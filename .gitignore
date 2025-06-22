@@ -1,0 +1,68 @@
+# --- General ---
+# Environment variables - **VERY IMPORTANT FOR SECURITY**
+.env
+.env.*
+!.env.example
+
+# IDE and editor specific files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+
+# --- Python / Backend ---
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+.venv
+venv/
+env/
+
+# Database files (local development)
+*.db
+*.sqlite3
+*.db-journal
+
+# Log and cache directories we created
+# Note: Using absolute paths from the root
+/backend/data/
+/backend/debug_logs/
+/backend/perf_logs/
+
+# Unit test / coverage reports
+.coverage
+.pytest_cache/
+htmlcov/
+
+
+# --- Node.js / Next.js / Frontend ---
+# Log files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+/frontend/node_modules/
+
+# Build directory
+/frontend/.next/
+
+# Production build
+/frontend/out/
+
+# TypeScript cache
+*.tsbuildinfo

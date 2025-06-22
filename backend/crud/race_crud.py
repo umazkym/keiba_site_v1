@@ -3,7 +3,7 @@
 from sqlalchemy.orm import Session, joinedload
 from database import models
 from datetime import date
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional # ★★★ Optional をインポート ★★★
 
 def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     """
@@ -22,8 +22,6 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     nar_venues: Dict[str, List[models.Race]] = {}
 
     for race in races_with_preds:
-        # ★★★ ここを修正 ★★★
-        # deviation_scoreがNoneの場合を考慮してソートする
         if race.predictions:
             race.predictions.sort(
                 key=lambda p: p.deviation_score if p.deviation_score is not None else -float('inf'), 
@@ -43,3 +41,14 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     nar_result = [{"venue_name": v_name, "races": race_list} for v_name, race_list in nar_venues.items()]
 
     return {"jra": jra_result, "nar": nar_result}
+
+
+def get_special_pick_for_date(db: Session, target_date: date) -> Optional[models.Prediction]:
+    """
+    指定された日付の予測の中から、最も偏差値が高いものを1件取得する
+    """
+    return db.query(models.Prediction)\
+        .join(models.Race, models.Prediction.race_id == models.Race.id)\
+        .filter(models.Race.race_date == target_date)\
+        .order_by(models.Prediction.deviation_score.desc())\
+        .first()

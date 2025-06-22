@@ -1,25 +1,22 @@
 # C:\Users\tnszk\program\GitHub\backend\schemas\race_schema.py
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import List, Optional
 
-# Pydantic V2以降では from_attributes=True と書くのが推奨
-class Config:
-    from_attributes = True
-
 class HorsePrediction(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     horse_name: str
     horse_number: int
-    # ★★★ float を Optional[float] に変更 ★★★
+    waku_number: Optional[int] # ★★★ waku_number を追加 ★★★
     deviation_score: Optional[float]
     mark: str
     start_1c_indicator: Optional[float]
 
-    class Config(Config):
-        pass
-
 class RacePrediction(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: str
     race_date: date
     venue_name: str
@@ -27,11 +24,7 @@ class RacePrediction(BaseModel):
     race_name: str
     course_type: Optional[str]
     distance: Optional[int]
-    
     predictions: List[HorsePrediction]
-
-    class Config(Config):
-        pass
 
 class VenueRaces(BaseModel):
     venue_name: str
@@ -40,3 +33,15 @@ class VenueRaces(BaseModel):
 class RaceDayPrediction(BaseModel):
     jra: List[VenueRaces]
     nar: List[VenueRaces]
+
+class SpecialPick(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    horse_id: str
+    horse_name: str
+    race_id: str
+    race_name: str
+    venue_name: str
+    race_number: int
+    deviation_score: float
+    commentary: str

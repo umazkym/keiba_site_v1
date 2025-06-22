@@ -1,4 +1,3 @@
-# C:\Users\tnszk\program\GitHub\backend\database\models.py
 from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -67,9 +66,8 @@ class Prediction(Base):
     horse_id = Column(String, nullable=False, index=True)
     horse_name = Column(String, nullable=False)
     horse_number = Column(Integer, nullable=False)
-    # ★★★ ここを修正 ★★★
-    # 予測不能なレースの場合、偏差値はNULLになりうるため nullable=True に変更
+    waku_number = Column(Integer, nullable=True) # 枠番
     deviation_score = Column(Float, nullable=True) 
     mark = Column(String, nullable=False)
-    start_1c_indicator = Column(Float)
+    start_1c_indicator = Column(Float, nullable=True)
     race = relationship("Race", back_populates="predictions")

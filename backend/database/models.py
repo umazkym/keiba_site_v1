@@ -1,3 +1,4 @@
+# C:\Users\tnszk\program\GitHub\backend\database\models.py
 from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -17,6 +18,7 @@ class Race(Base):
     total_horses = Column(Integer)
     results = relationship("Result", back_populates="race")
     predictions = relationship("Prediction", back_populates="race")
+    matchup = relationship("Matchup", back_populates="race", uselist=False) # ★★★ Matchupとのリレーションを追加 ★★★
 
 class Horse(Base):
     __tablename__ = "horses"
@@ -66,8 +68,17 @@ class Prediction(Base):
     horse_id = Column(String, nullable=False, index=True)
     horse_name = Column(String, nullable=False)
     horse_number = Column(Integer, nullable=False)
-    waku_number = Column(Integer, nullable=True) # 枠番
+    waku_number = Column(Integer, nullable=True)
     deviation_score = Column(Float, nullable=True) 
     mark = Column(String, nullable=False)
     start_1c_indicator = Column(Float, nullable=True)
     race = relationship("Race", back_populates="predictions")
+
+# ★★★ 新しいテーブル定義を追加 ★★★
+class Matchup(Base):
+    __tablename__ = "matchups"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    race_id = Column(String, ForeignKey("races.id"), nullable=False, unique=True, index=True)
+    matchup_data = Column(JSON, nullable=False)
+
+    race = relationship("Race", back_populates="matchup")

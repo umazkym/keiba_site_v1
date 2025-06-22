@@ -1,9 +1,9 @@
 # C:\Users\tnszk\program\GitHub\backend\crud\race_crud.py
-
 from sqlalchemy.orm import Session, joinedload
 from database import models
 from datetime import date
-from typing import Dict, Any, List, Optional # ★★★ Optional をインポート ★★★
+from typing import Dict, Any, List, Optional
+from collections import defaultdict
 
 def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     """
@@ -18,8 +18,8 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     if not races_with_preds:
         return {"jra": [], "nar": []}
         
-    jra_venues: Dict[str, List[models.Race]] = {}
-    nar_venues: Dict[str, List[models.Race]] = {}
+    jra_venues: Dict[str, List[models.Race]] = defaultdict(list)
+    nar_venues: Dict[str, List[models.Race]] = defaultdict(list)
 
     for race in races_with_preds:
         if race.predictions:
@@ -29,19 +29,14 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
             )
         
         if race.race_type == '中央':
-            if race.venue_name not in jra_venues:
-                jra_venues[race.venue_name] = []
             jra_venues[race.venue_name].append(race)
         elif race.race_type == '地方':
-            if race.venue_name not in nar_venues:
-                nar_venues[race.venue_name] = []
             nar_venues[race.venue_name].append(race)
 
     jra_result = [{"venue_name": v_name, "races": race_list} for v_name, race_list in jra_venues.items()]
     nar_result = [{"venue_name": v_name, "races": race_list} for v_name, race_list in nar_venues.items()]
 
     return {"jra": jra_result, "nar": nar_result}
-
 
 def get_special_pick_for_date(db: Session, target_date: date) -> Optional[models.Prediction]:
     """

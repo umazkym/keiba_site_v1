@@ -7,6 +7,7 @@ import numpy as np
 import math
 from datetime import date, timedelta
 from typing import Optional, List, Dict, Any
+from collections import defaultdict # ★★★ インポートを追加 ★★★
 
 def _calculate_1c_indicator(db: Session, horse_id: str, race_date: date) -> Optional[float]:
     past_results = db.query(models.Result.corner_positions, models.Race.total_horses)\
@@ -99,3 +100,65 @@ def create_predictions_for_race(db: Session, race_id: str) -> Optional[List[Dict
         df['mark'] = df.index.map(lambda i: marks[i] if pd.notna(df.loc[i, 'deviation_score']) and i < len(marks) else "")
     df_final = df.replace({np.nan: None})
     return df_final.to_dict('records')
+
+def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: List[str]):
+    """
+    指定されたレースの対戦成績を計算し、DBに保存する
+    """
+    if len(horse_ids) < 2:
+        return
+
+    past_results = db.query(models.Result, models.Race.venue_name, models.Race.race_date)\
+        .join(models.Race, models.Result.race_id == models.Race.id)\
+        .filter(models.Result.horse_id.in_(horse_ids))\
+        .all()
+
+    races_grouped = defaultdict(list)
+    for res, venue_name, race_date in past_results:
+        races_grouped[res.race_id].append({
+            'horse_id': res.horse_id, 'rank': res.rank,
+            'venue_name': venue_name, 'race_date': race_date.strftime('%Y-%m-%d')
+        })
+
+    matchup_matrix = defaultdict(lambda: {'win': 0, 'loss': 0, 'draw': 0, 'history': []})
+    for past_race_id, participants in races_grouped.items():
+        if len(participants) < 2: continue
+        
+        for i in range(len(participants)):
+            for j in range(i + 1, len(participants)):
+                p1 = participants[i]
+                p2 = participants[j]
+                
+                if p1.get('rank') is not None and p2.get('rank') is not None:
+                    key1 = f"{p1['horse_id']}_vs_{p2['horse_id']}"
+                    key2 = f"{p2['horse_id']}_vs_{p1['horse_id']}"
+                    
+                    history_entry = {
+                        'race_id': past_race_id, 'race_date': participants[0]['race_date'],
+                        'venue_name': participants[0]['venue_name'],
+                        'p1_horse_id': p1['horse_id'], 'p1_rank': p1['rank'],
+                        'p2_horse_id': p2['horse_id'], 'p2_rank': p2['rank']
+                    }
+
+                    if p1['rank'] < p2['rank']:
+                        matchup_matrix[key1]['win'] += 1
+                        matchup_matrix[key2]['loss'] += 1
+                    elif p2['rank'] < p1['rank']:
+                        matchup_matrix[key1]['loss'] += 1
+                        matchup_matrix[key2]['win'] += 1
+                    else:
+                        matchup_matrix[key1]['draw'] += 1
+                        matchup_matrix[key2]['draw'] += 1
+                    
+                    matchup_matrix[key1]['history'].append(history_entry)
+                    matchup_matrix[key2]['history'].append(history_entry)
+    
+    # DBに保存
+    if matchup_matrix:
+        existing = db.query(models.Matchup).filter(models.Matchup.race_id == race_id).first()
+        if existing:
+            existing.matchup_data = dict(matchup_matrix)
+        else:
+            new_matchup = models.Matchup(race_id=race_id, matchup_data=dict(matchup_matrix))
+            db.add(new_matchup)
+        db.commit()

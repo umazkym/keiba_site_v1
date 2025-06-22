@@ -27,17 +27,21 @@ def main():
     """
     指定された日付の予測を生成する一連の処理を実行する。
     """
-    # --- デバッグ用設定 ---
-    DEBUG_MODE = True
+    # --- 実行モード設定 ---
+    # Trueにすると、下の制限数で少量だけ処理する（デバッグ・テスト用）
+    # Falseにすると、全データを処理する（本番用）
+    DEBUG_MODE = False
     RACE_LIMIT_PER_VENUE = 2
-    # ★★★ HORSE_LIMIT_TOTAL を削除 ★★★
     # ---------------------------------
 
+    # DEBUG_MODEがFalseの時だけ、翌日を対象とする
+    target_date = datetime.date.today() + datetime.timedelta(days=1)
+    
     if DEBUG_MODE:
-        target_date = datetime.date(2025, 6, 22)
-        print(f"--- DEBUG MODE ON: Targeting fixed date {target_date.strftime('%Y-%m-%d')} ---")
+        print(f"--- DEBUG MODE ON: Targeting {target_date.strftime('%Y-%m-%d')} with limits ---")
     else:
-        target_date = datetime.date.today() + datetime.timedelta(days=1)
+        print(f"--- PRODUCTION MODE ON: Targeting {target_date.strftime('%Y-%m-%d')} with no limits ---")
+
     
     print(f"--- Starting Pipeline for {target_date.strftime('%Y-%m-%d')} ---")
     
@@ -50,7 +54,7 @@ def main():
         list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=True)
         if list_html:
             race_ids = parser.parse_race_ids_from_list(list_html)
-            filtered_race_ids = [rid for rid in race_ids if not rid.startswith('202565')]
+            filtered_race_ids = [rid for rid in race_ids if not rid.startswith(target_date_str[:4] + '65')]
             all_race_ids.extend([(rid, is_nar) for rid in filtered_race_ids])
             print(f"Found {len(race_ids)} {race_type} races ({len(filtered_race_ids)} after filtering).")
 
@@ -84,8 +88,6 @@ def main():
                     if horse.get('horse_id'):
                         all_horse_ids_to_fetch.add(horse['horse_id'])
 
-    # ★★★ 馬の数を制限するロジックを削除 ★★★
-    # これにより、選択されたレースに出走する全馬のデータを取得する
     fetch_and_load_past_data(list(all_horse_ids_to_fetch))
 
     for race_id, is_nar in all_race_ids:
@@ -94,6 +96,19 @@ def main():
         if predictions:
             database_loader.save_prediction(db, race_id, predictions)
             print(f"Saved {len(predictions)} predictions for race {race_id}")
+
+    for race_id, is_nar in all_race_ids:
+        print(f"Creating predictions for Race ID: {race_id}")
+        predictions = predictor.create_predictions_for_race(db, race_id)
+        if predictions:
+            database_loader.save_prediction(db, race_id, predictions)
+            print(f"Saved {len(predictions)} predictions for race {race_id}")
+
+            # ★★★ 対戦成績の計算・保存処理を呼び出す ★★★
+            horse_ids_in_race = [p['horse_id'] for p in predictions if p.get('horse_id')]
+            if horse_ids_in_race:
+                print(f"Calculating matchups for Race ID: {race_id}")
+                predictor.calculate_and_save_matchups_for_race(db, race_id, horse_ids_in_race)
 
     db.close()
     print(f"--- Pipeline Finished for {target_date.strftime('%Y-%m-%d')} ---")

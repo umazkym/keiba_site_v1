@@ -1,9 +1,13 @@
-# C:\Users\tnszk\program\keiba-ai-site\backend\schemas\race_schema.py
+# C:\Users\tnszk\program\GitHub\backend\schemas\race_schema.py
+
 from pydantic import BaseModel
 from datetime import date
 from typing import List, Optional
 
-# 予測結果の単一馬データ
+# orm_mode=True はPydantic V2以降では from_attributes=True と書くのが推奨です
+class Config:
+    from_attributes = True
+
 class HorsePrediction(BaseModel):
     horse_name: str
     horse_number: int
@@ -11,29 +15,29 @@ class HorsePrediction(BaseModel):
     mark: str
     start_1c_indicator: Optional[float]
 
-    class Config:
-        orm_mode = True
+    class Config(Config):
+        pass
 
-# 1レースごとの完全な予測データ
 class RacePrediction(BaseModel):
-    race_id: str
+    # ★★★ 修正点1: 'race_id' をモデルに合わせて 'id' に変更 ★★★
+    id: str
     race_date: date
     venue_name: str
     race_number: int
     race_name: str
-    course_type: str
-    distance: int
+    # ★★★ 修正点2: DBにNULLがありうるカラムをOptionalにする ★★★
+    course_type: Optional[str]
+    distance: Optional[int]
+    
     predictions: List[HorsePrediction]
 
-    class Config:
-        orm_mode = True
+    class Config(Config):
+        pass
 
-# 開催地ごとのレースリスト
 class VenueRaces(BaseModel):
     venue_name: str
     races: List[RacePrediction]
 
-# JRA/NARごとのデータ
 class RaceDayPrediction(BaseModel):
     jra: List[VenueRaces]
     nar: List[VenueRaces]

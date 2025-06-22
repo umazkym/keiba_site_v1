@@ -1,37 +1,30 @@
 # C:\Users\tnszk\program\GitHub\backend\database\models.py
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .database import Base
 
 class Race(Base):
     __tablename__ = "races"
-    
-    id = Column(String, primary_key=True, index=True) # race_id
+    id = Column(String, primary_key=True, index=True)
     race_date = Column(Date, nullable=False, index=True)
     venue_name = Column(String, nullable=False, index=True)
     race_number = Column(Integer, nullable=False)
     race_name = Column(String, nullable=False)
-    race_type = Column(String, nullable=False) # 中央 or 地方
-    
-    course_type = Column(String) # 芝 or ダート or 障
+    race_type = Column(String, nullable=False)
+    course_type = Column(String)
     distance = Column(Integer)
     weather = Column(String)
     ground_condition = Column(String)
     total_horses = Column(Integer)
-
-    # リレーションシップ
     results = relationship("Result", back_populates="race")
     predictions = relationship("Prediction", back_populates="race")
 
 class Horse(Base):
     __tablename__ = "horses"
-    
-    id = Column(String, primary_key=True, index=True) # netkeibaのhorse_id
+    id = Column(String, primary_key=True, index=True)
     name = Column(String, nullable=False, index=True)
     sex = Column(String)
     age = Column(Integer)
-    
-    # リレーションシップ
     results = relationship("Result", back_populates="horse")
 
 class Jockey(Base):
@@ -46,44 +39,37 @@ class Trainer(Base):
 
 class Result(Base):
     __tablename__ = "results"
-    
     id = Column(Integer, primary_key=True, autoincrement=True)
     race_id = Column(String, ForeignKey("races.id"), nullable=False, index=True)
     horse_id = Column(String, ForeignKey("horses.id"), nullable=False, index=True)
     jockey_id = Column(String, ForeignKey("jockeys.id"), index=True)
     trainer_id = Column(String, ForeignKey("trainers.id"), index=True)
-    
     rank = Column(Integer, index=True)
     waku_number = Column(Integer)
     horse_number = Column(Integer)
     finish_time_sec = Column(Float)
-    time_diff = Column(Float) # 着差
-    weight_carried = Column(Float) # 斤量
+    time_diff = Column(Float)
+    weight_carried = Column(Float)
     horse_weight = Column(Integer)
     horse_weight_diff = Column(Integer)
     popularity = Column(Integer)
     odds = Column(Float)
-    agari_3f = Column(Float) # 上り
-    corner_positions = Column(JSON) # コーナー通過順位 (例: [1, 2, 2, 3])
-    
-    # リレーションシップ
+    agari_3f = Column(Float)
+    corner_positions = Column(JSON)
+    __table_args__ = (UniqueConstraint('race_id', 'horse_id', name='_race_horse_uc'),)
     race = relationship("Race", back_populates="results")
     horse = relationship("Horse", back_populates="results")
     
 class Prediction(Base):
     __tablename__ = "predictions"
-    
     id = Column(Integer, primary_key=True, autoincrement=True)
     race_id = Column(String, ForeignKey("races.id"), nullable=False, index=True)
     horse_id = Column(String, nullable=False, index=True)
-    
     horse_name = Column(String, nullable=False)
     horse_number = Column(Integer, nullable=False)
-    
-    deviation_score = Column(Float, nullable=False)
-    mark = Column(String, nullable=False) # ◎, 〇, ▲, △, ☆
-    
+    # ★★★ ここを修正 ★★★
+    # 予測不能なレースの場合、偏差値はNULLになりうるため nullable=True に変更
+    deviation_score = Column(Float, nullable=True) 
+    mark = Column(String, nullable=False)
     start_1c_indicator = Column(Float)
-
-    # リレーションシップ
     race = relationship("Race", back_populates="predictions")

@@ -2,7 +2,6 @@
 
 from sqlalchemy.orm import Session, joinedload
 from database import models
-from schemas import race_schema # schemaもインポート
 from datetime import date
 from typing import Dict, Any, List
 
@@ -10,7 +9,6 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     """
     指定された日付のレースと予測をDBから取得し、スキーマに合わせた構造で返す。
     """
-    # options(joinedload(...)) を使うことで、関連する予測データも一度のクエリで効率的に取得する
     races_with_preds = db.query(models.Race)\
         .options(joinedload(models.Race.predictions))\
         .filter(models.Race.race_date == target_date)\
@@ -24,11 +22,14 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     nar_venues: Dict[str, List[models.Race]] = {}
 
     for race in races_with_preds:
-        # 取得した予測データを偏差値の降順でソートする
+        # ★★★ ここを修正 ★★★
+        # deviation_scoreがNoneの場合を考慮してソートする
         if race.predictions:
-            race.predictions.sort(key=lambda p: p.deviation_score, reverse=True)
+            race.predictions.sort(
+                key=lambda p: p.deviation_score if p.deviation_score is not None else -float('inf'), 
+                reverse=True
+            )
         
-        # race_type に基づいて中央と地方に振り分ける
         if race.race_type == '中央':
             if race.venue_name not in jra_venues:
                 jra_venues[race.venue_name] = []
@@ -38,7 +39,6 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
                 nar_venues[race.venue_name] = []
             nar_venues[race.venue_name].append(race)
 
-    # PydanticスキーマがDBオブジェクトから自動的に辞書へ変換してくれる
     jra_result = [{"venue_name": v_name, "races": race_list} for v_name, race_list in jra_venues.items()]
     nar_result = [{"venue_name": v_name, "races": race_list} for v_name, race_list in nar_venues.items()]
 

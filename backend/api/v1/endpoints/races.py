@@ -2,9 +2,9 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database.database import get_db          # <- 修正箇所
-from crud import race_crud                    # <- 修正箇所
-from schemas import race_schema               # <- 修正箇所
+from database.database import get_db
+from crud import race_crud
+from schemas import race_schema
 from datetime import date
 
 router = APIRouter()

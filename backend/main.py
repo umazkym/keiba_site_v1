@@ -2,8 +2,8 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.v1.endpoints import races as races_v1  # <- 修正箇所
-from database.database import engine, Base      # <- 修正箇所
+from api.v1.endpoints import races as races_v1
+from database.database import engine, Base
 
 # データベーステーブルを作成
 Base.metadata.create_all(bind=engine)

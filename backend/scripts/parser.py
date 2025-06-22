@@ -1,5 +1,4 @@
 # C:\Users\tnszk\program\GitHub\backend\scripts\parser.py
-
 from bs4 import BeautifulSoup
 import re
 import pandas as pd
@@ -45,7 +44,6 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
             
         shutuba_table = soup.find("table", class_=re.compile(r"Shutuba_Table|RaceTable0[12]"))
         if not shutuba_table:
-            print(f"[Warning] Shutuba table not found for race {race_id}. Skipping horse data.")
             return {'race_info': race_info_dict, 'horses': horse_list}
 
         rows = shutuba_table.find_all("tr", class_="HorseList")
@@ -89,10 +87,7 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
         return None
 
 def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]]:
-    # ★★★ この関数を、頂いたHTMLに合わせて全面的に書き換え ★★★
-    print("  - Parsing horse results page with BeautifulSoup...")
     soup = BeautifulSoup(html_content, 'lxml')
-    
     results_table = soup.find('table', class_='db_h_race_results')
     if not results_table:
         print("  - [Warning] Could not find the results table (.db_h_race_results).")
@@ -100,53 +95,48 @@ def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]
     
     results = []
     rows = results_table.find_all('tr')[1:]
-    print(f"  - Found {len(rows)} result rows in the table.")
 
     for row in rows:
-        cols = [c.get_text(strip=True) for c in row.find_all('td')]
-        if len(cols) < 27: continue # 列数が足りない行はスキップ
+        cols_text = [c.get_text(strip=True) for c in row.find_all('td')]
+        cols_elm = row.find_all('td')
+        if len(cols_text) < 27: continue
         
         try:
-            # --- race_idの抽出 (最重要) ---
-            race_link_a = row.select_one('td:nth-of-type(5) a') # 5番目の列(レース名)のリンク
+            race_link_a = cols_elm[4].find('a')
             race_id = None
             if race_link_a and 'href' in race_link_a.attrs:
                 match = re.search(r'/race/(\d+)', race_link_a['href'])
                 if match: race_id = match.group(1)
             
-            if not race_id: continue # race_idが取れない行はスキップ
+            if not race_id: continue
 
-            # --- 各種データの変換 ---
-            dist_match = re.match(r'([^\d]+)(\d+)', cols[14])
-            time_match = re.match(r'(\d+):(\d+\.\d+)', cols[17])
-            weight_match = re.match(r'(\d+)\((.+)\)', cols[23])
+            dist_match = re.match(r'([^\d]+)(\d+)', cols_text[14])
+            time_match = re.match(r'(\d+):(\d+\.\d+)', cols_text[17])
+            weight_match = re.match(r'(\d+)\((.+)\)', cols_text[23])
             
-            def safe_int(val): return int(val) if val.isdigit() else None
+            corner_positions_str = cols_text[20]
+            corner_positions = [int(p) for p in corner_positions_str.split('-') if p.isdigit()]
+            
+            def safe_int(val): return int(val) if val and val.isdigit() else None
             def safe_float(val):
                 try: return float(val)
                 except (ValueError, TypeError): return None
 
             result_dict = {
-                'race_id': race_id,
-                'race_date': pd.to_datetime(cols[0], errors='coerce').date(),
-                'venue_name': re.sub(r'^\d+', '', cols[1]).strip(),
-                'weather': cols[2],
-                'race_number': safe_int(cols[3]),
-                'race_name': cols[4],
-                'total_horses': safe_int(cols[6]),
-                'waku_number': safe_int(cols[7]),
-                'horse_number': safe_int(cols[8]),
-                'odds': safe_float(cols[9]),
-                'popularity': safe_int(cols[10]),
-                'rank': safe_int(cols[11]),
-                'jockey_name': cols[12].strip(),
-                'weight_carried': safe_float(cols[13]),
+                'race_id': race_id, 'race_date': pd.to_datetime(cols_text[0], errors='coerce').date(),
+                'venue_name': re.sub(r'^\d+', '', cols_text[1]).strip(), 'weather': cols_text[2],
+                'race_number': safe_int(cols_text[3]), 'race_name': cols_text[4],
+                'total_horses': safe_int(cols_text[6]), 'waku_number': safe_int(cols_text[7]),
+                'horse_number': safe_int(cols_text[8]), 'odds': safe_float(cols_text[9]),
+                'popularity': safe_int(cols_text[10]), 'rank': safe_int(cols_text[11]),
+                'jockey_name': cols_text[12].strip(), 'weight_carried': safe_float(cols_text[13]),
                 'distance': int(dist_match.group(2)) if dist_match else None,
                 'course_type': dist_match.group(1) if dist_match else None,
-                'ground_condition': cols[15],
+                'ground_condition': cols_text[15],
                 'finish_time_sec': int(time_match.group(1)) * 60 + float(time_match.group(2)) if time_match else None,
-                'time_diff': safe_float(cols[18]),
-                'agari_3f': safe_float(cols[22]),
+                'time_diff': safe_float(cols_text[18]),
+                'corner_positions': corner_positions,
+                'agari_3f': safe_float(cols_text[22]),
                 'horse_weight': int(weight_match.group(1)) if weight_match else None,
                 'horse_weight_diff': int(w_diff) if weight_match and (w_diff := weight_match.group(2)) not in ('計不', ' F', ' ', '--') and w_diff.replace('-', '').isdigit() else None,
             }

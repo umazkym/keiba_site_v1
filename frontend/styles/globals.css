@@ -1,0 +1,64 @@
+/* 総当たり表全体のコンテナ */
+.matchup-container {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.matchup-container h3 {
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+/* 横スクロール対応 */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #ddd;
+}
+
+/* テーブル本体のスタイル */
+.matchup-table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap; /* セル内での改行を防ぐ */
+  font-size: 0.8rem;
+}
+
+.matchup-table th, .matchup-table td {
+  border: 1px solid #ddd;
+  padding: 0.5rem;
+  text-align: center;
+}
+
+.matchup-table th {
+  background-color: #efefef;
+}
+
+/* 縦軸ヘッダーを固定するためのスタイル */
+.matchup-table .sticky-col {
+  position: sticky;
+  left: 0;
+  background-color: #efefef;
+  z-index: 1;
+  font-weight: bold;
+}
+
+/* 戦績に応じた背景色 */
+.matchup-table .matchup-win {
+  background-color: #e6fffa; /* 勝ち越し: 薄い緑 */
+}
+.matchup-table .matchup-loss {
+  background-color: #fff5f5; /* 負け越し: 薄い赤 */
+}
+.matchup-table .matchup-draw {
+  background-color: #feebc8; /* 五分: 薄い黄 */
+}
+.matchup-table .self-match {
+  background-color: #e2e8f0; /* 自分自身: グレー */
+}
+.matchup-table .no-match {
+  background-color: #ffffff; /* 対戦なし: 白 */
+}

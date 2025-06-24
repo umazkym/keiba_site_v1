@@ -7,6 +7,7 @@ import { PredictionTable } from '@/components/PredictuonTable';
 import { VenueRaces } from '@/lib/types';
 import { RaceSelector } from './RaceSelector';
 import { StartPositionChart } from './StartPositionChart';
+import { MatchupTable } from './MatchupTable'; // ★★★ 新しいコンポーネントをインポート ★★★
 
 const VenuePanel = ({ venue }: { venue: VenueRaces }) => {
     const [activeRaceIndex, setActiveRaceIndex] = useState(0);
@@ -23,6 +24,7 @@ const VenuePanel = ({ venue }: { venue: VenueRaces }) => {
                 <>
                     <StartPositionChart predictions={activeRace.predictions} />
                     <PredictionTable race={activeRace} />
+                    <MatchupTable race={activeRace} />
                 </>
             )}
         </div>

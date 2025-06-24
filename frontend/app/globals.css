@@ -1,3 +1,90 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 総当たり表全体のコンテナ */
+.matchup-container {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: #f9fafb; /* gray-50 */
+  border-radius: 8px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* 横スクロール対応 */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e5e7eb; /* gray-200 */
+  border-radius: 4px;
+}
+
+/* テーブル本体のスタイル */
+.matchup-table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap; /* セル内での改行を防ぐ */
+  font-size: 0.8rem;
+}
+
+.matchup-table th, .matchup-table td {
+  border: 1px solid #e5e7eb; /* gray-200 */
+  padding: 0.25rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.matchup-table th {
+  background-color: #f3f4f6; /* gray-100 */
+  font-weight: 600;
+}
+
+/* 左端の馬名列を固定 */
+.matchup-table .sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background-color: #f3f4f6; /* gray-100 と同じ */
+  min-width: 160px;
+  text-align: left;
+  border-right-width: 2px;
+  border-right-color: #d1d5db; /* gray-300 */
+}
+
+/* 左から2番目の合計成績列を固定 */
+.matchup-table .sticky-col-2 {
+  position: sticky;
+  left: 160px; /* sticky-colの幅に合わせる */
+  z-index: 20;
+  background-color: #f9fafb; /* gray-50 */
+  min-width: 100px;
+  border-right-width: 2px;
+  border-right-color: #d1d5db; /* gray-300 */
+}
+.matchup-table thead .sticky-col-2 {
+    background-color: #f3f4f6; /* ヘッダー行は他のヘッダーと同じ色 */
+}
+
+
+/* 戦績に応じた背景色 */
+.matchup-win {
+  background-color: #ECFDF5; /* green-50 */
+  color: #047857; /* green-700 */
+}
+.matchup-loss {
+  background-color: #FEF2F2; /* red-50 */
+  color: #B91C1C; /* red-700 */
+}
+.matchup-draw {
+  background-color: #FFFBEB; /* yellow-50 */
+  color: #B45309; /* yellow-700 */
+}
+
+/* ★★★ 対角線（自分自身との対戦）用のスタイル ★★★ */
+.self-match {
+  background-color: #e5e7eb; /* gray-200 */
+}
+
+.no-match {
+  background-color: #ffffff; /* 対戦なし: 白 */
+}

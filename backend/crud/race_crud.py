@@ -10,7 +10,10 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     指定された日付のレースと予測をDBから取得し、スキーマに合わせた構造で返す。
     """
     races_with_preds = db.query(models.Race)\
-        .options(joinedload(models.Race.predictions))\
+        .options(
+            joinedload(models.Race.predictions),
+            joinedload(models.Race.matchup)  # ★★★ matchupリレーションをEager Loadする ★★★
+        )\
         .filter(models.Race.race_date == target_date)\
         .order_by(models.Race.venue_name, models.Race.race_number)\
         .all()

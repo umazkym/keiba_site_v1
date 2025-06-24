@@ -13,6 +13,11 @@ class HorsePrediction(BaseModel):
     mark: str
     start_1c_indicator: Optional[float]
 
+# ★★★ 新しいMatchupスキーマを追加 ★★★
+class Matchup(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    matchup_data: Dict[str, Any]
+
 class RacePrediction(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
@@ -23,7 +28,7 @@ class RacePrediction(BaseModel):
     course_type: Optional[str]
     distance: Optional[int]
     predictions: List[HorsePrediction]
-    # ★★★ matchup_data を削除 ★★★
+    matchup: Optional[Matchup] # ★★★ matchup_dataをmatchupに変更し、型を適用 ★★★
 
 class VenueRaces(BaseModel):
     venue_name: str

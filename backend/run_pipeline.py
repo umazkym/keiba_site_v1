@@ -30,7 +30,7 @@ def main():
     # --- 実行モード設定 ---
     # Trueにすると、下の制限数で少量だけ処理する（デバッグ・テスト用）
     # Falseにすると、全データを処理する（本番用）
-    DEBUG_MODE = False
+    DEBUG_MODE = True
     RACE_LIMIT_PER_VENUE = 2
     # ---------------------------------
 

@@ -1,10 +1,13 @@
-import { RacePrediction, MatchupRecord } from '@/lib/types';
-import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { RacePrediction, MatchupRecord, HorsePrediction } from '@/lib/types';
+import React, { useState } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'; // ★★★ この行を追加 ★★★
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css'; 
 import 'tippy.js/themes/light-border.css';
 
+type ViewType = 'table' | 'cards';
+
+// --- ヘルパーコンポーネント ---
 const getWakuColorClasses = (waku: number | null): string => {
     switch (waku) {
         case 1: return 'bg-white text-black border-gray-500';
@@ -25,9 +28,9 @@ const HorseNumberCircle = ({ number, waku }: { number: number, waku: number | nu
     </div>
 );
 
-const MatchupTooltipContent = ({ rowHorseName, colHorseName, record }: { rowHorseName: string, colHorseName: string, record: MatchupRecord }) => (
+const MatchupTooltipContent = ({ rowHorse, colHorse, record }: { rowHorse: HorsePrediction, colHorse: HorsePrediction, record: MatchupRecord }) => (
     <div className="text-left p-2">
-        <h4 className="font-bold border-b border-gray-200 pb-1 mb-2">{rowHorseName} vs {colHorseName}</h4>
+        <h4 className="font-bold border-b border-gray-200 pb-1 mb-2">{rowHorse.horse_name} vs {colHorse.horse_name}</h4>
         <div className="font-semibold mb-2 text-center text-lg">
             <span className="text-green-500">{record.win}</span>
             <span className="text-gray-500 mx-1">-</span>
@@ -38,12 +41,14 @@ const MatchupTooltipContent = ({ rowHorseName, colHorseName, record }: { rowHors
         {record.history.length > 0 && (
             <ul className="space-y-2 text-xs max-h-40 overflow-y-auto">
                 {record.history.slice().reverse().map((h, index) => {
-                    const isWin = h.p1_rank < h.p2_rank;
+                    const rowRank = rowHorse.horse_id === h.p1_horse_id ? h.p1_rank : h.p2_rank;
+                    const colRank = colHorse.horse_id === h.p1_horse_id ? h.p1_rank : h.p2_rank;
+                    const isWin = rowRank < colRank;
                     return (
                         <li key={index} className="border-t border-gray-200 pt-1">
                             <div className="font-semibold">{new Date(h.race_date).toLocaleDateString()} {h.venue_name}</div>
                             <div>
-                                {h.p1_rank}着 vs {h.p2_rank}着
+                                {rowRank}着 vs {colRank}着
                                 <span className={`ml-2 font-bold ${isWin ? 'text-green-500' : 'text-red-500'}`}>
                                     {isWin ? '勝利' : '敗北'}
                                 </span>
@@ -56,19 +61,11 @@ const MatchupTooltipContent = ({ rowHorseName, colHorseName, record }: { rowHors
     </div>
 );
 
+// --- テーブルビュー用のコンポーネント ---
 const WinLossPieChart = ({ win, loss, draw }: { win: number, loss: number, draw: number }) => {
-    const data = [
-        { name: 'Win', value: win },
-        { name: 'Loss', value: loss },
-        { name: 'Draw', value: draw },
-    ].filter(d => d.value > 0);
-
+    const data = [ { name: 'Win', value: win }, { name: 'Loss', value: loss }, { name: 'Draw', value: draw } ].filter(d => d.value > 0);
     const COLORS = { Win: '#10B981', Loss: '#EF4444', Draw: '#A1A1AA' };
-
-    if (data.length === 0) {
-        return <div className='w-14 h-14 bg-gray-200 rounded-full flex items-center justify-center text-xs text-gray-500'>対戦なし</div>;
-    }
-
+    if (data.length === 0) return <div className='w-14 h-14 bg-gray-200 rounded-full flex items-center justify-center text-xs text-gray-500'>対戦なし</div>;
     return (
         <div className='w-14 h-14 relative'>
             <ResponsiveContainer>
@@ -78,129 +75,192 @@ const WinLossPieChart = ({ win, loss, draw }: { win: number, loss: number, draw:
                     </Pie>
                 </PieChart>
             </ResponsiveContainer>
-             <div className="absolute inset-0 flex items-center justify-center text-xs font-bold pointer-events-none">
-                {win + loss + draw}
-            </div>
+             <div className="absolute inset-0 flex items-center justify-center text-xs font-bold pointer-events-none">{win + loss + draw}</div>
         </div>
     );
 };
 
-
-export const MatchupTable = ({ race }: { race: RacePrediction }) => {
-    if (!race.matchup?.matchup_data || Object.keys(race.matchup.matchup_data).length === 0) {
-        return (
-            <div className="matchup-container text-center text-gray-500">
-                <p>このレースの直接対決データはありません。</p>
-            </div>
-        );
-    }
-
-    const { predictions, matchup: { matchup_data } } = race;
+const TableView = ({ race }: { race: RacePrediction }) => {
+    const { predictions, matchup } = race;
+    if (!matchup) return null;
+    const { matchup_data } = matchup;
     const sortedHorses = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
-
     const totalRecords = sortedHorses.reduce((acc, horse) => {
         let win = 0, loss = 0, draw = 0;
         sortedHorses.forEach(opponent => {
             if (horse.horse_id !== opponent.horse_id) {
                 const record = matchup_data[`${horse.horse_id}_vs_${opponent.horse_id}`];
-                if (record) {
-                    win += record.win; loss += record.loss; draw += record.draw;
-                }
+                if (record) { win += record.win; loss += record.loss; draw += record.draw; }
             }
         });
         acc[horse.horse_id] = { win, loss, draw };
         return acc;
     }, {} as Record<string, { win: number, loss: number, draw: number }>);
 
+    return (
+        <div className="table-wrapper">
+            <table className="matchup-table">
+                <thead>
+                    <tr>
+                        <th className="sticky-col !p-1 text-center">馬名</th>
+                        <th className="p-1 text-xs text-center font-normal sticky-col-2">VS 全体</th>
+                        {sortedHorses.map(horse => (
+                            <th key={horse.horse_id} className="p-1">
+                                <div className='flex flex-col items-center justify-center h-full gap-1'>
+                                    <HorseNumberCircle number={horse.horse_number} waku={horse.waku_number} />
+                                    <span className='text-xs font-normal whitespace-nowrap'>{horse.horse_name}</span>
+                                </div>
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {sortedHorses.map((rowHorse) => (
+                        <tr key={rowHorse.horse_id}>
+                            <th className="sticky-col p-1">
+                                <div className='flex items-center h-full px-2 gap-2'>
+                                    <HorseNumberCircle number={rowHorse.horse_number} waku={rowHorse.waku_number} />
+                                    <span className='text-sm font-semibold whitespace-nowrap'>{rowHorse.horse_name}</span>
+                                </div>
+                            </th>
+                            <td className="p-1 align-middle sticky-col-2">
+                                <div className='flex flex-col items-center justify-center'>
+                                    <WinLossPieChart {...totalRecords[rowHorse.horse_id]}/>
+                                    <div className='text-xs font-mono mt-1'>
+                                        <span className="text-green-600 font-semibold">{totalRecords[rowHorse.horse_id].win}</span>-
+                                        <span className="text-red-600 font-semibold">{totalRecords[rowHorse.horse_id].loss}</span>-
+                                        <span className="text-gray-500">{totalRecords[rowHorse.horse_id].draw}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            {sortedHorses.map((colHorse) => {
+                                if (colHorse.horse_id === rowHorse.horse_id) return <td key={colHorse.horse_id} className="self-match"></td>;
+
+                                const record = matchup_data[`${rowHorse.horse_id}_vs_${colHorse.horse_id}`];
+                                let content = <div className="net-wins-cell"><span className="text-gray-400">-</span></div>;
+                                let cellClass = 'no-match';
+                                let recordExists = record && (record.win > 0 || record.loss > 0 || record.draw > 0);
+
+                                if (recordExists) {
+                                    const netWins = record.win - record.loss;
+                                    if (netWins > 0) cellClass = 'matchup-win';
+                                    else if (netWins < 0) cellClass = 'matchup-loss';
+                                    else cellClass = 'matchup-draw';
+
+                                    content = (
+                                        <div className="net-wins-cell">
+                                            <span className={`net-wins-number ${cellClass}`}>
+                                                {netWins > 0 ? `+${netWins}` : netWins}
+                                            </span>
+                                            <span className="wld-text">
+                                                ({record.win}-{record.loss}-{record.draw})
+                                            </span>
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <td key={colHorse.horse_id} className={`p-0 ${cellClass}`}>
+                                        <Tippy content={record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : ''} theme="light-border" placement="top" animation={false} disabled={!record}>
+                                            {content}
+                                        </Tippy>
+                                    </td>
+                                );
+                            })}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
+// --- カードビュー ---
+const DuelCard = ({ horse1, horse2, record }: { horse1: HorsePrediction; horse2: HorsePrediction; record?: MatchupRecord }) => {
+    const totalGames = record ? record.win + record.loss : 0;
+    const h1WinRate = totalGames > 0 && record ? (record.win / totalGames) * 100 : 50;
+    const h1WakuClass = getWakuColorClasses(horse1.waku_number).split(' ')[0];
+    
+    const content = (
+        <div className="duel-card">
+            <div className="horse-profile">
+                <HorseNumberCircle number={horse1.horse_number} waku={horse1.waku_number} />
+                <span className="horse-name">{horse1.horse_name}</span>
+            </div>
+            <div className="duel-center">
+                <div className="score">
+                    {record ? `${record.win} - ${record.loss}` : '0 - 0'}
+                    {record && record.draw > 0 && <span className="draw-score">-{record.draw}</span>}
+                </div>
+                <div className="dominance-bar-container">
+                    <div className={`dominance-bar ${h1WakuClass}`} style={{ width: `${h1WinRate}%` }}></div>
+                </div>
+            </div>
+            <div className="horse-profile">
+                <HorseNumberCircle number={horse2.horse_number} waku={horse2.waku_number} />
+                <span className="horse-name">{horse2.horse_name}</span>
+            </div>
+        </div>
+    );
+    
+    return (
+        <Tippy content={record ? <MatchupTooltipContent rowHorse={horse1} colHorse={colHorse} record={record} /> : ''} theme="light-border" placement="top" animation={false} disabled={!record}>
+            {content}
+        </Tippy>
+    );
+};
+
+const CardView = ({ race }: { race: RacePrediction }) => {
+    const { predictions, matchup } = race;
+    if (!matchup) return null;
+    const { matchup_data } = matchup;
+    const sortedHorses = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
+    const pairs: { horse1: HorsePrediction; horse2: HorsePrediction }[] = [];
+    for (let i = 0; i < sortedHorses.length; i++) {
+        for (let j = i + 1; j < sortedHorses.length; j++) {
+            pairs.push({ horse1: sortedHorses[i], horse2: sortedHorses[j] });
+        }
+    }
+    return (
+        <div className="card-grid">
+            {pairs.map(({ horse1, horse2 }) => (
+                <DuelCard
+                    key={`${horse1.horse_id}-${horse2.horse_id}`}
+                    horse1={horse1}
+                    horse2={horse2}
+                    record={matchup_data[`${horse1.horse_id}_vs_${horse2.horse_id}`]}
+                />
+            ))}
+        </div>
+    );
+};
+
+
+// --- 親コンポーネント ---
+export const MatchupTable = ({ race }: { race: RacePrediction }) => {
+    const [view, setView] = useState<ViewType>('table');
+
+    if (!race.matchup?.matchup_data || Object.keys(race.matchup.matchup_data).length === 0) {
+        return <div className="matchup-container text-center text-gray-500"><p>このレースの直接対決データはありません。</p></div>;
+    }
+
+    const buttonClass = (buttonView: ViewType) => 
+        `px-3 py-1 text-sm rounded-md transition-colors duration-200 ${
+            view === buttonView 
+            ? 'bg-blue-600 text-white font-semibold shadow-md' 
+            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+        }`;
 
     return (
         <div className="matchup-container">
-            <h3 className="text-xl font-bold text-center mb-4">直接対決データ</h3>
-            <div className="table-wrapper">
-                <table className="matchup-table">
-                    <thead>
-                        <tr>
-                            <th className="sticky-col"></th>
-                            <th className="p-1 text-xs text-center font-normal sticky-col-2">VS 全体</th>
-                            {sortedHorses.map(horse => (
-                                <th key={horse.horse_id} className="p-1">
-                                    <div className='flex flex-col items-center justify-center h-full gap-1'>
-                                        <HorseNumberCircle number={horse.horse_number} waku={horse.waku_number} />
-                                        <span className='text-xs font-normal whitespace-nowrap'>{horse.horse_name}</span>
-                                    </div>
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {sortedHorses.map((rowHorse) => (
-                            <tr key={rowHorse.horse_id}>
-                                <th className="sticky-col p-1">
-                                    <div className='flex items-center h-full px-2 gap-2'>
-                                        <HorseNumberCircle number={rowHorse.horse_number} waku={rowHorse.waku_number} />
-                                        <span className='text-sm font-semibold whitespace-nowrap'>{rowHorse.horse_name}</span>
-                                    </div>
-                                </th>
-                                <td className="p-1 align-middle sticky-col-2">
-                                    <div className='flex flex-col items-center justify-center'>
-                                        <WinLossPieChart {...totalRecords[rowHorse.horse_id]}/>
-                                        <div className='text-xs font-mono mt-1'>
-                                            <span className="text-green-600 font-semibold">{totalRecords[rowHorse.horse_id].win}</span>-
-                                            <span className="text-red-600 font-semibold">{totalRecords[rowHorse.horse_id].loss}</span>-
-                                            <span className="text-gray-500">{totalRecords[rowHorse.horse_id].draw}</span>
-                                        </div>
-                                    </div>
-                                </td>
-                                {/* ★★★ ここからが修正箇所 ★★★ */}
-                                {sortedHorses.map((colHorse) => {
-                                    // 対角線（自分自身との対戦）のセルは専用スタイルを適用
-                                    if (colHorse.horse_number === rowHorse.horse_number) {
-                                        return <td key={colHorse.horse_id} className="self-match"></td>;
-                                    }
-
-                                    // 対角線以外のすべてのセルのデータを取得・表示
-                                    const record = matchup_data[`${rowHorse.horse_id}_vs_${colHorse.horse_id}`];
-                                    const netWins = record ? record.win - record.loss : 0;
-                                    
-                                    let cellClass = 'no-match';
-                                    let content = <span className="text-gray-400">-</span>;
-
-                                    if (record && (record.win > 0 || record.loss > 0 || record.draw > 0)) {
-                                        if (netWins > 0) cellClass = 'matchup-win';
-                                        else if (netWins < 0) cellClass = 'matchup-loss';
-                                        else cellClass = 'matchup-draw';
-                                        
-                                        content = <span>{netWins > 0 ? `+${netWins}`: netWins}</span>;
-                                    }
-
-                                    return (
-                                        <td key={colHorse.horse_id} className={`font-bold text-lg ${cellClass}`}>
-                                            {record ? (
-                                                <Tippy 
-                                                    content={<MatchupTooltipContent rowHorseName={rowHorse.horse_name} colHorseName={colHorse.horse_name} record={record} />} 
-                                                    theme="light-border" 
-                                                    placement="top" 
-                                                    animation="shift-away"
-                                                >
-                                                    {content}
-                                                </Tippy>
-                                            ) : (
-                                                content
-                                            )}
-                                        </td>
-                                    );
-                                })}
-                                {/* ★★★ 修正箇所ここまで ★★★ */}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <div className="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 className="text-xl font-bold">直接対決データ</h3>
+                <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-lg">
+                    <button onClick={() => setView('table')} className={buttonClass('table')}>テーブル表示</button>
+                    <button onClick={() => setView('cards')} className={buttonClass('cards')}>カード表示</button>
+                </div>
             </div>
-            <div className="flex justify-center items-center gap-4 mt-4 text-xs">
-                <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-100 border border-green-300"></div>勝ち越し</div>
-                <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-100 border border-red-300"></div>負け越し</div>
-                <div className="flex items-center gap-1"><div className="w-3 h-3 bg-yellow-100 border border-yellow-300"></div>五分</div>
-            </div>
+            {view === 'table' && <TableView race={race} />}
+            {view === 'cards' && <CardView race={race} />}
         </div>
     );
 };

@@ -1,6 +1,6 @@
 import { RacePrediction, MatchupRecord, HorsePrediction } from '@/lib/types';
 import React, { useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'; // ★★★ この行を追加 ★★★
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css'; 
 import 'tippy.js/themes/light-border.css';
@@ -160,7 +160,8 @@ const TableView = ({ race }: { race: RacePrediction }) => {
                                 }
                                 return (
                                     <td key={colHorse.horse_id} className={`p-0 ${cellClass}`}>
-                                        <Tippy content={record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : ''} theme="light-border" placement="top" animation={false} disabled={!record}>
+                                        {/* ★★★ 修正点: Tippy の content を render プロパティに変更 */}
+                                        <Tippy render={() => (record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : <></>)} theme="light-border" placement="top" animation={false} disabled={!record}>
                                             {content}
                                         </Tippy>
                                     </td>
@@ -203,7 +204,8 @@ const DuelCard = ({ horse1, horse2, record }: { horse1: HorsePrediction; horse2:
     );
     
     return (
-        <Tippy content={record ? <MatchupTooltipContent rowHorse={horse1} colHorse={colHorse} record={record} /> : ''} theme="light-border" placement="top" animation={false} disabled={!record}>
+        /* ★★★ 修正点: Tippy の content を render プロパティに変更し、colHorse の参照を horse2 に修正 */
+        <Tippy render={() => (record ? <MatchupTooltipContent rowHorse={horse1} colHorse={horse2} record={record} /> : <></>)} theme="light-border" placement="top" animation={false} disabled={!record}>
             {content}
         </Tippy>
     );

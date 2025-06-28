@@ -8,11 +8,12 @@ from collections import defaultdict
 def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     """
     指定された日付のレースと予測をDBから取得し、スキーマに合わせた構造で返す。
+    ★★★ 馬番有利不利データも付与する ★★★
     """
     races_with_preds = db.query(models.Race)\
         .options(
             joinedload(models.Race.predictions),
-            joinedload(models.Race.matchup)  # ★★★ matchupリレーションをEager Loadする ★★★
+            joinedload(models.Race.matchup)
         )\
         .filter(models.Race.race_date == target_date)\
         .order_by(models.Race.venue_name, models.Race.race_number)\
@@ -31,6 +32,17 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
                 reverse=True
             )
         
+        # ★★★ 修正箇所: `total_horses`の条件を削除 ★★★
+        if race.venue_name and race.course_type and race.distance:
+            advantages = db.query(models.HorseNumberAdvantage).filter(
+                models.HorseNumberAdvantage.venue_name == race.venue_name,
+                models.HorseNumberAdvantage.course_type == race.course_type,
+                models.HorseNumberAdvantage.distance == race.distance
+            ).order_by(models.HorseNumberAdvantage.horse_number).all()
+            setattr(race, 'horse_number_advantages', advantages)
+        else:
+            setattr(race, 'horse_number_advantages', [])
+
         if race.race_type == '中央':
             jra_venues[race.venue_name].append(race)
         elif race.race_type == '地方':

@@ -109,6 +109,16 @@ def get_shutuba_html(race_id: str, is_nar: bool, force_download: bool = False) -
     file_path = os.path.join(SHUTUBA_DIR, f"{race_id}.html")
     return get_html(url, file_path, force_download)
 
+# ★★★ 新規追加: レース結果ページを取得する関数 ★★★
+def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = False) -> str | None:
+    """
+    過去のレース結果ページを取得する
+    """
+    base_url = BASE_NAR_URL if is_nar else BASE_CENTRAL_URL
+    url = f"{base_url}/race/result.html?race_id={race_id}"
+    file_path = os.path.join(RACE_RESULT_DIR, f"{race_id}.html")
+    return get_html(url, file_path, force_download)
+
 def get_horse_page_html(horse_id: str, force_download: bool = False) -> str | None:
     url = f"{DB_BASE_URL}/horse/{horse_id}"
     file_path = os.path.join(HORSE_DIR, f"{horse_id}.html")

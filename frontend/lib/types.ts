@@ -8,7 +8,6 @@ export interface HorsePrediction {
     start_1c_indicator: number | null;
 }
 
-// ★★★ 対戦成績の型定義を追加 ★★★
 export interface MatchupRecord {
     win: number;
     loss: number;
@@ -28,6 +27,12 @@ export interface MatchupData {
     matchup_data: Record<string, MatchupRecord>;
 }
 
+// ★★★ 馬番有利不利データの型定義を追加 ★★★
+export interface HorseNumberAdvantage {
+    horse_number: number;
+    advantage_score: number;
+}
+
 export interface RacePrediction {
     id: string;
     race_date: string;
@@ -37,7 +42,9 @@ export interface RacePrediction {
     course_type: string | null;
     distance: number | null;
     predictions: HorsePrediction[];
-    matchup: MatchupData | null; // ★★★ matchupプロパティを追加 ★★★
+    matchup: MatchupData | null;
+    // ★★★ 馬番有利不利データのプロパティを追加 ★★★
+    horse_number_advantages: HorseNumberAdvantage[];
 }
 
 export interface VenueRaces {

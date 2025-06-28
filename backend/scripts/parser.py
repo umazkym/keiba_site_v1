@@ -147,3 +147,75 @@ def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]
             
     print(f"  - Successfully parsed {len(results)} past results.")
     return results
+
+# ★★★ 新規追加: レース結果ページ全体をパースする関数 ★★★
+def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str, Any]]:
+    """
+    レース結果ページをパースして、レース情報と全出走馬の結果を返す
+    """
+    if not html_content: return None
+    soup = BeautifulSoup(html_content, 'lxml')
+    race_info_dict = {}
+    results_list = []
+    
+    try:
+        # レース情報のパース (shutubaページと類似)
+        race_list_item = soup.select_one(".RaceList_Item02")
+        if race_list_item:
+            race_name_elm = race_list_item.select_one(".RaceName")
+            if race_name_elm: race_info_dict['race_name'] = race_name_elm.get_text(strip=True)
+            race_data01_elm = race_list_item.select_one(".RaceData01")
+            if race_data01_elm:
+                race_data01 = race_data01_elm.get_text(strip=True)
+                m_course = re.search(r'(芝|ダ|障)(\d+)m', race_data01)
+                if m_course:
+                    race_info_dict['course_type'] = m_course.group(1)
+                    race_info_dict['distance'] = int(m_course.group(2))
+                m_weather = re.search(r'天候:(\S+)', race_data01)
+                if m_weather: race_info_dict['weather'] = m_weather.group(1)
+                m_ground = re.search(r'馬場:(\S+)', race_data01)
+                if m_ground: race_info_dict['ground_condition'] = m_ground.group(1)
+        
+        race_info_dict['race_number'] = int(race_id[-2:])
+
+        # 結果テーブルのパース
+        result_table = soup.find("table", class_=re.compile(r"race_table_01|RaceTable01"))
+        if not result_table:
+            return None # 結果テーブルがなければ処理終了
+
+        rows = result_table.find_all("tr")[1:] # ヘッダー行を除く
+        race_info_dict['total_horses'] = len(rows)
+        
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) < 11: continue
+
+            # タイム文字列から秒へ変換
+            time_str = cols[7].get_text(strip=True)
+            time_match = re.match(r'(\d+):(\d+\.\d+)', time_str)
+            finish_time_sec = int(time_match.group(1)) * 60 + float(time_match.group(2)) if time_match else None
+
+            horse_link = cols[3].find('a', href=re.compile(r'/horse/'))
+            jockey_link = cols[6].find('a', href=re.compile(r'/jockey/'))
+            trainer_link = cols[10].find('a', href=re.compile(r'/trainer/'))
+
+            results_list.append({
+                'rank': int(cols[0].get_text(strip=True)) if cols[0].get_text(strip=True).isdigit() else None,
+                'waku_number': int(cols[1].get_text(strip=True)) if cols[1].get_text(strip=True).isdigit() else None,
+                'horse_number': int(cols[2].get_text(strip=True)) if cols[2].get_text(strip=True).isdigit() else None,
+                'horse_id': re.search(r'/horse/(\d+)', horse_link['href']).group(1) if horse_link else None,
+                'horse_name': horse_link.get_text(strip=True) if horse_link else None,
+                'weight_carried': float(cols[5].get_text(strip=True)) if re.match(r'^\d+\.?\d*$', cols[5].get_text(strip=True)) else None,
+                'jockey_id': re.search(r'/jockey/result/recent/(\w+)', jockey_link['href']).group(1) if jockey_link else None,
+                'finish_time_sec': finish_time_sec,
+                'odds': float(cols[9].get_text(strip=True)) if re.match(r'^\d+\.?\d*$', cols[9].get_text(strip=True)) else None,
+                'popularity': int(cols[10].get_text(strip=True)) if cols[10].get_text(strip=True).isdigit() else None,
+            })
+        
+        return {'race_info': race_info_dict, 'results': results_list}
+    
+    except Exception as e:
+        import traceback
+        print(f"An error occurred while parsing race result page for race {race_id}:")
+        traceback.print_exc()
+        return None

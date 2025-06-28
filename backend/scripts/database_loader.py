@@ -83,7 +83,7 @@ def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str)
             result_dict['race_id'] = r['race_id']
         
         if result_dict.get('race_id') and result_dict.get('horse_id'):
-             results_data.append(result_dict)
+            results_data.append(result_dict)
 
     upsert_data(db, models.Race, races_data, ['id'])
     upsert_data(db, models.Result, results_data, ['race_id', 'horse_id'])
@@ -98,4 +98,58 @@ def save_prediction(db: Session, race_id: str, predictions: List[Dict[str, Any]]
         preds_to_load.append(p)
     if preds_to_load:
         db.bulk_insert_mappings(models.Prediction, preds_to_load)
+    db.commit()
+
+def save_horse_number_advantages(db: Session, advantages: List[Dict[str, Any]]):
+    """
+    計算された馬番有利不利データをDBにUpsertする。
+    """
+    if not advantages:
+        return
+    
+    unique_keys = ['venue_name', 'course_type', 'distance', 'horse_number']
+    upsert_data(db, models.HorseNumberAdvantage, advantages, unique_keys)
+    db.commit()
+
+# ★★★ 新規追加: 過去レース結果をDBに保存する関数 ★★★
+def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, race_date: str, is_nar: bool):
+    """
+    パース済みの単一レース結果をDBにロードする
+    """
+    race_info = race_data.get('race_info', {})
+    venue_code = race_id[4:6]
+    venue_name = VENUE_CODE_MAP.get(venue_code, '不明')
+    
+    race_to_save = {
+        'id': race_id, 'race_date': race_date, 'race_type': '地方' if is_nar else '中央',
+        'venue_name': venue_name, 'race_number': race_info.get('race_number'),
+        'race_name': race_info.get('race_name'), 'course_type': race_info.get('course_type'),
+        'distance': race_info.get('distance'), 'weather': race_info.get('weather'),
+        'ground_condition': race_info.get('ground_condition'), 'total_horses': race_info.get('total_horses')
+    }
+    upsert_data(db, models.Race, [race_to_save], ['id'])
+
+    horses = []
+    results = []
+    for h in race_data.get('results', []):
+        if h.get('horse_id'):
+            horses.append({'id': h['horse_id'], 'name': h['horse_name']})
+            # resultに必要な情報だけを抽出
+            result_entry = {
+                'race_id': race_id,
+                'horse_id': h.get('horse_id'),
+                'jockey_id': h.get('jockey_id'),
+                'rank': h.get('rank'),
+                'waku_number': h.get('waku_number'),
+                'horse_number': h.get('horse_number'),
+                'finish_time_sec': h.get('finish_time_sec'),
+                'weight_carried': h.get('weight_carried'),
+                'popularity': h.get('popularity'),
+                'odds': h.get('odds')
+            }
+            results.append(result_entry)
+
+    upsert_data(db, models.Horse, horses, ['id'])
+    upsert_data(db, models.Result, results, ['race_id', 'horse_id'])
+    
     db.commit()

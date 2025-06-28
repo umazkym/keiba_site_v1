@@ -7,7 +7,8 @@ import { PredictionTable } from '@/components/PredictuonTable';
 import { VenueRaces } from '@/lib/types';
 import { RaceSelector } from './RaceSelector';
 import { StartPositionChart } from './StartPositionChart';
-import { MatchupTable } from './MatchupTable'; // ★★★ 新しいコンポーネントをインポート ★★★
+import { MatchupTable } from './MatchupTable';
+import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart'; // ★★★ 新しいコンポーネントをインポート ★★★
 
 const VenuePanel = ({ venue }: { venue: VenueRaces }) => {
     const [activeRaceIndex, setActiveRaceIndex] = useState(0);
@@ -25,6 +26,8 @@ const VenuePanel = ({ venue }: { venue: VenueRaces }) => {
                     <StartPositionChart predictions={activeRace.predictions} />
                     <PredictionTable race={activeRace} />
                     <MatchupTable race={activeRace} />
+                    {/* ★★★ 新しいコンポーネントを総当たり表の下に追加 ★★★ */}
+                    <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} />
                 </>
             )}
         </div>
@@ -71,7 +74,7 @@ export const RaceTabs = ({ data }: { data: { jra: VenueRaces[], nar: VenueRaces[
                         </TabList>
                         {data.nar.map(venue => (
                             <TabPanel key={venue.venue_name}>
-                               <VenuePanel venue={venue} />
+                                <VenuePanel venue={venue} />
                             </TabPanel>
                         ))}
                     </Tabs>

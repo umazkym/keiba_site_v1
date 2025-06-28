@@ -8,7 +8,7 @@ import { VenueRaces } from '@/lib/types';
 import { RaceSelector } from './RaceSelector';
 import { StartPositionChart } from './StartPositionChart';
 import { MatchupTable } from './MatchupTable';
-import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart'; // ★★★ 新しいコンポーネントをインポート ★★★
+import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 
 const VenuePanel = ({ venue }: { venue: VenueRaces }) => {
     const [activeRaceIndex, setActiveRaceIndex] = useState(0);
@@ -26,8 +26,11 @@ const VenuePanel = ({ venue }: { venue: VenueRaces }) => {
                     <StartPositionChart predictions={activeRace.predictions} />
                     <PredictionTable race={activeRace} />
                     <MatchupTable race={activeRace} />
-                    {/* ★★★ 新しいコンポーネントを総当たり表の下に追加 ★★★ */}
-                    <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} />
+                    <HorseNumberAdvantageChart
+                        advantages={activeRace.horse_number_advantages}
+                        courseType={activeRace.course_type}
+                        distance={activeRace.distance}
+                    />
                 </>
             )}
         </div>

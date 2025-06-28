@@ -58,7 +58,7 @@ def backfill_historical_data(start_date: datetime.date, end_date: datetime.date)
 def main():
     """指定された日付の予測を生成する一連の処理を実行する。"""
     DEBUG_MODE = True
-    RACE_LIMIT_PER_VENUE = 2
+    RACE_LIMIT_PER_VENUE = 10
 
     target_date = datetime.date.today() + datetime.timedelta(days=1)
 

@@ -1,5 +1,6 @@
 # C:\Users\tnszk\program\GitHub\backend\crud\race_crud.py
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import desc # SQLAlchemyからdescをインポート
 from database import models
 from datetime import date
 from typing import Dict, Any, List, Optional
@@ -8,7 +9,6 @@ from collections import defaultdict
 def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     """
     指定された日付のレースと予測をDBから取得し、スキーマに合わせた構造で返す。
-    ★★★ 馬番有利不利データも付与する ★★★
     """
     races_with_preds = db.query(models.Race)\
         .options(
@@ -32,7 +32,6 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
                 reverse=True
             )
         
-        # ★★★ 修正箇所: `total_horses`の条件を削除 ★★★
         if race.venue_name and race.course_type and race.distance:
             advantages = db.query(models.HorseNumberAdvantage).filter(
                 models.HorseNumberAdvantage.venue_name == race.venue_name,
@@ -56,9 +55,11 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
 def get_special_pick_for_date(db: Session, target_date: date) -> Optional[models.Prediction]:
     """
     指定された日付の予測の中から、最も偏差値が高いものを1件取得する
+    ★★★ ここが最終的な修正点です ★★★
     """
     return db.query(models.Prediction)\
         .join(models.Race, models.Prediction.race_id == models.Race.id)\
         .filter(models.Race.race_date == target_date)\
-        .order_by(models.Prediction.deviation_score.desc())\
+        .filter(models.Prediction.deviation_score.isnot(None)) \
+        .order_by(desc(models.Prediction.deviation_score))\
         .first()

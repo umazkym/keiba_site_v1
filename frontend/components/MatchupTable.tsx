@@ -1,10 +1,10 @@
 import { RacePrediction, MatchupRecord, HorsePrediction, MatchupData } from '@/lib/types';
 import React, { useState, useEffect } from 'react';
-import Tippy, { useSingleton } from '@tippyjs/react'; // useSingletonをインポート
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css'; 
-import 'tippy.js/animations/shift-away.css';
-import 'tippy.js/themes/light-border.css'; // Tippy.jsのテーマをインポート
-import { getFilteredMatchups } from '@/lib/api';
+import 'tippy.js/themes/light-border.css';
+import { getFilteredMatchups } from '@/lib/api'; // ★★★ API関数をインポート
 
 // --- ヘルパーコンポーネント (変更なし) ---
 const getWakuColorClasses = (waku: number | null): string => {
@@ -61,7 +61,7 @@ const MatchupTooltipContent = ({ rowHorse, colHorse, record }: { rowHorse: Horse
 );
 
 // --- テーブルビュー ---
-const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: HorsePrediction[], matchupData: MatchupData, tippySingleton: any }) => {
+const TableView = ({ predictions, matchupData }: { predictions: HorsePrediction[], matchupData: MatchupData }) => {
     const { matchup_data } = matchupData;
     const sortedHorses = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
     return (
@@ -110,9 +110,13 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
                                 return (
                                     <td key={colHorse.horse_id} className={`p-0 ${cellClass}`}>
                                         <Tippy 
-                                            singleton={tippySingleton}
-                                            content={record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : ''}
-                                            // ★★★ 個別のTippyから共通設定を削除
+                                            content={record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : ''} 
+                                            theme="light-border" 
+                                            placement="top"
+                                            animation="shift-away"
+                                            interactive={true} // ★★★ 操作可能にする設定
+                                            appendTo={() => document.body} // ★★★ 表示崩れを防ぐ設定
+                                            delay={[100, 100]} // 表示と非表示の遅延
                                         >
                                             {content}
                                         </Tippy>
@@ -127,19 +131,20 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
     );
 };
 
+
 // --- 親コンポーネント (大幅修正) ---
 export const MatchupTable = ({ race }: { race: RacePrediction }) => {
+    // デフォルトの期間を過去2年間に設定
     const today = new Date();
     const twoYearsAgo = new Date(new Date().setFullYear(today.getFullYear() - 2));
+
     const [startDate, setStartDate] = useState(twoYearsAgo.toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
-    const [matchupData, setMatchupData] = useState<MatchupData | null>(race.matchup);
+    const [matchupData, setMatchupData] = useState<MatchupData | null>(race.matchup); // 初期データは全期間
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // ★★★ Singletonの正しい使い方に修正 ★★★
-    const [source, target] = useSingleton();
-
+    // ★★★ 期間が変更されたらAPIを叩いてデータを再取得する
     useEffect(() => {
         const fetchFilteredData = async () => {
             setIsLoading(true);
@@ -154,53 +159,36 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                 setIsLoading(false);
             }
         };
-        fetchFilteredData();
+
+        // 初期表示時以外（日付が変更された時）にフェッチを実行
+        if (race.matchup) { // race.matchupは初回ロード時のみ
+            fetchFilteredData();
+        }
     }, [race.id, startDate, endDate]);
+
 
     const isDataEmpty = !matchupData || Object.keys(matchupData.matchup_data).length === 0;
 
     return (
         <div className="matchup-container">
-            {/* ★★★ Tippy用のSingletonコントローラーに共通設定をすべて集約 ★★★ */}
-            <Tippy 
-                singleton={source}
-                theme="light-border"
-                placement="top"
-                animation="shift-away"
-                interactive={true}
-                appendTo={() => document.body}
-                delay={[100, 200]}
-            />
-            
             <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-4">
                 <div className='flex items-center gap-2'>
-                    <h3 className="text-xl font-bold">対戦データ</h3>
+                    <h3 className="text-xl font-bold">直接対決データ</h3>
                     <Tippy 
                       content={
-                        // ★★★ 説明文を修正 ★★★
-                        <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
-                          <p className='font-bold mb-1 border-b pb-1'>「直接対決」と「偏差値」の計算方法</p>
-                          <p className='text-xs mt-2'>
-                            <strong className='text-blue-600'>● 直接対決データ:</strong><br/>
-                            この表は、出走馬同士が過去に<strong className='font-bold'>同じレースで直接走った経験</strong>があるかを調べ、その際の着順を比較して「勝ち(先行)」「負け(後着)」を集計したものです。
-                          </p>
-                          <p className='text-xs mt-2'>
-                            <strong className='text-red-600'>● 偏差値 (予測の根拠):</strong><br/>
-                            メインの予測偏差値は、これとは全く別のロジックです。過去2年間の全レースから、今回と似た条件（競馬場、距離、馬場状態など）のレースを探し出し、その<strong className='font-bold'>走破タイムを比較</strong>して算出しています。これにより、直接の対戦経験がない馬同士でも能力を比較しています。
-                          </p>
+                        <div className='p-2 text-sm text-left max-w-xs bg-gray-700 text-white rounded-md'>
+                          <p className='font-bold mb-1'>対戦成績の計算方法</p>
+                          <p>このレースの出走馬同士が、過去に<strong className='text-yellow-300'>同じレース</strong>で直接対戦した際の成績（1着、2着、3着）を集計しています。指定された期間内の成績のみが表示されます。</p>
                         </div>
                       }
                       placement="top-start"
-                      interactive={true}
-                      theme="light-border"
-                      appendTo={() => document.body}
                     >
                       <span className='w-5 h-5 bg-gray-400 text-white rounded-full flex items-center justify-center text-sm font-bold cursor-help'>?</span>
                     </Tippy>
                 </div>
+                {/* ★★★ 期間フィルタリングUI ★★★ */}
                 <div className="flex items-center gap-2 text-sm">
-                    <label htmlFor="start-date" className="text-gray-600">期間:</label>
-                    <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border-gray-300 p-1 rounded-md text-sm"/>
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border-gray-300 p-1 rounded-md text-sm"/>
                     <span>～</span>
                     <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border-gray-300 p-1 rounded-md text-sm"/>
                 </div>
@@ -212,7 +200,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
             {!isLoading && !error && (
                 isDataEmpty 
                 ? <div className="text-center text-gray-500 py-4"><p>指定された期間の直接対決データはありません。</p></div>
-                : <TableView predictions={race.predictions} matchupData={matchupData} tippySingleton={target} />
+                : <TableView predictions={race.predictions} matchupData={matchupData} />
             )}
         </div>
     );

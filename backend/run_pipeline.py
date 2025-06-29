@@ -53,8 +53,10 @@ def backfill_historical_data(db: Session, start_date: datetime.date, end_date: d
                     if result_html:
                         race_data = parser.parse_race_result_page(result_html, race_id)
                         if race_data:
+                            # ★★★ ここが修正点です！★★★
+                            # 文字列ではなく、current_date (dateオブジェクト) を直接渡します。
                             database_loader.load_race_result_data(
-                                db, race_data, race_id, current_date.strftime('%Y-%m-%d'), is_nar
+                                db, race_data, race_id, current_date, is_nar
                             )
                             print(f"  Loaded result for race {race_id}")
         current_date += datetime.timedelta(days=1)

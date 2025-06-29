@@ -1,6 +1,7 @@
 # C:\Users\tnszk\program\GitHub\backend\run_pipeline.py
 import datetime
 import time
+import os # osモジュールをインポート
 from collections import defaultdict
 from database.database import SessionLocal, engine, Base
 from database import models
@@ -75,19 +76,32 @@ def process_advantage_in_chunks(db: Session, start_date: datetime.date, end_date
 
 def main():
     """モードに応じて指定された日付の予測を生成する一連の処理を実行する。"""
-    DEBUG_MODE = False
+    # --- 実行モード設定 ---
+    # 環境変数 'PIPELINE_MODE' が 'DEBUG' の場合、デバッグモードで動作
+    PIPELINE_MODE = os.getenv('PIPELINE_MODE', 'PRODUCTION')
+    DEBUG_MODE = (PIPELINE_MODE == 'DEBUG')
     
-    ANALYSIS_START_DATE = datetime.date(2024, 1, 1) 
-    ANALYSIS_END_DATE = datetime.date.today()
-
-    prediction_dates: List[datetime.date] = [ANALYSIS_END_DATE + datetime.timedelta(days=1)]
-
+    # デバッグモード用の設定
     if DEBUG_MODE:
-        print(f"--- DEBUG MODE ON: Targeting {prediction_dates[0].strftime('%Y-%m-%d')} with limits ---")
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print("!!!  RUNNING IN DEBUG MODE  !!!")
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        # 過去2日分のデータだけを取得・分析する
+        ANALYSIS_START_DATE = datetime.date.today() - datetime.timedelta(days=2)
+        ANALYSIS_END_DATE = datetime.date.today() - datetime.timedelta(days=1)
+        # 予測対象は今日にする
+        prediction_dates: List[datetime.date] = [datetime.date.today()]
     else:
-        print(f"--- PRODUCTION MODE ON: Targeting {prediction_dates[0].strftime('%Y-%m-%d')} with no limits ---")
+        # 本番モード用の設定
+        print("--- RUNNING IN PRODUCTION MODE ---")
+        ANALYSIS_START_DATE = datetime.date(2024, 1, 1) 
+        ANALYSIS_END_DATE = datetime.date.today()
+        # 予測対象は明日にする
+        prediction_dates: List[datetime.date] = [ANALYSIS_END_DATE + datetime.timedelta(days=1)]
 
-    print(f"\n--- Performing pre-calculation based on fixed period: {ANALYSIS_START_DATE} to {ANALYSIS_END_DATE} ---")
+
+    # --- Step 1: 過去データの蓄積と分析 ---
+    print(f"\n--- Performing pre-calculation based on period: {ANALYSIS_START_DATE} to {ANALYSIS_END_DATE} ---")
     db_precalc: Session = SessionLocal()
     try:
         backfill_historical_data(db_precalc, ANALYSIS_START_DATE, ANALYSIS_END_DATE)
@@ -95,16 +109,13 @@ def main():
     finally:
         db_precalc.close()
 
+    # --- Step 2: 予測の生成 ---
     for target_date in prediction_dates:
         print(f"\n{'='*25} Processing for target date: {target_date.strftime('%Y-%m-%d')} {'='*25}")
-
         db: Session = SessionLocal()
-
         try:
-            print(f"--- Starting Prediction Pipeline for {target_date.strftime('%Y-%m-%d')} ---")
             target_date_str = target_date.strftime('%Y%m%d')
             all_race_ids: List[Tuple[str, bool]] = []
-
             for is_nar in [False, True]:
                 race_type = "NAR" if is_nar else "JRA"
                 print(f"Fetching {race_type} race list for {target_date_str}...")
@@ -114,14 +125,12 @@ def main():
                     filtered_race_ids = [rid for rid in race_ids if not rid.startswith(target_date_str[:4] + '65')]
                     all_race_ids.extend([(rid, is_nar) for rid in filtered_race_ids])
                     print(f"Found {len(race_ids)} {race_type} races ({len(filtered_race_ids)} after filtering).")
-
             if not all_race_ids:
                 print(f"No races found for {target_date.strftime('%Y-%m-%d')}.")
                 continue
 
             all_horse_ids_to_fetch = set()
             for race_id, is_nar in all_race_ids:
-                print(f"Processing Shutuba for Race ID: {race_id}")
                 shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=True)
                 if shutuba_html:
                     shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
@@ -130,7 +139,6 @@ def main():
                         for horse in shutuba_data.get("horses", []):
                             if horse.get("horse_id"):
                                 all_horse_ids_to_fetch.add(horse["horse_id"])
-
             if all_horse_ids_to_fetch:
                 fetch_and_load_past_data(db, list(all_horse_ids_to_fetch))
 
@@ -140,19 +148,13 @@ def main():
                 if predictions:
                     database_loader.save_prediction(db, race_id, predictions)
                     print(f"  Saved {len(predictions)} predictions for race {race_id}")
-
                     horse_ids_in_race = [p["horse_id"] for p in predictions if p.get("horse_id")]
                     if horse_ids_in_race:
-                        print(f"  Calculating matchups for Race ID: {race_id}")
                         predictor.calculate_and_save_matchups_for_race(db, race_id, horse_ids_in_race)
-
             print(f"--- Pipeline Finished for {target_date.strftime('%Y-%m-%d')} ---")
-
         finally:
             db.close()
-
     print("\nAll processing finished.")
-
 
 if __name__ == "__main__":
     main()

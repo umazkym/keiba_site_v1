@@ -31,11 +31,14 @@ def backfill_historical_data(db: Session, start_date: datetime.date, end_date: d
         date_str = current_date.strftime('%Y%m%d')
         for is_nar in [False, True]:
             race_type = "NAR" if is_nar else "JRA"
-            # 既に DB にその日のレースがあればスキップ
-            if db.query(models.Race).filter(
+            
+            # DBにその日のレースが既に存在するか確認
+            race_exists = db.query(models.Race).filter(
                 models.Race.race_date == current_date,
                 models.Race.race_type == ('地方' if is_nar else '中央')
-            ).first():
+            ).first()
+
+            if race_exists:
                 print(f"Skipping {date_str} ({race_type}) - already in DB.")
                 continue
 
@@ -51,7 +54,7 @@ def backfill_historical_data(db: Session, start_date: datetime.date, end_date: d
                         race_data = parser.parse_race_result_page(result_html, race_id)
                         if race_data:
                             database_loader.load_race_result_data(
-                                db, race_data, race_id, current_date, is_nar
+                                db, race_data, race_id, current_date.strftime('%Y-%m-%d'), is_nar
                             )
                             print(f"  Loaded result for race {race_id}")
         current_date += datetime.timedelta(days=1)
@@ -76,62 +79,32 @@ def process_advantage_in_chunks(db: Session, start_date: datetime.date, end_date
 def main():
     """モードに応じて指定された日付の予測を生成する一連の処理を実行する。"""
     # --- 実行モード設定 ---
-    # 通常は両方Falseで本番モード（明日のレースのみ対象）
     DEBUG_MODE = False
-    DEBUG_MODE_2 = False
-    RACE_LIMIT_PER_VENUE = 10
-
-    if DEBUG_MODE and DEBUG_MODE_2:
-        print("[ERROR] DEBUG_MODE and DEBUG_MODE_2 cannot be True at the same time.")
-        return
-
-    # --- 傾向分析の期間を定義 ---
+    
     ANALYSIS_START_DATE = datetime.date(2024, 1, 1) # 本番用の正しい日付
     ANALYSIS_END_DATE = datetime.date.today()
 
-    # --- 処理対象の日付リストを決定 ---
-    prediction_dates: List[datetime.date] = []
-    tomorrow = ANALYSIS_END_DATE + datetime.timedelta(days=1)
+    prediction_dates: List[datetime.date] = [ANALYSIS_END_DATE + datetime.timedelta(days=1)]
 
-    if DEBUG_MODE_2:
-        print("--- DEBUG MODE 2 ON: Generating pages from 2025-01-01 to tomorrow ---")
-        start_prediction_date = datetime.date(2025, 1, 1)
-        end_prediction_date = tomorrow
-        
-        current_date = start_prediction_date
-        while current_date <= end_prediction_date:
-            prediction_dates.append(current_date)
-            current_date += datetime.timedelta(days=1)
+    if DEBUG_MODE:
+        print(f"--- DEBUG MODE ON: Targeting {prediction_dates[0].strftime('%Y-%m-%d')} with limits ---")
     else:
-        # DEBUG_MODE または本番モード
-        prediction_dates.append(tomorrow)
-        if DEBUG_MODE:
-            print(f"--- DEBUG MODE ON: Targeting {tomorrow.strftime('%Y-%m-%d')} with limits ---")
-        else:
-            print(f"--- PRODUCTION MODE ON: Targeting {tomorrow.strftime('%Y-%m-%d')} with no limits ---")
+        print(f"--- PRODUCTION MODE ON: Targeting {prediction_dates[0].strftime('%Y-%m-%d')} with no limits ---")
 
-    # --- Step 1: 重い分析処理を最初に一度だけ実行 ---
     print(f"\n--- Performing pre-calculation based on fixed period: {ANALYSIS_START_DATE} to {ANALYSIS_END_DATE} ---")
     db_precalc: Session = SessionLocal()
     try:
-        # 1-a. 必要な全期間の過去レース結果をバックフィル
         backfill_historical_data(db_precalc, ANALYSIS_START_DATE, ANALYSIS_END_DATE)
-        
-        # 1-b. 全データを使って馬番有利不利指数を計算（メモリ対策版）
         process_advantage_in_chunks(db_precalc, ANALYSIS_START_DATE, ANALYSIS_END_DATE, chunk_size_days=30)
-        
     finally:
         db_precalc.close()
 
-
-    # --- Step 2: メインループ: 各対象日の予測ページ生成に専念 ---
     for target_date in prediction_dates:
         print(f"\n{'='*25} Processing for target date: {target_date.strftime('%Y-%m-%d')} {'='*25}")
 
         db: Session = SessionLocal()
 
         try:
-            # 2-a. ターゲット日のレースリスト取得
             print(f"--- Starting Prediction Pipeline for {target_date.strftime('%Y-%m-%d')} ---")
             target_date_str = target_date.strftime('%Y%m%d')
             all_race_ids: List[Tuple[str, bool]] = []
@@ -142,7 +115,7 @@ def main():
                 list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=True)
                 if list_html:
                     race_ids = parser.parse_race_ids_from_list(list_html)
-                    filtered_race_ids = [rid for rid in race_ids if not rid.startswith(target_date_str[:4] + '65')] # 帯広(ば)を除外
+                    filtered_race_ids = [rid for rid in race_ids if not rid.startswith(target_date_str[:4] + '65')]
                     all_race_ids.extend([(rid, is_nar) for rid in filtered_race_ids])
                     print(f"Found {len(race_ids)} {race_type} races ({len(filtered_race_ids)} after filtering).")
 
@@ -150,23 +123,6 @@ def main():
                 print(f"No races found for {target_date.strftime('%Y-%m-%d')}.")
                 continue
 
-            # デバッグモードの場合のみレース数を制限
-            if DEBUG_MODE:
-                races_by_venue = defaultdict(list)
-                for race_id, is_nar in all_race_ids:
-                    venue_code = race_id[4:6]
-                    venue_name = VENUE_CODE_MAP.get(venue_code, "UnknownVenue")
-                    races_by_venue[venue_name].append((race_id, is_nar))
-
-                limited_races = [
-                    race
-                    for v_races in races_by_venue.values()
-                    for race in v_races[:RACE_LIMIT_PER_VENUE]
-                ]
-                print(f"--- DEBUG MODE: Limiting races to {RACE_LIMIT_PER_VENUE} per venue. Total races: {len(limited_races)} ---")
-                all_race_ids = limited_races
-
-            # 2-b. 出馬表の取得とDBへのロード
             all_horse_ids_to_fetch = set()
             for race_id, is_nar in all_race_ids:
                 print(f"Processing Shutuba for Race ID: {race_id}")
@@ -179,11 +135,9 @@ def main():
                             if horse.get("horse_id"):
                                 all_horse_ids_to_fetch.add(horse["horse_id"])
 
-            # 2-c. 出走馬の過去成績を取得（未取得の場合のみ）
             if all_horse_ids_to_fetch:
                 fetch_and_load_past_data(db, list(all_horse_ids_to_fetch))
 
-            # 2-d. 予測とマッチアップを生成
             for race_id, is_nar in all_race_ids:
                 print(f"Creating predictions for Race ID: {race_id}")
                 predictions = predictor.create_predictions_for_race(db, race_id)

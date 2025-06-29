@@ -103,9 +103,6 @@ def create_predictions_for_race(db: Session, race_id: str) -> Optional[List[Dict
     return df_final.to_dict('records')
 
 def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: List[str]):
-    """
-    指定されたレースの対戦成績を計算し、DBに保存する
-    """
     if len(horse_ids) < 2:
         return
 
@@ -154,7 +151,6 @@ def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: L
                     matchup_matrix[key1]['history'].append(history_entry)
                     matchup_matrix[key2]['history'].append(history_entry)
     
-    # DBに保存
     if matchup_matrix:
         existing = db.query(models.Matchup).filter(models.Matchup.race_id == race_id).first()
         if existing:
@@ -164,11 +160,7 @@ def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: L
             db.add(new_matchup)
         db.commit()
 
-# メモリ対策：期間を限定して馬番有利不利を計算する関数
 def calculate_and_save_horse_number_advantage_for_period(db: Session, start_date: date, end_date: date):
-    """
-    指定期間のレース結果から、コース別の馬番有利不利指数を計算し、既存のデータに加算して更新する。
-    """
     print(f"Calculating horse number advantages for period: {start_date} to {end_date}...")
     
     results_query = db.query(
@@ -220,29 +212,13 @@ def calculate_and_save_horse_number_advantage_for_period(db: Session, start_date
 
     advantages_to_save = []
     for _, row in advantage_groups.iterrows():
-        # 既存のレコードを検索
-        existing_advantage = db.query(models.HorseNumberAdvantage).filter_by(
-            venue_name=row['venue_name'],
-            course_type=row['course_type'],
-            distance=row['distance'],
-            horse_number=row['horse_number']
-        ).first()
-
-        new_score = row['mean']
-        
-        if existing_advantage:
-            # ここでは単純に新しいスコアで上書きする
-            # より高度な実装としては、加重平均などが考えられる
-            existing_advantage.advantage_score = new_score
-        else:
-            # 新規作成
-            advantages_to_save.append({
-                'venue_name': row['venue_name'],
-                'course_type': row['course_type'],
-                'distance': row['distance'],
-                'horse_number': row['horse_number'],
-                'advantage_score': new_score
-            })
+        advantages_to_save.append({
+            'venue_name': row['venue_name'],
+            'course_type': row['course_type'],
+            'distance': int(row['distance']),
+            'horse_number': int(row['horse_number']),
+            'advantage_score': float(row['mean'])
+        })
     
     if advantages_to_save:
         database_loader.save_horse_number_advantages(db, advantages_to_save)

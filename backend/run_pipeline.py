@@ -1,8 +1,8 @@
 # C:\Users\tnszk\program\GitHub\backend\run_pipeline.py
 import datetime
+import time
 from collections import defaultdict
 from database.database import SessionLocal, engine, Base
-# ★★★ 不足していた import 文 ★★★
 from database import models
 from scripts import scraper, parser, database_loader, predictor
 from sqlalchemy.orm import Session
@@ -56,23 +56,37 @@ def backfill_historical_data(db: Session, start_date: datetime.date, end_date: d
                             print(f"  Loaded result for race {race_id}")
         current_date += datetime.timedelta(days=1)
 
+
+def process_advantage_in_chunks(db: Session, start_date: datetime.date, end_date: datetime.date, chunk_size_days: int = 30):
+    """
+    メモリ対策：指定された期間をチャンクに分割して馬番有利不利を計算する
+    """
+    print(f"\n--- Calculating Horse Number Advantage in chunks from {start_date} to {end_date} ---")
+    current_start = start_date
+    while current_start <= end_date:
+        current_end = min(current_start + datetime.timedelta(days=chunk_size_days - 1), end_date)
+        
+        predictor.calculate_and_save_horse_number_advantage_for_period(db, current_start, current_end)
+        
+        current_start = current_end + datetime.timedelta(days=1)
+        time.sleep(1) # サーバーへの負荷を軽減
+    print("--- Finished all advantage calculations ---\n")
+
+
 def main():
     """モードに応じて指定された日付の予測を生成する一連の処理を実行する。"""
     # --- 実行モード設定 ---
-    # DEBUG_MODE: 明日のレースを対象に、少ないデータで高速に動作確認するためのモード
-    # DEBUG_MODE_2: 2025/1/1から明日までの全日付のページを生成するモード
-    # どちらも False の場合: 本番モード (明日のレースのみ対象)
-    DEBUG_MODE = True
+    # 通常は両方Falseで本番モード（明日のレースのみ対象）
+    DEBUG_MODE = False
     DEBUG_MODE_2 = False
-    RACE_LIMIT_PER_VENUE = 2
+    RACE_LIMIT_PER_VENUE = 10
 
     if DEBUG_MODE and DEBUG_MODE_2:
         print("[ERROR] DEBUG_MODE and DEBUG_MODE_2 cannot be True at the same time.")
         return
 
-    # --- ★★★ 全ての予測で共通して使用する傾向分析の期間を定義 ★★★ ---
-    # 要件に基づき、傾向分析期間を2024年1月1日から本日までに固定
-    ANALYSIS_START_DATE = datetime.date(2025, 6, 25)
+    # --- 傾向分析の期間を定義 ---
+    ANALYSIS_START_DATE = datetime.date(2024, 1, 1)
     ANALYSIS_END_DATE = datetime.date.today()
 
     # --- 処理対象の日付リストを決定 ---
@@ -103,10 +117,9 @@ def main():
         # 1-a. 必要な全期間の過去レース結果をバックフィル
         backfill_historical_data(db_precalc, ANALYSIS_START_DATE, ANALYSIS_END_DATE)
         
-        # 1-b. 全データを使って馬番有利不利指数を計算
-        print(f"\n--- Calculating Horse Number Advantage for the entire period ---")
-        predictor.calculate_and_save_horse_number_advantage(db_precalc, ANALYSIS_START_DATE, ANALYSIS_END_DATE)
-        print("--- Finished all pre-calculations ---\n")
+        # 1-b. 全データを使って馬番有利不利指数を計算（メモリ対策版）
+        process_advantage_in_chunks(db_precalc, ANALYSIS_START_DATE, ANALYSIS_END_DATE, chunk_size_days=30)
+        
     finally:
         db_precalc.close()
 
@@ -129,7 +142,7 @@ def main():
                 list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=True)
                 if list_html:
                     race_ids = parser.parse_race_ids_from_list(list_html)
-                    filtered_race_ids = [rid for rid in race_ids if not rid.startswith(target_date_str[:4] + '65')]
+                    filtered_race_ids = [rid for rid in race_ids if not rid.startswith(target_date_str[:4] + '65')] # 帯広(ば)を除外
                     all_race_ids.extend([(rid, is_nar) for rid in filtered_race_ids])
                     print(f"Found {len(race_ids)} {race_type} races ({len(filtered_race_ids)} after filtering).")
 
@@ -167,12 +180,10 @@ def main():
                                 all_horse_ids_to_fetch.add(horse["horse_id"])
 
             # 2-c. 出走馬の過去成績を取得（未取得の場合のみ）
-            # これは予測計算に必要なのでループ内で実行
             if all_horse_ids_to_fetch:
                 fetch_and_load_past_data(db, list(all_horse_ids_to_fetch))
 
             # 2-d. 予測とマッチアップを生成
-            # この処理は内部でDBに保存された共通の傾向データを参照する
             for race_id, is_nar in all_race_ids:
                 print(f"Creating predictions for Race ID: {race_id}")
                 predictions = predictor.create_predictions_for_race(db, race_id)

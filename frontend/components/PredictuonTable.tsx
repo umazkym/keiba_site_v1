@@ -1,5 +1,10 @@
 import { RacePrediction } from '@/lib/types';
 import React from 'react';
+import Tippy from '@tippyjs/react';
+import 'tippy.js/dist/tippy.css';
+import 'tippy.js/animations/shift-away.css';
+import 'tippy.js/themes/light-border.css';
+
 
 export const PredictionTable = ({ race }: { race: RacePrediction }) => {
     const isUnpredictable = !race.predictions.length || race.predictions.some(p => p.mark === '—');
@@ -26,8 +31,20 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                                 <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">印</th>
                                 <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">馬番</th>
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">馬名</th>
-                                <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">偏差値</th>
-                                {/* ★★★ 1Cスタート指標の列を削除 ★★★ */}
+                                <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center justify-end gap-1">
+                                    <span>AI偏差値</span>
+                                    {/* ★★★ 偏差値の説明を追加 ★★★ */}
+                                    <Tippy 
+                                      content={
+                                        <div className='p-2 text-sm text-left max-w-xs bg-gray-700 text-white rounded-md'>
+                                          <p>過去のレース走破タイムを元に、独自のアルゴリズムで各馬の能力を算出した数値です。</p>
+                                        </div>
+                                      }
+                                      placement="top"
+                                    >
+                                      <span className='w-4 h-4 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold cursor-help'>?</span>
+                                    </Tippy>
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -39,7 +56,6 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                                     <td className="px-4 py-3 whitespace-nowrap text-right font-semibold text-red-600">
                                         {p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}
                                     </td>
-                                    {/* ★★★ 1Cスタート指標のセルを削除 ★★★ */}
                                 </tr>
                             ))}
                         </tbody>

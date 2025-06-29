@@ -77,11 +77,21 @@ def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str)
 
     for r in results:
         venue = r.get('venue_name')
+        
+        # ★★★ ここからが修正箇所 ★★★
         race_type = None
         if venue:
-            if any(jra_venue in venue for jra_venue in JRA_VENUES): race_type = '中央'
-            elif any(nar_venue in venue for nar_venue in NAR_VENUES): race_type = '地方'
+            if any(jra_venue in venue for jra_venue in JRA_VENUES):
+                race_type = '中央'
+            elif any(nar_venue in venue for nar_venue in NAR_VENUES):
+                race_type = '地方'
         
+        # race_typeが特定できない場合（海外レースなど）は、このレコードをスキップする
+        if race_type is None:
+            print(f"[Warning] Skipping unknown venue race: {venue} for horse {horse_id}")
+            continue
+        # ★★★ 修正ここまで ★★★
+
         race_dict = {
             'id': r.get('race_id'), 'race_date': r.get('race_date'), 'venue_name': venue,
             'race_type': race_type, 'race_number': r.get('race_number'), 'race_name': r.get('race_name'),
@@ -90,7 +100,9 @@ def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str)
             'total_horses': r.get('total_horses')
         }
         if race_dict.get('id'):
-            races_to_save.append(race_dict)
+            # race_typeがNoneでないことを再度確認
+            if race_dict['race_type'] is not None:
+                 races_to_save.append(race_dict)
 
         result_dict = {k: v for k, v in r.items() if k in models.Result.__table__.columns.keys()}
         result_dict['horse_id'] = horse_id

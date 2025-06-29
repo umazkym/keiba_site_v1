@@ -66,3 +66,8 @@ yarn-error.log*
 
 # TypeScript cache
 *.tsbuildinfo
+
+/data/html_cache/
+
+# ★★★ ここに以下の1行を追加 ★★★
+/data/

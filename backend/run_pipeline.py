@@ -32,7 +32,6 @@ def backfill_historical_data(db: Session, start_date: datetime.date, end_date: d
         for is_nar in [False, True]:
             race_type = "NAR" if is_nar else "JRA"
             
-            # DBにその日のレースが既に存在するか確認
             race_exists = db.query(models.Race).filter(
                 models.Race.race_date == current_date,
                 models.Race.race_type == ('地方' if is_nar else '中央')
@@ -43,18 +42,14 @@ def backfill_historical_data(db: Session, start_date: datetime.date, end_date: d
                 continue
 
             print(f"Fetching {race_type} race list for {date_str}...")
-            # 過去のレース結果リストはキャッシュを利用する
             list_html = scraper.get_race_list_html(date_str, is_nar=is_nar, force_download=False)
             if list_html:
                 race_ids = parser.parse_race_ids_from_list(list_html)
                 for race_id in race_ids:
-                    # 過去のレース結果はキャッシュを利用する
                     result_html = scraper.get_race_result_html(race_id, is_nar=is_nar, force_download=False)
                     if result_html:
                         race_data = parser.parse_race_result_page(result_html, race_id)
                         if race_data:
-                            # ★★★ ここが修正点です！★★★
-                            # 文字列ではなく、current_date (dateオブジェクト) を直接渡します。
                             database_loader.load_race_result_data(
                                 db, race_data, race_id, current_date, is_nar
                             )
@@ -74,16 +69,15 @@ def process_advantage_in_chunks(db: Session, start_date: datetime.date, end_date
         predictor.calculate_and_save_horse_number_advantage_for_period(db, current_start, current_end)
         
         current_start = current_end + datetime.timedelta(days=1)
-        time.sleep(1) # サーバーへの負荷を軽減
+        time.sleep(1) 
     print("--- Finished all advantage calculations ---\n")
 
 
 def main():
     """モードに応じて指定された日付の予測を生成する一連の処理を実行する。"""
-    # --- 実行モード設定 ---
     DEBUG_MODE = False
     
-    ANALYSIS_START_DATE = datetime.date(2024, 1, 1) # 本番用の正しい日付
+    ANALYSIS_START_DATE = datetime.date(2024, 1, 1) 
     ANALYSIS_END_DATE = datetime.date.today()
 
     prediction_dates: List[datetime.date] = [ANALYSIS_END_DATE + datetime.timedelta(days=1)]

@@ -102,13 +102,18 @@ def create_predictions_for_race(db: Session, race_id: str) -> Optional[List[Dict
     df_final = df.replace({np.nan: None})
     return df_final.to_dict('records')
 
-def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: List[str]):
+# ★★★ 修正: 期間を引数で受け取るようにし、計算結果を返すように変更 ★★★
+def calculate_matchups(db: Session, horse_ids: List[str], start_date: date, end_date: date) -> Dict[str, Any]:
+    """
+    指定された馬リストと期間に基づいて、対戦成績を計算して返す
+    """
     if len(horse_ids) < 2:
-        return
+        return {}
 
     past_results = db.query(models.Result, models.Race.venue_name, models.Race.race_date)\
         .join(models.Race, models.Result.race_id == models.Race.id)\
         .filter(models.Result.horse_id.in_(horse_ids))\
+        .filter(models.Race.race_date.between(start_date, end_date)) \
         .all()
 
     races_grouped = defaultdict(list)
@@ -151,14 +156,27 @@ def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: L
                     matchup_matrix[key1]['history'].append(history_entry)
                     matchup_matrix[key2]['history'].append(history_entry)
     
-    if matchup_matrix:
+    return dict(matchup_matrix)
+
+def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: List[str]):
+    """
+    指定されたレースの全期間対戦成績を計算し、DBに保存する（パイプライン用）
+    """
+    # 全期間を対象
+    start_date = date(2000, 1, 1)
+    end_date = date.today()
+    
+    matchup_data = calculate_matchups(db, horse_ids, start_date, end_date)
+
+    if matchup_data:
         existing = db.query(models.Matchup).filter(models.Matchup.race_id == race_id).first()
         if existing:
-            existing.matchup_data = dict(matchup_matrix)
+            existing.matchup_data = matchup_data
         else:
-            new_matchup = models.Matchup(race_id=race_id, matchup_data=dict(matchup_matrix))
+            new_matchup = models.Matchup(race_id=race_id, matchup_data=matchup_data)
             db.add(new_matchup)
         db.commit()
+
 
 def calculate_and_save_horse_number_advantage_for_period(db: Session, start_date: date, end_date: date):
     print(f"Calculating horse number advantages for period: {start_date} to {end_date}...")

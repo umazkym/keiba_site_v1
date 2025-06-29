@@ -28,7 +28,7 @@ const HorseNumberCircle = ({ number, waku }: { number: number, waku: number | nu
 
 // --- ポップアップ（ツールチップ）のコンテンツ (変更なし) ---
 const MatchupTooltipContent = ({ rowHorse, colHorse, record }: { rowHorse: HorsePrediction, colHorse: HorsePrediction, record: MatchupRecord }) => (
-    <div className="text-left p-2 bg-white rounded-lg shadow-xl border border-gray-200">
+    <div className="text-left p-2 bg-white rounded-lg shadow-xl border border-gray-200 max-w-sm">
         <h4 className="font-bold border-b border-gray-200 pb-1 mb-2">{rowHorse.horse_name} vs {colHorse.horse_name}</h4>
         <div className="font-semibold mb-2 text-center text-lg">
             <span className="text-green-500">{record.win}</span>
@@ -91,7 +91,6 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
                             </th>
                             {sortedHorses.map((colHorse) => {
                                 if (colHorse.horse_id === rowHorse.horse_id) return <td key={colHorse.horse_id} className="self-match"></td>;
-
                                 const record = matchup_data[`${rowHorse.horse_id}_vs_${colHorse.horse_id}`];
                                 let content = <div className="net-wins-cell"><span className="text-gray-400">-</span></div>;
                                 let cellClass = 'no-match';
@@ -131,11 +130,11 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
     // ★★★ デフォルト期間を「今年の1月1日〜今日」に修正 ★★★
     const today = new Date();
     const yearStart = new Date(today.getFullYear(), 0, 1);
-
     const [startDate, setStartDate] = useState(yearStart.toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
-    const [matchupData, setMatchupData] = useState<MatchupData | null>(race.matchup);
-    const [isLoading, setIsLoading] = useState(false);
+    
+    const [matchupData, setMatchupData] = useState<MatchupData | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
     const [source, target] = useSingleton();
@@ -171,7 +170,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                 delay={[100, 200]}
             />
             
-            <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 border-b pb-2 gap-4">
                 <div className='flex items-center gap-2'>
                     <h3 className="text-xl font-bold">直接対決データ</h3>
                     <Tippy 
@@ -180,7 +179,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
                           <p className='font-bold mb-1 border-b pb-1'>直接対決データの見方</p>
                           <p className='text-xs mt-2'>
-                            この表は、出走馬同士が過去に<strong className='font-bold'>同じレースで直接走った経験</strong>があるかを調べ、その際の着順を比較して「勝ち(先行)」「負け(後着)」を集計したものです。下のカレンダーで集計期間を自由に絞り込めます。
+                            この表は、出走馬同士が過去に<strong className='font-bold'>同じレースで直接走った経験</strong>があるかを調べ、その際の着順を比較して「勝ち(先行)」「負け(後着)」を集計したものです。集計期間は右上のカレンダーで自由に絞り込めます。
                           </p>
                         </div>
                       }
@@ -193,7 +192,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                     </Tippy>
                 </div>
                 {/* ★★★ 期間フィルタリングUI ★★★ */}
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex items-center gap-2 text-sm self-end">
                     <label htmlFor="start-date" className="text-gray-600 font-semibold">集計期間:</label>
                     <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border-gray-300 p-1 rounded-md text-sm"/>
                     <span>～</span>
@@ -204,7 +203,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
             {isLoading && <div className="text-center p-4">読み込み中...</div>}
             {error && <div className="text-center p-4 text-red-500">{error}</div>}
 
-            {!isLoading && !error && (
+            {!isLoading && !error && matchupData && (
                 isDataEmpty 
                 ? <div className="text-center text-gray-500 py-4"><p>指定された期間の直接対決データはありません。</p></div>
                 : <TableView predictions={race.predictions} matchupData={matchupData} tippySingleton={target} />

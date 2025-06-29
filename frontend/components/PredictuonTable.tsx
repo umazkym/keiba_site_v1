@@ -5,12 +5,11 @@ import 'tippy.js/dist/tippy.css';
 import 'tippy.js/animations/shift-away.css';
 import 'tippy.js/themes/light-border.css';
 
-
 export const PredictionTable = ({ race }: { race: RacePrediction }) => {
     const isUnpredictable = !race.predictions.length || race.predictions.some(p => p.mark === '—');
 
     return (
-        <div className="my-4 overflow-hidden rounded-lg border border-gray-200 shadow-lg bg-white">
+        <div className="my-4 overflow-hidden rounded-lg border border-gray-200 shadow-sm bg-white">
             <div className="bg-gray-800 text-white p-3 border-b border-gray-200">
                 <h3 className="text-lg font-bold">
                     <span className="bg-white text-gray-800 rounded-full w-8 h-8 inline-flex items-center justify-center mr-3 font-mono">{race.race_number}R</span>
@@ -33,11 +32,11 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">馬名</th>
                                 <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center justify-end gap-1">
                                     <span>AI偏差値</span>
-                                    {/* ★★★ 偏差値の説明を追加 ★★★ */}
+                                    {/* ★★★ 偏差値の説明を修正 ★★★ */}
                                     <Tippy 
                                       content={
                                         <div className='p-2 text-sm text-left max-w-xs bg-gray-700 text-white rounded-md'>
-                                          <p>過去のレース走破タイムを元に、独自のアルゴリズムで各馬の能力を算出した数値です。</p>
+                                          <p>過去のレース走破タイムを元に、AIが独自に算出した能力指数です。数値が高いほど、能力が高いと評価しています。</p>
                                         </div>
                                       }
                                       placement="top"

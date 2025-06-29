@@ -148,7 +148,6 @@ def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]
     print(f"  - Successfully parsed {len(results)} past results.")
     return results
 
-# ★★★ 新規追加: レース結果ページ全体をパースする関数 ★★★
 def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str, Any]]:
     """
     レース結果ページをパースして、レース情報と全出走馬の結果を返す
@@ -159,7 +158,6 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
     results_list = []
     
     try:
-        # レース情報のパース (shutubaページと類似)
         race_list_item = soup.select_one(".RaceList_Item02")
         if race_list_item:
             race_name_elm = race_list_item.select_one(".RaceName")
@@ -175,38 +173,50 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
                 if m_weather: race_info_dict['weather'] = m_weather.group(1)
                 m_ground = re.search(r'馬場:(\S+)', race_data01)
                 if m_ground: race_info_dict['ground_condition'] = m_ground.group(1)
-        
+         
         race_info_dict['race_number'] = int(race_id[-2:])
 
-        # 結果テーブルのパース
         result_table = soup.find("table", class_=re.compile(r"race_table_01|RaceTable01"))
         if not result_table:
-            return None # 結果テーブルがなければ処理終了
+            return None 
 
-        rows = result_table.find_all("tr")[1:] # ヘッダー行を除く
+        rows = result_table.find_all("tr")[1:] 
         race_info_dict['total_horses'] = len(rows)
         
         for row in rows:
             cols = row.find_all('td')
             if len(cols) < 11: continue
 
-            # タイム文字列から秒へ変換
             time_str = cols[7].get_text(strip=True)
             time_match = re.match(r'(\d+):(\d+\.\d+)', time_str)
             finish_time_sec = int(time_match.group(1)) * 60 + float(time_match.group(2)) if time_match else None
 
             horse_link = cols[3].find('a', href=re.compile(r'/horse/'))
             jockey_link = cols[6].find('a', href=re.compile(r'/jockey/'))
-            trainer_link = cols[10].find('a', href=re.compile(r'/trainer/'))
+            
+            # --- ここからが修正箇所 ---
+            horse_id_match = None
+            if horse_link:
+                horse_id_search = re.search(r'/horse/(\d+)', horse_link['href'])
+                if horse_id_search:
+                    horse_id_match = horse_id_search.group(1)
+            
+            jockey_id_match = None
+            if jockey_link:
+                jockey_id_search = re.search(r'/jockey/result/recent/(\w+)', jockey_link['href'])
+                if jockey_id_search:
+                    jockey_id_match = jockey_id_search.group(1)
+            # --- 修正ここまで ---
 
             results_list.append({
                 'rank': int(cols[0].get_text(strip=True)) if cols[0].get_text(strip=True).isdigit() else None,
                 'waku_number': int(cols[1].get_text(strip=True)) if cols[1].get_text(strip=True).isdigit() else None,
                 'horse_number': int(cols[2].get_text(strip=True)) if cols[2].get_text(strip=True).isdigit() else None,
-                'horse_id': re.search(r'/horse/(\d+)', horse_link['href']).group(1) if horse_link else None,
+                'horse_id': horse_id_match, # 修正後の変数を代入
                 'horse_name': horse_link.get_text(strip=True) if horse_link else None,
                 'weight_carried': float(cols[5].get_text(strip=True)) if re.match(r'^\d+\.?\d*$', cols[5].get_text(strip=True)) else None,
-                'jockey_id': re.search(r'/jockey/result/recent/(\w+)', jockey_link['href']).group(1) if jockey_link else None,
+                'jockey_id': jockey_id_match, # 修正後の変数を代入
+                'jockey_name': jockey_link.get_text(strip=True) if jockey_link else None,
                 'finish_time_sec': finish_time_sec,
                 'odds': float(cols[9].get_text(strip=True)) if re.match(r'^\d+\.?\d*$', cols[9].get_text(strip=True)) else None,
                 'popularity': int(cols[10].get_text(strip=True)) if cols[10].get_text(strip=True).isdigit() else None,

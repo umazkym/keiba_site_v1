@@ -1,21 +1,29 @@
-import { RacePrediction } from '@/lib/types';
+import { RacePrediction, HorsePrediction } from '@/lib/types';
 import React from 'react';
+import Tippy from '@tippyjs/react'; // ★★★ 不足していたimport文をここに追加 ★★★
+import 'tippy.js/dist/tippy.css'; 
+import 'tippy.js/animations/shift-away.css';
+import 'tippy.js/themes/light-border.css';
 
-// ★★★ 1Cスタート指標のチャートをこのファイルに移動 ★★★
+// スタート位置チャートのコンポーネント
 const StartPositionChart = ({ predictions }: { predictions: HorsePrediction[] }) => {
+    // 予測がない、または有効な指標を持つ予測が一つもない場合は何も表示しない
     if (!predictions || predictions.length === 0 || predictions.every(p => p.start_1c_indicator === null)) {
-        return null; // データがない場合は何も表示しない
+        return null;
     }
 
     const validPredictions = predictions.filter(p => p.start_1c_indicator !== null);
     const scores = validPredictions.map(p => p.start_1c_indicator!);
-    const minScore = Math.min(...scores, -2); // 最小値を-2に固定
-    const maxScore = Math.max(...scores, 2);  // 最大値を2に固定
+    
+    // スコアの範囲を-2から2の範囲で固定し、安定した表示を確保
+    const minScore = Math.min(...scores, -2);
+    const maxScore = Math.max(...scores, 2);
     const scoreRange = maxScore - minScore;
 
+    // スコアをチャート上の位置(0-100%)に変換する関数
     const getPosition = (score: number | null) => {
-        if (score === null || scoreRange <= 0.01) return 50; // 中央に配置
-        // スコアを0-100の範囲に正規化 (5%のマージンを持たせる)
+        if (score === null || scoreRange <= 0.01) return 50; // データがない場合や範囲が狭すぎる場合は中央に配置
+        // スコアを0-100の範囲に正規化 (左右に5%のマージンを持たせる)
         return 5 + ((score - minScore) / scoreRange) * 90;
     };
     
@@ -35,7 +43,7 @@ const StartPositionChart = ({ predictions }: { predictions: HorsePrediction[] })
 
                 {/* 各馬のマーカー */}
                 {validPredictions.map(p => (
-                    <Tippy key={p.horse_id} content={`${p.horse_name} (${p.start_1c_indicator?.toFixed(2)})`}>
+                    <Tippy key={p.horse_id} content={`${p.horse_name} (指標: ${p.start_1c_indicator?.toFixed(2)})`}>
                         <div 
                             className="absolute w-2 h-5 bg-gray-600 rounded-full border border-white shadow-md"
                             style={{ left: `calc(${getPosition(p.start_1c_indicator)}% - 4px)` }}
@@ -53,12 +61,13 @@ const StartPositionChart = ({ predictions }: { predictions: HorsePrediction[] })
 };
 
 
+// 予測表のメインコンポーネント
 export const PredictionTable = ({ race }: { race: RacePrediction }) => {
     const isUnpredictable = !race.predictions.length || race.predictions.some(p => p.mark === '—');
 
     return (
         <div className="my-4">
-             {/* ★★★ スタート位置チャートをここに表示 ★★★ */}
+             {/* スタート位置チャートをここに表示 */}
             <StartPositionChart predictions={race.predictions} />
 
             <div className="overflow-hidden rounded-lg border border-gray-200 shadow-lg bg-white">

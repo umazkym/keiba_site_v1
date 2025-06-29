@@ -86,7 +86,7 @@ def main():
         return
 
     # --- 傾向分析の期間を定義 ---
-    ANALYSIS_START_DATE = datetime.date(2024, 1, 1)
+    ANALYSIS_START_DATE = datetime.date(2024, 1, 1) # 本番用の正しい日付
     ANALYSIS_END_DATE = datetime.date.today()
 
     # --- 処理対象の日付リストを決定 ---

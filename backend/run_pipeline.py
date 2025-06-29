@@ -1,7 +1,7 @@
 # C:\Users\tnszk\program\GitHub\backend\run_pipeline.py
 import datetime
 import time
-import os # osモジュールをインポート
+import os 
 from collections import defaultdict
 from database.database import SessionLocal, engine, Base
 from database import models
@@ -77,45 +77,50 @@ def process_advantage_in_chunks(db: Session, start_date: datetime.date, end_date
 def main():
     """モードに応じて指定された日付の予測を生成する一連の処理を実行する。"""
     # --- 実行モード設定 ---
-    # 環境変数 'PIPELINE_MODE' が 'DEBUG' の場合、デバッグモードで動作
+    # 環境変数 'PIPELINE_MODE' で動作を切り替える
     PIPELINE_MODE = os.getenv('PIPELINE_MODE', 'PRODUCTION')
-    DEBUG_MODE = (PIPELINE_MODE == 'DEBUG')
     
-    # デバッグモード用の設定
-    if DEBUG_MODE:
+    # モードに応じた期間と対象日を設定
+    if PIPELINE_MODE == 'HISTORY':
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        print("!!!  RUNNING IN DEBUG MODE  !!!")
+        print("!!!  RUNNING IN HISTORY MODE !!!")
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        # 過去2日分のデータだけを取得・分析する
-        ANALYSIS_START_DATE = datetime.date.today() - datetime.timedelta(days=2)
-        ANALYSIS_END_DATE = datetime.date.today() - datetime.timedelta(days=1)
-        # 予測対象は今日にする
-        prediction_dates: List[datetime.date] = [datetime.date.today()]
-    else:
-        # 本番モード用の設定
+        # 2025年1月1日から本日までの全日付を処理対象とする
+        ANALYSIS_START_DATE = datetime.date(2025, 1, 1)
+        ANALYSIS_END_DATE = datetime.date.today()
+        prediction_dates = []
+        current_pred_date = ANALYSIS_START_DATE
+        while current_pred_date <= ANALYSIS_END_DATE:
+            prediction_dates.append(current_pred_date)
+            current_pred_date += datetime.timedelta(days=1)
+    else: # PRODUCTIONモード（デフォルト）
         print("--- RUNNING IN PRODUCTION MODE ---")
         ANALYSIS_START_DATE = datetime.date(2024, 1, 1) 
         ANALYSIS_END_DATE = datetime.date.today()
         # 予測対象は明日にする
-        prediction_dates: List[datetime.date] = [ANALYSIS_END_DATE + datetime.timedelta(days=1)]
+        prediction_dates = [ANALYSIS_END_DATE + datetime.timedelta(days=1)]
+        # 本番モードでは、まず過去データをすべてバックフィルする
+        print(f"\n--- Performing pre-calculation based on period: {ANALYSIS_START_DATE} to {ANALYSIS_END_DATE} ---")
+        db_precalc: Session = SessionLocal()
+        try:
+            backfill_historical_data(db_precalc, ANALYSIS_START_DATE, ANALYSIS_END_DATE)
+            process_advantage_in_chunks(db_precalc, ANALYSIS_START_DATE, ANALYSIS_END_DATE, chunk_size_days=30)
+        finally:
+            db_precalc.close()
 
-
-    # --- Step 1: 過去データの蓄積と分析 ---
-    print(f"\n--- Performing pre-calculation based on period: {ANALYSIS_START_DATE} to {ANALYSIS_END_DATE} ---")
-    db_precalc: Session = SessionLocal()
-    try:
-        backfill_historical_data(db_precalc, ANALYSIS_START_DATE, ANALYSIS_END_DATE)
-        process_advantage_in_chunks(db_precalc, ANALYSIS_START_DATE, ANALYSIS_END_DATE, chunk_size_days=30)
-    finally:
-        db_precalc.close()
-
-    # --- Step 2: 予測の生成 ---
+    # --- 予測の生成ループ ---
     for target_date in prediction_dates:
         print(f"\n{'='*25} Processing for target date: {target_date.strftime('%Y-%m-%d')} {'='*25}")
-        db: Session = SessionLocal()
+
+        db_session: Session = SessionLocal()
         try:
+            # HISTORYモードでは、ループ内で該当日までのデータを都度バックフィルする
+            if PIPELINE_MODE == 'HISTORY':
+                backfill_historical_data(db_session, target_date, target_date)
+            
             target_date_str = target_date.strftime('%Y%m%d')
             all_race_ids: List[Tuple[str, bool]] = []
+
             for is_nar in [False, True]:
                 race_type = "NAR" if is_nar else "JRA"
                 print(f"Fetching {race_type} race list for {target_date_str}...")
@@ -125,8 +130,10 @@ def main():
                     filtered_race_ids = [rid for rid in race_ids if not rid.startswith(target_date_str[:4] + '65')]
                     all_race_ids.extend([(rid, is_nar) for rid in filtered_race_ids])
                     print(f"Found {len(race_ids)} {race_type} races ({len(filtered_race_ids)} after filtering).")
+
             if not all_race_ids:
                 print(f"No races found for {target_date.strftime('%Y-%m-%d')}.")
+                db_session.close()
                 continue
 
             all_horse_ids_to_fetch = set()
@@ -135,25 +142,41 @@ def main():
                 if shutuba_html:
                     shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
                     if shutuba_data:
-                        database_loader.load_shutuba_data(db, shutuba_data, race_id, target_date, is_nar)
+                        database_loader.load_shutuba_data(db_session, shutuba_data, race_id, target_date, is_nar)
                         for horse in shutuba_data.get("horses", []):
                             if horse.get("horse_id"):
                                 all_horse_ids_to_fetch.add(horse["horse_id"])
+
             if all_horse_ids_to_fetch:
-                fetch_and_load_past_data(db, list(all_horse_ids_to_fetch))
+                fetch_and_load_past_data(db_session, list(all_horse_ids_to_fetch))
 
             for race_id, is_nar in all_race_ids:
                 print(f"Creating predictions for Race ID: {race_id}")
-                predictions = predictor.create_predictions_for_race(db, race_id)
+                predictions = predictor.create_predictions_for_race(db_session, race_id)
                 if predictions:
-                    database_loader.save_prediction(db, race_id, predictions)
+                    database_loader.save_prediction(db_session, race_id, predictions)
                     print(f"  Saved {len(predictions)} predictions for race {race_id}")
                     horse_ids_in_race = [p["horse_id"] for p in predictions if p.get("horse_id")]
                     if horse_ids_in_race:
-                        predictor.calculate_and_save_matchups_for_race(db, race_id, horse_ids_in_race)
+                        predictor.calculate_and_save_matchups_for_race(db_session, race_id, horse_ids_in_race)
             print(f"--- Pipeline Finished for {target_date.strftime('%Y-%m-%d')} ---")
+
         finally:
-            db.close()
+            if db_session.is_active:
+                db_session.close()
+
+    # HISTORYモードの最後に、全期間の馬番有利不利を再計算
+    if PIPELINE_MODE == 'HISTORY':
+        print("\n--- Recalculating all horse number advantages after history generation ---")
+        db_final: Session = SessionLocal()
+        try:
+            # HISTORYモードで分析した全期間を対象にする
+            history_start_date = datetime.date(2025, 1, 1)
+            history_end_date = datetime.date.today()
+            process_advantage_in_chunks(db_final, history_start_date, history_end_date, chunk_size_days=30)
+        finally:
+            db_final.close()
+
     print("\nAll processing finished.")
 
 if __name__ == "__main__":

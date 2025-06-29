@@ -179,7 +179,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
                           <p className='font-bold mb-1 border-b pb-1'>直接対決データの見方</p>
                           <p className='text-xs mt-2'>
-                            この表は、出走馬同士が過去に<strong className='font-bold'>同じレースで直接走った経験</strong>があるかを調べ、その際の着順を比較して「勝ち(先行)」「負け(後着)」を集計したものです。集計期間は右上のカレンダーで自由に絞り込めます。
+                            この表は、出走馬同士が過去に<strong className='font-bold'>同じレースで直接走った経験</strong>があるかを調べ、その際の着順を比較して「勝ち(先行)」「負け(後着)」を集計したものです。集計期間は右側のカレンダーで自由に絞り込めます。
                           </p>
                         </div>
                       }

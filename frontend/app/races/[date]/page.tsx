@@ -13,7 +13,6 @@ const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onD
     
     // ★★★ タイムゾーン問題を回避する堅牢な日付操作ロジック ★★★
     const handleDateShift = (days: number) => {
-        // YYYY-MM-DD形式をUTCとしてパースし、日付の計算がズレないようにする
         const [year, month, day] = currentDate.split('-').map(Number);
         const dateObj = new Date(Date.UTC(year, month - 1, day));
         dateObj.setUTCDate(dateObj.getUTCDate() + days);

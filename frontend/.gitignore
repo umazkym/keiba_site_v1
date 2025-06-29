@@ -1,41 +1,66 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# --- General ---
+# Environment variables - **VERY IMPORTANT FOR SECURITY**
+.env
+.env.*
+!.env.example
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# IDE and editor specific files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
+# System files
 .DS_Store
-*.pem
+Thumbs.db
+desktop.ini
 
-# debug
+
+# --- Python / Backend ---
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+.venv
+venv/
+env/
+
+# Database files (local development)
+*.db
+*.sqlite3
+*.db-journal
+
+# Log and cache directories we created
+# Note: Using absolute paths from the root
+/backend/data/
+/backend/debug_logs/
+/backend/perf_logs/
+
+
+# --- Node.js / Next.js / Frontend ---
+# Log files
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Dependencies
+/frontend/node_modules/
 
-# vercel
-.vercel
+# Build directory
+/frontend/.next/
 
-# typescript
+# Production build
+/frontend/out/
+
+# TypeScript cache
 *.tsbuildinfo
-next-env.d.ts
+
+# ★★★ ここに以下の1行を追加 ★★★
+/data/

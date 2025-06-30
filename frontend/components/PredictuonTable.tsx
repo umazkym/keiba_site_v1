@@ -32,7 +32,6 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">馬名</th>
                                 <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center justify-end gap-1">
                                     <span>AI偏差値</span>
-                                    {/* ★★★ 偏差値の説明を修正 ★★★ */}
                                     <Tippy 
                                       content={
                                         <div className='p-2 text-sm text-left max-w-xs bg-gray-700 text-white rounded-md'>

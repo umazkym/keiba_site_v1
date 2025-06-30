@@ -191,7 +191,6 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                       <span className='w-5 h-5 bg-gray-400 text-white rounded-full flex items-center justify-center text-sm font-bold cursor-help'>?</span>
                     </Tippy>
                 </div>
-                {/* ★★★ 期間フィルタリングUI ★★★ */}
                 <div className="flex items-center gap-2 text-sm self-end">
                     <label htmlFor="start-date" className="text-gray-600 font-semibold">集計期間:</label>
                     <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border-gray-300 p-1 rounded-md text-sm"/>

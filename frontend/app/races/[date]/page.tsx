@@ -8,10 +8,8 @@ import { RaceTabs } from '@/components/RaceTabs';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { formatDate } from '@/lib/utils';
 
-// ★★★ 日付ナビゲーションコンポーネントを新設 ★★★
 const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onDateChange: (newDate: string) => void }) => {
     
-    // ★★★ タイムゾーン問題を回避する堅牢な日付操作ロジック ★★★
     const handleDateShift = (days: number) => {
         const [year, month, day] = currentDate.split('-').map(Number);
         const dateObj = new Date(Date.UTC(year, month - 1, day));
@@ -45,7 +43,6 @@ export default function RacePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // データ取得ロジック
     const fetchDataForDate = useCallback((date: string) => {
         setIsLoading(true);
         setError(null);
@@ -65,12 +62,10 @@ export default function RacePage() {
         });
     }, []);
 
-    // URLのdateパラメータを監視してデータを再取得
     useEffect(() => {
         fetchDataForDate(dateFromUrl);
     }, [dateFromUrl, fetchDataForDate]);
     
-    // 日付変更時にURLを更新するハンドラ
     const handleDateChange = (newDate: string) => {
         if (newDate !== dateFromUrl) {
             router.push(`/races/${newDate}`);
@@ -79,7 +74,6 @@ export default function RacePage() {
 
     return (
         <div className="container mx-auto p-4">
-            {/* ★★★ レイアウトを修正 ★★★ */}
             <div className="flex flex-col md:flex-row justify-between items-center mt-2 mb-4 gap-4 p-4 bg-white border rounded-lg shadow-sm">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
                     <span className="text-gray-500 font-normal">AI競馬予測</span> ({formatDate(dateFromUrl)})

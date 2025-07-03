@@ -17,7 +17,7 @@ def fetch_and_load_past_data(db: Session, horse_ids: List[str]):
     """指定された馬リストの過去成績を取得し DB に保存する"""
     print(f"Fetching past data for {len(horse_ids)} horses...")
     for horse_id in horse_ids:
-        print(f"  - Horse ID: {horse_id}")
+        # キャッシュを優先するため force_download=False
         html = scraper.get_horse_page_html(horse_id, force_download=False)
         if html:
             results = parser.parse_horse_results_page(html)
@@ -25,7 +25,10 @@ def fetch_and_load_past_data(db: Session, horse_ids: List[str]):
                 database_loader.load_past_results(db, results, horse_id)
 
 def backfill_historical_data(db: Session, start_date: datetime.date, end_date: datetime.date):
-    """指定された期間のレース結果を DB に保存する"""
+    """
+    指定された期間のレース結果を DB に保存する。
+    HTMLキャッシュを最大限活用する。
+    """
     print(f"Backfilling historical data from {start_date} to {end_date}...")
     current_date = start_date
     while current_date <= end_date:
@@ -33,20 +36,23 @@ def backfill_historical_data(db: Session, start_date: datetime.date, end_date: d
         for is_nar in [False, True]:
             race_type = "NAR" if is_nar else "JRA"
             
-            race_exists = db.query(models.Race).filter(
+            # データベースにその日のレース情報が既にあればスキップ
+            race_exists_in_db = db.query(models.Race).filter(
                 models.Race.race_date == current_date,
                 models.Race.race_type == ('地方' if is_nar else '中央')
-            ).first()
+            ).count() > 0
 
-            if race_exists:
-                print(f"Skipping {date_str} ({race_type}) - already in DB.")
+            if race_exists_in_db:
+                print(f"Skipping {date_str} ({race_type}) - already processed and in DB.")
                 continue
 
-            print(f"Fetching {race_type} race list for {date_str}...")
+            print(f"Processing {race_type} race list for {date_str}...")
+            # force_download=False でキャッシュを優先
             list_html = scraper.get_race_list_html(date_str, is_nar=is_nar, force_download=False)
             if list_html:
                 race_ids = parser.parse_race_ids_from_list(list_html)
                 for race_id in race_ids:
+                    # force_download=False でキャッシュを優先
                     result_html = scraper.get_race_result_html(race_id, is_nar=is_nar, force_download=False)
                     if result_html:
                         race_data = parser.parse_race_result_page(result_html, race_id)
@@ -54,7 +60,6 @@ def backfill_historical_data(db: Session, start_date: datetime.date, end_date: d
                             database_loader.load_race_result_data(
                                 db, race_data, race_id, current_date, is_nar
                             )
-                            print(f"  Loaded result for race {race_id}")
         current_date += datetime.timedelta(days=1)
 
 
@@ -76,16 +81,12 @@ def process_advantage_in_chunks(db: Session, start_date: datetime.date, end_date
 
 def main():
     """モードに応じて指定された日付の予測を生成する一連の処理を実行する。"""
-    # --- 実行モード設定 ---
-    # 環境変数 'PIPELINE_MODE' で動作を切り替える
     PIPELINE_MODE = os.getenv('PIPELINE_MODE', 'PRODUCTION')
     
-    # モードに応じた期間と対象日を設定
     if PIPELINE_MODE == 'HISTORY':
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         print("!!!  RUNNING IN HISTORY MODE !!!")
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        # 2025年1月1日から本日までの全日付を処理対象とする
         ANALYSIS_START_DATE = datetime.date(2025, 1, 1)
         ANALYSIS_END_DATE = datetime.date.today()
         prediction_dates = []
@@ -97,9 +98,8 @@ def main():
         print("--- RUNNING IN PRODUCTION MODE ---")
         ANALYSIS_START_DATE = datetime.date(2024, 1, 1) 
         ANALYSIS_END_DATE = datetime.date.today()
-        # 予測対象は明日にする
         prediction_dates = [ANALYSIS_END_DATE + datetime.timedelta(days=1)]
-        # 本番モードでは、まず過去データをすべてバックフィルする
+        
         print(f"\n--- Performing pre-calculation based on period: {ANALYSIS_START_DATE} to {ANALYSIS_END_DATE} ---")
         db_precalc: Session = SessionLocal()
         try:
@@ -108,13 +108,11 @@ def main():
         finally:
             db_precalc.close()
 
-    # --- 予測の生成ループ ---
     for target_date in prediction_dates:
         print(f"\n{'='*25} Processing for target date: {target_date.strftime('%Y-%m-%d')} {'='*25}")
 
         db_session: Session = SessionLocal()
         try:
-            # HISTORYモードでは、ループ内で該当日までのデータを都度バックフィルする
             if PIPELINE_MODE == 'HISTORY':
                 backfill_historical_data(db_session, target_date, target_date)
             
@@ -123,8 +121,9 @@ def main():
 
             for is_nar in [False, True]:
                 race_type = "NAR" if is_nar else "JRA"
-                print(f"Fetching {race_type} race list for {target_date_str}...")
-                list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=True)
+                print(f"Processing {race_type} race list for {target_date_str}...")
+                # ★★★ force_download=False に変更 ★★★
+                list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=False)
                 if list_html:
                     race_ids = parser.parse_race_ids_from_list(list_html)
                     filtered_race_ids = [rid for rid in race_ids if not rid.startswith(target_date_str[:4] + '65')]
@@ -138,7 +137,8 @@ def main():
 
             all_horse_ids_to_fetch = set()
             for race_id, is_nar in all_race_ids:
-                shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=True)
+                # ★★★ force_download=False に変更 ★★★
+                shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=False)
                 if shutuba_html:
                     shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
                     if shutuba_data:
@@ -165,12 +165,10 @@ def main():
             if db_session.is_active:
                 db_session.close()
 
-    # HISTORYモードの最後に、全期間の馬番有利不利を再計算
     if PIPELINE_MODE == 'HISTORY':
         print("\n--- Recalculating all horse number advantages after history generation ---")
         db_final: Session = SessionLocal()
         try:
-            # HISTORYモードで分析した全期間を対象にする
             history_start_date = datetime.date(2025, 1, 1)
             history_end_date = datetime.date.today()
             process_advantage_in_chunks(db_final, history_start_date, history_end_date, chunk_size_days=30)

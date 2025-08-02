@@ -1,5 +1,4 @@
 # C:\Users\tnszk\program\GitHub\backend\scripts\scraper.py
-
 import requests
 import time
 import random
@@ -8,7 +7,10 @@ import re
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import TimeoutException
 
 try:
     from webdriver_manager.chrome import ChromeDriverManager
@@ -31,8 +33,8 @@ HORSE_DIR = os.path.join(HTML_DIR, "horse")
 PED_DIR = os.path.join(HTML_DIR, "ped")
 NAR_RACELIST_DIR = os.path.join(HTML_DIR, "nar_racelist")
 NAR_RACE_DIR = os.path.join(HTML_DIR, "nar_race")
-DATELIST_DIR = os.path.join(HTML_DIR, "datelist") # 追加
-NAR_DATELIST_DIR = os.path.join(HTML_DIR, "nar_datelist") # 追加
+DATELIST_DIR = os.path.join(HTML_DIR, "datelist")
+NAR_DATELIST_DIR = os.path.join(HTML_DIR, "nar_datelist")
 
 for d in [RACELIST_DIR, RACE_RESULT_DIR, SHUTUBA_DIR, HORSE_DIR, PED_DIR, NAR_RACELIST_DIR, NAR_RACE_DIR, DATELIST_DIR, NAR_DATELIST_DIR]:
     os.makedirs(d, exist_ok=True)
@@ -41,25 +43,28 @@ def _get_random_headers():
     return {"User-Agent": random.choice(USER_AGENTS)}
 
 def _prepare_chrome_driver():
-    ua = random.choice(USER_AGENTS)
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-gpu')
     options.add_argument('--log-level=3')
+    options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
     try:
-        driver = webdriver.Chrome(options=options)
-    except Exception:
         if _WDM_AVAILABLE:
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=options)
         else:
-            raise Exception("ChromeDriver setup failed.")
+            driver = webdriver.Chrome(options=options)
+    except Exception as e:
+        print(f"[ERROR] ChromeDriverのセットアップに失敗しました: {e}")
+        print("webdriver-managerがインストールされているか確認してください: pip install webdriver-manager")
+        raise
+        
     return driver
 
-def get_html(url: str, file_path: str, force_download: bool = False, use_selenium: bool = False, max_age_seconds: int = None) -> str | None:
-    # --- 拡張子を.binに統一してチェック ---
+def get_html(url: str, file_path: str, force_download: bool = False, use_selenium: bool = False, max_age_seconds: int = None, wait_for_class: str = None) -> str | None:
     file_path_bin = os.path.splitext(file_path)[0] + ".bin"
     if not force_download and os.path.exists(file_path_bin):
         is_stale = False
@@ -68,7 +73,6 @@ def get_html(url: str, file_path: str, force_download: bool = False, use_seleniu
             if file_age > max_age_seconds:
                 is_stale = True
         if not is_stale:
-            # print(f"Cache hit: {file_path_bin}") # デバッグ用
             with open(file_path_bin, 'r', encoding='utf-8', errors='ignore') as f:
                 return f.read()
 
@@ -80,7 +84,16 @@ def get_html(url: str, file_path: str, force_download: bool = False, use_seleniu
             try:
                 driver = _prepare_chrome_driver()
                 driver.get(url)
-                time.sleep(random.uniform(3, 5))
+                if wait_for_class:
+                    try:
+                        WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located((By.CLASS_NAME, wait_for_class))
+                        )
+                        time.sleep(random.uniform(1, 2)) # 要素表示後の待機
+                    except TimeoutException:
+                        print(f"[Warning] Selenium timed out waiting for class '{wait_for_class}' at {url}")
+                else:
+                    time.sleep(random.uniform(3, 5))
                 html_content = driver.page_source
             finally:
                 if driver:
@@ -93,7 +106,6 @@ def get_html(url: str, file_path: str, force_download: bool = False, use_seleniu
             time.sleep(random.uniform(1.5, 3.0))
 
         if html_content:
-            # --- 拡張子を.binに統一して保存 ---
             with open(file_path_bin, 'w', encoding='utf-8') as f:
                 f.write(html_content)
         return html_content
@@ -122,9 +134,11 @@ def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = Fals
     return get_html(url, file_path, force_download)
 
 def get_horse_page_html(horse_id: str, force_download: bool = False) -> str | None:
+    """馬の過去成績ページを取得。JavaScriptで描画されるためSeleniumを使用する。"""
     url = f"{DB_BASE_URL}/horse/{horse_id}"
     file_path = os.path.join(HORSE_DIR, f"{horse_id}.bin")
-    return get_html(url, file_path, force_download, max_age_seconds=HORSE_HTML_CACHE_MAX_AGE_SECONDS)
+    # 'db_main_race' はJSで過去成績テーブルが読み込まれるコンテナのクラス名
+    return get_html(url, file_path, force_download, use_selenium=True, max_age_seconds=HORSE_HTML_CACHE_MAX_AGE_SECONDS, wait_for_class='db_main_race')
 
 def get_ped_page_html(horse_id: str, force_download: bool = False) -> str | None:
     url = f"{DB_BASE_URL}/horse/ped/{horse_id}"

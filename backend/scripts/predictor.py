@@ -1,4 +1,5 @@
 # C:\Users\tnszk\program\GitHub\backend\scripts\predictor.py
+
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database import models
@@ -10,24 +11,69 @@ from typing import Optional, List, Dict, Any
 from collections import defaultdict
 from . import database_loader
 
-def _calculate_1c_indicator(db: Session, horse_id: str, race_date: date) -> Optional[float]:
+def _calculate_1c_indicator(db: Session, horse_id: str, race_date: date, debug: bool = False) -> Optional[float] | Dict[str, Any]:
+    """
+    指定された馬の過去のレース結果から1コーナー（またはそれに準ずる序盤のコーナー）での
+    位置取り傾向をZスコアで計算する。
+
+    Args:
+        db (Session): データベースセッション
+        horse_id (str): 対象の馬ID
+        race_date (date): 基準となるレース開催日（この日付より前のレースを集計）
+        debug (bool, optional): Trueの場合、計算過程の詳細情報を辞書で返す
+
+    Returns:
+        - debug=Falseの場合: Zスコアの平均値 (float) または None
+        - debug=Trueの場合: 計算過程を含む辞書 (Dict)
+    """
     past_results = db.query(models.Result.corner_positions, models.Race.total_horses)\
         .join(models.Race, models.Result.race_id == models.Race.id)\
         .filter(models.Result.horse_id == horse_id, models.Race.race_date < race_date)\
         .all()
-    if not past_results: return None
+
+    past_races_found = len(past_results)
+    if not past_results:
+        return {'z_score': None, 'past_races_found': 0, 'valid_corner_races': 0} if debug else None
+
     z_scores = []
     for res in past_results:
         positions = res.corner_positions
         n = res.total_horses
-        if not positions or not isinstance(positions, list) or not n or n < 2: continue
+        
+        # corner_positionsがNoneまたは空リスト、total_horsesがNoneまたは2未満の場合はスキップ
+        if not positions or not isinstance(positions, list) or not n or n < 2:
+            continue
+        
+        # リストが空でないことを確認
+        if not any(isinstance(p, int) and p > 0 for p in positions):
+            continue
+            
+        # 最初の有効なコーナー通過順位を取得 (1C or 2Cを優先)
         start_pos = next((p for p in positions[:2] if isinstance(p, int) and p > 0), None)
-        if start_pos is None: continue
+        if start_pos is None:
+            continue
+        
+        # 順位の期待値と標準偏差を計算
         e = (n + 1) / 2.0
         sd = math.sqrt((n**2 - 1) / 12.0)
-        if sd == 0: continue
+        if sd == 0:
+            continue
+        
+        # Zスコアを計算 (期待値 - 実際の順位) / 標準偏差
+        # 順位が小さい(前方にいる)ほどZスコアは高くなる
         z_scores.append((e - start_pos) / sd)
-    return np.mean(z_scores) if z_scores else None
+
+    valid_corner_races = len(z_scores)
+    mean_z_score = np.mean(z_scores) if z_scores else None
+
+    if debug:
+        return {
+            'z_score': mean_z_score,
+            'past_races_found': past_races_found,
+            'valid_corner_races': valid_corner_races
+        }
+    else:
+        return mean_z_score
 
 def _calculate_performance_scores(db: Session, horse_id: str, race_date: date) -> Optional[float]:
     start_date_filter = race_date - timedelta(days=2*365)
@@ -76,14 +122,32 @@ def create_predictions_for_race(db: Session, race_id: str) -> Optional[List[Dict
     all_horse_scores = []
     for horse in shutuba_horses:
         perf_score = None if is_unpredictable else _calculate_performance_scores(db, horse.horse_id, target_race.race_date)
-        start_1c = _calculate_1c_indicator(db, horse.horse_id, target_race.race_date)
+        
+        # debug=FalseのままにしてAPIからの呼び出しに影響を与えない
+        start_1c_z_score = _calculate_1c_indicator(db, horse.horse_id, target_race.race_date, debug=False)
+
         all_horse_scores.append({
             'horse_id': horse.horse_id, 'horse_name': horse.name,
             'horse_number': horse.horse_number, 'waku_number': horse.waku_number,
             'raw_score': perf_score if perf_score is not None else np.nan,
-            'start_1c_indicator': start_1c
+            'start_1c_z_score': start_1c_z_score # Zスコアを一時的に保持
         })
+
     df = pd.DataFrame(all_horse_scores)
+    
+    # 1Cスタート指標のスケーリング
+    valid_1c_scores = df['start_1c_z_score'].dropna()
+    if len(valid_1c_scores) > 1:
+        min_val, max_val = valid_1c_scores.min(), valid_1c_scores.max()
+        if abs(max_val - min_val) < 1e-9:
+            df['start_1c_indicator'] = 50.0
+        else:
+            df['start_1c_indicator'] = df['start_1c_z_score'].apply(
+                lambda z: 1.0 + (z - min_val) * 99 / (max_val - min_val) if pd.notna(z) else None
+            )
+    else:
+        df['start_1c_indicator'] = None
+
     valid_scores = df['raw_score'].dropna()
     if is_unpredictable or len(valid_scores) < 2:
         df['deviation_score'] = None
@@ -99,6 +163,10 @@ def create_predictions_for_race(db: Session, race_id: str) -> Optional[List[Dict
         df = df.sort_values('deviation_score', ascending=False, na_position='last').reset_index(drop=True)
         marks = ["◎", "〇", "▲", "△", "☆"]
         df['mark'] = df.index.map(lambda i: marks[i] if pd.notna(df.loc[i, 'deviation_score']) and i < len(marks) else "")
+
+    # 不要になったZスコアの列を削除
+    df = df.drop(columns=['start_1c_z_score'])
+    
     df_final = df.replace({np.nan: None})
     return df_final.to_dict('records')
 

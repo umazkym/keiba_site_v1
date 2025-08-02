@@ -1,7 +1,7 @@
 # C:\Users\tnszk\program\GitHub\backend\run_pipeline.py
 import datetime
 import time
-import os 
+import os
 from collections import defaultdict
 from database.database import SessionLocal, engine, Base
 from database import models
@@ -75,7 +75,7 @@ def process_advantage_in_chunks(db: Session, start_date: datetime.date, end_date
         predictor.calculate_and_save_horse_number_advantage_for_period(db, current_start, current_end)
         
         current_start = current_end + datetime.timedelta(days=1)
-        time.sleep(1) 
+        time.sleep(1)  
     print("--- Finished all advantage calculations ---\n")
 
 
@@ -87,8 +87,10 @@ def main():
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         print("!!!  RUNNING IN HISTORY MODE !!!")
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        ANALYSIS_START_DATE = datetime.date(2025, 1, 1)
-        ANALYSIS_END_DATE = datetime.date.today()
+        # ★★★ 修正箇所: 分析期間を開始日 '2025-06-09', 終了日 '2025-06-22' に変更 ★★★
+        ANALYSIS_START_DATE = datetime.date(2025, 6, 22)
+        ANALYSIS_END_DATE = datetime.date(2025, 6, 22)
+        # ★★★ 修正ここまで ★★★
         prediction_dates = []
         current_pred_date = ANALYSIS_START_DATE
         while current_pred_date <= ANALYSIS_END_DATE:
@@ -96,7 +98,7 @@ def main():
             current_pred_date += datetime.timedelta(days=1)
     else: # PRODUCTIONモード（デフォルト）
         print("--- RUNNING IN PRODUCTION MODE ---")
-        ANALYSIS_START_DATE = datetime.date(2024, 1, 1) 
+        ANALYSIS_START_DATE = datetime.date(2024, 1, 1)  
         ANALYSIS_END_DATE = datetime.date.today()
         prediction_dates = [ANALYSIS_END_DATE + datetime.timedelta(days=1)]
         
@@ -122,8 +124,7 @@ def main():
             for is_nar in [False, True]:
                 race_type = "NAR" if is_nar else "JRA"
                 print(f"Processing {race_type} race list for {target_date_str}...")
-                # ★★★ force_download=False に変更 ★★★
-                list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=False)
+                list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=True)
                 if list_html:
                     race_ids = parser.parse_race_ids_from_list(list_html)
                     filtered_race_ids = [rid for rid in race_ids if not rid.startswith(target_date_str[:4] + '65')]
@@ -137,8 +138,7 @@ def main():
 
             all_horse_ids_to_fetch = set()
             for race_id, is_nar in all_race_ids:
-                # ★★★ force_download=False に変更 ★★★
-                shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=False)
+                shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=True)
                 if shutuba_html:
                     shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
                     if shutuba_data:
@@ -169,8 +169,10 @@ def main():
         print("\n--- Recalculating all horse number advantages after history generation ---")
         db_final: Session = SessionLocal()
         try:
-            history_start_date = datetime.date(2025, 1, 1)
-            history_end_date = datetime.date.today()
+            # ★★★ 修正箇所: 再計算期間も分析期間に合わせる ★★★
+            history_start_date = datetime.date(2025, 6, 22)
+            history_end_date = datetime.date(2025, 6, 22)
+            # ★★★ 修正ここまで ★★★
             process_advantage_in_chunks(db_final, history_start_date, history_end_date, chunk_size_days=30)
         finally:
             db_final.close()

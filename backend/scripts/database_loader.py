@@ -7,10 +7,6 @@ from typing import Dict, Any, List
 import datetime
 
 def _bulk_upsert(db: Session, model, data: List[Dict[str, Any]], index_elements: List[str]):
-    """
-    PostgreSQL用の効率的なバルクUPSERT処理。
-    重複キーがあれば何もしない（DO NOTHING）。
-    """
     if not data:
         return
     
@@ -19,10 +15,26 @@ def _bulk_upsert(db: Session, model, data: List[Dict[str, Any]], index_elements:
     stmt = stmt.on_conflict_do_nothing(index_elements=index_elements)
     db.execute(stmt)
 
+def _bulk_upsert_results(db: Session, data: List[Dict[str, Any]]):
+    if not data:
+        return
+
+    table = models.Result.__table__
+    stmt = pg_insert(table).values(data)
+    
+    update_columns = {
+        c.name: getattr(stmt.excluded, c.name)
+        for c in table.c
+        if c.name not in ['id', 'race_id', 'horse_id']
+    }
+    
+    stmt = stmt.on_conflict_do_update(
+        index_elements=['race_id', 'horse_id'],
+        set_=update_columns
+    )
+    db.execute(stmt)
+
 def load_shutuba_data(db: Session, shutuba_data: Dict[str, Any], race_id: str, race_date: datetime.date, is_nar: bool):
-    """
-    出馬表データを安全な順序でデータベースにロードする。
-    """
     horses_to_save, jockeys_to_save, trainers_to_save = [], [], []
 
     for h in shutuba_data.get('horses', []):
@@ -33,12 +45,10 @@ def load_shutuba_data(db: Session, shutuba_data: Dict[str, Any], race_id: str, r
         if h.get('trainer_id'):
             trainers_to_save.append({'id': h['trainer_id'], 'name': h['trainer_name']})
 
-    # 1. 関連エンティティを先に登録
     _bulk_upsert(db, models.Horse, horses_to_save, ['id'])
     _bulk_upsert(db, models.Jockey, jockeys_to_save, ['id'])
     _bulk_upsert(db, models.Trainer, trainers_to_save, ['id'])
     
-    # 2. レース情報を登録
     race_info = shutuba_data.get('race_info', {})
     venue_code = race_id[4:6]
     venue_name = VENUE_CODE_MAP.get(venue_code, '不明')
@@ -51,7 +61,6 @@ def load_shutuba_data(db: Session, shutuba_data: Dict[str, Any], race_id: str, r
     }
     _bulk_upsert(db, models.Race, [race_to_save], ['id'])
 
-    # 3. 最後に結果テーブルを登録
     results_to_save = []
     for h in shutuba_data.get('horses', []):
         if h.get('horse_id'):
@@ -61,15 +70,12 @@ def load_shutuba_data(db: Session, shutuba_data: Dict[str, Any], race_id: str, r
                 'horse_number': h.get('horse_number'), 'weight_carried': h.get('weight_carried'),
                 'horse_weight': h.get('horse_weight'), 'horse_weight_diff': h.get('horse_weight_diff'),
             })
-    _bulk_upsert(db, models.Result, results_to_save, ['race_id', 'horse_id'])
+    _bulk_upsert_results(db, results_to_save)
     
     db.commit()
 
 
 def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str):
-    """
-    馬の過去成績データを安全な順序でロードする
-    """
     if not results: return
     
     races_to_save = []
@@ -78,7 +84,6 @@ def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str)
     for r in results:
         venue = r.get('venue_name')
         
-        # ★★★ ここからが修正箇所 ★★★
         race_type = None
         if venue:
             if any(jra_venue in venue for jra_venue in JRA_VENUES):
@@ -86,11 +91,8 @@ def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str)
             elif any(nar_venue in venue for nar_venue in NAR_VENUES):
                 race_type = '地方'
         
-        # race_typeが特定できない場合（海外レースなど）は、このレコードをスキップする
         if race_type is None:
-            print(f"[Warning] Skipping unknown venue race: {venue} for horse {horse_id}")
             continue
-        # ★★★ 修正ここまで ★★★
 
         race_dict = {
             'id': r.get('race_id'), 'race_date': r.get('race_date'), 'venue_name': venue,
@@ -100,7 +102,6 @@ def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str)
             'total_horses': r.get('total_horses')
         }
         if race_dict.get('id'):
-            # race_typeがNoneでないことを再度確認
             if race_dict['race_type'] is not None:
                  races_to_save.append(race_dict)
 
@@ -111,12 +112,11 @@ def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str)
         if result_dict.get('race_id') and result_dict.get('horse_id'):
             results_to_save.append(result_dict)
 
-    # 1. レース情報を先に登録
+    # ★★★ 修正: 先にレース情報を保存し、次に成績を保存する ★★★
     _bulk_upsert(db, models.Race, races_to_save, ['id'])
+    db.commit() # レース情報を確定
     
-    # 2. 結果を登録
-    _bulk_upsert(db, models.Result, results_to_save, ['race_id', 'horse_id'])
-    
+    _bulk_upsert_results(db, results_to_save)
     db.commit()
 
 
@@ -134,7 +134,6 @@ def save_horse_number_advantages(db: Session, advantages: List[Dict[str, Any]]):
     if not advantages: return
 
     for adv in advantages:
-        # PostgreSQLのUPSERT機能を使う
         stmt = pg_insert(models.HorseNumberAdvantage).values(adv)
         stmt = stmt.on_conflict_do_update(
             index_elements=['venue_name', 'course_type', 'distance', 'horse_number'],
@@ -145,19 +144,14 @@ def save_horse_number_advantages(db: Session, advantages: List[Dict[str, Any]]):
 
 
 def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, race_date: datetime.date, is_nar: bool):
-    """
-    レース結果データを安全な順序でロードする
-    """
     horses_to_save, jockeys_to_save = [], []
     for h in race_data.get('results', []):
         if h.get('horse_id'): horses_to_save.append({'id': h['horse_id'], 'name': h['horse_name']})
         if h.get('jockey_id'): jockeys_to_save.append({'id': h['jockey_id'], 'name': h.get('jockey_name')})
     
-    # 1. 関連エンティティを先に登録
     _bulk_upsert(db, models.Horse, horses_to_save, ['id'])
     _bulk_upsert(db, models.Jockey, jockeys_to_save, ['id'])
 
-    # 2. レース情報を登録
     race_info = race_data.get('race_info', {})
     venue_code = race_id[4:6]
     venue_name = VENUE_CODE_MAP.get(venue_code, '不明')
@@ -169,8 +163,8 @@ def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, 
         'ground_condition': race_info.get('ground_condition'), 'total_horses': race_info.get('total_horses')
     }
     _bulk_upsert(db, models.Race, [race_to_save], ['id'])
+    db.commit() # レース情報を先に確定
 
-    # 3. 最後に結果テーブルを登録
     results_to_save = []
     for h in race_data.get('results', []):
         if h.get('horse_id'):
@@ -179,8 +173,8 @@ def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, 
                 'rank': h.get('rank'), 'waku_number': h.get('waku_number'),
                 'horse_number': h.get('horse_number'), 'finish_time_sec': h.get('finish_time_sec'),
                 'weight_carried': h.get('weight_carried'), 'popularity': h.get('popularity'),
-                'odds': h.get('odds')
+                'odds': h.get('odds'),
+                'corner_positions': h.get('corner_positions')
             })
-    _bulk_upsert(db, models.Result, results_to_save, ['race_id', 'horse_id'])
-    
+    _bulk_upsert_results(db, results_to_save)
     db.commit()

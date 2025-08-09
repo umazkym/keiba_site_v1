@@ -1,4 +1,5 @@
 # C:\Users\tnszk\program\GitHub\backend\run_pipeline.py
+import winsound
 import datetime
 import time
 import os
@@ -180,4 +181,6 @@ def main():
     print("\nAll processing finished.")
 
 if __name__ == "__main__":
+    winsound.Beep(880, 500)
     main()
+    winsound.Beep(880, 500)

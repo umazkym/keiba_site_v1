@@ -130,6 +130,22 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
 def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]]:
     soup = BeautifulSoup(html_content, 'lxml')
     
+    # --- 追加: ページ上部のプロフィール欄から現在の調教師情報を取得 ---
+    current_trainer_id = None
+    current_trainer_name = None
+    # '調教師'というテキストを持つ<th>を探す
+    trainer_th = soup.find('th', string='調教師')
+    if trainer_th:
+        # その隣の<td>要素を取得
+        trainer_td = trainer_th.find_next_sibling('td')
+        if trainer_td:
+            # <td>内の調教師リンク<a>を探す
+            trainer_a = trainer_td.find('a', href=re.compile(r'/trainer/'))
+            if trainer_a:
+                current_trainer_id = _extract_id_from_href(trainer_a.get('href'))
+                current_trainer_name = trainer_a.get_text(strip=True)
+    # --- 追加ここまで ---
+
     results_table = None
     required_headers = {'日付', 'レース名', '着順', '頭数', '人気', '斤量', '騎手', 'タイム'}
     
@@ -165,13 +181,15 @@ def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]
             
             if not race_id: continue
 
-            # 騎手と調教師のIDを抽出
+            # 騎手IDを抽出
             jockey_link_a = cols_elm[col_map.get('騎手', 12)].find('a')
-            trainer_link_a = row.find('a', href=re.compile(r'/trainer/')) 
-            
             jockey_id = _extract_id_from_href(jockey_link_a.get('href')) if jockey_link_a else None
-            trainer_id = _extract_id_from_href(trainer_link_a.get('href')) if trainer_link_a else None
-
+            
+            # --- 削除: このテーブルからは調教師IDは取得できないため、該当コードを削除 ---
+            # trainer_link_a = row.find('a', href=re.compile(r'/trainer/'))
+            # trainer_id = _extract_id_from_href(trainer_link_a.get('href')) if trainer_link_a else None
+            # --- 削除ここまで ---
+            
             dist_match = re.match(r'([^\d]+)(\d+)', cols_text[col_map.get('距離', 14)])
             time_match = re.match(r'(\d+):(\d+\.\d+)', cols_text[col_map.get('タイム', 17)])
             weight_match = re.match(r'(\d+)\((.+)\)', cols_text[col_map.get('馬体重', 23)])
@@ -205,7 +223,9 @@ def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]
                 'horse_weight': int(weight_match.group(1)) if weight_match else None,
                 'horse_weight_diff': int(w_diff) if weight_match and (w_diff := weight_match.group(2)) not in ('計不', ' F', ' ', '--') and w_diff.replace('-', '').isdigit() else None,
                 'jockey_id': jockey_id,
-                'trainer_id': trainer_id,
+                # --- 修正: 取得した現在の調教師情報をデフォルト値として使用 ---
+                'trainer_id': current_trainer_id,
+                'trainer_name': current_trainer_name
             }
             results.append(result_dict)
         except (ValueError, TypeError, IndexError, AttributeError) as e:

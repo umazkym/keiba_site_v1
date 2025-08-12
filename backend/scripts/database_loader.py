@@ -47,7 +47,7 @@ def _bulk_upsert_horses(db: Session, data: List[Dict[str, Any]]):
     
     try:
         db.execute(stmt)
-        print("     ... Success.")
+        print("      ... Success.")
     except Exception as e:
         print(f"[ERROR] Failed to upsert horse data: {e}")
         db.rollback() # エラーが発生した場合はロールバック
@@ -87,7 +87,7 @@ def load_shutuba_data(db: Session, shutuba_data: Dict[str, Any], race_id: str, r
             sex = h.get('sex')
             age = h.get('age')
             if sex is None or age is None:
-                print(f"     [DEBUG CONSOLE] Horse '{h.get('horse_name', 'N/A')}' (ID: {h['horse_id']}) is missing sex or age. sex={sex}, age={age}")
+                print(f"       [DEBUG CONSOLE] Horse '{h.get('horse_name', 'N/A')}' (ID: {h['horse_id']}) is missing sex or age. sex={sex}, age={age}")
             
             horses_to_save.append({
                 'id': h['horse_id'], 
@@ -133,16 +133,25 @@ def load_shutuba_data(db: Session, shutuba_data: Dict[str, Any], race_id: str, r
     db.commit()
 
 
+# ★★★★★ ここから修正 ★★★★★
 def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str):
     """馬の過去成績データをDBにロードする"""
     if not results: return
     
     races_to_save = []
     results_to_save = []
+    jockeys_to_save = []
+    trainers_to_save = []
 
     for r in results:
+        # 1. 関連マスタデータを抽出
+        if r.get('jockey_id'):
+            jockeys_to_save.append({'id': r['jockey_id'], 'name': r.get('jockey_name')})
+        if r.get('trainer_id'):
+            trainers_to_save.append({'id': r['trainer_id'], 'name': r.get('trainer_name')})
+
+        # 2. レース情報を抽出
         venue = r.get('venue_name')
-        
         race_type = None
         if venue:
             if any(jra_venue in venue for jra_venue in JRA_VENUES):
@@ -164,6 +173,7 @@ def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str)
             if race_dict['race_type'] is not None:
                 races_to_save.append(race_dict)
 
+        # 3. 結果情報を抽出
         result_dict = {k: v for k, v in r.items() if k in models.Result.__table__.columns.keys()}
         result_dict['horse_id'] = horse_id
         if 'race_id' in r: result_dict['race_id'] = r['race_id']
@@ -171,13 +181,19 @@ def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str)
         if result_dict.get('race_id') and result_dict.get('horse_id'):
             results_to_save.append(result_dict)
 
-    # 先にレース情報を保存し、次に成績を保存する
+    # 4. マスタテーブルを先に保存
+    if jockeys_to_save:
+        _bulk_upsert(db, models.Jockey, jockeys_to_save, ['id'])
+    if trainers_to_save:
+        _bulk_upsert(db, models.Trainer, trainers_to_save, ['id'])
+    
+    # 5. レース情報を保存し、次に成績を保存する
     _bulk_upsert(db, models.Race, races_to_save, ['id'])
-    db.commit() # レース情報を確定
+    db.commit()
     
     _bulk_upsert_results(db, results_to_save)
     db.commit()
-
+# ★★★★★ ここまで修正 ★★★★★
 
 def save_prediction(db: Session, race_id: str, predictions: List[Dict[str, Any]]):
     """予測結果をDBに保存する"""
@@ -203,7 +219,6 @@ def save_horse_number_advantages(db: Session, advantages: List[Dict[str, Any]]):
         db.execute(stmt)
     db.commit()
 
-# --- ★★★ ここから修正 ★★★
 def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, race_date: datetime.date, is_nar: bool):
     """レース結果データを解析し、既存のレコードに情報をマージ（更新）する"""
     if not race_id:
@@ -270,4 +285,3 @@ def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, 
             db.add(new_result)
     
     db.commit()
-# --- 修正ここまで ---

@@ -4,6 +4,7 @@ import re
 import pandas as pd
 from typing import List, Dict, Any, Optional
 from collections import defaultdict
+import datetime
 
 def parse_race_ids_from_list(html_content: str) -> List[str]:
     soup = BeautifulSoup(html_content, 'lxml')
@@ -187,6 +188,7 @@ def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]
       print(f"  - Successfully parsed {len(results)} past results for horse.")
     return results
 
+# --- ★★★ ここから修正 ★★★
 def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str, Any]]:
     if not html_content: return None
     soup = BeautifulSoup(html_content, 'lxml')
@@ -194,23 +196,50 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
     results_list = []
     
     try:
-        race_list_item = soup.select_one(".RaceList_Item02")
-        if race_list_item:
-            race_name_elm = race_list_item.select_one(".RaceName")
-            if race_name_elm: race_info_dict['race_name'] = race_name_elm.get_text(strip=True).replace("\n", "").strip()
-            race_data01_elm = race_list_item.select_one(".RaceData01")
-            if race_data01_elm:
-                race_data01 = race_data01_elm.get_text(strip=True)
-                m_course = re.search(r'(芝|ダ|障)(\d+)m', race_data01)
+        # --- レース情報抽出ロジックを強化 ---
+        # 新旧両方のレイアウトに対応
+        race_header = soup.select_one("div.db_head") or soup.select_one(".RaceList_NameBox")
+
+        if race_header:
+            # レース名
+            race_name_elm = race_header.select_one("h1") or race_header.select_one(".RaceName")
+            if race_name_elm:
+                race_name_text = race_name_elm.get_text(strip=True).replace("\n", "").strip()
+                # 余分なテキストを除去
+                race_info_dict['race_name'] = re.sub(r'\(.+?\)$', '', race_name_text).strip()
+
+            # コース情報、日付など
+            race_data_text = ""
+            race_data_header = soup.select_one("div.RaceData01")
+            if race_data_header:
+                 race_data_text += race_data_header.get_text(strip=True, separator=' ')
+            
+            race_data_details = soup.select_one("div.RaceData02")
+            if race_data_details:
+                race_data_text += " " + race_data_details.get_text(strip=True, separator=' ')
+            
+            diary_snap_text = soup.select_one("div.diary_snap")
+            if diary_snap_text:
+                race_data_text += " " + diary_snap_text.get_text(strip=True, separator=' ')
+
+            if race_data_text:
+                m_course = re.search(r'(芝|ダ|障)\S*(\d+)m', race_data_text)
                 if m_course:
                     race_info_dict['course_type'] = m_course.group(1)
                     race_info_dict['distance'] = int(m_course.group(2))
-                m_weather = re.search(r'天候:(\S+)', race_data01)
+                
+                m_weather = re.search(r'天候:(\S+)', race_data_text)
                 if m_weather: race_info_dict['weather'] = m_weather.group(1)
-                m_ground = re.search(r'馬場:(\S+)', race_data01)
+                
+                m_ground = re.search(r'馬場:(\S+)', race_data_text)
                 if m_ground: race_info_dict['ground_condition'] = m_ground.group(1)
+                
+                m_date = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', race_data_text)
+                if m_date:
+                    race_info_dict['race_date'] = datetime.date(int(m_date.group(1)), int(m_date.group(2)), int(m_date.group(3)))
         
         race_info_dict['race_number'] = int(race_id[-2:])
+        # --- 修正ここまで ---
 
         result_table = soup.find("table", class_=re.compile(r"race_table_01|RaceTable01"))
         if not result_table:
@@ -258,6 +287,8 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
 
             horse_link = cols[3].find('a', href=re.compile(r'/horse/'))
             jockey_link = cols[6].find('a', href=re.compile(r'/jockey/'))
+            # --- ★★★ 修正箇所: trainer_linkをtd全体から探すように変更 ---
+            trainer_link = row.find('a', href=re.compile(r'/trainer/'))
             
             horse_id_match = None
             if horse_link:
@@ -270,6 +301,13 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
                 jockey_id_search = re.search(r'/jockey/result/recent/(\w+)', jockey_link['href'])
                 if jockey_id_search:
                     jockey_id_match = jockey_id_search.group(1)
+
+            # --- ★★★ 修正箇所: trainer_idを抽出する ---
+            trainer_id_match = None
+            if trainer_link:
+                trainer_id_search = re.search(r'/trainer/result/recent/(\w+)', trainer_link['href'])
+                if trainer_id_search:
+                    trainer_id_match = trainer_id_search.group(1)
             
             horse_num_val = int(cols[2].get_text(strip=True)) if cols[2].get_text(strip=True).isdigit() else 0
             
@@ -282,6 +320,10 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
                 'weight_carried': float(cols[5].get_text(strip=True)) if re.match(r'^\d+\.?\d*$', cols[5].get_text(strip=True)) else None,
                 'jockey_id': jockey_id_match,
                 'jockey_name': jockey_link.get_text(strip=True) if jockey_link else None,
+                # --- ★★★ 修正箇所: trainer情報を辞書に追加 ---
+                'trainer_id': trainer_id_match,
+                'trainer_name': trainer_link.get_text(strip=True) if trainer_link else None,
+                # ---
                 'finish_time_sec': finish_time_sec,
                 'odds': float(cols[9].get_text(strip=True)) if re.match(r'^\d+\.?\d*$', cols[9].get_text(strip=True)) else None,
                 'popularity': int(cols[10].get_text(strip=True)) if cols[10].get_text(strip=True).isdigit() else None,
@@ -302,3 +344,4 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
         print(f"An error occurred while parsing race result page for race {race_id}:")
         traceback.print_exc()
         return None
+# --- 修正ここまで ---

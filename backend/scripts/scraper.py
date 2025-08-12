@@ -18,7 +18,20 @@ try:
 except ImportError:
     _WDM_AVAILABLE = False
 
-USER_AGENTS = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"]
+# --- 変更点: BAN対策設定 ---
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/121.0",
+]
+MIN_SLEEP_SECONDS = 2.5
+MAX_SLEEP_SECONDS = 5.0
+MAX_RETRIES = 3
+RETRY_DELAY_SECONDS = 10
+# --- 変更点ここまで ---
+
 BASE_CENTRAL_URL = "https://race.netkeiba.com"
 BASE_NAR_URL = "https://nar.netkeiba.com"
 DB_BASE_URL = "https://db.netkeiba.com"
@@ -78,60 +91,96 @@ def get_html(url: str, file_path: str, force_download: bool = False, use_seleniu
 
     print(f"Downloading: {url}")
     html_content = None
-    try:
-        if use_selenium:
-            driver = None
-            try:
-                driver = _prepare_chrome_driver()
-                driver.get(url)
-                if wait_for_class:
-                    try:
-                        WebDriverWait(driver, 10).until(
-                            EC.presence_of_element_located((By.CLASS_NAME, wait_for_class))
-                        )
-                        time.sleep(random.uniform(1, 2)) # 要素表示後の待機
-                    except TimeoutException:
-                        print(f"[Warning] Selenium timed out waiting for class '{wait_for_class}' at {url}")
-                else:
-                    time.sleep(random.uniform(3, 5))
-                html_content = driver.page_source
-            finally:
-                if driver:
-                    driver.quit()
-        else:
-            response = requests.get(url, headers=_get_random_headers(), timeout=20)
-            response.raise_for_status()
-            response.encoding = response.apparent_encoding
-            html_content = response.text
-            time.sleep(random.uniform(1.5, 3.0))
+    
+    # --- 変更点: リトライ処理の導入 ---
+    for attempt in range(MAX_RETRIES):
+        try:
+            # リクエスト前にランダムな待機時間を挿入
+            sleep_time = random.uniform(MIN_SLEEP_SECONDS, MAX_SLEEP_SECONDS)
+            print(f"  ... Waiting for {sleep_time:.2f} seconds before request (Attempt {attempt + 1}/{MAX_RETRIES})")
+            time.sleep(sleep_time)
 
-        if html_content:
-            with open(file_path_bin, 'w', encoding='utf-8') as f:
-                f.write(html_content)
-        return html_content
-    except Exception as e:
-        print(f"[Request Error] Failed to get page {url}: {e}")
-        return None
+            if use_selenium:
+                driver = None
+                try:
+                    driver = _prepare_chrome_driver()
+                    driver.get(url)
+                    if wait_for_class:
+                        try:
+                            WebDriverWait(driver, 10).until(
+                                EC.presence_of_element_located((By.CLASS_NAME, wait_for_class))
+                            )
+                            time.sleep(random.uniform(1, 2)) # 要素表示後の待機
+                        except TimeoutException:
+                            print(f"[Warning] Selenium timed out waiting for class '{wait_for_class}' at {url}")
+                    else:
+                        time.sleep(random.uniform(3, 5))
+                    html_content = driver.page_source
+                finally:
+                    if driver:
+                        driver.quit()
+            else:
+                response = requests.get(url, headers=_get_random_headers(), timeout=20)
+                response.raise_for_status()
+                response.encoding = response.apparent_encoding
+                html_content = response.text
+            
+            if "ただいま大変混み合っております。" in html_content or "混み合っているため、しばらく時間をおいてから再度アクセスしてください。" in html_content:
+                print(f"  -> Congestion page detected. Retrying...")
+                html_content = None # コンテンツをクリアしてリトライさせる
+                raise requests.exceptions.HTTPError(f"Congestion page detected at {url}")
+
+            if html_content:
+                with open(file_path_bin, 'w', encoding='utf-8') as f:
+                    f.write(html_content)
+                return html_content
+
+        except requests.exceptions.HTTPError as e:
+            status_code = e.response.status_code if e.response else 500
+            print(f"[Request Error] HTTP {status_code} for {url}. Retrying...")
+            if status_code in [403, 429] or "Congestion page" in str(e):
+                print(f"  -> Status {status_code} is critical. Waiting longer before retry...")
+                time.sleep(RETRY_DELAY_SECONDS * (attempt + 1) * 2) # 待機時間をさらに増やす
+            elif status_code == 404:
+                print("  -> Page not found (404). No more retries for this URL.")
+                return None # 404ならリトライしない
+        except requests.RequestException as e:
+            print(f"[Request Error] Failed to get page {url} on attempt {attempt + 1}: {e}")
+        except Exception as e:
+             print(f"[Unexpected Error] in get_html for {url}: {e}")
+
+        if attempt < MAX_RETRIES - 1:
+            wait_time = RETRY_DELAY_SECONDS * (attempt + 1)
+            print(f"  ... Waiting for {wait_time} seconds before next attempt...")
+            time.sleep(wait_time)
+            
+    print(f"[Request Failed] Could not retrieve URL after {MAX_RETRIES} attempts: {url}")
+    return None
+    # --- 変更点ここまで ---
 
 def get_race_list_html(date_str: str, is_nar: bool, force_download: bool = False) -> str | None:
     base_url = BASE_NAR_URL if is_nar else BASE_CENTRAL_URL
     url = f"{base_url}/top/race_list.html?kaisai_date={date_str}"
     dir_path = NAR_RACELIST_DIR if is_nar else RACELIST_DIR
     file_path = os.path.join(dir_path, f"{date_str}.bin")
-    return get_html(url, file_path, force_download, use_selenium=True)
+    return get_html(url, file_path, force_download, use_selenium=True, wait_for_class="RaceList_Box")
 
 def get_shutuba_html(race_id: str, is_nar: bool, force_download: bool = False) -> str | None:
     base_url = BASE_NAR_URL if is_nar else BASE_CENTRAL_URL
     url = f"{base_url}/race/shutuba.html?race_id={race_id}"
     file_path = os.path.join(SHUTUBA_DIR, f"{race_id}.bin")
-    return get_html(url, file_path, force_download)
+    return get_html(url, file_path, force_download, wait_for_class="Shutuba_HorseList")
 
 def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = False) -> str | None:
     base_url = BASE_NAR_URL if is_nar else BASE_CENTRAL_URL
-    url = f"{base_url}/race/result.html?race_id={race_id}"
+    # 新しいdb.netkeiba.comのURL形式に対応
+    if not is_nar and (race_id.startswith("20") and len(race_id) == 12):
+        url = f"{DB_BASE_URL}/race/{race_id}"
+    else:
+        url = f"{base_url}/race/result.html?race_id={race_id}"
     dir_path = NAR_RACE_DIR if is_nar else RACE_RESULT_DIR
     file_path = os.path.join(dir_path, f"{race_id}.bin")
-    return get_html(url, file_path, force_download)
+    return get_html(url, file_path, force_download, wait_for_class="RaceTable01")
 
 def get_horse_page_html(horse_id: str, force_download: bool = False) -> str | None:
     """馬の過去成績ページを取得。JavaScriptで描画されるためSeleniumを使用する。"""

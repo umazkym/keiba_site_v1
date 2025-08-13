@@ -2,6 +2,7 @@
 import datetime
 import time
 import sys
+import pprint
 from sqlalchemy.orm import Session
 from database.database import SessionLocal, engine, Base
 from scripts import scraper, parser, database_loader, predictor
@@ -9,110 +10,100 @@ from database import models
 from typing import List, Dict, Any
 
 # --- デバッグ設定 ---
-# コマンドライン引数で受け取るか、デフォルト値を使用
-DEFAULT_RACE_ID = "202408030611" # JRAのレース例 (札幌記念)
+DEFAULT_RACE_ID = "202505030611"
 
-def fetch_and_load_past_data_for_debug(db: Session, horses_in_race: List[Dict[str, Any]]):
-    """デバッグ対象の馬リストの過去成績を取得し DB に保存する"""
-    horse_ids_to_fetch = [h.get('horse_id') for h in horses_in_race if h.get('horse_id')]
-    if not horse_ids_to_fetch:
-        print("  -> No valid horse IDs found in the race.")
+def _fetch_and_load_past_data_for_debug(db: Session, horse_ids: List[str]):
+    """デバッグ用に、指定された馬リストの過去成績を取得しDBに保存する"""
+    if not horse_ids:
         return
-        
-    print(f"  -> Fetching past race data for {len(horse_ids_to_fetch)} horses...")
+    print(f"\n[STEP 2] Fetching past results for {len(horse_ids)} horses to create predictions...")
     
-    # 先に出走馬の基本情報をDBに保存（ForeignKey制約エラーを防ぐため）
-    horse_records = [{'id': h['horse_id'], 'name': h['horse_name'], 'sex': h.get('sex'), 'age': h.get('age')} for h in horses_in_race if h.get('horse_id')]
-    if horse_records:
-        database_loader._bulk_upsert_horses(db, horse_records)
-        db.commit()
-
-    for horse_id in horse_ids_to_fetch:
-        print(f"    - Processing horse: {horse_id}")
-        # force_download=Falseでキャッシュを優先利用
+    for i, horse_id in enumerate(horse_ids):
+        print(f"  ({i+1}/{len(horse_ids)}) Fetching data for horse_id: {horse_id}...")
         html = scraper.get_horse_page_html(horse_id, force_download=False)
         if html:
             results = parser.parse_horse_results_page(html)
             if results:
                 database_loader.load_past_results(db, results, horse_id)
-        else:
-            print(f"      [Warning] Could not fetch past results for horse {horse_id}.")
-        time.sleep(0.5) # 念のため短いスリープ
+    print(" -> SUCCESS: Finished fetching and loading past data.")
 
 def main(race_id: str):
-    """指定された単一レースIDのデータ取得から予測保存までを実行する"""
+    """データ収集からAI予測、DB保存までを一気通貫で実行・検証する"""
     print("=" * 80)
-    print("--- Single Race Pipeline Debug Script ---")
+    print("--- Full Pipeline Debug Script for a Single Race ---")
     print(f"Target Race ID: {race_id}")
     print("=" * 80)
 
-    # データベーステーブルがなければ作成
     Base.metadata.create_all(bind=engine)
     db: Session = SessionLocal()
 
     try:
         is_nar = int(race_id[4:6]) >= 30
         race_type_str = "NAR" if is_nar else "JRA"
-        print(f"\n[1] Processing {race_type_str} race...")
-
-        # 1. 出馬表の処理
-        print("\n[2] Fetching, parsing, and loading shutuba data...")
-        shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=True)
-        if not shutuba_html:
-            print("  -> ERROR: Failed to get shutuba HTML. Aborting.")
-            return
-
-        shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
-        if not shutuba_data or not shutuba_data.get('horses'):
-            print("  -> ERROR: Failed to parse shutuba data. Aborting.")
-            return
-
-        # レース開催日をrace_idから生成
+        print(f"\nProcessing {race_type_str} race...")
+        
         try:
             race_date = datetime.date(int(race_id[:4]), int(race_id[6:8]), int(race_id[8:10]))
         except ValueError:
-            print(f"  -> ERROR: Invalid date in race_id '{race_id}'. Using today's date as fallback.")
             race_date = datetime.date.today()
-            
+
+        # STEP 1: 出馬表の処理
+        print("\n[STEP 1] Fetching, parsing, and loading Shutuba (entry) data...")
+        shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=True)
+        if not shutuba_html: raise Exception("Failed to get shutuba HTML.")
+        shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
+        if not shutuba_data: raise Exception("Failed to parse shutuba page.")
         database_loader.load_shutuba_data(db, shutuba_data, race_id, race_date, is_nar)
-        print(f"  -> SUCCESS: Loaded shutuba data for {len(shutuba_data['horses'])} horses.")
+        print(" -> SUCCESS: Loaded shutuba data.")
 
-        # 2. 出走馬の過去成績の処理
-        print("\n[3] Fetching, parsing, and loading past results for each horse...")
-        fetch_and_load_past_data_for_debug(db, shutuba_data['horses'])
-        print("  -> SUCCESS: Finished processing past results.")
+        # STEP 2: 予測のための過去データ収集
+        horse_ids_in_race = [h['horse_id'] for h in shutuba_data.get('horses', []) if h.get('horse_id')]
+        _fetch_and_load_past_data_for_debug(db, horse_ids_in_race)
 
-        # 3. レース結果の処理
-        print("\n[4] Fetching, parsing, and loading race result data...")
-        result_html = scraper.get_race_result_html(race_id, is_nar=is_nar, force_download=True)
-        if not result_html:
-            print("  -> WARNING: Failed to get race result HTML. Skipping result-based steps.")
-        else:
-            race_data = parser.parse_race_result_page(result_html, race_id)
-            if not race_data or not race_data.get('results'):
-                print("  -> WARNING: Failed to parse race result. Skipping result-based steps.")
-            else:
-                database_loader.load_race_result_data(db, race_data, race_id, race_date, is_nar)
-                print(f"  -> SUCCESS: Loaded race result data for {len(race_data['results'])} horses.")
-
-        # 4. 予測の生成と保存
-        print("\n[5] Creating and saving predictions...")
+        # STEP 3: AI予測と対戦成績の生成・保存
+        print("\n[STEP 3] Creating AI predictions and matchups...")
         predictions = predictor.create_predictions_for_race(db, race_id)
-        if not predictions:
-            print("  -> ERROR: Failed to create predictions.")
-        else:
+        if predictions:
             database_loader.save_prediction(db, race_id, predictions)
-            print(f"  -> SUCCESS: Saved {len(predictions)} predictions.")
+            print(f" -> SUCCESS: Saved {len(predictions)} predictions.")
+            predictor.calculate_and_save_matchups_for_race(db, race_id, horse_ids_in_race)
+            print(" -> SUCCESS: Calculated and saved matchups.")
+        else:
+            print(" -> WARNING: No predictions were generated.")
 
-            # 5. 対戦成績の計算と保存
-            print("\n[6] Calculating and saving matchups...")
-            horse_ids_in_race = [p["horse_id"] for p in predictions if p.get("horse_id")]
-            if horse_ids_in_race:
-                predictor.calculate_and_save_matchups_for_race(db, race_id, horse_ids_in_race)
-                print("  -> SUCCESS: Matchup data calculated and saved.")
-            else:
-                print("  -> No horse IDs found in predictions to calculate matchups.")
+        # STEP 4: レース結果の処理（データの最終更新）
+        print("\n[STEP 4] Fetching and updating with final Race Result data...")
+        result_html = scraper.get_race_result_html(race_id, is_nar=is_nar, force_download=True)
+        if not result_html: raise Exception("Failed to get race result HTML.")
+        race_data = parser.parse_race_result_page(result_html, race_id)
+        if not race_data: raise Exception("Failed to parse race result page.")
+        database_loader.load_race_result_data(db, race_data, race_id, race_date, is_nar)
+        print(" -> SUCCESS: Updated DB with final results.")
 
+        # STEP 5: 最終検証
+        print("\n[STEP 5] Verifying all data in the database...")
+        db.commit()
+        
+        # predictionsテーブルの検証
+        verify_preds = db.query(models.Prediction).filter(models.Prediction.race_id == race_id).order_by(models.Prediction.deviation_score.desc()).all()
+        print("\n--- [A] DB Stored Predictions (Top 3) ---")
+        if verify_preds:
+            for p in verify_preds[:3]:
+                print(f"  - {p.mark} ({p.horse_number}) {p.horse_name} (偏差値: {p.deviation_score:.2f}, スタート指標: {p.start_1c_indicator:.2f})")
+        else:
+            print("  -> No prediction data found.")
+        print("------------------------------------------")
+
+        # matchupsテーブルの検証
+        verify_matchup = db.query(models.Matchup).filter(models.Matchup.race_id == race_id).first()
+        print("\n--- [B] DB Stored Matchups ---")
+        if verify_matchup and verify_matchup.matchup_data:
+            pair_count = len(verify_matchup.matchup_data)
+            print(f"  -> SUCCESS: Found matchup data for {pair_count} pairs.")
+        else:
+            print("  -> No matchup data found.")
+        print("------------------------------")
+        
     except Exception as e:
         print(f"\n[CRITICAL ERROR] An unexpected error occurred: {e}")
         import traceback
@@ -122,8 +113,7 @@ def main(race_id: str):
             db.close()
         print("\n" + "="*80)
         print("--- Debug script finished ---")
-        print(f"To verify the data in the database, run: python backend/verify_db_data.py {race_id}")
-        print("=" * 80)
+        print("="*80)
 
 if __name__ == "__main__":
     target_id = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_RACE_ID

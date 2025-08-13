@@ -5,19 +5,17 @@ import pandas as pd
 from typing import List, Dict, Any, Optional
 from collections import defaultdict
 import datetime
+from .processors import ReturnProcessor
+from io import StringIO
 
 def _extract_id_from_href(href: Optional[str]) -> Optional[str]:
     """
     馬、騎手、調教師のリンクURLからIDを抽出するヘルパー関数。
-    複数のURLパターンに対応します。
-    例: /horse/2020104511, /jockey/01187/, /jockey/result/recent/01187, /trainer/01133/
     """
     if not href:
         return None
-    # r'/(?:horse|jockey|trainer)/.../(\w+)' という正規表現でID部分を抽出
     match = re.search(r'/(?:horse|jockey|trainer)/(?:[a-zA-Z0-9_/]+/)?(\w+)', href)
     if match:
-        # 最後のグループ（ID部分）を返す
         return match.groups()[-1]
     return None
 
@@ -126,25 +124,19 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
         traceback.print_exc()
         return None
 
-# ★★★★★ ここから修正 ★★★★★
 def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]]:
     soup = BeautifulSoup(html_content, 'lxml')
     
-    # --- 追加: ページ上部のプロフィール欄から現在の調教師情報を取得 ---
     current_trainer_id = None
     current_trainer_name = None
-    # '調教師'というテキストを持つ<th>を探す
     trainer_th = soup.find('th', string='調教師')
     if trainer_th:
-        # その隣の<td>要素を取得
         trainer_td = trainer_th.find_next_sibling('td')
         if trainer_td:
-            # <td>内の調教師リンク<a>を探す
             trainer_a = trainer_td.find('a', href=re.compile(r'/trainer/'))
             if trainer_a:
                 current_trainer_id = _extract_id_from_href(trainer_a.get('href'))
                 current_trainer_name = trainer_a.get_text(strip=True)
-    # --- 追加ここまで ---
 
     results_table = None
     required_headers = {'日付', 'レース名', '着順', '頭数', '人気', '斤量', '騎手', 'タイム'}
@@ -157,7 +149,7 @@ def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]
             break
 
     if not results_table:
-        print("  - [Warning] Could not find the horse results table. The website layout may have changed.")
+        print(" - [Warning] Could not find the horse results table. The website layout may have changed.")
         return None
     
     results = []
@@ -181,14 +173,8 @@ def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]
             
             if not race_id: continue
 
-            # 騎手IDを抽出
             jockey_link_a = cols_elm[col_map.get('騎手', 12)].find('a')
             jockey_id = _extract_id_from_href(jockey_link_a.get('href')) if jockey_link_a else None
-            
-            # --- 削除: このテーブルからは調教師IDは取得できないため、該当コードを削除 ---
-            # trainer_link_a = row.find('a', href=re.compile(r'/trainer/'))
-            # trainer_id = _extract_id_from_href(trainer_link_a.get('href')) if trainer_link_a else None
-            # --- 削除ここまで ---
             
             dist_match = re.match(r'([^\d]+)(\d+)', cols_text[col_map.get('距離', 14)])
             time_match = re.match(r'(\d+):(\d+\.\d+)', cols_text[col_map.get('タイム', 17)])
@@ -223,19 +209,17 @@ def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]
                 'horse_weight': int(weight_match.group(1)) if weight_match else None,
                 'horse_weight_diff': int(w_diff) if weight_match and (w_diff := weight_match.group(2)) not in ('計不', ' F', ' ', '--') and w_diff.replace('-', '').isdigit() else None,
                 'jockey_id': jockey_id,
-                # --- 修正: 取得した現在の調教師情報をデフォルト値として使用 ---
                 'trainer_id': current_trainer_id,
                 'trainer_name': current_trainer_name
             }
             results.append(result_dict)
         except (ValueError, TypeError, IndexError, AttributeError) as e:
-            print(f"  - [Warning] Skipping a row due to parsing error in horse results page: {e} | Row Data: {cols_text}")
+            print(f" - [Warning] Skipping a row due to parsing error in horse results page: {e} | Row Data: {cols_text}")
             continue
             
     if len(results) > 0:
-      print(f"  - Successfully parsed {len(results)} past results for horse.")
+      print(f" - Successfully parsed {len(results)} past results for horse.")
     return results
-# ★★★★★ ここまで修正 ★★★★★
 
 def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str, Any]]:
     if not html_content: return None
@@ -244,8 +228,8 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
     results_list = []
     
     try:
+        # --- レース基本情報の取得 ---
         race_header = soup.select_one("div.db_head") or soup.select_one(".RaceList_NameBox")
-
         if race_header:
             race_name_elm = race_header.select_one("h1") or race_header.select_one(".RaceName")
             if race_name_elm:
@@ -253,23 +237,17 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
                 race_info_dict['race_name'] = re.sub(r'\(.+?\)$', '', race_name_text).strip()
 
             race_data_text = ""
-            race_data_header = soup.select_one("div.RaceData01")
-            if race_data_header:
-                race_data_text += race_data_header.get_text(strip=True, separator=' ')
-            
-            race_data_details = soup.select_one("div.RaceData02")
-            if race_data_details:
-                race_data_text += " " + race_data_details.get_text(strip=True, separator=' ')
-            
-            diary_snap_text = soup.select_one("div.diary_snap")
-            if diary_snap_text:
-                race_data_text += " " + diary_snap_text.get_text(strip=True, separator=' ')
+            race_data_elements = soup.select(".RaceData01, .RaceData02, .diary_snap span")
+            for elem in race_data_elements:
+                race_data_text += " " + elem.get_text(strip=True, separator=' ')
 
             if race_data_text:
                 m_course = re.search(r'(芝|ダ|障)\S*(\d+)m', race_data_text)
                 if m_course:
-                    race_info_dict['course_type'] = m_course.group(1)
-                    race_info_dict['distance'] = int(m_course.group(2))
+                    dist = int(m_course.group(2))
+                    if dist > 0: # 距離が0の場合はNone扱い
+                        race_info_dict['course_type'] = m_course.group(1)
+                        race_info_dict['distance'] = dist
                 
                 m_weather = re.search(r'天候:(\S+)', race_data_text)
                 if m_weather: race_info_dict['weather'] = m_weather.group(1)
@@ -283,85 +261,103 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
         
         race_info_dict['race_number'] = int(race_id[-2:])
 
-        result_table = soup.find("table", class_=re.compile(r"race_table_01|RaceTable01"))
+        # --- レース結果テーブルの取得 (pandasを利用) ---
+        result_table = soup.find("table", class_=re.compile(r"race_table_01|RaceTable01|ResultRefund"))
         if not result_table:
-            return None 
+            print(f"[Warning] Race result table not found for race {race_id}.")
+            return None
+
+        id_map = {}
+        for row_idx, tr in enumerate(result_table.find_all('tr')):
+            for col_idx, td in enumerate(tr.find_all(['td', 'th'])):
+                for a in td.find_all('a', href=True):
+                    href = a['href']
+                    extracted_id = _extract_id_from_href(href)
+                    if extracted_id:
+                        if 'jockey' in href:
+                            id_map[(row_idx, 'jockey_id')] = extracted_id
+                        elif 'trainer' in href:
+                            id_map[(row_idx, 'trainer_id')] = extracted_id
+                        elif 'horse' in href:
+                            id_map[(row_idx, 'horse_id')] = extracted_id
         
-        rows = result_table.find_all("tr")[1:] 
-        race_info_dict['total_horses'] = len(rows)
-
-        corner_positions_by_horse_num = defaultdict(list)
-        try:
-            corner_passage_element = soup.select_one(".Corner_Passage, #corner_passage") 
-            if corner_passage_element:
-                corner_trs = corner_passage_element.find_all('tr')
-                corner_names = []
-                corner_data_rows = []
-                
-                for tr in corner_trs:
-                    th = tr.find('th')
-                    td = tr.find('td')
-                    if th and td and 'コーナー' in th.get_text():
-                        corner_names.append(th.get_text(strip=True))
-                        positions_text = td.get_text(strip=True).replace('(', ',').replace(')', ',')
-                        corner_data_rows.append([p for p in re.split(r'[, -]', positions_text) if p.isdigit()])
-
-                if corner_data_rows:
-                    all_horse_nums_in_table = [int(r.find_all('td')[2].get_text(strip=True)) for r in rows if len(r.find_all('td')) > 2 and r.find_all('td')[2].get_text(strip=True).isdigit()]
-                    for num in all_horse_nums_in_table:
-                        corner_positions_by_horse_num[num] = [None] * len(corner_names)
-
-                    for corner_idx, horse_nums_in_order in enumerate(horse_nums_in_order, 1):
-                        for rank, horse_num_str in enumerate(horse_nums_in_order, 1):
-                            horse_num = int(horse_num_str)
-                            if horse_num in corner_positions_by_horse_num:
-                                corner_positions_by_horse_num[horse_num][corner_idx] = rank
-        except Exception as e:
-            print(f"[Warning] Corner passage parsing failed for race {race_id}: {e}")
+        df = pd.read_html(StringIO(str(result_table)), header=0)[0]
         
-        for row in rows:
-            cols = row.find_all('td')
-            if len(cols) < 11: continue
+        # --- ヘッダーの正規化 ---
+        # ★★★★★★★★★★★★★★★★★★★★ 修正箇所 ★★★★★★★★★★★★★★★★★★★★
+        def clean_header(col):
+            if isinstance(col, tuple):
+                col = ''.join(map(str, col))
+            cleaned_col = re.sub(r'Unnamed:.*|_level_.*', '', col)
+            cleaned_col = re.sub(r'[\s_]', '', cleaned_col)
+            return cleaned_col
 
-            time_str = cols[7].get_text(strip=True)
-            time_match = re.match(r'(\d+):(\d+\.\d+)', time_str)
-            finish_time_sec = int(time_match.group(1)) * 60 + float(time_match.group(2)) if time_match else None
+        df.columns = [clean_header(c) for c in df.columns]
+
+        rename_map = {
+            '着順': 'rank', '枠番': 'waku_number', '馬番': 'horse_number', '馬名': 'horse_name',
+            '性齢': 'sex_age', '斤量': 'weight_carried', '騎手': 'jockey_name', 'タイム': 'finish_time',
+            '着差': 'time_diff', '人気': 'popularity', '単勝オッズ': 'odds', '後3F': 'agari_3f',
+            '上り': 'agari_3f', '通過': 'corner_positions', '厩舎': 'trainer_name', '馬体重(増減)': 'horse_weight_str'
+        }
+        df.rename(columns=rename_map, inplace=True)
+        # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+        if 'rank' not in df.columns:
+            print(f"[ERROR] Could not identify 'rank' column for race {race_id}. Columns found: {df.columns.tolist()}")
+            return None
+
+        df['rank'] = pd.to_numeric(df['rank'], errors='coerce').astype('Int64')
+        df = df.dropna(subset=['rank'])
+
+
+        # --- 各行のデータをパース ---
+        for idx, row in df.iterrows():
+            row_index_in_html = idx + 1
             
-            horse_link = cols[3].find('a', href=re.compile(r'/horse/'))
-            jockey_link = cols[6].find('a', href=re.compile(r'/jockey/'))
-            trainer_link = row.find('a', href=re.compile(r'/trainer/'))
-            
-            horse_id = _extract_id_from_href(horse_link.get('href')) if horse_link else None
-            jockey_id = _extract_id_from_href(jockey_link.get('href')) if jockey_link else None
-            trainer_id = _extract_id_from_href(trainer_link.get('href')) if trainer_link else None
-            
-            horse_num_val = int(cols[2].get_text(strip=True)) if cols[2].get_text(strip=True).isdigit() else 0
+            horse_weight, horse_weight_diff = None, None
+            if 'horse_weight_str' in row and isinstance(row['horse_weight_str'], str):
+                weight_match = re.match(r'(\d+)\((.+)\)', row['horse_weight_str'])
+                if weight_match:
+                    horse_weight = int(weight_match.group(1))
+                    diff_str = weight_match.group(2)
+                    if diff_str.replace('-', '').isdigit():
+                        horse_weight_diff = int(diff_str)
+
+            finish_time_sec = None
+            if 'finish_time' in row and isinstance(row['finish_time'], str):
+                time_match = re.match(r'(\d+):(\d+\.\d+)', row['finish_time'])
+                if time_match:
+                    finish_time_sec = int(time_match.group(1)) * 60 + float(time_match.group(2))
             
             result_dict = {
-                'rank': int(cols[0].get_text(strip=True)) if cols[0].get_text(strip=True).isdigit() else None,
-                'waku_number': int(cols[1].get_text(strip=True)) if cols[1].get_text(strip=True).isdigit() else None,
-                'horse_number': horse_num_val,
-                'horse_id': horse_id,
-                'horse_name': horse_link.get_text(strip=True) if horse_link else None,
-                'weight_carried': float(cols[5].get_text(strip=True)) if re.match(r'^\d+\.?\d*$', cols[5].get_text(strip=True)) else None,
-                'jockey_id': jockey_id,
-                'jockey_name': jockey_link.get_text(strip=True) if jockey_link else None,
-                'trainer_id': trainer_id,
-                'trainer_name': trainer_link.get_text(strip=True) if trainer_link else None,
+                'rank': row.get('rank'),
+                'waku_number': int(row.get('waku_number', 0)),
+                'horse_number': int(row.get('horse_number', 0)),
+                'horse_id': id_map.get((row_index_in_html, 'horse_id')),
+                'horse_name': row.get('horse_name'),
+                'weight_carried': pd.to_numeric(row.get('weight_carried'), errors='coerce'),
+                'jockey_id': id_map.get((row_index_in_html, 'jockey_id')),
+                'jockey_name': row.get('jockey_name'),
+                'trainer_id': id_map.get((row_index_in_html, 'trainer_id')),
+                'trainer_name': row.get('trainer_name'),
                 'finish_time_sec': finish_time_sec,
-                'odds': float(cols[9].get_text(strip=True)) if re.match(r'^\d+\.?\d*$', cols[9].get_text(strip=True)) else None,
-                'popularity': int(cols[10].get_text(strip=True)) if cols[10].get_text(strip=True).isdigit() else None,
+                'odds': pd.to_numeric(row.get('odds'), errors='coerce'),
+                'popularity': pd.to_numeric(row.get('popularity'), errors='coerce'),
+                'agari_3f': pd.to_numeric(row.get('agari_3f'), errors='coerce'),
+                'horse_weight': horse_weight,
+                'horse_weight_diff': horse_weight_diff,
             }
-
-            if horse_num_val in corner_positions_by_horse_num:
-                valid_positions = [p for p in corner_positions_by_horse_num[horse_num_val] if p is not None]
-                result_dict['corner_positions'] = valid_positions
-            else:
-                result_dict['corner_positions'] = []
-
             results_list.append(result_dict)
-        
-        return {'race_info': race_info_dict, 'results': results_list}
+
+        # 払い戻し情報
+        all_returns_data = {}
+        payout_container = soup.select_one(".ResultPaybackLeftWrap, dl.pay_block")
+        if payout_container:
+            processor = ReturnProcessor(payout_container)
+            all_returns_data = processor.get_all_returns()
+
+        return {'race_info': race_info_dict, 'results': results_list, 'returns': all_returns_data}
     
     except Exception as e:
         import traceback

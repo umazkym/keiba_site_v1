@@ -16,6 +16,10 @@ class Race(Base):
     weather = Column(String)
     ground_condition = Column(String)
     total_horses = Column(Integer)
+    
+    # ★★★ この行を追加 ★★★
+    returns = Column(JSON, nullable=True) # 払い戻し情報を格納するJSONカラム
+
     results = relationship("Result", back_populates="race")
     predictions = relationship("Prediction", back_populates="race")
     matchup = relationship("Matchup", back_populates="race", uselist=False)

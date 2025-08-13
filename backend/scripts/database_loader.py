@@ -7,6 +7,7 @@ from typing import Dict, Any, List
 import datetime
 import pandas as pd
 
+# --- (_bulk_upsert, _bulk_upsert_horses, _bulk_upsert_results, load_shutuba_data, load_past_results, save_prediction, save_horse_number_advantages は変更なし) ---
 def _bulk_upsert(db: Session, model, data: List[Dict[str, Any]], index_elements: List[str]):
     if not data:
         return
@@ -38,7 +39,7 @@ def _bulk_upsert_horses(db: Session, data: List[Dict[str, Any]]):
     
     try:
         db.execute(stmt)
-        print("       ... Success.")
+        print("         ... Success.")
     except Exception as e:
         print(f"[ERROR] Failed to upsert horse data: {e}")
         db.rollback()
@@ -212,10 +213,30 @@ def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, 
         for key, value in race_info.items():
             if value is not None and hasattr(race_record, key):
                 setattr(race_record, key, value)
+
+    if race_data.get('returns'):
+        print(f"  -> Found and loading return data for race {race_id} into 'race_returns' table.")
+        db.query(models.RaceReturn).filter(models.RaceReturn.race_id == race_id).delete()
         
-        if race_data.get('returns'):
-            print(f"  -> Found and loading return data for race {race_id}")
-            race_record.returns = race_data['returns']
+        returns_to_load = []
+        for bet_type, returns_list in race_data['returns'].items():
+            for item in returns_list:
+                # --- 修正: 新しいカラム構造に合わせてデータを準備 ---
+                if item.get('payout') is not None and item.get('number_1') is not None:
+                    returns_to_load.append({
+                        'race_id': race_id,
+                        'bet_type': bet_type,
+                        'number_1': item.get('number_1'),
+                        'number_2': item.get('number_2'),
+                        'number_3': item.get('number_3'),
+                        'payout': item['payout'],
+                        'popularity': item.get('popularity')
+                    })
+        
+        if returns_to_load:
+            # --- 修正: bulk_insert_mappingsではなく、on_conflict_do_nothingを使う ---
+            _bulk_upsert(db, models.RaceReturn, returns_to_load, ['race_id', 'bet_type', 'number_1', 'number_2', 'number_3'])
+            print(f"    -> Successfully loaded {len(returns_to_load)} return records.")
 
     results_from_parser = race_data.get('results', [])
     if not results_from_parser:
@@ -240,11 +261,8 @@ def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, 
 
         if result_record:
             for key, value in update_data.items():
-                # ★★★★★★★★★★★★★★★★★★★★ 修正箇所 ★★★★★★★★★★★★★★★★★★★★
-                # Noneでの更新を許可する（キーの存在チェックのみ）
                 if key in update_data:
                     setattr(result_record, key, value)
-                # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
         else:
             print(f"  - [Info] Result record for horse {horse_id} not found. Creating new one.")
             new_result = models.Result(race_id=race_id, **update_data)

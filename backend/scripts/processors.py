@@ -19,19 +19,25 @@ class ReturnProcessor:
             return int(re.sub(r'[円,]', '', text.strip()))
         except (ValueError, TypeError):
             return None
+            
+    def _clean_popularity(self, text: str) -> Optional[int]:
+        """人気順の文字列から '人気' を除去して数値に変換"""
+        if not text:
+            return None
+        try:
+            return int(re.sub(r'人気', '', text.strip()))
+        except (ValueError, TypeError):
+            return None
 
     def _get_texts_from_cell(self, cell: Tag) -> List[str]:
         """
         <td>要素内を解析し、<br>などで分割されたテキストのリストを返す
         """
-        # <br>タグをユニークな区切り文字に置換
         for br in cell.find_all('br'):
             br.replace_with('__BR__')
         
-        # get_textでテキストを取得し、区切り文字で分割
         items = [item.strip() for item in cell.get_text(separator='__BR__').split('__BR__')]
         
-        # 空の要素を除外
         return [item for item in items if item]
 
     def get_all_returns(self) -> Dict[str, List[Dict]]:
@@ -58,7 +64,7 @@ class ReturnProcessor:
         for row in rows:
             th = row.find('th')
             tds = row.find_all('td')
-            if not th or len(tds) < 2:
+            if not th or len(tds) < 3:
                 continue
             
             bet_type_text = th.get_text(strip=True)
@@ -68,41 +74,53 @@ class ReturnProcessor:
 
             numbers_cell = tds[0]
             payouts_cell = tds[1]
+            popularity_cell = tds[2]
+
             payouts_list = [self._clean_payout(p) for p in self._get_texts_from_cell(payouts_cell)]
+            popularity_list = [self._clean_popularity(p) for p in self._get_texts_from_cell(popularity_cell)]
             numbers_list = []
 
-            # NARの<ul><li>構造を優先的に処理
             uls = numbers_cell.find_all('ul')
             if uls:
-                # ワイドなど、複数の<ul>で結果を表す場合
                 for ul in uls:
                     numbers = [li.get_text(strip=True) for li in ul.find_all('li') if li.get_text(strip=True)]
                     delimiter = ' → ' if key in ['umatan', 'sanrentan'] else ' - '
                     numbers_list.append(delimiter.join(numbers))
             else:
-                # <ul>がない場合 (JRAのテキストや<br>区切り、NARの<div>区切りなど)
                 numbers_list = self._get_texts_from_cell(numbers_cell)
 
-            # 結果を組み立てる
             results = []
-            for i in range(min(len(numbers_list), len(payouts_list))):
-                num_str = numbers_list[i]
+            num_items = len(payouts_list)
+            for i in range(num_items):
+                num_str = numbers_list[i] if i < len(numbers_list) else ''
                 payout_val = payouts_list[i]
+                pop_val = popularity_list[i] if i < len(popularity_list) else None
                 
                 if num_str and payout_val is not None:
+                    # --- 修正: winning_numbersを分割してnumber_1,2,3に格納 ---
                     try:
-                        # 複勝・単勝の場合は数値に変換
-                        winning_numbers = int(num_str) if key in ['fukusho', 'tansho'] else num_str
-                        results.append({
-                            'winning_numbers': winning_numbers,
-                            'payout': payout_val
-                        })
-                    except ValueError:
-                        # 数値に変換できない場合(例: '1 - 7')はそのまま文字列として格納
-                        results.append({
-                            'winning_numbers': num_str,
-                            'payout': payout_val
-                        })
+                        # '→' または '-' で分割
+                        parsed_numbers = [int(n.strip()) for n in re.split(r'\s*→\s*|\s*-\s*', num_str) if n.strip().isdigit()]
+                        
+                        # 馬連、枠連、ワイド、三連複は順序を問わないのでソートする
+                        if key in ['umaren', 'wakuren', 'wide', 'sanrenpuku']:
+                            parsed_numbers.sort()
+
+                        # 辞書を作成
+                        return_dict = {
+                            'payout': payout_val,
+                            'popularity': pop_val,
+                            'number_1': parsed_numbers[0] if len(parsed_numbers) > 0 else None,
+                            'number_2': parsed_numbers[1] if len(parsed_numbers) > 1 else None,
+                            'number_3': parsed_numbers[2] if len(parsed_numbers) > 2 else None,
+                        }
+                        # number_1がNoneでない場合のみ結果リストに追加
+                        if return_dict['number_1'] is not None:
+                            results.append(return_dict)
+
+                    except (ValueError, IndexError) as e:
+                        print(f"[Warning] Could not parse numbers for {key}: '{num_str}'. Error: {e}")
+                        continue
             
             if results:
                 all_returns[key] = results

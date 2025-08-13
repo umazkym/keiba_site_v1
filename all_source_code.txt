@@ -1,6 +1,6 @@
 ================================================================================
 ソースコード集約ファイル
-作成日時: 2025-08-13 14:30:50
+作成日時: 2025-08-14 04:44:25
 対象ディレクトリ: C:\Users\tnszk\program\GitHub
 総ファイル数: 71
 ================================================================================
@@ -18838,6 +18838,27 @@ def main(race_id: str):
             print("  -> No matchup data found.")
         print("------------------------------")
         
+        # --- 修正: race_returnsテーブルの検証出力を見やすく変更 ---
+        print("\n--- [C] DB Stored Returns (race_returns table) ---")
+        verify_returns = db.query(models.RaceReturn).filter(models.RaceReturn.race_id == race_id).all()
+        if verify_returns:
+            print(f"  -> Found {len(verify_returns)} return records.")
+            print("    ----------------------------------------------------------")
+            print(f"    {'券種':<10s} | {'番号':<15s} | {'払戻金':>12s} | {'人気':>6s}")
+            print("    ----------------------------------------------------------")
+            
+            for r in verify_returns:
+                numbers = [n for n in [r.number_1, r.number_2, r.number_3] if n is not None]
+                delimiter = ' → ' if r.bet_type in ['umatan', 'sanrentan'] else ' - '
+                numbers_str = delimiter.join(map(str, numbers))
+                
+                pop_str = f"{r.popularity}人気" if r.popularity else "N/A"
+                print(f"    - {r.bet_type:<9s} | {numbers_str:<15s} | {str(r.payout) + '円':>12s} | {pop_str:>6s}")
+            print("    ----------------------------------------------------------")
+        else:
+            print("  -> No return data found.")
+        print("----------------------------------------------------")
+        
     except Exception as e:
         print(f"\n[CRITICAL ERROR] An unexpected error occurred: {e}")
         import traceback
@@ -18852,6 +18873,7 @@ def main(race_id: str):
 if __name__ == "__main__":
     target_id = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_RACE_ID
     main(target_id)
+
 
 --------------------------------------------------------------------------------
 ファイルパス: backend\debug_start_indicator.py
@@ -19677,13 +19699,12 @@ class Race(Base):
     ground_condition = Column(String)
     total_horses = Column(Integer)
     
-    # ★★★ この行を追加 ★★★
-    returns = Column(JSON, nullable=True) # 払い戻し情報を格納するJSONカラム
-
     results = relationship("Result", back_populates="race")
     predictions = relationship("Prediction", back_populates="race")
     matchup = relationship("Matchup", back_populates="race", uselist=False)
+    returns = relationship("RaceReturn", back_populates="race")
 
+# --- (Horse, Jockey, Trainer, Result, Prediction, Matchup, HorseNumberAdvantage モデルは変更なし) ---
 class Horse(Base):
     __tablename__ = "horses"
     id = Column(String, primary_key=True, index=True)
@@ -19755,6 +19776,23 @@ class HorseNumberAdvantage(Base):
     advantage_score = Column(Float, nullable=False)
 
     __table_args__ = (UniqueConstraint('venue_name', 'course_type', 'distance', 'horse_number', name='_hnav_uc'),)
+
+# --- 修正: 払い戻し情報テーブルのカラム構成を変更 ---
+class RaceReturn(Base):
+    __tablename__ = "race_returns"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    race_id = Column(String, ForeignKey("races.id"), nullable=False, index=True)
+    bet_type = Column(String, nullable=False)
+    # winning_numbers = Column(String, nullable=False) # この行を削除
+    number_1 = Column(Integer, nullable=False)
+    number_2 = Column(Integer, nullable=True)
+    number_3 = Column(Integer, nullable=True)
+    payout = Column(Integer, nullable=False)
+    popularity = Column(Integer, nullable=True)
+
+    __table_args__ = (UniqueConstraint('race_id', 'bet_type', 'number_1', 'number_2', 'number_3', name='_race_return_uc'),)
+    race = relationship("Race", back_populates="returns")
+
 
 --------------------------------------------------------------------------------
 ファイルパス: backend\database\__init__.py
@@ -19843,6 +19881,7 @@ from typing import Dict, Any, List
 import datetime
 import pandas as pd
 
+# --- (_bulk_upsert, _bulk_upsert_horses, _bulk_upsert_results, load_shutuba_data, load_past_results, save_prediction, save_horse_number_advantages は変更なし) ---
 def _bulk_upsert(db: Session, model, data: List[Dict[str, Any]], index_elements: List[str]):
     if not data:
         return
@@ -19874,7 +19913,7 @@ def _bulk_upsert_horses(db: Session, data: List[Dict[str, Any]]):
     
     try:
         db.execute(stmt)
-        print("       ... Success.")
+        print("         ... Success.")
     except Exception as e:
         print(f"[ERROR] Failed to upsert horse data: {e}")
         db.rollback()
@@ -20048,10 +20087,30 @@ def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, 
         for key, value in race_info.items():
             if value is not None and hasattr(race_record, key):
                 setattr(race_record, key, value)
+
+    if race_data.get('returns'):
+        print(f"  -> Found and loading return data for race {race_id} into 'race_returns' table.")
+        db.query(models.RaceReturn).filter(models.RaceReturn.race_id == race_id).delete()
         
-        if race_data.get('returns'):
-            print(f"  -> Found and loading return data for race {race_id}")
-            race_record.returns = race_data['returns']
+        returns_to_load = []
+        for bet_type, returns_list in race_data['returns'].items():
+            for item in returns_list:
+                # --- 修正: 新しいカラム構造に合わせてデータを準備 ---
+                if item.get('payout') is not None and item.get('number_1') is not None:
+                    returns_to_load.append({
+                        'race_id': race_id,
+                        'bet_type': bet_type,
+                        'number_1': item.get('number_1'),
+                        'number_2': item.get('number_2'),
+                        'number_3': item.get('number_3'),
+                        'payout': item['payout'],
+                        'popularity': item.get('popularity')
+                    })
+        
+        if returns_to_load:
+            # --- 修正: bulk_insert_mappingsではなく、on_conflict_do_nothingを使う ---
+            _bulk_upsert(db, models.RaceReturn, returns_to_load, ['race_id', 'bet_type', 'number_1', 'number_2', 'number_3'])
+            print(f"    -> Successfully loaded {len(returns_to_load)} return records.")
 
     results_from_parser = race_data.get('results', [])
     if not results_from_parser:
@@ -20076,17 +20135,15 @@ def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, 
 
         if result_record:
             for key, value in update_data.items():
-                # ★★★★★★★★★★★★★★★★★★★★ 修正箇所 ★★★★★★★★★★★★★★★★★★★★
-                # Noneでの更新を許可する（キーの存在チェックのみ）
                 if key in update_data:
                     setattr(result_record, key, value)
-                # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
         else:
             print(f"  - [Info] Result record for horse {horse_id} not found. Creating new one.")
             new_result = models.Result(race_id=race_id, **update_data)
             db.add(new_result)
     
     db.commit()
+
 
 --------------------------------------------------------------------------------
 ファイルパス: backend\scripts\parser.py
@@ -20802,19 +20859,25 @@ class ReturnProcessor:
             return int(re.sub(r'[円,]', '', text.strip()))
         except (ValueError, TypeError):
             return None
+            
+    def _clean_popularity(self, text: str) -> Optional[int]:
+        """人気順の文字列から '人気' を除去して数値に変換"""
+        if not text:
+            return None
+        try:
+            return int(re.sub(r'人気', '', text.strip()))
+        except (ValueError, TypeError):
+            return None
 
     def _get_texts_from_cell(self, cell: Tag) -> List[str]:
         """
         <td>要素内を解析し、<br>などで分割されたテキストのリストを返す
         """
-        # <br>タグをユニークな区切り文字に置換
         for br in cell.find_all('br'):
             br.replace_with('__BR__')
         
-        # get_textでテキストを取得し、区切り文字で分割
         items = [item.strip() for item in cell.get_text(separator='__BR__').split('__BR__')]
         
-        # 空の要素を除外
         return [item for item in items if item]
 
     def get_all_returns(self) -> Dict[str, List[Dict]]:
@@ -20841,7 +20904,7 @@ class ReturnProcessor:
         for row in rows:
             th = row.find('th')
             tds = row.find_all('td')
-            if not th or len(tds) < 2:
+            if not th or len(tds) < 3:
                 continue
             
             bet_type_text = th.get_text(strip=True)
@@ -20851,46 +20914,59 @@ class ReturnProcessor:
 
             numbers_cell = tds[0]
             payouts_cell = tds[1]
+            popularity_cell = tds[2]
+
             payouts_list = [self._clean_payout(p) for p in self._get_texts_from_cell(payouts_cell)]
+            popularity_list = [self._clean_popularity(p) for p in self._get_texts_from_cell(popularity_cell)]
             numbers_list = []
 
-            # NARの<ul><li>構造を優先的に処理
             uls = numbers_cell.find_all('ul')
             if uls:
-                # ワイドなど、複数の<ul>で結果を表す場合
                 for ul in uls:
                     numbers = [li.get_text(strip=True) for li in ul.find_all('li') if li.get_text(strip=True)]
                     delimiter = ' → ' if key in ['umatan', 'sanrentan'] else ' - '
                     numbers_list.append(delimiter.join(numbers))
             else:
-                # <ul>がない場合 (JRAのテキストや<br>区切り、NARの<div>区切りなど)
                 numbers_list = self._get_texts_from_cell(numbers_cell)
 
-            # 結果を組み立てる
             results = []
-            for i in range(min(len(numbers_list), len(payouts_list))):
-                num_str = numbers_list[i]
+            num_items = len(payouts_list)
+            for i in range(num_items):
+                num_str = numbers_list[i] if i < len(numbers_list) else ''
                 payout_val = payouts_list[i]
+                pop_val = popularity_list[i] if i < len(popularity_list) else None
                 
                 if num_str and payout_val is not None:
+                    # --- 修正: winning_numbersを分割してnumber_1,2,3に格納 ---
                     try:
-                        # 複勝・単勝の場合は数値に変換
-                        winning_numbers = int(num_str) if key in ['fukusho', 'tansho'] else num_str
-                        results.append({
-                            'winning_numbers': winning_numbers,
-                            'payout': payout_val
-                        })
-                    except ValueError:
-                        # 数値に変換できない場合(例: '1 - 7')はそのまま文字列として格納
-                        results.append({
-                            'winning_numbers': num_str,
-                            'payout': payout_val
-                        })
+                        # '→' または '-' で分割
+                        parsed_numbers = [int(n.strip()) for n in re.split(r'\s*→\s*|\s*-\s*', num_str) if n.strip().isdigit()]
+                        
+                        # 馬連、枠連、ワイド、三連複は順序を問わないのでソートする
+                        if key in ['umaren', 'wakuren', 'wide', 'sanrenpuku']:
+                            parsed_numbers.sort()
+
+                        # 辞書を作成
+                        return_dict = {
+                            'payout': payout_val,
+                            'popularity': pop_val,
+                            'number_1': parsed_numbers[0] if len(parsed_numbers) > 0 else None,
+                            'number_2': parsed_numbers[1] if len(parsed_numbers) > 1 else None,
+                            'number_3': parsed_numbers[2] if len(parsed_numbers) > 2 else None,
+                        }
+                        # number_1がNoneでない場合のみ結果リストに追加
+                        if return_dict['number_1'] is not None:
+                            results.append(return_dict)
+
+                    except (ValueError, IndexError) as e:
+                        print(f"[Warning] Could not parse numbers for {key}: '{num_str}'. Error: {e}")
+                        continue
             
             if results:
                 all_returns[key] = results
         
         return all_returns
+
 
 --------------------------------------------------------------------------------
 ファイルパス: backend\scripts\scraper.py

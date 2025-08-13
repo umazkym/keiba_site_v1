@@ -17,13 +17,12 @@ class Race(Base):
     ground_condition = Column(String)
     total_horses = Column(Integer)
     
-    # ★★★ この行を追加 ★★★
-    returns = Column(JSON, nullable=True) # 払い戻し情報を格納するJSONカラム
-
     results = relationship("Result", back_populates="race")
     predictions = relationship("Prediction", back_populates="race")
     matchup = relationship("Matchup", back_populates="race", uselist=False)
+    returns = relationship("RaceReturn", back_populates="race")
 
+# --- (Horse, Jockey, Trainer, Result, Prediction, Matchup, HorseNumberAdvantage モデルは変更なし) ---
 class Horse(Base):
     __tablename__ = "horses"
     id = Column(String, primary_key=True, index=True)
@@ -95,3 +94,19 @@ class HorseNumberAdvantage(Base):
     advantage_score = Column(Float, nullable=False)
 
     __table_args__ = (UniqueConstraint('venue_name', 'course_type', 'distance', 'horse_number', name='_hnav_uc'),)
+
+# --- 修正: 払い戻し情報テーブルのカラム構成を変更 ---
+class RaceReturn(Base):
+    __tablename__ = "race_returns"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    race_id = Column(String, ForeignKey("races.id"), nullable=False, index=True)
+    bet_type = Column(String, nullable=False)
+    # winning_numbers = Column(String, nullable=False) # この行を削除
+    number_1 = Column(Integer, nullable=False)
+    number_2 = Column(Integer, nullable=True)
+    number_3 = Column(Integer, nullable=True)
+    payout = Column(Integer, nullable=False)
+    popularity = Column(Integer, nullable=True)
+
+    __table_args__ = (UniqueConstraint('race_id', 'bet_type', 'number_1', 'number_2', 'number_3', name='_race_return_uc'),)
+    race = relationship("Race", back_populates="returns")

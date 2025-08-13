@@ -104,6 +104,27 @@ def main(race_id: str):
             print("  -> No matchup data found.")
         print("------------------------------")
         
+        # --- 修正: race_returnsテーブルの検証出力を見やすく変更 ---
+        print("\n--- [C] DB Stored Returns (race_returns table) ---")
+        verify_returns = db.query(models.RaceReturn).filter(models.RaceReturn.race_id == race_id).all()
+        if verify_returns:
+            print(f"  -> Found {len(verify_returns)} return records.")
+            print("    ----------------------------------------------------------")
+            print(f"    {'券種':<10s} | {'番号':<15s} | {'払戻金':>12s} | {'人気':>6s}")
+            print("    ----------------------------------------------------------")
+            
+            for r in verify_returns:
+                numbers = [n for n in [r.number_1, r.number_2, r.number_3] if n is not None]
+                delimiter = ' → ' if r.bet_type in ['umatan', 'sanrentan'] else ' - '
+                numbers_str = delimiter.join(map(str, numbers))
+                
+                pop_str = f"{r.popularity}人気" if r.popularity else "N/A"
+                print(f"    - {r.bet_type:<9s} | {numbers_str:<15s} | {str(r.payout) + '円':>12s} | {pop_str:>6s}")
+            print("    ----------------------------------------------------------")
+        else:
+            print("  -> No return data found.")
+        print("----------------------------------------------------")
+        
     except Exception as e:
         print(f"\n[CRITICAL ERROR] An unexpected error occurred: {e}")
         import traceback

@@ -13,6 +13,9 @@ from typing import List, Dict, Any
 # --- デバッグ設定 ---
 DEFAULT_RACE_ID = "202505030611"
 
+# ★★★ 修正箇所1: ばんえい競馬の会場コードを定義 ★★★
+BANEI_VENUE_CODES = ["33", "65"]
+
 def _fetch_and_load_past_data_for_debug(db: Session, horse_ids: List[str]):
     """デバッグ用に、指定された馬リストの過去成績を取得しDBに保存する"""
     if not horse_ids:
@@ -46,7 +49,7 @@ def verify_database_state(db: Session, race_id: str):
         else:
             print(f" -> 成功: {len(trainers_in_race)}件すべての調教師データに名前が正しく格納されています。")
             if trainers_in_race:
-                print(f"    (例: ID={trainers_in_race[0].id}, Name='{trainers_in_race[0].name}')")
+                print(f"     (例: ID={trainers_in_race[0].id}, Name='{trainers_in_race[0].name}')")
 
     # 2. races テーブルの検証
     print("\n[検証2] races テーブル (詳細情報列)")
@@ -63,11 +66,15 @@ def verify_database_state(db: Session, race_id: str):
             print(f" -> 失敗: 以下の列のデータが欠損しています: {missing_cols}")
         else:
             print(" -> 成功: 必要なレース詳細情報がすべて格納されています。")
-            print(f"    - Course: {race.course_type}{race.distance}m")
-            # ★★★ ここから修正 ★★★
-            print(f"    - Condition: 天候={race.weather}, 馬場={race.ground_condition}")
+            print(f"     - Course: {race.course_type}{race.distance}m")
+            print(f"     - Condition: 天候='{race.weather}', 馬場='{race.ground_condition}'")
+            # ★★★ 修正箇所2: 天候・馬場データに'/'が含まれていないか検証 ★★★
+            if '/' in str(race.weather) or '/' in str(race.ground_condition):
+                print(" -> ★失敗★: 天候または馬場状態に不要な '/' が含まれています。")
+            else:
+                print(" -> 成功: 天候と馬場状態のデータはクリーンです（'/' は含まれていません）。")
             # ★★★ 修正ここまで ★★★
-            print(f"    - Total Horses: {race.total_horses}")
+            print(f"     - Total Horses: {race.total_horses}")
 
     # 3. horse_number_advantages テーブルの検証（注意喚起付き）
     print("\n[検証3] horse_number_advantages テーブル")
@@ -79,7 +86,7 @@ def verify_database_state(db: Session, race_id: str):
         ).all()
         if not advantages:
             print(" -> INFO: 該当レース条件の馬番有利不利データはまだ生成されていません。")
-            print("    (注: このデータは run_pipeline.py の HISTORY モード実行完了後に一括で生成されます)")
+            print("     (注: このデータは run_pipeline.py の HISTORY モード実行完了後に一括で生成されます)")
         else:
             print(f" -> 成功: {len(advantages)}件の馬番有利不利データが格納されています。")
     else:
@@ -90,6 +97,15 @@ def verify_database_state(db: Session, race_id: str):
 
 def main(race_id: str):
     """データ収集からAI予測、DB保存までを一気通貫で実行・検証する"""
+    # ★★★ 修正箇所3: ばんえい競馬のレースIDが指定された場合に処理をスキップ ★★★
+    if race_id[4:6] in BANEI_VENUE_CODES:
+        print("\n" + "="*80)
+        print(f"[情報] 指定されたレースID ({race_id}) はばんえい競馬のため、処理をスキップします。")
+        print("run_pipeline.py はこれらのレースを自動的に除外します。")
+        print("="*80)
+        return
+    # ★★★ 修正ここまで ★★★
+
     print("=" * 80)
     print("--- Full Pipeline Debug Script for a Single Race ---")
     print(f"Target Race ID: {race_id}")

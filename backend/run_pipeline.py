@@ -15,6 +15,9 @@ from core.config import VENUE_CODE_MAP
 # --- 初期化 ---
 Base.metadata.create_all(bind=engine)
 
+# ★★★ 修正箇所1: ばんえい競馬の会場コードを定義 ★★★
+BANEI_VENUE_CODES = ["33", "65"] # 帯広, 帯広(ば)
+
 def fetch_and_load_past_data(db: Session, horse_ids: List[str]):
     """指定された馬リストの過去成績を取得し DB に保存する"""
     print(f"Fetching past data for {len(horse_ids)} horses...")
@@ -78,7 +81,7 @@ def backfill_historical_data(db: Session, start_date: datetime.date, end_date: d
                         else:
                             print(f"    [Warning] Failed to parse result page for {race_id}.")
                     else:
-                         print(f"    [Warning] Failed to get result HTML for {race_id}.")
+                       print(f"    [Warning] Failed to get result HTML for {race_id}.")
 
         current_date += datetime.timedelta(days=1)
 
@@ -145,7 +148,8 @@ def main():
                 list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=True)
                 if list_html:
                     race_ids = parser.parse_race_ids_from_list(list_html)
-                    filtered_race_ids = [rid for rid in race_ids if not rid.startswith(target_date_str[:4] + '65')]
+                    # ★★★ 修正箇所2: ばんえい競馬の会場コード(33, 65)を除外 ★★★
+                    filtered_race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
                     all_race_ids.extend([(rid, is_nar) for rid in filtered_race_ids])
                     print(f"Found {len(race_ids)} {race_type} races ({len(filtered_race_ids)} after filtering).")
 

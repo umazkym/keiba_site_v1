@@ -1,9 +1,10 @@
 # backend/debug_single_race_pipeline.py
+
 import datetime
 import time
 import sys
 import pprint
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from database.database import SessionLocal, engine, Base
 from scripts import scraper, parser, database_loader, predictor
 from database import models
@@ -26,6 +27,66 @@ def _fetch_and_load_past_data_for_debug(db: Session, horse_ids: List[str]):
             if results:
                 database_loader.load_past_results(db, results, horse_id)
     print(" -> SUCCESS: Finished fetching and loading past data.")
+
+
+def verify_database_state(db: Session, race_id: str):
+    """DBの状態を詳細に検証して出力する"""
+    print("\n" + "="*80)
+    print(f"--- データベース最終状態検証 (Race ID: {race_id}) ---")
+    
+    # 1. trainers テーブルの検証
+    print("\n[検証1] trainers テーブル (name列)")
+    trainers_in_race = db.query(models.Trainer).join(models.Result, models.Trainer.id == models.Result.trainer_id).filter(models.Result.race_id == race_id).distinct().all()
+    if not trainers_in_race:
+        print(" -> エラー: レースに関連する調教師が見つかりません。")
+    else:
+        missing_names = [t for t in trainers_in_race if not t.name]
+        if missing_names:
+            print(f" -> 失敗: {len(missing_names)}件の調教師データで名前が欠損しています。 (ID: {[t.id for t in missing_names]})")
+        else:
+            print(f" -> 成功: {len(trainers_in_race)}件すべての調教師データに名前が正しく格納されています。")
+            if trainers_in_race:
+                print(f"    (例: ID={trainers_in_race[0].id}, Name='{trainers_in_race[0].name}')")
+
+    # 2. races テーブルの検証
+    print("\n[検証2] races テーブル (詳細情報列)")
+    race = db.query(models.Race).filter(models.Race.id == race_id).first()
+    if not race:
+        print(" -> エラー: races テーブルに該当レースが見つかりません。")
+    else:
+        missing_cols = []
+        cols_to_check = ['course_type', 'distance', 'weather', 'ground_condition', 'total_horses']
+        for col in cols_to_check:
+            if not getattr(race, col):
+                missing_cols.append(col)
+        if missing_cols:
+            print(f" -> 失敗: 以下の列のデータが欠損しています: {missing_cols}")
+        else:
+            print(" -> 成功: 必要なレース詳細情報がすべて格納されています。")
+            print(f"    - Course: {race.course_type}{race.distance}m")
+            # ★★★ ここから修正 ★★★
+            print(f"    - Condition: 天候={race.weather}, 馬場={race.ground_condition}")
+            # ★★★ 修正ここまで ★★★
+            print(f"    - Total Horses: {race.total_horses}")
+
+    # 3. horse_number_advantages テーブルの検証（注意喚起付き）
+    print("\n[検証3] horse_number_advantages テーブル")
+    if race:
+        advantages = db.query(models.HorseNumberAdvantage).filter(
+            models.HorseNumberAdvantage.venue_name == race.venue_name,
+            models.HorseNumberAdvantage.course_type == race.course_type,
+            models.HorseNumberAdvantage.distance == race.distance
+        ).all()
+        if not advantages:
+            print(" -> INFO: 該当レース条件の馬番有利不利データはまだ生成されていません。")
+            print("    (注: このデータは run_pipeline.py の HISTORY モード実行完了後に一括で生成されます)")
+        else:
+            print(f" -> 成功: {len(advantages)}件の馬番有利不利データが格納されています。")
+    else:
+        print(" -> スキップ: racesテーブルにデータがないため検証できません。")
+
+    print("="*80)
+
 
 def main(race_id: str):
     """データ収集からAI予測、DB保存までを一気通貫で実行・検証する"""
@@ -81,49 +142,7 @@ def main(race_id: str):
         print(" -> SUCCESS: Updated DB with final results.")
 
         # STEP 5: 最終検証
-        print("\n[STEP 5] Verifying all data in the database...")
-        db.commit()
-        
-        # predictionsテーブルの検証
-        verify_preds = db.query(models.Prediction).filter(models.Prediction.race_id == race_id).order_by(models.Prediction.deviation_score.desc()).all()
-        print("\n--- [A] DB Stored Predictions (Top 3) ---")
-        if verify_preds:
-            for p in verify_preds[:3]:
-                print(f"  - {p.mark} ({p.horse_number}) {p.horse_name} (偏差値: {p.deviation_score:.2f}, スタート指標: {p.start_1c_indicator:.2f})")
-        else:
-            print("  -> No prediction data found.")
-        print("------------------------------------------")
-
-        # matchupsテーブルの検証
-        verify_matchup = db.query(models.Matchup).filter(models.Matchup.race_id == race_id).first()
-        print("\n--- [B] DB Stored Matchups ---")
-        if verify_matchup and verify_matchup.matchup_data:
-            pair_count = len(verify_matchup.matchup_data)
-            print(f"  -> SUCCESS: Found matchup data for {pair_count} pairs.")
-        else:
-            print("  -> No matchup data found.")
-        print("------------------------------")
-        
-        # --- 修正: race_returnsテーブルの検証出力を見やすく変更 ---
-        print("\n--- [C] DB Stored Returns (race_returns table) ---")
-        verify_returns = db.query(models.RaceReturn).filter(models.RaceReturn.race_id == race_id).all()
-        if verify_returns:
-            print(f"  -> Found {len(verify_returns)} return records.")
-            print("    ----------------------------------------------------------")
-            print(f"    {'券種':<10s} | {'番号':<15s} | {'払戻金':>12s} | {'人気':>6s}")
-            print("    ----------------------------------------------------------")
-            
-            for r in verify_returns:
-                numbers = [n for n in [r.number_1, r.number_2, r.number_3] if n is not None]
-                delimiter = ' → ' if r.bet_type in ['umatan', 'sanrentan'] else ' - '
-                numbers_str = delimiter.join(map(str, numbers))
-                
-                pop_str = f"{r.popularity}人気" if r.popularity else "N/A"
-                print(f"    - {r.bet_type:<9s} | {numbers_str:<15s} | {str(r.payout) + '円':>12s} | {pop_str:>6s}")
-            print("    ----------------------------------------------------------")
-        else:
-            print("  -> No return data found.")
-        print("----------------------------------------------------")
+        verify_database_state(db, race_id)
         
     except Exception as e:
         print(f"\n[CRITICAL ERROR] An unexpected error occurred: {e}")

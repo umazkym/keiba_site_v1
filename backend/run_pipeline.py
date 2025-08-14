@@ -1,4 +1,5 @@
-# C:\Users\tnszk\program\GitHub\backend\run_pipeline.py
+# backend/run_pipeline.py
+
 import winsound
 import datetime
 import time
@@ -53,7 +54,20 @@ def backfill_historical_data(db: Session, start_date: datetime.date, end_date: d
             if list_html:
                 race_ids = parser.parse_race_ids_from_list(list_html)
                 for race_id in race_ids:
-                    # force_download=False でキャッシュを優先
+                    print(f"  Processing Race ID: {race_id}...")
+                    
+                    # 1. まず出馬表のデータを取得・ロードする (★修正箇所★)
+                    shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=False)
+                    if shutuba_html:
+                        shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
+                        if shutuba_data:
+                            database_loader.load_shutuba_data(db, shutuba_data, race_id, current_date, is_nar)
+                        else:
+                            print(f"    [Warning] Failed to parse shutuba page for {race_id}.")
+                    else:
+                        print(f"    [Warning] Failed to get shutuba HTML for {race_id}.")
+                    
+                    # 2. 次にレース結果のデータを取得・ロード（更新）する
                     result_html = scraper.get_race_result_html(race_id, is_nar=is_nar, force_download=False)
                     if result_html:
                         race_data = parser.parse_race_result_page(result_html, race_id)
@@ -61,6 +75,11 @@ def backfill_historical_data(db: Session, start_date: datetime.date, end_date: d
                             database_loader.load_race_result_data(
                                 db, race_data, race_id, current_date, is_nar
                             )
+                        else:
+                            print(f"    [Warning] Failed to parse result page for {race_id}.")
+                    else:
+                         print(f"    [Warning] Failed to get result HTML for {race_id}.")
+
         current_date += datetime.timedelta(days=1)
 
 
@@ -88,10 +107,8 @@ def main():
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         print("!!!  RUNNING IN HISTORY MODE !!!")
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        # ★★★ 修正箇所: 分析期間を開始日 '2025-06-09', 終了日 '2025-06-22' に変更 ★★★
         ANALYSIS_START_DATE = datetime.date(2025, 6, 22)
         ANALYSIS_END_DATE = datetime.date(2025, 6, 22)
-        # ★★★ 修正ここまで ★★★
         prediction_dates = []
         current_pred_date = ANALYSIS_START_DATE
         while current_pred_date <= ANALYSIS_END_DATE:
@@ -170,10 +187,8 @@ def main():
         print("\n--- Recalculating all horse number advantages after history generation ---")
         db_final: Session = SessionLocal()
         try:
-            # ★★★ 修正箇所: 再計算期間も分析期間に合わせる ★★★
             history_start_date = datetime.date(2025, 6, 22)
             history_end_date = datetime.date(2025, 6, 22)
-            # ★★★ 修正ここまで ★★★
             process_advantage_in_chunks(db_final, history_start_date, history_end_date, chunk_size_days=30)
         finally:
             db_final.close()

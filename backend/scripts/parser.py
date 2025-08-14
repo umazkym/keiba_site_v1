@@ -1,4 +1,5 @@
-# C:\Users\tnszk\program\GitHub\backend\scripts\parser.py
+# backend/scripts/parser.py
+
 from bs4 import BeautifulSoup
 import re
 import pandas as pd
@@ -249,11 +250,14 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
                         race_info_dict['course_type'] = m_course.group(1)
                         race_info_dict['distance'] = dist
                 
-                m_weather = re.search(r'天候:(\S+)', race_data_text)
-                if m_weather: race_info_dict['weather'] = m_weather.group(1)
+                m_weather = re.search(r'天候\s*:\s*([^/\s]+)', race_data_text)
+                if m_weather: race_info_dict['weather'] = m_weather.group(1).strip()
                 
-                m_ground = re.search(r'馬場:(\S+)', race_data_text)
-                if m_ground: race_info_dict['ground_condition'] = m_ground.group(1)
+                m_ground = re.search(r'(?:芝|ダ)\s*:\s*([^/\s]+)|馬場\s*:\s*([^/\s]+)', race_data_text)
+                if m_ground:
+                    ground_condition = next((g for g in m_ground.groups() if g is not None), None)
+                    if ground_condition:
+                        race_info_dict['ground_condition'] = ground_condition.strip()
                 
                 m_date = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', race_data_text)
                 if m_date:
@@ -284,7 +288,6 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
         df = pd.read_html(StringIO(str(result_table)), header=0)[0]
         
         # --- ヘッダーの正規化 ---
-        # ★★★★★★★★★★★★★★★★★★★★ 修正箇所 ★★★★★★★★★★★★★★★★★★★★
         def clean_header(col):
             if isinstance(col, tuple):
                 col = ''.join(map(str, col))
@@ -301,7 +304,15 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
             '上り': 'agari_3f', '通過': 'corner_positions', '厩舎': 'trainer_name', '馬体重(増減)': 'horse_weight_str'
         }
         df.rename(columns=rename_map, inplace=True)
-        # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        
+        # ★★★ ここから修正 ★★★
+        if 'trainer_name' in df.columns:
+            nar_venues_pattern = r'^(門別|盛岡|水沢|浦和|船橋|大井|川崎|金沢|笠松|名古屋|園田|姫路|高知|佐賀|岩手|帯広\(ば\))'
+            jra_venues_pattern = r'^\[(西|東)\]'
+            
+            df['trainer_name'] = df['trainer_name'].str.replace(nar_venues_pattern, '', regex=True)
+            df['trainer_name'] = df['trainer_name'].str.replace(jra_venues_pattern, '', regex=True)
+        # ★★★ 修正ここまで ★★★
 
         if 'rank' not in df.columns:
             print(f"[ERROR] Could not identify 'rank' column for race {race_id}. Columns found: {df.columns.tolist()}")

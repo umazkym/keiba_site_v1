@@ -1,4 +1,5 @@
-# C:\Users\tnszk\program\GitHub\backend\scripts\database_loader.py
+# backend/scripts/database_loader.py
+
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from database import models
@@ -7,7 +8,6 @@ from typing import Dict, Any, List
 import datetime
 import pandas as pd
 
-# --- (_bulk_upsert, _bulk_upsert_horses, _bulk_upsert_results, load_shutuba_data, load_past_results, save_prediction, save_horse_number_advantages は変更なし) ---
 def _bulk_upsert(db: Session, model, data: List[Dict[str, Any]], index_elements: List[str]):
     if not data:
         return
@@ -16,6 +16,42 @@ def _bulk_upsert(db: Session, model, data: List[Dict[str, Any]], index_elements:
     stmt = pg_insert(table).values(data)
     stmt = stmt.on_conflict_do_nothing(index_elements=index_elements)
     db.execute(stmt)
+
+def _bulk_upsert_people(db: Session, model, data: List[Dict[str, Any]]):
+    """
+    JockeyとTrainerのUPSERT用関数。
+    重複を除外し、既存のnameが不完全な場合に新しいnameで更新する。
+    """
+    if not data:
+        return
+
+    # IDが同じデータが複数ある場合、nameがNoneでなく、より長いもの（フルネームと想定）を優先する
+    unique_data = {}
+    for item in data:
+        item_id = item.get('id')
+        if not item_id:
+            continue
+        
+        if item_id not in unique_data or \
+           (item.get('name') and len(item.get('name')) > len(unique_data[item_id].get('name', ''))):
+            unique_data[item_id] = item
+
+    if not unique_data:
+        return
+        
+    final_data = list(unique_data.values())
+
+    table = model.__table__
+    stmt = pg_insert(table).values(final_data)
+    
+    # 既存レコードのnameが新しいものと異なる場合に更新する
+    update_stmt = stmt.on_conflict_do_update(
+        index_elements=['id'],
+        set_={'name': stmt.excluded.name},
+        where=(table.c.name != stmt.excluded.name)
+    )
+    db.execute(update_stmt)
+
 
 def _bulk_upsert_horses(db: Session, data: List[Dict[str, Any]]):
     if not data:
@@ -87,8 +123,8 @@ def load_shutuba_data(db: Session, shutuba_data: Dict[str, Any], race_id: str, r
 
     _bulk_upsert_horses(db, horses_to_save)
     
-    _bulk_upsert(db, models.Jockey, jockeys_to_save, ['id'])
-    _bulk_upsert(db, models.Trainer, trainers_to_save, ['id'])
+    _bulk_upsert_people(db, models.Jockey, jockeys_to_save)
+    _bulk_upsert_people(db, models.Trainer, trainers_to_save)
     
     race_info = shutuba_data.get('race_info', {})
     venue_code = race_id[4:6]
@@ -159,9 +195,9 @@ def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str)
             results_to_save.append(result_dict)
 
     if jockeys_to_save:
-        _bulk_upsert(db, models.Jockey, jockeys_to_save, ['id'])
+        _bulk_upsert_people(db, models.Jockey, jockeys_to_save)
     if trainers_to_save:
-        _bulk_upsert(db, models.Trainer, trainers_to_save, ['id'])
+        _bulk_upsert_people(db, models.Trainer, trainers_to_save)
     
     _bulk_upsert(db, models.Race, races_to_save, ['id'])
     db.commit()
@@ -202,8 +238,8 @@ def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, 
         if h.get('trainer_id'):
             trainers_to_save.append({'id': h['trainer_id'], 'name': h.get('trainer_name')})
     
-    _bulk_upsert(db, models.Jockey, jockeys_to_save, ['id'])
-    _bulk_upsert(db, models.Trainer, trainers_to_save, ['id'])
+    _bulk_upsert_people(db, models.Jockey, jockeys_to_save)
+    _bulk_upsert_people(db, models.Trainer, trainers_to_save)
     db.commit()
 
     race_info = race_data.get('race_info', {})
@@ -221,7 +257,6 @@ def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, 
         returns_to_load = []
         for bet_type, returns_list in race_data['returns'].items():
             for item in returns_list:
-                # --- 修正: 新しいカラム構造に合わせてデータを準備 ---
                 if item.get('payout') is not None and item.get('number_1') is not None:
                     returns_to_load.append({
                         'race_id': race_id,
@@ -234,9 +269,8 @@ def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, 
                     })
         
         if returns_to_load:
-            # --- 修正: bulk_insert_mappingsではなく、on_conflict_do_nothingを使う ---
             _bulk_upsert(db, models.RaceReturn, returns_to_load, ['race_id', 'bet_type', 'number_1', 'number_2', 'number_3'])
-            print(f"    -> Successfully loaded {len(returns_to_load)} return records.")
+            print(f"     -> Successfully loaded {len(returns_to_load)} return records.")
 
     results_from_parser = race_data.get('results', [])
     if not results_from_parser:

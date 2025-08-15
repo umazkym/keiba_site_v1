@@ -95,18 +95,23 @@ export default function RacePage() {
 
     return (
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex flex-col md:flex-row justify-between items-center mt-2 mb-4 gap-4 p-3 bg-white border rounded-lg shadow-sm">
-                <h1 className="text-xl md:text-2xl font-bold text-gray-800 whitespace-nowrap">
-                    {formatDate(dateFromUrl)}
-                </h1>
+            
+            {/* 1. AI高配当的中ランキング */}
+            <div className="mb-4">
+                <TopHitsDisplay />
+            </div>
+
+            {/* 2. 日付ナビゲーション */}
+            <div className="flex justify-center items-center mb-4 p-3 bg-white border rounded-lg shadow-sm">
                 <DateNavigator currentDate={dateFromUrl} onDateChange={handleDateChange} />
             </div>
 
-            <div className="space-y-6">
-                <TopHitsDisplay />
+            {/* 3. AI注目馬 */}
+            <div className="mb-4">
                 <SpecialPickCard date={dateFromUrl} />
             </div>
 
+            {/* 4. レース予測タブ */}
             {isLoading && (
                 <RaceTabsSkeleton />
             )}

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, LabelList } from 'recharts';
 import { HorseNumberAdvantage } from '@/lib/types';
 
 type Props = {
@@ -62,7 +62,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                 <ResponsiveContainer>
                     <BarChart
                         data={sortedData}
-                        margin={{ top: 5, right: 20, left: -15, bottom: 5 }}
+                        margin={{ top: 20, right: 20, left: -15, bottom: 5 }}
                         barCategoryGap="20%"
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -90,13 +90,27 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                                     fill={getBarColor(entry.advantage_score)}
                                 />
                             ))}
+                            {/* ★★★ 修正箇所 ★★★ */}
+                            {/* formatterの引数の型をanyに変更し、内部で数値に変換してから比較することで型エラーを解消 */}
+                            <LabelList 
+                                dataKey="advantage_score" 
+                                position="top" 
+                                formatter={(value: any) => {
+                                    const numValue = Number(value);
+                                    if (numValue > 0.15) return '▲';
+                                    if (numValue < -0.15) return '▼';
+                                    return '';
+                                }}
+                                fontSize={12}
+                                fill="#374151"
+                            />
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
             </div>
             <div className="flex justify-between text-xs text-gray-500 mt-1 px-4">
-                <span style={{ color: 'rgba(239, 68, 68, 0.8)' }}>■ 不利</span>
-                <span style={{ color: 'rgba(52, 211, 153, 0.8)' }}>有利 ■</span>
+                <span style={{ color: 'rgba(239, 68, 68, 0.8)' }}>■ 不利 ▼</span>
+                <span style={{ color: 'rgba(52, 211, 153, 0.8)' }}>▲ 有利 ■</span>
             </div>
         </div>
     );

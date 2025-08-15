@@ -18,13 +18,24 @@ const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onD
         onDateChange(dateObj.toISOString().split('T')[0]);
     };
 
+    const getTodayString = () => {
+        const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+        return today.toISOString().split('T')[0];
+    };
+
     return (
-        <div className="flex items-center justify-center gap-2 md:gap-4">
-            <button 
-                onClick={() => handleDateShift(-1)} 
-                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-sm hover:bg-gray-100 hover:border-primary-light active:bg-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-semibold"
+        <div className="flex items-center justify-center gap-2 md:gap-4 flex-wrap">
+            <button  
+                onClick={() => handleDateShift(-1)}  
+                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-semibold"
             >
-                ‹ 一日前
+                ‹ 前日
+            </button>
+            <button
+                onClick={() => onDateChange(getTodayString())}
+                className="bg-primary border border-primary-dark text-white px-4 py-2 rounded-md shadow-sm hover:bg-primary-dark active:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-bold"
+            >
+                今日
             </button>
             <input
                 type="date"
@@ -32,11 +43,11 @@ const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onD
                 onChange={(e) => onDateChange(e.target.value)}
                 className="border-gray-300 p-2 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-sm md:text-base"
             />
-            <button 
-                onClick={() => handleDateShift(1)} 
-                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-sm hover:bg-gray-100 hover:border-primary-light active:bg-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-semibold"
+            <button  
+                onClick={() => handleDateShift(1)}  
+                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-semibold"
             >
-                一日後 ›
+                翌日 ›
             </button>
         </div>
     );

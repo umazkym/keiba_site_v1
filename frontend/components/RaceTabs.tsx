@@ -23,42 +23,60 @@ const VenuePanel = ({ venue }: { venue: VenueRaces }) => {
                 onSelectRace={setActiveRaceIndex}
             />
             {activeRace && (
-                <div className="mt-6 space-y-10">
+                <div className="mt-6 space-y-6">
+                    {/* AI予測 (常に表示) */}
                     <div>
                         <h3 className="flex items-center text-xl font-bold text-gray-800 mb-3 px-2">
                            <SparklesIcon className="w-6 h-6 text-accent-dark mr-2" />
-                            AI予測
+                           AI予測
                         </h3>
                         <PredictionTable race={activeRace} />
                     </div>
                     
+                    {/* AIスタート位置予測 (常に表示) */}
                     <div>
                         <h3 className="flex items-center text-xl font-bold text-gray-800 mb-3 px-2">
-                           <FlagIcon className="w-6 h-6 text-accent-dark mr-2" />
+                            <FlagIcon className="w-6 h-6 text-accent-dark mr-2" />
                             AI スタート位置予測 (1コーナー)
                         </h3>
                         <StartPositionChart predictions={activeRace.predictions} />
                     </div>
 
-                    <div>
-                        <h3 className="flex items-center text-xl font-bold text-gray-800 mb-3 px-2">
-                            <UsersIcon className="w-6 h-6 text-accent-dark mr-2" />
+                    {/* 直接対決データ (アコーディオン) */}
+                    <details className="group rounded-lg bg-gray-50 open:bg-white open:shadow-lg transition-all duration-300">
+                        <summary className="flex items-center text-xl font-bold text-gray-800 p-3 cursor-pointer list-none">
+                            <div className="w-6 h-6 mr-2 flex-shrink-0">
+                                 <UsersIcon className="w-6 h-6 text-accent-dark" />
+                            </div>
                             直接対決データ
-                        </h3>
-                        <MatchupTable race={activeRace} />
-                    </div>
+                            <div className="ml-auto transform transition-transform duration-300 group-open:rotate-90">
+                                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+                            </div>
+                        </summary>
+                         <div className="p-4 pt-0">
+                            <MatchupTable race={activeRace} />
+                        </div>
+                    </details>
 
-                    <div>
-                         <h3 className="flex items-center text-xl font-bold text-gray-800 mb-3 px-2">
-                           <ChartBarIcon className="w-6 h-6 text-accent-dark mr-2" />
-                           コース別・馬番有利不利
-                        </h3>
-                        <HorseNumberAdvantageChart
-                            advantages={activeRace.horse_number_advantages}
-                            courseType={activeRace.course_type}
-                            distance={activeRace.distance}
-                        />
-                    </div>
+                    {/* 馬番有利不利 (アコーディオン) */}
+                    <details className="group rounded-lg bg-gray-50 open:bg-white open:shadow-lg transition-all duration-300">
+                        <summary className="flex items-center text-xl font-bold text-gray-800 p-3 cursor-pointer list-none">
+                            <div className="w-6 h-6 mr-2 flex-shrink-0">
+                                <ChartBarIcon className="w-6 h-6 text-accent-dark" />
+                            </div>
+                            コース別・馬番有利不利
+                            <div className="ml-auto transform transition-transform duration-300 group-open:rotate-90">
+                                 <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+                            </div>
+                        </summary>
+                         <div className="p-4 pt-0">
+                             <HorseNumberAdvantageChart
+                                 advantages={activeRace.horse_number_advantages}
+                                 courseType={activeRace.course_type}
+                                 distance={activeRace.distance}
+                            />
+                        </div>
+                    </details>
                 </div>
             )}
         </div>

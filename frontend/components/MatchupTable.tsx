@@ -63,15 +63,15 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
     const sortedHorses = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
     return (
         <div className="table-wrapper">
-            <table className="matchup-table">
+            <table className="matchup-table" style={{ minWidth: `${160 + sortedHorses.length * 52}px` }}>
                 <thead>
                     <tr>
                         <th className="sticky-col !p-1 text-center">馬名</th>
                         {sortedHorses.map(horse => (
-                            <th key={horse.horse_id} className="p-1">
+                            <th key={horse.horse_id} className="p-1" style={{ minWidth: '52px' }}>
                                 <div className='flex flex-col items-center justify-center h-full gap-1'>
                                     <HorseNumberCircle number={horse.horse_number} waku={horse.waku_number} />
-                                    <span className='text-xs font-normal whitespace-nowrap'>{horse.horse_name}</span>
+                                    <span className='text-[10px] font-bold whitespace-nowrap'>{horse.horse_name.substring(0, 3)}</span>
                                 </div>
                             </th>
                         ))}
@@ -197,12 +197,12 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
 
                         return (
                              <div key={opponent.horse_id} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                                <div className="flex items-center gap-2">
+                                 <div className="flex items-center gap-2">
                                      <HorseNumberCircle number={opponent.horse_number} waku={opponent.waku_number} />
                                      <span className="font-medium text-gray-800">{opponent.horse_name}</span>
-                                </div>
-                               <div className="font-bold text-lg">{resultText}</div>
-                            </div>
+                                 </div>
+                                <div className="font-bold text-lg">{resultText}</div>
+                             </div>
                         );
                     })}
                 </div>

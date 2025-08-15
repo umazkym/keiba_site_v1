@@ -29,15 +29,12 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
             
             {/* Right part (Race Info) */}
             <div className="flex flex-col justify-center flex-grow pl-2 text-right md:text-center md:pl-0 md:mt-1">
-                <div className="text-xs text-gray-700">
-                    <span className="font-semibold">{hit.bet_type}</span>: {hit.winning_numbers}
+                <div className="text-xs text-gray-500">
+                     {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
+                     {' '}{hit.venue_name}{hit.race_number}R
                 </div>
-                <div className="mt-auto">
-                    <div className="text-xs text-gray-500">
-                         {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
-                         {' '}{hit.venue_name}{hit.race_number}R
-                    </div>
-                    <div className="font-semibold text-gray-800 text-xs truncate" title={hit.race_name}>{hit.race_name}</div>
+                <div className="text-xs text-gray-700 mt-1">
+                    <span className="font-semibold">{hit.bet_type}</span>: {hit.winning_numbers}
                 </div>
             </div>
         </div>
@@ -82,7 +79,7 @@ export const TopHitsDisplay = () => {
         <div>
             <h3 className="flex items-center text-xl sm:text-2xl font-bold text-gray-800 mb-3 px-1">
                <TrophyIcon className="w-6 h-6 mr-2 text-yellow-500"/>
-               AI高配当的中ランキング (過去7日間)
+               高配当的中レース (直近7日間)
             </h3>
             {hits.length === 0 ? (
                 <div className="p-6 bg-white border border-dashed rounded-lg text-center text-gray-500">

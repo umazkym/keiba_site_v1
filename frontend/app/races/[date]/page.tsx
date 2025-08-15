@@ -27,16 +27,16 @@ const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onD
     return (
         <div className="flex items-center justify-center gap-1 sm:gap-2 w-full overflow-x-auto">
             <button
-                onClick={() => handleDateShift(-1)}
-                className="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
-            >
-                ‹ 前日
-            </button>
-            <button
                 onClick={() => onDateChange(getTodayString())}
                 className="bg-primary border border-primary-dark text-white px-3 py-2 rounded-md shadow-sm hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-bold whitespace-nowrap shrink-0"
             >
                 今日
+            </button>
+            <button
+                onClick={() => handleDateShift(-1)}
+                className="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
+            >
+                ‹ 前日
             </button>
             <input
                 type="date"

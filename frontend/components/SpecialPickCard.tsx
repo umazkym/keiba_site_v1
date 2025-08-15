@@ -18,18 +18,49 @@ const Skeleton = () => (
     </div>
 );
 
+// プロパティの型定義を修正
+type Props = {
+  pick?: SpecialPick | null; // サーバーサイドから渡されるデータ（オプショナル）
+  date?: string;             // クライアントサイドでfetchする日付（オプショナル）
+};
 
-export const SpecialPickCard = ({ date }: { date: string }) => {
-    const [pick, setPick] = useState<SpecialPick | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+// コンポーネント定義を修正
+export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
+    // stateの初期値を修正
+    // initialPickが渡されていればそれを初期値に、なければnull
+    const [pick, setPick] = useState<SpecialPick | null>(initialPick === undefined ? null : initialPick);
+    
+    // ローディング状態の初期値を修正
+    // initialPickが渡されていない場合のみ、ローディング状態を開始する
+    const [isLoading, setIsLoading] = useState(initialPick === undefined);
 
     useEffect(() => {
+        // `initialPick`がpropsとして渡されている場合（サーバーサイドでデータ取得済み）、
+        // クライアントサイドでの再取得は行わない
+        if (initialPick !== undefined) {
+            setPick(initialPick);
+            setIsLoading(false);
+            return;
+        }
+
+        // `date`プロパティがない場合も取得できないので処理を終了
+        if (!date) {
+            setIsLoading(false);
+            setPick(null);
+            return;
+        }
+
+        // `initialPick`がなく、`date`がある場合のみAPIからデータを取得
         setIsLoading(true);
         getSpecialPick(date)
             .then(data => setPick(data))
-            .catch(e => console.error("Failed to fetch special pick:", e))
+            .catch(e => {
+                console.error("Failed to fetch special pick:", e);
+                setPick(null); // エラー時はnullを設定
+            })
             .finally(() => setIsLoading(false));
-    }, [date]);
+            
+    }, [date, initialPick]); // 依存配列に`date`と`initialPick`を指定
 
     if (isLoading) {
         return <Skeleton />;

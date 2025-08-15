@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getPredictionsForDate, getSpecialPick } from '@/lib/api';
-import { RaceDayPrediction, SpecialPick } from '@/lib/types';
+import { getPredictionsForDate } from '@/lib/api';
+import { RaceDayPrediction } from '@/lib/types';
 import { RaceTabs } from '@/components/RaceTabs';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
-import { formatDate } from '@/lib/utils';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
+import { formatDate } from '@/lib/utils';
+import { RaceTabsSkeleton } from '@/components/SkeletonLoader';
 
 const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onDateChange: (newDate: string) => void }) => {
     
@@ -60,27 +61,26 @@ export default function RacePage() {
     const dateFromUrl = typeof params.date === 'string' ? params.date : new Date().toISOString().split('T')[0];
 
     const [predictionData, setPredictionData] = useState<RaceDayPrediction | null>(null);
-    const [specialPick, setSpecialPick] = useState<SpecialPick | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const fetchDataForDate = useCallback((date: string) => {
         setIsLoading(true);
         setError(null);
+        setPredictionData(null); // 日付変更時に古いデータをクリア
         document.title = `競馬AI予測 | ${formatDate(date)}`;
         
-        Promise.all([
-            getPredictionsForDate(date),
-            getSpecialPick(date)
-        ]).then(([predictions, pick]) => {
-            setPredictionData(predictions);
-            setSpecialPick(pick);
-        }).catch(err => {
-            console.error(err);
-            setError('データの取得に失敗しました。バックエンドサーバーが起動しているか確認してください。');
-        }).finally(() => {
-            setIsLoading(false);
-        });
+        getPredictionsForDate(date)
+            .then((predictions) => {
+                setPredictionData(predictions);
+            })
+            .catch(err => {
+                console.error(err);
+                setError('データの取得に失敗しました。バックエンドサーバーが起動しているか確認してください。');
+            })
+            .finally(() => {
+                setIsLoading(false);
+            });
     }, []);
 
     useEffect(() => {
@@ -102,21 +102,18 @@ export default function RacePage() {
                 <DateNavigator currentDate={dateFromUrl} onDateChange={handleDateChange} />
             </div>
 
+            {/* SpecialPickとTopHitsは日付が変わっても即座に再取得・表示される */}
+            <SpecialPickCard date={dateFromUrl} />
+            <TopHitsDisplay />
+
             {isLoading && (
-                <div className="text-center p-8">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                    <p className="mt-4 text-gray-600">データを読み込んでいます...</p>
-                </div>
+                <RaceTabsSkeleton /> // RaceTabs部分のみスケルトンを表示
             )}
             
             {error && <div className="text-center p-8 text-red-600 bg-red-100 rounded-lg border border-red-200">{error}</div>}
             
             {!isLoading && !error && predictionData && (
-                <>
-                    <SpecialPickCard pick={specialPick} />
-                    <TopHitsDisplay />
-                    <RaceTabs data={predictionData} />
-                </>
+                 <RaceTabs data={predictionData} />
             )}
         </div>
     );

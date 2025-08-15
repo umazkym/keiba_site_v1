@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getTopPayoutHits } from '@/lib/api';
 import { TopPayoutHit } from '@/lib/types';
+import { TrophyIcon } from './icons';
 
 const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     const rankStyles = [
@@ -74,6 +75,16 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     );
 };
 
+const Skeleton = () => (
+    <div className="mb-6 animate-pulse">
+        <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+            {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
+            ))}
+        </div>
+    </div>
+);
 
 export const TopHitsDisplay = () => {
     const [hits, setHits] = useState<TopPayoutHit[]>([]);
@@ -82,40 +93,39 @@ export const TopHitsDisplay = () => {
     useEffect(() => {
         const fetchHits = async () => {
             setIsLoading(true);
-            const data = await getTopPayoutHits();
-            setHits(data);
-            setIsLoading(false);
+            try {
+                const data = await getTopPayoutHits();
+                setHits(data);
+            } catch (e) {
+                console.error("Failed to fetch top hits:", e);
+            } finally {
+                setIsLoading(false);
+            }
         };
         fetchHits();
     }, []);
 
     if (isLoading) {
-        return (
-            <div className="mb-6 p-4 bg-white border rounded-lg shadow-sm text-center text-gray-500">
-                高配当ランキングを読み込み中...
-            </div>
-        );
+        return <Skeleton />;
     }
-
-    if (hits.length === 0) {
-         return (
-             <div className="mb-6 p-4 bg-gray-100 border border-dashed rounded-lg text-center text-gray-500">
-                <h3 className="text-lg font-bold text-gray-700 mb-2">過去1週間のAI高配当ランキング</h3>
-                <p>対象期間内にAI予測による高配当的中はありませんでした。</p>
-            </div>
-        );
-    }
-
+    
     return (
         <div className="mb-6">
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">
-                過去1週間のAI高配当的中ランキング
+            <h3 className="flex items-center text-2xl font-bold text-gray-800 mb-4">
+               <TrophyIcon className="w-6 h-6 mr-2 text-yellow-500"/>
+               AI高配当的中ランキング (過去7日間)
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-                {hits.map((hit, index) => (
-                    <HitCard key={`${hit.race_id}-${hit.bet_type}-${hit.payout}`} hit={hit} rank={index + 1} />
-                ))}
-            </div>
+            {hits.length === 0 ? (
+                <div className="p-6 bg-white border border-dashed rounded-lg text-center text-gray-500">
+                    <p>対象期間内にAI予測による高配当的中はありませんでした。</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+                    {hits.map((hit, index) => (
+                        <HitCard key={`${hit.race_id}-${hit.bet_type}-${hit.payout}`} hit={hit} rank={index + 1} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

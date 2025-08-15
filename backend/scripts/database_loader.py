@@ -17,6 +17,35 @@ def _bulk_upsert(db: Session, model, data: List[Dict[str, Any]], index_elements:
     stmt = stmt.on_conflict_do_nothing(index_elements=index_elements)
     db.execute(stmt)
 
+# ★★★ここから追加★★★
+def _bulk_upsert_races(db: Session, data: List[Dict[str, Any]]):
+    """
+    racesテーブル専用のUPSERT関数。
+    重複キー(id)があった場合は、レコードを新しい情報で更新する。
+    """
+    if not data:
+        return
+
+    table = models.Race.__table__
+    stmt = pg_insert(table).values(data)
+
+    # 既存のレコードと競合した場合に更新するカラムを定義
+    # id以外の全てのカラムを更新対象とする
+    update_columns = {
+        c.name: getattr(stmt.excluded, c.name)
+        for c in table.c
+        if c.name != 'id' and c.name in data[0] # dataに含まれるキーのみを更新対象とする
+    }
+
+    # ON CONFLICT DO UPDATE句を構築
+    stmt = stmt.on_conflict_do_update(
+        index_elements=['id'],
+        set_=update_columns
+    )
+    
+    db.execute(stmt)
+# ★★★ここまで追加★★★
+
 def _bulk_upsert_people(db: Session, model, data: List[Dict[str, Any]]):
     """
     JockeyとTrainerのUPSERT用関数。
@@ -33,7 +62,7 @@ def _bulk_upsert_people(db: Session, model, data: List[Dict[str, Any]]):
             continue
         
         if item_id not in unique_data or \
-           (item.get('name') and len(item.get('name')) > len(unique_data[item_id].get('name', ''))):
+            (item.get('name') and len(item.get('name')) > len(unique_data[item_id].get('name', ''))):
             unique_data[item_id] = item
 
     if not unique_data:
@@ -75,7 +104,7 @@ def _bulk_upsert_horses(db: Session, data: List[Dict[str, Any]]):
     
     try:
         db.execute(stmt)
-        print("         ... Success.")
+        print("           ... Success.")
     except Exception as e:
         print(f"[ERROR] Failed to upsert horse data: {e}")
         db.rollback()
@@ -127,16 +156,30 @@ def load_shutuba_data(db: Session, shutuba_data: Dict[str, Any], race_id: str, r
     _bulk_upsert_people(db, models.Trainer, trainers_to_save)
     
     race_info = shutuba_data.get('race_info', {})
+    
+    # ★★★ここから修正★★★
+    # パーサーがHTMLから取得した日付を最優先で使用する。
+    # それがなければ、引数で渡された日付をフォールバックとして使用する。
+    date_from_parser = race_info.get('race_date')
+    final_race_date = date_from_parser if date_from_parser else race_date
+    # ★★★ここまで修正★★★
+
     venue_code = race_id[4:6]
     venue_name = VENUE_CODE_MAP.get(venue_code, '不明')
     race_to_save = {
-        'id': race_id, 'race_date': race_date, 'race_type': '地方' if is_nar else '中央',
-        'venue_name': venue_name, 'race_number': race_info.get('race_number'),
-        'race_name': race_info.get('race_name'), 'course_type': race_info.get('course_type'),
-        'distance': race_info.get('distance'), 'weather': race_info.get('weather'),
-        'ground_condition': race_info.get('ground_condition'), 'total_horses': race_info.get('total_horses')
+        'id': race_id,
+        'race_date': final_race_date,  # ★修正: 確定した日付を使用
+        'race_type': '地方' if is_nar else '中央',
+        'venue_name': venue_name,
+        'race_number': race_info.get('race_number'),
+        'race_name': race_info.get('race_name'),
+        'course_type': race_info.get('course_type'),
+        'distance': race_info.get('distance'),
+        'weather': race_info.get('weather'),
+        'ground_condition': race_info.get('ground_condition'),
+        'total_horses': race_info.get('total_horses')
     }
-    _bulk_upsert(db, models.Race, [race_to_save], ['id'])
+    _bulk_upsert_races(db, [race_to_save]) # ★修正: 更新対応の関数を呼び出す
 
     results_to_save = []
     for h in shutuba_data.get('horses', []):
@@ -199,7 +242,7 @@ def load_past_results(db: Session, results: List[Dict[str, Any]], horse_id: str)
     if trainers_to_save:
         _bulk_upsert_people(db, models.Trainer, trainers_to_save)
     
-    _bulk_upsert(db, models.Race, races_to_save, ['id'])
+    _bulk_upsert_races(db, races_to_save) # ★修正: 更新対応の関数を呼び出す
     db.commit()
     
     _bulk_upsert_results(db, results_to_save)

@@ -39,6 +39,7 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
         if race_list_item:
             race_name_elm = race_list_item.select_one(".RaceName")
             if race_name_elm: race_info_dict['race_name'] = race_name_elm.get_text(strip=True).replace("\n", "").strip()
+            
             race_data01_elm = race_list_item.select_one(".RaceData01")
             if race_data01_elm:
                 race_data01 = race_data01_elm.get_text(strip=True)
@@ -47,13 +48,23 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
                     race_info_dict['course_type'] = m_course.group(1)
                     race_info_dict['distance'] = int(m_course.group(2))
                 m_weather = re.search(r'天候:(\S+)', race_data01)
-                # ★★★ 修正箇所1 ★★★
                 if m_weather:
                     race_info_dict['weather'] = m_weather.group(1).strip().rstrip('/')
                 m_ground = re.search(r'馬場:(\S+)', race_data01)
                 if m_ground:
                     race_info_dict['ground_condition'] = m_ground.group(1).strip().rstrip('/')
-                # ★★★ 修正ここまで ★★★
+
+            # 日付情報を .RaceData02 要素から取得する
+            race_data02_elm = race_list_item.select_one(".RaceData02")
+            if race_data02_elm:
+                race_data02_text = race_data02_elm.get_text(strip=True)
+                m_date = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', race_data02_text)
+                if m_date:
+                    race_info_dict['race_date'] = datetime.date(
+                        int(m_date.group(1)),
+                        int(m_date.group(2)),
+                        int(m_date.group(3))
+                    )
         
         try:
             race_info_dict['race_number'] = int(race_id[-2:])
@@ -198,7 +209,11 @@ def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]
 
             result_dict = {
                 'race_id': race_id, 'race_date': pd.to_datetime(cols_text[col_map.get('日付', 0)], errors='coerce').date(),
-                'venue_name': re.sub(r'^\d+', '', cols_text[col_map.get('開催', 1)]).strip(), 'weather': cols_text[col_map.get('天候', 2)],
+                # ★★★ここから修正★★★
+                # venue_nameから前後の数字を削除する正規表現を強化
+                'venue_name': re.sub(r'^\d+|\d+$', '', cols_text[col_map.get('開催', 1)]).strip(),
+                # ★★★ここまで修正★★★
+                'weather': cols_text[col_map.get('天候', 2)],
                 'race_number': safe_int(cols_text[col_map.get('R', 3)]), 'race_name': cols_text[col_map.get('レース名', 4)],
                 'total_horses': safe_int(cols_text[col_map.get('頭数', 6)]), 'waku_number': safe_int(cols_text[col_map.get('枠番', 7)]),
                 'horse_number': safe_int(cols_text[col_map.get('馬番', 8)]), 'odds': safe_float(cols_text[col_map.get('オッズ', 9)]),
@@ -223,7 +238,7 @@ def parse_horse_results_page(html_content: str) -> Optional[List[Dict[str, Any]]
             continue
             
     if len(results) > 0:
-      print(f" - Successfully parsed {len(results)} past results for horse.")
+        print(f" - Successfully parsed {len(results)} past results for horse.")
     return results
 
 def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str, Any]]:
@@ -255,7 +270,6 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
                         race_info_dict['distance'] = dist
                 
                 m_weather = re.search(r'天候\s*:\s*([^/\s]+)', race_data_text)
-                # ★★★ 修正箇所2 ★★★
                 if m_weather:
                     race_info_dict['weather'] = m_weather.group(1).strip().rstrip('/')
                 
@@ -264,7 +278,6 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
                     ground_condition = next((g for g in m_ground.groups() if g is not None), None)
                     if ground_condition:
                         race_info_dict['ground_condition'] = ground_condition.strip().rstrip('/')
-                # ★★★ 修正ここまで ★★★
                 
                 m_date = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', race_data_text)
                 if m_date:

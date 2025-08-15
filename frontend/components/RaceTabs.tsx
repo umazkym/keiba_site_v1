@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { PredictionTable } from '@/components/PredictuonTable';
-import { VenueRaces } from '@/lib/types';
+import { VenueRaces, RaceDayPrediction } from '@/lib/types';
 import { RaceSelector } from './RaceSelector';
 import { StartPositionChart } from './StartPositionChart';
 import { MatchupTable } from './MatchupTable';
@@ -13,6 +13,8 @@ import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 const VenuePanel = ({ venue }: { venue: VenueRaces }) => {
     const [activeRaceIndex, setActiveRaceIndex] = useState(0);
     const activeRace = venue.races[activeRaceIndex];
+
+    // 的中判定ロジック（useState, useEffect）をここから削除します
 
     return (
         <div>
@@ -23,6 +25,7 @@ const VenuePanel = ({ venue }: { venue: VenueRaces }) => {
             />
             {activeRace && (
                 <>
+                    {/* TopHitsDisplayの呼び出しをここから削除します */}
                     <StartPositionChart predictions={activeRace.predictions} />
                     <PredictionTable race={activeRace} />
                     <MatchupTable race={activeRace} />
@@ -37,7 +40,7 @@ const VenuePanel = ({ venue }: { venue: VenueRaces }) => {
     );
 };
 
-export const RaceTabs = ({ data }: { data: { jra: VenueRaces[], nar: VenueRaces[] } }) => {
+export const RaceTabs = ({ data }: { data: RaceDayPrediction }) => {
     if (!data || (data.jra.length === 0 && data.nar.length === 0)) {
         return <div className="p-4 text-center text-gray-500">対象日のレースデータがありません。</div>;
     }

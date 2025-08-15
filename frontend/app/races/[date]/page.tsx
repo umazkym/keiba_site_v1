@@ -7,6 +7,8 @@ import { RaceDayPrediction, SpecialPick } from '@/lib/types';
 import { RaceTabs } from '@/components/RaceTabs';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { formatDate } from '@/lib/utils';
+// ★★★ 新規インポート ★★★
+import { TopHitsDisplay } from '@/components/TopHitsDisplay';
 
 const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onDateChange: (newDate: string) => void }) => {
     
@@ -93,6 +95,8 @@ export default function RacePage() {
             {!isLoading && !error && predictionData && (
                 <>
                     <SpecialPickCard pick={specialPick} />
+                    {/* ★★★ ここにTopHitsDisplayを配置 ★★★ */}
+                    <TopHitsDisplay />
                     <RaceTabs data={predictionData} />
                 </>
             )}

@@ -1,3 +1,10 @@
+// ★★★ 新規追加: レース結果の型 ★★★
+export interface Result {
+    horse_number: number;
+    rank: number | null;
+    horse_name: string | null;
+}
+
 export interface HorsePrediction {
     horse_id: string;
     horse_name: string;
@@ -27,7 +34,6 @@ export interface MatchupData {
     matchup_data: Record<string, MatchupRecord>;
 }
 
-// ★★★ 馬番有利不利データの型定義を追加 ★★★
 export interface HorseNumberAdvantage {
     horse_number: number;
     advantage_score: number;
@@ -43,8 +49,9 @@ export interface RacePrediction {
     distance: number | null;
     predictions: HorsePrediction[];
     matchup: MatchupData | null;
-    // ★★★ 馬番有利不利データのプロパティを追加 ★★★
     horse_number_advantages: HorseNumberAdvantage[];
+    // ★★★ 修正: resultsプロパティを追加 ★★★
+    results: Result[];
 }
 
 export interface VenueRaces {
@@ -66,4 +73,16 @@ export interface SpecialPick {
     race_number: number;
     deviation_score: number;
     commentary: string;
+}
+
+// ★★★ 新規追加: 高配当的中の型 ★★★
+export interface TopPayoutHit {
+    race_id: string;
+    race_date: string; // dateはstringで受け取る
+    venue_name: string;
+    race_number: number;
+    race_name: string;
+    bet_type: string;
+    winning_numbers: string;
+    payout: number;
 }

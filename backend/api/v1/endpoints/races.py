@@ -6,7 +6,7 @@ from database.database import get_db
 from crud import race_crud
 from schemas import race_schema
 from datetime import date, timedelta
-from typing import Optional 
+from typing import Optional, List
 
 router = APIRouter()
 
@@ -19,6 +19,15 @@ def read_predictions_for_date(target_date: date, db: Session = Depends(get_db)):
     if not predictions["jra"] and not predictions["nar"]:
         raise HTTPException(status_code=404, detail=f"Predictions for date {target_date} not found")
     return predictions
+
+# ★★★ 新規追加: 高配当的中ランキングのエンドポイント ★★★
+@router.get("/hits/top-payouts", response_model=List[race_schema.TopPayoutHit])
+def read_top_payout_hits(db: Session = Depends(get_db)):
+    """
+    過去1週間のAI予測による高配当的中トップ5を取得する。
+    """
+    top_hits = race_crud.get_top_payout_hits(db=db, days=7, limit=5)
+    return top_hits
 
 @router.get("/special-pick/{target_date}", response_model=Optional[race_schema.SpecialPick])
 def read_special_pick(target_date: date, db: Session = Depends(get_db)):
@@ -42,7 +51,6 @@ def read_special_pick(target_date: date, db: Session = Depends(get_db)):
         commentary=commentary
     )
 
-# ★★★ 新規追加: 期間フィルタリングされた対戦成績を返すエンドポイント ★★★
 @router.get("/matchups/{race_id}", response_model=race_schema.Matchup)
 def read_filtered_matchups_for_race(
     race_id: str,

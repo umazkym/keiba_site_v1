@@ -21,7 +21,7 @@ IGNORE_DIRS = {
 # このリストに含まれる拡張子のファイルのみがテキストファイルとして保存されます。
 # 必要に応じて追加・削除してください。
 TARGET_EXTENSIONS = {
-    '.py', '.tsx', '.ts', '.js', '.jsx', '.css', '.html', '.json',
+    '.py', '.tsx', '.ts', '.js', '.jsx', '.css', '.json',
     '.md', '.mjs', '.yaml', '.yml', '.gitignore', '.env.example', '.env'
 }
 

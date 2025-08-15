@@ -18,7 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className={`${inter.className} bg-gray-50`}>
+      <body className={`${inter.className} bg-gray-100 text-gray-800`}>
         <div className="flex flex-col min-h-screen">
           <Header />
           <main className="flex-grow">

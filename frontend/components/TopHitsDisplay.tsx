@@ -4,44 +4,54 @@ import { useState, useEffect } from 'react';
 import { getTopPayoutHits } from '@/lib/api';
 import { TopPayoutHit } from '@/lib/types';
 
-// ★★★ デザインを更新したランキングカードコンポーネント ★★★
 const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     const rankStyles = [
         // 1位
         {
             borderColor: 'border-yellow-400',
             rankBgColor: 'bg-yellow-400',
-            rankTextColor: 'text-white',
+            rankTextColor: 'text-yellow-900',
+            shadow: 'shadow-xl',
+            scale: 'hover:scale-105',
         },
         // 2位
         {
             borderColor: 'border-gray-400',
             rankBgColor: 'bg-gray-400',
             rankTextColor: 'text-white',
+            shadow: 'shadow-lg',
+            scale: 'hover:scale-102',
         },
         // 3位
         {
-            borderColor: 'border-amber-500',
-            rankBgColor: 'bg-amber-500',
+            borderColor: 'border-amber-600',
+            rankBgColor: 'bg-amber-600',
             rankTextColor: 'text-white',
+            shadow: 'shadow-md',
+            scale: 'hover:scale-102',
         },
         // 4位
         {
-            borderColor: 'border-blue-300',
-            rankBgColor: 'bg-blue-300',
-            rankTextColor: 'text-blue-800',
+            borderColor: 'border-gray-300',
+            rankBgColor: 'bg-gray-300',
+            rankTextColor: 'text-gray-800',
+            shadow: 'shadow',
+            scale: 'hover:scale-102',
         },
         // 5位
         {
-            borderColor: 'border-blue-300',
-            rankBgColor: 'bg-blue-300',
-            rankTextColor: 'text-blue-800',
+            borderColor: 'border-gray-300',
+            rankBgColor: 'bg-gray-300',
+            rankTextColor: 'text-gray-800',
+            shadow: 'shadow',
+            scale: 'hover:scale-102',
         },
     ];
-    const style = rankStyles[rank - 1];
+    // rankが5以上の場合でも安全にスタイルを取得
+    const style = rankStyles[Math.min(rank - 1, 4)];
 
     return (
-        <div className={`flex flex-col bg-white rounded-lg shadow-md p-4 h-full border-t-4 ${style.borderColor}`}>
+        <div className={`flex flex-col bg-white rounded-lg p-4 h-full border-2 transition-transform duration-300 ${style.borderColor} ${style.shadow} ${style.scale}`}>
             <div className="flex items-baseline justify-between mb-2">
                 <div className={`px-3 py-1 text-sm font-bold rounded-full ${style.rankBgColor} ${style.rankTextColor}`}>
                     {rank}位

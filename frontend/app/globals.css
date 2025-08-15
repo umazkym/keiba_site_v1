@@ -4,54 +4,43 @@
 
 /* --- グローバルスタイル --- */
 .matchup-container {
-  margin-top: 2rem;
-  padding: 1rem;
-  background-color: #f9fafb;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    margin-top: 2rem;
+    padding: 1rem;
+    background-color: #f9fafb;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 }
 
 /* --- テーブルビュー用のスタイル --- */
 .table-wrapper {
-  width: 100%;
-  overflow-x: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
 }
 .matchup-table {
-  width: 100%;
-  border-collapse: collapse;
-  white-space: nowrap;
-  font-size: 0.8rem;
+    width: 100%;
+    border-collapse: collapse;
+    white-space: nowrap;
+    font-size: 0.8rem;
 }
 .matchup-table th, .matchup-table td {
-  border: 1px solid #e5e7eb;
-  vertical-align: middle;
+    border: 1px solid #e5e7eb;
+    vertical-align: middle;
 }
 .matchup-table th {
-  background-color: #f3f4f6;
-  font-weight: 600;
-  padding: 0.25rem;
+    background-color: #f3f4f6;
+    font-weight: 600;
+    padding: 0.25rem;
 }
 .matchup-table .sticky-col {
-  position: sticky;
-  left: 0;
-  z-index: 10;
-  background-color: #f3f4f6;
-  min-width: 160px;
-  text-align: left;
-  border-right: 2px solid #d1d5db;
-}
-.matchup-table .sticky-col-2 {
-  position: sticky;
-  left: 160px;
-  z-index: 10;
-  background-color: #f9fafb;
-  min-width: 100px;
-  border-right: 2px solid #d1d5db;
-}
-.matchup-table thead .sticky-col-2 {
+    position: sticky;
+    left: 0;
+    z-index: 10;
     background-color: #f3f4f6;
+    min-width: 160px;
+    text-align: left;
+    border-right: 2px solid #d1d5db;
 }
 
 /* ★★★ 新しいテーブルセル用のスタイル ★★★ */
@@ -84,73 +73,42 @@ td.matchup-draw { background-color: #fffbeb; }
 
 
 .self-match {
-  background-color: #e5e7eb;
+    background-color: #e5e7eb;
 }
 td.no-match {
-  background-color: #ffffff;
+    background-color: #ffffff;
 }
 
-/* --- カードビュー用のスタイル --- */
-.card-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1rem;
+/* --- React Tabs スタイル上書き --- */
+.react-tabs__tab-list {
+    border-bottom: 2px solid #e5e7eb !important;
+    margin: 0 0 1.5rem 0 !important;
 }
-.duel-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background-color: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    padding: 0.75rem;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    transition: box-shadow 0.2s ease-in-out;
+
+.react-tabs__tab {
+    padding: 0.5rem 1.25rem !important;
+    border: 2px solid transparent !important;
+    border-bottom: none !important;
+    border-radius: 0.375rem 0.375rem 0 0 !important;
+    color: #4b5563; /* text-gray-600 */
+    font-weight: 600;
 }
-.duel-card .Tippy-module, .duel-card .Tippy-module > div {
-    width: 100%;
+
+.react-tabs__tab--selected {
+    background: #ffffff !important;
+    border-color: #e5e7eb !important;
+    color: #1e40af !important; /* text-primary-dark */
+    border-bottom: 2px solid #ffffff !important;
+    margin-bottom: -2px !important;
 }
-.duel-card:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+.react-tabs__tab:focus,
+.react-tabs__tab:focus:after {
+  box-shadow: none !important;
+  outline: 2px solid #60a5fa !important; /* focus:ring-primary-light */
+  outline-offset: 2px !important;
 }
-.horse-profile {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    width: 100px;
-}
-.horse-name {
-    font-size: 0.75rem;
-    font-weight: 500;
-    text-align: center;
-}
-.duel-center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    flex-grow: 1;
-    padding: 0 0.5rem;
-}
-.score {
-    font-size: 1.125rem;
-    font-weight: 700;
-    font-family: monospace;
-}
-.draw-score {
-    font-size: 0.875rem;
-    color: #6b7280;
-}
-.dominance-bar-container {
-    width: 100%;
-    height: 8px;
-    background-color: #e5e7eb;
-    border-radius: 4px;
-    display: flex;
-    overflow: hidden;
-}
-.dominance-bar {
-    height: 100%;
-    transition: width 0.5s ease-in-out;
+
+.react-tabs__tab-panel--selected {
+    padding: 0 !important;
 }

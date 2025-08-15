@@ -22,16 +22,18 @@ const HorseMarker = ({ horse, position }: { horse: HorsePrediction, position: nu
         style={{ 
             top: `${(horse.horse_number - 1) * 22}px`, 
             left: `${position}%`,
-            transform: 'translate(-50%, -50%)',
-            zIndex: 10
+            transform: 'translateY(-50%)', // 縦位置のみ調整
+            zIndex: 10 + horse.horse_number,
         }}
-        title={`${horse.horse_name} (指標: ${horse.start_1c_indicator?.toFixed(2)})`}
     >
-        <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shadow-md border-2 ${getWakuColor(horse.waku_number)}`}>
+        <div className={`relative w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shadow-md border-2 ${getWakuColor(horse.waku_number)}`}
+             style={{ transform: 'translateX(-50%)' }} // 横位置を中央に
+        >
             {horse.horse_number}
         </div>
-        <span className="ml-2 text-sm font-semibold text-gray-700 whitespace-nowrap bg-white/80 backdrop-blur-sm px-1 rounded">
+        <span className="absolute left-full ml-2 text-sm font-semibold text-gray-800 whitespace-nowrap bg-white/90 backdrop-blur-sm px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
             {horse.horse_name}
+             <span className="font-normal text-gray-600"> (指数: {horse.start_1c_indicator?.toFixed(1)})</span>
         </span>
     </div>
 );

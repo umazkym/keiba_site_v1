@@ -1,4 +1,4 @@
-// ★★★ 新規追加: レース結果の型 ★★★
+// レース結果の型
 export interface Result {
     horse_number: number;
     rank: number | null;
@@ -13,6 +13,8 @@ export interface HorsePrediction {
     deviation_score: number | null;
     mark: string;
     start_1c_indicator: number | null;
+    // ★★★ 追加: 結果をマージするためrankプロパティを追加 ★★★
+    rank: number | null; 
 }
 
 export interface MatchupRecord {

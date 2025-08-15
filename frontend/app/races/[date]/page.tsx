@@ -7,7 +7,6 @@ import { RaceDayPrediction, SpecialPick } from '@/lib/types';
 import { RaceTabs } from '@/components/RaceTabs';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { formatDate } from '@/lib/utils';
-// ★★★ 新規インポート ★★★
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
 
 const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onDateChange: (newDate: string) => void }) => {
@@ -21,18 +20,27 @@ const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onD
 
     return (
         <div className="flex items-center justify-center gap-2 md:gap-4">
-            <button onClick={() => handleDateShift(-1)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors text-sm md:text-base">‹ 一日前</button>
+            <button 
+                onClick={() => handleDateShift(-1)} 
+                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-sm hover:bg-gray-100 hover:border-primary-light active:bg-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-semibold"
+            >
+                ‹ 一日前
+            </button>
             <input
                 type="date"
                 value={currentDate}
                 onChange={(e) => onDateChange(e.target.value)}
-                className="border-gray-300 p-2 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm md:text-base"
+                className="border-gray-300 p-2 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-sm md:text-base"
             />
-            <button onClick={() => handleDateShift(1)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors text-sm md:text-base">一日後 ›</button>
+            <button 
+                onClick={() => handleDateShift(1)} 
+                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-sm hover:bg-gray-100 hover:border-primary-light active:bg-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-semibold"
+            >
+                一日後 ›
+            </button>
         </div>
     );
 };
-
 
 export default function RacePage() {
     const router = useRouter();
@@ -75,27 +83,26 @@ export default function RacePage() {
     };
 
     return (
-        <div className="container mx-auto p-4">
-            <div className="flex flex-col md:flex-row justify-between items-center mt-2 mb-4 gap-4 p-4 bg-white border rounded-lg shadow-sm">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex flex-col md:flex-row justify-between items-center mt-2 mb-8 gap-4 p-4 bg-white border rounded-lg shadow-sm">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-                    <span className="text-gray-500 font-normal">AI競馬予測</span> ({formatDate(dateFromUrl)})
+                    <span className="text-primary-dark font-normal">AI競馬予測</span> ({formatDate(dateFromUrl)})
                 </h1>
                 <DateNavigator currentDate={dateFromUrl} onDateChange={handleDateChange} />
             </div>
 
             {isLoading && (
                 <div className="text-center p-8">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
                     <p className="mt-4 text-gray-600">データを読み込んでいます...</p>
                 </div>
             )}
             
-            {error && <div className="text-center p-8 text-red-500 bg-red-50 rounded-lg">{error}</div>}
+            {error && <div className="text-center p-8 text-red-600 bg-red-100 rounded-lg border border-red-200">{error}</div>}
             
             {!isLoading && !error && predictionData && (
                 <>
                     <SpecialPickCard pick={specialPick} />
-                    {/* ★★★ ここにTopHitsDisplayを配置 ★★★ */}
                     <TopHitsDisplay />
                     <RaceTabs data={predictionData} />
                 </>

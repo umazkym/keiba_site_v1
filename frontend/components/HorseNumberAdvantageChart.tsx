@@ -68,7 +68,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                         <XAxis 
                             dataKey="horse_number" 
-                            interval={0} 
+                            interval="preserveStartEnd"
                             fontSize={12} 
                             tick={{ fill: '#4A5568' }} 
                             stroke="#d1d5db"

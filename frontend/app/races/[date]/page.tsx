@@ -11,7 +11,7 @@ import { formatDate } from '@/lib/utils';
 import { RaceTabsSkeleton } from '@/components/SkeletonLoader';
 
 const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onDateChange: (newDate: string) => void }) => {
-    
+
     const handleDateShift = (days: number) => {
         const [year, month, day] = currentDate.split('-').map(Number);
         const dateObj = new Date(Date.UTC(year, month - 1, day));
@@ -25,16 +25,16 @@ const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onD
     };
 
     return (
-        <div className="flex items-center justify-center gap-2 md:gap-4 flex-wrap">
-            <button  
-                onClick={() => handleDateShift(-1)}  
-                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-semibold"
+        <div className="flex items-center justify-center gap-1 sm:gap-2 w-full overflow-x-auto">
+            <button
+                onClick={() => handleDateShift(-1)}
+                className="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
             >
                 ‹ 前日
             </button>
             <button
                 onClick={() => onDateChange(getTodayString())}
-                className="bg-primary border border-primary-dark text-white px-4 py-2 rounded-md shadow-sm hover:bg-primary-dark active:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-bold"
+                className="bg-primary border border-primary-dark text-white px-3 py-2 rounded-md shadow-sm hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-bold whitespace-nowrap shrink-0"
             >
                 今日
             </button>
@@ -42,11 +42,11 @@ const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onD
                 type="date"
                 value={currentDate}
                 onChange={(e) => onDateChange(e.target.value)}
-                className="border-gray-300 p-2 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-sm md:text-base"
+                className="border-gray-300 p-2 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-xs sm:text-sm shrink-0"
             />
-            <button  
-                onClick={() => handleDateShift(1)}  
-                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-semibold"
+            <button
+                onClick={() => handleDateShift(1)}
+                className="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
             >
                 翌日 ›
             </button>
@@ -67,7 +67,7 @@ export default function RacePage() {
     const fetchDataForDate = useCallback((date: string) => {
         setIsLoading(true);
         setError(null);
-        setPredictionData(null); // 日付変更時に古いデータをクリア
+        setPredictionData(null);
         document.title = `競馬AI予測 | ${formatDate(date)}`;
         
         getPredictionsForDate(date)
@@ -94,20 +94,21 @@ export default function RacePage() {
     };
 
     return (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex flex-col md:flex-row justify-between items-center mt-2 mb-8 gap-4 p-4 bg-white border rounded-lg shadow-sm">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-                    <span className="text-primary-dark font-normal">AI競馬予測</span> ({formatDate(dateFromUrl)})
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex flex-col md:flex-row justify-between items-center mt-2 mb-4 gap-4 p-3 bg-white border rounded-lg shadow-sm">
+                <h1 className="text-xl md:text-2xl font-bold text-gray-800 whitespace-nowrap">
+                    {formatDate(dateFromUrl)}
                 </h1>
                 <DateNavigator currentDate={dateFromUrl} onDateChange={handleDateChange} />
             </div>
 
-            {/* SpecialPickとTopHitsは日付が変わっても即座に再取得・表示される */}
-            <SpecialPickCard date={dateFromUrl} />
-            <TopHitsDisplay />
+            <div className="space-y-6">
+                <TopHitsDisplay />
+                <SpecialPickCard date={dateFromUrl} />
+            </div>
 
             {isLoading && (
-                <RaceTabsSkeleton /> // RaceTabs部分のみスケルトンを表示
+                <RaceTabsSkeleton />
             )}
             
             {error && <div className="text-center p-8 text-red-600 bg-red-100 rounded-lg border border-red-200">{error}</div>}

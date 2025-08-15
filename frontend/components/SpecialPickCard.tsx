@@ -12,16 +12,16 @@ const Skeleton = () => (
         <div className="h-8 bg-gray-300 rounded w-2/3 mb-2"></div>
         <div className="h-6 bg-gray-300 rounded w-1/2 mb-4"></div>
         <div className="mt-4 pt-4 border-t border-gray-300/50">
-             <div className="h-4 bg-gray-300 rounded w-full"></div>
-             <div className="h-4 bg-gray-300 rounded w-5/6 mt-2"></div>
+            <div className="h-4 bg-gray-300 rounded w-full"></div>
+            <div className="h-4 bg-gray-300 rounded w-5/6 mt-2"></div>
         </div>
     </div>
 );
 
 // プロパティの型定義を修正
 type Props = {
-  pick?: SpecialPick | null; // サーバーサイドから渡されるデータ（オプショナル）
-  date?: string;             // クライアントサイドでfetchする日付（オプショナル）
+    pick?: SpecialPick | null; // サーバーサイドから渡されるデータ（オプショナル）
+    date?: string;             // クライアントサイドでfetchする日付（オプショナル）
 };
 
 // コンポーネント定義を修正
@@ -68,22 +68,22 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
 
     if (!pick) {
         return (
-            <div className="bg-white text-gray-600 p-6 rounded-xl shadow-md mb-6 text-center border">
+            <div className="bg-white text-gray-600 p-6 rounded-xl shadow-md h-full flex items-center justify-center border">
                 <p>本日のAI注目馬はいません。</p>
             </div>
         );
     }
 
     return (
-        <div className="bg-gradient-to-br from-yellow-400 to-orange-500 text-white p-6 rounded-xl shadow-lg mb-6">
-            <h3 className="text-sm font-bold uppercase tracking-wider mb-2 flex items-center">
-                <SparklesIcon className="w-5 h-5 mr-2" />
+        <div className="bg-gradient-to-br from-yellow-400 to-orange-500 text-white p-4 rounded-xl shadow-lg h-full flex flex-col">
+            <h3 className="text-xs font-bold uppercase tracking-wider mb-1 flex items-center">
+                <SparklesIcon className="w-4 h-4 mr-2" />
                 AIの注目馬！
             </h3>
-            <p className="text-3xl font-bold">{pick.horse_name}</p>
-            <p className="text-lg opacity-90">{pick.venue_name} {pick.race_number}R - {pick.race_name}</p>
-            <div className="mt-4 pt-4 border-t border-white/30">
-                <p className="text-sm italic">「{pick.commentary}」</p>
+            <p className="text-2xl font-bold">{pick.horse_name}</p>
+            <p className="text-base opacity-90">{pick.venue_name} {pick.race_number}R - {pick.race_name}</p>
+            <div className="mt-auto pt-3 border-t border-white/30">
+                <p className="text-xs italic">「{pick.commentary}」</p>
             </div>
         </div>
     );

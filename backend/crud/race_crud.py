@@ -1,6 +1,6 @@
 # C:\Users\tnszk\program\GitHub\backend\crud\race_crud.py
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc
+from sqlalchemy import desc, or_  # or_ をインポート
 from database import models
 from datetime import date, timedelta
 from typing import Dict, Any, List, Optional
@@ -11,12 +11,16 @@ from scripts import predictor  # predictorをインポート
 def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     """
     指定された日付のレースと予測、結果をDBから取得し、スキーマに合わせた構造で返す。
+    APIパフォーマンス向上のため、巨大なmatchupデータは除外し、
+    horse_number_advantagesは一括取得してN+1問題を解消する。
     """
+    # ★★★ 修正点1: joinedloadから matchup を削除し、APIレスポンスを軽量化 ★★★
+    # matchupデータはデータ量が非常に大きく、ロード遅延の主原因です。
+    # フロントエンドは必要な時に個別APIでこのデータを取得するため、初期ロードでは不要です。
     races_with_preds = db.query(models.Race)\
         .options(
             joinedload(models.Race.predictions),
-            joinedload(models.Race.matchup),
-            # ★★★ 修正: レース結果と、それに紐づく馬情報も一緒にロード ★★★
+            # joinedload(models.Race.matchup), # この行を削除またはコメントアウト
             joinedload(models.Race.results).joinedload(models.Result.horse)
         )\
         .filter(models.Race.race_date == target_date)\
@@ -26,30 +30,54 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     if not races_with_preds:
         return {"jra": [], "nar": []}
 
+    # ★★★ 修正点2: 馬番有利不利データ(horse_number_advantages)を一括取得してN+1問題を解消 ★★★
+    # Step 1: レース情報から必要な条件（競馬場、コース、距離）の組み合わせを重複なく収集します。
+    race_conditions = {
+        (race.venue_name, race.course_type, race.distance)
+        for race in races_with_preds
+        if race.venue_name and race.course_type and race.distance
+    }
+
+    # Step 2: 収集した全条件に合致する有利不利データを、DBから一度のクエリで全て取得します。
+    advantages_map = defaultdict(list)
+    if race_conditions:
+        filters = [
+            (models.HorseNumberAdvantage.venue_name == v_name) &
+            (models.HorseNumberAdvantage.course_type == c_type) &
+            (models.HorseNumberAdvantage.distance == dist)
+            for v_name, c_type, dist in race_conditions
+        ]
+        all_advantages = db.query(models.HorseNumberAdvantage).filter(or_(*filters)).all()
+        
+        # Step 3: 取得したデータを処理しやすいように辞書（マップ）に格納します。
+        for adv in all_advantages:
+            key = (adv.venue_name, adv.course_type, adv.distance)
+            advantages_map[key].append(adv)
+
+    # データを会場ごとに分類
     jra_venues: Dict[str, List[models.Race]] = defaultdict(list)
     nar_venues: Dict[str, List[models.Race]] = defaultdict(list)
 
     for race in races_with_preds:
+        # 予測データを偏差値でソート
         if race.predictions:
             race.predictions.sort(
                 key=lambda p: p.deviation_score if p.deviation_score is not None else -float('inf'),
                 reverse=True
             )
+        
+        # Step 4: 作成したマップから各レースに対応する有利不利データを割り当てます。
+        # これにより、ループ内でDBにアクセスする必要がなくなります。
+        key = (race.venue_name, race.course_type, race.distance)
+        advantages = advantages_map.get(key, [])
+        advantages.sort(key=lambda x: x.horse_number)
+        setattr(race, 'horse_number_advantages', advantages)
 
-        if race.venue_name and race.course_type and race.distance:
-            advantages = db.query(models.HorseNumberAdvantage).filter(
-                models.HorseNumberAdvantage.venue_name == race.venue_name,
-                models.HorseNumberAdvantage.course_type == race.course_type,
-                models.HorseNumberAdvantage.distance == race.distance
-            ).order_by(models.HorseNumberAdvantage.horse_number).all()
-            setattr(race, 'horse_number_advantages', advantages)
-        else:
-            setattr(race, 'horse_number_advantages', [])
-
-        # ★★★ 追加: resultsオブジェクトにスキーマ用のhorse_nameを付与 ★★★
+        # 結果データに馬名を付与（フロントエンドのスキーマ用）
         for r in race.results:
             setattr(r, 'horse_name', r.horse.name if r.horse else 'N/A')
 
+        # JRAとNARに分類
         if race.race_type == '中央':
             jra_venues[race.venue_name].append(race)
         elif race.race_type == '地方':

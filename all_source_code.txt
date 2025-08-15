@@ -1,8 +1,8 @@
 ================================================================================
 ソースコード集約ファイル
-作成日時: 2025-08-15 15:51:28
+作成日時: 2025-08-16 05:07:38
 対象ディレクトリ: C:\Users\tnszk\program\GitHub
-総ファイル数: 68
+総ファイル数: 70
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -480,6 +480,261 @@ if __name__ == "__main__":
 --------------------------------------------------------------------------------
 
 DATABASE_URL="postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db"
+
+--------------------------------------------------------------------------------
+ファイルパス: backend\db_handler.py
+--------------------------------------------------------------------------------
+
+# backend/db_handler.py
+
+import datetime
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from database import models
+from scripts import scraper, parser, database_loader, predictor
+from typing import List, Tuple
+
+def update_race_results(db: Session, target_date: datetime.date):
+    """
+    指定された日付（通常は前日）のレース結果と払い戻し情報を取得し、DBを更新する。
+    この関数は既存の予測データを上書きせず、結果情報のみを追記・更新する。
+    """
+    print(f"\n--- [RESULTS] Updating race results for {target_date.strftime('%Y-%m-%d')} ---")
+    target_date_str = target_date.strftime('%Y%m%d')
+    
+    all_race_ids: List[Tuple[str, bool]] = []
+    for is_nar in [False, True]:
+        race_type = "NAR" if is_nar else "JRA"
+        print(f"Fetching {race_type} race list for {target_date_str}...")
+        # force_download=Trueで常に最新の結果を取得
+        list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=True)
+        if list_html:
+            race_ids = parser.parse_race_ids_from_list(list_html)
+            all_race_ids.extend([(rid, is_nar) for rid in race_ids])
+
+    if not all_race_ids:
+        print(f"No races found for {target_date_str}.")
+        return
+
+    print(f"Found {len(all_race_ids)} races to update results.")
+    for race_id, is_nar in all_race_ids:
+        # 既にDBに存在するレース情報に対してのみ、結果を更新する
+        race_exists = db.query(models.Race).filter(models.Race.id == race_id).first()
+        if not race_exists:
+            print(f"  - Race {race_id} not found in DB, skipping result update.")
+            continue
+
+        print(f"  - Updating results for Race ID: {race_id}...")
+        result_html = scraper.get_race_result_html(race_id, is_nar=is_nar, force_download=True)
+        if result_html:
+            race_data = parser.parse_race_result_page(result_html, race_id)
+            if race_data:
+                # 払い戻し情報を含むレース結果をDBにロード（既存のレコードを更新）
+                database_loader.load_race_result_data(db, race_data, race_id, target_date, is_nar)
+                print(f"    -> Successfully updated results for {race_id}.")
+            else:
+                print(f"    -> [Warning] Failed to parse result page for {race_id}.")
+        else:
+            print(f"    -> [Warning] Failed to get result HTML for {race_id}.")
+
+def insert_new_predictions(db: Session, target_date: datetime.date):
+    """
+    指定された日付（通常は翌日）の出馬表を取得し、AI予測を行い、DBに新規追加する。
+    既に予測データが存在する場合は処理をスキップし、既存データを上書きしない。
+    """
+    print(f"\n--- [PREDICTIONS] Inserting new predictions for {target_date.strftime('%Y-%m-%d')} ---")
+    
+    # この日付の予測が既にDBに存在するかチェック
+    prediction_exists = db.query(models.Prediction.id).join(models.Race)\
+        .filter(models.Race.race_date == target_date).limit(1).first()
+    
+    if prediction_exists:
+        print(f"Predictions for {target_date.strftime('%Y-%m-%d')} already exist. Skipping.")
+        return
+
+    target_date_str = target_date.strftime('%Y%m%d')
+    all_race_ids: List[Tuple[str, bool]] = []
+    for is_nar in [False, True]:
+        race_type = "NAR" if is_nar else "JRA"
+        print(f"Fetching {race_type} race list for {target_date_str}...")
+        list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=True)
+        if list_html:
+            race_ids = parser.parse_race_ids_from_list(list_html)
+            all_race_ids.extend([(rid, is_nar) for rid in race_ids])
+
+    if not all_race_ids:
+        print(f"No races found for {target_date_str}.")
+        return
+
+    # 1. 全レースの出走馬情報を先に収集・保存
+    all_horse_ids_to_fetch = set()
+    print(f"\nStep 1/3: Loading shutuba data for {len(all_race_ids)} races...")
+    for race_id, is_nar in all_race_ids:
+        shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=True)
+        if shutuba_html:
+            shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
+            if shutuba_data:
+                database_loader.load_shutuba_data(db, shutuba_data, race_id, target_date, is_nar)
+                for horse in shutuba_data.get("horses", []):
+                    if horse.get("horse_id"):
+                        all_horse_ids_to_fetch.add(horse["horse_id"])
+    print("-> Shutuba data loading complete.")
+
+    # 2. 予測に必要な全馬の過去成績をまとめて取得
+    if all_horse_ids_to_fetch:
+        print(f"\nStep 2/3: Fetching past data for {len(all_horse_ids_to_fetch)} unique horses...")
+        for i, horse_id in enumerate(list(all_horse_ids_to_fetch)):
+            print(f"  ({i+1}/{len(all_horse_ids_to_fetch)}) Fetching data for horse_id: {horse_id}...")
+            html = scraper.get_horse_page_html(horse_id, force_download=False) # キャッシュ優先
+            if html:
+                results = parser.parse_horse_results_page(html)
+                if results:
+                    database_loader.load_past_results(db, results, horse_id)
+        print("-> Past data fetching complete.")
+
+    # 3. 各レースの予測を生成・保存
+    print(f"\nStep 3/3: Creating and saving predictions for {len(all_race_ids)} races...")
+    for race_id, is_nar in all_race_ids:
+        print(f"  - Predicting for Race ID: {race_id}")
+        predictions = predictor.create_predictions_for_race(db, race_id)
+        if predictions:
+            database_loader.save_prediction(db, race_id, predictions)
+            print(f"    -> Saved {len(predictions)} predictions.")
+            horse_ids_in_race = [p["horse_id"] for p in predictions if p.get("horse_id")]
+            if horse_ids_in_race:
+                predictor.calculate_and_save_matchups_for_race(db, race_id, horse_ids_in_race)
+                print(f"    -> Calculated and saved matchups.")
+        else:
+            print(f"    -> [Warning] No predictions were generated for {race_id}.")
+
+--------------------------------------------------------------------------------
+ファイルパス: backend\db_health_checker.py
+--------------------------------------------------------------------------------
+
+# backend/db_health_checker.py
+import os
+import sys
+from datetime import date, timedelta, datetime
+from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
+
+def check_database_health(start_date_str: str):
+    """
+    データベースの健全性をチェックする統合スクリプト。
+    1. 指定期間内にレースデータが全く存在しない「欠損日」を検出する。
+    2. レースデータはあるが予測データがない「不整合データ」を検出する。
+    """
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        print("Error: Invalid date format. Please use YYYY-MM-DD.")
+        print("Example: python db_health_checker.py 2025-01-01")
+        return
+
+    load_dotenv()
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if not DATABASE_URL:
+        print("Error: DATABASE_URL is not set in .env file.")
+        return
+
+    # --- ▼▼▼ ご自身の環境に合わせてここを編集してください ▼▼▼ ---
+    PREDICTION_TABLE_NAME = 'predictions'
+    DATE_COLUMN_NAME = 'race_date' # racesテーブルの日付カラム名
+    # --- ▲▲▲ ここまで ▲▲▲ ---
+
+    print("Connecting to the database...")
+    try:
+        engine = create_engine(DATABASE_URL)
+        with engine.connect() as connection:
+            
+            # --- チェック1: 欠損日の検出 ---
+            print("\n--- [Check 1/2] Checking for missing dates ---")
+            
+            dates_query = text(f"""
+                SELECT DISTINCT CAST({DATE_COLUMN_NAME} AS DATE) as race_date 
+                FROM races 
+                WHERE CAST({DATE_COLUMN_NAME} AS DATE) >= :start_date 
+                ORDER BY race_date;
+            """)
+            result = connection.execute(dates_query, {'start_date': start_date})
+            db_dates = {row[0] for row in result}
+
+            if not db_dates:
+                print(f"No race data found on or after {start_date_str}. Cannot check for missing dates.")
+            else:
+                max_date = max(db_dates)
+                print(f"Checking period: {start_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')}")
+                
+                missing_dates = []
+                current_date = start_date
+                while current_date <= max_date:
+                    if current_date not in db_dates:
+                        missing_dates.append(current_date)
+                    current_date += timedelta(days=1)
+                
+                if not missing_dates:
+                    print("✅ No missing dates found.")
+                else:
+                    print(f"🚨 Found {len(missing_dates)} missing dates (no races in 'races' table):")
+                    # 1行に7個の日付を表示
+                    formatted_dates = [d.strftime('%Y-%m-%d') for d in missing_dates]
+                    chunk_size = 7
+                    for i in range(0, len(formatted_dates), chunk_size):
+                        chunk = formatted_dates[i:i + chunk_size]
+                        print("  " + ", ".join(chunk))
+
+            # --- チェック2: データ不整合の検出 ---
+            print(f"\n--- [Check 2/2] Checking for data integrity against '{PREDICTION_TABLE_NAME}' table ---")
+            
+            integrity_query = text(f"""
+                SELECT r.id, CAST(r.{DATE_COLUMN_NAME} AS DATE) as race_date
+                FROM races r
+                LEFT JOIN {PREDICTION_TABLE_NAME} p ON r.id = CAST(p.id AS VARCHAR)
+                WHERE p.id IS NULL AND CAST(r.{DATE_COLUMN_NAME} AS DATE) >= :start_date
+                ORDER BY race_date, r.id;
+            """)
+            
+            integrity_result = connection.execute(integrity_query, {'start_date': start_date})
+            inconsistent_races = list(integrity_result)
+
+            if not inconsistent_races:
+                print("✅ Data integrity check passed. No inconsistencies found.")
+            else:
+                print(f"🚨 Found {len(inconsistent_races)} races with missing prediction data:")
+                
+                races_by_date = {}
+                for race_id, race_date in inconsistent_races:
+                    if race_date not in races_by_date:
+                        races_by_date[race_date] = []
+                    races_by_date[race_date].append(race_id)
+                
+                for race_date, ids in sorted(races_by_date.items()):
+                    print(f"  - Date: {race_date.strftime('%Y-%m-%d')} ({len(ids)} races):")
+                    # 1行に5個のIDを表示
+                    chunk_size = 5
+                    for i in range(0, len(ids), chunk_size):
+                        chunk = ids[i:i + chunk_size]
+                        print("    " + ", ".join(chunk))
+
+            print("\n" + "="*30)
+            print("Health check finished.")
+            print("="*30)
+
+    except Exception as e:
+        if "does not exist" in str(e):
+             print(f"\n[Error] A table or column does not exist. Please check your settings at the top of the script.")
+             print(f"Details: {e}")
+        else:
+            print(f"An error occurred: {e}")
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        start_date_input = sys.argv[1]
+        check_database_health(start_date_input)
+    else:
+        print("Usage: python db_health_checker.py YYYY-MM-DD")
+        print("Example: python db_health_checker.py 2025-01-01")
+
 
 --------------------------------------------------------------------------------
 ファイルパス: backend\debug_corner_parser.py
@@ -1432,209 +1687,108 @@ else:
 
 # backend/run_pipeline.py
 
-import winsound
-import datetime
-import time
 import os
-from collections import defaultdict
-from database.database import SessionLocal, engine, Base
-from database import models
-from scripts import scraper, parser, database_loader, predictor
+import datetime
 from sqlalchemy.orm import Session
-from typing import List, Tuple
+from database.database import SessionLocal, engine, Base
+from scripts import predictor
 from core.config import VENUE_CODE_MAP
+
+# ★★★ 新規作成したdb_handlerをインポート ★★★
+from db_handler import update_race_results, insert_new_predictions
 
 # --- 初期化 ---
 Base.metadata.create_all(bind=engine)
 
-# ★★★ 修正箇所1: ばんえい競馬の会場コードを定義 ★★★
-BANEI_VENUE_CODES = ["33", "65"] # 帯広, 帯広(ば)
-
-def fetch_and_load_past_data(db: Session, horse_ids: List[str]):
-    """指定された馬リストの過去成績を取得し DB に保存する"""
-    print(f"Fetching past data for {len(horse_ids)} horses...")
-    for horse_id in horse_ids:
-        # キャッシュを優先するため force_download=False
-        html = scraper.get_horse_page_html(horse_id, force_download=False)
-        if html:
-            results = parser.parse_horse_results_page(html)
-            if results:
-                database_loader.load_past_results(db, results, horse_id)
-
+# --- HISTORYモードの処理（変更なし・既存のまま） ---
 def backfill_historical_data(db: Session, start_date: datetime.date, end_date: datetime.date):
     """
-    指定された期間のレース結果を DB に保存する。
-    HTMLキャッシュを最大限活用する。
+    指定された期間のレース情報を網羅的に取得・予測し、DBに格納する。
+    db_health_checker.pyで検出された欠損・不整合データの補完に使用する。
     """
+    from scripts import scraper, parser, database_loader # 遅延インポート
+    from typing import List, Tuple
     print(f"Backfilling historical data from {start_date} to {end_date}...")
+    
     current_date = start_date
     while current_date <= end_date:
-        date_str = current_date.strftime('%Y%m%d')
-        for is_nar in [False, True]:
-            race_type = "NAR" if is_nar else "JRA"
-            
-            # データベースにその日のレース情報が既にあればスキップ
-            race_exists_in_db = db.query(models.Race).filter(
-                models.Race.race_date == current_date,
-                models.Race.race_type == ('地方' if is_nar else '中央')
-            ).count() > 0
-
-            if race_exists_in_db:
-                print(f"Skipping {date_str} ({race_type}) - already processed and in DB.")
-                continue
-
-            print(f"Processing {race_type} race list for {date_str}...")
-            # force_download=False でキャッシュを優先
-            list_html = scraper.get_race_list_html(date_str, is_nar=is_nar, force_download=False)
-            if list_html:
-                race_ids = parser.parse_race_ids_from_list(list_html)
-                for race_id in race_ids:
-                    print(f"  Processing Race ID: {race_id}...")
-                    
-                    # 1. まず出馬表のデータを取得・ロードする (★修正箇所★)
-                    shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=False)
-                    if shutuba_html:
-                        shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
-                        if shutuba_data:
-                            database_loader.load_shutuba_data(db, shutuba_data, race_id, current_date, is_nar)
-                        else:
-                            print(f"    [Warning] Failed to parse shutuba page for {race_id}.")
-                    else:
-                        print(f"    [Warning] Failed to get shutuba HTML for {race_id}.")
-                    
-                    # 2. 次にレース結果のデータを取得・ロード（更新）する
-                    result_html = scraper.get_race_result_html(race_id, is_nar=is_nar, force_download=False)
-                    if result_html:
-                        race_data = parser.parse_race_result_page(result_html, race_id)
-                        if race_data:
-                            database_loader.load_race_result_data(
-                                db, race_data, race_id, current_date, is_nar
-                            )
-                        else:
-                            print(f"    [Warning] Failed to parse result page for {race_id}.")
-                    else:
-                       print(f"    [Warning] Failed to get result HTML for {race_id}.")
-
+        # 予測の追加処理
+        insert_new_predictions(db, current_date)
+        # 結果の更新処理
+        update_race_results(db, current_date)
         current_date += datetime.timedelta(days=1)
 
-
 def process_advantage_in_chunks(db: Session, start_date: datetime.date, end_date: datetime.date, chunk_size_days: int = 30):
-    """
-    メモリ対策：指定された期間をチャンクに分割して馬番有利不利を計算する
-    """
+    """メモリ対策：指定された期間をチャンクに分割して馬番有利不利を計算する"""
     print(f"\n--- Calculating Horse Number Advantage in chunks from {start_date} to {end_date} ---")
     current_start = start_date
     while current_start <= end_date:
         current_end = min(current_start + datetime.timedelta(days=chunk_size_days - 1), end_date)
-        
         predictor.calculate_and_save_horse_number_advantage_for_period(db, current_start, current_end)
-        
         current_start = current_end + datetime.timedelta(days=1)
-        time.sleep(1)  
     print("--- Finished all advantage calculations ---\n")
-
 
 def main():
     """モードに応じて指定された日付の予測を生成する一連の処理を実行する。"""
     PIPELINE_MODE = os.getenv('PIPELINE_MODE', 'PRODUCTION')
-    
-    if PIPELINE_MODE == 'HISTORY':
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        print("!!!  RUNNING IN HISTORY MODE !!!")
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        ANALYSIS_START_DATE = datetime.date(2025, 6, 22)
-        ANALYSIS_END_DATE = datetime.date(2025, 6, 22)
-        prediction_dates = []
-        current_pred_date = ANALYSIS_START_DATE
-        while current_pred_date <= ANALYSIS_END_DATE:
-            prediction_dates.append(current_pred_date)
-            current_pred_date += datetime.timedelta(days=1)
-    else: # PRODUCTIONモード（デフォルト）
-        print("--- RUNNING IN PRODUCTION MODE ---")
-        ANALYSIS_START_DATE = datetime.date(2024, 1, 1)  
-        ANALYSIS_END_DATE = datetime.date.today()
-        prediction_dates = [ANALYSIS_END_DATE + datetime.timedelta(days=1)]
-        
-        print(f"\n--- Performing pre-calculation based on period: {ANALYSIS_START_DATE} to {ANALYSIS_END_DATE} ---")
-        db_precalc: Session = SessionLocal()
-        try:
-            backfill_historical_data(db_precalc, ANALYSIS_START_DATE, ANALYSIS_END_DATE)
-            process_advantage_in_chunks(db_precalc, ANALYSIS_START_DATE, ANALYSIS_END_DATE, chunk_size_days=30)
-        finally:
-            db_precalc.close()
+    db: Session = SessionLocal()
 
-    for target_date in prediction_dates:
-        print(f"\n{'='*25} Processing for target date: {target_date.strftime('%Y-%m-%d')} {'='*25}")
-
-        db_session: Session = SessionLocal()
-        try:
-            if PIPELINE_MODE == 'HISTORY':
-                backfill_historical_data(db_session, target_date, target_date)
+    try:
+        if PIPELINE_MODE == 'HISTORY':
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("!!!  RUNNING IN HISTORY MODE            !!!")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            # ▼▼▼ データを補完したい日付をここに設定 ▼▼▼
+            ANALYSIS_START_DATE = datetime.date(2025, 8, 11)
+            ANALYSIS_END_DATE = datetime.date(2025, 8, 12)
+            # ▲▲▲ ここまで ▲▲▲
             
-            target_date_str = target_date.strftime('%Y%m%d')
-            all_race_ids: List[Tuple[str, bool]] = []
+            # 1. 欠損・不整合データの補完
+            backfill_historical_data(db, ANALYSIS_START_DATE, ANALYSIS_END_DATE)
+            
+            # 2. 補完したデータを含む期間で馬番有利不利を再計算
+            #    （広めの範囲で実行しても重複計算はされないので安全）
+            print("\n--- Recalculating all horse number advantages after history backfill ---")
+            history_start_date = datetime.date(2020, 1, 1) # プロジェクトのデータ開始日
+            history_end_date = datetime.date.today()
+            process_advantage_in_chunks(db, history_start_date, history_end_date, chunk_size_days=90)
 
-            for is_nar in [False, True]:
-                race_type = "NAR" if is_nar else "JRA"
-                print(f"Processing {race_type} race list for {target_date_str}...")
-                list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=True)
-                if list_html:
-                    race_ids = parser.parse_race_ids_from_list(list_html)
-                    # ★★★ 修正箇所2: ばんえい競馬の会場コード(33, 65)を除外 ★★★
-                    filtered_race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
-                    all_race_ids.extend([(rid, is_nar) for rid in filtered_race_ids])
-                    print(f"Found {len(race_ids)} {race_type} races ({len(filtered_race_ids)} after filtering).")
+        else: # PRODUCTIONモード（デフォルト）
+            print("--- RUNNING IN PRODUCTION MODE ---")
+            
+            # 日本時間 (JST) を基準に今日の日付を取得
+            # RenderのサーバーはUTCなので、時差を考慮する
+            jst_offset = datetime.timedelta(hours=9)
+            today_jst = (datetime.datetime.utcnow() + jst_offset).date()
 
-            if not all_race_ids:
-                print(f"No races found for {target_date.strftime('%Y-%m-%d')}.")
-                db_session.close()
-                continue
+            # 1. 前日のレース結果を「更新」
+            target_date_results = today_jst - datetime.timedelta(days=1)
+            update_race_results(db, target_date_results)
 
-            all_horse_ids_to_fetch = set()
-            for race_id, is_nar in all_race_ids:
-                shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=True)
-                if shutuba_html:
-                    shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
-                    if shutuba_data:
-                        database_loader.load_shutuba_data(db_session, shutuba_data, race_id, target_date, is_nar)
-                        for horse in shutuba_data.get("horses", []):
-                            if horse.get("horse_id"):
-                                all_horse_ids_to_fetch.add(horse["horse_id"])
-
-            if all_horse_ids_to_fetch:
-                fetch_and_load_past_data(db_session, list(all_horse_ids_to_fetch))
-
-            for race_id, is_nar in all_race_ids:
-                print(f"Creating predictions for Race ID: {race_id}")
-                predictions = predictor.create_predictions_for_race(db_session, race_id)
-                if predictions:
-                    database_loader.save_prediction(db_session, race_id, predictions)
-                    print(f"  Saved {len(predictions)} predictions for race {race_id}")
-                    horse_ids_in_race = [p["horse_id"] for p in predictions if p.get("horse_id")]
-                    if horse_ids_in_race:
-                        predictor.calculate_and_save_matchups_for_race(db_session, race_id, horse_ids_in_race)
-            print(f"--- Pipeline Finished for {target_date.strftime('%Y-%m-%d')} ---")
-
-        finally:
-            if db_session.is_active:
-                db_session.close()
-
-    if PIPELINE_MODE == 'HISTORY':
-        print("\n--- Recalculating all horse number advantages after history generation ---")
-        db_final: Session = SessionLocal()
-        try:
-            history_start_date = datetime.date(2025, 6, 22)
-            history_end_date = datetime.date(2025, 6, 22)
-            process_advantage_in_chunks(db_final, history_start_date, history_end_date, chunk_size_days=30)
-        finally:
-            db_final.close()
+            # 2. 翌日のレース予測を「新規追加」
+            target_date_predictions = today_jst + datetime.timedelta(days=1)
+            insert_new_predictions(db, target_date_predictions)
+            
+    finally:
+        if db.is_active:
+            db.close()
 
     print("\nAll processing finished.")
 
 if __name__ == "__main__":
-    winsound.Beep(880, 500)
+    try:
+        import winsound
+        winsound.Beep(880, 500)
+    except ImportError:
+        print("winsound module not found, skipping sound.")
+    
     main()
-    winsound.Beep(880, 500)
+    
+    try:
+        import winsound
+        winsound.Beep(880, 500)
+    except ImportError:
+        print("winsound module not found, skipping sound.")
 
 --------------------------------------------------------------------------------
 ファイルパス: backend\verify_db_data.py
@@ -10393,54 +10547,55 @@ import { SparklesIcon } from '@/components/icons';
 
 // JSTでの今日の日付文字列をサーバーサイドで生成する関数
 const getTodayString = () => {
-  const now = new Date();
-  // JSTに変換 (UTC+9)
-  const jstDate = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-  return jstDate.toISOString().split('T')[0];
+    const now = new Date();
+    // JSTに変換 (UTC+9)
+    const jstDate = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+    return jstDate.toISOString().split('T')[0];
 };
 
 export default async function HomePage() {
-  const todayStr = getTodayString();
-  const specialPick = await getSpecialPick(todayStr).catch(e => {
-    console.error("Failed to fetch special pick:", e);
-    return null;
-  });
+    const todayStr = getTodayString();
+    const specialPick = await getSpecialPick(todayStr).catch(e => {
+        console.error("Failed to fetch special pick:", e);
+        return null;
+    });
 
-  return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="text-center my-6 md:my-8 p-6 bg-white rounded-lg shadow-md border border-gray-200">
-        <h1 className="text-3xl md:text-4xl font-bold text-primary-dark mb-2">
-          AI競馬予測へようこそ
-        </h1>
-        <p className="text-md md:text-lg text-gray-600">
-          AIによる高度な分析で、あなたの競馬予想をサポートします。
-        </p>
-        <Link 
-          href={`/races/${todayStr}`}
-          className="mt-6 inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105"
-        >
-          本日のレース予測を見る
-        </Link>
-      </div>
+    return (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="text-center my-4 md:my-6 p-6 bg-white rounded-lg shadow-md border border-gray-200">
+                <h1 className="text-3xl md:text-4xl font-bold text-primary-dark mb-2">
+                    AI競馬予測へようこそ
+                </h1>
+                <p className="text-md md:text-lg text-gray-600">
+                    AIによる高度な分析で、あなたの競馬予想をサポートします。
+                </p>
+                <Link
+                    href={`/races/${todayStr}`}
+                    className="mt-6 inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105"
+                >
+                    本日のレース予測を見る
+                </Link>
+            </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* AI注目馬セクション */}
-        <div className="lg:col-span-1">
-           <h2 className="flex items-center text-2xl font-bold text-gray-800 mb-4 border-b-2 border-primary pb-2">
-             <SparklesIcon className="w-6 h-6 mr-2 text-accent-dark" />
-             本日のAI注目馬
-           </h2>
-           <SpecialPickCard pick={specialPick} />
+            <div className="flex flex-col lg:flex-row gap-6">
+                {/* AI注目馬セクション */}
+                <div className="lg:w-1/3 flex flex-col">
+                    <h2 className="flex items-center text-2xl font-bold text-gray-800 mb-3 border-b-2 border-primary pb-2">
+                        <SparklesIcon className="w-6 h-6 mr-2 text-accent-dark" />
+                        本日のAI注目馬
+                    </h2>
+                    <div className="flex-grow">
+                        <SpecialPickCard pick={specialPick} />
+                    </div>
+                </div>
+                
+                {/* 高配当ランキングセクション */}
+                <div className="lg:w-2/3">
+                    <TopHitsDisplay />
+                </div>
+            </div>
         </div>
-        
-        {/* 高配当ランキングセクション */}
-        <div className="lg:col-span-2">
-          {/* TopHitsDisplayは内部でデータを取得するため、そのまま配置します */}
-          <TopHitsDisplay />
-        </div>
-      </div>
-    </div>
-  );
+    );
 }
 
 --------------------------------------------------------------------------------
@@ -10460,7 +10615,7 @@ import { formatDate } from '@/lib/utils';
 import { RaceTabsSkeleton } from '@/components/SkeletonLoader';
 
 const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onDateChange: (newDate: string) => void }) => {
-    
+
     const handleDateShift = (days: number) => {
         const [year, month, day] = currentDate.split('-').map(Number);
         const dateObj = new Date(Date.UTC(year, month - 1, day));
@@ -10474,28 +10629,28 @@ const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onD
     };
 
     return (
-        <div className="flex items-center justify-center gap-2 md:gap-4 flex-wrap">
-            <button  
-                onClick={() => handleDateShift(-1)}  
-                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-semibold"
-            >
-                ‹ 前日
-            </button>
+        <div className="flex items-center justify-center gap-1 sm:gap-2 w-full overflow-x-auto">
             <button
                 onClick={() => onDateChange(getTodayString())}
-                className="bg-primary border border-primary-dark text-white px-4 py-2 rounded-md shadow-sm hover:bg-primary-dark active:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-bold"
+                className="bg-primary border border-primary-dark text-white px-3 py-2 rounded-md shadow-sm hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-bold whitespace-nowrap shrink-0"
             >
                 今日
+            </button>
+            <button
+                onClick={() => handleDateShift(-1)}
+                className="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
+            >
+                ‹ 前日
             </button>
             <input
                 type="date"
                 value={currentDate}
                 onChange={(e) => onDateChange(e.target.value)}
-                className="border-gray-300 p-2 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-sm md:text-base"
+                className="border-gray-300 p-2 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-xs sm:text-sm shrink-0"
             />
-            <button  
-                onClick={() => handleDateShift(1)}  
-                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-sm hover:bg-gray-100 active:bg-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm md:text-base font-semibold"
+            <button
+                onClick={() => handleDateShift(1)}
+                className="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
             >
                 翌日 ›
             </button>
@@ -10516,7 +10671,7 @@ export default function RacePage() {
     const fetchDataForDate = useCallback((date: string) => {
         setIsLoading(true);
         setError(null);
-        setPredictionData(null); // 日付変更時に古いデータをクリア
+        setPredictionData(null);
         document.title = `競馬AI予測 | ${formatDate(date)}`;
         
         getPredictionsForDate(date)
@@ -10543,20 +10698,26 @@ export default function RacePage() {
     };
 
     return (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex flex-col md:flex-row justify-between items-center mt-2 mb-8 gap-4 p-4 bg-white border rounded-lg shadow-sm">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-                    <span className="text-primary-dark font-normal">AI競馬予測</span> ({formatDate(dateFromUrl)})
-                </h1>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            
+            {/* 1. AI高配当的中ランキング */}
+            <div className="mb-4">
+                <TopHitsDisplay />
+            </div>
+
+            {/* 2. 日付ナビゲーション */}
+            <div className="flex justify-center items-center mb-4 p-3 bg-white border rounded-lg shadow-sm">
                 <DateNavigator currentDate={dateFromUrl} onDateChange={handleDateChange} />
             </div>
 
-            {/* SpecialPickとTopHitsは日付が変わっても即座に再取得・表示される */}
-            <SpecialPickCard date={dateFromUrl} />
-            <TopHitsDisplay />
+            {/* 3. AI注目馬 */}
+            <div className="mb-4">
+                <SpecialPickCard date={dateFromUrl} />
+            </div>
 
+            {/* 4. レース予測タブ */}
             {isLoading && (
-                <RaceTabsSkeleton /> // RaceTabs部分のみスケルトンを表示
+                <RaceTabsSkeleton />
             )}
             
             {error && <div className="text-center p-8 text-red-600 bg-red-100 rounded-lg border border-red-200">{error}</div>}
@@ -11102,46 +11263,48 @@ import 'tippy.js/dist/tippy.css';
 import 'tippy.js/animations/shift-away.css';
 import 'tippy.js/themes/light-border.css';
 
+// 馬番アイコン用のヘルパー関数とコンポーネント
+const getWakuColorClasses = (waku: number | null): string => {
+    switch (waku) {
+        case 1: return 'bg-white text-black border-gray-500';
+        case 2: return 'bg-black text-white border-gray-700';
+        case 3: return 'bg-red-500 text-white border-red-700';
+        case 4: return 'bg-blue-600 text-white border-blue-800';
+        case 5: return 'bg-yellow-400 text-black border-yellow-600';
+        case 6: return 'bg-green-500 text-white border-green-700';
+        case 7: return 'bg-orange-500 text-white border-orange-700';
+        case 8: return 'bg-pink-500 text-white border-pink-700';
+        default: return 'bg-gray-200 text-black border-gray-400';
+    }
+};
+
+const HorseNumberCircle = ({ number, waku }: { number: number, waku: number | null }) => (
+    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm shrink-0 ${getWakuColorClasses(waku)}`}>
+        {number}
+    </div>
+);
+
 export const PredictionTable = ({ race }: { race: RacePrediction }) => {
     const isUnpredictable = !race.predictions.length || race.predictions.some(p => p.mark === '—');
 
     if (isUnpredictable) {
         return (
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                <div className="bg-primary text-white p-3 border-b border-gray-200">
-                    <h3 className="text-lg font-bold flex items-center">
-                        <span className="bg-primary-dark text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3 font-mono text-base shadow-inner">{race.race_number}R</span>
-                        {race.race_name}
-                    </h3>
-                    <p className="text-sm text-blue-100 mt-1 ml-12">{race.course_type}{race.distance}m</p>
-                </div>
-                <div className="p-6 text-center text-gray-500">
-                    <p>このレースは予測対象外です（新馬戦、障害戦など）。</p>
-                </div>
+            <div className="p-6 text-center text-gray-500">
+                <p>このレースは予測対象外です（新馬戦、障害戦など）。</p>
             </div>
         );
     }
     
     return (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-            <div className="bg-primary text-white p-3 border-b border-gray-200">
-                <h3 className="text-lg font-bold flex items-center">
-                    <span className="bg-primary-dark text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3 font-mono text-base shadow-inner">{race.race_number}R</span>
-                    {race.race_name}
-                </h3>
-                <p className="text-sm text-blue-100 mt-1 ml-12">{race.course_type}{race.distance}m</p>
-            </div>
-
+        <>
             {/* PC (md以上) ではテーブル表示 */}
             <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full">
                     <thead className="bg-gray-50">
                         <tr>
-                            {/* ★★★ 修正箇所: 着順のヘッダーを削除 ★★★ */}
-                            <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">印</th>
-                            <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">馬番</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">馬名</th>
-                            <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-end gap-1">
+                            <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">印</th>
+                            <th className="px-2 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" colSpan={2}>馬番・馬名</th>
+                            <th className="px-4 py-2 text-right text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-end gap-1">
                                 <span>AI偏差値</span>
                                 <Tippy content={<div className='p-2 text-sm text-left max-w-xs bg-gray-700 text-white rounded-md'><p>過去のレース走破タイムを元に、AIが独自に算出した能力指数です。数値が高いほど、能力が高いと評価しています。</p></div>} placement="top">
                                     <span className='w-4 h-4 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold cursor-help'>?</span>
@@ -11152,11 +11315,12 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {race.predictions.map((p) => (
                             <tr key={`${race.id}-${p.horse_number}`} className="hover:bg-gray-50 transition-colors duration-200">
-                                {/* ★★★ 修正箇所: 着順のセルを削除 ★★★ */}
-                                <td className="px-4 py-3 whitespace-nowrap text-center text-lg font-bold text-gray-800">{p.mark || '—'}</td>
-                                <td className="px-4 py-3 whitespace-nowrap text-center text-gray-700">{p.horse_number}</td>
-                                <td className="px-6 py-3 whitespace-nowrap font-medium text-gray-800">{p.horse_name}</td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right font-semibold text-primary-dark">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
+                                <td className="px-2 py-2 whitespace-nowrap text-center text-lg font-bold text-gray-800 w-12">{p.mark || '—'}</td>
+                                <td className="px-2 py-2 whitespace-nowrap w-10">
+                                    <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
+                                </td>
+                                <td className="px-2 py-2 whitespace-nowrap font-medium text-gray-800">{p.horse_name}</td>
+                                <td className="px-4 py-2 whitespace-nowrap text-right font-semibold text-primary-dark">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -11166,12 +11330,12 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
             {/* スマホ (md未満) ではカードリスト表示 */}
             <div className="md:hidden divide-y divide-gray-200">
                 {race.predictions.map((p) => (
-                    <div key={`${race.id}-${p.horse_number}-mobile`} className="p-4">
+                    <div key={`${race.id}-${p.horse_number}-mobile`} className="p-3">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3">
                                 <span className="text-xl font-bold text-gray-800 w-8 text-center">{p.mark || '—'}</span>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-gray-600 font-semibold bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center border">{p.horse_number}</span>
+                                    <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
                                     <span className="font-bold text-base text-gray-900">{p.horse_name}</span>
                                 </div>
                             </div>
@@ -11180,11 +11344,10 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                                 <div className="text-xs text-gray-500">AI偏差値</div>
                             </div>
                         </div>
-                        {/* ★★★ 修正箇所: 着順表示ブロックを完全に削除 ★★★ */}
                     </div>
                 ))}
             </div>
-        </div>
+        </>
     );
 };
 
@@ -11244,66 +11407,70 @@ const VenuePanel = ({ venue }: { venue: VenueRaces }) => {
 
     return (
         <div>
-            <RaceSelector 
+            <RaceSelector
                 races={venue.races}
                 selectedIndex={activeRaceIndex}
                 onSelectRace={setActiveRaceIndex}
             />
             {activeRace && (
-                <div className="mt-6 space-y-6">
-                    {/* AI予測 (常に表示) */}
-                    <div>
-                        <h3 className="flex items-center text-xl font-bold text-gray-800 mb-3 px-2">
-                           <SparklesIcon className="w-6 h-6 text-accent-dark mr-2" />
-                           AI予測
-                        </h3>
-                        <PredictionTable race={activeRace} />
-                    </div>
-                    
-                    {/* AIスタート位置予測 (常に表示) */}
-                    <div>
-                        <h3 className="flex items-center text-xl font-bold text-gray-800 mb-3 px-2">
-                            <FlagIcon className="w-6 h-6 text-accent-dark mr-2" />
-                            AI スタート位置予測 (1コーナー)
-                        </h3>
-                        <StartPositionChart predictions={activeRace.predictions} />
-                    </div>
-
-                    {/* 直接対決データ (アコーディオン) */}
-                    <details className="group rounded-lg bg-gray-50 open:bg-white open:shadow-lg transition-all duration-300">
-                        <summary className="flex items-center text-xl font-bold text-gray-800 p-3 cursor-pointer list-none">
-                            <div className="w-6 h-6 mr-2 flex-shrink-0">
-                                 <UsersIcon className="w-6 h-6 text-accent-dark" />
-                            </div>
-                            直接対決データ
-                            <div className="ml-auto transform transition-transform duration-300 group-open:rotate-90">
-                                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
-                            </div>
-                        </summary>
-                         <div className="p-4 pt-0">
-                            <MatchupTable race={activeRace} />
+                <div className="mt-2">
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-4">
+                        <div className="bg-primary text-white p-3 border-b border-gray-200 rounded-t-lg">
+                            <h3 className="text-lg font-bold flex items-center">
+                                <span className="bg-primary-dark text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-3 font-mono text-base shadow-inner">{activeRace.race_number}R</span>
+                                {activeRace.race_name}
+                            </h3>
+                            <p className="text-sm text-blue-100 mt-1 ml-12">{activeRace.course_type}{activeRace.distance}m</p>
                         </div>
-                    </details>
-
-                    {/* 馬番有利不利 (アコーディオン) */}
-                    <details className="group rounded-lg bg-gray-50 open:bg-white open:shadow-lg transition-all duration-300">
-                        <summary className="flex items-center text-xl font-bold text-gray-800 p-3 cursor-pointer list-none">
-                            <div className="w-6 h-6 mr-2 flex-shrink-0">
-                                <ChartBarIcon className="w-6 h-6 text-accent-dark" />
-                            </div>
-                            コース別・馬番有利不利
-                            <div className="ml-auto transform transition-transform duration-300 group-open:rotate-90">
-                                 <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
-                            </div>
-                        </summary>
-                         <div className="p-4 pt-0">
-                             <HorseNumberAdvantageChart
-                                 advantages={activeRace.horse_number_advantages}
-                                 courseType={activeRace.course_type}
-                                 distance={activeRace.distance}
-                            />
+                        <div className="p-3 border-b">
+                            <h4 className="flex items-center text-md font-bold text-gray-700 mb-2">
+                                <FlagIcon className="w-5 h-5 text-accent-dark mr-2" />
+                                AI スタート位置予測
+                            </h4>
+                            <StartPositionChart predictions={activeRace.predictions} />
                         </div>
-                    </details>
+                        <div>
+                             <h4 className="flex items-center text-md font-bold text-gray-700 mt-3 mb-2 px-3">
+                                <SparklesIcon className="w-5 h-5 text-accent-dark mr-2" />
+                                AI予測
+                            </h4>
+                            <PredictionTable race={activeRace} />
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        <details className="group rounded-lg bg-gray-50 open:bg-white open:shadow-lg transition-all duration-300">
+                            <summary className="flex items-center text-xl font-bold text-gray-800 p-3 cursor-pointer list-none">
+                                <div className="w-6 h-6 mr-2 flex-shrink-0">
+                                    <UsersIcon className="w-6 h-6 text-accent-dark" />
+                                </div>
+                                直接対決データ
+                                <div className="ml-auto transform transition-transform duration-300 group-open:rotate-90">
+                                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+                                </div>
+                            </summary>
+                            <div className="p-4 pt-0">
+                                <MatchupTable race={activeRace} />
+                            </div>
+                        </details>
+                        <details className="group rounded-lg bg-gray-50 open:bg-white open:shadow-lg transition-all duration-300">
+                            <summary className="flex items-center text-xl font-bold text-gray-800 p-3 cursor-pointer list-none">
+                                <div className="w-6 h-6 mr-2 flex-shrink-0">
+                                    <ChartBarIcon className="w-6 h-6 text-accent-dark" />
+                                </div>
+                                コース別・馬番有利不利
+                                <div className="ml-auto transform transition-transform duration-300 group-open:rotate-90">
+                                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+                                </div>
+                            </summary>
+                             <div className="p-4 pt-0">
+                                 <HorseNumberAdvantageChart
+                                     advantages={activeRace.horse_number_advantages}
+                                     courseType={activeRace.course_type}
+                                     distance={activeRace.distance}
+                                />
+                            </div>
+                        </details>
+                    </div>
                 </div>
             )}
         </div>
@@ -11316,38 +11483,38 @@ export const RaceTabs = ({ data }: { data: RaceDayPrediction }) => {
     }
 
     return (
-        <Tabs className="mt-8" selectedTabClassName="!text-primary-dark !bg-white border-gray-200 !border-b-white" >
+        <Tabs className="mt-4" selectedTabClassName="!text-primary-dark !bg-white border-gray-200 !border-b-white" >
             <TabList className="flex border-b-2 border-gray-200 bg-gray-100 rounded-t-lg">
                 <Tab className="flex-1 px-4 py-3 font-semibold text-gray-600 cursor-pointer text-center rounded-tl-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition-colors">中央競馬 (JRA)</Tab>
                 <Tab className="flex-1 px-4 py-3 font-semibold text-gray-600 cursor-pointer text-center rounded-tr-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition-colors">地方競馬 (NAR)</Tab>
             </TabList>
 
-            <TabPanel className="p-4 md:p-6 bg-white rounded-b-lg border border-t-0 border-gray-200 shadow-md">
+            <TabPanel className="p-2 md:p-4 bg-white rounded-b-lg border border-t-0 border-gray-200 shadow-md">
                 {data.jra.length === 0 ? (
                     <p className="p-4 text-gray-500 text-center">この日の中央競馬の開催はありません。</p>
                 ) : (
                     <Tabs forceRenderTabPanel selectedTabClassName="!text-primary-dark !bg-gray-100 !border-gray-300">
-                        <TabList className="flex flex-wrap border-b border-gray-200">
+                        <TabList className="flex flex-wrap border-b border-gray-200 -mb-px gap-x-2">
                             {data.jra.map(venue => <Tab key={venue.venue_name} className="px-4 py-2 font-medium cursor-pointer border-b-2 border-transparent hover:bg-gray-100 hover:text-primary-dark transition-colors">{venue.venue_name}</Tab>)}
                         </TabList>
                         {data.jra.map(venue => (
-                            <TabPanel key={venue.venue_name} className="pt-6">
+                            <TabPanel key={venue.venue_name} className="pt-4">
                                 <VenuePanel venue={venue} />
                             </TabPanel>
                         ))}
                     </Tabs>
                 )}
             </TabPanel>
-            <TabPanel className="p-4 md:p-6 bg-white rounded-b-lg border border-t-0 border-gray-200 shadow-md">
+            <TabPanel className="p-2 md:p-4 bg-white rounded-b-lg border border-t-0 border-gray-200 shadow-md">
                 {data.nar.length === 0 ? (
                     <p className="p-4 text-gray-500 text-center">この日の地方競馬の開催はありません。</p>
                 ) : (
                     <Tabs forceRenderTabPanel selectedTabClassName="!text-primary-dark !bg-gray-100 !border-gray-300">
-                        <TabList className="flex flex-wrap border-b border-gray-200">
+                        <TabList className="flex flex-wrap border-b border-gray-200 -mb-px gap-x-2">
                             {data.nar.map(venue => <Tab key={venue.venue_name} className="px-4 py-2 font-medium cursor-pointer border-b-2 border-transparent hover:bg-gray-100 hover:text-primary-dark transition-colors">{venue.venue_name}</Tab>)}
                         </TabList>
                         {data.nar.map(venue => (
-                            <TabPanel key={venue.venue_name} className="pt-6">
+                            <TabPanel key={venue.venue_name} className="pt-4">
                                 <VenuePanel venue={venue} />
                             </TabPanel>
                         ))}
@@ -11471,24 +11638,55 @@ const Skeleton = () => (
         <div className="h-8 bg-gray-300 rounded w-2/3 mb-2"></div>
         <div className="h-6 bg-gray-300 rounded w-1/2 mb-4"></div>
         <div className="mt-4 pt-4 border-t border-gray-300/50">
-             <div className="h-4 bg-gray-300 rounded w-full"></div>
-             <div className="h-4 bg-gray-300 rounded w-5/6 mt-2"></div>
+            <div className="h-4 bg-gray-300 rounded w-full"></div>
+            <div className="h-4 bg-gray-300 rounded w-5/6 mt-2"></div>
         </div>
     </div>
 );
 
+// プロパティの型定義を修正
+type Props = {
+    pick?: SpecialPick | null; // サーバーサイドから渡されるデータ（オプショナル）
+    date?: string;             // クライアントサイドでfetchする日付（オプショナル）
+};
 
-export const SpecialPickCard = ({ date }: { date: string }) => {
-    const [pick, setPick] = useState<SpecialPick | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+// コンポーネント定義を修正
+export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
+    // stateの初期値を修正
+    // initialPickが渡されていればそれを初期値に、なければnull
+    const [pick, setPick] = useState<SpecialPick | null>(initialPick === undefined ? null : initialPick);
+    
+    // ローディング状態の初期値を修正
+    // initialPickが渡されていない場合のみ、ローディング状態を開始する
+    const [isLoading, setIsLoading] = useState(initialPick === undefined);
 
     useEffect(() => {
+        // `initialPick`がpropsとして渡されている場合（サーバーサイドでデータ取得済み）、
+        // クライアントサイドでの再取得は行わない
+        if (initialPick !== undefined) {
+            setPick(initialPick);
+            setIsLoading(false);
+            return;
+        }
+
+        // `date`プロパティがない場合も取得できないので処理を終了
+        if (!date) {
+            setIsLoading(false);
+            setPick(null);
+            return;
+        }
+
+        // `initialPick`がなく、`date`がある場合のみAPIからデータを取得
         setIsLoading(true);
         getSpecialPick(date)
             .then(data => setPick(data))
-            .catch(e => console.error("Failed to fetch special pick:", e))
+            .catch(e => {
+                console.error("Failed to fetch special pick:", e);
+                setPick(null); // エラー時はnullを設定
+            })
             .finally(() => setIsLoading(false));
-    }, [date]);
+            
+    }, [date, initialPick]); // 依存配列に`date`と`initialPick`を指定
 
     if (isLoading) {
         return <Skeleton />;
@@ -11496,22 +11694,22 @@ export const SpecialPickCard = ({ date }: { date: string }) => {
 
     if (!pick) {
         return (
-            <div className="bg-white text-gray-600 p-6 rounded-xl shadow-md mb-6 text-center border">
+            <div className="bg-white text-gray-600 p-6 rounded-xl shadow-md h-full flex items-center justify-center border">
                 <p>本日のAI注目馬はいません。</p>
             </div>
         );
     }
 
     return (
-        <div className="bg-gradient-to-br from-yellow-400 to-orange-500 text-white p-6 rounded-xl shadow-lg mb-6">
-            <h3 className="text-sm font-bold uppercase tracking-wider mb-2 flex items-center">
-                <SparklesIcon className="w-5 h-5 mr-2" />
+        <div className="bg-gradient-to-br from-yellow-400 to-orange-500 text-white p-4 rounded-xl shadow-lg h-full flex flex-col">
+            <h3 className="text-xs font-bold uppercase tracking-wider mb-1 flex items-center">
+                <SparklesIcon className="w-4 h-4 mr-2" />
                 AIの注目馬！
             </h3>
-            <p className="text-3xl font-bold">{pick.horse_name}</p>
-            <p className="text-lg opacity-90">{pick.venue_name} {pick.race_number}R - {pick.race_name}</p>
-            <div className="mt-4 pt-4 border-t border-white/30">
-                <p className="text-sm italic">「{pick.commentary}」</p>
+            <p className="text-2xl font-bold">{pick.horse_name}</p>
+            <p className="text-base opacity-90">{pick.venue_name} {pick.race_number}R - {pick.race_name}</p>
+            <div className="mt-auto pt-3 border-t border-white/30">
+                <p className="text-xs italic">「{pick.commentary}」</p>
             </div>
         </div>
     );
@@ -11623,80 +11821,46 @@ import { TrophyIcon } from './icons';
 
 const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     const rankStyles = [
-        // 1位
-        {
-            borderColor: 'border-yellow-400',
-            rankBgColor: 'bg-yellow-400',
-            rankTextColor: 'text-yellow-900',
-            shadow: 'shadow-xl',
-            scale: 'hover:scale-105',
-        },
-        // 2位
-        {
-            borderColor: 'border-gray-400',
-            rankBgColor: 'bg-gray-400',
-            rankTextColor: 'text-white',
-            shadow: 'shadow-lg',
-            scale: 'hover:scale-102',
-        },
-        // 3位
-        {
-            borderColor: 'border-amber-600',
-            rankBgColor: 'bg-amber-600',
-            rankTextColor: 'text-white',
-            shadow: 'shadow-md',
-            scale: 'hover:scale-102',
-        },
-        // 4位
-        {
-            borderColor: 'border-gray-300',
-            rankBgColor: 'bg-gray-300',
-            rankTextColor: 'text-gray-800',
-            shadow: 'shadow',
-            scale: 'hover:scale-102',
-        },
-        // 5位
-        {
-            borderColor: 'border-gray-300',
-            rankBgColor: 'bg-gray-300',
-            rankTextColor: 'text-gray-800',
-            shadow: 'shadow',
-            scale: 'hover:scale-102',
-        },
+        { borderColor: 'border-yellow-400', rankBgColor: 'bg-yellow-400', rankTextColor: 'text-yellow-900', shadow: 'shadow-lg', scale: 'hover:scale-105' },
+        { borderColor: 'border-gray-400', rankBgColor: 'bg-gray-400', rankTextColor: 'text-white', shadow: 'shadow-md', scale: 'hover:scale-102' },
+        { borderColor: 'border-amber-600', rankBgColor: 'bg-amber-600', rankTextColor: 'text-white', shadow: 'shadow', scale: 'hover:scale-102' },
+        { borderColor: 'border-gray-300', rankBgColor: 'bg-gray-300', rankTextColor: 'text-gray-800', shadow: 'shadow-sm', scale: 'hover:scale-102' },
+        { borderColor: 'border-gray-300', rankBgColor: 'bg-gray-300', rankTextColor: 'text-gray-800', shadow: 'shadow-sm', scale: 'hover:scale-102' },
     ];
-    // rankが5以上の場合でも安全にスタイルを取得
     const style = rankStyles[Math.min(rank - 1, 4)];
 
     return (
-        <div className={`flex flex-col bg-white rounded-lg p-4 h-full border-2 transition-transform duration-300 ${style.borderColor} ${style.shadow} ${style.scale}`}>
-            <div className="flex items-baseline justify-between mb-2">
-                <div className={`px-3 py-1 text-sm font-bold rounded-full ${style.rankBgColor} ${style.rankTextColor}`}>
+        <div className={`bg-white rounded-lg border-2 transition-transform duration-300 ${style.borderColor} ${style.shadow} ${style.scale} p-2 flex flex-row md:flex-col md:p-3`}>
+            {/* Left part (Rank & Payout) */}
+            <div className="flex flex-col justify-center items-center w-24 flex-shrink-0 pr-2 border-r md:border-r-0 md:w-auto md:flex-row md:justify-between md:items-baseline md:mb-1 md:border-b md:pb-1">
+                <div className={`px-2 py-0.5 text-xs font-bold rounded-full ${style.rankBgColor} ${style.rankTextColor}`}>
                     {rank}位
                 </div>
-                <div className="text-2xl font-extrabold text-red-600">
+                <div className="text-lg md:text-xl font-extrabold text-red-600 mt-1 md:mt-0">
                     {hit.payout.toLocaleString()}円
                 </div>
             </div>
-             <div className="mt-1 text-right text-sm text-gray-700">
-                <span className="font-semibold">{hit.bet_type}</span>: {hit.winning_numbers}
-            </div>
-            <div className="mt-auto pt-2 border-t mt-2">
+            
+            {/* Right part (Race Info) */}
+            <div className="flex flex-col justify-center flex-grow pl-2 text-right md:text-center md:pl-0 md:mt-1">
                 <div className="text-xs text-gray-500">
-                    {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
-                    {' '}{hit.venue_name}{hit.race_number}R
+                     {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
+                     {' '}{hit.venue_name}{hit.race_number}R
                 </div>
-                <div className="font-semibold text-gray-800 text-sm truncate" title={hit.race_name}>{hit.race_name}</div>
+                <div className="text-xs text-gray-700 mt-1">
+                    <span className="font-semibold">{hit.bet_type}</span>: {hit.winning_numbers}
+                </div>
             </div>
         </div>
     );
 };
 
 const Skeleton = () => (
-    <div className="mb-6 animate-pulse">
-        <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+    <div className="animate-pulse">
+        <div className="h-8 bg-gray-200 rounded w-1/2 mb-3"></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
+                <div key={i} className="h-20 md:h-28 bg-gray-200 rounded-lg"></div>
             ))}
         </div>
     </div>
@@ -11726,17 +11890,17 @@ export const TopHitsDisplay = () => {
     }
     
     return (
-        <div className="mb-6">
-            <h3 className="flex items-center text-2xl font-bold text-gray-800 mb-4">
+        <div>
+            <h3 className="flex items-center text-xl sm:text-2xl font-bold text-gray-800 mb-3 px-1">
                <TrophyIcon className="w-6 h-6 mr-2 text-yellow-500"/>
-               AI高配当的中ランキング (過去7日間)
+               高配当的中レース (直近7日間)
             </h3>
             {hits.length === 0 ? (
                 <div className="p-6 bg-white border border-dashed rounded-lg text-center text-gray-500">
                     <p>対象期間内にAI予測による高配当的中はありませんでした。</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
                     {hits.map((hit, index) => (
                         <HitCard key={`${hit.race_id}-${hit.bet_type}-${hit.payout}`} hit={hit} rank={index + 1} />
                     ))}

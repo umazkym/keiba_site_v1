@@ -15,16 +15,6 @@ def _calculate_1c_indicator(db: Session, horse_id: str, race_date: date, debug: 
     """
     指定された馬の過去のレース結果から1コーナー（またはそれに準ずる序盤のコーナー）での
     位置取り傾向をZスコアで計算する。
-
-    Args:
-        db (Session): データベースセッション
-        horse_id (str): 対象の馬ID
-        race_date (date): 基準となるレース開催日（この日付より前のレースを集計）
-        debug (bool, optional): Trueの場合、計算過程の詳細情報を辞書で返す
-
-    Returns:
-        - debug=Falseの場合: Zスコアの平均値 (float) または None
-        - debug=Trueの場合: 計算過程を含む辞書 (Dict)
     """
     past_results = db.query(models.Result.corner_positions, models.Race.total_horses)\
         .join(models.Race, models.Result.race_id == models.Race.id)\
@@ -40,27 +30,21 @@ def _calculate_1c_indicator(db: Session, horse_id: str, race_date: date, debug: 
         positions = res.corner_positions
         n = res.total_horses
         
-        # corner_positionsがNoneまたは空リスト、total_horsesがNoneまたは2未満の場合はスキップ
         if not positions or not isinstance(positions, list) or not n or n < 2:
             continue
         
-        # リストが空でないことを確認
         if not any(isinstance(p, int) and p > 0 for p in positions):
             continue
             
-        # 最初の有効なコーナー通過順位を取得 (1C or 2Cを優先)
         start_pos = next((p for p in positions[:2] if isinstance(p, int) and p > 0), None)
         if start_pos is None:
             continue
         
-        # 順位の期待値と標準偏差を計算
         e = (n + 1) / 2.0
         sd = math.sqrt((n**2 - 1) / 12.0)
         if sd == 0:
             continue
         
-        # Zスコアを計算 (期待値 - 実際の順位) / 標準偏差
-        # 順位が小さい(前方にいる)ほどZスコアは高くなる
         z_scores.append((e - start_pos) / sd)
 
     valid_corner_races = len(z_scores)
@@ -75,28 +59,49 @@ def _calculate_1c_indicator(db: Session, horse_id: str, race_date: date, debug: 
     else:
         return mean_z_score
 
-def _calculate_performance_scores(db: Session, horse_id: str, race_date: date) -> Optional[float]:
+def _get_bulk_performance_data(db: Session, horse_ids: List[str], race_date: date) -> Dict[str, List[Any]]:
+    """
+    【案1: N+1問題解消】
+    指定された馬リストの過去成績データを一括で取得する。
+    """
+    if not horse_ids:
+        return {}
+
     start_date_filter = race_date - timedelta(days=2*365)
     end_date_filter = race_date - timedelta(days=2)
+    
     avg_times_base_q = db.query(
         models.Race.venue_name, models.Race.course_type, models.Race.distance,
         func.avg(models.Result.finish_time_sec).label('avg_time')
     ).join(models.Result).filter(models.Race.course_type.in_(['芝', 'ダ'])).group_by(
         models.Race.venue_name, models.Race.course_type, models.Race.distance
     ).subquery()
-    past_results = db.query(models.Result, models.Race, avg_times_base_q.c.avg_time)\
+
+    all_past_results = db.query(models.Result, models.Race, avg_times_base_q.c.avg_time)\
         .join(models.Race, models.Result.race_id == models.Race.id)\
         .outerjoin(avg_times_base_q, (models.Race.venue_name == avg_times_base_q.c.venue_name) & \
                                      (models.Race.course_type == avg_times_base_q.c.course_type) & \
                                      (models.Race.distance == avg_times_base_q.c.distance))\
-        .filter(models.Result.horse_id == horse_id)\
+        .filter(models.Result.horse_id.in_(horse_ids))\
         .filter(models.Race.race_date.between(start_date_filter, end_date_filter))\
         .all()
-    if not past_results: return None
+    
+    results_by_horse = defaultdict(list)
+    for res, race, avg_time in all_past_results:
+        results_by_horse[res.horse_id].append((res, race, avg_time))
+        
+    return results_by_horse
+
+def _calculate_scores_from_data(horse_past_results: List[Any], race_date: date) -> Optional[float]:
+    """
+    【案1: N+1問題解消】
+    取得済みの過去成績データからパフォーマンススコアを計算する（DBアクセスなし）。
+    """
+    if not horse_past_results: return None
     half_life_days = 180.0
     decay_const = math.log(2.0) / half_life_days
     scores, weights = [], []
-    for res, race, avg_time in past_results:
+    for res, race, avg_time in horse_past_results:
         if res.finish_time_sec and avg_time:
             base_time_diff = avg_time - res.finish_time_sec
             days_diff = (race_date - race.race_date).days
@@ -107,30 +112,45 @@ def _calculate_performance_scores(db: Session, horse_id: str, race_date: date) -
     return np.average(scores, weights=weights)
 
 def create_predictions_for_race(db: Session, race_id: str) -> Optional[List[Dict[str, Any]]]:
+    """
+    【案1: N+1問題解消】
+    レースの予測を生成するメイン関数。内部で過去データを一括取得するように変更。
+    """
     target_race = db.query(models.Race).filter(models.Race.id == race_id).first()
     if not target_race: return None
+    
     shutuba_horses = db.query(
         models.Result.horse_id, models.Horse.name,
         models.Result.horse_number, models.Result.waku_number
     ).join(models.Horse, models.Result.horse_id == models.Horse.id)\
      .filter(models.Result.race_id == race_id)\
      .order_by(models.Result.horse_number).all()
+     
     if not shutuba_horses: return None
+    
     is_unpredictable = False
     if target_race.race_name and ("新馬" in target_race.race_name or "障害" in target_race.race_name or target_race.course_type == '障'):
         is_unpredictable = True
+        
+    horse_ids = [h.horse_id for h in shutuba_horses if h.horse_id]
+    
+    # 全出走馬の過去成績を一度のクエリでまとめて取得
+    all_past_data = {}
+    if not is_unpredictable and horse_ids:
+        all_past_data = _get_bulk_performance_data(db, horse_ids, target_race.race_date)
+
     all_horse_scores = []
     for horse in shutuba_horses:
-        perf_score = None if is_unpredictable else _calculate_performance_scores(db, horse.horse_id, target_race.race_date)
+        horse_past_results = all_past_data.get(horse.horse_id, [])
+        perf_score = _calculate_scores_from_data(horse_past_results, target_race.race_date)
         
-        # debug=FalseのままにしてAPIからの呼び出しに影響を与えない
         start_1c_z_score = _calculate_1c_indicator(db, horse.horse_id, target_race.race_date, debug=False)
 
         all_horse_scores.append({
             'horse_id': horse.horse_id, 'horse_name': horse.name,
             'horse_number': horse.horse_number, 'waku_number': horse.waku_number,
             'raw_score': perf_score if perf_score is not None else np.nan,
-            'start_1c_z_score': start_1c_z_score # Zスコアを一時的に保持
+            'start_1c_z_score': start_1c_z_score
         })
 
     df = pd.DataFrame(all_horse_scores)
@@ -164,53 +184,42 @@ def create_predictions_for_race(db: Session, race_id: str) -> Optional[List[Dict
         marks = ["◎", "〇", "▲", "△", "☆"]
         df['mark'] = df.index.map(lambda i: marks[i] if pd.notna(df.loc[i, 'deviation_score']) and i < len(marks) else "")
 
-    # 不要になったZスコアの列を削除
-    df = df.drop(columns=['start_1c_z_score'])
+    df = df.drop(columns=['start_1c_z_score', 'raw_score'])
     
     df_final = df.replace({np.nan: None})
     return df_final.to_dict('records')
 
-# ★★★ 修正: 期間を引数で受け取るようにし、計算結果を返すように変更 ★★★
+# (calculate_matchups と calculate_and_save_matchups_for_race は変更なし)
 def calculate_matchups(db: Session, horse_ids: List[str], start_date: date, end_date: date) -> Dict[str, Any]:
-    """
-    指定された馬リストと期間に基づいて、対戦成績を計算して返す
-    """
     if len(horse_ids) < 2:
         return {}
-
     past_results = db.query(models.Result, models.Race.venue_name, models.Race.race_date)\
         .join(models.Race, models.Result.race_id == models.Race.id)\
         .filter(models.Result.horse_id.in_(horse_ids))\
         .filter(models.Race.race_date.between(start_date, end_date)) \
         .all()
-
     races_grouped = defaultdict(list)
     for res, venue_name, race_date in past_results:
         races_grouped[res.race_id].append({
             'horse_id': res.horse_id, 'rank': res.rank,
             'venue_name': venue_name, 'race_date': race_date.strftime('%Y-%m-%d')
         })
-
     matchup_matrix = defaultdict(lambda: {'win': 0, 'loss': 0, 'draw': 0, 'history': []})
     for past_race_id, participants in races_grouped.items():
         if len(participants) < 2: continue
-        
         for i in range(len(participants)):
             for j in range(i + 1, len(participants)):
                 p1 = participants[i]
                 p2 = participants[j]
-                
                 if p1.get('rank') is not None and p2.get('rank') is not None:
                     key1 = f"{p1['horse_id']}_vs_{p2['horse_id']}"
                     key2 = f"{p2['horse_id']}_vs_{p1['horse_id']}"
-                    
                     history_entry = {
                         'race_id': past_race_id, 'race_date': participants[0]['race_date'],
                         'venue_name': participants[0]['venue_name'],
                         'p1_horse_id': p1['horse_id'], 'p1_rank': p1['rank'],
                         'p2_horse_id': p2['horse_id'], 'p2_rank': p2['rank']
                     }
-
                     if p1['rank'] < p2['rank']:
                         matchup_matrix[key1]['win'] += 1
                         matchup_matrix[key2]['loss'] += 1
@@ -220,22 +229,13 @@ def calculate_matchups(db: Session, horse_ids: List[str], start_date: date, end_
                     else:
                         matchup_matrix[key1]['draw'] += 1
                         matchup_matrix[key2]['draw'] += 1
-                    
                     matchup_matrix[key1]['history'].append(history_entry)
                     matchup_matrix[key2]['history'].append(history_entry)
-    
     return dict(matchup_matrix)
-
 def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: List[str]):
-    """
-    指定されたレースの全期間対戦成績を計算し、DBに保存する（パイプライン用）
-    """
-    # 全期間を対象
     start_date = date(2000, 1, 1)
     end_date = date.today()
-    
     matchup_data = calculate_matchups(db, horse_ids, start_date, end_date)
-
     if matchup_data:
         existing = db.query(models.Matchup).filter(models.Matchup.race_id == race_id).first()
         if existing:
@@ -245,10 +245,9 @@ def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: L
             db.add(new_matchup)
         db.commit()
 
-
+# (calculate_and_save_horse_number_advantage_for_period は変更なし)
 def calculate_and_save_horse_number_advantage_for_period(db: Session, start_date: date, end_date: date):
     print(f"Calculating horse number advantages for period: {start_date} to {end_date}...")
-    
     results_query = db.query(
         models.Race.id,
         models.Race.venue_name,
@@ -262,40 +261,31 @@ def calculate_and_save_horse_number_advantage_for_period(db: Session, start_date
     .filter(models.Result.rank.isnot(None))\
     .filter(models.Race.total_horses.isnot(None))\
     .filter(models.Race.course_type.in_(['芝', 'ダ']))
-
     df = pd.read_sql(results_query.statement, db.bind)
-    
     if df.empty:
         print("No new race results found in the specified period.")
         return
-
     ai_scores = []
     for race_id, group in df.groupby('id'):
         n = group['total_horses'].iloc[0]
         if n is None or n < 2:
             continue
-            
         e = (n + 1) / 2.0
         sd = math.sqrt((n**2 - 1) / 12.0)
         if sd == 0:
             continue
-            
         group['advantage_score'] = (e - group['rank']) / sd
         ai_scores.append(group)
-
     if not ai_scores:
         print("Could not calculate any AI scores for the period.")
         return
-        
     df_with_ai = pd.concat(ai_scores)
-
     advantage_groups = df_with_ai.groupby([
         'venue_name', 
         'course_type', 
         'distance', 
         'horse_number'
     ])['advantage_score'].agg(['mean', 'count']).reset_index()
-
     advantages_to_save = []
     for _, row in advantage_groups.iterrows():
         advantages_to_save.append({
@@ -305,9 +295,7 @@ def calculate_and_save_horse_number_advantage_for_period(db: Session, start_date
             'horse_number': int(row['horse_number']),
             'advantage_score': float(row['mean'])
         })
-    
     if advantages_to_save:
         database_loader.save_horse_number_advantages(db, advantages_to_save)
         print(f"Saved/Updated {len(advantages_to_save)} horse number advantage records.")
-    
     db.commit()

@@ -95,8 +95,8 @@ def main():
         print("!!!  RUNNING IN HISTORY MODE (Parallel)   !!!")
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         # ▼▼▼ データを補完したい日付をここに設定 ▼▼▼
-        ANALYSIS_START_DATE = datetime.date(2025, 8, 15)
-        ANALYSIS_END_DATE = datetime.date(2025, 8, 15)
+        ANALYSIS_START_DATE = datetime.date(2025, 8, 1)
+        ANALYSIS_END_DATE = datetime.date(2025, 8, 16)
         # ▲▲▲ ここまで ▲▲▲
         
         # 1. 欠損・不整合データの補完 (並列処理)

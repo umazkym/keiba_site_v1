@@ -150,13 +150,21 @@ def get_shutuba_html(race_id: str, is_nar: bool, force_download: bool = False) -
     return get_html(url, file_path, force_download, wait_for_class="Shutuba_HorseList", target_date=target_date)
 
 def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = False) -> str | None:
-    base_url = BASE_NAR_URL if is_nar else DB_BASE_URL
-    url = f"{base_url}/race/{race_id}" if not is_nar else f"{BASE_NAR_URL}/race/result.html?race_id={race_id}"
-    dir_path = os.path.join(HTML_DIR, "nar_race" if is_nar else "race_results")
+    # ★★★ ここから修正 ★★★
+    # JRAの場合でも、払い戻し情報が確実に解析できる `race.netkeiba.com` を使用するようにURLを統一します。
+    if is_nar:
+        base_url = BASE_NAR_URL
+        url = f"{base_url}/race/result.html?race_id={race_id}"
+        dir_path = os.path.join(HTML_DIR, "nar_race")
+    else: # JRA
+        base_url = BASE_CENTRAL_URL
+        url = f"{base_url}/race/result.html?race_id={race_id}"
+        dir_path = os.path.join(HTML_DIR, "race_results")
+    # ★★★ ここまで修正 ★★★
+
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, f"{race_id}.bin")
 
-    # 【案3】race_idから日付を特定してget_htmlに渡す
     try:
         target_date = date(int(race_id[:4]), int(race_id[6:8]), int(race_id[8:10]))
     except ValueError:

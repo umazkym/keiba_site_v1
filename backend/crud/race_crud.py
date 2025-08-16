@@ -1,6 +1,6 @@
 # C:\Users\tnszk\program\GitHub\backend\crud\race_crud.py
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc, or_, func, case, and_ # 必要な関数をインポート
+from sqlalchemy import desc, or_, func, case, and_
 from database import models
 from datetime import date, timedelta
 from typing import Dict, Any, List, Optional
@@ -8,7 +8,6 @@ from collections import defaultdict
 from scripts import predictor
 
 def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
-    # ... この関数は変更ありません ...
     races_with_preds = db.query(models.Race)\
         .options(
             joinedload(models.Race.predictions),
@@ -71,7 +70,6 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
 
 
 def get_special_pick_for_date(db: Session, target_date: date) -> Optional[models.Prediction]:
-    # ... この関数は変更ありません ...
     return db.query(models.Prediction)\
         .join(models.Race, models.Prediction.race_id == models.Race.id)\
         .filter(models.Race.race_date == target_date)\
@@ -81,7 +79,6 @@ def get_special_pick_for_date(db: Session, target_date: date) -> Optional[models
 
 
 def get_filtered_matchups_for_race(db: Session, race_id: str, start_date: date, end_date: date) -> Optional[Dict[str, Any]]:
-    # ... この関数は変更ありません ...
     horse_results = db.query(models.Result.horse_id).filter(models.Result.race_id == race_id).all()
     if not horse_results:
         return None
@@ -95,11 +92,12 @@ def get_top_payout_hits(db: Session, days: int = 7, limit: int = 5) -> List[Dict
     """
     過去N日間のAI予測による高配当的中トップN件を、単一の効率的なクエリで取得します。
     """
+    # ★★★ 修正箇所 ★★★
+    # 集計の終了日を「今日」から「昨日」に変更します。
+    # これにより、結果が確定しているレースのみが集計対象となります。
     end_date = date.today() - timedelta(days=1)
     start_date = end_date - timedelta(days=days - 1)
 
-    # 1. サブクエリ: 各レースIDごとに、AI予測上位5頭の馬番と枠番の配列を作成します。
-    # これにより、メインのクエリで各レースの予測情報を効率的に参照できます。
     top_preds_sq = db.query(
         models.Prediction.race_id,
         func.array_agg(models.Prediction.horse_number).label('top_horse_numbers'),
@@ -108,28 +106,26 @@ def get_top_payout_hits(db: Session, days: int = 7, limit: int = 5) -> List[Dict
         models.Prediction.mark.in_(['◎', '〇', '▲', '△', '☆'])
     ).group_by(models.Prediction.race_id).subquery('top_preds_sq')
 
-    # 2. 的中条件をSQLのCASE文で構築します。
-    # これにより、Python側でループ処理をする代わりに、データベース側で高速に的中判定が実行されます。
     hit_condition = case(
-        ( # 枠連の的中判定
+        (
             models.RaceReturn.bet_type == 'wakuren',
             and_(
                 models.RaceReturn.number_1 == func.any(top_preds_sq.c.top_waku_numbers),
                 models.RaceReturn.number_2 == func.any(top_preds_sq.c.top_waku_numbers)
             )
         ),
-        ( # 単勝・複勝の的中判定
+        (
             models.RaceReturn.bet_type.in_(['tansho', 'fukusho']),
             models.RaceReturn.number_1 == func.any(top_preds_sq.c.top_horse_numbers)
         ),
-        ( # 馬連・ワイド・馬単の的中判定
+        (
             models.RaceReturn.bet_type.in_(['umaren', 'wide', 'umatan']),
             and_(
                 models.RaceReturn.number_1 == func.any(top_preds_sq.c.top_horse_numbers),
                 models.RaceReturn.number_2 == func.any(top_preds_sq.c.top_horse_numbers)
             )
         ),
-        ( # 3連複・3連単の的中判定
+        (
             models.RaceReturn.bet_type.in_(['sanrenpuku', 'sanrentan']),
             and_(
                 models.RaceReturn.number_1 == func.any(top_preds_sq.c.top_horse_numbers),
@@ -137,10 +133,9 @@ def get_top_payout_hits(db: Session, days: int = 7, limit: int = 5) -> List[Dict
                 models.RaceReturn.number_3 == func.any(top_preds_sq.c.top_horse_numbers)
             )
         ),
-        else_=False # 上記以外の券種は対象外
+        else_=False
     )
 
-    # 3. メインクエリ: 必要な情報をJOINで結合し、的中条件でフィルタリング後、配当順にソートして取得します。
     query = db.query(
         models.Race.id.label("race_id"),
         models.Race.race_date,
@@ -152,20 +147,19 @@ def get_top_payout_hits(db: Session, days: int = 7, limit: int = 5) -> List[Dict
         models.RaceReturn.number_1,
         models.RaceReturn.number_2,
         models.RaceReturn.number_3,
-    ).select_from(models.RaceReturn).join( # RaceReturnを起点にJOIN
+    ).select_from(models.RaceReturn).join(
         models.Race, models.RaceReturn.race_id == models.Race.id
-    ).join( # サブクエリをJOIN
+    ).join(
         top_preds_sq, models.RaceReturn.race_id == top_preds_sq.c.race_id
     ).filter(
-        models.Race.race_date.between(start_date, end_date), # 期間で絞り込み
-        hit_condition  # 的中したデータのみに絞り込み
+        models.Race.race_date.between(start_date, end_date),
+        hit_condition
     ).order_by(
-        desc(models.RaceReturn.payout) # 配当が高い順にソート
-    ).limit(limit) # 上位N件に制限
+        desc(models.RaceReturn.payout)
+    ).limit(limit)
 
     results = query.all()
 
-    # 4. 取得した結果をAPIのレスポンス形式に整形します。
     all_hits = []
     BET_TYPE_MAP_JA = {
         'tansho': '単勝', 'fukusho': '複勝', 'wakuren': '枠連', 'umaren': '馬連',

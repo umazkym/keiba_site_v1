@@ -62,15 +62,17 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                 <ResponsiveContainer>
                     <BarChart
                         data={sortedData}
-                        margin={{ top: 20, right: 20, left: -15, bottom: 5 }}
+                        // ★★★ 修正箇所 ★★★
+                        // 左右のマージンを調整して、グラフ全体が表示されるようにします。
+                        margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
                         barCategoryGap="20%"
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis 
-                            dataKey="horse_number" 
+                        <XAxis
+                            dataKey="horse_number"
                             interval="preserveStartEnd"
-                            fontSize={12} 
-                            tick={{ fill: '#4A5568' }} 
+                            fontSize={12}
+                            tick={{ fill: '#4A5568' }}
                             stroke="#d1d5db"
                         />
                         <YAxis
@@ -90,9 +92,9 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                                     fill={getBarColor(entry.advantage_score)}
                                 />
                             ))}
-                            <LabelList 
-                                dataKey="advantage_score" 
-                                position="top" 
+                            <LabelList
+                                dataKey="advantage_score"
+                                position="top"
                                 formatter={(value: any) => {
                                     const numValue = Number(value);
                                     if (numValue > 0.15) return '▲';

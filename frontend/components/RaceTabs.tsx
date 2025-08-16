@@ -77,7 +77,7 @@ const VenuePanel = ({ venue }: { venue: VenueRaces }) => {
                                      advantages={activeRace.horse_number_advantages}
                                      courseType={activeRace.course_type}
                                      distance={activeRace.distance}
-                                />
+                                 />
                             </div>
                         </details>
                     </div>
@@ -103,7 +103,7 @@ export const RaceTabs = ({ data }: { data: RaceDayPrediction }) => {
                 {data.jra.length === 0 ? (
                     <p className="p-4 text-gray-500 text-center">この日の中央競馬の開催はありません。</p>
                 ) : (
-                    <Tabs forceRenderTabPanel selectedTabClassName="!text-primary-dark !bg-gray-100 !border-gray-300">
+                    <Tabs selectedTabClassName="!text-primary-dark !bg-gray-100 !border-gray-300">
                         <TabList className="flex flex-wrap border-b border-gray-200 -mb-px gap-x-2">
                             {data.jra.map(venue => <Tab key={venue.venue_name} className="px-4 py-2 font-medium cursor-pointer border-b-2 border-transparent hover:bg-gray-100 hover:text-primary-dark transition-colors">{venue.venue_name}</Tab>)}
                         </TabList>
@@ -119,7 +119,7 @@ export const RaceTabs = ({ data }: { data: RaceDayPrediction }) => {
                 {data.nar.length === 0 ? (
                     <p className="p-4 text-gray-500 text-center">この日の地方競馬の開催はありません。</p>
                 ) : (
-                    <Tabs forceRenderTabPanel selectedTabClassName="!text-primary-dark !bg-gray-100 !border-gray-300">
+                    <Tabs selectedTabClassName="!text-primary-dark !bg-gray-100 !border-gray-300">
                         <TabList className="flex flex-wrap border-b border-gray-200 -mb-px gap-x-2">
                             {data.nar.map(venue => <Tab key={venue.venue_name} className="px-4 py-2 font-medium cursor-pointer border-b-2 border-transparent hover:bg-gray-100 hover:text-primary-dark transition-colors">{venue.venue_name}</Tab>)}
                         </TabList>

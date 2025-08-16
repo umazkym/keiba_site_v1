@@ -45,7 +45,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
             .then(data => {
                 // APIから返ってきたデータに解説文を追加
                 if (data) {
-                    data.commentary = `AI偏差値は驚異の${data.deviation_score.toFixed(2)}！出走する${data.venue_name}${data.race_number}Rの${data.horse_name}は、今回最も能力を発揮できる可能性を秘めています。`;
+                    data.commentary = `AI偏差値は${data.deviation_score.toFixed(2)}！${data.venue_name}${data.race_number}Rに出走する${data.horse_name}に注目です。`;
                 }
                 setPick(data);
             })
@@ -78,7 +78,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
             <p className="text-2xl font-bold">{pick.horse_name}</p>
             <p className="text-base opacity-90">{pick.venue_name} {pick.race_number}R - {pick.race_name}</p>
             <div className="mt-auto pt-3 border-t border-white/30">
-                <p className="text-xs italic">「{pick.commentary}」</p>
+                <p className="text-xs italic">{pick.commentary}</p>
             </div>
         </div>
     );

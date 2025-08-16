@@ -14,7 +14,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
     if (!advantages || advantages.length === 0) {
         return (
             <div className="my-4 p-4 bg-white border rounded-lg shadow-inner text-center text-gray-500">
-                <p className="font-semibold">コース別 馬番アドバンテージ</p>
+                <p className="font-semibold">コース別 馬番有利傾向</p>
                 <p className="mt-2 text-sm">このレース条件での馬番有利不利データはありません。</p>
             </div>
         );
@@ -49,7 +49,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
         return null;
     };
 
-    const chartTitle = `コース別 馬番アドバンテージ (${courseType || ''}${distance || ''}m)`;
+    const chartTitle = `コース別 馬番有利傾向 (${courseType || ''}${distance || ''}m)`;
     const yAxisDomain = [
         Math.floor((Math.min(...scores) - 0.1) * 10) / 10,
         Math.ceil((Math.max(...scores) + 0.1) * 10) / 10

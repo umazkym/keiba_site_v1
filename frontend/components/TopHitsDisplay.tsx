@@ -97,7 +97,7 @@ export const TopHitsDisplay = () => {
         <div>
             <h3 className="flex items-center text-xl sm:text-2xl font-bold text-gray-800 mb-2 px-1">
                <TrophyIcon className="w-6 h-6 mr-2 text-yellow-500"/>
-               <span className="whitespace-nowrap">AI高配当ランキング</span>
+               <span className="whitespace-nowrap">高配当的中ランキング</span>
                <span className="text-sm font-normal text-gray-500 ml-2 whitespace-nowrap">(直近7日間)</span>
             </h3>
             {hits.length === 0 ? (

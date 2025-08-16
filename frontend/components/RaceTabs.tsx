@@ -56,7 +56,7 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
                                 <div className="w-6 h-6 mr-2 flex-shrink-0">
                                     <FlagIcon className="w-5 h-5 text-accent-dark" />
                                 </div>
-                                <span className="whitespace-nowrap">スタートダッシュ予測</span>
+                                <span className="whitespace-nowrap">スタート位置予測</span>
                                 <div className="ml-auto transform transition-transform duration-300 group-open:rotate-90">
                                     <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
                                 </div>
@@ -71,7 +71,7 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
                                 <div className="w-6 h-6 mr-2 flex-shrink-0">
                                     <UsersIcon className="w-5 h-5 text-accent-dark" />
                                 </div>
-                                <span className="whitespace-nowrap">総当たり対戦績</span>
+                                <span className="whitespace-nowrap">総当たり対戦表</span>
                                 <div className="ml-auto transform transition-transform duration-300 group-open:rotate-90">
                                     <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
                                 </div>

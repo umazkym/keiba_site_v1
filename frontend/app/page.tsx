@@ -12,7 +12,7 @@ const getTodayString = () => {
     return jstDate.toISOString().split('T')[0];
 };
 
-const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) => (
+const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: React.ReactNode }) => (
     <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200 text-center flex flex-col items-center">
         <div className="bg-blue-100 text-primary-dark rounded-full p-2 mb-2">
             {icon}
@@ -40,12 +40,14 @@ export default async function HomePage() {
             {/* メインのヒーローセクション */}
             <div className="text-center my-4 md:my-5 p-6 bg-white rounded-lg shadow-xl border border-gray-200 bg-gradient-to-br from-blue-50 to-white">
                 <h1 className="text-3xl md:text-4xl font-extrabold text-primary-dark mb-2 leading-tight">
-                    今日の競馬、迷ったら。
+                    今日の競馬に迷ったら。
                     <br/>
                     無料で使えるAI予想
                 </h1>
                 <p className="text-sm md:text-base text-gray-700 max-w-2xl mx-auto">
-                    会員登録なしですぐに見れる！中央・地方競馬の全レースを<strong className="text-accent-dark">AI</strong>が徹底分析。
+                    会員登録なしですぐに見れる！
+                    <br/>
+                    中央・地方競馬の全レースを<strong className="text-accent-dark">AI</strong>が徹底分析。
                 </p>
                 <Link
                     href={`/races/${todayStr}`}
@@ -61,18 +63,36 @@ export default async function HomePage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <FeatureCard
                         icon={<UsersIcon className="w-7 h-7" />}
-                        title="AI総当たり対戦績"
-                        description="全出走馬の直接対決を分析。馬同士の本当の力関係が一目でわかります。"
+                        title="AI総当たり対戦成績"
+                        description={
+                            <>
+                                全出走馬の直接対決を分析。
+                                <br />
+                                馬同士の力関係が一目でわかります。
+                            </>
+                        }
                     />
                     <FeatureCard
                         icon={<FlagIcon className="w-7 h-7" />}
                         title="AIスタート予測"
-                        description="過去データから展開を予測。逃げ・先行馬探しに最適です。"
+                        description={
+                            <>
+                                過去データから展開を予測。
+                                <br />
+                                逃げ・先行馬探しに最適です。
+                            </>
+                        }
                     />
                     <FeatureCard
                         icon={<ChartBarIcon className="w-7 h-7" />}
                         title="コース別 馬番アドバンテージ"
-                        description="競馬場・距離・馬場ごとの有利な馬番を算出し、予想をサポート。"
+                        description={
+                            <>
+                                過去データからコース形態を分析。
+                                <br />
+                                競馬場・距離別に馬番の有利不利を算出。
+                            </>
+                        }
                     />
                 </div>
             </div>

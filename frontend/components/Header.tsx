@@ -17,7 +17,7 @@ export const Header = () => {
                         <HorseIcon />
                         <div className="flex flex-col">
                             <span className="text-2xl font-bold tracking-tight group-hover:text-gray-200 transition-colors">ウマFREE</span>
-                            <span className="text-xs text-blue-200 group-hover:text-white transition-colors">無料のAI競馬予想</span>
+                            <span className="text-xs text-blue-200 group-hover:text-white transition-colors">毎日無料のAI競馬予想</span>
                         </div>
                     </Link>
                 </div>

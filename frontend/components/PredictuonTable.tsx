@@ -47,11 +47,11 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                             <th className="px-2 py-1 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">印</th>
                             <th className="px-2 py-1 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" colSpan={2}>馬番・馬名</th>
                             <th className="px-4 py-1 text-right text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-end gap-1">
-                                <span className="whitespace-nowrap">能力偏差値</span>
+                                <span className="whitespace-nowrap">AI偏差値</span>
                                 <Tippy content={
                                     <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
-                                        <p className='font-bold mb-1'>能力偏差値とは？</p>
-                                        <p className='text-xs'>過去のレースタイムなどから算出した馬の能力指数です。数値が高いほど、高く評価していることを示します。</p>
+                                        <p className='font-bold mb-1'>AI偏差値とは？</p>
+                                        <p className='text-xs'>過去のレースタイムなどからAIが算出した馬の能力指数です。数値が高いほど、高く評価していることを示します。</p>
                                     </div>
                                     } placement="top" interactive={true} theme="light-border" appendTo={() => document.body}
                                 >
@@ -89,7 +89,7 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                             </div>
                             <div className="text-right">
                                 <div className="font-semibold text-primary-dark text-lg whitespace-nowrap">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</div>
-                                <div className="text-xs text-gray-500 whitespace-nowrap">能力偏差値</div>
+                                <div className="text-xs text-gray-500 whitespace-nowrap">AI偏差値</div>
                             </div>
                         </div>
                     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link'; // Linkコンポーネントをインポート
 import { getTopPayoutHits } from '@/lib/api';
 import { TopPayoutHit } from '@/lib/types';
 import { TrophyIcon } from './icons';
@@ -16,26 +17,26 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     const style = rankStyles[Math.min(rank - 1, 4)];
 
     return (
-        <div className={`bg-white rounded-lg border-2 transition-transform duration-300 ${style.borderColor} ${style.shadow} ${style.scale} p-2 flex items-center gap-2`}>
-            {/* Rank */}
-            <div className={`text-sm font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-2 py-1`}>
-                {rank}位
-            </div>
-            
-            {/* Main Info (Race & Bet type) */}
-            <div className="flex-grow min-w-0 text-left">
-                <div className="text-xs text-gray-500 whitespace-nowrap truncate">
-                     {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
-                     {' '}{hit.venue_name}{hit.race_number}R
+        <div className={`bg-white rounded-lg border-2 transition-transform duration-300 ${style.borderColor} ${style.shadow} ${style.scale} p-2 flex flex-col items-start gap-1 h-full`}>
+            {/* 上段：ランクと配当 */}
+            <div className="flex justify-between items-center w-full">
+                <div className={`text-xs font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-2 py-1`}>
+                    {rank}位
                 </div>
-                <div className="text-xs text-gray-700 mt-0.5 whitespace-nowrap truncate">
-                    {hit.bet_type}: {hit.winning_numbers}
+                <div className="font-bold text-red-600 text-base lg:text-lg whitespace-nowrap leading-none">
+                    {hit.payout.toLocaleString()}円
                 </div>
             </div>
 
-            {/* Payout */}
-            <div className="font-bold text-red-600 text-lg whitespace-nowrap leading-none flex-shrink-0">
-                {hit.payout.toLocaleString()}円
+            {/* 下段：レース情報 */}
+            <div className="text-left w-full mt-1">
+                <div className="text-xs text-gray-500">
+                    {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
+                    {' '}{hit.venue_name}{hit.race_number}R
+                </div>
+                <div className="text-xs text-gray-700 font-medium break-words">
+                    {hit.bet_type}: {hit.winning_numbers}
+                </div>
             </div>
         </div>
     );
@@ -44,9 +45,9 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
 const Skeleton = () => (
     <div className="animate-pulse">
         <div className="h-7 bg-gray-200 rounded w-1/2 mb-2"></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3">
             {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-16 bg-gray-200 rounded-lg"></div>
+                <div key={i} className="h-20 bg-gray-200 rounded-lg"></div>
             ))}
         </div>
     </div>
@@ -61,7 +62,24 @@ export const TopHitsDisplay = () => {
             setIsLoading(true);
             try {
                 const data = await getTopPayoutHits();
-                setHits(data);
+
+                // 同一レースの重複を排除
+                const uniqueHits = Object.values(
+                  data.reduce((acc: { [key: string]: TopPayoutHit }, currentHit) => {
+                    const existingHit = acc[currentHit.race_id];
+                    if (!existingHit || currentHit.payout > existingHit.payout) {
+                      acc[currentHit.race_id] = currentHit;
+                    }
+                    return acc;
+                  }, {})
+                );
+
+                const sortedAndLimitedHits = uniqueHits
+                  .sort((a, b) => b.payout - a.payout)
+                  .slice(0, 5);
+                
+                setHits(sortedAndLimitedHits);
+
             } catch (e) {
                 console.error("Failed to fetch top hits:", e);
             } finally {
@@ -87,9 +105,16 @@ export const TopHitsDisplay = () => {
                     <p>対象期間の的中実績はありませんでした。</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 md:gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3">
                     {hits.map((hit, index) => (
-                        <HitCard key={`${hit.race_id}-${hit.bet_type}-${hit.payout}`} hit={hit} rank={index + 1} />
+                        // ★修正点: hrefにクエリパラメータを追加
+                        <Link 
+                            key={`${hit.race_id}-${hit.winning_numbers}`} 
+                            href={`/races/${hit.race_date}?venue=${encodeURIComponent(hit.venue_name)}&race=${hit.race_number}`}
+                            className="block h-full"
+                        >
+                            <HitCard hit={hit} rank={index + 1} />
+                        </Link>
                     ))}
                 </div>
             )}

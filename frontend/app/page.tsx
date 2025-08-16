@@ -31,6 +31,12 @@ export default async function HomePage() {
 
     return (
         <div className="container py-4">
+            {/* ★★★ ここを修正しました ★★★ */}
+            {/* AI高配当ランキング (余白を日付ページと統一) */}
+            <div className="mb-4">
+                <TopHitsDisplay />
+            </div>
+            
             {/* メインのヒーローセクション */}
             <div className="text-center my-4 md:my-5 p-6 bg-white rounded-lg shadow-xl border border-gray-200 bg-gradient-to-br from-blue-50 to-white">
                 <h1 className="text-3xl md:text-4xl font-extrabold text-primary-dark mb-2 leading-tight">
@@ -50,7 +56,7 @@ export default async function HomePage() {
             </div>
 
             {/* 3つの特徴セクション */}
-            <div className="my-6">
+            <div className="my-8">
                 <h2 className="text-xl font-bold text-center text-gray-800 mb-3">ウマFREEだけの<span className="text-primary">3つの無料AIデータ</span></h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <FeatureCard
@@ -71,20 +77,14 @@ export default async function HomePage() {
                 </div>
             </div>
 
-            {/* 注目馬と的中実績 */}
-            <div className="flex flex-col lg:flex-row gap-6">
-                <div className="lg:w-1/3 flex flex-col">
-                    <h2 className="flex items-center text-xl font-bold text-gray-800 mb-2 border-b-2 border-primary pb-1">
-                        <SparklesIcon className="w-5 h-5 mr-2 text-accent-dark" />
-                        <span className="whitespace-nowrap">今日のAI注目馬</span>
-                    </h2>
-                    <div className="flex-grow">
-                        <SpecialPickCard pick={specialPick} />
-                    </div>
-                </div>
-                
-                <div className="lg:w-2/3">
-                    <TopHitsDisplay />
+            {/* 今日のAI注目馬 */}
+            <div className="my-8">
+                <h2 className="flex items-center text-xl font-bold text-gray-800 mb-2 border-b-2 border-primary pb-1">
+                    <SparklesIcon className="w-5 h-5 mr-2 text-accent-dark" />
+                    <span className="whitespace-nowrap">今日のAI注目馬</span>
+                </h2>
+                <div>
+                    <SpecialPickCard pick={specialPick} />
                 </div>
             </div>
         </div>

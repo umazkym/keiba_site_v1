@@ -7,8 +7,8 @@ import { Footer } from "@/components/Footer";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "競馬AI予測サイト",
-  description: "AIによる競馬予測",
+  title: "ウマFREE | 完全無料のAI競馬予想サイト",
+  description: "登録不要、すぐに見れる。あなたの競馬予想に、AIのチカラを。中央・地方競馬の全レース予測から、独自の対戦データまで完全無料で開放中。",
 };
 
 export default function RootLayout({

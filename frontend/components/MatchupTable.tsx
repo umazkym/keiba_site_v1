@@ -62,16 +62,16 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
     const { matchup_data } = matchupData;
     const sortedHorses = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
     return (
-        <div className="table-wrapper">
-            <table className="matchup-table" style={{ minWidth: `${160 + sortedHorses.length * 52}px` }}>
+        <div className="overflow-x-auto border border-gray-200 rounded">
+            <table className="matchup-table w-full">
                 <thead>
                     <tr>
-                        <th className="sticky-col !p-1 text-center">馬名</th>
+                        <th className="sticky-col !p-1 text-center whitespace-nowrap w-[140px]">馬名</th>
                         {sortedHorses.map(horse => (
-                            <th key={horse.horse_id} className="p-1" style={{ minWidth: '52px' }}>
-                                <div className='flex flex-col items-center justify-center h-full gap-1'>
+                            <th key={horse.horse_id} className="p-1 w-11">
+                                <div className='flex flex-col items-center justify-center h-full gap-0.5'>
                                     <HorseNumberCircle number={horse.horse_number} waku={horse.waku_number} />
-                                    <span className='text-[10px] font-bold whitespace-nowrap'>{horse.horse_name.substring(0, 3)}</span>
+                                    <span className='text-[10px] font-bold whitespace-nowrap'>{horse.horse_name.substring(0, 4)}</span>
                                 </div>
                             </th>
                         ))}
@@ -80,14 +80,14 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
                 <tbody>
                     {sortedHorses.map((rowHorse) => (
                         <tr key={rowHorse.horse_id}>
-                            <th className="sticky-col p-1">
-                                <div className='flex items-center h-full px-2 gap-2'>
+                            <th className="sticky-col p-1 w-[140px]">
+                                <div className='flex items-center h-full px-1 gap-2'>
                                     <HorseNumberCircle number={rowHorse.horse_number} waku={rowHorse.waku_number} />
-                                    <span className='text-sm font-semibold whitespace-nowrap'>{rowHorse.horse_name}</span>
+                                    <span className='text-sm font-semibold whitespace-nowrap truncate'>{rowHorse.horse_name}</span>
                                 </div>
                             </th>
                             {sortedHorses.map((colHorse) => {
-                                if (colHorse.horse_id === rowHorse.horse_id) return <td key={colHorse.horse_id} className="self-match"></td>;
+                                if (colHorse.horse_id === rowHorse.horse_id) return <td key={colHorse.horse_id} className="self-match w-11"></td>;
                                 const record = matchup_data[`${rowHorse.horse_id}_vs_${colHorse.horse_id}`];
                                 let content = <div className="net-wins-cell"><span className="text-gray-400">-</span></div>;
                                 let cellClass = 'no-match';
@@ -104,7 +104,7 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
                                     );
                                 }
                                 return (
-                                    <td key={colHorse.horse_id} className={`p-0 ${cellClass}`}>
+                                    <td key={colHorse.horse_id} className={`p-0 w-11 ${cellClass}`}>
                                         <Tippy 
                                             singleton={tippySingleton}
                                             content={record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : ''}
@@ -134,7 +134,6 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
     
     const [source, target] = useSingleton();
     
-    // スマホ用 state
     const sortedHorsesForSelect = React.useMemo(() => [...race.predictions].sort((a, b) => a.horse_number - b.horse_number), [race.predictions]);
     const [selectedHorseId, setSelectedHorseId] = useState<string>(sortedHorsesForSelect[0]?.horse_id || '');
 
@@ -163,13 +162,13 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
         if (!selectedHorse) return null;
 
         return (
-            <div className="p-4">
-                <label htmlFor="horse-select" className="block text-sm font-medium text-gray-700 mb-2">基準にする馬を選択してください:</label>
+            <div className="p-2">
+                <label htmlFor="horse-select" className="block text-sm font-medium text-gray-700 mb-1">基準の馬を選択:</label>
                 <select 
                     id="horse-select"
                     value={selectedHorseId}
                     onChange={(e) => setSelectedHorseId(e.target.value)}
-                    className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                    className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm"
                 >
                     {sortedHorsesForSelect.map(h => (
                         <option key={h.horse_id} value={h.horse_id}>
@@ -178,7 +177,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                     ))}
                 </select>
 
-                <div className="mt-4 space-y-2">
+                <div className="mt-2 space-y-1">
                     {sortedHorsesForSelect.filter(h => h.horse_id !== selectedHorseId).map(opponent => {
                         const record = matchupData?.matchup_data[`${selectedHorse.horse_id}_vs_${opponent.horse_id}`];
                         const netWins = record ? record.win - record.loss : 0;
@@ -196,12 +195,12 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         }
 
                         return (
-                             <div key={opponent.horse_id} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                                 <div className="flex items-center gap-2">
+                             <div key={opponent.horse_id} className="flex justify-between items-center p-2 bg-gray-50 rounded-md">
+                                 <div className="flex items-center gap-2 min-w-0">
                                      <HorseNumberCircle number={opponent.horse_number} waku={opponent.waku_number} />
-                                     <span className="font-medium text-gray-800">{opponent.horse_name}</span>
+                                     <span className="font-medium text-gray-800 text-sm truncate">{opponent.horse_name}</span>
                                  </div>
-                                <div className="font-bold text-lg">{resultText}</div>
+                                <div className="font-bold text-base whitespace-nowrap">{resultText}</div>
                              </div>
                         );
                     })}
@@ -212,21 +211,21 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
 
 
     return (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="bg-white rounded-lg">
             <Tippy singleton={source} theme="light-border" placement="top" animation="shift-away" interactive={true} appendTo={() => document.body} delay={[100, 200]} />
             
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border-b gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-2 border-b gap-2">
                 <div className='flex items-center gap-2'>
-                    <h3 className="text-base font-bold hidden md:block">直接対決データ</h3>
+                    <h3 className="text-sm font-bold hidden md:block whitespace-nowrap">AI総当たり対戦績</h3>
                      <Tippy 
                         content={
                             <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
-                                <p className='font-bold mb-1 border-b pb-1'>直接対決データとは？</p>
-                                <p className='text-xs mt-2'>この表は、出走馬同士が過去に<strong className='font-bold'>同じレースで直接対決</strong>した際の成績をまとめたものです。</p>
+                                <p className='font-bold mb-1 border-b pb-1'>AI総当たり対戦績とは？</p>
+                                <p className='text-xs mt-2'>出走馬同士が過去に同じレースで直接対決した際の成績です。</p>
                                 <ul className='text-xs mt-2 list-disc list-inside space-y-1'>
-                                    <li><strong>数値：</strong>左の馬から見た勝ち越し数です。（勝ち数 - 負け数）</li>
-                                    <li><strong>( )内の数字：</strong>(勝ち数 - 負け数 - 引き分け数) の内訳です。</li>
-                                    <li><strong>集計期間：</strong>右上のカレンダーで自由に変更できます。</li>
+                                    <li><strong>数値：</strong>左の馬から見た勝ち越し数（勝ち数 - 負け数）。</li>
+                                    <li><strong>( )内の数字：</strong>(勝-負-分) の内訳です。</li>
+                                    <li><strong>集計期間：</strong>右上のカレンダーで変更できます。</li>
                                 </ul>
                             </div>
                         }
@@ -235,20 +234,20 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         <span className='w-5 h-5 bg-gray-400 text-white rounded-full flex items-center justify-center text-sm font-bold cursor-help'>?</span>
                     </Tippy>
                 </div>
-                <div className="flex items-center gap-2 text-sm self-end w-full md:w-auto">
-                    <label htmlFor="start-date" className="text-gray-600 font-semibold shrink-0">集計期間:</label>
+                <div className="flex items-center gap-1 text-sm self-end w-full md:w-auto">
+                    <label htmlFor="start-date" className="text-gray-600 font-semibold shrink-0">期間:</label>
                     <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border-gray-300 p-1 rounded-md text-sm w-full"/>
                     <span className="text-gray-500">～</span>
                     <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border-gray-300 p-1 rounded-md text-sm w-full"/>
                 </div>
             </div>
             
-            {isLoading && <div className="text-center p-8 text-gray-500">対決データを読み込み中...</div>}
-            {error && <div className="text-center p-8 text-red-500">{error}</div>}
+            {isLoading && <div className="text-center p-6 text-gray-500">対決データを読み込み中...</div>}
+            {error && <div className="text-center p-6 text-red-500">{error}</div>}
 
             {!isLoading && !error && matchupData && (
                 isDataEmpty 
-                ? <div className="text-center text-gray-500 py-6"><p>指定された期間の直接対決データはありません。</p></div>
+                ? <div className="text-center text-gray-500 py-4"><p>指定された期間の直接対決データはありません。</p></div>
                 : <>
                     <div className="hidden lg:block">
                         <TableView predictions={race.predictions} matchupData={matchupData} tippySingleton={target} />

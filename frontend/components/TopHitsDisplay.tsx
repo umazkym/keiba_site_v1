@@ -16,26 +16,26 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     const style = rankStyles[Math.min(rank - 1, 4)];
 
     return (
-        <div className={`bg-white rounded-lg border-2 transition-transform duration-300 ${style.borderColor} ${style.shadow} ${style.scale} p-2 flex flex-row md:flex-col md:p-3`}>
-            {/* Left part (Rank & Payout) */}
-            <div className="flex flex-col justify-center items-center w-24 flex-shrink-0 pr-2 border-r md:border-r-0 md:w-auto md:flex-row md:justify-between md:items-baseline md:mb-1 md:border-b md:pb-1">
-                <div className={`px-2 py-0.5 text-xs font-bold rounded-full ${style.rankBgColor} ${style.rankTextColor}`}>
-                    {rank}位
-                </div>
-                <div className="text-lg md:text-xl font-extrabold text-red-600 mt-1 md:mt-0">
-                    {hit.payout.toLocaleString()}円
-                </div>
+        <div className={`bg-white rounded-lg border-2 transition-transform duration-300 ${style.borderColor} ${style.shadow} ${style.scale} p-2 flex items-center gap-2`}>
+            {/* Rank */}
+            <div className={`text-sm font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-2 py-1`}>
+                {rank}位
             </div>
             
-            {/* Right part (Race Info) */}
-            <div className="flex flex-col justify-center flex-grow pl-2 text-right md:text-center md:pl-0 md:mt-1">
-                <div className="text-xs text-gray-500">
+            {/* Main Info (Race & Bet type) */}
+            <div className="flex-grow min-w-0 text-left">
+                <div className="text-xs text-gray-500 whitespace-nowrap truncate">
                      {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
                      {' '}{hit.venue_name}{hit.race_number}R
                 </div>
-                <div className="text-xs text-gray-700 mt-1">
-                    <span className="font-semibold">{hit.bet_type}</span>: {hit.winning_numbers}
+                <div className="text-xs text-gray-700 mt-0.5 whitespace-nowrap truncate">
+                    {hit.bet_type}: {hit.winning_numbers}
                 </div>
+            </div>
+
+            {/* Payout */}
+            <div className="font-bold text-red-600 text-lg whitespace-nowrap leading-none flex-shrink-0">
+                {hit.payout.toLocaleString()}円
             </div>
         </div>
     );
@@ -43,10 +43,10 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
 
 const Skeleton = () => (
     <div className="animate-pulse">
-        <div className="h-8 bg-gray-200 rounded w-1/2 mb-3"></div>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="h-7 bg-gray-200 rounded w-1/2 mb-2"></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
             {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-20 md:h-28 bg-gray-200 rounded-lg"></div>
+                <div key={i} className="h-16 bg-gray-200 rounded-lg"></div>
             ))}
         </div>
     </div>
@@ -77,16 +77,17 @@ export const TopHitsDisplay = () => {
     
     return (
         <div>
-            <h3 className="flex items-center text-xl sm:text-2xl font-bold text-gray-800 mb-3 px-1">
+            <h3 className="flex items-center text-xl sm:text-2xl font-bold text-gray-800 mb-2 px-1">
                <TrophyIcon className="w-6 h-6 mr-2 text-yellow-500"/>
-               高配当的中レース (直近7日間)
+               <span className="whitespace-nowrap">AI高配当ランキング</span>
+               <span className="text-sm font-normal text-gray-500 ml-2 whitespace-nowrap">(直近7日間)</span>
             </h3>
             {hits.length === 0 ? (
-                <div className="p-6 bg-white border border-dashed rounded-lg text-center text-gray-500">
-                    <p>対象期間内にAI予測による高配当的中はありませんでした。</p>
+                <div className="p-4 bg-white border border-dashed rounded-lg text-center text-gray-500">
+                    <p>対象期間の的中実績はありませんでした。</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 md:gap-3">
                     {hits.map((hit, index) => (
                         <HitCard key={`${hit.race_id}-${hit.bet_type}-${hit.payout}`} hit={hit} rank={index + 1} />
                     ))}

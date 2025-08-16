@@ -8,15 +8,17 @@ const HorseIcon = () => (
     </svg>
 );
 
-
 export const Header = () => {
     return (
         <header className="bg-primary-dark text-white shadow-lg">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="container">
                 <div className="flex items-center justify-between h-16">
-                    <Link href="/" className="flex items-center gap-3 text-2xl font-bold tracking-tight hover:text-gray-200 transition-colors">
+                    <Link href="/" className="flex items-center gap-3 group">
                         <HorseIcon />
-                        <span>競馬AI予測</span>
+                        <div className="flex flex-col">
+                            <span className="text-2xl font-bold tracking-tight group-hover:text-gray-200 transition-colors">ウマFREE</span>
+                            <span className="text-xs text-blue-200 group-hover:text-white transition-colors">無料のAI競馬予想</span>
+                        </div>
                     </Link>
                 </div>
             </div>

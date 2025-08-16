@@ -31,7 +31,7 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
 
     if (isUnpredictable) {
         return (
-            <div className="p-6 text-center text-gray-500">
+            <div className="p-4 text-center text-gray-500">
                 <p>このレースは予測対象外です（新馬戦、障害戦など）。</p>
             </div>
         );
@@ -44,11 +44,17 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                 <table className="min-w-full">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">印</th>
-                            <th className="px-2 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" colSpan={2}>馬番・馬名</th>
-                            <th className="px-4 py-2 text-right text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-end gap-1">
-                                <span>AI偏差値</span>
-                                <Tippy content={<div className='p-2 text-sm text-left max-w-xs bg-gray-700 text-white rounded-md'><p>過去のレース走破タイムを元に、AIが独自に算出した能力指数です。数値が高いほど、能力が高いと評価しています。</p></div>} placement="top">
+                            <th className="px-2 py-1 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">印</th>
+                            <th className="px-2 py-1 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" colSpan={2}>馬番・馬名</th>
+                            <th className="px-4 py-1 text-right text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-end gap-1">
+                                <span className="whitespace-nowrap">能力偏差値</span>
+                                <Tippy content={
+                                    <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
+                                        <p className='font-bold mb-1'>能力偏差値とは？</p>
+                                        <p className='text-xs'>過去のレースタイムなどから算出した馬の能力指数です。数値が高いほど、高く評価していることを示します。</p>
+                                    </div>
+                                    } placement="top" interactive={true} theme="light-border" appendTo={() => document.body}
+                                >
                                     <span className='w-4 h-4 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold cursor-help'>?</span>
                                 </Tippy>
                             </th>
@@ -61,7 +67,7 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                                 <td className="px-2 py-2 whitespace-nowrap w-10">
                                     <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
                                 </td>
-                                <td className="px-2 py-2 whitespace-nowrap font-medium text-gray-800">{p.horse_name}</td>
+                                <td className="px-2 py-2 whitespace-nowrap font-medium text-gray-800 truncate">{p.horse_name}</td>
                                 <td className="px-4 py-2 whitespace-nowrap text-right font-semibold text-primary-dark">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
                             </tr>
                         ))}
@@ -72,18 +78,18 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
             {/* スマホ (md未満) ではカードリスト表示 */}
             <div className="md:hidden divide-y divide-gray-200">
                 {race.predictions.map((p) => (
-                    <div key={`${race.id}-${p.horse_number}-mobile`} className="p-3">
+                    <div key={`${race.id}-${p.horse_number}-mobile`} className="p-2">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <span className="text-xl font-bold text-gray-800 w-8 text-center">{p.mark || '—'}</span>
                                 <div className="flex items-center gap-2">
                                     <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
-                                    <span className="font-bold text-base text-gray-900">{p.horse_name}</span>
+                                    <span className="font-bold text-base text-gray-900 truncate">{p.horse_name}</span>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <div className="font-semibold text-primary-dark text-lg">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</div>
-                                <div className="text-xs text-gray-500">AI偏差値</div>
+                                <div className="font-semibold text-primary-dark text-lg whitespace-nowrap">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</div>
+                                <div className="text-xs text-gray-500 whitespace-nowrap">能力偏差値</div>
                             </div>
                         </div>
                     </div>

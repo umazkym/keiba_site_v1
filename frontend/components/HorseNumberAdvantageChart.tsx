@@ -14,7 +14,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
     if (!advantages || advantages.length === 0) {
         return (
             <div className="my-4 p-4 bg-white border rounded-lg shadow-inner text-center text-gray-500">
-                <p className="font-semibold">コース別・馬番有利不利</p>
+                <p className="font-semibold">コース別 馬番アドバンテージ</p>
                 <p className="mt-2 text-sm">このレース条件での馬番有利不利データはありません。</p>
             </div>
         );
@@ -41,7 +41,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                 <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg text-sm">
                     <p className="font-bold text-gray-800">{`馬番: ${label}`}</p>
                     <p className={`font-semibold ${data.advantage_score > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {`有利不利指数: ${data.advantage_score.toFixed(3)}`}
+                        {`アドバンテージ指数: ${data.advantage_score.toFixed(3)}`}
                     </p>
                 </div>
             );
@@ -49,7 +49,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
         return null;
     };
 
-    const chartTitle = `コース別・馬番有利不利 (${courseType || ''}${distance || ''}m)`;
+    const chartTitle = `コース別 馬番アドバンテージ (${courseType || ''}${distance || ''}m)`;
     const yAxisDomain = [
         Math.floor((Math.min(...scores) - 0.1) * 10) / 10,
         Math.ceil((Math.max(...scores) + 0.1) * 10) / 10
@@ -90,8 +90,6 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                                     fill={getBarColor(entry.advantage_score)}
                                 />
                             ))}
-                            {/* ★★★ 修正箇所 ★★★ */}
-                            {/* formatterの引数の型をanyに変更し、内部で数値に変換してから比較することで型エラーを解消 */}
                             <LabelList 
                                 dataKey="advantage_score" 
                                 position="top" 

@@ -7,7 +7,7 @@ import { SparklesIcon } from '@/components/icons';
 
 // スケルトンコンポーネント
 const Skeleton = () => (
-    <div className="bg-gray-200 p-6 rounded-xl shadow-lg mb-6 animate-pulse">
+    <div className="bg-gray-200 p-6 rounded-xl shadow-lg mb-6 animate-pulse h-full">
         <div className="h-4 bg-gray-300 rounded w-1/3 mb-3"></div>
         <div className="h-8 bg-gray-300 rounded w-2/3 mb-2"></div>
         <div className="h-6 bg-gray-300 rounded w-1/2 mb-4"></div>
@@ -18,49 +18,44 @@ const Skeleton = () => (
     </div>
 );
 
-// プロパティの型定義を修正
 type Props = {
-    pick?: SpecialPick | null; // サーバーサイドから渡されるデータ（オプショナル）
-    date?: string;             // クライアントサイドでfetchする日付（オプショナル）
+    pick?: SpecialPick | null;
+    date?: string;
 };
 
-// コンポーネント定義を修正
 export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
-    // stateの初期値を修正
-    // initialPickが渡されていればそれを初期値に、なければnull
     const [pick, setPick] = useState<SpecialPick | null>(initialPick === undefined ? null : initialPick);
-    
-    // ローディング状態の初期値を修正
-    // initialPickが渡されていない場合のみ、ローディング状態を開始する
     const [isLoading, setIsLoading] = useState(initialPick === undefined);
 
     useEffect(() => {
-        // `initialPick`がpropsとして渡されている場合（サーバーサイドでデータ取得済み）、
-        // クライアントサイドでの再取得は行わない
         if (initialPick !== undefined) {
             setPick(initialPick);
             setIsLoading(false);
             return;
         }
 
-        // `date`プロパティがない場合も取得できないので処理を終了
         if (!date) {
             setIsLoading(false);
             setPick(null);
             return;
         }
 
-        // `initialPick`がなく、`date`がある場合のみAPIからデータを取得
         setIsLoading(true);
         getSpecialPick(date)
-            .then(data => setPick(data))
+            .then(data => {
+                // APIから返ってきたデータに解説文を追加
+                if (data) {
+                    data.commentary = `AI偏差値は驚異の${data.deviation_score.toFixed(2)}！出走する${data.venue_name}${data.race_number}Rの${data.horse_name}は、今回最も能力を発揮できる可能性を秘めています。`;
+                }
+                setPick(data);
+            })
             .catch(e => {
                 console.error("Failed to fetch special pick:", e);
-                setPick(null); // エラー時はnullを設定
+                setPick(null);
             })
             .finally(() => setIsLoading(false));
             
-    }, [date, initialPick]); // 依存配列に`date`と`initialPick`を指定
+    }, [date, initialPick]);
 
     if (isLoading) {
         return <Skeleton />;
@@ -78,7 +73,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
         <div className="bg-gradient-to-br from-yellow-400 to-orange-500 text-white p-4 rounded-xl shadow-lg h-full flex flex-col">
             <h3 className="text-xs font-bold uppercase tracking-wider mb-1 flex items-center">
                 <SparklesIcon className="w-4 h-4 mr-2" />
-                AIの注目馬！
+                今日のイチオシ！
             </h3>
             <p className="text-2xl font-bold">{pick.horse_name}</p>
             <p className="text-base opacity-90">{pick.venue_name} {pick.race_number}R - {pick.race_name}</p>

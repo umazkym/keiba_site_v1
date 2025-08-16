@@ -28,13 +28,13 @@ const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onD
         <div className="flex items-center justify-center gap-1 sm:gap-2 w-full overflow-x-auto">
             <button
                 onClick={() => onDateChange(getTodayString())}
-                className="bg-primary border border-primary-dark text-white px-3 py-2 rounded-md shadow-sm hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-bold whitespace-nowrap shrink-0"
+                className="bg-primary border border-primary-dark text-white px-2 py-1.5 rounded-md shadow-sm hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-bold whitespace-nowrap shrink-0"
             >
                 今日
             </button>
             <button
                 onClick={() => handleDateShift(-1)}
-                className="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
+                className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
             >
                 ‹ 前日
             </button>
@@ -42,11 +42,11 @@ const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onD
                 type="date"
                 value={currentDate}
                 onChange={(e) => onDateChange(e.target.value)}
-                className="border-gray-300 p-2 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-xs sm:text-sm shrink-0"
+                className="border-gray-300 p-1.5 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-xs sm:text-sm shrink-0"
             />
             <button
                 onClick={() => handleDateShift(1)}
-                className="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
+                className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
             >
                 翌日 ›
             </button>
@@ -94,29 +94,25 @@ export default function RacePage() {
     };
 
     return (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="container py-4">
             
-            {/* 1. AI高配当的中ランキング */}
             <div className="mb-4">
                 <TopHitsDisplay />
             </div>
 
-            {/* 2. 日付ナビゲーション */}
-            <div className="flex justify-center items-center mb-4 p-3 bg-white border rounded-lg shadow-sm">
+            <div className="flex justify-center items-center mb-4 p-2 bg-white border rounded-lg shadow-sm">
                 <DateNavigator currentDate={dateFromUrl} onDateChange={handleDateChange} />
             </div>
 
-            {/* 3. AI注目馬 */}
             <div className="mb-4">
                 <SpecialPickCard date={dateFromUrl} />
             </div>
 
-            {/* 4. レース予測タブ */}
             {isLoading && (
                 <RaceTabsSkeleton />
             )}
             
-            {error && <div className="text-center p-8 text-red-600 bg-red-100 rounded-lg border border-red-200">{error}</div>}
+            {error && <div className="text-center p-6 text-red-600 bg-red-100 rounded-lg border border-red-200">{error}</div>}
             
             {!isLoading && !error && predictionData && (
                  <RaceTabs data={predictionData} />

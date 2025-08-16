@@ -7,6 +7,15 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    // ★★★ コンテナ設定を追加 ★★★
+    container: {
+      center: true,
+      padding: {
+        DEFAULT: '1rem', // デフォルトのパディング (スマホ)
+        sm: '1.5rem',      // 640px以上
+        lg: '2rem',      // 1024px以上
+      },
+    },
     extend: {
       colors: {
         primary: {

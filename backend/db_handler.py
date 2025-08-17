@@ -7,23 +7,35 @@ from database import models
 from scripts import scraper, parser, database_loader, predictor
 from typing import List, Tuple
 from tqdm import tqdm
+import os 
+
+# ★★★ 修正箇所1: ばんえい競馬の会場コードを定数として定義 ★★★
+BANEI_VENUE_CODES = ["33", "65"]
 
 def update_race_results(db: Session, target_date: datetime.date):
     """
     指定された日付（通常は前日）のレース結果と払い戻し情報を取得し、DBを更新する。
-    この関数は既存の予測データを上書きせず、結果情報のみを追記・更新する。
     """
     print(f"\n--- [RESULTS] Updating race results for {target_date.strftime('%Y-%m-%d')} ---")
-    target_date_str = target_date.strftime('%Y%m%d')
     
     all_race_ids: List[Tuple[str, bool]] = []
     for is_nar in [False, True]:
-        race_type = "NAR" if is_nar else "JRA"
-        # scraper側でキャッシュ戦略が実装されているため、ここでは常に最新を取得する意図でTrueを渡す
-        list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=True)
-        if list_html:
-            race_ids = parser.parse_race_ids_from_list(list_html)
-            all_race_ids.extend([(rid, is_nar) for rid in race_ids])
+        dir_path = os.path.join("data", "html_cache", "nar_racelist" if is_nar else "racelist")
+        file_path = os.path.join(dir_path, f"{target_date.strftime('%Y%m%d')}.bin")
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                list_html = f.read()
+            if list_html:
+                race_ids = parser.parse_race_ids_from_list(list_html)
+
+                # ★★★ 修正箇所2: ばんえい競馬のレースIDを除外するフィルタリング処理 ★★★
+                if is_nar:
+                    race_ids = [
+                        rid for rid in race_ids
+                        if rid[4:6] not in BANEI_VENUE_CODES
+                    ]
+                
+                all_race_ids.extend([(rid, is_nar) for rid in race_ids])
 
     if not all_race_ids:
         print(f"No races found for {target_date.strftime('%Y-%m-%d')}.")
@@ -35,7 +47,8 @@ def update_race_results(db: Session, target_date: datetime.date):
         if not race_exists:
             continue
 
-        result_html = scraper.get_race_result_html(race_id, is_nar=is_nar, force_download=True)
+        # scraper側のキャッシュポリシーに任せるため、force_download引数は使用しない
+        result_html = scraper.get_race_result_html(race_id, is_nar=is_nar)
         if result_html:
             race_data = parser.parse_race_result_page(result_html, race_id)
             if race_data:
@@ -48,7 +61,6 @@ def update_race_results(db: Session, target_date: datetime.date):
 def insert_new_predictions(db: Session, target_date: datetime.date):
     """
     指定された日付（通常は翌日）の出馬表を取得し、AI予測を行い、DBに新規追加する。
-    既に予測データが存在する場合は処理をスキップし、既存データを上書きしない。
     """
     print(f"\n--- [PREDICTIONS] Inserting new predictions for {target_date.strftime('%Y-%m-%d')} ---")
     
@@ -59,14 +71,24 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
         print(f"Predictions for {target_date.strftime('%Y-%m-%d')} already exist. Skipping.")
         return
 
-    target_date_str = target_date.strftime('%Y%m%d')
     all_race_ids: List[Tuple[str, bool]] = []
     for is_nar in [False, True]:
-        race_type = "NAR" if is_nar else "JRA"
-        list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, force_download=True)
-        if list_html:
-            race_ids = parser.parse_race_ids_from_list(list_html)
-            all_race_ids.extend([(rid, is_nar) for rid in race_ids])
+        dir_path = os.path.join("data", "html_cache", "nar_racelist" if is_nar else "racelist")
+        file_path = os.path.join(dir_path, f"{target_date.strftime('%Y%m%d')}.bin")
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                list_html = f.read()
+            if list_html:
+                race_ids = parser.parse_race_ids_from_list(list_html)
+                
+                # ★★★ 修正箇所3: ばんえい競馬のレースIDを除外するフィルタリング処理 ★★★
+                if is_nar:
+                    race_ids = [
+                        rid for rid in race_ids
+                        if rid[4:6] not in BANEI_VENUE_CODES
+                    ]
+
+                all_race_ids.extend([(rid, is_nar) for rid in race_ids])
 
     if not all_race_ids:
         print(f"No races found for {target_date.strftime('%Y-%m-%d')}.")
@@ -76,7 +98,8 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
     all_horse_ids_to_fetch = set()
     desc_step1 = f"[1/3] Fetching Shutuba ({target_date.strftime('%m-%d')})"
     for race_id, is_nar in tqdm(all_race_ids, desc=desc_step1, leave=False):
-        shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=True)
+        # scraper側のキャッシュポリシーに任せるため、force_download引数は使用しない
+        shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar)
         if shutuba_html:
             shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
             if shutuba_data:
@@ -90,8 +113,8 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
         horse_ids_list = list(all_horse_ids_to_fetch)
         desc_step2 = f"[2/3] Fetching Past Data ({target_date.strftime('%m-%d')})"
         for horse_id in tqdm(horse_ids_list, desc=desc_step2, leave=False):
-            # 過去データは常にキャッシュを優先するため force_download=False
-            html = scraper.get_horse_page_html(horse_id, force_download=False)
+            # 過去データは常にキャッシュを優先するため force_download=False のまま（引数なしでOK）
+            html = scraper.get_horse_page_html(horse_id)
             if html:
                 results = parser.parse_horse_results_page(html)
                 if results:

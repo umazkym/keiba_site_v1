@@ -123,10 +123,20 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
 };
 
 export const MatchupTable = ({ race }: { race: RacePrediction }) => {
-    const today = new Date();
-    const yearStart = new Date(today.getFullYear(), 0, 1);
+    // race.race_date (例: "2025-08-18") を基準に日付オブジェクトを生成します。
+    // タイムゾーンの問題を避けるため、UTCとして扱います。
+    const raceDate = new Date(race.race_date + 'T00:00:00Z');
+
+    // レース開催日の前日を計算します。
+    const dayBeforeRace = new Date(raceDate);
+    dayBeforeRace.setUTCDate(raceDate.getUTCDate() - 1);
+
+    // レース開催年の1月1日を計算します。
+    const yearStart = new Date(Date.UTC(raceDate.getUTCFullYear(), 0, 1));
+
+    // toISOString()は 'YYYY-MM-DDTHH:mm:ss.sssZ' 形式なので、'T'で分割して日付部分のみ取得します。
     const [startDate, setStartDate] = useState(yearStart.toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
+    const [endDate, setEndDate] = useState(dayBeforeRace.toISOString().split('T')[0]);
     
     const [matchupData, setMatchupData] = useState<MatchupData | null>(null);
     const [isLoading, setIsLoading] = useState(true);

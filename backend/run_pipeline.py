@@ -57,22 +57,33 @@ def pre_scrape_all_data(start_date: datetime.date, end_date: datetime.date):
             all_race_ids_for_date = []
 
             for is_nar in [False, True]:
+                race_type_str = "地方競馬(NAR)" if is_nar else "中央競馬(JRA)"
                 list_html = scraper.get_race_list_html(target_date_str, is_nar=is_nar, driver=driver)
-                if list_html:
-                    race_ids = parser.parse_race_ids_from_list(list_html)
-                    
-                    # ★★★ 修正箇所2: ばんえい競馬のレースIDを除外するフィルタリング処理 ★★★
-                    if is_nar:
-                        original_count = len(race_ids)
-                        race_ids = [
-                            rid for rid in race_ids
-                            if rid[4:6] not in BANEI_VENUE_CODES
-                        ]
-                        banei_count = original_count - len(race_ids)
-                        if banei_count > 0:
-                            tqdm.write(f"    -> 地方競馬から、ばんえい競馬のレース {banei_count} 件を除外しました。")
-                    
-                    all_race_ids_for_date.extend([(rid, is_nar) for rid in race_ids])
+                
+                # HTMLが取得できない場合（非開催日など）はスキップ
+                if not list_html:
+                    tqdm.write(f"  -> {target_date_str}: {race_type_str}のレース一覧が見つかりませんでした。スキップします。")
+                    continue
+
+                race_ids = parser.parse_race_ids_from_list(list_html)
+
+                # レースIDが1つも見つからない場合もスキップ
+                if not race_ids:
+                    tqdm.write(f"  -> {target_date_str}: {race_type_str}でレースIDが見つかりませんでした。スキップします。")
+                    continue
+                
+                # ★★★ 修正箇所2: ばんえい競馬のレースIDを除外するフィルタリング処理 ★★★
+                if is_nar:
+                    original_count = len(race_ids)
+                    race_ids = [
+                        rid for rid in race_ids
+                        if rid[4:6] not in BANEI_VENUE_CODES
+                    ]
+                    banei_count = original_count - len(race_ids)
+                    if banei_count > 0:
+                        tqdm.write(f"      -> 地方競馬から、ばんえい競馬のレース {banei_count} 件を除外しました。")
+                
+                all_race_ids_for_date.extend([(rid, is_nar) for rid in race_ids])
             
             for race_id, is_nar in tqdm(all_race_ids_for_date, desc=f"  [2/3] レース処理中 ({target_date_str})", unit="race", leave=False):
                 shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar)
@@ -89,15 +100,20 @@ def pre_scrape_all_data(start_date: datetime.date, end_date: datetime.date):
         if all_horse_ids_to_fetch:
             horse_ids_list = sorted(list(all_horse_ids_to_fetch))
             
-            request_counter = 0
+            scraped_counter = 0
             for horse_id in tqdm(horse_ids_list, desc="  [3/3] 馬の過去成績", unit="horse", leave=True):
-                scraper.get_horse_page_html(horse_id, force_download=False, driver=driver)
-                request_counter += 1
+                # 実際にスクレイピングしたかどうかのステータスを受け取る
+                _, was_scraped = scraper.get_horse_page_html(horse_id, force_download=False, driver=driver, return_status=True)
 
-                if request_counter % 50 == 0:
-                    break_time = random.uniform(60, 120)
-                    tqdm.write(f"\n--- 50件処理しました。サーバー負荷軽減のため {int(break_time)}秒間 休憩します ---")
-                    time.sleep(break_time)
+                # 実際にスクレイピングした場合のみカウンターを増やす
+                if was_scraped:
+                    scraped_counter += 1
+
+                    # スクレピング件数が50の倍数になったら休憩する
+                    if scraped_counter > 0 and scraped_counter % 50 == 0:
+                        break_time = random.uniform(60, 120)
+                        tqdm.write(f"\n--- 50件の新規スクレイピングを実行しました。サーバー負荷軽減のため {int(break_time)}秒間 休憩します ---")
+                        time.sleep(break_time)
 
     finally:
         if driver:

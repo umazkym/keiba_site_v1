@@ -5,7 +5,7 @@ import random
 import os
 import re
 from datetime import date, timedelta, datetime
-from typing import Optional
+from typing import Optional, Union
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -34,7 +34,7 @@ RETRY_DELAY_SECONDS = 10
 BASE_CENTRAL_URL = "https://race.netkeiba.com"
 BASE_NAR_URL = "https://nar.netkeiba.com"
 DB_BASE_URL = "https://db.netkeiba.com"
-HORSE_HTML_CACHE_MAX_AGE_SECONDS = 24 * 60 * 60
+HORSE_HTML_CACHE_MAX_AGE_SECONDS = 24 * 5 * 60 * 60  # 中4日
 
 # --- キャッシュディレクトリの定義 ---
 HTML_DIR = os.path.join("data", "html_cache")
@@ -65,13 +65,22 @@ def _prepare_chrome_driver():
         
     return driver
 
-def get_html(url: str, file_path: str, force_download: bool = False, use_selenium: bool = False, max_age_seconds: int = None, wait_for_class: str = None, target_date: Optional[date] = None, driver: Optional[webdriver.Chrome] = None) -> str | None:
+def get_html(
+    url: str,
+    file_path: str,
+    force_download: bool = False,
+    use_selenium: bool = False,
+    max_age_seconds: int = None,
+    wait_for_class: str = None,
+    target_date: Optional[date] = None,
+    driver: Optional[webdriver.Chrome] = None,
+    return_status: bool = False
+) -> Union[str, None, tuple[str | None, bool]]:
     should_force_download = force_download
     if not should_force_download and target_date:
         today_jst = (datetime.utcnow() + timedelta(hours=9)).date()
         yesterday_jst = today_jst - timedelta(days=1)
         if target_date >= yesterday_jst:
-            # print(f"  -> Cache policy: Target date {target_date} is recent. Forcing download.")
             should_force_download = True
 
     file_path_bin = os.path.splitext(file_path)[0] + ".bin"
@@ -83,7 +92,8 @@ def get_html(url: str, file_path: str, force_download: bool = False, use_seleniu
                 is_stale = True
         if not is_stale:
             with open(file_path_bin, 'r', encoding='utf-8', errors='ignore') as f:
-                return f.read()
+                content = f.read()
+                return (content, False) if return_status else content
 
     for attempt in range(MAX_RETRIES):
         try:
@@ -96,10 +106,16 @@ def get_html(url: str, file_path: str, force_download: bool = False, use_seleniu
                 try:
                     selenium_driver.get(url)
                     if wait_for_class:
-                        WebDriverWait(selenium_driver, 20).until(
-                            EC.presence_of_element_located((By.CLASS_NAME, wait_for_class))
-                        )
-                    html_content = selenium_driver.page_source
+                        try:
+                            WebDriverWait(selenium_driver, 10).until(
+                                EC.presence_of_element_located((By.CLASS_NAME, wait_for_class))
+                            )
+                            html_content = selenium_driver.page_source
+                        except TimeoutException:
+                            print(f"  -> [Info] Target element '{wait_for_class}' not found on {url}. Skipping.")
+                            return (None, False) if return_status else None
+                    else:
+                        html_content = selenium_driver.page_source
                 finally:
                     if driver is None and selenium_driver:
                         selenium_driver.quit()
@@ -114,11 +130,11 @@ def get_html(url: str, file_path: str, force_download: bool = False, use_seleniu
                 try:
                     with open(temp_file_path, 'w', encoding='utf-8') as f:
                         f.write(html_content)
-                    os.rename(temp_file_path, file_path_bin)
+                    os.replace(temp_file_path, file_path_bin)
                 finally:
                     if os.path.exists(temp_file_path):
                         os.remove(temp_file_path)
-                return html_content
+                return (html_content, True) if return_status else html_content
 
         except Exception as e:
             print(f"[Request Error] Attempt {attempt + 1}/{MAX_RETRIES} for {url} failed: {e}")
@@ -126,8 +142,7 @@ def get_html(url: str, file_path: str, force_download: bool = False, use_seleniu
                 time.sleep(RETRY_DELAY_SECONDS * (attempt + 1))
     
     print(f"[Request Failed] Could not retrieve URL after {MAX_RETRIES} attempts: {url}")
-    return None
-
+    return (None, False) if return_status else None
 
 def get_race_list_html(date_str: str, is_nar: bool, force_download: bool = False, driver: Optional[webdriver.Chrome] = None) -> str | None:
     base_url = BASE_NAR_URL if is_nar else BASE_CENTRAL_URL
@@ -171,13 +186,27 @@ def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = Fals
         target_date = date.today() # fallback
     return get_html(url, file_path, force_download, use_selenium=False, wait_for_class="RaceTable01", target_date=target_date)
 
-def get_horse_page_html(horse_id: str, force_download: bool = False, driver: Optional[webdriver.Chrome] = None) -> str | None:
+def get_horse_page_html(
+    horse_id: str,
+    force_download: bool = False,
+    driver: Optional[webdriver.Chrome] = None,
+    return_status: bool = False
+) -> Union[str, None, tuple[str | None, bool]]:
     """馬の過去成績ページ。キャッシュの有効期限(24h)で管理。日付ベースの強制ダウンロードは適用しない。"""
     url = f"{DB_BASE_URL}/horse/{horse_id}"
     dir_path = os.path.join(HTML_DIR, "horse")
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, f"{horse_id}.bin")
-    return get_html(url, file_path, force_download, use_selenium=True, max_age_seconds=HORSE_HTML_CACHE_MAX_AGE_SECONDS, wait_for_class='db_main_race', driver=driver)
+    return get_html(
+        url,
+        file_path,
+        force_download,
+        use_selenium=True,
+        max_age_seconds=HORSE_HTML_CACHE_MAX_AGE_SECONDS,
+        wait_for_class='db_main_race',
+        driver=driver,
+        return_status=return_status
+    )
 
 def get_ped_page_html(horse_id: str, force_download: bool = False) -> str | None:
     """血統ページ。日付による強制ダウンロードは不要。"""

@@ -203,7 +203,7 @@ def main():
         
         db_session_for_advantage = SessionLocal()
         try:
-            history_start_date = datetime.date(2020, 1, 1)
+            history_start_date = datetime.date(2024, 10, 1)
             history_end_date = datetime.date.today()
             process_advantage_in_chunks(db_session_for_advantage, history_start_date, history_end_date, chunk_size_days=90)
         finally:

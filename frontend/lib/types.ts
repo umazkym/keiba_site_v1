@@ -1,3 +1,5 @@
+// frontend/lib/types.ts
+
 // レース結果の型
 export interface Result {
     horse_number: number;
@@ -13,8 +15,8 @@ export interface HorsePrediction {
     deviation_score: number | null;
     mark: string;
     start_1c_indicator: number | null;
-    // ★★★ 追加: 結果をマージするためrankプロパティを追加 ★★★
-    rank: number | null; 
+    rank: number | null;
+    unpredictable_reason?: string | null; // ★★★ 追加 ★★★
 }
 
 export interface MatchupRecord {
@@ -52,7 +54,6 @@ export interface RacePrediction {
     predictions: HorsePrediction[];
     matchup: MatchupData | null;
     horse_number_advantages: HorseNumberAdvantage[];
-    // ★★★ 修正: resultsプロパティを追加 ★★★
     results: Result[];
 }
 
@@ -77,10 +78,9 @@ export interface SpecialPick {
     commentary: string;
 }
 
-// ★★★ 新規追加: 高配当的中の型 ★★★
 export interface TopPayoutHit {
     race_id: string;
-    race_date: string; // dateはstringで受け取る
+    race_date: string; 
     venue_name: string;
     race_number: number;
     race_name: string;

@@ -1,3 +1,5 @@
+// frontend/components/PredictuonTable.tsx
+
 import { RacePrediction } from '@/lib/types';
 import React from 'react';
 import Tippy from '@tippyjs/react';
@@ -27,15 +29,20 @@ const HorseNumberCircle = ({ number, waku }: { number: number, waku: number | nu
 );
 
 export const PredictionTable = ({ race }: { race: RacePrediction }) => {
+    // ==============================================================================
+    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
     const isUnpredictable = !race.predictions.length || race.predictions.some(p => p.mark === '—');
+    const reason = race.predictions?.[0]?.unpredictable_reason;
 
     if (isUnpredictable) {
         return (
             <div className="p-4 text-center text-gray-500">
-                <p>このレースは予測対象外です（新馬戦、障害戦など）。</p>
+                <p>{reason || 'このレースは予測対象外です（新馬戦、障害戦など）。'}</p>
             </div>
         );
     }
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+    // ==============================================================================
     
     return (
         <>

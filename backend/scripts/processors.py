@@ -121,7 +121,7 @@ class ReturnProcessor:
                     except (ValueError, IndexError) as e:
                         print(f"[Warning] Could not parse numbers for {key}: '{num_str}'. Error: {e}")
                         continue
-            
+                
             if results:
                 all_returns[key] = results
         

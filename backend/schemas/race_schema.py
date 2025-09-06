@@ -3,12 +3,11 @@ from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import List, Optional, Dict, Any
 
-# ★★★ 新規追加: レース結果のスキーマ ★★★
 class ResultSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     horse_number: int
     rank: Optional[int]
-    horse_name: Optional[str] # 表示用に馬名を追加
+    horse_name: Optional[str]
 
 class HorsePrediction(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -19,6 +18,7 @@ class HorsePrediction(BaseModel):
     deviation_score: Optional[float]
     mark: str
     start_1c_indicator: Optional[float]
+    unpredictable_reason: Optional[str] = None # ★★★ 追加 ★★★
 
 class Matchup(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -41,7 +41,6 @@ class RacePrediction(BaseModel):
     predictions: List[HorsePrediction]
     matchup: Optional[Matchup]
     horse_number_advantages: List[HorseNumberAdvantage]
-    # ★★★ 修正: フロントエンドで結果を扱えるようにresultsプロパティを追加 ★★★
     results: List[ResultSchema]
 
 class VenueRaces(BaseModel):
@@ -63,7 +62,6 @@ class SpecialPick(BaseModel):
     deviation_score: float
     commentary: str
 
-# ★★★ 新規追加: 的中配当ランキング用のスキーマ ★★★
 class TopPayoutHit(BaseModel):
     race_id: str
     race_date: date

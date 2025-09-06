@@ -61,7 +61,6 @@ def _calculate_1c_indicator(db: Session, horse_id: str, race_date: date, debug: 
 
 def _get_bulk_performance_data(db: Session, horse_ids: List[str], race_date: date) -> Dict[str, List[Any]]:
     """
-    【案1: N+1問題解消】
     指定された馬リストの過去成績データを一括で取得する。
     """
     if not horse_ids:
@@ -94,7 +93,6 @@ def _get_bulk_performance_data(db: Session, horse_ids: List[str], race_date: dat
 
 def _calculate_scores_from_data(horse_past_results: List[Any], race_date: date) -> Optional[float]:
     """
-    【案1: N+1問題解消】
     取得済みの過去成績データからパフォーマンススコアを計算する（DBアクセスなし）。
     """
     if not horse_past_results: return None
@@ -113,30 +111,46 @@ def _calculate_scores_from_data(horse_past_results: List[Any], race_date: date) 
 
 def create_predictions_for_race(db: Session, race_id: str) -> Optional[List[Dict[str, Any]]]:
     """
-    【案1: N+1問題解消】
-    レースの予測を生成するメイン関数。内部で過去データを一括取得するように変更。
+    レースの予測を生成するメイン関数。
+    馬番・枠番が処理の途中で失われないようにロジックを修正。
     """
     target_race = db.query(models.Race).filter(models.Race.id == race_id).first()
     if not target_race: return None
     
+# ==============================================================================
+# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+    # results.id ではなく、正しく horses.id と結合するように修正
     shutuba_horses = db.query(
         models.Result.horse_id, models.Horse.name,
         models.Result.horse_number, models.Result.waku_number
     ).join(models.Horse, models.Result.horse_id == models.Horse.id)\
      .filter(models.Result.race_id == race_id)\
-     .order_by(models.Result.horse_number).all()
-     
+     .all()
+# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+# ==============================================================================
+        
     if not shutuba_horses: return None
     
-    is_unpredictable = False
-    if target_race.race_name and ("新馬" in target_race.race_name or "障害" in target_race.race_name or target_race.course_type == '障'):
-        is_unpredictable = True
-        
+    horse_details = {
+        h.horse_id: {
+            'horse_name': h.name,
+            'horse_number': h.horse_number,
+            'waku_number': h.waku_number
+        }
+        for h in shutuba_horses if h.horse_id
+    }
+
+    unpredictable_reason = None
+    if target_race.race_name:
+        if "新馬" in target_race.race_name:
+            unpredictable_reason = "新馬戦のため、予測対象外です。"
+        elif "障害" in target_race.race_name or target_race.course_type == '障':
+            unpredictable_reason = "障害戦のため、予測対象外です。"
+            
     horse_ids = [h.horse_id for h in shutuba_horses if h.horse_id]
     
-    # 全出走馬の過去成績を一度のクエリでまとめて取得
     all_past_data = {}
-    if not is_unpredictable and horse_ids:
+    if not unpredictable_reason and horse_ids:
         all_past_data = _get_bulk_performance_data(db, horse_ids, target_race.race_date)
 
     all_horse_scores = []
@@ -147,15 +161,17 @@ def create_predictions_for_race(db: Session, race_id: str) -> Optional[List[Dict
         start_1c_z_score = _calculate_1c_indicator(db, horse.horse_id, target_race.race_date, debug=False)
 
         all_horse_scores.append({
-            'horse_id': horse.horse_id, 'horse_name': horse.name,
-            'horse_number': horse.horse_number, 'waku_number': horse.waku_number,
+            'horse_id': horse.horse_id,
             'raw_score': perf_score if perf_score is not None else np.nan,
             'start_1c_z_score': start_1c_z_score
         })
 
     df = pd.DataFrame(all_horse_scores)
     
-    # 1Cスタート指標のスケーリング
+    valid_scores = df['raw_score'].dropna()
+    if not unpredictable_reason and len(valid_scores) < 2:
+        unpredictable_reason = "比較可能な過去データを持つ馬が2頭未満のため、予測対象外です。"
+
     valid_1c_scores = df['start_1c_z_score'].dropna()
     if len(valid_1c_scores) > 1:
         min_val, max_val = valid_1c_scores.min(), valid_1c_scores.max()
@@ -168,10 +184,10 @@ def create_predictions_for_race(db: Session, race_id: str) -> Optional[List[Dict
     else:
         df['start_1c_indicator'] = None
 
-    valid_scores = df['raw_score'].dropna()
-    if is_unpredictable or len(valid_scores) < 2:
+    if unpredictable_reason:
         df['deviation_score'] = None
         df['mark'] = "—"
+        df['unpredictable_reason'] = unpredictable_reason
     else:
         mean = valid_scores.mean()
         std = valid_scores.std(ddof=0)
@@ -183,13 +199,19 @@ def create_predictions_for_race(db: Session, race_id: str) -> Optional[List[Dict
         df = df.sort_values('deviation_score', ascending=False, na_position='last').reset_index(drop=True)
         marks = ["◎", "〇", "▲", "△", "☆"]
         df['mark'] = df.index.map(lambda i: marks[i] if pd.notna(df.loc[i, 'deviation_score']) and i < len(marks) else "")
+        df['unpredictable_reason'] = None
 
-    df = df.drop(columns=['start_1c_z_score', 'raw_score'])
+    detail_df = pd.DataFrame.from_dict(horse_details, orient='index')
+    df = df.merge(detail_df, left_on='horse_id', right_index=True, how='left')
+
+    df = df.drop(columns=['start_1c_z_score', 'raw_score'], errors='ignore')
     
-    df_final = df.replace({np.nan: None})
+    final_columns = [c.name for c in models.Prediction.__table__.columns if c.name in df.columns]
+    df_final = df[final_columns].replace({np.nan: None})
+    
     return df_final.to_dict('records')
 
-# (calculate_matchups と calculate_and_save_matchups_for_race は変更なし)
+
 def calculate_matchups(db: Session, horse_ids: List[str], start_date: date, end_date: date) -> Dict[str, Any]:
     if len(horse_ids) < 2:
         return {}
@@ -245,7 +267,6 @@ def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: L
             db.add(new_matchup)
         db.commit()
 
-# (calculate_and_save_horse_number_advantage_for_period は変更なし)
 def calculate_and_save_horse_number_advantage_for_period(db: Session, start_date: date, end_date: date):
     print(f"Calculating horse number advantages for period: {start_date} to {end_date}...")
     results_query = db.query(

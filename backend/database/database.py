@@ -4,33 +4,39 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from dotenv import load_dotenv
 
+# ==============================================================================
+# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+# .envファイルの読み込みをモジュールのトップレベルで行う
 load_dotenv()
 
-# 本番環境のPostgreSQLのURLを環境変数から取得。なければローカルのSQLiteを使う。
+# 環境変数からデータベースURLを取得。Render環境ではこれが使われる。
+# 設定がなければ、ローカルのSQLiteをデフォルト値として使用する。
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/keiba.db")
 
-# 接続設定を分岐
+# 接続設定をURLのプレフィックスで判定
 if DATABASE_URL.startswith("postgres"):
-    # 本番環境 (PostgreSQL)
+    # 本番環境 (PostgreSQL on Render)
     engine = create_engine(DATABASE_URL)
 else:
     # ローカル開発環境 (SQLite)
-    # dataディレクトリがなければ作成
+    # dataディレクトリが存在しない場合は作成
     os.makedirs("data", exist_ok=True)
     engine = create_engine(
-        DATABASE_URL, connect_args={"check_same_thread": False} # SQLiteに必要
+        DATABASE_URL, 
+        connect_args={"check_same_thread": False} # SQLite特有の接続引数
     )
-
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Base(DeclarativeBase):
     pass
 
-# DB接続のセッションを取得する
+# DB接続のセッションを取得するための依存性関数
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+# ==============================================================================

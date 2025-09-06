@@ -22,7 +22,6 @@ class Race(Base):
     matchup = relationship("Matchup", back_populates="race", uselist=False)
     returns = relationship("RaceReturn", back_populates="race")
 
-# --- (Horse, Jockey, Trainer, Result, Prediction, Matchup, HorseNumberAdvantage モデルは変更なし) ---
 class Horse(Base):
     __tablename__ = "horses"
     id = Column(String, primary_key=True, index=True)
@@ -75,6 +74,11 @@ class Prediction(Base):
     deviation_score = Column(Float, nullable=True) 
     mark = Column(String, nullable=False)
     start_1c_indicator = Column(Float, nullable=True)
+    # ==============================================================================
+    # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+    unpredictable_reason = Column(String, nullable=True) # 予測不能な理由を格納するカラム
+    # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+    # ==============================================================================
     race = relationship("Race", back_populates="predictions")
 
 class Matchup(Base):
@@ -95,13 +99,11 @@ class HorseNumberAdvantage(Base):
 
     __table_args__ = (UniqueConstraint('venue_name', 'course_type', 'distance', 'horse_number', name='_hnav_uc'),)
 
-# --- 修正: 払い戻し情報テーブルのカラム構成を変更 ---
 class RaceReturn(Base):
     __tablename__ = "race_returns"
     id = Column(Integer, primary_key=True, autoincrement=True)
     race_id = Column(String, ForeignKey("races.id"), nullable=False, index=True)
     bet_type = Column(String, nullable=False)
-    # winning_numbers = Column(String, nullable=False) # この行を削除
     number_1 = Column(Integer, nullable=False)
     number_2 = Column(Integer, nullable=True)
     number_3 = Column(Integer, nullable=True)

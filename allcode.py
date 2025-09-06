@@ -17,6 +17,16 @@ IGNORE_DIRS = {
     'data',  # scraperが作成するキャッシュディレクトリなども除外
 }
 
+# 無視したいファイルのリスト（プロジェクトのルートからの相対パス）
+# パス区切り文字はOSに関わらず'/'を使用してください。
+IGNORE_FILES = {
+    'backend/website_analysis_data.json',
+    'frontend/package-lock.json',
+    # 必要に応じて他のファイルも追加できます
+    # 'another/file/to/ignore.txt',
+}
+
+
 # 読み込み対象とするファイルの拡張子リスト
 # このリストに含まれる拡張子のファイルのみがテキストファイルとして保存されます。
 # 必要に応じて追加・削除してください。
@@ -52,6 +62,13 @@ def get_all_source_files(src_dir: str) -> list[str]:
 
         for file in files:
             file_path = os.path.join(root, file)
+            relative_path = os.path.relpath(file_path, src_dir)
+
+            # 無視ファイルリストに含まれていればスキップ
+            # OSによるパス区切り文字の違いを吸収するため'/'に置換して比較
+            if relative_path.replace(os.path.sep, '/') in IGNORE_FILES:
+                continue
+
             if is_target_file(file_path):
                 source_files.append(file_path)
 

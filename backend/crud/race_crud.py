@@ -10,12 +10,20 @@ from scripts import predictor
 # ==============================================================================
 # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
+    # 最初に、その日に有効な予測を持つレースIDのリストを取得する
+    valid_race_ids_subquery = db.query(models.Prediction.race_id)\
+        .join(models.Race, models.Race.id == models.Prediction.race_id)\
+        .filter(models.Race.race_date == target_date)\
+        .distinct()\
+        .subquery()
+
+    # 有効なレースIDを持つレースのみを対象にクエリを実行する
     races_with_preds = db.query(models.Race)\
         .options(
             joinedload(models.Race.predictions),
             joinedload(models.Race.results).joinedload(models.Result.horse)
         )\
-        .filter(models.Race.race_date == target_date)\
+        .filter(models.Race.id.in_(valid_race_ids_subquery))\
         .order_by(models.Race.venue_name, models.Race.race_number)\
         .all()
 
@@ -47,13 +55,12 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     nar_venues: Dict[str, List[models.Race]] = defaultdict(list)
 
     for race in races_with_preds:
-        if race.predictions:
-            race.predictions.sort(
-                key=lambda p: p.deviation_score if p.deviation_score is not None else -float('inf'),
-                reverse=True
-            )
+        # この時点で race.predictions は必ず存在するので、Noneチェックは不要
+        race.predictions.sort(
+            key=lambda p: p.deviation_score if p.deviation_score is not None else -float('inf'),
+            reverse=True
+        )
         
-        # レースにコース情報がある場合のみ、有利不利データを取得
         advantages = []
         if race.venue_name and race.course_type and race.distance:
             key = (race.venue_name, race.course_type, race.distance)
@@ -78,6 +85,7 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
 
 
 def get_special_pick_for_date(db: Session, target_date: date) -> Optional[models.Prediction]:
+    # (...以下、変更なし...)
     return db.query(models.Prediction)\
         .join(models.Race, models.Prediction.race_id == models.Race.id)\
         .filter(models.Race.race_date == target_date)\
@@ -97,12 +105,6 @@ def get_filtered_matchups_for_race(db: Session, race_id: str, start_date: date, 
 
 
 def get_top_payout_hits(db: Session, days: int = 7, limit: int = 5) -> List[Dict[str, Any]]:
-    """
-    過去N日間のAI予測による高配当的中トップN件を、単一の効率的なクエリで取得します。
-    """
-    # ★★★ 修正箇所 ★★★
-    # 集計の終了日を「今日」から「昨日」に変更します。
-    # これにより、結果が確定しているレースのみが集計対象となります。
     end_date = date.today() - timedelta(days=1)
     start_date = end_date - timedelta(days=days - 1)
 

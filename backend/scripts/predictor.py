@@ -127,8 +127,10 @@ def _calculate_scores_from_data(horse_past_results: List[Any], race_date: date) 
 def create_predictions_for_race(race_id: str, db: Session) -> Optional[List[Dict[str, Any]]]:
     """
     レースの予測を生成するメイン関数。
-    データ不整合を防ぐため、horse_number などの情報を早期に結合するようロジックを修正。
+    エラーハンドリングを強化し、予測不能な場合でも安全に終了するように修正。
     """
+    # この関数内で使う出走馬情報を最初に取得し、エラー発生時にも再利用できるようにする
+    shutuba_horses = []
     try:
         target_race = db.query(models.Race).filter(models.Race.id == race_id).first()
         if not target_race: return None
@@ -142,10 +144,9 @@ def create_predictions_for_race(race_id: str, db: Session) -> Optional[List[Dict
             
         if not shutuba_horses: return None
         
-        # horse_idだけでなく、馬番や枠番も初期データとして保持する
         all_horse_scores = []
         for h in shutuba_horses:
-            if h.horse_id and h.horse_number: # 馬IDと馬番の両方が必須
+            if h.horse_id and h.horse_number:
                 all_horse_scores.append({
                     'horse_id': h.horse_id,
                     'horse_name': h.name,
@@ -168,12 +169,10 @@ def create_predictions_for_race(race_id: str, db: Session) -> Optional[List[Dict
         if not unpredictable_reason and horse_ids:
             all_past_data = _get_bulk_performance_data(db, horse_ids, target_race.race_date)
 
-        # 各馬のスコアを計算して、既存の辞書に追加していく
         for horse_data in all_horse_scores:
             horse_past_results = all_past_data.get(horse_data['horse_id'], [])
             perf_score = _calculate_scores_from_data(horse_past_results, target_race.race_date)
             start_1c_z_score = _calculate_1c_indicator(db, horse_data['horse_id'], target_race.race_date, debug=False)
-
             horse_data['raw_score'] = perf_score if perf_score is not None else np.nan
             horse_data['start_1c_z_score'] = start_1c_z_score
 
@@ -215,7 +214,6 @@ def create_predictions_for_race(race_id: str, db: Session) -> Optional[List[Dict
 
         df = df.drop(columns=['start_1c_z_score', 'raw_score'], errors='ignore')
         
-        # 必要なカラムのみを選択して、Noneに変換
         final_columns = [c.name for c in models.Prediction.__table__.columns if c.name in df.columns]
         df_final = df[final_columns].replace({np.nan: None})
         
@@ -225,29 +223,28 @@ def create_predictions_for_race(race_id: str, db: Session) -> Optional[List[Dict
         traceback.print_exc()
         print("--------------------------------------------------")
         # エラー発生時は、予測不能としてマークしたデータを返すことで、パイプラインを止めない
-        try:
-            shutuba_horses = db.query(models.Result.horse_id, models.Horse.name, models.Result.horse_number, models.Result.waku_number).join(models.Horse, models.Result.horse_id == models.Horse.id).filter(models.Result.race_id == race_id).all()
-            if not shutuba_horses: return None
-            
-            error_predictions = []
-            for h in shutuba_horses:
-                if h.horse_id and h.horse_number: # 馬IDと馬番を保証
-                    error_predictions.append({
-                        'horse_id': h.horse_id,
-                        'horse_name': h.name,
-                        'horse_number': h.horse_number,
-                        'waku_number': h.waku_number,
-                        'deviation_score': None,
-                        'mark': '—',
-                        'start_1c_indicator': None,
-                        'unpredictable_reason': f"予測計算中にエラーが発生しました。"
-                    })
-            return error_predictions
-        except Exception:
-            return None # ここでエラーが出たら諦める
+        # ★★★ 修正: DB再クエリをやめ、関数冒頭で取得した shutuba_horses を使う ★★★
+        if not shutuba_horses:
+            return None 
+
+        error_predictions = []
+        for h in shutuba_horses:
+            if h.horse_id and h.horse_number: # 馬IDと馬番を保証
+                error_predictions.append({
+                    'horse_id': h.horse_id,
+                    'horse_name': h.name,
+                    'horse_number': h.horse_number,
+                    'waku_number': h.waku_number,
+                    'deviation_score': None,
+                    'mark': '—',
+                    'start_1c_indicator': None,
+                    'unpredictable_reason': f"予測計算中にエラーが発生"
+                })
+        return error_predictions
 # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 def calculate_matchups(db: Session, horse_ids: List[str], start_date: date, end_date: date) -> Dict[str, Any]:
+    # (...以下、変更なし...)
     if len(horse_ids) < 2:
         return {}
     past_results = db.query(models.Result, models.Race.venue_name, models.Race.race_date)\
@@ -289,6 +286,7 @@ def calculate_matchups(db: Session, horse_ids: List[str], start_date: date, end_
                     matchup_matrix[key1]['history'].append(history_entry)
                     matchup_matrix[key2]['history'].append(history_entry)
     return dict(matchup_matrix)
+
 def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: List[str]):
     start_date = date(2000, 1, 1)
     end_date = date.today()
@@ -312,7 +310,7 @@ def calculate_and_save_horse_number_advantage_for_period(db: Session, start_date
         models.Race.total_horses,
         models.Result.horse_number,
         models.Result.rank
-    ).join(models.Result, models.Race.id == models.Result.race_id)\
+    ).join(models.Result, models.Race.id == models.Race.id)\
     .filter(models.Race.race_date.between(start_date, end_date))\
     .filter(models.Result.rank.isnot(None))\
     .filter(models.Race.total_horses.isnot(None))\

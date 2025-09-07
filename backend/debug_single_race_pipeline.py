@@ -24,11 +24,14 @@ def _fetch_and_load_past_data_for_debug(db: Session, horse_ids: List[str]):
     
     for i, horse_id in enumerate(horse_ids):
         print(f"  ({i+1}/{len(horse_ids)}) Fetching data for horse_id: {horse_id}...")
-        html = scraper.get_horse_page_html(horse_id, force_download=False)
+        html, _ = scraper.get_horse_page_html(horse_id, force_download=False)
         if html:
-            results = parser.parse_horse_results_page(html)
-            if results:
-                database_loader.load_past_results(db, results, horse_id)
+            parsed_data = parser.parse_horse_results_page(html)
+            if parsed_data:
+                horse_name = parsed_data.get('horse_name')
+                results = parsed_data.get('results')
+                if horse_name and results:
+                    database_loader.load_past_results(db, horse_name, results, horse_id)
     print(" -> SUCCESS: Finished fetching and loading past data.")
 
 
@@ -49,7 +52,7 @@ def verify_database_state(db: Session, race_id: str):
         else:
             print(f" -> 成功: {len(trainers_in_race)}件すべての調教師データに名前が正しく格納されています。")
             if trainers_in_race:
-                print(f"     (例: ID={trainers_in_race[0].id}, Name='{trainers_in_race[0].name}')")
+                print(f"      (例: ID={trainers_in_race[0].id}, Name='{trainers_in_race[0].name}')")
 
     # 2. races テーブルの検証
     print("\n[検証2] races テーブル (詳細情報列)")
@@ -66,15 +69,15 @@ def verify_database_state(db: Session, race_id: str):
             print(f" -> 失敗: 以下の列のデータが欠損しています: {missing_cols}")
         else:
             print(" -> 成功: 必要なレース詳細情報がすべて格納されています。")
-            print(f"     - Course: {race.course_type}{race.distance}m")
-            print(f"     - Condition: 天候='{race.weather}', 馬場='{race.ground_condition}'")
+            print(f"      - Course: {race.course_type}{race.distance}m")
+            print(f"      - Condition: 天候='{race.weather}', 馬場='{race.ground_condition}'")
             # ★★★ 修正箇所2: 天候・馬場データに'/'が含まれていないか検証 ★★★
             if '/' in str(race.weather) or '/' in str(race.ground_condition):
                 print(" -> ★失敗★: 天候または馬場状態に不要な '/' が含まれています。")
             else:
                 print(" -> 成功: 天候と馬場状態のデータはクリーンです（'/' は含まれていません）。")
             # ★★★ 修正ここまで ★★★
-            print(f"     - Total Horses: {race.total_horses}")
+            print(f"      - Total Horses: {race.total_horses}")
 
     # 3. horse_number_advantages テーブルの検証（注意喚起付き）
     print("\n[検証3] horse_number_advantages テーブル")
@@ -86,7 +89,7 @@ def verify_database_state(db: Session, race_id: str):
         ).all()
         if not advantages:
             print(" -> INFO: 該当レース条件の馬番有利不利データはまだ生成されていません。")
-            print("     (注: このデータは run_pipeline.py の HISTORY モード実行完了後に一括で生成されます)")
+            print("      (注: このデータは run_pipeline.py の HISTORY モード実行完了後に一括で生成されます)")
         else:
             print(f" -> 成功: {len(advantages)}件の馬番有利不利データが格納されています。")
     else:
@@ -126,7 +129,7 @@ def main(race_id: str):
 
         # STEP 1: 出馬表の処理
         print("\n[STEP 1] Fetching, parsing, and loading Shutuba (entry) data...")
-        shutuba_html = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=True)
+        shutuba_html, _ = scraper.get_shutuba_html(race_id, is_nar=is_nar, force_download=True)
         if not shutuba_html: raise Exception("Failed to get shutuba HTML.")
         shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
         if not shutuba_data: raise Exception("Failed to parse shutuba page.")
@@ -139,7 +142,11 @@ def main(race_id: str):
 
         # STEP 3: AI予測と対戦成績の生成・保存
         print("\n[STEP 3] Creating AI predictions and matchups...")
-        predictions = predictor.create_predictions_for_race(db, race_id)
+        # ==============================================================================
+        # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+        # 引数の順番を (race_id, db) に修正
+        predictions = predictor.create_predictions_for_race(race_id, db)
+        # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
         if predictions:
             database_loader.save_prediction(db, race_id, predictions)
             print(f" -> SUCCESS: Saved {len(predictions)} predictions.")
@@ -150,7 +157,7 @@ def main(race_id: str):
 
         # STEP 4: レース結果の処理（データの最終更新）
         print("\n[STEP 4] Fetching and updating with final Race Result data...")
-        result_html = scraper.get_race_result_html(race_id, is_nar=is_nar, force_download=True)
+        result_html, _ = scraper.get_race_result_html(race_id, is_nar=is_nar, force_download=True)
         if not result_html: raise Exception("Failed to get race result HTML.")
         race_data = parser.parse_race_result_page(result_html, race_id)
         if not race_data: raise Exception("Failed to parse race result page.")

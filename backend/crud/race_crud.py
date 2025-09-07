@@ -7,6 +7,8 @@ from typing import Dict, Any, List, Optional
 from collections import defaultdict
 from scripts import predictor
 
+# ==============================================================================
+# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     races_with_preds = db.query(models.Race)\
         .options(
@@ -20,6 +22,7 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     if not races_with_preds:
         return {"jra": [], "nar": []}
 
+    # venue_name, course_type, distance のいずれかがNoneのレースを除外する
     race_conditions = {
         (race.venue_name, race.course_type, race.distance)
         for race in races_with_preds
@@ -50,8 +53,12 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
                 reverse=True
             )
         
-        key = (race.venue_name, race.course_type, race.distance)
-        advantages = advantages_map.get(key, [])
+        # レースにコース情報がある場合のみ、有利不利データを取得
+        advantages = []
+        if race.venue_name and race.course_type and race.distance:
+            key = (race.venue_name, race.course_type, race.distance)
+            advantages = advantages_map.get(key, [])
+        
         advantages.sort(key=lambda x: x.horse_number)
         setattr(race, 'horse_number_advantages', advantages)
 
@@ -67,6 +74,7 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     nar_result = [{"venue_name": v_name, "races": race_list} for v_name, race_list in nar_venues.items()]
 
     return {"jra": jra_result, "nar": nar_result}
+# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 
 def get_special_pick_for_date(db: Session, target_date: date) -> Optional[models.Prediction]:

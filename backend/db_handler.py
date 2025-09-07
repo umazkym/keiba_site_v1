@@ -2,13 +2,9 @@
 
 import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, select # select をインポート
 from database import models
-# ==============================================================================
-# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 from scripts.scraper import get_shutuba_html_content, get_race_result_html_content, get_horse_page_html
-# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-# ==============================================================================
 from scripts import parser, database_loader, predictor
 from typing import List, Tuple
 from tqdm import tqdm
@@ -18,9 +14,6 @@ import time      # ★★★ この行を追加 ★★★
 import random    # ★★★ この行を追加 ★★★
 
 BANEI_VENUE_CODES = ["33", "65"]
-
-# ==============================================================================
-# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 
 def _fetch_and_load_horse_past_data(db: Session, horse_ids: set):
     """
@@ -108,13 +101,17 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
     try:
         print(f"  -> Deleting any existing data for {target_date.strftime('%Y-%m-%d')} to ensure a clean state.")
         
-        races_to_delete = db.query(models.Race.id).filter(models.Race.race_date == target_date).subquery()
+        # ==============================================================================
+        # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+        # SAWarningを解消するため、subquery() を select() に変更
+        races_to_delete_stmt = select(models.Race.id).where(models.Race.race_date == target_date)
         
-        db.query(models.Matchup).filter(models.Matchup.race_id.in_(races_to_delete)).delete(synchronize_session=False)
-        db.query(models.Prediction).filter(models.Prediction.race_id.in_(races_to_delete)).delete(synchronize_session=False)
-        db.query(models.Result).filter(models.Result.race_id.in_(races_to_delete)).delete(synchronize_session=False)
-        db.query(models.RaceReturn).filter(models.RaceReturn.race_id.in_(races_to_delete)).delete(synchronize_session=False)
-        db.query(models.Race).filter(models.Race.id.in_(races_to_delete)).delete(synchronize_session=False)
+        db.query(models.Matchup).filter(models.Matchup.race_id.in_(races_to_delete_stmt)).delete(synchronize_session=False)
+        db.query(models.Prediction).filter(models.Prediction.race_id.in_(races_to_delete_stmt)).delete(synchronize_session=False)
+        db.query(models.Result).filter(models.Result.race_id.in_(races_to_delete_stmt)).delete(synchronize_session=False)
+        db.query(models.RaceReturn).filter(models.RaceReturn.race_id.in_(races_to_delete_stmt)).delete(synchronize_session=False)
+        db.query(models.Race).filter(models.Race.id.in_(races_to_delete_stmt)).delete(synchronize_session=False)
+        # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
         db.commit()
         print("  -> Deletion of old data complete.")
@@ -182,7 +179,11 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
     desc_step4 = f"Predicting Races ({target_date.strftime('%m-%d')})"
     for race_id, is_nar in tqdm(all_race_ids, desc=desc_step4, leave=False):
         try:
-            predictions = predictor.create_predictions_for_race(db, race_id)
+            # ==============================================================================
+            # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+            # 引数の順番を (db, race_id) から (race_id, db) に修正
+            predictions = predictor.create_predictions_for_race(race_id, db)
+            # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
             if predictions:
                 database_loader.save_prediction(db, race_id, predictions)
                 horse_ids_in_race = [p["horse_id"] for p in predictions if p.get("horse_id")]
@@ -194,5 +195,3 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
             tqdm.write(f"\n[CRITICAL ERROR] Prediction processing for {race_id} failed: {e}")
             traceback.print_exc()
             db.rollback()
-# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-# ==============================================================================

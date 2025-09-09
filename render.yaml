@@ -1,26 +1,20 @@
-# render.yaml (修正版)
+# render.yaml (最終確定版)
 
 services:
   - type: cron
     name: keiba-pipeline-runner
-    # 修正点① (必須): "Oregon" を Render 指定の "oregon" (小文字) に修正
     region: oregon
-    # 修正点② (強く推奨): スケジュールを「日本時間 午前10時」である "0 1 * * *" に修正
-    schedule: "0 20 * * *"
-    buildFilter:
-      paths:
-      - backend/**
-      - render.yaml
+    schedule: "0 20 * * *" # 日本時間: 翌朝5時
+    
+    # --- 環境変数を直接指定 ---
     envVars:
       - key: DATABASE_URL
-        fromService:
-          type: psql
-          # 確認点: ご自身のDB名が "keiba-db" であることを再度ご確認ください
-          name: keiba-db
+        # あなたの.envファイルからコピーした接続URLを直接指定します
+        value: "postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db"
       - key: PYTHON_VERSION
         value: 3.11.4
-      - key: WEBHOOK_URL
-        sync: false
+
+    # --- 実行環境の設定 ---
     buildpacks:
       - url: https://github.com/render-inc/chrome-buildpack
     rootDirectory: backend

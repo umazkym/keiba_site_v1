@@ -1,8 +1,8 @@
 services:
   - type: cron
-    name: keiba-pipeline-test # 念のため名前を変更
+    name: keiba-pipeline-test
     env: python
-    plan: free
+    # ★ 修正点: エラーに従い、cronサービスのplanキーを削除します
     region: oregon
     schedule: "0 20 * * *"
     startCommand: "echo 'Test successful: YAML parsed correctly!'"

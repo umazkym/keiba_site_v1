@@ -48,22 +48,27 @@ def _get_random_headers():
     return {"User-Agent": random.choice(USER_AGENTS)}
 
 def _prepare_chrome_driver():
+    """
+    Render環境とローカル環境の両方で動作するように修正されたWebDriver準備関数
+    """
     options = Options()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage') # メモリ不足対策
-    # GPU関連のエラーメッセージを抑制するためのオプションを追加
-    options.add_argument('--disable-gpu')
-    options.add_argument('--disable-software-rasterizer')
-    options.add_argument('--log-level=3') 
+    # --- ▼▼▼ Render Cron Job環境で必須のオプション ▼▼▼ ---
+    options.add_argument('--headless=new') # GUIがない環境で必須
+    options.add_argument('--no-sandbox') # Render環境での実行に必要
+    options.add_argument('--disable-dev-shm-usage') # /dev/shmパーティションのサイズが小さいコンテナ環境で必須
+    options.add_argument('--disable-gpu') # GPUがない環境で不要なエラーを避ける
+    options.add_argument('--window-size=1920x1080') # ページレイアウトを安定させる
+    # --- ▲▲▲ ここまで ▲▲▲ ---
     options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
     try:
-        if _WDM_AVAILABLE:
+        # ローカル開発環境では `webdriver-manager` を利用
+        if _WDM_AVAILABLE and not os.environ.get("RENDER"):
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
         else:
+            # Render環境では、buildpackがインストールしたchromedriverがPATHに含まれていることを期待
             driver = webdriver.Chrome(options=options)
     except Exception as e:
         print(f"[ERROR] ChromeDriverのセットアップに失敗しました: {e}")
@@ -111,7 +116,6 @@ def get_html(
             
             html_content = None
             if use_selenium:
-                # ★★★ 修正箇所1: 呼び出し元から渡されたdriverを優先して使う ★★★
                 selenium_driver = driver
                 own_driver = False
                 if selenium_driver is None:
@@ -128,12 +132,10 @@ def get_html(
                             )
                             html_content = selenium_driver.page_source
                         except TimeoutException:
-                            # ★★★ 修正箇所2: Infoログを出力せず、Noneを返して静かに終了 ★★★
                             return None, False
                     else:
                         html_content = selenium_driver.page_source
                 finally:
-                    # ★★★ 修正箇所3: この関数内で作成したdriverのみ終了する ★★★
                     if own_driver and selenium_driver:
                         selenium_driver.quit()
             else:

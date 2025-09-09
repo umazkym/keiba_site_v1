@@ -1,6 +1,8 @@
 services:
   - type: cron
     name: keiba-pipeline-runner
+    env: python  # ★ 修正点1: Native Environmentを指定し、RenderにPython環境の構築を指示
+    plan: free   # ★ 追加点1: プランを明記 (無料プランの場合でも推奨)
     region: oregon
     schedule: "0 20 * * *"
     envVars:
@@ -8,9 +10,13 @@ services:
         value: "postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db"
       - key: PYTHON_VERSION
         value: 3.11.4
+      # ★ 追加点2: ビルドキャッシュを有効化し、2回目以降のビルドを高速化
+      - key: PIP_CACHE_DIR
+        value: /opt/render/project/.cache/pip
     buildpacks:
-      - url: https://github.com/render-inc/heroku-buildpack-python
+      # ★ 修正点2: Python Buildpackを削除。Chromeのインストールのみに絞る
       - url: https://github.com/render-inc/chrome-buildpack
     rootDirectory: backend
-    buildCommand: "pip install -r requirements.txt"
+    # ★ 修正点3: pip自体のアップグレードを追加し、依存関係の解決を安定化
+    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
     startCommand: "python run_pipeline.py"

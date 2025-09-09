@@ -1,18 +1,21 @@
 services:
   - type: cron
     name: keiba-pipeline-runner
-    env: python
+    # ★最重要★
+    # runtimeを「docker」に変更。これによりRenderはDockerfileを探しに行きます。
+    runtime: docker 
     region: oregon
-    schedule: "0 20 * * *"
+    schedule: "0 20 * * *"  # JST AM 5:00 (UTC 20:00)
+
+    # Dockerに関する設定
+    dockerfilePath: ./backend/Dockerfile   # Dockerfileの場所を指定
+    dockerContext: ./backend              # ビルドを開始する場所（Dockerfile内のCOPY . .の基準点）
+
+    # 環境変数の設定
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db"
-      - key: PYTHON_VERSION
-        value: 3.11.4
-      - key: PIP_CACHE_DIR
-        value: /opt/render/project/.cache/pip
-    buildpacks:
-      - url: https://github.com/render-inc/chrome-buildpack
-    rootDirectory: backend
-    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
-    startCommand: "python run_pipeline.py"
+        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+      - key: PIPELINE_MODE # スクリプトが本番モードで動くように設定
+        value: PRODUCTION
+      - key: TZ            # タイムゾーンを日本時間に設定
+        value: Asia/Tokyo

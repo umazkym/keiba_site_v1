@@ -1,20 +1,13 @@
-# render.yaml (最終確定版)
-
 services:
   - type: cron
     name: keiba-pipeline-runner
     region: oregon
-    schedule: "0 20 * * *" # 日本時間: 翌朝5時
-    
-    # --- 環境変数を直接指定 ---
+    schedule: "0 20 * * *"
     envVars:
       - key: DATABASE_URL
-        # あなたの.envファイルからコピーした接続URLを直接指定します
         value: "postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db"
       - key: PYTHON_VERSION
         value: 3.11.4
-
-    # --- 実行環境の設定 ---
     buildpacks:
       - url: https://github.com/render-inc/chrome-buildpack
     rootDirectory: backend

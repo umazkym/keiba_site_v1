@@ -1,21 +1,15 @@
 services:
   - type: cron
     name: keiba-pipeline-runner
-    # ★最重要★
-    # runtimeを「docker」に変更。これによりRenderはDockerfileを探しに行きます。
-    runtime: docker 
+    runtime: docker
     region: oregon
-    schedule: "0 20 * * *"  # JST AM 5:00 (UTC 20:00)
-
-    # Dockerに関する設定
-    dockerfilePath: ./backend/Dockerfile   # Dockerfileの場所を指定
-    dockerContext: ./backend              # ビルドを開始する場所（Dockerfile内のCOPY . .の基準点）
-
-    # 環境変数の設定
+    schedule: "0 20 * * *"  # JST AM 5:00
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     envVars:
       - key: DATABASE_URL
         value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
-      - key: PIPELINE_MODE # スクリプトが本番モードで動くように設定
+      - key: PIPELINE_MODE
         value: PRODUCTION
-      - key: TZ            # タイムゾーンを日本時間に設定
+      - key: TZ
         value: Asia/Tokyo

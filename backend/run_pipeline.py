@@ -9,12 +9,12 @@ import multiprocessing
 import sys
 import time
 import random
+import requests # ★ 通知機能のために追加
+import traceback # ★ 通知機能のために追加
 from sqlalchemy.orm import Session
 from tqdm import tqdm
 from database.database import SessionLocal, engine, Base
 from scripts import predictor, scraper, parser, database_loader
-
-# db_handlerをインポート
 from db_handler import update_race_results, insert_new_predictions
 
 # --- 設定 ---
@@ -46,6 +46,33 @@ def _force_cleanup_processes():
         time.sleep(2)
     except Exception as e:
         tqdm.write(f"  -> クリーンアップ中に軽微なエラーが発生しました (無視できます): {e}")
+
+
+# --- ★★★ ここからコード追加 (通知機能) ★★★ ---
+def send_notification(message: str, is_error: bool = False):
+    """
+    指定されたメッセージをWebhook URLに送信する。
+    """
+    webhook_url = os.getenv("WEBHOOK_URL")
+    if not webhook_url:
+        # WEBHOOK_URLが設定されていない場合は、コンソールに出力するだけ
+        print(f"[NOTIFICATION]\n{message}")
+        return
+
+    color = 15746887 if is_error else 3066993 # Discordの色 (赤 or 緑)
+    payload = {
+        "embeds": [{
+            "title": "🏇 Keiba AI Batch Status",
+            "description": message,
+            "color": color,
+            "timestamp": datetime.datetime.now().isoformat()
+        }]
+    }
+    try:
+        requests.post(webhook_url, json=payload, timeout=10)
+    except requests.RequestException as e:
+        print(f"Webhookへの通知送信に失敗しました: {e}")
+# --- ★★★ ここまでコード追加 ★★★ ---
 
 
 # --- 初期化 ---
@@ -162,13 +189,8 @@ def process_single_horse_worker(horse_id: str):
     """
     単一の馬IDに対して、キャッシュからHTMLを読み込み、解析し、DBに保存するワーカー関数
     """
-# ==============================================================================
-# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-    # ★★★ ワーカープロセスの開始時に.envを読み込む ★★★
     load_dotenv()
     from database.database import SessionLocal
-# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-# ==============================================================================
     db: Session = SessionLocal()
     try:
         html, _ = scraper.get_horse_page_html(horse_id, force_download=False)
@@ -177,7 +199,7 @@ def process_single_horse_worker(horse_id: str):
             if parsed_data and parsed_data['results']:
                 horse_name = parsed_data.get('horse_name')
                 results = parsed_data.get('results')
-                if horse_name: # horse_nameがNoneでないことを確認
+                if horse_name:
                     database_loader.load_past_results(db, horse_name, results, horse_id)
     except Exception as e:
         print(f"\n[ERROR] Horse data processing failed for {horse_id}: {e}\n")
@@ -197,7 +219,6 @@ def process_and_load_past_horse_data(horse_ids: set):
         print("ロード対象の馬データがありません。")
         return
 
-    # engine.dispose()
     horse_ids_list = list(horse_ids)
     with multiprocessing.Pool(processes=MAX_WORKERS) as pool:
         with tqdm(total=len(horse_ids_list), desc="[HISTORY] 馬の過去成績をDBへ保存中", unit="horse") as pbar:
@@ -209,13 +230,8 @@ def process_single_date_worker(target_date: datetime.date):
     """
     単一の日付に対して、予測生成と結果更新を行うワーカー関数
     """
-# ==============================================================================
-# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-    # ★★★ ワーカープロセスの開始時に.envを読み込む ★★★
     load_dotenv()
     from database.database import SessionLocal
-# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-# ==============================================================================
     db: Session = SessionLocal()
     try:
         insert_new_predictions(db, target_date)
@@ -245,7 +261,6 @@ def process_races_and_predictions(start_date: datetime.date, end_date: datetime.
         print("処理対象の日付がありません。")
         return
 
-    # engine.dispose()
     with multiprocessing.Pool(processes=MAX_WORKERS) as pool:
         with tqdm(total=len(dates_to_process), desc="[HISTORY] 日付ごとに並列処理中", unit="day") as pbar:
             for _ in pool.imap_unordered(process_single_date_worker, dates_to_process):
@@ -294,66 +309,89 @@ def scrape_race_lists_for_date(target_date: datetime.date):
         _force_cleanup_processes()
 
 def main():
+    # --- ★★★ ここからコード修正 (main関数) ★★★ ---
+    start_time = time.time()
     PIPELINE_MODE = os.getenv('PIPELINE_MODE', 'PRODUCTION')
 
-    if PIPELINE_MODE == 'HISTORY':
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        print("!!!  HISTORYモードで実行します (パイプライン処理を最適化)  !!!")
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        
-        try:
+    # 処理開始を通知
+    send_notification(f"パイプライン処理を開始します。\n**モード**: `{PIPELINE_MODE}`")
+
+    try:
+        if PIPELINE_MODE == 'HISTORY':
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("!!!  HISTORYモードで実行します (パイプライン処理を最適化)  !!!")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            
             if len(sys.argv) != 3:
                 raise ValueError("開始日と終了日を 'YYYY-MM-DD' 形式で指定してください。")
             
             start_date_str = sys.argv[1]
             end_date_str = sys.argv[2]
-            
             ANALYSIS_START_DATE = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
             ANALYSIS_END_DATE = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
 
             if ANALYSIS_START_DATE > ANALYSIS_END_DATE:
                 raise ValueError("開始日は終了日より前の日付にしてください。")
 
-        except ValueError as e:
-            print(f"\nエラー: {e}")
-            print("実行例: python backend/run_pipeline.py 2025-01-01 2025-01-05")
-            return
+            print(f"\n処理対象期間: {ANALYSIS_START_DATE.strftime('%Y-%m-%d')} から {ANALYSIS_END_DATE.strftime('%Y-%m-%d')} まで")
             
-        print(f"\n処理対象期間: {ANALYSIS_START_DATE.strftime('%Y-%m-%d')} から {ANALYSIS_END_DATE.strftime('%Y-%m-%d')} まで")
-        
-        target_horse_ids = pre_scrape_all_data(ANALYSIS_START_DATE, ANALYSIS_END_DATE)
-        process_and_load_past_horse_data(target_horse_ids)
-        process_races_and_predictions(ANALYSIS_START_DATE, ANALYSIS_END_DATE)
-        
-        db_session_for_advantage = SessionLocal()
-        try:
-            history_start_date = datetime.date(2020, 1, 1) 
-            history_end_date = datetime.date.today()
-            calculate_advantages(db_session_for_advantage, history_start_date, history_end_date)
-        finally:
-            db_session_for_advantage.close()
+            target_horse_ids = pre_scrape_all_data(ANALYSIS_START_DATE, ANALYSIS_END_DATE)
+            process_and_load_past_horse_data(target_horse_ids)
+            process_races_and_predictions(ANALYSIS_START_DATE, ANALYSIS_END_DATE)
+            
+            db_session_for_advantage = SessionLocal()
+            try:
+                history_start_date = datetime.date(2020, 1, 1) 
+                history_end_date = datetime.date.today()
+                calculate_advantages(db_session_for_advantage, history_start_date, history_end_date)
+            finally:
+                db_session_for_advantage.close()
 
-    else: # PRODUCTIONモード
-        print("--- RUNNING IN PRODUCTION MODE ---")
-        
-        jst = datetime.timezone(datetime.timedelta(hours=9))
-        today_jst = datetime.datetime.now(jst).date()
-        
-        target_date_results = today_jst - datetime.timedelta(days=1)
-        target_date_predictions = today_jst + datetime.timedelta(days=1)
+        else: # PRODUCTIONモード
+            print("--- RUNNING IN PRODUCTION MODE ---")
+            
+            jst = datetime.timezone(datetime.timedelta(hours=9))
+            today_jst = datetime.datetime.now(jst).date()
+            
+            target_date_results = today_jst - datetime.timedelta(days=1)
+            target_date_predictions = today_jst + datetime.timedelta(days=1)
 
-        scrape_race_lists_for_date(target_date_results)
-        scrape_race_lists_for_date(target_date_predictions)
+            scrape_race_lists_for_date(target_date_results)
+            scrape_race_lists_for_date(target_date_predictions)
 
-        db: Session = SessionLocal()
-        try:
-            update_race_results(db, target_date_results)
-            insert_new_predictions(db, target_date_predictions)
-        finally:
-            if db.is_active:
-                db.close()
+            db: Session = SessionLocal()
+            try:
+                update_race_results(db, target_date_results)
+                insert_new_predictions(db, target_date_predictions)
+            finally:
+                if db.is_active:
+                    db.close()
 
-    print("\n全ての処理が完了しました。")
+        # 処理成功を通知
+        elapsed_time = time.time() - start_time
+        success_message = (
+            f"✅ パイプライン処理が正常に完了しました。\n"
+            f"**モード**: `{PIPELINE_MODE}`\n"
+            f"**処理時間**: `{elapsed_time:.2f} 秒`"
+        )
+        send_notification(success_message)
+
+    except Exception as e:
+        # 処理失敗を通知
+        elapsed_time = time.time() - start_time
+        error_message = (
+            f"🚨 パイプライン処理中にエラーが発生しました。\n"
+            f"**モード**: `{PIPELINE_MODE}`\n"
+            f"**経過時間**: `{elapsed_time:.2f} 秒`\n"
+            f"**エラー**: \n```\n{traceback.format_exc()}\n```"
+        )
+        send_notification(error_message, is_error=True)
+        # エラーが発生したことを呼び出し元に伝えるために再スローする
+        raise
+    
+    finally:
+        print("\n全ての処理が完了しました。")
+    # --- ★★★ ここまでコード修正 ★★★ ---
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()

@@ -9,6 +9,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.4
     buildpacks:
+      - url: https://github.com/render-inc/heroku-buildpack-python
       - url: https://github.com/render-inc/chrome-buildpack
     rootDirectory: backend
     buildCommand: "pip install -r requirements.txt"

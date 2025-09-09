@@ -1,25 +1,18 @@
-# servicesリストの開始
 services:
-  # 最初のサービス定義（リストの要素なのでハイフンから始める）
   - type: cron
-    # --- ↓↓↓ `type`と同じ階層（インデント）に全てのキーを記述 ↓↓↓ ---
     name: keiba-pipeline-runner
     env: python
     region: oregon
     schedule: "0 20 * * *"
-    
-    # 環境変数のセクション
     envVars:
+      - key: DATABASE_URL
+        value: "postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db"
       - key: PYTHON_VERSION
         value: 3.11.4
       - key: PIP_CACHE_DIR
         value: /opt/render/project/.cache/pip
-    
-    # サービスのルートディレクトリを指定
+    buildpacks:
+      - url: https://github.com/render-inc/chrome-buildpack
     rootDirectory: backend
-    
-    # ビルド時に実行するコマンド
     buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
-    
-    # 実行するコマンド
-    startCommand: "echo 'Build and dependencies installed successfully!'"
+    startCommand: "python run_pipeline.py"

@@ -1,0 +1,39 @@
+# render.yaml (プロジェクトのルートディレクトリに配置)
+
+services:
+  # ---------------------------------------------------
+  # Cron Job (日次バッチ処理) の設定
+  # ---------------------------------------------------
+  - type: cron
+    name: keiba-pipeline-runner  # サービス名 (変更可)
+    region: Oregon     # リージョン (ご自身の環境に合わせてください)
+    schedule: "0 20 * * *"       # 「日本時間 午前5時」の設定
+    buildFilter:
+      paths:
+      - backend/** # backendフォルダ内の変更のみをデプロイ対象にする
+      - render.yaml
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: psql
+          name: keiba-db # ★注意: ご自身のRender上のDB名に合わせてください
+      - key: PYTHON_VERSION
+        value: 3.11.4
+      - key: WEBHOOK_URL # (任意) 通知機能を使う場合は設定
+        sync: false
+
+    # --- ここからが重要 ---
+    
+    # 1. Google ChromeをインストールするBuildpack
+    buildpacks:
+      - url: https://github.com/render-inc/chrome-buildpack
+
+    # 2. 実行場所とコマンドの指定
+    # backendディレクトリを起点にコマンドが実行される
+    rootDirectory: backend
+    
+    # 3. ビルドコマンド (ライブラリのインストール)
+    buildCommand: "pip install -r requirements.txt"
+    
+    # 4. 実行コマンド
+    startCommand: "python run_pipeline.py"

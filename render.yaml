@@ -1,19 +1,8 @@
 services:
   - type: cron
-    name: keiba-pipeline-runner
+    name: keiba-pipeline-test # 念のため名前を変更
     env: python
     plan: free
     region: oregon
     schedule: "0 20 * * *"
-    envVars:
-      - key: DATABASE_URL
-        value: "postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db"
-      - key: PYTHON_VERSION
-        value: 3.11.4
-      - key: PIP_CACHE_DIR
-        value: /opt/render/project/.cache/pip
-    buildpacks:
-      - url: https://github.com/render-inc/chrome-buildpack
-    rootDirectory: backend
-    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
-    startCommand: "python run_pipeline.py"
+    startCommand: "echo 'Test successful: YAML parsed correctly!'"

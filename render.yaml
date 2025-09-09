@@ -1,8 +1,15 @@
 services:
   - type: cron
-    name: keiba-pipeline-test
+    name: keiba-pipeline-runner # 元のサービス名に戻します
     env: python
-    # ★ 修正点: エラーに従い、cronサービスのplanキーを削除します
     region: oregon
     schedule: "0 20 * * *"
-    startCommand: "echo 'Test successful: YAML parsed correctly!'"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.4
+      - key: PIP_CACHE_DIR
+        value: /opt/render/project/.cache/pip
+    rootDirectory: backend
+    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
+    # 実際のスクリプト実行はまだせず、ビルド成功を確認する
+    startCommand: "echo 'Build and dependencies installed successfully!'"

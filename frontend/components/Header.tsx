@@ -1,6 +1,5 @@
 import Link from 'next/link';
 
-// 競馬のシルエットアイコン
 const HorseIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
         <path d="M7.618 16.89a.75.75 0 10-1.236-.88l-1.5 2.1a.75.75 0 101.236.88l1.5-2.1zM6.382 16.01a4.485 4.485 0 01-2.023 2.115.75.75 0 00.88 1.236 6 6 0 002.7-2.822.75.75 0 00-.88-1.236A4.493 4.493 0 016.382 16.01zM11.25 10.5A1.5 1.5 0 019.75 12c-.828 0-1.5-.672-1.5-1.5s.672-1.5 1.5-1.5 1.5.672 1.5 1.5z" />
@@ -16,8 +15,10 @@ export const Header = () => {
                     <Link href="/" className="flex items-center gap-3 group">
                         <HorseIcon />
                         <div className="flex flex-col">
-                            <span className="text-2xl font-bold tracking-tight group-hover:text-gray-200 transition-colors">ウマFREE</span>
-                            <span className="text-xs text-blue-200 group-hover:text-white transition-colors">毎日無料のAI競馬予想</span>
+                            <span className="text-2xl font-bold tracking-tight group-hover:text-gray-200 transition-colors">UMA-FREE</span>
+                            {/* ▼▼▼▼▼ ここを修正 ▼▼▼▼▼ */}
+                            <span className="text-xs text-blue-200 group-hover:text-white transition-colors">登録不要・完全無料！AIが中央・地方すべての競馬レースを毎日予想＆分析</span>
+                            {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
                         </div>
                     </Link>
                 </div>

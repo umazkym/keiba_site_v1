@@ -10,28 +10,29 @@ import { StartPositionChart } from './StartPositionChart';
 import { MatchupTable } from './MatchupTable';
 import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './icons';
+import { Adsense } from './Adsense';
 
-// ★★★ 修正箇所1: 新しい開閉コンポーネントを定義 ★★★
+// ▼▼▼▼▼ 開閉可能なセクションコンポーネントを新規作成 ▼▼▼▼▼
 const CollapsibleSection = ({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className={`rounded-lg bg-gray-50 transition-all duration-300 border ${isOpen ? 'bg-white shadow-lg border-gray-200' : ''}`}>
+    <div className={`rounded-lg bg-gray-50 transition-all duration-300 border ${isOpen ? 'bg-white shadow-lg border-gray-200' : 'border-transparent'}`}>
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center text-md font-bold text-gray-800 p-2 cursor-pointer list-none"
+        className="flex items-center text-md font-bold text-gray-800 p-3 cursor-pointer list-none"
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setIsOpen(!isOpen) }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setIsOpen(!isOpen); }}
       >
-        <div className="w-6 h-6 mr-2 flex-shrink-0">{icon}</div>
+        <div className="w-6 h-6 mr-2 flex-shrink-0 text-accent-dark">{icon}</div>
         <span className="whitespace-nowrap">{title}</span>
         <div className={`ml-auto transform transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`}>
           <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
         </div>
       </div>
       {isOpen && (
-        <div className="p-2 pt-0">
+        <div className="p-3 pt-0">
           {children}
         </div>
       )}
@@ -43,10 +44,9 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
   const initialIndex = initialRaceNumber
     ? venue.races.findIndex(r => r.race_number === initialRaceNumber)
     : 0;
-
   const [activeRaceIndex, setActiveRaceIndex] = useState(initialIndex >= 0 ? initialIndex : 0);
   const activeRace = venue.races[activeRaceIndex];
-
+  
   return (
     <div id={`venue-${venue.venue_name}`}>
       <RaceSelector
@@ -64,36 +64,33 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
               </h3>
               <p className="text-sm text-blue-100 ml-9 -mt-1">{activeRace.course_type}{activeRace.distance}m</p>
             </div>
-            
             <div>
               <h4 className="flex items-center text-md font-bold text-gray-700 mt-2 mb-1 px-3">
                 <SparklesIcon className="w-5 h-5 text-accent-dark mr-2" />
-                予測
+                AI予測
               </h4>
               <PredictionTable race={activeRace} />
             </div>
           </div>
 
-          {/* ★★★ 修正箇所2: <details> を <CollapsibleSection> に置き換える ★★★ */}
+          {/* ▼▼▼▼▼ 予測テーブルと詳細情報の間にインフィード広告を配置 ▼▼▼▼▼ */}
+          <div className="my-4">
+             <Adsense
+                client="ca-pub-xxxxxxxxxxxxxxxx" // ご自身のIDに置き換えてください
+                slot="xxxxxxxxxx"             // ご自身のIDに置き換えてください
+                style={{ minHeight: '120px' }}
+             />
+          </div>
+          {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
+
           <div className="space-y-2">
-            <CollapsibleSection
-              title="スタート位置予測"
-              icon={<FlagIcon className="w-5 h-5 text-accent-dark" />}
-            >
+            <CollapsibleSection title="AI展開予測 (スタート後)" icon={<FlagIcon className="w-5 h-5" />}>
               <StartPositionChart predictions={activeRace.predictions} />
             </CollapsibleSection>
-
-            <CollapsibleSection
-              title="総当たり対戦表"
-              icon={<UsersIcon className="w-5 h-5 text-accent-dark" />}
-            >
+            <CollapsibleSection title="AIライバル分析 (直接対決)" icon={<UsersIcon className="w-5 h-5" />}>
               <MatchupTable race={activeRace} />
             </CollapsibleSection>
-            
-            <CollapsibleSection
-              title="コース別 馬番アドバンテージ"
-              icon={<ChartBarIcon className="w-5 h-5 text-accent-dark" />}
-            >
+            <CollapsibleSection title="コース別・馬番データ" icon={<ChartBarIcon className="w-5 h-5" />}>
               <HorseNumberAdvantageChart
                 advantages={activeRace.horse_number_advantages}
                 courseType={activeRace.course_type}
@@ -106,7 +103,8 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
     </div>
   );
 };
-
+// 以下、RaceTabsコンポーネント本体のコードは変更なし（省略）
+// ... (元のRaceTabsコンポーネントのコードをここに貼り付け)
 export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: RaceDayPrediction, initialVenueName?: string | null, initialRaceNumber?: number | null }) => {
   if (!data || (data.jra.length === 0 && data.nar.length === 0)) {
     return <div className="p-6 text-center text-gray-500 bg-white rounded-lg shadow">対象日のレースデータがありません。</div>;

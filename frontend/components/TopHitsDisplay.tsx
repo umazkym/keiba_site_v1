@@ -62,8 +62,6 @@ export const TopHitsDisplay = () => {
             setIsLoading(true);
             try {
                 const data = await getTopPayoutHits();
-
-                // 同一レースの重複を排除
                 const uniqueHits = Object.values(
                   data.reduce((acc: { [key: string]: TopPayoutHit }, currentHit) => {
                     const existingHit = acc[currentHit.race_id];
@@ -73,13 +71,10 @@ export const TopHitsDisplay = () => {
                     return acc;
                   }, {})
                 );
-
                 const sortedAndLimitedHits = uniqueHits
                   .sort((a, b) => b.payout - a.payout)
                   .slice(0, 5);
-                
                 setHits(sortedAndLimitedHits);
-
             } catch (e) {
                 console.error("Failed to fetch top hits:", e);
             } finally {
@@ -107,7 +102,7 @@ export const TopHitsDisplay = () => {
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3">
                     {hits.map((hit, index) => (
-                        // ★修正点: hrefにクエリパラメータを追加
+                        // ▼▼▼▼▼ Linkタグで囲み、クエリパラメータで競馬場とレース番号を指定 ▼▼▼▼▼
                         <Link 
                             key={`${hit.race_id}-${hit.winning_numbers}`} 
                             href={`/races/${hit.race_date}?venue=${encodeURIComponent(hit.venue_name)}&race=${hit.race_number}`}
@@ -115,6 +110,7 @@ export const TopHitsDisplay = () => {
                         >
                             <HitCard hit={hit} rank={index + 1} />
                         </Link>
+                        // ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
                     ))}
                 </div>
             )}

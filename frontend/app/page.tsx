@@ -31,29 +31,30 @@ export default async function HomePage() {
 
     return (
         <div className="container py-4">
-            {/* ★★★ ここを修正しました ★★★ */}
             {/* AI高配当ランキング (余白を日付ページと統一) */}
             <div className="mb-4">
                 <TopHitsDisplay />
             </div>
-            
+
             {/* メインのヒーローセクション */}
             <div className="text-center my-4 md:my-5 p-6 bg-white rounded-lg shadow-xl border border-gray-200 bg-gradient-to-br from-blue-50 to-white">
+                {/* ▼▼▼▼▼ ここから修正 ▼▼▼▼▼ */}
                 <h1 className="text-3xl md:text-4xl font-extrabold text-primary-dark mb-2 leading-tight">
-                    今日の競馬に迷ったら。
+                    <span className="text-accent-dark">登録不要・完全無料</span>
                     <br/>
-                    無料で使えるAI予想
+                    AI競馬予測サイト ウマFREE
                 </h1>
                 <p className="text-sm md:text-base text-gray-700 max-w-2xl mx-auto">
-                    会員登録なしですぐに見れる！
+                    中央・地方の全レース予測から、独自の対戦データまで。
                     <br/>
-                    中央・地方競馬の全レースを<strong className="text-accent-dark">AI</strong>が徹底分析。
+                    あなたの競馬予想に、AIの分析力をプラスします。
                 </p>
+                {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
                 <Link
                     href={`/races/${todayStr}`}
                     className="mt-5 inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105 text-base"
                 >
-                    本日のレース予測を見る
+                    本日の全レース予測を見る
                 </Link>
             </div>
 

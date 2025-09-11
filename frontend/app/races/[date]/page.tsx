@@ -9,8 +9,9 @@ import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
 import { formatDate } from '@/lib/utils';
 import { RaceTabsSkeleton } from '@/components/SkeletonLoader';
+// SidebarAdは不要になったため、import文を削除またはコメントアウトします
+// import { SidebarAd } from '@/components/SidebarAd';
 
-// ★修正点1: 「今日」ボタンを削除し、中央揃えのナビゲーション要素のみに特化
 const DateNavigator = ({ currentDate, onDateChange }: { currentDate: string, onDateChange: (newDate: string) => void }) => {
     const handleDateShift = (days: number) => {
         const [year, month, day] = currentDate.split('-').map(Number);
@@ -94,7 +95,6 @@ function RacePageContent() {
         }
     };
 
-    // ★修正点2: 「今日」の日付を取得する関数をここで定義
     const getTodayString = () => {
         const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
         return today.toISOString().split('T')[0];
@@ -102,48 +102,50 @@ function RacePageContent() {
 
     return (
         <div className="container py-4">
-            <div className="mb-4">
-                <TopHitsDisplay />
-            </div>
+            {/* ▼▼▼ このdivから lg:flex-row クラスなどを削除 ▼▼▼ */}
+            <div>
+                {/* --- メインコンテンツエリア --- */}
+                {/* ▼▼▼ このdivから lg:w-3/4 クラスを削除 ▼▼▼ */}
+                <div className="w-full">
+                    <div className="mb-4">
+                        <TopHitsDisplay />
+                    </div>
 
-            {/* ★修正点3: 日付ナビゲーション全体のレイアウトをGridに変更 */}
-            <div className="grid grid-cols-3 items-center mb-4 p-2 bg-white border rounded-lg shadow-sm">
-                {/* 1列目: 左寄せの「今日」ボタン */}
-                <div className="justify-self-start">
-                    <button
-                        onClick={() => handleDateChange(getTodayString())}
-                        className="bg-primary border border-primary-dark text-white px-3 py-1.5 rounded-md shadow-sm hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm font-bold whitespace-nowrap"
-                    >
-                        今日
-                    </button>
+                    <div className="grid grid-cols-3 items-center mb-4 p-2 bg-white border rounded-lg shadow-sm">
+                        <div className="justify-self-start">
+                            <button
+                                onClick={() => handleDateChange(getTodayString())}
+                                className="bg-primary border border-primary-dark text-white px-3 py-1.5 rounded-md shadow-sm hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm font-bold whitespace-nowrap"
+                            >
+                                今日
+                            </button>
+                        </div>
+                        <div className="justify-self-center">
+                            <DateNavigator currentDate={dateFromUrl} onDateChange={handleDateChange} />
+                        </div>
+                        <div className="justify-self-end"></div>
+                    </div>
+
+                    <div className="mb-4">
+                        <SpecialPickCard date={dateFromUrl} />
+                    </div>
+
+                    {isLoading && <RaceTabsSkeleton />}
+                    
+                    {error && <div className="text-center p-6 text-red-600 bg-red-100 rounded-lg border border-red-200">{error}</div>}
+                    
+                    {!isLoading && !error && predictionData && (
+                        <RaceTabs 
+                            data={predictionData} 
+                            initialVenueName={initialVenue}
+                            initialRaceNumber={initialRaceNumber}
+                        />
+                    )}
                 </div>
 
-                {/* 2列目: 中央の日付ナビゲーター */}
-                <div className="justify-self-center">
-                    <DateNavigator currentDate={dateFromUrl} onDateChange={handleDateChange} />
-                </div>
-                
-                {/* 3列目は空のdivを配置し、2列目が常に中央に来るようにします */}
-                <div className="justify-self-end"></div>
+                {/* --- サイドバーエリア (削除) --- */}
+                {/* <aside> タグ全体をここから削除しました */}
             </div>
-
-            <div className="mb-4">
-                <SpecialPickCard date={dateFromUrl} />
-            </div>
-
-            {isLoading && (
-                <RaceTabsSkeleton />
-            )}
-            
-            {error && <div className="text-center p-6 text-red-600 bg-red-100 rounded-lg border border-red-200">{error}</div>}
-            
-            {!isLoading && !error && predictionData && (
-                <RaceTabs 
-                    data={predictionData} 
-                    initialVenueName={initialVenue}
-                    initialRaceNumber={initialRaceNumber}
-                />
-            )}
         </div>
     );
 }

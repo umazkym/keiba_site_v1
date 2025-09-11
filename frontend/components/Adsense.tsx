@@ -8,9 +8,10 @@ type AdsenseProps = {
   slot: string;
   className?: string;
   style?: React.CSSProperties;
+  isResponsive?: boolean; // ★★★ この行を追加 ★★★
 };
 
-export const Adsense = ({ client, slot, className, style }: AdsenseProps) => {
+export const Adsense = ({ client, slot, className, style, isResponsive = true }: AdsenseProps) => { // ★★★ isResponsive props を追加 ★★★
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -31,8 +32,14 @@ export const Adsense = ({ client, slot, className, style }: AdsenseProps) => {
 
     ins.setAttribute('data-ad-client', client);
     ins.setAttribute('data-ad-slot', slot);
-    ins.setAttribute('data-ad-format', 'auto');
-    ins.setAttribute('data-full-width-responsive', 'true');
+    
+    // ▼▼▼▼▼ ここを修正 ▼▼▼▼▼
+    // isResponsiveがtrueの場合のみ、レスポンシブ用の属性を設定する
+    if (isResponsive) {
+      ins.setAttribute('data-ad-format', 'auto');
+      ins.setAttribute('data-full-width-responsive', 'true');
+    }
+    // ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
 
     containerRef.current.appendChild(ins);
 
@@ -42,7 +49,7 @@ export const Adsense = ({ client, slot, className, style }: AdsenseProps) => {
       console.error('adsbygoogle.push() error:', err);
     }
 
-  }, [pathname, client, slot, className, style]);
+  }, [pathname, client, slot, className, style, isResponsive]); // ★★★ isResponsive を依存配列に追加 ★★★
 
   if (process.env.NODE_ENV !== 'production') {
     return (

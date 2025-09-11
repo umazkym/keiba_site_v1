@@ -17,6 +17,7 @@ export const AnchorAd = () => {
           slot="xxxxxxxxxx"             // アンカー広告用の広告ユニットIDに置き換えてください
           style={{ width: '320px', height: '50px' }}
           className="adsbygoogle"
+          isResponsive={false} // ★★★ この行を追加 ★★★
         />
       </div>
     </div>

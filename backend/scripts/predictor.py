@@ -1,5 +1,6 @@
-# C:\Users\zk-ht\Keiba\keiba_site_v1\backend\scripts\predictor.py
-
+# backend/scripts/predictor.py
+import time
+import traceback
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database import models
@@ -10,7 +11,9 @@ from datetime import date, timedelta
 from typing import Optional, List, Dict, Any
 from collections import defaultdict
 from . import database_loader
-import traceback # エラー詳細表示のためにインポート
+from tqdm import tqdm
+
+# _calculate_1c_indicator から calculate_and_save_matchups_for_race までの関数は変更ありません（省略）
 
 def _calculate_1c_indicator(db: Session, horse_id: str, race_date: date, debug: bool = False) -> Optional[float] | Dict[str, Any]:
     """
@@ -84,8 +87,8 @@ def _get_bulk_performance_data(db: Session, horse_ids: List[str], race_date: dat
         all_past_results = db.query(models.Result, models.Race, avg_times_base_q.c.avg_time)\
             .join(models.Race, models.Result.race_id == models.Race.id)\
             .outerjoin(avg_times_base_q, (models.Race.venue_name == avg_times_base_q.c.venue_name) & \
-                                        (models.Race.course_type == avg_times_base_q.c.course_type) & \
-                                        (models.Race.distance == avg_times_base_q.c.distance))\
+                                         (models.Race.course_type == avg_times_base_q.c.course_type) & \
+                                         (models.Race.distance == avg_times_base_q.c.distance))\
             .filter(models.Result.horse_id.in_(horse_ids))\
             .filter(models.Race.race_date.between(start_date_filter, end_date_filter))\
             .all()
@@ -295,13 +298,24 @@ def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: L
 
 # ==============================================================================
 # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-def calculate_and_save_horse_number_advantage_for_period(db: Session, start_date: date, end_date: date):
+def calculate_and_save_all_horse_number_advantages(db: Session):
     """
-    メモリ消費を抑えるため、データを一度に読み込まず、ストリーミングしながら
-    チャンク単位で処理するようにロジックを全面的に書き換える。
+    DB全体のデータから馬番有利不利データを再計算し、テーブルを更新する。
+    最終スコアが平均0になるように中心化し、ユーザーに分かりやすくする。
     """
-    print(f"Calculating horse number advantages for period: {start_date} to {end_date}...")
+    print("Calculating horse number advantages for all data in the database...")
     
+    # 1. 最初に既存のデータをすべて削除
+    try:
+        num_deleted = db.query(models.HorseNumberAdvantage).delete(synchronize_session=False)
+        db.commit()
+        print(f" -> Deleted {num_deleted} existing advantage records.")
+    except Exception as e:
+        db.rollback()
+        print(f" -> Error deleting existing data: {e}")
+        raise e
+
+    # 2. 全期間のデータを取得するクエリを定義
     results_query = db.query(
         models.Race.id,
         models.Race.venue_name,
@@ -311,76 +325,83 @@ def calculate_and_save_horse_number_advantage_for_period(db: Session, start_date
         models.Result.horse_number,
         models.Result.rank
     ).join(models.Result, models.Race.id == models.Result.race_id)\
-    .filter(models.Race.race_date.between(start_date, end_date))\
     .filter(models.Result.rank.isnot(None))\
     .filter(models.Race.total_horses.isnot(None))\
     .filter(models.Race.course_type.in_(['芝', 'ダ']))
 
-    # SQLAlchemy ORMの正しいストリーミング方法である yield_per を使用
-    chunk_size = 20000  # 2万件ずつ処理
-    all_scores_df_list = []
-    
-    # tqdmで進捗を表示するために、先に件数を取得
-    total_rows = results_query.count()
-    if total_rows == 0:
-        print("No valid race results found in the specified period to calculate advantages.")
-        return
+    try:
+        # 3. 集計用DataFrameの準備
+        advantage_summary = pd.DataFrame()
 
-    # データをチャンクに分割して処理
-    with tqdm(total=total_rows, desc="  -> DBから結果をストリーミング中") as pbar:
-        for race_results_chunk in results_query.yield_per(chunk_size):
-            # yield_perは1行ずつ返すので、手動でチャンクを作成する
-            chunk_data = [race_results_chunk] # 最初の1行
-            chunk_data.extend(next(results_query.yield_per(chunk_size)) for _ in range(chunk_size - 1))
-            pbar.update(len(chunk_data))
+        # 4. ストリーミングでデータを読み込み、チャンクごとに処理
+        chunk_size = 50000
+        total_rows = results_query.count()
 
-            df = pd.DataFrame(chunk_data, columns=results_query.column_descriptions.keys())
-            if df.empty:
-                continue
+        if total_rows == 0:
+            print("No data to process.")
+            return
 
-            ai_scores = []
-            for race_id, group in df.groupby('id'):
-                n = group['total_horses'].iloc[0]
-                if n is None or pd.isna(n) or int(n) < 2:
+        chunks = pd.read_sql(results_query.statement, db.bind, chunksize=chunk_size)
+        with tqdm(total=total_rows, desc=" -> Processing race data in chunks") as pbar:
+            for chunk_df in chunks:
+                ai_scores = []
+                for _, group in chunk_df.groupby('id'):
+                    n = group['total_horses'].iloc[0]
+                    if pd.isna(n) or int(n) < 2: continue
+                    n = int(n)
+                    
+                    e = (n + 1) / 2.0
+                    sd = math.sqrt((n**2 - 1) / 12.0)
+                    if sd == 0: continue
+                    
+                    group['advantage_score'] = (e - group['rank']) / sd
+                    ai_scores.append(group)
+                
+                if not ai_scores:
+                    pbar.update(len(chunk_df))
                     continue
-                n = int(n)
+                
+                chunk_scores_df = pd.concat(ai_scores)
+                
+                chunk_summary = chunk_scores_df.groupby([
+                    'venue_name', 'course_type', 'distance', 'horse_number'
+                ])['advantage_score'].agg(['sum', 'count']).reset_index()
+                
+                if advantage_summary.empty:
+                    advantage_summary = chunk_summary
+                else:
+                    advantage_summary = pd.concat([advantage_summary, chunk_summary])\
+                                          .groupby(['venue_name', 'course_type', 'distance', 'horse_number'])\
+                                          .sum().reset_index()
+                pbar.update(len(chunk_df))
 
-                e = (n + 1) / 2.0
-                sd = math.sqrt((n**2 - 1) / 12.0)
-                if sd == 0:
-                    continue
+        if advantage_summary.empty:
+            print("No advantage data calculated."); return
 
-                group['advantage_score'] = (e - group['rank']) / sd
-                ai_scores.append(group)
+        # 5. 最終的な平均を計算
+        advantage_summary['advantage_score'] = advantage_summary['sum'] / advantage_summary['count']
 
-            if ai_scores:
-                all_scores_df_list.append(pd.concat(ai_scores))
-
-    if not all_scores_df_list:
-        print("Could not calculate any AI scores for the period.")
-        return
-
-    df_with_ai = pd.concat(all_scores_df_list)
-    
-    advantage_groups = df_with_ai.groupby([
-        'venue_name', 
-        'course_type', 
-        'distance', 
-        'horse_number'
-    ])['advantage_score'].agg(['mean']).reset_index()
-    
-    # カラム名を'mean'から'advantage_score'に変更
-    advantage_groups.rename(columns={'mean': 'advantage_score'}, inplace=True)
-
-    advantages_to_save = advantage_groups.to_dict('records')
+        # 6. ★★★【重要】コース条件ごとにスコアを正規化（平均を0にする）★★★
+        # 各コース条件（venue_name, course_type, distance）でグループ化し、
+        # そのグループ内のadvantage_scoreの平均値を計算し、各スコアからその平均値を引く
+        advantage_summary['advantage_score'] = advantage_summary.groupby(
+            ['venue_name', 'course_type', 'distance']
+        )['advantage_score'].transform(lambda x: x - x.mean())
         
-    if advantages_to_save:
-        # 既存のデータを一度に削除
-        db.query(models.HorseNumberAdvantage).delete()
+        # 7. DBに保存
+        advantages_to_save = advantage_summary[[
+            'venue_name', 'course_type', 'distance', 'horse_number', 'advantage_score'
+        ]].to_dict('records')
         
-        # 新しいデータをバルクで保存
-        database_loader.save_horse_number_advantages(db, advantages_to_save)
-        print(f"Saved/Updated {len(advantages_to_save)} horse number advantage records.")
-    
-    db.commit()
-# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+        if advantages_to_save:
+            database_loader.save_horse_number_advantages(db, advantages_to_save)
+            print(f" -> Saved {len(advantages_to_save)} new horse number advantage records.")
+        
+        db.commit()
+
+    except Exception as e:
+        print(f"An error occurred during advantage calculation: {e}")
+        traceback.print_exc()
+        db.rollback()
+# ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
+# ==============================================================================

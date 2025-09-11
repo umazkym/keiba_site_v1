@@ -125,7 +125,7 @@ def pre_scrape_all_data(start_date: datetime.date, end_date: datetime.date) -> s
                     original_count = len(race_ids)
                     race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
                     if original_count - len(race_ids) > 0:
-                        tqdm.write(f"               -> 地方競馬から、ばんえい競馬のレース {original_count - len(race_ids)} 件を除外しました。")
+                        tqdm.write(f"                     -> 地方競馬から、ばんえい競馬のレース {original_count - len(race_ids)} 件を除外しました。")
                 
                 all_race_ids_for_date.extend([(rid, is_nar) for rid in race_ids])
             
@@ -266,24 +266,23 @@ def process_races_and_predictions(start_date: datetime.date, end_date: datetime.
             for _ in pool.imap_unordered(process_single_date_worker, dates_to_process):
                 pbar.update(1)
 
-def calculate_advantages(db: Session, start_date: datetime.date, end_date: datetime.date, chunk_size_days: int = 90):
+# ==============================================================================
+# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+def calculate_advantages(db: Session):
     """
     [STAGE 4/4]
-    馬番有利不利データをチャンクごとに計算する。
+    馬番有利不利データをDB全体のデータから再計算する。
     """
     print(f"\n--- [STAGE 4/4] 馬番有利不利データを計算します ---")
-    current_start = start_date
-    date_chunks = []
-    while current_start <= end_date:
-        current_end = min(current_start + datetime.timedelta(days=chunk_size_days - 1), end_date)
-        date_chunks.append((current_start, current_end))
-        current_start = current_end + datetime.timedelta(days=1)
-    
-    for start, end in tqdm(date_chunks, desc="チャンクごとに有利不利を計算中", unit="chunk"):
-        predictor.calculate_and_save_horse_number_advantage_for_period(db, start, end)
-
-    print("--- 全ての有利不利計算が完了しました ---\n")
-
+    try:
+        # DB全体を対象に計算する新しい関数を呼び出す
+        predictor.calculate_and_save_all_horse_number_advantages(db)
+        print("--- 全ての有利不利計算が完了しました ---\n")
+    except Exception as e:
+        print(f"--- 馬番有利不利データの計算中にエラーが発生しました: {e} ---")
+        traceback.print_exc()
+# ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
+# ==============================================================================
 
 def scrape_race_lists_for_date(target_date: datetime.date):
     """
@@ -341,9 +340,12 @@ def main():
             
             db_session_for_advantage = SessionLocal()
             try:
-                history_start_date = datetime.date(2020, 1, 1) 
-                history_end_date = datetime.date.today()
-                calculate_advantages(db_session_for_advantage, history_start_date, history_end_date)
+                # ==============================================================================
+                # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+                # 修正した関数を呼び出す
+                calculate_advantages(db_session_for_advantage)
+                # ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
+                # ==============================================================================
             finally:
                 db_session_for_advantage.close()
 

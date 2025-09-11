@@ -19,12 +19,15 @@ IGNORE_DIRS = {
 
 # 無視したいファイルのリスト（プロジェクトのルートからの相対パス）
 # パス区切り文字はOSに関わらず'/'を使用してください。
+# ▼▼▼▼▼ ここから修正 ▼▼▼▼▼
 IGNORE_FILES = {
     'backend/website_analysis_data.json',
+    'website_analysis_data.json', # ルートディレクトリに生成された場合も無視する
     'frontend/package-lock.json',
     # 必要に応じて他のファイルも追加できます
     # 'another/file/to/ignore.txt',
 }
+# ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
 
 
 # 読み込み対象とするファイルの拡張子リスト

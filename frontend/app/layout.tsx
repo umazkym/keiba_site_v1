@@ -42,7 +42,9 @@ export default function RootLayout({
       <body className={`${inter.className} bg-gray-100 text-gray-800`}>
         <div className="flex flex-col min-h-screen">
           <Header />
-          <main className="flex-grow">
+          {/* ▼▼▼▼▼ ここから修正 ▼▼▼▼▼ */}
+          <main className="flex-grow pb-24">
+          {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
             <div className="container py-2">
               <Adsense
                 client={adClient}

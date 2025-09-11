@@ -44,7 +44,9 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
       </head>
-      <body className="bg-gray-100 text-gray-800">
+      {/* ▼▼▼▼▼ ここを修正 ▼▼▼▼▼ */}
+      <body className="bg-gray-100 text-gray-800 pb-16">
+      {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
         <a href="#main-content" className="skip-link">
           コンテンツにスキップ
         </a>

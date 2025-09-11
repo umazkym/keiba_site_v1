@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: "運営者情報 | ウマFREE",
-  robots: "noindex, follow", 
+  robots: "noindex, follow",
 };
 
 export default function AboutPage() {
@@ -20,24 +21,22 @@ export default function AboutPage() {
           </div>
           <div>
             <h2 className="text-lg font-semibold">サイトURL</h2>
-            {/* ▼▼▼ 取得したドメインに修正 ▼▼▼ */}
             <p>https://uma-free.com</p>
           </div>
           <div>
             <h2 className="text-lg font-semibold">運営者</h2>
-            {/* ▼▼▼ あなたの名前またはハンドルネームに修正 ▼▼▼ */}
-            <p>[ここにあなたの名前またはハンドルネームを記載]</p>
+            <p>おとうふや</p>
           </div>
           <div>
             <h2 className="text-lg font-semibold">お問い合わせ</h2>
             <p>
-              お問い合わせは、<a href="/contact" className="text-blue-600 hover:underline">お問い合わせフォーム</a>よりお願いいたします。
+              お問い合わせは、<Link href="/contact" className="text-blue-600 hover:underline">お問い合わせフォーム</Link>よりお願いいたします。
             </p>
           </div>
           <div>
             <h2 className="text-lg font-semibold">プライバシーポリシー</h2>
             <p>
-              当サイトのプライバシーポリシーについては、<a href="/privacy" className="text-blue-600 hover:underline">こちら</a>をご覧ください。
+              当サイトのプライバシーポリシーについては、<Link href="/privacy" className="text-blue-600 hover:underline">こちら</Link>をご覧ください。
             </p>
           </div>
         </div>

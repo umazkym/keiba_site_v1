@@ -87,8 +87,8 @@ def _get_bulk_performance_data(db: Session, horse_ids: List[str], race_date: dat
         all_past_results = db.query(models.Result, models.Race, avg_times_base_q.c.avg_time)\
             .join(models.Race, models.Result.race_id == models.Race.id)\
             .outerjoin(avg_times_base_q, (models.Race.venue_name == avg_times_base_q.c.venue_name) & \
-                                         (models.Race.course_type == avg_times_base_q.c.course_type) & \
-                                         (models.Race.distance == avg_times_base_q.c.distance))\
+                                     (models.Race.course_type == avg_times_base_q.c.course_type) & \
+                                     (models.Race.distance == avg_times_base_q.c.distance))\
             .filter(models.Result.horse_id.in_(horse_ids))\
             .filter(models.Race.race_date.between(start_date_filter, end_date_filter))\
             .all()
@@ -162,7 +162,7 @@ def create_predictions_for_race(race_id: str, db: Session) -> Optional[List[Dict
                 unpredictable_reason = "新馬戦のため、予測対象外です。"
             elif "障害" in target_race.race_name or target_race.course_type == '障':
                 unpredictable_reason = "障害戦のため、予測対象外です。"
-                
+            
         horse_ids = [h['horse_id'] for h in all_horse_scores]
         
         all_past_data = {}

@@ -16,7 +16,6 @@ export const metadata: Metadata = {
     "登録不要・完全無料！AIが中央・地方すべての競馬レースを毎日予想＆分析。AI偏差値や独自の対戦データで、あなたの馬券検討を強力にサポートします。",
 };
 
-// ✅ themeColor は metadata ではなく viewport に移動
 export const viewport: Viewport = {
   themeColor: "#2563eb",
 };
@@ -44,8 +43,8 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
       </head>
-      {/* ▼▼▼▼▼ ここを修正 ▼▼▼▼▼ */}
-      <body className="bg-gray-100 text-gray-800 pb-16">
+      {/* ▼▼▼▼▼ クラス指定を削除し、globals.cssのスタイルを適用 ▼▼▼▼▼ */}
+      <body className="pb-16">
       {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
         <a href="#main-content" className="skip-link">
           コンテンツにスキップ

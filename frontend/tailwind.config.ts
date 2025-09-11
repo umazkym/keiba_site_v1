@@ -22,27 +22,34 @@ const config: Config = {
       },
       colors: {
         primary: {
-          light: "#60a5fa",
-          DEFAULT: "#2563eb",
-          dark: "#1e40af",
+          light: "var(--color-primary-light)",
+          DEFAULT: "var(--color-primary)",
+          dark: "var(--color-primary-dark)",
         },
         secondary: {
-          light: "#4ade80",
-          DEFAULT: "#16a34a",
-          dark: "#14532d",
+          light: "var(--color-secondary-light)",
+          DEFAULT: "var(--color-secondary)",
+          dark: "var(--color-secondary-dark)",
         },
         accent: {
-          light: "#fcd34d",
-          DEFAULT: "#f59e0b",
-          dark: "#b45309",
+          light: "var(--color-accent-light)",
+          DEFAULT: "var(--color-accent)",
+          dark: "var(--color-accent-dark)",
         },
+        // CSS変数に合わせて追加
+        bg: 'var(--bg)',
+        surface: 'var(--surface)',
+        muted: 'var(--muted)',
+        border: 'var(--border)',
+        text: 'var(--text)',
       },
       borderRadius: {
         lg: "0.75rem",
         xl: "1rem",
       },
       boxShadow: {
-        card: "0 6px 18px rgba(16, 24, 40, 0.06)",
+        // CSS変数に合わせて修正
+        card: "var(--soft-shadow)",
         elevated: "0 10px 30px rgba(2, 6, 23, 0.08)",
       },
       fontSize: {

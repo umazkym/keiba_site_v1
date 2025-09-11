@@ -12,15 +12,16 @@ import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './icons';
 import { Adsense } from './Adsense';
 
-// ▼▼▼▼▼ 開閉可能なセクションコンポーネントを新規作成 ▼▼▼▼▼
+// ▼▼▼▼▼ CollapsibleSection のスタイルを修正 ▼▼▼▼▼
 const CollapsibleSection = ({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className={`rounded-lg bg-gray-50 transition-all duration-300 border ${isOpen ? 'bg-white shadow-lg border-gray-200' : 'border-transparent'}`}>
+    // 背景色とボーダーを調整し、開いたときにカードスタイルが適用されるように
+    <div className={`rounded-lg transition-all duration-300 border ${isOpen ? 'card p-3' : 'border-transparent'}`}>
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center text-md font-bold text-gray-800 p-3 cursor-pointer list-none"
+        className={`flex items-center text-md font-bold text-gray-800 cursor-pointer list-none ${isOpen ? 'mb-3' : 'p-3 hover:bg-gray-50 rounded-lg'}`}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setIsOpen(!isOpen); }}
@@ -32,13 +33,14 @@ const CollapsibleSection = ({ title, icon, children }: { title: string, icon: Re
         </div>
       </div>
       {isOpen && (
-        <div className="p-3 pt-0">
+        <div className="pt-0">
           {children}
         </div>
       )}
     </div>
   );
 };
+// ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
 
 const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRaceNumber?: number | null }) => {
   const initialIndex = initialRaceNumber
@@ -56,13 +58,15 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
       />
       {activeRace && (
         <div id={`race-${activeRace.id}`} className="mt-2">
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-3">
-            <div className="bg-primary text-white p-2 border-b border-gray-200 rounded-t-lg">
+          {/* ▼▼▼▼▼ 共通のカードスタイルを適用 ▼▼▼▼▼ */}
+          <div className="card mb-3">
+            <div className="bg-primary text-white p-2 border-b border-border rounded-t-lg">
+          {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
               <h3 className="text-base font-bold flex items-center">
                 <span className="bg-primary-dark text-white rounded-full w-7 h-7 inline-flex items-center justify-center mr-2 font-mono shadow-inner">{activeRace.race_number}R</span>
                 <span className="truncate">{activeRace.race_name}</span>
               </h3>
-              <p className="text-sm text-blue-100 ml-9 -mt-1">{activeRace.course_type}{activeRace.distance}m</p>
+              <p className="text-sm text-primary-light ml-9 -mt-1">{activeRace.course_type}{activeRace.distance}m</p>
             </div>
             <div>
               <h4 className="flex items-center text-md font-bold text-gray-700 mt-2 mb-1 px-3">
@@ -73,15 +77,13 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
             </div>
           </div>
 
-          {/* ▼▼▼▼▼ 予測テーブルと詳細情報の間にインフィード広告を配置 ▼▼▼▼▼ */}
           <div className="my-4">
              <Adsense
-                client="ca-pub-xxxxxxxxxxxxxxxx" // ご自身のIDに置き換えてください
-                slot="xxxxxxxxxx"             // ご自身のIDに置き換えてください
+                client="ca-pub-xxxxxxxxxxxxxxxx"
+                slot="xxxxxxxxxx"
                 style={{ minHeight: '120px' }}
              />
           </div>
-          {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
 
           <div className="space-y-2">
             <CollapsibleSection title="AI展開予測 (スタート後)" icon={<FlagIcon className="w-5 h-5" />}>
@@ -103,11 +105,10 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
     </div>
   );
 };
-// 以下、RaceTabsコンポーネント本体のコードは変更なし（省略）
-// ... (元のRaceTabsコンポーネントのコードをここに貼り付け)
+
 export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: RaceDayPrediction, initialVenueName?: string | null, initialRaceNumber?: number | null }) => {
   if (!data || (data.jra.length === 0 && data.nar.length === 0)) {
-    return <div className="p-6 text-center text-gray-500 bg-white rounded-lg shadow">対象日のレースデータがありません。</div>;
+    return <div className="p-6 text-center text-muted card">対象日のレースデータがありません。</div>;
   }
 
   const isInitialVenueInJra = data.jra.some(v => v.venue_name === initialVenueName);
@@ -116,21 +117,22 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
   const initialJraVenueIndex = initialVenueName ? data.jra.findIndex(v => v.venue_name === initialVenueName) : 0;
   const initialNarVenueIndex = initialVenueName ? data.nar.findIndex(v => v.venue_name === initialVenueName) : 0;
 
+  // ▼▼▼▼▼ globals.cssのreact-tabsスタイルが適用されるようにクラス名を調整 ▼▼▼▼▼
   return (
-    <Tabs defaultIndex={initialTopTabIndex} className="mt-4" selectedTabClassName="!text-primary-dark !bg-white border-gray-200 !border-b-white" >
-      <TabList className="flex border-b-2 border-gray-200 bg-gray-100 rounded-t-lg">
-        <Tab className="flex-1 px-4 py-2 font-semibold text-gray-600 cursor-pointer text-center rounded-tl-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition-colors whitespace-nowrap">中央競馬 (JRA)</Tab>
-        <Tab className="flex-1 px-4 py-2 font-semibold text-gray-600 cursor-pointer text-center rounded-tr-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition-colors whitespace-nowrap">地方競馬 (NAR)</Tab>
+    <Tabs defaultIndex={initialTopTabIndex} className="mt-4">
+      <TabList>
+        <Tab>中央競馬 (JRA)</Tab>
+        <Tab>地方競馬 (NAR)</Tab>
       </TabList>
 
-      <TabPanel className="bg-white rounded-b-lg border border-t-0 border-gray-200 shadow-md">
+      <TabPanel>
         {data.jra.length === 0 ? (
-          <p className="p-4 text-gray-500 text-center">この日の中央競馬の開催はありません。</p>
+          <p className="p-4 text-muted text-center">この日の中央競馬の開催はありません。</p>
         ) : (
           <div className="p-2 md:p-3">
-            <Tabs defaultIndex={initialJraVenueIndex >= 0 ? initialJraVenueIndex : 0} selectedTabClassName="!text-primary-dark !bg-gray-100 !border-gray-300">
-              <TabList className="flex flex-wrap border-b border-gray-200 -mb-px gap-x-2">
-                {data.jra.map(venue => <Tab key={venue.venue_name} className="px-3 py-2 font-medium cursor-pointer border-b-2 border-transparent hover:bg-gray-100 hover:text-primary-dark transition-colors whitespace-nowrap">{venue.venue_name}</Tab>)}
+            <Tabs defaultIndex={initialJraVenueIndex >= 0 ? initialJraVenueIndex : 0}>
+              <TabList>
+                {data.jra.map(venue => <Tab key={venue.venue_name}>{venue.venue_name}</Tab>)}
               </TabList>
               {data.jra.map(venue => (
                 <TabPanel key={venue.venue_name}>
@@ -144,14 +146,14 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
           </div>
         )}
       </TabPanel>
-      <TabPanel className="bg-white rounded-b-lg border border-t-0 border-gray-200 shadow-md">
+      <TabPanel>
         {data.nar.length === 0 ? (
-          <p className="p-4 text-gray-500 text-center">この日の地方競馬の開催はありません。</p>
+          <p className="p-4 text-muted text-center">この日の地方競馬の開催はありません。</p>
         ) : (
           <div className="p-2 md:p-3">
-            <Tabs defaultIndex={initialNarVenueIndex >= 0 ? initialNarVenueIndex : 0} selectedTabClassName="!text-primary-dark !bg-gray-100 !border-gray-300">
-              <TabList className="flex flex-wrap border-b border-gray-200 -mb-px gap-x-2">
-                {data.nar.map(venue => <Tab key={venue.venue_name} className="px-3 py-2 font-medium cursor-pointer border-b-2 border-transparent hover:bg-gray-100 hover:text-primary-dark transition-colors whitespace-nowrap">{venue.venue_name}</Tab>)}
+            <Tabs defaultIndex={initialNarVenueIndex >= 0 ? initialNarVenueIndex : 0}>
+              <TabList>
+                {data.nar.map(venue => <Tab key={venue.venue_name}>{venue.venue_name}</Tab>)}
               </TabList>
               {data.nar.map(venue => (
                 <TabPanel key={venue.venue_name}>
@@ -167,4 +169,5 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
       </TabPanel>
     </Tabs>
   );
+  // ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
 };

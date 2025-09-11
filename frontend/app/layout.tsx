@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
@@ -6,12 +6,19 @@ import { Footer } from "@/components/Footer";
 import { Adsense } from "@/components/Adsense";
 import Script from "next/script";
 import { AnchorAd } from "@/components/AnchorAd";
+import React from "react";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "ウマFREE | 登録不要の無料AI競馬予想 (中央・地方 全レース対応)",
-  description: "登録不要・完全無料！AIが中央・地方すべての競馬レースを毎日予想＆分析。AI偏差値や独自の対戦データで、あなたの馬券検討を強力にサポートします。",
+  description:
+    "登録不要・完全無料！AIが中央・地方すべての競馬レースを毎日予想＆分析。AI偏差値や独自の対戦データで、あなたの馬券検討を強力にサポートします。",
+};
+
+// ✅ themeColor は metadata ではなく viewport に移動
+export const viewport: Viewport = {
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({
@@ -19,19 +26,17 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const adClient = "ca-pub-xxxxxxxxxxxxxxxx"; // ご自身のAdSenseクライアントIDに置き換えてください
+  const adClient = "ca-pub-xxxxxxxxxxxxxxxx";
 
   return (
-    <html lang="ja">
+    <html lang="ja" className={inter.className}>
       <head>
-        {/* 通常のAdSenseタグ */}
-        <Script
-          async
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
-        {/* ★★★ ここに自動広告用のコードを追加 ★★★ */}
         <Script
           async
           src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`}
@@ -39,23 +44,30 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
       </head>
-      <body className={`${inter.className} bg-gray-100 text-gray-800`}>
+      <body className="bg-gray-100 text-gray-800">
+        <a href="#main-content" className="skip-link">
+          コンテンツにスキップ
+        </a>
+
         <div className="flex flex-col min-h-screen">
           <Header />
-          {/* ▼▼▼▼▼ ここから修正 ▼▼▼▼▼ */}
-          <main className="flex-grow pb-24">
-          {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
-            <div className="container py-2">
-              <Adsense
-                client={adClient}
-                slot="xxxxxxxxxx" // ヘッダー下の広告ユニットID
-                style={{ height: '100px' }}
-              />
+
+          <main id="main-content" className="flex-grow">
+            <div className="container py-4">
+              <div className="adsense-wrapper" role="complementary" aria-label="広告">
+                <Adsense
+                  client={adClient}
+                  slot="xxxxxxxxxx"
+                  style={{ width: "100%", height: "90px" }}
+                />
+              </div>
             </div>
             {children}
           </main>
+
           <Footer />
         </div>
+
         <AnchorAd />
       </body>
     </html>

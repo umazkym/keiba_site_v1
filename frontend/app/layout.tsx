@@ -25,7 +25,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const adClient = "ca-pub-xxxxxxxxxxxxxxxx";
+  // ▼▼▼▼▼ 【重要】AdSenseで取得したご自身のパブリッシャーIDに書き換えてください ▼▼▼▼▼
+  const adClient = "ca-pub-4411270831448240";
+  // ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
 
   return (
     <html lang="ja" className={inter.className}>
@@ -36,6 +38,7 @@ export default function RootLayout({
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
+        {/* AdSenseの自動広告用スクリプト */}
         <Script
           async
           src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`}
@@ -43,9 +46,7 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
       </head>
-      {/* ▼▼▼▼▼ クラス指定を削除し、globals.cssのスタイルを適用 ▼▼▼▼▼ */}
       <body className="pb-16">
-      {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
         <a href="#main-content" className="skip-link">
           コンテンツにスキップ
         </a>
@@ -56,9 +57,10 @@ export default function RootLayout({
           <main id="main-content" className="flex-grow">
             <div className="container py-4">
               <div className="adsense-wrapper" role="complementary" aria-label="広告">
+                {/* ヘッダー下の広告ユニット（手動配置） */}
                 <Adsense
                   client={adClient}
-                  slot="xxxxxxxxxx"
+                  slot="xxxxxxxxxx" // こちらもご自身の広告ユニットIDに書き換えてください
                   style={{ width: "100%", height: "90px" }}
                 />
               </div>

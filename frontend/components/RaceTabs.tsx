@@ -12,16 +12,14 @@ import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './icons';
 import { Adsense } from './Adsense';
 
-// ▼▼▼▼▼ CollapsibleSection のスタイルを修正 ▼▼▼▼▼
 const CollapsibleSection = ({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    // 背景色とボーダーを調整し、開いたときにカードスタイルが適用されるように
-    <div className={`rounded-lg transition-all duration-300 border ${isOpen ? 'card p-3' : 'border-transparent'}`}>
+    <div className="card transition-all duration-300">
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center text-md font-bold text-gray-800 cursor-pointer list-none ${isOpen ? 'mb-3' : 'p-3 hover:bg-gray-50 rounded-lg'}`}
+        className="flex items-center text-md font-bold text-gray-800 cursor-pointer list-none p-3"
         role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setIsOpen(!isOpen); }}
@@ -33,14 +31,13 @@ const CollapsibleSection = ({ title, icon, children }: { title: string, icon: Re
         </div>
       </div>
       {isOpen && (
-        <div className="pt-0">
+        <div className="px-3 pb-3">
           {children}
         </div>
       )}
     </div>
   );
 };
-// ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
 
 const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRaceNumber?: number | null }) => {
   const initialIndex = initialRaceNumber
@@ -48,7 +45,7 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
     : 0;
   const [activeRaceIndex, setActiveRaceIndex] = useState(initialIndex >= 0 ? initialIndex : 0);
   const activeRace = venue.races[activeRaceIndex];
-  
+
   return (
     <div id={`venue-${venue.venue_name}`}>
       <RaceSelector
@@ -58,11 +55,9 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
       />
       {activeRace && (
         <div id={`race-${activeRace.id}`} className="mt-2">
-          {/* ▼▼▼▼▼ 共通のカードスタイルを適用 ▼▼▼▼▼ */}
           <div className="card mb-3">
             <div className="bg-primary text-white p-2 border-b border-border rounded-t-lg">
-          {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
-              <h3 className="text-base font-bold flex items-center">
+              <h3 className="text-base font-bold flex items-center text-white">
                 <span className="bg-primary-dark text-white rounded-full w-7 h-7 inline-flex items-center justify-center mr-2 font-mono shadow-inner">{activeRace.race_number}R</span>
                 <span className="truncate">{activeRace.race_name}</span>
               </h3>
@@ -77,22 +72,15 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
             </div>
           </div>
 
-          <div className="my-4">
-             <Adsense
-                client="ca-pub-xxxxxxxxxxxxxxxx"
-                slot="xxxxxxxxxx"
-                style={{ minHeight: '120px' }}
-             />
-          </div>
-
+          {/* ▼▼▼▼▼ ここから修正 ▼▼▼▼▼ */}
           <div className="space-y-2">
-            <CollapsibleSection title="AI展開予測 (スタート後)" icon={<FlagIcon className="w-5 h-5" />}>
+            <CollapsibleSection title="AIスタート位置取り予測" icon={<FlagIcon className="w-5 h-5" />}>
               <StartPositionChart predictions={activeRace.predictions} />
             </CollapsibleSection>
-            <CollapsibleSection title="AIライバル分析 (直接対決)" icon={<UsersIcon className="w-5 h-5" />}>
+            <CollapsibleSection title="過去対決成績" icon={<UsersIcon className="w-5 h-5" />}>
               <MatchupTable race={activeRace} />
             </CollapsibleSection>
-            <CollapsibleSection title="コース別・馬番データ" icon={<ChartBarIcon className="w-5 h-5" />}>
+            <CollapsibleSection title="枠順傾向スコア" icon={<ChartBarIcon className="w-5 h-5" />}>
               <HorseNumberAdvantageChart
                 advantages={activeRace.horse_number_advantages}
                 courseType={activeRace.course_type}
@@ -100,6 +88,16 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
               />
             </CollapsibleSection>
           </div>
+
+          {/* 広告をコンテンツの一番下に移動 */}
+          <div className="my-4">
+             <Adsense
+               client="ca-pub-xxxxxxxxxxxxxxxx"
+               slot="xxxxxxxxxx"
+               style={{ minHeight: '120px' }}
+             />
+          </div>
+          {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
         </div>
       )}
     </div>
@@ -117,7 +115,6 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
   const initialJraVenueIndex = initialVenueName ? data.jra.findIndex(v => v.venue_name === initialVenueName) : 0;
   const initialNarVenueIndex = initialVenueName ? data.nar.findIndex(v => v.venue_name === initialVenueName) : 0;
 
-  // ▼▼▼▼▼ globals.cssのreact-tabsスタイルが適用されるようにクラス名を調整 ▼▼▼▼▼
   return (
     <Tabs defaultIndex={initialTopTabIndex} className="mt-4">
       <TabList>
@@ -169,5 +166,4 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
       </TabPanel>
     </Tabs>
   );
-  // ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
 };

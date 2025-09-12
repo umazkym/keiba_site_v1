@@ -54,7 +54,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
                 setPick(null);
             })
             .finally(() => setIsLoading(false));
-            
+
     }, [date, initialPick]);
 
     if (isLoading) {
@@ -71,7 +71,9 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
 
     return (
         <div className="bg-gradient-to-br from-yellow-400 to-orange-500 text-white p-4 rounded-xl shadow-lg h-full flex flex-col">
-            <h3 className="text-xs font-bold uppercase tracking-wider mb-1 flex items-center">
+            {/* ▼▼▼▼▼ h3タグに text-white を追加 ▼▼▼▼▼ */}
+            <h3 className="text-xs font-bold uppercase tracking-wider mb-1 flex items-center text-white">
+            {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
                 <SparklesIcon className="w-4 h-4 mr-2" />
                 今日のイチオシ！
             </h3>

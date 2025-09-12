@@ -7,7 +7,7 @@ import type { Metadata } from 'next';
 
 // SEO metadata
 export const metadata: Metadata = {
-    title: "ウマFREE | 登録不要・完全無料のAI競馬予測サイト",
+    title: "UMA-FREE | 登録不要・完全無料のAI競馬予測サイト",
     description: "中央・地方の全レースをAIが完全無料で予測。独自の対戦データや展開予測で、あなたの競馬予想を強力サポートします。",
 };
 
@@ -45,9 +45,9 @@ export default async function HomePage() {
             {/* メインのヒーローセクション */}
             <div className="text-center my-4 md:my-5 p-6 bg-white rounded-lg shadow-xl border border-gray-200 bg-gradient-to-br from-blue-50 to-white">
                 <h1 className="text-3xl md:text-4xl font-extrabold text-primary-dark mb-2 leading-tight">
-                    <span className="text-accent-dark">登録不要・完全無料</span>
+                    <span className="text-primary-dark">登録不要・完全無料</span>
                     <br />
-                    AI競馬予測サイト ウマFREE
+                    AI競馬予測サイト UMA-FREE
                 </h1>
                 <p className="text-sm md:text-base text-gray-700 max-w-2xl mx-auto">
                     中央・地方の全レース予測から、独自の対戦データまで。
@@ -69,12 +69,12 @@ export default async function HomePage() {
             {/* 3つの特徴セクション */}
             <div className="my-8">
                 <h2 className="text-xl font-bold text-center text-gray-800 mb-3">
-                    ウマFREEだけの<span className="text-primary">3つの無料AIデータ</span>
+                    UMA-FREEだけの<span className="text-primary">3つの無料AIデータ</span>
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <FeatureCard
                         icon={<UsersIcon className="w-7 h-7" />}
-                        title="AI総当たり対戦成績"
+                        title="過去対決成績"
                         description={
                             <>
                                 全出走馬の直接対決を分析。
@@ -85,7 +85,7 @@ export default async function HomePage() {
                     />
                     <FeatureCard
                         icon={<FlagIcon className="w-7 h-7" />}
-                        title="AIスタート予測"
+                        title="AIスタート位置取り予測"
                         description={
                             <>
                                 過去データから展開を予測。
@@ -96,12 +96,12 @@ export default async function HomePage() {
                     />
                     <FeatureCard
                         icon={<ChartBarIcon className="w-7 h-7" />}
-                        title="コース別 馬番アドバンテージ"
+                        title="枠順傾向スコア"
                         description={
                             <>
                                 過去データからコース形態を分析。
                                 <br />
-                                競馬場・距離別に馬番の有利不利を算出。
+                                競馬場・距離別に有利な枠を算出。
                             </>
                         }
                     />

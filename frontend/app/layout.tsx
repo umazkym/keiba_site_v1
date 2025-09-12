@@ -11,7 +11,7 @@ import React from "react";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ウマFREE | 登録不要の無料AI競馬予想 (中央・地方 全レース対応)",
+  title: "UMA-FREE | 登録不要の無料AI競馬予想 (中央・地方 全レース対応)",
   description:
     "登録不要・完全無料！AIが中央・地方すべての競馬レースを毎日予想＆分析。AI偏差値や独自の対戦データで、あなたの馬券検討を強力にサポートします。",
 };

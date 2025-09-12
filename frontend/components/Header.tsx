@@ -9,17 +9,18 @@ const HorseIcon = () => (
 
 export const Header = () => {
     return (
-        // ▼▼▼▼▼ 背景色をプライマリカラーに統一 ▼▼▼▼▼
-        <header className="bg-primary text-white shadow-lg">
+        <header className="bg-primary text-white shadow-lg sticky top-0 z-50">
             <div className="container">
                 <div className="flex items-center justify-between h-16">
                     <Link href="/" className="flex items-center gap-3 group">
                         <HorseIcon />
                         <div className="flex flex-col">
-                            <span className="text-2xl font-bold tracking-tight group-hover:text-gray-200 transition-colors">UMA-FREE</span>
-                            {/* ▼▼▼▼▼ 文字色をプライマリカラーのライトバリアントに修正 ▼▼▼▼▼ */}
-                            <span className="text-xs text-primary-light group-hover:text-white transition-colors">登録不要・完全無料！AIが中央・地方すべての競馬レースを毎日予想＆分析</span>
+                            {/* ▼▼▼▼▼ テキストシャドウのクラスを削除 ▼▼▼▼▼ */}
+                            <span className="text-2xl font-bold tracking-tight text-white group-hover:text-gray-200 transition-colors">UMA-FREE</span>
                             {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
+                            <span className="text-xs text-blue-200 group-hover:text-white transition-colors">
+                                登録不要・完全無料！<br/>AIが中央・地方すべての競馬レースを毎日予想＆分析
+                            </span>
                         </div>
                     </Link>
                 </div>

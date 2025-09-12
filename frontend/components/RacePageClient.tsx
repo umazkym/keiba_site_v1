@@ -17,17 +17,19 @@ const DateNavigator = ({
   currentDate: string;
   onDateChange: (newDate: string) => void;
 }) => {
-  const handleDateShift = (days: number) => {
+  const handleDateShift = (e: React.MouseEvent<HTMLButtonElement>, days: number) => {
     const [year, month, day] = currentDate.split("-").map(Number);
+    // DateオブジェクトはUTCで作成し、JSTで日付操作を行う
     const dateObj = new Date(Date.UTC(year, month - 1, day));
-    dateObj.setUTCDate(dateObj.getUTCDate() + days);
+    dateObj.setUTCDate(dateObj.getUTCDate() + days); // UTC日付を直接操作
     onDateChange(dateObj.toISOString().split("T")[0]);
+    e.currentTarget.blur(); // フォーカスを外す
   };
 
   return (
     <div className="flex items-center justify-center gap-1 sm:gap-2">
       <button
-        onClick={() => handleDateShift(-1)}
+        onClick={(e) => handleDateShift(e, -1)}
         className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
       >
         ‹ 前日
@@ -39,7 +41,7 @@ const DateNavigator = ({
         className="border-gray-300 p-1.5 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-xs sm:text-sm shrink-0"
       />
       <button
-        onClick={() => handleDateShift(1)}
+        onClick={(e) => handleDateShift(e, 1)}
         className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
       >
         翌日 ›
@@ -79,9 +81,20 @@ export default function RacePageClient({ date }: { date: string }) {
       .finally(() => setIsLoading(false));
   }, []);
 
+  // ▼▼▼▼▼ ここから修正 ▼▼▼▼▼
   useEffect(() => {
-    fetchDataForDate(date);
+    // ユーザーが日付を素早く変更している間の不要なAPI呼び出しを防ぐためのデバウンス処理
+    const handler = setTimeout(() => {
+        fetchDataForDate(date);
+    }, 500); // 500ミリ秒の遅延を設定
+
+    // クリーンアップ関数：コンポーネントがアンマウントされるか、
+    // dateが変更されたときにタイマーをクリアする
+    return () => {
+        clearTimeout(handler);
+    };
   }, [date, fetchDataForDate]);
+  // ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
 
   useEffect(() => {
     if (!isLoading && predictionData && initialVenue) {
@@ -115,11 +128,14 @@ export default function RacePageClient({ date }: { date: string }) {
           <TopHitsDisplay />
         </div>
 
-        <div className="sticky top-0 z-50 bg-white border-b shadow-md mb-4 p-2">
+        <div className="sticky top-16 z-40 bg-white/80 backdrop-blur-sm border-b shadow-md mb-4 p-2">
           <div className="grid grid-cols-3 items-center">
             <div className="justify-self-start">
               <button
-                onClick={() => handleDateChange(getTodayString())}
+                onClick={(e) => {
+                  handleDateChange(getTodayString());
+                  e.currentTarget.blur(); // フォーカスを外す
+                }}
                 className="bg-primary border border-primary-dark text-white px-3 py-1.5 rounded-md shadow-sm hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm font-bold whitespace-nowrap"
               >
                 今日

@@ -12,8 +12,11 @@ export const RaceSelector = ({ races, selectedIndex, onSelectRace }: Props) => {
       {races.map((race, index) => (
         <button
           key={race.id}
-          onClick={() => onSelectRace(index)}
-          className={`px-3 py-1 text-sm font-bold rounded-full transition-colors duration-200 
+          onClick={(e) => {
+            onSelectRace(index);
+            e.currentTarget.blur(); // フォーカスを外す
+          }}
+          className={`px-3 py-1 text-sm font-bold rounded-full transition-colors duration-200  
             ${
               selectedIndex === index
                 ? 'bg-blue-600 text-white shadow'

@@ -14,46 +14,45 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
     if (!advantages || advantages.length === 0) {
         return (
             <div className="my-4 p-4 bg-white border rounded-lg shadow-inner text-center text-gray-500">
-                <p className="font-semibold">コース別 馬番有利傾向</p>
-                <p className="mt-2 text-sm">このレース条件での馬番有利不利データはありません。</p>
+                <p className="font-semibold">枠順傾向スコア</p>
+                <p className="mt-2 text-sm">このレース条件での枠順傾向データはありません。</p>
             </div>
         );
     }
 
-    const sortedData = [...advantages].sort((a, b) => a.horse_number - b.horse_number);
-    const scores = sortedData.map(d => d.advantage_score);
-    const maxAbsScore = Math.max(...scores.map(s => Math.abs(s)), 0.5);
-
-    const getBarColor = (score: number) => {
-        const alpha = Math.min(1, 0.2 + (Math.abs(score) / maxAbsScore) * 0.8);
-        if (score > 0) {
-            return `rgba(52, 211, 153, ${alpha})`; // 有利 (エメラルドグリーン系)
-        } else if (score < 0) {
-            return `rgba(239, 68, 68, ${alpha})`; // 不利 (赤系)
-        }
-        return `rgba(161, 161, 170, ${alpha})`; // 中間 (グレー系)
+    // 0点を基準に有利・不利で色を分ける
+    const getBarColor = (value: number) => {
+        if (value > 0) return 'rgba(52, 211, 153, 0.8)'; // Green for advantage
+        if (value < 0) return 'rgba(239, 68, 68, 0.8)'; // Red for disadvantage
+        return 'rgba(156, 163, 175, 0.8)'; // Gray for neutral
     };
 
+    // データを馬番順にソート (馬番は1から8、またはそれ以上)
+    const sortedAdvantages = advantages.sort((a, b) => a.horse_number - b.horse_number);
+
+    // Y軸の表示範囲を動的に調整
+    const scores = sortedAdvantages.map(item => item.advantage_score);
+    const yAxisDomain = [
+      Math.floor((Math.min(...scores) - 0.1) * 10) / 10, // 最小値より少し下
+      Math.ceil((Math.max(...scores) + 0.1) * 10) / 10   // 最大値より少し上
+    ];
+
+    // カスタムツールチップ
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             const data = payload[0].payload;
             return (
-                <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg text-sm">
-                    <p className="font-bold text-gray-800">{`馬番: ${label}`}</p>
-                    <p className={`font-semibold ${data.advantage_score > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {`アドバンテージ指数: ${data.advantage_score.toFixed(3)}`}
-                    </p>
+                <div className="bg-white p-3 border rounded-lg shadow-lg text-sm text-gray-800">
+                    <p className="font-bold mb-1">{`馬番: ${data.horse_number}`}</p>
+                    <p>{`スコア: ${data.advantage_score.toFixed(2)}`}</p>
+                    <p className="text-xs text-gray-600 mt-1">※スコアが高いほど有利</p>
                 </div>
             );
         }
         return null;
     };
 
-    const chartTitle = `コース別 馬番有利傾向 (${courseType || ''}${distance || ''}m)`;
-    const yAxisDomain = [
-        Math.floor((Math.min(...scores) - 0.1) * 10) / 10,
-        Math.ceil((Math.max(...scores) + 0.1) * 10) / 10
-    ];
+    const chartTitle = `枠順傾向スコア (${courseType || ''}${distance || ''}m)`;
 
     return (
         <div className="my-4 p-4 bg-white border rounded-lg shadow-inner">
@@ -61,48 +60,37 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
             <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer>
                     <BarChart
-                        data={sortedData}
-                        // ★★★ 修正箇所 ★★★
-                        // 左右のマージンを調整して、グラフ全体が表示されるようにします。
-                        margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
-                        barCategoryGap="20%"
+                        data={sortedAdvantages}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
                         <XAxis
                             dataKey="horse_number"
-                            interval="preserveStartEnd"
-                            fontSize={12}
-                            tick={{ fill: '#4A5568' }}
-                            stroke="#d1d5db"
+                            tick={{ fill: '#4a5568', fontSize: 12 }}
+                            axisLine={{ stroke: '#ccc' }}
+                            tickLine={{ stroke: '#ccc' }}
+                            label={{ value: '馬番', position: 'insideBottom', offset: 0, fill: '#4a5568' }}
                         />
                         <YAxis
-                            allowDecimals={true}
-                            tickFormatter={(tick) => tick.toFixed(1)}
-                            fontSize={12}
-                            tick={{ fill: '#4A5568' }}
-                            stroke="#d1d5db"
                             domain={yAxisDomain}
+                            tick={{ fill: '#4a5568', fontSize: 12 }}
+                            axisLine={{ stroke: '#ccc' }}
+                            tickLine={{ stroke: '#ccc' }}
+                            label={{ value: '有利不利スコア', angle: -90, position: 'insideLeft', offset: -10, fill: '#4a5568' }}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(229, 231, 235, 0.5)' }} />
-                        <ReferenceLine y={0} stroke="#6b7280" strokeWidth={1} strokeDasharray="2 2" />
-                        <Bar dataKey="advantage_score" radius={[4, 4, 0, 0]}>
-                            {sortedData.map((entry, index) => (
-                                <Cell
-                                    key={`cell-${index}`}
-                                    fill={getBarColor(entry.advantage_score)}
-                                />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(230, 230, 230, 0.4)' }} />
+                        <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
+                        <Bar dataKey="advantage_score">
+                            {sortedAdvantages.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={getBarColor(entry.advantage_score)} />
                             ))}
+                            {/* スコア値をバーの上に表示 */}
                             <LabelList
                                 dataKey="advantage_score"
                                 position="top"
-                                formatter={(value: any) => {
-                                    const numValue = Number(value);
-                                    if (numValue > 0.15) return '▲';
-                                    if (numValue < -0.15) return '▼';
-                                    return '';
-                                }}
+                                formatter={(value: number) => value.toFixed(2)}
+                                fill="#4a5568"
                                 fontSize={12}
-                                fill="#374151"
                             />
                         </Bar>
                     </BarChart>

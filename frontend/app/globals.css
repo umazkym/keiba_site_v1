@@ -2,10 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* === Design tokens (CSS変数) ===
-   Tailwind の色定義と整合させつつ、
-   カスタムCSSでも同じトークンを参照できるようにする
-*/
+/* === Design tokens (CSS変数) === */
 :root{
   --color-primary: #2563eb;
   --color-primary-light: #60a5fa;
@@ -19,12 +16,14 @@
   --color-accent-light: #fcd34d;
   --color-accent-dark: #b45309;
 
-  --bg: #f3f4f6; /* gray-100-ish */
+  /* ▼▼▼▼▼ ここから修正 ▼▼▼▼▼ */
+  --bg: #f8fafc; /* よりクリーンな背景色に変更 */
   --surface: #ffffff;
-  --muted: #6b7280; /* gray-500 */
-  --border: #e5e7eb; /* gray-200 */
-  --text: #111827; /* gray-900 */
+  --muted: #64748b; /* テキストカラーに合わせて調整 */
+  --border: #e2e8f0; /* 背景色に合わせて調整 */
+  --text: #1e293b; /* 少し柔らかい黒に変更 */
   --soft-shadow: 0 4px 16px rgba(16,24,40,0.06);
+  /* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */
 }
 
 /* ---------- base adjustments ---------- */
@@ -49,19 +48,18 @@
     text-decoration: underline;
   }
 
-  /* 見出しの統一 */
   h1, h2, h3, h4 {
     color: var(--text);
     font-weight: 700;
     letter-spacing: -0.01em;
   }
 
-  /* フォーム・ボタンの focus を統一（アクセシビリティ） */
   :focus {
-    outline: none;
+    outline: none; /* デフォルトの outline を完全に除去 */
   }
+  /* キーボード操作時のみフォーカスリングを表示 */
   :focus-visible {
-    outline: 3px solid rgba(37,99,235,0.18); /* primary with alpha */
+    outline: 3px solid rgba(37,99,235,0.18); /* Tailwindのprimary-lightの色を薄く */
     outline-offset: 2px;
     border-radius: 6px;
   }
@@ -69,14 +67,12 @@
 
 /* ---------- コンポーネントユーティリティ ---------- */
 @layer components {
-  /* 共通カード */
   .card {
     @apply bg-white rounded-lg border;
     border-color: var(--border);
     box-shadow: var(--soft-shadow);
   }
 
-  /* 一貫したプライマリボタン（CTA） */
   .btn-primary {
     @apply inline-flex items-center justify-center font-semibold rounded-md transition-transform;
     padding: 0.5rem 1rem;
@@ -95,19 +91,16 @@
     box-shadow: 0 0 0 4px rgba(96,165,250,0.18);
   }
 
-  /* 小さめのボタン（ヘッダ等） */
   .btn-sm {
     @apply text-sm px-2 py-1 rounded-md;
   }
 
-  /* 広告ラッパー（視覚的境界とレスポンシブ高さ） */
   .adsense-wrapper {
     @apply w-full flex items-center justify-center bg-white border rounded-md;
     border-color: var(--border);
     min-height: 60px;
   }
 
-  /* スクリーンリーダー向けのスキップリンク（Tailwindのsr-onlyと併用） */
   .skip-link {
     @apply sr-only focus:not-sr-only inline-block px-3 py-2 rounded-md font-medium;
     background: white;
@@ -125,7 +118,6 @@
   border: 1px solid var(--border);
 }
 
-/* テーブルラッパー（横スクロール対応） */
 .table-wrapper {
   width: 100%;
   overflow-x: auto;
@@ -134,7 +126,6 @@
   background: white;
 }
 
-/* テーブル本体 */
 .matchup-table {
   width: 100%;
   border-collapse: collapse;
@@ -148,14 +139,13 @@
   padding: 0.4rem 0.5rem;
 }
 .matchup-table th {
-  background-color: #f8fafc; /* subtle */
+  background-color: #f8fafc;
   font-weight: 700;
   padding: 0.5rem 0.6rem;
   text-align: left;
   font-size: 0.8rem;
 }
 
-/* sticky 列 */
 .matchup-table .sticky-col {
   position: sticky;
   left: 0;
@@ -166,7 +156,6 @@
   border-right: 1px solid #e6e9ee;
 }
 
-/* ネット勝利数セルのスタイル */
 .net-wins-cell {
   display: flex;
   flex-direction: column;
@@ -179,22 +168,20 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "monospace";
 }
 .net-wins-number {
-  font-size: 1.15rem; /* 18px */
+  font-size: 1.15rem;
   font-weight: 700;
 }
 .wld-text {
-  font-size: 0.75rem; /* 12px */
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
-/* 勝敗の背景色（色はブランド色 + 弱めに） */
 td.matchup-win { background-color: rgba(22,163,74,0.08); }
 td.matchup-loss { background-color: rgba(185,28,28,0.06); }
 td.matchup-draw { background-color: rgba(245,158,11,0.06); }
 
-/* 数字色 */
 .net-wins-number.matchup-win { color: var(--color-secondary-dark); }
-.net-wins-number.matchup-loss { color: #991b1b; } /* red-700 */
+.net-wins-number.matchup-loss { color: #991b1b; }
 .net-wins-number.matchup-draw { color: var(--color-accent-dark); }
 
 .self-match {
@@ -204,7 +191,7 @@ td.no-match {
   background-color: #ffffff;
 }
 
-/* React Tabs の上書き（既存のスタイルをより一貫化） */
+/* React Tabs の上書き */
 .react-tabs__tab-list {
   border-bottom: 2px solid var(--border) !important;
   margin: 0 0 1.25rem 0 !important;
@@ -217,7 +204,7 @@ td.no-match {
   border: 2px solid transparent !important;
   border-bottom: none !important;
   border-radius: 0.375rem 0.375rem 0 0 !important;
-  color: #4b5563; /* text-gray-600 */
+  color: #4b5563;
   font-weight: 600;
   background: transparent;
 }
@@ -228,14 +215,18 @@ td.no-match {
   border-bottom: 2px solid var(--surface) !important;
   margin-bottom: -2px !important;
 }
-.react-tabs__tab:focus,
-.react-tabs__tab:focus:after {
+
+/* :focus, :focus:after を :focus-visible に変更 */
+.react-tabs__tab:focus-visible {
   box-shadow: none !important;
   outline: 3px solid rgba(96,165,250,0.18) !important;
   outline-offset: 2px !important;
 }
+.react-tabs__tab:focus-visible:after {
+  content: none !important;
+}
 
-/* Skeleton や補助的なユーティリティ（軽量） */
+/* Skeleton や補助的なユーティリティ */
 .kv {
   display: flex;
   gap: 0.5rem;
@@ -246,7 +237,6 @@ td.no-match {
   font-size: 0.85rem;
 }
 
-/* モバイルでのテーブル視認性向上（少しフォント縮小） */
 @media (max-width: 640px) {
   .matchup-table {
     font-size: 0.78rem;

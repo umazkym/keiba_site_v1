@@ -25,20 +25,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // ▼▼▼▼▼ 【重要】AdSenseで取得したご自身のパブリッシャーIDに書き換えてください ▼▼▼▼▼
   const adClient = "ca-pub-4411270831448240";
-  // ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
 
   return (
     <html lang="ja" className={inter.className}>
       <head>
+        {/* ▼▼▼▼▼ 【重要】AdSenseの所有権確認用メタタグをここに追加 ▼▼▼▼▼ */}
+        <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
+        {/* ▲▲▲▲▲ ここまで追加 ▲▲▲▲▲ */}
+
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
-        {/* AdSenseの自動広告用スクリプト */}
+        {/* AdSenseの自動広告用スクリプト（これはこのまま残してください） */}
         <Script
           async
           src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`}
@@ -57,10 +59,9 @@ export default function RootLayout({
           <main id="main-content" className="flex-grow">
             <div className="container py-4">
               <div className="adsense-wrapper" role="complementary" aria-label="広告">
-                {/* ヘッダー下の広告ユニット（手動配置） */}
                 <Adsense
                   client={adClient}
-                  slot="xxxxxxxxxx" // こちらもご自身の広告ユニットIDに書き換えてください
+                  slot="xxxxxxxxxx"
                   style={{ width: "100%", height: "90px" }}
                 />
               </div>

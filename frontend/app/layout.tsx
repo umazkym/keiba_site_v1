@@ -9,16 +9,20 @@ import { GlobalAdManager } from "@/components/GlobalAdManager"; // 新規イン�
 
 const inter = Inter({ subsets: ["latin"], display: 'swap' });
 
-const siteTitle = "UMA-FREE | 登録不要の無料AI競馬予想 (中央・地方 全レース対応)";
+const siteTitleDefault = "UMA-FREE | 登録不要の無料AI競馬予想 (中央・地方 全レース対応)";
 const siteDescription = "登録不要・完全無料！AIが中央・地方すべての競馬レースを毎日予想＆分析。AI偏差値や独自の対戦データで、あなたの馬券検討を強力にサポートします。";
-const siteUrl = "https://uma-free.com";
+const siteUrl = "https://www.uma-free.com"; // www付きに正規化
 
+// ▼▼▼▼▼ metadataオブジェクト全体を修正 ▼▼▼▼▼
 export const metadata: Metadata = {
     metadataBase: new URL(siteUrl),
-    title: siteTitle,
+    title: {
+        default: siteTitleDefault,
+        template: '%s | UMA-FREE',
+    },
     description: siteDescription,
     openGraph: {
-        title: siteTitle,
+        title: siteTitleDefault,
         description: siteDescription,
         url: siteUrl,
         siteName: 'UMA-FREE',
@@ -33,7 +37,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: siteTitle,
+        title: siteTitleDefault,
         description: siteDescription,
         images: [`${siteUrl}/og-image.png`],
     },
@@ -42,7 +46,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
     themeColor: "#4f46e5",
 };
-
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -53,10 +56,7 @@ export default function RootLayout({
     return (
         <html lang="ja" className={inter.className}>
             <head>
-                {/* サイト所有権の確認メタタグ */}
                 <meta name="google-adsense-account" content={adClient} />
-                <link rel="icon" href="/favicon.ico" sizes="any" />
-                {/* AdSenseの自動広告スクリプト */}
                 <Script
                     async
                     src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`}
@@ -72,8 +72,10 @@ export default function RootLayout({
                 <div className="flex flex-col min-h-screen">
                     <Header />
 
-                    <main id="main-content" className="flex-grow">
-                        {/* 広告管理コンポーネントをここに配置 */}
+                    {/* ▼▼▼▼▼ ここを修正 ▼▼▼▼▼ */}
+                    <main id="main-content" className="flex-grow pb-24">
+                    {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
+
                         <GlobalAdManager />
                         {children}
                     </main>

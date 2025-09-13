@@ -9,19 +9,19 @@ export const GlobalAdManager = () => {
     const pathname = usePathname();
     const adClient = "ca-pub-4411270831448240";
 
-    // 広告を表示しないページのパスリスト（拡張）
+    // 広告を表示しないページのパスリスト
     const noAdPages = [
         '/about', 
         '/contact', 
         '/privacy',
-        // 404などのエラーページでも広告を表示しない
     ];
 
     // 現在のパスが広告を表示しないページリストに含まれているかチェック
     const shouldShowAds = !noAdPages.some(path => pathname === path);
     
-    // トップページのみヘッダー下広告を表示（コンテンツが確実にあるため）
-    const shouldShowHeaderAd = pathname === '/';
+    // トップページとレースページで異なる広告戦略を適用
+    const isTopPage = pathname === '/';
+    const isRacePage = pathname.startsWith('/races/');
 
     // 広告を表示すべきでない場合は何もレンダリングしない
     if (!shouldShowAds) {
@@ -30,10 +30,23 @@ export const GlobalAdManager = () => {
 
     return (
         <>
-            {/* ヘッダー下広告はトップページのみに制限 */}
-            {shouldShowHeaderAd && (
+            {/* トップページ: ヘッダー下に目立つ広告 */}
+            {isTopPage && (
+                <div className="container py-6">
+                    <div className="ad-highlight">
+                        <Adsense
+                            client={adClient}
+                            slot="8529703346"
+                            style={{ width: "100%", height: "120px" }}
+                        />
+                    </div>
+                </div>
+            )}
+            
+            {/* レースページ: コンテンツの上部に広告 */}
+            {isRacePage && (
                 <div className="container py-4">
-                    <div className="adsense-wrapper" role="complementary" aria-label="広告">
+                    <div className="ad-highlight">
                         <Adsense
                             client={adClient}
                             slot="8529703346"
@@ -42,7 +55,8 @@ export const GlobalAdManager = () => {
                     </div>
                 </div>
             )}
-            {/* アンカー広告も同様に制限 */}
+            
+            {/* アンカー広告: 全ページ共通 */}
             {shouldShowAds && <AnchorAd />}
         </>
     );

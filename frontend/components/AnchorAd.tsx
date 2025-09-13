@@ -9,7 +9,7 @@ export const AnchorAd = () => {
     }
 
     return (
-        <div className="fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-sm z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+        <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-sm z-40 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
             <div className="container mx-auto p-1 flex justify-center">
                 {/* このスタイルはGoogle AdSenseのアンカー広告の一般的なサイズです */}
                 <Adsense

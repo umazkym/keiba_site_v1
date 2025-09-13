@@ -17,13 +17,13 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     const style = rankStyles[Math.min(rank - 1, 4)];
 
     return (
-        <div className={`bg-white rounded-lg border-2 transition-transform duration-300 ${style.borderColor} ${style.shadow} ${style.scale} p-2 flex flex-col items-start gap-1 h-full`}>
+        <div className={`bg-white rounded-lg border-2 transition-all duration-300 ${style.borderColor} ${style.shadow} ${style.scale} p-2 flex flex-col items-start gap-1 h-full hover:bg-gray-50`}>
             {/* 上段：ランクと配当 */}
             <div className="flex justify-between items-center w-full">
                 <div className={`text-xs font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-2 py-1`}>
                     {rank}位
                 </div>
-                <div className="font-bold text-red-600 text-base lg:text-lg whitespace-nowrap leading-none">
+                <div className="font-bold text-red-600 text-base lg:text-lg whitespace-nowrap leading-none animate-pulse">
                     {hit.payout.toLocaleString()}円
                 </div>
             </div>

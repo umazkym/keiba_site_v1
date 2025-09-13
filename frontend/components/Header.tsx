@@ -3,23 +3,42 @@ import Image from 'next/image';
 
 export const Header = () => {
     return (
-        <header className="bg-surface text-text shadow-md sticky top-0 z-50 border-b border-border">
+        <header className="bg-white text-text shadow-lg sticky top-0 z-50 border-b-2 border-primary/10">
             <div className="container">
                 <div className="flex items-center justify-between h-16">
                     <Link href="/" className="flex items-center gap-3 group" aria-label="ウマFREE ホーム">
-                        <Image
-                            src="/new-logo.png"
-                            alt="UMA-FREE ロゴ"
-                            width={48} // ✅ 実際に表示したい幅に修正
-                            height={48} // ✅ 実際に表示したい高さに修正
-                            priority
-                        />
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full group-hover:bg-primary/30 transition-colors duration-300"></div>
+                            <Image
+                                src="/new-logo.png"
+                                alt="UMA-FREE ロゴ"
+                                width={48}
+                                height={48}
+                                priority
+                                className="relative z-10 group-hover:scale-110 transition-transform duration-300"
+                            />
+                        </div>
                         <div className="flex flex-col">
-                            <span className="text-2xl font-extrabold tracking-tight text-primary group-hover:text-primary-dark transition-colors">
+                            <span className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent group-hover:from-primary-dark group-hover:to-primary transition-all duration-300">
                                 UMA-FREE
+                            </span>
+                            <span className="text-xs text-gray-500 -mt-1">
+                                完全無料のAI競馬予測
                             </span>
                         </div>
                     </Link>
+                    
+                    {/* ナビゲーションリンク（将来的な拡張用） */}
+                    <nav className="hidden md:flex items-center gap-6">
+                        <Link href="/" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                            ホーム
+                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+                        </Link>
+                        <Link href={`/races/${new Date().toISOString().split('T')[0]}`} className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                            本日の予測
+                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+                        </Link>
+                    </nav>
                 </div>
             </div>
         </header>

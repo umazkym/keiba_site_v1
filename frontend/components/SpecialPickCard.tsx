@@ -61,40 +61,39 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
     }
 
     return (
-        <div className="bg-white text-gray-900 rounded-xl shadow-md h-full flex flex-col overflow-hidden border" role="region" aria-labelledby="special-pick-title">
+        <div className="bg-gradient-to-br from-yellow-50 to-white text-gray-900 rounded-xl shadow-lg h-full flex flex-col overflow-hidden border-2 border-yellow-200 hover:shadow-xl transition-shadow duration-300" role="region" aria-labelledby="special-pick-title">
 
             {/* 上部に細いハイライト帯（幅100%・高さ6px程度） */}
-            <div className="h-1.5 bg-yellow-400 w-full"></div>
-
+            <div className="h-2 bg-gradient-to-r from-yellow-400 to-yellow-500 w-full"></div>
             <div className="p-4 flex flex-col h-full">
                 <div className="flex items-start gap-3">
-                    <div className="flex items-center justify-center rounded-full bg-yellow-50 text-yellow-600 w-9 h-9 shrink-0">
-                        <SparklesIcon className="w-4 h-4" />
+                    <div className="flex items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-yellow-500 text-white w-10 h-10 shrink-0 shadow-md animate-pulse">
+                        <SparklesIcon className="w-5 h-5" />
                     </div>
 
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                            <h3 id="special-pick-title" className="text-xs font-semibold uppercase tracking-wider text-yellow-700">
+                            <h3 id="special-pick-title" className="text-sm font-bold uppercase tracking-wider text-yellow-600 drop-shadow-sm">
                                 今日のイチオシ！
                             </h3>
                             <div className="ml-auto">
-                                <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+                                <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-sm">
                                     AI {pick.deviation_score.toFixed(2)}
                                 </span>
                             </div>
                         </div>
 
-                        <p className="text-2xl sm:text-3xl font-extrabold leading-tight truncate mt-2">
+                        <p className="text-2xl sm:text-3xl font-extrabold leading-tight truncate mt-2 text-gray-900">
                             {pick.horse_name}
                         </p>
-                        <p className="text-sm text-gray-600 mt-1 truncate" title={`${pick.venue_name} ${pick.race_number}R - ${pick.race_name}`}>
+                        <p className="text-sm text-gray-700 font-medium mt-1 truncate" title={`${pick.venue_name} ${pick.race_number}R - ${pick.race_name}`}>
                             {pick.venue_name} {pick.race_number}R ・ {pick.race_name}
                         </p>
                     </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-gray-100">
-                    <p className="text-sm text-gray-700 italic leading-relaxed truncate" title={pick.commentary} aria-live="polite">
+                <div className="mt-4 pt-3 border-t border-yellow-100">
+                    <p className="text-sm text-gray-800 font-medium leading-relaxed truncate" title={pick.commentary} aria-live="polite">
                         {pick.commentary}
                     </p>
                 </div>

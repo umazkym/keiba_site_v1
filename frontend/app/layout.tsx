@@ -72,10 +72,8 @@ export default function RootLayout({
                 <div className="flex flex-col min-h-screen">
                     <Header />
 
-                    {/* ▼▼▼▼▼ ここを修正 ▼▼▼▼▼ */}
-                    <main id="main-content" className="flex-grow pb-24">
-                    {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
-
+                    {/* アンカー広告の高さ(50px) + 余白を確保 */}
+                    <main id="main-content" className="flex-grow pb-16">
                         <GlobalAdManager />
                         {children}
                     </main>

@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export const Footer = () => {
     return (
-        <footer className="bg-surface text-center py-4 mt-8 border-t border-border">
+        <footer className="bg-surface text-center py-6 mt-8 border-t-2 border-border relative z-0">
             <div className="container mx-auto px-4">
                 {/* ▼▼▼▼▼ ここから修正 ▼▼▼▼▼ */}
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-x-4 mb-2">

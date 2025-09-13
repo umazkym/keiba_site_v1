@@ -11,6 +11,7 @@ import { MatchupTable } from './MatchupTable';
 import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './icons';
 import { Adsense } from './Adsense';
+import { RelatedRaces } from './RelatedRaces';
 
 const CollapsibleSection = ({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -88,6 +89,12 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
                             />
                         </CollapsibleSection>
                     </div>
+
+                    {/* 関連レースレコメンドを追加 */}
+                    <RelatedRaces
+                        currentRace={activeRace}
+                        currentDate={activeRace.race_date}
+                    />
 
                     {/* 十分なコンテンツがある場合のみ広告を表示 */}
                     {activeRace && activeRace.predictions.length >= 5 && (

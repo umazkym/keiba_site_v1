@@ -4,6 +4,8 @@
 import { usePathname } from 'next/navigation';
 import { Adsense } from './Adsense';
 import { AnchorAd } from './AnchorAd';
+import { StickyAd } from './StickyAd';
+import { InterstitialAd } from './InterstitialAd';
 
 export const GlobalAdManager = () => {
     const pathname = usePathname();
@@ -45,19 +47,26 @@ export const GlobalAdManager = () => {
             
             {/* レースページ: コンテンツの上部に広告 */}
             {isRacePage && (
-                <div className="container py-4">
-                    <div className="ad-highlight">
-                        <Adsense
-                            client={adClient}
-                            slot="8529703346"
-                            style={{ width: "100%", height: "90px" }}
-                        />
+                <>
+                    <div className="container py-4">
+                        <div className="ad-highlight">
+                            <Adsense
+                                client={adClient}
+                                slot="8529703346"
+                                style={{ width: "100%", height: "90px" }}
+                            />
+                        </div>
                     </div>
-                </div>
+                    {/* スティッキーサイドバー広告 */}
+                    <StickyAd />
+                </>
             )}
             
             {/* アンカー広告: 全ページ共通 */}
             {shouldShowAds && <AnchorAd />}
+            
+            {/* インタースティシャル広告: レースページのみ */}
+            {isRacePage && <InterstitialAd />}
         </>
     );
 };

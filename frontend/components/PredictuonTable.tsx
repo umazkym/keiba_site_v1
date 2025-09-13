@@ -6,9 +6,9 @@ import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
 import 'tippy.js/animations/shift-away.css';
 import 'tippy.js/themes/light-border.css';
-import { Adsense } from './Adsense'; // ★★★ Adsenseコンポーネントをインポート ★★★
+import { Adsense } from './Adsense';
 
-// 馬番アイコン用のヘルパー関数とコンポーネント (変更なし)
+// 馬番アイコン用のヘルパー関数とコンポーネント
 const getWakuColorClasses = (waku: number | null): string => {
     switch (waku) {
         case 1: return 'bg-white text-black border-gray-500';
@@ -41,16 +41,27 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
         );
     }
     
-    // ★★★ 広告コンポーネントを定義 ★★★
-    const InFeedAd = () => (
+    // 広告コンポーネントを定義（異なるスロットIDで複数配置）
+    const InFeedAd = ({ slot }: { slot: string }) => (
         <div className="py-2">
             <Adsense
                 client="ca-pub-4411270831448240"
-                slot="1489598374" // ここは記事内広告用のスロットIDに変更してください
+                slot={slot}
                 style={{ minHeight: '80px' }}
             />
         </div>
     );
+    
+    // 広告挿入位置を決定する関数
+    const shouldShowAd = (index: number, totalCount: number): string | null => {
+        // 3位と4位の間（index=2）
+        if (index === 2) return "1489598374";
+        // 6位と7位の間（index=5）、10頭以上いる場合
+        if (index === 5 && totalCount > 8) return "8529703346";
+        // 10位と11位の間（index=9）、14頭以上いる場合
+        if (index === 9 && totalCount > 12) return "1489598374";
+        return null;
+    };
     
     return (
         <>
@@ -76,55 +87,57 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {race.predictions.map((p, index) => (
-                            // ★★★ React.Fragmentを使用して広告挿入ロジックを追加 ★★★
-                            <React.Fragment key={`${race.id}-${p.horse_number}`}>
-                                <tr className="hover:bg-gray-50 transition-colors duration-200">
-                                    <td className="px-2 py-2 whitespace-nowrap text-center text-lg font-bold text-gray-800 w-12">{p.mark || '—'}</td>
-                                    <td className="px-2 py-2 whitespace-nowrap w-10">
-                                        <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
-                                    </td>
-                                    <td className="px-2 py-2 whitespace-nowrap font-medium text-gray-800 truncate">{p.horse_name}</td>
-                                    <td className="px-4 py-2 whitespace-nowrap text-right font-semibold text-primary-dark">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
-                                </tr>
-                                {/* 2位(index=1)と3位の間に広告を挿入 */}
-                                {index === 1 && (
-                                    <tr>
-                                        <td colSpan={4}>
-                                            <InFeedAd />
+                        {race.predictions.map((p, index) => {
+                            const adSlot = shouldShowAd(index, race.predictions.length);
+                            return (
+                                <React.Fragment key={`${race.id}-${p.horse_number}`}>
+                                    <tr className="hover:bg-gray-50 transition-colors duration-200">
+                                        <td className="px-2 py-2 whitespace-nowrap text-center text-lg font-bold text-gray-800 w-12">{p.mark || '—'}</td>
+                                        <td className="px-2 py-2 whitespace-nowrap w-10">
+                                            <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
                                         </td>
+                                        <td className="px-2 py-2 whitespace-nowrap font-medium text-gray-800 truncate">{p.horse_name}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap text-right font-semibold text-primary-dark">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
                                     </tr>
-                                )}
-                            </React.Fragment>
-                        ))}
+                                    {adSlot && (
+                                        <tr>
+                                            <td colSpan={4}>
+                                                <InFeedAd slot={adSlot} />
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
 
             {/* スマホ (md未満) ではカードリスト表示 */}
             <div className="md:hidden divide-y divide-gray-200">
-                {race.predictions.map((p, index) => (
-                    // ★★★ React.Fragmentを使用して広告挿入ロジックを追加 ★★★
-                    <React.Fragment key={`${race.id}-${p.horse_number}-mobile`}>
-                         <div className="p-2">
-                             <div className="flex items-center justify-between">
-                                 <div className="flex items-center gap-3">
-                                     <span className="text-xl font-bold text-gray-800 w-8 text-center">{p.mark || '—'}</span>
-                                     <div className="flex items-center gap-2">
-                                         <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
-                                         <span className="font-bold text-base text-gray-900 truncate">{p.horse_name}</span>
+                {race.predictions.map((p, index) => {
+                    const adSlot = shouldShowAd(index, race.predictions.length);
+                    return (
+                        <React.Fragment key={`${race.id}-${p.horse_number}-mobile`}>
+                             <div className="p-2">
+                                 <div className="flex items-center justify-between">
+                                     <div className="flex items-center gap-3">
+                                         <span className="text-xl font-bold text-gray-800 w-8 text-center">{p.mark || '—'}</span>
+                                         <div className="flex items-center gap-2">
+                                             <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
+                                             <span className="font-bold text-base text-gray-900 truncate">{p.horse_name}</span>
+                                         </div>
+                                     </div>
+                                     <div className="text-right">
+                                         <div className="font-semibold text-primary-dark text-lg whitespace-nowrap">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</div>
+                                         <div className="text-xs text-gray-500 whitespace-nowrap">AI偏差値</div>
                                      </div>
                                  </div>
-                                 <div className="text-right">
-                                     <div className="font-semibold text-primary-dark text-lg whitespace-nowrap">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</div>
-                                     <div className="text-xs text-gray-500 whitespace-nowrap">AI偏差値</div>
-                                 </div>
                              </div>
-                         </div>
-                         {/* 2位(index=1)と3位の間に広告を挿入 */}
-                         {index === 1 && <InFeedAd />}
-                    </React.Fragment>
-                ))}
+                             {adSlot && <InFeedAd slot={adSlot} />}
+                        </React.Fragment>
+                    );
+                })}
             </div>
         </>
     );

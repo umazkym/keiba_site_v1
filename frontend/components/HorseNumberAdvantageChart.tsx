@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, LabelList } from 'recharts';
 import { HorseNumberAdvantage } from '@/lib/types';
 
@@ -88,7 +88,9 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                             <LabelList
                                 dataKey="advantage_score"
                                 position="top"
-                                formatter={(value: number) => value.toFixed(2)}
+                                // ▼▼▼▼▼【ここを修正】▼▼▼▼▼
+                                formatter={(value: any) => typeof value === 'number' ? value.toFixed(2) : value}
+                                // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
                                 fill="#4a5568"
                                 fontSize={12}
                             />

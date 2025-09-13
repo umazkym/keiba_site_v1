@@ -1,16 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { getSpecialPick } from '@/lib/api';
 import { SpecialPick } from "@/lib/types";
 import { SparklesIcon } from '@/components/icons';
 
-// Skeleton（案3）
+// 調整案1：「リッチゴールド ＆ ホワイト」デザイン
 const Skeleton = () => (
-    <div className="bg-white p-6 rounded-xl shadow-sm mb-6 animate-pulse h-full">
-        <div className="h-3 bg-gray-200 rounded w-full mb-3"></div>
-        <div className="h-8 bg-gray-200 rounded w-2/3 mb-2"></div>
-        <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
+    <div className="bg-amber-500 p-6 rounded-xl shadow-lg mb-6 animate-pulse h-[170px]">
+        <div className="flex justify-between items-center">
+            <div className="h-4 bg-amber-600 rounded w-1/3"></div>
+            <div className="h-8 bg-amber-600 rounded-full w-24"></div>
+        </div>
+        <div className="h-10 bg-amber-600 rounded w-3/4 mt-4"></div>
+        <div className="h-5 bg-amber-600 rounded w-1/2 mt-2"></div>
+        <div className="h-4 bg-amber-600 rounded w-full mt-4"></div>
     </div>
 );
 
@@ -61,43 +66,47 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
     }
 
     return (
-        <div className="bg-gradient-to-br from-yellow-50 to-white text-gray-900 rounded-xl shadow-lg h-full flex flex-col overflow-hidden border-2 border-yellow-200 hover:shadow-xl transition-shadow duration-300" role="region" aria-labelledby="special-pick-title">
+        <Link 
+            href={`/races/${date}?venue=${encodeURIComponent(pick.venue_name)}&race=${pick.race_number}`}
+            className="block group"
+            aria-label={`${pick.commentary}`}
+        >
+            <div className="bg-amber-500 text-white rounded-xl shadow-lg h-full flex flex-col overflow-hidden border border-amber-600 hover:border-amber-400 transition-all duration-300 relative group" role="region" aria-labelledby="special-pick-title">
+                {/* 装飾用の背景グラデーション（リッチなゴールド系） */}
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-600 via-amber-500 to-yellow-600 opacity-80"></div>
+                {/* ホバー時の光彩エフェクトは削除し、代わりにカード自体を少し明るくする */}
+                <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
 
-            {/* 上部に細いハイライト帯（幅100%・高さ6px程度） */}
-            <div className="h-2 bg-gradient-to-r from-yellow-400 to-yellow-500 w-full"></div>
-            <div className="p-4 flex flex-col h-full">
-                <div className="flex items-start gap-3">
-                    <div className="flex items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-yellow-500 text-white w-10 h-10 shrink-0 shadow-md animate-pulse">
-                        <SparklesIcon className="w-5 h-5" />
-                    </div>
 
-                    <div className="flex-1 min-w-0">
+                <div className="p-5 flex flex-col h-full relative z-10">
+                    <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
-                            <h3 id="special-pick-title" className="text-sm font-bold uppercase tracking-wider text-yellow-600 drop-shadow-sm">
+                             <SparklesIcon className="w-5 h-5 text-amber-200" />
+                             <h3 id="special-pick-title" className="text-sm font-bold uppercase tracking-wider text-amber-200">
                                 今日のイチオシ！
                             </h3>
-                            <div className="ml-auto">
-                                <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-sm">
-                                    AI {pick.deviation_score.toFixed(2)}
-                                </span>
-                            </div>
                         </div>
+                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/20 text-white border border-white/30">
+                            AI偏差値 <span className="text-lg font-mono">{pick.deviation_score.toFixed(2)}</span>
+                        </span>
+                    </div>
 
-                        <p className="text-2xl sm:text-3xl font-extrabold leading-tight truncate mt-2 text-gray-900">
+                    <div className="mt-2 min-w-0">
+                         <p className="text-3xl sm:text-4xl font-black leading-tight truncate text-white drop-shadow-md" title={pick.horse_name}>
                             {pick.horse_name}
                         </p>
-                        <p className="text-sm text-gray-700 font-medium mt-1 truncate" title={`${pick.venue_name} ${pick.race_number}R - ${pick.race_name}`}>
+                        <p className="text-sm text-amber-200 font-medium mt-1 truncate" title={`${pick.venue_name} ${pick.race_number}R - ${pick.race_name}`}>
                             {pick.venue_name} {pick.race_number}R ・ {pick.race_name}
                         </p>
                     </div>
-                </div>
 
-                <div className="mt-4 pt-3 border-t border-yellow-100">
-                    <p className="text-sm text-gray-800 font-medium leading-relaxed truncate" title={pick.commentary} aria-live="polite">
-                        {pick.commentary}
-                    </p>
+                    <div className="mt-auto pt-3 border-t border-amber-400/50">
+                         <p className="text-sm text-amber-100 font-medium leading-relaxed group-hover:text-white transition-colors duration-300" aria-live="polite">
+                            {pick.commentary}
+                        </p>
+                    </div>
                 </div>
             </div>
-        </div>
+        </Link>
     );
 };

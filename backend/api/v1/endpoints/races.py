@@ -38,7 +38,10 @@ def read_special_pick(target_date: date, db: Session = Depends(get_db)):
     if not pick or not pick.race:
         return None
     
-    commentary = f"{pick.race.venue_name}{pick.race.race_number}Rに出走する{pick.horse_name}に注目。AIは偏差値{pick.deviation_score:.2f}と高く評価しています。"
+    # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここを修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+    # commentaryの生成ロジックをご要望のフォーマットに変更
+    commentary = f"AI偏差値 {pick.deviation_score:.2f}！{pick.race.venue_name}{pick.race.race_number}R の {pick.horse_name} を詳しく見る →"
+    # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     
     return race_schema.SpecialPick(
         horse_id=pick.horse_id,

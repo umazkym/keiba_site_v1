@@ -53,12 +53,14 @@ export default async function HomePage() {
                     <br className="hidden sm:block" />
                     中央・地方の全レースを網羅し、あなたの馬券検討をサポートします。
                 </p>
+                {/* ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここを修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ */}
                 <Link
                     href={`/races/${todayStr}`}
-                    className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105 text-lg"
+                    className="inline-block bg-primary hover:bg-primary-dark text-white hover:text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-0.5 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
                 >
-                    本日の全レース予測を見る
+                    今日のAI予想を無料でチェック
                 </Link>
+                {/* ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ */}
             </section>
 
             {/* AI高配当ランキング */}
@@ -73,7 +75,6 @@ export default async function HomePage() {
                     <br />
                     <span className="text-primary">3つの無料AIデータ</span>
                 </h2>
-                {/* ▼▼▼▼▼ ここから修正 ▼▼▼▼▼ */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <FeatureCard
                         icon={<UsersIcon className="w-8 h-8" />}
@@ -91,7 +92,6 @@ export default async function HomePage() {
                         description={<>競馬場・距離別に有利な枠を算出。<br/>コースの特性を馬券に活かせます。</>}
                     />
                 </div>
-                {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
             </section>
 
             {/* 今日のAI注目馬 */}
@@ -125,7 +125,7 @@ export default async function HomePage() {
                             競馬場を選択
                         </h3>
                         <p className="text-gray-600">
-                            JRA（中央）またはNAR（地方）のタブを選び、
+                            中央競馬または地方競馬のタブを選び、
                             次に競馬場のタブを選択します。
                         </p>
                     </div>

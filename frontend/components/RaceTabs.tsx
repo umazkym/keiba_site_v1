@@ -89,13 +89,16 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
                         </CollapsibleSection>
                     </div>
 
-                    <div className="my-4">
-                        <Adsense
-                            client="ca-pub-4411270831448240"
-                            slot="1489598374" // ★★★ ここを修正 ★★★
-                            style={{ minHeight: '120px' }}
-                        />
-                    </div>
+                    {/* 十分なコンテンツがある場合のみ広告を表示 */}
+                    {activeRace && activeRace.predictions.length >= 5 && (
+                        <div className="my-4">
+                            <Adsense
+                                client="ca-pub-4411270831448240"
+                                slot="1489598374"
+                                style={{ minHeight: '120px' }}
+                            />
+                        </div>
+                    )}
                 </div>
             )}
         </div>

@@ -1,3 +1,4 @@
+// frontend/components/GlobalAdManager.tsx
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -8,11 +9,19 @@ export const GlobalAdManager = () => {
     const pathname = usePathname();
     const adClient = "ca-pub-4411270831448240";
 
-    // 広告を表示したくないページのパスリスト
-    const noAdPages = ['/about', '/contact', '/privacy'];
+    // 広告を表示しないページのパスリスト（拡張）
+    const noAdPages = [
+        '/about', 
+        '/contact', 
+        '/privacy',
+        // 404などのエラーページでも広告を表示しない
+    ];
 
     // 現在のパスが広告を表示しないページリストに含まれているかチェック
     const shouldShowAds = !noAdPages.some(path => pathname === path);
+    
+    // トップページのみヘッダー下広告を表示（コンテンツが確実にあるため）
+    const shouldShowHeaderAd = pathname === '/';
 
     // 広告を表示すべきでない場合は何もレンダリングしない
     if (!shouldShowAds) {
@@ -21,18 +30,20 @@ export const GlobalAdManager = () => {
 
     return (
         <>
-            {/* ヘッダー下広告 */}
-            <div className="container py-4">
-                <div className="adsense-wrapper" role="complementary" aria-label="広告">
-                    <Adsense
-                        client={adClient}
-                        slot="8529703346" // ヘッダー下用の広告スロットID
-                        style={{ width: "100%", height: "90px" }}
-                    />
+            {/* ヘッダー下広告はトップページのみに制限 */}
+            {shouldShowHeaderAd && (
+                <div className="container py-4">
+                    <div className="adsense-wrapper" role="complementary" aria-label="広告">
+                        <Adsense
+                            client={adClient}
+                            slot="8529703346"
+                            style={{ width: "100%", height: "90px" }}
+                        />
+                    </div>
                 </div>
-            </div>
-            {/* アンカー広告 */}
-            <AnchorAd />
+            )}
+            {/* アンカー広告も同様に制限 */}
+            {shouldShowAds && <AnchorAd />}
         </>
     );
 };

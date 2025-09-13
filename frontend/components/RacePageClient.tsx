@@ -88,50 +88,61 @@ export default function RacePageClient({ date }: { date: string }) {
         }
     };
     
-    // コンテンツの表示を制御する関数
-    const renderContent = () => {
-        if (isLoading) {
-            return <RaceTabsSkeleton />;
-        }
+// frontend/components/RacePageClient.tsx の renderContent 関数を修正
 
-        if (error) {
-            return (
-                <div className="text-center p-6 text-red-600 bg-red-100 rounded-lg border border-red-200">
-                    <p className="font-bold text-lg mb-2">エラー</p>
-                    <p>{error}</p>
-                </div>
-            );
-        }
+const renderContent = () => {
+    if (isLoading) {
+        return <RaceTabsSkeleton />;
+    }
 
-        // データが空の場合の表示（これが重要）
-        if (!predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
-            return (
-                <div className="text-center p-8 bg-white rounded-lg border shadow-sm">
-                    <h2 className="text-xl font-bold text-gray-700 mb-2">{formatDate(date)}のレースデータはありません</h2>
-                    <p className="text-gray-500 mb-6">
-                        指定された日付はレースが開催されないか、まだデータが登録されていません。<br />
-                        他の日付のレース予測をお探しください。
-                    </p>
-                    <Link
-                        href={`/races/${getTodayString()}`}
-                        className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105"
-                    >
-                        本日のレース予測を見る
-                    </Link>
-                </div>
-            );
-        }
-
-        // データがある場合の通常の表示
+    if (error) {
         return (
-            <>
-                <div className="mb-4">
-                    <SpecialPickCard date={date} />
-                </div>
-                <RaceTabs data={predictionData} />
-            </>
+            <div className="text-center p-6 text-red-600 bg-red-100 rounded-lg border border-red-200">
+                <p className="font-bold text-lg mb-2">エラー</p>
+                <p>{error}</p>
+            </div>
         );
-    };
+    }
+
+    // データが空の場合の表示（広告も非表示にする）
+    if (!predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
+        return (
+            <div className="text-center p-8 bg-white rounded-lg border shadow-sm">
+                <h2 className="text-xl font-bold text-gray-700 mb-2">{formatDate(date)}のレースデータはありません</h2>
+                <p className="text-gray-500 mb-6">
+                    指定された日付はレースが開催されないか、まだデータが登録されていません。<br />
+                    他の日付のレース予測をお探しください。
+                </p>
+                <Link
+                    href={`/races/${getTodayString()}`}
+                    className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105"
+                >
+                    本日のレース予測を見る
+                </Link>
+                
+                {/* コンテンツを追加：過去の開催情報など */}
+                <div className="mt-8 pt-6 border-t text-left max-w-2xl mx-auto">
+                    <h3 className="font-bold text-gray-700 mb-3">競馬開催スケジュール</h3>
+                    <div className="space-y-2 text-sm text-gray-600">
+                        <p>• 中央競馬（JRA）: 毎週土日開催</p>
+                        <p>• 地方競馬（NAR）: 各競馬場により開催日が異なります</p>
+                        <p>• データは開催前日の夕方頃に更新されます</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // データがある場合の通常の表示
+    return (
+        <>
+            <div className="mb-4">
+                <SpecialPickCard date={date} />
+            </div>
+            <RaceTabs data={predictionData} />
+        </>
+    );
+};
 
     return (
         <div className="container py-4">

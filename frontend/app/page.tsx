@@ -1,3 +1,5 @@
+// frontend/app/page.tsx
+
 import Link from 'next/link';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
@@ -93,6 +95,138 @@ export default async function HomePage() {
                     <span>今日のAI注目馬</span>
                 </h2>
                 <SpecialPickCard pick={specialPick} />
+            </section>
+
+            {/* 新規追加：使い方ガイド */}
+            <section className="my-8 bg-white rounded-xl shadow-md border p-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                    UMA-FREEの使い方
+                </h2>
+                <div className="grid md:grid-cols-2 gap-6">
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                        <h3 className="font-bold text-lg mb-2 text-primary flex items-center">
+                            <span className="bg-primary text-white rounded-full w-6 h-6 inline-flex items-center justify-center mr-2 text-sm">1</span>
+                            日付を選択
+                        </h3>
+                        <p className="text-gray-600">
+                            ページ上部のカレンダーから、予測を見たい日付を選択します。
+                            過去のレースも未来のレースも確認できます。
+                        </p>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                        <h3 className="font-bold text-lg mb-2 text-primary flex items-center">
+                            <span className="bg-primary text-white rounded-full w-6 h-6 inline-flex items-center justify-center mr-2 text-sm">2</span>
+                            競馬場を選択
+                        </h3>
+                        <p className="text-gray-600">
+                            JRA（中央）またはNAR（地方）のタブを選び、
+                            次に競馬場のタブを選択します。
+                        </p>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                        <h3 className="font-bold text-lg mb-2 text-primary flex items-center">
+                            <span className="bg-primary text-white rounded-full w-6 h-6 inline-flex items-center justify-center mr-2 text-sm">3</span>
+                            レースを選択
+                        </h3>
+                        <p className="text-gray-600">
+                            各競馬場の1R〜12Rのボタンから、
+                            見たいレースを選択します。
+                        </p>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                        <h3 className="font-bold text-lg mb-2 text-primary flex items-center">
+                            <span className="bg-primary text-white rounded-full w-6 h-6 inline-flex items-center justify-center mr-2 text-sm">4</span>
+                            予測を確認
+                        </h3>
+                        <p className="text-gray-600">
+                            AI偏差値や印を参考に、馬券検討に活用してください。
+                            詳細データも無料で閲覧できます。
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {/* 新規追加：よくある質問 */}
+            <section className="my-8 bg-gray-50 rounded-xl p-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                    よくある質問
+                </h2>
+                <div className="space-y-6">
+                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                        <h3 className="font-bold text-gray-700 mb-2 text-lg">Q: 本当に無料ですか？</h3>
+                        <p className="text-gray-600">
+                            A: はい、すべての機能を完全無料でご利用いただけます。
+                            会員登録も不要で、煩わしいメールマガジンの登録などもありません。
+                        </p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                        <h3 className="font-bold text-gray-700 mb-2 text-lg">Q: いつ更新されますか？</h3>
+                        <p className="text-gray-600">
+                            A: 毎日午前7時頃に、前日の結果と翌日の予測が更新されます。
+                        </p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                        <h3 className="font-bold text-gray-700 mb-2 text-lg">Q: 的中率はどのくらいですか？</h3>
+                        <p className="text-gray-600">
+                            A: AIの予測は参考情報としてご活用ください。
+                            過去の的中実績は「高配当的中ランキング」でご確認いただけます。
+                            最終的な馬券購入の判断は、ご自身の責任でお願いいたします。
+                        </p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                        <h3 className="font-bold text-gray-700 mb-2 text-lg">Q: スマートフォンでも使えますか？</h3>
+                        <p className="text-gray-600">
+                            A: はい、スマートフォン・タブレット・PCすべてのデバイスに対応しています。
+                            どのデバイスでも快適にご利用いただけます。
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {/* 新規追加：競馬場情報 */}
+            <section className="my-8 bg-white rounded-xl shadow-md border p-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                    対応競馬場一覧
+                </h2>
+                <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 className="font-bold text-lg mb-3 text-primary">中央競馬（JRA）</h3>
+                        <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                            <div>• 札幌競馬場</div>
+                            <div>• 函館競馬場</div>
+                            <div>• 福島競馬場</div>
+                            <div>• 新潟競馬場</div>
+                            <div>• 東京競馬場</div>
+                            <div>• 中山競馬場</div>
+                            <div>• 中京競馬場</div>
+                            <div>• 京都競馬場</div>
+                            <div>• 阪神競馬場</div>
+                            <div>• 小倉競馬場</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-lg mb-3 text-primary">地方競馬（NAR）</h3>
+                        <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                            <div>• 門別競馬場</div>
+                            <div>• 盛岡競馬場</div>
+                            <div>• 水沢競馬場</div>
+                            <div>• 浦和競馬場</div>
+                            <div>• 船橋競馬場</div>
+                            <div>• 大井競馬場</div>
+                            <div>• 川崎競馬場</div>
+                            <div>• 金沢競馬場</div>
+                            <div>• 笠松競馬場</div>
+                            <div>• 名古屋競馬場</div>
+                            <div>• 園田競馬場</div>
+                            <div>• 姫路競馬場</div>
+                            <div>• 高知競馬場</div>
+                            <div>• 佐賀競馬場</div>
+                        </div>
+                    </div>
+                </div>
+                <p className="text-sm text-gray-500 mt-4">
+                    ※ばんえい競馬（帯広）は現在対応しておりません
+                </p>
             </section>
         </div>
     );

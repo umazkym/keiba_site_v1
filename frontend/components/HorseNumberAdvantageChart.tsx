@@ -76,7 +76,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                             tick={{ fill: '#4a5568', fontSize: 12 }}
                             axisLine={{ stroke: '#ccc' }}
                             tickLine={{ stroke: '#ccc' }}
-                            label={{ value: '有利不利スコア', angle: -90, position: 'insideLeft', offset: -10, fill: '#4a5568' }}
+                            label={{ value: '枠順傾向スコア', angle: -90, position: 'insideLeft', offset: -10, fill: '#4a5568' }}
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(230, 230, 230, 0.4)' }} />
                         <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />

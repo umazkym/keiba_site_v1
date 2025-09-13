@@ -120,8 +120,8 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
     return (
         <Tabs defaultIndex={initialTopTabIndex} className="mt-4">
             <TabList>
-                {data.jra.length > 0 && <Tab>中央競馬 (JRA)</Tab>}
-                {data.nar.length > 0 && <Tab>地方競馬 (NAR)</Tab>}
+                {data.jra.length > 0 && <Tab>中央競馬</Tab>}
+                {data.nar.length > 0 && <Tab>地方競馬</Tab>}
             </TabList>
             
             {data.jra.length > 0 && (

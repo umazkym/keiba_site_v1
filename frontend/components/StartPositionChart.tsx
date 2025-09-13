@@ -40,7 +40,7 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
     if (!predictions || predictions.length === 0 || predictions.every(p => p.start_1c_indicator === null)) {
         return (
              <div className="my-4 p-4 bg-white border rounded-lg shadow-inner text-center text-gray-500">
-                <p>このレースのスタート位置予測データはありません。</p>
+                <p>このレースのAIスタート位置取り予測データはありません。</p>
             </div>
         );
     }

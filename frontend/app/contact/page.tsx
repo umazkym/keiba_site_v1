@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "お問い合わせ | ウマFREE",
+  title: "お問い合わせ | UMA-FREE",
   robots: "noindex, follow",
 };
 

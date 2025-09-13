@@ -8,17 +8,6 @@ import { formatDate } from "@/lib/utils";
 // ISRとSSGの設定を削除し、動的レンダリングを強制する設定を追加
 export const dynamic = 'force-dynamic';
 
-// 以下の2つの設定（revalidate と generateStaticParams）を完全に削除します。
-/*
-export const revalidate = 3600;
-
-export async function generateStaticParams() {
-  // ... この関数全体を削除 ...
-}
-*/
-
-// ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
-
 // 動的にメタデータを生成する
 export async function generateMetadata({ params }: { params: { date: string } }): Promise<Metadata> {
   const formattedDate = formatDate(params.date);

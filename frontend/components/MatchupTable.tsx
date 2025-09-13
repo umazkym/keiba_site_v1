@@ -226,11 +226,11 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
             
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-2 border-b gap-2">
                 <div className='flex items-center gap-2'>
-                    <h3 className="text-sm font-bold hidden md:block whitespace-nowrap">AI総当たり対戦績</h3>
+                    <h3 className="text-sm font-bold hidden md:block whitespace-nowrap">過去対決成績</h3>
                      <Tippy 
                         content={
                             <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
-                                <p className='font-bold mb-1 border-b pb-1'>AI総当たり対戦績とは？</p>
+                                <p className='font-bold mb-1 border-b pb-1'>過去対決成績とは？</p>
                                 <p className='text-xs mt-2'>出走馬同士が過去に同じレースで直接対決した際の成績です。</p>
                                 <ul className='text-xs mt-2 list-disc list-inside space-y-1'>
                                     <li><strong>数値：</strong>左の馬から見た勝ち越し数（勝ち数 - 負け数）。</li>

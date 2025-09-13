@@ -35,6 +35,7 @@
     body {
         background-color: var(--bg);
         color: var(--text);
+        word-break: break-word; /* ★★★ この行を追加 ★★★ */
     }
 
     a {

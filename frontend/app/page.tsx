@@ -10,7 +10,7 @@ import type { Metadata } from 'next';
 // SEO metadata
 export const metadata: Metadata = {
     title: "UMA-FREE | 登録不要・完全無料のAI競馬予測サイト",
-    description: "中央・地方の全レースをAIが完全無料で予測。独自の対戦データや展開予測で、あなたの競馬予想を強力サポートします。",
+    description: "AI競馬予想が完全無料で使い放題！ 中央・地方の全レースを網羅し、あなたの馬券検討をサポートします。",
 };
 
 // JSTでの今日の日付文字列をサーバーサイドで生成する関数
@@ -43,13 +43,15 @@ export default async function HomePage() {
         <div className="container py-4 space-y-8">
             {/* メインのヒーローセクション */}
             <section className="text-center my-4 p-8 bg-white rounded-xl shadow-lg border border-gray-200 bg-gradient-to-br from-indigo-50 to-white">
-                <h1 className="text-3xl md:text-4xl font-extrabold text-primary-dark mb-2 leading-tight">
-                    <span className="text-primary-dark">登録不要・完全無料</span>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-primary-dark mb-2 leading-tight">
+                    登録不要・完全無料の
                     <br />
-                    AI競馬予測サイト UMA-FREE
+                    AI競馬予測 UMA-FREE
                 </h1>
                 <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto mb-6">
-                    中央・地方の全レース予測から、独自の対戦データまで。あなたの競馬予想に、AIの分析力をプラスします。
+                    AI競馬予想が完全無料で使い放題！
+                    <br className="hidden sm:block" />
+                    中央・地方の全レースを網羅し、あなたの馬券検討をサポートします。
                 </p>
                 <Link
                     href={`/races/${todayStr}`}
@@ -66,26 +68,30 @@ export default async function HomePage() {
 
             {/* 3つの特徴セクション */}
             <section className="my-8">
-                <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
-                    UMA-FREEだけの<span className="text-primary">3つの無料AIデータ</span>
+                <h2 className="text-xl sm:text-2xl font-bold text-center text-gray-800 mb-6">
+                    UMA-FREEだけの
+                    <br />
+                    <span className="text-primary">3つの無料AIデータ</span>
                 </h2>
+                {/* ▼▼▼▼▼ ここから修正 ▼▼▼▼▼ */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <FeatureCard
                         icon={<UsersIcon className="w-8 h-8" />}
                         title="過去対決成績"
-                        description="全出走馬の直接対決をAIが分析。馬同士の力関係が一目でわかります。"
+                        description={<>全出走馬の直接対決をAIが分析。<br/>馬同士の力関係が一目でわかります。</>}
                     />
                     <FeatureCard
                         icon={<FlagIcon className="w-8 h-8" />}
                         title="AIスタート位置取り予測"
-                        description="過去データからレース展開を予測。逃げ・先行馬探しに最適です。"
+                        description={<>過去データからレース展開を予測。<br/>逃げ・先行馬探しに最適です。</>}
                     />
                     <FeatureCard
                         icon={<ChartBarIcon className="w-8 h-8" />}
                         title="枠順傾向スコア"
-                        description="競馬場・距離別に有利な枠を算出。コースの特性を馬券に活かせます。"
+                        description={<>競馬場・距離別に有利な枠を算出。<br/>コースの特性を馬券に活かせます。</>}
                     />
                 </div>
+                {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
             </section>
 
             {/* 今日のAI注目馬 */}
@@ -190,7 +196,7 @@ export default async function HomePage() {
                 </h2>
                 <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                        <h3 className="font-bold text-lg mb-3 text-primary">中央競馬（JRA）</h3>
+                        <h3 className="font-bold text-lg mb-3 text-primary">中央競馬</h3>
                         <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
                             <div>• 札幌競馬場</div>
                             <div>• 函館競馬場</div>
@@ -205,7 +211,7 @@ export default async function HomePage() {
                         </div>
                     </div>
                     <div>
-                        <h3 className="font-bold text-lg mb-3 text-primary">地方競馬（NAR）</h3>
+                        <h3 className="font-bold text-lg mb-3 text-primary">地方競馬</h3>
                         <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
                             <div>• 門別競馬場</div>
                             <div>• 盛岡競馬場</div>
@@ -225,7 +231,7 @@ export default async function HomePage() {
                     </div>
                 </div>
                 <p className="text-sm text-gray-500 mt-4">
-                    ※ばんえい競馬（帯広）は現在対応しておりません
+                    ※ばんえい競馬（帯広）は対応しておりません。
                 </p>
             </section>
         </div>

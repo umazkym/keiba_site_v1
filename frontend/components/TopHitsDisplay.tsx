@@ -34,9 +34,14 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
                     {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
                     {' '}{hit.venue_name}{hit.race_number}R
                 </div>
-                <div className="text-xs text-gray-700 font-medium break-words">
+                {/* ▼▼▼▼▼ ここから修正 ▼▼▼▼▼ */}
+                <div className="text-xs text-gray-800 font-semibold truncate" title={hit.race_name}>
+                  {hit.race_name}
+                </div>
+                <div className="text-xs text-gray-700 font-medium truncate" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
                     {hit.bet_type}: {hit.winning_numbers}
                 </div>
+                {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
             </div>
         </div>
     );
@@ -102,7 +107,6 @@ export const TopHitsDisplay = () => {
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3">
                     {hits.map((hit, index) => (
-                        // ▼▼▼▼▼ Linkタグで囲み、クエリパラメータで競馬場とレース番号を指定 ▼▼▼▼▼
                         <Link 
                             key={`${hit.race_id}-${hit.winning_numbers}`} 
                             href={`/races/${hit.race_date}?venue=${encodeURIComponent(hit.venue_name)}&race=${hit.race_number}`}
@@ -110,7 +114,6 @@ export const TopHitsDisplay = () => {
                         >
                             <HitCard hit={hit} rank={index + 1} />
                         </Link>
-                        // ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
                     ))}
                 </div>
             )}

@@ -105,9 +105,9 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
           <div className="mt-8 pt-6 border-t text-left max-w-2xl mx-auto">
             <h3 className="font-bold text-gray-700 mb-3">競馬開催スケジュール</h3>
             <div className="space-y-2 text-sm text-gray-600">
-              <p>• 中央競馬（JRA）: 主に土日に開催されます。</p>
-              <p>• 地方競馬（NAR）: 各競馬場により開催日が異なります。</p>
-              <p>• 翌日のレース予測データは、通常、前日の19時頃に更新されます。</p>
+              <p>• 中央競馬: 主に土日に開催されます。</p>
+              <p>• 地方競馬: 各競馬場により開催日が異なります。</p>
+              <p>• 翌日のレース予測データは、通常、前日の7時頃に更新されます。</p>
             </div>
           </div>
         </div>
@@ -131,8 +131,9 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
       </div>
 
       <div className="sticky top-16 z-40 bg-white/80 backdrop-blur-sm border-b shadow-md mb-4 p-2">
-        <div className="grid grid-cols-3 items-center">
-          <div className="justify-self-start">
+        {/* ▼▼▼▼▼ ここから修正 ▼▼▼▼▼ */}
+        <div className="flex items-center justify-between">
+          <div>
             <button
               onClick={(e) => {
                 handleDateChange(getTodayString());
@@ -143,11 +144,12 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
               今日
             </button>
           </div>
-          <div className="justify-self-center">
+          <div className="flex-grow flex justify-center">
             <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
           </div>
-          <div className="justify-self-end"></div>
+          <div className="w-12"></div> {/* 右側のスペース確保用 */}
         </div>
+        {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
       </div>
 
       {renderContent()}

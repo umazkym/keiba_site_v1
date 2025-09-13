@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "プライバシーポリシー | ウマFREE",
+  title: "プライバシーポリシー | UMA-FREE",
   robots: "noindex, follow",
 };
 
@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
           プライバシーポリシー
         </h1>
         <div className="prose prose-sm md:prose-base max-w-none text-gray-700">
-          <p>当サイト「ウマFREE」（以下、「当サイト」といいます。）は、ユーザーの個人情報保護の重要性について認識し、個人情報の保護に関する法律（以下、「個人情報保護法」といいます。）を遵守すると共に、以下のプライバシーポリシー（以下、「本ポリシー」といいます。）に従い、適切な取扱い及び保護に努めます。</p>
+          <p>当サイト「UMA-FREE」（以下、「当サイト」といいます。）は、ユーザーの個人情報保護の重要性について認識し、個人情報の保護に関する法律（以下、「個人情報保護法」といいます。）を遵守すると共に、以下のプライバシーポリシー（以下、「本ポリシー」といいます。）に従い、適切な取扱い及び保護に努めます。</p>
           <h2 className="text-xl font-bold mt-6 mb-2">広告の配信について</h2>
           <p>当サイトは、第三者配信の広告サービス「Google AdSense」を利用しています。</p>
           <p>このような広告配信事業者は、ユーザーの興味に応じた商品やサービスの広告を表示するため、当サイトや他サイトへのアクセスに関する情報『Cookie』（氏名、住所、メールアドレス、電話番号は含まれません）を使用することがあります。</p>

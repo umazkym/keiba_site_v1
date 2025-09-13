@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: "運営者情報 | ウマFREE",
+  title: "運営者情報 | UMA-FREE",
   robots: "noindex, follow",
 };
 
@@ -17,7 +17,7 @@ export default function AboutPage() {
         <div className="space-y-4 text-gray-700">
           <div>
             <h2 className="text-lg font-semibold">サイト名</h2>
-            <p>ウマFREE</p>
+            <p>UMA-FREE</p>
           </div>
           <div>
             <h2 className="text-lg font-semibold">サイトURL</h2>

@@ -74,7 +74,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
 
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                            <h3 id="special-pick-title" className="text-xs font-semibold uppercase tracking-wider text-gray-600">
+                            <h3 id="special-pick-title" className="text-xs font-semibold uppercase tracking-wider text-yellow-700">
                                 今日のイチオシ！
                             </h3>
                             <div className="ml-auto">

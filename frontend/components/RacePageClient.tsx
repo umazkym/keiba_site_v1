@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from 'next/link';
-import { getPredictionsForDate } from "@/lib/api";
 import { RaceDayPrediction } from "@/lib/types";
 import { RaceTabs } from "@/components/RaceTabs";
 import { SpecialPickCard } from "@/components/SpecialPickCard";
@@ -50,127 +49,108 @@ const DateNavigator = ({
     );
 };
 
-export default function RacePageClient({ date }: { date: string }) {
-    const router = useRouter();
-    const [predictionData, setPredictionData] = useState<RaceDayPrediction | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    const getTodayString = () => {
-        const today = new Date(
-            new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
-        );
-        return today.toISOString().split("T")[0];
-    };
-    
-    const fetchDataForDate = useCallback((newDate: string) => {
-        setIsLoading(true);
-        setError(null);
-        setPredictionData(null);
-        document.title = `競馬AI予測 | ${formatDate(newDate)}`;
-
-        getPredictionsForDate(newDate)
-            .then((predictions) => setPredictionData(predictions))
-            .catch((err) => {
-                console.error(err);
-                setError("データの取得に失敗しました。時間をおいて再度お試しください。");
-            })
-            .finally(() => setIsLoading(false));
-    }, []);
-
-    useEffect(() => {
-        fetchDataForDate(date);
-    }, [date, fetchDataForDate]);
-
-    const handleDateChange = (newDate: string) => {
-        if (newDate !== date) {
-            router.push(`/races/${newDate}`);
-        }
-    };
-    
-// frontend/components/RacePageClient.tsx の renderContent 関数を修正
-
-const renderContent = () => {
-    if (isLoading) {
-        return <RaceTabsSkeleton />;
-    }
-
-    if (error) {
-        return (
-            <div className="text-center p-6 text-red-600 bg-red-100 rounded-lg border border-red-200">
-                <p className="font-bold text-lg mb-2">エラー</p>
-                <p>{error}</p>
-            </div>
-        );
-    }
-
-    // データが空の場合の表示（広告も非表示にする）
-    if (!predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
-        return (
-            <div className="text-center p-8 bg-white rounded-lg border shadow-sm">
-                <h2 className="text-xl font-bold text-gray-700 mb-2">{formatDate(date)}のレースデータはありません</h2>
-                <p className="text-gray-500 mb-6">
-                    指定された日付はレースが開催されないか、まだデータが登録されていません。<br />
-                    他の日付のレース予測をお探しください。
-                </p>
-                <Link
-                    href={`/races/${getTodayString()}`}
-                    className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105"
-                >
-                    本日のレース予測を見る
-                </Link>
-                
-                {/* コンテンツを追加：過去の開催情報など */}
-                <div className="mt-8 pt-6 border-t text-left max-w-2xl mx-auto">
-                    <h3 className="font-bold text-gray-700 mb-3">競馬開催スケジュール</h3>
-                    <div className="space-y-2 text-sm text-gray-600">
-                        <p>• 中央競馬（JRA）: 毎週土日開催</p>
-                        <p>• 地方競馬（NAR）: 各競馬場により開催日が異なります</p>
-                        <p>• データは開催前日の夕方頃に更新されます</p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // データがある場合の通常の表示
-    return (
-        <>
-            <div className="mb-4">
-                <SpecialPickCard date={date} />
-            </div>
-            <RaceTabs data={predictionData} />
-        </>
-    );
+type RacePageClientProps = {
+  initialDate: string;
+  initialPredictionData: RaceDayPrediction | null;
 };
 
-    return (
-        <div className="container py-4">
-            <div className="mb-4">
-                <TopHitsDisplay />
-            </div>
+export default function RacePageClient({ initialDate, initialPredictionData }: RacePageClientProps) {
+  const router = useRouter();
+  const [currentDate, setCurrentDate] = useState(initialDate);
+  const [predictionData, setPredictionData] = useState<RaceDayPrediction | null>(initialPredictionData);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(initialPredictionData ? null : "指定された日付のレースデータはありませんでした。");
 
-            <div className="sticky top-16 z-40 bg-white/80 backdrop-blur-sm border-b shadow-md mb-4 p-2">
-                <div className="grid grid-cols-3 items-center">
-                    <div className="justify-self-start">
-                        <button
-                            onClick={(e) => {
-                                handleDateChange(getTodayString());
-                                e.currentTarget.blur();
-                            }}
-                            className="bg-primary border border-primary-dark text-white px-3 py-1.5 rounded-md shadow-sm hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm font-bold whitespace-nowrap"
-                        >
-                            今日
-                        </button>
-                    </div>
-                    <div className="justify-self-center">
-                        <DateNavigator currentDate={date} onDateChange={handleDateChange} />
-                    </div>
-                    <div className="justify-self-end"></div>
-                </div>
-            </div>
+  const handleDateChange = useCallback((newDate: string) => {
+    if (newDate && newDate !== currentDate) {
+      setIsLoading(true);
+      router.push(`/races/${newDate}`);
+    }
+  }, [currentDate, router]);
 
-            {renderContent()}
-        </div>
+  useEffect(() => {
+    setCurrentDate(initialDate);
+    setPredictionData(initialPredictionData);
+    setIsLoading(false);
+    setError(initialPredictionData ? null : "指定された日付のレースデータはありませんでした。");
+    document.title = `競馬AI予測 | ${formatDate(initialDate)}`;
+  }, [initialDate, initialPredictionData]);
+
+  const getTodayString = () => {
+    const today = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
     );
+    return today.toISOString().split("T")[0];
+  };
+
+  const renderContent = () => {
+    if (isLoading) {
+      return <RaceTabsSkeleton />;
+    }
+
+    if (error || !predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
+      return (
+        <div className="text-center p-8 bg-white rounded-lg border shadow-sm">
+          <h2 className="text-xl font-bold text-gray-700 mb-2">{formatDate(currentDate)}のレースデータはありません</h2>
+          <p className="text-gray-500 mb-6">
+            指定された日付はレースが開催されないか、まだデータが登録されていません。<br />
+            他の日付のレース予測をお探しください。
+          </p>
+          <Link
+            href={`/races/${getTodayString()}`}
+            className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105"
+          >
+            本日のレース予測を見る
+          </Link>
+          <div className="mt-8 pt-6 border-t text-left max-w-2xl mx-auto">
+            <h3 className="font-bold text-gray-700 mb-3">競馬開催スケジュール</h3>
+            <div className="space-y-2 text-sm text-gray-600">
+              <p>• 中央競馬（JRA）: 主に土日に開催されます。</p>
+              <p>• 地方競馬（NAR）: 各競馬場により開催日が異なります。</p>
+              <p>• 翌日のレース予測データは、通常、前日の19時頃に更新されます。</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div className="mb-4">
+          <SpecialPickCard date={currentDate} />
+        </div>
+        <RaceTabs data={predictionData} />
+      </>
+    );
+  };
+
+  return (
+    <div className="container py-4">
+      <div className="mb-4">
+        <TopHitsDisplay />
+      </div>
+
+      <div className="sticky top-16 z-40 bg-white/80 backdrop-blur-sm border-b shadow-md mb-4 p-2">
+        <div className="grid grid-cols-3 items-center">
+          <div className="justify-self-start">
+            <button
+              onClick={(e) => {
+                handleDateChange(getTodayString());
+                e.currentTarget.blur();
+              }}
+              className="bg-primary border border-primary-dark text-white px-3 py-1.5 rounded-md shadow-sm hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm font-bold whitespace-nowrap"
+            >
+              今日
+            </button>
+          </div>
+          <div className="justify-self-center">
+            <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
+          </div>
+          <div className="justify-self-end"></div>
+        </div>
+      </div>
+
+      {renderContent()}
+    </div>
+  );
 }

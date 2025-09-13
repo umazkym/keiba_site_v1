@@ -5,15 +5,14 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import Script from "next/script";
 import React from "react";
-import { GlobalAdManager } from "@/components/GlobalAdManager"; // 新規インポート
+import { GlobalAdManager } from "@/components/GlobalAdManager";
 
 const inter = Inter({ subsets: ["latin"], display: 'swap' });
 
 const siteTitleDefault = "UMA-FREE | 登録不要の無料AI競馬予想 (中央・地方 全レース対応)";
 const siteDescription = "登録不要・完全無料！AIが中央・地方すべての競馬レースを毎日予想＆分析。AI偏差値や独自の対戦データで、あなたの馬券検討を強力にサポートします。";
-const siteUrl = "https://www.uma-free.com"; // www付きに正規化
+const siteUrl = "https://www.uma-free.com";
 
-// ▼▼▼▼▼ metadataオブジェクト全体を修正 ▼▼▼▼▼
 export const metadata: Metadata = {
     metadataBase: new URL(siteUrl),
     title: {
@@ -63,6 +62,7 @@ export default function RootLayout({
                     crossOrigin="anonymous"
                     strategy="afterInteractive"
                 />
+                {/* ★★★ 全画面広告用の重複したScriptタグをここから削除しました ★★★ */}
             </head>
             <body>
                 <a href="#main-content" className="skip-link">
@@ -71,13 +71,10 @@ export default function RootLayout({
 
                 <div className="flex flex-col min-h-screen">
                     <Header />
-
-                    {/* アンカー広告の高さ(50px) + 余白を確保 */}
                     <main id="main-content" className="flex-grow pb-16">
                         <GlobalAdManager />
                         {children}
                     </main>
-
                     <Footer />
                 </div>
             </body>

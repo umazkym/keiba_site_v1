@@ -6,8 +6,9 @@ import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
 import 'tippy.js/animations/shift-away.css';
 import 'tippy.js/themes/light-border.css';
+import { Adsense } from './Adsense'; // ★★★ Adsenseコンポーネントをインポート ★★★
 
-// 馬番アイコン用のヘルパー関数とコンポーネント
+// 馬番アイコン用のヘルパー関数とコンポーネント (変更なし)
 const getWakuColorClasses = (waku: number | null): string => {
     switch (waku) {
         case 1: return 'bg-white text-black border-gray-500';
@@ -29,8 +30,6 @@ const HorseNumberCircle = ({ number, waku }: { number: number, waku: number | nu
 );
 
 export const PredictionTable = ({ race }: { race: RacePrediction }) => {
-    // ==============================================================================
-    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
     const isUnpredictable = !race.predictions.length || race.predictions.some(p => p.mark === '—');
     const reason = race.predictions?.[0]?.unpredictable_reason;
 
@@ -41,8 +40,17 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
             </div>
         );
     }
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-    // ==============================================================================
+    
+    // ★★★ 広告コンポーネントを定義 ★★★
+    const InFeedAd = () => (
+        <div className="py-2">
+            <Adsense
+                client="ca-pub-4411270831448240"
+                slot="1489598374" // ここは記事内広告用のスロットIDに変更してください
+                style={{ minHeight: '80px' }}
+            />
+        </div>
+    );
     
     return (
         <>
@@ -68,15 +76,26 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {race.predictions.map((p) => (
-                            <tr key={`${race.id}-${p.horse_number}`} className="hover:bg-gray-50 transition-colors duration-200">
-                                <td className="px-2 py-2 whitespace-nowrap text-center text-lg font-bold text-gray-800 w-12">{p.mark || '—'}</td>
-                                <td className="px-2 py-2 whitespace-nowrap w-10">
-                                    <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
-                                </td>
-                                <td className="px-2 py-2 whitespace-nowrap font-medium text-gray-800 truncate">{p.horse_name}</td>
-                                <td className="px-4 py-2 whitespace-nowrap text-right font-semibold text-primary-dark">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
-                            </tr>
+                        {race.predictions.map((p, index) => (
+                            // ★★★ React.Fragmentを使用して広告挿入ロジックを追加 ★★★
+                            <React.Fragment key={`${race.id}-${p.horse_number}`}>
+                                <tr className="hover:bg-gray-50 transition-colors duration-200">
+                                    <td className="px-2 py-2 whitespace-nowrap text-center text-lg font-bold text-gray-800 w-12">{p.mark || '—'}</td>
+                                    <td className="px-2 py-2 whitespace-nowrap w-10">
+                                        <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
+                                    </td>
+                                    <td className="px-2 py-2 whitespace-nowrap font-medium text-gray-800 truncate">{p.horse_name}</td>
+                                    <td className="px-4 py-2 whitespace-nowrap text-right font-semibold text-primary-dark">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
+                                </tr>
+                                {/* 2位(index=1)と3位の間に広告を挿入 */}
+                                {index === 1 && (
+                                    <tr>
+                                        <td colSpan={4}>
+                                            <InFeedAd />
+                                        </td>
+                                    </tr>
+                                )}
+                            </React.Fragment>
                         ))}
                     </tbody>
                 </table>
@@ -84,22 +103,27 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
 
             {/* スマホ (md未満) ではカードリスト表示 */}
             <div className="md:hidden divide-y divide-gray-200">
-                {race.predictions.map((p) => (
-                    <div key={`${race.id}-${p.horse_number}-mobile`} className="p-2">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <span className="text-xl font-bold text-gray-800 w-8 text-center">{p.mark || '—'}</span>
-                                <div className="flex items-center gap-2">
-                                    <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
-                                    <span className="font-bold text-base text-gray-900 truncate">{p.horse_name}</span>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <div className="font-semibold text-primary-dark text-lg whitespace-nowrap">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</div>
-                                <div className="text-xs text-gray-500 whitespace-nowrap">AI偏差値</div>
-                            </div>
-                        </div>
-                    </div>
+                {race.predictions.map((p, index) => (
+                    // ★★★ React.Fragmentを使用して広告挿入ロジックを追加 ★★★
+                    <React.Fragment key={`${race.id}-${p.horse_number}-mobile`}>
+                         <div className="p-2">
+                             <div className="flex items-center justify-between">
+                                 <div className="flex items-center gap-3">
+                                     <span className="text-xl font-bold text-gray-800 w-8 text-center">{p.mark || '—'}</span>
+                                     <div className="flex items-center gap-2">
+                                         <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
+                                         <span className="font-bold text-base text-gray-900 truncate">{p.horse_name}</span>
+                                     </div>
+                                 </div>
+                                 <div className="text-right">
+                                     <div className="font-semibold text-primary-dark text-lg whitespace-nowrap">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</div>
+                                     <div className="text-xs text-gray-500 whitespace-nowrap">AI偏差値</div>
+                                 </div>
+                             </div>
+                         </div>
+                         {/* 2位(index=1)と3位の間に広告を挿入 */}
+                         {index === 1 && <InFeedAd />}
+                    </React.Fragment>
                 ))}
             </div>
         </>

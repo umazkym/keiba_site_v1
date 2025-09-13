@@ -8,10 +8,10 @@ export const Header = () => {
                 <div className="flex items-center justify-between h-16">
                     <Link href="/" className="flex items-center gap-3 group" aria-label="ウマFREE ホーム">
                         <Image
-                            src="/logo.svg"
-                            alt="UMA-FREE Logo"
-                            width={40}
-                            height={40}
+                            src="/new-logo.png"
+                            alt="UMA-FREE ロゴ"
+                            width={48} // ✅ 実際に表示したい幅に修正
+                            height={48} // ✅ 実際に表示したい高さに修正
                             priority
                         />
                         <div className="flex flex-col">

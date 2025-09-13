@@ -3,10 +3,9 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { Adsense } from "@/components/Adsense";
 import Script from "next/script";
-import { AnchorAd } from "@/components/AnchorAd";
 import React from "react";
+import { GlobalAdManager } from "@/components/GlobalAdManager"; // 新規インポート
 
 const inter = Inter({ subsets: ["latin"], display: 'swap' });
 
@@ -25,7 +24,7 @@ export const metadata: Metadata = {
         siteName: 'UMA-FREE',
         images: [
             {
-                url: '/og-image.png', // publicディレクトリのog-image.pngを参照
+                url: '/og-image.png',
                 width: 1200,
                 height: 630,
             },
@@ -54,8 +53,10 @@ export default function RootLayout({
     return (
         <html lang="ja" className={inter.className}>
             <head>
-                <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
+                {/* サイト所有権の確認メタタグ */}
+                <meta name="google-adsense-account" content={adClient} />
                 <link rel="icon" href="/favicon.ico" sizes="any" />
+                {/* AdSenseの自動広告スクリプト */}
                 <Script
                     async
                     src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`}
@@ -63,7 +64,7 @@ export default function RootLayout({
                     strategy="afterInteractive"
                 />
             </head>
-            <body className="pb-16">
+            <body>
                 <a href="#main-content" className="skip-link">
                     コンテンツにスキップ
                 </a>
@@ -72,22 +73,13 @@ export default function RootLayout({
                     <Header />
 
                     <main id="main-content" className="flex-grow">
-                        <div className="container py-4">
-                            <div className="adsense-wrapper" role="complementary" aria-label="広告">
-                                <Adsense
-                                    client={adClient}
-                                    slot="xxxxxxxxxx" // 広告スロットIDを入力してください
-                                    style={{ width: "100%", height: "90px" }}
-                                />
-                            </div>
-                        </div>
+                        {/* 広告管理コンポーネントをここに配置 */}
+                        <GlobalAdManager />
                         {children}
                     </main>
 
                     <Footer />
                 </div>
-
-                <AnchorAd />
             </body>
         </html>
     );

@@ -92,7 +92,7 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
                     <div className="my-4">
                         <Adsense
                             client="ca-pub-4411270831448240"
-                            slot="xxxxxxxxxx" // 広告スロットIDを入力してください
+                            slot="1489598374" // ★★★ ここを修正 ★★★
                             style={{ minHeight: '120px' }}
                         />
                     </div>
@@ -122,7 +122,7 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
             </TabList>
             
             {data.jra.length > 0 && (
-                 <TabPanel>
+                <TabPanel>
                     <div className="p-2 md:p-3">
                         <Tabs defaultIndex={initialJraVenueIndex >= 0 ? initialJraVenueIndex : 0}>
                             <TabList>

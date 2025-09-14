@@ -1,5 +1,9 @@
 'use client';
 import { useState, useCallback, useMemo, memo } from 'react';
+// ==============================================================================
+// ▼▼▼▼▼【追加】▼▼▼▼▼
+import { useRouter, useSearchParams, useParams } from 'next/navigation';
+// ▲▲▲▲▲【追加ここまで】▲▲▲▲▲
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { PredictionTable } from '@/components/PredictuonTable';
@@ -54,6 +58,15 @@ const CollapsibleSection = memo(({ title, icon, children }: { title: string, ico
 CollapsibleSection.displayName = 'CollapsibleSection';
 
 const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, initialRaceNumber?: number | null }) => {
+    // ==============================================================================
+    // ▼▼▼▼▼【追加】▼▼▼▼▼
+    // useRouterなどのフックを使ってURLを操作できるようにする
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const params = useParams();
+    const currentDate = params.date as string;
+    // ▲▲▲▲▲【追加ここまで】▲▲▲▲▲
+    
     const initialIndex = useMemo(() => {
         if (!initialRaceNumber) return 0;
         const index = venue.races.findIndex(r => r.race_number === initialRaceNumber);
@@ -65,12 +78,59 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
     
     const handleRaceSelect = useCallback((index: number) => {
         setActiveRaceIndex(index);
-    }, []);
+        // ==============================================================================
+        // ▼▼▼▼▼【修正点】▼▼▼▼▼
+        // レース選択時にURLのクエリパラメータを更新する
+        const selectedRace = venue.races[index];
+        if (selectedRace) {
+            const newParams = new URLSearchParams(searchParams.toString());
+            newParams.set('venue', venue.venue_name);
+            newParams.set('race', selectedRace.race_number.toString());
+            // pushではなくreplaceを使い、ブラウザの履歴を汚さないようにする
+            router.replace(`/races/${currentDate}?${newParams.toString()}`, { scroll: false });
+        }
+        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+    }, [venue, router, currentDate, searchParams]); // 依存配列にrouterなどを追加
 
     // 広告表示条件を最適化
     const shouldShowAd = useMemo(() => {
         return activeRace && activeRace.predictions.length >= 5;
     }, [activeRace]);
+
+    const RaceNavigation = () => {
+        const hasPrev = activeRaceIndex > 0;
+        const hasNext = activeRaceIndex < venue.races.length - 1;
+
+        const prevRace = hasPrev ? venue.races[activeRaceIndex - 1] : null;
+        const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
+
+        return (
+            <div className="mt-6 flex justify-between items-center">
+                {hasPrev && prevRace ? (
+                    <button
+                        onClick={() => handleRaceSelect(activeRaceIndex - 1)}
+                        className="btn-primary" 
+                    >
+                        &larr; {prevRace.race_number}Rへ
+                    </button>
+                ) : (
+                    <div /> // Prevボタンがない場合でもレイアウトを維持するためのスペーサー
+                )}
+
+                {hasNext && nextRace ? (
+                    <button
+                        onClick={() => handleRaceSelect(activeRaceIndex + 1)}
+                        className="btn-primary"
+                    >
+                        {nextRace.race_number}Rへ &rarr;
+                    </button>
+                ) : (
+                    <div /> // Nextボタンがない場合でもレイアウトを維持するためのスペーサー
+                )}
+            </div>
+        )
+    };
+
 
     return (
         <div id={`venue-${venue.venue_name}`}>
@@ -113,6 +173,8 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
                             />
                         </CollapsibleSection>
                     </div>
+
+                    <RaceNavigation />
                     
                     {/* 関連レースレコメンドの前に広告を追加 */}
                     {shouldShowAd && (
@@ -129,7 +191,7 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
                     {/* 関連レースレコメンド */}
                     <RelatedRaces
                         currentRace={activeRace}
-                        currentDate={activeRace.race_date}
+                        currentDate={activeRace.race_date.toString()}
                     />
                     
                     {/* 最後にもう一つ広告（十分なコンテンツがある場合） */}

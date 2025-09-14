@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { getSpecialPick } from '@/lib/api';
 import { SpecialPick } from "@/lib/types";
 import { SparklesIcon } from '@/components/icons';
+// ==============================================================================
+// ▼▼▼▼▼【追加】▼▼▼▼▼
+import { formatDate } from '@/lib/utils';
+// ▲▲▲▲▲【追加ここまで】▲▲▲▲▲
 
 // 調整案1：「リッチゴールド ＆ ホワイト」デザイン
 const Skeleton = () => (
@@ -73,10 +77,16 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
             </div>
         );
     }
+    
+    // ==============================================================================
+    // ▼▼▼▼▼【追加】▼▼▼▼▼
+    // formatDateユーティリティを使って日付を整形
+    const formattedDate = formatDate(effectiveDate);
+    // ▲▲▲▲▲【追加ここまで】▲▲▲▲▲
 
     return (
         <Link 
-            href={`/races/${date}?venue=${encodeURIComponent(pick.venue_name)}&race=${pick.race_number}`}
+            href={`/races/${effectiveDate}?venue=${encodeURIComponent(pick.venue_name)}&race=${pick.race_number}`}
             className="block group"
             aria-label={`${pick.commentary}`}
         >
@@ -91,9 +101,13 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
                     <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
                              <SparklesIcon className="w-5 h-5 text-amber-200" />
+                            {/* ============================================================================== */}
+                            {/* ▼▼▼▼▼【修正点】▼▼▼▼▼ */}
+                            {/* 日付と曜日を表示 */}
                              <h3 id="special-pick-title" className="text-sm font-bold uppercase tracking-wider text-amber-200">
-                                今日のイチオシ！
+                                今日のイチオシ！ ({formattedDate})
                             </h3>
+                            {/* ▲▲▲▲▲【修正ここまで】▲▲▲▲▲ */}
                         </div>
                         <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/20 text-white border border-white/30">
                             AI偏差値 <span className="text-lg font-mono">{pick.deviation_score.toFixed(2)}</span>

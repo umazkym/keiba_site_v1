@@ -14,17 +14,17 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
         // 現在の日付（JST）を取得
         const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
         today.setHours(0, 0, 0, 0);
-        
+
         // 現在見ているレースの日付（UTCではなくローカル日付として扱う）
         const [year, month, day] = currentDate.split('-').map(Number);
-        
+
         // データ取得可能な最大日付（明日まで）
         const maxDate = new Date(today);
         maxDate.setDate(today.getDate() + 1);
         const maxDateStr = maxDate.toISOString().split('T')[0];
-        
+
         const dates: string[] = [];
-        
+
         // 現在の日付より前の2日分
         for (let i = -2; i <= -1; i++) {
             const date = new Date(year, month - 1, day);
@@ -35,19 +35,19 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                 dates.push(dateStr);
             }
         }
-        
+
         // 現在の日付より後の日付（最大で明日まで）
         for (let i = 1; i <= 2; i++) {
             const date = new Date(year, month - 1, day);
             date.setDate(date.getDate() + i);
             const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            
+
             // データが存在する可能性のある日付のみ追加
             if (dateStr <= maxDateStr) {
                 dates.push(dateStr);
             }
         }
-        
+
         // 日付が3つになるように調整
         if (dates.length < 3) {
             let additionalDaysBack = 3;
@@ -61,10 +61,10 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                 additionalDaysBack++;
             }
         }
-        
+
         // 日付順にソート
         dates.sort();
-        
+
         // 最大3つまでに制限
         return dates.slice(0, 3);
     }, [currentDate]);
@@ -84,7 +84,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                 </svg>
                 他の日付の予測もチェック
             </h3>
-            
+
             {/* ▼▼▼▼▼ ここを修正 ▼▼▼▼▼ */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
@@ -93,7 +93,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                     const dateObj = new Date(y, m - 1, d);
                     const isPast = dateObj < current;
                     const isFuture = dateObj > current;
-                    
+
                     return (
                         <Link
                             key={date}
@@ -113,7 +113,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                     );
                 })}
             </div>
-            
+
             <div className="mt-4 text-center">
                 <Link
                     href="/"

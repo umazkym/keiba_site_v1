@@ -11,9 +11,7 @@ const inter = Inter({ subsets: ["latin"], display: 'swap' });
 
 const siteTitleDefault = "UMA-FREE | 登録不要の無料AI競馬予想 (中央・地方 全レース対応)";
 const siteDescription = "登録不要・完全無料！AIが中央・地方すべての競馬レースを毎日予想＆分析。AI偏差値や独自の対戦データで、あなたの馬券検討を強力にサポートします。";
-// ▼▼▼▼▼ ここを修正 ▼▼▼▼▼
 const siteUrl = "https://uma-free.com";
-// ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
 
 export const metadata: Metadata = {
     metadataBase: new URL(siteUrl),
@@ -75,7 +73,9 @@ export default function RootLayout({
 
                 <div className="flex flex-col min-h-screen">
                     <Header />
-                    <main id="main-content" className="flex-grow pb-16">
+                    {/* ▼▼▼▼▼ ここを修正 ▼▼▼▼▼ */}
+                    <main id="main-content" className="flex-grow pb-32">
+                    {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
                         <GlobalAdManager />
                         {children}
                     </main>

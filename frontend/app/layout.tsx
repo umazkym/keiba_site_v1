@@ -54,7 +54,6 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     const adClient = "ca-pub-4411270831448240";
-
     return (
         <html lang="ja" className={inter.className}>
             <head>
@@ -70,12 +69,10 @@ export default function RootLayout({
                 <a href="#main-content" className="skip-link">
                     コンテンツにスキップ
                 </a>
-
                 <div className="flex flex-col min-h-screen">
                     <Header />
-                    {/* ▼▼▼▼▼ ここを修正 ▼▼▼▼▼ */}
-                    <main id="main-content" className="flex-grow pb-32">
-                    {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
+                    {/* アンカー広告の高さ（50px）+ 余白を考慮してpb-20（80px）に設定 */}
+                    <main id="main-content" className="flex-grow pb-20">
                         <GlobalAdManager />
                         {children}
                     </main>

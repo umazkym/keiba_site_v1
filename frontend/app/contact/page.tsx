@@ -2,13 +2,10 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "お問い合わせ | UMA-FREE",
-  robots: "noindex, follow",
 };
 
 export default function ContactPage() {
-  // ▼▼▼▼▼ Googleフォームの「送信」ボタンから「リンク」タブで取得したURLを貼り付け ▼▼▼▼▼
   const googleFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSdSJrPy6vagOLhjcIAGb7D8SaWCCUKHfE7muzpD0ML6dy9p_w/viewform";
-  // ▲▲▲▲▲ ここまで ▲▲▲▲▲
 
   return (
     <div className="container py-8">
@@ -20,17 +17,14 @@ export default function ContactPage() {
           サイトに関するご質問、ご意見、不具合のご報告などがございましたら、以下のボタンをクリックして、お問い合わせフォームへお進みください。
         </p>
         
-        {/* ▼▼▼▼▼ 埋め込みからリンクボタンに変更 ▼▼▼▼▼ */}
         <a
           href={googleFormUrl}
-          target="_blank" // 新しいタブでフォームを開く
-          rel="noopener noreferrer" // セキュリティ対策
+          target="_blank"
+          rel="noopener noreferrer"
           className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105 text-lg"
         >
           お問い合わせフォームを開く
         </a>
-        {/* ▲▲▲▲▲ ここまで ▲▲▲▲▲ */}
-
       </div>
     </div>
   );

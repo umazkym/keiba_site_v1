@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "プライバシーポリシー | UMA-FREE",
-  robots: "noindex, follow",
 };
 
 export default function PrivacyPolicyPage() {

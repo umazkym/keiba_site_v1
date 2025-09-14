@@ -11,7 +11,9 @@ const inter = Inter({ subsets: ["latin"], display: 'swap' });
 
 const siteTitleDefault = "UMA-FREE | 登録不要の無料AI競馬予想 (中央・地方 全レース対応)";
 const siteDescription = "登録不要・完全無料！AIが中央・地方すべての競馬レースを毎日予想＆分析。AI偏差値や独自の対戦データで、あなたの馬券検討を強力にサポートします。";
-const siteUrl = "https://www.uma-free.com";
+// ▼▼▼▼▼ ここを修正 ▼▼▼▼▼
+const siteUrl = "https://uma-free.com";
+// ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
 
 export const metadata: Metadata = {
     metadataBase: new URL(siteUrl),
@@ -20,11 +22,9 @@ export const metadata: Metadata = {
         template: '%s | UMA-FREE',
     },
     description: siteDescription,
-    // ★★★ ここから追加 ★★★
     icons: {
-        icon: '/new-logo.png', // publicディレクトリにあるロゴファイルを指定
+        icon: '/new-logo.png',
     },
-    // ★★★ ここまで追加 ★★★
     openGraph: {
         title: siteTitleDefault,
         description: siteDescription,

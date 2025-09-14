@@ -3,7 +3,6 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: "運営者情報 | UMA-FREE",
-  robots: "noindex, follow",
 };
 
 export default function AboutPage() {

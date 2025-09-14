@@ -20,6 +20,11 @@ export const metadata: Metadata = {
         template: '%s | UMA-FREE',
     },
     description: siteDescription,
+    // ★★★ ここから追加 ★★★
+    icons: {
+        icon: '/new-logo.png', // publicディレクトリにあるロゴファイルを指定
+    },
+    // ★★★ ここまで追加 ★★★
     openGraph: {
         title: siteTitleDefault,
         description: siteDescription,
@@ -62,7 +67,6 @@ export default function RootLayout({
                     crossOrigin="anonymous"
                     strategy="afterInteractive"
                 />
-                {/* ★★★ 全画面広告用の重複したScriptタグをここから削除しました ★★★ */}
             </head>
             <body>
                 <a href="#main-content" className="skip-link">

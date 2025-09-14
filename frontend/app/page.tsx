@@ -100,7 +100,7 @@ export default async function HomePage() {
                     <SparklesIcon className="w-7 h-7 text-accent-dark" />
                     <span>今日のAI注目馬</span>
                 </h2>
-                <SpecialPickCard pick={specialPick} />
+                <SpecialPickCard pick={specialPick} date={todayStr} />
             </section>
 
             {/* 新規追加：使い方ガイド */}

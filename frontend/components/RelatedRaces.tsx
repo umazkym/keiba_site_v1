@@ -1,8 +1,7 @@
 // frontend/components/RelatedRaces.tsx
 'use client';
-
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { RacePrediction } from '@/lib/types';
 
 interface RelatedRacesProps {
@@ -11,22 +10,71 @@ interface RelatedRacesProps {
 }
 
 export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) => {
-    const [relatedDates, setRelatedDates] = useState<string[]>([]);
-
-    useEffect(() => {
-        // 前後3日分の日付を生成
-        const dates: string[] = [];
-        const current = new Date(currentDate + 'T00:00:00');
+    const relatedDates = useMemo(() => {
+        // 現在の日付（JST）を取得
+        const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+        today.setHours(0, 0, 0, 0);
         
-        for (let i = -3; i <= 3; i++) {
-            if (i === 0) continue; // 現在の日付は除外
-            const date = new Date(current);
-            date.setDate(current.getDate() + i);
-            dates.push(date.toISOString().split('T')[0]);
+        // 現在見ているレースの日付（UTCではなくローカル日付として扱う）
+        const [year, month, day] = currentDate.split('-').map(Number);
+        
+        // データ取得可能な最大日付（明日まで）
+        const maxDate = new Date(today);
+        maxDate.setDate(today.getDate() + 1);
+        const maxDateStr = maxDate.toISOString().split('T')[0];
+        
+        const dates: string[] = [];
+        
+        // 現在の日付より前の2日分
+        for (let i = -2; i <= -1; i++) {
+            const date = new Date(year, month - 1, day);
+            date.setDate(date.getDate() + i);
+            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            // 2024年以降のデータのみ表示
+            if (date.getFullYear() >= 2024) {
+                dates.push(dateStr);
+            }
         }
         
-        setRelatedDates(dates);
+        // 現在の日付より後の日付（最大で明日まで）
+        for (let i = 1; i <= 2; i++) {
+            const date = new Date(year, month - 1, day);
+            date.setDate(date.getDate() + i);
+            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            
+            // データが存在する可能性のある日付のみ追加
+            if (dateStr <= maxDateStr) {
+                dates.push(dateStr);
+            }
+        }
+        
+        // 日付が3つになるように調整
+        if (dates.length < 3) {
+            let additionalDaysBack = 3;
+            while (dates.length < 3 && additionalDaysBack <= 7) {
+                const date = new Date(year, month - 1, day);
+                date.setDate(date.getDate() - additionalDaysBack);
+                const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                if (date.getFullYear() >= 2024 && !dates.includes(dateStr)) {
+                    dates.unshift(dateStr);
+                }
+                additionalDaysBack++;
+            }
+        }
+        
+        // 日付順にソート
+        dates.sort();
+        
+        // 最大3つまでに制限
+        return dates.slice(0, 3);
     }, [currentDate]);
+
+    if (relatedDates.length === 0) {
+        return null;
+    }
+
+    const [year, month, day] = currentDate.split('-').map(Number);
+    const current = new Date(year, month - 1, day);
 
     return (
         <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
@@ -37,10 +85,12 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                 他の日付の予測もチェック
             </h3>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3">
                 {relatedDates.map(date => {
-                    const d = new Date(date + 'T00:00:00');
-                    const isPast = d < new Date(currentDate + 'T00:00:00');
+                    const [y, m, d] = date.split('-').map(Number);
+                    const dateObj = new Date(y, m - 1, d);
+                    const isPast = dateObj < current;
+                    const isFuture = dateObj > current;
                     
                     return (
                         <Link
@@ -49,13 +99,13 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                             className="group relative bg-white p-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-blue-300"
                         >
                             <div className="text-xs text-gray-500 mb-1">
-                                {isPast ? '過去のレース' : '今後のレース'}
+                                {isPast ? '過去のレース' : isFuture ? '今後のレース' : 'レース'}
                             </div>
                             <div className="font-bold text-gray-800 group-hover:text-blue-600">
-                                {(d.getMonth() + 1)}月{d.getDate()}日
+                                {m}月{d}日
                             </div>
                             <div className="text-xs text-gray-600">
-                                ({['日', '月', '火', '水', '木', '金', '土'][d.getDay()]})
+                                ({['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()]})
                             </div>
                             <div className="absolute top-2 right-2 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
                                 →

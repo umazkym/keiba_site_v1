@@ -1,7 +1,6 @@
 "use client";
-
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from 'next/link';
 import { RaceDayPrediction } from "@/lib/types";
 import { RaceTabs } from "@/components/RaceTabs";
@@ -10,6 +9,7 @@ import { TopHitsDisplay } from "@/components/TopHitsDisplay";
 import { formatDate } from "@/lib/utils";
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 
+// frontend/components/RacePageClient.tsx の DateNavigator を修正
 const DateNavigator = ({
     currentDate,
     onDateChange,
@@ -17,13 +17,20 @@ const DateNavigator = ({
     currentDate: string;
     onDateChange: (newDate: string) => void;
 }) => {
-    const handleDateShift = (e: React.MouseEvent<HTMLButtonElement>, days: number) => {
+    const handleDateShift = useCallback((e: React.MouseEvent<HTMLButtonElement>, days: number) => {
         const [year, month, day] = currentDate.split("-").map(Number);
-        const dateObj = new Date(Date.UTC(year, month - 1, day));
-        dateObj.setUTCDate(dateObj.getUTCDate() + days);
+        const dateObj = new Date(year, month - 1, day);
+        dateObj.setDate(dateObj.getDate() + days);
         onDateChange(dateObj.toISOString().split("T")[0]);
         e.currentTarget.blur();
-    };
+    }, [currentDate, onDateChange]);
+
+    const handleDateInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const newDate = e.target.value;
+        if (newDate) {
+            onDateChange(newDate);
+        }
+    }, [onDateChange]);
 
     return (
         <div className="flex items-center justify-center gap-1 sm:gap-2">
@@ -36,7 +43,7 @@ const DateNavigator = ({
             <input
                 type="date"
                 value={currentDate}
-                onChange={(e) => onDateChange(e.target.value)}
+                onChange={handleDateInputChange}
                 className="border-gray-300 p-1.5 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-xs sm:text-sm shrink-0"
             />
             <button
@@ -56,14 +63,71 @@ type RacePageClientProps = {
 
 export default function RacePageClient({ initialDate, initialPredictionData }: RacePageClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentDate, setCurrentDate] = useState(initialDate);
   const [predictionData, setPredictionData] = useState<RaceDayPrediction | null>(initialPredictionData);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(initialPredictionData ? null : "指定された日付のレースデータはありませんでした。");
+  const [initialVenue, setInitialVenue] = useState<string | null>(null);
+  const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(null);
+  const hasScrolled = useRef(false);
+
+  // URLパラメータから初期値を取得
+  useEffect(() => {
+    const venue = searchParams.get('venue');
+    const raceStr = searchParams.get('race');
+    
+    if (venue) {
+      setInitialVenue(decodeURIComponent(venue));
+    }
+    if (raceStr) {
+      const raceNum = parseInt(raceStr, 10);
+      if (!isNaN(raceNum)) {
+        setInitialRaceNumber(raceNum);
+      }
+    }
+  }, [searchParams]);
+
+  // 指定されたレースへの自動スクロール
+  useEffect(() => {
+    if (!hasScrolled.current && initialVenue && initialRaceNumber && predictionData) {
+      // レースが存在するか確認
+      const venueExists = [...predictionData.jra, ...predictionData.nar].some(
+        v => v.venue_name === initialVenue
+      );
+      
+      if (venueExists) {
+        // 少し遅延を入れてDOMが完全に構築されるのを待つ
+        setTimeout(() => {
+          // まず競馬場へスクロール
+          const venueElement = document.getElementById(`venue-${initialVenue}`);
+          if (venueElement) {
+            venueElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            // さらにレース番号へスクロール
+            setTimeout(() => {
+              const raceData = [...predictionData.jra, ...predictionData.nar]
+                .find(v => v.venue_name === initialVenue)
+                ?.races.find(r => r.race_number === initialRaceNumber);
+              
+              if (raceData) {
+                const raceElement = document.getElementById(`race-${raceData.id}`);
+                if (raceElement) {
+                  raceElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }
+            }, 500);
+          }
+          hasScrolled.current = true;
+        }, 100);
+      }
+    }
+  }, [initialVenue, initialRaceNumber, predictionData]);
 
   const handleDateChange = useCallback((newDate: string) => {
     if (newDate && newDate !== currentDate) {
       setIsLoading(true);
+      hasScrolled.current = false; // リセット
       router.push(`/races/${newDate}`);
     }
   }, [currentDate, router]);
@@ -87,7 +151,6 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
     if (isLoading) {
       return <RaceTabsSkeleton />;
     }
-
     if (error || !predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
       return (
         <div className="text-center p-8 bg-white rounded-lg border shadow-sm">
@@ -113,13 +176,16 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
         </div>
       );
     }
-
     return (
       <>
         <div className="mb-4">
           <SpecialPickCard date={currentDate} />
         </div>
-        <RaceTabs data={predictionData} />
+        <RaceTabs 
+          data={predictionData} 
+          initialVenueName={initialVenue}
+          initialRaceNumber={initialRaceNumber}
+        />
       </>
     );
   };
@@ -129,9 +195,7 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
       <div className="mb-4">
         <TopHitsDisplay />
       </div>
-
       <div className="sticky top-16 z-40 bg-white/80 backdrop-blur-sm border-b shadow-md mb-4 p-2">
-        {/* ▼▼▼▼▼ ここから修正 ▼▼▼▼▼ */}
         <div className="flex items-center justify-between">
           <div>
             <button
@@ -147,11 +211,9 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
           <div className="flex-grow flex justify-center">
             <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
           </div>
-          <div className="w-12"></div> {/* 右側のスペース確保用 */}
+          <div className="w-12"></div>
         </div>
-        {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
       </div>
-
       {renderContent()}
     </div>
   );

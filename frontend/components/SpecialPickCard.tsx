@@ -24,9 +24,20 @@ type Props = {
     date?: string;
 };
 
+// frontend/components/SpecialPickCard.tsx の該当部分を修正
 export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
     const [pick, setPick] = useState<SpecialPick | null>(initialPick === undefined ? null : initialPick);
     const [isLoading, setIsLoading] = useState(initialPick === undefined);
+    
+    // 今日の日付を取得（dateが無い場合のフォールバック）
+    const getEffectiveDate = () => {
+        if (date) return date;
+        const now = new Date();
+        const jstDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+        return jstDate.toISOString().split('T')[0];
+    };
+    
+    const effectiveDate = getEffectiveDate();
 
     useEffect(() => {
         if (initialPick !== undefined) {
@@ -34,14 +45,13 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
             setIsLoading(false);
             return;
         }
-        if (!date) {
+        if (!effectiveDate) {
             setIsLoading(false);
             setPick(null);
             return;
         }
-
         setIsLoading(true);
-        getSpecialPick(date)
+        getSpecialPick(effectiveDate)
             .then(data => {
                 if (data) {
                     data.commentary = `AI偏差値 ${data.deviation_score.toFixed(2)}！${data.venue_name}${data.race_number}R の ${data.horse_name} を詳しく見る →`;
@@ -53,10 +63,9 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
                 setPick(null);
             })
             .finally(() => setIsLoading(false));
-    }, [date, initialPick]);
+    }, [effectiveDate, initialPick]);
 
     if (isLoading) return <Skeleton />;
-
     if (!pick) {
         return (
             <div className="bg-white text-gray-600 p-6 rounded-xl shadow-md h-full flex items-center justify-center border">

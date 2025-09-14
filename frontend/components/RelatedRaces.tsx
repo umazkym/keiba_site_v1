@@ -85,7 +85,9 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                 他の日付の予測もチェック
             </h3>
             
-            <div className="grid grid-cols-3 gap-3">
+            {/* ▼▼▼▼▼ ここを修正 ▼▼▼▼▼ */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
                 {relatedDates.map(date => {
                     const [y, m, d] = date.split('-').map(Number);
                     const dateObj = new Date(y, m - 1, d);

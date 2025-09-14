@@ -104,10 +104,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                                 {isPast ? '過去のレース' : isFuture ? '今後のレース' : 'レース'}
                             </div>
                             <div className="font-bold text-gray-800 group-hover:text-blue-600">
-                                {m}月{d}日
-                            </div>
-                            <div className="text-xs text-gray-600">
-                                ({['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()]})
+                                {m}月{d}日 ({['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()]})
                             </div>
                             <div className="absolute top-2 right-2 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
                                 →
@@ -122,7 +119,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                     href="/"
                     className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 font-medium"
                 >
-                    トップページで今日の注目馬を見る
+                    トップページに戻る
                     <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                     </svg>

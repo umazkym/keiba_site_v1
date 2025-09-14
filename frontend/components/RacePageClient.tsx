@@ -87,6 +87,8 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
         }
     }, [searchParams]);
 
+    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+    // 自動スクロールの原因となる scrollIntoView をコメントアウトします
     useEffect(() => {
         if (!hasScrolled.current && initialVenue && initialRaceNumber && predictionData) {
             const venueExists = [...predictionData.jra, ...predictionData.nar].some(
@@ -97,7 +99,7 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                 setTimeout(() => {
                     const venueElement = document.getElementById(`venue-${initialVenue}`);
                     if (venueElement) {
-                        venueElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        // venueElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         
                         setTimeout(() => {
                             const raceData = [...predictionData.jra, ...predictionData.nar]
@@ -107,7 +109,7 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                             if (raceData) {
                                 const raceElement = document.getElementById(`race-${raceData.id}`);
                                 if (raceElement) {
-                                    raceElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    // raceElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
                                 }
                             }
                         }, 500);
@@ -117,16 +119,13 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
             }
         }
     }, [initialVenue, initialRaceNumber, predictionData]);
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     const handleDateChange = useCallback((newDate: string) => {
         if (newDate && newDate !== currentDate) {
             setIsLoading(true);
             hasScrolled.current = false;
-            // ==============================================================================
-            // ▼▼▼▼▼【修正点】▼▼▼▼▼
-            // 日付変更時はURLパラメータをクリアして、新しい日付のページに遷移する
             router.push(`/races/${newDate}`);
-            // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
         }
     }, [currentDate, router]);
 
@@ -196,8 +195,6 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
             <div className="mb-4">
                 <TopHitsDisplay />
             </div>
-            {/* ============================================================================== */}
-            {/* ▼▼▼▼▼【レイアウト修正】▼▼▼▼▼ */}
             <div className="sticky top-16 z-40 bg-white/80 backdrop-blur-sm border-b shadow-md mb-4 p-2">
                 <div className="flex items-center justify-center gap-4">
                     <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
@@ -212,7 +209,6 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                     </button>
                 </div>
             </div>
-            {/* ▲▲▲▲▲【レイアウト修正ここまで】▲▲▲▲▲ */}
             {renderContent()}
         </div>
     );

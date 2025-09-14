@@ -5,12 +5,9 @@ import Link from 'next/link';
 import { getSpecialPick } from '@/lib/api';
 import { SpecialPick } from "@/lib/types";
 import { SparklesIcon } from '@/components/icons';
-// ==============================================================================
-// ▼▼▼▼▼【追加】▼▼▼▼▼
 import { formatDate } from '@/lib/utils';
-// ▲▲▲▲▲【追加ここまで】▲▲▲▲▲
 
-// 調整案1：「リッチゴールド ＆ ホワイト」デザイン
+// スケルトンコンポーネント（変更なし）
 const Skeleton = () => (
     <div className="bg-amber-500 p-6 rounded-xl shadow-lg mb-6 animate-pulse h-[170px]">
         <div className="flex justify-between items-center">
@@ -28,12 +25,10 @@ type Props = {
     date?: string;
 };
 
-// frontend/components/SpecialPickCard.tsx の該当部分を修正
 export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
     const [pick, setPick] = useState<SpecialPick | null>(initialPick === undefined ? null : initialPick);
     const [isLoading, setIsLoading] = useState(initialPick === undefined);
     
-    // 今日の日付を取得（dateが無い場合のフォールバック）
     const getEffectiveDate = () => {
         if (date) return date;
         const now = new Date();
@@ -78,11 +73,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
         );
     }
     
-    // ==============================================================================
-    // ▼▼▼▼▼【追加】▼▼▼▼▼
-    // formatDateユーティリティを使って日付を整形
     const formattedDate = formatDate(effectiveDate);
-    // ▲▲▲▲▲【追加ここまで】▲▲▲▲▲
 
     return (
         <Link 
@@ -91,40 +82,35 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
             aria-label={`${pick.commentary}`}
         >
             <div className="bg-amber-500 text-white rounded-xl shadow-lg h-full flex flex-col overflow-hidden border border-amber-600 hover:border-amber-400 transition-all duration-300 relative group" role="region" aria-labelledby="special-pick-title">
-                {/* 装飾用の背景グラデーション（リッチなゴールド系） */}
                 <div className="absolute inset-0 bg-gradient-to-br from-amber-600 via-amber-500 to-yellow-600 opacity-80"></div>
-                {/* ホバー時の光彩エフェクトは削除し、代わりにカード自体を少し明るくする */}
                 <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
 
-
                 <div className="p-5 flex flex-col h-full relative z-10">
+                    {/* ▼▼▼▼▼【ここから変更】▼▼▼▼▼ */}
                     <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
-                             <SparklesIcon className="w-5 h-5 text-amber-200" />
-                            {/* ============================================================================== */}
-                            {/* ▼▼▼▼▼【修正点】▼▼▼▼▼ */}
-                            {/* 日付と曜日を表示 */}
-                             <h3 id="special-pick-title" className="text-sm font-bold uppercase tracking-wider text-amber-200">
-                                今日のイチオシ！ ({formattedDate})
+                            <SparklesIcon className="w-5 h-5 text-amber-200 shrink-0" />
+                            <h3 id="special-pick-title" className="text-sm font-bold uppercase tracking-wider text-amber-200">
+                                今日のイチオシ！<br className="sm:hidden"/>{formattedDate}
                             </h3>
-                            {/* ▲▲▲▲▲【修正ここまで】▲▲▲▲▲ */}
                         </div>
-                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/20 text-white border border-white/30">
+                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/20 text-white border border-white/30 whitespace-nowrap">
                             AI偏差値 <span className="text-lg font-mono">{pick.deviation_score.toFixed(2)}</span>
                         </span>
                     </div>
-
                     <div className="mt-2 min-w-0">
-                         <p className="text-3xl sm:text-4xl font-black leading-tight truncate text-white drop-shadow-md" title={pick.horse_name}>
+                        <p className="text-3xl sm:text-4xl font-black leading-tight truncate text-white drop-shadow-md" title={pick.horse_name}>
                             {pick.horse_name}
                         </p>
-                        <p className="text-sm text-amber-200 font-medium mt-1 truncate" title={`${pick.venue_name} ${pick.race_number}R - ${pick.race_name}`}>
-                            {pick.venue_name} {pick.race_number}R ・ {pick.race_name}
-                        </p>
                     </div>
+                    {/* ▲▲▲▲▲【変更ここまで】▲▲▲▲▲ */}
+
+                    <p className="text-sm text-amber-200 font-medium mt-1 truncate" title={`${pick.venue_name} ${pick.race_number}R - ${pick.race_name}`}>
+                        {pick.venue_name} {pick.race_number}R ・ {pick.race_name}
+                    </p>
 
                     <div className="mt-auto pt-3 border-t border-amber-400/50">
-                         <p className="text-sm text-amber-100 font-medium leading-relaxed group-hover:text-white transition-colors duration-300" aria-live="polite">
+                        <p className="text-sm text-amber-100 font-medium leading-relaxed group-hover:text-white transition-colors duration-300" aria-live="polite">
                             {pick.commentary}
                         </p>
                     </div>

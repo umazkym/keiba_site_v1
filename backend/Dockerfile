@@ -8,23 +8,16 @@ ENV TZ=Asia/Tokyo
 ENV PYTHONUNBUFFERED 1
 
 # 必要なシステムパッケージとGoogle Chrome本体をインストール
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget \
-    curl \
-    unzip \
-    gnupg \
-    # Google Chromeの依存関係
-    libglib2.0-0 \
-    libnss3 \
-    libgconf-2-4 \
-    libfontconfig1 \
-    # Pillow (画像処理ライブラリ) の依存関係
-    libjpeg-dev \
-    zlib1g-dev \
-    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
-    && apt-get update && apt-get install -y google-chrome-stable \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends jq unzip && \
+    CHROME_VERSION=$(google-chrome --version | cut -f 3 -d ' ' | cut -d '.' -f 1) && \
+    CHROME_DRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone.json" | jq -r ".milestones.\"${CHROME_VERSION}\".version") && \
+    wget -q "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_DRIVER_VERSION}/linux64/chromedriver-linux64.zip" -O chromedriver.zip && \
+    unzip chromedriver.zip && \
+    mv chromedriver-linux64/chromedriver /usr/local/bin/ && \
+    rm -rf chromedriver.zip chromedriver-linux64 && \
+    apt-get purge -y --auto-remove jq && \
+    rm -rf /var/lib/apt/lists/*
 
 # インストールされたChromeのバージョンに合うChromeDriverを自動でダウンロード・インストール
 RUN CHROME_VERSION=$(google-chrome --version | cut -f 3 -d ' ' | cut -d '.' -f 1) \

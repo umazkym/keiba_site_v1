@@ -193,3 +193,99 @@ def get_top_payout_hits(db: Session, days: int = 7, limit: int = 5) -> List[Dict
         })
 
     return all_hits
+
+# ▼▼▼ 以下をファイルの末尾に追記 ▼▼▼
+def get_high_payout_hits_for_date(db: Session, target_date: date) -> List[Dict[str, Any]]:
+    """
+    指定された日付のAI予測による高配当（10,000円以上）の的中を全て取得する。
+    """
+    # AI予測の上位5頭（◎, 〇, ▲, △, ☆）の馬番・枠番を取得
+    top_preds_sq = db.query(
+        models.Prediction.race_id,
+        func.array_agg(models.Prediction.horse_number).label('top_horse_numbers'),
+        func.array_agg(models.Prediction.waku_number).label('top_waku_numbers')
+    ).filter(
+        models.Prediction.mark.in_(['◎', '〇', '▲', '△', '☆'])
+    ).group_by(models.Prediction.race_id).subquery('top_preds_sq')
+
+    # AI予測の上位5頭で的中した馬券の条件を定義
+    hit_condition = case(
+        (
+            models.RaceReturn.bet_type == 'wakuren',
+            and_(
+                models.RaceReturn.number_1 == func.any(top_preds_sq.c.top_waku_numbers),
+                models.RaceReturn.number_2 == func.any(top_preds_sq.c.top_waku_numbers)
+            )
+        ),
+        (
+            models.RaceReturn.bet_type.in_(['tansho', 'fukusho']),
+            models.RaceReturn.number_1 == func.any(top_preds_sq.c.top_horse_numbers)
+        ),
+        (
+            models.RaceReturn.bet_type.in_(['umaren', 'wide', 'umatan']),
+            and_(
+                models.RaceReturn.number_1 == func.any(top_preds_sq.c.top_horse_numbers),
+                models.RaceReturn.number_2 == func.any(top_preds_sq.c.top_horse_numbers)
+            )
+        ),
+        (
+            models.RaceReturn.bet_type.in_(['sanrenpuku', 'sanrentan']),
+            and_(
+                models.RaceReturn.number_1 == func.any(top_preds_sq.c.top_horse_numbers),
+                models.RaceReturn.number_2 == func.any(top_preds_sq.c.top_horse_numbers),
+                models.RaceReturn.number_3 == func.any(top_preds_sq.c.top_horse_numbers)
+            )
+        ),
+        else_=False
+    )
+
+    # 的中したレースの中から、指定日で10,000円以上の払い戻しがあったものを検索
+    query = db.query(
+        models.Race.id.label("race_id"),
+        models.Race.race_date,
+        models.Race.venue_name,
+        models.Race.race_number,
+        models.Race.race_name,
+        models.RaceReturn.bet_type,
+        models.RaceReturn.payout,
+        models.RaceReturn.number_1,
+        models.RaceReturn.number_2,
+        models.RaceReturn.number_3,
+    ).select_from(models.RaceReturn).join(
+        models.Race, models.RaceReturn.race_id == models.Race.id
+    ).join(
+        top_preds_sq, models.RaceReturn.race_id == top_preds_sq.c.race_id
+    ).filter(
+        models.Race.race_date == target_date,
+        models.RaceReturn.payout >= 10000, # 払い戻しが10,000円以上
+        hit_condition
+    ).order_by(
+        desc(models.RaceReturn.payout) # 払い戻しが高い順にソート
+    )
+
+    results = query.all()
+    
+    # フロントエンドで使いやすいようにデータを整形
+    all_hits = []
+    BET_TYPE_MAP_JA = {
+        'tansho': '単勝', 'fukusho': '複勝', 'wakuren': '枠連', 'umaren': '馬連',
+        'wide': 'ワイド', 'umatan': '馬単', 'sanrenpuku': '3連複', 'sanrentan': '3連単'
+    }
+
+    for hit in results:
+        delimiter = '→' if hit.bet_type in ['umatan', 'sanrentan'] else '-'
+        numbers_str_list = [str(n) for n in [hit.number_1, hit.number_2, hit.number_3] if n is not None]
+        winning_numbers_str = delimiter.join(numbers_str_list)
+
+        all_hits.append({
+            "race_id": hit.race_id,
+            "race_date": hit.race_date.strftime('%Y-%m-%d'),
+            "venue_name": hit.venue_name,
+            "race_number": hit.race_number,
+            "race_name": hit.race_name,
+            "bet_type": BET_TYPE_MAP_JA.get(hit.bet_type, hit.bet_type),
+            "winning_numbers": winning_numbers_str,
+            "payout": hit.payout
+        })
+
+    return all_hits

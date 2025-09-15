@@ -1,11 +1,9 @@
-# C:\Users\tnszk\program\GitHub\backend\api\v1\endpoints\races.py
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database.database import get_db
 from crud import race_crud
 from schemas import race_schema
-from datetime import date, timedelta
+from datetime import date
 from typing import Optional, List
 
 router = APIRouter()
@@ -20,7 +18,6 @@ def read_predictions_for_date(target_date: date, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=f"Predictions for date {target_date} not found")
     return predictions
 
-# ★★★ 新規追加: 高配当的中ランキングのエンドポイント ★★★
 @router.get("/hits/top-payouts", response_model=List[race_schema.TopPayoutHit])
 def read_top_payout_hits(db: Session = Depends(get_db)):
     """
@@ -28,6 +25,14 @@ def read_top_payout_hits(db: Session = Depends(get_db)):
     """
     top_hits = race_crud.get_top_payout_hits(db=db, days=7, limit=5)
     return top_hits
+
+@router.get("/hits/high-payouts/{target_date}", response_model=List[race_schema.TopPayoutHit])
+def read_high_payout_hits_for_date(target_date: date, db: Session = Depends(get_db)):
+    """
+    指定された日付のAI予測による高配当（10,000円以上）の的中をすべて取得する。
+    """
+    high_payout_hits = race_crud.get_high_payout_hits_for_date(db=db, target_date=target_date)
+    return high_payout_hits
 
 @router.get("/special-pick/{target_date}", response_model=Optional[race_schema.SpecialPick])
 def read_special_pick(target_date: date, db: Session = Depends(get_db)):
@@ -38,10 +43,7 @@ def read_special_pick(target_date: date, db: Session = Depends(get_db)):
     if not pick or not pick.race:
         return None
     
-    # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここを修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-    # commentaryの生成ロジックをご要望のフォーマットに変更
     commentary = f"AI偏差値 {pick.deviation_score:.2f}！{pick.race.venue_name}{pick.race.race_number}R の {pick.horse_name} を詳しく見る →"
-    # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     
     return race_schema.SpecialPick(
         horse_id=pick.horse_id,
@@ -74,3 +76,4 @@ def read_filtered_matchups_for_race(
         raise HTTPException(status_code=404, detail=f"Matchup data for race {race_id} not found")
 
     return race_schema.Matchup(matchup_data=matchup_data)
+

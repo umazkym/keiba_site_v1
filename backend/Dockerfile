@@ -34,10 +34,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ▼▼▼【ここから追記】▼▼▼
 # OGP画像生成に必要なフォントとロゴ画像をコンテナにコピーする
 COPY fonts ./fonts
-# ▲▲▲【追記ここまで】▲▲▲
 
 # アプリケーションの全ソースコードをコピー
 COPY . .

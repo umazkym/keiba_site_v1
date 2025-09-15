@@ -37,11 +37,13 @@ RUN CHROME_VERSION=$(google-chrome --version | cut -f 3 -d ' ' | cut -d '.' -f 1
 WORKDIR /app
 
 # Pythonの依存関係をインストール
-# (もしrequirements.txtがない場合は、以下の2行は削除してください)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # アプリケーションコードをコピー
 COPY . .
 
-# Cron Jobとして実行されるため、CMDは不要
+# ★★★★★ ここから追加 ★★★★★
+# コンテナが実行されたときに、run_pipeline.py を実行するよう指示
+CMD ["python", "run_pipeline.py"]
+# ★★★★★ ここまで追加 ★★★★★

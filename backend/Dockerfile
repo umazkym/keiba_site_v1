@@ -1,44 +1,47 @@
-# ベースとなる公式Pythonイメージを指定
+# ベースイメージとしてPython 3.11-slimを使用
 FROM python:3.11.4-slim
 
-# タイムゾーンを日本時間に設定
+# 環境変数を設定
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 ENV TZ=Asia/Tokyo
 
-# Pythonのログがバッファリングされないように設定
-ENV PYTHONUNBUFFERED 1
-
-# 必要なシステムパッケージとGoogle Chrome本体をインストール
+# ステップ1: 必要なシステムパッケージとGoogle Chrome本体を一度にインストール
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends jq unzip && \
-    CHROME_VERSION=$(google-chrome --version | cut -f 3 -d ' ' | cut -d '.' -f 1) && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    wget \
+    gnupg \
+    unzip \
+    jq \
+    # Google Chromeのリポジトリキーを追加
+    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg && \
+    # Google Chromeのリポジトリを追加
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
+    # パッケージリストを再度更新し、Chromeをインストール
+    apt-get update && \
+    apt-get install -y google-chrome-stable && \
+    # 不要になったaptキャッシュを削除してイメージサイズを削減
+    rm -rf /var/lib/apt/lists/*
+
+# ステップ2: インストール済みのChromeにバージョンを合わせたChromeDriverをインストール
+# (このステップでは、前のステップでインストールしたコマンドが利用可能です)
+RUN CHROME_VERSION=$(google-chrome --version | cut -f 3 -d ' ' | cut -d '.' -f 1) && \
     CHROME_DRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone.json" | jq -r ".milestones.\"${CHROME_VERSION}\".version") && \
     wget -q "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_DRIVER_VERSION}/linux64/chromedriver-linux64.zip" -O chromedriver.zip && \
     unzip chromedriver.zip && \
     mv chromedriver-linux64/chromedriver /usr/local/bin/ && \
-    rm -rf chromedriver.zip chromedriver-linux64 && \
-    apt-get purge -y --auto-remove jq && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf chromedriver.zip chromedriver-linux64
 
-# インストールされたChromeのバージョンに合うChromeDriverを自動でダウンロード・インストール
-RUN CHROME_VERSION=$(google-chrome --version | cut -f 3 -d ' ' | cut -d '.' -f 1) \
-    && CHROME_DRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone.json" | grep -A 1 "\"${CHROME_VERSION}\"" | grep "version" | cut -d '"' -f 4) \
-    && wget -q https://storage.googleapis.com/chrome-for-testing-public/${CHROME_DRIVER_VERSION}/linux64/chromedriver-linux64.zip -O chromedriver.zip \
-    && unzip chromedriver.zip \
-    && mv chromedriver-linux64/chromedriver /usr/local/bin/ \
-    && rm chromedriver.zip chromedriver-linux64 -rf
-
-# 作業ディレクトリを設定
+# ステップ3: アプリケーションのセットアップ
 WORKDIR /app
 
-# Pythonライブラリをインストール
+# Pythonの依存関係をインストール
+# (もしrequirements.txtがない場合は、以下の2行は削除してください)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# OGP画像生成に必要なフォントとロゴ画像をコンテナにコピーする
-COPY fonts ./fonts
-
-# アプリケーションの全ソースコードをコピー
+# アプリケーションコードをコピー
 COPY . .
 
-# コンテナ起動時に実行されるメインコマンド
-CMD ["python", "run_pipeline.py"]
+# Cron Jobとして実行されるため、CMDは不要

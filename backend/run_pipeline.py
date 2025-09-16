@@ -289,9 +289,13 @@ def main():
         if PIPELINE_MODE == 'PRODUCTION':
             print("\n--- [SNS POST] SNSへの自動投稿を開始します... ---")
             try:
+                # SNS 投稿スクリプトには PROCESS_PENDING=1 を渡して
+                # パイプライン完了時に pending キューも試行できるようにする
+                env = os.environ.copy()
+                env["PROCESS_PENDING"] = "1"
                 result = subprocess.run(
-                    [sys.executable, "scripts/sns_poster.py"], 
-                    check=True, capture_output=True, text=True, timeout=300, encoding='utf-8'
+                    [sys.executable, "scripts/sns_poster.py"],
+                    check=True, capture_output=True, text=True, timeout=300, encoding='utf-8', env=env
                 )
                 print("--- SNS投稿スクリプト ログ ---")
                 print(result.stdout)

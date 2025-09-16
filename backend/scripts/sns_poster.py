@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 from urllib.parse import urlencode
 import random
 import time
+import json
+from typing import Optional
+import traceback
 
 # --- 設定 ---
 load_dotenv()
@@ -22,6 +25,86 @@ OG_IMAGE_FILENAME = "/tmp/og_image.png" if os.getenv("RENDER") else "og_image_fo
 SITE_BASE_URL = "https://uma-free.com"
 # 本番環境では公開APIのURLを使用
 API_BASE_URL = "https://keiba-site-v1.onrender.com"
+
+
+# --- レート制御 / pending キュー設定 ---
+# テスト用に投稿を行わないモード
+DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
+# 起動時に pending キューを処理する場合は PROCESS_PENDING=1 を環境変数で渡す
+PROCESS_PENDING = os.getenv("PROCESS_PENDING", "0") == "1"
+# pending ファイル
+PENDING_POSTS_PATH = os.getenv("PENDING_POSTS_PATH", "pending_posts.json")
+# レート制限で「長すぎる待ち時間」と見なしてキュー登録する閾値（秒）
+MAX_WAIT_BEFORE_QUEUE = float(os.getenv("MAX_WAIT_BEFORE_QUEUE", "120.0"))
+# 個々の待機を最大何秒まで行うか（長時間ブロックを避けるため）
+MAX_SINGLE_SLEEP = float(os.getenv("MAX_SINGLE_SLEEP", "60.0"))
+
+def _now_str():
+    return datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
+
+def _log(msg: str):
+    print(f"{_now_str()} {msg}")
+
+# pending utils
+def load_pending() -> list:
+    if not os.path.exists(PENDING_POSTS_PATH):
+        return []
+    try:
+        with open(PENDING_POSTS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        _log(f"pending_posts の読み込みエラー: {e}")
+        return []
+
+def save_pending_list(lst: list):
+    tmp = PENDING_POSTS_PATH + ".tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(lst, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, PENDING_POSTS_PATH)
+    except Exception as e:
+        _log(f"pending_posts の保存エラー: {e}")
+
+def queue_post(text: str, image_path: str, reason: Optional[str] = None):
+    pending = load_pending()
+    entry = {
+        "queued_at": datetime.now(timezone(timedelta(hours=9))).isoformat(),
+        "text": text,
+        "image_path": image_path,
+        "reason": reason or "rate_limited"
+    }
+    pending.append(entry)
+    save_pending_list(pending)
+    _log(f"⚠️ 投稿をキューに保存しました (pending_posts.json に追加)。 reason={entry['reason']}")
+
+def _get_wait_seconds_from_response(response):
+    """レスポンスヘッダから待機秒を推定（Retry-After / x-rate-limit-reset を優先）"""
+    if response is None:
+        return None
+    headers = {}
+    try:
+        headers = response.headers or {}
+    except Exception:
+        try:
+            headers = dict(getattr(response, "headers", {}) or {})
+        except Exception:
+            headers = {}
+    ra = headers.get("Retry-After") or headers.get("retry-after")
+    if ra:
+        try:
+            return float(ra)
+        except Exception:
+            pass
+    xrl = headers.get("x-rate-limit-reset") or headers.get("X-Rate-Limit-Reset")
+    if xrl:
+        try:
+            reset_ts = float(xrl)
+            now_ts = time.time()
+            wait = max(0, reset_ts - now_ts)
+            return wait
+        except Exception:
+            pass
+    return None
 
 # --- フォントとロゴのパス設定 ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -227,27 +310,159 @@ def create_hit_tweet_text(all_hits: list) -> str:
     return text
 
 def post_to_twitter(text: str, image_path: str):
-    print("4. X (Twitter) への投稿を試みています...")
+    # 改良版: DRY_RUN / リトライ / レート検出 -> 長時間はキュー化
+    _log("4. X (Twitter) への投稿を試みています...")
+    if DRY_RUN:
+        _log("⚠️ DRY_RUN=1 のため投稿は実行しません（テストモード）。")
+        _log(f"--- 投稿テキストプレビュー ---\n{text}\n--- /プレビュー ---")
+        return True, None
+
     if not all([TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET, TWITTER_BEARER_TOKEN]):
-        print("⚠️ Twitter APIの認証情報が不足しています。.envファイルを確認してください。")
-        return
-    try:
-        auth = tweepy.OAuth1UserHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
-        api_v1 = tweepy.API(auth)
-        client_v2 = tweepy.Client(bearer_token=TWITTER_BEARER_TOKEN, consumer_key=TWITTER_CONSUMER_KEY, consumer_secret=TWITTER_CONSUMER_SECRET, access_token=TWITTER_ACCESS_TOKEN, access_token_secret=TWITTER_ACCESS_TOKEN_SECRET)
-        media = api_v1.media_upload(filename=image_path)
-        response = client_v2.create_tweet(text=text, media_ids=[media.media_id])
-        tweet_id = response.data['id']
-        print("🎉 投稿に成功しました！")
-        print(f"🔗 https://twitter.com/user/status/{tweet_id}")
-    except Exception as e:
-        print(f"❌ Xへの投稿中にエラーが発生しました: {e}")
+        _log("⚠️ Twitter APIの認証情報が不足しています。.envファイルを確認してください。")
+        return False, "認証情報不足"
+
+    auth = tweepy.OAuth1UserHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
+    api_v1 = tweepy.API(auth)
+    client_v2 = tweepy.Client(bearer_token=TWITTER_BEARER_TOKEN, consumer_key=TWITTER_CONSUMER_KEY, consumer_secret=TWITTER_CONSUMER_SECRET, access_token=TWITTER_ACCESS_TOKEN, access_token_secret=TWITTER_ACCESS_TOKEN_SECRET)
+
+    media_obj = None
+    last_err = None
+    max_retries = 3
+    backoff_factor = 2.0
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            if media_obj is None:
+                _log(f"投稿準備: メディアをアップロードします（試行 {attempt}/{max_retries}）...")
+                media_obj = api_v1.media_upload(filename=image_path)
+                _log(f"メディアアップロード成功: media_id={getattr(media_obj, 'media_id', 'unknown')}")
+
+            _log(f"ツイート送信（試行 {attempt}/{max_retries}）...")
+            response = client_v2.create_tweet(text=text, media_ids=[media_obj.media_id])
+            tweet_id = None
+            try:
+                tweet_id = response.data['id']
+            except Exception:
+                try:
+                    tweet_id = response.data.id
+                except Exception:
+                    tweet_id = None
+            if tweet_id:
+                _log("🎉 投稿に成功しました！")
+                _log(f"🔗 https://twitter.com/user/status/{tweet_id}")
+            else:
+                _log("🎉 投稿に成功しました（Tweet ID を取得できませんでした）。")
+            return True, None
+
+        except Exception as e:
+            last_err = e
+            err_message = str(e)
+            response_attr = getattr(e, "response", None)
+            status_code = None
+            try:
+                status_code = getattr(response_attr, "status_code", None)
+            except Exception:
+                status_code = None
+
+            _log(f"⚠️ 投稿エラー（試行 {attempt}/{max_retries}）: {err_message}")
+
+            # デバッグ: レスポンスヘッダ / 本文
+            if response_attr is not None:
+                try:
+                    headers = dict(response_attr.headers or {})
+                except Exception:
+                    try:
+                        headers = dict(getattr(response_attr, "headers", {}) or {})
+                    except Exception:
+                        headers = {}
+                if headers:
+                    _log("--- レスポンスヘッダ (debug) ---")
+                    for k, v in headers.items():
+                        _log(f"{k}: {v}")
+                else:
+                    _log("レスポンスヘッダは空です。")
+                try:
+                    body = getattr(response_attr, "text", None)
+                    if body:
+                        _log(f"レスポンス本文 (先頭1kB): {body[:1024]}")
+                    else:
+                        _log("レスポンス本文は空です。")
+                except Exception:
+                    _log("レスポンス本文の読み取りに失敗しました。")
+            else:
+                _log("例外に response 属性がありません（低レベルエラーの可能性）。")
+
+            # レート制限判定
+            is_rate_limit = False
+            try:
+                if "TooManyRequests" in type(e).__name__ or status_code == 429:
+                    is_rate_limit = True
+            except Exception:
+                is_rate_limit = False
+
+            if is_rate_limit:
+                wait_seconds = _get_wait_seconds_from_response(response_attr)
+                if wait_seconds is not None and wait_seconds > MAX_WAIT_BEFORE_QUEUE:
+                    _log(f"429 レスポンス検知: サーバー推奨待機時間 = {wait_seconds:.1f}s が閾値 {MAX_WAIT_BEFORE_QUEUE}s を超えています。キュー登録します。")
+                    queue_post(text, image_path, reason=f"rate_limit_wait_{int(wait_seconds)}s")
+                    return False, f"queued_due_to_rate_limit_{int(wait_seconds)}s"
+                wait = min((wait_seconds if wait_seconds is not None else backoff_factor * (2 ** (attempt - 1))) + random.uniform(0, 1.0), MAX_SINGLE_SLEEP)
+                _log(f"429 レスポンス検知: 待機してリトライします (待機: {wait:.1f}s)...")
+                try:
+                    time.sleep(wait)
+                except KeyboardInterrupt:
+                    _log("待機が中断されました（KeyboardInterrupt）。投稿処理を中止します。")
+                    return False, "Interrupted"
+                continue
+            else:
+                if status_code and 400 <= status_code < 500:
+                    _log(f"クライアントエラー (status {status_code}) のためリトライしません。詳細: {getattr(response_attr, 'text', '')}")
+                    tb = traceback.format_exc()
+                    _log(tb)
+                    return False, err_message
+                wait = min(backoff_factor * (2 ** (attempt - 1)) + random.uniform(0, 1.0), MAX_SINGLE_SLEEP)
+                _log(f"一時エラーのため待機してリトライします: {wait:.1f}s")
+                try:
+                    time.sleep(wait)
+                except KeyboardInterrupt:
+                    _log("待機が中断されました（KeyboardInterrupt）。投稿処理を中止します。")
+                    return False, "Interrupted"
+                continue
+
+    tb = traceback.format_exc()
+    _log("❌ すべての投稿試行が失敗しました。最後の例外を返します。")
+    _log(tb)
+    return False, str(last_err)
 
 # --- メイン処理 ---
 if __name__ == "__main__":
     print("="*50)
     print("SNS自動投稿ジョブを開始します")
     print("="*50)
+
+    # 起動時に PROCESS_PENDING=1 がセットされていれば先に pending を処理
+    if PROCESS_PENDING:
+        _log("PROCESS_PENDING=1 のため pending 投稿を先に処理します。")
+        pending = load_pending()
+        if pending:
+            _log(f"pending_posts.json に {len(pending)} 件あります。順に処理します。")
+            remaining = []
+            for idx, entry in enumerate(pending, start=1):
+                _log(f"pending {idx}/{len(pending)} を処理します。queued_at={entry.get('queued_at')}, reason={entry.get('reason')}")
+                text = entry.get("text")
+                image_path = entry.get("image_path")
+                if not image_path or not os.path.exists(image_path):
+                    _log(f"画像が見つかりません: {image_path} → 再キュー化")
+                    remaining.append(entry)
+                    continue
+                success, err = post_to_twitter(text, image_path)
+                if not success:
+                    _log(f"pending の投稿に失敗しました: {err} → 再キュー化")
+                    remaining.append(entry)
+                else:
+                    _log("pending 投稿 成功。キューから削除します。")
+            save_pending_list(remaining)
+            _log(f"pending 処理完了。残件数: {len(remaining)}")
 
     jst = timezone(timedelta(hours=9))
     

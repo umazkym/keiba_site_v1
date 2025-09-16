@@ -97,7 +97,7 @@ def pre_scrape_all_data(start_date: datetime.date, end_date: datetime.date) -> s
                     original_count = len(race_ids)
                     race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
                     if original_count - len(race_ids) > 0:
-                        tqdm.write(f"                  -> 地方競馬から、ばんえい競馬のレース {original_count - len(race_ids)} 件を除外しました。")
+                        tqdm.write(f"                                   -> 地方競馬から、ばんえい競馬のレース {original_count - len(race_ids)} 件を除外しました。")
                 all_race_ids_for_date.extend([(rid, is_nar) for rid in race_ids])
             for race_id, is_nar in tqdm(all_race_ids_for_date, desc=f"  [2/4] レース処理中 ({target_date_str})", unit="race", leave=False):
                 shutuba_html, was_scraped_s = scraper.get_shutuba_html(race_id, is_nar=is_nar)
@@ -264,7 +264,12 @@ def main():
             today_jst = datetime.datetime.now(jst).date()
             
             target_date_results = today_jst - datetime.timedelta(days=1)
-            target_date_predictions = today_jst
+            # ==============================================================================
+            # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+            # 予測対象を「当日」から「翌日」に変更
+            target_date_predictions = today_jst + datetime.timedelta(days=1)
+            # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+            # ==============================================================================
 
             scrape_race_lists_for_date(target_date_results)
             scrape_race_lists_for_date(target_date_predictions)

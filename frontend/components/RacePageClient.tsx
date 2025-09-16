@@ -8,6 +8,7 @@ import { SpecialPickCard } from "@/components/SpecialPickCard";
 import { TopHitsDisplay } from "@/components/TopHitsDisplay";
 import { formatDate } from "@/lib/utils";
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
+import { getPredictionsForDate } from "@/lib/api"; // APIクライアントをインポート
 
 const DateNavigator = ({
     currentDate,
@@ -18,7 +19,6 @@ const DateNavigator = ({
 }) => {
     const handleDateShift = useCallback((e: React.MouseEvent<HTMLButtonElement>, days: number) => {
         const [year, month, day] = currentDate.split("-").map(Number);
-        // タイムゾーンの問題を避けるため、UTCで日付を計算
         const dateObj = new Date(Date.UTC(year, month - 1, day));
         dateObj.setUTCDate(dateObj.getUTCDate() + days);
         onDateChange(dateObj.toISOString().split("T")[0]);
@@ -66,11 +66,45 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
     const searchParams = useSearchParams();
     const [currentDate, setCurrentDate] = useState(initialDate);
     const [predictionData, setPredictionData] = useState<RaceDayPrediction | null>(initialPredictionData);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(initialPredictionData ? null : "指定された日付のレースデータはありませんでした。");
+    const [isLoading, setIsLoading] = useState(!initialPredictionData);
+    const [error, setError] = useState<string | null>(null);
     const [initialVenue, setInitialVenue] = useState<string | null>(null);
     const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(null);
     const hasScrolled = useRef(false);
+
+    // ==============================================================================
+    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+    // URLの[date]パラメータが変更されたときに、クライアントサイドでデータを再フェッチする
+    useEffect(() => {
+        const fetchData = async (dateToFetch: string) => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                // APIから最新のデータを取得
+                const data = await getPredictionsForDate(dateToFetch);
+                setPredictionData(data);
+
+                if (!data || (data.jra.length === 0 && data.nar.length === 0)) {
+                    setError("指定された日付のレースデータはありませんでした。");
+                }
+            } catch (err) {
+                setError("データの取得に失敗しました。時間をおいて再度お試しください。");
+                console.error(err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        // 親コンポーネントから渡される `initialDate` が変わったら、
+        // `currentDate` stateを更新し、最新データを取得する。
+        setCurrentDate(initialDate);
+        document.title = `競馬AI予測 | ${formatDate(initialDate)}`;
+        fetchData(initialDate);
+
+    }, [initialDate]);
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+    // ==============================================================================
+
 
     useEffect(() => {
         const venue = searchParams.get('venue');
@@ -87,8 +121,6 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
         }
     }, [searchParams]);
 
-    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-    // 自動スクロールの原因となる scrollIntoView をコメントアウトします
     useEffect(() => {
         if (!hasScrolled.current && initialVenue && initialRaceNumber && predictionData) {
             const venueExists = [...predictionData.jra, ...predictionData.nar].some(
@@ -99,8 +131,6 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                 setTimeout(() => {
                     const venueElement = document.getElementById(`venue-${initialVenue}`);
                     if (venueElement) {
-                        // venueElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        
                         setTimeout(() => {
                             const raceData = [...predictionData.jra, ...predictionData.nar]
                                 .find(v => v.venue_name === initialVenue)
@@ -108,9 +138,6 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                             
                             if (raceData) {
                                 const raceElement = document.getElementById(`race-${raceData.id}`);
-                                if (raceElement) {
-                                    // raceElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                }
                             }
                         }, 500);
                     }
@@ -119,23 +146,15 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
             }
         }
     }, [initialVenue, initialRaceNumber, predictionData]);
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     const handleDateChange = useCallback((newDate: string) => {
         if (newDate && newDate !== currentDate) {
-            setIsLoading(true);
             hasScrolled.current = false;
+            // router.pushでページ遷移をトリガーする。
+            // データのフェッチは上記のuseEffectに任せる。
             router.push(`/races/${newDate}`);
         }
     }, [currentDate, router]);
-
-    useEffect(() => {
-        setCurrentDate(initialDate);
-        setPredictionData(initialPredictionData);
-        setIsLoading(false);
-        setError(initialPredictionData ? null : "指定された日付のレースデータはありませんでした。");
-        document.title = `競馬AI予測 | ${formatDate(initialDate)}`;
-    }, [initialDate, initialPredictionData]);
 
     const getTodayString = () => {
         const today = new Date(

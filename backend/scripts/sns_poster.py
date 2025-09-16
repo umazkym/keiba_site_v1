@@ -24,28 +24,19 @@ SITE_BASE_URL = "https://uma-free.com"
 API_BASE_URL = "https://keiba-site-v1.onrender.com"
 
 # --- フォントとロゴのパス設定 ---
-# このスクリプトは、backend/scripts/ から実行されることを想定しています。
-# そのため、親ディレクトリ(backend)にあるfontsフォルダを参照します。
-# 事前準備: backend/fonts/ ディレクトリを作成し、以下のファイルを配置してください:
-# - Inter-Bold.ttf
-# - Inter-Black.ttf
-# - MPLUSRounded1c-Bold.ttf
-# - MPLUSRounded1c-Black.ttf
-# - new-logo.png
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FONT_DIR = os.path.join(BASE_DIR, "fonts")
 
 def _get_font_path(font_name):
     path = os.path.join(FONT_DIR, font_name)
     if not os.path.exists(path):
-        # Render環境でのフォールバックパス (Dockerfileでbackend直下にコピーする場合)
         fallback_path = os.path.join(BASE_DIR, font_name)
         if os.path.exists(fallback_path):
             return fallback_path
         raise FileNotFoundError(f"Font not found. Make sure '{font_name}' is in '{FONT_DIR}' or '{BASE_DIR}'.")
     return path
 
-# --- API連携関数 ---
+# --- API連携関数 (変更なし) ---
 def get_special_pick_from_api(date_str: str):
     print(f"1. APIにアクセスして {date_str} の「注目馬」を取得...")
     try:
@@ -78,7 +69,7 @@ def get_high_payout_hits_from_api(date_str: str):
         print(f"❌ APIデータ取得エラー: {e}")
         return None
 
-# --- OGP画像生成関数 ---
+# --- OGP画像生成関数 (変更なし) ---
 def generate_pick_og_image(data: dict, date_str: str):
     print("2. 注目馬用のOGP画像を生成しています...")
     try:
@@ -188,7 +179,7 @@ def generate_hit_og_image(hit_data: dict):
         print(f"❌ OGP画像の生成中にエラーが発生しました: {e}")
         return None
 
-# --- テキスト生成 & 投稿関数 ---
+# --- テキスト生成 & 投稿関数 (変更なし) ---
 def create_pick_tweet_text(data: dict, date_str: str) -> str:
     print("3. 注目馬の投稿テキストを生成...")
     is_jra = int(data['race_id'][4:6]) < 30
@@ -274,9 +265,11 @@ if __name__ == "__main__":
             post_to_twitter(tweet_text, image_file)
     else:
         print("昨日は高配当的中がなかったため、投稿をスキップします。")
-
-    print("\n--- 連続投稿を避けるため5秒間待機します ---")
-    time.sleep(5)
+    
+    # --- ▼▼▼ 修正箇所 ▼▼▼ ---
+    print("\n--- 連続投稿を避けるため60秒間待機します ---")
+    time.sleep(60)
+    # --- ▲▲▲ 修正ここまで ▲▲▲ ---
 
     print("\n--- [フェーズ2/2] 今日の注目馬投稿を実行 ---")
     today = datetime.now(jst)

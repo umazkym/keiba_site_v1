@@ -29,10 +29,14 @@ USER_AGENTS = [
 MIN_SLEEP_SECONDS = 2.5
 MAX_SLEEP_SECONDS = 5.0
 MAX_RETRIES = 3
-RETRY_DELAY_SECONDS = 10
+# ==============================================================================
+# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+RETRY_DELAY_SECONDS = 15 # リトライ間隔を10秒から15秒に延長
 
-# Seleniumのページ読み込みタイムアウトを60秒に設定
-SELENIUM_PAGE_LOAD_TIMEOUT = 60
+# Seleniumのページ読み込みタイムアウトを90秒に設定
+SELENIUM_PAGE_LOAD_TIMEOUT = 90 # タイムアウトを60秒から90秒に延長
+# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+# ==============================================================================
 
 BASE_CENTRAL_URL = "https://race.netkeiba.com"
 BASE_NAR_URL = "https://nar.netkeiba.com"
@@ -76,8 +80,6 @@ def _prepare_chrome_driver():
         
     return driver
 
-# ==============================================================================
-# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 def get_html(
     url: str,
     file_path: str,
@@ -234,10 +236,6 @@ def get_ped_page_html(horse_id: str, force_download: bool = False) -> Tuple[Opti
     file_path = os.path.join(dir_path, f"{horse_id}.bin")
     return get_html(url, file_path, force_download)
 
-# 以下の関数は `run_pipeline.py` から直接は呼ばれず、
-# `db_handler.py` などから呼ばれることを想定しています。
-# そのため、返り値の型を `get_html` とは異なり、HTMLコンテンツのみを返すように調整します。
-# これにより、他のファイルへの影響を最小限に抑えます。
 def get_shutuba_html_content(race_id: str, is_nar: bool, force_download: bool = False) -> Optional[str]:
     content, _ = get_shutuba_html(race_id, is_nar, force_download)
     return content
@@ -245,6 +243,3 @@ def get_shutuba_html_content(race_id: str, is_nar: bool, force_download: bool = 
 def get_race_result_html_content(race_id: str, is_nar: bool, force_download: bool = False) -> Optional[str]:
     content, _ = get_race_result_html(race_id, is_nar, force_download)
     return content
-
-# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-# ==============================================================================

@@ -8,7 +8,7 @@ import { SpecialPickCard } from "@/components/SpecialPickCard";
 import { TopHitsDisplay } from "@/components/TopHitsDisplay";
 import { formatDate } from "@/lib/utils";
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
-import { getPredictionsForDate } from "@/lib/api"; // APIクライアントをインポート
+import { getPredictionsForDate } from "@/lib/api";
 
 const DateNavigator = ({
     currentDate,
@@ -72,15 +72,11 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
     const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(null);
     const hasScrolled = useRef(false);
 
-    // ==============================================================================
-    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-    // URLの[date]パラメータが変更されたときに、クライアントサイドでデータを再フェッチする
     useEffect(() => {
         const fetchData = async (dateToFetch: string) => {
             setIsLoading(true);
             setError(null);
             try {
-                // APIから最新のデータを取得
                 const data = await getPredictionsForDate(dateToFetch);
                 setPredictionData(data);
 
@@ -95,16 +91,11 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
             }
         };
 
-        // 親コンポーネントから渡される `initialDate` が変わったら、
-        // `currentDate` stateを更新し、最新データを取得する。
         setCurrentDate(initialDate);
         document.title = `競馬AI予測 | ${formatDate(initialDate)}`;
         fetchData(initialDate);
 
     }, [initialDate]);
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-    // ==============================================================================
-
 
     useEffect(() => {
         const venue = searchParams.get('venue');
@@ -150,8 +141,6 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
     const handleDateChange = useCallback((newDate: string) => {
         if (newDate && newDate !== currentDate) {
             hasScrolled.current = false;
-            // router.pushでページ遷移をトリガーする。
-            // データのフェッチは上記のuseEffectに任せる。
             router.push(`/races/${newDate}`);
         }
     }, [currentDate, router]);

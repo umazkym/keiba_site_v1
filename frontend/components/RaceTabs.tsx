@@ -1,9 +1,6 @@
 'use client';
-import { useState, useCallback, useMemo, memo } from 'react';
-// ==============================================================================
-// ▼▼▼▼▼【追加】▼▼▼▼▼
+import { useState, useCallback, useMemo, memo, useEffect } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-// ▲▲▲▲▲【追加ここまで】▲▲▲▲▲
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { PredictionTable } from '@/components/PredictuonTable';
@@ -16,56 +13,43 @@ import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './icons';
 import { Adsense } from './Adsense';
 import { RelatedRaces } from './RelatedRaces';
 
+// ▼▼▼ ここから CollapsibleSection コンポーネントを修正 ▼▼▼
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
+    // detailsタグの開閉イベントとReactのStateを同期させます
     const [isOpen, setIsOpen] = useState(false);
-    
-    const handleToggle = useCallback(() => {
-        setIsOpen(prev => !prev);
-    }, []);
-    
-    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setIsOpen(prev => !prev);
-        }
-    }, []);
-    
+
+    const handleToggle = (e: React.SyntheticEvent<HTMLDetailsElement>) => {
+        setIsOpen(e.currentTarget.open);
+    };
+
     return (
-        <div className="card transition-all duration-300">
-            <div
-                onClick={handleToggle}
-                className="flex items-center text-md font-bold text-gray-800 cursor-pointer list-none p-3"
-                role="button"
-                tabIndex={0}
-                onKeyDown={handleKeyDown}
-                aria-expanded={isOpen}
-            >
+        // divからdetailsタグに変更します
+        <details className="card transition-all duration-300" onToggle={handleToggle}>
+            {/* クリック領域をsummaryタグに変更し、デフォルトの▶を消します */}
+            <summary className="flex items-center text-md font-bold text-gray-800 cursor-pointer list-none p-3">
                 <div className="w-6 h-6 mr-2 flex-shrink-0 text-primary">{icon}</div>
                 <span className="whitespace-nowrap">{title}</span>
                 <div className={`ml-auto transform transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`}>
                     <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
                 </div>
+            </summary>
+            {/* コンテンツ部分はdivで囲みます */}
+            <div className="px-3 pb-3">
+                {children}
             </div>
-            {isOpen && (
-                <div className="px-3 pb-3">
-                    {children}
-                </div>
-            )}
-        </div>
+        </details>
     );
 });
+// ▲▲▲ 修正ここまで ▲▲▲
 
 CollapsibleSection.displayName = 'CollapsibleSection';
 
+// VenuePanelとRaceTabsコンポーネントは変更ありません
 const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, initialRaceNumber?: number | null }) => {
-    // ==============================================================================
-    // ▼▼▼▼▼【追加】▼▼▼▼▼
-    // useRouterなどのフックを使ってURLを操作できるようにする
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
     const currentDate = params.date as string;
-    // ▲▲▲▲▲【追加ここまで】▲▲▲▲▲
     
     const initialIndex = useMemo(() => {
         if (!initialRaceNumber) return 0;
@@ -78,21 +62,15 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
     
     const handleRaceSelect = useCallback((index: number) => {
         setActiveRaceIndex(index);
-        // ==============================================================================
-        // ▼▼▼▼▼【修正点】▼▼▼▼▼
-        // レース選択時にURLのクエリパラメータを更新する
         const selectedRace = venue.races[index];
         if (selectedRace) {
             const newParams = new URLSearchParams(searchParams.toString());
             newParams.set('venue', venue.venue_name);
             newParams.set('race', selectedRace.race_number.toString());
-            // pushではなくreplaceを使い、ブラウザの履歴を汚さないようにする
             router.replace(`/races/${currentDate}?${newParams.toString()}`, { scroll: false });
         }
-        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
-    }, [venue, router, currentDate, searchParams]); // 依存配列にrouterなどを追加
+    }, [venue, router, currentDate, searchParams]);
 
-    // 広告表示条件を最適化
     const shouldShowAd = useMemo(() => {
         return activeRace && activeRace.predictions.length >= 5;
     }, [activeRace]);
@@ -100,45 +78,28 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
     const RaceNavigation = () => {
         const hasPrev = activeRaceIndex > 0;
         const hasNext = activeRaceIndex < venue.races.length - 1;
-
         const prevRace = hasPrev ? venue.races[activeRaceIndex - 1] : null;
         const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
 
         return (
             <div className="mt-6 flex justify-between items-center">
                 {hasPrev && prevRace ? (
-                    <button
-                        onClick={() => handleRaceSelect(activeRaceIndex - 1)}
-                        className="btn-primary" 
-                    >
+                    <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary">
                         &larr; {prevRace.race_number}Rへ
                     </button>
-                ) : (
-                    <div /> // Prevボタンがない場合でもレイアウトを維持するためのスペーサー
-                )}
-
+                ) : <div />}
                 {hasNext && nextRace ? (
-                    <button
-                        onClick={() => handleRaceSelect(activeRaceIndex + 1)}
-                        className="btn-primary"
-                    >
+                    <button onClick={() => handleRaceSelect(activeRaceIndex + 1)} className="btn-primary">
                         {nextRace.race_number}Rへ &rarr;
                     </button>
-                ) : (
-                    <div /> // Nextボタンがない場合でもレイアウトを維持するためのスペーサー
-                )}
+                ) : <div />}
             </div>
-        )
+        );
     };
-
 
     return (
         <div id={`venue-${venue.venue_name}`}>
-            <RaceSelector
-                races={venue.races}
-                selectedIndex={activeRaceIndex}
-                onSelectRace={handleRaceSelect}
-            />
+            <RaceSelector races={venue.races} selectedIndex={activeRaceIndex} onSelectRace={handleRaceSelect} />
             {activeRace && (
                 <div id={`race-${activeRace.id}`} className="mt-2">
                     <div className="card mb-3">
@@ -157,7 +118,6 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
                             <PredictionTable race={activeRace} />
                         </div>
                     </div>
-                    
                     <div className="space-y-2">
                         <CollapsibleSection title="AIスタート位置取り予測" icon={<FlagIcon className="w-5 h-5" />}>
                             <StartPositionChart predictions={activeRace.predictions} />
@@ -166,43 +126,21 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
                             <MatchupTable race={activeRace} />
                         </CollapsibleSection>
                         <CollapsibleSection title="枠順傾向スコア" icon={<ChartBarIcon className="w-5 h-5" />}>
-                            <HorseNumberAdvantageChart
-                                advantages={activeRace.horse_number_advantages}
-                                courseType={activeRace.course_type}
-                                distance={activeRace.distance}
-                            />
+                            <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
                         </CollapsibleSection>
                     </div>
-
                     <RaceNavigation />
-                    
-                    {/* 関連レースレコメンドの前に広告を追加 */}
                     {shouldShowAd && (
                         <div className="my-4 p-2 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200">
                             <div className="text-xs text-gray-500 text-center mb-1">スポンサーリンク</div>
-                            <Adsense
-                                client="ca-pub-4411270831448240"
-                                slot="1489598374"
-                                style={{ minHeight: '90px' }}
-                            />
+                            <Adsense client="ca-pub-4411270831448240" slot="1489598374" style={{ minHeight: '90px' }} />
                         </div>
                     )}
-                    
-                    {/* 関連レースレコメンド */}
-                    <RelatedRaces
-                        currentRace={activeRace}
-                        currentDate={activeRace.race_date.toString()}
-                    />
-                    
-                    {/* 最後にもう一つ広告（十分なコンテンツがある場合） */}
+                    <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
                     {shouldShowAd && activeRace.predictions.length >= 10 && (
                         <div className="my-4 p-2 bg-gradient-to-r from-white to-gray-50 rounded-lg border border-gray-200">
                             <div className="text-xs text-gray-500 text-center mb-1">スポンサーリンク</div>
-                            <Adsense
-                                client="ca-pub-4411270831448240"
-                                slot="8529703346"
-                                style={{ minHeight: '120px' }}
-                            />
+                            <Adsense client="ca-pub-4411270831448240" slot="8529703346" style={{ minHeight: '120px' }} />
                         </div>
                     )}
                 </div>
@@ -218,11 +156,7 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
         return <div className="p-6 text-center text-muted card">対象日のレースデータがありません。</div>;
     }
     
-    const isInitialVenueInJra = useMemo(() => 
-        data.jra.some(v => v.venue_name === initialVenueName),
-        [data.jra, initialVenueName]
-    );
-    
+    const isInitialVenueInJra = useMemo(() => data.jra.some(v => v.venue_name === initialVenueName), [data.jra, initialVenueName]);
     const initialTopTabIndex = useMemo(() => {
         if (isInitialVenueInJra) return 0;
         if (data.nar.some(v => v.venue_name === initialVenueName)) return 1;
@@ -242,45 +176,37 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
     }, [data.nar, initialVenueName]);
     
     return (
-        <Tabs defaultIndex={initialTopTabIndex} className="mt-4">
+        <Tabs defaultIndex={initialTopTabIndex} className="mt-4" forceRenderTabPanel={true}>
             <TabList>
                 {data.jra.length > 0 && <Tab>中央競馬</Tab>}
                 {data.nar.length > 0 && <Tab>地方競馬</Tab>}
             </TabList>
-            
             {data.jra.length > 0 && (
                 <TabPanel>
                     <div className="p-2 md:p-3">
-                        <Tabs defaultIndex={initialJraVenueIndex}>
+                        <Tabs defaultIndex={initialJraVenueIndex} forceRenderTabPanel={true}>
                             <TabList>
                                 {data.jra.map(venue => <Tab key={venue.venue_name}>{venue.venue_name}</Tab>)}
                             </TabList>
                             {data.jra.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel
-                                        venue={venue}
-                                        initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null}
-                                    />
+                                    <VenuePanel venue={venue} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} />
                                 </TabPanel>
                             ))}
                         </Tabs>
                     </div>
                 </TabPanel>
             )}
-            
             {data.nar.length > 0 && (
                 <TabPanel>
                     <div className="p-2 md:p-3">
-                        <Tabs defaultIndex={initialNarVenueIndex}>
+                        <Tabs defaultIndex={initialNarVenueIndex} forceRenderTabPanel={true}>
                             <TabList>
                                 {data.nar.map(venue => <Tab key={venue.venue_name}>{venue.venue_name}</Tab>)}
                             </TabList>
                             {data.nar.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel
-                                        venue={venue}
-                                        initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null}
-                                    />
+                                    <VenuePanel venue={venue} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} />
                                 </TabPanel>
                             ))}
                         </Tabs>

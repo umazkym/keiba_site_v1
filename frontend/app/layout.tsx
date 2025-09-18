@@ -43,6 +43,17 @@ export const metadata: Metadata = {
         description: siteDescription,
         images: [`${siteUrl}/og-image.png`],
     },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
 };
 
 export const viewport: Viewport = {

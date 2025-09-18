@@ -17,10 +17,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: route === '' ? 1.0 : 0.8,
   }));
 
-  // 動的なレースページのURLを生成（例として過去30日分と未来7日分）
+  // 動的なレースページのURLを生成（過去90日分と未来14日分に範囲を拡大）
   const dynamicRaceRoutes = [];
   const today = new Date();
-  for (let i = -30; i <= 7; i++) {
+  // 過去90日から未来14日までループ
+  for (let i = -90; i <= 14; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
     const dateString = date.toISOString().split('T')[0];

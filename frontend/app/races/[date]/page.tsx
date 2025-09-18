@@ -22,10 +22,17 @@ export async function generateStaticParams() {
     return paths;
 }
 
-// ▼▼▼ ここから generateMetadata 関数を修正 ▼▼▼
 export async function generateMetadata({ params }: { params: { date: string } }): Promise<Metadata> {
     const formattedDate = formatDate(params.date);
-    let eventSchema = null;
+    
+    // 基本となるメタデータを定義
+    const metadata: Metadata = {
+        title: `${formattedDate}のAI競馬予測 | UMA-FREE`,
+        description: `${formattedDate}の中央・地方競馬の全レースをAIが完全無料で予測。馬券検討に役立つデータを毎日更新。`,
+        alternates: {
+            canonical: `/races/${params.date}`,
+        },
+    };
 
     try {
         const predictionData = await getPredictionsForDate(params.date);
@@ -33,7 +40,7 @@ export async function generateMetadata({ params }: { params: { date: string } })
         const mainRace = predictionData?.jra?.[0]?.races?.[0] || predictionData?.nar?.[0]?.races?.[0];
 
         if (mainRace) {
-            eventSchema = {
+            const eventSchema = {
                 "@context": "https://schema.org",
                 "@type": "SportsEvent",
                 "name": `${mainRace.venue_name} ${mainRace.race_number}R - ${mainRace.race_name}`,
@@ -46,24 +53,19 @@ export async function generateMetadata({ params }: { params: { date: string } })
                 "eventStatus": "https://schema.org/EventScheduled",
                 "url": `https://uma-free.com/races/${mainRace.race_date}?venue=${encodeURIComponent(mainRace.venue_name)}&race=${mainRace.race_number}`
             };
+            
+            // eventSchema が存在する場合のみ other プロパティを追加
+            metadata.other = {
+                'script:ld+json': JSON.stringify(eventSchema),
+            };
         }
     } catch (error) {
         console.error(`[Metadata Generation] Failed to fetch data for structured data:`, error);
     }
 
-    return {
-        title: `${formattedDate}のAI競馬予測 | UMA-FREE`,
-        description: `${formattedDate}の中央・地方競馬の全レースをAIが完全無料で予測。馬券検討に役立つデータを毎日更新。`,
-        alternates: {
-            canonical: `/races/${params.date}`,
-        },
-        // otherプロパティを使ってscriptタグを挿入するのが正しい方法です
-        other: {
-            'script:ld+json': eventSchema ? JSON.stringify(eventSchema) : undefined,
-        },
-    };
+    return metadata;
 }
-// ▲▲▲ 修正ここまで ▲▲▲
+
 
 const RacePageSkeleton = () => (
     <div className="container py-4">
@@ -98,3 +100,4 @@ export default async function RacePage({ params }: { params: { date: string } })
         </Suspense>
     );
 }
+

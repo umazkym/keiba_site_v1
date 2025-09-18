@@ -5,7 +5,6 @@ from PIL import Image, ImageDraw, ImageFont
 import tweepy
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
-from urllib.parse import urlencode
 import random
 import time
 import json
@@ -13,8 +12,10 @@ from typing import Optional, List, Dict, Any
 import traceback
 import re
 
-# --- 設定 ---
+# --- 基本設定 ---
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv()
+
 TWITTER_CONSUMER_KEY = os.getenv("TWITTER_CONSUMER_KEY")
 TWITTER_CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
 TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
@@ -29,7 +30,6 @@ API_BASE_URL = "https://keiba-site-v1.onrender.com"
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 
 JRA_GRADE_RACE_NAMES = {
-    # (省略) ... debug_daily_sns_posts.py と同じ内容 ...
     "フェブラリーS", "フェブラリーステークス", "高松宮記念", "大阪杯", "桜花賞", "皐月賞", "天皇賞（春）",
     "NHKマイルC", "NHKマイルカップ", "ヴィクトリアマイル", "オークス", "優駿牝馬", "日本ダービー", "東京優駿",
     "安田記念", "宝塚記念", "スプリンターズS", "スプリンターズステークス", "秋華賞", "菊花賞", "天皇賞（秋）",
@@ -115,14 +115,16 @@ def load_logo():
 
 # --- API連携関数 ---
 def get_api_data(endpoint: str, retries: int = 3, delay: int = 5) -> Optional[Any]:
-    # ... (変更なし) ...
     _log(f"APIにアクセス中: {endpoint}")
     for attempt in range(retries):
         try:
             url = f"{API_BASE_URL}/api/v1/predictions/{endpoint}"
             res = requests.get(url, timeout=90)
-            if res.status_code == 200 and res.json():
-                return res.json()
+            if res.status_code == 200:
+                data = res.json()
+                if data:
+                    _log(f"-> データ取得成功")
+                    return data
             if res.status_code == 404:
                 _log("-> データなし (404 Not Found)")
                 return None
@@ -133,23 +135,22 @@ def get_api_data(endpoint: str, retries: int = 3, delay: int = 5) -> Optional[An
             time.sleep(delay)
     return None
 
-# --- OGP画像生成関数 (修正) ---
+# --- OGP画像生成関数 (確定デザイン) ---
 def generate_hit_og_image(hit_data: dict, date_str: str) -> Optional[str]:
-    """的中報告デザイン1: 斜めグラデーション＋カード (紫系)"""
+    """的中報告デザイン: 斜めグラデーション＋カード (紫系)"""
     filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_hit_{date_str}_{random.randint(1000,9999)}.png")
     _log(f"-> 的中報告用のOGP画像を生成: {filename}")
-    
     try:
         font_light = _get_font_path("MPLUSRounded1c-Light.ttf")
         font_regular = _get_font_path("MPLUSRounded1c-Regular.ttf")
         font_bold = _get_font_path("MPLUSRounded1c-Bold.ttf")
         font_black = _get_font_path("MPLUSRounded1c-Black.ttf")
         
-        img = Image.new('RGB', (1200, 630), (79, 70, 229)) # #4f46e5
+        img = Image.new('RGB', (1200, 630), (79, 70, 229))
         draw = ImageDraw.Draw(img)
         
-        color_start = (129, 140, 248) # #818cf8
-        color_end = (55, 48, 163)   # #3730a3
+        color_start = (129, 140, 248)
+        color_end = (55, 48, 163)
         for y in range(630):
             for x in range(1200):
                 ratio = (x + y) / (1200 + 630)
@@ -193,7 +194,6 @@ def generate_hit_og_image(hit_data: dict, date_str: str) -> Optional[str]:
         return None
 
 def generate_pick_og_image(data: dict, date_str: str) -> Optional[str]:
-    # ... (変更なし) ...
     filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_pick_{date_str}.png")
     _log(f"-> 注目馬用のOGP画像を生成: {filename}")
     try:
@@ -215,7 +215,7 @@ def generate_pick_og_image(data: dict, date_str: str) -> Optional[str]:
         return None
 
 def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
-    """重賞デザイン配色2: 紺色グラデーション"""
+    """重賞デザイン: 紺色グラデーション"""
     filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_reminder_{race['id']}_{random.randint(1000,9999)}.png")
     _log(f"-> 重賞レース用のOGP画像を生成: {filename}")
     try:
@@ -229,9 +229,7 @@ def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
         
         for y in range(630):
             ratio = y / 630
-            r = int(30 + 20 * ratio)
-            g = int(40 + 30 * ratio)
-            b = int(80 + 40 * ratio)
+            r, g, b = int(30 + 20 * ratio), int(40 + 30 * ratio), int(80 + 40 * ratio)
             draw.line([(0, y), (1200, y)], fill=(r, g, b))
         
         draw.rectangle([(0, 0), (1200, 4)], fill=(192, 192, 192))
@@ -245,9 +243,7 @@ def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
         venue_info = f"{race['venue_name']} {datetime.strptime(race['race_date'], '%Y-%m-%d').strftime('%m/%d')}"
         draw_centered_text(draw, venue_info, ImageFont.truetype(font_light, 24), (200, 200, 200), img.width, 230)
         
-        y_start = 320
-        colors = [(255, 255, 100), (200, 200, 255), (255, 200, 200)]
-        marks = ["◎", "○", "▲"]
+        y_start, colors, marks = 320, [(255, 255, 100), (200, 200, 255), (255, 200, 200)], ["◎", "○", "▲"]
         
         for i, p in enumerate(top_preds):
             y_pos = y_start + i * 70
@@ -264,10 +260,8 @@ def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
         _log(f"❌ Reminder OGP生成エラー: {e}\n{traceback.format_exc()}")
         return None
 
-
-# --- テキスト生成 & 投稿関数 (変更なし) ---
+# --- テキスト生成 & 投稿関数 ---
 def create_combined_tweet_text(hits: List[dict], summary: dict, pick_data: Optional[dict], date_str: str) -> str:
-    # ... (変更なし) ...
     _log("-> 的中報告＋注目馬の投稿テキストを生成...")
     top_hit = hits[0]
     hashtags = ["#競馬", "#AI予想", "#万馬券" if top_hit['payout'] >= 10000 else "#的中"]
@@ -281,7 +275,7 @@ def create_combined_tweet_text(hits: List[dict], summary: dict, pick_data: Optio
     if other_hits:
         hit_texts.append("\n他にも万馬券が…")
         for hit in other_hits:
-            hit_texts.append(f"・{hit['venue_name']}{hit['race_number']}R: {hit['payout']:,}円 ({top_hit['venue_name']}{top_hit['race_number']}R {top_hit['bet_type']})")
+            hit_texts.append(f"・{hit['venue_name']}{hit['race_number']}R: {hit['payout']:,}円")
 
     summary_text = f"""
 📈昨日のAI本命馬(◎)成績
@@ -308,18 +302,21 @@ def create_combined_tweet_text(hits: List[dict], summary: dict, pick_data: Optio
 """
 
 def create_pick_tweet_text(data: dict, date_str: str) -> str:
-    # ... (変更なし) ...
     _log("-> 注目馬（単独）の投稿テキストを生成...")
     race_type = data.get('race_type', '地方')
     is_jra = race_type == '中央'
     hashtags = ["#競馬", "#AI予想", "#中央競馬" if is_jra else "#地方競馬", f"#{data['venue_name']}競馬", f"#{data['horse_name']}"]
+    
+    intros = ["AIが選んだ今日の鉄板候補はこちら！", "今日のレースで特に注目したい一頭！", "AIの分析によると、この馬が抜けているようです！"]
+    outros = ["あなたの本命は？リプライで教えて！", "この馬、どう思いますか？", "皆さんの予想もぜひ聞かせてください！"]
+    
     text = f"""🏇本日のAI注目馬 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})🏇
 
-AIが選んだ今日の鉄板候補はこちら！
+{random.choice(intros)}
 【{data['venue_name']}{data['race_number']}R {data['race_name']}】
 ◎ {data['horse_name']} (AI偏差値: {data['deviation_score']:.2f})
 
-あなたの本命は？
+{random.choice(outros)}
 
 ▼全レースのAI印と詳細データはこちら
 {SITE_BASE_URL}/races/{date_str}?venue={data['venue_name']}&race={data['race_number']}
@@ -329,7 +326,6 @@ AIが選んだ今日の鉄板候補はこちら！
     return text
 
 def create_reminder_tweet_text(race: dict, top_preds: List[dict]) -> str:
-    # ... (変更なし) ...
     _log("-> 重賞レースの投稿テキストを生成...")
     date_str = race['race_date']
     clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', race['race_name']).strip()
@@ -343,9 +339,7 @@ def create_reminder_tweet_text(race: dict, top_preds: List[dict]) -> str:
     lines.append(f"\n{' '.join(hashtags)}")
     return "\n".join(lines)
 
-
 def post_to_twitter(text: str, image_path: str):
-    # ... (変更なし) ...
     _log(f"-> X (Twitter) への投稿を実行: {image_path}")
     if DRY_RUN:
         _log("⚠️ DRY_RUN=1 のため投稿は実行しません（テストモード）。")
@@ -366,7 +360,7 @@ def post_to_twitter(text: str, image_path: str):
     except Exception as e:
         _log(f"❌ Xへの投稿中にエラー: {e}\n{traceback.format_exc()}")
 
-# --- メイン処理 (変更なし) ---
+# --- メイン処理 ---
 if __name__ == "__main__":
     _log("="*50)
     _log("SNS自動投稿ジョブを開始します")

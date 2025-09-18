@@ -1,96 +1,47 @@
-import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
-import Script from "next/script";
-import React from "react";
-import { GlobalAdManager } from "@/components/GlobalAdManager";
+import type { Metadata } from "next";
+import Link from 'next/link';
 
-const inter = Inter({ subsets: ["latin"], display: 'swap' });
-
-const siteTitleDefault = "UMA-FREE | 登録不要の無料AI競馬予想 (中央・地方 全レース対応)";
-const siteDescription = "登録不要・完全無料！AIが中央・地方すべての競馬レースを毎日予想＆分析。AI偏差値や独自の対戦データで、あなたの馬券検討を強力にサポートします。";
-const siteUrl = "https://uma-free.com";
+// globals.css のインポートは不要なため、このファイルからは削除します。
 
 export const metadata: Metadata = {
-    metadataBase: new URL(siteUrl),
-    title: {
-        default: siteTitleDefault,
-        template: '%s | UMA-FREE',
-    },
-    description: siteDescription,
-    icons: {
-        icon: '/new-logo.png',
-    },
-    openGraph: {
-        title: siteTitleDefault,
-        description: siteDescription,
-        url: siteUrl,
-        siteName: 'UMA-FREE',
-        images: [
-            {
-                url: '/og-image.png',
-                width: 1200,
-                height: 630,
-            },
-        ],
-        type: 'website',
-    },
-    twitter: {
-        card: 'summary_large_image',
-        title: siteTitleDefault,
-        description: siteDescription,
-        images: [`${siteUrl}/og-image.png`],
-    },
-    // ↓ この robots プロパティを追加します
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        'max-video-preview': -1,
-        'max-image-preview': 'large',
-        'max-snippet': -1,
-      },
-    },
+  title: "運営者情報 | UMA-FREE",
 };
 
-export const viewport: Viewport = {
-    themeColor: "#4f46e5",
-};
-export default function RootLayout({
-    children,
-}: Readonly<{
-    children: React.ReactNode;
-}>) {
-    const adClient = "ca-pub-4411270831448240";
-    return (
-        <html lang="ja" className={inter.className}>
-            <head>
-                <meta name="google-adsense-account" content={adClient} />
-                <Script
-                    async
-                    src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`}
-                    crossOrigin="anonymous"
-                    strategy="afterInteractive"
-                />
-            </head>
-            <body>
-                <a href="#main-content" className="skip-link">
-                    コンテンツにスキップ
-                </a>
-                <div className="flex flex-col min-h-screen">
-                    <Header />
-                    {/* アンカー広告の高さ（50px）+ 余白を考慮してpb-20（80px）に設定 */}
-                    <main id="main-content" className="flex-grow pb-20">
-                        <GlobalAdManager />
-                        {children}
-                    </main>
-                    <Footer />
-                </div>
-            </body>
-        </html>
-    );
+export default function AboutPage() {
+  return (
+    <div className="container py-8">
+      <div className="max-w-3xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md border">
+        <h1 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">
+          運営者情報
+        </h1>
+
+        <div className="space-y-4 text-gray-700">
+          <div>
+            <h2 className="text-lg font-semibold">サイト名</h2>
+            <p>UMA-FREE</p>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">サイトURL</h2>
+            <p>https://uma-free.com</p>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">運営者</h2>
+            <p>おとうふや</p>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">お問い合わせ</h2>
+            <p>
+              お問い合わせは、<Link href="/contact" className="text-blue-600 hover:underline">お問い合わせフォーム</Link>よりお願いいたします。
+            </p>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">プライバシーポリシー</h2>
+            <p>
+              当サイトのプライバシーポリシーについては、<Link href="/privacy" className="text-blue-600 hover:underline">こちら</Link>をご覧ください。
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

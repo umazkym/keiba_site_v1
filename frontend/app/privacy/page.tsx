@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+// globals.css のインポートは不要なため、このファイルからは削除します。
+
 export const metadata: Metadata = {
   title: "プライバシーポリシー | UMA-FREE",
 };

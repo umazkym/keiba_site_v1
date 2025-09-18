@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import RacePageClient from "@/components/RacePageClient";
 import { getPredictionsForDate } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { RaceDayPrediction, RacePrediction } from "@/lib/types";
+import { RaceDayPrediction } from "@/lib/types";
 import { Suspense } from 'react';
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 
@@ -22,50 +22,17 @@ export async function generateStaticParams() {
     return paths;
 }
 
+// メタデータ生成関数は、タイトルと説明など基本的な情報のみを返します
 export async function generateMetadata({ params }: { params: { date: string } }): Promise<Metadata> {
     const formattedDate = formatDate(params.date);
-    
-    // 基本となるメタデータを定義
-    const metadata: Metadata = {
+    return {
         title: `${formattedDate}のAI競馬予測 | UMA-FREE`,
         description: `${formattedDate}の中央・地方競馬の全レースをAIが完全無料で予測。馬券検討に役立つデータを毎日更新。`,
         alternates: {
             canonical: `/races/${params.date}`,
         },
     };
-
-    try {
-        const predictionData = await getPredictionsForDate(params.date);
-        // 構造化データには、その日の主要なレースを1つ代表として設定します
-        const mainRace = predictionData?.jra?.[0]?.races?.[0] || predictionData?.nar?.[0]?.races?.[0];
-
-        if (mainRace) {
-            const eventSchema = {
-                "@context": "https://schema.org",
-                "@type": "SportsEvent",
-                "name": `${mainRace.venue_name} ${mainRace.race_number}R - ${mainRace.race_name}`,
-                "startDate": `${mainRace.race_date}T15:45:00+09:00`, // 仮の時刻
-                "location": {
-                    "@type": "Place",
-                    "name": `${mainRace.venue_name}競馬場`,
-                },
-                "description": `AIによる${mainRace.venue_name} ${mainRace.race_number}R ${mainRace.race_name}の競馬予測データ。`,
-                "eventStatus": "https://schema.org/EventScheduled",
-                "url": `https://uma-free.com/races/${mainRace.race_date}?venue=${encodeURIComponent(mainRace.venue_name)}&race=${mainRace.race_number}`
-            };
-            
-            // eventSchema が存在する場合のみ other プロパティを追加
-            metadata.other = {
-                'script:ld+json': JSON.stringify(eventSchema),
-            };
-        }
-    } catch (error) {
-        console.error(`[Metadata Generation] Failed to fetch data for structured data:`, error);
-    }
-
-    return metadata;
 }
-
 
 const RacePageSkeleton = () => (
     <div className="container py-4">
@@ -84,20 +51,53 @@ const RacePageSkeleton = () => (
 
 export default async function RacePage({ params }: { params: { date: string } }) {
     let predictionData: RaceDayPrediction | null = null;
+    let jsonLd = null;
 
     try {
         predictionData = await getPredictionsForDate(params.date);
+        
+        // ▼▼▼ ここから構造化データ生成ロジックを追加 ▼▼▼
+        const mainRace = predictionData?.jra?.[0]?.races?.[0] || predictionData?.nar?.[0]?.races?.[0];
+
+        if (mainRace) {
+            jsonLd = {
+                "@context": "https://schema.org",
+                "@type": "SportsEvent",
+                "name": `${mainRace.venue_name} ${mainRace.race_number}R - ${mainRace.race_name}`,
+                "startDate": `${mainRace.race_date}T15:45:00+09:00`, // JRAのG1レースなどを想定した仮の時刻
+                "location": {
+                    "@type": "Place",
+                    "name": `${mainRace.venue_name}競馬場`,
+                },
+                "description": `AIによる${mainRace.venue_name} ${mainRace.race_number}R ${mainRace.race_name}の競馬予測データ。`,
+                "eventStatus": "https://schema.org/EventScheduled",
+                "url": `https://uma-free.com/races/${mainRace.race_date}?venue=${encodeURIComponent(mainRace.venue_name)}&race=${mainRace.race_number}`
+            };
+        }
+        // ▲▲▲ 構造化データ生成ロジックここまで ▲▲▲
+
     } catch (error) {
-        console.error(`[Build Warning] Failed to fetch initial data for ${params.date}. The page will show an error or fetch data on the client-side. Error:`, error);
+        console.error(`[Build Warning] Failed to fetch initial data for ${params.date}. Error:`, error);
     }
 
     return (
-        <Suspense fallback={<RacePageSkeleton />}>
-            <RacePageClient
-                initialDate={params.date}
-                initialPredictionData={predictionData}
-            />
-        </Suspense>
+        <>
+            {/* ▼▼▼ scriptタグをページに直接埋め込む ▼▼▼ */}
+            {jsonLd && (
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+                />
+            )}
+            {/* ▲▲▲ scriptタグここまで ▲▲▲ */}
+
+            <Suspense fallback={<RacePageSkeleton />}>
+                <RacePageClient
+                    initialDate={params.date}
+                    initialPredictionData={predictionData}
+                />
+            </Suspense>
+        </>
     );
 }
 

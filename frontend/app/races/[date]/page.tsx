@@ -22,7 +22,6 @@ export async function generateStaticParams() {
     return paths;
 }
 
-// メタデータ生成関数は、タイトルと説明など基本的な情報のみを返します
 export async function generateMetadata({ params }: { params: { date: string } }): Promise<Metadata> {
     const formattedDate = formatDate(params.date);
     return {
@@ -56,25 +55,44 @@ export default async function RacePage({ params }: { params: { date: string } })
     try {
         predictionData = await getPredictionsForDate(params.date);
         
-        // ▼▼▼ ここから構造化データ生成ロジックを追加 ▼▼▼
         const mainRace = predictionData?.jra?.[0]?.races?.[0] || predictionData?.nar?.[0]?.races?.[0];
 
         if (mainRace) {
+            // ▼▼▼ ここから構造化データを修正 ▼▼▼
             jsonLd = {
                 "@context": "https://schema.org",
                 "@type": "SportsEvent",
                 "name": `${mainRace.venue_name} ${mainRace.race_number}R - ${mainRace.race_name}`,
-                "startDate": `${mainRace.race_date}T15:45:00+09:00`, // JRAのG1レースなどを想定した仮の時刻
+                "startDate": `${mainRace.race_date}T15:45:00+09:00`,
+                // 終了日を追加
+                "endDate": `${mainRace.race_date}T16:00:00+09:00`,
                 "location": {
                     "@type": "Place",
                     "name": `${mainRace.venue_name}競馬場`,
+                    // 住所を追加（必須ではないが推奨）
+                    "address": `${mainRace.venue_name}競馬場`
                 },
                 "description": `AIによる${mainRace.venue_name} ${mainRace.race_number}R ${mainRace.race_name}の競馬予測データ。`,
                 "eventStatus": "https://schema.org/EventScheduled",
-                "url": `https://uma-free.com/races/${mainRace.race_date}?venue=${encodeURIComponent(mainRace.venue_name)}&race=${mainRace.race_number}`
+                "url": `https://uma-free.com/races/${mainRace.race_date}?venue=${encodeURIComponent(mainRace.venue_name)}&race=${mainRace.race_number}`,
+                // 画像情報を追加
+                "image": [
+                    "https://uma-free.com/og-image.png"
+                ],
+                // 主催者情報を追加
+                "organizer": {
+                    "@type": "Organization",
+                    "name": "UMA-FREE",
+                    "url": "https://uma-free.com"
+                },
+                // 出走馬情報をcompetitorとして追加
+                "competitor": mainRace.predictions.map(p => ({
+                    "@type": "SportsTeam", // PersonよりSportsTeamの方が適切
+                    "name": p.horse_name
+                }))
             };
+            // ▲▲▲ 修正ここまで ▲▲▲
         }
-        // ▲▲▲ 構造化データ生成ロジックここまで ▲▲▲
 
     } catch (error) {
         console.error(`[Build Warning] Failed to fetch initial data for ${params.date}. Error:`, error);
@@ -82,14 +100,12 @@ export default async function RacePage({ params }: { params: { date: string } })
 
     return (
         <>
-            {/* ▼▼▼ scriptタグをページに直接埋め込む ▼▼▼ */}
             {jsonLd && (
                 <script
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
             )}
-            {/* ▲▲▲ scriptタグここまで ▲▲▲ */}
 
             <Suspense fallback={<RacePageSkeleton />}>
                 <RacePageClient

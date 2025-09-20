@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { TwitterIcon } from 'lucide-react'; // ★★★ この行を追加 ★★★
 
 export const Footer = () => {
     return (
@@ -17,6 +18,19 @@ export const Footer = () => {
                     <Link href="/privacy" className="text-sm text-muted hover:text-primary hover:underline">
                         プライバシーポリシー
                     </Link>
+                    {/* ▼▼▼▼▼ ここから追加 ▼▼▼▼▼ */}
+                    <span className="hidden sm:block text-gray-400">|</span>
+                    <Link
+                        href="https://x.com/umafree_ai"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-muted hover:text-primary hover:underline flex items-center gap-1"
+                        aria-label="公式Xアカウント"
+                    >
+                        <TwitterIcon className="w-4 h-4" />
+                        <span>公式X(旧Twitter)</span>
+                    </Link>
+                    {/* ▲▲▲▲▲ ここまで追加 ▲▲▲▲▲ */}
                 </div>
                 <p className="text-sm text-muted">
                     &copy; {new Date().getFullYear()} UMA-FREE. All Rights Reserved.

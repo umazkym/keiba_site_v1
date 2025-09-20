@@ -62,7 +62,7 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
     return (
         <div className="my-4 p-6 bg-white border rounded-lg shadow-inner">
             <h4 className="text-sm font-bold text-gray-600 mb-3 flex items-center">
-                <span className="mr-2">🏁</span>
+                <span className="mr-2"></span>
                 AIスタート位置取り予測
             </h4>
             <div className="relative w-full bg-gradient-to-r from-blue-50 via-gray-50 to-yellow-50 rounded-lg shadow-sm" 
@@ -87,9 +87,9 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
                 })}
             </div>
             <div className="flex justify-between text-xs text-gray-600 mt-3 px-2 font-medium">
-                <span className="flex items-center"><span className="mr-1">🐢</span>後方・差し</span>
+                <span className="flex items-center"><span className="mr-1"></span>後方・差し</span>
                 <span>中団</span>
-                <span className="flex items-center">先行・逃げ<span className="ml-1">🏃</span></span>
+                <span className="flex items-center">先行・逃げ<span className="ml-1"></span></span>
             </div>
         </div>
     );

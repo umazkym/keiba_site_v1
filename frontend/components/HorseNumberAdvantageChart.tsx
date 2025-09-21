@@ -27,7 +27,8 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
         return 'rgba(156, 163, 175, 0.8)'; // ニュートラル
     };
     
-    const sortedAdvantages = advantages.sort((a, b) => a.horse_number - b.horse_number);
+    // ★ここを修正: 配列をコピーしてからソート
+    const sortedAdvantages = [...advantages].sort((a, b) => a.horse_number - b.horse_number);
     const scores = sortedAdvantages.map(item => item.advantage_score);
     const yAxisDomain = [
         Math.floor((Math.min(...scores, -0.1) - 0.05) * 20) / 20,

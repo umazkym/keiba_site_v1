@@ -1,4 +1,4 @@
-# backend/scripts/sns_poster.py (デザイン統一 & バグ修正版)
+# backend/scripts/sns_poster.py (最終完成版: 成績集計機能の統合)
 
 import os
 import sys
@@ -140,218 +140,103 @@ def get_api_data(endpoint: str, retries: int = 3, delay: int = 5) -> Optional[An
         if attempt < retries - 1: time.sleep(delay)
     return None
 
-# --- 5. OGP画像生成関数群 (デザイン統一版) ---
+# --- 5. OGP画像生成関数群 ---
 # Pillowライブラリを使い、投稿に添付する画像を動的に生成します。
-# 3つの画像生成関数で、共通の背景グラデーションと配色を使用します。
+# フォントやロゴファイルは `backend/fonts` ディレクトリから読み込みます。
 # ----------------------------------------------------------------------------------
-def _create_base_image_with_gradient() -> (Image.Image, ImageDraw.ImageDraw):
-    """全画像で共通のグラデーション背景とDrawオブジェクトを生成する"""
-    img = Image.new('RGB', (1200, 630))
-    draw = ImageDraw.Draw(img, 'RGBA')
-    # 的中速報で使われている鮮やかなインディゴグラデーション
-    color_start, color_end = (129, 140, 248), (55, 48, 163)
-    for y in range(630):
-        ratio = y / 629
-        r = int(color_start[0] * (1 - ratio) + color_end[0] * ratio)
-        g = int(color_start[1] * (1 - ratio) + color_end[1] * ratio)
-        b = int(color_start[2] * (1 - ratio) + color_end[2] * ratio)
-        draw.line([(0, y), (1200, y)], fill=(r, g, b))
-    return img, draw
-
-def _add_footer_and_logo(img: Image.Image, draw: ImageDraw.ImageDraw, date_str: str):
-    """全画像で共通のロゴとフッターを追加する"""
-    font_light = _get_font_path("MPLUSRounded1c-Light.ttf")
-    font_regular = _get_font_path("MPLUSRounded1c-Regular.ttf")
-    logo = load_logo()
-    if logo:
-        img.paste(logo, (50, 40), logo)
-    
-    try:
-        date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%Y/%m/%d')
-        draw.text((50, 550), date_formatted, font=ImageFont.truetype(font_light, 18), fill=(220, 220, 255))
-    except (ValueError, TypeError):
-        # date_strが不正な場合でもエラーにならないようにする
-         draw.text((50, 550), date_str, font=ImageFont.truetype(font_light, 18), fill=(220, 220, 255))
-    
-    draw.text((950, 550), "uma-free.com", font=ImageFont.truetype(font_regular, 20), fill=(220, 220, 255))
-
 def generate_hit_og_image(hit_data: dict, date_str: str) -> Optional[str]:
-    filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_hit_{date_str}_{random.randint(1000,9999)}.png")
-    _log(f"-> 的中報告用のOGP画像を生成: {filename}")
+    filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_hit_{date_str}_{random.randint(1000,9999)}.png"); _log(f"-> 的中報告用のOGP画像を生成: {filename}")
     try:
-        font_regular=_get_font_path("MPLUSRounded1c-Regular.ttf")
-        font_bold=_get_font_path("MPLUSRounded1c-Bold.ttf")
-        font_black=_get_font_path("MPLUSRounded1c-Black.ttf")
-        
-        img, draw = _create_base_image_with_gradient()
-        
-        # 白いカード
-        card_x, card_y, card_w, card_h = 150, 180, 900, 320
-        draw.rounded_rectangle([(card_x, card_y), (card_x + card_w, card_y + card_h)], radius=20, fill=(255, 255, 255, 230))
-        
-        # 「的中速報」ラベル
-        label_y = card_y - 25
-        brand_color = (79, 70, 229)
-        draw.rounded_rectangle([(500, label_y), (700, label_y + 50)], radius=25, fill=brand_color, outline=(255, 255, 255), width=2)
-        draw_centered_text(draw, "的中速報", ImageFont.truetype(font_bold, 24), (255, 255, 255), 1200, label_y + 12)
-        
-        # テキスト情報
-        race_text = f"{hit_data['venue_name']} {hit_data['race_number']}R"
-        draw_centered_text(draw, race_text, ImageFont.truetype(font_regular, 32), (80, 80, 80), 1200, card_y + 50)
-        draw_centered_text(draw, hit_data['bet_type'], ImageFont.truetype(font_bold, 36), (100, 100, 100), 1200, card_y + 100)
-        payout_text = f"¥{hit_data['payout']:,}"
-        draw_centered_text(draw, payout_text, ImageFont.truetype(font_black, 90), brand_color, 1200, card_y + 180)
-        
-        _add_footer_and_logo(img, draw, date_str)
-        img.convert('RGB').save(filename, quality=95, optimize=True)
+        font_light=_get_font_path("MPLUSRounded1c-Light.ttf");font_regular=_get_font_path("MPLUSRounded1c-Regular.ttf");font_bold=_get_font_path("MPLUSRounded1c-Bold.ttf");font_black=_get_font_path("MPLUSRounded1c-Black.ttf")
+        img=Image.new('RGB',(1200,630),(79,70,229));draw=ImageDraw.Draw(img,'RGBA');color_start,color_end=(129,140,248),(55,48,163)
+        for y in range(630):
+            ratio=y/629;r,g,b=int(color_start[0]*(1-ratio)+color_end[0]*ratio),int(color_start[1]*(1-ratio)+color_end[1]*ratio),int(color_start[2]*(1-ratio)+color_end[2]*ratio);draw.line([(0,y),(1200,y)],fill=(r,g,b))
+        logo=load_logo();
+        if logo:img.paste(logo,(50,40),logo)
+        card_x,card_y,card_w,card_h=150,180,900,320;draw.rounded_rectangle([(card_x,card_y),(card_x+card_w,card_y+card_h)],radius=20,fill=(255,255,255,230))
+        label_y=card_y-25;draw.rounded_rectangle([(500,label_y),(700,label_y+50)],radius=25,fill=(79,70,229),outline=(255,255,255),width=2);draw_centered_text(draw,"的中速報",ImageFont.truetype(font_bold,24),(255,255,255),1200,label_y+12)
+        race_text=f"{hit_data['venue_name']} {hit_data['race_number']}R";draw_centered_text(draw,race_text,ImageFont.truetype(font_regular,32),(80,80,80),1200,card_y+50)
+        draw_centered_text(draw,hit_data['bet_type'],ImageFont.truetype(font_bold,36),(100,100,100),1200,card_y+100)
+        payout_text=f"¥{hit_data['payout']:,}";draw_centered_text(draw,payout_text,ImageFont.truetype(font_black,90),(79,70,229),1200,card_y+180)
+        date_formatted=datetime.strptime(date_str,'%Y-%m-%d').strftime('%Y/%m/%d');draw.text((50,550),date_formatted,font=ImageFont.truetype(font_light,18),fill=(220,220,255))
+        draw.text((950,550),"uma-free.com",font=ImageFont.truetype(font_regular,20),fill=(220,220,255));img.convert('RGB').save(filename,quality=95,optimize=True)
         return filename
-    except Exception as e:
-        _log(f"❌ Hit OGP生成エラー: {e}\n{traceback.format_exc()}"); return None
-
+    except Exception as e: _log(f"❌ Hit OGP生成エラー: {e}\n{traceback.format_exc()}"); return None
 def generate_pick_og_image(data: dict, date_str: str) -> Optional[str]:
-    filename=os.path.join(IMAGE_OUTPUT_DIR,f"og_pick_{date_str}_{random.randint(1000,9999)}.png")
-    _log(f"-> 注目馬用のOGP画像を生成: {filename}")
+    filename=os.path.join(IMAGE_OUTPUT_DIR,f"og_pick_{date_str}.png");_log(f"-> 注目馬用のOGP画像を生成: {filename}")
     try:
-        font_bold=_get_font_path("MPLUSRounded1c-Bold.ttf")
-        font_black=_get_font_path("MPLUSRounded1c-Black.ttf")
-        
-        img, draw = _create_base_image_with_gradient()
-        
-        font_title = ImageFont.truetype(font_bold, 52)
-        font_horse = ImageFont.truetype(font_black, 80)
-        font_info = ImageFont.truetype(font_bold, 36)
-        
-        # テキスト情報
-        draw_centered_text(draw, "🏇 本日のAI注目馬 🏇", font_title, (255, 255, 255), 1200, 100)
-        draw_centered_text(draw, data['horse_name'], font_horse, (255, 255, 255), 1200, 220)
-        
-        race_info_text = f"{data['venue_name']} {data['race_number']}R {data['race_name']}"
-        draw_centered_text(draw, race_info_text, font_info, (220, 220, 255), 1200, 340)
-        
-        score_text = f"AI偏差値: {data['deviation_score']:.2f}"
-        draw_centered_text(draw, score_text, font_info, (255, 255, 255), 1200, 400)
-        
-        _add_footer_and_logo(img, draw, date_str)
-        img.save(filename, quality=95, optimize=True)
+        font_jp_bold_path,font_jp_black_path=_get_font_path("MPLUSRounded1c-Bold.ttf"),_get_font_path("MPLUSRounded1c-Black.ttf")
+        img=Image.new('RGB',(1200,630),(79,70,229));draw=ImageDraw.Draw(img)
+        font_title,font_horse,font_info=ImageFont.truetype(font_jp_bold_path,60),ImageFont.truetype(font_jp_black_path,80),ImageFont.truetype(font_jp_bold_path,40)
+        draw.text((100,80),"🏇 今日のAI注目馬 🏇",fill="white",font=font_title);draw.text((100,200),data['horse_name'],fill="white",font=font_horse)
+        draw.text((100,300),f"{data['venue_name']} {data['race_number']}R {data['race_name']}",fill="#dddddd",font=font_info)
+        draw.text((100,360),f"AI偏差値: {data['deviation_score']:.2f}",fill="white",font=font_info);img.save(filename,quality=95,optimize=True)
         return filename
-    except Exception as e:
-        _log(f"❌ Pick OGP生成エラー: {e}\n{traceback.format_exc()}"); return None
-
+    except Exception as e:_log(f"❌ Pick OGP生成エラー: {e}\n{traceback.format_exc()}");return None
 def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
-    filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_reminder_{race['id']}_{random.randint(1000,9999)}.png")
-    _log(f"-> 重賞レース用のOGP画像を生成: {filename}")
+    filename=os.path.join(IMAGE_OUTPUT_DIR,f"og_reminder_{race['id']}_{random.randint(1000,9999)}.png");_log(f"-> 重賞レース用のOGP画像を生成: {filename}")
     try:
-        font_light = _get_font_path("MPLUSRounded1c-Light.ttf")
-        font_regular = _get_font_path("MPLUSRounded1c-Regular.ttf")
-        font_bold = _get_font_path("MPLUSRounded1c-Bold.ttf")
-        font_black = _get_font_path("MPLUSRounded1c-Black.ttf")
-        
-        img, draw = _create_base_image_with_gradient()
-        
-        # 「重賞レース」ラベル
-        label_y = 120
-        brand_color = (79, 70, 229)
-        draw.rounded_rectangle([(480, label_y), (720, label_y + 50)], radius=25, fill=(255, 255, 255, 200))
-        draw_centered_text(draw, "本日の重賞", ImageFont.truetype(font_bold, 24), brand_color, 1200, label_y + 12)
-
-        # レース名
-        draw_centered_text(draw, race['race_name'], ImageFont.truetype(font_black, 60), (255, 255, 255), 1200, 190)
-        
-        # 開催情報
-        venue_info = f"{race['venue_name']} {datetime.strptime(race['race_date'], '%Y-%m-%d').strftime('%m/%d')}"
-        draw_centered_text(draw, venue_info, ImageFont.truetype(font_light, 24), (220, 220, 255), 1200, 270)
-        
-        # 予想印
-        y_start, colors, marks = 350, [(255, 255, 100), (200, 200, 255), (255, 200, 200)], ["◎", "○", "▲"]
-        for i, p in enumerate(top_preds):
-            y_pos = y_start + i * 65
-            draw.text((350, y_pos), marks[i], font=ImageFont.truetype(font_black, 36), fill=colors[i])
-            draw.text((420, y_pos + 5), p['horse_name'], font=ImageFont.truetype(font_bold, 30), fill=(255, 255, 255))
-            score_text = f"AI偏差値: {p.get('deviation_score', 0):.1f}"
-            draw.text((780, y_pos + 5), score_text, font=ImageFont.truetype(font_regular, 28), fill=(220, 220, 255))
-            
-        _add_footer_and_logo(img, draw, race['race_date'])
-        img.save(filename, quality=95, optimize=True)
+        font_light,font_regular,font_bold,font_black=_get_font_path("MPLUSRounded1c-Light.ttf"),_get_font_path("MPLUSRounded1c-Regular.ttf"),_get_font_path("MPLUSRounded1c-Bold.ttf"),_get_font_path("MPLUSRounded1c-Black.ttf")
+        img=Image.new('RGB',(1200,630),(30,40,80));draw=ImageDraw.Draw(img)
+        for y in range(630):
+            ratio=y/629;r,g,b=int(30+20*ratio),int(40+30*ratio),int(80+40*ratio);draw.line([(0,y),(1200,y)],fill=(r,g,b))
+        draw.rectangle([(0,0),(1200,4)],fill=(192,192,192,128));logo=load_logo()
+        if logo:img.paste(logo,(50,40),logo)
+        draw.text((60,100),"重賞",font=ImageFont.truetype(font_black,24),fill=(192,192,192));draw_centered_text(draw,race['race_name'],ImageFont.truetype(font_black,60),(255,255,255),1200,150)
+        venue_info=f"{race['venue_name']} {datetime.strptime(race['race_date'],'%Y-%m-%d').strftime('%m/%d')}";draw_centered_text(draw,venue_info,ImageFont.truetype(font_light,24),(200,200,200),1200,230)
+        y_start,colors,marks=320,[(255,255,100),(200,200,255),(255,200,200)],["◎","○","▲"]
+        for i,p in enumerate(top_preds):
+            y_pos=y_start+i*70;draw.text((350,y_pos),marks[i],font=ImageFont.truetype(font_black,36),fill=colors[i])
+            draw.text((420,y_pos+5),p['horse_name'],font=ImageFont.truetype(font_bold,30),fill=(255,255,255));score_text=f"{p.get('deviation_score',0):.1f}"
+            draw.text((800,y_pos+5),score_text,font=ImageFont.truetype(font_regular,28),fill=(200,200,200))
+        draw.text((950,550),"uma-free.com",font=ImageFont.truetype(font_regular,20),fill=(200,200,200));img.save(filename,quality=95,optimize=True)
         return filename
-    except Exception as e:
-        _log(f"❌ Reminder OGP生成エラー: {e}\n{traceback.format_exc()}"); return None
+    except Exception as e:_log(f"❌ Reminder OGP生成エラー: {e}\n{traceback.format_exc()}");return None
 
 # --- 6. テキスト生成関数群 ---
 # Xに投稿するテキストを生成します。スパム判定を避けるため、
 # 同じ内容でも複数の表現パターンをランダムに選ぶようにしています。
+# ----------------------------------------------------------------------------------
 def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date_str: str) -> str:
-    _log("-> 的中報告＋成績サマリーのテキストを生成...")
-    hashtags = ["#競馬", "#AI予想", "#的中", f"#{hit['venue_name']}競馬", "#UMA_FREE"]
-    # f-string内でdatetimeの処理を避けるため、事前に処理
-    date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')
-    hashtag_str = ' '.join(hashtags)
-    
-    return f"""{date_formatted}のAI的中報告🎯
+    _log("-> 的中報告＋成績サマリーのテキストを生成...");
+    hashtags = ["#競馬", "#AI予想", "#万馬券" if hit['payout'] >= 10000 else "#的中", f"#{hit['venue_name']}競馬"]
+    return f"""🎯昨日のAI的中速報 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})
 
-【{hit['venue_name']}{hit['race_number']}R】で
-{hit['bet_type']} {hit['payout']:,}円を的中しました！🎉
+【{hit['venue_name']}{hit['race_number']}R {hit['bet_type']}】で
+🎉 **{hit['payout']:,}円** の高配当を的中しました！
 
-昨日のAI本命馬(◎)成績📈
+📈昨日のAI本命馬(◎)成績
 [{summary['win']}-{summary['second']}-{summary['third']}-{summary['other']}]
-勝率:{summary['win_rate']:.1f}% / 複勝率:{summary['in_money_rate']:.1f}%
+勝率: {summary['win_rate']:.1f}% / 複勝率: {summary['in_money_rate']:.1f}%
 
-▼今すぐ無料で今日のAI予想をチェック!
-{SITE_BASE_URL}
+▼レース結果とAIの印はこちら
+{SITE_BASE_URL}/races/{date_str}
 
-{hashtag_str}
+{' '.join(hashtags)}
 """
+def create_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
+    _log("-> 注目馬のテキストを生成..."); is_jra = int(pick['race_id'][4:6]) < 30
+    hashtags = ["#競馬", "#AI予想", "#中央競馬" if is_jra else "#地方競馬", f"#{pick['horse_name']}"]
+    return f"""🏇本日のAI注目馬 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})
 
-def create_pick_tweet(pick: Dict[str, Any], summary: dict, date_str: str) -> str:
-    _log("-> 注目馬のテキストを生成...")
-    is_jra = int(pick['race_id'][4:6]) < 30
-    hashtags = ["#競馬", "#競馬AI", "#中央競馬" if is_jra else "#地方競馬", f"#{pick['horse_name']}", "#UMA_FREE"]
-    # f-string内でdatetimeの処理を避けるため、事前に処理
-    date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')
-    hashtag_str = ' '.join(hashtags)
-    
-    return f"""{date_formatted}のAI注目馬🏇
-
-本日の注目馬はこちら！
+AIが今日のレースで最も高く評価した一頭はこちら！
 【{pick['venue_name']}{pick['race_number']}R {pick['race_name']}】
-◎ {pick['horse_name']} 偏差値:{pick['deviation_score']:.2f}
+◎ {pick['horse_name']} (AI偏差値: {pick['deviation_score']:.2f})
 
-昨日のAI本命馬(◎)成績📈
-[{summary['win']}-{summary['second']}-{summary['third']}-{summary['other']}]
-勝率:{summary['win_rate']:.1f}% / 複勝率:{summary['in_money_rate']:.1f}%
-
-▼全馬のAI偏差値を無料公開中
+▼全レースの無料予測
 {SITE_BASE_URL}
 
-{hashtag_str}
+{' '.join(hashtags)}
 """
-
 def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
-    _log("-> 重賞レースのテキストを生成...")
-    date_str = race['race_date']
+    _log("-> 重賞レースのテキストを生成..."); date_str = race['race_date']
     clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', race['race_name']).strip()
-    hashtags = ["#競馬", "#競馬予想", "#AI予想", f"#{clean_race_name}", "#UMA_FREE"]
-    # f-string内でdatetimeの処理を避けるため、事前に処理
-    date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')
-    hashtag_str = ' '.join(hashtags)
-    
-    # 予想情報をフォーマット
-    predictions_text = []
-    marks = ['◎', '○', '▲']
-    for i, p in enumerate(top_preds):
-        predictions_text.append(f"{marks[i]} {p['horse_name']} (AI偏差値: {p.get('deviation_score', 0):.2f})")
-    predictions_str = '\n'.join(predictions_text)
-    
-    return f"""{date_formatted}の重賞AI予想🎯
-
-【{race['venue_name']}{race['race_number']}R {race['race_name']}】
-
-{predictions_str}
-
-▼無料で全馬のAI予想をチェック!
-{SITE_BASE_URL}
-
-{hashtag_str}
-"""
+    hashtags = ["#競馬", "#競馬予想", "#AI予想", f"#{clean_race_name}"]
+    lines = [f"🏇本日の重賞 ({race['race_name']}) AI予測\n"]
+    for i,p in enumerate(top_preds): lines.append(f"{['◎','○','▲'][i]} {p['horse_name']} (AI偏差値: {p.get('deviation_score', 0):.2f})")
+    lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}/races/{date_str}?venue={race['venue_name']}&race={race['race_number']}")
+    lines.append(f"\n{' '.join(hashtags)}")
+    return "\n".join(lines)
 
 # --- 7. X (Twitter) 投稿関数 ---
 # この関数が、実際にXへ投稿を行う心臓部です。
@@ -392,7 +277,7 @@ def post_to_twitter(text: str, image_path: Optional[str] = None) -> bool:
 # ----------------------------------------------------------------------------------
 if __name__ == "__main__":
     _log("="*50)
-    _log("SNS自動投稿ジョブを開始します (デザイン統一・安定版)")
+    _log("SNS自動投稿ジョブを開始します (最終安定版)")
     _log("="*50)
 
     if not all([TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET]):
@@ -403,35 +288,31 @@ if __name__ == "__main__":
     today, yesterday = datetime.now(jst), datetime.now(jst) - timedelta(days=1)
     today_str, yesterday_str = today.strftime('%Y-%m-%d'), yesterday.strftime('%Y-%m-%d')
     
-    # 昨日の成績サマリーを最初に集計
-    summary = {'win': 0, 'second': 0, 'third': 0, 'other': 0, 'total': 0, 'win_rate': 0.0, 'in_money_rate': 0.0}
-    all_races_data_yesterday = get_api_data(yesterday_str)
-    if all_races_data_yesterday:
-        _log("-> 昨日の本命馬成績を集計中...")
-        venues = all_races_data_yesterday.get('jra', []) + all_races_data_yesterday.get('nar', [])
-        for venue in venues:
-            for race in venue.get('races', []):
-                if race.get('predictions') and race.get('results'):
-                    honmei = next((p for p in race['predictions'] if p.get('mark') == '◎'), None)
-                    if honmei and honmei.get('horse_number') is not None:
-                        result = next((r for r in race['results'] if r.get('horse_number') == honmei.get('horse_number')), None)
-                        if result and isinstance(result.get('rank'), int) and result.get('rank') > 0:
-                            summary['total'] += 1
-                            rank = result['rank']
-                            if rank == 1: summary['win'] += 1
-                            elif rank == 2: summary['second'] += 1
-                            elif rank == 3: summary['third'] += 1
-                            else: summary['other'] += 1
-        if summary['total'] > 0:
-            summary['win_rate'] = (summary['win'] / summary['total'] * 100)
-            summary['in_money_rate'] = ((summary['win'] + summary['second'] + summary['third']) / summary['total'] * 100)
-    else:
-        _log("-> 昨日のレースデータが取得できなかったため、成績は [0-0-0-0] となります。")
-
-
     _log("\n--- [フェーズ1/3] 昨日の的中報告と成績サマリーを投稿 ---")
     hits_data = get_api_data(f"hits/high-payouts/{yesterday_str}")
     if hits_data and hits_data[0].get('payout', 0) >= 10000:
+        summary = {'win': 0, 'second': 0, 'third': 0, 'other': 0, 'total': 0, 'win_rate': 0.0, 'in_money_rate': 0.0}
+        all_races_data_yesterday = get_api_data(yesterday_str)
+        if all_races_data_yesterday:
+            _log("-> 昨日の本命馬成績を集計中...")
+            venues = all_races_data_yesterday.get('jra', []) + all_races_data_yesterday.get('nar', [])
+            for venue in venues:
+                for race in venue.get('races', []):
+                    if race.get('predictions') and race.get('results'):
+                        honmei = next((p for p in race['predictions'] if p.get('mark') == '◎'), None)
+                        if honmei and honmei.get('horse_number') is not None:
+                            result = next((r for r in race['results'] if r.get('horse_number') == honmei.get('horse_number')), None)
+                            if result and isinstance(result.get('rank'), int) and result.get('rank') > 0:
+                                summary['total'] += 1
+                                rank = result['rank']
+                                if rank == 1: summary['win'] += 1
+                                elif rank == 2: summary['second'] += 1
+                                elif rank == 3: summary['third'] += 1
+                                else: summary['other'] += 1
+            if summary['total'] > 0:
+                summary['win_rate'] = (summary['win'] / summary['total'] * 100)
+                summary['in_money_rate'] = ((summary['win'] + summary['second'] + summary['third']) / summary['total'] * 100)
+        
         image_file = generate_hit_og_image(hits_data[0], yesterday_str)
         if image_file:
             tweet_text = create_hit_report_and_summary_tweet(hits_data[0], summary, yesterday_str)
@@ -446,8 +327,7 @@ if __name__ == "__main__":
     if pick_data:
         image_file = generate_pick_og_image(pick_data, today_str)
         if image_file:
-            # バグ修正: create_pick_tweet に summary を渡す
-            tweet_text = create_pick_tweet(pick_data, summary, today_str)
+            tweet_text = create_pick_tweet(pick_data, today_str)
             post_to_twitter(tweet_text, image_file)
     else:
         _log("-> 今日の注目馬データがなかったため、投稿をスキップします。")
@@ -462,7 +342,7 @@ if __name__ == "__main__":
         for venue in venues:
             for race in venue.get('races', []):
                 if any(grade_race in race.get('race_name', '') for grade_race in JRA_GRADE_RACE_NAMES):
-                    if posted_count >= 1: continue # 1日に1レースのみ投稿
+                    if posted_count >= 1: continue
                     _log(f"-> JRA重賞レース発見: {race['venue_name']} {race.get('race_name')}")
                     preds = sorted([p for p in race.get('predictions', []) if p.get('deviation_score')], key=lambda p: p['deviation_score'], reverse=True)
                     top_preds = preds[:3]

@@ -279,11 +279,14 @@ def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
 # --- 6. テキスト生成関数群 ---
 # Xに投稿するテキストを生成します。スパム判定を避けるため、
 # 同じ内容でも複数の表現パターンをランダムに選ぶようにしています。
-# ----------------------------------------------------------------------------------
 def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date_str: str) -> str:
-    _log("-> 的中報告＋成績サマリーのテキストを生成...");
+    _log("-> 的中報告＋成績サマリーのテキストを生成...")
     hashtags = ["#競馬", "#AI予想", "#的中", f"#{hit['venue_name']}競馬", "#UMA_FREE"]
-    return f"""{datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')}のAI的中報告🎯
+    # f-string内でdatetimeの処理を避けるため、事前に処理
+    date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')
+    hashtag_str = ' '.join(hashtags)
+    
+    return f"""{date_formatted}のAI的中報告🎯
 
 【{hit['venue_name']}{hit['race_number']}R】で
 {hit['bet_type']} {hit['payout']:,}円を的中しました！🎉
@@ -295,14 +298,18 @@ def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date
 ▼今すぐ無料で今日のAI予想をチェック!
 {SITE_BASE_URL}
 
-{' '.join(hashtags)}
+{hashtag_str}
 """
 
 def create_pick_tweet(pick: Dict[str, Any], summary: dict, date_str: str) -> str:
-    _log("-> 注目馬のテキストを生成...");
+    _log("-> 注目馬のテキストを生成...")
     is_jra = int(pick['race_id'][4:6]) < 30
     hashtags = ["#競馬", "#競馬AI", "#中央競馬" if is_jra else "#地方競馬", f"#{pick['horse_name']}", "#UMA_FREE"]
-    return f"""{datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')}のAI注目馬🏇
+    # f-string内でdatetimeの処理を避けるため、事前に処理
+    date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')
+    hashtag_str = ' '.join(hashtags)
+    
+    return f"""{date_formatted}のAI注目馬🏇
 
 本日の注目馬はこちら！
 【{pick['venue_name']}{pick['race_number']}R {pick['race_name']}】
@@ -315,31 +322,35 @@ def create_pick_tweet(pick: Dict[str, Any], summary: dict, date_str: str) -> str
 ▼全馬のAI偏差値を無料公開中
 {SITE_BASE_URL}
 
-{' '.join(hashtags)}
+{hashtag_str}
 """
 
 def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
-    _log("-> 重賞レースのテキストを生成...");
+    _log("-> 重賞レースのテキストを生成...")
     date_str = race['race_date']
     clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', race['race_name']).strip()
     hashtags = ["#競馬", "#競馬予想", "#AI予想", f"#{clean_race_name}", "#UMA_FREE"]
+    # f-string内でdatetimeの処理を避けるため、事前に処理
+    date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')
+    hashtag_str = ' '.join(hashtags)
     
     # 予想情報をフォーマット
     predictions_text = []
     marks = ['◎', '○', '▲']
     for i, p in enumerate(top_preds):
         predictions_text.append(f"{marks[i]} {p['horse_name']} (AI偏差値: {p.get('deviation_score', 0):.2f})")
+    predictions_str = '\n'.join(predictions_text)
     
-    return f"""{datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')}の重賞AI予想🎯
+    return f"""{date_formatted}の重賞AI予想🎯
 
 【{race['venue_name']}{race['race_number']}R {race['race_name']}】
 
-{'\n'.join(predictions_text)}
+{predictions_str}
 
 ▼無料で全馬のAI予想をチェック!
 {SITE_BASE_URL}
 
-{' '.join(hashtags)}
+{hashtag_str}
 """
 
 # --- 7. X (Twitter) 投稿関数 ---

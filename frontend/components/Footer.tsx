@@ -27,7 +27,6 @@ export const Footer = () => {
                         className="text-sm text-muted hover:text-primary hover:underline flex items-center gap-1"
                         aria-label="公式Xアカウント"
                     >
-                        <TwitterIcon className="w-4 h-4" />
                         <span>公式X(旧Twitter)</span>
                     </Link>
                     {/* ▲▲▲▲▲ ここまで追加 ▲▲▲▲▲ */}

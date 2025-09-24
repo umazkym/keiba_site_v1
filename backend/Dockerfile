@@ -25,7 +25,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # ステップ2: インストール済みのChromeにバージョンを合わせたChromeDriverをインストール
-# (このステップでは、前のステップでインストールしたコマンドが利用可能です)
 RUN CHROME_VERSION=$(google-chrome --version | cut -f 3 -d ' ' | cut -d '.' -f 1) && \
     CHROME_DRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone.json" | jq -r ".milestones.\"${CHROME_VERSION}\".version") && \
     wget -q "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_DRIVER_VERSION}/linux64/chromedriver-linux64.zip" -O chromedriver.zip && \
@@ -43,7 +42,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # アプリケーションコードをコピー
 COPY . .
 
-# ★★★★★ ここから追加 ★★★★★
-# コンテナが実行されたときに、run_pipeline.py を実行するよう指示
+# ★★★★★ 修正点 ★★★★★
+# このコンテナのデフォルトの実行コマンドを定義します。
+# このCMDは、render.yamlのdockerCommandで上書きされます。
 CMD ["python", "run_pipeline.py"]
-# ★★★★★ ここまで追加 ★★★★★

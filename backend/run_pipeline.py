@@ -264,12 +264,7 @@ def main():
             today_jst = datetime.datetime.now(jst).date()
             
             target_date_results = today_jst - datetime.timedelta(days=1)
-            # ==============================================================================
-            # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-            # 予測対象を「当日」から「翌日」に変更
             target_date_predictions = today_jst + datetime.timedelta(days=1)
-            # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-            # ==============================================================================
 
             scrape_race_lists_for_date(target_date_results)
             scrape_race_lists_for_date(target_date_predictions)
@@ -286,28 +281,12 @@ def main():
         success_message = (f"✅ パイプライン処理が正常に完了しました。\n**モード**: `{PIPELINE_MODE}`\n**処理時間**: `{elapsed_time:.2f} 秒`")
         send_notification(success_message)
         
-        if PIPELINE_MODE == 'PRODUCTION':
-            print("\n--- [SNS POST] SNSへの自動投稿を開始します... ---")
-            try:
-                # SNS 投稿スクリプトには PROCESS_PENDING=1 を渡して
-                # パイプライン完了時に pending キューも試行できるようにする
-                env = os.environ.copy()
-                env["PROCESS_PENDING"] = "1"
-                result = subprocess.run(
-                    [sys.executable, "scripts/sns_poster.py"],
-                    check=True, capture_output=True, text=True, timeout=1200, encoding='utf-8', env=env
-                )
-                print("--- SNS投稿スクリプト ログ ---")
-                print(result.stdout)
-                print("--------------------------")
-                send_notification(f"✅ SNSへの自動投稿が完了しました。\n```\n{result.stdout}\n```")
-            except subprocess.TimeoutExpired:
-                print("--- SNS POST script timed out. ---")
-                send_notification("⚠️ SNSへの自動投稿がタイムアウトしました。", is_error=True)
-            except subprocess.CalledProcessError as e:
-                error_details = f"SNSへの自動投稿に失敗しました。\n**エラー**:\n```\n{e.stderr}\n```"
-                print(f"--- SNS POST script failed with error: ---\n{e.stderr}")
-                send_notification(error_details, is_error=True)
+        # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        #
+        #            SNS投稿を呼び出す処理はここにありましたが、
+        #            render.yamlでジョブを分離したため、完全に削除しました。
+        #
+        # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
     except Exception as e:
         elapsed_time = time.time() - start_time

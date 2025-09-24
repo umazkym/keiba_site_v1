@@ -1,4 +1,4 @@
-# backend/scripts/sns_poster.py (最終完成版: 成績集計機能の統合)
+# backend/scripts/sns_poster.py (Render環境対応版)
 
 import os
 import sys
@@ -13,41 +13,41 @@ from typing import Optional, List, Dict, Any
 import traceback
 from PIL import Image, ImageDraw, ImageFont
 
-# --- 1. 基本設定とパス解決 ---
-# このブロックは、スクリプトがどこから実行されても正しく動作するように、
-# プロジェクトのルートディレクトリを特定し、必要なファイルを正しく読み込むための重要な部分です。
-# ----------------------------------------------------------------------------------
-try:
-    # __file__ はスクリプト自身のパスを保持しており、これを基準に絶対パスを生成します。
-    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-    # `SCRIPT_DIR` (backend/scripts) から2階層上がることで、プロジェクトのルートディレクトリを取得します。
-    PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
-except NameError:
-    # 対話モードなどで `__file__` が定義されていない場合の代替手段です。
-    PROJECT_ROOT = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir))
+# --- 1. 基本設定とパス解決（Render対応版）---
+def get_project_root():
+    """Render環境とローカル環境の両方で正しくプロジェクトルートを取得"""
+    # Render環境の場合
+    if os.getenv("RENDER"):
+        # Renderでは /app がプロジェクトルート
+        return "/app"
+    
+    # ローカル環境の場合
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # backend/scripts から プロジェクトルートへ
+        return os.path.dirname(os.path.dirname(script_dir))
+    except:
+        # フォールバック
+        return os.getcwd()
 
-# プロジェクトルートにある `.env` ファイルのパスを生成します。
+PROJECT_ROOT = get_project_root()
+
+# .envファイルの読み込み
 dotenv_path = os.path.join(PROJECT_ROOT, '.env')
-
-# .envファイルの読み込み処理。Render環境では環境変数が直接設定されるため、ファイルがなくても動作します。
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
     print(f"INFO: .envファイルを読み込みました: {dotenv_path}")
 else:
-    # 代替として backend/.env も探します。
     dotenv_path_alt = os.path.join(PROJECT_ROOT, 'backend', '.env')
     if os.path.exists(dotenv_path_alt):
         load_dotenv(dotenv_path_alt)
         print(f"INFO: .envファイルを読み込みました: {dotenv_path_alt}")
     else:
-        print(f"警告: .envファイルが見つかりません。Render環境でない場合はAPIキーが読み込めません。")
-
+        # Render環境では環境変数が直接設定されるため警告は不要
+        if not os.getenv("RENDER"):
+            print(f"警告: .envファイルが見つかりません。")
 
 # --- 2. 環境変数と定数の定義 ---
-# このブロックでは、プログラム全体で利用する設定値やAPIキーを定義します。
-# 投稿内容や接続先を変更したい場合は、主にこのセクションを編集します。
-# ----------------------------------------------------------------------------------
-
 # .envファイルから読み込んだAPIキーを変数に格納します。
 TWITTER_CONSUMER_KEY = os.getenv("TWITTER_CONSUMER_KEY")
 TWITTER_CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
@@ -101,104 +101,215 @@ JRA_GRADE_RACE_NAMES = {
 }
 
 # --- 3. ヘルパー関数群 ---
-# このブロックは、ログ出力やフォントファイルのパス取得など、
-# スクリプト内で繰り返し使われる細かな処理をまとめたものです。
-# ----------------------------------------------------------------------------------
-def _now_str(): return datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
-def _log(msg: str): print(f"{_now_str()} {msg}")
+def _now_str():
+    return datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
+
+def _log(msg: str):
+    print(f"{_now_str()} {msg}")
+
 def _get_font_path(font_name: str) -> str:
-    font_path = os.path.join(PROJECT_ROOT, "backend", "fonts", font_name)
-    if os.path.exists(font_path): return font_path
+    """Render環境とローカル環境の両方で正しくフォントパスを取得"""
+    # Render環境の場合
+    if os.getenv("RENDER"):
+        font_path = os.path.join("/app", "fonts", font_name)
+    else:
+        # ローカル環境の場合
+        font_path = os.path.join(PROJECT_ROOT, "backend", "fonts", font_name)
+    
+    if os.path.exists(font_path):
+        return font_path
+    
+    # デバッグ情報を出力
+    print(f"[DEBUG] Font not found at: {font_path}")
+    print(f"[DEBUG] Current working directory: {os.getcwd()}")
+    print(f"[DEBUG] PROJECT_ROOT: {PROJECT_ROOT}")
+    print(f"[DEBUG] RENDER env: {os.getenv('RENDER')}")
+    
+    # フォントディレクトリの内容を確認
+    font_dir = os.path.dirname(font_path)
+    if os.path.exists(font_dir):
+        print(f"[DEBUG] Files in {font_dir}: {os.listdir(font_dir)}")
+    else:
+        print(f"[DEBUG] Font directory not found: {font_dir}")
+    
     raise FileNotFoundError(f"フォントファイルが見つかりません: '{font_path}'")
+
 def draw_centered_text(draw, text, font, fill_color, image_width, y_position, **kwargs):
-    try: bbox = draw.textbbox((0, 0), text, font=font); text_width = bbox[2] - bbox[0]
-    except AttributeError: text_width, _ = draw.textsize(text, font=font)
+    try:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+    except AttributeError:
+        text_width, _ = draw.textsize(text, font=font)
     x_position = (image_width - text_width) / 2
     draw.text((x_position, y_position), text, fill=fill_color, font=font, **kwargs)
+
 def load_logo() -> Optional[Image.Image]:
     try:
-        logo_path = _get_font_path("new-logo.png"); logo = Image.open(logo_path)
-        if logo.mode != 'RGBA': logo = logo.convert('RGBA')
-        aspect_ratio = logo.width/logo.height; new_height = 40; new_width = int(new_height * aspect_ratio)
+        logo_path = _get_font_path("new-logo.png")
+        logo = Image.open(logo_path)
+        if logo.mode != 'RGBA':
+            logo = logo.convert('RGBA')
+        aspect_ratio = logo.width / logo.height
+        new_height = 40
+        new_width = int(new_height * aspect_ratio)
         resample_filter = Image.Resampling.LANCZOS if hasattr(Image, 'Resampling') else Image.LANCZOS
         return logo.resize((new_width, new_height), resample_filter)
-    except Exception as e: _log(f"ロゴ読み込みエラー: {e}"); return None
+    except Exception as e:
+        _log(f"ロゴ読み込みエラー: {e}")
+        return None
 
-# --- 4. API連携関数 ---
-# バックエンドAPIサーバーからレース情報や予測データを取得するための関数です。
-# 失敗した場合に備え、3回まで自動で再試行するようになっています。
-# ----------------------------------------------------------------------------------
+# --- 4. API連携関数（修正版）---
 def get_api_data(endpoint: str, retries: int = 3, delay: int = 5) -> Optional[Any]:
     _log(f"APIにアクセス中: {endpoint}")
     for attempt in range(retries):
         try:
-            url = f"{API_BASE_URL}/api/v1/predictions/{endpoint}"; res = requests.get(url, timeout=90)
-            if res.status_code == 200 and res.json(): _log("-> データ取得成功"); return res.json()
-            if res.status_code == 404: _log("-> データなし (404 Not Found)"); return None
-            _log(f"-> データ取得失敗 (Status: {res.status_code})")
-        except requests.RequestException as e: _log(f"-> API接続エラー (試行 {attempt + 1}/{retries}): {e}")
-        if attempt < retries - 1: time.sleep(delay)
+            url = f"{API_BASE_URL}/api/v1/predictions/{endpoint}"
+            res = requests.get(url, timeout=90)
+            
+            # ステータスコードが200でも、空のリストや空の辞書の場合はNoneとして扱う
+            if res.status_code == 200:
+                data = res.json()
+                # 空でないデータの場合のみ成功とする
+                if data and (isinstance(data, list) and len(data) > 0 or 
+                           isinstance(data, dict) and data != {}):
+                    _log("-> データ取得成功")
+                    return data
+                else:
+                    _log("-> データなし (空のレスポンス)")
+                    return None
+            elif res.status_code == 404:
+                _log("-> データなし (404 Not Found)")
+                return None
+            else:
+                _log(f"-> データ取得失敗 (Status: {res.status_code})")
+        except requests.RequestException as e:
+            _log(f"-> API接続エラー (試行 {attempt + 1}/{retries}): {e}")
+        if attempt < retries - 1:
+            time.sleep(delay)
     return None
 
 # --- 5. OGP画像生成関数群 ---
-# Pillowライブラリを使い、投稿に添付する画像を動的に生成します。
-# フォントやロゴファイルは `backend/fonts` ディレクトリから読み込みます。
-# ----------------------------------------------------------------------------------
 def generate_hit_og_image(hit_data: dict, date_str: str) -> Optional[str]:
-    filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_hit_{date_str}_{random.randint(1000,9999)}.png"); _log(f"-> 的中報告用のOGP画像を生成: {filename}")
+    filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_hit_{date_str}_{random.randint(1000,9999)}.png")
+    _log(f"-> 的中報告用のOGP画像を生成: {filename}")
     try:
-        font_light=_get_font_path("MPLUSRounded1c-Light.ttf");font_regular=_get_font_path("MPLUSRounded1c-Regular.ttf");font_bold=_get_font_path("MPLUSRounded1c-Bold.ttf");font_black=_get_font_path("MPLUSRounded1c-Black.ttf")
-        img=Image.new('RGB',(1200,630),(79,70,229));draw=ImageDraw.Draw(img,'RGBA');color_start,color_end=(129,140,248),(55,48,163)
+        font_light = _get_font_path("MPLUSRounded1c-Light.ttf")
+        font_regular = _get_font_path("MPLUSRounded1c-Regular.ttf")
+        font_bold = _get_font_path("MPLUSRounded1c-Bold.ttf")
+        font_black = _get_font_path("MPLUSRounded1c-Black.ttf")
+        
+        img = Image.new('RGB', (1200, 630), (79, 70, 229))
+        draw = ImageDraw.Draw(img, 'RGBA')
+        color_start, color_end = (129, 140, 248), (55, 48, 163)
+        
         for y in range(630):
-            ratio=y/629;r,g,b=int(color_start[0]*(1-ratio)+color_end[0]*ratio),int(color_start[1]*(1-ratio)+color_end[1]*ratio),int(color_start[2]*(1-ratio)+color_end[2]*ratio);draw.line([(0,y),(1200,y)],fill=(r,g,b))
-        logo=load_logo();
-        if logo:img.paste(logo,(50,40),logo)
-        card_x,card_y,card_w,card_h=150,180,900,320;draw.rounded_rectangle([(card_x,card_y),(card_x+card_w,card_y+card_h)],radius=20,fill=(255,255,255,230))
-        label_y=card_y-25;draw.rounded_rectangle([(500,label_y),(700,label_y+50)],radius=25,fill=(79,70,229),outline=(255,255,255),width=2);draw_centered_text(draw,"的中速報",ImageFont.truetype(font_bold,24),(255,255,255),1200,label_y+12)
-        race_text=f"{hit_data['venue_name']} {hit_data['race_number']}R";draw_centered_text(draw,race_text,ImageFont.truetype(font_regular,32),(80,80,80),1200,card_y+50)
-        draw_centered_text(draw,hit_data['bet_type'],ImageFont.truetype(font_bold,36),(100,100,100),1200,card_y+100)
-        payout_text=f"¥{hit_data['payout']:,}";draw_centered_text(draw,payout_text,ImageFont.truetype(font_black,90),(79,70,229),1200,card_y+180)
-        date_formatted=datetime.strptime(date_str,'%Y-%m-%d').strftime('%Y/%m/%d');draw.text((50,550),date_formatted,font=ImageFont.truetype(font_light,18),fill=(220,220,255))
-        draw.text((950,550),"uma-free.com",font=ImageFont.truetype(font_regular,20),fill=(220,220,255));img.convert('RGB').save(filename,quality=95,optimize=True)
+            ratio = y / 629
+            r = int(color_start[0] * (1 - ratio) + color_end[0] * ratio)
+            g = int(color_start[1] * (1 - ratio) + color_end[1] * ratio)
+            b = int(color_start[2] * (1 - ratio) + color_end[2] * ratio)
+            draw.line([(0, y), (1200, y)], fill=(r, g, b))
+        
+        logo = load_logo()
+        if logo:
+            img.paste(logo, (50, 40), logo)
+        
+        card_x, card_y, card_w, card_h = 150, 180, 900, 320
+        draw.rounded_rectangle([(card_x, card_y), (card_x + card_w, card_y + card_h)], radius=20, fill=(255, 255, 255, 230))
+        
+        label_y = card_y - 25
+        draw.rounded_rectangle([(500, label_y), (700, label_y + 50)], radius=25, fill=(79, 70, 229), outline=(255, 255, 255), width=2)
+        draw_centered_text(draw, "的中速報", ImageFont.truetype(font_bold, 24), (255, 255, 255), 1200, label_y + 12)
+        
+        race_text = f"{hit_data['venue_name']} {hit_data['race_number']}R"
+        draw_centered_text(draw, race_text, ImageFont.truetype(font_regular, 32), (80, 80, 80), 1200, card_y + 50)
+        draw_centered_text(draw, hit_data['bet_type'], ImageFont.truetype(font_bold, 36), (100, 100, 100), 1200, card_y + 100)
+        
+        payout_text = f"¥{hit_data['payout']:,}"
+        draw_centered_text(draw, payout_text, ImageFont.truetype(font_black, 90), (79, 70, 229), 1200, card_y + 180)
+        
+        date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%Y/%m/%d')
+        draw.text((50, 550), date_formatted, font=ImageFont.truetype(font_light, 18), fill=(220, 220, 255))
+        draw.text((950, 550), "uma-free.com", font=ImageFont.truetype(font_regular, 20), fill=(220, 220, 255))
+        
+        img.convert('RGB').save(filename, quality=95, optimize=True)
         return filename
-    except Exception as e: _log(f"❌ Hit OGP生成エラー: {e}\n{traceback.format_exc()}"); return None
+    except Exception as e:
+        _log(f"❌ Hit OGP生成エラー: {e}\n{traceback.format_exc()}")
+        return None
+
 def generate_pick_og_image(data: dict, date_str: str) -> Optional[str]:
-    filename=os.path.join(IMAGE_OUTPUT_DIR,f"og_pick_{date_str}.png");_log(f"-> 注目馬用のOGP画像を生成: {filename}")
+    filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_pick_{date_str}.png")
+    _log(f"-> 注目馬用のOGP画像を生成: {filename}")
     try:
-        font_jp_bold_path,font_jp_black_path=_get_font_path("MPLUSRounded1c-Bold.ttf"),_get_font_path("MPLUSRounded1c-Black.ttf")
-        img=Image.new('RGB',(1200,630),(79,70,229));draw=ImageDraw.Draw(img)
-        font_title,font_horse,font_info=ImageFont.truetype(font_jp_bold_path,60),ImageFont.truetype(font_jp_black_path,80),ImageFont.truetype(font_jp_bold_path,40)
-        draw.text((100,80),"🏇 今日のAI注目馬 🏇",fill="white",font=font_title);draw.text((100,200),data['horse_name'],fill="white",font=font_horse)
-        draw.text((100,300),f"{data['venue_name']} {data['race_number']}R {data['race_name']}",fill="#dddddd",font=font_info)
-        draw.text((100,360),f"AI偏差値: {data['deviation_score']:.2f}",fill="white",font=font_info);img.save(filename,quality=95,optimize=True)
+        font_jp_bold_path = _get_font_path("MPLUSRounded1c-Bold.ttf")
+        font_jp_black_path = _get_font_path("MPLUSRounded1c-Black.ttf")
+        
+        img = Image.new('RGB', (1200, 630), (79, 70, 229))
+        draw = ImageDraw.Draw(img)
+        
+        font_title = ImageFont.truetype(font_jp_bold_path, 60)
+        font_horse = ImageFont.truetype(font_jp_black_path, 80)
+        font_info = ImageFont.truetype(font_jp_bold_path, 40)
+        
+        draw.text((100, 80), "🏇 今日のAI注目馬 🏇", fill="white", font=font_title)
+        draw.text((100, 200), data['horse_name'], fill="white", font=font_horse)
+        draw.text((100, 300), f"{data['venue_name']} {data['race_number']}R {data['race_name']}", fill="#dddddd", font=font_info)
+        draw.text((100, 360), f"AI偏差値: {data['deviation_score']:.2f}", fill="white", font=font_info)
+        
+        img.save(filename, quality=95, optimize=True)
         return filename
-    except Exception as e:_log(f"❌ Pick OGP生成エラー: {e}\n{traceback.format_exc()}");return None
+    except Exception as e:
+        _log(f"❌ Pick OGP生成エラー: {e}\n{traceback.format_exc()}")
+        return None
+
 def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
-    filename=os.path.join(IMAGE_OUTPUT_DIR,f"og_reminder_{race['id']}_{random.randint(1000,9999)}.png");_log(f"-> 重賞レース用のOGP画像を生成: {filename}")
+    filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_reminder_{race['id']}_{random.randint(1000,9999)}.png")
+    _log(f"-> 重賞レース用のOGP画像を生成: {filename}")
     try:
-        font_light,font_regular,font_bold,font_black=_get_font_path("MPLUSRounded1c-Light.ttf"),_get_font_path("MPLUSRounded1c-Regular.ttf"),_get_font_path("MPLUSRounded1c-Bold.ttf"),_get_font_path("MPLUSRounded1c-Black.ttf")
-        img=Image.new('RGB',(1200,630),(30,40,80));draw=ImageDraw.Draw(img)
+        font_light = _get_font_path("MPLUSRounded1c-Light.ttf")
+        font_regular = _get_font_path("MPLUSRounded1c-Regular.ttf")
+        font_bold = _get_font_path("MPLUSRounded1c-Bold.ttf")
+        font_black = _get_font_path("MPLUSRounded1c-Black.ttf")
+        
+        img = Image.new('RGB', (1200, 630), (30, 40, 80))
+        draw = ImageDraw.Draw(img)
+        
         for y in range(630):
-            ratio=y/629;r,g,b=int(30+20*ratio),int(40+30*ratio),int(80+40*ratio);draw.line([(0,y),(1200,y)],fill=(r,g,b))
-        draw.rectangle([(0,0),(1200,4)],fill=(192,192,192,128));logo=load_logo()
-        if logo:img.paste(logo,(50,40),logo)
-        draw.text((60,100),"重賞",font=ImageFont.truetype(font_black,24),fill=(192,192,192));draw_centered_text(draw,race['race_name'],ImageFont.truetype(font_black,60),(255,255,255),1200,150)
-        venue_info=f"{race['venue_name']} {datetime.strptime(race['race_date'],'%Y-%m-%d').strftime('%m/%d')}";draw_centered_text(draw,venue_info,ImageFont.truetype(font_light,24),(200,200,200),1200,230)
-        y_start,colors,marks=320,[(255,255,100),(200,200,255),(255,200,200)],["◎","○","▲"]
-        for i,p in enumerate(top_preds):
-            y_pos=y_start+i*70;draw.text((350,y_pos),marks[i],font=ImageFont.truetype(font_black,36),fill=colors[i])
-            draw.text((420,y_pos+5),p['horse_name'],font=ImageFont.truetype(font_bold,30),fill=(255,255,255));score_text=f"{p.get('deviation_score',0):.1f}"
-            draw.text((800,y_pos+5),score_text,font=ImageFont.truetype(font_regular,28),fill=(200,200,200))
-        draw.text((950,550),"uma-free.com",font=ImageFont.truetype(font_regular,20),fill=(200,200,200));img.save(filename,quality=95,optimize=True)
+            ratio = y / 629
+            r = int(30 + 20 * ratio)
+            g = int(40 + 30 * ratio)
+            b = int(80 + 40 * ratio)
+            draw.line([(0, y), (1200, y)], fill=(r, g, b))
+        
+        draw.rectangle([(0, 0), (1200, 4)], fill=(192, 192, 192, 128))
+        logo = load_logo()
+        if logo:
+            img.paste(logo, (50, 40), logo)
+        
+        draw.text((60, 100), "重賞", font=ImageFont.truetype(font_black, 24), fill=(192, 192, 192))
+        draw_centered_text(draw, race['race_name'], ImageFont.truetype(font_black, 60), (255, 255, 255), 1200, 150)
+        
+        venue_info = f"{race['venue_name']} {datetime.strptime(race['race_date'], '%Y-%m-%d').strftime('%m/%d')}"
+        draw_centered_text(draw, venue_info, ImageFont.truetype(font_light, 24), (200, 200, 200), 1200, 230)
+        
+        y_start, colors, marks = 320, [(255, 255, 100), (200, 200, 255), (255, 200, 200)], ["◎", "○", "▲"]
+        for i, p in enumerate(top_preds):
+            y_pos = y_start + i * 70
+            draw.text((350, y_pos), marks[i], font=ImageFont.truetype(font_black, 36), fill=colors[i])
+            draw.text((420, y_pos + 5), p['horse_name'], font=ImageFont.truetype(font_bold, 30), fill=(255, 255, 255))
+            score_text = f"{p.get('deviation_score', 0):.1f}"
+            draw.text((800, y_pos + 5), score_text, font=ImageFont.truetype(font_regular, 28), fill=(200, 200, 200))
+        
+        draw.text((950, 550), "uma-free.com", font=ImageFont.truetype(font_regular, 20), fill=(200, 200, 200))
+        img.save(filename, quality=95, optimize=True)
         return filename
-    except Exception as e:_log(f"❌ Reminder OGP生成エラー: {e}\n{traceback.format_exc()}");return None
+    except Exception as e:
+        _log(f"❌ Reminder OGP生成エラー: {e}\n{traceback.format_exc()}")
+        return None
 
 # --- 6. テキスト生成関数群 ---
-# Xに投稿するテキストを生成します。スパム判定を避けるため、
-# 同じ内容でも複数の表現パターンをランダムに選ぶようにしています。
-# ----------------------------------------------------------------------------------
 def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date_str: str) -> str:
-    _log("-> 的中報告＋成績サマリーのテキストを生成...");
+    _log("-> 的中報告＋成績サマリーのテキストを生成...")
     hashtags = ["#競馬", "#AI予想", "#万馬券" if hit['payout'] >= 10000 else "#的中", f"#{hit['venue_name']}競馬"]
     return f"""🎯昨日のAI的中速報 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})
 
@@ -214,8 +325,10 @@ def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date
 
 {' '.join(hashtags)}
 """
+
 def create_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
-    _log("-> 注目馬のテキストを生成..."); is_jra = int(pick['race_id'][4:6]) < 30
+    _log("-> 注目馬のテキストを生成...")
+    is_jra = int(pick['race_id'][4:6]) < 30
     hashtags = ["#競馬", "#AI予想", "#中央競馬" if is_jra else "#地方競馬", f"#{pick['horse_name']}"]
     return f"""🏇本日のAI注目馬 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})
 
@@ -228,25 +341,27 @@ AIが今日のレースで最も高く評価した一頭はこちら！
 
 {' '.join(hashtags)}
 """
+
 def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
-    _log("-> 重賞レースのテキストを生成..."); date_str = race['race_date']
+    _log("-> 重賞レースのテキストを生成...")
+    date_str = race['race_date']
     clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', race['race_name']).strip()
     hashtags = ["#競馬", "#競馬予想", "#AI予想", f"#{clean_race_name}"]
     lines = [f"🏇本日の重賞 ({race['race_name']}) AI予測\n"]
-    for i,p in enumerate(top_preds): lines.append(f"{['◎','○','▲'][i]} {p['horse_name']} (AI偏差値: {p.get('deviation_score', 0):.2f})")
+    for i, p in enumerate(top_preds):
+        lines.append(f"{['◎','○','▲'][i]} {p['horse_name']} (AI偏差値: {p.get('deviation_score', 0):.2f})")
     lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}/races/{date_str}?venue={race['venue_name']}&race={race['race_number']}")
     lines.append(f"\n{' '.join(hashtags)}")
     return "\n".join(lines)
 
 # --- 7. X (Twitter) 投稿関数 ---
-# この関数が、実際にXへ投稿を行う心臓部です。
-# 成功した `コードB` と同じ認証方式を採用し、安定性を確保しています。
-# ----------------------------------------------------------------------------------
 def post_to_twitter(text: str, image_path: Optional[str] = None) -> bool:
     _log("-> X (Twitter) への投稿を実行...")
     if DRY_RUN:
-        _log("⚠️ DRY_RUN=1 のため投稿は実行しません。");_log(f"--- 投稿テキストプレビュー ---\n{text}\n--- /プレビュー ---");
-        if image_path: _log(f"画像パス: {image_path}")
+        _log("⚠️ DRY_RUN=1 のため投稿は実行しません。")
+        _log(f"--- 投稿テキストプレビュー ---\n{text}\n--- /プレビュー ---")
+        if image_path:
+            _log(f"画像パス: {image_path}")
         return True
     try:
         # v1.1 API認証 (メディアアップロード用)
@@ -254,7 +369,8 @@ def post_to_twitter(text: str, image_path: Optional[str] = None) -> bool:
         api_v1 = tweepy.API(auth_v1)
 
         # v2 API認証 (ツイート投稿用)
-        client_v2 = tweepy.Client(consumer_key=TWITTER_CONSUMER_KEY, consumer_secret=TWITTER_CONSUMER_SECRET, access_token=TWITTER_ACCESS_TOKEN, access_token_secret=TWITTER_ACCESS_TOKEN_SECRET)
+        client_v2 = tweepy.Client(consumer_key=TWITTER_CONSUMER_KEY, consumer_secret=TWITTER_CONSUMER_SECRET, 
+                                   access_token=TWITTER_ACCESS_TOKEN, access_token_secret=TWITTER_ACCESS_TOKEN_SECRET)
 
         media_ids = []
         if image_path and os.path.exists(image_path):
@@ -268,20 +384,21 @@ def post_to_twitter(text: str, image_path: Optional[str] = None) -> bool:
         _log("\n🎉 ツイートの投稿に成功しました！")
         _log(f" - URL: https://x.com/anyuser/status/{response.data['id']}")
         return True
-    except tweepy.errors.TweepyException as e: _log(f"\n❌エラー: Twitter APIでエラーが発生しました。詳細: {e}"); return False
-    except Exception as e: _log(f"\n❌予期せぬエラーが発生しました: {e}\n{traceback.format_exc()}"); return False
+    except tweepy.errors.TweepyException as e:
+        _log(f"\n❌エラー: Twitter APIでエラーが発生しました。詳細: {e}")
+        return False
+    except Exception as e:
+        _log(f"\n❌予期せぬエラーが発生しました: {e}\n{traceback.format_exc()}")
+        return False
 
-# --- 8. メイン処理 ---
-# このスクリプトを直接実行したときに、ここから処理が始まります。
-# 投稿の順番や待機時間などを制御しています。
-# ----------------------------------------------------------------------------------
+# --- 8. メイン処理（Render環境対応版）---
 if __name__ == "__main__":
     _log("="*50)
-    _log("SNS自動投稿ジョブを開始します (最終安定版)")
+    _log("SNS自動投稿ジョブを開始します (Render環境対応版)")
     _log("="*50)
 
     if not all([TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET]):
-        _log("⚠️ .envファイルからTwitter API認証情報が読み込めませんでした。処理を終了します。")
+        _log("⚠️ Twitter API認証情報が読み込めませんでした。処理を終了します。")
         sys.exit(1)
 
     jst = timezone(timedelta(hours=9))
@@ -305,10 +422,14 @@ if __name__ == "__main__":
                             if result and isinstance(result.get('rank'), int) and result.get('rank') > 0:
                                 summary['total'] += 1
                                 rank = result['rank']
-                                if rank == 1: summary['win'] += 1
-                                elif rank == 2: summary['second'] += 1
-                                elif rank == 3: summary['third'] += 1
-                                else: summary['other'] += 1
+                                if rank == 1:
+                                    summary['win'] += 1
+                                elif rank == 2:
+                                    summary['second'] += 1
+                                elif rank == 3:
+                                    summary['third'] += 1
+                                else:
+                                    summary['other'] += 1
             if summary['total'] > 0:
                 summary['win_rate'] = (summary['win'] / summary['total'] * 100)
                 summary['in_money_rate'] = ((summary['win'] + summary['second'] + summary['third']) / summary['total'] * 100)
@@ -320,7 +441,13 @@ if __name__ == "__main__":
     else:
         _log("-> 昨日は1万円以上の高配当的中がなかったため、投稿をスキップします。")
 
-    delay = random.uniform(60, 120); _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---"); time.sleep(delay)
+    # Render環境では待機時間を短縮
+    if os.getenv("RENDER"):
+        delay = random.uniform(30, 60)  # 30-60秒
+    else:
+        delay = random.uniform(180, 420)  # 180-420秒（従来通り）
+    _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---")
+    time.sleep(delay)
     
     _log("\n--- [フェーズ2/3] 今日の注目馬を投稿 ---")
     pick_data = get_api_data(f"special-pick/{today_str}")
@@ -332,7 +459,13 @@ if __name__ == "__main__":
     else:
         _log("-> 今日の注目馬データがなかったため、投稿をスキップします。")
 
-    delay = random.uniform(60, 120); _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---"); time.sleep(delay)
+    # Render環境では待機時間を短縮
+    if os.getenv("RENDER"):
+        delay = random.uniform(30, 60)  # 30-60秒
+    else:
+        delay = random.uniform(180, 420)  # 180-420秒（従来通り）
+    _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---")
+    time.sleep(delay)
 
     _log("\n--- [フェーズ3/3] 今日の重賞レースを投稿 ---")
     all_races_data_today = get_api_data(today_str)
@@ -342,9 +475,11 @@ if __name__ == "__main__":
         for venue in venues:
             for race in venue.get('races', []):
                 if any(grade_race in race.get('race_name', '') for grade_race in JRA_GRADE_RACE_NAMES):
-                    if posted_count >= 1: continue
+                    if posted_count >= 1:
+                        continue
                     _log(f"-> JRA重賞レース発見: {race['venue_name']} {race.get('race_name')}")
-                    preds = sorted([p for p in race.get('predictions', []) if p.get('deviation_score')], key=lambda p: p['deviation_score'], reverse=True)
+                    preds = sorted([p for p in race.get('predictions', []) if p.get('deviation_score')], 
+                                   key=lambda p: p['deviation_score'], reverse=True)
                     top_preds = preds[:3]
                     if len(top_preds) == 3:
                         image_file = generate_reminder_og_image(race, top_preds)

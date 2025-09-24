@@ -295,7 +295,7 @@ def main():
                 env["PROCESS_PENDING"] = "1"
                 result = subprocess.run(
                     [sys.executable, "scripts/sns_poster.py"],
-                    check=True, capture_output=True, text=True, timeout=300, encoding='utf-8', env=env
+                    check=True, capture_output=True, text=True, timeout=1200, encoding='utf-8', env=env
                 )
                 print("--- SNS投稿スクリプト ログ ---")
                 print(result.stdout)

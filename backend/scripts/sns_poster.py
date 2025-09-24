@@ -320,7 +320,7 @@ if __name__ == "__main__":
     else:
         _log("-> 昨日は1万円以上の高配当的中がなかったため、投稿をスキップします。")
 
-    delay = random.uniform(180, 420); _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---"); time.sleep(delay)
+    delay = random.uniform(60, 120); _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---"); time.sleep(delay)
     
     _log("\n--- [フェーズ2/3] 今日の注目馬を投稿 ---")
     pick_data = get_api_data(f"special-pick/{today_str}")
@@ -332,7 +332,7 @@ if __name__ == "__main__":
     else:
         _log("-> 今日の注目馬データがなかったため、投稿をスキップします。")
 
-    delay = random.uniform(180, 420); _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---"); time.sleep(delay)
+    delay = random.uniform(60, 120); _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---"); time.sleep(delay)
 
     _log("\n--- [フェーズ3/3] 今日の重賞レースを投稿 ---")
     all_races_data_today = get_api_data(today_str)

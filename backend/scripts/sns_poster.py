@@ -1,4 +1,4 @@
-# backend/scripts/sns_poster.py (Render環境対応版)
+# backend/scripts/sns_poster.py (Render環境対応版 - 重複実行防止機能付き)
 
 import os
 import sys
@@ -12,22 +12,19 @@ import re
 from typing import Optional, List, Dict, Any
 import traceback
 from PIL import Image, ImageDraw, ImageFont
+import psycopg2
+from contextlib import contextmanager
 
 # --- 1. 基本設定とパス解決（Render対応版）---
 def get_project_root():
     """Render環境とローカル環境の両方で正しくプロジェクトルートを取得"""
-    # Render環境の場合
     if os.getenv("RENDER"):
-        # Renderでは /app がプロジェクトルート
         return "/app"
     
-    # ローカル環境の場合
     try:
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        # backend/scripts から プロジェクトルートへ
         return os.path.dirname(os.path.dirname(script_dir))
     except:
-        # フォールバック
         return os.getcwd()
 
 PROJECT_ROOT = get_project_root()
@@ -43,29 +40,25 @@ else:
         load_dotenv(dotenv_path_alt)
         print(f"INFO: .envファイルを読み込みました: {dotenv_path_alt}")
     else:
-        # Render環境では環境変数が直接設定されるため警告は不要
         if not os.getenv("RENDER"):
             print(f"警告: .envファイルが見つかりません。")
 
 # --- 2. 環境変数と定数の定義 ---
-# .envファイルから読み込んだAPIキーを変数に格納します。
+DATABASE_URL = os.getenv("DATABASE_URL")
 TWITTER_CONSUMER_KEY = os.getenv("TWITTER_CONSUMER_KEY")
 TWITTER_CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
 TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
 
-# 生成した画像の保存先ディレクトリです。
 IMAGE_OUTPUT_DIR = "/tmp" if os.getenv("RENDER") else os.path.join(PROJECT_ROOT, "sns_images_dist")
 os.makedirs(IMAGE_OUTPUT_DIR, exist_ok=True)
 
-# 投稿に含めるサイトURLや、データ取得元のAPIサーバーのURLです。
 SITE_BASE_URL = "https://uma-free.com"
-API_BASE_URL = "https://keiba-site-v1.onrender.com" # ローカルテスト時は "http://127.0.0.1:8000" に変更
+API_BASE_URL = "https://keiba-site-v1.onrender.com"
 
-# ドライランモード。Trueにすると、実際にXには投稿せず、コンソールに内容を表示するだけで終了します。テスト時に便利です。
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 
-# 重賞レースを判定するためのリスト。ここに記載された名前がレース名に含まれていると重賞投稿の対象になります。
+# 重賞レース判定リスト
 JRA_GRADE_RACE_NAMES = {
     "フェブラリーS", "フェブラリーステークス", "高松宮記念", "大阪杯", "桜花賞", "皐月賞", "天皇賞（春）",
     "NHKマイルC", "NHKマイルカップ", "ヴィクトリアマイル", "オークス", "優駿牝馬", "日本ダービー", "東京優駿",
@@ -96,11 +89,55 @@ JRA_GRADE_RACE_NAMES = {
     "レパードS", "レパードステークス", "CBC賞", "中京記念", "新潟2歳S", "新潟2歳ステークス", "キーンランドC", "キーンランドカップ",
     "新潟記念", "京成杯AH", "京成杯オータムハンデキャップ", "札幌2歳S", "札幌2歳ステークス",
     "チャレンジC", "チャレンジカップ", "シリウスS", "シリウスステークス", "サウジアラビアRC", "サウジアラビアロイヤルカップ", "アルテミスS", "アルテミスステークス",
-    "ファンタジーS", "ファンタジステークス", "みやこS", "みやこステークス", "武蔵野S", "武蔵野ステークス", "福島記念", "京都2歳S", "京都2歳ステークークス",
+    "ファンタジーS", "ファンタジステークス", "みやこS", "みやこステークス", "武蔵野S", "武蔵野ステークス", "福島記念", "京都2歳S", "京都2歳ステークース",
     "京阪杯", "鳴尾記念", "中日新聞杯", "カペラS", "カペラステークス", "ターコイズS", "ターコイズステークス"
 }
 
-# --- 3. ヘルパー関数群 ---
+# --- 3. データベースロック機構 ---
+@contextmanager
+def database_lock(lock_name: str, timeout_seconds: int = 60):
+    """
+    PostgreSQLのアドバイザリーロックを使用して重複実行を防ぐ
+    """
+    if not DATABASE_URL:
+        # データベースが設定されていない場合はロックなしで実行
+        yield True
+        return
+    
+    conn = None
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        conn.autocommit = True
+        cur = conn.cursor()
+        
+        # ロック名を数値に変換（PostgreSQLのアドバイザリーロックは数値を使用）
+        lock_id = hash(lock_name) % 2147483647  # int32の範囲内に収める
+        
+        # タイムアウト付きでロックを試みる
+        cur.execute("SELECT pg_try_advisory_lock(%s)", (lock_id,))
+        result = cur.fetchone()[0]
+        
+        if result:
+            _log(f"ロック取得成功: {lock_name}")
+            try:
+                yield True
+            finally:
+                # ロックを解放
+                cur.execute("SELECT pg_advisory_unlock(%s)", (lock_id,))
+                _log(f"ロック解放: {lock_name}")
+        else:
+            _log(f"警告: 別のインスタンスが実行中のため処理をスキップします: {lock_name}")
+            yield False
+            
+    except Exception as e:
+        _log(f"データベースロックエラー: {e}")
+        # エラーの場合はロックなしで実行を許可
+        yield True
+    finally:
+        if conn:
+            conn.close()
+
+# --- 4. ヘルパー関数群 ---
 def _now_str():
     return datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -109,23 +146,19 @@ def _log(msg: str):
 
 def _get_font_path(font_name: str) -> str:
     """Render環境とローカル環境の両方で正しくフォントパスを取得"""
-    # Render環境の場合
     if os.getenv("RENDER"):
         font_path = os.path.join("/app", "fonts", font_name)
     else:
-        # ローカル環境の場合
         font_path = os.path.join(PROJECT_ROOT, "backend", "fonts", font_name)
     
     if os.path.exists(font_path):
         return font_path
     
-    # デバッグ情報を出力
     print(f"[DEBUG] Font not found at: {font_path}")
     print(f"[DEBUG] Current working directory: {os.getcwd()}")
     print(f"[DEBUG] PROJECT_ROOT: {PROJECT_ROOT}")
     print(f"[DEBUG] RENDER env: {os.getenv('RENDER')}")
     
-    # フォントディレクトリの内容を確認
     font_dir = os.path.dirname(font_path)
     if os.path.exists(font_dir):
         print(f"[DEBUG] Files in {font_dir}: {os.listdir(font_dir)}")
@@ -158,7 +191,7 @@ def load_logo() -> Optional[Image.Image]:
         _log(f"ロゴ読み込みエラー: {e}")
         return None
 
-# --- 4. API連携関数（修正版）---
+# --- 5. API連携関数 ---
 def get_api_data(endpoint: str, retries: int = 3, delay: int = 5) -> Optional[Any]:
     _log(f"APIにアクセス中: {endpoint}")
     for attempt in range(retries):
@@ -166,10 +199,8 @@ def get_api_data(endpoint: str, retries: int = 3, delay: int = 5) -> Optional[An
             url = f"{API_BASE_URL}/api/v1/predictions/{endpoint}"
             res = requests.get(url, timeout=90)
             
-            # ステータスコードが200でも、空のリストや空の辞書の場合はNoneとして扱う
             if res.status_code == 200:
                 data = res.json()
-                # 空でないデータの場合のみ成功とする
                 if data and (isinstance(data, list) and len(data) > 0 or 
                            isinstance(data, dict) and data != {}):
                     _log("-> データ取得成功")
@@ -188,7 +219,7 @@ def get_api_data(endpoint: str, retries: int = 3, delay: int = 5) -> Optional[An
             time.sleep(delay)
     return None
 
-# --- 5. OGP画像生成関数群 ---
+# --- 6. OGP画像生成関数群 ---
 def generate_hit_og_image(hit_data: dict, date_str: str) -> Optional[str]:
     filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_hit_{date_str}_{random.randint(1000,9999)}.png")
     _log(f"-> 的中報告用のOGP画像を生成: {filename}")
@@ -307,7 +338,7 @@ def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
         _log(f"❌ Reminder OGP生成エラー: {e}\n{traceback.format_exc()}")
         return None
 
-# --- 6. テキスト生成関数群 ---
+# --- 7. テキスト生成関数群 ---
 def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date_str: str) -> str:
     _log("-> 的中報告＋成績サマリーのテキストを生成...")
     hashtags = ["#競馬", "#AI予想", "#万馬券" if hit['payout'] >= 10000 else "#的中", f"#{hit['venue_name']}競馬"]
@@ -354,7 +385,7 @@ def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
     lines.append(f"\n{' '.join(hashtags)}")
     return "\n".join(lines)
 
-# --- 7. X (Twitter) 投稿関数 ---
+# --- 8. X (Twitter) 投稿関数 ---
 def post_to_twitter(text: str, image_path: Optional[str] = None) -> bool:
     _log("-> X (Twitter) への投稿を実行...")
     if DRY_RUN:
@@ -364,11 +395,9 @@ def post_to_twitter(text: str, image_path: Optional[str] = None) -> bool:
             _log(f"画像パス: {image_path}")
         return True
     try:
-        # v1.1 API認証 (メディアアップロード用)
         auth_v1 = tweepy.OAuth1UserHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
         api_v1 = tweepy.API(auth_v1)
 
-        # v2 API認証 (ツイート投稿用)
         client_v2 = tweepy.Client(consumer_key=TWITTER_CONSUMER_KEY, consumer_secret=TWITTER_CONSUMER_SECRET, 
                                    access_token=TWITTER_ACCESS_TOKEN, access_token_secret=TWITTER_ACCESS_TOKEN_SECRET)
 
@@ -391,103 +420,117 @@ def post_to_twitter(text: str, image_path: Optional[str] = None) -> bool:
         _log(f"\n❌予期せぬエラーが発生しました: {e}\n{traceback.format_exc()}")
         return False
 
-# --- 8. メイン処理（Render環境対応版）---
-if __name__ == "__main__":
+# --- 9. メイン処理（重複実行防止機能付き）---
+def main():
+    """SNS投稿のメイン処理"""
     _log("="*50)
     _log("SNS自動投稿ジョブを開始します (Render環境対応版)")
     _log("="*50)
+
+    # プロセスIDとホスト名を出力（デバッグ用）
+    _log(f"Process ID: {os.getpid()}")
+    _log(f"Hostname: {os.uname().nodename if hasattr(os, 'uname') else 'unknown'}")
 
     if not all([TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET]):
         _log("⚠️ Twitter API認証情報が読み込めませんでした。処理を終了します。")
         sys.exit(1)
 
-    jst = timezone(timedelta(hours=9))
-    today, yesterday = datetime.now(jst), datetime.now(jst) - timedelta(days=1)
-    today_str, yesterday_str = today.strftime('%Y-%m-%d'), yesterday.strftime('%Y-%m-%d')
-    
-    _log("\n--- [フェーズ1/3] 昨日の的中報告と成績サマリーを投稿 ---")
-    hits_data = get_api_data(f"hits/high-payouts/{yesterday_str}")
-    if hits_data and hits_data[0].get('payout', 0) >= 10000:
-        summary = {'win': 0, 'second': 0, 'third': 0, 'other': 0, 'total': 0, 'win_rate': 0.0, 'in_money_rate': 0.0}
-        all_races_data_yesterday = get_api_data(yesterday_str)
-        if all_races_data_yesterday:
-            _log("-> 昨日の本命馬成績を集計中...")
-            venues = all_races_data_yesterday.get('jra', []) + all_races_data_yesterday.get('nar', [])
+    # データベースロックを使用して重複実行を防ぐ
+    with database_lock("sns_poster_lock", timeout_seconds=300) as lock_acquired:
+        if not lock_acquired:
+            _log("別のインスタンスが実行中のため、このインスタンスは終了します。")
+            sys.exit(0)
+        
+        jst = timezone(timedelta(hours=9))
+        today, yesterday = datetime.now(jst), datetime.now(jst) - timedelta(days=1)
+        today_str, yesterday_str = today.strftime('%Y-%m-%d'), yesterday.strftime('%Y-%m-%d')
+        
+        _log("\n--- [フェーズ1/3] 昨日の的中報告と成績サマリーを投稿 ---")
+        hits_data = get_api_data(f"hits/high-payouts/{yesterday_str}")
+        if hits_data and hits_data[0].get('payout', 0) >= 10000:
+            summary = {'win': 0, 'second': 0, 'third': 0, 'other': 0, 'total': 0, 'win_rate': 0.0, 'in_money_rate': 0.0}
+            all_races_data_yesterday = get_api_data(yesterday_str)
+            if all_races_data_yesterday:
+                _log("-> 昨日の本命馬成績を集計中...")
+                venues = all_races_data_yesterday.get('jra', []) + all_races_data_yesterday.get('nar', [])
+                for venue in venues:
+                    for race in venue.get('races', []):
+                        if race.get('predictions') and race.get('results'):
+                            honmei = next((p for p in race['predictions'] if p.get('mark') == '◎'), None)
+                            if honmei and honmei.get('horse_number') is not None:
+                                result = next((r for r in race['results'] if r.get('horse_number') == honmei.get('horse_number')), None)
+                                if result and isinstance(result.get('rank'), int) and result.get('rank') > 0:
+                                    summary['total'] += 1
+                                    rank = result['rank']
+                                    if rank == 1:
+                                        summary['win'] += 1
+                                    elif rank == 2:
+                                        summary['second'] += 1
+                                    elif rank == 3:
+                                        summary['third'] += 1
+                                    else:
+                                        summary['other'] += 1
+                if summary['total'] > 0:
+                    summary['win_rate'] = (summary['win'] / summary['total'] * 100)
+                    summary['in_money_rate'] = ((summary['win'] + summary['second'] + summary['third']) / summary['total'] * 100)
+            
+            image_file = generate_hit_og_image(hits_data[0], yesterday_str)
+            if image_file:
+                tweet_text = create_hit_report_and_summary_tweet(hits_data[0], summary, yesterday_str)
+                post_to_twitter(tweet_text, image_file)
+        else:
+            _log("-> 昨日は1万円以上の高配当的中がなかったため、投稿をスキップします。")
+
+        # Render環境では待機時間を短縮
+        if os.getenv("RENDER"):
+            delay = random.uniform(30, 60)
+        else:
+            delay = random.uniform(180, 420)
+        _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---")
+        time.sleep(delay)
+        
+        _log("\n--- [フェーズ2/3] 今日の注目馬を投稿 ---")
+        pick_data = get_api_data(f"special-pick/{today_str}")
+        if pick_data:
+            image_file = generate_pick_og_image(pick_data, today_str)
+            if image_file:
+                tweet_text = create_pick_tweet(pick_data, today_str)
+                post_to_twitter(tweet_text, image_file)
+        else:
+            _log("-> 今日の注目馬データがなかったため、投稿をスキップします。")
+
+        # Render環境では待機時間を短縮
+        if os.getenv("RENDER"):
+            delay = random.uniform(30, 60)
+        else:
+            delay = random.uniform(180, 420)
+        _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---")
+        time.sleep(delay)
+
+        _log("\n--- [フェーズ3/3] 今日の重賞レースを投稿 ---")
+        all_races_data_today = get_api_data(today_str)
+        if all_races_data_today:
+            venues = all_races_data_today.get('jra', [])
+            posted_count = 0
             for venue in venues:
                 for race in venue.get('races', []):
-                    if race.get('predictions') and race.get('results'):
-                        honmei = next((p for p in race['predictions'] if p.get('mark') == '◎'), None)
-                        if honmei and honmei.get('horse_number') is not None:
-                            result = next((r for r in race['results'] if r.get('horse_number') == honmei.get('horse_number')), None)
-                            if result and isinstance(result.get('rank'), int) and result.get('rank') > 0:
-                                summary['total'] += 1
-                                rank = result['rank']
-                                if rank == 1:
-                                    summary['win'] += 1
-                                elif rank == 2:
-                                    summary['second'] += 1
-                                elif rank == 3:
-                                    summary['third'] += 1
-                                else:
-                                    summary['other'] += 1
-            if summary['total'] > 0:
-                summary['win_rate'] = (summary['win'] / summary['total'] * 100)
-                summary['in_money_rate'] = ((summary['win'] + summary['second'] + summary['third']) / summary['total'] * 100)
+                    if any(grade_race in race.get('race_name', '') for grade_race in JRA_GRADE_RACE_NAMES):
+                        if posted_count >= 1:
+                            continue
+                        _log(f"-> JRA重賞レース発見: {race['venue_name']} {race.get('race_name')}")
+                        preds = sorted([p for p in race.get('predictions', []) if p.get('deviation_score')], 
+                                       key=lambda p: p['deviation_score'], reverse=True)
+                        top_preds = preds[:3]
+                        if len(top_preds) == 3:
+                            image_file = generate_reminder_og_image(race, top_preds)
+                            if image_file:
+                                text = create_reminder_tweet(race, top_preds)
+                                post_to_twitter(text, image_file)
+                                posted_count += 1
+            if posted_count == 0:
+                _log("-> 本日は対象のJRA重賞レースがありませんでした。")
         
-        image_file = generate_hit_og_image(hits_data[0], yesterday_str)
-        if image_file:
-            tweet_text = create_hit_report_and_summary_tweet(hits_data[0], summary, yesterday_str)
-            post_to_twitter(tweet_text, image_file)
-    else:
-        _log("-> 昨日は1万円以上の高配当的中がなかったため、投稿をスキップします。")
+        _log("\nSNS自動投稿ジョブが完了しました。")
 
-    # Render環境では待機時間を短縮
-    if os.getenv("RENDER"):
-        delay = random.uniform(30, 60)  # 30-60秒
-    else:
-        delay = random.uniform(180, 420)  # 180-420秒（従来通り）
-    _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---")
-    time.sleep(delay)
-    
-    _log("\n--- [フェーズ2/3] 今日の注目馬を投稿 ---")
-    pick_data = get_api_data(f"special-pick/{today_str}")
-    if pick_data:
-        image_file = generate_pick_og_image(pick_data, today_str)
-        if image_file:
-            tweet_text = create_pick_tweet(pick_data, today_str)
-            post_to_twitter(tweet_text, image_file)
-    else:
-        _log("-> 今日の注目馬データがなかったため、投稿をスキップします。")
-
-    # Render環境では待機時間を短縮
-    if os.getenv("RENDER"):
-        delay = random.uniform(30, 60)  # 30-60秒
-    else:
-        delay = random.uniform(180, 420)  # 180-420秒（従来通り）
-    _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---")
-    time.sleep(delay)
-
-    _log("\n--- [フェーズ3/3] 今日の重賞レースを投稿 ---")
-    all_races_data_today = get_api_data(today_str)
-    if all_races_data_today:
-        venues = all_races_data_today.get('jra', [])
-        posted_count = 0
-        for venue in venues:
-            for race in venue.get('races', []):
-                if any(grade_race in race.get('race_name', '') for grade_race in JRA_GRADE_RACE_NAMES):
-                    if posted_count >= 1:
-                        continue
-                    _log(f"-> JRA重賞レース発見: {race['venue_name']} {race.get('race_name')}")
-                    preds = sorted([p for p in race.get('predictions', []) if p.get('deviation_score')], 
-                                   key=lambda p: p['deviation_score'], reverse=True)
-                    top_preds = preds[:3]
-                    if len(top_preds) == 3:
-                        image_file = generate_reminder_og_image(race, top_preds)
-                        if image_file:
-                            text = create_reminder_tweet(race, top_preds)
-                            post_to_twitter(text, image_file)
-                            posted_count += 1
-        if posted_count == 0:
-            _log("-> 本日は対象のJRA重賞レースがありませんでした。")
-    
-    _log("\nSNS自動投稿ジョブが完了しました。")
+if __name__ == "__main__":
+    main()

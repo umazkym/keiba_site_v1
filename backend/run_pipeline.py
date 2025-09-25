@@ -24,7 +24,8 @@ except NotImplementedError:
 
 MAX_WORKERS = 4
 BANEI_VENUE_CODES = ["33", "65"]
-DRIVER_RESTART_INTERVAL = 500
+DRIVER_RESTART_INTERVAL = 200  # 500から200に減らす
+DRIVER_MEMORY_CHECK_INTERVAL = 100  # 新規追加
 LONG_BREAK_INTERVAL = 1000
 LONG_BREAK_SECONDS = 300
 SHORT_BREAK_INTERVAL = 50
@@ -37,10 +38,18 @@ def _force_cleanup_processes():
     これにより、長時間実行時のゴーストプロセス問題を解消する。
     """
     try:
-        os.system("taskkill /F /IM chromedriver.exe /T > nul 2>&1")
-        os.system("taskkill /F /IM chrome.exe /T > nul 2>&1")
+        if os.name == 'nt':  # Windows
+            os.system("taskkill /F /IM chromedriver.exe /T > nul 2>&1")
+            os.system("taskkill /F /IM chrome.exe /T > nul 2>&1")
+        else:  # Linux/Unix (Render環境)
+            os.system("pkill -f chromedriver 2>/dev/null")
+            os.system("pkill -f chrome 2>/dev/null")
+            os.system("pkill -f chromium 2>/dev/null")
         tqdm.write("  -> クリーンアップ: 既存のChrome/ChromeDriverプロセスを強制終了しました。")
         time.sleep(2)
+        # ガベージコレクションを強制実行
+        import gc
+        gc.collect()
     except Exception as e:
         tqdm.write(f"  -> クリーンアップ中に軽微なエラーが発生しました (無視できます): {e}")
 
@@ -119,12 +128,23 @@ def pre_scrape_all_data(start_date: datetime.date, end_date: datetime.date) -> s
         horse_ids_list = sorted(list(all_horse_ids_to_fetch))
         driver_instance = None
         try:
+            # WebDriverの再起動条件を厳しくする
             for i, horse_id in enumerate(tqdm(horse_ids_list, desc="  [3/4] 馬の過去成績", unit="horse", leave=True)):
+                # メモリ使用量チェック間隔を追加
+                if i > 0 and i % DRIVER_MEMORY_CHECK_INTERVAL == 0:
+                    # Render環境でのメモリ使用量をチェック
+                    if os.getenv("RENDER"):
+                        import gc
+                        gc.collect()  # ガベージコレクション実行
+                
                 if driver_instance is None or (i > 0 and i % DRIVER_RESTART_INTERVAL == 0):
                     if driver_instance:
                         tqdm.write(f"\n--- 定期メンテナンス: {DRIVER_RESTART_INTERVAL}頭処理したためWebDriverを再起動します ---")
                         driver_instance.quit()
                         _force_cleanup_processes()
+                        # 明示的なガベージコレクション
+                        import gc
+                        gc.collect()
                     driver_instance = scraper._prepare_chrome_driver()
                 if newly_scraped_count > 0 and newly_scraped_count % LONG_BREAK_INTERVAL == 0:
                     tqdm.write(f"\n--- 長時間アクセス継続のため、{int(LONG_BREAK_SECONDS / 60)}分間のクールダウンに入ります ---")

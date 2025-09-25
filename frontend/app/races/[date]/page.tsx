@@ -22,13 +22,33 @@ export async function generateStaticParams() {
     return paths;
 }
 
-export async function generateMetadata({ params }: { params: { date: string } }): Promise<Metadata> {
+export async function generateMetadata(
+    { params, searchParams }: {
+        params: { date: string };
+        searchParams: { [key: string]: string | string[] | undefined };
+    }
+): Promise<Metadata> {
     const formattedDate = formatDate(params.date);
+    const venue = searchParams.venue as string;
+    const race = searchParams.race as string;
+
+    let title = `${formattedDate}のAI競馬予測 | UMA-FREE`;
+    let description = `${formattedDate}の中央・地方競馬の全レースをAIが完全無料で予測。馬券検討に役立つデータを毎日更新。`;
+    let canonicalUrl = `/races/${params.date}`;
+
+    // クエリパラメータが存在する場合、タイトルとCanonical URLを個別ページ用に更新
+    if (venue && race) {
+        const venueName = decodeURIComponent(venue);
+        title = `${formattedDate} ${venueName} ${race}R のAI競馬予測 | UMA-FREE`;
+        description = `AIによる${formattedDate} ${venueName}競馬場 ${race}Rの無料予測。偏差値、対戦成績、枠順データで詳細分析。`;
+        canonicalUrl = `/races/${params.date}?venue=${venue}&race=${race}`;
+    }
+
     return {
-        title: `${formattedDate}のAI競馬予測 | UMA-FREE`,
-        description: `${formattedDate}の中央・地方競馬の全レースをAIが完全無料で予測。馬券検討に役立つデータを毎日更新。`,
+        title: title,
+        description: description,
         alternates: {
-            canonical: `/races/${params.date}`,
+            canonical: canonicalUrl,
         },
     };
 }
@@ -58,40 +78,33 @@ export default async function RacePage({ params }: { params: { date: string } })
         const mainRace = predictionData?.jra?.[0]?.races?.[0] || predictionData?.nar?.[0]?.races?.[0];
 
         if (mainRace) {
-            // ▼▼▼ ここから構造化データを修正 ▼▼▼
             jsonLd = {
                 "@context": "https://schema.org",
                 "@type": "SportsEvent",
                 "name": `${mainRace.venue_name} ${mainRace.race_number}R - ${mainRace.race_name}`,
                 "startDate": `${mainRace.race_date}T15:45:00+09:00`,
-                // 終了日を追加
                 "endDate": `${mainRace.race_date}T16:00:00+09:00`,
                 "location": {
                     "@type": "Place",
                     "name": `${mainRace.venue_name}競馬場`,
-                    // 住所を追加（必須ではないが推奨）
                     "address": `${mainRace.venue_name}競馬場`
                 },
                 "description": `AIによる${mainRace.venue_name} ${mainRace.race_number}R ${mainRace.race_name}の競馬予測データ。`,
                 "eventStatus": "https://schema.org/EventScheduled",
                 "url": `https://uma-free.com/races/${mainRace.race_date}?venue=${encodeURIComponent(mainRace.venue_name)}&race=${mainRace.race_number}`,
-                // 画像情報を追加
                 "image": [
                     "https://uma-free.com/og-image.png"
                 ],
-                // 主催者情報を追加
                 "organizer": {
                     "@type": "Organization",
                     "name": "UMA-FREE",
                     "url": "https://uma-free.com"
                 },
-                // 出走馬情報をcompetitorとして追加
                 "competitor": mainRace.predictions.map(p => ({
-                    "@type": "SportsTeam", // PersonよりSportsTeamの方が適切
+                    "@type": "SportsTeam",
                     "name": p.horse_name
                 }))
             };
-            // ▲▲▲ 修正ここまで ▲▲▲
         }
 
     } catch (error) {
@@ -116,4 +129,3 @@ export default async function RacePage({ params }: { params: { date: string } })
         </>
     );
 }
-

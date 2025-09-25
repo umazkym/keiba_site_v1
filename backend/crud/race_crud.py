@@ -7,8 +7,6 @@ from typing import Dict, Any, List, Optional
 from collections import defaultdict
 from scripts import predictor
 
-# ==============================================================================
-# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     # 最初に、その日に有効な予測を持つレースIDのリストを取得する
     valid_race_ids_subquery = db.query(models.Prediction.race_id)\
@@ -81,7 +79,6 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     nar_result = [{"venue_name": v_name, "races": race_list} for v_name, race_list in nar_venues.items()]
 
     return {"jra": jra_result, "nar": nar_result}
-# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 
 def get_special_pick_for_date(db: Session, target_date: date) -> Optional[models.Prediction]:
@@ -194,7 +191,6 @@ def get_top_payout_hits(db: Session, days: int = 7, limit: int = 5) -> List[Dict
 
     return all_hits
 
-# ▼▼▼ 以下をファイルの末尾に追記 ▼▼▼
 def get_high_payout_hits_for_date(db: Session, target_date: date) -> List[Dict[str, Any]]:
     """
     指定された日付のAI予測による高配当（10,000円以上）の的中を全て取得する。
@@ -289,3 +285,24 @@ def get_high_payout_hits_for_date(db: Session, target_date: date) -> List[Dict[s
         })
 
     return all_hits
+
+def get_all_race_urls(db: Session) -> List[Dict[str, Any]]:
+    """サイトマップ生成のために、全レースの日付、会場、レース番号を取得する"""
+    results = db.query(
+        models.Race.race_date,
+        models.Race.venue_name,
+        models.Race.race_number
+    ).filter(
+        models.Race.predictions.any() # 予測データが存在するレースのみを対象
+    ).order_by(
+        models.Race.race_date.desc()
+    ).all()
+
+    return [
+        {
+            "race_date": result.race_date.strftime('%Y-%m-%d'),
+            "venue_name": result.venue_name,
+            "race_number": result.race_number
+        }
+        for result in results
+    ]

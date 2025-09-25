@@ -4,7 +4,9 @@ from database.database import get_db
 from crud import race_crud
 from schemas import race_schema
 from datetime import date
-from typing import Optional, List
+# ▼▼▼▼▼ 【修正点】typingからDictとAnyをインポート ▼▼▼▼▼
+from typing import Optional, List, Dict, Any
+# ▲▲▲▲▲ 修正ここまで ▲▲▲▲▲
 
 router = APIRouter()
 
@@ -77,3 +79,10 @@ def read_filtered_matchups_for_race(
 
     return race_schema.Matchup(matchup_data=matchup_data)
 
+@router.get("/sitemap/all-race-urls", response_model=List[Dict[str, Any]])
+def get_all_race_urls_for_sitemap(db: Session = Depends(get_db)):
+    """
+    サイトマップ生成のために、全レースのURL情報を取得するエンドポイント。
+    """
+    urls = race_crud.get_all_race_urls(db=db)
+    return urls

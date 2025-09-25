@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@next/third-parties": "^15.5.4",
     "@tippyjs/react": "^4.2.6",
     "chart.js": "^4.4.3",
     "lucide-react": "^0.544.0",

@@ -1,95 +1,71 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
-import Script from "next/script";
-import React from "react";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { GlobalAdManager } from "@/components/GlobalAdManager";
 
-const inter = Inter({ subsets: ["latin"], display: 'swap' });
-
-const siteTitleDefault = "UMA-FREE | 登録不要の無料AI競馬予想 (中央・地方 全レース対応)";
-const siteDescription = "登録不要・完全無料！AIが中央・地方すべての競馬レースを毎日予想＆分析。AI偏差値や独自の対戦データで、あなたの馬券検討を強力にサポートします。";
-const siteUrl = "https://uma-free.com";
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-    metadataBase: new URL(siteUrl),
-    title: {
-        default: siteTitleDefault,
-        template: '%s | UMA-FREE',
-    },
-    description: siteDescription,
-    icons: {
-        icon: '/new-logo.png',
-    },
-    openGraph: {
-        title: siteTitleDefault,
-        description: siteDescription,
-        url: siteUrl,
-        siteName: 'UMA-FREE',
-        images: [
-            {
-                url: '/og-image.png',
-                width: 1200,
-                height: 630,
-            },
-        ],
-        type: 'website',
-    },
-    twitter: {
-        card: 'summary_large_image',
-        title: siteTitleDefault,
-        description: siteDescription,
-        images: [`${siteUrl}/og-image.png`],
-    },
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        'max-video-preview': -1,
-        'max-image-preview': 'large',
-        'max-snippet': -1,
+  // ここから追加
+  metadataBase: new URL("https://uma-free.com"),
+  // ここまで追加
+  title: {
+    default: "uma-free - 全レース無料AI競馬予想",
+    template: "%s | uma-free",
+  },
+  description: "全レース無料のAI競馬予想サイト。中央・地方競馬の全レースのAI予想を完全無料で公開しています。最新のAI技術を駆使した予想で、あなたの競馬ライフをサポートします。",
+  openGraph: {
+    title: "uma-free - 全レース無料AI競馬予想",
+    description: "全レース無料のAI競馬予想サイト。中央・地方競馬の全レースのAI予想を完全無料で公開しています。",
+    url: "https://uma-free.com",
+    siteName: "uma-free",
+    images: [
+      {
+        url: "/new-logo.png",
+        width: 800,
+        height: 600,
       },
-    },
+    ],
+    locale: "ja_JP",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "uma-free - 全レース無料AI競馬予想",
+    description: "全レース無料のAI競馬予想サイト。中央・地方競馬の全レースのAI予想を完全無料で公開しています。",
+    // images: ["/new-logo.png"],
+  },
+  alternates: {
+    canonical: "https://uma-free.com",
+  },
 };
 
 export const viewport: Viewport = {
-    themeColor: "#4f46e5",
-};
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export default function RootLayout({
-    children,
+  children,
 }: Readonly<{
-    children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
-    const adClient = "ca-pub-4411270831448240";
-    return (
-        <html lang="ja" className={inter.className}>
-            <head>
-                <meta name="google-adsense-account" content={adClient} />
-                <Script
-                    async
-                    src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`}
-                    crossOrigin="anonymous"
-                    strategy="afterInteractive"
-                />
-            </head>
-            <body>
-                <a href="#main-content" className="skip-link">
-                    コンテンツにスキップ
-                </a>
-                <div className="flex flex-col min-h-screen">
-                    <Header />
-                    {/* アンカー広告の高さ（50px）+ 余白を考慮してpb-20（80px）に設定 */}
-                    <main id="main-content" className="flex-grow pb-20">
-                        <GlobalAdManager />
-                        {children}
-                    </main>
-                    <Footer />
-                </div>
-            </body>
-        </html>
-    );
+  return (
+    <html lang="ja">
+      <head>
+        <GlobalAdManager />
+      </head>
+      <body className={`${inter.className} bg-gray-50`}>
+        <Header />
+        <main className="container mx-auto p-4 min-h-screen">
+          {children}
+        </main>
+        <Footer />
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || ""} />
+      </body>
+    </html>
+  );
 }

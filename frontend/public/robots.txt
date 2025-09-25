@@ -1,6 +1,4 @@
-# Allow all crawlers to access all parts of the site
 User-agent: *
 Allow: /
 
-# Specify the location of the sitemap
 Sitemap: https://uma-free.com/sitemap.xml

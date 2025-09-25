@@ -1,10 +1,9 @@
-import { MetadataRoute } from 'next';
+import { MetadataRoute } from 'next'
 
-// サイトのベースURLを設定
 const BASE_URL = 'https://uma-free.com';
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  // 静的なページのURLを追加
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // 静的ページのルート
   const staticRoutes = [
     '',
     '/about',
@@ -13,25 +12,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ].map((route) => ({
     url: `${BASE_URL}${route}`,
     lastModified: new Date(),
-    changeFrequency: 'weekly' as const,
-    priority: route === '' ? 1.0 : 0.8,
   }));
 
-  // 動的なレースページのURLを生成（過去90日分と未来14日分に範囲を拡大）
-  const dynamicRaceRoutes = [];
-  const today = new Date();
-  // 過去90日から未来14日までループ
-  for (let i = -90; i <= 14; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    const dateString = date.toISOString().split('T')[0];
-    dynamicRaceRoutes.push({
-      url: `${BASE_URL}/races/${dateString}`,
-      lastModified: new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.9,
-    });
-  }
+  try {
+    // 動的ページ（レース日程）のルート
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/races/dates`);
+    if (!response.ok) {
+      console.error(`Sitemap fetch failed with status: ${response.status}`);
+      return staticRoutes;
+    }
+    const dates = await response.json();
 
-  return [...staticRoutes, ...dynamicRaceRoutes];
+    const raceRoutes = dates.map((date: string) => ({
+      url: `${BASE_URL}/races/${date}`,
+      lastModified: new Date(),
+    }));
+
+    return [...staticRoutes, ...raceRoutes];
+  } catch (error) {
+    console.error('Error fetching race dates for sitemap:', error);
+    return staticRoutes;
+  }
 }

@@ -37,14 +37,9 @@ env/
 
 # Log and cache directories we created
 # Note: Using absolute paths from the root
-/backend/data/
+/data/
 /backend/debug_logs/
 /backend/perf_logs/
-
-# Unit test / coverage reports
-.coverage
-.pytest_cache/
-htmlcov/
 
 
 # --- Node.js / Next.js / Frontend ---
@@ -67,7 +62,5 @@ yarn-error.log*
 # TypeScript cache
 *.tsbuildinfo
 
-/data/html_cache/
-
-# ★★★ ここに以下の1行を追加 ★★★
-/data/
+# Generated images for SNS posts
+/sns_images_dist/

@@ -345,14 +345,14 @@ def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date
     return f"""🎯昨日のAI的中速報 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})
 
 【{hit['venue_name']}{hit['race_number']}R {hit['bet_type']}】で
-🎉 **{hit['payout']:,}円** の高配当を的中しました！
+🎉 {hit['payout']:,}円 の高配当を的中しました！
 
 📈昨日のAI本命馬(◎)成績
 [{summary['win']}-{summary['second']}-{summary['third']}-{summary['other']}]
 勝率: {summary['win_rate']:.1f}% / 複勝率: {summary['in_money_rate']:.1f}%
 
-▼レース結果とAIの印はこちら
-{SITE_BASE_URL}/races/{date_str}
+▼レース結果とAIの印はこちらから
+{SITE_BASE_URL}
 
 {' '.join(hashtags)}
 """
@@ -381,7 +381,7 @@ def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
     lines = [f"🏇本日の重賞 ({race['race_name']}) AI予測\n"]
     for i, p in enumerate(top_preds):
         lines.append(f"{['◎','○','▲'][i]} {p['horse_name']} (AI偏差値: {p.get('deviation_score', 0):.2f})")
-    lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}/races/{date_str}?venue={race['venue_name']}&race={race['race_number']}")
+    lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}")
     lines.append(f"\n{' '.join(hashtags)}")
     return "\n".join(lines)
 

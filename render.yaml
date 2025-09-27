@@ -27,10 +27,12 @@ services:
     name: keiba-sns-poster
     runtime: docker
     region: oregon
-    schedule: "0 22 * * *" # JST AM 7:00
+    schedule: "0 22 * * *"
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     dockerCommand: "python scripts/sns_poster.py"
+    # 並行実行を防ぐ設定を追加
+    maxRetries: 0  # リトライを無効化
     envVars:
       - key: DATABASE_URL
         value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
@@ -51,3 +53,6 @@ services:
       # Render環境であることを示す環境変数を追加
       - key: RENDER
         value: "true"
+      # 実行の一意性を保証するための環境変数を追加
+      - key: INSTANCE_ID
+        generateValue: true  # Renderが自動生成

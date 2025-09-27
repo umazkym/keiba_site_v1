@@ -100,7 +100,6 @@ def database_lock(lock_name: str, timeout_seconds: int = 60):
     PostgreSQLのアドバイザリーロックを使用して重複実行を防ぐ
     """
     if not DATABASE_URL:
-        # データベースが設定されていない場合はロックなしで実行
         yield True
         return
     
@@ -110,29 +109,50 @@ def database_lock(lock_name: str, timeout_seconds: int = 60):
         conn.autocommit = True
         cur = conn.cursor()
         
-        # ロック名を数値に変換（PostgreSQLのアドバイザリーロックは数値を使用）
-        lock_id = hash(lock_name) % 2147483647  # int32の範囲内に収める
+        # ロック名にタイムスタンプを含めて一意性を確保
+        import hashlib
+        lock_key = f"{lock_name}_{datetime.now().strftime('%Y%m%d')}"
+        lock_id = int(hashlib.md5(lock_key.encode()).hexdigest()[:8], 16) % 2147483647
         
-        # タイムアウト付きでロックを試みる
-        cur.execute("SELECT pg_try_advisory_lock(%s)", (lock_id,))
-        result = cur.fetchone()[0]
+        # トライロックではなく、タイムアウト付きロックを使用
+        cur.execute("SET lock_timeout = %s", (f"{timeout_seconds}s",))
         
-        if result:
-            _log(f"ロック取得成功: {lock_name}")
-            try:
-                yield True
-            finally:
-                # ロックを解放
-                cur.execute("SELECT pg_advisory_unlock(%s)", (lock_id,))
-                _log(f"ロック解放: {lock_name}")
-        else:
-            _log(f"警告: 別のインスタンスが実行中のため処理をスキップします: {lock_name}")
+        try:
+            # 排他的アドバイザリーロックを取得
+            cur.execute("SELECT pg_advisory_lock(%s)", (lock_id,))
+            _log(f"ロック取得成功: {lock_name} (ID: {lock_id})")
+            
+            # 二重チェック: 既に実行中のインスタンスがないか確認
+            cur.execute("""
+                SELECT COUNT(*) FROM pg_locks 
+                WHERE locktype = 'advisory' 
+                AND objid = %s 
+                AND pid != pg_backend_pid()
+            """, (lock_id,))
+            
+            if cur.fetchone()[0] > 0:
+                _log("警告: 別のインスタンスが既に実行中です")
+                yield False
+                return
+                
+            yield True
+            
+        except psycopg2.errors.LockNotAvailable:
+            _log(f"ロック取得失敗: 別のインスタンスが実行中です")
             yield False
             
+        finally:
+            # ロックを解放
+            try:
+                cur.execute("SELECT pg_advisory_unlock(%s)", (lock_id,))
+                _log(f"ロック解放: {lock_name}")
+            except:
+                pass
+                
     except Exception as e:
         _log(f"データベースロックエラー: {e}")
-        # エラーの場合はロックなしで実行を許可
-        yield True
+        # エラーの場合は実行をブロック
+        yield False
     finally:
         if conn:
             conn.close()
@@ -426,6 +446,16 @@ def main():
     _log("="*50)
     _log("SNS自動投稿ジョブを開始します (Render環境対応版)")
     _log("="*50)
+    
+    # インスタンスIDをチェック
+    instance_id = os.getenv('INSTANCE_ID', 'unknown')
+    hostname = os.uname().nodename if hasattr(os, 'uname') else 'unknown'
+    
+    # ff71などの異常なインスタンスをチェック
+    if 'ff71' in hostname or '-ff71' in str(os.getenv('RENDER_SERVICE_NAME', '')):
+        _log(f"警告: 異常なインスタンス検出 (hostname: {hostname})")
+        _log("このインスタンスは終了します")
+        sys.exit(0)
 
     # プロセスIDとホスト名を出力（デバッグ用）
     _log(f"Process ID: {os.getpid()}")

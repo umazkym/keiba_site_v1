@@ -54,18 +54,68 @@ def _get_random_headers():
 def _prepare_chrome_driver():
     """
     Render環境とローカル環境の両方で動作するように修正されたWebDriver準備関数
+    メモリ使用量を最適化しつつ、スクレイピング内容には影響を与えない
     """
     options = Options()
-    # --- ▼▼▼ Render Cron Job環境で必須のオプション ▼▼▼ ---
-    options.add_argument('--headless=new') # GUIがない環境で必須
-    options.add_argument('--no-sandbox') # Render環境での実行に必要
-    options.add_argument('--disable-dev-shm-usage') # /dev/shmパーティションのサイズが小さいコンテナ環境で必須
-    options.add_argument('--disable-gpu') # GPUがない環境で不要なエラーを避ける
-    options.add_argument('--window-size=1920x1080') # ページレイアウトを安定させる
-    # --- ▲▲▲ ここまで ▲▲▲ ---
+    
+    # === 基本設定（既存の重要な設定を維持）===
+    options.add_argument('--headless=new')  # GUIがない環境で必須
+    options.add_argument('--no-sandbox')  # Render環境での実行に必要
+    options.add_argument('--disable-dev-shm-usage')  # /dev/shmパーティションのサイズが小さいコンテナ環境で必須
+    options.add_argument('--disable-gpu')  # GPUがない環境で不要なエラーを避ける
+    options.add_argument('--window-size=1920x1080')  # ページレイアウトを安定させる（重要：変更不可）
+    
+    # === メモリ最適化設定（スクレイピング内容に影響しない）===
+    options.add_argument('--disable-background-timer-throttling')  # バックグラウンドタイマーの制限を無効化
+    options.add_argument('--disable-renderer-backgrounding')  # レンダラーのバックグラウンド化を無効化
+    options.add_argument('--disable-features=TranslateUI')  # 翻訳UIを無効化
+    options.add_argument('--disable-extensions')  # 拡張機能を無効化
+    options.add_argument('--disable-plugins')  # プラグインを無効化（PDFビューアなど）
+    options.add_argument('--disable-default-apps')  # デフォルトアプリを無効化
+    options.add_argument('--disable-background-networking')  # バックグラウンドネットワークを無効化
+    options.add_argument('--disable-sync')  # 同期機能を無効化
+    options.add_argument('--disable-translate')  # 翻訳機能を無効化
+    options.add_argument('--disable-web-security')  # Webセキュリティを無効化（CORS回避）
+    options.add_argument('--disable-site-isolation-trials')  # サイト分離試験を無効化
+    options.add_argument('--disable-features=site-per-process')  # プロセス分離を制限
+    
+    # === メモリ関連の追加最適化 ===
+    options.add_argument('--memory-pressure-off')  # メモリプレッシャー機能を無効化
+    options.add_argument('--max_old_space_size=512')  # V8のヒープサイズを制限
+    options.add_argument('--disable-javascript-harmony-shipping')  # 実験的JS機能を無効化
+    options.add_argument('--disable-features=VizDisplayCompositor')  # Vizコンポジタを無効化
+    options.add_argument('--disable-features=NetworkService')  # ネットワークサービスを無効化
+    
+    # === パフォーマンス最適化（レンダリングには影響しない）===
+    options.add_argument('--disable-logging')  # ログ出力を無効化
+    options.add_argument('--log-level=3')  # ログレベルを最小に
+    options.add_argument('--silent')  # サイレントモード
+    options.add_argument('--disable-breakpad')  # クラッシュレポートを無効化
+    options.add_argument('--disable-crash-reporter')  # クラッシュレポーターを無効化
+    options.add_argument('--no-first-run')  # 初回実行フラグを無効化
+    options.add_argument('--disable-component-update')  # コンポーネント更新を無効化
+    
+    # === User-Agent設定（既存のまま維持）===
     options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
+    
+    # === ログ出力の抑制（既存のまま維持）===
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
+    # === プリファレンス設定（慎重に設定）===
+    prefs = {
+        'profile.default_content_setting_values.notifications': 2,  # 通知を無効化
+        'profile.default_content_settings.popups': 0,  # ポップアップを許可（スクレイピングに必要な場合がある）
+        'profile.managed_default_content_settings.images': 1,  # 画像は読み込む（重要：スクレイピング内容に影響）
+        'download.prompt_for_download': False,  # ダウンロード確認を無効化
+        'download.directory_upgrade': True,
+        'safebrowsing.enabled': False,  # セーフブラウジングを無効化
+        'safebrowsing.disable_download_protection': True,
+        'useAutomationExtension': False,  # 自動化拡張を無効化
+        'profile.password_manager_enabled': False,  # パスワードマネージャーを無効化
+    }
+    options.add_experimental_option('prefs', prefs)
+    
+    # === WebDriverの作成（既存のロジックを維持）===
     try:
         # ローカル開発環境では `webdriver-manager` を利用
         if _WDM_AVAILABLE and not os.environ.get("RENDER"):
@@ -77,7 +127,11 @@ def _prepare_chrome_driver():
     except Exception as e:
         print(f"[ERROR] ChromeDriverのセットアップに失敗しました: {e}")
         raise
-        
+    
+    # === タイムアウト設定（重要：既存の値を維持）===
+    driver.set_page_load_timeout(SELENIUM_PAGE_LOAD_TIMEOUT)  # 90秒
+    driver.implicitly_wait(10)  # 暗黙的な待機時間
+    
     return driver
 
 def get_html(

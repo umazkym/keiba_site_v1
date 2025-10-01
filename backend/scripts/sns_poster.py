@@ -247,7 +247,7 @@ def get_api_data(endpoint: str, retries: int = 3, delay: int = 5) -> Optional[An
             time.sleep(delay)
     return None
 
-# --- 6. OGP画像生成関数群 ---
+# --- 6. OGP画像生成関数群 (変更なし) ---
 
 def generate_hit_og_image(hit_data: dict, date_str: str) -> Optional[str]:
     """的中報告用の画像を生成する"""
@@ -394,7 +394,7 @@ def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
         _log(f"❌ Reminder OGP生成エラー: {e}\n{traceback.format_exc()}")
         return None
 
-# --- 7. テキスト生成関数群 (変更なし) ---
+# --- 7. テキスト生成関数群 ---
 def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date_str: str) -> str:
     _log("-> 的中報告＋成績サマリーのテキストを生成...")
     hashtags = ["#競馬", "#AI予想", "#万馬券" if hit['payout'] >= 10000 else "#的中", f"#{hit['venue_name']}競馬"]
@@ -422,7 +422,8 @@ AIが今日のレースで最も高く評価した一頭はこちら！
 """
 def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
     _log("-> 重賞レースのテキストを生成...")
-    date_str = race['date']
+    # ★★修正★★: 'date' ではなく 'race_date' を参照する
+    date_str = race['race_date']
     clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', race['race_name']).strip()
     hashtags = ["#競馬", "#競馬予想", "#AI予想", f"#{clean_race_name}"]
     lines = [f"🏇本日の重賞 ({race['race_name']}) AI予測\n"]
@@ -464,7 +465,7 @@ def post_to_twitter(text: str, image_path: Optional[str] = None) -> bool:
         _log(f"\n❌予期せぬエラーが発生しました: {e}\n{traceback.format_exc()}")
         return False
 
-# --- 9. メイン処理 (変更なし) ---
+# --- 9. メイン処理 ---
 def main():
     """SNS投稿のメイン処理"""
     _log("="*50)
@@ -537,13 +538,16 @@ def main():
         _log("\n--- [フェーズ3/3] 今日の重賞レースを投稿 ---")
         all_races_data_today = get_api_data(today_str)
         if all_races_data_today:
-            venues = all_races_data_today.get('jra', [])
+            venues = all_races_data_today.get('jra', []) + all_races_data_today.get('nar', [])
             posted_count = 0
             for venue in venues:
                 for race in venue.get('races', []):
-                    if any(grade_race in race.get('race_name', '') for grade_race in JRA_GRADE_RACE_NAMES):
+                    # ★★修正★★: race_nameの前後の空白を削除して照合精度を上げる
+                    race_name = race.get('race_name', '').strip()
+                    if any(grade_race in race_name for grade_race in JRA_GRADE_RACE_NAMES):
                         if posted_count >= 1: continue
-                        _log(f"-> JRA重賞レース発見: {race['venue_name']} {race.get('race_name')}")
+                        # ★★修正★★: ログメッセージを「JRA」に限定しないように変更
+                        _log(f"-> 重賞レース発見: {race['venue_name']} {race.get('race_name')}")
                         preds = sorted([p for p in race.get('predictions', []) if p.get('deviation_score')], 
                                        key=lambda p: p['deviation_score'], reverse=True)
                         top_preds = preds[:3]
@@ -554,7 +558,8 @@ def main():
                                 post_to_twitter(text, image_file)
                                 posted_count += 1
             if posted_count == 0:
-                _log("-> 本日は対象のJRA重賞レースがありませんでした。")
+                # ★★修正★★: ログメッセージを「JRA」に限定しないように変更
+                _log("-> 本日は対象の重賞レースがありませんでした。")
         
         _log("\nSNS自動投稿ジョブが完了しました。")
 

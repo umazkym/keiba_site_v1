@@ -24,17 +24,17 @@ except NotImplementedError:
 
 MAX_WORKERS = 4
 BANEI_VENUE_CODES = ["33", "65"]
-DRIVER_RESTART_INTERVAL = 200  # 500から200に減らす
-DRIVER_MEMORY_CHECK_INTERVAL = 100  # 新規追加
-LONG_BREAK_INTERVAL = 1000
-LONG_BREAK_SECONDS = 300
-SHORT_BREAK_INTERVAL = 50
-SHORT_BREAK_SECONDS_MIN = 60
-SHORT_BREAK_SECONDS_MAX = 120
+DRIVER_RESTART_INTERVAL = 200  # WebDriverを再起動する間隔（馬の数）
+DRIVER_MEMORY_CHECK_INTERVAL = 100 # メモリチェックを行う間隔
+LONG_BREAK_INTERVAL = 1000 # 長時間休憩に入るまでのスクレイピング回数
+LONG_BREAK_SECONDS = 300 # 長時間休憩の秒数 (5分)
+SHORT_BREAK_INTERVAL = 50 # 短時間休憩に入るまでのスクレイピング回数
+SHORT_BREAK_SECONDS_MIN = 60 # 短時間休憩の最小秒数 (1分)
+SHORT_BREAK_SECONDS_MAX = 120 # 短時間休憩の最大秒数 (2分)
 
 def _force_cleanup_processes():
     """
-    Windows環境で実行中の可能性のあるChromeおよびChromeDriverのプロセスを強制終了する。
+    実行中の可能性のあるChromeおよびChromeDriverのプロセスを強制終了する。
     これにより、長時間実行時のゴーストプロセス問題を解消する。
     """
     try:
@@ -47,16 +47,12 @@ def _force_cleanup_processes():
             os.system("pkill -f chromium 2>/dev/null")
         tqdm.write("  -> クリーンアップ: 既存のChrome/ChromeDriverプロセスを強制終了しました。")
         time.sleep(2)
-        # ガベージコレクションを強制実行
         import gc
         gc.collect()
     except Exception as e:
         tqdm.write(f"  -> クリーンアップ中に軽微なエラーが発生しました (無視できます): {e}")
 
 def send_notification(message: str, is_error: bool = False):
-    """
-    指定されたメッセージをWebhook URLに送信する。
-    """
     webhook_url = os.getenv("WEBHOOK_URL")
     if not webhook_url:
         print(f"[NOTIFICATION]\n{message}")
@@ -71,11 +67,6 @@ def send_notification(message: str, is_error: bool = False):
 Base.metadata.create_all(bind=engine)
 
 def pre_scrape_all_data(start_date: datetime.date, end_date: datetime.date) -> set:
-    """
-    [STAGE 1/4]
-    指定された期間のスクレイピングを逐次実行し、HTMLをキャッシュする。
-    返り値として、収集対象となった全てのユニークな馬IDのセットを返す。
-    """
     print(f"\n--- [STAGE 1/4] 事前スクレイピングを逐次実行します ---")
     print(" -> 起動前クリーンアップを実行します...")
     _force_cleanup_processes()
@@ -106,7 +97,7 @@ def pre_scrape_all_data(start_date: datetime.date, end_date: datetime.date) -> s
                     original_count = len(race_ids)
                     race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
                     if original_count - len(race_ids) > 0:
-                        tqdm.write(f"                                   -> 地方競馬から、ばんえい競馬のレース {original_count - len(race_ids)} 件を除外しました。")
+                        tqdm.write(f"                                  -> 地方競馬から、ばんえい競馬のレース {original_count - len(race_ids)} 件を除外しました。")
                 all_race_ids_for_date.extend([(rid, is_nar) for rid in race_ids])
             for race_id, is_nar in tqdm(all_race_ids_for_date, desc=f"  [2/4] レース処理中 ({target_date_str})", unit="race", leave=False):
                 shutuba_html, was_scraped_s = scraper.get_shutuba_html(race_id, is_nar=is_nar)
@@ -128,34 +119,30 @@ def pre_scrape_all_data(start_date: datetime.date, end_date: datetime.date) -> s
         horse_ids_list = sorted(list(all_horse_ids_to_fetch))
         driver_instance = None
         try:
-            # WebDriverの再起動条件を厳しくする
             for i, horse_id in enumerate(tqdm(horse_ids_list, desc="  [3/4] 馬の過去成績", unit="horse", leave=True)):
-                # メモリ使用量チェック間隔を追加
-                if i > 0 and i % DRIVER_MEMORY_CHECK_INTERVAL == 0:
-                    # Render環境でのメモリ使用量をチェック
-                    if os.getenv("RENDER"):
-                        import gc
-                        gc.collect()  # ガベージコレクション実行
-                
+                if i > 0 and i % DRIVER_MEMORY_CHECK_INTERVAL == 0 and os.getenv("RENDER"):
+                    import gc
+                    gc.collect()
+
                 if driver_instance is None or (i > 0 and i % DRIVER_RESTART_INTERVAL == 0):
                     if driver_instance:
                         tqdm.write(f"\n--- 定期メンテナンス: {DRIVER_RESTART_INTERVAL}頭処理したためWebDriverを再起動します ---")
                         driver_instance.quit()
                         _force_cleanup_processes()
-                        # 明示的なガベージコレクション
-                        import gc
-                        gc.collect()
                     driver_instance = scraper._prepare_chrome_driver()
+
                 if newly_scraped_count > 0 and newly_scraped_count % LONG_BREAK_INTERVAL == 0:
                     tqdm.write(f"\n--- 長時間アクセス継続のため、{int(LONG_BREAK_SECONDS / 60)}分間のクールダウンに入ります ---")
                     time.sleep(LONG_BREAK_SECONDS)
                     tqdm.write("--- 処理を再開します ---")
+
                 _, was_scraped = scraper.get_horse_page_html(horse_id, force_download=False, driver=driver_instance)
+
                 if was_scraped:
                     newly_scraped_count += 1
                     if newly_scraped_count > 0 and newly_scraped_count % SHORT_BREAK_INTERVAL == 0:
                         break_time = random.uniform(SHORT_BREAK_SECONDS_MIN, SHORT_BREAK_SECONDS_MAX)
-                        tqdm.write(f"\n--- {SHORT_BREAK_INTERVAL}件の新規スクレイピングを実行しました。サーバー負荷軽減のため {int(break_time)}秒間 休憩します ---")
+                        tqdm.write(f"\n--- {SHORT_BREAK_INTERVAL}件の新規スクレイピングを実行。サーバー負荷軽減のため {int(break_time)}秒間 休憩します ---")
                         time.sleep(break_time)
         finally:
             if driver_instance:
@@ -301,13 +288,6 @@ def main():
         success_message = (f"✅ パイプライン処理が正常に完了しました。\n**モード**: `{PIPELINE_MODE}`\n**処理時間**: `{elapsed_time:.2f} 秒`")
         send_notification(success_message)
         
-        # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        #
-        #            SNS投稿を呼び出す処理はここにありましたが、
-        #            render.yamlでジョブを分離したため、完全に削除しました。
-        #
-        # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-
     except Exception as e:
         elapsed_time = time.time() - start_time
         error_message = (f"🚨 パイプライン処理中にエラーが発生しました。\n"

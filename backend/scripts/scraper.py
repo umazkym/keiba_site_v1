@@ -1,4 +1,3 @@
-# backend/scripts/scraper.py
 import requests
 import time
 import random
@@ -29,24 +28,16 @@ USER_AGENTS = [
 MIN_SLEEP_SECONDS = 2.5
 MAX_SLEEP_SECONDS = 5.0
 MAX_RETRIES = 3
-# ==============================================================================
-# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-RETRY_DELAY_SECONDS = 15 # リトライ間隔を10秒から15秒に延長
-
-# Seleniumのページ読み込みタイムアウトを90秒に設定
-SELENIUM_PAGE_LOAD_TIMEOUT = 90 # タイムアウトを60秒から90秒に延長
-# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-# ==============================================================================
+RETRY_DELAY_SECONDS = 15
+SELENIUM_PAGE_LOAD_TIMEOUT = 90
 
 BASE_CENTRAL_URL = "https://race.netkeiba.com"
 BASE_NAR_URL = "https://nar.netkeiba.com"
 DB_BASE_URL = "https://db.netkeiba.com"
-HORSE_HTML_CACHE_MAX_AGE_SECONDS = 24 * 5 * 60 * 60  # 中4日
+HORSE_HTML_CACHE_MAX_AGE_SECONDS = 24 * 5 * 60 * 60
 
-# --- キャッシュディレクトリの定義 ---
 HTML_DIR = os.path.join("data", "html_cache")
 os.makedirs(HTML_DIR, exist_ok=True)
-
 
 def _get_random_headers():
     return {"User-Agent": random.choice(USER_AGENTS)}
@@ -54,84 +45,34 @@ def _get_random_headers():
 def _prepare_chrome_driver():
     """
     Render環境とローカル環境の両方で動作するように修正されたWebDriver準備関数
-    メモリ使用量を最適化しつつ、スクレイピング内容には影響を与えない
     """
     options = Options()
-    
-    # === 基本設定（既存の重要な設定を維持）===
-    options.add_argument('--headless=new')  # GUIがない環境で必須
-    options.add_argument('--no-sandbox')  # Render環境での実行に必要
-    options.add_argument('--disable-dev-shm-usage')  # /dev/shmパーティションのサイズが小さいコンテナ環境で必須
-    options.add_argument('--disable-gpu')  # GPUがない環境で不要なエラーを避ける
-    options.add_argument('--window-size=1920x1080')  # ページレイアウトを安定させる（重要：変更不可）
-    
-    # === メモリ最適化設定（スクレイピング内容に影響しない）===
-    options.add_argument('--disable-background-timer-throttling')  # バックグラウンドタイマーの制限を無効化
-    options.add_argument('--disable-renderer-backgrounding')  # レンダラーのバックグラウンド化を無効化
-    options.add_argument('--disable-features=TranslateUI')  # 翻訳UIを無効化
-    options.add_argument('--disable-extensions')  # 拡張機能を無効化
-    options.add_argument('--disable-plugins')  # プラグインを無効化（PDFビューアなど）
-    options.add_argument('--disable-default-apps')  # デフォルトアプリを無効化
-    options.add_argument('--disable-background-networking')  # バックグラウンドネットワークを無効化
-    options.add_argument('--disable-sync')  # 同期機能を無効化
-    options.add_argument('--disable-translate')  # 翻訳機能を無効化
-    options.add_argument('--disable-web-security')  # Webセキュリティを無効化（CORS回避）
-    options.add_argument('--disable-site-isolation-trials')  # サイト分離試験を無効化
-    options.add_argument('--disable-features=site-per-process')  # プロセス分離を制限
-    
-    # === メモリ関連の追加最適化 ===
-    options.add_argument('--memory-pressure-off')  # メモリプレッシャー機能を無効化
-    options.add_argument('--max_old_space_size=512')  # V8のヒープサイズを制限
-    options.add_argument('--disable-javascript-harmony-shipping')  # 実験的JS機能を無効化
-    options.add_argument('--disable-features=VizDisplayCompositor')  # Vizコンポジタを無効化
-    options.add_argument('--disable-features=NetworkService')  # ネットワークサービスを無効化
-    
-    # === パフォーマンス最適化（レンダリングには影響しない）===
-    options.add_argument('--disable-logging')  # ログ出力を無効化
-    options.add_argument('--log-level=3')  # ログレベルを最小に
-    options.add_argument('--silent')  # サイレントモード
-    options.add_argument('--disable-breakpad')  # クラッシュレポートを無効化
-    options.add_argument('--disable-crash-reporter')  # クラッシュレポーターを無効化
-    options.add_argument('--no-first-run')  # 初回実行フラグを無効化
-    options.add_argument('--disable-component-update')  # コンポーネント更新を無効化
-    
-    # === User-Agent設定（既存のまま維持）===
+    options.add_argument('--headless=new')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--window-size=1920x1080')
+    # ▼▼▼ 修正 ▼▼▼
     options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
-    
-    # === ログ出力の抑制（既存のまま維持）===
+    options.add_argument("--disable-blink-features=AutomationControlled") 
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
+    # ▲▲▲ 修正 ▲▲▲
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
-    # === プリファレンス設定（慎重に設定）===
-    prefs = {
-        'profile.default_content_setting_values.notifications': 2,  # 通知を無効化
-        'profile.default_content_settings.popups': 0,  # ポップアップを許可（スクレイピングに必要な場合がある）
-        'profile.managed_default_content_settings.images': 1,  # 画像は読み込む（重要：スクレイピング内容に影響）
-        'download.prompt_for_download': False,  # ダウンロード確認を無効化
-        'download.directory_upgrade': True,
-        'safebrowsing.enabled': False,  # セーフブラウジングを無効化
-        'safebrowsing.disable_download_protection': True,
-        'useAutomationExtension': False,  # 自動化拡張を無効化
-        'profile.password_manager_enabled': False,  # パスワードマネージャーを無効化
-    }
-    options.add_experimental_option('prefs', prefs)
-    
-    # === WebDriverの作成（既存のロジックを維持）===
     try:
-        # ローカル開発環境では `webdriver-manager` を利用
         if _WDM_AVAILABLE and not os.environ.get("RENDER"):
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
         else:
-            # Render環境では、buildpackがインストールしたchromedriverがPATHに含まれていることを期待
             driver = webdriver.Chrome(options=options)
+        # ▼▼▼ 修正 ▼▼▼
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        # ▲▲▲ 修正 ▲▲▲
     except Exception as e:
         print(f"[ERROR] ChromeDriverのセットアップに失敗しました: {e}")
         raise
-    
-    # === タイムアウト設定（重要：既存の値を維持）===
-    driver.set_page_load_timeout(SELENIUM_PAGE_LOAD_TIMEOUT)  # 90秒
-    driver.implicitly_wait(10)  # 暗黙的な待機時間
-    
+        
     return driver
 
 def get_html(
@@ -161,12 +102,10 @@ def get_html(
         if not is_stale:
             with open(file_path_bin, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
-                return content, False # キャッシュヒット時はスクレイピングフラグをFalseに
+                return content, False
 
-    # --- ここから下はWebアクセスが発生する場合のロジック ---
     for attempt in range(MAX_RETRIES):
         try:
-            # Webアクセス直前に待機
             sleep_time = random.uniform(MIN_SLEEP_SECONDS, MAX_SLEEP_SECONDS)
             time.sleep(sleep_time)
             
@@ -209,8 +148,16 @@ def get_html(
                 finally:
                     if os.path.exists(temp_file_path):
                         os.remove(temp_file_path)
-                return html_content, True # Webアクセス成功時はスクレイピングフラグをTrueに
-
+                return html_content, True
+        # ▼▼▼ 修正 ▼▼▼
+        except requests.exceptions.HTTPError as e:
+            if 400 <= e.response.status_code < 500:
+                print(f"[HTTP Error {e.response.status_code}] for {url}. BANされた可能性があるためリトライを停止します。")
+                return None, False
+            print(f"[Request Error] Attempt {attempt + 1}/{MAX_RETRIES} for {url} failed: {e}")
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(RETRY_DELAY_SECONDS * (attempt + 1))
+        # ▲▲▲ 修正 ▲▲▲
         except (requests.RequestException, WebDriverException) as e:
             print(f"[Request Error] Attempt {attempt + 1}/{MAX_RETRIES} for {url} failed: {e}")
             if attempt < MAX_RETRIES - 1:
@@ -239,7 +186,7 @@ def get_shutuba_html(race_id: str, is_nar: bool, force_download: bool = False) -
     try:
         target_date = date(int(race_id[:4]), int(race_id[6:8]), int(race_id[8:10]))
     except ValueError:
-        target_date = date.today() # fallback
+        target_date = date.today()
     return get_html(url, file_path, force_download, use_selenium=False, wait_for_class="Shutuba_HorseList", target_date=target_date)
 
 def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = False) -> Tuple[Optional[str], bool]:
@@ -247,7 +194,7 @@ def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = Fals
         base_url = BASE_NAR_URL
         url = f"{base_url}/race/result.html?race_id={race_id}"
         dir_path = os.path.join(HTML_DIR, "nar_race")
-    else: # JRA
+    else:
         base_url = BASE_CENTRAL_URL
         url = f"{base_url}/race/result.html?race_id={race_id}"
         dir_path = os.path.join(HTML_DIR, "race_results")
@@ -258,7 +205,7 @@ def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = Fals
     try:
         target_date = date(int(race_id[:4]), int(race_id[6:8]), int(race_id[8:10]))
     except ValueError:
-        target_date = date.today() # fallback
+        target_date = date.today()
     return get_html(url, file_path, force_download, use_selenium=False, wait_for_class="RaceTable01", target_date=target_date)
 
 def get_horse_page_html(
@@ -266,7 +213,6 @@ def get_horse_page_html(
     force_download: bool = False,
     driver: Optional[webdriver.Chrome] = None
 ) -> Tuple[Optional[str], bool]:
-    """馬の過去成績ページ。キャッシュの有効期限(5日)で管理。日付ベースの強制ダウンロードは適用しない。"""
     url = f"{DB_BASE_URL}/horse/{horse_id}"
     dir_path = os.path.join(HTML_DIR, "horse")
     os.makedirs(dir_path, exist_ok=True)
@@ -276,14 +222,11 @@ def get_horse_page_html(
         file_path,
         force_download,
         use_selenium=True,
-        # この行をコメントアウトすることで、キャッシュの有効期限を無効化する
-        # max_age_seconds=HORSE_HTML_CACHE_MAX_AGE_SECONDS,
         wait_for_class='db_main_race',
         driver=driver
     )
 
 def get_ped_page_html(horse_id: str, force_download: bool = False) -> Tuple[Optional[str], bool]:
-    """血統ページ。日付による強制ダウンロードは不要。"""
     url = f"{DB_BASE_URL}/horse/ped/{horse_id}"
     dir_path = os.path.join(HTML_DIR, "ped")
     os.makedirs(dir_path, exist_ok=True)

@@ -1,5 +1,8 @@
 {
   "dependencies": {
-    "@next/third-parties": "^15.5.4"
+    "@next/third-parties": "^15.5.4",
+    "gray-matter": "^4.0.3",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   }
 }

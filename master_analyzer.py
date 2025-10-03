@@ -1,4 +1,3 @@
-# master_analyzer.py - 完全拡張版
 import argparse
 import os
 import json
@@ -10,6 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from tqdm import tqdm
 from datetime import datetime, date
+import re
 import traceback
 
 # ==============================================================================
@@ -23,6 +23,9 @@ def setup_matplotlib():
     try:
         import japanize_matplotlib
         print("✅ Matplotlibの日本語設定が有効になりました。")
+        # UI改善：モダンなスタイルとカラーパレットを設定
+        plt.style.use('seaborn-v0_8-whitegrid')
+        sns.set_palette("viridis")
     except ImportError:
         print("⚠️ 警告: japanize-matplotlibがインストールされていません。")
         print("グラフの日本語が文字化けする可能性があります。")
@@ -84,9 +87,13 @@ def save_analysis_results(output_dir: str, data: dict, figures: dict, summary: s
         print(f"💾 データ(JSON)を保存しました: {data_path}")
         
         # 2. グラフをPNGファイルとして保存
+        # ファイル名競合回避：output_dirの最後の部分をプレフィックスとして使用
+        prefix = os.path.basename(output_dir)
         for filename, fig in figures.items():
-            graph_path = os.path.join(output_dir, f"{filename}.png")
-            fig.savefig(graph_path, bbox_inches='tight', dpi=150)
+            safe_filename = re.sub(r'[\\/:*?"<>|]', '_', filename) # ファイル名に使えない文字を置換
+            graph_path = os.path.join(output_dir, f"{prefix}_{safe_filename}.png")
+            # UI改善：背景を透過して保存
+            fig.savefig(graph_path, bbox_inches='tight', dpi=150, transparent=True)
             plt.close(fig)
             print(f"📊 グラフ(PNG)を保存しました: {graph_path}")
         
@@ -174,7 +181,7 @@ def analyze_ai_performance(db_session: Session, start_date: str, end_date: str):
     ax1.tick_params(axis='x', rotation=0)
     ax1.legend(loc='upper left')
     ax1.right_ax.legend(loc='upper right')
-    figures['印別成績'] = fig1
+    figures['ai_review_mark_summary'] = fig1
     
     # グラフ2: 偏差値帯別回収率
     fig2, ax2 = plt.subplots(figsize=(12, 7))
@@ -184,7 +191,7 @@ def analyze_ai_performance(db_session: Session, start_date: str, end_date: str):
     ax2.set_xlabel('AI偏差値帯', fontsize=12)
     ax2.set_ylabel('回収率 (%)', fontsize=12)
     ax2.legend()
-    figures['偏差値帯別_回収率'] = fig2
+    figures['ai_review_deviation_return'] = fig2
     
     # サマリー生成（ストーリー性を持たせる）
     honmei_data = mark_summary.loc['◎']
@@ -306,19 +313,19 @@ def analyze_course(db_session: Session, venue: str, course_type: str, distance: 
     for bar in bars:
         height = bar.get_height()
         ax1.text(bar.get_x() + bar.get_width()/2., height,
-                f'{height:.1%}', ha='center', va='bottom')
+                 f'{height:.1%}', ha='center', va='bottom')
     
-    figures['枠番別_複勝率'] = fig1
+    figures['course_waku_rate'] = fig1
     
     # グラフ2: 脚質別勝率（円グラフ）
     fig2, ax2 = plt.subplots(figsize=(8, 8))
     leg_type_summary['win_rate'].plot(
         kind='pie', ax=ax2, autopct='%1.1f%%', startangle=90,
-        colors=sns.color_palette('coolwarm', len(leg_type_summary))
+        colors=sns.color_palette('viridis', len(leg_type_summary))
     )
     ax2.set_title(f'{venue} {course_type}{distance}m - 脚質別 勝率', fontsize=16, fontweight='bold')
     ax2.set_ylabel('')
-    figures['脚質別_勝率'] = fig2
+    figures['course_leg_type_pie'] = fig2
     
     # サマリー生成（種牡馬情報を削除）
     best_waku = waku_summary['within_3_rate'].idxmax()
@@ -419,22 +426,22 @@ def _analyze_person(db_session: Session, person_type: str, person_id: str):
     if not course_summary.empty:
         fig1, ax1 = plt.subplots(figsize=(10, 8))
         sns.barplot(x=course_summary['within_3_rate'], y=course_summary.index, 
-                   ax=ax1, orient='h', palette='summer')
+                    ax=ax1, orient='h', palette='summer')
         ax1.set_title(f'{person_name}の得意コース TOP10 (複勝率, 20走以上)', 
-                     fontsize=16, fontweight='bold')
+                      fontsize=16, fontweight='bold')
         ax1.set_xlabel('複勝率', fontsize=12)
         ax1.set_ylabel('コース', fontsize=12)
-        figures['得意コース_複勝率'] = fig1
+        figures[f'{person_type}_top_courses'] = fig1
     
     if not popularity_summary.empty:
         fig2, ax2 = plt.subplots(figsize=(12, 7))
         ax2.bar(popularity_summary.index, popularity_summary['within_3_rate'], 
-               color='skyblue', label='複勝率')
+                color='skyblue', label='複勝率')
         ax2.set_title(f'{person_name}の人気別成績', fontsize=16, fontweight='bold')
         ax2.set_xlabel('人気', fontsize=12)
         ax2.set_ylabel('複勝率', fontsize=12)
         ax2.set_xticks(range(1, len(popularity_summary) + 1))
-        figures['人気別成績'] = fig2
+        figures[f'{person_type}_popularity_summary'] = fig2
     
     person_label = "騎手" if person_type == "jockey" else "調教師"
     top_course = course_summary.index[0] if not course_summary.empty else "[データ不足]"
@@ -564,7 +571,7 @@ def analyze_odds(db_session: Session, start_date: str, end_date: str):
         ax1.set_xlabel('妙味スコア (人気 - AI評価順位)', fontsize=12)
         ax1.set_ylabel('単勝回収率 (%)', fontsize=12)
         ax1.legend()
-        figures['妙味スコア別_回収率'] = fig1
+        figures['odds_umami_score_return'] = fig1
     
     summary_text = f"""
 ### AI vs オッズ分析：高配当を呼ぶ「妙味馬」を探せ！ ({start_date} ~ {end_date})
@@ -667,7 +674,7 @@ def analyze_seasonal(db_session: Session, start_date: str, end_date: str):
     ax1.set_xlabel('季節', fontsize=12)
     ax1.set_ylabel('複勝率', fontsize=12)
     ax1.tick_params(axis='x', rotation=0)
-    figures['季節別_複勝率'] = fig1
+    figures['seasonal_rate'] = fig1
     
     # グラフ2: ヒートマップ（季節×コース種別）
     fig2, ax2 = plt.subplots(figsize=(10, 6))
@@ -677,7 +684,7 @@ def analyze_seasonal(db_session: Session, start_date: str, end_date: str):
     ax2.set_title('季節×コース種別 勝率ヒートマップ', fontsize=16, fontweight='bold')
     ax2.set_xlabel('コース種別', fontsize=12)
     ax2.set_ylabel('季節', fontsize=12)
-    figures['季節コース_ヒートマップ'] = fig2
+    figures['seasonal_course_heatmap'] = fig2
     
     # グラフ3: AI本命馬の季節別成績
     fig3, ax3 = plt.subplots(figsize=(10, 6))
@@ -688,7 +695,7 @@ def analyze_seasonal(db_session: Session, start_date: str, end_date: str):
     ax3.set_ylabel('成績', fontsize=12)
     ax3.legend(['勝率', '複勝率'])
     ax3.tick_params(axis='x', rotation=0)
-    figures['本命馬_季節別成績'] = fig3
+    figures['seasonal_honmei_summary'] = fig3
     
     # 最も成績が良い季節と悪い季節を特定
     best_season = season_summary['within_3_rate'].idxmax()
@@ -792,7 +799,7 @@ def analyze_ground_condition(db_session: Session, venue: str, start_date: str, e
     ax1.set_ylabel('成績', fontsize=12)
     ax1.legend(['勝率', '複勝率'])
     ax1.tick_params(axis='x', rotation=0)
-    figures['馬場状態別_成績'] = fig1
+    figures['ground_condition_summary'] = fig1
     
     # グラフ2: ヒートマップ（馬場状態×コース種別）
     fig2, ax2 = plt.subplots(figsize=(10, 6))
@@ -801,7 +808,7 @@ def analyze_ground_condition(db_session: Session, venue: str, start_date: str, e
     ax2.set_title(f'{venue} - 馬場状態×コース種別 平均着順', fontsize=16, fontweight='bold')
     ax2.set_xlabel('コース種別', fontsize=12)
     ax2.set_ylabel('馬場状態', fontsize=12)
-    figures['馬場コース_ヒートマップ'] = fig2
+    figures['ground_course_heatmap'] = fig2
     
     # グラフ3: 人気馬の馬場状態別勝率
     fig3, ax3 = plt.subplots(figsize=(10, 6))
@@ -810,7 +817,7 @@ def analyze_ground_condition(db_session: Session, venue: str, start_date: str, e
     ax3.set_xlabel('馬場状態', fontsize=12)
     ax3.set_ylabel('勝率', fontsize=12)
     ax3.tick_params(axis='x', rotation=0)
-    figures['人気馬_馬場別勝率'] = fig3
+    figures['ground_popular_win_rate'] = fig3
     
     best_ground = ground_summary['within_3_rate'].idxmax()
     worst_ground = ground_summary['within_3_rate'].idxmin()
@@ -932,7 +939,7 @@ def analyze_grade(db_session: Session, start_date: str, end_date: str):
     ax1.set_ylabel('成績', fontsize=12)
     ax1.legend(['勝率', '複勝率'])
     ax1.tick_params(axis='x', rotation=0)
-    figures['グレード別_成績比較'] = fig1
+    figures['grade_summary'] = fig1
     
     # グラフ2: AI本命馬のグレード別信頼度
     fig2, ax2 = plt.subplots(figsize=(10, 6))
@@ -943,7 +950,7 @@ def analyze_grade(db_session: Session, start_date: str, end_date: str):
         ax2.set_xlabel('レースグレード', fontsize=12)
         ax2.set_ylabel('複勝率', fontsize=12)
         ax2.tick_params(axis='x', rotation=0)
-    figures['本命馬_グレード別信頼度'] = fig2
+    figures['grade_honmei_rate'] = fig2
     
     # グラフ3: レーダーチャート（G1の特性）
     if 'G1' in grade_summary.index:
@@ -970,7 +977,7 @@ def analyze_grade(db_session: Session, start_date: str, end_date: str):
         ax3.legend(loc='upper right')
         ax3.grid(True)
         
-        figures['G1_レーダーチャート'] = fig3
+        figures['grade_g1_radar'] = fig3
     
     best_grade_honmei = honmei_grade_summary['within_3_rate'].idxmax() if not honmei_grade_summary.empty else 'N/A'
     
@@ -1111,7 +1118,7 @@ def analyze_distance_profile(db_session: Session, horse_id: str):
     ax1.set_title(f'{horse_name}の距離適性（レーダーチャート）', fontsize=16, fontweight='bold', pad=20)
     ax1.grid(True)
     
-    figures['距離適性_レーダー'] = fig1
+    figures['distance_profile_radar'] = fig1
     
     # グラフ2: コース種別×距離帯
     fig2, ax2 = plt.subplots(figsize=(10, 6))
@@ -1123,14 +1130,14 @@ def analyze_distance_profile(db_session: Session, horse_id: str):
         ax2.set_ylabel('勝率', fontsize=12)
         ax2.legend(title='コース種別')
         ax2.tick_params(axis='x', rotation=45)
-    figures['コース距離_成績'] = fig2
+    figures['distance_profile_course_type'] = fig2
     
     # グラフ3: 距離ごとの平均着順（折れ線グラフ）
     fig3, ax3 = plt.subplots(figsize=(12, 6))
     if not distance_detail.empty:
         distance_detail_sorted = distance_detail.sort_index()
         ax3.plot(distance_detail_sorted.index, distance_detail_sorted['avg_rank'], 
-                marker='o', linewidth=2, markersize=8)
+                 marker='o', linewidth=2, markersize=8)
         ax3.set_title(f'{horse_name} - 距離別 平均着順', fontsize=16, fontweight='bold')
         ax3.set_xlabel('距離 (m)', fontsize=12)
         ax3.set_ylabel('平均着順', fontsize=12)
@@ -1141,7 +1148,7 @@ def analyze_distance_profile(db_session: Session, horse_id: str):
         for x, y, n in zip(distance_detail_sorted.index, distance_detail_sorted['avg_rank'], distance_detail_sorted['n']):
             ax3.annotate(f'n={n}', (x, y), textcoords="offset points", xytext=(0,5), ha='center', fontsize=8)
     
-    figures['距離別_平均着順'] = fig3
+    figures['distance_profile_avg_rank'] = fig3
     
     best_distance_class = distance_summary['win_rate'].idxmax()
     best_distance_win_rate = distance_summary['win_rate'].max()
@@ -1261,7 +1268,7 @@ def main():
         
         # === 既存の分析 ===
         if args.command == "ai_review":
-            output_dir_name = f"ai_review_{args.start_date}_to_{args.end_date}"
+            output_dir_name = f"ai-review_{args.start_date.replace('-', '')}-{args.end_date.replace('-', '')}"
             data, figures, summary = analyze_ai_performance(db_session, args.start_date, args.end_date)
         
         elif args.command == "course":
@@ -1269,40 +1276,40 @@ def main():
             data, figures, summary = analyze_course(db_session, args.venue, args.course_type, args.distance)
         
         elif args.command == "jockey":
-            output_dir_name = f"jockey_{args.id}"
+            output_dir_name = f"jockey-analysis_{args.id}"
             data, figures, summary = analyze_jockey(db_session, args.id)
         
         elif args.command == "trainer":
-            output_dir_name = f"trainer_{args.id}"
+            output_dir_name = f"trainer-analysis_{args.id}"
             data, figures, summary = analyze_trainer(db_session, args.id)
         
         elif args.command == "sire":
-            output_dir_name = f"sire_{args.id}"
+            output_dir_name = f"sire-analysis_{args.id}"
             data, figures, summary = analyze_sire(db_session, args.id)
         
         elif args.command == "odds":
-            output_dir_name = f"odds_analysis_{args.start_date}_to_{args.end_date}"
+            output_dir_name = f"odds-analysis_{args.start_date.replace('-', '')}-{args.end_date.replace('-', '')}"
             data, figures, summary = analyze_odds(db_session, args.start_date, args.end_date)
         
         # === 新機能の分析 ===
         elif args.command == "seasonal":
-            output_dir_name = f"seasonal_{args.start_date}_to_{args.end_date}"
+            output_dir_name = f"seasonal-analysis_{args.start_date.replace('-', '')}-{args.end_date.replace('-', '')}"
             data, figures, summary = analyze_seasonal(db_session, args.start_date, args.end_date)
         
         elif args.command == "ground":
-            output_dir_name = f"ground_{args.venue}_{args.start_date}_to_{args.end_date}"
+            output_dir_name = f"ground-analysis_{args.venue}_{args.start_date.replace('-', '')}-{args.end_date.replace('-', '')}"
             data, figures, summary = analyze_ground_condition(db_session, args.venue, args.start_date, args.end_date)
         
         elif args.command == "grade":
-            output_dir_name = f"grade_analysis_{args.start_date}_to_{args.end_date}"
+            output_dir_name = f"grade-analysis_{args.start_date.replace('-', '')}-{args.end_date.replace('-', '')}"
             data, figures, summary = analyze_grade(db_session, args.start_date, args.end_date)
         
         elif args.command == "jockey_sire":
-            output_dir_name = f"jockey_sire_{args.start_date}_to_{args.end_date}"
+            output_dir_name = f"jockey-sire_{args.start_date.replace('-', '')}-{args.end_date.replace('-', '')}"
             data, figures, summary = analyze_jockey_sire_combination(db_session, args.start_date, args.end_date, args.min_rides)
         
         elif args.command == "distance_profile":
-            output_dir_name = f"distance_profile_{args.horse_id}"
+            output_dir_name = f"distance-profile_{args.horse_id}"
             data, figures, summary = analyze_distance_profile(db_session, args.horse_id)
         
         # === 結果の保存 ===

@@ -63,7 +63,9 @@ def save_analysis_results(output_dir: str, data: dict, figures: dict, summary: s
     """
     try:
         os.makedirs(output_dir, exist_ok=True)
-        
+        # ファイル名競合回避：output_dirの最後の部分をプレフィックスとして使用
+        prefix = os.path.basename(output_dir)
+
         # ★修正★ カスタムJSONエンコーダーを追加
         class DateTimeEncoder(json.JSONEncoder):
             """dateやdatetimeオブジェクトをJSON形式に変換するカスタムエンコーダー"""
@@ -79,16 +81,14 @@ def save_analysis_results(output_dir: str, data: dict, figures: dict, summary: s
                 if pd.isna(obj):
                     return None
                 return super().default(obj)
-        
+
         # 1. 詳細データをJSONとして保存
-        data_path = os.path.join(output_dir, "data.json")
+        data_path = os.path.join(output_dir, f"{prefix}_data.json")
         with open(data_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4, cls=DateTimeEncoder)
         print(f"💾 データ(JSON)を保存しました: {data_path}")
-        
+
         # 2. グラフをPNGファイルとして保存
-        # ファイル名競合回避：output_dirの最後の部分をプレフィックスとして使用
-        prefix = os.path.basename(output_dir)
         for filename, fig in figures.items():
             safe_filename = re.sub(r'[\\/:*?"<>|]', '_', filename) # ファイル名に使えない文字を置換
             graph_path = os.path.join(output_dir, f"{prefix}_{safe_filename}.png")
@@ -96,13 +96,13 @@ def save_analysis_results(output_dir: str, data: dict, figures: dict, summary: s
             fig.savefig(graph_path, bbox_inches='tight', dpi=150, transparent=True)
             plt.close(fig)
             print(f"📊 グラフ(PNG)を保存しました: {graph_path}")
-        
+
         # 3. 分析サマリーをテキストファイルとして保存
-        summary_path = os.path.join(output_dir, "summary.txt")
+        summary_path = os.path.join(output_dir, f"{prefix}_summary.txt")
         with open(summary_path, 'w', encoding='utf-8') as f:
             f.write(summary)
         print(f"📝 サマリー(TXT)を保存しました: {summary_path}")
-        
+
     except Exception as e:
         print(f"❌ ファイルの保存中にエラーが発生しました: {e}")
 
@@ -755,7 +755,7 @@ def analyze_ground_condition(db_session: Session, venue: str, start_date: str, e
         p.deviation_score
     FROM results res
     JOIN races r ON res.race_id = r.id
-    LEFT JOIN predictions p ON res.race_id = p.race_id AND res.horse_number = res.horse_number
+    LEFT JOIN predictions p ON res.race_id = p.race_id AND res.horse_number = p.horse_number
     WHERE r.venue_name = '{venue}'
       AND r.race_date BETWEEN '{start_date}' AND '{end_date}'
       AND r.ground_condition IS NOT NULL
@@ -1321,10 +1321,11 @@ def main():
             print(f"\n✅ 分析が完了しました！")
             print(f"📁 結果は以下のディレクトリに保存されています:")
             print(f"   {os.path.abspath(output_dir)}")
+            prefix = os.path.basename(output_dir)
             print(f"\n📄 生成されたファイル:")
-            print(f"   - data.json : 分析データの詳細")
-            print(f"   - summary.txt : 分析結果のサマリー")
-            print(f"   - *.png : 各種グラフ")
+            print(f"   - {prefix}_data.json : 分析データの詳細")
+            print(f"   - {prefix}_summary.txt : 分析結果のサマリー")
+            print(f"   - {prefix}_*.png : 各種グラフ")
     
     except Exception as e:
         print(f"\n❌ エラーが発生しました:")

@@ -4,6 +4,7 @@ import json
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 import seaborn as sns
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -20,6 +21,13 @@ def setup_matplotlib():
     matplotlibで日本語が文字化けしないように設定します。
     japanize-matplotlibライブラリが必要です。
     """
+
+    # ★★★ 修正箇所 ★★★
+    # 先にseabornのスタイルを設定し、その後にフォント設定を適用することで、
+    # スタイルによってフォント設定が上書きされるのを防ぎます。
+    plt.style.use('seaborn-v0_8-whitegrid')
+    sns.set_palette("viridis")
+
     try:
         import japanize_matplotlib
         print("✅ japanize-matplotlibによる日本語設定が有効になりました。")
@@ -42,9 +50,6 @@ def setup_matplotlib():
         if not font_found:
             print("❌ 代替フォントが見つかりませんでした。文字化けする可能性があります。")
 
-    # UI改善：モダンなスタイルとカラーパレットを設定
-    plt.style.use('seaborn-v0_8-whitegrid')
-    sns.set_palette("viridis")
 
 def get_db_session(database_url: str) -> Session | None:
     """

@@ -22,14 +22,29 @@ def setup_matplotlib():
     """
     try:
         import japanize_matplotlib
-        print("✅ Matplotlibの日本語設定が有効になりました。")
-        # UI改善：モダンなスタイルとカラーパレットを設定
-        plt.style.use('seaborn-v0_8-whitegrid')
-        sns.set_palette("viridis")
+        print("✅ japanize-matplotlibによる日本語設定が有効になりました。")
     except ImportError:
-        print("⚠️ 警告: japanize-matplotlibがインストールされていません。")
-        print("グラフの日本語が文字化けする可能性があります。")
-        print("pip install japanize-matplotlib を実行してください。")
+        print("⚠️ 警告: japanize-matplotlibがインストールされていません。代替フォントを設定します。")
+        # Windows, macOS, Linuxで一般的に利用可能な日本語フォントを試す
+        font_families = [
+            'Yu Gothic', 'Hiragino Sans', 'MS Gothic', 'TakaoPGothic', 'IPAexGothic', 'Noto Sans CJK JP'
+        ]
+        font_found = False
+        for font in font_families:
+            try:
+                plt.rcParams['font.family'] = font
+                plt.rcParams['axes.unicode_minus'] = False # マイナス記号の文字化け防止
+                print(f"✅ 代替フォントとして '{font}' を設定しました。")
+                font_found = True
+                break
+            except Exception:
+                continue
+        if not font_found:
+            print("❌ 代替フォントが見つかりませんでした。文字化けする可能性があります。")
+
+    # UI改善：モダンなスタイルとカラーパレットを設定
+    plt.style.use('seaborn-v0_8-whitegrid')
+    sns.set_palette("viridis")
 
 def get_db_session(database_url: str) -> Session | None:
     """

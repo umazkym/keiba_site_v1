@@ -12,13 +12,17 @@
     "@next/third-parties": "^15.5.4",
     "@tippyjs/react": "^4.2.6",
     "chart.js": "^4.4.3",
+    "date-fns": "^4.1.0",
+    "gray-matter": "^4.0.3",
     "lucide-react": "^0.544.0",
     "next": "^14.2.31",
     "react": "^18",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18",
+    "react-markdown": "^10.1.0",
     "react-tabs": "^6.0.2",
     "recharts": "^3.0.2",
+    "remark-gfm": "^4.0.1",
     "tippy.js": "^6.3.7"
   },
   "devDependencies": {

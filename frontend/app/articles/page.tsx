@@ -1,49 +1,71 @@
 import Link from 'next/link';
-import { getAllArticles } from '@/lib/articles';
-import { format } from 'date-fns';
+import Image from 'next/image';
+import { getAllArticles, getUniqueCategories, Article } from '../../lib/articles';
 
-export const metadata = {
-  title: 'データ分析記事一覧 | UMA-FREE',
-  description: 'AIと独自のデータ分析に基づいた競馬攻略記事の一覧です。最新のインサイトであなたの予想をアップグレードします。',
-};
+interface ArticlesPageProps {
+  searchParams: {
+    category?: string;
+  };
+}
 
-export default function ArticlesPage() {
-  const articles = getAllArticles();
+export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
+  // サーバーサイドで全記事とカテゴリを取得
+  const allArticles = getAllArticles();
+  const uniqueCategories = getUniqueCategories();
+  
+  const selectedCategory = searchParams.category;
+
+  const filteredArticles = selectedCategory
+    ? allArticles.filter((article) => article.category === selectedCategory)
+    : allArticles;
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-2 text-center text-gray-800">
-        データ分析記事一覧
+      <h1 className="text-4xl font-bold text-center mb-10">
+        {selectedCategory ? `${selectedCategory}の記事一覧` : "記事一覧"}
       </h1>
-      <p className="text-center text-gray-500 mb-8">
-        AIとデータで競馬の新しい楽しみ方を見つけよう
-      </p>
 
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {articles.map((article) => (
+      {/* カテゴリーフィルターボタン */}
+      <div className="flex flex-wrap justify-center gap-4 mb-10">
+        <Link 
+          href="/articles" 
+          className={`font-bold py-2 px-5 rounded-full transition-colors shadow-md ${!selectedCategory ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+        >
+          すべて
+        </Link>
+        {uniqueCategories.map((category) => (
           <Link
-            key={article.slug}
-            href={`/articles/${article.slug}`}
-            className="block group bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+            href={`/articles?category=${encodeURIComponent(category)}`}
+            key={category}
+            className={`font-bold py-2 px-5 rounded-full transition-colors shadow-md ${selectedCategory === category ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
           >
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={article.frontmatter.eyecatch}
-                alt={`${article.frontmatter.title}のアイキャッチ画像`}
-                className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+            {category}
+          </Link>
+        ))}
+      </div>
+
+      {/* 記事一覧グリッド */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {filteredArticles.map((article) => (
+          <Link href={`/articles/${article.slug}`} key={article.slug} className="block group border rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300 bg-white">
+            <div className="relative h-48 w-full">
+              <Image
+                src={article.eyecatch}
+                alt={article.title}
+                layout="fill"
+                objectFit="cover"
+                className="transition-transform duration-300 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-10 transition-all duration-300"></div>
             </div>
-            <div className="p-6">
-              <p className="text-sm text-gray-500 mb-2">
-                {format(new Date(article.frontmatter.date), 'yyyy年MM月dd日')}
-              </p>
-              <h2 className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors duration-300 mb-3">
-                {article.frontmatter.title}
+            <div className="p-5">
+              <span className="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full mb-3">
+                {article.category}
+              </span>
+              <h2 className="text-xl font-bold mb-2 h-16 group-hover:text-primary-dark">
+                {article.title}
               </h2>
-              <p className="text-gray-600 text-sm leading-relaxed">
-                {article.frontmatter.description}
+              <p className="text-gray-600 text-sm">
+                {new Date(article.date).toLocaleDateString()}
               </p>
             </div>
           </Link>

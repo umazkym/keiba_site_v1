@@ -1,62 +1,92 @@
-import { getAllArticleSlugs, getArticleData } from '@/lib/articles';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { getAllArticleSlugs, getArticleBySlug } from '../../../lib/articles';
+import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
+import Image from 'next/image';
+import Link from 'next/link';
 
 type Props = {
-  params: {
-    slug: string;
-  };
+  params: { slug: string };
 };
 
-// 動的なメタデータ（タイトル、説明）を生成
-export async function generateMetadata({ params }: Props) {
-  const articleData = getArticleData(params.slug);
-  return {
-    title: articleData.frontmatter.title,
-    description: articleData.frontmatter.description,
-  };
+// ページのタイトルなどを動的に設定 (SEO対策)
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  try {
+    // ▼▼▼▼▼ awaitを追加 ▼▼▼▼▼
+    const article = await getArticleBySlug(params.slug);
+    // ▲▲▲▲▲ awaitを追加 ▲▲▲▲▲
+    return {
+      title: `${article.title} | UMA-FREE`,
+      description: article.content.substring(0, 120), // 記事の冒頭を説明文に
+    };
+  } catch (error) {
+    return {
+      title: "記事が見つかりません",
+    };
+  }
 }
 
-// 記事ページ本体
-export default function ArticlePage({ params }: Props) {
-  const articleData = getArticleData(params.slug);
-
-  return (
-    <div className="bg-gray-50 min-h-screen">
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <article className="bg-white p-6 sm:p-8 rounded-lg shadow-md">
-          <header className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 leading-tight mb-2">
-              {articleData.frontmatter.title}
-            </h1>
-            <p className="text-gray-500 text-sm">
-              公開日: {articleData.frontmatter.date}
-            </p>
-          </header>
-          
-          {articleData.frontmatter.eyecatch && (
-            <div className="mb-8">
-              <img 
-                src={articleData.frontmatter.eyecatch} 
-                alt={articleData.frontmatter.title}
-                className="w-full h-auto rounded-lg object-cover" 
-              />
-            </div>
-          )}
-
-          <div className="prose prose-lg max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {articleData.content}
-            </ReactMarkdown>
-          </div>
-        </article>
-      </main>
-    </div>
-  );
-}
-
-// ビルド時に静的なパスを生成
+// ビルド時に静的生成するパスのリストを作成
 export async function generateStaticParams() {
-    const paths = getAllArticleSlugs();
-    return paths;
+  const articles = getAllArticleSlugs();
+  return articles.map((article) => ({
+    slug: article.slug,
+  }));
+}
+
+// ▼▼▼▼▼ async function に変更 ▼▼▼▼▼
+export default async function ArticlePage({ params }: Props) {
+// ▲▲▲▲▲ async function に変更 ▲▲▲▲▲
+  try {
+    // ▼▼▼▼▼ awaitを追加 ▼▼▼▼▼
+    const article = await getArticleBySlug(params.slug);
+    // ▲▲▲▲▲ awaitを追加 ▲▲▲▲▲
+
+    return (
+      <div className="bg-gray-50 py-12">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <article className="bg-white p-6 sm:p-8 rounded-lg shadow-lg">
+            <header className="mb-8 text-center border-b pb-6">
+              <div className="mb-4">
+                <Link href={`/articles?category=${encodeURIComponent(article.category)}`} className="text-sm bg-blue-500 text-white font-bold py-1 px-3 rounded-full hover:bg-blue-600 transition-colors">
+                  {article.category}
+                </Link>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-extrabold text-gray-800 mb-3">
+                {article.title}
+              </h1>
+              <p className="text-gray-500">
+                公開日: {new Date(article.date).toLocaleDateString()}
+              </p>
+            </header>
+
+            {article.eyecatch && (
+              <div className="relative w-full h-64 sm:h-80 md:h-96 mb-8 rounded-lg overflow-hidden">
+                <Image
+                  src={article.eyecatch}
+                  alt={`${article.title} のアイキャッチ画像`}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 896px"
+                  style={{ objectFit: 'cover' }}
+                  priority
+                />
+              </div>
+            )}
+            
+            <div 
+              className="prose max-w-none"
+              dangerouslySetInnerHTML={{ __html: article.content }}
+            />
+          </article>
+          
+          <div className="text-center mt-12">
+            <Link href="/articles" className="bg-gray-800 text-white font-bold py-3 px-8 rounded-lg hover:bg-gray-700 transition-colors">
+                記事一覧へ戻る
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  } catch (error) {
+    notFound();
+  }
 }

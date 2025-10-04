@@ -1,9 +1,9 @@
-// frontend/app/page.tsx
-
 import Link from 'next/link';
+import Image from 'next/image';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
 import { getSpecialPick } from '@/lib/api';
+import { getLatestArticles, getUniqueCategories } from '../lib/articles';
 import { SparklesIcon, UsersIcon, FlagIcon, ChartBarIcon } from '@/components/icons';
 import type { Metadata } from 'next';
 
@@ -16,7 +16,6 @@ export const metadata: Metadata = {
 // JSTでの今日の日付文字列をサーバーサイドで生成する関数
 const getTodayString = () => {
     const now = new Date();
-    // タイムゾーンを考慮してJSTに変換
     const jstDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
     return jstDate.toISOString().split('T')[0];
 };
@@ -31,7 +30,6 @@ const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, titl
     </div>
 );
 
-
 export default async function HomePage() {
     const todayStr = getTodayString();
     const specialPick = await getSpecialPick(todayStr).catch(e => {
@@ -39,10 +37,13 @@ export default async function HomePage() {
         return null;
     });
 
+    const latestArticles = getLatestArticles(5);
+    const categories = getUniqueCategories();
+
     return (
-        <div className="container py-4 space-y-8">
+        <div className="container py-4 space-y-12">
             {/* メインのヒーローセクション */}
-            <section className="text-center my-4 p-8 bg-white rounded-xl shadow-lg border border-gray-200 bg-gradient-to-br from-indigo-50 to-white">
+            <section className="text-center p-8 bg-white rounded-xl shadow-lg border border-gray-200 bg-gradient-to-br from-indigo-50 to-white">
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-primary-dark mb-2 leading-tight">
                     登録不要・完全無料の
                     <br />
@@ -53,14 +54,21 @@ export default async function HomePage() {
                     <br className="hidden sm:block" />
                     中央・地方の全レースを網羅し、あなたの馬券検討をサポートします。
                 </p>
-                {/* ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここを修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ */}
                 <Link
                     href={`/races/${todayStr}`}
                     className="inline-block bg-primary hover:bg-primary-dark text-white hover:text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-0.5 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
                 >
                     今日のAI予想を無料でチェック
                 </Link>
-                {/* ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ */}
+            </section>
+
+            {/* 今日のAI注目馬 */}
+            <section>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-3">
+                    <SparklesIcon className="w-7 h-7 text-accent-dark" />
+                    <span>今日のAI注目馬</span>
+                </h2>
+                <SpecialPickCard pick={specialPick} date={todayStr} />
             </section>
 
             {/* AI高配当ランキング */}
@@ -68,8 +76,49 @@ export default async function HomePage() {
                 <TopHitsDisplay />
             </section>
 
+            {/* 新着記事セクション */}
+            <section>
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center border-b-2 border-blue-500 pb-3">
+                    新着の分析記事
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                    {latestArticles.map((article) => (
+                        <Link href={`/articles/${article.slug}`} key={article.slug} className="block group border rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 bg-white">
+                            <div className="relative h-32 w-full">
+                                {/* ▼▼▼▼▼ Imageコンポーネントを修正 ▼▼▼▼▼ */}
+                                <Image
+                                    src={article.eyecatch}
+                                    alt={article.title}
+                                    fill
+                                    sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                                    style={{ objectFit: 'cover' }}
+                                    className="transition-transform duration-300 group-hover:scale-105"
+                                />
+                                {/* ▲▲▲▲▲ Imageコンポーネントを修正 ▲▲▲▲▲ */}
+                            </div>
+                            <div className="p-4">
+                                <span className="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full mb-2">
+                                    {article.category}
+                                </span>
+                                <h3 className="font-bold text-sm h-12 mb-2 group-hover:text-primary-dark">
+                                    {article.title}
+                                </h3>
+                                <p className="text-gray-500 text-xs">
+                                    {new Date(article.date).toLocaleDateString()}
+                                </p>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+                <div className="text-center mt-8">
+                    <Link href="/articles" className="bg-gray-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-700 transition-colors">
+                        記事一覧へ
+                    </Link>
+                </div>
+            </section>
+
             {/* 3つの特徴セクション */}
-            <section className="my-8">
+            <section>
                 <h2 className="text-xl sm:text-2xl font-bold text-center text-gray-800 mb-6">
                     UMA-FREEだけの
                     <br />
@@ -94,17 +143,8 @@ export default async function HomePage() {
                 </div>
             </section>
 
-            {/* 今日のAI注目馬 */}
-            <section className="my-8">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-3">
-                    <SparklesIcon className="w-7 h-7 text-accent-dark" />
-                    <span>今日のAI注目馬</span>
-                </h2>
-                <SpecialPickCard pick={specialPick} date={todayStr} />
-            </section>
-
-            {/* 新規追加：使い方ガイド */}
-            <section className="my-8 bg-white rounded-xl shadow-md border p-6">
+            {/* 使い方ガイドから下は変更なし... */}
+            <section className="bg-white rounded-xl shadow-md border p-6">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                     UMA-FREEの使い方
                 </h2>
@@ -152,8 +192,7 @@ export default async function HomePage() {
                 </div>
             </section>
 
-            {/* 新規追加：よくある質問 */}
-            <section className="my-8 bg-gray-50 rounded-xl p-6">
+            <section className="bg-gray-50 rounded-xl p-6">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                     よくある質問
                 </h2>
@@ -189,8 +228,7 @@ export default async function HomePage() {
                 </div>
             </section>
 
-            {/* 新規追加：競馬場情報 */}
-            <section className="my-8 bg-white rounded-xl shadow-md border p-6">
+            <section className="bg-white rounded-xl shadow-md border p-6">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                     対応競馬場一覧
                 </h2>

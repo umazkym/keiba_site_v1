@@ -1,12 +1,51 @@
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import { remark } from 'remark';
+import html from 'remark-html';
 
-// content/articles ディレクトリのパス
-const articlesDirectory = path.join(process.cwd(), 'content/articles');
+const articlesDirectory = path.join(process.cwd(), 'content', 'articles');
 
-// すべての記事のスラッグ（ファイル名）を取得
-export function getAllArticleSlugs() {
+export interface Article {
+  slug: string;
+  content: string;
+  title: string;
+  date: string;
+  eyecatch: string;
+  category: string;
+}
+
+// 全記事を取得する関数
+export function getAllArticles(): Article[] {
+  const fileNames = fs.readdirSync(articlesDirectory);
+  const allArticles = fileNames.map((fileName) => {
+    const slug = fileName.replace(/\.md$/, '');
+    const fullPath = path.join(articlesDirectory, fileName);
+    const fileContents = fs.readFileSync(fullPath, 'utf8');
+    const { data, content } = matter(fileContents);
+
+    return {
+      slug,
+      content, // ここでは変換せず、生のMarkdownを返す
+      title: data.title || '無題',
+      date: data.date || new Date().toISOString(),
+      eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
+      category: data.category || '未分類',
+    };
+  });
+
+  // 日付の降順で記事をソート
+  return allArticles.sort((a, b) => {
+    if (a.date < b.date) {
+      return 1;
+    } else {
+      return -1;
+    }
+  });
+}
+
+// 全記事のスラッグを取得する関数 (generateStaticParams用)
+export function getAllArticleSlugs(): { slug: string }[] {
   const fileNames = fs.readdirSync(articlesDirectory);
   return fileNames.map((fileName) => {
     return {
@@ -15,42 +54,37 @@ export function getAllArticleSlugs() {
   });
 }
 
-// スラッグに基づいて記事データを取得
-export function getArticleData(slug: string) {
-  const fullPath = path.join(articlesDirectory, `${slug}.md`);
-  const fileContents = fs.readFileSync(fullPath, 'utf8');
-
-  // gray-matterでFrontmatterと本文をパース
-  const matterResult = matter(fileContents);
-
-  return {
-    slug,
-    frontmatter: matterResult.data,
-    content: matterResult.content,
-  };
+// 最新の記事を指定した件数だけ取得する関数
+export function getLatestArticles(count: number): Article[] {
+  const allArticles = getAllArticles();
+  return allArticles.slice(0, count);
 }
 
-// すべての記事データを日付順に取得
-export function getAllArticles() {
-  const fileNames = fs.readdirSync(articlesDirectory);
-  const allArticlesData = fileNames.map((fileName) => {
-    const slug = fileName.replace(/\.md$/, '');
-    const fullPath = path.join(articlesDirectory, fileName);
-    const fileContents = fs.readFileSync(fullPath, 'utf8');
-    const matterResult = matter(fileContents);
+// ユニークなカテゴリーの一覧を取得する関数
+export function getUniqueCategories(): string[] {
+  const allArticles = getAllArticles();
+  const categories = allArticles.map(article => article.category);
+  return [...new Set(categories)];
+}
 
+// ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+// 特定の記事を取得し、MarkdownをHTMLに変換する関数
+export async function getArticleBySlug(slug: string): Promise<Article> {
+    const fullPath = path.join(articlesDirectory, `${slug}.md`);
+    const fileContents = fs.readFileSync(fullPath, 'utf8');
+    const { data, content } = matter(fileContents);
+
+    // MarkdownをHTMLに変換
+    const processedContent = await remark().use(html).process(content);
+    const contentHtml = processedContent.toString();
+  
     return {
       slug,
-      frontmatter: matterResult.data,
+      content: contentHtml, // HTML化されたコンテンツを返す
+      title: data.title || '無題',
+      date: data.date || new Date().toISOString(),
+      eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
+      category: data.category || '未分類',
     };
-  });
-
-  // 日付でソート
-  return allArticlesData.sort((a, b) => {
-    if (a.frontmatter.date < b.frontmatter.date) {
-      return 1;
-    } else {
-      return -1;
-    }
-  });
 }
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲

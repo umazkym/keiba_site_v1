@@ -3,7 +3,7 @@ title: "【衝撃のデータ】G1は堅いは大ウソ！？レースグレー�
 date: "2025-10-01"
 description: "「G1は実力通り、一般レースは荒れる」は本当か？1年間214万レース分のデータが示した意外な真実。実はG1の複勝率19.1%、一般レースは26.1%。グレード別の戦略を完全解明します。"
 keywords: "競馬, データ分析, G1, 重賞, レースグレード, 荒れる, 堅い"
-eyecatch: "/images/articles/2025-10-10-race-grade-chaos-analysis-eyecatch.png"
+eyecatch: "/images/articles/2025-10-11-umami-horse-strategy-eyecatch.png"
 category: "データ分析"
 ---
 

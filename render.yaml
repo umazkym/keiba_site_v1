@@ -1,28 +1,49 @@
 services:
-  # サービス1: データ生成パイプライン (毎日 JST AM 5:00 実行)
+  # ★★★ 修正: AM5:00に前日の結果のみ取得 ★★★
   - type: cron
-    name: keiba-pipeline-runner
+    name: keiba-results-updater
     runtime: docker
     region: oregon
-    schedule: "0 20 * * *"  # JST AM 5:00
+    schedule: "0 20 * * *"  # JST AM 5:00 (UTC 20:00前日)
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     envVars:
       - key: DATABASE_URL
         value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
       - key: PIPELINE_MODE
-        value: PRODUCTION
+        value: RESULTS_ONLY  # ★変更★
       - key: TZ
         value: Asia/Tokyo
       - key: API_BASE_URL
         value: "https://keiba-site-v1.onrender.com"
       - key: WEBHOOK_URL
         sync: false
-      # Render環境であることを示す環境変数を追加
       - key: RENDER
         value: "true"
 
-  # サービス2: SNS投稿 (毎日 JST AM 7:00 実行)  
+  # ★★★ 新規追加: AM10:00に翌日の予測のみ取得 ★★★
+  - type: cron
+    name: keiba-predictions-generator
+    runtime: docker
+    region: oregon
+    schedule: "0 1 * * *"  # JST AM 10:00 (UTC 01:00)
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+      - key: PIPELINE_MODE
+        value: PREDICTIONS_ONLY  # ★新規★
+      - key: TZ
+        value: Asia/Tokyo
+      - key: API_BASE_URL
+        value: "https://keiba-site-v1.onrender.com"
+      - key: WEBHOOK_URL
+        sync: false
+      - key: RENDER
+        value: "true"
+
+  # サービス3: SNS投稿 (毎日 JST AM 7:00 実行) - 変更なし
   - type: cron
     name: keiba-sns-poster
     runtime: docker

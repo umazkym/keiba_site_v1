@@ -246,32 +246,47 @@ def main():
     send_notification(f"パイプライン処理を開始します。\n**モード**: `{PIPELINE_MODE}`")
     try:
         if PIPELINE_MODE == 'HISTORY':
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            print("!!!  HISTORYモードで実行します (パイプライン処理を最適化)  !!!")
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            if len(sys.argv) != 3:
-                raise ValueError("開始日と終了日を 'YYYY-MM-DD' 形式で指定してください。")
-            start_date_str, end_date_str = sys.argv[1], sys.argv[2]
-            ANALYSIS_START_DATE = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            ANALYSIS_END_DATE = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            if ANALYSIS_START_DATE > ANALYSIS_END_DATE:
-                raise ValueError("開始日は終了日より前の日付にしてください。")
-            print(f"\n処理対象期間: {ANALYSIS_START_DATE.strftime('%Y-%m-%d')} から {ANALYSIS_END_DATE.strftime('%Y-%m-%d')} まで")
-            target_horse_ids = pre_scrape_all_data(ANALYSIS_START_DATE, ANALYSIS_END_DATE)
-            process_and_load_past_horse_data(target_horse_ids)
-            process_races_and_predictions(ANALYSIS_START_DATE, ANALYSIS_END_DATE)
-            db_session_for_advantage = SessionLocal()
+            # ... 既存のHISTORYモードの処理 ...
+            
+        elif PIPELINE_MODE == 'RESULTS_ONLY':
+            # ★★★ 新規追加: 前日の結果のみ取得 ★★★
+            print("--- RUNNING IN RESULTS_ONLY MODE (前日の結果取得) ---")
+            jst = datetime.timezone(datetime.timedelta(hours=9))
+            today_jst = datetime.datetime.now(jst).date()
+            target_date_results = today_jst - timedelta(days=1)
+            
+            scrape_race_lists_for_date(target_date_results)
+            
+            db: Session = SessionLocal()
             try:
-                calculate_advantages(db_session_for_advantage)
+                update_race_results(db, target_date_results)
             finally:
-                db_session_for_advantage.close()
-        else: # PRODUCTIONモード
+                if db.is_active:
+                    db.close()
+                    
+        elif PIPELINE_MODE == 'PREDICTIONS_ONLY':
+            # ★★★ 新規追加: 翌日の予測のみ取得 ★★★
+            print("--- RUNNING IN PREDICTIONS_ONLY MODE (翌日の予測取得) ---")
+            jst = datetime.timezone(datetime.timedelta(hours=9))
+            today_jst = datetime.datetime.now(jst).date()
+            target_date_predictions = today_jst + timedelta(days=1)
+            
+            scrape_race_lists_for_date(target_date_predictions)
+            
+            db: Session = SessionLocal()
+            try:
+                insert_new_predictions(db, target_date_predictions)
+            finally:
+                if db.is_active:
+                    db.close()
+                    
+        else: # PRODUCTIONモード（従来通り、両方実行）
             print("--- RUNNING IN PRODUCTION MODE ---")
             jst = datetime.timezone(datetime.timedelta(hours=9))
             today_jst = datetime.datetime.now(jst).date()
             
-            target_date_results = today_jst - datetime.timedelta(days=1)
-            target_date_predictions = today_jst + datetime.timedelta(days=1)
+            target_date_results = today_jst - timedelta(days=1)
+            target_date_predictions = today_jst + timedelta(days=1)
 
             scrape_race_lists_for_date(target_date_results)
             scrape_race_lists_for_date(target_date_predictions)

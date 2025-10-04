@@ -1,7 +1,8 @@
 # C:\Users\tnszk\program\GitHub\backend\database\models.py
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .database import Base
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, JSON, UniqueConstraint, DateTime
+from datetime import datetime
 
 class Race(Base):
     __tablename__ = "races"
@@ -112,3 +113,15 @@ class RaceReturn(Base):
 
     __table_args__ = (UniqueConstraint('race_id', 'bet_type', 'number_1', 'number_2', 'number_3', name='_race_return_uc'),)
     race = relationship("Race", back_populates="returns")
+
+class SnsPost(Base):
+    __tablename__ = "sns_posts"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    content_hash = Column(String, nullable=False, unique=True, index=True)  # ツイート内容のハッシュ
+    post_type = Column(String, nullable=False)  # 'hit', 'pick', 'reminder'
+    posted_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    target_date = Column(Date, nullable=False, index=True)  # 対象日（昨日 or 今日）
+    
+    __table_args__ = (
+        UniqueConstraint('content_hash', 'target_date', name='_sns_post_unique'),
+    )

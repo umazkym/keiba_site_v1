@@ -12,6 +12,9 @@ import traceback
 from PIL import Image, ImageDraw, ImageFont
 import psycopg2
 from contextlib import contextmanager
+import hashlib
+from database import models
+from database.database import SessionLocal
 
 # --- 1. 基本設定とパス解決（Render対応版）---
 def get_project_root():
@@ -220,6 +223,57 @@ def create_base_image(width: int = 1200, height: int = 630):
     draw.text((width - 50, height - 55), "uma-free.com", font=font_regular, fill=TEXT_COLOR_MUTED, anchor="rm")
     
     return img, draw
+
+def is_already_posted(content: str, post_type: str, target_date: str) -> bool:
+    """
+    同じ内容の投稿が既に行われているかチェックする
+    """
+    content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
+    
+    if not DATABASE_URL:
+        _log("⚠️ DATABASE_URLが設定されていないため、重複チェックをスキップします")
+        return False
+    
+    db = SessionLocal()
+    try:
+        existing_post = db.query(models.SnsPost).filter(
+            models.SnsPost.content_hash == content_hash,
+            models.SnsPost.target_date == target_date
+        ).first()
+        
+        if existing_post:
+            _log(f"⚠️ 重複投稿検出: {post_type} ({target_date}) は既に投稿済みです")
+            return True
+        return False
+    finally:
+        db.close()
+
+def record_post(content: str, post_type: str, target_date: str) -> None:
+    """
+    投稿記録をデータベースに保存する
+    """
+    content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
+    
+    if not DATABASE_URL:
+        _log("⚠️ DATABASE_URLが設定されていないため、投稿記録をスキップします")
+        return
+    
+    db = SessionLocal()
+    try:
+        new_post = models.SnsPost(
+            content_hash=content_hash,
+            post_type=post_type,
+            posted_at=datetime.now(timezone(timedelta(hours=9))),
+            target_date=target_date
+        )
+        db.add(new_post)
+        db.commit()
+        _log(f"✅ 投稿記録を保存: {post_type} ({target_date})")
+    except Exception as e:
+        _log(f"⚠️ 投稿記録の保存に失敗: {e}")
+        db.rollback()
+    finally:
+        db.close()
 
 # --- 5. API連携関数 (変更なし) ---
 def get_api_data(endpoint: str, retries: int = 3, delay: int = 5) -> Optional[Any]:
@@ -434,14 +488,25 @@ def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
     return "\n".join(lines)
 
 # --- 8. X (Twitter) 投稿関数 (変更なし) ---
-def post_to_twitter(text: str, image_path: Optional[str] = None) -> bool:
+def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str = "", target_date: str = "") -> bool:
     _log("-> X (Twitter) への投稿を実行...")
+    
+    # ★★★ 重複チェック ★★★
+    if post_type and target_date:
+        if is_already_posted(text, post_type, target_date):
+            _log("-> 重複投稿のため、スキップします")
+            return False
+    
     if DRY_RUN:
         _log("⚠️ DRY_RUN=1 のため投稿は実行しません。")
         _log(f"--- 投稿テキストプレビュー ---\n{text}\n--- /プレビュー ---")
         if image_path:
             _log(f"画像パス: {image_path}")
+        # DRY_RUNでも投稿記録は保存
+        if post_type and target_date:
+            record_post(text, post_type, target_date)
         return True
+    
     try:
         auth_v1 = tweepy.OAuth1UserHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
         api_v1 = tweepy.API(auth_v1)
@@ -457,6 +522,11 @@ def post_to_twitter(text: str, image_path: Optional[str] = None) -> bool:
         response = client_v2.create_tweet(text=text, media_ids=media_ids if media_ids else None)
         _log("\n🎉 ツイートの投稿に成功しました！")
         _log(f" - URL: https://x.com/anyuser/status/{response.data['id']}")
+        
+        # ★★★ 投稿成功後、記録を保存 ★★★
+        if post_type and target_date:
+            record_post(text, post_type, target_date)
+        
         return True
     except tweepy.errors.TweepyException as e:
         _log(f"\n❌エラー: Twitter APIでエラーが発生しました。詳細: {e}")
@@ -513,7 +583,7 @@ def main():
             image_file = generate_hit_og_image(hits_data[0], yesterday_str)
             if image_file:
                 tweet_text = create_hit_report_and_summary_tweet(hits_data[0], summary, yesterday_str)
-                post_to_twitter(tweet_text, image_file)
+                post_to_twitter(tweet_text, image_file, post_type="hit", target_date=yesterday_str)  # ★修正★
         else:
             _log("-> 昨日は1万円以上の高配当的中がなかったため、投稿をスキップします。")
         
@@ -527,7 +597,7 @@ def main():
             image_file = generate_pick_og_image(pick_data, today_str)
             if image_file:
                 tweet_text = create_pick_tweet(pick_data, today_str)
-                post_to_twitter(tweet_text, image_file)
+                post_to_twitter(tweet_text, image_file, post_type="pick", target_date=today_str)  # ★修正★
         else:
             _log("-> 今日の注目馬データがなかったため、投稿をスキップします。")
 
@@ -555,7 +625,7 @@ def main():
                             image_file = generate_reminder_og_image(race, top_preds)
                             if image_file:
                                 text = create_reminder_tweet(race, top_preds)
-                                post_to_twitter(text, image_file)
+                                post_to_twitter(text, image_file, post_type="reminder", target_date=today_str)  # ★修正★
                                 posted_count += 1
             if posted_count == 0:
                 # ★★修正★★: ログメッセージを「JRA」に限定しないように変更

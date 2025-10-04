@@ -246,8 +246,27 @@ def main():
     send_notification(f"パイプライン処理を開始します。\n**モード**: `{PIPELINE_MODE}`")
     try:
         if PIPELINE_MODE == 'HISTORY':
-            # ... 既存のHISTORYモードの処理 ...
-            
+            # ★★★ 既存のHISTORYモード処理（そのまま残す）★★★
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("!!!  HISTORYモードで実行します (パイプライン処理を最適化)  !!!")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            if len(sys.argv) != 3:
+                raise ValueError("開始日と終了日を 'YYYY-MM-DD' 形式で指定してください。")
+            start_date_str, end_date_str = sys.argv[1], sys.argv[2]
+            ANALYSIS_START_DATE = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            ANALYSIS_END_DATE = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            if ANALYSIS_START_DATE > ANALYSIS_END_DATE:
+                raise ValueError("開始日は終了日より前の日付にしてください。")
+            print(f"\n処理対象期間: {ANALYSIS_START_DATE.strftime('%Y-%m-%d')} から {ANALYSIS_END_DATE.strftime('%Y-%m-%d')} まで")
+            target_horse_ids = pre_scrape_all_data(ANALYSIS_START_DATE, ANALYSIS_END_DATE)
+            process_and_load_past_horse_data(target_horse_ids)
+            process_races_and_predictions(ANALYSIS_START_DATE, ANALYSIS_END_DATE)
+            db_session_for_advantage = SessionLocal()
+            try:
+                calculate_advantages(db_session_for_advantage)
+            finally:
+                db_session_for_advantage.close()
+        
         elif PIPELINE_MODE == 'RESULTS_ONLY':
             # ★★★ 新規追加: 前日の結果のみ取得 ★★★
             print("--- RUNNING IN RESULTS_ONLY MODE (前日の結果取得) ---")

@@ -1,3 +1,4 @@
+// app/page.tsx (HomePage 全文 - 修正済み)
 import Link from 'next/link';
 import Image from 'next/image';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
@@ -81,11 +82,17 @@ export default async function HomePage() {
                 <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center border-b-2 border-blue-500 pb-3">
                     新着の分析記事
                 </h2>
+
+                {/* Grid: responsive columns */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
                     {latestArticles.map((article) => (
-                        <Link href={`/articles/${article.slug}`} key={article.slug} className="block group border rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 bg-white">
-                            <div className="relative h-32 w-full">
-                                {/* ▼▼▼▼▼ Imageコンポーネントを修正 ▼▼▼▼▼ */}
+                        <Link
+                            href={`/articles/${article.slug}`}
+                            key={article.slug}
+                            className="block group border rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 bg-white"
+                        >
+                            {/* 画像コンテナ：レスポンシブに高さ固定 */}
+                            <div className="relative w-full h-32 sm:h-40 md:h-44 lg:h-48">
                                 <Image
                                     src={article.eyecatch}
                                     alt={article.title}
@@ -94,15 +101,28 @@ export default async function HomePage() {
                                     style={{ objectFit: 'cover' }}
                                     className="transition-transform duration-300 group-hover:scale-105"
                                 />
-                                {/* ▲▲▲▲▲ Imageコンポーネントを修正 ▲▲▲▲▲ */}
                             </div>
+
                             <div className="p-4">
                                 <span className="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full mb-2">
                                     {article.category}
                                 </span>
-                                <h3 className="font-bold text-sm h-12 mb-2 group-hover:text-primary-dark">
+
+                                {/* タイトル：最大行数を固定して省略する */}
+                                <h3
+                                    className="font-bold text-sm mb-2 group-hover:text-primary-dark"
+                                    style={{
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        minHeight: '3rem' /* 保証された高さでレイアウトが安定 */
+                                    }}
+                                >
                                     {article.title}
                                 </h3>
+
                                 <p className="text-gray-500 text-xs">
                                     {new Date(article.date).toLocaleDateString()}
                                 </p>
@@ -110,6 +130,7 @@ export default async function HomePage() {
                         </Link>
                     ))}
                 </div>
+
                 <div className="text-center mt-8">
                     <Link href="/articles" className="bg-gray-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-700 transition-colors">
                         記事一覧へ
@@ -117,7 +138,7 @@ export default async function HomePage() {
                 </div>
             </section>
 
-            {/* 3つの特徴セクション */}
+            {/* 以下、特徴・使い方などは変更なし */}
             <section>
                 <h2 className="text-xl sm:text-2xl font-bold text-center text-gray-800 mb-6">
                     UMA-FREEだけの
@@ -143,7 +164,8 @@ export default async function HomePage() {
                 </div>
             </section>
 
-            {/* 使い方ガイドから下は変更なし... */}
+            {/* 以降は既存のコンテンツをそのまま（省略せずページのまま） */}
+            {/* ...（既存の使い方／FAQ／対応競馬場等） */}
             <section className="bg-white rounded-xl shadow-md border p-6">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                     UMA-FREEの使い方
@@ -189,6 +211,13 @@ export default async function HomePage() {
                             詳細データも無料で閲覧できます。
                         </p>
                     </div>
+                </div>
+                <div className='p-6'>
+                    <ul className="space-y-2 text-gray-700">
+                        <li>• 当サイトは情報提供のみを目的としており、馬券購入を推奨するものではありません</li>
+                        <li>• 20歳未満の方の馬券購入は法律で禁止されています</li>
+                        <li>• 馬券は余裕資金で適度にお楽しみください</li>
+                    </ul>
                 </div>
             </section>
 
@@ -272,6 +301,7 @@ export default async function HomePage() {
                     ※ばんえい競馬（帯広）は対応しておりません。
                 </p>
             </section>
+            <section className="p-1" />
         </div>
     );
 }

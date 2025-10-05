@@ -1,5 +1,38 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import os
 import sys
+
+# --- 先にプロジェクトルートを推定して sys.path を伸ばす（database モジュール検出用） ---
+def get_project_root_default():
+    """Render環境とローカル環境の両方で正しくプロジェクトルートを取得"""
+    if os.getenv("RENDER"):
+        return "/app"
+    try:
+        # __file__ が存在する場合はその親の親をルートとする（元のコードの意図に合わせる）
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        return os.path.dirname(os.path.dirname(script_dir))
+    except NameError:
+        return os.getcwd()
+
+PROJECT_ROOT = get_project_root_default()
+
+# 候補ディレクトリを sys.path に追加（存在するものだけ）
+_possible_roots = [
+    PROJECT_ROOT,
+    os.path.join(PROJECT_ROOT, "backend"),
+    os.path.join(PROJECT_ROOT, "app"),
+    os.path.join(PROJECT_ROOT, "src"),
+    os.path.join(PROJECT_ROOT, "services"),
+]
+for p in _possible_roots:
+    if p and os.path.isdir(p) and p not in sys.path:
+        sys.path.insert(0, p)
+
+# --- ここまで：database パッケージがあるディレクトリを優先して読み込むための準備 ---
+
+
 import requests
 import tweepy
 from datetime import datetime, timedelta, timezone
@@ -13,21 +46,75 @@ from PIL import Image, ImageDraw, ImageFont
 import psycopg2
 from contextlib import contextmanager
 import hashlib
-from database import models
-from database.database import SessionLocal
+import importlib
+import importlib.util
+from types import ModuleType
+
+# --- attempt to import database.*; if fails, try dynamic import from common candidate paths ---
+def dynamic_module_from_path(module_name: str, candidate_paths: List[str]) -> Optional[ModuleType]:
+    """
+    Try to dynamically import a module by searching for its .py file in candidate_paths.
+    Returns the imported module or None.
+    """
+    for base in candidate_paths:
+        if not base:
+            continue
+        # Try module as package (directory)
+        pkg_path = os.path.join(base, module_name.replace(".", os.sep))
+        # Try file path
+        file_candidates = [
+            pkg_path + ".py",
+            os.path.join(pkg_path, "__init__.py"),
+        ]
+        for file_path in file_candidates:
+            if os.path.exists(file_path):
+                try:
+                    spec = importlib.util.spec_from_file_location(module_name, file_path)
+                    if spec and spec.loader:
+                        mod = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(mod)
+                        sys.modules[module_name] = mod
+                        return mod
+                except Exception:
+                    continue
+    return None
+
+# Candidate base dirs to search for database package files
+_candidate_bases = [
+    PROJECT_ROOT,
+    os.path.join(PROJECT_ROOT, "backend"),
+    os.path.join(PROJECT_ROOT, "app"),
+    os.path.join(PROJECT_ROOT, "src"),
+]
+
+# Try normal import first
+models = None
+SessionLocal = None
+try:
+    from database import models as models  # type: ignore
+    from database.database import SessionLocal  # type: ignore
+except Exception as e_import:
+    # Try dynamic import fallback
+    _log_msg = f"database package import failed: {e_import}. Trying dynamic import fallback..."
+    print(_log_msg)
+    mod_models = dynamic_module_from_path("database.models", _candidate_bases)
+    mod_database = dynamic_module_from_path("database.database", _candidate_bases)
+    if mod_models:
+        models = mod_models
+    if mod_database and hasattr(mod_database, "SessionLocal"):
+        SessionLocal = getattr(mod_database, "SessionLocal")
+    # If still missing, attempt to import package-level database (if found)
+    if not models:
+        try:
+            import database  # type: ignore
+            models = getattr(database, "models", None)
+            SessionLocal = getattr(database, "database", None)  # unlikely
+        except Exception:
+            pass
 
 # --- 1. 基本設定とパス解決（Render対応版）---
-def get_project_root():
-    """Render環境とローカル環境の両方で正しくプロジェクトルートを取得"""
-    if os.getenv("RENDER"):
-        return "/app"
-    try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.dirname(os.path.dirname(script_dir))
-    except NameError:
-        return os.getcwd()
+# NOTE: PROJECT_ROOT は既に設定済み（上で推定）
 
-PROJECT_ROOT = get_project_root()
 # .envファイルの読み込み
 dotenv_path = os.path.join(PROJECT_ROOT, '.env')
 if os.path.exists(dotenv_path):
@@ -234,6 +321,10 @@ def is_already_posted(content: str, post_type: str, target_date: str) -> bool:
         _log("⚠️ DATABASE_URLが設定されていないため、重複チェックをスキップします")
         return False
     
+    if SessionLocal is None or models is None:
+        _log("⚠️ データベース接続用モジュールが読み込まれていないため、重複チェックをスキップします")
+        return False
+
     db = SessionLocal()
     try:
         existing_post = db.query(models.SnsPost).filter(
@@ -258,6 +349,10 @@ def record_post(content: str, post_type: str, target_date: str) -> None:
         _log("⚠️ DATABASE_URLが設定されていないため、投稿記録をスキップします")
         return
     
+    if SessionLocal is None or models is None:
+        _log("⚠️ データベース接続用モジュールが読み込まれていないため、投稿記録をスキップします")
+        return
+
     db = SessionLocal()
     try:
         new_post = models.SnsPost(
@@ -302,7 +397,6 @@ def get_api_data(endpoint: str, retries: int = 3, delay: int = 5) -> Optional[An
     return None
 
 # --- 6. OGP画像生成関数群 (変更なし) ---
-
 def generate_hit_og_image(hit_data: dict, date_str: str) -> Optional[str]:
     """的中報告用の画像を生成する"""
     filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_hit_{date_str}_{random.randint(1000,9999)}.png")
@@ -344,7 +438,6 @@ def generate_hit_og_image(hit_data: dict, date_str: str) -> Optional[str]:
     except Exception as e:
         _log(f"❌ Hit OGP生成エラー: {e}\n{traceback.format_exc()}")
         return None
-
 
 def generate_pick_og_image(data: dict, date_str: str) -> Optional[str]:
     """注目馬用の画像を生成する"""
@@ -392,7 +485,6 @@ def generate_pick_og_image(data: dict, date_str: str) -> Optional[str]:
     except Exception as e:
         _log(f"❌ Pick OGP生成エラー: {e}\n{traceback.format_exc()}")
         return None
-
 
 def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
     """重賞レース用の画像を生成する"""
@@ -453,27 +545,45 @@ def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date
     _log("-> 的中報告＋成績サマリーのテキストを生成...")
     hashtags = ["#競馬", "#AI予想", "#万馬券" if hit['payout'] >= 10000 else "#的中", f"#{hit['venue_name']}競馬"]
     return f"""🎯昨日のAI的中速報 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})
+
 【{hit['venue_name']}{hit['race_number']}R {hit['bet_type']}】で
+
 🎉 {hit['payout']:,}円 の高配当を的中しました！
+
 📈昨日のAI本命馬(◎)成績
+
 [{summary['win']}-{summary['second']}-{summary['third']}-{summary['other']}]
+
 勝率: {summary['win_rate']:.1f}% / 複勝率: {summary['in_money_rate']:.1f}%
+
 ▼レース結果とAIの印はこちらから
+
 {SITE_BASE_URL}
+
 {' '.join(hashtags)}
+
 """
+
 def create_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
     _log("-> 注目馬のテキストを生成...")
     is_jra = int(pick['race_id'][4:6]) < 30
     hashtags = ["#競馬", "#AI予想", "#中央競馬" if is_jra else "#地方競馬", f"#{pick['horse_name']}"]
     return f"""🏇本日のAI注目馬 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})
+
 AIが今日のレースで最も高く評価した一頭はこちら！
+
 【{pick['venue_name']}{pick['race_number']}R {pick['race_name']}】
+
 ◎ {pick['horse_name']} (AI偏差値: {pick['deviation_score']:.2f})
+
 ▼全レースの無料予測
+
 {SITE_BASE_URL}
+
 {' '.join(hashtags)}
+
 """
+
 def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
     _log("-> 重賞レースのテキストを生成...")
     # ★★修正★★: 'date' ではなく 'race_date' を参照する
@@ -599,7 +709,7 @@ def main():
                 tweet_text = create_pick_tweet(pick_data, today_str)
                 post_to_twitter(tweet_text, image_file, post_type="pick", target_date=today_str)  # ★修正★
         else:
-            _log("-> 今日の注目馬データがなかったため、投稿をスキップします。")
+            _log("-> 今日の注目馬データがなかったため、投稿をスキップします.")
 
         delay = random.uniform(30, 60) if os.getenv("RENDER") else random.uniform(180, 420)
         _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---")
@@ -619,7 +729,7 @@ def main():
                         # ★★修正★★: ログメッセージを「JRA」に限定しないように変更
                         _log(f"-> 重賞レース発見: {race['venue_name']} {race.get('race_name')}")
                         preds = sorted([p for p in race.get('predictions', []) if p.get('deviation_score')], 
-                                       key=lambda p: p['deviation_score'], reverse=True)
+                                      key=lambda p: p['deviation_score'], reverse=True)
                         top_preds = preds[:3]
                         if len(top_preds) == 3:
                             image_file = generate_reminder_og_image(race, top_preds)

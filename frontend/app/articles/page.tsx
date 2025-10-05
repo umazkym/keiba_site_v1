@@ -1,3 +1,4 @@
+// app/articles/page.tsx (ArticlesPage 全文 - 修正済み)
 import Link from 'next/link';
 import Image from 'next/image';
 import { getAllArticles, getUniqueCategories, Article } from '../../lib/articles';
@@ -12,7 +13,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
   // サーバーサイドで全記事とカテゴリを取得
   const allArticles = getAllArticles();
   const uniqueCategories = getUniqueCategories();
-  
+
   const selectedCategory = searchParams.category;
 
   const filteredArticles = selectedCategory
@@ -48,22 +49,37 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredArticles.map((article) => (
           <Link href={`/articles/${article.slug}`} key={article.slug} className="block group border rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300 bg-white">
-            <div className="relative h-48 w-full">
+            {/* 画像：レスポンシブ高さを指定 */}
+            <div className="relative h-40 sm:h-44 md:h-48 w-full">
               <Image
                 src={article.eyecatch}
                 alt={article.title}
-                layout="fill"
-                objectFit="cover"
+                fill
+                style={{ objectFit: 'cover' }}
                 className="transition-transform duration-300 group-hover:scale-105"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               />
             </div>
             <div className="p-5">
               <span className="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full mb-3">
                 {article.category}
               </span>
-              <h2 className="text-xl font-bold mb-2 h-16 group-hover:text-primary-dark">
+
+              {/* タイトルを最大3行に制限（スマホでもPCでも被らない） */}
+              <h2
+                className="text-xl font-bold mb-2 group-hover:text-primary-dark"
+                style={{
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  minHeight: '4.5rem' /* 3行分の高さを確保 */
+                }}
+              >
                 {article.title}
               </h2>
+
               <p className="text-gray-600 text-sm">
                 {new Date(article.date).toLocaleDateString()}
               </p>

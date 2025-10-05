@@ -8,7 +8,7 @@ export const Footer = () => {
             <div className="container mx-auto px-4">
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-x-4 mb-2 flex-wrap">
                     <Link href="/about" className="text-sm text-muted hover:text-primary hover:underline">
-                        運営者情報
+                        このサイトについて
                     </Link>
                     <span className="hidden sm:block text-gray-400">|</span>
                     <Link href="/contact" className="text-sm text-muted hover:text-primary hover:underline">

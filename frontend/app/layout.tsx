@@ -21,6 +21,11 @@ export const metadata: Metadata = {
         shortcut: "/new-logo.png",
         apple: "/new-logo.png",
     },
+    // ★★★ ここを追加 ★★★
+    verification: {
+        google: "ca-pub-4411270831448240",
+    },
+    // ★★★ ここまで追加 ★★★
     openGraph: {
         title: "uma-free - 全レース無料AI競馬予想",
         description: "全レース無料のAI競馬予想サイト。中央・地方競馬の全レースのAI予想を完全無料で公開しています。",

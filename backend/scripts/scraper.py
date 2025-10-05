@@ -53,6 +53,8 @@ def _prepare_chrome_driver():
     options.add_argument('--disable-gpu')
     options.add_argument('--window-size=1920x1080')
     # ▼▼▼ 修正 ▼▼▼
+    options.add_argument('--disable-software-rasterizer') # GPU関連エラーの抑制
+    options.add_argument('--log-level=3') # 不要なログ出力を抑制
     options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
     options.add_argument("--disable-blink-features=AutomationControlled") 
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
@@ -149,7 +151,6 @@ def get_html(
                     if os.path.exists(temp_file_path):
                         os.remove(temp_file_path)
                 return html_content, True
-        # ▼▼▼ 修正 ▼▼▼
         except requests.exceptions.HTTPError as e:
             if 400 <= e.response.status_code < 500:
                 print(f"[HTTP Error {e.response.status_code}] for {url}. BANされた可能性があるためリトライを停止します。")
@@ -157,7 +158,6 @@ def get_html(
             print(f"[Request Error] Attempt {attempt + 1}/{MAX_RETRIES} for {url} failed: {e}")
             if attempt < MAX_RETRIES - 1:
                 time.sleep(RETRY_DELAY_SECONDS * (attempt + 1))
-        # ▲▲▲ 修正 ▲▲▲
         except (requests.RequestException, WebDriverException) as e:
             print(f"[Request Error] Attempt {attempt + 1}/{MAX_RETRIES} for {url} failed: {e}")
             if attempt < MAX_RETRIES - 1:

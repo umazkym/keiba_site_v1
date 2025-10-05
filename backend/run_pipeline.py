@@ -27,10 +27,14 @@ BANEI_VENUE_CODES = ["33", "65"]
 DRIVER_RESTART_INTERVAL = 200  # WebDriverを再起動する間隔（馬の数）
 DRIVER_MEMORY_CHECK_INTERVAL = 100 # メモリチェックを行う間隔
 LONG_BREAK_INTERVAL = 1000 # 長時間休憩に入るまでのスクレイピング回数
-LONG_BREAK_SECONDS = 300 # 長時間休憩の秒数 (5分)
+# ▼▼▼ 修正 ▼▼▼
+LONG_BREAK_SECONDS = 600 # 長時間休憩の秒数 (10分)
+# ▲▲▲ 修正 ▲▲▲
 SHORT_BREAK_INTERVAL = 50 # 短時間休憩に入るまでのスクレイピング回数
-SHORT_BREAK_SECONDS_MIN = 60 # 短時間休憩の最小秒数 (1分)
-SHORT_BREAK_SECONDS_MAX = 120 # 短時間休憩の最大秒数 (2分)
+# ▼▼▼ 修正 ▼▼▼
+SHORT_BREAK_SECONDS_MIN = 120 # 短時間休憩の最小秒数 (2分)
+SHORT_BREAK_SECONDS_MAX = 240 # 短時間休憩の最大秒数 (4分)
+# ▲▲▲ 修正 ▲▲▲
 
 def _force_cleanup_processes():
     """
@@ -272,7 +276,7 @@ def main():
             print("--- RUNNING IN RESULTS_ONLY MODE (前日の結果取得) ---")
             jst = datetime.timezone(datetime.timedelta(hours=9))
             today_jst = datetime.datetime.now(jst).date()
-            target_date_results = today_jst - timedelta(days=1)
+            target_date_results = today_jst - datetime.timedelta(days=1)
             
             scrape_race_lists_for_date(target_date_results)
             
@@ -288,7 +292,7 @@ def main():
             print("--- RUNNING IN PREDICTIONS_ONLY MODE (翌日の予測取得) ---")
             jst = datetime.timezone(datetime.timedelta(hours=9))
             today_jst = datetime.datetime.now(jst).date()
-            target_date_predictions = today_jst + timedelta(days=1)
+            target_date_predictions = today_jst + datetime.timedelta(days=1)
             
             scrape_race_lists_for_date(target_date_predictions)
             
@@ -304,8 +308,8 @@ def main():
             jst = datetime.timezone(datetime.timedelta(hours=9))
             today_jst = datetime.datetime.now(jst).date()
             
-            target_date_results = today_jst - timedelta(days=1)
-            target_date_predictions = today_jst + timedelta(days=1)
+            target_date_results = today_jst - datetime.timedelta(days=1)
+            target_date_predictions = today_jst + datetime.timedelta(days=1)
 
             scrape_race_lists_for_date(target_date_results)
             scrape_race_lists_for_date(target_date_predictions)

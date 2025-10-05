@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { GlobalAdManager } from "@/components/GlobalAdManager";
+import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,13 +16,11 @@ export const metadata: Metadata = {
         template: "%s | uma-free",
     },
     description: "全レース無料のAI競馬予想サイト。中央・地方競馬の全レースのAI予想を完全無料で公開しています。最新のAI技術を駆使した予想で、あなたの競馬ライフをサポートします。",
-    // ▼▼▼▼▼ 【ここから追加】 ▼▼▼▼▼
     icons: {
-        icon: "/new-logo.png", // 通常のファビコン
-        shortcut: "/new-logo.png", // ショートカットアイコン
-        apple: "/new-logo.png", // Appleデバイス用のアイコン
+        icon: "/new-logo.png",
+        shortcut: "/new-logo.png",
+        apple: "/new-logo.png",
     },
-    // ▲▲▲▲▲ 【修正ここまで】 ▲▲▲▲▲
     openGraph: {
         title: "uma-free - 全レース無料AI競馬予想",
         description: "全レース無料のAI競馬予想サイト。中央・地方競馬の全レースのAI予想を完全無料で公開しています。",
@@ -60,6 +59,13 @@ export default function RootLayout({
     return (
         <html lang="ja">
             <head>
+                {/* Google AdSense審査用コード */}
+                <Script
+                    async
+                    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"
+                    crossOrigin="anonymous"
+                    strategy="afterInteractive"
+                />
                 <GlobalAdManager />
             </head>
             <body className={`${inter.className} bg-gray-50`}>

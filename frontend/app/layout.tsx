@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { GlobalAdManager } from "@/components/GlobalAdManager";
 import Script from "next/script";
+import { OrganizationSchema, WebsiteSchema, SoftwareApplicationSchema } from "@/components/StructuredData";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -77,6 +78,11 @@ export default function RootLayout({
                 <GlobalAdManager />
             </head>
             <body className={`${inter.className} bg-gray-50`}>
+                {/* 構造化マークアップ：Organization, Website, SoftwareApplication */}
+                <OrganizationSchema />
+                <WebsiteSchema />
+                <SoftwareApplicationSchema />
+
                 <Header />
                 <main className="container mx-auto p-4 min-h-screen">
                     {children}

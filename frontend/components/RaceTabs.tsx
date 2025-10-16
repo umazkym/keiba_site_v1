@@ -4,6 +4,7 @@ import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { PredictionTable } from '@/components/PredictuonTable';
+import { RaceAnalysis } from '@/components/RaceAnalysis';
 import { VenueRaces, RaceDayPrediction } from '@/lib/types';
 import { RaceSelector } from './RaceSelector';
 import { StartPositionChart } from './StartPositionChart';
@@ -118,6 +119,10 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
                             <PredictionTable race={activeRace} />
                         </div>
                     </div>
+
+                    {/* レース全体の分析セクション */}
+                    <RaceAnalysis race={activeRace} />
+
                     <div className="space-y-2">
                         <CollapsibleSection title="AIスタート位置取り予測" icon={<FlagIcon className="w-5 h-5" />}>
                             <StartPositionChart predictions={activeRace.predictions} />

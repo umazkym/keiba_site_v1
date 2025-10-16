@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { ArticleSchema } from '@/components/StructuredData';
 
 type Props = {
   params: { slug: string };
@@ -41,8 +42,23 @@ export default async function ArticlePage({ params }: Props) {
     const article = await getArticleBySlug(params.slug);
     // ▲▲▲▲▲ awaitを追加 ▲▲▲▲▲
 
+    // articleのスキーマを生成
+    const articleUrl = `https://uma-free.com/articles/${params.slug}`;
+    const datePublished = new Date(article.date).toISOString();
+    const dateModified = article.updatedDate ? new Date(article.updatedDate).toISOString() : datePublished;
+
     return (
       <div className="bg-gray-50 py-12">
+        {/* 記事用スキーマ構造化データ */}
+        <ArticleSchema
+          title={article.title}
+          description={article.content.substring(0, 160)}
+          url={articleUrl}
+          datePublished={datePublished}
+          dateModified={dateModified}
+          image={article.eyecatch}
+        />
+
         <div className="container mx-auto px-4 max-w-4xl">
           <article className="bg-white p-6 sm:p-8 rounded-lg shadow-lg">
             <header className="mb-8 text-center border-b pb-6">

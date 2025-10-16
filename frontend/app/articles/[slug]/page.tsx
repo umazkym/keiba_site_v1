@@ -45,7 +45,7 @@ export default async function ArticlePage({ params }: Props) {
     // articleのスキーマを生成
     const articleUrl = `https://uma-free.com/articles/${params.slug}`;
     const datePublished = new Date(article.date).toISOString();
-    const dateModified = article.updatedDate ? new Date(article.updatedDate).toISOString() : datePublished;
+    const dateModified = datePublished;
 
     return (
       <div className="bg-gray-50 py-12">

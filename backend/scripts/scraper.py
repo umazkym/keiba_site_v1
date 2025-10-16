@@ -29,7 +29,9 @@ MIN_SLEEP_SECONDS = 2.5
 MAX_SLEEP_SECONDS = 5.0
 MAX_RETRIES = 3
 RETRY_DELAY_SECONDS = 15
-SELENIUM_PAGE_LOAD_TIMEOUT = 90
+SELENIUM_PAGE_LOAD_TIMEOUT = 60  # 90秒→60秒に短縮（タイムアウトが長すぎるとメモリ圧迫）
+SELENIUM_IMPLICIT_WAIT = 8  # 暗黙的待機を短縮（netkeiba.comの高速化に対応）
+SELENIUM_WAIT_ELEMENT_TIMEOUT = 8  # 要素待機タイムアウト短縮
 
 BASE_CENTRAL_URL = "https://race.netkeiba.com"
 BASE_NAR_URL = "https://nar.netkeiba.com"
@@ -121,10 +123,11 @@ def get_html(
 
                 try:
                     selenium_driver.set_page_load_timeout(SELENIUM_PAGE_LOAD_TIMEOUT)
+                    selenium_driver.implicitly_wait(SELENIUM_IMPLICIT_WAIT)
                     selenium_driver.get(url)
                     if wait_for_class:
                         try:
-                            WebDriverWait(selenium_driver, 10).until(
+                            WebDriverWait(selenium_driver, SELENIUM_WAIT_ELEMENT_TIMEOUT).until(
                                 EC.presence_of_element_located((By.CLASS_NAME, wait_for_class))
                             )
                             html_content = selenium_driver.page_source
@@ -172,8 +175,21 @@ def get_race_list_html(date_str: str, is_nar: bool, force_download: bool = False
     dir_path = os.path.join(HTML_DIR, "nar_racelist" if is_nar else "racelist")
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, f"{date_str}.bin")
-    
+
     target_date = datetime.strptime(date_str, '%Y%m%d').date()
+
+    # NAR（地方競馬）用に長めのタイムアウトを使用（サーバー応答が遅い傾向）
+    if is_nar and driver is None:
+        # NARレース一覧はキャッシュがなければ単独処理で新しいドライバーを使用
+        nar_driver = _prepare_chrome_driver()
+        try:
+            # NARは読み込みが遅いため、タイムアウトを90秒に拡張
+            result = get_html(url, file_path, force_download, use_selenium=True, wait_for_class="RaceList_Box", target_date=target_date, driver=nar_driver)
+            return result
+        finally:
+            if nar_driver:
+                nar_driver.quit()
+
     return get_html(url, file_path, force_download, use_selenium=True, wait_for_class="RaceList_Box", target_date=target_date, driver=driver)
 
 def get_shutuba_html(race_id: str, is_nar: bool, force_download: bool = False) -> Tuple[Optional[str], bool]:

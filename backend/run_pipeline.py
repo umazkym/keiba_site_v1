@@ -24,8 +24,8 @@ except NotImplementedError:
 
 MAX_WORKERS = 4
 BANEI_VENUE_CODES = ["33", "65"]
-DRIVER_RESTART_INTERVAL = 200  # WebDriverを再起動する間隔（馬の数）
-DRIVER_MEMORY_CHECK_INTERVAL = 100 # メモリチェックを行う間隔
+DRIVER_RESTART_INTERVAL = 100  # WebDriverを再起動する間隔（馬の数） - 2倍のメモリ効率化
+DRIVER_MEMORY_CHECK_INTERVAL = 50  # メモリチェックを行う間隔 - より頻繁にチェック
 LONG_BREAK_INTERVAL = 1000 # 長時間休憩に入るまでのスクレイピング回数
 # ▼▼▼ 修正 ▼▼▼
 LONG_BREAK_SECONDS = 600 # 長時間休憩の秒数 (10分)
@@ -124,9 +124,12 @@ def pre_scrape_all_data(start_date: datetime.date, end_date: datetime.date) -> s
         driver_instance = None
         try:
             for i, horse_id in enumerate(tqdm(horse_ids_list, desc="  [3/4] 馬の過去成績", unit="horse", leave=True)):
-                if i > 0 and i % DRIVER_MEMORY_CHECK_INTERVAL == 0 and os.getenv("RENDER"):
+                # メモリチェックと積極的なガベージコレクション
+                if i > 0 and i % DRIVER_MEMORY_CHECK_INTERVAL == 0:
                     import gc
                     gc.collect()
+                    if os.getenv("RENDER"):
+                        tqdm.write(f"  -> メモリチェック実行: {i}頭処理済み")
 
                 if driver_instance is None or (i > 0 and i % DRIVER_RESTART_INTERVAL == 0):
                     if driver_instance:

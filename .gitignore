@@ -66,3 +66,5 @@ yarn-error.log*
 /sns_images_dist/
 
 /analysis_results/
+
+/.claude

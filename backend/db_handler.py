@@ -14,6 +14,10 @@ import random
 BANEI_VENUE_CODES = ["33", "65"]
 
 def _fetch_and_load_horse_past_data(db: Session, horse_ids: set):
+    """
+    指定された馬リストの過去成績を取得しDBに保存する。
+    スクレイピング実行後にはランダムな待機時間を設け、サーバー負荷を軽減する。
+    """
     if not horse_ids:
         return
 
@@ -34,10 +38,10 @@ def _fetch_and_load_horse_past_data(db: Session, horse_ids: set):
                     results = parsed_data.get('results')
                     if horse_name:
                         database_loader.load_past_results(db, horse_name, results, horse_id)
-            # ▼▼▼ 修正 ▼▼▼
+            
             if was_scraped:
                 time.sleep(random.uniform(2.5, 5.0))
-            # ▲▲▲ 修正 ▲▲▲
+
         except Exception as e:
             tqdm.write(f"\n[ERROR] Failed to process horse_id {horse_id}: {e}")
             db.rollback()

@@ -14,44 +14,38 @@ from tqdm import tqdm
 from database.database import SessionLocal, engine, Base
 from scripts import predictor, scraper, parser, database_loader
 from db_handler import update_race_results, insert_new_predictions
-import subprocess
+import pandas as pd
+from database import models
+import math
+import gc 
+from datetime import timedelta
 
 # --- 設定 ---
 try:
     CPU_COUNT = max(1, multiprocessing.cpu_count() - 1)
+    MAX_WORKERS = min(CPU_COUNT, 4)
 except NotImplementedError:
-    CPU_COUNT = 1
+    MAX_WORKERS = 1
 
-MAX_WORKERS = 4
 BANEI_VENUE_CODES = ["33", "65"]
-DRIVER_RESTART_INTERVAL = 100  # WebDriverを再起動する間隔（馬の数） - 2倍のメモリ効率化
-DRIVER_MEMORY_CHECK_INTERVAL = 50  # メモリチェックを行う間隔 - より頻繁にチェック
-LONG_BREAK_INTERVAL = 1000 # 長時間休憩に入るまでのスクレイピング回数
-# ▼▼▼ 修正 ▼▼▼
-LONG_BREAK_SECONDS = 600 # 長時間休憩の秒数 (10分)
-# ▲▲▲ 修正 ▲▲▲
-SHORT_BREAK_INTERVAL = 50 # 短時間休憩に入るまでのスクレイピング回数
-# ▼▼▼ 修正 ▼▼▼
-SHORT_BREAK_SECONDS_MIN = 120 # 短時間休憩の最小秒数 (2分)
-SHORT_BREAK_SECONDS_MAX = 240 # 短時間休憩の最大秒数 (4分)
-# ▲▲▲ 修正 ▲▲▲
+
+BROWSER_REFRESH_INTERVAL = 50
+CONSECUTIVE_TIMEOUT_LIMIT = 3
+MIN_SLEEP = 2.0
+MAX_SLEEP = 4.0
 
 def _force_cleanup_processes():
-    """
-    実行中の可能性のあるChromeおよびChromeDriverのプロセスを強制終了する。
-    これにより、長時間実行時のゴーストプロセス問題を解消する。
-    """
+    """実行中の可能性のあるChromeおよびChromeDriverのプロセスを強制終了する。"""
     try:
-        if os.name == 'nt':  # Windows
+        if os.name == 'nt':
             os.system("taskkill /F /IM chromedriver.exe /T > nul 2>&1")
             os.system("taskkill /F /IM chrome.exe /T > nul 2>&1")
-        else:  # Linux/Unix (Render環境)
-            os.system("pkill -f chromedriver 2>/dev/null")
-            os.system("pkill -f chrome 2>/dev/null")
-            os.system("pkill -f chromium 2>/dev/null")
+        else:
+            os.system("pkill -f chromedriver 2>/dev/null || true")
+            os.system("pkill -f chrome 2>/dev/null || true")
+            os.system("pkill -f chromium 2>/dev/null || true")
         tqdm.write("  -> クリーンアップ: 既存のChrome/ChromeDriverプロセスを強制終了しました。")
         time.sleep(2)
-        import gc
         gc.collect()
     except Exception as e:
         tqdm.write(f"  -> クリーンアップ中に軽微なエラーが発生しました (無視できます): {e}")
@@ -70,260 +64,182 @@ def send_notification(message: str, is_error: bool = False):
 
 Base.metadata.create_all(bind=engine)
 
-def pre_scrape_all_data(start_date: datetime.date, end_date: datetime.date) -> set:
-    print(f"\n--- [STAGE 1/4] 事前スクレイピングを逐次実行します ---")
-    print(" -> 起動前クリーンアップを実行します...")
-    _force_cleanup_processes()
-    dates_to_process = [start_date + datetime.timedelta(days=i) for i in range((end_date - start_date).days + 1)]
-    all_horse_ids_to_fetch = set()
-    newly_scraped_count = 0
-    print("\n[Step 1/2] レース関連ページ (レース一覧、出馬表、結果) をキャッシュ中...")
-    driver = None
+def worker_process_race(race_id_tuple):
+    """
+    並列処理ワーカー。1つのレースIDに関する全ての処理を行う。
+    """
+    race_id, is_nar = race_id_tuple
+    worker_id = multiprocessing.current_process().pid
+    
+    db = SessionLocal()
     try:
-        print(" -> WebDriverを初期化しています...")
-        driver = scraper._prepare_chrome_driver()
-        print(" -> WebDriverの初期化が完了しました。")
-        for i, target_date in enumerate(tqdm(dates_to_process, desc="[1/4] 日付ごと", unit="day", leave=True)):
-            if i > 0 and i % 100 == 0:
-                tqdm.write(f"\n--- 定期メンテナンス: 100日分のレース一覧を処理したためWebDriverを再起動します ---")
-                if driver: driver.quit()
-                _force_cleanup_processes()
-                driver = scraper._prepare_chrome_driver()
-            target_date_str = target_date.strftime('%Y%m%d')
-            all_race_ids_for_date = []
-            for is_nar in [False, True]:
-                list_html, was_scraped = scraper.get_race_list_html(target_date_str, is_nar=is_nar, driver=driver)
-                if was_scraped: newly_scraped_count += 1
-                if not list_html: continue
-                race_ids = parser.parse_race_ids_from_list(list_html)
-                if not race_ids: continue
-                if is_nar:
-                    original_count = len(race_ids)
-                    race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
-                    if original_count - len(race_ids) > 0:
-                        tqdm.write(f"                                  -> 地方競馬から、ばんえい競馬のレース {original_count - len(race_ids)} 件を除外しました。")
-                all_race_ids_for_date.extend([(rid, is_nar) for rid in race_ids])
-            for race_id, is_nar in tqdm(all_race_ids_for_date, desc=f"  [2/4] レース処理中 ({target_date_str})", unit="race", leave=False):
-                shutuba_html, was_scraped_s = scraper.get_shutuba_html(race_id, is_nar=is_nar)
-                if was_scraped_s: newly_scraped_count += 1
-                _, was_scraped_r = scraper.get_race_result_html(race_id, is_nar=is_nar)
-                if was_scraped_r: newly_scraped_count += 1
-                if shutuba_html:
-                    shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
-                    if shutuba_data:
-                        for horse in shutuba_data.get("horses", []):
-                            if horse.get("horse_id"): all_horse_ids_to_fetch.add(horse["horse_id"])
-    finally:
-        if driver:
-            print("\n -> WebDriverを終了しています...")
-            driver.quit()
-            _force_cleanup_processes()
-    print(f"\n[Step 2/2] {len(all_horse_ids_to_fetch)}頭のユニークな馬を検出。過去成績ページをキャッシュ中...")
-    if all_horse_ids_to_fetch:
-        horse_ids_list = sorted(list(all_horse_ids_to_fetch))
-        driver_instance = None
-        try:
-            for i, horse_id in enumerate(tqdm(horse_ids_list, desc="  [3/4] 馬の過去成績", unit="horse", leave=True)):
-                # メモリチェックと積極的なガベージコレクション
-                if i > 0 and i % DRIVER_MEMORY_CHECK_INTERVAL == 0:
-                    import gc
-                    gc.collect()
-                    if os.getenv("RENDER"):
-                        tqdm.write(f"  -> メモリチェック実行: {i}頭処理済み")
+        shutuba_html, _ = scraper.get_shutuba_html(race_id, is_nar=is_nar)
+        if not shutuba_html: return
+        shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
+        if not shutuba_data or not shutuba_data.get('horses'): return
 
-                if driver_instance is None or (i > 0 and i % DRIVER_RESTART_INTERVAL == 0):
-                    if driver_instance:
-                        tqdm.write(f"\n--- 定期メンテナンス: {DRIVER_RESTART_INTERVAL}頭処理したためWebDriverを再起動します ---")
-                        driver_instance.quit()
-                        _force_cleanup_processes()
-                    driver_instance = scraper._prepare_chrome_driver()
+        race_date = shutuba_data.get('race_info', {}).get('race_date')
+        if not race_date:
+             race_date = datetime.date(int(race_id[:4]), int(race_id[6:8]), int(race_id[8:10]))
 
-                if newly_scraped_count > 0 and newly_scraped_count % LONG_BREAK_INTERVAL == 0:
-                    tqdm.write(f"\n--- 長時間アクセス継続のため、{int(LONG_BREAK_SECONDS / 60)}分間のクールダウンに入ります ---")
-                    time.sleep(LONG_BREAK_SECONDS)
-                    tqdm.write("--- 処理を再開します ---")
+        database_loader.load_shutuba_data(db, shutuba_data, race_id, race_date, is_nar)
+        
+        horse_ids_in_race = {h['horse_id'] for h in shutuba_data['horses'] if h.get('horse_id')}
+        for horse_id in horse_ids_in_race:
+            if db.query(models.Result).filter(models.Result.horse_id == horse_id).count() >= 5:
+                continue
+            html, was_scraped = scraper.get_horse_page_html(horse_id, force_download=False)
+            if html:
+                parsed_data = parser.parse_horse_results_page(html)
+                if parsed_data and parsed_data.get('results'):
+                    horse_name = parsed_data.get('horse_name')
+                    results = parsed_data.get('results')
+                    if horse_name:
+                        database_loader.load_past_results(db, horse_name, results, horse_id)
+            if was_scraped:
+                time.sleep(random.uniform(MIN_SLEEP, MAX_SLEEP))
 
-                _, was_scraped = scraper.get_horse_page_html(horse_id, force_download=False, driver=driver_instance)
+        predictions = predictor.create_predictions_for_race(race_id, db)
+        if predictions:
+            database_loader.save_prediction(db, race_id, predictions)
+            predictor.calculate_and_save_matchups_for_race(db, race_id, list(horse_ids_in_race))
 
-                if was_scraped:
-                    newly_scraped_count += 1
-                    if newly_scraped_count > 0 and newly_scraped_count % SHORT_BREAK_INTERVAL == 0:
-                        break_time = random.uniform(SHORT_BREAK_SECONDS_MIN, SHORT_BREAK_SECONDS_MAX)
-                        tqdm.write(f"\n--- {SHORT_BREAK_INTERVAL}件の新規スクレイピングを実行。サーバー負荷軽減のため {int(break_time)}秒間 休憩します ---")
-                        time.sleep(break_time)
-        finally:
-            if driver_instance:
-                driver_instance.quit()
-                tqdm.write("\n--- 全ての馬の処理が完了したため、最終的なWebDriverを終了しました ---")
-                _force_cleanup_processes()
-    print("\n--- 事前スクレイピングが正常に完了しました ---")
-    return all_horse_ids_to_fetch
-
-def process_single_horse_worker(horse_id: str):
-    load_dotenv()
-    from database.database import SessionLocal
-    db: Session = SessionLocal()
-    try:
-        html, _ = scraper.get_horse_page_html(horse_id, force_download=False)
-        if html:
-            parsed_data = parser.parse_horse_results_page(html)
-            if parsed_data and parsed_data['results']:
-                horse_name = parsed_data.get('horse_name')
-                results = parsed_data.get('results')
-                if horse_name:
-                    database_loader.load_past_results(db, horse_name, results, horse_id)
+        result_html, _ = scraper.get_race_result_html(race_id, is_nar=is_nar)
+        if result_html:
+            race_data = parser.parse_race_result_page(result_html, race_id)
+            if race_data and race_data.get('results'):
+                database_loader.load_race_result_data(db, race_data, race_id, race_date, is_nar)
     except Exception as e:
-        print(f"\n[ERROR] Horse data processing failed for {horse_id}: {e}\n")
-        import traceback
-        traceback.print_exc()
+        tqdm.write(f"[Worker-{worker_id}] Error processing race {race_id}: {e}")
         db.rollback()
     finally:
         db.close()
 
-def process_and_load_past_horse_data(horse_ids: set):
-    print(f"\n--- [STAGE 2/4] 馬の過去成績データを並列でDBにロードします ---")
-    if not horse_ids:
-        print("ロード対象の馬データがありません。")
-        return
-    horse_ids_list = list(horse_ids)
-    with multiprocessing.Pool(processes=MAX_WORKERS) as pool:
-        with tqdm(total=len(horse_ids_list), desc="[HISTORY] 馬の過去成績をDBへ保存中", unit="horse") as pbar:
-            for _ in pool.imap_unordered(process_single_horse_worker, horse_ids_list):
-                pbar.update(1)
 
-def process_single_date_worker(target_date: datetime.date):
-    load_dotenv()
-    from database.database import SessionLocal
-    db: Session = SessionLocal()
+def process_races_for_period(start_date: datetime.date, end_date: datetime.date):
+    """
+    指定された日付範囲のレースデータを並列処理で取得・保存する。
+    """
+    tqdm.write(f"\n--- {start_date} から {end_date} までの処理を開始 ---")
+    
+    dates_to_process = [start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)]
+
+    # 1. レースリンクの一括収集
+    all_race_ids = []
+    driver = scraper._prepare_chrome_driver()
     try:
-        insert_new_predictions(db, target_date)
-        today_jst = (datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))).date()
-        if target_date <= today_jst:
-            update_race_results(db, target_date)
-    except Exception as e:
-        print(f"\n[ERROR] Worker failed on date {target_date}: {e}\n")
-        import traceback
-        traceback.print_exc()
+        for target_date in tqdm(dates_to_process, desc="レースURL収集"):
+            date_str = target_date.strftime('%Y%m%d')
+            for is_nar in [False, True]:
+                list_html, _ = scraper.get_race_list_html(date_str, is_nar=is_nar, driver=driver)
+                if list_html:
+                    race_ids = parser.parse_race_ids_from_list(list_html)
+                    if is_nar:
+                        race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
+                    all_race_ids.extend([(rid, is_nar) for rid in race_ids])
+    finally:
+        driver.quit()
+    
+    unique_race_ids = sorted(list(set(all_race_ids)))
+    if not unique_race_ids:
+        tqdm.write(f"指定期間に処理対象のレースがありませんでした。")
+        return
+
+    # 2. 未処理のURLのみを抽出
+    db = SessionLocal()
+    try:
+        processed_races = {r[0] for r in db.query(models.Prediction.race_id).distinct()}
+        unprocessed_races = [r for r in unique_race_ids if r[0] not in processed_races]
     finally:
         db.close()
-    return target_date
-
-def process_races_and_predictions(start_date: datetime.date, end_date: datetime.date):
-    print(f"\n--- [STAGE 3/4] DB保存とAI予測を並列処理します ---")
-    print(f"最大 {MAX_WORKERS} 個のワーカープロセスを使用します...")
-    dates_to_process = [start_date + datetime.timedelta(days=i) for i in range((end_date - start_date).days + 1)]
-    if not dates_to_process:
-        print("処理対象の日付がありません。")
+    
+    tqdm.write(f"{len(unique_race_ids)}件のレースを検出。うち未処理は{len(unprocessed_races)}件。")
+    if not unprocessed_races:
         return
+
+    # 3. 並列処理の実行
     with multiprocessing.Pool(processes=MAX_WORKERS) as pool:
-        with tqdm(total=len(dates_to_process), desc="[HISTORY] 日付ごとに並列処理中", unit="day") as pbar:
-            for _ in pool.imap_unordered(process_single_date_worker, dates_to_process):
+        with tqdm(total=len(unprocessed_races), desc=f"並列処理中 ({start_date} to {end_date})") as pbar:
+            for _ in pool.imap_unordered(worker_process_race, unprocessed_races):
                 pbar.update(1)
-
-def calculate_advantages(db: Session):
-    print(f"\n--- [STAGE 4/4] 馬番有利不利データを計算します ---")
-    try:
-        predictor.calculate_and_save_all_horse_number_advantages(db)
-        print("--- 全ての有利不利計算が完了しました ---\n")
-    except Exception as e:
-        print(f"--- 馬番有利不利データの計算中にエラーが発生しました: {e} ---")
-        traceback.print_exc()
-
-def scrape_race_lists_for_date(target_date: datetime.date):
-    print(f"\n--- [PRODUCTION] Updating race lists for {target_date.strftime('%Y-%m-%d')} ---")
-    driver = None
-    try:
-        driver = scraper._prepare_chrome_driver()
-        target_date_str = target_date.strftime('%Y%m%d')
-        for is_nar in [False, True]:
-            race_type = "NAR" if is_nar else "JRA"
-            print(f"  -> Fetching {race_type} race list...")
-            scraper.get_race_list_html(target_date_str, is_nar=is_nar, driver=driver, force_download=True)
-        print(f"--- Finished updating race lists for {target_date.strftime('%Y-%m-%d')} ---")
-    except Exception as e:
-        print(f"[ERROR] Failed to scrape race lists for {target_date}: {e}")
-    finally:
-        if driver:
-            driver.quit()
-            _force_cleanup_processes()
 
 def main():
     start_time = time.time()
     PIPELINE_MODE = os.getenv('PIPELINE_MODE', 'PRODUCTION')
     send_notification(f"パイプライン処理を開始します。\n**モード**: `{PIPELINE_MODE}`")
+    
+    _force_cleanup_processes()
+
     try:
         if PIPELINE_MODE == 'HISTORY':
-            # ★★★ 既存のHISTORYモード処理（そのまま残す）★★★
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            print("!!!  HISTORYモードで実行します (パイプライン処理を最適化)  !!!")
+            print("!!!  HISTORYモードで実行します (記事の並列処理アーキテクチャ)  !!!")
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             if len(sys.argv) != 3:
                 raise ValueError("開始日と終了日を 'YYYY-MM-DD' 形式で指定してください。")
-            start_date_str, end_date_str = sys.argv[1], sys.argv[2]
-            ANALYSIS_START_DATE = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            ANALYSIS_END_DATE = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            if ANALYSIS_START_DATE > ANALYSIS_END_DATE:
+            
+            start_date = datetime.datetime.strptime(sys.argv[1], '%Y-%m-%d').date()
+            end_date = datetime.datetime.strptime(sys.argv[2], '%Y-%m-%d').date()
+            if start_date > end_date:
                 raise ValueError("開始日は終了日より前の日付にしてください。")
-            print(f"\n処理対象期間: {ANALYSIS_START_DATE.strftime('%Y-%m-%d')} から {ANALYSIS_END_DATE.strftime('%Y-%m-%d')} まで")
-            target_horse_ids = pre_scrape_all_data(ANALYSIS_START_DATE, ANALYSIS_END_DATE)
-            process_and_load_past_horse_data(target_horse_ids)
-            process_races_and_predictions(ANALYSIS_START_DATE, ANALYSIS_END_DATE)
-            db_session_for_advantage = SessionLocal()
-            try:
-                calculate_advantages(db_session_for_advantage)
-            finally:
-                db_session_for_advantage.close()
-        
-        elif PIPELINE_MODE == 'RESULTS_ONLY':
-            # ★★★ 新規追加: 前日の結果のみ取得 ★★★
-            print("--- RUNNING IN RESULTS_ONLY MODE (前日の結果取得) ---")
-            jst = datetime.timezone(datetime.timedelta(hours=9))
-            today_jst = datetime.datetime.now(jst).date()
-            target_date_results = today_jst - datetime.timedelta(days=1)
             
-            scrape_race_lists_for_date(target_date_results)
+            print(f"\n処理対象期間: {start_date.strftime('%Y-%m-%d')} から {end_date.strftime('%Y-%m-%d')} まで")
+            print(f"最大ワーカー数: {MAX_WORKERS}")
             
-            db: Session = SessionLocal()
-            try:
-                update_race_results(db, target_date_results)
-            finally:
-                if db.is_active:
-                    db.close()
-                    
-        elif PIPELINE_MODE == 'PREDICTIONS_ONLY':
-            # ★★★ 新規追加: 翌日の予測のみ取得 ★★★
-            print("--- RUNNING IN PREDICTIONS_ONLY MODE (翌日の予測取得) ---")
-            jst = datetime.timezone(datetime.timedelta(hours=9))
-            today_jst = datetime.datetime.now(jst).date()
-            target_date_predictions = today_jst + datetime.timedelta(days=1)
-            
-            scrape_race_lists_for_date(target_date_predictions)
-            
-            db: Session = SessionLocal()
-            try:
-                insert_new_predictions(db, target_date_predictions)
-            finally:
-                if db.is_active:
-                    db.close()
-                    
-        else: # PRODUCTIONモード（従来通り、両方実行）
-            print("--- RUNNING IN PRODUCTION MODE ---")
-            jst = datetime.timezone(datetime.timedelta(hours=9))
-            today_jst = datetime.datetime.now(jst).date()
-            
-            target_date_results = today_jst - datetime.timedelta(days=1)
-            target_date_predictions = today_jst + datetime.timedelta(days=1)
+            # ▼▼▼ 修正点: 月単位のループを廃止し、指定期間を直接処理する関数を呼び出す ▼▼▼
+            process_races_for_period(start_date, end_date)
+            # ▲▲▲ 修正ここまで ▲▲▲
 
-            scrape_race_lists_for_date(target_date_results)
-            scrape_race_lists_for_date(target_date_predictions)
-
-            db: Session = SessionLocal()
+            # 最後に馬番有利不利データを一括計算
+            db_session = SessionLocal()
             try:
-                update_race_results(db, target_date_results)
-                insert_new_predictions(db, target_date_predictions)
+                predictor.calculate_and_save_all_horse_number_advantages(db_session)
             finally:
-                if db.is_active:
-                    db.close()
+                db_session.close()
+
+        elif PIPELINE_MODE in ['PRODUCTION', 'RESULTS_ONLY', 'PREDICTIONS_ONLY']:
+            print(f"--- RUNNING IN {PIPELINE_MODE} MODE ---")
+            jst = datetime.timezone(datetime.timedelta(hours=9))
+            today_jst = datetime.datetime.now(jst).date()
+            db: Session = SessionLocal()
+
+            if PIPELINE_MODE in ['PRODUCTION', 'RESULTS_ONLY']:
+                target_date_results = today_jst - datetime.timedelta(days=1)
+                print(f"\n--- [RESULTS_ONLY] {target_date_results} の結果取得を開始 ---")
+                driver = None
+                try:
+                    driver = scraper._prepare_chrome_driver()
+                    scraper.get_race_list_html(target_date_results.strftime('%Y%m%d'), is_nar=False, driver=driver, force_download=True)
+                    scraper.get_race_list_html(target_date_results.strftime('%Y%m%d'), is_nar=True, driver=driver, force_download=True)
+                finally:
+                    if driver: driver.quit()
+                    _force_cleanup_processes()
+                
+                update_race_results(db, target_date_results)
+                print(f"--- [RESULTS_ONLY] {target_date_results} の結果取得が完了 ---")
+                gc.collect()
+
+            if PIPELINE_MODE in ['PRODUCTION', 'PREDICTIONS_ONLY']:
+                target_date_predictions = today_jst + datetime.timedelta(days=1)
+                print(f"\n--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成を開始 ---")
+                driver = None
+                try:
+                    driver = scraper._prepare_chrome_driver()
+                    scraper.get_race_list_html(target_date_predictions.strftime('%Y%m%d'), is_nar=False, driver=driver, force_download=True)
+                    scraper.get_race_list_html(target_date_predictions.strftime('%Y%m%d'), is_nar=True, driver=driver, force_download=True)
+                finally:
+                    if driver: driver.quit()
+                    _force_cleanup_processes()
+                
+                insert_new_predictions(db, target_date_predictions)
+                print(f"--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成が完了 ---")
+                gc.collect()
+
+            if db.is_active:
+                db.close()
+
+        else:
+            print(f"未定義のPIPELINE_MODEです: {PIPELINE_MODE}")
 
         elapsed_time = time.time() - start_time
         success_message = (f"✅ パイプライン処理が正常に完了しました。\n**モード**: `{PIPELINE_MODE}`\n**処理時間**: `{elapsed_time:.2f} 秒`")
@@ -339,6 +255,7 @@ def main():
         raise
     
     finally:
+        _force_cleanup_processes()
         print("\n全ての処理が完了しました。")
 
 if __name__ == "__main__":

@@ -1,27 +1,25 @@
 services:
-  # ★★★ 修正: AM5:00に前日の結果のみ取得 ★★★
+  # 修正: JST AM 5:00に前日の結果のみ取得するジョブ
   - type: cron
     name: keiba-results-updater
     runtime: docker
     region: oregon
-    schedule: "0 20 * * *"  # JST AM 5:00 (UTC 20:00前日)
+    schedule: "0 20 * * *"  # JST AM 5:00 (前日のUTC 20:00)
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     envVars:
       - key: DATABASE_URL
-        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+        fromDatabase:
+          name: keiba_db
+          property: connectionString
       - key: PIPELINE_MODE
-        value: RESULTS_ONLY  # ★変更★
+        value: RESULTS_ONLY  # 結果取得専用モード
       - key: TZ
         value: Asia/Tokyo
-      - key: API_BASE_URL
-        value: "https://keiba-site-v1.onrender.com"
-      - key: WEBHOOK_URL
-        sync: false
       - key: RENDER
         value: "true"
 
-  # ★★★ 新規追加: AM10:00に翌日の予測のみ取得 ★★★
+  # 修正: JST AM 10:00に翌日の予測のみ生成するジョブ
   - type: cron
     name: keiba-predictions-generator
     runtime: docker
@@ -31,32 +29,30 @@ services:
     dockerContext: ./backend
     envVars:
       - key: DATABASE_URL
-        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+        fromDatabase:
+          name: keiba_db
+          property: connectionString
       - key: PIPELINE_MODE
-        value: PREDICTIONS_ONLY  # ★新規★
+        value: PREDICTIONS_ONLY # 予測生成専用モード
       - key: TZ
         value: Asia/Tokyo
-      - key: API_BASE_URL
-        value: "https://keiba-site-v1.onrender.com"
-      - key: WEBHOOK_URL
-        sync: false
       - key: RENDER
         value: "true"
 
-  # サービス3: SNS投稿 (毎日 JST AM 7:00 実行) - 変更なし
+  # SNS投稿ジョブ
   - type: cron
     name: keiba-sns-poster
     runtime: docker
     region: oregon
-    schedule: "0 22 * * *"
+    schedule: "0 22 * * *" # JST AM 7:00
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     dockerCommand: "python scripts/sns_poster.py"
-    # 並行実行を防ぐ設定を追加
-    maxRetries: 0  # リトライを無効化
     envVars:
       - key: DATABASE_URL
-        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+        fromDatabase:
+          name: keiba_db
+          property: connectionString
       - key: TZ
         value: Asia/Tokyo
       - key: API_BASE_URL
@@ -71,9 +67,7 @@ services:
         sync: false
       - key: WEBHOOK_URL
         sync: false
-      # Render環境であることを示す環境変数を追加
       - key: RENDER
         value: "true"
-      # 実行の一意性を保証するための環境変数を追加
       - key: INSTANCE_ID
-        generateValue: true  # Renderが自動生成
+        generateValue: true

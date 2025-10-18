@@ -1,4 +1,3 @@
-# backend/scripts/predictor.py
 import time
 import traceback
 from sqlalchemy.orm import Session
@@ -12,8 +11,6 @@ from typing import Optional, List, Dict, Any
 from collections import defaultdict
 from . import database_loader
 from tqdm import tqdm
-
-# _calculate_1c_indicator から calculate_and_save_matchups_for_race までの関数は変更ありません（省略）
 
 def _calculate_1c_indicator(db: Session, horse_id: str, race_date: date, debug: bool = False) -> Optional[float] | Dict[str, Any]:
     """
@@ -296,16 +293,13 @@ def calculate_and_save_matchups_for_race(db: Session, race_id: str, horse_ids: L
             db.add(new_matchup)
         db.commit()
 
-# ==============================================================================
-# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 def calculate_and_save_all_horse_number_advantages(db: Session):
     """
     DB全体のデータから馬番有利不利データを再計算し、テーブルを更新する。
-    最終スコアが平均0になるように中心化し、ユーザーに分かりやすくする。
+    メモリ効率の良いチャンク処理で実行する。
     """
     print("Calculating horse number advantages for all data in the database...")
     
-    # 1. 最初に既存のデータをすべて削除
     try:
         num_deleted = db.query(models.HorseNumberAdvantage).delete(synchronize_session=False)
         db.commit()
@@ -315,7 +309,6 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
         print(f" -> Error deleting existing data: {e}")
         raise e
 
-    # 2. 全期間のデータを取得するクエリを定義
     results_query = db.query(
         models.Race.id,
         models.Race.venue_name,
@@ -330,10 +323,7 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
     .filter(models.Race.course_type.in_(['芝', 'ダ']))
 
     try:
-        # 3. 集計用DataFrameの準備
         advantage_summary = pd.DataFrame()
-
-        # 4. ストリーミングでデータを読み込み、チャンクごとに処理
         chunk_size = 50000
         total_rows = results_query.count()
 
@@ -349,11 +339,9 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
                     n = group['total_horses'].iloc[0]
                     if pd.isna(n) or int(n) < 2: continue
                     n = int(n)
-                    
                     e = (n + 1) / 2.0
                     sd = math.sqrt((n**2 - 1) / 12.0)
                     if sd == 0: continue
-                    
                     group['advantage_score'] = (e - group['rank']) / sd
                     ai_scores.append(group)
                 
@@ -378,17 +366,11 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
         if advantage_summary.empty:
             print("No advantage data calculated."); return
 
-        # 5. 最終的な平均を計算
         advantage_summary['advantage_score'] = advantage_summary['sum'] / advantage_summary['count']
-
-        # 6. ★★★【重要】コース条件ごとにスコアを正規化（平均を0にする）★★★
-        # 各コース条件（venue_name, course_type, distance）でグループ化し、
-        # そのグループ内のadvantage_scoreの平均値を計算し、各スコアからその平均値を引く
         advantage_summary['advantage_score'] = advantage_summary.groupby(
             ['venue_name', 'course_type', 'distance']
         )['advantage_score'].transform(lambda x: x - x.mean())
         
-        # 7. DBに保存
         advantages_to_save = advantage_summary[[
             'venue_name', 'course_type', 'distance', 'horse_number', 'advantage_score'
         ]].to_dict('records')
@@ -403,5 +385,3 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
         print(f"An error occurred during advantage calculation: {e}")
         traceback.print_exc()
         db.rollback()
-# ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲
-# ==============================================================================

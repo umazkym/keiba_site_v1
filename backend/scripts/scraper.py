@@ -29,9 +29,7 @@ MIN_SLEEP_SECONDS = 2.5
 MAX_SLEEP_SECONDS = 5.0
 MAX_RETRIES = 3
 RETRY_DELAY_SECONDS = 15
-SELENIUM_PAGE_LOAD_TIMEOUT = 60  # 90秒→60秒に短縮（タイムアウトが長すぎるとメモリ圧迫）
-SELENIUM_IMPLICIT_WAIT = 8  # 暗黙的待機を短縮（netkeiba.comの高速化に対応）
-SELENIUM_WAIT_ELEMENT_TIMEOUT = 8  # 要素待機タイムアウト短縮
+SELENIUM_PAGE_LOAD_TIMEOUT = 90
 
 BASE_CENTRAL_URL = "https://race.netkeiba.com"
 BASE_NAR_URL = "https://nar.netkeiba.com"
@@ -46,33 +44,43 @@ def _get_random_headers():
 
 def _prepare_chrome_driver():
     """
-    Render環境とローカル環境の両方で動作するように修正されたWebDriver準備関数
+    Render環境とローカル環境で設定を切り替えるWebDriver準備関数
     """
     options = Options()
+    is_render = os.getenv("RENDER") == "true"
+
+    # --- 共通設定 ---
     options.add_argument('--headless=new')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
-    options.add_argument('--window-size=1920x1080')
-    # ▼▼▼ 修正 ▼▼▼
-    options.add_argument('--disable-software-rasterizer') # GPU関連エラーの抑制
-    options.add_argument('--log-level=3') # 不要なログ出力を抑制
+    options.add_argument('--window-size=1280x800')
     options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
     options.add_argument("--disable-blink-features=AutomationControlled") 
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
-    # ▲▲▲ 修正 ▲▲▲
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
+
+    # ▼▼▼ 環境に応じた設定切り替え ▼▼▼
+    if is_render:
+        # --- Render環境用の超省メモリ設定 ---
+        print(" -> Render環境を検出。省メモリ設定を適用します。")
+        options.add_argument('--disable-images')
+        options.add_experimental_option("prefs", {"profile.managed_default_content_settings.images": 2})
+        options.add_argument('--blink-settings=imagesEnabled=false')
+        options.add_argument('--single-process') # Render環境でのみ使用
+    # ▲▲▲ 修正ここまで ▲▲▲
     
     try:
-        if _WDM_AVAILABLE and not os.environ.get("RENDER"):
+        if _WDM_AVAILABLE and not is_render:
+            # ローカル環境 (Windows/Mac)
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
         else:
+            # Render環境またはwebdriver-managerがない場合
             driver = webdriver.Chrome(options=options)
-        # ▼▼▼ 修正 ▼▼▼
+            
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        # ▲▲▲ 修正 ▲▲▲
     except Exception as e:
         print(f"[ERROR] ChromeDriverのセットアップに失敗しました: {e}")
         raise
@@ -123,11 +131,10 @@ def get_html(
 
                 try:
                     selenium_driver.set_page_load_timeout(SELENIUM_PAGE_LOAD_TIMEOUT)
-                    selenium_driver.implicitly_wait(SELENIUM_IMPLICIT_WAIT)
                     selenium_driver.get(url)
                     if wait_for_class:
                         try:
-                            WebDriverWait(selenium_driver, SELENIUM_WAIT_ELEMENT_TIMEOUT).until(
+                            WebDriverWait(selenium_driver, 10).until(
                                 EC.presence_of_element_located((By.CLASS_NAME, wait_for_class))
                             )
                             html_content = selenium_driver.page_source
@@ -155,7 +162,13 @@ def get_html(
                         os.remove(temp_file_path)
                 return html_content, True
         except requests.exceptions.HTTPError as e:
-            if 400 <= e.response.status_code < 500:
+            if e.response.status_code == 429:
+                print(f"[HTTP Error 429] Too Many Requests for {url}. 待機してリトライします。")
+                retry_after = e.response.headers.get("Retry-After")
+                wait_time = int(retry_after) if retry_after else RETRY_DELAY_SECONDS * (attempt + 1)
+                time.sleep(wait_time)
+                continue
+            elif 400 <= e.response.status_code < 500:
                 print(f"[HTTP Error {e.response.status_code}] for {url}. BANされた可能性があるためリトライを停止します。")
                 return None, False
             print(f"[Request Error] Attempt {attempt + 1}/{MAX_RETRIES} for {url} failed: {e}")
@@ -175,21 +188,8 @@ def get_race_list_html(date_str: str, is_nar: bool, force_download: bool = False
     dir_path = os.path.join(HTML_DIR, "nar_racelist" if is_nar else "racelist")
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, f"{date_str}.bin")
-
+    
     target_date = datetime.strptime(date_str, '%Y%m%d').date()
-
-    # NAR（地方競馬）用に長めのタイムアウトを使用（サーバー応答が遅い傾向）
-    if is_nar and driver is None:
-        # NARレース一覧はキャッシュがなければ単独処理で新しいドライバーを使用
-        nar_driver = _prepare_chrome_driver()
-        try:
-            # NARは読み込みが遅いため、タイムアウトを90秒に拡張
-            result = get_html(url, file_path, force_download, use_selenium=True, wait_for_class="RaceList_Box", target_date=target_date, driver=nar_driver)
-            return result
-        finally:
-            if nar_driver:
-                nar_driver.quit()
-
     return get_html(url, file_path, force_download, use_selenium=True, wait_for_class="RaceList_Box", target_date=target_date, driver=driver)
 
 def get_shutuba_html(race_id: str, is_nar: bool, force_download: bool = False) -> Tuple[Optional[str], bool]:
@@ -238,6 +238,7 @@ def get_horse_page_html(
         file_path,
         force_download,
         use_selenium=True,
+        max_age_seconds=HORSE_HTML_CACHE_MAX_AGE_SECONDS,
         wait_for_class='db_main_race',
         driver=driver
     )

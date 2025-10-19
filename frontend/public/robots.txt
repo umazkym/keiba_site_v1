@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
 
+# 静的リソース（フォントファイルなど）へのクロールを禁止
+Disallow: /_next/static/media/
+
+# サイトマップの場所を通知
 Sitemap: https://uma-free.com/sitemap.xml

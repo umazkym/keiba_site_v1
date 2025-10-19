@@ -1,8 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ここにNext.jsの高度な設定を追加できますが、
-  // 現時点では空のままで問題ありません。
-  // async redirects() { ... } のブロックをここから削除しました。
+  // ▼▼▼▼▼【ここから修正】▼▼▼▼▼
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'www.uma-free.com',
+          },
+        ],
+        destination: 'https://uma-free.com/:path*',
+        permanent: true, // 301リダイレクト
+      },
+    ];
+  },
+  // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 };
 
 export default nextConfig;

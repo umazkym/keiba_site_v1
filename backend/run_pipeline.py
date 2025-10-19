@@ -10,6 +10,7 @@ import random
 import requests
 import traceback
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 from tqdm import tqdm
 from database.database import SessionLocal, engine, Base
 from scripts import predictor, scraper, parser, database_loader
@@ -17,7 +18,7 @@ from db_handler import update_race_results, insert_new_predictions
 import pandas as pd
 from database import models
 import math
-import gc 
+import gc
 from datetime import timedelta
 
 # --- 設定 ---
@@ -75,12 +76,16 @@ def worker_process_race(race_id_tuple):
     try:
         shutuba_html, _ = scraper.get_shutuba_html(race_id, is_nar=is_nar)
         if not shutuba_html: return
+
         shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
         if not shutuba_data or not shutuba_data.get('horses'): return
 
         race_date = shutuba_data.get('race_info', {}).get('race_date')
-        if not race_date:
-             race_date = datetime.date(int(race_id[:4]), int(race_id[6:8]), int(race_id[8:10]))
+        if not isinstance(race_date, datetime.date):
+            try:
+                race_date = datetime.date(int(race_id[:4]), int(race_id[6:8]), int(race_id[8:10]))
+            except ValueError:
+                 return # 不正なrace_idの場合はスキップ
 
         database_loader.load_shutuba_data(db, shutuba_data, race_id, race_date, is_nar)
         
@@ -115,49 +120,63 @@ def worker_process_race(race_id_tuple):
     finally:
         db.close()
 
-
-def process_races_for_period(start_date: datetime.date, end_date: datetime.date):
+def backfill_historical_data(start_date: datetime.date, end_date: datetime.date):
     """
     指定された日付範囲のレースデータを並列処理で取得・保存する。
     """
     tqdm.write(f"\n--- {start_date} から {end_date} までの処理を開始 ---")
     
+    # === [修正箇所] 処理開始前に、対象期間の全データを削除する ===
+    db = SessionLocal()
+    try:
+        tqdm.write(f"\n[*] 既存のデータをクリーンアップします (期間: {start_date} to {end_date})...")
+        races_to_delete_stmt = select(models.Race.id).where(models.Race.race_date.between(start_date, end_date))
+        race_ids_to_delete = [r[0] for r in db.execute(races_to_delete_stmt).fetchall()]
+
+        if race_ids_to_delete:
+            db.query(models.Matchup).filter(models.Matchup.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
+            db.query(models.Prediction).filter(models.Prediction.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
+            db.query(models.Result).filter(models.Result.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
+            db.query(models.RaceReturn).filter(models.RaceReturn.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
+            db.query(models.Race).filter(models.Race.id.in_(race_ids_to_delete)).delete(synchronize_session=False)
+            db.commit()
+            tqdm.write(f"[*] {len(race_ids_to_delete)} レース分の関連データを削除しました。")
+        else:
+            tqdm.write("[*] クリーンアップ対象のデータはありませんでした。")
+    finally:
+        db.close()
+    # === 修正ここまで ===
+
     dates_to_process = [start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)]
 
-    # 1. レースリンクの一括収集
     all_race_ids = []
-    driver = scraper._prepare_chrome_driver()
+    driver = None
     try:
+        driver = scraper._prepare_chrome_driver()
         for target_date in tqdm(dates_to_process, desc="レースURL収集"):
             date_str = target_date.strftime('%Y%m%d')
             for is_nar in [False, True]:
-                list_html, _ = scraper.get_race_list_html(date_str, is_nar=is_nar, driver=driver)
+                list_html, _ = scraper.get_race_list_html(date_str, is_nar=is_nar, driver=driver, force_download=True)
                 if list_html:
                     race_ids = parser.parse_race_ids_from_list(list_html)
                     if is_nar:
                         race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
                     all_race_ids.extend([(rid, is_nar) for rid in race_ids])
     finally:
-        driver.quit()
-    
+        if driver:
+            driver.quit()
+
     unique_race_ids = sorted(list(set(all_race_ids)))
     if not unique_race_ids:
         tqdm.write(f"指定期間に処理対象のレースがありませんでした。")
         return
 
-    # 2. 未処理のURLのみを抽出
-    db = SessionLocal()
-    try:
-        processed_races = {r[0] for r in db.query(models.Prediction.race_id).distinct()}
-        unprocessed_races = [r for r in unique_race_ids if r[0] not in processed_races]
-    finally:
-        db.close()
-    
+    # クリーンアップ処理を追加したため、未処理チェックは不要になる
+    unprocessed_races = unique_race_ids
     tqdm.write(f"{len(unique_race_ids)}件のレースを検出。うち未処理は{len(unprocessed_races)}件。")
     if not unprocessed_races:
         return
 
-    # 3. 並列処理の実行
     with multiprocessing.Pool(processes=MAX_WORKERS) as pool:
         with tqdm(total=len(unprocessed_races), desc=f"並列処理中 ({start_date} to {end_date})") as pbar:
             for _ in pool.imap_unordered(worker_process_race, unprocessed_races):
@@ -186,11 +205,8 @@ def main():
             print(f"\n処理対象期間: {start_date.strftime('%Y-%m-%d')} から {end_date.strftime('%Y-%m-%d')} まで")
             print(f"最大ワーカー数: {MAX_WORKERS}")
             
-            # ▼▼▼ 修正点: 月単位のループを廃止し、指定期間を直接処理する関数を呼び出す ▼▼▼
-            process_races_for_period(start_date, end_date)
-            # ▲▲▲ 修正ここまで ▲▲▲
+            backfill_historical_data(start_date, end_date)
 
-            # 最後に馬番有利不利データを一括計算
             db_session = SessionLocal()
             try:
                 predictor.calculate_and_save_all_horse_number_advantages(db_session)
@@ -203,40 +219,41 @@ def main():
             today_jst = datetime.datetime.now(jst).date()
             db: Session = SessionLocal()
 
-            if PIPELINE_MODE in ['PRODUCTION', 'RESULTS_ONLY']:
-                target_date_results = today_jst - datetime.timedelta(days=1)
-                print(f"\n--- [RESULTS_ONLY] {target_date_results} の結果取得を開始 ---")
-                driver = None
-                try:
-                    driver = scraper._prepare_chrome_driver()
-                    scraper.get_race_list_html(target_date_results.strftime('%Y%m%d'), is_nar=False, driver=driver, force_download=True)
-                    scraper.get_race_list_html(target_date_results.strftime('%Y%m%d'), is_nar=True, driver=driver, force_download=True)
-                finally:
-                    if driver: driver.quit()
-                    _force_cleanup_processes()
-                
-                update_race_results(db, target_date_results)
-                print(f"--- [RESULTS_ONLY] {target_date_results} の結果取得が完了 ---")
-                gc.collect()
+            try:
+                if PIPELINE_MODE in ['PRODUCTION', 'RESULTS_ONLY']:
+                    target_date_results = today_jst - datetime.timedelta(days=1)
+                    print(f"\n--- [RESULTS_ONLY] {target_date_results} の結果取得を開始 ---")
+                    driver = None
+                    try:
+                        driver = scraper._prepare_chrome_driver()
+                        scraper.get_race_list_html(target_date_results.strftime('%Y%m%d'), is_nar=False, driver=driver, force_download=True)
+                        scraper.get_race_list_html(target_date_results.strftime('%Y%m%d'), is_nar=True, driver=driver, force_download=True)
+                    finally:
+                        if driver: driver.quit()
+                        _force_cleanup_processes()
+                    
+                    update_race_results(db, target_date_results)
+                    print(f"--- [RESULTS_ONLY] {target_date_results} の結果取得が完了 ---")
+                    gc.collect()
 
-            if PIPELINE_MODE in ['PRODUCTION', 'PREDICTIONS_ONLY']:
-                target_date_predictions = today_jst + datetime.timedelta(days=1)
-                print(f"\n--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成を開始 ---")
-                driver = None
-                try:
-                    driver = scraper._prepare_chrome_driver()
-                    scraper.get_race_list_html(target_date_predictions.strftime('%Y%m%d'), is_nar=False, driver=driver, force_download=True)
-                    scraper.get_race_list_html(target_date_predictions.strftime('%Y%m%d'), is_nar=True, driver=driver, force_download=True)
-                finally:
-                    if driver: driver.quit()
-                    _force_cleanup_processes()
-                
-                insert_new_predictions(db, target_date_predictions)
-                print(f"--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成が完了 ---")
-                gc.collect()
-
-            if db.is_active:
-                db.close()
+                if PIPELINE_MODE in ['PRODUCTION', 'PREDICTIONS_ONLY']:
+                    target_date_predictions = today_jst + datetime.timedelta(days=1)
+                    print(f"\n--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成を開始 ---")
+                    driver = None
+                    try:
+                        driver = scraper._prepare_chrome_driver()
+                        scraper.get_race_list_html(target_date_predictions.strftime('%Y%m%d'), is_nar=False, driver=driver, force_download=True)
+                        scraper.get_race_list_html(target_date_predictions.strftime('%Y%m%d'), is_nar=True, driver=driver, force_download=True)
+                    finally:
+                        if driver: driver.quit()
+                        _force_cleanup_processes()
+                    
+                    insert_new_predictions(db, target_date_predictions)
+                    print(f"--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成が完了 ---")
+                    gc.collect()
+            finally:
+                if db.is_active:
+                    db.close()
 
         else:
             print(f"未定義のPIPELINE_MODEです: {PIPELINE_MODE}")

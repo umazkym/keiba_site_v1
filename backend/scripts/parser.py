@@ -56,37 +56,55 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
     race_info_dict = {}
     horse_list = []
     try:
-        race_list_item = soup.select_one(".RaceList_Item02")
-        if race_list_item:
-            race_name_elm = race_list_item.select_one(".RaceName")
-            if race_name_elm: race_info_dict['race_name'] = race_name_elm.get_text(strip=True).replace("\n", "").strip()
-            
-            race_data01_elm = race_list_item.select_one(".RaceData01")
-            if race_data01_elm:
-                race_data01 = race_data01_elm.get_text(strip=True)
-                m_course = re.search(r'(芝|ダ|障)(\d+)m', race_data01)
-                if m_course:
-                    race_info_dict['course_type'] = m_course.group(1)
-                    race_info_dict['distance'] = _safe_int(m_course.group(2))
-                m_weather = re.search(r'天候:(\S+)', race_data01)
-                if m_weather:
-                    race_info_dict['weather'] = m_weather.group(1).strip().rstrip('/')
-                m_ground = re.search(r'馬場:(\S+)', race_data01)
-                if m_ground:
-                    race_info_dict['ground_condition'] = m_ground.group(1).strip().rstrip('/')
+        # --- [最終修正 Ver.3] JRAとNAR両対応の最も堅牢な情報取得ロジック ---
+        
+        # 1. レース名: h1 タグを最優先で探す
+        race_name_elm = soup.find("h1")
+        if race_name_elm:
+            race_name_text = race_name_elm.get_text(strip=True).replace("\n", "").strip()
+            race_info_dict['race_name'] = re.sub(r'\(.+?\)$', '', race_name_text).strip()
 
-            race_data02_elm = race_list_item.select_one(".RaceData02")
-            if race_data02_elm:
-                race_data02_text = race_data02_elm.get_text(strip=True)
-                m_date = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', race_data02_text)
-                if m_date:
-                    race_info_dict['race_date'] = datetime.date(
-                        _safe_int(m_date.group(1)),
-                        _safe_int(m_date.group(2)),
-                        _safe_int(m_date.group(3))
-                    )
+        # 2. 日付: ページ全体から "YYYY年MM月DD日" の形式を正規表現で探す (最も確実)
+        race_date_obj = None
+        date_match_in_text = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', html_content)
+        if date_match_in_text:
+            try:
+                race_date_obj = datetime.date(
+                    _safe_int(date_match_in_text.group(1)),
+                    _safe_int(date_match_in_text.group(2)),
+                    _safe_int(date_match_in_text.group(3))
+                )
+            except (ValueError, TypeError):
+                pass # パース失敗時はNoneのまま
+        race_info_dict['race_date'] = race_date_obj
+
+        # 3. コース、天候、馬場状態: 特徴的なテキストブロックから情報を抽出
+        race_data_text = ""
+        data_elements = soup.select(".RaceData01, .RaceData02, .RaceList_Item02 span, .diary_snap span")
+        if data_elements:
+            for elem in data_elements:
+                race_data_text += " " + elem.get_text(strip=True, separator=' ')
+        
+        if race_data_text:
+            m_course = re.search(r'(芝|ダ|障)\S*(\d+)m', race_data_text)
+            if m_course:
+                dist = _safe_int(m_course.group(2))
+                if dist and dist > 0:
+                    race_info_dict['course_type'] = m_course.group(1)
+                    race_info_dict['distance'] = dist
+
+            m_weather = re.search(r'天候\s*:\s*([^/\s]+)', race_data_text)
+            if m_weather:
+                race_info_dict['weather'] = m_weather.group(1).strip().rstrip('/')
+            
+            m_ground = re.search(r'(?:芝|ダ)\s*:\s*([^/\s]+)|馬場\s*:\s*([^/\s]+)', race_data_text)
+            if m_ground:
+                ground_condition = next((g for g in m_ground.groups() if g is not None), None)
+                if ground_condition:
+                    race_info_dict['ground_condition'] = ground_condition.strip().rstrip('/')
         
         race_info_dict['race_number'] = _safe_int(race_id[-2:])
+        # --- 修正ここまで ---
             
         shutuba_table = soup.find("table", class_=re.compile(r"Shutuba_Table|RaceTable0[12]|race_table_01", re.IGNORECASE))
         if not shutuba_table:
@@ -101,7 +119,7 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
             return {'race_info': race_info_dict, 'horses': []}
 
         rows = shutuba_table.find_all("tr")
-        rows = [row for row in rows if row.find('td', class_=re.compile("HorseInfo"))]
+        rows = [row for row in rows if row.find('td', class_=re.compile("HorseInfo|HorseList"))]
         
         race_info_dict['total_horses'] = len(rows)
 
@@ -109,7 +127,7 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
             cols = row.find_all('td')
             if len(cols) < 8: continue
             
-            horse_info_cell = row.find('td', class_=re.compile("HorseInfo", re.IGNORECASE)) or cols[3]
+            horse_info_cell = row.find('td', class_=re.compile("HorseInfo|HorseName", re.IGNORECASE)) or cols[3]
             jockey_cell = row.find('td', class_=re.compile("Jockey", re.IGNORECASE)) or cols[6]
             trainer_cell = row.find('td', class_=re.compile("Trainer", re.IGNORECASE)) or cols[7]
             weight_cell = row.find('td', class_=re.compile("Weight", re.IGNORECASE)) or cols[8]
@@ -264,12 +282,6 @@ def parse_horse_results_page(html_content: str) -> Optional[Dict[str, Any]]:
             
     return {'horse_name': horse_name, 'results': results}
 
-# ==============================================================================
-# ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-# 変更点：
-# 1. レース中止・取り止めを最初に判定し、その場合は空のデータを返して正常終了する。
-# 2. 結果テーブルが見つからない場合でもエラーとせず、Noneを返して正常終了させる。
-# 3. pandas.read_htmlが例外を投げる可能性があるため、try-exceptで囲む。
 def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str, Any]]:
     if not html_content: return None
     soup = BeautifulSoup(html_content, 'lxml')
@@ -418,5 +430,3 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
         print(f"An error occurred while parsing race result page for race {race_id}:")
         traceback.print_exc()
         return None
-# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-# ==============================================================================

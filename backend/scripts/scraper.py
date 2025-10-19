@@ -148,7 +148,12 @@ def get_html(
             else:
                 response = requests.get(url, headers=_get_random_headers(), timeout=20)
                 response.raise_for_status()
-                response.encoding = response.apparent_encoding
+                # ==============================================================================
+                # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+                # netkeibaの文字コードはEUC-JPで固定
+                response.encoding = 'EUC-JP'
+                # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+                # ==============================================================================
                 html_content = response.text
 
             if html_content:

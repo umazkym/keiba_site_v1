@@ -16,7 +16,15 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/keiba.db")
 # 接続設定をURLのプレフィックスで判定
 if DATABASE_URL.startswith("postgres"):
     # 本番環境 (PostgreSQL on Render)
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={
+            "client_encoding": "utf8",
+            "options": "-c client_encoding=UTF8"
+        },
+        pool_pre_ping=True,
+        pool_recycle=3600
+    )
 else:
     # ローカル開発環境 (SQLite)
     # dataディレクトリが存在しない場合は作成

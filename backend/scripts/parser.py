@@ -86,7 +86,11 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
                 race_data_text += " " + elem.get_text(strip=True, separator=' ')
         
         if race_data_text:
-            m_course = re.search(r'(芝|ダ|障)\S*(\d+)m', race_data_text)
+            # ==============================================================================
+            # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+            m_course = re.search(r'(芝|ダ|障).*?(\d+)m', race_data_text)
+            # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+            # ==============================================================================
             if m_course:
                 dist = _safe_int(m_course.group(2))
                 if dist and dist > 0:
@@ -315,7 +319,11 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
                 race_data_text += " " + elem.get_text(strip=True, separator=' ')
 
             if race_data_text:
-                m_course = re.search(r'(芝|ダ|障)\S*(\d+)m', race_data_text)
+                # ==============================================================================
+                # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+                m_course = re.search(r'(芝|ダ|障).*?(\d+)m', race_data_text)
+                # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+                # ==============================================================================
                 if m_course:
                     dist = _safe_int(m_course.group(2))
                     if dist and dist > 0:

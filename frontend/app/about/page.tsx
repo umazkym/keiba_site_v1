@@ -1,26 +1,26 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: '運営者情報・このサイトについて | UMA-FREE',
-    description: 'UMA-FREEの運営者情報とサービス内容について詳しく説明しています。AI競馬予測の仕組みやサイトの目的、技術情報などを公開しています。',
-    robots: {
-        index: true,
-        follow: true,
-    },
-    openGraph: {
-        title: '運営者情報・このサイトについて | UMA-FREE',
-        description: 'UMA-FREEの運営者情報とサービス内容について詳しく説明しています。',
-        url: 'https://uma-free.com/about',
-        siteName: 'UMA-FREE',
-        locale: 'ja_JP',
-        type: 'website',
-    },
-    alternates: {
-        canonical: 'https://uma-free.com/about',
-    },
+    title: '運営者情報・このサイトについて | UMA-FREE',
+    description: 'UMA-FREEの運営者情報とサービス内容について詳しく説明しています。AI競馬予測の仕組みやサイトの目的、技術情報などを公開しています。',
+    robots: {
+        index: true,
+        follow: true,
+    },
+    openGraph: {
+        title: '運営者情報・このサイトについて | UMA-FREE',
+        description: 'UMA-FREEの運営者情報とサービス内容について詳しく説明しています。',
+        url: 'https://uma-free.com/about',
+        siteName: 'UMA-FREE',
+        locale: 'ja_JP',
+        type: 'website',
+    },
+    alternates: {
+        canonical: 'https://uma-free.com/about',
+    },
 };
 
-// ▼▼▼▼▼【ここから修正】コンテンツをデータとして定義 ▼▼▼▼▼
+// コンテンツをデータとして定義
 const aboutContent = {
     main: {
         title: 'このサイトについて',
@@ -58,53 +58,56 @@ const aboutContent = {
         ]
     }
 };
-// ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
 
 export default function AboutPage() {
-    return (
-        <div className="container mx-auto my-10 px-4">
-            <div className="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md border">
-                <div className="space-y-10">
-                    {/* ▼▼▼▼▼【ここから修正】定義したデータを元に描画 ▼▼▼▼▼ */}
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-800 mb-4 border-b pb-4">{aboutContent.main.title}</h1>
-                        {aboutContent.main.paragraphs.map((text, index) => (
-                            <p key={index} className={`text-gray-700 leading-relaxed ${index > 0 ? 'mt-4' : ''}`}>{text}</p>
-                        ))}
-                    </div>
+    return (
+        <div className="container mx-auto my-10 px-4">
+            <div className="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md border">
+                <div className="space-y-10">
+                    {/* 定義したデータを元に描画 */}
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-800 mb-4 border-b pb-4">{aboutContent.main.title}</h1>
+                        {aboutContent.main.paragraphs.map((text, index) => (
+                            <p key={index} className={`text-gray-700 leading-relaxed ${index > 0 ? 'mt-4' : ''}`}>{text}</p>
+                        ))}
+                    </div>
 
-                    <section>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">{aboutContent.operatorInfo.title}</h2>
-                        <dl className="space-y-4">
-                            {aboutContent.operatorInfo.items.map(item => (
-                                <div key={item.label} className="grid grid-cols-1 sm:grid-cols-4 gap-x-4">
-                                    <dt className="font-semibold text-gray-700">{item.label}</dt>
-                                    <dd className="sm:col-span-3 text-gray-800" dangerouslySetInnerHTML={{ __html: item.value }} />
-                                </div>
-                            ))}
-                        </dl>
-                    </section>
+                    <section>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">{aboutContent.operatorInfo.title}</h2>
+                        <dl className="space-y-4">
+                            {aboutContent.operatorInfo.items.map(item => (
+                                <div key={item.label} className="grid grid-cols-1 sm:grid-cols-4 gap-x-4">
+                                    <dt className="font-semibold text-gray-700">{item.label}</dt>
+                                    <dd className="sm:col-span-3 text-gray-800" dangerouslySetInnerHTML={{ __html: item.value }} />
+                                </div>
+                            ))}
+                        </dl>
+                    </section>
 
-                    <section>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">{aboutContent.dataInfo.title}</h2>
-                        <div className="space-y-6">
-                            {aboutContent.dataInfo.items.map(item => (
-                                <div key={item.label}>
-                                    <h3 className="font-semibold text-gray-800 text-lg">{item.label}</h3>
-                                    <p className="text-gray-700 mt-1">{item.value}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
+                    <section>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">{aboutContent.dataInfo.title}</h2>
+                        <div className="space-y-6">
+                            {aboutContent.dataInfo.items.map(item => (
+                                <div key={item.label}>
+                                    <h3 className="font-semibold text-gray-800 text-lg">{item.label}</h3>
+                                    <p className="text-gray-700 mt-1">{item.value}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
 
-                    <section>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">{aboutContent.techInfo.title}</h2>
-                        <p className="text-gray-700 mb-4">{aboutContent.techInfo.intro}</p>
-                        <ul className="list-disc list-inside space-y-2 text-gray-700">
-                            {aboutContent.techInfo.items.map(item => (
-                                <li key={item} dangerouslySetInnerHTML={{ __html: item }} />
-                            ))}
-                        </ul>
-                    </section>
-                    {/* ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+                    <section>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">{aboutContent.techInfo.title}</h2>
+                        <p className="text-gray-700 mb-4">{aboutContent.techInfo.intro}</p>
+                        <ul className="list-disc list-inside space-y-2 text-gray-700">
+                            {aboutContent.techInfo.items.map(item => (
+                                <li key={item} dangerouslySetInnerHTML={{ __html: item }} />
+                            ))}
+                        </ul>
+                    </section>
+                </div>
+            </div>
+        </div>
+    );
+}

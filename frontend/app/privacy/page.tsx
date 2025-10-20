@@ -9,8 +9,37 @@ export const metadata: Metadata = {
     },
 };
 
+// 型定義
+type Subsection = {
+    title: string;
+    intro?: string;
+    items?: string[];
+    content?: string[];
+};
+
+type Section = {
+    title: string;
+    content?: string;
+    intro?: string;
+    items?: string[];
+    isOrdered?: boolean;
+    subsections?: Subsection[];
+    contactInfo?: {
+        operator: string;
+        siteName: string;
+        formLink: string;
+    };
+};
+
+type PrivacyPolicyContent = {
+    title: string;
+    lastUpdated: string;
+    introduction: string;
+    sections: Section[];
+};
+
 // ▼▼▼▼▼【ここから修正】コンテンツをデータとして定義 ▼▼▼▼▼
-const privacyPolicyContent = {
+const privacyPolicyContent: PrivacyPolicyContent = {
     title: 'プライバシーポリシー',
     lastUpdated: '最終更新日: 2025年10月20日',
     introduction: 'UMA-FREE（以下「当サイト」といいます。）は、ユーザーの個人情報保護の重要性について認識し、個人情報の保護に関する法律（以下「個人情報保護法」といいます。）を遵守すると共に、以下のプライバシーポリシー（以下「本ポリシー」といいます。）に従い、適切な取扱い及び保護に努めます。',
@@ -123,7 +152,63 @@ export default function PrivacyPolicyPage() {
                 <div className="flex flex-col gap-8 text-gray-700 leading-8">
                     <p className="text-sm text-gray-500">{privacyPolicyContent.lastUpdated}</p>
                     <p className="text-base">{privacyPolicyContent.introduction}</p>
-                    {privacyPolicyContent.sections.map((section, index) => (<section key={index} className="flex flex-col gap-4"><h2 className="text-3xl font-bold text-gray-800 mt-6 mb-2 border-b border-gray-200 pb-2">{section.title}</h2>{typeof section.content === 'string' && <p className="text-base">{section.content}</p>}{section.subsections?.map((subsection, subIndex) => (<div key={subIndex} className="flex flex-col gap-3"><h3 className="text-xl font-bold text-gray-700 mt-4 mb-1">{subsection.title}</h3>{subsection.intro && <p className="text-base">{subsection.intro}</p>}{Array.isArray(subsection.content) ? (subsection.content.map((p, pIndex) => (<p key={pIndex} className="mt-2 text-base" dangerouslySetInnerHTML={{ __html: p }} />))) : (subsection.items && <ul className="list-disc list-inside flex flex-col gap-2 mt-2">{subsection.items.map((item, itemIndex) => (<li key={itemIndex} className="text-base">{item}</li>))}</ul>)}</div>))}{section.items && (section.isOrdered ? (<ol className="list-decimal list-inside flex flex-col gap-2 mt-2">{section.items.map((item, itemIndex) => (<li key={itemIndex} className="text-base">{item}</li>))}</ol>) : (<ul className="list-disc list-inside flex flex-col gap-2 mt-2">{section.items.map((item, itemIndex) => (<li key={itemIndex} className="text-base">{item}</li>))}</ul>))}{section.contactInfo && (<div className="flex flex-col gap-2 mt-3"><p className="text-base"><strong>{'運営者：'}</strong>{section.contactInfo.operator}</p><p className="text-base"><strong>{'サイト名：'}</strong>{section.contactInfo.siteName}</p><p className="text-base"><strong>{'お問い合わせフォーム：'}</strong><span dangerouslySetInnerHTML={{ __html: section.contactInfo.formLink }} /></p></div>)}</section>))}
+                    {privacyPolicyContent.sections.map((section, index) => (
+                        <section key={index} className="flex flex-col gap-4">
+                            <h2 className="text-3xl font-bold text-gray-800 mt-6 mb-2 border-b border-gray-200 pb-2">{section.title}</h2>
+
+                            {section.content && typeof section.content === 'string' && (
+                                <p className="text-base">{section.content}</p>
+                            )}
+
+                            {section.intro && (
+                                <p className="text-base">{section.intro}</p>
+                            )}
+
+                            {section.subsections?.map((subsection, subIndex) => (
+                                <div key={subIndex} className="flex flex-col gap-3">
+                                    <h3 className="text-xl font-bold text-gray-700 mt-4 mb-1">{subsection.title}</h3>
+                                    {subsection.intro && <p className="text-base">{subsection.intro}</p>}
+                                    {Array.isArray(subsection.content) ? (
+                                        subsection.content.map((p, pIndex) => (
+                                            <p key={pIndex} className="mt-2 text-base" dangerouslySetInnerHTML={{ __html: p }} />
+                                        ))
+                                    ) : (
+                                        subsection.items && (
+                                            <ul className="list-disc list-inside flex flex-col gap-2 mt-2">
+                                                {subsection.items.map((item, itemIndex) => (
+                                                    <li key={itemIndex} className="text-base">{item}</li>
+                                                ))}
+                                            </ul>
+                                        )
+                                    )}
+                                </div>
+                            ))}
+
+                            {section.items && (
+                                section.isOrdered ? (
+                                    <ol className="list-decimal list-inside flex flex-col gap-2 mt-2">
+                                        {section.items.map((item, itemIndex) => (
+                                            <li key={itemIndex} className="text-base">{item}</li>
+                                        ))}
+                                    </ol>
+                                ) : (
+                                    <ul className="list-disc list-inside flex flex-col gap-2 mt-2">
+                                        {section.items.map((item, itemIndex) => (
+                                            <li key={itemIndex} className="text-base">{item}</li>
+                                        ))}
+                                    </ul>
+                                )
+                            )}
+
+                            {section.contactInfo && (
+                                <div className="flex flex-col gap-2 mt-3">
+                                    <p className="text-base"><strong>{'運営者：'}</strong>{section.contactInfo.operator}</p>
+                                    <p className="text-base"><strong>{'サイト名：'}</strong>{section.contactInfo.siteName}</p>
+                                    <p className="text-base"><strong>{'お問い合わせフォーム：'}</strong><span dangerouslySetInnerHTML={{ __html: section.contactInfo.formLink }} /></p>
+                                </div>
+                            )}
+                        </section>
+                    ))}
                 </div>
             </div>
         </div>

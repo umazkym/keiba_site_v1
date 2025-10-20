@@ -30,6 +30,41 @@ def _safe_float(value: any) -> Optional[float]:
     except (ValueError, TypeError):
         return None
 
+def _normalize_race_name(race_name_text: str) -> str:
+    """
+    レース名を正規化し、不要な空白・改行・括弧内の情報を整形する。
+
+    処理内容：
+    1. 改行・タブ・複数の空白を正規化
+    2. グレード情報（（G1）など）を末尾から除去
+    3. 先頭と末尾の空白を除去
+
+    Parameters
+    ----------
+    race_name_text : str
+        HTML から抽出した生のレース名テキスト
+
+    Returns
+    -------
+    str
+        正規化されたレース名
+    """
+    if not race_name_text:
+        return ""
+
+    # ステップ1: 改行・タブを空白に置換し、複数の連続空白を1つに統一
+    normalized = re.sub(r'[\n\r\t]+', ' ', race_name_text)
+    normalized = re.sub(r'\s+', ' ', normalized)
+
+    # ステップ2: グレード情報（末尾の括弧）を除去
+    # パターン: （G1）、（G2）、（G3）、（OP）など、または (G1), (G2) など
+    normalized = re.sub(r'\s*[（(](?:G[1-3]|OP|重賞)[）)]$', '', normalized)
+
+    # ステップ3: 先頭と末尾の空白を除去
+    normalized = normalized.strip()
+
+    return normalized
+
 def _extract_id_from_href(href: Optional[str]) -> Optional[str]:
     """
     馬、騎手、調教師のリンクURLからIDを抽出するヘルパー関数。
@@ -56,13 +91,13 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
     race_info_dict = {}
     horse_list = []
     try:
-        # --- [最終修正 Ver.3] JRAとNAR両対応の最も堅牢な情報取得ロジック ---
-        
+        # --- [最終修正 Ver.4] JRAとNAR両対応の最も堅牢な情報取得ロジック ---
+
         # 1. レース名: h1 タグを最優先で探す
         race_name_elm = soup.find("h1")
         if race_name_elm:
-            race_name_text = race_name_elm.get_text(strip=True).replace("\n", "").strip()
-            race_info_dict['race_name'] = re.sub(r'\(.+?\)$', '', race_name_text).strip()
+            race_name_text = race_name_elm.get_text(strip=True)
+            race_info_dict['race_name'] = _normalize_race_name(race_name_text)
 
         # 2. 日付: ページ全体から "YYYY年MM月DD日" の形式を正規表現で探す (最も確実)
         race_date_obj = None
@@ -302,7 +337,8 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
             if race_header:
                 race_name_elm = race_header.select_one("h1") or race_header.select_one(".RaceName")
                 if race_name_elm:
-                    race_info_dict['race_name'] = race_name_elm.get_text(strip=True).replace("\n", "").strip()
+                    race_name_text = race_name_elm.get_text(strip=True)
+                    race_info_dict['race_name'] = _normalize_race_name(race_name_text)
             return {'race_info': race_info_dict, 'results': [], 'returns': {}}
 
         # --- レース情報取得 ---
@@ -310,8 +346,8 @@ def parse_race_result_page(html_content: str, race_id: str) -> Optional[Dict[str
         if race_header:
             race_name_elm = race_header.select_one("h1") or race_header.select_one(".RaceName")
             if race_name_elm:
-                race_name_text = race_name_elm.get_text(strip=True).replace("\n", "").strip()
-                race_info_dict['race_name'] = re.sub(r'\(.+?\)$', '', race_name_text).strip()
+                race_name_text = race_name_elm.get_text(strip=True)
+                race_info_dict['race_name'] = _normalize_race_name(race_name_text)
 
             race_data_text = ""
             race_data_elements = soup.select(".RaceData01, .RaceData02, .diary_snap span")

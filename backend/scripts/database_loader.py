@@ -8,6 +8,42 @@ from core.config import JRA_VENUES, NAR_VENUES, VENUE_CODE_MAP
 from typing import Dict, Any, List
 import datetime
 import pandas as pd
+import re
+
+def _normalize_race_name_for_db(race_name: str) -> str:
+    """
+    レース名をDB保存前に正規化する。
+
+    処理内容：
+    1. 改行・タブ・複数の空白を正規化
+    2. グレード情報（（G1）など）を末尾から除去
+    3. 先頭と末尾の空白を除去
+
+    Parameters
+    ----------
+    race_name : str
+        DBに保存するレース名
+
+    Returns
+    -------
+    str
+        正規化されたレース名。Noneが渡された場合は空文字列を返す
+    """
+    if not race_name or not isinstance(race_name, str):
+        return ""
+
+    # ステップ1: 改行・タブを空白に置換し、複数の連続空白を1つに統一
+    normalized = re.sub(r'[\n\r\t]+', ' ', race_name)
+    normalized = re.sub(r'\s+', ' ', normalized)
+
+    # ステップ2: グレード情報（末尾の括弧）を除去
+    # パターン: （G1）、（G2）、（G3）、（OP）など、または (G1), (G2) など
+    normalized = re.sub(r'\s*[（(](?:G[1-3]|OP|重賞)[）)]$', '', normalized)
+
+    # ステップ3: 先頭と末尾の空白を除去
+    normalized = normalized.strip()
+
+    return normalized
 
 def _bulk_upsert(db: Session, model, data: List[Dict[str, Any]], index_elements: List[str]):
     if not data:
@@ -163,7 +199,7 @@ def load_shutuba_data(db: Session, shutuba_data: Dict[str, Any], race_id: str, r
         'race_type': '地方' if is_nar else '中央',
         'venue_name': venue_name,
         'race_number': race_info.get('race_number'),
-        'race_name': race_info.get('race_name'),
+        'race_name': _normalize_race_name_for_db(race_info.get('race_name', '')),
         'course_type': race_info.get('course_type'),
         'distance': race_info.get('distance'),
         'weather': race_info.get('weather'),
@@ -217,7 +253,7 @@ def load_past_results(db: Session, horse_name: str, results: List[Dict[str, Any]
 
         race_dict = {
             'id': r.get('race_id'), 'race_date': r.get('race_date'), 'venue_name': venue,
-            'race_type': race_type, 'race_number': r.get('race_number'), 'race_name': r.get('race_name'),
+            'race_type': race_type, 'race_number': r.get('race_number'), 'race_name': _normalize_race_name_for_db(r.get('race_name', '')),
             'course_type': r.get('course_type'), 'distance': r.get('distance'),
             'weather': r.get('weather'), 'ground_condition': r.get('ground_condition'),
             'total_horses': r.get('total_horses')
@@ -292,6 +328,9 @@ def load_race_result_data(db: Session, race_data: Dict[str, Any], race_id: str, 
     if race_record:
         for key, value in race_info.items():
             if value is not None and hasattr(race_record, key):
+                # race_nameの場合は正規化してから設定
+                if key == 'race_name' and isinstance(value, str):
+                    value = _normalize_race_name_for_db(value)
                 setattr(race_record, key, value)
     else:
         # レースが存在しない場合は警告を出して終了（データの不整合を防ぐ）

@@ -24,18 +24,12 @@ export default function AboutPage() {
     return (
         <div className="container mx-auto my-10 px-4">
             <div className="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md border">
-                <div className="space-y-10">
+                <div className="flex flex-col gap-10">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-800 mb-4 border-b pb-4">このサイトについて</h1>
-                        <p className="text-gray-700 leading-relaxed">
-                            UMA-FREEは、個人開発者が運営する、独自のAIアルゴリズムを用いた競馬予想サイトです。中央競馬（JRA）および地方競馬（NAR）の全レースを対象に、全てのAI予測データを完全無料で公開しています。会員登録やメールアドレスの登録は一切不要です。
-                        </p>
-                        <p className="text-gray-700 mt-4 leading-relaxed">
-                            本サイトが、皆様の競馬予想に新しい視点やデータに基づいた楽しみ方をもたらすきっかけの一つになれば幸いです。
-                        </p>
-                    </div>
-
-                    <section>
+                        <p className="text-gray-700 leading-relaxed">UMA-FREEは、個人開発者が運営する、独自のAIアルゴリズムを用いた競馬予想サイトです。中央競馬（JRA）および地方競馬（NAR）の全レースを対象に、全てのAI予測データを完全無料で公開しています。会員登録やメールアドレスの登録は一切不要です。</p>
+                        <p className="text-gray-700 mt-4 leading-relaxed">本サイトが、皆様の競馬予想に新しい視点やデータに基づいた楽しみ方をもたらすきっかけの一つになれば幸いです。</p>
+                    </div><section>
                         <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">運営者情報</h2>
                         <dl className="space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-4 gap-x-4">
@@ -57,9 +51,7 @@ export default function AboutPage() {
                                 </dd>
                             </div>
                         </dl>
-                    </section>
-
-                    <section>
+                    </section><section>
                         <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">公開データについて</h2>
                         <div className="space-y-6">
                             <div>
@@ -79,9 +71,7 @@ export default function AboutPage() {
                                 <p className="text-gray-700 mt-1">過去の膨大なレース結果から、コースや距離に応じた枠順の有利・不利をスコア化した独自のデータです。</p>
                             </div>
                         </div>
-                    </section>
-
-                    <section>
+                    </section><section>
                         <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">技術情報</h2>
                         <p className="text-gray-700 mb-4">本サービスは、以下の技術を活用して構築・運営されています：</p>
                         <ul className="list-disc list-inside space-y-2 text-gray-700">

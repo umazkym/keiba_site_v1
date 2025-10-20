@@ -9,11 +9,9 @@ interface ArticlesPageProps {
   };
 }
 
-// ▼▼▼▼▼【ここから修正】▼▼▼▼▼
 export async function generateMetadata({ searchParams }: ArticlesPageProps): Promise<Metadata> {
   const selectedCategory = searchParams.category;
-  // カテゴリでフィルタリングされている場合でも、正規URLはカテゴリなしのページとする
-  const canonicalUrl = '/articles'; 
+  const canonicalUrl = '/articles';
 
   let title = "記事一覧 | UMA-FREE";
   let description = "UMA-FREEが提供する競馬データ分析に関する記事の一覧です。コース分析や騎手分析など、馬券検討に役立つ情報をお届けします。";
@@ -30,7 +28,6 @@ export async function generateMetadata({ searchParams }: ArticlesPageProps): Pro
     },
   };
 }
-// ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
 export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
   const allArticles = getAllArticles();
@@ -43,14 +40,12 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
     : allArticles;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold text-center mb-10">
+    <div className="container mx-auto px-4 py-8 flex flex-col gap-10">
+      <h1 className="text-4xl font-bold text-center">
         {selectedCategory ? `${selectedCategory}の記事一覧` : "記事一覧"}
-      </h1>
-
-      <div className="flex flex-wrap justify-center gap-4 mb-10">
-        <Link 
-          href="/articles" 
+      </h1><div className="flex flex-wrap justify-center gap-4">
+        <Link
+          href="/articles"
           className={`font-bold py-2 px-5 rounded-full transition-colors shadow-md ${!selectedCategory ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
         >
           すべて
@@ -64,9 +59,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
             {category}
           </Link>
         ))}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      </div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredArticles.map((article) => (
           <Link href={`/articles/${article.slug}`} key={article.slug} className="block group border rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300 bg-white">
             <div className="relative h-40 sm:h-44 md:h-48 w-full">
@@ -79,13 +72,14 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               />
             </div>
-            <div className="p-5">
-              <span className="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full mb-3">
-                {article.category}
-              </span>
-
+            <div className="p-5 flex flex-col gap-2">
+              <div>
+                <span className="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full">
+                  {article.category}
+                </span>
+              </div>
               <h2
-                className="text-xl font-bold mb-2 group-hover:text-primary-dark"
+                className="text-xl font-bold group-hover:text-primary-dark"
                 style={{
                   display: '-webkit-box',
                   WebkitLineClamp: 3,
@@ -97,8 +91,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               >
                 {article.title}
               </h2>
-
-              <p className="text-gray-600 text-sm">
+              <p className="text-gray-600 text-sm mt-auto">
                 {new Date(article.date).toLocaleDateString()}
               </p>
             </div>

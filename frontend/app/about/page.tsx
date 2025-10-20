@@ -62,48 +62,30 @@ const aboutContent = {
 
 export default function AboutPage() {
     return (
-        <div className="container mx-auto my-10 px-4">
-            <div className="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md border">
-                <div className="space-y-10">
-                    {/* 定義したデータを元に描画 */}
+        <div className="flex flex-col gap-8 py-12 px-4">
+            <div className="max-w-4xl mx-auto w-full bg-white p-8 rounded-lg shadow-md border border-gray-200">
+                <div className="flex flex-col gap-10">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800 mb-4 border-b pb-4">{aboutContent.main.title}</h1>
-                        {aboutContent.main.paragraphs.map((text, index) => (
-                            <p key={index} className={`text-gray-700 leading-relaxed ${index > 0 ? 'mt-4' : ''}`}>{text}</p>
-                        ))}
+                        <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-2 border-gray-300 pb-4">{aboutContent.main.title}</h1>
+                        {aboutContent.main.paragraphs.map((text, index) => (<p key={index} className={`text-gray-700 leading-8 text-base ${index > 0 ? 'mt-4' : ''}`}>{text}</p>))}
                     </div>
-
-                    <section>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">{aboutContent.operatorInfo.title}</h2>
-                        <dl className="space-y-4">
-                            {aboutContent.operatorInfo.items.map(item => (
-                                <div key={item.label} className="grid grid-cols-1 sm:grid-cols-4 gap-x-4">
-                                    <dt className="font-semibold text-gray-700">{item.label}</dt>
-                                    <dd className="sm:col-span-3 text-gray-800" dangerouslySetInnerHTML={{ __html: item.value }} />
-                                </div>
-                            ))}
+                    <section className="flex flex-col gap-4">
+                        <h2 className="text-3xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3">{aboutContent.operatorInfo.title}</h2>
+                        <dl className="flex flex-col gap-6">
+                            {aboutContent.operatorInfo.items.map(item => (<div key={item.label} className="grid grid-cols-1 sm:grid-cols-4 gap-4"><dt className="font-bold text-gray-700 text-base">{item.label}</dt><dd className="sm:col-span-3 text-gray-800 text-base" dangerouslySetInnerHTML={{ __html: item.value }} /></div>))}
                         </dl>
                     </section>
-
-                    <section>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">{aboutContent.dataInfo.title}</h2>
-                        <div className="space-y-6">
-                            {aboutContent.dataInfo.items.map(item => (
-                                <div key={item.label}>
-                                    <h3 className="font-semibold text-gray-800 text-lg">{item.label}</h3>
-                                    <p className="text-gray-700 mt-1">{item.value}</p>
-                                </div>
-                            ))}
+                    <section className="flex flex-col gap-4">
+                        <h2 className="text-3xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3">{aboutContent.dataInfo.title}</h2>
+                        <div className="flex flex-col gap-8">
+                            {aboutContent.dataInfo.items.map(item => (<div key={item.label} className="flex flex-col gap-2"><h3 className="font-bold text-gray-800 text-lg">{item.label}</h3><p className="text-gray-700 text-base">{item.value}</p></div>))}
                         </div>
                     </section>
-
-                    <section>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">{aboutContent.techInfo.title}</h2>
-                        <p className="text-gray-700 mb-4">{aboutContent.techInfo.intro}</p>
-                        <ul className="list-disc list-inside space-y-2 text-gray-700">
-                            {aboutContent.techInfo.items.map(item => (
-                                <li key={item} dangerouslySetInnerHTML={{ __html: item }} />
-                            ))}
+                    <section className="flex flex-col gap-4">
+                        <h2 className="text-3xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3">{aboutContent.techInfo.title}</h2>
+                        <p className="text-gray-700 text-base mb-4">{aboutContent.techInfo.intro}</p>
+                        <ul className="list-disc list-inside flex flex-col gap-3 text-gray-700">
+                            {aboutContent.techInfo.items.map(item => (<li key={item} className="text-base" dangerouslySetInnerHTML={{ __html: item }} />))}
                         </ul>
                     </section>
                 </div>

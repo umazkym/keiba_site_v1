@@ -117,50 +117,14 @@ const privacyPolicyContent = {
 
 export default function PrivacyPolicyPage() {
     return (
-        <div className="container py-8">
-            <div className="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md border">
-                {/* ▼▼▼▼▼【ここから修正】定義したデータを元に描画（JSXの改行を削除） ▼▼▼▼▼ */}
-                <h1 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-4">{privacyPolicyContent.title}</h1>
-                <div className="space-y-8 text-gray-700 leading-relaxed">
+        <div className="flex flex-col gap-8 py-12 px-4">
+            <div className="max-w-4xl mx-auto w-full bg-white p-8 rounded-lg shadow-md border border-gray-200">
+                <h1 className="text-4xl font-bold text-gray-800 mb-8 border-b-2 border-gray-300 pb-4">{privacyPolicyContent.title}</h1>
+                <div className="flex flex-col gap-8 text-gray-700 leading-8">
                     <p className="text-sm text-gray-500">{privacyPolicyContent.lastUpdated}</p>
-                    <p>{privacyPolicyContent.introduction}</p>
-                    {privacyPolicyContent.sections.map((section, index) => (
-                        <section key={index}>
-                            <h2 className="text-2xl font-bold text-gray-800 mt-6 mb-3">{section.title}</h2>
-                            {typeof section.content === 'string' && <p>{section.content}</p>}
-                            {section.subsections?.map((subsection, subIndex) => (
-                                <div key={subIndex}>
-                                    <h3 className="text-xl font-semibold text-gray-700 mt-4 mb-2">{subsection.title}</h3>
-                                    {subsection.intro && <p>{subsection.intro}</p>}
-                                    {Array.isArray(subsection.content) ? (
-                                        subsection.content.map((p, pIndex) => <p key={pIndex} className="mt-2" dangerouslySetInnerHTML={{ __html: p }} />)
-                                    ) : (
-                                        subsection.items && <ul className="list-disc list-inside space-y-2 mt-2">
-                                            {subsection.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
-                                        </ul>
-                                    )}
-                                </div>
-                            ))}
-                            {section.items && (section.isOrdered ? (
-                                <ol className="list-decimal list-inside space-y-2 mt-2">
-                                    {section.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
-                                </ol>
-                            ) : (
-                                <ul className="list-disc list-inside space-y-2 mt-2">
-                                    {section.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
-                                </ul>
-                            ))}
-                            {section.contactInfo && (
-                                <div className="mt-2 space-y-1">
-                                    <p><strong>{'運営者：'}</strong>{section.contactInfo.operator}</p>
-                                    <p><strong>{'サイト名：'}</strong>{section.contactInfo.siteName}</p>
-                                    <p><strong>{'お問い合わせフォーム：'}</strong><span dangerouslySetInnerHTML={{ __html: section.contactInfo.formLink }} /></p>
-                                </div>
-                            )}
-                        </section>
-                    ))}
+                    <p className="text-base">{privacyPolicyContent.introduction}</p>
+                    {privacyPolicyContent.sections.map((section, index) => (<section key={index} className="flex flex-col gap-4"><h2 className="text-3xl font-bold text-gray-800 mt-6 mb-2 border-b border-gray-200 pb-2">{section.title}</h2>{typeof section.content === 'string' && <p className="text-base">{section.content}</p>}{section.subsections?.map((subsection, subIndex) => (<div key={subIndex} className="flex flex-col gap-3"><h3 className="text-xl font-bold text-gray-700 mt-4 mb-1">{subsection.title}</h3>{subsection.intro && <p className="text-base">{subsection.intro}</p>}{Array.isArray(subsection.content) ? (subsection.content.map((p, pIndex) => (<p key={pIndex} className="mt-2 text-base" dangerouslySetInnerHTML={{ __html: p }} />))) : (subsection.items && <ul className="list-disc list-inside flex flex-col gap-2 mt-2">{subsection.items.map((item, itemIndex) => (<li key={itemIndex} className="text-base">{item}</li>))}</ul>)}</div>))}{section.items && (section.isOrdered ? (<ol className="list-decimal list-inside flex flex-col gap-2 mt-2">{section.items.map((item, itemIndex) => (<li key={itemIndex} className="text-base">{item}</li>))}</ol>) : (<ul className="list-disc list-inside flex flex-col gap-2 mt-2">{section.items.map((item, itemIndex) => (<li key={itemIndex} className="text-base">{item}</li>))}</ul>))}{section.contactInfo && (<div className="flex flex-col gap-2 mt-3"><p className="text-base"><strong>{'運営者：'}</strong>{section.contactInfo.operator}</p><p className="text-base"><strong>{'サイト名：'}</strong>{section.contactInfo.siteName}</p><p className="text-base"><strong>{'お問い合わせフォーム：'}</strong><span dangerouslySetInnerHTML={{ __html: section.contactInfo.formLink }} /></p></div>)}</section>))}
                 </div>
-                {/* ▲▲▲▲▲【修正ここまで】▲▲▲▲▲ */}
             </div>
         </div>
     );

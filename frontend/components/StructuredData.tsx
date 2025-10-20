@@ -201,6 +201,9 @@ export function FAQSchema({ faqs }: { faqs: Array<{ question: string; answer: st
  * SoftwareApplicationスキーマ（AI予測サービスの説明）
  */
 export function SoftwareApplicationSchema() {
+    const today = new Date();
+    const validFromDate = today.toISOString().split('T')[0];
+
     const appSchema = {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
@@ -211,7 +214,8 @@ export function SoftwareApplicationSchema() {
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "JPY",
-            "availability": "https://schema.org/InStock"
+            "availability": "https://schema.org/InStock",
+            "validFrom": validFromDate
         },
         "author": {
             "@type": "Person",

@@ -63,18 +63,8 @@ export const TopHitsDisplay = () => {
             setIsLoading(true);
             try {
                 const data = await getTopPayoutHits();
-                const uniqueHits = Object.values(
-                  data.reduce((acc: { [key: string]: TopPayoutHit }, currentHit) => {
-                    const existingHit = acc[currentHit.race_id];
-                    if (!existingHit || currentHit.payout > existingHit.payout) {
-                      acc[currentHit.race_id] = currentHit;
-                    }
-                    return acc;
-                  }, {})
-                );
-                const sortedAndLimitedHits = uniqueHits
-                  .sort((a, b) => b.payout - a.payout)
-                  .slice(0, 5);
+                // バックエンドが既に上位5件を返しているため、重複排除なしで直接使用
+                const sortedAndLimitedHits = data.slice(0, 5);
                 setHits(sortedAndLimitedHits);
                 // 的中実績がある場合のみ広告を表示
                 setShowAd(sortedAndLimitedHits.length > 0);

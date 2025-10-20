@@ -3,6 +3,9 @@ import time
 import random
 import os
 import re
+import uuid
+import tempfile
+import shutil
 from datetime import date, timedelta, datetime
 from typing import Optional, Union, Tuple
 from selenium import webdriver
@@ -42,9 +45,30 @@ os.makedirs(HTML_DIR, exist_ok=True)
 def _get_random_headers():
     return {"User-Agent": random.choice(USER_AGENTS)}
 
+def cleanup_chrome_driver(driver):
+    """
+    Chromeドライバーをクリーンアップし、一時ディレクトリも削除する
+    """
+    if not driver:
+        return
+    try:
+        driver.quit()
+    except Exception:
+        pass
+    # 一時ディレクトリをクリーンアップ
+    if hasattr(driver, '_temp_user_data_dir'):
+        temp_dir = driver._temp_user_data_dir
+        if temp_dir and os.path.exists(temp_dir):
+            try:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            except Exception:
+                pass
+
 def _prepare_chrome_driver():
     """
     Render環境とローカル環境で設定を切り替えるWebDriver準備関数
+
+    Render環境では、ユーザーデータディレクトリが競合しないように一意の一時ディレクトリを使用する
     """
     options = Options()
     is_render = os.getenv("RENDER") == "true"
@@ -56,21 +80,26 @@ def _prepare_chrome_driver():
     options.add_argument('--disable-gpu')
     options.add_argument('--window-size=1280x800')
     options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
-    options.add_argument("--disable-blink-features=AutomationControlled") 
+    options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
     # ▼▼▼ 環境に応じた設定切り替え ▼▼▼
+    temp_user_data_dir = None
     if is_render:
         # --- Render環境用の超省メモリ設定 ---
         print(" -> Render環境を検出。省メモリ設定を適用します。")
         options.add_argument('--disable-images')
         options.add_experimental_option("prefs", {"profile.managed_default_content_settings.images": 2})
         options.add_argument('--blink-settings=imagesEnabled=false')
-        options.add_argument('--single-process') # Render環境でのみ使用
+
+        # ユーザーデータディレクトリが競合しないように一意の一時ディレクトリを使用
+        temp_user_data_dir = tempfile.mkdtemp(prefix=f"chrome_{uuid.uuid4().hex[:8]}_")
+        options.add_argument(f"--user-data-dir={temp_user_data_dir}")
     # ▲▲▲ 修正ここまで ▲▲▲
-    
+
+    driver = None
     try:
         if _WDM_AVAILABLE and not is_render:
             # ローカル環境 (Windows/Mac)
@@ -79,12 +108,21 @@ def _prepare_chrome_driver():
         else:
             # Render環境またはwebdriver-managerがない場合
             driver = webdriver.Chrome(options=options)
-            
+
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        # 一時ディレクトリ情報をdriverに付与（クリーンアップ時に使用）
+        if temp_user_data_dir:
+            driver._temp_user_data_dir = temp_user_data_dir
     except Exception as e:
         print(f"[ERROR] ChromeDriverのセットアップに失敗しました: {e}")
+        # エラー時は作成した一時ディレクトリをクリーンアップ
+        if temp_user_data_dir and os.path.exists(temp_user_data_dir):
+            try:
+                shutil.rmtree(temp_user_data_dir, ignore_errors=True)
+            except Exception:
+                pass
         raise
-        
+
     return driver
 
 def get_html(
@@ -144,7 +182,18 @@ def get_html(
                         html_content = selenium_driver.page_source
                 finally:
                     if own_driver and selenium_driver:
-                        selenium_driver.quit()
+                        try:
+                            selenium_driver.quit()
+                        except Exception:
+                            pass
+                        # 一時ディレクトリをクリーンアップ
+                        if hasattr(selenium_driver, '_temp_user_data_dir'):
+                            temp_dir = selenium_driver._temp_user_data_dir
+                            if temp_dir and os.path.exists(temp_dir):
+                                try:
+                                    shutil.rmtree(temp_dir, ignore_errors=True)
+                                except Exception:
+                                    pass
             else:
                 response = requests.get(url, headers=_get_random_headers(), timeout=20)
                 response.raise_for_status()

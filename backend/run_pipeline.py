@@ -163,8 +163,7 @@ def backfill_historical_data(start_date: datetime.date, end_date: datetime.date)
                         race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
                     all_race_ids.extend([(rid, is_nar) for rid in race_ids])
     finally:
-        if driver:
-            driver.quit()
+        scraper.cleanup_chrome_driver(driver)
 
     unique_race_ids = sorted(list(set(all_race_ids)))
     if not unique_race_ids:
@@ -229,7 +228,7 @@ def main():
                         scraper.get_race_list_html(target_date_results.strftime('%Y%m%d'), is_nar=False, driver=driver, force_download=True)
                         scraper.get_race_list_html(target_date_results.strftime('%Y%m%d'), is_nar=True, driver=driver, force_download=True)
                     finally:
-                        if driver: driver.quit()
+                        scraper.cleanup_chrome_driver(driver)
                         _force_cleanup_processes()
                     
                     update_race_results(db, target_date_results)
@@ -245,7 +244,7 @@ def main():
                         scraper.get_race_list_html(target_date_predictions.strftime('%Y%m%d'), is_nar=False, driver=driver, force_download=True)
                         scraper.get_race_list_html(target_date_predictions.strftime('%Y%m%d'), is_nar=True, driver=driver, force_download=True)
                     finally:
-                        if driver: driver.quit()
+                        scraper.cleanup_chrome_driver(driver)
                         _force_cleanup_processes()
                     
                     insert_new_predictions(db, target_date_predictions)

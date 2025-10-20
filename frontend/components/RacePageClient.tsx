@@ -36,7 +36,8 @@ const DateNavigator = ({
         <div className="flex items-center justify-center gap-1 sm:gap-2">
             <button
                 onClick={(e) => handleDateShift(e, -1)}
-                className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
+                className="bg-white border border-gray-300 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm sm:text-base font-semibold whitespace-nowrap shrink-0 min-h-10"
+                aria-label="前日へ移動"
             >
                 ‹ 前日
             </button>
@@ -44,11 +45,13 @@ const DateNavigator = ({
                 type="date"
                 value={currentDate}
                 onChange={handleDateInputChange}
-                className="border-gray-300 p-1.5 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-xs sm:text-sm shrink-0"
+                className="border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-sm sm:text-base shrink-0 min-h-10"
+                aria-label="日付を選択"
             />
             <button
                 onClick={(e) => handleDateShift(e, 1)}
-                className="bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0"
+                className="bg-white border border-gray-300 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm sm:text-base font-semibold whitespace-nowrap shrink-0 min-h-10"
+                aria-label="翌日へ移動"
             >
                 翌日 ›
             </button>
@@ -160,9 +163,14 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
         }
         if (error || !predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
             return (
-                <div className="text-center p-8 bg-white rounded-lg border shadow-sm">
-                    <h2 className="text-xl font-bold text-gray-700 mb-2">{formatDate(currentDate)}のレースデータはありません</h2>
-                    <p className="text-gray-500 mb-6">
+                <div className="text-center p-8 bg-red-50 rounded-lg border-2 border-red-200 shadow-sm">
+                    <div className="flex justify-center mb-4">
+                        <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-xl font-bold text-red-700 mb-2">{formatDate(currentDate)}のレースデータはありません</h2>
+                    <p className="text-gray-600 mb-6">
                         指定された日付はレースが開催されないか、まだデータが登録されていません。<br />
                         他の日付のレース予測をお探しください。
                     </p>
@@ -172,8 +180,8 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                     >
                         本日のレース予測を見る
                     </Link>
-                    <div className="mt-8 pt-6 border-t text-left max-w-2xl mx-auto">
-                        <h3 className="font-bold text-gray-700 mb-3">競馬開催スケジュール</h3>
+                    <div className="mt-8 pt-6 border-t border-red-200 text-left max-w-2xl mx-auto">
+                        <h3 className="font-bold text-gray-700 mb-3">ℹ️ 競馬開催スケジュール</h3>
                         <div className="space-y-2 text-sm text-gray-600">
                             <p>• 中央競馬: 主に土日に開催されます。</p>
                             <p>• 地方競馬: 各競馬場により開催日が異なります。</p>

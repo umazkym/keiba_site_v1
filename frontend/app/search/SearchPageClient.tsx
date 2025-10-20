@@ -118,11 +118,11 @@ export default function SearchPageClient() {
                             name="q"
                             defaultValue={query}
                             placeholder="キーワードを入力してください..."
-                            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                         <button
                             type="submit"
-                            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                            className="px-6 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark transition-colors"
                         >
                             検索
                         </button>
@@ -165,7 +165,7 @@ export default function SearchPageClient() {
                             <Link
                                 key={index}
                                 href={result.url}
-                                className="block p-4 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-400 transition-all"
+                                className="block p-4 border border-gray-200 rounded-lg hover:shadow-lg hover:border-primary transition-all"
                             >
                                 <div className="flex items-start gap-3">
                                     <div className="pt-1">
@@ -174,7 +174,7 @@ export default function SearchPageClient() {
                                         </span>
                                     </div>
                                     <div className="flex-1">
-                                        <h2 className="text-lg font-semibold text-blue-600 hover:underline mb-2">
+                                        <h2 className="text-lg font-semibold text-primary hover:underline mb-2">
                                             {result.title}
                                         </h2>
                                         <p className="text-gray-600 line-clamp-2 text-sm">
@@ -192,7 +192,7 @@ export default function SearchPageClient() {
 
                 {/* 初期表示（検索がまだ実行されていない） */}
                 {!searchPerformed && !query && (
-                    <div className="bg-blue-50 rounded-lg p-8 text-center border-2 border-blue-200">
+                    <div className="bg-primary/5 rounded-lg p-8 text-center border-2 border-primary/20">
                         <p className="text-gray-700 mb-4">
                             キーワードを入力して、サイト内の記事やページを検索できます。
                         </p>

@@ -5,7 +5,6 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { GlobalAdManager } from "@/components/GlobalAdManager";
-import Script from "next/script";
 import { OrganizationSchema, WebsiteSchema, SoftwareApplicationSchema } from "@/components/StructuredData";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -67,13 +66,22 @@ export default function RootLayout({
             <head>
                 {/* ★★★ 手動でメタタグを追加（最優先） ★★★ */}
                 <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
-                
-                {/* Google AdSense審査用コード */}
-                <Script
+
+                {/* Google AdSenseスクリプト - dangerouslySetInnerHTMLで直接挿入 */}
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            (adsbygoogle = window.adsbygoogle || []).push({
+                                google_ad_client: "ca-pub-4411270831448240",
+                                enable_page_level_ads: true
+                            });
+                        `
+                    }}
+                />
+                <script
                     async
-                    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"
+                    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"
                     crossOrigin="anonymous"
-                    strategy="afterInteractive"
                 />
                 <GlobalAdManager />
             </head>

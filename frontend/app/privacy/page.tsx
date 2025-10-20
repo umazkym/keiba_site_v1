@@ -119,49 +119,42 @@ export default function PrivacyPolicyPage() {
     return (
         <div className="container py-8">
             <div className="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md border">
-                {/* ▼▼▼▼▼【ここから修正】定義したデータを元に描画 ▼▼▼▼▼ */}
-                <h1 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-4">
-                    {privacyPolicyContent.title}
-                </h1>
-                
+                {/* ▼▼▼▼▼【ここから修正】定義したデータを元に描画（JSXの改行を削除） ▼▼▼▼▼ */}
+                <h1 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-4">{privacyPolicyContent.title}</h1>
                 <div className="space-y-8 text-gray-700 leading-relaxed">
                     <p className="text-sm text-gray-500">{privacyPolicyContent.lastUpdated}</p>
                     <p>{privacyPolicyContent.introduction}</p>
-
-                    {privacyPolicyContent.sections.map((section) => (
-                        <section key={section.title}>
+                    {privacyPolicyContent.sections.map((section, index) => (
+                        <section key={index}>
                             <h2 className="text-2xl font-bold text-gray-800 mt-6 mb-3">{section.title}</h2>
                             {typeof section.content === 'string' && <p>{section.content}</p>}
-
-                            {section.subsections?.map((subsection) => (
-                                <div key={subsection.title}>
+                            {section.subsections?.map((subsection, subIndex) => (
+                                <div key={subIndex}>
                                     <h3 className="text-xl font-semibold text-gray-700 mt-4 mb-2">{subsection.title}</h3>
                                     {subsection.intro && <p>{subsection.intro}</p>}
                                     {Array.isArray(subsection.content) ? (
-                                        subsection.content.map((p, index) => <p key={index} className="mt-2" dangerouslySetInnerHTML={{ __html: p }} />)
+                                        subsection.content.map((p, pIndex) => <p key={pIndex} className="mt-2" dangerouslySetInnerHTML={{ __html: p }} />)
                                     ) : (
                                         subsection.items && <ul className="list-disc list-inside space-y-2 mt-2">
-                                            {subsection.items.map((item) => <li key={item}>{item}</li>)}
+                                            {subsection.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
                                         </ul>
                                     )}
                                 </div>
                             ))}
-
                             {section.items && (section.isOrdered ? (
                                 <ol className="list-decimal list-inside space-y-2 mt-2">
-                                    {section.items.map((item) => <li key={item}>{item}</li>)}
+                                    {section.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
                                 </ol>
                             ) : (
                                 <ul className="list-disc list-inside space-y-2 mt-2">
-                                    {section.items.map((item) => <li key={item}>{item}</li>)}
+                                    {section.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
                                 </ul>
                             ))}
-
                             {section.contactInfo && (
                                 <div className="mt-2 space-y-1">
-                                    <p><strong>運営者：</strong>{section.contactInfo.operator}</p>
-                                    <p><strong>サイト名：</strong>{section.contactInfo.siteName}</p>
-                                    <p><strong>お問い合わせフォーム：</strong><span dangerouslySetInnerHTML={{ __html: section.contactInfo.formLink }} /></p>
+                                    <p><strong>{'運営者：'}</strong>{section.contactInfo.operator}</p>
+                                    <p><strong>{'サイト名：'}</strong>{section.contactInfo.siteName}</p>
+                                    <p><strong>{'お問い合わせフォーム：'}</strong><span dangerouslySetInnerHTML={{ __html: section.contactInfo.formLink }} /></p>
                                 </div>
                             )}
                         </section>

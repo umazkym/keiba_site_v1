@@ -18,6 +18,10 @@ export const Footer = () => {
                     <Link href="/privacy" className="text-sm text-muted hover:text-primary hover:underline">
                         プライバシーポリシー
                     </Link>
+                    <span className="hidden sm:block text-gray-400">|</span>
+                    <Link href="/terms" className="text-sm text-muted hover:text-primary hover:underline">
+                        利用規約
+                    </Link>
                     {/* ▼▼▼▼▼ ここから追加 ▼▼▼▼▼ */}
                     <span className="hidden sm:block text-gray-400">|</span>
                     <Link

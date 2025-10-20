@@ -8,6 +8,9 @@ import { getLatestArticles, getUniqueCategories } from '../lib/articles';
 import { SparklesIcon, UsersIcon, FlagIcon, ChartBarIcon } from '@/components/icons';
 import type { Metadata } from 'next';
 
+// ビルド時のAPI呼び出しを避けるため、動的レンダリングを強制
+export const dynamic = 'force-dynamic';
+
 // SEO metadata
 export const metadata: Metadata = {
     title: "UMA-FREE | 登録不要・完全無料のAI競馬予測サイト",

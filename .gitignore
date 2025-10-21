@@ -68,3 +68,4 @@ yarn-error.log*
 /analysis_results/
 
 /.claude
+/backend/data

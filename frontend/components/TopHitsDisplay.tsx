@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getTopPayoutHits } from '@/lib/api';
 import { TopPayoutHit } from '@/lib/types';
-import { TrophyIcon } from './icons';
+import { TrophyIcon } from './Icons';
 import { Adsense } from './Adsense';
 
 const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {

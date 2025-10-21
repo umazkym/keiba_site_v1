@@ -15,7 +15,7 @@ category: "コース分析"
 
 まず注目すべきは枠番による差です。実際の数字を見てください。
 
-![中山ダート1200m 枠番別成績](/images/articles/course_中山_ダ1200m_course_waku_rate.png)
+![中山ダート1200m 枠番別成績](/images/articles/course_nakayama_dirt_1200m_course_waku_rate.png)
 
 **8枠の複勝率28.6%に対し、2枠はわずか21.0%**。この7.6ポイントの差は、単なる誤差ではありません。100レースあれば7〜8回も結果が変わる計算になります。
 
@@ -29,7 +29,7 @@ category: "コース分析"
 
 次に脚質別のデータです。
 
-![中山ダート1200m 脚質別成績](/images/articles/course_中山_ダ1200m_course_leg_type_rate.png)
+![中山ダート1200m 脚質別成績](/images/articles/course_nakayama_dirt_1200m_waku_rate.png)
 
 - 逃げ：勝率10.2%、複勝率26.8%
 - 先行：勝率8.1%、複勝率25.3%

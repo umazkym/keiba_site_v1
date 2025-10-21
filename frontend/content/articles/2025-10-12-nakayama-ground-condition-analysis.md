@@ -19,7 +19,7 @@ category: "コース分析"
 
 まず、馬場状態別の全体成績を見ていきましょう。
 
-![中山競馬場 馬場状態別成績](/images/articles/ground-analysis_中山_20241001-20250930_ground_condition_summary.png)
+![中山競馬場 馬場状態別成績](/images/articles/ground-analysis_nakayama_20241001-20250930_ground_condition_summary.png)
 
 このグラフが示すデータは、一見すると意外なものです。
 
@@ -61,7 +61,7 @@ category: "コース分析"
 
 次に、コース種別（芝・ダート）と馬場状態のクロス分析を見てみましょう。
 
-![中山競馬場 馬場状態×コース種別 平均着順](/images/articles/ground-analysis_中山_20241001-20250930_ground_course_heatmap.png)
+![中山競馬場 馬場状態×コース種別 平均着順](/images/articles/ground-analysis_nakayama_20241001-20250930_ground_course_heatmap.png)
 
 このヒートマップは、馬場状態とコース種別の組み合わせで、平均着順がどう変わるかを示しています。着順は数字が小さいほど良いため、色が濃い（緑色）ほど好成績を意味します。
 

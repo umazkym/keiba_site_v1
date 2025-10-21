@@ -23,7 +23,7 @@ category: "コース分析"
 
 まず、多くのファンが注目する枠番別の成績を見ていきましょう。
 
-![小倉芝1200m 枠番別複勝率](/images/articles/course_小倉_芝1200m_course_waku_rate.png)
+![小倉芝1200m 枠番別複勝率](/images/articles/course_kokura_turf_1200m_course_waku_rate.png)
 
 このグラフが示すデータは、小倉1200mの枠順特性を明確に物語っています。
 
@@ -63,7 +63,7 @@ category: "コース分析"
 
 次に、このコースで求められる脚質を分析します。
 
-![小倉芝1200m 脚質別勝率](/images/articles/course_小倉_芝1200m_course_leg_type_pie.png)
+![小倉芝1200m 脚質別勝率](/images/articles/course_kokura_turf_1200m_course_leg_type_pie.png)
 
 データが示す結果は、多くの競馬ファンの予想を裏切るものでした。
 

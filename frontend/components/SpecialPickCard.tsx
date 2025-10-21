@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getSpecialPick } from '@/lib/api';
 import { SpecialPick } from "@/lib/types";
-import { SparklesIcon } from '@/components/icons';
+import { SparklesIcon } from '@/components/Icons';
 import { formatDate } from '@/lib/utils';
 
 // スケルトンコンポーネント（変更なし）

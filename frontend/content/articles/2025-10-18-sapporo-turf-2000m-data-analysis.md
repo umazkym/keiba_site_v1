@@ -23,7 +23,7 @@ category: "コース分析"
 
 まず、驚愕の枠番別成績をご覧ください。
 
-![札幌芝2000m 枠番別複勝率](/images/articles/course_札幌_芝2000m_course_waku_rate.png)
+![札幌芝2000m 枠番別複勝率](/images/articles/course_sapporo_turf_2000m_course_waku_rate.png)
 
 このグラフが示すデータは、競馬の常識を根底から覆すものです。
 
@@ -73,7 +73,7 @@ category: "コース分析"
 
 次に、このコースで求められる脚質を分析します。
 
-![札幌芝2000m 脚質別勝率](/images/articles/course_札幌_芝2000m_course_leg_type_pie.png)
+![札幌芝2000m 脚質別勝率](/images/articles/course_sapporo_turf_2000m_course_leg_type_pie.png)
 
 データが示す結果は明確です。**逃げタイプの馬が勝率12.5%と最も高く**、このコースでは前に行く競馬が絶対的に有利であることが証明されました。
 

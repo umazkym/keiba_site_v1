@@ -39,13 +39,13 @@ category: "データ分析"
 
 次に東京競馬場を例に、馬場状態別のデータを見てみます。
 
-![東京競馬場 - 馬場状態別成績](/images/articles/ground-analysis_東京_20241001-20250930_ground_condition_summary.png)
+![東京競馬場 - 馬場状態別成績](/images/articles/ground-analysis_tokyo_20241001-20250930_ground_condition_summary.png)
 
 **「良」馬場の複勝率21.7%に対し、「重」馬場は20.2%**。全体では良馬場の方が堅い決着になっています。
 
 ところが人気馬（1〜3番人気）に絞ると、様相が変わります。重馬場での勝率は25.2%と、良馬場を上回る数値に。道悪を苦にしない実力馬が、その適性を存分に発揮していると推測できます。
 
-![東京競馬場 - 馬場状態×コース種別 平均着順](/images/articles/ground-analysis_東京_20241001-20250930_ground_course_heatmap.png)
+![東京競馬場 - 馬場状態×コース種別 平均着順](/images/articles/ground-analysis_tokyo_20241001-20250930_ground_course_heatmap.png)
 
 このヒートマップを見ると、東京芝コースでは馬場状態による平均着順の変動が顕著です。良馬場の7.44に対し、不良馬場は7.90。道悪になるほど、人気薄の馬にもチャンスが巡ってくることがデータで裏付けられています。
 

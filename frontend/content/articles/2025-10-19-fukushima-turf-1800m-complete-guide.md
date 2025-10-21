@@ -23,7 +23,7 @@ category: "コース分析"
 
 まず、多くのファンが見落としている枠番別の成績を見ていきましょう。
 
-![福島芝1800m 枠番別複勝率](/images/articles/course_福島_芝1800m_course_waku_rate.png)
+![福島芝1800m 枠番別複勝率](/images/articles/course_fukushima_turf_1800m_course_waku_rate.png)
 
 このグラフが示すデータは、福島芝1800mの枠順特性を明確に物語っています。
 
@@ -83,7 +83,7 @@ category: "コース分析"
 
 次に、このコースで求められる脚質を分析します。
 
-![福島芝1800m 脚質別勝率](/images/articles/course_福島_芝1800m_course_leg_type_pie.png)
+![福島芝1800m 脚質別勝率](/images/articles/course_fukushima_turf_1800m_course_leg_type_pie.png)
 
 データが示す事実は極めて明確です。**逃げタイプの馬が勝率12.4%と圧倒的に高く**、逆に**追込馬の勝率は0%**という衝撃的な結果が出ました。
 

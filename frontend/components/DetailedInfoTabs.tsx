@@ -5,7 +5,7 @@ import { RacePrediction } from '@/lib/types';
 import { StartPositionChart } from './StartPositionChart';
 import { MatchupTable } from './MatchupTable';
 import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
-import { FlagIcon, UsersIcon, ChartBarIcon } from './icons';
+import { FlagIcon, UsersIcon, ChartBarIcon } from './Icons';
 
 export const DetailedInfoTabs = ({ race }: { race: RacePrediction }) => {
     return (

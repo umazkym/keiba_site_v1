@@ -3,14 +3,14 @@ import { useState, useCallback, useMemo, memo, useEffect } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
-import { PredictionTable } from '@/components/PredictuonTable';
+import { PredictionTable } from '@/components/PredictionTable';
 import { RaceAnalysis } from '@/components/RaceAnalysis';
 import { VenueRaces, RaceDayPrediction } from '@/lib/types';
 import { RaceSelector } from './RaceSelector';
 import { StartPositionChart } from './StartPositionChart';
 import { MatchupTable } from './MatchupTable';
 import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
-import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './icons';
+import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './Icons';
 import { Adsense } from './Adsense';
 import { RelatedRaces } from './RelatedRaces';
 

@@ -93,10 +93,25 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
     try:
         # --- [最終修正 Ver.4] JRAとNAR両対応の最も堅牢な情報取得ロジック ---
 
-        # 1. レース名: h1 タグを最優先で探す
-        race_name_elm = soup.find("h1")
-        if race_name_elm:
-            race_name_text = race_name_elm.get_text(strip=True)
+        # 1. レース名: 複数の方法で取得を試みる
+        race_name_text = None
+
+        # 方法1: h1 タグから取得を試みる
+        h1_elm = soup.find("h1")
+        if h1_elm:
+            text = h1_elm.get_text(strip=True)
+            if text and len(text) > 2:  # h1内のテキストが意味のある長さなら採用
+                race_name_text = text
+
+        # 方法2: h1が空の場合、RaceNameクラスの div から取得
+        if not race_name_text:
+            race_name_elm = soup.find("div", class_="RaceName")
+            if race_name_elm:
+                text = race_name_elm.get_text(strip=True)
+                if text:
+                    race_name_text = text
+
+        if race_name_text:
             race_info_dict['race_name'] = _normalize_race_name(race_name_text)
 
         # 2. 日付: ページ全体から "YYYY年MM月DD日" の形式を正規表現で探す (最も確実)

@@ -19,7 +19,7 @@ category: "コース分析"
 
 まず、多くのファンが注目する枠番別の成績を見ていきましょう。
 
-![阪神芝1600m 枠番別複勝率](/images/articles/course_hanshin_turf_1600m_course_waku_rate.png)
+![阪神芝1600m 枠番別複勝率](/images/articles/course_hanshin_turf_1600m_waku_rate.png)
 
 このグラフが示す通り、6枠の複勝率は32.4%と圧倒的な数値を記録しており、約3回に1回は馬券に絡む計算になります。阪神マイルで「6枠有利」と言われる定説は、まさにデータで裏付けられた事実だったのです。
 
@@ -51,7 +51,7 @@ category: "コース分析"
 
 次に、このコースで求められる脚質を分析します。
 
-![阪神芝1600m 脚質別勝率](/images/articles/course_hanshin_turf_1600m_course_leg_type_pie.png)
+![阪神芝1600m 脚質別勝率](/images/articles/course_hanshin_turf_1600m_leg_type_pie.png)
 
 データが示す事実は明確です。**先行タイプの馬が勝率8.9%と最も高く**、このコースでは前に行く競馬が有利であることが証明されました。
 

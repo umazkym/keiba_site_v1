@@ -23,7 +23,7 @@ category: "コース分析"
 
 まず、多くのファンが注目する枠番別の成績を見ていきましょう。
 
-![京都芝1800m 枠番別複勝率](/images/articles/course_kyoto_turf_1800m_course_waku_rate.png)
+![京都芝1800m 枠番別複勝率](/images/articles/course_kyoto_turf_1800m_waku_rate.png)
 
 このグラフが示すデータは、多くの競馬ファンの予想を裏切るものです。
 
@@ -69,7 +69,7 @@ category: "コース分析"
 
 次に、このコースで求められる脚質を分析します。
 
-![京都芝1800m 脚質別勝率](/images/articles/course_kyoto_turf_1800m_course_leg_type_pie.png)
+![京都芝1800m 脚質別勝率](/images/articles/course_kyoto_turf_1800m_leg_type_pie.png)
 
 データが示す事実は興味深いものです。**先行タイプの馬が勝率11.1%と最も高い**一方で、**逃げ馬の複勝率が31.25%と非常に優秀**な成績を残しています。
 

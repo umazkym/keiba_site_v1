@@ -17,7 +17,7 @@ category: "コース分析"
 
 枠番別の成績から見ていきましょう。
 
-![東京芝2400mの枠番別複勝率グラフ](/images/articles/course_tokyo_turf_2400m_course_waku_rate.png)
+![東京芝2400mの枠番別複勝率グラフ](/images/articles/course_tokyo_turf_2400m_waku_rate.png)
 
 **8枠の複勝率32.6%、2枠は22.9%**。約10ポイントの差がついています。
 
@@ -29,7 +29,7 @@ category: "コース分析"
 
 次に脚質別の成績です。
 
-![東京芝2400mの脚質別勝率グラフ](/images/articles/course_tokyo_turf_2400m_course_leg_type_pie.png)
+![東京芝2400mの脚質別勝率グラフ](/images/articles/course_tokyo_turf_2400m_leg_type_pie.png)
 
 - 追込：勝率10.4%、複勝率29.9%
 - 差し：勝率10.0%、複勝率27.5%

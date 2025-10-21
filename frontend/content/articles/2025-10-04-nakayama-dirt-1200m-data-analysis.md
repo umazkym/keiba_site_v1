@@ -29,7 +29,7 @@ category: "コース分析"
 
 次に脚質別のデータです。
 
-![中山ダート1200m 脚質別成績](/images/articles/course_nakayama_dirt_1200m_waku_rate.png)
+![中山ダート1200m 脚質別成績](/images/articles/course_nakayama_dirt_1200m_leg_type_rate.png)
 
 - 逃げ：勝率10.2%、複勝率26.8%
 - 先行：勝率8.1%、複勝率25.3%

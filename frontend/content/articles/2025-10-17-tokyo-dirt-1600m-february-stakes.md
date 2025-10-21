@@ -23,7 +23,7 @@ category: "コース分析"
 
 まず、多くのファンが見落としている枠番別の成績を見ていきましょう。
 
-![東京ダート1600m 枠番別複勝率](/images/articles/course_tokyo_dirt_1600m_course_waku_rate.png)
+![東京ダート1600m 枠番別複勝率](/images/articles/course_tokyo_dirt_1600m_waku_rate.png)
 
 このグラフが示すデータは、競馬の常識を覆すものです。
 
@@ -74,7 +74,7 @@ category: "コース分析"
 
 次に、このコースで求められる脚質を分析します。
 
-![東京ダート1600m 脚質別勝率](/images/articles/course_tokyo_dirt_1600m_course_leg_type_pie.png)
+![東京ダート1600m 脚質別勝率](/images/articles/course_tokyo_dirt_1600m_leg_type_pie.png)
 
 データが示す事実は極めて明確です。**逃げタイプの馬が勝率12.68%と圧倒的に高く**、このコースでは前に行く競馬が絶対的に有利であることが証明されました。
 

@@ -5,7 +5,7 @@ import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
 import { getSpecialPick } from '@/lib/api';
 import { getLatestArticles, getUniqueCategories } from '../lib/articles';
-import { SparklesIcon, UsersIcon, FlagIcon, ChartBarIcon } from '@/components/icons';
+import { SparklesIcon, UsersIcon, FlagIcon, ChartBarIcon } from '@/components/Icons';
 import type { Metadata } from 'next';
 
 // ビルド時のAPI呼び出しを避けるため、動的レンダリングを強制

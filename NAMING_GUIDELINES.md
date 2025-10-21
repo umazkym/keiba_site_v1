@@ -162,11 +162,9 @@ CACHE_TTL = 3600
 ### 画像ファイル
 
 ```
-命名規則: [category]-[identifier]-[type]-[spec].png
+命名規則: category-location-surface-distance-type.png
 文字   : 英字小文字 + ハイフン区切り
 エンコーディング: UTF-8（日本語は ALT テキストで提供）
-
-形式: category-location-distance-analysis-type.png
 
 例:
 ✓ course_nakayama_dirt_1200m_waku_rate.png
@@ -176,7 +174,7 @@ CACHE_TTL = 3600
 ✓ grade-analysis_20241001-20250930_g1_radar.png
 
 構成:
-course-{venue}-{surface}-{distance}-{metric}.png
+course_{venue}_{surface}_{distance}_{metric}.png
   venue: nakayama, kyoto, tokyo, hanshin, sapporo, kokura, niigata, fukushima
   surface: turf, dirt
   distance: 1000m, 1200m, 1600m, 1800m, 2000m, 2400m など
@@ -271,46 +269,10 @@ course-{venue}-{surface}-{distance}-{metric}.png
    - 変更前: `icons.tsx`（小文字、命名規則違反）
    - 変更後: `Icons.tsx`（PascalCase）
    - 参照元: 5ファイルを更新
-     - DetailedInfoTabs.tsx
-     - Header.tsx
-     - RaceTabs.tsx
-     - SpecialPickCard.tsx
-     - TopHitsDisplay.tsx
 
 3. **画像ファイルの日本語リネーム**
    - リネーム対象: 24ファイル
-   - 変更パターン:
-     ```
-     中山 → nakayama
-     京都 → kyoto
-     阪神 → hanshin
-     札幌 → sapporo
-     小倉 → kokura
-     新潟 → niigata
-     東京 → tokyo
-     福島 → fukushima
-     芝 → turf
-     ダ → dirt
-     ```
-   - リネーム対象ファイル例:
-     - `course_中山_ダ1200m_course_waku_rate.png` → `course_nakayama_dirt_1200m_course_waku_rate.png`
-     - `ground-analysis_東京_20241001-20250930_ground_condition_summary.png` → `ground-analysis_tokyo_20241001-20250930_ground_condition_summary.png`
-
-4. **マークダウン記事の画像パス更新**
-   - 更新対象: 11ファイル
-   - 旧パス → 新パス置換を実施
-
----
-
-## 補足
-
-### Google AdSense 対応
-
-すべての命名規則は Google AdSense の要件を満たすよう設計されています：
-
-- ✓ 言語混在がない（SEO改善）
-- ✓ ファイルシステム互換性（URLエンコーディング問題回避）
-- ✓ メンテナンス性向上（コード検索・自動化ツール対応）
+   - Google AdSense 対応強化
 
 ---
 

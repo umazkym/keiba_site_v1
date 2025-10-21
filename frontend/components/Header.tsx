@@ -135,6 +135,13 @@ export const Header = () => {
                                 このサイトについて
                             </Link>
                             <Link
+                                href="/advertising"
+                                className="block py-2 text-sm text-gray-600 hover:text-primary transition-colors duration-200"
+                                onClick={closeMenu}
+                            >
+                                広告について
+                            </Link>
+                            <Link
                                 href="/contact"
                                 className="block py-2 text-sm text-gray-600 hover:text-primary transition-colors duration-200"
                                 onClick={closeMenu}

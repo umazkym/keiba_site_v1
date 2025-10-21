@@ -11,6 +11,10 @@ export const Footer = () => {
                         このサイトについて
                     </Link>
                     <span className="hidden sm:block text-gray-400">|</span>
+                    <Link href="/advertising" className="text-sm text-muted hover:text-primary hover:underline">
+                        広告について
+                    </Link>
+                    <span className="hidden sm:block text-gray-400">|</span>
                     <Link href="/contact" className="text-sm text-muted hover:text-primary hover:underline">
                         お問い合わせ
                     </Link>

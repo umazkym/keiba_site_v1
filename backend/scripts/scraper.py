@@ -15,6 +15,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException, WebDriverException
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 
 try:
     from webdriver_manager.chrome import ChromeDriverManager
@@ -32,7 +34,9 @@ MIN_SLEEP_SECONDS = 2.5
 MAX_SLEEP_SECONDS = 5.0
 MAX_RETRIES = 3
 RETRY_DELAY_SECONDS = 15
-SELENIUM_PAGE_LOAD_TIMEOUT = 90
+SELENIUM_PAGE_LOAD_TIMEOUT = 120
+SELENIUM_ELEMENT_WAIT_TIMEOUT = 30
+SELENIUM_CONNECTION_TIMEOUT = 180
 
 BASE_CENTRAL_URL = "https://race.netkeiba.com"
 BASE_NAR_URL = "https://nar.netkeiba.com"
@@ -169,15 +173,19 @@ def get_html(
 
                 try:
                     selenium_driver.set_page_load_timeout(SELENIUM_PAGE_LOAD_TIMEOUT)
+                    selenium_driver.set_script_timeout(SELENIUM_CONNECTION_TIMEOUT)
                     selenium_driver.get(url)
                     if wait_for_class:
                         try:
-                            WebDriverWait(selenium_driver, 10).until(
+                            WebDriverWait(selenium_driver, SELENIUM_ELEMENT_WAIT_TIMEOUT).until(
                                 EC.presence_of_element_located((By.CLASS_NAME, wait_for_class))
                             )
                             html_content = selenium_driver.page_source
                         except TimeoutException:
-                            return None, False
+                            print(f"[Selenium Timeout] 要素 '{wait_for_class}' が見つかりませんでした。ページソースを取得します。")
+                            html_content = selenium_driver.page_source
+                            if not html_content:
+                                return None, False
                     else:
                         html_content = selenium_driver.page_source
                 finally:
@@ -195,7 +203,7 @@ def get_html(
                                 except Exception:
                                     pass
             else:
-                response = requests.get(url, headers=_get_random_headers(), timeout=20)
+                response = requests.get(url, headers=_get_random_headers(), timeout=60)
                 response.raise_for_status()
                 # ==============================================================================
                 # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
@@ -228,11 +236,17 @@ def get_html(
             print(f"[Request Error] Attempt {attempt + 1}/{MAX_RETRIES} for {url} failed: {e}")
             if attempt < MAX_RETRIES - 1:
                 time.sleep(RETRY_DELAY_SECONDS * (attempt + 1))
+        except TimeoutException as e:
+            print(f"[Selenium Timeout] Attempt {attempt + 1}/{MAX_RETRIES}: Seleniumタイムアウト {url}")
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(RETRY_DELAY_SECONDS * (attempt + 1))
+            else:
+                print(f"[Selenium Timeout] すべてのリトライが失敗しました: {url}")
         except (requests.RequestException, WebDriverException) as e:
             print(f"[Request Error] Attempt {attempt + 1}/{MAX_RETRIES} for {url} failed: {e}")
             if attempt < MAX_RETRIES - 1:
                 time.sleep(RETRY_DELAY_SECONDS * (attempt + 1))
-    
+
     print(f"[Request Failed] Could not retrieve URL after {MAX_RETRIES} attempts: {url}")
     return None, False
 

@@ -1,45 +1,5 @@
 services:
-  # 修正: JST AM 5:00に前日の結果のみ取得するジョブ
-  - type: cron
-    name: keiba-results-updater
-    runtime: docker
-    region: oregon
-    schedule: "0 20 * * *"  # JST AM 5:00 (前日のUTC 20:00)
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: keiba_db
-          property: connectionString
-      - key: PIPELINE_MODE
-        value: RESULTS_ONLY  # 結果取得専用モード
-      - key: TZ
-        value: Asia/Tokyo
-      - key: RENDER
-        value: "true"
-
-  # 修正: JST AM 10:00に翌日の予測のみ生成するジョブ
-  - type: cron
-    name: keiba-predictions-generator
-    runtime: docker
-    region: oregon
-    schedule: "0 1 * * *"  # JST AM 10:00 (UTC 01:00)
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: keiba_db
-          property: connectionString
-      - key: PIPELINE_MODE
-        value: PREDICTIONS_ONLY # 予測生成専用モード
-      - key: TZ
-        value: Asia/Tokyo
-      - key: RENDER
-        value: "true"
-
-  # SNS投稿ジョブ①: 朝7時（本日のAI注目馬TOP3 + 複勝実績）
+  # SNS投稿ジョブ①: 朝7時（的中報告 + 本命馬成績）
   - type: cron
     name: keiba-sns-morning-post
     runtime: docker

@@ -3,6 +3,7 @@ import path from 'path';
 import matter from 'gray-matter';
 import { remark } from 'remark';
 import html from 'remark-html';
+import gfm from 'remark-gfm';
 
 const guidesDirectory = path.join(process.cwd(), 'content', 'guides');
 
@@ -68,8 +69,11 @@ export async function getGuideBySlug(slug: string): Promise<Guide> {
     const fileContents = fs.readFileSync(fullPath, 'utf8');
     const { data, content } = matter(fileContents);
 
-    // MarkdownをHTMLに変換
-    const processedContent = await remark().use(html).process(content);
+    // MarkdownをHTMLに変換（GFMサポートで表をレンダリング）
+    const processedContent = await remark()
+      .use(gfm)
+      .use(html)
+      .process(content);
     const contentHtml = processedContent.toString();
 
     return {

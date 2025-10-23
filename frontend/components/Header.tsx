@@ -62,6 +62,10 @@ export const Header = () => {
                             本日の予測
                             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
                         </Link>
+                        <Link href="/guides" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                            ガイド
+                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+                        </Link>
                         <Link href="/articles" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
                             記事
                             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
@@ -111,6 +115,13 @@ export const Header = () => {
                             onClick={closeMenu}
                         >
                             本日の予測
+                        </Link>
+                        <Link
+                            href="/guides"
+                            className="block px-4 py-2 text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors duration-200"
+                            onClick={closeMenu}
+                        >
+                            ガイド
                         </Link>
                         <Link
                             href="/articles"

@@ -35,7 +35,7 @@ const aboutContent = {
             { label: 'サイト名', value: 'UMA-FREE' },
             { label: '運営者', value: 'おとうふや' },
             { label: 'サービス開始日', value: '2025年9月11日' },
-            { label: 'お問い合わせ', value: '<a href="/contact" class="text-blue-600 hover:underline">お問い合わせフォーム</a>をご利用ください。' }
+            { label: 'お問い合わせ', value: '<a href="/contact" class="text-primary hover:underline">お問い合わせフォーム</a>をご利用ください。' }
         ]
     },
     dataInfo: {

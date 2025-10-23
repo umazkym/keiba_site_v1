@@ -141,6 +141,71 @@ export default async function HomePage() {
                 </div>
             </section>
 
+            {/* ガイドセクション */}
+            <section>
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center border-b-2 border-primary pb-3">
+                    競馬予想ガイド
+                </h2>
+                <p className="text-center text-gray-600 mb-8 max-w-2xl mx-auto">
+                    競馬初心者から上級者まで必読。基本用語からAI予想の仕組み、全競馬場ガイド、騎手分析まで、競馬予想に必要なすべての知識をわかりやすく解説します。
+                </p>
+
+                {/* ガイドカード */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <Link
+                        href="/guides/horseracing-basics"
+                        className="group bg-white p-4 rounded-lg border border-gray-200 shadow-md hover:shadow-lg hover:border-primary transition-all"
+                    >
+                        <h3 className="font-bold text-gray-800 mb-2 group-hover:text-primary transition-colors">
+                            競馬の基本用語集
+                        </h3>
+                        <p className="text-sm text-gray-600">馬券の種類、基本知識、ルール解説</p>
+                    </Link>
+                    <Link
+                        href="/guides/prediction-glossary"
+                        className="group bg-white p-4 rounded-lg border border-gray-200 shadow-md hover:shadow-lg hover:border-primary transition-all"
+                    >
+                        <h3 className="font-bold text-gray-800 mb-2 group-hover:text-primary transition-colors">
+                            AI予測用語集
+                        </h3>
+                        <p className="text-sm text-gray-600">機械学習、偏差値、モデル解説</p>
+                    </Link>
+                    <Link
+                        href="/guides/course-guide"
+                        className="group bg-white p-4 rounded-lg border border-gray-200 shadow-md hover:shadow-lg hover:border-primary transition-all"
+                    >
+                        <h3 className="font-bold text-gray-800 mb-2 group-hover:text-primary transition-colors">
+                            全競馬場ガイド
+                        </h3>
+                        <p className="text-sm text-gray-600">コース特性、各競馬場分析</p>
+                    </Link>
+                    <Link
+                        href="/guides/jockey-guide"
+                        className="group bg-white p-4 rounded-lg border border-gray-200 shadow-md hover:shadow-lg hover:border-primary transition-all"
+                    >
+                        <h3 className="font-bold text-gray-800 mb-2 group-hover:text-primary transition-colors">
+                            主要騎手解説
+                        </h3>
+                        <p className="text-sm text-gray-600">一流騎手の特性、成績分析</p>
+                    </Link>
+                    <Link
+                        href="/guides/odds-reading-guide"
+                        className="group bg-white p-4 rounded-lg border border-gray-200 shadow-md hover:shadow-lg hover:border-primary transition-all"
+                    >
+                        <h3 className="font-bold text-gray-800 mb-2 group-hover:text-primary transition-colors">
+                            配当の読み方
+                        </h3>
+                        <p className="text-sm text-gray-600">オッズ戦略、配当分析</p>
+                    </Link>
+                </div>
+
+                <div className="text-center mt-8">
+                    <Link href="/guides" className="bg-primary text-white font-bold py-2 px-6 rounded-lg hover:bg-primary-dark transition-colors">
+                        すべてのガイドを見る
+                    </Link>
+                </div>
+            </section>
+
             {/* 以下、特徴・使い方などは変更なし */}
             <section>
                 <h2 className="text-xl sm:text-2xl font-bold text-center text-gray-800 mb-6">

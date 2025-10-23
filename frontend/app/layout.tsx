@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
+import { Suspense } from "react";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -67,29 +69,34 @@ export default function RootLayout({
                 {/* ★★★ 手動でメタタグを追加（最優先） ★★★ */}
                 <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
 
-                {/* Google AdSenseスクリプト - dangerouslySetInnerHTMLで直接挿入 */}
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `
-                            (adsbygoogle = window.adsbygoogle || []).push({
-                                google_ad_client: "ca-pub-4411270831448240",
-                                enable_page_level_ads: true
-                            });
-                        `
-                    }}
-                />
-                <script
+                {/* Google AdSense スクリプト（Next.js Script コンポーネント使用） */}
+                <Script
                     async
                     src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"
                     crossOrigin="anonymous"
+                    strategy="afterInteractive"
                 />
-                <GlobalAdManager />
+                <Script
+                    id="google-adsense-init"
+                    strategy="afterInteractive"
+                    dangerouslySetInnerHTML={{
+                        __html: `(adsbygoogle = window.adsbygoogle || []).push({
+                            google_ad_client: "ca-pub-4411270831448240",
+                            enable_page_level_ads: true
+                        });`
+                    }}
+                />
             </head>
             <body className={`${inter.className} bg-gray-50`}>
                 {/* 構造化マークアップ：Organization, Website, SoftwareApplication */}
                 <OrganizationSchema />
                 <WebsiteSchema />
                 <SoftwareApplicationSchema />
+
+                {/* グローバル広告マネージャー（Suspense でラップして Hydration エラーを防止） */}
+                <Suspense fallback={null}>
+                    <GlobalAdManager />
+                </Suspense>
 
                 <Header />
                 <main className="container mx-auto p-4 min-h-screen">

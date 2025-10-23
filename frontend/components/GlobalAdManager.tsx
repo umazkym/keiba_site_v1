@@ -3,25 +3,31 @@ import { usePathname } from 'next/navigation';
 import { Adsense } from './Adsense';
 
 export const GlobalAdManager = () => {
-    const pathname = usePathname();
-    const adClient = "ca-pub-4411270831448240";
-    
-    const noAdPages = [
-        '/about',
-        '/contact',
-        '/privacy',
-    ];
-    
-    const shouldShowAds = !noAdPages.some(path => pathname === path);
-    
-    if (!shouldShowAds) {
+    try {
+        const pathname = usePathname();
+        const adClient = "ca-pub-4411270831448240";
+
+        const noAdPages = [
+            '/about',
+            '/contact',
+            '/privacy',
+        ];
+
+        const shouldShowAds = !noAdPages.some(path => pathname === path);
+
+        if (!shouldShowAds) {
+            return null;
+        }
+
+        return (
+            <>
+            </>
+        );
+    } catch (error) {
+        // エラー時は何も表示しない（usePathname が null コンテキストで失敗した場合）
+        console.debug('GlobalAdManager error:', error);
         return null;
     }
-    
-    return (
-        <>
-        </>
-    );
 };
 
 

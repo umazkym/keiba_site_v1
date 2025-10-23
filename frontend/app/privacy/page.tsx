@@ -105,8 +105,8 @@ const privacyPolicyContent: PrivacyPolicyContent = {
                     title: 'Google AdSense',
                     content: [
                         '当サイトは、第三者配信の広告サービス「Google AdSense」を利用しています。このような広告配信事業者は、ユーザーの興味に応じた商品やサービスの広告を表示するため、Cookieを使用して当サイトや他サイトへのアクセスに関する情報（氏名、住所、メールアドレス、電話番号は含まれません）を使用することがあります。',
-                        'このプロセスの詳細やこのような情報が広告配信事業者に使用されないようにする方法については、<a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Googleの広告ポリシー</a>をご覧ください。',
-                        '当サイトの広告配信に関する詳細情報は、<a href="/advertising" class="text-blue-600 hover:underline">広告について</a>をご覧ください。',
+                        'このプロセスの詳細やこのような情報が広告配信事業者に使用されないようにする方法については、<a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Googleの広告ポリシー</a>をご覧ください。',
+                        '当サイトの広告配信に関する詳細情報は、<a href="/advertising" class="text-primary hover:underline">広告について</a>をご覧ください。',
                     ],
                 },
             ],
@@ -118,7 +118,7 @@ const privacyPolicyContent: PrivacyPolicyContent = {
                     title: 'Google Analytics',
                     content: [
                         '当サイトでは、Googleによるアクセス解析ツール「Google Analytics」を利用しています。このGoogle Analyticsはトラフィックデータの収集のためにCookieを使用しています。このトラフィックデータは匿名で収集されており、個人を特定するものではありません。',
-                        'この機能はCookieを無効にすることで収集を拒否することが可能ですので、お使いのブラウザの設定をご確認ください。Google Analyticsの詳細については、<a href="https://marketingplatform.google.com/about/analytics/terms/jp/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Google Analytics利用規約</a>をご覧ください。',
+                        'この機能はCookieを無効にすることで収集を拒否することが可能ですので、お使いのブラウザの設定をご確認ください。Google Analyticsの詳細については、<a href="https://marketingplatform.google.com/about/analytics/terms/jp/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Google Analytics利用規約</a>をご覧ください。',
                     ],
                 },
             ],
@@ -137,7 +137,7 @@ const privacyPolicyContent: PrivacyPolicyContent = {
             contactInfo: {
                 operator: 'おとうふや',
                 siteName: 'UMA-FREE',
-                formLink: '<a href="/contact" class="text-blue-600 hover:underline">こちら</a>',
+                formLink: '<a href="/contact" class="text-primary hover:underline">こちら</a>',
             },
         },
     ],

@@ -195,7 +195,7 @@ const termsOfServiceContent: TermsOfServiceContent = {
             contactInfo: {
                 operator: 'おとうふや',
                 siteName: 'UMA-FREE',
-                formLink: '<a href="/contact" class="text-blue-600 hover:underline">こちら</a>',
+                formLink: '<a href="/contact" class="text-primary hover:underline">こちら</a>',
             },
         },
     ],

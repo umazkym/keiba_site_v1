@@ -29,7 +29,7 @@ export default function ContactPage() {
                         href={googleFormUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center text-blue-600 hover:underline border border-gray-200 hover:bg-gray-50 font-medium py-2 px-4 rounded-md transition"
+                        className="inline-flex items-center justify-center bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition shadow-md hover:shadow-lg"
                         aria-label="お問い合わせフォームを新しいタブで開く"
                     >
                         お問い合わせフォームを開く

@@ -65,8 +65,8 @@ const advertisingContent: AdvertisingContent = {
                     title: "2.3 広告のパーソナライゼーション制御",
                     content: [
                         "ユーザーは、Google広告の個人設定からGoogleが表示する広告をコントロールできます。",
-                        "詳細については、<a href=\"https://policies.google.com/technologies/ads\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-blue-600 hover:underline\">Google広告に関するポリシー</a>をご覧ください。",
-                        "また、<a href=\"https://myaccount.google.com/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-blue-600 hover:underline\">Googleアカウントの設定</a>から、広告のパーソナライゼーションを無効にすることもできます。",
+                        "詳細については、<a href=\"https://policies.google.com/technologies/ads\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-primary hover:underline\">Google広告に関するポリシー</a>をご覧ください。",
+                        "また、<a href=\"https://myaccount.google.com/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-primary hover:underline\">Googleアカウントの設定</a>から、広告のパーソナライゼーションを無効にすることもできます。",
                     ],
                 },
             ],
@@ -102,14 +102,14 @@ const advertisingContent: AdvertisingContent = {
                 {
                     title: "5.1 Google AdSenseからのオプトアウト",
                     content: [
-                        "ユーザーは、<a href=\"https://adssettings.google.com\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-blue-600 hover:underline\">Google広告設定ページ</a>を訪問することで、Google AdSenseによるパーソナライズド広告を無効にできます。",
+                        "ユーザーは、<a href=\"https://adssettings.google.com\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-primary hover:underline\">Google広告設定ページ</a>を訪問することで、Google AdSenseによるパーソナライズド広告を無効にできます。",
                         "このページでは、ユーザーが見る広告について、Googleが推測している興味・関心を確認・管理できます。",
                     ],
                 },
                 {
                     title: "5.2 Network Advertising Initiative（NAI）",
                     content: [
-                        "<a href=\"https://optout.networkadvertising.org/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-blue-600 hover:underline\">NAI Opt-out Tool</a>を使用することで、複数の広告配信ネットワークのパーソナライズド広告を一括で無効にできます。",
+                        "<a href=\"https://optout.networkadvertising.org/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-primary hover:underline\">NAI Opt-out Tool</a>を使用することで、複数の広告配信ネットワークのパーソナライズド広告を一括で無効にできます。",
                     ],
                 },
                 {
@@ -131,7 +131,7 @@ const advertisingContent: AdvertisingContent = {
         },
         {
             title: "8. 広告に関する苦情とお問い合わせ",
-            content: "広告に関するご質問やご不明な点がある場合は、当サイトの<a href=\"/contact\" class=\"text-blue-600 hover:underline\">お問い合わせフォーム</a>までお気軽にご連絡ください。",
+            content: "広告に関するご質問やご不明な点がある場合は、当サイトの<a href=\"/contact\" class=\"text-primary hover:underline\">お問い合わせフォーム</a>までお気軽にご連絡ください。",
         },
         {
             title: "9. 本ポリシーの変更",
@@ -139,7 +139,7 @@ const advertisingContent: AdvertisingContent = {
         },
         {
             title: "10. プライバシーポリシーとの関連性",
-            content: "当サイトの広告配信に関する詳細情報は、当サイトの<a href=\"/privacy\" class=\"text-blue-600 hover:underline\">プライバシーポリシー</a>にも記載されています。個人情報の取り扱いについては、プライバシーポリシーをご覧ください。",
+            content: "当サイトの広告配信に関する詳細情報は、当サイトの<a href=\"/privacy\" class=\"text-primary hover:underline\">プライバシーポリシー</a>にも記載されています。個人情報の取り扱いについては、プライバシーポリシーをご覧ください。",
         },
     ],
 };

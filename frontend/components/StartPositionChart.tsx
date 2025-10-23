@@ -17,7 +17,7 @@ const getWakuColor = (waku: number | null): string => {
     }
 };
 
-const HorseMarker = ({ horse, position }: { horse: HorsePrediction, position: number }) => (
+const HorseMarker = ({ horse, position, isMobile, markerSpacing }: { horse: HorsePrediction, position: number, isMobile: boolean, markerSpacing: number }) => (
     <Tippy content={
         <div className="text-sm">
             <div className="font-bold">{horse.horse_name}</div>
@@ -27,17 +27,17 @@ const HorseMarker = ({ horse, position }: { horse: HorsePrediction, position: nu
         <div
             className="absolute transition-all duration-500 ease-out flex flex-col items-center cursor-pointer hover:z-50 hover:transform hover:scale-110"
             style={{
-                top: `${20 + (horse.horse_number - 1) * 20}px`,
+                top: `${20 + (horse.horse_number - 1) * markerSpacing}px`,
                 left: `${position}%`,
                 transform: 'translate(-50%, -50%)',
                 zIndex: 10 + horse.horse_number,
             }}
         >
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shadow-md border-2 ${getWakuColor(horse.waku_number)}`}>
+            <div className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} rounded-full flex items-center justify-center font-bold ${isMobile ? 'text-[10px]' : 'text-xs'} shadow-md border-2 ${getWakuColor(horse.waku_number)}`}>
                 {horse.horse_number}
             </div>
-            <span className="text-[11px] font-bold text-gray-700 whitespace-nowrap mt-px bg-white/80 px-1 rounded" style={{ lineHeight: 1 }}>
-                {horse.horse_name.substring(0, 4)}
+            <span className={`font-bold text-gray-700 whitespace-nowrap ${isMobile ? 'text-[9px] mt-0.5 px-0.5 py-0.5 rounded' : 'text-[11px] mt-px px-1 rounded'}`} style={{ lineHeight: 1 }}>
+                {horse.horse_name.substring(0, 3)}
             </span>
         </div>
     </Tippy>
@@ -46,27 +46,31 @@ const HorseMarker = ({ horse, position }: { horse: HorsePrediction, position: nu
 export const StartPositionChart = ({ predictions }: { predictions: HorsePrediction[] }) => {
     if (!predictions || predictions.length === 0 || predictions.every(p => p.start_1c_indicator === null)) {
         return (
-            <div className="my-4 p-6 bg-gradient-to-r from-gray-50 to-white border rounded-lg shadow-inner text-center text-gray-500">
-                <p className="font-medium">このレースのAIスタート位置取り予測データはありません。</p>
+            <div className="my-4 p-4 md:p-6 bg-gradient-to-r from-gray-50 to-white border rounded-lg shadow-inner text-center text-gray-500">
+                <p className="font-medium text-sm">このレースのAIスタート位置取り予測データはありません。</p>
             </div>
         );
     }
-    
+
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     const validPredictions = predictions.filter(p => p.start_1c_indicator !== null);
     const scores = validPredictions.map(p => p.start_1c_indicator!);
     const minScore = Math.min(...scores);
     const maxScore = Math.max(...scores);
     const scoreRange = maxScore - minScore;
     const sortedByNumber = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
-    
+
+    const markerSpacing = isMobile ? 14 : 20;
+    const containerHeight = Math.max((sortedByNumber.length - 1) * markerSpacing + 60, isMobile ? 140 : 150);
+
     return (
-        <div className="my-4 p-6 bg-white border rounded-lg shadow-inner">
-            <h4 className="text-sm font-bold text-gray-600 mb-3 flex items-center">
+        <div className="my-4 p-3 md:p-4 bg-white border rounded-lg shadow-inner">
+            <h4 className="text-xs md:text-sm font-bold text-gray-600 mb-2 md:mb-3 flex items-center">
                 <span className="mr-2"></span>
                 AIスタート位置取り予測
             </h4>
-            <div className="relative w-full bg-gradient-to-r from-blue-50 via-gray-50 to-yellow-50 rounded-lg shadow-sm" 
-                 style={{ height: `${Math.max((sortedByNumber.length - 1) * 20 + 50, 120)}px` }}>
+            <div className="relative w-full bg-gradient-to-r from-blue-50 via-gray-50 to-yellow-50 rounded-lg shadow-sm overflow-hidden"
+                 style={{ height: `${containerHeight}px` }}>
                 <div className="absolute top-0 bottom-0 left-0 w-[33.3%] bg-blue-100/30 rounded-l-lg"></div>
                 <div className="absolute top-0 bottom-0 left-[33.3%] w-[33.3%] bg-gray-100/30"></div>
                 <div className="absolute top-0 bottom-0 left-[66.6%] w-[33.3%] bg-yellow-100/30 rounded-r-lg"></div>
@@ -82,14 +86,16 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
                             key={horse.horse_number}
                             horse={horse}
                             position={position}
+                            isMobile={isMobile}
+                            markerSpacing={markerSpacing}
                         />
                     );
                 })}
             </div>
-            <div className="flex justify-between text-xs text-gray-600 mt-3 px-2 font-medium">
-                <span className="flex items-center"><span className="mr-1"></span>後方・差し</span>
-                <span>中団</span>
-                <span className="flex items-center">先行・逃げ<span className="ml-1"></span></span>
+            <div className="flex justify-between text-xs md:text-sm text-gray-600 mt-2 md:mt-3 px-2 font-medium">
+                <span className="flex items-center"><span className="mr-1"></span><span className="hidden md:inline">後方・差し</span><span className="md:hidden">後</span></span>
+                <span className="hidden md:inline">中団</span><span className="md:hidden">中</span>
+                <span className="flex items-center"><span className="hidden md:inline">先行・逃げ</span><span className="md:hidden">先</span><span className="ml-1"></span></span>
             </div>
         </div>
     );

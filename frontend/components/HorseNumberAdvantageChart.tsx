@@ -75,16 +75,16 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
 
     // レスポンシブ設定
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    const chartHeight = isMobile ? 300 : 280;
+    const chartHeight = isMobile ? 320 : 300;
     const chartMargin = isMobile
-        ? { top: 20, right: 10, left: 5, bottom: 80 }
-        : { top: 20, right: 15, left: 10, bottom: 35 };
+        ? { top: 30, right: 10, left: 5, bottom: 80 }
+        : { top: 30, right: 15, left: 10, bottom: 35 };
     const xAxisFontSize = isMobile ? 12 : 13;
-    const labelFontSize = isMobile ? 10 : 11;
+    const labelFontSize = isMobile ? 9 : 10;
 
     return (
         <div className="my-4 p-3 md:p-4 bg-white border rounded-lg shadow-inner">
-            <h4 className="font-bold text-center mb-3 text-gray-700 text-sm md:text-base">{chartTitle}</h4>
+            <h4 className="font-bold text-center mb-2 text-gray-700 text-sm md:text-base">{chartTitle}</h4>
             <div style={{ width: '100%', height: chartHeight }}>
                 <ResponsiveContainer>
                     <BarChart
@@ -111,10 +111,11 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                             <LabelList
                                 dataKey="advantage_score"
                                 position="top"
-                                formatter={(value: any) => typeof value === 'number' ? value.toFixed(3) : value}
+                                formatter={(value: any) => typeof value === 'number' ? value.toFixed(2) : value}
                                 fill="#374151"
                                 fontSize={labelFontSize}
                                 fontWeight={600}
+                                offset={isMobile ? 5 : 3}
                             />
                         </Bar>
                     </BarChart>

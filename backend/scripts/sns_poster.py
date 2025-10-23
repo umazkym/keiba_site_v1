@@ -40,6 +40,7 @@ from dotenv import load_dotenv
 import random
 import time
 import re
+import argparse
 from typing import Optional, List, Dict, Any
 import traceback
 from PIL import Image, ImageDraw, ImageFont
@@ -600,43 +601,33 @@ def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
 # --- 8. X (Twitter) 投稿関数 (変更なし) ---
 def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str = "", target_date: str = "") -> bool:
     _log("-> X (Twitter) への投稿を実行...")
-    
-    # ★★★ 重複チェック ★★★
-    if post_type and target_date:
-        if is_already_posted(text, post_type, target_date):
-            _log("-> 重複投稿のため、スキップします")
-            return False
-    
+
     if DRY_RUN:
         _log("⚠️ DRY_RUN=1 のため投稿は実行しません。")
         _log(f"--- 投稿テキストプレビュー ---\n{text}\n--- /プレビュー ---")
         if image_path:
             _log(f"画像パス: {image_path}")
-        # DRY_RUNでも投稿記録は保存
-        if post_type and target_date:
-            record_post(text, post_type, target_date)
         return True
     
     try:
         auth_v1 = tweepy.OAuth1UserHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
         api_v1 = tweepy.API(auth_v1)
-        client_v2 = tweepy.Client(consumer_key=TWITTER_CONSUMER_KEY, consumer_secret=TWITTER_CONSUMER_SECRET, 
+        client_v2 = tweepy.Client(consumer_key=TWITTER_CONSUMER_KEY, consumer_secret=TWITTER_CONSUMER_SECRET,
                                     access_token=TWITTER_ACCESS_TOKEN, access_token_secret=TWITTER_ACCESS_TOKEN_SECRET)
         media_ids = []
         if image_path and os.path.exists(image_path):
-            _log(f"画像をアップロードしています: {image_path}")
-            media = api_v1.media_upload(filename=image_path)
-            media_ids.append(media.media_id)
-        
+            try:
+                _log(f"画像をアップロードしています: {image_path}")
+                media = api_v1.media_upload(filename=image_path)
+                media_ids.append(media.media_id)
+            except Exception as img_error:
+                _log(f"⚠️ 画像アップロードに失敗しました: {img_error}。テキストのみで投稿します。")
+
         _log("ツイートを投稿しています...")
         response = client_v2.create_tweet(text=text, media_ids=media_ids if media_ids else None)
         _log("\n🎉 ツイートの投稿に成功しました！")
         _log(f" - URL: https://x.com/anyuser/status/{response.data['id']}")
-        
-        # ★★★ 投稿成功後、記録を保存 ★★★
-        if post_type and target_date:
-            record_post(text, post_type, target_date)
-        
+
         return True
     except tweepy.errors.TweepyException as e:
         _log(f"\n❌エラー: Twitter APIでエラーが発生しました。詳細: {e}")
@@ -645,102 +636,201 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
         _log(f"\n❌予期せぬエラーが発生しました: {e}\n{traceback.format_exc()}")
         return False
 
+# --- 7.5 新しい投稿用テキスト生成関数 ---
+def create_morning_combined_tweet(hit: Dict[str, Any], summary: dict, all_races_today: dict, date_str: str) -> str:
+    """朝投稿: 的中報告 + 本命馬成績"""
+    _log("-> 朝投稿: 的中報告＋本命馬成績のテキストを生成...")
+    hashtags = ["#競馬", "#AI予想", "#万馬券" if hit['payout'] >= 10000 else "#的中", f"#{hit['venue_name']}競馬"]
+
+    lines = [f"🎯昨日のAI的中速報 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})"]
+    lines.append(f"【{hit['venue_name']}{hit['race_number']}R {hit['bet_type']}】")
+    lines.append(f"🎉 {hit['payout']:,}円 的中！")
+    lines.append(f"📈本命馬成績: [{summary['win']}-{summary['second']}-{summary['third']}-{summary['other']}]")
+    lines.append(f"勝率: {summary['win_rate']:.1f}%")
+    lines.append(f"\n{SITE_BASE_URL}")
+    lines.append(" ".join(hashtags))
+
+    return "\n".join(lines)
+
+def create_afternoon_race_summary_tweet(all_races_today: dict, yesterday_hits: List[Dict], date_str: str) -> str:
+    """昼投稿: 本日のレース一覧 + 昨日の的中ランキング"""
+    _log("-> 昼投稿: 本日のレース一覧テキストを生成...")
+
+    # 本日のレース情報
+    total_races = 0
+    venue_info = []
+    venues = all_races_today.get('jra', []) + all_races_today.get('nar', [])
+
+    for venue in venues:
+        races = venue.get('races', [])
+        race_count = len(races)
+        if race_count > 0:
+            total_races += race_count
+            venue_info.append((venue.get('venue_name', '?'), race_count))
+
+    # 昨日の高配当を集計
+    hit_summary = "昨日の的中実績: 予測あり"
+    if yesterday_hits and len(yesterday_hits) > 0:
+        hit_summary = f"昨日の最高配当: {yesterday_hits[0].get('venue_name', '?')}{yesterday_hits[0].get('race_number', '?')}R {yesterday_hits[0].get('bet_type', '?')} ¥{yesterday_hits[0].get('payout', 0):,}"
+
+    lines = [f"📊本日のレース情報 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})"]
+    lines.append(f"\n{hit_summary}")
+    lines.append(f"\n✅ 本日は 全{total_races}レース 予測中！\n")
+    lines.append("【本日の開催場】")
+
+    for venue_name, count in sorted(venue_info, key=lambda x: x[1], reverse=True)[:5]:
+        lines.append(f"• {venue_name}: {count}R")
+
+    hashtags = ["#競馬予想", "#AI予想", "#レース情報"]
+    lines.append(f"\n▼詳細データはこちら\n{SITE_BASE_URL}\n")
+    lines.append(" ".join(hashtags))
+
+    return "\n".join(lines)
+
+def create_evening_tomorrow_race_tweet(tomorrow_date: str) -> Optional[str]:
+    """夜投稿: 明日の重賞/注目レース分析"""
+    _log("-> 夜投稿: 明日の重賞レース分析テキストを生成...")
+
+    tomorrow_races = get_api_data(tomorrow_date)
+    if not tomorrow_races:
+        return None
+
+    # 重賞レースを検索
+    venues = tomorrow_races.get('jra', []) + tomorrow_races.get('nar', [])
+
+    for venue in venues:
+        for race in venue.get('races', []):
+            race_name = race.get('race_name', '').strip()
+            if any(grade_race in race_name for grade_race in JRA_GRADE_RACE_NAMES):
+                preds = sorted([p for p in race.get('predictions', []) if p.get('deviation_score')],
+                              key=lambda p: p['deviation_score'], reverse=True)
+                top_preds = preds[:3]
+
+                if len(top_preds) >= 3:
+                    lines = [f"🎯明日の重賞レース AI分析"]
+                    lines.append(f"\n【{race_name}】")
+                    lines.append(f"{race.get('venue_name', '?')} / {datetime.strptime(tomorrow_date, '%Y-%m-%d').strftime('%m/%d')}\n")
+
+                    marks = ['◎', '○', '▲']
+                    for i, pred in enumerate(top_preds):
+                        lines.append(f"{marks[i]} {pred.get('horse_name', '?')} (AI偏差値: {pred.get('deviation_score', 0):.1f})")
+
+                    hashtags = ["#競馬予想", "#AI予想", "#重賞"]
+                    lines.append(f"\n▼詳細はこちら\n{SITE_BASE_URL}\n")
+                    lines.append(" ".join(hashtags))
+
+                    return "\n".join(lines)
+
+    return None
+
 # --- 9. メイン処理 ---
 def main():
-    """SNS投稿のメイン処理"""
+    """SNS投稿のメイン処理（投稿タイプに応じて処理を分岐）"""
     _log("="*50)
-    _log("SNS自動投稿ジョブを開始します (デザイン改修・Render対応版)")
+    _log("SNS自動投稿ジョブを開始します (3投稿体制対応版)")
     _log("="*50)
-    
+
     if not all([TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET]):
         _log("⚠️ Twitter API認証情報が読み込めませんでした。処理を終了します。")
         sys.exit(1)
+
+    # コマンドライン引数で投稿タイプを取得
+    parser = argparse.ArgumentParser(description='SNS投稿スクリプト')
+    parser.add_argument('--post-type', type=str, default='morning', choices=['morning', 'afternoon', 'evening'],
+                       help='投稿タイプ: morning(朝), afternoon(昼), evening(夜)')
+    args = parser.parse_args()
+    post_type = args.post_type
 
     with database_lock("sns_poster_lock", timeout_seconds=300) as lock_acquired:
         if not lock_acquired:
             _log("別のインスタンスが実行中のため、このインスタンスは終了します。")
             sys.exit(0)
-        
-        jst = timezone(timedelta(hours=9))
-        today, yesterday = datetime.now(jst), datetime.now(jst) - timedelta(days=1)
-        today_str, yesterday_str = today.strftime('%Y-%m-%d'), yesterday.strftime('%Y-%m-%d')
-        
-        _log("\n--- [フェーズ1/3] 昨日の的中報告と成績サマリーを投稿 ---")
-        hits_data = get_api_data(f"hits/high-payouts/{yesterday_str}")
-        if hits_data and hits_data[0].get('payout', 0) >= 10000:
-            summary = {'win': 0, 'second': 0, 'third': 0, 'other': 0, 'total': 0, 'win_rate': 0.0, 'in_money_rate': 0.0}
-            all_races_data_yesterday = get_api_data(yesterday_str)
-            if all_races_data_yesterday:
-                _log("-> 昨日の本命馬成績を集計中...")
-                venues = all_races_data_yesterday.get('jra', []) + all_races_data_yesterday.get('nar', [])
-                for venue in venues:
-                    for race in venue.get('races', []):
-                        if race.get('predictions') and race.get('results'):
-                            honmei = next((p for p in race['predictions'] if p.get('mark') == '◎'), None)
-                            if honmei and honmei.get('horse_number') is not None:
-                                result = next((r for r in race['results'] if r.get('horse_number') == honmei.get('horse_number')), None)
-                                if result and isinstance(result.get('rank'), int) and result.get('rank') > 0:
-                                    summary['total'] += 1
-                                    rank = result['rank']
-                                    if rank == 1: summary['win'] += 1
-                                    elif rank == 2: summary['second'] += 1
-                                    elif rank == 3: summary['third'] += 1
-                                    else: summary['other'] += 1
-                if summary['total'] > 0:
-                    summary['win_rate'] = (summary['win'] / summary['total'] * 100)
-                    summary['in_money_rate'] = ((summary['win'] + summary['second'] + summary['third']) / summary['total'] * 100)
-            
-            image_file = generate_hit_og_image(hits_data[0], yesterday_str)
-            if image_file:
-                tweet_text = create_hit_report_and_summary_tweet(hits_data[0], summary, yesterday_str)
-                post_to_twitter(tweet_text, image_file, post_type="hit", target_date=yesterday_str)  # ★修正★
-        else:
-            _log("-> 昨日は1万円以上の高配当的中がなかったため、投稿をスキップします。")
-        
-        delay = random.uniform(30, 60) if os.getenv("RENDER") else random.uniform(180, 420)
-        _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---")
-        time.sleep(delay)
-        
-        _log("\n--- [フェーズ2/3] 今日の注目馬を投稿 ---")
-        pick_data = get_api_data(f"special-pick/{today_str}")
-        if pick_data:
-            image_file = generate_pick_og_image(pick_data, today_str)
-            if image_file:
-                tweet_text = create_pick_tweet(pick_data, today_str)
-                post_to_twitter(tweet_text, image_file, post_type="pick", target_date=today_str)  # ★修正★
-        else:
-            _log("-> 今日の注目馬データがなかったため、投稿をスキップします.")
 
-        delay = random.uniform(30, 60) if os.getenv("RENDER") else random.uniform(180, 420)
-        _log(f"\n--- 次の投稿まで {delay:.0f}秒間 待機します ---")
-        time.sleep(delay)
-        
-        _log("\n--- [フェーズ3/3] 今日の重賞レースを投稿 ---")
-        all_races_data_today = get_api_data(today_str)
-        if all_races_data_today:
-            venues = all_races_data_today.get('jra', []) + all_races_data_today.get('nar', [])
-            posted_count = 0
-            for venue in venues:
-                for race in venue.get('races', []):
-                    # ★★修正★★: race_nameの前後の空白を削除して照合精度を上げる
-                    race_name = race.get('race_name', '').strip()
-                    if any(grade_race in race_name for grade_race in JRA_GRADE_RACE_NAMES):
-                        if posted_count >= 1: continue
-                        # ★★修正★★: ログメッセージを「JRA」に限定しないように変更
-                        _log(f"-> 重賞レース発見: {race['venue_name']} {race.get('race_name')}")
-                        preds = sorted([p for p in race.get('predictions', []) if p.get('deviation_score')], 
-                                      key=lambda p: p['deviation_score'], reverse=True)
-                        top_preds = preds[:3]
-                        if len(top_preds) == 3:
-                            image_file = generate_reminder_og_image(race, top_preds)
-                            if image_file:
-                                text = create_reminder_tweet(race, top_preds)
-                                post_to_twitter(text, image_file, post_type="reminder", target_date=today_str)  # ★修正★
-                                posted_count += 1
-            if posted_count == 0:
-                # ★★修正★★: ログメッセージを「JRA」に限定しないように変更
-                _log("-> 本日は対象の重賞レースがありませんでした。")
-        
+        jst = timezone(timedelta(hours=9))
+        today = datetime.now(jst)
+        yesterday = today - timedelta(days=1)
+        tomorrow = today + timedelta(days=1)
+        today_str = today.strftime('%Y-%m-%d')
+        yesterday_str = yesterday.strftime('%Y-%m-%d')
+        tomorrow_str = tomorrow.strftime('%Y-%m-%d')
+
+        # ========== 朝7時投稿 ==========
+        if post_type == 'morning':
+            _log("\n--- 朝投稿: 的中報告 + 本命馬成績 + 本日のAI注目馬 ---")
+            hits_data = get_api_data(f"hits/high-payouts/{yesterday_str}")
+
+            if hits_data and hits_data[0].get('payout', 0) >= 10000:
+                summary = {'win': 0, 'second': 0, 'third': 0, 'other': 0, 'total': 0, 'win_rate': 0.0, 'in_money_rate': 0.0}
+                all_races_data_yesterday = get_api_data(yesterday_str)
+
+                if all_races_data_yesterday:
+                    _log("-> 昨日の本命馬成績を集計中...")
+                    venues = all_races_data_yesterday.get('jra', []) + all_races_data_yesterday.get('nar', [])
+                    for venue in venues:
+                        for race in venue.get('races', []):
+                            if race.get('predictions') and race.get('results'):
+                                honmei = next((p for p in race['predictions'] if p.get('mark') == '◎'), None)
+                                if honmei and honmei.get('horse_number') is not None:
+                                    result = next((r for r in race['results'] if r.get('horse_number') == honmei.get('horse_number')), None)
+                                    if result and isinstance(result.get('rank'), int) and result.get('rank') > 0:
+                                        summary['total'] += 1
+                                        rank = result['rank']
+                                        if rank == 1: summary['win'] += 1
+                                        elif rank == 2: summary['second'] += 1
+                                        elif rank == 3: summary['third'] += 1
+                                        else: summary['other'] += 1
+                    if summary['total'] > 0:
+                        summary['win_rate'] = (summary['win'] / summary['total'] * 100)
+                        summary['in_money_rate'] = ((summary['win'] + summary['second'] + summary['third']) / summary['total'] * 100)
+
+                # 本日のレース情報を取得
+                all_races_today = get_api_data(today_str)
+                if all_races_today:
+                    image_file = generate_hit_og_image(hits_data[0], yesterday_str)
+                    tweet_text = create_morning_combined_tweet(hits_data[0], summary, all_races_today, yesterday_str)
+                    post_to_twitter(tweet_text, image_file, post_type="morning_hit", target_date=today_str)
+            else:
+                _log("-> 昨日は1万円以上の高配当的中がなかったため、投稿をスキップします。")
+
+        # ========== 昼12時投稿 ==========
+        elif post_type == 'afternoon':
+            _log("\n--- 昼投稿: 本日のレース一覧 + 昨日のAI的中ランキング ---")
+            all_races_today = get_api_data(today_str)
+            yesterday_hits = get_api_data(f"hits/high-payouts/{yesterday_str}")
+
+            if all_races_today:
+                tweet_text = create_afternoon_race_summary_tweet(all_races_today, yesterday_hits if yesterday_hits else [], today_str)
+                post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str)
+            else:
+                _log("-> 本日のレース情報が取得できませんでした。")
+
+        # ========== 夜20時投稿 ==========
+        elif post_type == 'evening':
+            _log("\n--- 夜投稿: 明日の重賞/注目レース分析 ---")
+            tweet_text = create_evening_tomorrow_race_tweet(tomorrow_str)
+
+            if tweet_text:
+                all_races_tomorrow = get_api_data(tomorrow_str)
+                if all_races_tomorrow:
+                    venues = all_races_tomorrow.get('jra', []) + all_races_tomorrow.get('nar', [])
+                    for venue in venues:
+                        for race in venue.get('races', []):
+                            race_name = race.get('race_name', '').strip()
+                            if any(grade_race in race_name for grade_race in JRA_GRADE_RACE_NAMES):
+                                preds = sorted([p for p in race.get('predictions', []) if p.get('deviation_score')],
+                                              key=lambda p: p['deviation_score'], reverse=True)
+                                top_preds = preds[:3]
+                                if len(top_preds) == 3:
+                                    image_file = generate_reminder_og_image(race, top_preds)
+                                    if image_file:
+                                        post_to_twitter(tweet_text, image_file, post_type="evening_race", target_date=tomorrow_str)
+                                        break
+                        else:
+                            continue
+                        break
+            else:
+                _log("-> 明日は対象の重賞レースがありませんでした。")
+
         _log("\nSNS自動投稿ジョブが完了しました。")
 
 if __name__ == "__main__":

@@ -39,15 +39,15 @@ services:
       - key: RENDER
         value: "true"
 
-  # SNS投稿ジョブ
+  # SNS投稿ジョブ①: 朝7時（本日のAI注目馬TOP3 + 複勝実績）
   - type: cron
-    name: keiba-sns-poster
+    name: keiba-sns-morning-post
     runtime: docker
     region: oregon
-    schedule: "0 22 * * *" # JST AM 7:00
+    schedule: "0 22 * * *"  # JST AM 7:00
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    dockerCommand: "python scripts/sns_poster.py"
+    dockerCommand: "python scripts/sns_poster.py --post-type morning"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -65,7 +65,67 @@ services:
         sync: false
       - key: TWITTER_ACCESS_TOKEN_SECRET
         sync: false
-      - key: WEBHOOK_URL
+      - key: RENDER
+        value: "true"
+      - key: INSTANCE_ID
+        generateValue: true
+
+  # SNS投稿ジョブ②: 昼12時（本日のレース一覧 + AI的中ランキング）
+  - type: cron
+    name: keiba-sns-afternoon-post
+    runtime: docker
+    region: oregon
+    schedule: "0 3 * * *"  # JST PM 12:00
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: "python scripts/sns_poster.py --post-type afternoon"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: keiba_db
+          property: connectionString
+      - key: TZ
+        value: Asia/Tokyo
+      - key: API_BASE_URL
+        value: "https://keiba-site-v1.onrender.com"
+      - key: TWITTER_CONSUMER_KEY
+        sync: false
+      - key: TWITTER_CONSUMER_SECRET
+        sync: false
+      - key: TWITTER_ACCESS_TOKEN
+        sync: false
+      - key: TWITTER_ACCESS_TOKEN_SECRET
+        sync: false
+      - key: RENDER
+        value: "true"
+      - key: INSTANCE_ID
+        generateValue: true
+
+  # SNS投稿ジョブ③: 夜20時（明日の重賞/注目レース分析）
+  - type: cron
+    name: keiba-sns-evening-post
+    runtime: docker
+    region: oregon
+    schedule: "0 11 * * *"  # JST PM 8:00
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: "python scripts/sns_poster.py --post-type evening"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: keiba_db
+          property: connectionString
+      - key: TZ
+        value: Asia/Tokyo
+      - key: API_BASE_URL
+        value: "https://keiba-site-v1.onrender.com"
+      - key: TWITTER_CONSUMER_KEY
+        sync: false
+      - key: TWITTER_CONSUMER_SECRET
+        sync: false
+      - key: TWITTER_ACCESS_TOKEN
+        sync: false
+      - key: TWITTER_ACCESS_TOKEN_SECRET
         sync: false
       - key: RENDER
         value: "true"

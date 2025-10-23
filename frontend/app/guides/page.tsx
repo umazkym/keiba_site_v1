@@ -97,11 +97,6 @@ export default async function GuidesPage() {
                                 ))}
                             </div>
                         )}
-
-                        {/* 読む時間の目安 */}
-                        <p className="text-xs text-gray-500 mt-auto">
-                            📖 約{Math.ceil(guide.content.length / 400)}分で読める
-                        </p>
                     </Link>
                 ))}
             </div>
@@ -120,47 +115,6 @@ export default async function GuidesPage() {
                 >
                     今日のレース予想を見る
                 </Link>
-            </div>
-
-            {/* FAQ セクション */}
-            <div className="max-w-3xl mx-auto w-full">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">よくある質問</h2>
-                <div className="space-y-3">
-                    <details className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
-                        <summary className="font-bold text-gray-800 flex items-center justify-between hover:text-primary transition-colors">
-                            <span>ガイドはすべて無料で読めますか？</span>
-                            <span className="text-primary text-lg">▼</span>
-                        </summary>
-                        <p className="mt-3 text-gray-600 leading-relaxed">はい、すべてのガイドは完全無料で読むことができます。登録も不要です。</p>
-                    </details>
-                    <details className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
-                        <summary className="font-bold text-gray-800 flex items-center justify-between hover:text-primary transition-colors">
-                            <span>競馬初心者でも理解できますか？</span>
-                            <span className="text-primary text-lg">▼</span>
-                        </summary>
-                        <p className="mt-3 text-gray-600 leading-relaxed">
-                            はい、すべてのガイドは初心者向けに丁寧に説明されています。まず「競馬の基本用語集」からお読みください。
-                        </p>
-                    </details>
-                    <details className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
-                        <summary className="font-bold text-gray-800 flex items-center justify-between hover:text-primary transition-colors">
-                            <span>ガイドはどのくらいの頻度で更新されますか？</span>
-                            <span className="text-primary text-lg">▼</span>
-                        </summary>
-                        <p className="mt-3 text-gray-600 leading-relaxed">
-                            ガイドは随時更新されます。競馬データや予想手法の最新情報を反映しています。
-                        </p>
-                    </details>
-                    <details className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
-                        <summary className="font-bold text-gray-800 flex items-center justify-between hover:text-primary transition-colors">
-                            <span>ガイド以外に相談できる場所はありますか？</span>
-                            <span className="text-primary text-lg">▼</span>
-                        </summary>
-                        <p className="mt-3 text-gray-600 leading-relaxed">
-                            ご不明な点やご質問は、<Link href="/contact" className="text-primary hover:underline">お問い合わせフォーム</Link>からお気軽にお尋ねください。
-                        </p>
-                    </details>
-                </div>
             </div>
         </div>
     );

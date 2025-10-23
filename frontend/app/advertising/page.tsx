@@ -157,7 +157,7 @@ export default function AdvertisingPage() {
                             <h2 className="text-3xl font-bold text-gray-800 mt-6 mb-2 border-b border-gray-200 pb-2">{section.title}</h2>
 
                             {section.content && typeof section.content === "string" && (
-                                <p className="text-base">{section.content}</p>
+                                <p className="text-base" dangerouslySetInnerHTML={{ __html: section.content }} />
                             )}
 
                             {section.intro && (

@@ -65,10 +65,15 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
         setActiveRaceIndex(index);
         const selectedRace = venue.races[index];
         if (selectedRace) {
-            const newParams = new URLSearchParams(searchParams.toString());
-            newParams.set('venue', venue.venue_name);
+            // ▼▼▼▼▼【修正: URLパラメータの正規化を厳密に】▼▼▼▼▼
+            // URLSearchParamsは自動的にencodeURIComponentを適用するため、
+            // 会場名を事前にencodeする必要はありませんが、確実性のため
+            // パラメータの順序を統一して常に 'race' → 'venue' の順序にしています
+            const newParams = new URLSearchParams();
             newParams.set('race', selectedRace.race_number.toString());
+            newParams.set('venue', venue.venue_name);
             router.replace(`/races/${currentDate}?${newParams.toString()}`, { scroll: false });
+            // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
         }
     }, [venue, router, currentDate, searchParams]);
 

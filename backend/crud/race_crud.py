@@ -287,13 +287,24 @@ def get_high_payout_hits_for_date(db: Session, target_date: date) -> List[Dict[s
     return all_hits
 
 def get_all_race_urls(db: Session) -> List[Dict[str, Any]]:
-    """サイトマップ生成のために、全レースの日付、会場、レース番号を取得する"""
+    """
+    サイトマップ生成のために、全レースの日付、会場、レース番号を取得する。
+
+    ▼▼▼【修正: インデックス未登録エラーを回避するため、より厳密なフィルタリングを追加】▼▼▼
+    - 予測データが存在し、かつ venue_name と race_number が有効なレースのみを対象にする
+    - これにより、不完全なレースデータがサイトマップに含まれるのを防ぐ
+    ▲▲▲【修正ここまで】▲▲▲
+    """
     results = db.query(
         models.Race.race_date,
         models.Race.venue_name,
         models.Race.race_number
     ).filter(
-        models.Race.predictions.any() # 予測データが存在するレースのみを対象
+        models.Race.predictions.any(),  # 予測データが存在するレースのみ
+        # ▼▼▼【修正: venue_name と race_number が NULL でないことを確認】▼▼▼
+        models.Race.venue_name.isnot(None),  # 会場名が存在する
+        models.Race.race_number.isnot(None),  # レース番号が存在する
+        # ▲▲▲【修正ここまで】▲▲▲
     ).order_by(
         models.Race.race_date.desc()
     ).all()

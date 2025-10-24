@@ -10,6 +10,36 @@ import { formatDate } from "@/lib/utils";
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { getPredictionsForDate } from "@/lib/api";
 
+// ▼▼▼▼▼【修正: 日付フォーマット検証関数を追加】▼▼▼▼▼
+/**
+ * 日付文字列が有効なISO 8601形式（YYYY-MM-DD）かつ実在する日付であることを検証する
+ * @param dateStr - 検証対象の日付文字列
+ * @returns 有効な日付の場合true、無効な場合false
+ */
+const isValidDateFormat = (dateStr: string): boolean => {
+    // YYYY-MM-DD形式か確認
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return false;
+    }
+
+    // 実在する日付か確認（Date.parseで自動的に無効な日付を検出）
+    const date = new Date(dateStr + 'T00:00:00Z');
+    if (isNaN(date.getTime())) {
+        return false;
+    }
+
+    // 日付の個別部分を検証（例: 2025-02-30は無効）
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const dateFromParts = new Date(Date.UTC(year, month - 1, day));
+    const isValidDate =
+        dateFromParts.getUTCFullYear() === year &&
+        dateFromParts.getUTCMonth() === month - 1 &&
+        dateFromParts.getUTCDate() === day;
+
+    return isValidDate;
+};
+// ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+
 const DateNavigator = ({
     currentDate,
     onDateChange,
@@ -77,6 +107,15 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
 
     useEffect(() => {
         const fetchData = async (dateToFetch: string) => {
+            // ▼▼▼▼▼【修正: 日付フォーマット検証を追加】▼▼▼▼▼
+            // 不正な日付形式の場合、バックエンドへのリクエストを送らずにエラーを表示
+            if (!isValidDateFormat(dateToFetch)) {
+                setError("無効な日付形式です。YYYY-MM-DD形式で指定してください。");
+                setIsLoading(false);
+                return;
+            }
+            // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+
             setIsLoading(true);
             setError(null);
             try {

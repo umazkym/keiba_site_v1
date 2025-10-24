@@ -41,7 +41,10 @@ export async function generateMetadata(
         const venueName = decodeURIComponent(venue);
         title = `${formattedDate} ${venueName} ${race}R のAI競馬予測 | UMA-FREE`;
         description = `AIによる${formattedDate} ${venueName}競馬場 ${race}Rの無料予測。偏差値、対戦成績、枠順データで詳細分析。`;
-        canonicalUrl = `/races/${params.date}?venue=${venue}&race=${race}`;
+        // ▼▼▼▼▼【修正: canonical URLのパラメータ順序を統一】▼▼▼▼▼
+        // Googleが重複判定を避けるため、クエリパラメータの順序を常に 'race' → 'venue' に統一
+        canonicalUrl = `/races/${params.date}?race=${race}&venue=${venue}`;
+        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
     }
 
     return {
@@ -91,7 +94,9 @@ export default async function RacePage({ params }: { params: { date: string } })
                 },
                 "description": `AIによる${mainRace.venue_name} ${mainRace.race_number}R ${mainRace.race_name}の競馬予測データ。`,
                 "eventStatus": "https://schema.org/EventScheduled",
-                "url": `https://uma-free.com/races/${mainRace.race_date}?venue=${encodeURIComponent(mainRace.venue_name)}&race=${mainRace.race_number}`,
+                // ▼▼▼▼▼【修正: JSON-LD URLのパラメータ順序を統一】▼▼▼▼▼
+                "url": `https://uma-free.com/races/${mainRace.race_date}?race=${mainRace.race_number}&venue=${encodeURIComponent(mainRace.venue_name)}`,
+                // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
                 "image": [
                     "https://uma-free.com/new-logo.png"
                 ],
@@ -102,7 +107,9 @@ export default async function RacePage({ params }: { params: { date: string } })
                 },
                 "offers": {
                     "@type": "Offer",
-                    "url": `https://uma-free.com/races/${mainRace.race_date}?venue=${encodeURIComponent(mainRace.venue_name)}&race=${mainRace.race_number}`,
+                    // ▼▼▼▼▼【修正: JSON-LD URLのパラメータ順序を統一】▼▼▼▼▼
+                    "url": `https://uma-free.com/races/${mainRace.race_date}?race=${mainRace.race_number}&venue=${encodeURIComponent(mainRace.venue_name)}`,
+                    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
                     "price": "0",
                     "priceCurrency": "JPY",
                     "availability": "https://schema.org/InStock",

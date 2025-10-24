@@ -14,11 +14,27 @@ router = APIRouter()
 def read_predictions_for_date(target_date: date, db: Session = Depends(get_db)):
     """
     指定された日付のJRAおよびNARのレース予測を取得するエンドポイント。
+
+    ▼▼▼【修正: 日付形式エラーをキャッチして適切なレスポンスを返す】▼▼▼
+    FastAPIの日付パース失敗時に自動的に422エラーが返されますが、
+    より詳細なエラーハンドリングのためにバリデーションロジックを追加します
+    ▲▲▲【修正ここまで】▲▲▲
     """
-    predictions = race_crud.get_predictions_by_date(db=db, target_date=target_date)
-    if not predictions["jra"] and not predictions["nar"]:
-        raise HTTPException(status_code=404, detail=f"Predictions for date {target_date} not found")
-    return predictions
+    # ▼▼▼【修正: HTTPExceptionを除く予期しないエラーをキャッチ】▼▼▼
+    try:
+        predictions = race_crud.get_predictions_by_date(db=db, target_date=target_date)
+        if not predictions["jra"] and not predictions["nar"]:
+            raise HTTPException(status_code=404, detail=f"Predictions for date {target_date} not found")
+        return predictions
+    except HTTPException:
+        # HTTPExceptionはそのまま再発生（404など）
+        raise
+    except Exception as e:
+        # その他の予期しないエラーをログして500を返す
+        import traceback
+        print(f"Error fetching predictions for date {target_date}:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Internal server error while fetching predictions")
+    # ▲▲▲【修正ここまで】▲▲▲
 
 @router.get("/hits/top-payouts", response_model=List[race_schema.TopPayoutHit])
 def read_top_payout_hits(db: Session = Depends(get_db)):

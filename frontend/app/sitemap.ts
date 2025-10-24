@@ -36,8 +36,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         // 取得したデータから個別レースページのURLを生成
         const racePageRoutes = races.map((race) => ({
-            // ▼▼▼▼▼【修正点】URL内の '&' をXMLエンティティ '&amp;' に置換 ▼▼▼▼▼
-            url: `${BASE_URL}/races/${race.race_date}?venue=${encodeURIComponent(race.venue_name)}&race=${race.race_number}`.replace(/&/g, '&amp;'),
+            // ▼▼▼▼▼【修正点】
+            // 1. URLパラメータの順序を統一（'race' → 'venue'）
+            // 2. URL内の '&' をXMLエンティティ '&amp;' に置換
+            // これにより、Googleが正規化エラーを回避し、インデックス登録が成功しやすくなる
+            url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`.replace(/&/g, '&amp;'),
             // ▲▲▲▲▲ 修正ここまで ▲▲▲▲▲
             lastModified: new Date(),
             changeFrequency: 'daily' as const,

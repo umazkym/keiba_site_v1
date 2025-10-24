@@ -79,14 +79,20 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
     print(f"\n--- [PREDICTIONS] Inserting new predictions for {target_date.strftime('%Y-%m-%d')} ---")
     try:
         print(f"  -> Deleting any existing data for {target_date.strftime('%Y-%m-%d')} to ensure a clean state.")
+        # 対象レースIDをリストで取得
         races_to_delete_stmt = select(models.Race.id).where(models.Race.race_date == target_date)
-        db.query(models.Matchup).filter(models.Matchup.race_id.in_(races_to_delete_stmt)).delete(synchronize_session=False)
-        db.query(models.Prediction).filter(models.Prediction.race_id.in_(races_to_delete_stmt)).delete(synchronize_session=False)
-        db.query(models.Result).filter(models.Result.race_id.in_(races_to_delete_stmt)).delete(synchronize_session=False)
-        db.query(models.RaceReturn).filter(models.RaceReturn.race_id.in_(races_to_delete_stmt)).delete(synchronize_session=False)
-        db.query(models.Race).filter(models.Race.id.in_(races_to_delete_stmt)).delete(synchronize_session=False)
-        db.commit()
-        print("  -> Deletion of old data complete.")
+        race_ids_to_delete = [r[0] for r in db.execute(races_to_delete_stmt).fetchall()]
+
+        if race_ids_to_delete:
+            db.query(models.Matchup).filter(models.Matchup.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
+            db.query(models.Prediction).filter(models.Prediction.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
+            db.query(models.Result).filter(models.Result.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
+            db.query(models.RaceReturn).filter(models.RaceReturn.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
+            db.query(models.Race).filter(models.Race.id.in_(race_ids_to_delete)).delete(synchronize_session=False)
+            db.commit()
+            print(f"  -> Deletion of old data complete. ({len(race_ids_to_delete)} races deleted)")
+        else:
+            print(f"  -> No existing data found for {target_date.strftime('%Y-%m-%d')}")
     except Exception as e:
         print(f"  -> An error occurred during cleanup, rolling back: {e}")
         db.rollback()

@@ -96,14 +96,23 @@ def parse_shutuba_page(html_content: str, race_id: str) -> Optional[Dict[str, An
         # 1. レース名: 複数の方法で取得を試みる
         race_name_text = None
 
-        # 方法1: h1 タグから取得を試みる
-        h1_elm = soup.find("h1")
-        if h1_elm:
+        # 方法1: h1 タグから取得を試みる（複数存在する場合は最初の非空を採用）
+        h1_elms = soup.find_all("h1")
+        for h1_elm in h1_elms:
             text = h1_elm.get_text(strip=True)
             if text and len(text) > 2:  # h1内のテキストが意味のある長さなら採用
                 race_name_text = text
+                break
 
-        # 方法2: h1が空の場合、RaceNameクラスの div から取得
+        # 方法2: 方法1で取得できなかった場合、RaceNameクラスの h1 から取得
+        if not race_name_text:
+            race_name_elm = soup.find("h1", class_="RaceName")
+            if race_name_elm:
+                text = race_name_elm.get_text(strip=True)
+                if text:
+                    race_name_text = text
+
+        # 方法3: 方法2でも取得できなかった場合、RaceNameクラスの div から取得
         if not race_name_text:
             race_name_elm = soup.find("div", class_="RaceName")
             if race_name_elm:

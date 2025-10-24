@@ -598,35 +598,194 @@ def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
     lines.append(f"\n{' '.join(hashtags)}")
     return "\n".join(lines)
 
-# --- 8. X (Twitter) 投稿関数 (変更なし) ---
-def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str = "", target_date: str = "") -> bool:
+# --- 8. X (Twitter) 投稿関数 (文字数制限対応版) ---
+def split_tweet_text(text: str, max_length: int = 280, force_split: bool = True) -> List[str]:
+    """
+    テキストを2つのツイートに分割する（force_split=Trueの場合）
+    force_split=Trueの場合、文字数に関わらず必ず2分割する
+    force_split=Falseの場合、文字数制限内で分割する
+
+    ハッシュタグが含まれる場合、それを考慮して分割する
+    """
+    if not force_split and len(text) <= max_length:
+        return [text]
+
+    tweets = []
+    lines = text.split('\n')
+
+    if force_split:
+        # ハッシュタグ行を検出
+        hashtag_indices = []
+        for i, line in enumerate(lines):
+            if line.strip().startswith('#'):
+                hashtag_indices.append(i)
+
+        # ハッシュタグが2つ以上ある場合、2番目のハッシュタグの前で分割
+        if len(hashtag_indices) >= 2:
+            # 2番目のハッシュタグの前で分割（1番目のハッシュタグはツイート1に含める）
+            split_point = hashtag_indices[1]
+        else:
+            # ハッシュタグがない場合は中点で分割
+            split_point = len(lines) // 2
+            if split_point == 0:
+                split_point = 1
+
+        first_tweet = '\n'.join(lines[:split_point])
+        second_tweet = '\n'.join(lines[split_point:])
+
+        # 両方が空でないことを確認
+        if first_tweet.strip():
+            tweets.append(first_tweet)
+        if second_tweet.strip():
+            tweets.append(second_tweet)
+
+        # どちらかが空の場合は元のテキストを2回返す
+        if len(tweets) < 2:
+            tweets = [text, text]
+    else:
+        # 文字数制限で分割する場合
+        current_tweet = ""
+
+        for line in lines:
+            # 行を追加した場合の長さをチェック
+            test_text = current_tweet + ('\n' if current_tweet else '') + line
+
+            if len(test_text) <= max_length:
+                current_tweet = test_text
+            else:
+                # 現在のツイートを保存して新しいツイートを開始
+                if current_tweet:
+                    tweets.append(current_tweet)
+                current_tweet = line
+
+        # 最後のツイートを追加
+        if current_tweet:
+            tweets.append(current_tweet)
+
+    return tweets if tweets else [text, text]
+
+def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image_path_1: Optional[str] = None, image_path_2: Optional[str] = None, post_type: str = "", target_date: str = "") -> bool:
+    """
+    2つのツイートテキストを受け取り、各投稿に異なる画像を添付して投稿する。
+    ツイート1に image_path_1、ツイート2に image_path_2 を使用。
+    """
     _log("-> X (Twitter) への投稿を実行...")
+
+    tweet_texts = [tweet_text_1, tweet_text_2]
+    _log(f"{len(tweet_texts)} 個のツイートを投稿します")
 
     if DRY_RUN:
         _log("⚠️ DRY_RUN=1 のため投稿は実行しません。")
-        _log(f"--- 投稿テキストプレビュー ---\n{text}\n--- /プレビュー ---")
-        if image_path:
-            _log(f"画像パス: {image_path}")
+        for i, tweet_text in enumerate(tweet_texts, 1):
+            _log(f"--- ツイート {i}/{len(tweet_texts)} プレビュー ---\n{tweet_text}\n--- /プレビュー ---")
+        if image_path_1:
+            _log(f"画像1パス: {image_path_1}")
+        if image_path_2:
+            _log(f"画像2パス: {image_path_2}")
         return True
-    
+
     try:
         auth_v1 = tweepy.OAuth1UserHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
         api_v1 = tweepy.API(auth_v1)
         client_v2 = tweepy.Client(consumer_key=TWITTER_CONSUMER_KEY, consumer_secret=TWITTER_CONSUMER_SECRET,
                                     access_token=TWITTER_ACCESS_TOKEN, access_token_secret=TWITTER_ACCESS_TOKEN_SECRET)
-        media_ids = []
-        if image_path and os.path.exists(image_path):
-            try:
-                _log(f"画像をアップロードしています: {image_path}")
-                media = api_v1.media_upload(filename=image_path)
-                media_ids.append(media.media_id)
-            except Exception as img_error:
-                _log(f"⚠️ 画像アップロードに失敗しました: {img_error}。テキストのみで投稿します。")
 
-        _log("ツイートを投稿しています...")
-        response = client_v2.create_tweet(text=text, media_ids=media_ids if media_ids else None)
-        _log("\n🎉 ツイートの投稿に成功しました！")
-        _log(f" - URL: https://x.com/anyuser/status/{response.data['id']}")
+        # 画像パスのリスト
+        image_paths = [image_path_1, image_path_2]
+
+        for idx, tweet_text in enumerate(tweet_texts, 1):
+            media_ids = []
+
+            # 対応する画像を添付
+            image_path = image_paths[idx - 1] if idx - 1 < len(image_paths) else None
+            if image_path and os.path.exists(image_path):
+                try:
+                    _log(f"画像をアップロードしています (ツイート {idx}): {image_path}")
+                    media = api_v1.media_upload(filename=image_path)
+                    media_ids.append(media.media_id)
+                except Exception as img_error:
+                    _log(f"⚠️ 画像アップロードに失敗しました: {img_error}。テキストのみで投稿します。")
+
+            _log(f"ツイート {idx}/{len(tweet_texts)} を投稿しています...")
+
+            # 独立した投稿として投稿
+            response = client_v2.create_tweet(
+                text=tweet_text,
+                media_ids=media_ids if media_ids else None
+            )
+
+            _log(f"✅ ツイート {idx} の投稿に成功しました！")
+            _log(f" - URL: https://x.com/anyuser/status/{response.data['id']}")
+
+            # API呼び出しの間隔を設けて制限を回避
+            if idx < len(tweet_texts):
+                time.sleep(1)
+
+        return True
+    except tweepy.errors.TweepyException as e:
+        _log(f"\n❌エラー: Twitter APIでエラーが発生しました。詳細: {e}")
+        return False
+    except Exception as e:
+        _log(f"\n❌予期せぬエラーが発生しました: {e}\n{traceback.format_exc()}")
+        return False
+
+def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str = "", target_date: str = "", split_mode: bool = True) -> bool:
+    """
+    テキストと画像をツイートする。
+    split_mode=True の場合、テキストを必ず2つに分割して投稿する。
+    split_mode=False の場合、テキストをそのまま1つのツイートで投稿する。
+    各投稿に同じ画像を添付する（スレッド形式ではなく独立した投稿）。
+    """
+    _log("-> X (Twitter) への投稿を実行...")
+
+    # テキストを分割（split_mode=Trueの場合のみ）
+    if split_mode:
+        tweet_texts = split_tweet_text(text, max_length=280, force_split=True)
+        _log(f"テキストを {len(tweet_texts)} 個のツイートに分割します")
+    else:
+        tweet_texts = [text]
+        _log(f"テキストを1個のツイートとして投稿します")
+
+    if DRY_RUN:
+        _log("⚠️ DRY_RUN=1 のため投稿は実行しません。")
+        for i, tweet_text in enumerate(tweet_texts, 1):
+            _log(f"--- ツイート {i}/{len(tweet_texts)} プレビュー ---\n{tweet_text}\n--- /プレビュー ---")
+        if image_path:
+            _log(f"画像パス: {image_path}")
+        return True
+
+    try:
+        auth_v1 = tweepy.OAuth1UserHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
+        api_v1 = tweepy.API(auth_v1)
+        client_v2 = tweepy.Client(consumer_key=TWITTER_CONSUMER_KEY, consumer_secret=TWITTER_CONSUMER_SECRET,
+                                    access_token=TWITTER_ACCESS_TOKEN, access_token_secret=TWITTER_ACCESS_TOKEN_SECRET)
+
+        for idx, tweet_text in enumerate(tweet_texts, 1):
+            media_ids = []
+
+            # すべてのツイートに画像を添付
+            if image_path and os.path.exists(image_path):
+                try:
+                    _log(f"画像をアップロードしています (ツイート {idx}): {image_path}")
+                    media = api_v1.media_upload(filename=image_path)
+                    media_ids.append(media.media_id)
+                except Exception as img_error:
+                    _log(f"⚠️ 画像アップロードに失敗しました: {img_error}。テキストのみで投稿します。")
+
+            _log(f"ツイート {idx}/{len(tweet_texts)} を投稿しています...")
+
+            # 独立した投稿として投稿（スレッド形式ではない）
+            response = client_v2.create_tweet(
+                text=tweet_text,
+                media_ids=media_ids if media_ids else None
+            )
+
+            _log(f"✅ ツイート {idx} の投稿に成功しました！")
+            _log(f" - URL: https://x.com/anyuser/status/{response.data['id']}")
+
+            # API呼び出しの間隔を設けて制限を回避
+            if idx < len(tweet_texts):
+                time.sleep(1)
 
         return True
     except tweepy.errors.TweepyException as e:
@@ -637,18 +796,58 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
         return False
 
 # --- 7.5 新しい投稿用テキスト生成関数 ---
-def create_morning_combined_tweet(hit: Dict[str, Any], summary: dict, all_races_today: dict, date_str: str) -> str:
-    """朝投稿: 的中報告 + 本命馬成績"""
-    _log("-> 朝投稿: 的中報告＋本命馬成績のテキストを生成...")
-    hashtags = ["#競馬", "#AI予想", "#万馬券" if hit['payout'] >= 10000 else "#的中", f"#{hit['venue_name']}競馬"]
+def create_morning_hit_tweet(hit: Dict[str, Any], summary: dict, date_str: str) -> str:
+    """朝投稿ツイート1: 昨日の的中報告 + 本命馬成績"""
+    _log("-> 朝投稿ツイート1: 的中報告＋本命馬成績のテキストを生成...")
 
-    lines = [f"🎯昨日のAI的中速報 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})"]
-    lines.append(f"【{hit['venue_name']}{hit['race_number']}R {hit['bet_type']}】")
-    lines.append(f"🎉 {hit['payout']:,}円 的中！")
-    lines.append(f"📈本命馬成績: [{summary['win']}-{summary['second']}-{summary['third']}-{summary['other']}]")
-    lines.append(f"勝率: {summary['win_rate']:.1f}%")
+    date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')
+    in_money_rate = ((summary['win'] + summary['second'] + summary['third']) / summary['total'] * 100) if summary['total'] > 0 else 0.0
+
+    # ハッシュタグを構築（ツイート1用）
+    hashtags_1 = ["#競馬", "#AI予想", "#万馬券" if hit['payout'] >= 10000 else "#的中"]
+    venue_name = hit.get('venue_name', '')
+    if venue_name:
+        hashtags_1.append(f"#{venue_name}競馬")
+
+    lines = [f"🎯昨日のAI的中速報 ({date_formatted})"]
+    lines.append(f"\n【{hit['venue_name']}{hit['race_number']}R {hit['bet_type']}】で")
+    lines.append(f"\n🎉 {hit['payout']:,}円 の高配当を的中しました！")
+    lines.append(f"\n📈昨日のAI本命馬(◎)成績")
+    lines.append(f"\n[{summary['win']}-{summary['second']}-{summary['third']}-{summary['other']}]")
+    lines.append(f"\n勝率: {summary['win_rate']:.1f}% / 複勝率: {in_money_rate:.1f}%")
+    lines.append(f"\n▼レース結果とAIの印はこちらから")
     lines.append(f"\n{SITE_BASE_URL}")
-    lines.append(" ".join(hashtags))
+    lines.append(f"\n{' '.join(hashtags_1)}")
+
+    return "\n".join(lines)
+
+def create_morning_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
+    """朝投稿ツイート2: 本日のAI注目馬"""
+    _log("-> 朝投稿ツイート2: 本日のAI注目馬のテキストを生成...")
+
+    date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')
+
+    # 競馬タイプを判定（JRA中央競馬 vs NAR地方競馬）
+    # venue_name で直接判定する方がより確実
+    venue_name = pick.get('venue_name', '')
+
+    # JRA中央競馬場: 札幌、函館、福島、新潟、東京、中山、京都、阪神
+    jra_venues = ['札幌', '函館', '福島', '新潟', '東京', '中山', '京都', '阪神']
+    is_jra = any(jra_venue in venue_name for jra_venue in jra_venues)
+
+    # ハッシュタグを構築（ツイート2用）- ツイート1とは異なるハッシュタグ
+    hashtags_2 = ["#競馬", "#AI予想", "#中央競馬" if is_jra else "#地方競馬"]
+    pick_horse_name = pick.get('horse_name', '')
+    if pick_horse_name:
+        hashtags_2.append(f"#{pick_horse_name}")
+
+    lines = [f"🐎本日のAI注目馬 ({date_formatted})"]
+    lines.append(f"\nAIが今日のレースで最も高く評価した一頭はこちら！")
+    lines.append(f"\n【{pick['venue_name']}{pick['race_number']}R {pick.get('race_name', '')}】")
+    lines.append(f"\n◎ {pick['horse_name']} (AI偏差値: {pick['deviation_score']:.2f})")
+    lines.append(f"\n▼全レースの無料予測")
+    lines.append(f"\n{SITE_BASE_URL}")
+    lines.append(f"\n{' '.join(hashtags_2)}")
 
     return "\n".join(lines)
 
@@ -785,10 +984,40 @@ def main():
 
                 # 本日のレース情報を取得
                 all_races_today = get_api_data(today_str)
+
+                # 本日のAI注目馬を取得
+                pick_data = None
                 if all_races_today:
-                    image_file = generate_hit_og_image(hits_data[0], yesterday_str)
-                    tweet_text = create_morning_combined_tweet(hits_data[0], summary, all_races_today, yesterday_str)
-                    post_to_twitter(tweet_text, image_file, post_type="morning_hit", target_date=today_str)
+                    _log("-> 本日のAI注目馬を検索中...")
+                    venues = all_races_today.get('jra', []) + all_races_today.get('nar', [])
+                    for venue in venues:
+                        for race in venue.get('races', []):
+                            preds = race.get('predictions', [])
+                            if preds:
+                                # AI偏差値が最も高い馬を取得
+                                sorted_preds = sorted([p for p in preds if p.get('deviation_score')],
+                                                     key=lambda p: p['deviation_score'], reverse=True)
+                                if sorted_preds:
+                                    pick_data = sorted_preds[0]
+                                    pick_data['venue_name'] = venue.get('venue_name', '?')
+                                    pick_data['race_name'] = race.get('race_name', '?')
+                                    pick_data['race_number'] = race.get('race_number', '?')
+                                    _log(f"-> AI注目馬を検出: {pick_data.get('horse_name', '?')} (AI偏差値: {pick_data.get('deviation_score', 0):.2f})")
+                                    break
+                        if pick_data:
+                            break
+
+                if all_races_today and pick_data:
+                    # 画像を生成（ツイート1用と2用で別の画像）
+                    image_file_1 = generate_hit_og_image(hits_data[0], yesterday_str)
+                    image_file_2 = generate_pick_og_image(pick_data, today_str)
+
+                    # ツイート1と2を個別に生成
+                    tweet_text_1 = create_morning_hit_tweet(hits_data[0], summary, yesterday_str)
+                    tweet_text_2 = create_morning_pick_tweet(pick_data, today_str)
+
+                    # 2つのツイートテキストを直接渡して投稿（分割なし）
+                    post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
             else:
                 _log("-> 昨日は1万円以上の高配当的中がなかったため、投稿をスキップします。")
 

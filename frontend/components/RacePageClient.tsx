@@ -233,7 +233,7 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
         return (
             <>
                 <div className="mb-4">
-                    <SpecialPickCard date={todayStr} />
+                    <SpecialPickCard date={currentDate} />
                 </div>
                 <RaceTabs
                     key={`${currentDate}-${initialVenue || 'defaultVenue'}-${initialRaceNumber || 'defaultRace'}`}

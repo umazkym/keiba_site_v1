@@ -47,7 +47,7 @@ export const Header = () => {
                                 UMA-FREE
                             </span>
                             <span className="text-xs text-gray-500 -mt-1">
-                                完全無料のAI競馬予測
+                                完全無料のAI競馬分析
                             </span>
                         </div>
                     </Link>
@@ -62,12 +62,12 @@ export const Header = () => {
                             本日の予測
                             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
                         </Link>
-                        <Link href="/guides" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
-                            ガイド
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
-                        </Link>
                         <Link href="/articles" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
                             記事
+                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+                        </Link>
+                        <Link href="/faq" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                            よくある質問
                             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
                         </Link>
                     </nav>
@@ -117,18 +117,18 @@ export const Header = () => {
                             本日の予測
                         </Link>
                         <Link
-                            href="/guides"
-                            className="block px-4 py-2 text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors duration-200"
-                            onClick={closeMenu}
-                        >
-                            ガイド
-                        </Link>
-                        <Link
                             href="/articles"
                             className="block px-4 py-2 text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors duration-200"
                             onClick={closeMenu}
                         >
                             記事
+                        </Link>
+                        <Link
+                            href="/faq"
+                            className="block px-4 py-2 text-sm font-medium text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors duration-200"
+                            onClick={closeMenu}
+                        >
+                            よくある質問
                         </Link>
                         <Link
                             href="/search"

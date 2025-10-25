@@ -1,10 +1,9 @@
-'use client';
-
 import { RacePrediction } from '@/lib/types';
 
 /**
- * レース全体の分析コンテンツを生成するコンポーネント
- * 既存のAIデータ（偏差値、スタート位置、枠順スコア）のみを使用
+ * レース全体の統計分析コンテンツを生成するコンポーネント
+ * 既存のデータ（AI偏差値、脚質パターン、枠順傾向スコア）のみを使用
+ * あくまで参考情報であり、実際の結果を保証するものではありません
  */
 export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
     if (!race.predictions.length) {
@@ -91,37 +90,31 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
 
     // ========== レンダリング ==========
     return (
-        <div className="card bg-gradient-to-r from-primary-light/20 to-white border border-border shadow-sm p-5 rounded-lg my-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
-                このレースのAI分析
-            </h2>
+        <div className="space-y-4">
+            <h3 className="text-lg font-bold text-gray-800 border-b-2 border-primary pb-2">このレースのデ－タ分析</h3>
 
-            <div className="space-y-4">
-                <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-primary">
-                    <h3 className="font-bold text-gray-800 mb-2">出走馬の能力分析</h3>
-                    <p className="text-gray-700 text-sm leading-relaxed">{generateAbilityAnalysis()}</p>
-                </div>
+            <div className="bg-white rounded-lg p-4 shadow-lg border-l-4 border-primary">
+                <h4 className="font-bold text-gray-800 mb-2">出走馬の能力分析</h4>
+                <p className="text-gray-700 text-sm leading-relaxed">{generateAbilityAnalysis()}</p>
+            </div>
 
-                <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-accent">
-                    <h3 className="font-bold text-gray-800 mb-2">スタートからの展開予想</h3>
-                    <p className="text-gray-700 text-sm leading-relaxed">{generateStartAnalysis()}</p>
-                </div>
+            <div className="bg-white rounded-lg p-4 shadow-lg border-l-4 border-accent">
+                <h4 className="font-bold text-gray-800 mb-2">スタートからの展開予想</h4>
+                <p className="text-gray-700 text-sm leading-relaxed">{generateStartAnalysis()}</p>
+            </div>
 
-                <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-indigo-500">
-                    <h3 className="font-bold text-gray-800 mb-2">枠順による影響</h3>
-                    <p className="text-gray-700 text-sm leading-relaxed">{generateFrameAnalysis()}</p>
-                </div>
+            <div className="bg-white rounded-lg p-4 shadow-lg border-l-4 border-indigo-500">
+                <h4 className="font-bold text-gray-800 mb-2">枠順による影響</h4>
+                <p className="text-gray-700 text-sm leading-relaxed">{generateFrameAnalysis()}</p>
+            </div>
 
-                <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-pink-500">
-                    <h3 className="font-bold text-gray-800 mb-2">馬券戦略の方向性</h3>
-                    <p className="text-gray-700 text-sm leading-relaxed">{generateStrategyAnalysis()}</p>
-                </div>
+            <div className="bg-white rounded-lg p-4 shadow-lg border-l-4 border-pink-500">
+                <h4 className="font-bold text-gray-800 mb-2">馬券戦略の方向性</h4>
+                <p className="text-gray-700 text-sm leading-relaxed">{generateStrategyAnalysis()}</p>
+            </div>
 
-                <div className="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg p-3 text-xs text-gray-600 italic">
-                    この分析は過去の偏差値、スタート位置指標、枠順傾向スコアなどのデータに基づいて作成されています。
-                    実際のレースでは天候や馬場状態、ペースなどの要因も大きく影響します。
-                    最終的な判断はご自身の見解も踏まえて行ってください。
-                </div>
+            <div className="p-3 text-xs italic">
+                <p>このデータ分析はあくまで推定値です。実際のレースでは天候や馬場状態、騎手の判断、馬の調子など予測不可能な要因が大きく影響します。最終的な投票判断はご自身の責任でお願いします。</p>
             </div>
         </div>
     );

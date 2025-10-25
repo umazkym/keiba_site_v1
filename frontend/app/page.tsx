@@ -13,8 +13,8 @@ export const dynamic = 'force-dynamic';
 
 // SEO metadata
 export const metadata: Metadata = {
-    title: "UMA-FREE | 登録不要・完全無料のAI競馬予測サイト",
-    description: "AI競馬予想が完全無料で使い放題！ 中央・地方の全レースを網羅し、あなたの馬券検討をサポートします。",
+    title: "UMA-FREE | 競馬データ分析・統計情報サイト",
+    description: "競馬レースの統計分析データを完全無料で提供。過去5年以上のデータを機械学習で分析。中央・地方競馬の詳細な分析情報をご活用ください。",
 };
 
 // JSTでの今日の日付文字列をサーバーサイドで生成する関数
@@ -45,48 +45,85 @@ export default async function HomePage() {
     const categories = getUniqueCategories();
 
     return (
-        <div className="container py-4 space-y-12">
-            {/* メインのヒーローセクション */}
-            <section className="text-center p-8 bg-white rounded-xl shadow-lg border border-gray-200 bg-gradient-to-br from-indigo-50 to-white">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-primary-dark mb-2 leading-tight">
-                    登録不要・完全無料の
-                    <br />
-                    AI競馬予測 UMA-FREE
-                </h1>
-                <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto mb-6">
-                    AI競馬予想が完全無料で使い放題！
-                    <br className="hidden sm:block" />
-                    中央・地方の全レースを網羅し、あなたの馬券検討をサポートします。
-                </p>
-                <Link
-                    href={`/races/${todayStr}`}
-                    className="inline-block bg-primary hover:bg-primary-dark text-white hover:text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-0.5 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
-                >
-                    今日のAI予想を無料でチェック
-                </Link>
+        <div className="container py-6 space-y-10">
+            {/* 1. ヒーロー＆高配当ランキング統合セクション */}
+            <div className="space-y-6">
+                {/* メインのヒーローセクション */}
+                <section className="text-center p-8 bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-lg border border-gray-200">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-primary-dark mb-3 leading-tight">
+                        登録不要・完全無料
+                        <br />
+                        AI競馬データ分析 UMA-FREE
+                    </h1>
+                    <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto mb-6">
+                        過去5年以上のレース結果をAIで分析。中央・地方の全レース対応。
+                        <br className="hidden sm:block" />
+                        あなたの競馬ライフをサポートします。
+                    </p>
+                    <Link
+                        href={`/races/${todayStr}`}
+                        className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-0.5 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
+                    >
+                        今日のデータ分析をチェック
+                    </Link>
+                </section>
+
+                {/* 高配当的中ランキング（最優先で表示） */}
+                <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 md:p-8">
+                    <TopHitsDisplay />
+                </section>
+            </div>
+
+            {/* 2. UMA-FREE価値提案セクション（統合・簡潔版） */}
+            <section className="bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-xl shadow-md border border-indigo-200">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8 text-center">UMA-FREEの3つの競馬分析データ</h2>
+                <div className="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 className="font-bold text-lg text-primary mb-3 flex items-center gap-2">
+                            <span className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">✓</span>
+                            完全無料・登録不要
+                        </h3>
+                        <p className="text-gray-700 leading-relaxed mb-4">
+                            機械学習を使用した中央・地方競馬の全レース分析が、登録・料金一切なしで利用可能です。
+                        </p>
+                        <p className="text-gray-700 leading-relaxed">
+                            初心者から上級者まで、データ分析をサポートします。
+                        </p>
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-lg text-primary mb-3 flex items-center gap-2">
+                            <span className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">✓</span>
+                            3つの独自統計分析
+                        </h3>
+                        <ul className="space-y-2 text-gray-700">
+                            <li>• <strong>過去対決成績分析</strong>：出走馬同士の直接対決統計データ</li>
+                            <li>• <strong>脚質パターン予測</strong>：過去データからの走法分類</li>
+                            <li>• <strong>枠順傾向スコア</strong>：競馬場・距離ごとの枠別成績分析</li>
+                        </ul>
+                    </div>
+                </div>
             </section>
 
-            {/* 今日のAI注目馬 */}
+            {/* 3. 今日の分析注目馬 */}
             <section>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-3">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3 border-b-3 border-primary pb-2">
                     <SparklesIcon className="w-7 h-7 text-accent-dark" />
-                    <span>今日のAI注目馬</span>
+                    <span>今日の分析注目馬</span>
                 </h2>
                 <SpecialPickCard pick={specialPick} date={todayStr} />
             </section>
 
-            {/* AI高配当ランキング */}
+            {/* 4. 新着記事セクション */}
             <section>
-                <TopHitsDisplay />
-            </section>
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800 border-b-3 border-primary pb-2">
+                        最新の分析記事
+                    </h2>
+                    <Link href="/articles" className="text-primary hover:text-primary-dark font-semibold text-sm">
+                        すべて見る →
+                    </Link>
+                </div>
 
-            {/* 新着記事セクション */}
-            <section>
-                <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center border-b-2 border-blue-500 pb-3">
-                    新着の分析記事
-                </h2>
-
-                {/* Grid: responsive columns */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
                     {latestArticles.map((article) => (
                         <Link
@@ -94,7 +131,6 @@ export default async function HomePage() {
                             key={article.slug}
                             className="block group border rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 bg-white"
                         >
-                            {/* 画像コンテナ：レスポンシブに高さ固定 */}
                             <div className="relative w-full h-32 sm:h-40 md:h-44 lg:h-48">
                                 <Image
                                     src={article.eyecatch}
@@ -111,7 +147,6 @@ export default async function HomePage() {
                                     {article.category}
                                 </span>
 
-                                {/* タイトル：最大行数を固定して省略する */}
                                 <h3
                                     className="font-bold text-sm mb-2 group-hover:text-primary-dark"
                                     style={{
@@ -120,7 +155,7 @@ export default async function HomePage() {
                                         WebkitBoxOrient: 'vertical',
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
-                                        minHeight: '3rem' /* 保証された高さでレイアウトが安定 */
+                                        minHeight: '3rem'
                                     }}
                                 >
                                     {article.title}
@@ -133,243 +168,113 @@ export default async function HomePage() {
                         </Link>
                     ))}
                 </div>
-
-                <div className="text-center mt-8">
-                    <Link href="/articles" className="bg-gray-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-700 transition-colors">
-                        記事一覧へ
-                    </Link>
-                </div>
             </section>
 
-            {/* ガイドセクション */}
-            <section>
-                <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center border-b-2 border-primary pb-3">
-                    競馬予想ガイド
-                </h2>
-                <p className="text-center text-gray-600 mb-8 max-w-2xl mx-auto">
-                    競馬初心者から上級者まで必読。基本用語からAI予想の仕組み、全競馬場ガイド、騎手分析まで、競馬予想に必要なすべての知識をわかりやすく解説します。
-                </p>
-
-                {/* ガイドカード */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <Link
-                        href="/guides/horseracing-basics"
-                        className="group bg-white p-4 rounded-lg border border-gray-200 shadow-md hover:shadow-lg hover:border-primary transition-all"
-                    >
-                        <h3 className="font-bold text-gray-800 mb-2 group-hover:text-primary transition-colors">
-                            競馬の基本用語集
-                        </h3>
-                        <p className="text-sm text-gray-600">馬券の種類、基本知識、ルール解説</p>
-                    </Link>
-                    <Link
-                        href="/guides/prediction-glossary"
-                        className="group bg-white p-4 rounded-lg border border-gray-200 shadow-md hover:shadow-lg hover:border-primary transition-all"
-                    >
-                        <h3 className="font-bold text-gray-800 mb-2 group-hover:text-primary transition-colors">
-                            AI予測用語集
-                        </h3>
-                        <p className="text-sm text-gray-600">機械学習、偏差値、モデル解説</p>
-                    </Link>
-                    <Link
-                        href="/guides/course-guide"
-                        className="group bg-white p-4 rounded-lg border border-gray-200 shadow-md hover:shadow-lg hover:border-primary transition-all"
-                    >
-                        <h3 className="font-bold text-gray-800 mb-2 group-hover:text-primary transition-colors">
-                            全競馬場ガイド
-                        </h3>
-                        <p className="text-sm text-gray-600">コース特性、各競馬場分析</p>
-                    </Link>
-                    <Link
-                        href="/guides/jockey-guide"
-                        className="group bg-white p-4 rounded-lg border border-gray-200 shadow-md hover:shadow-lg hover:border-primary transition-all"
-                    >
-                        <h3 className="font-bold text-gray-800 mb-2 group-hover:text-primary transition-colors">
-                            主要騎手解説
-                        </h3>
-                        <p className="text-sm text-gray-600">一流騎手の特性、成績分析</p>
-                    </Link>
-                    <Link
-                        href="/guides/odds-reading-guide"
-                        className="group bg-white p-4 rounded-lg border border-gray-200 shadow-md hover:shadow-lg hover:border-primary transition-all"
-                    >
-                        <h3 className="font-bold text-gray-800 mb-2 group-hover:text-primary transition-colors">
-                            配当の読み方
-                        </h3>
-                        <p className="text-sm text-gray-600">オッズ戦略、配当分析</p>
-                    </Link>
-                </div>
-
-                <div className="text-center mt-8">
-                    <Link href="/guides" className="bg-primary text-white font-bold py-2 px-6 rounded-lg hover:bg-primary-dark transition-colors">
-                        すべてのガイドを見る
-                    </Link>
-                </div>
-            </section>
-
-            {/* 以下、特徴・使い方などは変更なし */}
-            <section>
-                <h2 className="text-xl sm:text-2xl font-bold text-center text-gray-800 mb-6">
-                    UMA-FREEだけの
-                    <br />
-                    <span className="text-primary">3つの無料AIデータ</span>
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <FeatureCard
-                        icon={<UsersIcon className="w-8 h-8" />}
-                        title="過去対決成績"
-                        description={<>全出走馬の直接対決をAIが分析。<br/>馬同士の力関係が一目でわかります。</>}
-                    />
-                    <FeatureCard
-                        icon={<FlagIcon className="w-8 h-8" />}
-                        title="AIスタート位置取り予測"
-                        description={<>過去データからレース展開を予測。<br/>逃げ・先行馬探しに最適です。</>}
-                    />
-                    <FeatureCard
-                        icon={<ChartBarIcon className="w-8 h-8" />}
-                        title="枠順傾向スコア"
-                        description={<>競馬場・距離別に有利な枠を算出。<br/>コースの特性を馬券に活かせます。</>}
-                    />
-                </div>
-            </section>
-
-            {/* 以降は既存のコンテンツをそのまま（省略せずページのまま） */}
-            {/* ...（既存の使い方／FAQ／対応競馬場等） */}
-            <section className="bg-white rounded-xl shadow-md border p-6">
+            {/* 5. 使い方セクション */}
+            <section className="bg-gray-50 rounded-xl shadow-md border border-gray-200 p-6 md:p-8">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                    UMA-FREEの使い方
+                    3ステップで始める
                 </h2>
-                <div className="grid md:grid-cols-2 gap-6">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-bold text-lg mb-2 text-primary flex items-center">
-                            <span className="bg-primary text-white rounded-full w-6 h-6 inline-flex items-center justify-center mr-2 text-sm">1</span>
+                <div className="grid md:grid-cols-3 gap-6">
+                    <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-primary">
+                        <h3 className="font-bold text-lg text-primary mb-3 flex items-center">
+                            <span className="bg-primary text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-2 text-sm font-bold">1</span>
                             日付を選択
                         </h3>
                         <p className="text-gray-600">
-                            ページ上部のカレンダーから、予測を見たい日付を選択します。
-                            過去のレースも未来のレースも確認できます。
+                            カレンダーから分析データを見たい日付を選択。過去・未来のレースも確認できます。
                         </p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-bold text-lg mb-2 text-primary flex items-center">
-                            <span className="bg-primary text-white rounded-full w-6 h-6 inline-flex items-center justify-center mr-2 text-sm">2</span>
+                    <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-accent">
+                        <h3 className="font-bold text-lg text-accent mb-3 flex items-center">
+                            <span className="bg-accent text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-2 text-sm font-bold">2</span>
                             競馬場を選択
                         </h3>
                         <p className="text-gray-600">
-                            中央競馬または地方競馬のタブを選び、
-                            次に競馬場のタブを選択します。
+                            中央・地方競馬のタブから、対象競馬場を選択。
                         </p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-bold text-lg mb-2 text-primary flex items-center">
-                            <span className="bg-primary text-white rounded-full w-6 h-6 inline-flex items-center justify-center mr-2 text-sm">3</span>
-                            レースを選択
+                    <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-green-500">
+                        <h3 className="font-bold text-lg text-green-600 mb-3 flex items-center">
+                            <span className="bg-green-500 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-2 text-sm font-bold">3</span>
+                            統計データを活用
                         </h3>
                         <p className="text-gray-600">
-                            各競馬場の1R〜12Rのボタンから、
-                            見たいレースを選択します。
-                        </p>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-bold text-lg mb-2 text-primary flex items-center">
-                            <span className="bg-primary text-white rounded-full w-6 h-6 inline-flex items-center justify-center mr-2 text-sm">4</span>
-                            予測を確認
-                        </h3>
-                        <p className="text-gray-600">
-                            AI偏差値や印を参考に、馬券検討に活用してください。
-                            詳細データも無料で閲覧できます。
+                            AI偏差値・過去対決・枠順など詳細な分析データをご活用ください。
                         </p>
                     </div>
                 </div>
-                <div className='p-6'>
-                    <ul className="space-y-2 text-gray-700">
-                        <li>• 当サイトは情報提供のみを目的としており、馬券購入を推奨するものではありません</li>
-                        <li>• 20歳未満の方の馬券購入は法律で禁止されています</li>
-                        <li>• 馬券は余裕資金で適度にお楽しみください</li>
-                    </ul>
+                <div className="mt-6 p-4text-sm text-gray-700">
+                    <p>本サイトは分析データの提供を目的としており、投票や投資の助言ではありません。20歳未満の馬券購入は法律で禁止されています。投票は自己責任で、余裕資金でお楽しみください。</p>
                 </div>
             </section>
 
-            <section className="bg-gray-50 rounded-xl p-6">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                    よくある質問
-                </h2>
-                <div className="space-y-6">
-                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                        <h3 className="font-bold text-gray-700 mb-2 text-lg">Q: 本当に無料ですか？</h3>
-                        <p className="text-gray-600">
-                            A: はい、すべての機能を完全無料でご利用いただけます。
-                            会員登録も不要で、煩わしいメールマガジンの登録などもありません。
+            {/* 6. よくある質問 */}
+            <section className="bg-white rounded-xl shadow-md border border-gray-200 p-6 md:p-8">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">
+                        よくある質問
+                    </h2>
+                    <Link href="/faq" className="text-primary hover:text-primary-dark font-semibold text-sm">
+                        すべて見る →
+                    </Link>
+                </div>
+                <div className="grid md:grid-cols-2 gap-6">
+                    <div className="border-l-4 border-primary pl-4">
+                        <h3 className="font-bold text-gray-700 mb-2">Q: 本当に無料ですか？</h3>
+                        <p className="text-gray-600 text-sm">
+                            A: すべてのデータ分析情報が完全無料です。登録も不要で、メールマガジンなども一切ありません。
                         </p>
                     </div>
-                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                        <h3 className="font-bold text-gray-700 mb-2 text-lg">Q: いつ更新されますか？</h3>
-                        <p className="text-gray-600">
-                            A: 毎日午前7時頃に、前日の結果と翌日の予測が更新されます。
+                    <div className="border-l-4 border-accent pl-4">
+                        <h3 className="font-bold text-gray-700 mb-2">Q: データはいつ更新されますか？</h3>
+                        <p className="text-gray-600 text-sm">
+                            A: 毎日午前7時頃に前日の結果と翌日の分析データが更新されます。
                         </p>
                     </div>
-                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                        <h3 className="font-bold text-gray-700 mb-2 text-lg">Q: 的中率はどのくらいですか？</h3>
-                        <p className="text-gray-600">
-                            A: AIの予測は参考情報としてご活用ください。
-                            過去の的中実績は「高配当的中ランキング」でご確認いただけます。
-                            最終的な馬券購入の判断は、ご自身の責任でお願いいたします。
+                    <div className="border-l-4 border-green-500 pl-4">
+                        <h3 className="font-bold text-gray-700 mb-2">Q: 分析の精度はどのくらいですか？</h3>
+                        <p className="text-gray-600 text-sm">
+                            A: 実際の結果とは異なる場合があります。「高配当的中ランキング」で過去実績をご参考ください。
                         </p>
                     </div>
-                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                        <h3 className="font-bold text-gray-700 mb-2 text-lg">Q: スマートフォンでも使えますか？</h3>
-                        <p className="text-gray-600">
-                            A: はい、スマートフォン・タブレット・PCすべてのデバイスに対応しています。
-                            どのデバイスでも快適にご利用いただけます。
+                    <div className="border-l-4 border-blue-500 pl-4">
+                        <h3 className="font-bold text-gray-700 mb-2">Q: モバイルでも使えますか？</h3>
+                        <p className="text-gray-600 text-sm">
+                            A: はい、PC・スマートフォン・タブレットすべてのデバイスに対応しています。
                         </p>
                     </div>
                 </div>
             </section>
 
-            <section className="bg-white rounded-xl shadow-md border p-6">
+            {/* 7. 対応競馬場 */}
+            <section className="bg-gradient-to-b from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-6 md:p-8">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                     対応競馬場一覧
                 </h2>
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-2 gap-8">
                     <div>
-                        <h3 className="font-bold text-lg mb-3 text-primary">中央競馬</h3>
+                        <h3 className="font-bold text-lg mb-3 text-primary">中央競馬（10場）</h3>
                         <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                            <div>• 札幌競馬場</div>
-                            <div>• 函館競馬場</div>
-                            <div>• 福島競馬場</div>
-                            <div>• 新潟競馬場</div>
-                            <div>• 東京競馬場</div>
-                            <div>• 中山競馬場</div>
-                            <div>• 中京競馬場</div>
-                            <div>• 京都競馬場</div>
-                            <div>• 阪神競馬場</div>
-                            <div>• 小倉競馬場</div>
+                            <div>札幌・函館・福島・新潟</div>
+                            <div>東京・中山・中京・京都</div>
+                            <div>阪神・小倉</div>
                         </div>
                     </div>
                     <div>
-                        <h3 className="font-bold text-lg mb-3 text-primary">地方競馬</h3>
+                        <h3 className="font-bold text-lg mb-3 text-primary">地方競馬（14場）</h3>
                         <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                            <div>• 門別競馬場</div>
-                            <div>• 盛岡競馬場</div>
-                            <div>• 水沢競馬場</div>
-                            <div>• 浦和競馬場</div>
-                            <div>• 船橋競馬場</div>
-                            <div>• 大井競馬場</div>
-                            <div>• 川崎競馬場</div>
-                            <div>• 金沢競馬場</div>
-                            <div>• 笠松競馬場</div>
-                            <div>• 名古屋競馬場</div>
-                            <div>• 園田競馬場</div>
-                            <div>• 姫路競馬場</div>
-                            <div>• 高知競馬場</div>
-                            <div>• 佐賀競馬場</div>
+                            <div>門別・盛岡・水沢・浦和</div>
+                            <div>船橋・大井・川崎・金沢</div>
+                            <div>笠松・名古屋・園田・姫路</div>
+                            <div>高知・佐賀</div>
                         </div>
                     </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-4">
+                <p className="text-xs text-gray-500 mt-4">
                     ※ばんえい競馬（帯広）は対応しておりません。
                 </p>
             </section>
-            <section className="p-1" />
         </div>
     );
 }

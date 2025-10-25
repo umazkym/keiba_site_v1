@@ -3,7 +3,7 @@ import { TwitterIcon } from 'lucide-react'; // ★★★ この行を追加 ★�
 
 export const Footer = () => {
     return (
-        <footer className="bg-surface text-center py-6 mt-8 border-t-2 border-border relative z-0 mb-16">
+        <footer className="bg-surface text-center py-6 border-t-2 border-border relative z-0 mb-16">
             {/* mb-16（64px）を追加してアンカー広告分のマージンを確保 */}
             <div className="container mx-auto px-4">
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-x-4 mb-2 flex-wrap">

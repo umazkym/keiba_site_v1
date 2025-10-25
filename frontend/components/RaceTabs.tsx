@@ -13,6 +13,8 @@ import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './Icons';
 import { Adsense } from './Adsense';
 import { RelatedRaces } from './RelatedRaces';
+import { DataExplanationPanel } from './DataExplanationPanel';
+import { RelatedArticles } from './RelatedArticles';
 
 // ▼▼▼ ここから CollapsibleSection コンポーネントを修正 ▼▼▼
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
@@ -88,7 +90,7 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
         const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
 
         return (
-            <div className="mt-6 flex justify-between items-center">
+            <div className="my-6 flex justify-between items-center">
                 {hasPrev && prevRace ? (
                     <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary">
                         &larr; {prevRace.race_number}Rへ
@@ -125,21 +127,61 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
                         </div>
                     </div>
 
-                    {/* レース全体の分析セクション */}
-                    <RaceAnalysis race={activeRace} />
-
-                    <div className="space-y-2">
-                        <CollapsibleSection title="AIスタート位置取り予測" icon={<FlagIcon className="w-5 h-5" />}>
+                    {/* 脚質パターン予測 */}
+                    <div className="card mb-3">
+                        <div className="p-4 border-b border-gray-200">
+                            <h4 className="flex items-center text-md font-bold text-gray-700">
+                                <FlagIcon className="w-5 h-5 text-primary mr-2" />
+                                脚質パターン予測
+                            </h4>
+                        </div>
+                        <div className="p-4">
                             <StartPositionChart predictions={activeRace.predictions} />
-                        </CollapsibleSection>
-                        <CollapsibleSection title="過去対決成績" icon={<UsersIcon className="w-5 h-5" />}>
+                        </div>
+                    </div>
+
+                    {/* 過去対決成績 */}
+                    <div className="card mb-3">
+                        <div className="p-4 border-b border-gray-200">
+                            <h4 className="flex items-center text-md font-bold text-gray-700">
+                                <UsersIcon className="w-5 h-5 text-primary mr-2" />
+                                過去対決成績
+                            </h4>
+                        </div>
+                        <div className="p-4">
                             <MatchupTable race={activeRace} />
-                        </CollapsibleSection>
-                        <CollapsibleSection title="枠順傾向スコア" icon={<ChartBarIcon className="w-5 h-5" />}>
+                        </div>
+                    </div>
+
+                    {/* 枠順傾向スコア */}
+                    <div className="card mb-3">
+                        <div className="p-4 border-b border-gray-200">
+                            <h4 className="flex items-center text-md font-bold text-gray-700">
+                                <ChartBarIcon className="w-5 h-5 text-primary mr-2" />
+                                枠順傾向スコア
+                            </h4>
+                        </div>
+                        <div className="p-4">
                             <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
-                        </CollapsibleSection>
+                        </div>
                     </div>
                     <RaceNavigation />
+
+                    <div className='p-4 border mb-4 bg-white rounded-lg'>
+                        {/* レース全体の分析セクション */}
+                        <RaceAnalysis race={activeRace} />
+                    </div>
+
+                    {/* AI指標の説明パネル */}
+                    <DataExplanationPanel showAdvanced={true} />
+
+                    {/* 関連記事の推奨 */}
+                    <RelatedArticles
+                        venue={venue.venue_name}
+                        distance={activeRace.distance}
+                        courseType={activeRace.course_type === '芝' ? 'turf' : 'dirt'}
+                    />
+
                     {shouldShowAd && (
                         <div className="my-4 p-2 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200">
                             <div className="text-xs text-gray-500 text-center mb-1">スポンサーリンク</div>

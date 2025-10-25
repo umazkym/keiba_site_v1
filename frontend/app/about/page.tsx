@@ -1,15 +1,16 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
     title: '運営者情報・このサイトについて | UMA-FREE',
-    description: 'UMA-FREEの運営者情報とサービス内容について詳しく説明しています。AI競馬予測の仕組みやサイトの目的、技術情報などを公開しています。',
+    description: 'UMA-FREEの運営情報とサイトの趣旨について。競馬レースのデータ分析情報を参考提供しています。',
     robots: {
         index: true,
         follow: true,
     },
     openGraph: {
         title: '運営者情報・このサイトについて | UMA-FREE',
-        description: 'UMA-FREEの運営者情報とサービス内容について詳しく説明しています。',
+        description: 'UMA-FREEの運営情報とサイトの趣旨について。競馬レースのデータ分析情報を参考提供しています。',
         url: 'https://uma-free.com/about',
         siteName: 'UMA-FREE',
         locale: 'ja_JP',
@@ -25,8 +26,16 @@ const aboutContent = {
     main: {
         title: 'このサイトについて',
         paragraphs: [
-            'UMA-FREEは、個人開発者が運営する、独自のAIアルゴリズムを用いた競馬予想サイトです。中央競馬（JRA）および地方競馬（NAR）の全レースを対象に、全てのAI予測データを完全無料で公開しています。会員登録やメールアドレスの登録は一切不要です。',
-            '本サイトが、皆様の競馬予想に新しい視点やデータに基づいた楽しみ方をもたらすきっかけの一つになれば幸いです。'
+            'UMA-FREEは、個人開発者が運営する競馬データ分析サイトです。機械学習やデータ分析技術を用いてレース結果を統計分析し、過去のデータパターンに基づいた情報を無料で公開しています。会員登録やメールアドレスの登録は不要です。',
+            '本サイトの情報は参考・学習目的の統計分析です。実際の投票判断はご自身の責任において行ってください。'
+        ]
+    },
+    operatorBackground: {
+        title: '運営者について',
+        paragraphs: [
+            'UMA-FREEは個人開発者「おとうふや」が趣味・学習の延長として作成・運営しているサイトです。機械学習やデータ分析の技術を独学で学び、試作と検証を重ねてきました。このサイトは学習目的でのデータ分析研究を目的としています。',
+            '当サイトで提供している統計分析情報は、過去5年以上のレース結果を基に機械学習などを用いて作成された参考情報です。完全な的中や利益を保証するものではありません。すべて参考値・推定値としてご理解ください。',
+            '運営は個人的な活動であり、システム開発を本業として行っているわけではありません。投票の助言や推奨は行っていません。'
         ]
     },
     operatorInfo: {
@@ -35,58 +44,132 @@ const aboutContent = {
             { label: 'サイト名', value: 'UMA-FREE' },
             { label: '運営者', value: 'おとうふや' },
             { label: 'サービス開始日', value: '2025年9月11日' },
+            { label: '対応対象', value: '中央競馬（JRA）および地方競馬（NAR）のレースを対象に、可能な範囲で分析データを公開しています。' },
             { label: 'お問い合わせ', value: '<a href="/contact" class="text-primary hover:underline">お問い合わせフォーム</a>をご利用ください。' }
+        ]
+    },
+    statistics: {
+        title: 'サイト統計',
+        items: [
+            { label: '更新頻度', value: '基本的に毎日更新を目安にしています（概ね午前7時前後に前日の確定結果と翌日の分析データを掲載することが多いです）。' },
+            { label: '分析対象', value: '中央競馬・地方競馬のレースを対象（全レースの掲載が常に可能とは限りません）。' },
+            { label: '公開データ種類', value: 'AI偏差値、複勝率、勝率、能力順位、脚質予測、過去対決成績、枠順傾向スコア など。' },
+            { label: 'データの基礎', value: '公開している分析は過去5年以上のレース結果を基に作成し、定期的に改善・検証を行っています。' }
         ]
     },
     dataInfo: {
         title: '公開データについて',
         items: [
-            { label: '全出走馬のAI偏差値', value: 'AIによる能力評価を偏差値として数値化したものです。過去のレースタイムや着順、コース適性などを総合的に判断しています。' },
-            { label: 'AIスタート位置取り予測', value: '各馬の脚質や過去のレース展開データから、スタート直後の位置取りを予測します。逃げ・先行馬を探す際に役立ちます。' },
-            { label: '過去対決データ', value: '出走馬同士が過去に同じレースで直接対決した際の成績を一覧で確認できます。馬同士の力関係を比較するのに便利です。' },
-            { label: '枠順傾向スコア', value: '過去の膨大なレース結果から、コースや距離に応じた枠順の有利・不利をスコア化した独自のデータです。' }
+            { label: 'AI偏差値', value: '機械学習により算出した能力スコアを偏差値形式で表示しています。過去の着順やタイム、コース適性など複数の要素を統計分析していますが、あくまで推定値です。実際の結果とは異なる場合があります。' },
+            { label: '脚質予測', value: '過去のレース展開データを分析し、各馬のおおよその走法パターンを分類しています。参考情報としてご活用ください。' },
+            { label: '過去対決データ', value: '同一レースで直接対決した際の成績を統計的に一覧にしています。馬同士の相対比較の参考になりますが、状況によって結果は変わります。' },
+            { label: '枠順傾向スコア', value: '過去の統計データに基づき、コースや距離ごとの枠順の傾向をスコア化したものです。参考情報としてご利用ください。' }
         ]
     },
     techInfo: {
         title: '技術情報',
-        intro: '本サービスは、以下の技術を活用して構築・運営されています：',
+        intro: '本サイトは趣味・学習の範囲で以下の技術を使って構築しています（商用の大規模システムとは異なります）：',
         items: [
-            '<strong>AI/機械学習：</strong>Python, scikit-learn, pandas',
-            '<strong>フロントエンド：</strong>Next.js, React, TypeScript, Tailwind CSS',
-            '<strong>バックエンド：</strong>FastAPI, PostgreSQL',
-            '<strong>インフラ：</strong>Vercel, Render'
+            '<strong>AI/機械学習：</strong>Python、scikit-learn、pandas（試作・検証で利用）',
+            '<strong>フロントエンド：</strong>Next.js、React、TypeScript、Tailwind CSS',
+            '<strong>バックエンド：</strong>FastAPI、PostgreSQL（データ保存・APIに利用）',
+            '<strong>インフラ：</strong>Vercel、Render（デプロイやホスティングに利用）'
+        ]
+    },
+    disclaimer: {
+        title: '注意事項',
+        paragraphs: [
+            '当サイトの情報は投票や投資の助言を行うものではありません。提供する統計分析情報はあくまで参考値であり、実際の投票判断は完全にご自身の責任においてお願いします。',
+            '予測が外れることはよくあります。本サイトの情報により損失が生じても、当サイト及び運営者は一切の責任を負いません。',
+            '分析に使用しているデータやモデルは継続的に改善していますが、結果の保証はできません。',
+            '20歳未満の馬券購入は法律で禁止されています。本サイトは成人を対象としています。',
+            'ギャンブル依存症の可能性を感じた場合は、<a href="https://www.ncagc.jp/" target="_blank" className="text-primary hover:underline">ギャンブル依存症対策全国協議会</a>にご相談ください。'
         ]
     }
 };
 
 
 export default function AboutPage() {
+    // セクション用の統一されたスタイルを定義
+    const sectionClass = "flex flex-col gap-4";
+    const sectionTitleClass = "text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3";
+
     return (
-        <div className="flex flex-col gap-8 py-12 px-4">
-            <div className="max-w-4xl mx-auto w-full bg-white p-8 rounded-lg shadow-md border border-gray-200">
-                <div className="flex flex-col gap-10">
+        <div className="container py-8">
+            <div className="max-w-4xl mx-auto">
+                <div className="flex flex-col gap-8">
+                    {/* メインセクション */}
                     <div>
-                        <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-2 border-gray-300 pb-4">{aboutContent.main.title}</h1>
+                        <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-3 border-primary pb-4">{aboutContent.main.title}</h1>
                         {aboutContent.main.paragraphs.map((text, index) => (<p key={index} className={`text-gray-700 leading-8 text-base ${index > 0 ? 'mt-4' : ''}`}>{text}</p>))}
                     </div>
-                    <section className="flex flex-col gap-4">
-                        <h2 className="text-3xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3">{aboutContent.operatorInfo.title}</h2>
+
+                    {/* 運営者について */}
+                    <section className={sectionClass}>
+                        <h2 className={sectionTitleClass}>{aboutContent.operatorBackground.title}</h2>
+                        <div className="flex flex-col gap-4">
+                            {aboutContent.operatorBackground.paragraphs.map((text, index) => (<p key={index} className="text-gray-700 leading-8 text-base">{text}</p>))}
+                        </div>
+                    </section>
+
+                    {/* 運営者情報 */}
+                    <section className={sectionClass}>
+                        <h2 className={sectionTitleClass}>{aboutContent.operatorInfo.title}</h2>
                         <dl className="flex flex-col gap-6">
                             {aboutContent.operatorInfo.items.map(item => (<div key={item.label} className="grid grid-cols-1 sm:grid-cols-4 gap-4"><dt className="font-bold text-gray-700 text-base">{item.label}</dt><dd className="sm:col-span-3 text-gray-800 text-base" dangerouslySetInnerHTML={{ __html: item.value }} /></div>))}
                         </dl>
                     </section>
-                    <section className="flex flex-col gap-4">
-                        <h2 className="text-3xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3">{aboutContent.dataInfo.title}</h2>
-                        <div className="flex flex-col gap-8">
-                            {aboutContent.dataInfo.items.map(item => (<div key={item.label} className="flex flex-col gap-2"><h3 className="font-bold text-gray-800 text-lg">{item.label}</h3><p className="text-gray-700 text-base">{item.value}</p></div>))}
+
+                    {/* サイト統計 */}
+                    <section className={sectionClass}>
+                        <h2 className={sectionTitleClass}>{aboutContent.statistics.title}</h2>
+                        <dl className="flex flex-col gap-6">
+                            {aboutContent.statistics.items.map(item => (<div key={item.label} className="grid grid-cols-1 sm:grid-cols-4 gap-4"><dt className="font-bold text-gray-700 text-base">{item.label}</dt><dd className="sm:col-span-3 text-gray-800 text-base">{item.value}</dd></div>))}
+                        </dl>
+                    </section>
+
+                    {/* 公開データについて */}
+                    <section className={sectionClass}>
+                        <h2 className={sectionTitleClass}>{aboutContent.dataInfo.title}</h2>
+                        <div className="flex flex-col gap-6">
+                            {aboutContent.dataInfo.items.map(item => (<div key={item.label} className="border-l-4 border-primary pl-4"><h3 className="font-bold text-gray-800 text-base mb-2">{item.label}</h3><p className="text-gray-700 text-base">{item.value}</p></div>))}
                         </div>
                     </section>
-                    <section className="flex flex-col gap-4">
-                        <h2 className="text-3xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3">{aboutContent.techInfo.title}</h2>
+
+                    {/* 技術情報 */}
+                    <section className={sectionClass}>
+                        <h2 className={sectionTitleClass}>{aboutContent.techInfo.title}</h2>
                         <p className="text-gray-700 text-base mb-4">{aboutContent.techInfo.intro}</p>
-                        <ul className="list-disc list-inside flex flex-col gap-3 text-gray-700">
-                            {aboutContent.techInfo.items.map(item => (<li key={item} className="text-base" dangerouslySetInnerHTML={{ __html: item }} />))}
+                        <ul className="flex flex-col gap-3 text-gray-700">
+                            {aboutContent.techInfo.items.map(item => (<li key={item} className="text-base flex items-start gap-2"><span className="text-primary font-bold flex-shrink-0">•</span><span dangerouslySetInnerHTML={{ __html: item }} /></li>))}
                         </ul>
+                    </section>
+
+                    {/* 注意事項 */}
+                    <section className={sectionClass}>
+                        <h2 className={sectionTitleClass}>{aboutContent.disclaimer.title}</h2>
+                        <div className="flex flex-col gap-4 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                            {aboutContent.disclaimer.paragraphs.map((text, index) => (<p key={index} className="text-gray-700 leading-8 text-base" dangerouslySetInnerHTML={{ __html: text }} />))}
+                        </div>
+                    </section>
+
+                    {/* 関連ページへの導線 */}
+                    <section className={sectionClass}>
+                        <h2 className={sectionTitleClass}>関連ページ</h2>
+                        <div className="grid md:grid-cols-3 gap-4">
+                            <Link href="/faq" className="p-4 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-md transition-all">
+                                <h3 className="font-bold text-gray-800 mb-2">よくある質問</h3>
+                                <p className="text-sm text-gray-600">FAQページで詳しくご説明しています。</p>
+                            </Link>
+                            <Link href="/contact" className="p-4 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-md transition-all">
+                                <h3 className="font-bold text-gray-800 mb-2">お問い合わせ</h3>
+                                <p className="text-sm text-gray-600">ご質問やご意見をお聞かせください。</p>
+                            </Link>
+                            <Link href="/articles" className="p-4 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-md transition-all">
+                                <h3 className="font-bold text-gray-800 mb-2">分析記事</h3>
+                                <p className="text-sm text-gray-600">競馬予想に役立つ記事を公開中。</p>
+                            </Link>
+                        </div>
                     </section>
                 </div>
             </div>

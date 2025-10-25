@@ -243,8 +243,11 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                                 content={record ? <MatchupTooltipContent rowHorse={selectedHorse} colHorse={opponent} record={record} /> : ''}
                                 placement="top"
                                 interactive={true}
+                                theme="light-border"
+                                appendTo={() => document.body}
+                                delay={[100, 200]}
                             >
-                                <div className={`flex justify-between items-center px-2 py-1.5 ${bgColor} rounded border border-gray-200 hover:shadow-sm transition-shadow`}>
+                                <div className={`flex justify-between items-center px-2 py-1.5 ${bgColor} rounded border border-gray-200 hover:shadow-sm transition-shadow cursor-pointer`}>
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[9px] border-2 flex-shrink-0 ${getWakuColorClasses(opponent.waku_number)}`}>
                                             {opponent.horse_number}

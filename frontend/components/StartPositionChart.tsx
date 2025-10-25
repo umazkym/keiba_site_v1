@@ -47,7 +47,7 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
     if (!predictions || predictions.length === 0 || predictions.every(p => p.start_1c_indicator === null)) {
         return (
             <div className="my-4 p-4 md:p-6 bg-gradient-to-r from-gray-50 to-white border rounded-lg shadow-inner text-center text-gray-500">
-                <p className="font-medium text-sm">このレースのAIスタート位置取り予測データはありません。</p>
+                <p className="font-medium text-sm">このレースの脚質パターン予測はありません。</p>
             </div>
         );
     }
@@ -64,10 +64,8 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
     const containerHeight = Math.max((sortedByNumber.length - 1) * markerSpacing + 60, isMobile ? 140 : 150);
 
     return (
-        <div className="my-4 p-3 md:p-4 bg-white border rounded-lg shadow-inner">
+        <div className="p-3 md:p-4 bg-white">
             <h4 className="text-xs md:text-sm font-bold text-gray-600 mb-2 md:mb-3 flex items-center">
-                <span className="mr-2"></span>
-                AIスタート位置取り予測
             </h4>
             <div className="relative w-full bg-gradient-to-r from-blue-50 via-gray-50 to-yellow-50 rounded-lg shadow-sm overflow-hidden"
                  style={{ height: `${containerHeight}px` }}>

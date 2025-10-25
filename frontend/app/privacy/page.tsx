@@ -147,9 +147,9 @@ const privacyPolicyContent: PrivacyPolicyContent = {
 
 export default function PrivacyPolicyPage() {
     return (
-        <div className="flex flex-col gap-8 py-12 px-4">
-            <div className="max-w-4xl mx-auto w-full bg-white p-8 rounded-lg shadow-md border border-gray-200">
-                <h1 className="text-4xl font-bold text-gray-800 mb-8 border-b-2 border-gray-300 pb-4">{privacyPolicyContent.title}</h1>
+        <div className="container py-8">
+            <div className="max-w-4xl mx-auto">
+                <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-3 border-primary pb-4">{privacyPolicyContent.title}</h1>
                 <div className="flex flex-col gap-8 text-gray-700 leading-8">
                     <p className="text-sm text-gray-500">{privacyPolicyContent.lastUpdated}</p>
                     <p className="text-base">{privacyPolicyContent.introduction}</p>

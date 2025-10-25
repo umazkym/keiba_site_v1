@@ -19,6 +19,9 @@ export interface Guide {
 
 // 全ガイドを取得する関数
 export function getAllGuides(): Guide[] {
+  if (!fs.existsSync(guidesDirectory)) {
+    return [];
+  }
   const fileNames = fs.readdirSync(guidesDirectory);
   const allGuides = fileNames.map((fileName) => {
     const slug = fileName.replace(/\.md$/, '');

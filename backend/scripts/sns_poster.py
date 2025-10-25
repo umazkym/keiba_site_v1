@@ -858,6 +858,8 @@ def create_afternoon_race_summary_tweet(all_races_today: dict, yesterday_hits: L
     # 本日のレース情報
     total_races = 0
     venue_info = []
+    jra_races = 0
+    nar_races = 0
     venues = all_races_today.get('jra', []) + all_races_today.get('nar', [])
 
     for venue in venues:
@@ -866,6 +868,13 @@ def create_afternoon_race_summary_tweet(all_races_today: dict, yesterday_hits: L
         if race_count > 0:
             total_races += race_count
             venue_info.append((venue.get('venue_name', '?'), race_count))
+            # JRA/NAR判定
+            venue_name = venue.get('venue_name', '')
+            jra_venues = ['札幌', '函館', '福島', '新潟', '東京', '中山', '京都', '阪神']
+            if any(jra_venue in venue_name for jra_venue in jra_venues):
+                jra_races += race_count
+            else:
+                nar_races += race_count
 
     # 昨日の高配当を集計
     hit_summary = "昨日の的中実績: 予測あり"
@@ -874,13 +883,18 @@ def create_afternoon_race_summary_tweet(all_races_today: dict, yesterday_hits: L
 
     lines = [f"📊本日のレース情報 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})"]
     lines.append(f"\n{hit_summary}")
-    lines.append(f"\n✅ 本日は 全{total_races}レース 予測中！\n")
+    lines.append(f"\n✅ 本日は 全{total_races}レース 無料予想公開中！\n")
     lines.append("【本日の開催場】")
 
     for venue_name, count in sorted(venue_info, key=lambda x: x[1], reverse=True)[:5]:
-        lines.append(f"• {venue_name}: {count}R")
+        lines.append(f"• {venue_name}:全{count}R")
 
-    hashtags = ["#競馬予想", "#AI予想", "#レース情報"]
+    hashtags = ["#競馬予想", "#AI予想"]
+    if jra_races > 0:
+        hashtags.append("#中央競馬")
+    if nar_races > 0:
+        hashtags.append("#地方競馬")
+
     lines.append(f"\n▼詳細データはこちら\n{SITE_BASE_URL}\n")
     lines.append(" ".join(hashtags))
 
@@ -906,15 +920,25 @@ def create_evening_tomorrow_race_tweet(tomorrow_date: str) -> Optional[str]:
                 top_preds = preds[:3]
 
                 if len(top_preds) >= 3:
-                    lines = [f"🎯明日の重賞レース AI分析"]
+                    lines = [f"🎯明日のレース AI予想"]
                     lines.append(f"\n【{race_name}】")
-                    lines.append(f"{race.get('venue_name', '?')} / {datetime.strptime(tomorrow_date, '%Y-%m-%d').strftime('%m/%d')}\n")
+                    lines.append(f"{race.get('venue_name', '?')}   {datetime.strptime(tomorrow_date, '%Y-%m-%d').strftime('%m/%d')}\n")
 
                     marks = ['◎', '○', '▲']
+                    horse_names = []
                     for i, pred in enumerate(top_preds):
-                        lines.append(f"{marks[i]} {pred.get('horse_name', '?')} (AI偏差値: {pred.get('deviation_score', 0):.1f})")
+                        horse_name = pred.get('horse_name', '?')
+                        horse_names.append(horse_name)
+                        lines.append(f"{marks[i]} {horse_name} (AI偏差値: {pred.get('deviation_score', 0):.1f})")
 
-                    hashtags = ["#競馬予想", "#AI予想", "#重賞"]
+                    # 重賞名を削除（括弧内を削除）してハッシュタグ化
+                    clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', race_name).strip()
+
+                    hashtags = ["#競馬予想", "#AI予想", f"#{clean_race_name}"]
+                    # 馬名もハッシュタグに追加
+                    for horse_name in horse_names:
+                        hashtags.append(f"#{horse_name}")
+
                     lines.append(f"\n▼詳細はこちら\n{SITE_BASE_URL}\n")
                     lines.append(" ".join(hashtags))
 
@@ -1029,7 +1053,7 @@ def main():
 
             if all_races_today:
                 tweet_text = create_afternoon_race_summary_tweet(all_races_today, yesterday_hits if yesterday_hits else [], today_str)
-                post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str)
+                post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
             else:
                 _log("-> 本日のレース情報が取得できませんでした。")
 
@@ -1052,7 +1076,7 @@ def main():
                                 if len(top_preds) == 3:
                                     image_file = generate_reminder_og_image(race, top_preds)
                                     if image_file:
-                                        post_to_twitter(tweet_text, image_file, post_type="evening_race", target_date=tomorrow_str)
+                                        post_to_twitter(tweet_text, image_file, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
                                         break
                         else:
                             continue

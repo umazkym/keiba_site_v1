@@ -9,7 +9,12 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import { GlobalAdManager } from "@/components/GlobalAdManager";
 import { OrganizationSchema, WebsiteSchema, SoftwareApplicationSchema } from "@/components/StructuredData";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+    subsets: ["latin"],
+    variable: '--font-inter',
+    preload: true,
+    display: 'swap'
+});
 
 export const metadata: Metadata = {
     metadataBase: new URL("https://uma-free.com"),
@@ -66,6 +71,11 @@ export default function RootLayout({
     return (
         <html lang="ja">
             <head>
+                {/* DNS Prefetch と Preconnect for External Resources */}
+                <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
+                <link rel="preconnect" href="https://fonts.googleapis.com" />
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+
                 {/* ★★★ 手動でメタタグを追加（最優先） ★★★ */}
                 <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
 

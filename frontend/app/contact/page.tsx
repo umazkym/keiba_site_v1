@@ -32,9 +32,9 @@ export default function ContactPage() {
     // 本文テキスト
     const textBaseClass = "text-gray-700 leading-8 text-base";
     // メインCTAボタン
-    const primaryButtonClass = "inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg transition-all shadow-md hover:shadow-lg text-lg";
+    const primaryButtonClass = "inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 md:py-3 px-8 md:px-8 rounded-lg transition-all shadow-md hover:shadow-lg active:shadow-sm text-base md:text-lg min-h-[44px] md:min-h-auto flex items-center justify-center";
     // サブCTAボタン (FAQ)
-    const secondaryButtonClass = "inline-block bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-8 rounded-lg transition-all text-base";
+    const secondaryButtonClass = "inline-block bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 md:py-3 px-8 md:px-8 rounded-lg transition-all active:bg-gray-400 text-base min-h-[44px] md:min-h-auto flex items-center justify-center";
     // --- スタイル定義ここまで ---
 
     return (

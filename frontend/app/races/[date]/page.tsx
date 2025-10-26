@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 3600;
+export const revalidate = 300;  // ISR: 5分ごと再生成（データ更新遅延を最小化）
 
 export async function generateStaticParams() {
     const today = new Date();

@@ -92,3 +92,20 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     };
 }
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+// 関連記事を取得する関数（同じカテゴリの記事から指定件数）
+export function getRelatedArticles(currentSlug: string, count: number = 3): Article[] {
+  const allArticles = getAllArticles();
+  const currentArticle = allArticles.find(a => a.slug === currentSlug);
+
+  if (!currentArticle) {
+    // 現在の記事が見つからない場合は最新記事を返す
+    return allArticles.slice(0, count);
+  }
+
+  const relatedArticles = allArticles.filter(
+    a => a.category === currentArticle.category && a.slug !== currentSlug
+  );
+
+  return relatedArticles.slice(0, count);
+}

@@ -4,6 +4,8 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArticleSchema } from '@/components/StructuredData';
+import { Breadcrumb } from '@/components/Breadcrumb';
+import { RelatedArticles } from '@/components/RelatedArticles';
 
 type Props = {
   params: { slug: string };
@@ -60,6 +62,8 @@ export default async function ArticlePage({ params }: Props) {
         />
 
         <div className="container mx-auto px-4 max-w-4xl">
+          <Breadcrumb />
+
           <article className="bg-white p-6 sm:p-8 rounded-lg shadow-lg">
             <header className="mb-8 text-center border-b pb-6">
               <div className="mb-4">
@@ -88,12 +92,14 @@ export default async function ArticlePage({ params }: Props) {
               </div>
             )}
             
-            <div 
+            <div
               className="prose max-w-none"
               dangerouslySetInnerHTML={{ __html: article.content }}
             />
+
+            <RelatedArticles currentSlug={params.slug} count={3} />
           </article>
-          
+
           <div className="text-center mt-12">
             <Link href="/articles" className="bg-gray-800 text-white font-bold py-3 px-8 rounded-lg hover:bg-gray-700 transition-colors">
                 記事一覧へ戻る

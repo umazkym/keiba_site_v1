@@ -175,14 +175,7 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
                     {/* AI指標の説明パネル */}
                     <DataExplanationPanel showAdvanced={true} />
 
-                    {/* 関連記事の推奨 */}
-                    {activeRace.distance && (
-                        <RelatedArticles
-                            venue={venue.venue_name}
-                            distance={activeRace.distance}
-                            courseType={activeRace.course_type === '芝' ? 'turf' : 'dirt'}
-                        />
-                    )}
+                    {/* 関連記事の推奨は記事詳細ページで表示 */}
 
                     {shouldShowAd && (
                         <div className="my-4 p-2 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200">

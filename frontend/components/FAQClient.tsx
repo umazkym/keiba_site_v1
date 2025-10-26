@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import Script from 'next/script';
 
 interface FAQItem {
     id: string;
@@ -164,8 +165,31 @@ export const FAQClient = () => {
         ? faqItems.filter(item => item.category === selectedCategory)
         : faqItems;
 
+    // FAQ Schema for structured data
+    const faqSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        'mainEntity': faqItems.map(item => ({
+            '@type': 'Question',
+            'name': item.question,
+            'acceptedAnswer': {
+                '@type': 'Answer',
+                'text': item.answer
+            }
+        }))
+    };
+
     return (
-        <div className="container py-8">
+        <>
+            <Script
+                id="faq-schema"
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify(faqSchema)
+                }}
+                strategy="afterInteractive"
+            />
+            <div className="container py-8">
             <div className="max-w-4xl mx-auto">
                 {/* ヘッダー */}
                 <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-3 border-primary pb-4">
@@ -249,6 +273,7 @@ export const FAQClient = () => {
                     </div>
                 </div>
             </div>
-        </div>
+            </div>
+        </>
     );
 };

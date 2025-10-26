@@ -8,9 +8,8 @@ Disallow: /_next/static/media/
 Disallow: /api/
 Disallow: /node_modules/
 
-# サイトマップの場所を通知（複数サイトマップ）
+# サイトマップの場所を通知
 Sitemap: https://uma-free.com/sitemap.xml
-Sitemap: https://uma-free.com/sitemap-articles.xml
 
 # クロール遅延設定（サーバー負荷軽減）
 Crawl-delay: 1

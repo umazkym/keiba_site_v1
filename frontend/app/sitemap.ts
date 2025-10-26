@@ -1,8 +1,12 @@
 import { MetadataRoute } from 'next'
+import { getAllArticles } from '@/lib/articles';
 
 const BASE_URL = 'https://uma-free.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+    // 記事データを取得
+    const articles = getAllArticles();
+
     const staticRoutes = [
         '',
         '/about',
@@ -11,10 +15,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         '/privacy',
         '/articles',
         '/search',
+        '/terms',
+        '/faq',
     ].map((route) => ({
         url: `${BASE_URL}${route}`,
         lastModified: new Date(),
         changeFrequency: 'monthly' as const,
+        priority: route === '' ? 1.0 : 0.8,
+    }));
+
+    // 記事ページをサイトマップに追加
+    const articleRoutes = articles.map((article) => ({
+        url: `${BASE_URL}/articles/${article.slug}`,
+        lastModified: new Date(article.date),
+        changeFrequency: 'weekly' as const,
         priority: 0.8,
     }));
 
@@ -63,12 +77,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 priority: 1.0,
             },
             ...staticRoutes.filter(r => r.url !== BASE_URL),
+            ...articleRoutes,
             ...datePageRoutes,
             ...racePageRoutes
         ];
 
     } catch (error) {
         console.error('Error fetching all race URLs for sitemap:', error);
-        return staticRoutes;
+        return [
+            {
+                url: BASE_URL,
+                lastModified: new Date(),
+                changeFrequency: 'daily' as const,
+                priority: 1.0,
+            },
+            ...staticRoutes.filter(r => r.url !== BASE_URL),
+            ...articleRoutes,
+        ];
     }
 }

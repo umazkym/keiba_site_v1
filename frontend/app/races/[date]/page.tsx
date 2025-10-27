@@ -5,6 +5,9 @@ import { formatDate } from "@/lib/utils";
 import { RaceDayPrediction } from "@/lib/types";
 import { Suspense } from 'react';
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
+// ▼▼▼▼▼【修正】notFouund をインポート ▼▼▼▼▼
+import { notFound } from 'next/navigation';
+// ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 300;  // ISR: 5分ごと再生成（データ更新遅延を最小化）
@@ -78,6 +81,14 @@ export default async function RacePage({ params }: { params: { date: string } })
     try {
         predictionData = await getPredictionsForDate(params.date);
 
+        // ▼▼▼▼▼【修正】データが存在しない場合（ソフト404対策）▼▼▼▼▼
+        // データ取得失敗(null) または データが空 の場合は 404 ページを表示
+        if (!predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
+            console.log(`[Data Info] No prediction data found for ${params.date}. Returning 404.`);
+            notFound();
+        }
+        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+
         const mainRace = predictionData?.jra?.[0]?.races?.[0] || predictionData?.nar?.[0]?.races?.[0];
 
         if (mainRace) {
@@ -129,7 +140,23 @@ export default async function RacePage({ params }: { params: { date: string } })
 
     } catch (error) {
         console.error(`[Build Warning] Failed to fetch initial data for ${params.date}. Error:`, error);
+        // ▼▼▼▼▼【修正】データ取得例外時も404を返す ▼▼▼▼▼
+        // APIエラーなどでデータが取得できなかった場合も404扱いにする
+        notFound();
+        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
     }
+
+    // ▼▼▼▼▼【修正】predictionDataがnullの可能性を再度チェック（try-catchを抜けたがデータがnullの場合）▼▼▼▼▼
+    // 上部のチェックで既に notFound() が呼ばれているはずだが、念のためここでもチェックする
+    // ただし、try-catch内で例外が発生した場合は、このreturnには到達しない
+    if (!predictionData) {
+         // このコードパスには通常到達しないはずだが、
+         // tryブロック内でエラーが発生せず、predictionDataがnullのままの場合（現在はcatchで処理）
+         // のフォールバックとして
+         console.log(`[Data Info] Fallback check: No prediction data for ${params.date}. Returning 404.`);
+         notFound();
+    }
+    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
     return (
         <>

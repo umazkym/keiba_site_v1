@@ -11,14 +11,18 @@ interface ArticlesPageProps {
 
 export async function generateMetadata({ searchParams }: ArticlesPageProps): Promise<Metadata> {
     const selectedCategory = searchParams.category;
-    const canonicalUrl = '/articles'; 
-
+    // ▼▼▼▼▼【修正】canonical URLの生成ロジックを変更 ▼▼▼▼▼
+    let canonicalUrl = '/articles'; 
     let title = "記事一覧 | UMA-FREE";
     let description = "UMA-FREEが提供する競馬データ分析に関する記事の一覧です。コース分析や騎手分析など、馬券検討に役立つ情報をお届けします。";
+
     if (selectedCategory) {
         title = `${selectedCategory}の記事一覧 | UMA-FREE`;
         description = `${selectedCategory}に関するデータ分析記事の一覧です。`;
+        // カテゴリが指定されている場合は、canonical URLにもパラメータを追加
+        canonicalUrl = `/articles?category=${encodeURIComponent(selectedCategory)}`;
     }
+    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
     return {
         title,

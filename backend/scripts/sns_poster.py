@@ -900,26 +900,42 @@ def create_afternoon_race_summary_tweet(all_races_today: dict, yesterday_hits: L
 
     return "\n".join(lines)
 
-def create_evening_tomorrow_race_tweet(tomorrow_date: str) -> Optional[str]:
-    """夜投稿: 明日の重賞/注目レース分析"""
+def create_evening_tomorrow_race_tweet(tomorrow_date: str) -> Optional[tuple]:
+    """
+    夜投稿: 明日の重賞/注目レース分析
+
+    Returns:
+        tuple: (tweet_text: str, race_data: dict, top_preds: list) if found, None if not found
+    """
     _log("-> 夜投稿: 明日の重賞レース分析テキストを生成...")
 
     tomorrow_races = get_api_data(tomorrow_date)
     if not tomorrow_races:
+        _log("-> APIから明日のレースデータが取得できませんでした")
         return None
 
     # 重賞レースを検索
     venues = tomorrow_races.get('jra', []) + tomorrow_races.get('nar', [])
 
+    _log(f"-> 明日のレースデータ: JRA {len(tomorrow_races.get('jra', []))}会場, NAR {len(tomorrow_races.get('nar', []))}会場")
+
     for venue in venues:
         for race in venue.get('races', []):
             race_name = race.get('race_name', '').strip()
-            if any(grade_race in race_name for grade_race in JRA_GRADE_RACE_NAMES):
+
+            # 重賞レース判定
+            is_grade_race = any(grade_race in race_name for grade_race in JRA_GRADE_RACE_NAMES)
+
+            if is_grade_race:
+                _log(f"-> 重賞レース発見: {race_name} ({venue.get('venue_name')})")
+
                 preds = sorted([p for p in race.get('predictions', []) if p.get('deviation_score')],
                               key=lambda p: p['deviation_score'], reverse=True)
                 top_preds = preds[:3]
 
                 if len(top_preds) >= 3:
+                    _log(f"-> 予測データあり (トップ3頭: {', '.join([p.get('horse_name', '?') for p in top_preds])})")
+
                     lines = [f"🎯明日のレース AI予想"]
                     lines.append(f"\n【{race_name}】")
                     lines.append(f"{race.get('venue_name', '?')}   {datetime.strptime(tomorrow_date, '%Y-%m-%d').strftime('%m/%d')}\n")
@@ -942,8 +958,17 @@ def create_evening_tomorrow_race_tweet(tomorrow_date: str) -> Optional[str]:
                     lines.append(f"\n▼詳細はこちら\n{SITE_BASE_URL}\n")
                     lines.append(" ".join(hashtags))
 
-                    return "\n".join(lines)
+                    tweet_text = "\n".join(lines)
 
+                    # レースデータとトップ予測を一緒に返す
+                    return (tweet_text, race, top_preds)
+                else:
+                    _log(f"-> 重賞レース {race_name} の予測データが不足 (予測数: {len(top_preds)})")
+            else:
+                # デバッグ用: 重賞以外のレース名をログに出力（最初の5レースのみ）
+                pass
+
+    _log("-> 明日の重賞レースが見つかりませんでした")
     return None
 
 # --- 9. メイン処理 ---
@@ -1060,27 +1085,25 @@ def main():
         # ========== 夜20時投稿 ==========
         elif post_type == 'evening':
             _log("\n--- 夜投稿: 明日の重賞/注目レース分析 ---")
-            tweet_text = create_evening_tomorrow_race_tweet(tomorrow_str)
+            result = create_evening_tomorrow_race_tweet(tomorrow_str)
 
-            if tweet_text:
-                all_races_tomorrow = get_api_data(tomorrow_str)
-                if all_races_tomorrow:
-                    venues = all_races_tomorrow.get('jra', []) + all_races_tomorrow.get('nar', [])
-                    for venue in venues:
-                        for race in venue.get('races', []):
-                            race_name = race.get('race_name', '').strip()
-                            if any(grade_race in race_name for grade_race in JRA_GRADE_RACE_NAMES):
-                                preds = sorted([p for p in race.get('predictions', []) if p.get('deviation_score')],
-                                              key=lambda p: p['deviation_score'], reverse=True)
-                                top_preds = preds[:3]
-                                if len(top_preds) == 3:
-                                    image_file = generate_reminder_og_image(race, top_preds)
-                                    if image_file:
-                                        post_to_twitter(tweet_text, image_file, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
-                                        break
-                        else:
-                            continue
-                        break
+            if result:
+                # resultがtupleの場合、展開して使用
+                tweet_text, race_data, top_preds = result
+
+                _log(f"-> 重賞レースの投稿準備完了: {race_data.get('race_name', '?')}")
+
+                # 画像生成
+                image_file = generate_reminder_og_image(race_data, top_preds)
+
+                if image_file:
+                    _log(f"-> 画像生成成功: {image_file}")
+                    # 投稿実行
+                    post_to_twitter(tweet_text, image_file, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
+                else:
+                    _log("-> 画像生成に失敗しましたが、テキストのみで投稿します")
+                    # 画像なしで投稿
+                    post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
             else:
                 _log("-> 明日は対象の重賞レースがありませんでした。")
 

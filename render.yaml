@@ -85,3 +85,24 @@ services:
         value: "true"
       - key: INSTANCE_ID
         generateValue: true
+
+  # データ取得ジョブ: 朝11時（翌日のレース情報取得）
+  - type: cron
+    name: keiba-data-fetch-morning
+    runtime: docker
+    region: oregon
+    schedule: "0 2 * * *"  # JST AM 11:00 (UTC 02:00)
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: "python run_pipeline.py --date tomorrow --mode PREDICTIONS_ONLY"
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+      - key: TZ
+        value: Asia/Tokyo
+      - key: RENDER
+        value: "true"
+      - key: INSTANCE_ID
+        generateValue: true
+      - key: WEBHOOK_URL
+        sync: false

@@ -182,10 +182,20 @@ def backfill_historical_data(start_date: datetime.date, end_date: datetime.date)
                 pbar.update(1)
 
 def main():
+    import argparse
+
+    # コマンドライン引数のパース
+    parser = argparse.ArgumentParser(description='競馬データパイプライン')
+    parser.add_argument('--date', type=str, default=None,
+                       help='処理対象日: "today", "tomorrow", "yesterday", または "YYYY-MM-DD" 形式')
+    parser.add_argument('--mode', type=str, default=None,
+                       help='実行モード: PRODUCTION, RESULTS_ONLY, PREDICTIONS_ONLY, HISTORY')
+    args = parser.parse_args()
+
     start_time = time.time()
-    PIPELINE_MODE = os.getenv('PIPELINE_MODE', 'PRODUCTION')
-    send_notification(f"パイプライン処理を開始します。\n**モード**: `{PIPELINE_MODE}`")
-    
+    PIPELINE_MODE = args.mode or os.getenv('PIPELINE_MODE', 'PRODUCTION')
+    send_notification(f"パイプライン処理を開始します。\n**モード**: `{PIPELINE_MODE}`\n**日付指定**: `{args.date or '自動'}`")
+
     _force_cleanup_processes()
 
     try:
@@ -216,11 +226,32 @@ def main():
             print(f"--- RUNNING IN {PIPELINE_MODE} MODE ---")
             jst = datetime.timezone(datetime.timedelta(hours=9))
             today_jst = datetime.datetime.now(jst).date()
+
+            # 日付指定の処理
+            if args.date:
+                if args.date == 'today':
+                    target_date_override = today_jst
+                elif args.date == 'tomorrow':
+                    target_date_override = today_jst + datetime.timedelta(days=1)
+                elif args.date == 'yesterday':
+                    target_date_override = today_jst - datetime.timedelta(days=1)
+                else:
+                    try:
+                        target_date_override = datetime.datetime.strptime(args.date, '%Y-%m-%d').date()
+                    except ValueError:
+                        print(f"警告: 無効な日付形式です: {args.date}。自動日付を使用します。")
+                        target_date_override = None
+
+                if target_date_override:
+                    print(f"日付指定: {target_date_override} を処理対象とします")
+            else:
+                target_date_override = None
+
             db: Session = SessionLocal()
 
             try:
                 if PIPELINE_MODE in ['PRODUCTION', 'RESULTS_ONLY']:
-                    target_date_results = today_jst - datetime.timedelta(days=1)
+                    target_date_results = target_date_override if target_date_override and args.date in ['today', 'yesterday'] else (today_jst - datetime.timedelta(days=1))
                     print(f"\n--- [RESULTS_ONLY] {target_date_results} の結果取得を開始 ---")
                     driver = None
                     try:
@@ -247,7 +278,11 @@ def main():
                     gc.collect()
 
                 if PIPELINE_MODE in ['PRODUCTION', 'PREDICTIONS_ONLY']:
-                    target_date_predictions = today_jst + datetime.timedelta(days=1)
+                    # 日付が明示的に指定されている場合はそれを使用、そうでない場合はデフォルト（明日）
+                    if target_date_override:
+                        target_date_predictions = target_date_override
+                    else:
+                        target_date_predictions = today_jst + datetime.timedelta(days=1)
                     print(f"\n--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成を開始 ---")
                     driver = None
                     try:

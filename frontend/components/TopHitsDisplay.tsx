@@ -96,9 +96,9 @@ export const TopHitsDisplay = () => {
                 <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3">
                         {hits.map((hit, index) => (
-                            <Link 
-                                key={`${hit.race_id}-${hit.winning_numbers}`} 
-                                href={`/races/${hit.race_date}?venue=${encodeURIComponent(hit.venue_name)}&race=${hit.race_number}`}
+                            <Link
+                                key={`${hit.race_id}-${hit.winning_numbers}`}
+                                href={`/races/${hit.race_date}?race=${hit.race_number}&venue=${encodeURIComponent(hit.venue_name)}`}
                                 className="block h-full"
                             >
                                 <HitCard hit={hit} rank={index + 1} />

@@ -48,25 +48,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         const races: RaceUrlInfo[] = await response.json();
 
-        // 取得したデータから個別レースページのURLを生成
-        const racePageRoutes = races.map((race) => ({
-            // ▼▼▼▼▼【修正点】
-            // 1. URLパラメータの順序を統一（'race' → 'venue'）
-            // 2. URL内の '&' をXMLエンティティ '&amp;' に置換
-            // これにより、Googleが正規化エラーを回避し、インデックス登録が成功しやすくなる
-            url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`.replace(/&/g, '&amp;'),
-            // ▲▲▲▲▲ 修正ここまで ▲▲▲▲▲
-            lastModified: new Date(),
-            changeFrequency: 'daily' as const,
-            priority: 0.9,
-        }));
-
+        // 日付ごとにレースをグループ化し、各日付の最新レースのみをサイトマップに含める
         const datePages = [...new Set(races.map(race => race.race_date))];
+
+        // 日付ページのルート（優先度: 高）
         const datePageRoutes = datePages.map(date => ({
              url: `${BASE_URL}/races/${date}`,
              lastModified: new Date(),
              changeFrequency: 'daily' as const,
-             priority: 1.0,
+             priority: 0.9,
+        }));
+
+        // 個別レースページのルート（優先度: 中）
+        // クロールバジェット節約のため、直近30日間のレースのみをサイトマップに含める
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+
+        const recentRaces = races.filter(race => race.race_date >= thirtyDaysAgoStr);
+
+        const racePageRoutes = recentRaces.map((race) => ({
+            // URLパラメータの順序を統一（'race' → 'venue'）
+            // URL内の '&' をXMLエンティティ '&amp;' に置換
+            url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`.replace(/&/g, '&amp;'),
+            lastModified: new Date(),
+            changeFrequency: 'weekly' as const,
+            priority: 0.7,
         }));
 
         return [

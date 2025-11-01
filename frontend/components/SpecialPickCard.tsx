@@ -76,8 +76,8 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
     const formattedDate = formatDate(effectiveDate);
 
     return (
-        <Link 
-            href={`/races/${effectiveDate}?venue=${encodeURIComponent(pick.venue_name)}&race=${pick.race_number}`}
+        <Link
+            href={`/races/${effectiveDate}?race=${pick.race_number}&venue=${encodeURIComponent(pick.venue_name)}`}
             className="block group"
             aria-label={`${pick.commentary}`}
         >

@@ -18,12 +18,13 @@ def _fetch_and_load_horse_past_data(db: Session, horse_ids: set):
     指定された馬リストの過去成績を取得しDBに保存する。
     スクレイピング実行後にはランダムな待機時間を設け、サーバー負荷を軽減する。
     """
+    import gc
     if not horse_ids:
         return
 
     print(f"\n--- [PREDICTIONS] Fetching past data for {len(horse_ids)} horses ---")
 
-    for horse_id in tqdm(sorted(list(horse_ids)), desc="  -> Fetching horse data", leave=False):
+    for idx, horse_id in enumerate(tqdm(sorted(list(horse_ids)), desc="  -> Fetching horse data", leave=False)):
         try:
             existing_results_count = db.query(func.count(models.Result.id)).filter(models.Result.horse_id == horse_id).scalar()
 
@@ -38,13 +39,21 @@ def _fetch_and_load_horse_past_data(db: Session, horse_ids: set):
                     results = parsed_data.get('results')
                     if horse_name:
                         database_loader.load_past_results(db, horse_name, results, horse_id)
-            
+                # メモリ解放
+                del parsed_data
+
             if was_scraped:
                 time.sleep(random.uniform(2.5, 5.0))
+
+            # 10頭ごとにガベージコレクション
+            if idx % 10 == 0:
+                gc.collect()
 
         except Exception as e:
             tqdm.write(f"\n[ERROR] Failed to process horse_id {horse_id}: {e}")
             db.rollback()
+
+    gc.collect()
 
 def update_race_results(db: Session, target_date: datetime.date):
     print(f"\n--- [RESULTS] Updating race results for {target_date.strftime('%Y-%m-%d')} ---")
@@ -76,27 +85,45 @@ def update_race_results(db: Session, target_date: datetime.date):
             db.rollback()
 
 def insert_new_predictions(db: Session, target_date: datetime.date):
+    import gc
     print(f"\n--- [PREDICTIONS] Inserting new predictions for {target_date.strftime('%Y-%m-%d')} ---")
     try:
         print(f"  -> Deleting any existing data for {target_date.strftime('%Y-%m-%d')} to ensure a clean state.")
-        # 対象レースIDをリストで取得
+        # メモリ使用量を削減するため、バッチ処理で削除
         races_to_delete_stmt = select(models.Race.id).where(models.Race.race_date == target_date)
-        race_ids_to_delete = [r[0] for r in db.execute(races_to_delete_stmt).fetchall()]
 
-        if race_ids_to_delete:
-            db.query(models.Matchup).filter(models.Matchup.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
-            db.query(models.Prediction).filter(models.Prediction.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
-            db.query(models.Result).filter(models.Result.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
-            db.query(models.RaceReturn).filter(models.RaceReturn.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
-            db.query(models.Race).filter(models.Race.id.in_(race_ids_to_delete)).delete(synchronize_session=False)
+        BATCH_SIZE = 100
+        total_deleted = 0
+
+        while True:
+            race_ids_batch = [r[0] for r in db.execute(races_to_delete_stmt).limit(BATCH_SIZE).fetchall()]
+            if not race_ids_batch:
+                break
+
+            db.query(models.Matchup).filter(models.Matchup.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
+            db.query(models.Prediction).filter(models.Prediction.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
+            db.query(models.Result).filter(models.Result.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
+            db.query(models.RaceReturn).filter(models.RaceReturn.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
+            db.query(models.Race).filter(models.Race.id.in_(race_ids_batch)).delete(synchronize_session=False)
             db.commit()
-            print(f"  -> Deletion of old data complete. ({len(race_ids_to_delete)} races deleted)")
+
+            total_deleted += len(race_ids_batch)
+            del race_ids_batch
+            gc.collect()
+
+            if total_deleted >= 1000:  # 安全のため上限を設定
+                break
+
+        if total_deleted > 0:
+            print(f"  -> Deletion of old data complete. ({total_deleted} races deleted)")
         else:
             print(f"  -> No existing data found for {target_date.strftime('%Y-%m-%d')}")
     except Exception as e:
         print(f"  -> An error occurred during cleanup, rolling back: {e}")
         db.rollback()
         return
+    finally:
+        gc.collect()
 
     all_race_ids: List[Tuple[str, bool]] = []
     for is_nar in [False, True]:

@@ -23,12 +23,17 @@ from datetime import timedelta
 
 # --- 設定 ---
 # メモリ使用量を削減するため、並列ワーカー数を制限
-try:
-    CPU_COUNT = max(1, multiprocessing.cpu_count() - 1)
-    # メモリ制限が2GBの環境では、ワーカー数を2に制限
-    MAX_WORKERS = min(CPU_COUNT, 2)
-except NotImplementedError:
+# Render環境では特にメモリを節約
+if os.getenv('RENDER') == 'true':
+    # Render環境では1ワーカーに制限してメモリ使用量を最小化
     MAX_WORKERS = 1
+else:
+    try:
+        CPU_COUNT = max(1, multiprocessing.cpu_count() - 1)
+        # メモリ制限が2GBの環境では、ワーカー数を2に制限
+        MAX_WORKERS = min(CPU_COUNT, 2)
+    except NotImplementedError:
+        MAX_WORKERS = 1
 
 BANEI_VENUE_CODES = ["33", "65"]
 

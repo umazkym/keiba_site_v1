@@ -98,6 +98,23 @@ def _prepare_chrome_driver():
         options.add_experimental_option("prefs", {"profile.managed_default_content_settings.images": 2})
         options.add_argument('--blink-settings=imagesEnabled=false')
 
+        # 追加の超省メモリオプション（512MB-1GB環境用）
+        options.add_argument('--disable-extensions')
+        options.add_argument('--disable-plugins')
+        options.add_argument('--disable-background-networking')
+        options.add_argument('--disable-sync')
+        options.add_argument('--disable-notifications')
+        options.add_argument('--disable-default-apps')
+        options.add_argument('--disable-features=TranslateUI')
+        options.add_argument('--disable-features=BlinkGenPropertyTrees')
+        options.add_argument('--metrics-recording-only')
+        options.add_argument('--mute-audio')
+        options.add_argument('--disable-software-rasterizer')
+        options.add_argument('--disable-background-timer-throttling')
+        options.add_argument('--disable-backgrounding-occluded-windows')
+        options.add_argument('--disable-renderer-backgrounding')
+        options.add_argument('--disable-crash-reporter')
+
         # ユーザーデータディレクトリが競合しないように一意の一時ディレクトリを使用
         temp_user_data_dir = tempfile.mkdtemp(prefix=f"chrome_{uuid.uuid4().hex[:8]}_")
         options.add_argument(f"--user-data-dir={temp_user_data_dir}")

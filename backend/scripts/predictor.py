@@ -323,6 +323,7 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
     メモリ効率の良いチャンク処理で実行する。
     """
     import gc
+    import os
     print("Calculating horse number advantages for all data in the database...")
 
     try:
@@ -348,8 +349,10 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
     .filter(models.Race.course_type.in_(['芝', 'ダ']))
 
     try:
-        # メモリ使用量を削減するため、チャンクサイズを小さくする
-        chunk_size = 10000
+        # メモリ使用量を削減するため、チャンクサイズを環境に応じて調整
+        # Render環境（特に512MB-1GB）では更に小さくする
+        is_render = os.getenv('RENDER') == 'true'
+        chunk_size = 5000 if is_render else 10000
         total_rows = results_query.count()
 
         if total_rows == 0:
@@ -362,6 +365,7 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
         chunks = pd.read_sql(results_query.statement, db.bind, chunksize=chunk_size)
         with tqdm(total=total_rows, desc=" -> Processing race data in chunks") as pbar:
             for chunk_df in chunks:
+                chunk_len = len(chunk_df)
                 ai_scores = []
                 for _, group in chunk_df.groupby('id'):
                     n = group['total_horses'].iloc[0]
@@ -391,7 +395,7 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
 
                 del chunk_df
                 gc.collect()
-                pbar.update(len(chunk_df) if 'chunk_df' in locals() else chunk_size)
+                pbar.update(chunk_len)
 
         if not advantage_dict:
             print("No advantage data calculated.")

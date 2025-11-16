@@ -156,7 +156,9 @@ def backfill_historical_data(start_date: datetime.date, end_date: datetime.date)
         races_to_delete_stmt = select(models.Race.id).where(models.Race.race_date.between(start_date, end_date))
 
         # メモリ使用量を削減するため、バッチ処理で削除
-        BATCH_SIZE = 500
+        # Render環境（特に512MB-1GB）では更に小さいバッチサイズを使用
+        is_render = os.getenv('RENDER') == 'true'
+        BATCH_SIZE = 250 if is_render else 500
         total_deleted = 0
 
         while True:
@@ -174,10 +176,6 @@ def backfill_historical_data(start_date: datetime.date, end_date: datetime.date)
             total_deleted += len(race_ids_batch)
             del race_ids_batch
             gc.collect()
-
-            # 次のバッチが残っているか確認
-            if len(race_ids_batch if 'race_ids_batch' in locals() else []) < BATCH_SIZE:
-                break
 
         if total_deleted > 0:
             tqdm.write(f"[*] {total_deleted} レース分の関連データを削除しました。")
@@ -225,7 +223,9 @@ def backfill_historical_data(start_date: datetime.date, end_date: datetime.date)
         return
 
     # メモリ使用量を削減するため、バッチ処理で並列実行
-    RACE_BATCH_SIZE = 100
+    # Render環境（特に512MB-1GB）では更に小さいバッチサイズを使用
+    is_render = os.getenv('RENDER') == 'true'
+    RACE_BATCH_SIZE = 50 if is_render else 100
     total_races = len(unprocessed_races)
 
     for batch_start in range(0, total_races, RACE_BATCH_SIZE):

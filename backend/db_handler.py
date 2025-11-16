@@ -92,7 +92,9 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
         # メモリ使用量を削減するため、バッチ処理で削除
         races_to_delete_stmt = select(models.Race.id).where(models.Race.race_date == target_date)
 
-        BATCH_SIZE = 100
+        # Render環境（特に512MB-1GB）では更に小さいバッチサイズを使用
+        is_render = os.getenv('RENDER') == 'true'
+        BATCH_SIZE = 50 if is_render else 100
         total_deleted = 0
 
         while True:

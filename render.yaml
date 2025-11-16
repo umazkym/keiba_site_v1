@@ -106,3 +106,25 @@ services:
         generateValue: true
       - key: WEBHOOK_URL
         sync: false
+
+  # パイプライン実行ジョブ: 朝5時（前日の結果取得のみ）
+  - type: cron
+    name: keiba-pipeline-runner
+    runtime: docker
+    region: oregon
+    plan: starter  # 2GB RAM
+    schedule: "0 20 * * *"  # JST AM 5:00 (UTC 20:00)
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: "python run_pipeline.py --date yesterday --mode RESULTS_ONLY"
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+      - key: TZ
+        value: Asia/Tokyo
+      - key: RENDER
+        value: "true"
+      - key: INSTANCE_ID
+        generateValue: true
+      - key: WEBHOOK_URL
+        sync: false

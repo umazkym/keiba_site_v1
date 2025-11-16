@@ -38,16 +38,16 @@ export async function generateMetadata(
 
     let title = `${formattedDate}のAI競馬予測 | UMA-FREE`;
     let description = `${formattedDate}の中央・地方競馬の全レースをAIが完全無料で予測。馬券検討に役立つデータを毎日更新。`;
-    let canonicalUrl = `/races/${params.date}`;
+    // ★★★【重要な修正】クエリパラメータの有無に関わらず、canonical URLは常に日付ページに統一 ★★★
+    // これにより、Google Search Consoleの「重複ページ」問題が解決されます
+    const canonicalUrl = `/races/${params.date}`;
 
     if (venue && race) {
         const venueName = decodeURIComponent(venue);
         title = `${formattedDate} ${venueName} ${race}R のAI競馬予測 | UMA-FREE`;
         description = `AIによる${formattedDate} ${venueName}競馬場 ${race}Rの無料予測。偏差値、対戦成績、枠順データで詳細分析。`;
-        // ▼▼▼▼▼【修正: canonical URLのパラメータ順序を統一】▼▼▼▼▼
-        // Googleが重複判定を避けるため、クエリパラメータの順序を常に 'race' → 'venue' に統一
-        canonicalUrl = `/races/${params.date}?race=${race}&venue=${venue}`;
-        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+        // canonical URLは変更しない（日付ページのまま）
+        // これにより、クエリパラメータ付きURLは全て日付ページに正規化される
     }
 
     return {
@@ -105,9 +105,8 @@ export default async function RacePage({ params }: { params: { date: string } })
                 },
                 "description": `AIによる${mainRace.venue_name} ${mainRace.race_number}R ${mainRace.race_name}の競馬予測データ。`,
                 "eventStatus": "https://schema.org/EventScheduled",
-                // ▼▼▼▼▼【修正: JSON-LD URLのパラメータ順序を統一】▼▼▼▼▼
-                "url": `https://uma-free.com/races/${mainRace.race_date}?race=${mainRace.race_number}&venue=${encodeURIComponent(mainRace.venue_name)}`,
-                // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+                // ★★★【修正】JSON-LDのURLもcanonical URLと同じく日付ページに統一 ★★★
+                "url": `https://uma-free.com/races/${mainRace.race_date}`,
                 "image": [
                     "https://uma-free.com/new-logo.png"
                 ],
@@ -118,9 +117,8 @@ export default async function RacePage({ params }: { params: { date: string } })
                 },
                 "offers": {
                     "@type": "Offer",
-                    // ▼▼▼▼▼【修正: JSON-LD URLのパラメータ順序を統一】▼▼▼▼▼
-                    "url": `https://uma-free.com/races/${mainRace.race_date}?race=${mainRace.race_number}&venue=${encodeURIComponent(mainRace.venue_name)}`,
-                    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+                    // ★★★【修正】Offers URLも日付ページに統一 ★★★
+                    "url": `https://uma-free.com/races/${mainRace.race_date}`,
                     "price": "0",
                     "priceCurrency": "JPY",
                     "availability": "https://schema.org/InStock",

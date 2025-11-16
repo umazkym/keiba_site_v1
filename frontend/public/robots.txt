@@ -12,10 +12,11 @@ Disallow: /node_modules/
 # 検索機能のクロールを禁止（動的コンテンツ）
 Disallow: /search?*
 
-# 重複URLパターンを禁止（venue→raceの順序）
-# 正規化されたURL（race→venue）のみをクロール対象とする
-# ただし、Disallowでのクエリパラメータ順序指定は効果が限定的なため
-# ミドルウェアでのリダイレクトと併用
+# ★★★【重要な修正】重複URLパターンを禁止（Google Search Console問題の解決） ★★★
+# レースページのクエリパラメータ付きURLはクロール対象外
+# 正規URLは /races/[date] のみ（クエリパラメータなし）
+# これにより、1.49万ページの重複問題が解決されます
+Disallow: /races/*?*
 
 # サイトマップの場所を通知
 Sitemap: https://uma-free.com/sitemap.xml
@@ -25,6 +26,7 @@ User-agent: Googlebot
 Allow: /
 Disallow: /api/
 Disallow: /search?*
+Disallow: /races/*?*
 
 # その他のボットにクロール遅延設定
 User-agent: *

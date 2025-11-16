@@ -5,42 +5,15 @@ import type { NextRequest } from 'next/server';
  * ミドルウェア: URLの正規化
  *
  * Google Search Consoleで検出された問題を解決:
- * 1. レースページのクエリパラメータの順序を統一
- * 2. 記事ページの日付プレフィックスなしslugを最新の記事にリダイレクト
+ * 1. 記事ページの日付プレフィックスなしslugを最新の記事にリダイレクト
+ * 2. www → non-www のリダイレクト（next.config.mjsで処理）
+ * 3. タイポURLの修正
  *
- * 例:
- * - /races/2024-11-03?venue=東京&race=7 → /races/2024-11-03?race=7&venue=東京
- * - /articles/bloodline-sire-analysis → /articles/2025-10-26-bloodline-sire-analysis
+ * 重要: レースページのクエリパラメータのリダイレクトは削除しました。
+ * 代わりに、canonical URLで正規化を行います。
  */
 export function middleware(request: NextRequest) {
     const { pathname, searchParams } = request.nextUrl;
-
-    // 1. レースページのクエリパラメータ正規化
-    if (pathname.startsWith('/races/')) {
-        const venue = searchParams.get('venue');
-        const race = searchParams.get('race');
-
-        // クエリパラメータが両方存在する場合のみ正規化
-        if (venue && race) {
-            // 現在のURLの順序を確認
-            const url = request.url;
-            const queryString = url.split('?')[1] || '';
-
-            // 既に正しい順序（race→venue）になっている場合はそのまま
-            const correctOrder = `race=${race}&venue=${encodeURIComponent(venue)}`;
-
-            // 正規化が必要な場合（venue→raceの順序）
-            if (queryString !== correctOrder && queryString !== correctOrder.replace(encodeURIComponent(venue), venue)) {
-                // 正しい順序でリダイレクト（301 Permanent Redirect）
-                const newUrl = new URL(request.url);
-                newUrl.search = `?race=${race}&venue=${encodeURIComponent(venue)}`;
-
-                return NextResponse.redirect(newUrl, {
-                    status: 301, // 恒久的リダイレクト
-                });
-            }
-        }
-    }
 
     // 2. 記事ページの日付プレフィックスなしslugを処理
     if (pathname.startsWith('/articles/')) {

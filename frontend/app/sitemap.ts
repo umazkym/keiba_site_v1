@@ -48,32 +48,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         const races: RaceUrlInfo[] = await response.json();
 
-        // 日付ごとにレースをグループ化し、各日付の最新レースのみをサイトマップに含める
+        // ★★★【重要な修正】重複ページ問題を解決するため、クエリパラメータ付きのレースページを削除 ★★★
+        // 日付ページのみをサイトマップに含めることで、Googleに正規URLを明確に示します
         const datePages = [...new Set(races.map(race => race.race_date))];
 
         // 日付ページのルート（優先度: 高）
-        const datePageRoutes = datePages.map(date => ({
+        // クロールバジェット節約のため、直近60日間の日付ページのみをサイトマップに含める
+        const sixtyDaysAgo = new Date();
+        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+        const sixtyDaysAgoStr = sixtyDaysAgo.toISOString().split('T')[0];
+
+        const recentDatePages = datePages.filter(date => date >= sixtyDaysAgoStr);
+
+        const datePageRoutes = recentDatePages.map(date => ({
              url: `${BASE_URL}/races/${date}`,
              lastModified: new Date(),
              changeFrequency: 'daily' as const,
              priority: 0.9,
-        }));
-
-        // 個別レースページのルート（優先度: 中）
-        // クロールバジェット節約のため、直近30日間のレースのみをサイトマップに含める
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
-
-        const recentRaces = races.filter(race => race.race_date >= thirtyDaysAgoStr);
-
-        const racePageRoutes = recentRaces.map((race) => ({
-            // URLパラメータの順序を統一（'race' → 'venue'）
-            // URL内の '&' をXMLエンティティ '&amp;' に置換
-            url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`.replace(/&/g, '&amp;'),
-            lastModified: new Date(),
-            changeFrequency: 'weekly' as const,
-            priority: 0.7,
         }));
 
         return [
@@ -86,7 +77,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             ...staticRoutes.filter(r => r.url !== BASE_URL),
             ...articleRoutes,
             ...datePageRoutes,
-            ...racePageRoutes
+            // ★★★ racePageRoutesを削除（重複ページ問題の解決） ★★★
         ];
 
     } catch (error) {

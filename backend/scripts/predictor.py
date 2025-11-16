@@ -67,13 +67,15 @@ def _calculate_1c_indicator(db: Session, horse_id: str, race_date: date, debug: 
 def _get_bulk_performance_data(db: Session, horse_ids: List[str], race_date: date) -> Dict[str, List[Any]]:
     """
     指定された馬リストの過去成績データを一括で取得する。
+    メモリ使用量を削減するため、バッチ処理を使用。
     """
+    import gc
     if not horse_ids:
         return {}
     try:
         start_date_filter = race_date - timedelta(days=2*365)
         end_date_filter = race_date - timedelta(days=2)
-        
+
         avg_times_base_q = db.query(
             models.Race.venue_name, models.Race.course_type, models.Race.distance,
             func.avg(models.Result.finish_time_sec).label('avg_time')
@@ -81,19 +83,29 @@ def _get_bulk_performance_data(db: Session, horse_ids: List[str], race_date: dat
             models.Race.venue_name, models.Race.course_type, models.Race.distance
         ).subquery()
 
-        all_past_results = db.query(models.Result, models.Race, avg_times_base_q.c.avg_time)\
-            .join(models.Race, models.Result.race_id == models.Race.id)\
-            .outerjoin(avg_times_base_q, (models.Race.venue_name == avg_times_base_q.c.venue_name) & \
-                                     (models.Race.course_type == avg_times_base_q.c.course_type) & \
-                                     (models.Race.distance == avg_times_base_q.c.distance))\
-            .filter(models.Result.horse_id.in_(horse_ids))\
-            .filter(models.Race.race_date.between(start_date_filter, end_date_filter))\
-            .all()
-        
         results_by_horse = defaultdict(list)
-        for res, race, avg_time in all_past_results:
-            results_by_horse[res.horse_id].append((res, race, avg_time))
-            
+
+        # メモリ使用量を削減するため、馬IDをバッチ処理
+        BATCH_SIZE = 20
+        for i in range(0, len(horse_ids), BATCH_SIZE):
+            batch_horse_ids = horse_ids[i:i+BATCH_SIZE]
+
+            batch_results = db.query(models.Result, models.Race, avg_times_base_q.c.avg_time)\
+                .join(models.Race, models.Result.race_id == models.Race.id)\
+                .outerjoin(avg_times_base_q, (models.Race.venue_name == avg_times_base_q.c.venue_name) & \
+                                         (models.Race.course_type == avg_times_base_q.c.course_type) & \
+                                         (models.Race.distance == avg_times_base_q.c.distance))\
+                .filter(models.Result.horse_id.in_(batch_horse_ids))\
+                .filter(models.Race.race_date.between(start_date_filter, end_date_filter))\
+                .all()
+
+            for res, race, avg_time in batch_results:
+                results_by_horse[res.horse_id].append((res, race, avg_time))
+
+            # バッチごとにメモリ解放
+            del batch_results
+            gc.collect()
+
         return results_by_horse
     except Exception:
         # データ取得でエラーが発生した場合は空の辞書を返す
@@ -174,7 +186,11 @@ def create_predictions_for_race(race_id: str, db: Session) -> Optional[List[Dict
             horse_data['start_1c_z_score'] = start_1c_z_score
 
         df = pd.DataFrame(all_horse_scores)
-        
+
+        # メモリ解放
+        del all_horse_scores
+        del all_past_data
+
         valid_scores = df['raw_score'].dropna()
         if not unpredictable_reason and len(valid_scores) < 2:
             unpredictable_reason = "比較可能な過去データを持つ馬が2頭未満のため、予測対象外です。"
@@ -202,7 +218,7 @@ def create_predictions_for_race(race_id: str, db: Session) -> Optional[List[Dict
                 df['deviation_score'] = 50.0
             else:
                 df['deviation_score'] = df['raw_score'].apply(lambda x: 50.0 + 10 * (x - mean) / std if pd.notna(x) else None)
-            
+
             df['deviation_score'] = df['deviation_score'].round(2)
             df = df.sort_values('deviation_score', ascending=False, na_position='last').reset_index(drop=True)
             marks = ["◎", "〇", "▲", "△", "☆"]
@@ -210,11 +226,19 @@ def create_predictions_for_race(race_id: str, db: Session) -> Optional[List[Dict
             df['unpredictable_reason'] = None
 
         df = df.drop(columns=['start_1c_z_score', 'raw_score'], errors='ignore')
-        
+
         final_columns = [c.name for c in models.Prediction.__table__.columns if c.name in df.columns]
         df_final = df[final_columns].replace({np.nan: None})
-        
-        return df_final.to_dict('records')
+
+        result = df_final.to_dict('records')
+
+        # メモリ解放
+        del df
+        del df_final
+        import gc
+        gc.collect()
+
+        return result
     except Exception as e:
         print(f"--- [CRITICAL PREDICTION ERROR] Race ID: {race_id} ---")
         traceback.print_exc()
@@ -298,8 +322,9 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
     DB全体のデータから馬番有利不利データを再計算し、テーブルを更新する。
     メモリ効率の良いチャンク処理で実行する。
     """
+    import gc
     print("Calculating horse number advantages for all data in the database...")
-    
+
     try:
         num_deleted = db.query(models.HorseNumberAdvantage).delete(synchronize_session=False)
         db.commit()
@@ -323,13 +348,16 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
     .filter(models.Race.course_type.in_(['芝', 'ダ']))
 
     try:
-        advantage_summary = pd.DataFrame()
-        chunk_size = 50000
+        # メモリ使用量を削減するため、チャンクサイズを小さくする
+        chunk_size = 10000
         total_rows = results_query.count()
 
         if total_rows == 0:
             print("No data to process.")
             return
+
+        # 中間結果を辞書形式で保持してメモリ効率を改善
+        advantage_dict = defaultdict(lambda: {'sum': 0.0, 'count': 0})
 
         chunks = pd.read_sql(results_query.statement, db.bind, chunksize=chunk_size)
         with tqdm(total=total_rows, desc=" -> Processing race data in chunks") as pbar:
@@ -342,46 +370,72 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
                     e = (n + 1) / 2.0
                     sd = math.sqrt((n**2 - 1) / 12.0)
                     if sd == 0: continue
+                    group = group.copy()
                     group['advantage_score'] = (e - group['rank']) / sd
                     ai_scores.append(group)
-                
-                if not ai_scores:
-                    pbar.update(len(chunk_df))
-                    continue
-                
-                chunk_scores_df = pd.concat(ai_scores)
-                
-                chunk_summary = chunk_scores_df.groupby([
-                    'venue_name', 'course_type', 'distance', 'horse_number'
-                ])['advantage_score'].agg(['sum', 'count']).reset_index()
-                
-                if advantage_summary.empty:
-                    advantage_summary = chunk_summary
-                else:
-                    advantage_summary = pd.concat([advantage_summary, chunk_summary])\
-                                          .groupby(['venue_name', 'course_type', 'distance', 'horse_number'])\
-                                          .sum().reset_index()
-                pbar.update(len(chunk_df))
 
-        if advantage_summary.empty:
-            print("No advantage data calculated."); return
+                if ai_scores:
+                    chunk_scores_df = pd.concat(ai_scores, ignore_index=True)
+
+                    # チャンクごとに集計し、辞書に累積（メモリ効率改善）
+                    for (venue, course, dist, horse_num), group_data in chunk_scores_df.groupby(
+                        ['venue_name', 'course_type', 'distance', 'horse_number']
+                    ):
+                        key = (venue, course, dist, horse_num)
+                        advantage_dict[key]['sum'] += group_data['advantage_score'].sum()
+                        advantage_dict[key]['count'] += len(group_data)
+
+                    # チャンクデータを即座に削除してメモリを解放
+                    del chunk_scores_df
+                    del ai_scores
+
+                del chunk_df
+                gc.collect()
+                pbar.update(len(chunk_df) if 'chunk_df' in locals() else chunk_size)
+
+        if not advantage_dict:
+            print("No advantage data calculated.")
+            return
+
+        # 辞書からDataFrameを構築（一度だけ）
+        advantage_summary = pd.DataFrame([
+            {
+                'venue_name': k[0],
+                'course_type': k[1],
+                'distance': k[2],
+                'horse_number': k[3],
+                'sum': v['sum'],
+                'count': v['count']
+            }
+            for k, v in advantage_dict.items()
+        ])
+
+        # 辞書を削除してメモリを解放
+        del advantage_dict
+        gc.collect()
 
         advantage_summary['advantage_score'] = advantage_summary['sum'] / advantage_summary['count']
         advantage_summary['advantage_score'] = advantage_summary.groupby(
             ['venue_name', 'course_type', 'distance']
         )['advantage_score'].transform(lambda x: x - x.mean())
-        
+
         advantages_to_save = advantage_summary[[
             'venue_name', 'course_type', 'distance', 'horse_number', 'advantage_score'
         ]].to_dict('records')
-        
+
+        # DataFrameを削除
+        del advantage_summary
+        gc.collect()
+
         if advantages_to_save:
             database_loader.save_horse_number_advantages(db, advantages_to_save)
             print(f" -> Saved {len(advantages_to_save)} new horse number advantage records.")
-        
+
         db.commit()
 
     except Exception as e:
         print(f"An error occurred during advantage calculation: {e}")
         traceback.print_exc()
         db.rollback()
+    finally:
+        gc.collect()

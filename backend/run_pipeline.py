@@ -22,9 +22,11 @@ import gc
 from datetime import timedelta
 
 # --- 設定 ---
+# メモリ使用量を削減するため、並列ワーカー数を制限
 try:
     CPU_COUNT = max(1, multiprocessing.cpu_count() - 1)
-    MAX_WORKERS = min(CPU_COUNT, 4)
+    # メモリ制限が2GBの環境では、ワーカー数を2に制限
+    MAX_WORKERS = min(CPU_COUNT, 2)
 except NotImplementedError:
     MAX_WORKERS = 1
 
@@ -71,14 +73,16 @@ def worker_process_race(race_id_tuple):
     """
     race_id, is_nar = race_id_tuple
     worker_id = multiprocessing.current_process().pid
-    
+
     db = SessionLocal()
     try:
         shutuba_html, _ = scraper.get_shutuba_html(race_id, is_nar=is_nar)
-        if not shutuba_html: return
+        if not shutuba_html:
+            return
 
         shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
-        if not shutuba_data or not shutuba_data.get('horses'): return
+        if not shutuba_data or not shutuba_data.get('horses'):
+            return
 
         race_date = shutuba_data.get('race_info', {}).get('race_date')
         if not isinstance(race_date, datetime.date):
@@ -88,7 +92,7 @@ def worker_process_race(race_id_tuple):
                  return # 不正なrace_idの場合はスキップ
 
         database_loader.load_shutuba_data(db, shutuba_data, race_id, race_date, is_nar)
-        
+
         horse_ids_in_race = {h['horse_id'] for h in shutuba_data['horses'] if h.get('horse_id')}
         for horse_id in horse_ids_in_race:
             if db.query(models.Result).filter(models.Result.horse_id == horse_id).count() >= 5:
@@ -101,6 +105,8 @@ def worker_process_race(race_id_tuple):
                     results = parsed_data.get('results')
                     if horse_name:
                         database_loader.load_past_results(db, horse_name, results, horse_id)
+                # メモリ解放
+                del parsed_data
             if was_scraped:
                 time.sleep(random.uniform(MIN_SLEEP, MAX_SLEEP))
 
@@ -109,42 +115,72 @@ def worker_process_race(race_id_tuple):
             database_loader.save_prediction(db, race_id, predictions)
             predictor.calculate_and_save_matchups_for_race(db, race_id, list(horse_ids_in_race))
 
+        # メモリ解放
+        del predictions
+        del shutuba_data
+
         result_html, _ = scraper.get_race_result_html(race_id, is_nar=is_nar)
         if result_html:
             race_data = parser.parse_race_result_page(result_html, race_id)
             if race_data and race_data.get('results'):
                 database_loader.load_race_result_data(db, race_data, race_id, race_date, is_nar)
+            del race_data
+
+        # ガベージコレクション
+        gc.collect()
+
     except Exception as e:
         tqdm.write(f"[Worker-{worker_id}] Error processing race {race_id}: {e}")
         db.rollback()
     finally:
         db.close()
+        # セッション後もメモリを確実に解放
+        gc.collect()
 
 def backfill_historical_data(start_date: datetime.date, end_date: datetime.date):
     """
     指定された日付範囲のレースデータを並列処理で取得・保存する。
+    メモリ使用量を削減するため、バッチ処理を実施。
     """
     tqdm.write(f"\n--- {start_date} から {end_date} までの処理を開始 ---")
-    
-    # === [修正箇所] 処理開始前に、対象期間の全データを削除する ===
+
+    # === [修正箇所] 処理開始前に、対象期間の全データを削除する（バッチ処理で） ===
     db = SessionLocal()
     try:
         tqdm.write(f"\n[*] 既存のデータをクリーンアップします (期間: {start_date} to {end_date})...")
         races_to_delete_stmt = select(models.Race.id).where(models.Race.race_date.between(start_date, end_date))
-        race_ids_to_delete = [r[0] for r in db.execute(races_to_delete_stmt).fetchall()]
 
-        if race_ids_to_delete:
-            db.query(models.Matchup).filter(models.Matchup.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
-            db.query(models.Prediction).filter(models.Prediction.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
-            db.query(models.Result).filter(models.Result.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
-            db.query(models.RaceReturn).filter(models.RaceReturn.race_id.in_(race_ids_to_delete)).delete(synchronize_session=False)
-            db.query(models.Race).filter(models.Race.id.in_(race_ids_to_delete)).delete(synchronize_session=False)
+        # メモリ使用量を削減するため、バッチ処理で削除
+        BATCH_SIZE = 500
+        total_deleted = 0
+
+        while True:
+            race_ids_batch = [r[0] for r in db.execute(races_to_delete_stmt).limit(BATCH_SIZE).fetchall()]
+            if not race_ids_batch:
+                break
+
+            db.query(models.Matchup).filter(models.Matchup.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
+            db.query(models.Prediction).filter(models.Prediction.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
+            db.query(models.Result).filter(models.Result.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
+            db.query(models.RaceReturn).filter(models.RaceReturn.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
+            db.query(models.Race).filter(models.Race.id.in_(race_ids_batch)).delete(synchronize_session=False)
             db.commit()
-            tqdm.write(f"[*] {len(race_ids_to_delete)} レース分の関連データを削除しました。")
+
+            total_deleted += len(race_ids_batch)
+            del race_ids_batch
+            gc.collect()
+
+            # 次のバッチが残っているか確認
+            if len(race_ids_batch if 'race_ids_batch' in locals() else []) < BATCH_SIZE:
+                break
+
+        if total_deleted > 0:
+            tqdm.write(f"[*] {total_deleted} レース分の関連データを削除しました。")
         else:
             tqdm.write("[*] クリーンアップ対象のデータはありませんでした。")
     finally:
         db.close()
+        gc.collect()
     # === 修正ここまで ===
 
     dates_to_process = [start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)]
@@ -162,10 +198,17 @@ def backfill_historical_data(start_date: datetime.date, end_date: datetime.date)
                     if is_nar:
                         race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
                     all_race_ids.extend([(rid, is_nar) for rid in race_ids])
+            # 定期的にガベージコレクション
+            if len(all_race_ids) % 100 == 0:
+                gc.collect()
     finally:
         scraper.cleanup_chrome_driver(driver)
+        gc.collect()
 
     unique_race_ids = sorted(list(set(all_race_ids)))
+    del all_race_ids  # 元のリストを削除してメモリ解放
+    gc.collect()
+
     if not unique_race_ids:
         tqdm.write(f"指定期間に処理対象のレースがありませんでした。")
         return
@@ -176,10 +219,26 @@ def backfill_historical_data(start_date: datetime.date, end_date: datetime.date)
     if not unprocessed_races:
         return
 
-    with multiprocessing.Pool(processes=MAX_WORKERS) as pool:
-        with tqdm(total=len(unprocessed_races), desc=f"並列処理中 ({start_date} to {end_date})") as pbar:
-            for _ in pool.imap_unordered(worker_process_race, unprocessed_races):
-                pbar.update(1)
+    # メモリ使用量を削減するため、バッチ処理で並列実行
+    RACE_BATCH_SIZE = 100
+    total_races = len(unprocessed_races)
+
+    for batch_start in range(0, total_races, RACE_BATCH_SIZE):
+        batch_end = min(batch_start + RACE_BATCH_SIZE, total_races)
+        batch_races = unprocessed_races[batch_start:batch_end]
+
+        tqdm.write(f"\n[バッチ {batch_start//RACE_BATCH_SIZE + 1}/{math.ceil(total_races/RACE_BATCH_SIZE)}] {len(batch_races)}件のレースを処理中...")
+
+        with multiprocessing.Pool(processes=MAX_WORKERS) as pool:
+            with tqdm(total=len(batch_races), desc=f"並列処理中 (バッチ {batch_start//RACE_BATCH_SIZE + 1})") as pbar:
+                for _ in pool.imap_unordered(worker_process_race, batch_races):
+                    pbar.update(1)
+
+        # バッチ処理後にメモリを解放
+        del batch_races
+        gc.collect()
+
+    tqdm.write(f"\n全 {total_races} レースの処理が完了しました。")
 
 def main():
     import argparse

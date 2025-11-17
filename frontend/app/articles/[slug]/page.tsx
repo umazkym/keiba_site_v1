@@ -14,12 +14,13 @@ type Props = {
 // ページのタイトルなどを動的に設定 (SEO対策)
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
-    // ▼▼▼▼▼ awaitを追加 ▼▼▼▼▼
     const article = await getArticleBySlug(params.slug);
-    // ▲▲▲▲▲ awaitを追加 ▲▲▲▲▲
     return {
       title: `${article.title} | UMA-FREE`,
-      description: article.content.substring(0, 120), // 記事の冒頭を説明文に
+      description: article.content.substring(0, 120),
+      alternates: {
+        canonical: `/articles/${params.slug}`,
+      },
     };
   } catch (error) {
     return {

@@ -60,12 +60,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }));
 
         // 個別レースページのルート（優先度: 中）
-        // クロールバジェット節約のため、直近30日間のレースのみをサイトマップに含める
+        // クロールバジェット節約のため、過去30日間+未来14日間のレースのみをサイトマップに含める
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
 
-        const recentRaces = races.filter(race => race.race_date >= thirtyDaysAgoStr);
+        const fourteenDaysLater = new Date();
+        fourteenDaysLater.setDate(fourteenDaysLater.getDate() + 14);
+        const fourteenDaysLaterStr = fourteenDaysLater.toISOString().split('T')[0];
+
+        const recentRaces = races.filter(race =>
+            race.race_date >= thirtyDaysAgoStr && race.race_date <= fourteenDaysLaterStr
+        );
 
         const racePageRoutes = recentRaces.map((race) => ({
             // URLパラメータの順序を統一（'race' → 'venue'）

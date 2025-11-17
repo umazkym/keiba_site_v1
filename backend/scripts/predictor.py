@@ -73,7 +73,8 @@ def _get_bulk_performance_data(db: Session, horse_ids: List[str], race_date: dat
     if not horse_ids:
         return {}
     try:
-        start_date_filter = race_date - timedelta(days=2*365)
+        # メモリ削減のため、過去成績データの取得期間を2年→1年に短縮
+        start_date_filter = race_date - timedelta(days=365)
         end_date_filter = race_date - timedelta(days=2)
 
         avg_times_base_q = db.query(
@@ -86,7 +87,7 @@ def _get_bulk_performance_data(db: Session, horse_ids: List[str], race_date: dat
         results_by_horse = defaultdict(list)
 
         # メモリ使用量を削減するため、馬IDをバッチ処理
-        BATCH_SIZE = 10  # Render環境の512MB制限に対応するため削減
+        BATCH_SIZE = 5  # Render環境の512MB制限に対応（コスト削減のためplanは変更しない）
         for i in range(0, len(horse_ids), BATCH_SIZE):
             batch_horse_ids = horse_ids[i:i+BATCH_SIZE]
 
@@ -349,7 +350,7 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
 
     try:
         # メモリ使用量を削減するため、チャンクサイズを小さくする
-        chunk_size = 5000  # Render環境の512MB制限に対応するため削減
+        chunk_size = 2000  # Render環境の512MB制限に対応（コスト削減のためplanは変更しない）
         total_rows = results_query.count()
 
         if total_rows == 0:

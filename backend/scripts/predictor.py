@@ -86,7 +86,7 @@ def _get_bulk_performance_data(db: Session, horse_ids: List[str], race_date: dat
         results_by_horse = defaultdict(list)
 
         # メモリ使用量を削減するため、馬IDをバッチ処理
-        BATCH_SIZE = 20
+        BATCH_SIZE = 10  # Render環境の512MB制限に対応するため削減
         for i in range(0, len(horse_ids), BATCH_SIZE):
             batch_horse_ids = horse_ids[i:i+BATCH_SIZE]
 
@@ -349,7 +349,7 @@ def calculate_and_save_all_horse_number_advantages(db: Session):
 
     try:
         # メモリ使用量を削減するため、チャンクサイズを小さくする
-        chunk_size = 10000
+        chunk_size = 5000  # Render環境の512MB制限に対応するため削減
         total_rows = results_query.count()
 
         if total_rows == 0:

@@ -91,6 +91,7 @@ services:
     name: keiba-data-fetch-morning
     runtime: docker
     region: oregon
+    plan: starter  # 2GB RAM (予測処理には大量メモリが必要)
     schedule: "0 2 * * *"  # JST AM 11:00 (UTC 02:00)
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend

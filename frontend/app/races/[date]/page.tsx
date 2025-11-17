@@ -16,7 +16,9 @@ export async function generateStaticParams() {
     const today = new Date();
     const paths = [];
 
-    for (let i = -3; i <= 2; i++) {
+    // 過去30日から未来14日までの日付を生成（SEO最適化）
+    // Google Search Consoleの404を減らすため、より広い範囲をカバー
+    for (let i = -30; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         const dateString = date.toISOString().split('T')[0];

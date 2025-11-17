@@ -22,18 +22,19 @@ export function middleware(request: NextRequest) {
 
         // クエリパラメータが両方存在する場合のみ正規化
         if (venue && race) {
-            // 現在のURLの順序を確認
-            const url = request.url;
-            const queryString = url.split('?')[1] || '';
+            // URLSearchParamsで全パラメータを取得
+            const params = new URLSearchParams(searchParams.toString());
+            const paramsArray = Array.from(params.keys());
 
-            // 既に正しい順序（race→venue）になっている場合はそのまま
-            const correctOrder = `race=${race}&venue=${encodeURIComponent(venue)}`;
-
-            // 正規化が必要な場合（venue→raceの順序）
-            if (queryString !== correctOrder && queryString !== correctOrder.replace(encodeURIComponent(venue), venue)) {
+            // 最初のパラメータが'venue'の場合、または順序が不正な場合にリダイレクト
+            if (paramsArray[0] === 'venue' || paramsArray.indexOf('race') > paramsArray.indexOf('venue')) {
                 // 正しい順序でリダイレクト（301 Permanent Redirect）
                 const newUrl = new URL(request.url);
-                newUrl.search = `?race=${race}&venue=${encodeURIComponent(venue)}`;
+                // 新しいURLSearchParamsを作成し、正しい順序で追加
+                const newParams = new URLSearchParams();
+                newParams.set('race', race);
+                newParams.set('venue', venue);
+                newUrl.search = newParams.toString();
 
                 return NextResponse.redirect(newUrl, {
                     status: 301, // 恒久的リダイレクト

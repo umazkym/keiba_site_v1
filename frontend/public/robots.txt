@@ -4,6 +4,8 @@ Allow: /
 # 静的リソースへのクロールを禁止（クロールバジェット節約）
 Disallow: /_next/static/media/
 Disallow: /_next/image
+Disallow: /_next/static/
+Disallow: /favicon.ico
 
 # クロール不要なパス
 Disallow: /api/
@@ -12,20 +14,28 @@ Disallow: /node_modules/
 # 検索機能のクロールを禁止（動的コンテンツ）
 Disallow: /search?*
 
-# 重複URLパターンを禁止（venue→raceの順序）
-# 正規化されたURL（race→venue）のみをクロール対象とする
-# ただし、Disallowでのクエリパラメータ順序指定は効果が限定的なため
-# ミドルウェアでのリダイレクトと併用
+# 重複URLパターンを最小化
+# クエリパラメータの順序はミドルウェアで正規化（race→venue）
+# 古いURL（venue→race）は301リダイレクト
 
 # サイトマップの場所を通知
 Sitemap: https://uma-free.com/sitemap.xml
 
-# Googlebotは優先的にクロール（Crawl-delay不要）
+# Googlebotは優先的にクロール
 User-agent: Googlebot
 Allow: /
 Disallow: /api/
 Disallow: /search?*
+Disallow: /_next/static/
+Disallow: /_next/image
 
-# その他のボットにクロール遅延設定
-User-agent: *
+# Bingbot
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+Disallow: /search?*
 Crawl-delay: 1
+
+# その他のボットにクロール遅延設定（負荷対策）
+User-agent: *
+Crawl-delay: 2

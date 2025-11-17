@@ -12,7 +12,7 @@ type Props = {
 export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseType, distance }) => {
     if (!advantages || advantages.length === 0) {
         return (
-            <div className="my-4 p-6 bg-gradient-to-r from-gray-50 to-white border rounded-lg shadow-inner text-center text-gray-500">
+            <div className="my-4 p-6 bg-gray-50 border rounded-lg text-center text-gray-500">
                 <p className="font-bold text-base">枠順傾向スコア</p>
                 <p className="mt-2 text-sm">このレース条件での枠順傾向データはありません。</p>
             </div>
@@ -83,7 +83,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
     const labelFontSize = isMobile ? 9 : 10;
 
     return (
-        <div className="my-4 p-3 md:p-4 bg-white border rounded-lg shadow-inner">
+        <div className="my-4 p-3 md:p-4 bg-white border border-gray-200 rounded-lg">
             <h4 className="font-bold text-center mb-2 text-gray-700 text-sm md:text-base">{chartTitle}</h4>
             <div style={{ width: '100%', height: chartHeight }}>
                 <ResponsiveContainer>

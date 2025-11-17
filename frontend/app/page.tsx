@@ -49,7 +49,7 @@ export default async function HomePage() {
             {/* 1. ヒーロー＆高配当ランキング統合セクション */}
             <div className="space-y-6">
                 {/* メインのヒーローセクション */}
-                <section className="text-center p-8 bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-lg border border-gray-200">
+                <section className="text-center p-8 bg-indigo-50 rounded-xl border border-indigo-100">
                     <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-primary-dark mb-3 leading-tight">
                         登録不要・完全無料
                         <br />
@@ -62,20 +62,20 @@ export default async function HomePage() {
                     </p>
                     <Link
                         href={`/races/${todayStr}`}
-                        className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-0.5 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
+                        className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg transition-colors duration-200 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
                     >
                         今日のデータ分析をチェック
                     </Link>
                 </section>
 
                 {/* 高配当的中ランキング（最優先で表示） */}
-                <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 md:p-8">
+                <section className="bg-white rounded-xl border border-gray-200 p-6 md:p-8">
                     <TopHitsDisplay />
                 </section>
             </div>
 
             {/* 2. UMA-FREE価値提案セクション（統合・簡潔版） */}
-            <section className="bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-xl shadow-md border border-indigo-200">
+            <section className="bg-blue-50 p-8 rounded-xl border border-blue-100">
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8 text-center">UMA-FREEの3つの競馬分析データ</h2>
                 <div className="grid md:grid-cols-2 gap-8">
                     <div>
@@ -129,7 +129,7 @@ export default async function HomePage() {
                         <Link
                             href={`/articles/${article.slug}`}
                             key={article.slug}
-                            className="block group border rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 bg-white"
+                            className="block group border rounded-lg overflow-hidden border-gray-200 hover:border-primary-light transition-colors duration-200 bg-white"
                         >
                             <div className="relative w-full h-32 sm:h-40 md:h-44 lg:h-48">
                                 <Image
@@ -171,12 +171,12 @@ export default async function HomePage() {
             </section>
 
             {/* 5. 使い方セクション */}
-            <section className="bg-gray-50 rounded-xl shadow-md border border-gray-200 p-6 md:p-8">
+            <section className="bg-gray-50 rounded-xl border border-gray-200 p-6 md:p-8">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                     3ステップで始める
                 </h2>
                 <div className="grid md:grid-cols-3 gap-6">
-                    <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-primary">
+                    <div className="bg-white p-6 rounded-lg border-l-4 border-primary">
                         <h3 className="font-bold text-lg text-primary mb-3 flex items-center">
                             <span className="bg-primary text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-2 text-sm font-bold">1</span>
                             日付を選択
@@ -185,7 +185,7 @@ export default async function HomePage() {
                             カレンダーから分析データを見たい日付を選択。過去・未来のレースも確認できます。
                         </p>
                     </div>
-                    <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-accent">
+                    <div className="bg-white p-6 rounded-lg border-l-4 border-accent">
                         <h3 className="font-bold text-lg text-accent mb-3 flex items-center">
                             <span className="bg-accent text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-2 text-sm font-bold">2</span>
                             競馬場を選択
@@ -194,7 +194,7 @@ export default async function HomePage() {
                             中央・地方競馬のタブから、対象競馬場を選択。
                         </p>
                     </div>
-                    <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-green-500">
+                    <div className="bg-white p-6 rounded-lg border-l-4 border-green-500">
                         <h3 className="font-bold text-lg text-green-600 mb-3 flex items-center">
                             <span className="bg-green-500 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-2 text-sm font-bold">3</span>
                             統計データを活用
@@ -210,7 +210,7 @@ export default async function HomePage() {
             </section>
 
             {/* 6. よくある質問 */}
-            <section className="bg-white rounded-xl shadow-md border border-gray-200 p-6 md:p-8">
+            <section className="bg-white rounded-xl border border-gray-200 p-6 md:p-8">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-800">
                         よくある質問
@@ -248,7 +248,7 @@ export default async function HomePage() {
             </section>
 
             {/* 7. 対応競馬場 */}
-            <section className="bg-gradient-to-b from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-6 md:p-8">
+            <section className="bg-white rounded-xl border border-gray-200 p-6 md:p-8">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                     対応競馬場一覧
                 </h2>

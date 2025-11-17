@@ -22,7 +22,7 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
                 <div className={`text-xs font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-2 py-1`}>
                     {rank}位
                 </div>
-                <div className="font-bold text-red-600 text-base lg:text-lg whitespace-nowrap leading-none animate-pulse">
+                <div className="font-bold text-red-600 text-base lg:text-lg whitespace-nowrap leading-none">
                     {hit.payout.toLocaleString()}円
                 </div>
             </div>
@@ -107,7 +107,7 @@ export const TopHitsDisplay = () => {
                     </div>
                     {/* 的中実績の下に広告を表示 */}
                     {showAd && (
-                        <div className="mt-4 p-2 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200">
+                        <div className="mt-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
                             <div className="text-xs text-gray-500 text-center mb-1">スポンサーリンク</div>
                             <Adsense
                                 client="ca-pub-4411270831448240"

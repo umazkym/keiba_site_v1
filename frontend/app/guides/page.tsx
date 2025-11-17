@@ -69,7 +69,7 @@ export default async function GuidesPage() {
                     <Link
                         href={`/guides/${guide.slug}`}
                         key={guide.slug}
-                        className="flex flex-col gap-4 p-6 border border-gray-200 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 bg-white hover:translate-y-[-4px]"
+                        className="flex flex-col gap-4 p-6 border border-gray-200 rounded-lg transition-colors duration-200 bg-white hover:border-primary-light"
                     >
                         {/* ガイドカテゴリーバッジ */}
                         <span className="inline-block w-fit bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full">
@@ -102,7 +102,7 @@ export default async function GuidesPage() {
             </div>
 
             {/* CTA セクション */}
-            <div className="bg-gradient-to-br from-indigo-50 via-white to-blue-50 border-2 border-primary/20 p-8 rounded-xl max-w-3xl mx-auto text-center w-full shadow-lg">
+            <div className="bg-indigo-50 border border-indigo-100 p-8 rounded-xl max-w-3xl mx-auto text-center w-full">
                 <div className="mb-6">
                     <h2 className="text-2xl font-bold text-gray-800 mb-3">ガイドを読んだら、AI予想を試してみましょう</h2>
                     <p className="text-gray-600 leading-relaxed">
@@ -111,7 +111,7 @@ export default async function GuidesPage() {
                 </div>
                 <Link
                     href={`/races/${todayStr}`}
-                    className="inline-block bg-primary hover:bg-primary-dark text-white hover:text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
+                    className="inline-block bg-primary hover:bg-primary-dark text-white hover:text-white font-bold py-3 px-8 rounded-lg transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
                 >
                     今日のレース予想を見る
                 </Link>

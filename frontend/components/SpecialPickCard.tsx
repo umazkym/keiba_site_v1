@@ -7,16 +7,16 @@ import { SpecialPick } from "@/lib/types";
 import { SparklesIcon } from '@/components/Icons';
 import { formatDate } from '@/lib/utils';
 
-// スケルトンコンポーネント（変更なし）
+// スケルトンコンポーネント
 const Skeleton = () => (
-    <div className="bg-amber-500 p-6 rounded-xl shadow-lg mb-6 animate-pulse h-[170px]">
+    <div className="bg-amber-500 p-6 rounded-xl border border-amber-600 mb-6 h-[170px]">
         <div className="flex justify-between items-center">
-            <div className="h-4 bg-amber-600 rounded w-1/3"></div>
-            <div className="h-8 bg-amber-600 rounded-full w-24"></div>
+            <div className="h-4 bg-amber-600/50 rounded w-1/3"></div>
+            <div className="h-8 bg-amber-600/50 rounded-full w-24"></div>
         </div>
-        <div className="h-10 bg-amber-600 rounded w-3/4 mt-4"></div>
-        <div className="h-5 bg-amber-600 rounded w-1/2 mt-2"></div>
-        <div className="h-4 bg-amber-600 rounded w-full mt-4"></div>
+        <div className="h-10 bg-amber-600/50 rounded w-3/4 mt-4"></div>
+        <div className="h-5 bg-amber-600/50 rounded w-1/2 mt-2"></div>
+        <div className="h-4 bg-amber-600/50 rounded w-full mt-4"></div>
     </div>
 );
 
@@ -81,11 +81,8 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
             className="block group"
             aria-label={`${pick.commentary}`}
         >
-            <div className="bg-amber-500 text-white rounded-xl shadow-lg h-full flex flex-col overflow-hidden border border-amber-600 hover:border-amber-400 transition-all duration-300 relative group" role="region" aria-labelledby="special-pick-title">
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-600 via-amber-500 to-yellow-600 opacity-80"></div>
-                <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
-
-                <div className="p-5 flex flex-col h-full relative z-10">
+            <div className="bg-amber-500 text-white rounded-xl h-full flex flex-col overflow-hidden border-2 border-amber-600 hover:border-amber-700 transition-colors duration-200" role="region" aria-labelledby="special-pick-title">
+                <div className="p-5 flex flex-col h-full">
                     {/* ▼▼▼▼▼【ここから変更】▼▼▼▼▼ */}
                     <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">

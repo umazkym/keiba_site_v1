@@ -87,40 +87,33 @@
 /* ---------- コンポーネントユーティリティ ---------- */
 @layer components {
     .card {
-        @apply bg-surface rounded-lg border transition-all duration-300;
+        @apply bg-surface rounded-lg border transition-colors duration-200;
         border-color: var(--border);
-        box-shadow: var(--soft-shadow);
     }
 
     .card:hover {
-        box-shadow: var(--hover-shadow);
-        transform: translateY(-2px);
+        border-color: var(--color-primary-light);
     }
 
     .btn-primary {
-        @apply inline-flex items-center justify-center font-semibold rounded-md transition-all duration-300;
+        @apply inline-flex items-center justify-center font-semibold rounded-md transition-colors duration-200;
         padding: 0.5rem 1rem;
         background-color: var(--color-primary);
         color: white;
-        box-shadow: var(--soft-shadow);
     }
-    
+
     .btn-primary:hover {
-        transform: translateY(-2px);
         background-color: var(--color-primary-dark);
-        box-shadow: var(--hover-shadow);
     }
 
     .btn-primary:active {
-        transform: translateY(0);
-        box-shadow: var(--soft-shadow);
+        opacity: 0.9;
     }
 
     .adsense-wrapper {
-        @apply w-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-white border-2 rounded-lg;
+        @apply w-full flex items-center justify-center bg-gray-50 border rounded-lg;
         border-color: var(--border);
         min-height: 90px;
-        box-shadow: var(--soft-shadow);
         position: relative;
         overflow: hidden;
     }
@@ -139,34 +132,6 @@
         @apply sr-only focus:not-sr-only inline-block px-3 py-2 rounded-md font-medium;
         background: white;
         border: 1px solid var(--border);
-    }
-
-    /* 新規追加: アニメーションクラス */
-    .animate-gradient {
-        animation: gradient 3s ease infinite;
-        background-size: 200% 200%;
-    }
-
-    @keyframes gradient {
-        0%, 100% {
-            background-position: 0% 50%;
-        }
-        50% {
-            background-position: 100% 50%;
-        }
-    }
-
-    .pulse-slow {
-        animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-
-    @keyframes pulse {
-        0%, 100% {
-            opacity: 1;
-        }
-        50% {
-            opacity: 0.8;
-        }
     }
 }
 
@@ -304,7 +269,6 @@ td.no-match {
     color: var(--color-primary) !important;
     border-bottom: 2px solid var(--surface) !important;
     margin-bottom: -2px !important;
-    box-shadow: var(--soft-shadow);
 }
 
 .react-tabs__tab--selected::after {
@@ -314,7 +278,7 @@ td.no-match {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+    background: var(--color-primary);
     border-radius: 2px;
 }
 
@@ -328,11 +292,10 @@ td.no-match {
 .ad-highlight {
     position: relative;
     padding: 1rem;
-    background: linear-gradient(135deg, #f6f8fb 0%, #ffffff 100%);
-    border: 2px solid #e5e7eb;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
     border-radius: 12px;
     margin: 1.5rem 0;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
 }
 
 .ad-highlight::before {
@@ -367,23 +330,12 @@ td.no-match {
 /* 印の強調スタイル */
 .prediction-mark {
     display: inline-block;
-    font-weight: 900;
-    font-size: 1.2em;
+    font-weight: 800;
+    font-size: 1.1em;
     padding: 0.25rem 0.5rem;
     border-radius: 0.375rem;
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    background: #f59e0b;
     color: white;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
 }
 
 /* ---------- Prose テーブルスタイル ---------- */

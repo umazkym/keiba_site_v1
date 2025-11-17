@@ -25,7 +25,7 @@ const HorseMarker = ({ horse, position, isMobile, markerSpacing }: { horse: Hors
         </div>
     } placement="top">
         <div
-            className="absolute transition-all duration-500 ease-out flex flex-col items-center cursor-pointer hover:z-50 hover:transform hover:scale-110"
+            className="absolute transition-all duration-200 ease-out flex flex-col items-center cursor-pointer hover:z-50 hover:transform hover:scale-110"
             style={{
                 top: `${20 + (horse.horse_number - 1) * markerSpacing}px`,
                 left: `${position}%`,
@@ -46,7 +46,7 @@ const HorseMarker = ({ horse, position, isMobile, markerSpacing }: { horse: Hors
 export const StartPositionChart = ({ predictions }: { predictions: HorsePrediction[] }) => {
     if (!predictions || predictions.length === 0 || predictions.every(p => p.start_1c_indicator === null)) {
         return (
-            <div className="my-4 p-4 md:p-6 bg-gradient-to-r from-gray-50 to-white border rounded-lg shadow-inner text-center text-gray-500">
+            <div className="my-4 p-4 md:p-6 bg-gray-50 border rounded-lg text-center text-gray-500">
                 <p className="font-medium text-sm">このレースの脚質パターン予測はありません。</p>
             </div>
         );
@@ -67,11 +67,11 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
         <div className="p-3 md:p-4 bg-white">
             <h4 className="text-xs md:text-sm font-bold text-gray-600 mb-2 md:mb-3 flex items-center">
             </h4>
-            <div className="relative w-full bg-gradient-to-r from-blue-50 via-gray-50 to-yellow-50 rounded-lg shadow-sm overflow-hidden"
+            <div className="relative w-full bg-gray-50 rounded-lg border border-gray-200 overflow-hidden"
                  style={{ height: `${containerHeight}px` }}>
-                <div className="absolute top-0 bottom-0 left-0 w-[33.3%] bg-blue-100/30 rounded-l-lg"></div>
-                <div className="absolute top-0 bottom-0 left-[33.3%] w-[33.3%] bg-gray-100/30"></div>
-                <div className="absolute top-0 bottom-0 left-[66.6%] w-[33.3%] bg-yellow-100/30 rounded-r-lg"></div>
+                <div className="absolute top-0 bottom-0 left-0 w-[33.3%] bg-blue-50/40 rounded-l-lg"></div>
+                <div className="absolute top-0 bottom-0 left-[33.3%] w-[33.3%] bg-gray-50/40"></div>
+                <div className="absolute top-0 bottom-0 left-[66.6%] w-[33.3%] bg-yellow-50/40 rounded-r-lg"></div>
                 <div className="absolute top-0 bottom-0 left-[33.3%] border-l border-dashed border-gray-300"></div>
                 <div className="absolute top-0 bottom-0 left-[66.6%] border-l border-dashed border-gray-300"></div>
                 {sortedByNumber.map(horse => {

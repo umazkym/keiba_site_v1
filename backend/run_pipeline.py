@@ -91,10 +91,10 @@ def worker_process_race(race_id_tuple):
 
         race_date = shutuba_data.get('race_info', {}).get('race_date')
         if not isinstance(race_date, datetime.date):
-            try:
-                race_date = datetime.date(int(race_id[:4]), int(race_id[6:8]), int(race_id[8:10]))
-            except ValueError:
-                 return # 不正なrace_idの場合はスキップ
+            # HTMLから日付を取得できなかった場合はスキップ
+            # 注意: レースIDから日付を抽出できない（NN=開催回数、DD=開催日数であり、月日ではない）
+            tqdm.write(f"[WARNING] Race date not found in HTML for race {race_id}. Skipping.")
+            return
 
         database_loader.load_shutuba_data(db, shutuba_data, race_id, race_date, is_nar)
 

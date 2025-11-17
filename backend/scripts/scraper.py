@@ -267,11 +267,9 @@ def get_shutuba_html(race_id: str, is_nar: bool, force_download: bool = False) -
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, f"{race_id}.bin")
 
-    try:
-        target_date = date(int(race_id[:4]), int(race_id[6:8]), int(race_id[8:10]))
-    except ValueError:
-        target_date = date.today()
-    return get_html(url, file_path, force_download, use_selenium=False, wait_for_class="Shutuba_HorseList", target_date=target_date)
+    # レースIDから日付を抽出できない（NN=開催回数、DD=開催日数であり、月日ではない）
+    # target_dateはNoneにして、キャッシュ制御はforce_downloadで行う
+    return get_html(url, file_path, force_download, use_selenium=False, wait_for_class="Shutuba_HorseList", target_date=None)
 
 def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = False) -> Tuple[Optional[str], bool]:
     if is_nar:
@@ -286,11 +284,9 @@ def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = Fals
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, f"{race_id}.bin")
 
-    try:
-        target_date = date(int(race_id[:4]), int(race_id[6:8]), int(race_id[8:10]))
-    except ValueError:
-        target_date = date.today()
-    return get_html(url, file_path, force_download, use_selenium=False, wait_for_class="RaceTable01", target_date=target_date)
+    # レースIDから日付を抽出できない（NN=開催回数、DD=開催日数であり、月日ではない）
+    # target_dateはNoneにして、キャッシュ制御はforce_downloadで行う
+    return get_html(url, file_path, force_download, use_selenium=False, wait_for_class="RaceTable01", target_date=None)
 
 def get_horse_page_html(
     horse_id: str,

@@ -109,14 +109,14 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
         <div id={`venue-${venue.venue_name}`}>
             <RaceSelector races={venue.races} selectedIndex={activeRaceIndex} onSelectRace={handleRaceSelect} />
             {activeRace && (
-                <div id={`race-${activeRace.id}`} className="mt-2">
-                    <div className="card mb-3">
-                        <div className="bg-primary text-white p-2 border-b border-border rounded-t-lg">
-                            <h3 className="text-base font-bold flex items-center text-white">
-                                <span className="bg-primary-dark text-white rounded-full w-7 h-7 inline-flex items-center justify-center mr-2 font-mono shadow-inner">{activeRace.race_number}R</span>
+                <div id={`race-${activeRace.id}`} className="mt-4">
+                    <div className="card mb-4 overflow-hidden">
+                        <div className="bg-gradient-to-r from-primary via-primary-dark to-primary text-white p-4 border-b-2 border-accent">
+                            <h3 className="text-lg font-bold flex items-center text-white">
+                                <span className="bg-white/20 backdrop-blur-sm text-white rounded-full w-9 h-9 inline-flex items-center justify-center mr-3 font-mono font-extrabold shadow-lg text-base">{activeRace.race_number}R</span>
                                 <span className="truncate">{activeRace.race_name}</span>
                             </h3>
-                            <p className="text-sm text-primary-light ml-9 -mt-1">{activeRace.course_type}{activeRace.distance}m</p>
+                            <p className="text-sm text-blue-100 ml-12 -mt-1 font-medium">{activeRace.course_type} {activeRace.distance}m</p>
                         </div>
                         <div>
                             <h4 className="flex items-center text-md font-bold text-gray-700 mt-2 mb-1 px-3">
@@ -128,40 +128,40 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
                     </div>
 
                     {/* 脚質パターン予測 */}
-                    <div className="card mb-3">
-                        <div className="p-4 border-b border-gray-200">
-                            <h4 className="flex items-center text-md font-bold text-gray-700">
-                                <FlagIcon className="w-5 h-5 text-primary mr-2" />
+                    <div className="card mb-4 overflow-hidden">
+                        <div className="p-4 bg-gradient-to-r from-blue-50 to-white border-b-2 border-primary/10">
+                            <h4 className="flex items-center text-lg font-bold text-gray-800">
+                                <FlagIcon className="w-6 h-6 text-primary mr-2" />
                                 脚質パターン予測
                             </h4>
                         </div>
-                        <div className="p-4">
+                        <div className="p-5">
                             <StartPositionChart predictions={activeRace.predictions} />
                         </div>
                     </div>
 
                     {/* 過去対決成績 */}
-                    <div className="card mb-3">
-                        <div className="p-4 border-b border-gray-200">
-                            <h4 className="flex items-center text-md font-bold text-gray-700">
-                                <UsersIcon className="w-5 h-5 text-primary mr-2" />
+                    <div className="card mb-4 overflow-hidden">
+                        <div className="p-4 bg-gradient-to-r from-green-50 to-white border-b-2 border-secondary/10">
+                            <h4 className="flex items-center text-lg font-bold text-gray-800">
+                                <UsersIcon className="w-6 h-6 text-secondary mr-2" />
                                 過去対決成績
                             </h4>
                         </div>
-                        <div className="p-4">
+                        <div className="p-5">
                             <MatchupTable race={activeRace} />
                         </div>
                     </div>
 
                     {/* 枠順傾向スコア */}
-                    <div className="card mb-3">
-                        <div className="p-4 border-b border-gray-200">
-                            <h4 className="flex items-center text-md font-bold text-gray-700">
-                                <ChartBarIcon className="w-5 h-5 text-primary mr-2" />
+                    <div className="card mb-4 overflow-hidden">
+                        <div className="p-4 bg-gradient-to-r from-yellow-50 to-white border-b-2 border-accent/10">
+                            <h4 className="flex items-center text-lg font-bold text-gray-800">
+                                <ChartBarIcon className="w-6 h-6 text-accent-dark mr-2" />
                                 枠順傾向スコア
                             </h4>
                         </div>
-                        <div className="p-4">
+                        <div className="p-5">
                             <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
                         </div>
                     </div>

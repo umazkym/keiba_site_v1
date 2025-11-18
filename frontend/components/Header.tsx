@@ -26,9 +26,9 @@ export const Header = () => {
     const todayStr = getTodayString();
 
     return (
-        <header className="bg-white text-text shadow-lg sticky top-0 z-50 border-b-2 border-primary/10">
+        <header className="bg-white/95 backdrop-blur-md text-text shadow-lg sticky top-0 z-50 border-b-2 border-primary/20">
             <div className="container mx-auto px-4">
-                <div className="flex items-center justify-between h-16 gap-4">
+                <div className="flex items-center justify-between h-16 md:h-18 gap-4">
                     {/* ロゴ */}
                     <Link href="/" className="flex items-center gap-3 group shrink-0" aria-label="ウマFREE ホーム">
                         <Image
@@ -49,22 +49,18 @@ export const Header = () => {
                     </Link>
 
                     {/* デスクトップナビゲーション */}
-                    <nav className="hidden md:flex items-center gap-6 flex-1 ml-8">
-                        <Link href="/" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                    <nav className="hidden md:flex items-center gap-2 flex-1 ml-8">
+                        <Link href="/" className="px-3 py-2 text-sm font-semibold text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg transition-all duration-200 relative group">
                             ホーム
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
                         </Link>
-                        <Link href={`/races/${todayStr}`} className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
-                            本日の予測
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+                        <Link href={`/races/${todayStr}`} className="px-3 py-2 text-sm font-semibold text-white bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary rounded-lg transition-all duration-200 shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40">
+                            今日の予測
                         </Link>
-                        <Link href="/articles" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                        <Link href="/articles" className="px-3 py-2 text-sm font-semibold text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg transition-all duration-200 relative group">
                             記事
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
                         </Link>
-                        <Link href="/faq" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
-                            よくある質問
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+                        <Link href="/faq" className="px-3 py-2 text-sm font-semibold text-gray-700 hover:text-primary hover:bg-primary/5 rounded-lg transition-all duration-200 relative group">
+                            FAQ
                         </Link>
                     </nav>
 

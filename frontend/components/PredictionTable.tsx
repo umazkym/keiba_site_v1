@@ -114,23 +114,23 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
             </div>
 
             {/* スマホ (md未満) ではカードリスト表示 */}
-            <div className="md:hidden divide-y divide-gray-200">
+            <div className="md:hidden divide-y divide-gray-200 border border-gray-200 rounded-lg overflow-hidden">
                 {race.predictions.map((p, index) => {
                     const adSlot = shouldShowAd(index, race.predictions.length);
                     return (
                         <React.Fragment key={`${race.id}-${p.horse_number}-mobile`}>
-                             <div className="p-2">
-                                 <div className="flex items-center justify-between">
-                                     <div className="flex items-center gap-3">
-                                         <span className="text-xl font-bold text-gray-800 w-8 text-center">{p.mark || '—'}</span>
-                                         <div className="flex items-center gap-2">
+                             <div className="p-3 bg-white active:bg-gray-50 transition-colors">
+                                 <div className="flex items-center justify-between gap-3">
+                                     <div className="flex items-center gap-3 flex-1 min-w-0">
+                                         <span className="text-2xl font-extrabold text-gray-800 w-10 text-center flex-shrink-0">{p.mark || '—'}</span>
+                                         <div className="flex items-center gap-2 min-w-0 flex-1">
                                              <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
                                              <span className="font-bold text-base text-gray-900 truncate">{p.horse_name}</span>
                                          </div>
                                      </div>
-                                     <div className="text-right">
-                                         <div className="font-semibold text-primary-dark text-lg whitespace-nowrap">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</div>
-                                         <div className="text-xs text-gray-500 whitespace-nowrap">AI偏差値</div>
+                                     <div className="text-right flex-shrink-0">
+                                         <div className="font-bold text-primary text-xl whitespace-nowrap leading-tight">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</div>
+                                         <div className="text-[10px] text-gray-500 whitespace-nowrap font-medium">AI偏差値</div>
                                      </div>
                                  </div>
                              </div>

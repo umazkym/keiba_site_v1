@@ -49,20 +49,20 @@ export default async function HomePage() {
             {/* 1. ヒーロー＆高配当ランキング統合セクション */}
             <div className="space-y-6">
                 {/* メインのヒーローセクション */}
-                <section className="text-center p-8 bg-white rounded-xl shadow-sm border border-gray-200">
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-primary-dark mb-3 leading-tight">
+                <section className="text-center p-6 sm:p-8 md:p-10 bg-white rounded-xl shadow-sm border border-gray-200">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-primary-dark mb-4 leading-tight px-2">
                         登録不要・完全無料
                         <br />
                         AI競馬データ分析 UMA-FREE
                     </h1>
-                    <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto mb-6">
+                    <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto mb-6 px-4 leading-relaxed">
                         過去5年以上のレース結果をAIで分析。中央・地方の全レース対応。
                         <br className="hidden sm:block" />
                         あなたの競馬ライフをサポートします。
                     </p>
                     <Link
                         href={`/races/${todayStr}`}
-                        className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg transition-colors duration-200 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
+                        className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-lg transition-colors duration-200 text-base sm:text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light min-h-[48px] leading-tight"
                     >
                         今日のデータ分析をチェック
                     </Link>
@@ -75,9 +75,9 @@ export default async function HomePage() {
             </div>
 
             {/* 2. UMA-FREE価値提案セクション（統合・簡潔版） */}
-            <section className="bg-blue-50 p-8 rounded-xl shadow-sm border border-blue-100">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8 text-center">UMA-FREEの3つの競馬分析データ</h2>
-                <div className="grid md:grid-cols-2 gap-8">
+            <section className="bg-blue-50 p-6 sm:p-8 md:p-10 rounded-xl shadow-sm border border-blue-100">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-6 sm:mb-8 text-center px-2">UMA-FREEの3つの競馬分析データ</h2>
+                <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
                     <div>
                         <h3 className="font-bold text-lg text-primary mb-3 flex items-center gap-2">
                             <span className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">✓</span>

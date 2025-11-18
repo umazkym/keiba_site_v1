@@ -27,8 +27,8 @@ export const Header = () => {
 
     return (
         <header className="bg-white text-text shadow-lg sticky top-0 z-50 border-b-2 border-primary/10">
-            <div className="container mx-auto px-4">
-                <div className="flex items-center justify-between h-16 gap-4">
+            <div className="container mx-auto px-3 sm:px-4">
+                <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
                     {/* ロゴ */}
                     <Link href="/" className="flex items-center gap-3 group shrink-0" aria-label="ウマFREE ホーム">
                         <Image
@@ -69,20 +69,20 @@ export const Header = () => {
                     </nav>
 
                     {/* 検索ボタンとメニューボタン（右側） */}
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                         <Link
                             href="/search"
-                            className="p-3 md:p-2 text-gray-600 hover:text-primary transition-colors duration-200 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-light active:bg-gray-200 md:active:bg-gray-100"
+                            className="p-2.5 sm:p-3 md:p-2 text-gray-600 hover:text-primary transition-colors duration-200 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-light active:bg-gray-200 md:active:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center"
                             aria-label="サイト内検索"
                             title="検索"
                         >
-                            <SearchIcon className="w-5 h-5 md:w-5 md:h-5" />
+                            <SearchIcon className="w-5 h-5 sm:w-6 sm:h-6 md:w-5 md:h-5" />
                         </Link>
 
                         {/* モバイルメニューボタン */}
                         <button
                             onClick={toggleMenu}
-                            className="md:hidden p-3 text-gray-600 hover:text-primary transition-colors duration-200 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-light active:bg-gray-200"
+                            className="md:hidden p-2.5 sm:p-3 text-gray-600 hover:text-primary transition-colors duration-200 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-light active:bg-gray-200 min-h-[44px] min-w-[44px] flex items-center justify-center"
                             aria-label={isMenuOpen ? 'メニューを閉じる' : 'メニューを開く'}
                             aria-expanded={isMenuOpen}
                         >
@@ -97,70 +97,71 @@ export const Header = () => {
 
                 {/* モバイルメニュー */}
                 {isMenuOpen && (
-                    <nav className="md:hidden pb-4 border-t border-gray-200 max-h-[calc(100vh-64px)] overflow-y-auto">
+                    <nav className="md:hidden pb-4 border-t-2 border-gray-200 max-h-[calc(100vh-56px)] sm:max-h-[calc(100vh-64px)] overflow-y-auto bg-white">
                         <Link
                             href="/"
-                            className="block px-4 py-3 text-base font-medium text-gray-600 hover:text-primary hover:bg-gray-50 active:bg-gray-100 transition-colors duration-200"
+                            className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
                             onClick={closeMenu}
                         >
-                            ホーム
+                            🏠 ホーム
                         </Link>
                         <Link
                             href={`/races/${todayStr}`}
-                            className="block px-4 py-3 text-base font-medium text-gray-600 hover:text-primary hover:bg-gray-50 active:bg-gray-100 transition-colors duration-200"
+                            className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
                             onClick={closeMenu}
                         >
-                            本日の予測
+                            📊 本日の予測
                         </Link>
                         <Link
                             href="/articles"
-                            className="block px-4 py-3 text-base font-medium text-gray-600 hover:text-primary hover:bg-gray-50 active:bg-gray-100 transition-colors duration-200"
+                            className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
                             onClick={closeMenu}
                         >
-                            記事
+                            📰 記事
                         </Link>
                         <Link
                             href="/faq"
-                            className="block px-4 py-3 text-base font-medium text-gray-600 hover:text-primary hover:bg-gray-50 active:bg-gray-100 transition-colors duration-200"
+                            className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
                             onClick={closeMenu}
                         >
-                            よくある質問
+                            ❓ よくある質問
                         </Link>
                         <Link
                             href="/search"
-                            className="block px-4 py-3 text-base font-medium text-gray-600 hover:text-primary hover:bg-gray-50 active:bg-gray-100 transition-colors duration-200"
+                            className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
                             onClick={closeMenu}
                         >
-                            検索
+                            🔍 検索
                         </Link>
-                        <div className="px-4 py-3 border-t border-gray-200 mt-2">
+                        <div className="px-4 py-4 bg-gray-50 border-t-2 border-gray-200">
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">その他</p>
                             <Link
                                 href="/about"
-                                className="block py-2 text-sm text-gray-600 hover:text-primary active:text-primary-dark transition-colors duration-200"
+                                className="block py-3 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white active:bg-gray-100 rounded-md px-3 transition-colors duration-200 border-b border-gray-200"
                                 onClick={closeMenu}
                             >
-                                このサイトについて
+                                ℹ️ このサイトについて
                             </Link>
                             <Link
                                 href="/advertising"
-                                className="block py-2 text-sm text-gray-600 hover:text-primary active:text-primary-dark transition-colors duration-200"
+                                className="block py-3 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white active:bg-gray-100 rounded-md px-3 transition-colors duration-200 border-b border-gray-200"
                                 onClick={closeMenu}
                             >
-                                広告について
+                                📢 広告について
                             </Link>
                             <Link
                                 href="/contact"
-                                className="block py-2 text-sm text-gray-600 hover:text-primary active:text-primary-dark transition-colors duration-200"
+                                className="block py-3 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white active:bg-gray-100 rounded-md px-3 transition-colors duration-200 border-b border-gray-200"
                                 onClick={closeMenu}
                             >
-                                お問い合わせ
+                                ✉️ お問い合わせ
                             </Link>
                             <Link
                                 href="/privacy"
-                                className="block py-2 text-sm text-gray-600 hover:text-primary active:text-primary-dark transition-colors duration-200"
+                                className="block py-3 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white active:bg-gray-100 rounded-md px-3 transition-colors duration-200"
                                 onClick={closeMenu}
                             >
-                                プライバシーポリシー
+                                🔒 プライバシーポリシー
                             </Link>
                         </div>
                     </nav>

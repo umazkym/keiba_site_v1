@@ -304,17 +304,75 @@ td.no-match {
 
 /* レスポンシブ改善 */
 @media (max-width: 640px) {
-    .react-tabs__tab {
-        padding: 0.5rem 0.75rem !important;
-        font-size: 0.875rem;
+    body {
+        font-size: 16px; /* iOSのズームを防ぐ */
     }
-    
+
+    .react-tabs__tab {
+        padding: 0.625rem 1rem !important; /* タッチしやすいサイズ */
+        font-size: 0.875rem;
+        min-height: 44px; /* タッチターゲット推奨サイズ */
+    }
+
     .table-wrapper {
         border-radius: 6px;
+        margin: 0 -0.5rem; /* モバイルで左右の余白を活用 */
     }
-    
+
     .card {
-        border-radius: 8px;
+        border-radius: 12px; /* モバイルで丸みを強調 */
+        margin: 0 0 1rem 0;
+    }
+
+    /* モバイル用のコンテナ調整 */
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    /* モバイルでの見出しサイズ最適化 */
+    h1 {
+        font-size: 1.75rem !important;
+        line-height: 1.3;
+    }
+
+    h2 {
+        font-size: 1.5rem !important;
+        line-height: 1.3;
+    }
+
+    h3 {
+        font-size: 1.25rem !important;
+        line-height: 1.4;
+    }
+
+    /* ボタンのタッチターゲットサイズ */
+    .btn-primary {
+        min-height: 48px;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+    }
+
+    /* モバイルでのテーブル */
+    .matchup-table {
+        font-size: 0.75rem;
+    }
+
+    .matchup-table th,
+    .matchup-table td {
+        padding: 0.3rem 0.4rem;
+    }
+}
+
+/* タブレット用の調整 */
+@media (min-width: 641px) and (max-width: 1024px) {
+    .container {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+
+    .card {
+        margin-bottom: 1.5rem;
     }
 }
 

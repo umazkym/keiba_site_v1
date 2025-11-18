@@ -4,8 +4,8 @@ import Image from 'next/image';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
 import { getSpecialPick } from '@/lib/api';
-import { getLatestArticles, getUniqueCategories } from '../lib/articles';
-import { SparklesIcon, UsersIcon, FlagIcon, ChartBarIcon } from '@/components/Icons';
+import { getLatestArticles } from '../lib/articles';
+import { SparklesIcon } from '@/components/Icons';
 import type { Metadata } from 'next';
 
 // ビルド時のAPI呼び出しを避けるため、動的レンダリングを強制
@@ -24,16 +24,6 @@ const getTodayString = () => {
     return jstDate.toISOString().split('T')[0];
 };
 
-const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: React.ReactNode }) => (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 text-center flex flex-col items-center">
-        <div className="bg-primary-light/10 text-primary-dark rounded-full p-3 mb-3">
-            {icon}
-        </div>
-        <h3 className="text-lg font-bold text-gray-800 mb-1">{title}</h3>
-        <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
-    </div>
-);
-
 export default async function HomePage() {
     const todayStr = getTodayString();
     const specialPick = await getSpecialPick(todayStr).catch(e => {
@@ -42,7 +32,6 @@ export default async function HomePage() {
     });
 
     const latestArticles = getLatestArticles(5);
-    const categories = getUniqueCategories();
 
     return (
         <div className="container py-6 space-y-10">

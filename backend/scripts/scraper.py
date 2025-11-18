@@ -120,8 +120,10 @@ def _prepare_chrome_driver():
         options.add_argument('--single-process')  # シングルプロセスモード（メモリ節約）
         options.add_argument('--disable-software-rasterizer')
 
-        # メモリ制限を明示的に設定
-        options.add_argument('--max-old-space-size=256')
+        # メモリ制限を明示的に設定（Chrome用）
+        options.add_argument('--js-flags=--max-old-space-size=256')
+        options.add_argument('--disk-cache-size=1')
+        options.add_argument('--media-cache-size=1')
 
         # ユーザーデータディレクトリが競合しないように一意の一時ディレクトリを使用
         temp_user_data_dir = tempfile.mkdtemp(prefix=f"chrome_{uuid.uuid4().hex[:8]}_")

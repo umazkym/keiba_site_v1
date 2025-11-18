@@ -26,45 +26,49 @@ export const Header = () => {
     const todayStr = getTodayString();
 
     return (
-        <header className="bg-white text-text shadow-lg sticky top-0 z-50 border-b-2 border-primary/10">
+        <header className="bg-white/95 backdrop-blur-md text-text shadow-lg sticky top-0 z-50 border-b border-gray-200">
             <div className="container mx-auto px-4">
                 <div className="flex items-center justify-between h-16 gap-4">
                     {/* ロゴ */}
-                    <Link href="/" className="flex items-center gap-3 group shrink-0" aria-label="ウマFREE ホーム">
-                        <Image
-                            src="/new-logo.png"
-                            alt="UMA-FREE ロゴ"
-                            width={48}
-                            height={48}
-                            priority
-                        />
+                    <Link href="/" className="flex items-center gap-3 group shrink-0 transition-transform duration-200 hover:scale-105" aria-label="ウマFREE ホーム">
+                        <div className="relative">
+                            <Image
+                                src="/new-logo.png"
+                                alt="UMA-FREE ロゴ"
+                                width={48}
+                                height={48}
+                                priority
+                                className="drop-shadow-md"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        </div>
                         <div className="flex flex-col hidden sm:flex">
-                            <span className="text-2xl font-extrabold tracking-tight text-primary">
+                            <span className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                                 UMA-FREE
                             </span>
-                            <span className="text-xs text-gray-500 -mt-1">
+                            <span className="text-xs text-gray-500 -mt-1 font-medium">
                                 完全無料のAI競馬分析
                             </span>
                         </div>
                     </Link>
 
                     {/* デスクトップナビゲーション */}
-                    <nav className="hidden md:flex items-center gap-6 flex-1 ml-8">
-                        <Link href="/" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                    <nav className="hidden md:flex items-center gap-8 flex-1 ml-8">
+                        <Link href="/" className="text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-all duration-300 relative group py-1">
                             ホーム
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:w-full transition-all duration-300 rounded-full"></span>
                         </Link>
-                        <Link href={`/races/${todayStr}`} className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                        <Link href={`/races/${todayStr}`} className="text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-all duration-300 relative group py-1">
                             本日の予測
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:w-full transition-all duration-300 rounded-full"></span>
                         </Link>
-                        <Link href="/articles" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                        <Link href="/articles" className="text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-all duration-300 relative group py-1">
                             記事
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:w-full transition-all duration-300 rounded-full"></span>
                         </Link>
-                        <Link href="/faq" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                        <Link href="/faq" className="text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-all duration-300 relative group py-1">
                             よくある質問
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:w-full transition-all duration-300 rounded-full"></span>
                         </Link>
                     </nav>
 

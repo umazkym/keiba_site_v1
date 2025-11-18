@@ -42,6 +42,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # アプリケーションコードをコピー
 COPY . .
 
+# Render環境でのメモリ管理のため、ガベージコレクションを積極的に実行
+ENV PYTHONGC=1
+
 # ★★★★★ 修正点 ★★★★★
 # このコンテナのデフォルトの実行コマンドを定義します。
 # このCMDは、render.yamlのdockerCommandで上書きされます。

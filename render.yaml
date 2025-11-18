@@ -110,13 +110,19 @@ services:
         generateValue: true
       - key: WEBHOOK_URL
         sync: false
+      - key: RACE_BATCH_SIZE
+        value: "15"
+      - key: SELENIUM_PAGE_LOAD_TIMEOUT
+        value: "40"
+      - key: SELENIUM_ELEMENT_WAIT_TIMEOUT
+        value: "20"
 
   # パイプライン実行ジョブ: 朝5時（前日の結果取得のみ）
   - type: cron
     name: keiba-pipeline-runner
     runtime: docker
     region: oregon
-    plan: starter  # 2GB RAM
+    plan: starter  # 512MB RAM (starterプラン)
     schedule: "0 20 * * *"  # JST AM 5:00 (UTC 20:00)
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -132,3 +138,9 @@ services:
         generateValue: true
       - key: WEBHOOK_URL
         sync: false
+      - key: RACE_BATCH_SIZE
+        value: "15"
+      - key: SELENIUM_PAGE_LOAD_TIMEOUT
+        value: "40"
+      - key: SELENIUM_ELEMENT_WAIT_TIMEOUT
+        value: "20"

@@ -46,45 +46,16 @@ const config: Config = {
       borderRadius: {
         lg: "0.75rem",
         xl: "1rem",
-        "2xl": "1.5rem",
       },
       boxShadow: {
         // CSS変数に合わせて修正
-        card: "var(--card-shadow)",
-        elevated: "var(--elevated-shadow)",
-        "2xl": "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        card: "var(--soft-shadow)",
+        elevated: "0 10px 30px rgba(2, 6, 23, 0.08)",
       },
       fontSize: {
         "2xl": ["1.5rem", { lineHeight: "1.25" }],
         "3xl": ["1.875rem", { lineHeight: "1.15" }],
         "4xl": ["2.25rem", { lineHeight: "1.1" }],
-        "5xl": ["3rem", { lineHeight: "1.05" }],
-        "6xl": ["3.75rem", { lineHeight: "1" }],
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-in-out",
-        "slide-up": "slideUp 0.5s ease-out",
-        "slide-down": "slideDown 0.3s ease-out",
-        "scale-in": "scaleIn 0.3s ease-out",
-        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-      },
-      keyframes: {
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        slideUp: {
-          "0%": { transform: "translateY(20px)", opacity: "0" },
-          "100%": { transform: "translateY(0)", opacity: "1" },
-        },
-        slideDown: {
-          "0%": { transform: "translateY(-10px)", opacity: "0" },
-          "100%": { transform: "translateY(0)", opacity: "1" },
-        },
-        scaleIn: {
-          "0%": { transform: "scale(0.9)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
       },
     },
   },

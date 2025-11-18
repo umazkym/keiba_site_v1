@@ -16,14 +16,12 @@
     --color-accent-light: #fcd34d;
     --color-accent-dark: #d97706;
 
-    --bg: #f8fafc;
+    --bg: #f3f4f6;
     --surface: #ffffff;
     --muted: #6b7280;
     --border: #e5e7eb;
     --text: #1f2937;
     --soft-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --elevated-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
 /* ---------- base adjustments ---------- */
@@ -43,28 +41,23 @@
     }
 
     a {
-        @apply text-primary hover:text-primary-dark transition-all duration-300;
+        @apply text-primary hover:text-primary-dark transition-colors duration-200;
     }
 
     h1, h2, h3, h4 {
         color: var(--text);
         font-weight: 700;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.01em;
     }
 
     :focus {
         outline: none;
     }
-
+    
     :focus-visible {
         outline: 3px solid var(--color-primary-light);
-        outline-offset: 3px;
-        border-radius: 8px;
-    }
-
-    /* スムーズなページ遷移 */
-    * {
-        @apply transition-colors duration-200;
+        outline-offset: 2px;
+        border-radius: 6px;
     }
 
     /* スクロールバーのカスタマイズ */
@@ -92,31 +85,25 @@
 /* ---------- コンポーネントユーティリティ ---------- */
 @layer components {
     .card {
-        @apply bg-surface rounded-xl border border-gray-200;
-        box-shadow: var(--card-shadow);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .card:hover {
-        box-shadow: var(--elevated-shadow);
-        transform: translateY(-2px);
+        @apply bg-surface rounded-lg border;
+        border-color: var(--border);
+        box-shadow: var(--soft-shadow);
     }
 
     .btn-primary {
-        @apply inline-flex items-center justify-center font-bold rounded-xl transition-all duration-300;
-        padding: 0.75rem 1.5rem;
-        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+        @apply inline-flex items-center justify-center font-semibold rounded-md transition-colors duration-200;
+        padding: 0.5rem 1rem;
+        background-color: var(--color-primary);
         color: white;
-        box-shadow: var(--card-shadow);
     }
 
     .btn-primary:hover {
-        box-shadow: var(--elevated-shadow);
-        transform: translateY(-2px) scale(1.02);
+        background-color: var(--color-primary-dark);
     }
 
     .btn-primary:active {
-        transform: translateY(0) scale(0.98);
+        background-color: var(--color-primary-dark);
+        opacity: 0.9;
     }
 
     .adsense-wrapper {

@@ -31,19 +31,15 @@ export const Header = () => {
                 <div className="flex items-center justify-between h-16 gap-4">
                     {/* ロゴ */}
                     <Link href="/" className="flex items-center gap-3 group shrink-0" aria-label="ウマFREE ホーム">
-                        <div className="relative">
-                            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full group-hover:bg-primary/30 transition-colors duration-300"></div>
-                            <Image
-                                src="/new-logo.png"
-                                alt="UMA-FREE ロゴ"
-                                width={48}
-                                height={48}
-                                priority
-                                className="relative z-10 group-hover:scale-110 transition-transform duration-300"
-                            />
-                        </div>
+                        <Image
+                            src="/new-logo.png"
+                            alt="UMA-FREE ロゴ"
+                            width={48}
+                            height={48}
+                            priority
+                        />
                         <div className="flex flex-col hidden sm:flex">
-                            <span className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent group-hover:from-primary-dark group-hover:to-primary transition-all duration-300">
+                            <span className="text-2xl font-extrabold tracking-tight text-primary">
                                 UMA-FREE
                             </span>
                             <span className="text-xs text-gray-500 -mt-1">

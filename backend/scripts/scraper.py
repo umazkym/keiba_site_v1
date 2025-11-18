@@ -31,13 +31,20 @@ USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 ]
 # IP BAN対策: リクエスト間隔を増加（2.5-5.0秒 → 3.0-7.0秒）
-MIN_SLEEP_SECONDS = 2.5
-MAX_SLEEP_SECONDS = 5.0
-MAX_RETRIES = 3
-RETRY_DELAY_SECONDS = 15
-SELENIUM_PAGE_LOAD_TIMEOUT = 120
-SELENIUM_ELEMENT_WAIT_TIMEOUT = 30
-SELENIUM_CONNECTION_TIMEOUT = 180
+MIN_SLEEP_SECONDS = float(os.getenv('MIN_SLEEP_SECONDS', '2.5'))
+MAX_SLEEP_SECONDS = float(os.getenv('MAX_SLEEP_SECONDS', '5.0'))
+MAX_RETRIES = int(os.getenv('MAX_RETRIES', '3'))
+RETRY_DELAY_SECONDS = int(os.getenv('RETRY_DELAY_SECONDS', '15'))
+
+# Render環境ではタイムアウトを短縮して制限内に収める
+if os.getenv('RENDER') == 'true':
+    SELENIUM_PAGE_LOAD_TIMEOUT = int(os.getenv('SELENIUM_PAGE_LOAD_TIMEOUT', '45'))
+    SELENIUM_ELEMENT_WAIT_TIMEOUT = int(os.getenv('SELENIUM_ELEMENT_WAIT_TIMEOUT', '20'))
+    SELENIUM_CONNECTION_TIMEOUT = int(os.getenv('SELENIUM_CONNECTION_TIMEOUT', '60'))
+else:
+    SELENIUM_PAGE_LOAD_TIMEOUT = int(os.getenv('SELENIUM_PAGE_LOAD_TIMEOUT', '120'))
+    SELENIUM_ELEMENT_WAIT_TIMEOUT = int(os.getenv('SELENIUM_ELEMENT_WAIT_TIMEOUT', '30'))
+    SELENIUM_CONNECTION_TIMEOUT = int(os.getenv('SELENIUM_CONNECTION_TIMEOUT', '180'))
 
 BASE_CENTRAL_URL = "https://race.netkeiba.com"
 BASE_NAR_URL = "https://nar.netkeiba.com"
@@ -98,6 +105,23 @@ def _prepare_chrome_driver():
         options.add_argument('--disable-images')
         options.add_experimental_option("prefs", {"profile.managed_default_content_settings.images": 2})
         options.add_argument('--blink-settings=imagesEnabled=false')
+
+        # さらに省メモリ設定を追加
+        options.add_argument('--disable-extensions')
+        options.add_argument('--disable-plugins')
+        options.add_argument('--disable-background-networking')
+        options.add_argument('--disable-default-apps')
+        options.add_argument('--disable-sync')
+        options.add_argument('--disable-translate')
+        options.add_argument('--disable-notifications')
+        options.add_argument('--disable-web-security')
+        options.add_argument('--disable-infobars')
+        options.add_argument('--disable-popup-blocking')
+        options.add_argument('--single-process')  # シングルプロセスモード（メモリ節約）
+        options.add_argument('--disable-software-rasterizer')
+
+        # メモリ制限を明示的に設定
+        options.add_argument('--max-old-space-size=256')
 
         # ユーザーデータディレクトリが競合しないように一意の一時ディレクトリを使用
         temp_user_data_dir = tempfile.mkdtemp(prefix=f"chrome_{uuid.uuid4().hex[:8]}_")

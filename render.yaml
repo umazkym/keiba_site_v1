@@ -4,6 +4,7 @@ services:
     name: keiba-sns-morning-post
     runtime: docker
     region: oregon
+    plan: starter  # 512MB RAM (SNS投稿用)
     schedule: "0 22 * * *"  # JST AM 7:00
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -33,6 +34,7 @@ services:
     name: keiba-sns-afternoon-post
     runtime: docker
     region: oregon
+    plan: starter  # 512MB RAM (SNS投稿用)
     schedule: "0 3 * * *"  # JST PM 12:00
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -62,6 +64,7 @@ services:
     name: keiba-sns-evening-post
     runtime: docker
     region: oregon
+    plan: starter  # 512MB RAM (SNS投稿用)
     schedule: "0 11 * * *"  # JST PM 8:00
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -91,6 +94,7 @@ services:
     name: keiba-data-fetch-morning
     runtime: docker
     region: oregon
+    plan: starter  # 512MB RAM (軽量スクレイピング)
     schedule: "0 2 * * *"  # JST AM 11:00 (UTC 02:00)
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend

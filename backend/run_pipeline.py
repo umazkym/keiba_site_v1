@@ -225,7 +225,11 @@ def backfill_historical_data(start_date: datetime.date, end_date: datetime.date)
         return
 
     # メモリ使用量を削減するため、バッチ処理で並列実行
-    RACE_BATCH_SIZE = 100
+    # Render環境ではさらに小さいバッチサイズを使用
+    if os.getenv('RENDER') == 'true':
+        RACE_BATCH_SIZE = int(os.getenv('RACE_BATCH_SIZE', '20'))
+    else:
+        RACE_BATCH_SIZE = int(os.getenv('RACE_BATCH_SIZE', '50'))
     total_races = len(unprocessed_races)
 
     for batch_start in range(0, total_races, RACE_BATCH_SIZE):

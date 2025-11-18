@@ -56,43 +56,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                 </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
-                {filteredArticles.map((article) => (
-                    <Link
-                        href={`/articles/${article.slug}`}
-                        key={article.slug}
-                        className="group flex flex-col h-full border-2 border-gray-200 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 bg-white hover:translate-y-[-8px] hover:border-indigo-300"
-                    >
-                        <div className="relative h-48 sm:h-52 md:h-56 w-full overflow-hidden">
-                            <Image
-                                src={article.eyecatch}
-                                alt={article.title}
-                                fill
-                                style={{ objectFit: 'cover' }}
-                                className="transition-transform duration-500 group-hover:scale-110"
-                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        </div>
-                        <div className="flex flex-col gap-4 p-6 flex-1">
-                            <span className="inline-block w-fit bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 text-xs font-bold px-4 py-1.5 rounded-full shadow-sm">
-                                {article.category}
-                            </span>
-                            <h2 className="text-xl font-bold text-gray-800 line-clamp-3 group-hover:text-indigo-600 transition-colors duration-200">
-                                {article.title}
-                            </h2>
-                            <p className="text-gray-500 text-sm mt-auto flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                {new Date(article.date).toLocaleDateString('ja-JP', {
-                                    year: 'numeric',
-                                    month: '2-digit',
-                                    day: '2-digit',
-                                }).replace(/\//g, '/')}
-                            </p>
-                        </div>
-                    </Link>
-                ))}
+                {filteredArticles.map((article) => (<Link href={`/articles/${article.slug}`} key={article.slug} className="flex flex-col h-full border border-gray-200 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 bg-white hover:translate-y-[-4px]"><div className="relative h-40 sm:h-44 md:h-48 w-full overflow-hidden"><Image src={article.eyecatch} alt={article.title} fill style={{ objectFit: 'cover' }} className="transition-transform duration-300 group-hover:scale-105" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" /></div><div className="flex flex-col gap-3 p-5"><span className="inline-block w-fit bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full">{article.category}</span><h2 className="text-xl font-bold text-gray-800 line-clamp-3">{article.title}</h2><p className="text-gray-600 text-sm mt-auto">{new Date(article.date).toLocaleDateString('ja-JP', {year: 'numeric', month: '2-digit', day: '2-digit',}).replace(/\//g, '/')}</p></div></Link>))}
             </div>
         </div>
     );

@@ -158,25 +158,12 @@ const faqItems: FAQItem[] = [
 
 export const FAQClient = () => {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-    const [openItems, setOpenItems] = useState<Set<string>>(new Set());
 
     const categories = [...new Set(faqItems.map(item => item.category))];
 
     const filteredItems = selectedCategory
         ? faqItems.filter(item => item.category === selectedCategory)
         : faqItems;
-
-    const toggleItem = (id: string) => {
-        setOpenItems(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(id)) {
-                newSet.delete(id);
-            } else {
-                newSet.add(id);
-            }
-            return newSet;
-        });
-    };
 
     // FAQ Schema for structured data
     const faqSchema = {
@@ -243,57 +230,26 @@ export const FAQClient = () => {
                     ))}
                 </div>
 
-                {/* FAQ アイテム（アコーディオン形式） */}
-                <div className="space-y-4">
-                    {filteredItems.map(item => {
-                        const isOpen = openItems.has(item.id);
-                        return (
-                            <div
-                                key={item.id}
-                                className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden shadow-md hover:shadow-lg transition-all duration-300"
-                            >
-                                <button
-                                    onClick={() => toggleItem(item.id)}
-                                    className="w-full text-left p-5 flex items-center justify-between gap-4 hover:bg-gray-50 transition-colors duration-200"
-                                    aria-expanded={isOpen}
-                                >
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                            <span className="text-xs font-bold px-3 py-1 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 flex-shrink-0">
-                                                {item.category}
-                                            </span>
-                                            {item.importance === 'high' && (
-                                                <span className="text-xs font-bold px-3 py-1 rounded-full bg-gradient-to-r from-red-100 to-pink-100 text-red-800 flex-shrink-0">
-                                                    重要
-                                                </span>
-                                            )}
-                                        </div>
-                                        <h3 className="font-bold text-gray-800 text-base md:text-lg">
-                                            <span className="text-indigo-600 mr-2">Q.</span>
-                                            {item.question}
-                                        </h3>
-                                    </div>
-                                    <div className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-600 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </div>
-                                </button>
-                                <div
-                                    className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-96' : 'max-h-0'}`}
-                                >
-                                    <div className="px-5 pb-5 pt-2">
-                                        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-4 border-l-4 border-indigo-500">
-                                            <p className="text-gray-700 leading-relaxed">
-                                                <span className="font-bold text-indigo-600 text-lg mr-2">A.</span>
-                                                {item.answer}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
+                {/* FAQ アイテム */}
+                <div className="space-y-6">
+                    {filteredItems.map(item => (
+                        <div key={item.id} className="border-l-4 border-primary pl-6">
+                            <div className="flex items-start gap-2 mb-2">
+                                <span className="text-xs font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-800 flex-shrink-0">
+                                    {item.category}
+                                </span>
+                                {item.importance === 'high' && (
+                                    <span className="text-xs font-bold px-2 py-1 rounded-full bg-red-100 text-red-800 flex-shrink-0">
+                                        重要
+                                    </span>
+                                )}
                             </div>
-                        );
-                    })}
+                            <h3 className="font-bold text-gray-800 mb-2 text-base">Q: {item.question}</h3>
+                            <p className="text-gray-700 leading-relaxed">
+                                <span className="font-bold text-primary">A:</span> {item.answer}
+                            </p>
+                        </div>
+                    ))}
                 </div>
 
                 {/* 追加ヘルプ */}

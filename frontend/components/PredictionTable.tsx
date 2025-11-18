@@ -66,13 +66,13 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
     return (
         <>
             {/* PC (md以上) ではテーブル表示 */}
-            <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200">
+            <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full">
-                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-primary/20">
+                    <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-3 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">印</th>
-                            <th className="px-3 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" colSpan={2}>馬番・馬名</th>
-                            <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-end gap-1">
+                            <th className="px-2 py-1 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">印</th>
+                            <th className="px-2 py-1 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" colSpan={2}>馬番・馬名</th>
+                            <th className="px-4 py-1 text-right text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-end gap-1">
                                 <span className="whitespace-nowrap">AI偏差値</span>
                                 <Tippy content={
                                     <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
@@ -91,13 +91,13 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                             const adSlot = shouldShowAd(index, race.predictions.length);
                             return (
                                 <React.Fragment key={`${race.id}-${p.horse_number}`}>
-                                    <tr className="border-b border-gray-100 hover:bg-blue-50/50 transition-all duration-200 hover:shadow-sm">
-                                        <td className="px-3 py-3 whitespace-nowrap text-center text-xl font-extrabold text-gray-800 w-14">{p.mark || '—'}</td>
-                                        <td className="px-3 py-3 whitespace-nowrap w-12">
+                                    <tr className="hover:bg-gray-50 transition-colors duration-200">
+                                        <td className="px-2 py-2 whitespace-nowrap text-center text-lg font-bold text-gray-800 w-12">{p.mark || '—'}</td>
+                                        <td className="px-2 py-2 whitespace-nowrap w-10">
                                             <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
                                         </td>
-                                        <td className="px-3 py-3 whitespace-nowrap font-semibold text-gray-900 truncate">{p.horse_name}</td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-right text-lg font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
+                                        <td className="px-2 py-2 whitespace-nowrap font-medium text-gray-800 truncate">{p.horse_name}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap text-right font-semibold text-primary-dark">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
                                     </tr>
                                     {adSlot && (
                                         <tr>
@@ -119,17 +119,17 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                     const adSlot = shouldShowAd(index, race.predictions.length);
                     return (
                         <React.Fragment key={`${race.id}-${p.horse_number}-mobile`}>
-                             <div className="p-3 bg-white hover:bg-blue-50/50 transition-colors duration-200">
-                                 <div className="flex items-center justify-between">
-                                     <div className="flex items-center gap-3">
-                                         <span className="text-2xl font-extrabold text-gray-800 w-10 text-center">{p.mark || '—'}</span>
-                                         <div className="flex items-center gap-2">
+                             <div className="p-3 bg-white active:bg-gray-50 transition-colors">
+                                 <div className="flex items-center justify-between gap-3">
+                                     <div className="flex items-center gap-3 flex-1 min-w-0">
+                                         <span className="text-2xl font-extrabold text-gray-800 w-10 text-center flex-shrink-0">{p.mark || '—'}</span>
+                                         <div className="flex items-center gap-2 min-w-0 flex-1">
                                              <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
-                                             <span className="font-bold text-base text-gray-900 truncate max-w-[140px]">{p.horse_name}</span>
+                                             <span className="font-bold text-base text-gray-900 truncate">{p.horse_name}</span>
                                          </div>
                                      </div>
-                                     <div className="text-right">
-                                         <div className="font-bold text-primary text-xl whitespace-nowrap">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</div>
+                                     <div className="text-right flex-shrink-0">
+                                         <div className="font-bold text-primary text-xl whitespace-nowrap leading-tight">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</div>
                                          <div className="text-[10px] text-gray-500 whitespace-nowrap font-medium">AI偏差値</div>
                                      </div>
                                  </div>

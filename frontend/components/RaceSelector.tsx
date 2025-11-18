@@ -8,7 +8,7 @@ type Props = {
 
 export const RaceSelector = ({ races, selectedIndex, onSelectRace }: Props) => {
   return (
-    <div className="grid grid-cols-6 md:flex md:flex-wrap gap-1 md:gap-2 p-2 md:p-3 bg-white rounded-t-lg border-b">
+    <div className="grid grid-cols-6 md:flex md:flex-wrap gap-1.5 md:gap-2 p-3 md:p-4 bg-gradient-to-r from-gray-50 to-white rounded-t-xl border-b-2 border-gray-200">
       {races.map((race, index) => (
         <button
           key={race.id}
@@ -16,10 +16,10 @@ export const RaceSelector = ({ races, selectedIndex, onSelectRace }: Props) => {
             onSelectRace(index);
             e.currentTarget.blur();
           }}
-          className={`w-full md:w-auto px-2 md:px-3 py-1.5 md:py-1 text-xs md:text-sm font-bold rounded-full transition-colors duration-200 whitespace-nowrap ${
+          className={`w-full md:w-auto px-3 md:px-4 py-2 md:py-2 text-xs md:text-sm font-extrabold rounded-lg transition-all duration-300 whitespace-nowrap ${
             selectedIndex === index
-              ? 'bg-blue-600 text-white shadow'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              ? 'bg-gradient-to-r from-primary to-primary-dark text-white shadow-lg shadow-primary/40 scale-105'
+              : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 border border-gray-300 hover:border-primary/30 hover:shadow-md'
           }`}
         >
           {race.race_number}R

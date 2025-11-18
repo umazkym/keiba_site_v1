@@ -63,27 +63,27 @@ const DateNavigator = ({
     }, [onDateChange]);
 
     return (
-        <div className="flex items-center justify-center gap-1 sm:gap-2">
+        <div className="flex items-center justify-center gap-2 sm:gap-3">
             <button
                 onClick={(e) => handleDateShift(e, -1)}
-                className="bg-white border border-gray-300 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm sm:text-base font-semibold whitespace-nowrap shrink-0 min-h-10"
+                className="bg-white border-2 border-gray-300 text-gray-700 px-4 py-2.5 sm:px-5 sm:py-2.5 rounded-lg shadow-md hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:border-primary/40 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm sm:text-base font-bold whitespace-nowrap shrink-0 min-h-11 hover:shadow-lg"
                 aria-label="前日へ移動"
             >
-                ‹ 前日
+                ← 前日
             </button>
             <input
                 type="date"
                 value={currentDate}
                 onChange={handleDateInputChange}
-                className="border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light focus:ring-opacity-50 text-sm sm:text-base shrink-0 min-h-10"
+                className="border-2 border-gray-300 px-4 py-2.5 rounded-lg shadow-md focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all duration-200 text-sm sm:text-base shrink-0 min-h-11 font-semibold"
                 aria-label="日付を選択"
             />
             <button
                 onClick={(e) => handleDateShift(e, 1)}
-                className="bg-white border border-gray-300 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-md shadow-sm hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm sm:text-base font-semibold whitespace-nowrap shrink-0 min-h-10"
+                className="bg-white border-2 border-gray-300 text-gray-700 px-4 py-2.5 sm:px-5 sm:py-2.5 rounded-lg shadow-md hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:border-primary/40 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm sm:text-base font-bold whitespace-nowrap shrink-0 min-h-11 hover:shadow-lg"
                 aria-label="翌日へ移動"
             >
-                翌日 ›
+                翌日 →
             </button>
         </div>
     );
@@ -250,17 +250,17 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
             <div className="mb-4">
                 <TopHitsDisplay />
             </div>
-            <div className="sticky top-16 z-40 bg-white/80 backdrop-blur-sm border-b shadow-md mb-4 p-2">
-                <div className="flex items-center justify-center gap-4">
+            <div className="sticky top-16 z-40 bg-white/95 backdrop-blur-md border-b-2 border-primary/20 shadow-lg mb-6 p-3">
+                <div className="flex items-center justify-center gap-3">
                     <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
                     <button
                         onClick={(e) => {
                             handleDateChange(getTodayString());
                             e.currentTarget.blur();
                         }}
-                        className="bg-primary border border-primary-dark text-white px-3 py-1.5 rounded-md shadow-sm hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm font-bold whitespace-nowrap"
+                        className="bg-gradient-to-r from-accent to-accent-dark border-2 border-accent-dark text-white px-5 py-2.5 rounded-lg shadow-lg hover:from-accent-dark hover:to-accent hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-light text-sm font-extrabold whitespace-nowrap min-h-11"
                     >
-                        今日
+                        📅 今日
                     </button>
                 </div>
             </div>

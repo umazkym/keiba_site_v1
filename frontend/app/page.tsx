@@ -25,8 +25,8 @@ const getTodayString = () => {
 };
 
 const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: React.ReactNode }) => (
-    <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200 text-center flex flex-col items-center transform transition-transform hover:-translate-y-1">
-        <div className="bg-primary-light/20 text-primary-dark rounded-full p-3 mb-3">
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 text-center flex flex-col items-center">
+        <div className="bg-primary-light/10 text-primary-dark rounded-full p-3 mb-3">
             {icon}
         </div>
         <h3 className="text-lg font-bold text-gray-800 mb-1">{title}</h3>
@@ -49,7 +49,7 @@ export default async function HomePage() {
             {/* 1. ヒーロー＆高配当ランキング統合セクション */}
             <div className="space-y-6">
                 {/* メインのヒーローセクション */}
-                <section className="text-center p-8 bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-lg border border-gray-200">
+                <section className="text-center p-8 bg-white rounded-xl shadow-sm border border-gray-200">
                     <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-primary-dark mb-3 leading-tight">
                         登録不要・完全無料
                         <br />
@@ -62,20 +62,20 @@ export default async function HomePage() {
                     </p>
                     <Link
                         href={`/races/${todayStr}`}
-                        className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-0.5 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
+                        className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg transition-colors duration-200 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
                     >
                         今日のデータ分析をチェック
                     </Link>
                 </section>
 
                 {/* 高配当的中ランキング（最優先で表示） */}
-                <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 md:p-8">
+                <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-8">
                     <TopHitsDisplay />
                 </section>
             </div>
 
             {/* 2. UMA-FREE価値提案セクション（統合・簡潔版） */}
-            <section className="bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-xl shadow-md border border-indigo-200">
+            <section className="bg-blue-50 p-8 rounded-xl shadow-sm border border-blue-100">
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8 text-center">UMA-FREEの3つの競馬分析データ</h2>
                 <div className="grid md:grid-cols-2 gap-8">
                     <div>
@@ -129,7 +129,7 @@ export default async function HomePage() {
                         <Link
                             href={`/articles/${article.slug}`}
                             key={article.slug}
-                            className="block group border rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 bg-white"
+                            className="block group border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 bg-white"
                         >
                             <div className="relative w-full h-32 sm:h-40 md:h-44 lg:h-48">
                                 <Image
@@ -138,7 +138,6 @@ export default async function HomePage() {
                                     fill
                                     sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
                                     style={{ objectFit: 'cover' }}
-                                    className="transition-transform duration-300 group-hover:scale-105"
                                 />
                             </div>
 
@@ -171,7 +170,7 @@ export default async function HomePage() {
             </section>
 
             {/* 5. 使い方セクション */}
-            <section className="bg-gray-50 rounded-xl shadow-md border border-gray-200 p-6 md:p-8">
+            <section className="bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-6 md:p-8">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                     3ステップで始める
                 </h2>
@@ -210,7 +209,7 @@ export default async function HomePage() {
             </section>
 
             {/* 6. よくある質問 */}
-            <section className="bg-white rounded-xl shadow-md border border-gray-200 p-6 md:p-8">
+            <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-8">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-800">
                         よくある質問
@@ -248,7 +247,7 @@ export default async function HomePage() {
             </section>
 
             {/* 7. 対応競馬場 */}
-            <section className="bg-gradient-to-b from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-6 md:p-8">
+            <section className="bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-6 md:p-8">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                     対応競馬場一覧
                 </h2>

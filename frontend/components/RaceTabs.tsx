@@ -178,14 +178,14 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
                     {/* 関連記事の推奨は記事詳細ページで表示 */}
 
                     {shouldShowAd && (
-                        <div className="my-4 p-2 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200">
+                        <div className="my-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
                             <div className="text-xs text-gray-500 text-center mb-1">スポンサーリンク</div>
                             <Adsense client="ca-pub-4411270831448240" slot="1489598374" style={{ minHeight: '90px' }} />
                         </div>
                     )}
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
                     {shouldShowAd && activeRace.predictions.length >= 10 && (
-                        <div className="my-4 p-2 bg-gradient-to-r from-white to-gray-50 rounded-lg border border-gray-200">
+                        <div className="my-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
                             <div className="text-xs text-gray-500 text-center mb-1">スポンサーリンク</div>
                             <Adsense client="ca-pub-4411270831448240" slot="8529703346" style={{ minHeight: '120px' }} />
                         </div>

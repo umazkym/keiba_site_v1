@@ -103,35 +103,35 @@ export const Header = () => {
                             className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
                             onClick={closeMenu}
                         >
-                            🏠 ホーム
+                            ホーム
                         </Link>
                         <Link
                             href={`/races/${todayStr}`}
                             className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
                             onClick={closeMenu}
                         >
-                            📊 本日の予測
+                            本日の予測
                         </Link>
                         <Link
                             href="/articles"
                             className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
                             onClick={closeMenu}
                         >
-                            📰 記事
+                            記事
                         </Link>
                         <Link
                             href="/faq"
                             className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
                             onClick={closeMenu}
                         >
-                            ❓ よくある質問
+                            よくある質問
                         </Link>
                         <Link
                             href="/search"
                             className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
                             onClick={closeMenu}
                         >
-                            🔍 検索
+                            検索
                         </Link>
                         <div className="px-4 py-4 bg-gray-50 border-t-2 border-gray-200">
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">その他</p>
@@ -140,28 +140,28 @@ export const Header = () => {
                                 className="block py-3 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white active:bg-gray-100 rounded-md px-3 transition-colors duration-200 border-b border-gray-200"
                                 onClick={closeMenu}
                             >
-                                ℹ️ このサイトについて
+                                このサイトについて
                             </Link>
                             <Link
                                 href="/advertising"
                                 className="block py-3 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white active:bg-gray-100 rounded-md px-3 transition-colors duration-200 border-b border-gray-200"
                                 onClick={closeMenu}
                             >
-                                📢 広告について
+                                広告について
                             </Link>
                             <Link
                                 href="/contact"
                                 className="block py-3 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white active:bg-gray-100 rounded-md px-3 transition-colors duration-200 border-b border-gray-200"
                                 onClick={closeMenu}
                             >
-                                ✉️ お問い合わせ
+                                お問い合わせ
                             </Link>
                             <Link
                                 href="/privacy"
                                 className="block py-3 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white active:bg-gray-100 rounded-md px-3 transition-colors duration-200"
                                 onClick={closeMenu}
                             >
-                                🔒 プライバシーポリシー
+                                プライバシーポリシー
                             </Link>
                         </div>
                     </nav>

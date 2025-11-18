@@ -7,7 +7,7 @@ export default function NotFound() {
         <div className="container py-8 space-y-10">
             <div className="max-w-4xl mx-auto">
                 {/* エラーメッセージ - ヒーロースタイル */}
-                <section className="text-center p-8 md:p-12 bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-lg border border-gray-200">
+                <section className="text-center p-8 md:p-12 bg-gray-50 rounded-lg border border-gray-200">
                     <h1 className="text-5xl md:text-6xl font-extrabold text-primary-dark mb-3">
                         404
                     </h1>
@@ -26,11 +26,13 @@ export default function NotFound() {
                     {/* トップページ */}
                     <Link
                         href="/"
-                        className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group"
+                        className="bg-white rounded-lg border border-gray-200 p-6 hover:border-primary transition-colors group"
                     >
                         <div className="flex items-start gap-4">
-                            <div className="bg-primary-light/20 text-primary rounded-lg p-4 flex-shrink-0 text-2xl group-hover:bg-primary-light/30 transition-colors">
-                                🏠
+                            <div className="bg-primary-light/10 text-primary rounded-lg p-4 flex-shrink-0 group-hover:bg-primary-light/20 transition-colors">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                </svg>
                             </div>
                             <div>
                                 <h3 className="font-bold text-lg text-gray-800 mb-1 group-hover:text-primary transition-colors">トップページ</h3>
@@ -42,10 +44,10 @@ export default function NotFound() {
                     {/* 検索 */}
                     <Link
                         href="/search"
-                        className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group"
+                        className="bg-white rounded-lg border border-gray-200 p-6 hover:border-accent transition-colors group"
                     >
                         <div className="flex items-start gap-4">
-                            <div className="bg-accent-light/20 text-accent rounded-lg p-4 flex-shrink-0 group-hover:bg-accent-light/30 transition-colors">
+                            <div className="bg-accent-light/10 text-accent rounded-lg p-4 flex-shrink-0 group-hover:bg-accent-light/20 transition-colors">
                                 <SearchIcon className="w-6 h-6" />
                             </div>
                             <div>
@@ -58,11 +60,13 @@ export default function NotFound() {
                     {/* よくある質問 */}
                     <Link
                         href="/faq"
-                        className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group"
+                        className="bg-white rounded-lg border border-gray-200 p-6 hover:border-green-600 transition-colors group"
                     >
                         <div className="flex items-start gap-4">
-                            <div className="bg-green-50 text-green-600 rounded-lg p-4 flex-shrink-0 text-2xl group-hover:bg-green-100 transition-colors">
-                                ❓
+                            <div className="bg-green-50 text-green-600 rounded-lg p-4 flex-shrink-0 group-hover:bg-green-100 transition-colors">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
                             </div>
                             <div>
                                 <h3 className="font-bold text-lg text-gray-800 mb-1 group-hover:text-green-600 transition-colors">よくある質問</h3>
@@ -74,11 +78,13 @@ export default function NotFound() {
                     {/* お問い合わせ */}
                     <Link
                         href="/contact"
-                        className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group"
+                        className="bg-white rounded-lg border border-gray-200 p-6 hover:border-blue-600 transition-colors group"
                     >
                         <div className="flex items-start gap-4">
-                            <div className="bg-blue-50 text-blue-600 rounded-lg p-4 flex-shrink-0 text-2xl group-hover:bg-blue-100 transition-colors">
-                                ✉️
+                            <div className="bg-blue-50 text-blue-600 rounded-lg p-4 flex-shrink-0 group-hover:bg-blue-100 transition-colors">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
                             </div>
                             <div>
                                 <h3 className="font-bold text-lg text-gray-800 mb-1 group-hover:text-blue-600 transition-colors">お問い合わせ</h3>
@@ -88,8 +94,8 @@ export default function NotFound() {
                     </Link>
                 </div>
 
-                {/* 主要ページリンク - グラデーション背景 */}
-                <section className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-md border border-indigo-200 p-8">
+                {/* 主要ページリンク */}
+                <section className="bg-gray-50 rounded-lg border border-gray-200 p-8">
                     <h2 className="font-bold text-lg text-gray-800 mb-6 text-center">その他の主要ページ</h2>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         <Link href="/articles" className="text-primary hover:text-primary-dark font-semibold text-center py-3 px-2 rounded-lg hover:bg-white transition-colors">

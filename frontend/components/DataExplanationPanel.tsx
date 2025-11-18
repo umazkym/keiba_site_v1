@@ -28,21 +28,21 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
         {
             title: 'AI偏差値',
             description:
-                '機械学習により算出した馬の能力スコアを偏差値形式で表示。50が平均値。数値が高いほど統計分析では能力が高く評価されています。ただし、あくまで推定値です。',
-            example: '偏差値70の馬：平均的な馬より能力が高い / 偏差値50の馬：平均的な能力',
+                '過去の競走成績から機械学習で算出した馬の総合力。50が平均で、数値が高いほど能力が高いと評価されます。',
+            example: '偏差値60の馬は平均以上、偏差値70の馬は非常に高い能力を持つと推定されます',
+            importance: 'high',
+        },
+        {
+            title: '勝率',
+            description: 'これまでのレースで1着になった割合。馬の勝つ力を示す基本的な指標です。',
+            example: '勝率20%なら5回に1回勝利、10%なら10回に1回勝利する計算です',
             importance: 'high',
         },
         {
             title: '複勝率',
             description:
-                'その馬が1着・2着・3着のいずれかに入った割合。複勝率が高い馬は安定して上位入賞する傾向があります。',
-            example: '複勝率60%：3回に2回は上位3着以内に入る / 複勝率30%：3回に1回程度',
-            importance: 'high',
-        },
-        {
-            title: '勝率',
-            description: 'その馬が1着（優勝）した割合。勝率が高い馬は圧倒的な実力差があります。',
-            example: '勝率20%：5回に1回は勝利 / 勝率10%：10回に1回の勝利',
+                '1着・2着・3着のいずれかに入った割合。勝てなくても安定して上位に入る馬を見極められます。',
+            example: '複勝率60%なら5回中3回は3着以内、40%なら5回中2回程度です',
             importance: 'high',
         },
     ];
@@ -51,61 +51,39 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
         {
             title: '枠順傾向スコア',
             description:
-                'その競馬場・距離での「枠番による有利・不利」を数値化。プラスなら外枠有利、マイナスなら内枠有利を示します。',
-            example: '京都芝2000m：+18%（外枠が圧倒的に有利） / 東京ダート：+8%（外枠やや有利）',
+                'コースごとの枠番の有利不利を数値化した指標。プラスは外枠有利、マイナスは内枠有利を意味します。',
+            example: 'スコア+15%なら外枠の方が勝ちやすく、-10%なら内枠の方が有利な傾向があります',
             importance: 'medium',
         },
         {
             title: '過去対決成績',
             description:
-                '同じレースに出走した2頭が、過去に対戦した際の勝敗記録。直接的な実力比較ができます。',
-            example: 'A馬 vs B馬：A馬が過去3回中2回勝利（勝率67%）',
+                '今回出走する馬同士が過去にどちらが勝ったかの記録。相性の良し悪しが分かります。',
+            example: 'A馬とB馬が過去5回対戦してA馬が4勝なら、A馬の方が相性が良いと言えます',
             importance: 'medium',
         },
         {
             title: '脚質パターン予測',
             description:
-                '過去データから分析した「どの馬がどのような走法をする可能性が高いか」。レース展開の参考に活用できます。',
-            example: '「3番が先行する可能性が高い」なら、3番の脚質や成績に注目する価値があります',
+                'レース序盤でどの馬が先頭集団を形成するかの予測。展開を読む際の参考になります。',
+            example: '「1番と5番が逃げる」予測なら、序盤のペースが速くなる可能性があります',
             importance: 'medium',
         },
         {
             title: '回収率',
             description:
-                'その馬への投資額に対する払戻額の割合。100%以上なら利益が出ることを示します。',
-            example: '回収率150%：100円投じて150円戻ってきた / 回収率80%：100円投じて80円戻ってきた（20円損失）',
+                'その馬に賭け続けた場合の収支。100%を超えると利益が出る計算です。',
+            example: '回収率120%なら100円賭けて平均120円戻る計算で、長期的には利益が出ます',
             importance: 'low',
         },
     ];
 
     const renderExplanationItem = (item: ExplanationItem) => (
-        <div
-            key={item.title}
-            className="border-l-4 pl-4 mb-4"
-            style={{
-                borderLeftColor:
-                    item.importance === 'high'
-                        ? '#ef4444'
-                        : item.importance === 'medium'
-                          ? '#eab308'
-                          : '#9ca3af'
-            }}
-        >
-            <div className="flex items-center gap-2 mb-2">
-                <div
-                    className={`w-2 h-2 rounded-full ${
-                        item.importance === 'high'
-                            ? 'bg-red-500'
-                            : item.importance === 'medium'
-                              ? 'bg-yellow-500'
-                              : 'bg-gray-400'
-                    }`}
-                />
-                <h4 className="font-bold text-gray-800">{item.title}</h4>
-            </div>
-            <p className="text-gray-700 text-sm mb-2">{item.description}</p>
-            <div className="bg-gray-50 p-3 rounded border-l-2 border-blue-500 text-xs text-gray-600">
-                <strong>例：</strong> {item.example}
+        <div key={item.title} className="mb-5 pb-5 border-b border-gray-100 last:border-0">
+            <h4 className="font-bold text-gray-800 mb-2">{item.title}</h4>
+            <p className="text-gray-700 text-sm mb-3 leading-relaxed">{item.description}</p>
+            <div className="bg-blue-50 px-4 py-3 rounded text-sm text-gray-700 border-l-4 border-blue-400">
+                {item.example}
             </div>
         </div>
     );
@@ -128,16 +106,14 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
             {/* アコーディオンのコンテンツ */}
             {isExpanded && (
                 <div className="border-t border-gray-200 p-6 bg-gray-50">
-                    <p className="text-sm text-gray-600 mb-6">
-                        各AI指標の意味を理解することで、より効果的に予想できます。
-                    </p>
-
                     {/* 基本指標セクション */}
-                    <div className="mb-6">
-                        <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-red-500" />
-                            初心者向け（重要度：高）
-                        </h4>
+                    <div className="mb-8">
+                        <h3 className="font-bold text-gray-800 text-base mb-4 pb-2 border-b-2 border-primary">
+                            基本指標
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-5">
+                            まずはこの3つの指標を押さえましょう。
+                        </p>
                         <div>
                             {basicExplanations.map(renderExplanationItem)}
                         </div>
@@ -146,10 +122,12 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
                     {/* 高度な指標セクション */}
                     {showAdvanced && (
                         <div>
-                            <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-yellow-500" />
-                                応用編（重要度：中～低）
-                            </h4>
+                            <h3 className="font-bold text-gray-800 text-base mb-4 pb-2 border-b-2 border-gray-400">
+                                その他の指標
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-5">
+                                より詳しく分析したい方向けの補助的な指標です。
+                            </p>
                             <div>
                                 {advancedExplanations.map(renderExplanationItem)}
                             </div>
@@ -157,9 +135,9 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
                     )}
 
                     {/* 免責事項 */}
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                        <p className="text-xs text-gray-500">
-                            ※ これらのAI指標は参考情報です。実際のレース結果は予測できない多くの要因に左右されます。最終的な馬券購入の判断は、ご自身の責任でお願いします。
+                    <div className="mt-8 pt-6 border-t-2 border-gray-200 bg-amber-50 -mx-6 -mb-6 px-6 py-5 rounded-b-lg">
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                            <strong>ご注意:</strong> これらの指標は過去データに基づく統計的な分析結果です。当日の馬の状態や天候、騎手の判断など、数値化できない要素も多数あります。予想の参考としてご活用ください。
                         </p>
                     </div>
                 </div>

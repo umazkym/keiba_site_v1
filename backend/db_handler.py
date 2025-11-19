@@ -1,4 +1,5 @@
 import datetime
+import gc
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select
 from database import models
@@ -18,7 +19,6 @@ def _fetch_and_load_horse_past_data(db: Session, horse_ids: set):
     指定された馬リストの過去成績を取得しDBに保存する。
     スクレイピング実行後にはランダムな待機時間を設け、サーバー負荷を軽減する。
     """
-    import gc
     if not horse_ids:
         return
 
@@ -67,8 +67,14 @@ def update_race_results(db: Session, target_date: datetime.date):
         is_nar = int(race.id[4:6]) >= 30
         all_race_ids.append((race.id, is_nar))
 
+    # メモリ使用量を削減するため、バッチサイズを設定
+    is_render = os.getenv('RENDER') == 'true'
+    BATCH_SIZE = 3 if is_render else 10  # Render環境では3件ずつ処理
+
     print(f"Found {len(all_race_ids)} races in DB to update results.")
-    for race_id, is_nar in tqdm(all_race_ids, desc=f"Updating Results ({target_date.strftime('%m-%d')})", leave=False):
+    print(f"Processing in batches of {BATCH_SIZE} (Render mode: {is_render})")
+
+    for i, (race_id, is_nar) in enumerate(tqdm(all_race_ids, desc=f"Updating Results ({target_date.strftime('%m-%d')})", leave=False), 1):
         try:
             result_html = get_race_result_html_content(race_id, is_nar=is_nar)
             if result_html:
@@ -77,15 +83,26 @@ def update_race_results(db: Session, target_date: datetime.date):
                     database_loader.load_race_result_data(db, race_data, race_id, target_date, is_nar)
                 else:
                     tqdm.write(f"  -> [Info] No results data to update for {race_id} (e.g., cancelled race).")
+                # メモリ解放
+                del race_data
             else:
                 tqdm.write(f"  -> [Warning] Failed to get result HTML for {race_id}.")
+            # メモリ解放
+            del result_html
+
+            # バッチごとにガベージコレクション実行
+            if i % BATCH_SIZE == 0:
+                gc.collect()
+
         except Exception as e:
             tqdm.write(f"\n[CRITICAL ERROR] Race Result processing for {race_id} failed: {e}")
             traceback.print_exc()
             db.rollback()
 
+    # 最後にガベージコレクション実行
+    gc.collect()
+
 def insert_new_predictions(db: Session, target_date: datetime.date):
-    import gc
     print(f"\n--- [PREDICTIONS] Inserting new predictions for {target_date.strftime('%Y-%m-%d')} ---")
     try:
         print(f"  -> Deleting any existing data for {target_date.strftime('%Y-%m-%d')} to ensure a clean state.")

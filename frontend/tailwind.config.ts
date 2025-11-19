@@ -16,46 +16,44 @@ const config: Config = {
       },
     },
     extend: {
-      fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica Neue"],
-        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Roboto Mono", "monospace"],
-      },
       colors: {
         primary: {
-          light: "var(--color-primary-light)",
-          DEFAULT: "var(--color-primary)",
-          dark: "var(--color-primary-dark)",
+          DEFAULT: "#2563eb", // blue-600
+          light: "#60a5fa",   // blue-400
+          dark: "#1e40af",    // blue-800
         },
         secondary: {
-          light: "var(--color-secondary-light)",
-          DEFAULT: "var(--color-secondary)",
-          dark: "var(--color-secondary-dark)",
+          DEFAULT: "#64748b", // slate-500
+          light: "#94a3b8",   // slate-400
+          dark: "#475569",    // slate-600
         },
         accent: {
-          light: "var(--color-accent-light)",
-          DEFAULT: "var(--color-accent)",
-          dark: "var(--color-accent-dark)",
+          DEFAULT: "#f59e0b", // amber-500
+          light: "#fbbf24",   // amber-400
+          dark: "#d97706",    // amber-600
         },
-        // CSS変数に合わせて追加
-        bg: 'var(--bg)',
-        surface: 'var(--surface)',
-        muted: 'var(--muted)',
-        border: 'var(--border)',
-        text: 'var(--text)',
+        background: "#f8fafc", // slate-50
+        surface: "#ffffff",
+        text: "#1e293b",       // slate-800
+        muted: "#64748b",      // slate-500
+        border: "#e2e8f0",     // slate-200
+      },
+      fontFamily: {
+        sans: [
+          '"Hiragino Kaku Gothic ProN"',
+          '"Hiragino Sans"',
+          '"Noto Sans JP"',
+          "sans-serif",
+        ],
       },
       borderRadius: {
-        lg: "0.75rem",
-        xl: "1rem",
+        lg: "0.5rem",
+        md: "0.375rem",
+        sm: "0.25rem",
       },
       boxShadow: {
-        // CSS変数に合わせて修正
-        card: "var(--soft-shadow)",
-        elevated: "0 10px 30px rgba(2, 6, 23, 0.08)",
-      },
-      fontSize: {
-        "2xl": ["1.5rem", { lineHeight: "1.25" }],
-        "3xl": ["1.875rem", { lineHeight: "1.15" }],
-        "4xl": ["2.25rem", { lineHeight: "1.1" }],
+        card: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        elevated: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
       },
     },
   },

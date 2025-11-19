@@ -142,7 +142,7 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
     useEffect(() => {
         const venue = searchParams.get('venue');
         const raceStr = searchParams.get('race');
-        
+
         if (venue) {
             setInitialVenue(decodeURIComponent(venue));
         }
@@ -159,7 +159,7 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
             const venueExists = [...predictionData.jra, ...predictionData.nar].some(
                 v => v.venue_name === initialVenue
             );
-            
+
             if (venueExists) {
                 setTimeout(() => {
                     const venueElement = document.getElementById(`venue-${initialVenue}`);
@@ -168,7 +168,7 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                             const raceData = [...predictionData.jra, ...predictionData.nar]
                                 .find(v => v.venue_name === initialVenue)
                                 ?.races.find(r => r.race_number === initialRaceNumber);
-                            
+
                             if (raceData) {
                                 const raceElement = document.getElementById(`race-${raceData.id}`);
                             }
@@ -202,7 +202,7 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
         }
         if (error || !predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
             return (
-                <div className="text-center p-8 bg-red-50 rounded-lg border-2 border-red-200 shadow-sm">
+                <div className="text-center p-8 bg-red-50 rounded-lg border border-red-200 shadow-sm">
                     <div className="flex justify-center mb-4">
                         <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -215,12 +215,12 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                     </p>
                     <Link
                         href={`/races/${getTodayString()}`}
-                        className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105"
+                        className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg shadow-sm transition-colors"
                     >
                         本日のレース予測を見る
                     </Link>
                     <div className="mt-8 pt-6 border-t border-red-200 text-left max-w-2xl mx-auto">
-                        <h3 className="font-bold text-gray-700 mb-3">ℹ️ 競馬開催スケジュール</h3>
+                        <h3 className="font-bold text-gray-700 mb-3">競馬開催スケジュール</h3>
                         <div className="space-y-2 text-sm text-gray-600">
                             <p>• 中央競馬: 主に土日に開催されます。</p>
                             <p>• 地方競馬: 各競馬場により開催日が異なります。</p>
@@ -250,7 +250,7 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
             <div className="mb-4">
                 <TopHitsDisplay />
             </div>
-            <div className="sticky top-16 z-40 bg-white/95 backdrop-blur-sm border-b-2 border-gray-200 shadow-md mb-4 p-3 sm:p-4">
+            <div className="sticky top-16 z-40 bg-white border-b border-gray-200 shadow-sm mb-4 p-3 sm:p-4">
                 <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
                     <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
                     <button
@@ -258,9 +258,9 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                             handleDateChange(getTodayString());
                             e.currentTarget.blur();
                         }}
-                        className="bg-primary border-2 border-primary-dark text-white px-4 py-2.5 rounded-lg shadow-md hover:bg-primary-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm sm:text-base font-bold whitespace-nowrap min-h-[44px] active:scale-95"
+                        className="bg-primary border border-primary-dark text-white px-4 py-2.5 rounded-lg shadow-sm hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary-light text-sm sm:text-base font-bold whitespace-nowrap min-h-[44px]"
                     >
-                        📅 今日
+                        今日
                     </button>
                 </div>
             </div>

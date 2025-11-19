@@ -26,7 +26,7 @@ export const Header = () => {
     const todayStr = getTodayString();
 
     return (
-        <header className="bg-white text-text shadow-lg sticky top-0 z-50 border-b-2 border-primary/10">
+        <header className="bg-white text-text border-b border-gray-200 sticky top-0 z-50">
             <div className="container mx-auto px-3 sm:px-4">
                 <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
                     {/* ロゴ */}
@@ -34,55 +34,52 @@ export const Header = () => {
                         <Image
                             src="/new-logo.png"
                             alt="UMA-FREE ロゴ"
-                            width={48}
-                            height={48}
+                            width={40}
+                            height={40}
                             priority
+                            className="w-10 h-10 sm:w-12 sm:h-12"
                         />
                         <div className="flex flex-col hidden sm:flex">
-                            <span className="text-2xl font-extrabold tracking-tight text-primary">
+                            <span className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">
                                 UMA-FREE
                             </span>
-                            <span className="text-xs text-gray-500 -mt-1">
+                            <span className="text-[10px] text-gray-500 -mt-0.5 font-medium">
                                 完全無料のAI競馬分析
                             </span>
                         </div>
                     </Link>
 
                     {/* デスクトップナビゲーション */}
-                    <nav className="hidden md:flex items-center gap-6 flex-1 ml-8">
-                        <Link href="/" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                    <nav className="hidden md:flex items-center gap-8 flex-1 ml-10">
+                        <Link href="/" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200">
                             ホーム
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
                         </Link>
-                        <Link href={`/races/${todayStr}`} className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                        <Link href={`/races/${todayStr}`} className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200">
                             本日の予測
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
                         </Link>
-                        <Link href="/articles" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                        <Link href="/articles" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200">
                             記事
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
                         </Link>
-                        <Link href="/faq" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200 relative group">
+                        <Link href="/faq" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200">
                             よくある質問
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
                         </Link>
                     </nav>
 
                     {/* 検索ボタンとメニューボタン（右側） */}
-                    <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+                    <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                         <Link
                             href="/search"
-                            className="p-2.5 sm:p-3 md:p-2 text-gray-600 hover:text-primary transition-colors duration-200 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-light active:bg-gray-200 md:active:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                            className="p-2 text-gray-500 hover:text-primary hover:bg-gray-50 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             aria-label="サイト内検索"
                             title="検索"
                         >
-                            <SearchIcon className="w-5 h-5 sm:w-6 sm:h-6 md:w-5 md:h-5" />
+                            <SearchIcon className="w-5 h-5" />
                         </Link>
 
                         {/* モバイルメニューボタン */}
                         <button
                             onClick={toggleMenu}
-                            className="md:hidden p-2.5 sm:p-3 text-gray-600 hover:text-primary transition-colors duration-200 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-light active:bg-gray-200 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                            className="md:hidden p-2 text-gray-500 hover:text-primary hover:bg-gray-50 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             aria-label={isMenuOpen ? 'メニューを閉じる' : 'メニューを開く'}
                             aria-expanded={isMenuOpen}
                         >
@@ -97,68 +94,68 @@ export const Header = () => {
 
                 {/* モバイルメニュー */}
                 {isMenuOpen && (
-                    <nav className="md:hidden pb-4 border-t-2 border-gray-200 max-h-[calc(100vh-56px)] sm:max-h-[calc(100vh-64px)] overflow-y-auto bg-white">
+                    <nav className="md:hidden pb-4 border-t border-gray-100 max-h-[calc(100vh-56px)] sm:max-h-[calc(100vh-64px)] overflow-y-auto bg-white absolute left-0 right-0 shadow-lg">
                         <Link
                             href="/"
-                            className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
+                            className="block px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 transition-colors duration-200 border-b border-gray-50"
                             onClick={closeMenu}
                         >
                             ホーム
                         </Link>
                         <Link
                             href={`/races/${todayStr}`}
-                            className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
+                            className="block px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 transition-colors duration-200 border-b border-gray-50"
                             onClick={closeMenu}
                         >
                             本日の予測
                         </Link>
                         <Link
                             href="/articles"
-                            className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
+                            className="block px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 transition-colors duration-200 border-b border-gray-50"
                             onClick={closeMenu}
                         >
                             記事
                         </Link>
                         <Link
                             href="/faq"
-                            className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
+                            className="block px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 transition-colors duration-200 border-b border-gray-50"
                             onClick={closeMenu}
                         >
                             よくある質問
                         </Link>
                         <Link
                             href="/search"
-                            className="block px-4 py-4 text-base font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 active:bg-blue-100 transition-colors duration-200 border-b border-gray-100"
+                            className="block px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 transition-colors duration-200 border-b border-gray-50"
                             onClick={closeMenu}
                         >
                             検索
                         </Link>
-                        <div className="px-4 py-4 bg-gray-50 border-t-2 border-gray-200">
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">その他</p>
+                        <div className="px-4 py-4 bg-gray-50/50">
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">その他</p>
                             <Link
                                 href="/about"
-                                className="block py-3 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white active:bg-gray-100 rounded-md px-3 transition-colors duration-200 border-b border-gray-200"
+                                className="block py-2 text-sm text-gray-600 hover:text-primary transition-colors duration-200"
                                 onClick={closeMenu}
                             >
                                 このサイトについて
                             </Link>
                             <Link
                                 href="/advertising"
-                                className="block py-3 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white active:bg-gray-100 rounded-md px-3 transition-colors duration-200 border-b border-gray-200"
+                                className="block py-2 text-sm text-gray-600 hover:text-primary transition-colors duration-200"
                                 onClick={closeMenu}
                             >
                                 広告について
                             </Link>
                             <Link
                                 href="/contact"
-                                className="block py-3 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white active:bg-gray-100 rounded-md px-3 transition-colors duration-200 border-b border-gray-200"
+                                className="block py-2 text-sm text-gray-600 hover:text-primary transition-colors duration-200"
                                 onClick={closeMenu}
                             >
                                 お問い合わせ
                             </Link>
                             <Link
                                 href="/privacy"
-                                className="block py-3 text-sm font-medium text-gray-600 hover:text-primary hover:bg-white active:bg-gray-100 rounded-md px-3 transition-colors duration-200"
+                                className="block py-2 text-sm text-gray-600 hover:text-primary transition-colors duration-200"
                                 onClick={closeMenu}
                             >
                                 プライバシーポリシー

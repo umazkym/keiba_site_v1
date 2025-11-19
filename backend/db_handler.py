@@ -8,22 +8,37 @@ from scripts import parser, database_loader, predictor
 from typing import List, Tuple
 from tqdm import tqdm
 import os
+import datetime
+import gc
+from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from database import models
+from scripts.scraper import get_shutuba_html_content, get_race_result_html_content, get_horse_page_html
+from scripts import parser, database_loader, predictor
+from typing import List, Tuple
+from tqdm import tqdm
+import os
 import traceback
 import time
 import random
 
 BANEI_VENUE_CODES = ["33", "65"]
 
-def _fetch_and_load_horse_past_data(db: Session, horse_ids: set):
+def _fetch_and_load_horse_past_data(db: Session, horse_ids: set, driver=None):
     """
     指定された馬リストの過去成績を取得しDBに保存する。
     スクレイピング実行後にはランダムな待機時間を設け、サーバー負荷を軽減する。
+    driverが渡された場合はそれを使用し、渡されない場合は都度起動（非推奨）する。
     """
     if not horse_ids:
         return
 
     print(f"\n--- [PREDICTIONS] Fetching past data for {len(horse_ids)} horses ---")
 
+    # ドライバが渡されていない場合、この関数内で管理するか、都度起動するか。
+    # ここでは「渡されない場合は都度起動（既存動作）」とするが、
+    # 呼び出し元で管理することを強く推奨。
+    
     for idx, horse_id in enumerate(tqdm(sorted(list(horse_ids)), desc="  -> Fetching horse data", leave=False)):
         try:
             existing_results_count = db.query(func.count(models.Result.id)).filter(models.Result.horse_id == horse_id).scalar()
@@ -31,7 +46,9 @@ def _fetch_and_load_horse_past_data(db: Session, horse_ids: set):
             if existing_results_count >= 5:
                 continue
 
-            html, was_scraped = get_horse_page_html(horse_id, force_download=False)
+            # driverを渡す
+            html, was_scraped = get_horse_page_html(horse_id, force_download=False, driver=driver)
+            
             if html:
                 parsed_data = parser.parse_horse_results_page(html)
                 if parsed_data and parsed_data.get('results'):
@@ -175,7 +192,27 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
                         all_horse_ids_to_fetch.add(horse["horse_id"])
 
     print(f"\n  -> [2/4] Fetching past performance data for prediction")
-    _fetch_and_load_horse_past_data(db, all_horse_ids_to_fetch)
+    
+    # ドライバをここで初期化して渡す
+    from scripts.scraper import _prepare_chrome_driver, cleanup_chrome_driver
+    driver = None
+    try:
+        # 馬データ取得が必要な場合のみドライバを起動
+        if all_horse_ids_to_fetch:
+             # 既にDBにデータがある馬を除外して、本当にスクレイピングが必要か確認しても良いが、
+             # _fetch_and_load_horse_past_data 内でもチェックしている。
+             # ここではシンプルに起動する。
+             try:
+                 driver = _prepare_chrome_driver()
+             except Exception as e:
+                 print(f"Warning: Failed to initialize driver: {e}")
+        
+        _fetch_and_load_horse_past_data(db, all_horse_ids_to_fetch, driver=driver)
+    
+    finally:
+        if driver:
+            cleanup_chrome_driver(driver)
+        gc.collect()
 
     print(f"\n  -> [3/4] Loading shutuba data into database")
     desc_step3 = f"Loading Shutuba data ({target_date.strftime('%m-%d')})"

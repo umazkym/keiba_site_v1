@@ -120,10 +120,38 @@ def _prepare_chrome_driver():
         options.add_argument('--single-process')  # シングルプロセスモード（メモリ節約）
         options.add_argument('--disable-software-rasterizer')
 
-        # メモリ制限を明示的に設定（Chrome用）
-        options.add_argument('--js-flags=--max-old-space-size=256')
+        # 追加のメモリ削減オプション（2024年版）
+        options.add_argument('--disable-features=VizDisplayCompositor')
+        options.add_argument('--disable-features=NetworkService')
+        options.add_argument('--disable-features=site-per-process')
+        options.add_argument('--disable-canvas-aa')
+        options.add_argument('--disable-2d-canvas-clip-aa')
+        options.add_argument('--disable-gl-drawing-for-tests')
+        options.add_argument('--disable-accelerated-2d-canvas')
+        options.add_argument('--disable-accelerated-jpeg-decoding')
+        options.add_argument('--disable-accelerated-mjpeg-decode')
+        options.add_argument('--disable-accelerated-video-decode')
+        options.add_argument('--disable-background-timer-throttling')
+        options.add_argument('--disable-renderer-backgrounding')
+        options.add_argument('--disable-breakpad')
+        options.add_argument('--disable-component-extensions-with-background-pages')
+        options.add_argument('--disable-features=TranslateUI,BlinkGenPropertyTrees')
+        options.add_argument('--disable-ipc-flooding-protection')
+        options.add_argument('--disable-hang-monitor')
+        options.add_argument('--disable-prompt-on-repost')
+        options.add_argument('--disable-domain-reliability')
+        options.add_argument('--disable-component-update')
+        options.add_argument('--no-first-run')
+        options.add_argument('--no-default-browser-check')
+        options.add_argument('--autoplay-policy=user-gesture-required')
+        options.add_argument('--disable-remote-fonts')
+
+        # メモリ制限を明示的に設定（Chrome用）- 128MBに削減
+        options.add_argument('--js-flags=--max-old-space-size=128')
         options.add_argument('--disk-cache-size=1')
         options.add_argument('--media-cache-size=1')
+        options.add_argument('--aggressive-cache-discard')
+        options.add_argument('--disable-application-cache')
 
         # ユーザーデータディレクトリが競合しないように一意の一時ディレクトリを使用
         temp_user_data_dir = tempfile.mkdtemp(prefix=f"chrome_{uuid.uuid4().hex[:8]}_")

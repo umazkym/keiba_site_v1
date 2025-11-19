@@ -80,7 +80,7 @@ export default async function HomePage() {
                 <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
                     <div>
                         <h3 className="font-bold text-lg text-primary mb-3 flex items-center gap-2">
-                            <span className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">✓</span>
+                            <span className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">1</span>
                             完全無料・登録不要
                         </h3>
                         <p className="text-gray-700 leading-relaxed mb-4">
@@ -92,7 +92,7 @@ export default async function HomePage() {
                     </div>
                     <div>
                         <h3 className="font-bold text-lg text-primary mb-3 flex items-center gap-2">
-                            <span className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">✓</span>
+                            <span className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">2</span>
                             3つの独自統計分析
                         </h3>
                         <ul className="space-y-2 text-gray-700">
@@ -175,7 +175,7 @@ export default async function HomePage() {
                     3ステップで始める
                 </h2>
                 <div className="grid md:grid-cols-3 gap-6">
-                    <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-primary">
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-primary">
                         <h3 className="font-bold text-lg text-primary mb-3 flex items-center">
                             <span className="bg-primary text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-2 text-sm font-bold">1</span>
                             日付を選択
@@ -184,7 +184,7 @@ export default async function HomePage() {
                             カレンダーから分析データを見たい日付を選択。過去・未来のレースも確認できます。
                         </p>
                     </div>
-                    <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-accent">
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-accent">
                         <h3 className="font-bold text-lg text-accent mb-3 flex items-center">
                             <span className="bg-accent text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-2 text-sm font-bold">2</span>
                             競馬場を選択
@@ -193,7 +193,7 @@ export default async function HomePage() {
                             中央・地方競馬のタブから、対象競馬場を選択。
                         </p>
                     </div>
-                    <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-green-500">
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500">
                         <h3 className="font-bold text-lg text-green-600 mb-3 flex items-center">
                             <span className="bg-green-500 text-white rounded-full w-8 h-8 inline-flex items-center justify-center mr-2 text-sm font-bold">3</span>
                             統計データを活用
@@ -219,25 +219,25 @@ export default async function HomePage() {
                     </Link>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
-                    <div className="border-l-4 border-primary pl-4">
+                    <div className="border-l-4 border-primary pl-4 py-1">
                         <h3 className="font-bold text-gray-700 mb-2">Q: 本当に無料ですか？</h3>
                         <p className="text-gray-600 text-sm">
                             A: すべてのデータ分析情報が完全無料です。登録も不要で、メールマガジンなども一切ありません。
                         </p>
                     </div>
-                    <div className="border-l-4 border-accent pl-4">
+                    <div className="border-l-4 border-accent pl-4 py-1">
                         <h3 className="font-bold text-gray-700 mb-2">Q: データはいつ更新されますか？</h3>
                         <p className="text-gray-600 text-sm">
                             A: 毎日午前7時頃に前日の結果と翌日の分析データが更新されます。
                         </p>
                     </div>
-                    <div className="border-l-4 border-green-500 pl-4">
+                    <div className="border-l-4 border-green-500 pl-4 py-1">
                         <h3 className="font-bold text-gray-700 mb-2">Q: 分析の精度はどのくらいですか？</h3>
                         <p className="text-gray-600 text-sm">
                             A: 実際の結果とは異なる場合があります。「高配当的中ランキング」で過去実績をご参考ください。
                         </p>
                     </div>
-                    <div className="border-l-4 border-blue-500 pl-4">
+                    <div className="border-l-4 border-blue-500 pl-4 py-1">
                         <h3 className="font-bold text-gray-700 mb-2">Q: モバイルでも使えますか？</h3>
                         <p className="text-gray-600 text-sm">
                             A: はい、PC・スマートフォン・タブレットすべてのデバイスに対応しています。

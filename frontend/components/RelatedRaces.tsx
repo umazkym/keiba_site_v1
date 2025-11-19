@@ -77,7 +77,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
     const current = new Date(year, month - 1, day);
 
     return (
-        <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+        <div className="mt-8 p-6 bg-blue-50 rounded-xl border border-blue-200">
             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
                 <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -87,7 +87,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
 
             {/* ▼▼▼▼▼ ここを修正 ▼▼▼▼▼ */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
+                {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
                 {relatedDates.map(date => {
                     const [y, m, d] = date.split('-').map(Number);
                     const dateObj = new Date(y, m - 1, d);

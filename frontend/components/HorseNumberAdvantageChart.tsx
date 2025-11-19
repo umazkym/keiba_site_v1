@@ -12,13 +12,13 @@ type Props = {
 export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseType, distance }) => {
     if (!advantages || advantages.length === 0) {
         return (
-            <div className="my-4 p-6 bg-gradient-to-r from-gray-50 to-white border rounded-lg shadow-inner text-center text-gray-500">
+            <div className="my-4 p-6 bg-gray-50 border rounded-lg shadow-inner text-center text-gray-500">
                 <p className="font-bold text-base">枠順傾向スコア</p>
                 <p className="mt-2 text-sm">このレース条件での枠順傾向データはありません。</p>
             </div>
         );
     }
-    
+
     const getBarColor = (value: number) => {
         if (value > 0.05) return 'rgba(34, 197, 94, 0.9)'; // 明確に有利
         if (value > 0) return 'rgba(134, 239, 172, 0.8)'; // やや有利
@@ -26,7 +26,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
         if (value < 0) return 'rgba(252, 165, 165, 0.8)'; // やや不利
         return 'rgba(156, 163, 175, 0.8)'; // ニュートラル
     };
-    
+
     // ★ここを修正: 配列をコピーしてからソート
     const sortedAdvantages = [...advantages].sort((a, b) => a.horse_number - b.horse_number);
     const scores = sortedAdvantages.map(item => item.advantage_score);
@@ -34,12 +34,12 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
         Math.floor((Math.min(...scores, -0.1) - 0.05) * 20) / 20,
         Math.ceil((Math.max(...scores, 0.1) + 0.05) * 20) / 20
     ];
-    
+
     const CustomTooltip = ({ active, payload }: any) => {
         if (active && payload && payload.length) {
             const data = payload[0].payload;
             const interpretation = data.advantage_score > 0.05 ? "有利" :
-                                   data.advantage_score < -0.05 ? "不利" : "平均的";
+                data.advantage_score < -0.05 ? "不利" : "平均的";
             return (
                 <div className="bg-white p-3 border rounded-lg shadow-lg text-sm text-gray-800">
                     <p className="font-bold mb-1">{`馬番 ${data.horse_number}番`}</p>
@@ -70,7 +70,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
             </g>
         );
     };
-    
+
     const chartTitle = `枠順傾向スコア (${courseType || ''}${distance || ''}m)`;
 
     // レスポンシブ設定

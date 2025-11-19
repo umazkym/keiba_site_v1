@@ -39,7 +39,7 @@ export async function generateStaticParams() {
 
 // ▼▼▼▼▼ async function に変更 ▼▼▼▼▼
 export default async function ArticlePage({ params }: Props) {
-// ▲▲▲▲▲ async function に変更 ▲▲▲▲▲
+  // ▲▲▲▲▲ async function に変更 ▲▲▲▲▲
   try {
     // ▼▼▼▼▼ awaitを追加 ▼▼▼▼▼
     const article = await getArticleBySlug(params.slug);
@@ -65,7 +65,7 @@ export default async function ArticlePage({ params }: Props) {
         <div className="container mx-auto px-4 max-w-4xl">
           <Breadcrumb />
 
-          <article className="bg-white p-6 sm:p-8 rounded-lg shadow-lg">
+          <article className="bg-white p-6 sm:p-8 rounded-lg shadow-sm">
             <header className="mb-8 text-center border-b pb-6">
               <div className="mb-4">
                 <Link href={`/articles?category=${encodeURIComponent(article.category)}`} className="text-sm bg-blue-500 text-white font-bold py-1 px-3 rounded-full hover:bg-blue-600 transition-colors">
@@ -92,7 +92,7 @@ export default async function ArticlePage({ params }: Props) {
                 />
               </div>
             )}
-            
+
             <div
               className="prose max-w-none"
               dangerouslySetInnerHTML={{ __html: article.content }}
@@ -103,7 +103,7 @@ export default async function ArticlePage({ params }: Props) {
 
           <div className="text-center mt-12">
             <Link href="/articles" className="bg-gray-800 text-white font-bold py-3 px-8 rounded-lg hover:bg-gray-700 transition-colors">
-                記事一覧へ戻る
+              記事一覧へ戻る
             </Link>
           </div>
         </div>

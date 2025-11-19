@@ -5,15 +5,15 @@ import 'tippy.js/dist/tippy.css';
 
 const getWakuColor = (waku: number | null): string => {
     switch (waku) {
-        case 1: return 'border-gray-400 bg-white text-black';
-        case 2: return 'border-gray-800 bg-black text-white';
-        case 3: return 'border-red-600 bg-red-500 text-white';
-        case 4: return 'border-blue-700 bg-blue-600 text-white';
-        case 5: return 'border-yellow-500 bg-yellow-400 text-black';
-        case 6: return 'border-green-600 bg-green-500 text-white';
-        case 7: return 'border-orange-500 bg-orange-400 text-white';
-        case 8: return 'border-pink-500 bg-pink-400 text-white';
-        default: return 'border-gray-400 bg-gray-300 text-black';
+        case 1: return 'border-gray-300 bg-white text-gray-800';
+        case 2: return 'border-gray-800 bg-gray-800 text-white';
+        case 3: return 'border-red-500 bg-red-500 text-white';
+        case 4: return 'border-blue-600 bg-blue-600 text-white';
+        case 5: return 'border-yellow-400 bg-yellow-400 text-black';
+        case 6: return 'border-green-500 bg-green-500 text-white';
+        case 7: return 'border-orange-400 bg-orange-400 text-white';
+        case 8: return 'border-pink-400 bg-pink-400 text-white';
+        default: return 'border-gray-300 bg-gray-100 text-gray-800';
     }
 };
 
@@ -33,7 +33,7 @@ const HorseMarker = ({ horse, position, isMobile, markerSpacing }: { horse: Hors
                 zIndex: 10 + horse.horse_number,
             }}
         >
-            <div className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} rounded-full flex items-center justify-center font-bold ${isMobile ? 'text-[10px]' : 'text-xs'} shadow-md border-2 ${getWakuColor(horse.waku_number)}`}>
+            <div className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} rounded-full flex items-center justify-center font-bold ${isMobile ? 'text-[10px]' : 'text-xs'} shadow-sm border ${getWakuColor(horse.waku_number)}`}>
                 {horse.horse_number}
             </div>
             <span className={`font-bold text-gray-700 whitespace-nowrap ${isMobile ? 'text-[9px] mt-0.5 px-0.5 py-0.5 rounded' : 'text-[11px] mt-px px-1 rounded'}`} style={{ lineHeight: 1 }}>
@@ -46,7 +46,7 @@ const HorseMarker = ({ horse, position, isMobile, markerSpacing }: { horse: Hors
 export const StartPositionChart = ({ predictions }: { predictions: HorsePrediction[] }) => {
     if (!predictions || predictions.length === 0 || predictions.every(p => p.start_1c_indicator === null)) {
         return (
-            <div className="my-4 p-4 md:p-6 bg-gradient-to-r from-gray-50 to-white border rounded-lg shadow-inner text-center text-gray-500">
+            <div className="my-4 p-4 md:p-6 bg-gray-50 border rounded-lg shadow-inner text-center text-gray-500">
                 <p className="font-medium text-sm">このレースの脚質パターン予測はありません。</p>
             </div>
         );
@@ -67,8 +67,8 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
         <div className="p-3 md:p-4 bg-white">
             <h4 className="text-xs md:text-sm font-bold text-gray-600 mb-2 md:mb-3 flex items-center">
             </h4>
-            <div className="relative w-full bg-gradient-to-r from-blue-50 via-gray-50 to-yellow-50 rounded-lg shadow-sm overflow-hidden"
-                 style={{ height: `${containerHeight}px` }}>
+            <div className="relative w-full bg-gray-50 rounded-lg shadow-sm overflow-hidden"
+                style={{ height: `${containerHeight}px` }}>
                 <div className="absolute top-0 bottom-0 left-0 w-[33.3%] bg-blue-100/30 rounded-l-lg"></div>
                 <div className="absolute top-0 bottom-0 left-[33.3%] w-[33.3%] bg-gray-100/30"></div>
                 <div className="absolute top-0 bottom-0 left-[66.6%] w-[33.3%] bg-yellow-100/30 rounded-r-lg"></div>

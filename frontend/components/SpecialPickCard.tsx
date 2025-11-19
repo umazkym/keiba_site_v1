@@ -9,7 +9,7 @@ import { formatDate } from '@/lib/utils';
 
 // スケルトンコンポーネント（変更なし）
 const Skeleton = () => (
-    <div className="bg-amber-500 p-6 rounded-xl shadow-lg mb-6 animate-pulse h-[170px]">
+    <div className="bg-white p-6 rounded-xl shadow-sm mb-6 animate-pulse h-[170px]">
         <div className="flex justify-between items-center">
             <div className="h-4 bg-amber-600 rounded w-1/3"></div>
             <div className="h-8 bg-amber-600 rounded-full w-24"></div>
@@ -28,14 +28,14 @@ type Props = {
 export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
     const [pick, setPick] = useState<SpecialPick | null>(initialPick === undefined ? null : initialPick);
     const [isLoading, setIsLoading] = useState(initialPick === undefined);
-    
+
     const getEffectiveDate = () => {
         if (date) return date;
         const now = new Date();
         const jstDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
         return jstDate.toISOString().split('T')[0];
     };
-    
+
     const effectiveDate = getEffectiveDate();
 
     useEffect(() => {
@@ -72,7 +72,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
             </div>
         );
     }
-    
+
     const formattedDate = formatDate(effectiveDate);
 
     return (
@@ -81,33 +81,33 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
             className="block group"
             aria-label={`${pick.commentary}`}
         >
-            <div className="bg-amber-500 text-white rounded-xl shadow-sm h-full flex flex-col overflow-hidden border border-amber-600 hover:border-amber-700 transition-colors duration-200" role="region" aria-labelledby="special-pick-title">
+            <div className="bg-white text-gray-800 rounded-xl shadow-sm h-full flex flex-col overflow-hidden border border-gray-200 hover:border-primary/50 transition-colors duration-200" role="region" aria-labelledby="special-pick-title">
                 <div className="p-5 flex flex-col h-full">
                     {/* ▼▼▼▼▼【ここから変更】▼▼▼▼▼ */}
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-2">
-                            <SparklesIcon className="w-5 h-5 text-amber-200 shrink-0" />
-                            <h3 id="special-pick-title" className="text-sm font-bold uppercase tracking-wider text-amber-200">
-                                今日のイチオシ！<br className="sm:hidden"/>{formattedDate}
+                            <SparklesIcon className="w-5 h-5 text-primary shrink-0" />
+                            <h3 id="special-pick-title" className="text-sm font-bold uppercase tracking-wider text-primary">
+                                今日のイチオシ！<br className="sm:hidden" />{formattedDate}
                             </h3>
                         </div>
-                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/20 text-white border border-white/30 whitespace-nowrap">
+                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
                             AI偏差値 <span className="text-lg font-mono">{pick.deviation_score.toFixed(2)}</span>
                         </span>
                     </div>
-                    <div className="mt-2 min-w-0">
-                        <p className="text-3xl sm:text-4xl font-black leading-tight truncate text-white drop-shadow-md" title={pick.horse_name}>
+                    <div className="mt-2 min-w-0 mb-4">
+                        <p className="text-3xl sm:text-4xl font-black leading-tight truncate text-gray-900" title={pick.horse_name}>
                             {pick.horse_name}
                         </p>
                     </div>
                     {/* ▲▲▲▲▲【変更ここまで】▲▲▲▲▲ */}
 
-                    <p className="text-sm text-amber-200 font-medium mt-1 truncate" title={`${pick.venue_name} ${pick.race_number}R - ${pick.race_name}`}>
+                    <p className="text-sm text-gray-500 font-medium mt-1 truncate mb-4" title={`${pick.venue_name} ${pick.race_number}R - ${pick.race_name}`}>
                         {pick.venue_name} {pick.race_number}R ・ {pick.race_name}
                     </p>
 
-                    <div className="mt-auto pt-3 border-t border-amber-400/50">
-                        <p className="text-sm text-amber-100 font-medium leading-relaxed group-hover:text-white transition-colors duration-300" aria-live="polite">
+                    <div className="mt-auto pt-4 border-t border-gray-100">
+                        <p className="text-sm text-gray-600 font-medium leading-relaxed group-hover:text-primary transition-colors duration-300" aria-live="polite">
                             {pick.commentary}
                         </p>
                     </div>

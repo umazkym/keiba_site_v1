@@ -49,7 +49,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
         <div className="bg-gray-50 py-12">
             <div className="container mx-auto px-4 max-w-4xl">
                 {/* ガイドコンテンツ */}
-                <article className="bg-white p-6 sm:p-8 rounded-lg shadow-lg mb-8">
+                <article className="bg-white p-6 sm:p-8 rounded-lg shadow-sm mb-8">
                     {/* ヘッダー */}
                     <header className="mb-8 text-center border-b pb-6">
                         <nav className="text-sm text-gray-600 mb-4">
@@ -80,7 +80,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
                 </article>
 
                 {/* 関連ガイドへのナビゲーション */}
-                <div className="bg-white p-6 sm:p-8 rounded-lg shadow-lg mb-8">
+                <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm mb-8">
                     <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">関連ガイド</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Link href="/guides/horseracing-basics" className="flex flex-col gap-2 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow hover:translate-y-[-2px]">
@@ -107,7 +107,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
                 </div>
 
                 {/* CTA セクション */}
-                <div className="bg-gradient-to-br from-indigo-50 via-white to-blue-50 border-2 border-primary/20 p-8 rounded-lg text-center shadow-lg mb-8">
+                <div className="bg-blue-50 border-2 border-primary/20 p-8 rounded-lg text-center shadow-sm mb-8">
                     <div className="mb-6">
                         <h2 className="text-2xl font-bold text-gray-800 mb-3">このガイドで学んだ知識を活かしましょう</h2>
                         <p className="text-gray-600 leading-relaxed max-w-2xl mx-auto">
@@ -116,7 +116,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
                     </div>
                     <Link
                         href={`/races/${todayStr}`}
-                        className="inline-block bg-primary hover:bg-primary-dark text-white hover:text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
+                        className="inline-block bg-primary hover:bg-primary-dark text-white hover:text-white font-bold py-3 px-8 rounded-lg shadow-md transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-light"
                     >
                         今日のレース予想を見る
                     </Link>

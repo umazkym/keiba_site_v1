@@ -8,11 +8,11 @@ import { Adsense } from './Adsense';
 
 const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     const rankStyles = [
-        { borderColor: 'border-yellow-400', rankBgColor: 'bg-yellow-100', rankTextColor: 'text-yellow-800', shadow: 'shadow-sm', scale: 'hover:scale-[1.01]' },
-        { borderColor: 'border-gray-300', rankBgColor: 'bg-gray-100', rankTextColor: 'text-gray-700', shadow: 'shadow-sm', scale: 'hover:scale-[1.01]' },
-        { borderColor: 'border-orange-300', rankBgColor: 'bg-orange-100', rankTextColor: 'text-orange-800', shadow: 'shadow-sm', scale: 'hover:scale-[1.01]' },
-        { borderColor: 'border-gray-200', rankBgColor: 'bg-gray-50', rankTextColor: 'text-gray-600', shadow: 'shadow-none', scale: 'hover:scale-[1.01]' },
-        { borderColor: 'border-gray-200', rankBgColor: 'bg-gray-50', rankTextColor: 'text-gray-600', shadow: 'shadow-none', scale: 'hover:scale-[1.01]' },
+        { borderColor: 'border-yellow-200', rankBgColor: 'bg-yellow-50', rankTextColor: 'text-yellow-700', shadow: 'shadow-sm', scale: 'hover:scale-[1.01]' },
+        { borderColor: 'border-gray-200', rankBgColor: 'bg-gray-50', rankTextColor: 'text-gray-600', shadow: 'shadow-sm', scale: 'hover:scale-[1.01]' },
+        { borderColor: 'border-orange-200', rankBgColor: 'bg-orange-50', rankTextColor: 'text-orange-700', shadow: 'shadow-sm', scale: 'hover:scale-[1.01]' },
+        { borderColor: 'border-gray-100', rankBgColor: 'bg-gray-50', rankTextColor: 'text-gray-500', shadow: 'shadow-none', scale: 'hover:scale-[1.01]' },
+        { borderColor: 'border-gray-100', rankBgColor: 'bg-gray-50', rankTextColor: 'text-gray-500', shadow: 'shadow-none', scale: 'hover:scale-[1.01]' },
     ];
     const style = rankStyles[Math.min(rank - 1, 4)];
 

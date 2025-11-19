@@ -93,22 +93,22 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
         <div className="space-y-4">
             <h3 className="text-lg font-bold text-gray-800 border-b-2 border-primary pb-2">このレースのデ－タ分析</h3>
 
-            <div className="bg-white rounded-lg p-4 shadow-lg border-l-4 border-primary">
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 border-l-4 border-l-primary">
                 <h4 className="font-bold text-gray-800 mb-2">出走馬の能力分析</h4>
                 <p className="text-gray-700 text-sm leading-relaxed">{generateAbilityAnalysis()}</p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 shadow-lg border-l-4 border-accent">
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 border-l-4 border-l-accent">
                 <h4 className="font-bold text-gray-800 mb-2">スタートからの展開予想</h4>
                 <p className="text-gray-700 text-sm leading-relaxed">{generateStartAnalysis()}</p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 shadow-lg border-l-4 border-indigo-500">
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 border-l-4 border-l-indigo-500">
                 <h4 className="font-bold text-gray-800 mb-2">枠順による影響</h4>
                 <p className="text-gray-700 text-sm leading-relaxed">{generateFrameAnalysis()}</p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 shadow-lg border-l-4 border-pink-500">
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 border-l-4 border-l-pink-500">
                 <h4 className="font-bold text-gray-800 mb-2">馬券戦略の方向性</h4>
                 <p className="text-gray-700 text-sm leading-relaxed">{generateStrategyAnalysis()}</p>
             </div>

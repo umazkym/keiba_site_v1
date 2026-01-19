@@ -258,6 +258,10 @@ def main():
                        help='処理対象日: "today", "tomorrow", "yesterday", または "YYYY-MM-DD" 形式')
     parser.add_argument('--mode', type=str, default=None,
                        help='実行モード: PRODUCTION, RESULTS_ONLY, PREDICTIONS_ONLY, HISTORY')
+    parser.add_argument('--start-date', type=str, default=None,
+                       help='HISTORYモード用: 開始日 (YYYY-MM-DD 形式)')
+    parser.add_argument('--end-date', type=str, default=None,
+                       help='HISTORYモード用: 終了日 (YYYY-MM-DD 形式)')
     args = parser.parse_args()
 
     start_time = time.time()
@@ -271,11 +275,20 @@ def main():
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             print("!!!  HISTORYモードで実行します (記事の並列処理アーキテクチャ)  !!!")
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            if len(sys.argv) != 3:
-                raise ValueError("開始日と終了日を 'YYYY-MM-DD' 形式で指定してください。")
             
-            start_date = datetime.datetime.strptime(sys.argv[1], '%Y-%m-%d').date()
-            end_date = datetime.datetime.strptime(sys.argv[2], '%Y-%m-%d').date()
+            # --start-date と --end-date 引数を使用
+            start_date_str = getattr(args, 'start_date', None)
+            end_date_str = getattr(args, 'end_date', None)
+            
+            if not start_date_str or not end_date_str:
+                raise ValueError("HISTORYモードでは --start-date と --end-date を 'YYYY-MM-DD' 形式で指定してください。")
+            
+            try:
+                start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError as e:
+                raise ValueError(f"日付形式が無効です: {e}。'YYYY-MM-DD' 形式で指定してください。")
+            
             if start_date > end_date:
                 raise ValueError("開始日は終了日より前の日付にしてください。")
             

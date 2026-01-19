@@ -160,9 +160,13 @@ def backfill_historical_data(start_date: datetime.date, end_date: datetime.date)
         total_deleted = 0
 
         while True:
-            race_ids_batch = [r[0] for r in db.execute(races_to_delete_stmt).limit(BATCH_SIZE).fetchall()]
+            # limitをselectステートメントに適用
+            batch_stmt = races_to_delete_stmt.limit(BATCH_SIZE)
+            race_ids_batch = [r[0] for r in db.execute(batch_stmt).fetchall()]
             if not race_ids_batch:
                 break
+            
+            batch_len = len(race_ids_batch)
 
             db.query(models.Matchup).filter(models.Matchup.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
             db.query(models.Prediction).filter(models.Prediction.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
@@ -171,12 +175,12 @@ def backfill_historical_data(start_date: datetime.date, end_date: datetime.date)
             db.query(models.Race).filter(models.Race.id.in_(race_ids_batch)).delete(synchronize_session=False)
             db.commit()
 
-            total_deleted += len(race_ids_batch)
+            total_deleted += batch_len
             del race_ids_batch
             gc.collect()
 
-            # 次のバッチが残っているか確認
-            if len(race_ids_batch if 'race_ids_batch' in locals() else []) < BATCH_SIZE:
+            # 処理したバッチがBATCH_SIZE未満なら終了（残りがない）
+            if batch_len < BATCH_SIZE:
                 break
 
         if total_deleted > 0:

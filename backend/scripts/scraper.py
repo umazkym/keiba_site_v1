@@ -80,6 +80,22 @@ def _prepare_chrome_driver():
     """
     Render環境とローカル環境で設定を切り替えるWebDriver準備関数
 
+    Render環境では、ユーザーデータディレクトリが競合しないように一意の一時ディレクトリを使用する
+    """
+    options = Options()
+    is_render = os.getenv("RENDER") == "true"
+
+    # --- 共通設定 ---
+    options.add_argument('--headless=new')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--window-size=1280x800')
+    options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
     # ▼▼▼ 環境に応じた設定切り替え ▼▼▼
     temp_user_data_dir = None

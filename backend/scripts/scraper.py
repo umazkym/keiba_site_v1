@@ -306,14 +306,58 @@ def get_html(
     return None, False
 
 def get_race_list_html(date_str: str, is_nar: bool, force_download: bool = False, driver: Optional[webdriver.Chrome] = None) -> Tuple[Optional[str], bool]:
+    """
+    レース一覧HTMLを取得する。
+    
+    race_list_sub.html エンドポイントを使用することで、Selenium不要で高速に取得可能。
+    既存の race_list.html (Selenium必要) はフォールバックとして残す。
+    """
     base_url = BASE_NAR_URL if is_nar else BASE_CENTRAL_URL
-    url = f"{base_url}/top/race_list.html?kaisai_date={date_str}"
+    
+    # 高速版: race_list_sub.html (Selenium不要)
+    sub_url = f"{base_url}/top/race_list_sub.html?kaisai_date={date_str}"
     dir_path = os.path.join(HTML_DIR, "nar_racelist" if is_nar else "racelist")
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, f"{date_str}.bin")
     
+    # キャッシュ確認
     target_date = datetime.strptime(date_str, '%Y%m%d').date()
-    return get_html(url, file_path, force_download, use_selenium=True, wait_for_class="RaceList_Box", target_date=target_date, driver=driver)
+    today_jst = (datetime.utcnow() + timedelta(hours=9)).date()
+    yesterday_jst = today_jst - timedelta(days=1)
+    should_force = force_download or target_date >= yesterday_jst
+    
+    if not should_force and os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            return f.read(), False
+    
+    # リクエストで取得（Selenium不要）
+    try:
+        sleep_time = random.uniform(MIN_SLEEP_SECONDS, MAX_SLEEP_SECONDS)
+        time.sleep(sleep_time)
+        
+        response = requests.get(sub_url, headers=_get_random_headers(), timeout=60)
+        response.encoding = 'utf-8'  # race_list_sub.htmlはUTF-8
+        html_content = response.text
+        
+        # 取得成功をチェック（レースIDが含まれているか）
+        if html_content and 'race_id=' in html_content:
+            # キャッシュに保存
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            return html_content, True
+        else:
+            print(f"[Warning] race_list_sub.html returned no race data for {date_str}")
+            
+    except Exception as e:
+        print(f"[Warning] Failed to fetch race_list_sub.html: {e}")
+    
+    # フォールバック: 従来のSelenium版（必要な場合のみ）
+    if os.getenv('USE_SELENIUM_FALLBACK', 'false').lower() == 'true':
+        print(f"[Fallback] Using Selenium for {date_str}")
+        url = f"{base_url}/top/race_list.html?kaisai_date={date_str}"
+        return get_html(url, file_path, force_download, use_selenium=True, wait_for_class="RaceList_Box", target_date=target_date, driver=driver)
+    
+    return None, False
 
 def get_shutuba_html(race_id: str, is_nar: bool, force_download: bool = False) -> Tuple[Optional[str], bool]:
     base_url = BASE_NAR_URL if is_nar else BASE_CENTRAL_URL
@@ -348,18 +392,26 @@ def get_horse_page_html(
     force_download: bool = False,
     driver: Optional[webdriver.Chrome] = None
 ) -> Tuple[Optional[str], bool]:
+    """
+    馬ページHTMLを取得する。
+    
+    db.netkeibaは静的HTMLなので、requestsで高速に取得可能。
+    Seleniumは不要。
+    """
     url = f"{DB_BASE_URL}/horse/{horse_id}"
     dir_path = os.path.join(HTML_DIR, "horse")
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, f"{horse_id}.bin")
+    
+    # Seleniumなしで取得（db.netkeibaは静的HTML）
     return get_html(
         url,
         file_path,
         force_download,
-        use_selenium=True,
+        use_selenium=False,  # Selenium不要に変更
         max_age_seconds=HORSE_HTML_CACHE_MAX_AGE_SECONDS,
-        wait_for_class='db_main_race',
-        driver=driver
+        wait_for_class=None,  # requestsでは待機不要
+        driver=None
     )
 
 def get_ped_page_html(horse_id: str, force_download: bool = False) -> Tuple[Optional[str], bool]:

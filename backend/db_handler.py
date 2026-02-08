@@ -130,7 +130,9 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
         total_deleted = 0
 
         while True:
-            race_ids_batch = [r[0] for r in db.execute(races_to_delete_stmt).limit(BATCH_SIZE).fetchall()]
+            # limitをselectステートメントに適用（run_pipeline.pyと同じパターン）
+            batch_stmt = races_to_delete_stmt.limit(BATCH_SIZE)
+            race_ids_batch = [r[0] for r in db.execute(batch_stmt).fetchall()]
             if not race_ids_batch:
                 break
 

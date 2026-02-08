@@ -336,7 +336,8 @@ def main():
 
             try:
                 if PIPELINE_MODE in ['PRODUCTION', 'RESULTS_ONLY']:
-                    target_date_results = target_date_override if target_date_override and args.date in ['today', 'yesterday'] else (today_jst - datetime.timedelta(days=1))
+                    # 具体的な日付指定も受け付けるよう修正
+                    target_date_results = target_date_override if target_date_override else (today_jst - datetime.timedelta(days=1))
                     print(f"\n--- [RESULTS_ONLY] {target_date_results} の結果取得を開始 ---")
                     driver = None
                     try:

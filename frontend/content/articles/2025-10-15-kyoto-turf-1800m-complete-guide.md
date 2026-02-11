@@ -129,3 +129,11 @@ category: "コース分析"
 3枠の先行馬、逃げ馬の粘り、6枠の苦戦——これらのデータを頭に叩き込み、京都芝1800mという名舞台を攻略しましょう。
 
 中枠制覇の法則——それが、京都1800mで勝つための唯一の正解なのです。
+
+---
+
+## 関連記事
+
+- [マイルCS完全攻略｜京都芝1600m外回りのデータ](/articles/2025-10-28-mile-championship-kyoto-turf-1600m-analysis)
+- [エリザベス女王杯完全攻略｜京都芝2200m分析](/articles/2025-10-29-elizabeth-queen-cup-kyoto-turf-2200m-analysis)
+- [松山弘平騎手データ分析｜京都での安定感](/articles/2025-11-06-hiroaki-matsuyama-jockey-analysis)

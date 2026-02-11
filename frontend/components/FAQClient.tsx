@@ -156,6 +156,17 @@ const faqItems: FAQItem[] = [
     },
 ];
 
+// カテゴリ別カラーマップ
+const categoryColorMap: Record<string, { badge: string; border: string }> = {
+    'サービス全般': { badge: 'bg-blue-100 text-blue-800', border: 'border-blue-500' },
+    'データ分析': { badge: 'bg-indigo-100 text-indigo-800', border: 'border-indigo-500' },
+    '馬券購入': { badge: 'bg-amber-100 text-amber-800', border: 'border-amber-500' },
+    'トラブルシューティング': { badge: 'bg-slate-100 text-slate-700', border: 'border-slate-400' },
+};
+
+const getCategoryColor = (category: string) =>
+    categoryColorMap[category] || { badge: 'bg-gray-100 text-gray-700', border: 'border-gray-400' };
+
 export const FAQClient = () => {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -190,89 +201,85 @@ export const FAQClient = () => {
                 strategy="afterInteractive"
             />
             <div className="container py-8">
-            <div className="max-w-4xl mx-auto">
-                {/* ヘッダー */}
-                <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-3 border-primary pb-4">
-                    よくある質問
-                </h1>
-                <p className="text-base text-gray-700 mb-8 leading-8">
-                    UMA-FREEに関するご質問にお答えします。見つからない場合は、
-                    <Link href="/contact" className="text-primary hover:text-primary-dark font-semibold">
-                        お問い合わせ
-                    </Link>
-                    ください。
-                </p>
+                <div className="max-w-4xl mx-auto">
+                    {/* ヘッダー */}
+                    <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-2 border-primary pb-4">
+                        よくある質問
+                    </h1>
+                    <p className="text-base text-gray-700 mb-8 leading-8">
+                        UMA-FREEに関するご質問にお答えします。見つからない場合は、
+                        <Link href="/contact" className="text-primary hover:text-primary-dark font-semibold">
+                            お問い合わせ
+                        </Link>
+                        ください。
+                    </p>
 
-                {/* カテゴリフィルタ */}
-                <div className="mb-8 flex flex-wrap gap-2">
-                    <button
-                        onClick={() => setSelectedCategory(null)}
-                        className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                            selectedCategory === null
-                                ? 'bg-primary text-white'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                    >
-                        すべて
-                    </button>
-                    {categories.map(category => (
+                    {/* カテゴリフィルタ */}
+                    <div className="mb-8 flex flex-wrap gap-2">
                         <button
-                            key={category}
-                            onClick={() => setSelectedCategory(category)}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                                selectedCategory === category
+                            onClick={() => setSelectedCategory(null)}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-all ${selectedCategory === null
                                     ? 'bg-primary text-white'
                                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
+                                }`}
                         >
-                            {category}
+                            すべて
                         </button>
-                    ))}
-                </div>
+                        {categories.map(category => (
+                            <button
+                                key={category}
+                                onClick={() => setSelectedCategory(category)}
+                                className={`px-4 py-2 rounded-lg font-semibold transition-all ${selectedCategory === category
+                                        ? 'bg-primary text-white'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    }`}
+                            >
+                                {category}
+                            </button>
+                        ))}
+                    </div>
 
-                {/* FAQ アイテム */}
-                <div className="space-y-6">
-                    {filteredItems.map(item => (
-                        <div key={item.id} className="border-l-4 border-primary pl-6">
-                            <div className="flex items-start gap-2 mb-2">
-                                <span className="text-xs font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-800 flex-shrink-0">
-                                    {item.category}
-                                </span>
-                                {item.importance === 'high' && (
-                                    <span className="text-xs font-bold px-2 py-1 rounded-full bg-red-100 text-red-800 flex-shrink-0">
-                                        重要
-                                    </span>
-                                )}
-                            </div>
-                            <h3 className="font-bold text-gray-800 mb-2 text-base">Q: {item.question}</h3>
-                            <p className="text-gray-700 leading-relaxed">
-                                <span className="font-bold text-primary">A:</span> {item.answer}
-                            </p>
+                    {/* FAQ アイテム */}
+                    <div className="space-y-6">
+                        {filteredItems.map(item => {
+                            const colors = getCategoryColor(item.category);
+                            return (
+                                <div key={item.id} className={`border-l-4 ${colors.border} pl-6`}>
+                                    <div className="flex items-start gap-2 mb-2">
+                                        <span className={`text-xs font-bold px-2 py-1 rounded-full flex-shrink-0 ${colors.badge}`}>
+                                            {item.category}
+                                        </span>
+                                    </div>
+                                    <h3 className="font-bold text-gray-800 mb-2 text-base">Q. {item.question}</h3>
+                                    <p className="text-gray-700 leading-relaxed text-sm">
+                                        {item.answer}
+                                    </p>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* 追加ヘルプ */}
+                    <div className="mt-12 py-6 rounded-lg">
+                        <p className="text-gray-700 mb-4">
+                            その他のご質問やご不明な点がございましたら、遠慮なくお問い合わせください。
+                        </p>
+                        <div className="flex gap-4">
+                            <Link
+                                href="/contact"
+                                className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg transition-colors"
+                            >
+                                お問い合わせフォーム
+                            </Link>
+                            <Link
+                                href="/articles"
+                                className="inline-block bg-white border border-primary text-primary hover:bg-primary hover:text-white font-bold py-2 px-6 rounded-lg transition-colors"
+                            >
+                                記事を読む
+                            </Link>
                         </div>
-                    ))}
-                </div>
-
-                {/* 追加ヘルプ */}
-                <div className="mt-12 py-6 rounded-lg">
-                    <p className="text-gray-700 mb-4">
-                        その他のご質問やご不明な点がございましたら、遠慮なくお問い合わせください。
-                    </p>
-                    <div className="flex gap-4">
-                        <Link
-                            href="/contact"
-                            className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg transition-colors"
-                        >
-                            お問い合わせフォーム
-                        </Link>
-                        <Link
-                            href="/articles"
-                            className="inline-block bg-white border border-primary text-primary hover:bg-primary hover:text-white font-bold py-2 px-6 rounded-lg transition-colors"
-                        >
-                            記事を読む
-                        </Link>
                     </div>
                 </div>
-            </div>
             </div>
         </>
     );

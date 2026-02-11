@@ -91,7 +91,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
                                 <SparklesIcon className="w-5 h-5 text-amber-600 shrink-0" />
                             </div>
                             <h3 id="special-pick-title" className="text-sm font-bold uppercase tracking-wider text-amber-800">
-                                今日のイチオシ！<br className="sm:hidden" />{formattedDate}
+                                本日の注目馬<br className="sm:hidden" />{formattedDate}
                             </h3>
                         </div>
                         <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/80 text-amber-700 border border-amber-200 shadow-sm whitespace-nowrap backdrop-blur-sm">

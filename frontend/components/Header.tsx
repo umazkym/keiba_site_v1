@@ -55,7 +55,7 @@ export const Header = () => {
                             ホーム
                         </Link>
                         <Link href={`/races/${todayStr}`} className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200">
-                            本日の予測
+                            本日の分析
                         </Link>
                         <Link href="/articles" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200">
                             記事
@@ -107,7 +107,7 @@ export const Header = () => {
                             className="block px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 transition-colors duration-200 border-b border-gray-50"
                             onClick={closeMenu}
                         >
-                            本日の予測
+                            本日の分析
                         </Link>
                         <Link
                             href="/articles"

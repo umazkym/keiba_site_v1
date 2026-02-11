@@ -83,11 +83,11 @@ export const TopHitsDisplay = () => {
 
     return (
         <div>
-            <h3 className="flex items-center text-lg sm:text-xl font-bold text-gray-800 mb-3 px-1">
+            <h2 className="flex items-center text-lg sm:text-xl font-bold text-gray-800 mb-3 px-1">
                 <TrophyIcon className="w-5 h-5 mr-2 text-yellow-500" />
                 <span className="whitespace-nowrap">高配当的中ランキング</span>
                 <span className="text-xs font-normal text-gray-500 ml-2 whitespace-nowrap self-end mb-1">(直近7日間)</span>
-            </h3>
+            </h2>
             {hits.length === 0 ? (
                 <div className="p-6 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-center text-gray-500 text-sm">
                     <p>対象期間の的中実績はありませんでした。</p>

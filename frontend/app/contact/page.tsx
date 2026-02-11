@@ -3,14 +3,14 @@ import Link from "next/link";
 import { Breadcrumb } from '@/components/Breadcrumb';
 
 export const metadata: Metadata = {
-    title: "お問い合わせ | UMA-FREE",
+    title: "お問い合わせ",
     description: "UMA-FREEへのお問い合わせページ。ご質問や不具合のご報告はこちらからお願いします。FAQで解決できる場合もございます。",
     robots: {
         index: true,
         follow: true,
     },
     openGraph: {
-        title: "お問い合わせ | UMA-FREE",
+        title: "お問い合わせ",
         description: "UMA-FREEへのお問い合わせページ。サイトの使い方、データの不具合報告、機能リクエストなどお気軽にご連絡ください。",
     },
     alternates: {

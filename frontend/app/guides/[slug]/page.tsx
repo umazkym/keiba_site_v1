@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: GuidePageProps): Promise<Meta
     const guide = await getGuideBySlug(params.slug);
 
     return {
-        title: `${guide.title} | UMA-FREE`,
+        title: guide.title,
         description: guide.description,
         keywords: guide.keywords,
         alternates: {

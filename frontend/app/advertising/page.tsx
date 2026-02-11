@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { Breadcrumb } from '@/components/Breadcrumb';
 
 export const metadata: Metadata = {
-    title: "広告について | UMA-FREE",
+    title: "広告について",
     description: "UMA-FREEで配信している広告についての説明です。Google AdSenseなどの広告配信方法、Cookie使用、個人情報の取り扱いについて詳しく解説しています。",
     robots: {
         index: true,
         follow: true,
     },
     openGraph: {
-        title: "広告について | UMA-FREE",
+        title: "広告について",
         description: "UMA-FREEの広告配信ポリシー。Google AdSenseによる広告配信、Cookie技術の使用、オプトアウト方法について説明しています。",
     },
     alternates: {

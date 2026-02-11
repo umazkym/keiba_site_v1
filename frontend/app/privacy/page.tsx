@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { Breadcrumb } from '@/components/Breadcrumb';
 
 export const metadata: Metadata = {
-    title: "プライバシーポリシー | UMA-FREE",
+    title: "プライバシーポリシー",
     description: "UMA-FREEのプライバシーポリシーです。個人情報の取り扱い、Cookieの使用、広告配信について詳しく説明しています。",
     robots: {
         index: true,
         follow: true,
     },
     openGraph: {
-        title: "プライバシーポリシー | UMA-FREE",
+        title: "プライバシーポリシー",
         description: "UMA-FREEのプライバシーポリシーです。個人情報の取り扱い、Cookieの使用、Google AdSense・アナリティクスによる情報収集について詳しく説明しています。",
     },
     alternates: {

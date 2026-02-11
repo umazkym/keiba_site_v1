@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const article = await getArticleBySlug(params.slug);
     return {
-      title: `${article.title} | UMA-FREE`,
+      title: article.title,
       description: article.content.substring(0, 120),
       alternates: {
         canonical: `/articles/${params.slug}`,

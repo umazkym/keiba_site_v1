@@ -4,7 +4,7 @@ import { getTodayString } from '../../lib/date-utils';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'ガイド一覧 | UMA-FREE - 競馬予想ガイド・知識習得',
+    title: 'ガイド一覧 - 競馬分析ガイド・知識習得',
     description: '競馬初心者から上級者まで必読のガイド集。基本用語からAI予測手法、全競馬場ガイド、騎手解説、配当の読み方など、競馬予想に必要なすべての知識が揃っています。',
     keywords: [
         '競馬ガイド',
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
         canonical: '/guides',
     },
     openGraph: {
-        title: 'ガイド一覧 | UMA-FREE',
+        title: 'ガイド一覧',
         description: '競馬予想に必要なすべての知識が揃ったガイド集',
         url: '/guides',
         type: 'website',

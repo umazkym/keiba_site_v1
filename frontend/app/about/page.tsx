@@ -3,14 +3,14 @@ import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
 
 export const metadata: Metadata = {
-    title: '運営者情報・このサイトについて | UMA-FREE',
+    title: '運営者情報・このサイトについて',
     description: 'UMA-FREEの運営情報とサイトの趣旨について。競馬レースのデータ分析情報を参考提供しています。',
     robots: {
         index: true,
         follow: true,
     },
     openGraph: {
-        title: '運営者情報・このサイトについて | UMA-FREE',
+        title: '運営者情報・このサイトについて',
         description: 'UMA-FREEの運営情報とサイトの趣旨について。競馬レースのデータ分析情報を参考提供しています。',
         url: 'https://uma-free.com/about',
         siteName: 'UMA-FREE',

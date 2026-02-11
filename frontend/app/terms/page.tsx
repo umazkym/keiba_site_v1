@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { Breadcrumb } from '@/components/Breadcrumb';
 
 export const metadata: Metadata = {
-    title: "利用規約 | UMA-FREE",
+    title: "利用規約",
     description: "UMA-FREEの利用規約です。サービス利用時のルール、免責事項、ユーザーの責任や禁止事項について詳しく説明しています。",
     robots: {
         index: true,
         follow: true,
     },
     openGraph: {
-        title: "利用規約 | UMA-FREE",
+        title: "利用規約",
         description: "UMA-FREEの利用規約。サービス利用のルール、免責事項、ユーザーの責任、禁止事項、知的財産権について詳しく定めています。",
     },
     alternates: {

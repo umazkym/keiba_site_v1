@@ -1,26 +1,17 @@
 import datetime
 import gc
-from sqlalchemy.orm import Session
-from sqlalchemy import func, select
-from database import models
-from scripts.scraper import get_shutuba_html_content, get_race_result_html_content, get_horse_page_html
-from scripts import parser, database_loader, predictor
-from typing import List, Tuple
-from tqdm import tqdm
 import os
-import datetime
-import gc
-from sqlalchemy.orm import Session
-from sqlalchemy import func, select
-from database import models
-from scripts.scraper import get_shutuba_html_content, get_race_result_html_content, get_horse_page_html
-from scripts import parser, database_loader, predictor
-from typing import List, Tuple
-from tqdm import tqdm
-import os
+import sys
 import traceback
 import time
 import random
+from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from database import models
+from scripts.scraper import get_shutuba_html_content, get_race_result_html_content, get_horse_page_html
+from scripts import parser, database_loader, predictor
+from typing import List, Tuple
+from tqdm import tqdm
 
 BANEI_VENUE_CODES = ["33", "65"]
 
@@ -70,6 +61,8 @@ def _fetch_and_load_horse_past_data(db: Session, horse_ids: set, driver=None):
             tqdm.write(f"\n[ERROR] Failed to process horse_id {horse_id}: {e}")
             db.rollback()
 
+    sys.stdout.flush()
+    sys.stderr.flush()
     gc.collect()
 
 def update_race_results(db: Session, target_date: datetime.date):
@@ -89,6 +82,7 @@ def update_race_results(db: Session, target_date: datetime.date):
     BATCH_SIZE = 3 if is_render else 10  # Render環境では3件ずつ処理
 
     print(f"Found {len(all_race_ids)} races in DB to update results.")
+    sys.stdout.flush()
     print(f"Processing in batches of {BATCH_SIZE} (Render mode: {is_render})")
 
     for i, (race_id, is_nar) in enumerate(tqdm(all_race_ids, desc=f"Updating Results ({target_date.strftime('%m-%d')})", leave=False), 1):
@@ -117,6 +111,8 @@ def update_race_results(db: Session, target_date: datetime.date):
             db.rollback()
 
     # 最後にガベージコレクション実行
+    sys.stdout.flush()
+    sys.stderr.flush()
     gc.collect()
 
 def insert_new_predictions(db: Session, target_date: datetime.date):

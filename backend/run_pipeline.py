@@ -2,9 +2,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
+import sys
 import datetime
 import multiprocessing
-import sys
 import time
 import random
 import requests
@@ -358,6 +358,8 @@ def main():
 
                     try:
                         update_race_results(db, target_date_results)
+                        sys.stdout.flush()
+                        sys.stderr.flush()
                         print(f"--- [RESULTS_ONLY] {target_date_results} の結果取得が完了 ---")
                     except Exception as e:
                         print(f"警告: 結果データの更新に失敗しました: {e}")
@@ -389,6 +391,8 @@ def main():
 
                     try:
                         insert_new_predictions(db, target_date_predictions)
+                        sys.stdout.flush()
+                        sys.stderr.flush()
                         print(f"--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成が完了 ---")
                     except Exception as e:
                         print(f"警告: 予測データの挿入に失敗しました: {e}")

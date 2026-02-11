@@ -1157,7 +1157,36 @@ def main():
                     # 2つのツイートテキストを直接渡して投稿（分割なし）
                     post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
             else:
-                _log("-> 昨日は1万円以上の高配当的中がなかったため、投稿をスキップします。")
+                _log("-> 昨日は1万円以上の高配当的中がありませんでした。本日のAI注目馬のみ投稿します。")
+                # フォールバック: 高配当的中がなくても、本日のAI注目馬を画像付きで投稿する
+                all_races_today = get_api_data(today_str)
+                pick_data = None
+                if all_races_today:
+                    _log("-> 本日のAI注目馬を検索中（フォールバック）...")
+                    venues = all_races_today.get('jra', []) + all_races_today.get('nar', [])
+                    best_score = -1
+                    for venue in venues:
+                        for race in venue.get('races', []):
+                            preds = race.get('predictions', [])
+                            if preds:
+                                sorted_preds = sorted(
+                                    [p for p in preds if p.get('deviation_score') is not None],
+                                    key=lambda p: p['deviation_score'], reverse=True
+                                )
+                                if sorted_preds and sorted_preds[0]['deviation_score'] > best_score:
+                                    best_score = sorted_preds[0]['deviation_score']
+                                    pick_data = sorted_preds[0]
+                                    pick_data['venue_name'] = venue.get('venue_name', '?')
+                                    pick_data['race_name'] = race.get('race_name', '?')
+                                    pick_data['race_number'] = race.get('race_number', '?')
+
+                if pick_data:
+                    _log(f"-> AI注目馬を検出（フォールバック）: {pick_data.get('horse_name', '?')} (AI偏差値: {pick_data.get('deviation_score', 0):.2f})")
+                    image_file = generate_pick_og_image(pick_data, today_str)
+                    tweet_text = create_morning_pick_tweet(pick_data, today_str)
+                    post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
+                else:
+                    _log("-> 本日のレースデータも取得できなかったため、投稿をスキップします。")
 
         # ========== 昼12時投稿 ==========
         elif post_type == 'afternoon':

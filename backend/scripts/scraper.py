@@ -347,6 +347,13 @@ def get_race_list_html(date_str: str, is_nar: bool, force_download: bool = False
             return html_content, True
         else:
             print(f"[Warning] race_list_sub.html returned no race data for {date_str}")
+            # 開催なし日のキャッシュを空で上書き（古いキャッシュによる誤処理を防止）
+            try:
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write('')
+                print(f"[Info] Cache cleared for {date_str} (no races scheduled)")
+            except Exception as write_err:
+                print(f"[Warning] Failed to clear cache for {date_str}: {write_err}")
             
     except Exception as e:
         print(f"[Warning] Failed to fetch race_list_sub.html: {e}")

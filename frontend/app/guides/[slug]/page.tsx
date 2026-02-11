@@ -88,20 +88,20 @@ export default async function GuidePage({ params }: GuidePageProps) {
                             <p className="text-sm text-gray-600">競馬初心者向けの必須用語解説</p>
                         </Link>
                         <Link href="/guides/prediction-glossary" className="flex flex-col gap-2 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow hover:translate-y-[-2px]">
-                            <h3 className="font-bold text-gray-800">AI予測用語集</h3>
-                            <p className="text-sm text-gray-600">AI予想特有の用語と分析手法</p>
+                            <h3 className="font-bold text-gray-800">AI分析用語集</h3>
+                            <p className="text-sm text-gray-600">AI分析特有の用語と手法</p>
                         </Link>
                         <Link href="/guides/course-guide" className="flex flex-col gap-2 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow hover:translate-y-[-2px]">
                             <h3 className="font-bold text-gray-800">全競馬場ガイド</h3>
-                            <p className="text-sm text-gray-600">各競馬場の特性と有効な予想手法</p>
+                            <p className="text-sm text-gray-600">各競馬場の特性と有効な分析手法</p>
                         </Link>
                         <Link href="/guides/jockey-guide" className="flex flex-col gap-2 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow hover:translate-y-[-2px]">
                             <h3 className="font-bold text-gray-800">主要騎手解説</h3>
-                            <p className="text-sm text-gray-600">一流騎手の特性と過去成績</p>
+                            <p className="text-sm text-gray-600">一流騎手の特性と過去データ分析</p>
                         </Link>
                         <Link href="/guides/odds-reading-guide" className="flex flex-col gap-2 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow hover:translate-y-[-2px]">
                             <h3 className="font-bold text-gray-800">配当の読み方</h3>
-                            <p className="text-sm text-gray-600">配当から読み取る馬券戦略</p>
+                            <p className="text-sm text-gray-600">配当データから読み取る分析手法</p>
                         </Link>
                     </div>
                 </div>
@@ -111,7 +111,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
                     <div className="mb-6">
                         <h2 className="text-2xl font-bold text-gray-800 mb-3">このガイドで学んだ知識を活かしましょう</h2>
                         <p className="text-gray-600 leading-relaxed max-w-2xl mx-auto">
-                            UMA-FREEの高精度なAI予想と組み合わせることで、競馬予想の精度がさらに向上します。
+                            UMA-FREEのAI分析データと組み合わせることで、競馬への理解がさらに深まります。
                         </p>
                     </div>
                     <Link

@@ -170,7 +170,7 @@ export default function AboutPage() {
                                 </Link>
                                 <Link href="/articles" className="p-4 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-md transition-all">
                                     <h3 className="font-bold text-gray-800 mb-2">分析記事</h3>
-                                    <p className="text-sm text-gray-600">競馬予想に役立つ記事を公開中。</p>
+                                    <p className="text-sm text-gray-600">データ分析に関する記事を公開中。</p>
                                 </Link>
                             </div>
                         </section>

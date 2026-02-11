@@ -11,7 +11,7 @@ import type { Metadata } from 'next';
 // ビルド時のAPI呼び出しを避けるため、動的レンダリングを強制
 export const dynamic = 'force-dynamic';
 
-const siteDescription = "競馬レースの統計分析データを完全無料で提供。過去5年以上のデータを機械学習で分析。中央・地方競馬の全レースのAI予想・偏差値・対戦成績・枠順分析をご活用ください。";
+const siteDescription = "競馬レースの統計分析データを完全無料で提供。過去5年以上のデータを機械学習で分析。中央・地方競馬の全レースのAI偏差値・対戦成績・枠順分析をご活用ください。";
 
 // SEO metadata
 export const metadata: Metadata = {

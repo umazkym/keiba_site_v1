@@ -5,12 +5,12 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: 'ガイド一覧 - 競馬分析ガイド・知識習得',
-    description: '競馬初心者から上級者まで必読のガイド集。基本用語からAI予測手法、全競馬場ガイド、騎手解説、配当の読み方など、競馬予想に必要なすべての知識が揃っています。',
+    description: '競馬初心者から上級者まで必読のガイド集。基本用語からAI分析手法、全競馬場ガイド、騎手解説、配当の読み方など、競馬データ分析に必要なすべての知識が揃っています。',
     keywords: [
         '競馬ガイド',
         '競馬用語',
         '競馬初心者',
-        '競馬予想',
+        '競馬分析',
         'AI予測',
         '馬券',
         '競馬知識',
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     },
     openGraph: {
         title: 'ガイド一覧',
-        description: '競馬予想に必要なすべての知識が揃ったガイド集',
+        description: '競馬データ分析に必要なすべての知識が揃ったガイド集',
         url: '/guides',
         type: 'website',
     },
@@ -29,8 +29,8 @@ export const metadata: Metadata = {
 // ▼▼▼▼▼【ここから修正】ガイドページ用の静的テキストを定義 ▼▼▼▼▼
 const content = {
     title: 'ガイド一覧',
-    subtitle: '競馬予想に必要な知識をすべて習得',
-    description: 'UMA-FREEの高精度なAI予想をさらに活かすため、競馬の基本から応用までを網羅したガイド集です。初心者から上級者まで、誰もが必読の内容が揃っています。',
+    subtitle: '競馬データ分析に必要な知識をすべて習得',
+    description: 'UMA-FREEのAIデータ分析をさらに活かすため、競馬の基本から応用までを網羅したガイド集です。初心者から上級者まで、誰もが必読の内容が揃っています。',
     categoryLabel: 'ガイドカテゴリー',
 };
 // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
@@ -104,9 +104,9 @@ export default async function GuidesPage() {
             {/* CTA セクション */}
             <div className="bg-blue-50 border-2 border-primary/20 p-8 rounded-xl max-w-3xl mx-auto text-center w-full shadow-sm">
                 <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-3">ガイドを読んだら、AI予想を試してみましょう</h2>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-3">ガイドを読んだら、AI分析データを活用してみましょう</h2>
                     <p className="text-gray-600 leading-relaxed">
-                        このガイドで学んだ知識と、UMA-FREEの高精度なAI予想を組み合わせることで、競馬予想の成功率がさらに向上します。
+                        このガイドで学んだ知識と、UMA-FREEのAI分析データを組み合わせることで、競馬の理解がさらに深まります。
                     </p>
                 </div>
                 <Link

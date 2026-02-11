@@ -10,10 +10,10 @@ export function OrganizationSchema() {
     const organizationSchema = {
         "@context": "https://schema.org",
         "@type": "Organization",
-        "name": "uma-free",
+        "name": "UMA-FREE",
         "url": "https://uma-free.com",
         "logo": "https://uma-free.com/new-logo.png",
-        "description": "全レース無料のAI競馬予想サイト。中央・地方競馬の全レースのAI予想を完全無料で公開しています。",
+        "description": "競馬レースの統計分析データを無料で提供するデータ分析サイト。中央・地方競馬の全レースのAI偏差値・対戦成績・枠順分析を公開しています。",
         "sameAs": ["https://x.com/umafreecom"],
         "contactPoint": {
             "@type": "ContactPoint",
@@ -48,8 +48,8 @@ export function WebsiteSchema() {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "url": "https://uma-free.com",
-        "name": "uma-free",
-        "description": "全レース無料のAI競馬予想サイト",
+        "name": "UMA-FREE",
+        "description": "競馬データ分析・統計情報サイト",
         "potentialAction": {
             "@type": "SearchAction",
             "target": {
@@ -111,7 +111,7 @@ export function ArticleSchema({
         },
         "publisher": {
             "@type": "Organization",
-            "name": "uma-free",
+            "name": "UMA-FREE",
             "logo": {
                 "@type": "ImageObject",
                 "url": "https://uma-free.com/new-logo.png"
@@ -207,8 +207,8 @@ export function SoftwareApplicationSchema() {
     const appSchema = {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
-        "name": "uma-free AI 競馬予想システム",
-        "description": "機械学習を用いた競馬予想AI。中央・地方競馬の全レースに対応。",
+        "name": "UMA-FREE AI 競馬データ分析システム",
+        "description": "機械学習を用いた競馬データ分析。中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を無料で提供。",
         "applicationCategory": "Sports",
         "offers": {
             "@type": "Offer",

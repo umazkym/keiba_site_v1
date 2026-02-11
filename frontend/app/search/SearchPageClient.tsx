@@ -78,7 +78,7 @@ export default function SearchPageClient() {
             {
                 type: 'page',
                 title: 'サイト運営者について',
-                description: 'uma-freeの運営方針とサービス内容についてのご説明',
+                description: 'UMA-FREEの運営方針とサービス内容についてのご説明',
                 url: '/about'
             }
         ];
@@ -197,7 +197,7 @@ export default function SearchPageClient() {
                             キーワードを入力して、サイト内の記事やページを検索できます。
                         </p>
                         <p className="text-gray-500 text-sm">
-                            AI競馬予想、レース情報、会社情報などを検索してみてください。
+                            AI競馬分析、レース情報、運営情報などを検索してみてください。
                         </p>
                     </div>
                 )}

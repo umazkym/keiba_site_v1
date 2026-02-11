@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next'
 import { getAllArticles } from '@/lib/articles';
+import { getAllGuideSlugs } from '@/lib/guides';
 
 const BASE_URL = 'https://uma-free.com';
 
@@ -17,6 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         '/search',
         '/terms',
         '/faq',
+        '/guides',
     ].map((route) => ({
         url: `${BASE_URL}${route}`,
         lastModified: new Date(),
@@ -30,6 +32,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: new Date(article.date),
         changeFrequency: 'weekly' as const,
         priority: 0.8,
+    }));
+
+    // ガイドページをサイトマップに追加
+    const guideSlugs = getAllGuideSlugs();
+    const guideRoutes = guideSlugs.map((params) => ({
+        url: `${BASE_URL}/guides/${params.slug}`,
+        lastModified: new Date(),
+        changeFrequency: 'monthly' as const,
+        priority: 0.7,
     }));
 
     try {
@@ -53,10 +64,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         // 日付ページのルート（優先度: 高）
         const datePageRoutes = datePages.map(date => ({
-             url: `${BASE_URL}/races/${date}`,
-             lastModified: new Date(),
-             changeFrequency: 'daily' as const,
-             priority: 0.9,
+            url: `${BASE_URL}/races/${date}`,
+            lastModified: new Date(),
+            changeFrequency: 'daily' as const,
+            priority: 0.9,
         }));
 
         // 個別レースページのルート（優先度: 中）
@@ -91,6 +102,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             },
             ...staticRoutes.filter(r => r.url !== BASE_URL),
             ...articleRoutes,
+            ...guideRoutes,
             ...datePageRoutes,
             ...racePageRoutes
         ];
@@ -106,6 +118,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             },
             ...staticRoutes.filter(r => r.url !== BASE_URL),
             ...articleRoutes,
+            ...guideRoutes,
         ];
     }
 }

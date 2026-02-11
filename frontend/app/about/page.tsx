@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { Breadcrumb } from '@/components/Breadcrumb';
 
 export const metadata: Metadata = {
     title: '運営者情報・このサイトについて | UMA-FREE',
@@ -95,84 +96,87 @@ export default function AboutPage() {
     const sectionTitleClass = "text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3";
 
     return (
-        <div className="container py-8">
-            <div className="max-w-4xl mx-auto">
-                <div className="flex flex-col gap-8">
-                    {/* メインセクション */}
-                    <div>
-                        <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-3 border-primary pb-4">{aboutContent.main.title}</h1>
-                        {aboutContent.main.paragraphs.map((text, index) => (<p key={index} className={`text-gray-700 leading-8 text-base ${index > 0 ? 'mt-4' : ''}`}>{text}</p>))}
+        <>
+            <Breadcrumb />
+            <div className="container py-8">
+                <div className="max-w-4xl mx-auto">
+                    <div className="flex flex-col gap-8">
+                        {/* メインセクション */}
+                        <div>
+                            <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-3 border-primary pb-4">{aboutContent.main.title}</h1>
+                            {aboutContent.main.paragraphs.map((text, index) => (<p key={index} className={`text-gray-700 leading-8 text-base ${index > 0 ? 'mt-4' : ''}`}>{text}</p>))}
+                        </div>
+
+                        {/* 運営者について */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>{aboutContent.operatorBackground.title}</h2>
+                            <div className="flex flex-col gap-4">
+                                {aboutContent.operatorBackground.paragraphs.map((text, index) => (<p key={index} className="text-gray-700 leading-8 text-base">{text}</p>))}
+                            </div>
+                        </section>
+
+                        {/* 運営者情報 */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>{aboutContent.operatorInfo.title}</h2>
+                            <dl className="flex flex-col gap-6">
+                                {aboutContent.operatorInfo.items.map(item => (<div key={item.label} className="grid grid-cols-1 sm:grid-cols-4 gap-4"><dt className="font-bold text-gray-700 text-base">{item.label}</dt><dd className="sm:col-span-3 text-gray-800 text-base" dangerouslySetInnerHTML={{ __html: item.value }} /></div>))}
+                            </dl>
+                        </section>
+
+                        {/* サイト統計 */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>{aboutContent.statistics.title}</h2>
+                            <dl className="flex flex-col gap-6">
+                                {aboutContent.statistics.items.map(item => (<div key={item.label} className="grid grid-cols-1 sm:grid-cols-4 gap-4"><dt className="font-bold text-gray-700 text-base">{item.label}</dt><dd className="sm:col-span-3 text-gray-800 text-base">{item.value}</dd></div>))}
+                            </dl>
+                        </section>
+
+                        {/* 公開データについて */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>{aboutContent.dataInfo.title}</h2>
+                            <div className="flex flex-col gap-6">
+                                {aboutContent.dataInfo.items.map(item => (<div key={item.label} className="border-l-4 border-primary pl-4"><h3 className="font-bold text-gray-800 text-base mb-2">{item.label}</h3><p className="text-gray-700 text-base">{item.value}</p></div>))}
+                            </div>
+                        </section>
+
+                        {/* 技術情報 */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>{aboutContent.techInfo.title}</h2>
+                            <p className="text-gray-700 text-base mb-4">{aboutContent.techInfo.intro}</p>
+                            <ul className="flex flex-col gap-3 text-gray-700">
+                                {aboutContent.techInfo.items.map(item => (<li key={item} className="text-base flex items-start gap-2"><span className="text-primary font-bold flex-shrink-0">•</span><span dangerouslySetInnerHTML={{ __html: item }} /></li>))}
+                            </ul>
+                        </section>
+
+                        {/* 注意事項 */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>{aboutContent.disclaimer.title}</h2>
+                            <div className="flex flex-col gap-4 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                                {aboutContent.disclaimer.paragraphs.map((text, index) => (<p key={index} className="text-gray-700 leading-8 text-base" dangerouslySetInnerHTML={{ __html: text }} />))}
+                            </div>
+                        </section>
+
+                        {/* 関連ページへの導線 */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>関連ページ</h2>
+                            <div className="grid md:grid-cols-3 gap-4">
+                                <Link href="/faq" className="p-4 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-md transition-all">
+                                    <h3 className="font-bold text-gray-800 mb-2">よくある質問</h3>
+                                    <p className="text-sm text-gray-600">FAQページで詳しくご説明しています。</p>
+                                </Link>
+                                <Link href="/contact" className="p-4 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-md transition-all">
+                                    <h3 className="font-bold text-gray-800 mb-2">お問い合わせ</h3>
+                                    <p className="text-sm text-gray-600">ご質問やご意見をお聞かせください。</p>
+                                </Link>
+                                <Link href="/articles" className="p-4 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-md transition-all">
+                                    <h3 className="font-bold text-gray-800 mb-2">分析記事</h3>
+                                    <p className="text-sm text-gray-600">競馬予想に役立つ記事を公開中。</p>
+                                </Link>
+                            </div>
+                        </section>
                     </div>
-
-                    {/* 運営者について */}
-                    <section className={sectionClass}>
-                        <h2 className={sectionTitleClass}>{aboutContent.operatorBackground.title}</h2>
-                        <div className="flex flex-col gap-4">
-                            {aboutContent.operatorBackground.paragraphs.map((text, index) => (<p key={index} className="text-gray-700 leading-8 text-base">{text}</p>))}
-                        </div>
-                    </section>
-
-                    {/* 運営者情報 */}
-                    <section className={sectionClass}>
-                        <h2 className={sectionTitleClass}>{aboutContent.operatorInfo.title}</h2>
-                        <dl className="flex flex-col gap-6">
-                            {aboutContent.operatorInfo.items.map(item => (<div key={item.label} className="grid grid-cols-1 sm:grid-cols-4 gap-4"><dt className="font-bold text-gray-700 text-base">{item.label}</dt><dd className="sm:col-span-3 text-gray-800 text-base" dangerouslySetInnerHTML={{ __html: item.value }} /></div>))}
-                        </dl>
-                    </section>
-
-                    {/* サイト統計 */}
-                    <section className={sectionClass}>
-                        <h2 className={sectionTitleClass}>{aboutContent.statistics.title}</h2>
-                        <dl className="flex flex-col gap-6">
-                            {aboutContent.statistics.items.map(item => (<div key={item.label} className="grid grid-cols-1 sm:grid-cols-4 gap-4"><dt className="font-bold text-gray-700 text-base">{item.label}</dt><dd className="sm:col-span-3 text-gray-800 text-base">{item.value}</dd></div>))}
-                        </dl>
-                    </section>
-
-                    {/* 公開データについて */}
-                    <section className={sectionClass}>
-                        <h2 className={sectionTitleClass}>{aboutContent.dataInfo.title}</h2>
-                        <div className="flex flex-col gap-6">
-                            {aboutContent.dataInfo.items.map(item => (<div key={item.label} className="border-l-4 border-primary pl-4"><h3 className="font-bold text-gray-800 text-base mb-2">{item.label}</h3><p className="text-gray-700 text-base">{item.value}</p></div>))}
-                        </div>
-                    </section>
-
-                    {/* 技術情報 */}
-                    <section className={sectionClass}>
-                        <h2 className={sectionTitleClass}>{aboutContent.techInfo.title}</h2>
-                        <p className="text-gray-700 text-base mb-4">{aboutContent.techInfo.intro}</p>
-                        <ul className="flex flex-col gap-3 text-gray-700">
-                            {aboutContent.techInfo.items.map(item => (<li key={item} className="text-base flex items-start gap-2"><span className="text-primary font-bold flex-shrink-0">•</span><span dangerouslySetInnerHTML={{ __html: item }} /></li>))}
-                        </ul>
-                    </section>
-
-                    {/* 注意事項 */}
-                    <section className={sectionClass}>
-                        <h2 className={sectionTitleClass}>{aboutContent.disclaimer.title}</h2>
-                        <div className="flex flex-col gap-4 p-4 bg-red-50 border-l-4 border-red-500 rounded">
-                            {aboutContent.disclaimer.paragraphs.map((text, index) => (<p key={index} className="text-gray-700 leading-8 text-base" dangerouslySetInnerHTML={{ __html: text }} />))}
-                        </div>
-                    </section>
-
-                    {/* 関連ページへの導線 */}
-                    <section className={sectionClass}>
-                        <h2 className={sectionTitleClass}>関連ページ</h2>
-                        <div className="grid md:grid-cols-3 gap-4">
-                            <Link href="/faq" className="p-4 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-md transition-all">
-                                <h3 className="font-bold text-gray-800 mb-2">よくある質問</h3>
-                                <p className="text-sm text-gray-600">FAQページで詳しくご説明しています。</p>
-                            </Link>
-                            <Link href="/contact" className="p-4 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-md transition-all">
-                                <h3 className="font-bold text-gray-800 mb-2">お問い合わせ</h3>
-                                <p className="text-sm text-gray-600">ご質問やご意見をお聞かせください。</p>
-                            </Link>
-                            <Link href="/articles" className="p-4 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-md transition-all">
-                                <h3 className="font-bold text-gray-800 mb-2">分析記事</h3>
-                                <p className="text-sm text-gray-600">競馬予想に役立つ記事を公開中。</p>
-                            </Link>
-                        </div>
-                    </section>
                 </div>
             </div>
-        </div>
+        </>
     );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Breadcrumb } from '@/components/Breadcrumb';
 
 export const metadata: Metadata = {
     title: "お問い合わせ | UMA-FREE",
@@ -41,108 +42,111 @@ export default function ContactPage() {
     // --- スタイル定義ここまで ---
 
     return (
-        <div className="container py-8">
-            <div className="max-w-4xl mx-auto">
-                {/* セクション間の余白をgap-10に設定 */}
-                <div className="flex flex-col gap-10">
+        <>
+            <Breadcrumb />
+            <div className="container py-8">
+                <div className="max-w-4xl mx-auto">
+                    {/* セクション間の余白をgap-10に設定 */}
+                    <div className="flex flex-col gap-10">
 
-                    {/* 1. メインタイトル */}
-                    <div>
-                        <h1 className={mainTitleClass}>
-                            お問い合わせ
-                        </h1>
-                        <p className={textBaseClass}>
-                            サイトに関するご質問、ご意見、不具合のご報告などがございましたら、お気軽にお問い合わせください。
-                        </p>
+                        {/* 1. メインタイトル */}
+                        <div>
+                            <h1 className={mainTitleClass}>
+                                お問い合わせ
+                            </h1>
+                            <p className={textBaseClass}>
+                                サイトに関するご質問、ご意見、不具合のご報告などがございましたら、お気軽にお問い合わせください。
+                            </p>
+                        </div>
+
+                        {/* 2. メインCTAセクション (最優先) */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>
+                                お問い合わせフォーム
+                            </h2>
+                            <p className={textBaseClass}>
+                                ご用の際はこちらのフォームよりご連絡ください。
+                            </p>
+                            <div className="flex justify-start">
+                                <a
+                                    href={googleFormUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={primaryButtonClass}
+                                    aria-label="お問い合わせフォームを新しいタブで開く"
+                                >
+                                    お問い合わせフォームを開く
+                                </a>
+                            </div>
+                        </section>
+
+                        {/* 3. FAQセクション (CTAの次に配置) */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>
+                                よくある質問 (FAQ)
+                            </h2>
+                            <p className={textBaseClass}>
+                                多くのご質問には、FAQページでお答えしています。お問い合わせの前にご確認いただくと、問題が解決する場合があります。
+                            </p>
+                            <div className="flex justify-start">
+                                <Link
+                                    href="/faq"
+                                    className={secondaryButtonClass}
+                                >
+                                    FAQを確認
+                                </Link>
+                            </div>
+                        </section>
+
+                        {/* 4. お問い合わせ種別セクション (h2を追加) */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>
+                                主なお問い合わせ内容
+                            </h2>
+                            <p className={textBaseClass}>
+                                以下のようなお問い合わせをお受けしています：
+                            </p>
+                            {/* セマンティクス向上のため ul/li に変更 (list-decimal) */}
+                            <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 list-decimal list-inside marker:text-primary marker:font-bold">
+                                {inquiryTypes.map((type) => (
+                                    <li key={type} className={`${textBaseClass} ml-2`}>
+                                        {type}
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+
+                        {/* 5. 返信ポリシーセクション (h2を追加) */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>
+                                ご返信について
+                            </h2>
+                            {/* ul/li と flex を組み合わせてレイアウト */}
+                            <ul className="flex flex-col gap-3">
+                                {[
+                                    "お問い合わせいただいた内容に対して、必要に応じてご返事させていただきます。",
+                                    "ご返信は入力いただいたメールアドレスに送信されます。",
+                                    "スパム判定される場合もございますので、迷惑メールフォルダもご確認ください。",
+                                ].map((text, index) => (
+                                    <li key={index} className={`${textBaseClass} flex items-start gap-2.5`}>
+                                        <span className="text-primary font-bold flex-shrink-0 mt-1.5 text-lg">•</span>
+                                        <span>{text}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+
+                        {/* 6. 個人情報の取り扱いセクション */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>個人情報の取り扱い</h2>
+                            <p className={textBaseClass}>
+                                お問い合わせ時にご入力いただいた個人情報については、サイトの改善とお問い合わせへのご返信にのみ使用いたします。詳細は<Link href="/privacy" className="text-primary hover:underline font-semibold">プライバシーポリシー</Link>をご覧ください。
+                            </p>
+                        </section>
+
                     </div>
-
-                    {/* 2. メインCTAセクション (最優先) */}
-                    <section className={sectionClass}>
-                        <h2 className={sectionTitleClass}>
-                            お問い合わせフォーム
-                        </h2>
-                        <p className={textBaseClass}>
-                            ご用の際はこちらのフォームよりご連絡ください。
-                        </p>
-                        <div className="flex justify-start">
-                            <a
-                                href={googleFormUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={primaryButtonClass}
-                                aria-label="お問い合わせフォームを新しいタブで開く"
-                            >
-                                お問い合わせフォームを開く
-                            </a>
-                        </div>
-                    </section>
-
-                    {/* 3. FAQセクション (CTAの次に配置) */}
-                    <section className={sectionClass}>
-                        <h2 className={sectionTitleClass}>
-                            よくある質問 (FAQ)
-                        </h2>
-                        <p className={textBaseClass}>
-                            多くのご質問には、FAQページでお答えしています。お問い合わせの前にご確認いただくと、問題が解決する場合があります。
-                        </p>
-                        <div className="flex justify-start">
-                            <Link
-                                href="/faq"
-                                className={secondaryButtonClass}
-                            >
-                                FAQを確認
-                            </Link>
-                        </div>
-                    </section>
-
-                    {/* 4. お問い合わせ種別セクション (h2を追加) */}
-                    <section className={sectionClass}>
-                        <h2 className={sectionTitleClass}>
-                            主なお問い合わせ内容
-                        </h2>
-                        <p className={textBaseClass}>
-                            以下のようなお問い合わせをお受けしています：
-                        </p>
-                        {/* セマンティクス向上のため ul/li に変更 (list-decimal) */}
-                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 list-decimal list-inside marker:text-primary marker:font-bold">
-                            {inquiryTypes.map((type) => (
-                                <li key={type} className={`${textBaseClass} ml-2`}>
-                                    {type}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-
-                    {/* 5. 返信ポリシーセクション (h2を追加) */}
-                    <section className={sectionClass}>
-                        <h2 className={sectionTitleClass}>
-                            ご返信について
-                        </h2>
-                        {/* ul/li と flex を組み合わせてレイアウト */}
-                        <ul className="flex flex-col gap-3">
-                            {[
-                                "お問い合わせいただいた内容に対して、必要に応じてご返事させていただきます。",
-                                "ご返信は入力いただいたメールアドレスに送信されます。",
-                                "スパム判定される場合もございますので、迷惑メールフォルダもご確認ください。",
-                            ].map((text, index) => (
-                                <li key={index} className={`${textBaseClass} flex items-start gap-2.5`}>
-                                    <span className="text-primary font-bold flex-shrink-0 mt-1.5 text-lg">•</span>
-                                    <span>{text}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-
-                    {/* 6. 個人情報の取り扱いセクション */}
-                    <section className={sectionClass}>
-                        <h2 className={sectionTitleClass}>個人情報の取り扱い</h2>
-                        <p className={textBaseClass}>
-                            お問い合わせ時にご入力いただいた個人情報については、サイトの改善とお問い合わせへのご返信にのみ使用いたします。詳細は<Link href="/privacy" className="text-primary hover:underline font-semibold">プライバシーポリシー</Link>をご覧ください。
-                        </p>
-                    </section>
-                    
                 </div>
             </div>
-        </div>
+        </>
     );
 }

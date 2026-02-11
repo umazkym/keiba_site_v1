@@ -6,6 +6,7 @@ import { RaceDayPrediction } from "@/lib/types";
 import { RaceTabs } from "@/components/RaceTabs";
 import { SpecialPickCard } from "@/components/SpecialPickCard";
 import { TopHitsDisplay } from "@/components/TopHitsDisplay";
+import { DataExplainer } from "@/components/DataExplainer";
 import { formatDate } from "@/lib/utils";
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { getPredictionsForDate } from "@/lib/api";
@@ -264,7 +265,36 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                     </button>
                 </div>
             </div>
+            <DataExplainer />
             {renderContent()}
+
+            {/* 関連コンテンツ・内部導線 */}
+            <section className="mt-8 bg-slate-50 rounded-xl border border-slate-200 p-6">
+                <h2 className="font-bold text-lg text-gray-800 mb-4">関連コンテンツ</h2>
+                <div className="grid sm:grid-cols-3 gap-4">
+                    <Link
+                        href="/articles"
+                        className="block bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
+                    >
+                        <div className="font-bold text-sm text-blue-700 mb-1">📊 分析記事一覧</div>
+                        <p className="text-xs text-gray-500">競馬データの読み方やAI分析のコツを解説</p>
+                    </Link>
+                    <Link
+                        href="/faq"
+                        className="block bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
+                    >
+                        <div className="font-bold text-sm text-blue-700 mb-1">❓ よくある質問</div>
+                        <p className="text-xs text-gray-500">データの活用方法や更新タイミングのFAQ</p>
+                    </Link>
+                    <Link
+                        href="/about"
+                        className="block bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
+                    >
+                        <div className="font-bold text-sm text-blue-700 mb-1">ℹ️ サイトについて</div>
+                        <p className="text-xs text-gray-500">UMA-FREEのデータソースと分析手法</p>
+                    </Link>
+                </div>
+            </section>
         </div>
     );
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Breadcrumb } from '@/components/Breadcrumb';
 
 export const metadata: Metadata = {
     title: "利用規約 | UMA-FREE",
@@ -6,6 +7,9 @@ export const metadata: Metadata = {
     robots: {
         index: true,
         follow: true,
+    },
+    alternates: {
+        canonical: '/terms',
     },
 };
 
@@ -205,71 +209,74 @@ const termsOfServiceContent: TermsOfServiceContent = {
 
 export default function TermsOfServicePage() {
     return (
-        <div className="container py-8">
-            <div className="max-w-4xl mx-auto">
-                <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-3 border-primary pb-4">{termsOfServiceContent.title}</h1>
-                <div className="flex flex-col gap-8 text-gray-700 leading-8">
-                    <p className="text-sm text-gray-500">{termsOfServiceContent.lastUpdated}</p>
-                    <p className="text-base">{termsOfServiceContent.introduction}</p>
-                    {termsOfServiceContent.sections.map((section, index) => (
-                        <section key={index} className="flex flex-col gap-4">
-                            <h2 className="text-3xl font-bold text-gray-800 mt-6 mb-2 border-b border-gray-200 pb-2">{section.title}</h2>
+        <>
+            <Breadcrumb />
+            <div className="container py-8">
+                <div className="max-w-4xl mx-auto">
+                    <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-3 border-primary pb-4">{termsOfServiceContent.title}</h1>
+                    <div className="flex flex-col gap-8 text-gray-700 leading-8">
+                        <p className="text-sm text-gray-500">{termsOfServiceContent.lastUpdated}</p>
+                        <p className="text-base">{termsOfServiceContent.introduction}</p>
+                        {termsOfServiceContent.sections.map((section, index) => (
+                            <section key={index} className="flex flex-col gap-4">
+                                <h2 className="text-3xl font-bold text-gray-800 mt-6 mb-2 border-b border-gray-200 pb-2">{section.title}</h2>
 
-                            {section.content && typeof section.content === 'string' && (
-                                <p className="text-base" dangerouslySetInnerHTML={{ __html: section.content }} />
-                            )}
+                                {section.content && typeof section.content === 'string' && (
+                                    <p className="text-base" dangerouslySetInnerHTML={{ __html: section.content }} />
+                                )}
 
-                            {section.intro && (
-                                <p className="text-base">{section.intro}</p>
-                            )}
+                                {section.intro && (
+                                    <p className="text-base">{section.intro}</p>
+                                )}
 
-                            {section.subsections?.map((subsection, subIndex) => (
-                                <div key={subIndex} className="flex flex-col gap-3">
-                                    <h3 className="text-xl font-bold text-gray-700 mt-4 mb-1">{subsection.title}</h3>
-                                    {subsection.intro && <p className="text-base">{subsection.intro}</p>}
-                                    {Array.isArray(subsection.content) ? (
-                                        subsection.content.map((p, pIndex) => (
-                                            <p key={pIndex} className="mt-2 text-base" dangerouslySetInnerHTML={{ __html: p }} />
-                                        ))
+                                {section.subsections?.map((subsection, subIndex) => (
+                                    <div key={subIndex} className="flex flex-col gap-3">
+                                        <h3 className="text-xl font-bold text-gray-700 mt-4 mb-1">{subsection.title}</h3>
+                                        {subsection.intro && <p className="text-base">{subsection.intro}</p>}
+                                        {Array.isArray(subsection.content) ? (
+                                            subsection.content.map((p, pIndex) => (
+                                                <p key={pIndex} className="mt-2 text-base" dangerouslySetInnerHTML={{ __html: p }} />
+                                            ))
+                                        ) : (
+                                            subsection.items && (
+                                                <ul className="list-disc list-inside flex flex-col gap-2 mt-2">
+                                                    {subsection.items.map((item, itemIndex) => (
+                                                        <li key={itemIndex} className="text-base">{item}</li>
+                                                    ))}
+                                                </ul>
+                                            )
+                                        )}
+                                    </div>
+                                ))}
+
+                                {section.items && (
+                                    section.isOrdered ? (
+                                        <ol className="list-decimal list-inside flex flex-col gap-2 mt-2">
+                                            {section.items.map((item, itemIndex) => (
+                                                <li key={itemIndex} className="text-base">{item}</li>
+                                            ))}
+                                        </ol>
                                     ) : (
-                                        subsection.items && (
-                                            <ul className="list-disc list-inside flex flex-col gap-2 mt-2">
-                                                {subsection.items.map((item, itemIndex) => (
-                                                    <li key={itemIndex} className="text-base">{item}</li>
-                                                ))}
-                                            </ul>
-                                        )
-                                    )}
-                                </div>
-                            ))}
+                                        <ul className="list-disc list-inside flex flex-col gap-2 mt-2">
+                                            {section.items.map((item, itemIndex) => (
+                                                <li key={itemIndex} className="text-base">{item}</li>
+                                            ))}
+                                        </ul>
+                                    )
+                                )}
 
-                            {section.items && (
-                                section.isOrdered ? (
-                                    <ol className="list-decimal list-inside flex flex-col gap-2 mt-2">
-                                        {section.items.map((item, itemIndex) => (
-                                            <li key={itemIndex} className="text-base">{item}</li>
-                                        ))}
-                                    </ol>
-                                ) : (
-                                    <ul className="list-disc list-inside flex flex-col gap-2 mt-2">
-                                        {section.items.map((item, itemIndex) => (
-                                            <li key={itemIndex} className="text-base">{item}</li>
-                                        ))}
-                                    </ul>
-                                )
-                            )}
-
-                            {section.contactInfo && (
-                                <div className="flex flex-col gap-2 mt-3">
-                                    <p className="text-base"><strong>{'運営者：'}</strong>{section.contactInfo.operator}</p>
-                                    <p className="text-base"><strong>{'サイト名：'}</strong>{section.contactInfo.siteName}</p>
-                                    <p className="text-base"><strong>{'お問い合わせフォーム：'}</strong><span dangerouslySetInnerHTML={{ __html: section.contactInfo.formLink }} /></p>
-                                </div>
-                            )}
-                        </section>
-                    ))}
+                                {section.contactInfo && (
+                                    <div className="flex flex-col gap-2 mt-3">
+                                        <p className="text-base"><strong>{'運営者：'}</strong>{section.contactInfo.operator}</p>
+                                        <p className="text-base"><strong>{'サイト名：'}</strong>{section.contactInfo.siteName}</p>
+                                        <p className="text-base"><strong>{'お問い合わせフォーム：'}</strong><span dangerouslySetInnerHTML={{ __html: section.contactInfo.formLink }} /></p>
+                                    </div>
+                                )}
+                            </section>
+                        ))}
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 }

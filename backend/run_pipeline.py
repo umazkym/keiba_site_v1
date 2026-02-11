@@ -101,15 +101,21 @@ def worker_process_race(race_id_tuple):
         horse_ids_in_race = {h['horse_id'] for h in shutuba_data['horses'] if h.get('horse_id')}
         for horse_id in horse_ids_in_race:
             # 件数だけでなくデータの鮮度も考慮してスキップ判定
+            # finish_time_sec が非NULLのレース（実際の成績）のみで判定
+            force_download = False
             result_count = db.query(models.Result).filter(models.Result.horse_id == horse_id).count()
             if result_count >= 5:
                 from sqlalchemy import func as sa_func
                 latest_date = db.query(sa_func.max(models.Race.race_date))\
                     .join(models.Result, models.Result.race_id == models.Race.id)\
-                    .filter(models.Result.horse_id == horse_id).scalar()
+                    .filter(models.Result.horse_id == horse_id)\
+                    .filter(models.Result.finish_time_sec.isnot(None))\
+                    .scalar()
                 if latest_date and (race_date - latest_date).days < 365:
                     continue
-            html, was_scraped = scraper.get_horse_page_html(horse_id, force_download=False)
+                # データが古い場合はキャッシュを無視して最新データを取得
+                force_download = True
+            html, was_scraped = scraper.get_horse_page_html(horse_id, force_download=force_download)
             if html:
                 parsed_data = parser.parse_horse_results_page(html)
                 if parsed_data and parsed_data.get('results'):

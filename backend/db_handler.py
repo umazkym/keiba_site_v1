@@ -36,16 +36,22 @@ def _fetch_and_load_horse_past_data(db: Session, horse_ids: set, driver=None):
             existing_results_count = db.query(func.count(models.Result.id)).filter(models.Result.horse_id == horse_id).scalar()
 
             # 件数だけでなくデータの鮮度も考慮してスキップ判定
-            # 5件以上あっても直近1年以内のデータがなければ再取得が必要
+            # finish_time_sec が非NULLのレース（実際の成績）のみで判定
+            # 出走表エントリ（finish_time_sec=NULL）は除外
+            force_download = False
             if existing_results_count >= 5:
                 latest_race_date = db.query(func.max(models.Race.race_date))\
                     .join(models.Result, models.Result.race_id == models.Race.id)\
-                    .filter(models.Result.horse_id == horse_id).scalar()
+                    .filter(models.Result.horse_id == horse_id)\
+                    .filter(models.Result.finish_time_sec.isnot(None))\
+                    .scalar()
                 if latest_race_date and (date.today() - latest_race_date).days < 365:
                     continue
+                # データが古い場合はキャッシュを無視して最新データを取得
+                force_download = True
 
             # driverを渡す
-            html, was_scraped = get_horse_page_html(horse_id, force_download=False, driver=driver)
+            html, was_scraped = get_horse_page_html(horse_id, force_download=force_download, driver=driver)
             
             if html:
                 parsed_data = parser.parse_horse_results_page(html)

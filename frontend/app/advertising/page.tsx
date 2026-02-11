@@ -8,6 +8,10 @@ export const metadata: Metadata = {
         index: true,
         follow: true,
     },
+    openGraph: {
+        title: "広告について | UMA-FREE",
+        description: "UMA-FREEの広告配信ポリシー。Google AdSenseによる広告配信、Cookie技術の使用、オプトアウト方法について説明しています。",
+    },
     alternates: {
         canonical: '/advertising',
     },

@@ -8,6 +8,10 @@ export const metadata: Metadata = {
         index: true,
         follow: true,
     },
+    openGraph: {
+        title: "プライバシーポリシー | UMA-FREE",
+        description: "UMA-FREEのプライバシーポリシーです。個人情報の取り扱い、Cookieの使用、Google AdSense・アナリティクスによる情報収集について詳しく説明しています。",
+    },
     alternates: {
         canonical: '/privacy',
     },

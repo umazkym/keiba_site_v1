@@ -9,6 +9,10 @@ export const metadata: Metadata = {
         index: true,
         follow: true,
     },
+    openGraph: {
+        title: 'よくある質問 | UMA-FREE',
+        description: 'UMA-FREEのAI競馬分析に関するよくある質問。料金、データ更新タイミング、分析精度、モバイル対応など17の質問に回答しています。',
+    },
     alternates: {
         canonical: '/faq',
     },

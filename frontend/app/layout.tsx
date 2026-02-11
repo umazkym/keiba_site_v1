@@ -19,25 +19,23 @@ const inter = Inter({
 export const metadata: Metadata = {
     metadataBase: new URL("https://uma-free.com"),
     title: {
-        default: "uma-free - 全レース無料AI競馬予想",
-        template: "%s | uma-free",
+        default: "UMA-FREE - AI競馬データ分析・統計情報サイト",
+        template: "%s | UMA-FREE",
     },
-    description: "全レース無料のAI競馬予想サイト。中央・地方競馬の全レースのAI予想を完全無料で公開しています。最新のAI技術を駆使した予想で、あなたの競馬ライフをサポートします。",
+    description: "競馬レースの統計分析データを完全無料で提供。過去5年以上のデータを機械学習で分析。中央・地方競馬の全レースのAI偏差値・対戦成績・枠順分析をご活用ください。",
     icons: {
         icon: "/new-logo.png",
         shortcut: "/new-logo.png",
         apple: "/new-logo.png",
     },
-    // ★★★ ここを変更：otherプロパティを使用 ★★★
     other: {
         'google-adsense-account': 'ca-pub-4411270831448240',
     },
-    // ★★★ 変更ここまで ★★★
     openGraph: {
-        title: "uma-free - 全レース無料AI競馬予想",
-        description: "全レース無料のAI競馬予想サイト。中央・地方競馬の全レースのAI予想を完全無料で公開しています。",
+        title: "UMA-FREE | AI競馬データ分析・統計情報サイト",
+        description: "競馬レースの統計分析データを完全無料で提供。過去5年以上のデータを機械学習で分析。中央・地方競馬の全レースのAI偏差値・対戦成績・枠順分析をご活用ください。",
         url: "https://uma-free.com",
-        siteName: "uma-free",
+        siteName: "UMA-FREE",
         images: [
             {
                 url: "/new-logo.png",
@@ -50,8 +48,8 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "uma-free - 全レース無料AI競馬予想",
-        description: "全レース無料のAI競馬予想サイト。中央・地方競馬の全レースのAI予想を完全無料で公開しています。",
+        title: "UMA-FREE | AI競馬データ分析・統計情報サイト",
+        description: "競馬レースの統計分析データを完全無料で提供。AI偏差値・対戦成績・枠順分析で競馬ライフをサポート。",
     },
     alternates: {
         canonical: "https://uma-free.com",

@@ -9,6 +9,10 @@ export const metadata: Metadata = {
         index: true,
         follow: true,
     },
+    openGraph: {
+        title: "お問い合わせ | UMA-FREE",
+        description: "UMA-FREEへのお問い合わせページ。サイトの使い方、データの不具合報告、機能リクエストなどお気軽にご連絡ください。",
+    },
     alternates: {
         canonical: '/contact',
     },

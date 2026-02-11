@@ -8,6 +8,10 @@ export const metadata: Metadata = {
         index: true,
         follow: true,
     },
+    openGraph: {
+        title: "利用規約 | UMA-FREE",
+        description: "UMA-FREEの利用規約。サービス利用のルール、免責事項、ユーザーの責任、禁止事項、知的財産権について詳しく定めています。",
+    },
     alternates: {
         canonical: '/terms',
     },

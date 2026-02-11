@@ -400,12 +400,12 @@ def get_horse_page_html(
     driver: Optional[webdriver.Chrome] = None
 ) -> Tuple[Optional[str], bool]:
     """
-    馬ページHTMLを取得する。
+    馬の戦績ページHTMLを取得する。
     
-    db.netkeibaは静的HTMLなので、requestsで高速に取得可能。
-    Seleniumは不要。
+    netkeibaの構造変更により、過去成績テーブルは /horse/result/{id}/ に移動。
+    静的HTMLなので、requestsで高速に取得可能。Seleniumは不要。
     """
-    url = f"{DB_BASE_URL}/horse/{horse_id}"
+    url = f"{DB_BASE_URL}/horse/result/{horse_id}/"
     dir_path = os.path.join(HTML_DIR, "horse")
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, f"{horse_id}.bin")

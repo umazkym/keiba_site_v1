@@ -379,6 +379,43 @@ def main():
         print("調査完了")
         print("=" * 80)
         
+        # ===== 調査7: スクレイピング動作検証 =====
+        print("\n" + "=" * 80)
+        print("【調査7】スクレイピング動作検証 (トラストユー ID:2022101496)")
+        print("=" * 80)
+        
+        test_horse_id = "2022101496"
+        from scripts import scraper
+        
+        print(f"カレントディレクトリ: {os.getcwd()}")
+        print(f"scraper.HTML_DIR: {os.path.abspath(scraper.HTML_DIR)}")
+        
+        # 強制ダウンロード実行
+        print("get_horse_page_html(..., force_download=True) を実行中...")
+        try:
+            html, was_scraped = scraper.get_horse_page_html(test_horse_id, force_download=True)
+            print(f"結果: html取得={'成功' if html else '失敗'}, was_scraped={was_scraped}")
+            
+            if html:
+                print(f"HTMLサイズ: {len(html)} bytes")
+                # ファイルパスの確認
+                expected_path = os.path.join(scraper.HTML_DIR, "horse", f"{test_horse_id}.bin")
+                print(f"期待される保存パス: {expected_path}")
+                if os.path.exists(expected_path):
+                    print(f"ファイル存在確認: OK")
+                    print(f"ファイルサイズ: {os.path.getsize(expected_path)} bytes")
+                    mtime = datetime.datetime.fromtimestamp(os.path.getmtime(expected_path))
+                    print(f"ファイル更新日時: {mtime}")
+                else:
+                    print(f"ファイル存在確認: NG (ファイルが見つかりません)")
+            else:
+                print("HTMLが取得できませんでした。ネットワーク制限やBANの可能性があります。")
+                
+        except Exception as e:
+            print(f"スクレイピング実行中にエラー発生: {e}")
+            import traceback
+            traceback.print_exc()
+        
     finally:
         db.close()
 

@@ -131,6 +131,15 @@ def main():
                 dev_score = horse[3]
                 
                 print(f"--- 馬番{horse_num} {horse_name} (ID: {horse_id}) ---")
+    
+                # キャッシュファイルの更新日時確認
+                cache_path = os.path.join("data", "html_cache", "horse", f"{horse_id}.bin")
+                if os.path.exists(cache_path):
+                    mtime = datetime.datetime.fromtimestamp(os.path.getmtime(cache_path))
+                    print(f"  キャッシュ更新日時: {mtime}")
+                else:
+                    print("  キャッシュファイルなし")
+
                 print(f"  偏差値: {dev_score}")
                 
                 # この馬の全過去成績数

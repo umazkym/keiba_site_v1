@@ -5,6 +5,7 @@ import sys
 import traceback
 import time
 import random
+from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select
 from database import models
@@ -34,8 +35,14 @@ def _fetch_and_load_horse_past_data(db: Session, horse_ids: set, driver=None):
         try:
             existing_results_count = db.query(func.count(models.Result.id)).filter(models.Result.horse_id == horse_id).scalar()
 
+            # 件数だけでなくデータの鮮度も考慮してスキップ判定
+            # 5件以上あっても直近1年以内のデータがなければ再取得が必要
             if existing_results_count >= 5:
-                continue
+                latest_race_date = db.query(func.max(models.Race.race_date))\
+                    .join(models.Result, models.Result.race_id == models.Race.id)\
+                    .filter(models.Result.horse_id == horse_id).scalar()
+                if latest_race_date and (date.today() - latest_race_date).days < 365:
+                    continue
 
             # driverを渡す
             html, was_scraped = get_horse_page_html(horse_id, force_download=False, driver=driver)
@@ -118,38 +125,37 @@ def update_race_results(db: Session, target_date: datetime.date):
 def insert_new_predictions(db: Session, target_date: datetime.date):
     print(f"\n--- [PREDICTIONS] Inserting new predictions for {target_date.strftime('%Y-%m-%d')} ---")
     try:
-        print(f"  -> Deleting any existing data for {target_date.strftime('%Y-%m-%d')} to ensure a clean state.")
-        # メモリ使用量を削減するため、バッチ処理で削除
-        races_to_delete_stmt = select(models.Race.id).where(models.Race.race_date == target_date)
+        print(f"  -> Cleaning predictions/matchups for {target_date.strftime('%Y-%m-%d')}...")
+        # predictions と matchups のみ削除（races, results, race_returns は温存）
+        # load_shutuba_data は UPSERT（ON CONFLICT DO UPDATE）を使用するため、
+        # 事前にraces/resultsを削除する必要はない。
+        # races/resultsを削除すると、馬の過去成績が失われ偏差値計算に悪影響を与える。
+        races_for_date_stmt = select(models.Race.id).where(models.Race.race_date == target_date)
 
         BATCH_SIZE = 100
-        total_deleted = 0
+        total_cleaned = 0
 
         while True:
-            # limitをselectステートメントに適用（run_pipeline.pyと同じパターン）
-            batch_stmt = races_to_delete_stmt.limit(BATCH_SIZE)
+            batch_stmt = races_for_date_stmt.limit(BATCH_SIZE)
             race_ids_batch = [r[0] for r in db.execute(batch_stmt).fetchall()]
             if not race_ids_batch:
                 break
 
             db.query(models.Matchup).filter(models.Matchup.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
             db.query(models.Prediction).filter(models.Prediction.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
-            db.query(models.Result).filter(models.Result.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
-            db.query(models.RaceReturn).filter(models.RaceReturn.race_id.in_(race_ids_batch)).delete(synchronize_session=False)
-            db.query(models.Race).filter(models.Race.id.in_(race_ids_batch)).delete(synchronize_session=False)
             db.commit()
 
-            total_deleted += len(race_ids_batch)
+            total_cleaned += len(race_ids_batch)
             del race_ids_batch
             gc.collect()
 
-            if total_deleted >= 1000:  # 安全のため上限を設定
+            if total_cleaned >= 1000:
                 break
 
-        if total_deleted > 0:
-            print(f"  -> Deletion of old data complete. ({total_deleted} races deleted)")
+        if total_cleaned > 0:
+            print(f"  -> Cleaned predictions/matchups for {total_cleaned} races.")
         else:
-            print(f"  -> No existing data found for {target_date.strftime('%Y-%m-%d')}")
+            print(f"  -> No existing predictions found for {target_date.strftime('%Y-%m-%d')}")
     except Exception as e:
         print(f"  -> An error occurred during cleanup, rolling back: {e}")
         db.rollback()

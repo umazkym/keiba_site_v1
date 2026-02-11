@@ -108,8 +108,10 @@ def _get_bulk_performance_data(db: Session, horse_ids: List[str], race_date: dat
             gc.collect()
 
         return results_by_horse
-    except Exception:
-        # データ取得でエラーが発生した場合は空の辞書を返す
+    except Exception as e:
+        # データ取得でエラーが発生した場合はログ出力して空の辞書を返す
+        print(f"[WARNING] _get_bulk_performance_data でエラー発生: {e}")
+        traceback.print_exc()
         return {}
 
 

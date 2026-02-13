@@ -17,24 +17,24 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     const style = rankStyles[Math.min(rank - 1, 4)];
 
     return (
-        <div className={`bg-white rounded-lg border transition-all duration-200 ${style.borderColor} ${style.shadow} ${style.scale} p-3 flex flex-col items-start gap-2 h-full hover:bg-gray-50/50`}>
+        <div className={`bg-white rounded-lg border transition-all duration-200 ${style.borderColor} ${style.shadow} ${style.scale} p-2.5 sm:p-3 flex flex-col items-start gap-1.5 sm:gap-2 h-full hover:bg-gray-50/50`}>
             <div className="flex justify-between items-center w-full">
-                <div className={`text-xs font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-2 py-0.5`}>
+                <div className={`text-[10px] sm:text-xs font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-1.5 sm:px-2 py-0.5`}>
                     {rank}位
                 </div>
-                <div className="font-bold text-red-600 text-base lg:text-lg whitespace-nowrap leading-none">
+                <div className="font-bold text-red-600 text-sm sm:text-base lg:text-lg whitespace-nowrap leading-none">
                     {hit.payout.toLocaleString()}円
                 </div>
             </div>
             <div className="text-left w-full">
-                <div className="text-xs text-gray-500 mb-0.5">
+                <div className="text-[10px] sm:text-xs text-gray-500 mb-0.5">
                     {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
                     {' '}{hit.venue_name}{hit.race_number}R
                 </div>
-                <div className="text-sm text-gray-800 font-medium truncate mb-0.5" title={hit.race_name}>
+                <div className="text-xs sm:text-sm text-gray-800 font-medium truncate mb-0.5" title={hit.race_name}>
                     {hit.race_name}
                 </div>
-                <div className="text-xs text-gray-600 truncate" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
+                <div className="text-[10px] sm:text-xs text-gray-600 truncate" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
                     {hit.bet_type}: {hit.winning_numbers}
                 </div>
             </div>
@@ -45,9 +45,9 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
 const Skeleton = () => (
     <div className="animate-pulse">
         <div className="h-7 bg-gray-200 rounded w-1/2 mb-2"></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2">
             {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-24 bg-gray-100 rounded-lg border border-gray-200"></div>
+                <div key={i} className={`h-20 sm:h-24 bg-gray-100 rounded-lg border border-gray-200 ${i === 4 ? 'col-span-2 sm:col-span-1' : ''}`}></div>
             ))}
         </div>
     </div>
@@ -83,10 +83,10 @@ export const TopHitsDisplay = () => {
 
     return (
         <div>
-            <h2 className="flex items-center text-lg sm:text-xl font-bold text-gray-800 mb-3 px-1">
-                <TrophyIcon className="w-5 h-5 mr-2 text-yellow-500" />
+            <h2 className="flex items-center text-base sm:text-xl font-bold text-gray-800 mb-2 sm:mb-3 px-1">
+                <TrophyIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-yellow-500" />
                 <span className="whitespace-nowrap">高配当的中ランキング</span>
-                <span className="text-xs font-normal text-gray-500 ml-2 whitespace-nowrap self-end mb-1">(直近7日間)</span>
+                <span className="text-[10px] sm:text-xs font-normal text-gray-500 ml-1.5 sm:ml-2 whitespace-nowrap self-end mb-0.5 sm:mb-1">(直近7日間)</span>
             </h2>
             {hits.length === 0 ? (
                 <div className="p-6 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-center text-gray-500 text-sm">
@@ -94,7 +94,7 @@ export const TopHitsDisplay = () => {
                 </div>
             ) : (
                 <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
                         {hits.map((hit, index) => (
                             <Link
                                 key={`${hit.race_id}-${hit.winning_numbers}`}

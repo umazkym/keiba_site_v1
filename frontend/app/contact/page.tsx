@@ -33,10 +33,8 @@ export default function ContactPage() {
     // --- スタイル定義 ---
     // セクション全体
     const sectionClass = "flex flex-col gap-4";
-    // メインタイトル (h1)
-    const mainTitleClass = "text-4xl font-bold text-gray-800 mb-6";
     // セクションタイトル (h2)
-    const sectionTitleClass = "text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3";
+    const sectionTitleClass = "text-xl sm:text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3";
     // 本文テキスト
     const textBaseClass = "text-gray-700 leading-8 text-base";
     // メインCTAボタン

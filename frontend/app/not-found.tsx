@@ -1,6 +1,6 @@
 // frontend/app/not-found.tsx
 import Link from "next/link";
-import { SearchIcon, SparklesIcon } from "@/components/Icons";
+import { SearchIcon } from "@/components/Icons";
 
 export default function NotFound() {
     return (

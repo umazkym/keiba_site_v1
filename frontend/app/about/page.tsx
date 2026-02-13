@@ -93,7 +93,7 @@ const aboutContent = {
 export default function AboutPage() {
     // セクション用の統一されたスタイルを定義
     const sectionClass = "flex flex-col gap-4";
-    const sectionTitleClass = "text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3";
+    const sectionTitleClass = "text-xl sm:text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3";
 
     return (
         <>

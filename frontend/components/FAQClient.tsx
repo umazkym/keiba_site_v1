@@ -203,7 +203,7 @@ export const FAQClient = () => {
             <div className="container py-8">
                 <div className="max-w-4xl mx-auto">
                     {/* ヘッダー */}
-                    <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-2 border-primary pb-4">
+                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-6 border-b-2 border-primary pb-4">
                         よくある質問
                     </h1>
                     <p className="text-base text-gray-700 mb-8 leading-8">
@@ -219,8 +219,8 @@ export const FAQClient = () => {
                         <button
                             onClick={() => setSelectedCategory(null)}
                             className={`px-4 py-2 rounded-lg font-semibold transition-all ${selectedCategory === null
-                                    ? 'bg-primary text-white'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                ? 'bg-primary text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                 }`}
                         >
                             すべて
@@ -230,8 +230,8 @@ export const FAQClient = () => {
                                 key={category}
                                 onClick={() => setSelectedCategory(category)}
                                 className={`px-4 py-2 rounded-lg font-semibold transition-all ${selectedCategory === category
-                                        ? 'bg-primary text-white'
-                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    ? 'bg-primary text-white'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                     }`}
                             >
                                 {category}

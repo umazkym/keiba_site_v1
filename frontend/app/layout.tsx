@@ -74,7 +74,7 @@ export default function RootLayout({
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 
-                {/* ★★★ 手動でメタタグを追加（最優先） ★★★ */}
+                {/* AdSenseアカウントメタタグ */}
                 <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
 
                 {/* Google AdSense スクリプト（Next.js Script コンポーネント使用） */}

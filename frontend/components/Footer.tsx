@@ -22,17 +22,17 @@ export const Footer = () => {
                         <ul className="space-y-2">
                             <li>
                                 <Link href="/articles" className="text-xs text-gray-400 hover:text-blue-400 transition-colors">
-                                    📊 分析記事一覧
+                                    分析記事一覧
                                 </Link>
                             </li>
                             <li>
                                 <Link href="/faq" className="text-xs text-gray-400 hover:text-blue-400 transition-colors">
-                                    ❓ よくある質問
+                                    よくある質問
                                 </Link>
                             </li>
                             <li>
                                 <Link href="/about" className="text-xs text-gray-400 hover:text-blue-400 transition-colors">
-                                    ℹ️ このサイトについて
+                                    このサイトについて
                                 </Link>
                             </li>
                             <li>

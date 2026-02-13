@@ -11,7 +11,7 @@ import { formatDate } from "@/lib/utils";
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { getPredictionsForDate } from "@/lib/api";
 
-// ▼▼▼▼▼【修正: 日付フォーマット検証関数を追加】▼▼▼▼▼
+// 日付フォーマット検証関数
 /**
  * 日付文字列が有効なISO 8601形式（YYYY-MM-DD）かつ実在する日付であることを検証する
  * @param dateStr - 検証対象の日付文字列
@@ -39,7 +39,7 @@ const isValidDateFormat = (dateStr: string): boolean => {
 
     return isValidDate;
 };
-// ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+
 
 const DateNavigator = ({
     currentDate,
@@ -108,14 +108,14 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
 
     useEffect(() => {
         const fetchData = async (dateToFetch: string) => {
-            // ▼▼▼▼▼【修正: 日付フォーマット検証を追加】▼▼▼▼▼
+            // 日付フォーマット検証
             // 不正な日付形式の場合、バックエンドへのリクエストを送らずにエラーを表示
             if (!isValidDateFormat(dateToFetch)) {
                 setError("無効な日付形式です。YYYY-MM-DD形式で指定してください。");
                 setIsLoading(false);
                 return;
             }
-            // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+
 
             setIsLoading(true);
             setError(null);
@@ -276,21 +276,21 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                         href="/articles"
                         className="block bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
                     >
-                        <div className="font-bold text-sm text-blue-700 mb-1">📊 分析記事一覧</div>
+                        <div className="font-bold text-sm text-blue-700 mb-1">分析記事一覧</div>
                         <p className="text-xs text-gray-500">競馬データの読み方やAI分析のコツを解説</p>
                     </Link>
                     <Link
                         href="/faq"
                         className="block bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
                     >
-                        <div className="font-bold text-sm text-blue-700 mb-1">❓ よくある質問</div>
+                        <div className="font-bold text-sm text-blue-700 mb-1">よくある質問</div>
                         <p className="text-xs text-gray-500">データの活用方法や更新タイミングのFAQ</p>
                     </Link>
                     <Link
                         href="/about"
                         className="block bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
                     >
-                        <div className="font-bold text-sm text-blue-700 mb-1">ℹ️ サイトについて</div>
+                        <div className="font-bold text-sm text-blue-700 mb-1">サイトについて</div>
                         <p className="text-xs text-gray-500">UMA-FREEのデータソースと分析手法</p>
                     </Link>
                 </div>

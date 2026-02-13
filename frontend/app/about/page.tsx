@@ -103,7 +103,7 @@ export default function AboutPage() {
                     <div className="flex flex-col gap-8">
                         {/* メインセクション */}
                         <div>
-                            <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-3 border-primary pb-4">{aboutContent.main.title}</h1>
+                            <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-6 border-b-2 border-primary pb-4">{aboutContent.main.title}</h1>
                             {aboutContent.main.paragraphs.map((text, index) => (<p key={index} className={`text-gray-700 leading-8 text-base ${index > 0 ? 'mt-4' : ''}`}>{text}</p>))}
                         </div>
 

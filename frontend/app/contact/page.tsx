@@ -55,7 +55,7 @@ export default function ContactPage() {
 
                         {/* 1. メインタイトル */}
                         <div>
-                            <h1 className={mainTitleClass}>
+                            <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-6 border-b-2 border-primary pb-4">
                                 お問い合わせ
                             </h1>
                             <p className={textBaseClass}>

@@ -46,7 +46,7 @@ type PrivacyPolicyContent = {
     sections: Section[];
 };
 
-// ▼▼▼▼▼【ここから修正】コンテンツをデータとして定義 ▼▼▼▼▼
+// プライバシーポリシーコンテンツ定義
 const privacyPolicyContent: PrivacyPolicyContent = {
     title: 'プライバシーポリシー',
     lastUpdated: '最終更新日: 2025年10月20日',
@@ -150,7 +150,7 @@ const privacyPolicyContent: PrivacyPolicyContent = {
         },
     ],
 };
-// ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+
 
 
 export default function PrivacyPolicyPage() {
@@ -159,13 +159,13 @@ export default function PrivacyPolicyPage() {
             <Breadcrumb />
             <div className="container py-8">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-4xl font-bold text-gray-800 mb-6 border-b-3 border-primary pb-4">{privacyPolicyContent.title}</h1>
+                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-6 border-b-2 border-primary pb-4">{privacyPolicyContent.title}</h1>
                     <div className="flex flex-col gap-8 text-gray-700 leading-8">
                         <p className="text-sm text-gray-500">{privacyPolicyContent.lastUpdated}</p>
                         <p className="text-base">{privacyPolicyContent.introduction}</p>
                         {privacyPolicyContent.sections.map((section, index) => (
                             <section key={index} className="flex flex-col gap-4">
-                                <h2 className="text-3xl font-bold text-gray-800 mt-6 mb-2 border-b border-gray-200 pb-2">{section.title}</h2>
+                                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mt-6 mb-2 border-b-2 border-gray-300 pb-3">{section.title}</h2>
 
                                 {section.content && typeof section.content === 'string' && (
                                     <p className="text-base" dangerouslySetInnerHTML={{ __html: section.content }} />

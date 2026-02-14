@@ -9,11 +9,10 @@ from scripts import predictor
 
 def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     # 最初に、その日に有効な予測を持つレースIDのリストを取得する
-    valid_race_ids_subquery = db.query(models.Prediction.race_id)\
+    valid_race_ids_query = db.query(models.Prediction.race_id)\
         .join(models.Race, models.Race.id == models.Prediction.race_id)\
         .filter(models.Race.race_date == target_date)\
-        .distinct()\
-        .subquery()
+        .distinct()
 
     # 有効なレースIDを持つレースのみを対象にクエリを実行する
     races_with_preds = db.query(models.Race)\
@@ -21,7 +20,7 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
             joinedload(models.Race.predictions),
             joinedload(models.Race.results).joinedload(models.Result.horse)
         )\
-        .filter(models.Race.id.in_(valid_race_ids_subquery))\
+        .filter(models.Race.id.in_(valid_race_ids_query))\
         .order_by(models.Race.venue_name, models.Race.race_number)\
         .all()
 

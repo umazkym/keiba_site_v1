@@ -379,37 +379,45 @@ def main():
                     gc.collect()
 
                 if PIPELINE_MODE in ['PRODUCTION', 'PREDICTIONS_ONLY']:
-                    # 日付が明示的に指定されている場合はそれを使用、そうでない場合はデフォルト（明日）
+                    # 予測対象日リストを構築
+                    prediction_dates = []
+                    
+                    # 日付が明示的に指定されている場合はそれを使用
                     if target_date_override:
-                        target_date_predictions = target_date_override
+                        prediction_dates.append(target_date_override)
                     else:
-                        target_date_predictions = today_jst + datetime.timedelta(days=1)
-                    print(f"\n--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成を開始 ---")
-                    driver = None
-                    try:
-                        driver = scraper._prepare_chrome_driver()
+                        # デフォルト: 当日と翌日の両方を処理する（JRAデータ漏れ対策）
+                        prediction_dates.append(today_jst)
+                        prediction_dates.append(today_jst + datetime.timedelta(days=1))
+                    
+                    for target_date_predictions in prediction_dates:
+                        print(f"\n--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成を開始 ---")
+                        driver = None
                         try:
-                            scraper.get_race_list_html(target_date_predictions.strftime('%Y%m%d'), is_nar=False, driver=driver, force_download=True)
+                            # 毎回ドライバーを新しく初期化してクリーンな状態で開始
+                            driver = scraper._prepare_chrome_driver()
+                            try:
+                                scraper.get_race_list_html(target_date_predictions.strftime('%Y%m%d'), is_nar=False, driver=driver, force_download=True)
+                            except Exception as e:
+                                print(f"警告: 中央競馬のレース一覧取得に失敗しました: {e}")
+                            try:
+                                scraper.get_race_list_html(target_date_predictions.strftime('%Y%m%d'), is_nar=True, driver=driver, force_download=True)
+                            except Exception as e:
+                                print(f"警告: NAR競馬のレース一覧取得に失敗しました: {e}")
                         except Exception as e:
-                            print(f"警告: 中央競馬のレース一覧取得に失敗しました: {e}")
+                            print(f"警告: ドライバー初期化に失敗しました: {e}")
+                        finally:
+                            scraper.cleanup_chrome_driver(driver)
+                            _force_cleanup_processes()
+    
                         try:
-                            scraper.get_race_list_html(target_date_predictions.strftime('%Y%m%d'), is_nar=True, driver=driver, force_download=True)
+                            insert_new_predictions(db, target_date_predictions)
+                            sys.stdout.flush()
+                            sys.stderr.flush()
+                            print(f"--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成が完了 ---")
                         except Exception as e:
-                            print(f"警告: NAR競馬のレース一覧取得に失敗しました: {e}")
-                    except Exception as e:
-                        print(f"警告: ドライバー初期化に失敗しました: {e}")
-                    finally:
-                        scraper.cleanup_chrome_driver(driver)
-                        _force_cleanup_processes()
-
-                    try:
-                        insert_new_predictions(db, target_date_predictions)
-                        sys.stdout.flush()
-                        sys.stderr.flush()
-                        print(f"--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成が完了 ---")
-                    except Exception as e:
-                        print(f"警告: 予測データの挿入に失敗しました: {e}")
-                    gc.collect()
+                            print(f"警告: 予測データの挿入に失敗しました: {e}")
+                        gc.collect()
             finally:
                 if db.is_active:
                     db.close()

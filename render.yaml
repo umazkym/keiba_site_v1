@@ -89,16 +89,44 @@ services:
       - key: INSTANCE_ID
         generateValue: true
 
-  # データ取得ジョブ: 朝11時（翌日のレース情報取得）
+  # データ取得ジョブ（午後）: 13:30（翌日のレース情報取得 - JRA対応）
   - type: cron
-    name: keiba-data-fetch-morning
+    name: keiba-data-fetch-afternoon
     runtime: docker
     region: oregon
-    plan: starter  # 512MB RAM (軽量スクレイピング)
-    schedule: "0 2 * * *"  # JST AM 11:00 (UTC 02:00)
+    plan: starter  # 512MB RAM
+    schedule: "30 4 * * *"  # JST PM 1:30 (UTC 04:30)
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     dockerCommand: "python run_pipeline.py --date tomorrow --mode PREDICTIONS_ONLY"
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+      - key: TZ
+        value: Asia/Tokyo
+      - key: RENDER
+        value: "true"
+      - key: INSTANCE_ID
+        generateValue: true
+      - key: WEBHOOK_URL
+        sync: false
+      - key: RACE_BATCH_SIZE
+        value: "15"
+      - key: SELENIUM_PAGE_LOAD_TIMEOUT
+        value: "40"
+      - key: SELENIUM_ELEMENT_WAIT_TIMEOUT
+        value: "20"
+
+  # データ取得ジョブ（朝）: 朝6:30（当日レース予測生成・更新）
+  - type: cron
+    name: keiba-data-fetch-morning-today
+    runtime: docker
+    region: oregon
+    plan: starter
+    schedule: "0 21 * * *"  # JST AM 6:00 (UTC 21:00 - 前日)
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: "python run_pipeline.py --date today --mode PREDICTIONS_ONLY"
     envVars:
       - key: DATABASE_URL
         value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db

@@ -7,11 +7,11 @@ export const Footer = () => {
             {/* mb-16（64px）を追加してアンカー広告分のマージンを確保 */}
             <div className="container mx-auto px-4">
                 {/* メインフッターコンテンツ（3カラム） */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 mb-8">
                     {/* サイト情報 */}
                     <div>
                         <h3 className="font-bold text-white text-lg mb-3">UMA-FREE</h3>
-                        <p className="text-xs text-gray-400 leading-relaxed">
+                        <p className="text-xs text-gray-400 leading-[1.8]">
                             過去5年以上のレースデータをAIで分析し、中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を完全無料で提供する競馬データ分析サイトです。
                         </p>
                     </div>
@@ -19,7 +19,7 @@ export const Footer = () => {
                     {/* コンテンツリンク */}
                     <div>
                         <h3 className="font-bold text-white text-sm mb-3">コンテンツ</h3>
-                        <ul className="space-y-2">
+                        <ul className="space-y-2.5">
                             <li>
                                 <Link href="/articles" className="text-xs text-gray-400 hover:text-blue-400 transition-colors">
                                     分析記事一覧
@@ -53,7 +53,7 @@ export const Footer = () => {
                     {/* ポリシーリンク */}
                     <div>
                         <h3 className="font-bold text-white text-sm mb-3">サイトポリシー</h3>
-                        <ul className="space-y-2">
+                        <ul className="space-y-2.5">
                             <li>
                                 <Link href="/advertising" className="text-xs text-gray-400 hover:text-blue-400 transition-colors">
                                     広告について

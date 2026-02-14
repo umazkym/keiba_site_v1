@@ -237,7 +237,7 @@ export default async function HomePage() {
                             <Link
                                 href={`/articles/${article.slug}`}
                                 key={article.slug}
-                                className="flex sm:flex-col group border border-border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 bg-white hover:border-slate-300"
+                                className="flex sm:flex-col items-center sm:items-stretch group border border-border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 bg-white hover:border-slate-300"
                             >
                                 <div className="relative w-[88px] h-[72px] sm:w-full sm:h-40 md:h-44 lg:h-48 shrink-0 rounded-l-lg sm:rounded-l-none overflow-hidden bg-slate-100">
                                     <Image

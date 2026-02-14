@@ -122,19 +122,19 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                         <React.Fragment key={`${race.id}-${p.horse_number}-mobile`}>
                             <div className="p-2 transition-colors hover:bg-slate-50">
                                 <div className="flex items-center gap-2">
-                                    {/* 左側: 印と馬番 */}
-                                    <div className="flex flex-col items-center justify-center w-8 shrink-0 gap-1">
-                                        <span className="text-lg font-extrabold text-text-primary leading-none">{p.mark || '—'}</span>
+                                    {/* 左側: 印と馬番 (横並び・コンパクト化) */}
+                                    <div className="flex flex-row items-center gap-2 shrink-0 min-w-[3.5rem]">
+                                        <span className="text-lg font-extrabold text-text-primary leading-none w-5 text-center">{p.mark || '—'}</span>
                                         <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
                                     </div>
 
                                     {/* 中央: 馬名 */}
-                                    <div className="flex-1 min-w-0">
+                                    <div className="flex-1 min-w-0 flex flex-col justify-center">
                                         <div className="font-bold text-sm text-text-primary truncate">{p.horse_name}</div>
                                     </div>
 
                                     {/* 右側: 偏差値 */}
-                                    <div className="flex flex-col items-end shrink-0 w-14">
+                                    <div className="flex flex-col items-end shrink-0 w-14 justify-center">
                                         <div className="font-bold text-primary text-base font-mono tracking-tight leading-none">
                                             {p.deviation_score != null ? p.deviation_score.toFixed(1) : '--'}
                                         </div>

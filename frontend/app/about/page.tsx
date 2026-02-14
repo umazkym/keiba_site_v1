@@ -92,18 +92,18 @@ const aboutContent = {
 
 export default function AboutPage() {
     // セクション用の統一されたスタイルを定義
-    const sectionClass = "flex flex-col gap-4";
-    const sectionTitleClass = "text-xl sm:text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3";
+    const sectionClass = "flex flex-col gap-3 sm:gap-4";
+    const sectionTitleClass = "text-lg sm:text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 sm:pb-3";
 
     return (
         <>
             <Breadcrumb />
-            <div className="py-8">
+            <div className="py-4 sm:py-8">
                 <div className="max-w-3xl mx-auto">
                     <div className="flex flex-col gap-10">
                         {/* メインセクション */}
                         <div>
-                            <h1 className="text-3xl sm:text-4xl font-bold text-primary mb-6 border-b border-border pb-4">{aboutContent.main.title}</h1>
+                            <h1 className="text-2xl sm:text-4xl font-bold text-primary mb-4 sm:mb-6 border-b border-border pb-3 sm:pb-4">{aboutContent.main.title}</h1>
                             {aboutContent.main.paragraphs.map((text, index) => (<p key={index} className={`text-text-secondary leading-8 text-base ${index > 0 ? 'mt-4' : ''}`}>{text}</p>))}
                         </div>
 

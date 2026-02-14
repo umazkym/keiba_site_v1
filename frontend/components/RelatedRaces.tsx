@@ -86,7 +86,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
             </h3>
 
             {/* ▼▼▼▼▼ ここを修正 ▼▼▼▼▼ */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {/* ▲▲▲▲▲ ここまで修正 ▲▲▲▲▲ */}
                 {relatedDates.map(date => {
                     const [y, m, d] = date.split('-').map(Number);

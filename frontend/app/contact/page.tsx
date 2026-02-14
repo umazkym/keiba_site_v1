@@ -32,9 +32,9 @@ export default function ContactPage() {
 
     // --- スタイル定義 ---
     // セクション全体
-    const sectionClass = "flex flex-col gap-4";
+    const sectionClass = "flex flex-col gap-3 sm:gap-4";
     // セクションタイトル (h2)
-    const sectionTitleClass = "text-xl sm:text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-3";
+    const sectionTitleClass = "text-lg sm:text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 sm:pb-3";
     // 本文テキスト
     const textBaseClass = "text-gray-700 leading-8 text-base";
     // メインCTAボタン
@@ -46,14 +46,14 @@ export default function ContactPage() {
     return (
         <>
             <Breadcrumb />
-            <div className="py-8">
+            <div className="py-4 sm:py-8">
                 <div className="max-w-4xl mx-auto">
                     {/* セクション間の余白をgap-10に設定 */}
-                    <div className="flex flex-col gap-10">
+                    <div className="flex flex-col gap-6 sm:gap-10">
 
                         {/* 1. メインタイトル */}
                         <div>
-                            <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-6 border-b-2 border-primary pb-4">
+                            <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-4 sm:mb-6 border-b-2 border-primary pb-3 sm:pb-4">
                                 お問い合わせ
                             </h1>
                             <p className={textBaseClass}>

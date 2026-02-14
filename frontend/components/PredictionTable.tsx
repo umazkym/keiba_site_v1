@@ -115,7 +115,7 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
 
             {/* スマホ (md未満) ではカードリスト表示 */}
             {/* スマホ (md未満) ではカードリスト表示 */}
-            <div className="md:hidden divide-y divide-border border border-border rounded-lg overflow-hidden bg-white shadow-sm">
+            <div className="md:hidden divide-y divide-border bg-white">
                 {race.predictions.map((p, index) => {
                     const adSlot = shouldShowAd(index, race.predictions.length);
                     return (

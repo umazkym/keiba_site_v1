@@ -156,15 +156,15 @@ export default function AdvertisingPage() {
     return (
         <>
             <Breadcrumb />
-            <div className="py-8">
+            <div className="py-4 sm:py-8">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-6 border-b-2 border-primary pb-4">{advertisingContent.title}</h1>
+                    <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-4 sm:mb-6 border-b-2 border-primary pb-3 sm:pb-4">{advertisingContent.title}</h1>
                     <div className="flex flex-col gap-8 text-gray-700 leading-8">
                         <p className="text-sm text-gray-500">{advertisingContent.lastUpdated}</p>
                         <p className="text-base">{advertisingContent.introduction}</p>
                         {advertisingContent.sections.map((section, index) => (
-                            <section key={index} className="flex flex-col gap-4">
-                                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mt-6 mb-2 border-b-2 border-gray-300 pb-3">{section.title}</h2>
+                            <section key={index} className="flex flex-col gap-3 sm:gap-4">
+                                <h2 className="text-lg sm:text-2xl font-bold text-gray-800 mt-4 sm:mt-6 mb-2 border-b-2 border-gray-300 pb-2 sm:pb-3">{section.title}</h2>
 
                                 {section.content && typeof section.content === "string" && (
                                     <p className="text-base" dangerouslySetInnerHTML={{ __html: section.content }} />
@@ -175,8 +175,8 @@ export default function AdvertisingPage() {
                                 )}
 
                                 {section.subsections?.map((subsection, subIndex) => (
-                                    <div key={subIndex} className="flex flex-col gap-3">
-                                        <h3 className="text-xl font-bold text-gray-700 mt-4 mb-1">{subsection.title}</h3>
+                                    <div key={subIndex} className="flex flex-col gap-2 sm:gap-3">
+                                        <h3 className="text-lg sm:text-xl font-bold text-gray-700 mt-3 sm:mt-4 mb-1">{subsection.title}</h3>
                                         {subsection.intro && <p className="text-base">{subsection.intro}</p>}
                                         {Array.isArray(subsection.content) ? (
                                             subsection.content.map((p, pIndex) => (

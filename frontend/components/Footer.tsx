@@ -21,17 +21,17 @@ export const Footer = () => {
                         <h3 className="font-bold text-white text-sm mb-3">コンテンツ</h3>
                         <ul className="space-y-2.5">
                             <li>
-                                <Link href="/articles" className="text-xs text-slate-400 hover:text-white transition-colors">
+                                <Link href="/articles" className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     分析記事一覧
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/faq" className="text-xs text-slate-400 hover:text-white transition-colors">
+                                <Link href="/faq" className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     よくある質問
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/about" className="text-xs text-slate-400 hover:text-white transition-colors">
+                                <Link href="/about" className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     このサイトについて
                                 </Link>
                             </li>
@@ -40,7 +40,7 @@ export const Footer = () => {
                                     href="https://x.com/umafree_ai"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1"
+                                    className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1 py-1"
                                     aria-label="公式Xアカウント"
                                 >
                                     <TwitterIcon className="w-3 h-3" />
@@ -55,22 +55,22 @@ export const Footer = () => {
                         <h3 className="font-bold text-white text-sm mb-3">サイトポリシー</h3>
                         <ul className="space-y-2.5">
                             <li>
-                                <Link href="/advertising" className="text-xs text-slate-400 hover:text-white transition-colors">
+                                <Link href="/advertising" className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     広告について
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/contact" className="text-xs text-slate-400 hover:text-white transition-colors">
+                                <Link href="/contact" className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     お問い合わせ
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/privacy" className="text-xs text-slate-400 hover:text-white transition-colors">
+                                <Link href="/privacy" className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     プライバシーポリシー
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/terms" className="text-xs text-slate-400 hover:text-white transition-colors">
+                                <Link href="/terms" className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     利用規約
                                 </Link>
                             </li>

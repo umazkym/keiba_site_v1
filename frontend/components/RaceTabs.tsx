@@ -25,14 +25,14 @@ const CollapsibleSection = memo(({ title, icon, children }: { title: string, ico
 
     return (
         <details className="card transition-all duration-300" onToggle={handleToggle}>
-            <summary className="flex items-center text-md font-bold text-gray-800 cursor-pointer list-none p-3">
+            <summary className="flex items-center text-md font-bold text-gray-800 cursor-pointer list-none p-2 sm:p-3">
                 <div className="w-6 h-6 mr-2 flex-shrink-0 text-primary">{icon}</div>
                 <span className="whitespace-nowrap">{title}</span>
                 <div className={`ml-auto transform transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`}>
                     <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
                 </div>
             </summary>
-            <div className="px-3 pb-3">
+            <div className="px-2 pb-2 sm:px-3 sm:pb-3">
                 {children}
             </div>
         </details>
@@ -99,7 +99,7 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
             {activeRace && (
                 <div id={`race-${activeRace.id}`} className="mt-4">
                     <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="bg-white p-4 border-b border-gray-200">
+                        <div className="bg-white p-3 sm:p-4 border-b border-gray-200">
                             <h3 className="text-lg font-bold flex items-center text-gray-800">
                                 <span className="bg-primary text-white rounded-lg w-8 h-8 inline-flex items-center justify-center mr-3 font-mono font-bold text-base">{activeRace.race_number}R</span>
                                 <span className="truncate">{activeRace.race_name}</span>
@@ -107,7 +107,7 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
                             <p className="text-sm text-gray-500 ml-11 mt-0.5 font-medium">{activeRace.course_type} {activeRace.distance}m</p>
                         </div>
                         <div>
-                            <h4 className="flex items-center text-base font-bold text-gray-700 mt-4 mb-2 px-4">
+                            <h4 className="flex items-center text-base font-bold text-gray-700 mt-4 mb-2 px-3 sm:px-4">
                                 <SparklesIcon className="w-5 h-5 text-accent mr-2" />
                                 AI予測
                             </h4>
@@ -117,45 +117,45 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
 
                     {/* 脚質パターン予測 */}
                     <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="p-4 bg-gray-50 border-b border-gray-200">
+                        <div className="p-3 sm:p-4 bg-gray-50 border-b border-gray-200">
                             <h4 className="flex items-center text-base font-bold text-gray-800">
                                 <FlagIcon className="w-5 h-5 text-primary mr-2" />
                                 脚質パターン予測
                             </h4>
                         </div>
-                        <div className="p-5">
+                        <div className="p-2 sm:p-5">
                             <StartPositionChart predictions={activeRace.predictions} />
                         </div>
                     </div>
 
                     {/* 過去対決成績 */}
                     <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="p-4 bg-gray-50 border-b border-gray-200">
+                        <div className="p-3 sm:p-4 bg-gray-50 border-b border-gray-200">
                             <h4 className="flex items-center text-base font-bold text-gray-800">
                                 <UsersIcon className="w-5 h-5 text-secondary mr-2" />
                                 過去対決成績
                             </h4>
                         </div>
-                        <div className="p-5">
+                        <div className="p-2 sm:p-5">
                             <MatchupTable race={activeRace} />
                         </div>
                     </div>
 
                     {/* 枠順傾向スコア */}
                     <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="p-4 bg-gray-50 border-b border-gray-200">
+                        <div className="p-3 sm:p-4 bg-gray-50 border-b border-gray-200">
                             <h4 className="flex items-center text-base font-bold text-gray-800">
                                 <ChartBarIcon className="w-5 h-5 text-accent mr-2" />
                                 枠順傾向スコア
                             </h4>
                         </div>
-                        <div className="p-5">
+                        <div className="p-2 sm:p-5">
                             <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
                         </div>
                     </div>
                     <RaceNavigation />
 
-                    <div className='p-4 border mb-4 bg-white rounded-lg'>
+                    <div className='p-3 sm:p-4 border mb-4 bg-white rounded-lg'>
                         {/* レース全体の分析セクション */}
                         <RaceAnalysis race={activeRace} />
                     </div>
@@ -216,7 +216,7 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
             </TabList>
             {data.jra.length > 0 && (
                 <TabPanel>
-                    <div className="p-2 md:p-3">
+                    <div className="p-0 sm:p-2 md:p-3">
                         <Tabs defaultIndex={initialJraVenueIndex} forceRenderTabPanel={true}>
                             <TabList>
                                 {data.jra.map(venue => <Tab key={venue.venue_name}>{venue.venue_name}</Tab>)}
@@ -232,7 +232,7 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
             )}
             {data.nar.length > 0 && (
                 <TabPanel>
-                    <div className="p-2 md:p-3">
+                    <div className="p-0 sm:p-2 md:p-3">
                         <Tabs defaultIndex={initialNarVenueIndex} forceRenderTabPanel={true}>
                             <TabList>
                                 {data.nar.map(venue => <Tab key={venue.venue_name}>{venue.venue_name}</Tab>)}

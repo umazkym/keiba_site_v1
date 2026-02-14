@@ -1,7 +1,7 @@
 import { RacePrediction, MatchupRecord, HorsePrediction, MatchupData } from '@/lib/types';
 import React, { useState, useEffect } from 'react';
 import Tippy, { useSingleton } from '@tippyjs/react';
-import 'tippy.js/dist/tippy.css'; 
+import 'tippy.js/dist/tippy.css';
 import 'tippy.js/animations/shift-away.css';
 import 'tippy.js/themes/light-border.css';
 import { getFilteredMatchups } from '@/lib/api';
@@ -146,13 +146,13 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
     // toISOString()は 'YYYY-MM-DDTHH:mm:ss.sssZ' 形式なので、'T'で分割して日付部分のみ取得します。
     const [startDate, setStartDate] = useState(yearStart.toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(dayBeforeRace.toISOString().split('T')[0]);
-    
+
     const [matchupData, setMatchupData] = useState<MatchupData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    
+
     const [source, target] = useSingleton();
-    
+
     const sortedHorsesForSelect = React.useMemo(() => [...race.predictions].sort((a, b) => a.horse_number - b.horse_number), [race.predictions]);
     const [selectedHorseId, setSelectedHorseId] = useState<string>(sortedHorsesForSelect[0]?.horse_id || '');
 
@@ -187,7 +187,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                     id="horse-select"
                     value={selectedHorseId}
                     onChange={(e) => setSelectedHorseId(e.target.value)}
-                    className="block w-full p-1.5 border border-gray-300 rounded text-xs"
+                    className="block w-full p-1.5 border border-gray-300 rounded text-base sm:text-xs"
                 >
                     {sortedHorsesForSelect.map(h => (
                         <option key={h.horse_id} value={h.horse_id}>
@@ -268,11 +268,11 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
     return (
         <div className="bg-white rounded-lg">
             <Tippy singleton={source} theme="light-border" placement="top" animation="shift-away" interactive={true} appendTo={() => document.body} delay={[100, 200]} />
-            
+
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-2 md:p-3 border-b gap-2">
                 <div className='flex items-center gap-2'>
                     <h3 className="text-xs md:text-sm font-bold whitespace-nowrap">過去対決成績</h3>
-                     <Tippy
+                    <Tippy
                         content={
                             <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
                                 <p className='font-bold mb-1 border-b pb-1'>過去対決成績とは？</p>
@@ -292,27 +292,27 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-1 md:gap-2 text-xs md:text-sm w-full md:w-auto">
                     <label htmlFor="start-date" className="text-gray-600 font-semibold md:font-medium shrink-0">期間:</label>
                     <div className="flex items-center gap-1 w-full md:w-auto">
-                        <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border border-gray-300 p-1 rounded text-xs md:text-sm flex-1 md:flex-none w-full md:w-auto"/>
+                        <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border border-gray-300 p-1 rounded text-xs md:text-sm flex-1 md:flex-none w-full md:w-auto" />
                         <span className="text-gray-500 shrink-0">～</span>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border border-gray-300 p-1 rounded text-xs md:text-sm flex-1 md:flex-none w-full md:w-auto"/>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border border-gray-300 p-1 rounded text-xs md:text-sm flex-1 md:flex-none w-full md:w-auto" />
                     </div>
                 </div>
             </div>
-            
+
             {isLoading && <div className="text-center p-6 text-gray-500">対決データを読み込み中...</div>}
             {error && <div className="text-center p-6 text-red-500">{error}</div>}
 
             {!isLoading && !error && matchupData && (
                 isDataEmpty
-                ? <div className="text-center text-gray-500 py-4"><p>指定された期間の直接対決データはありません。</p></div>
-                : <>
-                    <div className="hidden md:block">
-                        <TableView predictions={race.predictions} matchupData={matchupData} tippySingleton={target} />
-                    </div>
-                    <div className="md:hidden">
-                        {renderMobileView()}
-                    </div>
-                  </>
+                    ? <div className="text-center text-gray-500 py-4"><p>指定された期間の直接対決データはありません。</p></div>
+                    : <>
+                        <div className="hidden md:block">
+                            <TableView predictions={race.predictions} matchupData={matchupData} tippySingleton={target} />
+                        </div>
+                        <div className="md:hidden">
+                            {renderMobileView()}
+                        </div>
+                    </>
             )}
         </div>
     );

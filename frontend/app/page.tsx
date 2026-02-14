@@ -91,7 +91,7 @@ export default async function HomePage() {
             <div className="py-4 sm:py-6 space-y-6 sm:space-y-10">
                 {/* 1. ヒーローセクション */}
                 <div className="space-y-4 sm:space-y-6">
-                    <section className="text-center px-5 py-8 sm:p-12 md:p-16 bg-slate-900 rounded-2xl shadow-xl relative overflow-hidden">
+                    <section className="text-center px-4 py-6 sm:p-12 md:p-16 bg-slate-900 rounded-2xl shadow-xl relative overflow-hidden">
                         {/* 背景装飾 */}
                         {/* 背景装飾 - Removed for cleaner look */}
                         {/* <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
@@ -142,13 +142,15 @@ export default async function HomePage() {
                     </section>
 
                     {/* 高配当的中ランキング */}
-                    <section className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 md:p-8">
+                    {/* 高配当的中ランキング - モバイルではp-0にしてカードを端まで寄せる */}
+                    <section className="bg-white rounded-xl border border-gray-200 p-3 sm:p-6 md:p-8">
                         <TopHitsDisplay />
                     </section>
                 </div>
 
                 {/* 2. UMA-FREEとは（テキスト密度向上セクション） */}
-                <section className="bg-white rounded-xl border border-border p-5 sm:p-6 md:p-8 shadow-sm">
+                {/* 2. UMA-FREEとは（テキスト密度向上セクション） */}
+                <section className="bg-white rounded-xl border border-border p-4 sm:p-6 md:p-8 shadow-sm">
                     <h2 className="text-lg sm:text-2xl font-bold text-primary mb-4 sm:mb-5 border-b border-border pb-2 sm:pb-3 flex items-center gap-2">
                         <span className="w-1.5 h-6 bg-primary rounded-full"></span>
                         UMA-FREEとは
@@ -167,7 +169,8 @@ export default async function HomePage() {
                 </section>
 
                 {/* 3. 3つの特長 - モバイルはアイコン+テキスト横並びでコンパクトに */}
-                <section className="bg-surface p-5 sm:p-8 md:p-10 rounded-xl border border-border">
+                {/* 3. 3つの特長 - モバイルはアイコン+テキスト横並びでコンパクトに */}
+                <section className="bg-surface p-4 sm:p-8 md:p-10 rounded-xl border border-border">
                     <h2 className="text-lg sm:text-2xl font-bold text-primary mb-5 sm:mb-8 text-center">3つの分析データ</h2>
                     <div className="grid md:grid-cols-3 gap-3.5 sm:gap-6">
                         <div className="bg-white py-4 px-4 sm:p-6 rounded-xl border border-border shadow-sm flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0">
@@ -279,7 +282,8 @@ export default async function HomePage() {
                 </section>
 
                 {/* 6. 使い方セクション */}
-                <section className="bg-surface rounded-xl border border-border p-5 sm:p-6 md:p-8">
+                {/* 6. 使い方セクション */}
+                <section className="bg-surface rounded-xl border border-border p-4 sm:p-6 md:p-8">
                     <h2 className="text-lg sm:text-2xl font-bold text-primary mb-5 sm:mb-6 text-center">
                         3ステップで始める
                     </h2>
@@ -318,7 +322,8 @@ export default async function HomePage() {
                 </section>
 
                 {/* 7. よくある質問 */}
-                <section className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6 md:p-8">
+                {/* 7. よくある質問 */}
+                <section className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 md:p-8">
                     <div className="flex items-center justify-between mb-5 sm:mb-6">
                         <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
                             よくある質問
@@ -348,7 +353,8 @@ export default async function HomePage() {
                 </section>
 
                 {/* 8. 対応競馬場 */}
-                <section className="bg-gray-50 rounded-xl border border-gray-200 p-5 sm:p-6 md:p-8">
+                {/* 8. 対応競馬場 */}
+                <section className="bg-gray-50 rounded-xl border border-gray-200 p-4 sm:p-6 md:p-8">
                     <h2 className="text-lg sm:text-2xl font-bold text-gray-800 mb-3 sm:mb-4">
                         対応競馬場一覧
                     </h2>

@@ -65,7 +65,7 @@ export default async function ArticlePage({ params }: Props) {
         <div className="mx-auto px-4 max-w-3xl">
           <Breadcrumb />
 
-          <article className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-100">
+          <article className="bg-white p-4 sm:p-8 rounded-xl shadow-sm border border-slate-100">
             <header className="mb-8 text-center border-b border-slate-100 pb-6">
               <div className="mb-4">
                 <Link href={`/articles?category=${encodeURIComponent(article.category)}`} className="text-sm bg-slate-100 text-slate-700 font-bold py-1.5 px-4 rounded-full hover:bg-slate-200 transition-colors">

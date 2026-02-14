@@ -41,7 +41,7 @@ export function DataExplainer() {
                     id="data-explainer-content"
                     className="px-4 pb-4 border-t border-blue-200"
                 >
-                    <div className="grid sm:grid-cols-2 gap-4 mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                         {/* AI偏差値 */}
                         <div className="bg-white rounded-lg p-4 border border-gray-100">
                             <h4 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">

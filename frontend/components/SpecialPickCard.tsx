@@ -81,7 +81,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
             aria-label={`${pick.commentary}`}
         >
             <div className="bg-white text-gray-800 rounded-xl h-full flex flex-col overflow-hidden border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all duration-200" role="region" aria-labelledby="special-pick-title">
-                <div className="p-5 sm:p-5 flex flex-col h-full">
+                <div className="p-4 sm:p-5 flex flex-col h-full">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2 mb-3 sm:mb-4">
                         <h3 id="special-pick-title" className="text-[13px] sm:text-sm font-bold text-gray-800">
                             本日の注目馬<span className="hidden sm:inline"> </span><br className="sm:hidden" /><span className="text-gray-500">{formattedDate}</span>

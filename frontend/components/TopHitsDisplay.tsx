@@ -17,7 +17,7 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     const style = rankStyles[Math.min(rank - 1, 4)];
 
     return (
-        <div className={`bg-white rounded-lg border transition-all duration-200 ${style.borderColor} ${style.shadow} ${style.scale} p-2.5 sm:p-3 flex flex-col items-start gap-1.5 sm:gap-2 h-full hover:bg-gray-50/50`}>
+        <div className={`bg-white rounded-lg border transition-all duration-200 ${style.borderColor} ${style.shadow} ${style.scale} p-2 sm:p-3 flex flex-col items-start gap-1 sm:gap-2 h-full hover:bg-gray-50/50`}>
             <div className="flex justify-between items-center w-full">
                 <div className={`text-[10px] sm:text-xs font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-1.5 sm:px-2 py-0.5`}>
                     {rank}位

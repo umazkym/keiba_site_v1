@@ -64,27 +64,29 @@ const DateNavigator = ({
     }, [onDateChange]);
 
     return (
-        <div className="flex items-center justify-center gap-2 sm:gap-3">
+        <div className="flex items-center justify-between w-full max-w-sm mx-auto bg-surface border border-border rounded-lg p-1 shadow-sm">
             <button
                 onClick={(e) => handleDateShift(e, -1)}
-                className="bg-white border-2 border-gray-300 text-gray-700 px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg shadow-sm hover:bg-gray-100 hover:border-primary transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm sm:text-base font-semibold whitespace-nowrap shrink-0 min-h-[44px] active:bg-gray-200"
-                aria-label="前日へ移動"
+                className="p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-md transition-all duration-200"
+                aria-label="前日へ"
             >
-                ‹ 前日
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             </button>
-            <input
-                type="date"
-                value={currentDate}
-                onChange={handleDateInputChange}
-                className="border-2 border-gray-300 px-3 py-2.5 rounded-lg shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/30 text-sm sm:text-base shrink-0 min-h-[44px] font-medium"
-                aria-label="日付を選択"
-            />
+            <div className="flex items-center gap-2">
+                <input
+                    type="date"
+                    value={currentDate}
+                    onChange={handleDateInputChange}
+                    className="border-none bg-transparent text-text-primary font-bold text-sm sm:text-base focus:ring-0 p-0 text-center font-mono cursor-pointer"
+                    aria-label="日付を選択"
+                />
+            </div>
             <button
                 onClick={(e) => handleDateShift(e, 1)}
-                className="bg-white border-2 border-gray-300 text-gray-700 px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg shadow-sm hover:bg-gray-100 hover:border-primary transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm sm:text-base font-semibold whitespace-nowrap shrink-0 min-h-[44px] active:bg-gray-200"
-                aria-label="翌日へ移動"
+                className="p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-md transition-all duration-200"
+                aria-label="翌日へ"
             >
-                翌日 ›
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </button>
         </div>
     );

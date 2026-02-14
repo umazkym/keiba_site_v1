@@ -91,46 +91,54 @@ export default async function HomePage() {
             <div className="container py-4 sm:py-6 space-y-6 sm:space-y-10">
                 {/* 1. ヒーローセクション */}
                 <div className="space-y-4 sm:space-y-6">
-                    <section className="text-center px-5 py-6 sm:p-10 md:p-12 bg-blue-600 rounded-2xl">
-                        <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-white mb-3 sm:mb-4 leading-tight">
-                            登録不要・完全無料
-                            <br />
-                            AI競馬データ分析
-                            <br className="sm:hidden" />
-                            <span className="sm:ml-2">UMA-FREE</span>
-                        </h1>
-                        <p className="text-sm sm:text-base md:text-lg text-blue-100 max-w-2xl mx-auto mb-5 sm:mb-6 leading-relaxed">
-                            過去5年以上のレース結果をAIで分析。
-                            <br className="sm:hidden" />
-                            中央・地方の全レースに対応しています。
-                        </p>
+                    <section className="text-center px-5 py-8 sm:p-12 md:p-16 bg-slate-900 rounded-2xl shadow-xl relative overflow-hidden">
+                        {/* 背景装飾 */}
+                        {/* 背景装飾 - Removed for cleaner look */}
+                        {/* <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                            <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-[radial-gradient(circle,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+                        </div> */}
 
-                        {/* サイト統計情報 - モバイルは2x2グリッド */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8 text-white/90 max-w-md sm:max-w-none mx-auto">
-                            <div className="text-center bg-white/10 rounded-lg py-2 sm:py-0 sm:bg-transparent">
-                                <div className="text-xl sm:text-3xl font-extrabold">24</div>
-                                <div className="text-[11px] sm:text-sm text-blue-200">対応競馬場</div>
+                        <div className="relative z-10">
+                            <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-white mb-4 sm:mb-6 leading-tight tracking-tight">
+                                登録不要・完全無料
+                                <br />
+                                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-indigo-200">
+                                    AI競馬データ分析
+                                </span>
+                            </h1>
+                            <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed font-medium">
+                                過去5年以上のレース結果をAIで分析。
+                                <br className="sm:hidden" />
+                                中央・地方の全レースに対応しています。
+                            </p>
+
+                            {/* サイト統計情報 - モバイルは2x2グリッド */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 mb-8 sm:mb-12 text-white/90 max-w-lg sm:max-w-4xl mx-auto divide-x divide-slate-700/50">
+                                <div className="text-center">
+                                    <div className="text-2xl sm:text-3xl font-bold text-white mb-1">24</div>
+                                    <div className="text-xs sm:text-sm text-slate-400 font-medium">対応競馬場</div>
+                                </div>
+                                <div className="text-center pl-4">
+                                    <div className="text-2xl sm:text-3xl font-bold text-white mb-1">5年+</div>
+                                    <div className="text-xs sm:text-sm text-slate-400 font-medium">分析データ期間</div>
+                                </div>
+                                <div className="text-center pl-4 border-l border-slate-700/50 sm:border-l-0">
+                                    <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{totalArticles}</div>
+                                    <div className="text-xs sm:text-sm text-slate-400 font-medium">分析記事</div>
+                                </div>
+                                <div className="text-center pl-4">
+                                    <div className="text-2xl sm:text-3xl font-bold text-white mb-1">毎日</div>
+                                    <div className="text-xs sm:text-sm text-slate-400 font-medium">データ更新</div>
+                                </div>
                             </div>
-                            <div className="text-center bg-white/10 rounded-lg py-2 sm:py-0 sm:bg-transparent">
-                                <div className="text-xl sm:text-3xl font-extrabold">5年+</div>
-                                <div className="text-[11px] sm:text-sm text-blue-200">分析データ期間</div>
-                            </div>
-                            <div className="text-center bg-white/10 rounded-lg py-2 sm:py-0 sm:bg-transparent">
-                                <div className="text-xl sm:text-3xl font-extrabold">{totalArticles}</div>
-                                <div className="text-[11px] sm:text-sm text-blue-200">分析記事</div>
-                            </div>
-                            <div className="text-center bg-white/10 rounded-lg py-2 sm:py-0 sm:bg-transparent">
-                                <div className="text-xl sm:text-3xl font-extrabold">毎日</div>
-                                <div className="text-[11px] sm:text-sm text-blue-200">データ更新</div>
-                            </div>
+
+                            <Link
+                                href={`/races/${todayStr}`}
+                                className="inline-flex items-center justify-center bg-white hover:bg-blue-50 text-slate-900 font-bold py-3.5 sm:py-4 px-8 sm:px-12 rounded-full transition-all duration-200 text-sm sm:text-lg shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-500/30 transform hover:-translate-y-0.5"
+                            >
+                                今日のデータ分析をチェック
+                            </Link>
                         </div>
-
-                        <Link
-                            href={`/races/${todayStr}`}
-                            className="inline-block bg-white hover:bg-gray-50 text-blue-700 font-bold py-3 sm:py-4 px-6 sm:px-10 rounded-lg transition-colors duration-200 text-sm sm:text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white min-h-[44px] sm:min-h-[48px] leading-tight"
-                        >
-                            今日のデータ分析をチェック
-                        </Link>
                     </section>
 
                     {/* 高配当的中ランキング */}
@@ -140,9 +148,12 @@ export default async function HomePage() {
                 </div>
 
                 {/* 2. UMA-FREEとは（テキスト密度向上セクション） */}
-                <section className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6 md:p-8">
-                    <h2 className="text-lg sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-5 border-b-2 border-gray-300 pb-2 sm:pb-3">UMA-FREEとは</h2>
-                    <div className="space-y-4 sm:space-y-5 text-gray-700 text-[13px] sm:text-base leading-[1.9] sm:leading-relaxed">
+                <section className="bg-white rounded-xl border border-border p-5 sm:p-6 md:p-8 shadow-sm">
+                    <h2 className="text-lg sm:text-2xl font-bold text-primary mb-4 sm:mb-5 border-b border-border pb-2 sm:pb-3 flex items-center gap-2">
+                        <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                        UMA-FREEとは
+                    </h2>
+                    <div className="space-y-4 sm:space-y-5 text-text-secondary text-[13px] sm:text-base leading-[1.8] sm:leading-relaxed">
                         <p>
                             UMA-FREEは、過去5年以上の中央・地方競馬のレースデータを機械学習で分析し、各出走馬の能力を偏差値として数値化した競馬データ分析サイトです。会員登録不要で、すべて無料でご利用いただけます。
                         </p>
@@ -156,38 +167,38 @@ export default async function HomePage() {
                 </section>
 
                 {/* 3. 3つの特長 - モバイルはアイコン+テキスト横並びでコンパクトに */}
-                <section className="bg-gray-50 p-5 sm:p-8 md:p-10 rounded-xl border border-gray-200">
-                    <h2 className="text-lg sm:text-2xl font-bold text-gray-800 mb-5 sm:mb-8 text-center">3つの分析データ</h2>
+                <section className="bg-surface p-5 sm:p-8 md:p-10 rounded-xl border border-border">
+                    <h2 className="text-lg sm:text-2xl font-bold text-primary mb-5 sm:mb-8 text-center">3つの分析データ</h2>
                     <div className="grid md:grid-cols-3 gap-3.5 sm:gap-6">
-                        <div className="bg-white py-4 px-4 sm:p-6 rounded-xl border border-gray-200 flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0">
-                            <div className="bg-blue-50 text-blue-600 rounded-full p-3 sm:p-4 sm:mb-4 shrink-0">
+                        <div className="bg-white py-4 px-4 sm:p-6 rounded-xl border border-border shadow-sm flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0">
+                            <div className="bg-slate-100 text-primary rounded-full p-3 sm:p-4 sm:mb-4 shrink-0">
                                 <svg className="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                             </div>
                             <div className="min-w-0">
-                                <h3 className="text-[13px] sm:text-lg font-bold text-gray-800 mb-1 sm:mb-2">完全無料・登録不要</h3>
-                                <p className="text-xs sm:text-sm text-gray-600 leading-[1.7]">
+                                <h3 className="text-[13px] sm:text-lg font-bold text-primary mb-1 sm:mb-2">完全無料・登録不要</h3>
+                                <p className="text-xs sm:text-sm text-text-secondary leading-[1.7]">
                                     中央・地方の全レース分析が登録なしで利用可能
                                 </p>
                             </div>
                         </div>
-                        <div className="bg-white py-4 px-4 sm:p-6 rounded-xl border border-gray-200 flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0">
-                            <div className="bg-blue-50 text-blue-600 rounded-full p-3 sm:p-4 sm:mb-4 shrink-0">
+                        <div className="bg-white py-4 px-4 sm:p-6 rounded-xl border border-border shadow-sm flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0">
+                            <div className="bg-slate-100 text-primary rounded-full p-3 sm:p-4 sm:mb-4 shrink-0">
                                 <ChartBarIcon className="w-5 h-5 sm:w-7 sm:h-7" />
                             </div>
                             <div className="min-w-0">
-                                <h3 className="text-[13px] sm:text-lg font-bold text-gray-800 mb-1 sm:mb-2">AI偏差値分析</h3>
-                                <p className="text-xs sm:text-sm text-gray-600 leading-[1.7]">
+                                <h3 className="text-[13px] sm:text-lg font-bold text-primary mb-1 sm:mb-2">AI偏差値分析</h3>
+                                <p className="text-xs sm:text-sm text-text-secondary leading-[1.7]">
                                     5年以上のデータを機械学習で解析し偏差値化
                                 </p>
                             </div>
                         </div>
-                        <div className="bg-white py-4 px-4 sm:p-6 rounded-xl border border-gray-200 flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0">
-                            <div className="bg-blue-50 text-blue-600 rounded-full p-3 sm:p-4 sm:mb-4 shrink-0">
+                        <div className="bg-white py-4 px-4 sm:p-6 rounded-xl border border-border shadow-sm flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0">
+                            <div className="bg-slate-100 text-primary rounded-full p-3 sm:p-4 sm:mb-4 shrink-0">
                                 <svg className="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>
                             </div>
                             <div className="min-w-0">
-                                <h3 className="text-[13px] sm:text-lg font-bold text-gray-800 mb-1 sm:mb-2">対戦成績・枠順分析</h3>
-                                <p className="text-xs sm:text-sm text-gray-600 leading-[1.7]">
+                                <h3 className="text-[13px] sm:text-lg font-bold text-primary mb-1 sm:mb-2">対戦成績・枠順分析</h3>
+                                <p className="text-xs sm:text-sm text-text-secondary leading-[1.7]">
                                     直接対決統計と枠順傾向スコアを提供
                                 </p>
                             </div>
@@ -197,7 +208,8 @@ export default async function HomePage() {
 
                 {/* 4. 今日の分析注目馬 */}
                 <section>
-                    <h2 className="text-lg sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 border-b-2 border-gray-300 pb-2 sm:pb-3">
+                    <h2 className="text-lg sm:text-2xl font-bold text-primary mb-4 sm:mb-6 border-b border-gray-200 pb-2 sm:pb-3 flex items-center gap-2">
+                        <span className="w-1.5 h-6 bg-accent rounded-full"></span>
                         今日の分析注目馬
                     </h2>
                     <SpecialPickCard pick={specialPick} date={todayStr} />
@@ -206,10 +218,11 @@ export default async function HomePage() {
                 {/* 5. 新着記事セクション */}
                 <section>
                     <div className="flex items-center justify-between mb-4 sm:mb-6">
-                        <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
+                        <h2 className="text-lg sm:text-2xl font-bold text-primary flex items-center gap-2">
+                            <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
                             最新の分析記事
                         </h2>
-                        <Link href="/articles" className="text-primary hover:text-primary-dark font-semibold text-xs sm:text-sm shrink-0 ml-3">
+                        <Link href="/articles" className="text-text-secondary hover:text-primary font-semibold text-xs sm:text-sm shrink-0 ml-3 transition-colors">
                             すべて見る →
                         </Link>
                     </div>
@@ -220,30 +233,31 @@ export default async function HomePage() {
                             <Link
                                 href={`/articles/${article.slug}`}
                                 key={article.slug}
-                                className="flex sm:flex-col group border rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200 bg-white"
+                                className="flex sm:flex-col group border border-border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 bg-white hover:border-slate-300"
                             >
-                                <div className="relative w-[88px] h-[72px] sm:w-full sm:h-40 md:h-44 lg:h-48 shrink-0 rounded-l-lg sm:rounded-l-none overflow-hidden">
+                                <div className="relative w-[88px] h-[72px] sm:w-full sm:h-40 md:h-44 lg:h-48 shrink-0 rounded-l-lg sm:rounded-l-none overflow-hidden bg-slate-100">
                                     <Image
                                         src={article.eyecatch}
                                         alt={article.title}
                                         fill
                                         sizes="(max-width: 640px) 88px, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
                                         style={{ objectFit: 'cover' }}
+                                        className="group-hover:scale-105 transition-transform duration-500"
                                     />
                                 </div>
 
                                 <div className="py-2.5 px-3 sm:p-4 flex flex-col justify-center min-w-0">
                                     <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
-                                        <span className="inline-block bg-blue-100 text-blue-800 text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full whitespace-nowrap">
+                                        <span className="inline-block bg-slate-100 text-slate-700 text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
                                             {article.category}
                                         </span>
-                                        <span className="text-gray-400 text-[10px] sm:hidden whitespace-nowrap">
+                                        <span className="text-text-muted text-[10px] sm:hidden whitespace-nowrap font-mono">
                                             {new Date(article.date).toLocaleDateString()}
                                         </span>
                                     </div>
 
                                     <h3
-                                        className="font-bold text-[13px] leading-snug sm:text-sm mb-0 sm:mb-2 group-hover:text-primary-dark"
+                                        className="font-bold text-text-primary text-[13px] leading-snug sm:text-sm mb-0 sm:mb-2 group-hover:text-primary transition-colors"
                                         style={{
                                             display: '-webkit-box',
                                             WebkitLineClamp: 2,
@@ -255,7 +269,7 @@ export default async function HomePage() {
                                         {article.title}
                                     </h3>
 
-                                    <p className="text-gray-500 text-xs hidden sm:block">
+                                    <p className="text-text-muted text-xs hidden sm:block font-mono">
                                         {new Date(article.date).toLocaleDateString()}
                                     </p>
                                 </div>
@@ -265,40 +279,40 @@ export default async function HomePage() {
                 </section>
 
                 {/* 6. 使い方セクション */}
-                <section className="bg-gray-50 rounded-xl border border-gray-200 p-5 sm:p-6 md:p-8">
-                    <h2 className="text-lg sm:text-2xl font-bold text-gray-800 mb-5 sm:mb-6">
+                <section className="bg-surface rounded-xl border border-border p-5 sm:p-6 md:p-8">
+                    <h2 className="text-lg sm:text-2xl font-bold text-primary mb-5 sm:mb-6 text-center">
                         3ステップで始める
                     </h2>
                     <div className="grid md:grid-cols-3 gap-3.5 sm:gap-6">
-                        <div className="bg-white py-3.5 px-4 sm:p-6 rounded-lg border border-gray-200 border-l-4 border-l-blue-600">
-                            <h3 className="font-bold text-[13px] sm:text-lg text-blue-700 mb-2 sm:mb-3 flex items-center">
-                                <span className="bg-blue-600 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2.5 sm:mr-3 text-xs sm:text-sm font-bold shrink-0">1</span>
+                        <div className="bg-white py-3.5 px-4 sm:p-6 rounded-lg border border-border shadow-sm">
+                            <h3 className="font-bold text-[13px] sm:text-lg text-primary mb-2 sm:mb-3 flex items-center">
+                                <span className="bg-slate-900 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2.5 sm:mr-3 text-xs sm:text-sm font-bold shrink-0">1</span>
                                 日付を選択
                             </h3>
-                            <p className="text-gray-600 text-xs sm:text-sm leading-[1.7] pl-[34px] sm:pl-0">
+                            <p className="text-text-secondary text-xs sm:text-sm leading-[1.7] pl-[34px] sm:pl-0">
                                 カレンダーから見たい日付を選択。過去も未来も確認できます。
                             </p>
                         </div>
-                        <div className="bg-white py-3.5 px-4 sm:p-6 rounded-lg border border-gray-200 border-l-4 border-l-blue-600">
-                            <h3 className="font-bold text-[13px] sm:text-lg text-blue-700 mb-2 sm:mb-3 flex items-center">
-                                <span className="bg-blue-600 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2.5 sm:mr-3 text-xs sm:text-sm font-bold shrink-0">2</span>
+                        <div className="bg-white py-3.5 px-4 sm:p-6 rounded-lg border border-border shadow-sm">
+                            <h3 className="font-bold text-[13px] sm:text-lg text-primary mb-2 sm:mb-3 flex items-center">
+                                <span className="bg-slate-900 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2.5 sm:mr-3 text-xs sm:text-sm font-bold shrink-0">2</span>
                                 競馬場を選択
                             </h3>
-                            <p className="text-gray-600 text-xs sm:text-sm leading-[1.7] pl-[34px] sm:pl-0">
+                            <p className="text-text-secondary text-xs sm:text-sm leading-[1.7] pl-[34px] sm:pl-0">
                                 中央・地方のタブから対象の競馬場を選択。
                             </p>
                         </div>
-                        <div className="bg-white py-3.5 px-4 sm:p-6 rounded-lg border border-gray-200 border-l-4 border-l-blue-600">
-                            <h3 className="font-bold text-[13px] sm:text-lg text-blue-700 mb-2 sm:mb-3 flex items-center">
-                                <span className="bg-blue-600 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2.5 sm:mr-3 text-xs sm:text-sm font-bold shrink-0">3</span>
+                        <div className="bg-white py-3.5 px-4 sm:p-6 rounded-lg border border-border shadow-sm">
+                            <h3 className="font-bold text-[13px] sm:text-lg text-primary mb-2 sm:mb-3 flex items-center">
+                                <span className="bg-slate-900 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2.5 sm:mr-3 text-xs sm:text-sm font-bold shrink-0">3</span>
                                 データを活用
                             </h3>
-                            <p className="text-gray-600 text-xs sm:text-sm leading-[1.7] pl-[34px] sm:pl-0">
+                            <p className="text-text-secondary text-xs sm:text-sm leading-[1.7] pl-[34px] sm:pl-0">
                                 偏差値・対決成績・枠順傾向などをご活用ください。
                             </p>
                         </div>
                     </div>
-                    <div className="mt-5 sm:mt-6 px-1 sm:p-4 text-[11px] sm:text-sm text-gray-400 sm:text-gray-500 leading-relaxed">
+                    <div className="mt-5 sm:mt-6 px-1 sm:p-4 text-[11px] sm:text-sm text-text-muted sm:text-gray-500 leading-relaxed text-center">
                         <p>本サイトは分析データの提供を目的としており、投票の助言ではありません。20歳未満の馬券購入は法律で禁止されています。</p>
                     </div>
                 </section>

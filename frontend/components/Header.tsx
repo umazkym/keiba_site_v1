@@ -26,7 +26,7 @@ export const Header = () => {
     const todayStr = getTodayString();
 
     return (
-        <header className="bg-white text-text border-b border-gray-200 sticky top-0 z-50">
+        <header className="bg-surface/95 backdrop-blur-sm text-text-primary border-b border-border sticky top-0 z-50 transition-all duration-300">
             <div className="container mx-auto px-3 sm:px-4">
                 <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
                     {/* ロゴ */}
@@ -40,10 +40,10 @@ export const Header = () => {
                             className="w-10 h-10 sm:w-12 sm:h-12"
                         />
                         <div className="flex flex-col hidden sm:flex">
-                            <span className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">
+                            <span className="text-xl sm:text-2xl font-bold tracking-tight text-primary">
                                 UMA-FREE
                             </span>
-                            <span className="text-[10px] text-gray-500 -mt-0.5 font-medium">
+                            <span className="text-[10px] text-text-muted -mt-0.5 font-medium font-mono">
                                 完全無料のAI競馬分析
                             </span>
                         </div>
@@ -51,16 +51,16 @@ export const Header = () => {
 
                     {/* デスクトップナビゲーション */}
                     <nav className="hidden md:flex items-center gap-8 flex-1 ml-10">
-                        <Link href="/" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200">
+                        <Link href="/" className="text-sm font-medium text-text-secondary hover:text-primary transition-colors duration-200">
                             ホーム
                         </Link>
-                        <Link href={`/races/${todayStr}`} className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200">
+                        <Link href={`/races/${todayStr}`} className="text-sm font-medium text-text-secondary hover:text-primary transition-colors duration-200">
                             本日の分析
                         </Link>
-                        <Link href="/articles" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200">
+                        <Link href="/articles" className="text-sm font-medium text-text-secondary hover:text-primary transition-colors duration-200">
                             記事
                         </Link>
-                        <Link href="/faq" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors duration-200">
+                        <Link href="/faq" className="text-sm font-medium text-text-secondary hover:text-primary transition-colors duration-200">
                             よくある質問
                         </Link>
                     </nav>
@@ -69,7 +69,7 @@ export const Header = () => {
                     <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                         <Link
                             href="/search"
-                            className="p-2 text-gray-500 hover:text-primary hover:bg-gray-50 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            className="p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             aria-label="サイト内検索"
                             title="検索"
                         >
@@ -79,7 +79,7 @@ export const Header = () => {
                         {/* モバイルメニューボタン */}
                         <button
                             onClick={toggleMenu}
-                            className="md:hidden p-2 text-gray-500 hover:text-primary hover:bg-gray-50 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            className="md:hidden p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             aria-label={isMenuOpen ? 'メニューを閉じる' : 'メニューを開く'}
                             aria-expanded={isMenuOpen}
                         >
@@ -94,68 +94,68 @@ export const Header = () => {
 
                 {/* モバイルメニュー */}
                 {isMenuOpen && (
-                    <nav className="md:hidden pb-4 border-t border-gray-100 max-h-[calc(100vh-56px)] sm:max-h-[calc(100vh-64px)] overflow-y-auto bg-white absolute left-0 right-0 shadow-lg">
+                    <nav className="md:hidden pb-4 border-t border-slate-100 max-h-[calc(100vh-56px)] sm:max-h-[calc(100vh-64px)] overflow-y-auto bg-white/95 backdrop-blur-md absolute left-0 right-0 shadow-lg">
                         <Link
                             href="/"
-                            className="block px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 transition-colors duration-200 border-b border-gray-50"
+                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
                             onClick={closeMenu}
                         >
                             ホーム
                         </Link>
                         <Link
                             href={`/races/${todayStr}`}
-                            className="block px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 transition-colors duration-200 border-b border-gray-50"
+                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
                             onClick={closeMenu}
                         >
                             本日の分析
                         </Link>
                         <Link
                             href="/articles"
-                            className="block px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 transition-colors duration-200 border-b border-gray-50"
+                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
                             onClick={closeMenu}
                         >
                             記事
                         </Link>
                         <Link
                             href="/faq"
-                            className="block px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 transition-colors duration-200 border-b border-gray-50"
+                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
                             onClick={closeMenu}
                         >
                             よくある質問
                         </Link>
                         <Link
                             href="/search"
-                            className="block px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary hover:bg-gray-50 transition-colors duration-200 border-b border-gray-50"
+                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
                             onClick={closeMenu}
                         >
                             検索
                         </Link>
-                        <div className="px-4 py-4 bg-gray-50/50">
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">その他</p>
+                        <div className="px-4 py-4 bg-slate-50/80">
+                            <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 font-mono">その他</p>
                             <Link
                                 href="/about"
-                                className="block py-2 text-sm text-gray-600 hover:text-primary transition-colors duration-200"
+                                className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
                                 onClick={closeMenu}
                             >
                                 このサイトについて
                             </Link>
                             <Link
                                 href="/advertising"
-                                className="block py-2 text-sm text-gray-600 hover:text-primary transition-colors duration-200"
+                                className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
                                 onClick={closeMenu}
                             >
                                 広告について
                             </Link>
                             <Link
                                 href="/contact"
-                                className="block py-2 text-sm text-gray-600 hover:text-primary transition-colors duration-200"
+                                className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
                                 onClick={closeMenu}
                             >
                                 お問い合わせ
                             </Link>
                             <Link
                                 href="/privacy"
-                                className="block py-2 text-sm text-gray-600 hover:text-primary transition-colors duration-200"
+                                className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
                                 onClick={closeMenu}
                             >
                                 プライバシーポリシー

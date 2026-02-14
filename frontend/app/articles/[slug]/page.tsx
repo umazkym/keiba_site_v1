@@ -62,26 +62,26 @@ export default async function ArticlePage({ params }: Props) {
           image={article.eyecatch}
         />
 
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="container mx-auto px-4 max-w-3xl">
           <Breadcrumb />
 
-          <article className="bg-white p-6 sm:p-8 rounded-lg shadow-sm">
-            <header className="mb-8 text-center border-b pb-6">
+          <article className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-100">
+            <header className="mb-8 text-center border-b border-slate-100 pb-6">
               <div className="mb-4">
-                <Link href={`/articles?category=${encodeURIComponent(article.category)}`} className="text-sm bg-blue-500 text-white font-bold py-1 px-3 rounded-full hover:bg-blue-600 transition-colors">
+                <Link href={`/articles?category=${encodeURIComponent(article.category)}`} className="text-sm bg-slate-100 text-slate-700 font-bold py-1.5 px-4 rounded-full hover:bg-slate-200 transition-colors">
                   {article.category}
                 </Link>
               </div>
-              <h1 className="text-3xl md:text-4xl font-extrabold text-gray-800 mb-3">
+              <h1 className="text-2xl md:text-3xl font-bold text-text-primary mb-3 leading-tight">
                 {article.title}
               </h1>
-              <p className="text-gray-500">
-                公開日: {new Date(article.date).toLocaleDateString()}
+              <p className="text-text-muted text-sm font-mono">
+                {new Date(article.date).toLocaleDateString('ja-JP')}
               </p>
             </header>
 
             {article.eyecatch && (
-              <div className="relative w-full h-64 sm:h-80 md:h-96 mb-8 rounded-lg overflow-hidden">
+              <div className="relative w-full aspect-video mb-8 rounded-lg overflow-hidden bg-slate-100">
                 <Image
                   src={article.eyecatch}
                   alt={`${article.title} のアイキャッチ画像`}
@@ -94,7 +94,7 @@ export default async function ArticlePage({ params }: Props) {
             )}
 
             <div
-              className="prose max-w-none"
+              className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-primary prose-img:rounded-lg"
               dangerouslySetInnerHTML={{ __html: article.content }}
             />
 

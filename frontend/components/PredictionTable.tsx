@@ -40,7 +40,7 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
             </div>
         );
     }
-    
+
     // 広告コンポーネントを定義（異なるスロットIDで複数配置）
     const InFeedAd = ({ slot }: { slot: string }) => (
         <div className="py-2">
@@ -51,7 +51,7 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
             />
         </div>
     );
-    
+
     // 広告挿入位置を決定する関数
     const shouldShowAd = (index: number, totalCount: number): string | null => {
         // 3位と4位の間（index=2）
@@ -62,7 +62,7 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
         if (index === 9 && totalCount > 12) return "1489598374";
         return null;
     };
-    
+
     return (
         <>
             {/* PC (md以上) ではテーブル表示 */}
@@ -79,7 +79,7 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                                         <p className='font-bold mb-1'>AI偏差値とは？</p>
                                         <p className='text-xs'>過去のレースタイムなどからAIが算出した馬の能力指数です。数値が高いほど、高く評価していることを示します。</p>
                                     </div>
-                                    } placement="top" interactive={true} theme="light-border" appendTo={() => document.body}
+                                } placement="top" interactive={true} theme="light-border" appendTo={() => document.body}
                                 >
                                     <span className='w-4 h-4 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold cursor-help'>?</span>
                                 </Tippy>
@@ -114,27 +114,35 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
             </div>
 
             {/* スマホ (md未満) ではカードリスト表示 */}
-            <div className="md:hidden divide-y divide-gray-200 border border-gray-200 rounded-lg overflow-hidden">
+            {/* スマホ (md未満) ではカードリスト表示 */}
+            <div className="md:hidden divide-y divide-border border border-border rounded-lg overflow-hidden bg-white shadow-sm">
                 {race.predictions.map((p, index) => {
                     const adSlot = shouldShowAd(index, race.predictions.length);
                     return (
                         <React.Fragment key={`${race.id}-${p.horse_number}-mobile`}>
-                             <div className="p-3 bg-white active:bg-gray-50 transition-colors">
-                                 <div className="flex items-center justify-between gap-3">
-                                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                                         <span className="text-2xl font-extrabold text-gray-800 w-10 text-center flex-shrink-0">{p.mark || '—'}</span>
-                                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                                             <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
-                                             <span className="font-bold text-base text-gray-900 truncate">{p.horse_name}</span>
-                                         </div>
-                                     </div>
-                                     <div className="text-right flex-shrink-0">
-                                         <div className="font-bold text-primary text-xl whitespace-nowrap leading-tight">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</div>
-                                         <div className="text-[10px] text-gray-500 whitespace-nowrap font-medium">AI偏差値</div>
-                                     </div>
-                                 </div>
-                             </div>
-                             {adSlot && <InFeedAd slot={adSlot} />}
+                            <div className="p-2 transition-colors hover:bg-slate-50">
+                                <div className="flex items-center gap-2">
+                                    {/* 左側: 印と馬番 */}
+                                    <div className="flex flex-col items-center justify-center w-8 shrink-0 gap-1">
+                                        <span className="text-lg font-extrabold text-text-primary leading-none">{p.mark || '—'}</span>
+                                        <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
+                                    </div>
+
+                                    {/* 中央: 馬名 */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-bold text-sm text-text-primary truncate">{p.horse_name}</div>
+                                    </div>
+
+                                    {/* 右側: 偏差値 */}
+                                    <div className="flex flex-col items-end shrink-0 w-14">
+                                        <div className="font-bold text-primary text-base font-mono tracking-tight leading-none">
+                                            {p.deviation_score != null ? p.deviation_score.toFixed(1) : '--'}
+                                        </div>
+                                        <div className="text-[10px] text-text-muted scale-90 origin-right mt-0.5">偏差値</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {adSlot && <InFeedAd slot={adSlot} />}
                         </React.Fragment>
                     );
                 })}

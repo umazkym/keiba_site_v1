@@ -18,9 +18,9 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "#2563eb", // blue-600
-          light: "#60a5fa",   // blue-400
-          dark: "#1e40af",    // blue-800
+          DEFAULT: "#0f172a", // slate-900 (Main Brand Color)
+          light: "#334155",   // slate-700
+          dark: "#020617",    // slate-950
         },
         secondary: {
           DEFAULT: "#64748b", // slate-500
@@ -28,14 +28,18 @@ const config: Config = {
           dark: "#475569",    // slate-600
         },
         accent: {
-          DEFAULT: "#f59e0b", // amber-500
+          DEFAULT: "#d97706", // amber-600 (Action/Win)
           light: "#fbbf24",   // amber-400
-          dark: "#d97706",    // amber-600
+          dark: "#b45309",    // amber-700
         },
-        background: "#f8fafc", // slate-50
-        surface: "#ffffff",
-        text: "#1e293b",       // slate-800
-        muted: "#64748b",      // slate-500
+        background: "#ffffff", // Pure White
+        surface: "#f8fafc",    // slate-50
+        text: {
+          DEFAULT: "#0f172a",  // slate-900
+          primary: "#0f172a",  // slate-900
+          secondary: "#475569",// slate-600
+          muted: "#94a3b8",    // slate-400
+        },
         border: "#e2e8f0",     // slate-200
       },
       fontFamily: {

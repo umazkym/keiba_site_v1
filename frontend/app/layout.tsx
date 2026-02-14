@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Noto_Sans_JP, Roboto_Mono } from "next/font/google"; // Corrected import
 import Script from "next/script";
 import { Suspense } from "react";
 import "./globals.css";
@@ -12,6 +12,20 @@ import { OrganizationSchema, WebsiteSchema, SoftwareApplicationSchema } from "@/
 const inter = Inter({
     subsets: ["latin"],
     variable: '--font-inter',
+    preload: true,
+    display: 'swap'
+});
+
+const notoSansJP = Noto_Sans_JP({
+    subsets: ["latin"],
+    variable: '--font-noto-sans-jp',
+    preload: true,
+    display: 'swap'
+});
+
+const robotoMono = Roboto_Mono({
+    subsets: ["latin"],
+    variable: '--font-roboto-mono',
     preload: true,
     display: 'swap'
 });
@@ -95,7 +109,7 @@ export default function RootLayout({
                     }}
                 />
             </head>
-            <body className={`${inter.className} bg-gray-50`}>
+            <body className={`${inter.variable} ${notoSansJP.variable} ${robotoMono.variable} font-sans bg-surface text-text-primary antialiased`}>
                 {/* 構造化マークアップ：Organization, Website, SoftwareApplication */}
                 <OrganizationSchema />
                 <WebsiteSchema />

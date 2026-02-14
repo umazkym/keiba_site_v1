@@ -60,14 +60,12 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
     const scoreRange = maxScore - minScore;
     const sortedByNumber = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
 
-    const markerSpacing = isMobile ? 14 : 20;
-    const containerHeight = Math.max((sortedByNumber.length - 1) * markerSpacing + 60, isMobile ? 140 : 150);
+    const markerSpacing = isMobile ? 12 : 20;
+    const containerHeight = Math.max((sortedByNumber.length - 1) * markerSpacing + 40, isMobile ? 120 : 150);
 
     return (
-        <div className="p-3 md:p-4 bg-white">
-            <h4 className="text-xs md:text-sm font-bold text-gray-600 mb-2 md:mb-3 flex items-center">
-            </h4>
-            <div className="relative w-full bg-gray-50 rounded-lg shadow-sm overflow-hidden"
+        <div className="md:p-4 md:bg-white">
+            <div className="relative w-full bg-gray-50 rounded-lg shadow-inner overflow-hidden"
                 style={{ height: `${containerHeight}px` }}>
                 <div className="absolute top-0 bottom-0 left-0 w-[33.3%] bg-blue-100/30 rounded-l-lg"></div>
                 <div className="absolute top-0 bottom-0 left-[33.3%] w-[33.3%] bg-gray-100/30"></div>

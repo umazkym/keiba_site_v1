@@ -121,7 +121,7 @@ export default function RootLayout({
                 </Suspense>
 
                 <Header />
-                <main className="container mx-auto p-4 min-h-screen">
+                <main className="w-full max-w-[1600px] mx-auto p-3 sm:p-4 md:p-6 min-h-screen">
                     {children}
                 </main>
                 <Footer />

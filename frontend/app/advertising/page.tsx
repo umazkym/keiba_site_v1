@@ -156,7 +156,7 @@ export default function AdvertisingPage() {
     return (
         <>
             <Breadcrumb />
-            <div className="container py-8">
+            <div className="py-8">
                 <div className="max-w-4xl mx-auto">
                     <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-6 border-b-2 border-primary pb-4">{advertisingContent.title}</h1>
                     <div className="flex flex-col gap-8 text-gray-700 leading-8">

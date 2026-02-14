@@ -62,7 +62,7 @@ export default async function ArticlePage({ params }: Props) {
           image={article.eyecatch}
         />
 
-        <div className="container mx-auto px-4 max-w-3xl">
+        <div className="mx-auto px-4 max-w-3xl">
           <Breadcrumb />
 
           <article className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-100">

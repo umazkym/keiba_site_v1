@@ -249,7 +249,7 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
     };
 
     return (
-        <div className="container py-4">
+        <div className="py-4">
             <div className="mb-4">
                 <TopHitsDisplay />
             </div>

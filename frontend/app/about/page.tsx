@@ -98,7 +98,7 @@ export default function AboutPage() {
     return (
         <>
             <Breadcrumb />
-            <div className="container py-8">
+            <div className="py-8">
                 <div className="max-w-3xl mx-auto">
                     <div className="flex flex-col gap-10">
                         {/* メインセクション */}

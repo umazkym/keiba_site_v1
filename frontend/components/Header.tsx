@@ -27,7 +27,7 @@ export const Header = () => {
 
     return (
         <header className="bg-surface/95 backdrop-blur-sm text-text-primary border-b border-border sticky top-0 z-50 transition-all duration-300">
-            <div className="container mx-auto px-3 sm:px-4">
+            <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6">
                 <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
                     {/* ロゴ */}
                     <Link href="/" className="flex items-center gap-3 group shrink-0" aria-label="ウマFREE ホーム">

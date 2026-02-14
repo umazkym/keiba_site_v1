@@ -88,7 +88,7 @@ export default async function HomePage() {
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
             />
-            <div className="container py-4 sm:py-6 space-y-6 sm:space-y-10">
+            <div className="py-4 sm:py-6 space-y-6 sm:space-y-10">
                 {/* 1. ヒーローセクション */}
                 <div className="space-y-4 sm:space-y-6">
                     <section className="text-center px-5 py-8 sm:p-12 md:p-16 bg-slate-900 rounded-2xl shadow-xl relative overflow-hidden">

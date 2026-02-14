@@ -4,7 +4,7 @@ import { SearchIcon } from "@/components/Icons";
 
 export default function NotFound() {
     return (
-        <div className="container py-8 space-y-10">
+        <div className="py-8 space-y-10">
             <div className="max-w-4xl mx-auto">
                 {/* エラーメッセージ - ヒーロースタイル */}
                 <section className="text-center p-8 md:p-12 bg-gray-50 rounded-lg border border-gray-200">

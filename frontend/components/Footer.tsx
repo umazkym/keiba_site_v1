@@ -5,7 +5,7 @@ export const Footer = () => {
     return (
         <footer className="bg-slate-900 text-slate-300 py-10 relative z-0 mb-16">
             {/* mb-16（64px）を追加してアンカー広告分のマージンを確保 */}
-            <div className="container mx-auto px-4">
+            <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6">
                 {/* メインフッターコンテンツ（3カラム） */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 mb-8">
                     {/* サイト情報 */}

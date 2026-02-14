@@ -200,7 +200,7 @@ export const FAQClient = () => {
                 }}
                 strategy="afterInteractive"
             />
-            <div className="container py-8">
+            <div className="py-8">
                 <div className="max-w-3xl mx-auto">
                     {/* ヘッダー */}
                     <h1 className="text-3xl sm:text-4xl font-bold text-primary mb-6 border-b border-border pb-4">

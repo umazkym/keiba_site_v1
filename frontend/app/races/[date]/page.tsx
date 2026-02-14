@@ -62,7 +62,7 @@ export async function generateMetadata(
 }
 
 const RacePageSkeleton = () => (
-    <div className="container py-4">
+    <div className="py-4">
         <div className="sticky top-16 z-40 bg-white/80 backdrop-blur-sm border-b shadow-md mb-4 p-2">
             <div className="animate-pulse flex items-center justify-between">
                 <div className="bg-gray-300 h-9 w-16 rounded-md"></div>
@@ -152,11 +152,11 @@ export default async function RacePage({ params }: { params: { date: string } })
     // 上部のチェックで既に notFound() が呼ばれているはずだが、念のためここでもチェックする
     // ただし、try-catch内で例外が発生した場合は、このreturnには到達しない
     if (!predictionData) {
-         // このコードパスには通常到達しないはずだが、
-         // tryブロック内でエラーが発生せず、predictionDataがnullのままの場合（現在はcatchで処理）
-         // のフォールバックとして
-         console.log(`[Data Info] Fallback check: No prediction data for ${params.date}. Returning 404.`);
-         notFound();
+        // このコードパスには通常到達しないはずだが、
+        // tryブロック内でエラーが発生せず、predictionDataがnullのままの場合（現在はcatchで処理）
+        // のフォールバックとして
+        console.log(`[Data Info] Fallback check: No prediction data for ${params.date}. Returning 404.`);
+        notFound();
     }
     // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 

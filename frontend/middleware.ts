@@ -93,10 +93,34 @@ export function middleware(request: NextRequest) {
         });
     }
 
+    // 5. /guides パスのリダイレクト（旧ページ構造の名残。app/guidesは削除済み）
+    // Google Search Consoleで5xxエラーとなっているURLを適切にリダイレクト
+    if (pathname.startsWith('/guides/')) {
+        const slug = pathname.replace('/guides/', '');
+
+        // 既知のガイドスラッグを対応する記事にマッピング
+        const guideToArticleMap: { [key: string]: string } = {
+            'horseracing-basics': '/articles/2025-10-26-beginners-complete-guide',
+        };
+
+        const newUrl = new URL(request.url);
+        if (guideToArticleMap[slug]) {
+            newUrl.pathname = guideToArticleMap[slug];
+        } else {
+            // マッピングにないガイドは記事一覧にリダイレクト
+            newUrl.pathname = '/articles';
+        }
+        newUrl.search = '';
+
+        return NextResponse.redirect(newUrl, {
+            status: 301,
+        });
+    }
+
     return NextResponse.next();
 }
 
 // ミドルウェアの適用範囲を指定
 export const config = {
-    matcher: ['/races/:path*', '/articles/:path*', '/search', '/rac:path*'],
+    matcher: ['/races/:path*', '/articles/:path*', '/search', '/rac:path*', '/guides/:path*'],
 };

@@ -105,7 +105,7 @@ export const TopHitsDisplay = () => {
                             </Link>
                         ))}
                     </div>
-                    {/* 的中実績の下に広告を表示 */}
+                    {/* AdSense審査通過後に有効化する
                     {showAd && (
                         <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
                             <div className="text-[10px] text-gray-400 text-center mb-2">スポンサーリンク</div>
@@ -116,6 +116,7 @@ export const TopHitsDisplay = () => {
                             />
                         </div>
                     )}
+                    */}
                 </>
             )}
         </div>

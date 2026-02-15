@@ -12,6 +12,7 @@ export interface Article {
   content: string;
   title: string;
   date: string;
+  description: string;
   eyecatch: string;
   category: string;
 }
@@ -30,6 +31,7 @@ export function getAllArticles(): Article[] {
       content, // ここでは変換せず、生のMarkdownを返す
       title: data.title || '無題',
       date: data.date || new Date().toISOString(),
+      description: data.description || '',
       eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
       category: data.category || '未分類',
     };
@@ -71,25 +73,26 @@ export function getUniqueCategories(): string[] {
 // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 // 特定の記事を取得し、MarkdownをHTMLに変換する関数
 export async function getArticleBySlug(slug: string): Promise<Article> {
-    const fullPath = path.join(articlesDirectory, `${slug}.md`);
-    const fileContents = fs.readFileSync(fullPath, 'utf8');
-    const { data, content } = matter(fileContents);
+  const fullPath = path.join(articlesDirectory, `${slug}.md`);
+  const fileContents = fs.readFileSync(fullPath, 'utf8');
+  const { data, content } = matter(fileContents);
 
-    // MarkdownをHTMLに変換 (GFMプラグインを使用してテーブル等をサポート)
-    const processedContent = await remark()
-        .use(gfm)
-        .use(html)
-        .process(content);
-    const contentHtml = processedContent.toString();
+  // MarkdownをHTMLに変換 (GFMプラグインを使用してテーブル等をサポート)
+  const processedContent = await remark()
+    .use(gfm)
+    .use(html)
+    .process(content);
+  const contentHtml = processedContent.toString();
 
-    return {
-      slug,
-      content: contentHtml, // HTML化されたコンテンツを返す
-      title: data.title || '無題',
-      date: data.date || new Date().toISOString(),
-      eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
-      category: data.category || '未分類',
-    };
+  return {
+    slug,
+    content: contentHtml, // HTML化されたコンテンツを返す
+    title: data.title || '無題',
+    date: data.date || new Date().toISOString(),
+    description: data.description || '',
+    eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
+    category: data.category || '未分類',
+  };
 }
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 

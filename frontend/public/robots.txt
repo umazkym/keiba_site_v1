@@ -35,7 +35,3 @@ Allow: /
 Disallow: /api/
 Disallow: /search?*
 Crawl-delay: 1
-
-# その他のボットにクロール遅延設定（負荷対策）
-User-agent: *
-Crawl-delay: 2

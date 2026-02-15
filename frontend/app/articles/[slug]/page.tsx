@@ -15,9 +15,15 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const article = await getArticleBySlug(params.slug);
-    // HTMLタグを除去してプレーンテキストのdescriptionを生成
-    const plainText = article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-    const description = plainText.substring(0, 160);
+    // frontmatterのdescriptionを優先、なければコンテンツから生成
+    const description = article.description ||
+      article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().substring(0, 160);
+
+    // eyecatchをフルURLに変換
+    const imageUrl = article.eyecatch.startsWith('http')
+      ? article.eyecatch
+      : `https://uma-free.com${article.eyecatch}`;
+
     return {
       title: article.title,
       description,
@@ -28,6 +34,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         type: 'article',
         siteName: 'UMA-FREE',
         locale: 'ja_JP',
+        images: [
+          {
+            url: imageUrl,
+            width: 1200,
+            height: 630,
+            alt: article.title,
+          },
+        ],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: article.title,
+        description,
+        images: [imageUrl],
       },
       alternates: {
         canonical: `/articles/${params.slug}`,

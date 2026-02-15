@@ -8,6 +8,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const articles = getAllArticles();
 
     // 静的ルートごとに適切な更新頻度と優先度を設定
+    const siteLastModified = new Date('2026-02-16');
     const staticRouteConfig: Record<string, { changeFrequency: 'daily' | 'weekly' | 'monthly'; priority: number }> = {
         '': { changeFrequency: 'daily', priority: 1.0 },
         '/about': { changeFrequency: 'monthly', priority: 0.7 },
@@ -22,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const staticRoutes = Object.entries(staticRouteConfig).map(([route, config]) => ({
         url: `${BASE_URL}${route}`,
-        lastModified: new Date(),
+        lastModified: siteLastModified,
         changeFrequency: config.changeFrequency,
         priority: config.priority,
     }));
@@ -79,8 +80,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         const racePageRoutes = recentRaces.map((race) => ({
             // URLパラメータの順序を統一（'race' → 'venue'）
-            // URL内の '&' をXMLエンティティ '&amp;' に置換
-            url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`.replace(/&/g, '&amp;'),
+            url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`,
             lastModified: new Date(),
             changeFrequency: 'weekly' as const,
             priority: 0.7,

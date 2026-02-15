@@ -1,12 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Noto_Sans_JP, Roboto_Mono } from "next/font/google"; // Corrected import
-import Script from "next/script";
-import { Suspense } from "react";
+import { Inter, Noto_Sans_JP, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { GoogleAnalytics } from "@next/third-parties/google";
-import { GlobalAdManager } from "@/components/GlobalAdManager";
 import { OrganizationSchema, WebsiteSchema, SoftwareApplicationSchema } from "@/components/StructuredData";
 
 const inter = Inter({
@@ -83,15 +80,14 @@ export default function RootLayout({
     return (
         <html lang="ja">
             <head>
-                {/* DNS Prefetch と Preconnect for External Resources */}
-                <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
+                {/* Preconnect for External Resources */}
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 
-                {/* AdSenseアカウントメタタグ */}
+                {/* AdSenseアカウントメタタグ（審査認証用に維持） */}
                 <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
 
-                {/* Google AdSense スクリプト（Next.js Script コンポーネント使用） */}
+                {/* AdSenseスクリプトは審査通過後に有効化する
                 <Script
                     async
                     src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"
@@ -108,6 +104,7 @@ export default function RootLayout({
                         });`
                     }}
                 />
+                */}
             </head>
             <body className={`${inter.variable} ${notoSansJP.variable} ${robotoMono.variable} font-sans bg-surface text-text-primary antialiased`}>
                 {/* 構造化マークアップ：Organization, Website, SoftwareApplication */}
@@ -115,10 +112,11 @@ export default function RootLayout({
                 <WebsiteSchema />
                 <SoftwareApplicationSchema />
 
-                {/* グローバル広告マネージャー（Suspense でラップして Hydration エラーを防止） */}
+                {/* グローバル広告マネージャー（AdSense審査通過後に有効化する）
                 <Suspense fallback={null}>
                     <GlobalAdManager />
                 </Suspense>
+                */}
 
                 <Header />
                 <main className="w-full max-w-[1600px] mx-auto p-3 sm:p-4 md:p-6 min-h-screen">

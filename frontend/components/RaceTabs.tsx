@@ -109,7 +109,7 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
                         <div>
                             <h4 className="flex items-center text-base font-bold text-gray-700 mt-4 mb-2 px-3 sm:px-4">
                                 <SparklesIcon className="w-5 h-5 text-accent mr-2" />
-                                AI予測
+                                AI分析
                             </h4>
                             <PredictionTable race={activeRace} />
                         </div>

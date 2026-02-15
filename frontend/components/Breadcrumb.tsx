@@ -44,7 +44,7 @@ export function Breadcrumb() {
       // URLスラッグを日本語ラベルに変換
       const labelMap: { [key: string]: string } = {
         'articles': '記事',
-        'races': 'レース予測',
+        'races': 'レース分析',
         'about': '運営者情報',
         'faq': 'よくある質問',
         'contact': 'お問い合わせ',

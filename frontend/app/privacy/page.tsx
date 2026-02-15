@@ -49,7 +49,7 @@ type PrivacyPolicyContent = {
 // プライバシーポリシーコンテンツ定義
 const privacyPolicyContent: PrivacyPolicyContent = {
     title: 'プライバシーポリシー',
-    lastUpdated: '最終更新日: 2025年10月20日',
+    lastUpdated: '最終更新日: 2026年2月15日',
     introduction: 'UMA-FREE（以下「当サイト」といいます。）は、ユーザーの個人情報保護の重要性について認識し、個人情報の保護に関する法律（以下「個人情報保護法」といいます。）を遵守すると共に、以下のプライバシーポリシー（以下「本ポリシー」といいます。）に従い、適切な取扱い及び保護に努めます。',
     sections: [
         {

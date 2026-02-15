@@ -43,7 +43,7 @@ type AdvertisingContent = {
 
 const advertisingContent: AdvertisingContent = {
     title: "広告について",
-    lastUpdated: "最終更新日: 2025年10月22日",
+    lastUpdated: "最終更新日: 2026年2月15日",
     introduction: "UMA-FREE（以下「当サイト」といいます。）は、サイト運営費用をまかなうため、第三者配信の広告サービスを利用しています。このページでは、当サイトで配信している広告についての詳細をご説明します。",
     sections: [
         {

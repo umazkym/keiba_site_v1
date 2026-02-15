@@ -49,7 +49,7 @@ type TermsOfServiceContent = {
 // 利用規約コンテンツ定義
 const termsOfServiceContent: TermsOfServiceContent = {
     title: '利用規約',
-    lastUpdated: '最終更新日: 2025年10月21日',
+    lastUpdated: '最終更新日: 2026年2月15日',
     introduction: 'UMA-FREE（以下「当サイト」といいます。）をご利用いただく際には、以下の利用規約（以下「本規約」といいます。）に同意していただく必要があります。本規約を読んで、その内容に同意していただけない場合は、当サイトのご利用をお控えくださいますようお願いいたします。',
     sections: [
         {

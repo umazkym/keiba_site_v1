@@ -137,7 +137,7 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
         };
 
         setCurrentDate(initialDate);
-        document.title = `競馬AI予測 | ${formatDate(initialDate)}`;
+        document.title = `競馬AIデータ分析 | ${formatDate(initialDate)}`;
         fetchData(initialDate);
 
     }, [initialDate]);
@@ -214,20 +214,20 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                     <h2 className="text-xl font-bold text-red-700 mb-2">{formatDate(currentDate)}のレースデータはありません</h2>
                     <p className="text-gray-600 mb-6">
                         指定された日付はレースが開催されないか、まだデータが登録されていません。<br />
-                        他の日付のレース予測をお探しください。
+                        他の日付のレースデータをお探しください。
                     </p>
                     <Link
                         href={`/races/${getTodayString()}`}
                         className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg shadow-sm transition-colors"
                     >
-                        本日のレース予測を見る
+                        本日のレース分析を見る
                     </Link>
                     <div className="mt-8 pt-6 border-t border-red-200 text-left max-w-2xl mx-auto">
                         <h3 className="font-bold text-gray-700 mb-3">競馬開催スケジュール</h3>
                         <div className="space-y-2 text-sm text-gray-600">
                             <p>• 中央競馬: 主に土日に開催されます。</p>
                             <p>• 地方競馬: 各競馬場により開催日が異なります。</p>
-                            <p>• 翌日のレース予測データは、通常、前日の7時頃に更新されます。</p>
+                            <p>• 翌日のレース分析データは、通常、前日の7時頃に更新されます。</p>
                         </div>
                     </div>
                 </div>
@@ -295,6 +295,29 @@ export default function RacePageClient({ initialDate, initialPredictionData }: R
                         <div className="font-bold text-sm text-blue-700 mb-1">サイトについて</div>
                         <p className="text-xs text-gray-500">UMA-FREEのデータソースと分析手法</p>
                     </Link>
+                </div>
+            </section>
+
+            {/* サイト紹介テキスト（SEO・AdSense対策） */}
+            <section className="mt-6 bg-white rounded-xl border border-slate-200 p-6">
+                <h2 className="font-bold text-lg text-gray-800 mb-3">
+                    UMA-FREEのデータ分析について
+                </h2>
+                <div className="text-sm text-gray-600 leading-relaxed space-y-3">
+                    <p>
+                        UMA-FREEは、過去5年以上の中央・地方競馬のレースデータを機械学習で分析し、
+                        各出走馬の能力を偏差値として数値化した競馬データ分析サイトです。
+                        会員登録不要で、すべて無料でご利用いただけます。
+                    </p>
+                    <p>
+                        出走馬ごとのAI偏差値（着順・タイム・コース適性から算出）、
+                        過去対決成績、コース・距離ごとの枠順傾向スコアを提供しています。
+                        データは毎日自動更新され、開催日午前中には当日の全レース分析が完了します。
+                    </p>
+                    <p>
+                        本サイトは統計情報の提供を目的としており、投票の推奨ではありません。
+                        すべての情報は過去の実績に基づく分析データです。
+                    </p>
                 </div>
             </section>
         </div>

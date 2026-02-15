@@ -38,14 +38,14 @@ export async function generateMetadata(
     const venue = searchParams.venue as string;
     const race = searchParams.race as string;
 
-    let title = `${formattedDate}のAI競馬予測 | UMA-FREE`;
-    let description = `${formattedDate}の中央・地方競馬の全レースをAIが完全無料で予測。馬券検討に役立つデータを毎日更新。`;
+    let title = `${formattedDate}のAI競馬データ分析 | UMA-FREE`;
+    let description = `${formattedDate}の中央・地方競馬の全レースをAIが完全無料でデータ分析。馬券検討に役立つ統計情報を毎日更新。`;
     let canonicalUrl = `/races/${params.date}`;
 
     if (venue && race) {
         const venueName = decodeURIComponent(venue);
-        title = `${formattedDate} ${venueName} ${race}R のAI競馬予測 | UMA-FREE`;
-        description = `AIによる${formattedDate} ${venueName}競馬場 ${race}Rの無料予測。偏差値、対戦成績、枠順データで詳細分析。`;
+        title = `${formattedDate} ${venueName} ${race}R のAI競馬データ分析 | UMA-FREE`;
+        description = `AIによる${formattedDate} ${venueName}競馬場 ${race}Rの無料データ分析。偏差値、対戦成績、枠順データで詳細分析。`;
         // ▼▼▼▼▼【修正: canonical URLのパラメータ順序を統一】▼▼▼▼▼
         // Googleが重複判定を避けるため、クエリパラメータの順序を常に 'race' → 'venue' に統一
         canonicalUrl = `/races/${params.date}?race=${race}&venue=${venue}`;
@@ -105,7 +105,7 @@ export default async function RacePage({ params }: { params: { date: string } })
                     "name": `${mainRace.venue_name}競馬場`,
                     "address": `${mainRace.venue_name}競馬場`
                 },
-                "description": `AIによる${mainRace.venue_name} ${mainRace.race_number}R ${mainRace.race_name}の競馬予測データ。`,
+                "description": `AIによる${mainRace.venue_name} ${mainRace.race_number}R ${mainRace.race_name}の競馬データ分析。`,
                 "eventStatus": "https://schema.org/EventScheduled",
                 // ▼▼▼▼▼【修正: JSON-LD URLのパラメータ順序を統一】▼▼▼▼▼
                 "url": `https://uma-free.com/races/${mainRace.race_date}?race=${mainRace.race_number}&venue=${encodeURIComponent(mainRace.venue_name)}`,

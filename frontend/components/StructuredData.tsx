@@ -207,13 +207,6 @@ export function SoftwareApplicationSchema() {
             "availability": "https://schema.org/InStock",
             "validFrom": validFromDate
         },
-        "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.5",
-            "ratingCount": "120",
-            "bestRating": "5",
-            "worstRating": "1"
-        },
         "author": {
             "@type": "Person",
             "name": "おとうふや"

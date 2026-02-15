@@ -60,9 +60,6 @@ export const Header = () => {
                         <Link href="/articles" className="text-sm font-medium text-text-secondary hover:text-primary transition-colors duration-200">
                             記事
                         </Link>
-                        <Link href="/guides" className="text-sm font-medium text-text-secondary hover:text-primary transition-colors duration-200">
-                            ガイド
-                        </Link>
                         <Link href="/faq" className="text-sm font-medium text-text-secondary hover:text-primary transition-colors duration-200">
                             よくある質問
                         </Link>
@@ -118,13 +115,6 @@ export const Header = () => {
                             onClick={closeMenu}
                         >
                             記事
-                        </Link>
-                        <Link
-                            href="/guides"
-                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
-                            onClick={closeMenu}
-                        >
-                            ガイド
                         </Link>
                         <Link
                             href="/faq"

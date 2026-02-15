@@ -1,6 +1,5 @@
 import { MetadataRoute } from 'next'
 import { getAllArticles } from '@/lib/articles';
-import { getAllGuideSlugs } from '@/lib/guides';
 
 const BASE_URL = 'https://uma-free.com';
 
@@ -19,7 +18,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         '/search': { changeFrequency: 'weekly', priority: 0.5 },
         '/terms': { changeFrequency: 'monthly', priority: 0.5 },
         '/faq': { changeFrequency: 'monthly', priority: 0.7 },
-        '/guides': { changeFrequency: 'weekly', priority: 0.8 },
     };
 
     const staticRoutes = Object.entries(staticRouteConfig).map(([route, config]) => ({
@@ -37,14 +35,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
     }));
 
-    // ガイドページをサイトマップに追加
-    const guideSlugs = getAllGuideSlugs();
-    const guideRoutes = guideSlugs.map((params) => ({
-        url: `${BASE_URL}/guides/${params.slug}`,
-        lastModified: new Date(),
-        changeFrequency: 'monthly' as const,
-        priority: 0.7,
-    }));
 
     try {
         // APIから全レースのURL情報を取得
@@ -105,7 +95,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             },
             ...staticRoutes.filter(r => r.url !== BASE_URL),
             ...articleRoutes,
-            ...guideRoutes,
             ...datePageRoutes,
             ...racePageRoutes
         ];
@@ -121,7 +110,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             },
             ...staticRoutes.filter(r => r.url !== BASE_URL),
             ...articleRoutes,
-            ...guideRoutes,
         ];
     }
 }

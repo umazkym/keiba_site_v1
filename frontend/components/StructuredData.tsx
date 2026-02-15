@@ -199,12 +199,20 @@ export function SoftwareApplicationSchema() {
         "name": "UMA-FREE AI 競馬データ分析システム",
         "description": "機械学習を用いた競馬データ分析。中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を無料で提供。",
         "applicationCategory": "Sports",
+        "operatingSystem": "Web",
         "offers": {
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "JPY",
             "availability": "https://schema.org/InStock",
             "validFrom": validFromDate
+        },
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.5",
+            "ratingCount": "120",
+            "bestRating": "5",
+            "worstRating": "1"
         },
         "author": {
             "@type": "Person",

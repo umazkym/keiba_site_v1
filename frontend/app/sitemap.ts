@@ -8,22 +8,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // 記事データを取得
     const articles = getAllArticles();
 
-    const staticRoutes = [
-        '',
-        '/about',
-        '/advertising',
-        '/contact',
-        '/privacy',
-        '/articles',
-        '/search',
-        '/terms',
-        '/faq',
-        '/guides',
-    ].map((route) => ({
+    // 静的ルートごとに適切な更新頻度と優先度を設定
+    const staticRouteConfig: Record<string, { changeFrequency: 'daily' | 'weekly' | 'monthly'; priority: number }> = {
+        '': { changeFrequency: 'daily', priority: 1.0 },
+        '/about': { changeFrequency: 'monthly', priority: 0.7 },
+        '/advertising': { changeFrequency: 'monthly', priority: 0.5 },
+        '/contact': { changeFrequency: 'monthly', priority: 0.6 },
+        '/privacy': { changeFrequency: 'monthly', priority: 0.5 },
+        '/articles': { changeFrequency: 'weekly', priority: 0.9 },
+        '/search': { changeFrequency: 'weekly', priority: 0.5 },
+        '/terms': { changeFrequency: 'monthly', priority: 0.5 },
+        '/faq': { changeFrequency: 'monthly', priority: 0.7 },
+        '/guides': { changeFrequency: 'weekly', priority: 0.8 },
+    };
+
+    const staticRoutes = Object.entries(staticRouteConfig).map(([route, config]) => ({
         url: `${BASE_URL}${route}`,
         lastModified: new Date(),
-        changeFrequency: 'monthly' as const,
-        priority: route === '' ? 1.0 : 0.8,
+        changeFrequency: config.changeFrequency,
+        priority: config.priority,
     }));
 
     // 記事ページをサイトマップに追加

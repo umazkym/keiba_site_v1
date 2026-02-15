@@ -26,6 +26,11 @@ export const Footer = () => {
                                 </Link>
                             </li>
                             <li>
+                                <Link href="/guides" className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
+                                    ガイド一覧
+                                </Link>
+                            </li>
+                            <li>
                                 <Link href="/faq" className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     よくある質問
                                 </Link>

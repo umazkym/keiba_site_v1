@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import Script from 'next/script';
 
 interface FAQItem {
     id: string;
@@ -192,13 +191,11 @@ export const FAQClient = () => {
 
     return (
         <>
-            <Script
-                id="faq-schema"
+            <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify(faqSchema)
                 }}
-                strategy="afterInteractive"
             />
             <div className="py-8">
                 <div className="max-w-3xl mx-auto">

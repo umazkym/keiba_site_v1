@@ -15,9 +15,20 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const article = await getArticleBySlug(params.slug);
+    // HTMLタグを除去してプレーンテキストのdescriptionを生成
+    const plainText = article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    const description = plainText.substring(0, 160);
     return {
       title: article.title,
-      description: article.content.substring(0, 120),
+      description,
+      openGraph: {
+        title: article.title,
+        description,
+        url: `https://uma-free.com/articles/${params.slug}`,
+        type: 'article',
+        siteName: 'UMA-FREE',
+        locale: 'ja_JP',
+      },
       alternates: {
         canonical: `/articles/${params.slug}`,
       },

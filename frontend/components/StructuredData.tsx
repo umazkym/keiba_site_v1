@@ -1,6 +1,5 @@
-'use client';
-
-import Script from 'next/script';
+// Server Component - 構造化データはSSR時にHTMLに直接含める必要がある
+// 'use client' と next/script の strategy="afterInteractive" は使用しない
 
 /**
  * 組織情報のSchema.org構造化データ
@@ -29,13 +28,11 @@ export function OrganizationSchema() {
     };
 
     return (
-        <Script
-            id="organization-schema"
+        <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
                 __html: JSON.stringify(organizationSchema)
             }}
-            strategy="afterInteractive"
         />
     );
 }
@@ -61,13 +58,11 @@ export function WebsiteSchema() {
     };
 
     return (
-        <Script
-            id="website-schema"
+        <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
                 __html: JSON.stringify(websiteSchema)
             }}
-            strategy="afterInteractive"
         />
     );
 }
@@ -128,13 +123,11 @@ export function ArticleSchema({
     };
 
     return (
-        <Script
-            id={`article-schema-${url}`}
+        <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
                 __html: JSON.stringify(articleSchema)
             }}
-            strategy="afterInteractive"
         />
     );
 }
@@ -156,13 +149,11 @@ export function BreadcrumbSchema({ items }: { items: Array<{ name: string; url: 
     };
 
     return (
-        <Script
-            id="breadcrumb-schema"
+        <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
                 __html: JSON.stringify(breadcrumbSchema)
             }}
-            strategy="afterInteractive"
         />
     );
 }
@@ -186,13 +177,11 @@ export function FAQSchema({ faqs }: { faqs: Array<{ question: string; answer: st
     };
 
     return (
-        <Script
-            id="faq-schema"
+        <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
                 __html: JSON.stringify(faqSchema)
             }}
-            strategy="afterInteractive"
         />
     );
 }
@@ -225,13 +214,11 @@ export function SoftwareApplicationSchema() {
     };
 
     return (
-        <Script
-            id="software-app-schema"
+        <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
                 __html: JSON.stringify(appSchema)
             }}
-            strategy="afterInteractive"
         />
     );
 }

@@ -35,6 +35,7 @@ const aboutContent = {
         title: '運営者について',
         paragraphs: [
             'UMA-FREEは個人開発者「おとうふや」が趣味・学習の延長として作成・運営しているサイトです。機械学習やデータ分析の技術を独学で学び、試作と検証を重ねてきました。このサイトは学習目的でのデータ分析研究を目的としています。',
+            '2025年9月のサイト開設以来、中央競馬（JRA）全10競馬場および地方競馬（NAR）主要14競馬場の全レースを対象に、毎日データ分析を実施しています。これまでに累計数万レース以上のデータを蓄積・分析しており、分析モデルは継続的に検証・改善を行っています。',
             '当サイトで提供している統計分析情報は、過去5年以上のレース結果を基に機械学習などを用いて作成された参考情報です。完全な的中や利益を保証するものではありません。すべて参考値・推定値としてご理解ください。',
             '運営は個人的な活動であり、システム開発を本業として行っているわけではありません。投票の助言や推奨は行っていません。'
         ]
@@ -67,6 +68,14 @@ const aboutContent = {
             { label: '枠順傾向スコア', value: '過去の統計データに基づき、コースや距離ごとの枠順の傾向をスコア化したものです。参考情報としてご利用ください。' }
         ]
     },
+    dataQuality: {
+        title: 'データの信頼性と透明性',
+        paragraphs: [
+            'AI偏差値は、過去の着順・走破タイム・上がりタイム・コース適性・馬場状態への対応力・距離適性など、複数の要素を統計モデルで重み付けして算出しています。',
+            '本サイトの分析モデルは継続的に検証を行っており、過去データに基づく検証（バックテスト）と実際のレース結果との照合を定期的に実施しています。',
+            '完全な予測は原理的に不可能であり、AI偏差値はあくまで相対的な能力の目安です。馬のコンディション、騎手の判断、天候、馬場状態の急変など、データに反映しきれない要素も多いため、結果の保証はできません。'
+        ]
+    },
     techInfo: {
         title: '技術情報',
         intro: '本サイトは趣味・学習の範囲で以下の技術を使って構築しています（商用の大規模システムとは異なります）：',
@@ -83,8 +92,8 @@ const aboutContent = {
             '当サイトの情報は投票や投資の助言を行うものではありません。提供する統計分析情報はあくまで参考値であり、実際の投票判断は完全にご自身の責任においてお願いします。',
             '予測が外れることはよくあります。本サイトの情報により損失が生じても、当サイト及び運営者は一切の責任を負いません。',
             '分析に使用しているデータやモデルは継続的に改善していますが、結果の保証はできません。',
-            '20歳未満の馬券購入は法律で禁止されています。本サイトは成人を対象としています。',
-            'ギャンブル依存症の可能性を感じた場合は、ギャンブル依存症対策全国協議会にご相談ください。'
+            '20歳未満の馬券購入は競馬法（第28条）により禁止されています。本サイトは成人を対象としています。',
+            'ギャンブル依存症に関するご心配がある場合は、以下の窓口にご相談ください。<br/>・リカバリーサポート・ネットワーク（RSN）: <a href="tel:0120297338" class="text-rose-700 underline">0120-29-7338</a>（24時間対応）<br/>・消費者ホットライン: <a href="tel:188" class="text-rose-700 underline">188</a><br/>・JRA「競馬についてのお悩みをお聞かせください」: <a href="https://www.jra.go.jp/" target="_blank" rel="noopener noreferrer" class="text-rose-700 underline">JRA公式サイト</a>'
         ]
     }
 };
@@ -136,6 +145,14 @@ export default function AboutPage() {
                             <h2 className={sectionTitleClass}>{aboutContent.dataInfo.title}</h2>
                             <div className="flex flex-col gap-6">
                                 {aboutContent.dataInfo.items.map(item => (<div key={item.label} className="border-l-4 border-slate-300 pl-4"><h3 className="font-bold text-text-primary text-base mb-2">{item.label}</h3><p className="text-text-secondary text-base">{item.value}</p></div>))}
+                            </div>
+                        </section>
+
+                        {/* データの信頼性と透明性 */}
+                        <section className={sectionClass}>
+                            <h2 className={sectionTitleClass}>{aboutContent.dataQuality.title}</h2>
+                            <div className="flex flex-col gap-4">
+                                {aboutContent.dataQuality.paragraphs.map((text, index) => (<p key={index} className="text-text-secondary leading-8 text-base">{text}</p>))}
                             </div>
                         </section>
 

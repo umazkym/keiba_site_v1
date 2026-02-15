@@ -72,6 +72,10 @@ export default async function ArticlePage({ params }: Props) {
   try {
     const article = await getArticleBySlug(params.slug);
 
+    // 読了時間の推定（日本語: 約500文字/分）
+    const textContent = article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, '');
+    const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
+
     // articleのスキーマを生成
     const articleUrl = `https://uma-free.com/articles/${params.slug}`;
     const datePublished = new Date(article.date).toISOString();
@@ -102,9 +106,13 @@ export default async function ArticlePage({ params }: Props) {
               <h1 className="text-2xl md:text-3xl font-bold text-text-primary mb-3 leading-tight">
                 {article.title}
               </h1>
-              <p className="text-text-muted text-sm">
-                {new Date(article.date).toLocaleDateString('ja-JP')}
-              </p>
+              <div className="flex items-center justify-center gap-3 text-text-muted text-sm">
+                <time dateTime={datePublished}>
+                  {new Date(article.date).toLocaleDateString('ja-JP')}
+                </time>
+                <span className="text-slate-300">|</span>
+                <span>約{readingTimeMin}分で読めます</span>
+              </div>
             </header>
 
             {article.eyecatch && (

@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     },
 };
 
-// FAQ構造化データ
+// トップページ「よくある質問」セクション用データ（構造化データはFAQ専用ページにのみ配置）
 const homepageFaqItems = [
     {
         question: '本当に無料ですか？',
@@ -49,19 +49,6 @@ const homepageFaqItems = [
         answer: 'はい。PC・スマートフォン・タブレットすべてのデバイスに対応しています。',
     },
 ];
-
-const faqJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    'mainEntity': homepageFaqItems.map(item => ({
-        '@type': 'Question',
-        'name': item.question,
-        'acceptedAnswer': {
-            '@type': 'Answer',
-            'text': item.answer,
-        },
-    })),
-};
 
 // JSTでの今日の日付文字列をサーバーサイドで生成する関数
 const getTodayString = () => {
@@ -83,11 +70,6 @@ export default async function HomePage() {
 
     return (
         <>
-            {/* FAQ構造化データ */}
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-            />
             <div className="py-4 sm:py-6 space-y-6 sm:space-y-10">
                 {/* 1. ヒーローセクション */}
                 <div className="space-y-4 sm:space-y-6">
@@ -151,13 +133,16 @@ export default async function HomePage() {
                     </h2>
                     <div className="space-y-4 sm:space-y-5 text-text-secondary text-[13px] sm:text-base leading-[1.8] sm:leading-relaxed">
                         <p>
-                            UMA-FREEは、過去5年以上の中央・地方競馬のレースデータを機械学習で分析し、各出走馬の能力を偏差値として数値化した競馬データ分析サイトです。会員登録不要で、すべて無料でご利用いただけます。
+                            UMA-FREEは、過去5年以上の中央競馬（JRA）および地方競馬（NAR）の膨大なレースデータを機械学習アルゴリズムで分析し、各出走馬の能力を独自の<strong>AI偏差値</strong>として数値化した競馬データ分析サイトです。会員登録やメールアドレスの入力は一切不要で、すべての分析データを完全無料でご利用いただけます。
                         </p>
                         <p>
-                            出走馬ごとの<strong>AI偏差値</strong>（着順・タイム・コース適性から算出）、<strong>過去対決成績</strong>、コース・距離ごとの<strong>枠順傾向スコア</strong>を提供しています。
+                            AI偏差値は、過去の着順・走破タイム・上がりタイム・コース適性・馬場状態への対応力など、複数の要素を統計的に分析して算出しています。単なる人気順や直近の成績だけではなく、長期的なデータに基づいた客観的な能力評価を提供することが特徴です。
                         </p>
                         <p>
-                            データは毎日自動更新。開催日午前中には当日の全レース分析が完了します。初心者からベテランまで、客観的な判断材料としてご活用ください。
+                            さらに、出走馬同士の<strong>過去対決成績</strong>（直接対決での勝敗記録）や、コース・距離ごとの<strong>枠順傾向スコア</strong>（統計的にどの枠順が有利かを数値化したもの）など、多角的なデータを組み合わせて提供しています。これにより、1つの指標だけでは見えない馬の総合的な力関係を把握できます。
+                        </p>
+                        <p>
+                            データは毎日自動更新されており、開催日の午前中には当日の全レース分析が完了します。競馬初心者の方はAI偏差値を目安に実力馬を探す入り口として、ベテランの方は自身の分析を補完する客観的な判断材料としてご活用ください。
                         </p>
                     </div>
                 </section>
@@ -173,7 +158,7 @@ export default async function HomePage() {
                             <div className="min-w-0">
                                 <h3 className="text-[13px] sm:text-lg font-bold text-primary mb-1 sm:mb-2">完全無料・登録不要</h3>
                                 <p className="text-xs sm:text-sm text-text-secondary leading-[1.7]">
-                                    中央・地方の全レース分析が登録なしで利用可能
+                                    中央競馬（JRA）10場・地方競馬（NAR）14場の全24競馬場をカバー。会員登録やメールアドレスの入力なしで、全レースの分析データにアクセスできます。
                                 </p>
                             </div>
                         </div>
@@ -184,7 +169,7 @@ export default async function HomePage() {
                             <div className="min-w-0">
                                 <h3 className="text-[13px] sm:text-lg font-bold text-primary mb-1 sm:mb-2">AI偏差値分析</h3>
                                 <p className="text-xs sm:text-sm text-text-secondary leading-[1.7]">
-                                    5年以上のデータを機械学習で解析し偏差値化
+                                    5年以上の過去レースデータを機械学習アルゴリズムで解析。着順・タイム・コース適性・馬場対応力を総合的に評価し、各馬の能力を偏差値として数値化しています。
                                 </p>
                             </div>
                         </div>
@@ -195,7 +180,7 @@ export default async function HomePage() {
                             <div className="min-w-0">
                                 <h3 className="text-[13px] sm:text-lg font-bold text-primary mb-1 sm:mb-2">対戦成績・枠順分析</h3>
                                 <p className="text-xs sm:text-sm text-text-secondary leading-[1.7]">
-                                    直接対決統計と枠順傾向スコアを提供
+                                    出走馬同士の直接対決での勝敗記録と、コース・距離別の枠順有利不利を統計スコアで表示。複数の指標を組み合わせて多角的に分析できます。
                                 </p>
                             </div>
                         </div>
@@ -308,8 +293,9 @@ export default async function HomePage() {
                             </p>
                         </div>
                     </div>
-                    <div className="mt-5 sm:mt-6 px-1 sm:p-4 text-[11px] sm:text-sm text-text-muted sm:text-gray-500 leading-relaxed text-center">
-                        <p>本サイトは分析データの提供を目的としており、投票の助言ではありません。20歳未満の馬券購入は法律で禁止されています。</p>
+                    <div className="mt-5 sm:mt-6 px-1 sm:p-4 text-[11px] sm:text-sm text-text-muted sm:text-gray-500 leading-relaxed text-center space-y-2">
+                        <p>本サイトは統計分析データの提供を目的としており、馬券購入の助言や推奨を行うものではありません。投票判断はご自身の責任において行ってください。</p>
+                        <p>20歳未満の方の馬券購入は競馬法により禁止されています。ギャンブル依存症に関するご心配がある場合は、リカバリーサポート・ネットワーク（RSN）（TEL: 0120-29-7338）までご相談ください。</p>
                     </div>
                 </section>
 

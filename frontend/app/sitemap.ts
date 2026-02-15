@@ -80,7 +80,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         const racePageRoutes = recentRaces.map((race) => ({
             // URLパラメータの順序を統一（'race' → 'venue'）
-            url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`,
+            // XML内では & を &amp; にエスケープする必要がある
+            url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&amp;venue=${encodeURIComponent(race.venue_name)}`,
             lastModified: new Date(),
             changeFrequency: 'weekly' as const,
             priority: 0.7,

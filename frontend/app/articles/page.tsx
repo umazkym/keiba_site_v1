@@ -12,7 +12,6 @@ interface ArticlesPageProps {
 
 export async function generateMetadata({ searchParams }: ArticlesPageProps): Promise<Metadata> {
     const selectedCategory = searchParams.category;
-    // ▼▼▼▼▼【修正】canonical URLの生成ロジックを変更 ▼▼▼▼▼
     let canonicalUrl = '/articles';
     let title = "記事一覧";
     let description = "UMA-FREEが提供する競馬データ分析に関する記事の一覧です。コース分析や騎手分析など、馬券検討に役立つ情報をお届けします。";
@@ -23,7 +22,7 @@ export async function generateMetadata({ searchParams }: ArticlesPageProps): Pro
         // カテゴリが指定されている場合は、canonical URLにもパラメータを追加
         canonicalUrl = `/articles?category=${encodeURIComponent(selectedCategory)}`;
     }
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+
 
     return {
         title,
@@ -34,12 +33,10 @@ export async function generateMetadata({ searchParams }: ArticlesPageProps): Pro
     };
 }
 
-// ▼▼▼▼▼【ここから修正】静的テキストを定義 ▼▼▼▼▼
 const content = {
     title: "記事一覧",
     allCategoryButton: "すべて",
 };
-// ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
 
 export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
@@ -52,7 +49,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
             <Breadcrumb />
             <div className="flex flex-col gap-12 py-12 px-4">
                 <div className="flex flex-col gap-10">
-                    <h1 className="text-5xl font-bold text-center text-gray-800">{selectedCategory ? `${selectedCategory}の${content.title}` : content.title}</h1>
+                    <h1 className="text-2xl sm:text-4xl font-bold text-center text-text-primary">{selectedCategory ? `${selectedCategory}の${content.title}` : content.title}</h1>
                     <div className="flex flex-wrap justify-center gap-4">
                         <Link href="/articles" className={`font-bold py-2 px-6 rounded-full transition-all duration-200 shadow-sm ${!selectedCategory ? 'bg-primary text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{content.allCategoryButton}</Link>
                         {uniqueCategories.map((category) => (<Link href={`/articles?category=${encodeURIComponent(category)}`} key={category} className={`font-bold py-2 px-6 rounded-full transition-all duration-200 shadow-sm ${selectedCategory === category ? 'bg-primary text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{category}</Link>))}

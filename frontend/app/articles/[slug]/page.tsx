@@ -37,13 +37,9 @@ export async function generateStaticParams() {
   }));
 }
 
-// ▼▼▼▼▼ async function に変更 ▼▼▼▼▼
 export default async function ArticlePage({ params }: Props) {
-  // ▲▲▲▲▲ async function に変更 ▲▲▲▲▲
   try {
-    // ▼▼▼▼▼ awaitを追加 ▼▼▼▼▼
     const article = await getArticleBySlug(params.slug);
-    // ▲▲▲▲▲ awaitを追加 ▲▲▲▲▲
 
     // articleのスキーマを生成
     const articleUrl = `https://uma-free.com/articles/${params.slug}`;
@@ -75,7 +71,7 @@ export default async function ArticlePage({ params }: Props) {
               <h1 className="text-2xl md:text-3xl font-bold text-text-primary mb-3 leading-tight">
                 {article.title}
               </h1>
-              <p className="text-text-muted text-sm font-mono">
+              <p className="text-text-muted text-sm">
                 {new Date(article.date).toLocaleDateString('ja-JP')}
               </p>
             </header>
@@ -102,7 +98,7 @@ export default async function ArticlePage({ params }: Props) {
           </article>
 
           <div className="text-center mt-12">
-            <Link href="/articles" className="bg-gray-800 text-white font-bold py-3 px-8 rounded-lg hover:bg-gray-700 transition-colors">
+            <Link href="/articles" className="bg-primary text-white font-bold py-3 px-8 rounded-lg hover:bg-primary-dark transition-colors">
               記事一覧へ戻る
             </Link>
           </div>

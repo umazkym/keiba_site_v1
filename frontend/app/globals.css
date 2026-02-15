@@ -2,22 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-/* === Design tokens (CSS変数) === */
+/* === Design tokens (CSS変数) ===
+ * tailwind.config.ts と同じ値を使用
+ * Tailwind ユーティリティクラスでカバーできない箇所（scrollbar, btn-primary等）で参照
+ */
 :root {
-    /* メインカラー：より鮮やかで信頼感のあるブルー */
-    --color-primary: #2563eb;
-    --color-primary-light: #60a5fa;
-    --color-primary-dark: #1e40af;
+    /* メインカラー：Tailwind primary (slate-900) */
+    --color-primary: #0f172a;
+    --color-primary-light: #334155;
+    --color-primary-dark: #020617;
 
-    /* セカンダリーカラー：成功や安心を表す緑 */
-    --color-secondary: #10b981;
-    --color-secondary-light: #34d399;
-    --color-secondary-dark: #047857;
+    /* セカンダリーカラー：Tailwind secondary (slate-500) */
+    --color-secondary: #64748b;
+    --color-secondary-light: #94a3b8;
+    --color-secondary-dark: #475569;
 
-    /* アクセントカラー：競馬の配当や勝利を連想させるゴールド */
-    --color-accent: #fbbf24;
-    --color-accent-light: #fde047;
-    --color-accent-dark: #f59e0b;
+    /* アクセントカラー：Tailwind accent (amber-600) */
+    --color-accent: #d97706;
+    --color-accent-light: #f59e0b;
+    --color-accent-dark: #b45309;
 
     /* 背景とテキストカラー */
     --bg: #fafafa;
@@ -28,6 +31,7 @@
     --soft-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
     --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
+
 
 /* ---------- base adjustments ---------- */
 @layer base {

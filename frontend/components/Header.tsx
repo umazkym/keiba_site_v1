@@ -43,9 +43,9 @@ export const Header = () => {
                             <span className="text-xl sm:text-2xl font-bold tracking-tight text-primary">
                                 UMA-FREE
                             </span>
-                            <span className="text-[10px] text-text-muted -mt-0.5 font-medium font-mono">
+                            <p className="text-[10px] text-slate-500 tracking-wider font-medium">
                                 完全無料のAI競馬分析
-                            </span>
+                            </p>
                         </div>
                     </Link>
 

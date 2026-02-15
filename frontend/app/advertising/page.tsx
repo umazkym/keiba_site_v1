@@ -164,7 +164,7 @@ export default function AdvertisingPage() {
                         <p className="text-base">{advertisingContent.introduction}</p>
                         {advertisingContent.sections.map((section, index) => (
                             <section key={index} className="flex flex-col gap-3 sm:gap-4">
-                                <h2 className="text-lg sm:text-2xl font-bold text-gray-800 mt-4 sm:mt-6 mb-2 border-b-2 border-gray-300 pb-2 sm:pb-3">{section.title}</h2>
+                                <h2 className="text-xl font-bold text-text-primary mb-4 pb-2 border-b border-border">{section.title}</h2>
 
                                 {section.content && typeof section.content === "string" && (
                                     <p className="text-base" dangerouslySetInnerHTML={{ __html: section.content }} />

@@ -92,11 +92,7 @@ export default async function HomePage() {
                 {/* 1. ヒーローセクション */}
                 <div className="space-y-4 sm:space-y-6">
                     <section className="text-center px-4 py-6 sm:p-12 md:p-16 bg-slate-900 rounded-2xl shadow-xl relative overflow-hidden">
-                        {/* 背景装飾 */}
-                        {/* 背景装飾 - Removed for cleaner look */}
-                        {/* <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-                            <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-[radial-gradient(circle,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-                        </div> */}
+
 
                         <div className="relative z-10">
                             <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-white mb-4 sm:mb-6 leading-tight tracking-tight">
@@ -142,15 +138,12 @@ export default async function HomePage() {
                     </section>
 
                     {/* 高配当的中ランキング */}
-                    {/* 高配当的中ランキング - モバイルではp-0にしてカードを端まで寄せる */}
-                    {/* 高配当的中ランキング - モバイルではp-0にしてカードを端まで寄せる */}
                     <section className="sm:bg-white sm:rounded-xl sm:border sm:border-gray-200 mt-2 sm:mt-0 sm:p-6 md:p-8">
                         <TopHitsDisplay />
                     </section>
                 </div>
 
-                {/* 2. UMA-FREEとは（テキスト密度向上セクション） */}
-                {/* 2. UMA-FREEとは（テキスト密度向上セクション） */}
+                {/* 2. UMA-FREEとは */}
                 <section className="sm:bg-white sm:rounded-xl sm:border sm:border-border sm:p-6 md:p-8 sm:shadow-sm py-4">
                     <h2 className="text-lg sm:text-2xl font-bold text-primary mb-4 sm:mb-5 border-b border-border pb-2 sm:pb-3 flex items-center gap-2">
                         <span className="w-1.5 h-6 bg-primary rounded-full"></span>
@@ -169,8 +162,7 @@ export default async function HomePage() {
                     </div>
                 </section>
 
-                {/* 3. 3つの特長 - モバイルはアイコン+テキスト横並びでコンパクトに */}
-                {/* 3. 3つの特長 - モバイルはアイコン+テキスト横並びでコンパクトに */}
+                {/* 3. 3つの分析データ */}
                 <section className="sm:bg-surface sm:p-8 md:p-10 sm:rounded-xl sm:border sm:border-border py-2">
                     <h2 className="text-lg sm:text-2xl font-bold text-primary mb-5 sm:mb-8 text-center">3つの分析データ</h2>
                     <div className="grid md:grid-cols-3 gap-3.5 sm:gap-6">
@@ -255,7 +247,7 @@ export default async function HomePage() {
                                         <span className="inline-block bg-slate-100 text-slate-700 text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
                                             {article.category}
                                         </span>
-                                        <span className="text-text-muted text-[10px] sm:hidden whitespace-nowrap font-mono">
+                                        <span className="text-text-muted text-[10px] sm:hidden whitespace-nowrap">
                                             {new Date(article.date).toLocaleDateString()}
                                         </span>
                                     </div>
@@ -273,7 +265,7 @@ export default async function HomePage() {
                                         {article.title}
                                     </h3>
 
-                                    <p className="text-text-muted text-xs hidden sm:block font-mono">
+                                    <p className="text-text-muted text-xs hidden sm:block">
                                         {new Date(article.date).toLocaleDateString()}
                                     </p>
                                 </div>
@@ -282,7 +274,6 @@ export default async function HomePage() {
                     </div>
                 </section>
 
-                {/* 6. 使い方セクション */}
                 {/* 6. 使い方セクション */}
                 <section className="sm:bg-surface sm:rounded-xl sm:border sm:border-border sm:p-6 md:p-8 py-2">
                     <h2 className="text-lg sm:text-2xl font-bold text-primary mb-5 sm:mb-6 text-center">
@@ -323,10 +314,9 @@ export default async function HomePage() {
                 </section>
 
                 {/* 7. よくある質問 */}
-                {/* 7. よくある質問 */}
                 <section className="sm:bg-white sm:rounded-xl sm:border sm:border-gray-200 sm:p-6 md:p-8 py-4">
                     <div className="flex items-center justify-between mb-5 sm:mb-6">
-                        <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
+                        <h2 className="text-lg sm:text-2xl font-bold text-primary">
                             よくある質問
                         </h2>
                         <Link href="/faq" className="text-primary hover:text-primary-dark font-semibold text-xs sm:text-sm shrink-0 ml-3">
@@ -354,9 +344,8 @@ export default async function HomePage() {
                 </section>
 
                 {/* 8. 対応競馬場 */}
-                {/* 8. 対応競馬場 */}
                 <section className="sm:bg-gray-50 sm:rounded-xl sm:border sm:border-gray-200 sm:p-6 md:p-8 py-4">
-                    <h2 className="text-lg sm:text-2xl font-bold text-gray-800 mb-3 sm:mb-4">
+                    <h2 className="text-lg sm:text-2xl font-bold text-primary mb-3 sm:mb-4">
                         対応競馬場一覧
                     </h2>
                     <p className="text-gray-600 text-xs sm:text-sm leading-[1.7] mb-5 sm:mb-6">

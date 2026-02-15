@@ -103,12 +103,12 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
                 <p className="text-gray-700 text-sm leading-relaxed">{generateStartAnalysis()}</p>
             </div>
 
-            <div className="bg-transparent sm:bg-white rounded-lg p-0 sm:p-4 shadow-none sm:shadow-sm border-none sm:border sm:border-gray-200 border-l-0 sm:border-l-4 border-l-indigo-500 mt-6 sm:mt-0">
+            <div className="bg-transparent sm:bg-white rounded-lg p-0 sm:p-4 shadow-none sm:shadow-sm border-none sm:border sm:border-gray-200 border-l-0 sm:border-l-4 border-l-secondary mt-6 sm:mt-0">
                 <h4 className="font-bold text-gray-800 mb-2 border-b sm:border-b-0 pb-2 sm:pb-0 text-base sm:text-lg">枠順による影響</h4>
                 <p className="text-gray-700 text-sm leading-relaxed">{generateFrameAnalysis()}</p>
             </div>
 
-            <div className="bg-transparent sm:bg-white rounded-lg p-0 sm:p-4 shadow-none sm:shadow-sm border-none sm:border sm:border-gray-200 border-l-0 sm:border-l-4 border-l-pink-500 mt-6 sm:mt-0">
+            <div className="bg-transparent sm:bg-white rounded-lg p-0 sm:p-4 shadow-none sm:shadow-sm border-none sm:border sm:border-gray-200 border-l-0 sm:border-l-4 border-l-secondary-dark mt-6 sm:mt-0">
                 <h4 className="font-bold text-gray-800 mb-2 border-b sm:border-b-0 pb-2 sm:pb-0 text-base sm:text-lg">馬券戦略の方向性</h4>
                 <p className="text-gray-700 text-sm leading-relaxed">{generateStrategyAnalysis()}</p>
             </div>

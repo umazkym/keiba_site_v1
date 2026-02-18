@@ -39,10 +39,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     try {
         // APIから全レースのURL情報を取得
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/predictions/sitemap/all-race-urls`);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        if (!apiUrl) {
+            console.warn('NEXT_PUBLIC_API_URL is not set. Generating sitemap without race data.');
+            return [...staticRoutes, ...articleRoutes];
+        }
+        const response = await fetch(`${apiUrl}/api/v1/predictions/sitemap/all-race-urls`);
         if (!response.ok) {
             console.error(`Sitemap fetch failed with status: ${response.status}`);
-            return staticRoutes;
+            return [...staticRoutes, ...articleRoutes];
         }
 
         type RaceUrlInfo = {
@@ -80,8 +85,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         const racePageRoutes = recentRaces.map((race) => ({
             // URLパラメータの順序を統一（'race' → 'venue'）
-            // XML内では & を &amp; にエスケープする必要がある
-            url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&amp;venue=${encodeURIComponent(race.venue_name)}`,
+            // Next.jsが自動的にXMLエスケープを行うため、通常の&を使用
+            url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`,
             lastModified: new Date(),
             changeFrequency: 'weekly' as const,
             priority: 0.7,

@@ -1,6 +1,15 @@
 // frontend/app/not-found.tsx
 import Link from "next/link";
 import { SearchIcon } from "@/components/Icons";
+import type { Metadata } from 'next';
+
+// 404ページはインデックスさせない
+export const metadata: Metadata = {
+    robots: {
+        index: false,
+        follow: true,
+    },
+};
 
 export default function NotFound() {
     return (

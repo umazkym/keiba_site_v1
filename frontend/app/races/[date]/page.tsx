@@ -9,23 +9,13 @@ import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { notFound } from 'next/navigation';
 // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 300;  // ISR: 5分ごと再生成（データ更新遅延を最小化）
+// ISR: 5分ごと再生成（レースデータ更新遅延を最小化しつつクローラー対応）
+export const revalidate = 300;
 
+// ビルド時にはSSGをスキップ（ローカルにAPIサーバーがない場合のエラーを回避）
+// 本番環境ではISR（revalidate: 300）でオンデマンド生成・キャッシュされる
 export async function generateStaticParams() {
-    const today = new Date();
-    const paths = [];
-
-    // 過去30日から未来14日までの日付を生成（SEO最適化）
-    // Google Search Consoleの404を減らすため、より広い範囲をカバー
-    for (let i = -30; i <= 14; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
-        const dateString = date.toISOString().split('T')[0];
-        paths.push({ date: dateString });
-    }
-
-    return paths;
+    return [];
 }
 
 export async function generateMetadata(
@@ -142,10 +132,7 @@ export default async function RacePage({ params }: { params: { date: string } })
 
     } catch (error) {
         console.error(`[Build Warning] Failed to fetch initial data for ${params.date}. Error:`, error);
-        // ▼▼▼▼▼【修正】データ取得例外時も404を返す ▼▼▼▼▼
-        // APIエラーなどでデータが取得できなかった場合も404扱いにする
-        notFound();
-        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+        // API未到達の場合はpredictionDataがnullのまま → 下のnullチェックで404を返す
     }
 
     // ▼▼▼▼▼【修正】predictionDataがnullの可能性を再度チェック（try-catchを抜けたがデータがnullの場合）▼▼▼▼▼

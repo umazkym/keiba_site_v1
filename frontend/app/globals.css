@@ -79,14 +79,27 @@
         color: var(--text);
     }
 
-    :focus {
-        outline: none;
-    }
-    
+    /* focus-visible: キーボード操作時のみアウトラインを表示 */
     :focus-visible {
         outline: 3px solid var(--color-primary-light);
         outline-offset: 2px;
         border-radius: 6px;
+    }
+
+    /* Cookie同意バナーのスライドアップアニメーション */
+    @keyframes slide-up {
+        from {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .animate-slide-up {
+        animation: slide-up 0.4s ease-out forwards;
     }
 
     /* スクロールバーのカスタマイズ */

@@ -72,7 +72,7 @@ export function DataExplainer() {
                             </p>
                             <div className="mt-2 text-xs text-gray-500 bg-gray-50 rounded p-2">
                                 <span className="font-semibold">活用法：</span>
-                                対戦相手との相性を確認し、馬券の組み合わせを検討する際に活用できます。
+                                対戦相手との相性を確認し、データを比較検討する際に活用できます。
                             </div>
                         </div>
 
@@ -101,7 +101,7 @@ export function DataExplainer() {
                             </h4>
                             <p className="text-xs text-gray-600 leading-relaxed">
                                 本データは統計分析に基づく参考情報であり、
-                                <strong className="text-gray-800">的中を保証するものではありません</strong>。
+                                <strong className="text-gray-800">結果の正確性を保証するものではありません</strong>。
                                 馬場状態、展開、騎手の力量など、数値化が難しい要素も多く存在します。
                             </p>
                             <div className="mt-2 text-xs text-gray-500 bg-gray-50 rounded p-2">

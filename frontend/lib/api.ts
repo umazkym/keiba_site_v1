@@ -4,7 +4,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export async function getPredictionsForDate(date: string): Promise<RaceDayPrediction> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/${date}`, { cache: 'no-store' });
+        // ISR互換: 5分ごとに再検証（no-storeだとビルド時にDynamic server usageエラーが発生する）
+        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/${date}`, { next: { revalidate: 300 } });
         if (!res.ok) {
             if (res.status === 404) {
                 console.log(`No predictions found for date ${date}, returning empty data.`);
@@ -21,7 +22,7 @@ export async function getPredictionsForDate(date: string): Promise<RaceDayPredic
 
 export async function getSpecialPick(date: string): Promise<SpecialPick | null> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/special-pick/${date}`, { cache: 'no-store' });
+        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/special-pick/${date}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.warn(`Could not fetch special pick for ${date}. Status: ${res.status}`);
             return null;
@@ -48,7 +49,7 @@ export async function getFilteredMatchups(raceId: string, startDate: string, end
     }
 }
 
-// ★★★ 新規追加: 高配当的中ランキングを取得する関数 ★★★
+// ★★★ 新規追加: 高配当データマッチ実績を取得する関数 ★★★
 export async function getTopPayoutHits(): Promise<TopPayoutHit[]> {
     try {
         const res = await fetch(`${API_BASE_URL}/api/v1/predictions/hits/top-payouts`, { cache: 'no-store' });

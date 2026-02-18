@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { OrganizationSchema, WebsiteSchema, SoftwareApplicationSchema } from "@/components/StructuredData";
+import { CookieConsent } from "@/components/CookieConsent";
 
 const inter = Inter({
     subsets: ["latin"],
@@ -30,7 +31,7 @@ const robotoMono = Roboto_Mono({
 export const metadata: Metadata = {
     metadataBase: new URL("https://uma-free.com"),
     title: {
-        default: "UMA-FREE - AI競馬データ分析・統計情報サイト",
+        default: "UMA-FREE - AI競馬統計分析・データ情報サイト",
         template: "%s | UMA-FREE",
     },
     description: "競馬レースの統計分析データを完全無料で提供。過去5年以上のデータを機械学習で分析。中央・地方競馬の全レースのAI偏差値・対戦成績・枠順分析をご活用ください。",
@@ -43,7 +44,7 @@ export const metadata: Metadata = {
         'google-adsense-account': 'ca-pub-4411270831448240',
     },
     openGraph: {
-        title: "UMA-FREE | AI競馬データ分析・統計情報サイト",
+        title: "UMA-FREE | AI競馬統計分析・データ情報サイト",
         description: "競馬レースの統計分析データを完全無料で提供。過去5年以上のデータを機械学習で分析。中央・地方競馬の全レースのAI偏差値・対戦成績・枠順分析をご活用ください。",
         url: "https://uma-free.com",
         siteName: "UMA-FREE",
@@ -59,8 +60,8 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "UMA-FREE | AI競馬データ分析・統計情報サイト",
-        description: "競馬レースの統計分析データを完全無料で提供。AI偏差値・対戦成績・枠順分析で競馬ライフをサポート。",
+        title: "UMA-FREE | AI競馬統計分析・データ情報サイト",
+        description: "競馬レースの統計分析データを完全無料で提供。AI偏差値・対戦成績・枠順分析で競馬データをご活用ください。",
     },
     alternates: {
         canonical: "https://uma-free.com",
@@ -123,6 +124,7 @@ export default function RootLayout({
                     {children}
                 </main>
                 <Footer />
+                <CookieConsent />
                 <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || ""} />
             </body>
         </html>

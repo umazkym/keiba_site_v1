@@ -9,14 +9,8 @@ import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { notFound } from 'next/navigation';
 // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
-// ISR: 5分ごと再生成（レースデータ更新遅延を最小化しつつクローラー対応）
-export const revalidate = 300;
-
-// ビルド時にはSSGをスキップ（ローカルにAPIサーバーがない場合のエラーを回避）
-// 本番環境ではISR（revalidate: 300）でオンデマンド生成・キャッシュされる
-export async function generateStaticParams() {
-    return [];
-}
+// レースデータは頻繁に更新されるため、常に最新データを取得
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(
     { params, searchParams }: {

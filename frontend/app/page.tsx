@@ -8,8 +8,8 @@ import { getLatestArticles, getUniqueCategories, getAllArticles } from '../lib/a
 import { ChartBarIcon } from '@/components/Icons';
 import type { Metadata } from 'next';
 
-// ISR: 1時間ごとに再生成（クローラーが常にコンテンツを取得可能にする）
-export const revalidate = 3600;
+// 動的コンテンツ（SpecialPick等）を含むため、常に最新データを取得
+export const dynamic = 'force-dynamic';
 
 const siteDescription = "競馬レースの統計分析データを完全無料で提供。過去5年以上のデータを機械学習で分析。中央・地方競馬の全レースのAI偏差値・対戦成績・枠順分析をご活用ください。";
 

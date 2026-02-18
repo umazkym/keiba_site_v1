@@ -4,8 +4,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export async function getPredictionsForDate(date: string): Promise<RaceDayPrediction | null> {
     try {
-        // ISR互換: 5分ごとに再検証（no-storeだとビルド時にDynamic server usageエラーが発生する）
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/${date}`, { next: { revalidate: 300 } });
+        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/${date}`, { cache: 'no-store' });
         if (!res.ok) {
             if (res.status === 404) {
                 console.log(`No predictions found for date ${date}, returning empty data.`);
@@ -23,7 +22,7 @@ export async function getPredictionsForDate(date: string): Promise<RaceDayPredic
 
 export async function getSpecialPick(date: string): Promise<SpecialPick | null> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/special-pick/${date}`, { next: { revalidate: 3600 } });
+        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/special-pick/${date}`, { cache: 'no-store' });
         if (!res.ok) {
             console.warn(`Could not fetch special pick for ${date}. Status: ${res.status}`);
             return null;

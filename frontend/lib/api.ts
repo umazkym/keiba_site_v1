@@ -2,7 +2,7 @@ import { RaceDayPrediction, SpecialPick, MatchupData, TopPayoutHit } from "./typ
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
-export async function getPredictionsForDate(date: string): Promise<RaceDayPrediction> {
+export async function getPredictionsForDate(date: string): Promise<RaceDayPrediction | null> {
     try {
         // ISR互換: 5分ごとに再検証（no-storeだとビルド時にDynamic server usageエラーが発生する）
         const res = await fetch(`${API_BASE_URL}/api/v1/predictions/${date}`, { next: { revalidate: 300 } });
@@ -11,12 +11,13 @@ export async function getPredictionsForDate(date: string): Promise<RaceDayPredic
                 console.log(`No predictions found for date ${date}, returning empty data.`);
                 return { jra: [], nar: [] };
             }
-            throw new Error(`Failed to fetch data from API. Status: ${res.status}`);
+            console.error(`Failed to fetch data from API. Status: ${res.status}`);
+            return null;
         }
         return res.json();
     } catch (error: any) {
         console.error("A network or fetch error occurred in getPredictionsForDate:", error.message);
-        throw new Error('Failed to fetch data from API. バックエンドサーバーが起動しているか確認してください。');
+        return null;
     }
 }
 

@@ -81,7 +81,7 @@ export default async function HomePage() {
                                 登録不要・完全無料
                                 <br />
                                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-indigo-200">
-                                    AI競馬統計分析
+                                    AI競馬データ分析
                                 </span>
                             </h1>
                             <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed font-medium">
@@ -119,7 +119,7 @@ export default async function HomePage() {
                         </div>
                     </section>
 
-                    {/* 高配当データマッチ実績 */}
+                    {/* 高配当的中ランキング */}
                     <section className="sm:bg-white sm:rounded-xl sm:border sm:border-gray-200 mt-2 sm:mt-0 sm:p-6 md:p-8">
                         <TopHitsDisplay />
                     </section>
@@ -191,7 +191,7 @@ export default async function HomePage() {
                 <section>
                     <h2 className="text-lg sm:text-2xl font-bold text-primary mb-4 sm:mb-6 border-b border-gray-200 pb-2 sm:pb-3 flex items-center gap-2">
                         <span className="w-1.5 h-6 bg-accent rounded-full"></span>
-                        今日の統計ハイライト
+                        今日の分析注目馬
                     </h2>
                     <SpecialPickCard pick={specialPick} date={todayStr} />
                 </section>

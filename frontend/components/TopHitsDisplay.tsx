@@ -66,7 +66,7 @@ export const TopHitsDisplay = () => {
                 // バックエンドが既に上位5件を返しているため、重複排除なしで直接使用
                 const sortedAndLimitedHits = data.slice(0, 5);
                 setHits(sortedAndLimitedHits);
-                // データマッチ実績がある場合のみ広告を表示
+                // 的中実績がある場合のみ広告を表示
                 setShowAd(sortedAndLimitedHits.length > 0);
             } catch (e) {
                 console.error("Failed to fetch top hits:", e);
@@ -85,12 +85,12 @@ export const TopHitsDisplay = () => {
         <div>
             <h2 className="flex items-center text-base sm:text-xl font-bold text-gray-800 mb-2 sm:mb-3 px-1">
                 <TrophyIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-yellow-500" />
-                <span className="whitespace-nowrap">高配当データマッチ実績</span>
+                <span className="whitespace-nowrap">高配当的中ランキング</span>
                 <span className="text-[10px] sm:text-xs font-normal text-gray-500 ml-1.5 sm:ml-2 whitespace-nowrap self-end mb-0.5 sm:mb-1">(直近7日間)</span>
             </h2>
             {hits.length === 0 ? (
                 <div className="p-6 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-center text-gray-500 text-sm">
-                    <p>対象期間のデータマッチ実績はありませんでした。</p>
+                    <p>対象期間の的中実績はありませんでした。</p>
                 </div>
             ) : (
                 <>

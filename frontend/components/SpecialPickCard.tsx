@@ -52,7 +52,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
         getSpecialPick(effectiveDate)
             .then(data => {
                 if (data) {
-                    data.commentary = `AI偏差値 ${data.deviation_score.toFixed(2)}。${data.venue_name}${data.race_number}R の ${data.horse_name} の分析データを見る →`;
+                    data.commentary = `AI偏差値 ${data.deviation_score.toFixed(2)}。${data.venue_name}${data.race_number}R の ${data.horse_name} を詳しく見る →`;
                 }
                 setPick(data);
             })
@@ -67,7 +67,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
     if (!pick) {
         return (
             <div className="bg-white text-gray-600 p-6 rounded-xl border border-gray-200 h-full flex items-center justify-center">
-                <p>本日の統計ハイライトはありません。</p>
+                <p>本日のAI注目馬はありません。</p>
             </div>
         );
     }
@@ -84,7 +84,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
                 <div className="p-4 sm:p-5 flex flex-col h-full">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2 mb-3 sm:mb-4">
                         <h3 id="special-pick-title" className="text-[13px] sm:text-sm font-bold text-gray-800">
-                            本日の統計ハイライト<span className="hidden sm:inline"> </span><br className="sm:hidden" /><span className="text-gray-500">{formattedDate}</span>
+                            本日のAI注目馬<span className="hidden sm:inline"> </span><br className="sm:hidden" /><span className="text-gray-500">{formattedDate}</span>
                         </h3>
                         <span className="text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap self-start">
                             AI偏差値 <span className="text-base sm:text-lg font-mono">{pick.deviation_score.toFixed(2)}</span>

@@ -90,7 +90,7 @@ export default async function ArticlePage({ params }: Props) {
           url={articleUrl}
           datePublished={datePublished}
           dateModified={dateModified}
-          image={article.eyecatch}
+          image={article.eyecatch.startsWith('http') ? article.eyecatch : `https://uma-free.com${article.eyecatch}`}
         />
 
         <div className="mx-auto px-4 max-w-3xl">

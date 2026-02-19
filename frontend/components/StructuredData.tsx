@@ -13,7 +13,7 @@ export function OrganizationSchema() {
         "url": "https://uma-free.com",
         "logo": "https://uma-free.com/new-logo.png",
         "description": "競馬レースの統計分析データを無料で提供するデータ分析サイト。中央・地方競馬の全レースのAI偏差値・対戦成績・枠順分析を公開しています。",
-        "sameAs": ["https://x.com/umafreecom"],
+        "sameAs": ["https://x.com/umafree_ai"],
         "contactPoint": {
             "@type": "ContactPoint",
             "contactType": "General",

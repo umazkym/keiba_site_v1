@@ -7,6 +7,7 @@ import { Suspense } from 'react';
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 // ▼▼▼▼▼【修正】notFouund をインポート ▼▼▼▼▼
 import { notFound } from 'next/navigation';
+import { Breadcrumb } from '@/components/Breadcrumb';
 // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
 // レースデータは頻繁に更新されるため、常に最新データを取得
@@ -126,7 +127,8 @@ export default async function RacePage({ params }: { params: { date: string } })
 
     } catch (error) {
         console.error(`[Build Warning] Failed to fetch initial data for ${params.date}. Error:`, error);
-        // API未到達の場合はpredictionDataがnullのまま → 下のnullチェックで404を返す
+        // API未到達の場合は即座に404を返す（Googleクローラーに500を返さないため）
+        notFound();
     }
 
     // ▼▼▼▼▼【修正】predictionDataがnullの可能性を再度チェック（try-catchを抜けたがデータがnullの場合）▼▼▼▼▼
@@ -149,6 +151,8 @@ export default async function RacePage({ params }: { params: { date: string } })
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
             )}
+
+            <Breadcrumb />
 
             <Suspense fallback={<RacePageSkeleton />}>
                 <RacePageClient

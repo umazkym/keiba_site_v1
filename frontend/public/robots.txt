@@ -1,15 +1,9 @@
 User-agent: *
 Allow: /
 
-# 静的リソースへのクロールを禁止（クロールバジェット節約）
-Disallow: /_next/static/media/
-Disallow: /_next/image
-Disallow: /_next/static/
-Disallow: /favicon.ico
-
 # クロール不要なパス
 Disallow: /api/
-Disallow: /node_modules/
+Disallow: /_next/image
 
 # 検索機能のクロールを禁止（動的コンテンツ）
 Disallow: /search?*
@@ -26,8 +20,6 @@ User-agent: Googlebot
 Allow: /
 Disallow: /api/
 Disallow: /search?*
-Disallow: /_next/static/
-Disallow: /_next/image
 
 # Bingbot
 User-agent: Bingbot

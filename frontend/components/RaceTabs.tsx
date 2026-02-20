@@ -163,23 +163,21 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
                     {/* AI指標の説明パネル */}
                     <DataExplanationPanel showAdvanced={true} />
 
-                    {/* AdSense審査通過後に有効化する
                     {shouldShowAd && (
                         <div className="my-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
                             <div className="text-xs text-gray-500 text-center mb-1">スポンサーリンク</div>
                             <Adsense client="ca-pub-4411270831448240" slot="1489598374" style={{ minHeight: '90px' }} />
                         </div>
                     )}
-                    */}
+
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
-                    {/* AdSense審査通過後に有効化する
+
                     {shouldShowAd && activeRace.predictions.length >= 10 && (
                         <div className="my-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
                             <div className="text-xs text-gray-500 text-center mb-1">スポンサーリンク</div>
                             <Adsense client="ca-pub-4411270831448240" slot="8529703346" style={{ minHeight: '120px' }} />
                         </div>
                     )}
-                    */}
                 </div>
             )}
         </div>

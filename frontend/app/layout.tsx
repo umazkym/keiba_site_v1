@@ -6,6 +6,9 @@ import { Footer } from "@/components/Footer";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { OrganizationSchema, WebsiteSchema, SoftwareApplicationSchema } from "@/components/StructuredData";
 import { CookieConsent } from "@/components/CookieConsent";
+import Script from "next/script";
+import { Suspense } from "react";
+import { GlobalAdManager } from "@/components/GlobalAdManager";
 
 const inter = Inter({
     subsets: ["latin"],
@@ -85,13 +88,12 @@ export default function RootLayout({
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 
-                {/* AdSenseアカウントメタタグ（審査認証用に維持） */}
+                {/* AdSenseアカウントメタタグ */}
                 <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
 
-                {/* AdSenseスクリプトは審査通過後に有効化する
                 <Script
                     async
-                    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"
+                    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"
                     crossOrigin="anonymous"
                     strategy="afterInteractive"
                 />
@@ -105,7 +107,6 @@ export default function RootLayout({
                         });`
                     }}
                 />
-                */}
             </head>
             <body className={`${inter.variable} ${notoSansJP.variable} ${robotoMono.variable} font-sans bg-surface text-text-primary antialiased`}>
                 {/* 構造化マークアップ：Organization, Website, SoftwareApplication */}
@@ -113,11 +114,10 @@ export default function RootLayout({
                 <WebsiteSchema />
                 <SoftwareApplicationSchema />
 
-                {/* グローバル広告マネージャー（AdSense審査通過後に有効化する）
+                {/* グローバル広告マネージャー */}
                 <Suspense fallback={null}>
                     <GlobalAdManager />
                 </Suspense>
-                */}
 
                 <Header />
                 <main className="w-full max-w-[1600px] mx-auto p-3 sm:p-4 md:p-6 min-h-screen">

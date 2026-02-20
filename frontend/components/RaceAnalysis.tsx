@@ -45,46 +45,59 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
 
     // ========== 分析文言の生成 ==========
     const generateAbilityAnalysis = (): string => {
+        const topHorse = [...race.predictions].filter(p => p.deviation_score !== null).sort((a, b) => (b.deviation_score as number) - (a.deviation_score as number))[0];
+        
+        if (!topHorse) return "AI偏差値データが不足しているため、詳細な能力分析は控えさせていただきます。";
+
         if (deviationRange > 15) {
-            return `このレースは出走馬の実力差が大きく、AIの偏差値でも明確な差が見られます。最高値は${maxDeviation.toFixed(1)}、最低値は${minDeviation.toFixed(1)}で、差は${deviationRange.toFixed(1)}となっています。このような場合、上位の数頭がレースを主導する展開になりやすく、能力上位馬を軸に据えた組み立てが有効になる傾向があります。逆に、実力下位の馬が大きく差を詰める展開は考えにくいため、軸を絞ってシンプルに考える戦略が適しています。`;
+            return `このレースは出走馬の実力差が大きく、全体的に縦長の力関係となっています。中でもAI偏差値トップの${topHorse.horse_number}番「${topHorse.horse_name}」（偏差値${maxDeviation.toFixed(1)}）が抜けた評価を受けており、レースの中心になりそうです。最高値と最低値（${minDeviation.toFixed(1)}）の差は${deviationRange.toFixed(1)}と大きく、実力下位の馬が上位に食い込むのは厳しいかもしれません。${topHorse.horse_name}を軸に据えたシンプルな組み立てが有効な傾向があります。`;
         } else if (deviationRange > 8) {
-            return `このレースは偏差値の差が中程度で、実力差はある程度あります。最高${maxDeviation.toFixed(1)}と最低${minDeviation.toFixed(1)}の差は${deviationRange.toFixed(1)}です。能力上位馬が優勢になりやすいものの、下位馬にも入り込む余地が残る展開になる可能性があります。上位馬を中心としつつも、ある程度広く検討することでリスクを分散できる構成が向いています。`;
+            return `各馬のAI偏差値に中程度の開きがあり、上位陣にある程度絞られそうなレースです。トップ評価の${topHorse.horse_number}番「${topHorse.horse_name}」（偏差値${maxDeviation.toFixed(1)}）が優勢ではありますが、絶対的とは言えません。最低値（${minDeviation.toFixed(1)}）との差は${deviationRange.toFixed(1)}となっており、上位評価の数頭を中心としつつ、展開次第で入り込める中位の馬も押さえておく構成が適しています。`;
         } else {
-            return `このレースは偏差値の差が小さく（差は${deviationRange.toFixed(1)}）、実力が拮抗しています。突出した存在がいないため、展開や位置取り、騎乗戦略といった他の要素が勝敗を分ける可能性が高いレースと考えられます。能力だけで判断せず、総合的な視点で組み立てることが重要です。`;
+            return `最高評価の${topHorse.horse_number}番「${topHorse.horse_name}」（偏差値${maxDeviation.toFixed(1)}）を含め、出走馬間の偏差値の差が小さい（差はわずか${deviationRange.toFixed(1)}）大混戦です。突出した能力を持つ馬がいないため、道中の位置取りや騎手の仕掛けのタイミングなど、展開一つで大きく着順が入れ替わる可能性が高いレースです。能力値だけでなく、多角的な視点から広く検討することをおすすめします。`;
         }
     };
 
     const generateStartAnalysis = (): string => {
         const strongRatio = (strongStartHorses.length / race.predictions.length * 100).toFixed(0);
+        const startHorseNames = strongStartHorses.slice(0, 3).map(h => `${h.horse_number}番${h.horse_name}`).join('や');
+        const startHorseText = startHorseNames ? `特に${startHorseNames}あたりがハナを主張しそうです。` : '';
+
         if (strongStartHorses.length >= race.predictions.length * 0.5) {
-            return `スタートから前に行ける馬が全体の${strongRatio}%を占めており、先行争いが活発になる可能性があります。前で競馬を進められる馬に展開の利が向きやすく、ペースが落ち着くと逃げ・先行馬がそのまま押し切る展開になることも考えられます。逆に、差し・追い込み勢は位置取りが重要になります。`;
+            return `スタートから前に行きたい馬が全体の${strongRatio}%（${strongStartHorses.length}頭）と多く、激しい先行争いが予想されます。${startHorseText}ハイペースになれば、道中脚を溜められる差し・追い込み馬に有利な展開が向く可能性があります。逆に前が止まらない馬場状態であれば、そのまま押し切るケースも考えられます。`;
         } else if (strongStartHorses.length >= race.predictions.length * 0.3) {
-            return `スタートで前に行ける馬が${strongRatio}%存在し、極端な展開にはなりにくい構成です。先行勢と差し勢のバランスが取れており、レースの流れ次第でどちらにもチャンスがあると考えられます。展開予想の精度が結果を大きく左右するレースになりやすい傾向です。`;
+            return `先行力が期待できる馬が${strongRatio}%（${strongStartHorses.length}頭）存在し、標準的でよどみないペースになりそうです。${startHorseText}極端な展開にはなりにくいため、先行馬と差し馬の双方が持ち味を発揮しやすいフェアな流れになる確率が高いでしょう。`;
         } else {
-            return `スタートから前に行ける馬が少なく（${strongRatio}%）、差しや追い込みといった後方からの脚が勝負を左右しやすいレースです。前半のペースが緩みやすくなる一方で、直線勝負になる可能性も高く、末脚の鋭い馬に注意が必要です。`;
+            return `スタートからハナを切りたい馬が少なく（${strongRatio}%）、ペースが落ち着いてスローになりやすい構成です。${startHorseText}前半のペースが緩むと、後方から追い込む馬には厳しい展開となり、前で立ち回れる馬や好位で脚を溜められる馬が有利になります。上がり3ハロンの速い末脚勝負への警戒が必要です。`;
         }
     };
 
     const generateFrameAnalysis = (): string => {
         let analysis = '';
         if (bestFrame) {
-            analysis += `${bestFrame.horse_number}枠は過去の傾向から見ても比較的有利な位置とされています。レースの進行に影響しやすく、特に先行馬の場合は展開を作りやすくなる可能性があります。`;
+            const bestHorses = race.predictions.filter(p => p.waku_number === bestFrame.horse_number).map(h => h.horse_name);
+            const bestHorseText = bestHorses.length > 0 ? `（${bestHorses.join('、')}など）` : '';
+            analysis += `過去の傾向から、このコースでは${bestFrame.horse_number}枠${bestHorseText}が有利なポジションを取りやすいデータが出ています。`;
         }
         if (worstFrame) {
-            analysis += `${worstFrame.horse_number}枠は他の枠に比べるとやや不利な傾向が見られます。位置取りやコース取りの工夫が求められ、能力があっても展開によっては力を発揮しづらいケースもあります。`;
+            const worstHorses = race.predictions.filter(p => p.waku_number === worstFrame.horse_number).map(h => h.horse_name);
+            const worstHorseText = worstHorses.length > 0 ? `（${worstHorses.join('、')}など）` : '';
+            analysis += `逆に、${worstFrame.horse_number}枠${worstHorseText}はやや不利な傾向が見られ、コース取りでロスが生じやすい点に注意が必要です。`;
         }
-        return analysis || `枠順による有利・不利の傾向は特に見られず、純粋な能力や展開の影響が強いレースと考えられます。`;
+        return analysis || `このコース・距離において、枠順による極端な有利・不利のデータはみられません。馬番よりも純粋な能力や展開が勝敗に直結しやすい条件です。`;
     };
 
     const generateStrategyAnalysis = (): string => {
+        const topHorse = [...race.predictions].filter(p => p.deviation_score !== null).sort((a, b) => (b.deviation_score as number) - (a.deviation_score as number))[0];
+        
         if (topMarkedHorses.length > 0 && darkHorses.length > 0) {
-            return `有力馬と伏兵馬の両方が混在している構成です。本命とされる馬が実力通りに走る可能性が高い一方で、展開次第では伏兵馬の台頭も十分考えられます。軸馬を明確にした上で、ヒモを広く拾う戦略が有効と考えられます。`;
+            return `◎や〇の印がついた有力馬に加え、▲や△の伏兵馬も混在するレースです。基本的には${topHorse?.horse_name || '高い評価の馬'}を中心に据えつつも、展開次第でヒモ荒れの可能性が十分にあります。軸を固定し、相手を手広く流す戦略などが一考です。`;
         } else if (topMarkedHorses.length >= 3) {
-            return `有力馬とされる候補が複数（${topMarkedHorses.length}頭）存在しており、1頭だけに依存する戦略はリスクが高い可能性があります。複数軸やボックス型など、幅を持たせた構成を検討することで安定性が増します。`;
+            return `◎や〇の印を獲得した有力候補が${topMarkedHorses.length}頭おり、上位拮抗の様相です。1頭の軸に絞り切るのはリスクが伴うため、複数頭のボックスやフォーメーションなどで手広く構えることで、思わぬ取りこぼしを防ぐ戦略が効果的です。`;
         } else if (darkHorses.length >= 2) {
-            return `伏兵馬が複数いるため、単純な力関係では決まりにくい可能性があります。展開や脚質の噛み合わせによって着順が入れ替わる余地があり、波乱の可能性も考慮した戦略が適しています。`;
+            return `▲や△の印がついた不気味な伏兵馬が複数存在しています。上位人気の馬が崩れた際に一気に波乱となるケースがあり、穴狙いの方にとっては面白い構成です。思わぬ高配当を狙うなら、手広くカバーする券種が適しているでしょう。`;
         } else {
-            return `能力・展開ともに比較的読みやすい構成です。明確な中心馬が存在し、軸を一本に絞ってシンプルな馬券構成を組む戦略が有効と考えられます。`;
+            return `印の分布からも、比較的順当に決まりやすい堅実な構成と分析されています。${topHorse?.horse_name || 'トップ評価の馬'}から点数を絞り、無駄な買い目を減らして利益率を高める王道の戦略が似合うレースと言えそうです。`;
         }
     };
 

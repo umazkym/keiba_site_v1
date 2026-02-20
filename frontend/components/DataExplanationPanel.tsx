@@ -27,22 +27,14 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
     const basicExplanations: ExplanationItem[] = [
         {
             title: 'AI偏差値',
-            description:
-                '過去の競走成績から機械学習で算出した馬の総合力。50が平均で、数値が高いほど能力が高いと評価されます。',
-            example: '偏差値60の馬は平均以上、偏差値70の馬は非常に高い能力を持つと推定されます',
+            description: '偏差値50を平均とした馬の総合的な能力評価スコアです。',
+            example: '偏差値が高いほど、AIが高い能力を持っていると推定しています。',
             importance: 'high',
         },
         {
-            title: '勝率',
-            description: 'これまでのレースで1着になった割合。馬の勝つ力を示す基本的な指標です。',
-            example: '勝率20%なら5回に1回勝利、10%なら10回に1回勝利する計算です',
-            importance: 'high',
-        },
-        {
-            title: '複勝率',
-            description:
-                '1着・2着・3着のいずれかに入った割合。勝てなくても安定して上位に入る馬を見極められます。',
-            example: '複勝率60%なら5回中3回は3着以内、40%なら5回中2回程度です',
+            title: '勝率・複勝率',
+            description: '過去のレースにおける1着、または3着以内に入った割合です。',
+            example: '基礎的な成績の安定度を示す指標です。',
             importance: 'high',
         },
     ];
@@ -50,31 +42,15 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
     const advancedExplanations: ExplanationItem[] = [
         {
             title: '枠順傾向スコア',
-            description:
-                'コースごとの枠番の有利不利を数値化した指標。プラスは外枠有利、マイナスは内枠有利を意味します。',
-            example: 'スコア+15%なら外枠の方が勝ちやすく、-10%なら内枠の方が有利な傾向があります',
+            description: 'そのコース・距離における枠番別の有利不利を独自スコア化したものです。',
+            example: 'プラススコアは外枠有利、マイナススコアは内枠有利の傾向を示します。',
             importance: 'medium',
         },
         {
-            title: '過去対決成績',
-            description:
-                '今回出走する馬同士が過去にどちらが勝ったかの記録。相性の良し悪しが分かります。',
-            example: 'A馬とB馬が過去5回対戦してA馬が4勝なら、A馬の方が相性が良いと言えます',
+            title: 'その他の指標（過去対決・脚質予測など）',
+            description: '出走馬同士の直接対決データや、序盤の位置取り予測などの補足データです。',
+            example: '展開や相性を考慮する際のサブ指標としてご活用ください。',
             importance: 'medium',
-        },
-        {
-            title: '脚質パターン予測',
-            description:
-                'レース序盤でどの馬が先頭集団を形成するかの予測。展開を読む際の参考になります。',
-            example: '「1番と5番が逃げる」予測なら、序盤のペースが速くなる可能性があります',
-            importance: 'medium',
-        },
-        {
-            title: '回収率',
-            description:
-                'その馬に賭け続けた場合の収支。100%を超えると利益が出る計算です。',
-            example: '回収率120%なら100円賭けて平均120円戻る計算で、長期的には利益が出ます',
-            importance: 'low',
         },
     ];
 

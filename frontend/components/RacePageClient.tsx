@@ -6,7 +6,6 @@ import { RaceDayPrediction } from "@/lib/types";
 import { RaceTabs } from "@/components/RaceTabs";
 import { SpecialPickCard } from "@/components/SpecialPickCard";
 import { TopHitsDisplay } from "@/components/TopHitsDisplay";
-import { DataExplainer } from "@/components/DataExplainer";
 import { formatDate } from "@/lib/utils";
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { getPredictionsForDate } from "@/lib/api";
@@ -270,30 +269,15 @@ export default function RacePageClient({ initialDate, initialPredictionData, art
                     </button>
                 </div>
             </div>
-            <DataExplainer />
             {renderContent()}
 
-            {/* サイト紹介テキスト（SEO・AdSense対策） */}
-            <section className="mt-6 bg-white rounded-xl border border-slate-200 p-6">
-                <h2 className="font-bold text-lg text-gray-800 mb-3">
-                    UMA-FREEのデータ分析について
-                </h2>
-                <div className="text-sm text-gray-600 leading-relaxed space-y-3">
-                    <p>
-                        UMA-FREEは、過去5年以上の中央・地方競馬のレースデータを機械学習で分析し、
-                        各出走馬の能力を偏差値として数値化した競馬データ分析サイトです。
-                        会員登録不要で、すべて無料でご利用いただけます。
-                    </p>
-                    <p>
-                        出走馬ごとのAI偏差値（着順・タイム・コース適性から算出）、
-                        過去対決成績、コース・距離ごとの枠順傾向スコアを提供しています。
-                        データは毎日自動更新され、開催日午前中には当日の全レース分析が完了します。
-                    </p>
-                    <p>
-                        本サイトは統計情報の提供を目的としており、投票の推奨ではありません。
-                        すべての情報は過去の実績に基づく分析データです。
-                    </p>
-                </div>
+            {/* サイト紹介テキスト（SEO・AdSense対策：重複回避のため最小限に） */}
+            <section className="mt-6 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">
+                <p className="text-sm text-gray-600">
+                    より詳しいAIデータ分析の仕組みや、サイトの使い方は
+                    <Link href="/about" className="text-primary hover:underline font-semibold mx-1">運営者情報・このサイトについて</Link>
+                    をご覧ください。
+                </p>
             </section>
         </div>
     );

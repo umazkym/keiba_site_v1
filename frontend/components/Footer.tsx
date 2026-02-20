@@ -75,7 +75,7 @@ export const Footer = () => {
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/sitemap.xml" className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
+                                <Link href="/sitemap" className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     サイトマップ
                                 </Link>
                             </li>

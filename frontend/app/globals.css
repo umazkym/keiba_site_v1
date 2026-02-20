@@ -280,57 +280,7 @@ td.no-match {
     background-color: #ffffff;
 }
 
-/* React Tabs の上書き */
-.react-tabs__tab-list {
-    border-bottom: 3px solid var(--border) !important;
-    margin: 0 0 1.5rem 0 !important;
-    display: flex;
-    gap: 0.75rem;
-}
-
-.react-tabs__tab {
-    padding: 0.75rem 1.5rem !important;
-    border: 2px solid transparent !important;
-    border-bottom: none !important;
-    border-radius: 0.75rem 0.75rem 0 0 !important;
-    color: var(--muted);
-    font-weight: 700;
-    background: transparent;
-    transition: all 0.3s ease;
-    position: relative;
-    font-size: 0.9375rem;
-}
-
-.react-tabs__tab:hover:not(.react-tabs__tab--selected) {
-    background: rgba(37, 99, 235, 0.06);
-    color: var(--color-primary);
-}
-
-.react-tabs__tab--selected {
-    background: var(--surface) !important;
-    border-color: var(--border) !important;
-    color: var(--color-primary) !important;
-    border-bottom: 3px solid var(--surface) !important;
-    margin-bottom: -3px !important;
-    box-shadow: 0 -2px 4px -1px rgb(0 0 0 / 0.05);
-}
-
-.react-tabs__tab--selected::after {
-    content: '';
-    position: absolute;
-    bottom: -3px;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: var(--color-primary);
-    border-radius: 2px 2px 0 0;
-}
-
-.react-tabs__tab:focus-visible {
-    box-shadow: none !important;
-    outline: 3px solid var(--color-primary-light) !important;
-    outline-offset: 2px !important;
-}
+/* React Tabs styling is now handled by Tailwind classes exclusively */
 
 /* ---------- 広告収益最大化のためのスタイル ---------- */
 .ad-highlight {

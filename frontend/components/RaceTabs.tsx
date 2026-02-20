@@ -219,18 +219,26 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         return index >= 0 ? index : 0;
     }, [data.nar, initialVenueName]);
 
+    const mainTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-2 sm:gap-4 border-b-2 border-slate-200 mb-6";
+    const mainTabClass = "snap-start min-w-max px-4 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-bold text-slate-400 bg-transparent cursor-pointer hover:text-slate-600 transition-all outline-none border-b-2 border-transparent -mb-[2px]";
+    const mainSelectedTabClass = "!text-primary !border-primary";
+
+    const venueTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1.5 sm:gap-2 mb-6 p-1 bg-slate-100/60 rounded-xl w-max border border-slate-200/50 max-w-full";
+    const venueTabClass = "snap-start min-w-max px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-slate-500 rounded-lg cursor-pointer hover:text-slate-700 hover:bg-slate-200/60 transition-all outline-none";
+    const venueSelectedTabClass = "!text-primary !bg-white shadow-sm !border-slate-200";
+
     return (
         <Tabs defaultIndex={initialTopTabIndex} className="mt-4" forceRenderTabPanel={true}>
-            <TabList className="react-tabs__tab-list relative flex overflow-x-auto snap-x snap-mandatory scrollbar-hide pr-8 after:content-[''] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-16 after:bg-gradient-to-l after:from-bg after:to-transparent after:pointer-events-none">
-                {data.jra.length > 0 && <Tab className="react-tabs__tab snap-start min-w-max">中央競馬</Tab>}
-                {data.nar.length > 0 && <Tab className="react-tabs__tab snap-start min-w-max">地方競馬</Tab>}
+            <TabList className={mainTabListClass}>
+                {data.jra.length > 0 && <Tab className={mainTabClass} selectedClassName={mainSelectedTabClass}>中央競馬</Tab>}
+                {data.nar.length > 0 && <Tab className={mainTabClass} selectedClassName={mainSelectedTabClass}>地方競馬</Tab>}
             </TabList>
             {data.jra.length > 0 && (
                 <TabPanel>
                     <div className="p-0 sm:p-2 md:p-3 relative">
                         <Tabs defaultIndex={initialJraVenueIndex} forceRenderTabPanel={true}>
-                            <TabList className="react-tabs__tab-list relative flex overflow-x-auto snap-x snap-mandatory scrollbar-hide pr-8 after:content-[''] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-12 after:bg-gradient-to-l after:from-surface after:to-transparent after:pointer-events-none mb-4">
-                                {data.jra.map(venue => <Tab key={venue.venue_name} className="react-tabs__tab snap-start min-w-max">{venue.venue_name}</Tab>)}
+                            <TabList className={venueTabListClass}>
+                                {data.jra.map(venue => <Tab key={venue.venue_name} className={venueTabClass} selectedClassName={venueSelectedTabClass}>{venue.venue_name}</Tab>)}
                             </TabList>
                             {data.jra.map(venue => (
                                 <TabPanel key={venue.venue_name}>
@@ -245,8 +253,8 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                 <TabPanel>
                     <div className="p-0 sm:p-2 md:p-3 relative">
                         <Tabs defaultIndex={initialNarVenueIndex} forceRenderTabPanel={true}>
-                            <TabList className="react-tabs__tab-list relative flex overflow-x-auto snap-x snap-mandatory scrollbar-hide pr-8 after:content-[''] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-12 after:bg-gradient-to-l after:from-surface after:to-transparent after:pointer-events-none mb-4">
-                                {data.nar.map(venue => <Tab key={venue.venue_name} className="react-tabs__tab snap-start min-w-max">{venue.venue_name}</Tab>)}
+                            <TabList className={venueTabListClass}>
+                                {data.nar.map(venue => <Tab key={venue.venue_name} className={venueTabClass} selectedClassName={venueSelectedTabClass}>{venue.venue_name}</Tab>)}
                             </TabList>
                             {data.nar.map(venue => (
                                 <TabPanel key={venue.venue_name}>

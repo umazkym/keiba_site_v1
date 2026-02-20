@@ -107,13 +107,13 @@ export default function AboutPage() {
     return (
         <>
             <Breadcrumb />
-            <div className="py-4 sm:py-8">
-                <div className="max-w-3xl mx-auto">
-                    <div className="flex flex-col gap-10">
+            <div className="py-10 sm:py-16 px-4 w-full bg-surface">
+                <div className="max-w-[800px] mx-auto w-full">
+                    <div className="flex flex-col gap-12 sm:gap-16">
                         {/* メインセクション */}
-                        <div>
-                            <h1 className="text-2xl sm:text-4xl font-bold text-primary mb-4 sm:mb-6 border-b border-border pb-3 sm:pb-4">{aboutContent.main.title}</h1>
-                            {aboutContent.main.paragraphs.map((text, index) => (<p key={index} className={`text-text-secondary leading-8 text-base ${index > 0 ? 'mt-4' : ''}`}>{text}</p>))}
+                        <div className="text-center sm:text-left">
+                            <h1 className="text-3xl sm:text-4xl font-bold text-text-primary mb-6 sm:mb-8 tracking-tight">{aboutContent.main.title}</h1>
+                            {aboutContent.main.paragraphs.map((text, index) => (<p key={index} className={`text-text-secondary leading-relaxed text-base sm:text-lg ${index > 0 ? 'mt-4' : ''}`}>{text}</p>))}
                         </div>
 
                         {/* 運営者について */}

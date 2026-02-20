@@ -197,19 +197,21 @@ export const FAQClient = () => {
                     __html: JSON.stringify(faqSchema)
                 }}
             />
-            <div className="py-8">
-                <div className="max-w-3xl mx-auto">
+            <div className="py-10 sm:py-16 px-4">
+                <div className="max-w-[800px] mx-auto w-full">
                     {/* ヘッダー */}
-                    <h1 className="text-3xl sm:text-4xl font-bold text-primary mb-6 border-b border-border pb-4">
-                        よくある質問
-                    </h1>
-                    <p className="text-base text-text-secondary mb-8 leading-8">
-                        UMA-FREEに関するご質問にお答えします。見つからない場合は、
-                        <Link href="/contact" className="text-primary hover:text-primary-light font-semibold underline decoration-2 decoration-primary/30 hover:decoration-primary/60 transition-all ml-1">
-                            お問い合わせ
-                        </Link>
-                        ください。
-                    </p>
+                    <div className="text-center mb-10 sm:mb-14">
+                        <h1 className="text-3xl sm:text-4xl font-bold text-text-primary mb-4 sm:mb-6 tracking-tight">
+                            よくある質問
+                        </h1>
+                        <p className="text-base text-text-secondary leading-relaxed max-w-2xl mx-auto">
+                            UMA-FREEに関するご質問にお答えします。見つからない場合は、
+                            <Link href="/contact" className="text-primary hover:text-primary-dark font-bold underline decoration-2 decoration-primary/30 hover:decoration-primary transition-all ml-1">
+                                お問い合わせ
+                            </Link>
+                            ください。
+                        </p>
+                    </div>
 
                     {/* カテゴリフィルタ */}
                     <div className="mb-10 flex flex-wrap gap-2">

@@ -20,9 +20,11 @@ export const metadata: Metadata = {
 
 export default function FAQPage() {
     return (
-        <>
+        <div className="flex flex-col min-h-screen">
             <Breadcrumb />
-            <FAQClient />
-        </>
+            <div className="w-full bg-surface">
+                <FAQClient />
+            </div>
+        </div>
     );
 }

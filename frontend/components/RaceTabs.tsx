@@ -221,16 +221,16 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
 
     return (
         <Tabs defaultIndex={initialTopTabIndex} className="mt-4" forceRenderTabPanel={true}>
-            <TabList className="relative flex overflow-x-auto snap-x snap-mandatory scrollbar-hide pr-8 after:content-[''] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-16 after:bg-gradient-to-l after:from-bg after:to-transparent after:pointer-events-none">
-                {data.jra.length > 0 && <Tab className="snap-start min-w-max">中央競馬</Tab>}
-                {data.nar.length > 0 && <Tab className="snap-start min-w-max">地方競馬</Tab>}
+            <TabList className="react-tabs__tab-list relative flex overflow-x-auto snap-x snap-mandatory scrollbar-hide pr-8 after:content-[''] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-16 after:bg-gradient-to-l after:from-bg after:to-transparent after:pointer-events-none">
+                {data.jra.length > 0 && <Tab className="react-tabs__tab snap-start min-w-max">中央競馬</Tab>}
+                {data.nar.length > 0 && <Tab className="react-tabs__tab snap-start min-w-max">地方競馬</Tab>}
             </TabList>
             {data.jra.length > 0 && (
                 <TabPanel>
                     <div className="p-0 sm:p-2 md:p-3 relative">
                         <Tabs defaultIndex={initialJraVenueIndex} forceRenderTabPanel={true}>
-                            <TabList className="relative flex overflow-x-auto snap-x snap-mandatory scrollbar-hide pr-8 after:content-[''] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-12 after:bg-gradient-to-l after:from-surface after:to-transparent after:pointer-events-none mb-4">
-                                {data.jra.map(venue => <Tab key={venue.venue_name} className="snap-start min-w-max">{venue.venue_name}</Tab>)}
+                            <TabList className="react-tabs__tab-list relative flex overflow-x-auto snap-x snap-mandatory scrollbar-hide pr-8 after:content-[''] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-12 after:bg-gradient-to-l after:from-surface after:to-transparent after:pointer-events-none mb-4">
+                                {data.jra.map(venue => <Tab key={venue.venue_name} className="react-tabs__tab snap-start min-w-max">{venue.venue_name}</Tab>)}
                             </TabList>
                             {data.jra.map(venue => (
                                 <TabPanel key={venue.venue_name}>
@@ -245,8 +245,8 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                 <TabPanel>
                     <div className="p-0 sm:p-2 md:p-3 relative">
                         <Tabs defaultIndex={initialNarVenueIndex} forceRenderTabPanel={true}>
-                            <TabList className="relative flex overflow-x-auto snap-x snap-mandatory scrollbar-hide pr-8 after:content-[''] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-12 after:bg-gradient-to-l after:from-surface after:to-transparent after:pointer-events-none mb-4">
-                                {data.nar.map(venue => <Tab key={venue.venue_name} className="snap-start min-w-max">{venue.venue_name}</Tab>)}
+                            <TabList className="react-tabs__tab-list relative flex overflow-x-auto snap-x snap-mandatory scrollbar-hide pr-8 after:content-[''] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-12 after:bg-gradient-to-l after:from-surface after:to-transparent after:pointer-events-none mb-4">
+                                {data.nar.map(venue => <Tab key={venue.venue_name} className="react-tabs__tab snap-start min-w-max">{venue.venue_name}</Tab>)}
                             </TabList>
                             {data.nar.map(venue => (
                                 <TabPanel key={venue.venue_name}>

@@ -113,7 +113,7 @@ const privacyPolicyContent: PrivacyPolicyContent = {
                     title: 'Google AdSense',
                     content: [
                         '当サイトは、第三者配信の広告サービス「Google AdSense」を利用しています。このような広告配信事業者は、ユーザーの興味に応じた商品やサービスの広告を表示するため、Cookieを使用して当サイトや他サイトへのアクセスに関する情報（氏名、住所、メールアドレス、電話番号は含まれません）を使用することがあります。',
-                        'このプロセスの詳細やこのような情報が広告配信事業者に使用されないようにする方法については、<a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Googleの広告ポリシー</a>をご覧ください。',
+                        'このプロセスの詳細やこのような情報が広告配信事業者に使用されないようにする方法については、<a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Googleの広告ポリシー</a>をご覧ください。また、ユーザーは、<a href="https://myadcenter.google.com/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">広告設定</a>でパーソナライズ広告を無効にすることができます。または、<a href="https://www.aboutads.info/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">www.aboutads.info</a> にアクセスすれば、パーソナライズ広告に使われる第三者配信事業者の Cookie を無効にすることができます。',
                         '当サイトの広告配信に関する詳細情報は、<a href="/advertising" class="text-primary hover:underline">広告について</a>をご覧ください。',
                     ],
                 },

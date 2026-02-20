@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/utils";
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { getPredictionsForDate } from "@/lib/api";
 import { Article } from "@/lib/articles";
+import DisclaimerAlert from "@/components/DisclaimerAlert";
 
 // 日付フォーマット検証関数
 /**
@@ -236,6 +237,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, art
         }
         return (
             <>
+                <DisclaimerAlert />
                 <div className="mb-4">
                     <SpecialPickCard date={currentDate} />
                 </div>

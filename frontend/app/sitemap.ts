@@ -58,8 +58,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         const races: RaceUrlInfo[] = await response.json();
 
-        // 日付ごとにレースをグループ化し、各日付の最新レースのみをサイトマップに含める
-        const datePages = [...new Set(races.map(race => race.race_date))];
+        // 日付ごとにレースをグループ化
+        const allDatePages = [...new Set(races.map(race => race.race_date))];
+
+        // サイトマップに含める日付のフィルタリング（noindex対応）
+        // 原則として過去日のレース結果はnoindexとするため、サイトマップにも不要。
+        // ただしクローラの巡回遅延を考慮し「今日を基準に3日前」までの日付と未来の日付のみを含める
+        const now = new Date();
+        const jstNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+        const threeDaysAgo = new Date(jstNow);
+        threeDaysAgo.setDate(jstNow.getDate() - 3);
+        const thresholdDateStr = threeDaysAgo.toISOString().split('T')[0];
+
+        const datePages = allDatePages.filter(date => date >= thresholdDateStr);
 
         // 日付ページのルート（優先度: 高）
         const datePageRoutes = datePages.map(date => ({

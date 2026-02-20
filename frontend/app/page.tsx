@@ -6,6 +6,7 @@ import { TopHitsDisplay } from '@/components/TopHitsDisplay';
 import { getSpecialPick } from '@/lib/api';
 import { getLatestArticles, getUniqueCategories, getAllArticles } from '../lib/articles';
 import { ChartBarIcon } from '@/components/Icons';
+import DisclaimerAlert from '@/components/DisclaimerAlert';
 import type { Metadata } from 'next';
 
 // 動的コンテンツ（SpecialPick等）を含むため、常に最新データを取得
@@ -293,9 +294,8 @@ export default async function HomePage() {
                             </p>
                         </div>
                     </div>
-                    <div className="mt-8 px-2 sm:p-4 text-xs sm:text-sm text-text-muted leading-relaxed text-center space-y-2">
-                        <p>本サイトは統計分析データの提供を目的としており、馬券購入の助言や推奨を行うものではありません。投票判断はご自身の責任において行ってください。</p>
-                        <p>20歳未満の方の馬券購入は競馬法により禁止されています。ギャンブル依存症に関するご心配がある場合は、リカバリーサポート・ネットワーク（RSN）（TEL: 0120-29-7338）までご相談ください。</p>
+                    <div className="mt-8 max-w-4xl mx-auto">
+                        <DisclaimerAlert />
                     </div>
                 </section>
 

@@ -121,6 +121,7 @@ class SnsPost(Base):
     post_type = Column(String, nullable=False)  # 'hit', 'pick', 'reminder'
     posted_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     target_date = Column(Date, nullable=False, index=True)  # 対象日（昨日 or 今日）
+    tweet_id = Column(String, nullable=True)  # Twitter上のID（引用RTなどで使用）
     
     __table_args__ = (
         UniqueConstraint('content_hash', 'target_date', name='_sns_post_unique'),

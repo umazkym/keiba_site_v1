@@ -145,6 +145,32 @@ services:
       - key: SELENIUM_ELEMENT_WAIT_TIMEOUT
         value: "20"
 
+  # SNS自動投稿ジョブ（直前リマインド）: 土日 14:00 JST (UTC 5:00)
+  - type: cron
+    name: keiba-sns-pre-race
+    runtime: docker
+    region: oregon
+    plan: free
+    schedule: "0 5 * * 0,6"
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: "python scripts/sns_poster.py --post-type pre_race"
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+      - key: TWITTER_CONSUMER_KEY
+        sync: false
+      - key: TWITTER_CONSUMER_SECRET
+        sync: false
+      - key: TWITTER_ACCESS_TOKEN
+        sync: false
+      - key: TWITTER_ACCESS_TOKEN_SECRET
+        sync: false
+      - key: API_BASE_URL
+        value: https://keiba-site-v1-api.onrender.com
+      - key: SITE_BASE_URL
+        value: https://k-b-a.vercel.app/
+
   # パイプライン実行ジョブ: 朝5時（前日の結果取得のみ）
   - type: cron
     name: keiba-pipeline-runner

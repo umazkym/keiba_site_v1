@@ -383,7 +383,7 @@ def is_already_posted(content: str, post_type: str, target_date: str) -> bool:
     finally:
         db.close()
 
-def record_post(content: str, post_type: str, target_date: str) -> None:
+def record_post(content: str, post_type: str, target_date: str, tweet_id: Optional[str] = None) -> None:
     """
     投稿記録をデータベースに保存する
     """
@@ -403,7 +403,8 @@ def record_post(content: str, post_type: str, target_date: str) -> None:
             content_hash=content_hash,
             post_type=post_type,
             posted_at=datetime.now(timezone(timedelta(hours=9))),
-            target_date=target_date
+            target_date=target_date,
+            tweet_id=tweet_id
         )
         db.add(new_post)
         db.commit()
@@ -535,6 +536,41 @@ def generate_pick_og_image(data: dict, date_str: str) -> Optional[str]:
         draw_centered_text(draw, "AI偏差値", label_font, TEXT_COLOR_MUTED, 1200, 470)
         draw_centered_text(draw, deviation_score_text, score_font, COLOR_CYAN, 1200, 505)
 
+        # 自信度バッジ
+        badge_text = ""
+        badge_color = (255, 255, 255)
+        badge_bg_color = (0, 0, 0)
+        if ds_val >= 70:
+            badge_text = " Sランク "
+            badge_color = (255, 215, 0)  # Gold
+            badge_bg_color = (139, 0, 0) # DarkRed
+        elif ds_val >= 60:
+            badge_text = " Aランク "
+            badge_color = (255, 255, 255)
+            badge_bg_color = (0, 100, 0) # DarkGreen
+        elif ds_val >= 50:
+            badge_text = " Bランク "
+            badge_color = (255, 255, 255)
+            badge_bg_color = (0, 0, 139) # DarkBlue
+
+        if badge_text:
+            badge_font = ImageFont.truetype(font_bold, 36)
+            # draw centered badge
+            bbox = draw.textbbox((0, 0), badge_text, font=badge_font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            x_center = 1200 / 2
+            y_center = 400
+            padding_x = 20
+            padding_y = 10
+            
+            draw.rounded_rectangle(
+                [x_center - text_width/2 - padding_x, y_center - text_height/2 - padding_y,
+                 x_center + text_width/2 + padding_x, y_center + text_height/2 + padding_y],
+                radius=10, fill=badge_bg_color
+            )
+            draw_centered_text(draw, badge_text, badge_font, badge_color, 1200, int(y_center - text_height/2))
+
         # フッター情報
         date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%Y.%m.%d')
         draw.text((50, 580), date_formatted, font=ImageFont.truetype(font_light, 22), fill=TEXT_COLOR_LIGHT, anchor="ls")
@@ -600,6 +636,32 @@ def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
             except Exception:
                 ds_p_val = 0.0
             score_text = f"{ds_p_val:.1f}"
+            
+            # 自信度バッジ
+            badge_text = ""
+            badge_color = (255, 255, 255)
+            badge_bg_color = (0, 0, 0)
+            if ds_p_val >= 70:
+                badge_text = "S"
+                badge_color = (255, 215, 0)  # Gold
+                badge_bg_color = (139, 0, 0) # DarkRed
+            elif ds_p_val >= 60:
+                badge_text = "A"
+                badge_color = (255, 255, 255)
+                badge_bg_color = (0, 100, 0) # DarkGreen
+            elif ds_p_val >= 50:
+                badge_text = "B"
+                badge_color = (255, 255, 255)
+                badge_bg_color = (0, 0, 139) # DarkBlue
+
+            if badge_text:
+                badge_font = ImageFont.truetype(font_bold, 28)
+                draw.rounded_rectangle(
+                    [850 - 130, y_pos - 20, 850 - 90, y_pos + 20],
+                    radius=5, fill=badge_bg_color
+                )
+                draw.text((850 - 110, y_pos), badge_text, font=badge_font, fill=badge_color, anchor="mm")
+                
             draw.text((850, y_pos), score_text, font=score_font, fill=TEXT_COLOR_MUTED, anchor="rm")
         
         # フッター情報
@@ -617,7 +679,36 @@ def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
         return None
 
 # --- 7. テキスト生成関数群 (安全に .get を使い None を扱う) ---
-def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date_str: str) -> str:
+def get_past_tweet_id_for_race(target_date_str: str, post_type_prefix: str = "evening_race") -> Optional[str]:
+    """
+    指定した日付に関する過去の投稿（例：前日の evening_race または 本日の morning_pick_only）
+    の tweet_id を取得し、引用RT用のURLを生成するために使用する。
+    """
+    if not DATABASE_URL or SessionLocal is None or models is None:
+        return None
+
+    db = SessionLocal()
+    try:
+        # target_date_str の日付に対する投稿を探す
+        # 例えば今日が2023-10-15で、昨日の的中(10-14)を報告する場合、
+        # 探したいのは「10-14のレース」に向けて投稿されたtweet_id。
+        # evening_race は前日(10-13)に target_date=10-14 として保存されている。
+        past_post = db.query(models.SnsPost).filter(
+            models.SnsPost.target_date == target_date_str,
+            models.SnsPost.post_type.like(f"{post_type_prefix}%"),
+            models.SnsPost.tweet_id.isnot(None)
+        ).order_by(models.SnsPost.posted_at.desc()).first()
+        
+        if past_post and past_post.tweet_id:
+            return past_post.tweet_id
+        return None
+    except Exception as e:
+        _log(f"⚠️ 過去のtweet_id取得に失敗しました: {e}")
+        return None
+    finally:
+        db.close()
+
+def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date_str: str, quote_tweet_id: Optional[str] = None) -> str:
     _log("-> 的中報告＋成績サマリーのテキストを生成...")
     payout_val = hit.get('payout', 0) or 0
     hashtags = ["#競馬", "#AI予想", "#万馬券" if payout_val >= 10000 else "#的中"]
@@ -641,7 +732,7 @@ def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date
 {SITE_BASE_URL}
 
 {' '.join(hashtags)}
-
+{f'https://x.com/anyuser/status/{quote_tweet_id}' if quote_tweet_id else ''}
 """
 
 def create_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
@@ -656,6 +747,14 @@ def create_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
             is_jra = False
 
     hashtags = ["#競馬", "#AI予想", "#中央競馬" if is_jra else "#地方競馬"]
+    venue_name = pick.get('venue_name', '')
+    if venue_name:
+        hashtags.append(f"#{venue_name}競馬")
+    
+    clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', pick.get('race_name', '')).strip()
+    if clean_race_name and clean_race_name != "?":
+        hashtags.append(f"#{clean_race_name}")
+
     pick_horse_name = pick.get('horse_name', '')
     if pick_horse_name:
         hashtags.append(f"#{pick_horse_name}")
@@ -804,6 +903,8 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
                 tweet_id = response.data.get('id') if response and response.data else None
                 if tweet_id:
                     _log(f" - URL: https://x.com/anyuser/status/{tweet_id}")
+                    # 最初のツイート（または分割された場合でもそれぞれのID）を記録
+                    record_post(tweet_text, post_type, target_date, tweet_id=str(tweet_id))
             except Exception:
                 pass
 
@@ -871,6 +972,8 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
                 tweet_id = response.data.get('id') if response and response.data else None
                 if tweet_id:
                     _log(f" - URL: https://x.com/anyuser/status/{tweet_id}")
+                    # 記録
+                    record_post(tweet_text, post_type, target_date, tweet_id=str(tweet_id))
             except Exception:
                 pass
 
@@ -886,7 +989,7 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
         return False
 
 # --- 7.5 新しい投稿用テキスト生成関数 ---
-def create_morning_hit_tweet(hit: Dict[str, Any], summary: dict, date_str: str) -> str:
+def create_morning_hit_tweet(hit: Dict[str, Any], summary: dict, date_str: str, quote_tweet_id: Optional[str] = None) -> str:
     """朝投稿ツイート1: 昨日の的中報告 + 本命馬成績"""
     _log("-> 朝投稿ツイート1: 的中報告＋本命馬成績のテキストを生成...")
 
@@ -908,6 +1011,17 @@ def create_morning_hit_tweet(hit: Dict[str, Any], summary: dict, date_str: str) 
     lines.append(f"\n▼レース結果とAIの印はこちらから")
     lines.append(f"\n{SITE_BASE_URL}")
     lines.append(f"\n{' '.join(hashtags_1)}")
+    
+    if quote_tweet_id:
+        lines.append(f"\nhttps://x.com/anyuser/status/{quote_tweet_id}")
+
+    engagements = [
+        "皆さんの本命馬と同じでしたか？👇",
+        "この結果に驚いた方は『いいね』で教えてください🐴",
+        "AIの印が参考になったら『いいね/ブックマーク』をぜひ！🔖",
+        "今後も高配当を狙うならお見逃しなく！🏇"
+    ]
+    lines.append(f"\n\n{random.choice(engagements)}")
 
     return "\n".join(lines)
 
@@ -923,6 +1037,13 @@ def create_morning_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
     is_jra = any(jra_venue in venue_name for jra_venue in jra_venues)
 
     hashtags_2 = ["#競馬", "#AI予想", "#中央競馬" if is_jra else "#地方競馬"]
+    if venue_name:
+        hashtags_2.append(f"#{venue_name}競馬")
+    
+    clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', pick.get('race_name', '')).strip()
+    if clean_race_name and clean_race_name != "?":
+        hashtags_2.append(f"#{clean_race_name}")
+
     pick_horse_name = pick.get('horse_name', '')
     if pick_horse_name:
         hashtags_2.append(f"#{pick_horse_name}")
@@ -934,6 +1055,14 @@ def create_morning_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
     lines.append(f"\n▼全レースの無料予測")
     lines.append(f"\n{SITE_BASE_URL}")
     lines.append(f"\n{' '.join(hashtags_2)}")
+
+    engagements = [
+        "波乱の予感がする方は『いいね/ブックマーク』で保存！🔖",
+        "この馬鹿にならないAI偏差値、ぜひ参考に！🐴",
+        "皆さんの予想はどうですか？👇",
+        "発走前にオッズと一緒にチェック！🏇"
+    ]
+    lines.append(f"\n\n{random.choice(engagements)}")
 
     return "\n".join(lines)
 
@@ -1047,6 +1176,10 @@ def create_evening_tomorrow_race_tweet(tomorrow_date: str) -> Optional[tuple]:
             clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', race_name).strip()
 
             hashtags = ["#競馬予想", "#AI予想", f"#{clean_race_name}"]
+            venue_name = race.get('venue_name', '')
+            if venue_name and venue_name != '?':
+                hashtags.append(f"#{venue_name}競馬")
+                
             for horse_name in horse_names:
                 hashtags.append(f"#{horse_name}")
 
@@ -1059,6 +1192,37 @@ def create_evening_tomorrow_race_tweet(tomorrow_date: str) -> Optional[tuple]:
 
     _log("-> 明日の重賞レースが見つかりませんでした")
     return None
+
+def create_pre_race_tweet(race: dict, top_preds: List[dict]) -> str:
+    """直前リマインド: レース直前の予想リマインド"""
+    _log("-> 直前リマインドテキストを生成...")
+    date_str = race.get('race_date', '')
+    clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', race.get('race_name', '')).strip()
+    hashtags = ["#競馬", "#競馬予想", "#AI予想", f"#{clean_race_name}"]
+    venue_name = race.get('venue_name', '')
+    if venue_name and venue_name != '?':
+        hashtags.append(f"#{venue_name}競馬")
+
+    lines = [f"⏰まもなく発走！ ({race.get('race_name','')}) AI予想\n"]
+    for i, p in enumerate(top_preds[:3]):
+        ds_val = p.get('deviation_score')
+        ds_val_f = float(ds_val) if ds_val is not None else 0.0
+        horse_name = p.get('horse_name','?')
+        lines.append(f"{['◎','○','▲'][i]} {horse_name} (AI偏差値: {ds_val_f:.1f})")
+        hashtags.append(f"#{horse_name}")
+        
+    lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}")
+    lines.append(f"\n{' '.join(hashtags)}")
+    
+    engagements = [
+        "馬券購入の参考にどうぞ！🐴",
+        "皆さんの本命は決まりましたか？👇",
+        "発走前に『いいね/ブックマーク』で保存！🔖",
+        "AIが高配当を狙います！🏇"
+    ]
+    lines.append(f"\n\n{random.choice(engagements)}")
+    
+    return "\n".join(lines)
 
 # --- 9. メイン処理 ---
 def main():
@@ -1073,8 +1237,8 @@ def main():
 
     # コマンドライン引数で投稿タイプを取得
     parser = argparse.ArgumentParser(description='SNS投稿スクリプト')
-    parser.add_argument('--post-type', type=str, default='morning', choices=['morning', 'afternoon', 'evening'],
-                       help='投稿タイプ: morning(朝), afternoon(昼), evening(夜)')
+    parser.add_argument('--post-type', type=str, default='morning', choices=['morning', 'afternoon', 'evening', 'pre_race'],
+                       help='投稿タイプ: morning(朝), afternoon(昼), evening(夜), pre_race(直前)')
     args = parser.parse_args()
     post_type = args.post_type
 
@@ -1150,8 +1314,14 @@ def main():
                     image_file_1 = generate_hit_og_image(hits_data[0], yesterday_str)
                     image_file_2 = generate_pick_og_image(pick_data, today_str)
 
+                    # 過去の重賞予想などの tweet_id を取得 (的中したレースの昨日の日付に対応)
+                    quote_tweet_id = get_past_tweet_id_for_race(yesterday_str, post_type_prefix="evening_race")
+                    if not quote_tweet_id:
+                        # 見つからない場合は当日の予想などを探す
+                        quote_tweet_id = get_past_tweet_id_for_race(yesterday_str, post_type_prefix="morning_pick")
+                    
                     # ツイート1と2を個別に生成
-                    tweet_text_1 = create_morning_hit_tweet(hits_data[0], summary, yesterday_str)
+                    tweet_text_1 = create_morning_hit_tweet(hits_data[0], summary, yesterday_str, quote_tweet_id=quote_tweet_id)
                     tweet_text_2 = create_morning_pick_tweet(pick_data, today_str)
 
                     # 2つのツイートテキストを直接渡して投稿（分割なし）
@@ -1220,6 +1390,45 @@ def main():
                     post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
             else:
                 _log("-> 明日は対象の重賞レースがありませんでした。")
+
+        # ========== 週末直前(14:00)投稿 ==========
+        elif post_type == 'pre_race':
+            _log("\n--- 直前リマインド: 本日のメインレース分析 ---")
+            all_races_today = get_api_data(today_str)
+            target_race = None
+            target_preds = None
+
+            if all_races_today:
+                venues = all_races_today.get('jra', []) + all_races_today.get('nar', [])
+                for venue in venues:
+                    for race in venue.get('races', []):
+                        race_name = (race.get('race_name') or '').strip()
+                        # 11Rなどメインレース、または特別戦などを対象とする
+                        # シンプルにするため、本日の一番注目度が高い（AI偏差値トップがいる、あるいは重賞）レースを選ぶ
+                        # 今回は11Rを優先的に探すロジックを採用
+                        if race.get('race_number') == 11 or is_grade_race(race_name):
+                            preds_raw = race.get('predictions', []) or []
+                            preds = [p for p in preds_raw if p and p.get('deviation_score') is not None]
+                            preds = sorted(preds, key=lambda p: p['deviation_score'], reverse=True)
+                            if len(preds) >= 3:
+                                target_race = race
+                                target_preds = preds[:3]
+                                break
+                    if target_race:
+                        break
+
+            if target_race and target_preds:
+                _log(f"-> 直前リマインダー投稿準備完了: {target_race.get('race_name', '?')}")
+                tweet_text = create_pre_race_tweet(target_race, target_preds)
+                image_file = generate_reminder_og_image(target_race, target_preds)
+                
+                if image_file:
+                    _log(f"-> 画像生成成功: {image_file}")
+                    post_to_twitter(tweet_text, image_file, post_type="pre_race_remind", target_date=today_str, split_mode=False)
+                else:
+                    post_to_twitter(tweet_text, None, post_type="pre_race_remind", target_date=today_str, split_mode=False)
+            else:
+                _log("-> 本日の適切な直前リマインダー対象レースがありませんでした。")
 
         _log("\nSNS自動投稿ジョブが完了しました。")
 

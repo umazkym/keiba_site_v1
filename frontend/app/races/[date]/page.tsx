@@ -36,31 +36,22 @@ export async function generateMetadata(
         // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
     }
 
-    // 過去のレース判定（本日より前の日付かどうか）
-    // JSTでの現在時刻を取得して比較
-    const now = new Date();
-    const jstNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-    const todayStr = jstNow.toISOString().split('T')[0];
-
-    // params.date が今日より過去であれば noindex にする
-    const isPastRace = params.date < todayStr;
-
     return {
         title: title,
         description: description,
         alternates: {
             canonical: canonicalUrl,
         },
-        // ▼▼▼▼▼【YMYL/Thin Content対策】▼▼▼▼▼
-        // 過去のレース結果ページは「データベースの機械的出力（Thin Content）」とみなされやすいため、
-        // サイト全体の評価を下げないようGoogleのインデックスから意図的に除外する
-        ...(isPastRace && {
-            robots: {
-                index: false,
-                follow: false,
-            }
-        }),
-        // ▲▲▲▲▲【対策ここまで】▲▲▲▲▲
+        // ▼▼▼▼▼【AdSense審査対策: 全レースページnoindex化】▼▼▼▼▼
+        // テンプレート的なデータページがサイト全体の品質評価を下げるのを防ぐため、
+        // AdSense承認まで全レースページをインデックスから除外する。
+        // follow=true でリンクの価値は保持する。
+        // ※ AdSense承認後にこのブロックを元に戻すこと（過去レースのみnoindexに）
+        robots: {
+            index: false,
+            follow: true,
+        },
+        // ▲▲▲▲▲【AdSense審査対策ここまで】▲▲▲▲▲
     };
 }
 

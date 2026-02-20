@@ -15,33 +15,9 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
     const { pathname, searchParams } = request.nextUrl;
 
-    // 1. レースページのクエリパラメータ正規化
-    if (pathname.startsWith('/races/')) {
-        const venue = searchParams.get('venue');
-        const race = searchParams.get('race');
-
-        // クエリパラメータが両方存在する場合のみ正規化
-        if (venue && race) {
-            // URLSearchParamsで全パラメータを取得
-            const params = new URLSearchParams(searchParams.toString());
-            const paramsArray = Array.from(params.keys());
-
-            // 最初のパラメータが'venue'の場合、または順序が不正な場合にリダイレクト
-            if (paramsArray[0] === 'venue' || paramsArray.indexOf('race') > paramsArray.indexOf('venue')) {
-                // 正しい順序でリダイレクト（301 Permanent Redirect）
-                const newUrl = new URL(request.url);
-                // 新しいURLSearchParamsを作成し、正しい順序で追加
-                const newParams = new URLSearchParams();
-                newParams.set('race', race);
-                newParams.set('venue', venue);
-                newUrl.search = newParams.toString();
-
-                return NextResponse.redirect(newUrl, {
-                    status: 301, // 恒久的リダイレクト
-                });
-            }
-        }
-    }
+    // 1. レースページのクエリパラメータ正規化（廃止）
+    // Google Search Consoleで過去URLの404が「リダイレクトエラー」になるのを防ぐため、
+    // ここでの301リダイレクトは行わず、正規化は page.tsx の canonical タグに任せます。
 
     // 2. 記事ページの日付プレフィックスなしslugを処理
     if (pathname.startsWith('/articles/')) {

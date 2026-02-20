@@ -35,31 +35,31 @@ export const CookieConsent = () => {
 
     return (
         <div
-            className="fixed bottom-0 left-0 right-0 z-[9999] bg-white border-t border-gray-200 shadow-lg px-4 py-4 sm:py-5 animate-slide-up"
+            className="fixed bottom-4 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-[9999] max-w-[calc(100vw-2rem)] sm:max-w-md glass rounded-2xl shadow-elevated border border-slate-200/60 p-4 sm:p-5 animate-slide-up"
             role="dialog"
             aria-label="Cookie使用の同意"
         >
-            <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
-                <div className="flex-1 text-sm text-gray-600 leading-relaxed">
+            <div className="flex flex-col gap-3 sm:gap-4">
+                <div className="text-[13px] sm:text-sm text-text-secondary leading-[1.6]">
                     <p>
-                        当サイトでは、サービス向上とアクセス分析のためにCookieを使用しています。
+                        当サイトでは、アクセス分析のためにCookieを使用しています。
                         詳細は
-                        <Link href="/privacy" className="text-primary font-semibold underline decoration-1 decoration-primary/30 hover:decoration-primary/60 ml-1">
+                        <Link href="/privacy" className="text-primary font-semibold hover:underline ml-1">
                             プライバシーポリシー
                         </Link>
-                        をご確認ください。
+                        をご覧ください。
                     </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                <div className="flex items-center gap-2 w-full">
                     <button
                         onClick={handleDecline}
-                        className="flex-1 sm:flex-initial px-4 py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors"
+                        className="flex-1 px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-text-secondary hover:text-text-primary bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all duration-200 shadow-sm"
                     >
                         拒否
                     </button>
                     <button
                         onClick={handleAccept}
-                        className="flex-1 sm:flex-initial px-6 py-2.5 text-sm font-bold text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors shadow-sm"
+                        className="flex-[2] px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-primary hover:bg-primary-dark rounded-xl shadow-sm transition-all duration-200 active:scale-95"
                     >
                         同意する
                     </button>

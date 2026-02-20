@@ -132,7 +132,7 @@ export default async function HomePage() {
                         <span className="w-1.5 h-6 bg-primary rounded-full"></span>
                         UMA-FREEとは
                     </h2>
-                    <div className="space-y-4 sm:space-y-5 text-text-secondary text-[13px] sm:text-base leading-[1.8] sm:leading-relaxed">
+                    <div className="space-y-4 sm:space-y-5 text-text-secondary text-[13px] sm:text-base leading-[1.8] sm:leading-relaxed max-w-3xl mx-auto">
                         <p>
                             UMA-FREEは、過去5年以上の中央競馬（JRA）および地方競馬（NAR）の膨大なレースデータを機械学習アルゴリズムで分析し、各出走馬の能力を独自の<strong>AI偏差値</strong>として数値化した競馬データ分析サイトです。会員登録やメールアドレスの入力は一切不要で、すべての分析データを完全無料でご利用いただけます。
                         </p>
@@ -154,7 +154,7 @@ export default async function HomePage() {
                     <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
                         <div className="bg-white py-6 px-5 sm:p-8 rounded-2xl border border-slate-100 shadow-soft flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0 hover-lift">
                             <div className="bg-slate-50 text-primary rounded-2xl p-4 sm:p-5 sm:mb-5 shrink-0 border border-slate-100">
-                                <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                             </div>
                             <div className="min-w-0">
                                 <h3 className="text-sm sm:text-lg font-bold text-primary mb-2 sm:mb-3">完全無料・登録不要</h3>
@@ -165,7 +165,7 @@ export default async function HomePage() {
                         </div>
                         <div className="bg-white py-6 px-5 sm:p-8 rounded-2xl border border-slate-100 shadow-soft flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0 hover-lift">
                             <div className="bg-slate-50 text-primary rounded-2xl p-4 sm:p-5 sm:mb-5 shrink-0 border border-slate-100">
-                                <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8" />
+                                <ChartBarIcon className="w-8 h-8 sm:w-10 sm:h-10" />
                             </div>
                             <div className="min-w-0">
                                 <h3 className="text-sm sm:text-lg font-bold text-primary mb-2 sm:mb-3">AI偏差値分析</h3>
@@ -176,7 +176,7 @@ export default async function HomePage() {
                         </div>
                         <div className="bg-white py-6 px-5 sm:p-8 rounded-2xl border border-slate-100 shadow-soft flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0 hover-lift">
                             <div className="bg-slate-50 text-primary rounded-2xl p-4 sm:p-5 sm:mb-5 shrink-0 border border-slate-100">
-                                <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>
+                                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>
                             </div>
                             <div className="min-w-0">
                                 <h3 className="text-sm sm:text-lg font-bold text-primary mb-2 sm:mb-3">対戦成績・枠順分析</h3>

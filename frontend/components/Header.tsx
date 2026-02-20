@@ -43,7 +43,7 @@ export const Header = () => {
                             <span className="text-xl sm:text-2xl font-bold tracking-tight text-primary">
                                 UMA-FREE
                             </span>
-                            <p className="text-[10px] text-text-muted tracking-wider font-medium">
+                            <p className="text-[10px] md:text-xs text-text-muted tracking-wider font-medium">
                                 完全無料のAI競馬分析
                             </p>
                         </div>
@@ -95,6 +95,10 @@ export const Header = () => {
                 {/* モバイルメニュー */}
                 {isMenuOpen && (
                     <nav className="md:hidden pb-4 border-t border-slate-100 max-h-[calc(100vh-56px)] sm:max-h-[calc(100vh-64px)] overflow-y-auto bg-white absolute left-0 right-0 shadow-lg">
+                        <div className="flex items-center gap-2 px-4 py-4 mb-2 bg-slate-50 border-b border-slate-100">
+                            <Image src="/new-logo.png" alt="UMA-FREE" width={24} height={24} className="w-6 h-6" />
+                            <span className="text-[15px] font-bold tracking-tight text-primary">UMA-FREE</span>
+                        </div>
                         <Link
                             href="/"
                             className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"

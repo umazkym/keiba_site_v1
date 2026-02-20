@@ -18,7 +18,7 @@ export const RaceSelector = ({ races, selectedIndex, onSelectRace }: Props) => {
           }}
           className={`w-full md:w-auto px-3 md:px-5 py-2.5 md:py-2 text-xs md:text-sm font-bold rounded-xl transition-all duration-200 whitespace-nowrap min-h-[44px] active:scale-95 border ${selectedIndex === index
             ? 'bg-primary text-white shadow-soft border-primary-dark'
-            : 'bg-white text-text-secondary hover:bg-slate-50 border-slate-200 hover:border-primary-light hover:text-primary-dark shadow-sm'
+            : 'bg-white text-text-secondary hover:bg-slate-100 border-slate-200 hover:border-primary-light hover:text-primary-dark shadow-sm'
             }`}
         >
           {race.race_number}R

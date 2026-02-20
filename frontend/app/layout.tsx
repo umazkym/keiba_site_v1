@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { OrganizationSchema, WebsiteSchema, SoftwareApplicationSchema } from "@/components/StructuredData";
 import { CookieConsent } from "@/components/CookieConsent";
-import Script from "next/script";
+
 import { Suspense } from "react";
 import { GlobalAdManager } from "@/components/GlobalAdManager";
 
@@ -91,21 +91,10 @@ export default function RootLayout({
                 {/* AdSenseアカウントメタタグ */}
                 <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
 
-                <Script
+                <script
                     async
                     src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"
                     crossOrigin="anonymous"
-                    strategy="afterInteractive"
-                />
-                <Script
-                    id="google-adsense-init"
-                    strategy="afterInteractive"
-                    dangerouslySetInnerHTML={{
-                        __html: `(adsbygoogle = window.adsbygoogle || []).push({
-                            google_ad_client: "ca-pub-4411270831448240",
-                            enable_page_level_ads: true
-                        });`
-                    }}
                 />
             </head>
             <body className={`${inter.variable} ${notoSansJP.variable} ${robotoMono.variable} font-sans bg-surface text-text-primary antialiased`}>

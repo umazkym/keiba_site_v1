@@ -102,7 +102,7 @@ export function Breadcrumb() {
                 >
                   {item.label}
                 </Link>
-                <span className="text-gray-300 mx-1">/</span>
+                <span className="text-slate-400 mx-1">/</span>
               </>
             ) : (
               <span className="text-text-primary font-semibold">{item.label}</span>

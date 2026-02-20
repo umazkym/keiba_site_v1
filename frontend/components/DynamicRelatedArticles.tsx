@@ -91,25 +91,25 @@ export function DynamicRelatedArticles({
                         key={article.slug}
                         className="block group border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-white"
                     >
-                        <div className="relative w-full h-32 overflow-hidden bg-slate-100">
+                        <div className="relative w-full h-32 sm:h-40 overflow-hidden bg-slate-100">
                             <Image
                                 src={article.eyecatch || '/images/articles/data-analysis-eyecatch.png'}
                                 alt={article.title}
                                 fill
                                 sizes="(max-width: 640px) 100vw, 33vw"
-                                style={{ objectFit: 'cover' }}
+                                style={{ objectFit: 'cover', objectPosition: 'center' }}
                                 className="transition-transform duration-500 group-hover:scale-105"
                             />
                         </div>
-                        <div className="p-3">
-                            <span className="inline-block bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded mb-1.5 border border-blue-100">
-                                {article.category}
-                            </span>
-                            <h4
-                                className="font-bold text-sm mb-1 text-gray-800 group-hover:text-primary transition-colors line-clamp-2 leading-snug"
-                            >
-                                {article.title}
-                            </h4>
+                        <div className="p-4 flex flex-col justify-between flex-grow">
+                            <div>
+                                <span className="inline-block bg-primary-light text-primary-dark text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full mb-2">
+                                    {article.category}
+                                </span>
+                                <h4 className="font-bold text-sm sm:text-base mb-1 text-text-primary group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+                                    {article.title}
+                                </h4>
+                            </div>
                         </div>
                     </Link>
                 ))}

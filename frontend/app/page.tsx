@@ -127,12 +127,12 @@ export default async function HomePage() {
                 </div>
 
                 {/* 2. UMA-FREEとは */}
-                <section className="bg-white rounded-2xl sm:border sm:border-slate-100 p-6 md:p-10 shadow-soft">
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-6 border-b border-slate-100 pb-4 flex items-center gap-3">
+                <section className="bg-white rounded-2xl sm:border sm:border-slate-100 p-6 md:p-10 shadow-soft max-w-[1000px] mx-auto w-full">
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-6 border-b border-slate-100 pb-4 flex items-center justify-center gap-3">
                         <span className="w-1.5 h-6 bg-primary rounded-full"></span>
                         UMA-FREEとは
                     </h2>
-                    <div className="space-y-4 sm:space-y-5 text-text-secondary text-sm sm:text-base leading-relaxed max-w-3xl mx-auto">
+                    <div className="space-y-4 sm:space-y-5 text-text-secondary text-base leading-relaxed max-w-3xl mx-auto text-left sm:text-center mt-6">
                         <p>
                             UMA-FREEは、過去5年以上の中央競馬（JRA）および地方競馬（NAR）の膨大なレースデータを機械学習アルゴリズムで分析し、各出走馬の能力を独自の<strong>AI偏差値</strong>として数値化した競馬データ分析サイトです。会員登録やメールアドレスの入力は一切不要で、すべての分析データを完全無料でご利用いただけます。
                         </p>
@@ -319,12 +319,12 @@ export default async function HomePage() {
                             </div>
                         ))}
                     </div>
-                    <div className="mt-8 text-center">
+                    <div className="mt-10 text-center">
                         <Link
                             href="/faq"
-                            className="inline-block bg-slate-50 hover:bg-slate-100 border border-slate-200 text-text-secondary font-semibold py-3 px-8 rounded-xl transition-colors text-sm hover-lift"
+                            className="inline-flex items-center justify-center bg-primary hover:bg-primary-light text-white font-bold py-3 px-8 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                         >
-                            よくある質問をもっと見る
+                            よくある質問をご確認
                         </Link>
                     </div>
                 </section>

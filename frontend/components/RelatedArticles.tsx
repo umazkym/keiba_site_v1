@@ -29,28 +29,27 @@ export function RelatedArticles({ currentSlug, count = 3 }: RelatedArticlesProps
           <Link
             href={`/articles/${article.slug}`}
             key={article.slug}
-            className="block group border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-white"
+            className="block group border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-white hover-lift flex flex-col h-full"
           >
-            <div className="relative w-full h-40 sm:h-48 overflow-hidden">
+            <div className="relative w-full h-40 sm:h-48 overflow-hidden bg-slate-100 shrink-0">
               <Image
                 src={article.eyecatch}
                 alt={article.title}
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                style={{ objectFit: 'cover' }}
+                style={{ objectFit: 'cover', objectPosition: 'center' }}
                 className="transition-transform duration-500 group-hover:scale-105"
               />
             </div>
-            <div className="p-4">
-              <span className="inline-block bg-blue-50 text-blue-700 text-xs font-medium px-2.5 py-0.5 rounded mb-2 border border-blue-100">
+            <div className="p-5 sm:p-6 flex flex-col flex-grow">
+              <span className="inline-block w-fit bg-primary-light text-primary-dark text-xs font-bold px-3 py-1 rounded-full mb-3">
                 {article.category}
               </span>
-              <h4
-                className="font-bold text-sm mb-2 text-gray-800 group-hover:text-primary transition-colors line-clamp-2"
-              >
+              <h4 className="font-bold text-base sm:text-lg mb-2 text-text-primary group-hover:text-primary transition-colors line-clamp-2 leading-snug">
                 {article.title}
               </h4>
-              <p className="text-gray-400 text-xs">
+              <p className="text-text-muted text-xs sm:text-sm font-medium mt-auto pt-2 flex items-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 {new Date(article.date).toLocaleDateString('ja-JP')}
               </p>
             </div>

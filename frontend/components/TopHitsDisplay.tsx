@@ -8,16 +8,16 @@ import { Adsense } from './Adsense';
 
 const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     const rankStyles = [
-        { borderColor: 'border-yellow-200', rankBgColor: 'bg-yellow-50', rankTextColor: 'text-yellow-700', shadow: 'shadow-sm', scale: 'hover:scale-[1.01]' },
-        { borderColor: 'border-gray-200', rankBgColor: 'bg-gray-50', rankTextColor: 'text-gray-600', shadow: 'shadow-sm', scale: 'hover:scale-[1.01]' },
-        { borderColor: 'border-orange-200', rankBgColor: 'bg-orange-50', rankTextColor: 'text-orange-700', shadow: 'shadow-sm', scale: 'hover:scale-[1.01]' },
-        { borderColor: 'border-gray-100', rankBgColor: 'bg-gray-50', rankTextColor: 'text-gray-500', shadow: 'shadow-none', scale: 'hover:scale-[1.01]' },
-        { borderColor: 'border-gray-100', rankBgColor: 'bg-gray-50', rankTextColor: 'text-gray-500', shadow: 'shadow-none', scale: 'hover:scale-[1.01]' },
+        { borderColor: 'border-amber-200', rankBgColor: 'bg-amber-50', rankTextColor: 'text-amber-700', shadow: 'shadow-sm', scale: 'hover-lift' },
+        { borderColor: 'border-slate-200', rankBgColor: 'bg-slate-50', rankTextColor: 'text-slate-600', shadow: 'shadow-sm', scale: 'hover-lift' },
+        { borderColor: 'border-orange-200', rankBgColor: 'bg-orange-50', rankTextColor: 'text-orange-700', shadow: 'shadow-sm', scale: 'hover-lift' },
+        { borderColor: 'border-slate-100', rankBgColor: 'bg-slate-50', rankTextColor: 'text-slate-500', shadow: '', scale: 'hover-lift' },
+        { borderColor: 'border-slate-100', rankBgColor: 'bg-slate-50', rankTextColor: 'text-slate-500', shadow: '', scale: 'hover-lift' },
     ];
     const style = rankStyles[Math.min(rank - 1, 4)];
 
     return (
-        <div className={`bg-white rounded-lg border transition-all duration-200 ${style.borderColor} ${style.shadow} ${style.scale} p-2 sm:p-3 flex flex-col items-start gap-1 sm:gap-2 h-full hover:bg-gray-50/50`}>
+        <div className={`bg-white rounded-xl border ${style.borderColor} ${style.shadow} ${style.scale} p-3 sm:p-4 flex flex-col items-start gap-1 sm:gap-2 h-full`}>
             <div className="flex justify-between items-center w-full">
                 <div className={`text-[10px] sm:text-xs font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-1.5 sm:px-2 py-0.5`}>
                     {rank}位
@@ -27,11 +27,11 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
                 </div>
             </div>
             <div className="text-left w-full">
-                <div className="text-[10px] sm:text-xs text-gray-500 mb-0.5">
+                <div className="text-[10px] sm:text-xs text-text-muted mb-0.5 font-medium">
                     {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
                     {' '}{hit.venue_name}{hit.race_number}R
                 </div>
-                <div className="text-xs sm:text-sm text-gray-800 font-medium truncate mb-0.5" title={hit.race_name}>
+                <div className="text-xs sm:text-sm text-text-primary font-bold truncate mb-0.5" title={hit.race_name}>
                     {hit.race_name}
                 </div>
                 <div className="text-[10px] sm:text-xs text-gray-600 truncate" title={`${hit.bet_type}: ${hit.winning_numbers}`}>

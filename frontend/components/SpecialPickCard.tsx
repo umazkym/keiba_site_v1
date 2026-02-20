@@ -8,14 +8,14 @@ import { formatDate } from '@/lib/utils';
 
 // スケルトンコンポーネント
 const Skeleton = () => (
-    <div className="bg-white p-6 rounded-xl border border-gray-200 animate-pulse h-[170px]">
+    <div className="bg-white p-6 rounded-2xl border border-slate-100 animate-pulse h-[170px]">
         <div className="flex justify-between items-center">
-            <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-            <div className="h-8 bg-gray-200 rounded-full w-24"></div>
+            <div className="h-4 bg-slate-100 rounded w-1/3"></div>
+            <div className="h-8 bg-slate-100 rounded-full w-24"></div>
         </div>
-        <div className="h-10 bg-gray-200 rounded w-3/4 mt-4"></div>
-        <div className="h-5 bg-gray-200 rounded w-1/2 mt-2"></div>
-        <div className="h-4 bg-gray-200 rounded w-full mt-4"></div>
+        <div className="h-10 bg-slate-100 rounded w-3/4 mt-4"></div>
+        <div className="h-5 bg-slate-100 rounded w-1/2 mt-2"></div>
+        <div className="h-4 bg-slate-100 rounded w-full mt-4"></div>
     </div>
 );
 
@@ -80,30 +80,33 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
             className="block group"
             aria-label={`${pick.commentary}`}
         >
-            <div className="bg-white text-gray-800 rounded-xl h-full flex flex-col overflow-hidden border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all duration-200" role="region" aria-labelledby="special-pick-title">
-                <div className="p-4 sm:p-5 flex flex-col h-full">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-2 mb-3 sm:mb-4">
-                        <h3 id="special-pick-title" className="text-[13px] sm:text-sm font-bold text-gray-800">
-                            本日のAI注目馬<span className="hidden sm:inline"> </span><br className="sm:hidden" /><span className="text-gray-500">{formattedDate}</span>
+            <div className="bg-white text-text-primary rounded-2xl h-full flex flex-col overflow-hidden border border-slate-100 hover-lift relative" role="region" aria-labelledby="special-pick-title">
+                {/* Subtle gradient overlay to make it look premium */}
+                <div className="absolute top-0 right-0 p-16 bg-blue-50/50 rounded-bl-full pointer-events-none -z-10"></div>
+
+                <div className="p-5 sm:p-6 flex flex-col h-full z-10">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-5">
+                        <h3 id="special-pick-title" className="text-[13px] sm:text-sm font-bold text-text-secondary">
+                            本日のAI注目馬<span className="hidden sm:inline"> </span><br className="sm:hidden" /><span className="text-text-muted">{formattedDate}</span>
                         </h3>
-                        <span className="text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap self-start">
-                            AI偏差値 <span className="text-base sm:text-lg font-mono">{pick.deviation_score.toFixed(2)}</span>
+                        <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-blue-50/80 text-blue-700 border border-blue-100/50 whitespace-nowrap self-start">
+                            AI偏差値 <span className="text-base sm:text-lg font-mono tracking-tight">{pick.deviation_score.toFixed(2)}</span>
                         </span>
                     </div>
-                    <div className="min-w-0 mb-3 sm:mb-4">
-                        <p className="text-2xl sm:text-4xl font-black leading-tight truncate text-gray-900" title={pick.horse_name}>
+                    <div className="min-w-0 mb-4 sm:mb-5">
+                        <p className="text-3xl sm:text-4xl font-extrabold leading-tight truncate tracking-tight text-primary-dark" title={pick.horse_name}>
                             {pick.horse_name}
                         </p>
                     </div>
 
-                    <p className="text-xs sm:text-sm text-gray-600 font-medium truncate mb-3 sm:mb-4" title={`${pick.venue_name} ${pick.race_number}R - ${pick.race_name}`}>
-                        <span className="bg-gray-50 px-2.5 py-1.5 rounded border border-gray-200 inline-block">
+                    <p className="text-xs sm:text-sm text-text-secondary font-medium truncate mb-4 sm:mb-5" title={`${pick.venue_name} ${pick.race_number}R - ${pick.race_name}`}>
+                        <span className="bg-slate-50 px-3 py-1.5 rounded-md border border-slate-100 inline-block">
                             {pick.venue_name} {pick.race_number}R ・ {pick.race_name}
                         </span>
                     </p>
 
-                    <div className="mt-auto pt-3.5 sm:pt-4 border-t border-gray-200">
-                        <p className="text-xs sm:text-sm text-gray-700 font-medium leading-[1.8] group-hover:text-blue-700 transition-colors duration-200" aria-live="polite">
+                    <div className="mt-auto pt-4 sm:pt-5 border-t border-slate-100">
+                        <p className="text-xs sm:text-sm font-medium leading-[1.8] text-primary-light group-hover:text-blue-700 transition-colors duration-200" aria-live="polite">
                             {pick.commentary}
                         </p>
                     </div>

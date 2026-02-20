@@ -88,7 +88,7 @@ export function Breadcrumb() {
 
   return (
     <nav
-      className="bg-gray-50 p-3 px-4 border-gray-200"
+      className="py-3 px-4"
       aria-label="Breadcrumb"
     >
       <ol className="flex flex-wrap items-center gap-2 text-sm">
@@ -102,10 +102,10 @@ export function Breadcrumb() {
                 >
                   {item.label}
                 </Link>
-                <span className="text-gray-400">/</span>
+                <span className="text-gray-300 mx-1">/</span>
               </>
             ) : (
-              <span className="text-gray-600 font-semibold">{item.label}</span>
+              <span className="text-text-primary font-semibold">{item.label}</span>
             )}
           </li>
         ))}

@@ -26,7 +26,7 @@ export const Header = () => {
     const todayStr = getTodayString();
 
     return (
-        <header className="bg-surface/95 backdrop-blur-sm text-text-primary border-b border-border sticky top-0 z-50 transition-all duration-300">
+        <header className="glass sticky top-0 z-50 transition-all duration-300">
             <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6">
                 <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
                     {/* ロゴ */}
@@ -43,7 +43,7 @@ export const Header = () => {
                             <span className="text-xl sm:text-2xl font-bold tracking-tight text-primary">
                                 UMA-FREE
                             </span>
-                            <p className="text-[10px] text-slate-500 tracking-wider font-medium">
+                            <p className="text-[10px] text-text-muted tracking-wider font-medium">
                                 完全無料のAI競馬分析
                             </p>
                         </div>
@@ -51,16 +51,16 @@ export const Header = () => {
 
                     {/* デスクトップナビゲーション */}
                     <nav className="hidden md:flex items-center gap-8 flex-1 ml-10">
-                        <Link href="/" className="text-sm font-medium text-text-secondary hover:text-primary transition-colors duration-200">
+                        <Link href="/" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             ホーム
                         </Link>
-                        <Link href={`/races/${todayStr}`} className="text-sm font-medium text-text-secondary hover:text-primary transition-colors duration-200">
+                        <Link href={`/races/${todayStr}`} className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             本日の分析
                         </Link>
-                        <Link href="/articles" className="text-sm font-medium text-text-secondary hover:text-primary transition-colors duration-200">
+                        <Link href="/articles" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             記事
                         </Link>
-                        <Link href="/faq" className="text-sm font-medium text-text-secondary hover:text-primary transition-colors duration-200">
+                        <Link href="/faq" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             よくある質問
                         </Link>
                     </nav>
@@ -94,7 +94,7 @@ export const Header = () => {
 
                 {/* モバイルメニュー */}
                 {isMenuOpen && (
-                    <nav className="md:hidden pb-4 border-t border-slate-100 max-h-[calc(100vh-56px)] sm:max-h-[calc(100vh-64px)] overflow-y-auto bg-white/95 backdrop-blur-md absolute left-0 right-0 shadow-lg">
+                    <nav className="md:hidden pb-4 border-t border-slate-100 max-h-[calc(100vh-56px)] sm:max-h-[calc(100vh-64px)] overflow-y-auto bg-white absolute left-0 right-0 shadow-lg">
                         <Link
                             href="/"
                             className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"

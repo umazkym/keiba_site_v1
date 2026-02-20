@@ -47,13 +47,13 @@ export async function generateMetadata(
 
 const RacePageSkeleton = () => (
     <div className="py-4">
-        <div className="sticky top-16 z-40 bg-white/80 backdrop-blur-sm border-b shadow-md mb-4 p-2">
-            <div className="animate-pulse flex items-center justify-between">
-                <div className="bg-gray-300 h-9 w-16 rounded-md"></div>
+        <div className="sticky top-14 sm:top-16 z-40 glass mb-5 p-2 sm:p-3">
+            <div className="animate-pulse flex items-center justify-between max-w-[280px] sm:max-w-sm mx-auto">
+                <div className="bg-slate-200 h-9 w-10 text-white px-4 py-2.5 rounded-xl shadow-sm"></div>
                 <div className="flex-grow flex justify-center">
-                    <div className="bg-gray-300 h-9 w-64 rounded-md"></div>
+                    <div className="bg-slate-200 h-9 w-32 rounded-lg"></div>
                 </div>
-                <div className="w-12"></div>
+                <div className="bg-slate-200 h-9 w-10 text-white px-4 py-2.5 rounded-xl shadow-sm"></div>
             </div>
         </div>
         <RaceTabsSkeleton />

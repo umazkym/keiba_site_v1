@@ -70,49 +70,50 @@ export default async function HomePage() {
 
     return (
         <>
-            <div className="py-4 sm:py-6 space-y-6 sm:space-y-10">
+            <div className="py-8 sm:py-12 flex flex-col gap-12 sm:gap-16">
                 {/* 1. ヒーローセクション */}
-                <div className="space-y-4 sm:space-y-6">
-                    <section className="text-center px-4 py-6 sm:p-12 md:p-16 bg-slate-900 rounded-2xl shadow-xl relative overflow-hidden">
-
+                <div className="space-y-6 sm:space-y-8">
+                    <section className="text-center px-4 py-10 sm:p-16 md:p-20 bg-primary rounded-3xl shadow-elevated relative overflow-hidden">
+                        {/* プレミアムな放射状グラデーション */}
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-blue-900/30 via-primary to-primary-dark"></div>
 
                         <div className="relative z-10">
-                            <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-white mb-4 sm:mb-6 leading-tight tracking-tight">
+                            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white mb-6 sm:mb-8 leading-tight tracking-tight drop-shadow-sm">
                                 登録不要・完全無料
                                 <br />
                                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-indigo-200">
                                     AI競馬データ分析
                                 </span>
                             </h1>
-                            <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed font-medium">
+                            <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl mx-auto mb-10 sm:mb-12 leading-relaxed font-medium">
                                 過去5年以上のレースデータを統計的に分析。
                                 <br className="sm:hidden" />
                                 中央・地方の全レースに対応しています。
                             </p>
 
                             {/* サイト統計情報 - モバイルは2x2グリッド */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 mb-8 sm:mb-12 text-white/90 max-w-lg sm:max-w-4xl mx-auto divide-x divide-slate-700/50">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 mb-10 sm:mb-14 text-white/90 max-w-lg sm:max-w-4xl mx-auto divide-x divide-slate-700/50">
                                 <div className="text-center">
-                                    <div className="text-2xl sm:text-3xl font-bold text-white mb-1">24</div>
-                                    <div className="text-xs sm:text-sm text-slate-400 font-medium">対応競馬場</div>
+                                    <div className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">24</div>
+                                    <div className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide">対応競馬場</div>
                                 </div>
                                 <div className="text-center pl-4">
-                                    <div className="text-2xl sm:text-3xl font-bold text-white mb-1">5年+</div>
-                                    <div className="text-xs sm:text-sm text-slate-400 font-medium">分析データ期間</div>
+                                    <div className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">5年+</div>
+                                    <div className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide">分析データ期間</div>
                                 </div>
                                 <div className="text-center pl-4 border-l border-slate-700/50 sm:border-l-0">
-                                    <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{totalArticles}</div>
-                                    <div className="text-xs sm:text-sm text-slate-400 font-medium">分析記事</div>
+                                    <div className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">{totalArticles}</div>
+                                    <div className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide">分析記事</div>
                                 </div>
                                 <div className="text-center pl-4">
-                                    <div className="text-2xl sm:text-3xl font-bold text-white mb-1">毎日</div>
-                                    <div className="text-xs sm:text-sm text-slate-400 font-medium">データ更新</div>
+                                    <div className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">毎日</div>
+                                    <div className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide">データ更新</div>
                                 </div>
                             </div>
 
                             <Link
                                 href={`/races/${todayStr}`}
-                                className="inline-flex items-center justify-center bg-white hover:bg-blue-50 text-slate-900 font-bold py-3.5 sm:py-4 px-8 sm:px-12 rounded-full transition-all duration-200 text-sm sm:text-lg shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-500/30 transform hover:-translate-y-0.5"
+                                className="inline-flex items-center justify-center bg-white hover:bg-slate-50 text-primary-dark font-bold py-4 sm:py-5 px-8 sm:px-12 rounded-2xl transition-all duration-300 text-sm sm:text-lg shadow-elevated hover:shadow-[0_10px_40px_-10px_rgba(255,255,255,0.3)] active:scale-95 transform hover:-translate-y-0.5"
                             >
                                 今日のデータ分析をチェック
                             </Link>
@@ -120,14 +121,14 @@ export default async function HomePage() {
                     </section>
 
                     {/* 高配当的中ランキング */}
-                    <section className="sm:bg-white sm:rounded-xl sm:border sm:border-gray-200 mt-2 sm:mt-0 sm:p-6 md:p-8">
+                    <section className="bg-white rounded-2xl sm:border sm:border-slate-100 mt-2 sm:mt-0 px-2 sm:p-8 sm:shadow-soft">
                         <TopHitsDisplay />
                     </section>
                 </div>
 
                 {/* 2. UMA-FREEとは */}
-                <section className="sm:bg-white sm:rounded-xl sm:border sm:border-border sm:p-6 md:p-8 sm:shadow-sm py-4">
-                    <h2 className="text-lg sm:text-2xl font-bold text-primary mb-4 sm:mb-5 border-b border-border pb-2 sm:pb-3 flex items-center gap-2">
+                <section className="bg-white rounded-2xl sm:border sm:border-slate-100 p-6 md:p-10 shadow-soft">
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-6 border-b border-slate-100 pb-4 flex items-center gap-3">
                         <span className="w-1.5 h-6 bg-primary rounded-full"></span>
                         UMA-FREEとは
                     </h2>
@@ -148,38 +149,38 @@ export default async function HomePage() {
                 </section>
 
                 {/* 3. 3つの分析データ */}
-                <section className="sm:bg-surface sm:p-8 md:p-10 sm:rounded-xl sm:border sm:border-border py-2">
-                    <h2 className="text-lg sm:text-2xl font-bold text-primary mb-5 sm:mb-8 text-center">3つの分析データ</h2>
-                    <div className="grid md:grid-cols-3 gap-3.5 sm:gap-6">
-                        <div className="bg-white py-4 px-4 sm:p-6 rounded-xl border border-border shadow-sm flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0">
-                            <div className="bg-slate-100 text-primary rounded-full p-3 sm:p-4 sm:mb-4 shrink-0">
-                                <svg className="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <section className="bg-surface p-6 md:p-10 rounded-2xl border border-border">
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-8 text-center">3つの分析データ</h2>
+                    <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
+                        <div className="bg-white py-6 px-5 sm:p-8 rounded-2xl border border-slate-100 shadow-soft flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0 hover-lift">
+                            <div className="bg-slate-50 text-primary rounded-2xl p-4 sm:p-5 sm:mb-5 shrink-0 border border-slate-100">
+                                <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                             </div>
                             <div className="min-w-0">
-                                <h3 className="text-[13px] sm:text-lg font-bold text-primary mb-1 sm:mb-2">完全無料・登録不要</h3>
-                                <p className="text-xs sm:text-sm text-text-secondary leading-[1.7]">
+                                <h3 className="text-sm sm:text-lg font-bold text-primary mb-2 sm:mb-3">完全無料・登録不要</h3>
+                                <p className="text-xs sm:text-sm text-text-secondary leading-[1.8]">
                                     中央競馬（JRA）10場・地方競馬（NAR）14場の全24競馬場をカバー。会員登録やメールアドレスの入力なしで、全レースの分析データにアクセスできます。
                                 </p>
                             </div>
                         </div>
-                        <div className="bg-white py-4 px-4 sm:p-6 rounded-xl border border-border shadow-sm flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0">
-                            <div className="bg-slate-100 text-primary rounded-full p-3 sm:p-4 sm:mb-4 shrink-0">
-                                <ChartBarIcon className="w-5 h-5 sm:w-7 sm:h-7" />
+                        <div className="bg-white py-6 px-5 sm:p-8 rounded-2xl border border-slate-100 shadow-soft flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0 hover-lift">
+                            <div className="bg-slate-50 text-primary rounded-2xl p-4 sm:p-5 sm:mb-5 shrink-0 border border-slate-100">
+                                <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8" />
                             </div>
                             <div className="min-w-0">
-                                <h3 className="text-[13px] sm:text-lg font-bold text-primary mb-1 sm:mb-2">AI偏差値分析</h3>
-                                <p className="text-xs sm:text-sm text-text-secondary leading-[1.7]">
+                                <h3 className="text-sm sm:text-lg font-bold text-primary mb-2 sm:mb-3">AI偏差値分析</h3>
+                                <p className="text-xs sm:text-sm text-text-secondary leading-[1.8]">
                                     5年以上の過去レースデータを機械学習アルゴリズムで解析。着順・タイム・コース適性・馬場対応力を総合的に評価し、各馬の能力を偏差値として数値化しています。
                                 </p>
                             </div>
                         </div>
-                        <div className="bg-white py-4 px-4 sm:p-6 rounded-xl border border-border shadow-sm flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0">
-                            <div className="bg-slate-100 text-primary rounded-full p-3 sm:p-4 sm:mb-4 shrink-0">
-                                <svg className="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>
+                        <div className="bg-white py-6 px-5 sm:p-8 rounded-2xl border border-slate-100 shadow-soft flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0 hover-lift">
+                            <div className="bg-slate-50 text-primary rounded-2xl p-4 sm:p-5 sm:mb-5 shrink-0 border border-slate-100">
+                                <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>
                             </div>
                             <div className="min-w-0">
-                                <h3 className="text-[13px] sm:text-lg font-bold text-primary mb-1 sm:mb-2">対戦成績・枠順分析</h3>
-                                <p className="text-xs sm:text-sm text-text-secondary leading-[1.7]">
+                                <h3 className="text-sm sm:text-lg font-bold text-primary mb-2 sm:mb-3">対戦成績・枠順分析</h3>
+                                <p className="text-xs sm:text-sm text-text-secondary leading-[1.8]">
                                     出走馬同士の直接対決での勝敗記録と、コース・距離別の枠順有利不利を統計スコアで表示。複数の指標を組み合わせて多角的に分析できます。
                                 </p>
                             </div>
@@ -198,8 +199,8 @@ export default async function HomePage() {
 
                 {/* 5. 新着記事セクション */}
                 <section>
-                    <div className="flex items-center justify-between mb-4 sm:mb-6">
-                        <h2 className="text-lg sm:text-2xl font-bold text-primary flex items-center gap-2">
+                    <div className="flex items-center justify-between mb-6 sm:mb-8">
+                        <h2 className="text-lg sm:text-2xl font-bold text-primary flex items-center gap-3">
                             <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
                             最新の分析記事
                         </h2>
@@ -209,12 +210,12 @@ export default async function HomePage() {
                     </div>
 
                     {/* モバイル: 横並びカード / デスクトップ: 5列グリッド */}
-                    <div className="flex flex-col gap-2.5 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 sm:gap-6">
+                    <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 lg:grid-cols-5 sm:gap-5">
                         {latestArticles.map((article) => (
                             <Link
                                 href={`/articles/${article.slug}`}
                                 key={article.slug}
-                                className="flex sm:flex-col items-center sm:items-stretch group border border-border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 bg-white hover:border-slate-300"
+                                className="flex sm:flex-col items-center sm:items-stretch group border border-slate-200 rounded-xl overflow-hidden shadow-sm hover-lift bg-white"
                             >
                                 <div className="relative w-[88px] h-[72px] sm:w-full sm:h-40 md:h-44 lg:h-48 shrink-0 rounded-l-lg sm:rounded-l-none overflow-hidden bg-slate-100">
                                     <Image
@@ -238,7 +239,7 @@ export default async function HomePage() {
                                     </div>
 
                                     <h3
-                                        className="font-bold text-text-primary text-[13px] leading-snug sm:text-sm mb-0 sm:mb-2 group-hover:text-primary transition-colors"
+                                        className="font-bold text-text-primary text-[13px] leading-snug sm:text-[15px] sm:leading-relaxed mb-0 sm:mb-3 group-hover:text-primary transition-colors"
                                         style={{
                                             display: '-webkit-box',
                                             WebkitLineClamp: 2,
@@ -260,69 +261,69 @@ export default async function HomePage() {
                 </section>
 
                 {/* 6. 使い方セクション */}
-                <section className="sm:bg-surface sm:rounded-xl sm:border sm:border-border sm:p-6 md:p-8 py-2">
-                    <h2 className="text-lg sm:text-2xl font-bold text-primary mb-5 sm:mb-6 text-center">
+                <section className="bg-surface rounded-2xl border border-border p-6 md:p-10">
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-8 text-center">
                         3ステップで始める
                     </h2>
-                    <div className="grid md:grid-cols-3 gap-3.5 sm:gap-6">
-                        <div className="bg-white py-3.5 px-4 sm:p-6 rounded-lg border border-border shadow-sm">
-                            <h3 className="font-bold text-[13px] sm:text-lg text-primary mb-2 sm:mb-3 flex items-center">
-                                <span className="bg-slate-900 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2.5 sm:mr-3 text-xs sm:text-sm font-bold shrink-0">1</span>
+                    <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
+                        <div className="bg-white py-5 px-5 sm:p-8 rounded-2xl border border-slate-100 shadow-soft">
+                            <h3 className="font-bold text-sm sm:text-lg text-primary mb-3 flex items-center">
+                                <span className="bg-primary text-white rounded-xl w-8 h-8 sm:w-10 sm:h-10 inline-flex items-center justify-center mr-3 text-sm sm:text-base font-bold shrink-0">1</span>
                                 日付を選択
                             </h3>
-                            <p className="text-text-secondary text-xs sm:text-sm leading-[1.7] pl-[34px] sm:pl-0">
+                            <p className="text-text-secondary text-xs sm:text-sm leading-[1.8] pl-[44px] sm:pl-[52px]">
                                 カレンダーから見たい日付を選択。過去も未来も確認できます。
                             </p>
                         </div>
-                        <div className="bg-white py-3.5 px-4 sm:p-6 rounded-lg border border-border shadow-sm">
-                            <h3 className="font-bold text-[13px] sm:text-lg text-primary mb-2 sm:mb-3 flex items-center">
-                                <span className="bg-slate-900 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2.5 sm:mr-3 text-xs sm:text-sm font-bold shrink-0">2</span>
+                        <div className="bg-white py-5 px-5 sm:p-8 rounded-2xl border border-slate-100 shadow-soft">
+                            <h3 className="font-bold text-sm sm:text-lg text-primary mb-3 flex items-center">
+                                <span className="bg-primary text-white rounded-xl w-8 h-8 sm:w-10 sm:h-10 inline-flex items-center justify-center mr-3 text-sm sm:text-base font-bold shrink-0">2</span>
                                 競馬場を選択
                             </h3>
-                            <p className="text-text-secondary text-xs sm:text-sm leading-[1.7] pl-[34px] sm:pl-0">
+                            <p className="text-text-secondary text-xs sm:text-sm leading-[1.8] pl-[44px] sm:pl-[52px]">
                                 中央・地方のタブから対象の競馬場を選択。
                             </p>
                         </div>
-                        <div className="bg-white py-3.5 px-4 sm:p-6 rounded-lg border border-border shadow-sm">
-                            <h3 className="font-bold text-[13px] sm:text-lg text-primary mb-2 sm:mb-3 flex items-center">
-                                <span className="bg-slate-900 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2.5 sm:mr-3 text-xs sm:text-sm font-bold shrink-0">3</span>
+                        <div className="bg-white py-5 px-5 sm:p-8 rounded-2xl border border-slate-100 shadow-soft">
+                            <h3 className="font-bold text-sm sm:text-lg text-primary mb-3 flex items-center">
+                                <span className="bg-primary text-white rounded-xl w-8 h-8 sm:w-10 sm:h-10 inline-flex items-center justify-center mr-3 text-sm sm:text-base font-bold shrink-0">3</span>
                                 データを活用
                             </h3>
-                            <p className="text-text-secondary text-xs sm:text-sm leading-[1.7] pl-[34px] sm:pl-0">
+                            <p className="text-text-secondary text-xs sm:text-sm leading-[1.8] pl-[44px] sm:pl-[52px]">
                                 偏差値・対決成績・枠順傾向などをご活用ください。
                             </p>
                         </div>
                     </div>
-                    <div className="mt-5 sm:mt-6 px-1 sm:p-4 text-[11px] sm:text-sm text-text-muted sm:text-gray-500 leading-relaxed text-center space-y-2">
+                    <div className="mt-8 px-2 sm:p-4 text-[11px] sm:text-sm text-text-muted leading-relaxed text-center space-y-2">
                         <p>本サイトは統計分析データの提供を目的としており、馬券購入の助言や推奨を行うものではありません。投票判断はご自身の責任において行ってください。</p>
                         <p>20歳未満の方の馬券購入は競馬法により禁止されています。ギャンブル依存症に関するご心配がある場合は、リカバリーサポート・ネットワーク（RSN）（TEL: 0120-29-7338）までご相談ください。</p>
                     </div>
                 </section>
 
                 {/* 7. よくある質問 */}
-                <section className="sm:bg-white sm:rounded-xl sm:border sm:border-gray-200 sm:p-6 md:p-8 py-4">
-                    <div className="flex items-center justify-between mb-5 sm:mb-6">
-                        <h2 className="text-lg sm:text-2xl font-bold text-primary">
+                <section className="bg-white rounded-2xl border border-slate-100 p-6 md:p-10 shadow-soft">
+                    <div className="flex items-center justify-between mb-6 sm:mb-8">
+                        <h2 className="text-xl sm:text-2xl font-bold text-primary">
                             よくある質問
                         </h2>
                         <Link href="/faq" className="text-primary hover:text-primary-dark font-semibold text-xs sm:text-sm shrink-0 ml-3">
                             すべて見る →
                         </Link>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-5 sm:gap-6">
+                    <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
                         {homepageFaqItems.map((item, index) => (
-                            <div key={index} className="border-l-4 border-gray-300 pl-4 sm:pl-5 py-2 sm:py-2.5">
-                                <h3 className="font-bold text-gray-700 mb-1.5 sm:mb-2 text-[13px] sm:text-base leading-snug">Q. {item.question}</h3>
-                                <p className="text-gray-600 text-xs sm:text-sm leading-[1.8]">
+                            <div key={index} className="border-l-[3px] border-secondary-light/30 pl-4 sm:pl-5 py-1">
+                                <h3 className="font-bold text-text-primary mb-2 text-sm sm:text-base leading-snug">Q. {item.question}</h3>
+                                <p className="text-text-secondary text-xs sm:text-sm leading-[1.8]">
                                     {item.answer}
                                 </p>
                             </div>
                         ))}
                     </div>
-                    <div className="mt-5 sm:mt-6 text-center">
+                    <div className="mt-8 text-center">
                         <Link
                             href="/faq"
-                            className="inline-block bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 px-6 rounded-lg transition-colors text-xs sm:text-sm"
+                            className="inline-block bg-slate-50 hover:bg-slate-100 border border-slate-200 text-text-secondary font-semibold py-3 px-8 rounded-xl transition-colors text-sm hover-lift"
                         >
                             よくある質問をもっと見る
                         </Link>
@@ -330,31 +331,31 @@ export default async function HomePage() {
                 </section>
 
                 {/* 8. 対応競馬場 */}
-                <section className="sm:bg-gray-50 sm:rounded-xl sm:border sm:border-gray-200 sm:p-6 md:p-8 py-4">
-                    <h2 className="text-lg sm:text-2xl font-bold text-primary mb-3 sm:mb-4">
+                <section className="bg-slate-50 rounded-2xl border border-slate-200 p-6 md:p-10 shadow-inner">
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-3 sm:mb-4">
                         対応競馬場一覧
                     </h2>
-                    <p className="text-gray-600 text-xs sm:text-sm leading-[1.7] mb-5 sm:mb-6">
+                    <p className="text-text-secondary text-xs sm:text-sm leading-[1.8] mb-6 sm:mb-8">
                         中央競馬（JRA）10場と地方競馬（NAR）14場の全24競馬場に対応。全レースの分析データを無料提供しています。
                     </p>
-                    <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
+                    <div className="grid md:grid-cols-2 gap-8 sm:gap-10">
                         <div>
-                            <h3 className="font-bold text-[13px] sm:text-lg mb-2 sm:mb-2.5 text-gray-800">中央競馬（10場）</h3>
-                            <p className="text-[11px] sm:text-xs text-gray-500 mb-2.5 sm:mb-3 leading-relaxed">JRA管理の全国10競馬場。ダービーや有馬記念など開催。</p>
-                            <div className="flex flex-wrap gap-2 sm:gap-2">
+                            <h3 className="font-bold text-sm sm:text-lg mb-2 sm:mb-3 text-text-primary">中央競馬（10場）</h3>
+                            <p className="text-xs text-text-muted mb-3 sm:mb-4 leading-relaxed">JRA管理の全国10競馬場。ダービーや有馬記念など開催。</p>
+                            <div className="flex flex-wrap gap-2.5 sm:gap-3">
                                 {['札幌', '函館', '福島', '新潟', '東京', '中山', '中京', '京都', '阪神', '小倉'].map(venue => (
-                                    <span key={venue} className="inline-block bg-white text-gray-700 text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1.5 sm:py-1.5 rounded-lg border border-gray-200">
+                                    <span key={venue} className="inline-block bg-white text-text-secondary text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
                                         {venue}
                                     </span>
                                 ))}
                             </div>
                         </div>
                         <div>
-                            <h3 className="font-bold text-[13px] sm:text-lg mb-2 sm:mb-2.5 text-gray-800">地方競馬（14場）</h3>
-                            <p className="text-[11px] sm:text-xs text-gray-500 mb-2.5 sm:mb-3 leading-relaxed">南関東4場を含む全14場に対応。</p>
-                            <div className="flex flex-wrap gap-2 sm:gap-2">
+                            <h3 className="font-bold text-sm sm:text-lg mb-2 sm:mb-3 text-text-primary">地方競馬（14場）</h3>
+                            <p className="text-xs text-text-muted mb-3 sm:mb-4 leading-relaxed">南関東4場を含む全14場に対応。</p>
+                            <div className="flex flex-wrap gap-2.5 sm:gap-3">
                                 {['門別', '盛岡', '水沢', '浦和', '船橋', '大井', '川崎', '金沢', '笠松', '名古屋', '園田', '姫路', '高知', '佐賀'].map(venue => (
-                                    <span key={venue} className="inline-block bg-white text-gray-700 text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1.5 sm:py-1.5 rounded-lg border border-gray-200">
+                                    <span key={venue} className="inline-block bg-white text-text-secondary text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
                                         {venue}
                                     </span>
                                 ))}

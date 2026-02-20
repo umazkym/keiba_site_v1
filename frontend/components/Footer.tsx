@@ -3,15 +3,15 @@ import { TwitterIcon } from 'lucide-react';
 
 export const Footer = () => {
     return (
-        <footer className="bg-slate-900 text-slate-300 py-10 relative z-0 mb-16">
+        <footer className="bg-primary text-slate-300 py-16 relative z-0 mb-16">
             {/* mb-16（64px）を追加してアンカー広告分のマージンを確保 */}
             <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6">
                 {/* メインフッターコンテンツ（3カラム） */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 mb-8">
                     {/* サイト情報 */}
                     <div>
-                        <h3 className="font-bold text-white text-lg mb-3 tracking-tight">UMA-FREE</h3>
-                        <p className="text-xs text-slate-400 leading-[1.8]">
+                        <h3 className="font-bold text-white text-xl mb-4 tracking-tight">UMA-FREE</h3>
+                        <p className="text-sm text-slate-400 leading-[1.8] max-w-sm">
                             過去5年以上のレースデータをAIで分析し、中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を完全無料で提供する競馬データ分析サイトです。
                         </p>
                     </div>
@@ -84,12 +84,12 @@ export const Footer = () => {
                 </div>
 
                 {/* 区切り線 */}
-                <div className="border-t border-slate-700 pt-6">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                        <p className="text-xs text-slate-500">
+                <div className="border-t border-slate-800 pt-8 mt-4">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <p className="text-sm text-slate-500">
                             &copy; {new Date().getFullYear()} UMA-FREE. All Rights Reserved.
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-slate-500 max-w-md text-center sm:text-right leading-relaxed">
                             本サイトは統計情報の提供を目的としており、投票の推奨ではありません。
                         </p>
                     </div>

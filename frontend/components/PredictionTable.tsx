@@ -68,36 +68,36 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
             {/* PC (md以上) ではテーブル表示 */}
             <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
-                            <th className="px-2 py-1 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">印</th>
-                            <th className="px-2 py-1 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" colSpan={2}>馬番・馬名</th>
-                            <th className="px-4 py-1 text-right text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-end gap-1">
-                                <span className="whitespace-nowrap">AI偏差値</span>
+                            <th className="px-3 py-2 text-center text-[11px] font-bold text-text-secondary tracking-wider w-12">印</th>
+                            <th className="px-2 py-2 text-left text-[11px] font-bold text-text-secondary tracking-wider" colSpan={2}>馬番・馬名</th>
+                            <th className="px-4 py-2 text-right text-[11px] font-bold text-text-secondary tracking-wider flex items-center justify-end gap-1.5 bg-blue-50/40">
+                                <span className="whitespace-nowrap text-blue-900">AI偏差値</span>
                                 <Tippy content={
-                                    <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
-                                        <p className='font-bold mb-1'>AI偏差値とは？</p>
-                                        <p className='text-xs'>過去のレースタイムなどからAIが算出した馬の能力指数です。数値が高いほど、高く評価していることを示します。</p>
+                                    <div className='p-2.5 text-sm text-left max-w-xs bg-white text-text-primary rounded-xl shadow-elevated border border-slate-100'>
+                                        <p className='font-bold mb-1.5 text-primary'>AI偏差値とは？</p>
+                                        <p className='text-xs text-text-secondary leading-[1.7]'>過去のレースタイムなどからAIが算出した馬の能力指数です。数値が高いほど、高く評価していることを示します。</p>
                                     </div>
                                 } placement="top" interactive={true} theme="light-border" appendTo={() => document.body}
                                 >
-                                    <span className='w-4 h-4 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold cursor-help'>?</span>
+                                    <span className='w-4 h-4 bg-slate-300 hover:bg-slate-400 transition-colors text-white rounded-full flex items-center justify-center text-[10px] font-bold cursor-help'>?</span>
                                 </Tippy>
                             </th>
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-slate-100">
                         {race.predictions.map((p, index) => {
                             const adSlot = shouldShowAd(index, race.predictions.length);
                             return (
                                 <React.Fragment key={`${race.id}-${p.horse_number}`}>
-                                    <tr className="hover:bg-gray-50 transition-colors duration-200">
-                                        <td className="px-2 py-2 whitespace-nowrap text-center text-lg font-bold text-gray-800 w-12">{p.mark || '—'}</td>
-                                        <td className="px-2 py-2 whitespace-nowrap w-10">
+                                    <tr className="hover:bg-slate-50 transition-colors duration-200 even:bg-slate-50/50 group">
+                                        <td className="px-3 py-3 whitespace-nowrap text-center text-lg font-bold text-text-primary w-12">{p.mark || '—'}</td>
+                                        <td className="px-2 py-3 whitespace-nowrap w-10">
                                             <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
                                         </td>
-                                        <td className="px-2 py-2 whitespace-nowrap font-medium text-gray-800 truncate">{p.horse_name}</td>
-                                        <td className="px-4 py-2 whitespace-nowrap text-right font-semibold text-primary-dark">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
+                                        <td className="px-2 py-3 whitespace-nowrap font-bold text-text-primary truncate">{p.horse_name}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-right font-bold text-primary-dark font-mono text-base bg-blue-50/20 group-hover:bg-blue-50/40 transition-colors">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
                                     </tr>
                                     {adSlot && (
                                         <tr>
@@ -114,30 +114,30 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
             </div>
 
             {/* スマホ (md未満) ではカードリスト表示 */}
-            <div className="md:hidden divide-y divide-border bg-white">
+            <div className="md:hidden divide-y divide-slate-100 bg-white">
                 {race.predictions.map((p, index) => {
                     const adSlot = shouldShowAd(index, race.predictions.length);
                     return (
                         <React.Fragment key={`${race.id}-${p.horse_number}-mobile`}>
-                            <div className="p-2 transition-colors hover:bg-slate-50">
-                                <div className="flex items-center gap-2">
+                            <div className={`p-3 transition-colors hover:bg-slate-50 ${index % 2 !== 0 ? 'bg-slate-50/50' : ''}`}>
+                                <div className="flex items-center gap-3">
                                     {/* 左側: 印と馬番 (横並び・コンパクト化) */}
-                                    <div className="flex flex-row items-center gap-2 shrink-0 min-w-[3.5rem]">
-                                        <span className="text-lg font-extrabold text-text-primary leading-none w-5 text-center">{p.mark || '—'}</span>
+                                    <div className="flex flex-row items-center gap-2.5 shrink-0 min-w-[3.5rem]">
+                                        <span className="text-xl font-extrabold text-text-primary leading-none w-5 text-center">{p.mark || '—'}</span>
                                         <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
                                     </div>
 
                                     {/* 中央: 馬名 */}
                                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                        <div className="font-bold text-sm text-text-primary truncate">{p.horse_name}</div>
+                                        <div className="font-bold text-[15px] text-text-primary truncate">{p.horse_name}</div>
                                     </div>
 
                                     {/* 右側: 偏差値 */}
-                                    <div className="flex flex-col items-end shrink-0 w-14 justify-center">
-                                        <div className="font-bold text-primary text-base font-mono tracking-tight leading-none">
+                                    <div className="flex flex-col items-end shrink-0 w-16 justify-center bg-blue-50/40 p-1.5 rounded-lg border border-blue-100/50">
+                                        <div className="font-bold text-primary-dark text-lg font-mono tracking-tight leading-none">
                                             {p.deviation_score != null ? p.deviation_score.toFixed(1) : '--'}
                                         </div>
-                                        <div className="text-[10px] text-text-muted scale-90 origin-right mt-0.5">偏差値</div>
+                                        <div className="text-[9px] font-bold text-blue-700/70 mt-0.5">偏差値</div>
                                     </div>
                                 </div>
                             </div>

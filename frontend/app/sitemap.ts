@@ -69,28 +69,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             priority: 0.9,
         }));
 
-        // 個別レースページのルート（優先度: 中）
-        // クロールバジェット節約のため、過去30日間+未来14日間のレースのみをサイトマップに含める
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
-
-        const fourteenDaysLater = new Date();
-        fourteenDaysLater.setDate(fourteenDaysLater.getDate() + 14);
-        const fourteenDaysLaterStr = fourteenDaysLater.toISOString().split('T')[0];
-
-        const recentRaces = races.filter(race =>
-            race.race_date >= thirtyDaysAgoStr && race.race_date <= fourteenDaysLaterStr
-        );
-
-        const racePageRoutes = recentRaces.map((race) => ({
-            // URLパラメータの順序を統一（'race' → 'venue'）
-            // Next.jsが自動的にXMLエスケープを行うため、通常の&を使用
-            url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`,
-            lastModified: new Date(),
-            changeFrequency: 'weekly' as const,
-            priority: 0.7,
-        }));
+        // 個別レースページ（クエリパラメータ付き）はサイトマップに含めない
+        // 理由: XMLの&エスケープ問題が発生するため
+        // Googleは日付ページ内のリンクから個別レースを発見できる
 
         return [
             {
@@ -102,7 +83,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             ...staticRoutes.filter(r => r.url !== BASE_URL),
             ...articleRoutes,
             ...datePageRoutes,
-            ...racePageRoutes
         ];
 
     } catch (error) {

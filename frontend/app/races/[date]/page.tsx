@@ -5,10 +5,9 @@ import { formatDate } from "@/lib/utils";
 import { RaceDayPrediction } from "@/lib/types";
 import { Suspense } from 'react';
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
-// ▼▼▼▼▼【修正】notFouund をインポート ▼▼▼▼▼
 import { notFound } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
-// ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+import { getAllArticlesMeta } from '@/lib/articles';
 
 // レースデータは頻繁に更新されるため、常に最新データを取得
 export const dynamic = 'force-dynamic';
@@ -64,6 +63,7 @@ const RacePageSkeleton = () => (
 export default async function RacePage({ params }: { params: { date: string } }) {
     let predictionData: RaceDayPrediction | null = null;
     let jsonLd = null;
+    const articlesMeta = getAllArticlesMeta();
 
     try {
         predictionData = await getPredictionsForDate(params.date);
@@ -158,6 +158,7 @@ export default async function RacePage({ params }: { params: { date: string } })
                 <RacePageClient
                     initialDate={params.date}
                     initialPredictionData={predictionData}
+                    articlesMeta={articlesMeta}
                 />
             </Suspense>
         </>

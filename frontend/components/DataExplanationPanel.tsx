@@ -112,7 +112,7 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
                             基本指標
                         </h3>
                         <p className="text-sm text-gray-600 mb-5">
-                            まずはこの3つの指標を押さえましょう。
+                            レース分析における基本の3指標です。
                         </p>
                         <div>
                             {basicExplanations.map(renderExplanationItem)}
@@ -126,7 +126,7 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
                                 その他の指標
                             </h3>
                             <p className="text-sm text-gray-600 mb-5">
-                                より詳しく分析したい方向けの補助的な指標です。
+                                多角的な分析に用いる補助的な指標です。
                             </p>
                             <div>
                                 {advancedExplanations.map(renderExplanationItem)}

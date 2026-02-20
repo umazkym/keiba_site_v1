@@ -57,6 +57,12 @@ export function getAllArticleSlugs(): { slug: string }[] {
   });
 }
 
+// クライアントコンポーネントへ渡すためのメタデータのみ（content抜き）を取得する関数
+export function getAllArticlesMeta(): Omit<Article, 'content'>[] {
+  const allArticles = getAllArticles();
+  return allArticles.map(({ content, ...meta }) => meta);
+}
+
 // 最新の記事を指定した件数だけ取得する関数
 export function getLatestArticles(count: number): Article[] {
   const allArticles = getAllArticles();

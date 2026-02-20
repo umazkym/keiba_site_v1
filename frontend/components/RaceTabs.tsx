@@ -14,6 +14,8 @@ import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './Icons';
 import { Adsense } from './Adsense';
 import { RelatedRaces } from './RelatedRaces';
 import { DataExplanationPanel } from './DataExplanationPanel';
+import { DynamicRelatedArticles } from './DynamicRelatedArticles';
+import { Article } from '@/lib/articles';
 
 // CollapsibleSection コンポーネント
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
@@ -41,7 +43,7 @@ const CollapsibleSection = memo(({ title, icon, children }: { title: string, ico
 
 CollapsibleSection.displayName = 'CollapsibleSection';
 
-const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, initialRaceNumber?: number | null }) => {
+const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null }) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
@@ -172,6 +174,13 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
 
+                    <DynamicRelatedArticles
+                        venueName={activeRace.venue_name}
+                        courseType={activeRace.course_type}
+                        distance={activeRace.distance}
+                        articlesMeta={articlesMeta}
+                    />
+
                     {shouldShowAd && activeRace.predictions.length >= 10 && (
                         <div className="my-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
                             <div className="text-xs text-gray-500 text-center mb-1">スポンサーリンク</div>
@@ -186,7 +195,7 @@ const VenuePanel = memo(({ venue, initialRaceNumber }: { venue: VenueRaces, init
 
 VenuePanel.displayName = 'VenuePanel';
 
-export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: RaceDayPrediction, initialVenueName?: string | null, initialRaceNumber?: number | null }) => {
+export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumber }: { data: RaceDayPrediction, articlesMeta: Omit<Article, 'content'>[], initialVenueName?: string | null, initialRaceNumber?: number | null }) => {
     if (!data || (data.jra.length === 0 && data.nar.length === 0)) {
         return <div className="p-6 text-center text-muted card">対象日のレースデータがありません。</div>;
     }
@@ -225,7 +234,7 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
                             </TabList>
                             {data.jra.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} />
                                 </TabPanel>
                             ))}
                         </Tabs>
@@ -241,7 +250,7 @@ export const RaceTabs = ({ data, initialVenueName, initialRaceNumber }: { data: 
                             </TabList>
                             {data.nar.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} />
                                 </TabPanel>
                             ))}
                         </Tabs>

@@ -132,7 +132,7 @@ export default async function HomePage() {
                         <span className="w-1.5 h-6 bg-primary rounded-full"></span>
                         UMA-FREEとは
                     </h2>
-                    <div className="space-y-4 sm:space-y-5 text-text-secondary text-[13px] sm:text-base leading-[1.8] sm:leading-relaxed max-w-3xl mx-auto">
+                    <div className="space-y-4 sm:space-y-5 text-text-secondary text-sm sm:text-base leading-relaxed max-w-3xl mx-auto">
                         <p>
                             UMA-FREEは、過去5年以上の中央競馬（JRA）および地方競馬（NAR）の膨大なレースデータを機械学習アルゴリズムで分析し、各出走馬の能力を独自の<strong>AI偏差値</strong>として数値化した競馬データ分析サイトです。会員登録やメールアドレスの入力は一切不要で、すべての分析データを完全無料でご利用いただけます。
                         </p>
@@ -230,16 +230,15 @@ export default async function HomePage() {
 
                                 <div className="py-2.5 px-3 sm:p-4 flex flex-col justify-center min-w-0">
                                     <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
-                                        <span className="inline-block bg-slate-100 text-slate-700 text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
+                                        <span className="inline-block bg-slate-100 text-slate-700 text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
                                             {article.category}
                                         </span>
-                                        <span className="text-text-muted text-[10px] sm:hidden whitespace-nowrap">
+                                        <span className="text-text-muted text-xs sm:hidden whitespace-nowrap">
                                             {new Date(article.date).toLocaleDateString()}
                                         </span>
                                     </div>
-
                                     <h3
-                                        className="font-bold text-text-primary text-[13px] leading-snug sm:text-[15px] sm:leading-relaxed mb-0 sm:mb-3 group-hover:text-primary transition-colors"
+                                        className="font-bold text-text-primary text-sm sm:text-base leading-snug sm:leading-relaxed mb-0 sm:mb-3 group-hover:text-primary transition-colors"
                                         style={{
                                             display: '-webkit-box',
                                             WebkitLineClamp: 2,
@@ -294,7 +293,7 @@ export default async function HomePage() {
                             </p>
                         </div>
                     </div>
-                    <div className="mt-8 px-2 sm:p-4 text-[11px] sm:text-sm text-text-muted leading-relaxed text-center space-y-2">
+                    <div className="mt-8 px-2 sm:p-4 text-xs sm:text-sm text-text-muted leading-relaxed text-center space-y-2">
                         <p>本サイトは統計分析データの提供を目的としており、馬券購入の助言や推奨を行うものではありません。投票判断はご自身の責任において行ってください。</p>
                         <p>20歳未満の方の馬券購入は競馬法により禁止されています。ギャンブル依存症に関するご心配がある場合は、リカバリーサポート・ネットワーク（RSN）（TEL: 0120-29-7338）までご相談ください。</p>
                     </div>
@@ -362,7 +361,7 @@ export default async function HomePage() {
                             </div>
                         </div>
                     </div>
-                    <p className="text-[11px] sm:text-xs text-gray-500 mt-4 sm:mt-5">
+                    <p className="text-xs text-gray-500 mt-4 sm:mt-5">
                         ※ばんえい競馬（帯広）は対応しておりません。
                     </p>
                 </section>

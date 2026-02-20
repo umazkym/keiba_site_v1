@@ -46,7 +46,7 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
     // ========== 分析文言の生成 ==========
     const generateAbilityAnalysis = (): string => {
         const topHorse = [...race.predictions].filter(p => p.deviation_score !== null).sort((a, b) => (b.deviation_score as number) - (a.deviation_score as number))[0];
-        
+
         if (!topHorse) return "AI偏差値データが不足しているため、詳細な能力分析は控えさせていただきます。";
 
         if (deviationRange > 15) {
@@ -89,7 +89,7 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
 
     const generateStrategyAnalysis = (): string => {
         const topHorse = [...race.predictions].filter(p => p.deviation_score !== null).sort((a, b) => (b.deviation_score as number) - (a.deviation_score as number))[0];
-        
+
         if (topMarkedHorses.length > 0 && darkHorses.length > 0) {
             return `◎や〇の印がついた有力馬に加え、▲や△の伏兵馬も混在するレースです。基本的には${topHorse?.horse_name || '高い評価の馬'}を中心に据えつつも、展開次第でヒモ荒れの可能性が十分にあります。軸を固定し、相手を手広く流す戦略などが一考です。`;
         } else if (topMarkedHorses.length >= 3) {
@@ -106,22 +106,22 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
         <div className="space-y-4">
             <h3 className="text-lg font-bold text-gray-800 border-b-2 border-primary pb-2">このレースのデ－タ分析</h3>
 
-            <div className="bg-transparent sm:bg-white rounded-lg p-0 sm:p-4 shadow-none sm:shadow-sm border-none sm:border sm:border-gray-200 border-l-0 sm:border-l-4 border-l-primary">
+            <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-primary">
                 <h4 className="font-bold text-gray-800 mb-2 border-b sm:border-b-0 pb-2 sm:pb-0 text-base sm:text-lg">出走馬の能力分析</h4>
                 <p className="text-gray-700 text-sm leading-relaxed">{generateAbilityAnalysis()}</p>
             </div>
 
-            <div className="bg-transparent sm:bg-white rounded-lg p-0 sm:p-4 shadow-none sm:shadow-sm border-none sm:border sm:border-gray-200 border-l-0 sm:border-l-4 border-l-accent mt-6 sm:mt-0">
+            <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-accent mt-4 sm:mt-0">
                 <h4 className="font-bold text-gray-800 mb-2 border-b sm:border-b-0 pb-2 sm:pb-0 text-base sm:text-lg">スタートからの展開予想</h4>
                 <p className="text-gray-700 text-sm leading-relaxed">{generateStartAnalysis()}</p>
             </div>
 
-            <div className="bg-transparent sm:bg-white rounded-lg p-0 sm:p-4 shadow-none sm:shadow-sm border-none sm:border sm:border-gray-200 border-l-0 sm:border-l-4 border-l-secondary mt-6 sm:mt-0">
+            <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary mt-4 sm:mt-0">
                 <h4 className="font-bold text-gray-800 mb-2 border-b sm:border-b-0 pb-2 sm:pb-0 text-base sm:text-lg">枠順による影響</h4>
                 <p className="text-gray-700 text-sm leading-relaxed">{generateFrameAnalysis()}</p>
             </div>
 
-            <div className="bg-transparent sm:bg-white rounded-lg p-0 sm:p-4 shadow-none sm:shadow-sm border-none sm:border sm:border-gray-200 border-l-0 sm:border-l-4 border-l-secondary-dark mt-6 sm:mt-0">
+            <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary-dark mt-4 sm:mt-0">
                 <h4 className="font-bold text-gray-800 mb-2 border-b sm:border-b-0 pb-2 sm:pb-0 text-base sm:text-lg">馬券戦略の方向性</h4>
                 <p className="text-gray-700 text-sm leading-relaxed">{generateStrategyAnalysis()}</p>
             </div>

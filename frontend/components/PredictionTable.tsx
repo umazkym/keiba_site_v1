@@ -70,9 +70,9 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                 <table className="min-w-full">
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
-                            <th className="px-3 py-2 text-center text-[11px] font-bold text-text-secondary tracking-wider w-12">印</th>
-                            <th className="px-2 py-2 text-left text-[11px] font-bold text-text-secondary tracking-wider" colSpan={2}>馬番・馬名</th>
-                            <th className="px-4 py-2 text-right text-[11px] font-bold text-text-secondary tracking-wider flex items-center justify-end gap-1.5 bg-blue-50/40">
+                            <th className="px-3 py-2 text-center text-xs font-bold text-text-secondary tracking-wider w-12">印</th>
+                            <th className="px-2 py-2 text-left text-xs font-bold text-text-secondary tracking-wider" colSpan={2}>馬番・馬名</th>
+                            <th className="px-4 py-2 text-right text-xs font-bold text-text-secondary tracking-wider flex items-center justify-end gap-1.5 bg-blue-50/40">
                                 <span className="whitespace-nowrap text-blue-900">AI偏差値</span>
                                 <Tippy content={
                                     <div className='p-2.5 text-sm text-left max-w-xs bg-white text-text-primary rounded-xl shadow-elevated border border-slate-100'>
@@ -81,7 +81,7 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                                     </div>
                                 } placement="top" interactive={true} theme="light-border" appendTo={() => document.body}
                                 >
-                                    <span className='w-4 h-4 bg-slate-300 hover:bg-slate-400 transition-colors text-white rounded-full flex items-center justify-center text-[10px] font-bold cursor-help'>?</span>
+                                    <span className='w-4 h-4 bg-slate-300 hover:bg-slate-400 transition-colors text-white rounded-full flex items-center justify-center text-xs font-bold cursor-help'>?</span>
                                 </Tippy>
                             </th>
                         </tr>
@@ -129,7 +129,7 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
 
                                     {/* 中央: 馬名 */}
                                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                        <div className="font-bold text-[15px] text-text-primary truncate">{p.horse_name}</div>
+                                        <div className="font-bold text-base text-text-primary truncate">{p.horse_name}</div>
                                     </div>
 
                                     {/* 右側: 偏差値 */}
@@ -137,7 +137,7 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
                                         <div className="font-bold text-primary-dark text-lg font-mono tracking-tight leading-none">
                                             {p.deviation_score != null ? p.deviation_score.toFixed(1) : '--'}
                                         </div>
-                                        <div className="text-[9px] font-bold text-blue-700/70 mt-0.5">偏差値</div>
+                                        <div className="text-[10px] font-bold text-blue-700/70 mt-0.5">偏差値</div>
                                     </div>
                                 </div>
                             </div>

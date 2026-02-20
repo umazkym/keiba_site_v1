@@ -71,7 +71,7 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
                             <th key={horse.horse_id} className="p-1 w-11">
                                 <div className='flex flex-col items-center justify-center h-full gap-0.5'>
                                     <HorseNumberCircle number={horse.horse_number} waku={horse.waku_number} />
-                                    <span className='text-[10px] font-bold whitespace-nowrap'>{horse.horse_name.substring(0, 4)}</span>
+                                    <span className='text-xs font-bold whitespace-nowrap'>{horse.horse_name.substring(0, 4)}</span>
                                 </div>
                             </th>
                         ))}
@@ -201,37 +201,37 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         const record = matchupData?.matchup_data[`${selectedHorse.horse_id}_vs_${opponent.horse_id}`];
                         const netWins = record ? record.win - record.loss : 0;
 
-                        let resultText = <span className="text-gray-500 text-[10px]">-</span>;
+                        let resultText = <span className="text-gray-500 text-xs">-</span>;
                         let bgColor = 'bg-gray-50';
                         if (record && (record.win > 0 || record.loss > 0 || record.draw > 0)) {
                             if (netWins > 0) {
                                 bgColor = 'bg-green-100';
                                 resultText = (
                                     <>
-                                        <span className="font-bold text-xs text-green-700">
+                                        <span className="font-bold text-sm text-green-700">
                                             +{netWins}
                                         </span>
-                                        <span className="text-[9px] text-green-600 ml-0.5">({record.win}-{record.loss}-{record.draw})</span>
+                                        <span className="text-[10px] text-green-600 ml-0.5">({record.win}-{record.loss}-{record.draw})</span>
                                     </>
                                 );
                             } else if (netWins < 0) {
                                 bgColor = 'bg-red-100';
                                 resultText = (
                                     <>
-                                        <span className="font-bold text-xs text-red-700">
+                                        <span className="font-bold text-sm text-red-700">
                                             {netWins}
                                         </span>
-                                        <span className="text-[9px] text-red-600 ml-0.5">({record.win}-{record.loss}-{record.draw})</span>
+                                        <span className="text-[10px] text-red-600 ml-0.5">({record.win}-{record.loss}-{record.draw})</span>
                                     </>
                                 );
                             } else {
                                 bgColor = 'bg-gray-200';
                                 resultText = (
                                     <>
-                                        <span className="font-bold text-xs text-gray-700">
+                                        <span className="font-bold text-sm text-gray-700">
                                             {netWins}
                                         </span>
-                                        <span className="text-[9px] text-gray-600 ml-0.5">({record.win}-{record.loss}-{record.draw})</span>
+                                        <span className="text-[10px] text-gray-600 ml-0.5">({record.win}-{record.loss}-{record.draw})</span>
                                     </>
                                 );
                             }
@@ -249,10 +249,10 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                             >
                                 <div className={`flex justify-between items-center px-2 py-1.5 ${bgColor} rounded border border-gray-200 hover:shadow-sm transition-shadow cursor-pointer`}>
                                     <div className="flex items-center gap-1.5 min-w-0">
-                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[9px] border-2 flex-shrink-0 ${getWakuColorClasses(opponent.waku_number)}`}>
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs border-2 flex-shrink-0 ${getWakuColorClasses(opponent.waku_number)}`}>
                                             {opponent.horse_number}
                                         </div>
-                                        <span className="font-medium text-gray-800 text-xs truncate">{opponent.horse_name.substring(0, 5)}</span>
+                                        <span className="font-medium text-gray-800 text-sm truncate">{opponent.horse_name.substring(0, 5)}</span>
                                     </div>
                                     <div className="text-xs whitespace-nowrap ml-1 flex-shrink-0">{resultText}</div>
                                 </div>

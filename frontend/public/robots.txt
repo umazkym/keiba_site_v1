@@ -14,6 +14,8 @@ Disallow: /search?*
 
 # サイトマップの場所を通知
 Sitemap: https://uma-free.com/sitemap.xml
+Sitemap: https://uma-free.com/sitemap-articles.xml
+Sitemap: https://uma-free.com/sitemap-images.xml
 
 # Googlebotは優先的にクロール
 User-agent: Googlebot

@@ -51,6 +51,7 @@ export interface RacePrediction {
     race_name: string;
     course_type: string | null;
     distance: number | null;
+    ai_analysis_text?: string | null; // ★★★ 追加 ★★★
     predictions: HorsePrediction[];
     matchup: MatchupData | null;
     horse_number_advantages: HorseNumberAdvantage[];
@@ -80,7 +81,7 @@ export interface SpecialPick {
 
 export interface TopPayoutHit {
     race_id: string;
-    race_date: string; 
+    race_date: string;
     venue_name: string;
     race_number: number;
     race_name: string;

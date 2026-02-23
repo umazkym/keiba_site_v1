@@ -256,3 +256,14 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
             tqdm.write(f"\n[CRITICAL ERROR] Prediction processing for {race_id} failed: {e}")
             traceback.print_exc()
             db.rollback()
+
+    print(f"\n  -> [5/5] Generating AI Analysis text for races in batches")
+    try:
+        from scripts import llm_generator
+        # 予測データが生成された全レースIDを抽出し、LLMバッチへ渡す
+        target_races = [rid for rid, _ in all_race_ids]
+        llm_generator.generate_analyses_in_batches(db, target_races)
+    except Exception as e:
+        print(f"  -> [CRITICAL ERROR] LLM Batch Generation failed: {e}")
+        traceback.print_exc()
+        db.rollback()

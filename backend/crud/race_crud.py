@@ -316,3 +316,37 @@ def get_all_race_urls(db: Session) -> List[Dict[str, Any]]:
         }
         for result in results
     ]
+
+import re
+
+def get_heavy_stakes_race_urls(db: Session) -> List[Dict[str, Any]]:
+    """
+    サイトマップ生成のために、重賞レース（G1, G2, G3等）のURL情報のみを取得するエンドポイント。
+    AdSense対策として、高品質なページのみをインデックスさせるために使用します。
+    """
+    results = db.query(
+        models.Race.race_date,
+        models.Race.venue_name,
+        models.Race.race_number,
+        models.Race.race_name
+    ).filter(
+        models.Race.predictions.any(),
+        models.Race.venue_name.isnot(None),
+        models.Race.race_number.isnot(None)
+    ).order_by(
+        models.Race.race_date.desc()
+    ).all()
+
+    heavy_stakes_urls = []
+    # G1, G2, G3, GⅠ, GⅡ, GⅢ, J・G1 などをマッチする正規表現
+    pattern = re.compile(r'[GＧ][1-3１-３Ⅰ-Ⅲ]|J・G', re.IGNORECASE)
+    
+    for r in results:
+        if r.race_name and pattern.search(r.race_name):
+            heavy_stakes_urls.append({
+                "race_date": r.race_date.strftime('%Y-%m-%d'),
+                "venue_name": r.venue_name,
+                "race_number": r.race_number
+            })
+            
+    return heavy_stakes_urls

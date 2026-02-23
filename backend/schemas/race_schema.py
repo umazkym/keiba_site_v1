@@ -38,6 +38,7 @@ class RacePrediction(BaseModel):
     race_name: str
     course_type: Optional[str]
     distance: Optional[int]
+    ai_analysis_text: Optional[str] = None # ★★★ 追加 ★★★
     predictions: List[HorsePrediction]
     matchup: Optional[Matchup]
     horse_number_advantages: List[HorseNumberAdvantage]

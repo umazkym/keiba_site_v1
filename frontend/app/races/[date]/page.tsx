@@ -42,16 +42,10 @@ export async function generateMetadata(
         alternates: {
             canonical: canonicalUrl,
         },
-        // ▼▼▼▼▼【AdSense審査対策: 全レースページnoindex化】▼▼▼▼▼
-        // テンプレート的なデータページがサイト全体の品質評価を下げるのを防ぐため、
-        // AdSense承認まで全レースページをインデックスから除外する。
-        // follow=true でリンクの価値は保持する。
-        // ※ AdSense承認後にこのブロックを元に戻すこと（過去レースのみnoindexに）
         robots: {
-            index: false,
+            index: true,
             follow: true,
         },
-        // ▲▲▲▲▲【AdSense審査対策ここまで】▲▲▲▲▲
     };
 }
 

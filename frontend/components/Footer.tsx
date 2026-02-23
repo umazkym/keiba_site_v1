@@ -36,6 +36,11 @@ export const Footer = () => {
                                 </Link>
                             </li>
                             <li>
+                                <Link href="/about-ai" className="text-sm sm:text-xs text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
+                                    AI予測モデルについて
+                                </Link>
+                            </li>
+                            <li>
                                 <Link
                                     href="https://x.com/umafree_ai"
                                     target="_blank"

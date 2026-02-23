@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next'
 import { getAllArticles } from '@/lib/articles';
+import { getAllRaceUrls } from '@/lib/api';
 
 const BASE_URL = 'https://uma-free.com';
 
@@ -12,6 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const staticRouteConfig: Record<string, { changeFrequency: 'daily' | 'weekly' | 'monthly'; priority: number }> = {
         '': { changeFrequency: 'daily', priority: 1.0 },
         '/about': { changeFrequency: 'monthly', priority: 0.7 },
+        '/about-ai': { changeFrequency: 'monthly', priority: 0.8 },
         '/advertising': { changeFrequency: 'monthly', priority: 0.5 },
         '/contact': { changeFrequency: 'monthly', priority: 0.6 },
         '/privacy': { changeFrequency: 'monthly', priority: 0.5 },
@@ -36,11 +38,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
     }));
 
+    // 全てのレースページをサイトマップに含める（ロングテールSEO維持のため）
+    const allRaces = await getAllRaceUrls();
+    const raceRoutes = allRaces.map((race) => ({
+        // クエリパラメータ順序を統一: race -> venue
+        url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`,
+        lastModified: new Date(race.race_date),
+        changeFrequency: 'daily' as const,
+        priority: 0.6,
+    }));
 
-    // ▼▼▼▼▼【AdSense審査対策: レースページをサイトマップから除外】▼▼▼▼▼
-    // テンプレート的なデータページがサイト全体の品質評価を下げるのを防ぐため、
-    // AdSense承認まで全レースページをサイトマップから除外する。
-    // ※ AdSense承認後にレースページのルートを復活させること
-    return [...staticRoutes, ...articleRoutes];
-    // ▲▲▲▲▲【AdSense審査対策ここまで】▲▲▲▲▲
+    return [...staticRoutes, ...articleRoutes, ...raceRoutes];
 }

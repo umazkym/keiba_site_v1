@@ -63,6 +63,9 @@ export const Header = () => {
                         <Link href="/faq" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             よくある質問
                         </Link>
+                        <Link href="/about-ai" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
+                            AIモデル
+                        </Link>
                     </nav>
 
                     {/* 検索ボタンとメニューボタン（右側） */}
@@ -126,6 +129,13 @@ export const Header = () => {
                             onClick={closeMenu}
                         >
                             よくある質問
+                        </Link>
+                        <Link
+                            href="/about-ai"
+                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
+                            onClick={closeMenu}
+                        >
+                            AIモデル
                         </Link>
                         <Link
                             href="/search"

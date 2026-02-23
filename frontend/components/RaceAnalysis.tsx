@@ -1,4 +1,5 @@
 import { RacePrediction } from '@/lib/types';
+import { SparklesIcon } from './Icons';
 
 /**
  * レース全体の統計分析コンテンツを生成するコンポーネント
@@ -106,7 +107,22 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
         <div className="space-y-4">
             <h3 className="text-lg font-bold text-gray-800 border-b-2 border-primary pb-2">このレースのデ－タ分析</h3>
 
-            <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-primary">
+            {race.ai_analysis_text && (
+                <div className="bg-gradient-to-br from-indigo-50/50 to-blue-50/30 rounded-lg p-4 sm:p-5 border border-indigo-200 shadow-sm mb-6 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
+                        <SparklesIcon className="w-24 h-24 text-primary" />
+                    </div>
+                    <h4 className="flex items-center text-primary font-bold mb-3 text-lg relative z-10">
+                        <SparklesIcon className="w-5 h-5 mr-2" />
+                        AIレース展望・展開予想
+                    </h4>
+                    <div className="text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap relative z-10">
+                        {race.ai_analysis_text}
+                    </div>
+                </div>
+            )}
+
+            <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-primary mt-4 sm:mt-0">
                 <h4 className="font-bold text-gray-800 mb-2 border-b sm:border-b-0 pb-2 sm:pb-0 text-base sm:text-lg">出走馬の能力分析</h4>
                 <p className="text-gray-700 text-sm leading-relaxed">{generateAbilityAnalysis()}</p>
             </div>

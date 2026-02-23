@@ -17,6 +17,7 @@ class Race(Base):
     weather = Column(String)
     ground_condition = Column(String)
     total_horses = Column(Integer)
+    ai_analysis_text = Column(String, nullable=True) # AIによるレース展開・展望等の自動生成テキスト
     
     results = relationship("Result", back_populates="race")
     predictions = relationship("Prediction", back_populates="race")

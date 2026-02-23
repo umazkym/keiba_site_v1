@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from tqdm import tqdm
 from database.database import SessionLocal, engine, Base
-from scripts import predictor, scraper, parser, database_loader
+from scripts import predictor, scraper, parser, database_loader, llm_generator
 from db_handler import update_race_results, insert_new_predictions
 import pandas as pd
 from database import models
@@ -132,6 +132,10 @@ def worker_process_race(race_id_tuple):
         if predictions:
             database_loader.save_prediction(db, race_id, predictions)
             predictor.calculate_and_save_matchups_for_race(db, race_id, list(horse_ids_in_race))
+            
+            # --- LLMテキストの自動生成は db_handler.py(insert_new_predictions) やバッチでまとめて処理するように変更 ---
+            # メモ：HISTORY等の個別ワーカーごとに叩くとAPIのバストラフィック上限(QPM)や1日上限に即座に引っかかるため、
+            # チャンク単位のバッチ処理に移行しました。
 
         # メモリ解放
         del predictions

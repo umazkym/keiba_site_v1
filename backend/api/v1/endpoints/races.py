@@ -102,3 +102,11 @@ def get_all_race_urls_for_sitemap(db: Session = Depends(get_db)):
     """
     urls = race_crud.get_all_race_urls(db=db)
     return urls
+
+@router.get("/sitemap/heavy-stakes-urls", response_model=List[Dict[str, Any]])
+def get_heavy_stakes_race_urls_for_sitemap(db: Session = Depends(get_db)):
+    """
+    サイトマップ生成のために、重賞レースのURL情報を取得するエンドポイント。
+    """
+    urls = race_crud.get_heavy_stakes_race_urls(db=db)
+    return urls

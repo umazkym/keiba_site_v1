@@ -66,7 +66,7 @@ export async function getTopPayoutHits(): Promise<TopPayoutHit[]> {
 // ★★★ 新規追加: サイトマップ/検索エンジン向け 全レースURL取得関数 ★★★
 export async function getAllRaceUrls(): Promise<{ race_date: string; venue_name: string; race_number: number }[]> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/sitemap/all-race-urls`, { cache: 'no-store' });
+        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/sitemap/all-race-urls`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error(`Failed to fetch all race urls. Status: ${res.status}`);
             return [];

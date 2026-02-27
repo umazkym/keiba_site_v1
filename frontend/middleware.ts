@@ -15,9 +15,35 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
     const { pathname, searchParams } = request.nextUrl;
 
-    // 1. レースページのクエリパラメータ正規化（廃止）
-    // Google Search Consoleで過去URLの404が「リダイレクトエラー」になるのを防ぐため、
-    // ここでの301リダイレクトは行わず、正規化は page.tsx の canonical タグに任せます。
+    // 1. レースページのクエリパラメータ正規化（条件付き301リダイレクト）
+    // ?venue=X&race=N → ?race=N&venue=X に正規化。
+    // ※ 2026-01-01以降の日付のみ。古い日付は予測データが欠落している月が多く、
+    //   301→404チェーンになるのを防ぐため、canonicalタグに任せる。
+    if (pathname.startsWith('/races/')) {
+        const venue = searchParams.get('venue');
+        const race = searchParams.get('race');
+
+        if (venue && race) {
+            // URLから日付部分を抽出 (例: /races/2026-02-15 → "2026-02-15")
+            const dateMatch = pathname.match(/^\/races\/(\d{4}-\d{2}-\d{2})$/);
+
+            if (dateMatch) {
+                const dateStr = dateMatch[1];
+
+                // 2026-01-01以降のみリダイレクト（予測データが確実に存在する範囲）
+                if (dateStr >= '2026-01-01') {
+                    const paramKeys = Array.from(searchParams.keys());
+                    const isWrongOrder = paramKeys.indexOf('venue') < paramKeys.indexOf('race');
+
+                    if (isWrongOrder) {
+                        const newUrl = new URL(request.url);
+                        newUrl.search = `?race=${race}&venue=${venue}`;
+                        return NextResponse.redirect(newUrl, { status: 301 });
+                    }
+                }
+            }
+        }
+    }
 
     // 2. 記事ページの日付プレフィックスなしslugを処理
     if (pathname.startsWith('/articles/')) {
@@ -77,6 +103,10 @@ export function middleware(request: NextRequest) {
         // 既知のガイドスラッグを対応する記事にマッピング
         const guideToArticleMap: { [key: string]: string } = {
             'horseracing-basics': '/articles/2025-10-26-beginners-complete-guide',
+            'odds-reading-guide': '/articles/2025-11-13-odds-reading-guide',
+            'jockey-guide': '/articles/2025-10-26-beginners-complete-guide',
+            'prediction-glossary': '/articles/2025-10-26-horseracing-terms-500',
+            'course-guide': '/articles/2025-10-26-racecourse-access-guide',
         };
 
         const newUrl = new URL(request.url);

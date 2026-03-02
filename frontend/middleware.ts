@@ -37,7 +37,10 @@ export function middleware(request: NextRequest) {
 
                     if (isWrongOrder) {
                         const newUrl = new URL(request.url);
-                        newUrl.search = `?race=${race}&venue=${venue}`;
+                        // URLSearchParamsを完全に置き換えて順序を保証
+                        newUrl.search = '';
+                        newUrl.searchParams.set('race', race);
+                        newUrl.searchParams.set('venue', venue);
                         return NextResponse.redirect(newUrl, { status: 301 });
                     }
                 }

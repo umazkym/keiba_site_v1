@@ -129,11 +129,10 @@ export default async function HomePage() {
 
                 {/* 2. UMA-FREEとは */}
                 <section className="bg-white rounded-2xl sm:border sm:border-slate-100 p-6 md:p-10 shadow-soft max-w-[1000px] mx-auto w-full">
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-6 border-b border-slate-100 pb-4 flex items-center justify-center gap-3">
-                        <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-6 text-center">
                         UMA-FREEとは
                     </h2>
-                    <div className="space-y-4 sm:space-y-5 text-text-secondary text-base leading-relaxed max-w-3xl mx-auto text-left sm:text-center mt-6">
+                    <div className="space-y-4 sm:space-y-5 text-text-secondary text-base leading-relaxed max-w-3xl mx-auto text-left mt-6">
                         <p>
                             UMA-FREEは、過去5年以上の中央競馬（JRA）および地方競馬（NAR）の膨大なレースデータを機械学習アルゴリズムで分析し、各出走馬の能力を独自の<strong>AI偏差値</strong>として数値化した競馬データ分析サイトです。会員登録やメールアドレスの入力は一切不要で、すべての分析データを完全無料でご利用いただけます。
                         </p>
@@ -294,10 +293,12 @@ export default async function HomePage() {
                             </p>
                         </div>
                     </div>
-                    <div className="mt-8 max-w-4xl mx-auto">
-                        <DisclaimerAlert />
-                    </div>
                 </section>
+
+                {/* 免責事項（独立セクション） */}
+                <div className="max-w-4xl mx-auto w-full">
+                    <DisclaimerAlert />
+                </div>
 
                 {/* 7. よくある質問 */}
                 <section className="bg-white rounded-2xl border border-slate-100 p-6 md:p-10 shadow-soft">
@@ -331,7 +332,7 @@ export default async function HomePage() {
 
                 {/* 8. 対応競馬場 */}
                 <section className="bg-slate-50 rounded-2xl border border-slate-200 p-6 md:p-10 shadow-inner">
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-3 sm:mb-4">
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-3 sm:mb-4 text-center">
                         対応競馬場一覧
                     </h2>
                     <p className="text-text-secondary text-xs sm:text-sm leading-[1.8] mb-6 sm:mb-8">

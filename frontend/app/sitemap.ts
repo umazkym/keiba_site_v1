@@ -42,7 +42,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const allRaces = await getAllRaceUrls();
     const raceRoutes = allRaces.map((race) => ({
         // クエリパラメータ順序を統一: race -> venue
-        url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`,
+        // XMLの仕様に従い、URL内の「&」は「&amp;」にエスケープする
+        url: `${BASE_URL}/races/${race.race_date}?race=${race.race_number}&amp;venue=${encodeURIComponent(race.venue_name)}`,
         lastModified: new Date(race.race_date),
         changeFrequency: 'daily' as const,
         priority: 0.6,

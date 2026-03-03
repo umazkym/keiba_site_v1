@@ -178,16 +178,24 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
     ]
     
     API_LIMIT_PER_MODEL = 20
+    CONSECUTIVE_ERROR_LIMIT = 3  # 連続エラーでフォールバックする閾値
     current_tier_idx = 0
     current_model_usage = 0
+    consecutive_errors = 0  # 連続エラーカウンタ
     
     client = genai.Client(api_key=api_key)
 
-    for chunk_idx, chunk in enumerate(chunks):
+    # whileループで管理し、フォールバック時に同じチャンクをリトライできるようにする
+    chunk_idx = 0
+    while chunk_idx < len(chunks):
+        chunk = chunks[chunk_idx]
+
+        # モデル使用上限チェック
         if current_model_usage >= API_LIMIT_PER_MODEL:
             print(f"[LLM Generator] Reached soft limit ({API_LIMIT_PER_MODEL}) for {model_tiers[current_tier_idx]}. Switching to next tier.")
             current_tier_idx += 1
             current_model_usage = 0
+            consecutive_errors = 0
             
             if current_tier_idx >= len(model_tiers):
                 print("[LLM Generator] ALERT: All fallback models have been exhausted for today! Stopping generation.")
@@ -265,22 +273,47 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
                 db.commit()
                 print(f"[LLM Generator] Successfully saved {saved_count} analyses from this chunk.")
                 current_model_usage += 1
+                consecutive_errors = 0
+                chunk_idx += 1  # 成功時のみ次のチャンクへ
                 time.sleep(4.5)
                 
             else:
                 print(f"[LLM Generator] Empty response for chunk {chunk_idx + 1}")
+                chunk_idx += 1  # 空レスポンスの場合も次へ
 
         except Exception as e:
             error_str = str(e)
             print(f"[LLM Generator] Error generating chunk with {current_model}: {error_str}")
             db.rollback()
             
-            if "429" in error_str or "quota" in error_str.lower():
-                print(f"[LLM Generator] Encountered rate limit/quota error for {current_model}. Falling back immediately.")
+            def _do_fallback():
+                """フォールバック処理の共通ロジック。成功時True、全モデル枯渇時False"""
+                nonlocal current_tier_idx, current_model_usage, consecutive_errors
                 current_tier_idx += 1
                 current_model_usage = 0
-                continue
+                consecutive_errors = 0
+                if current_tier_idx >= len(model_tiers):
+                    print("[LLM Generator] ALERT: All fallback models have been exhausted! Stopping generation.")
+                    return False
+                return True
+
+            # 429 or quota → 即座にフォールバック（同じチャンクをリトライ）
+            if "429" in error_str or "quota" in error_str.lower():
+                print(f"[LLM Generator] Encountered rate limit/quota error for {current_model}. Falling back immediately.")
+                if not _do_fallback():
+                    break
+                continue  # chunk_idxを進めず同じチャンクをリトライ
             
+            # 503 or UNAVAILABLE → 連続エラーをカウントし、閾値超えでフォールバック
+            consecutive_errors += 1
+            if ("503" in error_str or "unavailable" in error_str.lower()) and consecutive_errors >= CONSECUTIVE_ERROR_LIMIT:
+                print(f"[LLM Generator] {current_model} has failed {consecutive_errors} times consecutively (503/UNAVAILABLE). Falling back to next tier.")
+                if not _do_fallback():
+                    break
+                continue  # chunk_idxを進めず同じチャンクをリトライ
+            
+            # その他のエラーは次のチャンクへ
+            chunk_idx += 1
             time.sleep(5)
 
     print("[LLM Generator] Batch generation finished.")

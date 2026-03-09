@@ -113,7 +113,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: RACE_BATCH_SIZE
-        value: "15"
+        value: "3"
       - key: SELENIUM_PAGE_LOAD_TIMEOUT
         value: "40"
       - key: SELENIUM_ELEMENT_WAIT_TIMEOUT
@@ -143,7 +143,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: RACE_BATCH_SIZE
-        value: "15"
+        value: "3"
       - key: SELENIUM_PAGE_LOAD_TIMEOUT
         value: "40"
       - key: SELENIUM_ELEMENT_WAIT_TIMEOUT
@@ -197,7 +197,7 @@ services:
       - key: WEBHOOK_URL
         sync: false
       - key: RACE_BATCH_SIZE
-        value: "15"
+        value: "3"
       - key: SELENIUM_PAGE_LOAD_TIMEOUT
         value: "40"
       - key: SELENIUM_ELEMENT_WAIT_TIMEOUT

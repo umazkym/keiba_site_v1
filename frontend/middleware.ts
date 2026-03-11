@@ -30,10 +30,13 @@ export function middleware(request: NextRequest) {
                 const firstKey = Array.from(searchParams.keys())[0];
 
                 if (firstKey !== 'race') {
-                    // 絶対URLを文字列で直接構築（new URL()やnextUrl.clone()は使わない）
-                    // new URL()はパラメータ順を変更する場合がある
-                    const redirectUrl = `https://uma-free.com/races/${dateMatch[1]}?race=${encodeURIComponent(race)}&venue=${encodeURIComponent(venue)}`;
-                    return NextResponse.redirect(redirectUrl as any, { status: 301 });
+                    // Responseを直接構築してLocationヘッダーを文字列で設定
+                    // NextResponse.redirect() はVercel内部でURLを再パースしパラメータ順序が変わるため使用しない
+                    const location = `https://uma-free.com/races/${dateMatch[1]}?race=${encodeURIComponent(race)}&venue=${encodeURIComponent(venue)}`;
+                    return new NextResponse(null, {
+                        status: 301,
+                        headers: { Location: location },
+                    });
                 }
             }
         }

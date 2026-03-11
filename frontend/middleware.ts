@@ -30,9 +30,10 @@ export function middleware(request: NextRequest) {
                 const firstKey = Array.from(searchParams.keys())[0];
 
                 if (firstKey !== 'race') {
-                    // 絶対URLをリテラル文字列で構築（Vercel Edge のURL解析を完全バイパス）
-                    const redirectUrl = new URL(`https://uma-free.com/races/${dateMatch[1]}?race=${encodeURIComponent(race)}&venue=${encodeURIComponent(venue)}`);
-                    return NextResponse.redirect(redirectUrl, { status: 301 });
+                    // 絶対URLを文字列で直接構築（new URL()やnextUrl.clone()は使わない）
+                    // new URL()はパラメータ順を変更する場合がある
+                    const redirectUrl = `https://uma-free.com/races/${dateMatch[1]}?race=${encodeURIComponent(race)}&venue=${encodeURIComponent(venue)}`;
+                    return NextResponse.redirect(redirectUrl as any, { status: 301 });
                 }
             }
         }

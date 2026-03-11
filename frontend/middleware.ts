@@ -26,17 +26,19 @@ export function middleware(request: NextRequest) {
             const dateMatch = pathname.match(/^\/races\/(\d{4}-\d{2}-\d{2})$/);
 
             if (dateMatch) {
-                // パラメータの順序チェック: 最初のキーが 'race' でなければリダイレクト
+                // パラメータの順序チェック: 最初のキーが 'race' でなければ
                 const firstKey = Array.from(searchParams.keys())[0];
 
                 if (firstKey !== 'race') {
-                    // Responseを直接構築してLocationヘッダーを文字列で設定
-                    // NextResponse.redirect() はVercel内部でURLを再パースしパラメータ順序が変わるため使用しない
-                    const location = `https://uma-free.com/races/${dateMatch[1]}?race=${encodeURIComponent(race)}&venue=${encodeURIComponent(venue)}`;
-                    return new NextResponse(null, {
-                        status: 301,
-                        headers: { Location: location },
-                    });
+                    // Vercel Edge環境では301リダイレクトのLocationヘッダーのパラメータ順序が
+                    // 内部的に変更されるため、リダイレクトでは解決できない。
+                    // 代わりにrewrite（内部転送）で正しいパラメータ順序のページを表示し、
+                    // canonicalタグ（page.tsx側で設定済み）でGoogleに正規URLを通知する。
+                    const rewriteUrl = new URL(request.url);
+                    rewriteUrl.search = '';
+                    rewriteUrl.searchParams.set('race', race);
+                    rewriteUrl.searchParams.set('venue', venue);
+                    return NextResponse.rewrite(rewriteUrl);
                 }
             }
         }

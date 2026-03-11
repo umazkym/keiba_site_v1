@@ -9,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const articles = getAllArticles();
 
     // 静的ルートごとに適切な更新頻度と優先度を設定
-    const siteLastModified = new Date('2026-02-16');
+    const siteLastModified = new Date(); // ビルド時の現在日付を使用
     const staticRouteConfig: Record<string, { changeFrequency: 'daily' | 'weekly' | 'monthly'; priority: number }> = {
         '': { changeFrequency: 'daily', priority: 1.0 },
         '/about': { changeFrequency: 'monthly', priority: 0.7 },

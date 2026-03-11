@@ -154,7 +154,7 @@ services:
     name: keiba-sns-pre-race
     runtime: docker
     region: oregon
-    plan: free
+    plan: free  # 週末のみ実行・画像1枚生成のみなのでfreeで十分
     schedule: "0 5 * * 0,6"
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -162,6 +162,8 @@ services:
     envVars:
       - key: DATABASE_URL
         value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+      - key: TZ
+        value: Asia/Tokyo
       - key: TWITTER_CONSUMER_KEY
         sync: false
       - key: TWITTER_CONSUMER_SECRET
@@ -171,9 +173,11 @@ services:
       - key: TWITTER_ACCESS_TOKEN_SECRET
         sync: false
       - key: API_BASE_URL
-        value: https://keiba-site-v1-api.onrender.com
-      - key: SITE_BASE_URL
-        value: https://k-b-a.vercel.app/
+        value: "https://keiba-site-v1.onrender.com"
+      - key: RENDER
+        value: "true"
+      - key: INSTANCE_ID
+        generateValue: true
 
   # パイプライン実行ジョブ: 朝5時（前日の結果取得のみ）
   - type: cron

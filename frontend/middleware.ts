@@ -15,32 +15,31 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
     const { pathname, searchParams } = request.nextUrl;
 
-    // 1. レースページのクエリパラメータ正規化（条件付き301リダイレクト）
+    // 1. レースページのクエリパラメータ正規化（301リダイレクト）
     // ?venue=X&race=N → ?race=N&venue=X に正規化。
-    // ※ 2026-01-01以降の日付のみ。古い日付は予測データが欠落している月が多く、
-    //   301→404チェーンになるのを防ぐため、canonicalタグに任せる。
+    // 全日付が対象。古い日付でデータがなくてもリダイレクト先で404を返すのは正常動作。
+    // リダイレクトエラー（無限ループ）を放置するよりも遥かにSEO上健全。
     if (pathname.startsWith('/races/')) {
         const venue = searchParams.get('venue');
         const race = searchParams.get('race');
 
         if (venue && race) {
-            // URLから日付部分を抽出 (例: /races/2026-02-15 → "2026-02-15")
             const dateMatch = pathname.match(/^\/races\/(\d{4}-\d{2}-\d{2})$/);
 
             if (dateMatch) {
-                const dateStr = dateMatch[1];
+                const paramKeys = Array.from(searchParams.keys());
+                const isWrongOrder = paramKeys.indexOf('venue') < paramKeys.indexOf('race');
 
-                // 2026-01-01以降のみリダイレクト（予測データが確実に存在する範囲）
-                if (dateStr >= '2026-01-01') {
-                    const paramKeys = Array.from(searchParams.keys());
-                    const isWrongOrder = paramKeys.indexOf('venue') < paramKeys.indexOf('race');
+                if (isWrongOrder) {
+                    // request.nextUrl.clone() を使用（request.url はVercel内部URLの場合がありループの原因になる）
+                    const newUrl = request.nextUrl.clone();
+                    newUrl.searchParams.delete('venue');
+                    newUrl.searchParams.delete('race');
+                    newUrl.searchParams.set('race', race);
+                    newUrl.searchParams.set('venue', venue);
 
-                    if (isWrongOrder) {
-                        const newUrl = new URL(request.url);
-                        // URLSearchParamsを完全に置き換えて順序を保証
-                        newUrl.search = '';
-                        newUrl.searchParams.set('race', race);
-                        newUrl.searchParams.set('venue', venue);
+                    // ループ防止: リダイレクト先が現在URLと実質的に異なることを確認
+                    if (newUrl.pathname + newUrl.search !== request.nextUrl.pathname + request.nextUrl.search) {
                         return NextResponse.redirect(newUrl, { status: 301 });
                     }
                 }

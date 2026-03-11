@@ -26,17 +26,13 @@ export function middleware(request: NextRequest) {
             const dateMatch = pathname.match(/^\/races\/(\d{4}-\d{2}-\d{2})$/);
 
             if (dateMatch) {
-                // URLSearchParamsで正規化（エンコーディングを自動統一）
-                const canonicalParams = new URLSearchParams();
-                canonicalParams.set('race', race);
-                canonicalParams.set('venue', venue);
-                const canonicalSearch = `?${canonicalParams.toString()}`;
+                // パラメータの順序チェック: 最初のキーが 'race' でなければリダイレクト
+                const firstKey = Array.from(searchParams.keys())[0];
 
-                // 現在のクエリ文字列が正規形と異なる場合のみリダイレクト
-                if (request.nextUrl.search !== canonicalSearch) {
-                    const newUrl = request.nextUrl.clone();
-                    newUrl.search = canonicalSearch;
-                    return NextResponse.redirect(newUrl, { status: 301 });
+                if (firstKey !== 'race') {
+                    // 絶対URLをリテラル文字列で構築（Vercel Edge のURL解析を完全バイパス）
+                    const redirectUrl = new URL(`https://uma-free.com/races/${dateMatch[1]}?race=${encodeURIComponent(race)}&venue=${encodeURIComponent(venue)}`);
+                    return NextResponse.redirect(redirectUrl, { status: 301 });
                 }
             }
         }

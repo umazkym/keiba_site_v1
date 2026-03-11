@@ -18,7 +18,6 @@ export function middleware(request: NextRequest) {
     // 1. レースページのクエリパラメータ正規化（301リダイレクト）
     // ?venue=X&race=N → ?race=N&venue=X に正規化。
     // 全日付が対象。古い日付でデータがなくてもリダイレクト先で404を返すのは正常動作。
-    // リダイレクトエラー（無限ループ）を放置するよりも遥かにSEO上健全。
     if (pathname.startsWith('/races/')) {
         const venue = searchParams.get('venue');
         const race = searchParams.get('race');
@@ -27,21 +26,15 @@ export function middleware(request: NextRequest) {
             const dateMatch = pathname.match(/^\/races\/(\d{4}-\d{2}-\d{2})$/);
 
             if (dateMatch) {
-                const paramKeys = Array.from(searchParams.keys());
-                const isWrongOrder = paramKeys.indexOf('venue') < paramKeys.indexOf('race');
+                // 正規化されたクエリ文字列を直接構築（URLSearchParamsの順序に依存しない）
+                const canonicalSearch = `?race=${encodeURIComponent(race)}&venue=${encodeURIComponent(venue)}`;
+                const currentSearch = request.nextUrl.search;
 
-                if (isWrongOrder) {
-                    // request.nextUrl.clone() を使用（request.url はVercel内部URLの場合がありループの原因になる）
+                // 現在のクエリ文字列が正規形と異なる場合のみリダイレクト
+                if (currentSearch !== canonicalSearch) {
                     const newUrl = request.nextUrl.clone();
-                    newUrl.searchParams.delete('venue');
-                    newUrl.searchParams.delete('race');
-                    newUrl.searchParams.set('race', race);
-                    newUrl.searchParams.set('venue', venue);
-
-                    // ループ防止: リダイレクト先が現在URLと実質的に異なることを確認
-                    if (newUrl.pathname + newUrl.search !== request.nextUrl.pathname + request.nextUrl.search) {
-                        return NextResponse.redirect(newUrl, { status: 301 });
-                    }
+                    newUrl.search = canonicalSearch;
+                    return NextResponse.redirect(newUrl, { status: 301 });
                 }
             }
         }

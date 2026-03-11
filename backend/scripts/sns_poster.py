@@ -415,8 +415,29 @@ def record_post(content: str, post_type: str, target_date: str, tweet_id: Option
     finally:
         db.close()
 
-# --- 5. API連携関数 (変更なし) ---
-def get_api_data(endpoint: str, retries: int = 3, delay: int = 5) -> Optional[Any]:
+# --- 5. API連携関数 (リトライ強化版) ---
+_api_warmed_up = False
+
+def warmup_api() -> None:
+    """APIサーバをスリープから起こすための軽量リクエスト"""
+    global _api_warmed_up
+    if _api_warmed_up:
+        return
+    try:
+        _log("APIサーバのウォームアップリクエストを送信中...")
+        res = requests.get(f"{API_BASE_URL}/api/v1/predictions/health", timeout=30)
+        if res.status_code < 500:
+            _log(f"-> ウォームアップ成功 (Status: {res.status_code})")
+        else:
+            _log(f"-> ウォームアップ応答待ち (Status: {res.status_code})、10秒待機...")
+            time.sleep(10)
+    except requests.RequestException:
+        _log("-> ウォームアップ応答なし、15秒待機してから本リクエストを開始...")
+        time.sleep(15)
+    _api_warmed_up = True
+
+def get_api_data(endpoint: str, retries: int = 3, delay: int = 15) -> Optional[Any]:
+    warmup_api()
     _log(f"APIにアクセス中: {endpoint}")
     for attempt in range(retries):
         try:
@@ -434,11 +455,13 @@ def get_api_data(endpoint: str, retries: int = 3, delay: int = 5) -> Optional[An
                 _log("-> データなし (404 Not Found)")
                 return None
             else:
-                _log(f"-> データ取得失敗 (Status: {res.status_code})")
+                _log(f"-> データ取得失敗 (Status: {res.status_code}), 試行 {attempt + 1}/{retries}")
         except requests.RequestException as e:
             _log(f"-> API接続エラー (試行 {attempt + 1}/{retries}): {e}")
         if attempt < retries - 1:
+            _log(f"-> {delay}秒後にリトライします...")
             time.sleep(delay)
+    _log(f"⚠️ APIデータ取得に全 {retries} 回失敗しました: {endpoint}")
     return None
 
 # --- 6. OGP画像生成関数群 (改良: 安全な .get 使用、None ハンドリング) ---
@@ -888,6 +911,10 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
                     _log(f"画像をアップロードしています (ツイート {idx}): {image_path}")
                     media = api_v1.media_upload(filename=image_path)
                     media_ids.append(media.media_id)
+                except tweepy.errors.Forbidden as img_403:
+                    _log(f"⚠️ 画像アップロードが403 Forbiddenで拒否されました: {img_403}")
+                    _log("  → 原因: Twitter Appの権限が 'Read and Write' でないか、トークン再生成が未実施の可能性があります")
+                    _log("  → テキストのみで投稿を継続します")
                 except Exception as img_error:
                     _log(f"⚠️ 画像アップロードに失敗しました: {img_error}。テキストのみで投稿します。")
 
@@ -903,7 +930,6 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
                 tweet_id = response.data.get('id') if response and response.data else None
                 if tweet_id:
                     _log(f" - URL: https://x.com/anyuser/status/{tweet_id}")
-                    # 最初のツイート（または分割された場合でもそれぞれのID）を記録
                     record_post(tweet_text, post_type, target_date, tweet_id=str(tweet_id))
             except Exception:
                 pass
@@ -912,6 +938,18 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
                 time.sleep(1)
 
         return True
+    except tweepy.errors.Forbidden as e:
+        _log(f"\n❌ Twitter API 403 Forbidden: {e}")
+        _log("  → 考えられる原因:")
+        _log("    1. App権限が 'Read and Write' になっていない")
+        _log("    2. 権限変更後にAccess Token & Secretを再生成していない")
+        _log("    3. Free tier の API レート制限に抵触")
+        try:
+            if hasattr(e, 'response') and e.response is not None:
+                _log(f"  → レスポンス詳細: {e.response.text[:500]}")
+        except Exception:
+            pass
+        return False
     except tweepy.errors.TweepyException as e:
         _log(f"\n❌エラー: Twitter APIでエラーが発生しました。詳細: {e}")
         return False
@@ -957,6 +995,10 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
                     _log(f"画像をアップロードしています (ツイート {idx}): {image_path}")
                     media = api_v1.media_upload(filename=image_path)
                     media_ids.append(media.media_id)
+                except tweepy.errors.Forbidden as img_403:
+                    _log(f"⚠️ 画像アップロードが403 Forbiddenで拒否されました: {img_403}")
+                    _log("  → 原因: Twitter Appの権限が 'Read and Write' でないか、トークン再生成が未実施の可能性があります")
+                    _log("  → テキストのみで投稿を継続します")
                 except Exception as img_error:
                     _log(f"⚠️ 画像アップロードに失敗しました: {img_error}。テキストのみで投稿します。")
 
@@ -972,7 +1014,6 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
                 tweet_id = response.data.get('id') if response and response.data else None
                 if tweet_id:
                     _log(f" - URL: https://x.com/anyuser/status/{tweet_id}")
-                    # 記録
                     record_post(tweet_text, post_type, target_date, tweet_id=str(tweet_id))
             except Exception:
                 pass
@@ -981,6 +1022,18 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
                 time.sleep(1)
 
         return True
+    except tweepy.errors.Forbidden as e:
+        _log(f"\n❌ Twitter API 403 Forbidden: {e}")
+        _log("  → 考えられる原因:")
+        _log("    1. App権限が 'Read and Write' になっていない")
+        _log("    2. 権限変更後にAccess Token & Secretを再生成していない")
+        _log("    3. Free tier の API レート制限に抵触")
+        try:
+            if hasattr(e, 'response') and e.response is not None:
+                _log(f"  → レスポンス詳細: {e.response.text[:500]}")
+        except Exception:
+            pass
+        return False
     except tweepy.errors.TweepyException as e:
         _log(f"\n❌エラー: Twitter APIでエラーが発生しました。詳細: {e}")
         return False

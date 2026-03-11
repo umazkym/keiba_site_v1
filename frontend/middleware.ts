@@ -26,12 +26,14 @@ export function middleware(request: NextRequest) {
             const dateMatch = pathname.match(/^\/races\/(\d{4}-\d{2}-\d{2})$/);
 
             if (dateMatch) {
-                // 正規化されたクエリ文字列を直接構築（URLSearchParamsの順序に依存しない）
-                const canonicalSearch = `?race=${encodeURIComponent(race)}&venue=${encodeURIComponent(venue)}`;
-                const currentSearch = request.nextUrl.search;
+                // URLSearchParamsで正規化（エンコーディングを自動統一）
+                const canonicalParams = new URLSearchParams();
+                canonicalParams.set('race', race);
+                canonicalParams.set('venue', venue);
+                const canonicalSearch = `?${canonicalParams.toString()}`;
 
                 // 現在のクエリ文字列が正規形と異なる場合のみリダイレクト
-                if (currentSearch !== canonicalSearch) {
+                if (request.nextUrl.search !== canonicalSearch) {
                     const newUrl = request.nextUrl.clone();
                     newUrl.search = canonicalSearch;
                     return NextResponse.redirect(newUrl, { status: 301 });

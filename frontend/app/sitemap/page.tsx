@@ -45,7 +45,7 @@ export default function SitemapPage() {
         <>
             <Breadcrumb />
             <div className="py-4 sm:py-8">
-                <div className="max-w-4xl mx-auto">
+                <div className="mx-auto">
                     <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-6 sm:mb-8 border-b-2 border-primary pb-3 sm:pb-4">
                         サイトマップ
                     </h1>

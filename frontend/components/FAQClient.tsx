@@ -204,7 +204,7 @@ export const FAQClient = () => {
                         <h1 className="text-3xl sm:text-4xl font-bold text-text-primary mb-4 sm:mb-6 tracking-tight">
                             よくある質問
                         </h1>
-                        <p className="text-base text-text-secondary leading-relaxed max-w-2xl mx-auto">
+                        <p className="text-base text-text-secondary leading-relaxed mx-auto">
                             UMA-FREEに関するご質問にお答えします。見つからない場合は、
                             <Link href="/contact" className="text-primary hover:text-primary-dark font-bold underline decoration-2 decoration-primary/30 hover:decoration-primary transition-all ml-1">
                                 お問い合わせ

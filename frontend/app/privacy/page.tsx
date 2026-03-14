@@ -158,7 +158,7 @@ export default function PrivacyPolicyPage() {
         <>
             <Breadcrumb />
             <div className="py-4 sm:py-8">
-                <div className="max-w-4xl mx-auto">
+                <div className="mx-auto">
                     <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-4 sm:mb-6 border-b-2 border-primary pb-3 sm:pb-4">{privacyPolicyContent.title}</h1>
                     <div className="flex flex-col gap-8 text-gray-700 leading-8">
                         <p className="text-sm text-gray-500">{privacyPolicyContent.lastUpdated}</p>

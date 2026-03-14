@@ -47,7 +47,7 @@ export default function ContactPage() {
         <>
             <Breadcrumb />
             <div className="py-4 sm:py-8">
-                <div className="max-w-4xl mx-auto">
+                <div className="mx-auto">
                     {/* セクション間の余白をgap-10に設定 */}
                     <div className="flex flex-col gap-6 sm:gap-10">
 

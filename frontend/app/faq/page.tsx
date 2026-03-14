@@ -26,7 +26,7 @@ export default function FAQPage() {
             <div className="w-full bg-surface">
                 <FAQClient />
                 {/* 広告: FAQコンテンツ後 */}
-                <div className="max-w-4xl mx-auto px-4 pb-8">
+                <div className="mx-auto px-4 pb-8">
                     <AdUnit slot="9407670747" placement="inline" />
                 </div>
             </div>

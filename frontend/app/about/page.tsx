@@ -108,7 +108,7 @@ export default function AboutPage() {
         <>
             <Breadcrumb />
             <div className="py-10 sm:py-16 px-4 w-full bg-surface">
-                <div className="max-w-[800px] mx-auto w-full">
+                <div className="mx-auto w-full">
                     <div className="flex flex-col gap-12 sm:gap-16">
                         {/* メインセクション */}
                         <div className="text-center sm:text-left">

@@ -286,16 +286,19 @@ td.no-match {
 .ad-highlight {
     position: relative;
     padding: 0.75rem;
-    background: #fafbfc;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
     overflow: hidden;
+    /* AdSense審査・配信準備期間中に空枠が目立つのを防ぐため背景と枠線を削除 */
 }
 
 /* 広告ユニットコンテナ: CLS防止のためmin-height予約 */
 .ad-unit-container {
     contain: layout;
     content-visibility: auto;
+}
+
+/* 広告が「未配信（unfilled）」としてマークされた場合は枠自体を非表示にして不自然な空白を防ぐ */
+.ad-unit-container:has(ins[data-ad-status="unfilled"]) {
+    display: none !important;
 }
 
 /* Google Auto Adsのアンカー広告用: コンテンツが隠れないようbottomパディング */

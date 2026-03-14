@@ -132,7 +132,7 @@ export default async function HomePage() {
                 <AdUnit slot="8529703346" placement="banner" />
 
                 {/* 2. UMA-FREEとは */}
-                <section className="bg-white rounded-2xl sm:border sm:border-slate-100 p-6 md:p-10 shadow-soft max-w-[1000px] mx-auto w-full">
+                <section className="bg-white rounded-2xl sm:border sm:border-slate-100 p-6 md:p-10 shadow-soft">
                     <h2 className="text-xl sm:text-2xl font-bold text-primary mb-6 text-center">
                         UMA-FREEとは
                     </h2>
@@ -303,9 +303,7 @@ export default async function HomePage() {
                 </section>
 
                 {/* 免責事項（独立セクション） */}
-                <div className="max-w-4xl mx-auto w-full">
-                    <DisclaimerAlert />
-                </div>
+                <DisclaimerAlert />
 
                 {/* 7. よくある質問 */}
                 <section className="bg-white rounded-2xl border border-slate-100 p-6 md:p-10 shadow-soft">
@@ -332,7 +330,7 @@ export default async function HomePage() {
                             href="/faq"
                             className="inline-flex items-center justify-center bg-primary hover:bg-primary-light text-white font-bold py-3 px-8 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                         >
-                            よくある質問をご確認
+                            よくある質問
                         </Link>
                     </div>
                 </section>

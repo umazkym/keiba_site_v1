@@ -559,41 +559,6 @@ def generate_pick_og_image(data: dict, date_str: str) -> Optional[str]:
         draw_centered_text(draw, "AI偏差値", label_font, TEXT_COLOR_MUTED, 1200, 470)
         draw_centered_text(draw, deviation_score_text, score_font, COLOR_CYAN, 1200, 505)
 
-        # 自信度バッジ
-        badge_text = ""
-        badge_color = (255, 255, 255)
-        badge_bg_color = (0, 0, 0)
-        if ds_val >= 70:
-            badge_text = " Sランク "
-            badge_color = (255, 215, 0)  # Gold
-            badge_bg_color = (139, 0, 0) # DarkRed
-        elif ds_val >= 60:
-            badge_text = " Aランク "
-            badge_color = (255, 255, 255)
-            badge_bg_color = (0, 100, 0) # DarkGreen
-        elif ds_val >= 50:
-            badge_text = " Bランク "
-            badge_color = (255, 255, 255)
-            badge_bg_color = (0, 0, 139) # DarkBlue
-
-        if badge_text:
-            badge_font = ImageFont.truetype(font_bold, 36)
-            # draw centered badge
-            bbox = draw.textbbox((0, 0), badge_text, font=badge_font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-            x_center = 1200 / 2
-            y_center = 400
-            padding_x = 20
-            padding_y = 10
-            
-            draw.rounded_rectangle(
-                [x_center - text_width/2 - padding_x, y_center - text_height/2 - padding_y,
-                 x_center + text_width/2 + padding_x, y_center + text_height/2 + padding_y],
-                radius=10, fill=badge_bg_color
-            )
-            draw_centered_text(draw, badge_text, badge_font, badge_color, 1200, int(y_center - text_height/2))
-
         # フッター情報
         date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%Y.%m.%d')
         draw.text((50, 580), date_formatted, font=ImageFont.truetype(font_light, 22), fill=TEXT_COLOR_LIGHT, anchor="ls")
@@ -658,33 +623,6 @@ def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
                 ds_p_val = float(ds_p) if ds_p is not None else 0.0
             except Exception:
                 ds_p_val = 0.0
-            score_text = f"{ds_p_val:.1f}"
-            
-            # 自信度バッジ
-            badge_text = ""
-            badge_color = (255, 255, 255)
-            badge_bg_color = (0, 0, 0)
-            if ds_p_val >= 70:
-                badge_text = "S"
-                badge_color = (255, 215, 0)  # Gold
-                badge_bg_color = (139, 0, 0) # DarkRed
-            elif ds_p_val >= 60:
-                badge_text = "A"
-                badge_color = (255, 255, 255)
-                badge_bg_color = (0, 100, 0) # DarkGreen
-            elif ds_p_val >= 50:
-                badge_text = "B"
-                badge_color = (255, 255, 255)
-                badge_bg_color = (0, 0, 139) # DarkBlue
-
-            if badge_text:
-                badge_font = ImageFont.truetype(font_bold, 28)
-                draw.rounded_rectangle(
-                    [850 - 130, y_pos - 20, 850 - 90, y_pos + 20],
-                    radius=5, fill=badge_bg_color
-                )
-                draw.text((850 - 110, y_pos), badge_text, font=badge_font, fill=badge_color, anchor="mm")
-                
             draw.text((850, y_pos), score_text, font=score_font, fill=TEXT_COLOR_MUTED, anchor="rm")
         
         # フッター情報

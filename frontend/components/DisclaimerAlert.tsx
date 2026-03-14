@@ -26,13 +26,6 @@ const DisclaimerAlert = () => {
                     </div>
                 </div>
             </div>
-            
-            {/* 装飾用背景パターン */}
-            <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <svg className="w-24 h-24 text-amber-900" fill="currentColor" viewBox="0 0 24 24">
-                     <path d="M12 2L1 21h22L12 2zm0 3.83L19.5 19h-15L12 5.83zM11 16h2v2h-2v-2zm0-7h2v5h-2V9z" />
-                </svg>
-            </div>
         </div>
     );
 };

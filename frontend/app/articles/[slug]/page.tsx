@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArticleSchema } from '@/components/StructuredData';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { RelatedArticles } from '@/components/RelatedArticles';
+import { AdUnit } from '@/components/AdUnit';
 
 type Props = {
   params: { slug: string };
@@ -128,12 +129,21 @@ export default async function ArticlePage({ params }: Props) {
               </div>
             )}
 
+            {/* 広告: アイキャッチ後・記事本文前（読者が記事に入る直前のCTR高位置） */}
+            <AdUnit slot="8529703346" placement="inline" />
+
             <div
               className="prose prose-slate prose-lg max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-p:leading-[1.85] prose-p:text-slate-700 prose-a:text-primary prose-a:font-semibold hover:prose-a:text-primary-light prose-img:rounded-xl prose-img:shadow-sm prose-blockquote:border-l-4 prose-blockquote:border-primary/20 prose-blockquote:bg-slate-50 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:text-slate-700 mt-8"
               dangerouslySetInnerHTML={{ __html: article.content }}
             />
 
+            {/* 広告: 記事本文後・関連記事前（読了直後のエンゲージメント最高潮） */}
+            <AdUnit slot="1489598374" placement="inline" />
+
             <RelatedArticles currentSlug={params.slug} count={3} />
+
+            {/* 広告: 関連記事後（次ページ遷移前のインプレッション） */}
+            <AdUnit slot="9407670747" placement="inline" />
           </article>
 
           <div className="text-center mt-12">

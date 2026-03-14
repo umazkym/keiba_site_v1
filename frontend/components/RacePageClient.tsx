@@ -11,6 +11,7 @@ import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { getPredictionsForDate } from "@/lib/api";
 import { Article } from "@/lib/articles";
 import DisclaimerAlert from "@/components/DisclaimerAlert";
+import { AdUnit } from "@/components/AdUnit";
 
 // 日付フォーマット検証関数
 /**
@@ -257,6 +258,8 @@ export default function RacePageClient({ initialDate, initialPredictionData, art
             <div className="mb-4">
                 <TopHitsDisplay />
             </div>
+            {/* 広告: 的中ランキング後・日付ナビ前（レースページファーストビュー直後） */}
+            <AdUnit slot="8529703346" placement="banner" />
             <div className="sticky top-14 sm:top-16 z-40 glass mb-5 p-2 sm:p-3">
                 <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
                     <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />

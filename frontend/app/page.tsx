@@ -7,6 +7,7 @@ import { getSpecialPick } from '@/lib/api';
 import { getLatestArticles, getUniqueCategories, getAllArticles } from '../lib/articles';
 import { ChartBarIcon } from '@/components/Icons';
 import DisclaimerAlert from '@/components/DisclaimerAlert';
+import { AdUnit } from '@/components/AdUnit';
 import type { Metadata } from 'next';
 
 // 動的コンテンツ（SpecialPick等）を含むため、常に最新データを取得
@@ -126,6 +127,9 @@ export default async function HomePage() {
                         <TopHitsDisplay />
                     </section>
                 </div>
+
+                {/* 広告①: ヒーロー＋的中ランキング直後（最も視認性が高い位置） */}
+                <AdUnit slot="8529703346" placement="banner" />
 
                 {/* 2. UMA-FREEとは */}
                 <section className="bg-white rounded-2xl sm:border sm:border-slate-100 p-6 md:p-10 shadow-soft max-w-[1000px] mx-auto w-full">
@@ -259,6 +263,9 @@ export default async function HomePage() {
                     </div>
                 </section>
 
+                {/* 広告②: 記事セクション後（コンテンツ読了タイミング） */}
+                <AdUnit slot="1489598374" placement="inline" />
+
                 {/* 6. 使い方セクション */}
                 <section className="bg-surface rounded-2xl border border-border p-6 md:p-10">
                     <h2 className="text-xl sm:text-2xl font-bold text-primary mb-8 text-center">
@@ -329,6 +336,9 @@ export default async function HomePage() {
                         </Link>
                     </div>
                 </section>
+
+                {/* 広告③: FAQ後・競馬場一覧前（ページ下部スクロール到達者向け） */}
+                <AdUnit slot="9407670747" placement="inline" />
 
                 {/* 8. 対応競馬場 */}
                 <section className="bg-slate-50 rounded-2xl border border-slate-200 p-6 md:p-10 shadow-inner">

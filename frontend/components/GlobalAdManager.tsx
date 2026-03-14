@@ -1,12 +1,28 @@
 'use client';
 import { usePathname } from 'next/navigation';
-import { Adsense } from './Adsense';
+import { StickyAd } from './StickyAd';
 
+/**
+ * グローバル広告マネージャー
+ * 
+ * 広告収益最大化戦略:
+ * 
+ * 1. Google Auto Ads（アンカー広告・ビネット広告）
+ *    → layout.tsx の adsbygoogle.js スクリプトが自動処理
+ *    → カスタムAnchorAd/InterstitialAdは不要（Google ML最適化の方が効果的）
+ * 
+ * 2. 手動配置広告
+ *    → 各ページコンポーネント内に AdUnit を配置（高価値ポジション）
+ *    → StickyAd: デスクトップサイドバー追従広告
+ * 
+ * 3. 広告非表示ページ
+ *    → /about, /contact, /privacy: ポリシー/個人情報系ページでは非表示
+ */
 export const GlobalAdManager = () => {
     try {
         const pathname = usePathname();
-        const adClient = "ca-pub-4411270831448240";
 
+        // 広告を表示しないページ（ポリシー系・個人情報系）
         const noAdPages = [
             '/about',
             '/contact',
@@ -19,8 +35,16 @@ export const GlobalAdManager = () => {
             return null;
         }
 
+        // デスクトップサイドバー追従広告の表示条件
+        // コンテンツが長いページ（レース詳細・記事詳細）で特に効果的
+        const showStickyAd = pathname.startsWith('/races/') ||
+            pathname.startsWith('/articles/') ||
+            pathname === '/faq';
+
         return (
             <>
+                {/* デスクトップ: 右サイドバー追従広告（xl以上の画面幅で表示） */}
+                {showStickyAd && <StickyAd />}
             </>
         );
     } catch (error) {
@@ -29,71 +53,3 @@ export const GlobalAdManager = () => {
         return null;
     }
 };
-
-
-// 合格後
-// 'use client';
-// import { usePathname } from 'next/navigation';
-// import { Adsense } from './Adsense';
-// import { AnchorAd } from './AnchorAd';
-// import { StickyAd } from './StickyAd';
-// import { InterstitialAd } from './InterstitialAd';
-
-// export const GlobalAdManager = () => {
-//     const pathname = usePathname();
-//     const adClient = "ca-pub-4411270831448240";
-    
-//     const noAdPages = [
-//         '/about', 
-//         '/contact', 
-//         '/privacy',
-//     ];
-    
-//     const shouldShowAds = !noAdPages.some(path => pathname === path);
-//     const isTopPage = pathname === '/';
-//     const isRacePage = pathname.startsWith('/races/');
-    
-//     if (!shouldShowAds) {
-//         return null;
-//     }
-    
-//     return (
-//         <>
-//             {/* トップページ: ヘッダー下に目立つ広告 */}
-//             {isTopPage && (
-//                 <div className="container py-4">
-//                     <div className="ad-highlight max-w-4xl mx-auto">
-//                         <Adsense
-//                             client={adClient}
-//                             slot="8529703346"
-//                             style={{ width: "100%", height: "120px" }}
-//                         />
-//                     </div>
-//                 </div>
-//             )}
-            
-//             {/* レースページ: コンテンツの上部に広告 */}
-//             {isRacePage && (
-//                 <>
-//                     <div className="container py-3">
-//                         <div className="ad-highlight max-w-4xl mx-auto">
-//                             <Adsense
-//                                 client={adClient}
-//                                 slot="8529703346"
-//                                 style={{ width: "100%", height: "90px" }}
-//                             />
-//                         </div>
-//                     </div>
-//                     {/* スティッキーサイドバー広告 */}
-//                     <StickyAd />
-//                 </>
-//             )}
-            
-//             {/* アンカー広告: 全ページ共通 */}
-//             {shouldShowAds && <AnchorAd />}
-            
-//             {/* インタースティシャル広告: レースページのみ */}
-//             {isRacePage && <InterstitialAd />}
-//         </>
-//     );
-// };

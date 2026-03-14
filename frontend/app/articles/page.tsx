@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getAllArticles, getUniqueCategories } from '../../lib/articles';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { AdUnit } from '@/components/AdUnit';
 import type { Metadata } from 'next';
 
 interface ArticlesPageProps {
@@ -57,6 +58,8 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                         {uniqueCategories.map((category) => (<Link href={`/articles?category=${encodeURIComponent(category)}`} key={category} className={`font-bold py-2 px-5 sm:px-6 text-sm sm:text-base rounded-full transition-all duration-200 shadow-sm ${selectedCategory === category ? 'bg-primary text-white shadow-md' : 'bg-surface border border-slate-200 text-text-secondary hover:bg-slate-50 hover:text-primary-dark hover:border-primary-light'}`}>{category}</Link>))}
                     </div>
                 </div>
+                {/* 広告: カテゴリフィルター後・記事グリッド前 */}
+                <AdUnit slot="1489598374" placement="inline" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 w-full mt-4">
                     {filteredArticles.map((article) => (<Link href={`/articles/${article.slug}`} key={article.slug} className="card group flex flex-col h-full overflow-hidden transition-all duration-300 hover-lift"><div className="relative h-48 w-full overflow-hidden"><Image src={article.eyecatch} alt={article.title} fill style={{ objectFit: 'cover' }} className="transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" /></div><div className="flex flex-col gap-3 p-5 sm:p-6 bg-white flex-grow"><span className="inline-block w-fit bg-primary-light text-primary-dark text-xs font-bold px-3 py-1 rounded-full">{article.category}</span><h2 className="text-lg sm:text-xl font-bold text-text-primary line-clamp-2 group-hover:text-primary transition-colors">{article.title}</h2>{article.description && <p className="text-text-secondary text-sm leading-relaxed line-clamp-2 mt-1">{article.description}</p>}<p className="text-text-muted text-xs sm:text-sm font-medium mt-auto pt-4 flex items-center gap-1.5"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>{new Date(article.date).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', }).replace(/\//g, '/')}</p></div></Link>))}
                 </div>

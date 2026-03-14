@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { FAQClient } from '@/components/FAQClient';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { AdUnit } from '@/components/AdUnit';
 
 export const metadata: Metadata = {
     title: 'よくある質問',
@@ -24,6 +25,10 @@ export default function FAQPage() {
             <Breadcrumb />
             <div className="w-full bg-surface">
                 <FAQClient />
+                {/* 広告: FAQコンテンツ後 */}
+                <div className="max-w-4xl mx-auto px-4 pb-8">
+                    <AdUnit slot="9407670747" placement="inline" />
+                </div>
             </div>
         </div>
     );

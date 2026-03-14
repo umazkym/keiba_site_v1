@@ -285,24 +285,22 @@ td.no-match {
 /* ---------- 広告収益最大化のためのスタイル ---------- */
 .ad-highlight {
     position: relative;
-    padding: 1rem;
+    padding: 0.75rem;
     background: #fafbfc;
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    margin: 1.5rem 0;
+    border-radius: 10px;
+    overflow: hidden;
 }
 
-.ad-highlight::before {
-    content: "スポンサーリンク";
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: white;
-    padding: 0 12px;
-    font-size: 11px;
-    color: #6b7280;
-    letter-spacing: 0.05em;
+/* 広告ユニットコンテナ: CLS防止のためmin-height予約 */
+.ad-unit-container {
+    contain: layout;
+    content-visibility: auto;
+}
+
+/* Google Auto Adsのアンカー広告用: コンテンツが隠れないようbottomパディング */
+body {
+    padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 /* レスポンシブ改善 */

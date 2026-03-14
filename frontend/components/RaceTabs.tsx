@@ -117,6 +117,14 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: Ve
                         </div>
                     </div>
 
+                    {/* 広告: AI分析テーブル直後（最高エンゲージメント位置） */}
+                    {shouldShowAd && (
+                        <div className="my-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="text-[10px] text-gray-400 text-center mb-1 tracking-wider select-none">スポンサーリンク</div>
+                            <Adsense client="ca-pub-4411270831448240" slot="8529703346" style={{ minHeight: '100px' }} />
+                        </div>
+                    )}
+
                     {/* 脚質パターン予測 */}
                     <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
                         <div className="p-3 sm:p-4 bg-gray-50 border-b border-gray-200">

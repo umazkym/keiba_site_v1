@@ -94,7 +94,7 @@ export default async function ArticlePage({ params }: Props) {
           image={article.eyecatch.startsWith('http') ? article.eyecatch : `https://uma-free.com${article.eyecatch}`}
         />
 
-        <div className="mx-auto px-4 max-w-3xl">
+        <div className="mx-auto px-4">
           <Breadcrumb />
 
           <article className="bg-white p-4 sm:p-8 rounded-xl shadow-sm border border-slate-100">
@@ -117,12 +117,12 @@ export default async function ArticlePage({ params }: Props) {
             </header>
 
             {article.eyecatch && (
-              <div className="relative w-full aspect-video mb-8 rounded-lg overflow-hidden bg-slate-100">
+              <div className="relative w-full md:w-1/2 mx-auto aspect-video mb-8 rounded-lg overflow-hidden bg-slate-100">
                 <Image
                   src={article.eyecatch}
                   alt={`${article.title} のアイキャッチ画像`}
                   fill
-                  sizes="(max-width: 768px) 100vw, 896px"
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   style={{ objectFit: 'cover' }}
                   priority
                 />

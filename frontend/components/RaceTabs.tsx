@@ -151,6 +151,11 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: Ve
                         </div>
                     </div>
 
+                    {/* 広告: 脚質パターン予測と過去対決成績の間（データ比較の読み進め区間） */}
+                    {shouldShowAd && (
+                        <AdUnit slot="9407670747" placement="inline" refreshKey={adRefreshKey} />
+                    )}
+
                     {/* 過去対決成績 */}
                     <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
                         <div className="p-3 sm:p-4 bg-gray-50 border-b border-gray-200">
@@ -176,6 +181,11 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: Ve
                             <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
                         </div>
                     </div>
+
+                    {/* 広告: レースナビゲーション直前（ユーザーが次Rへ遷移する前の停留ポイント） */}
+                    {shouldShowAd && (
+                        <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} />
+                    )}
                     <RaceNavigation />
 
                     <div className='p-3 sm:p-4 border mb-4 bg-white rounded-lg'>
@@ -199,8 +209,8 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: Ve
                         articlesMeta={articlesMeta}
                     />
 
-                    {shouldShowAd && activeRace.predictions.length >= 10 && (
-                        <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} />
+                    {shouldShowAd && activeRace.predictions.length >= 8 && (
+                        <AdUnit slot="1489598374" placement="inline" refreshKey={adRefreshKey} />
                     )}
                 </div>
             )}

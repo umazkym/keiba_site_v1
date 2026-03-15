@@ -305,6 +305,8 @@ td.no-match {
     opacity: 0;
     margin: 0 !important;
     padding: 0 !important;
+    line-height: 0;
+    font-size: 0;
 }
 
 /* Google Auto Adsのアンカー広告用: コンテンツが隠れないようbottomパディング */
@@ -321,7 +323,13 @@ header.glass {
 /* モバイルでのフッターアンカー広告用余白 */
 @media (max-width: 640px) {
     footer {
-        padding-bottom: 60px; /* アンカー広告分のスペースを確保 */
+        padding-bottom: 70px; /* Auto Adsアンカーの高さ変動に対応 */
+    }
+
+    /* モバイルでの広告ユニット間の余白を調整 */
+    .ad-unit-container {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
     }
 }
 

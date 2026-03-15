@@ -88,8 +88,8 @@ export const AdUnit = ({
     }> = {
         inline: {
             containerClass: 'my-5 sm:my-6 flex flex-col items-center justify-center',
-            minHeight: '100px',
-            adStyle: { width: '100%', minHeight: '100px' },
+            minHeight: '90px',
+            adStyle: { width: '100%', minHeight: '90px' },
         },
         banner: {
             containerClass: 'my-6 sm:my-8 flex flex-col items-center justify-center',
@@ -98,8 +98,8 @@ export const AdUnit = ({
         },
         sidebar: {
             containerClass: 'mb-4',
-            minHeight: '250px',
-            adStyle: { width: '100%', minHeight: '250px' },
+            minHeight: '200px',
+            adStyle: { width: '100%', minHeight: '200px' },
         },
     };
 

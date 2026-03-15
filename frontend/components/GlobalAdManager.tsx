@@ -8,15 +8,14 @@ import { StickyAd } from './StickyAd';
  * 広告収益最大化戦略:
  * 
  * 1. Google Auto Ads（アンカー広告・ビネット広告）
- *    → layout.tsx の adsbygoogle.js スクリプトが自動処理
- *    → カスタムAnchorAd/InterstitialAdは不要（Google ML最適化の方が効果的）
+ *    → layout.tsx の adsbygoogle.js スクリプトが自動処理（Google ML最適化）
  * 
  * 2. 手動配置広告
  *    → 各ページコンポーネント内に AdUnit を配置（高価値ポジション）
  *    → StickyAd: デスクトップサイドバー追従広告
  * 
  * 3. 広告非表示ページ
- *    → /about, /contact, /privacy: ポリシー/個人情報系ページでは非表示
+ *    → /about, /contact, /privacy, /terms, /advertising: ポリシー/個人情報系ページ
  */
 export const GlobalAdManager = () => {
     try {
@@ -27,6 +26,8 @@ export const GlobalAdManager = () => {
             '/about',
             '/contact',
             '/privacy',
+            '/terms',
+            '/advertising',
         ];
 
         const shouldShowAds = !noAdPages.some(path => pathname === path);
@@ -42,7 +43,8 @@ export const GlobalAdManager = () => {
             pathname === '/faq' ||
             pathname === '/' ||
             pathname === '/articles' ||
-            pathname === '/about-ai';
+            pathname === '/about-ai' ||
+            pathname === '/search';
 
         return (
             <>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { AdUnit } from './AdUnit';
 
 interface FAQItem {
     id: string;
@@ -240,25 +241,33 @@ export const FAQClient = () => {
 
                     {/* FAQ アイテム */}
                     <div className="space-y-6">
-                        {filteredItems.map(item => {
+                        {filteredItems.map((item, index) => {
                             const colors = getCategoryColor(item.category);
                             return (
-                                <div key={item.id} className="bg-white p-6 rounded-xl border border-border shadow-sm">
-                                    <div className="flex items-start gap-2 mb-3">
-                                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 tracking-wide ${colors.badge}`}>
-                                            {item.category}
-                                        </span>
-                                    </div>
-                                    <h3 className="font-bold text-primary mb-3 text-lg flex items-start gap-2">
-                                        <span className="text-slate-300" aria-hidden="true">Q.</span>
-                                        {item.question}
-                                    </h3>
-                                    <div className="text-text-secondary leading-relaxed text-sm flex items-start gap-2">
-                                        <span className="font-bold text-primary opacity-20" aria-hidden="true">A.</span>
-                                        <div className="flex-1">
-                                            {item.answer}
+                                <div key={item.id}>
+                                    <div className="bg-white p-6 rounded-xl border border-border shadow-sm">
+                                        <div className="flex items-start gap-2 mb-3">
+                                            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 tracking-wide ${colors.badge}`}>
+                                                {item.category}
+                                            </span>
+                                        </div>
+                                        <h3 className="font-bold text-primary mb-3 text-lg flex items-start gap-2">
+                                            <span className="text-slate-300" aria-hidden="true">Q.</span>
+                                            {item.question}
+                                        </h3>
+                                        <div className="text-text-secondary leading-relaxed text-sm flex items-start gap-2">
+                                            <span className="font-bold text-primary opacity-20" aria-hidden="true">A.</span>
+                                            <div className="flex-1">
+                                                {item.answer}
+                                            </div>
                                         </div>
                                     </div>
+                                    {/* カテゴリ間にインフィード広告を挿入（8問目の後、フィルタ無し時のみ） */}
+                                    {index === 7 && !selectedCategory && (
+                                        <div className="mt-6">
+                                            <AdUnit slot="8529703346" placement="inline" />
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}

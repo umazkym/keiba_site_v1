@@ -18,6 +18,8 @@ export const FooterAd = () => {
             '/about',
             '/contact',
             '/privacy',
+            '/terms',
+            '/advertising',
         ];
 
         const shouldShow = !noAdPages.some(path => pathname === path);
@@ -28,7 +30,7 @@ export const FooterAd = () => {
             <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6 pb-4">
                 <AdUnit
                     slot="9407670747"
-                    placement="banner"
+                    placement="inline"
                     label="スポンサーリンク"
                 />
             </div>

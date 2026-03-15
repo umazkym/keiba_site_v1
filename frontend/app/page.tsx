@@ -205,6 +205,9 @@ export default async function HomePage() {
                     <SpecialPickCard pick={specialPick} date={todayStr} />
                 </section>
 
+                {/* 広告: 注目馬セクション後（ユーザーの興味が高まったタイミング） */}
+                <AdUnit slot="9407670747" placement="inline" />
+
                 {/* 5. 新着記事セクション */}
                 <section>
                     <div className="flex items-center justify-between mb-6 sm:mb-8">
@@ -308,6 +311,9 @@ export default async function HomePage() {
 
                 {/* 免責事項（独立セクション） */}
                 <DisclaimerAlert />
+
+                {/* 広告: 使い方セクション後（ページ中盤のスクロール到達者向け） */}
+                <AdUnit slot="8529703346" placement="inline" />
 
                 {/* 7. よくある質問 */}
                 <section className="bg-white rounded-2xl border border-slate-100 p-6 md:p-10 shadow-soft">

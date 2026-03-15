@@ -285,20 +285,26 @@ td.no-match {
 /* ---------- 広告収益最大化のためのスタイル ---------- */
 .ad-highlight {
     position: relative;
-    padding: 0.75rem;
+    padding: 0.5rem 0.25rem;
     overflow: hidden;
-    /* AdSense審査・配信準備期間中に空枠が目立つのを防ぐため背景と枠線を削除 */
+    /* 広告クリック誤タップ防止のため余白を最小限に */
 }
 
 /* 広告ユニットコンテナ: CLS防止のためmin-height予約 */
 .ad-unit-container {
     contain: layout;
     content-visibility: auto;
+    transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin 0.3s ease-out;
 }
 
-/* 広告が「未配信（unfilled）」としてマークされた場合は枠自体を非表示にして不自然な空白を防ぐ */
+/* 広告が「未配信（unfilled）」としてマークされた場合はスムーズに折りたたむ */
 .ad-unit-container:has(ins[data-ad-status="unfilled"]) {
-    display: none !important;
+    max-height: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden;
+    opacity: 0;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 /* Google Auto Adsのアンカー広告用: コンテンツが隠れないようbottomパディング */

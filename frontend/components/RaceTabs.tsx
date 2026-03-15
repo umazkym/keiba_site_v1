@@ -11,7 +11,7 @@ import { StartPositionChart } from './StartPositionChart';
 import { MatchupTable } from './MatchupTable';
 import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './Icons';
-import { Adsense } from './Adsense';
+import { AdUnit } from './AdUnit';
 import { RelatedRaces } from './RelatedRaces';
 import { DataExplanationPanel } from './DataExplanationPanel';
 import { DynamicRelatedArticles } from './DynamicRelatedArticles';
@@ -119,10 +119,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: Ve
 
                     {/* 広告: AI分析テーブル直後（最高エンゲージメント位置） */}
                     {shouldShowAd && (
-                        <div className="my-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="text-[10px] text-gray-400 text-center mb-1 tracking-wider select-none">スポンサーリンク</div>
-                            <Adsense client="ca-pub-4411270831448240" slot="8529703346" style={{ minHeight: '100px' }} />
-                        </div>
+                        <AdUnit slot="8529703346" placement="inline" />
                     )}
 
                     {/* 脚質パターン予測 */}
@@ -174,10 +171,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: Ve
                     <DataExplanationPanel showAdvanced={true} />
 
                     {shouldShowAd && (
-                        <div className="my-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="text-xs text-gray-500 text-center mb-1">スポンサーリンク</div>
-                            <Adsense client="ca-pub-4411270831448240" slot="1489598374" style={{ minHeight: '90px' }} />
-                        </div>
+                        <AdUnit slot="1489598374" placement="inline" />
                     )}
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
@@ -190,10 +184,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: Ve
                     />
 
                     {shouldShowAd && activeRace.predictions.length >= 10 && (
-                        <div className="my-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="text-xs text-gray-500 text-center mb-1">スポンサーリンク</div>
-                            <Adsense client="ca-pub-4411270831448240" slot="8529703346" style={{ minHeight: '120px' }} />
-                        </div>
+                        <AdUnit slot="8529703346" placement="inline" />
                     )}
                 </div>
             )}

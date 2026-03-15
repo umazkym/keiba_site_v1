@@ -39,7 +39,9 @@ export const GlobalAdManager = () => {
         // コンテンツが長いページ（レース詳細・記事詳細）で特に効果的
         const showStickyAd = pathname.startsWith('/races/') ||
             pathname.startsWith('/articles/') ||
-            pathname === '/faq';
+            pathname === '/faq' ||
+            pathname === '/' ||
+            pathname === '/about-ai';
 
         return (
             <>

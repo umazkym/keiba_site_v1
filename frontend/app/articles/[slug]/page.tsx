@@ -132,10 +132,54 @@ export default async function ArticlePage({ params }: Props) {
             {/* 広告: アイキャッチ後・記事本文前（読者が記事に入る直前のCTR高位置） */}
             <AdUnit slot="8529703346" placement="inline" />
 
-            <div
-              className="prose prose-slate prose-lg max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-p:leading-[1.85] prose-p:text-slate-700 prose-a:text-primary prose-a:font-semibold hover:prose-a:text-primary-light prose-img:rounded-xl prose-img:shadow-sm prose-blockquote:border-l-4 prose-blockquote:border-primary/20 prose-blockquote:bg-slate-50 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:text-slate-700 mt-8"
-              dangerouslySetInnerHTML={{ __html: article.content }}
-            />
+            {(() => {
+              // 記事本文を<h2>タグで分割し、長文記事には中間広告を挿入
+              const h2Regex = /(<h2[\s>])/gi;
+              const h2Matches = article.content.match(h2Regex);
+              const h2Count = h2Matches ? h2Matches.length : 0;
+
+              if (h2Count >= 4) {
+                // 2番目の<h2>の位置を見つけて分割
+                let matchIndex = 0;
+                let splitPos = -1;
+                const searchRegex = /<h2[\s>]/gi;
+                let match;
+                while ((match = searchRegex.exec(article.content)) !== null) {
+                  matchIndex++;
+                  if (matchIndex === 2) {
+                    splitPos = match.index;
+                    break;
+                  }
+                }
+
+                if (splitPos > 0) {
+                  const firstPart = article.content.substring(0, splitPos);
+                  const secondPart = article.content.substring(splitPos);
+                  return (
+                    <>
+                      <div
+                        className="prose prose-slate prose-lg max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-p:leading-[1.85] prose-p:text-slate-700 prose-a:text-primary prose-a:font-semibold hover:prose-a:text-primary-light prose-img:rounded-xl prose-img:shadow-sm prose-blockquote:border-l-4 prose-blockquote:border-primary/20 prose-blockquote:bg-slate-50 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:text-slate-700 mt-8"
+                        dangerouslySetInnerHTML={{ __html: firstPart }}
+                      />
+                      {/* 広告: 記事本文中間（長文記事のみ表示） */}
+                      <AdUnit slot="1489598374" placement="inline" />
+                      <div
+                        className="prose prose-slate prose-lg max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-p:leading-[1.85] prose-p:text-slate-700 prose-a:text-primary prose-a:font-semibold hover:prose-a:text-primary-light prose-img:rounded-xl prose-img:shadow-sm prose-blockquote:border-l-4 prose-blockquote:border-primary/20 prose-blockquote:bg-slate-50 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:text-slate-700"
+                        dangerouslySetInnerHTML={{ __html: secondPart }}
+                      />
+                    </>
+                  );
+                }
+              }
+
+              // h2が4つ未満の短い記事では、広告なしで通常の表示
+              return (
+                <div
+                  className="prose prose-slate prose-lg max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-p:leading-[1.85] prose-p:text-slate-700 prose-a:text-primary prose-a:font-semibold hover:prose-a:text-primary-light prose-img:rounded-xl prose-img:shadow-sm prose-blockquote:border-l-4 prose-blockquote:border-primary/20 prose-blockquote:bg-slate-50 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:text-slate-700 mt-8"
+                  dangerouslySetInnerHTML={{ __html: article.content }}
+                />
+              );
+            })()}
 
             {/* 広告: 記事本文後・関連記事前（読了直後のエンゲージメント最高潮） */}
             <AdUnit slot="1489598374" placement="inline" />

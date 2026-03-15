@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useState, useEffect } from 'react';
 import { Adsense } from './Adsense';
 
 /**
@@ -29,6 +30,9 @@ const AD_CLIENT = 'ca-pub-4411270831448240';
  * CLS（Cumulative Layout Shift）防止のためmin-heightを予約。
  * 配置タイプに応じた最適なサイズとスタイルを自動適用。
  * 開発環境ではプレースホルダーを表示。
+ * 
+ * 広告がロードされるまでラベルは非表示にし、
+ * unfilled時にはコンテナごと折りたたまれる（CSS側で制御）。
  */
 export const AdUnit = ({
     slot,
@@ -36,6 +40,36 @@ export const AdUnit = ({
     className = '',
     label = 'スポンサーリンク',
 }: AdUnitProps) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [adLoaded, setAdLoaded] = useState(false);
+
+    // MutationObserverで広告のロード完了を検知
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const observer = new MutationObserver(() => {
+            // ins要素にdata-ad-statusが設定されたらロード完了とみなす
+            const ins = container.querySelector('ins.adsbygoogle');
+            if (ins) {
+                const status = ins.getAttribute('data-ad-status');
+                if (status === 'filled') {
+                    setAdLoaded(true);
+                    observer.disconnect();
+                }
+            }
+        });
+
+        observer.observe(container, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['data-ad-status'],
+        });
+
+        return () => observer.disconnect();
+    }, []);
+
     // 配置タイプに応じたスタイル設定
     const placementStyles: Record<AdPlacement, {
         containerClass: string;
@@ -63,11 +97,13 @@ export const AdUnit = ({
 
     return (
         <div
+            ref={containerRef}
             className={`ad-unit-container ${config.containerClass} ${className}`}
             style={{ minHeight: config.minHeight }}
         >
             <div className="ad-highlight">
-                {label && (
+                {/* 広告がロードされた場合のみラベルを表示 */}
+                {label && adLoaded && (
                     <div className="text-[10px] text-gray-400 text-center mb-1 tracking-wider select-none">
                         {label}
                     </div>

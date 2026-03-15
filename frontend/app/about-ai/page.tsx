@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { AdUnit } from '@/components/AdUnit';
 
 export const metadata: Metadata = {
     title: 'UMA-FREEのAI競馬予測モデルとデータサイエンス',
@@ -114,6 +115,9 @@ export default function AboutAiPage() {
                             </div>
                         </section>
 
+                        {/* 広告: 特徴量セクション後（コンテンツ中間のインプレッション） */}
+                        <AdUnit slot="8529703346" placement="inline" />
+
                         {/* バックテスト */}
                         <section className={sectionClass}>
                             <h2 className={sectionTitleClass}>{aiContent.backtest.title}</h2>
@@ -143,6 +147,10 @@ export default function AboutAiPage() {
                                 ))}
                             </div>
                         </section>
+
+
+                        {/* 広告: 限界と課題セクション後（読了直後のインプレッション） */}
+                        <AdUnit slot="1489598374" placement="inline" />
 
                         {/* 関連リンク */}
                         <section className={sectionClass}>

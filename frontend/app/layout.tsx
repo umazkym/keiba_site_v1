@@ -9,6 +9,7 @@ import { CookieConsent } from "@/components/CookieConsent";
 
 import { Suspense } from "react";
 import { GlobalAdManager } from "@/components/GlobalAdManager";
+import { FooterAd } from "@/components/FooterAd";
 
 const inter = Inter({
     subsets: ["latin"],
@@ -112,6 +113,10 @@ export default function RootLayout({
                 <main className="w-full max-w-[1600px] mx-auto p-3 sm:p-4 md:p-6 min-h-screen">
                     {children}
                 </main>
+                {/* フッター直前の全ページ共通広告（ポリシー系ページでは非表示） */}
+                <Suspense fallback={null}>
+                    <FooterAd />
+                </Suspense>
                 <Footer />
                 <CookieConsent />
                 <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || ""} />

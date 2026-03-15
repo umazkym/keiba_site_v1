@@ -87,7 +87,7 @@ export const Adsense = ({ client, slot, className, style, isResponsive = true }:
         }
       },
       {
-        rootMargin: '0px',
+        rootMargin: '200px',
         threshold: 0.1, // 要素が10%見えたらトリガー
       }
     );

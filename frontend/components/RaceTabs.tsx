@@ -65,13 +65,29 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: Ve
             const newParams = new URLSearchParams();
             newParams.set('race', selectedRace.race_number.toString());
             newParams.set('venue', venue.venue_name);
-            router.replace(`/races/${currentDate}?${newParams.toString()}`, { scroll: false });
+            const newUrl = `/races/${currentDate}?${newParams.toString()}`;
+            router.replace(newUrl, { scroll: false });
+
+            // Google Analytics 仮想ページビュー送信
+            // 各レース閲覧を個別のPVとしてカウントすることで、
+            // AdSenseのRPM計算とレポート精度を向上させる
+            if (typeof window !== 'undefined' && (window as any).gtag) {
+                (window as any).gtag('event', 'page_view', {
+                    page_path: newUrl,
+                    page_title: `${venue.venue_name} ${selectedRace.race_number}R ${selectedRace.race_name}`,
+                });
+            }
         }
     }, [venue, router, currentDate, searchParams]);
 
     const shouldShowAd = useMemo(() => {
         return activeRace && activeRace.predictions.length >= 5;
     }, [activeRace]);
+
+    // レース切替時に広告を完全リフレッシュさせるキー
+    const adRefreshKey = useMemo(() => {
+        return activeRace ? `${venue.venue_name}-${activeRace.race_number}` : '';
+    }, [venue.venue_name, activeRace]);
 
     const RaceNavigation = () => {
         const hasPrev = activeRaceIndex > 0;
@@ -119,7 +135,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: Ve
 
                     {/* 広告: AI分析テーブル直後（最高エンゲージメント位置） */}
                     {shouldShowAd && (
-                        <AdUnit slot="8529703346" placement="inline" />
+                        <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} />
                     )}
 
                     {/* 脚質パターン予測 */}
@@ -171,7 +187,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: Ve
                     <DataExplanationPanel showAdvanced={true} />
 
                     {shouldShowAd && (
-                        <AdUnit slot="1489598374" placement="inline" />
+                        <AdUnit slot="1489598374" placement="inline" refreshKey={adRefreshKey} />
                     )}
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
@@ -184,7 +200,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: Ve
                     />
 
                     {shouldShowAd && activeRace.predictions.length >= 10 && (
-                        <AdUnit slot="8529703346" placement="inline" />
+                        <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} />
                     )}
                 </div>
             )}

@@ -20,6 +20,8 @@ type AdUnitProps = {
     className?: string;
     /** 追加ラベルテキスト */
     label?: string;
+    /** レース切替等で広告をリフレッシュしたい場合に変更する一意キー */
+    refreshKey?: string;
 };
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
@@ -33,15 +35,23 @@ const AD_CLIENT = 'ca-pub-4411270831448240';
  * 
  * 広告がロードされるまでラベルは非表示にし、
  * unfilled時にはコンテナごと折りたたまれる（CSS側で制御）。
+ * 
+ * refreshKeyが変わると広告が完全リフレッシュされる。
  */
 export const AdUnit = ({
     slot,
     placement = 'inline',
     className = '',
     label = 'スポンサーリンク',
+    refreshKey = '',
 }: AdUnitProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [adLoaded, setAdLoaded] = useState(false);
+
+    // refreshKeyが変わったらラベル状態をリセット
+    useEffect(() => {
+        setAdLoaded(false);
+    }, [refreshKey]);
 
     // MutationObserverで広告のロード完了を検知
     useEffect(() => {
@@ -68,7 +78,7 @@ export const AdUnit = ({
         });
 
         return () => observer.disconnect();
-    }, []);
+    }, [refreshKey]); // refreshKey変更時にobserverも再設定
 
     // 配置タイプに応じたスタイル設定
     const placementStyles: Record<AdPlacement, {
@@ -111,6 +121,7 @@ export const AdUnit = ({
                 <Adsense
                     client={AD_CLIENT}
                     slot={slot}
+                    refreshKey={refreshKey}
                     style={config.adStyle}
                     isResponsive={true}
                 />

@@ -6,16 +6,19 @@ import { usePathname } from 'next/navigation';
 type AdsenseProps = {
   client: string;
   slot: string;
+  /** レース切替等で広告をリフレッシュしたい場合に変更する一意キー */
+  refreshKey?: string;
   className?: string;
   style?: React.CSSProperties;
   isResponsive?: boolean;
 };
 
-export const Adsense = ({ client, slot, className, style, isResponsive = true }: AdsenseProps) => {
+export const Adsense = ({ client, slot, refreshKey = '', className, style, isResponsive = true }: AdsenseProps) => {
   const pathname = usePathname();
   const adRef = useRef<HTMLDivElement>(null);
   const adLoaded = useRef(false); // 広告が一度読み込まれたかを追跡するフラグ
   const [scriptReady, setScriptReady] = useState(false); // adsbygoogleスクリプトが準備完了したか
+  const prevRefreshKey = useRef(refreshKey);
 
   // GoogleAdSenseスクリプトの初期化を確認
   useEffect(() => {
@@ -31,6 +34,14 @@ export const Adsense = ({ client, slot, className, style, isResponsive = true }:
 
     checkScriptReady();
   }, []);
+
+  // refreshKeyが変わったら広告をリセット
+  useEffect(() => {
+    if (prevRefreshKey.current !== refreshKey) {
+      adLoaded.current = false; // フラグをリセットして再読込を許可
+      prevRefreshKey.current = refreshKey;
+    }
+  }, [refreshKey]);
 
   useEffect(() => {
     const adContainer = adRef.current;
@@ -98,8 +109,8 @@ export const Adsense = ({ client, slot, className, style, isResponsive = true }:
     return () => {
       observer.disconnect();
     };
-    // pathnameが変わるたびに再監視するように設定
-  }, [pathname, client, slot, className, style, isResponsive, scriptReady]);
+    // pathname/refreshKey が変わるたびに再監視するように設定
+  }, [pathname, refreshKey, client, slot, className, style, isResponsive, scriptReady]);
 
   // 開発環境ではプレースホルダーを表示
   if (process.env.NODE_ENV !== 'production') {
@@ -108,11 +119,11 @@ export const Adsense = ({ client, slot, className, style, isResponsive = true }:
           className={`bg-gray-200 border-2 border-dashed border-gray-400 text-gray-500 flex items-center justify-center ${className || ''}`}
           style={style}
         >
-          広告エリア (Slot: {slot})
+          広告エリア (Slot: {slot}{refreshKey ? ` | Key: ${refreshKey}` : ''})
         </div>
     );
   }
 
-  // keyをpathnameとslotの組み合わせにすることで、ページ遷移時に広告コンポーネントを確実に再生成させる
-  return <div ref={adRef} key={`${pathname}-${slot}`} />;
+  // keyにrefreshKeyを含めることで、レース切替時にコンポーネントを完全再生成させる
+  return <div ref={adRef} key={`${pathname}-${slot}-${refreshKey}`} />;
 };

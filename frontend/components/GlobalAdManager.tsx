@@ -41,6 +41,7 @@ export const GlobalAdManager = () => {
             pathname.startsWith('/articles/') ||
             pathname === '/faq' ||
             pathname === '/' ||
+            pathname === '/articles' ||
             pathname === '/about-ai';
 
         return (

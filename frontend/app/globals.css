@@ -312,6 +312,19 @@ body {
     padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+/* Google Auto Ads 上部アンカー広告のヘッダー重なり対策 */
+/* Auto Adsがトップアンカーを挿入した場合、stickyヘッダーと重ならないようz-indexを調整 */
+header.glass {
+    z-index: 40 !important; /* Google Adsの上部アンカー(z-index: 2147483646)より低いが、他要素より高い */
+}
+
+/* モバイルでのフッターアンカー広告用余白 */
+@media (max-width: 640px) {
+    footer {
+        padding-bottom: 60px; /* アンカー広告分のスペースを確保 */
+    }
+}
+
 /* レスポンシブ改善 */
 @media (max-width: 640px) {
     body {

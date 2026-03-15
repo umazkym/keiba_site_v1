@@ -134,50 +134,51 @@ export default async function ArticlePage({ params }: Props) {
 
             {(() => {
               // 記事本文を<h2>タグで分割し、長文記事には中間広告を挿入
-              const h2Regex = /(<h2[\s>])/gi;
-              const h2Matches = article.content.match(h2Regex);
-              const h2Count = h2Matches ? h2Matches.length : 0;
-
-              if (h2Count >= 4) {
-                // 2番目の<h2>の位置を見つけて分割
-                let matchIndex = 0;
-                let splitPos = -1;
-                const searchRegex = /<h2[\s>]/gi;
-                let match;
-                while ((match = searchRegex.exec(article.content)) !== null) {
-                  matchIndex++;
-                  if (matchIndex === 2) {
-                    splitPos = match.index;
-                    break;
-                  }
-                }
-
-                if (splitPos > 0) {
-                  const firstPart = article.content.substring(0, splitPos);
-                  const secondPart = article.content.substring(splitPos);
-                  return (
-                    <>
-                      <div
-                        className="prose prose-slate prose-lg max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-p:leading-[1.85] prose-p:text-slate-700 prose-a:text-primary prose-a:font-semibold hover:prose-a:text-primary-light prose-img:rounded-xl prose-img:shadow-sm prose-blockquote:border-l-4 prose-blockquote:border-primary/20 prose-blockquote:bg-slate-50 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:text-slate-700 mt-8"
-                        dangerouslySetInnerHTML={{ __html: firstPart }}
-                      />
-                      {/* 広告: 記事本文中間（長文記事のみ表示） */}
-                      <AdUnit slot="1489598374" placement="inline" />
-                      <div
-                        className="prose prose-slate prose-lg max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-p:leading-[1.85] prose-p:text-slate-700 prose-a:text-primary prose-a:font-semibold hover:prose-a:text-primary-light prose-img:rounded-xl prose-img:shadow-sm prose-blockquote:border-l-4 prose-blockquote:border-primary/20 prose-blockquote:bg-slate-50 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:text-slate-700"
-                        dangerouslySetInnerHTML={{ __html: secondPart }}
-                      />
-                    </>
-                  );
-                }
+              const proseClass = "prose prose-slate prose-lg max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-p:leading-[1.85] prose-p:text-slate-700 prose-a:text-primary prose-a:font-semibold hover:prose-a:text-primary-light prose-img:rounded-xl prose-img:shadow-sm prose-blockquote:border-l-4 prose-blockquote:border-primary/20 prose-blockquote:bg-slate-50 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:text-slate-700";
+              
+              // H2の位置をすべて収集
+              const h2Positions: number[] = [];
+              const searchRegex = /<h2[\s>]/gi;
+              let match;
+              while ((match = searchRegex.exec(article.content)) !== null) {
+                h2Positions.push(match.index);
               }
 
-              // h2が4つ未満の短い記事では、広告なしで通常の表示
+              // H2が7つ以上: 2番目と5番目のH2前に広告（2箇所）
+              if (h2Positions.length >= 7) {
+                const split1 = h2Positions[1]; // 2番目のH2
+                const split2 = h2Positions[4]; // 5番目のH2
+                const part1 = article.content.substring(0, split1);
+                const part2 = article.content.substring(split1, split2);
+                const part3 = article.content.substring(split2);
+                return (
+                  <>
+                    <div className={`${proseClass} mt-8`} dangerouslySetInnerHTML={{ __html: part1 }} />
+                    <AdUnit slot="1489598374" placement="inline" />
+                    <div className={proseClass} dangerouslySetInnerHTML={{ __html: part2 }} />
+                    <AdUnit slot="9407670747" placement="inline" />
+                    <div className={proseClass} dangerouslySetInnerHTML={{ __html: part3 }} />
+                  </>
+                );
+              }
+
+              // H2が4〜6つ: 2番目のH2前に広告（1箇所）
+              if (h2Positions.length >= 4) {
+                const splitPos = h2Positions[1];
+                const firstPart = article.content.substring(0, splitPos);
+                const secondPart = article.content.substring(splitPos);
+                return (
+                  <>
+                    <div className={`${proseClass} mt-8`} dangerouslySetInnerHTML={{ __html: firstPart }} />
+                    <AdUnit slot="1489598374" placement="inline" />
+                    <div className={proseClass} dangerouslySetInnerHTML={{ __html: secondPart }} />
+                  </>
+                );
+              }
+
+              // H2が3つ以下の短い記事では広告なし
               return (
-                <div
-                  className="prose prose-slate prose-lg max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-p:leading-[1.85] prose-p:text-slate-700 prose-a:text-primary prose-a:font-semibold hover:prose-a:text-primary-light prose-img:rounded-xl prose-img:shadow-sm prose-blockquote:border-l-4 prose-blockquote:border-primary/20 prose-blockquote:bg-slate-50 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:text-slate-700 mt-8"
-                  dangerouslySetInnerHTML={{ __html: article.content }}
-                />
+                <div className={`${proseClass} mt-8`} dangerouslySetInnerHTML={{ __html: article.content }} />
               );
             })()}
 

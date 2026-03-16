@@ -56,14 +56,7 @@ export const GlobalAdManager = () => {
 
         return (
             <>
-                {/* 既存のデスクトップ用右サイドバー */}
-                {showStickyAd && (
-                    <aside className="hidden xl:block w-[300px] shrink-0">
-                        <StickyAd />
-                    </aside>
-                )}
-
-                {/* 新設のモバイル用下部追従広告 */}
+                {/* 新設のモバイル用下部追従広告（PCなど広い画面ではコンポーネント側で制御/非表示） */}
                 {showMobileStickyAd && <MobileStickyAd />}
             </>
         );

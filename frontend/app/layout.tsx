@@ -106,18 +106,16 @@ export default function RootLayout({
                 <SoftwareApplicationSchema />
 
                 <Header />
-                <main className="w-full max-w-[1600px] mx-auto p-3 sm:p-4 md:p-6 min-h-screen">
-                    <div className="flex items-stretch gap-6 xl:gap-8">
-                        {/* メインコンテンツエリア */}
-                        <div className="flex-1 min-w-0">
-                            {children}
-                        </div>
-                        
-                        {/* デスクトップ用右サイドバー（広告専用エリア） */}
-                        <Suspense fallback={null}>
-                            <GlobalAdManager />
-                        </Suspense>
+                <main className="w-full max-w-5xl mx-auto p-3 sm:p-4 md:p-6 min-h-screen">
+                    {/* メインコンテンツエリア */}
+                    <div className="w-full">
+                        {children}
                     </div>
+                    
+                    {/* モバイル下部追従等、DOMフローに影響しない広告マネージャー */}
+                    <Suspense fallback={null}>
+                        <GlobalAdManager />
+                    </Suspense>
                 </main>
                 {/* フッター直前の全ページ共通広告はユーザーの要望により撤去（UIスッキリ化のため） */}
                 <Footer />

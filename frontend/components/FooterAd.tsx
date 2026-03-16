@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { AdUnit } from './AdUnit';
 
 /**
@@ -8,10 +8,12 @@ import { AdUnit } from './AdUnit';
  * 
  * ページ最下部までスクロールしたユーザーに追加インプレッションを提供。
  * ポリシー系ページ（/about, /contact, /privacy）では非表示。
+ * レース切替時にsearchParamsの変化を検知して広告をリフレッシュ。
  */
 export const FooterAd = () => {
     try {
         const pathname = usePathname();
+        const searchParams = useSearchParams();
 
         // 広告を表示しないページ（ポリシー系・個人情報系）
         const noAdPages = [
@@ -26,12 +28,18 @@ export const FooterAd = () => {
 
         if (!shouldShow) return null;
 
+        // ▼▼▼▼▼【広告リフレッシュ対応】▼▼▼▼▼
+        // pathname + searchParams からrefreshKeyを生成
+        const refreshKey = `footer-${pathname}-${searchParams.get('race') || ''}-${searchParams.get('venue') || ''}`;
+        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+
         return (
             <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6 pb-4">
                 <AdUnit
                     slot="9407670747"
                     placement="inline"
                     label="スポンサーリンク"
+                    refreshKey={refreshKey}
                 />
             </div>
         );

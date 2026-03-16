@@ -3,6 +3,7 @@
 
 import { Adsense } from './Adsense';
 import { useEffect, useState, useCallback } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 /**
  * デスクトップ右サイドバー追従広告
@@ -12,11 +13,20 @@ import { useEffect, useState, useCallback } from 'react';
  * - フッターに到達したら非表示（重なり防止）
  * - 閉じるボタン付き（UX向上）
  * - 300x250（ミディアムレクタングル）サイズ: 最もCTRが高い広告サイズ
+ * - レース切替時にsearchParamsの変化を検知して広告をリフレッシュ
  */
 export const StickyAd = () => {
     const [isVisible, setIsVisible] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
     const [isDismissed, setIsDismissed] = useState(false);
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    // ▼▼▼▼▼【広告リフレッシュ対応】▼▼▼▼▼
+    // pathname + searchParams（race, venue）からrefreshKeyを生成
+    // レース切替時にsearchParamsが変わるため、広告がリフレッシュされる
+    const refreshKey = `${pathname}-${searchParams.get('race') || ''}-${searchParams.get('venue') || ''}`;
+    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
     useEffect(() => {
         setIsMounted(true);
@@ -77,6 +87,7 @@ export const StickyAd = () => {
                 <Adsense
                     client="ca-pub-4411270831448240"
                     slot="9407670747"
+                    refreshKey={refreshKey}
                     style={{ width: '100%', height: '250px' }}
                     isResponsive={false}
                 />

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from 'next/link';
-import { RaceDayPrediction } from "@/lib/types";
+import { RaceDayPrediction, SpecialPick, TopPayoutHit } from "@/lib/types";
 import { RaceTabs } from "@/components/RaceTabs";
 import { SpecialPickCard } from "@/components/SpecialPickCard";
 import { TopHitsDisplay } from "@/components/TopHitsDisplay";
@@ -97,10 +97,12 @@ const DateNavigator = ({
 type RacePageClientProps = {
     initialDate: string;
     initialPredictionData: RaceDayPrediction | null;
+    initialSpecialPick?: SpecialPick | null;
+    initialTopHits?: TopPayoutHit[];
     articlesMeta: Omit<Article, 'content'>[];
 };
 
-export default function RacePageClient({ initialDate, initialPredictionData, articlesMeta }: RacePageClientProps) {
+export default function RacePageClient({ initialDate, initialPredictionData, initialSpecialPick, initialTopHits, articlesMeta }: RacePageClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [currentDate, setCurrentDate] = useState(initialDate);
@@ -110,17 +112,22 @@ export default function RacePageClient({ initialDate, initialPredictionData, art
     const [initialVenue, setInitialVenue] = useState<string | null>(null);
     const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(null);
     const hasScrolled = useRef(false);
+    const isInitialLoad = useRef(true); // ★ 初回レンダリング判定用
 
+    // ▼▼▼▼▼【二重フェッチ解消】▼▼▼▼▼
+    // 従来: initialDateが変わるたびに毎回fetchDataを実行（SSRで取得済みでも再フェッチ）
+    // 変更: 初回レンダリング時はSSRで取得した initialPredictionData をそのまま使用。
+    //       日付が変わった場合（DateNavigatorでの操作→router.push→再マウント時は
+    //       isInitialLoadがtrueにリセットされるため、SSRデータがあればスキップ）。
+    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
     useEffect(() => {
         const fetchData = async (dateToFetch: string) => {
             // 日付フォーマット検証
-            // 不正な日付形式の場合、バックエンドへのリクエストを送らずにエラーを表示
             if (!isValidDateFormat(dateToFetch)) {
                 setError("無効な日付形式です。YYYY-MM-DD形式で指定してください。");
                 setIsLoading(false);
                 return;
             }
-
 
             setIsLoading(true);
             setError(null);
@@ -141,6 +148,17 @@ export default function RacePageClient({ initialDate, initialPredictionData, art
 
         setCurrentDate(initialDate);
         document.title = `競馬AIデータ分析 | ${formatDate(initialDate)}`;
+
+        // 初回レンダリング時かつSSRデータがある場合はフェッチをスキップ
+        if (isInitialLoad.current && initialPredictionData) {
+            isInitialLoad.current = false;
+            setPredictionData(initialPredictionData);
+            setIsLoading(false);
+            return;
+        }
+        isInitialLoad.current = false;
+
+        // 日付が変わった場合のみフェッチ実行
         fetchData(initialDate);
 
     }, [initialDate]);
@@ -240,7 +258,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, art
             <>
                 <DisclaimerAlert />
                 <div className="mb-4">
-                    <SpecialPickCard date={currentDate} />
+                    <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
                 </div>
                 <RaceTabs
                     key={`${currentDate}-${initialVenue || 'defaultVenue'}-${initialRaceNumber || 'defaultRace'}`}
@@ -256,10 +274,10 @@ export default function RacePageClient({ initialDate, initialPredictionData, art
     return (
         <div className="py-4">
             <div className="mb-4">
-                <TopHitsDisplay />
+                <TopHitsDisplay initialHits={initialTopHits} />
             </div>
             {/* 広告: 的中ランキング後・日付ナビ前（レースページファーストビュー直後） */}
-            <AdUnit slot="8529703346" placement="banner" />
+            <AdUnit slot="8529703346" placement="banner" refreshKey={`banner-${currentDate}`} />
             <div className="sticky top-14 sm:top-16 z-40 glass mb-5 p-2 sm:p-3">
                 <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
                     <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />

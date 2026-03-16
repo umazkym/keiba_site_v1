@@ -53,20 +53,28 @@ const Skeleton = () => (
     </div>
 );
 
-export const TopHitsDisplay = () => {
-    const [hits, setHits] = useState<TopPayoutHit[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [showAd, setShowAd] = useState(false);
+// ▼▼▼▼▼【SSRプリフェッチ対応】▼▼▼▼▼
+// initialHitsが渡された場合はクライアント側のAPIコールをスキップ
+export const TopHitsDisplay = ({ initialHits }: { initialHits?: TopPayoutHit[] }) => {
+    const [hits, setHits] = useState<TopPayoutHit[]>(initialHits || []);
+    const [isLoading, setIsLoading] = useState(!initialHits);
+    const [showAd, setShowAd] = useState((initialHits || []).length > 0);
 
     useEffect(() => {
+        // SSRで既にデータがある場合はスキップ
+        if (initialHits) {
+            setHits(initialHits);
+            setIsLoading(false);
+            setShowAd(initialHits.length > 0);
+            return;
+        }
+
         const fetchHits = async () => {
             setIsLoading(true);
             try {
                 const data = await getTopPayoutHits();
-                // バックエンドが既に上位5件を返しているため、重複排除なしで直接使用
                 const sortedAndLimitedHits = data.slice(0, 5);
                 setHits(sortedAndLimitedHits);
-                // 的中実績がある場合のみ広告を表示
                 setShowAd(sortedAndLimitedHits.length > 0);
             } catch (e) {
                 console.error("Failed to fetch top hits:", e);
@@ -75,7 +83,8 @@ export const TopHitsDisplay = () => {
             }
         };
         fetchHits();
-    }, []);
+    }, [initialHits]);
+    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
     if (isLoading) {
         return <Skeleton />;

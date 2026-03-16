@@ -130,7 +130,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 <SparklesIcon className="w-5 h-5 text-accent mr-2" />
                                 AI分析
                             </h4>
-                            <PredictionTable race={activeRace} />
+                            <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
                         </div>
                     </div>
 
@@ -302,7 +302,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
     const venueSelectedTabClass = "!text-primary !bg-white shadow-sm !border-slate-200";
 
     return (
-        <Tabs defaultIndex={initialTopTabIndex} onSelect={handleTopTabSelect} className="mt-4" forceRenderTabPanel={true}>
+        <Tabs defaultIndex={initialTopTabIndex} onSelect={handleTopTabSelect} className="mt-4" forceRenderTabPanel={false}>
             <TabList className={mainTabListClass}>
                 {data.jra.length > 0 && <Tab className={mainTabClass} selectedClassName={mainSelectedTabClass}>中央競馬</Tab>}
                 {data.nar.length > 0 && <Tab className={mainTabClass} selectedClassName={mainSelectedTabClass}>地方競馬</Tab>}
@@ -310,7 +310,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
             {data.jra.length > 0 && (
                 <TabPanel>
                     <div className="p-0 sm:p-2 md:p-3 relative">
-                        <Tabs defaultIndex={initialJraVenueIndex} onSelect={handleJraVenueSelect} forceRenderTabPanel={true}>
+                        <Tabs defaultIndex={initialJraVenueIndex} onSelect={handleJraVenueSelect} forceRenderTabPanel={false}>
                             <TabList className={venueTabListClass}>
                                 {data.jra.map(venue => <Tab key={venue.venue_name} className={venueTabClass} selectedClassName={venueSelectedTabClass}>{venue.venue_name}</Tab>)}
                             </TabList>
@@ -326,7 +326,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
             {data.nar.length > 0 && (
                 <TabPanel>
                     <div className="p-0 sm:p-2 md:p-3 relative">
-                        <Tabs defaultIndex={initialNarVenueIndex} onSelect={handleNarVenueSelect} forceRenderTabPanel={true}>
+                        <Tabs defaultIndex={initialNarVenueIndex} onSelect={handleNarVenueSelect} forceRenderTabPanel={false}>
                             <TabList className={venueTabListClass}>
                                 {data.nar.map(venue => <Tab key={venue.venue_name} className={venueTabClass} selectedClassName={venueSelectedTabClass}>{venue.venue_name}</Tab>)}
                             </TabList>

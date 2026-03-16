@@ -6,7 +6,7 @@ import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
 import 'tippy.js/animations/shift-away.css';
 import 'tippy.js/themes/light-border.css';
-import { Adsense } from './Adsense';
+import { AdUnit } from './AdUnit';
 
 // 馬番アイコン用のヘルパー関数とコンポーネント
 const getWakuColorClasses = (waku: number | null): string => {
@@ -29,7 +29,7 @@ const HorseNumberCircle = ({ number, waku }: { number: number, waku: number | nu
     </div>
 );
 
-export const PredictionTable = ({ race }: { race: RacePrediction }) => {
+export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePrediction, refreshKey?: string }) => {
     const isUnpredictable = !race.predictions.length || race.predictions.some(p => p.mark === '—');
     const reason = race.predictions?.[0]?.unpredictable_reason;
 
@@ -41,16 +41,19 @@ export const PredictionTable = ({ race }: { race: RacePrediction }) => {
         );
     }
 
-    // 広告コンポーネントを定義（異なるスロットIDで複数配置）
+    // ▼▼▼▼▼【広告refreshKey対応】▼▼▼▼▼
+    // InFeedAdにrefreshKeyを渡し、レース切替時に広告がリフレッシュされるようにする
     const InFeedAd = ({ slot }: { slot: string }) => (
         <div className="py-2">
-            <Adsense
-                client="ca-pub-4411270831448240"
+            <AdUnit
                 slot={slot}
-                style={{ minHeight: '80px' }}
+                placement="inline"
+                refreshKey={refreshKey}
+                label=""
             />
         </div>
     );
+    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
     // 広告挿入位置を決定する関数
     const shouldShowAd = (index: number, totalCount: number): string | null => {

@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
 import RacePageClient from "@/components/RacePageClient";
-import { getPredictionsForDate } from "@/lib/api";
+import { getPredictionsForDate, getSpecialPick, getTopPayoutHits } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { RaceDayPrediction } from "@/lib/types";
+import { RaceDayPrediction, SpecialPick, TopPayoutHit } from "@/lib/types";
 import { Suspense } from 'react';
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { notFound } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { getAllArticlesMeta } from '@/lib/articles';
 
-// レースデータは頻繁に更新されるため、常に最新データを取得
-export const dynamic = 'force-dynamic';
+// ▼▼▼▼▼【ISR導入】▼▼▼▼▼
+// 従来: export const dynamic = 'force-dynamic' で毎回フルSSR
+// 変更: ISRに切り替え。api.tsのfetchに revalidate を設定済み。
+// レースデータは1日2〜3回の定時バッチ更新のため、リアルタイムSSRは不要。
+// ▲▲▲▲▲【ISR導入ここまで】▲▲▲▲▲
 
 export async function generateMetadata(
     { params, searchParams }: {
@@ -66,14 +69,27 @@ const RacePageSkeleton = () => (
 
 export default async function RacePage({ params }: { params: { date: string } }) {
     let predictionData: RaceDayPrediction | null = null;
+    let specialPickData: SpecialPick | null = null;
+    let topHitsData: TopPayoutHit[] = [];
     let jsonLd = null;
     const articlesMeta = getAllArticlesMeta();
 
     try {
-        predictionData = await getPredictionsForDate(params.date);
+        // ▼▼▼▼▼【SSRプリフェッチ統合】▼▼▼▼▼
+        // 従来: predictionDataのみSSR、specialPick/topHitsはクライアント側で独立APIコール
+        // 変更: Promise.allで3つのAPIコールを並列実行し、全データをSSRで取得
+        // メリット: クライアント側のAPIコールが0に、サーバー側も並列で処理時間短縮
+        const [predictions, specialPick, topHits] = await Promise.all([
+            getPredictionsForDate(params.date),
+            getSpecialPick(params.date),
+            getTopPayoutHits(),
+        ]);
+        predictionData = predictions;
+        specialPickData = specialPick;
+        topHitsData = topHits;
+        // ▲▲▲▲▲【SSRプリフェッチ統合ここまで】▲▲▲▲▲
 
-        // ▼▼▼▼▼【修正】データが存在しない場合（ソフト404対策）▼▼▼▼▼
-        // データ取得失敗(null) または データが空 の場合は 404 ページを表示
+        // データが存在しない場合（ソフト404対策）
         if (!predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
             console.log(`[Data Info] No prediction data found for ${params.date}. Returning 404.`);
             notFound();
@@ -162,6 +178,8 @@ export default async function RacePage({ params }: { params: { date: string } })
                 <RacePageClient
                     initialDate={params.date}
                     initialPredictionData={predictionData}
+                    initialSpecialPick={specialPickData}
+                    initialTopHits={topHitsData}
                     articlesMeta={articlesMeta}
                 />
             </Suspense>

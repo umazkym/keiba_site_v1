@@ -261,7 +261,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                     <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
                 </div>
                 <RaceTabs
-                    key={`${currentDate}-${initialVenue || 'defaultVenue'}-${initialRaceNumber || 'defaultRace'}`}
+                    key={`${currentDate}-${initialVenue || 'default'}`}
                     data={predictionData}
                     articlesMeta={articlesMeta}
                     initialVenueName={initialVenue}
@@ -273,12 +273,11 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
 
     return (
         <div className="py-4">
-            <div className="mb-4">
-                <TopHitsDisplay initialHits={initialTopHits} />
-            </div>
-            {/* 広告: 的中ランキング後・日付ナビ前（レースページファーストビュー直後） */}
-            <AdUnit slot="8529703346" placement="banner" refreshKey={`banner-${currentDate}`} />
-            <div className="sticky top-14 sm:top-16 z-40 glass mb-5 p-2 sm:p-3">
+            {/* ▼▼▼▼▼【ファーストビュー改善】▼▼▼▼▼ */}
+            {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
+            {/* 変更: 日付ナビ→レースデータ→的中ランキング→バナー広告（レースデータを最速で表示） */}
+            {/* ▲▲▲▲▲【ファーストビュー改善ここまで】▲▲▲▲▲ */}
+            <div className="sticky top-14 sm:top-16 z-40 glass mb-3 p-2 sm:p-3">
                 <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
                     <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
                     <button
@@ -292,10 +291,21 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                     </button>
                 </div>
             </div>
+
             {renderContent()}
 
+            {/* 的中ランキング: レースデータの後に配置（ファーストビューをレースに集中） */}
+            <div className="mt-6 mb-4">
+                <TopHitsDisplay initialHits={initialTopHits} />
+            </div>
+
+            {/* 広告: 的中ランキング後（自然な区切り位置） */}
+            <div className="my-6 py-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <AdUnit slot="8529703346" placement="banner" refreshKey={`banner-${currentDate}`} />
+            </div>
+
             {/* サイト紹介テキスト（SEO・AdSense対策：重複回避のため最小限に） */}
-            <section className="mt-6 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">
+            <section className="mt-4 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">
                 <p className="text-sm text-gray-600">
                     より詳しいAIデータ分析の仕組みや、サイトの使い方は
                     <Link href="/about" className="text-primary hover:underline font-semibold mx-1">運営者情報・このサイトについて</Link>

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
@@ -58,6 +58,20 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     const [activeRaceIndex, setActiveRaceIndex] = useState(initialIndex);
     const activeRace = venue.races[activeRaceIndex];
 
+    // ▼▼▼▼▼【ブラウザ「戻る」対応】▼▼▼▼▼
+    // router.push()で履歴が作られるため、「戻る」操作でsearchParamsが変わり
+    // initialRaceNumberが更新される。keyにraceNumberが含まれなくなったため
+    // VenuePanel内部でactiveRaceIndexを同期する必要がある。
+    useEffect(() => {
+        if (initialRaceNumber) {
+            const newIndex = venue.races.findIndex(r => r.race_number === initialRaceNumber);
+            if (newIndex >= 0 && newIndex !== activeRaceIndex) {
+                setActiveRaceIndex(newIndex);
+            }
+        }
+    }, [initialRaceNumber, venue.races]);
+    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+
     const handleRaceSelect = useCallback((index: number) => {
         setActiveRaceIndex(index);
         const selectedRace = venue.races[index];
@@ -66,19 +80,22 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
             newParams.set('race', selectedRace.race_number.toString());
             newParams.set('venue', venue.venue_name);
             const newUrl = `/races/${currentDate}?${newParams.toString()}`;
-            router.replace(newUrl, { scroll: false });
+            // ▼▼▼▼▼【router.push化】▼▼▼▼▼
+            // 従来: router.replace() → URLのsearchParamsのみ変更、AdSenseがページ遷移と認識しない
+            // 変更: router.push() → ブラウザ履歴に追加、AdSenseが新インプレッション、GA PVも自然発生
+            // ISRキャッシュ済みのため、同一日付のデータ再取得コストは実質ゼロ
+            router.push(newUrl, { scroll: false });
+            // ▲▲▲▲▲【router.push化ここまで】▲▲▲▲▲
 
-            // Google Analytics 仮想ページビュー送信
-            // 各レース閲覧を個別のPVとしてカウントすることで、
-            // AdSenseのRPM計算とレポート精度を向上させる
-            if (typeof window !== 'undefined' && (window as any).gtag) {
-                (window as any).gtag('event', 'page_view', {
-                    page_path: newUrl,
-                    page_title: `${venue.venue_name} ${selectedRace.race_number}R ${selectedRace.race_name}`,
-                });
-            }
+            // レース切替後にコンテンツ先頭へ自動スクロール
+            setTimeout(() => {
+                const raceContent = document.getElementById(`venue-${venue.venue_name}`);
+                if (raceContent) {
+                    raceContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 100);
         }
-    }, [venue, router, currentDate, searchParams]);
+    }, [venue, router, currentDate]);
 
     const shouldShowAd = useMemo(() => {
         return activeRace && activeRace.predictions.length >= 5;
@@ -114,9 +131,14 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
     return (
         <div id={`venue-${venue.venue_name}`}>
-            <RaceSelector races={venue.races} selectedIndex={activeRaceIndex} onSelectRace={handleRaceSelect} />
+            {/* ▼▼▼▼▼【sticky化】レースセレクターを常に表示 ▼▼▼▼▼ */}
+            <div className="sticky top-[120px] sm:top-[140px] z-30 bg-background/95 backdrop-blur-sm pb-1">
+                <RaceSelector races={venue.races} selectedIndex={activeRaceIndex} onSelectRace={handleRaceSelect} />
+            </div>
+            {/* ▲▲▲▲▲【sticky化ここまで】▲▲▲▲▲ */}
             {activeRace && (
-                <div id={`race-${activeRace.id}`} className="mt-4">
+                <div id={`race-${activeRace.id}`} className="mt-3">
+                    {/* AI分析テーブル（最重要コンテンツ） */}
                     <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
                         <div className="bg-white p-3 sm:p-4 border-b border-gray-200">
                             <h3 className="text-lg font-bold flex items-center text-gray-800">
@@ -134,10 +156,21 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         </div>
                     </div>
 
-                    {/* 広告: AI分析テーブル直後（最高エンゲージメント位置） */}
+                    {/* ▼▼▼▼▼【レースナビゲーション位置変更】▼▼▼▼▼ */}
+                    {/* 従来: ページ最下部に配置 → モバイルで30スクロール以上必要 */}
+                    {/* 変更: AI分析直後に配置 → 予測テーブルを見たらすぐ次Rに遷移可能 */}
+                    <RaceNavigation />
+                    {/* ▲▲▲▲▲【位置変更ここまで】▲▲▲▲▲ */}
+
+                    {/* ▼▼▼▼▼【広告配置改善】▼▼▼▼▼ */}
+                    {/* 広告: AI分析＋ナビゲーション後の自然な区切り位置 */}
+                    {/* 余白を十分に確保し、コンテンツとの境界を明確化 */}
                     {shouldShowAd && (
-                        <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} />
+                        <div className="my-6 py-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                            <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} />
+                        </div>
                     )}
+                    {/* ▲▲▲▲▲【広告配置改善ここまで】▲▲▲▲▲ */}
 
                     {/* 脚質パターン予測 */}
                     <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
@@ -152,11 +185,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         </div>
                     </div>
 
-                    {/* 広告: 脚質パターン予測と過去対決成績の間（データ比較の読み進め区間） */}
-                    {shouldShowAd && (
-                        <AdUnit slot="9407670747" placement="inline" refreshKey={adRefreshKey} />
-                    )}
-
                     {/* 過去対決成績 */}
                     <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
                         <div className="p-3 sm:p-4 bg-gray-50 border-b border-gray-200">
@@ -169,6 +197,13 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                             <MatchupTable race={activeRace} />
                         </div>
                     </div>
+
+                    {/* 広告: データセクション間の自然な区切り */}
+                    {shouldShowAd && (
+                        <div className="my-6 py-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                            <AdUnit slot="9407670747" placement="inline" refreshKey={adRefreshKey} />
+                        </div>
+                    )}
 
                     {/* 枠順傾向スコア */}
                     <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
@@ -183,12 +218,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         </div>
                     </div>
 
-                    {/* 広告: レースナビゲーション直前（ユーザーが次Rへ遷移する前の停留ポイント） */}
-                    {shouldShowAd && (
-                        <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} />
-                    )}
-                    <RaceNavigation />
-
                     <div className='p-3 sm:p-4 border mb-4 bg-white rounded-lg'>
                         {/* レース全体の分析セクション */}
                         <RaceAnalysis race={activeRace} />
@@ -197,8 +226,11 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* AI指標の説明パネル */}
                     <DataExplanationPanel showAdvanced={true} />
 
+                    {/* 広告: ページ下部（読了後の停留ポイント） */}
                     {shouldShowAd && (
-                        <AdUnit slot="1489598374" placement="inline" refreshKey={adRefreshKey} />
+                        <div className="my-6 py-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                            <AdUnit slot="1489598374" placement="inline" refreshKey={adRefreshKey} />
+                        </div>
                     )}
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
@@ -209,10 +241,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         distance={activeRace.distance}
                         articlesMeta={articlesMeta}
                     />
-
-                    {shouldShowAd && activeRace.predictions.length >= 8 && (
-                        <AdUnit slot="1489598374" placement="inline" refreshKey={adRefreshKey} />
-                    )}
                 </div>
             )}
         </div>

@@ -109,8 +109,22 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
     const [predictionData, setPredictionData] = useState<RaceDayPrediction | null>(initialPredictionData);
     const [isLoading, setIsLoading] = useState(!initialPredictionData);
     const [error, setError] = useState<string | null>(null);
-    const [initialVenue, setInitialVenue] = useState<string | null>(null);
-    const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(null);
+    // ▼▼▼▼▼【初期値をsearchParamsから同期的に取得】▼▼▼▼▼
+    // 従来: useState(null) → 初回レース切替でkeyが変わりRaceTabs再マウント
+    // 変更: searchParamsの値を初期値として使用 → 最初からkeyが安定
+    const [initialVenue, setInitialVenue] = useState<string | null>(() => {
+        const venue = searchParams.get('venue');
+        return venue ? decodeURIComponent(venue) : null;
+    });
+    const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(() => {
+        const raceStr = searchParams.get('race');
+        if (raceStr) {
+            const num = parseInt(raceStr, 10);
+            return isNaN(num) ? null : num;
+        }
+        return null;
+    });
+    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
     const hasScrolled = useRef(false);
     const isInitialLoad = useRef(true); // ★ 初回レンダリング判定用
 
@@ -261,7 +275,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                     <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
                 </div>
                 <RaceTabs
-                    key={`${currentDate}-${initialVenue || 'default'}`}
+                    key={currentDate}
                     data={predictionData}
                     articlesMeta={articlesMeta}
                     initialVenueName={initialVenue}

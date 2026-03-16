@@ -1,0 +1,13 @@
+# APIサーバー専用の最小限の依存関係
+# Chrome/Selenium/pandas/numpy等の重量ライブラリを排除
+
+# Web API & Server
+fastapi
+uvicorn
+
+# Database
+sqlalchemy
+psycopg2-binary
+
+# Utilities
+python-dotenv

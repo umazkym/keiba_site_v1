@@ -1,11 +1,11 @@
-# C:\Users\tnszk\program\GitHub\backend\crud\race_crud.py
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, or_, func, case, and_
 from database import models
 from datetime import date, timedelta
 from typing import Dict, Any, List, Optional
 from collections import defaultdict
-from scripts import predictor
+# NOTE: matchup計算は crud/matchup_calculator.py を使用（pandas/numpy非依存の軽量モジュール）
+# predictor.py はcronジョブ専用（pandas/numpy/seleniumを使用するため、API環境にはインストールしない）
 
 def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     # 最初に、その日に有効な予測を持つレースIDのリストを取得する
@@ -96,7 +96,10 @@ def get_filtered_matchups_for_race(db: Session, race_id: str, start_date: date, 
         return None
 
     horse_ids = [r.horse_id for r in horse_results]
-    matchup_data = predictor.calculate_matchups(db, horse_ids, start_date, end_date)
+    # matchup_calculator は pandas/numpy に依存しない軽量モジュール
+    # （predictor.py からの分離により、API専用Docker環境でも安全に動作）
+    from crud.matchup_calculator import calculate_matchups
+    matchup_data = calculate_matchups(db, horse_ids, start_date, end_date)
     return matchup_data
 
 
@@ -288,42 +291,35 @@ def get_high_payout_hits_for_date(db: Session, target_date: date) -> List[Dict[s
 def get_all_race_urls(db: Session) -> List[Dict[str, Any]]:
     """
     サイトマップ生成のために、全レースの日付、会場、レース番号を取得する。
-
-    ▼▼▼【修正: インデックス未登録エラーを回避するため、より厳密なフィルタリングを追加】▼▼▼
-    - 予測データが存在し、かつ venue_name と race_number が有効なレースのみを対象にする
-    - これにより、不完全なレースデータがサイトマップに含まれるのを防ぐ
-    ▲▲▲【修正ここまで】▲▲▲
+    メモリ効率のため yield_per() でストリーミング処理。
     """
-    results = db.query(
+    query = db.query(
         models.Race.race_date,
         models.Race.venue_name,
         models.Race.race_number
     ).filter(
-        models.Race.predictions.any(),  # 予測データが存在するレースのみ
-        # ▼▼▼【修正: venue_name と race_number が NULL でないことを確認】▼▼▼
-        models.Race.venue_name.isnot(None),  # 会場名が存在する
-        models.Race.race_number.isnot(None),  # レース番号が存在する
-        # ▲▲▲【修正ここまで】▲▲▲
+        models.Race.predictions.any(),
+        models.Race.venue_name.isnot(None),
+        models.Race.race_number.isnot(None),
     ).order_by(
         models.Race.race_date.desc()
-    ).all()
+    )
 
-    return [
-        {
+    urls = []
+    for result in query.yield_per(500):
+        urls.append({
             "race_date": result.race_date.strftime('%Y-%m-%d'),
             "venue_name": result.venue_name,
             "race_number": result.race_number
-        }
-        for result in results
-    ]
-
-import re
+        })
+    return urls
 
 def get_heavy_stakes_race_urls(db: Session) -> List[Dict[str, Any]]:
     """
-    サイトマップ生成のために、重賞レース（G1, G2, G3等）のURL情報のみを取得するエンドポイント。
-    AdSense対策として、高品質なページのみをインデックスさせるために使用します。
+    サイトマップ生成のために、重賞レース（G1, G2, G3等）のURL情報のみを取得する。
+    SQLレベルでフィルタリングし、メモリ使用量を大幅に削減。
     """
+    # SQLレベルで重賞レースをフィルタ（Python側の正規表現処理を削減）
     results = db.query(
         models.Race.race_date,
         models.Race.venue_name,
@@ -332,21 +328,30 @@ def get_heavy_stakes_race_urls(db: Session) -> List[Dict[str, Any]]:
     ).filter(
         models.Race.predictions.any(),
         models.Race.venue_name.isnot(None),
-        models.Race.race_number.isnot(None)
+        models.Race.race_number.isnot(None),
+        models.Race.race_name.isnot(None),
+        # SQLレベルで重賞をフィルタ（全件ロードを回避）
+        or_(
+            models.Race.race_name.like('%G1%'),
+            models.Race.race_name.like('%G2%'),
+            models.Race.race_name.like('%G3%'),
+            models.Race.race_name.like('%GⅠ%'),
+            models.Race.race_name.like('%GⅡ%'),
+            models.Race.race_name.like('%GⅢ%'),
+            models.Race.race_name.like('%Ｇ１%'),
+            models.Race.race_name.like('%Ｇ２%'),
+            models.Race.race_name.like('%Ｇ３%'),
+            models.Race.race_name.like('%J・G%'),
+        )
     ).order_by(
         models.Race.race_date.desc()
     ).all()
 
-    heavy_stakes_urls = []
-    # G1, G2, G3, GⅠ, GⅡ, GⅢ, J・G1 などをマッチする正規表現
-    pattern = re.compile(r'[GＧ][1-3１-３Ⅰ-Ⅲ]|J・G', re.IGNORECASE)
-    
-    for r in results:
-        if r.race_name and pattern.search(r.race_name):
-            heavy_stakes_urls.append({
-                "race_date": r.race_date.strftime('%Y-%m-%d'),
-                "venue_name": r.venue_name,
-                "race_number": r.race_number
-            })
-            
-    return heavy_stakes_urls
+    return [
+        {
+            "race_date": r.race_date.strftime('%Y-%m-%d'),
+            "venue_name": r.venue_name,
+            "race_number": r.race_number
+        }
+        for r in results
+    ]

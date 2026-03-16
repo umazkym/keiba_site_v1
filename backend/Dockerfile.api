@@ -1,0 +1,31 @@
+# ============================================================
+# API専用の軽量Dockerfile
+# Chrome/Selenium/pandas/numpy等の重量ライブラリを含まない
+# ============================================================
+FROM python:3.11.4-slim
+
+# 環境変数
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV TZ=Asia/Tokyo
+
+# psycopg2-binary はプリコンパイル済みのため、gcc/libpq-dev は不要
+# システムパッケージの追加インストールなし → イメージサイズ最小化
+
+WORKDIR /app
+
+# API専用の軽量dependenciesのみインストール
+COPY requirements-api.txt .
+RUN pip install --no-cache-dir -r requirements-api.txt
+
+# アプリケーションコードをコピー
+COPY . .
+
+# メモリ管理: ガベージコレクションを積極的に実行
+ENV PYTHONGC=1
+
+# uvicorn起動:
+#   --workers 1       : 512MB制限下ではシングルワーカーが安全
+#   --limit-max-requests 1000 : メモリリーク防止のためワーカー自動再起動
+#   shell形式でRenderの$PORT環境変数を正しく展開する
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000} --workers 1 --limit-max-requests 1000"]

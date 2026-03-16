@@ -55,14 +55,8 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
     );
     // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
-    // 広告挿入位置を決定する関数
+    // ユーザー要望により、馬と馬の間の広告は「コンテンツが見づらくなる」ため全撤去
     const shouldShowAd = (index: number, totalCount: number): string | null => {
-        // 3位と4位の間（index=2）
-        if (index === 2) return "1489598374";
-        // 6位と7位の間（index=5）、10頭以上いる場合
-        if (index === 5 && totalCount > 8) return "8529703346";
-        // 10位と11位の間（index=9）、14頭以上いる場合
-        if (index === 9 && totalCount > 12) return "1489598374";
         return null;
     };
 

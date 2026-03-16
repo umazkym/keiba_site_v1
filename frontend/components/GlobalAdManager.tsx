@@ -1,6 +1,7 @@
 'use client';
 import { usePathname } from 'next/navigation';
 import { StickyAd } from './StickyAd';
+import { MobileStickyAd } from './MobileStickyAd';
 
 /**
  * グローバル広告マネージャー
@@ -46,14 +47,25 @@ export const GlobalAdManager = () => {
             pathname === '/about-ai' ||
             pathname === '/search';
 
-        if (!shouldShowAds || !showStickyAd) {
+        // モバイルサイドバー追従広告の表示条件（常に表示可能だが、ポリシー系画面で弾いているので十分）
+        const showMobileStickyAd = true;
+
+        if (!shouldShowAds) {
             return null;
         }
 
         return (
-            <aside className="hidden xl:block w-[300px] shrink-0">
-                <StickyAd />
-            </aside>
+            <>
+                {/* 既存のデスクトップ用右サイドバー */}
+                {showStickyAd && (
+                    <aside className="hidden xl:block w-[300px] shrink-0">
+                        <StickyAd />
+                    </aside>
+                )}
+
+                {/* 新設のモバイル用下部追従広告 */}
+                {showMobileStickyAd && <MobileStickyAd />}
+            </>
         );
     } catch (error) {
         // エラー時は何も表示しない（usePathname が null コンテキストで失敗した場合）

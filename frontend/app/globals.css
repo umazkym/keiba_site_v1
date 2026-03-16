@@ -320,10 +320,10 @@ header.glass {
     z-index: 40 !important; /* Google Adsの上部アンカー(z-index: 2147483646)より低いが、他要素より高い */
 }
 
-/* モバイルでのフッターアンカー広告用余白 */
-@media (max-width: 640px) {
+/* モバイルでの独自のアンカー広告用余白 (MobileStickyAd.tsx) */
+@media (max-width: 1280px) {
     footer {
-        padding-bottom: 70px; /* Auto Adsアンカーの高さ変動に対応 */
+        padding-bottom: 110px; /* 固定広告(max100px + シャドウ)の高さ分を確保 */
     }
 
     /* モバイルでの広告ユニット間の余白を調整 */

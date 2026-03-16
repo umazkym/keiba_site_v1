@@ -123,9 +123,9 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
       }
     };
 
-    // ★ リフレッシュ時（isFirstLoad=false）かつ要素が画面内にある場合は即座に読み込み
+    // ★ リフレッシュ時（isFirstLoad=false）は画面内判定を待たずに即座に読み込み
     //   IntersectionObserver待ちをスキップし、広告の表示遅延を大幅に短縮
-    if (!isFirstLoad.current && adContainer.offsetWidth > 0) {
+    if (!isFirstLoad.current) {
       loadAd();
       return; // クリーンアップ不要（observerなし）
     }
@@ -133,7 +133,9 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
     // 初回読み込み: IntersectionObserverで遅延読み込み（パフォーマンス最適化）
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && entry.target.clientWidth > 0) {
+        // ★ Flexbox環境等で初期幅が0になるケースがあるため、clientWidth>0 の条件は削除。
+        // （交差していれば確実にロードを実行する）
+        if (entry.isIntersecting) {
           loadAd();
           observer.disconnect();
         }
@@ -165,5 +167,6 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
 
   // ★ 本番: key プロップを使わない（DOM破棄→再作成による画面ジャンプを防止）
   //   同一DOMノードの innerHTML を差し替えることで、スムーズなリフレッシュを実現
-  return <div ref={adRef} />;
+  // w-full を指定し、親要素から幅を100%継承させる
+  return <div ref={adRef} className="w-full h-full flex justify-center items-center" />;
 };

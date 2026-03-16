@@ -87,14 +87,14 @@ export const AdUnit = ({
         adStyle: React.CSSProperties;
     }> = {
         inline: {
-            containerClass: 'my-5 sm:my-6 flex flex-col items-center justify-center',
-            minHeight: '90px',
-            adStyle: { width: '100%', minHeight: '90px' },
+            containerClass: 'my-2 sm:my-5 flex flex-col items-center justify-center',
+            minHeight: '50px',
+            adStyle: { width: '100%', minHeight: '50px' },
         },
         banner: {
-            containerClass: 'my-6 sm:my-8 flex flex-col items-center justify-center',
-            minHeight: '120px',
-            adStyle: { width: '100%', minHeight: '120px' },
+            containerClass: 'my-3 sm:my-8 flex flex-col items-center justify-center',
+            minHeight: '80px',
+            adStyle: { width: '100%', minHeight: '80px' },
         },
         sidebar: {
             containerClass: 'mb-4',

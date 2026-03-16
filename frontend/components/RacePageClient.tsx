@@ -291,7 +291,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
             {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
             {/* 変更: 日付ナビ→レースデータ→的中ランキング→バナー広告（レースデータを最速で表示） */}
             {/* ▲▲▲▲▲【ファーストビュー改善ここまで】▲▲▲▲▲ */}
-            <div className="sticky top-14 sm:top-16 z-40 glass mb-3 p-2 sm:p-3">
+            <div className="sticky top-14 sm:top-16 z-40 glass mb-2 sm:mb-3 p-1.5 sm:p-3">
                 <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
                     <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
                     <button
@@ -299,7 +299,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                             handleDateChange(getTodayString());
                             e.currentTarget.blur();
                         }}
-                        className="bg-primary text-white px-4 py-2.5 rounded-lg shadow-sm hover:bg-primary-dark transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm sm:text-base font-bold whitespace-nowrap min-h-[44px]"
+                        className="bg-primary text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg shadow-sm hover:bg-primary-dark transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm font-bold whitespace-nowrap min-h-[40px] sm:min-h-[44px]"
                     >
                         今日
                     </button>
@@ -308,13 +308,13 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
 
             {renderContent()}
 
-            {/* 的中ランキング: レースデータの後に配置（ファーストビューをレースに集中） */}
-            <div className="mt-6 mb-4">
+            {/* 的中ランキング: レースデータの後に配置 */}
+            <div className="mt-3 sm:mt-6 mb-2 sm:mb-4">
                 <TopHitsDisplay initialHits={initialTopHits} />
             </div>
 
-            {/* 広告: 的中ランキング後（自然な区切り位置） */}
-            <div className="my-6 py-4 bg-slate-50/50 rounded-xl border border-slate-100">
+            {/* 広告: 的中ランキング後 */}
+            <div className="my-3 sm:my-6 py-2 sm:py-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100">
                 <AdUnit slot="8529703346" placement="banner" refreshKey={`banner-${currentDate}`} />
             </div>
 

@@ -44,7 +44,7 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
     // ▼▼▼▼▼【広告refreshKey対応】▼▼▼▼▼
     // InFeedAdにrefreshKeyを渡し、レース切替時に広告がリフレッシュされるようにする
     const InFeedAd = ({ slot }: { slot: string }) => (
-        <div className="py-2">
+        <div className="py-1 sm:py-2">
             <AdUnit
                 slot={slot}
                 placement="inline"
@@ -122,25 +122,25 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                     const adSlot = shouldShowAd(index, race.predictions.length);
                     return (
                         <React.Fragment key={`${race.id}-${p.horse_number}-mobile`}>
-                            <div className={`p-3 transition-colors hover:bg-slate-50 ${index % 2 !== 0 ? 'bg-slate-50/50' : ''}`}>
-                                <div className="flex items-center gap-3">
-                                    {/* 左側: 印と馬番 (横並び・コンパクト化) */}
-                                    <div className="flex flex-row items-center gap-2.5 shrink-0 min-w-[3.5rem]">
-                                        <span className="text-xl font-extrabold text-text-primary leading-none w-5 text-center">{p.mark || '—'}</span>
+                            <div className={`px-2 py-1.5 transition-colors hover:bg-slate-50 ${index % 2 !== 0 ? 'bg-slate-50/50' : ''}`}>
+                                <div className="flex items-center gap-2">
+                                    {/* 左: 印+馬番 */}
+                                    <div className="flex flex-row items-center gap-1.5 shrink-0 min-w-[3rem]">
+                                        <span className="text-lg font-extrabold text-text-primary leading-none w-5 text-center">{p.mark || '—'}</span>
                                         <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
                                     </div>
 
-                                    {/* 中央: 馬名 */}
-                                    <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                        <div className="font-bold text-base text-text-primary truncate">{p.horse_name}</div>
+                                    {/* 中: 馬名 */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-bold text-sm text-text-primary truncate">{p.horse_name}</div>
                                     </div>
 
-                                    {/* 右側: 偏差値 */}
-                                    <div className="flex flex-col items-end shrink-0 w-16 justify-center bg-blue-50/40 p-1.5 rounded-lg border border-blue-100/50">
-                                        <div className="font-bold text-primary-dark text-lg font-mono tracking-tight leading-none">
+                                    {/* 右: 偏差値 */}
+                                    <div className="flex flex-col items-end shrink-0 w-14 justify-center bg-blue-50/40 px-1.5 py-1 rounded-md border border-blue-100/50">
+                                        <div className="font-bold text-primary-dark text-base font-mono tracking-tight leading-none">
                                             {p.deviation_score != null ? p.deviation_score.toFixed(1) : '--'}
                                         </div>
-                                        <div className="text-[10px] font-bold text-blue-700/70 mt-0.5">偏差値</div>
+                                        <div className="text-[9px] font-bold text-blue-700/70">偏差値</div>
                                     </div>
                                 </div>
                             </div>

@@ -114,14 +114,14 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
         const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
 
         return (
-            <div className="my-6 flex justify-between items-center">
+            <div className="my-3 flex justify-between items-center">
                 {hasPrev && prevRace ? (
-                    <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary">
+                    <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary text-sm px-3 py-1.5">
                         &larr; {prevRace.race_number}Rへ
                     </button>
                 ) : <div />}
                 {hasNext && nextRace ? (
-                    <button onClick={() => handleRaceSelect(activeRaceIndex + 1)} className="btn-primary">
+                    <button onClick={() => handleRaceSelect(activeRaceIndex + 1)} className="btn-primary text-sm px-3 py-1.5">
                         {nextRace.race_number}Rへ &rarr;
                     </button>
                 ) : <div />}
@@ -132,103 +132,96 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     return (
         <div id={`venue-${venue.venue_name}`}>
             {/* ▼▼▼▼▼【sticky化】レースセレクターを常に表示 ▼▼▼▼▼ */}
-            <div className="sticky top-[120px] sm:top-[140px] z-30 bg-background/95 backdrop-blur-sm pb-1">
+            <div className="sticky top-[108px] sm:top-[140px] z-30 bg-background/95 backdrop-blur-sm pb-0.5 sm:pb-1">
                 <RaceSelector races={venue.races} selectedIndex={activeRaceIndex} onSelectRace={handleRaceSelect} />
             </div>
             {/* ▲▲▲▲▲【sticky化ここまで】▲▲▲▲▲ */}
             {activeRace && (
-                <div id={`race-${activeRace.id}`} className="mt-3">
+                <div id={`race-${activeRace.id}`} className="mt-1">
                     {/* AI分析テーブル（最重要コンテンツ） */}
-                    <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="bg-white p-3 sm:p-4 border-b border-gray-200">
-                            <h3 className="text-lg font-bold flex items-center text-gray-800">
-                                <span className="bg-primary text-white rounded-lg w-8 h-8 inline-flex items-center justify-center mr-3 font-mono font-bold text-base">{activeRace.race_number}R</span>
+                    <div className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
+                        <div className="bg-white px-2.5 py-2 sm:p-4 border-b border-gray-200">
+                            <h3 className="text-base sm:text-lg font-bold flex items-center text-gray-800">
+                                <span className="bg-primary text-white rounded-md w-7 h-7 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2 font-mono font-bold text-sm sm:text-base">{activeRace.race_number}R</span>
                                 <span className="truncate">{activeRace.race_name}</span>
                             </h3>
-                            <p className="text-sm text-gray-500 ml-11 mt-0.5 font-medium">{activeRace.course_type} {activeRace.distance}m</p>
+                            <p className="text-xs sm:text-sm text-gray-500 ml-9 sm:ml-11 font-medium">{activeRace.course_type} {activeRace.distance}m</p>
                         </div>
                         <div>
-                            <h4 className="flex items-center text-base font-bold text-gray-700 mt-4 mb-2 px-3 sm:px-4">
-                                <SparklesIcon className="w-5 h-5 text-accent mr-2" />
+                            <h4 className="flex items-center text-sm sm:text-base font-bold text-gray-700 mt-2 mb-1 px-2.5 sm:px-4">
+                                <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
                                 AI分析
                             </h4>
                             <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
                         </div>
                     </div>
 
-                    {/* ▼▼▼▼▼【レースナビゲーション位置変更】▼▼▼▼▼ */}
-                    {/* 従来: ページ最下部に配置 → モバイルで30スクロール以上必要 */}
-                    {/* 変更: AI分析直後に配置 → 予測テーブルを見たらすぐ次Rに遷移可能 */}
+                    {/* レースナビゲーション: AI分析直後 → 予測を見たら即座に次Rへ */}
                     <RaceNavigation />
-                    {/* ▲▲▲▲▲【位置変更ここまで】▲▲▲▲▲ */}
 
-                    {/* ▼▼▼▼▼【広告配置改善】▼▼▼▼▼ */}
-                    {/* 広告: AI分析＋ナビゲーション後の自然な区切り位置 */}
-                    {/* 余白を十分に確保し、コンテンツとの境界を明確化 */}
+                    {/* 広告①: AI分析＋ナビ後の自然な区切り（最高視認性ポジション） */}
                     {shouldShowAd && (
-                        <div className="my-6 py-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                        <div className="my-3 sm:my-6 py-2 sm:py-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100">
                             <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} />
                         </div>
                     )}
-                    {/* ▲▲▲▲▲【広告配置改善ここまで】▲▲▲▲▲ */}
 
                     {/* 脚質パターン予測 */}
-                    <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="p-3 sm:p-4 bg-gray-50 border-b border-gray-200">
-                            <h4 className="flex items-center text-base font-bold text-gray-800">
-                                <FlagIcon className="w-5 h-5 text-primary mr-2" />
+                    <div className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
+                        <div className="px-2.5 py-1.5 sm:p-4 bg-gray-50 border-b border-gray-200">
+                            <h4 className="flex items-center text-sm sm:text-base font-bold text-gray-800">
+                                <FlagIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary mr-1.5" />
                                 脚質パターン予測
                             </h4>
                         </div>
-                        <div className="p-2 sm:p-5">
+                        <div className="p-1.5 sm:p-5">
                             <StartPositionChart predictions={activeRace.predictions} />
                         </div>
                     </div>
 
                     {/* 過去対決成績 */}
-                    <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="p-3 sm:p-4 bg-gray-50 border-b border-gray-200">
-                            <h4 className="flex items-center text-base font-bold text-gray-800">
-                                <UsersIcon className="w-5 h-5 text-secondary mr-2" />
+                    <div className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
+                        <div className="px-2.5 py-1.5 sm:p-4 bg-gray-50 border-b border-gray-200">
+                            <h4 className="flex items-center text-sm sm:text-base font-bold text-gray-800">
+                                <UsersIcon className="w-4 h-4 sm:w-5 sm:h-5 text-secondary mr-1.5" />
                                 過去対決成績
                             </h4>
                         </div>
-                        <div className="p-2 sm:p-5">
+                        <div className="p-1 sm:p-5">
                             <MatchupTable race={activeRace} />
                         </div>
                     </div>
 
-                    {/* 広告: データセクション間の自然な区切り */}
+                    {/* 広告②: データセクション間（スクロール中の停留ポイント） */}
                     {shouldShowAd && (
-                        <div className="my-6 py-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                        <div className="my-3 sm:my-6 py-2 sm:py-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100">
                             <AdUnit slot="9407670747" placement="inline" refreshKey={adRefreshKey} />
                         </div>
                     )}
 
                     {/* 枠順傾向スコア */}
-                    <div className="card mb-4 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="p-3 sm:p-4 bg-gray-50 border-b border-gray-200">
-                            <h4 className="flex items-center text-base font-bold text-gray-800">
-                                <ChartBarIcon className="w-5 h-5 text-accent mr-2" />
+                    <div className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
+                        <div className="px-2.5 py-1.5 sm:p-4 bg-gray-50 border-b border-gray-200">
+                            <h4 className="flex items-center text-sm sm:text-base font-bold text-gray-800">
+                                <ChartBarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
                                 枠順傾向スコア
                             </h4>
                         </div>
-                        <div className="p-2 sm:p-5">
+                        <div className="p-1.5 sm:p-5">
                             <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
                         </div>
                     </div>
 
-                    <div className='p-3 sm:p-4 border mb-4 bg-white rounded-lg'>
-                        {/* レース全体の分析セクション */}
+                    <div className='p-2 sm:p-4 border mb-2 bg-white rounded-lg'>
                         <RaceAnalysis race={activeRace} />
                     </div>
 
                     {/* AI指標の説明パネル */}
                     <DataExplanationPanel showAdvanced={true} />
 
-                    {/* 広告: ページ下部（読了後の停留ポイント） */}
+                    {/* 広告③: ページ下部（読了後の停留ポイント） */}
                     {shouldShowAd && (
-                        <div className="my-6 py-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                        <div className="my-3 sm:my-6 py-2 sm:py-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100">
                             <AdUnit slot="1489598374" placement="inline" refreshKey={adRefreshKey} />
                         </div>
                     )}

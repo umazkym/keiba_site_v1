@@ -156,6 +156,26 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
     const sortedHorsesForSelect = React.useMemo(() => [...race.predictions].sort((a, b) => a.horse_number - b.horse_number), [race.predictions]);
     const [selectedHorseId, setSelectedHorseId] = useState<string>(sortedHorsesForSelect[0]?.horse_id || '');
 
+    // ▼▼▼▼▼【クリティカルバグ修正: 2R以降のモバイル対戦成績が空になる問題】▼▼▼▼▼
+    // 原因: useState初期値は初回マウント時のrace.predictionsの馬IDで固定される
+    //       VenuePanelが再マウントされないため、raceが変わっても古い馬IDのまま
+    //       → renderMobileView()でfindがnullを返す → 何も表示されない
+    // 修正: race.idが変わったらselectedHorseId/startDate/endDateをリセット
+    useEffect(() => {
+        const newHorses = [...race.predictions].sort((a, b) => a.horse_number - b.horse_number);
+        if (newHorses.length > 0) {
+            setSelectedHorseId(newHorses[0].horse_id);
+        }
+        // 日付範囲もレースに合わせてリセット
+        const newRaceDate = new Date(race.race_date + 'T00:00:00Z');
+        const newDayBefore = new Date(newRaceDate);
+        newDayBefore.setUTCDate(newRaceDate.getUTCDate() - 1);
+        const newYearStart = new Date(Date.UTC(newRaceDate.getUTCFullYear(), 0, 1));
+        setStartDate(newYearStart.toISOString().split('T')[0]);
+        setEndDate(newDayBefore.toISOString().split('T')[0]);
+    }, [race.id]);
+    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+
 
     useEffect(() => {
         const fetchFilteredData = async () => {

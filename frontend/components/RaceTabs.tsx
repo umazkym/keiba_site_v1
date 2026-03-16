@@ -11,7 +11,7 @@ import { StartPositionChart } from './StartPositionChart';
 import { MatchupTable } from './MatchupTable';
 import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './Icons';
-import { AdUnit } from './AdUnit';
+import { InFeedAd } from './InFeedAd'; // ★ 新規追加: インフィード広告
 import { RelatedRaces } from './RelatedRaces';
 import { DataExplanationPanel } from './DataExplanationPanel';
 import { DynamicRelatedArticles } from './DynamicRelatedArticles';
@@ -159,10 +159,8 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* レースナビゲーション: AI分析直後 → 予測を見たら即座に次Rへ */}
                     <RaceNavigation />
 
-                    {/* 広告①: AI分析＋ナビ後の自然な区切り（最高視認性ポジション） */}
-                    {shouldShowAd && (
-                        <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} className="my-3 sm:my-6" />
-                    )}
+                    {/* フローを阻害しないための空白（広告撤去跡地） */}
+                    <div className="h-4 sm:h-6"></div>
 
                     {/* 脚質パターン予測 */}
                     <div className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
@@ -190,9 +188,9 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         </div>
                     </div>
 
-                    {/* 広告②: データセクション間（スクロール中の停留ポイント） */}
+                    {/* 広告①: インフィード広告（データセクション間・背景同化） */}
                     {shouldShowAd && (
-                        <AdUnit slot="9407670747" placement="inline" refreshKey={adRefreshKey} className="my-3 sm:my-6" />
+                        <InFeedAd slot="9407670747" refreshKey={adRefreshKey} />
                     )}
 
                     {/* 枠順傾向スコア */}
@@ -215,9 +213,9 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* AI指標の説明パネル */}
                     <DataExplanationPanel showAdvanced={true} />
 
-                    {/* 広告③: ページ下部（読了後の停留ポイント） */}
+                    {/* 広告②: インフィード広告（ページ下部・読了後の効果的な配置） */}
                     {shouldShowAd && (
-                        <AdUnit slot="1489598374" placement="inline" refreshKey={adRefreshKey} className="my-3 sm:my-6" />
+                        <InFeedAd slot="1489598374" refreshKey={adRefreshKey} />
                     )}
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />

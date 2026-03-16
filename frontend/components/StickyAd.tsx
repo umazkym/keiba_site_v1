@@ -64,12 +64,12 @@ export const StickyAd = () => {
 
     return (
         <div
-            className={`hidden xl:block fixed right-2 2xl:right-4 top-24 w-[300px] transition-all duration-500 ${
-                isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'
+            className={`sticky top-24 transition-all duration-500 w-full ${
+                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
             }`}
             style={{ zIndex: 30 }}
         >
-            <div className="sticky top-24 bg-white rounded-xl shadow-lg p-3 border border-gray-100 relative">
+            <div className="bg-white rounded-xl shadow-lg p-3 border border-gray-100 relative">
                 {/* 閉じるボタン */}
                 <button
                     onClick={handleDismiss}
@@ -88,7 +88,7 @@ export const StickyAd = () => {
                     client="ca-pub-4411270831448240"
                     slot="9407670747"
                     refreshKey={refreshKey}
-                    style={{ width: '100%', height: '250px' }}
+                    style={{ width: '100%', height: '600px' }}
                     isResponsive={false}
                 />
             </div>

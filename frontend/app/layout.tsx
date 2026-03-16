@@ -105,14 +105,19 @@ export default function RootLayout({
                 <WebsiteSchema />
                 <SoftwareApplicationSchema />
 
-                {/* グローバル広告マネージャー */}
-                <Suspense fallback={null}>
-                    <GlobalAdManager />
-                </Suspense>
-
                 <Header />
                 <main className="w-full max-w-[1600px] mx-auto p-3 sm:p-4 md:p-6 min-h-screen">
-                    {children}
+                    <div className="flex items-stretch gap-6 xl:gap-8">
+                        {/* メインコンテンツエリア */}
+                        <div className="flex-1 min-w-0">
+                            {children}
+                        </div>
+                        
+                        {/* デスクトップ用右サイドバー（広告専用エリア） */}
+                        <Suspense fallback={null}>
+                            <GlobalAdManager />
+                        </Suspense>
+                    </div>
                 </main>
                 {/* フッター直前の全ページ共通広告（ポリシー系ページでは非表示） */}
                 <Suspense fallback={null}>

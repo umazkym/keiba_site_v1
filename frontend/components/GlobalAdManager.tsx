@@ -46,11 +46,14 @@ export const GlobalAdManager = () => {
             pathname === '/about-ai' ||
             pathname === '/search';
 
+        if (!shouldShowAds || !showStickyAd) {
+            return null;
+        }
+
         return (
-            <>
-                {/* デスクトップ: 右サイドバー追従広告（xl以上の画面幅で表示） */}
-                {showStickyAd && <StickyAd />}
-            </>
+            <aside className="hidden xl:block w-[300px] shrink-0">
+                <StickyAd />
+            </aside>
         );
     } catch (error) {
         // エラー時は何も表示しない（usePathname が null コンテキストで失敗した場合）

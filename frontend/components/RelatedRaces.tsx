@@ -89,8 +89,8 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                 {relatedDates.map(date => {
                     const [y, m, d] = date.split('-').map(Number);
                     const dateObj = new Date(y, m - 1, d);
-                    const isPast = dateObj < current;
-                    const isFuture = dateObj > current;
+                    // const isPast = dateObj < current;
+                    // const isFuture = dateObj > current;
 
                     return (
                         <Link
@@ -98,9 +98,6 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                             href={`/races/${date}`}
                             className="group relative bg-white p-2 sm:p-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-blue-300"
                         >
-                            <div className="text-xs text-gray-500 mb-1">
-                                {isPast ? '過去のレース' : isFuture ? '今後のレース' : 'レース'}
-                            </div>
                             <div className="font-bold text-gray-800 group-hover:text-blue-600">
                                 {m}月{d}日 ({['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()]})
                             </div>

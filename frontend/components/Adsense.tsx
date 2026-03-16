@@ -16,9 +16,11 @@ type AdsenseProps = {
 export const Adsense = ({ client, slot, refreshKey = '', className, style, isResponsive = true }: AdsenseProps) => {
   const pathname = usePathname();
   const adRef = useRef<HTMLDivElement>(null);
-  const adLoaded = useRef(false); // 広告が一度読み込まれたかを追跡するフラグ
-  const [scriptReady, setScriptReady] = useState(false); // adsbygoogleスクリプトが準備完了したか
+  const adLoaded = useRef(false);
+  const [scriptReady, setScriptReady] = useState(false);
   const prevRefreshKey = useRef(refreshKey);
+  const prevPathname = useRef(pathname);
+  const isFirstLoad = useRef(true); // 初回読み込みフラグ（lazy load用）
 
   // GoogleAdSenseスクリプトの初期化を確認
   useEffect(() => {
@@ -26,7 +28,6 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
       if ((window as any).adsbygoogle && Array.isArray((window as any).adsbygoogle)) {
         setScriptReady(true);
       } else {
-        // スクリプトがまだ読み込まれていない場合は、再度チェック
         const timer = setTimeout(checkScriptReady, 100);
         return () => clearTimeout(timer);
       }
@@ -35,36 +36,47 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
     checkScriptReady();
   }, []);
 
-  // refreshKeyが変わったら広告をリセット
+  // refreshKey または pathname が変わったら広告をリフレッシュ準備
+  // ★ CLS防止: リフレッシュ前にコンテナの高さをロックし、画面ジャンプを防ぐ
   useEffect(() => {
-    if (prevRefreshKey.current !== refreshKey) {
-      adLoaded.current = false; // フラグをリセットして再読込を許可
-      prevRefreshKey.current = refreshKey;
-    }
-  }, [refreshKey]);
+    const keyChanged = prevRefreshKey.current !== refreshKey;
+    const pathChanged = prevPathname.current !== pathname;
 
+    if (keyChanged || pathChanged) {
+      const container = adRef.current;
+      if (container && adLoaded.current) {
+        // ★ 現在の高さを固定し、広告消去時のレイアウトシフトを防止
+        const currentHeight = container.offsetHeight;
+        if (currentHeight > 0) {
+          container.style.minHeight = `${currentHeight}px`;
+        }
+      }
+      adLoaded.current = false;
+      isFirstLoad.current = false;
+      prevRefreshKey.current = refreshKey;
+      prevPathname.current = pathname;
+    }
+  }, [refreshKey, pathname]);
+
+  // メイン広告読み込みエフェクト
   useEffect(() => {
     const adContainer = adRef.current;
-    // コンテナが存在しない、または既に広告が読み込まれている場合は何もしない
     if (!adContainer || adLoaded.current || !scriptReady) {
       return;
     }
 
-    // 広告を実際に読み込む関数
     const loadAd = () => {
-      // 二重読み込みを防止
       if (adLoaded.current) return;
-
-      // スクリプトが準備完了していることを再確認
       if (!(window as any).adsbygoogle) {
         console.warn('adsbygoogle not ready');
         return;
       }
 
-      adContainer.innerHTML = ''; // 既存の内容をクリア
+      // 既存の内容をクリア
+      adContainer.innerHTML = '';
+
       const ins = document.createElement('ins');
       ins.className = `adsbygoogle ${className || ''}`;
-
       ins.style.display = 'block';
       if (style) {
         Object.assign(ins.style, style);
@@ -82,48 +94,76 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
 
       try {
         ((window as any).adsbygoogle).push({});
-        adLoaded.current = true; // 読み込み成功フラグを立てる
+        adLoaded.current = true;
+
+        // ★ CLS防止: 新しい広告がレンダリングされたら高さロックを解除
+        //   data-ad-status="filled" or "unfilled" を監視
+        const adStatusObserver = new MutationObserver(() => {
+          const status = ins.getAttribute('data-ad-status');
+          if (status === 'filled' || status === 'unfilled') {
+            // 新しい広告が描画完了 → 高さロック解除
+            adContainer.style.minHeight = '';
+            adStatusObserver.disconnect();
+          }
+        });
+        adStatusObserver.observe(ins, {
+          attributes: true,
+          attributeFilter: ['data-ad-status'],
+        });
+
+        // フォールバック: 3秒経っても応答がなければロック解除
+        setTimeout(() => {
+          adContainer.style.minHeight = '';
+          adStatusObserver.disconnect();
+        }, 3000);
       } catch (err) {
         console.error('adsbygoogle.push() error:', err);
+        // エラー時もロック解除
+        adContainer.style.minHeight = '';
       }
     };
 
-    // IntersectionObserverをセットアップ
+    // ★ リフレッシュ時（isFirstLoad=false）かつ要素が画面内にある場合は即座に読み込み
+    //   IntersectionObserver待ちをスキップし、広告の表示遅延を大幅に短縮
+    if (!isFirstLoad.current && adContainer.offsetWidth > 0) {
+      loadAd();
+      return; // クリーンアップ不要（observerなし）
+    }
+
+    // 初回読み込み: IntersectionObserverで遅延読み込み（パフォーマンス最適化）
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // 要素がビューポート内に入り、かつ幅が0でない場合に広告を読み込む
         if (entry.isIntersecting && entry.target.clientWidth > 0) {
-            loadAd();
-            observer.disconnect(); // 目的を果たしたので監視を停止
+          loadAd();
+          observer.disconnect();
         }
       },
       {
         rootMargin: '200px',
-        threshold: 0.1, // 要素が10%見えたらトリガー
+        threshold: 0.1,
       }
     );
 
     observer.observe(adContainer);
 
-    // クリーンアップ関数
     return () => {
       observer.disconnect();
     };
-    // pathname/refreshKey が変わるたびに再監視するように設定
   }, [pathname, refreshKey, client, slot, className, style, isResponsive, scriptReady]);
 
   // 開発環境ではプレースホルダーを表示
   if (process.env.NODE_ENV !== 'production') {
     return (
-        <div
-          className={`bg-gray-200 border-2 border-dashed border-gray-400 text-gray-500 flex items-center justify-center ${className || ''}`}
-          style={style}
-        >
-          広告エリア (Slot: {slot}{refreshKey ? ` | Key: ${refreshKey}` : ''})
-        </div>
+      <div
+        className={`bg-gray-200 border-2 border-dashed border-gray-400 text-gray-500 flex items-center justify-center ${className || ''}`}
+        style={style}
+      >
+        広告エリア (Slot: {slot}{refreshKey ? ` | Key: ${refreshKey}` : ''})
+      </div>
     );
   }
 
-  // keyにrefreshKeyを含めることで、レース切替時にコンポーネントを完全再生成させる
-  return <div ref={adRef} key={`${pathname}-${slot}-${refreshKey}`} />;
+  // ★ 本番: key プロップを使わない（DOM破棄→再作成による画面ジャンプを防止）
+  //   同一DOMノードの innerHTML を差し替えることで、スムーズなリフレッシュを実現
+  return <div ref={adRef} />;
 };

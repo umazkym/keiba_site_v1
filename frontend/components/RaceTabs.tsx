@@ -43,7 +43,7 @@ const CollapsibleSection = memo(({ title, icon, children }: { title: string, ico
 
 CollapsibleSection.displayName = 'CollapsibleSection';
 
-const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null }) => {
+const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0 }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number }) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
@@ -84,10 +84,11 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber }: { venue: Ve
         return activeRace && activeRace.predictions.length >= 5;
     }, [activeRace]);
 
-    // レース切替時に広告を完全リフレッシュさせるキー
+    // レース切替 + 競馬場タブ切替時に広告を完全リフレッシュさせるキー
+    // venueActivationKey が変わると競馬場タブ切替、activeRace が変わるとレース切替
     const adRefreshKey = useMemo(() => {
-        return activeRace ? `${venue.venue_name}-${activeRace.race_number}` : '';
-    }, [venue.venue_name, activeRace]);
+        return activeRace ? `${venue.venue_name}-${activeRace.race_number}-v${venueActivationKey}` : '';
+    }, [venue.venue_name, activeRace, venueActivationKey]);
 
     const RaceNavigation = () => {
         const hasPrev = activeRaceIndex > 0;
@@ -225,6 +226,54 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         return <div className="p-6 text-center text-muted card">対象日のレースデータがありません。</div>;
     }
 
+    const params = useParams();
+    const currentDate = params.date as string;
+
+    // 競馬場/タブ切替時の広告リフレッシュ用カウンター
+    // 切り替えごとにインクリメントし、venueActivationKeyとしてVenuePanelに渡す
+    const [jraActivationKey, setJraActivationKey] = useState(0);
+    const [narActivationKey, setNarActivationKey] = useState(0);
+
+    // JRA/NARトップタブ切替ハンドラ
+    const handleTopTabSelect = useCallback((index: number) => {
+        // 切替先のパネルの広告をリフレッシュ
+        if (index === 0) setJraActivationKey(prev => prev + 1);
+        else setNarActivationKey(prev => prev + 1);
+
+        // GA仮想ページビュー: JRA/NAR切替もPVとしてカウント
+        if (typeof window !== 'undefined' && (window as any).gtag) {
+            const tabName = index === 0 ? '中央競馬' : '地方競馬';
+            (window as any).gtag('event', 'page_view', {
+                page_path: `/races/${currentDate}?tab=${encodeURIComponent(tabName)}`,
+                page_title: `${tabName} - レース一覧`,
+            });
+        }
+    }, [currentDate]);
+
+    // JRA競馬場タブ切替ハンドラ
+    const handleJraVenueSelect = useCallback((index: number) => {
+        setJraActivationKey(prev => prev + 1);
+        const venue = data.jra[index];
+        if (venue && typeof window !== 'undefined' && (window as any).gtag) {
+            (window as any).gtag('event', 'page_view', {
+                page_path: `/races/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
+                page_title: `${venue.venue_name} - レース一覧`,
+            });
+        }
+    }, [data.jra, currentDate]);
+
+    // NAR競馬場タブ切替ハンドラ
+    const handleNarVenueSelect = useCallback((index: number) => {
+        setNarActivationKey(prev => prev + 1);
+        const venue = data.nar[index];
+        if (venue && typeof window !== 'undefined' && (window as any).gtag) {
+            (window as any).gtag('event', 'page_view', {
+                page_path: `/races/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
+                page_title: `${venue.venue_name} - レース一覧`,
+            });
+        }
+    }, [data.nar, currentDate]);
+
     const isInitialVenueInJra = useMemo(() => data.jra.some(v => v.venue_name === initialVenueName), [data.jra, initialVenueName]);
     const initialTopTabIndex = useMemo(() => {
         if (isInitialVenueInJra) return 0;
@@ -253,7 +302,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
     const venueSelectedTabClass = "!text-primary !bg-white shadow-sm !border-slate-200";
 
     return (
-        <Tabs defaultIndex={initialTopTabIndex} className="mt-4" forceRenderTabPanel={true}>
+        <Tabs defaultIndex={initialTopTabIndex} onSelect={handleTopTabSelect} className="mt-4" forceRenderTabPanel={true}>
             <TabList className={mainTabListClass}>
                 {data.jra.length > 0 && <Tab className={mainTabClass} selectedClassName={mainSelectedTabClass}>中央競馬</Tab>}
                 {data.nar.length > 0 && <Tab className={mainTabClass} selectedClassName={mainSelectedTabClass}>地方競馬</Tab>}
@@ -261,13 +310,13 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
             {data.jra.length > 0 && (
                 <TabPanel>
                     <div className="p-0 sm:p-2 md:p-3 relative">
-                        <Tabs defaultIndex={initialJraVenueIndex} forceRenderTabPanel={true}>
+                        <Tabs defaultIndex={initialJraVenueIndex} onSelect={handleJraVenueSelect} forceRenderTabPanel={true}>
                             <TabList className={venueTabListClass}>
                                 {data.jra.map(venue => <Tab key={venue.venue_name} className={venueTabClass} selectedClassName={venueSelectedTabClass}>{venue.venue_name}</Tab>)}
                             </TabList>
                             {data.jra.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} />
                                 </TabPanel>
                             ))}
                         </Tabs>
@@ -277,13 +326,13 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
             {data.nar.length > 0 && (
                 <TabPanel>
                     <div className="p-0 sm:p-2 md:p-3 relative">
-                        <Tabs defaultIndex={initialNarVenueIndex} forceRenderTabPanel={true}>
+                        <Tabs defaultIndex={initialNarVenueIndex} onSelect={handleNarVenueSelect} forceRenderTabPanel={true}>
                             <TabList className={venueTabListClass}>
                                 {data.nar.map(venue => <Tab key={venue.venue_name} className={venueTabClass} selectedClassName={venueSelectedTabClass}>{venue.venue_name}</Tab>)}
                             </TabList>
                             {data.nar.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} />
                                 </TabPanel>
                             ))}
                         </Tabs>

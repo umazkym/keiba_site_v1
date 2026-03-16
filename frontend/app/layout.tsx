@@ -75,6 +75,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
+    maximumScale: 5, // Allow zooming for accessibility, but provide a ceiling
 }
 
 export default function RootLayout({

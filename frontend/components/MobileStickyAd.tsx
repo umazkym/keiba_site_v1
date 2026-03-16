@@ -1,23 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Adsense } from './Adsense';
 import { usePathname } from 'next/navigation';
 
 /**
  * モバイル専用・下部固定の追従広告（アンカー広告の代替）
  * 
- * AdSense自動アンカー広告の巨大化リスク（画面半分を覆うUX破壊）を防止するため、
- * 高さを物理的にCSSレベルで強制制限（max-h-[100px]）した安全な自社実装コンポーネント。
+ * AdSense自動アンカー広告の巨大化リスクを防止するための自社実装コンポーネント。
  * xlブレイクポイント未満（モバイル・タブレット）でのみ表示。
+ * 
+ * ★変更点: AdSense側から広告が返ってこない(unfilled)場合、
+ * 空の枠だけが表示されてしまうのを出さないようにステータスを監視します。
  */
 export const MobileStickyAd = () => {
     const [isMounted, setIsMounted] = useState(false);
     const [isDismissed, setIsDismissed] = useState(false);
+    const [adStatus, setAdStatus] = useState<'loading' | 'filled' | 'unfilled'>('loading');
     const pathname = usePathname();
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    // 広告を表示しないページ（ポリシー系・個人情報系）
-    // GlobalAdManagerでも制御しているが念のためのガード
+    // 広告を表示しないページガード
     const noAdPages = [
         '/about',
         '/contact',
@@ -29,23 +32,62 @@ export const MobileStickyAd = () => {
 
     useEffect(() => {
         setIsMounted(true);
-        // FIXME: セッションストレージ等で閉じた状態を維持する処理を将来追加しても良い
     }, []);
+
+    // パス変更（レース切替など）でリフレッシュする際、ステータスを戻す
+    useEffect(() => {
+        setAdStatus('loading');
+    }, [pathname]);
+
+    // MutationObserverで広告のロード完了/空振り(unfilled)を検知
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const observer = new MutationObserver(() => {
+            const ins = container.querySelector('ins.adsbygoogle');
+            if (ins) {
+                const status = ins.getAttribute('data-ad-status');
+                if (status === 'filled') {
+                    setAdStatus('filled');
+                    observer.disconnect();
+                } else if (status === 'unfilled') {
+                    setAdStatus('unfilled');
+                    observer.disconnect();
+                }
+            }
+        });
+
+        observer.observe(container, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['data-ad-status'],
+        });
+
+        return () => observer.disconnect();
+    }, [pathname]);
 
     const handleDismiss = () => {
         setIsDismissed(true);
     };
 
-    // SSR時、非表示ページ、またはユーザーが閉じた場合はレンダリングしない
-    if (!isMounted || !shouldShowAds || isDismissed) return null;
+    // SSR時、非表示ページ、閉じた後、または「枠が空(unfilled)」と確定した場合は完全にDOMから消す（裏に隠れていたコンテンツを被せないため）
+    if (!isMounted || !shouldShowAds || isDismissed || adStatus === 'unfilled') return null;
+
+    // loading中は「見えない」がDOMには存在する（AdSenseに表示領域を計測させるため必須）
+    // filledになったらスーッと下から現れる
+    const isVisible = adStatus === 'filled';
 
     return (
         <div 
-            className="xl:hidden fixed bottom-0 left-0 right-0 w-full z-50 transition-transform duration-300 transform translate-y-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]"
-            // セーフエリア（iPhoneのホームインジケータなど）への対応
+            ref={containerRef}
+            className={`xl:hidden fixed bottom-0 left-0 right-0 w-full z-50 transition-all duration-500 transform shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] ${
+                isVisible ? 'translate-y-0 opacity-100' : 'translate-y-[120px] opacity-0 pointer-events-none'
+            }`}
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
         >
-            <div className="relative bg-white/95 backdrop-blur-sm border-t border-slate-200">
+            <div className={`relative bg-white/95 backdrop-blur-sm border-t border-slate-200 transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
                 {/* 閉じるボタン（絶対に配置し、UXを担保） */}
                 <button
                     onClick={handleDismiss}
@@ -58,17 +100,16 @@ export const MobileStickyAd = () => {
                 </button>
 
                 {/* 
-                  * 【超重要】広告コンテナの高さ制限
-                  * AdSenseが巨大なバナーを挿入しようとしても、ここではね除ける
+                  * 広告コンテナの高さ制限
                   * overflow-hidden によりはみ出し部分をカット
                   */}
                 <div className="w-full flex justify-center items-center overflow-hidden max-h-[100px] min-h-[50px] bg-slate-50 relative">
                     <div className="absolute top-1 left-2 text-[10px] text-gray-400 font-sans tracking-widest bg-white/80 px-1 rounded z-10 pointer-events-none">広告</div>
                     <Adsense
                         client="ca-pub-4411270831448240"
-                        slot="8529703346" // モバイルアンカーにふさわしい既存のslot ID（必要に応じて差し替え）
+                        slot="8529703346" 
                         refreshKey={`mobile-sticky-${pathname}`}
-                        style={{ width: '100vw', height: '100%' }}
+                        style={{ width: '100%', minHeight: '50px' }}
                         isResponsive={true}
                     />
                 </div>

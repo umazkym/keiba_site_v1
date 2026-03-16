@@ -94,17 +94,17 @@ export const AdUnit = ({
         adStyle: React.CSSProperties;
     }> = {
         inline: {
-            containerClass: 'my-2 sm:my-5 flex flex-col items-center justify-center',
+            containerClass: 'my-2 sm:my-5 flex flex-col items-center justify-center w-full',
             minHeight: '50px',
             adStyle: { width: '100%', minHeight: '50px' },
         },
         banner: {
-            containerClass: 'my-3 sm:my-8 flex flex-col items-center justify-center',
+            containerClass: 'my-3 sm:my-8 flex flex-col items-center justify-center w-full',
             minHeight: '80px',
             adStyle: { width: '100%', minHeight: '80px' },
         },
         sidebar: {
-            containerClass: 'mb-4',
+            containerClass: 'mb-4 w-full',
             minHeight: '200px',
             adStyle: { width: '100%', minHeight: '200px' },
         },
@@ -121,7 +121,7 @@ export const AdUnit = ({
             className={`ad-unit-container ${config.containerClass} ${className} ${adUnfilled ? 'hidden m-0 p-0' : ''}`}
             style={containerStyle}
         >
-            <div className={`ad-highlight ${adUnfilled ? 'hidden' : ''}`}>
+            <div className={`ad-highlight w-full ${adUnfilled ? 'hidden' : ''}`}>
                 {/* 広告がロードされた場合のみラベルを表示 */}
                 {label && adLoaded && (
                     <div className="text-[10px] text-gray-400 text-center mb-1 tracking-wider select-none">

@@ -25,7 +25,9 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
   // GoogleAdSenseスクリプトの初期化を確認
   useEffect(() => {
     const checkScriptReady = () => {
-      if ((window as any).adsbygoogle && Array.isArray((window as any).adsbygoogle)) {
+      const ads = (window as any).adsbygoogle;
+      // Array.isArray() に加え、スクリプトが即座に読み込まれた場合(オブジェクト化済)の判定も追加
+      if (ads && (Array.isArray(ads) || typeof ads.push === 'function' || ads.loaded)) {
         setScriptReady(true);
       } else {
         const timer = setTimeout(checkScriptReady, 100);
@@ -133,9 +135,9 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
     // 初回読み込み: IntersectionObserverで遅延読み込み（パフォーマンス最適化）
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // ★ Flexbox環境等で初期幅が0になるケースがあるため、clientWidth>0 の条件は削除。
-        // （交差していれば確実にロードを実行する）
-        if (entry.isIntersecting) {
+        // ★ 安全策: 親の幅が0のままロードするとAdSenseがクラッシュし、unfilled判定すら出なくなるため、
+        // 必ず clientWidth > 0 を確認してからロードする。
+        if (entry.isIntersecting && entry.target.clientWidth > 0) {
           loadAd();
           observer.disconnect();
         }
@@ -167,6 +169,6 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
 
   // ★ 本番: key プロップを使わない（DOM破棄→再作成による画面ジャンプを防止）
   //   同一DOMノードの innerHTML を差し替えることで、スムーズなリフレッシュを実現
-  // w-full を指定し、親要素から幅を100%継承させる
-  return <div ref={adRef} className="w-full h-full flex justify-center items-center" />;
+  // 幅ゼロでのクラッシュを防ぐため、w-full とスタイル(minHeight等)を明示的に外枠へ適用
+  return <div ref={adRef} className={`w-full ${className || ''}`} style={style} />;
 };

@@ -97,22 +97,7 @@ export default function RootLayout({
                     src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"
                     crossOrigin="anonymous"
                 />
-                {/* ▼▼▼▼▼【自動広告無効化】▼▼▼▼▼ */}
-                {/* Googleの自動配置広告（アンカー・ビネット・インフィード）を無効化 */}
-                {/* 手動配置のAdUnitのみが表示されるようになる */}
-                {/* ※完全に無効化するにはAdSense管理画面でも自動広告をオフにする必要あり */}
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `
-                            (window.adsbygoogle = window.adsbygoogle || []).pauseAdRequests = 0;
-                            (window.adsbygoogle = window.adsbygoogle || []).push({
-                                google_ad_client: "ca-pub-4411270831448240",
-                                enable_page_level_ads: false
-                            });
-                        `,
-                    }}
-                />
-                {/* ▲▲▲▲▲【自動広告無効化ここまで】▲▲▲▲▲ */}
+                {/* 自動広告のオフはAdSense管理画面で設定してください */}
             </head>
             <body className={`${inter.variable} ${notoSansJP.variable} ${robotoMono.variable} font-sans bg-surface text-text-primary antialiased`}>
                 {/* 構造化マークアップ：Organization, Website, SoftwareApplication */}

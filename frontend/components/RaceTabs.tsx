@@ -161,9 +161,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
                     {/* 広告①: AI分析＋ナビ後の自然な区切り（最高視認性ポジション） */}
                     {shouldShowAd && (
-                        <div className="my-3 sm:my-6 py-2 sm:py-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100">
-                            <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} />
-                        </div>
+                        <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} className="my-3 sm:my-6 py-2 sm:py-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100" />
                     )}
 
                     {/* 脚質パターン予測 */}
@@ -194,9 +192,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
                     {/* 広告②: データセクション間（スクロール中の停留ポイント） */}
                     {shouldShowAd && (
-                        <div className="my-3 sm:my-6 py-2 sm:py-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100">
-                            <AdUnit slot="9407670747" placement="inline" refreshKey={adRefreshKey} />
-                        </div>
+                        <AdUnit slot="9407670747" placement="inline" refreshKey={adRefreshKey} className="my-3 sm:my-6 py-2 sm:py-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100" />
                     )}
 
                     {/* 枠順傾向スコア */}
@@ -221,9 +217,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
                     {/* 広告③: ページ下部（読了後の停留ポイント） */}
                     {shouldShowAd && (
-                        <div className="my-3 sm:my-6 py-2 sm:py-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100">
-                            <AdUnit slot="1489598374" placement="inline" refreshKey={adRefreshKey} />
-                        </div>
+                        <AdUnit slot="1489598374" placement="inline" refreshKey={adRefreshKey} className="my-3 sm:my-6 py-2 sm:py-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100" />
                     )}
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />

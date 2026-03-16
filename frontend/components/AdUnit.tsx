@@ -47,10 +47,12 @@ export const AdUnit = ({
 }: AdUnitProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [adLoaded, setAdLoaded] = useState(false);
+    const [adUnfilled, setAdUnfilled] = useState(false);
 
-    // refreshKeyが変わったらラベル状態をリセット
+    // refreshKeyが変わったらステートをリセット
     useEffect(() => {
         setAdLoaded(false);
+        setAdUnfilled(false);
     }, [refreshKey]);
 
     // MutationObserverで広告のロード完了を検知
@@ -59,12 +61,17 @@ export const AdUnit = ({
         if (!container) return;
 
         const observer = new MutationObserver(() => {
-            // ins要素にdata-ad-statusが設定されたらロード完了とみなす
+            // ins要素にdata-ad-statusが設定されたらステータスを更新
             const ins = container.querySelector('ins.adsbygoogle');
             if (ins) {
                 const status = ins.getAttribute('data-ad-status');
                 if (status === 'filled') {
                     setAdLoaded(true);
+                    setAdUnfilled(false);
+                    observer.disconnect();
+                } else if (status === 'unfilled') {
+                    setAdUnfilled(true);
+                    setAdLoaded(false);
                     observer.disconnect();
                 }
             }
@@ -105,13 +112,16 @@ export const AdUnit = ({
 
     const config = placementStyles[placement];
 
+    // unfilledの場合はCSSのminHeightを外し、非表示にする
+    const containerStyle = adUnfilled ? { display: 'none' } : { minHeight: config.minHeight };
+
     return (
         <div
             ref={containerRef}
-            className={`ad-unit-container ${config.containerClass} ${className}`}
-            style={{ minHeight: config.minHeight }}
+            className={`ad-unit-container ${config.containerClass} ${className} ${adUnfilled ? 'hidden m-0 p-0' : ''}`}
+            style={containerStyle}
         >
-            <div className="ad-highlight">
+            <div className={`ad-highlight ${adUnfilled ? 'hidden' : ''}`}>
                 {/* 広告がロードされた場合のみラベルを表示 */}
                 {label && adLoaded && (
                     <div className="text-[10px] text-gray-400 text-center mb-1 tracking-wider select-none">

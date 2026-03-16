@@ -65,14 +65,14 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
     );
 
     return (
-        <div className="bg-white border border-gray-200 rounded-lg mb-4 overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-lg mb-2 sm:mb-4 overflow-hidden">
             {/* アコーディオンのヘッダー */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between p-2.5 sm:p-4 hover:bg-gray-50 transition-colors"
             >
-                <div className="flex items-center gap-3 flex-1 text-left">
-                    <h4 className="font-bold text-gray-800">AI指標について</h4>
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 text-left">
+                    <h4 className="font-bold text-gray-800 text-xs sm:text-base">AI指標について</h4>
                 </div>
                 <span className="text-sm font-semibold text-primary">
                     {isExpanded ? '詳細を閉じる' : '詳細を見る'}

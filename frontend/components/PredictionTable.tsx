@@ -117,7 +117,14 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
             </div>
 
             {/* スマホ (md未満) ではカードリスト表示 */}
-            <div className="md:hidden divide-y divide-slate-100 bg-white">
+            <div className="md:hidden bg-white">
+                {/* モバイル用ヘッダー行（PC同様に列名を表示） */}
+                <div className="flex items-center gap-2 px-2 py-1 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-text-secondary tracking-wider">
+                    <div className="min-w-[3rem]">印・馬番</div>
+                    <div className="flex-1">馬名</div>
+                    <div className="w-12 text-right">AI偏差値</div>
+                </div>
+                <div className="divide-y divide-slate-100">
                 {race.predictions.map((p, index) => {
                     const adSlot = shouldShowAd(index, race.predictions.length);
                     return (
@@ -126,21 +133,20 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                                 <div className="flex items-center gap-2">
                                     {/* 左: 印+馬番 */}
                                     <div className="flex flex-row items-center gap-1.5 shrink-0 min-w-[3rem]">
-                                        <span className="text-lg font-extrabold text-text-primary leading-none w-5 text-center">{p.mark || '—'}</span>
+                                        <span className="text-base font-extrabold text-text-primary leading-none w-4 text-center">{p.mark || '—'}</span>
                                         <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
                                     </div>
 
                                     {/* 中: 馬名 */}
                                     <div className="flex-1 min-w-0">
-                                        <div className="font-bold text-sm text-text-primary truncate">{p.horse_name}</div>
+                                        <div className="font-bold text-xs text-text-primary truncate">{p.horse_name}</div>
                                     </div>
 
-                                    {/* 右: 偏差値 */}
-                                    <div className="flex flex-col items-end shrink-0 w-14 justify-center bg-blue-50/40 px-1.5 py-1 rounded-md border border-blue-100/50">
-                                        <div className="font-bold text-primary-dark text-base font-mono tracking-tight leading-none">
+                                    {/* 右: 偏差値（数値のみ） */}
+                                    <div className="shrink-0 w-12 text-right">
+                                        <span className="font-bold text-primary-dark text-sm font-mono">
                                             {p.deviation_score != null ? p.deviation_score.toFixed(1) : '--'}
-                                        </div>
-                                        <div className="text-[9px] font-bold text-blue-700/70">偏差値</div>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -148,6 +154,7 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                         </React.Fragment>
                     );
                 })}
+                </div>
             </div>
         </>
     );

@@ -17,24 +17,24 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     const style = rankStyles[Math.min(rank - 1, 4)];
 
     return (
-        <div className={`bg-white rounded-xl border ${style.borderColor} ${style.shadow} p-2 sm:p-4 flex flex-col items-start gap-1 sm:gap-2 h-full`}>
+        <div className={`bg-white rounded-xl border ${style.borderColor} ${style.shadow} p-1.5 sm:p-4 flex flex-col items-start justify-center h-full`}>
             <div className="flex justify-between items-center w-full mb-0.5">
-                <div className={`text-[9px] sm:text-xs font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-1.5 py-0.5`}>
+                <div className={`text-[8px] sm:text-xs font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-1.5 py-0.5 leading-none`}>
                     {rank}位
                 </div>
-                <div className="font-bold text-red-600 text-sm sm:text-lg whitespace-nowrap leading-none tracking-tighter">
+                <div className="font-bold text-red-600 text-[13px] sm:text-lg whitespace-nowrap leading-none tracking-tighter">
                     {hit.payout.toLocaleString()}円
                 </div>
             </div>
-            <div className="text-left w-full">
-                <div className="text-[9px] sm:text-xs text-text-muted mb-0.5 font-medium leading-tight">
+            <div className="text-left w-full mt-0.5">
+                <div className="text-[8px] sm:text-xs text-text-muted mb-0.5 font-medium leading-none">
                     {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
                     {' '}{hit.venue_name}{hit.race_number}R
                 </div>
-                <div className="text-[11px] sm:text-sm text-text-primary font-bold truncate mb-0.5 leading-tight" title={hit.race_name}>
+                <div className="text-[10px] sm:text-sm text-text-primary font-bold truncate mb-0.5 leading-tight" title={hit.race_name}>
                     {hit.race_name}
                 </div>
-                <div className="text-[9px] sm:text-xs text-gray-600 truncate leading-tight" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
+                <div className="text-[8px] sm:text-xs text-gray-600 truncate leading-none" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
                     {hit.bet_type}: {hit.winning_numbers}
                 </div>
             </div>
@@ -92,10 +92,10 @@ export const TopHitsDisplay = ({ initialHits }: { initialHits?: TopPayoutHit[] }
 
     return (
         <div>
-            <h2 className="flex items-center text-base sm:text-xl font-bold text-gray-800 mb-2 sm:mb-3 px-1">
+            <h2 className="flex items-center text-sm sm:text-xl font-bold text-gray-800 mb-1 sm:mb-3 px-1">
                 <TrophyIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-yellow-500" />
                 <span className="whitespace-nowrap">高配当的中ランキング</span>
-                <span className="text-[10px] sm:text-xs font-normal text-gray-500 ml-1.5 sm:ml-2 whitespace-nowrap self-end mb-0.5 sm:mb-1">(直近7日間)</span>
+                <span className="text-[9px] sm:text-xs font-normal text-gray-500 ml-1.5 sm:ml-2 whitespace-nowrap self-end mb-0.5 sm:mb-1">(直近7日)</span>
             </h2>
             {hits.length === 0 ? (
                 <div className="p-6 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-center text-gray-500 text-sm">
@@ -103,7 +103,7 @@ export const TopHitsDisplay = ({ initialHits }: { initialHits?: TopPayoutHit[] }
                 </div>
             ) : (
                 <>
-                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-1.5 sm:gap-3">
                         {hits.map((hit, index) => (
                             <Link
                                 key={`${hit.race_id}-${hit.winning_numbers}`}

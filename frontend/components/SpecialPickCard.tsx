@@ -82,10 +82,10 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
         >
             <div className="bg-white text-text-primary rounded-xl overflow-hidden border border-slate-200 shadow-sm relative" role="region" aria-labelledby="special-pick-title">
                 {/* Subtle gradient overlay to make it look premium */}
-                <div className="absolute top-0 right-0 p-12 bg-blue-50/50 rounded-bl-full pointer-events-none -z-10"></div>
+                <div className="absolute top-0 right-0 p-10 bg-blue-50/50 rounded-bl-full pointer-events-none -z-10"></div>
 
-                <div className="p-2 sm:p-5 flex flex-col z-10">
-                    <div className="flex items-center justify-between mb-1.5">
+                <div className="p-1.5 sm:p-5 flex flex-col z-10">
+                    <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-1.5">
                            <span id="special-pick-title" className="text-[10px] sm:text-[13px] font-bold bg-primary text-white px-1.5 py-0.5 rounded leading-none">AI注目馬</span>
                            <span className="text-[10px] sm:text-xs text-text-muted font-medium hidden sm:inline">{formattedDate}</span>
@@ -95,16 +95,16 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
                         </span>
                     </div>
 
-                    <div className="flex items-baseline justify-between gap-1.5 mb-1.5 min-w-0">
-                        <p className="text-lg sm:text-3xl font-extrabold leading-none truncate tracking-tight text-primary-dark" title={pick.horse_name}>
+                    <div className="flex items-baseline justify-between gap-1 mb-1 min-w-0">
+                        <p className="text-[15px] sm:text-3xl font-extrabold leading-none truncate tracking-tight text-primary-dark" title={pick.horse_name}>
                             {pick.horse_name}
                         </p>
-                        <p className="text-[9px] sm:text-[13px] text-text-secondary font-medium shrink-0 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 leading-tight">
+                        <p className="text-[8px] sm:text-[13px] text-text-secondary font-medium shrink-0 bg-slate-50 px-1 py-0.5 rounded border border-slate-100 leading-none">
                             {pick.venue_name}{pick.race_number}R <span className="hidden sm:inline">・ {pick.race_name}</span>
                         </p>
                     </div>
 
-                    <p className="text-[11px] sm:text-sm font-medium leading-[1.3] text-primary-light group-hover:text-blue-700 transition-colors duration-200 line-clamp-1 sm:line-clamp-2 mt-0.5 border-t border-slate-100 pt-1.5">
+                    <p className="text-[10px] sm:text-sm font-medium leading-tight text-primary-light group-hover:text-blue-700 transition-colors duration-200 line-clamp-1 sm:line-clamp-2 mt-0.5 border-t border-slate-100 pt-1">
                         {pick.commentary}
                     </p>
                 </div>

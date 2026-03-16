@@ -114,9 +114,15 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
         });
 
         // フォールバック: 3秒経っても応答がなければロック解除
+        // また、localhostやAdBlock等の環境で、AdSenseが何もステータスを返さずに沈黙した場合のフォールバックとして、
+        // 強制的に unfilled を付与し、親コンポーネント(AdUnit等)の枠消去ロジックを非同期発火させる。
         setTimeout(() => {
           adContainer.style.minHeight = '';
           adStatusObserver.disconnect();
+          
+          if (ins && !ins.getAttribute('data-ad-status')) {
+            ins.setAttribute('data-ad-status', 'unfilled');
+          }
         }, 3000);
       } catch (err) {
         console.error('adsbygoogle.push() error:', err);

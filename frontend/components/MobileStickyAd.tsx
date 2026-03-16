@@ -109,8 +109,10 @@ export const MobileStickyAd = () => {
                         client="ca-pub-4411270831448240"
                         slot="8529703346" 
                         refreshKey={`mobile-sticky-${pathname}`}
-                        style={{ width: '100%', minHeight: '50px' }}
-                        isResponsive={true}
+                        // ★自動サイズ(auto)を無効化し、高さを固定することで、「320x50」や「320x100」の
+                        // スマホ専用標準バナーの配信をGoogleに強制し、空振り(unfilled)を劇的に減らす
+                        style={{ display: 'inline-block', width: '100%', height: '50px' }}
+                        isResponsive={false}
                     />
                 </div>
             </div>

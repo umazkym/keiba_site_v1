@@ -116,12 +116,12 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
         return (
             <div className="my-3 flex justify-between items-center">
                 {hasPrev && prevRace ? (
-                    <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary text-sm px-3 py-1.5">
+                    <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-2.5 font-bold shadow-sm">
                         &larr; {prevRace.race_number}Rへ
                     </button>
                 ) : <div />}
                 {hasNext && nextRace ? (
-                    <button onClick={() => handleRaceSelect(activeRaceIndex + 1)} className="btn-primary text-sm px-3 py-1.5">
+                    <button onClick={() => handleRaceSelect(activeRaceIndex + 1)} className="btn-primary text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-2.5 font-bold shadow-sm">
                         {nextRace.race_number}Rへ &rarr;
                     </button>
                 ) : <div />}

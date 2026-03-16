@@ -77,8 +77,8 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
     const current = new Date(year, month - 1, day);
 
     return (
-        <div className="mt-8 p-6 bg-blue-50 rounded-xl border border-blue-200">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+        <div className="mt-4 sm:mt-8 p-4 sm:p-6 bg-blue-50/50 rounded-xl border border-blue-100">
+            <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4 flex items-center">
                 <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
@@ -96,7 +96,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                         <Link
                             key={date}
                             href={`/races/${date}`}
-                            className="group relative bg-white p-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-blue-300"
+                            className="group relative bg-white p-2 sm:p-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-blue-300"
                         >
                             <div className="text-xs text-gray-500 mb-1">
                                 {isPast ? '過去のレース' : isFuture ? '今後のレース' : 'レース'}
@@ -112,10 +112,10 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                 })}
             </div>
 
-            <div className="mt-4 text-center">
+            <div className="mt-4 sm:mt-5 text-center">
                 <Link
                     href="/"
-                    className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    className="inline-flex items-center justify-center bg-white border border-blue-200 hover:bg-blue-50 text-blue-600 font-bold py-2 sm:py-2.5 px-6 rounded-lg shadow-sm w-full sm:w-auto transition-colors text-sm sm:text-base"
                 >
                     トップページに戻る
                     <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

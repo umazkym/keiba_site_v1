@@ -77,14 +77,14 @@ export function DynamicRelatedArticles({
     }
 
     return (
-        <section className="mt-6 mb-4">
-            <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center justify-between">
+        <section className="mt-6 sm:mt-8 mb-4 sm:mb-6">
+            <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
+                    <span className="w-1.5 h-5 sm:h-6 bg-secondary rounded-full"></span>
                     関連する分析記事
                 </div>
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 {relatedArticles.map((article) => (
                     <Link
                         href={`/articles/${article.slug}`}
@@ -101,7 +101,7 @@ export function DynamicRelatedArticles({
                                 className="transition-transform duration-500 group-hover:scale-105"
                             />
                         </div>
-                        <div className="p-4 flex flex-col justify-between flex-grow">
+                        <div className="p-3 sm:p-4 flex flex-col justify-between flex-grow">
                             <div>
                                 <span className="inline-block bg-primary-light text-primary-dark text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full mb-2">
                                     {article.category}

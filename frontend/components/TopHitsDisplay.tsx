@@ -17,24 +17,24 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     const style = rankStyles[Math.min(rank - 1, 4)];
 
     return (
-        <div className={`bg-white rounded-xl border ${style.borderColor} ${style.shadow} ${style.scale} p-3 sm:p-4 flex flex-col items-start gap-1 sm:gap-2 h-full`}>
-            <div className="flex justify-between items-center w-full">
-                <div className={`text-[10px] sm:text-xs font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-1.5 sm:px-2 py-0.5`}>
+        <div className={`bg-white rounded-xl border ${style.borderColor} ${style.shadow} p-2 sm:p-4 flex flex-col items-start gap-1 sm:gap-2 h-full`}>
+            <div className="flex justify-between items-center w-full mb-0.5">
+                <div className={`text-[9px] sm:text-xs font-bold whitespace-nowrap ${style.rankTextColor} ${style.rankBgColor} rounded px-1.5 py-0.5`}>
                     {rank}位
                 </div>
-                <div className="font-bold text-red-600 text-sm sm:text-base lg:text-lg whitespace-nowrap leading-none">
+                <div className="font-bold text-red-600 text-sm sm:text-lg whitespace-nowrap leading-none tracking-tighter">
                     {hit.payout.toLocaleString()}円
                 </div>
             </div>
             <div className="text-left w-full">
-                <div className="text-[10px] sm:text-xs text-text-muted mb-0.5 font-medium">
+                <div className="text-[9px] sm:text-xs text-text-muted mb-0.5 font-medium leading-tight">
                     {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
                     {' '}{hit.venue_name}{hit.race_number}R
                 </div>
-                <div className="text-xs sm:text-sm text-text-primary font-bold truncate mb-0.5" title={hit.race_name}>
+                <div className="text-[11px] sm:text-sm text-text-primary font-bold truncate mb-0.5 leading-tight" title={hit.race_name}>
                     {hit.race_name}
                 </div>
-                <div className="text-[10px] sm:text-xs text-gray-600 truncate" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
+                <div className="text-[9px] sm:text-xs text-gray-600 truncate leading-tight" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
                     {hit.bet_type}: {hit.winning_numbers}
                 </div>
             </div>

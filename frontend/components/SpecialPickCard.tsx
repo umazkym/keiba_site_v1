@@ -77,42 +77,36 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
     return (
         <Link
             href={`/races/${effectiveDate}?race=${pick.race_number}&venue=${encodeURIComponent(pick.venue_name)}`}
-            className="block group"
+            className="block group mb-1 sm:mb-2"
             aria-label={`${pick.commentary}`}
         >
-            <div className="bg-white text-text-primary rounded-2xl h-full flex flex-col overflow-hidden border border-slate-100 hover-lift relative" role="region" aria-labelledby="special-pick-title">
+            <div className="bg-white text-text-primary rounded-xl overflow-hidden border border-slate-200 shadow-sm relative" role="region" aria-labelledby="special-pick-title">
                 {/* Subtle gradient overlay to make it look premium */}
-                <div className="absolute top-0 right-0 p-16 bg-blue-50/50 rounded-bl-full pointer-events-none -z-10"></div>
+                <div className="absolute top-0 right-0 p-12 bg-blue-50/50 rounded-bl-full pointer-events-none -z-10"></div>
 
-                <div className="p-3 sm:p-6 flex flex-col h-full z-10">
-                    {/* Header: Title and Deviation Score in one row on mobile */}
-                    <div className="flex flex-row items-center justify-between gap-2 sm:gap-4 mb-2 sm:mb-5">
-                        <h3 id="special-pick-title" className="text-xs sm:text-sm font-bold text-text-secondary whitespace-nowrap">
-                            AI注目馬 <span className="hidden sm:inline">{formattedDate}</span>
-                        </h3>
-                        <span className="text-[10px] sm:text-xs font-bold px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-blue-50/80 text-blue-700 border border-blue-100/50 whitespace-nowrap">
-                            偏差値 <span className="text-sm sm:text-lg font-mono tracking-tight">{pick.deviation_score.toFixed(2)}</span>
+                <div className="p-2 sm:p-5 flex flex-col z-10">
+                    <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                           <span id="special-pick-title" className="text-[10px] sm:text-[13px] font-bold bg-primary text-white px-1.5 py-0.5 rounded leading-none">AI注目馬</span>
+                           <span className="text-[10px] sm:text-xs text-text-muted font-medium hidden sm:inline">{formattedDate}</span>
+                        </div>
+                        <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50/80 text-blue-700 border border-blue-100/50 whitespace-nowrap flex items-center gap-1 leading-none">
+                            偏差値 <span className="text-xs sm:text-base font-mono tracking-tight">{pick.deviation_score.toFixed(2)}</span>
                         </span>
                     </div>
 
-                    {/* Main Content: Horse Name and Venue/Race in one row on mobile */}
-                    <div className="flex items-center justify-between gap-2 mb-2 sm:mb-5 min-w-0">
-                        <p className="text-2xl sm:text-4xl font-extrabold leading-tight truncate tracking-tight text-primary-dark flex-1" title={pick.horse_name}>
+                    <div className="flex items-baseline justify-between gap-1.5 mb-1.5 min-w-0">
+                        <p className="text-lg sm:text-3xl font-extrabold leading-none truncate tracking-tight text-primary-dark" title={pick.horse_name}>
                             {pick.horse_name}
                         </p>
-                        <p className="text-[10px] sm:text-sm text-text-secondary font-medium shrink-0">
-                            <span className="bg-slate-50 px-2 py-1 sm:px-3 sm:py-1.5 rounded-md border border-slate-100 inline-block">
-                                {pick.venue_name}{pick.race_number}R <span className="hidden sm:inline">・ {pick.race_name}</span>
-                            </span>
+                        <p className="text-[9px] sm:text-[13px] text-text-secondary font-medium shrink-0 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 leading-tight">
+                            {pick.venue_name}{pick.race_number}R <span className="hidden sm:inline">・ {pick.race_name}</span>
                         </p>
                     </div>
 
-                    {/* Commentary: Smaller text and line clamp on mobile */}
-                    <div className="mt-1 sm:mt-auto pt-2 sm:pt-5 border-t border-slate-100">
-                        <p className="text-[11px] sm:text-sm font-medium leading-[1.5] sm:leading-[1.8] text-primary-light group-hover:text-blue-700 transition-colors duration-200 line-clamp-1 sm:line-clamp-none" aria-live="polite">
-                            {pick.commentary}
-                        </p>
-                    </div>
+                    <p className="text-[11px] sm:text-sm font-medium leading-[1.3] text-primary-light group-hover:text-blue-700 transition-colors duration-200 line-clamp-1 sm:line-clamp-2 mt-0.5 border-t border-slate-100 pt-1.5">
+                        {pick.commentary}
+                    </p>
                 </div>
             </div>
         </Link>

@@ -314,7 +314,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
             </div>
 
             {/* 広告: 的中ランキング後 */}
-            <AdUnit slot="8529703346" placement="banner" refreshKey={`banner-${currentDate}`} className="my-3 sm:my-6 py-2 sm:py-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100" />
+            <AdUnit slot="8529703346" placement="banner" refreshKey={`banner-${currentDate}`} className="my-3 sm:my-6" />
 
             {/* サイト紹介テキスト（SEO・AdSense対策：重複回避のため最小限に） */}
             <section className="mt-4 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">

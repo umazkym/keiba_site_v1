@@ -157,7 +157,7 @@ export default async function HomePage() {
                 </section>
 
                 {/* 3. 3つの分析データ */}
-                <section className="bg-surface p-6 md:p-10 rounded-2xl border border-border">
+                <section className="bg-surface p-6 rounded-2xl border border-border">
                     <h2 className="text-xl sm:text-2xl font-bold text-primary mb-8 text-center">3つの分析データ</h2>
                     <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
                         <div className="bg-white py-6 px-5 sm:p-8 rounded-2xl border border-slate-100 shadow-soft flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0 hover-lift">
@@ -207,7 +207,7 @@ export default async function HomePage() {
 
                 {/* 5. 新着記事セクション */}
                 <section>
-                    <div className="flex items-center justify-between mb-6 sm:mb-8">
+                    <div className="flex items-center justify-between mt-6 mb-6 sm:mb-8">
                         <h2 className="text-lg sm:text-2xl font-bold text-primary flex items-center gap-3">
                             <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
                             最新の分析記事
@@ -271,7 +271,7 @@ export default async function HomePage() {
                 <AdUnit slot="1489598374" placement="inline" />
 
                 {/* 6. 使い方セクション */}
-                <section className="bg-surface rounded-2xl border border-border p-6 md:p-10">
+                <section className="bg-surface rounded-2xl border border-border p-6">
                     <h2 className="text-xl sm:text-2xl font-bold text-primary mb-8 text-center">
                         3ステップで始める
                     </h2>

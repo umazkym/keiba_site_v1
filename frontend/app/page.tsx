@@ -72,7 +72,7 @@ export default async function HomePage() {
 
     return (
         <>
-            <div className="py-8 sm:py-12 flex flex-col">
+            <div className="py-6 flex flex-col">
                 {/* 1. ヒーローセクション */}
                 <div className="space-y-6 sm:space-y-8">
                     <section className="text-center px-4 py-10 sm:p-16 md:p-20 bg-primary rounded-3xl shadow-elevated relative overflow-hidden">

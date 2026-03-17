@@ -340,7 +340,7 @@ export default async function HomePage() {
                 </section>
 
                 {/* 8. 対応競馬場 */}
-                <section className="bg-slate-50 rounded-2xl border border-slate-200 mt-4 p-6 md:p-10 shadow-inner">
+                <section className="bg-slate-100 rounded-2xl border border-slate-200 mt-4 p-6 md:p-10 shadow-inner">
                     <h2 className="text-xl sm:text-2xl font-bold text-primary mb-3 sm:mb-4 text-center">
                         対応競馬場一覧
                     </h2>

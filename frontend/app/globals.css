@@ -364,12 +364,6 @@ header.glass {
     footer {
         padding-bottom: 110px; /* 固定広告(max100px + シャドウ)の高さ分を確保 */
     }
-
-    /* モバイルでの広告ユニット間の余白を調整 */
-    .ad-unit-container {
-        margin-top: 1rem;
-        margin-bottom: 1rem;
-    }
 }
 
 /* レスポンシブ改善 */

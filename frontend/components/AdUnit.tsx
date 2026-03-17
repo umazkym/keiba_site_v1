@@ -95,8 +95,8 @@ export const AdUnit = ({
     }> = {
         inline: {
             containerClass: 'my-1 sm:my-3 flex flex-col items-center justify-center w-full',
-            minHeight: '50px',
-            adStyle: { width: '100%', minHeight: '50px' },
+            minHeight: '0',
+            adStyle: { width: '100%' },
         },
         banner: {
             containerClass: 'my-2 sm:my-4 flex flex-col items-center justify-center w-full',

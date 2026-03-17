@@ -28,7 +28,7 @@ export const InFeedAd = ({
     className = '',
 }: InFeedAdProps) => {
     return (
-        <div className={`overflow-hidden rounded-xl border-l-[3px] border-l-slate-300 border border-y-slate-200 border-r-slate-200 shadow-sm relative w-full flex flex-col items-center justify-center bg-slate-50 p-2 sm:p-3 mt-4 mb-4 ${className}`}>
+        <div className={`overflow-hidden rounded-xl border-l-[3px] border-l-slate-300 border border-y-slate-200 border-r-slate-200 shadow-sm relative w-full flex flex-col items-center justify-center bg-slate-50 p-1.5 sm:p-3 mt-2 mb-2 ${className}`}>
             
             {/* 広告ラベル: コンテンツとの誤認を防ぐための表示 */}
             <div className="absolute top-0 right-0 max-w-fit px-2 py-0.5 rounded-bl text-[9px] text-slate-400 font-medium tracking-wider bg-slate-100/80 z-10 pointer-events-none">

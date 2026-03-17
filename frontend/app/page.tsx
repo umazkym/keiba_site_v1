@@ -72,7 +72,7 @@ export default async function HomePage() {
 
     return (
         <>
-            <div className="py-8 sm:py-12 flex flex-col gap-12 sm:gap-16">
+            <div className="py-8 sm:py-12 flex flex-col">
                 {/* 1. ヒーローセクション */}
                 <div className="space-y-6 sm:space-y-8">
                     <section className="text-center px-4 py-10 sm:p-16 md:p-20 bg-primary rounded-3xl shadow-elevated relative overflow-hidden">
@@ -340,7 +340,7 @@ export default async function HomePage() {
                 </section>
 
                 {/* 8. 対応競馬場 */}
-                <section className="bg-slate-50 rounded-2xl border border-slate-200 p-6 md:p-10 shadow-inner">
+                <section className="bg-slate-50 rounded-2xl border border-slate-200 mt-4 p-6 md:p-10 shadow-inner">
                     <h2 className="text-xl sm:text-2xl font-bold text-primary mb-3 sm:mb-4 text-center">
                         対応競馬場一覧
                     </h2>

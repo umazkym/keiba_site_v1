@@ -159,9 +159,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* レースナビゲーション: AI分析直後 → 予測を見たら即座に次Rへ */}
                     <RaceNavigation />
 
-                    {/* フローを阻害しないための空白（広告撤去跡地） */}
-                    <div className="h-4 sm:h-6"></div>
-
                     {/* 脚質パターン予測 */}
                     <div className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
                         <div className="px-2.5 py-1.5 sm:p-4 bg-gray-50 border-b border-gray-200">
@@ -306,11 +303,11 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         return index >= 0 ? index : 0;
     }, [data.nar, initialVenueName]);
 
-    const mainTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-2 sm:gap-4 border-b-2 border-slate-200 mb-6";
+    const mainTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-2 sm:gap-4 border-b-2 border-slate-200 mb-4";
     const mainTabClass = "snap-start min-w-max px-4 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-bold text-slate-400 bg-transparent cursor-pointer hover:text-slate-600 transition-all outline-none border-b-2 border-transparent -mb-[2px]";
     const mainSelectedTabClass = "!text-primary !border-primary";
 
-    const venueTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1.5 sm:gap-2 mb-6 p-1 bg-slate-100/60 rounded-xl w-max border border-slate-200/50 max-w-full";
+    const venueTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1.5 sm:gap-2 mb-4 p-1 bg-slate-100/60 rounded-xl w-max border border-slate-200/50 max-w-full";
     const venueTabClass = "snap-start min-w-max px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-slate-500 rounded-lg cursor-pointer hover:text-slate-700 hover:bg-slate-200/60 transition-all outline-none";
     const venueSelectedTabClass = "!text-primary !bg-white shadow-sm !border-slate-200";
 

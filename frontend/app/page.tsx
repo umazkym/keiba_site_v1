@@ -72,29 +72,29 @@ export default async function HomePage() {
 
     return (
         <>
-            <div className="py-6 flex flex-col" style={{ gap: 'var(--section-gap)' }}>
+            <div className="py-4 flex flex-col" style={{ gap: 'var(--section-gap)' }}>
                 {/* 1. ヒーローセクション */}
-                <div className="space-y-6 sm:space-y-8">
-                    <section className="text-center px-4 py-10 sm:p-16 md:p-20 bg-primary rounded-3xl shadow-elevated relative overflow-hidden">
+                <div className="space-y-4 sm:space-y-6">
+                    <section className="text-center px-4 py-8 sm:p-14 md:p-16 bg-primary rounded-3xl shadow-elevated relative overflow-hidden">
                         {/* プレミアムな放射状グラデーション */}
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-blue-900/30 via-primary to-primary-dark"></div>
 
                         <div className="relative z-10">
-                            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white mb-6 sm:mb-8 leading-tight tracking-tight drop-shadow-sm">
+                            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white mb-4 sm:mb-6 leading-tight tracking-tight drop-shadow-sm">
                                 登録不要・完全無料
                                 <br />
                                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-indigo-200">
                                     AI競馬データ分析
                                 </span>
                             </h1>
-                            <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl mx-auto mb-10 sm:mb-12 leading-relaxed font-medium">
+                            <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl mx-auto mb-6 sm:mb-10 leading-relaxed font-medium">
                                 過去5年以上のレースデータを統計的に分析。
                                 <br className="sm:hidden" />
                                 中央・地方の全レースに対応しています。
                             </p>
 
                             {/* サイト統計情報 - モバイル2x2グリッド（divide-x削除でゴースト線回避） */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 mb-10 sm:mb-14 text-white/90 max-w-lg sm:max-w-4xl mx-auto sm:divide-x sm:divide-slate-700/50">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-8 mb-6 sm:mb-10 text-white/90 max-w-lg sm:max-w-4xl mx-auto sm:divide-x sm:divide-slate-700/50">
                                 <div className="text-center">
                                     <div className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">24</div>
                                     <div className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide">対応競馬場</div>
@@ -123,17 +123,17 @@ export default async function HomePage() {
                     </section>
 
                     {/* 高配当的中ランキング */}
-                    <section className="bg-white rounded-2xl sm:border sm:border-slate-100 mt-2 sm:mt-0 px-2 sm:p-8 sm:shadow-soft">
+                    <section className="bg-white rounded-2xl sm:border sm:border-slate-100 px-2 sm:p-6 sm:shadow-soft">
                         <TopHitsDisplay />
                     </section>
                 </div>
 
                 {/* 2. UMA-FREEとは */}
                 <section className="bg-white rounded-2xl sm:border sm:border-slate-100 p-6 md:p-10 shadow-soft">
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-6 text-center">
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4 sm:mb-6 text-center">
                         UMA-FREEとは
                     </h2>
-                    <div className="mt-6 grid md:grid-cols-2 gap-6 sm:gap-8 md:gap-10 text-text-secondary text-base leading-relaxed text-left">
+                    <div className="grid md:grid-cols-2 gap-5 sm:gap-8 md:gap-10 text-text-secondary text-base leading-relaxed text-left">
                         <div className="space-y-4 sm:space-y-5">
                             <p>
                                 UMA-FREEは、過去5年以上の中央競馬（JRA）および地方競馬（NAR）の膨大なレースデータを機械学習アルゴリズムで分析し、各出走馬の能力を独自の<strong>AI偏差値</strong>として数値化した競馬データ分析サイトです。会員登録やメールアドレスの入力は一切不要で、すべての分析データを完全無料でご利用いただけます。
@@ -158,7 +158,7 @@ export default async function HomePage() {
 
                 {/* 3. 3つの分析データ */}
                 <section className="bg-surface p-6 rounded-2xl border border-border">
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-8 text-center">3つの分析データ</h2>
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-5 sm:mb-6 text-center">3つの分析データ</h2>
                     <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
                         <div className="bg-white py-6 px-5 sm:p-8 rounded-2xl border border-slate-100 shadow-soft flex items-center sm:flex-col sm:text-center gap-4 sm:gap-0 hover-lift">
                             <div className="bg-slate-50 text-primary rounded-2xl p-4 sm:p-5 sm:mb-5 shrink-0 border border-slate-100">
@@ -198,7 +198,7 @@ export default async function HomePage() {
 
                 {/* 4. 今日の分析注目馬 */}
                 <section>
-                    <h2 className="text-lg sm:text-2xl font-bold text-primary mb-4 sm:mb-6 border-b border-gray-200 pb-2 sm:pb-3 flex items-center gap-2">
+                    <h2 className="text-lg sm:text-2xl font-bold text-primary mb-3 sm:mb-5 border-b border-gray-200 pb-2 sm:pb-3 flex items-center gap-2">
                         <span className="w-1.5 h-6 bg-accent rounded-full"></span>
                         今日の分析注目馬
                     </h2>
@@ -207,7 +207,7 @@ export default async function HomePage() {
 
                 {/* 5. 新着記事セクション */}
                 <section>
-                    <div className="flex items-center justify-between mb-6 sm:mb-8">
+                    <div className="flex items-center justify-between mb-4 sm:mb-6">
                         <h2 className="text-lg sm:text-2xl font-bold text-primary flex items-center gap-3">
                             <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
                             最新の分析記事
@@ -272,7 +272,7 @@ export default async function HomePage() {
 
                 {/* 6. 使い方セクション */}
                 <section className="bg-surface rounded-2xl border border-border p-6">
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-8 text-center">
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-5 sm:mb-6 text-center">
                         3ステップで始める
                     </h2>
                     <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
@@ -311,7 +311,7 @@ export default async function HomePage() {
 
                 {/* 7. よくある質問 */}
                 <section className="bg-white rounded-2xl border border-slate-100 p-6 md:p-10 shadow-soft">
-                    <div className="flex items-center justify-between mb-6 sm:mb-8">
+                    <div className="flex items-center justify-between mb-4 sm:mb-6">
                         <h2 className="text-xl sm:text-2xl font-bold text-primary">
                             よくある質問
                         </h2>
@@ -329,7 +329,7 @@ export default async function HomePage() {
                             </div>
                         ))}
                     </div>
-                    <div className="mt-10 text-center">
+                    <div className="mt-6 sm:mt-8 text-center">
                         <Link
                             href="/faq"
                             className="inline-flex items-center justify-center bg-primary hover:bg-primary-light text-white font-bold py-3 px-8 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
@@ -347,10 +347,10 @@ export default async function HomePage() {
                     <h2 className="text-xl sm:text-2xl font-bold text-primary mb-3 sm:mb-4 text-center">
                         対応競馬場一覧
                     </h2>
-                    <p className="text-text-secondary text-xs sm:text-sm leading-[1.8] mb-6 sm:mb-8">
+                    <p className="text-text-secondary text-xs sm:text-sm leading-[1.8] mb-4 sm:mb-6">
                         中央競馬（JRA）10場と地方競馬（NAR）14場の全24競馬場に対応。全レースの分析データを無料提供しています。
                     </p>
-                    <div className="grid md:grid-cols-2 gap-8 sm:gap-10">
+                    <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
                         <div>
                             <h3 className="font-bold text-sm sm:text-lg mb-2 sm:mb-3 text-text-primary">中央競馬（10場）</h3>
                             <p className="text-xs text-text-muted mb-3 sm:mb-4 leading-relaxed">JRA管理の全国10競馬場。ダービーや有馬記念など開催。</p>

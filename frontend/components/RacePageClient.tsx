@@ -275,7 +275,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                 {/* In-article広告: 免責事項読了後・注目馬前の自然な区切り */}
                 <AdUnit slot="1489598374" placement="inline" refreshKey={`inarticle-${currentDate}`} />
 
-                <div className="mb-4">
+                <div className="mb-2">
                     <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
                 </div>
                 <RaceTabs
@@ -313,15 +313,15 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
             {renderContent()}
 
             {/* 的中ランキング: レースデータの後に配置 */}
-            <div className="mt-3 sm:mt-6 mb-2 sm:mb-4">
+            <div className="mt-2 sm:mt-4 mb-1 sm:mb-3">
                 <TopHitsDisplay initialHits={initialTopHits} />
             </div>
 
             {/* 広告: 的中ランキング後（inlineに変更しコンテンツとの一体感を強化） */}
-            <AdUnit slot="8529703346" placement="inline" refreshKey={`banner-${currentDate}`} className="my-3 sm:my-6" />
+            <AdUnit slot="8529703346" placement="inline" refreshKey={`banner-${currentDate}`} className="my-2 sm:my-4" />
 
             {/* サイト紹介テキスト（SEO・AdSense対策：重複回避のため最小限に） */}
-            <section className="mt-4 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">
+            <section className="mt-2 sm:mt-3 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">
                 <p className="text-sm text-gray-600">
                     より詳しいAIデータ分析の仕組みや、サイトの使い方は
                     <Link href="/about" className="text-primary hover:underline font-semibold mx-1">運営者情報・このサイトについて</Link>

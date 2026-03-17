@@ -326,9 +326,7 @@ td.no-match {
 /* ---------- 広告収益最大化のためのスタイル ---------- */
 .ad-highlight {
     position: relative;
-    padding: 0.5rem 0.25rem;
     overflow: hidden;
-    /* 広告クリック誤タップ防止のため余白を最小限に */
 }
 
 /* 広告ユニットコンテナ: CLS防止のためmin-height予約 */

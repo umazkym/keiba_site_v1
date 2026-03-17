@@ -94,12 +94,12 @@ export const AdUnit = ({
         adStyle: React.CSSProperties;
     }> = {
         inline: {
-            containerClass: 'my-2 sm:my-5 flex flex-col items-center justify-center w-full',
+            containerClass: 'my-1 sm:my-3 flex flex-col items-center justify-center w-full',
             minHeight: '50px',
             adStyle: { width: '100%', minHeight: '50px' },
         },
         banner: {
-            containerClass: 'my-3 sm:my-8 flex flex-col items-center justify-center w-full',
+            containerClass: 'my-2 sm:my-4 flex flex-col items-center justify-center w-full',
             minHeight: '80px',
             adStyle: { width: '100%', minHeight: '80px' },
         },

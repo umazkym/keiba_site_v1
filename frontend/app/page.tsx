@@ -72,7 +72,7 @@ export default async function HomePage() {
 
     return (
         <>
-            <div className="py-6 flex flex-col">
+            <div className="py-6 flex flex-col" style={{ gap: 'var(--section-gap)' }}>
                 {/* 1. ヒーローセクション */}
                 <div className="space-y-6 sm:space-y-8">
                     <section className="text-center px-4 py-10 sm:p-16 md:p-20 bg-primary rounded-3xl shadow-elevated relative overflow-hidden">
@@ -93,21 +93,21 @@ export default async function HomePage() {
                                 中央・地方の全レースに対応しています。
                             </p>
 
-                            {/* サイト統計情報 - モバイルは2x2グリッド */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 mb-10 sm:mb-14 text-white/90 max-w-lg sm:max-w-4xl mx-auto divide-x divide-slate-700/50">
+                            {/* サイト統計情報 - モバイル2x2グリッド（divide-x削除でゴースト線回避） */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 mb-10 sm:mb-14 text-white/90 max-w-lg sm:max-w-4xl mx-auto sm:divide-x sm:divide-slate-700/50">
                                 <div className="text-center">
                                     <div className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">24</div>
                                     <div className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide">対応競馬場</div>
                                 </div>
-                                <div className="text-center pl-4">
+                                <div className="text-center sm:pl-4">
                                     <div className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">5年+</div>
                                     <div className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide">分析データ期間</div>
                                 </div>
-                                <div className="text-center pl-4 border-l border-slate-700/50 sm:border-l-0">
+                                <div className="text-center sm:pl-4">
                                     <div className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">{totalArticles}</div>
                                     <div className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide">分析記事</div>
                                 </div>
-                                <div className="text-center pl-4">
+                                <div className="text-center sm:pl-4">
                                     <div className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">毎日</div>
                                     <div className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide">データ更新</div>
                                 </div>
@@ -127,9 +127,6 @@ export default async function HomePage() {
                         <TopHitsDisplay />
                     </section>
                 </div>
-
-                {/* 広告①: ヒーロー＋的中ランキング直後（最も視認性が高い位置） */}
-                <AdUnit slot="8529703346" placement="banner" />
 
                 {/* 2. UMA-FREEとは */}
                 <section className="bg-white rounded-2xl sm:border sm:border-slate-100 p-6 md:p-10 shadow-soft">
@@ -155,6 +152,9 @@ export default async function HomePage() {
                         </div>
                     </div>
                 </section>
+
+                {/* 広告①: リード文（UMA-FREEとは）読了後の自然な「間」に配置 */}
+                <AdUnit slot="8529703346" placement="inline" />
 
                 {/* 3. 3つの分析データ */}
                 <section className="bg-surface p-6 rounded-2xl border border-border">
@@ -207,7 +207,7 @@ export default async function HomePage() {
 
                 {/* 5. 新着記事セクション */}
                 <section>
-                    <div className="flex items-center justify-between mt-6 mb-6 sm:mb-8">
+                    <div className="flex items-center justify-between mb-6 sm:mb-8">
                         <h2 className="text-lg sm:text-2xl font-bold text-primary flex items-center gap-3">
                             <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
                             最新の分析記事
@@ -225,12 +225,12 @@ export default async function HomePage() {
                                 key={article.slug}
                                 className="flex sm:flex-col items-center sm:items-stretch group border border-slate-200 rounded-xl overflow-hidden shadow-sm hover-lift bg-white"
                             >
-                                <div className="relative w-[88px] h-[72px] sm:w-full sm:h-40 md:h-44 lg:h-48 shrink-0 rounded-l-lg sm:rounded-l-none overflow-hidden bg-slate-100">
+                                <div className="relative w-24 h-[72px] sm:w-full sm:h-40 md:h-44 lg:h-48 shrink-0 rounded-l-lg sm:rounded-l-none overflow-hidden bg-slate-100">
                                     <Image
                                         src={article.eyecatch}
                                         alt={article.title}
                                         fill
-                                        sizes="(max-width: 640px) 88px, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                                        sizes="(max-width: 640px) 96px, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
                                         style={{ objectFit: 'cover' }}
                                         className="group-hover:scale-105 transition-transform duration-500"
                                     />
@@ -339,8 +339,11 @@ export default async function HomePage() {
                     </div>
                 </section>
 
+                {/* 広告③: FAQ後のMultiplex枠（次ページ遷移直前・CTR高ポジション） */}
+                <AdUnit slot="9407670747" placement="inline" />
+
                 {/* 8. 対応競馬場 */}
-                <section className="bg-slate-100 rounded-2xl border border-slate-200 mt-4 p-6 md:p-10 shadow-inner">
+                <section className="bg-slate-100 rounded-2xl border border-slate-200 p-6 md:p-10 shadow-inner">
                     <h2 className="text-xl sm:text-2xl font-bold text-primary mb-3 sm:mb-4 text-center">
                         対応競馬場一覧
                     </h2>

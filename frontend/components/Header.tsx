@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { SearchIcon, MenuIcon, XIcon } from '@/components/Icons';
 
 export const Header = () => {
@@ -15,6 +15,18 @@ export const Header = () => {
     const closeMenu = useCallback(() => {
         setIsMenuOpen(false);
     }, []);
+
+    // メニュー展開時にbodyのスクロールをロック
+    useEffect(() => {
+        if (isMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isMenuOpen]);
 
     const getTodayString = () => {
         const today = new Date(
@@ -95,88 +107,96 @@ export const Header = () => {
                     </div>
                 </div>
 
-                {/* モバイルメニュー */}
-                {isMenuOpen && (
-                    <nav className="md:hidden pb-4 border-t border-slate-100 max-h-[calc(100dvh-56px)] sm:max-h-[calc(100dvh-64px)] overflow-y-auto bg-white absolute left-0 right-0 shadow-lg">
-                        <div className="flex items-center gap-2 px-4 py-4 mb-2 bg-slate-50 border-b border-slate-100">
-                            <Image src="/new-logo.png" alt="UMA-FREE" width={24} height={24} className="w-6 h-6" />
-                            <span className="text-base font-bold tracking-tight text-primary">UMA-FREE</span>
-                        </div>
+                {/* モバイルメニューオーバーレイ（タップで閉じる） */}
+                <div
+                    className={`mobile-menu-overlay ${isMenuOpen ? 'active' : ''}`}
+                    onClick={closeMenu}
+                    aria-hidden="true"
+                />
+
+                {/* モバイルメニューパネル（スライドアニメーション） */}
+                <nav
+                    className={`mobile-menu-panel ${isMenuOpen ? 'open' : ''}`}
+                    aria-label="モバイルナビゲーション"
+                >
+                    <div className="flex items-center gap-2 px-4 py-4 mb-2 bg-slate-50 border-b border-slate-100">
+                        <Image src="/new-logo.png" alt="UMA-FREE" width={24} height={24} className="w-6 h-6" />
+                        <span className="text-base font-bold tracking-tight text-primary">UMA-FREE</span>
+                    </div>
+                    <Link
+                        href="/"
+                        className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
+                        onClick={closeMenu}
+                    >
+                        ホーム
+                    </Link>
+                    <Link
+                        href={`/races/${todayStr}`}
+                        className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
+                        onClick={closeMenu}
+                    >
+                        本日の分析
+                    </Link>
+                    <Link
+                        href="/articles"
+                        className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
+                        onClick={closeMenu}
+                    >
+                        記事
+                    </Link>
+                    <Link
+                        href="/faq"
+                        className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
+                        onClick={closeMenu}
+                    >
+                        よくある質問
+                    </Link>
+                    <Link
+                        href="/about-ai"
+                        className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
+                        onClick={closeMenu}
+                    >
+                        AIモデル
+                    </Link>
+                    <Link
+                        href="/search"
+                        className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
+                        onClick={closeMenu}
+                    >
+                        検索
+                    </Link>
+                    <div className="px-4 py-4 bg-slate-50/80">
+                        <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 font-mono">その他</p>
                         <Link
-                            href="/"
-                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
+                            href="/about"
+                            className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
                             onClick={closeMenu}
                         >
-                            ホーム
+                            このサイトについて
                         </Link>
                         <Link
-                            href={`/races/${todayStr}`}
-                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
+                            href="/advertising"
+                            className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
                             onClick={closeMenu}
                         >
-                            本日の分析
+                            広告について
                         </Link>
                         <Link
-                            href="/articles"
-                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
+                            href="/contact"
+                            className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
                             onClick={closeMenu}
                         >
-                            記事
+                            お問い合わせ
                         </Link>
                         <Link
-                            href="/faq"
-                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
+                            href="/privacy"
+                            className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
                             onClick={closeMenu}
                         >
-                            よくある質問
+                            プライバシーポリシー
                         </Link>
-                        <Link
-                            href="/about-ai"
-                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
-                            onClick={closeMenu}
-                        >
-                            AIモデル
-                        </Link>
-                        <Link
-                            href="/search"
-                            className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
-                            onClick={closeMenu}
-                        >
-                            検索
-                        </Link>
-                        <div className="px-4 py-4 bg-slate-50/80">
-                            <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 font-mono">その他</p>
-                            <Link
-                                href="/about"
-                                className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
-                                onClick={closeMenu}
-                            >
-                                このサイトについて
-                            </Link>
-                            <Link
-                                href="/advertising"
-                                className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
-                                onClick={closeMenu}
-                            >
-                                広告について
-                            </Link>
-                            <Link
-                                href="/contact"
-                                className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
-                                onClick={closeMenu}
-                            >
-                                お問い合わせ
-                            </Link>
-                            <Link
-                                href="/privacy"
-                                className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
-                                onClick={closeMenu}
-                            >
-                                プライバシーポリシー
-                            </Link>
-                        </div>
-                    </nav>
-                )}
+                    </div>
+                </nav>
             </div>
         </header>
     );

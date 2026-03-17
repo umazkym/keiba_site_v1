@@ -3,8 +3,8 @@ import { TwitterIcon } from 'lucide-react';
 
 export const Footer = () => {
     return (
-        <footer className="bg-primary text-slate-300 py-8 sm:py-16 relative z-0 mb-16">
-            {/* mb-16（64px）を追加してアンカー広告分のマージンを確保 */}
+        <footer className="bg-primary text-slate-300 py-8 sm:py-16 relative z-0 mb-[60px]">
+            {/* mb-[60px]でMobileStickyAd(50px + border)の実高さと正確に合わせる */}
             <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6">
                 {/* メインフッターコンテンツ（3カラム） */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-12 mb-8 sm:mb-12">
@@ -19,7 +19,7 @@ export const Footer = () => {
                     {/* コンテンツリンク */}
                     <div>
                         <h3 className="font-bold text-white text-sm sm:text-base mb-3 sm:mb-4">コンテンツ</h3>
-                        <ul className="space-y-2.5 sm:space-y-3">
+                        <ul className="space-y-2 sm:space-y-3">
                             <li>
                                 <Link href="/articles" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     分析記事一覧
@@ -58,7 +58,7 @@ export const Footer = () => {
                     {/* ポリシーリンク */}
                     <div>
                         <h3 className="font-bold text-white text-sm sm:text-base mb-3 sm:mb-4">サイトポリシー</h3>
-                        <ul className="space-y-2.5 sm:space-y-3">
+                        <ul className="space-y-2 sm:space-y-3">
                             <li>
                                 <Link href="/advertising" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     広告について

@@ -30,6 +30,15 @@
     --text: #0f172a;
     --soft-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
     --elevated-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08);
+
+    /* セクション間のギャップ（モバイル/デスクトップ自動切替） */
+    --section-gap: 1.25rem;
+}
+
+@media (min-width: 640px) {
+    :root {
+        --section-gap: 2rem;
+    }
 }
 
 /* ---------- base adjustments ---------- */
@@ -181,6 +190,38 @@
         background: white;
         border: 1px solid var(--border);
     }
+
+    /* セクション区切り: コンテンツと広告の間に控えめなセパレーター */
+    .section-divider {
+        @apply w-full flex items-center justify-center;
+        padding: var(--section-gap) 0;
+    }
+
+    .section-divider::before {
+        content: '';
+        display: block;
+        width: 40px;
+        height: 3px;
+        border-radius: 2px;
+        background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+
+    /* ネイティブ風広告スタイル: コンテンツと自然に馴染む */
+    .ad-native {
+        @apply w-full bg-slate-50/50 border border-slate-100 rounded-xl overflow-hidden;
+        transition: opacity 0.3s ease, max-height 0.3s ease;
+    }
+
+    .ad-native::before {
+        content: '広告';
+        display: block;
+        text-align: center;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        padding-top: 6px;
+        opacity: 0.6;
+    }
 }
 
 /* ---------- テーブル / Matchup 固有スタイル ---------- */
@@ -294,7 +335,7 @@ td.no-match {
 .ad-unit-container {
     contain: layout;
     content-visibility: auto;
-    transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin 0.3s ease-out;
+    transition: max-height 0.4s ease-out, opacity 0.4s ease-out, margin 0.4s ease-out;
 }
 
 /* 広告が「未配信（unfilled）」としてマークされた場合はスムーズに折りたたむ */
@@ -457,6 +498,41 @@ header.glass {
 
 .prose table tbody tr:nth-child(even) {
     background-color: #fafbfc;
+}
+
+/* ---------- モバイルメニューアニメーション ---------- */
+.mobile-menu-overlay {
+    @apply fixed inset-0 bg-black/30 backdrop-blur-[2px] z-40;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.mobile-menu-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.mobile-menu-panel {
+    @apply md:hidden absolute left-0 right-0 shadow-xl bg-white border-t border-slate-100 z-50;
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+    max-height: calc(100dvh - 56px);
+    overflow-y: auto;
+}
+
+.mobile-menu-panel.open {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+@media (min-width: 640px) {
+    .mobile-menu-panel {
+        max-height: calc(100dvh - 64px);
+    }
 }
 
 @layer utilities {

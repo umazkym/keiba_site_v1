@@ -1,6 +1,5 @@
 'use client';
 import { usePathname } from 'next/navigation';
-import { StickyAd } from './StickyAd';
 import { MobileStickyAd } from './MobileStickyAd';
 
 /**
@@ -8,12 +7,12 @@ import { MobileStickyAd } from './MobileStickyAd';
  * 
  * 広告収益最大化戦略:
  * 
- * 1. Google Auto Ads（アンカー広告・ビネット広告）
- *    → layout.tsx の adsbygoogle.js スクリプトが自動処理（Google ML最適化）
+ * 1. Google Auto Ads（全画面広告のみON）
+ *    → layout.tsx の adsbygoogle.js スクリプトが自動処理
  * 
  * 2. 手動配置広告
  *    → 各ページコンポーネント内に AdUnit を配置（高価値ポジション）
- *    → StickyAd: デスクトップサイドバー追従広告
+ *    → MobileStickyAd: モバイル下部追従広告
  * 
  * 3. 広告非表示ページ
  *    → /about, /contact, /privacy, /terms, /advertising: ポリシー/個人情報系ページ
@@ -37,27 +36,10 @@ export const GlobalAdManager = () => {
             return null;
         }
 
-        // デスクトップサイドバー追従広告の表示条件
-        // コンテンツが長いページ（レース詳細・記事詳細）で特に効果的
-        const showStickyAd = pathname.startsWith('/races/') ||
-            pathname.startsWith('/articles/') ||
-            pathname === '/faq' ||
-            pathname === '/' ||
-            pathname === '/articles' ||
-            pathname === '/about-ai' ||
-            pathname === '/search';
-
-        // モバイルサイドバー追従広告の表示条件（常に表示可能だが、ポリシー系画面で弾いているので十分）
-        const showMobileStickyAd = true;
-
-        if (!shouldShowAds) {
-            return null;
-        }
-
         return (
             <>
-                {/* 新設のモバイル用下部追従広告（PCなど広い画面ではコンポーネント側で制御/非表示） */}
-                {showMobileStickyAd && <MobileStickyAd />}
+                {/* モバイル用下部追従広告（PCなど広い画面ではコンポーネント側で制御/非表示） */}
+                <MobileStickyAd />
             </>
         );
     } catch (error) {

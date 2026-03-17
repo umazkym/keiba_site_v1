@@ -271,6 +271,10 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
         return (
             <>
                 <DisclaimerAlert />
+
+                {/* In-article広告: 免責事項読了後・注目馬前の自然な区切り */}
+                <AdUnit slot="1489598374" placement="inline" refreshKey={`inarticle-${currentDate}`} />
+
                 <div className="mb-4">
                     <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
                 </div>
@@ -313,8 +317,8 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                 <TopHitsDisplay initialHits={initialTopHits} />
             </div>
 
-            {/* 広告: 的中ランキング後 */}
-            <AdUnit slot="8529703346" placement="banner" refreshKey={`banner-${currentDate}`} className="my-3 sm:my-6" />
+            {/* 広告: 的中ランキング後（inlineに変更しコンテンツとの一体感を強化） */}
+            <AdUnit slot="8529703346" placement="inline" refreshKey={`banner-${currentDate}`} className="my-3 sm:my-6" />
 
             {/* サイト紹介テキスト（SEO・AdSense対策：重複回避のため最小限に） */}
             <section className="mt-4 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">

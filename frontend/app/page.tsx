@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
-import { getSpecialPick } from '@/lib/api';
+import { getSpecialPick, getPredictionsForDate } from '@/lib/api';
 import { getLatestArticles, getUniqueCategories, getAllArticles } from '../lib/articles';
 
 import DisclaimerAlert from '@/components/DisclaimerAlert';
@@ -61,10 +61,16 @@ const getTodayString = () => {
 
 export default async function HomePage() {
     const todayStr = getTodayString();
-    const specialPick = await getSpecialPick(todayStr).catch(e => {
-        console.error("Failed to fetch special pick:", e);
-        return null;
-    });
+    const [specialPick, predictions] = await Promise.all([
+        getSpecialPick(todayStr).catch(e => {
+            console.error("Failed to fetch special pick:", e);
+            return null;
+        }),
+        getPredictionsForDate(todayStr).catch(e => {
+            console.error("Failed to fetch predictions:", e);
+            return null;
+        })
+    ]);
 
     const latestArticles = getLatestArticles(5);
     const categories = getUniqueCategories();
@@ -176,19 +182,42 @@ export default async function HomePage() {
                         <svg width="18" height="18" fill="none" stroke="var(--color-primary)" strokeWidth="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                         本日の開催（{todayStr.split('-').slice(1).join('/')}）
                     </h2>
-                    <div className="venue-links-label">中央競馬（JRA）</div>
-                    <div className="venue-links-row">
-                        <Link href={`/races/${todayStr}?venue=東京`} className="venue-link">東京</Link>
-                        <Link href={`/races/${todayStr}?venue=中山`} className="venue-link">中山</Link>
-                        <Link href={`/races/${todayStr}?venue=阪神`} className="venue-link">阪神</Link>
-                        <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
-                    </div>
-                    <div className="venue-links-label">地方競馬（NAR）</div>
-                    <div className="venue-links-row !mb-0">
-                        <Link href={`/races/${todayStr}?venue=大井`} className="venue-link">大井</Link>
-                        <Link href={`/races/${todayStr}?venue=川崎`} className="venue-link">川崎</Link>
-                        <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
-                    </div>
+                    
+                    {predictions && predictions.jra.length > 0 && (
+                        <>
+                            <div className="venue-links-label">中央競馬（JRA）</div>
+                            <div className="venue-links-row">
+                                {predictions.jra.slice(0, 4).map(venue => (
+                                    <Link key={venue.venue_name} href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`} className="venue-link">
+                                        {venue.venue_name}
+                                    </Link>
+                                ))}
+                                {predictions.jra.length > 4 && (
+                                    <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
+                                )}
+                            </div>
+                        </>
+                    )}
+
+                    {predictions && predictions.nar.length > 0 && (
+                        <>
+                            <div className="venue-links-label">地方競馬（NAR）</div>
+                            <div className="venue-links-row !mb-0">
+                                {predictions.nar.slice(0, 4).map(venue => (
+                                    <Link key={venue.venue_name} href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`} className="venue-link">
+                                        {venue.venue_name}
+                                    </Link>
+                                ))}
+                                {predictions.nar.length > 4 && (
+                                    <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
+                                )}
+                            </div>
+                        </>
+                    )}
+
+                    {(!predictions || (predictions.jra.length === 0 && predictions.nar.length === 0)) && (
+                        <p className="text-sm text-secondary mt-2">本日のレースデータはありません。</p>
+                    )}
                 </section>
 
                 {/* 5. 新着記事セクション */}

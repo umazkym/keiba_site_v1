@@ -144,6 +144,112 @@
         border-color: #e2e8f0;
     }
 
+    /* === Prototype Additions: Hero Section === */
+    .hero-stats {
+        @apply grid grid-cols-4 gap-2 mb-4 text-white/90;
+    }
+    .hero-stats .num {
+        @apply text-lg sm:text-2xl font-bold text-white;
+    }
+    .hero-stats .lbl {
+        @apply text-[10px] sm:text-xs text-slate-400 tracking-wider;
+    }
+    .hero-btn {
+        @apply inline-flex items-center text-primary font-bold py-2.5 px-6 rounded-xl text-sm shadow-[0_4px_14px_rgba(255,255,255,0.15)] transition-all duration-200 bg-white;
+    }
+    .hero-btn:hover {
+        @apply transform -translate-y-0.5 shadow-[0_8px_24px_rgba(255,255,255,0.2)];
+    }
+    @media(min-width:640px) {
+        .hero-btn { @apply text-base py-3 px-8; }
+    }
+
+    /* === Prototype Additions: Typography & Generic === */
+    .sec-title {
+        @apply flex items-center gap-2 mb-3 text-base sm:text-lg font-bold text-primary;
+    }
+    .sec-title .bar {
+        @apply w-1 h-5 rounded-sm shrink-0;
+    }
+
+    /* === Prototype Additions: Accordion === */
+    .accordion {
+        @apply rounded-xl overflow-hidden;
+    }
+    .accordion summary {
+        @apply list-none cursor-pointer py-3 px-4 sm:py-4 sm:px-5 text-sm sm:text-base font-bold text-slate-900 flex items-center justify-between transition-colors duration-150 select-none;
+    }
+    .accordion summary:hover { @apply bg-slate-50; }
+    .accordion summary::-webkit-details-marker { display: none; }
+    .accordion summary .chevron { @apply text-[10px] sm:text-[12px] text-slate-400 transition-transform duration-300; }
+    .accordion[open] summary .chevron { transform: rotate(90deg); }
+    .accordion .acc-body { @apply px-4 pb-4 sm:px-5 sm:pb-5 text-[13px] sm:text-sm text-slate-500 leading-relaxed; }
+
+    /* === Prototype Additions: Special Pick Card === */
+    .pick-card {
+        @apply relative border border-border rounded-xl overflow-hidden bg-white transition-all duration-200;
+    }
+    .pick-card:hover { @apply shadow-[0_4px_20px_rgba(15,23,42,0.08)]; }
+    .pick-card .glow {
+        @apply absolute top-0 right-0 w-32 h-32 pointer-events-none;
+        background: radial-gradient(circle, rgba(59,130,246,0.06), transparent 70%);
+    }
+    .pick-inner { @apply relative z-10 p-3 sm:p-5; }
+    .pick-top { @apply flex items-center justify-between mb-2; }
+    .pick-badge { @apply text-[10px] sm:text-xs font-bold bg-primary text-white py-0.5 px-2 rounded-md leading-tight; }
+    .pick-score { @apply text-[11px] sm:text-[13px] font-bold text-blue-700 bg-blue-50 border border-blue-100/50 py-0.5 px-2 rounded-full flex items-center gap-1; }
+    .pick-score .val { @apply text-[14px] sm:text-base font-mono tracking-tight; }
+    .pick-name { @apply text-lg sm:text-2xl font-extrabold text-primary-dark leading-tight mb-1; }
+    .pick-meta { @apply text-[11px] sm:text-[13px] text-slate-500 bg-slate-50 border border-slate-100 py-0.5 px-2 rounded-md inline-block mb-1.5; }
+    .pick-comment { @apply text-[12px] sm:text-sm text-primary-light leading-relaxed border-t border-slate-100 pt-1.5; }
+
+    /* === Prototype Additions: Hits Grid === */
+    .hits-grid { @apply grid grid-cols-2 lg:grid-cols-5 gap-1.5 sm:gap-2.5; }
+    .hit-card { @apply bg-white border border-border rounded-xl p-2 sm:p-3 transition-all duration-200; }
+    .hit-card:hover { @apply shadow-[0_2px_12px_rgba(15,23,42,0.06)]; }
+    .hit-top { @apply flex justify-between items-center mb-1; }
+    .hit-rank { @apply text-[10px] sm:text-[11px] font-bold py-0.5 px-1.5 rounded-md leading-tight; }
+    .rank-1 { @apply bg-amber-50 text-amber-800 border-amber-200 border; }
+    .rank-2 { @apply bg-slate-50 text-slate-600 border-slate-200 border; }
+    .rank-3 { @apply bg-orange-50 text-orange-800 border-orange-200 border; }
+    .rank-default { @apply bg-slate-50 text-slate-500 border-slate-100 border; }
+    .hit-payout { @apply text-sm sm:text-base font-bold text-red-600 tracking-tight leading-none; }
+    .hit-info { @apply text-[10px] sm:text-[11px] text-slate-400 mb-0.5; }
+    .hit-name { @apply text-[12px] sm:text-[13px] font-bold text-slate-900 truncate mb-0.5; }
+    .hit-bet { @apply text-[10px] sm:text-[11px] text-gray-500 truncate; }
+
+    /* === Prototype Additions: Articles List/Grid === */
+    .articles-list { @apply flex flex-col gap-2.5; }
+    @media(min-width:640px) {
+        .articles-grid { @apply grid grid-cols-2 gap-3; }
+        .articles-list { display: none; }
+    }
+    .article-card { @apply flex items-center border border-border rounded-xl overflow-hidden bg-white transition-all duration-200; }
+    .article-card:hover { @apply shadow-[0_4px_16px_rgba(15,23,42,0.06)]; }
+    .article-thumb { @apply w-[88px] h-[66px] bg-slate-200 shrink-0 flex items-center justify-center relative; }
+    .article-body { @apply py-2 px-3 min-w-0 flex-1; }
+    .article-cat { @apply text-[10px] font-bold bg-slate-100 text-slate-600 py-0.5 px-1.5 rounded-full inline-block mb-1; }
+    .article-title { @apply text-[13px] font-bold text-slate-900 leading-snug line-clamp-2; }
+    .article-date { @apply text-[10px] text-slate-400 mt-0.5; }
+
+    .article-card-v { @apply hidden flex-col border border-border rounded-xl overflow-hidden bg-white transition-all duration-200; }
+    @media(min-width:640px) {
+        .article-card-v { @apply flex; }
+        .articles-list .article-card { display: none; }
+    }
+    .article-card-v:hover { @apply shadow-[0_4px_16px_rgba(15,23,42,0.06)]; }
+    .article-thumb-v { @apply w-full h-[140px] md:h-[160px] bg-slate-200 flex items-center justify-center relative; }
+    .article-body-v { @apply p-3 sm:p-4; }
+    .article-body-v .article-title { @apply text-[14px] sm:text-[15px] font-bold mt-1 mb-1; }
+
+    /* === Prototype Additions: Venue Links === */
+    .venue-links { @apply bg-white border border-border rounded-xl py-3 px-4 sm:p-5; }
+    .venue-links h2 { @apply text-sm sm:text-base font-bold text-slate-900 mb-3 flex items-center gap-1.5; }
+    .venue-links-label { @apply text-[11px] sm:text-sm font-semibold text-slate-400 mb-1.5 tracking-wide; }
+    .venue-links-row { @apply flex flex-wrap gap-1.5 sm:gap-2 mb-3; }
+    .venue-link { @apply inline-flex items-center justify-center px-4 py-2 text-xs sm:text-sm font-bold text-primary bg-slate-50 border border-border rounded-lg transition-all duration-200 min-h-[40px]; }
+    .venue-link:hover { @apply bg-primary text-white border-primary transform -translate-y-[1px] shadow-[0_2px_8px_rgba(15,23,42,0.12)]; }
+
     /* Glassmorphism utility */
     .glass {
         @apply bg-white/80 backdrop-blur-md border-b border-slate-200/50;

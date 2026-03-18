@@ -80,31 +80,27 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
             className="block group mb-1 sm:mb-2"
             aria-label={`${pick.commentary}`}
         >
-            <div className="bg-white text-text-primary rounded-xl overflow-hidden border border-slate-200 shadow-sm relative" role="region" aria-labelledby="special-pick-title">
-                {/* Subtle gradient overlay to make it look premium */}
-                <div className="absolute top-0 right-0 p-12 bg-blue-50/50 rounded-bl-full pointer-events-none -z-10"></div>
-
-                <div className="p-3 sm:p-5 flex flex-col z-10">
-                    <div className="flex items-center justify-between mb-1.5">
+            <div className="pick-card" role="region" aria-labelledby="special-pick-title">
+                <div className="glow"></div>
+                <div className="pick-inner">
+                    <div className="pick-top">
                         <div className="flex items-center gap-1.5">
-                           <span id="special-pick-title" className="text-[10px] sm:text-[13px] font-bold bg-primary text-white px-1.5 py-0.5 rounded leading-none">AI注目馬</span>
-                           <span className="text-[10px] sm:text-xs text-text-muted font-medium hidden sm:inline">{formattedDate}</span>
+                           <span id="special-pick-title" className="pick-badge">AI注目馬</span>
+                           <span className="text-[10px] sm:text-xs text-muted font-medium hidden sm:inline">{formattedDate}</span>
                         </div>
-                        <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50/80 text-blue-700 border border-blue-100/50 whitespace-nowrap flex items-center gap-1 leading-none">
-                            偏差値 <span className="text-xs sm:text-base font-mono tracking-tight">{pick.deviation_score.toFixed(2)}</span>
+                        <span className="pick-score">
+                            偏差値 <span className="val">{pick.deviation_score.toFixed(2)}</span>
                         </span>
                     </div>
-
-                    <div className="flex items-baseline justify-between gap-1.5 mb-1.5 min-w-0">
-                        <p className="text-[18px] sm:text-3xl font-extrabold leading-tight truncate tracking-tight text-primary-dark" title={pick.horse_name}>
+                    <div className="flex items-baseline justify-between gap-1.5 min-w-0">
+                        <p className="pick-name truncate" title={pick.horse_name}>
                             {pick.horse_name}
                         </p>
-                        <p className="text-[10px] sm:text-[13px] text-text-secondary font-medium shrink-0 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 leading-tight">
-                            {pick.venue_name}{pick.race_number}R <span className="hidden sm:inline">・ {pick.race_name}</span>
-                        </p>
                     </div>
-
-                    <p className="text-[11px] sm:text-sm font-medium leading-[1.4] text-primary-light group-hover:text-blue-700 transition-colors duration-200 line-clamp-1 sm:line-clamp-2 mt-1 border-t border-slate-100 pt-1.5">
+                    <span className="pick-meta">
+                        {pick.venue_name} {pick.race_number}R <span className="hidden sm:inline">・ {pick.race_name}</span>
+                    </span>
+                    <p className="pick-comment line-clamp-1 sm:line-clamp-2">
                         {pick.commentary}
                     </p>
                 </div>

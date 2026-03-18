@@ -149,8 +149,9 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
         }
       },
       {
-        rootMargin: '200px',
-        threshold: 0.1,
+        // 猛スピードのスクロールに対応するため、1200px（約スマホ2画面分）前から読み込み開始
+        rootMargin: '1200px 0px 1200px 0px',
+        threshold: 0.01,
       }
     );
 

@@ -1,7 +1,7 @@
 import React from 'react';
 
 // 個々のスケルトン要素
-const SkeletonBox = ({ className }: { className?: string }) => (
+export const SkeletonBox = ({ className }: { className?: string }) => (
     <div className={`bg-gray-200 rounded animate-pulse ${className}`} />
 );
 

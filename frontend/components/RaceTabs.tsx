@@ -152,6 +152,14 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
                                 AI分析
                             </h4>
+                            
+                            {/* 広告①: プレ・コンクルージョン・アンカー（AI結論直前・視線集中ゾーン） */}
+                            {shouldShowAd && (
+                                <div className="px-2 mb-2">
+                                    <InFeedAd slot="9407670747" refreshKey={adRefreshKey} className="!mt-0 !mb-2" />
+                                </div>
+                            )}
+
                             <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
                         </div>
                     </div>
@@ -160,47 +168,32 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     <RaceNavigation />
 
                     {/* 脚質パターン予測 */}
-                    <div className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="px-2.5 py-1.5 sm:p-4 bg-gray-50 border-b border-gray-200">
-                            <h4 className="flex items-center text-sm sm:text-base font-bold text-gray-800">
-                                <FlagIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary mr-1.5" />
-                                脚質パターン予測
-                            </h4>
-                        </div>
-                        <div className="p-1.5 sm:p-5">
-                            <StartPositionChart predictions={activeRace.predictions} />
-                        </div>
+                    <div className="mb-2">
+                        <CollapsibleSection title="脚質パターン予測" icon={<FlagIcon className="w-5 h-5 text-primary" />}>
+                            <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
+                                <StartPositionChart predictions={activeRace.predictions} />
+                            </div>
+                        </CollapsibleSection>
                     </div>
 
                     {/* 過去対決成績 */}
-                    <div className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="px-2.5 py-1.5 sm:p-4 bg-gray-50 border-b border-gray-200">
-                            <h4 className="flex items-center text-sm sm:text-base font-bold text-gray-800">
-                                <UsersIcon className="w-4 h-4 sm:w-5 sm:h-5 text-secondary mr-1.5" />
-                                過去対決成績
-                            </h4>
-                        </div>
-                        <div className="p-1 sm:p-5">
-                            <MatchupTable race={activeRace} />
-                        </div>
+                    <div className="mb-2">
+                        <CollapsibleSection title="過去対決成績" icon={<UsersIcon className="w-5 h-5 text-secondary" />}>
+                            <div className="p-1 sm:p-5 border bg-white rounded-lg">
+                                <MatchupTable race={activeRace} />
+                            </div>
+                        </CollapsibleSection>
                     </div>
 
-                    {/* 広告①: インフィード広告（データセクション間・背景同化） */}
-                    {shouldShowAd && (
-                        <InFeedAd slot="9407670747" refreshKey={adRefreshKey} />
-                    )}
+                    {/* 過去対戦成績後の広告（9407670747）はAI分析直前に移動したため撤去 */}
 
                     {/* 枠順傾向スコア */}
-                    <div className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="px-2.5 py-1.5 sm:p-4 bg-gray-50 border-b border-gray-200">
-                            <h4 className="flex items-center text-sm sm:text-base font-bold text-gray-800">
-                                <ChartBarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
-                                枠順傾向スコア
-                            </h4>
-                        </div>
-                        <div className="p-1.5 sm:p-5">
-                            <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
-                        </div>
+                    <div className="mb-2">
+                        <CollapsibleSection title="枠順傾向スコア" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
+                            <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
+                                <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
+                            </div>
+                        </CollapsibleSection>
                     </div>
 
                     <div className="mb-2">

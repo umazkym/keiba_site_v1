@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { Adsense } from './Adsense';
+import { SkeletonBox as SkeletonLoader } from './SkeletonLoader';
 
 /**
  * 広告ユニットの配置タイプ
@@ -118,10 +119,16 @@ export const AdUnit = ({
     return (
         <div
             ref={containerRef}
-            className={`ad-unit-container ${config.containerClass} ${className} ${adUnfilled ? 'hidden m-0 p-0' : ''}`}
+            className={`ad-unit-container ${config.containerClass} ${className} ${adUnfilled ? 'hidden m-0 p-0' : ''} relative`}
             style={containerStyle}
         >
-            <div className={`ad-highlight w-full ${adUnfilled ? 'hidden' : ''}`}>
+            {/* 広告未ロード時（リフレッシュ中含む）はスケルトンを表示して視線を繋ぎ止める */}
+            {!adLoaded && !adUnfilled && (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-50/80 rounded-xl z-0">
+                    <SkeletonLoader className="w-[90%] h-[80%] rounded-lg opacity-50" />
+                </div>
+            )}
+            <div className={`ad-highlight w-full z-10 relative ${!adLoaded ? 'opacity-0' : 'opacity-100 transition-opacity duration-500'}`}>
                 {/* 広告がロードされた場合のみラベルを表示 */}
                 {label && adLoaded && (
                     <div className="text-[10px] text-gray-400 text-center mb-1 tracking-wider select-none">

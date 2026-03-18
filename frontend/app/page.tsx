@@ -8,6 +8,7 @@ import { getLatestArticles, getUniqueCategories, getAllArticles } from '../lib/a
 
 import DisclaimerAlert from '@/components/DisclaimerAlert';
 import { AdUnit } from '@/components/AdUnit';
+import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
 
 // 動的コンテンツ（SpecialPick等）を含むため、常に最新データを取得
@@ -235,7 +236,21 @@ export default async function HomePage() {
 
                     {/* レスポンシブ記事一覧: モバイル横スクロール / デスクトップグリッド */}
                     <div className="flex overflow-x-auto gap-3 sm:gap-4 snap-x snap-mandatory scrollbar-hide pb-2 sm:pb-0 -mx-3 px-3 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 md:grid-cols-4 sm:overflow-visible">
-                        {latestArticles.map((article) => (
+                        {latestArticles.slice(0, 2).map((article) => (
+                            <Link href={`/articles/${article.slug}`} key={article.slug} className="article-card-v group shrink-0 w-[240px] sm:w-auto snap-start sm:snap-align-none">
+                                <div className="article-thumb-v">
+                                    <Image src={article.eyecatch} alt={article.title} fill className="object-cover transition-transform group-hover:scale-105 duration-500" sizes="(max-width: 640px) 240px, (max-width: 1024px) 50vw, 25vw" />
+                                </div>
+                                <div className="article-body-v">
+                                    <span className="article-cat">{article.category}</span>
+                                    <p className="article-title line-clamp-2">{article.title}</p>
+                                    <span className="article-date">{new Date(article.date).toLocaleDateString()}</span>
+                                </div>
+                            </Link>
+                        ))}
+                        {/* ネイティブカード広告: 記事カードに紛れ込む */}
+                        <NativeCardAd slot="1489598374" variant="article" className="shrink-0 w-[240px] sm:w-auto snap-start sm:snap-align-none" />
+                        {latestArticles.slice(2).map((article) => (
                             <Link href={`/articles/${article.slug}`} key={article.slug} className="article-card-v group shrink-0 w-[240px] sm:w-auto snap-start sm:snap-align-none">
                                 <div className="article-thumb-v">
                                     <Image src={article.eyecatch} alt={article.title} fill className="object-cover transition-transform group-hover:scale-105 duration-500" sizes="(max-width: 640px) 240px, (max-width: 1024px) 50vw, 25vw" />

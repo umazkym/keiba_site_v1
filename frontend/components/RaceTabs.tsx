@@ -18,7 +18,8 @@ import { DynamicRelatedArticles } from './DynamicRelatedArticles';
 import { Article } from '@/lib/articles';
 import { MultiplexAd } from './MultiplexAd';
 import { AdUnit } from './AdUnit';
-import { NextRaceReminder } from './NextRaceReminder';
+import { ContentGate } from './ContentGate';
+import { NativeCardAd } from './NativeCardAd';
 
 // CollapsibleSection コンポーネント
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
@@ -180,33 +181,53 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         </CollapsibleSection>
                     </div>
 
-                    {/* 過去対決成績 */}
-                    <div className="mb-2">
-                        <CollapsibleSection title="過去対決成績" icon={<UsersIcon className="w-5 h-5 text-secondary" />}>
-                            <div className="p-1 sm:p-5 border bg-white rounded-lg">
-                                <MatchupTable race={activeRace} />
-                            </div>
-                        </CollapsibleSection>
-                    </div>
+                    {/* 過去対決成績 — コンテンツゲート対象 */}
+                    <ContentGate
+                        gateId="matchup"
+                        title="過去対決成績"
+                        description="出走馬の直接対決データを確認できます"
+                        adSlot="1489598374"
+                    >
+                        <div className="mb-2">
+                            <CollapsibleSection title="過去対決成績" icon={<UsersIcon className="w-5 h-5 text-secondary" />}>
+                                <div className="p-1 sm:p-5 border bg-white rounded-lg">
+                                    <MatchupTable race={activeRace} />
+                                </div>
+                            </CollapsibleSection>
+                        </div>
+                    </ContentGate>
 
-                    {/* 過去対戦成績後の広告（9407670747）はAI分析直前に移動したため撤去 */}
+                    {/* 枠順傾向スコア — コンテンツゲート対象 */}
+                    <ContentGate
+                        gateId="frame"
+                        title="枠順傾向スコア"
+                        description="コース・距離別の枠順有利不利データ"
+                        adSlot="8529703346"
+                    >
+                        <div className="mb-2">
+                            <CollapsibleSection title="枠順傾向スコア" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
+                                <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
+                                    <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
+                                </div>
+                            </CollapsibleSection>
+                        </div>
+                    </ContentGate>
 
-                    {/* 枠順傾向スコア */}
-                    <div className="mb-2">
-                        <CollapsibleSection title="枠順傾向スコア" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
-                            <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
-                                <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
-                            </div>
-                        </CollapsibleSection>
-                    </div>
-
-                    <div className="mb-2">
-                        <CollapsibleSection title="このレースのデータ分析" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
-                            <div className='p-2 sm:p-4 border bg-white rounded-lg'>
-                                <RaceAnalysis race={activeRace} />
-                            </div>
-                        </CollapsibleSection>
-                    </div>
+                    {/* データ分析 — コンテンツゲート対象 */}
+                    <ContentGate
+                        gateId="analysis"
+                        title="レースデータ分析"
+                        description="AIによる詳細なレース傾向分析"
+                        adSlot="9407670747"
+                    >
+                        <div className="mb-2">
+                            <CollapsibleSection title="このレースのデータ分析" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
+                                <div className='p-2 sm:p-4 border bg-white rounded-lg'>
+                                    <RaceAnalysis race={activeRace} />
+                                </div>
+                            </CollapsibleSection>
+                        </div>
+                    </ContentGate>
 
                     {/* AI指標の説明パネル */}
                     <DataExplanationPanel showAdvanced={true} />
@@ -218,6 +239,11 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
 
+                    {/* ネイティブカード広告: 関連レースカードに紛れ込む */}
+                    {shouldShowAd && (
+                        <NativeCardAd slot="1489598374" variant="article" refreshKey={adRefreshKey} className="mb-2" />
+                    )}
+
                     {/* 広告③: マルチプレックス擬態（関連記事と全く同じUIで脳を錯覚させる） */}
                     {shouldShowAd && <MultiplexAd slot="8529703346" refreshKey={adRefreshKey} />}
 
@@ -227,9 +253,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         distance={activeRace.distance}
                         articlesMeta={articlesMeta}
                     />
-
-                    {/* 次回開催案内: リピーターゼロ問題への対策 */}
-                    <NextRaceReminder />
                 </div>
             )}
         </div>

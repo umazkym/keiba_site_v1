@@ -208,7 +208,7 @@ export default async function HomePage() {
                         {latestArticles.map((article) => (
                             <Link href={`/articles/${article.slug}`} key={article.slug} className="article-card-v group">
                                 <div className="article-thumb-v">
-                                    {article.category === 'データ分析' ? '📊' : article.category.includes('レース') ? '🏇' : article.category.includes('枠順') ? '📈' : article.category.includes('的中') ? '🎯' : '💡'}
+                                    <Image src={article.eyecatch} alt={article.title} fill className="object-cover" sizes="(max-width: 640px) 400px, 600px" />
                                 </div>
                                 <div className="article-body-v">
                                     <span className="article-cat">{article.category}</span>
@@ -223,8 +223,8 @@ export default async function HomePage() {
                     <div className="articles-list">
                         {latestArticles.map((article) => (
                             <Link href={`/articles/${article.slug}`} key={article.slug} className="article-card group">
-                                <div className="article-thumb text-2xl">
-                                    {article.category === 'データ分析' ? '📊' : article.category.includes('レース') ? '🏇' : article.category.includes('枠順') ? '📈' : article.category.includes('的中') ? '🎯' : '💡'}
+                                <div className="article-thumb">
+                                    <Image src={article.eyecatch} alt={article.title} fill className="object-cover" sizes="88px" />
                                 </div>
                                 <div className="article-body">
                                     <span className="article-cat">{article.category}</span>

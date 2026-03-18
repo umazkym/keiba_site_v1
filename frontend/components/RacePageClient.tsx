@@ -295,7 +295,8 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
             {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
             {/* 変更: 日付ナビ→レースデータ→的中ランキング→バナー広告（レースデータを最速で表示） */}
             {/* ▲▲▲▲▲【ファーストビュー改善ここまで】▲▲▲▲▲ */}
-            <div className="sticky top-14 sm:top-16 z-40 glass mb-2 sm:mb-3 p-1.5 sm:p-3">
+            {/* ★ここからstickyを削除し、スクロールで自然に消えるようにして画面領域を確保 */}
+            <div className="glass mb-2 sm:mb-3 p-1.5 sm:p-3 relative z-10 shadow-sm border-b border-white/40">
                 <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
                     <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
                     <button

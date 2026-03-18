@@ -139,7 +139,8 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     return (
         <div id={`venue-${venue.venue_name}`}>
             {/* ▼▼▼▼▼【sticky化】レースセレクターを常に表示 ▼▼▼▼▼ */}
-            <div className="sticky top-[108px] sm:top-[140px] z-30 bg-background/95 backdrop-blur-sm pb-0.5 sm:pb-1">
+            {/* Header (top-14/16) の直下に吸着させるよう変更 */}
+            <div className="sticky top-14 sm:top-16 z-30 bg-white/95 backdrop-blur-sm -mx-2 px-2 sm:mx-0 sm:px-0 py-1.5 shadow-sm border-b border-gray-100">
                 <RaceSelector races={venue.races} selectedIndex={activeRaceIndex} onSelectRace={handleRaceSelect} />
             </div>
             {/* ▲▲▲▲▲【sticky化ここまで】▲▲▲▲▲ */}

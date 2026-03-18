@@ -4,23 +4,18 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Adsense } from './Adsense';
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
-const UNLOCK_DURATION = 15; // 広告表示秒数
+const UNLOCK_DURATION = 15;
 const STORAGE_KEY = 'uma_content_unlocked';
 
 /**
  * ContentGate — 広告視聴でコンテンツ解放
  *
  * 仕組み:
- * 1. ゲート対象コンテンツはblur + オーバーレイで隠される
- * 2. ユーザーが「データを見る」ボタンを押すと広告オーバーレイが表示
- * 3. カウントダウン（15秒）完了で「閉じる」ボタンが出現
- * 4. 閉じるとコンテンツが解放され、sessionStorageに記録
- * 5. 同一セッション内では再度視聴不要
- *
- * 効果:
- * - 広告視認時間が保証される → Active View 100%
- * - ユーザーが能動的に広告を見る → eCPM大幅向上
- * - コンテンツの価値を感じさせる心理効果
+ * 1. ゲートされたコンテンツは非表示（プレビューなし）
+ * 2. ロック状態のカードUIで「無料で見る」ボタンを大きく表示
+ * 3. ボタンタップ → 広告オーバーレイ（15秒カウントダウン）
+ * 4. カウントダウン完了 → コンテンツ解放 → sessionStorage記録
+ * 5. 同一セッション内は再視聴不要
  */
 export const ContentGate = ({
     children,
@@ -28,12 +23,14 @@ export const ContentGate = ({
     title = 'プレミアムデータ',
     description = '広告を表示してデータを閲覧',
     adSlot = '9407670747',
+    icon,
 }: {
     children: React.ReactNode;
     gateId: string;
     title?: string;
     description?: string;
     adSlot?: string;
+    icon?: React.ReactNode;
 }) => {
     const [isUnlocked, setIsUnlocked] = useState(false);
     const [showAdOverlay, setShowAdOverlay] = useState(false);
@@ -74,7 +71,6 @@ export const ContentGate = ({
         setShowAdOverlay(true);
         setCountdown(UNLOCK_DURATION);
         setCanClose(false);
-        // bodyスクロールをロック
         document.body.style.overflow = 'hidden';
     }, []);
 
@@ -82,7 +78,6 @@ export const ContentGate = ({
         setIsUnlocked(true);
         setShowAdOverlay(false);
         document.body.style.overflow = '';
-        // sessionStorageに保存
         try {
             const stored = sessionStorage.getItem(STORAGE_KEY);
             const unlocked: string[] = stored ? JSON.parse(stored) : [];
@@ -95,40 +90,45 @@ export const ContentGate = ({
         }
     }, [gateId]);
 
-    // すでに解放済み → そのまま表示
+    // 解放済み → コンテンツ表示
     if (isUnlocked) {
         return <>{children}</>;
     }
 
     return (
         <>
-            {/* ゲート済みコンテンツ: blur + オーバーレイ */}
-            <div className="relative rounded-xl overflow-hidden">
-                {/* blurされたコンテンツプレビュー */}
-                <div className="filter blur-[6px] pointer-events-none select-none" aria-hidden="true">
-                    {children}
+            {/* ロック状態カード — 必ず十分な高さがあり、ボタンがクリック可能 */}
+            <div className="mb-2 border border-slate-200 rounded-xl bg-gradient-to-b from-slate-50 to-white overflow-hidden">
+                {/* ヘッダー */}
+                <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100">
+                    {icon && <span className="shrink-0">{icon}</span>}
+                    <div className="flex-1 min-w-0">
+                        <h4 className="text-sm sm:text-base font-bold text-primary leading-tight">{title}</h4>
+                        <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">{description}</p>
+                    </div>
+                    <span className="shrink-0 text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
+                        🔒 ロック中
+                    </span>
                 </div>
 
-                {/* 解放プロンプトオーバーレイ */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/60 via-white/80 to-white/95 backdrop-blur-[1px] z-10">
-                    <div className="text-center px-4 max-w-xs">
-                        <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                            <svg width="24" height="24" fill="none" stroke="var(--color-primary)" strokeWidth="2" viewBox="0 0 24 24">
-                                <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                            </svg>
-                        </div>
-                        <h4 className="text-sm sm:text-base font-bold text-primary mb-1">{title}</h4>
-                        <p className="text-[11px] sm:text-xs text-slate-500 mb-3 leading-relaxed">{description}</p>
-                        <button
-                            onClick={handleStartAd}
-                            className="inline-flex items-center gap-2 bg-primary text-white text-xs sm:text-sm font-bold px-5 py-2.5 rounded-xl shadow-md hover:bg-primary-light transition-all duration-200 active:scale-95"
-                        >
-                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M8 5v14l11-7z"/>
-                            </svg>
-                            無料で見る（{UNLOCK_DURATION}秒）
-                        </button>
+                {/* 解放ボタンエリア */}
+                <div className="flex flex-col items-center justify-center py-8 px-4">
+                    <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center mb-4">
+                        <svg width="28" height="28" fill="none" stroke="var(--color-primary)" strokeWidth="1.5" viewBox="0 0 24 24">
+                            <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
                     </div>
+                    <button
+                        onClick={handleStartAd}
+                        className="inline-flex items-center gap-2 bg-primary text-white text-sm sm:text-base font-bold px-6 py-3 rounded-xl shadow-md hover:bg-primary-light transition-all duration-200 active:scale-95"
+                    >
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        無料で見る（{UNLOCK_DURATION}秒）
+                    </button>
+                    <p className="text-[10px] text-slate-400 mt-2.5">広告表示後にデータが閲覧可能になります</p>
                 </div>
             </div>
 
@@ -139,7 +139,7 @@ export const ContentGate = ({
                         {/* ヘッダー */}
                         <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-100">
                             <span className="text-xs font-bold text-slate-500">
-                                {canClose ? '✓ 閲覧可能になりました' : `あと ${countdown}秒...`}
+                                {canClose ? '✓ 閲覧可能になりました' : `データ解放まで ${countdown}秒`}
                             </span>
                             {canClose ? (
                                 <button
@@ -150,8 +150,7 @@ export const ContentGate = ({
                                 </button>
                             ) : (
                                 <div className="flex items-center gap-2">
-                                    {/* プログレスバー */}
-                                    <div className="w-20 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                    <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-primary rounded-full transition-all duration-1000 ease-linear"
                                             style={{ width: `${((UNLOCK_DURATION - countdown) / UNLOCK_DURATION) * 100}%` }}

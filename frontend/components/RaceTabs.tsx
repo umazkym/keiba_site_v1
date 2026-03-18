@@ -187,13 +187,16 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         title="過去対決成績"
                         description="出走馬の直接対決データを確認できます"
                         adSlot="1489598374"
+                        icon={<UsersIcon className="w-5 h-5 text-secondary" />}
                     >
-                        <div className="mb-2">
-                            <CollapsibleSection title="過去対決成績" icon={<UsersIcon className="w-5 h-5 text-secondary" />}>
-                                <div className="p-1 sm:p-5 border bg-white rounded-lg">
-                                    <MatchupTable race={activeRace} />
-                                </div>
-                            </CollapsibleSection>
+                        <div className="mb-2 border border-border rounded-xl overflow-hidden">
+                            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100">
+                                <UsersIcon className="w-5 h-5 text-secondary" />
+                                <h4 className="text-sm sm:text-base font-bold text-primary">過去対決成績</h4>
+                            </div>
+                            <div className="p-1 sm:p-5 bg-white">
+                                <MatchupTable race={activeRace} />
+                            </div>
                         </div>
                     </ContentGate>
 
@@ -203,13 +206,16 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         title="枠順傾向スコア"
                         description="コース・距離別の枠順有利不利データ"
                         adSlot="8529703346"
+                        icon={<ChartBarIcon className="w-5 h-5 text-accent" />}
                     >
-                        <div className="mb-2">
-                            <CollapsibleSection title="枠順傾向スコア" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
-                                <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
-                                    <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
-                                </div>
-                            </CollapsibleSection>
+                        <div className="mb-2 border border-border rounded-xl overflow-hidden">
+                            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100">
+                                <ChartBarIcon className="w-5 h-5 text-accent" />
+                                <h4 className="text-sm sm:text-base font-bold text-primary">枠順傾向スコア</h4>
+                            </div>
+                            <div className="p-1.5 sm:p-5 bg-white">
+                                <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
+                            </div>
                         </div>
                     </ContentGate>
 
@@ -219,13 +225,16 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         title="レースデータ分析"
                         description="AIによる詳細なレース傾向分析"
                         adSlot="9407670747"
+                        icon={<ChartBarIcon className="w-5 h-5 text-accent" />}
                     >
-                        <div className="mb-2">
-                            <CollapsibleSection title="このレースのデータ分析" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
-                                <div className='p-2 sm:p-4 border bg-white rounded-lg'>
-                                    <RaceAnalysis race={activeRace} />
-                                </div>
-                            </CollapsibleSection>
+                        <div className="mb-2 border border-border rounded-xl overflow-hidden">
+                            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100">
+                                <ChartBarIcon className="w-5 h-5 text-accent" />
+                                <h4 className="text-sm sm:text-base font-bold text-primary">レースデータ分析</h4>
+                            </div>
+                            <div className="p-2 sm:p-4 bg-white">
+                                <RaceAnalysis race={activeRace} />
+                            </div>
                         </div>
                     </ContentGate>
 

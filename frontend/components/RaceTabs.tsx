@@ -18,8 +18,6 @@ import { DynamicRelatedArticles } from './DynamicRelatedArticles';
 import { Article } from '@/lib/articles';
 import { MultiplexAd } from './MultiplexAd';
 import { AdUnit } from './AdUnit';
-import { ContentGate } from './ContentGate';
-import { NativeCardAd } from './NativeCardAd';
 
 // CollapsibleSection コンポーネント
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
@@ -169,8 +167,40 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         <AdUnit slot="9407670747" placement="inline" refreshKey={adRefreshKey} className="my-2" />
                     )}
 
-                    {/* レースナビゲーション: AI分析直後 → 予測を見たら即座に次Rへ */}
-                    <RaceNavigation />
+                    {/* レースナビゲーション + 次レースプレビュー */}
+                    <div className="my-3">
+                        {/* 次レース注目馬プレビュー: レース遷移を促進 → 全広告リフレッシュ → imp乗算 */}
+                        {(() => {
+                            const hasNext = activeRaceIndex < venue.races.length - 1;
+                            const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
+                            const nextTopHorse = nextRace?.predictions?.[0];
+                            if (nextTopHorse && nextRace) {
+                                return (
+                                    <div
+                                        onClick={() => handleRaceSelect(activeRaceIndex + 1)}
+                                        className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50/80 to-slate-50 border border-blue-100 rounded-xl mb-2 cursor-pointer hover:border-blue-200 transition-colors active:scale-[0.99]"
+                                    >
+                                        <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                                            <span className="text-xs font-bold text-primary">{nextRace.race_number}R</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[11px] text-slate-500">次のレース</p>
+                                            <p className="text-xs sm:text-sm font-bold text-primary truncate">
+                                                {nextRace.race_name}
+                                            </p>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <p className="text-[10px] text-slate-400">AI 1位</p>
+                                            <p className="text-xs font-bold text-primary">{nextTopHorse.horse_name}</p>
+                                        </div>
+                                        <span className="text-primary text-sm">→</span>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })()}
+                        <RaceNavigation />
+                    </div>
 
                     {/* 脚質パターン予測 */}
                     <div className="mb-2">
@@ -181,79 +211,44 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         </CollapsibleSection>
                     </div>
 
-                    {/* 過去対決成績 — コンテンツゲート対象 */}
-                    <ContentGate
-                        gateId="matchup"
-                        title="過去対決成績"
-                        description="出走馬の直接対決データを確認できます"
-                        adSlot="1489598374"
-                        icon={<UsersIcon className="w-5 h-5 text-secondary" />}
-                    >
-                        <div className="mb-2 border border-border rounded-xl overflow-hidden">
-                            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100">
-                                <UsersIcon className="w-5 h-5 text-secondary" />
-                                <h4 className="text-sm sm:text-base font-bold text-primary">過去対決成績</h4>
-                            </div>
-                            <div className="p-1 sm:p-5 bg-white">
-                                <MatchupTable race={activeRace} />
-                            </div>
-                        </div>
-                    </ContentGate>
-
-                    {/* 枠順傾向スコア — コンテンツゲート対象 */}
-                    <ContentGate
-                        gateId="frame"
-                        title="枠順傾向スコア"
-                        description="コース・距離別の枠順有利不利データ"
-                        adSlot="8529703346"
-                        icon={<ChartBarIcon className="w-5 h-5 text-accent" />}
-                    >
-                        <div className="mb-2 border border-border rounded-xl overflow-hidden">
-                            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100">
-                                <ChartBarIcon className="w-5 h-5 text-accent" />
-                                <h4 className="text-sm sm:text-base font-bold text-primary">枠順傾向スコア</h4>
-                            </div>
-                            <div className="p-1.5 sm:p-5 bg-white">
-                                <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
-                            </div>
-                        </div>
-                    </ContentGate>
-
-                    {/* データ分析 — コンテンツゲート対象 */}
-                    <ContentGate
-                        gateId="analysis"
-                        title="レースデータ分析"
-                        description="AIによる詳細なレース傾向分析"
-                        adSlot="9407670747"
-                        icon={<ChartBarIcon className="w-5 h-5 text-accent" />}
-                    >
-                        <div className="mb-2 border border-border rounded-xl overflow-hidden">
-                            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100">
-                                <ChartBarIcon className="w-5 h-5 text-accent" />
-                                <h4 className="text-sm sm:text-base font-bold text-primary">レースデータ分析</h4>
-                            </div>
-                            <div className="p-2 sm:p-4 bg-white">
-                                <RaceAnalysis race={activeRace} />
-                            </div>
-                        </div>
-                    </ContentGate>
-
-                    {/* AI指標の説明パネル */}
-                    <DataExplanationPanel showAdvanced={true} />
-
-                    {/* 広告②: インフィード広告（ページ下部・読了後の効果的な配置） */}
+                    {/* ★広告: アコーディオン間配置 — セクションを開いたユーザーはスクロールする→高い視認率 */}
                     {shouldShowAd && (
                         <InFeedAd slot="1489598374" refreshKey={adRefreshKey} />
                     )}
 
+                    {/* 過去対決成績 */}
+                    <div className="mb-2">
+                        <CollapsibleSection title="過去対決成績" icon={<UsersIcon className="w-5 h-5 text-secondary" />}>
+                            <div className="p-1 sm:p-5 border bg-white rounded-lg">
+                                <MatchupTable race={activeRace} />
+                            </div>
+                        </CollapsibleSection>
+                    </div>
+
+                    {/* 枠順傾向スコア */}
+                    <div className="mb-2">
+                        <CollapsibleSection title="枠順傾向スコア" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
+                            <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
+                                <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
+                            </div>
+                        </CollapsibleSection>
+                    </div>
+
+                    {/* データ分析 */}
+                    <div className="mb-2">
+                        <CollapsibleSection title="このレースのデータ分析" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
+                            <div className='p-2 sm:p-4 border bg-white rounded-lg'>
+                                <RaceAnalysis race={activeRace} />
+                            </div>
+                        </CollapsibleSection>
+                    </div>
+
+                    {/* AI指標の説明パネル */}
+                    <DataExplanationPanel showAdvanced={true} />
+
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
 
-                    {/* ネイティブカード広告: 関連レースカードに紛れ込む */}
-                    {shouldShowAd && (
-                        <NativeCardAd slot="1489598374" variant="article" refreshKey={adRefreshKey} className="mb-2" />
-                    )}
-
-                    {/* 広告③: マルチプレックス擬態（関連記事と全く同じUIで脳を錯覚させる） */}
+                    {/* おすすめの関連情報（広告）→ 関連記事の直前で自然な流れ */}
                     {shouldShowAd && <MultiplexAd slot="8529703346" refreshKey={adRefreshKey} />}
 
                     <DynamicRelatedArticles

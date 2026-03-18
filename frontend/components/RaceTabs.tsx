@@ -114,17 +114,17 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
         const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
 
         return (
-            <div className="my-3 flex justify-between items-center">
+            <div className="my-3 flex justify-between items-center gap-2">
                 {hasPrev && prevRace ? (
-                    <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-2.5 font-bold shadow-sm">
+                    <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 font-bold shadow-sm">
                         &larr; {prevRace.race_number}Rへ
                     </button>
-                ) : <div />}
+                ) : <div className="flex-1" />}
                 {hasNext && nextRace ? (
-                    <button onClick={() => handleRaceSelect(activeRaceIndex + 1)} className="btn-primary text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-2.5 font-bold shadow-sm">
+                    <button onClick={() => handleRaceSelect(activeRaceIndex + 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 font-bold shadow-sm">
                         {nextRace.race_number}Rへ &rarr;
                     </button>
-                ) : <div />}
+                ) : <div className="flex-1" />}
             </div>
         );
     };
@@ -203,8 +203,12 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         </div>
                     </div>
 
-                    <div className='p-2 sm:p-4 border mb-2 bg-white rounded-lg'>
-                        <RaceAnalysis race={activeRace} />
+                    <div className="mb-2">
+                        <CollapsibleSection title="このレースのデータ分析" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
+                            <div className='p-2 sm:p-4 border bg-white rounded-lg'>
+                                <RaceAnalysis race={activeRace} />
+                            </div>
+                        </CollapsibleSection>
                     </div>
 
                     {/* AI指標の説明パネル */}

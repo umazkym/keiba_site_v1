@@ -203,32 +203,16 @@ export default async function HomePage() {
                         </Link>
                     </div>
 
-                    {/* Desktop: Grid */}
-                    <div className="articles-grid">
+                    {/* レスポンシブ記事一覧: モバイル横スクロール / デスクトップグリッド */}
+                    <div className="flex overflow-x-auto gap-3 sm:gap-4 snap-x snap-mandatory scrollbar-hide pb-2 sm:pb-0 -mx-3 px-3 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 md:grid-cols-4 sm:overflow-visible">
                         {latestArticles.map((article) => (
-                            <Link href={`/articles/${article.slug}`} key={article.slug} className="article-card-v group">
+                            <Link href={`/articles/${article.slug}`} key={article.slug} className="article-card-v group shrink-0 w-[240px] sm:w-auto snap-start sm:snap-align-none">
                                 <div className="article-thumb-v">
-                                    <Image src={article.eyecatch} alt={article.title} fill className="object-cover" sizes="(max-width: 640px) 400px, 600px" />
+                                    <Image src={article.eyecatch} alt={article.title} fill className="object-cover transition-transform group-hover:scale-105 duration-500" sizes="(max-width: 640px) 240px, (max-width: 1024px) 50vw, 25vw" />
                                 </div>
                                 <div className="article-body-v">
                                     <span className="article-cat">{article.category}</span>
-                                    <p className="article-title">{article.title}</p>
-                                    <span className="article-date">{new Date(article.date).toLocaleDateString()}</span>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-
-                    {/* Mobile: List */}
-                    <div className="articles-list">
-                        {latestArticles.map((article) => (
-                            <Link href={`/articles/${article.slug}`} key={article.slug} className="article-card group">
-                                <div className="article-thumb">
-                                    <Image src={article.eyecatch} alt={article.title} fill className="object-cover" sizes="88px" />
-                                </div>
-                                <div className="article-body">
-                                    <span className="article-cat">{article.category}</span>
-                                    <p className="article-title">{article.title}</p>
+                                    <p className="article-title line-clamp-2">{article.title}</p>
                                     <span className="article-date">{new Date(article.date).toLocaleDateString()}</span>
                                 </div>
                             </Link>

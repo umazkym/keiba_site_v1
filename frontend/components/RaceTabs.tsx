@@ -16,6 +16,8 @@ import { RelatedRaces } from './RelatedRaces';
 import { DataExplanationPanel } from './DataExplanationPanel';
 import { DynamicRelatedArticles } from './DynamicRelatedArticles';
 import { Article } from '@/lib/articles';
+import { MultiplexAd } from './MultiplexAd';
+import { ScrollStopAd } from './ScrollStopAd';
 
 // CollapsibleSection コンポーネント
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
@@ -114,17 +116,22 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
         const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
 
         return (
-            <div className="my-3 flex justify-between items-center gap-2">
-                {hasPrev && prevRace ? (
-                    <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 font-bold shadow-sm">
-                        &larr; {prevRace.race_number}Rへ
-                    </button>
-                ) : <div className="flex-1" />}
-                {hasNext && nextRace ? (
-                    <button onClick={() => handleRaceSelect(activeRaceIndex + 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 font-bold shadow-sm">
-                        {nextRace.race_number}Rへ &rarr;
-                    </button>
-                ) : <div className="flex-1" />}
+            <div className="my-3">
+                {/* 広告②: スクロールトップ・ハック（次へボタンに極限まで接近させて親指の動きを誘う） */}
+                {shouldShowAd && <ScrollStopAd slot="1489598374" refreshKey={adRefreshKey} />}
+                
+                <div className="flex justify-between items-center gap-2 mt-1">
+                    {hasPrev && prevRace ? (
+                        <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 font-bold shadow-sm">
+                            &larr; {prevRace.race_number}Rへ
+                        </button>
+                    ) : <div className="flex-1" />}
+                    {hasNext && nextRace ? (
+                        <button onClick={() => handleRaceSelect(activeRaceIndex + 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 font-bold shadow-sm">
+                            {nextRace.race_number}Rへ &rarr;
+                        </button>
+                    ) : <div className="flex-1" />}
+                </div>
             </div>
         );
     };
@@ -213,6 +220,9 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     )}
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
+
+                    {/* 広告③: マルチプレックス擬態（関連記事と全く同じUIで脳を錯覚させる） */}
+                    {shouldShowAd && <MultiplexAd slot="8529703346" refreshKey={adRefreshKey} />}
 
                     <DynamicRelatedArticles
                         venueName={activeRace.venue_name}

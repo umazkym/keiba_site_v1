@@ -11,9 +11,10 @@ type AdsenseProps = {
   className?: string;
   style?: React.CSSProperties;
   isResponsive?: boolean;
+  format?: string;
 };
 
-export const Adsense = ({ client, slot, refreshKey = '', className, style, isResponsive = true }: AdsenseProps) => {
+export const Adsense = ({ client, slot, refreshKey = '', className, style, isResponsive = true, format }: AdsenseProps) => {
   const pathname = usePathname();
   const adRef = useRef<HTMLDivElement>(null);
   const adLoaded = useRef(false);
@@ -88,8 +89,10 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
       ins.setAttribute('data-ad-slot', slot);
 
       if (isResponsive) {
-        ins.setAttribute('data-ad-format', 'auto');
+        ins.setAttribute('data-ad-format', format || 'auto');
         ins.setAttribute('data-full-width-responsive', 'true');
+      } else if (format) {
+        ins.setAttribute('data-ad-format', format);
       }
 
       adContainer.appendChild(ins);

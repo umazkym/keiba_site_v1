@@ -36,15 +36,15 @@ export const InFeedAd = ({
             </div>
             
             {/* 
-              * ★最重要: 高さと横幅の固定（isResponsive={false}）
-              * 16:9 または 320x100 等の安定したバナーを指名買いし、
-              * 「大きすぎる広告」や「表示されない（unfilled）」事態を防ぐ。
+              * ★ 250pxに拡大: ミディアムレクタングル(300x250)の配信を許可
+              * 300x250はAdSense最高eCPMのフォーマット。100px制限では配信対象外だった。
+              * isResponsive={false}で高さを固定し、レイアウトの安定性を維持。
               */}
             <Adsense
                 client={AD_CLIENT}
                 slot={slot}
                 refreshKey={refreshKey}
-                style={{ display: 'inline-block', width: '100%', height: '100px' }}
+                style={{ display: 'inline-block', width: '100%', height: '250px' }}
                 isResponsive={false}
             />
         </div>

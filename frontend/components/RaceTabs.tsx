@@ -11,13 +11,14 @@ import { StartPositionChart } from './StartPositionChart';
 import { MatchupTable } from './MatchupTable';
 import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './Icons';
-import { InFeedAd } from './InFeedAd'; // ★ 新規追加: インフィード広告
+import { InFeedAd } from './InFeedAd';
 import { RelatedRaces } from './RelatedRaces';
 import { DataExplanationPanel } from './DataExplanationPanel';
 import { DynamicRelatedArticles } from './DynamicRelatedArticles';
 import { Article } from '@/lib/articles';
 import { MultiplexAd } from './MultiplexAd';
-import { ScrollStopAd } from './ScrollStopAd';
+import { AdUnit } from './AdUnit';
+import { NextRaceReminder } from './NextRaceReminder';
 
 // CollapsibleSection コンポーネント
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
@@ -117,10 +118,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
         return (
             <div className="my-3">
-                {/* 広告②: スクロールトップ・ハック（次へボタンに極限まで接近させて親指の動きを誘う） */}
-                {shouldShowAd && <ScrollStopAd slot="1489598374" refreshKey={adRefreshKey} />}
-                
-                <div className="flex justify-between items-center gap-2 mt-1">
+                <div className="flex justify-between items-center gap-2">
                     {hasPrev && prevRace ? (
                         <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 font-bold shadow-sm">
                             &larr; {prevRace.race_number}Rへ
@@ -160,17 +158,15 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
                                 AI分析
                             </h4>
-                            
-                            {/* 広告①: プレ・コンクルージョン・アンカー（AI結論直前・視線集中ゾーン） */}
-                            {shouldShowAd && (
-                                <div className="px-2 mb-2">
-                                    <InFeedAd slot="9407670747" refreshKey={adRefreshKey} className="!mt-0 !mb-2" />
-                                </div>
-                            )}
 
                             <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
                         </div>
                     </div>
+
+                    {/* ★広告②: PredictionTable読了直後 — ユーザーが結果を精読し終え「次どうしよう」と止まるポイント。視認時間が最長 */}
+                    {shouldShowAd && (
+                        <AdUnit slot="9407670747" placement="inline" refreshKey={adRefreshKey} className="my-2" />
+                    )}
 
                     {/* レースナビゲーション: AI分析直後 → 予測を見たら即座に次Rへ */}
                     <RaceNavigation />
@@ -231,6 +227,9 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         distance={activeRace.distance}
                         articlesMeta={articlesMeta}
                     />
+
+                    {/* 次回開催案内: リピーターゼロ問題への対策 */}
+                    <NextRaceReminder />
                 </div>
             )}
         </div>

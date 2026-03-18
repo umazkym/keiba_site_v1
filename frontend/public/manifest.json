@@ -1,0 +1,22 @@
+{
+  "name": "UMA-FREE",
+  "short_name": "UMA-FREE",
+  "description": "AI競馬データ分析・統計情報サイト",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/new-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

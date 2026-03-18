@@ -88,7 +88,7 @@ export const StickyAd = () => {
                     client="ca-pub-4411270831448240"
                     slot="9407670747"
                     refreshKey={refreshKey}
-                    style={{ width: '100%', height: '600px' }}
+                    style={{ width: '100%', height: '300px' }}
                     isResponsive={false}
                 />
             </div>

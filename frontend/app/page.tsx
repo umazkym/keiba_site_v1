@@ -110,6 +110,51 @@ export default async function HomePage() {
                         </div>
                     </section>
 
+                    {/* ★ファーストビュー改善: 本日の開催をヒーロー直下に移動 */}
+                    {/* GA4データ: トップ181PV→レース≈200PVのドロップオフ対策 */}
+                    <section className="venue-links">
+                        <h2>
+                            <svg width="18" height="18" fill="none" stroke="var(--color-primary)" strokeWidth="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            本日の開催（{todayStr.split('-').slice(1).join('/')}）
+                        </h2>
+                        
+                        {predictions && predictions.jra.length > 0 && (
+                            <>
+                                <div className="venue-links-label">中央競馬（JRA）</div>
+                                <div className="venue-links-row">
+                                    {predictions.jra.slice(0, 4).map(venue => (
+                                        <Link key={venue.venue_name} href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`} className="venue-link">
+                                            {venue.venue_name}
+                                        </Link>
+                                    ))}
+                                    {predictions.jra.length > 4 && (
+                                        <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
+                                    )}
+                                </div>
+                            </>
+                        )}
+
+                        {predictions && predictions.nar.length > 0 && (
+                            <>
+                                <div className="venue-links-label">地方競馬（NAR）</div>
+                                <div className="venue-links-row !mb-0">
+                                    {predictions.nar.slice(0, 4).map(venue => (
+                                        <Link key={venue.venue_name} href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`} className="venue-link">
+                                            {venue.venue_name}
+                                        </Link>
+                                    ))}
+                                    {predictions.nar.length > 4 && (
+                                        <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
+                                    )}
+                                </div>
+                            </>
+                        )}
+
+                        {(!predictions || (predictions.jra.length === 0 && predictions.nar.length === 0)) && (
+                            <p className="text-sm text-secondary mt-2">本日のレースデータはありません。</p>
+                        )}
+                    </section>
+
                     {/* 高配当的中ランキング */}
                     <section>
                         <TopHitsDisplay />
@@ -174,50 +219,6 @@ export default async function HomePage() {
                 <section>
                     <h2 className="sec-title"><span className="bar bg-accent"></span>今日の分析注目馬</h2>
                     <SpecialPickCard pick={specialPick} date={todayStr} />
-                </section>
-
-                {/* 本日の開催 */}
-                <section className="venue-links">
-                    <h2>
-                        <svg width="18" height="18" fill="none" stroke="var(--color-primary)" strokeWidth="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        本日の開催（{todayStr.split('-').slice(1).join('/')}）
-                    </h2>
-                    
-                    {predictions && predictions.jra.length > 0 && (
-                        <>
-                            <div className="venue-links-label">中央競馬（JRA）</div>
-                            <div className="venue-links-row">
-                                {predictions.jra.slice(0, 4).map(venue => (
-                                    <Link key={venue.venue_name} href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`} className="venue-link">
-                                        {venue.venue_name}
-                                    </Link>
-                                ))}
-                                {predictions.jra.length > 4 && (
-                                    <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
-                                )}
-                            </div>
-                        </>
-                    )}
-
-                    {predictions && predictions.nar.length > 0 && (
-                        <>
-                            <div className="venue-links-label">地方競馬（NAR）</div>
-                            <div className="venue-links-row !mb-0">
-                                {predictions.nar.slice(0, 4).map(venue => (
-                                    <Link key={venue.venue_name} href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`} className="venue-link">
-                                        {venue.venue_name}
-                                    </Link>
-                                ))}
-                                {predictions.nar.length > 4 && (
-                                    <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
-                                )}
-                            </div>
-                        </>
-                    )}
-
-                    {(!predictions || (predictions.jra.length === 0 && predictions.nar.length === 0)) && (
-                        <p className="text-sm text-secondary mt-2">本日のレースデータはありません。</p>
-                    )}
                 </section>
 
                 {/* 5. 新着記事セクション */}

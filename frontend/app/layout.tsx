@@ -92,6 +92,9 @@ export default function RootLayout({
                 {/* AdSenseアカウントメタタグ */}
                 <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
 
+                {/* PWA: ホーム画面追加対応 */}
+                <link rel="manifest" href="/manifest.json" />
+
                 <script
                     async
                     src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"

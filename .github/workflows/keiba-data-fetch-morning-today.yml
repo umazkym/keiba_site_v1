@@ -1,0 +1,42 @@
+name: Keiba Data Fetch (Morning Today)
+
+on:
+  schedule:
+    # 毎日 UTC 21:00 = JST 06:00
+    - cron: '0 21 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          
+      - name: Run pipeline (Today Predictions)
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          RACE_BATCH_SIZE: '3'
+          SELENIUM_PAGE_LOAD_TIMEOUT: '40'
+          SELENIUM_ELEMENT_WAIT_TIMEOUT: '20'
+          TZ: Asia/Tokyo
+          RENDER: 'false'
+        run: |
+          python run_pipeline.py --date today --mode PREDICTIONS_ONLY

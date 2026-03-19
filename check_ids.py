@@ -2,7 +2,7 @@
 import pandas as pd
 from sqlalchemy import create_engine
 
-DATABASE_URL = "postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db"
+DATABASE_URL = "postgresql://user:password@host/dbname"
 
 try:
     engine = create_engine(DATABASE_URL, connect_args={'client_encoding': 'utf8'})

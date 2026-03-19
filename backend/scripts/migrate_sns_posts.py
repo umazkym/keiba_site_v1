@@ -2,7 +2,7 @@ import os
 from sqlalchemy import create_engine, text
 
 # RenderのDB接続URL（ハードコードでも環境変数でも可）
-DB_URL = os.environ.get("DATABASE_URL", "postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db")
+DB_URL = os.environ.get("DATABASE_URL", "postgresql://user:password@host/dbname")
 
 engine = create_engine(DB_URL)
 

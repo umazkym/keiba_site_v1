@@ -251,7 +251,7 @@ load_dotenv()
 
 # --- 設定 ---
 # データベース接続URLを環境変数から取得
-DATABASE_URL = "postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db"
+DATABASE_URL = "postgresql://user:password@host/dbname"
 # 出力するデータの上限行数（matchupsテーブル以外に適用）
 ROW_LIMIT = 100
 # 出力ファイル名
@@ -509,7 +509,7 @@ services:
     dockerContext: ./backend
     envVars:
       - key: DATABASE_URL
-        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+        value: postgresql://user:password@host/dbname
       - key: PIPELINE_MODE
         value: PRODUCTION
       - key: TZ
@@ -520,7 +520,7 @@ services:
 ファイルパス: backend\.env
 --------------------------------------------------------------------------------
 
-DATABASE_URL="postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db"
+DATABASE_URL="postgresql://user:password@host/dbname"
 
 --------------------------------------------------------------------------------
 ファイルパス: backend\check_data_completeness.py

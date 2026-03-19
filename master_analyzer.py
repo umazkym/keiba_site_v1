@@ -1221,7 +1221,7 @@ def main():
     """
     setup_matplotlib()
     
-    DATABASE_URL = "postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db"
+    DATABASE_URL = "postgresql://user:password@host/dbname"
     
     parser = argparse.ArgumentParser(
         description="競馬データベースを分析し、記事作成用のデータ、グラフ、サマリーを生成するマスターツール（完全拡張版）。",

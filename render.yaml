@@ -11,7 +11,7 @@ services:
     dockerCommand: "python scripts/sns_poster.py --post-type morning"
     envVars:
       - key: DATABASE_URL
-        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+        value: postgresql://user:password@host/dbname
       - key: TZ
         value: Asia/Tokyo
       - key: API_BASE_URL
@@ -41,7 +41,7 @@ services:
     dockerCommand: "python scripts/sns_poster.py --post-type afternoon"
     envVars:
       - key: DATABASE_URL
-        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+        value: postgresql://user:password@host/dbname
       - key: TZ
         value: Asia/Tokyo
       - key: API_BASE_URL
@@ -71,7 +71,7 @@ services:
     dockerCommand: "python scripts/sns_poster.py --post-type evening"
     envVars:
       - key: DATABASE_URL
-        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+        value: postgresql://user:password@host/dbname
       - key: TZ
         value: Asia/Tokyo
       - key: API_BASE_URL
@@ -101,7 +101,7 @@ services:
     dockerCommand: "python run_pipeline.py --date tomorrow --mode PREDICTIONS_ONLY"
     envVars:
       - key: DATABASE_URL
-        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+        value: postgresql://user:password@host/dbname
       - key: TZ
         value: Asia/Tokyo
       - key: RENDER
@@ -131,7 +131,7 @@ services:
     dockerCommand: "python run_pipeline.py --date today --mode PREDICTIONS_ONLY"
     envVars:
       - key: DATABASE_URL
-        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+        value: postgresql://user:password@host/dbname
       - key: TZ
         value: Asia/Tokyo
       - key: RENDER
@@ -161,7 +161,7 @@ services:
     dockerCommand: "python scripts/sns_poster.py --post-type pre_race"
     envVars:
       - key: DATABASE_URL
-        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+        value: postgresql://user:password@host/dbname
       - key: TZ
         value: Asia/Tokyo
       - key: TWITTER_CONSUMER_KEY
@@ -191,7 +191,7 @@ services:
     dockerCommand: "python run_pipeline.py --date yesterday --mode RESULTS_ONLY"
     envVars:
       - key: DATABASE_URL
-        value: postgresql://keiba_db_user:XTme6b9rg87c6POChTgQlBFgV0NQJV8a@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db
+        value: postgresql://user:password@host/dbname
       - key: TZ
         value: Asia/Tokyo
       - key: RENDER

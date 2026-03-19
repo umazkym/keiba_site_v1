@@ -25,7 +25,7 @@ jobs:
           
       - name: Restore Data to Neon
         env:
-          TARGET_DB: "postgresql://neondb_owner:npg_0kOPvcxAU4bg@ep-hidden-fog-aksj4thi-pooler.c-3.us-west-2.aws.neon.tech/neondb?sslmode=require"
+          TARGET_DB: "postgresql://neondb_owner:npg_0kOPvcxAU4bg@ep-hidden-fog-aksj4thi.c-3.us-west-2.aws.neon.tech/neondb?sslmode=require"
         run: |
           echo "Starting psql restore to Neon..."
           psql -d $TARGET_DB -f dump.sql > restore.log 2>&1 || cat restore.log

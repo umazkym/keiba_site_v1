@@ -30,6 +30,7 @@ jobs:
       - name: Run pipeline (Yesterday Results)
         working-directory: backend
         env:
+          PYTHONPATH: .
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
           RACE_BATCH_SIZE: '3'

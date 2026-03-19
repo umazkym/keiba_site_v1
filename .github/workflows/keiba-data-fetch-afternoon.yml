@@ -30,6 +30,7 @@ jobs:
       - name: Run pipeline (Tomorrow Predictions)
         working-directory: backend
         env:
+          PYTHONPATH: .
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}

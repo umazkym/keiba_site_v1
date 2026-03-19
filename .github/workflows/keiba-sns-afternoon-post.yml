@@ -30,6 +30,7 @@ jobs:
       - name: Post to SNS (Afternoon)
         working-directory: backend
         env:
+          PYTHONPATH: .
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TWITTER_CONSUMER_KEY: ${{ secrets.TWITTER_CONSUMER_KEY }}
           TWITTER_CONSUMER_SECRET: ${{ secrets.TWITTER_CONSUMER_SECRET }}

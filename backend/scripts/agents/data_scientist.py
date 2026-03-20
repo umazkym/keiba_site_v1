@@ -37,13 +37,10 @@ def fetch_data():
     1. 回収率用: race_returns の bet_type='単勝' と number_1(馬番) で結合。
     2. コース判定: races.course_type が '芝' または 'ダート' に限定。
     """
-    if not os.path.exists(DB_PATH):
-        raise FileNotFoundError(f"Database not found at {DB_PATH}")
-
+    db_url = os.environ.get('DATABASE_URL')
     cutoff_date = (datetime.now() - timedelta(days=365 * ANALYSIS_YEARS)).strftime('%Y-%m-%d')
 
-    conn = sqlite3.connect(DB_PATH)
-    query = """
+    query = f"""
     SELECT 
         r.id AS race_id, 
         r.venue_name, 
@@ -62,13 +59,23 @@ def fetch_data():
         AND ret.bet_type = '単勝' 
         AND ret.number_1 = res.horse_number
     WHERE r.course_type IN ('芝', 'ダ')
-      AND r.race_date >= ?
+      AND r.race_date >= '{cutoff_date}'
       AND r.distance IS NOT NULL
       AND res.waku_number BETWEEN 1 AND 8
       AND res.rank IS NOT NULL
     """
-    df = pd.read_sql_query(query, conn, params=[cutoff_date])
-    conn.close()
+
+    if db_url:
+        import sqlalchemy
+        engine = sqlalchemy.create_engine(db_url)
+        df = pd.read_sql_query(query, engine)
+        engine.dispose()
+    else:
+        if not os.path.exists(DB_PATH):
+            raise FileNotFoundError(f"Database not found at {DB_PATH}")
+        conn = sqlite3.connect(DB_PATH)
+        df = pd.read_sql_query(query, conn)
+        conn.close()
     
     # データ型のクレンジング
     df['race_date'] = pd.to_datetime(df['race_date'])

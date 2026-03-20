@@ -371,7 +371,7 @@ HTML_BODY = """<!DOCTYPE html>
     <summary>UMA-FREEとは<span class="chevron">▶</span></summary>
     <div class="acc-body">
       <p>UMA-FREEは、過去5年以上の中央競馬（JRA）および地方競馬（NAR）の膨大なレースデータを機械学習アルゴリズムで分析し、各出走馬の能力を独自の<strong>AI偏差値</strong>として数値化した競馬データ分析サイトです。会員登録やメールアドレスの入力は一切不要で、すべての分析データを完全無料でご利用いただけます。</p>
-      <p style="margin-top:10px;">さらに、出走馬同士の<strong>過去対決成績</strong>や、コース・距離ごとの<strong>枠順傾向スコア</strong>など、多角的なデータを組み合わせて提供。データは毎日自動更新されており、開催日の午前中には当日の全レース分析が完了します。</p>
+      <p style="margin-top:10px;">さらに、出走馬同士の<strong>過去対決成績</strong>や、コース・距離ごとの<strong>このコースの枠順傾向</strong>など、多角的なデータを組み合わせて提供。データは毎日自動更新されており、開催日の午前中には当日の全レース分析が完了します。</p>
     </div>
   </details>
 

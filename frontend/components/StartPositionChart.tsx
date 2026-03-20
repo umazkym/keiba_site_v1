@@ -47,7 +47,7 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
     if (!predictions || predictions.length === 0 || predictions.every(p => p.start_1c_indicator === null)) {
         return (
             <div className="my-4 p-4 md:p-6 bg-gray-50 border rounded-lg shadow-inner text-center text-gray-500">
-                <p className="font-medium text-sm">このレースの脚質パターン予測はありません。</p>
+                <p className="font-medium text-sm">このレースの展開/脚質予測はありません。</p>
             </div>
         );
     }

@@ -115,10 +115,10 @@ export default async function HomePage() {
                     {/* GA4データ: トップ181PV→レース≈200PVのドロップオフ対策 */}
                     <section className="venue-links">
                         <h2>
-                            <svg width="18" height="18" fill="none" stroke="var(--color-primary)" strokeWidth="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <svg width="18" height="18" fill="none" stroke="var(--color-primary)" strokeWidth="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                             本日の開催（{todayStr.split('-').slice(1).join('/')}）
                         </h2>
-                        
+
                         {predictions && predictions.jra.length > 0 && (
                             <>
                                 <div className="venue-links-label">中央競馬（JRA）</div>
@@ -167,7 +167,7 @@ export default async function HomePage() {
                     <summary>UMA-FREEとは<span className="chevron">▶</span></summary>
                     <div className="acc-body">
                         <p>UMA-FREEは、過去5年以上の中央競馬（JRA）および地方競馬（NAR）の膨大なレースデータを機械学習アルゴリズムで分析し、各出走馬の能力を独自の<strong>AI偏差値</strong>として数値化した競馬データ分析サイトです。会員登録やメールアドレスの入力は一切不要で、すべての分析データを完全無料でご利用いただけます。</p>
-                        <p className="mt-2.5">さらに、出走馬同士の<strong>過去対決成績</strong>や、コース・距離ごとの<strong>枠順傾向スコア</strong>など、多角的なデータを組み合わせて提供。データは毎日自動更新されており、開催日の午前中には当日の全レース分析が完了します。</p>
+                        <p className="mt-2.5">さらに、出走馬同士の<strong>過去対決成績</strong>や、コース・距離ごとの<strong>このコースの枠順傾向</strong>など、多角的なデータを組み合わせて提供。データは毎日自動更新されており、開催日の午前中には当日の全レース分析が完了します。</p>
                     </div>
                 </details>
 
@@ -192,7 +192,7 @@ export default async function HomePage() {
                             </div>
                             <div className="card py-4 px-4 flex gap-3 items-start md:flex-col md:items-center md:text-center md:p-5 shadow-none hover-lift">
                                 <div className="w-11 h-11 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 text-primary border border-slate-200">
-                                    <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 9l-5 5-2-2-4 4"/></svg>
+                                    <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M3 3v18h18" /><path d="M18 9l-5 5-2-2-4 4" /></svg>
                                 </div>
                                 <div className="min-w-0">
                                     <h3 className="text-[13px] sm:text-[14px] font-bold text-primary mb-1">AI偏差値分析</h3>

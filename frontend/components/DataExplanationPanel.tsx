@@ -1,7 +1,7 @@
 /**
  * データ解説パネル コンポーネント
  *
- * AI偏差値、枠順傾向スコア、その他の統計分析指標の意味を
+ * AI偏差値、このコースの枠順傾向、その他の統計分析指標の意味を
  * 初心者にもわかりやすく説明する折りたたみ式パネル
  * あくまで参考情報・推定値であることを明確化
  */
@@ -41,7 +41,7 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
 
     const advancedExplanations: ExplanationItem[] = [
         {
-            title: '枠順傾向スコア',
+            title: 'このコースの枠順傾向',
             description: 'そのコース・距離における枠番別の有利不利を独自スコア化したものです。',
             example: 'プラススコアは外枠有利、マイナススコアは内枠有利の傾向を示します。',
             importance: 'medium',

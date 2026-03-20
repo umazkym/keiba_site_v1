@@ -209,12 +209,12 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* プレミアム・ロック切り替え部分 */}
                     {isUnlocked ? (
                         <>
-                            {/* 脚質パターン予測 — アンロック後は常に展開表示 */}
+                            {/* 展開/脚質予測 — アンロック後は常に展開表示 */}
                             <div className="mb-2">
                                 <div className="card p-2 sm:p-3">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                         <FlagIcon className="w-5 h-5 mr-2 text-primary" />
-                                        <span>脚質パターン予測</span>
+                                        <span>展開/脚質予測</span>
                                     </div>
                                     <div className="px-2 pb-2 sm:px-3 sm:pb-3">
                                         <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
@@ -239,12 +239,12 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 </div>
                             </div>
 
-                            {/* 枠順傾向スコア */}
+                            {/* このコースの枠順傾向 */}
                             <div className="mb-2">
                                 <div className="card p-2 sm:p-3">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                         <ChartBarIcon className="w-5 h-5 mr-2 text-accent" />
-                                        <span>枠順傾向スコア</span>
+                                        <span>このコースの枠順傾向</span>
                                     </div>
                                     <div className="px-2 pb-2 sm:px-3 sm:pb-3">
                                         <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
@@ -283,7 +283,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                         <div className="card p-2 sm:p-3">
                                             <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                                 <FlagIcon className="w-5 h-5 mr-2 text-primary" />
-                                                <span>脚質パターン予測</span>
+                                                <span>展開/脚質予測</span>
                                             </div>
                                             <div className="px-2 pb-2 sm:px-3 sm:pb-3">
                                                 <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
@@ -312,7 +312,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/30 via-white/70 to-white/95 px-4">
                                 {!showInlineAd ? (
                                     <div className="text-center max-w-xs w-full">
-                                        <p className="text-sm text-slate-600 mb-4 font-medium">脚質傾向・対決成績・枠順データ・AI分析を閲覧</p>
+                                        <p className="text-sm text-slate-600 mb-4 font-medium">展開/脚質予測・対決成績・枠順データ・AI分析を閲覧</p>
                                         <button
                                             onClick={() => {
                                                 if (isSupported) {

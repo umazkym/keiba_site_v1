@@ -3,7 +3,7 @@ import { SparklesIcon } from './Icons';
 
 /**
  * レース全体の統計分析コンテンツを生成するコンポーネント
- * 既存のデータ（AI偏差値、脚質パターン、枠順傾向スコア）のみを使用
+ * 既存のデータ（AI偏差値、脚質パターン、このコースの枠順傾向）のみを使用
  * あくまで参考情報であり、実際の結果を保証するものではありません
  */
 export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {

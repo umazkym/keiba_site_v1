@@ -21,7 +21,7 @@ export const DetailedInfoTabs = ({ race }: { race: RacePrediction }) => {
                 </Tab>
                 <Tab className="flex-1 md:flex-none px-4 py-3 font-semibold text-gray-600 cursor-pointer text-center border-b-2 border-transparent hover:bg-gray-100 hover:text-primary-dark transition-colors focus:outline-none flex items-center justify-center gap-2">
                     <ChartBarIcon className="w-5 h-5" />
-                    <span>枠順傾向スコア</span>
+                    <span>このコースの枠順傾向</span>
                 </Tab>
             </TabList>
 

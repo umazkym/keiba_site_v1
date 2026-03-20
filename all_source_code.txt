@@ -6890,7 +6890,7 @@ export default async function HomePage() {
                     />
                     <FeatureCard
                         icon={<ChartBarIcon className="w-7 h-7" />}
-                        title="枠順傾向スコア"
+                        title="このコースの枠順傾向"
                         description={
                             <>
                                 過去データからコース形態を分析。
@@ -7240,7 +7240,7 @@ export const DetailedInfoTabs = ({ race }: { race: RacePrediction }) => {
                 </Tab>
                 <Tab className="flex-1 md:flex-none px-4 py-3 font-semibold text-gray-600 cursor-pointer text-center border-b-2 border-transparent hover:bg-gray-100 hover:text-primary-dark transition-colors focus:outline-none flex items-center justify-center gap-2">
                     <ChartBarIcon className="w-5 h-5" />
-                    <span>枠順傾向スコア</span>
+                    <span>このコースの枠順傾向</span>
                 </Tab>
             </TabList>
 
@@ -7350,7 +7350,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
     if (!advantages || advantages.length === 0) {
         return (
             <div className="my-4 p-4 bg-white border rounded-lg shadow-inner text-center text-gray-500">
-                <p className="font-semibold">枠順傾向スコア</p>
+                <p className="font-semibold">このコースの枠順傾向</p>
                 <p className="mt-2 text-sm">このレース条件での枠順傾向データはありません。</p>
             </div>
         );
@@ -7388,7 +7388,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
         return null;
     };
 
-    const chartTitle = `枠順傾向スコア (${courseType || ''}${distance || ''}m)`;
+    const chartTitle = `このコースの枠順傾向 (${courseType || ''}${distance || ''}m)`;
 
     return (
         <div className="my-4 p-4 bg-white border rounded-lg shadow-inner">
@@ -8143,7 +8143,7 @@ const VenuePanel = ({ venue, initialRaceNumber }: { venue: VenueRaces, initialRa
             <CollapsibleSection title="過去対決成績" icon={<UsersIcon className="w-5 h-5" />}>
               <MatchupTable race={activeRace} />
             </CollapsibleSection>
-            <CollapsibleSection title="枠順傾向スコア" icon={<ChartBarIcon className="w-5 h-5" />}>
+            <CollapsibleSection title="このコースの枠順傾向" icon={<ChartBarIcon className="w-5 h-5" />}>
               <HorseNumberAdvantageChart
                 advantages={activeRace.horse_number_advantages}
                 courseType={activeRace.course_type}

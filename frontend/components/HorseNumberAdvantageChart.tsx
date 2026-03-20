@@ -70,7 +70,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
         );
     };
 
-    const chartTitle = `枠順傾向スコア (${courseType || ''}${distance || ''}m)`;
+    const chartTitle = `このコースの枠順傾向 (${courseType || ''}${distance || ''}m)`;
 
     // レスポンシブ設定
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;

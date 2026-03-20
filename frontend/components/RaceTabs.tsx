@@ -275,11 +275,10 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                             )}
                         </>
                     ) : (
-                        <div className="relative mb-2">
-                            {/* ぼかした実データをチラ見せ */}
-                            <div className="select-none pointer-events-none overflow-hidden max-h-[420px]" aria-hidden="true">
-                                <div className="blur-[6px] opacity-70">
-                                    {/* 脚質パターン予測（プレビュー） */}
+                        <div className="relative mb-2 overflow-hidden rounded-2xl" style={{ minHeight: '320px' }}>
+                            {/* 背景: ぼかした実データ */}
+                            <div className="select-none pointer-events-none" aria-hidden="true">
+                                <div className="blur-[6px] opacity-60">
                                     <div className="mb-2">
                                         <div className="card p-2 sm:p-3">
                                             <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
@@ -293,7 +292,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                             </div>
                                         </div>
                                     </div>
-                                    {/* 過去対決成績（プレビュー） */}
                                     <div className="mb-2">
                                         <div className="card p-2 sm:p-3">
                                             <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
@@ -308,69 +306,65 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                         </div>
                                     </div>
                                 </div>
-                                {/* 下部フェードアウト */}
-                                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[var(--bg)] to-transparent"></div>
                             </div>
 
-                            {/* アンロックUI（ぼかしの上に重ねる） */}
-                            <div className="relative -mt-20 z-10 px-2 sm:px-4 pb-2">
-                                <div className="card p-3 sm:p-4">
-                                    {!showInlineAd ? (
-                                        <div className="text-center">
-                                            <p className="text-sm text-slate-500 mb-3">脚質傾向・対決成績・枠順データ・AI分析を閲覧</p>
-                                            <button
-                                                onClick={() => {
-                                                    if (isSupported) {
-                                                        showAd();
-                                                    } else {
-                                                        setShowInlineAd(true);
-                                                        let remaining = 5;
+                            {/* オーバーレイ: グラデーション + UI */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/30 via-white/70 to-white/95 px-4">
+                                {!showInlineAd ? (
+                                    <div className="text-center max-w-xs w-full">
+                                        <p className="text-sm text-slate-600 mb-4 font-medium">脚質傾向・対決成績・枠順データ・AI分析を閲覧</p>
+                                        <button
+                                            onClick={() => {
+                                                if (isSupported) {
+                                                    showAd();
+                                                } else {
+                                                    setShowInlineAd(true);
+                                                    let remaining = 5;
+                                                    setCountdown(remaining);
+                                                    const timer = setInterval(() => {
+                                                        remaining--;
                                                         setCountdown(remaining);
-                                                        const timer = setInterval(() => {
-                                                            remaining--;
-                                                            setCountdown(remaining);
-                                                            if (remaining <= 0) clearInterval(timer);
-                                                        }, 1000);
-                                                    }
-                                                }}
-                                                disabled={!isReady && !isLoading}
+                                                        if (remaining <= 0) clearInterval(timer);
+                                                    }, 1000);
+                                                }
+                                            }}
+                                            disabled={!isReady && !isLoading}
+                                            className="btn-primary w-full text-sm gap-2"
+                                        >
+                                            {isLoading ? (
+                                                <>
+                                                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                    読み込み中
+                                                </>
+                                            ) : (
+                                                '広告を見てデータを表示'
+                                            )}
+                                        </button>
+                                        <p className="text-[11px] text-muted mt-2">無料 · 同一セッション内で1回のみ</p>
+                                    </div>
+                                ) : (
+                                    <div className="w-full max-w-sm">
+                                        <div className="text-[10px] text-muted text-center mb-1 tracking-wider select-none">スポンサーリンク</div>
+                                        <div className="flex justify-center mb-3">
+                                            <Adsense
+                                                client="ca-pub-4411270831448240"
+                                                slot="1489598374"
+                                                style={{ display: 'block', width: '100%', maxWidth: '336px', height: '280px' }}
+                                                isResponsive={false}
+                                            />
+                                        </div>
+                                        {countdown > 0 ? (
+                                            <div className="text-center text-sm text-slate-400">あと {countdown}秒...</div>
+                                        ) : (
+                                            <button
+                                                onClick={unlock}
                                                 className="btn-primary w-full text-sm gap-2"
                                             >
-                                                {isLoading ? (
-                                                    <>
-                                                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                        読み込み中
-                                                    </>
-                                                ) : (
-                                                    '広告を見てデータを表示'
-                                                )}
+                                                データを表示
                                             </button>
-                                            <p className="text-[11px] text-muted mt-2">無料 · 同一セッション内で1回のみ</p>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="text-[10px] text-muted text-center mb-1 tracking-wider select-none">スポンサーリンク</div>
-                                            <div className="flex justify-center mb-3">
-                                                <Adsense
-                                                    client="ca-pub-4411270831448240"
-                                                    slot="1489598374"
-                                                    style={{ display: 'block', width: '100%', maxWidth: '336px', height: '280px' }}
-                                                    isResponsive={false}
-                                                />
-                                            </div>
-                                            {countdown > 0 ? (
-                                                <div className="text-center text-sm text-slate-400">あと {countdown}秒...</div>
-                                            ) : (
-                                                <button
-                                                    onClick={unlock}
-                                                    className="btn-primary w-full text-sm gap-2"
-                                                >
-                                                    データを表示
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
 

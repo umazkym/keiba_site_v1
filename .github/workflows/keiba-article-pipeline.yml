@@ -1,0 +1,67 @@
+name: Keiba Article Auto Pipeline
+
+on:
+  schedule:
+    # 月・水・金 08:00 JST (UTCでは前日の23:00)
+    - cron: '0 23 * * 0,2,4'
+  workflow_dispatch: # 手動実行用
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    
+    # リポジトリの書き込み権限を付与
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: pip install -r requirements.txt
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "${{ secrets.GIT_USER_NAME || 'github-actions[bot]' }}"
+          git config --global user.email "${{ secrets.GIT_USER_EMAIL || 'github-actions[bot]@users.noreply.github.com' }}"
+
+      - name: Step 1 - Generate Write Order (Data Scientist)
+        working-directory: ./backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/agents/data_scientist.py
+
+      - name: Step 2 & 3 - Generate Draft and Review (Writer & Editor Pipeline)
+        working-directory: ./frontend
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        # test_pipeline.ts が最新の write_order.json を読み込み、writerとeditorを連鎖実行します
+        run: npx tsx scripts/agents/test_pipeline.ts
+
+      - name: Step 4 - Publish and Push (agent_publisher)
+        working-directory: ./frontend
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # 念のため
+        # agent_publisher.ts 内部で git push までの処理が行われます
+        run: npx tsx scripts/agents/agent_publisher.ts
+
+      - name: Step 5 - Completion Check
+        run: echo "Pipeline execution completed successfully!"

@@ -19,6 +19,7 @@ import { Article } from '@/lib/articles';
 import { MultiplexAd } from './MultiplexAd';
 import { AdUnit } from './AdUnit';
 import { useRewardedAd } from '@/hooks/useRewardedAd';
+import { AdGateModal } from './AdGateModal';
 
 // CollapsibleSection コンポーネント
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
@@ -46,7 +47,8 @@ const CollapsibleSection = memo(({ title, icon, children }: { title: string, ico
 
 CollapsibleSection.displayName = 'CollapsibleSection';
 
-const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isUnlocked, isReady, isLoading, showAd }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isUnlocked: boolean, isReady: boolean, isLoading: boolean, showAd: () => void }) => {
+const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isUnlocked, isReady, isLoading, isSupported, showAd, unlock }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isUnlocked: boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, showAd: () => void, unlock: () => void }) => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
@@ -282,7 +284,15 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
                                     {/* ボタン */}
                                     <button
-                                        onClick={showAd}
+                                        onClick={() => {
+                                            if (isSupported) {
+                                                // モバイル: GAM Rewarded Ad 表示
+                                                showAd();
+                                            } else {
+                                                // PC / フォールバック: モーダル表示
+                                                setIsModalOpen(true);
+                                            }
+                                        }}
                                         disabled={!isReady && !isLoading}
                                         className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-dark transition-colors outline-none disabled:opacity-40 disabled:cursor-not-allowed"
                                     >
@@ -301,6 +311,16 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                     <p className="text-[11px] text-slate-400 mt-2 text-center">無料 · 同一セッション内で1回のみ</p>
                                 </div>
                             </div>
+
+                            {/* PC用広告ゲートモーダル */}
+                            <AdGateModal
+                                isOpen={isModalOpen}
+                                onUnlock={() => {
+                                    setIsModalOpen(false);
+                                    unlock();
+                                }}
+                                onClose={() => setIsModalOpen(false)}
+                            />
                         </div>
                     )}
 
@@ -357,7 +377,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
 
     // JRA競馬場タブ切替ハンドラ
     // ▼▼▼▼▼【GAM Rewarded Ad】▼▼▼▼▼
-    const { isUnlocked, isReady, isLoading: isAdLoading, showAd } = useRewardedAd();
+    const { isUnlocked, isReady, isLoading: isAdLoading, isSupported, showAd, unlock } = useRewardedAd();
     // ▲▲▲▲▲【GAM Rewarded Ad ここまで】▲▲▲▲▲
 
     const handleJraVenueSelect = useCallback((index: number) => {
@@ -425,7 +445,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                             </TabList>
                             {data.jra.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isUnlocked={isUnlocked} isReady={isReady} isLoading={isAdLoading} showAd={showAd} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isUnlocked={isUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} showAd={showAd} unlock={unlock} />
                                 </TabPanel>
                             ))}
                         </Tabs>
@@ -441,7 +461,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                             </TabList>
                             {data.nar.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isUnlocked={isUnlocked} isReady={isReady} isLoading={isAdLoading} showAd={showAd} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isUnlocked={isUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} showAd={showAd} unlock={unlock} />
                                 </TabPanel>
                             ))}
                         </Tabs>

@@ -18,6 +18,7 @@ import { DynamicRelatedArticles } from './DynamicRelatedArticles';
 import { Article } from '@/lib/articles';
 import { MultiplexAd } from './MultiplexAd';
 import { AdUnit } from './AdUnit';
+import { useRewardedAd } from '@/hooks/useRewardedAd';
 
 // CollapsibleSection コンポーネント
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
@@ -45,7 +46,7 @@ const CollapsibleSection = memo(({ title, icon, children }: { title: string, ico
 
 CollapsibleSection.displayName = 'CollapsibleSection';
 
-const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isPremium = false, basePath = "/races" }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isPremium?: boolean, basePath?: string }) => {
+const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isUnlocked, isReady, isLoading, showAd }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isUnlocked: boolean, isReady: boolean, isLoading: boolean, showAd: () => void }) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
@@ -81,7 +82,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
             const newParams = new URLSearchParams();
             newParams.set('race', selectedRace.race_number.toString());
             newParams.set('venue', venue.venue_name);
-            const newUrl = `${basePath}/${currentDate}?${newParams.toString()}`;
+            const newUrl = `/races/${currentDate}?${newParams.toString()}`;
             // ▼▼▼▼▼【router.push化】▼▼▼▼▼
             // 従来: router.replace() → URLのsearchParamsのみ変更、AdSenseがページ遷移と認識しない
             // 変更: router.push() → ブラウザ履歴に追加、AdSenseが新インプレッション、GA PVも自然発生
@@ -203,7 +204,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     </div>
 
                     {/* プレミアム・ロック切り替え部分 */}
-                    {isPremium ? (
+                    {isUnlocked ? (
                         <>
                             {/* 脚質パターン予測 */}
                             <div className="mb-2">
@@ -263,20 +264,25 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 </p>
                                 
                                 <button
-                                    onClick={() => {
-                                        const newParams = new URLSearchParams();
-                                        newParams.set('race', activeRace.race_number.toString());
-                                        newParams.set('venue', venue.venue_name);
-                                        router.push(`/premium/races/${currentDate}?${newParams.toString()}`);
-                                    }}
-                                    className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 bg-primary text-white font-bold rounded-lg shadow-md hover:bg-primary-dark hover:shadow-lg hover:-translate-y-0.5 transition-all outline-none"
+                                    onClick={showAd}
+                                    disabled={!isReady && !isLoading}
+                                    className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 bg-primary text-white font-bold rounded-lg shadow-md hover:bg-primary-dark hover:shadow-lg hover:-translate-y-0.5 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-md"
                                 >
-                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    動画広告を視聴してすべてのデータを見る
+                                    {isLoading ? (
+                                        <>
+                                            <svg className="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                            広告を読み込み中...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            動画広告を視聴してすべてのデータを見る
+                                        </>
+                                    )}
                                 </button>
                                 <p className="text-xs text-slate-400 mt-3 flex items-center justify-center gap-1">
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                    完全無料・24時間アクセス権付与
+                                    完全無料・このセッション中は再表示なし
                                 </p>
                             </div>
                         </div>
@@ -304,7 +310,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
 VenuePanel.displayName = 'VenuePanel';
 
-export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumber, isPremium = false, basePath = "/races" }: { data: RaceDayPrediction, articlesMeta: Omit<Article, 'content'>[], initialVenueName?: string | null, initialRaceNumber?: number | null, isPremium?: boolean, basePath?: string }) => {
+export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumber }: { data: RaceDayPrediction, articlesMeta: Omit<Article, 'content'>[], initialVenueName?: string | null, initialRaceNumber?: number | null }) => {
     if (!data || (data.jra.length === 0 && data.nar.length === 0)) {
         return <div className="p-6 text-center text-muted card">対象日のレースデータがありません。</div>;
     }
@@ -327,19 +333,23 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         if (typeof window !== 'undefined' && (window as any).gtag) {
             const tabName = index === 0 ? '中央競馬' : '地方競馬';
             (window as any).gtag('event', 'page_view', {
-                page_path: `${basePath}/${currentDate}?tab=${encodeURIComponent(tabName)}`,
+                page_path: `/races/${currentDate}?tab=${encodeURIComponent(tabName)}`,
                 page_title: `${tabName} - レース一覧`,
             });
         }
     }, [currentDate]);
 
     // JRA競馬場タブ切替ハンドラ
+    // ▼▼▼▼▼【GAM Rewarded Ad】▼▼▼▼▼
+    const { isUnlocked, isReady, isLoading: isAdLoading, showAd } = useRewardedAd();
+    // ▲▲▲▲▲【GAM Rewarded Ad ここまで】▲▲▲▲▲
+
     const handleJraVenueSelect = useCallback((index: number) => {
         setJraActivationKey(prev => prev + 1);
         const venue = data.jra[index];
         if (venue && typeof window !== 'undefined' && (window as any).gtag) {
             (window as any).gtag('event', 'page_view', {
-                page_path: `${basePath}/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
+                page_path: `/races/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
                 page_title: `${venue.venue_name} - レース一覧`,
             });
         }
@@ -351,7 +361,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         const venue = data.nar[index];
         if (venue && typeof window !== 'undefined' && (window as any).gtag) {
             (window as any).gtag('event', 'page_view', {
-                page_path: `${basePath}/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
+                page_path: `/races/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
                 page_title: `${venue.venue_name} - レース一覧`,
             });
         }
@@ -399,7 +409,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                             </TabList>
                             {data.jra.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isPremium={isPremium} basePath={basePath} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isUnlocked={isUnlocked} isReady={isReady} isLoading={isAdLoading} showAd={showAd} />
                                 </TabPanel>
                             ))}
                         </Tabs>
@@ -415,7 +425,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                             </TabList>
                             {data.nar.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isPremium={isPremium} basePath={basePath} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isUnlocked={isUnlocked} isReady={isReady} isLoading={isAdLoading} showAd={showAd} />
                                 </TabPanel>
                             ))}
                         </Tabs>

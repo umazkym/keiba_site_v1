@@ -100,6 +100,12 @@ export default function RootLayout({
                     src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"
                     crossOrigin="anonymous"
                 />
+                {/* GPT (Google Publisher Tag) for GAM Rewarded Ads */}
+                <script
+                    async
+                    src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"
+                    crossOrigin="anonymous"
+                />
                 {/* 自動広告のオフはAdSense管理画面で設定してください */}
             </head>
             <body className={`${inter.variable} ${notoSansJP.variable} ${robotoMono.variable} font-sans bg-surface text-text-primary antialiased`}>

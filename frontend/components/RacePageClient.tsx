@@ -100,9 +100,11 @@ type RacePageClientProps = {
     initialSpecialPick?: SpecialPick | null;
     initialTopHits?: TopPayoutHit[];
     articlesMeta: Omit<Article, 'content'>[];
+    isPremium?: boolean;
+    basePath?: string;
 };
 
-export default function RacePageClient({ initialDate, initialPredictionData, initialSpecialPick, initialTopHits, articlesMeta }: RacePageClientProps) {
+export default function RacePageClient({ initialDate, initialPredictionData, initialSpecialPick, initialTopHits, articlesMeta, isPremium = false, basePath = "/races" }: RacePageClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [currentDate, setCurrentDate] = useState(initialDate);
@@ -221,7 +223,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
     const handleDateChange = useCallback((newDate: string) => {
         if (newDate && newDate !== currentDate) {
             hasScrolled.current = false;
-            router.push(`/races/${newDate}`);
+            router.push(`${basePath}/${newDate}`);
         }
     }, [currentDate, router]);
 
@@ -252,7 +254,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                         他の日付のレースデータをお探しください。
                     </p>
                     <Link
-                        href={`/races/${getTodayString()}`}
+                        href={`${basePath}/${getTodayString()}`}
                         className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg shadow-sm transition-colors"
                     >
                         本日のレース分析を見る
@@ -284,6 +286,8 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                     articlesMeta={articlesMeta}
                     initialVenueName={initialVenue}
                     initialRaceNumber={initialRaceNumber}
+                    isPremium={isPremium}
+                    basePath={basePath}
                 />
             </>
         );

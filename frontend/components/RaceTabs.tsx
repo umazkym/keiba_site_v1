@@ -45,7 +45,7 @@ const CollapsibleSection = memo(({ title, icon, children }: { title: string, ico
 
 CollapsibleSection.displayName = 'CollapsibleSection';
 
-const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0 }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number }) => {
+const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isPremium = false, basePath = "/races" }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isPremium?: boolean, basePath?: string }) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
@@ -81,7 +81,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
             const newParams = new URLSearchParams();
             newParams.set('race', selectedRace.race_number.toString());
             newParams.set('venue', venue.venue_name);
-            const newUrl = `/races/${currentDate}?${newParams.toString()}`;
+            const newUrl = `${basePath}/${currentDate}?${newParams.toString()}`;
             // ▼▼▼▼▼【router.push化】▼▼▼▼▼
             // 従来: router.replace() → URLのsearchParamsのみ変更、AdSenseがページ遷移と認識しない
             // 変更: router.push() → ブラウザ履歴に追加、AdSenseが新インプレッション、GA PVも自然発生
@@ -202,46 +202,85 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         <RaceNavigation />
                     </div>
 
-                    {/* 脚質パターン予測 */}
-                    <div className="mb-2">
-                        <CollapsibleSection title="脚質パターン予測" icon={<FlagIcon className="w-5 h-5 text-primary" />}>
-                            <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
-                                <StartPositionChart predictions={activeRace.predictions} />
+                    {/* プレミアム・ロック切り替え部分 */}
+                    {isPremium ? (
+                        <>
+                            {/* 脚質パターン予測 */}
+                            <div className="mb-2">
+                                <CollapsibleSection title="脚質パターン予測" icon={<FlagIcon className="w-5 h-5 text-primary" />}>
+                                    <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
+                                        <StartPositionChart predictions={activeRace.predictions} />
+                                    </div>
+                                </CollapsibleSection>
                             </div>
-                        </CollapsibleSection>
-                    </div>
 
-                    {/* ★広告: アコーディオン間配置 — セクションを開いたユーザーはスクロールする→高い視認率 */}
-                    {shouldShowAd && (
-                        <InFeedAd slot="1489598374" refreshKey={adRefreshKey} />
+                            {/* ★広告: アコーディオン間配置 — セクションを開いたユーザーはスクロールする→高い視認率 */}
+                            {shouldShowAd && (
+                                <InFeedAd slot="1489598374" refreshKey={adRefreshKey} />
+                            )}
+
+                            {/* 過去対決成績 */}
+                            <div className="mb-2">
+                                <CollapsibleSection title="過去対決成績" icon={<UsersIcon className="w-5 h-5 text-secondary" />}>
+                                    <div className="p-1 sm:p-5 border bg-white rounded-lg">
+                                        <MatchupTable race={activeRace} />
+                                    </div>
+                                </CollapsibleSection>
+                            </div>
+
+                            {/* 枠順傾向スコア */}
+                            <div className="mb-2">
+                                <CollapsibleSection title="枠順傾向スコア" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
+                                    <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
+                                        <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
+                                    </div>
+                                </CollapsibleSection>
+                            </div>
+
+                            {/* データ分析 */}
+                            <div className="mb-2">
+                                <CollapsibleSection title="このレースのデータ分析" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
+                                    <div className='p-2 sm:p-4 border bg-white rounded-lg'>
+                                        <RaceAnalysis race={activeRace} />
+                                    </div>
+                                </CollapsibleSection>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="mb-4 mt-2">
+                            <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-100 rounded-xl p-6 text-center shadow-sm relative overflow-hidden">
+                                <div className="absolute top-0 right-0 -mr-6 -mt-6 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
+                                <div className="absolute bottom-0 left-0 -ml-6 -mb-6 w-24 h-24 bg-primary/5 rounded-full blur-xl"></div>
+                                
+                                <div className="inline-flex items-center justify-center w-12 h-12 bg-white rounded-full shadow-sm mb-3">
+                                    <svg className="w-6 h-6 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">プレミアムデータ分析</h3>
+                                <p className="text-sm text-gray-600 mb-5 max-w-sm mx-auto leading-relaxed">
+                                    このレースの『脚質傾向』『過去対決成績』『枠順データ』『AIデータ分析』を閲覧するには、短い動画広告をご視聴ください。
+                                </p>
+                                
+                                <button
+                                    onClick={() => {
+                                        const newParams = new URLSearchParams();
+                                        newParams.set('race', activeRace.race_number.toString());
+                                        newParams.set('venue', venue.venue_name);
+                                        router.push(`/premium/races/${currentDate}?${newParams.toString()}`);
+                                    }}
+                                    className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 bg-primary text-white font-bold rounded-lg shadow-md hover:bg-primary-dark hover:shadow-lg hover:-translate-y-0.5 transition-all outline-none"
+                                >
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    動画広告を視聴してすべてのデータを見る
+                                </button>
+                                <p className="text-xs text-slate-400 mt-3 flex items-center justify-center gap-1">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    完全無料・24時間アクセス権付与
+                                </p>
+                            </div>
+                        </div>
                     )}
-
-                    {/* 過去対決成績 */}
-                    <div className="mb-2">
-                        <CollapsibleSection title="過去対決成績" icon={<UsersIcon className="w-5 h-5 text-secondary" />}>
-                            <div className="p-1 sm:p-5 border bg-white rounded-lg">
-                                <MatchupTable race={activeRace} />
-                            </div>
-                        </CollapsibleSection>
-                    </div>
-
-                    {/* 枠順傾向スコア */}
-                    <div className="mb-2">
-                        <CollapsibleSection title="枠順傾向スコア" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
-                            <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
-                                <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
-                            </div>
-                        </CollapsibleSection>
-                    </div>
-
-                    {/* データ分析 */}
-                    <div className="mb-2">
-                        <CollapsibleSection title="このレースのデータ分析" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
-                            <div className='p-2 sm:p-4 border bg-white rounded-lg'>
-                                <RaceAnalysis race={activeRace} />
-                            </div>
-                        </CollapsibleSection>
-                    </div>
 
                     {/* AI指標の説明パネル */}
                     <DataExplanationPanel showAdvanced={true} />
@@ -265,7 +304,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
 VenuePanel.displayName = 'VenuePanel';
 
-export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumber }: { data: RaceDayPrediction, articlesMeta: Omit<Article, 'content'>[], initialVenueName?: string | null, initialRaceNumber?: number | null }) => {
+export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumber, isPremium = false, basePath = "/races" }: { data: RaceDayPrediction, articlesMeta: Omit<Article, 'content'>[], initialVenueName?: string | null, initialRaceNumber?: number | null, isPremium?: boolean, basePath?: string }) => {
     if (!data || (data.jra.length === 0 && data.nar.length === 0)) {
         return <div className="p-6 text-center text-muted card">対象日のレースデータがありません。</div>;
     }
@@ -288,7 +327,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         if (typeof window !== 'undefined' && (window as any).gtag) {
             const tabName = index === 0 ? '中央競馬' : '地方競馬';
             (window as any).gtag('event', 'page_view', {
-                page_path: `/races/${currentDate}?tab=${encodeURIComponent(tabName)}`,
+                page_path: `${basePath}/${currentDate}?tab=${encodeURIComponent(tabName)}`,
                 page_title: `${tabName} - レース一覧`,
             });
         }
@@ -300,7 +339,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         const venue = data.jra[index];
         if (venue && typeof window !== 'undefined' && (window as any).gtag) {
             (window as any).gtag('event', 'page_view', {
-                page_path: `/races/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
+                page_path: `${basePath}/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
                 page_title: `${venue.venue_name} - レース一覧`,
             });
         }
@@ -312,7 +351,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         const venue = data.nar[index];
         if (venue && typeof window !== 'undefined' && (window as any).gtag) {
             (window as any).gtag('event', 'page_view', {
-                page_path: `/races/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
+                page_path: `${basePath}/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
                 page_title: `${venue.venue_name} - レース一覧`,
             });
         }
@@ -360,7 +399,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                             </TabList>
                             {data.jra.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isPremium={isPremium} basePath={basePath} />
                                 </TabPanel>
                             ))}
                         </Tabs>
@@ -376,7 +415,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                             </TabList>
                             {data.nar.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isPremium={isPremium} basePath={basePath} />
                                 </TabPanel>
                             ))}
                         </Tabs>

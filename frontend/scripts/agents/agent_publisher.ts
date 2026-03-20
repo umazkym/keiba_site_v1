@@ -75,8 +75,12 @@ async function publishDraft() {
 
   // frontmatterのdraftを消すかfalseにする
   parsed.data.draft = false;
+  
+  // [関連記事：〇〇] プレースホルダーを除去（Phase 5で内部リンク実装まで）
+  const cleanedContent = parsed.content.replace(/\[関連記事：.*?\]\n?/g, '');
+
   // Markdown再シリアライズ
-  const finalContent = matter.stringify(parsed.content, parsed.data);
+  const finalContent = matter.stringify(cleanedContent, parsed.data);
 
   // ディレクトリ生成
   if (!fs.existsSync(ARTICLES_DIR)) {

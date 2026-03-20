@@ -249,41 +249,57 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         </>
                     ) : (
                         <div className="mb-4 mt-2">
-                            <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-100 rounded-xl p-6 text-center shadow-sm relative overflow-hidden">
-                                <div className="absolute top-0 right-0 -mr-6 -mt-6 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
-                                <div className="absolute bottom-0 left-0 -ml-6 -mb-6 w-24 h-24 bg-primary/5 rounded-full blur-xl"></div>
-                                
-                                <div className="inline-flex items-center justify-center w-12 h-12 bg-white rounded-full shadow-sm mb-3">
-                                    <svg className="w-6 h-6 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                                    </svg>
+                            <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
+                                {/* ヘッダー */}
+                                <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                    <span className="text-sm font-semibold text-slate-600">詳細データ</span>
                                 </div>
-                                <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">プレミアムデータ分析</h3>
-                                <p className="text-sm text-gray-600 mb-5 max-w-sm mx-auto leading-relaxed">
-                                    このレースの『脚質傾向』『過去対決成績』『枠順データ』『AIデータ分析』を閲覧するには、短い動画広告をご視聴ください。
-                                </p>
-                                
-                                <button
-                                    onClick={showAd}
-                                    disabled={!isReady && !isLoading}
-                                    className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 bg-primary text-white font-bold rounded-lg shadow-md hover:bg-primary-dark hover:shadow-lg hover:-translate-y-0.5 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-md"
-                                >
-                                    {isLoading ? (
-                                        <>
-                                            <svg className="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                            広告を読み込み中...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                            動画広告を視聴してすべてのデータを見る
-                                        </>
-                                    )}
-                                </button>
-                                <p className="text-xs text-slate-400 mt-3 flex items-center justify-center gap-1">
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                    完全無料・このセッション中は再表示なし
-                                </p>
+
+                                {/* コンテンツ */}
+                                <div className="p-4">
+                                    <p className="text-xs text-slate-500 mb-3">以下のデータは広告視聴で閲覧できます</p>
+
+                                    {/* アンロック項目リスト */}
+                                    <div className="space-y-2 mb-4">
+                                        <div className="flex items-center gap-2.5 text-sm text-slate-700">
+                                            <FlagIcon className="w-4 h-4 text-primary flex-shrink-0" />
+                                            <span>脚質パターン予測</span>
+                                        </div>
+                                        <div className="flex items-center gap-2.5 text-sm text-slate-700">
+                                            <UsersIcon className="w-4 h-4 text-secondary flex-shrink-0" />
+                                            <span>過去対決成績</span>
+                                        </div>
+                                        <div className="flex items-center gap-2.5 text-sm text-slate-700">
+                                            <ChartBarIcon className="w-4 h-4 text-accent flex-shrink-0" />
+                                            <span>枠順傾向スコア</span>
+                                        </div>
+                                        <div className="flex items-center gap-2.5 text-sm text-slate-700">
+                                            <ChartBarIcon className="w-4 h-4 text-accent flex-shrink-0" />
+                                            <span>レースデータ分析</span>
+                                        </div>
+                                    </div>
+
+                                    {/* ボタン */}
+                                    <button
+                                        onClick={showAd}
+                                        disabled={!isReady && !isLoading}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-dark transition-colors outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        {isLoading ? (
+                                            <>
+                                                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                読み込み中...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                広告を見てデータを表示
+                                            </>
+                                        )}
+                                    </button>
+                                    <p className="text-[11px] text-slate-400 mt-2 text-center">無料 · 同一セッション内で1回のみ</p>
+                                </div>
                             </div>
                         </div>
                     )}

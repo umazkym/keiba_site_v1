@@ -209,46 +209,70 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* プレミアム・ロック切り替え部分 */}
                     {isUnlocked ? (
                         <>
-                            {/* 脚質パターン予測 */}
+                            {/* 脚質パターン予測 — アンロック後は常に展開表示 */}
                             <div className="mb-2">
-                                <CollapsibleSection title="脚質パターン予測" icon={<FlagIcon className="w-5 h-5 text-primary" />}>
-                                    <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
-                                        <StartPositionChart predictions={activeRace.predictions} />
+                                <div className="card p-2 sm:p-3">
+                                    <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
+                                        <FlagIcon className="w-5 h-5 mr-2 text-primary" />
+                                        <span>脚質パターン予測</span>
                                     </div>
-                                </CollapsibleSection>
+                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3">
+                                        <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
+                                            <StartPositionChart predictions={activeRace.predictions} />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-
-                            {/* ★広告: アコーディオン間配置 — セクションを開いたユーザーはスクロールする→高い視認率 */}
-                            {shouldShowAd && (
-                                <InFeedAd slot="1489598374" refreshKey={adRefreshKey} />
-                            )}
 
                             {/* 過去対決成績 */}
                             <div className="mb-2">
-                                <CollapsibleSection title="過去対決成績" icon={<UsersIcon className="w-5 h-5 text-secondary" />}>
-                                    <div className="p-1 sm:p-5 border bg-white rounded-lg">
-                                        <MatchupTable race={activeRace} />
+                                <div className="card p-2 sm:p-3">
+                                    <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
+                                        <UsersIcon className="w-5 h-5 mr-2 text-secondary" />
+                                        <span>過去対決成績</span>
                                     </div>
-                                </CollapsibleSection>
+                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3">
+                                        <div className="p-1 sm:p-5 border bg-white rounded-lg">
+                                            <MatchupTable race={activeRace} />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* 枠順傾向スコア */}
                             <div className="mb-2">
-                                <CollapsibleSection title="枠順傾向スコア" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
-                                    <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
-                                        <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
+                                <div className="card p-2 sm:p-3">
+                                    <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
+                                        <ChartBarIcon className="w-5 h-5 mr-2 text-accent" />
+                                        <span>枠順傾向スコア</span>
                                     </div>
-                                </CollapsibleSection>
+                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3">
+                                        <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
+                                            <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* データ分析 */}
                             <div className="mb-2">
-                                <CollapsibleSection title="このレースのデータ分析" icon={<ChartBarIcon className="w-5 h-5 text-accent" />}>
-                                    <div className='p-2 sm:p-4 border bg-white rounded-lg'>
-                                        <RaceAnalysis race={activeRace} />
+                                <div className="card p-2 sm:p-3">
+                                    <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
+                                        <ChartBarIcon className="w-5 h-5 mr-2 text-accent" />
+                                        <span>このレースのデータ分析</span>
                                     </div>
-                                </CollapsibleSection>
+                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3">
+                                        <div className="p-2 sm:p-4 border bg-white rounded-lg">
+                                            <RaceAnalysis race={activeRace} />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* ★広告: プレミアムデータ全体の後に配置 */}
+                            {shouldShowAd && (
+                                <InFeedAd slot="1489598374" refreshKey={adRefreshKey} />
+                            )}
                         </>
                     ) : (
                         <div className="mb-2">

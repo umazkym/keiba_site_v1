@@ -19,7 +19,7 @@ import { Article } from '@/lib/articles';
 import { MultiplexAd } from './MultiplexAd';
 import { AdUnit } from './AdUnit';
 import { useRewardedAd } from '@/hooks/useRewardedAd';
-import { AdGateModal } from './AdGateModal';
+import { Adsense } from './Adsense';
 
 // CollapsibleSection コンポーネント
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
@@ -48,7 +48,8 @@ const CollapsibleSection = memo(({ title, icon, children }: { title: string, ico
 CollapsibleSection.displayName = 'CollapsibleSection';
 
 const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isUnlocked, isReady, isLoading, isSupported, showAd, unlock }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isUnlocked: boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, showAd: () => void, unlock: () => void }) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [showInlineAd, setShowInlineAd] = useState(false);
+    const [countdown, setCountdown] = useState(5);
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
@@ -250,77 +251,92 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                             </div>
                         </>
                     ) : (
-                        <div className="mb-4 mt-2">
-                            <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
-                                {/* ヘッダー */}
-                                <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
-                                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                                    <span className="text-sm font-semibold text-slate-600">詳細データ</span>
+                        <div className="mb-2">
+                            <div className="card p-2 sm:p-3">
+                                <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
+                                    <svg className="w-5 h-5 mr-2 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                    <span>詳細データ</span>
                                 </div>
-
-                                {/* コンテンツ */}
-                                <div className="p-4">
-                                    <p className="text-xs text-slate-500 mb-3">以下のデータは広告視聴で閲覧できます</p>
-
-                                    {/* アンロック項目リスト */}
-                                    <div className="space-y-2 mb-4">
-                                        <div className="flex items-center gap-2.5 text-sm text-slate-700">
-                                            <FlagIcon className="w-4 h-4 text-primary flex-shrink-0" />
-                                            <span>脚質パターン予測</span>
-                                        </div>
-                                        <div className="flex items-center gap-2.5 text-sm text-slate-700">
-                                            <UsersIcon className="w-4 h-4 text-secondary flex-shrink-0" />
-                                            <span>過去対決成績</span>
-                                        </div>
-                                        <div className="flex items-center gap-2.5 text-sm text-slate-700">
-                                            <ChartBarIcon className="w-4 h-4 text-accent flex-shrink-0" />
-                                            <span>枠順傾向スコア</span>
-                                        </div>
-                                        <div className="flex items-center gap-2.5 text-sm text-slate-700">
-                                            <ChartBarIcon className="w-4 h-4 text-accent flex-shrink-0" />
-                                            <span>レースデータ分析</span>
-                                        </div>
-                                    </div>
-
-                                    {/* ボタン */}
-                                    <button
-                                        onClick={() => {
-                                            if (isSupported) {
-                                                // モバイル: GAM Rewarded Ad 表示
-                                                showAd();
-                                            } else {
-                                                // PC / フォールバック: モーダル表示
-                                                setIsModalOpen(true);
-                                            }
-                                        }}
-                                        disabled={!isReady && !isLoading}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-dark transition-colors outline-none disabled:opacity-40 disabled:cursor-not-allowed"
-                                    >
-                                        {isLoading ? (
+                                <div className="px-2 pb-2 sm:px-3 sm:pb-3">
+                                    <div className="p-1.5 sm:p-4 border bg-white rounded-lg">
+                                        {!showInlineAd ? (
+                                            // 初期状態: 項目リスト + ボタン
                                             <>
-                                                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                読み込み中...
+                                                <div className="grid grid-cols-2 gap-2 mb-4">
+                                                    <div className="flex items-center gap-2 text-[13px] text-slate-600">
+                                                        <FlagIcon className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                                                        <span>脚質パターン予測</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[13px] text-slate-600">
+                                                        <UsersIcon className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
+                                                        <span>過去対決成績</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[13px] text-slate-600">
+                                                        <ChartBarIcon className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                                                        <span>枠順傾向スコア</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[13px] text-slate-600">
+                                                        <ChartBarIcon className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                                                        <span>データ分析</span>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        if (isSupported) {
+                                                            showAd();
+                                                        } else {
+                                                            setShowInlineAd(true);
+                                                            // カウントダウン開始
+                                                            let remaining = 5;
+                                                            setCountdown(remaining);
+                                                            const timer = setInterval(() => {
+                                                                remaining--;
+                                                                setCountdown(remaining);
+                                                                if (remaining <= 0) clearInterval(timer);
+                                                            }, 1000);
+                                                        }
+                                                    }}
+                                                    disabled={!isReady && !isLoading}
+                                                    className="btn-primary w-full text-sm gap-2"
+                                                >
+                                                    {isLoading ? (
+                                                        <>
+                                                            <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                            読み込み中
+                                                        </>
+                                                    ) : (
+                                                        '広告を見てデータを表示'
+                                                    )}
+                                                </button>
+                                                <p className="text-[11px] text-muted mt-2 text-center">無料 · 同一セッション内で1回のみ</p>
                                             </>
                                         ) : (
+                                            // インライン広告 + カウントダウン
                                             <>
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                                広告を見てデータを表示
+                                                <div className="text-[10px] text-muted text-center mb-1 tracking-wider select-none">スポンサーリンク</div>
+                                                <div className="flex justify-center mb-3">
+                                                    <Adsense
+                                                        client="ca-pub-4411270831448240"
+                                                        slot="1489598374"
+                                                        style={{ display: 'block', width: '100%', maxWidth: '336px', height: '280px' }}
+                                                        isResponsive={false}
+                                                    />
+                                                </div>
+                                                {countdown > 0 ? (
+                                                    <div className="text-center text-sm text-slate-400">あと {countdown}秒...</div>
+                                                ) : (
+                                                    <button
+                                                        onClick={unlock}
+                                                        className="btn-primary w-full text-sm gap-2"
+                                                    >
+                                                        データを表示
+                                                    </button>
+                                                )}
                                             </>
                                         )}
-                                    </button>
-                                    <p className="text-[11px] text-slate-400 mt-2 text-center">無料 · 同一セッション内で1回のみ</p>
+                                    </div>
                                 </div>
                             </div>
-
-                            {/* PC用広告ゲートモーダル */}
-                            <AdGateModal
-                                isOpen={isModalOpen}
-                                onUnlock={() => {
-                                    setIsModalOpen(false);
-                                    unlock();
-                                }}
-                                onClose={() => setIsModalOpen(false)}
-                            />
                         </div>
                     )}
 

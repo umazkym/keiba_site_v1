@@ -42,7 +42,7 @@ export function RelatedArticles({ currentSlug, count = 3 }: RelatedArticlesProps
               />
             </div>
             <div className="p-5 sm:p-6 flex flex-col flex-grow">
-              <span className="inline-block w-fit bg-primary-light text-primary-dark text-xs font-bold px-3 py-1 rounded-full mb-3">
+              <span className="inline-block w-fit bg-slate-200 text-primary-dark text-xs font-bold px-3 py-1 rounded-full mb-3">
                 {article.category}
               </span>
               <h4 className="font-bold text-base sm:text-lg mb-2 text-text-primary group-hover:text-primary transition-colors line-clamp-2 leading-snug">

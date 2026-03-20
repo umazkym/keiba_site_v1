@@ -41,7 +41,7 @@ def _fetch_and_load_horse_past_data(db: Session, horse_ids: set, driver=None):
                 .filter(models.Result.finish_time_sec.isnot(None))\
                 .scalar()
 
-            force_download = True
+            force_download = False
             if valid_results_count >= 5:
                 latest_race_date = db.query(func.max(models.Race.race_date))\
                     .join(models.Result, models.Result.race_id == models.Race.id)\
@@ -50,7 +50,8 @@ def _fetch_and_load_horse_past_data(db: Session, horse_ids: set, driver=None):
                     .scalar()
                 if latest_race_date and (date.today() - latest_race_date).days < 365:
                     continue
-                # データが古い場合はキャッシュを無視して最新データを取得 (force_download=Trueのまま)
+                # データが古い場合でもキャッシュが5日以内であればそれを使用
+                force_download = False
 
             # driverを渡す
             html, was_scraped = get_horse_page_html(horse_id, force_download=force_download, driver=driver)

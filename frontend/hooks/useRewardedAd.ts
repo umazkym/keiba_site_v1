@@ -10,6 +10,12 @@ declare global {
 
 const AD_UNIT_PATH = '/23345285369/uma-free-rewarded-premium';
 
+// ▼▼▼▼▼【タイムアウト設定】▼▼▼▼▼
+// GPTからのイベントが一切発火しない場合（GAM設定ミス、在庫なし、ネットワーク障害等）、
+// この秒数を過ぎたらフォールバックとして自動アンロックする
+const LOADING_TIMEOUT_MS = 10_000; // 10秒
+// ▲▲▲▲▲【タイムアウト設定ここまで】▲▲▲▲▲
+
 /**
  * GAM リワード広告のライフサイクルを管理するカスタムフック。
  *
@@ -27,6 +33,7 @@ export function useRewardedAd() {
     const makeVisibleRef = useRef<(() => void) | null>(null);
     const slotRef = useRef<any>(null);
     const initializedRef = useRef(false);
+    const resolvedRef = useRef(false); // イベント受信済みフラグ
 
     useEffect(() => {
         // 二重初期化防止
@@ -39,9 +46,22 @@ export function useRewardedAd() {
             if (unlocked === 'true') {
                 setIsUnlocked(true);
                 setIsLoading(false);
+                resolvedRef.current = true;
                 return;
             }
         }
+
+        // ▼▼▼▼▼【タイムアウトフォールバック】▼▼▼▼▼
+        // GPTイベントが一切発火しない場合のセーフティネット
+        const timeoutId = setTimeout(() => {
+            if (!resolvedRef.current) {
+                console.warn('[useRewardedAd] Timeout: no GPT event received within', LOADING_TIMEOUT_MS, 'ms. Auto-unlocking.');
+                resolvedRef.current = true;
+                setIsLoading(false);
+                setIsUnlocked(true);
+            }
+        }, LOADING_TIMEOUT_MS);
+        // ▲▲▲▲▲【タイムアウトフォールバックここまで】▲▲▲▲▲
 
         const googletag = window.googletag || { cmd: [] };
         window.googletag = googletag;
@@ -53,10 +73,13 @@ export function useRewardedAd() {
             );
 
             // ページやデバイスがリワード広告をサポートしていない場合 null が返る
+            // （PCブラウザ、viewport未設定等）
             if (!slot) {
+                console.log('[useRewardedAd] Rewarded ads not supported on this page/device. Auto-unlocking.');
+                resolvedRef.current = true;
+                clearTimeout(timeoutId);
                 setIsSupported(false);
                 setIsLoading(false);
-                // サポートされない環境ではフォールバックとしてアンロック
                 setIsUnlocked(true);
                 return;
             }
@@ -66,6 +89,9 @@ export function useRewardedAd() {
 
             // 広告準備完了 → ボタンの有効化
             googletag.pubads().addEventListener('rewardedSlotReady', (event: any) => {
+                console.log('[useRewardedAd] Rewarded slot is ready.');
+                resolvedRef.current = true;
+                clearTimeout(timeoutId);
                 setIsReady(true);
                 setIsLoading(false);
                 makeVisibleRef.current = () => event.makeRewardedVisible();
@@ -73,6 +99,7 @@ export function useRewardedAd() {
 
             // リワード付与（広告視聴完了）
             googletag.pubads().addEventListener('rewardedSlotGranted', () => {
+                console.log('[useRewardedAd] Reward granted!');
                 setIsUnlocked(true);
                 // セッションストレージに保存（同一セッション中は再度広告不要）
                 if (typeof window !== 'undefined') {
@@ -82,7 +109,7 @@ export function useRewardedAd() {
 
             // 広告クローズ（リワード未付与でもクローズ可能）
             googletag.pubads().addEventListener('rewardedSlotClosed', () => {
-                // スロットを破棄して再利用に備える
+                console.log('[useRewardedAd] Rewarded slot closed.');
                 if (slotRef.current) {
                     googletag.destroySlots([slotRef.current]);
                     slotRef.current = null;
@@ -92,18 +119,29 @@ export function useRewardedAd() {
             // 広告なし（在庫切れなど）
             googletag.pubads().addEventListener('slotRenderEnded', (event: any) => {
                 if (event.slot === slotRef.current && event.isEmpty) {
+                    console.log('[useRewardedAd] No ad returned (empty slot). Auto-unlocking.');
+                    resolvedRef.current = true;
+                    clearTimeout(timeoutId);
                     setIsLoading(false);
-                    // 広告在庫がない場合はフォールバックとしてアンロック
                     setIsUnlocked(true);
                 }
             });
 
-            googletag.enableServices();
+            // ▼▼▼▼▼【enableServices 重複呼び出し防止】▼▼▼▼▼
+            // layout.tsx の AdSense (adsbygoogle) が先に enableServices を呼んでいる可能性あり
+            // GPTの enableServices は冪等だが念のためtry-catch
+            try {
+                googletag.enableServices();
+            } catch (e) {
+                console.warn('[useRewardedAd] enableServices error (possibly already called):', e);
+            }
+            // ▲▲▲▲▲【enableServices 重複呼び出し防止ここまで】▲▲▲▲▲
+
             googletag.display(slot);
         });
 
         return () => {
-            // クリーンアップ
+            clearTimeout(timeoutId);
             if (slotRef.current && window.googletag) {
                 try {
                     window.googletag.destroySlots([slotRef.current]);

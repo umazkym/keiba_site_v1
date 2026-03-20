@@ -56,7 +56,7 @@ def fetch_data():
     /* 単勝払戻金の取得。number_1は馬番を指すためhorse_numberと結合 */
     LEFT JOIN race_returns ret 
         ON r.id = ret.race_id 
-        AND ret.bet_type = '単勝' 
+        AND ret.bet_type = 'tansho' 
         AND ret.number_1 = res.horse_number
     WHERE r.course_type IN ('芝', 'ダ')
       AND r.race_date >= '{cutoff_date}'

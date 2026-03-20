@@ -56,7 +56,15 @@ jobs:
         # test_pipeline.ts が最新の write_order.json を読み込み、writerとeditorを連鎖実行します
         run: npx tsx scripts/agents/test_pipeline.ts
 
+      - name: Check if article was approved
+        id: check_approved
+        run: |
+          count=$(find data/write_orders -name "*.json" 2>/dev/null | wc -l)
+          approved=$(find frontend/agents/queue/approved -name "*.md" 2>/dev/null | wc -l)
+          echo "approved_count=$approved" >> $GITHUB_OUTPUT
+
       - name: Step 4 - Publish and Push (agent_publisher)
+        if: steps.check_approved.outputs.approved_count > 0
         working-directory: ./frontend
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # 念のため

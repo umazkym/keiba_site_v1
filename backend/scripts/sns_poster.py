@@ -1042,13 +1042,13 @@ def create_morning_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
     lines.append(f"\n{SITE_BASE_URL}")
     lines.append(f"\n{' '.join(hashtags_2)}")
 
-    engagements = [
-        "波乱の予感がする方は『いいね/ブックマーク』で保存！🔖",
-        "この馬鹿にならないAI偏差値、ぜひ参考に！🐴",
-        "皆さんの予想はどうですか？👇",
-        "発走前にオッズと一緒にチェック！🏇"
-    ]
-    lines.append(f"\n\n{random.choice(engagements)}")
+    # engagements = [
+    #     "波乱の予感がする方は『いいね/ブックマーク』で保存！🔖",
+    #     "この馬鹿にならないAI偏差値、ぜひ参考に！🐴",
+    #     "皆さんの予想はどうですか？👇",
+    #     "発走前にオッズと一緒にチェック！🏇"
+    # ]
+    # lines.append(f"\n\n{random.choice(engagements)}")
 
     return "\n".join(lines)
 

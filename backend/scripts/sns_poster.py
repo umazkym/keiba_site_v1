@@ -1001,13 +1001,13 @@ def create_morning_hit_tweet(hit: Dict[str, Any], summary: dict, date_str: str, 
     if quote_tweet_id:
         lines.append(f"\nhttps://x.com/anyuser/status/{quote_tweet_id}")
 
-    engagements = [
-        "皆さんの本命馬と同じでしたか？👇",
-        "この結果に驚いた方は『いいね』で教えてください🐴",
-        "AIの印が参考になったら『いいね/ブックマーク』をぜひ！🔖",
-        "今後も高配当を狙うならお見逃しなく！🏇"
-    ]
-    lines.append(f"\n\n{random.choice(engagements)}")
+    # engagements = [
+    #     "皆さんの本命馬と同じでしたか？👇",
+    #     "この結果に驚いた方は『いいね』で教えてください🐴",
+    #     "AIの印が参考になったら『いいね/ブックマーク』をぜひ！🔖",
+    #     "今後も高配当を狙うならお見逃しなく！🏇"
+    # ]
+    # lines.append(f"\n\n{random.choice(engagements)}")
 
     return "\n".join(lines)
 

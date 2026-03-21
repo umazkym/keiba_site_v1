@@ -9,41 +9,30 @@ import { notFound } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { getAllArticlesMeta } from '@/lib/articles';
 
-// ▼▼▼▼▼【ISR導入】▼▼▼▼▼
-// 従来: export const dynamic = 'force-dynamic' で毎回フルSSR
-// 変更: ISRに切り替え。api.tsのfetchに revalidate を設定済み。
-// レースデータは1日2〜3回の定時バッチ更新のため、リアルタイムSSRは不要。
-// ▲▲▲▲▲【ISR導入ここまで】▲▲▲▲▲
+// ============================================================
+// ISR: 15分ごとにVercel CDNキャッシュを再生成
+// searchParams を除去したことでこの設定が正しく有効になる
+// ============================================================
+export const revalidate = 900;
 
 export async function generateMetadata(
-    { params, searchParams }: {
-        params: { date: string };
-        searchParams: { [key: string]: string | string[] | undefined };
-    }
+    // ============================================================
+    // [変更] searchParams 引数を完全に削除
+    // 変更前: searchParams から venue/race を取り出して動的タイトルを生成
+    //         → Next.jsが「このページは動的」と判定しISRが無効化されていた
+    // 変更後: params.date のみに依存した静的タイトルを返す
+    //         → ページ全体がISRキャッシュの対象になる
+    // ============================================================
+    { params }: { params: { date: string } }
 ): Promise<Metadata> {
     const formattedDate = formatDate(params.date);
-    const venue = searchParams.venue as string;
-    const race = searchParams.race as string;
-
-    let title = `${formattedDate}のAI競馬データ分析 | UMA-FREE`;
-    let description = `${formattedDate}の中央・地方競馬の全レースをAIが完全無料でデータ分析。馬券検討に役立つ統計情報を毎日更新。`;
-    let canonicalUrl = `/races/${params.date}`;
-
-    if (venue && race) {
-        const venueName = decodeURIComponent(venue);
-        title = `${formattedDate} ${venueName} ${race}R のAI競馬データ分析 | UMA-FREE`;
-        description = `AIによる${formattedDate} ${venueName}競馬場 ${race}Rの無料データ分析。偏差値、対戦成績、枠順データで詳細分析。`;
-        // ▼▼▼▼▼【修正: canonical URLのパラメータ順序を統一】▼▼▼▼▼
-        // Googleが重複判定を避けるため、クエリパラメータの順序を常に 'race' → 'venue' に統一
-        canonicalUrl = `/races/${params.date}?race=${race}&venue=${venue}`;
-        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
-    }
 
     return {
-        title: title,
-        description: description,
+        title: `${formattedDate}のAI競馬データ分析 | UMA-FREE`,
+        description: `${formattedDate}の中央・地方競馬の全レースをAIが完全無料でデータ分析。馬券検討に役立つ統計情報を毎日更新。`,
         alternates: {
-            canonical: canonicalUrl,
+            // venue/race なしの日付URLをcanonicalとして統一
+            canonical: `/races/${params.date}`,
         },
         robots: {
             index: true,
@@ -75,10 +64,6 @@ export default async function RacePage({ params }: { params: { date: string } })
     const articlesMeta = getAllArticlesMeta();
 
     try {
-        // ▼▼▼▼▼【SSRプリフェッチ統合】▼▼▼▼▼
-        // 従来: predictionDataのみSSR、specialPick/topHitsはクライアント側で独立APIコール
-        // 変更: Promise.allで3つのAPIコールを並列実行し、全データをSSRで取得
-        // メリット: クライアント側のAPIコールが0に、サーバー側も並列で処理時間短縮
         const [predictions, specialPick, topHits] = await Promise.all([
             getPredictionsForDate(params.date),
             getSpecialPick(params.date),
@@ -87,14 +72,11 @@ export default async function RacePage({ params }: { params: { date: string } })
         predictionData = predictions;
         specialPickData = specialPick;
         topHitsData = topHits;
-        // ▲▲▲▲▲【SSRプリフェッチ統合ここまで】▲▲▲▲▲
 
-        // データが存在しない場合（ソフト404対策）
         if (!predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
             console.log(`[Data Info] No prediction data found for ${params.date}. Returning 404.`);
             notFound();
         }
-        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
         const mainRace = predictionData?.jra?.[0]?.races?.[0] || predictionData?.nar?.[0]?.races?.[0];
 
@@ -112,12 +94,9 @@ export default async function RacePage({ params }: { params: { date: string } })
                 },
                 "description": `AIによる${mainRace.venue_name} ${mainRace.race_number}R ${mainRace.race_name}の競馬データ分析。`,
                 "eventStatus": "https://schema.org/EventScheduled",
-                // ▼▼▼▼▼【修正: JSON-LD URLのパラメータ順序を統一】▼▼▼▼▼
-                "url": `https://uma-free.com/races/${mainRace.race_date}?race=${mainRace.race_number}&venue=${encodeURIComponent(mainRace.venue_name)}`,
-                // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
-                "image": [
-                    "https://uma-free.com/new-logo.png"
-                ],
+                // [変更] JSON-LD URLも日付ベースのcanonicalに統一
+                "url": `https://uma-free.com/races/${mainRace.race_date}`,
+                "image": ["https://uma-free.com/new-logo.png"],
                 "organizer": {
                     "@type": "Organization",
                     "name": "UMA-FREE",
@@ -125,20 +104,18 @@ export default async function RacePage({ params }: { params: { date: string } })
                 },
                 "offers": {
                     "@type": "Offer",
-                    // ▼▼▼▼▼【修正: JSON-LD URLのパラメータ順序を統一】▼▼▼▼▼
-                    "url": `https://uma-free.com/races/${mainRace.race_date}?race=${mainRace.race_number}&venue=${encodeURIComponent(mainRace.venue_name)}`,
-                    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+                    "url": `https://uma-free.com/races/${mainRace.race_date}`,
                     "price": "0",
                     "priceCurrency": "JPY",
                     "availability": "https://schema.org/InStock",
                     "validFrom": `${mainRace.race_date}T00:00:00+09:00`,
                     "validThrough": `${mainRace.race_date}T23:59:59+09:00`
                 },
-                "performer": mainRace.predictions.map(p => ({
+                "performer": mainRace.predictions.map((p: { horse_name: string }) => ({
                     "@type": "SportsTeam",
                     "name": p.horse_name
                 })),
-                "competitor": mainRace.predictions.map(p => ({
+                "competitor": mainRace.predictions.map((p: { horse_name: string }) => ({
                     "@type": "SportsTeam",
                     "name": p.horse_name
                 }))
@@ -147,21 +124,12 @@ export default async function RacePage({ params }: { params: { date: string } })
 
     } catch (error) {
         console.error(`[Build Warning] Failed to fetch initial data for ${params.date}. Error:`, error);
-        // API未到達の場合は即座に404を返す（Googleクローラーに500を返さないため）
         notFound();
     }
 
-    // ▼▼▼▼▼【修正】predictionDataがnullの可能性を再度チェック（try-catchを抜けたがデータがnullの場合）▼▼▼▼▼
-    // 上部のチェックで既に notFound() が呼ばれているはずだが、念のためここでもチェックする
-    // ただし、try-catch内で例外が発生した場合は、このreturnには到達しない
     if (!predictionData) {
-        // このコードパスには通常到達しないはずだが、
-        // tryブロック内でエラーが発生せず、predictionDataがnullのままの場合（現在はcatchで処理）
-        // のフォールバックとして
-        console.log(`[Data Info] Fallback check: No prediction data for ${params.date}. Returning 404.`);
         notFound();
     }
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
     return (
         <>

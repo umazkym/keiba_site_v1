@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from 'next/link';
 import { RaceDayPrediction, SpecialPick, TopPayoutHit } from "@/lib/types";
 import { RaceTabs } from "@/components/RaceTabs";
@@ -13,35 +13,19 @@ import { Article } from "@/lib/articles";
 import DisclaimerAlert from "@/components/DisclaimerAlert";
 import { AdUnit } from "@/components/AdUnit";
 
-// 日付フォーマット検証関数
-/**
- * 日付文字列が有効なISO 8601形式（YYYY-MM-DD）かつ実在する日付であることを検証する
- * @param dateStr - 検証対象の日付文字列
- * @returns 有効な日付の場合true、無効な場合false
- */
+// 日付フォーマット検証
 const isValidDateFormat = (dateStr: string): boolean => {
-    // YYYY-MM-DD形式か確認
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-        return false;
-    }
-
-    // 実在する日付か確認（Date.parseで自動的に無効な日付を検出）
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
     const date = new Date(dateStr + 'T00:00:00Z');
-    if (isNaN(date.getTime())) {
-        return false;
-    }
-
-    // 日付の個別部分を検証（例: 2025-02-30は無効）
+    if (isNaN(date.getTime())) return false;
     const [year, month, day] = dateStr.split('-').map(Number);
     const dateFromParts = new Date(Date.UTC(year, month - 1, day));
-    const isValidDate =
+    return (
         dateFromParts.getUTCFullYear() === year &&
         dateFromParts.getUTCMonth() === month - 1 &&
-        dateFromParts.getUTCDate() === day;
-
-    return isValidDate;
+        dateFromParts.getUTCDate() === day
+    );
 };
-
 
 const DateNavigator = ({
     currentDate,
@@ -60,9 +44,7 @@ const DateNavigator = ({
 
     const handleDateInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const newDate = e.target.value;
-        if (newDate) {
-            onDateChange(newDate);
-        }
+        if (newDate) onDateChange(newDate);
     }, [onDateChange]);
 
     return (
@@ -74,15 +56,13 @@ const DateNavigator = ({
             >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             </button>
-            <div className="flex items-center gap-2">
-                <input
-                    type="date"
-                    value={currentDate}
-                    onChange={handleDateInputChange}
-                    className="border-none bg-transparent text-text-primary font-bold text-[15px] sm:text-base focus:ring-0 p-0 text-center font-mono cursor-pointer"
-                    aria-label="日付を選択"
-                />
-            </div>
+            <input
+                type="date"
+                value={currentDate}
+                onChange={handleDateInputChange}
+                className="border-none bg-transparent text-text-primary font-bold text-[15px] sm:text-base focus:ring-0 p-0 text-center font-mono cursor-pointer"
+                aria-label="日付を選択"
+            />
             <button
                 onClick={(e) => handleDateShift(e, 1)}
                 className="p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-md transition-all duration-200"
@@ -102,53 +82,56 @@ type RacePageClientProps = {
     articlesMeta: Omit<Article, 'content'>[];
 };
 
-export default function RacePageClient({ initialDate, initialPredictionData, initialSpecialPick, initialTopHits, articlesMeta }: RacePageClientProps) {
+export default function RacePageClient({
+    initialDate,
+    initialPredictionData,
+    initialSpecialPick,
+    initialTopHits,
+    articlesMeta,
+}: RacePageClientProps) {
     const router = useRouter();
-    const searchParams = useSearchParams();
     const [currentDate, setCurrentDate] = useState(initialDate);
     const [predictionData, setPredictionData] = useState<RaceDayPrediction | null>(initialPredictionData);
     const [isLoading, setIsLoading] = useState(!initialPredictionData);
     const [error, setError] = useState<string | null>(null);
-    // ▼▼▼▼▼【初期値をsearchParamsから同期的に取得】▼▼▼▼▼
-    // 従来: useState(null) → 初回レース切替でkeyが変わりRaceTabs再マウント
-    // 変更: searchParamsの値を初期値として使用 → 最初からkeyが安定
-    const [initialVenue, setInitialVenue] = useState<string | null>(() => {
-        const venue = searchParams.get('venue');
-        return venue ? decodeURIComponent(venue) : null;
-    });
-    const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(() => {
-        const raceStr = searchParams.get('race');
+
+    // ============================================================
+    // venue / race の初期値はクライアントサイドのみで読み取る
+    // useSearchParams() を使わないことで動的レンダリングを回避
+    // SSR時は null → クライアントマウント後に window.location.search から取得
+    // ============================================================
+    const [initialVenue, setInitialVenue] = useState<string | null>(null);
+    const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(null);
+
+    const hasScrolled = useRef(false);
+    const isInitialLoad = useRef(true);
+
+    // クライアントマウント時にURLパラメータを一度だけ読む
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const venue = params.get('venue');
+        const raceStr = params.get('race');
+
+        if (venue) setInitialVenue(decodeURIComponent(venue));
         if (raceStr) {
             const num = parseInt(raceStr, 10);
-            return isNaN(num) ? null : num;
+            if (!isNaN(num)) setInitialRaceNumber(num);
         }
-        return null;
-    });
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
-    const hasScrolled = useRef(false);
-    const isInitialLoad = useRef(true); // ★ 初回レンダリング判定用
+    }, []); // マウント時1回のみ
 
-    // ▼▼▼▼▼【二重フェッチ解消】▼▼▼▼▼
-    // 従来: initialDateが変わるたびに毎回fetchDataを実行（SSRで取得済みでも再フェッチ）
-    // 変更: 初回レンダリング時はSSRで取得した initialPredictionData をそのまま使用。
-    //       日付が変わった場合（DateNavigatorでの操作→router.push→再マウント時は
-    //       isInitialLoadがtrueにリセットされるため、SSRデータがあればスキップ）。
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+    // 日付変更時のデータフェッチ
     useEffect(() => {
         const fetchData = async (dateToFetch: string) => {
-            // 日付フォーマット検証
             if (!isValidDateFormat(dateToFetch)) {
                 setError("無効な日付形式です。YYYY-MM-DD形式で指定してください。");
                 setIsLoading(false);
                 return;
             }
-
             setIsLoading(true);
             setError(null);
             try {
                 const data = await getPredictionsForDate(dateToFetch);
                 setPredictionData(data);
-
                 if (!data || (data.jra.length === 0 && data.nar.length === 0)) {
                     setError("指定された日付のレースデータはありませんでした。");
                 }
@@ -163,7 +146,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
         setCurrentDate(initialDate);
         document.title = `競馬AIデータ分析 | ${formatDate(initialDate)}`;
 
-        // 初回レンダリング時かつSSRデータがある場合はフェッチをスキップ
+        // 初回かつSSRデータがある場合はスキップ
         if (isInitialLoad.current && initialPredictionData) {
             isInitialLoad.current = false;
             setPredictionData(initialPredictionData);
@@ -171,73 +154,30 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
             return;
         }
         isInitialLoad.current = false;
-
-        // 日付が変わった場合のみフェッチ実行
         fetchData(initialDate);
+    }, [initialDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    }, [initialDate]);
-
-    useEffect(() => {
-        const venue = searchParams.get('venue');
-        const raceStr = searchParams.get('race');
-
-        if (venue) {
-            setInitialVenue(decodeURIComponent(venue));
-        }
-        if (raceStr) {
-            const raceNum = parseInt(raceStr, 10);
-            if (!isNaN(raceNum)) {
-                setInitialRaceNumber(raceNum);
-            }
-        }
-    }, [searchParams]);
-
-    useEffect(() => {
-        if (!hasScrolled.current && initialVenue && initialRaceNumber && predictionData) {
-            const venueExists = [...predictionData.jra, ...predictionData.nar].some(
-                v => v.venue_name === initialVenue
-            );
-
-            if (venueExists) {
-                setTimeout(() => {
-                    const venueElement = document.getElementById(`venue-${initialVenue}`);
-                    if (venueElement) {
-                        setTimeout(() => {
-                            const raceData = [...predictionData.jra, ...predictionData.nar]
-                                .find(v => v.venue_name === initialVenue)
-                                ?.races.find(r => r.race_number === initialRaceNumber);
-
-                            if (raceData) {
-                                const raceElement = document.getElementById(`race-${raceData.id}`);
-                            }
-                        }, 500);
-                    }
-                    hasScrolled.current = true;
-                }, 100);
-            }
-        }
-    }, [initialVenue, initialRaceNumber, predictionData]);
-
+    // 日付ナビゲーション: 日付変更はページ遷移（router.push）が必要
+    // ISRページのHTMLを正しく取得するため、ここだけは router.push を維持する
     const handleDateChange = useCallback((newDate: string) => {
         if (newDate && newDate !== currentDate) {
             hasScrolled.current = false;
+            // venue/race の初期値をリセット（新しい日付ではURL上に存在しない）
+            setInitialVenue(null);
+            setInitialRaceNumber(null);
             router.push(`/races/${newDate}`);
         }
     }, [currentDate, router]);
 
     const getTodayString = () => {
-        const today = new Date(
-            new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
-        );
+        const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
         return today.toISOString().split("T")[0];
     };
-
     const todayStr = getTodayString();
 
     const renderContent = () => {
-        if (isLoading) {
-            return <RaceTabsSkeleton />;
-        }
+        if (isLoading) return <RaceTabsSkeleton />;
+
         if (error || !predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
             return (
                 <div className="text-center p-8 bg-red-50 rounded-lg border border-red-200 shadow-sm">
@@ -252,7 +192,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                         他の日付のレースデータをお探しください。
                     </p>
                     <Link
-                        href={`/races/${getTodayString()}`}
+                        href={`/races/${todayStr}`}
                         className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg shadow-sm transition-colors"
                     >
                         本日のレース分析を見る
@@ -268,13 +208,11 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                 </div>
             );
         }
+
         return (
             <>
                 <DisclaimerAlert />
-
-                {/* In-article広告: 免責事項読了後・注目馬前の自然な区切り */}
                 <AdUnit slot="1489598374" placement="inline" refreshKey={`inarticle-${currentDate}`} />
-
                 <div className="mb-2">
                     <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
                 </div>
@@ -291,17 +229,12 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
 
     return (
         <div className="py-4">
-            {/* ▼▼▼▼▼【ファーストビュー改善】▼▼▼▼▼ */}
-            {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
-            {/* 変更: 日付ナビ→レースデータ→的中ランキング→バナー広告（レースデータを最速で表示） */}
-            {/* ▲▲▲▲▲【ファーストビュー改善ここまで】▲▲▲▲▲ */}
-            {/* ★ここからstickyを削除し、スクロールで自然に消えるようにして画面領域を確保 */}
             <div className="glass mb-2 sm:mb-3 p-1.5 sm:p-3 relative z-10 shadow-sm border-b border-white/40">
                 <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
                     <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
                     <button
                         onClick={(e) => {
-                            handleDateChange(getTodayString());
+                            handleDateChange(todayStr);
                             e.currentTarget.blur();
                         }}
                         className="bg-primary text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg shadow-sm hover:bg-primary-dark transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm font-bold whitespace-nowrap min-h-[40px] sm:min-h-[44px]"
@@ -313,15 +246,10 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
 
             {renderContent()}
 
-            {/* 的中ランキング: レースデータの後に配置 */}
             <div className="mt-2 sm:mt-4 mb-1 sm:mb-3">
                 <TopHitsDisplay initialHits={initialTopHits} />
             </div>
-
-            {/* 広告: 的中ランキング後（inlineに変更しコンテンツとの一体感を強化） */}
             <AdUnit slot="8529703346" placement="inline" refreshKey={`banner-${currentDate}`} className="my-2 sm:my-4" />
-
-            {/* サイト紹介テキスト（SEO・AdSense対策：重複回避のため最小限に） */}
             <section className="mt-2 sm:mt-3 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">
                 <p className="text-sm text-gray-600">
                     より詳しいAIデータ分析の仕組みや、サイトの使い方は

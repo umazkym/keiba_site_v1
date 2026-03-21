@@ -48,7 +48,7 @@ CollapsibleSection.displayName = 'CollapsibleSection';
 
 const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isUnlocked, isReady, isLoading, isSupported, showAd, unlock }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isUnlocked: boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, showAd: () => void, unlock: () => void }) => {
     const [showInlineAd, setShowInlineAd] = useState(false);
-    const [countdown, setCountdown] = useState(5);
+    const [countdown, setCountdown] = useState(10);
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
@@ -81,7 +81,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     useEffect(() => {
         if (!isUnlocked) {
             setShowInlineAd(false);
-            setCountdown(5);
+            setCountdown(10);
         }
     }, [activeRaceIndex, isUnlocked]);
 
@@ -298,14 +298,14 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/30 via-white/70 to-white/95 px-4">
                                 {!showInlineAd ? (
                                     <div className="text-center max-w-xs w-full">
-                                        <p className="text-sm text-slate-600 mb-4 font-medium">展開/脚質予測、対戦成績、枠順傾向、AI分析を閲覧</p>
+                                        <p className="text-sm text-slate-600 mb-4 font-medium">脚質予測、対戦成績、枠順傾向、AI分析を閲覧</p>
                                         <button
                                             onClick={() => {
                                                 if (isSupported) {
                                                     showAd();
                                                 } else {
                                                     setShowInlineAd(true);
-                                                    let remaining = 5;
+                                                    let remaining = 10;
                                                     setCountdown(remaining);
                                                     const timer = setInterval(() => {
                                                         remaining--;
@@ -328,7 +328,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                                     読み込み中
                                                 </>
                                             ) : (
-                                                '広告を見てデータを表示'
+                                                '10秒間の広告を見てデータを表示'
                                             )}
                                         </button>
                                     </div>

@@ -476,29 +476,25 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
         print(f"  -> Cleaning predictions/matchups for {target_date.strftime('%Y-%m-%d')}...")
         races_for_date_stmt = select(models.Race.id).where(models.Race.race_date == target_date)
 
-        CLEANUP_BATCH = 100
-        total_cleaned = 0
+        # ★ バグ修正: while True ループを廃止
+        # 旧コードは races を削除しないため LIMIT が毎回同じIDを返し続け、
+        # 1000件上限に達するまで同じレースを何度もクリーンアップしていた。
+        # 修正: 対象日の race_id を1クエリで全件取得してからまとめて削除する。
+        all_race_ids_for_cleanup = [
+            r[0] for r in db.execute(races_for_date_stmt).fetchall()
+        ]
+        total_cleaned = len(all_race_ids_for_cleanup)
 
-        while True:
-            batch_stmt = races_for_date_stmt.limit(CLEANUP_BATCH)
-            race_ids_batch = [r[0] for r in db.execute(batch_stmt).fetchall()]
-            if not race_ids_batch:
-                break
-
+        if all_race_ids_for_cleanup:
             db.query(models.Matchup).filter(
-                models.Matchup.race_id.in_(race_ids_batch)
+                models.Matchup.race_id.in_(all_race_ids_for_cleanup)
             ).delete(synchronize_session=False)
             db.query(models.Prediction).filter(
-                models.Prediction.race_id.in_(race_ids_batch)
+                models.Prediction.race_id.in_(all_race_ids_for_cleanup)
             ).delete(synchronize_session=False)
             db.commit()
-
-            total_cleaned += len(race_ids_batch)
-            del race_ids_batch
+            del all_race_ids_for_cleanup
             gc.collect()
-
-            if total_cleaned >= 1000:
-                break
 
         if total_cleaned > 0:
             print(f"  -> Cleaned predictions/matchups for {total_cleaned} races.")

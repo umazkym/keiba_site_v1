@@ -15,6 +15,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
+      - name: Cache HTML files
+        uses: actions/cache@v4
+        with:
+          path: backend/data/html_cache
+          key: html-cache-${{ github.run_id }}
+          restore-keys: |
+            html-cache-
+        
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -37,6 +45,6 @@ jobs:
           SELENIUM_PAGE_LOAD_TIMEOUT: '40'
           SELENIUM_ELEMENT_WAIT_TIMEOUT: '20'
           TZ: Asia/Tokyo
-          RENDER: 'false'
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
         run: |
           python run_pipeline.py --date yesterday --mode RESULTS_ONLY

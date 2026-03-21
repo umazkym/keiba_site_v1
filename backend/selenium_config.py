@@ -38,10 +38,10 @@ def get_chrome_driver():
         '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     )
 
-    # Render環境かどうか判定
-    is_render = os.getenv('RENDER') is not None
+    # CI/CD環境かどうか判定
+    is_github_actions = os.getenv('GITHUB_ACTIONS') == 'true'
 
-    if is_render:
+    if is_github_actions:
         options.binary_location = os.getenv('CHROME_BIN', '/usr/bin/chromium')
         service = Service(os.getenv('CHROME_DRIVER', '/usr/bin/chromedriver'))
         driver = webdriver.Chrome(service=service, options=options)

@@ -36,11 +36,11 @@ MAX_SLEEP_SECONDS = float(os.getenv('MAX_SLEEP_SECONDS', '5.0'))
 MAX_RETRIES = int(os.getenv('MAX_RETRIES', '3'))
 RETRY_DELAY_SECONDS = int(os.getenv('RETRY_DELAY_SECONDS', '15'))
 
-# Render環境ではタイムアウトを短縮して制限内に収める
-if os.getenv('RENDER') == 'true':
-    SELENIUM_PAGE_LOAD_TIMEOUT = int(os.getenv('SELENIUM_PAGE_LOAD_TIMEOUT', '45'))
+# GitHub Actions 環境ではタイムアウトを独自設定する（アクションの制限時間に収めるため）
+if os.getenv('GITHUB_ACTIONS') == 'true':
+    SELENIUM_PAGE_LOAD_TIMEOUT = int(os.getenv('SELENIUM_PAGE_LOAD_TIMEOUT', '60'))
     SELENIUM_ELEMENT_WAIT_TIMEOUT = int(os.getenv('SELENIUM_ELEMENT_WAIT_TIMEOUT', '20'))
-    SELENIUM_CONNECTION_TIMEOUT = int(os.getenv('SELENIUM_CONNECTION_TIMEOUT', '60'))
+    SELENIUM_CONNECTION_TIMEOUT = int(os.getenv('SELENIUM_CONNECTION_TIMEOUT', '90'))
 else:
     SELENIUM_PAGE_LOAD_TIMEOUT = int(os.getenv('SELENIUM_PAGE_LOAD_TIMEOUT', '120'))
     SELENIUM_ELEMENT_WAIT_TIMEOUT = int(os.getenv('SELENIUM_ELEMENT_WAIT_TIMEOUT', '30'))
@@ -83,7 +83,7 @@ def _prepare_chrome_driver():
     Render環境では、ユーザーデータディレクトリが競合しないように一意の一時ディレクトリを使用する
     """
     options = Options()
-    is_render = os.getenv("RENDER") == "true"
+    is_github_actions = os.getenv("GITHUB_ACTIONS") == "true"
 
     # --- 共通設定 ---
     options.add_argument('--headless=new')
@@ -99,9 +99,9 @@ def _prepare_chrome_driver():
 
     # ▼▼▼ 環境に応じた設定切り替え ▼▼▼
     temp_user_data_dir = None
-    if is_render:
-        # --- Render環境用の超省メモリ設定 ---
-        print(" -> Render環境を検出。省メモリ設定を適用します。")
+    if is_github_actions:
+        # --- GitHub Actions 環境設定 ---
+        print(" -> GitHub Actions 環境を検出。CI向けの安定化設定を適用します。")
         options.add_argument('--disable-images')
         options.add_experimental_option("prefs", {"profile.managed_default_content_settings.images": 2})
         options.add_argument('--blink-settings=imagesEnabled=false')
@@ -146,8 +146,8 @@ def _prepare_chrome_driver():
         options.add_argument('--autoplay-policy=user-gesture-required')
         options.add_argument('--disable-remote-fonts')
 
-        # メモリ制限を明示的に設定（Chrome用）- 128MBに削減
-        options.add_argument('--js-flags=--max-old-space-size=128')
+        # メモリ制限を明示的に設定（Chrome用）- GitHub Actionsでは余裕があるが安定化のため設定
+        options.add_argument('--js-flags=--max-old-space-size=512')
         options.add_argument('--disk-cache-size=1')
         options.add_argument('--media-cache-size=1')
         options.add_argument('--aggressive-cache-discard')
@@ -160,12 +160,12 @@ def _prepare_chrome_driver():
 
     driver = None
     try:
-        if _WDM_AVAILABLE and not is_render:
+        if _WDM_AVAILABLE and not is_github_actions:
             # ローカル環境 (Windows/Mac)
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
         else:
-            # Render環境またはwebdriver-managerがない場合
+            # GitHub Actions 環境またはwebdriver-managerがない場合
             driver = webdriver.Chrome(options=options)
 
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
@@ -366,18 +366,16 @@ def get_race_list_html(date_str: str, is_nar: bool, force_download: bool = False
     
     return None, False
 
-def get_shutuba_html(race_id: str, is_nar: bool, force_download: bool = False) -> Tuple[Optional[str], bool]:
+def get_shutuba_html(race_id: str, is_nar: bool, force_download: bool = False, target_date: Optional[date] = None) -> Tuple[Optional[str], bool]:
     base_url = BASE_NAR_URL if is_nar else BASE_CENTRAL_URL
     url = f"{base_url}/race/shutuba.html?race_id={race_id}"
     dir_path = os.path.join(HTML_DIR, "shutuba")
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, f"{race_id}.bin")
 
-    # レースIDから日付を抽出できない（NN=開催回数、DD=開催日数であり、月日ではない）
-    # target_dateはNoneにして、キャッシュ制御はforce_downloadで行う
-    return get_html(url, file_path, force_download, use_selenium=False, wait_for_class="Shutuba_HorseList", target_date=None)
+    return get_html(url, file_path, force_download, use_selenium=False, wait_for_class="Shutuba_HorseList", target_date=target_date)
 
-def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = False) -> Tuple[Optional[str], bool]:
+def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = False, target_date: Optional[date] = None) -> Tuple[Optional[str], bool]:
     if is_nar:
         base_url = BASE_NAR_URL
         url = f"{base_url}/race/result.html?race_id={race_id}"
@@ -390,9 +388,7 @@ def get_race_result_html(race_id: str, is_nar: bool, force_download: bool = Fals
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(dir_path, f"{race_id}.bin")
 
-    # レースIDから日付を抽出できない（NN=開催回数、DD=開催日数であり、月日ではない）
-    # target_dateはNoneにして、キャッシュ制御はforce_downloadで行う
-    return get_html(url, file_path, force_download, use_selenium=False, wait_for_class="RaceTable01", target_date=None)
+    return get_html(url, file_path, force_download, use_selenium=False, wait_for_class="RaceTable01", target_date=target_date)
 
 def get_horse_page_html(
     horse_id: str,
@@ -428,10 +424,10 @@ def get_ped_page_html(horse_id: str, force_download: bool = False) -> Tuple[Opti
     file_path = os.path.join(dir_path, f"{horse_id}.bin")
     return get_html(url, file_path, force_download)
 
-def get_shutuba_html_content(race_id: str, is_nar: bool, force_download: bool = False) -> Optional[str]:
-    content, _ = get_shutuba_html(race_id, is_nar, force_download)
+def get_shutuba_html_content(race_id: str, is_nar: bool, force_download: bool = False, target_date: Optional[date] = None) -> Optional[str]:
+    content, _ = get_shutuba_html(race_id, is_nar, force_download, target_date)
     return content
 
-def get_race_result_html_content(race_id: str, is_nar: bool, force_download: bool = False) -> Optional[str]:
-    content, _ = get_race_result_html(race_id, is_nar, force_download)
+def get_race_result_html_content(race_id: str, is_nar: bool, force_download: bool = False, target_date: Optional[date] = None) -> Optional[str]:
+    content, _ = get_race_result_html(race_id, is_nar, force_download, target_date)
     return content

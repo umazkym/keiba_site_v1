@@ -23,17 +23,12 @@ from datetime import timedelta
 
 # --- 設定 ---
 # メモリ使用量を削減するため、並列ワーカー数を制限
-# Render環境では特にメモリを節約
-if os.getenv('RENDER') == 'true':
-    # Render環境では1ワーカーに制限してメモリ使用量を最小化
+try:
+    CPU_COUNT = max(1, multiprocessing.cpu_count() - 1)
+    # GitHub Actions の場合はコア数も多いが、スクレイピングでブロックされるため2〜3で十分
+    MAX_WORKERS = min(CPU_COUNT, 3) 
+except NotImplementedError:
     MAX_WORKERS = 1
-else:
-    try:
-        CPU_COUNT = max(1, multiprocessing.cpu_count() - 1)
-        # メモリ制限が2GBの環境では、ワーカー数を2に制限
-        MAX_WORKERS = min(CPU_COUNT, 2)
-    except NotImplementedError:
-        MAX_WORKERS = 1
 
 BANEI_VENUE_CODES = ["33", "65"]
 
@@ -246,11 +241,7 @@ def backfill_historical_data(start_date: datetime.date, end_date: datetime.date)
         return
 
     # メモリ使用量を削減するため、バッチ処理で並列実行
-    # Render環境ではさらに小さいバッチサイズを使用
-    if os.getenv('RENDER') == 'true':
-        RACE_BATCH_SIZE = int(os.getenv('RACE_BATCH_SIZE', '20'))
-    else:
-        RACE_BATCH_SIZE = int(os.getenv('RACE_BATCH_SIZE', '50'))
+    RACE_BATCH_SIZE = int(os.getenv('RACE_BATCH_SIZE', '50'))
     total_races = len(unprocessed_races)
 
     for batch_start in range(0, total_races, RACE_BATCH_SIZE):

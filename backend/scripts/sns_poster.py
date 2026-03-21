@@ -6,9 +6,7 @@ import sys
 
 # --- 先にプロジェクトルートを推定して sys.path を伸ばす（database モジュール検出用） ---
 def get_project_root_default():
-    """Render環境とローカル環境の両方で正しくプロジェクトルートを取得"""
-    if os.getenv("RENDER"):
-        return "/app"
+    """CI環境とローカル環境の両方で正しくプロジェクトルートを取得"""
     try:
         # __file__ が存在する場合はその親の親をルートとする（元のコードの意図に合わせる）
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -128,7 +126,7 @@ else:
         load_dotenv(dotenv_path_alt)
         print(f"INFO: .envファイルを読み込みました: {dotenv_path_alt}")
     else:
-        if not os.getenv("RENDER"):
+        if not os.getenv("GITHUB_ACTIONS") and not os.getenv("K_SERVICE"):
             print(f"警告: .envファイルが見つかりません。")
 
 # --- 2. 環境変数と定数の定義 ---
@@ -137,10 +135,10 @@ TWITTER_CONSUMER_KEY = os.getenv("TWITTER_CONSUMER_KEY")
 TWITTER_CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
 TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
-IMAGE_OUTPUT_DIR = "/tmp" if os.getenv("RENDER") else os.path.join(PROJECT_ROOT, "sns_images_dist")
+IMAGE_OUTPUT_DIR = os.path.join(PROJECT_ROOT, "sns_images_dist")
 os.makedirs(IMAGE_OUTPUT_DIR, exist_ok=True)
 SITE_BASE_URL = "https://uma-free.com"
-API_BASE_URL = "https://keiba-site-v1.onrender.com"
+API_BASE_URL = os.getenv("API_BASE_URL", "https://keiba-site-v1.onrender.com")
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 
 # 重賞レース判定リスト (変更なし)
@@ -268,11 +266,8 @@ def _log(msg: str):
     print(f"{_now_str()} {msg}")
 
 def get_font_path(font_name: str) -> str:
-    """Render環境とローカル環境の両方で正しくフォントパスを取得"""
-    if os.getenv("RENDER"):
-        font_dir = "/app/fonts"
-    else:
-        font_dir = os.path.join(PROJECT_ROOT, "backend", "fonts")
+    """CI環境とローカル環境の両方で正しくフォントパスを取得"""
+    font_dir = os.path.join(PROJECT_ROOT, "backend", "fonts")
     
     font_path = os.path.join(font_dir, font_name)
     if os.path.exists(font_path):

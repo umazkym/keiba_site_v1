@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// googletag の型定義
 declare global {
     interface Window {
         googletag?: any;
@@ -9,60 +8,59 @@ declare global {
 }
 
 const AD_UNIT_PATH = '/23345285369/uma-free-rewarded-premium';
-
-// GPTからのイベントが一切発火しない場合のタイムアウト（モバイルのみ使用）
 const LOADING_TIMEOUT_MS = 10_000;
 
 /**
  * GAM リワード広告のライフサイクルを管理するカスタムフック。
- * デバイスに応じて2つのモードで動作する:
  *
  * 【モバイル】GAM Rewarded Ad
  *   → ボタンクリック → 動画広告 → rewardedSlotGranted → アンロック
  *
- * 【PC】AdSense表示広告 + カウントダウンモーダル（フックの外で制御）
- *   → defineOutOfPageSlot() が null → isSupported=false
- *   → 呼び出し元がモーダルを表示 → 5秒待機 → アンロック
+ * 【PC / 在庫なし / タイムアウト】
+ *   → defineOutOfPageSlot() が null / slotRenderEnded(isEmpty) / タイムアウト
+ *   → isSupported=false → 呼び出し元がモーダルを表示 → 5秒待機 → アンロック
  *
- * 返り値:
- * - isUnlocked: コンテンツアンロック済か
- * - isReady: モバイル: 広告準備完了 / PC: 常にtrue
- * - isLoading: 初期読み込み中
- * - isSupported: GAM Rewardedがサポートされているか（false=PC）
- * - showAd: モバイル: 広告表示 / PC: 何もしない（モーダルは呼び出し元が制御）
- * - unlock: 外部からアンロックを実行する関数（PC用モーダルから呼ばれる）
+ * 【修正点】
+ * - 広告を途中で閉じた後に再試行できなかった問題を修正
+ *   rewardedSlotClosed 後にスロットを再初期化し isReady=false→true を経由させる
+ * - ボタンの disabled 条件が逆だった問題を修正
+ *   isLoading=true のときはボタンを disabled にする
  */
 export function useRewardedAd() {
     const [isUnlocked, setIsUnlocked] = useState(false);
     const [isReady, setIsReady] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSupported, setIsSupported] = useState(true);
+    // ★ 再試行トリガー: closeされるたびにインクリメントして再初期化を走らせる
+    const [retryKey, setRetryKey] = useState(0);
+
     const makeVisibleRef = useRef<(() => void) | null>(null);
     const slotRef = useRef<any>(null);
-    const initializedRef = useRef(false);
     const resolvedRef = useRef(false);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
-        if (initializedRef.current) return;
-        initializedRef.current = true;
-
-        // セッション中に以前アンロック済みなら即解放
+        // セッション中にアンロック済みなら即解放（再初期化不要）
         if (typeof window !== 'undefined') {
             const unlocked = sessionStorage.getItem('premium_unlocked');
             if (unlocked === 'true') {
                 setIsUnlocked(true);
                 setIsLoading(false);
-                resolvedRef.current = true;
                 return;
             }
         }
 
-        // タイムアウトフォールバック（モバイルで広告在庫がない場合のセーフティネット）
-        const timeoutId = setTimeout(() => {
+        // 再試行時は状態をリセット
+        resolvedRef.current = false;
+        makeVisibleRef.current = null;
+        setIsReady(false);
+        setIsLoading(true);
+
+        // タイムアウトフォールバック
+        timeoutRef.current = setTimeout(() => {
             if (!resolvedRef.current) {
                 console.warn('[useRewardedAd] Timeout: no GPT event received. Falling back.');
                 resolvedRef.current = true;
-                // タイムアウト時はPC同様にモーダルゲートへフォールバック
                 setIsSupported(false);
                 setIsReady(true);
                 setIsLoading(false);
@@ -73,18 +71,26 @@ export function useRewardedAd() {
         window.googletag = googletag;
 
         googletag.cmd.push(() => {
+            // 前回スロットが残っていれば破棄
+            if (slotRef.current) {
+                try {
+                    googletag.destroySlots([slotRef.current]);
+                } catch (e) { /* ignore */ }
+                slotRef.current = null;
+            }
+
             const slot = googletag.defineOutOfPageSlot(
                 AD_UNIT_PATH,
                 googletag.enums.OutOfPageFormat.REWARDED
             );
 
-            // PCブラウザ / 非対応環境 → モーダルゲートモードへ
+            // PC / 非対応環境 → モーダルゲートへ
             if (!slot) {
                 console.log('[useRewardedAd] Rewarded ads not supported. Using modal gate.');
                 resolvedRef.current = true;
-                clearTimeout(timeoutId);
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 setIsSupported(false);
-                setIsReady(true);  // PC: モーダル表示可能
+                setIsReady(true);
                 setIsLoading(false);
                 return;
             }
@@ -92,17 +98,17 @@ export function useRewardedAd() {
             slotRef.current = slot;
             slot.addService(googletag.pubads());
 
-            // モバイル: 広告準備完了
+            // 広告準備完了
             googletag.pubads().addEventListener('rewardedSlotReady', (event: any) => {
                 console.log('[useRewardedAd] Rewarded slot is ready.');
                 resolvedRef.current = true;
-                clearTimeout(timeoutId);
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 setIsReady(true);
                 setIsLoading(false);
                 makeVisibleRef.current = () => event.makeRewardedVisible();
             });
 
-            // モバイル: リワード付与
+            // リワード付与
             googletag.pubads().addEventListener('rewardedSlotGranted', () => {
                 console.log('[useRewardedAd] Reward granted!');
                 setIsUnlocked(true);
@@ -111,21 +117,28 @@ export function useRewardedAd() {
                 }
             });
 
-            // モバイル: 広告クローズ
+            // ★ 修正: 広告クローズ後にスロットを破棄し、再初期化をトリガー
+            // 変更前: 破棄のみ → makeVisibleRef は有効な参照のまま残り showAd() が壊れた状態で動作
+            // 変更後: retryKey をインクリメント → useEffect が再実行 → スロットを再定義
             googletag.pubads().addEventListener('rewardedSlotClosed', () => {
-                console.log('[useRewardedAd] Rewarded slot closed.');
+                console.log('[useRewardedAd] Rewarded slot closed. Preparing for retry.');
                 if (slotRef.current) {
-                    googletag.destroySlots([slotRef.current]);
+                    try {
+                        googletag.destroySlots([slotRef.current]);
+                    } catch (e) { /* ignore */ }
                     slotRef.current = null;
                 }
+                makeVisibleRef.current = null;
+                // アンロックされていなければ再初期化（ユーザーが再試行できるように）
+                setRetryKey(prev => prev + 1);
             });
 
-            // モバイル: 広告なし（在庫切れ）→ モーダルゲートへフォールバック
+            // 広告なし（在庫切れ）→ モーダルゲートへフォールバック
             googletag.pubads().addEventListener('slotRenderEnded', (event: any) => {
                 if (event.slot === slotRef.current && event.isEmpty) {
                     console.log('[useRewardedAd] No ad returned. Using modal gate.');
                     resolvedRef.current = true;
-                    clearTimeout(timeoutId);
+                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
                     setIsSupported(false);
                     setIsReady(true);
                     setIsLoading(false);
@@ -142,7 +155,7 @@ export function useRewardedAd() {
         });
 
         return () => {
-            clearTimeout(timeoutId);
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
             if (slotRef.current && window.googletag) {
                 try {
                     window.googletag.destroySlots([slotRef.current]);
@@ -150,7 +163,9 @@ export function useRewardedAd() {
                 slotRef.current = null;
             }
         };
-    }, []);
+        // retryKey が変わるたびに再初期化する（closeされた後の再試行）
+        // isUnlocked が true の場合は再初期化不要（上部の早期リターンで処理）
+    }, [retryKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // モバイル: GAM Rewarded広告を表示
     const showAd = useCallback(() => {
@@ -159,7 +174,7 @@ export function useRewardedAd() {
         }
     }, []);
 
-    // PC / フォールバック: 外部からアンロックを実行（AdGateModalから呼ばれる）
+    // PC / フォールバック: 外部からアンロックを実行
     const unlock = useCallback(() => {
         setIsUnlocked(true);
         if (typeof window !== 'undefined') {

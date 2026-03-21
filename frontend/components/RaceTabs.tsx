@@ -21,7 +21,6 @@ import { AdUnit } from './AdUnit';
 import { useRewardedAd } from '@/hooks/useRewardedAd';
 import { Adsense } from './Adsense';
 
-// CollapsibleSection コンポーネント
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -64,10 +63,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     const [activeRaceIndex, setActiveRaceIndex] = useState(initialIndex);
     const activeRace = venue.races[activeRaceIndex];
 
-    // ▼▼▼▼▼【ブラウザ「戻る」対応】▼▼▼▼▼
-    // router.push()で履歴が作られるため、「戻る」操作でsearchParamsが変わり
-    // initialRaceNumberが更新される。keyにraceNumberが含まれなくなったため
-    // VenuePanel内部でactiveRaceIndexを同期する必要がある。
+    // ブラウザ「戻る」対応
     useEffect(() => {
         if (initialRaceNumber) {
             const newIndex = venue.races.findIndex(r => r.race_number === initialRaceNumber);
@@ -76,7 +72,18 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
             }
         }
     }, [initialRaceNumber, venue.races]);
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+
+    // ★ 修正: レース切替時に showInlineAd と countdown をリセット
+    // 変更前: activeRaceIndex が変わっても showInlineAd=true / countdown が途中のまま残る
+    //         → レース2に切り替えても広告が表示済みの状態になる（ユーザーが広告を見ていない可能性）
+    // 変更後: レース切替のたびに広告状態をリセット
+    //         ただし isUnlocked=true の場合はリセット不要（アンロック済み）
+    useEffect(() => {
+        if (!isUnlocked) {
+            setShowInlineAd(false);
+            setCountdown(5);
+        }
+    }, [activeRaceIndex, isUnlocked]);
 
     const handleRaceSelect = useCallback((index: number) => {
         setActiveRaceIndex(index);
@@ -86,14 +93,8 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
             newParams.set('race', selectedRace.race_number.toString());
             newParams.set('venue', venue.venue_name);
             const newUrl = `/races/${currentDate}?${newParams.toString()}`;
-            // ▼▼▼▼▼【router.push化】▼▼▼▼▼
-            // 従来: router.replace() → URLのsearchParamsのみ変更、AdSenseがページ遷移と認識しない
-            // 変更: router.push() → ブラウザ履歴に追加、AdSenseが新インプレッション、GA PVも自然発生
-            // ISRキャッシュ済みのため、同一日付のデータ再取得コストは実質ゼロ
             router.push(newUrl, { scroll: false });
-            // ▲▲▲▲▲【router.push化ここまで】▲▲▲▲▲
 
-            // レース切替後にコンテンツ先頭へ自動スクロール
             setTimeout(() => {
                 const raceContent = document.getElementById(`venue-${venue.venue_name}`);
                 if (raceContent) {
@@ -107,8 +108,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
         return activeRace && activeRace.predictions.length >= 5;
     }, [activeRace]);
 
-    // レース切替 + 競馬場タブ切替時に広告を完全リフレッシュさせるキー
-    // venueActivationKey が変わると競馬場タブ切替、activeRace が変わるとレース切替
     const adRefreshKey = useMemo(() => {
         return activeRace ? `${venue.venue_name}-${activeRace.race_number}-v${venueActivationKey}` : '';
     }, [venue.venue_name, activeRace, venueActivationKey]);
@@ -139,15 +138,11 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
     return (
         <div id={`venue-${venue.venue_name}`}>
-            {/* ▼▼▼▼▼【sticky化】レースセレクターを常に表示 ▼▼▼▼▼ */}
-            {/* Header (top-14/16) の直下に吸着させるよう変更 */}
             <div className="sticky top-14 sm:top-16 z-30 bg-white/95 backdrop-blur-sm -mx-2 px-2 sm:mx-0 sm:px-0 py-1.5 shadow-sm border-b border-gray-100">
                 <RaceSelector races={venue.races} selectedIndex={activeRaceIndex} onSelectRace={handleRaceSelect} />
             </div>
-            {/* ▲▲▲▲▲【sticky化ここまで】▲▲▲▲▲ */}
             {activeRace && (
                 <div id={`race-${activeRace.id}`} className="mt-1">
-                    {/* AI分析テーブル（最重要コンテンツ） */}
                     <div className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
                         <div className="bg-white px-2.5 py-2 sm:p-4 border-b border-gray-200">
                             <h3 className="text-base sm:text-lg font-bold flex items-center text-gray-800">
@@ -161,19 +156,15 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
                                 AI分析
                             </h4>
-
                             <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
                         </div>
                     </div>
 
-                    {/* ★広告②: PredictionTable読了直後 — ユーザーが結果を精読し終え「次どうしよう」と止まるポイント。視認時間が最長 */}
                     {shouldShowAd && (
                         <AdUnit slot="9407670747" placement="inline" refreshKey={adRefreshKey} className="my-2" />
                     )}
 
-                    {/* レースナビゲーション + 次レースプレビュー */}
                     <div className="my-3">
-                        {/* 次レース注目馬プレビュー: レース遷移を促進 → 全広告リフレッシュ → imp乗算 */}
                         {(() => {
                             const hasNext = activeRaceIndex < venue.races.length - 1;
                             const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
@@ -209,7 +200,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* プレミアム・ロック切り替え部分 */}
                     {isUnlocked ? (
                         <>
-                            {/* 展開/脚質予測 — アンロック後は常に展開表示 */}
                             <div className="mb-2">
                                 <div className="card p-2 sm:p-3">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
@@ -224,7 +214,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 </div>
                             </div>
 
-                            {/* 過去対決成績 */}
                             <div className="mb-2">
                                 <div className="card p-2 sm:p-3">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
@@ -239,7 +228,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 </div>
                             </div>
 
-                            {/* このコースの枠順傾向 */}
                             <div className="mb-2">
                                 <div className="card p-2 sm:p-3">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
@@ -254,7 +242,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 </div>
                             </div>
 
-                            {/* データ分析 */}
                             <div className="mb-2">
                                 <div className="card p-2 sm:p-3">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
@@ -269,7 +256,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 </div>
                             </div>
 
-                            {/* ★広告: プレミアムデータ全体の後に配置 */}
                             {shouldShowAd && (
                                 <InFeedAd slot="1489598374" refreshKey={adRefreshKey} />
                             )}
@@ -308,7 +294,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 </div>
                             </div>
 
-                            {/* オーバーレイ: グラデーション + UI */}
+                            {/* オーバーレイ */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/30 via-white/70 to-white/95 px-4">
                                 {!showInlineAd ? (
                                     <div className="text-center max-w-xs w-full">
@@ -328,7 +314,12 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                                     }, 1000);
                                                 }
                                             }}
-                                            disabled={!isReady && !isLoading}
+                                            // ★ 修正: disabled 条件を修正
+                                            // 変更前: disabled={!isReady && !isLoading}
+                                            //   → isLoading=true のとき disabled=false → スピナー表示中でも押せた
+                                            //   → モバイルで showAd() が空振り（makeVisibleRef 未設定）
+                                            // 変更後: isLoading 中は必ず disabled。isReady になってから押せる。
+                                            disabled={isLoading || !isReady}
                                             className="btn-primary w-full text-sm gap-2"
                                         >
                                             {isLoading ? (
@@ -366,15 +357,12 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 )}
                             </div>
                         </div>
-
                     )}
 
-                    {/* AI指標の説明パネル */}
                     <DataExplanationPanel showAdvanced={true} />
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
 
-                    {/* おすすめの関連情報（広告）→ 関連記事の直前で自然な流れ */}
                     {shouldShowAd && <MultiplexAd slot="8529703346" refreshKey={adRefreshKey} />}
 
                     <DynamicRelatedArticles
@@ -399,18 +387,13 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
     const params = useParams();
     const currentDate = params.date as string;
 
-    // 競馬場/タブ切替時の広告リフレッシュ用カウンター
-    // 切り替えごとにインクリメントし、venueActivationKeyとしてVenuePanelに渡す
     const [jraActivationKey, setJraActivationKey] = useState(0);
     const [narActivationKey, setNarActivationKey] = useState(0);
 
-    // JRA/NARトップタブ切替ハンドラ
     const handleTopTabSelect = useCallback((index: number) => {
-        // 切替先のパネルの広告をリフレッシュ
         if (index === 0) setJraActivationKey(prev => prev + 1);
         else setNarActivationKey(prev => prev + 1);
 
-        // GA仮想ページビュー: JRA/NAR切替もPVとしてカウント
         if (typeof window !== 'undefined' && (window as any).gtag) {
             const tabName = index === 0 ? '中央競馬' : '地方競馬';
             (window as any).gtag('event', 'page_view', {
@@ -420,10 +403,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         }
     }, [currentDate]);
 
-    // JRA競馬場タブ切替ハンドラ
-    // ▼▼▼▼▼【GAM Rewarded Ad】▼▼▼▼▼
     const { isUnlocked, isReady, isLoading: isAdLoading, isSupported, showAd, unlock } = useRewardedAd();
-    // ▲▲▲▲▲【GAM Rewarded Ad ここまで】▲▲▲▲▲
 
     const handleJraVenueSelect = useCallback((index: number) => {
         setJraActivationKey(prev => prev + 1);
@@ -436,7 +416,6 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         }
     }, [data.jra, currentDate]);
 
-    // NAR競馬場タブ切替ハンドラ
     const handleNarVenueSelect = useCallback((index: number) => {
         setNarActivationKey(prev => prev + 1);
         const venue = data.nar[index];

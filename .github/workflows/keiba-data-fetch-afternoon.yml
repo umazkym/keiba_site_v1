@@ -9,7 +9,7 @@ on:
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     
     steps:
       - name: Checkout repository
@@ -22,6 +22,7 @@ jobs:
           key: html-cache-${{ github.run_id }}
           restore-keys: |
             html-cache-
+          save-always: true
         
       - name: Set up Python 3.11
         uses: actions/setup-python@v5

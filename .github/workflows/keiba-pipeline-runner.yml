@@ -22,6 +22,7 @@ jobs:
           key: html-cache-${{ github.run_id }}
           restore-keys: |
             html-cache-
+          save-always: true
         
       - name: Set up Python 3.11
         uses: actions/setup-python@v5

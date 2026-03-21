@@ -312,7 +312,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/30 via-white/70 to-white/95 px-4">
                                 {!showInlineAd ? (
                                     <div className="text-center max-w-xs w-full">
-                                        <p className="text-sm text-slate-600 mb-4 font-medium">展開/脚質予測・対決成績・枠順データ・AI分析を閲覧</p>
+                                        <p className="text-sm text-slate-600 mb-4 font-medium">展開/脚質予測、対戦成績、枠順傾向、AI分析を閲覧</p>
                                         <button
                                             onClick={() => {
                                                 if (isSupported) {
@@ -340,7 +340,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                                 '広告を見てデータを表示'
                                             )}
                                         </button>
-                                        <p className="text-[11px] text-muted mt-2">無料 · 同一セッション内で1回のみ</p>
                                     </div>
                                 ) : (
                                     <div className="w-full max-w-sm">

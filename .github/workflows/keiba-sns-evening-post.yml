@@ -9,7 +9,7 @@ on:
 jobs:
   sns-post:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 180
     
     steps:
       - name: Checkout repository

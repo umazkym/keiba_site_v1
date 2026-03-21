@@ -5,7 +5,7 @@ on: workflow_dispatch
 jobs:
   migrate-database:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 180
     
     steps:
       - name: Install PostgreSQL Client

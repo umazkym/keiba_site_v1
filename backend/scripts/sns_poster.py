@@ -141,6 +141,12 @@ SITE_BASE_URL = "https://uma-free.com"
 API_BASE_URL = os.getenv("API_BASE_URL", "https://keiba-site-v1.onrender.com")
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 
+# ===== Threads API設定 =====
+THREADS_USER_ID = os.getenv("THREADS_USER_ID")
+THREADS_ACCESS_TOKEN = os.getenv("THREADS_ACCESS_TOKEN")
+THREADS_TOKEN_EXPIRY = os.getenv("THREADS_TOKEN_EXPIRY")
+THREADS_MAX_CHARS = 480
+
 # 重賞レース判定リスト (変更なし)
 JRA_GRADE_RACE_NAMES = {
     "フェブラリーS", "フェブラリーステークス", "高松宮記念", "大阪杯", "桜花賞", "皐月賞", "天皇賞（春）",
@@ -289,6 +295,103 @@ def draw_centered_text(draw, text, font, fill_color, image_width, y_position, **
         text_width, _ = draw.textsize(text, font=font)
     x_position = (image_width - text_width) / 2
     draw.text((x_position, y_position), text, fill=fill_color, font=font, **kwargs)
+
+# ===== Threads API関数群 =====
+
+def truncate_for_threads(text: str) -> str:
+    if len(text) <= THREADS_MAX_CHARS:
+        return text
+    lines = text.split('\n')
+    result = []
+    current_len = 0
+    for line in lines:
+        if current_len + len(line) + 1 > THREADS_MAX_CHARS - 30:
+            result.append('...')
+            break
+        result.append(line)
+        current_len += len(line) + 1
+    return '\n'.join(result)
+
+
+def post_to_threads(text: str) -> Optional[str]:
+    if not THREADS_USER_ID or not THREADS_ACCESS_TOKEN:
+        _log("⚠️ Threads認証情報未設定。スキップします。")
+        return None
+
+    text = truncate_for_threads(text)
+
+    if DRY_RUN:
+        _log(f"[DRY_RUN] Threads投稿スキップ:\n{text[:80]}...")
+        return "dry_run_threads_id"
+
+    base_url = f"https://graph.threads.net/v1.0/{THREADS_USER_ID}"
+    headers = {"Authorization": f"Bearer {THREADS_ACCESS_TOKEN}"}
+
+    try:
+        res = requests.post(
+            f"{base_url}/threads",
+            headers=headers,
+            data={"media_type": "TEXT", "text": text},
+            timeout=30
+        )
+        if res.status_code != 200:
+            _log(f"❌ Threadsコンテナ作成失敗: {res.status_code} - {res.text[:200]}")
+            return None
+
+        container_id = res.json().get("id")
+        if not container_id:
+            return None
+
+        time.sleep(3)
+
+        pub_res = requests.post(
+            f"{base_url}/threads_publish",
+            headers=headers,
+            data={"creation_id": container_id},
+            timeout=30
+        )
+        if pub_res.status_code != 200:
+            _log(f"❌ Threads公開失敗: {pub_res.status_code} - {pub_res.text[:200]}")
+            return None
+
+        post_id = pub_res.json().get("id")
+        _log(f"✅ Threads投稿成功! ID: {post_id}")
+        return post_id
+
+    except Exception as e:
+        _log(f"❌ Threads投稿エラー: {e}")
+        return None
+
+
+def refresh_threads_token_if_needed() -> None:
+    if not THREADS_ACCESS_TOKEN or not THREADS_TOKEN_EXPIRY:
+        return
+    try:
+        expiry = datetime.fromisoformat(THREADS_TOKEN_EXPIRY)
+        days_left = (expiry - datetime.now()).days
+        if days_left > 10:
+            return
+        _log(f"🔄 Threadsトークン残り{days_left}日。更新を試みます...")
+        res = requests.get(
+            "https://graph.threads.net/refresh_access_token",
+            params={"grant_type": "th_refresh_token", "access_token": THREADS_ACCESS_TOKEN},
+            timeout=30
+        )
+        if res.status_code == 200:
+            data = res.json()
+            new_token = data.get("access_token", "")
+            new_expiry = (datetime.now() + timedelta(days=60)).strftime('%Y-%m-%d')
+            _log("✅ Threadsトークン更新成功!")
+            _log("=" * 50)
+            _log("⚠️ 以下をGitHub Secretsに手動で更新してください:")
+            _log(f"  THREADS_ACCESS_TOKEN = {new_token}")
+            _log(f"  THREADS_TOKEN_EXPIRY = {new_expiry}")
+            _log("=" * 50)
+        else:
+            _log(f"❌ トークン更新失敗: {res.status_code}")
+    except Exception as e:
+        _log(f"❌ トークン更新エラー: {e}")
+
 
 def load_logo(size: int = 50) -> Optional[Image.Image]:
     """ロゴ画像を読み込み、指定されたサイズにリサイズする"""
@@ -1228,6 +1331,8 @@ def main():
     args = parser.parse_args()
     post_type = args.post_type
 
+    refresh_threads_token_if_needed()
+
     with database_lock("sns_poster_lock", timeout_seconds=300) as lock_acquired:
         if not lock_acquired:
             _log("別のインスタンスが実行中のため、このインスタンスは終了します。")
@@ -1312,6 +1417,8 @@ def main():
 
                     # 2つのツイートテキストを直接渡して投稿（分割なし）
                     post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
+                    threads_text = truncate_for_threads(tweet_text_1 + "\n\n" + tweet_text_2)
+                    post_to_threads(threads_text)
             else:
                 _log("-> 昨日は1万円以上の高配当的中がありませんでした。本日のAI注目馬のみ投稿します。")
                 # フォールバック: 高配当的中がなくても、本日のAI注目馬を画像付きで投稿する
@@ -1353,6 +1460,7 @@ def main():
             if all_races_today:
                 tweet_text = create_afternoon_race_summary_tweet(all_races_today, yesterday_hits if yesterday_hits else [], today_str)
                 post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
+                post_to_threads(tweet_text)
             else:
                 _log("-> 本日のレース情報が取得できませんでした。")
 
@@ -1374,6 +1482,7 @@ def main():
                 else:
                     _log("-> 画像生成に失敗しましたが、テキストのみで投稿します")
                     post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
+                post_to_threads(tweet_text)
             else:
                 _log("-> 明日は対象の重賞レースがありませんでした。")
 
@@ -1413,8 +1522,68 @@ def main():
                     post_to_twitter(tweet_text, image_file, post_type="pre_race_remind", target_date=today_str, split_mode=False)
                 else:
                     post_to_twitter(tweet_text, None, post_type="pre_race_remind", target_date=today_str, split_mode=False)
+                post_to_threads(tweet_text)
             else:
                 _log("-> 本日の適切な直前リマインダー対象レースがありませんでした。")
+
+        # ========== 的中速報（即時投稿）==========
+        elif post_type == 'hit_immediate':
+            _log("\n--- 的中速報（即時投稿）---")
+
+            high_payout_hits = get_api_data(f"hits/high-payouts/{today_str}")
+
+            if not high_payout_hits:
+                _log("-> 本日の高配当的中データが取得できませんでした。")
+                sys.exit(0)
+
+            big_hits = [h for h in high_payout_hits if (h.get('payout') or 0) >= 10000]
+
+            if not big_hits:
+                _log("-> 1万円以上の的中はありません。スキップします。")
+                sys.exit(0)
+
+            _log(f"-> {len(big_hits)}件の高配当的中を発見！")
+
+            posted_count = 0
+            for hit in big_hits[:3]:
+                payout = hit.get('payout') or 0
+                venue = hit.get('venue_name', '')
+                race_num = hit.get('race_number', '')
+                bet_type = hit.get('bet_type', '')
+                race_name = hit.get('race_name', '')
+                winning_numbers = hit.get('winning_numbers', '')
+                date_formatted = datetime.strptime(today_str, '%Y-%m-%d').strftime('%m/%d')
+
+                tweet_text = f"""🎯AI的中速報！({date_formatted})
+
+{venue}{race_num}R {race_name}
+{bet_type}（{winning_numbers}）
+
+💰 {int(payout):,}円 的中！
+
+▼今日の全レース無料予測
+{SITE_BASE_URL}
+
+#競馬 #AI予想 #{'万馬券' if payout >= 100000 else '高配当的中'} #{venue}競馬"""
+
+                if is_already_posted(tweet_text, 'hit_immediate', today_str):
+                    _log(f"-> 既に投稿済み: {venue}{race_num}R")
+                    continue
+
+                image_file = generate_hit_og_image(hit, today_str)
+                post_to_twitter(
+                    tweet_text, image_file,
+                    post_type='hit_immediate',
+                    target_date=today_str,
+                    split_mode=False
+                )
+                post_to_threads(tweet_text)
+                posted_count += 1
+
+                if posted_count < len(big_hits):
+                    time.sleep(10)
+
+            _log(f"-> 的中速報 {posted_count}件投稿完了")
 
         _log("\nSNS自動投稿ジョブが完了しました。")
 

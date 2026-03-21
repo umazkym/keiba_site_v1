@@ -10,28 +10,24 @@ import threading
 # ==============================================================================
 # TTLキャッシュ（Neon通信量削減）
 #
-# 【前回実装から修正した4つのバグ】
+# 【OOMクラッシュ修正 - 2026-03-21】
 #
-# バグ①「空結果の永続キャッシュ」:
-#   パイプライン未実行時に空結果を長時間キャッシュ → 404 が固定化。
-#   修正: 空データは TTL 60秒のみ。
+# 症状: /predictions/2026-03-22 へのリクエストが毎回 503 を返す
+# ログ: "Memory limit of 512 MiB exceeded with 583 MiB used"
+#       → リクエストのたびにコンテナがOOMキルされ、無限再起動ループ
 #
-# バグ②「昨日ページ・レース結果が反映されない」:
-#   結果パイプラインは 06:00 JST に完了。06:00 前に 24h キャッシュしていた。
-#   修正: 昨日の 06:00 JST 前は 5分TTL、以降は 4時間TTL。
+# 原因: joinedload(models.Race.matchup) が全レースのmatchupを一括ロード
+#       16頭レース = 120通りの対戦組み合わせ × 対戦履歴 × ORMオーバーヘッド
+#       47レース分を一括展開すると97MB超 → 他のデータと合計で512MB超過
 #
-# バグ③「メモリ膨張（Render 512MB 超えリスク）」:
-#   無制限に蓄積 → 最悪 365MB。
-#   修正: 最大 50 エントリ（LRU） → 上限約 100MB。
-#
-# バグ④「プロセス間キャッシュ無効化が不可能」:
-#   GitHub Actions と Render は別プロセス → in-memory 共有不可。
-#   修正: TTL を短くすることで許容範囲に収める（バグ①②で解消）。
-#         同一プロセス内向けに invalidate_predictions_cache() を公開。
+# 修正: joinedload(matchup) を削除
+#       matchupは /matchups/{race_id} エンドポイントで個別提供済み。
+#       フロントエンドはレース詳細ページで個別に呼ぶため影響なし。
+#       スキーマの matchup: Optional[Matchup] は None を返す形に変更。
 # ==============================================================================
 
 _JST = timezone(timedelta(hours=9))
-_RESULTS_DONE_HOUR_JST = 6  # 結果パイプライン完了予定時刻
+_RESULTS_DONE_HOUR_JST = 6
 
 
 class _TTLCache:
@@ -74,27 +70,14 @@ _top_payout_cache = _TTLCache(max_entries=10)
 
 
 def invalidate_predictions_cache(target_date: date) -> None:
-    """
-    指定日のキャッシュを強制削除する。
-    NOTE: 同一プロセス内（例: テスト）のみ有効。
-    GitHub Actions → Render の in-memory cache は別プロセスのため不可。
-    """
+    """同一プロセス内のキャッシュを強制削除（GitHub Actions→Render間は不可）"""
     _predictions_cache.invalidate(f"pred_{target_date.isoformat()}")
 
 
 def _get_cache_ttl(target_date: date, has_data: bool) -> int:
-    """
-    日付・時刻・データ有無に応じた TTL（秒）を返す。
-
-    空データ → 60秒（パイプライン完了後に自動更新させる）
-    昨日 06:00 JST 前 → 5分（結果未確定）
-    昨日 06:00 JST 後 → 4時間（結果確定済み）
-    当日 → 15分（予測は朝パイプライン後に安定）
-    翌日以降 → 30分（午後パイプラインで更新される）
-    2日以上前 → 4時間（完全確定）
-    """
+    """日付・時刻・データ有無に応じた TTL（秒）を返す"""
     if not has_data:
-        return 60
+        return 60  # 空データは60秒のみ（パイプライン完了後に自動更新）
 
     today = date.today()
 
@@ -102,15 +85,14 @@ def _get_cache_ttl(target_date: date, has_data: bool) -> int:
         return 14400  # 2日以上前: 4時間
 
     if target_date == today - timedelta(days=1):
-        # 昨日: 結果パイプライン完了前後で TTL を変える
         now_jst = datetime.now(_JST)
         if now_jst.hour >= _RESULTS_DONE_HOUR_JST:
-            return 14400  # 06:00以降: 4時間
+            return 14400  # 昨日・結果確定後: 4時間
         else:
-            return 300    # 06:00前: 5分
+            return 300    # 昨日・結果未確定: 5分
 
     if target_date == today:
-        return 900  # 当日: 15分
+        return 900   # 当日: 15分
 
     return 1800  # 翌日以降: 30分
 
@@ -118,8 +100,10 @@ def _get_cache_ttl(target_date: date, has_data: bool) -> int:
 def _serialize_race_for_cache(race, advantages: list) -> dict:
     """
     SQLAlchemy オブジェクトを純粋な dict に変換してキャッシュする。
-    セッションが閉じた後も参照可能。Pydantic の from_attributes=True は
-    dict からも検証できるので response_model との互換性は維持される。
+
+    ★ matchup は含めない（OOM修正）
+       matchupデータは /matchups/{race_id} エンドポイントで個別提供する。
+       メインレスポンスに含めるとOOMクラッシュの原因になる。
     """
     return {
         'id': race.id,
@@ -147,10 +131,9 @@ def _serialize_race_for_cache(race, advantages: list) -> dict:
                 reverse=True
             )
         ],
-        'matchup': (
-            {'matchup_data': race.matchup.matchup_data}
-            if race.matchup else None
-        ),
+        # ★ matchup を None に固定（OOMクラッシュ修正）
+        # matchup は /matchups/{race_id} エンドポイントで個別取得する設計
+        'matchup': None,
         'horse_number_advantages': [
             {'horse_number': a.horse_number, 'advantage_score': a.advantage_score}
             for a in advantages
@@ -169,9 +152,7 @@ def _serialize_race_for_cache(race, advantages: list) -> dict:
 def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     """
     指定日のレース予測を返す（TTLキャッシュ付き）。
-
     キャッシュヒット時はDBへの接続ゼロ。
-    空データは 60秒のみキャッシュ（バグ①修正）。
     """
     cache_key = f"pred_{target_date.isoformat()}"
     cached = _predictions_cache.get(cache_key)
@@ -183,11 +164,13 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
         .filter(models.Race.race_date == target_date)\
         .distinct()
 
+    # ★ joinedload(models.Race.matchup) を削除（OOMクラッシュ修正）
+    # matchupは /matchups/{race_id} エンドポイントで個別提供するため不要
     races_with_preds = db.query(models.Race)\
         .options(
             joinedload(models.Race.predictions),
             joinedload(models.Race.results).joinedload(models.Result.horse),
-            joinedload(models.Race.matchup),
+            # joinedload(models.Race.matchup) ← 削除: OOMの原因
         )\
         .filter(models.Race.id.in_(valid_race_ids_query))\
         .order_by(models.Race.venue_name, models.Race.race_number)\
@@ -195,7 +178,6 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
 
     if not races_with_preds:
         empty = {"jra": [], "nar": []}
-        # ★ バグ①修正: 空は 60 秒のみ（パイプライン完了後に自動更新）
         _predictions_cache.set(cache_key, empty, 60)
         return empty
 

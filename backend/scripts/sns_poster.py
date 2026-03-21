@@ -1448,6 +1448,7 @@ def main():
                     image_file = generate_pick_og_image(pick_data, today_str)
                     tweet_text = create_morning_pick_tweet(pick_data, today_str)
                     post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
+                    post_to_threads(tweet_text)
                 else:
                     _log("-> 本日のレースデータも取得できなかったため、投稿をスキップします。")
 

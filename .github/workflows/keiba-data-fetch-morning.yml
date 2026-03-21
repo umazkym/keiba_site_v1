@@ -1,42 +1,38 @@
 name: Keiba Data Fetch (Morning)
 
+# 自動実行なし（廃止済み）。手動実行専用として残す。
+# keiba-data-fetch-morning-today.yml と keiba-data-fetch-afternoon.yml で代替済み。
+
 on:
-  schedule:
-    # 毎日 UTC 21:30 = JST 06:30
-    - cron: '30 21 * * *'
   workflow_dispatch:
+    inputs:
+      target_date:
+        description: '処理対象日 (YYYY-MM-DD, today, tomorrow)'
+        required: false
+        default: 'today'
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
-    
+    timeout-minutes: 60  # バルクスキップ導入後は ~30分で完了する見込み
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
-      - name: Cache HTML files
-        uses: actions/cache@v4
-        with:
-          path: backend/data/html_cache
-          key: html-cache-${{ github.run_id }}
-          restore-keys: |
-            html-cache-
-          save-always: true
-        
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
           cache-dependency-path: backend/requirements.txt
-          
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
-          
-      - name: Run pipeline (Morning Predictions)
+
+      - name: Run pipeline (Manual)
         working-directory: backend
         env:
           PYTHONPATH: .
@@ -47,7 +43,5 @@ jobs:
           SELENIUM_PAGE_LOAD_TIMEOUT: '40'
           SELENIUM_ELEMENT_WAIT_TIMEOUT: '20'
           TZ: Asia/Tokyo
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
         run: |
-          # 以前の morning ジョブは PREDICTIONS_ONLY で日付指定なしで実行されていました
-          python run_pipeline.py --mode PREDICTIONS_ONLY
+          python run_pipeline.py --date ${{ github.event.inputs.target_date || 'today' }} --mode PREDICTIONS_ONLY

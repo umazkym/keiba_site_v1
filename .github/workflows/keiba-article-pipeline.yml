@@ -2,8 +2,8 @@ name: Keiba Article Auto Pipeline
 
 on:
   schedule:
-    # 月〜金 08:00 JST (UTCでは前日の23:00)
-    - cron: '0 23 * * 1,2,3,4,5'
+    # 毎日 08:00 JST (UTCでは前日の23:00)
+    - cron: '0 23 * * *'
   workflow_dispatch:
 
 jobs:

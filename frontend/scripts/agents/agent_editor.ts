@@ -181,6 +181,11 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
           keywords: parsed.data.keywords || [],
           posted_at: new Date().toISOString(),
           draft: true,
+          // 施策G: 収益ポテンシャルスコア（Phase 4/6で自動入力）
+          estimated_monthly_searches: null,
+          actual_pv_30d: null,
+          ad_revenue_30d: null,
+          rewrite_score: null,
         });
         fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), 'utf-8');
         console.log(`[Editor] History updated: ${historyPath}`);

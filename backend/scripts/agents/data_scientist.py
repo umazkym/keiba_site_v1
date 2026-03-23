@@ -12,6 +12,23 @@ JRA_VENUES = [
     '中京', '京都', '阪神', '小倉'
 ]
 
+# 施策B: 競馬場別の検索需要重み（Google検索ボリュームに基づく推定値）
+# Phase 6でGSCデータ導入後に自動更新する設計に移行可能
+SEARCH_DEMAND_WEIGHT = {
+    '中山': 1.4, '東京': 1.4, '阪神': 1.3, '京都': 1.3,
+    '中京': 1.1, '新潟': 1.0, '小倉': 0.9, '函館': 0.85,
+    '福島': 0.9, '札幌': 0.85
+}
+
+# 施策A: 開催カレンダー（各競馬場の主要開催月）
+VENUE_SEASONS = {
+    '札幌': [6, 7, 8, 9], '函館': [6, 7, 8],
+    '福島': [4, 7, 11], '新潟': [5, 8, 10],
+    '東京': [2, 5, 6, 10, 11], '中山': [1, 3, 4, 9, 12],
+    '中京': [1, 3, 7, 12], '京都': [1, 2, 5, 10, 11],
+    '阪神': [3, 4, 6, 9, 12], '小倉': [2, 7, 8]
+}
+
 # パス設定
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # backend/
 DB_PATH = os.path.join(BASE_DIR, 'keiba.db')
@@ -149,13 +166,31 @@ def analyze_waku_bias(df):
 
     print(f"[Debug] Final valid matching ALL criteria: {len(valid_conds)}")
     
-    # 特異点スコアの算出：勝率と回収率の有利不利格差が激しいほどスコアが高い
-    valid_conds['anomaly_score'] = (valid_conds['win_rate_std'] * 100) + (valid_conds['roi_std'] * 10)
+    # 施策B: 検索需要重みを取得するヘルパー
+    def _get_venue_weight(cond):
+        for venue, weight in SEARCH_DEMAND_WEIGHT.items():
+            if venue in cond:
+                return weight
+        return 1.0
+
+    # 特異点スコアの算出：統計的偏差 × 検索需要重み
+    valid_conds['search_weight'] = valid_conds['condition'].apply(_get_venue_weight)
+    valid_conds['anomaly_score'] = (
+        (valid_conds['win_rate_std'] * 100) + (valid_conds['roi_std'] * 10)
+    ) * valid_conds['search_weight']
     
     # スコアで降順ソート
     ranked_conds = valid_conds.sort_values('anomaly_score', ascending=False)
     
     return ranked_conds, waku_stats, df
+
+def determine_theme_cluster(condition: str) -> str:
+    """施策A: コースの開催時期と現在月からテーマクラスターを自動判定"""
+    current_month = datetime.now().month
+    for venue, months in VENUE_SEASONS.items():
+        if venue in condition and current_month in months:
+            return "seasonal"
+    return "asset"
 
 def generate_write_order():
     """特異点データから write_order.json を生成するメイン処理"""
@@ -201,7 +236,7 @@ def generate_write_order():
         # WriteOrder スキーマへのマッピング
         order = {
             "target_keyword": target_keyword,
-            "theme_cluster": "asset",
+            "theme_cluster": determine_theme_cluster(condition),
             "reference_data": {
                 "period": f"{period_min}〜{period_max}",
                 "condition": f"{condition} 良〜不良",

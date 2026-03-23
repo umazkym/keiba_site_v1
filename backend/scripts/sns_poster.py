@@ -147,7 +147,7 @@ THREADS_ACCESS_TOKEN = os.getenv("THREADS_ACCESS_TOKEN")
 THREADS_TOKEN_EXPIRY = os.getenv("THREADS_TOKEN_EXPIRY")
 THREADS_MAX_CHARS = 480
 
-# 重賞レース判定リスト (変更なし)
+# 重賞レース判定リスト (リスト判定フォールバック用)
 JRA_GRADE_RACE_NAMES = {
     "フェブラリーS", "フェブラリーステークス", "高松宮記念", "大阪杯", "桜花賞", "皐月賞", "天皇賞（春）",
     "NHKマイルC", "NHKマイルカップ", "ヴィクトリアマイル", "オークス", "優駿牝馬", "日本ダービー", "東京優駿",
@@ -182,6 +182,11 @@ JRA_GRADE_RACE_NAMES = {
     "京阪杯", "鳴尾記念", "中日新聞杯", "カペラS", "カペラステークス", "ターコイズS", "ターコイズステークス"
 }
 
+# グレードキーワード判定 (race_crud.py get_heavy_stakes_race_urls と同一キーワードセット)
+GRADE_KEYWORDS = ['G1', 'G2', 'G3', 'GI', 'GII', 'GIII',
+                  'Ｇ１', 'Ｇ２', 'Ｇ３', 'GⅠ', 'GⅡ', 'GⅢ',
+                  'ＧⅠ', 'ＧⅡ', 'ＧⅢ', 'J・G']
+
 # --- レース名正規化ユーティリティ（追加） ---
 def canonicalize_race_name(s: str) -> str:
     """
@@ -206,20 +211,42 @@ def canonicalize_race_name(s: str) -> str:
 # 正規化済みの重賞レース名集合（モジュールロード時に一度作成）
 NORMALIZED_GRADE_RACES = set(canonicalize_race_name(r) for r in JRA_GRADE_RACE_NAMES if r)
 
+def _has_grade_keyword(race_name: str) -> bool:
+    """レース名にグレード表記キーワード（G1/G2/G3等）が含まれるか判定"""
+    if not race_name:
+        return False
+    return any(kw in race_name for kw in GRADE_KEYWORDS)
+
+def get_grade_priority(race_name: str) -> int:
+    """重賞のグレード優先度を返す (1=G1, 2=G2, 3=G3, 4=その他)"""
+    if not race_name:
+        return 99
+    if any(kw in race_name for kw in ['G1', 'GI', 'Ｇ１', 'GⅠ', 'ＧⅠ']):
+        return 1
+    if any(kw in race_name for kw in ['G2', 'GII', 'Ｇ２', 'GⅡ', 'ＧⅡ']):
+        return 2
+    if any(kw in race_name for kw in ['G3', 'GIII', 'Ｇ３', 'GⅢ', 'ＧⅢ']):
+        return 3
+    return 4
+
 def is_grade_race(race_name: str) -> bool:
     """
-    重賞判定:
-      - 正規化した race_name に normalized grade 名のいずれかが含まれるか
-      - 補助ルール: '天皇賞' + '秋'/'春' の組み合わせなど
+    重賞判定（二段階方式）:
+      1. グレードキーワード判定: レース名に G1/G2/G3 等の表記があるか
+      2. リスト判定フォールバック: 正規化したレース名が既知の重賞名に一致するか
+      3. 補助ルール: '天皇賞' + '秋'/'春' の組み合わせなど
     """
     if not race_name:
         return False
+    # 1. グレードキーワード判定（最も信頼性が高い）
+    if _has_grade_keyword(race_name):
+        return True
+    # 2. リスト判定フォールバック
     norm = canonicalize_race_name(race_name)
-    # 正規化済み集合との部分一致
     for gr in NORMALIZED_GRADE_RACES:
         if gr and gr in norm:
             return True
-    # 補助的キーワード判定
+    # 3. 補助的キーワード判定
     if '天皇賞' in norm and ('秋' in norm or '春' in norm):
         return True
     return False
@@ -721,6 +748,7 @@ def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
                 ds_p_val = float(ds_p) if ds_p is not None else 0.0
             except Exception:
                 ds_p_val = 0.0
+            score_text = f"偏差値: {ds_p_val:.1f}"
             draw.text((850, y_pos), score_text, font=score_font, fill=TEXT_COLOR_MUTED, anchor="rm")
         
         # フッター情報
@@ -970,8 +998,13 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
             except Exception:
                 pass
 
+            # Threads にも個別投稿
+            post_to_threads(tweet_text)
+
             if idx < len(tweet_texts):
-                time.sleep(1)
+                # スレッド化防止: 120秒間隔を空ける
+                _log("-> スレッド化防止のため120秒待機...")
+                time.sleep(120)
 
         return True
     except tweepy.errors.Forbidden as e:
@@ -1201,20 +1234,22 @@ def create_afternoon_race_summary_tweet(all_races_today: dict, yesterday_hits: L
 
     return "\n".join(lines)
 
-def create_evening_tomorrow_race_tweet(tomorrow_date: str) -> Optional[tuple]:
+def find_all_grade_races_for_date(target_date: str) -> List[tuple]:
     """
-    夜投稿: 明日の重賞レース分析テキストを生成して返す
-    戻り値: (tweet_text, race_data, top_preds) または None
+    指定日の全重賞レースを検索し、投稿用データのリストを返す。
+    戻り値: [(tweet_text, race_data, top_preds), ...] (グレード優先度順)
     """
-    _log("-> 夜投稿: 明日の重賞レース分析テキストを生成...")
+    _log(f"-> 重賞レース検索: {target_date} のレースデータを取得中...")
 
-    tomorrow_races = get_api_data(tomorrow_date)
-    if not tomorrow_races:
-        _log("-> APIから明日のレースデータが取得できませんでした")
-        return None
+    races_data = get_api_data(target_date)
+    if not races_data:
+        _log("-> APIからレースデータが取得できませんでした")
+        return []
 
-    venues = tomorrow_races.get('jra', []) + tomorrow_races.get('nar', [])
-    _log(f"-> 明日のレースデータ: JRA {len(tomorrow_races.get('jra', []))}会場, NAR {len(tomorrow_races.get('nar', []))}会場")
+    venues = races_data.get('jra', []) + races_data.get('nar', [])
+    _log(f"-> レースデータ: JRA {len(races_data.get('jra', []))}会場, NAR {len(races_data.get('nar', []))}会場")
+
+    grade_results = []
 
     for venue in venues:
         for race in venue.get('races', []):
@@ -1222,11 +1257,7 @@ def create_evening_tomorrow_race_tweet(tomorrow_date: str) -> Optional[tuple]:
             if not race_name:
                 continue
 
-            # 正規化して判定（強化）
             if not is_grade_race(race_name):
-                # デバッグ: 天皇賞等の候補があるときは原文を出す
-                if '天皇賞' in race_name or '天皇賞' in canonicalize_race_name(race_name):
-                    _log(f"DEBUG: 重賞判定に失敗 (候補): raw='{race_name}', normalized='{canonicalize_race_name(race_name)}'")
                 continue
 
             norm_race = canonicalize_race_name(race_name)
@@ -1248,7 +1279,7 @@ def create_evening_tomorrow_race_tweet(tomorrow_date: str) -> Optional[tuple]:
 
             lines = [f"🎯明日のレース AI予想"]
             lines.append(f"\n【{race_name}】")
-            lines.append(f"{race.get('venue_name', '?')}   {datetime.strptime(tomorrow_date, '%Y-%m-%d').strftime('%m/%d')}\n")
+            lines.append(f"{race.get('venue_name', '?')}   {datetime.strptime(target_date, '%Y-%m-%d').strftime('%m/%d')}\n")
 
             marks = ['◎', '○', '▲']
             horse_names = []
@@ -1268,7 +1299,7 @@ def create_evening_tomorrow_race_tweet(tomorrow_date: str) -> Optional[tuple]:
             venue_name = race.get('venue_name', '')
             if venue_name and venue_name != '?':
                 hashtags.append(f"#{venue_name}競馬")
-                
+
             for horse_name in horse_names:
                 hashtags.append(f"#{horse_name}")
 
@@ -1276,11 +1307,17 @@ def create_evening_tomorrow_race_tweet(tomorrow_date: str) -> Optional[tuple]:
             lines.append(" ".join(hashtags))
 
             tweet_text = "\n".join(lines)
+            priority = get_grade_priority(race_name)
+            grade_results.append((tweet_text, race, top_preds, priority))
 
-            return (tweet_text, race, top_preds)
+    if not grade_results:
+        _log("-> 重賞レースが見つかりませんでした")
+        return []
 
-    _log("-> 明日の重賞レースが見つかりませんでした")
-    return None
+    # グレード優先度順にソート (G1 -> G2 -> G3)
+    grade_results.sort(key=lambda x: x[3])
+    _log(f"-> {len(grade_results)}件の重賞レースを検出")
+    return [(text, race, preds) for text, race, preds, _ in grade_results]
 
 def create_pre_race_tweet(race: dict, top_preds: List[dict]) -> str:
     """直前リマインド: レース直前の予想リマインド"""
@@ -1326,8 +1363,9 @@ def main():
 
     # コマンドライン引数で投稿タイプを取得
     parser = argparse.ArgumentParser(description='SNS投稿スクリプト')
-    parser.add_argument('--post-type', type=str, default='morning', choices=['morning', 'afternoon', 'evening', 'pre_race'],
-                       help='投稿タイプ: morning(朝), afternoon(昼), evening(夜), pre_race(直前)')
+    parser.add_argument('--post-type', type=str, default='morning',
+                       choices=['morning', 'afternoon', 'evening', 'pre_race', 'hit_immediate'],
+                       help='投稿タイプ: morning(朝), afternoon(昼), evening(夜), pre_race(直前), hit_immediate(的中速報)')
     args = parser.parse_args()
     post_type = args.post_type
 
@@ -1415,10 +1453,9 @@ def main():
                     tweet_text_1 = create_morning_hit_tweet(hits_data[0], summary, yesterday_str, quote_tweet_id=quote_tweet_id)
                     tweet_text_2 = create_morning_pick_tweet(pick_data, today_str)
 
-                    # 2つのツイートテキストを直接渡して投稿（分割なし）
+                    # 2つのツイートテキストを直接渡して投稿（分割なし、スレッド化防止済み）
+                    # ※ post_to_twitter_with_dual_images 内で各ツイートごとにThreads投稿も実行される
                     post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
-                    threads_text = truncate_for_threads(tweet_text_1 + "\n\n" + tweet_text_2)
-                    post_to_threads(threads_text)
             else:
                 _log("-> 昨日は1万円以上の高配当的中がありませんでした。本日のAI注目馬のみ投稿します。")
                 # フォールバック: 高配当的中がなくても、本日のAI注目馬を画像付きで投稿する
@@ -1467,23 +1504,34 @@ def main():
 
         # ========== 夜20時投稿 ==========
         elif post_type == 'evening':
-            _log("\n--- 夜投稿: 明日の重賞/注目レース分析 ---")
-            result = create_evening_tomorrow_race_tweet(tomorrow_str)
+            _log("\n--- 夜投稿: 明日の全重賞レース分析 ---")
+            grade_races = find_all_grade_races_for_date(tomorrow_str)
 
-            if result:
-                tweet_text, race_data, top_preds = result
+            if grade_races:
+                _log(f"-> {len(grade_races)}件の重賞レースを投稿します")
+                for idx, (tweet_text, race_data, top_preds) in enumerate(grade_races):
+                    race_name = race_data.get('race_name', '?')
+                    _log(f"\n-> [{idx+1}/{len(grade_races)}] 重賞レースの投稿準備: {race_name}")
 
-                _log(f"-> 重賞レースの投稿準備完了: {race_data.get('race_name', '?')}")
+                    # 重複チェック
+                    if is_already_posted(tweet_text, 'evening_race', tomorrow_str):
+                        _log(f"-> 既に投稿済み: {race_name}")
+                        continue
 
-                image_file = generate_reminder_og_image(race_data, top_preds)
+                    image_file = generate_reminder_og_image(race_data, top_preds)
 
-                if image_file:
-                    _log(f"-> 画像生成成功: {image_file}")
-                    post_to_twitter(tweet_text, image_file, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
-                else:
-                    _log("-> 画像生成に失敗しましたが、テキストのみで投稿します")
-                    post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
-                post_to_threads(tweet_text)
+                    if image_file:
+                        _log(f"-> 画像生成成功: {image_file}")
+                        post_to_twitter(tweet_text, image_file, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
+                    else:
+                        _log("-> 画像生成に失敗しましたが、テキストのみで投稿します")
+                        post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
+                    post_to_threads(tweet_text)
+
+                    # 次の重賞投稿まで120秒待機（スレッド化防止 + レート制限対策）
+                    if idx < len(grade_races) - 1:
+                        _log("-> 次の重賞投稿まで120秒待機...")
+                        time.sleep(120)
             else:
                 _log("-> 明日は対象の重賞レースがありませんでした。")
 

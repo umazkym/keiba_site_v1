@@ -108,6 +108,30 @@ export default async function HomePage() {
                             >
                                 今日のデータ分析をチェック <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
                             </Link>
+
+                            {/* ★ 回遊性向上: 前日・翌日のリンク追加 */}
+                            <div className="flex justify-center gap-4 mt-3">
+                                <Link
+                                    href={`/races/${(() => {
+                                        const d = new Date(todayStr + 'T00:00:00+09:00');
+                                        d.setDate(d.getDate() - 1);
+                                        return d.toISOString().split('T')[0];
+                                    })()}`}
+                                    className="text-[11px] sm:text-xs text-white/70 hover:text-white transition-colors font-medium"
+                                >
+                                    ← 昨日の結果を確認
+                                </Link>
+                                <Link
+                                    href={`/races/${(() => {
+                                        const d = new Date(todayStr + 'T00:00:00+09:00');
+                                        d.setDate(d.getDate() + 1);
+                                        return d.toISOString().split('T')[0];
+                                    })()}`}
+                                    className="text-[11px] sm:text-xs text-white/70 hover:text-white transition-colors font-medium"
+                                >
+                                    明日のデータ分析 →
+                                </Link>
+                            </div>
                         </div>
                     </section>
 

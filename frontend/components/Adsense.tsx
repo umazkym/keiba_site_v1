@@ -152,8 +152,10 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
         }
       },
       {
-        // 猛スピードのスクロールに対応するため、1200px（約スマホ2画面分）前から読み込み開始
-        rootMargin: '1200px 0px 1200px 0px',
+        // ★ ビューアビリティ改善: rootMarginを600pxに縮小
+        // 1200pxだとAdSenseが画面外で「表示済み」と計測し、ビューアビリティが低下していた
+        // 600px（約スマホ1画面分）に縮小し、ビューポート付近での読み込みでビューアビリティ向上
+        rootMargin: '600px 0px 600px 0px',
         threshold: 0.01,
       }
     );

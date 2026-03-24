@@ -104,8 +104,9 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
         }
     }, [venue, router, currentDate]);
 
+    // ★ ビューアビリティ改善: 条件を5→3頭に緩和し、ほぼ全レースで広告表示
     const shouldShowAd = useMemo(() => {
-        return activeRace && activeRace.predictions.length >= 5;
+        return activeRace && activeRace.predictions.length >= 3;
     }, [activeRace]);
 
     const adRefreshKey = useMemo(() => {
@@ -228,6 +229,11 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 </div>
                             </div>
 
+                            {/* ★ ビューアビリティ改善: 過去対決成績と枠順傾向の間（自然な区切り）に広告配置 */}
+                            {shouldShowAd && (
+                                <InFeedAd slot="1489598374" refreshKey={adRefreshKey} />
+                            )}
+
                             <div className="mb-2">
                                 <div className="card p-2 sm:p-3">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
@@ -255,10 +261,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                     </div>
                                 </div>
                             </div>
-
-                            {shouldShowAd && (
-                                <InFeedAd slot="1489598374" refreshKey={adRefreshKey} />
-                            )}
                         </>
                     ) : (
                         <div className="relative mb-2 overflow-hidden rounded-2xl" style={{ minHeight: '320px' }}>
@@ -360,6 +362,11 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     )}
 
                     <DataExplanationPanel showAdvanced={true} />
+
+                    {/* ★ コンテンツ読了ポイント: データ解説を読み終えた高集中度タイミングに広告配置 */}
+                    {shouldShowAd && (
+                        <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} className="my-2" />
+                    )}
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
 

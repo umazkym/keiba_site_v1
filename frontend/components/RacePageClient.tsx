@@ -318,6 +318,30 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                 <TopHitsDisplay initialHits={initialTopHits} />
             </div>
 
+            {/* ★ 回遊性向上: 他の日付への導線を追加 */}
+            <div className="flex justify-center gap-3 my-2 sm:my-3">
+                <Link
+                    href={`/races/${(() => {
+                        const [y, m, d] = currentDate.split('-').map(Number);
+                        const prev = new Date(Date.UTC(y, m - 1, d - 1));
+                        return prev.toISOString().split('T')[0];
+                    })()}`}
+                    className="text-xs sm:text-sm font-semibold text-secondary hover:text-primary transition-colors px-3 py-2 bg-white border border-slate-200 rounded-lg hover:border-primary/30"
+                >
+                    ← 前日のデータ分析
+                </Link>
+                <Link
+                    href={`/races/${(() => {
+                        const [y, m, d] = currentDate.split('-').map(Number);
+                        const next = new Date(Date.UTC(y, m - 1, d + 1));
+                        return next.toISOString().split('T')[0];
+                    })()}`}
+                    className="text-xs sm:text-sm font-semibold text-secondary hover:text-primary transition-colors px-3 py-2 bg-white border border-slate-200 rounded-lg hover:border-primary/30"
+                >
+                    翌日のデータ分析 →
+                </Link>
+            </div>
+
             {/* 広告: 的中ランキング後（inlineに変更しコンテンツとの一体感を強化） */}
             <AdUnit slot="8529703346" placement="inline" refreshKey={`banner-${currentDate}`} className="my-2 sm:my-4" />
 

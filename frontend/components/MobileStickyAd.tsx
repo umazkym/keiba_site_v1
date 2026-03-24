@@ -17,6 +17,7 @@ export const MobileStickyAd = () => {
     const [isMounted, setIsMounted] = useState(false);
     const [isDismissed, setIsDismissed] = useState(false);
     const [adStatus, setAdStatus] = useState<'loading' | 'filled' | 'unfilled'>('loading');
+    const [hasScrolled, setHasScrolled] = useState(false);
     const pathname = usePathname();
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -33,6 +34,21 @@ export const MobileStickyAd = () => {
     useEffect(() => {
         setIsMounted(true);
     }, []);
+
+    // ★ ビューアビリティ改善: 300px以上スクロールしてから表示（ファーストビュー保護）
+    useEffect(() => {
+        if (!isMounted) return;
+        const handleScroll = () => {
+            if (window.scrollY > 300) {
+                setHasScrolled(true);
+                window.removeEventListener('scroll', handleScroll);
+            }
+        };
+        // 初期チェック
+        handleScroll();
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [isMounted]);;
 
     // パス変更（レース切替など）でリフレッシュする際、ステータスを戻す
     useEffect(() => {
@@ -73,7 +89,7 @@ export const MobileStickyAd = () => {
     };
 
     // SSR時、非表示ページ、閉じた後、または「枠が空(unfilled)」と確定した場合は完全にDOMから消す（裏に隠れていたコンテンツを被せないため）
-    if (!isMounted || !shouldShowAds || isDismissed || adStatus === 'unfilled') return null;
+    if (!isMounted || !shouldShowAds || isDismissed || adStatus === 'unfilled' || !hasScrolled) return null;
 
     // loading中は「見えない」がDOMには存在する（AdSenseに表示領域を計測させるため必須）
     // filledになったらスーッと下から現れる
@@ -103,15 +119,14 @@ export const MobileStickyAd = () => {
                   * 広告コンテナの高さ制限
                   * overflow-hidden によりはみ出し部分をカット
                   */}
-                <div className="w-full flex justify-center items-center overflow-hidden max-h-[100px] min-h-[50px] bg-slate-50 relative">
+                <div className="w-full flex justify-center items-center overflow-hidden max-h-[70px] min-h-[50px] bg-slate-50 relative">
                     <div className="absolute top-1 left-2 text-[10px] text-gray-400 font-sans tracking-widest bg-white/80 px-1 rounded z-10 pointer-events-none">広告</div>
                     <Adsense
                         client="ca-pub-4411270831448240"
                         slot="8529703346" 
                         refreshKey={`mobile-sticky-${pathname}`}
-                        // ★自動サイズ(auto)を無効化し、高さを固定することで、「320x50」や「320x100」の
-                        // スマホ専用標準バナーの配信をGoogleに強制し、空振り(unfilled)を劇的に減らす
-                        style={{ display: 'inline-block', width: '100%', height: '50px' }}
+                        // ★ 60pxに拡大: 320x60や300x50フォーマットも配信対象にし、eCPM向上
+                        style={{ display: 'inline-block', width: '100%', height: '60px' }}
                         isResponsive={false}
                     />
                 </div>

@@ -1453,9 +1453,19 @@ def main():
                     tweet_text_1 = create_morning_hit_tweet(hits_data[0], summary, yesterday_str, quote_tweet_id=quote_tweet_id)
                     tweet_text_2 = create_morning_pick_tweet(pick_data, today_str)
 
-                    # 2つのツイートテキストを直接渡して投稿（分割なし、スレッド化防止済み）
-                    # ※ post_to_twitter_with_dual_images 内で各ツイートごとにThreads投稿も実行される
-                    post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
+                    # 重複チェック: morning_combined として既に投稿済みか確認
+                    # ※テキスト1を代表してハッシュ化の基準とするか、結合文字列でチェックする。
+                    # post_to_twitter_with_dual_images は内部で各ツイートを記録するが、
+                    # target_date と post_type("morning_combined") で判定すれば全体として1回のみ実行される
+                    combined_check_text = tweet_text_1 + "\n---\n" + tweet_text_2
+                    if is_already_posted(combined_check_text, "morning_combined", today_str):
+                        _log(f"-> 既に投稿済み: morning_combined")
+                    else:
+                        # 2つのツイートテキストを直接渡して投稿（分割なし、スレッド化防止済み）
+                        # ※ post_to_twitter_with_dual_images 内で各ツイートごとにThreads投稿も実行される
+                        # ※ 投稿記録は内部で record_post によりそれぞれ保存されるが、全体チェック用に combined_check_text も保存する
+                        post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
+                        record_post(combined_check_text, "morning_combined", today_str)
             else:
                 _log("-> 昨日は1万円以上の高配当的中がありませんでした。本日のAI注目馬のみ投稿します。")
                 # フォールバック: 高配当的中がなくても、本日のAI注目馬を画像付きで投稿する
@@ -1484,8 +1494,12 @@ def main():
                     _log(f"-> AI注目馬を検出（フォールバック）: {pick_data.get('horse_name', '?')} (AI偏差値: {pick_data.get('deviation_score', 0):.2f})")
                     image_file = generate_pick_og_image(pick_data, today_str)
                     tweet_text = create_morning_pick_tweet(pick_data, today_str)
-                    post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
-                    post_to_threads(tweet_text)
+                    
+                    if is_already_posted(tweet_text, "morning_pick_only", today_str):
+                        _log(f"-> 既に投稿済み: morning_pick_only")
+                    else:
+                        post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
+                        post_to_threads(tweet_text)
                 else:
                     _log("-> 本日のレースデータも取得できなかったため、投稿をスキップします。")
 
@@ -1497,8 +1511,11 @@ def main():
 
             if all_races_today:
                 tweet_text = create_afternoon_race_summary_tweet(all_races_today, yesterday_hits if yesterday_hits else [], today_str)
-                post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
-                post_to_threads(tweet_text)
+                if is_already_posted(tweet_text, "afternoon_summary", today_str):
+                    _log(f"-> 既に投稿済み: afternoon_summary")
+                else:
+                    post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
+                    post_to_threads(tweet_text)
             else:
                 _log("-> 本日のレース情報が取得できませんでした。")
 

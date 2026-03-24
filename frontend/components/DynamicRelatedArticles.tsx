@@ -103,7 +103,7 @@ export function DynamicRelatedArticles({
                         </div>
                         <div className="p-3 sm:p-4 flex flex-col justify-between flex-grow">
                             <div>
-                                <span className="inline-block bg-primary-light text-primary-dark text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full mb-2">
+                                <span className="inline-block bg-slate-200 text-primary-dark text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full mb-2">
                                     {article.category}
                                 </span>
                                 <h4 className="font-bold text-sm sm:text-base mb-1 text-text-primary group-hover:text-primary transition-colors line-clamp-2 leading-snug">

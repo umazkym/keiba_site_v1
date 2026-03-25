@@ -17,6 +17,20 @@ export interface Article {
   category: string;
 }
 
+// スラッグ（ファイル名）から日付を抽出するフォールバック関数
+function extractDateFromSlug(slug: string): string | null {
+  const match = slug.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) {
+    try {
+      // e.g., "2024-10-15" -> "2024-10-15T00:00:00.000Z"
+      return new Date(`${match[1]}T00:00:00Z`).toISOString();
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 // 全記事を取得する関数
 export function getAllArticles(): Article[] {
   const fileNames = fs.readdirSync(articlesDirectory);
@@ -30,7 +44,7 @@ export function getAllArticles(): Article[] {
       slug,
       content, // ここでは変換せず、生のMarkdownを返す
       title: data.title || '無題',
-      date: data.date || new Date().toISOString(),
+      date: data.date || data.article_published_time || data.last_updated || extractDateFromSlug(slug) || new Date().toISOString(),
       description: data.description || '',
       eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
       category: data.category || '未分類',
@@ -94,7 +108,7 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     slug,
     content: contentHtml, // HTML化されたコンテンツを返す
     title: data.title || '無題',
-    date: data.date || new Date().toISOString(),
+    date: data.date || data.article_published_time || data.last_updated || extractDateFromSlug(slug) || new Date().toISOString(),
     description: data.description || '',
     eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
     category: data.category || '未分類',

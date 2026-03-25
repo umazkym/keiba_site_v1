@@ -103,6 +103,21 @@ function generateHubArticle(venue: string, history: any[]): void {
   const now = new Date();
   const updateDate = now.toISOString().split('T')[0];
 
+  const hubFilename = `${venueSlug}-gate-data-hub.md`;
+  const hubPath = path.join(ARTICLES_DIR, hubFilename);
+  const isUpdate = fs.existsSync(hubPath);
+
+  let originalDate = now.toISOString();
+  if (isUpdate) {
+    const existingContent = fs.readFileSync(hubPath, 'utf-8');
+    const existingParsed = matter(existingContent);
+    if (existingParsed.data.date) {
+      originalDate = existingParsed.data.date;
+    } else if (existingParsed.data.article_published_time) {
+      originalDate = existingParsed.data.article_published_time;
+    }
+  }
+
   // ハブ記事のFrontmatter（SEOチェッカーを通さない非パイプライン記事だが、品質は担保する）
   const hubTitle = `${venue}競馬場の枠順データ一覧｜有利枠を全距離で比較`;
   const hubDesc = `${venue}競馬場の芝・ダート${articleEntries.length}コースの枠順別データを独自集計。距離ごとの有利枠・不利枠を勝率・複勝率・回収率の3指標で一覧化した。`;
@@ -113,11 +128,12 @@ function generateHubArticle(venue: string, history: any[]): void {
     target_keyword: `${venue}競馬場 枠順`,
     article_type: 'hub',
     draft: false,
+    date: originalDate,
     last_updated: updateDate,
     og_type: 'article',
     og_title: hubTitle,
     og_description: hubDesc,
-    article_published_time: now.toISOString(),
+    article_published_time: originalDate,
   };
 
   // 記事一覧テーブル
@@ -152,10 +168,7 @@ ${tableRows}
 `;
 
   const hubContent = matter.stringify(body.trim(), frontmatter);
-  const hubFilename = `${venueSlug}-gate-data-hub.md`;
-  const hubPath = path.join(ARTICLES_DIR, hubFilename);
 
-  const isUpdate = fs.existsSync(hubPath);
   fs.writeFileSync(hubPath, hubContent, 'utf-8');
   console.log(`[Publisher Hub] ハブ記事を${isUpdate ? '更新' : '新規生成'}: ${hubFilename}`);
 }
@@ -190,7 +203,8 @@ async function publishDraft() {
   // frontmatterのdraftを消すかfalseにする
   parsed.data.draft = false;
 
-  // 施策F: OGP・構造化データをFrontmatterに自動付与
+  // 施策F: 日付・OGP・構造化データをFrontmatterに自動付与
+  parsed.data.date = now.toISOString();
   parsed.data.og_type = 'article';
   parsed.data.og_title = parsed.data.title;
   parsed.data.og_description = parsed.data.description;

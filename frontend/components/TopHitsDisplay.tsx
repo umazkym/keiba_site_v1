@@ -100,7 +100,7 @@ export const TopHitsDisplay = ({ initialHits }: { initialHits?: TopPayoutHit[] }
                             <Link
                                 key={`${hit.race_id}-${hit.winning_numbers}`}
                                 href={`/races/${hit.race_date}?race=${hit.race_number}&venue=${encodeURIComponent(hit.venue_name)}`}
-                                className="block h-full"
+                                className={`block h-full ${index === 4 ? 'col-span-2 lg:col-span-1' : ''}`}
                             >
                                 <HitCard hit={hit} rank={index + 1} />
                             </Link>

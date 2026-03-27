@@ -78,7 +78,8 @@ export default async function HomePage() {
         })
     ]);
 
-    const latestArticles = getLatestArticles(5);
+    // ▲ 4列×2行（計8アイテム）を埋めるため、記事6件＋広告2件にする
+    const latestArticles = getLatestArticles(6);
     const categories = getUniqueCategories();
     const totalArticles = getAllArticles().length;
 
@@ -107,7 +108,7 @@ export default async function HomePage() {
                                 <div><div className="num">毎日</div><div className="lbl">データ更新</div></div>
                             </div>
 
-                            <div className="mt-6 sm:mt-8">
+                            <div className="mt-6 sm:mt-8 flex justify-center">
                                 <Link
                                     href={`/races/${todayStr}`}
                                     className="hero-btn group"
@@ -252,9 +253,39 @@ export default async function HomePage() {
                         </Link>
                     </div>
 
-                    {/* レスポンシブ記事一覧: モバイル横スクロール / デスクトップグリッド */}
-                    <div className="flex overflow-x-auto gap-3 sm:gap-4 snap-x snap-mandatory scrollbar-hide pb-2 sm:pb-0 -mx-3 px-3 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 md:grid-cols-3 sm:overflow-visible">
-                        {latestArticles.slice(0, 2).map((article) => (
+                    {/* レスポンシブ記事一覧: デスクトップで4列×2行（計8アイテム：記事6・広告2）ぴったり収まるように最適化 */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                        {latestArticles.slice(0, 3).map((article) => (
+                            <Link href={`/articles/${article.slug}`} key={article.slug} className="article-card-v group shrink-0 w-full snap-start sm:snap-align-none">
+                                <div className="article-thumb-v">
+                                    <Image src={article.eyecatch} alt={article.title} fill className="object-cover transition-transform group-hover:scale-105 duration-500" sizes="(max-width: 640px) 240px, (max-width: 1024px) 50vw, 25vw" />
+                                </div>
+                                <div className="article-body-v">
+                                    <span className="article-cat">{article.category}</span>
+                                    <p className="article-title line-clamp-2">{article.title}</p>
+                                    <span className="article-date">{new Date(article.date).toLocaleDateString()}</span>
+                                </div>
+                            </Link>
+                        ))}
+                        {/* 1段目右端: ネイティブカード広告 */}
+                        <NativeCardAd slot="1489598374" variant="article" className="shrink-0 w-full" />
+                        
+                        {/* 2段目: 記事3件 + 広告1件 */}
+                        {latestArticles.slice(3, 6).map((article) => (
+                            <Link href={`/articles/${article.slug}`} key={article.slug} className="article-card-v group shrink-0 w-full snap-start sm:snap-align-none">
+                                <div className="article-thumb-v">
+                                    <Image src={article.eyecatch} alt={article.title} fill className="object-cover transition-transform group-hover:scale-105 duration-500" sizes="(max-width: 640px) 240px, (max-width: 1024px) 50vw, 25vw" />
+                                </div>
+                                <div className="article-body-v">
+                                    <span className="article-cat">{article.category}</span>
+                                    <p className="article-title line-clamp-2">{article.title}</p>
+                                    <span className="article-date">{new Date(article.date).toLocaleDateString()}</span>
+                                </div>
+                            </Link>
+                        ))}
+                        {/* 2段目右端: ネイティブカード広告 */}
+                        <NativeCardAd slot="3471018698" variant="article" className="shrink-0 w-full" />
+                    </div>0, 2).map((article) => (
                             <Link href={`/articles/${article.slug}`} key={article.slug} className="article-card-v group shrink-0 w-[240px] sm:w-auto snap-start sm:snap-align-none">
                                 <div className="article-thumb-v">
                                     <Image src={article.eyecatch} alt={article.title} fill className="object-cover transition-transform group-hover:scale-105 duration-500" sizes="(max-width: 640px) 240px, (max-width: 1024px) 50vw, 25vw" />

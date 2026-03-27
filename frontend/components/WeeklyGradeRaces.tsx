@@ -69,8 +69,8 @@ export function WeeklyGradeRaces({ races }: WeeklyGradeRacesProps) {
                     今週の重賞レース
                 </h2>
 
-                {/* 横スクロール（モバイル） / 横並びラップ（PC） */}
-                <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-2 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
+                {/* モバイルでスクロールせず横全体に収まるレイアウト。等分グリッドで配置 */}
+                <div className="grid gap-2 sm:gap-3" style={{ gridTemplateColumns: `repeat(${races.length}, minmax(0, 1fr))` }}>
                     {races.map((race) => {
                         const style = gradeStyles[race.grade] || gradeStyles.G3;
                         const raceDate = formatRaceDate(race.race_date);
@@ -81,37 +81,26 @@ export function WeeklyGradeRaces({ races }: WeeklyGradeRacesProps) {
                                 key={race.race_id}
                                 href={`/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`}
                                 className={`
-                                    shrink-0 snap-start flex items-center gap-2 py-2 px-3 rounded-lg
-                                    w-[220px] sm:w-auto sm:flex-1 sm:min-w-[180px]
+                                    flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg text-center
                                     ${style.card}
-                                    transition-colors duration-150 group
-                                    no-underline
+                                    transition-colors duration-150 group shrink-0
+                                    no-underline shadow-sm hover:shadow active:scale-95
                                 `}
+                                style={{ borderLeftWidth: 0, borderBottomWidth: '3px' }}
                             >
                                 {/* グレードバッジ */}
                                 <span className={`
-                                    shrink-0 inline-flex items-center justify-center
+                                    inline-flex items-center justify-center
                                     w-[34px] h-[22px] rounded text-[10px] font-bold tracking-wide
                                     ${style.badge}
                                 `}>
                                     {race.grade}
                                 </span>
 
-                                {/* レース情報 */}
-                                <div className="flex-1 min-w-0">
-                                    <span className={`text-[12px] sm:text-[13px] font-bold ${style.label} truncate block leading-tight`}>
-                                        {displayName}
-                                    </span>
-                                    <span className="text-[10px] text-secondary block leading-tight">
-                                        {raceDate} {race.venue_name}{race.race_number}R
-                                    </span>
-                                </div>
-
-                                {/* 矢印 */}
-                                <svg className="shrink-0 w-3.5 h-3.5 text-secondary/30 group-hover:text-primary transition-colors"
-                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
+                                {/* レース情報（縦配置で超省スペース化） */}
+                                <span className={`text-[11px] sm:text-[13px] font-bold ${style.label} mt-1.5 line-clamp-1 w-full leading-tight`}>
+                                    {displayName}
+                                </span>
                             </Link>
                         );
                     })}

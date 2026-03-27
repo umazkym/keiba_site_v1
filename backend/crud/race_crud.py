@@ -550,28 +550,49 @@ _JRA_GRADE_RACES: Dict[str, str] = {
 
 def _detect_grade(race_name: str) -> str:
     """
-    レース名からグレード (G1/G2/G3) を判定する。
+    レース名からグレード (G1/G2/G3) を判定する（3層防御）。
 
-    DB上の race_name にはグレード情報が含まれないため
-    （parser が保存前に除去するため）、固定辞書で照合する。
-    完全一致 → 前方一致 → 部分一致 の順で検索する。
+    Layer 1: race_name 内のグレード接尾辞を正規表現で検出
+             → パーサー修正後の新データで機能（例: "高松宮記念（G1）"）
+    Layer 2: 辞書の完全一致・前方一致
+             → パーサー修正前の旧データで機能（例: "日経賞"）
+    Layer 3: 辞書の部分一致（フォールバック）
+             → 表記ゆれ対策
     """
     if not race_name:
         return ""
     name = race_name.strip()
 
-    # 1. 完全一致
-    if name in _JRA_GRADE_RACES:
-        return _JRA_GRADE_RACES[name]
+    # ── Layer 1: race_name にグレード接尾辞が含まれるか ──
+    # 新しいデータ: "高松宮記念（G1）" / "日経賞(G2)" 等
+    import re as _re
+    grade_match = _re.search(r'[（(](G[1-3])[）)]', name)
+    if grade_match:
+        return grade_match.group(1)
 
-    # 2. 辞書キーの前方一致（例: "弥生賞ディープ..." → "弥生賞"）
-    for key, grade in sorted(_JRA_GRADE_RACES.items(), key=lambda x: -len(x[0])):
-        if name.startswith(key) or key.startswith(name):
+    # GI/GII/GIII 表記にも対応
+    for kw, grade in [('GⅠ', 'G1'), ('GI', 'G1'), ('Ｇ１', 'G1'),
+                      ('GⅡ', 'G2'), ('GII', 'G2'), ('Ｇ２', 'G2'),
+                      ('GⅢ', 'G3'), ('GIII', 'G3'), ('Ｇ３', 'G3')]:
+        if kw in name:
             return grade
 
-    # 3. 部分一致（フォールバック）
+    # ── Layer 2: 辞書の完全一致 → 前方一致 ──
+    # 旧データ（グレード接尾辞が除去済み）のための照合
+    # グレード接尾辞を除いた部分で照合する
+    name_without_grade = _re.sub(r'\s*[（(]G[1-3][）)]$', '', name)
+
+    if name_without_grade in _JRA_GRADE_RACES:
+        return _JRA_GRADE_RACES[name_without_grade]
+
+    # 前方一致（長い順に走査して最も具体的なキーを優先）
     for key, grade in sorted(_JRA_GRADE_RACES.items(), key=lambda x: -len(x[0])):
-        if key in name or name in key:
+        if name_without_grade.startswith(key) or key.startswith(name_without_grade):
+            return grade
+
+    # ── Layer 3: 部分一致（フォールバック） ──
+    for key, grade in sorted(_JRA_GRADE_RACES.items(), key=lambda x: -len(x[0])):
+        if key in name_without_grade or name_without_grade in key:
             return grade
 
     return ""

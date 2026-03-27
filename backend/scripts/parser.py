@@ -36,7 +36,8 @@ def _normalize_race_name(race_name_text: str) -> str:
 
     処理内容：
     1. 改行・タブ・複数の空白を正規化
-    2. グレード情報（（G1）など）を末尾から除去
+    2. OPなどの非グレード情報を末尾から除去
+       ※ グレード情報（G1/G2/G3）は重賞表示機能で使用するため保持する
     3. 先頭と末尾の空白を除去
 
     Parameters
@@ -56,9 +57,8 @@ def _normalize_race_name(race_name_text: str) -> str:
     normalized = re.sub(r'[\n\r\t]+', ' ', race_name_text)
     normalized = re.sub(r'\s+', ' ', normalized)
 
-    # ステップ2: グレード情報（末尾の括弧）を除去
-    # パターン: （G1）、（G2）、（G3）、（OP）など、または (G1), (G2) など
-    normalized = re.sub(r'\s*[（(](?:G[1-3]|OP|重賞)[）)]$', '', normalized)
+    # ステップ2: 非グレード情報（OP、重賞）のみ除去。G1/G2/G3は保持する
+    normalized = re.sub(r'\s*[（(](?:OP|重賞)[）)]$', '', normalized)
 
     # ステップ3: 先頭と末尾の空白を除去
     normalized = normalized.strip()

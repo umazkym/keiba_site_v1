@@ -69,8 +69,8 @@ export function WeeklyGradeRaces({ races }: WeeklyGradeRacesProps) {
                     今週の重賞レース
                 </h2>
 
-                {/* モバイルでスクロールせず横全体に収まるレイアウト。等分グリッドで配置 */}
-                <div className="grid gap-2 sm:gap-3" style={{ gridTemplateColumns: `repeat(${races.length}, minmax(0, 1fr))` }}>
+                {/* 横並びでシンプル＆クリーンな「タグ」スタイル */}
+                <div className="flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-3">
                     {races.map((race) => {
                         const style = gradeStyles[race.grade] || gradeStyles.G3;
                         const raceDate = formatRaceDate(race.race_date);
@@ -81,24 +81,25 @@ export function WeeklyGradeRaces({ races }: WeeklyGradeRacesProps) {
                                 key={race.race_id}
                                 href={`/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`}
                                 className={`
-                                    flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg text-center
+                                    flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg
+                                    bg-white border border-slate-200 shadow-sm
                                     ${style.card}
-                                    transition-colors duration-150 group shrink-0
-                                    no-underline shadow-sm hover:shadow active:scale-95
+                                    transition-all duration-200 group hover:shadow hover:border-primary/30
+                                    no-underline active:scale-95
                                 `}
-                                style={{ borderLeftWidth: 0, borderBottomWidth: '3px' }}
+                                style={{ borderLeftWidth: 0, borderBottomWidth: 0 }}
                             >
                                 {/* グレードバッジ */}
                                 <span className={`
                                     inline-flex items-center justify-center
-                                    w-[34px] h-[22px] rounded text-[10px] font-bold tracking-wide
+                                    w-[28px] h-[18px] sm:w-[32px] sm:h-[20px] rounded text-[9px] sm:text-[10px] font-bold tracking-wide
                                     ${style.badge}
                                 `}>
                                     {race.grade}
                                 </span>
 
-                                {/* レース情報（縦配置で超省スペース化） */}
-                                <span className={`text-[11px] sm:text-[13px] font-bold ${style.label} mt-1.5 line-clamp-1 w-full leading-tight`}>
+                                {/* レース名 */}
+                                <span className={`text-[12px] sm:text-[13px] font-bold ${style.label} line-clamp-1 leading-tight`}>
                                     {displayName}
                                 </span>
                             </Link>

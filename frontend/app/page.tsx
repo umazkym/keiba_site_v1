@@ -91,7 +91,7 @@ export default async function HomePage() {
                     <section className="hero">
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_60%)]"></div>
 
-                        <div className="relative z-10">
+                        <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto">
                             <h1>
                                 登録不要・完全無料
                                 <br />
@@ -284,7 +284,7 @@ export default async function HomePage() {
                             </Link>
                         ))}
                         {/* 2段目右端: ネイティブカード広告 */}
-                        <NativeCardAd slot="3471018698" variant="article" className="shrink-0 w-full" />
+                        <NativeCardAd slot="1489598374" variant="article" className="shrink-0 w-full" />
                     </div>
                 </section>
 

@@ -1,8 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getTopPayoutHits } from '@/lib/api';
 import { TopPayoutHit } from '@/lib/types';
+import { NativeCardAd } from '@/components/NativeCardAd';
 import { TrophyIcon } from './Icons';
 import { Adsense } from './Adsense';
 
@@ -100,11 +101,20 @@ export const TopHitsDisplay = ({ initialHits }: { initialHits?: TopPayoutHit[] }
                             <Link
                                 key={`${hit.race_id}-${hit.winning_numbers}`}
                                 href={`/races/${hit.race_date}?race=${hit.race_number}&venue=${encodeURIComponent(hit.venue_name)}`}
-                                className={`block h-full ${index === 4 ? 'col-span-2 lg:col-span-1' : ''}`}
+                                className="block h-full"
                             >
                                 <HitCard hit={hit} rank={index + 1} />
                             </Link>
                         ))}
+                        {/* モバイルで右下が空くのでネイティブ広告で穴埋め（PC時は5列なので非表示） */}
+                        {hits.length === 5 && (
+                            <div className="block h-full lg:hidden rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col justify-center items-center min-h-[140px] p-2">
+                                <span className="text-[9px] text-slate-400 mb-1">スポンサーリンク</span>
+                                <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                                    <NativeCardAd slot="1489598374" variant="article" className="w-full" />
+                                </div>
+                            </div>
+                        )}
                     </div>
                     {/* AdSense審査通過後に有効化する
                     {showAd && (

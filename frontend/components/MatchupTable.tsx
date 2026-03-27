@@ -66,12 +66,12 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
             <table className="matchup-table w-full">
                 <thead>
                     <tr>
-                        <th className="sticky-col !p-1 text-center whitespace-nowrap w-[140px]">馬名</th>
+                        <th className="sticky-col !p-1 text-center whitespace-nowrap w-[100px] md:w-[120px]">馬名</th>
                         {sortedHorses.map(horse => (
-                            <th key={horse.horse_id} className="p-1 w-11">
+                            <th key={horse.horse_id} className="p-0.5 md:p-1 w-[36px] md:w-[42px] min-w-[36px]">
                                 <div className='flex flex-col items-center justify-center h-full gap-0.5'>
                                     <HorseNumberCircle number={horse.horse_number} waku={horse.waku_number} />
-                                    <span className='text-xs font-bold whitespace-nowrap'>{horse.horse_name.substring(0, 4)}</span>
+                                    <span className='text-[10px] md:text-xs font-bold whitespace-nowrap'>{horse.horse_name.substring(0, 4)}</span>
                                 </div>
                             </th>
                         ))}
@@ -80,10 +80,10 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
                 <tbody>
                     {sortedHorses.map((rowHorse) => (
                         <tr key={rowHorse.horse_id}>
-                            <th className="sticky-col p-1 w-[140px]">
-                                <div className='flex items-center h-full px-1 gap-2'>
+                            <th className="sticky-col p-1 w-[100px] md:w-[120px]">
+                                <div className='flex items-center h-full px-1 gap-1.5 md:gap-2'>
                                     <HorseNumberCircle number={rowHorse.horse_number} waku={rowHorse.waku_number} />
-                                    <span className='text-sm font-semibold whitespace-nowrap truncate'>{rowHorse.horse_name}</span>
+                                    <span className='text-xs md:text-sm font-semibold whitespace-nowrap truncate'>{rowHorse.horse_name}</span>
                                 </div>
                             </th>
                             {sortedHorses.map((colHorse) => {
@@ -106,14 +106,14 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
                                         textColorClass = 'text-gray-700';
                                     }
                                     content = (
-                                        <div className="net-wins-cell">
-                                            <span className={`net-wins-number font-bold text-sm ${textColorClass}`}>{netWins > 0 ? `+${netWins}` : netWins}</span>
-                                            <span className="wld-text text-xs text-gray-600">({record.win}-{record.loss}-{record.draw})</span>
+                                        <div className="net-wins-cell flex flex-col items-center justify-center leading-none">
+                                            <span className={`net-wins-number font-bold text-[11px] md:text-xs ${textColorClass}`}>{netWins > 0 ? `+${netWins}` : netWins}</span>
+                                            <span className="wld-text text-[9px] text-gray-600 tracking-tighter scale-90 origin-center truncate w-full text-center mt-0.5">({record.win}-{record.loss}-{record.draw})</span>
                                         </div>
                                     );
                                 }
                                 return (
-                                    <td key={colHorse.horse_id} className={`p-1 w-11 ${cellClass}`}>
+                                    <td key={colHorse.horse_id} className={`p-0.5 md:p-1 w-[36px] md:w-[42px] min-w-[36px] ${cellClass}`}>
                                         <Tippy
                                             singleton={tippySingleton}
                                             content={record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : ''}

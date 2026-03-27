@@ -110,13 +110,10 @@ export default async function HomePage() {
                             <div className="mt-6 sm:mt-8">
                                 <Link
                                     href={`/races/${todayStr}`}
-                                    className="inline-flex items-center justify-center text-[15px] sm:text-[17px] font-extrabold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 py-3.5 px-8 sm:py-4 sm:px-10 rounded-full shadow-[0_8px_30px_rgba(79,70,229,0.4)] hover:shadow-[0_12px_40px_rgba(79,70,229,0.6)] transform hover:-translate-y-1 transition-all duration-300 border border-white/20 group"
+                                    className="hero-btn group"
                                 >
-                                    今日のデータ分析をチェック <span className="ml-2 font-black transition-transform duration-300 group-hover:translate-x-1.5">→</span>
+                                    今日のデータ分析をチェック <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
                                 </Link>
-                                <p className="text-[11px] sm:text-xs text-slate-400 mt-3 font-medium tracking-wide">
-                                    ＼ 会員登録なしで全データを無料公開中 ／
-                                </p>
                             </div>
                         </div>
                     </section>

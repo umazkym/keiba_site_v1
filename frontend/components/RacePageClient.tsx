@@ -328,16 +328,16 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
             </div>
 
             {/* ★ 回遊性向上: 他の日付への導線を追加 */}
-            <div className="flex justify-center gap-3 my-2 sm:my-3">
+            <div className="flex justify-center gap-2 sm:gap-3 my-3 sm:my-4">
                 <Link
                     href={`/races/${(() => {
                         const [y, m, d] = currentDate.split('-').map(Number);
                         const prev = new Date(Date.UTC(y, m - 1, d - 1));
                         return prev.toISOString().split('T')[0];
                     })()}`}
-                    className="text-xs sm:text-sm font-semibold text-secondary hover:text-primary transition-colors px-3 py-2 bg-white border border-slate-200 rounded-lg hover:border-primary/30"
+                    className="flex-1 max-w-[160px] inline-flex items-center justify-center px-2 py-2.5 text-[11px] sm:text-[13px] font-bold text-slate-600 bg-white border border-slate-200 rounded-xl transition-all duration-200 min-h-[44px] hover:bg-slate-50 hover:text-primary hover:border-slate-300 hover:shadow-sm"
                 >
-                    ← 前日のデータ分析
+                    ← 前日のデータ
                 </Link>
                 <Link
                     href={`/races/${(() => {
@@ -345,9 +345,9 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                         const next = new Date(Date.UTC(y, m - 1, d + 1));
                         return next.toISOString().split('T')[0];
                     })()}`}
-                    className="text-xs sm:text-sm font-semibold text-secondary hover:text-primary transition-colors px-3 py-2 bg-white border border-slate-200 rounded-lg hover:border-primary/30"
+                    className="flex-1 max-w-[160px] inline-flex items-center justify-center px-2 py-2.5 text-[11px] sm:text-[13px] font-bold text-slate-600 bg-white border border-slate-200 rounded-xl transition-all duration-200 min-h-[44px] hover:bg-slate-50 hover:text-primary hover:border-slate-300 hover:shadow-sm"
                 >
-                    翌日のデータ分析 →
+                    翌日のデータ →
                 </Link>
             </div>
 

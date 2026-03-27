@@ -56,10 +56,10 @@ export function WeeklyGradeRaces({ races }: WeeklyGradeRacesProps) {
 
     return (
         <section className="card" id="weekly-grade-races">
-            <div className="p-4 sm:p-5">
+            <div className="p-3 sm:p-4">
                 <h2 style={{
                     display: 'flex', alignItems: 'center', gap: '8px',
-                    fontSize: '15px', fontWeight: 700, margin: '0 0 12px',
+                    fontSize: '15px', fontWeight: 700, margin: '0 0 8px',
                     color: 'var(--color-heading, #1a1a2e)',
                 }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -69,7 +69,8 @@ export function WeeklyGradeRaces({ races }: WeeklyGradeRacesProps) {
                     今週の重賞レース
                 </h2>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {/* 横スクロール（モバイル） / 横並びラップ（PC） */}
+                <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-2 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
                     {races.map((race) => {
                         const style = gradeStyles[race.grade] || gradeStyles.G3;
                         const raceDate = formatRaceDate(race.race_date);
@@ -80,7 +81,8 @@ export function WeeklyGradeRaces({ races }: WeeklyGradeRacesProps) {
                                 key={race.race_id}
                                 href={`/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`}
                                 className={`
-                                    flex items-center gap-3 py-2.5 px-3 rounded-lg
+                                    shrink-0 snap-start flex items-center gap-2 py-2 px-3 rounded-lg
+                                    w-[220px] sm:w-auto sm:flex-1 sm:min-w-[180px]
                                     ${style.card}
                                     transition-colors duration-150 group
                                     no-underline
@@ -89,7 +91,7 @@ export function WeeklyGradeRaces({ races }: WeeklyGradeRacesProps) {
                                 {/* グレードバッジ */}
                                 <span className={`
                                     shrink-0 inline-flex items-center justify-center
-                                    w-[38px] h-[24px] rounded text-[11px] font-bold tracking-wide
+                                    w-[34px] h-[22px] rounded text-[10px] font-bold tracking-wide
                                     ${style.badge}
                                 `}>
                                     {race.grade}
@@ -97,23 +99,16 @@ export function WeeklyGradeRaces({ races }: WeeklyGradeRacesProps) {
 
                                 {/* レース情報 */}
                                 <div className="flex-1 min-w-0">
-                                    <span className={`text-[13px] sm:text-[14px] font-bold ${style.label} truncate block`}>
+                                    <span className={`text-[12px] sm:text-[13px] font-bold ${style.label} truncate block leading-tight`}>
                                         {displayName}
                                     </span>
-                                </div>
-
-                                {/* 日付・会場 */}
-                                <div className="shrink-0 text-right">
-                                    <span className="text-[11px] text-secondary block leading-tight">
-                                        {raceDate}
-                                    </span>
-                                    <span className="text-[10px] text-muted leading-tight">
-                                        {race.venue_name}{race.race_number}R
+                                    <span className="text-[10px] text-secondary block leading-tight">
+                                        {raceDate} {race.venue_name}{race.race_number}R
                                     </span>
                                 </div>
 
                                 {/* 矢印 */}
-                                <svg className="shrink-0 w-4 h-4 text-secondary/30 group-hover:text-primary transition-colors"
+                                <svg className="shrink-0 w-3.5 h-3.5 text-secondary/30 group-hover:text-primary transition-colors"
                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                 </svg>

@@ -140,7 +140,7 @@ export default async function HomePage() {
                         </div>
                     </section>
 
-                    {/* 🏆 今週の重賞セクション */}
+                    {/* 今週の重賞セクション */}
                     {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
                         <WeeklyGradeRaces races={weeklyGradeRaces} />
                     )}

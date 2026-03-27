@@ -448,7 +448,8 @@ def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:
     - 月〜木: その週の土曜〜日曜
     - 金〜日: 当日〜その週の日曜
     """
-    today = date.today()
+    JST = timezone(timedelta(hours=9))
+    today = datetime.now(JST).date()
     weekday = today.weekday()  # 0=月, 6=日
 
     if weekday <= 3:  # 月〜木

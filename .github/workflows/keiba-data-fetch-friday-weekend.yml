@@ -1,0 +1,75 @@
+name: Keiba Data Fetch (Friday Weekend)
+
+# 金曜日に土日分の重賞データを事前取得するワークフロー
+# netkeibaの枠順確定: 金曜11:30頃（一部GIは木曜15:00頃）
+# 目標: 金曜PM19:00までに土日分のデータを揃える
+
+on:
+  schedule:
+    # 金曜 JST 12:00 (UTC 03:00) → 土曜分（枠順確定直後）
+    - cron: '0 3 * * 5'
+    # 金曜 JST 15:00 (UTC 06:00) → 日曜分
+    - cron: '0 6 * * 5'
+  workflow_dispatch:
+    inputs:
+      target_offset:
+        description: '取得対象のオフセット日数 (1=明日, 2=明後日)'
+        required: false
+        default: '2'
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Calculate target date
+        id: calc_date
+        run: |
+          # スケジュール実行時: cron時刻で土曜/日曜を判定
+          # UTC 03:00 (JST 12:00) → 翌日（土曜） offset=1
+          # UTC 06:00 (JST 15:00) → 翌々日（日曜） offset=2
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" -le "4" ]; then
+              OFFSET=1
+            else
+              OFFSET=2
+            fi
+          else
+            OFFSET=${{ github.event.inputs.target_offset || '2' }}
+          fi
+          TARGET_DATE=$(TZ=Asia/Tokyo date -d "+${OFFSET} days" +%Y-%m-%d)
+          echo "target_date=${TARGET_DATE}" >> $GITHUB_OUTPUT
+          echo "offset=${OFFSET}" >> $GITHUB_OUTPUT
+          echo "Fetching data for: ${TARGET_DATE} (offset: ${OFFSET} days)"
+
+      - name: Run pipeline (Weekend Predictions)
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          RACE_BATCH_SIZE: '3'
+          SELENIUM_PAGE_LOAD_TIMEOUT: '40'
+          SELENIUM_ELEMENT_WAIT_TIMEOUT: '20'
+          TZ: Asia/Tokyo
+        run: |
+          echo "Target date: ${{ steps.calc_date.outputs.target_date }}"
+          python run_pipeline.py --date ${{ steps.calc_date.outputs.target_date }} --mode PREDICTIONS_ONLY

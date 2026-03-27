@@ -3,7 +3,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
-import { getSpecialPick, getPredictionsForDate } from '@/lib/api';
+import { WeeklyGradeRaces } from '@/components/WeeklyGradeRaces';
+import { getSpecialPick, getPredictionsForDate, getWeeklyGradeRaces } from '@/lib/api';
 import { getLatestArticles, getUniqueCategories, getAllArticles } from '../lib/articles';
 
 import DisclaimerAlert from '@/components/DisclaimerAlert';
@@ -62,7 +63,7 @@ const getTodayString = () => {
 
 export default async function HomePage() {
     const todayStr = getTodayString();
-    const [specialPick, predictions] = await Promise.all([
+    const [specialPick, predictions, weeklyGradeRaces] = await Promise.all([
         getSpecialPick(todayStr).catch(e => {
             console.error("Failed to fetch special pick:", e);
             return null;
@@ -70,6 +71,10 @@ export default async function HomePage() {
         getPredictionsForDate(todayStr).catch(e => {
             console.error("Failed to fetch predictions:", e);
             return null;
+        }),
+        getWeeklyGradeRaces().catch(e => {
+            console.error("Failed to fetch weekly grade races:", e);
+            return [];
         })
     ]);
 
@@ -134,6 +139,11 @@ export default async function HomePage() {
                             </div>
                         </div>
                     </section>
+
+                    {/* 🏆 今週の重賞セクション */}
+                    {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
+                        <WeeklyGradeRaces races={weeklyGradeRaces} />
+                    )}
 
                     {/* ★ファーストビュー改善: 本日の開催をヒーロー直下に移動 */}
                     {/* GA4データ: トップ181PV→レース≈200PVのドロップオフ対策 */}

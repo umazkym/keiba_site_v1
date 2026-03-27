@@ -89,3 +89,12 @@ export interface TopPayoutHit {
     winning_numbers: string;
     payout: number;
 }
+
+export interface WeeklyGradeRace {
+    race_id: string;
+    race_date: string;
+    venue_name: string;
+    race_number: number;
+    race_name: string;
+    grade: string; // "G1", "G2", "G3"
+}

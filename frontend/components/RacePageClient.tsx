@@ -2,10 +2,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from 'next/link';
-import { RaceDayPrediction, SpecialPick, TopPayoutHit } from "@/lib/types";
+import { RaceDayPrediction, SpecialPick, TopPayoutHit, WeeklyGradeRace } from "@/lib/types";
 import { RaceTabs } from "@/components/RaceTabs";
 import { SpecialPickCard } from "@/components/SpecialPickCard";
 import { TopHitsDisplay } from "@/components/TopHitsDisplay";
+import { WeeklyGradeRaces } from "@/components/WeeklyGradeRaces";
 import { formatDate } from "@/lib/utils";
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { getPredictionsForDate } from "@/lib/api";
@@ -99,10 +100,11 @@ type RacePageClientProps = {
     initialPredictionData: RaceDayPrediction | null;
     initialSpecialPick?: SpecialPick | null;
     initialTopHits?: TopPayoutHit[];
+    weeklyGradeRaces?: WeeklyGradeRace[];
     articlesMeta: Omit<Article, 'content'>[];
 };
 
-export default function RacePageClient({ initialDate, initialPredictionData, initialSpecialPick, initialTopHits, articlesMeta }: RacePageClientProps) {
+export default function RacePageClient({ initialDate, initialPredictionData, initialSpecialPick, initialTopHits, weeklyGradeRaces, articlesMeta }: RacePageClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [currentDate, setCurrentDate] = useState(initialDate);
@@ -310,6 +312,13 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                     </button>
                 </div>
             </div>
+
+            {/* 🏆 今週の重賞セクション */}
+            {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
+                <div className="mb-2 sm:mb-3">
+                    <WeeklyGradeRaces races={weeklyGradeRaces} />
+                </div>
+            )}
 
             {renderContent()}
 

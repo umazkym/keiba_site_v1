@@ -72,3 +72,12 @@ class TopPayoutHit(BaseModel):
     bet_type: str
     winning_numbers: str
     payout: int
+
+
+class WeeklyGradeRace(BaseModel):
+    race_id: str
+    race_date: date
+    venue_name: str
+    race_number: int
+    race_name: str
+    grade: str  # "G1", "G2", "G3"

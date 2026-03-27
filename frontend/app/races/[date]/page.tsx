@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import RacePageClient from "@/components/RacePageClient";
-import { getPredictionsForDate, getSpecialPick, getTopPayoutHits } from "@/lib/api";
+import { getPredictionsForDate, getSpecialPick, getTopPayoutHits, getWeeklyGradeRaces } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { RaceDayPrediction, SpecialPick, TopPayoutHit } from "@/lib/types";
+import { RaceDayPrediction, SpecialPick, TopPayoutHit, WeeklyGradeRace } from "@/lib/types";
 import { Suspense } from 'react';
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { notFound } from 'next/navigation';
@@ -71,6 +71,7 @@ export default async function RacePage({ params }: { params: { date: string } })
     let predictionData: RaceDayPrediction | null = null;
     let specialPickData: SpecialPick | null = null;
     let topHitsData: TopPayoutHit[] = [];
+    let weeklyGradeRaces: WeeklyGradeRace[] = [];
     let jsonLd = null;
     const articlesMeta = getAllArticlesMeta();
 
@@ -79,14 +80,16 @@ export default async function RacePage({ params }: { params: { date: string } })
         // 従来: predictionDataのみSSR、specialPick/topHitsはクライアント側で独立APIコール
         // 変更: Promise.allで3つのAPIコールを並列実行し、全データをSSRで取得
         // メリット: クライアント側のAPIコールが0に、サーバー側も並列で処理時間短縮
-        const [predictions, specialPick, topHits] = await Promise.all([
+        const [predictions, specialPick, topHits, gradeRaces] = await Promise.all([
             getPredictionsForDate(params.date),
             getSpecialPick(params.date),
             getTopPayoutHits(),
+            getWeeklyGradeRaces(),
         ]);
         predictionData = predictions;
         specialPickData = specialPick;
         topHitsData = topHits;
+        weeklyGradeRaces = gradeRaces;
         // ▲▲▲▲▲【SSRプリフェッチ統合ここまで】▲▲▲▲▲
 
         // データが存在しない場合（ソフト404対策）
@@ -180,6 +183,7 @@ export default async function RacePage({ params }: { params: { date: string } })
                     initialPredictionData={predictionData}
                     initialSpecialPick={specialPickData}
                     initialTopHits={topHitsData}
+                    weeklyGradeRaces={weeklyGradeRaces}
                     articlesMeta={articlesMeta}
                 />
             </Suspense>

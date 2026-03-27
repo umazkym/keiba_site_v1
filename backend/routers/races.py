@@ -168,3 +168,11 @@ def get_heavy_stakes_race_urls_for_sitemap(response: Response, db: Session = Dep
     urls = race_crud.get_heavy_stakes_race_urls(db=db)
     response.headers["Cache-Control"] = "public, max-age=21600"
     return urls
+
+
+@router.get("/weekly-grade-races", response_model=List[race_schema.WeeklyGradeRace])
+def read_weekly_grade_races(response: Response, db: Session = Depends(get_db)):
+    """今週の重賞レース（中央競馬 G1/G2/G3）を返す"""
+    races = race_crud.get_weekly_grade_races(db=db)
+    response.headers["Cache-Control"] = "public, max-age=1800, stale-while-revalidate=60"
+    return races

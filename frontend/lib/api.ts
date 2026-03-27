@@ -1,4 +1,4 @@
-import { RaceDayPrediction, SpecialPick, MatchupData, TopPayoutHit } from "./types";
+import { RaceDayPrediction, SpecialPick, MatchupData, TopPayoutHit, WeeklyGradeRace } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
@@ -85,6 +85,20 @@ export async function getAllRaceUrls(): Promise<{ race_date: string; venue_name:
         return res.json();
     } catch (error: any) {
         console.error("An error occurred in getAllRaceUrls:", error.message);
+        return [];
+    }
+}
+
+export async function getWeeklyGradeRaces(): Promise<WeeklyGradeRace[]> {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/weekly-grade-races`, { next: { revalidate: 1800 } });
+        if (!res.ok) {
+            console.warn(`Could not fetch weekly grade races. Status: ${res.status}`);
+            return [];
+        }
+        return res.json();
+    } catch (error: any) {
+        console.error("An error occurred in getWeeklyGradeRaces:", error.message);
         return [];
     }
 }

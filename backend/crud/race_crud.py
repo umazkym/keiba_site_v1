@@ -411,3 +411,83 @@ def get_heavy_stakes_race_urls(db: Session) -> List[Dict[str, Any]]:
          "venue_name": r.venue_name, "race_number": r.race_number}
         for r in results
     ]
+
+
+def _detect_grade(race_name: str) -> str:
+    """レース名からグレードを判定する"""
+    if not race_name:
+        return "G3"
+    for kw in ['G1', 'GⅠ', 'Ｇ１', 'GI']:
+        if kw in race_name:
+            return "G1"
+    for kw in ['G2', 'GⅡ', 'Ｇ２', 'GII']:
+        if kw in race_name:
+            return "G2"
+    return "G3"
+
+
+_GRADE_FILTER = or_(
+    models.Race.race_name.like('%G1%'),
+    models.Race.race_name.like('%G2%'),
+    models.Race.race_name.like('%G3%'),
+    models.Race.race_name.like('%GⅠ%'),
+    models.Race.race_name.like('%GⅡ%'),
+    models.Race.race_name.like('%GⅢ%'),
+    models.Race.race_name.like('%Ｇ１%'),
+    models.Race.race_name.like('%Ｇ２%'),
+    models.Race.race_name.like('%Ｇ３%'),
+    models.Race.race_name.like('%J・G%'),
+)
+
+
+def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:
+    """
+    今週の重賞レース（中央競馬のG1/G2/G3）を返す。
+
+    「今週」の定義:
+    - 月〜木: その週の土曜〜日曜
+    - 金〜日: 当日〜その週の日曜
+    """
+    today = date.today()
+    weekday = today.weekday()  # 0=月, 6=日
+
+    if weekday <= 3:  # 月〜木
+        days_to_saturday = 5 - weekday
+        start_date = today + timedelta(days=days_to_saturday)
+        end_date = start_date + timedelta(days=1)  # 日曜
+    else:  # 金〜日
+        start_date = today
+        days_to_sunday = 6 - weekday
+        end_date = today + timedelta(days=days_to_sunday)
+
+    results = db.query(
+        models.Race.id,
+        models.Race.race_date,
+        models.Race.venue_name,
+        models.Race.race_number,
+        models.Race.race_name,
+    ).filter(
+        models.Race.race_date.between(start_date, end_date),
+        models.Race.race_type == '中央',
+        models.Race.predictions.any(),
+        models.Race.venue_name.isnot(None),
+        models.Race.race_number.isnot(None),
+        models.Race.race_name.isnot(None),
+        _GRADE_FILTER,
+    ).order_by(models.Race.race_date, models.Race.race_number).all()
+
+    grade_priority = {"G1": 0, "G2": 1, "G3": 2}
+    races = []
+    for r in results:
+        grade = _detect_grade(r.race_name)
+        races.append({
+            "race_id": r.id,
+            "race_date": r.race_date,
+            "venue_name": r.venue_name,
+            "race_number": r.race_number,
+            "race_name": r.race_name,
+            "grade": grade,
+        })
+
+    races.sort(key=lambda x: (grade_priority.get(x["grade"], 9), x["race_date"]))
+    return races

@@ -413,31 +413,168 @@ def get_heavy_stakes_race_urls(db: Session) -> List[Dict[str, Any]]:
     ]
 
 
+# ============================================================
+# JRA中央競馬 重賞レース名辞書
+# parser.py の _normalize_race_name() がDBに保存する前に
+# グレード接尾辞（G1）等を除去するため、race_name には
+# グレード情報が含まれない。そのため、レース名からグレードを
+# 判定する固定辞書を用いる。
+# ============================================================
+_JRA_GRADE_RACES: Dict[str, str] = {
+    # ─── G1 ───
+    "フェブラリーS": "G1", "フェブラリーステークス": "G1",
+    "高松宮記念": "G1",
+    "大阪杯": "G1",
+    "桜花賞": "G1",
+    "皐月賞": "G1",
+    "天皇賞（春）": "G1", "天皇賞・春": "G1", "天皇賞（春": "G1",
+    "NHKマイルC": "G1", "NHKマイルカップ": "G1",
+    "ヴィクトリアマイル": "G1", "ヴィクトリアM": "G1",
+    "オークス": "G1", "優駿牝馬": "G1",
+    "日本ダービー": "G1", "東京優駿": "G1",
+    "安田記念": "G1",
+    "宝塚記念": "G1",
+    "スプリンターズS": "G1", "スプリンターズステークス": "G1",
+    "秋華賞": "G1",
+    "菊花賞": "G1",
+    "天皇賞（秋）": "G1", "天皇賞・秋": "G1", "天皇賞（秋": "G1",
+    "エリザベス女王杯": "G1",
+    "マイルCS": "G1", "マイルチャンピオンシップ": "G1",
+    "ジャパンC": "G1", "ジャパンカップ": "G1",
+    "チャンピオンズC": "G1", "チャンピオンズカップ": "G1",
+    "阪神JF": "G1", "阪神ジュベナイルフィリーズ": "G1",
+    "朝日杯FS": "G1", "朝日杯フューチュリティステークス": "G1",
+    "有馬記念": "G1",
+    "ホープフルS": "G1", "ホープフルステークス": "G1",
+    # ─── G2 ───
+    "日経新春杯": "G2",
+    "アメリカJCC": "G2", "AJCC": "G2", "アメリカジョッキークラブカップ": "G2",
+    "京都記念": "G2",
+    "共同通信杯": "G2",
+    "京都牝馬S": "G2", "京都牝馬ステークス": "G2",
+    "小倉大賞典": "G2",
+    "阪急杯": "G2",
+    "中山記念": "G2",
+    "弥生賞": "G2", "弥生賞ディープインパクト記念": "G2",
+    "チューリップ賞": "G2",
+    "フィリーズレビュー": "G2",
+    "金鯱賞": "G2",
+    "スプリングS": "G2", "スプリングステークス": "G2",
+    "日経賞": "G2",
+    "阪神大賞典": "G2",
+    "産経大阪杯": "G2",
+    "読売マイラーズC": "G2", "マイラーズC": "G2", "マイラーズカップ": "G2",
+    "青葉賞": "G2",
+    "フローラS": "G2", "フローラステークス": "G2",
+    "京王杯SC": "G2", "京王杯スプリングカップ": "G2",
+    "目黒記念": "G2",
+    "札幌記念": "G2",
+    "セントウルS": "G2", "セントウルステークス": "G2",
+    "ローズS": "G2", "ローズステークス": "G2",
+    "オールカマー": "G2",
+    "神戸新聞杯": "G2",
+    "毎日王冠": "G2",
+    "京都大賞典": "G2",
+    "府中牝馬S": "G2", "府中牝馬ステークス": "G2",
+    "富士S": "G2", "富士ステークス": "G2",
+    "スワンS": "G2", "スワンステークス": "G2",
+    "アルゼンチン共和国杯": "G2",
+    "デイリー杯2歳S": "G2", "デイリー杯２歳ステークス": "G2",
+    "京阪杯": "G2",
+    "ステイヤーズS": "G2", "ステイヤーズステークス": "G2",
+    "阪神C": "G2", "阪神カップ": "G2",
+    "中日新聞杯": "G2",
+    "東海S": "G2", "東海ステークス": "G2",
+    "きさらぎ賞": "G2",
+    # ─── G3 ───
+    "中山金杯": "G3", "京都金杯": "G3",
+    "シンザン記念": "G3",
+    "愛知杯": "G3",
+    "フェアリーS": "G3", "フェアリーステークス": "G3",
+    "シルクロードS": "G3", "シルクロードステークス": "G3",
+    "根岸S": "G3", "根岸ステークス": "G3",
+    "東京新聞杯": "G3",
+    "クイーンC": "G3", "クイーンカップ": "G3",
+    "ダイヤモンドS": "G3", "ダイヤモンドステークス": "G3",
+    "オーシャンS": "G3", "オーシャンステークス": "G3",
+    "中山牝馬S": "G3", "中山牝馬ステークス": "G3",
+    "毎日杯": "G3",
+    "マーチS": "G3", "マーチステークス": "G3",
+    "高松宮杯": "G3",
+    "ダービー卿CT": "G3", "ダービー卿チャレンジトロフィー": "G3",
+    "阪神牝馬S": "G3", "阪神牝馬ステークス": "G3",
+    "アーリントンC": "G3", "アーリントンカップ": "G3",
+    "福島牝馬S": "G3", "福島牝馬ステークス": "G3",
+    "新潟大賞典": "G3",
+    "京都新聞杯": "G3",
+    "平安S": "G3", "平安ステークス": "G3",
+    "葵S": "G3", "葵ステークス": "G3",
+    "鳴尾記念": "G3",
+    "函館スプリントS": "G3", "函館スプリントステークス": "G3",
+    "エプソムC": "G3", "エプソムカップ": "G3",
+    "マーメイドS": "G3", "マーメイドステークス": "G3",
+    "ユニコーンS": "G3", "ユニコーンステークス": "G3",
+    "ラジオNIKKEI賞": "G3",
+    "CBC賞": "G3",
+    "プロキオンS": "G3", "プロキオンステークス": "G3",
+    "七夕賞": "G3",
+    "函館記念": "G3",
+    "中京記念": "G3",
+    "アイビスSD": "G3", "アイビスサマーダッシュ": "G3",
+    "小倉記念": "G3",
+    "レパードS": "G3", "レパードステークス": "G3",
+    "関屋記念": "G3",
+    "エルムS": "G3", "エルムステークス": "G3",
+    "北九州記念": "G3",
+    "新潟2歳S": "G3", "新潟２歳ステークス": "G3",
+    "キーンランドC": "G3", "キーンランドカップ": "G3",
+    "新潟記念": "G3",
+    "小倉2歳S": "G3", "小倉２歳ステークス": "G3",
+    "紫苑S": "G3", "紫苑ステークス": "G3",
+    "京成杯オータムH": "G3", "京成杯AH": "G3",
+    "シリウスS": "G3", "シリウスステークス": "G3",
+    "サウジアラビアRC": "G3", "サウジアラビアロイヤルカップ": "G3",
+    "サムソナイトS": "G3",
+    "京成杯": "G3",
+    "カペラS": "G3", "カペラステークス": "G3",
+    "ターコイズS": "G3", "ターコイズステークス": "G3",
+    "チャレンジC": "G3", "チャレンジカップ": "G3",
+    "ファルコンS": "G3", "ファルコンステークス": "G3",
+    "福島記念": "G3",
+    "武蔵野S": "G3", "武蔵野ステークス": "G3",
+    "みやこS": "G3", "みやこステークス": "G3",
+    "ファンタジーS": "G3", "ファンタジーステークス": "G3",
+    "京王杯2歳S": "G3", "京王杯２歳ステークス": "G3",
+}
+
+
 def _detect_grade(race_name: str) -> str:
-    """レース名からグレードを判定する"""
+    """
+    レース名からグレード (G1/G2/G3) を判定する。
+
+    DB上の race_name にはグレード情報が含まれないため
+    （parser が保存前に除去するため）、固定辞書で照合する。
+    完全一致 → 前方一致 → 部分一致 の順で検索する。
+    """
     if not race_name:
-        return "G3"
-    for kw in ['G1', 'GⅠ', 'Ｇ１', 'GI']:
-        if kw in race_name:
-            return "G1"
-    for kw in ['G2', 'GⅡ', 'Ｇ２', 'GII']:
-        if kw in race_name:
-            return "G2"
-    return "G3"
+        return ""
+    name = race_name.strip()
 
+    # 1. 完全一致
+    if name in _JRA_GRADE_RACES:
+        return _JRA_GRADE_RACES[name]
 
-_GRADE_FILTER = or_(
-    models.Race.race_name.like('%G1%'),
-    models.Race.race_name.like('%G2%'),
-    models.Race.race_name.like('%G3%'),
-    models.Race.race_name.like('%GⅠ%'),
-    models.Race.race_name.like('%GⅡ%'),
-    models.Race.race_name.like('%GⅢ%'),
-    models.Race.race_name.like('%Ｇ１%'),
-    models.Race.race_name.like('%Ｇ２%'),
-    models.Race.race_name.like('%Ｇ３%'),
-    models.Race.race_name.like('%J・G%'),
-)
+    # 2. 辞書キーの前方一致（例: "弥生賞ディープ..." → "弥生賞"）
+    for key, grade in sorted(_JRA_GRADE_RACES.items(), key=lambda x: -len(x[0])):
+        if name.startswith(key) or key.startswith(name):
+            return grade
+
+    # 3. 部分一致（フォールバック）
+    for key, grade in sorted(_JRA_GRADE_RACES.items(), key=lambda x: -len(x[0])):
+        if key in name or name in key:
+            return grade
+
+    return ""
 
 
 def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:
@@ -447,6 +584,11 @@ def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:
     「今週」の定義:
     - 月〜木: その週の土曜〜日曜
     - 金〜日: 当日〜その週の日曜
+
+    グレード判定:
+      DB上の race_name にはグレード接尾辞がないため、
+      全レースを取得してから _detect_grade() で
+      固定辞書を用いてフィルタリングする。
     """
     JST = timezone(timedelta(hours=9))
     today = datetime.now(JST).date()
@@ -461,6 +603,7 @@ def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:
         days_to_sunday = 6 - weekday
         end_date = today + timedelta(days=days_to_sunday)
 
+    # 重賞は通常 10R 以降で行われるため、候補を絞る
     results = db.query(
         models.Race.id,
         models.Race.race_date,
@@ -474,13 +617,15 @@ def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:
         models.Race.venue_name.isnot(None),
         models.Race.race_number.isnot(None),
         models.Race.race_name.isnot(None),
-        _GRADE_FILTER,
+        models.Race.race_number >= 9,
     ).order_by(models.Race.race_date, models.Race.race_number).all()
 
     grade_priority = {"G1": 0, "G2": 1, "G3": 2}
     races = []
     for r in results:
         grade = _detect_grade(r.race_name)
+        if not grade:  # 辞書にマッチしない = 非重賞
+            continue
         races.append({
             "race_id": r.id,
             "race_date": r.race_date,

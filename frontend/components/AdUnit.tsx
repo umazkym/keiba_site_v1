@@ -96,7 +96,10 @@ export const AdUnit = ({
     }> = {
         inline: {
             containerClass: 'my-1 sm:my-3 flex flex-col items-center justify-center w-full',
-            minHeight: '0',
+            // ★ Viewability改善: 0→90pxに変更
+            // 広告がビューポートに十分な面積を確保し、Active View viewable判定の閾値（50%表示 + 1秒）を満たしやすくする
+            // AdSenseデータ: viewability 35.17% → 50%目標
+            minHeight: '90px',
             adStyle: { width: '100%' },
         },
         banner: {

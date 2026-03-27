@@ -196,6 +196,11 @@ export default async function HomePage() {
                     </section>
                 </div>
 
+                {/* ★ 広告①: 高配当ランキング直後（100%のユーザーが到達する位置）
+                     変更理由: 旧配置（アコーディオン直後）は閉じた状態のためスクロールで通過されやすく
+                     Viewable判定率が低かった（35%→50%目標）*/}
+                <AdUnit slot="8529703346" placement="inline" />
+
                 {/* 2. UMA-FREEとは */}
                 <details className="card accordion" open={false}>
                     <summary>UMA-FREEとは<span className="chevron">▶</span></summary>
@@ -204,9 +209,6 @@ export default async function HomePage() {
                         <p className="mt-2.5">さらに、出走馬同士の<strong>過去対決成績</strong>や、コース・距離ごとの<strong>このコースの枠順傾向</strong>など、多角的なデータを組み合わせて提供。データは毎日自動更新されており、開催日の午前中には当日の全レース分析が完了します。</p>
                     </div>
                 </details>
-
-                {/* 広告①: UMA-FREEとは（アコーディオン）後に配置 */}
-                <AdUnit slot="8529703346" placement="inline" />
 
                 {/* 3. 3つの分析データ */}
                 <section className="card">
@@ -256,6 +258,10 @@ export default async function HomePage() {
                     <SpecialPickCard pick={specialPick} date={todayStr} />
                 </section>
 
+                {/* ★ 広告②: 注目馬カード読了後（コンテンツ区切りの自然なタイミング）
+                     変更理由: 旧配置（記事セクション後）はスクロール深すぎてViewable判定低 */}
+                <AdUnit slot="1489598374" placement="inline" />
+
                 {/* 5. 新着記事セクション */}
                 <section>
                     <div className="flex items-center justify-between mb-2">
@@ -298,9 +304,6 @@ export default async function HomePage() {
                         ))}
                     </div>
                 </section>
-
-                {/* 広告②: 記事セクション後（コンテンツ読了タイミング） */}
-                <AdUnit slot="1489598374" placement="inline" />
 
                 {/* 6. 使い方セクション */}
                 <section className="card">

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { getAllArticles, getUniqueCategories } from '../../lib/articles';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { AdUnit } from '@/components/AdUnit';
+import { MultiplexAd } from '@/components/MultiplexAd';
 import type { Metadata } from 'next';
 
 interface ArticlesPageProps {
@@ -74,6 +75,10 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                         </React.Fragment>
                     ))}
                 </div>
+                {/* ★ MultiplexAd: 記事一覧読了後（views/user 5.22・滞在100秒の高エンゲージ読者向け）
+                     GAデータ: 記事一覧は全ページ中最高のエンゲージメント指標だが収益$0.01。
+                     関連コンテンツ風広告で回遊を促しつつ収益化 */}
+                <MultiplexAd slot="8529703346" />
             </div>
         </>
     );

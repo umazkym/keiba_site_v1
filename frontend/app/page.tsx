@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
 import { WeeklyGradeRaces } from '@/components/WeeklyGradeRaces';
-import { getSpecialPick, getPredictionsForDate, getWeeklyGradeRaces } from '@/lib/api';
+import { getSpecialPick, getPredictionsForDate, getWeeklyGradeRaces, getTopPayoutHits } from '@/lib/api';
 import { getLatestArticles, getUniqueCategories, getAllArticles } from '../lib/articles';
 
 import DisclaimerAlert from '@/components/DisclaimerAlert';
@@ -12,8 +12,11 @@ import { AdUnit } from '@/components/AdUnit';
 import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
 
-// 動的コンテンツ（SpecialPick等）を含むため、常に最新データを取得
-export const dynamic = 'force-dynamic';
+// ISR: データ更新は1日2〜3回（06:00, 13:30 JST）のバッチ処理のため、
+// 30分間キャッシュでも十分な鮮度を維持しつつ、Origin Transfer/CPUを大幅削減。
+// stale-while-revalidate方式: キャッシュ期間中もユーザーにはページが表示され、
+// バックグラウンドで再検証が行われるため「何も見れない」障害を防止する。
+export const revalidate = 1800;
 
 const siteDescription = "競馬レースの統計分析データを完全無料で提供。過去5年以上のデータを機械学習で分析。中央・地方競馬の全レースのAI偏差値・対戦成績・枠順分析をご活用ください。";
 
@@ -63,7 +66,7 @@ const getTodayString = () => {
 
 export default async function HomePage() {
     const todayStr = getTodayString();
-    const [specialPick, predictions, weeklyGradeRaces] = await Promise.all([
+    const [specialPick, predictions, weeklyGradeRaces, topHits] = await Promise.all([
         getSpecialPick(todayStr).catch(e => {
             console.error("Failed to fetch special pick:", e);
             return null;
@@ -74,6 +77,10 @@ export default async function HomePage() {
         }),
         getWeeklyGradeRaces().catch(e => {
             console.error("Failed to fetch weekly grade races:", e);
+            return [];
+        }),
+        getTopPayoutHits().catch(e => {
+            console.error("Failed to fetch top hits:", e);
             return [];
         })
     ]);
@@ -171,7 +178,7 @@ export default async function HomePage() {
 
                     {/* 高配当的中ランキング */}
                     <section>
-                        <TopHitsDisplay />
+                        <TopHitsDisplay initialHits={topHits} />
                     </section>
                 </div>
 

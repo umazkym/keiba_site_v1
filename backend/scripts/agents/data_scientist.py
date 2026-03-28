@@ -1,6 +1,7 @@
 import os
 import json
 import sqlite3
+import glob
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -35,6 +36,7 @@ DB_PATH = os.path.join(BASE_DIR, 'keiba.db')
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
 POSTED_HISTORY_PATH = os.path.join(PROJECT_ROOT, 'data', 'posted_history.json')
 WRITE_ORDERS_DIR = os.path.join(PROJECT_ROOT, 'data', 'write_orders')
+ARTICLES_DIR = os.path.join(PROJECT_ROOT, 'frontend', 'content', 'articles')
 
 def load_posted_keywords():
     """過去の投稿履歴を読み込み、キーワードのSetを返す"""
@@ -46,6 +48,50 @@ def load_posted_keywords():
             except json.JSONDecodeError:
                 return set()
     return set()
+
+def load_existing_article_keywords():
+    """既存の記事ファイルのfrontmatterからtarget_keywordを収集する"""
+    keywords = set()
+    if not os.path.exists(ARTICLES_DIR):
+        return keywords
+    
+    for filepath in glob.glob(os.path.join(ARTICLES_DIR, '*.md')):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+            # 簡易的なfrontmatter解析（gray-matterの代替）
+            if content.startswith('---'):
+                parts = content.split('---', 2)
+                if len(parts) >= 3:
+                    frontmatter = parts[1]
+                    for line in frontmatter.split('\n'):
+                        if line.strip().startswith('target_keyword:'):
+                            kw = line.split(':', 1)[1].strip().strip('"').strip("'")
+                            if kw:
+                                keywords.add(kw)
+                            break
+        except Exception:
+            continue
+    
+    return keywords
+
+def load_pending_order_keywords():
+    """未消費のwrite_orderのtarget_keywordを収集する"""
+    keywords = set()
+    if not os.path.exists(WRITE_ORDERS_DIR):
+        return keywords
+    
+    for filepath in glob.glob(os.path.join(WRITE_ORDERS_DIR, '*.json')):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                order = json.load(f)
+                kw = order.get('target_keyword')
+                if kw:
+                    keywords.add(kw)
+        except Exception:
+            continue
+    
+    return keywords
 
 def fetch_data():
     """
@@ -195,7 +241,15 @@ def determine_theme_cluster(condition: str) -> str:
 def generate_write_order():
     """特異点データから write_order.json を生成するメイン処理"""
     print("[DataScientist] Starting extraction process...")
+    
+    # 3層の重複チェック
     posted_keywords = load_posted_keywords()
+    existing_keywords = load_existing_article_keywords()
+    pending_keywords = load_pending_order_keywords()
+    
+    # 全ての既知キーワードを統合
+    all_known_keywords = posted_keywords | existing_keywords | pending_keywords
+    print(f"[DataScientist] 重複チェック対象: posted_history={len(posted_keywords)}, 既存記事={len(existing_keywords)}, 未消費order={len(pending_keywords)}, 合計={len(all_known_keywords)}")
     
     df = fetch_data()
     if df.empty:
@@ -210,8 +264,8 @@ def generate_write_order():
         # サジェスト等で需要が高い検索キーワードのフォーマット
         target_keyword = f"{condition} 枠順 データ"
         
-        # 過去記事と重複している場合はスキップ
-        if target_keyword in posted_keywords:
+        # 3層の重複チェック: posted_history + 既存記事 + 未消費write_order
+        if target_keyword in all_known_keywords:
             continue
             
         # 未開拓の激アツ特異点を発見

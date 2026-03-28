@@ -35,6 +35,31 @@ function extractVenue(targetKeyword: string): string | null {
 }
 
 /**
+ * target_keyword / title / theme_cluster からカテゴリを自動判定するフォールバック関数
+ */
+function determineCategory(data: Record<string, any>): string {
+  const keyword = (data.target_keyword || '').toLowerCase();
+  const title = (data.title || '').toLowerCase();
+  const themeCluster = data.theme_cluster || '';
+  const combined = `${keyword} ${title}`;
+
+  // theme_clusterベースの判定（最優先）
+  if (themeCluster === 'grade_race_preview') return '重賞プレビュー';
+
+  // キーワードベースの判定
+  if (combined.includes('枠順') || combined.includes('ダート') || combined.includes('芝'))
+    return '枠順データ';
+  if (combined.includes('ai予想') || combined.includes('重賞'))
+    return '重賞プレビュー';
+  if (combined.includes('騎手'))
+    return '騎手分析';
+  if (combined.includes('初心者') || combined.includes('ガイド') || combined.includes('入門'))
+    return '競馬入門';
+
+  return 'データ分析';
+}
+
+/**
  * 日本語のキーワードから英語スラグを生成する関数
  */
 function generateSlug(targetKeyword: string, date: Date): string {
@@ -127,6 +152,7 @@ function generateHubArticle(venue: string, history: any[]): void {
     keywords: [`${venue}競馬場`, '枠順', 'データ', '有利枠', '競馬'],
     target_keyword: `${venue}競馬場 枠順`,
     article_type: 'hub',
+    category: '枠順データ',
     draft: false,
     date: originalDate,
     last_updated: updateDate,
@@ -210,6 +236,12 @@ async function publishDraft() {
   parsed.data.og_description = parsed.data.description;
   parsed.data.article_published_time = now.toISOString();
   parsed.data.og_image = `https://uma-free.jp/og/${slug}.png`;
+
+  // カテゴリの自動判定フォールバック
+  if (!parsed.data.category || parsed.data.category === '未分類') {
+    parsed.data.category = determineCategory(parsed.data);
+    console.log(`[Publisher] カテゴリを自動判定: ${parsed.data.category}`);
+  }
 
   // 施策E: [関連記事：〇〇] プレースホルダーをCTAブロックに置換
   // 記事中に2箇所のプレースホルダーがあるが、CTAは1つだけ挿入し残りは削除する（重複防止）

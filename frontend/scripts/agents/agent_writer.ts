@@ -46,6 +46,12 @@ const SYSTEM_PROMPT = `あなたはデータ駆動型競馬メディア「UMA-FR
 入力データのtheme_clusterの値に応じて書き方を微調整せよ。
 ・"asset": 通年のストック記事。3年分のデータの蓄積的価値を重視し、統計的な網羅性を出す。
 ・"seasonal": 開催シーズン中の時事性を強調する。導入の1〜2文目で「今開催中の〇〇競馬場で」「今シーズンの〇〇開催では」のような直近の時事フックを入れ、データの即効性をアピールする。ただし誇張禁止のルールは同様に厳守。
+・"grade_race_preview": 重賞レースのプレビュー記事。AI偏差値データを軸に注目馬を分析する。
+
+【カテゴリの決定ルール】
+theme_clusterの値に応じてcategoryを以下のように決定せよ。
+・"asset" または "seasonal" → category: "枠順データ"
+・"grade_race_preview" → category: "重賞プレビュー"
 
 【出力形式】
 説明文・謝辞・前置き一切不要。以下のFrontmatter付きMarkdownのみを出力せよ。
@@ -56,6 +62,7 @@ description: ""
 keywords: []
 target_keyword: ""
 theme_cluster: ""
+category: ""
 draft: true
 ---
 

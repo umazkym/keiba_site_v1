@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Adsense } from './Adsense';
 import { usePathname } from 'next/navigation';
+import { sendAdImpressionEvent } from '../lib/analytics';
 
 /**
  * モバイル専用・下部固定の追従広告（アンカー広告の代替）
@@ -66,6 +67,7 @@ export const MobileStickyAd = () => {
                 const status = ins.getAttribute('data-ad-status');
                 if (status === 'filled') {
                     setAdStatus('filled');
+                    sendAdImpressionEvent('sticky_bottom');
                     observer.disconnect();
                 } else if (status === 'unfilled') {
                     setAdStatus('unfilled');

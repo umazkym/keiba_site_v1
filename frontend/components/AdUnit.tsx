@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Adsense } from './Adsense';
 import { SkeletonBox as SkeletonLoader } from './SkeletonLoader';
+import { sendAdImpressionEvent } from '../lib/analytics';
 
 /**
  * 広告ユニットの配置タイプ
@@ -69,6 +70,8 @@ export const AdUnit = ({
                 if (status === 'filled') {
                     setAdLoaded(true);
                     setAdUnfilled(false);
+                    // ★ 深層分析による改善: インフィード広告等の表示もGA4へ送る
+                    sendAdImpressionEvent(placement);
                     observer.disconnect();
                 } else if (status === 'unfilled') {
                     setAdUnfilled(true);

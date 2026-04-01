@@ -1,7 +1,10 @@
-// frontend/components/PredictuonTable.tsx
+// frontend/components/PredictionTable.tsx
+'use client';
 
 import { RacePrediction } from '@/lib/types';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
+import { sendReadCompleteEvent } from '../lib/analytics';
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
 import 'tippy.js/animations/shift-away.css';
@@ -30,6 +33,23 @@ const HorseNumberCircle = ({ number, waku }: { number: number, waku: number | nu
 );
 
 export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePrediction, refreshKey?: string }) => {
+    const pathname = usePathname();
+    const observerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const el = observerRef.current;
+        if (!el) return;
+        
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                sendReadCompleteEvent('race_prediction', pathname || '');
+                observer.disconnect();
+            }
+        }, { threshold: 0.3 }); // 30%程度見えたら発火
+        
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [pathname]);
     const isUnpredictable = !race.predictions.length || race.predictions.some(p => p.mark === '—');
     const reason = race.predictions?.[0]?.unpredictable_reason;
 
@@ -61,7 +81,7 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
     };
 
     return (
-        <>
+        <div ref={observerRef}>
             {/* PC (md以上) ではテーブル表示 */}
             <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full">
@@ -150,6 +170,6 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                 })}
                 </div>
             </div>
-        </>
+        </div>
     );
 };

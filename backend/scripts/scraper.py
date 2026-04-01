@@ -347,13 +347,25 @@ def get_race_list_html(date_str: str, is_nar: bool, force_download: bool = False
             return html_content, True
         else:
             print(f"[Warning] race_list_sub.html returned no race data for {date_str}")
-            # 開催なし日のキャッシュを空で上書き（古いキャッシュによる誤処理を防止）
-            try:
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write('')
-                print(f"[Info] Cache cleared for {date_str} (no races scheduled)")
-            except Exception as write_err:
-                print(f"[Warning] Failed to clear cache for {date_str}: {write_err}")
+            # 当日・未来日: データがまだ公開されていない可能性があるため、
+            # 既存の有効なキャッシュを空で上書きしない
+            # 過去日: 開催なし確定として空キャッシュで上書き
+            if target_date < today_jst:
+                try:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write('')
+                    print(f"[Info] Cache cleared for {date_str} (past date, no races confirmed)")
+                except Exception as write_err:
+                    print(f"[Warning] Failed to clear cache for {date_str}: {write_err}")
+            else:
+                print(f"[Info] Skipping cache clear for {date_str} (today/future - data may not yet be published)")
+                # 既存の有効なキャッシュ（race_id=を含む）があればそれを返す
+                if os.path.exists(file_path):
+                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        existing_content = f.read()
+                    if existing_content and 'race_id=' in existing_content:
+                        print(f"[Info] Returning existing valid cache for {date_str}")
+                        return existing_content, False
             
     except Exception as e:
         print(f"[Warning] Failed to fetch race_list_sub.html: {e}")

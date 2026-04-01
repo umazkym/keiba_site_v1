@@ -1,15 +1,18 @@
-name: Keiba Data Fetch (Morning Today)
+name: Keiba Data Fetch (Retry Today)
+
+# Morning Today (06:30) でレース一覧が未公開だった場合のリトライ
+# JST 10:00 にはほぼ全ての NAR/JRA 出走表が公開済み
 
 on:
   schedule:
-    # 毎日 UTC 21:30 = JST 06:30
-    - cron: '30 21 * * *'
+    # 毎日 UTC 01:00 = JST 10:00
+    - cron: '0 1 * * *'
   workflow_dispatch:
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 180  # 初回やDBデータ不足時に全件取得（約85分）が走る可能性があるため120分に設定
+    timeout-minutes: 180
 
     steps:
       - name: Checkout repository
@@ -27,7 +30,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-      - name: Run pipeline (Today Predictions)
+      - name: Run pipeline (Today Predictions - Retry)
         working-directory: backend
         env:
           PYTHONPATH: .

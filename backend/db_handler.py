@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select
 from database import models
-from scripts.scraper import get_shutuba_html_content, get_race_result_html_content, get_horse_page_html
+from scripts.scraper import get_shutuba_html_content, get_race_result_html_content, get_horse_page_html, get_race_list_html
 from scripts import parser, database_loader, predictor
 from typing import List, Tuple, Dict, Optional, Set
 from tqdm import tqdm
@@ -256,6 +256,30 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
                 if is_nar:
                     race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
                 all_race_ids.extend([(rid, is_nar) for rid in race_ids])
+
+    if not all_race_ids:
+        # フォールバック: キャッシュが空の場合、直接netkeibaから再取得を試みる
+        # キャッシュ書き込み失敗・ネットワーク一時エラー・データ未公開後の公開 等に対応
+        print(f"  -> [FALLBACK] No cached race data found for {target_date.strftime('%Y-%m-%d')}. Retrying direct fetch...")
+        for is_nar in [False, True]:
+            label = "NAR" if is_nar else "JRA"
+            try:
+                list_html, fetched = get_race_list_html(
+                    target_date.strftime('%Y%m%d'),
+                    is_nar=is_nar,
+                    force_download=True
+                )
+                if list_html:
+                    race_ids = parser.parse_race_ids_from_list(list_html)
+                    if is_nar:
+                        race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
+                    if race_ids:
+                        all_race_ids.extend([(rid, is_nar) for rid in race_ids])
+                        print(f"  -> [FALLBACK] {label}: Found {len(race_ids)} races via direct fetch")
+                    else:
+                        print(f"  -> [FALLBACK] {label}: No races found via direct fetch")
+            except Exception as e:
+                print(f"  -> [FALLBACK ERROR] Failed to fetch {label} race list: {e}")
 
     if not all_race_ids:
         print(f"No races found for {target_date.strftime('%Y-%m-%d')}.")

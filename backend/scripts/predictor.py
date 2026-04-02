@@ -551,15 +551,44 @@ def _calculate_1c_indicator(
         return {'z_score': None, 'past_races_found': 0, 'valid_corner_races': 0} if debug else None
 
 
+_cached_avg_times_dict = None
+
+def _get_avg_times_dict(db: Session) -> Dict[tuple, float]:
+    global _cached_avg_times_dict
+    import gc
+    if _cached_avg_times_dict is not None:
+        return _cached_avg_times_dict
+    
+    avg_times_rows = db.query(
+        models.Race.venue_name,
+        models.Race.course_type,
+        models.Race.distance,
+        func.avg(models.Result.finish_time_sec).label('avg_time')
+    ).join(models.Result).filter(
+        models.Race.course_type.in_(['芝', 'ダ'])
+    ).group_by(
+        models.Race.venue_name,
+        models.Race.course_type,
+        models.Race.distance
+    ).all()
+
+    _cached_avg_times_dict = {
+        (row.venue_name, row.course_type, row.distance): float(row.avg_time)
+        for row in avg_times_rows
+        if row.avg_time is not None
+    }
+    del avg_times_rows
+    gc.collect()
+    return _cached_avg_times_dict
+
 def _get_bulk_performance_data(
     db: Session, horse_ids: List[str], race_date: date
 ) -> Dict[str, List[Any]]:
     """
     指定された馬リストの過去成績データを一括取得する。
 
-    ★ avg_times を関数先頭で1回だけ集計してdictに保持。
-    変更前はバッチごとにサブクエリが再実行され、Results全件スキャンが
-    バッチ数分繰り返されていた。
+    ★最適化1: avg_times をモジュールレベルでキャッシュし、毎レースの再集計を回避。（コンピュートCU大幅削減）
+    ★最適化2: ORMで全体オブジェクトを取らず、必要な数カラムのみをSELECT。（DB転送量大幅削減）
     """
     import gc
     if not horse_ids:
@@ -568,27 +597,8 @@ def _get_bulk_performance_data(
         start_date_filter = race_date - timedelta(days=365)
         end_date_filter = race_date - timedelta(days=2)
 
-        # avg_times を1回だけ集計してdictに変換
-        avg_times_rows = db.query(
-            models.Race.venue_name,
-            models.Race.course_type,
-            models.Race.distance,
-            func.avg(models.Result.finish_time_sec).label('avg_time')
-        ).join(models.Result).filter(
-            models.Race.course_type.in_(['芝', 'ダ'])
-        ).group_by(
-            models.Race.venue_name,
-            models.Race.course_type,
-            models.Race.distance
-        ).all()
-
-        avg_times_dict: Dict[tuple, float] = {
-            (row.venue_name, row.course_type, row.distance): float(row.avg_time)
-            for row in avg_times_rows
-            if row.avg_time is not None
-        }
-        del avg_times_rows
-        gc.collect()
+        # キャッシュされた辞書を取得
+        avg_times_dict = _get_avg_times_dict(db)
 
         results_by_horse: Dict[str, List] = defaultdict(list)
 
@@ -598,17 +608,26 @@ def _get_bulk_performance_data(
         for i in range(0, len(horse_ids), BATCH_SIZE):
             batch_horse_ids = horse_ids[i:i + BATCH_SIZE]
 
-            batch_results = db.query(models.Result, models.Race)\
-                .join(models.Race, models.Result.race_id == models.Race.id)\
-                .filter(models.Result.horse_id.in_(batch_horse_ids))\
-                .filter(models.Race.race_date.between(start_date_filter, end_date_filter))\
-                .all()
+            # フルORMオブジェクトではなく必要なカラムだけを抽出（通信量の大幅削減）
+            batch_results = db.query(
+                models.Result.horse_id.label('horse_id'),
+                models.Result.finish_time_sec.label('finish_time_sec'),
+                models.Race.race_date.label('race_date'),
+                models.Race.venue_name.label('venue_name'),
+                models.Race.course_type.label('course_type'),
+                models.Race.distance.label('distance')
+            )\
+            .join(models.Race, models.Result.race_id == models.Race.id)\
+            .filter(models.Result.horse_id.in_(batch_horse_ids))\
+            .filter(models.Race.race_date.between(start_date_filter, end_date_filter))\
+            .all()
 
-            for res, race in batch_results:
+            for row in batch_results:
                 avg_time = avg_times_dict.get(
-                    (race.venue_name, race.course_type, race.distance)
+                    (row.venue_name, row.course_type, row.distance)
                 )
-                results_by_horse[res.horse_id].append((res, race, avg_time))
+                # rowから必要な値を取り出し、tuple として保存
+                results_by_horse[row.horse_id].append((row.finish_time_sec, row.race_date, avg_time))
 
             del batch_results
             gc.collect()
@@ -630,16 +649,17 @@ def _calculate_scores_from_data(
         half_life_days = 180.0
         decay_const = math.log(2.0) / half_life_days
         scores, weights = [], []
-        for res, race, avg_time in horse_past_results:
-            if res.finish_time_sec and avg_time:
-                base_time_diff = avg_time - res.finish_time_sec
-                days_diff = (race_date - race.race_date).days
+        # ここは _get_bulk_performance_data の戻り値構造に合わせて変更
+        for finish_time_sec, hist_race_date, avg_time in horse_past_results:
+            if finish_time_sec and avg_time:
+                base_time_diff = avg_time - finish_time_sec
+                days_diff = (race_date - hist_race_date).days
                 weight = math.exp(-decay_const * max(days_diff, 0))
                 scores.append(base_time_diff)
                 weights.append(weight)
         if not scores:
             return None
-        return np.average(scores, weights=weights)
+        return float(np.average(scores, weights=weights))
     except Exception:
         return None
 
@@ -778,16 +798,24 @@ def calculate_matchups(
 ) -> Dict[str, Any]:
     if len(horse_ids) < 2:
         return {}
-    past_results = db.query(models.Result, models.Race.venue_name, models.Race.race_date)\
-        .join(models.Race, models.Result.race_id == models.Race.id)\
-        .filter(models.Result.horse_id.in_(horse_ids))\
-        .filter(models.Race.race_date.between(start_date, end_date))\
-        .all()
+    # ★最適化: フルORMオブジェクトを取らず、必要なカラムだけ取得（通信量の大幅削減）
+    past_results = db.query(
+        models.Result.race_id.label('race_id'),
+        models.Result.horse_id.label('horse_id'),
+        models.Result.rank.label('rank'),
+        models.Race.venue_name.label('venue_name'),
+        models.Race.race_date.label('race_date')
+    )\
+    .join(models.Race, models.Result.race_id == models.Race.id)\
+    .filter(models.Result.horse_id.in_(horse_ids))\
+    .filter(models.Race.race_date.between(start_date, end_date))\
+    .all()
+    
     races_grouped = defaultdict(list)
-    for res, venue_name, race_date in past_results:
-        races_grouped[res.race_id].append({
-            'horse_id': res.horse_id, 'rank': res.rank,
-            'venue_name': venue_name, 'race_date': race_date.strftime('%Y-%m-%d')
+    for row in past_results:
+        races_grouped[row.race_id].append({
+            'horse_id': row.horse_id, 'rank': row.rank,
+            'venue_name': row.venue_name, 'race_date': row.race_date.strftime('%Y-%m-%d')
         })
     matchup_matrix = defaultdict(lambda: {'win': 0, 'loss': 0, 'draw': 0, 'history': []})
     for past_race_id, participants in races_grouped.items():

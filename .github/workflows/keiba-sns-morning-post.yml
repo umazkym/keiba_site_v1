@@ -2,8 +2,8 @@ name: Keiba SNS Morning Post
 
 on:
   schedule:
-    # 毎日 UTC 22:00 = JST 07:00
-    - cron: '0 22 * * *'
+    # 毎日 UTC 23:00 = JST 08:00
+    - cron: '0 23 * * *'
   workflow_dispatch:
 
 jobs:

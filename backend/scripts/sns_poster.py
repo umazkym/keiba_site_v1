@@ -138,7 +138,7 @@ TWITTER_ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
 IMAGE_OUTPUT_DIR = os.path.join(PROJECT_ROOT, "sns_images_dist")
 os.makedirs(IMAGE_OUTPUT_DIR, exist_ok=True)
 SITE_BASE_URL = "https://uma-free.com"
-API_BASE_URL = os.getenv("API_BASE_URL", "https://keiba-site-v1.onrender.com")
+API_BASE_URL = os.getenv("API_BASE_URL")
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 
 # ===== Threads API設定 =====
@@ -574,8 +574,7 @@ def get_api_data(endpoint: str, retries: int = 3, delay: int = 15) -> Optional[A
                     _log("-> データ取得成功")
                     return data
                 else:
-                    _log("-> データなし (空のレスポンス)")
-                    return None
+                    _log(f"-> 空のレスポンス (試行 {attempt + 1}/{retries}), リトライします...")
             elif res.status_code == 404:
                 _log("-> データなし (404 Not Found)")
                 return None
@@ -1083,9 +1082,9 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
                 tweet_id = response.data.get('id') if response and response.data else None
                 if tweet_id:
                     _log(f" - URL: https://x.com/anyuser/status/{tweet_id}")
-                    record_post(tweet_text, post_type, target_date, tweet_id=str(tweet_id))
-            except Exception:
-                pass
+                record_post(tweet_text, post_type, target_date, tweet_id=str(tweet_id) if tweet_id else None)
+            except Exception as e:
+                _log(f"  -> 投稿記録の保存に失敗（無視して継続）: {e}")
 
             if idx < len(tweet_texts):
                 time.sleep(1)
@@ -1464,8 +1463,11 @@ def main():
                         # 2つのツイートテキストを直接渡して投稿（分割なし、スレッド化防止済み）
                         # ※ post_to_twitter_with_dual_images 内で各ツイートごとにThreads投稿も実行される
                         # ※ 投稿記録は内部で record_post によりそれぞれ保存されるが、全体チェック用に combined_check_text も保存する
-                        post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
-                        record_post(combined_check_text, "morning_combined", today_str)
+                        success = post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
+                        if success:
+                            record_post(combined_check_text, "morning_combined", today_str)
+                        else:
+                            _log("⚠️ Twitter投稿失敗。投稿記録をスキップします（翌実行で再試行可能）")
             else:
                 _log("-> 昨日は1万円以上の高配当的中がありませんでした。本日のAI注目馬のみ投稿します。")
                 # フォールバック: 高配当的中がなくても、本日のAI注目馬を画像付きで投稿する
@@ -1498,8 +1500,11 @@ def main():
                     if is_already_posted(tweet_text, "morning_pick_only", today_str):
                         _log(f"-> 既に投稿済み: morning_pick_only")
                     else:
-                        post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
-                        post_to_threads(tweet_text)
+                        twitter_ok = post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
+                        if twitter_ok:
+                            post_to_threads(tweet_text)
+                        else:
+                            _log("⚠️ Twitter投稿失敗のためThreads投稿もスキップします")
                 else:
                     _log("-> 本日のレースデータも取得できなかったため、投稿をスキップします。")
 
@@ -1514,8 +1519,11 @@ def main():
                 if is_already_posted(tweet_text, "afternoon_summary", today_str):
                     _log(f"-> 既に投稿済み: afternoon_summary")
                 else:
-                    post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
-                    post_to_threads(tweet_text)
+                    twitter_ok = post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
+                    if twitter_ok:
+                        post_to_threads(tweet_text)
+                    else:
+                        _log("⚠️ Twitter投稿失敗のためThreads投稿もスキップします")
             else:
                 _log("-> 本日のレース情報が取得できませんでした。")
 

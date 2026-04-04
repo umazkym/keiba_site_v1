@@ -172,10 +172,10 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
     chunks = [races_to_process[i:i + chunk_size] for i in range(0, len(races_to_process), chunk_size)]
 
     model_tiers = [
-        "gemini-3-flash-preview",
-        "gemini-3.1-flash-lite-preview",
         "gemini-2.5-flash",
-        "gemini-2.5-flash-lite"
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash"
     ]
     
     # モデルごとのソフトリミット設定 (画像ダッシュボードの無料枠上限に基づく)
@@ -309,17 +309,17 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
                     return False
                 return True
 
-            # 429 or quota → 即座にフォールバック（同じチャンクをリトライ）
-            if "429" in error_str or "quota" in error_str.lower():
-                print(f"[LLM Generator] Encountered rate limit/quota error for {current_model}. Falling back immediately.")
+            # 429, quota, 404 (モデル不在) → 即座にフォールバック（同じチャンクをリトライ）
+            if "429" in error_str or "quota" in error_str.lower() or "404" in error_str or "not found" in error_str.lower():
+                print(f"[LLM Generator] Encountered fatal error (rate limit/quota/not found) for {current_model}. Falling back immediately.")
                 if not _do_fallback():
                     break
                 continue  # chunk_idxを進めず同じチャンクをリトライ
             
-            # 503 or UNAVAILABLE → 連続エラーをカウントし、閾値超えでフォールバック
+            # 503 or UNAVAILABLE 等の一時的エラー → 連続エラーをカウントし、閾値超えでフォールバック
             consecutive_errors += 1
-            if ("503" in error_str or "unavailable" in error_str.lower()) and consecutive_errors >= CONSECUTIVE_ERROR_LIMIT:
-                print(f"[LLM Generator] {current_model} has failed {consecutive_errors} times consecutively (503/UNAVAILABLE). Falling back to next tier.")
+            if ("503" in error_str or "unavailable" in error_str.lower() or "500" in error_str) and consecutive_errors >= CONSECUTIVE_ERROR_LIMIT:
+                print(f"[LLM Generator] {current_model} has failed {consecutive_errors} times consecutively. Falling back to next tier.")
                 if not _do_fallback():
                     break
                 continue  # chunk_idxを進めず同じチャンクをリトライ

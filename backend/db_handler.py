@@ -352,6 +352,6 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
         target_races = [rid for rid, _ in all_race_ids]
         llm_generator.generate_analyses_in_batches(db, target_races)
     except Exception as e:
-        print(f"  -> [CRITICAL ERROR] LLM Batch Generation failed: {e}")
+        print(f"  -> [WARNING] LLM text generation failed (predictions data is safe): {e}")
         traceback.print_exc()
-        db.rollback()
+        # db.rollback() 削除: 予測データは既にコミット済みのため不要

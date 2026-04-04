@@ -79,33 +79,46 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
       return { success: false, error: "GEMINI_API_KEY is not set." };
     }
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview',
-      systemInstruction: SYSTEM_PROMPT,
-      generationConfig: {
-        temperature: 0.7, // 独自の表現を入れるため多少温度をもたせるが、構成は厳格に
-        topP: 0.8,
-        topK: 40,
-      }
-    });
-
-    const historyPath = path.join(__dirname, '..', '..', 'data', 'posted_history.json');
-    if (fs.existsSync(historyPath)) {
-      const history = JSON.parse(fs.readFileSync(historyPath, 'utf-8'));
-      const recent10Keywords = history.slice(-10).map((a: any) => a.target_keyword);
-      if (recent10Keywords.includes(order.target_keyword)) {
-        return {
-          success: false,
-          error: `直近10件に同一キーワードが存在します: ${order.target_keyword}`
-        };
-      }
-    }
+    const modelTiers = [
+      'gemini-3-flash-preview',
+      'gemini-3.1-flash-lite-preview',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite'
+    ];
 
     const prompt = `以下の入力データ（WriteOrder）に基づいて記事を生成せよ。\n\n${JSON.stringify(order, null, 2)}`;
-
     console.log(`[Writer] Generating draft for keyword: ${order.target_keyword}...`);
-    const result = await model.generateContent(prompt);
-    let text = result.response.text();
+
+    let result;
+    let usedModel = '';
+    
+    for (let i = 0; i < modelTiers.length; i++) {
+        const currentModelName = modelTiers[i];
+        console.log(`[Writer] Trying model: ${currentModelName}`);
+        
+        const model = genAI.getGenerativeModel({
+          model: currentModelName,
+          systemInstruction: SYSTEM_PROMPT,
+          generationConfig: {
+            temperature: 0.7,
+            topP: 0.8,
+            topK: 40,
+          }
+        });
+
+        try {
+            result = await model.generateContent(prompt);
+            usedModel = currentModelName;
+            break; // 成功したら抜ける
+        } catch (e: any) {
+            console.error(`[Writer Warning] ${currentModelName} failed: ${e.message}`);
+            if (i === modelTiers.length - 1) {
+                throw new Error("すべての生成モデルでの試行が失敗しました。");
+            }
+        }
+    }
+
+    let text = result?.response.text();
 
     if (!text) {
       throw new Error("生成されたテキストが空でした。");

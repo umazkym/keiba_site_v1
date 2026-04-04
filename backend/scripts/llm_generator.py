@@ -173,11 +173,19 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
 
     model_tiers = [
         "gemini-3-flash-preview",
+        "gemini-3.1-flash-lite-preview",
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite"
     ]
     
-    API_LIMIT_PER_MODEL = 20
+    # モデルごとのソフトリミット設定 (画像ダッシュボードの無料枠上限に基づく)
+    model_limits = {
+        "gemini-3-flash-preview": 19,           # 無料枠 RPD=20
+        "gemini-3.1-flash-lite-preview": 480,   # 無料枠 RPD=500 
+        "gemini-2.5-flash": 19,                 # 無料枠 RPD=20
+        "gemini-2.5-flash-lite": 19             # 無料枠 RPD=20
+    }
+    
     CONSECUTIVE_ERROR_LIMIT = 3  # 連続エラーでフォールバックする閾値
     current_tier_idx = 0
     current_model_usage = 0
@@ -189,10 +197,12 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
     chunk_idx = 0
     while chunk_idx < len(chunks):
         chunk = chunks[chunk_idx]
+        current_model = model_tiers[current_tier_idx]
+        current_limit = model_limits.get(current_model, 20)
 
         # モデル使用上限チェック
-        if current_model_usage >= API_LIMIT_PER_MODEL:
-            print(f"[LLM Generator] Reached soft limit ({API_LIMIT_PER_MODEL}) for {model_tiers[current_tier_idx]}. Switching to next tier.")
+        if current_model_usage >= current_limit:
+            print(f"[LLM Generator] Reached soft limit ({current_limit}) for {current_model}. Switching to next tier.")
             current_tier_idx += 1
             current_model_usage = 0
             consecutive_errors = 0
@@ -201,7 +211,9 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
                 print("[LLM Generator] ALERT: All fallback models have been exhausted for today! Stopping generation.")
                 break
                 
-        current_model = model_tiers[current_tier_idx]
+            current_model = model_tiers[current_tier_idx]
+            current_limit = model_limits.get(current_model, 20)
+            
         print(f"[LLM Generator] Processing chunk {chunk_idx + 1}/{len(chunks)} ({len(chunk)} races) using {current_model} ...")
 
         combined_prompt_data = ""

@@ -75,14 +75,12 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
       throw new Error("GEMINI_API_KEY is not set.");
     }
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview',
-      systemInstruction: EDITOR_SYSTEM_PROMPT,
-      generationConfig: {
-        temperature: 0.1,
-        responseMimeType: "application/json"
-      }
-    });
+    const modelTiers = [
+      'gemini-3-flash-preview',
+      'gemini-3.1-flash-lite-preview',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite'
+    ];
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       console.log(`[Editor] Running AI evaluation (Attempt ${attempt})...`);
@@ -95,7 +93,37 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
 
       const prompt = `以下のドラフト記事（Markdown）を検閲せよ。\n\n【事前の機械チェック結果】\n${mechanicalLog}\n\n\`\`\`markdown\n${currentContent}\n\`\`\``;
 
-      const response = await model.generateContent(prompt);
+      let response: any = null;
+      let generateFailed = true;
+
+      for (let i = 0; i < modelTiers.length; i++) {
+        const currentModelName = modelTiers[i];
+        console.log(`[Editor] Attempt ${attempt} - Trying model: ${currentModelName}`);
+        
+        const model = genAI.getGenerativeModel({
+          model: currentModelName,
+          systemInstruction: EDITOR_SYSTEM_PROMPT,
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: "application/json"
+          }
+        });
+
+        try {
+          response = await model.generateContent(prompt);
+          generateFailed = false;
+          break; // 成功したら次へ
+        } catch (e: any) {
+          console.error(`[Editor Warning] ${currentModelName} failed: ${e.message}`);
+          allLogs += `\n[Editor Warning] ${currentModelName} failed: ${e.message}\n`;
+        }
+      }
+
+      if (generateFailed || !response) {
+         allLogs += `\n[Editor Fatal] すべてのモデルでAPIリクエストが失敗しました。\n`;
+         break;
+      }
+
       const editorText = response.response.text() || '';
       allLogs += `\n[Attempt ${attempt} AI Editor JSON Response]\n${editorText}\n`;
 

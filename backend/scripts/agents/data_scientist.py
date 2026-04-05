@@ -404,13 +404,15 @@ def generate_write_order():
     
     import random
     themes = ['waku', 'jockey', 'popularity', 'running_style']
-    selected_theme = random.choice(themes)
-    print(f"[DataScientist] Selected Theme for today: {selected_theme}")
+    random.shuffle(themes)
     
     df = fetch_data()
     if df.empty:
         print("[DataScientist Error] No valid data extracted from DB.")
         return
+        
+    for selected_theme in themes:
+        print(f"[DataScientist] Trying Theme: {selected_theme}")
         
     if selected_theme == 'waku':
         ranked_conds, stats_df, df = analyze_waku_bias(df)
@@ -449,88 +451,88 @@ def generate_write_order():
             "差し・追込馬の台頭条件"
         ]
 
-    for _, row in ranked_conds.iterrows():
-        condition = row['condition']
-        target_keyword = f"{condition} {keyword_suffix}"
-        
-        if target_keyword in all_known_keywords:
-            continue
+        for _, row in ranked_conds.iterrows():
+            condition = row['condition']
+            target_keyword = f"{condition} {keyword_suffix}"
             
-        print(f"[DataScientist] Anomaly found! Target: {target_keyword} (Score: {row['anomaly_score']:.2f})")
-        
-        course_df = df[df['condition'] == condition]
-        period_min = course_df['race_date'].min().strftime('%Y年%m月')
-        period_max = course_df['race_date'].max().strftime('%Y年%m月')
-        max_runs_val = 0
-        key_metrics = []
-        
-        if selected_theme == 'waku':
-            metrics_df = stats_df[stats_df['condition'] == condition].sort_values('waku_number')
-            max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
-            for _, m_row in metrics_df.iterrows():
-                key_metrics.append({
-                    "枠番": f"{int(m_row['waku_number'])}枠",
-                    "勝率": f"{m_row['win_rate']*100:.1f}%",
-                    "複勝率": f"{m_row['place_rate']*100:.1f}%",
-                    "単勝回収率": f"{m_row['roi']*100:.0f}%"
-                })
-        elif selected_theme == 'jockey':
-            metrics_df = stats_df[stats_df['condition'] == condition].sort_values('win_rate', ascending=False).head(5)
-            max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
-            for _, m_row in metrics_df.iterrows():
-                key_metrics.append({
-                    "騎手": m_row['jockey_name'],
-                    "騎乗回数": int(m_row['total_runs']),
-                    "勝率": f"{m_row['win_rate']*100:.1f}%",
-                    "単勝回収率": f"{m_row['roi']*100:.0f}%"
-                })
-        elif selected_theme == 'popularity':
-            metrics_df = stats_df[stats_df['condition'] == condition].sort_values('popularity').head(5)
-            max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
-            for _, m_row in metrics_df.iterrows():
-                key_metrics.append({
-                    "人気": f"{int(m_row['popularity'])}番人気",
-                    "勝率": f"{m_row['win_rate']*100:.1f}%",
-                    "複勝率": f"{m_row['place_rate']*100:.1f}%",
-                    "単勝回収率": f"{m_row['roi']*100:.0f}%"
-                })
-        else: # running_style
-            metrics_df = stats_df[stats_df['condition'] == condition].sort_values('win_rate', ascending=False)
-            max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
-            for _, m_row in metrics_df.iterrows():
-                key_metrics.append({
-                    "脚質": m_row['running_style'],
-                    "該当数": int(m_row['total_runs']),
-                    "勝率": f"{m_row['win_rate']*100:.1f}%",
-                    "複勝率": f"{m_row['place_rate']*100:.1f}%"
-                })
+            if target_keyword in all_known_keywords:
+                continue
+                
+            print(f"[DataScientist] Anomaly found! Target: {target_keyword} (Score: {row['anomaly_score']:.2f})")
+            
+            course_df = df[df['condition'] == condition]
+            period_min = course_df['race_date'].min().strftime('%Y年%m月')
+            period_max = course_df['race_date'].max().strftime('%Y年%m月')
+            max_runs_val = 0
+            key_metrics = []
+            
+            if selected_theme == 'waku':
+                metrics_df = stats_df[stats_df['condition'] == condition].sort_values('waku_number')
+                max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
+                for _, m_row in metrics_df.iterrows():
+                    key_metrics.append({
+                        "枠番": f"{int(m_row['waku_number'])}枠",
+                        "勝率": f"{m_row['win_rate']*100:.1f}%",
+                        "複勝率": f"{m_row['place_rate']*100:.1f}%",
+                        "単勝回収率": f"{m_row['roi']*100:.0f}%"
+                    })
+            elif selected_theme == 'jockey':
+                metrics_df = stats_df[stats_df['condition'] == condition].sort_values('win_rate', ascending=False).head(5)
+                max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
+                for _, m_row in metrics_df.iterrows():
+                    key_metrics.append({
+                        "騎手": m_row['jockey_name'],
+                        "騎乗回数": int(m_row['total_runs']),
+                        "勝率": f"{m_row['win_rate']*100:.1f}%",
+                        "単勝回収率": f"{m_row['roi']*100:.0f}%"
+                    })
+            elif selected_theme == 'popularity':
+                metrics_df = stats_df[stats_df['condition'] == condition].sort_values('popularity').head(5)
+                max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
+                for _, m_row in metrics_df.iterrows():
+                    key_metrics.append({
+                        "人気": f"{int(m_row['popularity'])}番人気",
+                        "勝率": f"{m_row['win_rate']*100:.1f}%",
+                        "複勝率": f"{m_row['place_rate']*100:.1f}%",
+                        "単勝回収率": f"{m_row['roi']*100:.0f}%"
+                    })
+            else: # running_style
+                metrics_df = stats_df[stats_df['condition'] == condition].sort_values('win_rate', ascending=False)
+                max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
+                for _, m_row in metrics_df.iterrows():
+                    key_metrics.append({
+                        "脚質": m_row['running_style'],
+                        "該当数": int(m_row['total_runs']),
+                        "勝率": f"{m_row['win_rate']*100:.1f}%",
+                        "複勝率": f"{m_row['place_rate']*100:.1f}%"
+                    })
 
-        # WriteOrder スキーマへのマッピング
-        order = {
-            "target_keyword": target_keyword,
-            "theme_cluster": theme_id,
-            "priority": 10,
-            "reference_data": {
-                "period": f"{period_min}〜{period_max}",
-                "condition": f"{condition} 良〜不良",
-                "sample_size": max_runs_val,
-                "key_metrics": key_metrics,
-                "source": "独自集計データ"
-            },
-            "competing_article_structure": comp_struct
-        }
-        
-        os.makedirs(WRITE_ORDERS_DIR, exist_ok=True)
-        date_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_path = os.path.join(WRITE_ORDERS_DIR, f"{date_str}.json")
-        
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(order, f, ensure_ascii=False, indent=2)
+            # WriteOrder スキーマへのマッピング
+            order = {
+                "target_keyword": target_keyword,
+                "theme_cluster": theme_id,
+                "priority": 10,
+                "reference_data": {
+                    "period": f"{period_min}〜{period_max}",
+                    "condition": f"{condition} 良〜不良",
+                    "sample_size": max_runs_val,
+                    "key_metrics": key_metrics,
+                    "source": "独自集計データ"
+                },
+                "competing_article_structure": comp_struct
+            }
             
-        print(f"[DataScientist] Successfully generated WriteOrder: {output_path}")
-        return
-        
-    print("[DataScientist] No new valid conditions found to write about.")
+            os.makedirs(WRITE_ORDERS_DIR, exist_ok=True)
+            date_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+            output_path = os.path.join(WRITE_ORDERS_DIR, f"{date_str}.json")
+            
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(order, f, ensure_ascii=False, indent=2)
+                
+            print(f"[DataScientist] Successfully generated WriteOrder: {output_path}")
+            return # 生成に成功したら即終了（1回につき1記事）
+
+    print("[DataScientist] No new valid conditions found across all themes.")
 
 if __name__ == '__main__':
     generate_write_order()

@@ -55,30 +55,66 @@ def get_grade_priority(race_name: str) -> int:
     return 4
 
 
+ARTICLES_DIR = os.path.join(PROJECT_ROOT, 'frontend', 'content', 'articles')
+
 def load_posted_keywords() -> set:
     if not os.path.exists(POSTED_HISTORY_PATH):
         return set()
     try:
         with open(POSTED_HISTORY_PATH, 'r', encoding='utf-8') as f:
-            history = json.load(f)
-            return {item.get('target_keyword', '') for item in history}
-    except Exception:
+            data = json.load(f)
+            return {item.get('target_keyword') for item in data}
+    except:
         return set()
 
+def load_existing_article_keywords() -> set:
+    import glob
+    keywords = set()
+    if not os.path.exists(ARTICLES_DIR):
+        return keywords
+    for filepath in glob.glob(os.path.join(ARTICLES_DIR, '*.md')):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+            if content.startswith('---'):
+                parts = content.split('---', 2)
+                if len(parts) >= 3:
+                    for line in parts[1].split('\n'):
+                        if line.strip().startswith('target_keyword:'):
+                            kw = line.split(':', 1)[1].strip().strip('"').strip("'")
+                            if kw: keywords.add(kw)
+                            break
+        except: continue
+    return keywords
 
-def get_upcoming_weekend_dates() -> List[datetime.date]:
+def load_pending_order_keywords() -> set:
+    import glob
+    keywords = set()
+    if not os.path.exists(WRITE_ORDERS_DIR):
+        return keywords
+    for filepath in glob.glob(os.path.join(WRITE_ORDERS_DIR, '*.json')):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                order = json.load(f)
+                kw = order.get('target_keyword')
+                if kw: keywords.add(kw)
+        except: continue
+    return keywords
+
+
+def get_upcoming_target_dates() -> List[datetime.date]:
     today = datetime.now(JST).date()
-    days_to_sat = (5 - today.weekday()) % 7
-    sat_date = today + timedelta(days=days_to_sat)
-    sun_date = sat_date + timedelta(days=1)
-    return [sat_date, sun_date]
+    # 土日限定ではなく向こう7日間（1週間）を走査する。
+    # 理由: 3日間開催の月曜祝日（例: 京都大賞典）や、年末の変則開催（例: ホープフルSの火曜・木曜開催）を取りこぼさないため。
+    # 重複判定ロジックが正常に機能しているため、何日先を走査しても二重生成は発生しない。
+    return [today + timedelta(days=i) for i in range(7)]
 
 def get_upcoming_grade_races() -> List[Dict[str, Any]]:
     db = SessionLocal()
     grade_races = []
     try:
-        target_dates = get_upcoming_weekend_dates()
-        print(f"[GradeRaceWriter] 対象日付: {[d.strftime('%Y-%m-%d') for d in target_dates]}")
+        target_dates = get_upcoming_target_dates()
+        print(f"[GradeRaceWriter] 対象日付（直近7日間）: {[d.strftime('%m-%d') for d in target_dates]}")
         
         for d in target_dates:
             date_str = d.strftime('%Y%m%d')
@@ -247,6 +283,10 @@ def generate_grade_race_orders() -> int:
     print("[GradeRaceWriter] 重賞レースプレビュー記事の生成開始...")
 
     posted_keywords = load_posted_keywords()
+    existing_keywords = load_existing_article_keywords()
+    pending_keywords = load_pending_order_keywords()
+    all_known_keywords = posted_keywords | existing_keywords | pending_keywords
+    
     upcoming = get_upcoming_grade_races()
 
     if not upcoming:
@@ -262,7 +302,7 @@ def generate_grade_race_orders() -> int:
         year = race['race_date'][:4]
         target_keyword = f"{race_name}{year} AI予想 無料"
 
-        if target_keyword in posted_keywords:
+        if target_keyword in all_known_keywords:
             print(f"[GradeRaceWriter] スキップ（生成済み）: {target_keyword}")
             continue
 

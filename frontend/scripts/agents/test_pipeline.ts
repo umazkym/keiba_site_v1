@@ -55,18 +55,31 @@ async function runPipeline() {
   }
   
   // processedディレクトリ内のファイルを除外（トップレベルのJSONファイルのみ対象）
-  const files = fs.readdirSync(ordersDir).filter(f => f.endsWith('.json')).sort();
-  if (files.length === 0) {
+  const filesList = fs.readdirSync(ordersDir).filter(f => f.endsWith('.json'));
+  if (filesList.length === 0) {
     console.error(`指示書JSONが見つかりません: ${ordersDir}`);
     return;
   }
+
+  // priority順にソートするための配列を作成
+  const sortedFiles = filesList.map(f => {
+    try {
+      const content = fs.readFileSync(path.join(ordersDir, f), 'utf-8');
+      const order = JSON.parse(content);
+      return { file: f, order, priority: order.priority || 0 };
+    } catch {
+      return { file: f, order: null, priority: 0 };
+    }
+  }).sort((a, b) => b.priority - a.priority || a.file.localeCompare(b.file));
+
+  const files = sortedFiles.map(item => item.file);
 
   // 既存記事のキーワードを取得（重複チェック用）
   const existingKeywords = getExistingArticleKeywords();
   console.log(`[Pipeline] 既存記事のキーワード数: ${existingKeywords.size}`);
   
   // 最古のwrite_orderから順に処理（未消費のものを優先）
-  let processed = false;
+  let processedCount = 0;
   for (const file of files) {
     const orderPath = path.join(ordersDir, file);
     
@@ -121,11 +134,11 @@ async function runPipeline() {
 
     // write_orderを消費済みに移動
     moveToProcessed(orderPath);
-    processed = true;
-    break; // 1日1記事のみ生成
+    processedCount++;
+    if (processedCount >= 3) break; // 1日最大3記事まで生成
   }
 
-  if (!processed) {
+  if (processedCount === 0) {
     console.log("[Pipeline] 処理対象のwrite_orderがありませんでした。");
   }
 }

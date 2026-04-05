@@ -113,10 +113,13 @@ def fetch_data():
         res.waku_number,
         res.horse_number,
         res.rank,
+        res.popularity,
+        res.corner_positions,
+        j.name AS jockey_name,
         ret.payout AS win_payout
     FROM races r
     JOIN results res ON r.id = res.race_id
-    /* 単勝払戻金の取得。number_1は馬番を指すためhorse_numberと結合 */
+    LEFT JOIN jockeys j ON res.jockey_id = j.id
     LEFT JOIN race_returns ret 
         ON r.id = ret.race_id 
         AND ret.bet_type = 'tansho' 
@@ -230,6 +233,154 @@ def analyze_waku_bias(df):
     
     return ranked_conds, waku_stats, df
 
+def analyze_jockey_bias(df):
+    """騎手の有利不利を計算。勝率や回収率が高い騎手を抽出"""
+    df = df.copy()
+    display_course = df['course_type'].replace({'ダ': 'ダート'})
+    df['condition'] = df['venue_name'] + display_course + df['distance'].astype(str) + 'm'
+    
+    # jockey_nameがnullの行は落とす
+    df_jockey = df.dropna(subset=['jockey_name'])
+    
+    jockey_stats = df_jockey.groupby(['condition', 'jockey_name']).agg(
+        total_runs=('horse_number', 'count'),
+        wins=('rank', lambda x: (x == 1).sum()),
+        places=('rank', lambda x: (x <= 3).sum()),
+        total_win_payout=('win_payout', 'sum')
+    ).reset_index()
+    
+    # 騎乗回数20回以上に絞る
+    jockey_stats = jockey_stats[jockey_stats['total_runs'] >= 20].copy()
+    
+    jockey_stats['win_rate'] = jockey_stats['wins'] / jockey_stats['total_runs']
+    jockey_stats['place_rate'] = jockey_stats['places'] / jockey_stats['total_runs']
+    jockey_stats['roi'] = jockey_stats['total_win_payout'] / (jockey_stats['total_runs'] * 100)
+    
+    cond_stats = jockey_stats.groupby('condition').agg(
+        num_jockeys=('jockey_name', 'count'),
+        max_win_rate=('win_rate', 'max')
+    ).reset_index()
+    
+    # 有効な騎手が複数いて、最高勝率が15%以上のコースを採用
+    valid_conds = cond_stats[(cond_stats['num_jockeys'] >= 3) & (cond_stats['max_win_rate'] >= 0.15)].copy()
+    valid_conds['is_jra'] = valid_conds['condition'].apply(lambda c: any(v in c for v in JRA_VENUES))
+    valid_conds = valid_conds[valid_conds['is_jra']].copy()
+    
+    def _get_venue_weight(cond):
+        for venue, weight in SEARCH_DEMAND_WEIGHT.items():
+            if venue in cond: return weight
+        return 1.0
+    
+    valid_conds['search_weight'] = valid_conds['condition'].apply(_get_venue_weight)
+    valid_conds['anomaly_score'] = (valid_conds['max_win_rate'] * 100) * valid_conds['search_weight']
+    
+    ranked_conds = valid_conds.sort_values('anomaly_score', ascending=False)
+    return ranked_conds, jockey_stats, df
+
+def analyze_popularity_bias(df):
+    """上位人気（1〜3番人気）の勝率や信頼度（荒れやすさ）を計算"""
+    df = df.copy()
+    display_course = df['course_type'].replace({'ダ': 'ダート'})
+    df['condition'] = df['venue_name'] + display_course + df['distance'].astype(str) + 'm'
+    
+    df_pop = df.dropna(subset=['popularity'])
+    
+    pop_stats = df_pop.groupby(['condition', 'popularity']).agg(
+        total_runs=('horse_number', 'count'),
+        wins=('rank', lambda x: (x == 1).sum()),
+        places=('rank', lambda x: (x <= 3).sum()),
+        total_win_payout=('win_payout', 'sum')
+    ).reset_index()
+    
+    pop_stats['win_rate'] = pop_stats['wins'] / pop_stats['total_runs']
+    pop_stats['place_rate'] = pop_stats['places'] / pop_stats['total_runs']
+    pop_stats['roi'] = pop_stats['total_win_payout'] / (pop_stats['total_runs'] * 100)
+    
+    # コースごとの1番人気の勝率をスコアに使用
+    pop1 = pop_stats[pop_stats['popularity'] == 1].copy()
+    pop1 = pop1[pop1['total_runs'] >= 50] # 1番人気の母数が50以上を対象
+    
+    pop1['is_jra'] = pop1['condition'].apply(lambda c: any(v in c for v in JRA_VENUES))
+    valid_conds = pop1[pop1['is_jra']].copy()
+    
+    def _get_venue_weight(cond):
+        for venue, weight in SEARCH_DEMAND_WEIGHT.items():
+            if venue in cond: return weight
+        return 1.0
+    
+    valid_conds['search_weight'] = valid_conds['condition'].apply(_get_venue_weight)
+    
+    # 荒れる（1番人気の勝率が低い）コース、あるいは極端に堅い（勝率が高い）コースをスコア化
+    # 30%を中央値とし、そこからの差分を絶対値でスコア化
+    valid_conds['anomaly_score'] = abs(valid_conds['win_rate'] - 0.3) * 100 * valid_conds['search_weight']
+    
+    ranked_conds = valid_conds.sort_values('anomaly_score', ascending=False)
+    return ranked_conds, pop_stats, df
+
+def analyze_running_style_bias(df):
+    """コーナー順位データ（corner_positions）を用いて脚質の有利不利を推定"""
+    df = df.copy()
+    display_course = df['course_type'].replace({'ダ': 'ダート'})
+    df['condition'] = df['venue_name'] + display_course + df['distance'].astype(str) + 'm'
+    
+    df_rp = df.dropna(subset=['corner_positions']).copy()
+    
+    def extract_4c_position(corner_json):
+        try:
+            if not corner_json: return None
+            data = json.loads(corner_json) if isinstance(corner_json, str) else corner_json
+            if isinstance(data, list) and len(data) > 0:
+                # 最後のコーナー（4角等）の順位を取得
+                # "2-3-4-5" のような文字列か、数値が入る可能性がある。ここではシンプルに数値抽出を試みる
+                # （※データベースの実態に依存するが、数値リストである前提）
+                last_c = data[-1]
+                if isinstance(last_c, int):
+                    return last_c
+                elif isinstance(last_c, str) and last_c.isdigit():
+                    return int(last_c)
+            return None
+        except:
+            return None
+            
+    df_rp['pos_4c'] = df_rp['corner_positions'].apply(extract_4c_position)
+    df_rp = df_rp.dropna(subset=['pos_4c'])
+    
+    # 簡易脚質分類（おおよその傾向）
+    df_rp['running_style'] = df_rp['pos_4c'].apply(lambda x: '逃げ・先行' if x <= 4 else '差し・追込')
+    
+    style_stats = df_rp.groupby(['condition', 'running_style']).agg(
+        total_runs=('horse_number', 'count'),
+        wins=('rank', lambda x: (x == 1).sum()),
+        places=('rank', lambda x: (x <= 3).sum()),
+    ).reset_index()
+    
+    style_stats = style_stats[style_stats['total_runs'] >= 50].copy()
+    style_stats['win_rate'] = style_stats['wins'] / style_stats['total_runs']
+    style_stats['place_rate'] = style_stats['places'] / style_stats['total_runs']
+    
+    # 先行と差しの勝率差を使ってスコア化
+    cond_stats = style_stats.groupby('condition').agg(
+        num_styles=('running_style', 'count'),
+        max_win_rate=('win_rate', 'max'),
+        min_win_rate=('win_rate', 'min'),
+        total_runs=('total_runs', 'sum')
+    ).reset_index()
+    
+    valid_conds = cond_stats[(cond_stats['num_styles'] >= 2) & (cond_stats['total_runs'] >= 100)].copy()
+    valid_conds['is_jra'] = valid_conds['condition'].apply(lambda c: any(v in c for v in JRA_VENUES))
+    valid_conds = valid_conds[valid_conds['is_jra']].copy()
+    
+    def _get_venue_weight(cond):
+        for venue, weight in SEARCH_DEMAND_WEIGHT.items():
+            if venue in cond: return weight
+        return 1.0
+        
+    valid_conds['search_weight'] = valid_conds['condition'].apply(_get_venue_weight)
+    valid_conds['anomaly_score'] = ((valid_conds['max_win_rate'] - valid_conds['min_win_rate']) * 100) * valid_conds['search_weight']
+    
+    ranked_conds = valid_conds.sort_values('anomaly_score', ascending=False)
+    return ranked_conds, style_stats, df
+
 def determine_theme_cluster(condition: str) -> str:
     """施策A: コースの開催時期と現在月からテーマクラスターを自動判定"""
     current_month = datetime.now().month
@@ -251,58 +402,122 @@ def generate_write_order():
     all_known_keywords = posted_keywords | existing_keywords | pending_keywords
     print(f"[DataScientist] 重複チェック対象: posted_history={len(posted_keywords)}, 既存記事={len(existing_keywords)}, 未消費order={len(pending_keywords)}, 合計={len(all_known_keywords)}")
     
+    import random
+    themes = ['waku', 'jockey', 'popularity', 'running_style']
+    selected_theme = random.choice(themes)
+    print(f"[DataScientist] Selected Theme for today: {selected_theme}")
+    
     df = fetch_data()
     if df.empty:
         print("[DataScientist Error] No valid data extracted from DB.")
         return
         
-    ranked_conds, waku_stats, df = analyze_waku_bias(df)
-    
+    if selected_theme == 'waku':
+        ranked_conds, stats_df, df = analyze_waku_bias(df)
+        theme_id = "waku_data"
+        keyword_suffix = "枠順 データ"
+        comp_struct = [
+            "コース概要と特徴",
+            "枠順別データと明確な有利不利",
+            "オッズ（回収率）から見る狙い目"
+        ]
+    elif selected_theme == 'jockey':
+        ranked_conds, stats_df, df = analyze_jockey_bias(df)
+        theme_id = "jockey_data"
+        keyword_suffix = "騎手 データ"
+        comp_struct = [
+            "コース概要と基本情報",
+            "圧倒的勝率を誇る騎手ランキング",
+            "回収率（穴馬）で狙える穴ジョッキー"
+        ]
+    elif selected_theme == 'popularity':
+        ranked_conds, stats_df, df = analyze_popularity_bias(df)
+        theme_id = "popularity_data"
+        keyword_suffix = "荒れる 傾向"
+        comp_struct = [
+            "コース概要と基本情報",
+            "一番人気の信頼度と勝率データ",
+            "配当傾向から見る穴馬の狙い目"
+        ]
+    else: # running_style
+        ranked_conds, stats_df, df = analyze_running_style_bias(df)
+        theme_id = "running_style_data"
+        keyword_suffix = "脚質 有利"
+        comp_struct = [
+            "コース概要と直線距離の特徴",
+            "逃げ・先行馬の勝率と地の利",
+            "差し・追込馬の台頭条件"
+        ]
+
     for _, row in ranked_conds.iterrows():
         condition = row['condition']
+        target_keyword = f"{condition} {keyword_suffix}"
         
-        # サジェスト等で需要が高い検索キーワードのフォーマット
-        target_keyword = f"{condition} 枠順 データ"
-        
-        # 3層の重複チェック: posted_history + 既存記事 + 未消費write_order
         if target_keyword in all_known_keywords:
             continue
             
-        # 未開拓の激アツ特異点を発見
         print(f"[DataScientist] Anomaly found! Target: {target_keyword} (Score: {row['anomaly_score']:.2f})")
-        metrics_df = waku_stats[waku_stats['condition'] == condition].sort_values('waku_number')
         
-        # key_metrics の整形
-        key_metrics = []
-        for _, m_row in metrics_df.iterrows():
-            waku = int(m_row['waku_number'])
-            key_metrics.append({
-                "枠番": f"{waku}枠",
-                "勝率": f"{m_row['win_rate']*100:.1f}%",
-                "複勝率": f"{m_row['place_rate']*100:.1f}%",
-                "単勝回収率": f"{m_row['roi']*100:.0f}%"
-            })
-            
         course_df = df[df['condition'] == condition]
         period_min = course_df['race_date'].min().strftime('%Y年%m月')
         period_max = course_df['race_date'].max().strftime('%Y年%m月')
+        max_runs_val = 0
+        key_metrics = []
         
+        if selected_theme == 'waku':
+            metrics_df = stats_df[stats_df['condition'] == condition].sort_values('waku_number')
+            max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
+            for _, m_row in metrics_df.iterrows():
+                key_metrics.append({
+                    "枠番": f"{int(m_row['waku_number'])}枠",
+                    "勝率": f"{m_row['win_rate']*100:.1f}%",
+                    "複勝率": f"{m_row['place_rate']*100:.1f}%",
+                    "単勝回収率": f"{m_row['roi']*100:.0f}%"
+                })
+        elif selected_theme == 'jockey':
+            metrics_df = stats_df[stats_df['condition'] == condition].sort_values('win_rate', ascending=False).head(5)
+            max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
+            for _, m_row in metrics_df.iterrows():
+                key_metrics.append({
+                    "騎手": m_row['jockey_name'],
+                    "騎乗回数": int(m_row['total_runs']),
+                    "勝率": f"{m_row['win_rate']*100:.1f}%",
+                    "単勝回収率": f"{m_row['roi']*100:.0f}%"
+                })
+        elif selected_theme == 'popularity':
+            metrics_df = stats_df[stats_df['condition'] == condition].sort_values('popularity').head(5)
+            max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
+            for _, m_row in metrics_df.iterrows():
+                key_metrics.append({
+                    "人気": f"{int(m_row['popularity'])}番人気",
+                    "勝率": f"{m_row['win_rate']*100:.1f}%",
+                    "複勝率": f"{m_row['place_rate']*100:.1f}%",
+                    "単勝回収率": f"{m_row['roi']*100:.0f}%"
+                })
+        else: # running_style
+            metrics_df = stats_df[stats_df['condition'] == condition].sort_values('win_rate', ascending=False)
+            max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
+            for _, m_row in metrics_df.iterrows():
+                key_metrics.append({
+                    "脚質": m_row['running_style'],
+                    "該当数": int(m_row['total_runs']),
+                    "勝率": f"{m_row['win_rate']*100:.1f}%",
+                    "複勝率": f"{m_row['place_rate']*100:.1f}%"
+                })
+
         # WriteOrder スキーマへのマッピング
         order = {
             "target_keyword": target_keyword,
-            "theme_cluster": determine_theme_cluster(condition),
+            "theme_cluster": theme_id,
+            "priority": 10,
             "reference_data": {
                 "period": f"{period_min}〜{period_max}",
                 "condition": f"{condition} 良〜不良",
-                "sample_size": int(row['max_runs']),
+                "sample_size": max_runs_val,
                 "key_metrics": key_metrics,
                 "source": "独自集計データ"
             },
-            "competing_article_structure": [
-                f"{condition}のコース概要と特徴",
-                "枠順別データと明確な有利不利",
-                "オッズ（回収率）から見る狙い目"
-            ]
+            "competing_article_structure": comp_struct
         }
         
         os.makedirs(WRITE_ORDERS_DIR, exist_ok=True)

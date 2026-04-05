@@ -10,6 +10,8 @@ import json
 import time
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
+import requests
+import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -18,7 +20,8 @@ load_dotenv()
 
 from database.database import SessionLocal
 from database import models
-from sqlalchemy import and_
+from sqlalchemy import and_, text
+from scripts import scraper, parser
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 POSTED_HISTORY_PATH = os.path.join(PROJECT_ROOT, 'data', 'posted_history.json')
@@ -27,6 +30,11 @@ WRITE_ORDERS_DIR = os.path.join(PROJECT_ROOT, 'data', 'write_orders')
 JST = timezone(timedelta(hours=9))
 
 GRADE_KEYWORDS = ['G1', 'G2', 'G3', 'GI', 'GII', 'GIII', 'Ｇ１', 'Ｇ２', 'Ｇ３', 'J・G']
+
+JRA_VENUE_MAP = {
+    '01': '札幌', '02': '函館', '03': '福島', '04': '新潟', '05': '東京',
+    '06': '中山', '07': '中京', '08': '京都', '09': '阪神', '10': '小倉'
+}
 
 
 def is_grade_race(race_name: str) -> bool:
@@ -58,65 +66,120 @@ def load_posted_keywords() -> set:
         return set()
 
 
-def get_upcoming_grade_races(days_ahead: int = 14) -> List[Dict[str, Any]]:
-    today_jst = datetime.now(JST).date()
-    end_date = today_jst + timedelta(days=days_ahead)
+def get_upcoming_weekend_dates() -> List[datetime.date]:
+    today = datetime.now(JST).date()
+    days_to_sat = (5 - today.weekday()) % 7
+    sat_date = today + timedelta(days=days_to_sat)
+    sun_date = sat_date + timedelta(days=1)
+    return [sat_date, sun_date]
 
+def get_upcoming_grade_races() -> List[Dict[str, Any]]:
     db = SessionLocal()
+    grade_races = []
     try:
-        races = db.query(models.Race).filter(
-            and_(
-                models.Race.race_date >= today_jst,
-                models.Race.race_date <= end_date,
-                models.Race.race_type == '中央',
-            )
-        ).order_by(models.Race.race_date).all()
-
-        grade_races = []
-        for race in races:
-            if not is_grade_race(race.race_name or ''):
+        target_dates = get_upcoming_weekend_dates()
+        print(f"[GradeRaceWriter] 対象日付: {[d.strftime('%Y-%m-%d') for d in target_dates]}")
+        
+        for d in target_dates:
+            date_str = d.strftime('%Y%m%d')
+            list_html, _ = scraper.get_race_list_html(date_str, is_nar=False, force_download=False)
+            if not list_html:
                 continue
-
-            pred_count = db.query(models.Prediction).filter(
-                models.Prediction.race_id == race.id,
-                models.Prediction.deviation_score.isnot(None)
-            ).count()
-
-            if pred_count == 0:
-                continue
-
-            predictions = db.query(models.Prediction).filter(
-                models.Prediction.race_id == race.id,
-                models.Prediction.deviation_score.isnot(None)
-            ).order_by(models.Prediction.deviation_score.desc()).limit(5).all()
-
-            grade_races.append({
-                'race_id': race.id,
-                'race_name': race.race_name,
-                'race_date': race.race_date.strftime('%Y-%m-%d'),
-                'venue_name': race.venue_name,
-                'race_number': race.race_number,
-                'course_type': race.course_type or '',
-                'distance': race.distance or 0,
-                'total_horses': race.total_horses or 0,
-                'grade_priority': get_grade_priority(race.race_name or ''),
-                'predictions': [
-                    {
-                        'horse_name': p.horse_name,
-                        'horse_number': p.horse_number,
-                        'waku_number': p.waku_number,
-                        'deviation_score': round(p.deviation_score, 2) if p.deviation_score else None,
-                        'mark': p.mark,
-                    }
-                    for p in predictions
-                ]
-            })
+                
+            race_ids = parser.parse_race_ids_from_list(list_html)
+            for rid in race_ids:
+                shutuba_html = scraper.get_shutuba_html_content(rid, is_nar=False, force_download=False)
+                if not shutuba_html:
+                    continue
+                parsed = parser.parse_shutuba_page(shutuba_html, rid)
+                race_info = parsed.get('race_info', {})
+                race_name = race_info.get('race_name', '')
+                
+                if not is_grade_race(race_name):
+                    continue
+                
+                venue_code = rid[4:6]
+                venue_name = JRA_VENUE_MAP.get(venue_code, '中央')
+                
+                pred_count = db.query(models.Prediction).filter(
+                    models.Prediction.race_id == rid,
+                    models.Prediction.deviation_score.isnot(None)
+                ).count()
+                
+                predictions = []
+                if pred_count > 0:
+                    preds = db.query(models.Prediction).filter(
+                        models.Prediction.race_id == rid,
+                        models.Prediction.deviation_score.isnot(None)
+                    ).order_by(models.Prediction.deviation_score.desc()).limit(5).all()
+                    
+                    predictions = [
+                        {
+                            'horse_name': p.horse_name,
+                            'horse_number': p.horse_number,
+                            'waku_number': p.waku_number,
+                            'deviation_score': round(p.deviation_score, 2) if p.deviation_score else None,
+                            'mark': p.mark,
+                        }
+                        for p in preds
+                    ]
+                
+                grade_races.append({
+                    'race_id': rid,
+                    'race_name': race_name,
+                    'race_date': race_info.get('race_date', d).strftime('%Y-%m-%d'),
+                    'venue_name': venue_name,
+                    'race_number': race_info.get('race_number', 0),
+                    'course_type': race_info.get('course_type', ''),
+                    'distance': race_info.get('distance', 0),
+                    'total_horses': race_info.get('total_horses', 0),
+                    'grade_priority': get_grade_priority(race_name),
+                    'predictions': predictions
+                })
 
         grade_races.sort(key=lambda r: (r['race_date'], r['grade_priority']))
         return grade_races
 
     finally:
         db.close()
+
+
+def get_course_statistics(db, venue: str, course: str, distance: int) -> List[Dict[str, str]]:
+    if not course: course = '芝'
+    if distance == 0: distance = 1600
+    
+    cutoff_date = (datetime.now(JST).date() - timedelta(days=365*3)).strftime('%Y-%m-%d')
+    
+    query = text("""
+        SELECT res.waku_number, COUNT(res.id) as runs, SUM(CASE WHEN res.rank = 1 THEN 1 ELSE 0 END) as wins
+        FROM results res
+        JOIN races r ON res.race_id = r.id
+        WHERE r.venue_name = :venue AND r.course_type = :course AND r.distance = :distance
+        AND r.race_date >= :cutoff
+        AND res.waku_number BETWEEN 1 AND 8
+        GROUP BY res.waku_number
+        ORDER BY res.waku_number
+    """)
+    
+    try:
+        df = pd.read_sql_query(query, db.bind, params={'venue': venue, 'course': course, 'distance': distance, 'cutoff': cutoff_date})
+    except Exception as e:
+        print(f"[GradeRaceWriter Warning] Course stat query failed: {e}")
+        return []
+        
+    if df.empty:
+        return []
+        
+    stats = []
+    for _, row in df.iterrows():
+        runs = row['runs']
+        wins = row['wins']
+        win_rate = round((wins / runs) * 100, 1) if runs > 0 else 0
+        stats.append({
+            '枠番': f"{int(row['waku_number'])}枠",
+            '勝率': f"{win_rate}%"
+        })
+    return stats
 
 
 def build_write_order(race: Dict[str, Any]) -> Dict[str, Any]:
@@ -134,23 +197,38 @@ def build_write_order(race: Dict[str, Any]) -> Dict[str, Any]:
     top_horses_metrics = []
     for p in preds[:5]:
         top_horses_metrics.append({
-            '馬番': f"{p['waku_number']}枠{p['horse_number']}番",
+            '馬番': f"{p['waku_number']}枠{p['horse_number']}番" if p['waku_number'] else f"{p['horse_number']}番",
             '馬名': p['horse_name'],
             'AI偏差値': str(p['deviation_score']),
             '印': p['mark'],
         })
+        
+    db = SessionLocal()
+    course_stats = []
+    try:
+        if venue and course and distance:
+            course_stats = get_course_statistics(db, venue, course, distance)
+    finally:
+        db.close()
+
+    import urllib.parse
+    venue_encoded = urllib.parse.quote(venue)
+    race_url = f"https://uma-free.com/races/{race_date}?race={race['race_number']}&venue={venue_encoded}"
 
     return {
         'target_keyword': target_keyword,
         'theme_cluster': 'grade_race_preview',
+        'priority': 100 - race['grade_priority'] * 10,
+        'has_predictions': len(preds) > 0,
         'reference_data': {
             'race_name': race_name,
             'race_date': race_date,
+            'race_url': race_url,
             'venue': course_text,
             'total_horses': race['total_horses'],
             'period': f"{race_date}開催",
             'condition': course_text,
-            'sample_size': race['total_horses'],
+            'course_stats': course_stats,
             'key_metrics': top_horses_metrics,
             'source': 'UMA-FREE AI分析データ',
         },
@@ -169,10 +247,10 @@ def generate_grade_race_orders() -> int:
     print("[GradeRaceWriter] 重賞レースプレビュー記事の生成開始...")
 
     posted_keywords = load_posted_keywords()
-    upcoming = get_upcoming_grade_races(days_ahead=14)
+    upcoming = get_upcoming_grade_races()
 
     if not upcoming:
-        print("[GradeRaceWriter] 今後14日間に予測データ付きの重賞レースが見つかりません。")
+        print("[GradeRaceWriter] 該当週に重賞レースが見つかりません。")
         return 0
 
     print(f"[GradeRaceWriter] {len(upcoming)}件の重賞レースを発見")

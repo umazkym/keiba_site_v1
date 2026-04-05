@@ -46,7 +46,7 @@ const CollapsibleSection = memo(({ title, icon, children }: { title: string, ico
 
 CollapsibleSection.displayName = 'CollapsibleSection';
 
-const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isUnlocked, isReady, isLoading, isSupported, showAd, unlock }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isUnlocked: boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, showAd: () => void, unlock: () => void }) => {
+const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isRaceUnlocked, isReady, isLoading, isSupported, showAd, unlock }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isRaceUnlocked: (raceId: string) => boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, showAd: (raceId?: string) => void, unlock: (raceId?: string) => void }) => {
     const [showInlineAd, setShowInlineAd] = useState(false);
     const [countdown, setCountdown] = useState(10);
     const router = useRouter();
@@ -79,11 +79,11 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     // 変更後: レース切替のたびに広告状態をリセット
     //         ただし isUnlocked=true の場合はリセット不要（アンロック済み）
     useEffect(() => {
-        if (!isUnlocked) {
+        if (activeRace && !isRaceUnlocked(activeRace.id)) {
             setShowInlineAd(false);
             setCountdown(10);
         }
-    }, [activeRaceIndex, isUnlocked]);
+    }, [activeRaceIndex, activeRace, isRaceUnlocked]);
 
     const handleRaceSelect = useCallback((index: number) => {
         setActiveRaceIndex(index);
@@ -199,7 +199,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     </div>
 
                     {/* プレミアム・ロック切り替え部分 */}
-                    {isUnlocked ? (
+                    {(activeRace && isRaceUnlocked(activeRace.id)) ? (
                         <>
                             <div className="mb-2">
                                 <div className="card p-2 sm:p-3">
@@ -304,7 +304,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                         <button
                                             onClick={() => {
                                                 if (isSupported) {
-                                                    showAd();
+                                                    showAd(activeRace.id);
                                                 } else {
                                                     setShowInlineAd(true);
                                                     let remaining = 10;
@@ -349,7 +349,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                             <div className="text-center text-sm text-slate-400">あと {countdown}秒...</div>
                                         ) : (
                                             <button
-                                                onClick={unlock}
+                                                onClick={() => unlock(activeRace.id)}
                                                 className="btn-primary w-full text-sm gap-2"
                                             >
                                                 データを表示
@@ -410,7 +410,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         }
     }, [currentDate]);
 
-    const { isUnlocked, isReady, isLoading: isAdLoading, isSupported, showAd, unlock } = useRewardedAd();
+    const { isRaceUnlocked, isReady, isLoading: isAdLoading, isSupported, showAd, unlock } = useRewardedAd();
 
     const handleJraVenueSelect = useCallback((index: number) => {
         setJraActivationKey(prev => prev + 1);
@@ -476,7 +476,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                             </TabList>
                             {data.jra.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isUnlocked={isUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} showAd={showAd} unlock={unlock} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isRaceUnlocked={isRaceUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} showAd={showAd} unlock={unlock} />
                                 </TabPanel>
                             ))}
                         </Tabs>
@@ -492,7 +492,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                             </TabList>
                             {data.nar.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isUnlocked={isUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} showAd={showAd} unlock={unlock} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isRaceUnlocked={isRaceUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} showAd={showAd} unlock={unlock} />
                                 </TabPanel>
                             ))}
                         </Tabs>

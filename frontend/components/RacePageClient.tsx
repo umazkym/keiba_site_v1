@@ -163,7 +163,9 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
         };
 
         setCurrentDate(initialDate);
-        document.title = `競馬AIデータ分析 | ${formatDate(initialDate)}`;
+        if (isValidDateFormat(initialDate)) {
+            document.title = `競馬AIデータ分析 | ${formatDate(initialDate)}`;
+        }
 
         // 初回レンダリング時かつSSRデータがある場合はフェッチをスキップ
         if (isInitialLoad.current && initialPredictionData) {
@@ -221,7 +223,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
     }, [initialVenue, initialRaceNumber, predictionData]);
 
     const handleDateChange = useCallback((newDate: string) => {
-        if (newDate && newDate !== currentDate) {
+        if (newDate && newDate !== currentDate && isValidDateFormat(newDate)) {
             hasScrolled.current = false;
             router.push(`/races/${newDate}`);
         }

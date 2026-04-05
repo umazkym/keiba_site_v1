@@ -36,6 +36,12 @@ const LOADING_TIMEOUT_MS = 10_000;
  *    変更前: retryKey で useEffect を再実行 → enableServices が複数回呼ばれる。
  *    変更後: reloadSlot() 関数でスロット定義と display() のみを再実行。
  *            リスナーは初回1回だけ登録し、スロット参照 (slotRef) で絞り込む。
+ *
+ * ④ アンロック粒度をレース単位に変更
+ *    変更前: sessionStorage('premium_unlocked') でセッション中全レース無料。
+ *    変更後: レースIDごとに sessionStorage('unlocked_race_ids') で管理。
+ *            showAd(raceId)、unlock(raceId) でレース単位の制御が可能。
+ *            isRaceUnlocked(raceId) でレースごとの判定ができる。
  */
 
 // enableServices() は1ページに1回のみ。モジュールスコープで管理する。
@@ -47,11 +53,24 @@ export function useRewardedAd() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSupported, setIsSupported] = useState(true);
 
+    // レース単位のアンロック管理
+    const [unlockedRaceIds, setUnlockedRaceIds] = useState<Set<string>>(() => {
+        if (typeof window === 'undefined') return new Set<string>();
+        try {
+            const stored = sessionStorage.getItem('unlocked_race_ids');
+            return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
+        } catch {
+            return new Set<string>();
+        }
+    });
+
     const makeVisibleRef = useRef<(() => void) | null>(null);
     const slotRef = useRef<any>(null);
     const resolvedRef = useRef(false);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const initializedRef = useRef(false);
+    // showAd() 呼び出し時にどのレースの広告かを記憶する
+    const pendingRaceIdRef = useRef<string | undefined>(undefined);
 
     // ★ スロットのみ再定義する関数（リスナーは再登録しない）
     const reloadSlot = useCallback(() => {
@@ -103,7 +122,7 @@ export function useRewardedAd() {
         if (initializedRef.current) return;
         initializedRef.current = true;
 
-        // セッション中にアンロック済みなら即解放
+        // セッション中にグローバルアンロック済みなら即解放
         if (typeof window !== 'undefined') {
             const unlocked = sessionStorage.getItem('premium_unlocked');
             if (unlocked === 'true') {
@@ -127,18 +146,39 @@ export function useRewardedAd() {
             makeVisibleRef.current = () => event.makeRewardedVisible();
         };
 
+        // ★ 修正④: レース単位のアンロック
         const onGranted = (event: any) => {
             if (event.slot !== slotRef.current) return;
-            setIsUnlocked(true);
-            if (typeof window !== 'undefined') {
-                sessionStorage.setItem('premium_unlocked', 'true');
+            const raceId = pendingRaceIdRef.current;
+            if (raceId) {
+                // レース単位でアンロック
+                setUnlockedRaceIds(prev => {
+                    const next = new Set<string>(prev);
+                    next.add(raceId);
+                    try {
+                        sessionStorage.setItem('unlocked_race_ids', JSON.stringify([...next]));
+                    } catch { /* ignore */ }
+                    return next;
+                });
+            } else {
+                // raceId なし（旧来の呼び出し）は全体アンロック
+                setIsUnlocked(true);
+                if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('premium_unlocked', 'true');
+                }
             }
+            pendingRaceIdRef.current = undefined;
         };
 
         const onClosed = (event: any) => {
             if (event.slot !== slotRef.current) return;
-            // アンロックされていなければスロットを再定義して再試行可能にする
-            if (!sessionStorage.getItem('premium_unlocked')) {
+            // 対象レースがまだアンロックされていなければ再試行可能にする
+            const raceId = pendingRaceIdRef.current;
+            const isThisRaceUnlocked = raceId
+                ? (sessionStorage.getItem('unlocked_race_ids') ?? '').includes(raceId)
+                : sessionStorage.getItem('premium_unlocked') === 'true';
+            pendingRaceIdRef.current = undefined;
+            if (!isThisRaceUnlocked) {
                 if (slotRef.current) {
                     try { googletag.destroySlots([slotRef.current]); } catch (e) { /* ignore */ }
                     slotRef.current = null;
@@ -227,18 +267,37 @@ export function useRewardedAd() {
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const showAd = useCallback(() => {
+    // ★ 修正④: raceId を受け取る
+    const showAd = useCallback((raceId?: string) => {
+        pendingRaceIdRef.current = raceId;
         if (makeVisibleRef.current) {
             makeVisibleRef.current();
         }
     }, []);
 
-    const unlock = useCallback(() => {
-        setIsUnlocked(true);
-        if (typeof window !== 'undefined') {
-            sessionStorage.setItem('premium_unlocked', 'true');
+    // ★ 修正④: raceId 単位でもアンロック可能に
+    const unlock = useCallback((raceId?: string) => {
+        if (raceId) {
+            setUnlockedRaceIds(prev => {
+                const next = new Set<string>(prev);
+                next.add(raceId);
+                try {
+                    sessionStorage.setItem('unlocked_race_ids', JSON.stringify([...next]));
+                } catch { /* ignore */ }
+                return next;
+            });
+        } else {
+            setIsUnlocked(true);
+            if (typeof window !== 'undefined') {
+                sessionStorage.setItem('premium_unlocked', 'true');
+            }
         }
     }, []);
 
-    return { isUnlocked, isReady, isLoading, isSupported, showAd, unlock };
+    // ★ 修正④: レースIDごとのアンロック判定
+    const isRaceUnlocked = useCallback((raceId: string): boolean => {
+        return isUnlocked || unlockedRaceIds.has(raceId);
+    }, [isUnlocked, unlockedRaceIds]);
+
+    return { isUnlocked, isRaceUnlocked, isReady, isLoading, isSupported, showAd, unlock };
 }

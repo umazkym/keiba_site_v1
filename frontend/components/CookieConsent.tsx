@@ -28,6 +28,20 @@ export const CookieConsent = () => {
 
     const handleDecline = () => {
         localStorage.setItem('cookie-consent', 'declined');
+        // 拒否時: GPT・AdSenseを非パーソナライズモードに切り替える
+        if (typeof window !== 'undefined') {
+            // GPT (Google Publisher Tag) の非パーソナライズ設定
+            if ((window as any).googletag) {
+                (window as any).googletag.cmd.push(() => {
+                    (window as any).googletag.pubads().setPrivacySettings({
+                        nonPersonalizedAds: true,
+                    });
+                });
+            }
+            // AdSense 非パーソナライズフラグ
+            (window as any).adsbygoogle = (window as any).adsbygoogle || [];
+            (window as any).adsbygoogle.requestNonPersonalizedAds = 1;
+        }
         setIsVisible(false);
     };
 

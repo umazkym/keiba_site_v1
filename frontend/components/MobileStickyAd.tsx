@@ -121,14 +121,15 @@ export const MobileStickyAd = () => {
                   * 広告コンテナの高さ制限
                   * overflow-hidden によりはみ出し部分をカット
                   */}
-                <div className="w-full flex justify-center items-center overflow-hidden max-h-[70px] min-h-[50px] bg-slate-50 relative">
+                <div className="w-full flex justify-center items-center overflow-hidden max-h-[80px] min-h-[50px] bg-slate-50 relative">
                     <div className="absolute top-1 left-2 text-[10px] text-gray-400 font-sans tracking-widest bg-white/80 px-1 rounded z-10 pointer-events-none">広告</div>
                     <Adsense
                         client="ca-pub-4411270831448240"
                         slot="8529703346" 
                         refreshKey={`mobile-sticky-${pathname}`}
-                        // ★ 60pxに拡大: 320x60や300x50フォーマットも配信対象にし、eCPM向上
-                        style={{ display: 'inline-block', width: '100%', height: '60px' }}
+                        // ★ 70pxに拡大: 320x100や300x50フォーマットも配信対象にし、eCPM・viewable率を向上
+                        // データ根拠: Active View 27-45% → max-h拡大でviewable閾値（50%面積+1秒）を満たしやすくする
+                        style={{ display: 'inline-block', width: '100%', height: '70px' }}
                         isResponsive={false}
                     />
                 </div>

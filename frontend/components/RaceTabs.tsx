@@ -16,7 +16,7 @@ import { RelatedRaces } from './RelatedRaces';
 import { DataExplanationPanel } from './DataExplanationPanel';
 import { DynamicRelatedArticles } from './DynamicRelatedArticles';
 import { Article } from '@/lib/articles';
-import { MultiplexAd } from './MultiplexAd';
+// MultiplexAd削除: ページ最下部のviewable率が極端に低い位置の広告を廃止し、高viewable位置に集約
 import { AdUnit } from './AdUnit';
 import { useRewardedAd } from '@/hooks/useRewardedAd';
 import { Adsense } from './Adsense';
@@ -198,6 +198,12 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         <RaceNavigation />
                     </div>
 
+                    {/* ★ ビューアビリティ改善: ロック前の「全ユーザーが見る」位置に広告配置 */}
+                    {/* MultiplexAd(最下部)を廃止し、viewable率の高いここに集約 */}
+                    {shouldShowAd && (
+                        <AdUnit slot="8529703346" placement="inline" refreshKey={`prelock-${adRefreshKey}`} className="my-2" />
+                    )}
+
                     {/* プレミアム・ロック切り替え部分 */}
                     {(activeRace && isRaceUnlocked(activeRace.id)) ? (
                         <>
@@ -370,7 +376,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
 
-                    {shouldShowAd && <MultiplexAd slot="8529703346" refreshKey={adRefreshKey} />}
+                    {/* MultiplexAd削除: 最下部のviewable率が極端に低い広告を廃止（Active View 27-45%改善施策） */}
 
                     <DynamicRelatedArticles
                         venueName={activeRace.venue_name}

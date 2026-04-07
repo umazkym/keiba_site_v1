@@ -152,10 +152,11 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
         }
       },
       {
-        // ★ ビューアビリティ改善: rootMarginを600pxに縮小
-        // 1200pxだとAdSenseが画面外で「表示済み」と計測し、ビューアビリティが低下していた
-        // 600px（約スマホ1画面分）に縮小し、ビューポート付近での読み込みでビューアビリティ向上
-        rootMargin: '600px 0px 600px 0px',
+        // ★ ビューアビリティ改善: rootMarginを300pxに縮小
+        // 600pxだとAdSenseが画面外で「表示済み」と計測し、ビューアビリティが低下していた
+        // 300px（約スマホ0.75画面分）に縮小し、ユーザー到達直前での読み込みでviewable判定率を向上
+        // データ: Active View 27-45% → 目標50-60%
+        rootMargin: '300px 0px 300px 0px',
         threshold: 0.01,
       }
     );

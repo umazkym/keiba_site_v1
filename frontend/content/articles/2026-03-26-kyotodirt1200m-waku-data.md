@@ -17,7 +17,7 @@ og_title: 京都ダート1200mは8枠の複勝率27.8%と4枠の回収率163%が
 og_description: >-
   京都ダート1200mの全247レースを分析。勝率10.9%を記録する7枠と複勝率27.8%の8枠が外枠優勢の構造を示す。一方で単勝回収率163%を叩き出す4枠の特異な穴馬台頭パターンも判明。内枠の勝率低迷と中外枠の優位性を示す詳細な数値データを公開する。
 article_published_time: '2026-03-26T23:43:21.108Z'
-og_image: 'https://uma-free.jp/og/2026-03-26-kyotodirt1200m-waku-data.png'
+og_image: 'https://uma-free.com/og/2026-03-26-kyotodirt1200m-waku-data.png'
 category: 枠順データ
 ---
 

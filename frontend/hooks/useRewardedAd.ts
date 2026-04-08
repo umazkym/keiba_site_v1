@@ -135,6 +135,17 @@ export function useRewardedAd() {
         const googletag = window.googletag || { cmd: [] };
         window.googletag = googletag;
 
+        // ★ パフォーマンス改善: GPTスクリプトをlayout.tsxから移動し、ここで動的ロード
+        // レースページでのみ使用されるRewarded Adのために、全ページでスクリプトを読む必要はない
+        // 既にスクリプトが読み込まれていなければ動的に挿入する
+        if (!document.querySelector('script[src*="securepubads.g.doubleclick.net"]')) {
+            const gptScript = document.createElement('script');
+            gptScript.src = 'https://securepubads.g.doubleclick.net/tag/js/gpt.js';
+            gptScript.async = true;
+            gptScript.crossOrigin = 'anonymous';
+            document.head.appendChild(gptScript);
+        }
+
         // ★ 修正②: リスナーを変数に保持して cleanup で確実に削除する
         // 各リスナーは slotRef.current と照合して該当スロットの場合のみ処理する
         const onReady = (event: any) => {

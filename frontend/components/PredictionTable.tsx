@@ -9,7 +9,7 @@ import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
 import 'tippy.js/animations/shift-away.css';
 import 'tippy.js/themes/light-border.css';
-import { AdUnit } from './AdUnit';
+// AdUnit import削除: PredictionTable内広告はユーザー要望で全撤去済み
 
 // 馬番アイコン用のヘルパー関数とコンポーネント
 const getWakuColorClasses = (waku: number | null): string => {
@@ -61,24 +61,6 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
         );
     }
 
-    // ▼▼▼▼▼【広告refreshKey対応】▼▼▼▼▼
-    // InFeedAdにrefreshKeyを渡し、レース切替時に広告がリフレッシュされるようにする
-    const InFeedAd = ({ slot }: { slot: string }) => (
-        <div className="py-1 sm:py-2">
-            <AdUnit
-                slot={slot}
-                placement="inline"
-                refreshKey={refreshKey}
-                label=""
-            />
-        </div>
-    );
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
-
-    // ユーザー要望により、馬と馬の間の広告は「コンテンツが見づらくなる」ため全撤去
-    const shouldShowAd = (index: number, totalCount: number): string | null => {
-        return null;
-    };
 
     return (
         <div ref={observerRef}>
@@ -104,28 +86,16 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-slate-100">
-                        {race.predictions.map((p, index) => {
-                            const adSlot = shouldShowAd(index, race.predictions.length);
-                            return (
-                                <React.Fragment key={`${race.id}-${p.horse_number}`}>
-                                    <tr className="hover:bg-slate-50 transition-colors duration-200 even:bg-slate-50/50 group">
-                                        <td className="px-3 py-3 whitespace-nowrap text-center text-lg font-bold text-text-primary w-12">{p.mark || '—'}</td>
-                                        <td className="px-2 py-3 whitespace-nowrap w-10">
-                                            <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
-                                        </td>
-                                        <td className="px-2 py-3 whitespace-nowrap font-bold text-text-primary truncate">{p.horse_name}</td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-right font-bold text-primary-dark font-mono text-base bg-blue-50/20 group-hover:bg-blue-50/40 transition-colors">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
-                                    </tr>
-                                    {adSlot && (
-                                        <tr>
-                                            <td colSpan={4}>
-                                                <InFeedAd slot={adSlot} />
-                                            </td>
-                                        </tr>
-                                    )}
-                                </React.Fragment>
-                            );
-                        })}
+                        {race.predictions.map((p) => (
+                                <tr key={`${race.id}-${p.horse_number}`} className="hover:bg-slate-50 transition-colors duration-200 even:bg-slate-50/50 group">
+                                    <td className="px-3 py-3 whitespace-nowrap text-center text-lg font-bold text-text-primary w-12">{p.mark || '—'}</td>
+                                    <td className="px-2 py-3 whitespace-nowrap w-10">
+                                        <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
+                                    </td>
+                                    <td className="px-2 py-3 whitespace-nowrap font-bold text-text-primary truncate">{p.horse_name}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-right font-bold text-primary-dark font-mono text-base bg-blue-50/20 group-hover:bg-blue-50/40 transition-colors">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
+                                </tr>
+                        ))}
                     </tbody>
                 </table>
             </div>
@@ -139,35 +109,29 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                     <div className="w-12 text-right">AI偏差値</div>
                 </div>
                 <div className="divide-y divide-slate-100">
-                {race.predictions.map((p, index) => {
-                    const adSlot = shouldShowAd(index, race.predictions.length);
-                    return (
-                        <React.Fragment key={`${race.id}-${p.horse_number}-mobile`}>
-                            <div className={`px-2 py-1.5 transition-colors hover:bg-slate-50 ${index % 2 !== 0 ? 'bg-slate-50/50' : ''}`}>
-                                <div className="flex items-center gap-2">
-                                    {/* 左: 印+馬番 */}
-                                    <div className="flex flex-row items-center gap-1.5 shrink-0 min-w-[3rem]">
-                                        <span className="text-base font-extrabold text-text-primary leading-none w-4 text-center">{p.mark || '—'}</span>
-                                        <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
-                                    </div>
+                {race.predictions.map((p, index) => (
+                        <div key={`${race.id}-${p.horse_number}-mobile`} className={`px-2 py-1.5 transition-colors hover:bg-slate-50 ${index % 2 !== 0 ? 'bg-slate-50/50' : ''}`}>
+                            <div className="flex items-center gap-2">
+                                {/* 左: 印+馬番 */}
+                                <div className="flex flex-row items-center gap-1.5 shrink-0 min-w-[3rem]">
+                                    <span className="text-base font-extrabold text-text-primary leading-none w-4 text-center">{p.mark || '—'}</span>
+                                    <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
+                                </div>
 
-                                    {/* 中: 馬名 */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-bold text-xs text-text-primary truncate">{p.horse_name}</div>
-                                    </div>
+                                {/* 中: 馬名 */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-bold text-xs text-text-primary truncate">{p.horse_name}</div>
+                                </div>
 
-                                    {/* 右: 偏差値（数値のみ） */}
-                                    <div className="shrink-0 w-12 text-right">
-                                        <span className="font-bold text-primary-dark text-sm font-mono">
-                                            {p.deviation_score != null ? p.deviation_score.toFixed(1) : '--'}
-                                        </span>
-                                    </div>
+                                {/* 右: 偏差値（数値のみ） */}
+                                <div className="shrink-0 w-12 text-right">
+                                    <span className="font-bold text-primary-dark text-sm font-mono">
+                                        {p.deviation_score != null ? p.deviation_score.toFixed(1) : '--'}
+                                    </span>
                                 </div>
                             </div>
-                            {adSlot && <InFeedAd slot={adSlot} />}
-                        </React.Fragment>
-                    );
-                })}
+                        </div>
+                ))}
                 </div>
             </div>
         </div>

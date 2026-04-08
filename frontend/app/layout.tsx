@@ -100,13 +100,10 @@ export default function RootLayout({
                     src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"
                     crossOrigin="anonymous"
                 />
-                {/* GPT (Google Publisher Tag) for GAM Rewarded Ads */}
-                <script
-                    async
-                    src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"
-                    crossOrigin="anonymous"
-                />
-                {/* 自動広告のオフはAdSense管理画面で設定してください */}
+                {/* GPT (Google Publisher Tag) for GAM Rewarded Ads
+                     ★ パフォーマンス改善: layout.tsxから削除し、useRewardedAd.ts内で動的ロードに変更
+                     全ページで約30KB(gzip)のJS読み込みを削減し、Core Web Vitalsを改善
+                     Rewarded Adはレースページでのみ使用されるため、他ページでは不要 */}
             </head>
             <body className={`${inter.variable} ${notoSansJP.variable} ${robotoMono.variable} font-sans bg-surface text-text-primary antialiased`}>
                 {/* 構造化マークアップ：Organization, Website, SoftwareApplication */}

@@ -8,8 +8,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 // revalidate値を設定し、キャッシュヒット時は即座にレスポンスを返す。
 //
 // revalidate値の根拠（GitHub Actionsのデータ更新スケジュールに基づく）:
-//   データ更新: 毎日05:00(結果), 06:00(当日予測), 13:30(翌日予測) の最大3回
-//   1800秒 (30分) = レース予測・注目馬（朝6時・13:30の更新に対し30分遅延は許容範囲）
+//   データ更新: 毎日05:00(結果), 10:00(当日予測), 13:30(翌日予測) の最大3回
+//   3600秒 (1時間) = レース予測・注目馬（★ Neon Free Tier Transfer削減のため1800→3600に延長）
 //   3600秒 (1時間) = 高配当ランキング・重賞情報（日次/週次集計データ）
 //   86400秒 (24時間) = サイトマップ（日次更新で十分）
 // ※ stale-while-revalidate方式のため、キャッシュ切れ時もユーザーにはstaleデータが返り、
@@ -18,7 +18,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export async function getPredictionsForDate(date: string): Promise<RaceDayPrediction | null> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/${date}`, { next: { revalidate: 1800 } });
+        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/${date}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             if (res.status === 404) {
                 console.log(`No predictions found for date ${date}, returning empty data.`);
@@ -36,7 +36,7 @@ export async function getPredictionsForDate(date: string): Promise<RaceDayPredic
 
 export async function getSpecialPick(date: string): Promise<SpecialPick | null> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/special-pick/${date}`, { next: { revalidate: 1800 } });
+        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/special-pick/${date}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.warn(`Could not fetch special pick for ${date}. Status: ${res.status}`);
             return null;

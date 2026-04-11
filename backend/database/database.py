@@ -160,17 +160,23 @@ if DATABASE_URL.startswith("postgres"):
         print("[DB] NullPool mode (GitHub Actions)")
 
     elif _is_cloud_run:
-        # ② Google Cloud Run: 小さいプール + コールドスタート対策
+        # ② Google Cloud Run: 最小プール + コールドスタート対策
+        # ★ Neon Free Tier 最適化 (2026-04-11)
+        #   - pool_size=2, max_overflow=1: 最大3接続に制限（旧: 5接続）
+        #   - pool_recycle=900: 15分で接続リサイクル（旧: 30分）
+        #     Neon の接続保持時間を短縮し、Network Transfer を削減。
+        #     Cloud Run はリクエストが来ないとスケールダウンするため、
+        #     長寿命の接続は不要。
         engine = create_engine(
             DATABASE_URL,
             connect_args=_connect_args,
             pool_pre_ping=True,
-            pool_recycle=1800,   # 30分（Neon アイドルタイムアウト対策）
-            pool_size=3,
-            max_overflow=2,      # 最大5接続（3 + 2）
+            pool_recycle=900,    # 15分（Neon Free Tier Network Transfer 削減）
+            pool_size=2,
+            max_overflow=1,      # 最大3接続（2 + 1）
             pool_timeout=30,
         )
-        print("[DB] Small pool mode (Google Cloud Run)")
+        print("[DB] Minimal pool mode (Google Cloud Run - Neon Free Tier)")
 
     else:
         # ③ ローカル開発

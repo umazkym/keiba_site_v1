@@ -2,8 +2,12 @@ name: Keiba Article Auto Pipeline
 
 on:
   schedule:
-    # 毎日 08:00 JST (UTCでは前日の23:00) - 通常の生成
-    - cron: '0 23 * * *'
+    # 火曜・土曜 08:00 JST (UTCでは月・金の23:00)
+    # ★ Neon Free Tier Network Transfer 削減 (2026-04-11)
+    #   毎日→週2回に変更。egress 月2.4GB削減。
+    #   火曜: 統計記事 (data_scientist.py) の生成
+    #   土曜: 重賞プレビュー記事の生成（金曜に予測データ生成済み）
+    - cron: '0 23 * * 1,5'
   workflow_dispatch:
 
 jobs:

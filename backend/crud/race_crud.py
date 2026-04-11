@@ -67,6 +67,10 @@ class _TTLCache:
 
 _predictions_cache = _TTLCache(max_entries=50)
 _top_payout_cache = _TTLCache(max_entries=10)
+_sitemap_cache = _TTLCache(max_entries=5)
+_weekly_grade_cache = _TTLCache(max_entries=5)
+_special_pick_cache = _TTLCache(max_entries=10)
+_matchup_cache = _TTLCache(max_entries=30)
 
 
 def invalidate_predictions_cache(target_date: date) -> None:
@@ -225,17 +229,31 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
 
 
 def get_special_pick_for_date(db: Session, target_date: date) -> Optional[models.Prediction]:
-    return db.query(models.Prediction)\
+    cache_key = f"special_pick_{target_date.isoformat()}"
+    cached = _special_pick_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    result = db.query(models.Prediction)\
         .join(models.Race, models.Prediction.race_id == models.Race.id)\
         .filter(models.Race.race_date == target_date)\
         .filter(models.Prediction.deviation_score.isnot(None))\
         .order_by(desc(models.Prediction.deviation_score))\
         .first()
 
+    # データの有無に関わらずキャッシュ（15分）
+    _special_pick_cache.set(cache_key, result, 900)
+    return result
+
 
 def get_filtered_matchups_for_race(
     db: Session, race_id: str, start_date: date, end_date: date
 ) -> Optional[Dict[str, Any]]:
+    cache_key = f"matchup_{race_id}_{start_date}_{end_date}"
+    cached = _matchup_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     horse_results = db.query(models.Result.horse_id).filter(
         models.Result.race_id == race_id
     ).all()
@@ -243,7 +261,11 @@ def get_filtered_matchups_for_race(
         return None
     horse_ids = [r.horse_id for r in horse_results]
     from crud.matchup_calculator import calculate_matchups
-    return calculate_matchups(db, horse_ids, start_date, end_date)
+    result = calculate_matchups(db, horse_ids, start_date, end_date)
+
+    # マッチアップデータは変化頻度が低い（1時間キャッシュ）
+    _matchup_cache.set(cache_key, result, 3600)
+    return result
 
 
 def _build_hit_condition(top_preds_sq):
@@ -334,7 +356,7 @@ def get_top_payout_hits(db: Session, days: int = 7, limit: int = 5) -> List[Dict
      .all()
 
     hits = [_format_hit(r) for r in results]
-    _top_payout_cache.set(cache_key, hits, 1800)
+    _top_payout_cache.set(cache_key, hits, 3600)
     return hits
 
 
@@ -368,6 +390,11 @@ def get_high_payout_hits_for_date(db: Session, target_date: date) -> List[Dict[s
 
 
 def get_all_race_urls(db: Session) -> List[Dict[str, Any]]:
+    cache_key = "sitemap_all_race_urls"
+    cached = _sitemap_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     query = db.query(
         models.Race.race_date, models.Race.venue_name, models.Race.race_number
     ).filter(
@@ -376,14 +403,23 @@ def get_all_race_urls(db: Session) -> List[Dict[str, Any]]:
         models.Race.race_number.isnot(None),
     ).order_by(models.Race.race_date.desc())
 
-    return [
+    result = [
         {"race_date": r.race_date.strftime('%Y-%m-%d'),
          "venue_name": r.venue_name, "race_number": r.race_number}
-        for r in query.yield_per(500)
+        for r in query.yield_per(200)
     ]
+
+    # サイトマップは1日1回更新で十分（24時間キャッシュ）
+    _sitemap_cache.set(cache_key, result, 86400)
+    return result
 
 
 def get_heavy_stakes_race_urls(db: Session) -> List[Dict[str, Any]]:
+    cache_key = "sitemap_heavy_stakes_urls"
+    cached = _sitemap_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     results = db.query(
         models.Race.race_date, models.Race.venue_name,
         models.Race.race_number, models.Race.race_name
@@ -406,11 +442,15 @@ def get_heavy_stakes_race_urls(db: Session) -> List[Dict[str, Any]]:
         )
     ).order_by(models.Race.race_date.desc()).all()
 
-    return [
+    data = [
         {"race_date": r.race_date.strftime('%Y-%m-%d'),
          "venue_name": r.venue_name, "race_number": r.race_number}
         for r in results
     ]
+
+    # 重賞サイトマップも1日1回更新で十分（24時間キャッシュ）
+    _sitemap_cache.set(cache_key, data, 86400)
+    return data
 
 
 # ============================================================
@@ -667,6 +707,11 @@ def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:
       全レースを取得してから _detect_grade() で
       固定辞書を用いてフィルタリングする。
     """
+    cache_key = "weekly_grade_races"
+    cached = _weekly_grade_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     JST = timezone(timedelta(hours=9))
     today = datetime.now(JST).date()
     weekday = today.weekday()  # 0=月, 6=日
@@ -713,4 +758,7 @@ def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:
         })
 
     races.sort(key=lambda x: (grade_priority.get(x["grade"], 9), x["race_date"]))
+
+    # 重賞は週に数回しか変わらない（1時間キャッシュ）
+    _weekly_grade_cache.set(cache_key, races, 3600)
     return races

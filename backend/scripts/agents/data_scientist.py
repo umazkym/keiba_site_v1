@@ -413,59 +413,59 @@ def generate_write_order():
         
     for selected_theme in themes:
         print(f"[DataScientist] Trying Theme: {selected_theme}")
-        
-    if selected_theme == 'waku':
-        ranked_conds, stats_df, df = analyze_waku_bias(df)
-        theme_id = "waku_data"
-        keyword_suffix = "枠順 データ"
-        comp_struct = [
-            "コース概要と特徴",
-            "枠順別データと明確な有利不利",
-            "オッズ（回収率）から見る狙い目"
-        ]
-    elif selected_theme == 'jockey':
-        ranked_conds, stats_df, df = analyze_jockey_bias(df)
-        theme_id = "jockey_data"
-        keyword_suffix = "騎手 データ"
-        comp_struct = [
-            "コース概要と基本情報",
-            "圧倒的勝率を誇る騎手ランキング",
-            "回収率（穴馬）で狙える穴ジョッキー"
-        ]
-    elif selected_theme == 'popularity':
-        ranked_conds, stats_df, df = analyze_popularity_bias(df)
-        theme_id = "popularity_data"
-        keyword_suffix = "荒れる 傾向"
-        comp_struct = [
-            "コース概要と基本情報",
-            "一番人気の信頼度と勝率データ",
-            "配当傾向から見る穴馬の狙い目"
-        ]
-    else: # running_style
-        ranked_conds, stats_df, df = analyze_running_style_bias(df)
-        theme_id = "running_style_data"
-        keyword_suffix = "脚質 有利"
-        comp_struct = [
-            "コース概要と直線距離の特徴",
-            "逃げ・先行馬の勝率と地の利",
-            "差し・追込馬の台頭条件"
-        ]
+
+        if selected_theme == 'waku':
+            ranked_conds, stats_df, df = analyze_waku_bias(df)
+            theme_id = "waku_data"
+            keyword_suffix = "枠順 データ"
+            comp_struct = [
+                "コース概要と特徴",
+                "枠順別データと明確な有利不利",
+                "オッズ（回収率）から見る狙い目"
+            ]
+        elif selected_theme == 'jockey':
+            ranked_conds, stats_df, df = analyze_jockey_bias(df)
+            theme_id = "jockey_data"
+            keyword_suffix = "騎手 データ"
+            comp_struct = [
+                "コース概要と基本情報",
+                "圧倒的勝率を誇る騎手ランキング",
+                "回収率（穴馬）で狙える穴ジョッキー"
+            ]
+        elif selected_theme == 'popularity':
+            ranked_conds, stats_df, df = analyze_popularity_bias(df)
+            theme_id = "popularity_data"
+            keyword_suffix = "荒れる 傾向"
+            comp_struct = [
+                "コース概要と基本情報",
+                "一番人気の信頼度と勝率データ",
+                "配当傾向から見る穴馬の狙い目"
+            ]
+        else:  # running_style
+            ranked_conds, stats_df, df = analyze_running_style_bias(df)
+            theme_id = "running_style_data"
+            keyword_suffix = "脚質 有利"
+            comp_struct = [
+                "コース概要と直線距離の特徴",
+                "逃げ・先行馬の勝率と地の利",
+                "差し・追込馬の台頭条件"
+            ]
 
         for _, row in ranked_conds.iterrows():
             condition = row['condition']
             target_keyword = f"{condition} {keyword_suffix}"
-            
+
             if target_keyword in all_known_keywords:
                 continue
-                
+
             print(f"[DataScientist] Anomaly found! Target: {target_keyword} (Score: {row['anomaly_score']:.2f})")
-            
+
             course_df = df[df['condition'] == condition]
             period_min = course_df['race_date'].min().strftime('%Y年%m月')
             period_max = course_df['race_date'].max().strftime('%Y年%m月')
             max_runs_val = 0
             key_metrics = []
-            
+
             if selected_theme == 'waku':
                 metrics_df = stats_df[stats_df['condition'] == condition].sort_values('waku_number')
                 max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
@@ -496,7 +496,7 @@ def generate_write_order():
                         "複勝率": f"{m_row['place_rate']*100:.1f}%",
                         "単勝回収率": f"{m_row['roi']*100:.0f}%"
                     })
-            else: # running_style
+            else:  # running_style
                 metrics_df = stats_df[stats_df['condition'] == condition].sort_values('win_rate', ascending=False)
                 max_runs_val = int(metrics_df['total_runs'].max() if not metrics_df.empty else 0)
                 for _, m_row in metrics_df.iterrows():
@@ -521,16 +521,16 @@ def generate_write_order():
                 },
                 "competing_article_structure": comp_struct
             }
-            
+
             os.makedirs(WRITE_ORDERS_DIR, exist_ok=True)
             date_str = datetime.now().strftime('%Y%m%d_%H%M%S')
             output_path = os.path.join(WRITE_ORDERS_DIR, f"{date_str}.json")
-            
+
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(order, f, ensure_ascii=False, indent=2)
-                
+
             print(f"[DataScientist] Successfully generated WriteOrder: {output_path}")
-            return # 生成に成功したら即終了（1回につき1記事）
+            return  # 生成に成功したら即終了（1回につき1記事）
 
     print("[DataScientist] No new valid conditions found across all themes.")
 

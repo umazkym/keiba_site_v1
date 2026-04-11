@@ -16,9 +16,43 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 //   バックグラウンドで新データが取得される。500エラーにはならない。
 // ▲▲▲▲▲【ISR導入ここまで】▲▲▲▲▲
 
+// ▼▼▼▼▼【コールドスタート対策】▼▼▼▼▼
+// Cloud Run (Scale to Zero) + Neon (Scale to Zero) の同時ウェイクアップで
+// 初回リクエストが10-20秒かかりタイムアウトする問題への対策。
+// 失敗時に一定時間待ってからリトライすることで、2回目にはウォームアップ完了済み。
+// ▲▲▲▲▲【コールドスタート対策ここまで】▲▲▲▲▲
+async function fetchWithRetry(
+    url: string,
+    options: RequestInit & { next?: { revalidate?: number } },
+    retries: number = 1,
+    delayMs: number = 3000
+): Promise<Response> {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            const res = await fetch(url, options);
+            // 5xx エラーの場合はリトライ対象（コールドスタートでの一時的な失敗）
+            if (res.status >= 500 && attempt < retries) {
+                console.warn(`[fetchWithRetry] ${url} returned ${res.status}, retrying in ${delayMs}ms... (attempt ${attempt + 1}/${retries + 1})`);
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+                continue;
+            }
+            return res;
+        } catch (error) {
+            if (attempt < retries) {
+                console.warn(`[fetchWithRetry] ${url} fetch failed, retrying in ${delayMs}ms... (attempt ${attempt + 1}/${retries + 1})`);
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+                continue;
+            }
+            throw error;
+        }
+    }
+    // フォールバック（到達しないはずだが型安全のため）
+    return fetch(url, options);
+}
+
 export async function getPredictionsForDate(date: string): Promise<RaceDayPrediction | null> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/${date}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/${date}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             if (res.status === 404) {
                 console.log(`No predictions found for date ${date}, returning empty data.`);
@@ -36,7 +70,7 @@ export async function getPredictionsForDate(date: string): Promise<RaceDayPredic
 
 export async function getSpecialPick(date: string): Promise<SpecialPick | null> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/special-pick/${date}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/special-pick/${date}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.warn(`Could not fetch special pick for ${date}. Status: ${res.status}`);
             return null;
@@ -51,7 +85,7 @@ export async function getSpecialPick(date: string): Promise<SpecialPick | null> 
 
 export async function getFilteredMatchups(raceId: string, startDate: string, endDate: string): Promise<MatchupData | null> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/matchups/${raceId}?start_date=${startDate}&end_date=${endDate}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/matchups/${raceId}?start_date=${startDate}&end_date=${endDate}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.warn(`Could not fetch filtered matchups for ${raceId}. Status: ${res.status}`);
             return null;
@@ -66,7 +100,7 @@ export async function getFilteredMatchups(raceId: string, startDate: string, end
 // 高配当データマッチ実績を取得する関数
 export async function getTopPayoutHits(): Promise<TopPayoutHit[]> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/hits/top-payouts`, { next: { revalidate: 3600 } });
+        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/hits/top-payouts`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             throw new Error(`Failed to fetch top hits. Status: ${res.status}`);
         }
@@ -80,7 +114,7 @@ export async function getTopPayoutHits(): Promise<TopPayoutHit[]> {
 // ★★★ 新規追加: サイトマップ/検索エンジン向け 全レースURL取得関数 ★★★
 export async function getAllRaceUrls(): Promise<{ race_date: string; venue_name: string; race_number: number }[]> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/sitemap/all-race-urls`, { next: { revalidate: 86400 } });
+        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/sitemap/all-race-urls`, { next: { revalidate: 86400 } });
         if (!res.ok) {
             console.error(`Failed to fetch all race urls. Status: ${res.status}`);
             return [];
@@ -94,7 +128,7 @@ export async function getAllRaceUrls(): Promise<{ race_date: string; venue_name:
 
 export async function getWeeklyGradeRaces(): Promise<WeeklyGradeRace[]> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/predictions/weekly-grade-races`, { next: { revalidate: 3600 } });
+        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/weekly-grade-races`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.warn(`Could not fetch weekly grade races. Status: ${res.status}`);
             return [];

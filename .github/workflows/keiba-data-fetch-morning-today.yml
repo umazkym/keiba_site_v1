@@ -1,11 +1,9 @@
 name: Keiba Data Fetch (Morning Today)
-# ★ Neon Free Tier Network Transfer 削減 (2026-04-11)
-# 自動実行を廃止。retry-today (JST 10:00) に統合。
-# 前日 afternoon ジョブ (JST 13:30) で当日予測は生成済みのため、
-# 06:30 の早朝実行は不要。手動実行用として残す。
 
 on:
-  # schedule を削除（retry-today に統合済み）
+  schedule:
+    # JST 06:30 = UTC 21:30 (前日)
+    - cron: '30 21 * * 4,5,6'
   workflow_dispatch:
 
 jobs:

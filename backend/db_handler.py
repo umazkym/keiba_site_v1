@@ -60,6 +60,23 @@ def _build_horses_to_skip(db: Session, horse_ids: Set[str], target_date: date) -
     if not horse_ids:
         return set()
 
+    # ★ クエリ高速化のための部分インデックスを自動作成
+    # e2-micro (vCPU 0.25) ではJOIN+GROUP BYが遅いため、適切なインデックスが不可欠。
+    # IF NOT EXISTS なので既に存在すれば即座にスキップされる（性能影響ゼロ）。
+    try:
+        from sqlalchemy import text as sa_text
+        db.execute(sa_text(
+            "CREATE INDEX IF NOT EXISTS idx_results_horse_id_finish_time "
+            "ON results (horse_id, finish_time_sec) WHERE finish_time_sec IS NOT NULL"
+        ))
+        db.commit()
+    except Exception as idx_err:
+        print(f"  -> [INFO] Index creation skipped: {idx_err}")
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
     recent_cutoff = target_date - timedelta(days=_RECENT_RACE_DAYS)
 
     # ★ GCE e2-micro (vCPU 0.25) + 外部IP接続でも安全なバッチサイズ

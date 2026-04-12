@@ -370,7 +370,10 @@ def main():
                         sys.stderr.flush()
                         print(f"--- [RESULTS_ONLY] {target_date_results} の結果取得が完了 ---")
                     except Exception as e:
-                        print(f"警告: 結果データの更新に失敗しました: {e}")
+                        # ★ 2026-04-13 修正: 結果データの更新失敗も致命的エラーとして扱う
+                        print(f"❌ エラー: {target_date_results} の結果データ更新に失敗しました: {e}")
+                        traceback.print_exc()
+                        raise
                     gc.collect()
 
                 if PIPELINE_MODE in ['PRODUCTION', 'PREDICTIONS_ONLY']:
@@ -411,7 +414,13 @@ def main():
                             sys.stderr.flush()
                             print(f"--- [PREDICTIONS_ONLY] {target_date_predictions} の予測生成が完了 ---")
                         except Exception as e:
-                            print(f"警告: 予測データの挿入に失敗しました: {e}")
+                            # ★ 2026-04-13 修正: 予測データの挿入失敗は致命的エラー。
+                            # 旧コードは print() するだけで continue し、パイプライン全体が
+                            # 「成功」として GitHub Actions に報告されていた（2026-04-12 障害の原因）。
+                            # raise することで GitHub Actions が失敗ステータスを返し、問題に気づける。
+                            print(f"❌ エラー: {target_date_predictions} の予測データ挿入に失敗しました: {e}")
+                            traceback.print_exc()
+                            raise
                         gc.collect()
             finally:
                 if db.is_active:

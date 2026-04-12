@@ -27,7 +27,7 @@ _RECENT_RACE_DAYS = 7
 
 def _build_horses_to_skip(db: Session, horse_ids: Set[str], target_date: date) -> Set[str]:
     """
-    【バルク1クエリ】取得をスキップすべき馬のIDセットを返す。
+    【バッチクエリ】取得をスキップすべき馬のIDセットを返す。
 
     なぜ必要か:
       GitHub Actions は毎回クリーンな環境で起動し、ローカルHTMLキャッシュが
@@ -46,27 +46,40 @@ def _build_horses_to_skip(db: Session, horse_ids: Set[str], target_date: date) -
     フェッチ対象になる馬:
       ・DB成績が4件以下（新馬・転入馬など、データが不足）
       ・最近7日以内に出走した馬（成績が更新されている可能性大）
+
+    ★ 2026-04-13 バッチ分割修正:
+      全馬IDを1つのIN句で送信すると、日曜開催（974頭等）で
+      GCE e2-micro (vCPU 0.25) 上のPostgreSQLが接続タイムアウトを起こす。
+      200件ずつバッチ分割して安全に処理する。
     """
     if not horse_ids:
         return set()
 
     recent_cutoff = target_date - timedelta(days=_RECENT_RACE_DAYS)
 
-    # 1クエリで全馬の成績件数と最終出走日を取得（N+1を完全排除）
-    horse_stats = (
-        db.query(
-            models.Result.horse_id,
-            func.count(models.Result.id).label('valid_count'),
-            func.max(models.Race.race_date).label('last_race_date'),
+    # ★ バッチ分割: 全馬IDを一度にIN句で送るとGCE e2-microでタイムアウトするため、
+    #   200件ずつに分割して処理する（2026-04-12 障害の再発防止）
+    _SKIP_QUERY_BATCH_SIZE = 200
+    horse_list = sorted(list(horse_ids))
+    horse_stats = []
+
+    for batch_start in range(0, len(horse_list), _SKIP_QUERY_BATCH_SIZE):
+        batch = horse_list[batch_start:batch_start + _SKIP_QUERY_BATCH_SIZE]
+        batch_stats = (
+            db.query(
+                models.Result.horse_id,
+                func.count(models.Result.id).label('valid_count'),
+                func.max(models.Race.race_date).label('last_race_date'),
+            )
+            .join(models.Race, models.Result.race_id == models.Race.id)
+            .filter(
+                models.Result.horse_id.in_(batch),
+                models.Result.finish_time_sec.isnot(None),
+            )
+            .group_by(models.Result.horse_id)
+            .all()
         )
-        .join(models.Race, models.Result.race_id == models.Race.id)
-        .filter(
-            models.Result.horse_id.in_(list(horse_ids)),
-            models.Result.finish_time_sec.isnot(None),
-        )
-        .group_by(models.Result.horse_id)
-        .all()
-    )
+        horse_stats.extend(batch_stats)
 
     skip_set = {
         row.horse_id

@@ -47,39 +47,80 @@ def _build_horses_to_skip(db: Session, horse_ids: Set[str], target_date: date) -
       ・DB成績が4件以下（新馬・転入馬など、データが不足）
       ・最近7日以内に出走した馬（成績が更新されている可能性大）
 
-    ★ 2026-04-13 バッチ分割修正:
-      全馬IDを1つのIN句で送信すると、日曜開催（974頭等）で
-      GCE e2-micro (vCPU 0.25) 上のPostgreSQLが接続タイムアウトを起こす。
-      200件ずつバッチ分割して安全に処理する。
+    ★ 2026-04-13 バッチ分割 + 接続リフレッシュ修正:
+      この関数の呼び出し前に「Collecting horses」ステップで5-6分の
+      スクレイピングが行われる。その間にNullPool接続が失効し、
+      さらにGCE e2-micro (vCPU 0.25) への外部IP経由の重いJOIN+GROUP BY
+      クエリがタイムアウトを引き起こす。
+      対策:
+        1. バッチサイズを50に縮小（e2-micro安全圏）
+        2. 各バッチ実行前にDB接続をリフレッシュ
+        3. バッチごとに3回リトライ
     """
     if not horse_ids:
         return set()
 
     recent_cutoff = target_date - timedelta(days=_RECENT_RACE_DAYS)
 
-    # ★ バッチ分割: 全馬IDを一度にIN句で送るとGCE e2-microでタイムアウトするため、
-    #   200件ずつに分割して処理する（2026-04-12 障害の再発防止）
-    _SKIP_QUERY_BATCH_SIZE = 200
+    # ★ GCE e2-micro (vCPU 0.25) + 外部IP接続でも安全なバッチサイズ
+    _SKIP_QUERY_BATCH_SIZE = 50
+    _MAX_RETRIES = 3
     horse_list = sorted(list(horse_ids))
     horse_stats = []
+    total_batches = (len(horse_list) + _SKIP_QUERY_BATCH_SIZE - 1) // _SKIP_QUERY_BATCH_SIZE
 
-    for batch_start in range(0, len(horse_list), _SKIP_QUERY_BATCH_SIZE):
+    for batch_idx, batch_start in enumerate(range(0, len(horse_list), _SKIP_QUERY_BATCH_SIZE)):
         batch = horse_list[batch_start:batch_start + _SKIP_QUERY_BATCH_SIZE]
-        batch_stats = (
-            db.query(
-                models.Result.horse_id,
-                func.count(models.Result.id).label('valid_count'),
-                func.max(models.Race.race_date).label('last_race_date'),
-            )
-            .join(models.Race, models.Result.race_id == models.Race.id)
-            .filter(
-                models.Result.horse_id.in_(batch),
-                models.Result.finish_time_sec.isnot(None),
-            )
-            .group_by(models.Result.horse_id)
-            .all()
-        )
-        horse_stats.extend(batch_stats)
+
+        for retry in range(_MAX_RETRIES):
+            try:
+                # ★ 各バッチ前にDB接続をリフレッシュ
+                # 「Collecting horses」で5-6分のスクレイピング後、
+                # NullPoolの接続が腐っている可能性があるため、
+                # close() で既存接続を切断してから新規接続でクエリを実行する。
+                try:
+                    db.close()
+                except Exception:
+                    pass
+
+                batch_stats = (
+                    db.query(
+                        models.Result.horse_id,
+                        func.count(models.Result.id).label('valid_count'),
+                        func.max(models.Race.race_date).label('last_race_date'),
+                    )
+                    .join(models.Race, models.Result.race_id == models.Race.id)
+                    .filter(
+                        models.Result.horse_id.in_(batch),
+                        models.Result.finish_time_sec.isnot(None),
+                    )
+                    .group_by(models.Result.horse_id)
+                    .all()
+                )
+                horse_stats.extend(batch_stats)
+
+                if (batch_idx + 1) % 5 == 0 or batch_idx == total_batches - 1:
+                    print(f"  -> Skip query progress: batch {batch_idx + 1}/{total_batches}")
+
+                break  # 成功したらリトライループを抜ける
+
+            except Exception as e:
+                if retry < _MAX_RETRIES - 1:
+                    wait_sec = (retry + 1) * 5
+                    print(f"  -> [RETRY {retry + 1}/{_MAX_RETRIES}] Skip query batch {batch_idx + 1} failed: {e}")
+                    print(f"     Waiting {wait_sec}s before retry...")
+                    time.sleep(wait_sec)
+                    try:
+                        db.rollback()
+                        db.close()
+                    except Exception:
+                        pass
+                else:
+                    print(f"  -> [FAILED] Skip query batch {batch_idx + 1} failed after {_MAX_RETRIES} retries: {e}")
+                    # 最終リトライも失敗 → スキップ判定を諦めて全馬フェッチ対象にする
+                    # （保守的な選択: データ不足よりはフェッチ過剰の方がまし）
+                    print(f"  -> Falling back: all {len(horse_ids)} horses will be fetched (no skip)")
+                    return set()
 
     skip_set = {
         row.horse_id

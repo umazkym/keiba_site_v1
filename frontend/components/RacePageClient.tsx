@@ -151,7 +151,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                 const data = await getPredictionsForDate(dateToFetch);
                 setPredictionData(data);
 
-                if (!data || (data.jra.length === 0 && data.nar.length === 0)) {
+                if (!data || ((data.jra?.length ?? 0) === 0 && (data.nar?.length ?? 0) === 0)) {
                     setError("指定された日付のレースデータはありませんでした。");
                 }
             } catch (err) {
@@ -198,7 +198,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
 
     useEffect(() => {
         if (!hasScrolled.current && initialVenue && initialRaceNumber && predictionData) {
-            const venueExists = [...predictionData.jra, ...predictionData.nar].some(
+            const venueExists = [...(predictionData.jra ?? []), ...(predictionData.nar ?? [])].some(
                 v => v.venue_name === initialVenue
             );
 
@@ -207,7 +207,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                     const venueElement = document.getElementById(`venue-${initialVenue}`);
                     if (venueElement) {
                         setTimeout(() => {
-                            const raceData = [...predictionData.jra, ...predictionData.nar]
+                            const raceData = [...(predictionData.jra ?? []), ...(predictionData.nar ?? [])]
                                 .find(v => v.venue_name === initialVenue)
                                 ?.races.find(r => r.race_number === initialRaceNumber);
 
@@ -242,7 +242,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
         if (isLoading) {
             return <RaceTabsSkeleton />;
         }
-        if (error || !predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
+        if (error || !predictionData || ((predictionData.jra?.length ?? 0) === 0 && (predictionData.nar?.length ?? 0) === 0)) {
             return (
                 <div className="text-center p-8 bg-red-50 rounded-lg border border-red-200 shadow-sm">
                     <div className="flex justify-center mb-4">

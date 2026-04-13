@@ -61,7 +61,19 @@ export async function getPredictionsForDate(date: string): Promise<RaceDayPredic
             console.error(`Failed to fetch data from API. Status: ${res.status}`);
             return null;
         }
-        return res.json();
+        const data = await res.json();
+        // ★ 防御的バリデーション: APIが200 OKでも予期しない構造のレスポンスを返す場合がある
+        // （CDNキャッシュ破損、プロキシ介入、バックエンドの一時的な不整合等）
+        // jra/nar プロパティが欠落している場合はフォールバックし、
+        // TypeError: Cannot read properties of undefined (reading 'push'/'length') を防止する
+        if (!data || typeof data !== 'object') {
+            console.error(`[getPredictionsForDate] Invalid response body for ${date}:`, data);
+            return null;
+        }
+        return {
+            jra: Array.isArray(data.jra) ? data.jra : [],
+            nar: Array.isArray(data.nar) ? data.nar : [],
+        };
     } catch (error: any) {
         console.error("A network or fetch error occurred in getPredictionsForDate:", error.message);
         return null;

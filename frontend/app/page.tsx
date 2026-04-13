@@ -139,39 +139,39 @@ export default async function HomePage() {
                             本日の開催（{todayStr.split('-').slice(1).join('/')}）
                         </h2>
 
-                        {predictions && predictions.jra.length > 0 && (
+                        {predictions && predictions.jra?.length > 0 && (
                             <>
                                 <div className="venue-links-label">中央競馬（JRA）</div>
                                 <div className="venue-links-row">
-                                    {predictions.jra.slice(0, 4).map(venue => (
+                                    {(predictions.jra ?? []).slice(0, 4).map(venue => (
                                         <Link key={venue.venue_name} href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`} className="venue-link">
                                             {venue.venue_name}
                                         </Link>
                                     ))}
-                                    {predictions.jra.length > 4 && (
+                                    {(predictions.jra?.length ?? 0) > 4 && (
                                         <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
                                     )}
                                 </div>
                             </>
                         )}
 
-                        {predictions && predictions.nar.length > 0 && (
+                        {predictions && predictions.nar?.length > 0 && (
                             <>
                                 <div className="venue-links-label">地方競馬（NAR）</div>
                                 <div className="venue-links-row !mb-0">
-                                    {predictions.nar.slice(0, 4).map(venue => (
+                                    {(predictions.nar ?? []).slice(0, 4).map(venue => (
                                         <Link key={venue.venue_name} href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`} className="venue-link">
                                             {venue.venue_name}
                                         </Link>
                                     ))}
-                                    {predictions.nar.length > 4 && (
+                                    {(predictions.nar?.length ?? 0) > 4 && (
                                         <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
                                     )}
                                 </div>
                             </>
                         )}
 
-                        {(!predictions || (predictions.jra.length === 0 && predictions.nar.length === 0)) && (
+                        {(!predictions || ((predictions.jra?.length ?? 0) === 0 && (predictions.nar?.length ?? 0) === 0)) && (
                             <p className="text-sm text-secondary mt-2">本日のレースデータはありません。</p>
                         )}
                     </section>

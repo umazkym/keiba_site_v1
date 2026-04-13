@@ -93,7 +93,7 @@ export default async function RacePage({ params }: { params: { date: string } })
         // ▲▲▲▲▲【SSRプリフェッチ統合ここまで】▲▲▲▲▲
 
         // データが存在しない場合（ソフト404対策）
-        if (!predictionData || (predictionData.jra.length === 0 && predictionData.nar.length === 0)) {
+        if (!predictionData || ((predictionData.jra?.length ?? 0) === 0 && (predictionData.nar?.length ?? 0) === 0)) {
             console.log(`[Data Info] No prediction data found for ${params.date}. Returning 404.`);
             notFound();
         }

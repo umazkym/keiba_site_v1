@@ -19,10 +19,13 @@ BANEI_VENUE_CODES = ["33", "65"]
 _IS_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 _DEFAULT_RESULT_BATCH = 3 if _IS_GITHUB_ACTIONS else 10
 
-# 最近出走した馬とみなす日数
-# この日数以内に出走実績がある馬 → 成績が更新されている可能性が高いので再取得
-# それ以外で既にDB成績5件以上の馬 → スキップ（データは十分で変化なし）
-_RECENT_RACE_DAYS = 7
+# スキップ判定の閾値（日数）
+# DB上の最終出走日がこの日数以内の馬 → データが新しいのでスキップ
+# DB上の最終出走日がこの日数より古い馬 → データが古い可能性があるので再取得
+# ★ 2026-04-14 バグ修正: 旧値7日 + 比較方向が逆だったため、
+#   ほぼ全馬がスキップされ過去走データが永遠に更新されないバグがあった。
+#   run_pipeline.py HISTORYモード（L110: days < 365）と同じ方向に統一。
+_RECENT_RACE_DAYS = 60
 
 
 def _build_horses_to_skip(db: Session, horse_ids: Set[str], target_date: date) -> Set[str]:
@@ -40,12 +43,12 @@ def _build_horses_to_skip(db: Session, horse_ids: Set[str], target_date: date) -
 
     スキップ条件（AND）:
       ① DB に finish_time_sec ありのレース成績が5件以上存在する
-      ② 最終出走日が _RECENT_RACE_DAYS 日より前である
-         （= 最近出走しておらず、成績に変化がない可能性が高い）
+      ② 最終出走日が _RECENT_RACE_DAYS 日以内である
+         （= データが十分に新しく、再取得の必要がない）
 
     フェッチ対象になる馬:
       ・DB成績が4件以下（新馬・転入馬など、データが不足）
-      ・最近7日以内に出走した馬（成績が更新されている可能性大）
+      ・最終出走日が60日より古い馬（データが古く、新たな出走が反映されていない可能性大）
 
     ★ 2026-04-13 バッチ分割 + 接続リフレッシュ修正:
       この関数の呼び出し前に「Collecting horses」ステップで5-6分の
@@ -144,7 +147,7 @@ def _build_horses_to_skip(db: Session, horse_ids: Set[str], target_date: date) -
         for row in horse_stats
         if row.valid_count >= 5
         and row.last_race_date is not None
-        and row.last_race_date < recent_cutoff
+        and row.last_race_date >= recent_cutoff  # データが新しい馬のみスキップ
     }
 
     total = len(horse_ids)
@@ -152,8 +155,8 @@ def _build_horses_to_skip(db: Session, horse_ids: Set[str], target_date: date) -
     fetch_count = total - skip_count
     print(
         f"  -> Horse fetch plan: {total} total / "
-        f"{skip_count} skip (DB data sufficient) / "
-        f"{fetch_count} fetch (new or recently raced)"
+        f"{skip_count} skip (DB data fresh, within {_RECENT_RACE_DAYS}d) / "
+        f"{fetch_count} fetch (stale or insufficient data)"
     )
     return skip_set
 

@@ -317,7 +317,7 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
     finally:
         gc.collect()
 
-    # --- キャッシュされたレース一覧から race_id を収集 ---
+    # キャッシュされたレース一覧から race_id を収集
     all_race_ids: List[Tuple[str, bool]] = []
     for is_nar in [False, True]:
         dir_path = os.path.join("data", "html_cache", "nar_racelist" if is_nar else "racelist")

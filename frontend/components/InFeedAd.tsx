@@ -3,8 +3,8 @@
 import { Adsense } from './Adsense';
 
 type InFeedAdProps = {
-    /** 広告スロットID (インフィード専用、またはディスプレイを代用) */
-    slot: string;
+    /** 広告スロットID（省略時はインフィード専用スロットを使用） */
+    slot?: string;
     /** レース切替等でリフレッシュするためのキー */
     refreshKey?: string;
     /** カードデザインに合わせるための追加CSSクラス */
@@ -12,15 +12,21 @@ type InFeedAdProps = {
 };
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
+// ★ AdSenseで新規作成した「インフィード」形式の専用スロット
+const INFEED_SLOT = '7367648888';
+const INFEED_LAYOUT_KEY = '-g0+4h+46-dp+9m';
 
 /**
- * インフィード広告専用コンポーネント (ハイブリッド戦略対応)
+ * インフィード広告専用コンポーネント
  * 
- * データカードの合間に挟まってもUXを損なわないよう、
- * 「他のカードと同じ横幅」「固定された高さ（ガタつかない）」を保証する設計。
+ * ★ 重要な変更: ディスプレイ形式スロット → インフィード形式スロットに移行
  * 
- * - 高さを固定することで、Googleにスマホ定番サイズのバナー配信を強制する
- * - 自動サイズ（responsive）によるレイアウト崩れ・コンテンツの圧迫を防止する
+ * AdSense管理画面で「インフィード広告」として作成したスロットを使用。
+ * data-ad-format="fluid" + data-ad-layout-key により、
+ * Googleがコンテンツカードに溶け込むネイティブ広告を配信する。
+ * 
+ * AdSenseの注意: コンテナの高さは固定してはいけない（fluid形式の要件）。
+ * → 旧実装の height: 280px 固定を削除し、display: block に変更。
  */
 export const InFeedAd = ({
     slot,
@@ -28,7 +34,7 @@ export const InFeedAd = ({
     className = '',
 }: InFeedAdProps) => {
     return (
-        <div className={`overflow-hidden rounded-xl border-l-[3px] border-l-blue-200 border border-y-slate-200 border-r-slate-200 shadow-sm relative w-full flex flex-col items-center justify-center bg-slate-50 p-1.5 sm:p-3 mt-2 mb-2 ${className}`}>
+        <div className={`overflow-hidden rounded-xl border-l-[3px] border-l-blue-200 border border-y-slate-200 border-r-slate-200 shadow-sm relative w-full bg-slate-50 p-1.5 sm:p-3 mt-2 mb-2 ${className}`}>
             
             {/* 広告ラベル: コンテンツとの誤認を防ぐための表示 */}
             <div className="absolute top-0 right-0 max-w-fit px-2 py-0.5 rounded-bl text-[9px] text-slate-400 font-medium tracking-wider bg-slate-100/80 z-10 pointer-events-none">
@@ -36,15 +42,17 @@ export const InFeedAd = ({
             </div>
             
             {/* 
-              * ★ 280pxに拡大: ミディアムレクタングル(300x250)のフィット改善
-              * 余白によりビューアビリティ判定の滞留時間を確保し、viewable判定を得やすくする
-              * isResponsive={false}で高さを固定し、レイアウトの安定性を維持。
+              * ★ インフィード形式: fluid + layoutKey
+              * 高さ固定なし（AdSenseの要件: コンテナの高さは変更可能でなければならない）
+              * Googleがサイトデザインに合った広告を自動配信
               */}
             <Adsense
                 client={AD_CLIENT}
-                slot={slot}
+                slot={slot || INFEED_SLOT}
                 refreshKey={refreshKey}
-                style={{ display: 'inline-block', width: '100%', height: '280px' }}
+                style={{ display: 'block' }}
+                format="fluid"
+                layoutKey={INFEED_LAYOUT_KEY}
                 isResponsive={false}
             />
         </div>

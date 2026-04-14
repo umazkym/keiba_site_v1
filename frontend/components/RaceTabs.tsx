@@ -203,7 +203,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* 変更後: InFeedAd（コンテンツカード風） → コンテンツに溶け込みCTR向上を狙う */}
                     {/* InFeedAdは以前ロック解除後のみ表示(L240)だったが、大半のユーザーの目に触れていなかった */}
                     {shouldShowAd && (
-                        <InFeedAd slot="8529703346" refreshKey={`prelock-${adRefreshKey}`} />
+                        <InFeedAd refreshKey={`prelock-${adRefreshKey}`} />
                     )}
 
                     {/* プレミアム・ロック切り替え部分 */}
@@ -239,7 +239,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
                             {/* ★ ビューアビリティ改善: 過去対決成績と枠順傾向の間（自然な区切り）に広告配置 */}
                             {shouldShowAd && (
-                                <InFeedAd slot="1489598374" refreshKey={adRefreshKey} />
+                                <InFeedAd refreshKey={adRefreshKey} />
                             )}
 
                             <div className="mb-2">
@@ -374,7 +374,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* ★ CTR改善: DataExplanation後もInFeedAdに統一 */}
                     {/* レースページ内の全バナー広告をInFeedAd化完了（CTR 0.12%→0.59%実績に基づく） */}
                     {shouldShowAd && (
-                        <InFeedAd slot="8529703346" refreshKey={adRefreshKey} />
+                        <InFeedAd refreshKey={adRefreshKey} />
                     )}
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />

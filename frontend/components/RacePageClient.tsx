@@ -356,7 +356,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
 
             {/* ★ CTR改善: 的中ランキング後の広告をInFeedAdに変更 */}
             {/* バナー広告よりコンテンツカード風の方がCTRが高い */}
-            <InFeedAd slot="8529703346" refreshKey={`bottom-${currentDate}`} />
+            <InFeedAd refreshKey={`bottom-${currentDate}`} />
 
             {/* サイト紹介テキスト（SEO・AdSense対策：重複回避のため最小限に） */}
             <section className="mt-2 sm:mt-3 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">

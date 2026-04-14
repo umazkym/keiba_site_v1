@@ -12,9 +12,11 @@ type AdsenseProps = {
   style?: React.CSSProperties;
   isResponsive?: boolean;
   format?: string;
+  /** インフィード広告用のレイアウトキー (data-ad-layout-key) */
+  layoutKey?: string;
 };
 
-export const Adsense = ({ client, slot, refreshKey = '', className, style, isResponsive = true, format }: AdsenseProps) => {
+export const Adsense = ({ client, slot, refreshKey = '', className, style, isResponsive = true, format, layoutKey }: AdsenseProps) => {
   const pathname = usePathname();
   const adRef = useRef<HTMLDivElement>(null);
   const adLoaded = useRef(false);
@@ -93,6 +95,11 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
         ins.setAttribute('data-full-width-responsive', 'true');
       } else if (format) {
         ins.setAttribute('data-ad-format', format);
+      }
+
+      // ★ インフィード広告用: layout-keyを設定
+      if (layoutKey) {
+        ins.setAttribute('data-ad-layout-key', layoutKey);
       }
 
       adContainer.appendChild(ins);

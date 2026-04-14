@@ -198,10 +198,12 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         <RaceNavigation />
                     </div>
 
-                    {/* ★ ビューアビリティ改善: ロック前の「全ユーザーが見る」位置に広告配置 */}
-                    {/* MultiplexAd(最下部)を廃止し、viewable率の高いここに集約 */}
+                    {/* ★ CTR改善: ロック前の「全ユーザーが見る」位置にInFeedAd配置 */}
+                    {/* 変更前: AdUnit（バナー広告） → CTR 0.36%と低迷 */}
+                    {/* 変更後: InFeedAd（コンテンツカード風） → コンテンツに溶け込みCTR向上を狙う */}
+                    {/* InFeedAdは以前ロック解除後のみ表示(L240)だったが、大半のユーザーの目に触れていなかった */}
                     {shouldShowAd && (
-                        <AdUnit slot="8529703346" placement="inline" refreshKey={`prelock-${adRefreshKey}`} className="my-2" />
+                        <InFeedAd slot="8529703346" refreshKey={`prelock-${adRefreshKey}`} />
                     )}
 
                     {/* プレミアム・ロック切り替え部分 */}

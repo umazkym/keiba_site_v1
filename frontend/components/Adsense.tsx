@@ -134,11 +134,21 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
       }
     };
 
-    // ★ リフレッシュ時（isFirstLoad=false）は画面内判定を待たずに即座に読み込み
-    //   IntersectionObserver待ちをスキップし、広告の表示遅延を大幅に短縮
+    // ★ Viewable率改善: リフレッシュ時（レース切替等）のビューポート判定
+    //   変更前: refreshKey変更時に全広告を画面外でも即座にリロード → Viewable率35%の主犯
+    //   変更後: ビューポート近辺(±200px)の広告のみ即座にリロードし、
+    //           画面外の広告はIntersectionObserverで待機（ユーザーがスクロールしてから表示）
+    //   リピーターが1日5-10回レース切替を行うたびに、4広告枠のうち画面外2-3枠が
+    //   「見えないインプレッション」として計上され、Viewable率を壊滅させていた
     if (!isFirstLoad.current) {
-      loadAd();
-      return; // クリーンアップ不要（observerなし）
+      const rect = adContainer.getBoundingClientRect();
+      const isNearViewport = rect.top < window.innerHeight + 200 && rect.bottom > -200;
+      
+      if (isNearViewport) {
+        loadAd();  // 画面内or近辺: 即座にリロード（UX維持）
+        return;    // クリーンアップ不要
+      }
+      // 画面外: IntersectionObserverにフォールスルー（下の処理へ）
     }
 
     // 初回読み込み: IntersectionObserverで遅延読み込み（パフォーマンス最適化）
@@ -152,11 +162,11 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
         }
       },
       {
-        // ★ ビューアビリティ改善: rootMarginを300pxに縮小
-        // 600pxだとAdSenseが画面外で「表示済み」と計測し、ビューアビリティが低下していた
-        // 300px（約スマホ0.75画面分）に縮小し、ユーザー到達直前での読み込みでviewable判定率を向上
-        // データ: Active View 27-45% → 目標50-60%
-        rootMargin: '300px 0px 300px 0px',
+        // ★ ビューアビリティ改善: rootMarginを200pxに縮小
+        // 300pxでもActive View viewableが35%に留まっていたため、さらに縮小
+        // 200px（約スマホ0.5画面分）に縮小し、ユーザー到達直前での読み込みでviewable判定率を向上
+        // データ: Active View 35% → 目標50-60%
+        rootMargin: '200px 0px 200px 0px',
         threshold: 0.01,
       }
     );

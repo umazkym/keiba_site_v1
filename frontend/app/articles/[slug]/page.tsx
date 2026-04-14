@@ -7,6 +7,7 @@ import { ArticleSchema } from '@/components/StructuredData';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { RelatedArticles } from '@/components/RelatedArticles';
 import { AdUnit } from '@/components/AdUnit';
+import { MultiplexAd } from '@/components/MultiplexAd';
 
 type Props = {
   params: { slug: string };
@@ -187,8 +188,8 @@ export default async function ArticlePage({ params }: Props) {
 
             <RelatedArticles currentSlug={params.slug} count={3} />
 
-            {/* 広告: 関連記事後（次ページ遷移前のインプレッション） */}
-            <AdUnit slot="9407670747" placement="inline" />
+            {/* MultiplexAd: 関連記事後（読了ユーザー向け、おすすめコンテンツ風広告） */}
+            <MultiplexAd slot="9407670747" />
           </article>
 
           <div className="text-center mt-12">

@@ -13,6 +13,7 @@ import { getPredictionsForDate } from "@/lib/api";
 import { Article } from "@/lib/articles";
 import DisclaimerAlert from "@/components/DisclaimerAlert";
 import { AdUnit } from "@/components/AdUnit";
+import { InFeedAd } from "@/components/InFeedAd";
 
 // 日付フォーマット検証関数
 /**
@@ -353,8 +354,9 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                 </Link>
             </div>
 
-            {/* 広告: 的中ランキング後（inlineに変更しコンテンツとの一体感を強化） */}
-            <AdUnit slot="8529703346" placement="inline" refreshKey={`banner-${currentDate}`} className="my-2 sm:my-4" />
+            {/* ★ CTR改善: 的中ランキング後の広告をInFeedAdに変更 */}
+            {/* バナー広告よりコンテンツカード風の方がCTRが高い */}
+            <InFeedAd slot="8529703346" refreshKey={`bottom-${currentDate}`} />
 
             {/* サイト紹介テキスト（SEO・AdSense対策：重複回避のため最小限に） */}
             <section className="mt-2 sm:mt-3 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">

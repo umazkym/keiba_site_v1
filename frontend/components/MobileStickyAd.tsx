@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Adsense } from './Adsense';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { sendAdImpressionEvent } from '../lib/analytics';
 
 /**
@@ -20,6 +20,11 @@ export const MobileStickyAd = () => {
     const [adStatus, setAdStatus] = useState<'loading' | 'filled' | 'unfilled'>('loading');
     const [hasScrolled, setHasScrolled] = useState(false);
     const pathname = usePathname();
+    // ★ レース切替リフレッシュ対応: searchParamsのraceを取得
+    // pathnameはレース切替（?race=3&venue=東京）で変化しないため、
+    // 追従広告が同じ広告を表示し続けてバナーブラインドネスを引き起こしていた
+    const searchParams = useSearchParams();
+    const raceParam = searchParams.get('race') || '';
     const containerRef = useRef<HTMLDivElement>(null);
 
     // 広告を表示しないページガード
@@ -126,7 +131,7 @@ export const MobileStickyAd = () => {
                     <Adsense
                         client="ca-pub-4411270831448240"
                         slot="8529703346" 
-                        refreshKey={`mobile-sticky-${pathname}`}
+                        refreshKey={`mobile-sticky-${pathname}-${raceParam}`}
                         // ★ 70pxに拡大: 320x100や300x50フォーマットも配信対象にし、eCPM・viewable率を向上
                         // データ根拠: Active View 27-45% → max-h拡大でviewable閾値（50%面積+1秒）を満たしやすくする
                         style={{ display: 'inline-block', width: '100%', height: '70px' }}

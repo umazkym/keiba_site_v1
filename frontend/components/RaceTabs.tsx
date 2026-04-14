@@ -371,9 +371,10 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
                     <DataExplanationPanel showAdvanced={true} />
 
-                    {/* ★ コンテンツ読了ポイント: データ解説を読み終えた高集中度タイミングに広告配置 */}
+                    {/* ★ CTR改善: DataExplanation後もInFeedAdに統一 */}
+                    {/* レースページ内の全バナー広告をInFeedAd化完了（CTR 0.12%→0.59%実績に基づく） */}
                     {shouldShowAd && (
-                        <AdUnit slot="8529703346" placement="inline" refreshKey={adRefreshKey} className="my-2" />
+                        <InFeedAd slot="8529703346" refreshKey={adRefreshKey} />
                     )}
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />

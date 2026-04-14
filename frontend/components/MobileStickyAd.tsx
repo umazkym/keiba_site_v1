@@ -56,10 +56,11 @@ export const MobileStickyAd = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, [isMounted]);;
 
-    // パス変更（レース切替など）でリフレッシュする際、ステータスを戻す
+    // パス変更・レース切替でリフレッシュする際、ステータスを戻す
+    // ★ raceParam追加: pathname + raceParam両方の変化に反応
     useEffect(() => {
         setAdStatus('loading');
-    }, [pathname]);
+    }, [pathname, raceParam]);
 
     // MutationObserverで広告のロード完了/空振り(unfilled)を検知
     useEffect(() => {
@@ -89,7 +90,7 @@ export const MobileStickyAd = () => {
         });
 
         return () => observer.disconnect();
-    }, [pathname]);
+    }, [pathname, raceParam]);  // ★ raceParam追加: レース切替時もMutationObserverを再作成
 
     const handleDismiss = () => {
         setIsDismissed(true);

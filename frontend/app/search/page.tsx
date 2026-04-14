@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import SearchPageClient from './SearchPageClient';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { AdUnit } from '@/components/AdUnit';
 
 export const metadata: Metadata = {
     title: 'サイト内検索',
@@ -23,6 +24,11 @@ export default function SearchPage() {
             <Suspense fallback={<div className="container mx-auto px-4 py-8"><div className="max-w-3xl mx-auto"><div className="flex justify-center items-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div></div></div>}>
                 <SearchPageClient />
             </Suspense>
+            {/* ★ 検索結果閲覧後の自然な位置に広告配置 */}
+            <div className="max-w-3xl mx-auto px-4 pb-8">
+                <AdUnit slot="9407670747" placement="inline" />
+            </div>
         </>
     );
 }
+

@@ -75,7 +75,7 @@ export function useRewardedAd() {
     // ★ スロットのみ再定義する関数（リスナーは再登録しない）
     const reloadSlot = useCallback(() => {
         const googletag = window.googletag;
-        if (!googletag) return;
+        if (!googletag || !googletag.cmd) return;
 
         googletag.cmd.push(() => {
             // 前回スロットを破棄
@@ -132,7 +132,8 @@ export function useRewardedAd() {
             }
         }
 
-        const googletag = window.googletag || { cmd: [] };
+        const googletag = window.googletag || {};
+        googletag.cmd = googletag.cmd || [];
         window.googletag = googletag;
 
         // ★ パフォーマンス改善: GPTスクリプトをlayout.tsxから移動し、ここで動的ロード

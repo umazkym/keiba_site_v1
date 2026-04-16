@@ -31,7 +31,7 @@ export const CookieConsent = () => {
         // 拒否時: GPT・AdSenseを非パーソナライズモードに切り替える
         if (typeof window !== 'undefined') {
             // GPT (Google Publisher Tag) の非パーソナライズ設定
-            if ((window as any).googletag) {
+            if ((window as any).googletag && (window as any).googletag.cmd) {
                 (window as any).googletag.cmd.push(() => {
                     (window as any).googletag.pubads().setPrivacySettings({
                         nonPersonalizedAds: true,

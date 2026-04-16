@@ -399,9 +399,15 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
     // ★ 防御的チェック: data.jra/nar が undefined の場合も安全に処理
     const jra = data?.jra ?? [];
     const nar = data?.nar ?? [];
-    if (!data || (jra.length === 0 && nar.length === 0)) {
-        return <div className="p-6 text-center text-muted card">対象日のレースデータがありません。</div>;
-    }
+    const isEmpty = !data || (jra.length === 0 && nar.length === 0);
+
+    // ▼▼▼▼▼【フックルール違反修正】▼▼▼▼▼
+    // 修正前: isEmpty時に早期リターンし、その後にuseParams/useState/useCallback/useMemoを呼んでいた
+    //   → Reactのフックルール違反（条件分岐の後にフックを呼んではいけない）
+    //   → SSRとクライアントでフック呼び出し順序が不整合になり、
+    //     "Cannot read properties of undefined (reading 'push')" エラーが発生
+    // 修正後: 全てのフックを条件分岐より前に移動し、早期リターンは一番最後に行う
+    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
     const params = useParams();
     const currentDate = params.date as string;
@@ -464,6 +470,11 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         const index = nar.findIndex(v => v.venue_name === initialVenueName);
         return index >= 0 ? index : 0;
     }, [nar, initialVenueName]);
+
+    // ★ 全てのフックの後で早期リターン
+    if (isEmpty) {
+        return <div className="p-6 text-center text-muted card">対象日のレースデータがありません。</div>;
+    }
 
     const mainTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-2 sm:gap-4 border-b-2 border-slate-200 mb-4";
     const mainTabClass = "snap-start min-w-max px-4 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-bold text-slate-400 bg-transparent cursor-pointer hover:text-slate-600 transition-all outline-none border-b-2 border-transparent -mb-[2px]";

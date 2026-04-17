@@ -72,13 +72,13 @@ export default async function ArticlePage({ params }: Props) {
       "prose-h2:text-2xl prose-h2:border-b prose-h2:border-slate-100 prose-h2:pb-3 prose-h2:mt-12 prose-h2:mb-6",
       "prose-h3:text-xl prose-h3:mt-8",
       "prose-p:leading-[1.9] prose-p:text-slate-600",
-      "prose-a:text-primary prose-a:font-semibold prose-a:no-underline hover:prose-a:text-amber-600",
+      "prose-a:text-primary prose-a:font-semibold prose-a:no-underline hover:prose-a:text-blue-600",
       "prose-strong:text-slate-900 prose-strong:font-bold",
       "prose-img:rounded-2xl prose-img:shadow-md",
-      "prose-blockquote:border-l-4 prose-blockquote:border-amber-400 prose-blockquote:bg-amber-50/50 prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:rounded-r-xl prose-blockquote:not-italic prose-blockquote:text-slate-700",
+      "prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-blue-50/50 prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:rounded-r-xl prose-blockquote:not-italic prose-blockquote:text-slate-700",
       "prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-slate-800 prose-code:font-mono prose-code:text-sm",
       "prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-xl",
-      "prose-ul:marker:text-amber-500 prose-ol:marker:text-amber-500 prose-ol:marker:font-bold",
+      "prose-ul:marker:text-blue-500 prose-ol:marker:text-blue-500 prose-ol:marker:font-bold",
     ].join(' ');
 
     return (
@@ -109,10 +109,7 @@ export default async function ArticlePage({ params }: Props) {
                     sizes="(max-width: 768px) 100vw, 800px"
                     style={{ objectFit: 'cover' }}
                     priority
-                    className="brightness-90"
                   />
-                  {/* グラデーションオーバーレイ */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
                 </div>
               )}
 
@@ -122,7 +119,7 @@ export default async function ArticlePage({ params }: Props) {
                 <div className="flex flex-wrap items-center gap-2 mb-5">
                   <Link
                     href={`/articles?category=${encodeURIComponent(article.category)}`}
-                    className="bg-slate-900 text-white text-xs font-black py-1.5 px-4 rounded-full hover:bg-amber-500 transition-colors duration-200 uppercase tracking-wide"
+                    className="bg-blue-50 text-blue-700 border border-blue-100 text-xs font-bold py-1.5 px-4 rounded-full hover:bg-blue-100 transition-colors duration-200 tracking-wide"
                   >
                     {article.category}
                   </Link>
@@ -139,7 +136,7 @@ export default async function ArticlePage({ params }: Props) {
                   </time>
                   <span className="text-slate-300">|</span>
                   <span className="text-slate-400 text-sm flex items-center gap-1.5">
-                    <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     約{readingTimeMin}分で読めます
@@ -153,7 +150,7 @@ export default async function ArticlePage({ params }: Props) {
 
                 {/* リードテキスト */}
                 {article.description && (
-                  <p className="mt-4 text-base text-slate-500 leading-relaxed border-l-4 border-amber-400 pl-4">
+                  <p className="mt-4 text-base text-slate-500 leading-relaxed border-l-4 border-blue-400 pl-4 bg-slate-50 py-3 pr-4 rounded-r-lg">
                     {article.description}
                   </p>
                 )}
@@ -225,7 +222,7 @@ export default async function ArticlePage({ params }: Props) {
                 </Link>
                 <Link
                   href="/articles"
-                  className="inline-flex items-center gap-2 bg-slate-900 text-white text-sm font-bold py-2.5 px-5 rounded-xl hover:bg-amber-500 transition-colors duration-200"
+                  className="inline-flex items-center gap-2 bg-primary text-white text-sm font-bold py-2.5 px-5 rounded-xl hover:bg-primary-light transition-colors duration-200"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />

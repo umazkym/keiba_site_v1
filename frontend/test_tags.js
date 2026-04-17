@@ -1,0 +1,3 @@
+import { getUniqueTags, getAllArticles } from './lib/articles.ts';
+import fs from 'fs';
+// We just write a simple node script that imports and tests it. BUT wait, typescript...

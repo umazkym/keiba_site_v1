@@ -12,6 +12,7 @@ export interface Article {
   content: string;
   title: string;
   date: string;
+  description: string;
   eyecatch: string;
   category: string;
   tags: string[];

@@ -5,7 +5,7 @@ description: >-
   単なる馬券の買い方ではなく、JRAのシステム構造である「控除率」の観点から各券種を分析。単勝・複勝の数学的優位性と、三連単等の高控除率の危険性を定量的に解説する。
 keywords: '馬券, 種類, 控除率, 期待値, 単勝, 複勝, 三連単'
 eyecatch: /images/articles/beginner.png
-category: 初心者ガイド
+category: 初心者向けガイド
 tags: []
 ---
 

@@ -5,7 +5,7 @@ description: >-
   単なる競馬用語ではなく、競馬をデータと確率のゲームとして捉えるために必須となる数学的・分析的概念の用語を解説。期待値、回収率、バイアスなどの意味を正確に理解する。
 keywords: '競馬, データ分析, 競馬用語, 期待値, 回収率, 控除率, オッズ, バイアス'
 eyecatch: /images/articles/beginner.png
-category: 初心者ガイド
+category: 初心者向けガイド
 tags: []
 ---
 

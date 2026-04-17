@@ -10,7 +10,7 @@ keywords:
   - 回収率
 target_keyword: 東京芝1800m 枠順 データ
 theme_cluster: asset
-category: 競馬場・コースデータ
+category: コース・枠順分析
 draft: false
 date: '2026-03-30T23:42:53.689Z'
 og_type: article
@@ -21,7 +21,6 @@ article_published_time: '2026-03-30T23:42:53.689Z'
 og_image: 'https://uma-free.com/og/2026-03-30-tokyoturf1800m-waku-data.png'
 tags:
   - 東京
-  - 芝1800m
   - 枠順
 ---
 

@@ -103,7 +103,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                     </div>
 
                     {/* ===== TIER 1: CATEGORY FILTERS ===== */}
-                    <div className={`flex gap-2.5 overflow-x-auto scrollbar-hide ${selectedCategory && uniqueTags.length > 0 ? 'pb-3' : 'pb-6'}`}>
+                    <div className={`flex flex-wrap gap-2.5 ${selectedCategory && uniqueTags.length > 0 ? 'pb-3' : 'pb-6'}`}>
                         <Link
                             href="/articles"
                             className={`shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 border ${!selectedCategory
@@ -129,7 +129,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
 
                     {/* ===== TIER 2: TAG FILTERS ===== */}
                     {selectedCategory && uniqueTags.length > 0 && (
-                        <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-6 pt-1">
+                        <div className="flex flex-wrap gap-2.5 pb-6 pt-1">
                             <Link
                                 href={`/articles?category=${encodeURIComponent(selectedCategory)}`}
                                 className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border ${!selectedTag

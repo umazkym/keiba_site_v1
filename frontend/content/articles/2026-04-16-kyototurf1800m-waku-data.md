@@ -10,7 +10,7 @@ keywords:
   - コース傾向
 target_keyword: 京都芝1800m 枠順 データ
 theme_cluster: waku_data
-category: 競馬場・コースデータ
+category: コース・枠順分析
 draft: false
 date: '2026-04-16T23:42:23.449Z'
 og_type: article
@@ -21,7 +21,6 @@ article_published_time: '2026-04-16T23:42:23.449Z'
 og_image: 'https://uma-free.jp/og/2026-04-16-kyototurf1800m-waku-data.png'
 tags:
   - 京都
-  - 芝1800m
   - 枠順
 ---
 

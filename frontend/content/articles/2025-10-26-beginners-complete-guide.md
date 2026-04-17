@@ -5,7 +5,7 @@ description: >-
   競馬を単なるギャンブルではなくデータに基づく投資として捉えるための初心者向けガイド。JRAの控除率の構造から、なぜ単勝と複勝が最も合理的な馬券種であるかを客観的数値で解説する。
 keywords: '競馬, 初心者, 馬券購入, 投資, 控除率, 単勝, 複勝, データ分析, JRA'
 eyecatch: /images/articles/beginner.png
-category: 初心者ガイド
+category: 初心者向けガイド
 tags: []
 ---
 

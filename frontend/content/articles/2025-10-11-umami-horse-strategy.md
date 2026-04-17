@@ -5,7 +5,7 @@ description: >-
   AI評価順位が5位以内で実際の人気が3つ以上低い「妙味馬」25,441頭のデータを集計した。勝率3.0%ながら平均オッズ60.1倍で単勝回収率79%を記録する事実から、AIと市場の評価ギャップ（妙味スコア）を活用した高配当獲得のロジックを示す。
 keywords: '競馬, データ分析, AI予測, 高配当, 穴馬, 妙味馬, 回収率, 地方競馬, 妙味スコア'
 eyecatch: /images/articles/2025-10-11-umami-horse-strategy-eyecatch.png
-category: データ分析・コラム
+category: 血統・馬券コラム
 tags:
   - 馬券術
 ---

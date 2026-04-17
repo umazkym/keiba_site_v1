@@ -10,7 +10,7 @@ keywords:
   - 回収率
 target_keyword: 中山芝2000m 枠順 データ
 theme_cluster: seasonal
-category: 競馬場・コースデータ
+category: コース・枠順分析
 draft: false
 date: '2026-04-04T23:38:55.958Z'
 og_type: article
@@ -21,7 +21,6 @@ article_published_time: '2026-04-04T23:38:55.958Z'
 og_image: 'https://uma-free.com/og/2026-04-04-nakayamaturf2000m-waku-data.png'
 tags:
   - 中山
-  - 芝2000m
   - 枠順
 ---
 

@@ -11,10 +11,10 @@ keywords:
 target_keyword: 福島芝1200m 枠順 データ
 theme_cluster: asset
 draft: false
-category: 競馬場・コースデータ
+category: コース・枠順分析
 tags:
+  - ローカル
   - 福島
-  - 芝1200m
   - 枠順
 ---
 

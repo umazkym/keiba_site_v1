@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getAllArticles, getUniqueCategories } from '../../lib/articles';
+import { getAllArticles, getUniqueCategories, getUniqueTags } from '../../lib/articles';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
@@ -10,6 +10,7 @@ import type { Metadata } from 'next';
 interface ArticlesPageProps {
     searchParams: {
         category?: string;
+        tag?: string;
     };
 }
 
@@ -52,9 +53,20 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
     const allArticles = getAllArticles();
     const uniqueCategories = getUniqueCategories();
     const selectedCategory = searchParams.category;
-    const filteredArticles = selectedCategory
+    const selectedTag = searchParams.tag;
+
+    // Get tags related to the selected category (or empty if everything)
+    const uniqueTags = selectedCategory ? getUniqueTags(selectedCategory) : [];
+
+    let filteredArticles = selectedCategory
         ? allArticles.filter((article) => article.category === selectedCategory)
         : allArticles;
+
+    if (selectedTag) {
+        filteredArticles = filteredArticles.filter((article) => 
+            article.tags && article.tags.includes(selectedTag)
+        );
+    }
 
     const featuredArticle = filteredArticles[0];
     const regularArticles = filteredArticles.slice(1);
@@ -90,8 +102,8 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                         </div>
                     </div>
 
-                    {/* ===== CATEGORY FILTERS ===== */}
-                    <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-6">
+                    {/* ===== TIER 1: CATEGORY FILTERS ===== */}
+                    <div className={`flex gap-2.5 overflow-x-auto scrollbar-hide ${selectedCategory && uniqueTags.length > 0 ? 'pb-3' : 'pb-6'}`}>
                         <Link
                             href="/articles"
                             className={`shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 border ${!selectedCategory
@@ -114,6 +126,33 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                             </Link>
                         ))}
                     </div>
+
+                    {/* ===== TIER 2: TAG FILTERS ===== */}
+                    {selectedCategory && uniqueTags.length > 0 && (
+                        <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-6 pt-1">
+                            <Link
+                                href={`/articles?category=${encodeURIComponent(selectedCategory)}`}
+                                className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border ${!selectedTag
+                                        ? 'bg-slate-700 text-white border-slate-700'
+                                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                                    }`}
+                            >
+                                すべて
+                            </Link>
+                            {uniqueTags.map((tag) => (
+                                <Link
+                                    key={tag}
+                                    href={`/articles?category=${encodeURIComponent(selectedCategory)}&tag=${encodeURIComponent(tag)}`}
+                                    className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border ${selectedTag === tag
+                                            ? 'bg-slate-700 text-white border-slate-700'
+                                            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                >
+                                    #{tag}
+                                </Link>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 

@@ -12,9 +12,9 @@ export interface Article {
   content: string;
   title: string;
   date: string;
-  description: string;
   eyecatch: string;
   category: string;
+  tags: string[];
 }
 
 // スラッグ（ファイル名）から日付を抽出するフォールバック関数
@@ -48,6 +48,7 @@ export function getAllArticles(): Article[] {
       description: data.description || '',
       eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
       category: data.category || '未分類',
+      tags: data.tags || [],
     };
   });
 
@@ -90,6 +91,22 @@ export function getUniqueCategories(): string[] {
   return [...new Set(categories)];
 }
 
+// ユニークなタグ一覧を取得する関数（特定のカテゴリに絞ることも可能）
+export function getUniqueTags(category?: string): string[] {
+  const allArticles = getAllArticles();
+  const filtered = category 
+    ? allArticles.filter(a => a.category === category)
+    : allArticles;
+  
+  const tags = new Set<string>();
+  filtered.forEach(a => {
+    if (a.tags && Array.isArray(a.tags)) {
+      a.tags.forEach(t => tags.add(t));
+    }
+  });
+  return Array.from(tags).sort();
+}
+
 // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 // 特定の記事を取得し、MarkdownをHTMLに変換する関数
 export async function getArticleBySlug(slug: string): Promise<Article> {
@@ -112,6 +129,7 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     description: data.description || '',
     eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
     category: data.category || '未分類',
+    tags: data.tags || [],
   };
 }
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲

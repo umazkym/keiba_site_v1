@@ -123,6 +123,15 @@ export default async function ArticlePage({ params }: Props) {
                   >
                     {article.category}
                   </Link>
+                  {article.tags && article.tags.map(tag => (
+                    <Link
+                      key={tag}
+                      href={`/articles?category=${encodeURIComponent(article.category)}&tag=${encodeURIComponent(tag)}`}
+                      className="bg-white text-slate-500 border border-slate-200 text-xs font-bold py-1.5 px-3 rounded-full hover:bg-slate-50 transition-colors duration-200"
+                    >
+                      #{tag}
+                    </Link>
+                  ))}
                   <span className="text-slate-300">|</span>
                   <time
                     dateTime={datePublished}

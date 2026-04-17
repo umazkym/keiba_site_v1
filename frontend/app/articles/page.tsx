@@ -63,8 +63,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
         <>
             {/* ===== LIGHT HERO BANNER ===== */}
             <div className="relative -mx-3 sm:-mx-4 md:-mx-6 bg-white overflow-hidden border-b border-slate-100">
-                {/* 放射状のグラデーション背景 (トップページと統一) */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_60%)]" />
+
 
                 <div className="relative px-4 sm:px-6 pt-8 sm:pt-10 pb-0">
                     {/* ページタイトルエリア */}

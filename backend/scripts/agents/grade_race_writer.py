@@ -1,16 +1,24 @@
 """
 重賞レースプレビュー記事の自動生成スクリプト
-今後14日間に開催される重賞レースをDBから取得し、
+今後7日間に開催される重賞レースをDBから取得し、
 WriteOrderを生成して記事自動生成パイプラインに投入する。
+
+設計方針:
+  - スクレイピング（scraper/parser）に一切依存しない。
+  - run_pipeline.py が毎日DBに投入済みのレースデータ（races / predictions テーブル）を
+    直接クエリすることで、GitHub Actions環境でも確実に動作させる。
+  - 旧実装はHTML取得のsleep・BAN対策でGitHub Actionsのタイムアウトに抵触していた。
 """
 
 import os
 import sys
 import json
 import time
+import glob
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
-import requests
+import urllib.parse
+
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -21,7 +29,6 @@ load_dotenv()
 from database.database import SessionLocal
 from database import models
 from sqlalchemy import and_, text
-from scripts import scraper, parser
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 POSTED_HISTORY_PATH = os.path.join(PROJECT_ROOT, 'data', 'posted_history.json')
@@ -35,6 +42,11 @@ JRA_VENUE_MAP = {
     '01': '札幌', '02': '函館', '03': '福島', '04': '新潟', '05': '東京',
     '06': '中山', '07': '中京', '08': '京都', '09': '阪神', '10': '小倉'
 }
+
+# venue_name → venue_code の逆引きマップ（DB上のvenue_nameからrace_idのvenue_codeへの変換用）
+VENUE_NAME_MAP = {v: k for k, v in JRA_VENUE_MAP.items()}
+
+ARTICLES_DIR = os.path.join(PROJECT_ROOT, 'frontend', 'content', 'articles')
 
 
 def is_grade_race(race_name: str) -> bool:
@@ -55,8 +67,6 @@ def get_grade_priority(race_name: str) -> int:
     return 4
 
 
-ARTICLES_DIR = os.path.join(PROJECT_ROOT, 'frontend', 'content', 'articles')
-
 def load_posted_keywords() -> set:
     if not os.path.exists(POSTED_HISTORY_PATH):
         return set()
@@ -64,11 +74,10 @@ def load_posted_keywords() -> set:
         with open(POSTED_HISTORY_PATH, 'r', encoding='utf-8') as f:
             data = json.load(f)
             return {item.get('target_keyword') for item in data}
-    except:
+    except Exception:
         return set()
 
 def load_existing_article_keywords() -> set:
-    import glob
     keywords = set()
     if not os.path.exists(ARTICLES_DIR):
         return keywords
@@ -84,11 +93,10 @@ def load_existing_article_keywords() -> set:
                             kw = line.split(':', 1)[1].strip().strip('"').strip("'")
                             if kw: keywords.add(kw)
                             break
-        except: continue
+        except Exception: continue
     return keywords
 
 def load_pending_order_keywords() -> set:
-    import glob
     keywords = set()
     if not os.path.exists(WRITE_ORDERS_DIR):
         return keywords
@@ -98,82 +106,92 @@ def load_pending_order_keywords() -> set:
                 order = json.load(f)
                 kw = order.get('target_keyword')
                 if kw: keywords.add(kw)
-        except: continue
+        except Exception: continue
     return keywords
 
 
-def get_upcoming_target_dates() -> List[datetime.date]:
+def get_upcoming_target_dates() -> List:
     today = datetime.now(JST).date()
     # 土日限定ではなく向こう7日間（1週間）を走査する。
     # 理由: 3日間開催の月曜祝日（例: 京都大賞典）や、年末の変則開催（例: ホープフルSの火曜・木曜開催）を取りこぼさないため。
     # 重複判定ロジックが正常に機能しているため、何日先を走査しても二重生成は発生しない。
     return [today + timedelta(days=i) for i in range(7)]
 
+
 def get_upcoming_grade_races() -> List[Dict[str, Any]]:
+    """
+    DBから直近7日間の重賞レースを取得する。
+
+    旧実装ではスクレイピング（scraper.get_race_list_html + parser）に依存していたため、
+    GitHub Actions環境ではキャッシュ不在 + BAN対策sleepにより確実に失敗していた。
+    DBには run_pipeline.py が毎日レースデータを投入済みなので、直接クエリに変更。
+    """
     db = SessionLocal()
     grade_races = []
     try:
         target_dates = get_upcoming_target_dates()
         print(f"[GradeRaceWriter] 対象日付（直近7日間）: {[d.strftime('%m-%d') for d in target_dates]}")
-        
-        for d in target_dates:
-            date_str = d.strftime('%Y%m%d')
-            list_html, _ = scraper.get_race_list_html(date_str, is_nar=False, force_download=False)
-            if not list_html:
+
+        # DBから対象日のレースを一括取得
+        races = db.query(models.Race).filter(
+            models.Race.race_date.in_(target_dates)
+        ).all()
+
+        if not races:
+            print(f"[GradeRaceWriter] DB上に対象日のレースが存在しません")
+            return []
+
+        print(f"[GradeRaceWriter] DB上のレース総数: {len(races)}件")
+
+        for race in races:
+            race_name = race.race_name or ''
+
+            if not is_grade_race(race_name):
                 continue
-                
-            race_ids = parser.parse_race_ids_from_list(list_html)
-            for rid in race_ids:
-                shutuba_html = scraper.get_shutuba_html_content(rid, is_nar=False, force_download=False)
-                if not shutuba_html:
-                    continue
-                parsed = parser.parse_shutuba_page(shutuba_html, rid)
-                race_info = parsed.get('race_info', {})
-                race_name = race_info.get('race_name', '')
-                
-                if not is_grade_race(race_name):
-                    continue
-                
-                venue_code = rid[4:6]
-                venue_name = JRA_VENUE_MAP.get(venue_code, '中央')
-                
-                pred_count = db.query(models.Prediction).filter(
-                    models.Prediction.race_id == rid,
-                    models.Prediction.deviation_score.isnot(None)
-                ).count()
-                
-                predictions = []
-                if pred_count > 0:
-                    preds = db.query(models.Prediction).filter(
-                        models.Prediction.race_id == rid,
-                        models.Prediction.deviation_score.isnot(None)
-                    ).order_by(models.Prediction.deviation_score.desc()).limit(5).all()
-                    
-                    predictions = [
-                        {
-                            'horse_name': p.horse_name,
-                            'horse_number': p.horse_number,
-                            'waku_number': p.waku_number,
-                            'deviation_score': round(p.deviation_score, 2) if p.deviation_score else None,
-                            'mark': p.mark,
-                        }
-                        for p in preds
-                    ]
-                
-                grade_races.append({
-                    'race_id': rid,
-                    'race_name': race_name,
-                    'race_date': race_info.get('race_date', d).strftime('%Y-%m-%d'),
-                    'venue_name': venue_name,
-                    'race_number': race_info.get('race_number', 0),
-                    'course_type': race_info.get('course_type', ''),
-                    'distance': race_info.get('distance', 0),
-                    'total_horses': race_info.get('total_horses', 0),
-                    'grade_priority': get_grade_priority(race_name),
-                    'predictions': predictions
-                })
+
+            venue_name = race.venue_name or '中央'
+            race_date = race.race_date
+
+            # 予測データを取得（AI偏差値上位5頭）
+            preds = db.query(models.Prediction).filter(
+                models.Prediction.race_id == race.id,
+                models.Prediction.deviation_score.isnot(None)
+            ).order_by(models.Prediction.deviation_score.desc()).limit(5).all()
+
+            predictions = [
+                {
+                    'horse_name': p.horse_name,
+                    'horse_number': p.horse_number,
+                    'waku_number': p.waku_number,
+                    'deviation_score': round(p.deviation_score, 2) if p.deviation_score else None,
+                    'mark': p.mark,
+                }
+                for p in preds
+            ]
+
+            # course_typeの表示名変換（DBでは'ダ'が使われる場合がある）
+            course_type = race.course_type or ''
+            if course_type == 'ダ':
+                course_type = 'ダート'
+
+            grade_races.append({
+                'race_id': race.id,
+                'race_name': race_name,
+                'race_date': race_date.strftime('%Y-%m-%d'),
+                'venue_name': venue_name,
+                'race_number': race.race_number or 0,
+                'course_type': course_type,
+                'distance': race.distance or 0,
+                'total_horses': race.total_horses or 0,
+                'grade_priority': get_grade_priority(race_name),
+                'predictions': predictions
+            })
 
         grade_races.sort(key=lambda r: (r['race_date'], r['grade_priority']))
+        print(f"[GradeRaceWriter] 重賞レース: {len(grade_races)}件を検出")
+        for gr in grade_races:
+            pred_status = f"予測あり({len(gr['predictions'])}頭)" if gr['predictions'] else "予測なし"
+            print(f"  - {gr['race_date']} {gr['race_name']} ({gr['venue_name']}) [{pred_status}]")
         return grade_races
 
     finally:
@@ -183,9 +201,14 @@ def get_upcoming_grade_races() -> List[Dict[str, Any]]:
 def get_course_statistics(db, venue: str, course: str, distance: int) -> List[Dict[str, str]]:
     if not course: course = '芝'
     if distance == 0: distance = 1600
-    
+
+    # course_typeのDB値に合わせる（DBでは'ダ'が使われている場合がある）
+    db_course = course
+    if course == 'ダート':
+        db_course = 'ダ'
+
     cutoff_date = (datetime.now(JST).date() - timedelta(days=365*3)).strftime('%Y-%m-%d')
-    
+
     query = text("""
         SELECT res.waku_number, COUNT(res.id) as runs, SUM(CASE WHEN res.rank = 1 THEN 1 ELSE 0 END) as wins
         FROM results res
@@ -196,16 +219,23 @@ def get_course_statistics(db, venue: str, course: str, distance: int) -> List[Di
         GROUP BY res.waku_number
         ORDER BY res.waku_number
     """)
-    
+
     try:
-        df = pd.read_sql_query(query, db.bind, params={'venue': venue, 'course': course, 'distance': distance, 'cutoff': cutoff_date})
+        df = pd.read_sql_query(query, db.bind, params={'venue': venue, 'course': db_course, 'distance': distance, 'cutoff': cutoff_date})
     except Exception as e:
         print(f"[GradeRaceWriter Warning] Course stat query failed: {e}")
-        return []
-        
+        # '芝'でも試す（DBの値が安定しない場合のフォールバック）
+        if db_course != course:
+            try:
+                df = pd.read_sql_query(query, db.bind, params={'venue': venue, 'course': course, 'distance': distance, 'cutoff': cutoff_date})
+            except Exception:
+                return []
+        else:
+            return []
+
     if df.empty:
         return []
-        
+
     stats = []
     for _, row in df.iterrows():
         runs = row['runs']
@@ -238,7 +268,7 @@ def build_write_order(race: Dict[str, Any]) -> Dict[str, Any]:
             'AI偏差値': str(p['deviation_score']),
             '印': p['mark'],
         })
-        
+
     db = SessionLocal()
     course_stats = []
     try:
@@ -247,7 +277,6 @@ def build_write_order(race: Dict[str, Any]) -> Dict[str, Any]:
     finally:
         db.close()
 
-    import urllib.parse
     venue_encoded = urllib.parse.quote(venue)
     race_url = f"https://uma-free.com/races/{race_date}?race={race['race_number']}&venue={venue_encoded}"
 
@@ -286,7 +315,9 @@ def generate_grade_race_orders() -> int:
     existing_keywords = load_existing_article_keywords()
     pending_keywords = load_pending_order_keywords()
     all_known_keywords = posted_keywords | existing_keywords | pending_keywords
-    
+
+    print(f"[GradeRaceWriter] 重複チェック対象: posted={len(posted_keywords)}, 既存記事={len(existing_keywords)}, 未消費order={len(pending_keywords)}")
+
     upcoming = get_upcoming_grade_races()
 
     if not upcoming:

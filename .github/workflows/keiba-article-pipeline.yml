@@ -47,8 +47,7 @@ jobs:
         working-directory: ./backend
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          python scripts/agents/grade_race_writer.py || echo "重賞WriteOrder生成スキップ（エラーでも続行）"
+        run: python scripts/agents/grade_race_writer.py
 
       - name: Step 1B - Generate Statistical Write Order (Data Scientist)
         working-directory: ./backend

@@ -44,9 +44,6 @@ og_image: 'https://uma-free.jp/og/2026-04-23-kyototurf1400m-waku-data.png'
 | 8枠 | 5.4% | 17.3% | 6% |
 
 
----
-> **同じ競馬場の枠順データを見る**
-> → [京都の全記事一覧へ](/articles/kyoto-gate-data-hub)
 
 ## 2. 3枠の複勝率35.2%は3回に1回以上馬券に絡む絶対的指標
 

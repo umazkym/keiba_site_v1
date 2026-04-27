@@ -43,9 +43,6 @@ og_image: 'https://uma-free.jp/og/2026-04-22-hanshinturf1600m-waku-data.png'
 | 8枠 | 6.7% | 18.0% | 0% |
 
 
----
-> **同じ競馬場の枠順データを見る**
-> → [阪神の全記事一覧へ](/articles/hanshin-gate-data-hub)
 
 ## 4枠の勝率13.3%が証明する中枠の立ち回りやすさ
 

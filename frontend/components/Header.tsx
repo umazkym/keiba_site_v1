@@ -44,7 +44,7 @@ export const Header = () => {
                     {/* ロゴ */}
                     <Link href="/" className="flex items-center gap-3 group shrink-0" aria-label="ウマFREE ホーム">
                         <Image
-                            src="/new-logo.png"
+                            src="/new-logo.webp"
                             alt="UMA-FREE ロゴ"
                             width={40}
                             height={40}
@@ -120,7 +120,7 @@ export const Header = () => {
                     aria-label="モバイルナビゲーション"
                 >
                     <div className="flex items-center gap-2 px-4 py-4 mb-2 bg-slate-50 border-b border-slate-100">
-                        <Image src="/new-logo.png" alt="UMA-FREE" width={24} height={24} className="w-6 h-6" />
+                        <Image src="/new-logo.webp" alt="UMA-FREE" width={24} height={24} className="w-6 h-6" />
                         <span className="text-base font-bold tracking-tight text-primary">UMA-FREE</span>
                     </div>
                     <Link

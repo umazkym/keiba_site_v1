@@ -42,9 +42,9 @@ export const metadata: Metadata = {
     // 「ルメール 得意コース」(23表示)等の実検索ワードを反映
     description: "競馬データ分析サイト。中央・地方の全レースをAIが無料分析。馬場状態の勝率影響、騎手の得意コース、枠順・距離適性、馬体重増減と成績の関係をデータで解説。登録不要で今すぐ使えます。",
     icons: {
-        icon: "/new-logo.png",
-        shortcut: "/new-logo.png",
-        apple: "/new-logo.png",
+        icon: "/new-logo.webp",
+        shortcut: "/new-logo.webp",
+        apple: "/new-logo.png", // AppleはWebP非対応の場合があるためPNG維持
     },
     other: {
         'google-adsense-account': 'ca-pub-4411270831448240',

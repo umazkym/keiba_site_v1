@@ -358,6 +358,60 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
             {/* バナー広告よりコンテンツカード風の方がCTRが高い */}
             <InFeedAd refreshKey={`bottom-${currentDate}`} />
 
+            {/* ★ 回遊性改善: 分析記事への導線を追加 */}
+            {/* データ根拠: 記事ページのエンゲージメント時間はレースページの3-10倍
+              → 広告のViewable率が高い → RPM向上
+              レースページ: 収益効率 $0.0001-0.0006/session
+              記事ページ(about-ai等): 収益効率 $0.0025/session（4-25倍） */}
+            {articlesMeta && articlesMeta.length > 0 && (
+                <section className="mt-3 sm:mt-4 mb-2 sm:mb-3 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
+                        <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <span className="w-1.5 h-5 bg-primary rounded-full"></span>
+                            分析記事で馬券力UP
+                        </h2>
+                    </div>
+                    <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {articlesMeta.slice(0, 3).map((article) => (
+                            <Link
+                                key={article.slug}
+                                href={`/articles/${article.slug}`}
+                                className="group flex sm:flex-col gap-3 sm:gap-0 items-start p-2 sm:p-0 rounded-lg hover:bg-slate-50 transition-colors"
+                            >
+                                <div className="shrink-0 w-16 h-16 sm:w-full sm:h-28 rounded-lg sm:rounded-b-none overflow-hidden bg-slate-100 relative">
+                                    {article.eyecatch && (
+                                        <img
+                                            src={article.eyecatch}
+                                            alt={article.title}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0 sm:p-3">
+                                    <span className="inline-block text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded mb-1">
+                                        {article.category}
+                                    </span>
+                                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 line-clamp-2 leading-snug group-hover:text-primary transition-colors">
+                                        {article.title}
+                                    </h3>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                    <div className="px-4 pb-3 text-center">
+                        <Link
+                            href="/articles"
+                            className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:text-primary-dark transition-colors"
+                        >
+                            すべての記事を見る
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </Link>
+                    </div>
+                </section>
+            )}
+
             {/* サイト紹介テキスト（SEO・AdSense対策：重複回避のため最小限に） */}
             <section className="mt-2 sm:mt-3 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">
                 <p className="text-sm text-gray-600">

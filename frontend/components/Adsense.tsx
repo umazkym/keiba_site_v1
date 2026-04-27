@@ -169,11 +169,13 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
         }
       },
       {
-        // ★ ビューアビリティ改善: rootMarginを200pxに縮小
-        // 300pxでもActive View viewableが35%に留まっていたため、さらに縮小
-        // 200px（約スマホ0.5画面分）に縮小し、ユーザー到達直前での読み込みでviewable判定率を向上
-        // データ: Active View 35% → 目標50-60%
-        rootMargin: '200px 0px 200px 0px',
+        // ★ ビューアビリティ改善: rootMarginを100pxに縮小
+        // 200pxでもActive View viewableが35-50%に留まっていたため、さらに縮小
+        // 100px（約スマホ0.15画面分）に縮小し、ほぼビューポート内に入った時点で読み込み
+        // → ユーザーが実際に閲覧する確率が高い位置でのみ広告がロードされる
+        // データ: report.json分析でViewable率22%の日はRPM¥14, 66%の日はRPM¥32と強い相関
+        // 目標: Active View 35-50% → 55-65%
+        rootMargin: '100px 0px 100px 0px',
         threshold: 0.01,
       }
     );

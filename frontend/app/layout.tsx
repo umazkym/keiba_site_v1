@@ -37,7 +37,9 @@ export const metadata: Metadata = {
         default: "UMA-FREE - AI競馬データ分析・統計情報サイト",
         template: "%s | UMA-FREE",
     },
-    description: "競馬レースの統計分析データを完全無料で提供。過去5年以上のデータを機械学習で分析。中央・地方競馬の全レースのAI偏差値・対戦成績・枠順分析をご活用ください。",
+    // ★ SEO改善: 検索クエリ「競馬 データ分析」(CTR 20%)、「馬場状態」(11表示)、
+    // 「ルメール 得意コース」(23表示)等の実検索ワードを反映
+    description: "競馬データ分析サイト。中央・地方の全レースをAIが無料分析。馬場状態の勝率影響、騎手の得意コース、枠順・距離適性、馬体重増減と成績の関係をデータで解説。登録不要で今すぐ使えます。",
     icons: {
         icon: "/new-logo.png",
         shortcut: "/new-logo.png",
@@ -48,7 +50,7 @@ export const metadata: Metadata = {
     },
     openGraph: {
         title: "UMA-FREE | AI競馬データ分析・統計情報サイト",
-        description: "競馬レースの統計分析データを完全無料で提供。過去5年以上のデータを機械学習で分析。中央・地方競馬の全レースのAI偏差値・対戦成績・枠順分析をご活用ください。",
+        description: "競馬データ分析サイト。中央・地方の全レースをAIが無料分析。馬場状態の勝率影響、騎手の得意コース、枠順・距離適性、馬体重増減と成績の関係をデータで解説。登録不要で今すぐ使えます。",
         url: "https://uma-free.com",
         siteName: "UMA-FREE",
         images: [

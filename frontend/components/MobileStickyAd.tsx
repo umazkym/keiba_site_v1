@@ -41,11 +41,14 @@ export const MobileStickyAd = () => {
         setIsMounted(true);
     }, []);
 
-    // ★ ビューアビリティ改善: 300px以上スクロールしてから表示（ファーストビュー保護）
+    // ★ ビューアビリティ改善: 500px以上スクロールしてから表示（ファーストビュー保護強化）
+    // 旧: 300px → ファーストビュー直後に追従広告が出現し、コンテンツ閲覧を妨害
+    // 新: 500px → ユーザーがコンテンツに集中した後に自然に表示
+    // データ根拠: モバイルユーザー274人のViewable率改善と直帰率低下を狙う
     useEffect(() => {
         if (!isMounted) return;
         const handleScroll = () => {
-            if (window.scrollY > 300) {
+            if (window.scrollY > 500) {
                 setHasScrolled(true);
                 window.removeEventListener('scroll', handleScroll);
             }

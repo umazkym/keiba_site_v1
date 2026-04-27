@@ -16,8 +16,11 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const article = await getArticleBySlug(params.slug);
+    // ★ SEO改善: descriptionのfallbackに「競馬データ分析」を含めて検索クエリとの関連性を強化
+    // 記事のdescriptionが設定されていない場合、本文冒頭から「競馬データ分析」を前置して生成
+    const rawDescription = article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().substring(0, 140);
     const description = article.description ||
-      article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().substring(0, 160);
+      `【競馬データ分析】${rawDescription}...`;
 
     const imageUrl = article.eyecatch.startsWith('http')
       ? article.eyecatch

@@ -17,12 +17,16 @@ interface ArticlesPageProps {
 export async function generateMetadata({ searchParams }: ArticlesPageProps): Promise<Metadata> {
     const selectedCategory = searchParams.category;
     let canonicalUrl = '/articles';
-    let title = "記事一覧";
-    let description = "UMA-FREEが提供する競馬データ分析に関する記事の一覧です。コース分析や騎手分析など、馬券検討に役立つ情報をお届けします。";
+    // ★ SEO改善: 検索クエリ「競馬データ分析 サイト」(月24表示/0クリック)、
+    // 「競馬データ分析 無料」(月14表示/0クリック)に対応するtitle/descriptionに変更
+    // 旧: 「記事一覧」→ 検索意図との関連が薄くCTR 0%
+    // 新: 「無料」「データ分析」「統計」を明示し、検索結果での訴求力を向上
+    let title = "競馬データ分析の記事一覧 | 無料で読める統計分析コラム";
+    let description = "競馬のデータ分析・統計情報を無料で提供。馬場状態の影響、騎手の得意コース、枠順傾向、体重変動と勝率の関係など、馬券検討に役立つデータ分析記事を多数掲載。登録不要で全記事を閲覧できます。";
 
     if (selectedCategory) {
-        title = `${selectedCategory}の記事一覧`;
-        description = `${selectedCategory}に関するデータ分析記事の一覧です。`;
+        title = `${selectedCategory}のデータ分析記事 | 競馬統計コラム`;
+        description = `${selectedCategory}に関する競馬データ分析記事の一覧です。過去5年以上のデータに基づく統計分析で、馬券検討をサポートします。`;
         canonicalUrl = `/articles?category=${encodeURIComponent(selectedCategory)}`;
     }
 

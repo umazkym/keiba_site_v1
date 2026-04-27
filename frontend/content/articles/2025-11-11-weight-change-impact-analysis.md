@@ -5,7 +5,7 @@ description: >-
   馬体重の±4kg以内の増減は成績への影響がほぼ皆無である一方、±10kg以上の変動は勝率5〜6%台へ急落する危険な客観的シグナルとなる。季節特有の減少傾向等ノイズを排除し、馬体重データからコンディション不良による期待値崩壊を回避する基準を解説する。
 keywords: '競馬, データ分析, 馬体重変動, コンディション, 増減, 勝率, バランス'
 eyecatch: /images/articles/data-analysis-eyecatch.png
-category: 初心者向けガイド
+category: 入門ガイド
 tags: []
 ---
 

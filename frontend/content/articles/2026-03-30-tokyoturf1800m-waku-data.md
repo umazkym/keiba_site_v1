@@ -10,7 +10,7 @@ keywords:
   - 回収率
 target_keyword: 東京芝1800m 枠順 データ
 theme_cluster: asset
-category: コース・枠順分析
+category: コース分析
 draft: false
 date: '2026-03-30T23:42:53.689Z'
 og_type: article

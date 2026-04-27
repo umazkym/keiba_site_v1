@@ -5,7 +5,7 @@ description: >-
   単なるアクセス情報ではなく、JRA全国10競馬場の「直線距離」「高低差」「コーナーの角度」といったコース形態が引き起こす物理的な有利不利（バイアス）の構造を解説。
 keywords: '競馬場, コース形態, バイアス, 直線距離, 高低差, JRA'
 eyecatch: /images/articles/beginner.png
-category: 初心者向けガイド
+category: 入門ガイド
 tags: []
 ---
 

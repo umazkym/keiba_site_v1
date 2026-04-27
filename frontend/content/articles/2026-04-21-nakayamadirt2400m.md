@@ -10,7 +10,7 @@ keywords:
   - 逃げ先行
 target_keyword: 中山ダート2400m 脚質 有利
 theme_cluster: running_style_data
-category: course-data
+category: コース分析
 draft: false
 date: '2026-04-21T23:31:21.840Z'
 og_type: article

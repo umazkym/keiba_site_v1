@@ -10,7 +10,7 @@ keywords:
   - 回収率
 target_keyword: 京都芝1400m 枠順 データ
 theme_cluster: waku_data
-category: course-data
+category: コース分析
 draft: false
 date: '2026-04-23T23:43:17.838Z'
 og_type: article

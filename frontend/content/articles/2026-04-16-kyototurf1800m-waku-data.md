@@ -10,7 +10,7 @@ keywords:
   - コース傾向
 target_keyword: 京都芝1800m 枠順 データ
 theme_cluster: waku_data
-category: コース・枠順分析
+category: コース分析
 draft: false
 date: '2026-04-16T23:42:23.449Z'
 og_type: article

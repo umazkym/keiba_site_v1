@@ -5,7 +5,7 @@ description: >-
   1番人気の勝率32.5%・複勝率64.3%をはじめ、JRA全レースの人気別成績を完全データ化。単勝回収率85%を記録する9番人気など中穴ゾーンの優位性と、新馬戦〜GIまでのクラス別信頼度を解明。
 keywords: '競馬, データ分析, 人気別成績, 勝率, 複勝率, 単勝回収率, 1番人気, 中穴, 期待値'
 eyecatch: /images/articles/data-analysis-eyecatch.png
-category: 血統・馬券コラム
+category: 馬券・統計
 tags:
   - 馬券術
 ---

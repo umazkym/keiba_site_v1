@@ -10,7 +10,7 @@ keywords:
   - 配当傾向
 target_keyword: 中山芝2000m 荒れる 傾向
 theme_cluster: popularity_data
-category: course-data
+category: コース分析
 draft: false
 date: '2026-04-20T23:44:10.689Z'
 og_type: article

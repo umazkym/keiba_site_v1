@@ -10,7 +10,7 @@ keywords:
   - 回収率
 target_keyword: 東京芝2400m 枠順 データ
 theme_cluster: asset
-category: コース・枠順分析
+category: コース分析
 draft: false
 date: '2026-03-29T23:39:48.825Z'
 og_type: article

@@ -5,7 +5,7 @@ description: >-
   8枠の複勝率28.6%は2枠の21.0%を7.6pt上回る。芝スタートのアドバンテージとコーナー1つのコース形状がもたらす外枠有利の構造を解説。逃げ馬勝率10.2%というデータから、波乱の少ない短距離戦における先行力と枠順の組み合わせによる馬券戦略を提示する。
 keywords: '競馬, データ分析, 中山ダート1200m, 枠順, 脚質'
 eyecatch: /images/articles/data-analysis-eyecatch.png
-category: コース・枠順分析
+category: コース分析
 tags:
   - 中山
 ---

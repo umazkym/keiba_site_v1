@@ -5,7 +5,7 @@ description: >-
   競走馬の能力だけでなく、陣営の技術も勝敗に直結する。矢作芳人厩舎（勝率16.2%）や中内田充正厩舎（勝率24.2%）などの客観的ランキングデータから、調教師の「得意パターン」を利用して馬券の期待値を底上げする戦略を解説。
 keywords: '競馬, データ分析, 調教師, 勝率, ランキング, 回収率, JRA, 中内田充正, 矢作芳人, 国枝栄'
 eyecatch: /images/articles/data-analysis-eyecatch.png
-category: 血統・馬券コラム
+category: 馬券・統計
 tags:
   - 馬券術
 ---

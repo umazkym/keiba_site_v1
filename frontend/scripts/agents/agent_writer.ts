@@ -61,12 +61,13 @@ const SYSTEM_PROMPT = `あなたはデータ駆動型競馬メディア「UMA-FR
 
 【カテゴリの決定ルール】
 theme_clusterの値に応じてcategoryを以下のように決定せよ。
-  - "asset" -> "course-data"
-  - "seasonal" -> "course-data"
-  - "jockey_data" -> "course-data"
-  - "popularity_data" -> "course-data"
-  - "running_style_data" -> "course-data"
-  - "grade_race_preview" -> "grade-race"
+  - "asset" -> "コース分析"
+  - "seasonal" -> "コース分析"
+  - "waku_data" -> "コース分析"
+  - "jockey_data" -> "騎手分析"
+  - "popularity_data" -> "馬券・統計"
+  - "running_style_data" -> "コース分析"
+  - "grade_race_preview" -> "重賞攻略"
 
 【出力形式】
 説明文・謝辞・前置き一切不要。以下のFrontmatter付きMarkdownのみを出力せよ。

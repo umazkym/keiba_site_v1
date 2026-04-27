@@ -5,7 +5,7 @@ description: >-
   「春のGIシーズン」といったイベント情報の裏にある、JRAのクラス編成（1勝クラス〜オープン）や新馬戦のスケジュール等、時期によって変動するレースの予測難易度と期待値構造を解説する。
 keywords: '競馬, クラス編成, 番組表, 年間スケジュール, 新馬戦, 未勝利戦, 投資戦略'
 eyecatch: /images/articles/beginner.png
-category: 初心者向けガイド
+category: 入門ガイド
 tags: []
 ---
 

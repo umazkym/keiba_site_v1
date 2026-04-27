@@ -5,7 +5,7 @@ description: >-
   最低騎乗回数50回以上のデータに基づくJRA騎手・調教師ランキング。勝率28.9%の川田将雅や27.7%のC.ルメール、中内田充正厩舎の勝率24.2%など、馬券構築における評価基準となる陣営の実績を数値で明確化する。
 keywords: '競馬, 勝率, ランキング, 騎手, 調教師, JRA, データ分析, ルメール, 川田将雅, 厩舎'
 eyecatch: /images/articles/data-analysis-eyecatch.png
-category: 血統・馬券コラム
+category: 馬券・統計
 tags:
   - 馬券術
 ---

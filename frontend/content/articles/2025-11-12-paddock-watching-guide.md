@@ -4,7 +4,7 @@ date: '2025-11-12'
 description: 「元気そう」といった主観的表現を排除し、パドックでの発汗、歩様、馬体重の増減という定量的要素をデータと組み合わせて馬のパフォーマンス低下を見抜く方法を解説。
 keywords: '競馬, パドック, 馬体重, 発汗, 歩様, コンディション, バイアス'
 eyecatch: /images/articles/beginner.png
-category: 初心者向けガイド
+category: 入門ガイド
 tags: []
 ---
 

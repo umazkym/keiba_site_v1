@@ -10,7 +10,7 @@ keywords:
   - 阪神競馬場
 target_keyword: 阪神芝1600m 枠順 データ
 theme_cluster: asset
-category: course-data
+category: コース分析
 draft: false
 date: '2026-04-22T23:45:20.855Z'
 og_type: article

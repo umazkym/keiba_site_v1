@@ -10,7 +10,7 @@ keywords:
   - 回収率
 target_keyword: 中山芝2000m 枠順 データ
 theme_cluster: seasonal
-category: コース・枠順分析
+category: コース分析
 draft: false
 date: '2026-04-04T23:38:55.958Z'
 og_type: article

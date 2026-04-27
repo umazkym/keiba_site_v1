@@ -10,7 +10,7 @@ keywords:
   - モレイラ
 target_keyword: 東京ダート1600m 騎手 データ
 theme_cluster: jockey_data
-category: 騎手データ分析
+category: 騎手分析
 draft: false
 date: '2026-04-11T23:28:19.931Z'
 og_type: article

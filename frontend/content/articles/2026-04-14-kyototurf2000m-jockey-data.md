@@ -11,7 +11,7 @@ keywords:
   - 競馬データ分析
 target_keyword: 京都芝2000m 騎手 データ
 theme_cluster: jockey_data
-category: 騎手データ分析
+category: 騎手分析
 draft: false
 date: '2026-04-14T23:41:37.759Z'
 og_type: article

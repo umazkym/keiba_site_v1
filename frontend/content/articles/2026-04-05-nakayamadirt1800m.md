@@ -10,7 +10,7 @@ keywords:
   - 先行有利
 target_keyword: 中山ダート1800m 脚質 有利
 theme_cluster: running_style_data
-category: コース・枠順分析
+category: コース分析
 draft: false
 date: '2026-04-05T23:41:34.352Z'
 og_type: article

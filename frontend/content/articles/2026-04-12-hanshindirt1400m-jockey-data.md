@@ -10,7 +10,7 @@ keywords:
   - 競馬予想
 target_keyword: 阪神ダート1400m 騎手 データ
 theme_cluster: jockey_data
-category: 騎手データ分析
+category: 騎手分析
 draft: false
 date: '2026-04-12T23:28:39.643Z'
 og_type: article

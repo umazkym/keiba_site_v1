@@ -5,7 +5,7 @@ description: >-
   UMA-FREEのAI競馬分析データを活用し、主観を排除した投資としての競馬戦略を解説。AI偏差値60以上の信頼性と、オッズ期待値を組み合わせた合理的な資金配分プロセスを定義する。
 keywords: '競馬, データ分析, AI予想, UMA-FREE, AI偏差値, 資金配分, 期待値, オッズ'
 eyecatch: /images/articles/beginner.png
-category: 初心者向けガイド
+category: 入門ガイド
 tags: []
 ---
 

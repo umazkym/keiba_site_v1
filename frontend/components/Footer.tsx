@@ -48,7 +48,6 @@ export const Footer = () => {
                                     className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1.5 py-1"
                                     aria-label="公式Xアカウント"
                                 >
-                                    <TwitterIcon className="w-3.5 h-3.5" />
                                     公式X (Twitter)
                                 </Link>
                             </li>

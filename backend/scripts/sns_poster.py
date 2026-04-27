@@ -815,7 +815,7 @@ def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date
 
 ▼レース結果とAIの印はこちらから
 
-{SITE_BASE_URL}
+{SITE_BASE_URL}/races/{date_str}
 
 {' '.join(hashtags)}
 {f'https://x.com/anyuser/status/{quote_tweet_id}' if quote_tweet_id else ''}
@@ -855,7 +855,7 @@ AIが今日のレースで最も高く評価した一頭はこちら！
 
 ▼全レースの無料予測
 
-{SITE_BASE_URL}
+{SITE_BASE_URL}/races/{date_str}?race={pick.get('race_number','')}&venue={pick.get('venue_name','')}
 
 {' '.join(hashtags)}
 
@@ -870,7 +870,9 @@ def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
     lines = [f"🏇本日の重賞 ({race.get('race_name','')}) AI予測\n"]
     for i, p in enumerate(top_preds[:3]):
         lines.append(f"{['◎','○','▲'][i]} {p.get('horse_name','?')} (AI偏差値: {float(p.get('deviation_score') or 0):.2f})")
-    lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}")
+    race_num = race.get('race_number', '')
+    venue = race.get('venue_name', '')
+    lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}/races/{date_str}?race={race_num}&venue={venue}")
     lines.append(f"\n{' '.join(hashtags)}")
     return "\n".join(lines)
 
@@ -1130,7 +1132,7 @@ def create_morning_hit_tweet(hit: Dict[str, Any], summary: dict, date_str: str, 
     lines.append(f"\n[{summary.get('win',0)}-{summary.get('second',0)}-{summary.get('third',0)}-{summary.get('other',0)}]")
     lines.append(f"\n勝率: {summary.get('win_rate',0.0):.1f}% / 複勝率: {in_money_rate:.1f}%")
     lines.append(f"\n▼レース結果とAIの印はこちらから")
-    lines.append(f"\n{SITE_BASE_URL}")
+    lines.append(f"\n{SITE_BASE_URL}/races/{date_str}")
     lines.append(f"\n{' '.join(hashtags_1)}")
     
     if quote_tweet_id:
@@ -1174,7 +1176,9 @@ def create_morning_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
     lines.append(f"\n【{pick.get('venue_name','')}{pick.get('race_number','')}R {pick.get('race_name','')}】")
     lines.append(f"\n◎ {pick_horse_name} (AI偏差値: {float(pick.get('deviation_score') or 0):.2f})")
     lines.append(f"\n▼全レースの無料予測")
-    lines.append(f"\n{SITE_BASE_URL}")
+    race_num = pick.get('race_number', '')
+    venue = pick.get('venue_name', '')
+    lines.append(f"\n{SITE_BASE_URL}/races/{date_str}?race={race_num}&venue={venue}")
     lines.append(f"\n{' '.join(hashtags_2)}")
 
     # engagements = [
@@ -1228,7 +1232,7 @@ def create_afternoon_race_summary_tweet(all_races_today: dict, yesterday_hits: L
     if nar_races > 0:
         hashtags.append("#地方競馬")
 
-    lines.append(f"\n▼詳細データはこちら\n{SITE_BASE_URL}\n")
+    lines.append(f"\n▼詳細データはこちら\n{SITE_BASE_URL}/races/{date_str}\n")
     lines.append(" ".join(hashtags))
 
     return "\n".join(lines)
@@ -1302,7 +1306,8 @@ def find_all_grade_races_for_date(target_date: str) -> List[tuple]:
             for horse_name in horse_names:
                 hashtags.append(f"#{horse_name}")
 
-            lines.append(f"\n▼詳細はこちら\n{SITE_BASE_URL}\n")
+            race_num = race.get('race_number', '')
+            lines.append(f"\n▼詳細はこちら\n{SITE_BASE_URL}/races/{target_date}?race={race_num}&venue={venue_name}\n")
             lines.append(" ".join(hashtags))
 
             tweet_text = "\n".join(lines)
@@ -1336,7 +1341,8 @@ def create_pre_race_tweet(race: dict, top_preds: List[dict]) -> str:
         lines.append(f"{['◎','○','▲'][i]} {horse_name} (AI偏差値: {ds_val_f:.1f})")
         hashtags.append(f"#{horse_name}")
         
-    lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}")
+    race_num = race.get('race_number', '')
+    lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}/races/{date_str}?race={race_num}&venue={venue_name}")
     lines.append(f"\n{' '.join(hashtags)}")
     
     engagements = [
@@ -1636,7 +1642,7 @@ def main():
 💰 {int(payout):,}円 的中！
 
 ▼今日の全レース無料予測
-{SITE_BASE_URL}
+{SITE_BASE_URL}/races/{today_str}
 
 #競馬 #AI予想 #{'万馬券' if payout >= 100000 else '高配当的中'} #{venue}競馬"""
 

@@ -92,6 +92,13 @@ export default function RootLayout({
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 
+                {/* ★ パフォーマンス改善: AdSense/GAへのdns-prefetch + preconnect
+                    広告のロード開始を早め、Viewable判定の機会を増やす */}
+                <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
+                <link rel="dns-prefetch" href="https://tpc.googlesyndication.com" />
+                <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+                <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossOrigin="anonymous" />
+
                 {/* AdSenseアカウントメタタグ */}
                 <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
 

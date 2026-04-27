@@ -48,7 +48,7 @@ CollapsibleSection.displayName = 'CollapsibleSection';
 
 const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isRaceUnlocked, isReady, isLoading, isSupported, showAd, unlock }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isRaceUnlocked: (raceId: string) => boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, showAd: (raceId?: string) => void, unlock: (raceId?: string) => void }) => {
     const [showInlineAd, setShowInlineAd] = useState(false);
-    const [countdown, setCountdown] = useState(10);
+    const [countdown, setCountdown] = useState(7);
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
@@ -81,7 +81,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     useEffect(() => {
         if (activeRace && !isRaceUnlocked(activeRace.id)) {
             setShowInlineAd(false);
-            setCountdown(10);
+            setCountdown(7);
         }
     }, [activeRaceIndex, activeRace, isRaceUnlocked]);
 
@@ -315,7 +315,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                                     showAd(activeRace.id);
                                                 } else {
                                                     setShowInlineAd(true);
-                                                    let remaining = 10;
+                                                    let remaining = 7;
                                                     setCountdown(remaining);
                                                     const timer = setInterval(() => {
                                                         remaining--;
@@ -338,7 +338,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                                     読み込み中
                                                 </>
                                             ) : (
-                                                '10秒間の広告を見てデータを表示'
+                                                '7秒間の広告を見てデータを表示'
                                             )}
                                         </button>
                                     </div>

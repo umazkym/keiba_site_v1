@@ -32,6 +32,42 @@ export default function NotFound() {
 
                 {/* ナビゲーションカード */}
                 <div className="grid md:grid-cols-2 gap-6 my-10">
+                    {/* 今日のレース分析（最優先導線） */}
+                    <Link
+                        href="/races/today"
+                        className="bg-primary/5 rounded-lg border-2 border-primary/20 p-6 hover:border-primary transition-colors group"
+                    >
+                        <div className="flex items-start gap-4">
+                            <div className="bg-primary/10 text-primary rounded-lg p-4 flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg text-primary mb-1">今日のレースデータ分析</h3>
+                                <p className="text-sm text-gray-600">AI偏差値・対戦成績・枠順傾向を無料で確認</p>
+                            </div>
+                        </div>
+                    </Link>
+
+                    {/* 分析記事 */}
+                    <Link
+                        href="/articles"
+                        className="bg-white rounded-lg border border-gray-200 p-6 hover:border-secondary transition-colors group"
+                    >
+                        <div className="flex items-start gap-4">
+                            <div className="bg-secondary/10 text-secondary rounded-lg p-4 flex-shrink-0 group-hover:bg-secondary/20 transition-colors">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg text-gray-800 mb-1 group-hover:text-secondary transition-colors">競馬データ分析記事</h3>
+                                <p className="text-sm text-gray-600">枠順・騎手・コース別の統計データを解説</p>
+                            </div>
+                        </div>
+                    </Link>
+
                     {/* トップページ */}
                     <Link
                         href="/"

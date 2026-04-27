@@ -77,69 +77,80 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
 
     return (
         <>
-            {/* ===== LIGHT HERO BANNER ===== */}
-            <div className="relative -mx-3 sm:-mx-4 md:-mx-6 bg-white overflow-hidden border-b border-slate-100">
-
-
-                <div className="relative px-4 sm:px-6 pt-8 sm:pt-10 pb-0">
-                    {/* ページタイトルエリア */}
-                    <div className="flex items-start justify-between mb-7">
-                        <div>
-                            <div className="flex items-center gap-3 mb-3">
-                                <span className="text-primary font-bold text-xs tracking-wider">
-                                    競馬データ分析・コラム
-                                </span>
-                            </div>
-                            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 leading-none tracking-tight">
+            {/* ===== HEADER & FILTERS ===== */}
+            <div className="relative -mx-3 sm:-mx-4 md:-mx-6 bg-white border-b border-slate-200/80">
+                <div className="relative px-4 sm:px-6">
+                    {/* ページタイトルエリア — コンパクト＆モダン */}
+                    <div className="pt-6 sm:pt-8 pb-4">
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                            </svg>
+                            <span className="text-slate-400 font-medium text-xs tracking-wide uppercase">
+                                競馬データ分析・コラム
+                            </span>
+                        </div>
+                        <div className="flex items-baseline gap-3">
+                            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">
                                 {selectedCategory ? (
                                     <>
-                                        <span className="text-primary">{selectedCategory}</span>
-                                        <span className="text-slate-500 text-2xl font-bold ml-2">の記事</span>
+                                        {selectedCategory}
+                                        <span className="text-slate-400 text-lg sm:text-xl font-bold ml-1.5">の記事</span>
                                     </>
                                 ) : (
                                     'データ分析記事'
                                 )}
                             </h1>
-                            <p className="text-slate-500 text-sm mt-2 font-medium">
-                                全 {filteredArticles.length} 件の記事
-                            </p>
+                            <span className="text-slate-400 text-sm font-medium tabular-nums whitespace-nowrap">
+                                {filteredArticles.length}件
+                            </span>
                         </div>
                     </div>
 
-                    {/* ===== TIER 1: CATEGORY FILTERS ===== */}
-                    <div className={`flex flex-wrap gap-2.5 ${selectedCategory && uniqueTags.length > 0 ? 'pb-3' : 'pb-6'}`}>
-                        <Link
-                            href="/articles"
-                            className={`shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 border ${!selectedCategory
-                                    ? 'bg-primary text-white border-primary shadow-[0_4px_14px_rgba(15,23,42,0.2)]'
-                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
-                                }`}
-                        >
-                            すべて
-                        </Link>
-                        {uniqueCategories.map((cat) => (
+                    {/* ===== CATEGORY TAB BAR — 横スクロール式 ===== */}
+                    <div className="relative -mb-px">
+                        <div className="flex gap-0.5 overflow-x-auto scrollbar-hide pb-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                             <Link
-                                key={cat}
-                                href={`/articles?category=${encodeURIComponent(cat)}`}
-                                className={`shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 border ${selectedCategory === cat
-                                        ? 'bg-primary text-white border-primary shadow-[0_4px_14px_rgba(15,23,42,0.2)]'
-                                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
-                                    }`}
+                                href="/articles"
+                                className={`relative shrink-0 px-4 py-2.5 text-sm font-semibold transition-colors duration-200 whitespace-nowrap ${!selectedCategory
+                                    ? 'text-slate-900'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                }`}
                             >
-                                {cat}
+                                すべて
+                                {!selectedCategory && (
+                                    <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-slate-900 rounded-full" />
+                                )}
                             </Link>
-                        ))}
+                            {uniqueCategories.map((cat) => (
+                                <Link
+                                    key={cat}
+                                    href={`/articles?category=${encodeURIComponent(cat)}`}
+                                    className={`relative shrink-0 px-4 py-2.5 text-sm font-semibold transition-colors duration-200 whitespace-nowrap ${selectedCategory === cat
+                                        ? 'text-slate-900'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                >
+                                    {cat}
+                                    {selectedCategory === cat && (
+                                        <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-slate-900 rounded-full" />
+                                    )}
+                                </Link>
+                            ))}
+                        </div>
                     </div>
+                </div>
 
-                    {/* ===== TIER 2: TAG FILTERS ===== */}
-                    {selectedCategory && uniqueTags.length > 0 && (
-                        <div className="flex flex-wrap gap-2.5 pb-6 pt-1">
+                {/* ===== TAG CHIPS — カテゴリ選択時のみ ===== */}
+                {selectedCategory && uniqueTags.length > 0 && (
+                    <div className="bg-slate-50/80 border-t border-slate-100 px-4 sm:px-6 py-3">
+                        <div className="flex gap-2 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                             <Link
                                 href={`/articles?category=${encodeURIComponent(selectedCategory)}`}
-                                className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border ${!selectedTag
-                                        ? 'bg-slate-700 text-white border-slate-700'
-                                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-                                    }`}
+                                className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${!selectedTag
+                                    ? 'bg-slate-800 text-white shadow-sm'
+                                    : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-300 hover:text-slate-700'
+                                }`}
                             >
                                 すべて
                             </Link>
@@ -147,17 +158,17 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                                 <Link
                                     key={tag}
                                     href={`/articles?category=${encodeURIComponent(selectedCategory)}&tag=${encodeURIComponent(tag)}`}
-                                    className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border ${selectedTag === tag
-                                            ? 'bg-slate-700 text-white border-slate-700'
-                                            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-                                        }`}
+                                    className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${selectedTag === tag
+                                        ? 'bg-slate-800 text-white shadow-sm'
+                                        : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-300 hover:text-slate-700'
+                                    }`}
                                 >
                                     #{tag}
                                 </Link>
                             ))}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* ===== BREADCRUMB ===== */}

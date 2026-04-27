@@ -18,7 +18,8 @@ import type { Metadata } from 'next';
 // バックグラウンドで再検証が行われるため「何も見れない」障害を防止する。
 export const revalidate = 1800;
 
-const siteDescription = "競馬レースの統計分析データを完全無料で提供。過去5年以上のデータを機械学習で分析。中央・地方競馬の全レースのAI偏差値・対戦成績・枠順分析をご活用ください。";
+// ★ SEO改善: layout.tsxのdescriptionと同期（検索クエリ「競馬 データ分析」対応）
+const siteDescription = "競馬データ分析サイト。中央・地方の全レースをAIが無料分析。馬場状態の勝率影響、騎手の得意コース、枠順・距離適性、馬体重増減と成績の関係をデータで解説。登録不要で今すぐ使えます。";
 
 // SEO metadata
 export const metadata: Metadata = {
@@ -290,8 +291,8 @@ export default async function HomePage() {
                                 </div>
                             </Link>
                         ))}
-                        {/* 2段目右端: ネイティブカード広告 */}
-                        <NativeCardAd slot="1489598374" variant="article" className="shrink-0 w-full" />
+                        {/* 2段目右端: ネイティブカード広告（1段目と異なるスロットIDでfill率向上） */}
+                        <NativeCardAd slot="9407670747" variant="article" className="shrink-0 w-full" />
                     </div>
                 </section>
 

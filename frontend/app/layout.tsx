@@ -5,7 +5,8 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { OrganizationSchema, WebsiteSchema, SoftwareApplicationSchema } from "@/components/StructuredData";
-import { CookieConsent } from "@/components/CookieConsent";
+// CookieConsent削除: AdSense/GoogleのGDPR同意メッセージと重複して2種類のポップアップが表示されるUX問題を解消
+// 日本向けサイトではGDPR準拠Cookie同意バナーは法的に不要。Google側の同意管理に一元化
 
 import { Suspense } from "react";
 import { GlobalAdManager } from "@/components/GlobalAdManager";
@@ -97,6 +98,25 @@ export default function RootLayout({
                 {/* PWA: ホーム画面追加対応 */}
                 <link rel="manifest" href="/manifest.json" />
 
+                {/* ★ Consent Mode v2: デフォルトgranted設定
+                    日本のユーザーにはGDPR同意は法的に不要。
+                    これにより Google Funding Choices（AdSenseの自動GDPR同意ポップアップ）が表示されなくなる。
+                    adsbygoogle.js よりも先に実行される必要がある。 */}
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            window.dataLayer = window.dataLayer || [];
+                            function gtag(){dataLayer.push(arguments);}
+                            gtag('consent', 'default', {
+                                'ad_storage': 'granted',
+                                'ad_user_data': 'granted',
+                                'ad_personalization': 'granted',
+                                'analytics_storage': 'granted'
+                            });
+                        `,
+                    }}
+                />
+
                 <script
                     async
                     src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"
@@ -127,7 +147,7 @@ export default function RootLayout({
                 </main>
                 {/* フッター直前の全ページ共通広告はユーザーの要望により撤去（UIスッキリ化のため） */}
                 <Footer />
-                <CookieConsent />
+                {/* CookieConsent削除済み: Google側のGDPR同意メッセージに一元化 */}
                 <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || ""} />
             </body>
         </html>

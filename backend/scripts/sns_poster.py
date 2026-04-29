@@ -341,6 +341,8 @@ def truncate_for_threads(text: str) -> str:
 
 
 def post_to_threads(text: str) -> Optional[str]:
+    """Threadsにテキスト投稿を行う。トークン失効時は明確な警告を出力する。"""
+    global THREADS_ACCESS_TOKEN
     if not THREADS_USER_ID or not THREADS_ACCESS_TOKEN:
         _log("⚠️ Threads認証情報未設定。スキップします。")
         return None
@@ -361,12 +363,19 @@ def post_to_threads(text: str) -> Optional[str]:
             data={"media_type": "TEXT", "text": text},
             timeout=30
         )
+        if res.status_code == 401:
+            _log("❌ Threadsコンテナ作成失敗: 401 Unauthorized")
+            _log("  → 🔑 アクセストークンが失効しています！")
+            _log("  → Meta for Developers で新しいトークンを生成し、GitHub Secrets の THREADS_ACCESS_TOKEN を更新してください")
+            _log(f"  → レスポンス: {res.text[:300]}")
+            return None
         if res.status_code != 200:
             _log(f"❌ Threadsコンテナ作成失敗: {res.status_code} - {res.text[:200]}")
             return None
 
         container_id = res.json().get("id")
         if not container_id:
+            _log("❌ Threadsコンテナ作成: レスポンスにIDが含まれていません")
             return None
 
         time.sleep(3)
@@ -391,13 +400,47 @@ def post_to_threads(text: str) -> Optional[str]:
 
 
 def refresh_threads_token_if_needed() -> None:
-    if not THREADS_ACCESS_TOKEN or not THREADS_TOKEN_EXPIRY:
+    """Threadsトークンの有効期限を確認し、期限が近い場合はリフレッシュを試みる。
+    THREADS_TOKEN_EXPIRY未設定時はトークン有効性を軽量APIで確認する。
+    リフレッシュ成功時はグローバル変数を更新し、同一実行内で新トークンを使用する。
+    """
+    global THREADS_ACCESS_TOKEN
+    if not THREADS_ACCESS_TOKEN:
+        _log("⚠️ THREADS_ACCESS_TOKEN が未設定です。Threads投稿はスキップされます。")
         return
+
+    # THREADS_TOKEN_EXPIRY が未設定の場合、APIでトークンの有効性を確認
+    if not THREADS_TOKEN_EXPIRY:
+        _log("⚠️ THREADS_TOKEN_EXPIRY が未設定です。トークンの有効性をAPIで確認します...")
+        try:
+            check_res = requests.get(
+                f"https://graph.threads.net/v1.0/me",
+                params={"access_token": THREADS_ACCESS_TOKEN},
+                timeout=15
+            )
+            if check_res.status_code == 200:
+                user_data = check_res.json()
+                _log(f"✅ Threadsトークン有効確認: ユーザーID={user_data.get('id', '?')}")
+            else:
+                _log(f"❌ Threadsトークン無効の可能性: {check_res.status_code} - {check_res.text[:200]}")
+                _log("  → Meta for Developers で新しいトークンを生成し、GitHub Secrets を更新してください")
+        except Exception as e:
+            _log(f"❌ Threadsトークン確認エラー: {e}")
+        return
+
     try:
         expiry = datetime.fromisoformat(THREADS_TOKEN_EXPIRY)
         days_left = (expiry - datetime.now()).days
+        _log(f"ℹ️ Threadsトークン残り{days_left}日 (期限: {THREADS_TOKEN_EXPIRY})")
+
+        if days_left <= 0:
+            _log("❌ Threadsトークンは既に期限切れです！")
+            _log("  → Meta for Developers で新しいトークンを生成し、GitHub Secrets を更新してください")
+            return
+
         if days_left > 10:
             return
+
         _log(f"🔄 Threadsトークン残り{days_left}日。更新を試みます...")
         res = requests.get(
             "https://graph.threads.net/refresh_access_token",
@@ -408,14 +451,18 @@ def refresh_threads_token_if_needed() -> None:
             data = res.json()
             new_token = data.get("access_token", "")
             new_expiry = (datetime.now() + timedelta(days=60)).strftime('%Y-%m-%d')
-            _log("✅ Threadsトークン更新成功!")
+            if new_token:
+                # グローバル変数を更新して同一実行内で新トークンを使用
+                THREADS_ACCESS_TOKEN = new_token
+                _log("✅ Threadsトークン更新成功! (今回の実行から新トークンを使用)")
             _log("=" * 50)
             _log("⚠️ 以下をGitHub Secretsに手動で更新してください:")
             _log(f"  THREADS_ACCESS_TOKEN = {new_token}")
             _log(f"  THREADS_TOKEN_EXPIRY = {new_expiry}")
             _log("=" * 50)
         else:
-            _log(f"❌ トークン更新失敗: {res.status_code}")
+            _log(f"❌ トークン更新失敗: {res.status_code} - {res.text[:200]}")
+            _log("  → Meta for Developers で新しいトークンを手動で生成してください")
     except Exception as e:
         _log(f"❌ トークン更新エラー: {e}")
 
@@ -1507,10 +1554,10 @@ def main():
                         _log(f"-> 既に投稿済み: morning_pick_only")
                     else:
                         twitter_ok = post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
-                        if twitter_ok:
-                            post_to_threads(tweet_text)
-                        else:
-                            _log("⚠️ Twitter投稿失敗のためThreads投稿もスキップします")
+                        # Twitter投稿の成否に関わらずThreads投稿は独立して実行
+                        post_to_threads(tweet_text)
+                        if not twitter_ok:
+                            _log("⚠️ Twitter投稿は失敗しましたが、Threads投稿は試行済みです")
                 else:
                     _log("-> 本日のレースデータも取得できなかったため、投稿をスキップします。")
 
@@ -1526,10 +1573,10 @@ def main():
                     _log(f"-> 既に投稿済み: afternoon_summary")
                 else:
                     twitter_ok = post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
-                    if twitter_ok:
-                        post_to_threads(tweet_text)
-                    else:
-                        _log("⚠️ Twitter投稿失敗のためThreads投稿もスキップします")
+                    # Twitter投稿の成否に関わらずThreads投稿は独立して実行
+                    post_to_threads(tweet_text)
+                    if not twitter_ok:
+                        _log("⚠️ Twitter投稿は失敗しましたが、Threads投稿は試行済みです")
             else:
                 _log("-> 本日のレース情報が取得できませんでした。")
 

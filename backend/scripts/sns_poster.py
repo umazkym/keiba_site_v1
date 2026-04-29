@@ -49,6 +49,7 @@ import importlib
 import importlib.util
 from types import ModuleType
 import unicodedata
+from urllib.parse import quote as url_quote
 
 # --- attempt to import database.*; if fails, try dynamic import from common candidate paths ---
 def dynamic_module_from_path(module_name: str, candidate_paths: List[str]) -> Optional[ModuleType]:
@@ -902,7 +903,7 @@ AIが今日のレースで最も高く評価した一頭はこちら！
 
 ▼全レースの無料予測
 
-{SITE_BASE_URL}/races/{date_str}?race={pick.get('race_number','')}&venue={pick.get('venue_name','')}
+{SITE_BASE_URL}/races/{date_str}?race={pick.get('race_number','')}&venue={url_quote(pick.get('venue_name',''))}
 
 {' '.join(hashtags)}
 
@@ -919,7 +920,7 @@ def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
         lines.append(f"{['◎','○','▲'][i]} {p.get('horse_name','?')} (AI偏差値: {float(p.get('deviation_score') or 0):.2f})")
     race_num = race.get('race_number', '')
     venue = race.get('venue_name', '')
-    lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}/races/{date_str}?race={race_num}&venue={venue}")
+    lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}/races/{date_str}?race={race_num}&venue={url_quote(venue)}")
     lines.append(f"\n{' '.join(hashtags)}")
     return "\n".join(lines)
 
@@ -1225,7 +1226,7 @@ def create_morning_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
     lines.append(f"\n▼全レースの無料予測")
     race_num = pick.get('race_number', '')
     venue = pick.get('venue_name', '')
-    lines.append(f"\n{SITE_BASE_URL}/races/{date_str}?race={race_num}&venue={venue}")
+    lines.append(f"\n{SITE_BASE_URL}/races/{date_str}?race={race_num}&venue={url_quote(venue)}")
     lines.append(f"\n{' '.join(hashtags_2)}")
 
     # engagements = [

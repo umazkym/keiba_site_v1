@@ -964,6 +964,39 @@ def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
     return "\n".join(lines)
 
 # --- 8. X (Twitter) 投稿関数 (文字数制限対応版) ---
+X_URL_PATTERN = re.compile(r'https?://\S+')
+
+
+def sanitize_text_for_x(text: str) -> str:
+    """X API費用を抑えるため、X投稿からURL行と直前の誘導文を除外する。"""
+    cleaned_lines: List[str] = []
+    removed_url = False
+
+    for line in text.splitlines():
+        if X_URL_PATTERN.search(line):
+            removed_url = True
+            if cleaned_lines:
+                previous = cleaned_lines[-1].strip()
+                if previous.startswith("▼") or "こちら" in previous or "無料予測" in previous:
+                    cleaned_lines.pop()
+            continue
+        cleaned_lines.append(line.rstrip())
+
+    compact_lines: List[str] = []
+    previous_blank = False
+    for line in cleaned_lines:
+        is_blank = not line.strip()
+        if is_blank and previous_blank:
+            continue
+        compact_lines.append(line)
+        previous_blank = is_blank
+
+    sanitized = "\n".join(compact_lines).strip()
+    if removed_url:
+        _log("X投稿コスト抑制のため、URL行を除外しました。")
+    return sanitized or text
+
+
 def split_tweet_text(text: str, max_length: int = 280, force_split: bool = True) -> List[str]:
     """
     テキストを2つのツイートに分割する（force_split=Trueの場合）
@@ -1053,7 +1086,7 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
     """
     _log("-> X (Twitter) への投稿を実行...")
 
-    tweet_texts = [tweet_text_1, tweet_text_2]
+    tweet_texts = [sanitize_text_for_x(tweet_text_1), sanitize_text_for_x(tweet_text_2)]
     _log(f"{len(tweet_texts)} 個のツイートを投稿します")
 
     if not ENABLE_TWITTER:
@@ -1146,6 +1179,7 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
     各投稿に同じ画像を添付する（スレッド形式ではなく独立した投稿）。
     """
     _log("-> X (Twitter) への投稿を実行...")
+    text = sanitize_text_for_x(text)
 
     if split_mode:
         tweet_texts = split_tweet_text(text, max_length=280, force_split=True)

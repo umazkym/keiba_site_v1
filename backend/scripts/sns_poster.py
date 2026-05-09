@@ -131,16 +131,35 @@ else:
             print(f"警告: .envファイルが見つかりません。")
 
 # --- 2. 環境変数と定数の定義 ---
-DATABASE_URL = os.getenv("DATABASE_URL")
-TWITTER_CONSUMER_KEY = os.getenv("TWITTER_CONSUMER_KEY")
-TWITTER_CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
-TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
-TWITTER_ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
+def _env_value(*names: str, default: Optional[str] = None) -> Optional[str]:
+    """複数の環境変数名から、最初に設定されている値を返す。"""
+    for name in names:
+        value = os.getenv(name)
+        if value and value.strip():
+            return value.strip()
+    return default
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+DATABASE_URL = _env_value("DATABASE_URL")
+TWITTER_CONSUMER_KEY = _env_value("TWITTER_CONSUMER_KEY", "TWITTER_API_KEY")
+TWITTER_CONSUMER_SECRET = _env_value("TWITTER_CONSUMER_SECRET", "TWITTER_API_SECRET")
+TWITTER_ACCESS_TOKEN = _env_value("TWITTER_ACCESS_TOKEN")
+TWITTER_ACCESS_TOKEN_SECRET = _env_value("TWITTER_ACCESS_TOKEN_SECRET")
 IMAGE_OUTPUT_DIR = os.path.join(PROJECT_ROOT, "sns_images_dist")
 os.makedirs(IMAGE_OUTPUT_DIR, exist_ok=True)
 SITE_BASE_URL = "https://uma-free.com"
-API_BASE_URL = os.getenv("API_BASE_URL")
-DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
+API_BASE_URL = (_env_value("API_BASE_URL", "NEXT_PUBLIC_API_URL") or "https://keiba-site-v1-761440273070.us-west1.run.app").rstrip("/")
+DRY_RUN = _env_flag("DRY_RUN", False)
+ENABLE_TWITTER = _env_flag("ENABLE_TWITTER", True)
+ENABLE_THREADS = _env_flag("ENABLE_THREADS", True)
+FAIL_ON_SNS_ERROR = _env_flag("FAIL_ON_SNS_ERROR", False)
 
 # ===== Threads API設定 =====
 THREADS_USER_ID = os.getenv("THREADS_USER_ID")
@@ -344,6 +363,10 @@ def truncate_for_threads(text: str) -> str:
 def post_to_threads(text: str) -> Optional[str]:
     """Threadsにテキスト投稿を行う。トークン失効時は明確な警告を出力する。"""
     global THREADS_ACCESS_TOKEN
+    if not ENABLE_THREADS:
+        _log("Threads投稿は ENABLE_THREADS=false のためスキップします。")
+        return None
+
     if not THREADS_USER_ID or not THREADS_ACCESS_TOKEN:
         _log("⚠️ Threads認証情報未設定。スキップします。")
         return None
@@ -400,12 +423,28 @@ def post_to_threads(text: str) -> Optional[str]:
         return None
 
 
+def post_texts_to_threads(texts: List[str], delay_seconds: int = 3) -> int:
+    """複数テキストをThreadsへ独立投稿し、成功件数を返す。"""
+    posted_count = 0
+    for idx, text in enumerate(texts, 1):
+        _log(f"Threads投稿 {idx}/{len(texts)} を実行します。")
+        if post_to_threads(text):
+            posted_count += 1
+        if idx < len(texts) and delay_seconds > 0:
+            time.sleep(delay_seconds)
+    return posted_count
+
+
 def refresh_threads_token_if_needed() -> None:
     """Threadsトークンの有効期限を確認し、期限が近い場合はリフレッシュを試みる。
     THREADS_TOKEN_EXPIRY未設定時はトークン有効性を軽量APIで確認する。
     リフレッシュ成功時はグローバル変数を更新し、同一実行内で新トークンを使用する。
     """
     global THREADS_ACCESS_TOKEN
+    if not ENABLE_THREADS:
+        _log("Threads投稿は ENABLE_THREADS=false のためトークン確認をスキップします。")
+        return
+
     if not THREADS_ACCESS_TOKEN:
         _log("⚠️ THREADS_ACCESS_TOKEN が未設定です。Threads投稿はスキップされます。")
         return
@@ -988,6 +1027,25 @@ def split_tweet_text(text: str, max_length: int = 280, force_split: bool = True)
 
     return tweets if tweets else [text, text]
 
+
+def twitter_credentials_ready() -> bool:
+    return all([
+        TWITTER_CONSUMER_KEY,
+        TWITTER_CONSUMER_SECRET,
+        TWITTER_ACCESS_TOKEN,
+        TWITTER_ACCESS_TOKEN_SECRET,
+    ])
+
+
+def threads_credentials_ready() -> bool:
+    return bool(THREADS_USER_ID and THREADS_ACCESS_TOKEN)
+
+
+def track_sns_result(failures: List[str], channel: str, context: str, ok: bool) -> None:
+    if not ok:
+        failures.append(f"{channel}: {context}")
+
+
 def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image_path_1: Optional[str] = None, image_path_2: Optional[str] = None, post_type: str = "", target_date: str = "") -> bool:
     """
     2つのツイートテキストを受け取り、各投稿に異なる画像を添付して投稿する。
@@ -997,6 +1055,14 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
 
     tweet_texts = [tweet_text_1, tweet_text_2]
     _log(f"{len(tweet_texts)} 個のツイートを投稿します")
+
+    if not ENABLE_TWITTER:
+        _log("X投稿は ENABLE_TWITTER=false のためスキップします。")
+        return False
+
+    if not twitter_credentials_ready():
+        _log("⚠️ X API認証情報が不足しているため、X投稿をスキップします。")
+        return False
 
     if DRY_RUN:
         _log("⚠️ DRY_RUN=1 のため投稿は実行しません。")
@@ -1047,9 +1113,6 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
             except Exception:
                 pass
 
-            # Threads にも個別投稿
-            post_to_threads(tweet_text)
-
             if idx < len(tweet_texts):
                 # スレッド化防止: 120秒間隔を空ける
                 _log("-> スレッド化防止のため120秒待機...")
@@ -1090,6 +1153,14 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
     else:
         tweet_texts = [text]
         _log(f"テキストを1個のツイートとして投稿します")
+
+    if not ENABLE_TWITTER:
+        _log("X投稿は ENABLE_TWITTER=false のためスキップします。")
+        return False
+
+    if not twitter_credentials_ready():
+        _log("⚠️ X API認証情報が不足しているため、X投稿をスキップします。")
+        return False
 
     if DRY_RUN:
         _log("⚠️ DRY_RUN=1 のため投稿は実行しません。")
@@ -1410,8 +1481,24 @@ def main():
     _log("SNS自動投稿ジョブを開始します (3投稿体制対応版)")
     _log("="*50)
 
-    if not all([TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET]):
-        _log("⚠️ Twitter API認証情報が読み込めませんでした。処理を終了します。")
+    sns_failures: List[str] = []
+    twitter_ready = twitter_credentials_ready()
+    threads_ready = threads_credentials_ready()
+
+    if ENABLE_TWITTER and not twitter_ready:
+        _log("⚠️ X API認証情報が不足しています。X投稿は失敗扱いにし、他SNSの投稿は続行します。")
+        track_sns_result(sns_failures, "X(Twitter)", "認証情報未設定", False)
+    elif not ENABLE_TWITTER:
+        _log("X投稿は ENABLE_TWITTER=false のため無効です。")
+
+    if ENABLE_THREADS and not threads_ready:
+        _log("⚠️ Threads認証情報が不足しています。Threads投稿は失敗扱いにし、他SNSの投稿は続行します。")
+        track_sns_result(sns_failures, "Threads", "認証情報未設定", False)
+    elif not ENABLE_THREADS:
+        _log("Threads投稿は ENABLE_THREADS=false のため無効です。")
+
+    if not (ENABLE_TWITTER and twitter_ready) and not (ENABLE_THREADS and threads_ready):
+        _log("投稿可能なSNS認証情報がありません。処理を終了します。")
         sys.exit(1)
 
     # コマンドライン引数で投稿タイプを取得
@@ -1515,13 +1602,16 @@ def main():
                         _log(f"-> 既に投稿済み: morning_combined")
                     else:
                         # 2つのツイートテキストを直接渡して投稿（分割なし、スレッド化防止済み）
-                        # ※ post_to_twitter_with_dual_images 内で各ツイートごとにThreads投稿も実行される
-                        # ※ 投稿記録は内部で record_post によりそれぞれ保存されるが、全体チェック用に combined_check_text も保存する
                         success = post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
+                        threads_posted = post_texts_to_threads([tweet_text_1, tweet_text_2])
+                        if ENABLE_TWITTER:
+                            track_sns_result(sns_failures, "X(Twitter)", "morning_combined", success)
+                        if ENABLE_THREADS:
+                            track_sns_result(sns_failures, "Threads", "morning_combined", threads_posted == 2)
                         if success:
                             record_post(combined_check_text, "morning_combined", today_str)
                         else:
-                            _log("⚠️ Twitter投稿失敗。投稿記録をスキップします（翌実行で再試行可能）")
+                            _log("⚠️ X投稿失敗。投稿記録をスキップします（翌実行で再試行可能）")
             else:
                 _log("-> 昨日は1万円以上の高配当的中がありませんでした。本日のAI注目馬のみ投稿します。")
                 # フォールバック: 高配当的中がなくても、本日のAI注目馬を画像付きで投稿する
@@ -1555,10 +1645,13 @@ def main():
                         _log(f"-> 既に投稿済み: morning_pick_only")
                     else:
                         twitter_ok = post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
-                        # Twitter投稿の成否に関わらずThreads投稿は独立して実行
-                        post_to_threads(tweet_text)
+                        threads_ok = post_to_threads(tweet_text) is not None
+                        if ENABLE_TWITTER:
+                            track_sns_result(sns_failures, "X(Twitter)", "morning_pick_only", twitter_ok)
+                        if ENABLE_THREADS:
+                            track_sns_result(sns_failures, "Threads", "morning_pick_only", threads_ok)
                         if not twitter_ok:
-                            _log("⚠️ Twitter投稿は失敗しましたが、Threads投稿は試行済みです")
+                            _log("⚠️ X投稿は失敗しましたが、Threads投稿は試行済みです")
                 else:
                     _log("-> 本日のレースデータも取得できなかったため、投稿をスキップします。")
 
@@ -1574,10 +1667,13 @@ def main():
                     _log(f"-> 既に投稿済み: afternoon_summary")
                 else:
                     twitter_ok = post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
-                    # Twitter投稿の成否に関わらずThreads投稿は独立して実行
-                    post_to_threads(tweet_text)
+                    threads_ok = post_to_threads(tweet_text) is not None
+                    if ENABLE_TWITTER:
+                        track_sns_result(sns_failures, "X(Twitter)", "afternoon_summary", twitter_ok)
+                    if ENABLE_THREADS:
+                        track_sns_result(sns_failures, "Threads", "afternoon_summary", threads_ok)
                     if not twitter_ok:
-                        _log("⚠️ Twitter投稿は失敗しましたが、Threads投稿は試行済みです")
+                        _log("⚠️ X投稿は失敗しましたが、Threads投稿は試行済みです")
             else:
                 _log("-> 本日のレース情報が取得できませんでした。")
 
@@ -1601,11 +1697,15 @@ def main():
 
                     if image_file:
                         _log(f"-> 画像生成成功: {image_file}")
-                        post_to_twitter(tweet_text, image_file, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
+                        twitter_ok = post_to_twitter(tweet_text, image_file, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
                     else:
                         _log("-> 画像生成に失敗しましたが、テキストのみで投稿します")
-                        post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
-                    post_to_threads(tweet_text)
+                        twitter_ok = post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
+                    threads_ok = post_to_threads(tweet_text) is not None
+                    if ENABLE_TWITTER:
+                        track_sns_result(sns_failures, "X(Twitter)", f"evening_race:{race_name}", twitter_ok)
+                    if ENABLE_THREADS:
+                        track_sns_result(sns_failures, "Threads", f"evening_race:{race_name}", threads_ok)
 
                     # 次の重賞投稿まで120秒待機（スレッド化防止 + レート制限対策）
                     if idx < len(grade_races) - 1:
@@ -1647,10 +1747,14 @@ def main():
                 
                 if image_file:
                     _log(f"-> 画像生成成功: {image_file}")
-                    post_to_twitter(tweet_text, image_file, post_type="pre_race_remind", target_date=today_str, split_mode=False)
+                    twitter_ok = post_to_twitter(tweet_text, image_file, post_type="pre_race_remind", target_date=today_str, split_mode=False)
                 else:
-                    post_to_twitter(tweet_text, None, post_type="pre_race_remind", target_date=today_str, split_mode=False)
-                post_to_threads(tweet_text)
+                    twitter_ok = post_to_twitter(tweet_text, None, post_type="pre_race_remind", target_date=today_str, split_mode=False)
+                threads_ok = post_to_threads(tweet_text) is not None
+                if ENABLE_TWITTER:
+                    track_sns_result(sns_failures, "X(Twitter)", "pre_race_remind", twitter_ok)
+                if ENABLE_THREADS:
+                    track_sns_result(sns_failures, "Threads", "pre_race_remind", threads_ok)
             else:
                 _log("-> 本日の適切な直前リマインダー対象レースがありませんでした。")
 
@@ -1699,19 +1803,35 @@ def main():
                     continue
 
                 image_file = generate_hit_og_image(hit, today_str)
-                post_to_twitter(
+                twitter_ok = post_to_twitter(
                     tweet_text, image_file,
                     post_type='hit_immediate',
                     target_date=today_str,
                     split_mode=False
                 )
-                post_to_threads(tweet_text)
+                threads_ok = post_to_threads(tweet_text) is not None
+                if ENABLE_TWITTER:
+                    track_sns_result(sns_failures, "X(Twitter)", f"hit_immediate:{venue}{race_num}R", twitter_ok)
+                if ENABLE_THREADS:
+                    track_sns_result(sns_failures, "Threads", f"hit_immediate:{venue}{race_num}R", threads_ok)
                 posted_count += 1
 
                 if posted_count < len(big_hits):
                     time.sleep(10)
 
             _log(f"-> 的中速報 {posted_count}件投稿完了")
+
+        if sns_failures:
+            _log("\nSNS投稿で失敗または未設定の項目があります。")
+            reported_failures = set()
+            for failure in sns_failures:
+                if failure in reported_failures:
+                    continue
+                reported_failures.add(failure)
+                _log(f" - {failure}")
+            if FAIL_ON_SNS_ERROR:
+                _log("FAIL_ON_SNS_ERROR=true のため、ジョブを失敗として終了します。")
+                sys.exit(1)
 
         _log("\nSNS自動投稿ジョブが完了しました。")
 

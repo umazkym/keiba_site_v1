@@ -15,15 +15,31 @@ services:
       - key: TZ
         value: Asia/Tokyo
       - key: API_BASE_URL
-        value: "https://keiba-site-v1.onrender.com"
+        value: "https://keiba-site-v1-761440273070.us-west1.run.app"
       - key: TWITTER_CONSUMER_KEY
         sync: false
       - key: TWITTER_CONSUMER_SECRET
+        sync: false
+      - key: TWITTER_API_KEY
+        sync: false
+      - key: TWITTER_API_SECRET
         sync: false
       - key: TWITTER_ACCESS_TOKEN
         sync: false
       - key: TWITTER_ACCESS_TOKEN_SECRET
         sync: false
+      - key: THREADS_USER_ID
+        sync: false
+      - key: THREADS_ACCESS_TOKEN
+        sync: false
+      - key: THREADS_TOKEN_EXPIRY
+        sync: false
+      - key: ENABLE_TWITTER
+        value: "true"
+      - key: ENABLE_THREADS
+        value: "true"
+      - key: FAIL_ON_SNS_ERROR
+        value: "true"
       - key: RENDER
         value: "true"
       - key: INSTANCE_ID
@@ -45,15 +61,31 @@ services:
       - key: TZ
         value: Asia/Tokyo
       - key: API_BASE_URL
-        value: "https://keiba-site-v1.onrender.com"
+        value: "https://keiba-site-v1-761440273070.us-west1.run.app"
       - key: TWITTER_CONSUMER_KEY
         sync: false
       - key: TWITTER_CONSUMER_SECRET
+        sync: false
+      - key: TWITTER_API_KEY
+        sync: false
+      - key: TWITTER_API_SECRET
         sync: false
       - key: TWITTER_ACCESS_TOKEN
         sync: false
       - key: TWITTER_ACCESS_TOKEN_SECRET
         sync: false
+      - key: THREADS_USER_ID
+        sync: false
+      - key: THREADS_ACCESS_TOKEN
+        sync: false
+      - key: THREADS_TOKEN_EXPIRY
+        sync: false
+      - key: ENABLE_TWITTER
+        value: "true"
+      - key: ENABLE_THREADS
+        value: "true"
+      - key: FAIL_ON_SNS_ERROR
+        value: "true"
       - key: RENDER
         value: "true"
       - key: INSTANCE_ID
@@ -75,15 +107,31 @@ services:
       - key: TZ
         value: Asia/Tokyo
       - key: API_BASE_URL
-        value: "https://keiba-site-v1.onrender.com"
+        value: "https://keiba-site-v1-761440273070.us-west1.run.app"
       - key: TWITTER_CONSUMER_KEY
         sync: false
       - key: TWITTER_CONSUMER_SECRET
+        sync: false
+      - key: TWITTER_API_KEY
+        sync: false
+      - key: TWITTER_API_SECRET
         sync: false
       - key: TWITTER_ACCESS_TOKEN
         sync: false
       - key: TWITTER_ACCESS_TOKEN_SECRET
         sync: false
+      - key: THREADS_USER_ID
+        sync: false
+      - key: THREADS_ACCESS_TOKEN
+        sync: false
+      - key: THREADS_TOKEN_EXPIRY
+        sync: false
+      - key: ENABLE_TWITTER
+        value: "true"
+      - key: ENABLE_THREADS
+        value: "true"
+      - key: FAIL_ON_SNS_ERROR
+        value: "true"
       - key: RENDER
         value: "true"
       - key: INSTANCE_ID
@@ -168,12 +216,28 @@ services:
         sync: false
       - key: TWITTER_CONSUMER_SECRET
         sync: false
+      - key: TWITTER_API_KEY
+        sync: false
+      - key: TWITTER_API_SECRET
+        sync: false
       - key: TWITTER_ACCESS_TOKEN
         sync: false
       - key: TWITTER_ACCESS_TOKEN_SECRET
         sync: false
       - key: API_BASE_URL
-        value: "https://keiba-site-v1.onrender.com"
+        value: "https://keiba-site-v1-761440273070.us-west1.run.app"
+      - key: THREADS_USER_ID
+        sync: false
+      - key: THREADS_ACCESS_TOKEN
+        sync: false
+      - key: THREADS_TOKEN_EXPIRY
+        sync: false
+      - key: ENABLE_TWITTER
+        value: "true"
+      - key: ENABLE_THREADS
+        value: "true"
+      - key: FAIL_ON_SNS_ERROR
+        value: "true"
       - key: RENDER
         value: "true"
       - key: INSTANCE_ID

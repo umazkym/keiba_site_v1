@@ -111,7 +111,7 @@ export const TopHitsDisplay = ({ initialHits }: { initialHits?: TopPayoutHit[] }
                             <div className="block h-full lg:hidden rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col justify-center items-center min-h-[140px] p-2">
                                 <span className="text-[9px] text-slate-400 mb-1">スポンサーリンク</span>
                                 <div className="w-full h-full flex items-center justify-center overflow-hidden">
-                                    <NativeCardAd slot="1489598374" variant="article" className="w-full" />
+                                    <NativeCardAd slot="1489598374" variant="article" className="w-full" analyticsPlacement="top_hits_mobile_gap" />
                                 </div>
                             </div>
                         )}

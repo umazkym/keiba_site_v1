@@ -12,8 +12,8 @@ import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { getPredictionsForDate } from "@/lib/api";
 import { Article } from "@/lib/articles";
 import DisclaimerAlert from "@/components/DisclaimerAlert";
-import { AdUnit } from "@/components/AdUnit";
 import { InFeedAd } from "@/components/InFeedAd";
+import { RecentRaceReturn } from "@/components/RecentRaceReturn";
 
 // 日付フォーマット検証関数
 /**
@@ -277,9 +277,6 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
             <>
                 <DisclaimerAlert />
 
-                {/* In-article広告: 免責事項読了後・注目馬前の自然な区切り */}
-                <AdUnit slot="1489598374" placement="inline" refreshKey={`inarticle-${currentDate}`} />
-
                 <div className="mb-2">
                     <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
                 </div>
@@ -315,6 +312,8 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                     </button>
                 </div>
             </div>
+
+            <RecentRaceReturn className="mb-2 sm:mb-3" />
 
             {/* 🏆 今週の重賞セクション */}
             {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
@@ -356,7 +355,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
 
             {/* ★ CTR改善: 的中ランキング後の広告をInFeedAdに変更 */}
             {/* バナー広告よりコンテンツカード風の方がCTRが高い */}
-            <InFeedAd refreshKey={`bottom-${currentDate}`} />
+            <InFeedAd refreshKey={`bottom-${currentDate}`} analyticsPlacement="race_after_top_hits" />
 
             {/* ★ 回遊性改善: 分析記事への導線を追加 */}
             {/* データ根拠: 記事ページのエンゲージメント時間はレースページの3-10倍

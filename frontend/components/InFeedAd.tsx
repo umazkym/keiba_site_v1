@@ -1,12 +1,16 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { Adsense } from './Adsense';
+import { sendAdImpressionEvent } from '@/lib/analytics';
 
 type InFeedAdProps = {
     /** 広告スロットID（省略時はインフィード専用スロットを使用） */
     slot?: string;
     /** レース切替等でリフレッシュするためのキー */
     refreshKey?: string;
+    /** GA4計測用の詳細な広告位置名 */
+    analyticsPlacement?: string;
     /** カードデザインに合わせるための追加CSSクラス */
     className?: string;
 };
@@ -31,16 +35,56 @@ const INFEED_LAYOUT_KEY = '-g0+4h+46-dp+9m';
 export const InFeedAd = ({
     slot,
     refreshKey = '',
+    analyticsPlacement = 'infeed',
     className = '',
 }: InFeedAdProps) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [adUnfilled, setAdUnfilled] = useState(false);
+
+    useEffect(() => {
+        setAdUnfilled(false);
+    }, [refreshKey]);
+
+    useEffect(() => {
+        if (process.env.NODE_ENV !== 'production') return;
+
+        const container = containerRef.current;
+        if (!container) return;
+
+        const observer = new MutationObserver(() => {
+            const ins = container.querySelector('ins.adsbygoogle');
+            if (!ins) return;
+
+            const status = ins.getAttribute('data-ad-status');
+            if (status === 'filled') {
+                sendAdImpressionEvent(analyticsPlacement);
+                observer.disconnect();
+            } else if (status === 'unfilled') {
+                setAdUnfilled(true);
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(container, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['data-ad-status'],
+        });
+
+        return () => observer.disconnect();
+    }, [refreshKey, analyticsPlacement]);
+
+    if (adUnfilled) return null;
+
     return (
-        <div className={`overflow-hidden rounded-xl border-l-[3px] border-l-blue-200 border border-y-slate-200 border-r-slate-200 shadow-sm relative w-full bg-slate-50 p-1.5 sm:p-3 mt-2 mb-2 ${className}`}>
-            
+        <div ref={containerRef} className={`overflow-hidden rounded-xl border-l-[3px] border-l-blue-200 border border-y-slate-200 border-r-slate-200 shadow-sm relative w-full bg-slate-50 p-1.5 sm:p-3 mt-2 mb-2 ${className}`}>
+
             {/* 広告ラベル: コンテンツとの誤認を防ぐための表示 */}
             <div className="absolute top-0 right-0 max-w-fit px-2 py-0.5 rounded-bl text-[9px] text-slate-400 font-medium tracking-wider bg-slate-100/80 z-10 pointer-events-none">
-                Sponsored
+                広告
             </div>
-            
+
             {/* 
               * ★ インフィード形式: fluid + layoutKey
               * 高さ固定なし（AdSenseの要件: コンテナの高さは変更可能でなければならない）

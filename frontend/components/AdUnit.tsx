@@ -18,6 +18,8 @@ type AdUnitProps = {
     slot: string;
     /** 配置タイプ */
     placement?: AdPlacement;
+    /** GA4計測用の詳細な広告位置名 */
+    analyticsPlacement?: string;
     /** カスタムクラス名 */
     className?: string;
     /** 追加ラベルテキスト */
@@ -43,6 +45,7 @@ const AD_CLIENT = 'ca-pub-4411270831448240';
 export const AdUnit = ({
     slot,
     placement = 'inline',
+    analyticsPlacement,
     className = '',
     label = 'スポンサーリンク',
     refreshKey = '',
@@ -70,8 +73,7 @@ export const AdUnit = ({
                 if (status === 'filled') {
                     setAdLoaded(true);
                     setAdUnfilled(false);
-                    // ★ 深層分析による改善: インフィード広告等の表示もGA4へ送る
-                    sendAdImpressionEvent(placement);
+                    sendAdImpressionEvent(analyticsPlacement ?? placement);
                     observer.disconnect();
                 } else if (status === 'unfilled') {
                     setAdUnfilled(true);
@@ -89,7 +91,7 @@ export const AdUnit = ({
         });
 
         return () => observer.disconnect();
-    }, [refreshKey]); // refreshKey変更時にobserverも再設定
+    }, [refreshKey, placement, analyticsPlacement]); // refreshKey変更時にobserverも再設定
 
     // 配置タイプに応じたスタイル設定
     const placementStyles: Record<AdPlacement, {

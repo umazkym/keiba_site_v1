@@ -31,6 +31,20 @@ export const sendAdImpressionEvent = (placement: string) => {
 };
 
 /**
+ * レースページ内でユーザーが実際に見たレースを計測する。
+ * 日付ページ全体のPVだけでは、リピーターが何レース分確認しているかが見えないため、
+ * 収益改善の判断軸として競馬場・レース番号単位のイベントを送る。
+ */
+export const sendRaceViewEvent = (params: {
+    race_date: string;
+    venue_name: string;
+    race_number: number;
+    race_name: string;
+}) => {
+    sendGAEvent('event', 'race_view_custom', params);
+};
+
+/**
  * AI予想などの結果を確認・閲覧した際に送信するイベント
  * リワード広告視聴後の遷移や、有料枠のアンロック時に活用する
  * @param accuracy - 予想が的中したかどうかのフラグ

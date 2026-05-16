@@ -16,10 +16,10 @@ import { RelatedRaces } from './RelatedRaces';
 import { DataExplanationPanel } from './DataExplanationPanel';
 import { DynamicRelatedArticles } from './DynamicRelatedArticles';
 import { Article } from '@/lib/articles';
-// MultiplexAd削除: ページ最下部のviewable率が極端に低い位置の広告を廃止し、高viewable位置に集約
-import { AdUnit } from './AdUnit';
 import { useRewardedAd } from '@/hooks/useRewardedAd';
 import { Adsense } from './Adsense';
+import { sendRaceViewEvent } from '@/lib/analytics';
+import { LAST_RACE_STORAGE_KEY, StoredRaceView } from '@/lib/race-memory';
 
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -113,6 +113,42 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
         return activeRace ? `${venue.venue_name}-${activeRace.race_number}-v${venueActivationKey}` : '';
     }, [venue.venue_name, activeRace, venueActivationKey]);
 
+    useEffect(() => {
+        if (!activeRace || typeof window === 'undefined') return;
+
+        const href = `/races/${currentDate}?race=${activeRace.race_number}&venue=${encodeURIComponent(venue.venue_name)}`;
+        const viewedRace: StoredRaceView = {
+            href,
+            date: currentDate,
+            venueName: venue.venue_name,
+            raceNumber: activeRace.race_number,
+            raceName: activeRace.race_name,
+            courseLabel: `${activeRace.course_type} ${activeRace.distance}m`,
+            viewedAt: Date.now(),
+        };
+
+        try {
+            window.localStorage.setItem(LAST_RACE_STORAGE_KEY, JSON.stringify(viewedRace));
+        } catch {
+            // localStorageが使えない環境では導線保存のみスキップする。
+        }
+
+        sendRaceViewEvent({
+            race_date: currentDate,
+            venue_name: venue.venue_name,
+            race_number: activeRace.race_number,
+            race_name: activeRace.race_name,
+        });
+    }, [
+        activeRace?.id,
+        activeRace?.race_number,
+        activeRace?.race_name,
+        activeRace?.course_type,
+        activeRace?.distance,
+        currentDate,
+        venue.venue_name,
+    ]);
+
     const RaceNavigation = () => {
         const hasPrev = activeRaceIndex > 0;
         const hasNext = activeRaceIndex < venue.races.length - 1;
@@ -161,10 +197,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                         </div>
                     </div>
 
-                    {shouldShowAd && (
-                        <AdUnit slot="9407670747" placement="inline" refreshKey={adRefreshKey} className="my-2" />
-                    )}
-
                     <div className="my-3">
                         {(() => {
                             const hasNext = activeRaceIndex < venue.races.length - 1;
@@ -203,7 +235,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* 変更後: InFeedAd（コンテンツカード風） → コンテンツに溶け込みCTR向上を狙う */}
                     {/* InFeedAdは以前ロック解除後のみ表示(L240)だったが、大半のユーザーの目に触れていなかった */}
                     {shouldShowAd && (
-                        <InFeedAd refreshKey={`prelock-${adRefreshKey}`} />
+                        <InFeedAd refreshKey={`prelock-${adRefreshKey}`} analyticsPlacement="race_after_prediction_table" />
                     )}
 
                     {/* プレミアム・ロック切り替え部分 */}
@@ -239,7 +271,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
                             {/* ★ ビューアビリティ改善: 過去対決成績と枠順傾向の間（自然な区切り）に広告配置 */}
                             {shouldShowAd && (
-                                <InFeedAd refreshKey={adRefreshKey} />
+                                <InFeedAd refreshKey={`premium-mid-${adRefreshKey}`} analyticsPlacement="race_premium_mid" />
                             )}
 
                             <div className="mb-2">
@@ -374,7 +406,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* ★ CTR改善: DataExplanation後もInFeedAdに統一 */}
                     {/* レースページ内の全バナー広告をInFeedAd化完了（CTR 0.12%→0.59%実績に基づく） */}
                     {shouldShowAd && (
-                        <InFeedAd refreshKey={adRefreshKey} />
+                        <InFeedAd refreshKey={`after-explainer-${adRefreshKey}`} analyticsPlacement="race_after_data_explainer" />
                     )}
 
                     <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />

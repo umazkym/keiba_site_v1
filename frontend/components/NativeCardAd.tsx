@@ -1,18 +1,17 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { Adsense } from './Adsense';
+import { sendAdImpressionEvent } from '@/lib/analytics';
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
 
 /**
  * ネイティブカード広告
  * 
- * 記事カード・コンテンツカードと完全に同じスタイリングで広告を表示。
+ * 記事カード・コンテンツカードの流れに合わせて広告を表示。
  * Google AdSenseのインフィード広告フォーマットを使用し、
- * 周囲のカードに自然に溶け込ませることでCTRを最大化する。
- * 
- * AdSenseポリシー準拠: Google側が自動で「広告」ラベルを付与するため、
- * 視覚的に馴染みつつもポリシー違反にならない。
+ * 周囲のカードに自然に馴染ませつつ、明示ラベルでコンテンツと区別する。
  */
 
 type NativeCardAdProps = {
@@ -21,24 +20,61 @@ type NativeCardAdProps = {
     /** カードのスタイルパターン */
     variant: 'article' | 'pick' | 'venue';
     className?: string;
+    analyticsPlacement?: string;
 };
 
-export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', className = '' }: NativeCardAdProps) => {
+export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', className = '', analyticsPlacement = 'native_card' }: NativeCardAdProps) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [adUnfilled, setAdUnfilled] = useState(false);
+
+    useEffect(() => {
+        setAdUnfilled(false);
+    }, [refreshKey]);
+
+    useEffect(() => {
+        if (process.env.NODE_ENV !== 'production') return;
+
+        const container = containerRef.current;
+        if (!container) return;
+
+        const observer = new MutationObserver(() => {
+            const ins = container.querySelector('ins.adsbygoogle');
+            if (!ins) return;
+
+            const status = ins.getAttribute('data-ad-status');
+            if (status === 'filled') {
+                sendAdImpressionEvent(analyticsPlacement);
+                observer.disconnect();
+            } else if (status === 'unfilled') {
+                setAdUnfilled(true);
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(container, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['data-ad-status'],
+        });
+
+        return () => observer.disconnect();
+    }, [refreshKey, analyticsPlacement]);
+
+    if (adUnfilled) return null;
+
     // バリアントに応じたスタイル
     const variantStyles: Record<string, { container: string; height: string }> = {
-        // 記事カードに擬態: .article-card と同じ border/radius/shadow
         article: {
-            container: 'flex items-center border border-border rounded-xl overflow-hidden bg-white transition-all duration-200 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)]',
+            container: 'relative flex items-center border border-border rounded-xl overflow-hidden bg-white transition-all duration-200 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)]',
             height: '90px', // 記事カードと同等の高さ
         },
-        // 注目馬カードに擬態: .pick-card と同じスタイル
         pick: {
             container: 'relative border border-border rounded-xl overflow-hidden bg-white transition-all duration-200 hover:shadow-[0_4px_20px_rgba(15,23,42,0.08)]',
             height: '120px',
         },
-        // 競馬場リンクに擬態: .venue-link と同じスタイル
         venue: {
-            container: 'bg-white border border-border rounded-xl overflow-hidden transition-all duration-200',
+            container: 'relative bg-white border border-border rounded-xl overflow-hidden transition-all duration-200',
             height: '100px',
         },
     };
@@ -46,7 +82,10 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
     const style = variantStyles[variant] || variantStyles.article;
 
     return (
-        <div className={`${style.container} ${className}`}>
+        <div ref={containerRef} className={`${style.container} ${className}`}>
+            <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-white/85 text-[9px] text-slate-400 font-medium z-10 pointer-events-none">
+                広告
+            </div>
             <Adsense
                 client={AD_CLIENT}
                 slot={slot}

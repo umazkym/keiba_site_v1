@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
 import { WeeklyGradeRaces } from '@/components/WeeklyGradeRaces';
+import { RecentRaceReturn } from '@/components/RecentRaceReturn';
 import { getSpecialPick, getPredictionsForDate, getWeeklyGradeRaces, getTopPayoutHits } from '@/lib/api';
 import { getLatestArticles, getUniqueCategories, getAllArticles } from '../lib/articles';
 
@@ -132,6 +133,8 @@ export default async function HomePage() {
                         <WeeklyGradeRaces races={weeklyGradeRaces} />
                     )}
 
+                    <RecentRaceReturn />
+
                     {/* ★ファーストビュー改善: 本日の開催をヒーロー直下に移動 */}
                     {/* GA4データ: トップ181PV→レース≈200PVのドロップオフ対策 */}
                     <section className="venue-links">
@@ -186,7 +189,7 @@ export default async function HomePage() {
                 {/* ★ 広告①: 高配当ランキング直後（100%のユーザーが到達する位置）
                      変更理由: 旧配置（アコーディオン直後）は閉じた状態のためスクロールで通過されやすく
                      Viewable判定率が低かった（35%→50%目標）*/}
-                <AdUnit slot="8529703346" placement="inline" />
+                <AdUnit slot="8529703346" placement="inline" analyticsPlacement="home_after_top_hits" />
 
                 {/* 2. UMA-FREEとは */}
                 <details className="card accordion" open={false}>
@@ -247,7 +250,7 @@ export default async function HomePage() {
 
                 {/* ★ 広告②: 注目馬カード読了後（コンテンツ区切りの自然なタイミング）
                      変更理由: 旧配置（記事セクション後）はスクロール深すぎてViewable判定低 */}
-                <AdUnit slot="1489598374" placement="inline" />
+                <AdUnit slot="1489598374" placement="inline" analyticsPlacement="home_after_special_pick" />
 
                 {/* 5. 新着記事セクション */}
                 <section>
@@ -276,7 +279,7 @@ export default async function HomePage() {
                             </Link>
                         ))}
                         {/* 1段目右端: ネイティブカード広告 */}
-                        <NativeCardAd slot="1489598374" variant="article" className="shrink-0 w-full" />
+                        <NativeCardAd slot="1489598374" variant="article" className="shrink-0 w-full" analyticsPlacement="home_article_feed_1" />
                         
                         {/* 2段目: 記事3件 + 広告1件 */}
                         {latestArticles.slice(3, 6).map((article) => (
@@ -292,7 +295,7 @@ export default async function HomePage() {
                             </Link>
                         ))}
                         {/* 2段目右端: ネイティブカード広告（1段目と異なるスロットIDでfill率向上） */}
-                        <NativeCardAd slot="9407670747" variant="article" className="shrink-0 w-full" />
+                        <NativeCardAd slot="9407670747" variant="article" className="shrink-0 w-full" analyticsPlacement="home_article_feed_2" />
                     </div>
                 </section>
 
@@ -350,7 +353,7 @@ export default async function HomePage() {
                 </details>
 
                 {/* 広告③: FAQ後のMultiplex枠 */}
-                <AdUnit slot="9407670747" placement="inline" />
+                <AdUnit slot="9407670747" placement="inline" analyticsPlacement="home_after_faq" />
 
                 {/* 8. 対応競馬場 */}
                 <details className="card accordion" open={false}>

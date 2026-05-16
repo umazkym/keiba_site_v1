@@ -477,7 +477,12 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
-（ここに完了したステップが時系列で記録されます）
+#### ✅ データ実態に基づく予想ページ導線・広告配置改善
+- **完了日時**: 2026-05-16 20:59
+- **実施内容**: GA4のトラフィック獲得・維持率・ページ閲覧データ、Search Consoleデータ、GA4行動PDFをもとに、リピーターがレース予想を反復確認する利用実態に合わせて、前回見たレースへ戻る導線、レース閲覧イベント計測、広告配置ごとの詳細GA4計測、インフィード/ネイティブ広告のラベル・未配信処理を実装。レース予想表の前に出ていた広告は撤去し、予想確認後の自然な区切りに広告を集約。
+- **変更ファイル**: `frontend/app/page.tsx`, `frontend/components/RacePageClient.tsx`, `frontend/components/RaceTabs.tsx`, `frontend/components/RecentRaceReturn.tsx`, `frontend/components/InFeedAd.tsx`, `frontend/components/NativeCardAd.tsx`, `frontend/components/AdUnit.tsx`, `frontend/components/TopHitsDisplay.tsx`, `frontend/lib/analytics.ts`, `frontend/lib/race-memory.ts`
+- **確認事項**: `npm run build` は成功。`next lint` はESLint初期設定プロンプトで停止するため未実行。ローカルAPI未起動のため、レースデータ取得警告とレース詳細画面の実データ表示確認は未実施。
+- **次のステップ**: GA4で `race_view_custom` と `ad_impression_custom` の配置別データを確認し、`race_after_prediction_table`, `race_premium_mid`, `race_after_data_explainer`, `race_after_top_hits` のRPM/CTR/滞在影響を比較する。
 
 -----
 

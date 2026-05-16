@@ -2,11 +2,12 @@ import matter from 'gray-matter';
 
 export const SEO_RULES = {
   title_min_chars: 30,
-  title_max_chars: 36,
+  title_max_chars: 40,
   description_min_chars: 120,
   description_max_chars: 140,
   min_word_count: 1500,
-  min_internal_link_placeholders: 2,
+  require_today_race_cta: true,
+  require_buying_point_heading: true,
   require_data_table_or_list: true,
   require_number_in_all_h2: true,
   require_number_in_first_100_chars: true,
@@ -17,6 +18,18 @@ export const SEO_RULES = {
     "必勝",
     "絶対に当たる",
     "完全攻略",
+    "最強",
+    "買うな",
+    "圧倒的",
+    "絶対的",
+    "絶対条件",
+    "狙い撃つ",
+    "消去対象",
+    "完全に除外",
+    "儲かる",
+    "爆益",
+    "✅",
+    "❌",
     // 導入テンプレート
     "と思っていませんか",
     "この記事をお読みいただければ",
@@ -63,7 +76,7 @@ export function checkSEO(markdownText: string): SEOCheckResult {
   }
   // Title Format Check: requires at least some numbers and a specific pattern (simplified to checking for numbers for now)
   if (!/\d/.test(title)) {
-    errors.push(`titleに数字が含まれていません。(構成ルール: 競馬場/条件＋最強数字＋読者が得るもの)`);
+    errors.push(`titleに数字が含まれていません。(構成ルール: 競馬場/条件＋重要な数字＋読者が取る判断)`);
   }
 
   // 2. ディスクリプションチェック
@@ -81,11 +94,14 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     errors.push(`本文の文字数が不足: 現在${plainText.length}文字 (最小: ${SEO_RULES.min_word_count})`);
   }
 
-  // 4. 内部リンクプレースホルダー数
-  const linkRegex = /\[関連記事：.*?\]/g;
-  const linkMatches = content.match(linkRegex) || [];
-  if (linkMatches.length < SEO_RULES.min_internal_link_placeholders) {
-    errors.push(`内部リンクプレースホルダー不足: 現在${linkMatches.length}箇所 (最小: ${SEO_RULES.min_internal_link_placeholders})`);
+  // 4. レースページへの自然な内部導線
+  // 関連記事はフロント側で自動表示するため、本文内の[関連記事：...]プレースホルダーは要求しない。
+  if (SEO_RULES.require_today_race_cta && !content.includes('/races/today')) {
+    errors.push(`今日のAI予想・出馬表への内部リンクがありません。記事末尾に /races/today への自然な導線を含めてください。`);
+  }
+
+  if (SEO_RULES.require_buying_point_heading && !/^##\s+このコースの買い目ポイント\s*$/m.test(content)) {
+    errors.push(`記事末尾のH2「このコースの買い目ポイント」がありません。まとめ見出しではなく、買い目判断の箇条書きで締めてください。`);
   }
 
   // 5. データテーブルまたはリストの存在
@@ -103,11 +119,15 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     while ((match = h2Regex.exec(content)) !== null) {
       foundH2 = true;
       const h2Text = match[1];
-      if (!/\d/.test(h2Text)) {
+      const isRequiredBuyingPointHeading = h2Text.trim() === 'このコースの買い目ポイント';
+      if (!isRequiredBuyingPointHeading && !/\d/.test(h2Text)) {
         errors.push(`H2見出しに数字が含まれていません: 「${h2Text}」`);
       }
       if (h2Text === 'まとめ') {
         errors.push(`「まとめ」というH2見出しが存在します。(作成禁止)`);
+      }
+      if (h2Text === '総論' || h2Text === 'おわりに') {
+        errors.push(`「${h2Text}」というH2見出しが存在します。(作成禁止)`);
       }
     }
     
@@ -143,14 +163,24 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     const lastLine = lastLineMatch[1];
     const isForbiddenEnding = endingForbiddenPatterns.some(pattern => pattern.test(lastLine));
     if (isForbiddenEnding) {
-      errors.push(`記事の末尾が定型文や過剰な総略で終わっています（「...${lastLine.substring(Math.max(0, lastLine.length - 15))}」）。戦略の復唱や読者への指示は禁止です。直前のデータの断言のみで唐突に終わらせてください。`);
+      errors.push(`記事の末尾が定型文や過剰な総括で終わっています（「...${lastLine.substring(Math.max(0, lastLine.length - 15))}」）。買い目ポイントと /races/today への自然な導線で締めてください。`);
     }
   }
 
-  // 9. NGワードの完全チェック
+  // 9. 手動関連記事や壊れたリンク片のチェック
+  if (/^##\s+関連記事\s*$/m.test(content)) {
+    errors.push(`本文内に手動の「関連記事」セクションがあります。関連記事はページ側で自動表示するため、本文には含めないでください。`);
+  }
+
+  if (/^\s*\(\/[^)\s]+\)\s*$/m.test(content)) {
+    errors.push(`本文内に壊れたリンク片があります。単独行の「(/course-xxx)」のようなURL片を削除してください。`);
+  }
+
+  // 10. NGワードの完全チェック
+  const scanTarget = `${title}\n${description}\n${content}`;
   for (const banned of SEO_RULES.hard_banned_strings) {
-    if (content.includes(banned)) {
-      errors.push(`本文にNGワードが含まれています: 「${banned}」`);
+    if (scanTarget.includes(banned)) {
+      errors.push(`title/description/本文にNGワードが含まれています: 「${banned}」`);
     }
   }
 

@@ -402,9 +402,9 @@ def generate_write_order():
     all_known_keywords = posted_keywords | existing_keywords | pending_keywords
     print(f"[DataScientist] 重複チェック対象: posted_history={len(posted_keywords)}, 既存記事={len(existing_keywords)}, 未消費order={len(pending_keywords)}, 合計={len(all_known_keywords)}")
     
-    import random
-    themes = ['waku', 'jockey', 'popularity', 'running_style']
-    random.shuffle(themes)
+    # Search Consoleでは「騎手名 + 得意コース」「競馬データ分析 無料」の表示が伸びているため、
+    # ランダム選定ではなく、検索流入に直結しやすいテーマから順に探索する。
+    themes = ['jockey', 'popularity', 'waku', 'running_style']
     
     df = fetch_data()
     if df.empty:

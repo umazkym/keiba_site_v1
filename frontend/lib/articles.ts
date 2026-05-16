@@ -16,6 +16,47 @@ export interface Article {
   eyecatch: string;
   category: string;
   tags: string[];
+  keywords: string[];
+  targetKeyword?: string;
+  themeCluster?: string;
+  lastUpdated?: string;
+}
+
+const VENUE_NAMES = [
+  '札幌', '函館', '福島', '新潟', '東京', '中山', '中京', '京都', '阪神', '小倉',
+  '大井', '川崎', '船橋', '浦和', '門別', '盛岡', '水沢', '金沢', '笠松', '名古屋',
+  '園田', '姫路', '高知', '佐賀',
+];
+
+function normalizeStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map(String).map((item) => item.trim()).filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function cleanArticleMarkdownForRender(markdown: string): string {
+  let cleaned = markdown.replace(/\r\n/g, '\n');
+
+  // 旧記事の本文末に残っている手動関連記事は、ページ側の関連記事コンポーネントと重複する。
+  // 生成時期によってリンク切れも混ざるため、表示時には自動関連記事へ一本化する。
+  const manualRelatedIndex = cleaned.search(/\n##\s+関連記事\s*\n/);
+  if (manualRelatedIndex >= 0) {
+    cleaned = cleaned.slice(0, manualRelatedIndex);
+  }
+
+  // パブリッシュ時の置換失敗で単独行として残った "(/course-...)" のような壊れたURL片を消す。
+  cleaned = cleaned.replace(/^\s*\(\/[^)\s]+\)\s*$/gm, '');
+
+  return cleaned.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 // スラッグ（ファイル名）から日付を抽出するフォールバック関数
@@ -49,7 +90,11 @@ export function getAllArticles(): Article[] {
       description: data.description || '',
       eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
       category: data.category || '未分類',
-      tags: data.tags || [],
+      tags: normalizeStringArray(data.tags),
+      keywords: normalizeStringArray(data.keywords),
+      targetKeyword: data.target_keyword || '',
+      themeCluster: data.theme_cluster || '',
+      lastUpdated: data.last_updated || '',
     };
   });
 
@@ -114,12 +159,13 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
   const fullPath = path.join(articlesDirectory, `${slug}.md`);
   const fileContents = fs.readFileSync(fullPath, 'utf8');
   const { data, content } = matter(fileContents);
+  const cleanedContent = cleanArticleMarkdownForRender(content);
 
   // MarkdownをHTMLに変換 (GFMプラグインを使用してテーブル等をサポート)
   const processedContent = await remark()
     .use(gfm)
     .use(html)
-    .process(content);
+    .process(cleanedContent);
   const contentHtml = processedContent.toString();
 
   return {
@@ -130,7 +176,11 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     description: data.description || '',
     eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
     category: data.category || '未分類',
-    tags: data.tags || [],
+    tags: normalizeStringArray(data.tags),
+    keywords: normalizeStringArray(data.keywords),
+    targetKeyword: data.target_keyword || '',
+    themeCluster: data.theme_cluster || '',
+    lastUpdated: data.last_updated || '',
   };
 }
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
@@ -145,9 +195,70 @@ export function getRelatedArticles(currentSlug: string, count: number = 3): Arti
     return allArticles.slice(0, count);
   }
 
-  const relatedArticles = allArticles.filter(
-    a => a.category === currentArticle.category && a.slug !== currentSlug
-  );
+  const buildSignals = (article: Article): Set<string> => {
+    const text = [
+      article.title,
+      article.description,
+      article.category,
+      article.targetKeyword || '',
+      article.themeCluster || '',
+      ...article.tags,
+      ...article.keywords,
+    ].join(' ');
 
-  return relatedArticles.slice(0, count);
+    const signals = new Set<string>();
+    for (const venue of VENUE_NAMES) {
+      if (text.includes(venue)) signals.add(`venue:${venue}`);
+    }
+
+    const distances = text.match(/\d{3,4}m/g) || [];
+    distances.forEach((distance) => signals.add(`distance:${distance}`));
+
+    if (text.includes('芝')) signals.add('course:turf');
+    if (text.includes('ダート') || text.includes('ダ')) signals.add('course:dirt');
+    if (article.themeCluster) signals.add(`theme:${article.themeCluster}`);
+    article.tags.forEach((tag) => signals.add(`tag:${tag}`));
+
+    return signals;
+  };
+
+  const currentSignals = buildSignals(currentArticle);
+
+  const scoredArticles = allArticles
+    .filter((article) => article.slug !== currentSlug)
+    .map((article) => {
+      let score = 0;
+      if (article.category === currentArticle.category) score += 4;
+      if (article.themeCluster && article.themeCluster === currentArticle.themeCluster) score += 2;
+
+      const articleSignals = buildSignals(article);
+      for (const signal of articleSignals) {
+        if (currentSignals.has(signal)) {
+          score += signal.startsWith('venue:') ? 4 : 2;
+        }
+      }
+
+      if (article.tags.some((tag) => currentArticle.tags.includes(tag))) score += 3;
+
+      return { article, score };
+    })
+    .sort((a, b) => {
+      if (a.score !== b.score) return b.score - a.score;
+      return a.article.date < b.article.date ? 1 : -1;
+    });
+
+  const related = scoredArticles
+    .filter((entry) => entry.score > 0)
+    .slice(0, count)
+    .map((entry) => entry.article);
+
+  if (related.length >= count) {
+    return related;
+  }
+
+  const fallback = allArticles
+    .filter((article) => article.slug !== currentSlug && !related.some((r) => r.slug === article.slug))
+    .slice(0, count - related.length);
+
+  return [...related, ...fallback];
 }

@@ -8,6 +8,8 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { RelatedArticles } from '@/components/RelatedArticles';
 import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
+import { ArticleIntentPanel } from '@/components/ArticleIntentPanel';
+import { enhanceArticleHtml, getArticleIntent } from '@/lib/article-ux';
 
 type Props = {
   params: { slug: string };
@@ -64,15 +66,17 @@ export default async function ArticlePage({ params }: Props) {
 
     const textContent = article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, '');
     const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
+    const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
+    const intent = getArticleIntent(article);
 
     const articleUrl = `https://uma-free.com/articles/${params.slug}`;
     const datePublished = new Date(article.date).toISOString();
-    const dateModified = datePublished;
+    const dateModified = new Date(article.lastUpdated || article.date).toISOString();
 
     const proseClass = [
       "prose prose-slate prose-lg max-w-none",
       "prose-headings:font-black prose-headings:tracking-tight prose-headings:text-slate-900",
-      "prose-h2:text-2xl prose-h2:border-b prose-h2:border-slate-100 prose-h2:pb-3 prose-h2:mt-12 prose-h2:mb-6",
+      "prose-h2:text-2xl prose-h2:border-b prose-h2:border-slate-100 prose-h2:pb-3 prose-h2:mt-12 prose-h2:mb-6 prose-h2:scroll-mt-24",
       "prose-h3:text-xl prose-h3:mt-8",
       "prose-p:leading-[1.9] prose-p:text-slate-600",
       "prose-a:text-primary prose-a:font-semibold prose-a:no-underline hover:prose-a:text-blue-600",
@@ -88,7 +92,7 @@ export default async function ArticlePage({ params }: Props) {
       <div className="bg-slate-50 min-h-screen py-6 sm:py-10">
         <ArticleSchema
           title={article.title}
-          description={article.content.substring(0, 160)}
+          description={article.description || textContent.substring(0, 160)}
           url={articleUrl}
           datePublished={datePublished}
           dateModified={dateModified}
@@ -169,10 +173,26 @@ export default async function ArticlePage({ params }: Props) {
               </div>
             </header>
 
-            {/* ===== 広告: アイキャッチ後・記事本文前 ===== */}
-            <div className="px-6 sm:px-10 pt-6">
-              <AdUnit slot="8529703346" placement="inline" />
-            </div>
+            <ArticleIntentPanel intent={intent} />
+
+            {toc.length >= 3 && (
+              <nav className="border-b border-slate-100 px-6 py-5 sm:px-10" aria-label="記事内の見出し">
+                <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">
+                  この記事で確認すること
+                </p>
+                <div className="grid gap-2 text-sm sm:grid-cols-2">
+                  {toc.slice(0, 6).map((item) => (
+                    <a
+                      key={item.id}
+                      href={`#${item.id}`}
+                      className="leading-6 text-slate-600 transition-colors hover:text-primary"
+                    >
+                      {item.title}
+                    </a>
+                  ))}
+                </div>
+              </nav>
+            )}
 
             {/* ===== ARTICLE BODY ===== */}
             <div className="px-6 sm:px-10 pb-10">
@@ -180,22 +200,22 @@ export default async function ArticlePage({ params }: Props) {
                 const h2Positions: number[] = [];
                 const searchRegex = /<h2[\s>]/gi;
                 let match;
-                while ((match = searchRegex.exec(article.content)) !== null) {
+                while ((match = searchRegex.exec(enhancedContent)) !== null) {
                   h2Positions.push(match.index);
                 }
 
                 if (h2Positions.length >= 7) {
                   const split1 = h2Positions[1];
                   const split2 = h2Positions[4];
-                  const part1 = article.content.substring(0, split1);
-                  const part2 = article.content.substring(split1, split2);
-                  const part3 = article.content.substring(split2);
+                  const part1 = enhancedContent.substring(0, split1);
+                  const part2 = enhancedContent.substring(split1, split2);
+                  const part3 = enhancedContent.substring(split2);
                   return (
                     <>
                       <div className={`${proseClass} mt-8`} dangerouslySetInnerHTML={{ __html: part1 }} />
-                      <AdUnit slot="1489598374" placement="inline" />
+                      <AdUnit slot="1489598374" placement="inline" analyticsPlacement="article_after_intro" />
                       <div className={proseClass} dangerouslySetInnerHTML={{ __html: part2 }} />
-                      <AdUnit slot="9407670747" placement="inline" />
+                      <AdUnit slot="9407670747" placement="inline" analyticsPlacement="article_mid" />
                       <div className={proseClass} dangerouslySetInnerHTML={{ __html: part3 }} />
                     </>
                   );
@@ -203,19 +223,19 @@ export default async function ArticlePage({ params }: Props) {
 
                 if (h2Positions.length >= 4) {
                   const splitPos = h2Positions[1];
-                  const firstPart = article.content.substring(0, splitPos);
-                  const secondPart = article.content.substring(splitPos);
+                  const firstPart = enhancedContent.substring(0, splitPos);
+                  const secondPart = enhancedContent.substring(splitPos);
                   return (
                     <>
                       <div className={`${proseClass} mt-8`} dangerouslySetInnerHTML={{ __html: firstPart }} />
-                      <AdUnit slot="1489598374" placement="inline" />
+                      <AdUnit slot="1489598374" placement="inline" analyticsPlacement="article_after_intro" />
                       <div className={proseClass} dangerouslySetInnerHTML={{ __html: secondPart }} />
                     </>
                   );
                 }
 
                 return (
-                  <div className={`${proseClass} mt-8`} dangerouslySetInnerHTML={{ __html: article.content }} />
+                  <div className={`${proseClass} mt-8`} dangerouslySetInnerHTML={{ __html: enhancedContent }} />
                 );
               })()}
             </div>
@@ -246,7 +266,7 @@ export default async function ArticlePage({ params }: Props) {
 
             {/* ===== 広告: 記事本文後 ===== */}
             <div className="px-6 sm:px-10 pb-8">
-              <AdUnit slot="1489598374" placement="inline" />
+              <AdUnit slot="1489598374" placement="inline" analyticsPlacement="article_after_body" />
             </div>
 
             {/* ===== 関連記事 ===== */}

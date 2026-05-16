@@ -241,7 +241,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📊 全体の進捗状況
 
-**最終更新**: 2025-10-25
+**最終更新**: 2026-05-16
 
 | フェーズ | ステータス | 完了数/総数 | 進捗率 |
 |---------|----------|-----------|-------|
@@ -483,6 +483,28 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 - **変更ファイル**: `frontend/app/page.tsx`, `frontend/components/RacePageClient.tsx`, `frontend/components/RaceTabs.tsx`, `frontend/components/RecentRaceReturn.tsx`, `frontend/components/InFeedAd.tsx`, `frontend/components/NativeCardAd.tsx`, `frontend/components/AdUnit.tsx`, `frontend/components/TopHitsDisplay.tsx`, `frontend/lib/analytics.ts`, `frontend/lib/race-memory.ts`
 - **確認事項**: `npm run build` は成功。`next lint` はESLint初期設定プロンプトで停止するため未実行。ローカルAPI未起動のため、レースデータ取得警告とレース詳細画面の実データ表示確認は未実施。
 - **次のステップ**: GA4で `race_view_custom` と `ad_impression_custom` の配置別データを確認し、`race_after_prediction_table`, `race_premium_mid`, `race_after_data_explainer`, `race_after_top_hits` のRPM/CTR/滞在影響を比較する。
+
+#### ✅ 記事自動生成パイプラインの復旧
+- **完了日時**: 2026-05-16 21:57
+- **実施内容**: ライター、エディター、SEOチェッカーの審査条件が互いに矛盾していた問題を整理。関連記事プレースホルダー要求を撤廃し、記事末尾の `/races/today` 導線と「このコースの買い目ポイント」見出しを正規ルールとして統一。Geminiモデル指定は実在性の低いpreview名の固定指定をやめ、安定モデル中心の共通設定に変更。記事生成失敗時にwrite_orderを無条件消費せず `failed/` に退避し、承認済み記事0件の実行失敗をCIで検知できるようにした。
+- **変更ファイル**: `.github/workflows/keiba-article-pipeline.yml`, `frontend/package.json`, `frontend/scripts/agents/agent_writer.ts`, `frontend/scripts/agents/agent_editor.ts`, `frontend/scripts/agents/seo_checker.ts`, `frontend/scripts/agents/test_pipeline.ts`, `frontend/scripts/agents/model_tiers.ts`
+- **確認事項**: `npm run build` は成功。初回ビルドは前回起動したNext dev serverが `.next/trace` を保持して失敗したため、該当dev serverのみ停止して再実行。ローカルではトップレベルのwrite_orderが無く、Gemini APIキーを使った記事生成本番実行は未実施。
+- **次のステップ**: GitHub Actionsで `GEMINI_API_KEY` が設定済みか確認し、手動実行で `frontend/agents/queue/approved` に記事が入るか、また失敗時に `data/write_orders/failed` とActionsログへ原因が出るかを確認する。
+
+#### ✅ Google AI Studio無料枠前提のGemini利用最適化
+- **完了日時**: 2026-05-16 22:27
+- **実施内容**: Google AI Studio無料枠ではレート制限がプロジェクト単位で効くため、記事生成とレース分析文生成をFlash-Lite優先に変更。記事生成は1日最大2本・10リクエストを既定値にし、使用回数を `data/gemini_usage` に記録するソフト上限を追加。レース分析文は1cronあたり最大8リクエスト・24レースに抑え、JRA・後半レース・頭数の多いレースを優先するようにした。非推奨期限が近い2.0/1.5系モデルは既定候補から除外。
+- **変更ファイル**: `backend/scripts/llm_generator.py`, `render.yaml`, `.github/workflows/keiba-article-pipeline.yml`, `frontend/scripts/agents/gemini_quota.ts`, `frontend/scripts/agents/model_tiers.ts`, `frontend/scripts/agents/agent_writer.ts`, `frontend/scripts/agents/agent_editor.ts`, `frontend/scripts/agents/seo_checker.ts`, `frontend/scripts/agents/test_pipeline.ts`
+- **確認事項**: `python -m py_compile backend/scripts/llm_generator.py` 成功。`npm run build` 成功。ローカルAPI未起動のため、ビルド時の予想API取得警告は継続。
+- **次のステップ**: AI StudioのLimits画面で実際の `gemini-2.5-flash-lite` / `gemini-2.5-flash` のRPM・TPM・RPDを確認し、必要なら `GEMINI_RACE_ANALYSIS_REQUEST_LIMIT_PER_RUN` と `GEMINI_ARTICLE_DAILY_REQUEST_LIMIT` を実測値に合わせて調整する。
+- **追加確認**: 2026-05-16 22:49 にGemini APIの429/quota/resource exhausted系エラーを再試行可能な一時停止として扱うよう追加修正。記事品質NGとしてwrite_orderを消費しないことを確認。`python -m py_compile backend/scripts/llm_generator.py` と `npm run build` は再度成功。
+
+#### ✅ AI生成記事の自然化・回遊導線・流入改善
+- **完了日時**: 2026-05-16 23:15
+- **実施内容**: 公開記事一覧、既存Markdown、記事生成プロンプト、GSC/GA4データを確認し、重賞予想前の迷い・平場予想の短時間判断・レース直前の出馬表確認という読者心理に合わせて、記事一覧の目的別導線、記事詳細の使いどころパネル、見出しナビ、関連記事スコアリング、本文前広告の撤去、壊れた手動リンク片の表示除去を実装。CTRの低い既存記事のタイトル・descriptionを自然な検索意図に寄せ、最新重賞記事の煽り表現と壊れたリンクを修正。記事生成プロンプトとSEOチェッカーも「断定・煽り」より「確認順序・買う/見送る条件」を重視するルールへ更新。
+- **変更ファイル**: `frontend/app/articles/page.tsx`, `frontend/app/articles/[slug]/page.tsx`, `frontend/components/ArticleIntentPanel.tsx`, `frontend/components/RelatedArticles.tsx`, `frontend/lib/articles.ts`, `frontend/lib/article-ux.ts`, `frontend/scripts/agents/agent_writer.ts`, `frontend/scripts/agents/agent_editor.ts`, `frontend/scripts/agents/seo_checker.ts`, `frontend/scripts/agents/test_seo_checker.ts`, `backend/scripts/agents/data_scientist.py`, `docs/system-documentation/13_記事生成AIトーンマナー定義書.md`, `frontend/content/articles/2026-05-14-niigata2026-ai.md`, `frontend/content/articles/2025-10-26-ground-condition-impact.md`, `frontend/content/articles/2025-11-11-weight-change-impact-analysis.md`, `frontend/content/articles/2025-10-04-nakayama-dirt-1200m-data-analysis.md`
+- **確認事項**: `npm run build` 成功。`python -m py_compile backend/scripts/agents/data_scientist.py backend/scripts/agents/grade_race_writer.py` 成功。ローカルNext dev serverで `/articles` と `/articles/2026-05-14-niigata2026-ai` を確認し、目的別導線・使いどころパネル・見出しナビ・関連記事表示・壊れたリンク片の非表示を確認。ローカルAPI未起動のため、ビルド時の予想API取得警告は継続。
+- **次のステップ**: Search Consoleで `馬場状態`, `馬体重`, `中山ダート1200m`, `騎手名 得意コース` 系のCTR推移を見て、表示回数が多くCTR 1%未満の記事から順にタイトル・descriptionを追加で調整する。
 
 -----
 

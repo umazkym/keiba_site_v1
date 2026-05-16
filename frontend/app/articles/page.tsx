@@ -6,6 +6,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
 import type { Metadata } from 'next';
+import { BarChart3, CalendarDays, Map, Trophy, User } from 'lucide-react';
 
 interface ArticlesPageProps {
     searchParams: {
@@ -74,6 +75,13 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
 
     const featuredArticle = filteredArticles[0];
     const regularArticles = filteredArticles.slice(1);
+    const intentLinks = [
+        { href: '/races/today', label: '今日の予想', note: '直前確認', icon: CalendarDays },
+        { href: '/articles?category=%E9%87%8D%E8%B3%9E%E6%94%BB%E7%95%A5', label: '重賞攻略', note: '週末の軸探し', icon: Trophy },
+        { href: '/articles?category=%E3%82%B3%E3%83%BC%E3%82%B9%E5%88%86%E6%9E%90', label: 'コース分析', note: '平場の初期値', icon: Map },
+        { href: '/articles?category=%E9%A8%8E%E6%89%8B%E5%88%86%E6%9E%90', label: '騎手分析', note: '人気とのズレ', icon: User },
+        { href: '/articles?category=%E9%A6%AC%E5%88%B8%E3%83%BB%E7%B5%B1%E8%A8%88', label: '馬券・統計', note: '買い方の整理', icon: BarChart3 },
+    ];
 
     return (
         <>
@@ -105,6 +113,9 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                                 {filteredArticles.length}件
                             </span>
                         </div>
+                        <p className="mt-3 max-w-3xl text-sm sm:text-base leading-7 text-slate-600">
+                            重賞の直前確認、平場で使うコース傾向、騎手や馬場の判断材料を、実レースデータから整理しています。オッズを見る前に「買う理由」と「見送る理由」を分けたい時に使う記事群です。
+                        </p>
                     </div>
 
                     {/* ===== CATEGORY TAB BAR — 横スクロール式 ===== */}
@@ -169,6 +180,29 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                         </div>
                     </div>
                 )}
+
+                <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-6">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                        {intentLinks.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className="group flex min-w-[150px] shrink-0 items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2.5 text-left transition-colors hover:border-slate-300 hover:bg-slate-50"
+                                >
+                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600 group-hover:text-primary">
+                                        <Icon className="h-4 w-4" aria-hidden="true" />
+                                    </span>
+                                    <span className="min-w-0">
+                                        <span className="block text-sm font-bold text-slate-800">{item.label}</span>
+                                        <span className="block text-xs text-slate-400">{item.note}</span>
+                                    </span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
 
             {/* ===== BREADCRUMB ===== */}
@@ -176,13 +210,8 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
 
             {/* ===== MAIN CONTENT ===== */}
             <div className="flex flex-col gap-10 pb-12 max-w-[1200px] mx-auto w-full mt-2">
-
-                {/* 広告: カテゴリフィルター後 */}
-                <AdUnit slot="1489598374" placement="inline" />
-
                 {filteredArticles.length === 0 ? (
-                    <div className="text-center py-24 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                        <div className="text-5xl mb-4 opacity-20">🏇</div>
+                    <div className="text-center py-24 bg-white rounded-md border border-slate-100 shadow-sm">
                         <p className="text-slate-500 text-lg font-medium">該当する記事がありません</p>
                         <Link
                             href="/articles"
@@ -269,6 +298,14 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                             </div>
                         )}
 
+                        {featuredArticle && (
+                            <AdUnit
+                                slot="1489598374"
+                                placement="inline"
+                                analyticsPlacement="articles_after_featured"
+                            />
+                        )}
+
                         {/* ===== REGULAR ARTICLES GRID ===== */}
                         {regularArticles.length > 0 && (
                             <div>
@@ -350,7 +387,11 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                                             {/* インフィード広告: 4番目と9番目の後 */}
                                             {(index === 3 || index === 8) && regularArticles.length > index + 1 && (
                                                 <div className="col-span-1 sm:col-span-2 lg:col-span-3 pb-2 pt-2">
-                                                    <AdUnit slot="8529703346" placement="inline" />
+                                                    <AdUnit
+                                                        slot="8529703346"
+                                                        placement="inline"
+                                                        analyticsPlacement={`articles_grid_after_${index + 1}`}
+                                                    />
                                                 </div>
                                             )}
                                         </React.Fragment>

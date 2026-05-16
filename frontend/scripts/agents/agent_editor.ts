@@ -3,6 +3,8 @@ import path from 'path';
 import matter from 'gray-matter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { checkSEO } from './seo_checker';
+import { getGeminiModelTiers } from './model_tiers';
+import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
 
 function applyReplacement(content: string, original: string, fixed: string): { success: boolean, result: string } {
   // \r\n と \n の差異を完全に吸収するため、全体を \n に統一してから完全一致置換を行う
@@ -27,14 +29,20 @@ const EDITOR_SYSTEM_PROMPT = `あなたはUMA-FREEの編集長だ。ライター
 STEP 1：禁止ワードスキャン
 記事全文から、導入テンプレート、AI手癖表現、誇張表現などの禁止ワードを抽出し、修正文言を作成する。
 STEP 2：構造チェック
-・1文目に核心データと断言が含まれているか
-・見出しに数字と結論が含まれているか
+・1文目に核心データと、読者が最初に確認すべき材料が含まれているか
+・見出しに数字と結論が含まれているか（最後の「このコースの買い目ポイント」は例外）
 ・「まとめ」や「総論」などの見出しが存在しないか
-・記事の最後が最重要視点の断言のみで終わっているか（戦略の「復唱」「読者への指示・総括」「～を実現する」等のまとめ・余韻は一切禁止。直前のデータ段落の事実のみで唐突に終わること）
+・記事末尾に「## このコースの買い目ポイント」があり、最後に「このコースの最新レースは [今日のAI予想・出馬表](/races/today) で無料公開中。」が自然に入っているか
+・✅ や ❌ などの装飾記号、煽りの強い「最強」「圧倒的」「狙い撃つ」「買うな」「消去対象」が残っていないか
+・重賞記事は、人気馬を煽るだけでなく「疑う条件」「買い足す条件」「見送る条件」が分かれているか
+・平場向け記事は、短時間で複数レースを見る読者が使える初期判断になっているか
 STEP 3：フォーマットとSEOのチェック
-・タイトルの文字数（30〜36文字）と構成
+・タイトルの文字数（30〜40文字）と構成
 ・ディスクリプションの文字数（120〜140文字）
 ※もし「事前の機械チェック結果」でエラーが指摘されている場合は、必ずそれを満たすようにtitleとdescriptionを修正すること。
+※関連記事プレースホルダーは要求しない。本文中に「関連記事」セクションや「[関連記事：...]」は追加しないこと。
+※存在確認できないURL、仮URL、単独行の「(/course-xxx)」のような壊れたリンク片は必ず削除すること。
+※本文を長くしすぎない。必要な修正だけ行い、表・数値・母数・期間は壊さないこと。
 
 【JSON出力フォーマット】
 以下のJSONスキーマに従って出力せよ。Markdownのコードブロックなどは含めず、純粋なJSON文字列のみを出力すること。
@@ -57,7 +65,14 @@ STEP 3：フォーマットとSEOのチェック
 【極秘指示】
 元の原稿に含まれているデータテーブル（| で構築された表）およびリスト要素に対する修正は確実な理由がない限り行わないこと。表自体を削除・破壊してはならない。`;
 
-export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED' | 'REJECTED'; log: string, newDraftPath?: string }> {
+function isRetryableGeminiError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error || '');
+  return /429|quota|rate limit|resource exhausted|too many requests/i.test(message);
+}
+
+export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED' | 'REJECTED'; log: string, newDraftPath?: string; retryable?: boolean }> {
+  let retryableApiFailure = false;
+
   try {
     const revisedPath = filePath.replace('.md', '_revised.md');
     if (fs.existsSync(revisedPath)) {
@@ -69,18 +84,14 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
     let finalStatus: 'APPROVED' | 'REJECTED' = 'REJECTED';
     let newDraftPath: string | undefined = undefined;
     let allLogs = "";
+    let lastApiErrorMessage = "";
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not set.");
     }
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelTiers = [
-      'gemini-3-flash-preview',
-      'gemini-3.1-flash-lite-preview',
-      'gemini-2.5-flash',
-      'gemini-2.5-flash-lite'
-    ];
+    const modelTiers = getGeminiModelTiers('GEMINI_EDITOR_MODEL_TIERS');
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       console.log(`[Editor] Running AI evaluation (Attempt ${attempt})...`);
@@ -110,17 +121,38 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
         });
 
         try {
+          const parsedForQuota = matter(currentContent);
+          reserveGeminiRequest({
+            scope: 'article',
+            model: currentModelName,
+            purpose: `editor-attempt-${attempt}`,
+            target: parsedForQuota.data.target_keyword || parsedForQuota.data.title,
+          });
           response = await model.generateContent(prompt);
           generateFailed = false;
           break; // 成功したら次へ
         } catch (e: any) {
+          if (e instanceof GeminiQuotaExceededError) {
+            console.error(`[Editor Warning] ${currentModelName} quota guard: ${e.message}`);
+            if (e.kind === 'total' || i === modelTiers.length - 1) {
+              throw e;
+            }
+            continue;
+          }
           console.error(`[Editor Warning] ${currentModelName} failed: ${e.message}`);
           allLogs += `\n[Editor Warning] ${currentModelName} failed: ${e.message}\n`;
+          lastApiErrorMessage = e.message || String(e);
+          if (isRetryableGeminiError(e)) {
+            retryableApiFailure = true;
+          }
         }
       }
 
       if (generateFailed || !response) {
          allLogs += `\n[Editor Fatal] すべてのモデルでAPIリクエストが失敗しました。\n`;
+         if (retryableApiFailure) {
+           throw new Error(`Gemini APIの一時的な制限によりレビューを完了できませんでした。${lastApiErrorMessage}`);
+         }
          break;
       }
 
@@ -226,6 +258,10 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
 
   } catch (error: any) {
     console.error(`[Editor Error] ${error.message}`);
-    return { status: 'REJECTED', log: `エラーにより検証失敗: ${error.message}` };
+    return {
+      status: 'REJECTED',
+      log: `エラーにより検証失敗: ${error.message}`,
+      retryable: error instanceof GeminiQuotaExceededError || isRetryableGeminiError(error),
+    };
   }
 }

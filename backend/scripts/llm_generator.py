@@ -14,6 +14,75 @@ class RaceAnalysis(BaseModel):
     race_id: str = Field(description="12桁の数字のレースID")
     analysis_text: str = Field(description="プレーンテキストのみのレース展望。マークダウンやHTMLは使用不可。")
 
+JRA_VENUE_CODES = {"01", "02", "03", "04", "05", "06", "07", "08", "09", "10"}
+JRA_VENUE_NAMES = {"札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"}
+
+def _parse_int(value, default: int = 0) -> int:
+    try:
+        if value is None:
+            return default
+        digits = "".join(ch for ch in str(value) if ch.isdigit())
+        return int(digits) if digits else default
+    except Exception:
+        return default
+
+def _parse_float_env(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except ValueError:
+        return default
+
+def _parse_int_env(name: str, default: int) -> int:
+    try:
+        return max(0, int(os.getenv(name, str(default))))
+    except ValueError:
+        return default
+
+def _parse_model_tiers(env_name: str, default_models: List[str]) -> List[str]:
+    configured = os.getenv(env_name) or os.getenv("GEMINI_MODEL_TIERS")
+    if not configured:
+        return default_models
+    models = [m.strip() for m in configured.split(",") if m.strip()]
+    return models or default_models
+
+def _parse_model_limits(value: str, default_limit: int, models: List[str]) -> dict:
+    limits = {model: default_limit for model in models}
+    if not value:
+        return limits
+    for pair in value.split(","):
+        if ":" in pair:
+            model, raw_limit = pair.split(":", 1)
+        elif "=" in pair:
+            model, raw_limit = pair.split("=", 1)
+        else:
+            continue
+        model = model.strip()
+        try:
+            limits[model] = max(0, int(raw_limit.strip()))
+        except ValueError:
+            continue
+    return limits
+
+def _race_priority(race) -> int:
+    race_id = str(getattr(race, "id", "") or "")
+    venue_code = race_id[4:6] if len(race_id) >= 6 else ""
+    venue_name = getattr(race, "venue_name", "") or ""
+    race_number = _parse_int(getattr(race, "race_number", 0))
+    total_horses = _parse_int(getattr(race, "total_horses", 0))
+    race_name = getattr(race, "race_name", "") or ""
+
+    score = 0
+    if venue_code in JRA_VENUE_CODES or venue_name in JRA_VENUE_NAMES:
+        score += 1000
+    if race_number >= 9:
+        score += 120
+    elif race_number >= 6:
+        score += 60
+    score += min(total_horses, 18)
+    if any(word in race_name for word in ["G1", "G2", "G3", "重賞", "ステークス", "記念", "賞"]):
+        score += 80
+    return score
+
 
 def _get_race_hash(race_id: str) -> int:
     """レースIDから決定論的なハッシュ値を生成（毎回同じIDなら同じ結果）"""
@@ -71,9 +140,9 @@ def _get_per_race_instructions(race_id: str) -> str:
     # 【D】文字数レンジ（3種）
     # ========================================================================
     lengths = [
-        "800〜1100文字",
-        "1100〜1400文字",
-        "1400〜1800文字"
+        "650〜900文字",
+        "750〜1000文字",
+        "850〜1100文字"
     ]
 
     # ========================================================================
@@ -143,7 +212,7 @@ def _get_race_prompt_data(db: Session, race_id: str) -> str:
 
 def generate_analyses_in_batches(db: Session, target_races: List[str]):
     """
-    指定されたレースIDのリストに対して、API制限(20回/日)とモデルのフォールバックを考慮し、
+    指定されたレースIDのリストに対して、Google AI Studio無料枠を意識したソフト上限とモデルのフォールバックを考慮し、
     1リクエストで最大3レース分の分析をまとめて生成する。
     """
     api_key = os.getenv("GEMINI_API_KEY")
@@ -151,8 +220,21 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
         print("[LLM Generator] GEMINI_API_KEY is not set. Skipping batch generation.")
         return
 
-    # すでにテキストがあるものや、予測データがないものを除外
-    races_to_process = []
+    if os.getenv("GEMINI_RACE_ANALYSIS_ENABLED", "true").lower() in {"0", "false", "no"}:
+        print("[LLM Generator] GEMINI_RACE_ANALYSIS_ENABLED=false. Skipping AI analysis generation.")
+        return
+
+    request_limit_per_run = _parse_int_env("GEMINI_RACE_ANALYSIS_REQUEST_LIMIT_PER_RUN", 8)
+    chunk_size = max(1, min(5, _parse_int_env("GEMINI_RACE_ANALYSIS_CHUNK_SIZE", 3)))
+    max_races_per_run = _parse_int_env("GEMINI_RACE_ANALYSIS_MAX_RACES_PER_RUN", request_limit_per_run * chunk_size)
+    request_sleep_seconds = _parse_float_env("GEMINI_RACE_REQUEST_SLEEP_SECONDS", 6.5)
+
+    if request_limit_per_run <= 0 or max_races_per_run <= 0:
+        print("[LLM Generator] Gemini request/race limit is 0. Skipping AI analysis generation.")
+        return
+
+    # すでにテキストがあるものや、予測データがないものを除外し、無料枠では価値の高いレースを優先する
+    candidate_races = []
     for rid in target_races:
         race = db.query(models.Race).filter(models.Race.id == rid).first()
         if not race or race.ai_analysis_text:
@@ -160,7 +242,17 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
         
         preds_count = db.query(models.Prediction).filter(models.Prediction.race_id == rid).filter(models.Prediction.deviation_score.isnot(None)).count()
         if preds_count > 0:
-            races_to_process.append(rid)
+            candidate_races.append((_race_priority(race), rid))
+
+    candidate_races.sort(key=lambda item: (-item[0], item[1]))
+    races_to_process = [rid for _, rid in candidate_races]
+
+    if len(races_to_process) > max_races_per_run:
+        print(
+            f"[LLM Generator] Free-tier guard: {len(races_to_process)} candidate races found. "
+            f"Processing top {max_races_per_run} by priority this run."
+        )
+        races_to_process = races_to_process[:max_races_per_run]
 
     if not races_to_process:
         print("[LLM Generator] No races require AI analysis generation.")
@@ -168,27 +260,24 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
 
     print(f"[LLM Generator] Starting batch generation for {len(races_to_process)} races.")
 
-    chunk_size = 3
     chunks = [races_to_process[i:i + chunk_size] for i in range(0, len(races_to_process), chunk_size)]
 
-    model_tiers = [
-        "gemini-2.5-flash",
+    model_tiers = _parse_model_tiers("GEMINI_RACE_MODEL_TIERS", [
         "gemini-2.5-flash-lite",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash"
-    ]
+        "gemini-2.5-flash",
+    ])
     
-    # モデルごとのソフトリミット設定 (画像ダッシュボードの無料枠上限に基づく)
-    model_limits = {
-        "gemini-3-flash-preview": 19,           # 無料枠 RPD=20
-        "gemini-3.1-flash-lite-preview": 480,   # 無料枠 RPD=500 
-        "gemini-2.5-flash": 19,                 # 無料枠 RPD=20
-        "gemini-2.5-flash-lite": 19             # 無料枠 RPD=20
-    }
+    # Google AI Studioの実効上限はプロジェクトごとに異なるため、ここでは1ジョブ内のソフト上限として扱う。
+    model_limits = _parse_model_limits(
+        os.getenv("GEMINI_RACE_MODEL_LIMITS", ""),
+        request_limit_per_run,
+        model_tiers,
+    )
     
     CONSECUTIVE_ERROR_LIMIT = 3  # 連続エラーでフォールバックする閾値
     current_tier_idx = 0
     current_model_usage = 0
+    total_request_usage = 0
     consecutive_errors = 0  # 連続エラーカウンタ
     
     client = genai.Client(api_key=api_key)
@@ -196,6 +285,13 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
     # whileループで管理し、フォールバック時に同じチャンクをリトライできるようにする
     chunk_idx = 0
     while chunk_idx < len(chunks):
+        if total_request_usage >= request_limit_per_run:
+            print(
+                f"[LLM Generator] Free-tier guard: reached request limit for this run "
+                f"({total_request_usage}/{request_limit_per_run}). Remaining chunks are skipped."
+            )
+            break
+
         chunk = chunks[chunk_idx]
         current_model = model_tiers[current_tier_idx]
         current_limit = model_limits.get(current_model, 20)
@@ -231,9 +327,9 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
 ━━━━━━━━━━━━━━━━━━━
 
 【文体】
-・口調は「〜である」「〜だろう」「〜といえる」「〜と見る」を基調にした、競馬新聞の予想コラムの文体で統一すること。
-・「〜です」「〜ます」「〜でしょう」「〜してまいります」等の敬語・丁寧語は一切使用禁止。
-・「〜と考える」「〜と判断する」も使用禁止（投資レポート調になるため）。
+・口調は「〜だ」「〜と見る」「〜といえる」を基調にした、短く読み返しやすい競馬メモの文体で統一すること。
+・「〜です」「〜ます」「〜でしょう」「〜してまいります」等の敬語・丁寧語は使用しない。
+・「〜と考える」「〜と判断する」は多用しない。投資レポート調ではなく、予想ページ横の補足として自然に読む文章にする。
 ・一人称は使わない。「私は〜」「筆者は〜」等は禁止。
 
 【禁止語彙】
@@ -248,8 +344,10 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
 ・全レースが同じ構成・同じ書き出しにならないように、指定された構成に厳密に従うこと。
 
 【内容ルール】
+・ユーザーは記事を熟読するより、出馬表と予想印を何度も確認する。長い前置きは不要で、最初の2文で狙い筋を示すこと。
 ・AI偏差値と1角ポジション指標は具体的な数値つきで引用すること。枠番（〇枠〇番）にも言及すること。
 ・数値の羅列ではなく、その数値が「何を意味するか」を競馬ファンが読んで納得できる言葉で解説すること。
+・「絶対」「必勝」「買うな」「儲かる」「爆益」などの煽りは禁止。人気・枠・脚質の扱いを一段控えめに整理すること。
 ・マークダウン記号（# ** など）やHTMLタグは一切使用禁止。プレーンテキストのみ。段落間は空白行1行。
 ・「こんにちは」「以下に分析を〜」等のメタ発言は不要。いきなり本文から書き始めること。
 
@@ -260,6 +358,13 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
 """
 
         try:
+            total_request_usage += 1
+            current_model_usage += 1
+            print(
+                f"[LLM Generator] Gemini request usage: "
+                f"{total_request_usage}/{request_limit_per_run} total, "
+                f"{current_model_usage}/{current_limit} for {current_model}"
+            )
             response = client.models.generate_content(
                 model=current_model,
                 contents=master_prompt,
@@ -284,14 +389,14 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
                 
                 db.commit()
                 print(f"[LLM Generator] Successfully saved {saved_count} analyses from this chunk.")
-                current_model_usage += 1
                 consecutive_errors = 0
                 chunk_idx += 1  # 成功時のみ次のチャンクへ
-                time.sleep(4.5)
+                time.sleep(request_sleep_seconds)
                 
             else:
                 print(f"[LLM Generator] Empty response for chunk {chunk_idx + 1}")
                 chunk_idx += 1  # 空レスポンスの場合も次へ
+                time.sleep(request_sleep_seconds)
 
         except Exception as e:
             error_str = str(e)
@@ -326,7 +431,7 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
             
             # その他のエラーは次のチャンクへ
             chunk_idx += 1
-            time.sleep(5)
+            time.sleep(request_sleep_seconds)
 
     print("[LLM Generator] Batch generation finished.")
     

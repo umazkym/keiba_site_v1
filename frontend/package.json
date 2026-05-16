@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "article:pipeline": "npx --yes tsx scripts/agents/test_pipeline.ts",
+    "article:publish": "npx --yes tsx scripts/agents/agent_publisher.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

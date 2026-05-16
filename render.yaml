@@ -162,6 +162,16 @@ services:
         sync: false
       - key: RACE_BATCH_SIZE
         value: "3"
+      - key: GEMINI_RACE_MODEL_TIERS
+        value: "gemini-2.5-flash-lite,gemini-2.5-flash"
+      - key: GEMINI_RACE_ANALYSIS_REQUEST_LIMIT_PER_RUN
+        value: "8"
+      - key: GEMINI_RACE_ANALYSIS_CHUNK_SIZE
+        value: "3"
+      - key: GEMINI_RACE_ANALYSIS_MAX_RACES_PER_RUN
+        value: "24"
+      - key: GEMINI_RACE_REQUEST_SLEEP_SECONDS
+        value: "6.5"
       - key: SELENIUM_PAGE_LOAD_TIMEOUT
         value: "40"
       - key: SELENIUM_ELEMENT_WAIT_TIMEOUT
@@ -192,6 +202,16 @@ services:
         sync: false
       - key: RACE_BATCH_SIZE
         value: "3"
+      - key: GEMINI_RACE_MODEL_TIERS
+        value: "gemini-2.5-flash-lite,gemini-2.5-flash"
+      - key: GEMINI_RACE_ANALYSIS_REQUEST_LIMIT_PER_RUN
+        value: "8"
+      - key: GEMINI_RACE_ANALYSIS_CHUNK_SIZE
+        value: "3"
+      - key: GEMINI_RACE_ANALYSIS_MAX_RACES_PER_RUN
+        value: "24"
+      - key: GEMINI_RACE_REQUEST_SLEEP_SECONDS
+        value: "6.5"
       - key: SELENIUM_PAGE_LOAD_TIMEOUT
         value: "40"
       - key: SELENIUM_ELEMENT_WAIT_TIMEOUT

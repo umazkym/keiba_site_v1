@@ -59,7 +59,10 @@ jobs:
         working-directory: ./frontend
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: npx tsx scripts/agents/test_pipeline.ts
+          GEMINI_MODEL_TIERS: gemini-2.5-flash-lite,gemini-2.5-flash
+          GEMINI_ARTICLE_DAILY_REQUEST_LIMIT: "10"
+          ARTICLE_PIPELINE_MAX_ARTICLES: "2"
+        run: npm run article:pipeline
 
       - name: Check if article was approved
         id: check_approved
@@ -72,7 +75,7 @@ jobs:
         working-directory: ./frontend
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: npx tsx scripts/agents/agent_publisher.ts
+        run: npm run article:publish
 
       - name: Step 5 - Completion Check
         run: echo "Pipeline execution completed successfully!"

@@ -23,9 +23,9 @@ function applyReplacement(content: string, original: string, fixed: string): { s
   return { success: true, result: resultContent };
 }
 
-const EDITOR_SYSTEM_PROMPT = `あなたはUMA-FREEの編集長だ。ライターが生成したMarkdown記事を検閲し、以下の手順で指定されたJSONフォーマットのみを出力せよ。
+const EDITOR_SYSTEM_PROMPT = `あなたはUMA-FREEの編集長だ。ライターが生成したMarkdown記事を編集確認し、以下の手順で指定されたJSONフォーマットのみを出力する。
 
-【検閲の手順】
+【編集確認の手順】
 STEP 1：禁止ワードスキャン
 記事全文から、導入テンプレート、AI手癖表現、誇張表現などの禁止ワードを抽出し、修正文言を作成する。
 STEP 2：構造チェック
@@ -33,7 +33,7 @@ STEP 2：構造チェック
 ・見出しに数字と結論が含まれているか（最後の「このコースの買い目ポイント」は例外）
 ・「まとめ」や「総論」などの見出しが存在しないか
 ・記事末尾に「## このコースの買い目ポイント」があり、最後に「このコースの最新レースは [今日のAI予想・出馬表](/races/today) で無料公開中。」が自然に入っているか
-・✅ や ❌ などの装飾記号、煽りの強い「最強」「圧倒的」「狙い撃つ」「買うな」「消去対象」が残っていないか
+・チェックマークやバツ印などの装飾記号、煽りの強い「最強」「圧倒的」「狙い撃つ」「買うな」「消去対象」が残っていないか
 ・重賞記事は、人気馬を煽るだけでなく「疑う条件」「買い足す条件」「見送る条件」が分かれているか
 ・平場向け記事は、短時間で複数レースを見る読者が使える初期判断になっているか
 STEP 3：フォーマットとSEOのチェック
@@ -45,10 +45,10 @@ STEP 3：フォーマットとSEOのチェック
 ※本文を長くしすぎない。必要な修正だけ行い、表・数値・母数・期間は壊さないこと。
 
 【JSON出力フォーマット】
-以下のJSONスキーマに従って出力せよ。Markdownのコードブロックなどは含めず、純粋なJSON文字列のみを出力すること。
+以下のJSONスキーマに従って出力する。Markdownのコードブロックなどは含めず、純粋なJSON文字列のみを出力すること。
 {
   "status": "APPROVED" | "REJECTED",
-  "log": "検閲の所感やエラー理由の一言メモ",
+  "log": "編集確認の所感やエラー理由の一言メモ",
   "fixed_frontmatter": {
     "title": "新しいタイトル",
     "description": "新しいディスクリプション"
@@ -102,7 +102,7 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
 
       allLogs += `\n[Attempt ${attempt} Mechanical Check]\n${mechanicalLog}\n`;
 
-      const prompt = `以下のドラフト記事（Markdown）を検閲せよ。\n\n【事前の機械チェック結果】\n${mechanicalLog}\n\n\`\`\`markdown\n${currentContent}\n\`\`\``;
+      const prompt = `以下のドラフト記事（Markdown）を編集確認する。\n\n【事前の機械チェック結果】\n${mechanicalLog}\n\n\`\`\`markdown\n${currentContent}\n\`\`\``;
 
       let response: any = null;
       let generateFailed = true;

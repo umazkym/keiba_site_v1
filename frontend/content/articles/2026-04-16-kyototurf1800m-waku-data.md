@@ -18,7 +18,7 @@ og_title: '[京都芝1800m] 5枠の複勝率36.2%が示す中枠優位と回収�
 og_description: >-
   京都芝1800mの全166レースを分析した結果、5枠が勝率14.2%、複勝率36.2%と高い数値を記録した。一方で2枠の単勝回収率は0%であり、内枠の勝ちきれない傾向が顕著だ。コース形状から導き出される枠順別の有利不利と、馬券に直結する回収率の歪みを浮き彫りにする。
 article_published_time: '2026-04-16T23:42:23.449Z'
-og_image: 'https://uma-free.jp/og/2026-04-16-kyototurf1800m-waku-data.png'
+og_image: 'https://uma-free.com/og/2026-04-16-kyototurf1800m-waku-data.png'
 tags:
   - 京都
   - 枠順

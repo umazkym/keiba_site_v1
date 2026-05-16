@@ -53,7 +53,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - 本文中のCTAは /races/today または reference_data.race_url のみ。存在確認できないURLや仮のURLは書かない。
 
 【記事の締め方 ― 「買い目のポイント」セクション必須】
-記事の最後のセクションは必ず以下の形式で締めろ。
+記事の最後のセクションは必ず以下の形式で締める。
 見出し: ## このコースの買い目ポイント
 内容: 「買い」「抑え」「見送り」「条件付き」のような自然なラベルで、読者がすぐ使える判断基準を3〜5個提示。
 例:
@@ -61,26 +61,26 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
   - 抑え: 6枠の先行馬は回収率49%で相手に残す価値がある。
   - 見送り: 8枠は複勝率17.3%で、人気なら評価を下げる。
   - 条件付き: 2枠は内で脚をためられる先行馬だけ拾う。
-その後、以下の1文で記事を閉じろ:
+その後、以下の1文で記事を閉じる:
 「このコースの最新レースは [今日のAI予想・出馬表](/races/today) で無料公開中。」
 
-【絶対禁止事項】
-- 「まとめ」「総論」「おわりに」の見出しは禁止。代わりに「買い目ポイント」で締めろ。
+【禁止事項】
+- 「まとめ」「総論」「おわりに」の見出しは禁止。代わりに「買い目ポイント」で締める。
 - 以下の表現が含まれる場合、書き直せ:
   ・「〜と思っていませんか？」「この記事をお読みいただければ〜」
   ・「結論から言うと」「興味深いことに」「総じて〜」「〜に注目です」
   ・「絶対」「絶対的」「確実」「必勝」「完全攻略」「最強」「圧倒的」「狙い撃つ」「買うな」「消去対象」「いかがでしたか？」「ぜひ参考にしてください」
 - ✅ や ❌ などの装飾記号は使わない。競馬の印（◎○▲△）は重賞プレビューの予想データに限って使用可。
-- 【関連記事リンクを本文中に書くな】。関連記事はシステム側が自動で表示するため、記事本文には「関連記事」セクションや「[関連記事：ダミー]」を一切含めるな。存在しないスラッグへのリンクを生成すると404エラーになる。
+- 【関連記事リンクの禁止】関連記事はシステム側が自動で表示するため、記事本文には「関連記事」セクションや「[関連記事：ダミー]」を含めない。存在確認できないスラッグへのリンクを生成すると404エラーになる。
 
 【テーマクラスター別の追加指示】
-入力データのtheme_clusterの値に応じて書き方を微調整せよ。
-・"asset"/"waku_data": 枠順データの記事。枠番ごとの勝率テーブルを提示し、「買い」と「消し」の枠を明確にせよ。
+入力データのtheme_clusterの値に応じて書き方を微調整する。
+・"asset"/"waku_data": 枠順データの記事。枠番ごとの勝率テーブルを提示し、「買い」と「評価を下げる」枠を明確にする。
 ・"seasonal": 開催シーズン中の時事性を強調する枠順・傾向記事。
-・"jockey_data": 騎手のコース成績記事。「勝率は高いが回収率は低い」等の期待値の逆転を掘り下げろ。
-・"popularity_data": 配当傾向と上位人気の信頼度。「堅いコースか荒れるコースか」を明確にせよ。
-・"running_style_data": コース形態と脚質の有利不利。直線距離や坂の有無を根拠にせよ。
-・"grade_race_preview": 重賞レースのプレビュー記事。以下のルールに従え:
+・"jockey_data": 騎手のコース成績記事。「勝率は高いが回収率は低い」等の期待値の逆転を掘り下げる。
+・"popularity_data": 配当傾向と上位人気の信頼度。「堅いコースか荒れるコースか」を明確にする。
+・"running_style_data": コース形態と脚質の有利不利。直線距離や坂の有無を根拠にする。
+・"grade_race_preview": 重賞レースのプレビュー記事。以下のルールに従う:
   - タイトル構成: 「[レース名][年] AI予想｜[確認すべきデータの核心]」（30〜40文字）
   - 導入: レースの基本情報（開催場・コース・距離）を1〜2文で簡潔に。
   - コース傾向セクション必須: reference_data のデータから傾向をMarkdownテーブルで提示。
@@ -89,7 +89,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
   - 読者は直前の不安解消を求めている。人気馬を煽るのではなく、疑う条件・買い足す条件・見送る条件を分けて書く。
 
 【カテゴリの決定ルール】
-theme_clusterの値に応じてcategoryを以下のように決定せよ。
+theme_clusterの値に応じてcategoryを以下のように決定する。
   - "asset" -> "コース分析"
   - "seasonal" -> "コース分析"
   - "waku_data" -> "コース分析"
@@ -99,7 +99,7 @@ theme_clusterの値に応じてcategoryを以下のように決定せよ。
   - "grade_race_preview" -> "重賞攻略"
 
 【出力形式】
-説明文・謝辞・前置き一切不要。以下のFrontmatter付きMarkdownのみを出力せよ。
+説明文・謝辞・前置きは不要。以下のFrontmatter付きMarkdownのみを出力する。
 
 ---
 title: ""
@@ -133,7 +133,7 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
     const genAI = new GoogleGenerativeAI(apiKey);
     const modelTiers = getGeminiModelTiers('GEMINI_WRITER_MODEL_TIERS');
 
-    const prompt = `以下の入力データ（WriteOrder）に基づいて記事を生成せよ。\n\n${JSON.stringify(order, null, 2)}`;
+    const prompt = `以下の入力データ（WriteOrder）に基づいて記事を生成する。\n\n${JSON.stringify(order, null, 2)}`;
     console.log(`[Writer] Generating draft for keyword: ${order.target_keyword}...`);
 
     let result;
@@ -210,7 +210,12 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
     // ディレクトリが存在しない場合は作成
     fs.mkdirSync(queueDir, { recursive: true });
 
-    const filePath = path.join(queueDir, `${timestamp}.md`);
+    let filePath = path.join(queueDir, `${timestamp}.md`);
+    let suffix = 2;
+    while (fs.existsSync(filePath)) {
+      filePath = path.join(queueDir, `${timestamp}_${suffix}.md`);
+      suffix++;
+    }
     fs.writeFileSync(filePath, text, 'utf-8');
 
     console.log(`[Writer] Draft successfully saved to: ${filePath}`);

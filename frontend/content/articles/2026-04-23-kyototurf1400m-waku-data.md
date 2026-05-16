@@ -18,7 +18,7 @@ og_title: 京都芝1400mは3枠複勝率35.2%が最強で7枠勝率12.3%が急�
 og_description: >-
   京都芝1400mの全185レース（2023年4月〜2026年1月）を分析。3枠の複勝率35.2%の安定感と、7枠の勝率12.3%が示す外からの差し切り性能をデータで示す。2枠・4枠の単勝回収率0%から、馬券戦略に不可欠な死角と狙い目を明確に提示する。
 article_published_time: '2026-04-23T23:43:17.838Z'
-og_image: 'https://uma-free.jp/og/2026-04-23-kyototurf1400m-waku-data.png'
+og_image: 'https://uma-free.com/og/2026-04-23-kyototurf1400m-waku-data.png'
 ---
 
 ## 1. 3枠の複勝率35.2%が示す最大級の軸としての信頼度

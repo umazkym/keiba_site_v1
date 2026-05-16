@@ -97,6 +97,7 @@ async function runPipeline() {
 
   // 既存記事のキーワードを取得（重複チェック用）
   const existingKeywords = getExistingArticleKeywords();
+  const seenKeywords = new Set(existingKeywords);
   console.log(`[Pipeline] 既存記事のキーワード数: ${existingKeywords.size}`);
   
   // 最古のwrite_orderから順に処理（未消費のものを優先）
@@ -115,8 +116,8 @@ async function runPipeline() {
     }
 
     // 既存記事との重複チェック
-    if (existingKeywords.has(order.target_keyword)) {
-      console.log(`[Pipeline] 重複スキップ（既存記事あり）: ${order.target_keyword}`);
+    if (seenKeywords.has(order.target_keyword)) {
+      console.log(`[Pipeline] 重複スキップ（既存記事または同一実行内で処理済み）: ${order.target_keyword}`);
       moveToProcessed(orderPath);
       continue;
     }
@@ -129,6 +130,7 @@ async function runPipeline() {
     }
 
     attemptedCount++;
+    seenKeywords.add(order.target_keyword);
 
     // 1. Writer: 記事ドラフトの生成
     console.log("\n[Step 1] Writer Agent is generating the draft...");

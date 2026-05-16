@@ -41,12 +41,39 @@ export const SEO_RULES = {
     "と言えるでしょう",
     "独自の分析スクリプトで解析",
     "膨大なレースデータを徹底的に解析",
+    "https://uma-free.jp",
   ],
 };
 
 export interface SEOCheckResult {
   passed: boolean;
   errors: string[];
+}
+
+function collectMarkdownLinks(content: string): string[] {
+  const links: string[] = [];
+  const linkPattern = /!?\[[^\]]*]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = linkPattern.exec(content)) !== null) {
+    links.push(match[1].replace(/^<|>$/g, ''));
+  }
+
+  return links;
+}
+
+function normalizeInternalHref(href: string): string | null {
+  if (!/^https?:\/\//.test(href)) return href;
+
+  try {
+    const url = new URL(href);
+    if (url.hostname === 'uma-free.com' || url.hostname === 'www.uma-free.com') {
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
+    return null;
+  } catch {
+    return href;
+  }
 }
 
 export function checkSEO(markdownText: string): SEOCheckResult {
@@ -174,6 +201,40 @@ export function checkSEO(markdownText: string): SEOCheckResult {
 
   if (/^\s*\(\/[^)\s]+\)\s*$/m.test(content)) {
     errors.push(`本文内に壊れたリンク片があります。単独行の「(/course-xxx)」のようなURL片を削除してください。`);
+  }
+
+  for (const href of collectMarkdownLinks(content)) {
+    if (href.includes('uma-free.jp')) {
+      errors.push(`リンクのドメインが古いです: ${href}。正規ドメイン https://uma-free.com を使ってください。`);
+      continue;
+    }
+
+    const internalHref = normalizeInternalHref(href);
+    if (internalHref === null) {
+      errors.push(`生成記事内の外部リンクは原則禁止です: ${href}`);
+      continue;
+    }
+
+    if (!internalHref.startsWith('/')) {
+      errors.push(`相対リンクは禁止です: ${href}`);
+      continue;
+    }
+
+    const pathname = internalHref.split(/[?#]/)[0];
+    if (pathname.startsWith('/articles/')) {
+      errors.push(`本文内に手動の記事リンクがあります: ${href}。関連記事はページ側で自動表示してください。`);
+      continue;
+    }
+
+    if (pathname.startsWith('/races/')) {
+      if (pathname === '/races/today' || /^\/races\/\d{4}-\d{2}-\d{2}$/.test(pathname)) {
+        continue;
+      }
+      errors.push(`レースページへのリンク形式が不正です: ${href}`);
+      continue;
+    }
+
+    errors.push(`生成記事内で許可されていない内部リンクです: ${href}`);
   }
 
   // 10. NGワードの完全チェック

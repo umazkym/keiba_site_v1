@@ -1,12 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getAllArticles, getUniqueCategories, getUniqueTags } from '../../lib/articles';
+import { getAllArticles, getUniqueCategories } from '../../lib/articles';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
 import type { Metadata } from 'next';
-import { BarChart3, CalendarDays, Map, Trophy, User } from 'lucide-react';
 
 interface ArticlesPageProps {
     searchParams: {
@@ -60,9 +59,6 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
     const selectedCategory = searchParams.category;
     const selectedTag = searchParams.tag;
 
-    // Get tags related to the selected category (or empty if everything)
-    const uniqueTags = selectedCategory ? getUniqueTags(selectedCategory) : [];
-
     let filteredArticles = selectedCategory
         ? allArticles.filter((article) => article.category === selectedCategory)
         : allArticles;
@@ -75,132 +71,52 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
 
     const featuredArticle = filteredArticles[0];
     const regularArticles = filteredArticles.slice(1);
-    const intentLinks = [
-        { href: '/races/today', label: '今日の予想', note: '直前確認', icon: CalendarDays },
-        { href: '/articles?category=%E9%87%8D%E8%B3%9E%E6%94%BB%E7%95%A5', label: '重賞攻略', note: '週末の軸探し', icon: Trophy },
-        { href: '/articles?category=%E3%82%B3%E3%83%BC%E3%82%B9%E5%88%86%E6%9E%90', label: 'コース分析', note: '平場の初期値', icon: Map },
-        { href: '/articles?category=%E9%A8%8E%E6%89%8B%E5%88%86%E6%9E%90', label: '騎手分析', note: '人気とのズレ', icon: User },
-        { href: '/articles?category=%E9%A6%AC%E5%88%B8%E3%83%BB%E7%B5%B1%E8%A8%88', label: '馬券・統計', note: '買い方の整理', icon: BarChart3 },
-    ];
+    const formatDate = (date: string) => new Date(date).toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+    const categoryItems = uniqueCategories.map((category) => ({
+        category,
+        count: allArticles.filter((article) => article.category === category).length,
+    }));
 
     return (
         <>
-            {/* ===== HEADER & FILTERS ===== */}
-            <div className="relative -mx-3 sm:-mx-4 md:-mx-6 bg-white border-b border-slate-200/80">
-                <div className="relative px-4 sm:px-6">
-                    {/* ページタイトルエリア — コンパクト＆モダン */}
-                    <div className="pt-6 sm:pt-8 pb-4">
-                        <div className="flex items-center gap-2 mb-1.5">
-                            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                            </svg>
-                            <span className="text-slate-400 font-medium text-xs tracking-wide uppercase">
-                                競馬データ分析・コラム
-                            </span>
-                        </div>
-                        <div className="flex items-baseline gap-3">
-                            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">
-                                {selectedCategory ? (
-                                    <>
-                                        {selectedCategory}
-                                        <span className="text-slate-400 text-lg sm:text-xl font-bold ml-1.5">の記事</span>
-                                    </>
-                                ) : (
-                                    'データ分析記事'
-                                )}
+            <div className="relative -mx-3 border-b border-slate-200 bg-white sm:-mx-4 md:-mx-6">
+                <div className="px-4 py-6 sm:px-6 sm:py-8">
+                    <div className="flex flex-wrap items-end justify-between gap-4">
+                        <div>
+                            <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-slate-400">ARTICLES</p>
+                            <h1 className="text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
+                                {selectedCategory || '記事'}
                             </h1>
-                            <span className="text-slate-400 text-sm font-medium tabular-nums whitespace-nowrap">
-                                {filteredArticles.length}件
-                            </span>
                         </div>
-                        <p className="mt-3 max-w-3xl text-sm sm:text-base leading-7 text-slate-600">
-                            重賞の直前確認、平場で使うコース傾向、騎手や馬場の判断材料を、実レースデータから整理しています。オッズを見る前に「買う理由」と「見送る理由」を分けたい時に使う記事群です。
-                        </p>
+                        <p className="text-sm font-semibold text-slate-400 tabular-nums">{filteredArticles.length}件</p>
                     </div>
 
-                    {/* ===== CATEGORY TAB BAR — 横スクロール式 ===== */}
-                    <div className="relative -mb-px">
-                        <div className="flex gap-0.5 overflow-x-auto scrollbar-hide pb-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    <div className="mt-6 flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                        <Link
+                            href="/articles"
+                            className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${!selectedCategory
+                                ? 'bg-slate-950 text-white'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                        >
+                            すべて
+                        </Link>
+                        {categoryItems.map(({ category }) => (
                             <Link
-                                href="/articles"
-                                className={`relative shrink-0 px-4 py-2.5 text-sm font-semibold transition-colors duration-200 whitespace-nowrap ${!selectedCategory
-                                    ? 'text-slate-900'
-                                    : 'text-slate-500 hover:text-slate-700'
+                                key={category}
+                                href={`/articles?category=${encodeURIComponent(category)}`}
+                                className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${selectedCategory === category
+                                    ? 'bg-slate-950 text-white'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                             >
-                                すべて
-                                {!selectedCategory && (
-                                    <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-slate-900 rounded-full" />
-                                )}
+                                {category}
                             </Link>
-                            {uniqueCategories.map((cat) => (
-                                <Link
-                                    key={cat}
-                                    href={`/articles?category=${encodeURIComponent(cat)}`}
-                                    className={`relative shrink-0 px-4 py-2.5 text-sm font-semibold transition-colors duration-200 whitespace-nowrap ${selectedCategory === cat
-                                        ? 'text-slate-900'
-                                        : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                                >
-                                    {cat}
-                                    {selectedCategory === cat && (
-                                        <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-slate-900 rounded-full" />
-                                    )}
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* ===== TAG CHIPS — カテゴリ選択時のみ ===== */}
-                {selectedCategory && uniqueTags.length > 0 && (
-                    <div className="bg-slate-50/80 border-t border-slate-100 px-4 sm:px-6 py-3">
-                        <div className="flex gap-2 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                            <Link
-                                href={`/articles?category=${encodeURIComponent(selectedCategory)}`}
-                                className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${!selectedTag
-                                    ? 'bg-slate-800 text-white shadow-sm'
-                                    : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-300 hover:text-slate-700'
-                                }`}
-                            >
-                                すべて
-                            </Link>
-                            {uniqueTags.map((tag) => (
-                                <Link
-                                    key={tag}
-                                    href={`/articles?category=${encodeURIComponent(selectedCategory)}&tag=${encodeURIComponent(tag)}`}
-                                    className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${selectedTag === tag
-                                        ? 'bg-slate-800 text-white shadow-sm'
-                                        : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-300 hover:text-slate-700'
-                                    }`}
-                                >
-                                    #{tag}
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-6">
-                    <div className="flex gap-2 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                        {intentLinks.map((item) => {
-                            const Icon = item.icon;
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className="group flex min-w-[150px] shrink-0 items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2.5 text-left transition-colors hover:border-slate-300 hover:bg-slate-50"
-                                >
-                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600 group-hover:text-primary">
-                                        <Icon className="h-4 w-4" aria-hidden="true" />
-                                    </span>
-                                    <span className="min-w-0">
-                                        <span className="block text-sm font-bold text-slate-800">{item.label}</span>
-                                        <span className="block text-xs text-slate-400">{item.note}</span>
-                                    </span>
-                                </Link>
-                            );
-                        })}
+                        ))}
                     </div>
                 </div>
             </div>
@@ -209,9 +125,32 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
             <Breadcrumb />
 
             {/* ===== MAIN CONTENT ===== */}
-            <div className="flex flex-col gap-10 pb-12 max-w-[1200px] mx-auto w-full mt-2">
+            <div className="mx-auto mt-3 grid w-full max-w-[1200px] gap-8 pb-12 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <aside className="hidden lg:block">
+                    <nav className="sticky top-24 border-r border-slate-200 pr-5" aria-label="記事カテゴリ">
+                        <Link
+                            href="/articles"
+                            className={`flex items-center justify-between border-b border-slate-100 py-3 text-sm font-bold transition-colors ${!selectedCategory ? 'text-slate-950' : 'text-slate-500 hover:text-slate-800'}`}
+                        >
+                            <span>すべて</span>
+                            <span className="text-xs text-slate-400">{allArticles.length}</span>
+                        </Link>
+                        {categoryItems.map(({ category, count }) => (
+                            <Link
+                                key={category}
+                                href={`/articles?category=${encodeURIComponent(category)}`}
+                                className={`flex items-center justify-between border-b border-slate-100 py-3 text-sm font-bold transition-colors ${selectedCategory === category ? 'text-slate-950' : 'text-slate-500 hover:text-slate-800'}`}
+                            >
+                                <span>{category}</span>
+                                <span className="text-xs text-slate-400">{count}</span>
+                            </Link>
+                        ))}
+                    </nav>
+                </aside>
+
+                <div className="min-w-0">
                 {filteredArticles.length === 0 ? (
-                    <div className="text-center py-24 bg-white rounded-md border border-slate-100 shadow-sm">
+                    <div className="border border-slate-100 bg-white py-24 text-center">
                         <p className="text-slate-500 text-lg font-medium">該当する記事がありません</p>
                         <Link
                             href="/articles"
@@ -222,80 +161,40 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                     </div>
                 ) : (
                     <>
-                        {/* ===== FEATURED ARTICLE (1件目) ===== */}
                         {featuredArticle && (
-                            <div className="mt-2">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-1.5 h-6 bg-primary rounded-full" />
-                                    <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
-                                        注目の記事
-                                    </h2>
-                                </div>
+                            <section>
                                 <Link
                                     href={`/articles/${featuredArticle.slug}`}
-                                    className="group block bg-white rounded-2xl overflow-hidden border border-slate-100 hover:shadow-[0_8px_30px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-300"
+                                    className="group grid overflow-hidden border border-slate-200 bg-white transition-colors hover:border-slate-300 md:grid-cols-[42%_1fr]"
                                 >
-                                    <div className="flex flex-col md:flex-col">
-                                        {/* 大きなサムネイル（オーバーレイなし） */}
-                                        <div className="relative w-full h-[240px] sm:h-[320px] md:h-[400px] bg-slate-100 overflow-hidden shrink-0">
-                                            <Image
-                                                src={featuredArticle.eyecatch}
-                                                alt={featuredArticle.title}
-                                                fill
-                                                sizes="(max-width: 768px) 100vw, 1200px"
-                                                style={{ objectFit: 'cover' }}
-                                                className="group-hover:scale-105 transition-transform duration-700 ease-out"
-                                                priority
-                                            />
-                                            {/* 新着バッジ */}
-                                            {isNewArticle(featuredArticle.date) && (
-                                                <div className="absolute top-4 left-4 bg-red-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-full shadow-md tracking-wide">
-                                                    新着記事
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* クリーンな白背景のコンテンツエリア */}
-                                        <div className="p-6 md:p-8 lg:p-10 flex flex-col justify-center">
-                                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
-                                                <span className="bg-blue-50 text-blue-700 border border-blue-100 text-xs font-bold px-3 py-1 rounded-md">
-                                                    {featuredArticle.category}
-                                                </span>
-                                                <span className="text-slate-400 text-sm font-medium">
-                                                    {new Date(featuredArticle.date).toLocaleDateString('ja-JP', {
-                                                        year: 'numeric',
-                                                        month: '2-digit',
-                                                        day: '2-digit',
-                                                    })}
-                                                </span>
-                                                <span className="text-slate-400 text-sm flex items-center gap-1">
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    約{getReadingTime(featuredArticle.content)}分
-                                                </span>
+                                    <div className="relative aspect-[16/10] bg-slate-100 md:aspect-auto">
+                                        <Image
+                                            src={featuredArticle.eyecatch}
+                                            alt={featuredArticle.title}
+                                            fill
+                                            sizes="(max-width: 768px) 100vw, 460px"
+                                            style={{ objectFit: 'cover' }}
+                                            className="transition-transform duration-500 group-hover:scale-[1.03]"
+                                            priority
+                                        />
+                                    </div>
+                                    <div className="flex min-h-[260px] flex-col justify-between p-5 sm:p-7 lg:p-8">
+                                        <div>
+                                            <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-400">
+                                                <span className="text-slate-700">{featuredArticle.category}</span>
+                                                <time dateTime={new Date(featuredArticle.date).toISOString()}>{formatDate(featuredArticle.date)}</time>
+                                                <span>約{getReadingTime(featuredArticle.content)}分</span>
                                             </div>
-                                            
-                                            <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-snug mb-4 group-hover:text-primary transition-colors duration-300">
+                                            <h2 className="text-2xl font-black leading-snug tracking-tight text-slate-950 transition-colors group-hover:text-primary sm:text-3xl">
                                                 {featuredArticle.title}
-                                            </h3>
-                                            
-                                            {featuredArticle.description && (
-                                                <p className="text-slate-500 text-base leading-relaxed line-clamp-3 mb-6">
-                                                    {featuredArticle.description}
-                                                </p>
-                                            )}
-                                            
-                                            <div className="inline-flex items-center gap-2 text-primary font-bold text-sm bg-slate-50 hover:bg-slate-100 px-5 py-2.5 rounded-xl transition-colors self-start w-fit">
-                                                記事を読む
-                                                <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                                </svg>
-                                            </div>
+                                            </h2>
                                         </div>
+                                        <span className="mt-6 inline-flex text-sm font-bold text-primary">
+                                            読む
+                                        </span>
                                     </div>
                                 </Link>
-                            </div>
+                            </section>
                         )}
 
                         {featuredArticle && (
@@ -306,87 +205,41 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                             />
                         )}
 
-                        {/* ===== REGULAR ARTICLES GRID ===== */}
                         {regularArticles.length > 0 && (
-                            <div>
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-1.5 h-6 bg-slate-300 rounded-full" />
-                                    <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">
-                                        記事一覧
-                                    </h2>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+                            <section className="mt-8">
+                                <div className="divide-y divide-slate-200 border-y border-slate-200 bg-white">
                                     {regularArticles.map((article, index) => (
                                         <React.Fragment key={article.slug}>
                                             <Link
                                                 href={`/articles/${article.slug}`}
-                                                className="group flex flex-col bg-white rounded-2xl overflow-hidden border border-slate-100 hover:shadow-[0_8px_30px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1"
+                                                className="group grid grid-cols-[96px_minmax(0,1fr)] gap-4 p-4 transition-colors hover:bg-slate-50 sm:grid-cols-[160px_minmax(0,1fr)] sm:gap-5 sm:p-5"
                                             >
-                                                {/* サムネイル */}
-                                                <div className="relative h-48 overflow-hidden bg-slate-100 shrink-0">
+                                                <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
                                                     <Image
                                                         src={article.eyecatch}
                                                         alt={article.title}
                                                         fill
-                                                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                                        sizes="(max-width: 640px) 96px, 160px"
                                                         style={{ objectFit: 'cover' }}
-                                                        className="transition-transform duration-500 group-hover:scale-105"
+                                                        className="transition-transform duration-500 group-hover:scale-[1.03]"
                                                     />
-                                                    {/* 新着バッジ */}
-                                                    {isNewArticle(article.date) && (
-                                                        <div className="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-sm">
-                                                            新着記事
-                                                        </div>
-                                                    )}
                                                 </div>
 
-                                                {/* カード本文 */}
-                                                <div className="flex flex-col flex-1 p-5">
-                                                    {/* カテゴリバッジ */}
-                                                    <div className="mb-3">
-                                                        <span className="inline-flex bg-blue-50 text-blue-700 border border-blue-100 text-xs font-bold px-2.5 py-1 rounded-md">
-                                                            {article.category}
-                                                        </span>
+                                                <div className="min-w-0">
+                                                    <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold text-slate-400 sm:text-xs">
+                                                        <span className="text-slate-600">{article.category}</span>
+                                                        <time dateTime={new Date(article.date).toISOString()}>{formatDate(article.date)}</time>
+                                                        <span>約{getReadingTime(article.content)}分</span>
+                                                        {isNewArticle(article.date) && <span className="text-primary">NEW</span>}
                                                     </div>
-
-                                                    {/* タイトル */}
-                                                    <h3 className="font-extrabold text-[16px] text-slate-900 line-clamp-2 leading-snug mb-3 group-hover:text-primary transition-colors flex-1">
+                                                    <h3 className="line-clamp-2 text-[15px] font-black leading-snug text-slate-950 transition-colors group-hover:text-primary sm:text-lg">
                                                         {article.title}
                                                     </h3>
-
-                                                    {/* 説明文 */}
-                                                    {article.description && (
-                                                        <p className="text-slate-500 text-[13px] leading-relaxed line-clamp-2 mb-4">
-                                                            {article.description}
-                                                        </p>
-                                                    )}
-
-                                                    {/* フッター: 日付 + 読了時間 */}
-                                                    <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-auto">
-                                                        <time
-                                                            dateTime={new Date(article.date).toISOString()}
-                                                            className="text-slate-400 text-xs font-medium"
-                                                        >
-                                                            {new Date(article.date).toLocaleDateString('ja-JP', {
-                                                                year: 'numeric',
-                                                                month: '2-digit',
-                                                                day: '2-digit',
-                                                            })}
-                                                        </time>
-                                                        <span className="text-slate-400 text-xs flex items-center gap-1">
-                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                            約{getReadingTime(article.content)}分
-                                                        </span>
-                                                    </div>
                                                 </div>
                                             </Link>
 
-                                            {/* インフィード広告: 4番目と9番目の後 */}
                                             {(index === 3 || index === 8) && regularArticles.length > index + 1 && (
-                                                <div className="col-span-1 sm:col-span-2 lg:col-span-3 pb-2 pt-2">
+                                                <div className="py-4">
                                                     <AdUnit
                                                         slot="8529703346"
                                                         placement="inline"
@@ -397,14 +250,14 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                                         </React.Fragment>
                                     ))}
                                 </div>
-                            </div>
+                            </section>
                         )}
                     </>
                 )}
 
-                {/* MultiplexAd: 読了後 */}
                 <div className="pt-4">
                     <MultiplexAd slot="9407670747" />
+                </div>
                 </div>
             </div>
         </>

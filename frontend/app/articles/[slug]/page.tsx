@@ -8,8 +8,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { RelatedArticles } from '@/components/RelatedArticles';
 import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
-import { ArticleIntentPanel } from '@/components/ArticleIntentPanel';
-import { enhanceArticleHtml, getArticleIntent } from '@/lib/article-ux';
+import { enhanceArticleHtml } from '@/lib/article-ux';
 
 type Props = {
   params: { slug: string };
@@ -66,30 +65,29 @@ export default async function ArticlePage({ params }: Props) {
 
     const textContent = article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, '');
     const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
-    const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
-    const intent = getArticleIntent(article);
+    const { html: enhancedContent } = enhanceArticleHtml(article.content);
 
     const articleUrl = `https://uma-free.com/articles/${params.slug}`;
     const datePublished = new Date(article.date).toISOString();
     const dateModified = new Date(article.lastUpdated || article.date).toISOString();
 
     const proseClass = [
-      "prose prose-slate prose-lg max-w-none",
+      "prose prose-slate max-w-none",
       "prose-headings:font-black prose-headings:tracking-tight prose-headings:text-slate-900",
-      "prose-h2:text-2xl prose-h2:border-b prose-h2:border-slate-100 prose-h2:pb-3 prose-h2:mt-12 prose-h2:mb-6 prose-h2:scroll-mt-24",
-      "prose-h3:text-xl prose-h3:mt-8",
+      "prose-h2:text-2xl prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-3 prose-h2:mt-12 prose-h2:mb-6 prose-h2:scroll-mt-24",
+      "prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3",
       "prose-p:leading-[1.9] prose-p:text-slate-600",
       "prose-a:text-primary prose-a:font-semibold prose-a:no-underline hover:prose-a:text-blue-600",
       "prose-strong:text-slate-900 prose-strong:font-bold",
-      "prose-img:rounded-2xl prose-img:shadow-md",
-      "prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-blue-50/50 prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:rounded-r-xl prose-blockquote:not-italic prose-blockquote:text-slate-700",
+      "prose-img:border prose-img:border-slate-100",
+      "prose-blockquote:border-l-4 prose-blockquote:border-slate-300 prose-blockquote:bg-slate-50 prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:not-italic prose-blockquote:text-slate-700",
       "prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-slate-800 prose-code:font-mono prose-code:text-sm",
       "prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-xl",
-      "prose-ul:marker:text-blue-500 prose-ol:marker:text-blue-500 prose-ol:marker:font-bold",
+      "prose-ul:marker:text-slate-400 prose-ol:marker:text-slate-400 prose-ol:marker:font-bold",
     ].join(' ');
 
     return (
-      <div className="bg-slate-50 min-h-screen py-6 sm:py-10">
+      <div className="min-h-screen bg-white py-5 sm:py-8">
         <ArticleSchema
           title={article.title}
           description={article.description || textContent.substring(0, 160)}
@@ -99,16 +97,16 @@ export default async function ArticlePage({ params }: Props) {
           image={article.eyecatch.startsWith('http') ? article.eyecatch : `https://uma-free.com${article.eyecatch}`}
         />
 
-        <div className="mx-auto px-4 max-w-3xl">
+        <div className="mx-auto max-w-[920px] px-4">
           <Breadcrumb />
 
-          <article className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <article>
 
             {/* ===== ARTICLE HEADER ===== */}
-            <header className="relative">
+            <header className="relative border-b border-slate-200 pb-8">
               {/* アイキャッチ画像（フルワイド） */}
               {article.eyecatch && (
-                <div className="relative w-full aspect-[16/7] overflow-hidden bg-slate-200">
+                <div className="relative mb-7 aspect-[16/9] max-h-[320px] w-full overflow-hidden bg-slate-100 sm:aspect-[16/6]">
                   <Image
                     src={article.eyecatch}
                     alt={`${article.title} のアイキャッチ画像`}
@@ -121,28 +119,16 @@ export default async function ArticlePage({ params }: Props) {
               )}
 
               {/* メタ情報 + タイトル */}
-              <div className="px-6 sm:px-10 pt-8 pb-8 border-b border-slate-100">
-                {/* カテゴリ + バッジ群 */}
-                <div className="flex flex-wrap items-center gap-2 mb-5">
+              <div>
+                <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-400 sm:text-sm">
                   <Link
                     href={`/articles?category=${encodeURIComponent(article.category)}`}
-                    className="bg-blue-50 text-blue-700 border border-blue-100 text-xs font-bold py-1.5 px-4 rounded-full hover:bg-blue-100 transition-colors duration-200 tracking-wide"
+                    className="text-slate-700 transition-colors hover:text-primary"
                   >
                     {article.category}
                   </Link>
-                  {article.tags && article.tags.map(tag => (
-                    <Link
-                      key={tag}
-                      href={`/articles?category=${encodeURIComponent(article.category)}&tag=${encodeURIComponent(tag)}`}
-                      className="bg-white text-slate-500 border border-slate-200 text-xs font-bold py-1.5 px-3 rounded-full hover:bg-slate-50 transition-colors duration-200"
-                    >
-                      #{tag}
-                    </Link>
-                  ))}
-                  <span className="text-slate-300">|</span>
                   <time
                     dateTime={datePublished}
-                    className="text-slate-400 text-sm font-medium"
                   >
                     {new Date(article.date).toLocaleDateString('ja-JP', {
                       year: 'numeric',
@@ -150,52 +136,27 @@ export default async function ArticlePage({ params }: Props) {
                       day: 'numeric',
                     })}
                   </time>
-                  <span className="text-slate-300">|</span>
-                  <span className="text-slate-400 text-sm flex items-center gap-1.5">
-                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    約{readingTimeMin}分で読めます
+                  <span>
+                    約{readingTimeMin}分
                   </span>
                 </div>
 
                 {/* タイトル */}
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 leading-tight tracking-tight">
+                <h1 className="text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl md:text-5xl">
                   {article.title}
                 </h1>
 
                 {/* リードテキスト */}
                 {article.description && (
-                  <p className="mt-4 text-base text-slate-500 leading-relaxed border-l-4 border-blue-400 pl-4 bg-slate-50 py-3 pr-4 rounded-r-lg">
+                  <p className="mt-5 max-w-3xl text-base leading-8 text-slate-500 sm:text-lg">
                     {article.description}
                   </p>
                 )}
               </div>
             </header>
 
-            <ArticleIntentPanel intent={intent} />
-
-            {toc.length >= 3 && (
-              <nav className="border-b border-slate-100 px-6 py-5 sm:px-10" aria-label="記事内の見出し">
-                <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">
-                  この記事で確認すること
-                </p>
-                <div className="grid gap-2 text-sm sm:grid-cols-2">
-                  {toc.slice(0, 6).map((item) => (
-                    <a
-                      key={item.id}
-                      href={`#${item.id}`}
-                      className="leading-6 text-slate-600 transition-colors hover:text-primary"
-                    >
-                      {item.title}
-                    </a>
-                  ))}
-                </div>
-              </nav>
-            )}
-
             {/* ===== ARTICLE BODY ===== */}
-            <div className="px-6 sm:px-10 pb-10">
+            <div className="pb-10">
               {(() => {
                 const h2Positions: number[] = [];
                 const searchRegex = /<h2[\s>]/gi;
@@ -212,11 +173,11 @@ export default async function ArticlePage({ params }: Props) {
                   const part3 = enhancedContent.substring(split2);
                   return (
                     <>
-                      <div className={`${proseClass} mt-8`} dangerouslySetInnerHTML={{ __html: part1 }} />
+                      <div className={`${proseClass} mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part1 }} />
                       <AdUnit slot="1489598374" placement="inline" analyticsPlacement="article_after_intro" />
-                      <div className={proseClass} dangerouslySetInnerHTML={{ __html: part2 }} />
+                      <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part2 }} />
                       <AdUnit slot="9407670747" placement="inline" analyticsPlacement="article_mid" />
-                      <div className={proseClass} dangerouslySetInnerHTML={{ __html: part3 }} />
+                      <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part3 }} />
                     </>
                   );
                 }
@@ -227,25 +188,25 @@ export default async function ArticlePage({ params }: Props) {
                   const secondPart = enhancedContent.substring(splitPos);
                   return (
                     <>
-                      <div className={`${proseClass} mt-8`} dangerouslySetInnerHTML={{ __html: firstPart }} />
+                      <div className={`${proseClass} mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: firstPart }} />
                       <AdUnit slot="1489598374" placement="inline" analyticsPlacement="article_after_intro" />
-                      <div className={proseClass} dangerouslySetInnerHTML={{ __html: secondPart }} />
+                      <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: secondPart }} />
                     </>
                   );
                 }
 
                 return (
-                  <div className={`${proseClass} mt-8`} dangerouslySetInnerHTML={{ __html: enhancedContent }} />
+                  <div className={`${proseClass} mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: enhancedContent }} />
                 );
               })()}
             </div>
 
             {/* ===== 記事フッター ===== */}
-            <div className="px-6 sm:px-10 pb-8 border-t border-slate-100 pt-6">
+            <div className="border-t border-slate-200 pb-8 pt-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <Link
                   href={`/articles?category=${encodeURIComponent(article.category)}`}
-                  className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-primary transition-colors font-medium"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition-colors hover:text-primary"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -254,7 +215,7 @@ export default async function ArticlePage({ params }: Props) {
                 </Link>
                 <Link
                   href="/articles"
-                  className="inline-flex items-center gap-2 bg-primary text-white text-sm font-bold py-2.5 px-5 rounded-xl hover:bg-primary-light transition-colors duration-200"
+                  className="inline-flex items-center gap-2 bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition-colors duration-200 hover:bg-primary"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
@@ -265,12 +226,12 @@ export default async function ArticlePage({ params }: Props) {
             </div>
 
             {/* ===== 広告: 記事本文後 ===== */}
-            <div className="px-6 sm:px-10 pb-8">
+            <div className="pb-8">
               <AdUnit slot="1489598374" placement="inline" analyticsPlacement="article_after_body" />
             </div>
 
             {/* ===== 関連記事 ===== */}
-            <div className="px-6 sm:px-10 pb-10">
+            <div className="pb-10">
               <RelatedArticles currentSlug={params.slug} count={3} />
             </div>
 

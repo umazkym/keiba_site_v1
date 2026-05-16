@@ -19,8 +19,8 @@ const getWakuColorClasses = (waku: number | null): string => {
         default: return 'bg-gray-200 text-black border-gray-400';
     }
 };
-const HorseNumberCircle = ({ number, waku }: { number: number, waku: number | null }) => (
-    <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm border-2 shadow-sm shrink-0 ${getWakuColorClasses(waku)}`}>
+const HorseNumberCircle = ({ number, waku, compact = false }: { number: number, waku: number | null, compact?: boolean }) => (
+    <div className={`${compact ? 'h-5 w-5 text-[10px] border' : 'h-7 w-7 text-sm border-2'} rounded-full flex items-center justify-center font-bold shadow-sm shrink-0 ${getWakuColorClasses(waku)}`}>
         {number}
     </div>
 );
@@ -61,59 +61,70 @@ const MatchupTooltipContent = ({ rowHorse, colHorse, record }: { rowHorse: Horse
 const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: HorsePrediction[], matchupData: MatchupData, tippySingleton: any }) => {
     const { matchup_data } = matchupData;
     const sortedHorses = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
+    const isCompact = sortedHorses.length >= 16;
+    const firstColPercent = isCompact ? 15 : 19;
+    const horseColPercent = (100 - firstColPercent) / Math.max(sortedHorses.length, 1);
+
     return (
-        <div className="overflow-x-auto border border-gray-200 rounded">
-            <table className="matchup-table w-full">
+        <div className="overflow-hidden border border-slate-200 bg-white">
+            <table className="w-full table-fixed border-collapse text-center">
+                <colgroup>
+                    <col style={{ width: `${firstColPercent}%` }} />
+                    {sortedHorses.map((horse) => (
+                        <col key={horse.horse_id} style={{ width: `${horseColPercent}%` }} />
+                    ))}
+                </colgroup>
                 <thead>
-                    <tr>
-                        <th className="sticky-col !p-1 text-center whitespace-nowrap w-[100px] md:w-[120px]">馬名</th>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                        <th className="px-1 py-2 text-left text-[11px] font-bold text-slate-500">馬名</th>
                         {sortedHorses.map(horse => (
-                            <th key={horse.horse_id} className="p-0.5 md:p-1 w-[36px] md:w-[42px] min-w-[36px]">
-                                <div className='flex flex-col items-center justify-center h-full gap-0.5'>
-                                    <HorseNumberCircle number={horse.horse_number} waku={horse.waku_number} />
-                                    <span className='text-[10px] md:text-xs font-bold whitespace-nowrap'>{horse.horse_name.substring(0, 4)}</span>
+                            <th key={horse.horse_id} className="px-0.5 py-1" title={horse.horse_name}>
+                                <div className='flex items-center justify-center'>
+                                    <HorseNumberCircle number={horse.horse_number} waku={horse.waku_number} compact={isCompact} />
                                 </div>
                             </th>
                         ))}
                     </tr>
                 </thead>
                 <tbody>
-                    {sortedHorses.map((rowHorse) => (
-                        <tr key={rowHorse.horse_id}>
-                            <th className="sticky-col p-1 w-[100px] md:w-[120px]">
-                                <div className='flex items-center h-full px-1 gap-1.5 md:gap-2'>
-                                    <HorseNumberCircle number={rowHorse.horse_number} waku={rowHorse.waku_number} />
-                                    <span className='text-xs md:text-sm font-semibold whitespace-nowrap truncate'>{rowHorse.horse_name}</span>
+                    {sortedHorses.map((rowHorse, rowIndex) => (
+                        <tr key={rowHorse.horse_id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
+                            <th className="border-b border-slate-100 px-1 py-1 text-left">
+                                <div className='flex min-w-0 items-center gap-1.5'>
+                                    <HorseNumberCircle number={rowHorse.horse_number} waku={rowHorse.waku_number} compact={isCompact} />
+                                    <span className='truncate text-[11px] font-semibold text-slate-700' title={rowHorse.horse_name}>{rowHorse.horse_name}</span>
                                 </div>
                             </th>
                             {sortedHorses.map((colHorse) => {
-                                if (colHorse.horse_id === rowHorse.horse_id) return <td key={colHorse.horse_id} className="self-match w-11 bg-gray-100"></td>;
+                                if (colHorse.horse_id === rowHorse.horse_id) return <td key={colHorse.horse_id} className="border-b border-slate-100 bg-slate-100"></td>;
                                 const record = matchup_data[`${rowHorse.horse_id}_vs_${colHorse.horse_id}`];
-                                let content = <div className="net-wins-cell"><span className="text-gray-400">-</span></div>;
-                                let cellClass = 'no-match bg-gray-50';
-                                let textColorClass = 'text-gray-500';
+                                let content = <div className="flex h-7 items-center justify-center"><span className="text-[11px] text-slate-300">-</span></div>;
+                                let cellClass = 'bg-white';
+                                let textColorClass = 'text-slate-500';
 
                                 if (record && (record.win > 0 || record.loss > 0 || record.draw > 0)) {
                                     const netWins = record.win - record.loss;
                                     if (netWins > 0) {
-                                        cellClass = 'matchup-win bg-green-100';
+                                        cellClass = 'bg-emerald-50';
                                         textColorClass = 'text-green-700';
                                     } else if (netWins < 0) {
-                                        cellClass = 'matchup-loss bg-red-100';
+                                        cellClass = 'bg-rose-50';
                                         textColorClass = 'text-red-700';
                                     } else {
-                                        cellClass = 'matchup-draw bg-gray-200';
-                                        textColorClass = 'text-gray-700';
+                                        cellClass = 'bg-slate-100';
+                                        textColorClass = 'text-slate-700';
                                     }
                                     content = (
-                                        <div className="net-wins-cell flex flex-col items-center justify-center leading-none">
-                                            <span className={`net-wins-number font-bold text-[11px] md:text-xs ${textColorClass}`}>{netWins > 0 ? `+${netWins}` : netWins}</span>
-                                            <span className="wld-text text-[9px] text-gray-600 tracking-tighter scale-90 origin-center truncate w-full text-center mt-0.5">({record.win}-{record.loss}-{record.draw})</span>
+                                        <div className="flex h-7 flex-col items-center justify-center leading-none">
+                                            <span className={`font-bold ${isCompact ? 'text-[11px]' : 'text-xs'} ${textColorClass}`}>{netWins > 0 ? `+${netWins}` : netWins}</span>
+                                            {!isCompact && (
+                                                <span className="mt-0.5 w-full truncate text-center text-[9px] tracking-tighter text-slate-500">{record.win}-{record.loss}-{record.draw}</span>
+                                            )}
                                         </div>
                                     );
                                 }
                                 return (
-                                    <td key={colHorse.horse_id} className={`p-0.5 md:p-1 w-[36px] md:w-[42px] min-w-[36px] ${cellClass}`}>
+                                    <td key={colHorse.horse_id} className={`border-b border-slate-100 p-0 ${cellClass}`}>
                                         <Tippy
                                             singleton={tippySingleton}
                                             content={record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : ''}
@@ -201,13 +212,13 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
         if (!selectedHorse) return null;
 
         return (
-            <div className="p-2">
-                <label htmlFor="horse-select" className="block text-xs font-medium text-gray-700 mb-1.5">基準馬:</label>
+        <div className="p-2.5">
+            <label htmlFor="horse-select" className="mb-1.5 block text-xs font-bold text-slate-600">基準馬</label>
                 <select
                     id="horse-select"
                     value={selectedHorseId}
                     onChange={(e) => setSelectedHorseId(e.target.value)}
-                    className="block w-full p-1.5 border border-gray-300 rounded text-base sm:text-xs"
+                    className="block w-full rounded-md border border-slate-300 bg-white p-2 text-base"
                 >
                     {sortedHorsesForSelect.map(h => (
                         <option key={h.horse_id} value={h.horse_id}>
@@ -216,42 +227,43 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                     ))}
                 </select>
 
-                <div className="mt-2 space-y-1">
+                <div className="mt-2 grid grid-cols-2 gap-1.5">
                     {sortedHorsesForSelect.filter(h => h.horse_id !== selectedHorseId).map(opponent => {
                         const record = matchupData?.matchup_data[`${selectedHorse.horse_id}_vs_${opponent.horse_id}`];
                         const netWins = record ? record.win - record.loss : 0;
 
-                        let resultText = <span className="text-gray-500 text-xs">-</span>;
-                        let bgColor = 'bg-gray-50';
+                        let resultText = <span className="text-slate-400 text-xs">-</span>;
+                        let bgColor = 'bg-white';
+                        let borderColor = 'border-slate-200';
                         if (record && (record.win > 0 || record.loss > 0 || record.draw > 0)) {
                             if (netWins > 0) {
-                                bgColor = 'bg-green-100';
+                                bgColor = 'bg-emerald-50';
+                                borderColor = 'border-emerald-100';
                                 resultText = (
                                     <>
                                         <span className="font-bold text-sm text-green-700">
                                             +{netWins}
                                         </span>
-                                        <span className="text-[10px] text-green-600 ml-0.5">({record.win}-{record.loss}-{record.draw})</span>
                                     </>
                                 );
                             } else if (netWins < 0) {
-                                bgColor = 'bg-red-100';
+                                bgColor = 'bg-rose-50';
+                                borderColor = 'border-rose-100';
                                 resultText = (
                                     <>
                                         <span className="font-bold text-sm text-red-700">
                                             {netWins}
                                         </span>
-                                        <span className="text-[10px] text-red-600 ml-0.5">({record.win}-{record.loss}-{record.draw})</span>
                                     </>
                                 );
                             } else {
-                                bgColor = 'bg-gray-200';
+                                bgColor = 'bg-slate-100';
+                                borderColor = 'border-slate-200';
                                 resultText = (
                                     <>
-                                        <span className="font-bold text-sm text-gray-700">
+                                        <span className="font-bold text-sm text-slate-700">
                                             {netWins}
                                         </span>
-                                        <span className="text-[10px] text-gray-600 ml-0.5">({record.win}-{record.loss}-{record.draw})</span>
                                     </>
                                 );
                             }
@@ -267,14 +279,12 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                                 appendTo={() => document.body}
                                 delay={[100, 200]}
                             >
-                                <div className={`flex justify-between items-center px-2 py-1.5 ${bgColor} rounded border border-gray-200 hover:shadow-sm transition-shadow cursor-pointer`}>
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs border-2 flex-shrink-0 ${getWakuColorClasses(opponent.waku_number)}`}>
-                                            {opponent.horse_number}
-                                        </div>
-                                        <span className="font-medium text-gray-800 text-sm truncate">{opponent.horse_name.substring(0, 5)}</span>
+                                <div className={`flex min-h-[42px] items-center justify-between gap-1 rounded-md border px-2 py-1.5 ${bgColor} ${borderColor}`}>
+                                    <div className="flex min-w-0 items-center gap-1.5">
+                                        <HorseNumberCircle number={opponent.horse_number} waku={opponent.waku_number} compact />
+                                        <span className="truncate text-xs font-semibold text-slate-700">{opponent.horse_name}</span>
                                     </div>
-                                    <div className="text-xs whitespace-nowrap ml-1 flex-shrink-0">{resultText}</div>
+                                    <div className="ml-1 flex-shrink-0 whitespace-nowrap text-xs">{resultText}</div>
                                 </div>
                             </Tippy>
                         );
@@ -286,12 +296,12 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
 
 
     return (
-        <div className="bg-white rounded-lg">
+        <div className="bg-white">
             <Tippy singleton={source} theme="light-border" placement="top" animation="shift-away" interactive={true} appendTo={() => document.body} delay={[100, 200]} />
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-2 md:p-3 border-b gap-2">
+            <div className="flex flex-col gap-2 border-b border-slate-200 p-2.5 md:flex-row md:items-center md:justify-between md:p-3">
                 <div className='flex items-center gap-2'>
-                    <h3 className="text-xs md:text-sm font-bold whitespace-nowrap">過去対決成績</h3>
+                    <h3 className="whitespace-nowrap text-xs font-bold text-slate-800 md:text-sm">過去対決成績</h3>
                     <Tippy
                         content={
                             <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
@@ -306,15 +316,15 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         }
                         placement="top-start" interactive={true} theme="light-border" appendTo={() => document.body}
                     >
-                        <span className='w-4 h-4 md:w-5 md:h-5 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs md:text-sm font-bold cursor-help flex-shrink-0'>?</span>
+                        <span className='flex h-4 w-4 flex-shrink-0 cursor-help items-center justify-center rounded-full bg-slate-400 text-xs font-bold text-white md:h-5 md:w-5 md:text-sm'>?</span>
                     </Tippy>
                 </div>
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-1 md:gap-2 text-xs md:text-sm w-full md:w-auto">
-                    <label htmlFor="start-date" className="text-gray-600 font-semibold md:font-medium shrink-0">期間:</label>
-                    <div className="flex items-center gap-1 w-full md:w-auto">
-                        <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border border-gray-300 p-1 rounded text-xs md:text-sm flex-1 md:flex-none w-full md:w-auto" />
-                        <span className="text-gray-500 shrink-0">～</span>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border border-gray-300 p-1 rounded text-xs md:text-sm flex-1 md:flex-none w-full md:w-auto" />
+                <div className="flex w-full flex-col gap-1 text-xs md:w-auto md:flex-row md:items-center md:gap-2 md:text-sm">
+                    <label htmlFor="start-date" className="shrink-0 font-semibold text-slate-500 md:font-medium">期間</label>
+                    <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 md:flex md:w-auto">
+                        <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-1 text-xs md:w-auto md:text-sm" />
+                        <span className="shrink-0 text-slate-400">-</span>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-1 text-xs md:w-auto md:text-sm" />
                     </div>
                 </div>
             </div>

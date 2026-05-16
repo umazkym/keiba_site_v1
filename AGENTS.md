@@ -509,6 +509,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 - **追加確認**: 2026-05-17 00:40 に自動生成が再びAI的・煽り寄りの記事を作らないよう、ライター・エディターのプロンプト表現、Publisherのハブ記事テンプレート、データサイエンティストのテーマ生成文、13/14番ドキュメントを再点検。命令文の強い語感、手動関連記事要求、存在しないURL生成、断定・煽り語を抑え、買い目判断の条件整理と `/races/today` 導線を正規ルールとして統一。`npm run build` と `python -m py_compile backend/scripts/agents/data_scientist.py backend/scripts/agents/grade_race_writer.py` は成功。
 - **追加確認**: 2026-05-17 00:47 に日次実行時の重複・上書きリスクを点検。承認済み記事が複数ある場合に1本しか公開されない問題、重賞の日本語レース名がslug生成で削られて衝突し得る問題、未公開draft履歴が次回生成候補を塞ぐ問題、同一実行内の同一keyword重複処理を修正。既存の重複draft履歴も整理し、記事生成workflowにconcurrencyを追加。`npm run build` と `python -m py_compile backend/scripts/agents/data_scientist.py backend/scripts/agents/grade_race_writer.py` は成功。
 - **追加確認**: 2026-05-17 00:56 に既存67記事のMarkdownリンク、画像、frontmatter URLを全件検査。記事slug切れ・画像切れは0件だった一方、旧手動「関連記事」セクション50件と `uma-free.jp` のOGP URL 10件を検出したため、既存記事から手動関連記事を削除し、OGP URLを `uma-free.com` に統一。日次公開前に `npm run article:validate-links` が走る検査スクリプトを追加し、Publisherのコミット前検査、workflowの事前検査、SEOチェッカーのリンク規則にも反映。`npm run article:validate-links`, `npm run build`, `python -m py_compile backend/scripts/agents/data_scientist.py backend/scripts/agents/grade_race_writer.py`, `git diff --check` は成功。
+- **追加対応**: 2026-05-17 02:27 に `/articles` と記事詳細のUIを再設計。目的別の説明付きタグ群、記事詳細の長い使いどころパネル、目次ブロックを撤去し、カテゴリ絞り込みとタイトル中心の一覧表示へ変更。過去対決成績は18頭でもPCで横スクロールに頼らない固定幅テーブルにし、スマホでは基準馬選択＋2列比較に変更。`npm run build`, `npm run article:validate-links`, `git diff --check` は成功。ローカルNextで `/articles` と `/articles/2026-05-14-niigata2026-ai` の表示を確認。
 
 -----
 

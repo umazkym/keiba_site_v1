@@ -156,6 +156,7 @@ IMAGE_OUTPUT_DIR = os.path.join(PROJECT_ROOT, "sns_images_dist")
 os.makedirs(IMAGE_OUTPUT_DIR, exist_ok=True)
 SITE_BASE_URL = "https://uma-free.com"
 API_BASE_URL = (_env_value("API_BASE_URL", "NEXT_PUBLIC_API_URL") or "https://keiba-site-v1-761440273070.us-west1.run.app").rstrip("/")
+X_ACCOUNT_HANDLE = (_env_value("X_ACCOUNT_HANDLE", "TWITTER_SCREEN_NAME", default="umafree_ai") or "umafree_ai").lstrip("@")
 DRY_RUN = _env_flag("DRY_RUN", False)
 ENABLE_TWITTER = _env_flag("ENABLE_TWITTER", True)
 ENABLE_THREADS = _env_flag("ENABLE_THREADS", True)
@@ -166,6 +167,24 @@ THREADS_USER_ID = os.getenv("THREADS_USER_ID")
 THREADS_ACCESS_TOKEN = os.getenv("THREADS_ACCESS_TOKEN")
 THREADS_TOKEN_EXPIRY = os.getenv("THREADS_TOKEN_EXPIRY")
 THREADS_MAX_CHARS = 480
+
+
+def build_race_url(date_str: str, race_number: Any = None, venue_name: Any = None) -> str:
+    """レースページURLを正規のクエリ形式で生成する。"""
+    base_url = f"{SITE_BASE_URL}/races/{date_str}"
+    race = str(race_number or "").strip()
+    venue = str(venue_name or "").strip()
+    params = []
+    if race:
+        params.append(f"race={url_quote(race)}")
+    if venue and venue != "?":
+        params.append(f"venue={url_quote(venue)}")
+    return f"{base_url}?{'&'.join(params)}" if params else base_url
+
+
+def build_x_status_url(tweet_id: Any) -> str:
+    """投稿IDから正しいXステータスURLを生成する。"""
+    return f"https://x.com/{X_ACCOUNT_HANDLE}/status/{tweet_id}"
 
 # 重賞レース判定リスト (リスト判定フォールバック用)
 JRA_GRADE_RACE_NAMES = {
@@ -371,6 +390,12 @@ def post_to_threads(text: str) -> Optional[str]:
         _log("⚠️ Threads認証情報未設定。スキップします。")
         return None
 
+    text = prepare_short_social_text(
+        text,
+        "Threads",
+        remove_urls=False,
+        max_chars=THREADS_MAX_CHARS,
+    )
     text = truncate_for_threads(text)
 
     if DRY_RUN:
@@ -902,10 +927,10 @@ def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date
 
 ▼レース結果とAIの印はこちらから
 
-{SITE_BASE_URL}/races/{date_str}
+{build_race_url(date_str, hit.get('race_number', ''), venue_name)}
 
 {' '.join(hashtags)}
-{f'https://x.com/anyuser/status/{quote_tweet_id}' if quote_tweet_id else ''}
+{build_x_status_url(quote_tweet_id) if quote_tweet_id else ''}
 """
 
 def create_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
@@ -942,7 +967,7 @@ AIが今日のレースで最も高く評価した一頭はこちら！
 
 ▼全レースの無料予測
 
-{SITE_BASE_URL}/races/{date_str}?race={pick.get('race_number','')}&venue={url_quote(pick.get('venue_name',''))}
+{build_race_url(date_str, pick.get('race_number', ''), pick.get('venue_name', ''))}
 
 {' '.join(hashtags)}
 
@@ -959,21 +984,22 @@ def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
         lines.append(f"{['◎','○','▲'][i]} {p.get('horse_name','?')} (AI偏差値: {float(p.get('deviation_score') or 0):.2f})")
     race_num = race.get('race_number', '')
     venue = race.get('venue_name', '')
-    lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}/races/{date_str}?race={race_num}&venue={url_quote(venue)}")
+    lines.append(f"\n▼詳細なデータはこちら\n{build_race_url(date_str, race_num, venue)}")
     lines.append(f"\n{' '.join(hashtags)}")
     return "\n".join(lines)
 
 # --- 8. X (Twitter) 投稿関数 (文字数制限対応版) ---
 X_URL_PATTERN = re.compile(r'https?://\S+')
+SHORT_SOCIAL_MAX_CHARS = 280
 
 
-def sanitize_text_for_x(text: str) -> str:
-    """X API費用を抑えるため、X投稿からURL行と直前の誘導文を除外する。"""
+def sanitize_text_for_short_social_post(text: str, channel_name: str, remove_urls: bool = True) -> str:
+    """SNS本文の空行を整え、必要な場合だけURL行と直前の誘導文を除外する。"""
     cleaned_lines: List[str] = []
     removed_url = False
 
     for line in text.splitlines():
-        if X_URL_PATTERN.search(line):
+        if remove_urls and X_URL_PATTERN.search(line):
             removed_url = True
             if cleaned_lines:
                 previous = cleaned_lines[-1].strip()
@@ -993,8 +1019,94 @@ def sanitize_text_for_x(text: str) -> str:
 
     sanitized = "\n".join(compact_lines).strip()
     if removed_url:
-        _log("X投稿コスト抑制のため、URL行を除外しました。")
+        _log(f"{channel_name}投稿用にURL行を除外しました。")
     return sanitized or text
+
+
+def fit_text_for_short_social_post(
+    text: str,
+    channel_name: str,
+    max_chars: int = SHORT_SOCIAL_MAX_CHARS,
+    preserve_urls: bool = False,
+) -> str:
+    """XとThreadsで同じ印象になるよう、短いSNS本文に丸める。"""
+    if len(text) <= max_chars:
+        return text
+
+    lines = [line.rstrip() for line in text.splitlines()]
+    hashtag_lines = [line for line in lines if line.strip().startswith("#")]
+    hashtag_line = hashtag_lines[-1].strip() if hashtag_lines else ""
+    url_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if preserve_urls and X_URL_PATTERN.search(stripped) and stripped not in url_lines:
+            url_lines.append(stripped)
+
+    content_lines = [
+        line
+        for line in lines
+        if line.strip()
+        and not line.strip().startswith("#")
+        and not (preserve_urls and X_URL_PATTERN.search(line.strip()))
+    ]
+
+    suffix = "..."
+    reserved = len("\n") + len(suffix)
+    trailing_blocks = []
+    if url_lines:
+        trailing_blocks.append("\n".join(url_lines))
+    if hashtag_line:
+        trailing_blocks.append(hashtag_line)
+
+    while trailing_blocks and reserved + sum(len("\n\n") + len(block) for block in trailing_blocks) > max_chars:
+        if hashtag_line and trailing_blocks[-1] == hashtag_line:
+            trailing_blocks.pop()
+            hashtag_line = ""
+        elif len(url_lines) > 1:
+            url_lines = url_lines[:1]
+            trailing_blocks = ["\n".join(url_lines)] + ([hashtag_line] if hashtag_line else [])
+        else:
+            break
+
+    reserved += sum(len("\n\n") + len(block) for block in trailing_blocks)
+
+    fitted_lines: List[str] = []
+    current_len = 0
+    for line in content_lines:
+        next_len = len(line) if not fitted_lines else current_len + 1 + len(line)
+        if next_len + reserved > max_chars:
+            break
+        fitted_lines.append(line)
+        current_len = next_len
+
+    if not fitted_lines:
+        base_limit = max_chars - reserved
+        fitted_lines = [content_lines[0][:max(base_limit, 1)].rstrip()] if content_lines else []
+
+    fitted = "\n".join(fitted_lines).rstrip()
+    if fitted and not fitted.endswith(suffix):
+        fitted = f"{fitted}\n{suffix}"
+    for block in trailing_blocks:
+        if block and len(f"{fitted}\n\n{block}") <= max_chars:
+            fitted = f"{fitted}\n\n{block}"
+
+    _log(f"{channel_name}投稿用に本文を{max_chars}文字以内へ調整しました。")
+    return fitted.strip() or text[:max_chars]
+
+
+def prepare_short_social_text(
+    text: str,
+    channel_name: str,
+    remove_urls: bool = True,
+    max_chars: int = SHORT_SOCIAL_MAX_CHARS,
+) -> str:
+    sanitized = sanitize_text_for_short_social_post(text, channel_name, remove_urls=remove_urls)
+    return fit_text_for_short_social_post(
+        sanitized,
+        channel_name,
+        max_chars=max_chars,
+        preserve_urls=not remove_urls,
+    )
 
 
 def split_tweet_text(text: str, max_length: int = 280, force_split: bool = True) -> List[str]:
@@ -1086,7 +1198,10 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
     """
     _log("-> X (Twitter) への投稿を実行...")
 
-    tweet_texts = [sanitize_text_for_x(tweet_text_1), sanitize_text_for_x(tweet_text_2)]
+    tweet_texts = [
+        prepare_short_social_text(tweet_text_1, "X"),
+        prepare_short_social_text(tweet_text_2, "X"),
+    ]
     _log(f"{len(tweet_texts)} 個のツイートを投稿します")
 
     if not ENABLE_TWITTER:
@@ -1141,7 +1256,7 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
             try:
                 tweet_id = response.data.get('id') if response and response.data else None
                 if tweet_id:
-                    _log(f" - URL: https://x.com/anyuser/status/{tweet_id}")
+                    _log(f" - URL: {build_x_status_url(tweet_id)}")
                     record_post(tweet_text, post_type, target_date, tweet_id=str(tweet_id))
             except Exception:
                 pass
@@ -1179,7 +1294,7 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
     各投稿に同じ画像を添付する（スレッド形式ではなく独立した投稿）。
     """
     _log("-> X (Twitter) への投稿を実行...")
-    text = sanitize_text_for_x(text)
+    text = prepare_short_social_text(text, "X")
 
     if split_mode:
         tweet_texts = split_tweet_text(text, max_length=280, force_split=True)
@@ -1236,7 +1351,7 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
             try:
                 tweet_id = response.data.get('id') if response and response.data else None
                 if tweet_id:
-                    _log(f" - URL: https://x.com/anyuser/status/{tweet_id}")
+                    _log(f" - URL: {build_x_status_url(tweet_id)}")
                 record_post(tweet_text, post_type, target_date, tweet_id=str(tweet_id) if tweet_id else None)
             except Exception as e:
                 _log(f"  -> 投稿記録の保存に失敗（無視して継続）: {e}")
@@ -1285,11 +1400,11 @@ def create_morning_hit_tweet(hit: Dict[str, Any], summary: dict, date_str: str, 
     lines.append(f"\n[{summary.get('win',0)}-{summary.get('second',0)}-{summary.get('third',0)}-{summary.get('other',0)}]")
     lines.append(f"\n勝率: {summary.get('win_rate',0.0):.1f}% / 複勝率: {in_money_rate:.1f}%")
     lines.append(f"\n▼レース結果とAIの印はこちらから")
-    lines.append(f"\n{SITE_BASE_URL}/races/{date_str}")
+    lines.append(f"\n{build_race_url(date_str, hit.get('race_number', ''), venue_name)}")
     lines.append(f"\n{' '.join(hashtags_1)}")
     
     if quote_tweet_id:
-        lines.append(f"\nhttps://x.com/anyuser/status/{quote_tweet_id}")
+        lines.append(f"\n{build_x_status_url(quote_tweet_id)}")
 
     # engagements = [
     #     "皆さんの本命馬と同じでしたか？👇",
@@ -1331,7 +1446,7 @@ def create_morning_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
     lines.append(f"\n▼全レースの無料予測")
     race_num = pick.get('race_number', '')
     venue = pick.get('venue_name', '')
-    lines.append(f"\n{SITE_BASE_URL}/races/{date_str}?race={race_num}&venue={url_quote(venue)}")
+    lines.append(f"\n{build_race_url(date_str, race_num, venue)}")
     lines.append(f"\n{' '.join(hashtags_2)}")
 
     # engagements = [
@@ -1385,7 +1500,7 @@ def create_afternoon_race_summary_tweet(all_races_today: dict, yesterday_hits: L
     if nar_races > 0:
         hashtags.append("#地方競馬")
 
-    lines.append(f"\n▼詳細データはこちら\n{SITE_BASE_URL}/races/{date_str}\n")
+    lines.append(f"\n▼詳細データはこちら\n{build_race_url(date_str)}\n")
     lines.append(" ".join(hashtags))
 
     return "\n".join(lines)
@@ -1460,7 +1575,7 @@ def find_all_grade_races_for_date(target_date: str) -> List[tuple]:
                 hashtags.append(f"#{horse_name}")
 
             race_num = race.get('race_number', '')
-            lines.append(f"\n▼詳細はこちら\n{SITE_BASE_URL}/races/{target_date}?race={race_num}&venue={venue_name}\n")
+            lines.append(f"\n▼詳細はこちら\n{build_race_url(target_date, race_num, venue_name)}\n")
             lines.append(" ".join(hashtags))
 
             tweet_text = "\n".join(lines)
@@ -1495,7 +1610,7 @@ def create_pre_race_tweet(race: dict, top_preds: List[dict]) -> str:
         hashtags.append(f"#{horse_name}")
         
     race_num = race.get('race_number', '')
-    lines.append(f"\n▼詳細なデータはこちら\n{SITE_BASE_URL}/races/{date_str}?race={race_num}&venue={venue_name}")
+    lines.append(f"\n▼詳細なデータはこちら\n{build_race_url(date_str, race_num, venue_name)}")
     lines.append(f"\n{' '.join(hashtags)}")
     
     engagements = [
@@ -1828,7 +1943,7 @@ def main():
 💰 {int(payout):,}円 的中！
 
 ▼今日の全レース無料予測
-{SITE_BASE_URL}/races/{today_str}
+{build_race_url(today_str, race_num, venue)}
 
 #競馬 #AI予想 #{'万馬券' if payout >= 100000 else '高配当的中'} #{venue}競馬"""
 

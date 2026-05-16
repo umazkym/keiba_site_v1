@@ -355,7 +355,15 @@ def load_posted_keywords() -> set:
     try:
         with open(POSTED_HISTORY_PATH, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            return {item.get('target_keyword') for item in data}
+            return {
+                item.get('target_keyword')
+                for item in data
+                if item.get('target_keyword') and (
+                    item.get('draft') is False
+                    or bool(item.get('slug'))
+                    or bool(item.get('published_at'))
+                )
+            }
     except Exception:
         return set()
 

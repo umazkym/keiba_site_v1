@@ -19,7 +19,7 @@ og_title: '[京都芝2000m]勝率44.1%の川田将雅と回収率で選ぶべき
 og_description: >-
   京都芝2000m（2023年4月〜2026年2月）の騎手データ。川田将雅が勝率44.1%を記録する一方、単勝回収率は21%に低迷する。勝率20%台の池添謙一が回収率58%で妙味を放つなど、勝率と期待値の乖離が顕著だ。主要騎手の勝率と回収率の相関データを提示する。
 article_published_time: '2026-04-14T23:41:37.759Z'
-og_image: 'https://uma-free.jp/og/2026-04-14-kyototurf2000m-jockey-data.png'
+og_image: 'https://uma-free.com/og/2026-04-14-kyototurf2000m-jockey-data.png'
 tags: []
 ---
 

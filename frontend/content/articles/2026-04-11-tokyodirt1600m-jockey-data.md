@@ -18,7 +18,7 @@ og_title: 東京ダート1600mは勝率47.6%のモレイラとルメールが支
 og_description: >-
   東京ダート1600mにおける2023年4月からのデータを分析。モレイラの勝率47.6%やルメールの勝率32.7%に対し、岩田望来が単勝回収率73%を記録する事実を浮き彫りにする。芝スタート特有の加速と騎手技術の相関を数値で証明し、馬券戦略に直結する期待値の高い騎手を特定する。
 article_published_time: '2026-04-11T23:28:19.931Z'
-og_image: 'https://uma-free.jp/og/2026-04-11-tokyodirt1600m-jockey-data.png'
+og_image: 'https://uma-free.com/og/2026-04-11-tokyodirt1600m-jockey-data.png'
 tags: []
 ---
 

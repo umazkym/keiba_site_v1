@@ -55,9 +55,3 @@ tags: []
 パドックでは馬の長所を探すのではなく、過剰なエネルギー消耗や馬体重の大幅な変化という「物理的エラー」を見つけるツールとして、冷徹に利用すべきである。
 
 ---
-
-## 関連記事
-
-- [AI予測マニュアル｜UMA-FREE偏差値60以上の活用と資金配分戦略](/articles/2025-10-26-ai-prediction-manual)
-- [馬体重変動の影響を分析｜成長と消耗の見極め](/articles/2025-11-11-weight-change-impact-analysis)
-- [距離適性とペースの因果関係｜スタミナ消費の構造](/articles/2025-10-26-distance-suitability-data)

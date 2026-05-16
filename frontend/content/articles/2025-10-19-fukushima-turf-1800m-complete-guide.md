@@ -105,9 +105,3 @@ tags: []
 追込馬の勝率0%が表す通り、後方からの切れ味はここでは意味を持たない。福島芝1800mは、小回りコースの構造を活かし、中枠から好位を確保できる馬が圧倒的に有利なコースだ。
 
 ---
-
-## 関連記事
-
-- [三浦皇成騎手｜福島での圧倒的な成績](/articles/2025-10-08-kosei-miura-data-analysis)
-- [石川裕紀人騎手｜福島芝1800m複勝率39.1%](/articles/2025-10-16-hiroto-ishikawa-jockey-analysis)
-- [戸崎圭太騎手｜福島芝1200m複勝率62.3%](/articles/2025-10-20-tosakikeita-jockey-analysis)

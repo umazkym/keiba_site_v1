@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "article:pipeline": "npx --yes tsx scripts/agents/test_pipeline.ts",
-    "article:publish": "npx --yes tsx scripts/agents/agent_publisher.ts"
+    "article:publish": "npx --yes tsx scripts/agents/agent_publisher.ts",
+    "article:validate-links": "node -e \"eval(require('fs').readFileSync('scripts/agents/validate_article_links.js','utf8'))\""
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

@@ -18,7 +18,7 @@ og_title: '[阪神ダート1400m]川田将雅の勝率50%を軸に据えて的�
 og_description: >-
   2023年4月から2026年4月の阪神ダート1400m騎手別成績を公開。川田将雅が勝率50.0%を記録し、2回に1回は勝利する。坂井瑠星や藤岡康太らのデータを比較し、芝スタートと急坂を攻略するための騎手選択の根拠をデータから断定し、馬券戦略の核心を突く。
 article_published_time: '2026-04-12T23:28:39.643Z'
-og_image: 'https://uma-free.jp/og/2026-04-12-hanshindirt1400m-jockey-data.png'
+og_image: 'https://uma-free.com/og/2026-04-12-hanshindirt1400m-jockey-data.png'
 tags: []
 ---
 

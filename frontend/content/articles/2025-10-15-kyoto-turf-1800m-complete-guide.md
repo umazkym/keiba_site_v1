@@ -48,9 +48,3 @@ tags: []
    天皇賞（秋）や秋華賞、京都新聞杯などのビッグレースにおいてもコース形状の影響は変わらない。枠順発表直後に、3枠に入った先行タイプの有力馬をチェックし中心に据える。
 
 京都芝1800mは、中枠のポジション優位性と前に行った馬の粘り強さがレース結果を大きく左右するコースだ。
-
-## 関連記事
-
-- [マイルCS完全攻略｜京都芝1600m外回りのデータ](/articles/2025-10-28-mile-championship-kyoto-turf-1600m-analysis)
-- [エリザベス女王杯完全攻略｜京都芝2200m分析](/articles/2025-10-29-elizabeth-queen-cup-kyoto-turf-2200m-analysis)
-- [松山弘平騎手データ分析｜京都での安定感](/articles/2025-11-06-hiroaki-matsuyama-jockey-analysis)

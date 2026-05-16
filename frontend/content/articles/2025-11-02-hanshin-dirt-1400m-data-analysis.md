@@ -46,9 +46,3 @@ tags:
 阪神ダート1400mは、芝スタートの距離差が生む初期加速の有利不利が、そのままレース結果を支配するコースだ。
 
 ---
-
-## 関連記事
-
-- [東京ダート1600m｜8枠複勝率30.1%が教える枠順と脚質の使い分け](/articles/2025-10-17-tokyo-dirt-1600m-february-stakes)
-- [松山弘平騎手の阪神ダート成績と回収率データ](/articles/2025-11-06-hiroaki-matsuyama-jockey-analysis)
-- [馬場状態がダート戦の時計と脚質に与える影響](/articles/2025-10-26-ground-condition-impact)

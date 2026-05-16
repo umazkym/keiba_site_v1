@@ -39,12 +39,20 @@ WRITE_ORDERS_DIR = os.path.join(PROJECT_ROOT, 'data', 'write_orders')
 ARTICLES_DIR = os.path.join(PROJECT_ROOT, 'frontend', 'content', 'articles')
 
 def load_posted_keywords():
-    """過去の投稿履歴を読み込み、キーワードのSetを返す"""
+    """公開済み投稿履歴を読み込み、キーワードのSetを返す"""
     if os.path.exists(POSTED_HISTORY_PATH):
         with open(POSTED_HISTORY_PATH, 'r', encoding='utf-8') as f:
             try:
                 history = json.load(f)
-                return {item.get('target_keyword') for item in history}
+                return {
+                    item.get('target_keyword')
+                    for item in history
+                    if item.get('target_keyword') and (
+                        item.get('draft') is False
+                        or bool(item.get('slug'))
+                        or bool(item.get('published_at'))
+                    )
+                }
             except json.JSONDecodeError:
                 return set()
     return set()
@@ -429,8 +437,8 @@ def generate_write_order():
             keyword_suffix = "騎手 データ"
             comp_struct = [
                 "コース概要と基本情報",
-                "圧倒的勝率を誇る騎手ランキング",
-                "回収率（穴馬）で狙える穴ジョッキー"
+                "勝率と複勝率で見る騎手ランキング",
+                "回収率と人気のズレで残したい騎手"
             ]
         elif selected_theme == 'popularity':
             ranked_conds, stats_df, df = analyze_popularity_bias(df)

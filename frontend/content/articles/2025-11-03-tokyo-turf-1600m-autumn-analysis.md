@@ -45,9 +45,3 @@ tags:
 東京芝1600mの秋開催は、芝の物理的な損傷度合いという開催進行に伴うバイアス変化が、レース結果を支配するコースだ。
 
 ---
-
-## 関連記事
-
-- [アルテミスS（東京芝1600m秋GI）における馬場バイアスと脚質](/articles/2025-10-25-artemis-stakes-tokyo-turf-1600m-analysis)
-- [マイルCS（京都芝1600m）｜外枠有利の構造と差し馬の活かし方](/articles/2025-10-28-mile-championship-kyoto-turf-1600m-analysis)
-- [横山武史騎手の東京芝1600mデータ分析｜複勝率43.8%の背景](/articles/2025-11-04-takeshi-yokoyama-jockey-analysis)

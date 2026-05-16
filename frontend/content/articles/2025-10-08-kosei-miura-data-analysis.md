@@ -52,9 +52,3 @@ tags:
 三浦皇成騎手は、福島開催をはじめとする特定条件において極めて高い複勝率を担保する、馬券戦略に不可欠な存在である。
 
 ---
-
-## 関連記事
-
-- [福島芝1800m｜3枠複勝率32.3%が教える中枠有利と前残りの構造](/articles/2025-10-19-fukushima-turf-1800m-complete-guide)
-- [石川裕紀人騎手分析｜ローカル・福島開催での成績比較](/articles/2025-10-16-hiroto-ishikawa-jockey-analysis)
-- [JRA勝率ランキング分析｜騎手トップ20の買い条件](/articles/2025-10-26-top20-ranking-analysis)

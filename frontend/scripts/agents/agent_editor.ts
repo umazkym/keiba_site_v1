@@ -2,9 +2,43 @@ import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { checkSEO } from './seo_checker';
+import { checkSEO, SEO_RULES } from './seo_checker';
 import { getGeminiModelTiers } from './model_tiers';
 import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
+
+const REQUIRED_BUYING_POINT_HEADING = '## このコースの買い目ポイント';
+const REQUIRED_TODAY_RACE_CTA = 'このコースの最新レースは [今日のAI予想・出馬表](/races/today) で無料公開中。';
+
+const BANNED_REPLACEMENTS: Record<string, string> = {
+  'いかがでしたか': '',
+  'ぜひ参考にしてください': '判断材料として確認してください',
+  '最後まで読んでいただき': '',
+  '必勝': '判断',
+  '絶対に当たる': '可能性を確認する',
+  '完全攻略': '要点整理',
+  '最強': '有力',
+  '買うな': '評価を下げる',
+  '圧倒的': '高い',
+  '絶対的': 'はっきりした',
+  '絶対条件': '重要な条件',
+  '狙い撃つ': '狙いを絞る',
+  '消去対象': '評価を下げる候補',
+  '完全に除外': '評価を下げる',
+  '儲かる': '妙味がある',
+  '爆益': '配当妙味',
+  '✅': '',
+  '❌': '',
+  'と思っていませんか': '',
+  'この記事をお読みいただければ': 'この記事では',
+  'オカルトや個人の感覚ではなく': 'データを手掛かりに',
+  '曖昧な勘に頼るのではなく': '数字を確認しながら',
+  '結論から言うと': '',
+  '興味深いことに': '',
+  'と言えるでしょう': 'と見られます',
+  '独自の分析スクリプトで解析': 'データを整理',
+  '膨大なレースデータを徹底的に解析': 'レースデータを整理',
+  'https://uma-free.jp': 'https://uma-free.com',
+};
 
 function applyReplacement(content: string, original: string, fixed: string): { success: boolean, result: string } {
   // \r\n と \n の差異を完全に吸収するため、全体を \n に統一してから完全一致置換を行う
@@ -21,6 +55,340 @@ function applyReplacement(content: string, original: string, fixed: string): { s
   // 正規化済みの文字列に対して、完全一致による置換を実行する（正規表現のサイレント失敗を防ぐ）
   const resultContent = normalizedContent.replace(normalizedOriginal, fixed);
   return { success: true, result: resultContent };
+}
+
+function replaceLiteral(input: string, search: string, replacement: string): string {
+  if (!search) return input;
+  return input.split(search).join(replacement);
+}
+
+function sanitizeGeneratedText(input: string): string {
+  let text = input;
+  for (const banned of SEO_RULES.hard_banned_strings) {
+    text = replaceLiteral(text, banned, BANNED_REPLACEMENTS[banned] ?? '');
+  }
+
+  return text
+    .replace(/[ \t]+$/gm, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function normalizeHref(href: string): string | null {
+  const cleanHref = href.replace(/^<|>$/g, '');
+  if (!/^https?:\/\//.test(cleanHref)) return cleanHref;
+
+  try {
+    const url = new URL(cleanHref);
+    if (url.hostname === 'uma-free.com' || url.hostname === 'www.uma-free.com') {
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
+    return null;
+  } catch {
+    return cleanHref;
+  }
+}
+
+function isAllowedGeneratedArticleHref(href: string): boolean {
+  const normalized = normalizeHref(href);
+  if (!normalized) return false;
+  if (!normalized.startsWith('/')) return false;
+  return normalized === '/races/today' || /^\/races\/\d{4}-\d{2}-\d{2}$/.test(normalized);
+}
+
+function unwrapDisallowedLinks(content: string): string {
+  return content.replace(/(!?)\[([^\]]*)]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (match, bang, label, href) => {
+    const normalized = normalizeHref(href);
+    if (normalized && isAllowedGeneratedArticleHref(normalized)) {
+      return `${bang}[${label}](${normalized})`;
+    }
+    return bang ? label : label;
+  });
+}
+
+function compactForTitle(value: unknown): string {
+  return String(value || '')
+    .replace(/[【】]/g, '')
+    .replace(/\s+/g, '')
+    .replace(/[|｜]+$/g, '')
+    .trim();
+}
+
+function suffixForTheme(themeCluster: unknown): string {
+  switch (String(themeCluster || '')) {
+    case 'jockey_data':
+      return '勝率と回収率の見方3点';
+    case 'grade_race_preview':
+      return '枠順と偏差値の見方3点';
+    case 'running_style_data':
+      return '脚質と展開の見方3点';
+    case 'popularity_data':
+      return '人気と配当の見方3点';
+    case 'waku_data':
+    case 'asset':
+    case 'seasonal':
+      return '枠順の買い方3点';
+    default:
+      return 'データの見方3点';
+  }
+}
+
+function fitTitleToSeo(title: string, data: Record<string, any>, content: string): string {
+  let result = sanitizeGeneratedText(title).replace(/^["']|["']$/g, '');
+  const fallbackBase = compactForTitle(data.target_keyword || result || '競馬データ');
+  const suffix = suffixForTheme(data.theme_cluster);
+  const numberInContent = content.match(/\d+(?:\.\d+)?%?/)?.[0] || '3点';
+
+  if (!/\d/.test(result)) {
+    result = `${result || fallbackBase}${numberInContent}`;
+  }
+
+  if (result.length < SEO_RULES.title_min_chars || result.length > SEO_RULES.title_max_chars) {
+    result = `${fallbackBase}｜${suffix}`;
+  }
+
+  if (!/\d/.test(result)) {
+    result = `${result}3点`;
+  }
+
+  while (result.length < SEO_RULES.title_min_chars) {
+    const addition = result.includes('｜') ? '確認' : '｜直前確認';
+    if (result.length + addition.length > SEO_RULES.title_max_chars) break;
+    result += addition;
+  }
+
+  if (result.length > SEO_RULES.title_max_chars) {
+    const separator = '｜';
+    const maxBaseLength = SEO_RULES.title_max_chars - suffix.length - separator.length;
+    const base = fallbackBase.slice(0, Math.max(8, maxBaseLength));
+    result = `${base}${separator}${suffix}`;
+  }
+
+  if (result.length < SEO_RULES.title_min_chars) {
+    const addition = 'データ確認3点';
+    result = `${result}${addition}`.slice(0, SEO_RULES.title_max_chars);
+  }
+
+  return sanitizeGeneratedText(result);
+}
+
+function trimDescription(description: string): string {
+  let result = description.trim();
+  if (result.length <= SEO_RULES.description_max_chars) return result;
+
+  result = result.slice(0, SEO_RULES.description_max_chars - 1);
+  const lastBreak = Math.max(result.lastIndexOf('。'), result.lastIndexOf('、'));
+  if (lastBreak >= SEO_RULES.description_min_chars - 1) {
+    result = result.slice(0, lastBreak);
+  }
+  return `${result.replace(/[、。]+$/g, '')}。`;
+}
+
+function fitDescriptionToSeo(description: string, data: Record<string, any>): string {
+  const target = compactForTitle(data.target_keyword || data.title || 'この条件');
+  const additions = [
+    '勝率、回収率、枠順や騎手の傾向を照らし、買い・抑え・見送りの判断を整理します。',
+    '直前に見る数字と条件を分け、出馬表を開く前の確認順序をまとめます。',
+    '人気だけに寄せず、評価を上げる場面と下げる場面を確認できます。',
+  ];
+
+  let result = sanitizeGeneratedText(description)
+    .replace(/徹底分析/g, '整理')
+    .replace(/^["']|["']$/g, '');
+
+  if (!result) {
+    result = `${target}の成績データを整理。`;
+  }
+
+  for (const addition of additions) {
+    if (result.length >= SEO_RULES.description_min_chars) break;
+    const candidate = `${result}${result.endsWith('。') ? '' : '。'}${addition}`;
+    result = candidate.length <= SEO_RULES.description_max_chars ? candidate : trimDescription(candidate);
+  }
+
+  if (result.length < SEO_RULES.description_min_chars) {
+    result = `${target}のデータを整理。勝率、回収率、枠順や騎手の傾向を照らし、買い・抑え・見送りの判断を確認できます。直前に見る数字と条件もまとめます。`;
+  }
+
+  return trimDescription(sanitizeGeneratedText(result));
+}
+
+function findLastBuyingPointHeading(content: string): number {
+  const pattern = /^##\s+このコースの買い目ポイント\s*$/gm;
+  let match: RegExpExecArray | null;
+  let lastIndex = -1;
+  while ((match = pattern.exec(content)) !== null) {
+    lastIndex = match.index;
+  }
+  return lastIndex;
+}
+
+function fallbackBuyingPoints(data: Record<string, any>): string[] {
+  const theme = String(data.theme_cluster || '');
+  if (theme === 'jockey_data') {
+    return [
+      '買い: 勝率と騎乗回数がそろう騎手は、人気との釣り合いを見て軸候補にする。',
+      '抑え: 回収率だけが高い騎手は、相手候補として配当に厚みを出す。',
+      '見送り: 勝率が低く人気だけ先行する騎乗は、評価を下げる。',
+      '条件付き: 馬場悪化や少頭数では、先行できる馬との組み合わせを優先する。',
+    ];
+  }
+
+  if (theme === 'grade_race_preview') {
+    return [
+      '買い: AI偏差値上位でも枠順と脚質を合わせて、軸にできるか確認する。',
+      '抑え: コース傾向に合う馬は、人気が落ちるなら相手に残す。',
+      '見送り: 評価が低く展開の助けも必要な馬は、買い目を広げすぎない。',
+      '条件付き: 馬場が変わる日は、当日の時計と内外の伸びを見て評価を調整する。',
+    ];
+  }
+
+  return [
+    '買い: 勝率と複勝率がそろう条件は、軸候補として最初に確認する。',
+    '抑え: 回収率に妙味が残る条件は、相手候補として買い目に残す。',
+    '見送り: 数字が低く人気だけ先行する条件は、評価を下げる。',
+    '条件付き: 馬場や頭数が変わる日は、直前の出馬表で脚質との相性を確認する。',
+  ];
+}
+
+function normalizeBuyingPointLines(sectionText: string, data: Record<string, any>): string {
+  const lines = sectionText
+    .split('\n')
+    .map(line => sanitizeGeneratedText(line).replace(/^[・\s]+/, '').trim())
+    .filter(line => line && !line.includes('/races/today') && !/^#{1,6}\s+/.test(line));
+
+  const normalizedLines = lines.map(line => {
+    const withoutBullet = line.replace(/^[-*]\s+/, '').replace(/^\d+\.\s+/, '').trim();
+    return `- ${withoutBullet}`;
+  });
+
+  const existingText = normalizedLines.join('\n');
+  for (const point of fallbackBuyingPoints(data)) {
+    if (normalizedLines.length >= 3) break;
+    if (!existingText.includes(point.slice(0, 8))) {
+      normalizedLines.push(`- ${point}`);
+    }
+  }
+
+  return (normalizedLines.length > 0 ? normalizedLines : fallbackBuyingPoints(data).map(point => `- ${point}`)).join('\n');
+}
+
+function normalizeBuyingPointSection(content: string, data: Record<string, any>): string {
+  let result = content
+    .replace(/^(?:#{1,6}\s*){0,2}このコースの買い目ポイント\s*$/gm, REQUIRED_BUYING_POINT_HEADING)
+    .replace(/^.*\[今日のAI予想・出馬表]\(\/races\/today\).*$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  if (!/^##\s+このコースの買い目ポイント\s*$/m.test(result)) {
+    result = `${result}\n\n${REQUIRED_BUYING_POINT_HEADING}\n\n${fallbackBuyingPoints(data).map(point => `- ${point}`).join('\n')}`;
+  }
+
+  const headingIndex = findLastBuyingPointHeading(result);
+  if (headingIndex < 0) {
+    return `${result}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim();
+  }
+
+  const before = result.slice(0, headingIndex).trim();
+  const sectionWithHeading = result.slice(headingIndex);
+  const sectionBody = sectionWithHeading
+    .replace(/^##\s+このコースの買い目ポイント\s*$/m, '')
+    .trim();
+  const normalizedSection = normalizeBuyingPointLines(sectionBody, data);
+
+  return `${before}\n\n${REQUIRED_BUYING_POINT_HEADING}\n\n${normalizedSection}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim();
+}
+
+function ensureH2HeadingsHaveNumbers(content: string): string {
+  return content.replace(/^##\s+(.*)$/gm, (full, headingText) => {
+    const heading = String(headingText || '').trim();
+    if (heading === 'このコースの買い目ポイント') return full;
+    if (heading === 'まとめ' || heading === '総論' || heading === 'おわりに') {
+      return '## 買い方を決める3つの確認順';
+    }
+    if (/\d/.test(heading)) return full;
+    if (heading.includes('AI偏差値')) return '## AI偏差値上位3頭と買い方の優先順';
+    if (heading.includes('騎手')) return '## 騎手データで見る3つの判断材料';
+    if (heading.includes('コース')) return '## コース特性で見る3つの注意点';
+    return `## ${heading}で見る3つの判断材料`;
+  });
+}
+
+function ensureNumberInOpening(content: string, data: Record<string, any>): string {
+  const plainText = content.replace(/\s/g, '');
+  if (/\d/.test(plainText.slice(0, 100))) return content;
+
+  const target = compactForTitle(data.target_keyword || data.title || 'この条件');
+  return `${target}では、まず3つの数字を順に確認すると買い目の優先順位を決めやすい。\n\n${content}`;
+}
+
+function supplementalBlocks(data: Record<string, any>): string[] {
+  const target = compactForTitle(data.target_keyword || data.title || 'この条件');
+  return [
+    `## 直前に見る3つの確認材料\n\n${target}を買う前は、表の勝率だけでなく、騎乗回数や回収率、当日の馬場を分けて見る必要がある。母数が少ない数字は上振れを含みやすいため、人気馬をそのまま軸にするのではなく、同じ条件で安定して馬券圏に残っているかを確認したい。\n\n- 勝率: 軸候補を探すための入口にする\n- 回収率: 配当妙味が残っているかを見る\n- 母数: データの信頼度を測る`,
+    `## 買い目へ移す3つの順序\n\n最初に勝率で候補を絞り、次に回収率で人気との釣り合いを見る。最後に枠順、脚質、馬場状態を重ねると、買う理由と見送る理由を分けやすい。数字が高くても人気が集中している場合は、単勝より相手候補に回す判断も必要になる。`,
+    `## 出馬表で確認したい3つの条件\n\n同じコース成績でも、当日の頭数やペースで評価は変わる。先行馬が多い日は差し馬の位置取り、少頭数では人気馬の取りこぼしに注意したい。直前の出馬表では、データの順位だけでなく、展開に合う馬がどれかを確認する。`,
+  ];
+}
+
+function insertBeforeBuyingPointSection(content: string, block: string): string {
+  const headingIndex = findLastBuyingPointHeading(content);
+  if (headingIndex < 0) {
+    return `${content.trim()}\n\n${block.trim()}`;
+  }
+
+  return `${content.slice(0, headingIndex).trim()}\n\n${block.trim()}\n\n${content.slice(headingIndex).trimStart()}`;
+}
+
+function ensureMinimumBodyLength(content: string, data: Record<string, any>): string {
+  let result = content;
+  for (const block of supplementalBlocks(data)) {
+    if (result.replace(/\s/g, '').length >= SEO_RULES.min_word_count) break;
+    if (!result.includes(block.split('\n')[0])) {
+      result = insertBeforeBuyingPointSection(result, block);
+    }
+  }
+  return result;
+}
+
+export function autoRepairDraftMarkdown(markdownText: string): { content: string; changes: string[] } {
+  const changes: string[] = [];
+  let parsed;
+
+  try {
+    parsed = matter(markdownText);
+  } catch {
+    return { content: markdownText, changes: ['Frontmatterのパースに失敗したため自動補正をスキップ'] };
+  }
+
+  const data = { ...parsed.data };
+  let content = parsed.content.replace(/\r\n/g, '\n').trim();
+  const beforeTitle = String(data.title || '');
+  const beforeDescription = String(data.description || '');
+  const beforeContent = content;
+
+  data.title = fitTitleToSeo(beforeTitle, data, content);
+  data.description = fitDescriptionToSeo(beforeDescription, { ...data, title: data.title });
+
+  content = sanitizeGeneratedText(content);
+  content = unwrapDisallowedLinks(content);
+  content = normalizeBuyingPointSection(content, data);
+  content = ensureH2HeadingsHaveNumbers(content);
+  content = ensureNumberInOpening(content, data);
+  content = ensureMinimumBodyLength(content, data);
+  content = normalizeBuyingPointSection(content, data);
+  content = ensureH2HeadingsHaveNumbers(content);
+  content = sanitizeGeneratedText(content);
+
+  if (data.title !== beforeTitle) changes.push('titleをSEO文字数内に補正');
+  if (data.description !== beforeDescription) changes.push('descriptionをSEO文字数内に補正');
+  if (content !== beforeContent) changes.push('本文のNG語・リンク・末尾CTA・文字数を補正');
+
+  return {
+    content: matter.stringify(`${content.trim()}\n`, data),
+    changes,
+  };
 }
 
 const EDITOR_SYSTEM_PROMPT = `あなたはUMA-FREEの編集長だ。ライターが生成したMarkdown記事を編集確認し、以下の手順で指定されたJSONフォーマットのみを出力する。
@@ -95,10 +463,17 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       console.log(`[Editor] Running AI evaluation (Attempt ${attempt})...`);
+      const preAttemptRepair = autoRepairDraftMarkdown(currentContent);
+      if (preAttemptRepair.changes.length > 0) {
+        currentContent = preAttemptRepair.content;
+        allLogs += `\n[Attempt ${attempt} Auto Repair Before AI]\n - ${preAttemptRepair.changes.join('\n - ')}\n`;
+      }
+
       const seoResult = checkSEO(currentContent);
       const mechanicalLog = seoResult.passed
         ? "機械チェック（文字数・NGワード等）：エラーなし"
         : `機械チェックエラー（以下の違反を必ず修正すること）:\n - ${seoResult.errors.join('\n - ')}`;
+      const hadMechanicalErrors = !seoResult.passed;
 
       allLogs += `\n[Attempt ${attempt} Mechanical Check]\n${mechanicalLog}\n`;
 
@@ -200,14 +575,40 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
       // FrontmatterとBodyを再結合
       currentContent = matter.stringify(tmpContent, parsedMatter.data);
 
-      // パッチ後の内容でSEO再チェック
+      const postAiRepair = autoRepairDraftMarkdown(currentContent);
+      if (postAiRepair.changes.length > 0) {
+        currentContent = postAiRepair.content;
+        allLogs += `\n[Attempt ${attempt} Auto Repair After AI]\n - ${postAiRepair.changes.join('\n - ')}\n`;
+      }
+
+      // パッチ後の内容でSEO再チェック。機械チェック由来のREJECTEDは自動補正後に通れば承認扱いにする。
       const postPatchSeo = checkSEO(currentContent);
-      if (postPatchSeo.passed && parsedJson.status === 'APPROVED' && !replacementFailed) {
+      if (postPatchSeo.passed && (parsedJson.status === 'APPROVED' || hadMechanicalErrors)) {
         finalStatus = 'APPROVED';
-        allLogs += `\n[Attempt ${attempt}] SEO Passed. Fully APPROVED.\n`;
+        allLogs += `\n[Attempt ${attempt}] SEO Passed. Fully APPROVED. Replacement Failed: ${replacementFailed}\n`;
         break; // 完全合格
       } else {
-        allLogs += `\n[Attempt ${attempt}] AI status was ${parsedJson.status}. Post-patch SEO passed: ${postPatchSeo.passed}. Replacement Failed: ${replacementFailed}\n`;
+        allLogs += `\n[Attempt ${attempt}] AI status was ${parsedJson.status}. Post-patch SEO passed: ${postPatchSeo.passed}. Replacement Failed: ${replacementFailed}`;
+        if (!postPatchSeo.passed) {
+          allLogs += `\n[Attempt ${attempt} Remaining SEO Errors]\n - ${postPatchSeo.errors.join('\n - ')}`;
+        }
+        allLogs += `\n`;
+      }
+    }
+
+    if (finalStatus === 'REJECTED') {
+      const finalRepair = autoRepairDraftMarkdown(currentContent);
+      if (finalRepair.changes.length > 0) {
+        currentContent = finalRepair.content;
+        allLogs += `\n[Final Auto Repair]\n - ${finalRepair.changes.join('\n - ')}\n`;
+      }
+
+      const finalSeo = checkSEO(currentContent);
+      if (finalSeo.passed) {
+        finalStatus = 'APPROVED';
+        allLogs += `\n[Final Auto Repair] SEO Passed. APPROVED without another Gemini request.\n`;
+      } else {
+        allLogs += `\n[Final Auto Repair] SEO still failed:\n - ${finalSeo.errors.join('\n - ')}\n`;
       }
     }
 

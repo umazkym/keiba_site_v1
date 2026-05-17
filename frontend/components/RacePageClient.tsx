@@ -111,88 +111,6 @@ const getShiftedDate = (dateStr: string, days: number) => {
     return date.toISOString().split('T')[0];
 };
 
-const SidebarSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-        <h2 className="mb-2 flex items-center gap-2 text-[13px] font-bold text-slate-900">
-            <span className="h-4 w-1 rounded-full bg-primary"></span>
-            {title}
-        </h2>
-        {children}
-    </section>
-);
-
-const RaceSideRail = ({
-    currentDate,
-    initialSpecialPick,
-    initialTopHits,
-    weeklyGradeRaces,
-    articlesMeta,
-}: {
-    currentDate: string;
-    initialSpecialPick?: SpecialPick | null;
-    initialTopHits?: TopPayoutHit[];
-    weeklyGradeRaces?: WeeklyGradeRace[];
-    articlesMeta: Omit<Article, 'content'>[];
-}) => {
-    const relatedArticles = articlesMeta.slice(0, 4);
-
-    return (
-        <aside className="hidden xl:block">
-            <div className="sticky top-24 space-y-3">
-                <SidebarSection title="注目データ">
-                    <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
-                </SidebarSection>
-
-                {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
-                    <SidebarSection title="今週の重賞">
-                        <WeeklyGradeRaces races={weeklyGradeRaces} compact />
-                    </SidebarSection>
-                )}
-
-                <SidebarSection title="日付を移動">
-                    <div className="grid grid-cols-2 gap-2">
-                        <Link
-                            href={`/races/${getShiftedDate(currentDate, -1)}`}
-                            className="inline-flex min-h-[40px] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-primary"
-                        >
-                            前日
-                        </Link>
-                        <Link
-                            href={`/races/${getShiftedDate(currentDate, 1)}`}
-                            className="inline-flex min-h-[40px] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-primary"
-                        >
-                            翌日
-                        </Link>
-                    </div>
-                </SidebarSection>
-
-                <SidebarSection title="的中ランキング">
-                    <TopHitsDisplay initialHits={initialTopHits} compact />
-                </SidebarSection>
-
-                {relatedArticles.length > 0 && (
-                    <SidebarSection title="あわせて読む">
-                        <div className="space-y-2">
-                            {relatedArticles.map((article) => (
-                                <Link
-                                    key={article.slug}
-                                    href={`/articles/${article.slug}`}
-                                    className="block rounded-lg border border-slate-100 bg-slate-50/70 p-2 transition-colors hover:border-slate-200 hover:bg-white"
-                                >
-                                    <span className="mb-1 block text-[10px] font-bold text-slate-400">{article.category}</span>
-                                    <span className="line-clamp-2 text-xs font-bold leading-snug text-slate-800">
-                                        {article.title}
-                                    </span>
-                                </Link>
-                            ))}
-                        </div>
-                    </SidebarSection>
-                )}
-            </div>
-        </aside>
-    );
-};
-
 export default function RacePageClient({ initialDate, initialPredictionData, initialSpecialPick, initialTopHits, weeklyGradeRaces, articlesMeta }: RacePageClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -369,7 +287,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                 <DisclaimerAlert />
 
                 {showSpecialPick && (
-                    <div className="mb-2 xl:hidden">
+                    <div className="mb-2">
                         <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
                     </div>
                 )}
@@ -385,7 +303,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
     };
 
     return (
-        <div className="py-4">
+        <div className="mx-auto max-w-6xl py-4">
             {/* ▼▼▼▼▼【ファーストビュー改善】▼▼▼▼▼ */}
             {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
             {/* 変更: 日付ナビ→レースデータ→的中ランキング→バナー広告（レースデータを最速で表示） */}
@@ -410,31 +328,20 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
 
             {/* 🏆 今週の重賞セクション */}
             {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
-                <div className="mb-2 sm:mb-3 xl:hidden">
+                <div className="mb-2 sm:mb-3">
                     <WeeklyGradeRaces races={weeklyGradeRaces} />
                 </div>
             )}
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_336px] xl:items-start">
-                <div className="min-w-0">
-                    {renderContent()}
-                </div>
-                <RaceSideRail
-                    currentDate={currentDate}
-                    initialSpecialPick={initialSpecialPick}
-                    initialTopHits={initialTopHits}
-                    weeklyGradeRaces={weeklyGradeRaces}
-                    articlesMeta={articlesMeta}
-                />
-            </div>
+            {renderContent()}
 
             {/* 的中ランキング: レースデータの後に配置 */}
-            <div className="mt-2 sm:mt-4 mb-1 sm:mb-3 xl:hidden">
+            <div className="mt-2 sm:mt-4 mb-1 sm:mb-3">
                 <TopHitsDisplay initialHits={initialTopHits} />
             </div>
 
             {/* ★ 回遊性向上: 他の日付への導線を追加 */}
-            <div className="flex justify-center gap-2 sm:gap-3 my-3 sm:my-4 xl:hidden">
+            <div className="flex justify-center gap-2 sm:gap-3 my-3 sm:my-4">
                 <Link
                     href={`/races/${getShiftedDate(currentDate, -1)}`}
                     className="flex-1 max-w-[160px] inline-flex items-center justify-center px-2 py-2.5 text-[11px] sm:text-[13px] font-bold text-slate-600 bg-white border border-slate-200 rounded-xl transition-all duration-200 min-h-[44px] hover:bg-slate-50 hover:text-primary hover:border-slate-300 hover:shadow-sm"
@@ -459,7 +366,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
               レースページ: 収益効率 $0.0001-0.0006/session
               記事ページ(about-ai等): 収益効率 $0.0025/session（4-25倍） */}
             {articlesMeta && articlesMeta.length > 0 && (
-                <section className="mt-3 sm:mt-4 mb-2 sm:mb-3 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm xl:hidden">
+                <section className="mt-3 sm:mt-4 mb-2 sm:mb-3 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                     <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
                         <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                             <span className="w-1.5 h-5 bg-primary rounded-full"></span>
@@ -508,7 +415,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
             )}
 
             {/* サイト紹介テキスト（SEO・AdSense対策：重複回避のため最小限に） */}
-            <section className="mt-2 sm:mt-3 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm xl:hidden">
+            <section className="mt-2 sm:mt-3 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">
                 <p className="text-sm text-gray-600">
                     より詳しいAIデータ分析の仕組みや、サイトの使い方は
                     <Link href="/about" className="text-primary hover:underline font-semibold mx-1">運営者情報・このサイトについて</Link>

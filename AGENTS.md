@@ -479,10 +479,11 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 #### ✅ レース予想ページ中心のUI/UX統一・可変データ表示改善
 - **完了日時**: 2026-05-17 19:41
-- **実施内容**: PCで横幅を活用できるよう共通コンテナを拡張し、レース予想ページに注目馬・重賞・日付移動・的中ランキング・関連記事をまとめたサイドレールを追加。スマホでは従来の読み順を保ちつつ、記事一覧の余白、予想表、指標解説、レース分析ブロックを圧縮。API由来の初期レースデータがクライアント再取得で「データなし」に上書きされる問題も修正し、ローカル確認用に `127.0.0.1:3000` のCORSを許可。
+- **実施内容**: PCで横幅を活用できるよう共通コンテナを拡張し、レース予想ページの予想表、指標解説、レース分析、注目馬、重賞導線、関連記事の表示密度を調整。スマホでは従来の読み順を保ちつつ、記事一覧の余白、予想表、指標解説、レース分析ブロックを圧縮。API由来の初期レースデータがクライアント再取得で「データなし」に上書きされる問題も修正し、ローカル確認用に `127.0.0.1:3000` のCORSを許可。
 - **変更ファイル**: `backend/main.py`, `frontend/app/layout.tsx`, `frontend/app/articles/page.tsx`, `frontend/components/RacePageClient.tsx`, `frontend/components/RaceTabs.tsx`, `frontend/components/PredictionTable.tsx`, `frontend/components/TopHitsDisplay.tsx`, `frontend/components/WeeklyGradeRaces.tsx`, `frontend/components/DataExplanationPanel.tsx`, `frontend/components/RaceAnalysis.tsx`, `frontend/components/StartPositionChart.tsx`, `frontend/components/HorseNumberAdvantageChart.tsx`, `frontend/components/Footer.tsx`, `frontend/hooks/useMediaQuery.ts`
-- **確認事項**: `npm run build`, `npm run article:validate-links`, `python -m py_compile backend/main.py`, `git diff --check` は成功。ブラウザで `/`, `/articles`, `/races/2026-05-18` をPC幅・スマホ幅で確認し、レース実データ表示、サイドレール、スマホ予想表、記事一覧の表示を確認。
-- **次のステップ**: 実機または本番プレビューで広告配信時のサイドレール高さ、モバイル下部追従広告との干渉、レース詳細のロック解除後チャート表示を追加確認する。
+- **確認事項**: `npm run build`, `npm run article:validate-links`, `python -m py_compile backend/main.py`, `git diff --check` は成功。ブラウザで `/`, `/articles`, `/races/2026-05-18` をPC幅・スマホ幅で確認し、レース実データ表示、スマホ予想表、記事一覧の表示を確認。
+- **次のステップ**: 実機または本番プレビューで広告配信時の余白、モバイル下部追従広告との干渉、レース詳細のロック解除後チャート表示を追加確認する。
+- **追加対応**: 2026-05-17 22:04 に、右側サイドレールが唐突に見え、予想表の可読幅も削っていたため撤去。注目馬、今週の重賞、的中ランキング、日付移動、関連記事は本文の自然な読順へ戻し、PCでも主コンテンツを最大幅で読める構成に変更。`/races/2026-05-17` をPC幅・スマホ幅で確認し、右レールが出ないこと、実データが表示されることを確認。`npm run build`, `npm run article:validate-links`, `git diff --check` は成功。
 
 #### ✅ データ実態に基づく予想ページ導線・広告配置改善
 - **完了日時**: 2026-05-16 20:59

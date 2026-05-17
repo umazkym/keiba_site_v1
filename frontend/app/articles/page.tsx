@@ -178,7 +178,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                                             priority
                                         />
                                     </div>
-                                    <div className="flex min-h-[260px] flex-col justify-between p-5 sm:p-7 lg:p-8">
+                                    <div className="flex flex-col justify-between p-5 sm:p-7 md:min-h-[260px] lg:p-8">
                                         <div>
                                             <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-400">
                                                 <span className="text-slate-700">{featuredArticle.category}</span>

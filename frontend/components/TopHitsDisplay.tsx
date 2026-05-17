@@ -7,11 +7,31 @@ import { NativeCardAd } from '@/components/NativeCardAd';
 import { TrophyIcon } from './Icons';
 import { Adsense } from './Adsense';
 
-const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
+const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: number, compact?: boolean }) => {
     let rankClass = 'rank-default';
     if (rank === 1) rankClass = 'rank-1';
     else if (rank === 2) rankClass = 'rank-2';
     else if (rank === 3) rankClass = 'rank-3';
+
+    if (compact) {
+        return (
+            <div className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-100 bg-white px-2.5 py-2 transition-colors hover:border-slate-200 hover:bg-slate-50">
+                <span className={`hit-rank ${rankClass} shrink-0`}>{rank}位</span>
+                <div className="min-w-0 flex-1">
+                    <div className="truncate text-[11px] font-bold text-slate-800" title={hit.race_name}>
+                        {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
+                        {' '}{hit.venue_name}{hit.race_number}R {hit.race_name}
+                    </div>
+                    <div className="truncate text-[10px] text-slate-400" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
+                        {hit.bet_type}: {hit.winning_numbers}
+                    </div>
+                </div>
+                <span className="shrink-0 text-xs font-black tracking-tight text-red-600">
+                    {hit.payout.toLocaleString()}円
+                </span>
+            </div>
+        );
+    }
 
     return (
         <div className="hit-card flex flex-col items-start justify-center h-full">
@@ -35,20 +55,28 @@ const HitCard = ({ hit, rank }: { hit: TopPayoutHit, rank: number }) => {
     );
 };
 
-const Skeleton = () => (
+const Skeleton = ({ compact = false }: { compact?: boolean }) => (
     <div className="animate-pulse">
         <div className="h-7 bg-gray-200 rounded w-1/2 mb-2"></div>
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-            {[...Array(5)].map((_, i) => (
-                <div key={i} className={`h-20 sm:h-24 bg-gray-100 rounded-lg border border-gray-200 ${i === 4 ? 'col-span-2 sm:col-span-1' : ''}`}></div>
-            ))}
-        </div>
+        {compact ? (
+            <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-12 bg-gray-100 rounded-lg border border-gray-200"></div>
+                ))}
+            </div>
+        ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                {[...Array(5)].map((_, i) => (
+                    <div key={i} className={`h-20 sm:h-24 bg-gray-100 rounded-lg border border-gray-200 ${i === 4 ? 'col-span-2 sm:col-span-1' : ''}`}></div>
+                ))}
+            </div>
+        )}
     </div>
 );
 
 // ▼▼▼▼▼【SSRプリフェッチ対応】▼▼▼▼▼
 // initialHitsが渡された場合はクライアント側のAPIコールをスキップ
-export const TopHitsDisplay = ({ initialHits }: { initialHits?: TopPayoutHit[] }) => {
+export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?: TopPayoutHit[], compact?: boolean }) => {
     const [hits, setHits] = useState<TopPayoutHit[]>(initialHits || []);
     const [isLoading, setIsLoading] = useState(!initialHits);
     const [showAd, setShowAd] = useState((initialHits || []).length > 0);
@@ -80,19 +108,33 @@ export const TopHitsDisplay = ({ initialHits }: { initialHits?: TopPayoutHit[] }
     // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
     if (isLoading) {
-        return <Skeleton />;
+        return <Skeleton compact={compact} />;
     }
 
     return (
         <div>
-            <h2 className="sec-title px-1 mb-2">
-                <TrophyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
-                <span className="whitespace-nowrap ml-1">高配当的中ランキング</span>
-                <span className="text-[10px] sm:text-xs font-normal text-muted ml-1.5 whitespace-nowrap self-end mb-0.5">(直近7日)</span>
-            </h2>
+            {!compact && (
+                <h2 className="sec-title px-1 mb-2">
+                    <TrophyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
+                    <span className="whitespace-nowrap ml-1">高配当的中ランキング</span>
+                    <span className="text-[10px] sm:text-xs font-normal text-muted ml-1.5 whitespace-nowrap self-end mb-0.5">(直近7日)</span>
+                </h2>
+            )}
             {hits.length === 0 ? (
                 <div className="p-6 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-center text-gray-500 text-sm">
                     <p>対象期間の的中実績はありませんでした。</p>
+                </div>
+            ) : compact ? (
+                <div className="space-y-1.5">
+                    {hits.map((hit, index) => (
+                        <Link
+                            key={`${hit.race_id}-${hit.winning_numbers}`}
+                            href={`/races/${hit.race_date}?race=${hit.race_number}&venue=${encodeURIComponent(hit.venue_name)}`}
+                            className="block"
+                        >
+                            <HitCard hit={hit} rank={index + 1} compact />
+                        </Link>
+                    ))}
                 </div>
             ) : (
                 <>

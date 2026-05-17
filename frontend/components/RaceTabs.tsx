@@ -217,9 +217,9 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                                 {nextRace.race_name}
                                             </p>
                                         </div>
-                                        <div className="text-right shrink-0">
+                                        <div className="max-w-[104px] shrink-0 text-right sm:max-w-[160px]">
                                             <p className="text-[10px] text-slate-400">AI 1位</p>
-                                            <p className="text-xs font-bold text-primary">{nextTopHorse.horse_name}</p>
+                                            <p className="truncate text-xs font-bold text-primary" title={nextTopHorse.horse_name}>{nextTopHorse.horse_name}</p>
                                         </div>
                                         <span className="text-primary text-sm">→</span>
                                     </div>
@@ -241,7 +241,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* プレミアム・ロック切り替え部分 */}
                     {(activeRace && isRaceUnlocked(activeRace.id)) ? (
                         <>
-                            <div className="mb-2">
+                            <div className="mb-2 grid gap-2 xl:grid-cols-2">
                                 <div className="card p-2 sm:p-3">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                         <FlagIcon className="w-5 h-5 mr-2 text-primary" />
@@ -250,6 +250,18 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                     <div className="px-2 pb-2 sm:px-3 sm:pb-3">
                                         <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
                                             <StartPositionChart predictions={activeRace.predictions} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="card p-2 sm:p-3">
+                                    <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
+                                        <ChartBarIcon className="w-5 h-5 mr-2 text-accent" />
+                                        <span>このコースの枠順傾向</span>
+                                    </div>
+                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3">
+                                        <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
+                                            <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
                                         </div>
                                     </div>
                                 </div>
@@ -269,24 +281,10 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 </div>
                             </div>
 
-                            {/* ★ ビューアビリティ改善: 過去対決成績と枠順傾向の間（自然な区切り）に広告配置 */}
+                            {/* ★ ビューアビリティ改善: 対決成績の直後（自然な区切り）に広告配置 */}
                             {shouldShowAd && (
                                 <InFeedAd refreshKey={`premium-mid-${adRefreshKey}`} analyticsPlacement="race_premium_mid" />
                             )}
-
-                            <div className="mb-2">
-                                <div className="card p-2 sm:p-3">
-                                    <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
-                                        <ChartBarIcon className="w-5 h-5 mr-2 text-accent" />
-                                        <span>このコースの枠順傾向</span>
-                                    </div>
-                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3">
-                                        <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
-                                            <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
                             <div className="mb-2">
                                 <div className="card p-2 sm:p-3">

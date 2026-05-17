@@ -2,6 +2,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, LabelList } from 'recharts';
 import { HorseNumberAdvantage } from '@/lib/types';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 type Props = {
     advantages: HorseNumberAdvantage[];
@@ -10,6 +11,8 @@ type Props = {
 };
 
 export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseType, distance }) => {
+    const isMobile = useMediaQuery('(max-width: 767px)');
+
     if (!advantages || advantages.length === 0) {
         return (
             <div className="my-4 p-4 bg-gray-50 border rounded-lg text-center text-gray-500 text-sm">
@@ -73,7 +76,6 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
     const chartTitle = `このコースの枠順傾向 (${courseType || ''}${distance || ''}m)`;
 
     // レスポンシブ設定
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     // 高さ削減: 320 -> 180 (gap排除のため大幅圧縮)
     const chartHeight = isMobile ? 180 : 300;
     const chartMargin = isMobile

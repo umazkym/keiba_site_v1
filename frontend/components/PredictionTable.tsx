@@ -66,22 +66,30 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
         <div ref={observerRef}>
             {/* PC (md以上) ではテーブル表示 */}
             <div className="hidden md:block overflow-x-auto">
-                <table className="min-w-full">
+                <table className="w-full table-fixed">
+                    <colgroup>
+                        <col className="w-14" />
+                        <col className="w-11" />
+                        <col />
+                        <col className="w-28" />
+                    </colgroup>
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th className="px-3 py-2 text-center text-xs font-bold text-text-secondary tracking-wider w-12">印</th>
                             <th className="px-2 py-2 text-left text-xs font-bold text-text-secondary tracking-wider" colSpan={2}>馬番・馬名</th>
-                            <th className="px-4 py-2 text-right text-xs font-bold text-text-secondary tracking-wider flex items-center justify-end gap-1.5 bg-blue-50/40">
-                                <span className="whitespace-nowrap text-blue-900">AI偏差値</span>
-                                <Tippy content={
-                                    <div className='p-2.5 text-sm text-left max-w-xs bg-white text-text-primary rounded-xl shadow-elevated border border-slate-100'>
-                                        <p className='font-bold mb-1.5 text-primary'>AI偏差値とは？</p>
-                                        <p className='text-xs text-text-secondary leading-[1.7]'>過去のレースタイムなどからAIが算出した馬の能力指数です。数値が高いほど、高く評価していることを示します。</p>
-                                    </div>
-                                } placement="top" interactive={true} theme="light-border" appendTo={() => document.body}
-                                >
-                                    <span className='w-4 h-4 bg-slate-300 hover:bg-slate-400 transition-colors text-white rounded-full flex items-center justify-center text-xs font-bold cursor-help'>?</span>
-                                </Tippy>
+                            <th className="px-4 py-2 text-right text-xs font-bold text-text-secondary tracking-wider bg-blue-50/40">
+                                <div className="flex items-center justify-end gap-1.5">
+                                    <span className="whitespace-nowrap text-blue-900">AI偏差値</span>
+                                    <Tippy content={
+                                        <div className='p-2.5 text-sm text-left max-w-xs bg-white text-text-primary rounded-xl shadow-elevated border border-slate-100'>
+                                            <p className='font-bold mb-1.5 text-primary'>AI偏差値とは？</p>
+                                            <p className='text-xs text-text-secondary leading-[1.7]'>過去のレースタイムなどからAIが算出した馬の能力指数です。数値が高いほど、高く評価していることを示します。</p>
+                                        </div>
+                                    } placement="top" interactive={true} theme="light-border" appendTo={() => document.body}
+                                    >
+                                        <span className='w-4 h-4 bg-slate-300 hover:bg-slate-400 transition-colors text-white rounded-full flex items-center justify-center text-xs font-bold cursor-help'>?</span>
+                                    </Tippy>
+                                </div>
                             </th>
                         </tr>
                     </thead>

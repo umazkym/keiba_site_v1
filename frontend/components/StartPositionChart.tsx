@@ -2,6 +2,7 @@
 import { HorsePrediction } from "@/lib/types";
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const getWakuColor = (waku: number | null): string => {
     switch (waku) {
@@ -36,7 +37,7 @@ const HorseMarker = ({ horse, position, isMobile, markerSpacing }: { horse: Hors
             <div className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} rounded-full flex items-center justify-center font-bold ${isMobile ? 'text-[10px]' : 'text-xs'} shadow-sm border ${getWakuColor(horse.waku_number)}`}>
                 {horse.horse_number}
             </div>
-            <span className={`font-bold text-gray-700 whitespace-nowrap ${isMobile ? 'text-[9px] mt-0.5 px-0.5 py-0.5 rounded' : 'text-[11px] mt-px px-1 rounded'}`} style={{ lineHeight: 1 }}>
+            <span className={`max-w-[58px] truncate font-bold text-gray-700 ${isMobile ? 'hidden' : 'mt-px inline-block px-1 text-[11px]'}`} style={{ lineHeight: 1 }}>
                 {horse.horse_name.substring(0, 3)}
             </span>
         </div>
@@ -44,6 +45,8 @@ const HorseMarker = ({ horse, position, isMobile, markerSpacing }: { horse: Hors
 );
 
 export const StartPositionChart = ({ predictions }: { predictions: HorsePrediction[] }) => {
+    const isMobile = useMediaQuery('(max-width: 767px)');
+
     if (!predictions || predictions.length === 0 || predictions.every(p => p.start_1c_indicator === null)) {
         return (
             <div className="my-4 p-4 md:p-6 bg-gray-50 border rounded-lg shadow-inner text-center text-gray-500">
@@ -52,7 +55,6 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
         );
     }
 
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     const validPredictions = predictions.filter(p => p.start_1c_indicator !== null);
     const scores = validPredictions.map(p => p.start_1c_indicator!);
     const minScore = Math.min(...scores);

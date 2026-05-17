@@ -23,6 +23,7 @@ app = FastAPI(
 # ローカル開発環境、Vercelのプレビュードメイン、本番ドメインをすべて含めます。
 allow_origins = [
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
     "https://uma-free.com",
     "https://www.uma-free.com",
     "https://keiba-site-v1-6brvxwn9l-umazkyms-projects.vercel.app", # ログに出ていたVercelのプレビュードメイン

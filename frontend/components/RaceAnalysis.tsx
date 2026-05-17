@@ -98,7 +98,7 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
         } else if (darkHorses.length >= 2) {
             return `▲や△の印がついた不気味な伏兵馬が複数存在しています。上位人気の馬が崩れた際に一気に波乱となるケースがあり、穴狙いの方にとっては面白い構成です。思わぬ高配当を狙うなら、手広くカバーする券種が適しているでしょう。`;
         } else {
-            return `印の分布からも、比較的順当に決まりやすい堅実な構成と分析されています。${topHorse?.horse_name || 'トップ評価の馬'}から点数を絞り、無駄な買い目を減らして利益率を高める王道の戦略が似合うレースと言えそうです。`;
+            return `印の分布からも、比較的順当に決まりやすい堅実な構成と分析されています。${topHorse?.horse_name || 'トップ評価の馬'}を中心に、相手候補を絞って確認する進め方が合うレースと言えそうです。`;
         }
     };
 
@@ -119,24 +119,26 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
                 </div>
             )}
 
-            <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-primary">
-                <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">出走馬の能力分析</h4>
-                <p className="text-gray-700 text-[11px] sm:text-sm leading-relaxed">{generateAbilityAnalysis()}</p>
-            </div>
+            <div className="grid gap-2 sm:gap-4 lg:grid-cols-2">
+                <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-primary">
+                    <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">出走馬の能力分析</h4>
+                    <p className="text-gray-700 text-[11px] sm:text-sm leading-relaxed">{generateAbilityAnalysis()}</p>
+                </div>
 
-            <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-accent">
-                <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">スタートからの展開予想</h4>
-                <p className="text-gray-700 text-[11px] sm:text-sm leading-relaxed">{generateStartAnalysis()}</p>
-            </div>
+                <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-accent">
+                    <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">スタートからの展開予想</h4>
+                    <p className="text-gray-700 text-[11px] sm:text-sm leading-relaxed">{generateStartAnalysis()}</p>
+                </div>
 
-            <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary">
-                <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">枠順による影響</h4>
-                <p className="text-gray-700 text-[11px] sm:text-sm leading-relaxed">{generateFrameAnalysis()}</p>
-            </div>
+                <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary">
+                    <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">枠順による影響</h4>
+                    <p className="text-gray-700 text-[11px] sm:text-sm leading-relaxed">{generateFrameAnalysis()}</p>
+                </div>
 
-            <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary-dark">
-                <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">馬券戦略の方向性</h4>
-                <p className="text-gray-700 text-[11px] sm:text-sm leading-relaxed">{generateStrategyAnalysis()}</p>
+                <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary-dark">
+                    <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">馬券戦略の方向性</h4>
+                    <p className="text-gray-700 text-[11px] sm:text-sm leading-relaxed">{generateStrategyAnalysis()}</p>
+                </div>
             </div>
 
             <div className="p-2 sm:p-3 text-[10px] sm:text-xs italic">

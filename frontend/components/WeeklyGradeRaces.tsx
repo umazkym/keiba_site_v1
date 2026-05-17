@@ -47,17 +47,18 @@ function cleanRaceName(name: string): string {
 
 interface WeeklyGradeRacesProps {
     races: WeeklyGradeRace[];
+    compact?: boolean;
 }
 
-export function WeeklyGradeRaces({ races }: WeeklyGradeRacesProps) {
+export function WeeklyGradeRaces({ races, compact = false }: WeeklyGradeRacesProps) {
     if (!races || races.length === 0) {
         return null;
     }
 
     return (
-        <section className="card" id="weekly-grade-races">
-            <div className="p-3 sm:p-4">
-                <h2 style={{
+        <section className={compact ? "" : "card"} id="weekly-grade-races">
+            <div className={compact ? "" : "p-3 sm:p-4"}>
+                <h2 className={compact ? "sr-only" : ""} style={{
                     display: 'flex', alignItems: 'center', gap: '8px',
                     fontSize: '15px', fontWeight: 700, margin: '0 0 8px',
                     color: 'var(--color-heading, #1a1a2e)',
@@ -70,7 +71,7 @@ export function WeeklyGradeRaces({ races }: WeeklyGradeRacesProps) {
                 </h2>
 
                 {/* 横並びでシンプル＆クリーンな「タグ」スタイル */}
-                <div className="flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-3">
+                <div className={`flex flex-wrap gap-2 ${compact ? 'justify-start' : 'justify-center sm:justify-start sm:gap-3'}`}>
                     {races.map((race) => {
                         const style = gradeStyles[race.grade] || gradeStyles.G3;
                         const raceDate = formatRaceDate(race.race_date);

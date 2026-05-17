@@ -484,6 +484,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 - **確認事項**: `npm run build` 成功。`npm run article:validate-links` は主要変更後に成功し、最後の見出しタグ調整後の再実行は環境の権限申請上限で未実施。`git diff --check` は成功。ブラウザ確認はローカルプレビューURLが環境側のセキュリティポリシーでブロックされたため未実施。
 - **次のステップ**: 本番プレビューまたは実機でファーストビューの見え方、広告配信時の余白、`home_after_value_preview` と `home_after_top_hits` のRPM/CTR/滞在影響をGA4とAdSenseで比較する。
 - **追加対応**: 2026-05-18 00:18 に、ホーム上部の説明臭さを抑えるため、ヒーロー文と「Why UMA-FREE」説明セクションを撤去。ファーストビューは `本日の分析` の操作パネルへ変更し、「レースを開くと見られる分析」は `詳細分析メニュー` に改名。各サンプルカードの文言も「上位候補の差を見る」「前半の位置取りを見る」など操作語へ短縮。`npm run build`, `node -e "eval(require('fs').readFileSync('scripts/agents/validate_article_links.js','utf8'))"`, `git diff --check` は成功。
+- **追加対応**: 2026-05-18 00:30 に、元サイトの表示・色合いから離れすぎていた白黒分割のファーストビューを撤去し、既存の濃紺フル幅ヒーロー、`venue-links`、高配当ランキング中心の構成へ戻した。`詳細分析メニュー` は通常の白カード群として下部に残し、追加価値だけを元のトンマナ内に収めた。`npm run build`, `node -e "eval(require('fs').readFileSync('scripts/agents/validate_article_links.js','utf8'))"`, `git diff --check` は成功。
 
 #### ✅ レース予想ページ中心のUI/UX統一・可変データ表示改善
 - **完了日時**: 2026-05-17 19:41

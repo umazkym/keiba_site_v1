@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 import {
     ArrowRight,
     BarChart3,
-    CalendarDays,
     Gauge,
     LineChart,
     ListChecks,
@@ -21,7 +20,7 @@ import DisclaimerAlert from '@/components/DisclaimerAlert';
 import { AdUnit } from '@/components/AdUnit';
 import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
-import type { HorsePrediction, RaceDayPrediction, RacePrediction, VenueRaces } from '@/lib/types';
+import type { RaceDayPrediction, RacePrediction, VenueRaces } from '@/lib/types';
 
 // ISR: データ更新は1日2〜3回（06:00, 13:30 JST）のバッチ処理のため、
 // 30分間キャッシュでも十分な鮮度を維持しつつ、Origin Transfer/CPUを大幅削減。
@@ -64,12 +63,6 @@ const homepageFaqItems = [
         question: 'モバイルでも使えますか？',
         answer: 'はい。PC・スマートフォン・タブレットすべてのデバイスに対応しています。',
     },
-];
-
-const fallbackPreviewHorses = [
-    { horse_number: 3, horse_name: 'AI上位候補', mark: '◎', deviation_score: 72.4 },
-    { horse_number: 8, horse_name: '相手候補', mark: '○', deviation_score: 66.8 },
-    { horse_number: 11, horse_name: '押さえ候補', mark: '▲', deviation_score: 61.5 },
 ];
 
 const getTodayString = () => {
@@ -151,42 +144,6 @@ const selectFeaturedRace = (predictions: RaceDayPrediction | null, todayStr: str
         href: `/races/${todayStr}?race=${selected.race.race_number}&venue=${encodeURIComponent(selected.venue.venue_name)}`,
         topHorses,
     };
-};
-
-const getMarkClass = (mark?: string) => {
-    if (mark === '◎') return 'bg-amber-500 text-white';
-    if (mark === '○') return 'bg-blue-600 text-white';
-    if (mark === '▲') return 'bg-slate-800 text-white';
-    if (mark === '△') return 'bg-emerald-600 text-white';
-    return 'bg-slate-100 text-slate-600';
-};
-
-const PreviewHorseRow = ({ horse, index }: { horse: Partial<HorsePrediction>; index: number }) => {
-    const score = horse.deviation_score ?? 0;
-    const width = Math.max(36, Math.min(100, Math.round((score / 80) * 100)));
-
-    return (
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-            <div className="flex items-center gap-2">
-                <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-black ${getMarkClass(horse.mark)}`}>
-                    {horse.mark || index + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-xs font-bold leading-none text-slate-900">
-                            {horse.horse_number ? `${horse.horse_number}. ` : ''}{horse.horse_name}
-                        </p>
-                        <span className="font-mono text-[12px] font-black text-slate-900">
-                            {score ? score.toFixed(1) : '--'}
-                        </span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full rounded-full bg-blue-600" style={{ width: `${width}%` }} />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
 };
 
 const FeaturePreviewCard = ({
@@ -332,44 +289,6 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
     </section>
 );
 
-const VenueButtonGroup = ({
-    label,
-    venues,
-    todayStr,
-}: {
-    label: string;
-    venues: VenueRaces[];
-    todayStr: string;
-}) => {
-    if (!venues || venues.length === 0) return null;
-
-    return (
-        <div>
-            <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-black text-slate-700">{label}</p>
-                <span className="text-[10px] font-bold text-slate-400">{venues.reduce((sum, venue) => sum + venue.races.length, 0)}レース</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {venues.slice(0, 6).map((venue) => (
-                    <Link
-                        key={`${label}-${venue.venue_name}`}
-                        href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`}
-                        className="flex min-h-[44px] items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-black text-slate-800 transition-colors hover:border-slate-300 hover:bg-white"
-                    >
-                        <span>{venue.venue_name}</span>
-                        <span className="text-[10px] font-bold text-slate-400">{venue.races.length}R</span>
-                    </Link>
-                ))}
-            </div>
-            {venues.length > 6 && (
-                <Link href={`/races/${todayStr}`} className="mt-2 inline-flex text-xs font-bold text-slate-600 hover:text-slate-950">
-                    すべての開催を見る
-                </Link>
-            )}
-        </div>
-    );
-};
-
 export default async function HomePage() {
     const todayStr = getTodayString();
     const [specialPick, predictions, weeklyGradeRaces, topHits] = await Promise.all([
@@ -395,164 +314,110 @@ export default async function HomePage() {
     const totalArticles = getAllArticles().length;
     const featuredRace = selectFeaturedRace(predictions, todayStr);
     const featuredHref = featuredRace?.href ?? `/races/${todayStr}`;
-    const previewHorses = featuredRace?.topHorses.length ? featuredRace.topHorses : fallbackPreviewHorses;
     const venueCount = getVenueCount(predictions);
     const raceCount = getRaceCount(predictions);
 
     return (
         <div className="py-4 flex flex-col" style={{ gap: 'var(--section-gap)' }}>
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="grid gap-0 lg:grid-cols-[minmax(0,0.88fr)_minmax(390px,1.12fr)]">
-                    <div className="flex flex-col justify-between p-5 sm:p-7 lg:p-8">
-                        <div>
-                            <div className="mb-4 flex items-center justify-between gap-3">
-                                <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">TODAY</p>
-                                    <h1 className="text-2xl font-black leading-tight tracking-normal text-slate-950 sm:text-3xl">
-                                        本日の分析
-                                    </h1>
-                                </div>
-                                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-black text-slate-600">
-                                    <CalendarDays className="h-3.5 w-3.5" />
-                                    {formatShortDate(todayStr)}
-                                </span>
-                            </div>
+            <div className="space-y-4 sm:space-y-6">
+                <section className="hero">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_60%)]"></div>
 
-                            <div className="grid grid-cols-3 gap-2">
-                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                                    <p className="text-xl font-black text-slate-950">{venueCount || 24}</p>
-                                    <p className="text-[11px] font-bold text-slate-500">開催場</p>
-                                </div>
-                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                                    <p className="text-xl font-black text-slate-950">{raceCount || '全'}</p>
-                                    <p className="text-[11px] font-bold text-slate-500">レース</p>
-                                </div>
-                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                                    <p className="text-xl font-black text-slate-950">{totalArticles}</p>
-                                    <p className="text-[11px] font-bold text-slate-500">記事</p>
-                                </div>
-                            </div>
+                    <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto">
+                        <h1>
+                            登録不要・完全無料
+                            <br />
+                            <span>AI競馬データ分析</span>
+                        </h1>
+                        <p>
+                            過去5年以上のレースデータを統計的に分析。中央・地方の全レースに対応。
+                        </p>
+
+                        <div className="hero-stats">
+                            <div><div className="num">{venueCount || 24}</div><div className="lbl">対応競馬場</div></div>
+                            <div><div className="num">{raceCount || '全'}</div><div className="lbl">本日レース</div></div>
+                            <div><div className="num">{totalArticles}</div><div className="lbl">分析記事</div></div>
+                            <div><div className="num">毎日</div><div className="lbl">データ更新</div></div>
                         </div>
 
-                        <div className="mt-5 grid gap-2">
-                            <Link href={featuredHref} className="btn-primary min-h-[46px] justify-between gap-2 px-4 text-sm">
-                                今日の分析を見る
-                                <ArrowRight className="h-4 w-4" />
+                        <div className="mt-6 sm:mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                            <Link href={featuredHref} className="hero-btn group justify-center">
+                                今日のデータ分析をチェック <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
                             </Link>
-                            <div className="grid grid-cols-2 gap-2">
-                                <Link
-                                    href={`/races/${todayStr}`}
-                                    className="inline-flex min-h-[42px] items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                                >
-                                    全レース
-                                </Link>
-                                <Link
-                                    href="/articles"
-                                    className="inline-flex min-h-[42px] items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                                >
-                                    記事
-                                </Link>
-                            </div>
+                            <Link
+                                href={`/races/${todayStr}`}
+                                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-white/15 bg-white/10 px-5 text-sm font-bold text-white transition-colors hover:bg-white/15"
+                            >
+                                本日の全レース
+                            </Link>
                         </div>
                     </div>
+                </section>
 
-                    <div className="bg-slate-950 p-4 text-white sm:p-6 lg:p-7">
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">PICKUP RACE</p>
-                                <p className="truncate text-base font-black text-white">
-                                    {featuredRace ? `${featuredRace.venue.venue_name} ${featuredRace.race.race_number}R` : 'レース詳細の表示例'}
-                                </p>
-                            </div>
-                            {featuredRace && (
-                                <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold text-slate-200">
-                                    {featuredRace.group}
-                                </span>
-                            )}
-                        </div>
+                {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
+                    <WeeklyGradeRaces races={weeklyGradeRaces} />
+                )}
 
-                        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                            <div className="mb-3 flex items-center justify-between gap-2 border-b border-white/10 pb-2">
-                                <div className="min-w-0">
-                                    <p className="truncate text-sm font-black text-white">
-                                        {featuredRace?.race.race_name ?? '出走馬のAI評価'}
-                                    </p>
-                                    <p className="mt-0.5 text-[11px] font-bold text-slate-400">
-                                        {featuredRace ? getRaceCourseLabel(featuredRace.race) : 'AI偏差値・脚質・枠順傾向をまとめて確認'}
-                                    </p>
-                                </div>
-                                <Gauge className="h-5 w-5 shrink-0 text-blue-300" />
-                            </div>
-                            <div className="space-y-2">
-                                {previewHorses.map((horse, index) => (
-                                    <PreviewHorseRow key={`${horse.horse_number}-${horse.horse_name}-${index}`} horse={horse} index={index} />
+                <RecentRaceReturn />
+
+                <section className="venue-links">
+                    <h2>
+                        <svg width="18" height="18" fill="none" stroke="var(--color-primary)" strokeWidth="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        本日の開催（{formatShortDate(todayStr)}）
+                    </h2>
+
+                    {predictions && predictions.jra?.length > 0 && (
+                        <>
+                            <div className="venue-links-label">中央競馬（JRA）</div>
+                            <div className="venue-links-row">
+                                {(predictions.jra ?? []).slice(0, 4).map(venue => (
+                                    <Link key={venue.venue_name} href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`} className="venue-link">
+                                        {venue.venue_name}
+                                    </Link>
                                 ))}
+                                {(predictions.jra?.length ?? 0) > 4 && (
+                                    <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
+                                )}
                             </div>
-                        </div>
-
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                            {[
-                                { label: '脚質予測', active: featuredRace?.race.predictions.some((prediction) => prediction.start_1c_indicator !== null) },
-                                { label: '対戦成績', active: hasMatchupData(featuredRace?.race) },
-                                { label: '枠順傾向', active: (featuredRace?.race.horse_number_advantages?.length ?? 0) > 0 },
-                                { label: 'AI分析', active: !!featuredRace?.race.ai_analysis_text },
-                            ].map((item) => (
-                                <div key={item.label} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2">
-                                    <p className="text-[11px] font-black text-white">{item.label}</p>
-                                    <p className={`mt-0.5 text-[10px] font-bold ${item.active ? 'text-emerald-300' : 'text-slate-400'}`}>
-                                        {item.active ? 'このレースで表示' : '詳細画面で確認'}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <RecentRaceReturn />
-
-            <section className="grid gap-3 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.75fr)]">
-                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Race Entrances</p>
-                            <h2 className="text-lg font-black text-slate-900">本日の開催（{formatShortDate(todayStr)}）</h2>
-                        </div>
-                        <Link href={`/races/${todayStr}`} className="inline-flex items-center gap-1 text-xs font-black text-slate-700 hover:text-slate-950">
-                            今日の全レース
-                            <ArrowRight className="h-3.5 w-3.5" />
-                        </Link>
-                    </div>
-
-                    {predictions && ((predictions.jra?.length ?? 0) > 0 || (predictions.nar?.length ?? 0) > 0) ? (
-                        <div className="space-y-4">
-                            <VenueButtonGroup label="中央競馬" venues={predictions.jra ?? []} todayStr={todayStr} />
-                            <VenueButtonGroup label="地方競馬" venues={predictions.nar ?? []} todayStr={todayStr} />
-                        </div>
-                    ) : (
-                        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm font-bold text-slate-500">
-                            本日のレースデータはまだありません。更新後に競馬場別の入口が表示されます。
-                        </div>
+                        </>
                     )}
-                </div>
 
-                <div className="space-y-3">
-                    <SpecialPickCard pick={specialPick} date={todayStr} />
-                    {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
-                        <WeeklyGradeRaces races={weeklyGradeRaces} />
+                    {predictions && predictions.nar?.length > 0 && (
+                        <>
+                            <div className="venue-links-label">地方競馬（NAR）</div>
+                            <div className="venue-links-row !mb-0">
+                                {(predictions.nar ?? []).slice(0, 4).map(venue => (
+                                    <Link key={venue.venue_name} href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`} className="venue-link">
+                                        {venue.venue_name}
+                                    </Link>
+                                ))}
+                                {(predictions.nar?.length ?? 0) > 4 && (
+                                    <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
+                                )}
+                            </div>
+                        </>
                     )}
-                </div>
-            </section>
+
+                    {(!predictions || ((predictions.jra?.length ?? 0) === 0 && (predictions.nar?.length ?? 0) === 0)) && (
+                        <p className="text-sm text-secondary mt-2">本日のレースデータはありません。</p>
+                    )}
+                </section>
+
+                <section>
+                    <TopHitsDisplay initialHits={topHits} />
+                </section>
+            </div>
+
+            <AdUnit slot="8529703346" placement="inline" analyticsPlacement="home_after_top_hits" />
 
             <MiniFeatureSamples href={featuredHref} race={featuredRace?.race} />
 
-            <AdUnit slot="8529703346" placement="inline" analyticsPlacement="home_after_value_preview" />
-
             <section>
-                <TopHitsDisplay initialHits={topHits} />
+                <h2 className="sec-title"><span className="bar bg-accent"></span>今日の分析注目馬</h2>
+                <SpecialPickCard pick={specialPick} date={todayStr} />
             </section>
 
-            <AdUnit slot="1489598374" placement="inline" analyticsPlacement="home_after_top_hits" />
+            <AdUnit slot="1489598374" placement="inline" analyticsPlacement="home_after_special_pick" />
 
             <section>
                 <div className="flex items-center justify-between mb-2">

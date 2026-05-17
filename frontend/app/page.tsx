@@ -8,11 +8,7 @@ import {
     Gauge,
     LineChart,
     ListChecks,
-    MapPin,
-    ShieldCheck,
     Swords,
-    Target,
-    TrendingUp,
 } from 'lucide-react';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
@@ -225,7 +221,7 @@ const FeaturePreviewCard = ({
             <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-700" />
         </div>
         <div className="mb-3 min-h-[76px]">{children}</div>
-        <p className="mt-auto text-[11px] leading-relaxed text-slate-500">{description}</p>
+        <p className="mt-auto text-[11px] font-bold leading-relaxed text-slate-500">{description}</p>
     </Link>
 );
 
@@ -233,11 +229,11 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
     <section>
         <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Race Detail Preview</p>
-                <h2 className="text-lg font-black text-slate-900 sm:text-xl">レースを開くと見られる分析</h2>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">DETAIL TOOLS</p>
+                <h2 className="text-lg font-black text-slate-900 sm:text-xl">詳細分析メニュー</h2>
             </div>
             <Link href={href} className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 hover:text-slate-950">
-                サンプルのレースを見る
+                このレースで開く
                 <ArrowRight className="h-3.5 w-3.5" />
             </Link>
         </div>
@@ -248,7 +244,7 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
                 label="全頭比較"
                 title="AI偏差値"
                 icon={<Gauge className="h-4 w-4" />}
-                description="能力評価を数値で並べて、上位候補と差をすばやく確認できます。"
+                description="上位候補の差を見る"
             >
                 <div className="space-y-2">
                     <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
@@ -265,7 +261,7 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
                 label="位置取り"
                 title="脚質予測"
                 icon={<LineChart className="h-4 w-4" />}
-                description="序盤の位置取り傾向を見て、展開が向きそうな馬を探せます。"
+                description="前半の位置取りを見る"
             >
                 <div className="flex h-[74px] items-end gap-1.5 rounded-lg bg-slate-50 px-3 pb-2 pt-3">
                     {[68, 42, 74, 52, 35].map((height, index) => (
@@ -282,7 +278,7 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
                 label="直接比較"
                 title="対戦成績"
                 icon={<Swords className="h-4 w-4" />}
-                description={hasMatchupData(race) ? '出走馬同士の過去対戦を勝敗で確認できます。' : '過去対戦があるレースでは、勝敗関係を表で確認できます。'}
+                description={hasMatchupData(race) ? '過去の直接対決を見る' : '直接対決の有無を見る'}
             >
                 <div className="grid grid-cols-3 gap-1.5 text-center text-[11px] font-black">
                     {['+2', '0', '-1', '+1', '+3', '0', '-2', '+1', '+2'].map((value, index) => (
@@ -301,7 +297,7 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
                 label={getRaceCourseLabel(race)}
                 title="枠順傾向"
                 icon={<BarChart3 className="h-4 w-4" />}
-                description="コースごとに、馬番や枠の有利不利をスコアで確認できます。"
+                description="コース別の有利枠を見る"
             >
                 <div className="space-y-1.5">
                     {[82, 54, 68, 40].map((width, index) => (
@@ -320,7 +316,7 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
                 label="読み解き"
                 title="AI分析"
                 icon={<ListChecks className="h-4 w-4" />}
-                description={race?.ai_analysis_text ? 'レースごとの注目点を短く整理して確認できます。' : 'データがそろったレースでは、注目点を文章で確認できます。'}
+                description={race?.ai_analysis_text ? 'レース短評を見る' : '分析コメントを見る'}
             >
                 <div className="space-y-1.5 rounded-lg bg-slate-50 p-2.5 text-[10px] font-bold text-slate-600">
                     <div className="h-1.5 w-[92%] rounded-full bg-slate-300" />
@@ -406,56 +402,64 @@ export default async function HomePage() {
     return (
         <div className="py-4 flex flex-col" style={{ gap: 'var(--section-gap)' }}>
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="grid gap-0 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
-                    <div className="p-5 sm:p-7 lg:p-8">
-                        <div className="mb-3 flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[11px] font-black text-blue-700">
-                                <ShieldCheck className="h-3.5 w-3.5" />
-                                登録不要
-                            </span>
-                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-800">
-                                <CalendarDays className="h-3.5 w-3.5" />
-                                毎日更新
-                            </span>
+                <div className="grid gap-0 lg:grid-cols-[minmax(0,0.88fr)_minmax(390px,1.12fr)]">
+                    <div className="flex flex-col justify-between p-5 sm:p-7 lg:p-8">
+                        <div>
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">TODAY</p>
+                                    <h1 className="text-2xl font-black leading-tight tracking-normal text-slate-950 sm:text-3xl">
+                                        本日の分析
+                                    </h1>
+                                </div>
+                                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-black text-slate-600">
+                                    <CalendarDays className="h-3.5 w-3.5" />
+                                    {formatShortDate(todayStr)}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                    <p className="text-xl font-black text-slate-950">{venueCount || 24}</p>
+                                    <p className="text-[11px] font-bold text-slate-500">開催場</p>
+                                </div>
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                    <p className="text-xl font-black text-slate-950">{raceCount || '全'}</p>
+                                    <p className="text-[11px] font-bold text-slate-500">レース</p>
+                                </div>
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                    <p className="text-xl font-black text-slate-950">{totalArticles}</p>
+                                    <p className="text-[11px] font-bold text-slate-500">記事</p>
+                                </div>
+                            </div>
                         </div>
-                        <h1 className="max-w-2xl text-2xl font-black leading-tight tracking-normal text-slate-950 sm:text-4xl">
-                            今日のレースを、AI偏差値とデータで見比べる
-                        </h1>
-                        <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-                            UMA-FREEは、出走馬のAI偏差値、脚質予測、過去対戦、枠順傾向、AI分析コメントを無料で確認できる競馬データ分析サイトです。買うレースと見送るレースを整理するための材料を、レースごとにまとめています。
-                        </p>
-                        <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-xl">
-                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                                <p className="text-lg font-black text-slate-950">{venueCount || 24}</p>
-                                <p className="text-[11px] font-bold text-slate-500">対応競馬場</p>
-                            </div>
-                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                                <p className="text-lg font-black text-slate-950">{raceCount || '全'}</p>
-                                <p className="text-[11px] font-bold text-slate-500">本日レース</p>
-                            </div>
-                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                                <p className="text-lg font-black text-slate-950">{totalArticles}</p>
-                                <p className="text-[11px] font-bold text-slate-500">分析記事</p>
-                            </div>
-                        </div>
-                        <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-                            <Link href={featuredHref} className="btn-primary min-h-[46px] justify-center gap-2 px-5 text-sm">
+
+                        <div className="mt-5 grid gap-2">
+                            <Link href={featuredHref} className="btn-primary min-h-[46px] justify-between gap-2 px-4 text-sm">
                                 今日の分析を見る
                                 <ArrowRight className="h-4 w-4" />
                             </Link>
-                            <Link
-                                href="/articles"
-                                className="inline-flex min-h-[46px] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                            >
-                                分析記事を読む
-                            </Link>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Link
+                                    href={`/races/${todayStr}`}
+                                    className="inline-flex min-h-[42px] items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                                >
+                                    全レース
+                                </Link>
+                                <Link
+                                    href="/articles"
+                                    className="inline-flex min-h-[42px] items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                                >
+                                    記事
+                                </Link>
+                            </div>
                         </div>
                     </div>
 
                     <div className="bg-slate-950 p-4 text-white sm:p-6 lg:p-7">
                         <div className="mb-3 flex items-center justify-between gap-3">
                             <div className="min-w-0">
-                                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Today Preview</p>
+                                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">PICKUP RACE</p>
                                 <p className="truncate text-base font-black text-white">
                                     {featuredRace ? `${featuredRace.venue.venue_name} ${featuredRace.race.race_number}R` : 'レース詳細の表示例'}
                                 </p>
@@ -543,34 +547,6 @@ export default async function HomePage() {
             <MiniFeatureSamples href={featuredHref} race={featuredRace?.race} />
 
             <AdUnit slot="8529703346" placement="inline" analyticsPlacement="home_after_value_preview" />
-
-            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-center">
-                    <div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Why UMA-FREE</p>
-                        <h2 className="mt-1 text-lg font-black text-slate-900 sm:text-xl">出走表だけでは見落としやすい材料を、レースごとに整理</h2>
-                        <p className="mt-2 text-sm leading-7 text-slate-600">
-                            人気やオッズだけで判断しにくいレースでも、過去の対戦、コースごとの馬番傾向、序盤の位置取り、AI偏差値を同じ画面で比較できます。新規の方は今日のレースから全体像をつかみ、リピーターの方は前回見たレースや重賞レースへすぐ戻れる構成にしています。
-                        </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                        {[
-                            { icon: <Target className="h-4 w-4" />, title: '買う理由を整理', text: '上位候補と不安材料を同時に確認' },
-                            { icon: <TrendingUp className="h-4 w-4" />, title: '回収率の見直し', text: '的中ランキングから傾向を振り返る' },
-                            { icon: <MapPin className="h-4 w-4" />, title: '競馬場別に確認', text: '中央・地方を同じ導線でチェック' },
-                            { icon: <CalendarDays className="h-4 w-4" />, title: '日々の習慣化', text: '前回のレースへ戻りやすい導線' },
-                        ].map((item) => (
-                            <div key={item.title} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                                <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-white text-slate-800 shadow-sm">
-                                    {item.icon}
-                                </div>
-                                <p className="text-[13px] font-black text-slate-900">{item.title}</p>
-                                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{item.text}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
 
             <section>
                 <TopHitsDisplay initialHits={topHits} />

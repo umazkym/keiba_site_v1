@@ -21,6 +21,17 @@ const ALLOWED_INTERNAL_PATHS = new Set([
 const markdownLinkPattern = /!?\[[^\]]*]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
 const manualRelatedPattern = /^##\s+関連記事\s*$/m;
 const relatedPlaceholderPattern = /\[関連記事：.*?]/;
+const prohibitedTonePatterns = [
+  { pattern: /投資|資金配分|期待値/, reason: 'financial or profit-like phrasing should be avoided' },
+  { pattern: /絶対|圧倒|最強|完全攻略|必勝|消去対象/, reason: 'overconfident betting phrasing should be avoided' },
+  { pattern: /断言|論証|解明|無条件/, reason: 'mechanical or overly assertive phrasing should be avoided' },
+  { pattern: /稼げ|儲か|爆益|買えば|勝てる/, reason: 'guaranteed-return style phrasing should be avoided' },
+  { pattern: /封殺|叩き出|爆発力/, reason: 'sensational phrasing should be avoided' },
+];
+const awkwardPhrasePatterns = [
+  { pattern: /大きくな|大きくであり|大きなな|目立つな|有力なの/, reason: 'awkward replacement artifact' },
+  { pattern: /するする|だだ|できるだけ抑えたし|大きく上回るして/, reason: 'awkward replacement artifact' },
+];
 
 function getArticleFiles() {
   if (!fs.existsSync(ARTICLES_DIR)) return [];
@@ -118,6 +129,15 @@ function parseFrontmatter(raw) {
   return { data, content };
 }
 
+function validateTone(file, raw, issues) {
+  for (const { pattern, reason } of [...prohibitedTonePatterns, ...awkwardPhrasePatterns]) {
+    const match = raw.match(pattern);
+    if (match) {
+      issues.push({ file, type: 'tone', value: match[0], reason });
+    }
+  }
+}
+
 function main() {
   const files = getArticleFiles();
   const slugs = new Set(files.map(file => file.replace(/\.md$/, '')));
@@ -132,6 +152,8 @@ function main() {
       issues.push({ file, type: 'frontmatter', value: 'missing or invalid frontmatter', reason: 'frontmatter parse failed' });
       continue;
     }
+
+    validateTone(file, raw, issues);
 
     if (manualRelatedPattern.test(parsed.content)) {
       issues.push({ file, type: 'content', value: '## 関連記事', reason: 'manual related section is not allowed' });

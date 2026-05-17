@@ -241,7 +241,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📊 全体の進捗状況
 
-**最終更新**: 2026-05-16
+**最終更新**: 2026-05-17
 
 | フェーズ | ステータス | 完了数/総数 | 進捗率 |
 |---------|----------|-----------|-------|
@@ -510,6 +510,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 - **追加確認**: 2026-05-17 00:47 に日次実行時の重複・上書きリスクを点検。承認済み記事が複数ある場合に1本しか公開されない問題、重賞の日本語レース名がslug生成で削られて衝突し得る問題、未公開draft履歴が次回生成候補を塞ぐ問題、同一実行内の同一keyword重複処理を修正。既存の重複draft履歴も整理し、記事生成workflowにconcurrencyを追加。`npm run build` と `python -m py_compile backend/scripts/agents/data_scientist.py backend/scripts/agents/grade_race_writer.py` は成功。
 - **追加確認**: 2026-05-17 00:56 に既存67記事のMarkdownリンク、画像、frontmatter URLを全件検査。記事slug切れ・画像切れは0件だった一方、旧手動「関連記事」セクション50件と `uma-free.jp` のOGP URL 10件を検出したため、既存記事から手動関連記事を削除し、OGP URLを `uma-free.com` に統一。日次公開前に `npm run article:validate-links` が走る検査スクリプトを追加し、Publisherのコミット前検査、workflowの事前検査、SEOチェッカーのリンク規則にも反映。`npm run article:validate-links`, `npm run build`, `python -m py_compile backend/scripts/agents/data_scientist.py backend/scripts/agents/grade_race_writer.py`, `git diff --check` は成功。
 - **追加対応**: 2026-05-17 02:27 に `/articles` と記事詳細のUIを再設計。目的別の説明付きタグ群、記事詳細の長い使いどころパネル、目次ブロックを撤去し、カテゴリ絞り込みとタイトル中心の一覧表示へ変更。過去対決成績は18頭でもPCで横スクロールに頼らない固定幅テーブルにし、スマホでは基準馬選択＋2列比較に変更。`npm run build`, `npm run article:validate-links`, `git diff --check` は成功。ローカルNextで `/articles` と `/articles/2026-05-14-niigata2026-ai` の表示を確認。
+- **追加対応**: 2026-05-17 07:57 に既存記事64件の本文・title・descriptionを横断的に自然化。「投資」「期待値」「絶対」「圧倒」「最強」「必勝」「消去対象」など、広告審査や読者信頼の面で強すぎる表現を、オッズ妙味・購入候補・判断材料・評価を下げたい条件などの自然な競馬メディア表現へ置換。置換由来の不自然な接続も検査し、日次生成で再発しないよう `frontend/scripts/agents/validate_article_links.js` に文体ガードを追加。`npm run article:validate-links`, `npm run build`, `git diff --check` は成功。ローカルAPI未起動のため、ビルド時の予想API取得警告は継続。
 
 -----
 

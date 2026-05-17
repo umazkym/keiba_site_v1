@@ -186,11 +186,11 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
     <section>
         <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">DETAIL TOOLS</p>
-                <h2 className="text-lg font-black text-slate-900 sm:text-xl">詳細分析メニュー</h2>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">RACE DATA</p>
+                <h2 className="text-lg font-black text-slate-900 sm:text-xl">各レースで見られるデータ</h2>
             </div>
             <Link href={href} className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 hover:text-slate-950">
-                このレースで開く
+                実際のレースで見る
                 <ArrowRight className="h-3.5 w-3.5" />
             </Link>
         </div>
@@ -201,7 +201,7 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
                 label="全頭比較"
                 title="AI偏差値"
                 icon={<Gauge className="h-4 w-4" />}
-                description="上位候補の差を見る"
+                description="全頭の評価差をひと目で確認"
             >
                 <div className="space-y-2">
                     <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
@@ -218,7 +218,7 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
                 label="位置取り"
                 title="脚質予測"
                 icon={<LineChart className="h-4 w-4" />}
-                description="前半の位置取りを見る"
+                description="序盤の位置取りをチェック"
             >
                 <div className="flex h-[74px] items-end gap-1.5 rounded-lg bg-slate-50 px-3 pb-2 pt-3">
                     {[68, 42, 74, 52, 35].map((height, index) => (
@@ -235,7 +235,7 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
                 label="直接比較"
                 title="対戦成績"
                 icon={<Swords className="h-4 w-4" />}
-                description={hasMatchupData(race) ? '過去の直接対決を見る' : '直接対決の有無を見る'}
+                description={hasMatchupData(race) ? '過去の直接対決を確認' : '直接対決の有無を確認'}
             >
                 <div className="grid grid-cols-3 gap-1.5 text-center text-[11px] font-black">
                     {['+2', '0', '-1', '+1', '+3', '0', '-2', '+1', '+2'].map((value, index) => (
@@ -254,7 +254,7 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
                 label={getRaceCourseLabel(race)}
                 title="枠順傾向"
                 icon={<BarChart3 className="h-4 w-4" />}
-                description="コース別の有利枠を見る"
+                description="コース別の枠順傾向を確認"
             >
                 <div className="space-y-1.5">
                     {[82, 54, 68, 40].map((width, index) => (
@@ -273,7 +273,7 @@ const MiniFeatureSamples = ({ href, race }: { href: string; race?: RacePredictio
                 label="読み解き"
                 title="AI分析"
                 icon={<ListChecks className="h-4 w-4" />}
-                description={race?.ai_analysis_text ? 'レース短評を見る' : '分析コメントを見る'}
+                description={race?.ai_analysis_text ? '展開・適性の短評を確認' : '分析コメントを確認'}
             >
                 <div className="space-y-1.5 rounded-lg bg-slate-50 p-2.5 text-[10px] font-bold text-slate-600">
                     <div className="h-1.5 w-[92%] rounded-full bg-slate-300" />
@@ -403,14 +403,14 @@ export default async function HomePage() {
                     )}
                 </section>
 
+                <MiniFeatureSamples href={featuredHref} race={featuredRace?.race} />
+
+                <AdUnit slot="8529703346" placement="inline" analyticsPlacement="home_after_value_preview" />
+
                 <section>
                     <TopHitsDisplay initialHits={topHits} />
                 </section>
             </div>
-
-            <AdUnit slot="8529703346" placement="inline" analyticsPlacement="home_after_top_hits" />
-
-            <MiniFeatureSamples href={featuredHref} race={featuredRace?.race} />
 
             <section>
                 <h2 className="sec-title"><span className="bar bg-accent"></span>今日の分析注目馬</h2>

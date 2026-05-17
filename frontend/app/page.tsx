@@ -179,9 +179,9 @@ const MiniFeatureSamples = ({ href }: { href: string }) => (
     <section>
         <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">DATA SAMPLE</p>
-                <h2 className="text-lg font-black text-slate-900 sm:text-xl">レースデータの表示例</h2>
-                <p className="mt-1 text-[11px] font-semibold text-slate-500">実際のデータではなく表示例です</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">RACE DATA</p>
+                <h2 className="text-lg font-black text-slate-900 sm:text-xl">このサイトで見られる分析</h2>
+                <p className="mt-1 text-[11px] font-semibold text-slate-500">図は画面イメージです。実際のレースでは当日のデータで表示します。</p>
             </div>
             <Link href={href} className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 hover:text-slate-950">
                 実際のレースで確認
@@ -192,14 +192,14 @@ const MiniFeatureSamples = ({ href }: { href: string }) => (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <FeaturePreviewCard
                 href={href}
-                label="表示例・全頭比較"
+                label="全頭比較"
                 title="AI偏差値"
                 icon={<Gauge className="h-4 w-4" />}
-                description="全頭の評価差を短時間で比べる例です"
+                description="全頭の評価差を短時間で比較"
             >
                 <div className="space-y-2">
                     <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
-                        <span>上位候補</span><span>表示例</span>
+                        <span>上位候補</span><span>差分</span>
                     </div>
                     <div className="h-2 rounded-full bg-slate-100"><div className="h-2 w-[88%] rounded-full bg-blue-600" /></div>
                     <div className="h-2 rounded-full bg-slate-100"><div className="h-2 w-[72%] rounded-full bg-slate-500" /></div>
@@ -209,10 +209,10 @@ const MiniFeatureSamples = ({ href }: { href: string }) => (
 
             <FeaturePreviewCard
                 href={href}
-                label="表示例・位置取り"
+                label="位置取り"
                 title="脚質予測"
                 icon={<LineChart className="h-4 w-4" />}
-                description="序盤の位置取りを短時間で読む例です"
+                description="序盤の位置取りをグラフで把握"
             >
                 <div className="flex h-[74px] items-end gap-1.5 rounded-lg bg-slate-50 px-3 pb-2 pt-3">
                     {[68, 42, 74, 52, 35].map((height, index) => (
@@ -226,10 +226,10 @@ const MiniFeatureSamples = ({ href }: { href: string }) => (
 
             <FeaturePreviewCard
                 href={href}
-                label="表示例・直接比較"
+                label="直接比較"
                 title="対戦成績"
                 icon={<Swords className="h-4 w-4" />}
-                description="過去対戦の勝敗関係を確認する例です"
+                description="過去対戦の勝敗関係を確認"
             >
                 <div className="grid grid-cols-3 gap-1.5 text-center text-[11px] font-black">
                     {['+2', '0', '-1', '+1', '+3', '0', '-2', '+1', '+2'].map((value, index) => (
@@ -245,10 +245,10 @@ const MiniFeatureSamples = ({ href }: { href: string }) => (
 
             <FeaturePreviewCard
                 href={href}
-                label="表示例・枠順"
+                label="枠順とコース"
                 title="枠順傾向"
                 icon={<BarChart3 className="h-4 w-4" />}
-                description="枠順ごとの有利不利を確認する例です"
+                description="枠順ごとの有利不利を確認"
             >
                 <div className="space-y-1.5">
                     {[82, 54, 68, 40].map((width, index) => (
@@ -264,10 +264,10 @@ const MiniFeatureSamples = ({ href }: { href: string }) => (
 
             <FeaturePreviewCard
                 href={href}
-                label="表示例・読み解き"
+                label="読み解き"
                 title="AI分析"
                 icon={<ListChecks className="h-4 w-4" />}
-                description="展開と適性の注目点を読む例です"
+                description="展開と適性の注目点を整理"
             >
                 <div className="space-y-1.5 rounded-lg bg-slate-50 p-2.5 text-[10px] font-bold text-slate-600">
                     <div className="h-1.5 w-[92%] rounded-full bg-slate-300" />
@@ -314,12 +314,6 @@ export default async function HomePage() {
     return (
         <div className="py-4 flex flex-col" style={{ gap: 'var(--section-gap)' }}>
             <div className="space-y-4 sm:space-y-6">
-                <section>
-                    <TopHitsDisplay initialHits={topHits} />
-                </section>
-
-                <RecentRaceReturn />
-
                 <section className="hero">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_60%)]"></div>
 
@@ -353,6 +347,12 @@ export default async function HomePage() {
                         </div>
                     </div>
                 </section>
+
+                <section>
+                    <TopHitsDisplay initialHits={topHits} />
+                </section>
+
+                <RecentRaceReturn />
 
                 {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
                     <WeeklyGradeRaces races={weeklyGradeRaces} />

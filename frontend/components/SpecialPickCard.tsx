@@ -52,7 +52,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
         getSpecialPick(effectiveDate)
             .then(data => {
                 if (data) {
-                    data.commentary = `AI偏差値 ${data.deviation_score.toFixed(2)}。${data.venue_name}${data.race_number}R の ${data.horse_name} を詳しく見る →`;
+                    data.commentary = `AI偏差値 ${data.deviation_score.toFixed(2)} — ${data.venue_name}${data.race_number}R の ${data.horse_name} を詳しく見る →`;
                 }
                 setPick(data);
             })

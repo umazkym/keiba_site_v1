@@ -2,7 +2,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
 import {
-    ArrowRight,
     BarChart3,
     Gauge,
     LineChart,
@@ -77,10 +76,6 @@ const formatShortDate = (date: string) => {
     return `${Number(month)}/${Number(day)}`;
 };
 
-const hasMatchupData = (race?: RacePrediction | null) => {
-    const data = race?.matchup?.matchup_data;
-    return !!data && Object.keys(data).length > 0;
-};
 
 const getAllRaceItems = (predictions: RaceDayPrediction | null) => {
     const items: { group: '中央' | '地方'; venue: VenueRaces; race: RacePrediction }[] = [];
@@ -101,184 +96,63 @@ const getRaceCount = (predictions: RaceDayPrediction | null) => {
     return getAllRaceItems(predictions).length;
 };
 
-const selectFeaturedRace = (predictions: RaceDayPrediction | null, todayStr: string) => {
-    const allRaces = getAllRaceItems(predictions);
-    if (allRaces.length === 0) return null;
 
-    const scored = allRaces.map((item) => {
-        const topScore = Math.max(
-            ...item.race.predictions
-                .map((prediction) => prediction.deviation_score ?? 0)
-                .filter((score) => Number.isFinite(score)),
-            0
-        );
-        const score =
-            topScore +
-            (item.race.ai_analysis_text ? 12 : 0) +
-            (hasMatchupData(item.race) ? 8 : 0) +
-            ((item.race.horse_number_advantages?.length ?? 0) > 0 ? 6 : 0) +
-            (item.race.predictions.some((prediction) => prediction.start_1c_indicator !== null) ? 5 : 0);
-
-        return { ...item, score };
-    });
-
-    const selected = scored.sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        return a.race.race_number - b.race.race_number;
-    })[0];
-
-    const topHorses = selected.race.predictions
-        .filter((prediction) => prediction.deviation_score !== null)
-        .sort((a, b) => (b.deviation_score ?? 0) - (a.deviation_score ?? 0))
-        .slice(0, 3);
-
-    return {
-        ...selected,
-        href: `/races/${todayStr}?race=${selected.race.race_number}&venue=${encodeURIComponent(selected.venue.venue_name)}`,
-        topHorses,
-    };
-};
-
-const FeaturePreviewCard = ({
+/* ------------------------------------------------------------------
+ * 分析データ紹介 — コンパクト横並びカード
+ * 他ページと同じ白背景カード + 控えめなアイコンで統一感を保つ
+ * ------------------------------------------------------------------ */
+const FeatureItem = ({
     title,
-    label,
     description,
     icon,
-    href,
-    children,
 }: {
     title: string;
-    label: string;
     description: string;
     icon: ReactNode;
-    href: string;
-    children: ReactNode;
 }) => (
-    <Link
-        href={href}
-        className="group flex h-full flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
-    >
-        <div className="mb-3 flex items-start justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-800">
-                    {icon}
-                </span>
-                <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-slate-400">{label}</p>
-                    <p className="truncate text-[13px] font-black text-slate-900">{title}</p>
-                </div>
-            </div>
-            <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-700" />
+    <div className="flex items-start gap-2.5 rounded-lg border border-slate-200 bg-white p-3 sm:p-3.5">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
+            {icon}
+        </span>
+        <div className="min-w-0">
+            <p className="text-[13px] font-bold text-slate-900 leading-tight">{title}</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">{description}</p>
         </div>
-        <div className="mb-3 min-h-[76px]">{children}</div>
-        <p className="mt-auto text-[11px] font-bold leading-relaxed text-slate-500">{description}</p>
-    </Link>
+    </div>
 );
 
-const MiniFeatureSamples = ({ href }: { href: string }) => (
+const AnalysisFeatures = () => (
     <section>
-        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">RACE DATA</p>
-                <h2 className="text-lg font-black text-slate-900 sm:text-xl">このサイトで見られる分析</h2>
-                <p className="mt-1 text-[11px] font-semibold text-slate-500">図は画面イメージです。実際のレースでは当日のデータで表示します。</p>
-            </div>
-            <Link href={href} className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 hover:text-slate-950">
-                実際のレースで確認
-                <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            <FeaturePreviewCard
-                href={href}
-                label="全頭比較"
+        <h2 className="sec-title">
+            <span className="bar bg-secondary"></span>
+            レースページの主な分析データ
+        </h2>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <FeatureItem
                 title="AI偏差値"
-                icon={<Gauge className="h-4 w-4" />}
-                description="全頭の評価差を短時間で比較"
-            >
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
-                        <span>上位候補</span><span>差分</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-slate-100"><div className="h-2 w-[88%] rounded-full bg-blue-600" /></div>
-                    <div className="h-2 rounded-full bg-slate-100"><div className="h-2 w-[72%] rounded-full bg-slate-500" /></div>
-                    <div className="h-2 rounded-full bg-slate-100"><div className="h-2 w-[61%] rounded-full bg-amber-500" /></div>
-                </div>
-            </FeaturePreviewCard>
-
-            <FeaturePreviewCard
-                href={href}
-                label="位置取り"
+                icon={<Gauge className="h-3.5 w-3.5" />}
+                description="過去走・適性・展開力を独自アルゴリズムで数値化し、出走全頭を一覧で比較"
+            />
+            <FeatureItem
                 title="脚質予測"
-                icon={<LineChart className="h-4 w-4" />}
-                description="序盤の位置取りをグラフで把握"
-            >
-                <div className="flex h-[74px] items-end gap-1.5 rounded-lg bg-slate-50 px-3 pb-2 pt-3">
-                    {[68, 42, 74, 52, 35].map((height, index) => (
-                        <div key={index} className="flex flex-1 flex-col items-center justify-end gap-1">
-                            <div className="w-full rounded-t bg-emerald-500/80" style={{ height: `${height}%` }} />
-                            <span className="text-[9px] font-bold text-slate-400">{index + 1}C</span>
-                        </div>
-                    ))}
-                </div>
-            </FeaturePreviewCard>
-
-            <FeaturePreviewCard
-                href={href}
-                label="直接比較"
+                icon={<LineChart className="h-3.5 w-3.5" />}
+                description="各コーナーでの隊列をシミュレーションし、展開の有利不利を表示"
+            />
+            <FeatureItem
                 title="対戦成績"
-                icon={<Swords className="h-4 w-4" />}
-                description="過去対戦の勝敗関係を確認"
-            >
-                <div className="grid grid-cols-3 gap-1.5 text-center text-[11px] font-black">
-                    {['+2', '0', '-1', '+1', '+3', '0', '-2', '+1', '+2'].map((value, index) => (
-                        <span
-                            key={`${value}-${index}`}
-                            className={`rounded-md py-1.5 ${value.startsWith('+') ? 'bg-emerald-50 text-emerald-700' : value.startsWith('-') ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-500'}`}
-                        >
-                            {value}
-                        </span>
-                    ))}
-                </div>
-            </FeaturePreviewCard>
-
-            <FeaturePreviewCard
-                href={href}
-                label="枠順とコース"
+                icon={<Swords className="h-3.5 w-3.5" />}
+                description="出走馬同士の過去の直接対決をマトリクスで表示"
+            />
+            <FeatureItem
                 title="枠順傾向"
-                icon={<BarChart3 className="h-4 w-4" />}
-                description="枠順ごとの有利不利を確認"
-            >
-                <div className="space-y-1.5">
-                    {[82, 54, 68, 40].map((width, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                            <span className="w-7 text-[10px] font-bold text-slate-400">{index + 1}枠</span>
-                            <div className="h-2 flex-1 rounded-full bg-slate-100">
-                                <div className="h-2 rounded-full bg-amber-500" style={{ width: `${width}%` }} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </FeaturePreviewCard>
-
-            <FeaturePreviewCard
-                href={href}
-                label="読み解き"
-                title="AI分析"
-                icon={<ListChecks className="h-4 w-4" />}
-                description="展開と適性の注目点を整理"
-            >
-                <div className="space-y-1.5 rounded-lg bg-slate-50 p-2.5 text-[10px] font-bold text-slate-600">
-                    <div className="h-1.5 w-[92%] rounded-full bg-slate-300" />
-                    <div className="h-1.5 w-[74%] rounded-full bg-slate-300" />
-                    <div className="mt-2 flex flex-wrap gap-1">
-                        <span className="rounded bg-white px-1.5 py-1 text-blue-700">展開</span>
-                        <span className="rounded bg-white px-1.5 py-1 text-emerald-700">適性</span>
-                        <span className="rounded bg-white px-1.5 py-1 text-amber-700">注意点</span>
-                    </div>
-                </div>
-            </FeaturePreviewCard>
+                icon={<BarChart3 className="h-3.5 w-3.5" />}
+                description="コース・距離・馬場状態ごとの枠順別勝率を集計"
+            />
+            <FeatureItem
+                title="AI分析コメント"
+                icon={<ListChecks className="h-3.5 w-3.5" />}
+                description="展開予想・適性評価・リスク要因をテキストで解説"
+            />
         </div>
     </section>
 );
@@ -306,14 +180,13 @@ export default async function HomePage() {
 
     const latestArticles = getLatestArticles(6);
     const totalArticles = getAllArticles().length;
-    const featuredRace = selectFeaturedRace(predictions, todayStr);
-    const featuredHref = featuredRace?.href ?? `/races/${todayStr}`;
     const venueCount = getVenueCount(predictions);
     const raceCount = getRaceCount(predictions);
 
     return (
         <div className="py-4 flex flex-col" style={{ gap: 'var(--section-gap)' }}>
             <div className="space-y-4 sm:space-y-6">
+                {/* ── ヒーロー ── */}
                 <section className="hero">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_60%)]"></div>
 
@@ -321,10 +194,10 @@ export default async function HomePage() {
                         <h1>
                             登録不要・完全無料
                             <br />
-                            <span>AI競馬データ分析</span>
+                            <span className="text-white">AI競馬データ分析</span>
                         </h1>
                         <p>
-                            過去5年以上のレースデータを統計的に分析。中央・地方の全レースに対応。
+                            過去5年以上のレースデータを統計的に分析。中央・地方の全レースに対応しています。
                         </p>
 
                         <div className="hero-stats">
@@ -335,29 +208,27 @@ export default async function HomePage() {
                         </div>
 
                         <div className="mt-6 sm:mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
-                            <Link href={featuredHref} className="hero-btn group justify-center">
-                                今日のデータ分析をチェック <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
-                            </Link>
-                            <Link
-                                href={`/races/${todayStr}`}
-                                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-white/15 bg-white/10 px-5 text-sm font-bold text-white transition-colors hover:bg-white/15"
-                            >
-                                本日の全レース
+                            <Link href={`/races/${todayStr}`} className="hero-btn group justify-center">
+                                本日の分析を見る <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
                             </Link>
                         </div>
                     </div>
                 </section>
 
+                {/* ── 高配当的中ランキング ── */}
                 <section>
                     <TopHitsDisplay initialHits={topHits} />
                 </section>
 
+                {/* ── 前回見ていたレース（リピーター向け） ── */}
                 <RecentRaceReturn />
 
+                {/* ── 今週の重賞 ── */}
                 {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
                     <WeeklyGradeRaces races={weeklyGradeRaces} />
                 )}
 
+                {/* ── 本日の開催 ── */}
                 <section className="venue-links">
                     <h2>
                         <svg width="18" height="18" fill="none" stroke="var(--color-primary)" strokeWidth="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -401,11 +272,10 @@ export default async function HomePage() {
                     )}
                 </section>
 
-                <MiniFeatureSamples href={featuredHref} />
-
                 <AdUnit slot="8529703346" placement="inline" analyticsPlacement="home_after_value_preview" />
             </div>
 
+            {/* ── 今日の分析注目馬 ── */}
             <section>
                 <h2 className="sec-title"><span className="bar bg-accent"></span>今日の分析注目馬</h2>
                 <SpecialPickCard pick={specialPick} date={todayStr} />
@@ -413,6 +283,10 @@ export default async function HomePage() {
 
             <AdUnit slot="1489598374" placement="inline" analyticsPlacement="home_after_special_pick" />
 
+            {/* ── 分析データの紹介 ── */}
+            <AnalysisFeatures />
+
+            {/* ── 最新の分析記事 ── */}
             <section>
                 <div className="flex items-center justify-between mb-2">
                     <h2 className="sec-title !mb-0">

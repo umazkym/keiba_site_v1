@@ -152,7 +152,7 @@
         @apply text-2xl sm:text-4xl font-extrabold text-white leading-tight mb-2 tracking-tight;
     }
     .hero h1 span {
-        @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-300;
+        @apply text-white;
     }
     .hero p {
         @apply text-sm sm:text-base text-slate-400 mb-6 max-w-xl leading-relaxed;

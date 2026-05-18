@@ -19,7 +19,7 @@ import DisclaimerAlert from '@/components/DisclaimerAlert';
 import { AdUnit } from '@/components/AdUnit';
 import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
-import type { RaceDayPrediction, RacePrediction, VenueRaces } from '@/lib/types';
+import type { RaceDayPrediction } from '@/lib/types';
 
 // ISR: データ更新は1日2〜3回（06:00, 13:30 JST）のバッチ処理のため、
 // 30分間キャッシュでも十分な鮮度を維持しつつ、Origin Transfer/CPUを大幅削減。
@@ -76,25 +76,6 @@ const formatShortDate = (date: string) => {
     return `${Number(month)}/${Number(day)}`;
 };
 
-
-const getAllRaceItems = (predictions: RaceDayPrediction | null) => {
-    const items: { group: '中央' | '地方'; venue: VenueRaces; race: RacePrediction }[] = [];
-    predictions?.jra?.forEach((venue) => {
-        venue.races.forEach((race) => items.push({ group: '中央', venue, race }));
-    });
-    predictions?.nar?.forEach((venue) => {
-        venue.races.forEach((race) => items.push({ group: '地方', venue, race }));
-    });
-    return items;
-};
-
-const getVenueCount = (predictions: RaceDayPrediction | null) => {
-    return (predictions?.jra?.length ?? 0) + (predictions?.nar?.length ?? 0);
-};
-
-const getRaceCount = (predictions: RaceDayPrediction | null) => {
-    return getAllRaceItems(predictions).length;
-};
 
 
 /* ------------------------------------------------------------------
@@ -252,8 +233,6 @@ export default async function HomePage() {
 
     const latestArticles = getLatestArticles(6);
     const totalArticles = getAllArticles().length;
-    const venueCount = getVenueCount(predictions);
-    const raceCount = getRaceCount(predictions);
 
     return (
         <div className="py-4 flex flex-col" style={{ gap: 'var(--section-gap)' }}>
@@ -273,8 +252,8 @@ export default async function HomePage() {
                         </p>
 
                         <div className="hero-stats">
-                            <div><div className="num">{venueCount || 24}</div><div className="lbl">対応競馬場</div></div>
-                            <div><div className="num">{raceCount || '全'}</div><div className="lbl">本日レース</div></div>
+                            <div><div className="num">24</div><div className="lbl">対応競馬場</div></div>
+                            <div><div className="num">中央・地方</div><div className="lbl">全レース無料</div></div>
                             <div><div className="num">{totalArticles}</div><div className="lbl">分析記事</div></div>
                             <div><div className="num">毎日</div><div className="lbl">データ更新</div></div>
                         </div>

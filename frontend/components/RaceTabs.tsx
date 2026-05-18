@@ -334,11 +334,41 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 </div>
                             </div>
 
-                            {/* オーバーレイ */}
+                            {/* オーバーレイ: 4つの分析データプレビュー + 解除ボタン */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/30 via-white/70 to-white/95 px-4">
                                 {!showInlineAd ? (
-                                    <div className="text-center max-w-xs w-full">
-                                        <p className="text-sm text-slate-600 mb-4 font-medium">脚質予測、対戦成績、枠順傾向、AI分析を閲覧</p>
+                                    <div className="text-center max-w-sm w-full">
+                                        <p className="text-[13px] sm:text-sm font-bold text-slate-800 mb-3">このレースの詳細分析を表示</p>
+                                        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-4 text-left">
+                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
+                                                <FlagIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">脚質予測</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">各コーナーの位置取り</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
+                                                <UsersIcon className="w-3.5 h-3.5 text-secondary shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">対戦成績</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">過去の直接対決</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
+                                                <ChartBarIcon className="w-3.5 h-3.5 text-accent shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">枠順傾向</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">コース別の有利枠</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
+                                                <SparklesIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">AI分析</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">展開・適性の解説</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                         <button
                                             onClick={() => {
                                                 if (isSupported) {
@@ -354,11 +384,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                                     }, 1000);
                                                 }
                                             }}
-                                            // ★ 修正: disabled 条件を修正
-                                            // 変更前: disabled={!isReady && !isLoading}
-                                            //   → isLoading=true のとき disabled=false → スピナー表示中でも押せた
-                                            //   → モバイルで showAd() が空振り（makeVisibleRef 未設定）
-                                            // 変更後: isLoading 中は必ず disabled。isReady になってから押せる。
                                             disabled={isLoading || !isReady}
                                             className="btn-primary w-full text-sm gap-2"
                                         >

@@ -157,14 +157,22 @@ async function runPipeline() {
     if (reviewResult.retryable) {
       console.error("[Pipeline] Geminiの一時的な制限によりレビューを停止します。write_orderは未消費のまま残します。");
       break;
-    } else if (reviewResult.status === 'REJECTED' && reviewResult.newDraftPath) {
-      console.log(`修正版のファイルが生成されました: ${reviewResult.newDraftPath}`);
+    } else if (reviewResult.status === 'REJECTED') {
+      if (reviewResult.newDraftPath) {
+        console.log(`修正版のファイルが生成されました: ${reviewResult.newDraftPath}`);
+      }
+      const rejectReason = reviewResult.newDraftPath
+        ? `editor rejected: ${path.basename(reviewResult.newDraftPath)}`
+        : `editor rejected: ${reviewResult.log.slice(0, 120)}`;
+      moveToFailed(orderPath, rejectReason);
+      if (attemptedCount >= MAX_ARTICLES_PER_RUN) break;
+      continue;
     } else if (reviewResult.status === 'APPROVED') {
       console.log(`合格したため、承認済みキューに移動しました: ${reviewResult.newDraftPath}`);
       approvedCount++;
     }
 
-    // write_orderを消費済みに移動
+    // 承認まで進んだwrite_orderのみ消費済みに移動する。
     moveToProcessed(orderPath);
     if (attemptedCount >= MAX_ARTICLES_PER_RUN) break; // 1日最大3記事まで生成
   }

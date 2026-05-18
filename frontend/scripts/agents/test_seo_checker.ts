@@ -2,7 +2,7 @@ import { checkSEO } from './seo_checker';
 
 const validMarkdown = `---
 title: "中山ダート1200m｜8枠複勝率26.8%が教える外枠偏重の買い方"
-description: "8枠の複勝率26.8%は1枠の7.0%を19.8pt上回る。スタート直後の芝部分の長さがもたらす外枠有利の構造と、脚質別の狙い目をデータで整理する。"
+description: "8枠の複勝率26.8%は1枠の7.0%を19.8pt上回る。スタート直後の芝部分がもたらす外枠有利の構造と、脚質別の狙い目、評価を下げる条件をデータで整理する。直前の出馬表で確認したい順番と、買い目を広げすぎない判断軸も分かる実用メモです。"
 keywords: ["中山ダート1200m", "枠順"]
 target_keyword: "中山ダート1200m 枠順"
 theme_cluster: "asset"
@@ -30,7 +30,7 @@ draft: true
 
 ## データが示す3つの買い目構築ルール
 
-1. **8枠の先行馬は無条件で買い目に入れる。**
+1. **8枠の先行馬は条件が合えば買い目に入れる。**
 2. **1枠の逃げ馬は、テンの速さがメンバー中1位でなければ消す。**
 3. **差し馬を狙うなら、外から被されない6〜7枠の中枠から選ぶ。**
 
@@ -48,3 +48,6 @@ draft: true
 console.log("Testing SEOChecker...");
 const result = checkSEO(validMarkdown);
 console.log(result);
+if (!result.passed) {
+  process.exitCode = 1;
+}

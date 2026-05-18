@@ -14,10 +14,15 @@ const BANNED_REPLACEMENTS: Record<string, string> = {
   'ぜひ参考にしてください': '判断材料として確認してください',
   '最後まで読んでいただき': '',
   '必勝': '判断',
+  '投資': '馬券検討',
+  '資金配分': '買い目の組み立て',
+  '期待値': '妙味',
   '絶対に当たる': '可能性を確認する',
+  '絶対': '条件が合えば',
   '完全攻略': '要点整理',
   '最強': '有力',
   '買うな': '評価を下げる',
+  '圧倒': '大きく',
   '圧倒的': '高い',
   '絶対的': 'はっきりした',
   '絶対条件': '重要な条件',
@@ -25,7 +30,17 @@ const BANNED_REPLACEMENTS: Record<string, string> = {
   '消去対象': '評価を下げる候補',
   '完全に除外': '評価を下げる',
   '儲かる': '妙味がある',
+  '儲か': '妙味があ',
+  '稼げ': '配当妙味を見込め',
   '爆益': '配当妙味',
+  '買えば': '買うなら',
+  '勝てる': '上位を狙える',
+  '封殺': '抑える',
+  '叩き出': '記録',
+  '爆発力': '末脚',
+  '断言': '整理',
+  '論証': '説明',
+  '解明': '整理',
   '✅': '',
   '❌': '',
   'と思っていませんか': '',
@@ -65,6 +80,10 @@ function replaceLiteral(input: string, search: string, replacement: string): str
 function sanitizeGeneratedText(input: string): string {
   let text = input;
   for (const banned of SEO_RULES.hard_banned_strings) {
+    if (banned === '買うな') {
+      text = text.replace(/買うな(?!ら)/g, BANNED_REPLACEMENTS[banned] ?? '');
+      continue;
+    }
     text = replaceLiteral(text, banned, BANNED_REPLACEMENTS[banned] ?? '');
   }
 
@@ -152,10 +171,13 @@ function fitTitleToSeo(title: string, data: Record<string, any>, content: string
     result = `${result}3点`;
   }
 
-  while (result.length < SEO_RULES.title_min_chars) {
-    const addition = result.includes('｜') ? '確認' : '｜直前確認';
-    if (result.length + addition.length > SEO_RULES.title_max_chars) break;
-    result += addition;
+  if (result.length < SEO_RULES.title_min_chars) {
+    for (const addition of ['直前確認', '買い方整理', 'データ確認']) {
+      if (result.length + addition.length <= SEO_RULES.title_max_chars) {
+        result += addition;
+        break;
+      }
+    }
   }
 
   if (result.length > SEO_RULES.title_max_chars) {
@@ -329,6 +351,9 @@ function supplementalBlocks(data: Record<string, any>): string[] {
     `## 直前に見る3つの確認材料\n\n${target}を買う前は、表の勝率だけでなく、騎乗回数や回収率、当日の馬場を分けて見る必要がある。母数が少ない数字は上振れを含みやすいため、人気馬をそのまま軸にするのではなく、同じ条件で安定して馬券圏に残っているかを確認したい。\n\n- 勝率: 軸候補を探すための入口にする\n- 回収率: 配当妙味が残っているかを見る\n- 母数: データの信頼度を測る`,
     `## 買い目へ移す3つの順序\n\n最初に勝率で候補を絞り、次に回収率で人気との釣り合いを見る。最後に枠順、脚質、馬場状態を重ねると、買う理由と見送る理由を分けやすい。数字が高くても人気が集中している場合は、単勝より相手候補に回す判断も必要になる。`,
     `## 出馬表で確認したい3つの条件\n\n同じコース成績でも、当日の頭数やペースで評価は変わる。先行馬が多い日は差し馬の位置取り、少頭数では人気馬の取りこぼしに注意したい。直前の出馬表では、データの順位だけでなく、展開に合う馬がどれかを確認する。`,
+    `## 人気を疑う3つの場面\n\n数字が良い条件でも、人気が先に集まっている時は買い目を広げすぎない方がいい。勝率が高い馬や騎手ほどオッズに反映されやすく、配当面の妙味は薄くなる。上位評価をそのまま買うのではなく、相手候補の絞り込みや見送りの判断まで含めて使いたい。`,
+    `## 馬場変化で見る3つのズレ\n\n良馬場の成績が中心のデータは、雨や乾きかけの馬場でそのまま使いにくい。時計が掛かる日は先行力、内が荒れる日は外を通せる脚質、乾いて速くなる日は位置取りの速さを重視する。直前の馬場傾向と表の数字を合わせることで、過去データと当日のズレを小さくできる。`,
+    `## 最後に残す3つの優先順位\n\n買い目を決める時は、最初に軸候補、次に相手候補、最後に評価を下げる条件を分ける。候補を増やすほど的中の幅は広がるが、根拠の薄い馬まで足すと判断がぼやける。数字で強調されている条件と、当日の出馬表で確認できる材料が重なるところを優先したい。`,
   ];
 }
 
@@ -349,6 +374,23 @@ function ensureMinimumBodyLength(content: string, data: Record<string, any>): st
       result = insertBeforeBuyingPointSection(result, block);
     }
   }
+
+  const target = compactForTitle(data.target_keyword || data.title || 'この条件');
+  const extraParagraphs = [
+    `${target}の数字は、単独で正解を決めるためではなく、出馬表を見る順番を整えるために使う。勝率が高い条件は入口として便利だが、人気が集まれば配当面の妙味は薄くなる。逆に回収率だけが目立つ条件は、母数や馬場の偏りを確認してから相手候補に残したい。`,
+    `同じコースでも、開催が進んだ週、雨が残る日、少頭数のレースでは隊列が変わる。過去データの順位をそのまま買い目へ移すのではなく、当日の馬場、脚質の並び、前走内容を重ねることで、数字の使いどころがはっきりする。`,
+    `最終的には、買う理由が複数重なる馬だけを中心に残す。勝率、回収率、枠順、騎手のどれか1つだけで強く見える場合は、相手候補までに抑える判断も必要になる。迷った時ほど、評価を上げる条件と下げる条件を分けて確認したい。`,
+    `短時間で複数レースを見る場合は、最初から細部を追いすぎないことも大切だ。まず表の上位条件を確認し、次に人気とオッズの偏りを見て、最後に当日の馬場で評価を微調整する。この順序なら、根拠の弱い買い足しを減らしやすい。`,
+    `買い目を組む前には、数字が示す強みと、当日の条件で崩れそうな点を分けておく。どちらも説明できる候補だけを残せば、人気や印の雰囲気に流されにくくなる。`,
+  ];
+
+  for (const paragraph of extraParagraphs) {
+    if (result.replace(/\s/g, '').length >= SEO_RULES.min_word_count) break;
+    if (!result.includes(paragraph.slice(0, 24))) {
+      result = insertBeforeBuyingPointSection(result, paragraph);
+    }
+  }
+
   return result;
 }
 

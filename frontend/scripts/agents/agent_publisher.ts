@@ -3,6 +3,7 @@ import path from 'path';
 import matter from 'gray-matter';
 import { execSync } from 'child_process';
 import { createHash } from 'crypto';
+import { autoRepairDraftMarkdown } from './agent_editor';
 
 const APPROVED_DIR = path.join(__dirname, '..', '..', 'agents', 'queue', 'approved');
 const ARTICLES_DIR = path.join(__dirname, '..', '..', 'content', 'articles');
@@ -304,6 +305,8 @@ async function publishDraft() {
   const publishedKeywords = loadPublishedArticleKeywords();
   const publishedSlugs: string[] = [];
   const affectedVenues = new Set<string>();
+  const approvedFilesToRemove: string[] = [];
+  const writtenArticlePaths: string[] = [];
   let skippedCount = 0;
 
   for (const targetFile of files) {
@@ -346,26 +349,35 @@ async function publishDraft() {
     // 旧プロンプト由来の [関連記事：〇〇] プレースホルダーが混入した場合のみ掃除する。
     // 新規生成では本文中に関連記事を書かず、ページ側の関連記事コンポーネントに任せる。
     const venue = extractVenue(targetKeyword);
-    const hubSlug = venue ? `${venueMap[venue]}-gate-data-hub` : null;
-    let ctaInserted = false;
-    const cleanedContent = parsed.content.replace(/\[関連記事：.*?\]\n?/g, () => {
-      if (!ctaInserted && hubSlug) {
-        ctaInserted = true;
-        return `\n---\n> **同じ競馬場の枠順データを見る**\n> → [${venue}の全記事一覧へ](/articles/${hubSlug})\n`;
-      }
-      return ''; // 2つ目以降は削除
-    });
+    const cleanedContent = parsed.content.replace(/\[関連記事：.*?\]\n?/g, '');
+
+    // Markdown再シリアライズ前に、承認済みキューに残った旧基準の文言を公開直前で補正する。
+    // 例: 「期待値」など、article:validate-links 側で弾く収益想起ワード。
+    const repaired = autoRepairDraftMarkdown(matter.stringify(cleanedContent, parsed.data));
+    if (repaired.changes.length > 0) {
+      console.log(`[Publisher] Auto-repaired article before publish: ${targetFile} (${repaired.changes.join(', ')})`);
+    }
+
+    const repairedParsed = matter(repaired.content);
+    repairedParsed.data.draft = false;
+    repairedParsed.data.date = parsed.data.date;
+    repairedParsed.data.article_published_time = parsed.data.article_published_time;
+    repairedParsed.data.og_type = 'article';
+    repairedParsed.data.og_title = repairedParsed.data.title;
+    repairedParsed.data.og_description = repairedParsed.data.description;
+    repairedParsed.data.og_image = parsed.data.og_image;
+    parsed.data = repairedParsed.data;
 
     // Markdown再シリアライズ
-    const finalContent = matter.stringify(cleanedContent, parsed.data);
+    const finalContent = matter.stringify(repairedParsed.content, repairedParsed.data);
 
     // ファイルを Articles ディレクトリへ書き込み
     fs.writeFileSync(destPath, finalContent, 'utf-8');
+    writtenArticlePaths.push(destPath);
     console.log(`[Publisher] Published article to: ${destPath}`);
 
-    // 元ファイルを削除
-    fs.unlinkSync(filePath);
-    console.log(`[Publisher] Removed original approved draft: ${targetFile}`);
+    // 検査が通るまではapproved原稿を残し、失敗時に調査・再実行できるようにする。
+    approvedFilesToRemove.push(filePath);
 
     // posted_history.json を更新
     try {
@@ -418,15 +430,32 @@ async function publishDraft() {
     publishedSlugs.push(slug);
   }
 
-  writeHistory(history);
-
   // 施策C: ハブ記事の自動生成/更新
   for (const venue of affectedVenues) {
     generateHubArticle(venue, history);
   }
 
   console.log('[Publisher] Validating article links before Git commit...');
-  execSync('npm run article:validate-links', { stdio: 'inherit' });
+  try {
+    execSync('npm run article:validate-links', { stdio: 'inherit' });
+  } catch (validationErr) {
+    for (const articlePath of writtenArticlePaths) {
+      if (fs.existsSync(articlePath)) {
+        fs.unlinkSync(articlePath);
+        console.warn(`[Publisher] Rolled back article after validation failure: ${path.basename(articlePath)}`);
+      }
+    }
+    throw validationErr;
+  }
+
+  writeHistory(history);
+
+  for (const approvedPath of approvedFilesToRemove) {
+    if (fs.existsSync(approvedPath)) {
+      fs.unlinkSync(approvedPath);
+      console.log(`[Publisher] Removed original approved draft: ${path.basename(approvedPath)}`);
+    }
+  }
 
   // Git操作 (Actionsでの動作を想定)
   try {
@@ -443,12 +472,18 @@ async function publishDraft() {
         console.log('[Publisher] Git push complete!');
       } catch (pushErr: any) {
         console.warn('[Publisher] Git push failed. Please ensure credentials are set if running locally.', pushErr.message);
+        if (process.env.GITHUB_ACTIONS === 'true') {
+          throw pushErr;
+        }
       }
     } else {
       console.log('[Publisher] No changes to commit.');
     }
   } catch (gitErr: any) {
     console.error('[Publisher] Git operation failed. Skipping...', gitErr.message);
+    if (process.env.GITHUB_ACTIONS === 'true') {
+      throw gitErr;
+    }
   }
 
   console.log(`[Publisher] Published: ${publishedSlugs.length}, skipped duplicates: ${skippedCount}`);

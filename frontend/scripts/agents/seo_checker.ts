@@ -16,18 +16,33 @@ export const SEO_RULES = {
     "ぜひ参考にしてください",
     "最後まで読んでいただき",
     "必勝",
+    "投資",
+    "資金配分",
+    "期待値",
     "絶対に当たる",
+    "絶対的",
+    "絶対条件",
+    "絶対",
     "完全攻略",
     "最強",
     "買うな",
     "圧倒的",
-    "絶対的",
-    "絶対条件",
+    "圧倒",
     "狙い撃つ",
     "消去対象",
     "完全に除外",
     "儲かる",
+    "儲か",
+    "稼げ",
     "爆益",
+    "買えば",
+    "勝てる",
+    "封殺",
+    "叩き出",
+    "爆発力",
+    "断言",
+    "論証",
+    "解明",
     "✅",
     "❌",
     // 導入テンプレート
@@ -240,7 +255,11 @@ export function checkSEO(markdownText: string): SEOCheckResult {
   // 10. NGワードの完全チェック
   const scanTarget = `${title}\n${description}\n${content}`;
   for (const banned of SEO_RULES.hard_banned_strings) {
-    if (scanTarget.includes(banned)) {
+    const found = banned === '買うな'
+      ? /買うな(?!ら)/.test(scanTarget)
+      : scanTarget.includes(banned);
+
+    if (found) {
       errors.push(`title/description/本文にNGワードが含まれています: 「${banned}」`);
     }
   }

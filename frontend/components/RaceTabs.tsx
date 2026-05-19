@@ -454,11 +454,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                             '詳細分析を表示'
                                         )}
                                     </button>
-                                    <p className="mt-2 text-[10px] sm:text-[11px] leading-relaxed text-slate-500">
-                                        {isSupported
-                                            ? '広告視聴が完了すると、このレースの詳細分析が開きます。'
-                                            : '広告を準備できない場合は、そのまま詳細分析を表示します。'}
-                                    </p>
                                 </div>
                             </div>
                         </div>

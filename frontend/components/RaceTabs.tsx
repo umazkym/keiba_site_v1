@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
@@ -16,9 +16,8 @@ import { RelatedRaces } from './RelatedRaces';
 import { DataExplanationPanel } from './DataExplanationPanel';
 import { DynamicRelatedArticles } from './DynamicRelatedArticles';
 import { Article } from '@/lib/articles';
-import { useRewardedAd } from '@/hooks/useRewardedAd';
-import { Adsense } from './Adsense';
-import { sendRaceViewEvent } from '@/lib/analytics';
+import { useRewardedAd, type RewardedAdContext } from '@/hooks/useRewardedAd';
+import { sendRaceViewEvent, sendRewardGateEvent } from '@/lib/analytics';
 import { LAST_RACE_STORAGE_KEY, StoredRaceView } from '@/lib/race-memory';
 
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
@@ -46,13 +45,14 @@ const CollapsibleSection = memo(({ title, icon, children }: { title: string, ico
 
 CollapsibleSection.displayName = 'CollapsibleSection';
 
-const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isRaceUnlocked, isReady, isLoading, isSupported, showAd, unlock }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isRaceUnlocked: (raceId: string) => boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, showAd: (raceId?: string) => void, unlock: (raceId?: string) => void }) => {
-    const [showInlineAd, setShowInlineAd] = useState(false);
-    const [countdown, setCountdown] = useState(7);
+const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isRaceUnlocked, isReady, isLoading, isSupported, unavailableReason, showAd, unlock }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isRaceUnlocked: (raceId: string) => boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, unavailableReason: string | null, showAd: (context?: RewardedAdContext | string) => boolean, unlock: (raceId?: string) => void }) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
     const currentDate = params.date as string;
+    const gateViewKeysRef = useRef<Set<string>>(new Set());
+    const adAvailabilityKeysRef = useRef<Set<string>>(new Set());
+    const premiumViewKeysRef = useRef<Set<string>>(new Set());
 
     const initialIndex = useMemo(() => {
         if (!initialRaceNumber) return 0;
@@ -62,6 +62,8 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
     const [activeRaceIndex, setActiveRaceIndex] = useState(initialIndex);
     const activeRace = venue.races[activeRaceIndex];
+    const isActiveRaceUnlocked = activeRace ? isRaceUnlocked(activeRace.id) : false;
+    const rewardAdStatus = isLoading ? 'loading' : isSupported ? 'ready' : 'unavailable';
 
     // ブラウザ「戻る」対応
     useEffect(() => {
@@ -72,18 +74,6 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
             }
         }
     }, [initialRaceNumber, venue.races]);
-
-    // ★ 修正: レース切替時に showInlineAd と countdown をリセット
-    // 変更前: activeRaceIndex が変わっても showInlineAd=true / countdown が途中のまま残る
-    //         → レース2に切り替えても広告が表示済みの状態になる（ユーザーが広告を見ていない可能性）
-    // 変更後: レース切替のたびに広告状態をリセット
-    //         ただし isUnlocked=true の場合はリセット不要（アンロック済み）
-    useEffect(() => {
-        if (activeRace && !isRaceUnlocked(activeRace.id)) {
-            setShowInlineAd(false);
-            setCountdown(7);
-        }
-    }, [activeRaceIndex, activeRace, isRaceUnlocked]);
 
     const handleRaceSelect = useCallback((index: number) => {
         setActiveRaceIndex(index);
@@ -112,6 +102,48 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     const adRefreshKey = useMemo(() => {
         return activeRace ? `${venue.venue_name}-${activeRace.race_number}-v${venueActivationKey}` : '';
     }, [venue.venue_name, activeRace, venueActivationKey]);
+
+    const buildRewardContext = useCallback((): RewardedAdContext | null => {
+        if (!activeRace) return null;
+
+        return {
+            race_id: activeRace.id,
+            race_date: currentDate || activeRace.race_date,
+            venue_name: venue.venue_name,
+            race_number: activeRace.race_number,
+            race_name: activeRace.race_name,
+            gate_placement: 'race_detail_overlay',
+            reward_type: 'race_detail_data',
+            ad_status: rewardAdStatus,
+            reason: unavailableReason ?? undefined,
+        };
+    }, [activeRace, currentDate, venue.venue_name, rewardAdStatus, unavailableReason]);
+
+    const handleRewardGateClick = useCallback(() => {
+        if (!activeRace) return;
+        const context = buildRewardContext();
+        if (!context) return;
+
+        sendRewardGateEvent('reward_gate_click', context);
+
+        if (isSupported && isReady) {
+            const started = showAd(context);
+            if (started) return;
+
+            sendRewardGateEvent('reward_fallback_used', {
+                ...context,
+                reason: 'rewarded_start_failed',
+            });
+            unlock(activeRace.id);
+            return;
+        }
+
+        sendRewardGateEvent('reward_fallback_used', {
+            ...context,
+            reason: isLoading ? 'rewarded_loading' : unavailableReason ?? 'rewarded_unavailable',
+        });
+        unlock(activeRace.id);
+    }, [activeRace, buildRewardContext, isLoading, isReady, isSupported, showAd, unavailableReason, unlock]);
 
     useEffect(() => {
         if (!activeRace || typeof window === 'undefined') return;
@@ -148,6 +180,44 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
         currentDate,
         venue.venue_name,
     ]);
+
+    useEffect(() => {
+        if (!activeRace || isActiveRaceUnlocked) return;
+        const context = buildRewardContext();
+        if (!context) return;
+
+        const key = `${activeRace.id}:gate_view`;
+        if (gateViewKeysRef.current.has(key)) return;
+        gateViewKeysRef.current.add(key);
+        sendRewardGateEvent('reward_gate_view', context);
+    }, [activeRace, isActiveRaceUnlocked, buildRewardContext]);
+
+    useEffect(() => {
+        if (!activeRace || isActiveRaceUnlocked || !isReady) return;
+        const context = buildRewardContext();
+        if (!context) return;
+
+        const status = isSupported ? 'ready' : 'unavailable';
+        const key = `${activeRace.id}:${status}`;
+        if (adAvailabilityKeysRef.current.has(key)) return;
+        adAvailabilityKeysRef.current.add(key);
+        sendRewardGateEvent(isSupported ? 'reward_ad_ready' : 'reward_ad_unavailable', {
+            ...context,
+            ad_status: status,
+            reason: isSupported ? undefined : unavailableReason ?? 'rewarded_not_available',
+        });
+    }, [activeRace, isActiveRaceUnlocked, isReady, isSupported, unavailableReason, buildRewardContext]);
+
+    useEffect(() => {
+        if (!activeRace || !isActiveRaceUnlocked) return;
+        const context = buildRewardContext();
+        if (!context) return;
+
+        const key = `${activeRace.id}:premium_view`;
+        if (premiumViewKeysRef.current.has(key)) return;
+        premiumViewKeysRef.current.add(key);
+        sendRewardGateEvent('premium_data_view', context);
+    }, [activeRace, isActiveRaceUnlocked, buildRewardContext]);
 
     const RaceNavigation = () => {
         const hasPrev = activeRaceIndex > 0;
@@ -239,7 +309,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     )}
 
                     {/* プレミアム・ロック切り替え部分 */}
-                    {(activeRace && isRaceUnlocked(activeRace.id)) ? (
+                    {(activeRace && isActiveRaceUnlocked) ? (
                         <>
                             <div className="mb-2 grid gap-2 xl:grid-cols-2">
                                 <div className="card p-2 sm:p-3">
@@ -336,90 +406,60 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
                             {/* オーバーレイ: 4つの分析データプレビュー + 解除ボタン */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/30 via-white/70 to-white/95 px-4">
-                                {!showInlineAd ? (
-                                    <div className="text-center max-w-sm w-full">
-                                        <p className="text-[13px] sm:text-sm font-bold text-slate-800 mb-3">このレースの詳細分析を表示</p>
-                                        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-4 text-left">
-                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
-                                                <FlagIcon className="w-3.5 h-3.5 text-primary shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">脚質予測</p>
-                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">各コーナーの位置取り</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
-                                                <UsersIcon className="w-3.5 h-3.5 text-secondary shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">対戦成績</p>
-                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">過去の直接対決</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
-                                                <ChartBarIcon className="w-3.5 h-3.5 text-accent shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">枠順傾向</p>
-                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">コース別の有利枠</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
-                                                <SparklesIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">AI分析</p>
-                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">展開・適性の解説</p>
-                                                </div>
+                                <div className="text-center max-w-sm w-full">
+                                    <p className="text-[13px] sm:text-sm font-bold text-slate-800 mb-3">このレースの詳細分析を表示</p>
+                                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-4 text-left">
+                                        <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
+                                            <FlagIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                                            <div className="min-w-0">
+                                                <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">脚質予測</p>
+                                                <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">各コーナーの位置取り</p>
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => {
-                                                if (isSupported) {
-                                                    showAd(activeRace.id);
-                                                } else {
-                                                    setShowInlineAd(true);
-                                                    let remaining = 7;
-                                                    setCountdown(remaining);
-                                                    const timer = setInterval(() => {
-                                                        remaining--;
-                                                        setCountdown(remaining);
-                                                        if (remaining <= 0) clearInterval(timer);
-                                                    }, 1000);
-                                                }
-                                            }}
-                                            disabled={isLoading || !isReady}
-                                            className="btn-primary w-full text-sm gap-2"
-                                        >
-                                            {isLoading ? (
-                                                <>
-                                                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                    読み込み中
-                                                </>
-                                            ) : (
-                                                '7秒間の広告を見てデータを表示'
-                                            )}
-                                        </button>
+                                        <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
+                                            <UsersIcon className="w-3.5 h-3.5 text-secondary shrink-0" />
+                                            <div className="min-w-0">
+                                                <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">対戦成績</p>
+                                                <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">過去の直接対決</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
+                                            <ChartBarIcon className="w-3.5 h-3.5 text-accent shrink-0" />
+                                            <div className="min-w-0">
+                                                <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">枠順傾向</p>
+                                                <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">コース別の有利枠</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
+                                            <SparklesIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                            <div className="min-w-0">
+                                                <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">AI分析</p>
+                                                <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">展開・適性の解説</p>
+                                            </div>
+                                        </div>
                                     </div>
-                                ) : (
-                                    <div className="w-full max-w-sm">
-                                        <div className="text-[10px] text-muted text-center mb-1 tracking-wider select-none">スポンサーリンク</div>
-                                        <div className="flex justify-center mb-3">
-                                            <Adsense
-                                                client="ca-pub-4411270831448240"
-                                                slot="1489598374"
-                                                style={{ display: 'block', width: '100%', maxWidth: '336px', height: '280px' }}
-                                                isResponsive={false}
-                                            />
-                                        </div>
-                                        {countdown > 0 ? (
-                                            <div className="text-center text-sm text-slate-400">あと {countdown}秒...</div>
+                                    <button
+                                        onClick={handleRewardGateClick}
+                                        disabled={isLoading}
+                                        className="btn-primary w-full text-sm gap-2 disabled:cursor-wait disabled:opacity-70"
+                                    >
+                                        {isLoading ? (
+                                            <>
+                                                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                広告を準備中
+                                            </>
+                                        ) : isSupported ? (
+                                            '広告を見て詳細分析を表示'
                                         ) : (
-                                            <button
-                                                onClick={() => unlock(activeRace.id)}
-                                                className="btn-primary w-full text-sm gap-2"
-                                            >
-                                                データを表示
-                                            </button>
+                                            '詳細分析を表示'
                                         )}
-                                    </div>
-                                )}
+                                    </button>
+                                    <p className="mt-2 text-[10px] sm:text-[11px] leading-relaxed text-slate-500">
+                                        {isSupported
+                                            ? '広告視聴が完了すると、このレースの詳細分析が開きます。'
+                                            : '広告を準備できない場合は、そのまま詳細分析を表示します。'}
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -483,7 +523,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         }
     }, [currentDate]);
 
-    const { isRaceUnlocked, isReady, isLoading: isAdLoading, isSupported, showAd, unlock } = useRewardedAd();
+    const { isRaceUnlocked, isReady, isLoading: isAdLoading, isSupported, unavailableReason, showAd, unlock } = useRewardedAd();
 
     const handleJraVenueSelect = useCallback((index: number) => {
         setJraActivationKey(prev => prev + 1);
@@ -554,7 +594,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                             </TabList>
                             {jra.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isRaceUnlocked={isRaceUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} showAd={showAd} unlock={unlock} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isRaceUnlocked={isRaceUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} unavailableReason={unavailableReason} showAd={showAd} unlock={unlock} />
                                 </TabPanel>
                             ))}
                         </Tabs>
@@ -570,7 +610,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                             </TabList>
                             {nar.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isRaceUnlocked={isRaceUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} showAd={showAd} unlock={unlock} />
+                                    <VenuePanel venue={venue} articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isRaceUnlocked={isRaceUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} unavailableReason={unavailableReason} showAd={showAd} unlock={unlock} />
                                 </TabPanel>
                             ))}
                         </Tabs>

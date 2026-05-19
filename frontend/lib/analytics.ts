@@ -7,6 +7,37 @@ import { sendGAEvent } from '@next/third-parties/google';
 
 export type ContentCategory = 'race_prediction' | 'data_analysis' | 'news' | 'other';
 export type PredictAccuracy = 'hit' | 'miss' | 'none';
+export type RewardGateEventName =
+    | 'reward_gate_view'
+    | 'reward_gate_click'
+    | 'reward_ad_ready'
+    | 'reward_ad_requested'
+    | 'reward_ad_started'
+    | 'reward_ad_granted'
+    | 'reward_ad_closed'
+    | 'reward_ad_unavailable'
+    | 'reward_fallback_used'
+    | 'premium_data_view';
+
+export type RewardGateEventParams = {
+    race_id?: string;
+    race_date?: string;
+    venue_name?: string;
+    race_number?: number;
+    race_name?: string;
+    gate_placement?: string;
+    reward_type?: string;
+    ad_unit_path?: string;
+    ad_status?: string;
+    result?: string;
+    reason?: string;
+};
+
+const compactParams = (params: RewardGateEventParams) => {
+    return Object.fromEntries(
+        Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    );
+};
 
 /**
  * 記事の最下部など、特定の位置まで熟読された際に送信するイベント
@@ -53,4 +84,12 @@ export const sendPredictionViewEvent = (accuracy: PredictAccuracy) => {
     sendGAEvent('event', 'prediction_view', {
         predict_accuracy: accuracy,
     });
+};
+
+/**
+ * リワード広告ゲートの表示、押下、広告開始、報酬付与、解放後閲覧までを計測する。
+ * GA4でファネルを組めるよう、イベント名を細かく分けて送る。
+ */
+export const sendRewardGateEvent = (eventName: RewardGateEventName, params: RewardGateEventParams = {}) => {
+    sendGAEvent('event', eventName, compactParams(params));
 };

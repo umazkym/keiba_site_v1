@@ -118,7 +118,7 @@ const AnalysisFeatures = () => (
     <section>
         <h2 className="sec-title">
             <span className="bar bg-secondary"></span>
-            レースページの主な分析データ
+            本サイト独自の分析データ
         </h2>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">

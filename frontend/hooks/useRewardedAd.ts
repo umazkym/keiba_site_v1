@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { sendRewardGateEvent, type RewardGateEventParams } from '@/lib/analytics';
 
 declare global {
     interface Window {
@@ -10,6 +11,15 @@ declare global {
 const AD_UNIT_PATH = '/23345285369/uma-free-rewarded-premium';
 const LOADING_TIMEOUT_MS = 10_000;
 
+export type RewardedAdContext = RewardGateEventParams;
+export type RewardedAdUnavailableReason =
+    | 'rewarded_timeout'
+    | 'slot_not_supported'
+    | 'slot_empty'
+    | 'make_rewarded_visible_failed'
+    | 'make_rewarded_visible_missing'
+    | null;
+
 /**
  * GAM リワード広告のライフサイクルを管理するカスタムフック。
  *
@@ -17,7 +27,7 @@ const LOADING_TIMEOUT_MS = 10_000;
  *   → ボタンクリック → 動画広告 → rewardedSlotGranted → アンロック
  *
  * 【PC / 在庫なし / タイムアウト】
- *   → isSupported=false → 呼び出し元がモーダルを表示 → 5秒待機 → アンロック
+ *   → isSupported=false → 呼び出し元が通常の「データを表示」ボタンに切り替える
  *
  * 【修正点】
  *
@@ -52,6 +62,7 @@ export function useRewardedAd() {
     const [isReady, setIsReady] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSupported, setIsSupported] = useState(true);
+    const [unavailableReason, setUnavailableReason] = useState<RewardedAdUnavailableReason>(null);
 
     // レース単位のアンロック管理
     const [unlockedRaceIds, setUnlockedRaceIds] = useState<Set<string>>(() => {
@@ -64,13 +75,24 @@ export function useRewardedAd() {
         }
     });
 
-    const makeVisibleRef = useRef<(() => void) | null>(null);
+    const makeVisibleRef = useRef<(() => boolean | void) | null>(null);
     const slotRef = useRef<any>(null);
     const resolvedRef = useRef(false);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const initializedRef = useRef(false);
     // showAd() 呼び出し時にどのレースの広告かを記憶する
     const pendingRaceIdRef = useRef<string | undefined>(undefined);
+    const pendingContextRef = useRef<RewardedAdContext | null>(null);
+    const rewardGrantedRef = useRef(false);
+
+    const buildEventParams = useCallback((extra: RewardGateEventParams = {}): RewardGateEventParams => {
+        return {
+            ...pendingContextRef.current,
+            race_id: pendingRaceIdRef.current ?? pendingContextRef.current?.race_id,
+            ad_unit_path: AD_UNIT_PATH,
+            ...extra,
+        };
+    }, []);
 
     // ★ スロットのみ再定義する関数（リスナーは再登録しない）
     const reloadSlot = useCallback(() => {
@@ -85,8 +107,10 @@ export function useRewardedAd() {
             }
             makeVisibleRef.current = null;
             resolvedRef.current = false;
+            rewardGrantedRef.current = false;
             setIsReady(false);
             setIsLoading(true);
+            setUnavailableReason(null);
 
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             timeoutRef.current = setTimeout(() => {
@@ -95,6 +119,8 @@ export function useRewardedAd() {
                     setIsSupported(false);
                     setIsReady(true);
                     setIsLoading(false);
+                    setUnavailableReason('rewarded_timeout');
+                    makeVisibleRef.current = null;
                 }
             }, LOADING_TIMEOUT_MS);
 
@@ -109,6 +135,8 @@ export function useRewardedAd() {
                 setIsSupported(false);
                 setIsReady(true);
                 setIsLoading(false);
+                setUnavailableReason('slot_not_supported');
+                makeVisibleRef.current = null;
                 return;
             }
 
@@ -155,6 +183,8 @@ export function useRewardedAd() {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             setIsReady(true);
             setIsLoading(false);
+            setIsSupported(true);
+            setUnavailableReason(null);
             makeVisibleRef.current = () => event.makeRewardedVisible();
         };
 
@@ -179,25 +209,23 @@ export function useRewardedAd() {
                     sessionStorage.setItem('premium_unlocked', 'true');
                 }
             }
-            pendingRaceIdRef.current = undefined;
+            rewardGrantedRef.current = true;
+            sendRewardGateEvent('reward_ad_granted', buildEventParams({ result: 'granted' }));
         };
 
         const onClosed = (event: any) => {
             if (event.slot !== slotRef.current) return;
-            // 対象レースがまだアンロックされていなければ再試行可能にする
-            const raceId = pendingRaceIdRef.current;
-            const isThisRaceUnlocked = raceId
-                ? (sessionStorage.getItem('unlocked_race_ids') ?? '').includes(raceId)
-                : sessionStorage.getItem('premium_unlocked') === 'true';
+            const result = rewardGrantedRef.current ? 'closed_after_reward' : 'closed_without_reward';
+            sendRewardGateEvent('reward_ad_closed', buildEventParams({ result }));
             pendingRaceIdRef.current = undefined;
-            if (!isThisRaceUnlocked) {
-                if (slotRef.current) {
-                    try { googletag.destroySlots([slotRef.current]); } catch (e) { /* ignore */ }
-                    slotRef.current = null;
-                }
-                // ★ reloadSlot() でスロットのみ再定義（リスナーは再登録しない）
-                reloadSlot();
+            pendingContextRef.current = null;
+            rewardGrantedRef.current = false;
+            if (slotRef.current) {
+                try { googletag.destroySlots([slotRef.current]); } catch (e) { /* ignore */ }
+                slotRef.current = null;
             }
+            // 次のレースで再度押せるよう、閉じたタイミングで次のRewarded Adを準備する。
+            reloadSlot();
         };
 
         const onRenderEnded = (event: any) => {
@@ -208,6 +236,9 @@ export function useRewardedAd() {
                 setIsSupported(false);
                 setIsReady(true);
                 setIsLoading(false);
+                setUnavailableReason('slot_empty');
+                makeVisibleRef.current = null;
+                sendRewardGateEvent('reward_ad_unavailable', buildEventParams({ reason: 'slot_empty' }));
             }
         };
 
@@ -235,6 +266,7 @@ export function useRewardedAd() {
                     setIsSupported(false);
                     setIsReady(true);
                     setIsLoading(false);
+                    setUnavailableReason('rewarded_timeout');
                 }
             }, LOADING_TIMEOUT_MS);
 
@@ -245,12 +277,14 @@ export function useRewardedAd() {
             );
 
             if (!slot) {
-                console.log('[useRewardedAd] Rewarded ads not supported. Using modal gate.');
+                console.log('[useRewardedAd] Rewarded ads not supported. Using direct content fallback.');
                 resolvedRef.current = true;
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 setIsSupported(false);
                 setIsReady(true);
                 setIsLoading(false);
+                setUnavailableReason('slot_not_supported');
+                makeVisibleRef.current = null;
                 return;
             }
 
@@ -280,11 +314,44 @@ export function useRewardedAd() {
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ★ 修正④: raceId を受け取る
-    const showAd = useCallback((raceId?: string) => {
-        pendingRaceIdRef.current = raceId;
+    const showAd = useCallback((context?: RewardedAdContext | string): boolean => {
+        const normalizedContext: RewardedAdContext | undefined = typeof context === 'string'
+            ? { race_id: context }
+            : context;
+
+        pendingRaceIdRef.current = normalizedContext?.race_id;
+        pendingContextRef.current = normalizedContext ?? null;
+        rewardGrantedRef.current = false;
+        sendRewardGateEvent('reward_ad_requested', {
+            ...normalizedContext,
+            ad_unit_path: AD_UNIT_PATH,
+        });
+
         if (makeVisibleRef.current) {
-            makeVisibleRef.current();
+            const visible = makeVisibleRef.current();
+            if (visible === false) {
+                setUnavailableReason('make_rewarded_visible_failed');
+                sendRewardGateEvent('reward_ad_unavailable', {
+                    ...normalizedContext,
+                    ad_unit_path: AD_UNIT_PATH,
+                    reason: 'make_rewarded_visible_failed',
+                });
+                return false;
+            }
+            sendRewardGateEvent('reward_ad_started', {
+                ...normalizedContext,
+                ad_unit_path: AD_UNIT_PATH,
+                result: 'started',
+            });
+            return true;
         }
+        sendRewardGateEvent('reward_ad_unavailable', {
+            ...normalizedContext,
+            ad_unit_path: AD_UNIT_PATH,
+            reason: 'make_rewarded_visible_missing',
+        });
+        setUnavailableReason('make_rewarded_visible_missing');
+        return false;
     }, []);
 
     // ★ 修正④: raceId 単位でもアンロック可能に
@@ -311,5 +378,5 @@ export function useRewardedAd() {
         return isUnlocked || unlockedRaceIds.has(raceId);
     }, [isUnlocked, unlockedRaceIds]);
 
-    return { isUnlocked, isRaceUnlocked, isReady, isLoading, isSupported, showAd, unlock };
+    return { isUnlocked, isRaceUnlocked, isReady, isLoading, isSupported, unavailableReason, showAd, unlock };
 }

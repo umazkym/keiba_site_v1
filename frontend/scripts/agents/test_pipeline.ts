@@ -103,6 +103,7 @@ async function runPipeline() {
   // 最古のwrite_orderから順に処理（未消費のものを優先）
   let attemptedCount = 0;
   let approvedCount = 0;
+  let stoppedForGeminiLimit = false;
   for (const file of files) {
     const orderPath = path.join(ordersDir, file);
     
@@ -139,7 +140,8 @@ async function runPipeline() {
     if (!writerResult.success || !writerResult.filePath) {
       console.error("記事の生成に失敗しました:", writerResult.error);
       if (writerResult.retryable) {
-        console.error("[Pipeline] Geminiの一時的な制限により停止します。write_orderは未消費のまま残します。");
+        console.error("[Pipeline] Geminiの外部制限（クォータ・課金・レート制限等）により停止します。write_orderは未消費のまま残します。");
+        stoppedForGeminiLimit = true;
         break;
       }
       moveToFailed(orderPath, writerResult.error || 'writer failed');
@@ -155,7 +157,8 @@ async function runPipeline() {
     console.log(reviewResult.log);
     
     if (reviewResult.retryable) {
-      console.error("[Pipeline] Geminiの一時的な制限によりレビューを停止します。write_orderは未消費のまま残します。");
+      console.error("[Pipeline] Geminiの外部制限（クォータ・課金・レート制限等）によりレビューを停止します。write_orderは未消費のまま残します。");
+      stoppedForGeminiLimit = true;
       break;
     } else if (reviewResult.status === 'REJECTED') {
       if (reviewResult.newDraftPath) {
@@ -179,6 +182,11 @@ async function runPipeline() {
 
   if (attemptedCount === 0) {
     console.log("[Pipeline] 処理対象のwrite_orderがありませんでした。");
+  }
+
+  if (attemptedCount > 0 && approvedCount === 0 && stoppedForGeminiLimit) {
+    console.warn(`[Pipeline] Geminiの外部制限で記事生成を保留しました。write_orderは未消費のまま残しています。attempted=${attemptedCount}`);
+    return;
   }
 
   if (attemptedCount > 0 && approvedCount === 0) {

@@ -568,7 +568,7 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
       if (generateFailed || !response) {
          allLogs += `\n[Editor Fatal] すべてのモデルでAPIリクエストが失敗しました。\n`;
          if (retryableApiFailure) {
-           throw new Error(`Gemini APIの一時的な制限によりレビューを完了できませんでした。${lastApiErrorMessage}`);
+           throw new Error(`Gemini APIの外部制限（クォータ・課金・レート制限等）によりレビューを完了できませんでした。${lastApiErrorMessage}`);
          }
          break;
       }

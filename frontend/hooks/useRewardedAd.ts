@@ -9,7 +9,9 @@ declare global {
 }
 
 const AD_UNIT_PATH = '/23345285369/uma-free-rewarded-premium';
-const LOADING_TIMEOUT_MS = 10_000;
+const LOADING_TIMEOUT_MS = 5_000;
+const UNAVAILABLE_CACHE_KEY = 'rewarded_ad_unavailable_until';
+const UNAVAILABLE_CACHE_TTL_MS = 15 * 60 * 1000;
 
 export type RewardedAdContext = RewardGateEventParams;
 export type RewardedAdUnavailableReason =
@@ -18,6 +20,7 @@ export type RewardedAdUnavailableReason =
     | 'slot_empty'
     | 'make_rewarded_visible_failed'
     | 'make_rewarded_visible_missing'
+    | 'rewarded_recently_unavailable'
     | null;
 
 /**
@@ -56,6 +59,34 @@ export type RewardedAdUnavailableReason =
 
 // enableServices() は1ページに1回のみ。モジュールスコープで管理する。
 let _gptServicesEnabled = false;
+
+const rememberRewardedUnavailable = () => {
+    if (typeof window === 'undefined') return;
+    try {
+        sessionStorage.setItem(UNAVAILABLE_CACHE_KEY, String(Date.now() + UNAVAILABLE_CACHE_TTL_MS));
+    } catch {
+        // sessionStorageが使えない環境では待機抑制のみスキップする。
+    }
+};
+
+const clearRewardedUnavailableCache = () => {
+    if (typeof window === 'undefined') return;
+    try {
+        sessionStorage.removeItem(UNAVAILABLE_CACHE_KEY);
+    } catch {
+        // ignore
+    }
+};
+
+const isRewardedRecentlyUnavailable = () => {
+    if (typeof window === 'undefined') return false;
+    try {
+        const until = Number(sessionStorage.getItem(UNAVAILABLE_CACHE_KEY) || '0');
+        return Number.isFinite(until) && until > Date.now();
+    } catch {
+        return false;
+    }
+};
 
 export function useRewardedAd() {
     const [isUnlocked, setIsUnlocked] = useState(false);
@@ -121,6 +152,7 @@ export function useRewardedAd() {
                     setIsLoading(false);
                     setUnavailableReason('rewarded_timeout');
                     makeVisibleRef.current = null;
+                    rememberRewardedUnavailable();
                 }
             }, LOADING_TIMEOUT_MS);
 
@@ -137,6 +169,7 @@ export function useRewardedAd() {
                 setIsLoading(false);
                 setUnavailableReason('slot_not_supported');
                 makeVisibleRef.current = null;
+                rememberRewardedUnavailable();
                 return;
             }
 
@@ -156,6 +189,14 @@ export function useRewardedAd() {
             if (unlocked === 'true') {
                 setIsUnlocked(true);
                 setIsLoading(false);
+                return;
+            }
+
+            if (isRewardedRecentlyUnavailable()) {
+                setIsSupported(false);
+                setIsReady(true);
+                setIsLoading(false);
+                setUnavailableReason('rewarded_recently_unavailable');
                 return;
             }
         }
@@ -183,6 +224,7 @@ export function useRewardedAd() {
                 setIsLoading(false);
                 setUnavailableReason('rewarded_timeout');
                 makeVisibleRef.current = null;
+                rememberRewardedUnavailable();
             }
         }, LOADING_TIMEOUT_MS);
 
@@ -196,6 +238,7 @@ export function useRewardedAd() {
             setIsLoading(false);
             setIsSupported(true);
             setUnavailableReason(null);
+            clearRewardedUnavailableCache();
             makeVisibleRef.current = () => event.makeRewardedVisible();
         };
 
@@ -249,6 +292,7 @@ export function useRewardedAd() {
                 setIsLoading(false);
                 setUnavailableReason('slot_empty');
                 makeVisibleRef.current = null;
+                rememberRewardedUnavailable();
                 sendRewardGateEvent('reward_ad_unavailable', buildEventParams({ reason: 'slot_empty' }));
             }
         };
@@ -285,6 +329,7 @@ export function useRewardedAd() {
                 setIsLoading(false);
                 setUnavailableReason('slot_not_supported');
                 makeVisibleRef.current = null;
+                rememberRewardedUnavailable();
                 return;
             }
 

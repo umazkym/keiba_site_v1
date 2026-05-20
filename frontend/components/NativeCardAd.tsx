@@ -37,18 +37,25 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
         const container = containerRef.current;
         if (!container) return;
 
-        const observer = new MutationObserver(() => {
+        const applyAdStatus = () => {
             const ins = container.querySelector('ins.adsbygoogle');
-            if (!ins) return;
+            if (!ins) return false;
 
             const status = ins.getAttribute('data-ad-status');
             if (status === 'filled') {
                 sendAdImpressionEvent(analyticsPlacement);
                 observer.disconnect();
+                return true;
             } else if (status?.startsWith('unfill')) {
                 setAdUnfilled(true);
                 observer.disconnect();
+                return true;
             }
+            return false;
+        };
+
+        const observer = new MutationObserver(() => {
+            applyAdStatus();
         });
 
         observer.observe(container, {
@@ -58,7 +65,13 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
             attributeFilter: ['data-ad-status'],
         });
 
-        return () => observer.disconnect();
+        applyAdStatus();
+        const statusTimer = window.setTimeout(applyAdStatus, 1000);
+
+        return () => {
+            window.clearTimeout(statusTimer);
+            observer.disconnect();
+        };
     }, [refreshKey, analyticsPlacement]);
 
     if (adUnfilled) return null;

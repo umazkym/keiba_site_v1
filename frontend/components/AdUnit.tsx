@@ -65,7 +65,7 @@ export const AdUnit = ({
         const container = containerRef.current;
         if (!container) return;
 
-        const observer = new MutationObserver(() => {
+        const applyAdStatus = () => {
             // ins要素にdata-ad-statusが設定されたらステータスを更新
             const ins = container.querySelector('ins.adsbygoogle');
             if (ins) {
@@ -75,12 +75,19 @@ export const AdUnit = ({
                     setAdUnfilled(false);
                     sendAdImpressionEvent(analyticsPlacement ?? placement);
                     observer.disconnect();
+                    return true;
                 } else if (status?.startsWith('unfill')) {
                     setAdUnfilled(true);
                     setAdLoaded(false);
                     observer.disconnect();
+                    return true;
                 }
             }
+            return false;
+        };
+
+        const observer = new MutationObserver(() => {
+            applyAdStatus();
         });
 
         observer.observe(container, {
@@ -90,7 +97,13 @@ export const AdUnit = ({
             attributeFilter: ['data-ad-status'],
         });
 
-        return () => observer.disconnect();
+        applyAdStatus();
+        const statusTimer = window.setTimeout(applyAdStatus, 1000);
+
+        return () => {
+            window.clearTimeout(statusTimer);
+            observer.disconnect();
+        };
     }, [refreshKey, placement, analyticsPlacement]); // refreshKey変更時にobserverも再設定
 
     // 配置タイプに応じたスタイル設定

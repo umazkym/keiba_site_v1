@@ -70,7 +70,7 @@ export const MobileStickyAd = () => {
         const container = containerRef.current;
         if (!container) return;
 
-        const observer = new MutationObserver(() => {
+        const applyAdStatus = () => {
             const ins = container.querySelector('ins.adsbygoogle');
             if (ins) {
                 const status = ins.getAttribute('data-ad-status');
@@ -78,11 +78,18 @@ export const MobileStickyAd = () => {
                     setAdStatus('filled');
                     sendAdImpressionEvent('sticky_bottom');
                     observer.disconnect();
+                    return true;
                 } else if (status?.startsWith('unfill')) {
                     setAdStatus('unfilled');
                     observer.disconnect();
+                    return true;
                 }
             }
+            return false;
+        };
+
+        const observer = new MutationObserver(() => {
+            applyAdStatus();
         });
 
         observer.observe(container, {
@@ -92,7 +99,13 @@ export const MobileStickyAd = () => {
             attributeFilter: ['data-ad-status'],
         });
 
-        return () => observer.disconnect();
+        applyAdStatus();
+        const statusTimer = window.setTimeout(applyAdStatus, 1000);
+
+        return () => {
+            window.clearTimeout(statusTimer);
+            observer.disconnect();
+        };
     }, [pathname, raceParam]);  // ★ raceParam追加: レース切替時もMutationObserverを再作成
 
     const handleDismiss = () => {

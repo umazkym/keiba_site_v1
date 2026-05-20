@@ -123,17 +123,13 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
           attributeFilter: ['data-ad-status'],
         });
 
-        // フォールバック: 3秒経っても応答がなければロック解除
-        // また、localhostやAdBlock等の環境で、AdSenseが何もステータスを返さずに沈黙した場合のフォールバックとして、
-        // 強制的に unfilled を付与し、親コンポーネント(AdUnit等)の枠消去ロジックを非同期発火させる。
+        // フォールバック: 応答が遅い場合でもレイアウトロックだけ解除する。
+        // ここで data-ad-status="unfilled" を自前で付けると、AdSenseの応答が遅いだけの広告まで
+        // 親コンポーネント側で非表示になってしまうため、配信ステータスはGoogleが付与した値だけを信頼する。
         setTimeout(() => {
           adContainer.style.minHeight = '';
           adStatusObserver.disconnect();
-          
-          if (ins && !ins.getAttribute('data-ad-status')) {
-            ins.setAttribute('data-ad-status', 'unfilled');
-          }
-        }, 3000);
+        }, 10_000);
       } catch (err) {
         console.error('adsbygoogle.push() error:', err);
         // エラー時もロック解除

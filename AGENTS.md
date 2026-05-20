@@ -493,6 +493,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 - **変更ファイル**: `frontend/lib/analytics.ts`, `frontend/hooks/useRewardedAd.ts`, `frontend/components/RaceTabs.tsx`, `AGENTS.md`
 - **確認事項**: `npm run build` 成功。`git diff --check` はCRLF警告のみでエラーなし。GAM管理画面では保存・有効化・クリエイティブ追加など配信に影響する操作は未実施。
 - **次のステップ**: GAMで収益化を続ける場合はAd Exchange利用可否をGoogle側で確認し、利用可能になってからRewarded用の正規需要を紐づける。すぐ収益化を優先する場合は、AdSense Offerwallのリワード広告導線を検討する。
+- **追加対応**: 2026-05-20 16:22 に、本番 `?fc=alwaysshow&fctype=monetization` 確認で「詳細分析を表示」押下時に白紙広告のまま即時開放される挙動を確認。原因はAdSense Offerwallではなく、GAM Rewardedが未準備・未配信のときにコード側で詳細分析を直接開放するfallbackだったため、`RaceTabs.tsx` から未配信時の直接開放を撤去。今後はGAM Rewardedが利用可能かつ準備完了した場合だけ押下でき、実際の報酬付与イベント後に詳細分析を開放する。未配信時は `reward_ad_unavailable` を計測し、ボタンは `広告を準備中` のままにする。通常AdSense広告は通常枠として維持し、疑似リワード用途には使わない方針にした。
 
 #### ✅ ホーム画面の価値訴求・回遊導線・広告配置改善
 - **完了日時**: 2026-05-17 22:23

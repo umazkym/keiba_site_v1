@@ -242,7 +242,11 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     }
 
     if (pathname.startsWith('/races/')) {
-      if (pathname === '/races/today' || /^\/races\/\d{4}-\d{2}-\d{2}$/.test(pathname)) {
+      if (
+        pathname === '/races/today' ||
+        /^\/races\/\d{4}-\d{2}-\d{2}$/.test(pathname) ||
+        /^\/races\/\d{4}-\d{2}-\d{2}\/[a-z0-9%.-]+\/\d{1,2}$/.test(pathname)
+      ) {
         continue;
       }
       errors.push(`レースページへのリンク形式が不正です: ${href}`);

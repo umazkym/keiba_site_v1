@@ -97,7 +97,11 @@ function validateHref(file, type, href, slugs, issues) {
   }
 
   if (pathname.startsWith('/races/')) {
-    if (pathname === '/races/today' || /^\/races\/\d{4}-\d{2}-\d{2}$/.test(pathname)) {
+    if (
+      pathname === '/races/today' ||
+      /^\/races\/\d{4}-\d{2}-\d{2}$/.test(pathname) ||
+      /^\/races\/\d{4}-\d{2}-\d{2}\/[a-z0-9%.-]+\/\d{1,2}$/.test(pathname)
+    ) {
       return;
     }
     issues.push({ file, type, value: href, reason: 'unexpected race path' });

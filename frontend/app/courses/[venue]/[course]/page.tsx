@@ -1,0 +1,113 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { courseProfiles, getCourseProfile } from "@/lib/growth-content";
+
+type Props = {
+  params: { venue: string; course: string };
+};
+
+export function generateStaticParams() {
+  return courseProfiles.map((profile) => ({
+    venue: profile.venue,
+    course: profile.course,
+  }));
+}
+
+export function generateMetadata({ params }: Props): Metadata {
+  const profile = getCourseProfile(params.venue, params.course);
+  if (!profile) {
+    return { title: "コースデータが見つかりません" };
+  }
+
+  return {
+    title: profile.title,
+    description: profile.metaDescription,
+    alternates: {
+      canonical: `/courses/${profile.venue}/${profile.course}`,
+    },
+  };
+}
+
+export default function CoursePage({ params }: Props) {
+  const profile = getCourseProfile(params.venue, params.course);
+  if (!profile) notFound();
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: profile.title,
+    description: profile.metaDescription,
+    url: `https://uma-free.com/courses/${profile.venue}/${profile.course}`,
+    author: {
+      "@type": "Organization",
+      name: "UMA-FREE",
+    },
+  };
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <Breadcrumb />
+      <article className="mx-auto max-w-4xl px-4 pb-12 pt-6">
+        <header className="border-b border-slate-200 pb-8">
+          <p className="text-xs font-bold tracking-[0.18em] text-slate-400">COURSE DATA</p>
+          <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+            {profile.title}
+          </h1>
+          <p className="mt-4 text-base leading-8 text-slate-600">{profile.lead}</p>
+        </header>
+
+        <section className="mt-8 grid gap-4 md:grid-cols-3">
+          {profile.stats.map((stat) => (
+            <div key={stat.label} className="border border-slate-200 bg-white p-5">
+              <p className="text-xs font-bold tracking-[0.14em] text-slate-400">{stat.label}</p>
+              <h2 className="mt-1 text-xl font-black text-slate-950">{stat.value}</h2>
+              <p className="mt-2 text-sm leading-7 text-slate-600">{stat.note}</p>
+            </div>
+          ))}
+        </section>
+
+        <section className="mt-10">
+          <h2 className="text-2xl font-black text-slate-950">予想前に確認する順番</h2>
+          <ol className="mt-4 space-y-3 text-sm leading-8 text-slate-600">
+            {profile.checkpoints.map((checkpoint, index) => (
+              <li key={checkpoint} className="border-l-4 border-slate-300 bg-white p-4">
+                <strong className="text-slate-950">{index + 1}. </strong>
+                {checkpoint}
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="mt-10 border border-slate-200 bg-slate-50 p-5">
+          <h2 className="text-xl font-black text-slate-950">注意点</h2>
+          <p className="mt-2 text-sm leading-7 text-slate-600">{profile.caution}</p>
+        </section>
+
+        <section className="mt-8 grid gap-5 md:grid-cols-2">
+          <div className="border border-slate-200 bg-white p-5">
+            <h2 className="text-xl font-black text-slate-950">関連記事</h2>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {profile.relatedArticles.map((link) => (
+                <Link key={link.href} href={link.href} className="bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+          <div className="border border-slate-200 bg-white p-5">
+            <h2 className="text-xl font-black text-slate-950">当日のレースで確認</h2>
+            <p className="mt-2 text-sm leading-7 text-slate-600">
+              コース傾向は、当日の馬場、枠順、出走馬の脚質と合わせて確認してください。
+            </p>
+            <Link href="/races/today" className="mt-4 inline-flex bg-slate-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary">
+              本日の分析を見る
+            </Link>
+          </div>
+        </section>
+      </article>
+    </>
+  );
+}

@@ -113,7 +113,11 @@ function isAllowedGeneratedArticleHref(href: string): boolean {
   const normalized = normalizeHref(href);
   if (!normalized) return false;
   if (!normalized.startsWith('/')) return false;
-  return normalized === '/races/today' || /^\/races\/\d{4}-\d{2}-\d{2}$/.test(normalized);
+  return (
+    normalized === '/races/today' ||
+    /^\/races\/\d{4}-\d{2}-\d{2}$/.test(normalized) ||
+    /^\/races\/\d{4}-\d{2}-\d{2}\/[a-z0-9%.-]+\/\d{1,2}$/.test(normalized)
+  );
 }
 
 function unwrapDisallowedLinks(content: string): string {

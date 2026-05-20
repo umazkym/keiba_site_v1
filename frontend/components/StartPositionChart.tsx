@@ -18,7 +18,7 @@ const getWakuColor = (waku: number | null): string => {
     }
 };
 
-const HorseMarker = ({ horse, position, isMobile, markerSpacing }: { horse: HorsePrediction, position: number, isMobile: boolean, markerSpacing: number }) => (
+const HorseMarker = ({ horse, position, top, isMobile }: { horse: HorsePrediction, position: number, top: number, isMobile: boolean }) => (
     <Tippy content={
         <div className="text-sm">
             <div className="font-bold">{horse.horse_name}</div>
@@ -28,7 +28,7 @@ const HorseMarker = ({ horse, position, isMobile, markerSpacing }: { horse: Hors
         <div
             className="absolute transition-all duration-500 ease-out flex flex-col items-center cursor-pointer hover:z-50 hover:transform hover:scale-110"
             style={{
-                top: `${20 + (horse.horse_number - 1) * markerSpacing}px`,
+                top: `${top}px`,
                 left: `${position}%`,
                 transform: 'translate(-50%, -50%)',
                 zIndex: 10 + horse.horse_number,
@@ -61,20 +61,22 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
     const maxScore = Math.max(...scores);
     const scoreRange = maxScore - minScore;
     const sortedByNumber = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
-
-    const markerSpacing = isMobile ? 12 : 20;
-    const containerHeight = Math.max((sortedByNumber.length - 1) * markerSpacing + 40, isMobile ? 120 : 150);
+    const chartHeight = isMobile ? 180 : 300;
+    const topPadding = isMobile ? 18 : 28;
+    const bottomPadding = isMobile ? 18 : 38;
+    const laneCount = Math.max(sortedByNumber.length, 1);
+    const markerSpacing = laneCount > 1 ? (chartHeight - topPadding - bottomPadding) / (laneCount - 1) : 0;
 
     return (
-        <div className="md:p-4 md:bg-white">
+        <div className="md:p-4 md:bg-white h-full flex flex-col justify-center">
             <div className="relative w-full bg-gray-50 rounded-lg shadow-inner overflow-hidden"
-                style={{ height: `${containerHeight}px` }}>
+                style={{ height: `${chartHeight}px` }}>
                 <div className="absolute top-0 bottom-0 left-0 w-[33.3%] bg-blue-100/30 rounded-l-lg"></div>
                 <div className="absolute top-0 bottom-0 left-[33.3%] w-[33.3%] bg-gray-100/30"></div>
                 <div className="absolute top-0 bottom-0 left-[66.6%] w-[33.3%] bg-yellow-100/30 rounded-r-lg"></div>
                 <div className="absolute top-0 bottom-0 left-[33.3%] border-l border-dashed border-gray-300"></div>
                 <div className="absolute top-0 bottom-0 left-[66.6%] border-l border-dashed border-gray-300"></div>
-                {sortedByNumber.map(horse => {
+                {sortedByNumber.map((horse, index) => {
                     let position = 50;
                     if (horse.start_1c_indicator !== null && scoreRange > 0.01) {
                         position = 5 + ((horse.start_1c_indicator - minScore) / scoreRange) * 90;
@@ -84,8 +86,8 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
                             key={horse.horse_number}
                             horse={horse}
                             position={position}
+                            top={topPadding + index * markerSpacing}
                             isMobile={isMobile}
-                            markerSpacing={markerSpacing}
                         />
                     );
                 })}

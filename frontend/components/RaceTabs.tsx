@@ -143,13 +143,11 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
             reason: isLoading ? 'rewarded_loading' : unavailableReason ?? 'rewarded_unavailable',
         });
 
-        if (!isLoading) {
-            sendRewardGateEvent('reward_fallback_used', {
-                ...context,
-                reason: unavailableReason ?? 'rewarded_unavailable',
-            });
-            unlock(activeRace.id);
-        }
+        sendRewardGateEvent('reward_fallback_used', {
+            ...context,
+            reason: isLoading ? 'rewarded_loading' : unavailableReason ?? 'rewarded_unavailable',
+        });
+        unlock(activeRace.id);
     }, [activeRace, buildRewardContext, canUseRewardedAd, isLoading, showAd, unavailableReason, unlock]);
 
     useEffect(() => {
@@ -318,26 +316,26 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     {/* プレミアム・ロック切り替え部分 */}
                     {(activeRace && isActiveRaceUnlocked) ? (
                         <>
-                            <div className="mb-2 grid gap-2 xl:grid-cols-2">
-                                <div className="card p-2 sm:p-3">
+                            <div className="mb-2 grid gap-2 xl:grid-cols-2 xl:items-stretch">
+                                <div className="card p-2 sm:p-3 h-full flex flex-col">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                         <FlagIcon className="w-5 h-5 mr-2 text-primary" />
                                         <span>展開/脚質予測</span>
                                     </div>
-                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3">
-                                        <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
+                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3 flex-1">
+                                        <div className="p-1.5 sm:p-5 border bg-white rounded-lg h-full">
                                             <StartPositionChart predictions={activeRace.predictions} />
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="card p-2 sm:p-3">
+                                <div className="card p-2 sm:p-3 h-full flex flex-col">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                         <ChartBarIcon className="w-5 h-5 mr-2 text-accent" />
                                         <span>このコースの枠順傾向</span>
                                     </div>
-                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3">
-                                        <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
+                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3 flex-1">
+                                        <div className="p-1.5 sm:p-5 border bg-white rounded-lg h-full">
                                             <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
                                         </div>
                                     </div>
@@ -447,15 +445,9 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                     </div>
                                     <button
                                         onClick={handleRewardGateClick}
-                                        disabled={isLoading}
-                                        className="btn-primary w-full text-sm gap-2 disabled:cursor-wait disabled:opacity-70"
+                                        className="btn-primary w-full text-sm gap-2"
                                     >
-                                        {isLoading ? (
-                                            <>
-                                                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                広告を準備中
-                                            </>
-                                        ) : canUseRewardedAd ? (
+                                        {canUseRewardedAd ? (
                                             '広告を見て詳細分析を表示'
                                         ) : (
                                             '詳細分析を表示'

@@ -86,7 +86,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
 
     return (
         // パディング・背景削除 (フラット化)
-        <div className="my-4 md:p-4 md:bg-white md:border md:rounded-lg md:shadow-inner">
+        <div className="my-4 md:p-4 md:bg-white md:border md:rounded-lg md:shadow-inner h-full flex flex-col justify-center">
             <h4 className="font-bold text-center mb-1 text-gray-700 text-sm md:text-base md:mb-2">{chartTitle}</h4>
             <div style={{ width: '100%', height: chartHeight }}>
                 <ResponsiveContainer>

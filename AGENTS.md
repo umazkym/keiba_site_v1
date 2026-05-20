@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 検索流入改善のためのデータハブ・騎手別・コース別ページ整備
+- **完了日時**: 2026-05-21 02:05
+- **実施内容**: 競合比でアクセス数が伸びにくい要因を、検索意図の受け皿不足、レース詳細URLの重複、内部導線の弱さ、既存記事の汎用クエリ対応不足に分解して改善。新規に `競馬データ辞典`、馬場状態・馬体重・サイト選びの解説ページ、騎手別データ、コース別データ、重賞入口、AI偏差値の検証ページを追加し、トップページ・ヘッダー・フッター・パンくずから回遊できるようにした。記事側は馬場状態、馬体重、中山ダート1200m、天皇賞秋、ルメール騎手、武豊騎手、川田将雅騎手の記事を検索意図に合わせて調整し、関連する新規ページへの内部リンクを追加。サイトマップは記事専用XMLを追加し、レース詳細のクエリURLは日付ページへ正規化する方針へ整理した。
+- **変更ファイル**: `frontend/lib/growth-content.ts`, `frontend/app/keiba-data/`, `frontend/app/jockeys/`, `frontend/app/courses/`, `frontend/app/results/accuracy/page.tsx`, `frontend/app/grade-races/page.tsx`, `frontend/app/sitemap-articles.xml/route.ts`, `frontend/app/page.tsx`, `frontend/app/sitemap.ts`, `frontend/app/robots.ts`, `frontend/app/races/[date]/page.tsx`, `frontend/components/Header.tsx`, `frontend/components/Footer.tsx`, `frontend/components/Breadcrumb.tsx`, `frontend/middleware.ts`, `frontend/next.config.mjs`, `frontend/public/robots.txt`, `frontend/scripts/agents/validate_article_links.js`, `frontend/content/articles/2025-10-26-ground-condition-impact.md`, `frontend/content/articles/2025-11-11-weight-change-impact-analysis.md`, `frontend/content/articles/2025-10-04-nakayama-dirt-1200m-data-analysis.md`, `frontend/content/articles/2025-10-27-tennosho-autumn-tokyo-turf-2000m-analysis.md`, `frontend/content/articles/2025-10-06-christophe-lemaire-data-analysis.md`, `frontend/content/articles/2025-10-07-yutaka-take-data-analysis.md`, `frontend/content/articles/2025-10-13-yuga-kawada-jockey-analysis.md`
+- **確認事項**: `npm run article:validate-links` は67記事チェックで成功。`npm run build` は成功し、静的ページ数は108件まで増加。`git diff --check` はLF/CRLF警告のみでエラーなし。`npm run build` では `caniuse-lite` 更新推奨の警告のみ表示。
+- **次のステップ**: デプロイ後にSearch Consoleで `sitemap.xml` と `sitemap-articles.xml` を送信し、インデックス登録、PC検索CTR、馬場状態・馬体重・コース名・騎手名系クエリの表示回数を2週間単位で確認する。
+
 #### ✅ AdSense Offerwall公開・リワード広告導線の有効化
 - **完了日時**: 2026-05-19 09:37
 - **実施内容**: AdSense管理画面の `プライバシーとメッセージ > Offerwall` で既存下書き `UmaFree Premium Offerwall` を確認し、ユーザー承認後に公開。サイトは `uma-free.com`、言語は日本語、リワード広告はオン、メール収集はオフ、閉じるオプションはオフ、オファーウォール最適化はオン。表示文言は「詳細データをみるには」「このレースの詳細データを閲覧するには短い動画広告をご視聴ください。」で、視聴後のアクセス権は「24時間、サイト全体にアクセスできます」。公開確認ダイアログでは、AdSenseタグ経由で自動公開され、サイト表示まで1時間ほどかかる場合があることを確認。

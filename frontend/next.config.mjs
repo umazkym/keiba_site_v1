@@ -48,6 +48,24 @@ const nextConfig = {
         ],
       },
       {
+        source: '/sitemap-articles.xml',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 's-maxage=86400, stale-while-revalidate=86400',
+          },
+        ],
+      },
+      {
+        source: '/sitemap-images.xml',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 's-maxage=86400, stale-while-revalidate=86400',
+          },
+        ],
+      },
+      {
         // robots.txt: 7日間CDNキャッシュ（ほぼ変化しない）
         source: '/robots.txt',
         headers: [

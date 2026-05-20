@@ -33,10 +33,9 @@ export async function generateMetadata(
         const venueName = decodeURIComponent(venue);
         title = `${formattedDate} ${venueName} ${race}R のAI競馬データ分析 | UMA-FREE`;
         description = `AIによる${formattedDate} ${venueName}競馬場 ${race}Rの無料データ分析。偏差値、対戦成績、枠順データで詳細分析。`;
-        // ▼▼▼▼▼【修正: canonical URLのパラメータ順序を統一】▼▼▼▼▼
-        // Googleが重複判定を避けるため、クエリパラメータの順序を常に 'race' → 'venue' に統一
-        canonicalUrl = `/races/${params.date}?race=${race}&venue=${venue}`;
-        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+        // レース詳細は日付ページ内の状態として扱い、canonicalは日付ページへ集約する。
+        // クエリ付きURLの大量重複を避け、Search Consoleのcanonical差し替えを減らす。
+        canonicalUrl = `/races/${params.date}`;
     }
 
     return {

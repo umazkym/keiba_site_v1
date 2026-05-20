@@ -20,6 +20,7 @@ import { AdUnit } from '@/components/AdUnit';
 import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
 import type { RaceDayPrediction } from '@/lib/types';
+import { dataHubLinks } from '@/lib/growth-content';
 
 // ISR: データ更新は1日2〜3回（06:00, 13:30 JST）のバッチ処理のため、
 // 30分間キャッシュでも十分な鮮度を維持しつつ、Origin Transfer/CPUを大幅削減。
@@ -336,6 +337,27 @@ export default async function HomePage() {
 
             {/* ── 分析データの紹介 ── */}
             <AnalysisFeatures />
+
+            {/* ── データ辞典への導線 ── */}
+            <section>
+                <div className="mb-2 flex items-center justify-between">
+                    <h2 className="sec-title !mb-0">
+                        <span className="bar bg-accent"></span>
+                        競馬データ辞典
+                    </h2>
+                    <Link href="/keiba-data" className="pr-1 text-[11px] font-semibold text-secondary transition-colors hover:text-primary sm:text-[12px]">
+                        すべて見る →
+                    </Link>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {dataHubLinks.map((item) => (
+                        <Link key={item.href} href={item.href} className="border border-slate-200 bg-white p-4 transition-colors hover:border-slate-400">
+                            <h3 className="text-sm font-black text-slate-950">{item.label}</h3>
+                            <p className="mt-2 line-clamp-3 text-xs leading-6 text-slate-500">{item.description}</p>
+                        </Link>
+                    ))}
+                </div>
+            </section>
 
             {/* ── 最新の分析記事 ── */}
             <section>

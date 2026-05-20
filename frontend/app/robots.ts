@@ -14,14 +14,14 @@ export default function robots(): MetadataRoute.Robots {
     return {
         rules: [
             {
-                // 主要クローラー: 全ページ許可、ただしクロール間隔を10秒に制限
+                // 主要クローラー: データ辞典・記事・日付別レースページをクロール対象にする。
+                // 検索結果やAPIは重複・低品質URLになりやすいため除外。
                 userAgent: '*',
                 allow: '/',
                 disallow: [
                     '/api/',        // APIエンドポイントは非公開
                     '/search?*',    // 検索結果ページは重複コンテンツ回避のためクロール除外
                 ],
-                crawlDelay: 10,
             },
             {
                 // SEO監査ツール（Ahrefs, Semrush等）: クロール間隔をさらに長く制限
@@ -31,6 +31,10 @@ export default function robots(): MetadataRoute.Robots {
                 crawlDelay: 30,
             },
         ],
-        sitemap: 'https://uma-free.com/sitemap.xml',
+        sitemap: [
+            'https://uma-free.com/sitemap.xml',
+            'https://uma-free.com/sitemap-articles.xml',
+            'https://uma-free.com/sitemap-images.xml',
+        ],
     }
 }

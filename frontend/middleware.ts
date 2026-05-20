@@ -19,6 +19,17 @@ export function middleware(request: NextRequest) {
     // ?venue=X&race=N → ?race=N&venue=X に正規化。
     // 全日付が対象。古い日付でデータがなくてもリダイレクト先で404を返すのは正常動作。
     if (pathname.startsWith('/races/')) {
+        const dateOnlyMatch = pathname.match(/^\/races\/([^/]+)$/);
+        if (dateOnlyMatch && !/^\d{4}-\d{2}-\d{2}$/.test(dateOnlyMatch[1]) && dateOnlyMatch[1] !== 'today') {
+            const newUrl = new URL(request.url);
+            newUrl.pathname = '/races/today';
+            newUrl.search = '';
+
+            return NextResponse.redirect(newUrl, {
+                status: 301,
+            });
+        }
+
         const venue = searchParams.get('venue');
         const race = searchParams.get('race');
 
@@ -26,19 +37,18 @@ export function middleware(request: NextRequest) {
             const dateMatch = pathname.match(/^\/races\/(\d{4}-\d{2}-\d{2})$/);
 
             if (dateMatch) {
-                // パラメータの順序チェック: 最初のキーが 'race' でなければ
+                // パラメータの順序チェック: 最初のキーが 'race' でなければ正規URLへ301。
+                // canonicalは日付ページへ集約するが、ユーザー共有URLとしては race -> venue に統一する。
                 const firstKey = Array.from(searchParams.keys())[0];
+                const allowedKeys = new Set(['race', 'venue']);
+                const hasExtraParams = Array.from(searchParams.keys()).some((key) => !allowedKeys.has(key));
 
-                if (firstKey !== 'race') {
-                    // Vercel Edge環境では301リダイレクトのLocationヘッダーのパラメータ順序が
-                    // 内部的に変更されるため、リダイレクトでは解決できない。
-                    // 代わりにrewrite（内部転送）で正しいパラメータ順序のページを表示し、
-                    // canonicalタグ（page.tsx側で設定済み）でGoogleに正規URLを通知する。
-                    const rewriteUrl = new URL(request.url);
-                    rewriteUrl.search = '';
-                    rewriteUrl.searchParams.set('race', race);
-                    rewriteUrl.searchParams.set('venue', venue);
-                    return NextResponse.rewrite(rewriteUrl);
+                if (firstKey !== 'race' || hasExtraParams) {
+                    const newUrl = new URL(request.url);
+                    newUrl.search = `?race=${encodeURIComponent(race)}&venue=${encodeURIComponent(venue)}`;
+                    return NextResponse.redirect(newUrl, {
+                        status: 301,
+                    });
                 }
             }
         }
@@ -50,10 +60,12 @@ export function middleware(request: NextRequest) {
 
         // 日付プレフィックスがない記事slug（Google Search Consoleで404になっているもの）
         const legacyArticles: { [key: string]: string } = {
-            'bloodline-sire-analysis': '2025-10-26-bloodline-sire-analysis',
+            'bloodline-sire-analysis': '2025-11-09-bloodline-data-analysis',
             'frame-number-analysis': '2025-10-26-frame-number-analysis',
             'ground-condition-impact': '2025-10-26-ground-condition-impact',
             'distance-suitability-data': '2025-10-26-distance-suitability-data',
+            'track-condition': '2025-10-26-ground-condition-impact',
+            'horse-weight': '2025-11-11-weight-change-impact-analysis',
         };
 
         // 日付プレフィックスなしのslugが存在する場合、正しいslugにリダイレクト

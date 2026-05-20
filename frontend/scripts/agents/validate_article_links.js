@@ -11,8 +11,16 @@ const ALLOWED_INTERNAL_PATHS = new Set([
   '/advertising',
   '/articles',
   '/contact',
+  '/courses',
   '/faq',
+  '/grade-races',
+  '/jockeys',
+  '/keiba-data',
+  '/keiba-data/horse-weight',
+  '/keiba-data/site-selection',
+  '/keiba-data/track-condition',
   '/privacy',
+  '/results/accuracy',
   '/search',
   '/sitemap',
   '/terms',
@@ -93,6 +101,10 @@ function validateHref(file, type, href, slugs, issues) {
       return;
     }
     issues.push({ file, type, value: href, reason: 'unexpected race path' });
+    return;
+  }
+
+  if (pathname.startsWith('/courses/') || pathname.startsWith('/jockeys/')) {
     return;
   }
 

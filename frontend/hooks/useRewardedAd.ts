@@ -175,6 +175,17 @@ export function useRewardedAd() {
             document.head.appendChild(gptScript);
         }
 
+        timeoutRef.current = setTimeout(() => {
+            if (!resolvedRef.current) {
+                resolvedRef.current = true;
+                setIsSupported(false);
+                setIsReady(true);
+                setIsLoading(false);
+                setUnavailableReason('rewarded_timeout');
+                makeVisibleRef.current = null;
+            }
+        }, LOADING_TIMEOUT_MS);
+
         // ★ 修正②: リスナーを変数に保持して cleanup で確実に削除する
         // 各リスナーは slotRef.current と照合して該当スロットの場合のみ処理する
         const onReady = (event: any) => {
@@ -258,17 +269,6 @@ export function useRewardedAd() {
             googletag.pubads().addEventListener('rewardedSlotGranted', onGranted);
             googletag.pubads().addEventListener('rewardedSlotClosed', onClosed);
             googletag.pubads().addEventListener('slotRenderEnded', onRenderEnded);
-
-            // タイムアウト
-            timeoutRef.current = setTimeout(() => {
-                if (!resolvedRef.current) {
-                    resolvedRef.current = true;
-                    setIsSupported(false);
-                    setIsReady(true);
-                    setIsLoading(false);
-                    setUnavailableReason('rewarded_timeout');
-                }
-            }, LOADING_TIMEOUT_MS);
 
             // スロット初期定義
             const slot = googletag.defineOutOfPageSlot(

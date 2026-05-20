@@ -78,7 +78,7 @@ export const MobileStickyAd = () => {
                     setAdStatus('filled');
                     sendAdImpressionEvent('sticky_bottom');
                     observer.disconnect();
-                } else if (status === 'unfilled') {
+                } else if (status?.startsWith('unfill')) {
                     setAdStatus('unfilled');
                     observer.disconnect();
                 }

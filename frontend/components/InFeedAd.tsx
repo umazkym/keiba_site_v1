@@ -59,7 +59,7 @@ export const InFeedAd = ({
             if (status === 'filled') {
                 sendAdImpressionEvent(analyticsPlacement);
                 observer.disconnect();
-            } else if (status === 'unfilled') {
+            } else if (status?.startsWith('unfill')) {
                 setAdUnfilled(true);
                 observer.disconnect();
             }

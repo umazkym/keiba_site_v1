@@ -112,7 +112,7 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
         //   data-ad-status="filled" or "unfilled" を監視
         const adStatusObserver = new MutationObserver(() => {
           const status = ins.getAttribute('data-ad-status');
-          if (status === 'filled' || status === 'unfilled') {
+          if (status === 'filled' || status?.startsWith('unfill')) {
             // 新しい広告が描画完了 → 高さロック解除
             adContainer.style.minHeight = '';
             adStatusObserver.disconnect();

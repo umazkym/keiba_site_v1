@@ -45,7 +45,7 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
             if (status === 'filled') {
                 sendAdImpressionEvent(analyticsPlacement);
                 observer.disconnect();
-            } else if (status === 'unfilled') {
+            } else if (status?.startsWith('unfill')) {
                 setAdUnfilled(true);
                 observer.disconnect();
             }

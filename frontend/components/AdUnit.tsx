@@ -75,7 +75,7 @@ export const AdUnit = ({
                     setAdUnfilled(false);
                     sendAdImpressionEvent(analyticsPlacement ?? placement);
                     observer.disconnect();
-                } else if (status === 'unfilled') {
+                } else if (status?.startsWith('unfill')) {
                     setAdUnfilled(true);
                     setAdLoaded(false);
                     observer.disconnect();

@@ -45,17 +45,17 @@ function buildSearchIndex(): SearchIndexItem[] {
         },
         {
             type: 'page',
-            title: 'AI予測の成績と振り返り',
-            description: 'AI偏差値の直近成績、条件別傾向、結果とずれたレースを確認できます。',
+            title: 'AI予想の成績',
+            description: 'AI偏差値の直近成績、条件別の傾向、評価が届かなかったレースを確認できます。',
             url: '/results/accuracy',
-            keywords: ['予測成績', '的中率', '複勝率', 'AI偏差値', '振り返り'],
+            keywords: ['AI予想成績', '的中率', '複勝率', 'AI偏差値', '振り返り'],
         },
         {
             type: 'page',
-            title: '競馬分析ガイド',
-            description: '馬場状態、馬体重、騎手、コース、AI偏差値の見方を整理したガイドです。',
+            title: '競馬データの見方',
+            description: '馬場状態、馬体重、騎手、コース、AI偏差値をレース前に見る順番で整理しています。',
             url: '/keiba-data',
-            keywords: ['分析ガイド', '馬場', '馬体重', '枠順', '騎手', 'コース'],
+            keywords: ['データの見方', '馬場', '馬体重', '枠順', '騎手', 'コース'],
         },
         {
             type: 'page',

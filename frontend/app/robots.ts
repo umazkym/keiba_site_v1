@@ -14,7 +14,7 @@ export default function robots(): MetadataRoute.Robots {
     return {
         rules: [
             {
-                // 主要クローラー: 分析ガイド・記事・安定パス化したレースページをクロール対象にする。
+                // 主要クローラー: データの見方・記事・安定パス化したレースページをクロール対象にする。
                 // 検索結果やAPIは重複・低品質URLになりやすいため除外。
                 userAgent: '*',
                 allow: '/',

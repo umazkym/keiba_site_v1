@@ -73,10 +73,10 @@ export const Header = () => {
                             記事
                         </Link>
                         <Link href="/keiba-data" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
-                            分析ガイド
+                            データの見方
                         </Link>
                         <Link href="/results/accuracy" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
-                            予測成績
+                            AI予想成績
                         </Link>
                         <Link href="/faq" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             よくある質問
@@ -152,14 +152,14 @@ export const Header = () => {
                         className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
                         onClick={closeMenu}
                     >
-                        分析ガイド
+                        データの見方
                     </Link>
                     <Link
                         href="/results/accuracy"
                         className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
                         onClick={closeMenu}
                     >
-                        予測成績
+                        AI予想成績
                     </Link>
                     <Link
                         href="/faq"

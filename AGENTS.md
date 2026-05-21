@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ UIトンマナ再調整: データ導線の色使い・文言・見せ方改善
+- **完了日時**: 2026-05-22 00:55
+- **実施内容**: 前回の文言整理後に、固定ページの見た目が白背景と薄い罫線に寄りすぎ、UMA-FREE本来の濃紺・アンバーを軸にした競馬分析サイトらしさが弱くなっていたため再調整。ナビと主要導線は「分析ガイド」「予測成績」から、ユーザーの行動に近い「データの見方」「AI予想成績」へ変更。`/keiba-data` は濃紺のヒーロー、当日確認順、色付きカードで「出走表を見る前にどう判断するか」が伝わる構成へ変更。`/results/accuracy` は「AI予想の成績」として、良い数字だけでなく「評価が届かなかったレース」「扱いに注意したい条件」を見るページに調整。`/keiba-data/site-selection`, `/keiba-data/track-condition`, `/keiba-data/horse-weight` も同じ濃紺ヘッダー、アンバー/ブルー/グリーンの控えめなアクセント、影付きカードに揃え、説明書のような硬い文言をレース前の実用文へ寄せた。
+- **変更ファイル**: `frontend/lib/growth-content.ts`, `frontend/components/Header.tsx`, `frontend/components/Footer.tsx`, `frontend/components/Breadcrumb.tsx`, `frontend/app/page.tsx`, `frontend/app/keiba-data/page.tsx`, `frontend/app/keiba-data/site-selection/page.tsx`, `frontend/app/keiba-data/track-condition/page.tsx`, `frontend/app/keiba-data/horse-weight/page.tsx`, `frontend/app/results/accuracy/page.tsx`, `frontend/app/search/page.tsx`, `frontend/app/grade-races/[slug]/page.tsx`, `frontend/app/robots.ts`, `AGENTS.md`
+- **確認事項**: `npm run build` は成功し、静的ページ数は138件。主要表示コードで `競馬分析ガイド`, `予測成績`, `AI予測の成績`, `結果とずれた`, `慎重に見る条件`, `集計待ち`, `データ辞典`, `検証ページ` が残っていないことを確認。`npm run article:validate-links` はサンドボックス内の npm キャッシュ書き込み権限で失敗し、権限付き再実行は利用上限により許可されなかったため未完了。ローカル開発サーバーも同じ環境制約で起動できず、今回のブラウザ実画面確認は未実施。`npm run build` では `caniuse-lite` 更新推奨の警告のみ表示。
+- **次のステップ**: 利用上限解除後に `npm run article:validate-links` とローカルブラウザ確認を再実行し、`/keiba-data`, `/results/accuracy`, `/keiba-data/site-selection`, `/keiba-data/track-condition`, `/keiba-data/horse-weight` のファーストビューとモバイル表示を確認する。
+
 #### ✅ UI文言統一: 分析ガイド・予測成績への整理
 - **完了日時**: 2026-05-22 00:32
 - **実施内容**: サイト内で浮いていた「データ辞典」「AI偏差値の検証」などの開発者目線の呼び方を整理し、主要導線を「分析ガイド」「予測成績」に統一。`/keiba-data` は辞典風の一覧ではなく、レース前に見る順番を示す分析ガイドへ本文を調整。`/results/accuracy` は検証ページではなく、AI予測の成績と振り返りとして「上位評価馬の結果」「条件別の傾向」「結果とずれたレース」を確認する構成に変更。ナビ、フッター、パンくず、検索、トップページ、重賞ページCTA、サイト選びページの文言も同じトーンに揃えた。前回の補助UIに残っていた英字ラベルや強い表現も、日本語の落ち着いた補助文へ調整した。

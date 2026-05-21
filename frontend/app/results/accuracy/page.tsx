@@ -4,9 +4,9 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { getPredictionAccuracySummary } from "@/lib/api";
 
 export const metadata: Metadata = {
-  title: "AI予測の成績と振り返り",
+  title: "AI予想の成績",
   description:
-    "UMA-FREEのAI予測を、直近成績、条件別の傾向、結果とずれたレースの振り返りから確認できます。",
+    "UMA-FREEのAI予想成績を、直近の結果、条件別の傾向、評価が届かなかったレースから確認できます。",
   alternates: {
     canonical: "/results/accuracy",
   },
@@ -14,20 +14,20 @@ export const metadata: Metadata = {
 
 const metrics = [
   {
-    label: "上位評価馬の結果",
-    body: "AI偏差値で上位にした馬が、実際にどの程度3着以内へ入ったかを確認します。",
+    label: "上位評価馬の走り",
+    body: "AI偏差値で上位にした馬が、どのくらい馬券内まで届いたかを見ます。",
   },
   {
     label: "条件別の傾向",
-    body: "短距離、芝中距離、ダート、地方競馬など、条件ごとの結果を分けて見ます。",
+    body: "芝、ダート、距離帯、地方競馬など、条件ごとに数字の出方を分けます。",
   },
   {
-    label: "結果とずれたレース",
-    body: "出遅れ、馬場変化、ハイペース、馬体重の大幅増減など、結果とずれた時の材料を残します。",
+    label: "評価が届かなかったレース",
+    body: "出遅れ、馬場変化、ハイペース、馬体重の大幅増減など、次に残す材料を見ます。",
   },
   {
-    label: "人気とのずれ",
-    body: "人気順とAI偏差値が大きくずれた馬を追い、評価が偏っていないか確認します。",
+    label: "人気との違い",
+    body: "人気順とAI偏差値が大きく違う馬を追い、評価が偏っていないかを見ます。",
   },
 ];
 
@@ -49,6 +49,13 @@ const rangeOptions = [
   { label: "30日", days: 30 },
   { label: "90日", days: 90 },
   { label: "180日", days: 180 },
+];
+
+const metricStyles = [
+  "border-t-accent",
+  "border-t-blue-600",
+  "border-t-emerald-600",
+  "border-t-slate-900",
 ];
 
 export default async function AccuracyPage({
@@ -91,7 +98,7 @@ export default async function AccuracyPage({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "AboutPage",
-    name: "AI予測の成績と振り返り",
+    name: "AI予想の成績",
     description: metadata.description,
     url: "https://uma-free.com/results/accuracy",
   };
@@ -100,22 +107,33 @@ export default async function AccuracyPage({
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Breadcrumb />
-      <article className="mx-auto max-w-4xl px-4 pb-12 pt-6">
-        <header className="border-b border-slate-200 pb-8">
-          <p className="text-xs font-bold tracking-[0.18em] text-slate-400">PREDICTION RECORD</p>
-          <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
-            AI予測の成績と振り返り
-          </h1>
-          <p className="mt-4 text-base leading-8 text-slate-600">
-            UMA-FREEでは、AI偏差値を「当たった・外れた」だけで見ず、条件別の傾向と結果とのずれを残します。
-            競馬は結果を保証できないため、このページでは数字を参考にする時の向き不向きを確認できるようにしています。
-          </p>
+      <article className="mx-auto max-w-5xl px-4 pb-14 pt-4">
+        <header className="rounded-md border border-slate-800 bg-primary p-5 shadow-elevated sm:p-7">
+          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-3xl">
+              <p className="inline-flex rounded-sm bg-white/10 px-2 py-1 text-xs font-bold tracking-[0.14em] text-accent-light">
+                AI RECORD
+              </p>
+              <h1 className="mt-4 text-3xl font-black leading-tight text-white sm:text-4xl">
+                AI予想の成績
+              </h1>
+              <p className="mt-4 text-sm leading-8 text-slate-300 sm:text-base">
+                AI偏差値が結果につながった場面と、届かなかった条件を同じページで見ます。
+                良い数字だけを切り出さず、レース検討で使う時の向き不向きまで残します。
+              </p>
+            </div>
+            <div className="rounded-md border border-white/10 bg-white/[0.06] p-4 text-sm text-slate-300">
+              <p className="text-xs font-bold tracking-[0.16em] text-slate-400">VIEW RANGE</p>
+              <p className="mt-2 text-lg font-black text-white">直近{selectedDays}日</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">短期のぶれと中期の傾向を分けて確認します。</p>
+            </div>
+          </div>
           <div className="mt-6 flex flex-wrap gap-2">
             {rangeOptions.map((option) => (
               <Link
                 key={option.days}
                 href={`/results/accuracy?days=${option.days}`}
-                className={`px-4 py-2 text-sm font-bold transition-colors ${selectedDays === option.days ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                className={`rounded-md px-4 py-2 text-sm font-bold transition-colors ${selectedDays === option.days ? "bg-accent text-primary" : "border border-white/15 bg-white/10 text-slate-200 hover:bg-white/20"}`}
               >
                 {option.label}
               </Link>
@@ -123,10 +141,10 @@ export default async function AccuracyPage({
           </div>
         </header>
 
-        <section className="mt-8 grid gap-3 md:grid-cols-3">
+        <section className="mt-6 grid gap-3 md:grid-cols-3">
           {trendSummaries.map(({ label, summary: item }) => (
-            <div key={label} className="border border-slate-200 bg-white p-5">
-              <p className="text-xs font-bold tracking-[0.14em] text-slate-400">{label}</p>
+            <div key={label} className="rounded-md border border-slate-200 bg-white p-5 shadow-soft">
+              <p className="text-xs font-bold tracking-[0.14em] text-accent-dark">{label}</p>
               {item && item.race_count > 0 ? (
                 <>
                   <p className="mt-2 text-2xl font-black text-slate-950">
@@ -137,7 +155,7 @@ export default async function AccuracyPage({
                   </p>
                 </>
               ) : (
-                <p className="mt-3 text-sm text-slate-500">集計待ちです。</p>
+                <p className="mt-3 text-sm text-slate-500">表示できるレースがまだありません。</p>
               )}
             </div>
           ))}
@@ -145,13 +163,13 @@ export default async function AccuracyPage({
 
         {summary && summary.race_count > 0 ? (
           <>
-            <section className="mt-8 border border-slate-200 bg-slate-50 p-5">
+            <section className="mt-8 rounded-md border border-slate-200 bg-slate-50 p-5">
               <p className="text-xs font-bold text-slate-500">
                 集計期間: {formatDate(summary.start_date)}〜{formatDate(summary.end_date)} / 対象 {summary.race_count}レース
               </p>
               <div className="mt-4 grid gap-3 md:grid-cols-3">
                 {headlineRates.map((item) => (
-                  <div key={item.label} className="bg-white p-5">
+                  <div key={item.label} className="rounded-md border border-slate-100 bg-white p-5 shadow-soft">
                     <h2 className="text-sm font-black text-slate-600">{item.label}</h2>
                     <p className="mt-2 text-3xl font-black text-slate-950">{item.rate.toFixed(1)}%</p>
                     <p className="mt-1 text-xs text-slate-500">{item.hits} / {item.total}</p>
@@ -161,11 +179,11 @@ export default async function AccuracyPage({
             </section>
 
             {(weakCourseTypes.length > 0 || weakDistances.length > 0) && (
-              <section className="mt-8 border border-slate-200 bg-white p-5">
-                <h2 className="text-xl font-black text-slate-950">慎重に見る条件</h2>
+              <section className="mt-8 rounded-md border border-amber-200 bg-amber-50/60 p-5">
+                <h2 className="text-xl font-black text-slate-950">扱いに注意したい条件</h2>
                 <p className="mt-2 text-sm leading-7 text-slate-600">
-                  成績が伸びにくい条件は、AI偏差値だけで判断せず、馬場、枠順、展開、人気とのずれを追加で確認します。
-                  うまくいかなかった条件も残すことで、数字を過信しない使い方をしやすくしています。
+                  数字が伸びにくい条件では、AI偏差値だけで決めず、馬場、枠順、展開、人気との違いを合わせて見ます。
+                  うまくいかなかった条件も残し、無理に良く見せない使い方にしています。
                 </p>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <div>
@@ -195,7 +213,7 @@ export default async function AccuracyPage({
             )}
 
             <section className="mt-8 grid gap-4 md:grid-cols-2">
-              <div className="border border-slate-200 bg-white p-5">
+              <div className="rounded-md border border-slate-200 bg-white p-5 shadow-soft">
                 <h2 className="text-xl font-black text-slate-950">条件別の傾向</h2>
                 <div className="mt-4 space-y-3">
                   {summary.by_course_type.slice(0, 4).map((item) => (
@@ -210,7 +228,7 @@ export default async function AccuracyPage({
                 </div>
               </div>
 
-              <div className="border border-slate-200 bg-white p-5">
+              <div className="rounded-md border border-slate-200 bg-white p-5 shadow-soft">
                 <h2 className="text-xl font-black text-slate-950">距離別の傾向</h2>
                 <div className="mt-4 space-y-3">
                   {summary.by_distance.slice(0, 4).map((item) => (
@@ -227,8 +245,11 @@ export default async function AccuracyPage({
             </section>
 
             <section className="mt-10">
-              <h2 className="text-2xl font-black text-slate-950">結果とずれたレースの確認材料</h2>
-              <div className="mt-4 divide-y divide-slate-200 border-y border-slate-200 bg-white">
+              <h2 className="text-2xl font-black text-slate-950">評価が届かなかったレース</h2>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                上位評価にした馬が着順へ届かなかったレースは、展開や馬場の読み直しに使います。
+              </p>
+              <div className="mt-4 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white shadow-soft">
                 {summary.recent_misses.map((miss) => (
                   <div key={`${miss.race_date}-${miss.venue_name}-${miss.race_number}-${miss.horse_name}`} className="p-4">
                     <p className="text-sm font-black text-slate-900">
@@ -247,8 +268,8 @@ export default async function AccuracyPage({
           </>
         ) : (
           <section className="mt-8 grid gap-4 md:grid-cols-2">
-            {metrics.map((metric) => (
-              <div key={metric.label} className="border border-slate-200 bg-white p-5">
+            {metrics.map((metric, index) => (
+              <div key={metric.label} className={`rounded-md border border-slate-200 border-t-4 bg-white p-5 shadow-soft ${metricStyles[index]}`}>
                 <h2 className="text-lg font-black text-slate-950">{metric.label}</h2>
                 <p className="mt-2 text-sm leading-7 text-slate-600">{metric.body}</p>
               </div>
@@ -256,32 +277,32 @@ export default async function AccuracyPage({
           </section>
         )}
 
-        <section className="mt-10 border border-slate-200 bg-slate-50 p-5">
-          <h2 className="text-xl font-black text-slate-950">現在の見方</h2>
+        <section className="mt-10 rounded-md border border-slate-200 bg-white p-5 shadow-soft">
+          <h2 className="text-xl font-black text-slate-950">数字の使い方</h2>
           <p className="mt-3 text-sm leading-8 text-slate-600">
-            AI偏差値は、上位馬の勝率や3着以内率だけでなく、芝/ダート、距離、結果とずれたレースの共通点を合わせて見ます。
-            良い数字だけを切り出さず、慎重に見る条件も残すことで、レース検討の参考情報として使いやすくします。
+            AI偏差値は、上位馬の勝率や3着以内率だけでなく、芝/ダート、距離、評価が届かなかったレースの共通点を合わせて見ます。
+            数字が良い条件と扱いに注意したい条件を分けることで、レース検討の参考情報として使いやすくします。
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link href="/" className="bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
+            <Link href="/" className="rounded-md border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
               高配当的中ランキングを見る
             </Link>
-            <Link href="/races/today" className="bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
+            <Link href="/races/today" className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-light">
               本日の分析を見る
             </Link>
           </div>
         </section>
 
         <section className="mt-10">
-          <h2 className="text-2xl font-black text-slate-950">成績を見る時に大事にしていること</h2>
+          <h2 className="text-2xl font-black text-slate-950">公開方針</h2>
           <div className="mt-4 space-y-3 text-sm leading-8 text-slate-600">
-            <p className="border-l-4 border-slate-300 bg-white p-4">
-              的中率だけを高く見せるために、都合のよいレースだけを取り出すことはしません。
+            <p className="rounded-md border-l-4 border-accent bg-white p-4 shadow-soft">
+              的中率だけを高く見せるために、都合のよいレースだけを取り出しません。
             </p>
-            <p className="border-l-4 border-slate-300 bg-white p-4">
+            <p className="rounded-md border-l-4 border-blue-600 bg-white p-4 shadow-soft">
               回収率を扱う場合も、点数、券種、購入条件を明記し、再現しにくい買い方とは分けます。
             </p>
-            <p className="border-l-4 border-slate-300 bg-white p-4">
+            <p className="rounded-md border-l-4 border-emerald-600 bg-white p-4 shadow-soft">
               AI偏差値は投票の推奨ではなく、馬の比較をしやすくするための参考指標として扱います。
             </p>
           </div>

@@ -32,24 +32,24 @@ export type CourseProfile = {
 
 export const dataHubLinks: Array<LinkItem & { description: string }> = [
   {
-    label: "馬場状態の見方",
+    label: "馬場を読む",
     href: "/keiba-data/track-condition",
-    description: "良・稍重・重・不良で変わる時計、脚質、評価の順番を整理します。",
+    description: "良・稍重・重・不良で変わる時計、脚質、評価の上げ下げをレース前に整理します。",
   },
   {
-    label: "馬体重増減の見方",
+    label: "馬体重を見る",
     href: "/keiba-data/horse-weight",
-    description: "増減幅、成長分、休み明けを分けて直前評価に使うための基準です。",
+    description: "増減幅だけで決めず、成長分、休み明け、前走からの戻りを分けて見ます。",
   },
   {
-    label: "競馬データ分析サイトの選び方",
+    label: "予想サイトを選ぶ基準",
     href: "/keiba-data/site-selection",
-    description: "無料範囲、指数の根拠、成績公開、地方対応など比較時に見る項目です。",
+    description: "無料で見られる範囲、指数の根拠、成績の出し方、直前の使いやすさを比べます。",
   },
   {
-    label: "AI予測の成績",
+    label: "AI予想の成績",
     href: "/results/accuracy",
-    description: "UMA-FREEのAI偏差値を、直近成績と条件別の傾向から振り返ります。",
+    description: "AI偏差値が結果につながった場面と、届かなかった条件をまとめて見ます。",
   },
 ];
 

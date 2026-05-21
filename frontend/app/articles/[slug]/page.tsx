@@ -8,7 +8,8 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { RelatedArticles } from '@/components/RelatedArticles';
 import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
-import { enhanceArticleHtml } from '@/lib/article-ux';
+import { enhanceArticleHtml, getArticleIntent } from '@/lib/article-ux';
+import { ArticleIntentPanel } from '@/components/ArticleIntentPanel';
 
 type Props = {
   params: { slug: string };
@@ -65,7 +66,8 @@ export default async function ArticlePage({ params }: Props) {
 
     const textContent = article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, '');
     const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
-    const { html: enhancedContent } = enhanceArticleHtml(article.content);
+    const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
+    const intent = getArticleIntent(article);
 
     const articleUrl = `https://uma-free.com/articles/${params.slug}`;
     const datePublished = new Date(article.date).toISOString();
@@ -139,6 +141,14 @@ export default async function ArticlePage({ params }: Props) {
                   <span>
                     約{readingTimeMin}分
                   </span>
+                  <Link href="/about" className="text-slate-500 transition-colors hover:text-primary">
+                    著者: おとうふや
+                  </Link>
+                  {article.lastUpdated && (
+                    <span>
+                      更新日 {new Date(article.lastUpdated).toLocaleDateString('ja-JP')}
+                    </span>
+                  )}
                 </div>
 
                 {/* タイトル */}
@@ -154,6 +164,30 @@ export default async function ArticlePage({ params }: Props) {
                 )}
               </div>
             </header>
+
+            <div className="border-b border-slate-100">
+              <ArticleIntentPanel intent={intent} />
+            </div>
+
+            {toc.length > 1 && (
+              <nav className="mt-8 border border-slate-200 bg-slate-50 p-5" aria-label="記事の目次">
+                <p className="text-xs font-bold tracking-[0.16em] text-slate-400">CONTENTS</p>
+                <h2 className="mt-1 text-lg font-black text-slate-950">この記事の流れ</h2>
+                <ol className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {toc.map((item, index) => (
+                    <li key={item.id}>
+                      <a
+                        href={`#${item.id}`}
+                        className="flex gap-2 text-sm font-semibold leading-6 text-slate-600 transition-colors hover:text-primary"
+                      >
+                        <span className="font-mono text-slate-400">{String(index + 1).padStart(2, '0')}</span>
+                        <span>{item.title}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+            )}
 
             {/* ===== ARTICLE BODY ===== */}
             <div className="pb-10">

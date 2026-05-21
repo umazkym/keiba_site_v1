@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 競合比アクセス改善: 当日ダッシュボード・検索復旧・データ入口拡張
+- **完了日時**: 2026-05-21 23:32
+- **実施内容**: 競合サイトとの差を、検索入口、当日再訪理由、検証透明性、データベース感、記事からレースページへの回遊に分解して改修。レースページには全開催を横断して「まず確認」「混戦注意」「AI偏差値上位馬」を整理する当日ダッシュボードを追加し、ユーザーが全レースを見比べる前に確認順を決められる構成へ変更。サイト内検索は存在しないバックエンド記事API依存を撤去し、Next.js側の静的インデックスで記事、固定ページ、コース、騎手、重賞を横断検索できるよう修正。記事詳細には著者・更新日、記事意図パネル、H2目次を追加し、読後に本日のAI予想や同カテゴリ記事へ戻りやすくした。AI偏差値検証ページは7日、30日、90日、180日の切替と期間比較、弱い条件の表示を追加。データハブには当日の予想で使う順番を追加し、騎手データを13名、コースデータを19ページ、重賞個別ページを8ページへ拡張した。構造化データは記事スキーマを `Article` に見直し、`SoftwareApplication` の `url` 表記も修正。
+- **変更ファイル**: `frontend/components/RaceDayDashboard.tsx`, `frontend/components/RacePageClient.tsx`, `frontend/app/search/page.tsx`, `frontend/app/search/SearchPageClient.tsx`, `frontend/app/articles/[slug]/page.tsx`, `frontend/components/StructuredData.tsx`, `frontend/app/results/accuracy/page.tsx`, `frontend/app/keiba-data/page.tsx`, `frontend/lib/growth-content.ts`, `frontend/lib/grade-race-content.ts`, `AGENTS.md`
+- **確認事項**: `npm run build` は成功し、静的ページ数は138件まで増加。`/courses/[venue]/[course]` は19ページ、`/jockeys/[slug]` は13ページ、`/grade-races/[slug]` は8ページ生成。`npm run article:validate-links` は69記事チェックで成功。ブラウザ確認では `/search?q=ルメール` がローカル検索インデックスから結果を返し、`/courses/tokyo/turf-1600m` と `/results/accuracy?days=90` の主要導線表示を確認。`npm run build` では `caniuse-lite` 更新推奨の警告のみ表示。
+- **次のステップ**: デプロイ後にSearch Consoleで新規コース、騎手、重賞ページのインデックス登録を確認し、検索クエリ別に「騎手名 得意コース」「競馬場 距離 枠順」「重賞名 予想」の表示回数とCTRを2週間単位で追う。バックエンドの精度APIが本番で返る状態で `/results/accuracy` の期間比較が実測値に切り替わることも確認する。
+
 #### ✅ 残タスク実施: 全記事信頼補強・重賞個別ハブ・検証API・X導線
 - **完了日時**: 2026-05-21 03:35
 - **実施内容**: 未完了だった低CTR記事追加対策、記事の信頼補強、重賞個別ページ、レース後回顧テンプレート、AI偏差値の実測検証、X投稿導線、旧URL追加リダイレクトを実装。全67記事に `この記事で扱う集計条件` を追加し、Search ConsoleでCTR改善余地が大きい馬場状態、馬体重、枠順、距離適性、血統記事のtitle/descriptionを検索意図寄りに更新。断定的・煽りの強い表現も一括で自然な表現へ調整した。重賞ハブは `/grade-races/2026-nihon-derby`, `/grade-races/2026-yasuda-kinen`, `/grade-races/2026-takarazuka-kinen` を追加し、7日前、枠順確定後、レース後回顧の3段階で使える構成にした。`/results/accuracy` はバックエンドの新API `/api/v1/predictions/stats/accuracy` からAI偏差値上位馬の勝率・複勝率、条件別傾向、外れたレースを表示する構成へ変更。X投稿は重賞個別ページから該当ページへ直接送る投稿導線を追加した。

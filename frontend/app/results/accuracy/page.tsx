@@ -37,8 +37,49 @@ function formatDate(date: string) {
   return date.replace(/-/g, "/");
 }
 
-export default async function AccuracyPage() {
-  const summary = await getPredictionAccuracySummary(30);
+function normalizeDays(value: string | string[] | undefined) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const parsed = Number(raw ?? 30);
+  if ([7, 30, 90, 180].includes(parsed)) return parsed;
+  return 30;
+}
+
+const rangeOptions = [
+  { label: "7日", days: 7 },
+  { label: "30日", days: 30 },
+  { label: "90日", days: 90 },
+  { label: "180日", days: 180 },
+];
+
+export default async function AccuracyPage({
+  searchParams,
+}: {
+  searchParams?: { days?: string | string[] };
+}) {
+  const selectedDays = normalizeDays(searchParams?.days);
+  const [summary, trend7, trend30, trend90] = await Promise.all([
+    getPredictionAccuracySummary(selectedDays),
+    getPredictionAccuracySummary(7),
+    getPredictionAccuracySummary(30),
+    getPredictionAccuracySummary(90),
+  ]);
+
+  const trendSummaries = [
+    { label: "直近7日", summary: trend7 },
+    { label: "直近30日", summary: trend30 },
+    { label: "直近90日", summary: trend90 },
+  ];
+
+  const weakCourseTypes = [...(summary?.by_course_type ?? [])]
+    .filter((item) => item.races >= 3)
+    .sort((a, b) => a.top1_place_rate - b.top1_place_rate)
+    .slice(0, 3);
+
+  const weakDistances = [...(summary?.by_distance ?? [])]
+    .filter((item) => item.races >= 3)
+    .sort((a, b) => a.top1_place_rate - b.top1_place_rate)
+    .slice(0, 3);
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "AboutPage",
@@ -61,7 +102,38 @@ export default async function AccuracyPage() {
             UMA-FREEでは、AI偏差値を「当てた・外した」だけで見ず、条件別にどこが強く、どこが弱いかを確認します。
             競馬は結果を保証できないため、検証ページでは数字の使いどころと限界を明確にしていきます。
           </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {rangeOptions.map((option) => (
+              <Link
+                key={option.days}
+                href={`/results/accuracy?days=${option.days}`}
+                className={`px-4 py-2 text-sm font-bold transition-colors ${selectedDays === option.days ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              >
+                {option.label}
+              </Link>
+            ))}
+          </div>
         </header>
+
+        <section className="mt-8 grid gap-3 md:grid-cols-3">
+          {trendSummaries.map(({ label, summary: item }) => (
+            <div key={label} className="border border-slate-200 bg-white p-5">
+              <p className="text-xs font-bold tracking-[0.14em] text-slate-400">{label}</p>
+              {item && item.race_count > 0 ? (
+                <>
+                  <p className="mt-2 text-2xl font-black text-slate-950">
+                    {item.top1_place.rate.toFixed(1)}%
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    AI偏差値1位の複勝率 / {item.race_count}レース
+                  </p>
+                </>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">集計待ちです。</p>
+              )}
+            </div>
+          ))}
+        </section>
 
         {summary && summary.race_count > 0 ? (
           <>
@@ -79,6 +151,40 @@ export default async function AccuracyPage() {
                 ))}
               </div>
             </section>
+
+            {(weakCourseTypes.length > 0 || weakDistances.length > 0) && (
+              <section className="mt-8 border border-slate-200 bg-white p-5">
+                <h2 className="text-xl font-black text-slate-950">注意して見る条件</h2>
+                <p className="mt-2 text-sm leading-7 text-slate-600">
+                  的中率が低く出ている条件は、AI偏差値だけで判断せず、馬場、枠順、展開、人気とのズレを追加で確認します。
+                  数字が弱い条件も残すことで、過信しない使い方をしやすくしています。
+                </p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-700">コース種別</h3>
+                    <div className="mt-3 space-y-2">
+                      {weakCourseTypes.map((item) => (
+                        <div key={item.label} className="flex items-center justify-between border-b border-slate-100 pb-2 text-sm">
+                          <span className="font-bold text-slate-700">{item.label}</span>
+                          <span className="text-slate-500">1位複勝率 {item.top1_place_rate.toFixed(1)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-700">距離帯</h3>
+                    <div className="mt-3 space-y-2">
+                      {weakDistances.map((item) => (
+                        <div key={item.label} className="flex items-center justify-between border-b border-slate-100 pb-2 text-sm">
+                          <span className="font-bold text-slate-700">{item.label}</span>
+                          <span className="text-slate-500">1位複勝率 {item.top1_place_rate.toFixed(1)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
 
             <section className="mt-8 grid gap-4 md:grid-cols-2">
               <div className="border border-slate-200 bg-white p-5">

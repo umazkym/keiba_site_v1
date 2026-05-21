@@ -14,6 +14,7 @@ import { Article } from "@/lib/articles";
 import DisclaimerAlert from "@/components/DisclaimerAlert";
 import { InFeedAd } from "@/components/InFeedAd";
 import { RecentRaceReturn } from "@/components/RecentRaceReturn";
+import { RaceDayDashboard } from "@/components/RaceDayDashboard";
 
 // 日付フォーマット検証関数
 /**
@@ -351,6 +352,8 @@ export default function RacePageClient({
                     <WeeklyGradeRaces races={weeklyGradeRaces} />
                 </div>
             )}
+
+            <RaceDayDashboard data={predictionData} date={currentDate} />
 
             {renderContent()}
 

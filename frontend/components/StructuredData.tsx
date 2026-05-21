@@ -93,10 +93,14 @@ export function ArticleSchema({
 }) {
     const articleSchema = {
         "@context": "https://schema.org",
-        "@type": "NewsArticle",
+        "@type": "Article",
         "headline": title,
         "description": description,
         "url": url,
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": url
+        },
         "datePublished": datePublished,
         "dateModified": dateModified,
         "author": {
@@ -211,7 +215,7 @@ export function SoftwareApplicationSchema() {
             "@type": "Person",
             "name": "おとうふや"
         },
-        "URL": "https://uma-free.com"
+        "url": "https://uma-free.com"
     };
 
     return (

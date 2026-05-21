@@ -11,7 +11,63 @@ interface SearchResult {
     url: string;
 }
 
-export default function SearchPageClient() {
+export interface SearchIndexItem {
+    type: 'article' | 'page' | 'course' | 'jockey' | 'grade';
+    title: string;
+    description: string;
+    url: string;
+    keywords: string[];
+}
+
+function normalize(value: string) {
+    return value.toLowerCase().replace(/\s+/g, '');
+}
+
+function scoreResult(item: SearchIndexItem, query: string) {
+    const normalizedQuery = normalize(query);
+    const haystack = normalize([
+        item.title,
+        item.description,
+        item.type,
+        ...item.keywords,
+    ].join(' '));
+
+    if (!normalizedQuery) return 0;
+    if (normalize(item.title) === normalizedQuery) return 100;
+    if (normalize(item.title).includes(normalizedQuery)) return 60;
+    if (item.keywords.some((keyword) => normalize(keyword).includes(normalizedQuery))) return 45;
+    if (haystack.includes(normalizedQuery)) return 25;
+
+    const queryParts = query
+        .split(/[\s　]+/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+    return queryParts.reduce((score, part) => {
+        const normalizedPart = normalize(part);
+        if (!normalizedPart) return score;
+        if (normalize(item.title).includes(normalizedPart)) return score + 12;
+        if (haystack.includes(normalizedPart)) return score + 6;
+        return score;
+    }, 0);
+}
+
+function getResultLabel(type: SearchIndexItem['type']) {
+    switch (type) {
+        case 'article':
+            return '記事';
+        case 'course':
+            return 'コース';
+        case 'jockey':
+            return '騎手';
+        case 'grade':
+            return '重賞';
+        default:
+            return 'ページ';
+    }
+}
+
+export default function SearchPageClient({ searchIndex }: { searchIndex: SearchIndexItem[] }) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const query = searchParams.get('q') || '';
@@ -28,68 +84,18 @@ export default function SearchPageClient() {
     const performSearch = async (searchQuery: string) => {
         setIsLoading(true);
         setSearchPerformed(true);
-        const results: SearchResult[] = [];
 
-        try {
-            // 記事の検索
-            const articlesResponse = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/articles`
-            );
-
-            if (articlesResponse.ok) {
-                const articlesData = await articlesResponse.json();
-                const articles = Array.isArray(articlesData) ? articlesData : articlesData.articles || [];
-
-                // クエリ文字列で記事をフィルタリング
-                const lowerQuery = searchQuery.toLowerCase();
-                const matchingArticles = articles.filter((article: any) =>
-                    (article.title && article.title.toLowerCase().includes(lowerQuery)) ||
-                    (article.content && article.content.toLowerCase().includes(lowerQuery)) ||
-                    (article.description && article.description.toLowerCase().includes(lowerQuery))
-                ).slice(0, 10);
-
-                matchingArticles.forEach((article: any) => {
-                    results.push({
-                        type: 'article',
-                        title: article.title || '記事',
-                        description: article.description || article.content?.substring(0, 160) || '',
-                        url: `/articles/${article.slug || article.id}`
-                    });
-                });
-            }
-        } catch (error) {
-            console.error('記事検索エラー:', error);
-        }
-
-        // 静的ページの検索結果を追加
-        const staticPages: SearchResult[] = [
-            {
-                type: 'page',
-                title: 'プライバシーポリシー',
-                description: 'サイトのプライバシーポリシーと個人情報の取り扱いについて',
-                url: '/privacy'
-            },
-            {
-                type: 'page',
-                title: 'お問い合わせ',
-                description: 'ご不明な点やご要望については、こちらからお問い合わせください',
-                url: '/contact'
-            },
-            {
-                type: 'page',
-                title: 'サイト運営者について',
-                description: 'UMA-FREEの運営方針とサービス内容についてのご説明',
-                url: '/about'
-            }
-        ];
-
-        const lowerQuery = searchQuery.toLowerCase();
-        staticPages.forEach(page => {
-            if (page.title.toLowerCase().includes(lowerQuery) ||
-                page.description.toLowerCase().includes(lowerQuery)) {
-                results.push(page);
-            }
-        });
+        const results: SearchResult[] = searchIndex
+            .map((item) => ({ item, score: scoreResult(item, searchQuery) }))
+            .filter(({ score }) => score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 20)
+            .map(({ item }) => ({
+                type: item.type === 'article' ? 'article' : 'page',
+                title: item.title,
+                description: item.description,
+                url: item.url,
+            }));
 
         setResults(results);
         setIsLoading(false);
@@ -170,7 +176,7 @@ export default function SearchPageClient() {
                                 <div className="flex items-start gap-3">
                                     <div className="pt-1">
                                         <span className="inline-block px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded font-semibold">
-                                            {result.type === 'article' ? '記事' : 'ページ'}
+                                            {getResultLabel(searchIndex.find((item) => item.url === result.url)?.type ?? result.type)}
                                         </span>
                                     </div>
                                     <div className="flex-1">

@@ -51,6 +51,27 @@ export default function KeibaDataPage() {
           ))}
         </section>
 
+        <section className="mt-10 border border-slate-200 bg-slate-50 p-5">
+          <h2 className="text-2xl font-black text-slate-950">当日の予想で使う順番</h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            {[
+              ["1", "開催条件", "競馬場、芝/ダート、距離を確認し、コースの癖を先に押さえます。"],
+              ["2", "馬場と馬体重", "馬場状態と馬体重増減で、指数をそのまま信じてよいかを見ます。"],
+              ["3", "騎手と脚質", "騎手の得意条件と脚質が噛み合っているかを確認します。"],
+              ["4", "AI偏差値", "最後に当日の出馬表へ戻り、上位馬と見送り条件を分けます。"],
+            ].map(([step, title, body]) => (
+              <div key={step} className="bg-white p-4">
+                <p className="font-mono text-xs font-black text-slate-400">STEP {step}</p>
+                <h3 className="mt-1 text-base font-black text-slate-950">{title}</h3>
+                <p className="mt-2 text-xs leading-6 text-slate-600">{body}</p>
+              </div>
+            ))}
+          </div>
+          <Link href="/races/today" className="mt-5 inline-flex bg-slate-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary">
+            本日の分析で確認する
+          </Link>
+        </section>
+
         <section className="mt-10">
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>

@@ -339,12 +339,12 @@ export default async function HomePage() {
             {/* ── 分析データの紹介 ── */}
             <AnalysisFeatures />
 
-            {/* ── データ辞典への導線 ── */}
+            {/* ── 分析ガイドへの導線 ── */}
             <section>
                 <div className="mb-2 flex items-center justify-between">
                     <h2 className="sec-title !mb-0">
                         <span className="bar bg-accent"></span>
-                        競馬データ辞典
+                        競馬分析ガイド
                     </h2>
                     <Link href="/keiba-data" className="pr-1 text-[11px] font-semibold text-secondary transition-colors hover:text-primary sm:text-[12px]">
                         すべて見る →

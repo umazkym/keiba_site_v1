@@ -44,12 +44,12 @@ export const dataHubLinks: Array<LinkItem & { description: string }> = [
   {
     label: "競馬データ分析サイトの選び方",
     href: "/keiba-data/site-selection",
-    description: "無料データ、指数、検証公開、地方対応など比較時に見る項目です。",
+    description: "無料範囲、指数の根拠、成績公開、地方対応など比較時に見る項目です。",
   },
   {
-    label: "AI偏差値の検証",
+    label: "AI予測の成績",
     href: "/results/accuracy",
-    description: "UMA-FREEの予測を、的中だけでなく条件別に見直すためのページです。",
+    description: "UMA-FREEのAI偏差値を、直近成績と条件別の傾向から振り返ります。",
   },
 ];
 

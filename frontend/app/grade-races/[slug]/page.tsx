@@ -72,7 +72,7 @@ export default function GradeRaceDetailPage({ params }: Props) {
               当日のAI予想を見る
             </Link>
             <Link href="/results/accuracy" className="bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
-              AI偏差値の検証を見る
+              AI予測の成績を見る
             </Link>
           </div>
         </header>

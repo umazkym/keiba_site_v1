@@ -392,7 +392,7 @@ export default function RacePageClient({
                     <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
                         <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                             <span className="w-1.5 h-5 bg-primary rounded-full"></span>
-                            分析記事で馬券力UP
+                            関連する分析記事
                         </h2>
                     </div>
                     <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">

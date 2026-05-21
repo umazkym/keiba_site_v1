@@ -27,7 +27,7 @@ export const Footer = () => {
                             </li>
                             <li>
                                 <Link href="/keiba-data" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
-                                    競馬データ辞典
+                                    競馬分析ガイド
                                 </Link>
                             </li>
                             <li>
@@ -42,7 +42,7 @@ export const Footer = () => {
                             </li>
                             <li>
                                 <Link href="/results/accuracy" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
-                                    AI偏差値の検証
+                                    AI予測の成績
                                 </Link>
                             </li>
                             <li>

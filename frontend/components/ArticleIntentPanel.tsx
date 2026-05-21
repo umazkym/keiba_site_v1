@@ -22,7 +22,7 @@ export function ArticleIntentPanel({ intent }: ArticleIntentPanelProps) {
 
         <details className="border-t border-slate-100 pt-2">
           <summary className="cursor-pointer list-none text-xs font-bold text-slate-500 hover:text-primary">
-            確認ポイントを開く
+            読み方のポイントを見る
           </summary>
           <ul className="mt-2 grid gap-1.5 text-sm text-slate-600">
             {intent.checkpoints.map((checkpoint) => (

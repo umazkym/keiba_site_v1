@@ -4,9 +4,9 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { getPredictionAccuracySummary } from "@/lib/api";
 
 export const metadata: Metadata = {
-  title: "AI偏差値の検証と的中実績",
+  title: "AI予測の成績と振り返り",
   description:
-    "UMA-FREEのAI偏差値を、的中率だけでなく条件別の得意不得意、上位馬の複勝傾向、外れたレースの振り返りで検証するページです。",
+    "UMA-FREEのAI予測を、直近成績、条件別の傾向、結果とずれたレースの振り返りから確認できます。",
   alternates: {
     canonical: "/results/accuracy",
   },
@@ -14,20 +14,20 @@ export const metadata: Metadata = {
 
 const metrics = [
   {
-    label: "AI偏差値上位馬",
-    body: "レースごとの上位評価馬が、実際にどの程度3着以内へ入ったかを確認します。",
+    label: "上位評価馬の結果",
+    body: "AI偏差値で上位にした馬が、実際にどの程度3着以内へ入ったかを確認します。",
   },
   {
-    label: "コース別の傾向",
-    body: "短距離、芝中距離、ダート、地方競馬など、条件ごとの得意不得意を分けて見ます。",
+    label: "条件別の傾向",
+    body: "短距離、芝中距離、ダート、地方競馬など、条件ごとの結果を分けて見ます。",
   },
   {
-    label: "外れた理由",
-    body: "出遅れ、馬場悪化、ハイペース、馬体重の大幅増減など、外れた時の共通点を残します。",
+    label: "結果とずれたレース",
+    body: "出遅れ、馬場変化、ハイペース、馬体重の大幅増減など、結果とずれた時の材料を残します。",
   },
   {
-    label: "過剰人気の確認",
-    body: "人気順とAI偏差値が大きくずれた馬を追い、オッズ妙味の有無を検証します。",
+    label: "人気とのずれ",
+    body: "人気順とAI偏差値が大きくずれた馬を追い、評価が偏っていないか確認します。",
   },
 ];
 
@@ -80,10 +80,18 @@ export default async function AccuracyPage({
     .sort((a, b) => a.top1_place_rate - b.top1_place_rate)
     .slice(0, 3);
 
+  const headlineRates = summary
+    ? [
+        { ...summary.top1_win, label: "AI偏差値1位の勝率" },
+        { ...summary.top1_place, label: "AI偏差値1位の3着以内率" },
+        { ...summary.top3_place, label: "上位3頭の3着以内率" },
+      ]
+    : [];
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "AboutPage",
-    name: "AI偏差値の検証と的中実績",
+    name: "AI予測の成績と振り返り",
     description: metadata.description,
     url: "https://uma-free.com/results/accuracy",
   };
@@ -94,13 +102,13 @@ export default async function AccuracyPage({
       <Breadcrumb />
       <article className="mx-auto max-w-4xl px-4 pb-12 pt-6">
         <header className="border-b border-slate-200 pb-8">
-          <p className="text-xs font-bold tracking-[0.18em] text-slate-400">MODEL REVIEW</p>
+          <p className="text-xs font-bold tracking-[0.18em] text-slate-400">PREDICTION RECORD</p>
           <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
-            AI偏差値の検証と的中実績
+            AI予測の成績と振り返り
           </h1>
           <p className="mt-4 text-base leading-8 text-slate-600">
-            UMA-FREEでは、AI偏差値を「当てた・外した」だけで見ず、条件別にどこが強く、どこが弱いかを確認します。
-            競馬は結果を保証できないため、検証ページでは数字の使いどころと限界を明確にしていきます。
+            UMA-FREEでは、AI偏差値を「当たった・外れた」だけで見ず、条件別の傾向と結果とのずれを残します。
+            競馬は結果を保証できないため、このページでは数字を参考にする時の向き不向きを確認できるようにしています。
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
             {rangeOptions.map((option) => (
@@ -125,7 +133,7 @@ export default async function AccuracyPage({
                     {item.top1_place.rate.toFixed(1)}%
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    AI偏差値1位の複勝率 / {item.race_count}レース
+                    AI偏差値1位の3着以内率 / {item.race_count}レース
                   </p>
                 </>
               ) : (
@@ -142,7 +150,7 @@ export default async function AccuracyPage({
                 集計期間: {formatDate(summary.start_date)}〜{formatDate(summary.end_date)} / 対象 {summary.race_count}レース
               </p>
               <div className="mt-4 grid gap-3 md:grid-cols-3">
-                {[summary.top1_win, summary.top1_place, summary.top3_place].map((item) => (
+                {headlineRates.map((item) => (
                   <div key={item.label} className="bg-white p-5">
                     <h2 className="text-sm font-black text-slate-600">{item.label}</h2>
                     <p className="mt-2 text-3xl font-black text-slate-950">{item.rate.toFixed(1)}%</p>
@@ -154,10 +162,10 @@ export default async function AccuracyPage({
 
             {(weakCourseTypes.length > 0 || weakDistances.length > 0) && (
               <section className="mt-8 border border-slate-200 bg-white p-5">
-                <h2 className="text-xl font-black text-slate-950">注意して見る条件</h2>
+                <h2 className="text-xl font-black text-slate-950">慎重に見る条件</h2>
                 <p className="mt-2 text-sm leading-7 text-slate-600">
-                  的中率が低く出ている条件は、AI偏差値だけで判断せず、馬場、枠順、展開、人気とのズレを追加で確認します。
-                  数字が弱い条件も残すことで、過信しない使い方をしやすくしています。
+                  成績が伸びにくい条件は、AI偏差値だけで判断せず、馬場、枠順、展開、人気とのずれを追加で確認します。
+                  うまくいかなかった条件も残すことで、数字を過信しない使い方をしやすくしています。
                 </p>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <div>
@@ -166,7 +174,7 @@ export default async function AccuracyPage({
                       {weakCourseTypes.map((item) => (
                         <div key={item.label} className="flex items-center justify-between border-b border-slate-100 pb-2 text-sm">
                           <span className="font-bold text-slate-700">{item.label}</span>
-                          <span className="text-slate-500">1位複勝率 {item.top1_place_rate.toFixed(1)}%</span>
+                          <span className="text-slate-500">1位3着以内率 {item.top1_place_rate.toFixed(1)}%</span>
                         </div>
                       ))}
                     </div>
@@ -177,7 +185,7 @@ export default async function AccuracyPage({
                       {weakDistances.map((item) => (
                         <div key={item.label} className="flex items-center justify-between border-b border-slate-100 pb-2 text-sm">
                           <span className="font-bold text-slate-700">{item.label}</span>
-                          <span className="text-slate-500">1位複勝率 {item.top1_place_rate.toFixed(1)}%</span>
+                          <span className="text-slate-500">1位3着以内率 {item.top1_place_rate.toFixed(1)}%</span>
                         </div>
                       ))}
                     </div>
@@ -196,7 +204,7 @@ export default async function AccuracyPage({
                         <p className="text-sm font-bold text-slate-800">{item.label}</p>
                         <p className="text-xs text-slate-500">{item.races}レース</p>
                       </div>
-                      <p className="mt-1 text-sm text-slate-600">1位複勝率 {item.top1_place_rate.toFixed(1)}% / 上位3頭複勝内率 {item.top3_place_rate.toFixed(1)}%</p>
+                      <p className="mt-1 text-sm text-slate-600">1位3着以内率 {item.top1_place_rate.toFixed(1)}% / 上位3頭の3着以内率 {item.top3_place_rate.toFixed(1)}%</p>
                     </div>
                   ))}
                 </div>
@@ -211,7 +219,7 @@ export default async function AccuracyPage({
                         <p className="text-sm font-bold text-slate-800">{item.label}</p>
                         <p className="text-xs text-slate-500">{item.races}レース</p>
                       </div>
-                      <p className="mt-1 text-sm text-slate-600">1位複勝率 {item.top1_place_rate.toFixed(1)}% / 上位3頭複勝内率 {item.top3_place_rate.toFixed(1)}%</p>
+                      <p className="mt-1 text-sm text-slate-600">1位3着以内率 {item.top1_place_rate.toFixed(1)}% / 上位3頭の3着以内率 {item.top3_place_rate.toFixed(1)}%</p>
                     </div>
                   ))}
                 </div>
@@ -219,7 +227,7 @@ export default async function AccuracyPage({
             </section>
 
             <section className="mt-10">
-              <h2 className="text-2xl font-black text-slate-950">外れたレースの確認材料</h2>
+              <h2 className="text-2xl font-black text-slate-950">結果とずれたレースの確認材料</h2>
               <div className="mt-4 divide-y divide-slate-200 border-y border-slate-200 bg-white">
                 {summary.recent_misses.map((miss) => (
                   <div key={`${miss.race_date}-${miss.venue_name}-${miss.race_number}-${miss.horse_name}`} className="p-4">
@@ -251,8 +259,8 @@ export default async function AccuracyPage({
         <section className="mt-10 border border-slate-200 bg-slate-50 p-5">
           <h2 className="text-xl font-black text-slate-950">現在の見方</h2>
           <p className="mt-3 text-sm leading-8 text-slate-600">
-            AI偏差値は、上位馬の勝率・複勝率だけでなく、芝/ダート、距離、外れたレースの共通点を合わせて見ます。
-            数字が良い条件だけを切り出さず、弱い条件も残すことで、馬券検討の参考情報として使いやすくします。
+            AI偏差値は、上位馬の勝率や3着以内率だけでなく、芝/ダート、距離、結果とずれたレースの共通点を合わせて見ます。
+            良い数字だけを切り出さず、慎重に見る条件も残すことで、レース検討の参考情報として使いやすくします。
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link href="/" className="bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
@@ -265,7 +273,7 @@ export default async function AccuracyPage({
         </section>
 
         <section className="mt-10">
-          <h2 className="text-2xl font-black text-slate-950">検証で重視すること</h2>
+          <h2 className="text-2xl font-black text-slate-950">成績を見る時に大事にしていること</h2>
           <div className="mt-4 space-y-3 text-sm leading-8 text-slate-600">
             <p className="border-l-4 border-slate-300 bg-white p-4">
               的中率だけを高く見せるために、都合のよいレースだけを取り出すことはしません。

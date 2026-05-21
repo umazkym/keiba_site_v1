@@ -4,9 +4,9 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { dataHubLinks, courseProfiles, jockeyProfiles } from "@/lib/growth-content";
 
 export const metadata: Metadata = {
-  title: "競馬データ分析の無料辞典",
+  title: "競馬分析ガイド",
   description:
-    "競馬データ分析を無料で確認できるUMA-FREEのデータ辞典。馬場状態、馬体重、騎手の得意コース、コース別傾向、AI偏差値の検証をまとめています。",
+    "UMA-FREEの競馬分析ガイド。馬場状態、馬体重、騎手の得意条件、コース傾向、AI予測の成績をレース前に確認しやすく整理しています。",
   alternates: {
     canonical: "/keiba-data",
   },
@@ -16,7 +16,7 @@ export default function KeibaDataPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: "競馬データ分析の無料辞典",
+    name: "競馬分析ガイド",
     description: metadata.description,
     url: "https://uma-free.com/keiba-data",
   };
@@ -27,13 +27,13 @@ export default function KeibaDataPage() {
       <Breadcrumb />
       <div className="mx-auto max-w-6xl px-4 pb-12 pt-6">
         <header className="border-b border-slate-200 pb-8">
-          <p className="text-xs font-bold tracking-[0.18em] text-slate-400">KEIBA DATA GUIDE</p>
+          <p className="text-xs font-bold tracking-[0.18em] text-slate-400">ANALYSIS GUIDE</p>
           <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
-            競馬データ分析の無料辞典
+            競馬分析ガイド
           </h1>
           <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">
-            UMA-FREEで公開しているレース分析を、検索しやすいテーマ別に整理しました。
-            当日の予想を見る前に、馬場状態、馬体重、騎手、コースの順で確認すると、数字の意味を読み取りやすくなります。
+            UMA-FREEで公開している分析の読み方を、レース前に確認しやすいテーマ別にまとめました。
+            馬場、馬体重、騎手、コースの順に見てから当日の出馬表へ戻ると、AI偏差値の意味を落ち着いて判断しやすくなります。
           </p>
         </header>
 
@@ -52,13 +52,13 @@ export default function KeibaDataPage() {
         </section>
 
         <section className="mt-10 border border-slate-200 bg-slate-50 p-5">
-          <h2 className="text-2xl font-black text-slate-950">当日の予想で使う順番</h2>
+          <h2 className="text-2xl font-black text-slate-950">レース前に確認する順番</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-4">
             {[
-              ["1", "開催条件", "競馬場、芝/ダート、距離を確認し、コースの癖を先に押さえます。"],
-              ["2", "馬場と馬体重", "馬場状態と馬体重増減で、指数をそのまま信じてよいかを見ます。"],
-              ["3", "騎手と脚質", "騎手の得意条件と脚質が噛み合っているかを確認します。"],
-              ["4", "AI偏差値", "最後に当日の出馬表へ戻り、上位馬と見送り条件を分けます。"],
+              ["1", "開催条件", "競馬場、芝/ダート、距離を確認し、コースの特徴を先に押さえます。"],
+              ["2", "馬場と馬体重", "馬場状態と馬体重増減を見て、当日の状態変化を確認します。"],
+              ["3", "騎手と脚質", "騎手の得意条件と脚質が、今回のコースに合うかを見ます。"],
+              ["4", "AI偏差値", "最後に当日の出馬表へ戻り、上位評価馬と注意材料を分けます。"],
             ].map(([step, title, body]) => (
               <div key={step} className="bg-white p-4">
                 <p className="font-mono text-xs font-black text-slate-400">STEP {step}</p>
@@ -68,7 +68,7 @@ export default function KeibaDataPage() {
             ))}
           </div>
           <Link href="/races/today" className="mt-5 inline-flex bg-slate-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary">
-            本日の分析で確認する
+            本日のレースで確認する
           </Link>
         </section>
 

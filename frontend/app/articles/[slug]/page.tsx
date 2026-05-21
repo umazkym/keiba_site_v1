@@ -172,7 +172,7 @@ export default async function ArticlePage({ params }: Props) {
             {toc.length > 1 && (
               <details className="mt-4 border border-slate-200 bg-slate-50" aria-label="記事の目次">
                 <summary className="cursor-pointer list-none px-4 py-3 text-sm font-black text-slate-800">
-                  目次を開く
+                  本文の流れを見る
                 </summary>
                 <ol className="grid gap-2 border-t border-slate-200 px-4 py-3 sm:grid-cols-2">
                   {toc.map((item, index) => (

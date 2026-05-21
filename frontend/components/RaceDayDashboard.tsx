@@ -127,7 +127,7 @@ export function RaceDayDashboard({ data, date }: { data: RaceDayPrediction | nul
       <summary className="cursor-pointer list-none px-3 py-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:px-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-bold tracking-[0.14em] text-slate-400">TODAY MEMO</p>
+            <p className="text-xs font-bold tracking-[0.14em] text-slate-400">当日の見どころ</p>
             <h2 className="mt-0.5 truncate text-sm font-black text-slate-950 sm:text-base">
               今日のレース整理
             </h2>
@@ -137,7 +137,7 @@ export function RaceDayDashboard({ data, date }: { data: RaceDayPrediction | nul
             <span>{totalRaces}R</span>
             <span>混戦 {closeRaceCount}</span>
           </div>
-          <span className="shrink-0 text-xs font-bold text-primary">開く</span>
+          <span className="shrink-0 text-xs font-bold text-primary">見る</span>
         </div>
         {primaryRace && (
           <p className="mt-2 truncate text-xs text-slate-500">

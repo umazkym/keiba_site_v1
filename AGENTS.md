@@ -477,11 +477,18 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ UI文言統一: 分析ガイド・予測成績への整理
+- **完了日時**: 2026-05-22 00:32
+- **実施内容**: サイト内で浮いていた「データ辞典」「AI偏差値の検証」などの開発者目線の呼び方を整理し、主要導線を「分析ガイド」「予測成績」に統一。`/keiba-data` は辞典風の一覧ではなく、レース前に見る順番を示す分析ガイドへ本文を調整。`/results/accuracy` は検証ページではなく、AI予測の成績と振り返りとして「上位評価馬の結果」「条件別の傾向」「結果とずれたレース」を確認する構成に変更。ナビ、フッター、パンくず、検索、トップページ、重賞ページCTA、サイト選びページの文言も同じトーンに揃えた。前回の補助UIに残っていた英字ラベルや強い表現も、日本語の落ち着いた補助文へ調整した。
+- **変更ファイル**: `frontend/lib/growth-content.ts`, `frontend/components/Header.tsx`, `frontend/components/Footer.tsx`, `frontend/components/Breadcrumb.tsx`, `frontend/app/page.tsx`, `frontend/app/keiba-data/page.tsx`, `frontend/app/keiba-data/site-selection/page.tsx`, `frontend/app/results/accuracy/page.tsx`, `frontend/app/search/page.tsx`, `frontend/app/grade-races/[slug]/page.tsx`, `frontend/components/RacePageClient.tsx`, `frontend/components/RaceDayDashboard.tsx`, `frontend/components/ArticleIntentPanel.tsx`, `frontend/app/articles/[slug]/page.tsx`, `frontend/app/robots.ts`, `AGENTS.md`
+- **確認事項**: 旧表示語の検索で `データ辞典`, `AI偏差値の検証`, `検証ページ`, `TODAY MEMO`, `馬券力UP`, `確認ポイントを開く`, `目次を開く`, `弱い条件` が主要フロントエンド表示コードに残っていないことを確認。`npm run build` は成功し、静的ページ数は138件。`npm run article:validate-links` は69記事チェックで成功。ブラウザ確認では `/keiba-data`, `/results/accuracy?days=90`, `/keiba-data/site-selection` の見出し、パンくず、本文で「分析ガイド」「予測成績」へ統一され、旧称が表示されないことを確認。確認用の開発サーバーは停止済み。`npm run build` では `caniuse-lite` 更新推奨の警告のみ表示。
+- **次のステップ**: 本番反映後に、Search Consoleで新しい表示名のクリック率と検索クエリを確認し、「分析ガイド」「予測成績」が自然に受け入れられているかを2週間単位で見る。
+
 #### ✅ UI視認性改善: 追加導線の折りたたみ化・表示密度調整
 - **完了日時**: 2026-05-22 00:05
-- **実施内容**: 前回追加した競合対策UIが、レースページと記事ページの主コンテンツより強く見えていたため、情報量を抑える方向で修正。`RaceDayDashboard` は大きなカード型ダッシュボードをやめ、初期表示では1行程度の `TODAY MEMO` と「まず確認」レースだけを見せる折りたたみUIへ変更。開いた場合も、黒背景カードや大きな説明文ではなく、3列の小さな一覧で「まず確認」「混戦注意」「偏差値上位」を確認する構成にした。記事ページでは、記事意図パネルを小さな白背景の補助枠に変更し、確認ポイントは折りたたみ化。H2目次も大きなボックス表示をやめ、初期表示では `目次を開く` だけの折りたたみUIに変更した。
+- **実施内容**: 前回追加した競合対策UIが、レースページと記事ページの主コンテンツより強く見えていたため、情報量を抑える方向で修正。`RaceDayDashboard` は大きなカード型ダッシュボードをやめ、初期表示では1行程度の「当日の見どころ」と「まず確認」レースだけを見せる折りたたみUIへ変更。開いた場合も、黒背景カードや大きな説明文ではなく、3列の小さな一覧で「まず確認」「混戦注意」「偏差値上位」を確認する構成にした。記事ページでは、記事意図パネルを小さな白背景の補助枠に変更し、確認ポイントは折りたたみ化。H2目次も大きなボックス表示をやめ、初期表示では「本文の流れを見る」だけの折りたたみUIに変更した。
 - **変更ファイル**: `frontend/components/RaceDayDashboard.tsx`, `frontend/components/ArticleIntentPanel.tsx`, `frontend/app/articles/[slug]/page.tsx`, `AGENTS.md`
-- **確認事項**: `npm run build` は成功。`npm run article:validate-links` は69記事チェックで成功。ブラウザ確認では、記事ページに `確認ポイントを開く` と `目次を開く` が表示され、旧来の大きな `この記事の流れ` 表示が出ていないことを確認。レースページでは `TODAY MEMO` のコンパクト表示になり、旧来の `今日見るべきレースの整理` の大きな見出しが出ていないこと、予想エリアへ進めることを確認。確認用の開発サーバーは停止済み。`npm run build` では `caniuse-lite` 更新推奨の警告のみ表示。
+- **確認事項**: `npm run build` は成功。`npm run article:validate-links` は69記事チェックで成功。ブラウザ確認では、記事ページに「読み方のポイントを見る」と「本文の流れを見る」が表示され、旧来の大きな `この記事の流れ` 表示が出ていないことを確認。レースページでは「当日の見どころ」のコンパクト表示になり、旧来の `今日見るべきレースの整理` の大きな見出しが出ていないこと、予想エリアへ進めることを確認。確認用の開発サーバーは停止済み。`npm run build` では `caniuse-lite` 更新推奨の警告のみ表示。
 - **次のステップ**: 本番反映後に、レースページのファーストビュー、記事ページの読了率、検索から記事・レースへの遷移率を確認し、補助UIがクリックされていない場合はさらに下部配置へ移動する。
 
 #### ✅ 競合比アクセス改善: 当日ダッシュボード・検索復旧・データ入口拡張

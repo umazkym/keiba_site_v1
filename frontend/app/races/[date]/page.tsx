@@ -8,6 +8,10 @@ import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { notFound } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { getAllArticlesMeta } from '@/lib/articles';
+import {
+    getRaceDetailPath,
+    getRaceIndexPolicy,
+} from '@/lib/race-url';
 
 // ▼▼▼▼▼【ISR導入】▼▼▼▼▼
 // 従来: export const dynamic = 'force-dynamic' で毎回フルSSR
@@ -28,6 +32,7 @@ export async function generateMetadata(
     let title = `${formattedDate}のAI競馬データ分析 | UMA-FREE`;
     let description = `${formattedDate}の中央・地方競馬の全レースをAIが完全無料でデータ分析。馬券検討に役立つ統計情報を毎日更新。`;
     let canonicalUrl = `/races/${params.date}`;
+    const indexPolicy = getRaceIndexPolicy(params.date);
 
     if (venue && race) {
         const venueName = decodeURIComponent(venue);
@@ -45,8 +50,8 @@ export async function generateMetadata(
             canonical: canonicalUrl,
         },
         robots: {
-            index: true,
-            follow: true,
+            index: indexPolicy.index,
+            follow: indexPolicy.follow,
         },
     };
 }
@@ -114,9 +119,7 @@ export default async function RacePage({ params }: { params: { date: string } })
                 },
                 "description": `AIによる${mainRace.venue_name} ${mainRace.race_number}R ${mainRace.race_name}の競馬データ分析。`,
                 "eventStatus": "https://schema.org/EventScheduled",
-                // ▼▼▼▼▼【修正: JSON-LD URLのパラメータ順序を統一】▼▼▼▼▼
-                "url": `https://uma-free.com/races/${mainRace.race_date}?race=${mainRace.race_number}&venue=${encodeURIComponent(mainRace.venue_name)}`,
-                // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+                "url": `https://uma-free.com${getRaceDetailPath(mainRace.race_date, mainRace.venue_name, mainRace.race_number)}`,
                 "image": [
                     "https://uma-free.com/new-logo.png"
                 ],
@@ -127,9 +130,7 @@ export default async function RacePage({ params }: { params: { date: string } })
                 },
                 "offers": {
                     "@type": "Offer",
-                    // ▼▼▼▼▼【修正: JSON-LD URLのパラメータ順序を統一】▼▼▼▼▼
-                    "url": `https://uma-free.com/races/${mainRace.race_date}?race=${mainRace.race_number}&venue=${encodeURIComponent(mainRace.venue_name)}`,
-                    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+                    "url": `https://uma-free.com${getRaceDetailPath(mainRace.race_date, mainRace.venue_name, mainRace.race_number)}`,
                     "price": "0",
                     "priceCurrency": "JPY",
                     "availability": "https://schema.org/InStock",

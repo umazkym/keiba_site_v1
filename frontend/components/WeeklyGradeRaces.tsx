@@ -1,6 +1,7 @@
 // components/WeeklyGradeRaces.tsx
 import Link from 'next/link';
 import { WeeklyGradeRace } from '@/lib/types';
+import { getRaceDetailPath } from '@/lib/race-url';
 
 // グレードごとのスタイル定義（絵文字不使用・プロフェッショナルなデザイン）
 const gradeStyles: Record<string, {
@@ -80,7 +81,7 @@ export function WeeklyGradeRaces({ races, compact = false }: WeeklyGradeRacesPro
                         return (
                             <Link
                                 key={race.race_id}
-                                href={`/races/${race.race_date}?race=${race.race_number}&venue=${encodeURIComponent(race.venue_name)}`}
+                                href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
                                 className={`
                                     flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg
                                     bg-white border border-slate-200 shadow-sm

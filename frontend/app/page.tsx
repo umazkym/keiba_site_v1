@@ -21,6 +21,7 @@ import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
 import type { RaceDayPrediction } from '@/lib/types';
 import { dataHubLinks } from '@/lib/growth-content';
+import { getRaceDetailPath } from '@/lib/race-url';
 
 // ISR: データ更新は1日2〜3回（06:00, 13:30 JST）のバッチ処理のため、
 // 30分間キャッシュでも十分な鮮度を維持しつつ、Origin Transfer/CPUを大幅削減。
@@ -292,7 +293,7 @@ export default async function HomePage() {
                             <div className="venue-links-label">中央競馬（JRA）</div>
                             <div className="venue-links-row">
                                 {(predictions.jra ?? []).slice(0, 4).map(venue => (
-                                    <Link key={venue.venue_name} href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`} className="venue-link">
+                                    <Link key={venue.venue_name} href={venue.races[0] ? getRaceDetailPath(todayStr, venue.venue_name, venue.races[0].race_number) : `/races/${todayStr}`} className="venue-link">
                                         {venue.venue_name}
                                     </Link>
                                 ))}
@@ -308,7 +309,7 @@ export default async function HomePage() {
                             <div className="venue-links-label">地方競馬（NAR）</div>
                             <div className="venue-links-row !mb-0">
                                 {(predictions.nar ?? []).slice(0, 4).map(venue => (
-                                    <Link key={venue.venue_name} href={`/races/${todayStr}?venue=${encodeURIComponent(venue.venue_name)}`} className="venue-link">
+                                    <Link key={venue.venue_name} href={venue.races[0] ? getRaceDetailPath(todayStr, venue.venue_name, venue.races[0].race_number) : `/races/${todayStr}`} className="venue-link">
                                         {venue.venue_name}
                                     </Link>
                                 ))}

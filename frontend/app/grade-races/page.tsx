@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { gradeRaceProfiles } from "@/lib/grade-race-content";
 
 export const metadata: Metadata = {
   title: "今週の重賞・G1データ分析",
@@ -53,6 +54,20 @@ export default function GradeRacesPage() {
             UMA-FREEでは、枠順確定前、枠順確定後、当日、レース後の4段階で確認すべきデータを分けて整理します。
           </p>
         </header>
+
+        <section className="mt-8">
+          <h2 className="text-2xl font-black text-slate-950">2026年春G1の個別ハブ</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            {gradeRaceProfiles.map((race) => (
+              <Link key={race.slug} href={`/grade-races/${race.slug}`} className="border border-slate-200 bg-white p-5 hover:border-primary/40 hover:bg-slate-50">
+                <p className="text-xs font-bold text-primary">{race.date} / {race.grade}</p>
+                <h3 className="mt-2 text-lg font-black text-slate-950">{race.name}</h3>
+                <p className="mt-1 text-sm font-bold text-slate-500">{race.venue}{race.course}</p>
+                <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-600">{race.summary}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
 
         <section className="mt-8 grid gap-4 md:grid-cols-2">
           {guideBlocks.map((block) => (

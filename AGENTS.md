@@ -477,6 +477,20 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 残タスク実施: 全記事信頼補強・重賞個別ハブ・検証API・X導線
+- **完了日時**: 2026-05-21 03:35
+- **実施内容**: 未完了だった低CTR記事追加対策、記事の信頼補強、重賞個別ページ、レース後回顧テンプレート、AI偏差値の実測検証、X投稿導線、旧URL追加リダイレクトを実装。全67記事に `この記事で扱う集計条件` を追加し、Search ConsoleでCTR改善余地が大きい馬場状態、馬体重、枠順、距離適性、血統記事のtitle/descriptionを検索意図寄りに更新。断定的・煽りの強い表現も一括で自然な表現へ調整した。重賞ハブは `/grade-races/2026-nihon-derby`, `/grade-races/2026-yasuda-kinen`, `/grade-races/2026-takarazuka-kinen` を追加し、7日前、枠順確定後、レース後回顧の3段階で使える構成にした。`/results/accuracy` はバックエンドの新API `/api/v1/predictions/stats/accuracy` からAI偏差値上位馬の勝率・複勝率、条件別傾向、外れたレースを表示する構成へ変更。X投稿は重賞個別ページから該当ページへ直接送る投稿導線を追加した。
+- **変更ファイル**: `frontend/content/articles/*.md`, `frontend/scripts/agents/apply_remaining_growth_fixes.js`, `frontend/lib/grade-race-content.ts`, `frontend/app/grade-races/page.tsx`, `frontend/app/grade-races/[slug]/page.tsx`, `frontend/content/templates/grade-race-recap-template.md`, `frontend/app/results/accuracy/page.tsx`, `frontend/lib/api.ts`, `frontend/lib/types.ts`, `backend/api/v1/endpoints/races.py`, `backend/crud/race_crud.py`, `backend/schemas/race_schema.py`, `frontend/app/sitemap.ts`, `frontend/components/Breadcrumb.tsx`, `frontend/middleware.ts`
+- **確認事項**: `npm run article:validate-links` は67記事チェックで成功。`python -m py_compile backend/api/v1/endpoints/races.py backend/crud/race_crud.py backend/schemas/race_schema.py` は成功。`npm run build` は成功し、静的ページ数は111件まで増加。`/grade-races/[slug]` は3ページ生成された。`npm run build` では `caniuse-lite` 更新推奨の警告のみ表示。
+- **次のステップ**: フロントエンドとバックエンドを同時にデプロイし、`/results/accuracy` が新APIから実測値を取得できること、旧URLが301されること、重賞個別ページのSearch Console登録状況を確認する。
+
+#### ✅ レースURL安定パス化・旧クエリURL301統合・index制御
+- **完了日時**: 2026-05-21 02:45
+- **実施内容**: レース詳細URLを `/races/YYYY-MM-DD/venue-slug/raceNumber` の安定パスへ移行する基盤を実装。旧来の `/races/YYYY-MM-DD?race=11&venue=東京` や `?venue=東京&race=11` はミドルウェアで301リダイレクトし、venueのみ・raceのみ・余分なクエリは日付ページへ集約するよう整理した。レース詳細用の新規動的ルートを追加し、個別レースのtitle、description、canonical、SportsEvent JSON-LDを安定パスで出力。古いレースアーカイブは `noindex,follow`、直近14日から未来2日までのレースと重賞はindex対象にする共通判定を追加。トップページ、AI注目馬、高配当的中ランキング、今週の重賞、レース内切替、前回見ていたレース保存URLも安定パスへ更新。サイトマップはクエリ付きURLを掲載せず、直近・重賞系の安定パスだけを出す方針に変更した。
+- **変更ファイル**: `frontend/lib/race-url.ts`, `frontend/middleware.ts`, `frontend/app/races/[date]/[venue]/[race]/page.tsx`, `frontend/app/races/[date]/page.tsx`, `frontend/app/sitemap.ts`, `frontend/app/robots.ts`, `frontend/public/robots.txt`, `frontend/app/page.tsx`, `frontend/components/RacePageClient.tsx`, `frontend/components/RaceTabs.tsx`, `frontend/components/TopHitsDisplay.tsx`, `frontend/components/SpecialPickCard.tsx`, `frontend/components/WeeklyGradeRaces.tsx`, `frontend/scripts/agents/validate_article_links.js`, `frontend/scripts/agents/seo_checker.ts`, `frontend/scripts/agents/agent_editor.ts`
+- **確認事項**: `npm run article:validate-links` は67記事チェックで成功。`npm run build` は成功し、`/races/[date]/[venue]/[race]` がDynamic routeとして追加されたことを確認。`npm run build` では `caniuse-lite` 更新推奨の警告のみ表示。
+- **次のステップ**: デプロイ後に旧クエリURL数本で301先を確認し、Search Consoleで「リダイレクト エラー」「Googleにより正規ページとして選択されていません」「クロール済み - インデックス未登録」の推移を見る。
+
 #### ✅ 検索流入改善のためのデータハブ・騎手別・コース別ページ整備
 - **完了日時**: 2026-05-21 02:05
 - **実施内容**: 競合比でアクセス数が伸びにくい要因を、検索意図の受け皿不足、レース詳細URLの重複、内部導線の弱さ、既存記事の汎用クエリ対応不足に分解して改善。新規に `競馬データ辞典`、馬場状態・馬体重・サイト選びの解説ページ、騎手別データ、コース別データ、重賞入口、AI偏差値の検証ページを追加し、トップページ・ヘッダー・フッター・パンくずから回遊できるようにした。記事側は馬場状態、馬体重、中山ダート1200m、天皇賞秋、ルメール騎手、武豊騎手、川田将雅騎手の記事を検索意図に合わせて調整し、関連する新規ページへの内部リンクを追加。サイトマップは記事専用XMLを追加し、レース詳細のクエリURLは日付ページへ正規化する方針へ整理した。

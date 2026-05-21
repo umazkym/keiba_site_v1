@@ -1,26 +1,59 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import {
+    getRaceDetailPath,
+    isValidRaceDate,
+    parseRaceNumberParam,
+} from './lib/race-url';
 
 /**
  * ミドルウェア: URLの正規化
  *
  * Google Search Consoleで検出された問題を解決:
- * 1. レースページのクエリパラメータの順序を統一
+ * 1. 旧レース詳細クエリURLを安定パスへ統一
  * 2. 記事ページの日付プレフィックスなしslugを最新の記事にリダイレクト
  *
  * 例:
- * - /races/2024-11-03?venue=東京&race=7 → /races/2024-11-03?race=7&venue=東京
+ * - /races/2024-11-03?venue=東京&race=7 → /races/2024-11-03/tokyo/7
  * - /articles/bloodline-sire-analysis → /articles/2025-10-26-bloodline-sire-analysis
  */
 export function middleware(request: NextRequest) {
     const { pathname, searchParams } = request.nextUrl;
 
-    // 1. レースページのクエリパラメータ正規化（301リダイレクト）
-    // ?venue=X&race=N → ?race=N&venue=X に正規化。
-    // 全日付が対象。古い日付でデータがなくてもリダイレクト先で404を返すのは正常動作。
+    // 1. レースページURL正規化（301リダイレクト）
+    // クエリ付き詳細URLは /races/YYYY-MM-DD/venue-slug/R へ統一する。
+    // venueのみ・raceのみ・余分なクエリは日付ページへ集約して重複URLを増やさない。
     if (pathname.startsWith('/races/')) {
         const dateOnlyMatch = pathname.match(/^\/races\/([^/]+)$/);
-        if (dateOnlyMatch && !/^\d{4}-\d{2}-\d{2}$/.test(dateOnlyMatch[1]) && dateOnlyMatch[1] !== 'today') {
+        const detailMatch = pathname.match(/^\/races\/([^/]+)\/([^/]+)\/([^/]+)$/);
+
+        if (detailMatch) {
+            const [, date, venueSlug, raceParam] = detailMatch;
+            const raceNumber = parseRaceNumberParam(raceParam);
+
+            if (!isValidRaceDate(date) || !raceNumber) {
+                const newUrl = new URL(request.url);
+                newUrl.pathname = isValidRaceDate(date) ? `/races/${date}` : '/races/today';
+                newUrl.search = '';
+
+                return NextResponse.redirect(newUrl, {
+                    status: 301,
+                });
+            }
+
+            const expectedPath = `/races/${date}/${venueSlug.toLowerCase()}/${raceNumber}`;
+            if (pathname !== expectedPath || searchParams.size > 0) {
+                const newUrl = new URL(request.url);
+                newUrl.pathname = expectedPath;
+                newUrl.search = '';
+
+                return NextResponse.redirect(newUrl, {
+                    status: 301,
+                });
+            }
+        }
+
+        if (dateOnlyMatch && !isValidRaceDate(dateOnlyMatch[1]) && dateOnlyMatch[1] !== 'today') {
             const newUrl = new URL(request.url);
             newUrl.pathname = '/races/today';
             newUrl.search = '';
@@ -33,24 +66,21 @@ export function middleware(request: NextRequest) {
         const venue = searchParams.get('venue');
         const race = searchParams.get('race');
 
-        if (venue && race) {
-            const dateMatch = pathname.match(/^\/races\/(\d{4}-\d{2}-\d{2})$/);
+        if (dateOnlyMatch && dateOnlyMatch[1] !== 'today' && searchParams.size > 0) {
+            const date = dateOnlyMatch[1];
+            const raceNumber = parseRaceNumberParam(race);
+            const newUrl = new URL(request.url);
 
-            if (dateMatch) {
-                // パラメータの順序チェック: 最初のキーが 'race' でなければ正規URLへ301。
-                // canonicalは日付ページへ集約するが、ユーザー共有URLとしては race -> venue に統一する。
-                const firstKey = Array.from(searchParams.keys())[0];
-                const allowedKeys = new Set(['race', 'venue']);
-                const hasExtraParams = Array.from(searchParams.keys()).some((key) => !allowedKeys.has(key));
-
-                if (firstKey !== 'race' || hasExtraParams) {
-                    const newUrl = new URL(request.url);
-                    newUrl.search = `?race=${encodeURIComponent(race)}&venue=${encodeURIComponent(venue)}`;
-                    return NextResponse.redirect(newUrl, {
-                        status: 301,
-                    });
-                }
+            if (venue && raceNumber) {
+                newUrl.pathname = getRaceDetailPath(date, venue, raceNumber);
+            } else {
+                newUrl.pathname = `/races/${date}`;
             }
+            newUrl.search = '';
+
+            return NextResponse.redirect(newUrl, {
+                status: 301,
+            });
         }
     }
 
@@ -77,6 +107,37 @@ export function middleware(request: NextRequest) {
                 status: 301, // 恒久的リダイレクト
             });
         }
+    }
+
+    // 2.5. 旧ハブURL・単数形URLを現行ページへ集約
+    const legacyPathRedirects: { [key: string]: string } = {
+        '/data': '/keiba-data',
+        '/data/track-condition': '/keiba-data/track-condition',
+        '/data/horse-weight': '/keiba-data/horse-weight',
+        '/keiba-data/ground-condition': '/keiba-data/track-condition',
+        '/jockey': '/jockeys',
+        '/jockey/yutaka-take': '/jockeys/yutaka-take',
+        '/jockey/christophe-lemaire': '/jockeys/christophe-lemaire',
+        '/jockey/yuga-kawada': '/jockeys/yuga-kawada',
+        '/course': '/courses',
+        '/course/nakayama/dirt-1200m': '/courses/nakayama/dirt-1200m',
+        '/course/tokyo/turf-2400m': '/courses/tokyo/turf-2400m',
+        '/accuracy': '/results/accuracy',
+        '/results': '/results/accuracy',
+        '/grade-races/nihon-derby': '/grade-races/2026-nihon-derby',
+        '/grade-races/derby': '/grade-races/2026-nihon-derby',
+        '/grade-races/yasuda': '/grade-races/2026-yasuda-kinen',
+        '/grade-races/takarazuka': '/grade-races/2026-takarazuka-kinen',
+    };
+
+    if (legacyPathRedirects[pathname]) {
+        const newUrl = new URL(request.url);
+        newUrl.pathname = legacyPathRedirects[pathname];
+        newUrl.search = '';
+
+        return NextResponse.redirect(newUrl, {
+            status: 301,
+        });
     }
 
     // 3. 検索ページのプレースホルダーURLを処理
@@ -139,5 +200,17 @@ export function middleware(request: NextRequest) {
 
 // ミドルウェアの適用範囲を指定
 export const config = {
-    matcher: ['/races/:path*', '/articles/:path*', '/search', '/rac:path*', '/guides/:path*'],
+    matcher: [
+        '/races/:path*',
+        '/articles/:path*',
+        '/search',
+        '/rac:path*',
+        '/guides/:path*',
+        '/data/:path*',
+        '/jockey/:path*',
+        '/course/:path*',
+        '/accuracy',
+        '/results',
+        '/grade-races/:path*',
+    ],
 };

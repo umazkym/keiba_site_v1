@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { getPredictionAccuracySummary } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "AI偏差値の検証と的中実績",
@@ -30,7 +31,14 @@ const metrics = [
   },
 ];
 
-export default function AccuracyPage() {
+export const revalidate = 3600;
+
+function formatDate(date: string) {
+  return date.replace(/-/g, "/");
+}
+
+export default async function AccuracyPage() {
+  const summary = await getPredictionAccuracySummary(30);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "AboutPage",
@@ -55,20 +63,90 @@ export default function AccuracyPage() {
           </p>
         </header>
 
-        <section className="mt-8 grid gap-4 md:grid-cols-2">
-          {metrics.map((metric) => (
-            <div key={metric.label} className="border border-slate-200 bg-white p-5">
-              <h2 className="text-lg font-black text-slate-950">{metric.label}</h2>
-              <p className="mt-2 text-sm leading-7 text-slate-600">{metric.body}</p>
-            </div>
-          ))}
-        </section>
+        {summary && summary.race_count > 0 ? (
+          <>
+            <section className="mt-8 border border-slate-200 bg-slate-50 p-5">
+              <p className="text-xs font-bold text-slate-500">
+                集計期間: {formatDate(summary.start_date)}〜{formatDate(summary.end_date)} / 対象 {summary.race_count}レース
+              </p>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {[summary.top1_win, summary.top1_place, summary.top3_place].map((item) => (
+                  <div key={item.label} className="bg-white p-5">
+                    <h2 className="text-sm font-black text-slate-600">{item.label}</h2>
+                    <p className="mt-2 text-3xl font-black text-slate-950">{item.rate.toFixed(1)}%</p>
+                    <p className="mt-1 text-xs text-slate-500">{item.hits} / {item.total}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="mt-8 grid gap-4 md:grid-cols-2">
+              <div className="border border-slate-200 bg-white p-5">
+                <h2 className="text-xl font-black text-slate-950">条件別の傾向</h2>
+                <div className="mt-4 space-y-3">
+                  {summary.by_course_type.slice(0, 4).map((item) => (
+                    <div key={item.label} className="border-b border-slate-100 pb-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-bold text-slate-800">{item.label}</p>
+                        <p className="text-xs text-slate-500">{item.races}レース</p>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-600">1位複勝率 {item.top1_place_rate.toFixed(1)}% / 上位3頭複勝内率 {item.top3_place_rate.toFixed(1)}%</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border border-slate-200 bg-white p-5">
+                <h2 className="text-xl font-black text-slate-950">距離別の傾向</h2>
+                <div className="mt-4 space-y-3">
+                  {summary.by_distance.slice(0, 4).map((item) => (
+                    <div key={item.label} className="border-b border-slate-100 pb-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-bold text-slate-800">{item.label}</p>
+                        <p className="text-xs text-slate-500">{item.races}レース</p>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-600">1位複勝率 {item.top1_place_rate.toFixed(1)}% / 上位3頭複勝内率 {item.top3_place_rate.toFixed(1)}%</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section className="mt-10">
+              <h2 className="text-2xl font-black text-slate-950">外れたレースの確認材料</h2>
+              <div className="mt-4 divide-y divide-slate-200 border-y border-slate-200 bg-white">
+                {summary.recent_misses.map((miss) => (
+                  <div key={`${miss.race_date}-${miss.venue_name}-${miss.race_number}-${miss.horse_name}`} className="p-4">
+                    <p className="text-sm font-black text-slate-900">
+                      {formatDate(miss.race_date)} {miss.venue_name}{miss.race_number}R {miss.race_name}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      AI偏差値1位: {miss.horse_name}（{miss.deviation_score.toFixed(2)}） / 着順 {miss.rank ?? "不明"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {miss.course_type ?? "条件不明"} {miss.distance ? `${miss.distance}m` : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
+        ) : (
+          <section className="mt-8 grid gap-4 md:grid-cols-2">
+            {metrics.map((metric) => (
+              <div key={metric.label} className="border border-slate-200 bg-white p-5">
+                <h2 className="text-lg font-black text-slate-950">{metric.label}</h2>
+                <p className="mt-2 text-sm leading-7 text-slate-600">{metric.body}</p>
+              </div>
+            ))}
+          </section>
+        )}
 
         <section className="mt-10 border border-slate-200 bg-slate-50 p-5">
           <h2 className="text-xl font-black text-slate-950">現在の見方</h2>
           <p className="mt-3 text-sm leading-8 text-slate-600">
-            現時点では、高配当的中ランキングとレース別の結果表示をもとに、AI偏差値上位馬の振り返りを行います。
-            今後は月別、競馬場別、距離別に集計を分け、強い条件と弱い条件を公開していく方針です。
+            AI偏差値は、上位馬の勝率・複勝率だけでなく、芝/ダート、距離、外れたレースの共通点を合わせて見ます。
+            数字が良い条件だけを切り出さず、弱い条件も残すことで、馬券検討の参考情報として使いやすくします。
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link href="/" className="bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">

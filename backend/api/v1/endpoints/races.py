@@ -24,6 +24,20 @@ def read_weekly_grade_races(db: Session = Depends(get_db)):
     return race_crud.get_weekly_grade_races(db=db)
 
 
+@router.get("/stats/accuracy", response_model=race_schema.PredictionAccuracySummary)
+def read_prediction_accuracy_summary(
+    days: int = Query(30, ge=7, le=180, description="集計対象日数"),
+    db: Session = Depends(get_db),
+):
+    """
+    AI偏差値上位馬の実測成績を返す。
+
+    的中率だけを強調せず、上位馬の複勝傾向、条件別の得意不得意、
+    外れたレースの確認材料を同じレスポンスで扱う。
+    """
+    return race_crud.get_prediction_accuracy_summary(db=db, days=days)
+
+
 @router.get("/{target_date}", response_model=race_schema.RaceDayPrediction)
 def read_predictions_for_date(target_date: date, db: Session = Depends(get_db)):
     """

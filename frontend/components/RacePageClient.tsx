@@ -103,6 +103,8 @@ type RacePageClientProps = {
     initialTopHits?: TopPayoutHit[];
     weeklyGradeRaces?: WeeklyGradeRace[];
     articlesMeta: Omit<Article, 'content'>[];
+    initialVenueName?: string | null;
+    initialRaceNumber?: number | null;
 };
 
 const getShiftedDate = (dateStr: string, days: number) => {
@@ -111,7 +113,16 @@ const getShiftedDate = (dateStr: string, days: number) => {
     return date.toISOString().split('T')[0];
 };
 
-export default function RacePageClient({ initialDate, initialPredictionData, initialSpecialPick, initialTopHits, weeklyGradeRaces, articlesMeta }: RacePageClientProps) {
+export default function RacePageClient({
+    initialDate,
+    initialPredictionData,
+    initialSpecialPick,
+    initialTopHits,
+    weeklyGradeRaces,
+    articlesMeta,
+    initialVenueName: routeInitialVenueName = null,
+    initialRaceNumber: routeInitialRaceNumber = null,
+}: RacePageClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [currentDate, setCurrentDate] = useState(initialDate);
@@ -122,10 +133,12 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
     // 従来: useState(null) → 初回レース切替でkeyが変わりRaceTabs再マウント
     // 変更: searchParamsの値を初期値として使用 → 最初からkeyが安定
     const [initialVenue, setInitialVenue] = useState<string | null>(() => {
+        if (routeInitialVenueName) return routeInitialVenueName;
         const venue = searchParams.get('venue');
         return venue ? decodeURIComponent(venue) : null;
     });
     const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(() => {
+        if (routeInitialRaceNumber) return routeInitialRaceNumber;
         const raceStr = searchParams.get('race');
         if (raceStr) {
             const num = parseInt(raceStr, 10);
@@ -192,6 +205,12 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
     }, [initialDate]);
 
     useEffect(() => {
+        if (routeInitialVenueName || routeInitialRaceNumber) {
+            setInitialVenue(routeInitialVenueName);
+            setInitialRaceNumber(routeInitialRaceNumber);
+            return;
+        }
+
         const venue = searchParams.get('venue');
         const raceStr = searchParams.get('race');
 
@@ -204,7 +223,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                 setInitialRaceNumber(raceNum);
             }
         }
-    }, [searchParams]);
+    }, [searchParams, routeInitialVenueName, routeInitialRaceNumber]);
 
     useEffect(() => {
         if (!hasScrolled.current && initialVenue && initialRaceNumber && predictionData) {
@@ -292,7 +311,7 @@ export default function RacePageClient({ initialDate, initialPredictionData, ini
                     </div>
                 )}
                 <RaceTabs
-                    key={currentDate}
+                    key={`${currentDate}-${initialVenue ?? 'all'}-${initialRaceNumber ?? 'all'}`}
                     data={predictionData}
                     articlesMeta={articlesMeta}
                     initialVenueName={initialVenue}

@@ -6,6 +6,7 @@ import { TopPayoutHit } from '@/lib/types';
 import { NativeCardAd } from '@/components/NativeCardAd';
 import { TrophyIcon } from './Icons';
 import { Adsense } from './Adsense';
+import { getRaceDetailPath } from '@/lib/race-url';
 
 const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: number, compact?: boolean }) => {
     let rankClass = 'rank-default';
@@ -129,7 +130,7 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
                     {hits.map((hit, index) => (
                         <Link
                             key={`${hit.race_id}-${hit.winning_numbers}`}
-                            href={`/races/${hit.race_date}?race=${hit.race_number}&venue=${encodeURIComponent(hit.venue_name)}`}
+                            href={getRaceDetailPath(hit.race_date, hit.venue_name, hit.race_number)}
                             className="block"
                         >
                             <HitCard hit={hit} rank={index + 1} compact />
@@ -142,7 +143,7 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
                         {hits.map((hit, index) => (
                             <Link
                                 key={`${hit.race_id}-${hit.winning_numbers}`}
-                                href={`/races/${hit.race_date}?race=${hit.race_number}&venue=${encodeURIComponent(hit.venue_name)}`}
+                                href={getRaceDetailPath(hit.race_date, hit.venue_name, hit.race_number)}
                                 className="block h-full"
                             >
                                 <HitCard hit={hit} rank={index + 1} />

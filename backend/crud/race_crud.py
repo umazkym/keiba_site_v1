@@ -71,6 +71,7 @@ _sitemap_cache = _TTLCache(max_entries=5)
 _weekly_grade_cache = _TTLCache(max_entries=5)
 _special_pick_cache = _TTLCache(max_entries=10)
 _matchup_cache = _TTLCache(max_entries=30)
+_accuracy_cache = _TTLCache(max_entries=5)
 
 
 def invalidate_predictions_cache(target_date: date) -> None:
@@ -387,6 +388,145 @@ def get_high_payout_hits_for_date(db: Session, target_date: date) -> List[Dict[s
      .all()
 
     return [_format_hit(r, str_date=True) for r in results]
+
+
+def _rate(label: str, hits: int, total: int, races: int) -> Dict[str, Any]:
+    return {
+        "label": label,
+        "races": races,
+        "rate": round((hits / total) * 100, 1) if total else 0.0,
+        "hits": hits,
+        "total": total,
+    }
+
+
+def _distance_bucket(distance: Optional[int]) -> str:
+    if distance is None:
+        return "距離不明"
+    if distance <= 1400:
+        return "短距離（1400m以下）"
+    if distance <= 1800:
+        return "マイル前後（1600〜1800m）"
+    if distance <= 2200:
+        return "中距離（2000〜2200m）"
+    return "長距離（2400m以上）"
+
+
+def get_prediction_accuracy_summary(db: Session, days: int = 30) -> Dict[str, Any]:
+    safe_days = max(7, min(days, 180))
+    cache_key = f"accuracy_summary_{safe_days}"
+    cached = _accuracy_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    end_date = date.today() - timedelta(days=1)
+    start_date = end_date - timedelta(days=safe_days - 1)
+
+    rows = db.query(
+        models.Race.id.label("race_id"),
+        models.Race.race_date,
+        models.Race.venue_name,
+        models.Race.race_number,
+        models.Race.race_name,
+        models.Race.course_type,
+        models.Race.distance,
+        models.Prediction.horse_id,
+        models.Prediction.horse_name,
+        models.Prediction.deviation_score,
+        models.Result.rank,
+    ).select_from(models.Prediction)\
+     .join(models.Race, models.Prediction.race_id == models.Race.id)\
+     .join(
+        models.Result,
+        and_(
+            models.Result.race_id == models.Prediction.race_id,
+            models.Result.horse_id == models.Prediction.horse_id,
+        ),
+     )\
+     .filter(
+        models.Race.race_date.between(start_date, end_date),
+        models.Prediction.deviation_score.isnot(None),
+        models.Result.rank.isnot(None),
+     )\
+     .order_by(models.Race.race_date.desc(), models.Race.id, desc(models.Prediction.deviation_score))\
+     .all()
+
+    grouped: Dict[str, List[Any]] = defaultdict(list)
+    for row in rows:
+        grouped[row.race_id].append(row)
+
+    race_groups = [sorted(items, key=lambda item: item.deviation_score or 0, reverse=True) for items in grouped.values()]
+    race_count = len(race_groups)
+
+    top1_win_hits = 0
+    top1_place_hits = 0
+    top3_place_hits = 0
+    top3_total = 0
+    condition_stats: Dict[str, Dict[str, int]] = defaultdict(lambda: {"races": 0, "top1_place": 0, "top3_place": 0, "top3_total": 0})
+    distance_stats: Dict[str, Dict[str, int]] = defaultdict(lambda: {"races": 0, "top1_place": 0, "top3_place": 0, "top3_total": 0})
+    misses: List[Dict[str, Any]] = []
+
+    for predictions in race_groups:
+        top1 = predictions[0]
+        top3 = predictions[:3]
+        top1_rank = top1.rank
+        top1_placed = top1_rank is not None and top1_rank <= 3
+
+        if top1_rank == 1:
+            top1_win_hits += 1
+        if top1_placed:
+            top1_place_hits += 1
+        else:
+            misses.append({
+                "race_date": top1.race_date,
+                "venue_name": top1.venue_name,
+                "race_number": top1.race_number,
+                "race_name": top1.race_name,
+                "horse_name": top1.horse_name,
+                "deviation_score": round(top1.deviation_score or 0, 2),
+                "rank": top1.rank,
+                "course_type": top1.course_type,
+                "distance": top1.distance,
+            })
+
+        top3_hits = sum(1 for item in top3 if item.rank is not None and item.rank <= 3)
+        top3_place_hits += top3_hits
+        top3_total += len(top3)
+
+        course_label = top1.course_type or "不明"
+        bucket = _distance_bucket(top1.distance)
+        for store, label in [(condition_stats, course_label), (distance_stats, bucket)]:
+            store[label]["races"] += 1
+            if top1_placed:
+                store[label]["top1_place"] += 1
+            store[label]["top3_place"] += top3_hits
+            store[label]["top3_total"] += len(top3)
+
+    def serialize_conditions(store: Dict[str, Dict[str, int]]) -> List[Dict[str, Any]]:
+        return [
+            {
+                "label": label,
+                "races": stats["races"],
+                "top1_place_rate": round((stats["top1_place"] / stats["races"]) * 100, 1) if stats["races"] else 0.0,
+                "top3_place_rate": round((stats["top3_place"] / stats["top3_total"]) * 100, 1) if stats["top3_total"] else 0.0,
+            }
+            for label, stats in sorted(store.items(), key=lambda item: item[1]["races"], reverse=True)
+        ]
+
+    result = {
+        "start_date": start_date,
+        "end_date": end_date,
+        "race_count": race_count,
+        "top1_win": _rate("AI偏差値1位の勝率", top1_win_hits, race_count, race_count),
+        "top1_place": _rate("AI偏差値1位の複勝率", top1_place_hits, race_count, race_count),
+        "top3_place": _rate("AI偏差値上位3頭の複勝内率", top3_place_hits, top3_total, race_count),
+        "by_course_type": serialize_conditions(condition_stats),
+        "by_distance": serialize_conditions(distance_stats),
+        "recent_misses": misses[:6],
+    }
+
+    _accuracy_cache.set(cache_key, result, 3600)
+    return result
 
 
 def get_all_race_urls(db: Session) -> List[Dict[str, Any]]:

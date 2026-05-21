@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getSpecialPick } from '@/lib/api';
 import { SpecialPick } from "@/lib/types";
 import { formatDate } from '@/lib/utils';
+import { getRaceDetailPath } from '@/lib/race-url';
 
 // スケルトンコンポーネント
 const Skeleton = () => (
@@ -76,7 +77,7 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
 
     return (
         <Link
-            href={`/races/${effectiveDate}?race=${pick.race_number}&venue=${encodeURIComponent(pick.venue_name)}`}
+            href={getRaceDetailPath(effectiveDate, pick.venue_name, pick.race_number)}
             className="block group mb-1 sm:mb-2"
             aria-label={`${pick.commentary}`}
         >

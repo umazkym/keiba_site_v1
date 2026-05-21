@@ -81,3 +81,42 @@ class WeeklyGradeRace(BaseModel):
     race_number: int
     race_name: str
     grade: str  # "G1", "G2", "G3"
+
+
+class AccuracyRate(BaseModel):
+    label: str
+    races: int
+    rate: float
+    hits: int
+    total: int
+
+
+class AccuracyCondition(BaseModel):
+    label: str
+    races: int
+    top1_place_rate: float
+    top3_place_rate: float
+
+
+class AccuracyMissCase(BaseModel):
+    race_date: date
+    venue_name: str
+    race_number: int
+    race_name: str
+    horse_name: str
+    deviation_score: float
+    rank: Optional[int]
+    course_type: Optional[str]
+    distance: Optional[int]
+
+
+class PredictionAccuracySummary(BaseModel):
+    start_date: date
+    end_date: date
+    race_count: int
+    top1_win: AccuracyRate
+    top1_place: AccuracyRate
+    top3_place: AccuracyRate
+    by_course_type: List[AccuracyCondition]
+    by_distance: List[AccuracyCondition]
+    recent_misses: List[AccuracyMissCase]

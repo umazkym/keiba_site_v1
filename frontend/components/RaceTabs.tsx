@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
-import { useRouter, useSearchParams, useParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { PredictionTable } from '@/components/PredictionTable';
@@ -19,6 +19,7 @@ import { Article } from '@/lib/articles';
 import { useRewardedAd, type RewardedAdContext } from '@/hooks/useRewardedAd';
 import { sendRaceViewEvent, sendRewardGateEvent } from '@/lib/analytics';
 import { LAST_RACE_STORAGE_KEY, StoredRaceView } from '@/lib/race-memory';
+import { getRaceDetailPath } from '@/lib/race-url';
 
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -47,7 +48,6 @@ CollapsibleSection.displayName = 'CollapsibleSection';
 
 const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivationKey = 0, isRaceUnlocked, isReady, isLoading, isSupported, unavailableReason, showAd, unlock }: { venue: VenueRaces, articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isRaceUnlocked: (raceId: string) => boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, unavailableReason: string | null, showAd: (context?: RewardedAdContext | string) => boolean, unlock: (raceId?: string) => void }) => {
     const router = useRouter();
-    const searchParams = useSearchParams();
     const params = useParams();
     const currentDate = params.date as string;
     const gateViewKeysRef = useRef<Set<string>>(new Set());
@@ -80,10 +80,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
         setActiveRaceIndex(index);
         const selectedRace = venue.races[index];
         if (selectedRace) {
-            const newParams = new URLSearchParams();
-            newParams.set('race', selectedRace.race_number.toString());
-            newParams.set('venue', venue.venue_name);
-            const newUrl = `/races/${currentDate}?${newParams.toString()}`;
+            const newUrl = getRaceDetailPath(currentDate, venue.venue_name, selectedRace.race_number);
             router.push(newUrl, { scroll: false });
 
             setTimeout(() => {
@@ -153,7 +150,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     useEffect(() => {
         if (!activeRace || typeof window === 'undefined') return;
 
-        const href = `/races/${currentDate}?race=${activeRace.race_number}&venue=${encodeURIComponent(venue.venue_name)}`;
+        const href = getRaceDetailPath(currentDate, venue.venue_name, activeRace.race_number);
         const viewedRace: StoredRaceView = {
             href,
             date: currentDate,

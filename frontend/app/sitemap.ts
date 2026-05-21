@@ -1,7 +1,9 @@
 import { MetadataRoute } from 'next'
 import { getAllArticles } from '@/lib/articles';
-import { getAllRaceUrls } from '@/lib/api';
+import { getAllRaceUrls, getWeeklyGradeRaces } from '@/lib/api';
 import { courseProfiles, jockeyProfiles } from '@/lib/growth-content';
+import { gradeRaceProfiles } from '@/lib/grade-race-content';
+import { getRaceDetailPath, getRaceIndexPolicy } from '@/lib/race-url';
 
 // ▼▼▼▼▼【修正1】revalidate を追加▼▼▼▼▼
 // 旧: 指定なし → Googlebotがアクセスするたびに毎回Serverless関数が起動し、
@@ -65,21 +67,46 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.75,
     }));
 
-    // ▼▼▼▼▼【修正2】レースURLを直近60日分のみに絞る▼▼▼▼▼
-    // 旧: 全過去レースURL（数万件）をサイトマップに掲載
-    //   → Googlebotが数万URLを順繰りに巡回。全てSSRでOriginから生成 → 10GB即消滅。
-    // 新: 直近60日間のレースのみ掲載。
-    //   - 古いレースページはGoogleがすでにインデックス済みのため削除しても問題なし。
-    //   - サイトマップのXMLサイズが大幅に減少し、クロールコストを劇的に削減。
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
-    const allRaces = await getAllRaceUrls();
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - 60);
+    const gradeRaceHubRoutes = gradeRaceProfiles.map((race) => ({
+        url: `${BASE_URL}/grade-races/${race.slug}`,
+        lastModified: siteLastModified,
+        changeFrequency: 'weekly' as const,
+        priority: 0.82,
+    }));
+
+    // レースURLは安定パスだけを掲載し、index対象も直近中心に絞る。
+    // 古いクエリ付き詳細URLはミドルウェアで301され、サイトマップには載せない。
+    const [allRaces, weeklyGradeRaces] = await Promise.all([
+        getAllRaceUrls(),
+        getWeeklyGradeRaces(),
+    ]);
+
+    const sitemapRaceRows = [
+        ...allRaces.filter((race) => getRaceIndexPolicy(race.race_date).index),
+        ...weeklyGradeRaces,
+    ];
+
+    const seenRaceUrls = new Set<string>();
+    const raceDetailRoutes = sitemapRaceRows
+        .map((race) => ({
+            race,
+            path: getRaceDetailPath(race.race_date, race.venue_name, race.race_number),
+        }))
+        .filter(({ path }) => {
+            if (seenRaceUrls.has(path)) return false;
+            seenRaceUrls.add(path);
+            return true;
+        })
+        .map(({ race, path }) => ({
+            url: `${BASE_URL}${path}`,
+            lastModified: new Date(race.race_date),
+            changeFrequency: 'daily' as const,
+            priority: 0.7,
+        }));
 
     const raceDateRoutes = Array.from(
         new Set(
-            allRaces
-                .filter((race) => new Date(race.race_date) >= cutoffDate)
+            sitemapRaceRows
                 .map((race) => race.race_date)
         )
     ).map((raceDate) => ({
@@ -89,5 +116,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.65,
     }));
 
-    return [...staticRoutes, ...articleRoutes, ...courseRoutes, ...jockeyRoutes, ...raceDateRoutes];
+    return [...staticRoutes, ...articleRoutes, ...courseRoutes, ...jockeyRoutes, ...gradeRaceHubRoutes, ...raceDateRoutes, ...raceDetailRoutes];
 }

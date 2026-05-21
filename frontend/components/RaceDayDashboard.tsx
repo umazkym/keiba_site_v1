@@ -83,53 +83,20 @@ function toRaceSignals(data: RaceDayPrediction | null): RaceSignal[] {
   );
 }
 
-function RaceSignalCard({
-  title,
-  signal,
-  tone,
-}: {
-  title: string;
-  signal: RaceSignal;
-  tone: 'solid' | 'light';
-}) {
-  const toneClass =
-    tone === 'solid'
-      ? 'border-slate-900 bg-slate-950 text-white'
-      : 'border-slate-200 bg-white text-slate-950';
-  const mutedClass = tone === 'solid' ? 'text-slate-300' : 'text-slate-500';
-  const badgeClass = tone === 'solid' ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600';
-
+function CompactRaceLink({ signal }: { signal: RaceSignal }) {
   return (
     <Link
       href={signal.href}
-      className={`group flex h-full flex-col border p-4 transition-colors hover:border-primary ${toneClass}`}
+      className="group grid gap-1 border-b border-slate-100 py-2.5 text-sm last:border-b-0 hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_120px_64px] sm:items-center"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className={`text-xs font-bold tracking-[0.14em] ${mutedClass}`}>{title}</p>
-          <h3 className="mt-1 line-clamp-2 text-lg font-black leading-snug">
-            {signal.venueName}{signal.race.race_number}R {signal.race.race_name}
-          </h3>
-        </div>
-        <span className={`shrink-0 px-2 py-1 text-xs font-bold ${badgeClass}`}>
-          {signal.runnerCount}頭
-        </span>
+      <div className="min-w-0 px-1">
+        <p className="truncate font-bold text-slate-900">
+          {signal.venueName}{signal.race.race_number}R {signal.race.race_name}
+        </p>
+        <p className="mt-0.5 text-xs text-slate-500">{formatCourse(signal.race)} / {signal.runnerCount}頭</p>
       </div>
-      <p className={`mt-2 text-xs font-semibold ${mutedClass}`}>{formatCourse(signal.race)}</p>
-      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-        <div className={tone === 'solid' ? 'bg-white/10 p-3' : 'bg-slate-50 p-3'}>
-          <p className={`text-[11px] font-bold ${mutedClass}`}>AI 1位</p>
-          <p className="mt-1 truncate font-black" title={signal.topHorseName}>{signal.topHorseName}</p>
-        </div>
-        <div className={tone === 'solid' ? 'bg-white/10 p-3' : 'bg-slate-50 p-3'}>
-          <p className={`text-[11px] font-bold ${mutedClass}`}>偏差値差</p>
-          <p className="mt-1 font-black">{signal.scoreGap.toFixed(1)}</p>
-        </div>
-      </div>
-      <p className={`mt-4 text-sm leading-7 ${mutedClass}`}>{signal.reason}</p>
-      <span className="mt-auto pt-4 text-sm font-black text-primary group-hover:underline">
-        レースを見る
-      </span>
+      <p className="truncate px-1 font-semibold text-slate-600" title={signal.topHorseName}>{signal.topHorseName}</p>
+      <p className="px-1 font-mono font-black text-primary sm:text-right">{signal.topScore.toFixed(1)}</p>
     </Link>
   );
 }
@@ -151,74 +118,67 @@ export function RaceDayDashboard({ data, date }: { data: RaceDayPrediction | nul
 
   const totalRaces = signals.length;
   const venues = new Set(signals.map((signal) => signal.venueName)).size;
-  const highConfidenceCount = signals.filter((signal) => signal.confidenceScore >= 72).length;
   const closeRaceCount = signals.filter((signal) => signal.scoreGap <= 2.5).length;
 
+  const primaryRace = confidenceRaces[0] ?? topScoreRaces[0];
+
   return (
-    <section className="mb-4 border border-slate-200 bg-white">
-      <div className="border-b border-slate-200 bg-slate-50 px-4 py-4 sm:px-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs font-bold tracking-[0.18em] text-slate-400">TODAY DASHBOARD</p>
-            <h2 className="mt-1 text-2xl font-black leading-tight text-slate-950">
-              今日見るべきレースの整理
+    <details className="mb-3 border border-slate-200 bg-white">
+      <summary className="cursor-pointer list-none px-3 py-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:px-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-bold tracking-[0.14em] text-slate-400">TODAY MEMO</p>
+            <h2 className="mt-0.5 truncate text-sm font-black text-slate-950 sm:text-base">
+              今日のレース整理
             </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
-              {date.replace(/-/g, '/')}の全レースをAI偏差値の差、頭数、上位評価の固まり方で横断整理します。
-              まず確認するレース、荒れやすいレース、指数上位馬を短時間で見分けるための入口です。
-            </p>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:w-[440px]">
-            {[
-              ['開催場', `${venues}`],
-              ['対象レース', `${totalRaces}`],
-              ['軸候補', `${highConfidenceCount}`],
-              ['混戦', `${closeRaceCount}`],
-            ].map(([label, value]) => (
-              <div key={label} className="border border-slate-200 bg-white p-3 text-center">
-                <p className="text-[11px] font-bold text-slate-400">{label}</p>
-                <p className="mt-1 text-xl font-black text-slate-950">{value}</p>
-              </div>
-            ))}
+          <div className="hidden items-center gap-2 text-xs font-bold text-slate-500 sm:flex">
+            <span>{venues}場</span>
+            <span>{totalRaces}R</span>
+            <span>混戦 {closeRaceCount}</span>
           </div>
+          <span className="shrink-0 text-xs font-bold text-primary">開く</span>
         </div>
-      </div>
-
-      <div className="grid gap-4 p-4 lg:grid-cols-2">
-        {confidenceRaces[0] && (
-          <RaceSignalCard title="まず確認" signal={confidenceRaces[0]} tone="solid" />
+        {primaryRace && (
+          <p className="mt-2 truncate text-xs text-slate-500">
+            まず確認: {primaryRace.venueName}{primaryRace.race.race_number}R {primaryRace.race.race_name}
+          </p>
         )}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {upsetRaces.slice(0, 2).map((signal, index) => (
-            <RaceSignalCard key={signal.href} title={index === 0 ? '混戦注意' : '相手探し'} signal={signal} tone="light" />
-          ))}
-        </div>
-      </div>
+      </summary>
 
-      <div className="border-t border-slate-200 px-4 py-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="text-base font-black text-slate-950">AI偏差値上位馬</h3>
-          <p className="text-xs font-semibold text-slate-400">上位5件</p>
-        </div>
-        <div className="divide-y divide-slate-100 border-y border-slate-100">
-          {topScoreRaces.map((signal) => (
-            <Link key={signal.href} href={signal.href} className="grid gap-2 py-3 text-sm transition-colors hover:bg-slate-50 sm:grid-cols-[1fr_180px_100px] sm:items-center">
-              <div className="min-w-0">
-                <p className="truncate font-black text-slate-900">
-                  {signal.venueName}{signal.race.race_number}R {signal.race.race_name}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">{formatCourse(signal.race)}</p>
-              </div>
-              <p className="truncate font-bold text-slate-700" title={signal.topHorseName}>
-                {signal.topHorseName}
-              </p>
-              <p className="font-mono text-base font-black text-primary sm:text-right">
-                {signal.topScore.toFixed(1)}
-              </p>
-            </Link>
-          ))}
+      <div className="border-t border-slate-100 px-3 py-3 sm:px-4">
+        <p className="text-xs leading-6 text-slate-500">
+          {date.replace(/-/g, '/')}の全レースを、AI偏差値の差と頭数から簡易整理しています。
+          本命を決める場所ではなく、見る順番を決めるための補助情報です。
+        </p>
+
+        <div className="mt-3 grid gap-4 lg:grid-cols-3">
+          <div>
+            <h3 className="border-b border-slate-200 pb-2 text-xs font-black tracking-[0.14em] text-slate-500">まず確認</h3>
+            <div>
+              {confidenceRaces.slice(0, 3).map((signal) => (
+                <CompactRaceLink key={signal.href} signal={signal} />
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="border-b border-slate-200 pb-2 text-xs font-black tracking-[0.14em] text-slate-500">混戦注意</h3>
+            <div>
+              {upsetRaces.slice(0, 3).map((signal) => (
+                <CompactRaceLink key={signal.href} signal={signal} />
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="border-b border-slate-200 pb-2 text-xs font-black tracking-[0.14em] text-slate-500">偏差値上位</h3>
+            <div>
+              {topScoreRaces.slice(0, 3).map((signal) => (
+                <CompactRaceLink key={signal.href} signal={signal} />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-    </section>
+    </details>
   );
 }

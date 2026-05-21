@@ -165,15 +165,16 @@ export default async function ArticlePage({ params }: Props) {
               </div>
             </header>
 
-            <div className="border-b border-slate-100">
+            <div className="mt-6">
               <ArticleIntentPanel intent={intent} />
             </div>
 
             {toc.length > 1 && (
-              <nav className="mt-8 border border-slate-200 bg-slate-50 p-5" aria-label="記事の目次">
-                <p className="text-xs font-bold tracking-[0.16em] text-slate-400">CONTENTS</p>
-                <h2 className="mt-1 text-lg font-black text-slate-950">この記事の流れ</h2>
-                <ol className="mt-4 grid gap-2 sm:grid-cols-2">
+              <details className="mt-4 border border-slate-200 bg-slate-50" aria-label="記事の目次">
+                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-black text-slate-800">
+                  目次を開く
+                </summary>
+                <ol className="grid gap-2 border-t border-slate-200 px-4 py-3 sm:grid-cols-2">
                   {toc.map((item, index) => (
                     <li key={item.id}>
                       <a
@@ -186,7 +187,7 @@ export default async function ArticlePage({ params }: Props) {
                     </li>
                   ))}
                 </ol>
-              </nav>
+              </details>
             )}
 
             {/* ===== ARTICLE BODY ===== */}

@@ -1,4 +1,4 @@
-import { RaceDayPrediction, SpecialPick, MatchupData, TopPayoutHit, WeeklyGradeRace } from "./types";
+import { RaceDayPrediction, SpecialPick, MatchupData, TopPayoutHit, WeeklyGradeRace, PredictionAccuracySummary } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
@@ -149,5 +149,23 @@ export async function getWeeklyGradeRaces(): Promise<WeeklyGradeRace[]> {
     } catch (error: any) {
         console.error("An error occurred in getWeeklyGradeRaces:", error.message);
         return [];
+    }
+}
+
+export async function getPredictionAccuracySummary(days: number = 30): Promise<PredictionAccuracySummary | null> {
+    try {
+        const safeDays = Math.max(7, Math.min(days, 180));
+        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/stats/accuracy?days=${safeDays}`, { next: { revalidate: 3600 } });
+        if (!res.ok) {
+            if (res.status === 404) {
+                return null;
+            }
+            console.warn(`Could not fetch prediction accuracy summary. Status: ${res.status}`);
+            return null;
+        }
+        return res.json();
+    } catch (error: any) {
+        console.error("An error occurred in getPredictionAccuracySummary:", error.message);
+        return null;
     }
 }

@@ -98,3 +98,42 @@ export interface WeeklyGradeRace {
     race_name: string;
     grade: string; // "G1", "G2", "G3"
 }
+
+export interface AccuracyRate {
+    label: string;
+    races: number;
+    rate: number;
+    hits: number;
+    total: number;
+}
+
+export interface AccuracyCondition {
+    label: string;
+    races: number;
+    top1_place_rate: number;
+    top3_place_rate: number;
+}
+
+export interface AccuracyMissCase {
+    race_date: string;
+    venue_name: string;
+    race_number: number;
+    race_name: string;
+    horse_name: string;
+    deviation_score: number;
+    rank: number | null;
+    course_type: string | null;
+    distance: number | null;
+}
+
+export interface PredictionAccuracySummary {
+    start_date: string;
+    end_date: string;
+    race_count: number;
+    top1_win: AccuracyRate;
+    top1_place: AccuracyRate;
+    top3_place: AccuracyRate;
+    by_course_type: AccuracyCondition[];
+    by_distance: AccuracyCondition[];
+    recent_misses: AccuracyMissCase[];
+}

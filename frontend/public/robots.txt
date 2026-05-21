@@ -9,9 +9,9 @@ Disallow: /_next/image
 Disallow: /search?*
 
 # 重複URLパターンを最小化
-# クエリパラメータの順序はミドルウェアで正規化（race→venue）
-# レース詳細URLのcanonicalは日付ページへ集約
-# サイトマップにはクエリ付きレース詳細を掲載せず、日付ページを掲載
+# クエリ付きレース詳細URLはミドルウェアで /races/YYYY-MM-DD/venue/race に301統合
+# 古いレースアーカイブはページ側のrobotsでnoindex,followに制御
+# サイトマップには安定パス化した直近・重賞系レースURLだけを掲載
 
 # サイトマップの場所を通知
 Sitemap: https://uma-free.com/sitemap.xml

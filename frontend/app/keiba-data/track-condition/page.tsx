@@ -47,8 +47,9 @@ export default function TrackConditionPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <Breadcrumb />
       <article className="mx-auto max-w-5xl px-4 pb-14 pt-4">
-        <header className="rounded-md border border-slate-800 bg-primary p-5 shadow-elevated sm:p-7">
-          <p className="inline-flex rounded-sm bg-white/10 px-2 py-1 text-xs font-bold tracking-[0.14em] text-accent-light">TRACK CONDITION</p>
+        <header className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-5 shadow-[0_12px_36px_rgba(15,23,42,0.24)] sm:p-8">
+          <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
+          <p className="inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-accent-light">馬場の読み方</p>
           <h1 className="mt-4 text-3xl font-black leading-tight text-white sm:text-4xl">
             馬場状態とは？良・稍重・重・不良の違い
           </h1>
@@ -60,7 +61,7 @@ export default function TrackConditionPage() {
 
         <section className="mt-8">
           <h2 className="text-2xl font-black text-slate-950">4つの馬場状態の見方</h2>
-          <div className="mt-4 overflow-hidden rounded-md border border-slate-200 bg-white shadow-soft">
+          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
             {conditionRows.map((row) => (
               <div key={row.name} className="grid gap-2 border-b border-slate-100 p-4 last:border-b-0 sm:grid-cols-[80px_1fr_1.6fr]">
                 <div className="text-xl font-black text-accent-dark">{row.name}</div>
@@ -72,19 +73,22 @@ export default function TrackConditionPage() {
         </section>
 
         <section className="mt-10 grid gap-5 md:grid-cols-3">
-          <div className="rounded-md border border-slate-200 border-t-4 border-t-accent bg-white p-5 shadow-soft">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+            <div className="mb-3 h-1.5 w-12 rounded-full bg-accent" />
             <h3 className="text-lg font-black text-slate-950">時計を見る</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               良馬場で速い時計を出している馬は、道悪でも同じ評価にできるとは限りません。時計がかかる馬場で崩れていないかを確認します。
             </p>
           </div>
-          <div className="rounded-md border border-slate-200 border-t-4 border-t-blue-600 bg-white p-5 shadow-soft">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+            <div className="mb-3 h-1.5 w-12 rounded-full bg-blue-600" />
             <h3 className="text-lg font-black text-slate-950">脚質を見る</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               道悪では前が止まりにくい日もあれば、先行馬が消耗して差しが届く日もあります。まず当日の同条件レースを見ます。
             </p>
           </div>
-          <div className="rounded-md border border-slate-200 border-t-4 border-t-emerald-600 bg-white p-5 shadow-soft">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+            <div className="mb-3 h-1.5 w-12 rounded-full bg-emerald-600" />
             <h3 className="text-lg font-black text-slate-950">実績を見る</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               重・不良で3着以内に入った経験、時計のかかる決着で崩れていない経験は、評価を上げる材料になります。
@@ -95,31 +99,31 @@ export default function TrackConditionPage() {
         <section className="mt-10">
           <h2 className="text-2xl font-black text-slate-950">予想に使う順番</h2>
           <ol className="mt-4 space-y-3 text-sm leading-8 text-slate-600">
-            <li className="rounded-md border-l-4 border-accent bg-white p-4 shadow-soft">
+            <li className="rounded-xl border-l-4 border-accent bg-white p-4 shadow-soft">
               <strong className="text-slate-950">1. まず能力順を見る。</strong>
               AI偏差値、近走内容、コース適性を先に確認します。
             </li>
-            <li className="rounded-md border-l-4 border-blue-600 bg-white p-4 shadow-soft">
+            <li className="rounded-xl border-l-4 border-blue-600 bg-white p-4 shadow-soft">
               <strong className="text-slate-950">2. 馬場で評価を補正する。</strong>
               重・不良で良馬場実績だけの人気馬を少し疑い、道悪実績のある馬を相手に残します。
             </li>
-            <li className="rounded-md border-l-4 border-emerald-600 bg-white p-4 shadow-soft">
+            <li className="rounded-xl border-l-4 border-emerald-600 bg-white p-4 shadow-soft">
               <strong className="text-slate-950">3. 当日の傾向で最終確認する。</strong>
               同じ競馬場で前が残っているか、外が伸びているかをレース一覧から確認します。
             </li>
           </ol>
         </section>
 
-        <section className="mt-10 rounded-md border border-slate-200 bg-slate-50 p-5">
+        <section className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
           <h2 className="text-xl font-black text-slate-950">関連して確認したいページ</h2>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link href="/keiba-data/horse-weight" className="rounded-md bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
+            <Link href="/keiba-data/horse-weight" className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
               馬体重を見る
             </Link>
-            <Link href="/courses" className="rounded-md bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
+            <Link href="/courses" className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
               コース別データ
             </Link>
-            <Link href="/races/today" className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-light">
+            <Link href="/races/today" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-primary-light">
               本日の分析を見る
             </Link>
           </div>

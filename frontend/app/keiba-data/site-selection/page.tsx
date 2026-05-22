@@ -38,13 +38,13 @@ const criteria = [
   },
 ];
 
-const criterionStyles = [
-  "border-t-accent",
-  "border-t-blue-600",
-  "border-t-emerald-600",
-  "border-t-slate-900",
-  "border-t-amber-700",
-  "border-t-slate-500",
+const criterionAccents = [
+  "bg-accent",
+  "bg-blue-600",
+  "bg-emerald-600",
+  "bg-slate-900",
+  "bg-amber-700",
+  "bg-slate-500",
 ];
 
 export default function SiteSelectionPage() {
@@ -52,9 +52,10 @@ export default function SiteSelectionPage() {
     <>
       <Breadcrumb />
       <article className="mx-auto max-w-5xl px-4 pb-14 pt-4">
-        <header className="rounded-md border border-slate-800 bg-primary p-5 shadow-elevated sm:p-7">
-          <p className="inline-flex rounded-sm bg-white/10 px-2 py-1 text-xs font-bold tracking-[0.14em] text-accent-light">
-            SITE CHECK
+        <header className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-5 shadow-[0_12px_36px_rgba(15,23,42,0.24)] sm:p-8">
+          <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
+          <p className="inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-accent-light">
+            予想サイト選びの視点
           </p>
           <h1 className="mt-4 text-3xl font-black leading-tight text-white sm:text-4xl">
             競馬予想サイトの選び方
@@ -67,27 +68,28 @@ export default function SiteSelectionPage() {
 
         <section className="mt-8 grid gap-4 md:grid-cols-2">
           {criteria.map((item, index) => (
-            <div key={item.title} className={`rounded-md border border-slate-200 border-t-4 bg-white p-5 shadow-soft ${criterionStyles[index]}`}>
-              <p className="font-mono text-xs font-black text-slate-400">POINT {index + 1}</p>
+            <div key={item.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+              <div className={`mb-3 h-1.5 w-12 rounded-full ${criterionAccents[index]}`} />
+              <p className="font-mono text-xs font-black text-slate-400">{String(index + 1).padStart(2, '0')}</p>
               <h2 className="mt-1 text-lg font-black text-slate-950">{item.title}</h2>
               <p className="mt-2 text-sm leading-7 text-slate-600">{item.body}</p>
             </div>
           ))}
         </section>
 
-        <section className="mt-10 rounded-md border border-slate-200 bg-slate-50 p-5">
+        <section className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
           <h2 className="text-xl font-black text-slate-950">UMA-FREEで見られること</h2>
           <ul className="mt-4 grid gap-3 text-sm leading-7 text-slate-600 sm:grid-cols-2">
-            <li className="rounded-md bg-white p-4 shadow-soft">中央・地方のレース分析を登録不要で見られます。</li>
-            <li className="rounded-md bg-white p-4 shadow-soft">AI偏差値、脚質予測、対戦成績、枠順傾向をレースごとに出します。</li>
-            <li className="rounded-md bg-white p-4 shadow-soft">AI予想成績では、良かった条件と扱いに注意したい条件を分けます。</li>
-            <li className="rounded-md bg-white p-4 shadow-soft">投票の推奨ではなく、レース検討の参考情報として公開しています。</li>
+            <li className="rounded-xl bg-white p-4 shadow-soft">中央・地方のレース分析を登録不要で見られます。</li>
+            <li className="rounded-xl bg-white p-4 shadow-soft">AI偏差値、脚質予測、対戦成績、枠順傾向をレースごとに出します。</li>
+            <li className="rounded-xl bg-white p-4 shadow-soft">AI予想成績では、良かった条件と扱いに注意したい条件を分けます。</li>
+            <li className="rounded-xl bg-white p-4 shadow-soft">投票の推奨ではなく、レース検討の参考情報として公開しています。</li>
           </ul>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link href="/results/accuracy" className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-light">
+            <Link href="/results/accuracy" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-primary-light">
               AI予想の成績を見る
             </Link>
-            <Link href="/keiba-data" className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
+            <Link href="/keiba-data" className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:text-primary">
               データの見方へ戻る
             </Link>
           </div>

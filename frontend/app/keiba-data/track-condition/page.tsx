@@ -47,13 +47,13 @@ export default function TrackConditionPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <Breadcrumb />
       <article className="mx-auto max-w-5xl px-4 pb-14 pt-4">
-        <header className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-5 shadow-[0_12px_36px_rgba(15,23,42,0.24)] sm:p-8">
+        <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
-          <p className="inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-accent-light">馬場の読み方</p>
-          <h1 className="mt-4 text-3xl font-black leading-tight text-white sm:text-4xl">
+          <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">馬場の読み方</p>
+          <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
             馬場状態とは？良・稍重・重・不良の違い
           </h1>
-          <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-300 sm:text-base">
+          <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
             馬場状態は、レース直前に評価を動かす材料です。
             良馬場の能力順をそのまま使うのか、道悪適性を強く見るのかを分けると、人気馬の信頼度と穴馬の拾い方が整理できます。
           </p>

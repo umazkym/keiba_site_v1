@@ -275,18 +275,18 @@ export default async function AccuracyPage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Breadcrumb />
       <article className="mx-auto max-w-[1200px] px-4 pb-14 pt-4">
-        <header className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-5 shadow-[0_12px_36px_rgba(15,23,42,0.24)] sm:p-8">
+        <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-stretch">
             <div className="flex flex-col justify-between">
               <div>
-                <p className="inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-accent-light">
+                <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
                   成績をそのまま公開
                 </p>
-                <h1 className="mt-4 text-3xl font-black leading-tight text-white sm:text-4xl">
+                <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
                   AI予想の成績
                 </h1>
-                <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-300 sm:text-base">
+                <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
                   AI偏差値が結果につながった場面だけでなく、評価が届かなかった条件も同じ画面で見ます。
                   数字を良く見せるためのページではなく、今日のレース検討でどこまで信じるかを判断するためのページです。
                 </p>
@@ -301,7 +301,7 @@ export default async function AccuracyPage({
                     className={`rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
                       selectedDays === option.days
                         ? "bg-accent text-slate-950"
-                        : "border border-white/15 bg-white/10 text-slate-200 hover:bg-white/20"
+                        : "border border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white"
                     }`}
                   >
                     <span className="block leading-none">{option.label}</span>
@@ -311,38 +311,38 @@ export default async function AccuracyPage({
               </div>
             </div>
 
-            <aside className="rounded-2xl border border-white/10 bg-white/[0.07] p-4">
+            <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center gap-2">
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-slate-950">
                   <ListChecks className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-slate-400">表示期間</p>
-                  <p className="text-lg font-black text-white">直近{selectedDays}日</p>
+                  <p className="text-xs font-bold text-slate-500">表示期間</p>
+                  <p className="text-lg font-black text-slate-950">直近{selectedDays}日</p>
                 </div>
               </div>
               {hasSummary ? (
                 <div className="mt-5 space-y-4">
                   {headlineRates.slice(0, 3).map((item) => (
                     <div key={item.label}>
-                      <div className="mb-1 flex items-center justify-between gap-3 text-xs font-bold text-slate-400">
+                      <div className="mb-1 flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
                         <span>{item.label}</span>
                         <span>{item.rate.toFixed(1)}%</span>
                       </div>
-                      <div className="h-2 rounded-full bg-white/10">
+                      <div className="h-2 rounded-full bg-slate-100">
                         <div className={`h-2 rounded-full ${item.accent}`} style={{ width: percentWidth(item.rate) }} />
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="mt-5 rounded-xl bg-slate-950/60 p-3">
-                  <p className="text-xs leading-6 text-slate-300">
+                <div className="mt-5 rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-xs leading-6 text-slate-600">
                     現在は集計できるレースが不足しています。表示できる結果が増えたら、ここに勝率、3着以内率、条件別の傾向が並びます。
                   </p>
                 </div>
               )}
-              <p className="mt-5 rounded-xl bg-slate-950/60 p-3 text-xs leading-6 text-slate-300">
+              <p className="mt-5 rounded-xl border border-slate-200 bg-white p-3 text-xs leading-6 text-slate-600">
                 短期の数字はぶれます。7日、30日、90日を切り替えて、直近の変化と中期の傾向を分けて見ます。
               </p>
             </aside>

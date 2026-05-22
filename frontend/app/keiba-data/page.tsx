@@ -128,11 +128,11 @@ function MiniSignal({
 }) {
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between gap-3 text-xs font-bold text-slate-400">
+      <div className="mb-1 flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
         <span>{label}</span>
         <span>{value}</span>
       </div>
-      <div className="h-2 rounded-full bg-white/10">
+      <div className="h-2 rounded-full bg-slate-100">
         <div className={`h-2 rounded-full ${className}`} style={{ width }} />
       </div>
     </div>
@@ -156,47 +156,47 @@ export default function KeibaDataPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Breadcrumb />
       <div className="mx-auto max-w-[1200px] px-4 pb-14 pt-4">
-        <header className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-5 shadow-[0_12px_36px_rgba(15,23,42,0.24)] sm:p-8">
+        <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
           <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
             <div className="flex flex-col justify-between">
               <div>
-                <p className="inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-accent-light">
+                <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
                   レース前の確認順
                 </p>
-                <h1 className="mt-4 text-3xl font-black leading-tight text-white sm:text-4xl">
+                <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
                   競馬データの見方
                 </h1>
-                <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-300 sm:text-base">
+                <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
                   出走表、馬場、馬体重、騎手、AI偏差値をばらばらに見てしまうと、強い材料と弱い材料が混ざります。
                   ここでは、レース前に評価を動かす順番を固定し、迷った時に立ち返れる見方にまとめています。
                 </p>
               </div>
 
               <div className="mt-6 grid gap-2 sm:grid-cols-3">
-                <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
-                  <p className="text-xs font-bold text-slate-400">対応</p>
-                  <p className="mt-1 text-lg font-black text-white">中央・地方</p>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-bold text-slate-500">対応</p>
+                  <p className="mt-1 text-lg font-black text-slate-950">中央・地方</p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
-                  <p className="text-xs font-bold text-slate-400">使う場面</p>
-                  <p className="mt-1 text-lg font-black text-white">レース前</p>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-bold text-slate-500">使う場面</p>
+                  <p className="mt-1 text-lg font-black text-slate-950">レース前</p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
-                  <p className="text-xs font-bold text-slate-400">目的</p>
-                  <p className="mt-1 text-lg font-black text-white">判断材料の整理</p>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-bold text-slate-500">目的</p>
+                  <p className="mt-1 text-lg font-black text-slate-950">判断材料の整理</p>
                 </div>
               </div>
             </div>
 
-            <aside className="rounded-2xl border border-white/10 bg-white/[0.07] p-4">
+            <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center gap-2">
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-slate-950">
                   <ListChecks className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-slate-400">本日の見方</p>
-                  <p className="text-sm font-black text-white">先に条件、最後にAI偏差値</p>
+                  <p className="text-xs font-bold text-slate-500">本日の見方</p>
+                  <p className="text-sm font-black text-slate-950">先に条件、最後にAI偏差値</p>
                 </div>
               </div>
               <div className="mt-5 space-y-4">
@@ -204,8 +204,8 @@ export default function KeibaDataPage() {
                 <MiniSignal label="馬体重の変化" value="要確認" width="58%" className="bg-blue-400" />
                 <MiniSignal label="AI上位との差" value="比較" width="82%" className="bg-emerald-400" />
               </div>
-              <div className="mt-5 rounded-xl bg-slate-950/60 p-3">
-                <p className="text-xs leading-6 text-slate-300">
+              <div className="mt-5 rounded-xl border border-slate-200 bg-white p-3">
+                <p className="text-xs leading-6 text-slate-600">
                   いきなり印を決めず、条件ごとに評価を少しずつ動かす。UMA-FREEのデータページは、その順番を崩さないための入口です。
                 </p>
               </div>

@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ データ系ページヘッダー調整: ダーク背景の撤去
+- **完了日時**: 2026-05-22 23:23
+- **実施内容**: `データの見方` と `AI予想成績`、およびデータの見方配下の3ページで、ページ上部が濃紺のダーク系ヒーローになっていたため白ベースへ変更。濃紺背景、白文字、暗い補助パネルを撤去し、白背景、薄い罫線、アンバーの上線、淡いグレーの補助カードで構成。情報密度とアクセントは残しつつ、他ページと馴染む明るいトンマナへ調整した。
+- **変更ファイル**: `frontend/app/keiba-data/page.tsx`, `frontend/app/results/accuracy/page.tsx`, `frontend/app/keiba-data/site-selection/page.tsx`, `frontend/app/keiba-data/track-condition/page.tsx`, `frontend/app/keiba-data/horse-weight/page.tsx`, `AGENTS.md`
+- **確認事項**: `npm run build` は成功し、静的ページ数は139件。`npm run article:validate-links` はサンドボックス内のnpmキャッシュ書き込み権限で一度失敗したが、権限付き再実行で70記事チェック成功。ローカル開発サーバーで `/keiba-data`, `/results/accuracy?days=90`, `/keiba-data/track-condition` がHTTP 200を返すことを確認。ブラウザでデスクトップ表示を確認し、ページ上部が白基調になっていることを確認。確認用の開発サーバーは停止済み。`npm run build` では `caniuse-lite` 更新推奨の警告のみ表示。
+- **次のステップ**: 本番反映後に、主要ページのファーストビューが白基調で統一されているかを実機で確認する。
+
 #### ✅ データの見方サブページUIトンマナ統一: site-selection, track-condition, horse-weight
 - **完了日時**: 2026-05-22 23:15
 - **実施内容**: データの見方（`/keiba-data`）配下の3つのサブページ（`site-selection`, `track-condition`, `horse-weight`）のデザインシステム乖離を解消。ヒーローセクションの角丸を `rounded-md` から `rounded-2xl` へ統一し、背景色を `bg-slate-950` に、バッジを英字から日本語（「予想サイト選びの視点」「馬場の読み方」「馬体重の読み方」）に更新、さらに上部にアクセント線（`absolute h-1 bg-accent`）を追加。カードは `border-t-4` による上辺装飾を廃止し、親ページと同様のスタイリッシュなアクセントバーをカード内に配置する構成に変更、角丸を `rounded-2xl` に統一。リストやボタンの角丸も `rounded-xl` に揃え、手順リストは `POINT 1` 等から `01` 等のモノスペース数字へ統一。

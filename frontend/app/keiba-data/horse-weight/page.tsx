@@ -47,13 +47,13 @@ export default function HorseWeightPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <Breadcrumb />
       <article className="mx-auto max-w-5xl px-4 pb-14 pt-4">
-        <header className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-5 shadow-[0_12px_36px_rgba(15,23,42,0.24)] sm:p-8">
+        <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
-          <p className="inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-accent-light">馬体重の読み方</p>
-          <h1 className="mt-4 text-3xl font-black leading-tight text-white sm:text-4xl">
+          <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">馬体重の読み方</p>
+          <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
             馬体重増減の見方
           </h1>
-          <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-300 sm:text-base">
+          <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
             馬体重は、直前で評価を変えるための状態確認データです。
             大きな増減を機械的に消すのではなく、休み明け、成長分、過去の好走体重への戻りを分けて考えます。
           </p>

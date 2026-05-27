@@ -79,12 +79,15 @@ def invalidate_predictions_cache(target_date: date) -> None:
     _predictions_cache.invalidate(f"pred_{target_date.isoformat()}")
 
 
-def _get_cache_ttl(target_date: date, has_data: bool) -> int:
+def _get_cache_ttl(target_date: date, has_data: bool, has_results: bool = True) -> int:
     """日付・時刻・データ有無に応じた TTL（秒）を返す"""
     if not has_data:
         return 60  # 空データは60秒のみ（パイプライン完了後に自動更新）
 
-    today = date.today()
+    today = datetime.now(_JST).date()
+
+    if target_date < today and not has_results:
+        return 60  # 過去日の予想はあるが結果未反映なら、SNS・表示用に長時間キャッシュしない
 
     if target_date < today - timedelta(days=1):
         return 14400  # 2日以上前: 4時間
@@ -145,6 +148,7 @@ def _serialize_race_for_cache(race, advantages: list) -> dict:
         ],
         'results': [
             {
+                'horse_id': r.horse_id,
                 'horse_number': r.horse_number,
                 'rank': r.rank,
                 'horse_name': r.horse.name if r.horse else 'N/A',
@@ -225,7 +229,12 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     result = {"jra": jra_result, "nar": nar_result}
 
     has_data = bool(jra_result or nar_result)
-    _predictions_cache.set(cache_key, result, _get_cache_ttl(target_date, has_data))
+    has_results = (
+        all(bool(race.results) for race in races_with_preds)
+        if target_date < datetime.now(_JST).date()
+        else any(race.results for race in races_with_preds)
+    )
+    _predictions_cache.set(cache_key, result, _get_cache_ttl(target_date, has_data, has_results))
     return result
 
 

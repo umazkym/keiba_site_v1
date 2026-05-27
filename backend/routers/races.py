@@ -19,7 +19,7 @@ def _cache_control_for_date(target_date: date) -> str:
     これは HTTP レスポンスヘッダーとして CDN・ブラウザに伝わる。
     race_crud の in-memory TTL と整合させること。
     """
-    today = date.today()
+    today = datetime.now(_JST).date()
 
     if target_date < today - timedelta(days=1):
         return "public, max-age=14400"  # 2日以上前: 4時間

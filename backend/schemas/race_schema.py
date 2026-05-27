@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 
 class ResultSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+    horse_id: Optional[str] = None
     horse_number: Optional[int]
     rank: Optional[int]
     horse_name: Optional[str]

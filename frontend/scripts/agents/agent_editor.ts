@@ -77,8 +77,42 @@ function replaceLiteral(input: string, search: string, replacement: string): str
   return input.split(search).join(replacement);
 }
 
+function applyContextualToneReplacements(input: string): string {
+  return input
+    .replace(/圧倒的な/g, '高い')
+    .replace(/圧倒的に/g, '大きく')
+    .replace(/圧倒的です/g, '高いです')
+    .replace(/圧倒的で/g, '高く')
+    .replace(/圧倒的だ/g, '高い')
+    .replace(/圧倒している/g, '上回っている')
+    .replace(/圧倒して/g, '上回って')
+    .replace(/圧倒する/g, '上回る')
+    .replace(/圧倒した/g, '上回った')
+    .replace(/圧倒な/g, '大きな');
+}
+
+function repairAwkwardReplacementArtifacts(input: string): string {
+  return input
+    .replace(/大きくない/g, '大きいとは言えない')
+    .replace(/大きくなく/g, '大きいとは言えず')
+    .replace(/大きくなって/g, '広がって')
+    .replace(/大きくなった/g, '広がった')
+    .replace(/大きくなり/g, '広がり')
+    .replace(/大きくなる/g, '広がる')
+    .replace(/大きくなれば/g, '広がれば')
+    .replace(/大きくな/g, '大きな')
+    .replace(/大きくであり/g, '大きく、')
+    .replace(/大きなな/g, '大きな')
+    .replace(/目立つな/g, '目立つ')
+    .replace(/有力なの/g, '有力な')
+    .replace(/するする/g, 'する')
+    .replace(/だだ/g, 'だ')
+    .replace(/できるだけ抑えたし/g, 'できるだけ抑えたい')
+    .replace(/大きく上回るして/g, '上回って');
+}
+
 function sanitizeGeneratedText(input: string): string {
-  let text = input;
+  let text = applyContextualToneReplacements(input);
   for (const banned of SEO_RULES.hard_banned_strings) {
     if (banned === '買うな') {
       text = text.replace(/買うな(?!ら)/g, BANNED_REPLACEMENTS[banned] ?? '');
@@ -87,7 +121,7 @@ function sanitizeGeneratedText(input: string): string {
     text = replaceLiteral(text, banned, BANNED_REPLACEMENTS[banned] ?? '');
   }
 
-  return text
+  return repairAwkwardReplacementArtifacts(text)
     .replace(/[ \t]+$/gm, '')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n{3,}/g, '\n\n')

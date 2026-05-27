@@ -700,6 +700,182 @@ def get_api_data(endpoint: str, retries: int = 3, delay: int = 15) -> Optional[A
     _log(f"⚠️ APIデータ取得に全 {retries} 回失敗しました: {endpoint}")
     return None
 
+
+def _empty_honmei_summary() -> Dict[str, Any]:
+    return {'win': 0, 'second': 0, 'third': 0, 'other': 0, 'total': 0, 'win_rate': 0.0, 'in_money_rate': 0.0}
+
+
+def _safe_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    try:
+        text = str(value).strip()
+        if not text or not re.match(r"^-?\d+$", text):
+            return None
+        return int(text)
+    except Exception:
+        return None
+
+
+def _normalize_horse_name(value: Any) -> str:
+    return unicodedata.normalize("NFKC", str(value or "")).replace(" ", "").replace("　", "").strip()
+
+
+def _finalize_honmei_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
+    total = summary.get('total', 0) or 0
+    if total > 0:
+        summary['win_rate'] = summary.get('win', 0) / total * 100
+        summary['in_money_rate'] = (
+            (summary.get('win', 0) + summary.get('second', 0) + summary.get('third', 0)) / total * 100
+        )
+    return summary
+
+
+def _add_rank_to_honmei_summary(summary: Dict[str, Any], rank: Any) -> bool:
+    rank_int = _safe_int(rank)
+    if rank_int is None or rank_int <= 0:
+        return False
+    summary['total'] += 1
+    if rank_int == 1:
+        summary['win'] += 1
+    elif rank_int == 2:
+        summary['second'] += 1
+    elif rank_int == 3:
+        summary['third'] += 1
+    else:
+        summary['other'] += 1
+    return True
+
+
+def summarize_honmei_results_from_db(target_date_str: str) -> Optional[Dict[str, Any]]:
+    """SNS向けに、DBから昨日のAI本命馬(◎)成績を直接集計する。"""
+    if not DATABASE_URL or SessionLocal is None or models is None:
+        _log("-> DB集計は利用できません。APIレスポンスから集計します。")
+        return None
+
+    try:
+        target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        _log(f"⚠️ 日付形式が不正なためDB集計をスキップします: {target_date_str}")
+        return None
+
+    db = SessionLocal()
+    try:
+        rows = db.query(models.Result.rank).select_from(models.Prediction)\
+            .join(models.Race, models.Race.id == models.Prediction.race_id)\
+            .join(
+                models.Result,
+                (models.Result.race_id == models.Prediction.race_id) &
+                (models.Result.horse_id == models.Prediction.horse_id)
+            )\
+            .filter(
+                models.Race.race_date == target_date,
+                models.Prediction.mark == '◎',
+                models.Result.rank.isnot(None),
+            )\
+            .all()
+
+        if not rows:
+            rows = db.query(models.Result.rank).select_from(models.Prediction)\
+                .join(models.Race, models.Race.id == models.Prediction.race_id)\
+                .join(
+                    models.Result,
+                    (models.Result.race_id == models.Prediction.race_id) &
+                    (models.Result.horse_number == models.Prediction.horse_number)
+                )\
+                .filter(
+                    models.Race.race_date == target_date,
+                    models.Prediction.mark == '◎',
+                    models.Result.rank.isnot(None),
+                )\
+                .all()
+
+        summary = _empty_honmei_summary()
+        for row in rows:
+            _add_rank_to_honmei_summary(summary, row.rank)
+
+        if summary['total'] <= 0:
+            _log("-> DBでは昨日のAI本命馬成績を集計できませんでした。APIレスポンスから再集計します。")
+            return None
+
+        _finalize_honmei_summary(summary)
+        _log(
+            "-> DB集計成功: AI本命馬(◎)成績 "
+            f"[{summary['win']}-{summary['second']}-{summary['third']}-{summary['other']}] "
+            f"対象{summary['total']}頭"
+        )
+        return summary
+    except Exception as e:
+        _log(f"⚠️ DB集計に失敗しました。APIレスポンスから再集計します: {e}")
+        return None
+    finally:
+        db.close()
+
+
+def _find_honmei_prediction(predictions: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    honmei = next((p for p in predictions if p.get('mark') == '◎'), None)
+    if honmei:
+        return honmei
+
+    scored = [
+        p for p in predictions
+        if p.get('deviation_score') is not None
+    ]
+    if not scored:
+        return None
+
+    return sorted(scored, key=lambda p: p.get('deviation_score') or 0, reverse=True)[0]
+
+
+def _find_result_for_prediction(prediction: Dict[str, Any], results: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    pred_horse_id = str(prediction.get('horse_id') or '').strip()
+    if pred_horse_id:
+        matched = next((r for r in results if str(r.get('horse_id') or '').strip() == pred_horse_id), None)
+        if matched:
+            return matched
+
+    pred_number = _safe_int(prediction.get('horse_number'))
+    if pred_number is not None:
+        matched = next((r for r in results if _safe_int(r.get('horse_number')) == pred_number), None)
+        if matched:
+            return matched
+
+    pred_name = _normalize_horse_name(prediction.get('horse_name'))
+    if pred_name:
+        return next((r for r in results if _normalize_horse_name(r.get('horse_name')) == pred_name), None)
+
+    return None
+
+
+def summarize_honmei_results_from_api(all_races_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    summary = _empty_honmei_summary()
+    if not all_races_data:
+        return summary
+
+    venues = all_races_data.get('jra', []) + all_races_data.get('nar', [])
+    for venue in venues:
+        for race in venue.get('races', []):
+            predictions = race.get('predictions') or []
+            results = race.get('results') or []
+            if not predictions or not results:
+                continue
+
+            honmei = _find_honmei_prediction(predictions)
+            if not honmei:
+                continue
+
+            result = _find_result_for_prediction(honmei, results)
+            if result:
+                _add_rank_to_honmei_summary(summary, result.get('rank'))
+
+    if summary['total'] <= 0:
+        _log("⚠️ APIレスポンスからAI本命馬成績を1件も集計できませんでした。投稿では0件として扱います。")
+    return _finalize_honmei_summary(summary)
+
 # --- 6. OGP画像生成関数群 (改良: 安全な .get 使用、None ハンドリング) ---
 def generate_hit_og_image(hit_data: dict, date_str: str) -> Optional[str]:
     """的中報告用の画像を生成する"""
@@ -1679,28 +1855,11 @@ def main():
             hits_data = get_api_data(f"hits/high-payouts/{yesterday_str}")
 
             if hits_data and isinstance(hits_data, list) and len(hits_data) > 0 and (hits_data[0].get('payout', 0) or 0) >= 10000:
-                summary = {'win': 0, 'second': 0, 'third': 0, 'other': 0, 'total': 0, 'win_rate': 0.0, 'in_money_rate': 0.0}
-                all_races_data_yesterday = get_api_data(yesterday_str)
-
-                if all_races_data_yesterday:
-                    _log("-> 昨日の本命馬成績を集計中...")
-                    venues = all_races_data_yesterday.get('jra', []) + all_races_data_yesterday.get('nar', [])
-                    for venue in venues:
-                        for race in venue.get('races', []):
-                            if race.get('predictions') and race.get('results'):
-                                honmei = next((p for p in race['predictions'] if p.get('mark') == '◎'), None)
-                                if honmei and honmei.get('horse_number') is not None:
-                                    result = next((r for r in race['results'] if r.get('horse_number') == honmei.get('horse_number')), None)
-                                    if result and isinstance(result.get('rank'), int) and result.get('rank') > 0:
-                                        summary['total'] += 1
-                                        rank = result['rank']
-                                        if rank == 1: summary['win'] += 1
-                                        elif rank == 2: summary['second'] += 1
-                                        elif rank == 3: summary['third'] += 1
-                                        else: summary['other'] += 1
-                    if summary['total'] > 0:
-                        summary['win_rate'] = (summary['win'] / summary['total'] * 100)
-                        summary['in_money_rate'] = ((summary['win'] + summary['second'] + summary['third']) / summary['total'] * 100)
+                _log("-> 昨日の本命馬成績を集計中...")
+                summary = summarize_honmei_results_from_db(yesterday_str)
+                if summary is None:
+                    all_races_data_yesterday = get_api_data(yesterday_str)
+                    summary = summarize_honmei_results_from_api(all_races_data_yesterday)
 
                 # 本日のレース情報を取得
                 all_races_today = get_api_data(today_str)

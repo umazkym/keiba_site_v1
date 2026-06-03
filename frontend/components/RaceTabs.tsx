@@ -53,6 +53,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     const gateViewKeysRef = useRef<Set<string>>(new Set());
     const adAvailabilityKeysRef = useRef<Set<string>>(new Set());
     const premiumViewKeysRef = useRef<Set<string>>(new Set());
+    const fallbackKeysRef = useRef<Set<string>>(new Set());
 
     const initialIndex = useMemo(() => {
         if (!initialRaceNumber) return 0;
@@ -65,6 +66,8 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     const isActiveRaceUnlocked = activeRace ? isRaceUnlocked(activeRace.id) : false;
     const rewardAdStatus = isLoading ? 'loading' : isSupported ? 'ready' : 'unavailable';
     const canUseRewardedAd = isSupported && isReady && !isLoading;
+    const isPremiumDetailVisible = isActiveRaceUnlocked || !canUseRewardedAd;
+    const shouldShowRewardGate = Boolean(activeRace && !isPremiumDetailVisible);
 
     // ブラウザ「戻る」対応
     useEffect(() => {
@@ -184,7 +187,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     ]);
 
     useEffect(() => {
-        if (!activeRace || isActiveRaceUnlocked) return;
+        if (!activeRace || !shouldShowRewardGate) return;
         const context = buildRewardContext();
         if (!context) return;
 
@@ -192,7 +195,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
         if (gateViewKeysRef.current.has(key)) return;
         gateViewKeysRef.current.add(key);
         sendRewardGateEvent('reward_gate_view', context);
-    }, [activeRace, isActiveRaceUnlocked, buildRewardContext]);
+    }, [activeRace, shouldShowRewardGate, buildRewardContext]);
 
     useEffect(() => {
         if (!activeRace || isActiveRaceUnlocked || !isReady) return;
@@ -211,15 +214,40 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
     }, [activeRace, isActiveRaceUnlocked, isReady, isSupported, unavailableReason, buildRewardContext]);
 
     useEffect(() => {
-        if (!activeRace || !isActiveRaceUnlocked) return;
+        if (!activeRace || !isPremiumDetailVisible) return;
         const context = buildRewardContext();
         if (!context) return;
 
         const key = `${activeRace.id}:premium_view`;
         if (premiumViewKeysRef.current.has(key)) return;
         premiumViewKeysRef.current.add(key);
-        sendRewardGateEvent('premium_data_view', context);
-    }, [activeRace, isActiveRaceUnlocked, buildRewardContext]);
+        sendRewardGateEvent('premium_data_view', {
+            ...context,
+            result: isActiveRaceUnlocked ? 'reward_unlocked' : 'soft_fallback',
+            reason: isActiveRaceUnlocked
+                ? undefined
+                : isLoading
+                    ? 'rewarded_soft_fallback_while_loading'
+                    : unavailableReason ?? 'rewarded_unavailable',
+        });
+    }, [activeRace, isPremiumDetailVisible, isActiveRaceUnlocked, isLoading, unavailableReason, buildRewardContext]);
+
+    useEffect(() => {
+        if (!activeRace || isActiveRaceUnlocked || canUseRewardedAd) return;
+        const context = buildRewardContext();
+        if (!context) return;
+
+        const key = `${activeRace.id}:soft_fallback`;
+        if (fallbackKeysRef.current.has(key)) return;
+        fallbackKeysRef.current.add(key);
+        sendRewardGateEvent('reward_fallback_used', {
+            ...context,
+            result: 'soft_fallback',
+            reason: isLoading
+                ? 'rewarded_soft_fallback_while_loading'
+                : unavailableReason ?? 'rewarded_unavailable',
+        });
+    }, [activeRace, isActiveRaceUnlocked, canUseRewardedAd, isLoading, unavailableReason, buildRewardContext]);
 
     const RaceNavigation = () => {
         const hasPrev = activeRaceIndex > 0;
@@ -311,7 +339,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                     )}
 
                     {/* プレミアム・ロック切り替え部分 */}
-                    {(activeRace && isActiveRaceUnlocked) ? (
+                    {(activeRace && isPremiumDetailVisible) ? (
                         <>
                             <div className="mb-2 grid gap-2 xl:grid-cols-2 xl:items-stretch">
                                 <div className="card p-2 sm:p-3 h-full flex flex-col">
@@ -372,7 +400,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 </div>
                             </div>
                         </>
-                    ) : (
+                    ) : shouldShowRewardGate ? (
                         <div className="relative mb-2 overflow-hidden rounded-2xl" style={{ minHeight: '320px' }}>
                             {/* 背景: ぼかした実データ */}
                             <div className="select-none pointer-events-none" aria-hidden="true">
@@ -453,7 +481,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
                                 </div>
                             </div>
                         </div>
-                    )}
+                    ) : null}
 
                     <DataExplanationPanel showAdvanced={true} />
 

@@ -1,9 +1,61 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Adsense } from './Adsense';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { sendAdImpressionEvent } from '../lib/analytics';
+
+type StickyVariant = 'control' | 'delayed' | 'compact';
+
+const STICKY_VARIANT_KEY = 'mobile_sticky_ad_variant_v2';
+
+const stickyVariantConfig: Record<StickyVariant, {
+    scrollThreshold: number;
+    height: number;
+    minHeight: number;
+    maxHeight: number;
+    placement: string;
+}> = {
+    control: {
+        scrollThreshold: 500,
+        height: 70,
+        minHeight: 50,
+        maxHeight: 80,
+        placement: 'sticky_bottom_control',
+    },
+    delayed: {
+        scrollThreshold: 900,
+        height: 70,
+        minHeight: 50,
+        maxHeight: 80,
+        placement: 'sticky_bottom_delayed',
+    },
+    compact: {
+        scrollThreshold: 650,
+        height: 56,
+        minHeight: 48,
+        maxHeight: 64,
+        placement: 'sticky_bottom_compact',
+    },
+};
+
+const resolveStickyVariant = (): StickyVariant => {
+    if (typeof window === 'undefined') return 'control';
+
+    try {
+        const stored = window.localStorage.getItem(STICKY_VARIANT_KEY);
+        if (stored === 'control' || stored === 'delayed' || stored === 'compact') {
+            return stored;
+        }
+
+        const bucket = Math.floor(Math.random() * 3);
+        const next: StickyVariant = bucket === 0 ? 'control' : bucket === 1 ? 'delayed' : 'compact';
+        window.localStorage.setItem(STICKY_VARIANT_KEY, next);
+        return next;
+    } catch {
+        return 'control';
+    }
+};
 
 /**
  * モバイル専用・下部固定の追従広告（アンカー広告の代替）
@@ -19,6 +71,7 @@ export const MobileStickyAd = () => {
     const [isDismissed, setIsDismissed] = useState(false);
     const [adStatus, setAdStatus] = useState<'loading' | 'filled' | 'unfilled'>('loading');
     const [hasScrolled, setHasScrolled] = useState(false);
+    const [variant, setVariant] = useState<StickyVariant>('control');
     const pathname = usePathname();
     // ★ レース切替リフレッシュ対応: searchParamsのraceを取得
     // pathnameはレース切替（?race=3&venue=東京）で変化しないため、
@@ -26,6 +79,7 @@ export const MobileStickyAd = () => {
     const searchParams = useSearchParams();
     const raceParam = searchParams.get('race') || '';
     const containerRef = useRef<HTMLDivElement>(null);
+    const variantConfig = useMemo(() => stickyVariantConfig[variant], [variant]);
 
     // 広告を表示しないページガード
     const noAdPages = [
@@ -39,16 +93,16 @@ export const MobileStickyAd = () => {
 
     useEffect(() => {
         setIsMounted(true);
+        setVariant(resolveStickyVariant());
     }, []);
 
-    // ★ ビューアビリティ改善: 500px以上スクロールしてから表示（ファーストビュー保護強化）
-    // 旧: 300px → ファーストビュー直後に追従広告が出現し、コンテンツ閲覧を妨害
-    // 新: 500px → ユーザーがコンテンツに集中した後に自然に表示
-    // データ根拠: モバイルユーザー274人のViewable率改善と直帰率低下を狙う
+    // モバイル広告A/B:
+    // control=500px表示、delayed=900px表示、compact=650px表示かつ低めの枠。
+    // variantはlocalStorageに保存し、同一ユーザーでは比較条件を固定する。
     useEffect(() => {
         if (!isMounted) return;
         const handleScroll = () => {
-            if (window.scrollY > 500) {
+            if (window.scrollY > variantConfig.scrollThreshold) {
                 setHasScrolled(true);
                 window.removeEventListener('scroll', handleScroll);
             }
@@ -57,12 +111,13 @@ export const MobileStickyAd = () => {
         handleScroll();
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [isMounted]);;
+    }, [isMounted, variantConfig.scrollThreshold, pathname, raceParam]);;
 
     // パス変更・レース切替でリフレッシュする際、ステータスを戻す
     // ★ raceParam追加: pathname + raceParam両方の変化に反応
     useEffect(() => {
         setAdStatus('loading');
+        setHasScrolled(false);
     }, [pathname, raceParam]);
 
     // MutationObserverで広告のロード完了/空振り(unfilled)を検知
@@ -76,7 +131,7 @@ export const MobileStickyAd = () => {
                 const status = ins.getAttribute('data-ad-status');
                 if (status === 'filled') {
                     setAdStatus('filled');
-                    sendAdImpressionEvent('sticky_bottom');
+                    sendAdImpressionEvent(variantConfig.placement);
                     observer.disconnect();
                     return true;
                 } else if (status?.startsWith('unfill')) {
@@ -106,7 +161,7 @@ export const MobileStickyAd = () => {
             window.clearTimeout(statusTimer);
             observer.disconnect();
         };
-    }, [pathname, raceParam]);  // ★ raceParam追加: レース切替時もMutationObserverを再作成
+    }, [pathname, raceParam, variantConfig.placement]);  // ★ raceParam追加: レース切替時もMutationObserverを再作成
 
     const handleDismiss = () => {
         setIsDismissed(true);
@@ -122,6 +177,7 @@ export const MobileStickyAd = () => {
     return (
         <div 
             ref={containerRef}
+            data-ad-variant={variant}
             className={`xl:hidden fixed bottom-0 left-0 right-0 w-full z-50 transition-all duration-500 transform shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] ${
                 isVisible ? 'translate-y-0 opacity-100' : 'translate-y-[120px] opacity-0 pointer-events-none'
             }`}
@@ -131,7 +187,7 @@ export const MobileStickyAd = () => {
                 {/* 閉じるボタン（絶対に配置し、UXを担保） */}
                 <button
                     onClick={handleDismiss}
-                    className="absolute -top-7 right-0 bg-white/90 backdrop-blur-sm text-slate-500 hover:text-slate-700 w-8 h-8 flex items-center justify-center rounded-tl-lg border-t border-l border-slate-200 shadow-sm z-10 transition-colors"
+                    className="absolute -top-9 right-0 flex h-9 w-9 items-center justify-center rounded-tl-lg border-l border-t border-slate-200 bg-white/95 text-slate-500 shadow-sm backdrop-blur-sm transition-colors hover:text-slate-700"
                     aria-label="広告を閉じる"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,15 +199,19 @@ export const MobileStickyAd = () => {
                   * 広告コンテナの高さ制限
                   * overflow-hidden によりはみ出し部分をカット
                   */}
-                <div className="w-full flex justify-center items-center overflow-hidden max-h-[80px] min-h-[50px] bg-slate-50 relative">
+                <div
+                    className="relative flex w-full items-center justify-center overflow-hidden bg-slate-50"
+                    style={{
+                        maxHeight: `${variantConfig.maxHeight}px`,
+                        minHeight: `${variantConfig.minHeight}px`,
+                    }}
+                >
                     <div className="absolute top-1 left-2 text-[10px] text-gray-400 font-sans tracking-widest bg-white/80 px-1 rounded z-10 pointer-events-none">広告</div>
                     <Adsense
                         client="ca-pub-4411270831448240"
                         slot="8529703346" 
                         refreshKey={`mobile-sticky-${pathname}-${raceParam}`}
-                        // ★ 70pxに拡大: 320x100や300x50フォーマットも配信対象にし、eCPM・viewable率を向上
-                        // データ根拠: Active View 27-45% → max-h拡大でviewable閾値（50%面積+1秒）を満たしやすくする
-                        style={{ display: 'inline-block', width: '100%', height: '70px' }}
+                        style={{ display: 'inline-block', width: '100%', height: `${variantConfig.height}px` }}
                         isResponsive={false}
                     />
                 </div>

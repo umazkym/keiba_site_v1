@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 収益改善: 追加伸長施策一式の実装
+- **完了日時**: 2026-06-04 01:58
+- **実施内容**: 記事流入後の回遊改善とCLS対策に続き、提示された追加施策を実装。重賞記事は同一URLで「1週間前の展望」「枠順確定後」「前日更新」「当日朝更新」を育てる前提にし、記事ページへ更新方針パネルを追加、記事生成プロンプトと公開処理にも `update_stage` と既存重賞記事更新ルールを追加した。低CTRページ対策として `/keiba-data` と `/about-ai` のSEOタイトル・descriptionを検索回答型へ変更。レース詳細ページはレース名、開催場、R番号を先頭に置いた「AI予想・出走馬分析」型のmetadataとOGPへ強化。モバイル追従広告は `control` / `delayed` / `compact` の3パターンA/Bへ変更し、表示開始位置と広告高さを比較可能にした。リワード広告は在庫なし・タイムアウト・準備中の場合にゲートを出し続けず、詳細データを直接表示するソフトフォールバックへ変更し、通常のインフィード広告で回収する構成にした。上位流入記事と検出された不自然な記事descriptionの重複・途中切れ・機械的タイトルをまとめて自然な文言へ修正した。
+- **変更ファイル**: `frontend/app/keiba-data/page.tsx`, `frontend/app/about-ai/page.tsx`, `frontend/app/races/[date]/[venue]/[race]/page.tsx`, `frontend/app/articles/[slug]/page.tsx`, `frontend/components/GradeRaceUpdatePanel.tsx`, `frontend/components/MobileStickyAd.tsx`, `frontend/components/RaceTabs.tsx`, `frontend/lib/articles.ts`, `frontend/lib/grade-race-update-plan.ts`, `frontend/scripts/agents/agent_writer.ts`, `frontend/scripts/agents/agent_publisher.ts`, `frontend/content/templates/grade-race-preview-update-template.md`, `frontend/content/articles/*.md`（上位流入・不自然description検出記事）, `AGENTS.md`
+- **確認事項**: `npm run article:validate-links` は82記事チェックで成功。`npm run build` は成功し、静的ページ数は151件。生成済みHTMLで日本ダービー記事に「重賞記事の更新方針」「次に確認するページ」「日本ダービーの出馬表を見る」「article-ad-slot」が含まれること、`/keiba-data` に「競馬データ分析 無料」、`/about-ai` に「競馬データ分析の仕組み」が含まれることを確認。`git diff --check` は成功。ビルド時には既存の `caniuse-lite` 更新推奨と、バックエンド未起動による `127.0.0.1:8000` 取得失敗ログが出たが終了コードは0。ローカルサーバー起動と最終プロセス確認は権限付き実行の利用上限で実施できなかった。
+- **次のステップ**: 本番反映後に、Search Consoleで `/keiba-data`, `/about-ai`, `/races/*` のCTR推移、GA4で記事から出馬表・関連記事への2ページ目遷移率、AdSenseで `sticky_bottom_control/delayed/compact` のActive View・CTR・RPM、GA4で `reward_fallback_used` と `premium_data_view` の変化を確認する。GAM/AdSense管理画面ではリワード広告ユニット `/23345285369/uma-free-rewarded-premium` の対象デバイス、在庫、配信制限、広告ユニットパスを確認する。
+
 #### ✅ 収益改善: 記事流入の回遊導線強化と記事CLS対策
 - **完了日時**: 2026-06-04 01:37
 - **実施内容**: `分析レポート` 内のSearch Console、GA4、AdSense系データを確認し、直近の収益増は日本ダービー記事を中心とした検索流入増、ページビュー増、広告表示回数増、クリック数増が主因と推定。記事流入後の離脱を抑えるため、記事冒頭の意図パネルに「次に確認するページ」を追加し、日本ダービー、目黒記念、オークス、新潟大賞典の記事では該当レースの出馬表へ直接遷移できる導線を設定。関連記事を本文後広告より前に移動し、広告を見る前に次の記事へ進める構成へ変更。Search ConsoleでCLS不良が出ていた記事ページ向けに、記事内広告枠を280pxで予約し、未配信時も本文を押し上げない設定を追加。広告コンテナの `contain-intrinsic-size` も設定し、モバイルでの記事タイトル・パンくず・本文見出しの横崩れ対策を追加。主要流入記事の重複気味なdescriptionも自然な文言へ整理した。

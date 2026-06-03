@@ -82,6 +82,9 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 ・"running_style_data": コース形態と脚質の有利不利。直線距離や坂の有無を根拠にする。
 ・"grade_race_preview": 重賞レースのプレビュー記事。以下のルールに従う:
   - タイトル構成: 「[レース名][年] AI予想｜[確認すべきデータの核心]」（30〜40文字）
+  - G1・G2は新規URLを乱立させず、同じ記事を「1週間前の展望」「枠順確定後」「前日更新」「当日朝更新」の4段階で育てる前提で書く。
+  - frontmatterには update_stage を入れる。値は one_week_before / draw_confirmed / eve_update / race_morning のいずれか。
+  - 追記更新を想定し、古い判断を消すのではなく「どの条件なら評価を上げるか」「どの条件なら見送るか」を更新後も読み返せる形にする。
   - 導入: レースの基本情報（開催場・コース・距離）を1〜2文で簡潔に。
   - コース傾向セクション必須: reference_data のデータから傾向をMarkdownテーブルで提示。
   - 予測データがある場合: 偏差値上位の馬を印（◎○▲△）付きで分析。
@@ -108,6 +111,7 @@ keywords: []
 target_keyword: ""
 theme_cluster: ""
 category: ""
+update_stage: ""
 draft: true
 ---
 

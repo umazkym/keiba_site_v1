@@ -10,6 +10,8 @@ import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
 import { enhanceArticleHtml, getArticleIntent } from '@/lib/article-ux';
 import { ArticleIntentPanel } from '@/components/ArticleIntentPanel';
+import { GradeRaceUpdatePanel } from '@/components/GradeRaceUpdatePanel';
+import { getGradeRaceUpdatePlan } from '@/lib/grade-race-update-plan';
 
 type Props = {
   params: { slug: string };
@@ -68,6 +70,7 @@ export default async function ArticlePage({ params }: Props) {
     const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
     const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
     const intent = getArticleIntent(article);
+    const gradeRaceUpdatePlan = getGradeRaceUpdatePlan(article);
 
     const articleUrl = `https://uma-free.com/articles/${params.slug}`;
     const datePublished = new Date(article.date).toISOString();
@@ -175,6 +178,12 @@ export default async function ArticlePage({ params }: Props) {
             <div className="mt-6">
               <ArticleIntentPanel intent={intent} />
             </div>
+
+            {gradeRaceUpdatePlan && (
+              <div className="mt-4">
+                <GradeRaceUpdatePanel plan={gradeRaceUpdatePlan} />
+              </div>
+            )}
 
             {toc.length > 1 && (
               <details className="mt-4 border border-slate-200 bg-slate-50" aria-label="記事の目次">

@@ -20,6 +20,7 @@ export interface Article {
   targetKeyword?: string;
   themeCluster?: string;
   lastUpdated?: string;
+  updateStage?: string;
 }
 
 const VENUE_NAMES = [
@@ -95,6 +96,7 @@ export function getAllArticles(): Article[] {
       targetKeyword: data.target_keyword || '',
       themeCluster: data.theme_cluster || '',
       lastUpdated: data.last_updated || '',
+      updateStage: data.update_stage || '',
     };
   });
 
@@ -181,6 +183,7 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     targetKeyword: data.target_keyword || '',
     themeCluster: data.theme_cluster || '',
     lastUpdated: data.last_updated || '',
+    updateStage: data.update_stage || '',
   };
 }
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲

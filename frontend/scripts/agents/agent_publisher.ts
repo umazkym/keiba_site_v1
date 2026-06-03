@@ -108,6 +108,64 @@ function resolveUniqueSlug(targetKeyword: string, date: Date): string {
   return slug;
 }
 
+function isGradeRaceDraft(data: Record<string, any>): boolean {
+  const combined = `${data.theme_cluster || ''} ${data.category || ''} ${data.target_keyword || ''} ${data.title || ''}`;
+  return /grade_race_preview|重賞|G[12]|Ｇ[１２]|ダービー|オークス|記念|ステークス|カップ/u.test(combined);
+}
+
+function normalizeGradeRaceKey(value: string): string {
+  return value
+    .replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
+    .replace(/20\d{2}/g, '')
+    .replace(/G[123]|Ｇ[１２３]|AI予想|ai予想|無料|攻略|展望|直前|最終|枠順確定後|枠順|前日更新|前日|当日朝更新|当日朝|データ|分析|予想|買い目|ポイント|確認/g, '')
+    .replace(/[｜|:：・\s　【】「」『』（）()]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function findExistingGradeRaceArticlePath(data: Record<string, any>): string | null {
+  if (!isGradeRaceDraft(data) || !fs.existsSync(ARTICLES_DIR)) return null;
+
+  const draftKey = normalizeGradeRaceKey(`${data.target_keyword || ''} ${data.title || ''}`);
+  if (!draftKey) return null;
+
+  for (const file of fs.readdirSync(ARTICLES_DIR).filter((f) => f.endsWith('.md'))) {
+    const fullPath = path.join(ARTICLES_DIR, file);
+    try {
+      const content = fs.readFileSync(fullPath, 'utf-8');
+      const parsed = matter(content);
+      if (!isGradeRaceDraft(parsed.data)) continue;
+
+      const articleKey = normalizeGradeRaceKey(`${parsed.data.target_keyword || ''} ${parsed.data.title || ''}`);
+      if (articleKey && (articleKey === draftKey || articleKey.includes(draftKey) || draftKey.includes(articleKey))) {
+        return fullPath;
+      }
+    } catch {
+      // 壊れた記事ファイルは公開処理を止めずにスキップする
+    }
+  }
+
+  return null;
+}
+
+function updateExistingGradeRaceArticle(destPath: string, parsedDraft: any, now: Date): void {
+  const existing = matter(fs.readFileSync(destPath, 'utf-8'));
+  const nextData = {
+    ...existing.data,
+    ...parsedDraft.data,
+    draft: false,
+    date: existing.data.date || existing.data.article_published_time || parsedDraft.data.date || now.toISOString(),
+    article_published_time: existing.data.article_published_time || existing.data.date || now.toISOString(),
+    last_updated: now.toISOString(),
+    og_type: 'article',
+    og_title: parsedDraft.data.title || existing.data.title,
+    og_description: parsedDraft.data.description || existing.data.description,
+    og_image: existing.data.og_image || `https://uma-free.com/og/${path.basename(destPath, '.md')}.png`,
+  };
+
+  fs.writeFileSync(destPath, matter.stringify(parsedDraft.content.trim() + '\n', nextData), 'utf-8');
+}
+
 function loadPublishedArticleKeywords(): Set<string> {
   const keywords = new Set<string>();
   if (!fs.existsSync(ARTICLES_DIR)) return keywords;
@@ -315,6 +373,45 @@ async function publishDraft() {
     const parsed = matter(content);
     const targetKeyword = String(parsed.data.target_keyword || parsed.data.title || 'article');
     const oldId = path.basename(targetFile, '.md');
+    const now = new Date();
+
+    const existingGradeArticlePath = findExistingGradeRaceArticlePath(parsed.data);
+    if (existingGradeArticlePath) {
+      updateExistingGradeRaceArticle(existingGradeArticlePath, parsed, now);
+      const existingSlug = path.basename(existingGradeArticlePath, '.md');
+      console.log(`[Publisher] Updated existing grade race article: ${existingSlug}`);
+
+      const venue = extractVenue(targetKeyword);
+      if (venue) affectedVenues.add(venue);
+      publishedSlugs.push(existingSlug);
+      writtenArticlePaths.push(existingGradeArticlePath);
+
+      const idx = findHistoryIndex(history, oldId, targetKeyword);
+      if (idx !== -1) {
+        history[idx] = {
+          ...history[idx],
+          draft: false,
+          slug: existingSlug,
+          path: `content/articles/${existingSlug}.md`,
+          updated_existing: true,
+          published_at: now.toISOString(),
+        };
+      } else {
+        history.push({
+          id: oldId,
+          target_keyword: targetKeyword,
+          draft: false,
+          slug: existingSlug,
+          path: `content/articles/${existingSlug}.md`,
+          updated_existing: true,
+          published_at: now.toISOString(),
+        });
+      }
+
+      fs.unlinkSync(filePath);
+      publishedKeywords.add(targetKeyword);
+      continue;
+    }
 
     if (publishedKeywords.has(targetKeyword)) {
       console.warn(`[Publisher] Skip duplicate approved draft. Already published: ${targetKeyword}`);
@@ -324,7 +421,6 @@ async function publishDraft() {
       continue;
     }
 
-    const now = new Date();
     const slug = resolveUniqueSlug(targetKeyword, now);
     const newFilename = `${slug}.md`;
     const destPath = path.join(ARTICLES_DIR, newFilename);

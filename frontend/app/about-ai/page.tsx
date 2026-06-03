@@ -4,15 +4,15 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { AdUnit } from '@/components/AdUnit';
 
 export const metadata: Metadata = {
-    title: 'UMA-FREEのAI競馬予測モデルとデータサイエンス',
-    description: 'UMA-FREEが採用している機械学習アルゴリズム、評価特徴量、バックテスト実績など、データサイエンスの裏側を詳しく解説します。',
+    title: '競馬データ分析の仕組み｜AI予想の根拠と使い方',
+    description: 'UMA-FREEの競馬データ分析の仕組みを解説。AI偏差値、評価特徴量、バックテスト、得意条件と苦手条件をレース前にどう使うか整理します。',
     robots: {
         index: true,
         follow: true,
     },
     openGraph: {
-        title: 'UMA-FREEのAI競馬予測モデルとデータサイエンス',
-        description: 'UMA-FREEが採用している機械学習アルゴリズム、評価特徴量、バックテスト実績など、データサイエンスの裏側を詳しく解説します。',
+        title: '競馬データ分析の仕組み｜AI予想の根拠と使い方',
+        description: 'UMA-FREEの競馬データ分析の仕組みを解説。AI偏差値、評価特徴量、バックテスト、得意条件と苦手条件をレース前にどう使うか整理します。',
         url: 'https://uma-free.com/about-ai',
         siteName: 'UMA-FREE',
         locale: 'ja_JP',

@@ -13,9 +13,9 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { dataHubLinks, courseProfiles, jockeyProfiles } from "@/lib/growth-content";
 
 export const metadata: Metadata = {
-  title: "競馬データの見方",
+  title: "競馬データ分析 無料｜馬場・馬体重・AI予想の見方",
   description:
-    "UMA-FREEの競馬データの見方。馬場状態、馬体重、騎手、コース傾向、AI予想の成績をレース前に使う順番で整理しています。",
+    "無料で使える競馬データ分析の見方を整理。馬場状態、馬体重、騎手、コース傾向、AI予想成績をレース前に確認する順番で解説します。",
   alternates: {
     canonical: "/keiba-data",
   },

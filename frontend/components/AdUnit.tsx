@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { Adsense } from './Adsense';
 import { SkeletonBox as SkeletonLoader } from './SkeletonLoader';
 import { sendAdImpressionEvent } from '../lib/analytics';
@@ -26,6 +26,10 @@ type AdUnitProps = {
     label?: string;
     /** レース切替等で広告をリフレッシュしたい場合に変更する一意キー */
     refreshKey?: string;
+    /** CLS対策としてページ側で広告枠の予約高を明示したい場合に指定 */
+    minHeight?: string;
+    /** 未配信時に枠を畳むか。記事ページでは本文の移動を防ぐためfalseを使う */
+    collapseUnfilled?: boolean;
 };
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
@@ -49,6 +53,8 @@ export const AdUnit = ({
     className = '',
     label = 'スポンサーリンク',
     refreshKey = '',
+    minHeight,
+    collapseUnfilled = true,
 }: AdUnitProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [adLoaded, setAdLoaded] = useState(false);
@@ -133,14 +139,20 @@ export const AdUnit = ({
     };
 
     const config = placementStyles[placement];
+    const reservedMinHeight = minHeight || config.minHeight;
+    const adStyle = useMemo(
+        () => ({ ...placementStyles[placement].adStyle, minHeight: reservedMinHeight }),
+        [placement, reservedMinHeight]
+    );
 
     // unfilledの場合はCSSのminHeightを外し、非表示にする
-    const containerStyle = adUnfilled ? { display: 'none' } : { minHeight: config.minHeight };
+    const shouldCollapse = adUnfilled && collapseUnfilled;
+    const containerStyle = shouldCollapse ? { display: 'none' } : { minHeight: reservedMinHeight };
 
     return (
         <div
             ref={containerRef}
-            className={`ad-unit-container ${config.containerClass} ${className} ${adUnfilled ? 'hidden m-0 p-0' : ''} relative`}
+            className={`ad-unit-container ${!collapseUnfilled ? 'ad-preserve-space' : ''} ${config.containerClass} ${className} ${shouldCollapse ? 'hidden m-0 p-0' : ''} relative`}
             style={containerStyle}
         >
             {/* 広告未ロード時（リフレッシュ中含む）はスケルトンを表示して視線を繋ぎ止める */}
@@ -160,7 +172,7 @@ export const AdUnit = ({
                     client={AD_CLIENT}
                     slot={slot}
                     refreshKey={refreshKey}
-                    style={config.adStyle}
+                    style={adStyle}
                     isResponsive={true}
                 />
             </div>

@@ -241,7 +241,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📊 全体の進捗状況
 
-**最終更新**: 2026-05-27
+**最終更新**: 2026-06-04
 
 | フェーズ | ステータス | 完了数/総数 | 進捗率 |
 |---------|----------|-----------|-------|
@@ -476,6 +476,20 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 -----
 
 ### 📝 完了したステップの記録
+
+#### ✅ 収益改善: 記事流入の回遊導線強化と記事CLS対策
+- **完了日時**: 2026-06-04 01:37
+- **実施内容**: `分析レポート` 内のSearch Console、GA4、AdSense系データを確認し、直近の収益増は日本ダービー記事を中心とした検索流入増、ページビュー増、広告表示回数増、クリック数増が主因と推定。記事流入後の離脱を抑えるため、記事冒頭の意図パネルに「次に確認するページ」を追加し、日本ダービー、目黒記念、オークス、新潟大賞典の記事では該当レースの出馬表へ直接遷移できる導線を設定。関連記事を本文後広告より前に移動し、広告を見る前に次の記事へ進める構成へ変更。Search ConsoleでCLS不良が出ていた記事ページ向けに、記事内広告枠を280pxで予約し、未配信時も本文を押し上げない設定を追加。広告コンテナの `contain-intrinsic-size` も設定し、モバイルでの記事タイトル・パンくず・本文見出しの横崩れ対策を追加。主要流入記事の重複気味なdescriptionも自然な文言へ整理した。
+- **変更ファイル**: `frontend/lib/article-ux.ts`, `frontend/components/ArticleIntentPanel.tsx`, `frontend/components/AdUnit.tsx`, `frontend/components/Breadcrumb.tsx`, `frontend/app/globals.css`, `frontend/app/articles/[slug]/page.tsx`, `frontend/content/articles/2026-05-24-2026-ai-8a51ae64.md`, `frontend/content/articles/2026-05-24-2026-ai-98ffdbb1.md`, `frontend/content/articles/2026-05-21-2026-ai-22f493f9.md`, `frontend/content/articles/2025-11-11-weight-change-impact-analysis.md`, `AGENTS.md`
+- **確認事項**: `npm run article:validate-links` は82記事チェックで成功。`npm run build` は151ページ生成で成功。ビルド時に既存の `caniuse-lite` 更新推奨と、バックエンド未起動による `127.0.0.1:8000` 取得失敗ログが出たが、終了コードは0。ローカル記事ページをEdge DevTools Protocolでモバイル幅390pxとして確認し、`innerWidth=390`, `scrollWidth=390`, H1幅334pxで横スクロールなし。記事内広告枠は `article-ad-slot` が高さ280px、`minHeight=280px`、初期 `layout-shift` 記録なしを確認。Codex内蔵ブラウザ制御はWindowsサンドボックス側の起動失敗で使用できなかったため、Edge CDPで代替確認した。
+- **次のステップ**: 本番反映後、Search ConsoleでCLSグループの「修正を検証」を開始し、28日単位で該当45URLグループのCLS改善を確認する。GA4では記事ランディング後の2ページ目遷移率、`/races/2026-05-31/tokyo/11` など該当レースページへの遷移、関連記事クリック率を追跡する。AdSenseでは記事内広告ユニット別の表示回数、Active View、クリック率、RPMを確認し、280px予約枠によるViewable改善と収益への影響を見る。
+
+#### ✅ 自動運用復旧: X API一時403とSNS投稿重複リスクの修正
+- **完了日時**: 2026-06-04 00:30
+- **実施内容**: 朝SNS投稿でX APIが403 Forbiddenになり、レスポンス本文がCloudflareの `Just a moment...` HTMLになった場合を恒久的な認証不備ではなく一時的な外部要因として扱うよう修正。X投稿は最大3回リトライし、Cloudflareチャレンジ、429、5xx、ネットワーク系エラーを一時障害として分類するようにした。Xだけが一時障害で失敗してもThreadsが成功した場合は `FAIL_ON_SNS_ERROR=true` でもジョブを失敗扱いにせず、投稿済み記録を保存する運用に変更。認証情報不足や恒久的なX APIエラーは引き続き失敗扱い。さらに、X投稿時にURL行を削った本文だけが記録され、重複チェック側のURL付き本文とハッシュがずれる問題を補正し、いずれかのSNSで配信できた場合は元本文でも投稿記録を残すようにした。投稿記録保存は既存レコード確認と `tweet_id` 補完に対応し、一意制約による不要な保存失敗ログを避けるよう改善した。
+- **変更ファイル**: `backend/scripts/sns_poster.py`, `.github/workflows/keiba-sns-morning-post.yml`, `.github/workflows/keiba-sns-afternoon-post.yml`, `.github/workflows/keiba-sns-evening-post.yml`, `.github/workflows/keiba-sns-pre-race.yml`, `.github/workflows/keiba-sns-hit-immediate.yml`, `AGENTS.md`
+- **確認事項**: `python -m py_compile backend\scripts\sns_poster.py` は成功。`py -3.12 -m py_compile backend\scripts\sns_poster.py` は成功。`git diff --check` は成功。補助確認として `python -c ...` と `py -3.11/-3.12 -c ...` で関数単体確認を試したが、PowerShell上のPython解決、壊れたStore版Python参照、またはサンドボックス実行権限により未完了。Codex同梱Pythonは `requests` が入っていないため、対象モジュールのインポート確認には使えなかった。
+- **次のステップ**: 次回の朝SNS GitHub Actionsで、XがCloudflare 403になった場合に3回リトライすること、Threadsが成功した場合はジョブが成功終了し、同日の再実行でThreads投稿が重複しないことを確認する。XがJSON形式の認証/権限エラーを返した場合は引き続きSecretsまたはX Developer Portal側の確認を行う。
 
 #### ✅ 自動運用復旧: 記事公開バリデーション・SNS本命馬成績集計の修正
 - **完了日時**: 2026-05-27 22:12

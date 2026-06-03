@@ -72,9 +72,16 @@ export default async function ArticlePage({ params }: Props) {
     const articleUrl = `https://uma-free.com/articles/${params.slug}`;
     const datePublished = new Date(article.date).toISOString();
     const dateModified = new Date(article.lastUpdated || article.date).toISOString();
+    const stableArticleAdProps = {
+      placement: 'inline' as const,
+      minHeight: '280px',
+      collapseUnfilled: false,
+      className: 'article-ad-slot',
+    };
 
     const proseClass = [
-      "prose prose-slate max-w-none",
+      "article-page-prose prose prose-slate max-w-none",
+      "[overflow-wrap:anywhere]",
       "prose-headings:font-black prose-headings:tracking-tight prose-headings:text-slate-900",
       "prose-h2:text-2xl prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-3 prose-h2:mt-12 prose-h2:mb-6 prose-h2:scroll-mt-24",
       "prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3",
@@ -152,13 +159,13 @@ export default async function ArticlePage({ params }: Props) {
                 </div>
 
                 {/* タイトル */}
-                <h1 className="text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl md:text-5xl">
+                <h1 className="article-page-title text-3xl font-black leading-tight tracking-tight text-slate-950 [overflow-wrap:anywhere] sm:text-4xl md:text-5xl">
                   {article.title}
                 </h1>
 
                 {/* リードテキスト */}
                 {article.description && (
-                  <p className="mt-5 max-w-3xl text-base leading-8 text-slate-500 sm:text-lg">
+                  <p className="article-page-lead mt-5 max-w-3xl text-base leading-8 text-slate-500 sm:text-lg">
                     {article.description}
                   </p>
                 )}
@@ -209,9 +216,9 @@ export default async function ArticlePage({ params }: Props) {
                   return (
                     <>
                       <div className={`${proseClass} mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part1 }} />
-                      <AdUnit slot="1489598374" placement="inline" analyticsPlacement="article_after_intro" />
+                      <AdUnit slot="1489598374" analyticsPlacement="article_after_intro" {...stableArticleAdProps} />
                       <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part2 }} />
-                      <AdUnit slot="9407670747" placement="inline" analyticsPlacement="article_mid" />
+                      <AdUnit slot="9407670747" analyticsPlacement="article_mid" {...stableArticleAdProps} />
                       <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part3 }} />
                     </>
                   );
@@ -224,7 +231,7 @@ export default async function ArticlePage({ params }: Props) {
                   return (
                     <>
                       <div className={`${proseClass} mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: firstPart }} />
-                      <AdUnit slot="1489598374" placement="inline" analyticsPlacement="article_after_intro" />
+                      <AdUnit slot="1489598374" analyticsPlacement="article_after_intro" {...stableArticleAdProps} />
                       <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: secondPart }} />
                     </>
                   );
@@ -260,14 +267,14 @@ export default async function ArticlePage({ params }: Props) {
               </div>
             </div>
 
-            {/* ===== 広告: 記事本文後 ===== */}
-            <div className="pb-8">
-              <AdUnit slot="1489598374" placement="inline" analyticsPlacement="article_after_body" />
-            </div>
-
             {/* ===== 関連記事 ===== */}
             <div className="pb-10">
               <RelatedArticles currentSlug={params.slug} count={3} />
+            </div>
+
+            {/* ===== 広告: 記事本文後 ===== */}
+            <div className="pb-8">
+              <AdUnit slot="1489598374" analyticsPlacement="article_after_body" {...stableArticleAdProps} />
             </div>
 
             {/* ===== MultiplexAd ===== */}

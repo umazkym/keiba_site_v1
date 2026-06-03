@@ -8,7 +8,7 @@ interface ArticleIntentPanelProps {
 
 export function ArticleIntentPanel({ intent }: ArticleIntentPanelProps) {
   return (
-    <section className="border border-slate-200 bg-white p-4">
+    <section className="border border-slate-200 bg-white p-4 sm:p-5">
       <div className="flex flex-col gap-3">
         <div>
           <p className="text-xs font-bold tracking-[0.14em] text-slate-400">{intent.eyebrow}</p>
@@ -48,6 +48,31 @@ export function ArticleIntentPanel({ intent }: ArticleIntentPanelProps) {
             {intent.secondaryLabel}
           </Link>
         </div>
+
+        {intent.nextLinks.length > 0 && (
+          <div className="border-t border-slate-100 pt-3">
+            <p className="mb-2 text-xs font-bold text-slate-500">次に確認するページ</p>
+            <div className="divide-y divide-slate-100 border-y border-slate-100">
+              {intent.nextLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="group flex items-center justify-between gap-3 py-2.5"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold leading-5 text-slate-800 group-hover:text-primary">
+                      {link.label}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-5 text-slate-500">
+                      {link.description}
+                    </span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 group-hover:text-primary" aria-hidden="true" />
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

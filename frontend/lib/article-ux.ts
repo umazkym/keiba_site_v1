@@ -14,6 +14,13 @@ export interface ArticleIntent {
   primaryLabel: string;
   secondaryHref: string;
   secondaryLabel: string;
+  nextLinks: ArticleNextLink[];
+}
+
+export interface ArticleNextLink {
+  href: string;
+  label: string;
+  description: string;
 }
 
 function stripHtml(value: string): string {
@@ -46,10 +53,93 @@ export function enhanceArticleHtml(html: string): { html: string; toc: ArticleTo
   return { html: enhancedHtml, toc };
 }
 
+function getFeaturedRaceLink(article: Article): ArticleNextLink | null {
+  const text = `${article.title} ${article.description} ${article.targetKeyword || ''}`;
+
+  if (text.includes('日本ダービー')) {
+    return {
+      href: '/races/2026-05-31/tokyo/11',
+      label: '日本ダービーの出馬表を見る',
+      description: '東京11RのAI偏差値、展開予測、枠順傾向を確認',
+    };
+  }
+
+  if (text.includes('目黒記念')) {
+    return {
+      href: '/races/2026-05-31/tokyo/12',
+      label: '目黒記念の出馬表を見る',
+      description: '東京12RのAI分析とコース傾向を確認',
+    };
+  }
+
+  if (text.includes('オークス')) {
+    return {
+      href: '/races/2026-05-24/tokyo/11',
+      label: 'オークスの出馬表を見る',
+      description: '東京11RのAI偏差値と直前データを確認',
+    };
+  }
+
+  if (text.includes('新潟大賞典')) {
+    return {
+      href: '/races/2026-05-17/niigata/11',
+      label: '新潟大賞典の出馬表を見る',
+      description: '新潟11RのAI分析と展開材料を確認',
+    };
+  }
+
+  return null;
+}
+
+function buildNextLinks(article: Article, categoryHref: string): ArticleNextLink[] {
+  const featuredRace = getFeaturedRaceLink(article);
+  const links: ArticleNextLink[] = [];
+
+  if (featuredRace) {
+    links.push(featuredRace);
+  }
+
+  links.push({
+    href: '/races/today',
+    label: '今日のAI予想を見る',
+    description: '当日の出馬表で、記事の見方をそのまま試す',
+  });
+
+  if (article.category.includes('入門')) {
+    links.push({
+      href: '/keiba-data',
+      label: 'データの見方を確認する',
+      description: '馬場、馬体重、予想サイト選びの基礎を整理',
+    });
+  } else {
+    links.push({
+      href: '/results/accuracy?days=90',
+      label: 'AI予想成績を見る',
+      description: '直近90日の成績から、得意条件と弱い条件を確認',
+    });
+  }
+
+  links.push({
+    href: categoryHref,
+    label: '同じテーマの記事を読む',
+    description: '関連する分析記事で、判断材料を補強する',
+  });
+
+  const seen = new Set<string>();
+  return links.filter((link) => {
+    if (seen.has(link.href)) return false;
+    seen.add(link.href);
+    return true;
+  }).slice(0, 3);
+}
+
 export function getArticleIntent(article: Article): ArticleIntent {
   const category = article.category || '';
   const theme = article.themeCluster || '';
   const encodedCategory = encodeURIComponent(category);
+  const categoryHref = `/articles?category=${encodedCategory}`;
+  const featuredRace = getFeaturedRaceLink(article);
+  const nextLinks = buildNextLinks(article, categoryHref);
 
   if (category.includes('重賞') || theme === 'grade_race_preview' || article.title.includes('AI予想')) {
     return {
@@ -61,10 +151,11 @@ export function getArticleIntent(article: Article): ArticleIntent {
         '穴馬は能力より先に、展開で浮上できる位置を取れるかを見る',
         '枠順確定後は、出馬表のAI偏差値と合わせて最終確認する',
       ],
-      primaryHref: '/races/today',
-      primaryLabel: '今日のAI予想を見る',
-      secondaryHref: `/articles?category=${encodedCategory}`,
+      primaryHref: featuredRace?.href || '/races/today',
+      primaryLabel: featuredRace?.label || '今日のAI予想を見る',
+      secondaryHref: categoryHref,
       secondaryLabel: '重賞攻略を続けて読む',
+      nextLinks,
     };
   }
 
@@ -80,8 +171,9 @@ export function getArticleIntent(article: Article): ArticleIntent {
       ],
       primaryHref: '/races/today',
       primaryLabel: '今日の騎乗馬を確認する',
-      secondaryHref: `/articles?category=${encodedCategory}`,
+      secondaryHref: categoryHref,
       secondaryLabel: '騎手分析をもっと読む',
+      nextLinks,
     };
   }
 
@@ -97,8 +189,9 @@ export function getArticleIntent(article: Article): ArticleIntent {
       ],
       primaryHref: '/races/today',
       primaryLabel: '今日の出馬表で使う',
-      secondaryHref: `/articles?category=${encodedCategory}`,
+      secondaryHref: categoryHref,
       secondaryLabel: 'コース分析を続けて読む',
+      nextLinks,
     };
   }
 
@@ -114,8 +207,9 @@ export function getArticleIntent(article: Article): ArticleIntent {
       ],
       primaryHref: '/races/today',
       primaryLabel: '今日の予想で試す',
-      secondaryHref: `/articles?category=${encodedCategory}`,
+      secondaryHref: categoryHref,
       secondaryLabel: '入門ガイドを読む',
+      nextLinks,
     };
   }
 
@@ -132,5 +226,6 @@ export function getArticleIntent(article: Article): ArticleIntent {
     primaryLabel: '今日のAI予想を見る',
     secondaryHref: '/articles',
     secondaryLabel: '記事一覧へ戻る',
+    nextLinks,
   };
 }

@@ -39,6 +39,7 @@ import random
 import time
 import re
 import argparse
+from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 import traceback
 from PIL import Image, ImageDraw, ImageFont
@@ -147,6 +148,17 @@ def _env_flag(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_int(name: str, default: int, minimum: int = 0) -> int:
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        return default
+    try:
+        parsed = int(value.strip())
+        return max(parsed, minimum)
+    except ValueError:
+        return default
+
+
 DATABASE_URL = _env_value("DATABASE_URL")
 TWITTER_CONSUMER_KEY = _env_value("TWITTER_CONSUMER_KEY", "TWITTER_API_KEY")
 TWITTER_CONSUMER_SECRET = _env_value("TWITTER_CONSUMER_SECRET", "TWITTER_API_SECRET")
@@ -161,6 +173,9 @@ DRY_RUN = _env_flag("DRY_RUN", False)
 ENABLE_TWITTER = _env_flag("ENABLE_TWITTER", True)
 ENABLE_THREADS = _env_flag("ENABLE_THREADS", True)
 FAIL_ON_SNS_ERROR = _env_flag("FAIL_ON_SNS_ERROR", False)
+TWITTER_POST_MAX_RETRIES = _env_int("TWITTER_POST_MAX_RETRIES", 3, minimum=1)
+TWITTER_POST_RETRY_BASE_SECONDS = _env_int("TWITTER_POST_RETRY_BASE_SECONDS", 30, minimum=1)
+ALLOW_X_TRANSIENT_FAILURE_WITH_THREADS = _env_flag("ALLOW_X_TRANSIENT_FAILURE_WITH_THREADS", True)
 
 # ===== Threads API設定 =====
 THREADS_USER_ID = os.getenv("THREADS_USER_ID")
@@ -636,6 +651,26 @@ def record_post(content: str, post_type: str, target_date: str, tweet_id: Option
 
     db = SessionLocal()
     try:
+        existing_post = db.query(models.SnsPost).filter(
+            models.SnsPost.content_hash == content_hash,
+            models.SnsPost.target_date == target_date
+        ).first()
+
+        if existing_post:
+            updated = False
+            if tweet_id and not existing_post.tweet_id:
+                existing_post.tweet_id = str(tweet_id)
+                updated = True
+            if post_type and existing_post.post_type != post_type:
+                existing_post.post_type = post_type
+                updated = True
+            if updated:
+                db.commit()
+                _log(f"✅ 投稿記録を更新: {post_type} ({target_date})")
+            else:
+                _log(f"-> 投稿記録は既に存在: {post_type} ({target_date})")
+            return
+
         new_post = models.SnsPost(
             content_hash=content_hash,
             post_type=post_type,
@@ -1367,7 +1402,184 @@ def track_sns_result(failures: List[str], channel: str, context: str, ok: bool) 
         failures.append(f"{channel}: {context}")
 
 
-def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image_path_1: Optional[str] = None, image_path_2: Optional[str] = None, post_type: str = "", target_date: str = "") -> bool:
+@dataclass
+class TwitterPostResult:
+    ok: bool
+    attempted: bool = True
+    posted_ids: List[str] = field(default_factory=list)
+    transient: bool = False
+    reason: str = ""
+
+    def __bool__(self) -> bool:
+        return self.ok
+
+
+def _response_body_from_exception(error: Exception) -> str:
+    response = getattr(error, "response", None)
+    if response is None:
+        return ""
+    try:
+        return getattr(response, "text", "") or ""
+    except Exception:
+        return ""
+
+
+def _status_from_exception(error: Exception) -> Optional[int]:
+    response = getattr(error, "response", None)
+    if response is None:
+        return None
+    status_code = getattr(response, "status_code", None)
+    try:
+        return int(status_code) if status_code is not None else None
+    except Exception:
+        return None
+
+
+def _classify_twitter_exception(error: Exception) -> tuple[bool, str]:
+    """X API例外を、一時的な外部要因か恒久的な設定問題かに分ける。"""
+    body = _response_body_from_exception(error)
+    status = _status_from_exception(error)
+    body_lower = body.lower()
+
+    if "just a moment" in body_lower or "challenges.cloudflare.com" in body_lower:
+        return True, "X側のCloudflareチャレンジによる一時的な403"
+    if status == 429:
+        return True, "X APIのレート制限"
+    if status is not None and 500 <= status <= 599:
+        return True, f"X APIの一時的なサーバーエラー({status})"
+    if isinstance(error, (requests.Timeout, requests.ConnectionError)):
+        return True, "X APIへのネットワーク接続エラー"
+    return False, f"X APIエラー({status or 'status不明'})"
+
+
+def _log_twitter_exception(error: Exception, reason: str, attempt: int, max_retries: int) -> None:
+    status = _status_from_exception(error)
+    _log(f"\n❌ Twitter APIエラー: {reason} (試行 {attempt}/{max_retries})")
+    if status:
+        _log(f"  → HTTPステータス: {status}")
+    body = _response_body_from_exception(error)
+    if body:
+        _log(f"  → レスポンス詳細: {body[:500]}")
+
+
+def _sleep_before_twitter_retry(attempt: int) -> None:
+    delay = TWITTER_POST_RETRY_BASE_SECONDS * attempt + random.randint(0, 10)
+    _log(f"  → {delay}秒後にX投稿を再試行します。")
+    time.sleep(delay)
+
+
+def _create_twitter_clients():
+    auth_v1 = tweepy.OAuth1UserHandler(
+        TWITTER_CONSUMER_KEY,
+        TWITTER_CONSUMER_SECRET,
+        TWITTER_ACCESS_TOKEN,
+        TWITTER_ACCESS_TOKEN_SECRET,
+    )
+    api_v1 = tweepy.API(auth_v1)
+    client_v2 = tweepy.Client(
+        consumer_key=TWITTER_CONSUMER_KEY,
+        consumer_secret=TWITTER_CONSUMER_SECRET,
+        access_token=TWITTER_ACCESS_TOKEN,
+        access_token_secret=TWITTER_ACCESS_TOKEN_SECRET,
+    )
+    return api_v1, client_v2
+
+
+def _post_single_tweet_to_x(tweet_text: str, image_path: Optional[str], idx: int, total: int) -> TwitterPostResult:
+    last_result = TwitterPostResult(ok=False, reason="X投稿が完了しませんでした")
+
+    for attempt in range(1, TWITTER_POST_MAX_RETRIES + 1):
+        try:
+            api_v1, client_v2 = _create_twitter_clients()
+            media_ids = []
+
+            if image_path and os.path.exists(image_path):
+                try:
+                    _log(f"画像をアップロードしています (ツイート {idx}): {image_path}")
+                    media = api_v1.media_upload(filename=image_path)
+                    media_ids.append(media.media_id)
+                except tweepy.errors.Forbidden as img_403:
+                    transient, reason = _classify_twitter_exception(img_403)
+                    _log(f"⚠️ 画像アップロードが403 Forbiddenで拒否されました: {reason}")
+                    _log("  → 画像なしのテキスト投稿へ切り替えます。")
+                    if transient:
+                        last_result = TwitterPostResult(ok=False, transient=True, reason=reason)
+                except Exception as img_error:
+                    _log(f"⚠️ 画像アップロードに失敗しました: {img_error}。テキストのみで投稿します。")
+
+            _log(f"ツイート {idx}/{total} を投稿しています...")
+            response = client_v2.create_tweet(
+                text=tweet_text,
+                media_ids=media_ids if media_ids else None,
+            )
+
+            tweet_id = response.data.get('id') if response and response.data else None
+            _log(f"✅ ツイート {idx} の投稿に成功しました！")
+            if tweet_id:
+                _log(f" - URL: {build_x_status_url(tweet_id)}")
+            return TwitterPostResult(
+                ok=True,
+                posted_ids=[str(tweet_id)] if tweet_id else [],
+                reason="投稿成功",
+            )
+        except tweepy.errors.TweepyException as error:
+            transient, reason = _classify_twitter_exception(error)
+            _log_twitter_exception(error, reason, attempt, TWITTER_POST_MAX_RETRIES)
+            last_result = TwitterPostResult(ok=False, transient=transient, reason=reason)
+            if transient and attempt < TWITTER_POST_MAX_RETRIES:
+                _sleep_before_twitter_retry(attempt)
+                continue
+            return last_result
+        except Exception as error:
+            transient, reason = _classify_twitter_exception(error)
+            if not transient:
+                reason = f"予期せぬエラー: {error}"
+            _log(f"\n❌予期せぬエラーが発生しました: {error}\n{traceback.format_exc()}")
+            last_result = TwitterPostResult(ok=False, transient=transient, reason=reason)
+            if transient and attempt < TWITTER_POST_MAX_RETRIES:
+                _sleep_before_twitter_retry(attempt)
+                continue
+            return last_result
+
+    return last_result
+
+
+def track_x_result(failures: List[str], context: str, result: TwitterPostResult, threads_ok: bool = False) -> None:
+    if result.ok:
+        return
+    if not result.attempted:
+        failures.append(f"X(Twitter): {context}")
+        return
+    if (
+        result.transient
+        and threads_ok
+        and ALLOW_X_TRANSIENT_FAILURE_WITH_THREADS
+    ):
+        _log(
+            "⚠️ X投稿は一時的な外部要因で失敗しましたが、Threads投稿が成功したため、"
+            "今回のジョブは失敗扱いにしません。"
+        )
+        _log(f"  → X失敗理由: {result.reason}")
+        return
+    failures.append(f"X(Twitter): {context}")
+
+
+def record_post_if_delivered(
+    content: str,
+    post_type: str,
+    target_date: str,
+    x_result: Optional[TwitterPostResult] = None,
+    threads_ok: bool = False,
+) -> None:
+    """いずれかのSNSで配信できた内容を、元本文のハッシュで記録する。"""
+    x_ok = bool(x_result) if x_result is not None else False
+    if not x_ok and not threads_ok:
+        return
+    tweet_id = x_result.posted_ids[0] if x_result and x_result.posted_ids else None
+    record_post(content, post_type, target_date, tweet_id=tweet_id)
+
+
+def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image_path_1: Optional[str] = None, image_path_2: Optional[str] = None, post_type: str = "", target_date: str = "") -> TwitterPostResult:
     """
     2つのツイートテキストを受け取り、各投稿に異なる画像を添付して投稿する。
     ツイート1に image_path_1、ツイート2に image_path_2 を使用。
@@ -1382,11 +1594,11 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
 
     if not ENABLE_TWITTER:
         _log("X投稿は ENABLE_TWITTER=false のためスキップします。")
-        return False
+        return TwitterPostResult(ok=False, attempted=False, reason="X投稿無効")
 
     if not twitter_credentials_ready():
         _log("⚠️ X API認証情報が不足しているため、X投稿をスキップします。")
-        return False
+        return TwitterPostResult(ok=False, attempted=False, reason="X API認証情報不足")
 
     if DRY_RUN:
         _log("⚠️ DRY_RUN=1 のため投稿は実行しません。")
@@ -1396,73 +1608,37 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
             _log(f"画像1パス: {image_path_1}")
         if image_path_2:
             _log(f"画像2パス: {image_path_2}")
-        return True
+        return TwitterPostResult(ok=True, reason="DRY_RUN")
 
-    try:
-        auth_v1 = tweepy.OAuth1UserHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
-        api_v1 = tweepy.API(auth_v1)
-        client_v2 = tweepy.Client(consumer_key=TWITTER_CONSUMER_KEY, consumer_secret=TWITTER_CONSUMER_SECRET,
-                                    access_token=TWITTER_ACCESS_TOKEN, access_token_secret=TWITTER_ACCESS_TOKEN_SECRET)
+    posted_ids: List[str] = []
+    image_paths = [image_path_1, image_path_2]
 
-        image_paths = [image_path_1, image_path_2]
+    for idx, tweet_text in enumerate(tweet_texts, 1):
+        if is_already_posted(tweet_text, post_type, target_date):
+            _log(f"-> ツイート {idx}/{len(tweet_texts)} は既に投稿済みのためスキップします。")
+            continue
 
-        for idx, tweet_text in enumerate(tweet_texts, 1):
-            media_ids = []
-            image_path = image_paths[idx - 1] if idx - 1 < len(image_paths) else None
-            if image_path and os.path.exists(image_path):
-                try:
-                    _log(f"画像をアップロードしています (ツイート {idx}): {image_path}")
-                    media = api_v1.media_upload(filename=image_path)
-                    media_ids.append(media.media_id)
-                except tweepy.errors.Forbidden as img_403:
-                    _log(f"⚠️ 画像アップロードが403 Forbiddenで拒否されました: {img_403}")
-                    _log("  → 原因: Twitter Appの権限が 'Read and Write' でないか、トークン再生成が未実施の可能性があります")
-                    _log("  → テキストのみで投稿を継続します")
-                except Exception as img_error:
-                    _log(f"⚠️ 画像アップロードに失敗しました: {img_error}。テキストのみで投稿します。")
-
-            _log(f"ツイート {idx}/{len(tweet_texts)} を投稿しています...")
-
-            response = client_v2.create_tweet(
-                text=tweet_text,
-                media_ids=media_ids if media_ids else None
+        image_path = image_paths[idx - 1] if idx - 1 < len(image_paths) else None
+        result = _post_single_tweet_to_x(tweet_text, image_path, idx, len(tweet_texts))
+        posted_ids.extend(result.posted_ids)
+        if result.ok:
+            record_post(tweet_text, post_type, target_date, tweet_id=result.posted_ids[0] if result.posted_ids else None)
+        else:
+            return TwitterPostResult(
+                ok=False,
+                posted_ids=posted_ids,
+                transient=result.transient,
+                reason=result.reason,
             )
 
-            _log(f"✅ ツイート {idx} の投稿に成功しました！")
-            try:
-                tweet_id = response.data.get('id') if response and response.data else None
-                if tweet_id:
-                    _log(f" - URL: {build_x_status_url(tweet_id)}")
-                    record_post(tweet_text, post_type, target_date, tweet_id=str(tweet_id))
-            except Exception:
-                pass
+        if idx < len(tweet_texts):
+            _log("-> スレッド化防止のため120秒待機...")
+            time.sleep(120)
 
-            if idx < len(tweet_texts):
-                # スレッド化防止: 120秒間隔を空ける
-                _log("-> スレッド化防止のため120秒待機...")
-                time.sleep(120)
+    return TwitterPostResult(ok=True, posted_ids=posted_ids, reason="投稿成功")
 
-        return True
-    except tweepy.errors.Forbidden as e:
-        _log(f"\n❌ Twitter API 403 Forbidden: {e}")
-        _log("  → 考えられる原因:")
-        _log("    1. App権限が 'Read and Write' になっていない")
-        _log("    2. 権限変更後にAccess Token & Secretを再生成していない")
-        _log("    3. Free tier の API レート制限に抵触")
-        try:
-            if hasattr(e, 'response') and e.response is not None:
-                _log(f"  → レスポンス詳細: {e.response.text[:500]}")
-        except Exception:
-            pass
-        return False
-    except tweepy.errors.TweepyException as e:
-        _log(f"\n❌エラー: Twitter APIでエラーが発生しました。詳細: {e}")
-        return False
-    except Exception as e:
-        _log(f"\n❌予期せぬエラーが発生しました: {e}\n{traceback.format_exc()}")
-        return False
 
-def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str = "", target_date: str = "", split_mode: bool = True) -> bool:
+def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str = "", target_date: str = "", split_mode: bool = True) -> TwitterPostResult:
     """
     テキストと画像をツイートする。
     split_mode=True の場合、テキストを必ず2つに分割して投稿する。
@@ -1481,11 +1657,11 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
 
     if not ENABLE_TWITTER:
         _log("X投稿は ENABLE_TWITTER=false のためスキップします。")
-        return False
+        return TwitterPostResult(ok=False, attempted=False, reason="X投稿無効")
 
     if not twitter_credentials_ready():
         _log("⚠️ X API認証情報が不足しているため、X投稿をスキップします。")
-        return False
+        return TwitterPostResult(ok=False, attempted=False, reason="X API認証情報不足")
 
     if DRY_RUN:
         _log("⚠️ DRY_RUN=1 のため投稿は実行しません。")
@@ -1493,67 +1669,30 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
             _log(f"--- ツイート {i}/{len(tweet_texts)} プレビュー ---\n{tweet_text}\n--- /プレビュー ---")
         if image_path:
             _log(f"画像パス: {image_path}")
-        return True
+        return TwitterPostResult(ok=True, reason="DRY_RUN")
 
-    try:
-        auth_v1 = tweepy.OAuth1UserHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
-        api_v1 = tweepy.API(auth_v1)
-        client_v2 = tweepy.Client(consumer_key=TWITTER_CONSUMER_KEY, consumer_secret=TWITTER_CONSUMER_SECRET,
-                                    access_token=TWITTER_ACCESS_TOKEN, access_token_secret=TWITTER_ACCESS_TOKEN_SECRET)
+    posted_ids: List[str] = []
+    for idx, tweet_text in enumerate(tweet_texts, 1):
+        if is_already_posted(tweet_text, post_type, target_date):
+            _log(f"-> ツイート {idx}/{len(tweet_texts)} は既に投稿済みのためスキップします。")
+            continue
 
-        for idx, tweet_text in enumerate(tweet_texts, 1):
-            media_ids = []
-
-            if image_path and os.path.exists(image_path):
-                try:
-                    _log(f"画像をアップロードしています (ツイート {idx}): {image_path}")
-                    media = api_v1.media_upload(filename=image_path)
-                    media_ids.append(media.media_id)
-                except tweepy.errors.Forbidden as img_403:
-                    _log(f"⚠️ 画像アップロードが403 Forbiddenで拒否されました: {img_403}")
-                    _log("  → 原因: Twitter Appの権限が 'Read and Write' でないか、トークン再生成が未実施の可能性があります")
-                    _log("  → テキストのみで投稿を継続します")
-                except Exception as img_error:
-                    _log(f"⚠️ 画像アップロードに失敗しました: {img_error}。テキストのみで投稿します。")
-
-            _log(f"ツイート {idx}/{len(tweet_texts)} を投稿しています...")
-
-            response = client_v2.create_tweet(
-                text=tweet_text,
-                media_ids=media_ids if media_ids else None
+        result = _post_single_tweet_to_x(tweet_text, image_path, idx, len(tweet_texts))
+        posted_ids.extend(result.posted_ids)
+        if result.ok:
+            record_post(tweet_text, post_type, target_date, tweet_id=result.posted_ids[0] if result.posted_ids else None)
+        else:
+            return TwitterPostResult(
+                ok=False,
+                posted_ids=posted_ids,
+                transient=result.transient,
+                reason=result.reason,
             )
 
-            _log(f"✅ ツイート {idx} の投稿に成功しました！")
-            try:
-                tweet_id = response.data.get('id') if response and response.data else None
-                if tweet_id:
-                    _log(f" - URL: {build_x_status_url(tweet_id)}")
-                record_post(tweet_text, post_type, target_date, tweet_id=str(tweet_id) if tweet_id else None)
-            except Exception as e:
-                _log(f"  -> 投稿記録の保存に失敗（無視して継続）: {e}")
+        if idx < len(tweet_texts):
+            time.sleep(1)
 
-            if idx < len(tweet_texts):
-                time.sleep(1)
-
-        return True
-    except tweepy.errors.Forbidden as e:
-        _log(f"\n❌ Twitter API 403 Forbidden: {e}")
-        _log("  → 考えられる原因:")
-        _log("    1. App権限が 'Read and Write' になっていない")
-        _log("    2. 権限変更後にAccess Token & Secretを再生成していない")
-        _log("    3. Free tier の API レート制限に抵触")
-        try:
-            if hasattr(e, 'response') and e.response is not None:
-                _log(f"  → レスポンス詳細: {e.response.text[:500]}")
-        except Exception:
-            pass
-        return False
-    except tweepy.errors.TweepyException as e:
-        _log(f"\n❌エラー: Twitter APIでエラーが発生しました。詳細: {e}")
-        return False
-    except Exception as e:
-        _log(f"\n❌予期せぬエラーが発生しました: {e}\n{traceback.format_exc()}")
-        return False
+    return TwitterPostResult(ok=True, posted_ids=posted_ids, reason="投稿成功")
 
 # --- 7.5 新しい投稿用テキスト生成関数 ---
 def create_morning_hit_tweet(hit: Dict[str, Any], summary: dict, date_str: str, quote_tweet_id: Optional[str] = None) -> str:
@@ -1910,16 +2049,26 @@ def main():
                         _log(f"-> 既に投稿済み: morning_combined")
                     else:
                         # 2つのツイートテキストを直接渡して投稿（分割なし、スレッド化防止済み）
-                        success = post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
+                        x_result = post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
                         threads_posted = post_texts_to_threads([tweet_text_1, tweet_text_2])
+                        threads_ok = threads_posted == 2
                         if ENABLE_TWITTER:
-                            track_sns_result(sns_failures, "X(Twitter)", "morning_combined", success)
+                            track_x_result(sns_failures, "morning_combined", x_result, threads_ok=threads_ok)
                         if ENABLE_THREADS:
-                            track_sns_result(sns_failures, "Threads", "morning_combined", threads_posted == 2)
-                        if success:
-                            record_post(combined_check_text, "morning_combined", today_str)
+                            track_sns_result(sns_failures, "Threads", "morning_combined", threads_ok)
+                        record_post_if_delivered(
+                            combined_check_text,
+                            "morning_combined",
+                            today_str,
+                            x_result=x_result,
+                            threads_ok=threads_ok,
+                        )
+                        if not x_result and not threads_ok:
+                            _log("⚠️ X投稿とThreads投稿の両方が失敗したため、投稿記録を保存しません。")
+                        elif not x_result:
+                            _log("⚠️ X投稿は失敗しましたが、Threads投稿は完了したため投稿記録を保存しました。")
                         else:
-                            _log("⚠️ X投稿失敗。投稿記録をスキップします（翌実行で再試行可能）")
+                            _log("-> 朝投稿の配信記録を保存しました。")
             else:
                 _log("-> 昨日は1万円以上の高配当的中がありませんでした。本日のAI注目馬のみ投稿します。")
                 # フォールバック: 高配当的中がなくても、本日のAI注目馬を画像付きで投稿する
@@ -1952,13 +2101,14 @@ def main():
                     if is_already_posted(tweet_text, "morning_pick_only", today_str):
                         _log(f"-> 既に投稿済み: morning_pick_only")
                     else:
-                        twitter_ok = post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
+                        x_result = post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
                         threads_ok = post_to_threads(tweet_text) is not None
                         if ENABLE_TWITTER:
-                            track_sns_result(sns_failures, "X(Twitter)", "morning_pick_only", twitter_ok)
+                            track_x_result(sns_failures, "morning_pick_only", x_result, threads_ok=threads_ok)
                         if ENABLE_THREADS:
                             track_sns_result(sns_failures, "Threads", "morning_pick_only", threads_ok)
-                        if not twitter_ok:
+                        record_post_if_delivered(tweet_text, "morning_pick_only", today_str, x_result=x_result, threads_ok=threads_ok)
+                        if not x_result:
                             _log("⚠️ X投稿は失敗しましたが、Threads投稿は試行済みです")
                 else:
                     _log("-> 本日のレースデータも取得できなかったため、投稿をスキップします。")
@@ -1974,13 +2124,14 @@ def main():
                 if is_already_posted(tweet_text, "afternoon_summary", today_str):
                     _log(f"-> 既に投稿済み: afternoon_summary")
                 else:
-                    twitter_ok = post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
+                    x_result = post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
                     threads_ok = post_to_threads(tweet_text) is not None
                     if ENABLE_TWITTER:
-                        track_sns_result(sns_failures, "X(Twitter)", "afternoon_summary", twitter_ok)
+                        track_x_result(sns_failures, "afternoon_summary", x_result, threads_ok=threads_ok)
                     if ENABLE_THREADS:
                         track_sns_result(sns_failures, "Threads", "afternoon_summary", threads_ok)
-                    if not twitter_ok:
+                    record_post_if_delivered(tweet_text, "afternoon_summary", today_str, x_result=x_result, threads_ok=threads_ok)
+                    if not x_result:
                         _log("⚠️ X投稿は失敗しましたが、Threads投稿は試行済みです")
             else:
                 _log("-> 本日のレース情報が取得できませんでした。")
@@ -2005,15 +2156,16 @@ def main():
 
                     if image_file:
                         _log(f"-> 画像生成成功: {image_file}")
-                        twitter_ok = post_to_twitter(tweet_text, image_file, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
+                        x_result = post_to_twitter(tweet_text, image_file, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
                     else:
                         _log("-> 画像生成に失敗しましたが、テキストのみで投稿します")
-                        twitter_ok = post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
+                        x_result = post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
                     threads_ok = post_to_threads(tweet_text) is not None
                     if ENABLE_TWITTER:
-                        track_sns_result(sns_failures, "X(Twitter)", f"evening_race:{race_name}", twitter_ok)
+                        track_x_result(sns_failures, f"evening_race:{race_name}", x_result, threads_ok=threads_ok)
                     if ENABLE_THREADS:
                         track_sns_result(sns_failures, "Threads", f"evening_race:{race_name}", threads_ok)
+                    record_post_if_delivered(tweet_text, "evening_race", tomorrow_str, x_result=x_result, threads_ok=threads_ok)
 
                     # 次の重賞投稿まで120秒待機（スレッド化防止 + レート制限対策）
                     if idx < len(grade_races) - 1:
@@ -2055,14 +2207,15 @@ def main():
                 
                 if image_file:
                     _log(f"-> 画像生成成功: {image_file}")
-                    twitter_ok = post_to_twitter(tweet_text, image_file, post_type="pre_race_remind", target_date=today_str, split_mode=False)
+                    x_result = post_to_twitter(tweet_text, image_file, post_type="pre_race_remind", target_date=today_str, split_mode=False)
                 else:
-                    twitter_ok = post_to_twitter(tweet_text, None, post_type="pre_race_remind", target_date=today_str, split_mode=False)
+                    x_result = post_to_twitter(tweet_text, None, post_type="pre_race_remind", target_date=today_str, split_mode=False)
                 threads_ok = post_to_threads(tweet_text) is not None
                 if ENABLE_TWITTER:
-                    track_sns_result(sns_failures, "X(Twitter)", "pre_race_remind", twitter_ok)
+                    track_x_result(sns_failures, "pre_race_remind", x_result, threads_ok=threads_ok)
                 if ENABLE_THREADS:
                     track_sns_result(sns_failures, "Threads", "pre_race_remind", threads_ok)
+                record_post_if_delivered(tweet_text, "pre_race_remind", today_str, x_result=x_result, threads_ok=threads_ok)
             else:
                 _log("-> 本日の適切な直前リマインダー対象レースがありませんでした。")
 
@@ -2111,7 +2264,7 @@ def main():
                     continue
 
                 image_file = generate_hit_og_image(hit, today_str)
-                twitter_ok = post_to_twitter(
+                x_result = post_to_twitter(
                     tweet_text, image_file,
                     post_type='hit_immediate',
                     target_date=today_str,
@@ -2119,9 +2272,10 @@ def main():
                 )
                 threads_ok = post_to_threads(tweet_text) is not None
                 if ENABLE_TWITTER:
-                    track_sns_result(sns_failures, "X(Twitter)", f"hit_immediate:{venue}{race_num}R", twitter_ok)
+                    track_x_result(sns_failures, f"hit_immediate:{venue}{race_num}R", x_result, threads_ok=threads_ok)
                 if ENABLE_THREADS:
                     track_sns_result(sns_failures, "Threads", f"hit_immediate:{venue}{race_num}R", threads_ok)
+                record_post_if_delivered(tweet_text, "hit_immediate", today_str, x_result=x_result, threads_ok=threads_ok)
                 posted_count += 1
 
                 if posted_count < len(big_hits):

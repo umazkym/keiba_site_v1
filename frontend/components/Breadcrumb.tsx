@@ -100,12 +100,12 @@ export function Breadcrumb() {
 
   return (
     <nav
-      className="py-3 px-4"
+      className="overflow-hidden px-4 py-3"
       aria-label="Breadcrumb"
     >
       <ol className="flex flex-wrap items-center gap-2 text-sm">
         {breadcrumbs.map((item, index) => (
-          <li key={index} className="flex items-center gap-2">
+          <li key={index} className="flex min-w-0 items-center gap-2">
             {item.href ? (
               <>
                 <Link
@@ -117,7 +117,9 @@ export function Breadcrumb() {
                 <span className="text-slate-400 mx-1">/</span>
               </>
             ) : (
-              <span className="text-text-primary font-semibold">{item.label}</span>
+              <span className="breadcrumb-current font-semibold text-text-primary">
+                {item.label}
+              </span>
             )}
           </li>
         ))}

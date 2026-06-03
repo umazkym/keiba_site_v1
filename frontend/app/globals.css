@@ -451,11 +451,12 @@ td.no-match {
 .ad-unit-container {
     contain: layout;
     content-visibility: auto;
+    contain-intrinsic-size: 280px;
     transition: max-height 0.4s ease-out, opacity 0.4s ease-out, margin 0.4s ease-out;
 }
 
 /* 広告が「未配信（unfilled）」としてマークされた場合はスムーズに折りたたむ */
-.ad-unit-container:has(ins[data-ad-status="unfilled"]) {
+.ad-unit-container:not(.ad-preserve-space):has(ins[data-ad-status^="unfill"]) {
     max-height: 0 !important;
     min-height: 0 !important;
     overflow: hidden;
@@ -572,6 +573,53 @@ header.glass {
     border-radius: 0.375rem;
     background: var(--color-accent);
     color: white;
+}
+
+/* 記事タイトルや本文見出しの長い語句でモバイル横スクロールを起こさない */
+.article-page-title,
+.article-page-prose,
+.article-page-prose h1,
+.article-page-prose h2,
+.article-page-prose h3 {
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+.breadcrumb-current {
+    display: none;
+    max-width: 15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+    .breadcrumb-current {
+        display: inline-block;
+        max-width: 36rem;
+    }
+}
+
+@media (max-width: 639px) {
+    .article-page-title,
+    .article-page-lead,
+    .article-page-prose {
+        max-width: calc(100vw - 3.5rem) !important;
+        width: 100%;
+    }
+
+    .article-page-title {
+        font-size: 1.625rem !important;
+        line-height: 1.28 !important;
+        word-break: break-all;
+    }
+
+    .article-page-prose h1,
+    .article-page-prose h2 {
+        font-size: 1.5rem !important;
+        line-height: 1.35 !important;
+        word-break: break-all;
+    }
 }
 
 /* ---------- Prose テーブルスタイル ---------- */

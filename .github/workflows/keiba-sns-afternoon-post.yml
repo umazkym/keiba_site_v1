@@ -45,6 +45,9 @@ jobs:
           ENABLE_TWITTER: 'true'
           ENABLE_THREADS: 'true'
           FAIL_ON_SNS_ERROR: 'true'
+          ALLOW_X_TRANSIENT_FAILURE_WITH_THREADS: 'true'
+          TWITTER_POST_MAX_RETRIES: '3'
+          TWITTER_POST_RETRY_BASE_SECONDS: '30'
           TZ: Asia/Tokyo
           RENDER: 'false'
         run: |

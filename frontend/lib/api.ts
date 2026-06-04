@@ -1,6 +1,42 @@
 import { RaceDayPrediction, SpecialPick, MatchupData, TopPayoutHit, WeeklyGradeRace, PredictionAccuracySummary } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+const RECENT_RACE_REVALIDATE_SECONDS = 300;
+const DEFAULT_RACE_REVALIDATE_SECONDS = 3600;
+
+function formatJstDate(date: Date): string {
+    const parts = new Intl.DateTimeFormat('ja-JP', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(date);
+
+    const year = parts.find(part => part.type === 'year')?.value;
+    const month = parts.find(part => part.type === 'month')?.value;
+    const day = parts.find(part => part.type === 'day')?.value;
+
+    return `${year}-${month}-${day}`;
+}
+
+function addDays(dateString: string, days: number): string {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day + days));
+    return date.toISOString().slice(0, 10);
+}
+
+function getRaceDataRevalidate(date: string): number {
+    const today = formatJstDate(new Date());
+    const recentDates = new Set([
+        addDays(today, -1),
+        today,
+        addDays(today, 1),
+    ]);
+
+    return recentDates.has(date)
+        ? RECENT_RACE_REVALIDATE_SECONDS
+        : DEFAULT_RACE_REVALIDATE_SECONDS;
+}
 
 // ▼▼▼▼▼【ISR導入】▼▼▼▼▼
 // レースデータはcronジョブで1日2〜3回（06:00, 13:30 JST）のみ更新される。
@@ -52,7 +88,7 @@ async function fetchWithRetry(
 
 export async function getPredictionsForDate(date: string): Promise<RaceDayPrediction | null> {
     try {
-        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/${date}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/${date}`, { next: { revalidate: getRaceDataRevalidate(date) } });
         if (!res.ok) {
             if (res.status === 404) {
                 console.log(`No predictions found for date ${date}, returning empty data.`);
@@ -82,7 +118,7 @@ export async function getPredictionsForDate(date: string): Promise<RaceDayPredic
 
 export async function getSpecialPick(date: string): Promise<SpecialPick | null> {
     try {
-        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/special-pick/${date}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/special-pick/${date}`, { next: { revalidate: getRaceDataRevalidate(date) } });
         if (!res.ok) {
             console.warn(`Could not fetch special pick for ${date}. Status: ${res.status}`);
             return null;

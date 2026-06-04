@@ -50,12 +50,123 @@ BASE_CENTRAL_URL = "https://race.netkeiba.com"
 BASE_NAR_URL = "https://nar.netkeiba.com"
 DB_BASE_URL = "https://db.netkeiba.com"
 HORSE_HTML_CACHE_MAX_AGE_SECONDS = 24 * 5 * 60 * 60
+MOJIBAKE_MARKERS = (
+    "\ufffd",
+    "縺",
+    "繧",
+    "譁",
+    "蜈",
+    "荳",
+    "ï¿½",
+    "ã",
+    "ã",
+    "ãƒ",
+)
 
 HTML_DIR = os.path.join("data", "html_cache")
 os.makedirs(HTML_DIR, exist_ok=True)
 
 def _get_random_headers():
     return {"User-Agent": random.choice(USER_AGENTS)}
+
+def _dedupe_encodings(encodings):
+    seen = set()
+    result = []
+    for enc in encodings:
+        if not enc:
+            continue
+        normalized = enc.strip().strip('"').strip("'")
+        if not normalized:
+            continue
+        key = normalized.lower().replace("_", "-")
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(normalized)
+    return result
+
+def _extract_declared_charset(response: requests.Response) -> Optional[str]:
+    content_type = response.headers.get("Content-Type", "")
+    match = re.search(r"charset\s*=\s*['\"]?([^;'\"]+)", content_type, re.IGNORECASE)
+    if match:
+        return match.group(1)
+
+    head = response.content[:4096].decode("ascii", errors="ignore")
+    match = re.search(r"<meta[^>]+charset\s*=\s*['\"]?([^'\"\s/>]+)", head, re.IGNORECASE)
+    if match:
+        return match.group(1)
+
+    match = re.search(
+        r"<meta[^>]+content\s*=\s*['\"][^'\"]*charset\s*=\s*([^'\";\s/>]+)",
+        head,
+        re.IGNORECASE,
+    )
+    if match:
+        return match.group(1)
+
+    return None
+
+def _decode_score(text: str) -> int:
+    score = text.count("\ufffd") * 1000
+    for marker in MOJIBAKE_MARKERS[1:]:
+        score += text.count(marker) * 80
+
+    # 日本語ページで日本語文字がほとんど出ないデコードは低品質とみなす。
+    japanese_chars = len(re.findall(r"[ぁ-んァ-ヶ一-龥]", text))
+    if japanese_chars == 0:
+        score += 500
+    elif japanese_chars > 30:
+        score -= 100
+
+    return score
+
+def _decode_html_response(
+    response: requests.Response,
+    url: str,
+    preferred_encodings: Optional[list] = None,
+) -> str:
+    """
+    netkeiba 系HTMLを、実際のレスポンスに合わせて安全にデコードする。
+
+    race.netkeiba.com / nar.netkeiba.com はUTF-8、db.netkeiba.com はEUC-JPの
+    ページが混在するため、単一の固定エンコードにすると当日データの馬名が
+    U+FFFD混じりでDBへ保存される。宣言charsetと候補デコードを比較し、
+    文字化け指標が最も少ない結果を採用する。
+    """
+    raw = response.content
+    declared = _extract_declared_charset(response)
+
+    site_defaults = ["utf-8", "EUC-JP", "cp932"]
+    if "db.netkeiba.com" in url:
+        site_defaults = ["EUC-JP", "cp932", "utf-8"]
+
+    candidates = _dedupe_encodings(
+        (preferred_encodings or [])
+        + [declared, response.encoding, response.apparent_encoding]
+        + site_defaults
+    )
+
+    decoded_candidates = []
+    for encoding in candidates:
+        try:
+            text = raw.decode(encoding, errors="replace")
+        except LookupError:
+            continue
+        decoded_candidates.append((_decode_score(text), encoding, text))
+
+    if not decoded_candidates:
+        return raw.decode("utf-8", errors="replace")
+
+    decoded_candidates.sort(key=lambda item: item[0])
+    best_score, best_encoding, best_text = decoded_candidates[0]
+
+    if "\ufffd" in best_text:
+        print(
+            f"[Warning] Decoded HTML still contains replacement characters "
+            f"(url={url}, encoding={best_encoding}, score={best_score})"
+        )
+
+    return best_text
 
 def cleanup_chrome_driver(driver):
     """
@@ -260,13 +371,7 @@ def get_html(
             else:
                 response = requests.get(url, headers=_get_random_headers(), timeout=60)
                 response.raise_for_status()
-                # ==============================================================================
-                # ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ ここから修正 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-                # netkeibaの文字コードはEUC-JPで固定
-                response.encoding = 'EUC-JP'
-                # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-                # ==============================================================================
-                html_content = response.text
+                html_content = _decode_html_response(response, url)
 
             if html_content:
                 temp_file_path = file_path_bin + f".tmp.{os.getpid()}"
@@ -336,8 +441,7 @@ def get_race_list_html(date_str: str, is_nar: bool, force_download: bool = False
         time.sleep(sleep_time)
         
         response = requests.get(sub_url, headers=_get_random_headers(), timeout=60)
-        response.encoding = 'utf-8'  # race_list_sub.htmlはUTF-8
-        html_content = response.text
+        html_content = _decode_html_response(response, sub_url, preferred_encodings=['utf-8'])
         
         # 取得成功をチェック（レースIDが含まれているか）
         if html_content and 'race_id=' in html_content:

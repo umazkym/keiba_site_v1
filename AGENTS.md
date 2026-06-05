@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ UX改善: Search Console CLS不良グループ対策
+- **完了日時**: 2026-06-05 23:23
+- **実施内容**: Search ConsoleでCLS 0.34の不良グループとして出ていた記事、トップ、レース詳細、データ解説系URLを対象に、共通のレイアウトシフト要因を修正。`AdUnit` は未配信広告を既定で折りたたまない設計へ変更し、トップ、記事一覧、FAQ、about-ai、keiba-data系ページで広告空振り時に本文が上へ詰まる動きを抑止した。広告コンテナの `content-visibility: auto` と `contain-intrinsic-size: 280px` は、実際の予約高90pxの広告枠とズレてスクロール中のCLS要因になるため削除。`NativeCardAd` と `InFeedAd` も未配信時にDOMごと消さず、予約枠を維持するよう変更し、特にホームの記事グリッドとレース詳細ページのインフィード広告でカードや予測表の位置が動かないようにした。さらに、`RecentRaceReturn` がlocalStorage読込後にページ上部へ突然カードを差し込む問題を修正し、初期描画から同じ高さの導線を表示してリピーター環境でのCLSを抑制した。
+- **変更ファイル**: `frontend/components/AdUnit.tsx`, `frontend/components/NativeCardAd.tsx`, `frontend/components/InFeedAd.tsx`, `frontend/components/RecentRaceReturn.tsx`, `frontend/app/globals.css`, `AGENTS.md`
+- **確認事項**: `npm run build` は成功し、静的ページ数は152件。既存どおり `caniuse-lite` 更新推奨と、ローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログが出たが終了コードは0。`git diff --check` は成功し、LF/CRLF警告のみ。ローカル開発サーバー `http://localhost:3000` を起動し、トップページ、記事ページ、記事一覧、about-aiのHTTP 200を確認。トップでは広告枠3件が `ad-preserve-space` と90px予約を持ち、`RecentRaceReturn` のSSR導線も出力されることを確認。記事ページでは `article-ad-slot`、`ad-preserve-space`、280px予約を確認。生成CSSでは `content-visibility` が消え、明示時のみ使う `ad-collapse-unfilled` が存在することを確認。Codex内蔵ブラウザはNode REPL側の `windows sandbox failed: spawn setup refresh` で接続できなかったため、ブラウザスクリーンショット確認は未実施。
+- **次のステップ**: 本番反映後、Search Consoleの該当CLSグループで「修正を検証」を開始し、28日単位でCLSが良好または改善待ちに移るか確認する。GA4/AdSenseでは広告未配信時の空白増加が回遊率やRPMへ与える影響を確認し、必要ならファーストビュー外の一部広告だけ `collapseUnfilled` を明示的に戻す。
+
 #### ✅ 収益改善: リワード広告ゲート一時停止と記事流入残タスク対応
 - **完了日時**: 2026-06-05 08:26
 - **実施内容**: `reward_ad_unavailable` と `reward_gate_view` の多さによる機会損失を抑えるため、リワード広告は在庫・配信設定が安定するまで一時停止できる構成に変更。デフォルトでは `NEXT_PUBLIC_REWARDED_AD_MODE` を `enabled` にしない限りGAMのリワード広告スロットを読み込まず、詳細データはゲートで止めずに表示する。通常のレースページ内広告で回収する状態にし、在庫不足時の無駄な `reward_ad_unavailable` 計測も抑制した。あわせて、記事から流入したユーザーがAIっぽい文言で離脱しないよう、既存記事の機械的・不自然な表現を一括点検し、`AI予想無料を買う前は`、`勝率、回収率、枠順や騎手の傾向を照らし`、`高いな数字`、`大きく優位性`、`お勧めします` などの表現を自然な競馬記事の言い回しへ修正。今後の記事生成でも同じ崩れが再発しないよう、編集器の補正処理と記事生成プロンプトにも禁止表現・置換ルールを追加した。

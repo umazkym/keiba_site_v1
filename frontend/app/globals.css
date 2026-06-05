@@ -450,13 +450,11 @@ td.no-match {
 /* 広告ユニットコンテナ: CLS防止のためmin-height予約 */
 .ad-unit-container {
     contain: layout;
-    content-visibility: auto;
-    contain-intrinsic-size: 280px;
-    transition: max-height 0.4s ease-out, opacity 0.4s ease-out, margin 0.4s ease-out;
+    overflow: hidden;
 }
 
-/* 広告が「未配信（unfilled）」としてマークされた場合はスムーズに折りたたむ */
-.ad-unit-container:not(.ad-preserve-space):has(ins[data-ad-status^="unfill"]) {
+/* 明示的に許可した広告枠だけ、未配信時に畳む。通常の広告枠は高さを保ってCLSを避ける */
+.ad-unit-container.ad-collapse-unfilled:has(ins[data-ad-status^="unfill"]) {
     max-height: 0 !important;
     min-height: 0 !important;
     overflow: hidden;

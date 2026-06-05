@@ -63,10 +63,42 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
         }
     }, []);
 
-    if (!recentRace) return null;
+    const sectionClass = `card min-h-[116px] overflow-hidden border-slate-200 bg-white sm:min-h-[76px] ${className}`;
+
+    if (!recentRace) {
+        return (
+            <section className={sectionClass}>
+                <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:p-4">
+                    <div className="min-w-0 flex-1">
+                        <p className="mb-1 text-[11px] font-bold text-secondary">本日のレース分析</p>
+                        <h2 className="truncate text-sm font-bold text-slate-900 sm:text-base">
+                            中央・地方の予測データを確認
+                        </h2>
+                        <p className="mt-0.5 truncate text-[11px] text-slate-500 sm:text-xs">
+                            AI偏差値、枠順傾向、展開材料を無料で見られます。
+                        </p>
+                    </div>
+                    <div className="flex gap-2 sm:shrink-0">
+                        <Link
+                            href="/races/today"
+                            className="btn-primary flex-1 justify-center px-4 py-2.5 text-xs min-h-[40px] sm:flex-none sm:text-sm"
+                        >
+                            今日の分析へ
+                        </Link>
+                        <Link
+                            href="/articles"
+                            className="inline-flex min-h-[40px] flex-1 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 sm:flex-none sm:text-sm"
+                        >
+                            記事を読む
+                        </Link>
+                    </div>
+                </div>
+            </section>
+        );
+    }
 
     return (
-        <section className={`card border-slate-200 bg-white overflow-hidden ${className}`}>
+        <section className={sectionClass}>
             <div className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-bold text-secondary mb-1">前回見ていたレース</p>

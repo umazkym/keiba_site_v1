@@ -88,10 +88,13 @@ export const InFeedAd = ({
         };
     }, [refreshKey, analyticsPlacement]);
 
-    if (adUnfilled) return null;
-
     return (
-        <div ref={containerRef} className={`overflow-hidden rounded-xl border-l-[3px] border-l-blue-200 border border-y-slate-200 border-r-slate-200 shadow-sm relative w-full bg-slate-50 p-1.5 sm:p-3 mt-2 mb-2 ${className}`}>
+        <div
+            ref={containerRef}
+            className={`overflow-hidden rounded-xl border-l-[3px] border-l-blue-200 border border-y-slate-200 border-r-slate-200 shadow-sm relative w-full bg-slate-50 p-1.5 sm:p-3 mt-2 mb-2 ${adUnfilled ? 'invisible pointer-events-none' : ''} ${className}`}
+            style={{ minHeight: '180px' }}
+            aria-hidden={adUnfilled ? true : undefined}
+        >
 
             {/* 広告ラベル: コンテンツとの誤認を防ぐための表示 */}
             <div className="absolute top-0 right-0 max-w-fit px-2 py-0.5 rounded-bl text-[9px] text-slate-400 font-medium tracking-wider bg-slate-100/80 z-10 pointer-events-none">
@@ -107,7 +110,7 @@ export const InFeedAd = ({
                 client={AD_CLIENT}
                 slot={slot || INFEED_SLOT}
                 refreshKey={refreshKey}
-                style={{ display: 'block' }}
+                style={{ display: 'block', minHeight: '160px' }}
                 format="fluid"
                 layoutKey={INFEED_LAYOUT_KEY}
                 isResponsive={false}

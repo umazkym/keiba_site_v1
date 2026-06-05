@@ -28,7 +28,7 @@ type AdUnitProps = {
     refreshKey?: string;
     /** CLS対策としてページ側で広告枠の予約高を明示したい場合に指定 */
     minHeight?: string;
-    /** 未配信時に枠を畳むか。記事ページでは本文の移動を防ぐためfalseを使う */
+    /** 未配信時に枠を畳むか。CLSを抑えるため通常はfalseのまま使う */
     collapseUnfilled?: boolean;
 };
 
@@ -42,7 +42,7 @@ const AD_CLIENT = 'ca-pub-4411270831448240';
  * 開発環境ではプレースホルダーを表示。
  * 
  * 広告がロードされるまでラベルは非表示にし、
- * unfilled時にはコンテナごと折りたたまれる（CSS側で制御）。
+ * 未配信時も予約した高さを保ち、本文やカード位置を動かさない。
  * 
  * refreshKeyが変わると広告が完全リフレッシュされる。
  */
@@ -54,7 +54,7 @@ export const AdUnit = ({
     label = 'スポンサーリンク',
     refreshKey = '',
     minHeight,
-    collapseUnfilled = true,
+    collapseUnfilled = false,
 }: AdUnitProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [adLoaded, setAdLoaded] = useState(false);
@@ -145,15 +145,17 @@ export const AdUnit = ({
         [placement, reservedMinHeight]
     );
 
-    // unfilledの場合はCSSのminHeightを外し、非表示にする
+    // unfilledの場合も、原則として予約した高さは残してCLSを防ぐ。
+    // どうしても畳みたい箇所だけ collapseUnfilled を明示する。
     const shouldCollapse = adUnfilled && collapseUnfilled;
     const containerStyle = shouldCollapse ? { display: 'none' } : { minHeight: reservedMinHeight };
 
     return (
         <div
             ref={containerRef}
-            className={`ad-unit-container ${!collapseUnfilled ? 'ad-preserve-space' : ''} ${config.containerClass} ${className} ${shouldCollapse ? 'hidden m-0 p-0' : ''} relative`}
+            className={`ad-unit-container ${collapseUnfilled ? 'ad-collapse-unfilled' : 'ad-preserve-space'} ${config.containerClass} ${className} ${shouldCollapse ? 'hidden m-0 p-0' : ''} relative`}
             style={containerStyle}
+            aria-hidden={adUnfilled && !adLoaded ? true : undefined}
         >
             {/* 広告未ロード時（リフレッシュ中含む）はスケルトンを表示して視線を繋ぎ止める */}
             {!adLoaded && !adUnfilled && (

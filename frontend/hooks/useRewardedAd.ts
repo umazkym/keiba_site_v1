@@ -9,6 +9,8 @@ declare global {
 }
 
 const AD_UNIT_PATH = '/23345285369/uma-free-rewarded-premium';
+const REWARDED_AD_MODE = process.env.NEXT_PUBLIC_REWARDED_AD_MODE ?? 'fallback';
+const IS_REWARDED_TEMPORARILY_DISABLED = REWARDED_AD_MODE !== 'enabled';
 const LOADING_TIMEOUT_MS = 5_000;
 const UNAVAILABLE_CACHE_KEY = 'rewarded_ad_unavailable_until';
 const UNAVAILABLE_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -21,6 +23,7 @@ export type RewardedAdUnavailableReason =
     | 'make_rewarded_visible_failed'
     | 'make_rewarded_visible_missing'
     | 'rewarded_recently_unavailable'
+    | 'rewarded_temporarily_disabled'
     | null;
 
 /**
@@ -90,10 +93,12 @@ const isRewardedRecentlyUnavailable = () => {
 
 export function useRewardedAd() {
     const [isUnlocked, setIsUnlocked] = useState(false);
-    const [isReady, setIsReady] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isSupported, setIsSupported] = useState(true);
-    const [unavailableReason, setUnavailableReason] = useState<RewardedAdUnavailableReason>(null);
+    const [isReady, setIsReady] = useState(IS_REWARDED_TEMPORARILY_DISABLED);
+    const [isLoading, setIsLoading] = useState(!IS_REWARDED_TEMPORARILY_DISABLED);
+    const [isSupported, setIsSupported] = useState(!IS_REWARDED_TEMPORARILY_DISABLED);
+    const [unavailableReason, setUnavailableReason] = useState<RewardedAdUnavailableReason>(
+        IS_REWARDED_TEMPORARILY_DISABLED ? 'rewarded_temporarily_disabled' : null
+    );
 
     // レース単位のアンロック管理
     const [unlockedRaceIds, setUnlockedRaceIds] = useState<Set<string>>(() => {
@@ -182,6 +187,14 @@ export function useRewardedAd() {
     useEffect(() => {
         if (initializedRef.current) return;
         initializedRef.current = true;
+
+        if (IS_REWARDED_TEMPORARILY_DISABLED) {
+            setIsSupported(false);
+            setIsReady(true);
+            setIsLoading(false);
+            setUnavailableReason('rewarded_temporarily_disabled');
+            return;
+        }
 
         // セッション中にグローバルアンロック済みなら即解放
         if (typeof window !== 'undefined') {

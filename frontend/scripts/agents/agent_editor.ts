@@ -108,7 +108,44 @@ function repairAwkwardReplacementArtifacts(input: string): string {
     .replace(/するする/g, 'する')
     .replace(/だだ/g, 'だ')
     .replace(/できるだけ抑えたし/g, 'できるだけ抑えたい')
-    .replace(/大きく上回るして/g, '上回って');
+    .replace(/大きく上回るして/g, '上回って')
+    .replace(/([^\n。]{1,40}?20\d{2})AI予想無料を買う前は/g, '$1のAI予想を見る前は')
+    .replace(/([^\n。]{1,40}?20\d{2})AI予想無料を見る前は/g, '$1のAI予想を見る前は')
+    .replace(/([^\n。]{1,40}?20\d{2})のAI予想無料/g, '$1のAI予想')
+    .replace(/([^\n。]{2,50}?)(騎手データ|枠順データ|コースデータ|AI予想データ|データ)を買う前は/g, (_match, prefix, subject) => {
+      const connector = String(prefix).endsWith('の') ? '' : 'の';
+      return `${prefix}${connector}${subject}を見る前は`;
+    })
+    .replace(/表の勝率だけでなく、騎乗回数や回収率、当日の馬場を分けて見る必要がある/g, '表の勝率だけでなく、騎乗回数や回収率、当日の馬場を分けて確認したい')
+    .replace(/勝率、回収率、枠順や騎手の傾向を照らし。/g, '')
+    .replace(/高いな数字/g, '高い数字')
+    .replace(/大きく優位性/g, '大きな優位性')
+    .replace(/国内専制状態/g, '国内勢が優勢な状態')
+    .replace(/客観指標/g, 'データ')
+    .replace(/購入点数の配分/g, '買い目の組み立て')
+    .replace(/決定的な/g, 'はっきりした')
+    .replace(/お勧めします/g, '確認したいところです')
+    .replace(/確認することを確認したいところです/g, '確認します')
+    .replace(/高い勝率を誇ります/g, '高い勝率です')
+    .replace(/勝率を誇ります/g, '勝率です')
+    .replace(/可能性が示唆されます/g, '可能性があります')
+    .replace(/示唆しています/g, '示しています')
+    .replace(/と言えます/g, 'です')
+    .replace(/考慮すると良いでしょう/g, '確認します')
+    .replace(/良いでしょう/g, 'よいです')
+    .replace(/分析しました/g, '整理します')
+    .replace(/評価組み立てを組み立てする/g, '評価の組み立てを整理する')
+    .replace(/評価組み立て/g, '評価の組み立て')
+    .replace(/馬券組み立ての組み立て方/g, '馬券の組み立て方')
+    .replace(/馬券組み立て/g, '買い目の組み立て')
+    .replace(/買い目組み立て/g, '買い目の組み立て')
+    .replace(/買い目を組み立てする/g, '買い目を組み立てる')
+    .replace(/買い目の組み立てが立てられる/g, '買い目を組み立てやすくなる')
+    .replace(/距離ロスが大きくなりやすい/g, '距離ロスが増えやすい')
+    .replace(/考慮すべきと見ます/g, '考慮したいところです')
+    .replace(/留めるのが賢明と見ます/g, '相手候補までに留めたいところです')
+    .replace(/割引が必要と見ます/g, '割り引いて見ます')
+    .replace(/狙う必要はないと見ます/g, '狙う必要はありません');
 }
 
 function sanitizeGeneratedText(input: string): string {
@@ -248,7 +285,7 @@ function trimDescription(description: string): string {
 function fitDescriptionToSeo(description: string, data: Record<string, any>): string {
   const target = compactForTitle(data.target_keyword || data.title || 'この条件');
   const additions = [
-    '勝率、回収率、枠順や騎手の傾向を照らし、買い・抑え・見送りの判断を整理します。',
+    '勝率、回収率、枠順や騎手の傾向を分けて見て、買い・抑え・見送りの判断を整理します。',
     '直前に見る数字と条件を分け、出馬表を開く前の確認順序をまとめます。',
     '人気だけに寄せず、評価を上げる場面と下げる場面を確認できます。',
   ];
@@ -268,7 +305,7 @@ function fitDescriptionToSeo(description: string, data: Record<string, any>): st
   }
 
   if (result.length < SEO_RULES.description_min_chars) {
-    result = `${target}のデータを整理。勝率、回収率、枠順や騎手の傾向を照らし、買い・抑え・見送りの判断を確認できます。直前に見る数字と条件もまとめます。`;
+    result = `${target}のデータを整理。勝率、回収率、枠順や騎手の傾向を分けて見て、買い・抑え・見送りの判断を確認できます。直前に見る数字と条件もまとめます。`;
   }
 
   return trimDescription(sanitizeGeneratedText(result));
@@ -386,7 +423,7 @@ function ensureNumberInOpening(content: string, data: Record<string, any>): stri
 function supplementalBlocks(data: Record<string, any>): string[] {
   const target = compactForTitle(data.target_keyword || data.title || 'この条件');
   return [
-    `## 直前に見る3つの確認材料\n\n${target}を買う前は、表の勝率だけでなく、騎乗回数や回収率、当日の馬場を分けて見る必要がある。母数が少ない数字は上振れを含みやすいため、人気馬をそのまま軸にするのではなく、同じ条件で安定して馬券圏に残っているかを確認したい。\n\n- 勝率: 軸候補を探すための入口にする\n- 回収率: 配当妙味が残っているかを見る\n- 母数: データの信頼度を測る`,
+    `## 直前に見る3つの確認材料\n\n${target}を見る前は、表の勝率だけでなく、騎乗回数や回収率、当日の馬場を分けて確認したい。母数が少ない数字は上振れを含みやすいため、人気馬をそのまま軸にするのではなく、同じ条件で安定して馬券圏に残っているかを見る。\n\n- 勝率: 軸候補を探すための入口にする\n- 回収率: 配当妙味が残っているかを見る\n- 母数: データの信頼度を測る`,
     `## 買い目へ移す3つの順序\n\n最初に勝率で候補を絞り、次に回収率で人気との釣り合いを見る。最後に枠順、脚質、馬場状態を重ねると、買う理由と見送る理由を分けやすい。数字が高くても人気が集中している場合は、単勝より相手候補に回す判断も必要になる。`,
     `## 出馬表で確認したい3つの条件\n\n同じコース成績でも、当日の頭数やペースで評価は変わる。先行馬が多い日は差し馬の位置取り、少頭数では人気馬の取りこぼしに注意したい。直前の出馬表では、データの順位だけでなく、展開に合う馬がどれかを確認する。`,
     `## 人気を疑う3つの場面\n\n数字が良い条件でも、人気が先に集まっている時は買い目を広げすぎない方がいい。勝率が高い馬や騎手ほどオッズに反映されやすく、配当面の妙味は薄くなる。上位評価をそのまま買うのではなく、相手候補の絞り込みや見送りの判断まで含めて使いたい。`,

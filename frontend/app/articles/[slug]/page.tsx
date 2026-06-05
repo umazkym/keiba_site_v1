@@ -10,8 +10,10 @@ import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
 import { enhanceArticleHtml, getArticleIntent } from '@/lib/article-ux';
 import { ArticleIntentPanel } from '@/components/ArticleIntentPanel';
+import { ArticleSearchEntryPanel } from '@/components/ArticleSearchEntryPanel';
 import { GradeRaceUpdatePanel } from '@/components/GradeRaceUpdatePanel';
 import { getGradeRaceUpdatePlan } from '@/lib/grade-race-update-plan';
+import { getTopPayoutHits } from '@/lib/api';
 
 type Props = {
   params: { slug: string };
@@ -65,6 +67,7 @@ export async function generateStaticParams() {
 export default async function ArticlePage({ params }: Props) {
   try {
     const article = await getArticleBySlug(params.slug);
+    const topHits = await getTopPayoutHits();
 
     const textContent = article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, '');
     const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
@@ -176,6 +179,10 @@ export default async function ArticlePage({ params }: Props) {
             </header>
 
             <div className="mt-6">
+              <ArticleSearchEntryPanel topHits={topHits} />
+            </div>
+
+            <div className="mt-4">
               <ArticleIntentPanel intent={intent} />
             </div>
 

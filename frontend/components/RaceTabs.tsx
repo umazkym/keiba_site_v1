@@ -199,6 +199,7 @@ const VenuePanel = memo(({ venue, articlesMeta, initialRaceNumber, venueActivati
 
     useEffect(() => {
         if (!activeRace || isActiveRaceUnlocked || !isReady) return;
+        if (!isSupported && unavailableReason === 'rewarded_temporarily_disabled') return;
         const context = buildRewardContext();
         if (!context) return;
 

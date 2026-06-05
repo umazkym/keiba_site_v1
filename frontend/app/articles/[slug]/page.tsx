@@ -116,6 +116,9 @@ export default async function ArticlePage({ params }: Props) {
           <Breadcrumb />
 
           <article>
+            <div className="mb-7">
+              <ArticleSearchEntryPanel topHits={topHits} />
+            </div>
 
             {/* ===== ARTICLE HEADER ===== */}
             <header className="relative border-b border-slate-200 pb-8">
@@ -177,10 +180,6 @@ export default async function ArticlePage({ params }: Props) {
                 )}
               </div>
             </header>
-
-            <div className="mt-6">
-              <ArticleSearchEntryPanel topHits={topHits} />
-            </div>
 
             <div className="mt-4">
               <ArticleIntentPanel intent={intent} />

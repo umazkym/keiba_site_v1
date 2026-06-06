@@ -70,7 +70,7 @@ export default function CoursePage({ params }: Props) {
         </section>
 
         <section className="mt-10">
-          <h2 className="text-2xl font-black text-slate-950">予想前に確認する順番</h2>
+          <h2 className="text-2xl font-black text-slate-950">コースの読みどころ</h2>
           <ol className="mt-4 space-y-3 text-sm leading-8 text-slate-600">
             {profile.checkpoints.map((checkpoint, index) => (
               <li key={checkpoint} className="border-l-4 border-slate-300 bg-white p-4">
@@ -82,7 +82,7 @@ export default function CoursePage({ params }: Props) {
         </section>
 
         <section className="mt-10 border border-slate-200 bg-slate-50 p-5">
-          <h2 className="text-xl font-black text-slate-950">注意点</h2>
+          <h2 className="text-xl font-black text-slate-950">注意したいポイント</h2>
           <p className="mt-2 text-sm leading-7 text-slate-600">{profile.caution}</p>
         </section>
 
@@ -98,9 +98,9 @@ export default function CoursePage({ params }: Props) {
             </div>
           </div>
           <div className="border border-slate-200 bg-white p-5">
-            <h2 className="text-xl font-black text-slate-950">当日のレースで確認</h2>
+            <h2 className="text-xl font-black text-slate-950">当日のレースに活かす</h2>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              コース傾向は、当日の馬場、枠順、出走馬の脚質と合わせて確認してください。
+              ここで確認したコース傾向を踏まえて、当日の出走馬をチェックしてみてください。
             </p>
             <Link href="/races/today" className="mt-4 inline-flex bg-slate-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary">
               本日の分析を見る

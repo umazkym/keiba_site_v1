@@ -16,7 +16,7 @@ import type { AccuracyCondition, AccuracyRate, PredictionAccuracySummary } from 
 export const metadata: Metadata = {
   title: "AI予想の成績",
   description:
-    "UMA-FREEのAI予想成績を、直近の結果、条件別の傾向、評価が届かなかったレースから確認できます。",
+    "UMA-FREEのAI偏差値1位の勝率・3着以内率を、期間別・条件別に集計。精度の高い条件と低い条件を同時に確認できます。",
   alternates: {
     canonical: "/results/accuracy",
   },
@@ -39,25 +39,25 @@ const fallbackMetrics: Array<{
 }> = [
   {
     label: "上位評価馬の走り",
-    body: "AI偏差値で上位にした馬が、どのくらい馬券内まで届いたかを見ます。",
+    body: "AI偏差値上位馬が実際にどの程度馬券に絡んだかを数字で示します。",
     icon: Gauge,
     accent: "bg-amber-500",
   },
   {
     label: "条件別の傾向",
-    body: "芝、ダート、距離帯、地方競馬など、条件ごとに数字の出方を分けます。",
+    body: "芝・ダート・距離帯・地方など、条件ごとの精度差が分かります。",
     icon: BarChart3,
     accent: "bg-blue-600",
   },
   {
-    label: "評価が届かなかったレース",
-    body: "出遅れ、馬場変化、ハイペース、馬体重の大幅増減など、次に残す材料を見ます。",
+    label: "不的中レースの振り返り",
+    body: "出遅れ・馬場急変・ハイペースなど、外れた背景を分類し、次のレース判断に活かせます。",
     icon: AlertTriangle,
     accent: "bg-emerald-600",
   },
   {
     label: "人気との違い",
-    body: "人気順とAI偏差値が大きく違う馬を追い、評価が偏っていないかを見ます。",
+    body: "オッズ上位とAI偏差値上位のズレを追跡し、モデルの偏りを検証します。",
     icon: LineChart,
     accent: "bg-slate-900",
   },
@@ -280,15 +280,11 @@ export default async function AccuracyPage({
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-stretch">
             <div className="flex flex-col justify-between">
               <div>
-                <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
-                  成績をそのまま公開
-                </p>
-                <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+                <h1 className="text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
                   AI予想の成績
                 </h1>
                 <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
-                  AI偏差値が結果につながった場面だけでなく、評価が届かなかった条件も同じ画面で見ます。
-                  数字を良く見せるためのページではなく、今日のレース検討でどこまで信じるかを判断するためのページです。
+                  AI偏差値の勝率・3着以内率を、期間別・条件別に集計しています。得意な条件だけでなく精度が低い条件も掲載しているので、当日のレースでどの程度参考にすべきかの判断材料になります。
                 </p>
               </div>
 
@@ -342,9 +338,7 @@ export default async function AccuracyPage({
                   </p>
                 </div>
               )}
-              <p className="mt-5 rounded-xl border border-slate-200 bg-white p-3 text-xs leading-6 text-slate-600">
-                短期の数字はぶれます。7日、30日、90日を切り替えて、直近の変化と中期の傾向を分けて見ます。
-              </p>
+
             </aside>
           </div>
         </header>
@@ -386,22 +380,20 @@ export default async function AccuracyPage({
               <SectionHeading
                 label="注意条件"
                 title="扱いに注意したい条件"
-                description="数字が伸びにくい条件では、AI偏差値だけで決めず、馬場、枠順、展開、人気との違いを合わせて見ます。"
+                description="以下の条件ではAI偏差値の精度が低めに出ています。馬場や展開など他の材料と組み合わせて判断してください。"
               />
               <div className="grid gap-4 md:grid-cols-2">
                 <WeakConditionList title="コース種別" items={weakCourseTypes} />
                 <WeakConditionList title="距離帯" items={weakDistances} />
               </div>
-              <p className="mt-4 text-sm leading-7 text-slate-600">
-                良い数字だけを切り取ると、使いどころを誤ります。うまくいかなかった条件も残し、次のレースで評価を上げすぎないための材料にします。
-              </p>
+
             </section>
 
             <section className="mt-10">
               <SectionHeading
-                label="未達レース"
-                title="評価が届かなかったレース"
-                description="上位評価にした馬が着順へ届かなかったレースは、展開や馬場の読み直しに使います。"
+                label="不的中レース"
+                title="外れたレース"
+                description="AI偏差値1位の馬が馬券圏外に終わったレースです。外れた原因を振り返る材料として残しています。"
               />
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
                 {summary.recent_misses.length > 0 ? (
@@ -425,7 +417,7 @@ export default async function AccuracyPage({
                     </div>
                   ))
                 ) : (
-                  <p className="p-5 text-sm leading-7 text-slate-500">直近の対象期間では、表示できる未達レースがまだありません。</p>
+                  <p className="p-5 text-sm leading-7 text-slate-500">この期間に該当する不的中レースはありません。</p>
                 )}
               </div>
             </section>
@@ -452,20 +444,20 @@ export default async function AccuracyPage({
             <SectionHeading
               label="数字の読み方"
               title="数字の使い方"
-              description="AI偏差値は、馬の比較をしやすくするための参考指標です。単独で買い目を決める数字ではありません。"
+              description="AI偏差値はあくまで馬の比較を補助する参考指標です。"
             />
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm font-black text-slate-950">短期はぶれを見る</p>
-                <p className="mt-2 text-xs leading-6 text-slate-600">7日は直近の馬場や開催替わりの影響を確認します。</p>
+                <p className="text-sm font-black text-slate-950">短期のブレ幅</p>
+                <p className="mt-2 text-xs leading-6 text-slate-600">7日間は母数が少なく変動が大きいため、傾向よりも直近の状況把握に使います。</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm font-black text-slate-950">中期で傾向を見る</p>
-                <p className="mt-2 text-xs leading-6 text-slate-600">30日、90日は条件別の安定感を見る時に使います。</p>
+                <p className="text-sm font-black text-slate-950">中期の安定度</p>
+                <p className="mt-2 text-xs leading-6 text-slate-600">30〜90日なら母数がある程度揃い、条件別の得意・不得意が見えてきます。</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm font-black text-slate-950">未達も残す</p>
-                <p className="mt-2 text-xs leading-6 text-slate-600">外れた条件を残すことで、次の過信を防ぎます。</p>
+                <p className="text-sm font-black text-slate-950">不的中の記録</p>
+                <p className="mt-2 text-xs leading-6 text-slate-600">外れたレースも隠さず残すことで、どの条件で精度が落ちるかを把握できます。</p>
               </div>
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
@@ -482,13 +474,13 @@ export default async function AccuracyPage({
             <SectionHeading label="成績の扱い" title="公開方針" />
             <div className="space-y-3 text-sm leading-7 text-slate-600">
               <p className="rounded-xl border-l-4 border-accent bg-white p-4 shadow-soft">
-                的中率だけを高く見せるために、都合のよいレースだけを取り出しません。
+                集計対象を恣意的に絞って的中率を高く見せることはしていません。
               </p>
               <p className="rounded-xl border-l-4 border-blue-600 bg-white p-4 shadow-soft">
-                回収率を扱う場合も、点数、券種、購入条件を明記し、再現しにくい買い方とは分けます。
+                回収率を掲載する際は、点数・券種・購入条件を併記します。条件が不明確な数字は載せません。
               </p>
               <p className="rounded-xl border-l-4 border-emerald-600 bg-white p-4 shadow-soft">
-                AI偏差値は投票の推奨ではなく、馬の比較をしやすくするための参考指標として扱います。
+                AI偏差値は馬の比較を補助するための参考指標であり、特定の投票行動を推奨するものではありません。
               </p>
             </div>
           </div>

@@ -58,13 +58,13 @@ export default function JockeyPage({ params }: Props) {
         </header>
 
         <section className="mt-8 border border-slate-200 bg-white p-5">
-          <h2 className="text-xl font-black text-slate-950">先に見るポイント</h2>
+          <h2 className="text-xl font-black text-slate-950">騎乗傾向</h2>
           <p className="mt-3 text-sm leading-8 text-slate-600">{profile.summary}</p>
         </section>
 
         <section className="mt-8 grid gap-5 md:grid-cols-2">
           <div className="border border-slate-200 bg-white p-5">
-            <h2 className="text-xl font-black text-slate-950">評価を上げたい条件</h2>
+            <h2 className="text-xl font-black text-slate-950">買いたい条件</h2>
             <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-600">
               {profile.strengths.map((strength) => (
                 <li key={strength} className="border-l-4 border-slate-300 pl-3">{strength}</li>
@@ -72,7 +72,7 @@ export default function JockeyPage({ params }: Props) {
             </ul>
           </div>
           <div className="border border-slate-200 bg-white p-5">
-            <h2 className="text-xl font-black text-slate-950">見送り・割引の確認</h2>
+            <h2 className="text-xl font-black text-slate-950">割り引く条件</h2>
             <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-600">
               {profile.checkpoints.map((checkpoint) => (
                 <li key={checkpoint} className="border-l-4 border-slate-300 pl-3">{checkpoint}</li>
@@ -105,10 +105,9 @@ export default function JockeyPage({ params }: Props) {
         </section>
 
         <section className="mt-8 border border-slate-200 bg-white p-5">
-          <h2 className="text-xl font-black text-slate-950">本日のレースで確認する</h2>
+          <h2 className="text-xl font-black text-slate-950">当日のレースに活かす</h2>
           <p className="mt-2 text-sm leading-7 text-slate-600">
-            騎手の得意条件は、当日の枠順、馬場状態、馬体重、脚質と合わせて確認します。
-            単独の騎手名だけで判断せず、レースごとのデータに戻って見直してください。
+            ここで押さえた得意条件を、当日の枠順・馬場・出走馬と照合してみてください。
           </p>
           <Link href="/races/today" className="mt-4 inline-flex bg-slate-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary">
             本日の分析を見る

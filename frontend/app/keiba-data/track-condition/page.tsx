@@ -54,8 +54,7 @@ export default function TrackConditionPage() {
             馬場状態とは？良・稍重・重・不良の違い
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
-            馬場状態は、レース直前に評価を動かす材料です。
-            良馬場の能力順をそのまま使うのか、道悪適性を強く見るのかを分けると、人気馬の信頼度と穴馬の拾い方が整理できます。
+            馬場状態が変われば、当然ながら「走れる馬」も変わります。良馬場の能力序列をそのまま信じるのか、それとも道悪適性を重く見るのか。馬場の特性を理解することで、人気馬の信頼度や穴馬の激走パターンを的確に読み解けるようになります。
           </p>
         </header>
 
@@ -77,21 +76,21 @@ export default function TrackConditionPage() {
             <div className="mb-3 h-1.5 w-12 rounded-full bg-accent" />
             <h3 className="text-lg font-black text-slate-950">時計を見る</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              良馬場で速い時計を出している馬は、道悪でも同じ評価にできるとは限りません。時計がかかる馬場で崩れていないかを確認します。
+              高速決着で好走した馬が、時計のかかる馬場でも同じ力を出せるとは限りません。道悪で大きく着順を落とした経験がないかは必ず見ておきたいポイントです。
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <div className="mb-3 h-1.5 w-12 rounded-full bg-blue-600" />
             <h3 className="text-lg font-black text-slate-950">脚質を見る</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              道悪では前が止まりにくい日もあれば、先行馬が消耗して差しが届く日もあります。まず当日の同条件レースを見ます。
+              道悪で前が粘るか差しが届くかは、含水率やコース形態で変わります。同日の他レースで前後どちらが有利かを掴んでから本命レースに臨むのが定石です。
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <div className="mb-3 h-1.5 w-12 rounded-full bg-emerald-600" />
             <h3 className="text-lg font-black text-slate-950">実績を見る</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              重・不良で3着以内に入った経験、時計のかかる決着で崩れていない経験は、評価を上げる材料になります。
+              過去に重・不良で馬券圏内に入った実績は、道悪適性の裏付けとして強い材料です。逆に初めての道悪で人気を集めている馬は、過信を避けたいところです。
             </p>
           </div>
         </section>
@@ -100,16 +99,16 @@ export default function TrackConditionPage() {
           <h2 className="text-2xl font-black text-slate-950">予想に使う順番</h2>
           <ol className="mt-4 space-y-3 text-sm leading-8 text-slate-600">
             <li className="rounded-xl border-l-4 border-accent bg-white p-4 shadow-soft">
-              <strong className="text-slate-950">1. まず能力順を見る。</strong>
-              AI偏差値、近走内容、コース適性を先に確認します。
+              <strong className="text-slate-950">1. 能力順を土台にする。</strong>
+              AI偏差値と近走の着差・上がりから基本の序列を作ります。
             </li>
             <li className="rounded-xl border-l-4 border-blue-600 bg-white p-4 shadow-soft">
-              <strong className="text-slate-950">2. 馬場で評価を補正する。</strong>
-              重・不良で良馬場実績だけの人気馬を少し疑い、道悪実績のある馬を相手に残します。
+              <strong className="text-slate-950">2. 馬場で序列を動かす。</strong>
+              道悪経験がない人気馬を1段下げ、重馬場巧者をヒモに加える、といった補正を入れます。
             </li>
             <li className="rounded-xl border-l-4 border-emerald-600 bg-white p-4 shadow-soft">
-              <strong className="text-slate-950">3. 当日の傾向で最終確認する。</strong>
-              同じ競馬場で前が残っているか、外が伸びているかをレース一覧から確認します。
+              <strong className="text-slate-950">3. 当日のレース傾向で裏を取る。</strong>
+              同じ競馬場のここまでの結果で、内前残りか外差し有利かを確かめてから最終判断に入ります。
             </li>
           </ol>
         </section>

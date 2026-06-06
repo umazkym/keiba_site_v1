@@ -14,15 +14,15 @@ export const metadata: Metadata = {
 const criteria = [
   {
     title: "無料で見られる範囲",
-    body: "登録前に見られる情報が少ないと、指数の癖がわかりません。全レースの基本データ、指数、結果まで追えるかを見ます。",
+    body: "登録前にどこまで見られるかは最初に確認したい。基本データ・指数・過去結果が無料で追えないと、相性を判断できません。",
   },
   {
     title: "指数の根拠",
-    body: "印だけでなく、枠順、脚質、馬場、騎手、馬体重など、どの材料を見ているかがわかるサイトを選びます。",
+    body: "印だけ載せているサイトよりも、枠順・脚質・馬場・騎手のどれを重視しているかが分かるサイトの方が使いこなしやすいです。",
   },
   {
     title: "成績の出し方",
-    body: "良かった日だけでなく、評価が届かなかったレースや扱いに注意したい条件まで出しているかを見ます。",
+    body: "好成績だけを切り取って見せるサイトは要注意。外れた条件や苦手カテゴリまで公開しているかが信頼度の目安です。",
   },
   {
     title: "地方競馬対応",
@@ -30,11 +30,11 @@ const criteria = [
   },
   {
     title: "使いやすさ",
-    body: "スマホで予想表、詳細分析、過去対戦、コース傾向へすぐ移動できるかは、締切前の使いやすさに直結します。",
+    body: "発走10分前にスマホで出馬表・詳細分析・コース傾向へ素早くアクセスできるかは、実戦で使えるかどうかの分かれ目です。",
   },
   {
     title: "注意書きの明確さ",
-    body: "競馬データは結果を保証しません。投票の推奨ではなく参考情報だと明記しているサイトの方が安心して使えます。",
+    body: "「的中保証」を謳うサイトは距離を置いた方が無難です。参考情報であることを明記しているサイトの方が誠実といえます。",
   },
 ];
 
@@ -61,8 +61,8 @@ export default function SiteSelectionPage() {
             競馬予想サイトの選び方
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
-            的中率の数字だけで選ぶと、使い始めてから「見たい情報がない」と気づくことがあります。
-            無料で見られる範囲、指数の根拠、成績の出し方、締切前の使いやすさを先に見ておきます。
+            的中率だけを比較してサイトを選ぶと、いざ使い始めてから「欲しい情報が有料の壁の向こう」と気づくことがあります。
+            登録前に何を見られるか、指数に根拠があるか、成績をどこまで公開しているかを先に見極めておくと失敗が減ります。
           </p>
         </header>
 
@@ -78,12 +78,12 @@ export default function SiteSelectionPage() {
         </section>
 
         <section className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
-          <h2 className="text-xl font-black text-slate-950">UMA-FREEで見られること</h2>
+          <h2 className="text-xl font-black text-slate-950">UMA-FREEの場合</h2>
           <ul className="mt-4 grid gap-3 text-sm leading-7 text-slate-600 sm:grid-cols-2">
-            <li className="rounded-xl bg-white p-4 shadow-soft">中央・地方のレース分析を登録不要で見られます。</li>
-            <li className="rounded-xl bg-white p-4 shadow-soft">AI偏差値、脚質予測、対戦成績、枠順傾向をレースごとに出します。</li>
-            <li className="rounded-xl bg-white p-4 shadow-soft">AI予想成績では、良かった条件と扱いに注意したい条件を分けます。</li>
-            <li className="rounded-xl bg-white p-4 shadow-soft">投票の推奨ではなく、レース検討の参考情報として公開しています。</li>
+            <li className="rounded-xl bg-white p-4 shadow-soft">中央・地方の全レースを登録不要で閲覧可能。</li>
+            <li className="rounded-xl bg-white p-4 shadow-soft">AI偏差値・脚質予測・対戦成績・枠順傾向をレースごとに算出。</li>
+            <li className="rounded-xl bg-white p-4 shadow-soft">成績は好調条件・不調条件の両方を公開。</li>
+            <li className="rounded-xl bg-white p-4 shadow-soft">投票推奨ではなく、レース検討の参考情報として提供。</li>
           </ul>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link href="/results/accuracy" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-primary-light">

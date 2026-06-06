@@ -54,8 +54,8 @@ export default function HorseWeightPage() {
             馬体重増減の見方
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
-            馬体重は、直前で評価を変えるための状態確認データです。
-            大きな増減を機械的に消すのではなく、休み明け、成長分、過去の好走体重への戻りを分けて考えます。
+            パドック発表直後に大きな増減を見て慌てる必要はありません。
+            大事なのは、その増減が疲労なのか、成長なのか、それともベスト体重への回帰なのかを切り分けることです。
           </p>
         </header>
 
@@ -77,21 +77,21 @@ export default function HorseWeightPage() {
             <div className="mb-3 h-1.5 w-12 rounded-full bg-accent" />
             <h3 className="text-lg font-black text-slate-950">減りすぎ</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              連戦で大きく減っている馬は疲労や輸送の影響を考えます。人気馬なら軸から相手へ下げる判断も必要です。
+              連戦続きで大幅に絞れている馬は、消耗や輸送疲れが疑われます。人気馬でも軸には据えづらく、ヒモ評価に留めるのが無難です。
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <div className="mb-3 h-1.5 w-12 rounded-full bg-blue-600" />
             <h3 className="text-lg font-black text-slate-950">増えすぎ</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              太め残りか、成長分かを分けます。休み明けで調教内容が良い場合は、単純なマイナス材料にしません。
+              太め残りと成長増は意味が違います。休み明けで追い切りの動きが良ければ、体重増だけを理由に切るのは早計です。
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <div className="mb-3 h-1.5 w-12 rounded-full bg-emerald-600" />
-            <h3 className="text-lg font-black text-slate-950">戻り</h3>
+            <h3 className="text-lg font-black text-slate-950">好走体重への戻り</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              前走で大きく減って凡走し、今回は過去の好走体重に戻る形なら、むしろ評価を戻す材料になります。
+              前走で絞れすぎて力を出せなかった馬が、過去の好走時と同じ水準まで増量して出走してくるケースです。これは復調のサインと捉え、再評価するチャンスになります。
             </p>
           </div>
         </section>
@@ -100,16 +100,16 @@ export default function HorseWeightPage() {
           <h2 className="text-2xl font-black text-slate-950">予想に入れる順番</h2>
           <ol className="mt-4 space-y-3 text-sm leading-8 text-slate-600">
             <li className="rounded-xl border-l-4 border-accent bg-white p-4 shadow-soft">
-              <strong className="text-slate-950">1. まずAI偏差値と適性を見る。</strong>
-              馬体重だけで買う馬を決めないようにします。
+              <strong className="text-slate-950">1. 能力評価を先に作る。</strong>
+              馬体重は買い目を決める材料ではなく、リスクを測る材料です。
             </li>
             <li className="rounded-xl border-l-4 border-blue-600 bg-white p-4 shadow-soft">
-              <strong className="text-slate-950">2. 人気馬の大幅増減を確認する。</strong>
-              特に1〜3番人気の大幅増減は、過剰人気を疑う材料になります。
+              <strong className="text-slate-950">2. 上位人気馬の増減に注目する。</strong>
+              1〜3番人気で±10kg以上の変動があれば、過信は禁物です。
             </li>
             <li className="rounded-xl border-l-4 border-emerald-600 bg-white p-4 shadow-soft">
-              <strong className="text-slate-950">3. 例外を確認する。</strong>
-              3歳馬の成長、休み明け、好走体重への回帰なら、数字だけで下げすぎないようにします。
+              <strong className="text-slate-950">3. 例外パターンを見落とさない。</strong>
+              3歳馬の成長期、長期休養明けの回復増、ベスト体重への回帰は、増減の数字だけでは測れません。
             </li>
           </ol>
         </section>

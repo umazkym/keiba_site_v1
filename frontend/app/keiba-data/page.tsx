@@ -4,7 +4,6 @@ import {
   Activity,
   BarChart3,
   Gauge,
-  ListChecks,
   MapPinned,
   Scale,
   type LucideIcon,
@@ -34,25 +33,25 @@ const guideSteps = [
   {
     step: "01",
     title: "条件を先に置く",
-    body: "競馬場、芝/ダート、距離、頭数を確認し、そもそも荒れやすい条件かを見ます。",
+    body: "競馬場・距離・頭数から、波乱が起きやすい条件かどうかを先に把握する。",
     note: "コース・距離",
   },
   {
     step: "02",
     title: "当日気配で補正する",
-    body: "馬場状態と馬体重を見て、能力評価をそのまま信じるか、少し動かすかを決めます。",
+    body: "馬場と馬体重の当日データで、事前の能力評価にどこまで補正が必要かを判断する。",
     note: "馬場・馬体重",
   },
   {
     step: "03",
     title: "人と枠を重ねる",
-    body: "騎手の得意条件、脚質、枠順が今回の舞台で噛み合うかを確認します。",
+    body: "騎手の得意条件と枠順・脚質の相性が、このコースで活きるかを照合する。",
     note: "騎手・枠順",
   },
   {
     step: "04",
     title: "AI偏差値で最後に比較する",
-    body: "上位評価馬を軸に、不安材料と人気とのずれを並べて見ます。",
+    body: "AI偏差値の上位馬を軸に、人気とのギャップや不安材料を最終チェックする。",
     note: "AI偏差値",
   },
 ];
@@ -61,7 +60,7 @@ const guideTones: GuideTone[] = [
   {
     icon: MapPinned,
     timing: "出走表を見る前",
-    check: "馬場の変化で脚質評価を動かすかを決める",
+    check: "馬場が変わった時、脚質の優劣がどう入れ替わるかを整理する",
     accent: "bg-amber-500",
     badge: "bg-amber-50 text-amber-800",
     panel: "border-amber-100 bg-amber-50/60",
@@ -69,7 +68,7 @@ const guideTones: GuideTone[] = [
   {
     icon: Activity,
     timing: "馬体重発表後",
-    check: "増減幅を成長分、戻り、絞り込みに分ける",
+    check: "当日の増減が成長なのか、消耗なのかを切り分ける",
     accent: "bg-blue-600",
     badge: "bg-blue-50 text-blue-800",
     panel: "border-blue-100 bg-blue-50/60",
@@ -77,7 +76,7 @@ const guideTones: GuideTone[] = [
   {
     icon: Scale,
     timing: "買い目を絞る前",
-    check: "無料範囲、根拠、成績公開の見せ方を比べる",
+    check: "予想サイトの根拠と成績公開の透明度を比較する",
     accent: "bg-emerald-600",
     badge: "bg-emerald-50 text-emerald-800",
     panel: "border-emerald-100 bg-emerald-50/60",
@@ -85,7 +84,7 @@ const guideTones: GuideTone[] = [
   {
     icon: Gauge,
     timing: "最終確認",
-    check: "良かった条件と届かなかった条件を同時に見る",
+    check: "好調条件と苦手条件の両面から精度を確かめる",
     accent: "bg-slate-900",
     badge: "bg-slate-100 text-slate-800",
     panel: "border-slate-200 bg-slate-50",
@@ -115,29 +114,7 @@ function SectionHeading({
   );
 }
 
-function MiniSignal({
-  label,
-  value,
-  width,
-  className,
-}: {
-  label: string;
-  value: string;
-  width: string;
-  className: string;
-}) {
-  return (
-    <div>
-      <div className="mb-1 flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
-        <span>{label}</span>
-        <span>{value}</span>
-      </div>
-      <div className="h-2 rounded-full bg-slate-100">
-        <div className={`h-2 rounded-full ${className}`} style={{ width }} />
-      </div>
-    </div>
-  );
-}
+
 
 export default function KeibaDataPage() {
   const jsonLd = {
@@ -158,58 +135,17 @@ export default function KeibaDataPage() {
       <div className="mx-auto max-w-[1200px] px-4 pb-14 pt-4">
         <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
-          <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
-            <div className="flex flex-col justify-between">
-              <div>
-                <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
-                  レース前の確認順
-                </p>
-                <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
-                  競馬データの見方
-                </h1>
-                <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
-                  出走表、馬場、馬体重、騎手、AI偏差値をばらばらに見てしまうと、強い材料と弱い材料が混ざります。
-                  ここでは、レース前に評価を動かす順番を固定し、迷った時に立ち返れる見方にまとめています。
-                </p>
-              </div>
-
-              <div className="mt-6 grid gap-2 sm:grid-cols-3">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs font-bold text-slate-500">対応</p>
-                  <p className="mt-1 text-lg font-black text-slate-950">中央・地方</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs font-bold text-slate-500">使う場面</p>
-                  <p className="mt-1 text-lg font-black text-slate-950">レース前</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs font-bold text-slate-500">目的</p>
-                  <p className="mt-1 text-lg font-black text-slate-950">判断材料の整理</p>
-                </div>
-              </div>
-            </div>
-
-            <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-slate-950">
-                  <ListChecks className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-xs font-bold text-slate-500">本日の見方</p>
-                  <p className="text-sm font-black text-slate-950">先に条件、最後にAI偏差値</p>
-                </div>
-              </div>
-              <div className="mt-5 space-y-4">
-                <MiniSignal label="馬場の影響" value="強め" width="72%" className="bg-amber-400" />
-                <MiniSignal label="馬体重の変化" value="要確認" width="58%" className="bg-blue-400" />
-                <MiniSignal label="AI上位との差" value="比較" width="82%" className="bg-emerald-400" />
-              </div>
-              <div className="mt-5 rounded-xl border border-slate-200 bg-white p-3">
-                <p className="text-xs leading-6 text-slate-600">
-                  いきなり印を決めず、条件ごとに評価を少しずつ動かす。UMA-FREEのデータページは、その順番を崩さないための入口です。
-                </p>
-              </div>
-            </aside>
+          <div>
+            <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
+              レース前の確認順
+            </p>
+            <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+              競馬データの見方
+            </h1>
+            <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
+              出走表、馬場、馬体重、騎手、AI偏差値——これらをバラバラに眺めると、判断の軸がぶれやすくなります。
+              このページでは、レース前に何をどの順番で見るかを整理しています。
+            </p>
           </div>
         </header>
 
@@ -217,7 +153,7 @@ export default function KeibaDataPage() {
           <SectionHeading
             label="確認の順番"
             title="迷った時に戻る4手順"
-            description="人気や印だけで判断せず、評価を動かした理由が残る順番にしています。"
+            description="印や人気だけに頼らず、根拠を積み上げる手順です。"
           />
           <div className="grid gap-3 md:grid-cols-4">
             {guideSteps.map((step, index) => (
@@ -238,7 +174,7 @@ export default function KeibaDataPage() {
           <SectionHeading
             label="判断材料"
             title="レース前に確認するデータ"
-            description="各ページは単なる用語説明ではなく、今日の評価をどう動かすかに絞って読める構成です。"
+            description="各ページでは用語の解説よりも、当日の判断にどう使うかを重視しています。"
           />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {dataHubLinks.map((item, index) => {
@@ -282,8 +218,8 @@ export default function KeibaDataPage() {
               </div>
             </div>
             <p className="mt-4 text-sm leading-8 text-slate-600">
-              AI偏差値を先に見ると、上位評価馬に判断が寄りやすくなります。
-              UMA-FREEでは、コースの癖、馬場、馬体重、騎手の得意条件を先に置き、最後にAI偏差値で比較する流れを基本にしています。
+              AI偏差値を最初に見ると、上位馬に引っ張られて他の材料を軽視しがちです。
+              コースの癖、馬場、馬体重、騎手の条件適性を先に固めてから、最後の比較材料としてAI偏差値を使う流れを推奨しています。
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <Link href="/races/today" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-primary-light">
@@ -295,18 +231,7 @@ export default function KeibaDataPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {guideSteps.map((step, index) => (
-              <div key={step.step} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-mono text-xs font-black text-slate-400">STEP {step.step}</p>
-                  <span className={`h-2 w-10 rounded-full ${guideTones[index].accent}`} />
-                </div>
-                <h3 className="mt-2 text-base font-black text-slate-950">{step.title}</h3>
-                <p className="mt-2 text-xs leading-6 text-slate-600">{step.body}</p>
-              </div>
-            ))}
-          </div>
+
         </section>
 
         <section className="mt-10">
@@ -314,7 +239,7 @@ export default function KeibaDataPage() {
             <SectionHeading
               label="コースデータ"
               title="コース別データ"
-              description="よく見られるコースを先に置き、枠順・脚質・馬場の癖を確認しやすくしています。"
+              description="主要コースの枠順・脚質・馬場傾向をまとめています。"
             />
             <Link href="/courses" className="hidden rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary sm:inline-flex">
               すべて見る
@@ -355,7 +280,7 @@ export default function KeibaDataPage() {
             <SectionHeading
               label="騎手データ"
               title="騎手別の得意条件"
-              description="騎手名だけで決めず、コース、脚質、人気との釣り合いまで見られる入口です。"
+              description="騎手名だけでなく、コースや脚質との相性から得意条件を絞り込めます。"
             />
             <Link href="/jockeys" className="hidden rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary sm:inline-flex">
               すべて見る

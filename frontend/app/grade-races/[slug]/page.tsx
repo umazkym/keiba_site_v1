@@ -71,9 +71,6 @@ export default function GradeRaceDetailPage({ params }: Props) {
             <Link href="/races/today" className="bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary">
               当日のAI予想を見る
             </Link>
-            <Link href="/results/accuracy" className="bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
-              AI予想の成績を見る
-            </Link>
           </div>
         </header>
 

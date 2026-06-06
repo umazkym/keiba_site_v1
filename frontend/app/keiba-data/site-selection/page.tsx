@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "競馬予想サイトの選び方｜無料で見るべきポイント",
   description:
     "競馬予想サイトを選ぶときに見るべきポイントを整理。無料範囲、指数の根拠、成績の出し方、地方競馬対応、登録要否を比べます。",
+  robots: { index: false, follow: true },
   alternates: {
     canonical: "/keiba-data/site-selection",
   },

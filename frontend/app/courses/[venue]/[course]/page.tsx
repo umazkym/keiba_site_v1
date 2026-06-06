@@ -24,6 +24,7 @@ export function generateMetadata({ params }: Props): Metadata {
   return {
     title: profile.title,
     description: profile.metaDescription,
+    robots: { index: false, follow: true },
     alternates: {
       canonical: `/courses/${profile.venue}/${profile.course}`,
     },

@@ -1,7 +1,6 @@
 import { MetadataRoute } from 'next'
 import { getAllArticles } from '@/lib/articles';
 import { getAllRaceUrls, getWeeklyGradeRaces } from '@/lib/api';
-import { courseProfiles, jockeyProfiles } from '@/lib/growth-content';
 import { gradeRaceProfiles } from '@/lib/grade-race-content';
 import { getRaceDetailPath, getRaceIndexPolicy } from '@/lib/race-url';
 
@@ -24,15 +23,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         '/about-ai': { changeFrequency: 'monthly', priority: 0.8 },
         '/advertising': { changeFrequency: 'monthly', priority: 0.5 },
         '/contact': { changeFrequency: 'monthly', priority: 0.6 },
-        '/courses': { changeFrequency: 'weekly', priority: 0.8 },
         '/grade-races': { changeFrequency: 'weekly', priority: 0.8 },
-        '/jockeys': { changeFrequency: 'weekly', priority: 0.8 },
-        '/keiba-data': { changeFrequency: 'weekly', priority: 0.9 },
-        '/keiba-data/horse-weight': { changeFrequency: 'monthly', priority: 0.8 },
-        '/keiba-data/site-selection': { changeFrequency: 'monthly', priority: 0.7 },
-        '/keiba-data/track-condition': { changeFrequency: 'monthly', priority: 0.8 },
         '/privacy': { changeFrequency: 'monthly', priority: 0.5 },
-        '/results/accuracy': { changeFrequency: 'weekly', priority: 0.8 },
         '/articles': { changeFrequency: 'weekly', priority: 0.9 },
         '/search': { changeFrequency: 'weekly', priority: 0.5 },
         '/terms': { changeFrequency: 'monthly', priority: 0.5 },
@@ -53,19 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
     }));
 
-    const courseRoutes = courseProfiles.map((course) => ({
-        url: `${BASE_URL}/courses/${course.venue}/${course.course}`,
-        lastModified: siteLastModified,
-        changeFrequency: 'monthly' as const,
-        priority: 0.8,
-    }));
 
-    const jockeyRoutes = jockeyProfiles.map((jockey) => ({
-        url: `${BASE_URL}/jockeys/${jockey.slug}`,
-        lastModified: siteLastModified,
-        changeFrequency: 'monthly' as const,
-        priority: 0.75,
-    }));
 
     const gradeRaceHubRoutes = gradeRaceProfiles.map((race) => ({
         url: `${BASE_URL}/grade-races/${race.slug}`,
@@ -116,5 +96,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.65,
     }));
 
-    return [...staticRoutes, ...articleRoutes, ...courseRoutes, ...jockeyRoutes, ...gradeRaceHubRoutes, ...raceDateRoutes, ...raceDetailRoutes];
+    return [...staticRoutes, ...articleRoutes, ...gradeRaceHubRoutes, ...raceDateRoutes, ...raceDetailRoutes];
 }

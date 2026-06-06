@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   title: "AI予想の成績",
   description:
     "UMA-FREEのAI偏差値1位の勝率・3着以内率を、期間別・条件別に集計。精度の高い条件と低い条件を同時に確認できます。",
+  robots: { index: false, follow: true },
   alternates: {
     canonical: "/results/accuracy",
   },

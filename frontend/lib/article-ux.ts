@@ -107,15 +107,15 @@ function buildNextLinks(article: Article, categoryHref: string): ArticleNextLink
 
   if (article.category.includes('入門')) {
     links.push({
-      href: '/keiba-data',
-      label: 'データの見方を確認する',
-      description: '馬場、馬体重、予想サイト選びの基礎を整理',
+      href: '/faq',
+      label: 'よくある質問を見る',
+      description: '初心者がつまずきやすいポイントをまとめて確認',
     });
   } else {
     links.push({
-      href: '/results/accuracy?days=90',
-      label: 'AI予想成績を見る',
-      description: '直近90日の成績から、得意条件と弱い条件を確認',
+      href: '/races/today',
+      label: '今日のAI予想で試す',
+      description: '当日の出馬表で、記事の見方をそのまま試す',
     });
   }
 

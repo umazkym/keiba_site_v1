@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   title: "競馬データ分析 無料｜馬場・馬体重・AI予想の見方",
   description:
     "無料で使える競馬データ分析の見方を整理。馬場状態、馬体重、騎手、コース傾向、AI予想成績をレース前に確認する順番で解説します。",
+  robots: { index: false, follow: true },
   alternates: {
     canonical: "/keiba-data",
   },

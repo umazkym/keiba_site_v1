@@ -4,7 +4,6 @@ import SearchPageClient, { type SearchIndexItem } from './SearchPageClient';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { AdUnit } from '@/components/AdUnit';
 import { getAllArticlesMeta } from '@/lib/articles';
-import { courseProfiles, dataHubLinks, jockeyProfiles } from '@/lib/growth-content';
 import { gradeRaceProfiles } from '@/lib/grade-race-content';
 
 export const metadata: Metadata = {
@@ -45,20 +44,6 @@ function buildSearchIndex(): SearchIndexItem[] {
         },
         {
             type: 'page',
-            title: 'AI予想の成績',
-            description: 'AI偏差値の直近成績、条件別の傾向、評価が届かなかったレースを確認できます。',
-            url: '/results/accuracy',
-            keywords: ['AI予想成績', '的中率', '複勝率', 'AI偏差値', '振り返り'],
-        },
-        {
-            type: 'page',
-            title: '競馬データの見方',
-            description: '馬場状態、馬体重、騎手、コース、AI偏差値をレース前に見る順番で整理しています。',
-            url: '/keiba-data',
-            keywords: ['データの見方', '馬場', '馬体重', '枠順', '騎手', 'コース'],
-        },
-        {
-            type: 'page',
             title: '運営者情報・このサイトについて',
             description: 'UMA-FREEの運営方針、公開データ、注意事項、問い合わせ先を確認できます。',
             url: '/about',
@@ -73,30 +58,6 @@ function buildSearchIndex(): SearchIndexItem[] {
         },
     ];
 
-    const dataPages = dataHubLinks.map((item) => ({
-        type: 'page' as const,
-        title: item.label,
-        description: item.description,
-        url: item.href,
-        keywords: [item.label, '競馬データ', '無料'],
-    }));
-
-    const courses = courseProfiles.map((course) => ({
-        type: 'course' as const,
-        title: course.title,
-        description: course.metaDescription,
-        url: `/courses/${course.venue}/${course.course}`,
-        keywords: [course.venueName, course.courseName, course.course, '枠順', '脚質', 'コースデータ'],
-    }));
-
-    const jockeys = jockeyProfiles.map((jockey) => ({
-        type: 'jockey' as const,
-        title: jockey.searchTitle,
-        description: jockey.metaDescription,
-        url: `/jockeys/${jockey.slug}`,
-        keywords: [jockey.name, ...jockey.strengths, '騎手', '得意コース'],
-    }));
-
     const gradeRaces = gradeRaceProfiles.map((race) => ({
         type: 'grade' as const,
         title: `${race.name} ${race.grade} データ分析`,
@@ -105,7 +66,7 @@ function buildSearchIndex(): SearchIndexItem[] {
         keywords: [race.name, race.grade, race.venue, race.course, '重賞', 'G1', '枠順'],
     }));
 
-    return [...staticPages, ...dataPages, ...courses, ...jockeys, ...gradeRaces, ...articles];
+    return [...staticPages, ...gradeRaces, ...articles];
 }
 
 export default function SearchPage() {

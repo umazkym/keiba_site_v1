@@ -26,26 +26,6 @@ export const Footer = () => {
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/keiba-data" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
-                                    競馬データの見方
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/courses" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
-                                    コース別データ
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/jockeys" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
-                                    騎手別データ
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/results/accuracy" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
-                                    AI予想の成績
-                                </Link>
-                            </li>
-                            <li>
                                 <Link href="/faq" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     よくある質問
                                 </Link>

@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "馬場状態とは？良・稍重・重・不良の違いと予想への使い方",
   description:
     "JRAの馬場状態である良・稍重・重・不良の違いを、時計、脚質、枠順、道悪適性の観点から整理。競馬予想で評価を変える順番を解説します。",
+  robots: { index: false, follow: true },
   alternates: {
     canonical: "/keiba-data/track-condition",
   },

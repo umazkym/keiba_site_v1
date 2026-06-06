@@ -54,7 +54,7 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
       },
     ],
     relatedLinks: [
-      { label: "東京芝2400mデータ", href: "/courses/tokyo/turf-2400m" },
+      { label: "日本ダービーデータ分析", href: "/articles/2025-10-30-japan-cup-tokyo-turf-2400m-analysis" },
       { label: "距離適性の見方", href: "/articles/2025-10-26-distance-suitability-data" },
       { label: "今日のAI予想", href: "/races/today" },
     ],
@@ -142,7 +142,6 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
       },
     ],
     relatedLinks: [
-      { label: "馬場状態の見方", href: "/keiba-data/track-condition" },
       { label: "距離適性の見方", href: "/articles/2025-10-26-distance-suitability-data" },
       { label: "今日のAI予想", href: "/races/today" },
     ],
@@ -186,8 +185,8 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
       },
     ],
     relatedLinks: [
-      { label: "中山ダート1200mの見方", href: "/courses/nakayama/dirt-1200m" },
-      { label: "馬場状態の見方", href: "/keiba-data/track-condition" },
+      { label: "中山芝1200m分析記事", href: "/articles/2025-10-04-nakayama-dirt-1200m-data-analysis" },
+      { label: "短距離レースの見方", href: "/articles/2025-10-26-distance-suitability-data" },
       { label: "今日のAI予想", href: "/races/today" },
     ],
     xPostThemes: [
@@ -230,7 +229,6 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
       },
     ],
     relatedLinks: [
-      { label: "東京芝2000mデータ", href: "/courses/tokyo/turf-2000m" },
       { label: "天皇賞秋データ分析", href: "/articles/2025-10-27-tennosho-autumn-tokyo-turf-2000m-analysis" },
       { label: "今日のAI予想", href: "/races/today" },
     ],
@@ -274,7 +272,6 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
       },
     ],
     relatedLinks: [
-      { label: "東京芝2400mデータ", href: "/courses/tokyo/turf-2400m" },
       { label: "ジャパンカップ分析", href: "/articles/2025-10-30-japan-cup-tokyo-turf-2400m-analysis" },
       { label: "今日のAI予想", href: "/races/today" },
     ],
@@ -318,7 +315,6 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
       },
     ],
     relatedLinks: [
-      { label: "京都芝1800m完全ガイド", href: "/articles/2025-10-15-kyoto-turf-1800m-complete-guide" },
       { label: "マイルCS分析", href: "/articles/2025-10-28-mile-championship-kyoto-turf-1600m-analysis" },
       { label: "今日のAI予想", href: "/races/today" },
     ],
@@ -362,7 +358,6 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
       },
     ],
     relatedLinks: [
-      { label: "中山芝2500mデータ", href: "/courses/nakayama/turf-2500m" },
       { label: "有馬記念データ分析", href: "/articles/2025-10-31-arima-kinen-nakayama-turf-2500m-analysis" },
       { label: "今日のAI予想", href: "/races/today" },
     ],

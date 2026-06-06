@@ -172,10 +172,6 @@ export default async function ArticlePage({ params }: Props) {
               </div>
             </header>
 
-            <div className="mt-5">
-              <ArticleSearchEntryPanel topHits={topHits} />
-            </div>
-
             {toc.length > 1 && (
               <details className="mt-4 border border-slate-200 bg-slate-50" aria-label="記事の目次">
                 <summary className="cursor-pointer list-none px-4 py-3 text-sm font-black text-slate-800">
@@ -196,6 +192,10 @@ export default async function ArticlePage({ params }: Props) {
                 </ol>
               </details>
             )}
+
+            <div className="mt-5">
+              <ArticleSearchEntryPanel topHits={topHits} />
+            </div>
 
             {/* ===== ARTICLE BODY ===== */}
             <div className="pb-10">

@@ -19,9 +19,9 @@ const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: numb
             <div className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-100 bg-white px-2.5 py-2 transition-colors hover:border-slate-200 hover:bg-slate-50">
                 <span className={`hit-rank ${rankClass} shrink-0`}>{rank}位</span>
                 <div className="min-w-0 flex-1">
-                    <div className="truncate text-[11px] font-bold text-slate-800" title={hit.race_name}>
+                    <div className="truncate text-[11px] font-bold text-slate-800">
                         {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
-                        {' '}{hit.venue_name}{hit.race_number}R {hit.race_name}
+                        {' '}{hit.venue_name}{hit.race_number}R
                     </div>
                     <div className="truncate text-[10px] text-slate-400" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
                         {hit.bet_type}: {hit.winning_numbers}
@@ -44,9 +44,6 @@ const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: numb
                 <div className="hit-info">
                     {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
                     {' '}{hit.venue_name}{hit.race_number}R
-                </div>
-                <div className="hit-name" title={hit.race_name}>
-                    {hit.race_name}
                 </div>
                 <div className="hit-bet" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
                     {hit.bet_type}: {hit.winning_numbers}

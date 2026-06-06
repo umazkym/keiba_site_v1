@@ -27,7 +27,6 @@ const FeaturePreviewCard = ({
         {icon}
       </span>
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold text-slate-400">{label}</p>
         <p className="truncate text-[13px] font-bold text-slate-900">{title}</p>
       </div>
     </div>
@@ -53,7 +52,7 @@ export function ArticleSearchEntryPanel({ topHits }: ArticleSearchEntryPanelProp
             label="独自指標"
             title="AI偏差値"
             icon={<Gauge className="h-4 w-4" />}
-            description="過去走・適性・展開力を独自アルゴリズムで数値化し、出走全頭を一覧で比較できます"
+            description="過去走・適性・展開力を数値化し、一覧で比較できます"
           >
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500">
@@ -69,7 +68,7 @@ export function ArticleSearchEntryPanel({ topHits }: ArticleSearchEntryPanelProp
             label="レース展開"
             title="脚質予測"
             icon={<LineChart className="h-4 w-4" />}
-            description="各コーナーでの隊列をシミュレーションし、展開の有利不利を確認できます"
+            description="各コーナーでの隊列を予測し、展開の有利不利を確認できます"
           >
             <div className="flex h-[58px] items-end gap-1.5 rounded-lg bg-slate-50 px-3 pb-2 pt-3">
               {[68, 42, 74, 52, 35].map((height, index) => (

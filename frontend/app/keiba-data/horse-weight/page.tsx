@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { BreadcrumbSchema } from "@/components/StructuredData";
 
 export const metadata: Metadata = {
   title: "馬体重増減の見方｜±10kg以上で評価を変える条件",
@@ -46,6 +47,13 @@ export default function HorseWeightPage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <BreadcrumbSchema
+        items={[
+          { name: "ホーム", url: "https://uma-free.com" },
+          { name: "データの見方", url: "https://uma-free.com/keiba-data" },
+          { name: "馬体重増減", url: "https://uma-free.com/keiba-data/horse-weight" },
+        ]}
+      />
       <Breadcrumb />
       <article className="mx-auto max-w-5xl px-4 pb-14 pt-4">
         <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">

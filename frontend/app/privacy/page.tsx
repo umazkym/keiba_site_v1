@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { BreadcrumbSchema } from '@/components/StructuredData';
 
 export const metadata: Metadata = {
     title: "プライバシーポリシー",
@@ -156,6 +157,12 @@ const privacyPolicyContent: PrivacyPolicyContent = {
 export default function PrivacyPolicyPage() {
     return (
         <>
+            <BreadcrumbSchema
+                items={[
+                    { name: "ホーム", url: "https://uma-free.com" },
+                    { name: "プライバシーポリシー", url: "https://uma-free.com/privacy" },
+                ]}
+            />
             <Breadcrumb />
             <div className="py-4 sm:py-8">
                 <div className="mx-auto">

@@ -7,6 +7,7 @@ import { Suspense } from 'react';
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { notFound, redirect } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { BreadcrumbSchema } from '@/components/StructuredData';
 import { getAllArticlesMeta } from '@/lib/articles';
 import {
     getRaceDetailPath,
@@ -172,6 +173,7 @@ export default async function RaceDetailPage({ params }: Props) {
     }
 
     const raceUrl = `https://uma-free.com${getRaceDetailPath(selectedRace.race_date, selectedVenue.venue_name, selectedRace.race_number)}`;
+    const formattedDate = formatDate(params.date);
     const jsonLd = {
         "@context": "https://schema.org",
         "@type": "SportsEvent",
@@ -218,6 +220,14 @@ export default async function RaceDetailPage({ params }: Props) {
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
+            <BreadcrumbSchema
+                items={[
+                    { name: 'ホーム', url: 'https://uma-free.com' },
+                    { name: 'レース分析', url: 'https://uma-free.com/races/today' },
+                    { name: `${formattedDate}のレース分析`, url: `https://uma-free.com/races/${params.date}` },
+                    { name: `${selectedVenue.venue_name}${selectedRace.race_number}R ${selectedRace.race_name}`, url: raceUrl },
+                ]}
             />
 
             <Breadcrumb />

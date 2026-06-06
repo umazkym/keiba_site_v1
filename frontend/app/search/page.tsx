@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import SearchPageClient, { type SearchIndexItem } from './SearchPageClient';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { AdUnit } from '@/components/AdUnit';
+import { BreadcrumbSchema } from '@/components/StructuredData';
 import { getAllArticlesMeta } from '@/lib/articles';
 import { gradeRaceProfiles } from '@/lib/grade-race-content';
 
@@ -74,6 +75,12 @@ export default function SearchPage() {
 
     return (
         <>
+            <BreadcrumbSchema
+                items={[
+                    { name: 'ホーム', url: 'https://uma-free.com' },
+                    { name: 'サイト内検索', url: 'https://uma-free.com/search' },
+                ]}
+            />
             <Breadcrumb />
             <Suspense fallback={<div className="container mx-auto px-4 py-8"><div className="max-w-3xl mx-auto"><div className="flex justify-center items-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div></div></div>}>
                 <SearchPageClient searchIndex={searchIndex} />

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { BreadcrumbSchema } from '@/components/StructuredData';
 
 export const metadata: Metadata = {
     title: "広告について",
@@ -155,6 +156,12 @@ const advertisingContent: AdvertisingContent = {
 export default function AdvertisingPage() {
     return (
         <>
+            <BreadcrumbSchema
+                items={[
+                    { name: "ホーム", url: "https://uma-free.com" },
+                    { name: "広告について", url: "https://uma-free.com/advertising" },
+                ]}
+            />
             <Breadcrumb />
             <div className="py-4 sm:py-8">
                 <div className="mx-auto">

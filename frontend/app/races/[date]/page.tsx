@@ -7,6 +7,7 @@ import { Suspense } from 'react';
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { notFound } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { BreadcrumbSchema } from '@/components/StructuredData';
 import { getAllArticlesMeta } from '@/lib/articles';
 import {
     getRaceDetailPath,
@@ -78,6 +79,7 @@ export default async function RacePage({ params }: { params: { date: string } })
     let weeklyGradeRaces: WeeklyGradeRace[] = [];
     let jsonLd = null;
     const articlesMeta = getAllArticlesMeta();
+    const formattedDate = formatDate(params.date);
 
     try {
         // ▼▼▼▼▼【SSRプリフェッチ統合】▼▼▼▼▼
@@ -174,6 +176,13 @@ export default async function RacePage({ params }: { params: { date: string } })
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
             )}
+            <BreadcrumbSchema
+                items={[
+                    { name: 'ホーム', url: 'https://uma-free.com' },
+                    { name: 'レース分析', url: 'https://uma-free.com/races/today' },
+                    { name: `${formattedDate}のレース分析`, url: `https://uma-free.com/races/${params.date}` },
+                ]}
+            />
 
             <Breadcrumb />
 

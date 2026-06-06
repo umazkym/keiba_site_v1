@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { BreadcrumbSchema } from "@/components/StructuredData";
 import { getPredictionAccuracySummary } from "@/lib/api";
 import type { AccuracyCondition, AccuracyRate, PredictionAccuracySummary } from "@/lib/types";
 
@@ -274,6 +275,12 @@ export default async function AccuracyPage({
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <BreadcrumbSchema
+        items={[
+          { name: "ホーム", url: "https://uma-free.com" },
+          { name: "AI予想成績", url: "https://uma-free.com/results/accuracy" },
+        ]}
+      />
       <Breadcrumb />
       <article className="mx-auto max-w-[1200px] px-4 pb-14 pt-4">
         <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">

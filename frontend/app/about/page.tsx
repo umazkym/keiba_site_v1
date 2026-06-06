@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { BreadcrumbSchema } from '@/components/StructuredData';
 
 export const metadata: Metadata = {
     title: '運営者情報・このサイトについて',
@@ -106,6 +107,12 @@ export default function AboutPage() {
 
     return (
         <>
+            <BreadcrumbSchema
+                items={[
+                    { name: 'ホーム', url: 'https://uma-free.com' },
+                    { name: '運営者情報', url: 'https://uma-free.com/about' },
+                ]}
+            />
             <Breadcrumb />
             <div className="py-10 sm:py-16 px-4 w-full bg-surface">
                 <div className="mx-auto w-full">

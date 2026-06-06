@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArticleSchema } from '@/components/StructuredData';
+import { ArticleSchema, BreadcrumbSchema } from '@/components/StructuredData';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { RelatedArticles } from '@/components/RelatedArticles';
 import { AdUnit } from '@/components/AdUnit';
@@ -105,6 +105,13 @@ export default async function ArticlePage({ params }: Props) {
           datePublished={datePublished}
           dateModified={dateModified}
           image={article.eyecatch.startsWith('http') ? article.eyecatch : `https://uma-free.com${article.eyecatch}`}
+        />
+        <BreadcrumbSchema
+          items={[
+            { name: 'ホーム', url: 'https://uma-free.com' },
+            { name: '記事', url: 'https://uma-free.com/articles' },
+            { name: article.title, url: articleUrl },
+          ]}
         />
 
         <div className="mx-auto max-w-[920px] px-4">

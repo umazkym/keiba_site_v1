@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { BreadcrumbSchema } from "@/components/StructuredData";
 
 export const metadata: Metadata = {
   title: "競馬予想サイトの選び方｜無料で見るべきポイント",
@@ -51,6 +52,13 @@ const criterionAccents = [
 export default function SiteSelectionPage() {
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "ホーム", url: "https://uma-free.com" },
+          { name: "データの見方", url: "https://uma-free.com/keiba-data" },
+          { name: "サイトの選び方", url: "https://uma-free.com/keiba-data/site-selection" },
+        ]}
+      />
       <Breadcrumb />
       <article className="mx-auto max-w-5xl px-4 pb-14 pt-4">
         <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">

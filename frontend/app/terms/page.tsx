@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { BreadcrumbSchema } from '@/components/StructuredData';
 
 export const metadata: Metadata = {
     title: "利用規約",
@@ -214,6 +215,12 @@ const termsOfServiceContent: TermsOfServiceContent = {
 export default function TermsOfServicePage() {
     return (
         <>
+            <BreadcrumbSchema
+                items={[
+                    { name: "ホーム", url: "https://uma-free.com" },
+                    { name: "利用規約", url: "https://uma-free.com/terms" },
+                ]}
+            />
             <Breadcrumb />
             <div className="py-4 sm:py-8">
                 <div className="mx-auto">

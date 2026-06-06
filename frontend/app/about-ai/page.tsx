@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { AdUnit } from '@/components/AdUnit';
+import { BreadcrumbSchema } from '@/components/StructuredData';
 
 export const metadata: Metadata = {
     title: '競馬データ分析の仕組み｜AI予想の根拠と使い方',
@@ -77,6 +78,12 @@ export default function AboutAiPage() {
 
     return (
         <>
+            <BreadcrumbSchema
+                items={[
+                    { name: 'ホーム', url: 'https://uma-free.com' },
+                    { name: 'AI予想の仕組み', url: 'https://uma-free.com/about-ai' },
+                ]}
+            />
             <Breadcrumb />
             <div className="py-10 sm:py-16 px-4 w-full bg-surface">
                 <div className="mx-auto w-full">

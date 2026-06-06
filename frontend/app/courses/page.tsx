@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { BreadcrumbSchema } from "@/components/StructuredData";
 import { courseProfiles } from "@/lib/growth-content";
 
 export const metadata: Metadata = {
@@ -16,6 +17,12 @@ export const metadata: Metadata = {
 export default function CoursesPage() {
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "ホーム", url: "https://uma-free.com" },
+          { name: "コース別データ", url: "https://uma-free.com/courses" },
+        ]}
+      />
       <Breadcrumb />
       <div className="mx-auto max-w-6xl px-4 pb-12 pt-6">
         <header className="border-b border-slate-200 pb-8">

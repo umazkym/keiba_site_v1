@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { BreadcrumbSchema } from "@/components/StructuredData";
 import { courseProfiles, getCourseProfile } from "@/lib/growth-content";
 
 type Props = {
@@ -50,6 +51,13 @@ export default function CoursePage({ params }: Props) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <BreadcrumbSchema
+        items={[
+          { name: "ホーム", url: "https://uma-free.com" },
+          { name: "コース別データ", url: "https://uma-free.com/courses" },
+          { name: profile.courseName, url: `https://uma-free.com/courses/${profile.venue}/${profile.course}` },
+        ]}
+      />
       <Breadcrumb />
       <article className="mx-auto max-w-4xl px-4 pb-12 pt-6">
         <header className="border-b border-slate-200 pb-8">

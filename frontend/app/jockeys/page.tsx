@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { BreadcrumbSchema } from "@/components/StructuredData";
 import { jockeyProfiles } from "@/lib/growth-content";
 
 export const metadata: Metadata = {
@@ -16,6 +17,12 @@ export const metadata: Metadata = {
 export default function JockeysPage() {
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "ホーム", url: "https://uma-free.com" },
+          { name: "騎手別データ", url: "https://uma-free.com/jockeys" },
+        ]}
+      />
       <Breadcrumb />
       <div className="mx-auto max-w-6xl px-4 pb-12 pt-6">
         <header className="border-b border-slate-200 pb-8">

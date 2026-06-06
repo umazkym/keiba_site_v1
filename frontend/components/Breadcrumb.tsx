@@ -124,26 +124,6 @@ export function Breadcrumb() {
           </li>
         ))}
       </ol>
-
-      {/* Schema.org構造化データ */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'BreadcrumbList',
-            'itemListElement': breadcrumbs
-              .filter(b => b.href || b === breadcrumbs[breadcrumbs.length - 1])
-              .map((item, index) => ({
-                '@type': 'ListItem',
-                'position': index + 1,
-                'name': item.label,
-                'item': item.href ? `https://uma-free.com${item.href}` : undefined,
-              }))
-              .filter(item => item.item !== undefined),
-          }),
-        }}
-      />
     </nav>
   );
 }

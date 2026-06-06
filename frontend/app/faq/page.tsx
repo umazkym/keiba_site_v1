@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { FAQClient } from '@/components/FAQClient';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { AdUnit } from '@/components/AdUnit';
+import { BreadcrumbSchema, FAQSchema } from '@/components/StructuredData';
+import { faqItems } from '@/lib/faq-content';
 
 export const metadata: Metadata = {
     title: 'よくある質問',
@@ -22,6 +24,13 @@ export const metadata: Metadata = {
 export default function FAQPage() {
     return (
         <div className="flex flex-col min-h-screen">
+            <FAQSchema faqs={faqItems.map(({ question, answer }) => ({ question, answer }))} />
+            <BreadcrumbSchema
+                items={[
+                    { name: 'ホーム', url: 'https://uma-free.com' },
+                    { name: 'よくある質問', url: 'https://uma-free.com/faq' },
+                ]}
+            />
             <Breadcrumb />
             {/* 広告: FAQページ上部（ブレッドクラム直下） */}
             <div className="mx-auto px-4 pt-4 w-full max-w-[800px]">

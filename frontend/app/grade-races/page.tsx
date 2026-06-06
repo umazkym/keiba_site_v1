@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { BreadcrumbSchema } from "@/components/StructuredData";
 import { gradeRaceProfiles } from "@/lib/grade-race-content";
 
 export const metadata: Metadata = {
@@ -42,6 +43,12 @@ const articleLinks = [
 export default function GradeRacesPage() {
   return (
     <>
+      <BreadcrumbSchema
+        items={[
+          { name: "ホーム", url: "https://uma-free.com" },
+          { name: "重賞データ", url: "https://uma-free.com/grade-races" },
+        ]}
+      />
       <Breadcrumb />
       <div className="mx-auto max-w-5xl px-4 pb-12 pt-6">
         <header className="border-b border-slate-200 pb-8">

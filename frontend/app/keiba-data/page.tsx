@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { BreadcrumbSchema } from "@/components/StructuredData";
 import { dataHubLinks, courseProfiles, jockeyProfiles } from "@/lib/growth-content";
 
 export const metadata: Metadata = {
@@ -132,6 +133,12 @@ export default function KeibaDataPage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <BreadcrumbSchema
+        items={[
+          { name: "ホーム", url: "https://uma-free.com" },
+          { name: "データの見方", url: "https://uma-free.com/keiba-data" },
+        ]}
+      />
       <Breadcrumb />
       <div className="mx-auto max-w-[1200px] px-4 pb-14 pt-4">
         <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">

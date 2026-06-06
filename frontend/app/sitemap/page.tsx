@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { BreadcrumbSchema } from '@/components/StructuredData';
 
 export const metadata: Metadata = {
     title: 'サイトマップ',
@@ -43,6 +44,12 @@ export default function SitemapPage() {
 
     return (
         <>
+            <BreadcrumbSchema
+                items={[
+                    { name: 'ホーム', url: 'https://uma-free.com' },
+                    { name: 'サイトマップ', url: 'https://uma-free.com/sitemap' },
+                ]}
+            />
             <Breadcrumb />
             <div className="py-4 sm:py-8">
                 <div className="mx-auto">

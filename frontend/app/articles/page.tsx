@@ -5,6 +5,7 @@ import { getAllArticles, getUniqueCategories } from '../../lib/articles';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
+import { BreadcrumbSchema } from '@/components/StructuredData';
 import type { Metadata } from 'next';
 
 interface ArticlesPageProps {
@@ -83,6 +84,12 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
 
     return (
         <>
+            <BreadcrumbSchema
+                items={[
+                    { name: 'ホーム', url: 'https://uma-free.com' },
+                    { name: '記事', url: 'https://uma-free.com/articles' },
+                ]}
+            />
             <div className="relative -mx-3 border-b border-slate-200 bg-white sm:-mx-4 md:-mx-6">
                 <div className="px-4 py-6 sm:px-6 sm:py-8">
                     <div className="flex flex-wrap items-end justify-between gap-4">

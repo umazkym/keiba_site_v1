@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { BreadcrumbSchema } from "@/components/StructuredData";
 import { getJockeyProfile, jockeyProfiles } from "@/lib/growth-content";
 
 type Props = {
@@ -48,6 +49,13 @@ export default function JockeyPage({ params }: Props) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <BreadcrumbSchema
+        items={[
+          { name: "ホーム", url: "https://uma-free.com" },
+          { name: "騎手別データ", url: "https://uma-free.com/jockeys" },
+          { name: profile.name, url: `https://uma-free.com/jockeys/${profile.slug}` },
+        ]}
+      />
       <Breadcrumb />
       <article className="mx-auto max-w-4xl px-4 pb-12 pt-6">
         <header className="border-b border-slate-200 pb-8">

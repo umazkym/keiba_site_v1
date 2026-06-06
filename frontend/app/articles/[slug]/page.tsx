@@ -8,11 +8,8 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { RelatedArticles } from '@/components/RelatedArticles';
 import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
-import { enhanceArticleHtml, getArticleIntent } from '@/lib/article-ux';
-import { ArticleIntentPanel } from '@/components/ArticleIntentPanel';
+import { enhanceArticleHtml } from '@/lib/article-ux';
 import { ArticleSearchEntryPanel } from '@/components/ArticleSearchEntryPanel';
-import { GradeRaceUpdatePanel } from '@/components/GradeRaceUpdatePanel';
-import { getGradeRaceUpdatePlan } from '@/lib/grade-race-update-plan';
 import { getTopPayoutHits } from '@/lib/api';
 
 type Props = {
@@ -72,8 +69,6 @@ export default async function ArticlePage({ params }: Props) {
     const textContent = article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, '');
     const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
     const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
-    const intent = getArticleIntent(article);
-    const gradeRaceUpdatePlan = getGradeRaceUpdatePlan(article);
 
     const articleUrl = `https://uma-free.com/articles/${params.slug}`;
     const datePublished = new Date(article.date).toISOString();
@@ -116,10 +111,6 @@ export default async function ArticlePage({ params }: Props) {
           <Breadcrumb />
 
           <article>
-            <div className="mb-7">
-              <ArticleSearchEntryPanel topHits={topHits} />
-            </div>
-
             {/* ===== ARTICLE HEADER ===== */}
             <header className="relative border-b border-slate-200 pb-8">
               {/* アイキャッチ画像（フルワイド） */}
@@ -181,15 +172,9 @@ export default async function ArticlePage({ params }: Props) {
               </div>
             </header>
 
-            <div className="mt-4">
-              <ArticleIntentPanel intent={intent} />
+            <div className="mt-5">
+              <ArticleSearchEntryPanel topHits={topHits} />
             </div>
-
-            {gradeRaceUpdatePlan && (
-              <div className="mt-4">
-                <GradeRaceUpdatePanel plan={gradeRaceUpdatePlan} />
-              </div>
-            )}
 
             {toc.length > 1 && (
               <details className="mt-4 border border-slate-200 bg-slate-50" aria-label="記事の目次">

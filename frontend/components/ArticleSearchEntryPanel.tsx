@@ -41,16 +41,6 @@ export function ArticleSearchEntryPanel({ topHits }: ArticleSearchEntryPanelProp
 
   return (
     <section className="space-y-5">
-      <div className="flex justify-center sm:justify-start">
-        <Link
-          href="/races/today"
-          className="hero-btn group justify-center border border-slate-200"
-        >
-          本日の分析を見る
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-        </Link>
-      </div>
-
       <TopHitsDisplay initialHits={initialHits} />
 
       <section>
@@ -145,6 +135,16 @@ export function ArticleSearchEntryPanel({ topHits }: ArticleSearchEntryPanelProp
           </FeaturePreviewCard>
         </div>
       </section>
+
+      <div className="flex justify-center">
+        <Link
+          href="/races/today"
+          className="hero-btn group justify-center border border-slate-200"
+        >
+          本日の分析を見る
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+        </Link>
+      </div>
     </section>
   );
 }

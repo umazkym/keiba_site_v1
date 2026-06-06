@@ -209,29 +209,66 @@ function compactForTitle(value: unknown): string {
     .trim();
 }
 
-function suffixForTheme(themeCluster: unknown): string {
-  switch (String(themeCluster || '')) {
-    case 'jockey_data':
-      return '勝率と回収率の見方3点';
-    case 'grade_race_preview':
-      return '枠順と偏差値の見方3点';
-    case 'running_style_data':
-      return '脚質と展開の見方3点';
-    case 'popularity_data':
-      return '人気と配当の見方3点';
-    case 'waku_data':
-    case 'asset':
-    case 'seasonal':
-      return '枠順の買い方3点';
-    default:
-      return 'データの見方3点';
+function stableIndex(seed: string, size: number): number {
+  if (size <= 1) return 0;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
   }
+  return hash % size;
+}
+
+function suffixForTheme(themeCluster: unknown, seed: string): string {
+  const suffixesByTheme: Record<string, string[]> = {
+    jockey_data: [
+      '勝率と回収率で残す騎手',
+      '人気とのズレを見る騎手データ',
+      '軸候補を絞る騎手成績',
+    ],
+    grade_race_preview: [
+      '枠順と偏差値の確認順',
+      '疑う条件と買い足す条件',
+      '直前データで見る評価軸',
+    ],
+    running_style_data: [
+      '脚質と隊列で見る狙い所',
+      '展開から残す馬の条件',
+      '先行差しの評価を分ける',
+    ],
+    popularity_data: [
+      '人気と配当のズレを読む',
+      '荒れ方を見る上位人気データ',
+      '買い過ぎを避ける人気傾向',
+    ],
+    waku_data: [
+      '枠順で評価を分ける条件',
+      '内外の差から見る買い方',
+      '有利枠を出馬表で確認',
+    ],
+    asset: [
+      '枠順で評価を分ける条件',
+      '内外の差から見る買い方',
+      '有利枠を出馬表で確認',
+    ],
+    seasonal: [
+      '開催時期で見る枠順傾向',
+      '今の馬場で残す条件',
+      '季節替わりの評価軸',
+    ],
+  };
+
+  const suffixes = suffixesByTheme[String(themeCluster || '')] || [
+    'データから見る確認順',
+    '出馬表で使う判断材料',
+    '買い目を絞るデータ軸',
+  ];
+  return suffixes[stableIndex(seed, suffixes.length)];
 }
 
 function fitTitleToSeo(title: string, data: Record<string, any>, content: string): string {
   let result = sanitizeGeneratedText(title).replace(/^["']|["']$/g, '');
   const fallbackBase = compactForTitle(data.target_keyword || result || '競馬データ');
-  const suffix = suffixForTheme(data.theme_cluster);
+  const suffix = suffixForTheme(data.theme_cluster, fallbackBase);
   const numberInContent = content.match(/\d+(?:\.\d+)?%?/)?.[0] || '3点';
 
   if (!/\d/.test(result)) {
@@ -282,13 +319,52 @@ function trimDescription(description: string): string {
   return `${result.replace(/[、。]+$/g, '')}。`;
 }
 
+function descriptionAdditionsForTheme(themeCluster: unknown): string[] {
+  const theme = String(themeCluster || '');
+  if (theme === 'jockey_data') {
+    return [
+      '騎乗回数、勝率、人気とのズレを分け、軸候補と相手候補の線引きを整理します。',
+      '好走率だけでなく、回収率が数字に残る場面と人気先行で疑う場面を確認できます。',
+    ];
+  }
+
+  if (theme === 'grade_race_preview') {
+    return [
+      '枠順、脚質、AI偏差値を分け、買い足す条件と評価を下げる条件を整理します。',
+      '直前に見る材料を絞り、人気馬をそのまま信じるか疑うかの判断順を確認できます。',
+    ];
+  }
+
+  if (theme === 'running_style_data') {
+    return [
+      '先行勢と差し勢の数字を分け、隊列が向く馬と展開待ちの馬を整理します。',
+      '直線やコーナーの特徴を踏まえ、出馬表で脚質を確認する順番をまとめます。',
+    ];
+  }
+
+  if (theme === 'popularity_data') {
+    return [
+      '上位人気の信頼度と配当妙味を分け、堅く見る場面と広げる場面を確認できます。',
+      '人気だけで決めず、オッズに織り込まれた条件と残したい穴条件を整理します。',
+    ];
+  }
+
+  if (theme === 'waku_data' || theme === 'asset' || theme === 'seasonal') {
+    return [
+      '内外の枠差、複勝率、回収率を分け、軸にしやすい枠と割り引く枠を整理します。',
+      '枠番の数字を出馬表で使える形にし、当日の馬場や脚質と重ねて確認できます。',
+    ];
+  }
+
+  return [
+    '数字の強弱と当日の確認材料を分け、買い・抑え・見送りの判断を整理します。',
+    '出馬表を見る前に、評価を上げる条件と下げる条件を確認できます。',
+  ];
+}
+
 function fitDescriptionToSeo(description: string, data: Record<string, any>): string {
   const target = compactForTitle(data.target_keyword || data.title || 'この条件');
-  const additions = [
-    '勝率、回収率、枠順や騎手の傾向を分けて見て、買い・抑え・見送りの判断を整理します。',
-    '直前に見る数字と条件を分け、出馬表を開く前の確認順序をまとめます。',
-    '人気だけに寄せず、評価を上げる場面と下げる場面を確認できます。',
-  ];
+  const additions = descriptionAdditionsForTheme(data.theme_cluster);
 
   let result = sanitizeGeneratedText(description)
     .replace(/徹底分析/g, '整理')
@@ -305,7 +381,7 @@ function fitDescriptionToSeo(description: string, data: Record<string, any>): st
   }
 
   if (result.length < SEO_RULES.description_min_chars) {
-    result = `${target}のデータを整理。勝率、回収率、枠順や騎手の傾向を分けて見て、買い・抑え・見送りの判断を確認できます。直前に見る数字と条件もまとめます。`;
+    result = `${target}のデータを整理。${additions.join('')}`;
   }
 
   return trimDescription(sanitizeGeneratedText(result));
@@ -402,13 +478,13 @@ function ensureH2HeadingsHaveNumbers(content: string): string {
     const heading = String(headingText || '').trim();
     if (heading === 'このコースの買い目ポイント') return full;
     if (heading === 'まとめ' || heading === '総論' || heading === 'おわりに') {
-      return '## 買い方を決める3つの確認順';
+      return '## 買い目を決める前に確認する材料';
     }
     if (/\d/.test(heading)) return full;
-    if (heading.includes('AI偏差値')) return '## AI偏差値上位3頭と買い方の優先順';
-    if (heading.includes('騎手')) return '## 騎手データで見る3つの判断材料';
-    if (heading.includes('コース')) return '## コース特性で見る3つの注意点';
-    return `## ${heading}で見る3つの判断材料`;
+    if (heading.includes('AI偏差値')) return '## AI偏差値上位と買い方の優先順';
+    if (heading.includes('騎手')) return '## 騎手データで評価を分ける材料';
+    if (heading.includes('コース')) return '## コース特性と当日の確認順';
+    return full;
   });
 }
 
@@ -420,53 +496,8 @@ function ensureNumberInOpening(content: string, data: Record<string, any>): stri
   return `${target}では、まず3つの数字を順に確認すると買い目の優先順位を決めやすい。\n\n${content}`;
 }
 
-function supplementalBlocks(data: Record<string, any>): string[] {
-  const target = compactForTitle(data.target_keyword || data.title || 'この条件');
-  return [
-    `## 直前に見る3つの確認材料\n\n${target}を見る前は、表の勝率だけでなく、騎乗回数や回収率、当日の馬場を分けて確認したい。母数が少ない数字は上振れを含みやすいため、人気馬をそのまま軸にするのではなく、同じ条件で安定して馬券圏に残っているかを見る。\n\n- 勝率: 軸候補を探すための入口にする\n- 回収率: 配当妙味が残っているかを見る\n- 母数: データの信頼度を測る`,
-    `## 買い目へ移す3つの順序\n\n最初に勝率で候補を絞り、次に回収率で人気との釣り合いを見る。最後に枠順、脚質、馬場状態を重ねると、買う理由と見送る理由を分けやすい。数字が高くても人気が集中している場合は、単勝より相手候補に回す判断も必要になる。`,
-    `## 出馬表で確認したい3つの条件\n\n同じコース成績でも、当日の頭数やペースで評価は変わる。先行馬が多い日は差し馬の位置取り、少頭数では人気馬の取りこぼしに注意したい。直前の出馬表では、データの順位だけでなく、展開に合う馬がどれかを確認する。`,
-    `## 人気を疑う3つの場面\n\n数字が良い条件でも、人気が先に集まっている時は買い目を広げすぎない方がいい。勝率が高い馬や騎手ほどオッズに反映されやすく、配当面の妙味は薄くなる。上位評価をそのまま買うのではなく、相手候補の絞り込みや見送りの判断まで含めて使いたい。`,
-    `## 馬場変化で見る3つのズレ\n\n良馬場の成績が中心のデータは、雨や乾きかけの馬場でそのまま使いにくい。時計が掛かる日は先行力、内が荒れる日は外を通せる脚質、乾いて速くなる日は位置取りの速さを重視する。直前の馬場傾向と表の数字を合わせることで、過去データと当日のズレを小さくできる。`,
-    `## 最後に残す3つの優先順位\n\n買い目を決める時は、最初に軸候補、次に相手候補、最後に評価を下げる条件を分ける。候補を増やすほど的中の幅は広がるが、根拠の薄い馬まで足すと判断がぼやける。数字で強調されている条件と、当日の出馬表で確認できる材料が重なるところを優先したい。`,
-  ];
-}
-
-function insertBeforeBuyingPointSection(content: string, block: string): string {
-  const headingIndex = findLastBuyingPointHeading(content);
-  if (headingIndex < 0) {
-    return `${content.trim()}\n\n${block.trim()}`;
-  }
-
-  return `${content.slice(0, headingIndex).trim()}\n\n${block.trim()}\n\n${content.slice(headingIndex).trimStart()}`;
-}
-
-function ensureMinimumBodyLength(content: string, data: Record<string, any>): string {
-  let result = content;
-  for (const block of supplementalBlocks(data)) {
-    if (result.replace(/\s/g, '').length >= SEO_RULES.min_word_count) break;
-    if (!result.includes(block.split('\n')[0])) {
-      result = insertBeforeBuyingPointSection(result, block);
-    }
-  }
-
-  const target = compactForTitle(data.target_keyword || data.title || 'この条件');
-  const extraParagraphs = [
-    `${target}の数字は、単独で正解を決めるためではなく、出馬表を見る順番を整えるために使う。勝率が高い条件は入口として便利だが、人気が集まれば配当面の妙味は薄くなる。逆に回収率だけが目立つ条件は、母数や馬場の偏りを確認してから相手候補に残したい。`,
-    `同じコースでも、開催が進んだ週、雨が残る日、少頭数のレースでは隊列が変わる。過去データの順位をそのまま買い目へ移すのではなく、当日の馬場、脚質の並び、前走内容を重ねることで、数字の使いどころがはっきりする。`,
-    `最終的には、買う理由が複数重なる馬だけを中心に残す。勝率、回収率、枠順、騎手のどれか1つだけで強く見える場合は、相手候補までに抑える判断も必要になる。迷った時ほど、評価を上げる条件と下げる条件を分けて確認したい。`,
-    `短時間で複数レースを見る場合は、最初から細部を追いすぎないことも大切だ。まず表の上位条件を確認し、次に人気とオッズの偏りを見て、最後に当日の馬場で評価を微調整する。この順序なら、根拠の弱い買い足しを減らしやすい。`,
-    `買い目を組む前には、数字が示す強みと、当日の条件で崩れそうな点を分けておく。どちらも説明できる候補だけを残せば、人気や印の雰囲気に流されにくくなる。`,
-  ];
-
-  for (const paragraph of extraParagraphs) {
-    if (result.replace(/\s/g, '').length >= SEO_RULES.min_word_count) break;
-    if (!result.includes(paragraph.slice(0, 24))) {
-      result = insertBeforeBuyingPointSection(result, paragraph);
-    }
-  }
-
-  return result;
+function ensureMinimumBodyLength(content: string, _data: Record<string, any>): string {
+  return content;
 }
 
 export function autoRepairDraftMarkdown(markdownText: string): { content: string; changes: string[] } {
@@ -521,13 +552,15 @@ STEP 2：構造チェック
 ・チェックマークやバツ印などの装飾記号、煽りの強い「最強」「圧倒的」「狙い撃つ」「買うな」「消去対象」が残っていないか
 ・重賞記事は、人気馬を煽るだけでなく「疑う条件」「買い足す条件」「見送る条件」が分かれているか
 ・平場向け記事は、短時間で複数レースを見る読者が使える初期判断になっているか
+・文字数不足を補うために、勝率、回収率、枠順別成績、斤量別成績などの新しい数値を作らないこと
 STEP 3：フォーマットとSEOのチェック
-・タイトルの文字数（30〜40文字）と構成
-・ディスクリプションの文字数（120〜140文字）
+・タイトルの文字数（30〜50文字）と構成
+・ディスクリプションの文字数（120〜160文字）
 ※もし「事前の機械チェック結果」でエラーが指摘されている場合は、必ずそれを満たすようにtitleとdescriptionを修正すること。
 ※関連記事プレースホルダーは要求しない。本文中に「関連記事」セクションや「[関連記事：...]」は追加しないこと。
 ※存在確認できないURL、仮URL、単独行の「(/course-xxx)」のような壊れたリンク片は必ず削除すること。
 ※本文を長くしすぎない。必要な修正だけ行い、表・数値・母数・期間は壊さないこと。
+※本文の文字数不足が大きい場合は、定型段落で水増しせずREJECTEDにすること。
 
 【JSON出力フォーマット】
 以下のJSONスキーマに従って出力する。Markdownのコードブロックなどは含めず、純粋なJSON文字列のみを出力すること。

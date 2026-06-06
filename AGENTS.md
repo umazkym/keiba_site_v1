@@ -241,7 +241,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📊 全体の進捗状況
 
-**最終更新**: 2026-06-06
+**最終更新**: 2026-06-07
 
 | フェーズ | ステータス | 完了数/総数 | 進捗率 |
 |---------|----------|-----------|-------|
@@ -476,6 +476,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 -----
 
 ### 📝 完了したステップの記録
+
+#### ✅ 記事生成改善: 生成パイプラインの重複・架空データ対策
+- **完了日時**: 2026-06-07 02:22
+- **実施内容**: 記事生成パイプライン調査レポートに基づき、Writer、Editor、SEOチェック、Publisher周辺の構造問題を修正。`title` 上限を40字から50字へ、`description` 上限を160字へ拡張し、40字制限による画一的なフォールバックtitleを抑制した。Writerプロンプトには `reference_data` に存在しない勝率・回収率・枠順別成績・斤量別成績・AI偏差値を補完、推測、生成しないルールを追加し、データテーブルも入力JSONに存在する列と値だけで作るよう明文化した。Editor側は、文字数不足時に `直前に見る3つの確認材料` などの共通定型ブロックを差し込む処理を停止し、短い原稿は定型文で合格させず、機械チェックで落とす設計へ変更。H2見出しも全見出しへ数字を強制するルールを緩和し、最低1つの具体的な数字を含む見出しを求めつつ、全記事が `3つの` 構文へ寄る状態を避けた。さらに `/og/{slug}.png` の動的PNG生成ルートを追加し、Publisherが設定していたOG画像URLが実際に画像として返るようにした。既存記事では、Editor由来の固定ブロックが残っていた10記事から該当セクションを削除し、1記事の重複description文言と1記事の過剰表現 `圧倒的` を自然な表現へ修正。`posted_history.json` は既存84記事のfrontmatterから復元し、重複生成チェックが1件分しか効いていない状態を解消した。
+- **変更ファイル**: `frontend/scripts/agents/seo_checker.ts`, `frontend/scripts/agents/agent_writer.ts`, `frontend/scripts/agents/agent_editor.ts`, `frontend/app/og/[slug]/route.ts`, `frontend/scripts/agents/cleanup_generated_article_boilerplate.js`, `frontend/scripts/agents/rebuild_posted_history.js`, `data/posted_history.json`, `frontend/content/articles/2026-05-21-kyotodirt1800m-jockey-data.md`, `frontend/content/articles/2026-05-24-2026-ai-98ffdbb1.md`, `frontend/content/articles/2026-05-27-nakayamaturf2000m-jockey-data.md`, `frontend/content/articles/2026-05-27-s2026-ai-9b63f42c.md`, `frontend/content/articles/2026-05-29-nakayamadirt1200m-jockey-data.md`, `frontend/content/articles/2026-05-30-tokyoturf2400m-jockey-data.md`, `frontend/content/articles/2026-05-31-2026-ai-6c2de93f.md`, `frontend/content/articles/2026-06-03-tokyodirt2100m-jockey-data.md`, `frontend/content/articles/2026-06-04-kyototurf1600m-jockey-data.md`, `frontend/content/articles/2026-06-05-tokyoturf1800m-jockey-data.md`, `frontend/content/articles/2026-04-19-kyotodirt1900m.md`, `AGENTS.md`
+- **確認事項**: `npm run article:validate-links` は84記事チェックで成功。`npx tsc --noEmit` は権限付き実行で成功。`npm run build` はNext devを一時停止した状態で成功し、静的ページ数は153件。既存どおり `caniuse-lite` 更新推奨と、ローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログが出たが終了コードは0。`/og/2026-06-05-tokyoturf1800m-jockey-data.png` はローカルでHTTP 200、`Content-Type: image/png` を確認し、生成PNGも目視でタイトル・説明文が枠内に収まることを確認。Codex内蔵ブラウザは `windows sandbox failed: spawn setup refresh` で接続できず、ブラウザスクリーンショット確認は未実施。ビルド確認後、ローカルNext devは `http://localhost:3000` で再起動済み。
+- **次のステップ**: 固定ブロック削除で本文が1,500字未満になった既存記事は、架空データを足さずに個別リライトで厚みを戻す。次回以降の生成記事では、Editorの水増しに頼らずWriterの初稿品質をGA4/GSCのCTR・滞在時間で確認する。OG画像は本番反映後、X Card Validator等で `https://uma-free.com/og/{slug}.png` がカード画像として取得されるか確認する。
 
 #### ✅ UI改善: 記事流入向けトップ導線追加とトップページ導線整理
 - **完了日時**: 2026-06-06 02:21

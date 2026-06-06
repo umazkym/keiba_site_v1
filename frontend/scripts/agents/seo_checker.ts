@@ -2,14 +2,15 @@ import matter from 'gray-matter';
 
 export const SEO_RULES = {
   title_min_chars: 30,
-  title_max_chars: 40,
+  title_max_chars: 50,
   description_min_chars: 120,
-  description_max_chars: 140,
+  description_max_chars: 160,
   min_word_count: 1500,
   require_today_race_cta: true,
   require_buying_point_heading: true,
   require_data_table_or_list: true,
-  require_number_in_all_h2: true,
+  require_number_in_all_h2: false,
+  require_number_in_some_h2: true,
   require_number_in_first_100_chars: true,
   hard_banned_strings: [
     "いかがでしたか",
@@ -154,28 +155,39 @@ export function checkSEO(markdownText: string): SEOCheckResult {
   }
 
   // 6. 見出し(H2)チェック
-  if (SEO_RULES.require_number_in_all_h2) {
-    const h2Regex = /^##\s+(.*)$/gm;
-    let match;
-    let foundH2 = false;
-    while ((match = h2Regex.exec(content)) !== null) {
-      foundH2 = true;
-      const h2Text = match[1];
-      const isRequiredBuyingPointHeading = h2Text.trim() === 'このコースの買い目ポイント';
-      if (!isRequiredBuyingPointHeading && !/\d/.test(h2Text)) {
+  const h2Regex = /^##\s+(.*)$/gm;
+  let match;
+  let foundH2 = false;
+  let nonBuyingH2Count = 0;
+  let numberedNonBuyingH2Count = 0;
+  while ((match = h2Regex.exec(content)) !== null) {
+    foundH2 = true;
+    const h2Text = match[1].trim();
+    const isRequiredBuyingPointHeading = h2Text === 'このコースの買い目ポイント';
+
+    if (!isRequiredBuyingPointHeading) {
+      nonBuyingH2Count++;
+      if (/\d/.test(h2Text)) {
+        numberedNonBuyingH2Count++;
+      } else if (SEO_RULES.require_number_in_all_h2) {
         errors.push(`H2見出しに数字が含まれていません: 「${h2Text}」`);
       }
-      if (h2Text === 'まとめ') {
-        errors.push(`「まとめ」というH2見出しが存在します。(作成禁止)`);
-      }
-      if (h2Text === '総論' || h2Text === 'おわりに') {
-        errors.push(`「${h2Text}」というH2見出しが存在します。(作成禁止)`);
-      }
     }
-    
-    if (!foundH2) {
-      errors.push(`H2見出しが存在しません。見出しに数字と結論を含めてください。`);
+
+    if (h2Text === 'まとめ') {
+      errors.push(`「まとめ」というH2見出しが存在します。(作成禁止)`);
     }
+    if (h2Text === '総論' || h2Text === 'おわりに') {
+      errors.push(`「${h2Text}」というH2見出しが存在します。(作成禁止)`);
+    }
+  }
+
+  if (!foundH2) {
+    errors.push(`H2見出しが存在しません。見出しに数字または具体的な条件を含めてください。`);
+  }
+
+  if (SEO_RULES.require_number_in_some_h2 && nonBuyingH2Count > 0 && numberedNonBuyingH2Count === 0) {
+    errors.push(`主要H2のうち少なくとも1つには、勝率・距離・枠番などの具体的な数字を含めてください。`);
   }
 
   // 7. 冒頭100文字以内の数字チェック

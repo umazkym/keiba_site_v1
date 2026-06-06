@@ -102,6 +102,12 @@ export default function RootLayout({
                 {/* AdSenseアカウントメタタグ */}
                 <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
 
+                {/* Bing Webmaster Tools 認証メタタグ
+                    Bingからの流入が294セッション（Google 350の84%）あるため登録必須。
+                    登録手順: https://www.bing.com/webmasters/ でサイト追加 →
+                    Search Console連携またはメタタグ認証を選択 → 認証コードをcontentに設定 */}
+                {/* <meta name="msvalidate.01" content="YOUR_BING_VERIFICATION_CODE" /> */}
+
                 {/* PWA: ホーム画面追加対応 */}
                 <link rel="manifest" href="/manifest.json" />
 

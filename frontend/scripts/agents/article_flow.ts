@@ -34,6 +34,15 @@ type ResearchDecision = {
   tavilyEnabled: boolean;
 };
 
+export type ResearchSource = {
+  source_url: string;
+  source_name: string;
+  source_type: 'official' | 'trusted_media' | 'reference' | 'other';
+  fetched_at: string;
+  title: string;
+  allowed_claims: string[];
+};
+
 type ArticleFlowState = {
   target_keyword: string;
   theme_cluster: string;
@@ -42,7 +51,23 @@ type ArticleFlowState = {
   related_articles: RelatedArticle[];
   evidence_pack: EvidencePack;
   research_decision: ResearchDecision;
+  research_sources: ResearchSource[];
+  tavily_usage_credits: number;
   issues: FlowIssue[];
+};
+
+type TavilySearchResult = {
+  title?: string;
+  url?: string;
+  content?: string;
+  score?: number;
+};
+
+type TavilySearchResponse = {
+  query?: string;
+  results?: TavilySearchResult[];
+  usage?: { credits?: number };
+  request_id?: string;
 };
 
 export type ArticleFlowResult = {
@@ -222,6 +247,179 @@ function decideResearch(order: WriteOrder, articleType: ArticleType): ResearchDe
   };
 }
 
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value || '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseCsvEnv(name: string, fallback: string[]): string[] {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  return raw
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function compactText(value: string, maxLength = 240): string {
+  const compacted = value.replace(/\s+/g, ' ').trim();
+  return compacted.length > maxLength ? `${compacted.slice(0, maxLength - 1)}…` : compacted;
+}
+
+function getHostname(urlValue: string): string {
+  try {
+    return new URL(urlValue).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+function classifySourceType(urlValue: string): ResearchSource['source_type'] {
+  const host = getHostname(urlValue);
+  if (host === 'jra.jp' || host.endsWith('.jra.jp') || host === 'jra.go.jp' || host.endsWith('.jra.go.jp')) {
+    return 'official';
+  }
+  if (/keiba|netkeiba|sponichi|sanspo|nikkan|tospo|yahoo/.test(host)) {
+    return 'trusted_media';
+  }
+  if (host === 'uma-free.com') return 'reference';
+  return 'other';
+}
+
+function extractAllowedClaims(content: string): string[] {
+  const rejectedMetricPattern = /勝率|複勝率|連対率|回収率|単勝回収|複勝回収|AI偏差値|指数|オッズ|人気|予想印/;
+  return content
+    .split(/。|\n/)
+    .map(sentence => compactText(sentence, 180))
+    .filter(sentence => sentence.length >= 18)
+    .filter(sentence => !rejectedMetricPattern.test(sentence))
+    .slice(0, 3);
+}
+
+function buildTavilyQueries(order: WriteOrder, articleType: ArticleType): string[] {
+  const ref = order.reference_data as Record<string, unknown>;
+  const raceName = String(ref.race_name || '').replace(/\([^)]*\)/g, '').trim();
+  const raceDate = String(ref.race_date || '').trim();
+  const venue = String(ref.venue || ref.condition || '').trim();
+
+  if (articleType === 'grade_race_preview' && raceName) {
+    return [
+      `${raceName} ${raceDate} ${venue} JRA 公式`,
+      `${raceName} 出走予定 開催情報 JRA`,
+    ];
+  }
+
+  if (articleType === 'beginner' || articleType === 'guide') {
+    return [
+      `${order.target_keyword} JRA 公式`,
+      `${order.target_keyword} 競馬 公式`,
+    ];
+  }
+
+  if (ref.external_research_query) {
+    return [String(ref.external_research_query)];
+  }
+
+  return [];
+}
+
+async function tavilySearch(query: string, includeDomains: string[], maxResults: number): Promise<TavilySearchResponse> {
+  const apiKey = process.env.TAVILY_API_KEY;
+  if (!apiKey) {
+    throw new Error('TAVILY_API_KEY is not set.');
+  }
+
+  const response = await fetch('https://api.tavily.com/search', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      query,
+      search_depth: 'basic',
+      topic: 'general',
+      max_results: maxResults,
+      include_answer: false,
+      include_raw_content: false,
+      include_images: false,
+      include_domains: includeDomains.length > 0 ? includeDomains : undefined,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Tavily search failed: ${response.status} ${body.slice(0, 160)}`);
+  }
+
+  return response.json() as Promise<TavilySearchResponse>;
+}
+
+function sourceFromTavilyResult(result: TavilySearchResult, fetchedAt: string): ResearchSource | null {
+  const url = String(result.url || '').trim();
+  const content = String(result.content || '').trim();
+  const title = String(result.title || '').trim();
+  if (!url || !content || !title) return null;
+
+  const sourceType = classifySourceType(url);
+  if (sourceType === 'other') return null;
+
+  const allowedClaims = extractAllowedClaims(content);
+  if (allowedClaims.length === 0) return null;
+
+  return {
+    source_url: url,
+    source_name: getHostname(url),
+    source_type: sourceType,
+    fetched_at: fetchedAt,
+    title: compactText(title, 120),
+    allowed_claims: allowedClaims,
+  };
+}
+
+async function runTavilyResearch(order: WriteOrder, state: ArticleFlowState): Promise<void> {
+  if (!state.research_decision.needsExternalResearch || !state.research_decision.tavilyEnabled) return;
+
+  const maxQueries = parsePositiveInt(process.env.TAVILY_ARTICLE_MAX_QUERIES, 2);
+  const maxResults = Math.min(parsePositiveInt(process.env.TAVILY_ARTICLE_MAX_RESULTS, 3), 5);
+  const includeDomains = parseCsvEnv('TAVILY_ARTICLE_INCLUDE_DOMAINS', ['jra.jp', 'jra.go.jp']);
+  const queries = buildTavilyQueries(order, state.article_type).slice(0, maxQueries);
+  const seenUrls = new Set<string>();
+  const fetchedAt = new Date().toISOString();
+
+  if (queries.length === 0) {
+    addIssue(state, 'Tavily Research', 'warning', 'External research was requested, but no query could be built.');
+    return;
+  }
+
+  for (const query of queries) {
+    try {
+      const response = await tavilySearch(query, includeDomains, maxResults);
+      state.tavily_usage_credits += response.usage?.credits || 1;
+
+      for (const result of response.results || []) {
+        const source = sourceFromTavilyResult(result, fetchedAt);
+        if (!source || seenUrls.has(source.source_url)) continue;
+        seenUrls.add(source.source_url);
+        state.research_sources.push(source);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addIssue(state, 'Tavily Research', 'warning', message);
+      break;
+    }
+  }
+
+  if (state.research_sources.length === 0) {
+    addIssue(
+      state,
+      'Research Filter',
+      'warning',
+      'No trusted research sources remained after filtering. Continue with DB/internal evidence only.'
+    );
+  }
+}
+
 function createInitialState(order: WriteOrder): ArticleFlowState {
   const articleType = classifyArticleType(order);
   const evidencePack = buildEvidencePack(order);
@@ -234,6 +432,8 @@ function createInitialState(order: WriteOrder): ArticleFlowState {
     related_articles: collectRelatedArticles(order),
     evidence_pack: evidencePack,
     research_decision: decideResearch(order, articleType),
+    research_sources: [],
+    tavily_usage_credits: 0,
     issues: [],
   };
 }
@@ -395,6 +595,8 @@ function buildLog(prefix: string, state: ArticleFlowState): string {
     `  season_label: ${state.season_label}`,
     `  evidence_rows: ${state.evidence_pack.metricRows}`,
     `  related_articles: ${state.related_articles.length}`,
+    `  research_sources: ${state.research_sources.length}`,
+    `  tavily_usage_credits: ${state.tavily_usage_credits}`,
     `  external_research: ${state.research_decision.needsExternalResearch ? 'needed' : 'not_needed'} / tavily=${state.research_decision.tavilyEnabled ? 'enabled' : 'disabled'}`,
     ...issueLines,
   ].join('\n');
@@ -404,9 +606,10 @@ function statusFromIssues(state: ArticleFlowState): FlowStatus {
   return state.issues.some(issue => issue.severity === 'critical') ? 'REJECTED' : 'APPROVED';
 }
 
-export function runPreDraftArticleFlow(order: WriteOrder): ArticleFlowResult {
+export async function runPreDraftArticleFlow(order: WriteOrder): Promise<ArticleFlowResult> {
   const state = createInitialState(order);
   validatePreDraftState(order, state);
+  await runTavilyResearch(order, state);
 
   const status = statusFromIssues(state);
   return {

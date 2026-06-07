@@ -127,12 +127,16 @@ async function runPipeline() {
     console.log(`[Input] Loading real order from: ${file}`);
     console.log(`[Input] target_keyword: ${order.target_keyword}`);
 
-    const preDraftFlow = runPreDraftArticleFlow(order);
+    const preDraftFlow = await runPreDraftArticleFlow(order);
     console.log(preDraftFlow.log);
     if (preDraftFlow.status === 'REJECTED') {
       moveToFailed(orderPath, `article flow rejected before draft: ${preDraftFlow.log.slice(0, 160)}`);
       if (attemptedCount >= MAX_ARTICLES_PER_RUN) break;
       continue;
+    }
+    if (preDraftFlow.state.research_sources.length > 0) {
+      order.research_sources = preDraftFlow.state.research_sources;
+      console.log(`[ArticleFlow] research_sources attached: ${order.research_sources.length}`);
     }
 
     if (!process.env.GEMINI_API_KEY) {

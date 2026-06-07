@@ -241,7 +241,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📊 全体の進捗状況
 
-**最終更新**: 2026-06-07
+**最終更新**: 2026-06-08
 
 | フェーズ | ステータス | 完了数/総数 | 進捗率 |
 |---------|----------|-----------|-------|
@@ -476,6 +476,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 -----
 
 ### 📝 完了したステップの記録
+
+#### ✅ 記事生成改善: Tavily Research/Research Filterの実装完了
+- **完了日時**: 2026-06-08 00:10
+- **実施内容**: 前回までResearch Decisionに留まっていたTavily外部リサーチを、実際の `article:pipeline` 内で動く非同期フローとして実装した。Pre-Draft Flowで記事種別、Evidence Pack、関連記事、外部リサーチ要否を判定し、G1/G2級の重賞プレビュー、初心者・ガイド記事、`external_research_required` 指定記事だけTavily検索を実行する。検索は既定で1記事あたり最大2クエリ、各3件、`jra.jp` / `jra.go.jp` に限定し、通過した結果だけを `research_sources` としてWriterへ渡す。Research Filterでは公式・信頼メディア・内部参照以外を除外し、勝率、複勝率、回収率、AI偏差値、オッズ、人気、予想印などの数値根拠に使われやすい文を `allowed_claims` から除外するようにした。Writerプロンプトにも `research_sources` 以外の外部情報追加禁止、本文内外部リンク禁止、外部リサーチを数値根拠に使わない制約を追加した。GitHub Actionsでは `TAVILY_API_KEY` を `article:pipeline` に渡すよう更新し、毎朝08:00 JSTの自動実行でもTavilyが利用できる状態にした。
+- **変更ファイル**: `.github/workflows/keiba-article-pipeline.yml`, `frontend/scripts/agents/article_flow.ts`, `frontend/scripts/agents/agent_writer.ts`, `frontend/scripts/agents/test_pipeline.ts`, `AGENTS.md`
+- **確認事項**: `npm run article:validate-links` は87記事チェックで成功。`npm run article:audit-quality` は87記事に対して合計316件の改善候補を検出し、標準どおり終了コード0で成功。内訳はcritical 10件、warning 306件で、既存記事のdescription、本文量、Markdown表、買い目ポイント、レース導線、根拠リスクなどが主対象。`npm run build` は成功し、静的ページ数は156件。既存どおり `caniuse-lite` 更新推奨と、ローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログが出たが終了コードは0。`git diff --check` は成功し、CRLF警告のみ。
+- **次のステップ**: GitHub Actions側のRepository Secretに `TAVILY_API_KEY` が設定されていることを確認し、手動実行または次回08:00 JST実行ログで `[ArticleFlow] pre-draft APPROVED`、`research_sources attached`、`[ArticleFlow] post-writer APPROVED` を確認する。Tavily無料枠を守るため、既定では1日1記事、最大2クエリのまま運用する。必要な場合だけ `TAVILY_ARTICLE_INCLUDE_DOMAINS`、`TAVILY_ARTICLE_MAX_QUERIES`、`TAVILY_ARTICLE_MAX_RESULTS` を調整する。
 
 #### ✅ 記事生成改善: 実行パイプラインへの記事作成フロー接続
 - **完了日時**: 2026-06-07 23:53

@@ -9,6 +9,14 @@ import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
 export type WriteOrder = {
   target_keyword: string;
   theme_cluster: string;
+  research_sources?: {
+    source_url: string;
+    source_name: string;
+    source_type: 'official' | 'trusted_media' | 'reference' | 'other';
+    fetched_at: string;
+    title: string;
+    allowed_claims: string[];
+  }[];
   reference_data: {
     period: string;
     condition: string;
@@ -59,6 +67,8 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - 「過去3年」などの期間表現は reference_data.period に従う。period がない場合は期間を断定しない。
 - tavily_results、research_sources、external_research、web_research などの外部リサーチ情報が入力に含まれる場合、それは制度・開催情報・公式発表・注目点の補足にだけ使う。勝率、複勝率、回収率、騎乗回数、AI偏差値、枠順別成績、脚質別成績、斤量別成績の根拠には使わない。
 - 外部リサーチ由来の話題を使う場合も、本文内に外部リンクは置かない。出典管理はシステム側のresearch_sourcesで行う前提とし、本文はUMA-FREE内の導線だけにする。
+- research_sources の allowed_claims は「外部文脈として触れてよい話題」だけであり、記事の主役にしない。本文では「公式発表では〜」のような外部依存の言い回しを乱用せず、UMA-FREEのデータ確認順序を補助する範囲に留める。
+- research_sources に含まれない外部情報やURLを新たに足してはいけない。
 
 【フォーマット要件】
 - タイトル：厳格に30文字以上、50文字以内。

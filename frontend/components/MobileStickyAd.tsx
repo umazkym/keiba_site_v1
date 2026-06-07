@@ -131,7 +131,12 @@ export const MobileStickyAd = () => {
                 const status = ins.getAttribute('data-ad-status');
                 if (status === 'filled') {
                     setAdStatus('filled');
-                    sendAdImpressionEvent(variantConfig.placement);
+                    sendAdImpressionEvent({
+                        placement: variantConfig.placement,
+                        format: 'sticky_bottom',
+                        slot: '8529703346',
+                        variant,
+                    });
                     observer.disconnect();
                     return true;
                 } else if (status?.startsWith('unfill')) {
@@ -161,7 +166,7 @@ export const MobileStickyAd = () => {
             window.clearTimeout(statusTimer);
             observer.disconnect();
         };
-    }, [pathname, raceParam, variantConfig.placement]);  // ★ raceParam追加: レース切替時もMutationObserverを再作成
+    }, [pathname, raceParam, variantConfig.placement, variant]);  // ★ raceParam追加: レース切替時もMutationObserverを再作成
 
     const handleDismiss = () => {
         setIsDismissed(true);

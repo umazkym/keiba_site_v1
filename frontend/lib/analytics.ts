@@ -7,6 +7,22 @@ import { sendGAEvent } from '@next/third-parties/google';
 
 export type ContentCategory = 'race_prediction' | 'data_analysis' | 'news' | 'other';
 export type PredictAccuracy = 'hit' | 'miss' | 'none';
+export type AdFormat =
+    | 'display_inline'
+    | 'display_banner'
+    | 'display_sidebar'
+    | 'in_feed'
+    | 'native_card'
+    | 'sticky_bottom'
+    | 'multiplex';
+
+export type AdImpressionParams = {
+    placement: string;
+    format: AdFormat;
+    slot?: string;
+    variant?: string;
+};
+
 export type RewardGateEventName =
     | 'reward_gate_view'
     | 'reward_gate_click'
@@ -33,10 +49,25 @@ export type RewardGateEventParams = {
     reason?: string;
 };
 
-const compactParams = (params: RewardGateEventParams) => {
+const compactParams = (params: Record<string, unknown>) => {
     return Object.fromEntries(
         Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
     );
+};
+
+const inferPageType = () => {
+    if (typeof window === 'undefined') return 'unknown';
+
+    const pathname = window.location.pathname;
+    if (pathname === '/') return 'home';
+    if (pathname === '/articles') return 'articles_index';
+    if (pathname.startsWith('/articles/')) return 'article';
+    if (/^\/races\/\d{4}-\d{2}-\d{2}\/[^/]+\/\d{1,2}$/.test(pathname)) return 'race_detail';
+    if (pathname.startsWith('/races/')) return 'race_day';
+    if (pathname.startsWith('/keiba-data')) return 'data_guide';
+    if (pathname.startsWith('/results/')) return 'results';
+    if (pathname === '/faq') return 'faq';
+    return 'other';
 };
 
 /**
@@ -53,11 +84,20 @@ export const sendReadCompleteEvent = (category: string, pagePath: string) => {
 
 /**
  * 特定の配置の広告が画面内にインプレッション（表示）された際に送信するイベント
- * @param placement - 広告の配置位置 (例: 'in_article_1', 'sticky_bottom')
+ * @param params - 広告の配置位置、形式、スロットなど
  */
-export const sendAdImpressionEvent = (placement: string) => {
+export const sendAdImpressionEvent = (params: string | AdImpressionParams) => {
+    const normalized =
+        typeof params === 'string'
+            ? { placement: params, format: 'display_inline' as const }
+            : params;
+
     sendGAEvent('event', 'ad_impression_custom', {
-        ad_placement: placement,
+        ad_placement: normalized.placement,
+        ad_format: normalized.format,
+        ad_slot: normalized.slot,
+        ad_variant: normalized.variant,
+        ad_page_type: inferPageType(),
     });
 };
 

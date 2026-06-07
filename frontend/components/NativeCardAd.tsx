@@ -43,7 +43,12 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
 
             const status = ins.getAttribute('data-ad-status');
             if (status === 'filled') {
-                sendAdImpressionEvent(analyticsPlacement);
+                sendAdImpressionEvent({
+                    placement: analyticsPlacement,
+                    format: 'native_card',
+                    slot,
+                    variant,
+                });
                 observer.disconnect();
                 return true;
             } else if (status?.startsWith('unfill')) {
@@ -72,7 +77,7 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
             window.clearTimeout(statusTimer);
             observer.disconnect();
         };
-    }, [refreshKey, analyticsPlacement]);
+    }, [refreshKey, analyticsPlacement, slot, variant]);
 
     // バリアントに応じたスタイル
     const variantStyles: Record<string, { container: string; height: string }> = {

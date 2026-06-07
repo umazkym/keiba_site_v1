@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { Adsense } from './Adsense';
 import { SkeletonBox as SkeletonLoader } from './SkeletonLoader';
-import { sendAdImpressionEvent } from '../lib/analytics';
+import { sendAdImpressionEvent, type AdFormat } from '../lib/analytics';
 
 /**
  * 広告ユニットの配置タイプ
@@ -33,6 +33,12 @@ type AdUnitProps = {
 };
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
+
+const AD_FORMAT_BY_PLACEMENT: Record<AdPlacement, AdFormat> = {
+    inline: 'display_inline',
+    banner: 'display_banner',
+    sidebar: 'display_sidebar',
+};
 
 /**
  * 統一広告ユニットコンポーネント
@@ -79,7 +85,11 @@ export const AdUnit = ({
                 if (status === 'filled') {
                     setAdLoaded(true);
                     setAdUnfilled(false);
-                    sendAdImpressionEvent(analyticsPlacement ?? placement);
+                    sendAdImpressionEvent({
+                        placement: analyticsPlacement ?? placement,
+                        format: AD_FORMAT_BY_PLACEMENT[placement],
+                        slot,
+                    });
                     observer.disconnect();
                     return true;
                 } else if (status?.startsWith('unfill')) {
@@ -110,7 +120,7 @@ export const AdUnit = ({
             window.clearTimeout(statusTimer);
             observer.disconnect();
         };
-    }, [refreshKey, placement, analyticsPlacement]); // refreshKey変更時にobserverも再設定
+    }, [refreshKey, placement, analyticsPlacement, slot]); // refreshKey変更時にobserverも再設定
 
     // 配置タイプに応じたスタイル設定
     const placementStyles: Record<AdPlacement, {

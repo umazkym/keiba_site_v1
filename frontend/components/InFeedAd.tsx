@@ -57,7 +57,11 @@ export const InFeedAd = ({
 
             const status = ins.getAttribute('data-ad-status');
             if (status === 'filled') {
-                sendAdImpressionEvent(analyticsPlacement);
+                sendAdImpressionEvent({
+                    placement: analyticsPlacement,
+                    format: 'in_feed',
+                    slot: slot || INFEED_SLOT,
+                });
                 observer.disconnect();
                 return true;
             } else if (status?.startsWith('unfill')) {
@@ -86,7 +90,7 @@ export const InFeedAd = ({
             window.clearTimeout(statusTimer);
             observer.disconnect();
         };
-    }, [refreshKey, analyticsPlacement]);
+    }, [refreshKey, analyticsPlacement, slot]);
 
     return (
         <div

@@ -123,62 +123,84 @@ export function RaceDayDashboard({ data, date }: { data: RaceDayPrediction | nul
   const primaryRace = confidenceRaces[0] ?? topScoreRaces[0];
 
   return (
-    <details className="mb-3 border border-slate-200 bg-white">
-      <summary className="cursor-pointer list-none px-3 py-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:px-4">
-        <div className="flex items-center justify-between gap-3">
+    <div className="mb-3">
+      {primaryRace && (
+        <Link
+          href={primaryRace.href}
+          className="group mb-2 grid gap-2 border border-slate-200 bg-white px-3 py-2.5 text-sm transition-colors hover:border-primary/40 hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-4"
+        >
           <div className="min-w-0">
-            <p className="text-xs font-bold tracking-[0.14em] text-slate-400">当日の見どころ</p>
-            <h2 className="mt-0.5 truncate text-sm font-black text-slate-950 sm:text-base">
-              今日のレース整理
-            </h2>
+            <p className="text-[11px] font-bold tracking-[0.14em] text-slate-400">今日まず見るレース</p>
+            <p className="mt-1 truncate font-black text-slate-950">
+              {primaryRace.venueName}{primaryRace.race.race_number}R {primaryRace.race.race_name}
+            </p>
+            <p className="mt-1 truncate text-xs text-slate-500">
+              {primaryRace.reason} AI1位: {primaryRace.topHorseName} / 偏差値{primaryRace.topScore.toFixed(1)}
+            </p>
           </div>
-          <div className="hidden items-center gap-2 text-xs font-bold text-slate-500 sm:flex">
-            <span>{venues}場</span>
-            <span>{totalRaces}R</span>
-            <span>混戦 {closeRaceCount}</span>
+          <span className="justify-self-start text-xs font-black text-primary group-hover:underline sm:justify-self-end">
+            詳細を見る
+          </span>
+        </Link>
+      )}
+
+      <details className="border border-slate-200 bg-white">
+        <summary className="cursor-pointer list-none px-3 py-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:px-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-bold tracking-[0.14em] text-slate-400">当日の見どころ</p>
+              <h2 className="mt-0.5 truncate text-sm font-black text-slate-950 sm:text-base">
+                今日のレース整理
+              </h2>
+            </div>
+            <div className="hidden items-center gap-2 text-xs font-bold text-slate-500 sm:flex">
+              <span>{venues}場</span>
+              <span>{totalRaces}R</span>
+              <span>混戦 {closeRaceCount}</span>
+            </div>
+            <span className="shrink-0 text-xs font-bold text-primary">見る</span>
           </div>
-          <span className="shrink-0 text-xs font-bold text-primary">見る</span>
-        </div>
-        {primaryRace && (
-          <p className="mt-2 truncate text-xs text-slate-500">
-            まず確認: {primaryRace.venueName}{primaryRace.race.race_number}R {primaryRace.race.race_name}
+          {primaryRace && (
+            <p className="mt-2 truncate text-xs text-slate-500">
+              まず確認: {primaryRace.venueName}{primaryRace.race.race_number}R {primaryRace.race.race_name}
+            </p>
+          )}
+        </summary>
+
+        <div className="border-t border-slate-100 px-3 py-3 sm:px-4">
+          <p className="text-xs leading-6 text-slate-500">
+            {date.replace(/-/g, '/')}の全レースを、AI偏差値の差と頭数から簡易整理しています。
+            本命を決める場所ではなく、見る順番を決めるための補助情報です。
           </p>
-        )}
-      </summary>
 
-      <div className="border-t border-slate-100 px-3 py-3 sm:px-4">
-        <p className="text-xs leading-6 text-slate-500">
-          {date.replace(/-/g, '/')}の全レースを、AI偏差値の差と頭数から簡易整理しています。
-          本命を決める場所ではなく、見る順番を決めるための補助情報です。
-        </p>
-
-        <div className="mt-3 grid gap-4 lg:grid-cols-3">
-          <div>
-            <h3 className="border-b border-slate-200 pb-2 text-xs font-black tracking-[0.14em] text-slate-500">まず確認</h3>
+          <div className="mt-3 grid gap-4 lg:grid-cols-3">
             <div>
-              {confidenceRaces.slice(0, 3).map((signal) => (
-                <CompactRaceLink key={signal.href} signal={signal} />
-              ))}
+              <h3 className="border-b border-slate-200 pb-2 text-xs font-black tracking-[0.14em] text-slate-500">まず確認</h3>
+              <div>
+                {confidenceRaces.slice(0, 3).map((signal) => (
+                  <CompactRaceLink key={signal.href} signal={signal} />
+                ))}
+              </div>
             </div>
-          </div>
-          <div>
-            <h3 className="border-b border-slate-200 pb-2 text-xs font-black tracking-[0.14em] text-slate-500">混戦注意</h3>
             <div>
-              {upsetRaces.slice(0, 3).map((signal) => (
-                <CompactRaceLink key={signal.href} signal={signal} />
-              ))}
+              <h3 className="border-b border-slate-200 pb-2 text-xs font-black tracking-[0.14em] text-slate-500">混戦注意</h3>
+              <div>
+                {upsetRaces.slice(0, 3).map((signal) => (
+                  <CompactRaceLink key={signal.href} signal={signal} />
+                ))}
+              </div>
             </div>
-          </div>
-          <div>
-            <h3 className="border-b border-slate-200 pb-2 text-xs font-black tracking-[0.14em] text-slate-500">偏差値上位</h3>
             <div>
-              {topScoreRaces.slice(0, 3).map((signal) => (
-                <CompactRaceLink key={signal.href} signal={signal} />
-              ))}
+              <h3 className="border-b border-slate-200 pb-2 text-xs font-black tracking-[0.14em] text-slate-500">偏差値上位</h3>
+              <div>
+                {topScoreRaces.slice(0, 3).map((signal) => (
+                  <CompactRaceLink key={signal.href} signal={signal} />
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </details>
+      </details>
+    </div>
   );
 }

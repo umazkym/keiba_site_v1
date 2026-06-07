@@ -44,6 +44,11 @@ export const SEO_RULES = {
     "断言",
     "論証",
     "解明",
+    "大きなる",
+    "暴利設定",
+    "馬券購入的価値",
+    "利益へ変換",
+    "プロやAIシステム",
     "✅",
     "❌",
     // 導入テンプレート
@@ -129,6 +134,12 @@ export function checkSEO(markdownText: string): SEOCheckResult {
   }
   if (description.length > SEO_RULES.description_max_chars) {
     errors.push(`description文字数が超過: 現在${description.length}文字 (最大: ${SEO_RULES.description_max_chars})`);
+  }
+  if (description && !/[。.!?！？]$/.test(description.trim())) {
+    errors.push(`descriptionが文末記号で終わっていません。検索結果で未完文に見えないよう、1文として閉じてください。`);
+  }
+  if (/[、,]$|(?:し|照らし|比較し|整理し|確認し)$/.test(description.trim())) {
+    errors.push(`descriptionが途中で切れている可能性があります。title/descriptionは検索結果で自然に読める文にしてください。`);
   }
 
   // 3. 文字数（スペース改行を除くおおまかな文字数）

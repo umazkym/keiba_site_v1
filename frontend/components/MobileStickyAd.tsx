@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Adsense } from './Adsense';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { sendAdImpressionEvent } from '../lib/analytics';
+import { isManualAdsEnabled } from '@/lib/ad-config';
 
 type StickyVariant = 'control' | 'delayed' | 'compact';
 
@@ -89,7 +90,7 @@ export const MobileStickyAd = () => {
         '/terms',
         '/advertising',
     ];
-    const shouldShowAds = !noAdPages.some(path => pathname === path);
+    const shouldShowAds = isManualAdsEnabled && !noAdPages.some(path => pathname === path);
 
     useEffect(() => {
         setIsMounted(true);

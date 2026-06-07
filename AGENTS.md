@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 収益改善: 自動広告単独テスト用の手動広告一括OFF化
+- **完了日時**: 2026-06-07 18:37
+- **実施内容**: AdSense自動広告の効果を手動配置広告と混ぜずに検証できるよう、手動広告を一括で制御する `NEXT_PUBLIC_MANUAL_ADS_MODE` を追加。既定値は `disabled` とし、`AdUnit`、`InFeedAd`、`NativeCardAd`、`MultiplexAd`、`MobileStickyAd`、直接 `Adsense` 呼び出しを表示しない状態にした。AdSense自動広告スクリプトは `layout.tsx` に残しているため、AdSense管理画面側の自動広告だけが配信対象になる。モバイル下部の独自追従広告を止めることで、AdSense下部アンカー広告との二重表示を避け、自動広告テストの結果を読みやすくした。あわせて、`MobileStickyAd` 用に常時入っていたフッター下余白も、手動広告有効時だけ入るよう調整し、自動広告単独テスト時に不要な空白が残らないようにした。後日、手動広告を戻す場合は環境変数 `NEXT_PUBLIC_MANUAL_ADS_MODE=enabled` を設定すれば再有効化できる。
+- **変更ファイル**: `frontend/lib/ad-config.ts`, `frontend/components/AdUnit.tsx`, `frontend/components/Adsense.tsx`, `frontend/components/InFeedAd.tsx`, `frontend/components/NativeCardAd.tsx`, `frontend/components/MultiplexAd.tsx`, `frontend/components/MobileStickyAd.tsx`, `frontend/components/TopHitsDisplay.tsx`, `frontend/components/Footer.tsx`, `frontend/components/GlobalAdManager.tsx`, `frontend/app/globals.css`, `AGENTS.md`
+- **確認事項**: `npx tsc --noEmit` は権限付き実行で成功。`npm run build` は権限付き実行で成功し、静的ページ数は153件。既存どおり `caniuse-lite` 更新推奨と、ローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログが出たが終了コードは0。`git diff --check` は成功し、LF/CRLF警告のみ。未追跡の `分析レポート/` は今回の作業対象外の既存分析資料として未変更。
+- **次のステップ**: AdSense管理画面では、自動広告のみのテストとして、インテント重視OFF、全画面ON、サイドレールON、アンカー広告は下部ON、ページ内バナーON、Multiplex ON、関連検索OFFで開始する。除外ページ・除外エリアがテスト時に使えない前提のため、まずは7日以上、理想は土日2回を含む14日で、AdSenseの推定収益、Page RPM、Impression RPM、CTR、Active View、GA4のページ/セッション、レース詳細閲覧数、記事からレースへの遷移率、Search Console/Core Web VitalsのCLSを比較する。自動広告単独で伸びない場合は、手動広告を一括復帰するのではなく、レース予想表後、記事導入後、トップ価値訴求後など、過去に意図が明確だった枠だけ段階的に戻す。
+
 #### ✅ 収益改善: 広告計測粒度強化・レース詳細導線・自動生成記事CTR対策
 - **完了日時**: 2026-06-07 17:02
 - **実施内容**: AdSense/GA4の分析結果を踏まえ、広告RPM改善を配置単位で検証できるよう `ad_impression_custom` の送信内容を拡張。従来の `ad_placement` に加えて、`ad_format`、`ad_slot`、`ad_variant`、`ad_page_type` を送るようにし、ディスプレイ広告、インフィード広告、ネイティブカード広告、モバイル追従広告の各コンポーネントから形式・スロット・A/B種別を渡す構成へ変更した。レース日別ページでは、折りたたみ内に隠れていた主要レースを「今日まず見るレース」として上部に直接表示し、日別一覧から収益効率の高いレース詳細ページへ自然に進める導線を追加。自動生成記事については、検索結果での見え方をWriterプロンプトに追加し、title/descriptionで「見方」「違い」「買い時」「見送り条件」など読者の判断語を自然に入れる方針を明文化。SEOチェック側では、descriptionの未完文と不自然な生成表現を検出するルールを追加した。既存の低CTR良順位記事では、馬体重、馬場状態、ルメール騎手、馬券控除率の4記事について、本文内の既存数値だけを使い、title/descriptionを検索意図に寄せつつ、煽り・投資感・AIっぽい置換痕のある表現を自然な競馬記事の文体へ修正した。

@@ -7,10 +7,10 @@ import { MobileStickyAd } from './MobileStickyAd';
  * 
  * 広告収益最大化戦略:
  * 
- * 1. Google Auto Ads（全画面広告のみON）
+ * 1. Google Auto Ads（AdSense管理画面側で制御）
  *    → layout.tsx の adsbygoogle.js スクリプトが自動処理
  * 
- * 2. 手動配置広告
+ * 2. 手動配置広告（NEXT_PUBLIC_MANUAL_ADS_MODE=enabled の場合のみ）
  *    → 各ページコンポーネント内に AdUnit を配置（高価値ポジション）
  *    → MobileStickyAd: モバイル下部追従広告
  * 

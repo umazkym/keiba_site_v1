@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { isManualAdsEnabled } from '@/lib/ad-config';
 
 type AdsenseProps = {
   client: string;
@@ -182,6 +183,8 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
       observer.disconnect();
     };
   }, [pathname, refreshKey, client, slot, className, style, isResponsive, scriptReady]);
+
+  if (!isManualAdsEnabled) return null;
 
   // 開発環境ではプレースホルダーを表示
   if (process.env.NODE_ENV !== 'production') {

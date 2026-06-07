@@ -7,6 +7,7 @@ import { NativeCardAd } from '@/components/NativeCardAd';
 import { TrophyIcon } from './Icons';
 import { Adsense } from './Adsense';
 import { getRaceDetailPath } from '@/lib/race-url';
+import { isManualAdsEnabled } from '@/lib/ad-config';
 
 const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: number, compact?: boolean }) => {
     let rankClass = 'rank-default';
@@ -147,7 +148,7 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
                             </Link>
                         ))}
                         {/* モバイルで右下が空くのでネイティブ広告で穴埋め（PC時は5列なので非表示） */}
-                        {hits.length === 5 && (
+                        {isManualAdsEnabled && hits.length === 5 && (
                             <div className="block h-full lg:hidden rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col justify-center items-center min-h-[140px] p-2">
                                 <span className="text-[9px] text-slate-400 mb-1">スポンサーリンク</span>
                                 <div className="w-full h-full flex items-center justify-center overflow-hidden">

@@ -1,5 +1,6 @@
 'use client';
 import { Adsense } from './Adsense';
+import { isManualAdsEnabled } from '@/lib/ad-config';
 
 type MultiplexAdProps = {
     slot: string;
@@ -16,6 +17,8 @@ const AD_CLIENT = 'ca-pub-4411270831448240';
  * 標準のレスポンシブ広告にフォールバック。
  */
 export const MultiplexAd = ({ slot, refreshKey = '' }: MultiplexAdProps) => {
+    if (!isManualAdsEnabled) return null;
+
     return (
         <section className="mt-4 mb-2 px-1">
             <h3 className="text-sm sm:text-base font-bold text-gray-800 mb-2 flex items-center justify-between">

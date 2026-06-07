@@ -1,9 +1,12 @@
 import Link from 'next/link';
 import { TwitterIcon } from 'lucide-react';
+import { isManualAdsEnabled } from '@/lib/ad-config';
 
 export const Footer = () => {
+    const stickyAdSpacing = isManualAdsEnabled ? 'mb-[80px] xl:mb-0' : '';
+
     return (
-        <footer className="bg-primary text-slate-300 py-8 sm:py-16 relative z-0 mb-[80px] xl:mb-0">
+        <footer className={`bg-primary text-slate-300 py-8 sm:py-16 relative z-0 ${stickyAdSpacing}`}>
             {/* mb-[80px]でMobileStickyAd(70px + max-h 80px + border)の実高さと合わせる */}
             <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6">
                 {/* メインフッターコンテンツ（3カラム） */}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Adsense } from './Adsense';
 import { sendAdImpressionEvent } from '@/lib/analytics';
+import { isManualAdsEnabled } from '@/lib/ad-config';
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
 
@@ -96,6 +97,8 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
     };
 
     const style = variantStyles[variant] || variantStyles.article;
+
+    if (!isManualAdsEnabled) return null;
 
     return (
         <div

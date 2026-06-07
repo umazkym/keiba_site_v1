@@ -476,13 +476,6 @@ header.glass {
     z-index: 40 !important; /* Google Adsの上部アンカー(z-index: 2147483646)より低いが、他要素より高い */
 }
 
-/* モバイルでの独自のアンカー広告用余白 (MobileStickyAd.tsx) */
-@media (max-width: 1280px) {
-    footer {
-        padding-bottom: 110px; /* 固定広告(max100px + シャドウ)の高さ分を確保 */
-    }
-}
-
 /* レスポンシブ改善 */
 @media (max-width: 640px) {
     body {

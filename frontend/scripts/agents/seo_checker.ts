@@ -5,7 +5,7 @@ export const SEO_RULES = {
   title_max_chars: 50,
   description_min_chars: 120,
   description_max_chars: 160,
-  min_word_count: 1500,
+  min_word_count: 2000,
   require_today_race_cta: true,
   require_buying_point_heading: true,
   require_data_table_or_list: true,

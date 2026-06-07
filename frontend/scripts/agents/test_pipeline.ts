@@ -1,5 +1,6 @@
 import { WriteOrder, generateDraft } from './agent_writer';
 import { reviewDraft } from './agent_editor';
+import { runPostWriterArticleFlow, runPreDraftArticleFlow } from './article_flow';
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
@@ -126,6 +127,14 @@ async function runPipeline() {
     console.log(`[Input] Loading real order from: ${file}`);
     console.log(`[Input] target_keyword: ${order.target_keyword}`);
 
+    const preDraftFlow = runPreDraftArticleFlow(order);
+    console.log(preDraftFlow.log);
+    if (preDraftFlow.status === 'REJECTED') {
+      moveToFailed(orderPath, `article flow rejected before draft: ${preDraftFlow.log.slice(0, 160)}`);
+      if (attemptedCount >= MAX_ARTICLES_PER_RUN) break;
+      continue;
+    }
+
     if (!process.env.GEMINI_API_KEY) {
       throw new Error(`GEMINI_API_KEYが設定されていないため記事を生成できません。write_orderは未消費のまま残します: ${file}`);
     }
@@ -145,6 +154,14 @@ async function runPipeline() {
         break;
       }
       moveToFailed(orderPath, writerResult.error || 'writer failed');
+      if (attemptedCount >= MAX_ARTICLES_PER_RUN) break;
+      continue;
+    }
+
+    const postWriterFlow = runPostWriterArticleFlow(order, writerResult.filePath);
+    console.log(postWriterFlow.log);
+    if (postWriterFlow.status === 'REJECTED') {
+      moveToFailed(orderPath, `article flow rejected after writer: ${postWriterFlow.log.slice(0, 160)}`);
       if (attemptedCount >= MAX_ARTICLES_PER_RUN) break;
       continue;
     }

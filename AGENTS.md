@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 記事生成改善: 実行パイプラインへの記事作成フロー接続
+- **完了日時**: 2026-06-07 23:53
+- **実施内容**: これまで設計書とGitHub Actions設定に留まっていた記事作成フローを、実際の `article:pipeline` に接続した。新規に `frontend/scripts/agents/article_flow.ts` を追加し、Demand Planner、Internal Retrieval、Evidence Builder、Research Decision、Fact Checker、Research Filter相当のノードをTypeScriptで実装した。`test_pipeline.ts` では、Geminiを呼ぶ前にPre-Draft Flowを実行し、`target_keyword`、`theme_cluster`、`reference_data`、データ記事のEvidence有無、重賞記事のrace_name/race_date/venueを検査するようにした。Writer直後にはPost-Writer Flowを実行し、入力Evidenceに基づく数値トークン確認、外部リンク禁止、単調増加しすぎる怪しい数値表の検出を行い、criticalが出た場合はEditorへ進めずwrite_orderをfailedへ移動するようにした。Tavilyはまだ必須化せず、G1/G2・初心者・ガイド記事で外部リサーチが有効な場合だけ使う前提のResearch Decisionとして扱い、未設定時はDB/Internal Evidenceのみで継続する警告にした。
+- **変更ファイル**: `frontend/scripts/agents/article_flow.ts`, `frontend/scripts/agents/test_pipeline.ts`, `AGENTS.md`
+- **確認事項**: `npm run article:validate-links` は86記事チェックで成功。`npm run article:audit-quality` は86記事に対して改善候補316件を検出し、標準どおり終了コード0で成功。`npm run build` は成功し、静的ページ数は155件。既存どおり `caniuse-lite` 更新推奨と、ローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログが出たが終了コードは0。`git diff --check` は成功し、CRLF警告のみ。
+- **次のステップ**: 実運用で次回のGitHub Actions記事生成ログに `[ArticleFlow] pre-draft APPROVED` と `[ArticleFlow] post-writer APPROVED` が出ることを確認する。次段階では、このTypeScript実装をLangGraphへ移植し、Outline Builder、Outline Validator、Human Review、Post Publish Monitorを個別ノードとして永続化する。
+
 #### ✅ 記事生成改善: GitHub Actions毎朝1記事生成フロー化
 - **完了日時**: 2026-06-07 23:08
 - **実施内容**: GitHub Actionsの `Keiba Article Auto Pipeline` を、毎朝8:00 JSTに品質優先で1記事生成・公開する運用へ調整した。既存のscheduleは維持しつつ、通常実行時の `ARTICLE_PIPELINE_MAX_ARTICLES` を1本に変更。手動実行では `max_articles` 入力で1本または2本を選べるようにした。あわせて、冒頭に `DATABASE_URL` と `GEMINI_API_KEY` のSecrets事前チェックを追加し、未設定時に原因が分かる形で停止するようにした。前回追加した `article:audit-quality` をGitHub Actionsにも組み込み、毎朝の生成前に公開済み記事の品質棚卸しを実行する構成にした。監査は既存記事の改善候補を出す目的のため、標準では失敗終了しない。

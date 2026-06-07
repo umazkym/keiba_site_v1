@@ -6,6 +6,20 @@ on:
     # GCE移行完了 (2026-04-12): 帯域制限解消のため毎日実行に復元
     - cron: '0 23 * * *'
   workflow_dispatch:
+    inputs:
+      max_articles:
+        description: 'この実行で生成・公開する最大記事数'
+        required: true
+        default: '1'
+        type: choice
+        options:
+          - '1'
+          - '2'
+      run_quality_audit:
+        description: '公開済み記事の品質監査を実行する'
+        required: true
+        default: true
+        type: boolean
 
 concurrency:
   group: keiba-article-auto-pipeline
@@ -18,9 +32,33 @@ jobs:
     permissions:
       contents: write
 
+    env:
+      ARTICLE_PIPELINE_MAX_ARTICLES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_articles || '1' }}
+      GEMINI_MODEL_TIERS: gemini-2.5-flash-lite,gemini-2.5-flash
+      GEMINI_ARTICLE_DAILY_REQUEST_LIMIT: "10"
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Preflight - Check Required Secrets
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          missing=0
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL secret is required for write order generation."
+            missing=1
+          fi
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error::GEMINI_API_KEY secret is required for article writing and review."
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Required secrets are configured."
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -31,6 +69,11 @@ jobs:
       - name: Install Frontend Dependencies
         working-directory: ./frontend
         run: npm ci
+
+      - name: Article Quality Audit
+        if: github.event_name == 'schedule' || inputs.run_quality_audit
+        working-directory: ./frontend
+        run: npm run article:audit-quality
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -63,9 +106,9 @@ jobs:
         working-directory: ./frontend
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL_TIERS: gemini-2.5-flash-lite,gemini-2.5-flash
-          GEMINI_ARTICLE_DAILY_REQUEST_LIMIT: "10"
-          ARTICLE_PIPELINE_MAX_ARTICLES: "2"
+          GEMINI_MODEL_TIERS: ${{ env.GEMINI_MODEL_TIERS }}
+          GEMINI_ARTICLE_DAILY_REQUEST_LIMIT: ${{ env.GEMINI_ARTICLE_DAILY_REQUEST_LIMIT }}
+          ARTICLE_PIPELINE_MAX_ARTICLES: ${{ env.ARTICLE_PIPELINE_MAX_ARTICLES }}
         run: npm run article:pipeline
 
       - name: Check if article was approved
@@ -86,4 +129,7 @@ jobs:
         run: npm run article:publish
 
       - name: Step 5 - Completion Check
-        run: echo "Pipeline execution completed successfully!"
+        run: |
+          echo "Pipeline execution completed successfully!"
+          echo "max_articles=${{ env.ARTICLE_PIPELINE_MAX_ARTICLES }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "approved_count=${{ steps.check_approved.outputs.approved_count }}" >> "$GITHUB_STEP_SUMMARY"

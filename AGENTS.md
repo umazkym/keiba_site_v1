@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 記事生成改善: GitHub Actions毎朝1記事生成フロー化
+- **完了日時**: 2026-06-07 23:08
+- **実施内容**: GitHub Actionsの `Keiba Article Auto Pipeline` を、毎朝8:00 JSTに品質優先で1記事生成・公開する運用へ調整した。既存のscheduleは維持しつつ、通常実行時の `ARTICLE_PIPELINE_MAX_ARTICLES` を1本に変更。手動実行では `max_articles` 入力で1本または2本を選べるようにした。あわせて、冒頭に `DATABASE_URL` と `GEMINI_API_KEY` のSecrets事前チェックを追加し、未設定時に原因が分かる形で停止するようにした。前回追加した `article:audit-quality` をGitHub Actionsにも組み込み、毎朝の生成前に公開済み記事の品質棚卸しを実行する構成にした。監査は既存記事の改善候補を出す目的のため、標準では失敗終了しない。
+- **変更ファイル**: `.github/workflows/keiba-article-pipeline.yml`, `AGENTS.md`
+- **確認事項**: `npm run article:audit-quality` は実行成功し、84記事に対して改善候補313件を検出。`npm run article:validate-links` は84記事チェックで成功。`git diff --check` は成功し、CRLF警告のみ。Git操作は禁止事項に従い、commit/pushは未実行。
+- **次のステップ**: GitHub側で `GEMINI_API_KEY` と `DATABASE_URL` のRepository Secretsを設定する。変更がGitHubに反映された後、`Actions > Keiba Article Auto Pipeline > Run workflow` で手動実行し、`max_articles=1` のまま1記事生成を確認する。成功すれば以後は毎朝8:00 JSTに自動実行される。
+
 #### ✅ 記事生成改善: SEO流入最大化に向けた記事作成フロー構築
 - **完了日時**: 2026-06-07 22:41
 - **実施内容**: LangChain/LangGraph導入を見据えた記事作成フローを `docs/article_creation_flow.md` として新設。DB Evidence Packを主根拠にし、Tavilyなどの外部リサーチはG1/G2、初心者記事、制度・公式発表確認などの補助用途に限定する方針を明文化した。内部RAG/ベクトル検索は、外部Webではなく公開済み記事、posted_history、Evidence Pack、AGENTS.md、失敗下書きから始める設計にした。SEO流入増加を前提に、季節ごとの記事テーマ、更新型G1記事、LLM/Tavily予算、公開後モニタリング、People-first品質ゲート、人間確認条件を定義した。あわせてWriterプロンプトを本文2,100〜2,700字目安・最低2,000字、外部リサーチから数値を作らない方針へ更新し、SEO checkerと既存システム文書の本文基準を2,000字に統一した。公開済み記事の棚卸し用に `article:audit-quality` を追加し、本文量、メタ情報、買い目ポイント、レース導線、外部リンク、怪しい数値表の兆候を非LLMで確認できるようにした。

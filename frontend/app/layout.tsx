@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { OrganizationSchema, WebsiteSchema, SoftwareApplicationSchema } from "@/components/StructuredData";
+import { MicrosoftClarity } from "@/components/MicrosoftClarity";
 // CookieConsent削除: AdSense/GoogleのGDPR同意メッセージと重複して2種類のポップアップが表示されるUX問題を解消
 // 日本向けサイトではGDPR準拠Cookie同意バナーは法的に不要。Google側の同意管理に一元化
 
@@ -110,6 +111,8 @@ export default function RootLayout({
 
                 {/* PWA: ホーム画面追加対応 */}
                 <link rel="manifest" href="/manifest.json" />
+
+                <MicrosoftClarity />
 
                 {/* ★ Consent Mode v2: デフォルトgranted設定
                     日本のユーザーにはGDPR同意は法的に不要。

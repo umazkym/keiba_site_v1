@@ -50,7 +50,7 @@ type PrivacyPolicyContent = {
 // プライバシーポリシーコンテンツ定義
 const privacyPolicyContent: PrivacyPolicyContent = {
     title: 'プライバシーポリシー',
-    lastUpdated: '最終更新日: 2026年2月15日',
+    lastUpdated: '最終更新日: 2026年6月9日',
     introduction: 'UMA-FREE（以下「当サイト」といいます。）は、ユーザーの個人情報保護の重要性について認識し、個人情報の保護に関する法律（以下「個人情報保護法」といいます。）を遵守すると共に、以下のプライバシーポリシー（以下「本ポリシー」といいます。）に従い、適切な取扱い及び保護に努めます。',
     sections: [
         {
@@ -70,6 +70,7 @@ const privacyPolicyContent: PrivacyPolicyContent = {
                         'アクセス日時、滞在時間',
                         '参照元URL',
                         '閲覧ページURL',
+                        'クリック、スクロール、ページ内の操作状況',
                         'Cookie情報およびそれに類する技術',
                         'デバイス情報（PC、スマートフォン、タブレット等）',
                     ],
@@ -128,6 +129,13 @@ const privacyPolicyContent: PrivacyPolicyContent = {
                     content: [
                         '当サイトでは、Googleによるアクセス解析ツール「Google Analytics」を利用しています。このGoogle Analyticsはトラフィックデータの収集のためにCookieを使用しています。このトラフィックデータは匿名で収集されており、個人を特定するものではありません。',
                         'この機能はCookieを無効にすることで収集を拒否することが可能ですので、お使いのブラウザの設定をご確認ください。Google Analyticsの詳細については、<a href="https://marketingplatform.google.com/about/analytics/terms/jp/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Google Analytics利用規約</a>をご覧ください。',
+                    ],
+                },
+                {
+                    title: 'Microsoft Clarity',
+                    content: [
+                        '当サイトでは、サイト改善および広告配置の検証のため、Microsoft Corporationが提供するアクセス解析ツール「Microsoft Clarity」を利用しています。Microsoft Clarityでは、ページの閲覧状況、クリック、スクロール、操作の流れなどをヒートマップやセッション記録として分析することがあります。',
+                        'これらの情報は、ユーザー体験の改善、コンテンツの読みやすさの確認、広告表示位置の適正化を目的として利用します。当サイトは、Microsoft Clarityを通じて氏名、メールアドレス、電話番号などの個人を直接特定する情報を意図して収集しません。Microsoft Clarityの詳細については、<a href="https://privacy.microsoft.com/privacystatement" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Microsoftプライバシーステートメント</a>をご覧ください。',
                     ],
                 },
             ],

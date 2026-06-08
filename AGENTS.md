@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 収益改善: Microsoft Clarityによるヒートマップ計測導入
+- **完了日時**: 2026-06-09 00:10
+- **実施内容**: 無料のヒートマップ・クリック・スクロール・セッション記録を使って広告配置を判断できるよう、Microsoft Clarityの計測コードをNext.jsに追加した。ユーザー提示のProject ID `x3vmax3h3t` を既定値として `MicrosoftClarity` コンポーネントに分離し、`NEXT_PUBLIC_CLARITY_PROJECT_ID` を設定すれば将来ID差し替えもできる構成にした。あわせて、プライバシーポリシーにMicrosoft Clarityの利用目的、収集される可能性のある操作情報、Microsoftプライバシーステートメントへのリンクを追記した。
+- **変更ファイル**: `frontend/components/MicrosoftClarity.tsx`, `frontend/app/layout.tsx`, `frontend/app/privacy/page.tsx`, `AGENTS.md`
+- **確認事項**: `npm run build` は成功し、静的ページ数は156件。既存どおり `caniuse-lite` 更新推奨と、ローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログが出たが終了コードは0。
+- **次のステップ**: 本番反映後、Microsoft Clarity管理画面で `uma-free.com` のデータ受信を確認する。最低7日、できれば土日競馬を含めてトップ、記事、日別レース一覧、レース詳細のヒートマップと録画を確認し、誤クリックになりやすいボタン・タブ・レース表付近を避けながら手動広告の復帰候補を決める。
+
 #### ✅ 記事生成改善: Tavily Research/Research Filterの実装完了
 - **完了日時**: 2026-06-08 00:10
 - **実施内容**: 前回までResearch Decisionに留まっていたTavily外部リサーチを、実際の `article:pipeline` 内で動く非同期フローとして実装した。Pre-Draft Flowで記事種別、Evidence Pack、関連記事、外部リサーチ要否を判定し、G1/G2級の重賞プレビュー、初心者・ガイド記事、`external_research_required` 指定記事だけTavily検索を実行する。検索は既定で1記事あたり最大2クエリ、各3件、`jra.jp` / `jra.go.jp` に限定し、通過した結果だけを `research_sources` としてWriterへ渡す。Research Filterでは公式・信頼メディア・内部参照以外を除外し、勝率、複勝率、回収率、AI偏差値、オッズ、人気、予想印などの数値根拠に使われやすい文を `allowed_claims` から除外するようにした。Writerプロンプトにも `research_sources` 以外の外部情報追加禁止、本文内外部リンク禁止、外部リサーチを数値根拠に使わない制約を追加した。GitHub Actionsでは `TAVILY_API_KEY` を `article:pipeline` に渡すよう更新し、毎朝08:00 JSTの自動実行でもTavilyが利用できる状態にした。

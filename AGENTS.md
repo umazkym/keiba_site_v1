@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 収益改善: 自動広告単独テスト終了・手動広告既定ON復帰
+- **完了日時**: 2026-06-09 00:42
+- **実施内容**: 2026年6月8日のAdSense/GA4確認で、自動広告単独運用ではPVに対する広告リクエスト数が大きく落ち、これまで安定していた手動広告の配信機会を代替できていないと判断した。サイト側では `NEXT_PUBLIC_MANUAL_ADS_MODE` の既定値を `disabled` から `enabled` に戻し、環境変数未設定でも `AdUnit`、`InFeedAd`、`NativeCardAd`、`MultiplexAd`、`MobileStickyAd`、直接 `Adsense` 呼び出しが再び表示対象になるよう修正した。AdSenseの共通スクリプトは手動広告ユニットの配信にも必要なため維持し、コメントを「自動広告用」ではなく「手動広告にも必要なAdSenseスクリプト」と分かる表現へ調整した。
+- **変更ファイル**: `frontend/lib/ad-config.ts`, `frontend/components/GlobalAdManager.tsx`, `AGENTS.md`
+- **確認事項**: ローカル `frontend/.env.local` に `NEXT_PUBLIC_MANUAL_ADS_MODE` は未設定であることを確認。`npm run build` は成功し、静的ページ数は156件。既存どおり `caniuse-lite` 更新推奨と、ローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログが出たが終了コードは0。
+- **次のステップ**: Vercel環境変数に `NEXT_PUBLIC_MANUAL_ADS_MODE=disabled` が残っていないか確認し、残っている場合は削除または `enabled` に変更する。AdSense管理画面では `uma-free.com` の自動広告をOFFにし、手動広告ユニット中心の運用へ戻す。Clarityで7日以上ヒートマップを確認し、誤クリックリスクの低い位置だけ段階的に最適化する。
+
 #### ✅ 収益改善: Microsoft Clarityによるヒートマップ計測導入
 - **完了日時**: 2026-06-09 00:10
 - **実施内容**: 無料のヒートマップ・クリック・スクロール・セッション記録を使って広告配置を判断できるよう、Microsoft Clarityの計測コードをNext.jsに追加した。ユーザー提示のProject ID `x3vmax3h3t` を既定値として `MicrosoftClarity` コンポーネントに分離し、`NEXT_PUBLIC_CLARITY_PROJECT_ID` を設定すれば将来ID差し替えもできる構成にした。あわせて、プライバシーポリシーにMicrosoft Clarityの利用目的、収集される可能性のある操作情報、Microsoftプライバシーステートメントへのリンクを追記した。
@@ -522,7 +529,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 #### 収益改善メモ: AdSense自動広告単独テストの判断整理
 - **記録日**: 2026-06-07
 - **目的**: 手動広告と自動広告が混在した状態では、AdSense自動広告の純粋な効果、過密表示によるUX影響、ページ種別ごとの収益性を切り分けにくい。そのため、コード上の手動配置広告を一旦すべてOFFにし、AdSense管理画面側の自動広告だけでテストする。これは最終形を自動広告だけに決めるためではなく、自動広告が得意な場所と不得意な場所を見極めるための基礎テストである。
-- **現在のコード状態**: `frontend/lib/ad-config.ts` の `NEXT_PUBLIC_MANUAL_ADS_MODE` で手動広告を一括制御する。既定値は `disabled` のため、環境変数を設定しない限り `AdUnit`、`Adsense`、`InFeedAd`、`NativeCardAd`、`MultiplexAd`、`MobileStickyAd`、`TopHitsDisplay` 内のネイティブ広告穴埋めは表示されない。`frontend/app/layout.tsx` の AdSense自動広告スクリプトは残しているため、AdSense管理画面で自動広告をONにすれば自動広告は配信対象になる。後で手動広告を戻す場合は `NEXT_PUBLIC_MANUAL_ADS_MODE=enabled` を設定する。
+- **現在のコード状態**: 2026-06-09 00:42に自動広告単独テストを終了し、`frontend/lib/ad-config.ts` の `NEXT_PUBLIC_MANUAL_ADS_MODE` 既定値を `enabled` に戻した。環境変数を設定しない場合でも `AdUnit`、`Adsense`、`InFeedAd`、`NativeCardAd`、`MultiplexAd`、`MobileStickyAd`、`TopHitsDisplay` 内のネイティブ広告穴埋めは表示対象になる。`frontend/app/layout.tsx` の AdSenseスクリプトは、手動広告ユニット表示にも必要なため残している。AdSense自動広告を止める場合は、コードではなくAdSense管理画面側で `uma-free.com` の自動広告をOFFにする。
 - **AdSense管理画面の当初推奨設定**: インテント重視のフォーマットはOFF。オーバーレイフォーマットは、全画面広告ON、サイドレール広告ON、アンカー広告ONで、当初はアンカーを下部のみにする案を推奨していた。ページ内フォーマットは、バナー広告ON、Multiplex広告ON、関連検索OFFで開始する。関連検索は検索意図と広告導線が強く混ざりやすく、競馬データ確認中のユーザーを外へ逃がす可能性があるため、初回テストでは使わない。実際の本番適用値は下部の「2026-06-07 追加: 本番適用されたAdSense設定」を優先して参照する。
 - **除外ページの考え方**: AdSenseテスト中に除外ページ・除外エリアを設定できない場合は、一旦その制約を受け入れてテストする。本適用時はAdSense管理画面側で `/privacy`、`/terms`、`/contact`、`/advertising`、`/about` を除外候補にする。`GlobalAdManager` の `noAdPages` は手動追従広告の制御には効くが、`layout.tsx` の共通AdSenseスクリプトによる自動広告までは止められないため、自動広告のページ除外は必ずAdSense管理画面で行う。
 - **除外エリアの考え方**: 本適用時に除外エリアが使える場合、ヘッダー直下、記事タイトル・リード・目次・`ArticleSearchEntryPanel` 周辺、レースページのstickyレース選択、予想表直前・予想表途中、詳細分析ゲート周辺、横スクロールタブ周辺は除外候補にする。公式仕様上、除外エリアはページ内自動広告への制御であり、アンカー広告や全画面広告などのオーバーレイ広告を止める設定ではない。

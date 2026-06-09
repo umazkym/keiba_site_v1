@@ -11,7 +11,10 @@ import {
     selectWeightedAffiliateCampaign,
 } from '@/lib/affiliate-campaigns';
 import { sendAffiliateClickEvent } from '@/lib/analytics';
-import { resolveRakutenAffiliateUrl } from '@/lib/affiliate-url-resolver';
+import {
+    resolveRakutenAffiliateLink,
+    type ResolvedAffiliateLink,
+} from '@/lib/affiliate-url-resolver';
 
 type AffiliateSlotProps = {
     context: AffiliateContext;
@@ -55,7 +58,7 @@ export const AffiliateSlot = ({
         return campaign ? getActiveAffiliateLinks(campaign) : [];
     }, [campaign]);
     const linkSignature = links.map((link) => `${link.id}:${link.provider}:${link.url}`).join('|');
-    const [resolvedLinkUrls, setResolvedLinkUrls] = useState<Record<string, string>>({});
+    const [resolvedLinks, setResolvedLinks] = useState<Record<string, ResolvedAffiliateLink>>({});
 
     useEffect(() => {
         let cancelled = false;
@@ -64,19 +67,19 @@ export const AffiliateSlot = ({
 
         Promise.all(
             rakutenLinks.map(async (link) => {
-                const resolvedUrl = await resolveRakutenAffiliateUrl(link.url);
-                return resolvedUrl ? [link.id, resolvedUrl] as const : null;
+                const resolvedLink = await resolveRakutenAffiliateLink(link.url);
+                return resolvedLink ? [link.id, resolvedLink] as const : null;
             })
         ).then((entries) => {
             if (cancelled) return;
-            const nextUrls = entries.reduce<Record<string, string>>((accumulator, entry) => {
+            const nextLinks = entries.reduce<Record<string, ResolvedAffiliateLink>>((accumulator, entry) => {
                 if (entry) {
                     accumulator[entry[0]] = entry[1];
                 }
                 return accumulator;
             }, {});
-            if (Object.keys(nextUrls).length > 0) {
-                setResolvedLinkUrls((current) => ({ ...current, ...nextUrls }));
+            if (Object.keys(nextLinks).length > 0) {
+                setResolvedLinks((current) => ({ ...current, ...nextLinks }));
             }
         });
 
@@ -97,55 +100,82 @@ export const AffiliateSlot = ({
     const iconWrapperClassName = campaign.type === 'voting'
         ? 'bg-rose-50 text-rose-700'
         : 'bg-emerald-50 text-emerald-700';
+    const productPreview = campaign.type === 'product'
+        ? links.map((link) => resolvedLinks[link.id]).find((link) => link?.imageUrl || link?.itemPrice || link?.itemName)
+        : null;
+    const productPriceLabel = productPreview?.itemPrice
+        ? new Intl.NumberFormat('ja-JP').format(productPreview.itemPrice)
+        : null;
 
     return (
         <section
             className={`my-2 sm:my-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm ${className}`}
             aria-label={`${campaign.title} 広告リンク`}
         >
-            <div className="mb-2 flex items-start gap-2.5">
-                <span className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconWrapperClassName}`}>
-                    <Icon className="h-4 w-4" />
-                </span>
+            <div className="flex gap-3">
+                {campaign.type === 'product' ? (
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-slate-50 sm:h-24 sm:w-24">
+                        {productPreview?.imageUrl ? (
+                            <img
+                                src={productPreview.imageUrl}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                            />
+                        ) : (
+                            <Icon className="h-6 w-6 text-slate-300" />
+                        )}
+                    </div>
+                ) : (
+                    <span className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconWrapperClassName}`}>
+                        <Icon className="h-4 w-4" />
+                    </span>
+                )}
+
                 <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                    <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
                         <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
                             PR
                         </span>
-                        <h3 className="text-[13px] font-bold leading-tight text-slate-800 sm:text-sm">
-                            {campaign.title}
-                        </h3>
+                        {productPriceLabel && (
+                            <span className="rounded border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                                楽天 {productPriceLabel}円
+                            </span>
+                        )}
                     </div>
+                    <h3 className="text-[13px] font-bold leading-tight text-slate-800 sm:text-sm">
+                        {campaign.title}
+                    </h3>
                     {campaign.description && (
-                        <p className="text-[11px] leading-5 text-slate-500 sm:text-xs">
+                        <p className="mt-1 text-[11px] leading-5 text-slate-500 sm:text-xs">
                             {campaign.description}
                         </p>
                     )}
-                </div>
-            </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
-                {links.map((link) => (
-                    <a
-                        key={link.id}
-                        href={resolvedLinkUrls[link.id] || link.url}
-                        target="_blank"
-                        rel="sponsored nofollow noopener noreferrer"
-                        onClick={() => sendAffiliateClickEvent({
-                            campaign_id: campaign.id,
-                            link_id: link.id,
-                            provider: link.provider,
-                            context,
-                            campaign_type: campaign.type,
-                            race_type: raceType,
-                            venue_name: venueName,
-                        })}
-                        className={`inline-flex min-h-[42px] items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${providerClassNames[link.provider]}`}
-                    >
-                        <span className="min-w-0 truncate">{link.label || providerLabels[link.provider]}</span>
-                        <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                    </a>
-                ))}
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {links.map((link) => (
+                            <a
+                                key={link.id}
+                                href={resolvedLinks[link.id]?.affiliateUrl || link.url}
+                                target="_blank"
+                                rel="sponsored nofollow noopener noreferrer"
+                                onClick={() => sendAffiliateClickEvent({
+                                    campaign_id: campaign.id,
+                                    link_id: link.id,
+                                    provider: link.provider,
+                                    context,
+                                    campaign_type: campaign.type,
+                                    race_type: raceType,
+                                    venue_name: venueName,
+                                })}
+                                className={`inline-flex min-h-[40px] items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${providerClassNames[link.provider]}`}
+                            >
+                                <span className="min-w-0 truncate">{link.label || providerLabels[link.provider]}</span>
+                                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                            </a>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             {campaign.attention && (

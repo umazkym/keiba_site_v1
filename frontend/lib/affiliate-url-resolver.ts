@@ -4,11 +4,21 @@ type RakutenAffiliateResolveResponse = {
     affiliateUrl?: string;
     sourceUrl?: string;
     itemCode?: string;
+    itemName?: string;
+    itemPrice?: number | string;
+    imageUrl?: string;
     resolved?: boolean;
     reason?: string | null;
 };
 
-const MEMORY_CACHE = new Map<string, string>();
+export type ResolvedAffiliateLink = {
+    affiliateUrl: string;
+    itemName?: string;
+    itemPrice?: number;
+    imageUrl?: string;
+};
+
+const MEMORY_CACHE = new Map<string, ResolvedAffiliateLink>();
 const STORAGE_PREFIX = 'uma-free:rakuten-affiliate-url:v1:';
 const STORAGE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -22,29 +32,55 @@ const hashString = (value: string) => {
 
 const getStorageKey = (url: string) => `${STORAGE_PREFIX}${hashString(url)}`;
 
+const normalizePayload = (
+    sourceUrl: string,
+    payload: RakutenAffiliateResolveResponse
+): ResolvedAffiliateLink | null => {
+    const affiliateUrl = typeof payload.affiliateUrl === 'string'
+        ? payload.affiliateUrl.trim()
+        : '';
+    if (!affiliateUrl || affiliateUrl === sourceUrl) return null;
+
+    const itemPrice = typeof payload.itemPrice === 'number'
+        ? payload.itemPrice
+        : Number(payload.itemPrice);
+
+    return {
+        affiliateUrl,
+        itemName: typeof payload.itemName === 'string' ? payload.itemName : undefined,
+        itemPrice: Number.isFinite(itemPrice) ? itemPrice : undefined,
+        imageUrl: typeof payload.imageUrl === 'string' ? payload.imageUrl : undefined,
+    };
+};
+
 const readStoredUrl = (sourceUrl: string) => {
     if (typeof window === 'undefined') return null;
     try {
         const raw = window.localStorage.getItem(getStorageKey(sourceUrl));
         if (!raw) return null;
-        const parsed = JSON.parse(raw) as { url?: string; expiresAt?: number };
-        if (!parsed.url || !parsed.expiresAt || Date.now() >= parsed.expiresAt) {
+        const parsed = JSON.parse(raw) as ResolvedAffiliateLink & { expiresAt?: number };
+        if (!parsed.affiliateUrl || !parsed.expiresAt || Date.now() >= parsed.expiresAt) {
             window.localStorage.removeItem(getStorageKey(sourceUrl));
             return null;
         }
-        return parsed.url;
+        return {
+            affiliateUrl: parsed.affiliateUrl,
+            itemName: parsed.itemName,
+            itemPrice: parsed.itemPrice,
+            imageUrl: parsed.imageUrl,
+        };
     } catch {
         return null;
     }
 };
 
-const writeStoredUrl = (sourceUrl: string, affiliateUrl: string) => {
+const writeStoredUrl = (sourceUrl: string, resolvedLink: ResolvedAffiliateLink) => {
     if (typeof window === 'undefined') return;
     try {
         window.localStorage.setItem(
             getStorageKey(sourceUrl),
             JSON.stringify({
-                url: affiliateUrl,
+                ...resolvedLink,
                 expiresAt: Date.now() + STORAGE_TTL_MS,
             })
         );
@@ -53,7 +89,7 @@ const writeStoredUrl = (sourceUrl: string, affiliateUrl: string) => {
     }
 };
 
-export const resolveRakutenAffiliateUrl = async (sourceUrl: string) => {
+export const resolveRakutenAffiliateLink = async (sourceUrl: string) => {
     const normalizedUrl = sourceUrl.trim();
     if (!normalizedUrl) return null;
 
@@ -66,15 +102,12 @@ export const resolveRakutenAffiliateUrl = async (sourceUrl: string) => {
         if (!response.ok) return null;
 
         const payload = await response.json() as RakutenAffiliateResolveResponse;
-        const affiliateUrl = typeof payload.affiliateUrl === 'string'
-            ? payload.affiliateUrl.trim()
-            : '';
+        const resolvedLink = normalizePayload(normalizedUrl, payload);
+        if (!resolvedLink) return null;
 
-        if (!affiliateUrl || affiliateUrl === normalizedUrl) return null;
-
-        MEMORY_CACHE.set(normalizedUrl, affiliateUrl);
-        writeStoredUrl(normalizedUrl, affiliateUrl);
-        return affiliateUrl;
+        MEMORY_CACHE.set(normalizedUrl, resolvedLink);
+        writeStoredUrl(normalizedUrl, resolvedLink);
+        return resolvedLink;
     } catch {
         return null;
     }

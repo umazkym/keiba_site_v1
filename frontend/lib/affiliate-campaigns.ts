@@ -79,8 +79,8 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         id: 'horse-plush-equinox-doudeuce',
         enabled: true,
         type: 'product',
-        title: '名馬ぬいぐるみを探す',
-        description: 'イクイノックス、ドウデュースなどのサラブレッドコレクションを確認できます。',
+        title: 'サラブレッドコレクション GBぬいぐるみ',
+        description: 'イクイノックス・ドウデュースのGBサイズ。棚やデスクに置きやすい競走馬グッズです。',
         contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 100,
         links: [
@@ -104,8 +104,8 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         id: 'keiba-tshirt-collection',
         enabled: true,
         type: 'product',
-        title: '競馬系Tシャツを探す',
-        description: '競馬好きのギフトや観戦用に使いやすい、競馬モチーフのTシャツです。',
+        title: '競馬系Tシャツ',
+        description: '馬券や競馬用語をそのまま着るタイプの文字Tシャツ。観戦日や部屋着向けです。',
         contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 80,
         links: [
@@ -129,8 +129,8 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         id: 'horseshoe-lucky-charm',
         enabled: true,
         type: 'product',
-        title: '馬蹄グッズを探す',
-        description: '実際に使われた古蹄鉄を使った、馬好き向けの置物・開運グッズです。',
+        title: '実使用の古蹄鉄',
+        description: '栗東トレセンのサラブレッドが実際に使用した蹄鉄。玄関やデスクまわりに置けます。',
         contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 70,
         links: [

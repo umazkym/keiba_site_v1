@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 収益改善: アフィリエイト商品枠の表示改善
+- **完了日時**: 2026-06-09 22:47
+- **実施内容**: ユーザー提示の商品リンク内容を確認し、アフィリエイト商品枠の文言と見た目を実物寄りに調整した。ぬいぐるみは「サラブレッドコレクション GBぬいぐるみ」、Tシャツは「競馬系Tシャツ」、蹄鉄は「実使用の古蹄鉄」とし、過度にきれいな紹介文や「くすっと笑える」系の表現を避けた。楽天APIから `imageUrl` と `itemPrice` が取得できた場合は、商品画像と楽天価格をカード内に表示するようにし、取得できない場合は崩れないようアイコン枠へフォールバックする。
+- **変更ファイル**: `frontend/lib/affiliate-campaigns.ts`, `frontend/lib/affiliate-url-resolver.ts`, `frontend/components/AffiliateSlot.tsx`, `AGENTS.md`
+- **確認事項**: `python -m py_compile backend\core\rakuten_settings.py backend\api\v1\endpoints\affiliate.py backend\main.py` と `npm run build` は成功。既存どおり `caniuse-lite` 更新推奨と、ローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログが出たが終了コードは0。
+- **次のステップ**: 本番反映後、楽天APIの `imageUrl` が商品PR枠に出ることを確認する。Amazon短縮リンク側はAPI画像を取得しないため、楽天API画像を商品枠の代表画像として扱う。
+
 #### ✅ 収益改善: 楽天API affiliateUrl 自動解決の実装
 - **完了日時**: 2026-06-09 21:58
 - **実施内容**: 楽天市場の通常商品URLを、Cloud Runバックエンド経由で楽天APIの `affiliateUrl` に差し替えられるようにした。バックエンドに `/api/v1/affiliate/rakuten/resolve` を追加し、楽天商品URLから `shop:item` 形式の `itemCode` を抽出して、楽天市場商品検索APIへ `applicationId`、`accessKey`、`affiliateId` 付きで問い合わせる。フロントエンドでは楽天リンクだけを表示時に非同期解決し、取得できた場合はリンク先を `affiliateUrl` に置き換える。APIキーはブラウザへ出さず、取得失敗時は通常の商品URLへフォールバックする。Cloud Runの固定送信元IP `35.252.200.91` もデプロイメント文書へ記録した。

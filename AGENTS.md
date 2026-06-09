@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 収益改善: 楽天API affiliateUrl 自動解決の実装
+- **完了日時**: 2026-06-09 21:58
+- **実施内容**: 楽天市場の通常商品URLを、Cloud Runバックエンド経由で楽天APIの `affiliateUrl` に差し替えられるようにした。バックエンドに `/api/v1/affiliate/rakuten/resolve` を追加し、楽天商品URLから `shop:item` 形式の `itemCode` を抽出して、楽天市場商品検索APIへ `applicationId`、`accessKey`、`affiliateId` 付きで問い合わせる。フロントエンドでは楽天リンクだけを表示時に非同期解決し、取得できた場合はリンク先を `affiliateUrl` に置き換える。APIキーはブラウザへ出さず、取得失敗時は通常の商品URLへフォールバックする。Cloud Runの固定送信元IP `35.252.200.91` もデプロイメント文書へ記録した。
+- **変更ファイル**: `backend/api/v1/endpoints/affiliate.py`, `backend/main.py`, `frontend/lib/affiliate-url-resolver.ts`, `frontend/components/AffiliateSlot.tsx`, `.env.example`, `docs/system-documentation/08_デプロイメント.md`, `AGENTS.md`
+- **確認事項**: Cloud Run側には `RAKUTEN_API_APPLICATION_ID`、`RAKUTEN_API_ACCESS_KEY`、`RAKUTEN_AFFILIATE_ID` を環境変数またはSecretとして設定する。`RAKUTEN_API_APPLICATION_URL` は管理用メモとして設定しておく。Vercel側の `NEXT_PUBLIC_API_URL` が Cloud Run API URL を向いていれば、フロントから解決APIを呼び出せる。`python -m py_compile backend\core\rakuten_settings.py backend\api\v1\endpoints\affiliate.py backend\main.py` と `npm run build` は成功。既存どおり `caniuse-lite` 更新推奨と、ローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログが出たが終了コードは0。
+- **次のステップ**: 本番デプロイ後、商品PR枠の楽天リンクをクリック直前のHTMLまたはDevTools Networkで確認し、`/api/v1/affiliate/rakuten/resolve` が200を返して `affiliateUrl` が通常URLと異なることを確認する。
+
 #### ✅ 収益改善: アフィリエイト導線基盤の追加
 - **完了日時**: 2026-06-09 01:42
 - **実施内容**: 日別予想ページ中心のアクセス構造を前提に、競馬関連の商品リンクと投票サイト導線を半自動で差し込める `AffiliateSlot` と設定ファイルを追加した。投票サイトは現状楽天競馬のみを表示対象とし、地方競馬ページの予想表直後で既存 `InFeedAd` と差し替えられる構成にした。SPAT4とオッズパークは後日審査通過時にすぐ有効化できるよう、無効状態の待機キャンペーンとして用意した。商品リンクは楽天市場とAmazonを同じ商品キャンペーンにまとめ、日別ページの的中ランキング後と記事末尾に表示できるようにした。リンクURLが空の間は該当枠が表示されず、日別ページでは既存AdSense枠がフォールバック表示される。各リンクには `rel="sponsored nofollow noopener noreferrer"` と `PR` 表記を付与し、GA4の `affiliate_click` イベントでクリック計測できるようにした。

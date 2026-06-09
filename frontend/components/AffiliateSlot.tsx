@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ExternalLink, ShoppingBag, Ticket } from 'lucide-react';
 import {
     type AffiliateContext,
@@ -11,6 +11,7 @@ import {
     selectWeightedAffiliateCampaign,
 } from '@/lib/affiliate-campaigns';
 import { sendAffiliateClickEvent } from '@/lib/analytics';
+import { resolveRakutenAffiliateUrl } from '@/lib/affiliate-url-resolver';
 
 type AffiliateSlotProps = {
     context: AffiliateContext;
@@ -50,12 +51,44 @@ export const AffiliateSlot = ({
     const campaigns = getAffiliateCampaignsForContext({ context, raceType, venueName });
     const seed = `${context}:${raceType ?? 'all'}:${venueName ?? 'all'}:${selectionKey}`;
     const campaign = selectWeightedAffiliateCampaign(campaigns, seed);
+    const links = useMemo(() => {
+        return campaign ? getActiveAffiliateLinks(campaign) : [];
+    }, [campaign]);
+    const linkSignature = links.map((link) => `${link.id}:${link.provider}:${link.url}`).join('|');
+    const [resolvedLinkUrls, setResolvedLinkUrls] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        let cancelled = false;
+        const rakutenLinks = links.filter((link) => link.provider === 'rakuten' && link.url.trim());
+        if (rakutenLinks.length === 0) return undefined;
+
+        Promise.all(
+            rakutenLinks.map(async (link) => {
+                const resolvedUrl = await resolveRakutenAffiliateUrl(link.url);
+                return resolvedUrl ? [link.id, resolvedUrl] as const : null;
+            })
+        ).then((entries) => {
+            if (cancelled) return;
+            const nextUrls = entries.reduce<Record<string, string>>((accumulator, entry) => {
+                if (entry) {
+                    accumulator[entry[0]] = entry[1];
+                }
+                return accumulator;
+            }, {});
+            if (Object.keys(nextUrls).length > 0) {
+                setResolvedLinkUrls((current) => ({ ...current, ...nextUrls }));
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [linkSignature, links]);
 
     if (!campaign) {
         return <>{fallback}</>;
     }
 
-    const links = getActiveAffiliateLinks(campaign);
     if (links.length === 0) {
         return <>{fallback}</>;
     }
@@ -95,7 +128,7 @@ export const AffiliateSlot = ({
                 {links.map((link) => (
                     <a
                         key={link.id}
-                        href={link.url}
+                        href={resolvedLinkUrls[link.id] || link.url}
                         target="_blank"
                         rel="sponsored nofollow noopener noreferrer"
                         onClick={() => sendAffiliateClickEvent({

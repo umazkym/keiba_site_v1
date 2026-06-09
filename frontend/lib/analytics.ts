@@ -49,6 +49,16 @@ export type RewardGateEventParams = {
     reason?: string;
 };
 
+export type AffiliateClickParams = {
+    campaign_id: string;
+    link_id: string;
+    provider: string;
+    context: string;
+    campaign_type: string;
+    race_type?: string;
+    venue_name?: string;
+};
+
 const compactParams = (params: Record<string, unknown>) => {
     return Object.fromEntries(
         Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -132,4 +142,11 @@ export const sendPredictionViewEvent = (accuracy: PredictAccuracy) => {
  */
 export const sendRewardGateEvent = (eventName: RewardGateEventName, params: RewardGateEventParams = {}) => {
     sendGAEvent('event', eventName, compactParams(params));
+};
+
+export const sendAffiliateClickEvent = (params: AffiliateClickParams) => {
+    sendGAEvent('event', 'affiliate_click', compactParams({
+        ...params,
+        affiliate_page_type: inferPageType(),
+    }));
 };

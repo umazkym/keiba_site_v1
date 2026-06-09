@@ -241,7 +241,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📊 全体の進捗状況
 
-**最終更新**: 2026-06-08
+**最終更新**: 2026-06-09
 
 | フェーズ | ステータス | 完了数/総数 | 進捗率 |
 |---------|----------|-----------|-------|
@@ -476,6 +476,27 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 -----
 
 ### 📝 完了したステップの記録
+
+#### ✅ 収益改善: アフィリエイト導線基盤の追加
+- **完了日時**: 2026-06-09 01:42
+- **実施内容**: 日別予想ページ中心のアクセス構造を前提に、競馬関連の商品リンクと投票サイト導線を半自動で差し込める `AffiliateSlot` と設定ファイルを追加した。投票サイトは現状楽天競馬のみを表示対象とし、地方競馬ページの予想表直後で既存 `InFeedAd` と差し替えられる構成にした。SPAT4とオッズパークは後日審査通過時にすぐ有効化できるよう、無効状態の待機キャンペーンとして用意した。商品リンクは楽天市場とAmazonを同じ商品キャンペーンにまとめ、日別ページの的中ランキング後と記事末尾に表示できるようにした。リンクURLが空の間は該当枠が表示されず、日別ページでは既存AdSense枠がフォールバック表示される。各リンクには `rel="sponsored nofollow noopener noreferrer"` と `PR` 表記を付与し、GA4の `affiliate_click` イベントでクリック計測できるようにした。
+- **変更ファイル**: `frontend/lib/affiliate-campaigns.ts`, `frontend/components/AffiliateSlot.tsx`, `frontend/lib/analytics.ts`, `frontend/components/RaceTabs.tsx`, `frontend/components/RacePageClient.tsx`, `frontend/app/articles/[slug]/page.tsx`, `frontend/app/advertising/page.tsx`, `frontend/app/privacy/page.tsx`, `AGENTS.md`
+- **確認事項**: 実リンク未投入時はアフィリエイト枠は表示されず、日別予想ページでは既存AdSense枠が継続する。楽天競馬リンクを設定すると、地方競馬タブの予想表直後に「このレースを投票サイトで確認」枠が表示される。商品リンクを設定すると、日別ページ下部と記事末尾に「名馬グッズを探す」枠が表示される。
+- **次のステップ**: 楽天競馬、楽天市場、Amazonの実リンクを `frontend/lib/affiliate-campaigns.ts` の `url` に設定する。必要に応じて商品キャンペーンを複数追加し、`weight`、`startAt`、`endAt`、`enabled` で掲載期間と表示比率を調整する。
+
+#### ✅ 収益改善: 楽天API設定受け口の追加
+- **完了日時**: 2026-06-09 02:08
+- **実施内容**: ユーザーが作成した楽天APIアプリ `umafree_rakuten_api` を今後の商品検索・アフィリエイト連携で使えるよう、実キーをリポジトリへ直書きしない形で環境変数の受け口を追加した。`.env.example` に `RAKUTEN_API_APPLICATION_URL`、`RAKUTEN_API_APPLICATION_ID`、`RAKUTEN_API_ACCESS_KEY`、`RAKUTEN_AFFILIATE_ID` を追加し、バックエンド側には `backend/core/rakuten_settings.py` を追加して設定有無とマスク済み概要を確認できるようにした。デプロイメント文書にも、固定IP制限が必要な場合はGCE VM `keiba-db` の外部IPから楽天APIを呼び、Cloud Runから直接呼ぶ場合はCloud NATによる静的アウトバウンドIPが必要であることを追記した。
+- **変更ファイル**: `.env.example`, `backend/core/rakuten_settings.py`, `docs/system-documentation/08_デプロイメント.md`, `AGENTS.md`
+- **確認事項**: 実際のAccess Keyは追跡対象ファイルへ保存していない。GCE VM上で同期バッチを動かす場合は、`keiba-db` の `.env` または実行環境変数に実値を設定する。
+- **次のステップ**: 楽天側の許可IPに `34.182.6.97` を登録し、GCE VMまたはGitHub Secretsへ楽天APIの実値を設定する。Amazonは通常のアフィリエイトリンクを `frontend/lib/affiliate-campaigns.ts` の商品キャンペーンに追加する。
+
+#### ✅ 収益改善: 競馬グッズ商品リンク初期登録
+- **完了日時**: 2026-06-09 02:18
+- **実施内容**: ユーザー提示の楽天市場リンクとAmazon短縮リンクを、既存のアフィリエイト導線設定に商品キャンペーンとして登録した。対象は、名馬ぬいぐるみ、競馬系Tシャツ、馬蹄グッズの3種類。表示場所は `race_after_top_hits`、`article_footer`、`home_goods` とし、日別予想ページ下部と記事末尾で1商品ずつ自然に選ばれる。表示文言は長い商品名をそのまま出さず、サイトの雰囲気に合わせて短いタイトルと説明文へ整理した。
+- **変更ファイル**: `frontend/lib/affiliate-campaigns.ts`, `AGENTS.md`
+- **確認事項**: 各商品に楽天市場リンクとAmazonリンクを設定済み。リンクは `AffiliateSlot` 経由で `PR` 表記、`rel="sponsored nofollow noopener noreferrer"`、GA4 `affiliate_click` 計測が適用される。
+- **次のステップ**: 本番反映後、日別予想ページ下部と記事末尾で商品PR枠が出ることを確認する。クリック数はGA4の `affiliate_click` で、キャンペーン別・提供元別に確認する。
 
 #### ✅ UI改善: レース日別ページの「今日まず見るレース」表示撤去
 - **完了日時**: 2026-06-09 00:57

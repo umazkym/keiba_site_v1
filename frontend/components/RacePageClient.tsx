@@ -14,6 +14,7 @@ import { Article } from "@/lib/articles";
 import DisclaimerAlert from "@/components/DisclaimerAlert";
 import { InFeedAd } from "@/components/InFeedAd";
 import { RecentRaceReturn } from "@/components/RecentRaceReturn";
+import { AffiliateSlot } from "@/components/AffiliateSlot";
 
 // 日付フォーマット検証関数
 /**
@@ -377,7 +378,11 @@ export default function RacePageClient({
 
             {/* ★ CTR改善: 的中ランキング後の広告をInFeedAdに変更 */}
             {/* バナー広告よりコンテンツカード風の方がCTRが高い */}
-            <InFeedAd refreshKey={`bottom-${currentDate}`} analyticsPlacement="race_after_top_hits" />
+            <AffiliateSlot
+                context="race_after_top_hits"
+                selectionKey={currentDate}
+                fallback={<InFeedAd refreshKey={`bottom-${currentDate}`} analyticsPlacement="race_after_top_hits" />}
+            />
 
             {/* ★ 回遊性改善: 分析記事への導線を追加 */}
             {/* データ根拠: 記事ページのエンゲージメント時間はレースページの3-10倍

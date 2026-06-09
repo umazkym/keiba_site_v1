@@ -11,6 +11,7 @@ import { MultiplexAd } from '@/components/MultiplexAd';
 import { enhanceArticleHtml } from '@/lib/article-ux';
 import { ArticleSearchEntryPanel } from '@/components/ArticleSearchEntryPanel';
 import { getTopPayoutHits } from '@/lib/api';
+import { AffiliateSlot } from '@/components/AffiliateSlot';
 
 type Props = {
   params: { slug: string };
@@ -278,6 +279,8 @@ export default async function ArticlePage({ params }: Props) {
             <div className="pb-10">
               <RelatedArticles currentSlug={params.slug} count={3} />
             </div>
+
+            <AffiliateSlot context="article_footer" selectionKey={params.slug} className="mb-8" />
 
             {/* ===== 広告: 記事本文後 ===== */}
             <div className="pb-8">

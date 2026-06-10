@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ExternalLink, ShoppingBag, Ticket } from 'lucide-react';
 import {
     type AffiliateContext,
@@ -10,7 +10,7 @@ import {
     getAffiliateCampaignsForContext,
     selectWeightedAffiliateCampaign,
 } from '@/lib/affiliate-campaigns';
-import { sendAffiliateClickEvent } from '@/lib/analytics';
+import { sendAffiliateClickEvent, sendAffiliateImpressionEvent } from '@/lib/analytics';
 import {
     resolveRakutenAffiliateLink,
     type ResolvedAffiliateLink,
@@ -59,6 +59,7 @@ export const AffiliateSlot = ({
     }, [campaign]);
     const linkSignature = links.map((link) => `${link.id}:${link.provider}:${link.url}`).join('|');
     const [resolvedLinks, setResolvedLinks] = useState<Record<string, ResolvedAffiliateLink>>({});
+    const slotRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -88,6 +89,51 @@ export const AffiliateSlot = ({
         };
     }, [linkSignature, links]);
 
+    useEffect(() => {
+        if (!campaign || links.length === 0 || typeof window === 'undefined') {
+            return undefined;
+        }
+
+        const node = slotRef.current;
+        if (!node) return undefined;
+
+        const providers = Array.from(new Set(links.map((link) => link.provider))).join(',');
+        const sendImpression = () => {
+            sendAffiliateImpressionEvent({
+                campaign_id: campaign.id,
+                providers,
+                context,
+                campaign_type: campaign.type,
+                link_count: links.length,
+                race_type: raceType,
+                venue_name: venueName,
+            });
+        };
+
+        if (!('IntersectionObserver' in window)) {
+            sendImpression();
+            return undefined;
+        }
+
+        let hasSent = false;
+        const observer = new IntersectionObserver((entries) => {
+            const entry = entries[0];
+            if (!entry || hasSent) return;
+
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.4) {
+                hasSent = true;
+                sendImpression();
+                observer.disconnect();
+            }
+        }, { threshold: [0, 0.4, 0.75] });
+
+        observer.observe(node);
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [campaign, context, links, raceType, venueName]);
+
     if (!campaign) {
         return <>{fallback}</>;
     }
@@ -109,6 +155,7 @@ export const AffiliateSlot = ({
 
     return (
         <section
+            ref={slotRef}
             className={`my-2 sm:my-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm ${className}`}
             aria-label={`${campaign.title} 広告リンク`}
         >

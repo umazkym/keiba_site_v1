@@ -2,7 +2,8 @@ export type AffiliateContext =
     | 'race_after_prediction'
     | 'race_after_top_hits'
     | 'article_footer'
-    | 'home_goods';
+    | 'home_goods'
+    | 'home_nar_voting';
 
 export type AffiliateCampaignType = 'voting' | 'product';
 
@@ -50,18 +51,18 @@ export type AffiliateFilter = {
     now?: Date;
 };
 
-const DEFAULT_VOTING_NOTICE = '馬券は20歳になってから。ほどよく楽しむ大人の遊び。';
+const DEFAULT_VOTING_NOTICE = '勝馬投票券の購入は20歳以上から。分析データは参考情報として、無理のない範囲でご利用ください。';
 
 export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
     {
         id: 'rakuten-keiba-default',
         enabled: true,
         type: 'voting',
-        title: 'このレースを投票サイトで確認',
-        description: '地方競馬の発売状況やオッズは、投票サイト側で最新情報を確認できます。',
+        title: '地方競馬のオッズと投票会員登録を確認',
+        description: '地方競馬全場の発売状況とオッズをまとめて確認できます。楽天銀行口座をお持ちの方は、楽天競馬の投票会員登録手続きへ進めます。',
         attention: DEFAULT_VOTING_NOTICE,
-        contexts: ['race_after_prediction'],
-        weight: 100,
+        contexts: ['race_after_prediction', 'race_after_top_hits', 'home_nar_voting'],
+        weight: 520,
         raceScope: {
             raceTypes: ['nar'],
         },
@@ -69,8 +70,8 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
             {
                 id: 'rakuten-keiba-main',
                 provider: 'rakuten_keiba',
-                label: '楽天競馬で確認',
-                url: '',
+                label: '楽天競馬で詳細を見る',
+                url: 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641',
                 enabled: true,
             },
         ],

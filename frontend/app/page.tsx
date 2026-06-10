@@ -18,6 +18,7 @@ import { getLatestArticles, getAllArticles } from '../lib/articles';
 import DisclaimerAlert from '@/components/DisclaimerAlert';
 import { AdUnit } from '@/components/AdUnit';
 import { NativeCardAd } from '@/components/NativeCardAd';
+import { AffiliateSlot } from '@/components/AffiliateSlot';
 import type { Metadata } from 'next';
 import type { RaceDayPrediction } from '@/lib/types';
 import { getRaceDetailPath } from '@/lib/race-url';
@@ -316,6 +317,12 @@ export default async function HomePage() {
                                     <Link href={`/races/${todayStr}`} className="venue-link text-xs !bg-transparent !border-transparent !text-secondary hover:!bg-slate-50">その他すべて→</Link>
                                 )}
                             </div>
+                            <AffiliateSlot
+                                context="home_nar_voting"
+                                raceType="nar"
+                                selectionKey={todayStr}
+                                className="mt-3"
+                            />
                         </>
                     )}
 

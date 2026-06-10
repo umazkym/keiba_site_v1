@@ -59,6 +59,16 @@ export type AffiliateClickParams = {
     venue_name?: string;
 };
 
+export type AffiliateImpressionParams = {
+    campaign_id: string;
+    providers: string;
+    context: string;
+    campaign_type: string;
+    link_count: number;
+    race_type?: string;
+    venue_name?: string;
+};
+
 const compactParams = (params: Record<string, unknown>) => {
     return Object.fromEntries(
         Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -146,6 +156,13 @@ export const sendRewardGateEvent = (eventName: RewardGateEventName, params: Rewa
 
 export const sendAffiliateClickEvent = (params: AffiliateClickParams) => {
     sendGAEvent('event', 'affiliate_click', compactParams({
+        ...params,
+        affiliate_page_type: inferPageType(),
+    }));
+};
+
+export const sendAffiliateImpressionEvent = (params: AffiliateImpressionParams) => {
+    sendGAEvent('event', 'affiliate_impression', compactParams({
         ...params,
         affiliate_page_type: inferPageType(),
     }));

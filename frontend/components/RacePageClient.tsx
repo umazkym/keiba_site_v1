@@ -267,6 +267,7 @@ export default function RacePageClient({
     };
 
     const todayStr = getTodayString();
+    const hasNarRaces = (predictionData?.nar?.length ?? 0) > 0;
 
     const renderContent = ({ showSpecialPick = true }: { showSpecialPick?: boolean } = {}) => {
         if (isLoading) {
@@ -380,6 +381,7 @@ export default function RacePageClient({
             {/* バナー広告よりコンテンツカード風の方がCTRが高い */}
             <AffiliateSlot
                 context="race_after_top_hits"
+                raceType={hasNarRaces ? 'nar' : 'jra'}
                 selectionKey={currentDate}
                 fallback={<InFeedAd refreshKey={`bottom-${currentDate}`} analyticsPlacement="race_after_top_hits" />}
             />

@@ -51,15 +51,15 @@ export type AffiliateFilter = {
     now?: Date;
 };
 
-const DEFAULT_VOTING_NOTICE = '勝馬投票券の購入は20歳以上から。分析データは参考情報として、無理のない範囲でご利用ください。';
+const DEFAULT_VOTING_NOTICE = '※馬券購入は20歳になってから、余裕を持ってお楽しみください。';
 
 export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
     {
         id: 'rakuten-keiba-default',
         enabled: true,
         type: 'voting',
-        title: '地方競馬のオッズと投票会員登録を確認',
-        description: '地方競馬全場の発売状況とオッズをまとめて確認できます。楽天銀行口座をお持ちの方は、楽天競馬の投票会員登録手続きへ進めます。',
+        title: '楽天競馬でオッズを確認する',
+        description: '地方競馬全場のオッズ確認や馬券投票は楽天競馬で。馬券購入で楽天ポイントも貯まります。',
         attention: DEFAULT_VOTING_NOTICE,
         contexts: ['race_after_prediction', 'race_after_top_hits', 'home_nar_voting'],
         weight: 520,
@@ -70,7 +70,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
             {
                 id: 'rakuten-keiba-main',
                 provider: 'rakuten_keiba',
-                label: '楽天競馬で詳細を見る',
+                label: '楽天競馬でオッズを見る',
                 url: 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641',
                 enabled: true,
             },
@@ -80,8 +80,8 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         id: 'horse-plush-equinox-doudeuce',
         enabled: true,
         type: 'product',
-        title: 'サラブレッドコレクション GBぬいぐるみ',
-        description: 'イクイノックス・ドウデュースのGBサイズ。棚やデスクに置きやすい競走馬グッズです。',
+        title: 'サラブレッドコレクション ぬいぐるみ（イクイノックス / ドウデュース）',
+        description: '大人気のイクイノックスとドウデュース。お部屋やデスクに飾りやすいサイズ（高さ約20cm）の競走馬ぬいぐるみです。競馬ファンへのプレゼントにも。',
         contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 100,
         links: [
@@ -105,8 +105,8 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         id: 'keiba-tshirt-collection',
         enabled: true,
         type: 'product',
-        title: '競馬系Tシャツ',
-        description: '馬券や競馬用語をそのまま着るタイプの文字Tシャツ。観戦日や部屋着向けです。',
+        title: 'おもしろ競馬系文字Tシャツ（競馬用語・名言）',
+        description: '「単勝」「勝負気配」など競馬用語やクスッと笑える名言をあしらったTシャツ。競馬場への観戦や普段の部屋着にも最適です。',
         contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 80,
         links: [
@@ -130,8 +130,8 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         id: 'horseshoe-lucky-charm',
         enabled: true,
         type: 'product',
-        title: '実使用の古蹄鉄',
-        description: '栗東トレセンのサラブレッドが実際に使用した蹄鉄。玄関やデスクまわりに置けます。',
+        title: '栗東トレセン実使用 幸運の馬蹄（古蹄鉄）',
+        description: '栗東トレーニングセンターのサラブレッドが実際に使用した本物の蹄鉄。魔除けや幸運を呼ぶお守りとして、玄関やリビングのインテリアに。',
         contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 70,
         links: [

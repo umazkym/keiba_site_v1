@@ -275,12 +275,12 @@ export default async function ArticlePage({ params }: Props) {
               </div>
             </div>
 
+            <AffiliateSlot context="article_footer" selectionKey={params.slug} className="mb-8" />
+
             {/* ===== 関連記事 ===== */}
             <div className="pb-10">
               <RelatedArticles currentSlug={params.slug} count={3} />
             </div>
-
-            <AffiliateSlot context="article_footer" selectionKey={params.slug} className="mb-8" />
 
             {/* ===== 広告: 記事本文後 ===== */}
             <div className="pb-8">

@@ -35,12 +35,12 @@ const providerLabels: Record<AffiliateProvider, string> = {
 };
 
 const providerClassNames: Record<AffiliateProvider, string> = {
-    rakuten_keiba: 'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100',
-    spat4: 'border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-300 hover:bg-sky-100',
-    oddspark: 'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100',
-    rakuten: 'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100',
+    rakuten_keiba: 'border-rose-600 bg-rose-600 text-white hover:bg-rose-700 hover:border-rose-700 shadow-sm',
+    spat4: 'border-sky-600 bg-sky-600 text-white hover:bg-sky-700 hover:border-sky-700 shadow-sm',
+    oddspark: 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700 hover:border-amber-700 shadow-sm',
+    rakuten: 'border-rose-600 bg-rose-600 text-white hover:bg-rose-700 hover:border-rose-700 shadow-sm',
     amazon: 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100',
-    official: 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100',
+    official: 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700 hover:border-blue-700 shadow-sm',
 };
 
 export const AffiliateSlot = ({
@@ -57,6 +57,21 @@ export const AffiliateSlot = ({
     const links = useMemo(() => {
         return campaign ? getActiveAffiliateLinks(campaign) : [];
     }, [campaign]);
+    const mainLinks = useMemo(() => {
+        if (campaign?.type === 'product') {
+            const rLink = links.find((link) => link.provider === 'rakuten');
+            if (rLink) return [rLink];
+            return links.slice(0, 1);
+        }
+        return links;
+    }, [campaign, links]);
+    const subLinks = useMemo(() => {
+        if (campaign?.type === 'product') {
+            const mLink = mainLinks[0];
+            return links.filter((link) => link.id !== mLink?.id);
+        }
+        return [];
+    }, [campaign, links, mainLinks]);
     const linkSignature = links.map((link) => `${link.id}:${link.provider}:${link.url}`).join('|');
     const [resolvedLinks, setResolvedLinks] = useState<Record<string, ResolvedAffiliateLink>>({});
     const slotRef = useRef<HTMLElement | null>(null);
@@ -199,28 +214,57 @@ export const AffiliateSlot = ({
                         </p>
                     )}
 
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                        {links.map((link) => (
-                            <a
-                                key={link.id}
-                                href={resolvedLinks[link.id]?.affiliateUrl || link.url}
-                                target="_blank"
-                                rel="sponsored nofollow noopener noreferrer"
-                                onClick={() => sendAffiliateClickEvent({
-                                    campaign_id: campaign.id,
-                                    link_id: link.id,
-                                    provider: link.provider,
-                                    context,
-                                    campaign_type: campaign.type,
-                                    race_type: raceType,
-                                    venue_name: venueName,
-                                })}
-                                className={`inline-flex min-h-[40px] items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${providerClassNames[link.provider]}`}
-                            >
-                                <span className="min-w-0 truncate">{link.label || providerLabels[link.provider]}</span>
-                                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                            </a>
-                        ))}
+                    <div className="mt-2 flex flex-col gap-2">
+                        <div className={`grid gap-2 ${mainLinks.length > 1 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
+                            {mainLinks.map((link) => (
+                                <a
+                                    key={link.id}
+                                    href={resolvedLinks[link.id]?.affiliateUrl || link.url}
+                                    target="_blank"
+                                    rel="sponsored nofollow noopener noreferrer"
+                                    onClick={() => sendAffiliateClickEvent({
+                                        campaign_id: campaign.id,
+                                        link_id: link.id,
+                                        provider: link.provider,
+                                        context,
+                                        campaign_type: campaign.type,
+                                        race_type: raceType,
+                                        venue_name: venueName,
+                                    })}
+                                    className={`inline-flex min-h-[40px] items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${providerClassNames[link.provider]}`}
+                                >
+                                    <span className="min-w-0 truncate">{link.label || providerLabels[link.provider]}</span>
+                                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                </a>
+                            ))}
+                        </div>
+
+                        {subLinks.length > 0 && (
+                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
+                                <span className="shrink-0">他のショップで探す:</span>
+                                {subLinks.map((link) => (
+                                    <a
+                                        key={link.id}
+                                        href={resolvedLinks[link.id]?.affiliateUrl || link.url}
+                                        target="_blank"
+                                        rel="sponsored nofollow noopener noreferrer"
+                                        onClick={() => sendAffiliateClickEvent({
+                                            campaign_id: campaign.id,
+                                            link_id: link.id,
+                                            provider: link.provider,
+                                            context,
+                                            campaign_type: campaign.type,
+                                            race_type: raceType,
+                                            venue_name: venueName,
+                                        })}
+                                        className="font-semibold text-rose-600 hover:text-rose-700 hover:underline inline-flex items-center gap-0.5"
+                                    >
+                                        {providerLabels[link.provider]}
+                                        <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                                    </a>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

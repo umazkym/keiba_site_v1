@@ -342,7 +342,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             raceType={raceType}
                             venueName={venue.venue_name}
                             selectionKey={adRefreshKey}
-                            fallback={<InFeedAd refreshKey={`prelock-${adRefreshKey}`} analyticsPlacement="race_after_prediction_table" />}
                         />
                     )}
 

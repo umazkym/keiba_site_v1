@@ -58,6 +58,10 @@ export const AffiliateSlot = ({
         return campaign ? getActiveAffiliateLinks(campaign) : [];
     }, [campaign]);
     const mainLinks = useMemo(() => {
+        if (campaign?.type === 'voting') {
+            // 投票系: 最初の1リンクのみ主ボタンにする（将来複数対応時の保険）
+            return links.slice(0, 1);
+        }
         if (campaign?.type === 'product') {
             const rLink = links.find((link) => link.provider === 'rakuten');
             if (rLink) return [rLink];
@@ -69,6 +73,10 @@ export const AffiliateSlot = ({
         if (campaign?.type === 'product') {
             const mLink = mainLinks[0];
             return links.filter((link) => link.id !== mLink?.id);
+        }
+        if (campaign?.type === 'voting') {
+            // 投票系でも複数リンクがあれば控えめに表示
+            return links.slice(1);
         }
         return [];
     }, [campaign, links, mainLinks]);

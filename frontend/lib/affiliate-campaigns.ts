@@ -51,7 +51,7 @@ export type AffiliateFilter = {
     now?: Date;
 };
 
-const DEFAULT_VOTING_NOTICE = '※馬券購入は20歳になってから、余裕を持ってお楽しみください。';
+const DEFAULT_VOTING_NOTICE = '※馬券の購入は20歳以上の方のみ対象です。';
 
 export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
     {
@@ -59,7 +59,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         enabled: true,
         type: 'voting',
         title: '楽天競馬でオッズを確認する',
-        description: '地方競馬全場のオッズ確認や馬券投票は楽天競馬で。馬券購入で楽天ポイントも貯まります。',
+        description: '地方競馬のオッズ確認や投票に対応しています。楽天会員であればポイントも利用できます。',
         attention: DEFAULT_VOTING_NOTICE,
         contexts: ['race_after_prediction', 'race_after_top_hits', 'home_nar_voting'],
         weight: 520,
@@ -106,7 +106,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         enabled: true,
         type: 'product',
         title: 'おもしろ競馬系文字Tシャツ（競馬用語・名言）',
-        description: '「単勝」「勝負気配」など競馬用語やクスッと笑える名言をあしらったTシャツ。競馬場への観戦や普段の部屋着にも最適です。',
+        description: '競馬用語や競走馬をモチーフにした文字Tシャツです。競馬場での観戦や日常使いに。',
         contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 80,
         links: [
@@ -167,7 +167,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
             {
                 id: 'spat4-main',
                 provider: 'spat4',
-                label: 'SPAT4で確認',
+                label: 'SPAT4で馬券投票する',
                 url: '',
                 enabled: true,
             },
@@ -190,7 +190,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
             {
                 id: 'oddspark-main',
                 provider: 'oddspark',
-                label: 'オッズパークで確認',
+                label: 'オッズパークで馬券投票する',
                 url: '',
                 enabled: true,
             },

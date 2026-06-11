@@ -241,7 +241,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📊 全体の進捗状況
 
-**最終更新**: 2026-06-10
+**最終更新**: 2026-06-11
 
 | フェーズ | ステータス | 完了数/総数 | 進捗率 |
 |---------|----------|-----------|-------|
@@ -476,6 +476,19 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 -----
 
 ### 📝 完了したステップの記録
+
+#### ✅ 記事トーン改善: UMA-FREE 記事文言改善仕様書に基づく改訂
+- **完了日時**: 2026-06-11 19:10
+- **実施内容**: UMA-FREE記事文言改善仕様書に基づき、記事生成および編集エンジンの文言品質の根本的改善を行った。
+  - `agent_writer.ts`：SYSTEM_PROMPTの「トーン・表現のルール」を改訂版に差し替え、冒頭・文末・見出し・結び方・データの見せ方等のルールを刷新。重賞プレビューで人気馬や騎手を煽る主観・断定表現の禁止・代替表現の指示を追記。
+  - `agent_editor.ts`：BANNED_REPLACEMENTSに「データという武器」「馬券購入」等の追加禁止・代替ルールを追加し、`repairAwkwardReplacementArtifacts` に不自然な置換を修復する処理を追加。
+  - `seo_checker.ts`：`hard_banned_strings` に購入推奨や過剰確信、定型的な結びなどの禁止語を追加しチェックを強化。
+  - `naturalize_existing_articles.js`：文末定型化、買い続ける系、重複、非常に制限などの置換ルールを追加。
+  - `improve_article_tone.js`：既存記事トーン一括修正用スクリプトを新規作成・実行（CRLF改行対応と絶対/絶対的の置換を追加し適用、24記事を修正）。
+  - `package.json`：`article:tone-fix`、`article:tone-fix:apply`、`article:tone-audit` スクリプトを追加。
+- **変更ファイル**: `frontend/scripts/agents/agent_writer.ts`, `frontend/scripts/agents/agent_editor.ts`, `frontend/scripts/agents/seo_checker.ts`, `frontend/scripts/agents/naturalize_existing_articles.js`, `frontend/scripts/agents/improve_article_tone.js` (新規), `frontend/package.json`, `AGENTS.md`
+- **確認事項**: 既存記事のトーン修正を適用し、監査結果で「絶対的」などのCRITICALエラーが解消されたこと、および `npm run build` が正常に完了することを確認。
+- **次のステップ**: 今後自動生成される記事が、新ルールに従って自然な文面（見出し・文末の多様化など）で生成されることを Actions で監視・確認する。
 
 #### ✅ 記事改善: 改善仕様書に基づく記事修正と自動生成ロジックの適用
 - **完了日時**: 2026-06-11 19:40

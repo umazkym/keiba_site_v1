@@ -20,8 +20,67 @@ const courseMap: Record<string, string> = {
   '芝': 'turf', 'ダート': 'dirt'
 };
 
+const raceNameMap: Record<string, string> = {
+  'フェブラリーS': 'february-stakes',
+  'フェブラリーステークス': 'february-stakes',
+  '高松宮記念': 'takamatsunomiya-kinen',
+  '大阪杯': 'osaka-hai',
+  '桜花賞': 'oka-sho',
+  '皐月賞': 'satsuki-sho',
+  '天皇賞(春)': 'tenno-sho-haru',
+  '天皇賞春': 'tenno-sho-haru',
+  'NHKマイルC': 'nhk-mile-cup',
+  'NHKマイルカップ': 'nhk-mile-cup',
+  'ヴィクトリアマイル': 'victoria-mile',
+  'オークス': 'oaks',
+  '優駿牝馬': 'oaks',
+  '日本ダービー': 'nihon-derby',
+  '東京優駿': 'nihon-derby',
+  '安田記念': 'yasuda-kinen',
+  '函館SS': 'hakodate-sprint-stakes',
+  '函館スプリントS': 'hakodate-sprint-stakes',
+  '函館スプリントステークス': 'hakodate-sprint-stakes',
+  '宝塚記念': 'takarazuka-kinen',
+  'スプリンターズS': 'sprinters-stakes',
+  'スプリンターズステークス': 'sprinters-stakes',
+  '秋華賞': 'shuka-sho',
+  '菊花賞': 'kikuka-sho',
+  '天皇賞(秋)': 'tenno-sho-aki',
+  '天皇賞秋': 'tenno-sho-aki',
+  'エリザベス女王杯': 'queen-elizabeth-cup',
+  'マイルCS': 'mile-championship',
+  'マイルチャンピオンシップ': 'mile-championship',
+  'ジャパンカップ': 'japan-cup',
+  'チャンピオンズC': 'champions-cup',
+  'チャンピオンズカップ': 'champions-cup',
+  '阪神JF': 'hanshin-juvenile-fillies',
+  '阪神ジュベナイルF': 'hanshin-juvenile-fillies',
+  '朝日杯FS': 'asahi-hai-futurity-stakes',
+  '朝日杯フューチュリティS': 'asahi-hai-futurity-stakes',
+  '有馬記念': 'arima-kinen',
+  'ホープフルS': 'hopeful-stakes',
+  'ホープフルステークス': 'hopeful-stakes',
+};
+
 const extraMap: Record<string, string> = {
-  '枠順': 'waku', 'データ': 'data', '血統': 'blood', '騎手': 'jockey'
+  'AI予想': 'ai-yosou',
+  '出走予定': 'entries',
+  '出走馬': 'entries',
+  '出馬表': 'race-card',
+  '枠順確定': 'waku',
+  '枠順': 'waku',
+  '馬場状態': 'track-condition',
+  '馬場': 'track-condition',
+  '追い切り': 'training',
+  '調教': 'training',
+  '騎手変更': 'jockey-change',
+  '騎手': 'jockey',
+  'データ確認': 'data-check',
+  'データ': 'data',
+  'ニュース': 'news',
+  '無料': 'free',
+  '重賞': 'grade-race',
+  '血統': 'blood',
 };
 
 /**
@@ -70,11 +129,15 @@ function generateSlug(targetKeyword: string, date: Date): string {
   const dateStr = date.toISOString().split('T')[0];
 
   let slug = targetKeyword;
-  for (const [ja, en] of Object.entries({ ...venueMap, ...courseMap, ...extraMap })) {
+  const replacementEntries = Object.entries({ ...raceNameMap, ...venueMap, ...courseMap, ...extraMap })
+    .sort((a, b) => b[0].length - a[0].length);
+  for (const [ja, en] of replacementEntries) {
     slug = slug.split(ja).join(en);
   }
 
   slug = slug
+    .replace(/([a-z])(\d{4})/gi, '$1-$2')
+    .replace(/(\d{4})([a-z])/gi, '$1-$2')
     .replace(/[^\w\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')

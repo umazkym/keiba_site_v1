@@ -26,6 +26,10 @@ export type WriteOrder = {
     article_type?: string;
     news_topic?: string;
     news_reason?: string;
+    search_intent?: string;
+    search_intent_label?: string;
+    calendar_race?: string;
+    days_to_race?: number;
     source_cards?: {
       source_url: string;
       source_name: string;
@@ -83,6 +87,8 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - research_sources に含まれない外部情報やURLを新たに足してはいけない。
 - theme_cluster が "news_context" または "race_update" の場合、reference_data.key_metrics はニュース本文の要約ではなく「確認済みの事実テーブル」として扱う。表にない日付・頭数・発表内容を勝手に補完しない。
 - ニュース記事では、外部ソースの文章を言い換えて長く展開しない。外部事実は短く置き、その後に「出馬表で確認する順番」「馬場・枠順・脚質の見方」「/races/today への導線」へ移る。
+- reference_data.search_intent_label がある場合、その検索意図を記事の中心に置く。たとえば「枠順」なら枠順確定後にどこを見るか、「出走馬」なら出走馬一覧から脚質・騎手・馬場をどう確認するかを主題にする。
+- reference_data.days_to_race がある場合、開催までの日数に合わせて書く。開催前なら「直前に確認する順番」、開催後なら「次に同条件を見る時の確認材料」に寄せる。
 
 【フォーマット要件】
 - タイトル：厳格に30文字以上、50文字以内。

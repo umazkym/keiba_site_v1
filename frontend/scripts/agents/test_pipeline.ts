@@ -13,6 +13,7 @@ const MAX_ARTICLES_PER_RUN = Math.max(
   1,
   Number.parseInt(process.env.ARTICLE_PIPELINE_MAX_ARTICLES || '2', 10) || 2
 );
+const RESERVE_NEWS_SLOT = (process.env.ARTICLE_PIPELINE_RESERVE_NEWS_SLOT || 'true').toLowerCase() !== 'false';
 
 /**
  * 既存記事のtarget_keywordを全て取得する（重複チェック用）
@@ -66,6 +67,24 @@ function getUniqueDestination(directory: string, fileName: string): string {
   return path.join(directory, `${parsed.name}_${Date.now()}${parsed.ext}`);
 }
 
+function isNewsOrder(order: any): boolean {
+  const cluster = String(order?.theme_cluster || order?.reference_data?.article_type || '');
+  return cluster === 'news_context' || cluster === 'race_update';
+}
+
+function prioritizeOrderFiles<T extends { file: string; order: any; priority: number }>(items: T[]): T[] {
+  if (!RESERVE_NEWS_SLOT || MAX_ARTICLES_PER_RUN < 2) return items;
+
+  const newsIndex = items.findIndex(item => isNewsOrder(item.order));
+  if (newsIndex < 0 || newsIndex < MAX_ARTICLES_PER_RUN) return items;
+
+  const result = [...items];
+  const [newsItem] = result.splice(newsIndex, 1);
+  result.splice(MAX_ARTICLES_PER_RUN - 1, 0, newsItem);
+  console.log(`[Pipeline] ニュース枠を予約: ${newsItem.file} を今回の処理枠に移動`);
+  return result;
+}
+
 async function runPipeline() {
   console.log("=== UMA-FREE 記事生成パイプライン テスト開始 ===");
 
@@ -84,7 +103,7 @@ async function runPipeline() {
   }
 
   // priority順にソートするための配列を作成
-  const sortedFiles = filesList.map(f => {
+  const sortedFiles = prioritizeOrderFiles(filesList.map(f => {
     try {
       const content = fs.readFileSync(path.join(ordersDir, f), 'utf-8');
       const order = JSON.parse(content);
@@ -92,7 +111,7 @@ async function runPipeline() {
     } catch {
       return { file: f, order: null, priority: 0 };
     }
-  }).sort((a, b) => b.priority - a.priority || a.file.localeCompare(b.file));
+  }).sort((a, b) => b.priority - a.priority || a.file.localeCompare(b.file)));
 
   const files = sortedFiles.map(item => item.file);
 

@@ -477,6 +477,13 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 自動記事生成: Tavily検索流入最大化エンジン化
+- **完了日時**: 2026-06-11 17:24
+- **実施内容**: Tavily起点の記事生成を、単なるニュース収集ではなく検索流入を狙うWriteOrder生成へ強化した。直近21日以内から開催後3日以内の重賞を優先するレースカレンダーを追加し、毎日の自動実行でも宝塚記念・函館SSなど開催が近いレース名からTavilyクエリを組み立てるようにした。Tavily結果は `枠順`、`出走馬`、`馬場`、`追い切り`、`騎手変更`、`開催情報`、`AI予想` の検索意図に分類し、`宝塚記念2026 枠順 AI予想` のような自然検索向けの `target_keyword` へ変換する。季節外れのレースは原則採用せず、同一レースの記事量産を防ぐため、7日間で同一レース2本まで、1回の実行では同一レース1本までに制限した。さらに `article:pipeline` 側でニュース枠を1本予約し、通常データ記事にTavily起点記事が押し出されないようにした。公開slugも主要重賞名・検索意図語を英語slugへ変換するよう改善し、`2026-ai-xxxx` のような汎用slugを減らす構成にした。
+- **変更ファイル**: `backend/scripts/agents/news_topic_planner.py`, `frontend/scripts/agents/test_pipeline.ts`, `frontend/scripts/agents/agent_publisher.ts`, `frontend/scripts/agents/agent_writer.ts`, `.github/workflows/keiba-article-pipeline.yml`, `.env.example`, `docs/article_creation_flow.md`, `docs/system-documentation/14_自動記事生成システム全体仕様書.md`, `AGENTS.md`
+- **確認事項**: `KEIBA_NEWS_NOW=2026-06-11` のローカル確認で、フォーカス重賞は `函館SS` と `宝塚記念` になり、`皐月賞2026` はクラスタ段階で季節外れとして除外されることを確認。`宝塚記念2026 枠順確定` は `宝塚記念2026 枠順 AI予想` へ変換される。`python -m py_compile backend/scripts/agents/news_topic_planner.py`、`npm run build`、`git diff --check` は成功。既存どおりローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログは出るが終了コードは0。
+- **次のステップ**: 次回のGitHub Actions実行で、NewsTopicPlannerのログが直近重賞名中心のクエリになっているか、`news_topic_history.json` に `race_name`、`search_intent_label`、`days_to_race` が記録されているか確認する。公開後はSearch Consoleで `枠順`、`出走馬`、`馬場`、`AI予想` の表示回数とCTRを見て、レースカレンダーの対象・検索意図スコアを調整する。
+
 #### ✅ 自動記事生成: Editor文字数不足REJECTEDの自動補正強化
 - **完了日時**: 2026-06-11 16:43
 - **実施内容**: GitHub Actionsログで、Writerは生成成功している一方、Editorの機械チェックで本文が1,327〜1,455文字に留まり、3回のAIレビュー後も `本文の文字数が不足` のまま承認済み記事0件となっていたため、Editorの自動補正を強化した。既存の `ensureMinimumBodyLength` が実質未実装だったため、2000文字未満のドラフトに限り、架空の数値や外部情報を足さず、「直前に見る材料」「人気馬を疑う条件」「買い足す前の確認順」「出馬表で使う順番」などの自然な補足セクションを最終買い目ポイントの前へ追加する処理を実装。Writerプロンプトにも、生成時点で2000字未満にならないよう本文量確認と補足観点を明記した。

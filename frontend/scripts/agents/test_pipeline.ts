@@ -206,8 +206,7 @@ async function runPipeline() {
   }
 
   if (attemptedCount > 0 && approvedCount === 0 && stoppedForGeminiLimit) {
-    console.warn(`[Pipeline] Geminiの外部制限で記事生成を保留しました。write_orderは未消費のまま残しています。attempted=${attemptedCount}`);
-    return;
+    throw new Error(`Geminiの外部制限で記事生成を保留しました。GitHub Actions上の一時WriteOrderは公開・コミットされないため、課金/クォータを復旧して再実行してください。attempted=${attemptedCount}`);
   }
 
   if (attemptedCount > 0 && approvedCount === 0) {

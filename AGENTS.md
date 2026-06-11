@@ -477,6 +477,20 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 自動記事生成: Editor文字数不足REJECTEDの自動補正強化
+- **完了日時**: 2026-06-11 16:43
+- **実施内容**: GitHub Actionsログで、Writerは生成成功している一方、Editorの機械チェックで本文が1,327〜1,455文字に留まり、3回のAIレビュー後も `本文の文字数が不足` のまま承認済み記事0件となっていたため、Editorの自動補正を強化した。既存の `ensureMinimumBodyLength` が実質未実装だったため、2000文字未満のドラフトに限り、架空の数値や外部情報を足さず、「直前に見る材料」「人気馬を疑う条件」「買い足す前の確認順」「出馬表で使う順番」などの自然な補足セクションを最終買い目ポイントの前へ追加する処理を実装。Writerプロンプトにも、生成時点で2000字未満にならないよう本文量確認と補足観点を明記した。
+- **変更ファイル**: `frontend/scripts/agents/agent_editor.ts`, `frontend/scripts/agents/agent_writer.ts`, `frontend/scripts/agents/test_auto_repair.ts`, `AGENTS.md`
+- **確認事項**: 外部APIを使わないローカル補正テストで、短い `race_update` ドラフトが補正後2,139文字になり、`checkSEO` はエラーなし。`npm run build` は成功。`git diff --check` も成功。既存どおりローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログは出るが終了コードは0。
+- **次のステップ**: GitHub Actionsの自動記事生成Workflowを再実行し、今回失敗した `grade_race_preview` と `race_update` がEditor承認まで進むか確認する。Gemini API側の課金・クォータ制限が復旧していることも併せて確認する。
+
+#### ✅ 自動記事生成: Gemini外部制限時のActions失敗判定化
+- **完了日時**: 2026-06-11 15:35
+- **実施内容**: GitHub ActionsログでニュースPlannerとWriteOrder生成は成功していた一方、Gemini APIの `Your prepayment credits are depleted` によりWriterが停止し、承認済み記事0件のままWorkflowが成功扱いになっていたため、`article:pipeline` 側の終了判定を修正。Geminiの課金・クォータ等の外部制限で記事生成が保留された場合は、Actionsを明確に失敗させるようにした。
+- **変更ファイル**: `frontend/scripts/agents/test_pipeline.ts`, `AGENTS.md`
+- **確認事項**: `npm run build` は成功。`git diff --check` も成功。既存どおりローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログは出るが終了コードは0。
+- **次のステップ**: Gemini APIのプリペイド残高または課金設定を復旧し、Workflowを再実行する。復旧前に再実行した場合は赤で失敗し、記事が公開されていないことが明確に分かる。
+
 #### ✅ 自動記事生成: ニュース起点Plannerと完全自動公開フロー接続
 - **完了日時**: 2026-06-11 15:23
 - **実施内容**:

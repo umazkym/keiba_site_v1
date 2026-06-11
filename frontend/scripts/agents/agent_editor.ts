@@ -70,6 +70,20 @@ const BANNED_REPLACEMENTS: Record<string, string> = {
   '絶望的数値': '大幅に低い数値',
   '絶望的': '著しく低い',
   '壊滅的': '大幅な不振',
+  '回収率を高める': '判断材料を整理する',
+  '回収率向上': '判断材料の整理',
+  '妙味の高い穴馬': '人気と評価にズレがある馬',
+  '軸の筆頭': '有力な候補',
+  '信頼度の高い軸候補': '候補として確認したい馬',
+  '信頼度の高い軸': '候補として確認したい馬',
+  '精度の高い予想': '根拠を確認しやすい予想',
+  '消し': '評価を下げる',
+  '絶好枠': '条件が合う枠',
+  '買い目の構築が可能': '買い目を整理しやすくなる',
+  'AI偏差値70以上': 'AI偏差値の上位候補',
+  '偏差値70以上': '偏差値の上位候補',
+  '再現が期待': '同様の走りを確認したい',
+  '期待できる': '材料になる',
   // 新たに発見された問題パターン
   'データという確かな根拠': 'データを手掛かりに',
   'データという羅針盤': 'データを参考に',
@@ -842,7 +856,21 @@ STEP 3：フォーマットとSEOのチェック
 
 function isRetryableGeminiError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error || '');
-  return /429|quota|rate limit|resource exhausted|too many requests/i.test(message);
+  return /429|503|quota|rate limit|resource exhausted|too many requests|service unavailable|high demand|overloaded|unavailable|timeout/i.test(message);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function geminiRetryAttemptsForModel(modelName: string): number {
+  if (/gemma/i.test(modelName)) return 1;
+  return Math.min(3, parsePositiveInt(process.env.ARTICLE_LLM_RETRY_ATTEMPTS, 2));
+}
+
+function geminiRetryDelayMs(requestAttempt: number): number {
+  const baseMs = parsePositiveInt(process.env.ARTICLE_LLM_RETRY_BASE_MS, 12000);
+  return Math.min(45000, baseMs * requestAttempt);
 }
 
 function geminiUsageLine(prefix: string, response: any): string {
@@ -928,6 +956,144 @@ function isGemmaReviewEnabled(): boolean {
 function compactGemmaReviewText(value: string, maxLength = 1800): string {
   const text = value.replace(/\s+/g, ' ').trim();
   return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+}
+
+function extractJsonObjectCandidates(text: string): string[] {
+  const cleaned = text
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+  const candidates: string[] = [];
+
+  try {
+    JSON.parse(cleaned);
+    candidates.push(cleaned);
+  } catch {
+    // そのままJSONでなければ、後続の括弧スキャンで候補を拾う。
+  }
+
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const char = cleaned[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+    if (char === '{') {
+      if (depth === 0) start = i;
+      depth += 1;
+      continue;
+    }
+    if (char === '}' && depth > 0) {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        candidates.push(cleaned.slice(start, i + 1));
+        start = -1;
+      }
+    }
+  }
+
+  return Array.from(new Set(candidates));
+}
+
+function parseModelJsonObject(text: string): any {
+  const candidates = extractJsonObjectCandidates(text);
+  const errors: string[] = [];
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch (e: any) {
+      errors.push(e.message || String(e));
+    }
+  }
+
+  throw new Error(errors[0] || 'JSON object not found.');
+}
+
+function toBriefItems(value: unknown, limit = 5): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map(item => String(item || '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function normalizeGemmaReviewResponse(rawText: string, pass: GemmaReviewPass, model: string): { brief: string; logText: string } {
+  try {
+    const parsed = parseModelJsonObject(rawText);
+    const status = String(parsed?.status || 'UNKNOWN').trim();
+    const lines: string[] = [`### ${pass.label} (${model})`, `status: ${status}`];
+
+    const priorityActions = toBriefItems(parsed?.priority_actions, 5);
+    if (priorityActions.length > 0) {
+      lines.push('priority_actions:', ...priorityActions.map(item => `- ${item}`));
+    }
+
+    const rewriteNotes = Array.isArray(parsed?.rewrite_notes) ? parsed.rewrite_notes.slice(0, 5) : [];
+    if (rewriteNotes.length > 0) {
+      lines.push('rewrite_notes:');
+      for (const note of rewriteNotes) {
+        const original = String(note?.original || '').replace(/\s+/g, ' ').trim();
+        const fixed = String(note?.fixed || '').replace(/\s+/g, ' ').trim();
+        if (original && fixed) {
+          lines.push(`- original: ${original}`);
+          lines.push(`  fixed: ${fixed}`);
+        }
+      }
+    }
+
+    const expansionSections = Array.isArray(parsed?.safe_expansion_sections) ? parsed.safe_expansion_sections.slice(0, 3) : [];
+    if (expansionSections.length > 0) {
+      lines.push('safe_expansion_sections:');
+      for (const section of expansionSections) {
+        const heading = String(section?.heading || '').replace(/\s+/g, ' ').trim();
+        const reason = String(section?.reason || '').replace(/\s+/g, ' ').trim();
+        const mustNotAdd = String(section?.must_not_add || '').replace(/\s+/g, ' ').trim();
+        if (heading || reason || mustNotAdd) {
+          lines.push(`- ${heading || pass.label}: ${reason}${mustNotAdd ? ` / 禁止: ${mustNotAdd}` : ''}`);
+        }
+      }
+    }
+
+    const terms = toBriefItems(parsed?.seo_terms_to_naturally_include, 8);
+    if (terms.length > 0) {
+      lines.push(`seo_terms: ${terms.join(' / ')}`);
+    }
+
+    const risks = toBriefItems(parsed?.risk_notes, 5);
+    if (risks.length > 0) {
+      lines.push('risk_notes:', ...risks.map(item => `- ${item}`));
+    }
+
+    const brief = lines.join('\n');
+    return { brief, logText: brief };
+  } catch (e: any) {
+    const compacted = compactGemmaReviewText(rawText, 900);
+    const fallback = [
+      `### ${pass.label} (${model})`,
+      `status: PARSE_FAILED`,
+      `risk_notes:`,
+      `- GemmaレビューのJSON抽出に失敗したため、本文への反映は限定する。${e.message || String(e)}`,
+      compacted ? `raw_excerpt: ${compacted}` : '',
+    ].filter(Boolean).join('\n');
+    return { brief: fallback, logText: fallback };
+  }
 }
 
 async function runSingleGemmaReviewPass(input: {
@@ -1034,9 +1200,9 @@ async function buildGemmaReviewBrief(input: {
       continue;
     }
 
-    const compacted = compactGemmaReviewText(result.responseText);
-    briefParts.push(`### ${pass.label} (${result.model})\n${compacted}`);
-    logParts.push(`- ${pass.label}: ${result.model}\n  ${result.usageLog}\n  ${compacted}`);
+    const normalized = normalizeGemmaReviewResponse(result.responseText, pass, result.model);
+    briefParts.push(normalized.brief);
+    logParts.push(`- ${pass.label}: ${result.model}\n  ${result.usageLog}\n${normalized.logText}`);
   }
 
   return {
@@ -1060,6 +1226,9 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
     let newDraftPath: string | undefined = undefined;
     let allLogs = "";
     let lastApiErrorMessage = "";
+    let sawEditorJsonParseFailure = false;
+    let lastParsedEditorStatus: string | null = null;
+    let lastReplacementFailed = false;
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -1081,7 +1250,6 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
       const mechanicalLog = seoResult.passed
         ? "機械チェック（文字数・NGワード等）：エラーなし"
         : `機械チェックエラー（以下の違反を必ず修正すること）:\n - ${seoResult.errors.join('\n - ')}`;
-      const hadMechanicalErrors = !seoResult.passed;
 
       allLogs += `\n[Attempt ${attempt} Mechanical Check]\n${mechanicalLog}\n`;
 
@@ -1121,7 +1289,9 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
           }
         });
 
-        try {
+        const maxRequestAttempts = geminiRetryAttemptsForModel(currentModelName);
+        for (let requestAttempt = 1; requestAttempt <= maxRequestAttempts; requestAttempt++) {
+          try {
           const parsedForQuota = matter(currentContent);
           reserveGeminiRequest({
             scope: 'article',
@@ -1135,7 +1305,7 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
           allLogs += `\n[Attempt ${attempt} Token Usage]\n${usageLine}\n`;
           generateFailed = false;
           break; // 成功したら次へ
-        } catch (e: any) {
+          } catch (e: any) {
           if (isApiKeyInvalidError(e)) {
             console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
             console.error(`Google AI Studioで新しいAPIキーを再生成し、.env または GitHub Secrets の GEMINI_API_KEY に設定し直してください。\n`);
@@ -1146,14 +1316,26 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
             if (e.kind === 'total' || i === modelTiers.length - 1) {
               throw e;
             }
-            continue;
+            break;
           }
           console.error(`[Editor Warning] ${currentModelName} failed: ${e.message}`);
           allLogs += `\n[Editor Warning] ${currentModelName} failed: ${e.message}\n`;
           lastApiErrorMessage = e.message || String(e);
           if (isRetryableGeminiError(e)) {
             retryableApiFailure = true;
+            if (requestAttempt < maxRequestAttempts) {
+              const waitMs = geminiRetryDelayMs(requestAttempt);
+              console.warn(`[Editor] ${currentModelName} retryable failure. Retrying in ${waitMs}ms (${requestAttempt + 1}/${maxRequestAttempts})...`);
+              allLogs += `[Editor Retry] ${currentModelName} retrying in ${waitMs}ms (${requestAttempt + 1}/${maxRequestAttempts})\n`;
+              await sleep(waitMs);
+              continue;
+            }
           }
+          break;
+          }
+        }
+        if (!generateFailed) {
+          break;
         }
       }
 
@@ -1170,12 +1352,14 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
 
       let parsedJson: any = null;
       try {
-        const jsonStr = editorText.replace(/^[^{]*/, '').replace(/[^}]*$/, '').trim();
-        parsedJson = JSON.parse(jsonStr);
+        parsedJson = parseModelJsonObject(editorText);
       } catch (e: any) {
+        sawEditorJsonParseFailure = true;
+        lastParsedEditorStatus = null;
         allLogs += `\n[Editor Fatal] JSONパースフェイル: ${e.message}\n`;
-        break; // JSON形式で返してこない場合は即座にアボート
+        continue;
       }
+      lastParsedEditorStatus = String(parsedJson.status || '').trim();
 
       // JSONを適用して content を更新
       const parsedMatter = matter(currentContent);
@@ -1217,12 +1401,19 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
 
       // パッチ後の内容でSEO再チェック。機械チェック由来のREJECTEDは自動補正後に通れば承認扱いにする。
       const postPatchSeo = checkSEO(currentContent);
-      if (postPatchSeo.passed && (parsedJson.status === 'APPROVED' || hadMechanicalErrors)) {
+      lastReplacementFailed = replacementFailed;
+      if (postPatchSeo.passed && parsedJson.status === 'APPROVED' && !replacementFailed) {
         finalStatus = 'APPROVED';
         allLogs += `\n[Attempt ${attempt}] SEO Passed. Fully APPROVED. Replacement Failed: ${replacementFailed}\n`;
         break; // 完全合格
       } else {
         allLogs += `\n[Attempt ${attempt}] AI status was ${parsedJson.status}. Post-patch SEO passed: ${postPatchSeo.passed}. Replacement Failed: ${replacementFailed}`;
+        if (postPatchSeo.passed && parsedJson.status !== 'APPROVED') {
+          allLogs += `\n[Attempt ${attempt}] SEOは通過しましたが、AI Editorが承認していないため公開承認しません。`;
+        }
+        if (postPatchSeo.passed && replacementFailed) {
+          allLogs += `\n[Attempt ${attempt}] SEOは通過しましたが、AI Editorの置換指示が一部未反映のため再確認します。`;
+        }
         if (!postPatchSeo.passed) {
           allLogs += `\n[Attempt ${attempt} Remaining SEO Errors]\n - ${postPatchSeo.errors.join('\n - ')}`;
         }
@@ -1238,9 +1429,11 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
       }
 
       const finalSeo = checkSEO(currentContent);
-      if (finalSeo.passed) {
+      if (finalSeo.passed && !sawEditorJsonParseFailure && lastParsedEditorStatus === 'APPROVED' && !lastReplacementFailed) {
         finalStatus = 'APPROVED';
-        allLogs += `\n[Final Auto Repair] SEO Passed. APPROVED without another Gemini request.\n`;
+        allLogs += `\n[Final Auto Repair] SEO Passed after AI Editor approval. APPROVED.\n`;
+      } else if (finalSeo.passed) {
+        allLogs += `\n[Final Auto Repair] SEOは通過しましたが、AI EditorのJSON失敗・非承認・未反映置換が残るためREJECTEDのままにします。\n`;
       } else {
         allLogs += `\n[Final Auto Repair] SEO still failed:\n - ${finalSeo.errors.join('\n - ')}\n`;
       }

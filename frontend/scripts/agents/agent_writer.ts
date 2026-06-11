@@ -82,8 +82,9 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - 検索から来た読者には「この条件で何を重く見るべきか」をすぐ掴ませる。
 - 予想ページを繰り返し見る読者には、出馬表を見る前の判断メモとして使える内容にする。
 - 重賞記事では、情報過多で迷っている読者に「枠順・脚質・斤量・人気のどこから確認するか」を示す。
-- 平場向けの記事では、全頭を深く見られない読者に「買うレース」と「見送るレース」を分ける初期判断を渡す。
+- 平場向けの記事では、全頭を深く見られない読者に「確認を優先するレース」と「慎重に見るレース」を分ける初期判断を渡す。
 - ニュース起点の記事では、外部ニュースの焼き直しではなく「発表・話題を受けて、UMA-FREEで何を確認すべきか」を整理する。
+- 地方競馬・交流重賞の記事では、中央競馬と同じ書き方に寄せすぎず、開催場、ナイター、馬場、距離、交流重賞なら中央馬と地方馬の条件差を「確認順」として整理する。
 - 入力に「Gemma SEO/構成ブリーフ」が含まれる場合は、検索意図・見出し候補・不足観点のメモとして使う。ただし新しい数値や事実の根拠にはしない。
 - 煽り、断定しすぎ、機械的なSEO文は避ける。数字を根拠に、競馬ファンが自然に読める実務的な文章にする。
 
@@ -142,7 +143,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 
 
 【検索結果での見え方】
-- titleは数字だけで目を引かせない。検索ユーザーがクリック前に判断できるよう、「見方」「違い」「買い時」「見送り条件」「軸候補」「相手候補」など、記事で解決する行動を1つ入れる。
+- titleは数字だけで目を引かせない。検索ユーザーがクリック前に判断できるよう、「見方」「違い」「確認順」「疑う条件」「相手候補」「慎重に見る条件」など、記事で解決する行動を1つ入れる。
 - 馬体重、馬場状態、控除率、騎手の得意コースなど一般クエリ寄りのテーマでは、titleの前半に読者の検索語に近い言葉を置き、後半に数字やデータの強みを置く。
 - descriptionは「この記事を読むと何ができるか」を1文で閉じる。検索語の羅列、未完文、同じ語尾の連発、「確認できます」の連続は禁止。
 - PC検索ではtitleの前半だけで比較されるため、「データ分析」「徹底解説」だけで終わらせず、買い時・疑う条件・当日の確認順序のいずれかを明示する。
@@ -150,6 +151,8 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 【データの正確性（最重要）】
 - 記事に使ってよい数値は、reference_data の key_metrics、course_stats、predictions相当の配列、または race_name / race_date / venue / total_horses / period / condition / sample_size などの明示フィールドに含まれる値だけ。
 - 自分で勝率、回収率、母数、枠順別成績、斤量別成績、脚質別成績、AI偏差値を補完・推測・生成してはならない。
+- reference_data.predictions が空、または has_predictions が false の場合、AI偏差値の具体値、AI偏差値70以上のようなしきい値、上位・下位の断定、予想印（◎○▲△）は書かない。「枠順確定後に出馬表ページで確認する」に留める。
+- AI偏差値や予想印が入力にある場合でも、「軸の筆頭」「信頼度の高い軸」「精度の高い予想」「消し」のような強い表現は使わず、「候補として確認」「相手候補」「評価を下げたい条件」に言い換える。
 - データテーブルを作る場合は、入力JSONに存在する列名と値を使う。入力にない列を足さない。入力にない行を増やさない。
 - 入力に枠順別・脚質別・斤量別の実数がない場合、そのテーブルは作らない。「未取得」「枠順確定後に確認」など、分かる範囲の定性的な説明に留める。
 - reference_data.course_stats が空で key_metrics も空の場合は、レース名・開催日・会場・条件など、入力にある事実だけを小さな確認表にする。
@@ -185,13 +188,13 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - "news_context": ## このニュースの確認ポイント
 - "race_update" または "grade_race_preview": ## このレースの買い目ポイント
 - それ以外: ## このコースの買い目ポイント
-内容: 「買い」「抑え」「見送り」「条件付き」のような自然なラベルで、読者がすぐ使える判断基準を3〜5個提示。
+内容: 「確認」「相手候補」「慎重」「条件付き」のような自然なラベルで、読者がすぐ使える判断基準を3〜5個提示。必要な場合だけ「買い目に含める候補」という控えめな表現を使い、「軸」「消し」は避ける。
 例:
-  - 買い: 軸候補は3枠。複勝率35.2%で安定している。
-  - 抑え: 6枠の先行馬は回収率49%で相手に残す価値がある。
-  - 見送り: 8枠は複勝率17.3%で、人気なら評価を下げる。
+  - 確認: 3枠は複勝率35.2%で、出馬表では先に脚質を確認したい。
+  - 相手候補: 6枠の先行馬は回収率49%で、人気とのズレがあれば残す材料になる。
+  - 慎重: 8枠は複勝率17.3%で、人気なら評価を下げたい条件を確認する。
   - 条件付き: 2枠は内で脚をためられる先行馬だけ拾う。
-ニュース記事では、数値がない項目に数字を付け足さず、「確認」「抑え」「見送り」「条件付き」の判断ラベルで整理する。
+ニュース記事では、数値がない項目に数字を付け足さず、「確認」「相手候補」「慎重」「条件付き」の判断ラベルで整理する。
 その後、以下の1文で記事を閉じる:
 「最新の出馬表とAI予想は [今日のAI予想・出馬表](/races/today) で無料公開中。」
 
@@ -227,7 +230,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
     「過去の実績から〜は鉄板」（確実性の断定）
   代わりに使う表現：
     「〇〇コースでの複勝率が〇〇%なので、
-     同条件なら評価を上げる材料になる」
+     同条件なら候補として確認したい」
     「前走から条件が変わる点として〜がある」
 ・"news_context": 競馬ニュース起点の記事。以下のルールに従う:
   - タイトル構成: 「[ニュース内の主要語]｜出馬表で見る確認ポイント[数字]」（30〜50文字）
@@ -240,6 +243,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
   - タイトル構成: 「[レース名][年]｜ニュース後に見る確認ポイント[数字]」（30〜50文字）
   - 枠順確定、出走予定、馬場、追い切り、前走後評価、陣営コメント、騎手変更、話題馬など、レース前に検索される語を自然に含める。
   - reference_data.predictions、course_stats、horse_number_advantages がある場合、ニュースの話題と内部データを別々に扱わず、直前に確認する順序として接続する。
+  - 地方競馬の重賞・交流重賞では、開催場名（大井、川崎、船橋、浦和、門別、園田、高知、佐賀、帯広など）、ナイター、馬場、距離、交流重賞の条件差を自然に含める。中央G1風の煽り見出しに寄せない。
   - 最新情報の断定より、/races/today で当日確認する順番を優先する。
   - 最後の見出しは「## このレースの買い目ポイント」にする。
 
@@ -275,7 +279,21 @@ draft: true
 
 function isRetryableGeminiError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error || '');
-  return /429|quota|rate limit|resource exhausted|too many requests/i.test(message);
+  return /429|503|quota|rate limit|resource exhausted|too many requests|service unavailable|high demand|overloaded|unavailable|timeout/i.test(message);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function geminiRetryAttemptsForModel(modelName: string): number {
+  if (/gemma/i.test(modelName)) return 1;
+  return Math.min(3, parsePositiveInt(process.env.ARTICLE_LLM_RETRY_ATTEMPTS, 2));
+}
+
+function geminiRetryDelayMs(requestAttempt: number): number {
+  const baseMs = parsePositiveInt(process.env.ARTICLE_LLM_RETRY_BASE_MS, 12000);
+  return Math.min(45000, baseMs * requestAttempt);
 }
 
 function logGeminiUsage(prefix: string, response: any): void {
@@ -574,7 +592,9 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
           }
         });
 
-        try {
+        const maxRequestAttempts = geminiRetryAttemptsForModel(currentModelName);
+        for (let requestAttempt = 1; requestAttempt <= maxRequestAttempts; requestAttempt++) {
+          try {
             reserveGeminiRequest({
               scope: 'article',
               model: currentModelName,
@@ -586,7 +606,7 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
             console.log(`[Writer] Model succeeded: ${usedModel}`);
             logGeminiUsage(`[Writer] ${usedModel}`, result.response);
             break; // 成功したら抜ける
-        } catch (e: any) {
+          } catch (e: any) {
             if (isApiKeyInvalidError(e)) {
                 console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
                 console.error(`Google AI Studioで新しいAPIキーを再生成し、.env または GitHub Secrets の GEMINI_API_KEY に設定し直してください。\n`);
@@ -597,16 +617,27 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
                 if (e.kind === 'total' || i === modelTiers.length - 1) {
                     throw e;
                 }
-                continue;
+                break;
             }
             console.error(`[Writer Warning] ${currentModelName} failed: ${e.message}`);
             lastErrorMessage = e.message || String(e);
             if (isRetryableGeminiError(e)) {
                 retryableFailure = true;
+                if (requestAttempt < maxRequestAttempts) {
+                    const waitMs = geminiRetryDelayMs(requestAttempt);
+                    console.warn(`[Writer] ${currentModelName} retryable failure. Retrying in ${waitMs}ms (${requestAttempt + 1}/${maxRequestAttempts})...`);
+                    await sleep(waitMs);
+                    continue;
+                }
             }
             if (i === modelTiers.length - 1) {
                 throw new Error(`すべての生成モデルでの試行が失敗しました。${lastErrorMessage}`);
             }
+            break;
+          }
+        }
+        if (result) {
+            break;
         }
     }
 

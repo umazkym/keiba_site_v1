@@ -93,6 +93,8 @@ QUERY_TEMPLATES = [
     "競馬 ニュース 重賞 話題馬 騎手 乗り替わり {year}",
     "競馬 SNS 話題 注目馬 騎手 重賞 {year}",
     "地方競馬 ニュース 重賞 出走予定 枠順 {year}",
+    "NAR 公式 地方競馬 交流重賞 出走予定 枠順 {year}",
+    "地方競馬 交流重賞 帝王賞 東京大賞典 JBC かしわ記念 {year}",
 ]
 
 RACE_QUERY_INTENTS = [
@@ -109,14 +111,15 @@ SOURCE_METRIC_REJECT_PATTERN = re.compile(
 )
 
 HIGH_VALUE_TOPIC_PATTERN = re.compile(
-    r"G1|G2|G3|Ｇ１|Ｇ２|Ｇ３|重賞|枠順|出走予定|出走馬|馬場|騎手変更|開催|"
+    r"G1|G2|G3|Ｇ１|Ｇ２|Ｇ３|JpnI|JpnII|JpnIII|Jpn1|Jpn2|Jpn3|重賞|交流重賞|地方重賞|南関|枠順|出走予定|出走馬|馬場|騎手変更|開催|"
     r"追い切り|調教|最終追い|前走|陣営|厩舎|コメント|話題馬|注目馬|SNS|騎手|乗り替わり|"
     r"ダービー|オークス|安田記念|宝塚記念|有馬記念|ジャパンカップ|天皇賞|皐月賞|菊花賞|桜花賞|"
-    r"マイルCS|スプリンターズS|高松宮記念|フェブラリーS|チャンピオンズC|ホープフルS"
+    r"マイルCS|スプリンターズS|高松宮記念|フェブラリーS|チャンピオンズC|ホープフルS|"
+    r"帝王賞|東京大賞典|JBC|かしわ記念|さきたま杯|関東オークス|全日本2歳優駿|ジャパンダートクラシック"
 )
 
 RACE_NAME_PATTERN = re.compile(
-    r"([一-龥ァ-ヴーA-Za-z0-9・（）()]{2,24}(?:S|ステークス|カップ|記念|賞|杯|ダービー|オークス|マイル|スプリント))"
+    r"([一-龥ァ-ヴーA-Za-z0-9・（）()]{2,24}(?:S|ステークス|カップ|記念|賞|杯|ダービー|オークス|マイル|スプリント|クラシック|レディスクラシック|グランプリ))"
 )
 
 SEARCH_INTENT_RULES = [
@@ -235,24 +238,35 @@ RACE_DEMAND_CALENDAR: Tuple[RaceDemand, ...] = (
     RaceDemand("桜花賞", ("桜花賞",), 4, 12, "G1", 40),
     RaceDemand("皐月賞", ("皐月賞",), 4, 19, "G1", 42),
     RaceDemand("天皇賞(春)", ("天皇賞(春)", "天皇賞春", "天皇賞・春"), 5, 3, "G1", 40),
+    RaceDemand("かしわ記念", ("かしわ記念",), 5, 5, "JpnI", 40),
     RaceDemand("NHKマイルC", ("NHKマイルC", "NHKマイルカップ"), 5, 10, "G1", 36),
     RaceDemand("ヴィクトリアマイル", ("ヴィクトリアマイル",), 5, 17, "G1", 36),
     RaceDemand("オークス", ("オークス", "優駿牝馬"), 5, 24, "G1", 42),
     RaceDemand("日本ダービー", ("日本ダービー", "東京優駿", "ダービー"), 5, 31, "G1", 48),
     RaceDemand("安田記念", ("安田記念",), 6, 7, "G1", 40),
+    RaceDemand("関東オークス", ("関東オークス",), 6, 10, "JpnII", 32),
     RaceDemand("函館SS", ("函館SS", "函館スプリントS", "函館スプリントステークス"), 6, 13, "G3", 30),
     RaceDemand("宝塚記念", ("宝塚記念",), 6, 14, "G1", 46),
+    # 地方・交流重賞も検索流入が見込めるため、近似日で季節外れの拾いすぎを抑える。
+    RaceDemand("さきたま杯", ("さきたま杯",), 6, 17, "JpnI", 36),
+    RaceDemand("帝王賞", ("帝王賞",), 6, 24, "JpnI", 44),
     RaceDemand("スプリンターズS", ("スプリンターズS", "スプリンターズステークス"), 9, 27, "G1", 38),
+    RaceDemand("ジャパンダートクラシック", ("ジャパンダートクラシック", "JDC"), 10, 7, "JpnI", 38),
     RaceDemand("秋華賞", ("秋華賞",), 10, 18, "G1", 38),
     RaceDemand("菊花賞", ("菊花賞",), 10, 25, "G1", 40),
     RaceDemand("天皇賞(秋)", ("天皇賞(秋)", "天皇賞秋", "天皇賞・秋"), 11, 1, "G1", 42),
+    RaceDemand("JBCクラシック", ("JBCクラシック", "JBC Classic"), 11, 3, "JpnI", 42),
+    RaceDemand("JBCスプリント", ("JBCスプリント",), 11, 3, "JpnI", 36),
+    RaceDemand("JBCレディスクラシック", ("JBCレディスクラシック",), 11, 3, "JpnI", 34),
     RaceDemand("エリザベス女王杯", ("エリザベス女王杯",), 11, 15, "G1", 36),
     RaceDemand("マイルCS", ("マイルCS", "マイルチャンピオンシップ"), 11, 22, "G1", 38),
     RaceDemand("ジャパンカップ", ("ジャパンカップ", "JC"), 11, 29, "G1", 44),
     RaceDemand("チャンピオンズC", ("チャンピオンズC", "チャンピオンズカップ"), 12, 6, "G1", 36),
     RaceDemand("阪神JF", ("阪神JF", "阪神ジュベナイルF", "阪神ジュベナイルフィリーズ"), 12, 13, "G1", 34),
+    RaceDemand("全日本2歳優駿", ("全日本2歳優駿",), 12, 16, "JpnI", 34),
     RaceDemand("朝日杯FS", ("朝日杯FS", "朝日杯フューチュリティS", "朝日杯フューチュリティステークス"), 12, 20, "G1", 34),
     RaceDemand("有馬記念", ("有馬記念",), 12, 27, "G1", 50),
+    RaceDemand("東京大賞典", ("東京大賞典",), 12, 29, "G1", 46),
     RaceDemand("ホープフルS", ("ホープフルS", "ホープフルステークス"), 12, 28, "G1", 34),
 )
 
@@ -804,6 +818,18 @@ def make_target_keyword(
     if race_name:
         if search_intent == "ai_prediction":
             return f"{race_name}{year} AI予想"
+        if search_intent in {
+            "waku",
+            "entries",
+            "training",
+            "previous_run",
+            "stable_comment",
+            "track_condition",
+            "jockey_change",
+            "sns_buzz",
+            "schedule",
+        }:
+            return f"{race_name}{year} {keyword_label} 確認ポイント"
         return f"{race_name}{year} {keyword_label} AI予想"
 
     normalized_title = re.sub(r"\s+", " ", title)
@@ -1346,22 +1372,24 @@ def build_competing_structure(candidate: TopicCandidate) -> List[str]:
             f"{angle_label}を出馬表で確認する順番",
             "同レースで先に見るべき枠順・脚質・馬場",
             "UMA-FREEの出馬表で確認する順番",
-            "買い・抑え・見送りの条件",
+            "確認・相手候補・慎重に見る条件",
         ]
     return [
         "複数ニュースで確認された事実",
         f"{angle_label}の話題とUMA-FREEデータの結び付け",
         f"{angle_label}として見るべき論点",
         "出馬表や開催情報で確認する順番",
-        "買い・抑え・見送りの条件",
+        "確認・相手候補・慎重に見る条件",
     ]
 
 
 def build_write_orders_node(state: WorkflowState) -> WorkflowState:
     max_orders = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_ORDERS_PER_RUN"), 3), 5)
+    max_topics_per_race = parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN"), 1)
     min_topic_score = float(os.environ.get("KEIBA_NEWS_MIN_TOPIC_SCORE", "45"))
     selected: List[TopicCandidate] = []
     selected_angle_keys: Set[str] = set()
+    selected_race_counts: Dict[str, int] = {}
 
     for item in state.topic_candidates:
         if item.score < min_topic_score:
@@ -1371,9 +1399,13 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
         angle_key = normalize_key(f"{race_key}:{item.search_intent}:{item.search_angle_label or item.search_intent_label}")
         if angle_key in selected_angle_keys:
             continue
+        if race_key and selected_race_counts.get(race_key, 0) >= max_topics_per_race:
+            continue
 
         selected.append(item)
         selected_angle_keys.add(angle_key)
+        if race_key:
+            selected_race_counts[race_key] = selected_race_counts.get(race_key, 0) + 1
         if len(selected) >= max_orders:
             break
 

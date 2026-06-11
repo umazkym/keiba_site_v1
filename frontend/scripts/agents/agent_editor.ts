@@ -6,8 +6,15 @@ import { checkSEO, SEO_RULES } from './seo_checker';
 import { getGeminiModelTiers } from './model_tiers';
 import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
 
-const REQUIRED_BUYING_POINT_HEADING = '## このコースの買い目ポイント';
-const REQUIRED_TODAY_RACE_CTA = 'このコースの最新レースは [今日のAI予想・出馬表](/races/today) で無料公開中。';
+const DEFAULT_BUYING_POINT_HEADING = '## このコースの買い目ポイント';
+const RACE_BUYING_POINT_HEADING = '## このレースの買い目ポイント';
+const NEWS_CONFIRMATION_POINT_HEADING = '## このニュースの確認ポイント';
+const REQUIRED_TODAY_RACE_CTA = '最新の出馬表とAI予想は [今日のAI予想・出馬表](/races/today) で無料公開中。';
+const POINT_HEADING_TEXTS = [
+  'このコースの買い目ポイント',
+  'このレースの買い目ポイント',
+  'このニュースの確認ポイント',
+];
 
 const BANNED_REPLACEMENTS: Record<string, string> = {
   'いかがでしたか': '',
@@ -218,6 +225,17 @@ function stableIndex(seed: string, size: number): number {
   return hash % size;
 }
 
+function requiredPointHeadingForData(data: Record<string, any>): string {
+  const theme = String(data.theme_cluster || data.article_type || '');
+  if (theme === 'news_context') return NEWS_CONFIRMATION_POINT_HEADING;
+  if (theme === 'race_update' || theme === 'grade_race_preview') return RACE_BUYING_POINT_HEADING;
+  return DEFAULT_BUYING_POINT_HEADING;
+}
+
+function isPointHeadingText(heading: string): boolean {
+  return POINT_HEADING_TEXTS.includes(heading.trim());
+}
+
 function suffixForTheme(themeCluster: unknown, seed: string): string {
   const suffixesByTheme: Record<string, string[]> = {
     jockey_data: [
@@ -228,6 +246,16 @@ function suffixForTheme(themeCluster: unknown, seed: string): string {
     grade_race_preview: [
       '枠順と偏差値の確認順',
       '疑う条件と買い足す条件',
+      '直前データで見る評価軸',
+    ],
+    news_context: [
+      '出馬表で見る確認ポイント',
+      'ニュース後に見る判断材料',
+      '当日の確認順を整理',
+    ],
+    race_update: [
+      'ニュース後に見る確認順',
+      '枠順と馬場の判断材料',
       '直前データで見る評価軸',
     ],
     running_style_data: [
@@ -335,6 +363,20 @@ function descriptionAdditionsForTheme(themeCluster: unknown): string[] {
     ];
   }
 
+  if (theme === 'news_context') {
+    return [
+      'ニュースで確認された材料を出馬表の見方に置き換え、当日見る順番を整理します。',
+      '話題そのものの要約ではなく、馬場、枠順、脚質、AI予想で確認する点を分けます。',
+    ];
+  }
+
+  if (theme === 'race_update') {
+    return [
+      'レース前の発表や話題を踏まえ、枠順、馬場、脚質、AI予想で確認する順番を整理します。',
+      '直前に見る材料を分け、買い足す条件と評価を下げる条件を確認できます。',
+    ];
+  }
+
   if (theme === 'running_style_data') {
     return [
       '先行勢と差し勢の数字を分け、隊列が向く馬と展開待ちの馬を整理します。',
@@ -388,7 +430,7 @@ function fitDescriptionToSeo(description: string, data: Record<string, any>): st
 }
 
 function findLastBuyingPointHeading(content: string): number {
-  const pattern = /^##\s+このコースの買い目ポイント\s*$/gm;
+  const pattern = /^##\s+(このコースの買い目ポイント|このレースの買い目ポイント|このニュースの確認ポイント)\s*$/gm;
   let match: RegExpExecArray | null;
   let lastIndex = -1;
   while ((match = pattern.exec(content)) !== null) {
@@ -414,6 +456,24 @@ function fallbackBuyingPoints(data: Record<string, any>): string[] {
       '抑え: コース傾向に合う馬は、人気が落ちるなら相手に残す。',
       '見送り: 評価が低く展開の助けも必要な馬は、買い目を広げすぎない。',
       '条件付き: 馬場が変わる日は、当日の時計と内外の伸びを見て評価を調整する。',
+    ];
+  }
+
+  if (theme === 'news_context') {
+    return [
+      '確認: ニュースで触れられた材料は、出馬表と馬場発表で事実関係を先に確認する。',
+      '抑え: 関連するレースがある場合は、枠順、脚質、騎手変更を分けて見る。',
+      '見送り: 話題性だけで人気が先行している馬は、AI偏差値とオッズの釣り合いを確認する。',
+      '条件付き: 当日の馬場が変わる日は、直前の時計と内外の伸びを見て評価を調整する。',
+    ];
+  }
+
+  if (theme === 'race_update') {
+    return [
+      '買い: 発表内容と枠順、脚質がかみ合う馬は、軸候補として最初に確認する。',
+      '抑え: コース傾向に合う馬は、人気が落ちるなら相手に残す。',
+      '見送り: 話題性だけで人気が先行する馬は、AI偏差値と馬場適性を見て評価を下げる。',
+      '条件付き: 騎手変更や馬場悪化がある日は、直前の出馬表で評価を調整する。',
     ];
   }
 
@@ -448,14 +508,16 @@ function normalizeBuyingPointLines(sectionText: string, data: Record<string, any
 }
 
 function normalizeBuyingPointSection(content: string, data: Record<string, any>): string {
+  const requiredHeading = requiredPointHeadingForData(data);
   let result = content
-    .replace(/^(?:#{1,6}\s*){0,2}このコースの買い目ポイント\s*$/gm, REQUIRED_BUYING_POINT_HEADING)
+    .replace(/^(?:#{1,6}\s*){0,2}(?:このコースの買い目ポイント|このレースの買い目ポイント|このニュースの確認ポイント)\s*$/gm, requiredHeading)
     .replace(/^.*\[今日のAI予想・出馬表]\(\/races\/today\).*$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
-  if (!/^##\s+このコースの買い目ポイント\s*$/m.test(result)) {
-    result = `${result}\n\n${REQUIRED_BUYING_POINT_HEADING}\n\n${fallbackBuyingPoints(data).map(point => `- ${point}`).join('\n')}`;
+  const requiredHeadingRegex = new RegExp(`^${requiredHeading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
+  if (!requiredHeadingRegex.test(result)) {
+    result = `${result}\n\n${requiredHeading}\n\n${fallbackBuyingPoints(data).map(point => `- ${point}`).join('\n')}`;
   }
 
   const headingIndex = findLastBuyingPointHeading(result);
@@ -466,17 +528,17 @@ function normalizeBuyingPointSection(content: string, data: Record<string, any>)
   const before = result.slice(0, headingIndex).trim();
   const sectionWithHeading = result.slice(headingIndex);
   const sectionBody = sectionWithHeading
-    .replace(/^##\s+このコースの買い目ポイント\s*$/m, '')
+    .replace(/^##\s+(?:このコースの買い目ポイント|このレースの買い目ポイント|このニュースの確認ポイント)\s*$/m, '')
     .trim();
   const normalizedSection = normalizeBuyingPointLines(sectionBody, data);
 
-  return `${before}\n\n${REQUIRED_BUYING_POINT_HEADING}\n\n${normalizedSection}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim();
+  return `${before}\n\n${requiredHeading}\n\n${normalizedSection}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim();
 }
 
 function ensureH2HeadingsHaveNumbers(content: string): string {
   return content.replace(/^##\s+(.*)$/gm, (full, headingText) => {
     const heading = String(headingText || '').trim();
-    if (heading === 'このコースの買い目ポイント') return full;
+    if (isPointHeadingText(heading)) return full;
     if (heading === 'まとめ' || heading === '総論' || heading === 'おわりに') {
       return '## 買い目を決める前に確認する材料';
     }
@@ -546,9 +608,9 @@ STEP 1：禁止ワードスキャン
 記事全文から、導入テンプレート、AI手癖表現、誇張表現などの禁止ワードを抽出し、修正文言を作成する。
 STEP 2：構造チェック
 ・1文目に核心データと、読者が最初に確認すべき材料が含まれているか
-・見出しに数字と結論が含まれているか（最後の「このコースの買い目ポイント」は例外）
+・見出しに数字と結論が含まれているか（最後の「このコースの買い目ポイント」「このレースの買い目ポイント」「このニュースの確認ポイント」は例外）
 ・「まとめ」や「総論」などの見出しが存在しないか
-・記事末尾に「## このコースの買い目ポイント」があり、最後に「このコースの最新レースは [今日のAI予想・出馬表](/races/today) で無料公開中。」が自然に入っているか
+・記事末尾にテーマに応じた確認ポイント見出しがあり、最後に「最新の出馬表とAI予想は [今日のAI予想・出馬表](/races/today) で無料公開中。」が自然に入っているか
 ・チェックマークやバツ印などの装飾記号、煽りの強い「最強」「圧倒的」「狙い撃つ」「買うな」「消去対象」が残っていないか
 ・重賞記事は、人気馬を煽るだけでなく「疑う条件」「買い足す条件」「見送る条件」が分かれているか
 ・平場向け記事は、短時間で複数レースを見る読者が使える初期判断になっているか

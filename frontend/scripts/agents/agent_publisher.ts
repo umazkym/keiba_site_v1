@@ -47,6 +47,8 @@ function determineCategory(data: Record<string, any>): string {
 
   // theme_clusterベースの判定（最優先）
   if (themeCluster === 'grade_race_preview') return '重賞プレビュー';
+  if (themeCluster === 'race_update') return '重賞プレビュー';
+  if (themeCluster === 'news_context') return '競馬ニュース';
 
   // キーワードベースの判定
   if (combined.includes('枠順') || combined.includes('ダート') || combined.includes('芝'))

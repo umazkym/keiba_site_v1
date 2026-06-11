@@ -477,6 +477,18 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 
 ### 📝 完了したステップの記録
 
+#### ✅ 自動記事生成: ニュース起点Plannerと完全自動公開フロー接続
+- **完了日時**: 2026-06-11 15:23
+- **実施内容**:
+  - Tavilyで競馬ニュース・重賞関連トピックを取得し、公式・信頼媒体だけを残して `write_order.json` に変換する `news_topic_planner.py` を追加。LangGraph風の固定ノード列（BuildQueries → FetchTavily → FilterSources → ClusterTopics → BuildWriteOrders → PersistOrders）で、外部記事の要約ではなく「出馬表で何を確認するか」に変換する構成にした。
+  - `news_context` と `race_update` のテーマクラスターを追加し、既存の Writer / Editor / SEO checker / Publisher がニュース起点記事を通常の完全自動記事と同じ経路で処理できるように接続した。
+  - ニュース記事では「このニュースの確認ポイント」、レース更新記事では「このレースの買い目ポイント」を許可し、従来の「このコースの買い目ポイント」だけに固定されていた末尾チェックを拡張。CTAはニュース記事でも自然に読める「最新の出馬表とAI予想」表現へ統一した。
+  - GitHub Actionsの自動記事生成ワークフローにニュースPlannerをStep 1Aとして追加し、Tavilyキーがある本番環境ではニュース起点WriteOrderを優先生成するようにした。スケジュール実行の既定生成上限も2本に拡張。
+  - `.env.example` と記事生成仕様書に、ニュース起点自動生成の環境変数・運用仕様・重複防止方針を追記した。
+- **変更ファイル**: `backend/scripts/agents/news_topic_planner.py`, `frontend/scripts/agents/article_flow.ts`, `frontend/scripts/agents/agent_writer.ts`, `frontend/scripts/agents/agent_editor.ts`, `frontend/scripts/agents/seo_checker.ts`, `frontend/scripts/agents/agent_publisher.ts`, `.github/workflows/keiba-article-pipeline.yml`, `.env.example`, `docs/article_creation_flow.md`, `docs/system-documentation/14_自動記事生成システム全体仕様書.md`, `AGENTS.md`
+- **確認事項**: `TAVILY_API_KEY` をGitHub Secretsに設定するとニュース起点のWriteOrder生成が有効化される。未設定時は既存の重賞・DBデータ記事生成だけが継続する。
+- **次のステップ**: 本番Secretsへ `TAVILY_API_KEY` を設定し、最初の1週間は `data/news_topic_history.json` と公開記事のSearch Console流入を確認して、採用クエリと許可ドメインを調整する。
+
 #### ✅ 収益・UI改善: アフィリエイト広告UI/UX改善と過密広告削減
 - **完了日時**: 2026-06-10 21:40
 - **実施内容**:

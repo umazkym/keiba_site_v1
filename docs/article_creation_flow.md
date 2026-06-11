@@ -433,6 +433,50 @@ Tavilyは「外部文脈確認ツール」であり、競馬成績データの�
 - ログインや会員登録が必要なページ
 - 転載か一次情報か判断できないページ
 
+## ニュース起点の自動生成フロー
+
+ニュース起点の記事生成は、`backend/scripts/agents/news_topic_planner.py` が担当する。これはLangGraph風の固定ワークフローとして実装し、自由に動くAgentではなく、以下のノード順でStateを変換する。
+
+```text
+BuildQueries
+  → FetchTavily
+  → FilterSources
+  → ClusterTopics
+  → BuildWriteOrders
+  → PersistOrders
+```
+
+### 役割
+
+競馬ニュースをそのまま要約して公開するのではなく、検索需要が出やすい話題を検出し、UMA-FREEの既存記事生成パイプラインで扱える `write_order.json` に変換する。
+
+### 採用するトピック
+
+- JRA、NAR、競馬場公式、または信頼媒体で確認できる話題
+- 重賞、G1/G2/G3、枠順確定、出走予定、出走馬、馬場、騎手変更、開催情報
+- `/races/today` や重賞記事、コース分析記事へ自然に回遊できる話題
+- 既存記事、`posted_history.json`、未消費WriteOrder、`news_topic_history.json` と重複しない話題
+
+### 採用しないトピック
+
+- SNSや掲示板だけが根拠の話題
+- 外部記事の本文を言い換えるだけになる話題
+- オッズ、予想印、勝率、回収率など、UMA-FREEのDBで検証できない数値が主役になる話題
+- 炎上、処分、故障など、事実確認や表現リスクが高く、馬券検討の確認順に落としにくい話題
+
+### WriteOrderの扱い
+
+ニュースPlannerは `theme_cluster` を以下のどちらかで出力する。
+
+- `news_context`: 一般的な競馬ニュースを、出馬表で確認する順番へ変換する記事
+- `race_update`: レース名を検出できたニュースを、重賞・日別レース導線へつなぐ記事
+
+`reference_data.key_metrics` には、ニュース本文の要約ではなく、採用済みソースから抽出した「確認済みの事実テーブル」を入れる。Writerはこの表と `research_sources.allowed_claims` だけを外部文脈として使い、勝率、回収率、AI偏差値などの主要数値は外部ソースから作らない。
+
+### 自動公開の考え方
+
+ニュースPlannerは `data/write_orders/` に指示書を作成するだけで、公開判断は既存の `article:pipeline`、`agent_editor.ts`、`agent_publisher.ts` に委ねる。人間確認ノードは置かず、既存の完全自動公開フローと同じ経路で処理する。
+
 ## ベクトル検索ポリシー
 
 最初に内部記事とEvidence Packを対象にする。

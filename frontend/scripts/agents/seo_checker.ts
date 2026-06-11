@@ -66,6 +66,17 @@ export const SEO_RULES = {
   ],
 };
 
+const REQUIRED_POINT_HEADINGS = [
+  'このコースの買い目ポイント',
+  'このレースの買い目ポイント',
+  'このニュースの確認ポイント',
+];
+
+const REQUIRED_POINT_HEADING_PATTERN = new RegExp(
+  `^##\\s+(${REQUIRED_POINT_HEADINGS.join('|')})\\s*$`,
+  'm'
+);
+
 export interface SEOCheckResult {
   passed: boolean;
   errors: string[];
@@ -154,8 +165,8 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     errors.push(`今日のAI予想・出馬表への内部リンクがありません。記事末尾に /races/today への自然な導線を含めてください。`);
   }
 
-  if (SEO_RULES.require_buying_point_heading && !/^##\s+このコースの買い目ポイント\s*$/m.test(content)) {
-    errors.push(`記事末尾のH2「このコースの買い目ポイント」がありません。まとめ見出しではなく、買い目判断の箇条書きで締めてください。`);
+  if (SEO_RULES.require_buying_point_heading && !REQUIRED_POINT_HEADING_PATTERN.test(content)) {
+    errors.push(`記事末尾のH2「このコースの買い目ポイント」「このレースの買い目ポイント」「このニュースの確認ポイント」のいずれかがありません。まとめ見出しではなく、判断の箇条書きで締めてください。`);
   }
 
   // 5. データテーブルまたはリストの存在
@@ -174,7 +185,7 @@ export function checkSEO(markdownText: string): SEOCheckResult {
   while ((match = h2Regex.exec(content)) !== null) {
     foundH2 = true;
     const h2Text = match[1].trim();
-    const isRequiredBuyingPointHeading = h2Text === 'このコースの買い目ポイント';
+    const isRequiredBuyingPointHeading = REQUIRED_POINT_HEADINGS.includes(h2Text);
 
     if (!isRequiredBuyingPointHeading) {
       nonBuyingH2Count++;
@@ -228,7 +239,7 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     const lastLine = lastLineMatch[1];
     const isForbiddenEnding = endingForbiddenPatterns.some(pattern => pattern.test(lastLine));
     if (isForbiddenEnding) {
-      errors.push(`記事の末尾が定型文や過剰な総括で終わっています（「...${lastLine.substring(Math.max(0, lastLine.length - 15))}」）。買い目ポイントと /races/today への自然な導線で締めてください。`);
+      errors.push(`記事の末尾が定型文や過剰な総括で終わっています（「...${lastLine.substring(Math.max(0, lastLine.length - 15))}」）。確認ポイントと /races/today への自然な導線で締めてください。`);
     }
   }
 

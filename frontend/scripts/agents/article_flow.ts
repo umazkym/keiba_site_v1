@@ -3,7 +3,7 @@ import path from 'path';
 import matter from 'gray-matter';
 import { WriteOrder } from './agent_writer';
 
-type ArticleType = 'data' | 'grade_race_preview' | 'beginner' | 'guide' | 'rewrite';
+type ArticleType = 'data' | 'grade_race_preview' | 'news_context' | 'race_update' | 'beginner' | 'guide' | 'rewrite';
 type FlowStatus = 'APPROVED' | 'REJECTED';
 type FlowSeverity = 'info' | 'warning' | 'critical';
 
@@ -95,6 +95,8 @@ function addIssue(state: ArticleFlowState, node: string, severity: FlowSeverity,
 function classifyArticleType(order: WriteOrder): ArticleType {
   const cluster = order.theme_cluster || '';
   if (cluster === 'grade_race_preview') return 'grade_race_preview';
+  if (cluster === 'news_context') return 'news_context';
+  if (cluster === 'race_update') return 'race_update';
   if (/beginner|初心者|guide|manual/i.test(cluster) || /始め方|買い方|用語|ガイド|マニュアル/.test(order.target_keyword)) {
     return 'beginner';
   }
@@ -226,8 +228,18 @@ function buildEvidencePack(order: WriteOrder): EvidencePack {
 }
 
 function decideResearch(order: WriteOrder, articleType: ArticleType): ResearchDecision {
+  if ((articleType === 'news_context' || articleType === 'race_update') && (order.research_sources?.length || 0) > 0) {
+    return {
+      needsExternalResearch: false,
+      reason: 'News research sources were already attached by News Topic Planner.',
+      tavilyEnabled: false,
+    };
+  }
+
   const needsExternalResearch =
     articleType === 'grade_race_preview' ||
+    articleType === 'news_context' ||
+    articleType === 'race_update' ||
     articleType === 'beginner' ||
     articleType === 'guide' ||
     Boolean((order.reference_data as Record<string, unknown> | undefined)?.external_research_required);
@@ -314,6 +326,15 @@ function buildTavilyQueries(order: WriteOrder, articleType: ArticleType): string
       `${order.target_keyword} JRA 公式`,
       `${order.target_keyword} 競馬 公式`,
     ];
+  }
+
+  if (articleType === 'news_context' || articleType === 'race_update') {
+    const newsTopic = String(ref.news_topic || '').trim();
+    const raceNameForNews = String(ref.race_name || '').trim();
+    return [
+      `${raceNameForNews || order.target_keyword} JRA 公式 ニュース`,
+      newsTopic || `${order.target_keyword} 競馬 ニュース`,
+    ].filter(Boolean);
   }
 
   if (ref.external_research_query) {
@@ -457,6 +478,16 @@ function validatePreDraftState(order: WriteOrder, state: ArticleFlowState): void
     const ref = order.reference_data as Record<string, unknown>;
     if (!ref.race_name || !ref.race_date || !ref.venue) {
       addIssue(state, 'Evidence Builder', 'critical', 'grade race preview requires race_name, race_date, and venue.');
+    }
+  }
+
+  if (state.article_type === 'news_context' || state.article_type === 'race_update') {
+    const ref = order.reference_data as Record<string, unknown>;
+    if (!ref.news_topic && !ref.key_metrics) {
+      addIssue(state, 'Evidence Builder', 'critical', 'news article requires news_topic or key_metrics.');
+    }
+    if ((order.research_sources?.length || 0) === 0 && !ref.source_cards) {
+      addIssue(state, 'Research Filter', 'warning', 'news article has no attached research_sources. Continue only if WriteOrder has enough key_metrics.');
     }
   }
 

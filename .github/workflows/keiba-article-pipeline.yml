@@ -10,11 +10,12 @@ on:
       max_articles:
         description: 'この実行で生成・公開する最大記事数'
         required: true
-        default: '1'
+        default: '2'
         type: choice
         options:
           - '1'
           - '2'
+          - '3'
       run_quality_audit:
         description: '公開済み記事の品質監査を実行する'
         required: true
@@ -33,9 +34,10 @@ jobs:
       contents: write
 
     env:
-      ARTICLE_PIPELINE_MAX_ARTICLES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_articles || '1' }}
+      ARTICLE_PIPELINE_MAX_ARTICLES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_articles || '2' }}
       GEMINI_MODEL_TIERS: gemini-2.5-flash-lite,gemini-2.5-flash
       GEMINI_ARTICLE_DAILY_REQUEST_LIMIT: "10"
+      KEIBA_NEWS_MAX_ORDERS_PER_RUN: "2"
 
     steps:
       - name: Checkout Repository
@@ -45,6 +47,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: |
           missing=0
           if [ -z "$DATABASE_URL" ]; then
@@ -54,6 +57,9 @@ jobs:
           if [ -z "$GEMINI_API_KEY" ]; then
             echo "::error::GEMINI_API_KEY secret is required for article writing and review."
             missing=1
+          fi
+          if [ -z "$TAVILY_API_KEY" ]; then
+            echo "::warning::TAVILY_API_KEY is not set. News topic planner will skip external news collection."
           fi
           if [ "$missing" -ne 0 ]; then
             exit 1
@@ -90,13 +96,21 @@ jobs:
           git config --global user.name "${{ secrets.GIT_USER_NAME || 'github-actions[bot]' }}"
           git config --global user.email "${{ secrets.GIT_USER_EMAIL || 'github-actions[bot]@users.noreply.github.com' }}"
 
-      - name: Step 1A - Generate Grade Race Write Orders
+      - name: Step 1A - Generate News Topic Write Orders
+        working-directory: ./backend
+        env:
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          KEIBA_NEWS_MAX_ORDERS_PER_RUN: ${{ env.KEIBA_NEWS_MAX_ORDERS_PER_RUN }}
+          KEIBA_NEWS_LOOKBACK_DAYS: "7"
+        run: python scripts/agents/news_topic_planner.py
+
+      - name: Step 1B - Generate Grade Race Write Orders
         working-directory: ./backend
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/agents/grade_race_writer.py
 
-      - name: Step 1B - Generate Statistical Write Order (Data Scientist)
+      - name: Step 1C - Generate Statistical Write Order (Data Scientist)
         working-directory: ./backend
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

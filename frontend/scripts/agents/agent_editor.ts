@@ -60,6 +60,10 @@ const BANNED_REPLACEMENTS: Record<string, string> = {
   '独自の分析スクリプトで解析': 'データを整理',
   '膨大なレースデータを徹底的に解析': 'レースデータを整理',
   'https://uma-free.jp': 'https://uma-free.com',
+  '絶望的な低さ': '大幅に低い水準',
+  '絶望的数値': '大幅に低い数値',
+  '絶望的': '著しく低い',
+  '壊滅的': '大幅な不振',
 };
 
 function applyReplacement(content: string, original: string, fixed: string): { success: boolean, result: string } {
@@ -152,7 +156,16 @@ function repairAwkwardReplacementArtifacts(input: string): string {
     .replace(/考慮すべきと見ます/g, '考慮したいところです')
     .replace(/留めるのが賢明と見ます/g, '相手候補までに留めたいところです')
     .replace(/割引が必要と見ます/g, '割り引いて見ます')
-    .replace(/狙う必要はないと見ます/g, '狙う必要はありません');
+    .replace(/狙う必要はないと見ます/g, '狙う必要はありません')
+    .replace(/難しいなコース/g, '難しいコース')
+    .replace(/難しいな展開/g, '難しい展開')
+    .replace(/大きくに有利/g, '大きく有利')
+    .replace(/過信を禁物とする/g, '過信は禁物だ')
+    .replace(/かなり合致している/g, 'よく合致している')
+    .replace(/突出だ。/g, '突出している。')
+    .replace(/かなり低い水準/g, '大幅に低い水準')
+    .replace(/絶望的な低さ/g, '大幅に低い水準')
+    .replace(/絶望的数値/g, '大幅に低い数値');
 }
 
 function sanitizeGeneratedText(input: string): string {

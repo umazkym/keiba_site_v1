@@ -479,6 +479,60 @@ ${JSON.stringify(order, null, 2)}
   }
 }
 
+function cleanWriterPromptEchoesAndMeta(markdownText: string): string {
+  let targetText = markdownText.replace(/\r\n/g, '\n');
+  
+  // 複数フロントマターのクリーンアップ
+  const fmBlocks = targetText.split('---');
+  if (fmBlocks.length > 3) {
+    let targetFmIndex = -1;
+    for (let i = fmBlocks.length - 2; i >= 0; i--) {
+      const block = fmBlocks[i];
+      if (block.includes('title:') && block.includes('description:')) {
+        targetFmIndex = i;
+        break;
+      }
+    }
+    if (targetFmIndex !== -1) {
+      console.log(`[Writer-Cleanup] Duplicate frontmatters detected. Filtering garbage meta.`);
+      const actualFm = fmBlocks[targetFmIndex].trim();
+      const actualBody = fmBlocks.slice(targetFmIndex + 1).join('---').trim();
+      targetText = `---\n${actualFm}\n---\n\n${actualBody}`;
+    }
+  }
+
+  // 本文からのオウム返し除去
+  const lines = targetText.split('\n');
+  const filteredLines = lines.filter(line => {
+    const trimmed = line.trim();
+    const isEcho = 
+      trimmed.includes('3,000字以上') ||
+      trimmed.includes('4,200字目安') ||
+      trimmed.includes('競馬データメディア「UMA-FREE」の編集ライター') ||
+      trimmed.includes('検索ユーザーに「何を重く見るべきか」を提示') ||
+      (trimmed.includes('race_update') && trimmed.includes('（')) ||
+      (trimmed.includes('news_context') && trimmed.includes('（')) ||
+      (trimmed.includes('grade_race_preview') && trimmed.includes('（')) ||
+      (trimmed.startsWith('* ') && (
+        trimmed.includes('AI予想・偏差値などの内部データ') ||
+        trimmed.includes('predictions:') ||
+        trimmed.includes('JRAが調教後馬体重を発表') ||
+        trimmed.includes('構成案：') ||
+        trimmed.includes('導入：') ||
+        trimmed.includes('タイトル：') ||
+        trimmed.includes('ディスクリプション：') ||
+        trimmed.includes('文末の多様化') ||
+        trimmed.includes('「かなり」の使用制限') ||
+        trimmed.includes('見出しの多様化') ||
+        trimmed.includes('Markdownテーブルの使用') ||
+        trimmed.includes('禁止表現')
+      ));
+    return !isEcho;
+  });
+
+  return filteredLines.join('\n');
+}
+
 /**
  * ライターエンジンを実行し、指定されたWriteOrderに基づいて記事ドラフトを生成する
  */
@@ -606,6 +660,10 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
       filePath = path.join(queueDir, `${timestamp}_${suffix}.md`);
       suffix++;
     }
+
+    // プロンプトオウム返しの除去と複数フロントマターのクリーンアップ
+    text = cleanWriterPromptEchoesAndMeta(text);
+
     fs.writeFileSync(filePath, text, 'utf-8');
 
     console.log(`[Writer] Draft successfully saved to: ${filePath}`);

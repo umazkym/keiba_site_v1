@@ -685,18 +685,89 @@ function ensureMinimumBodyLength(content: string, data: Record<string, any>): st
   return result;
 }
 
+function cleanPromptEchoes(content: string): { content: string; cleaned: boolean } {
+  let cleaned = false;
+  const lines = content.split('\n');
+  const filteredLines = lines.filter(line => {
+    const trimmed = line.trim();
+    
+    // プロンプト特有のキーワードやメタ指示文の検出
+    const isEcho = 
+      trimmed.includes('3,000字以上') ||
+      trimmed.includes('4,200字目安') ||
+      trimmed.includes('競馬データメディア「UMA-FREE」の編集ライター') ||
+      trimmed.includes('検索ユーザーに「何を重く見るべきか」を提示') ||
+      (trimmed.includes('race_update') && trimmed.includes('（')) ||
+      (trimmed.includes('news_context') && trimmed.includes('（')) ||
+      (trimmed.includes('grade_race_preview') && trimmed.includes('（')) ||
+      (trimmed.startsWith('* ') && (
+        trimmed.includes('AI予想・偏差値などの内部データ') ||
+        trimmed.includes('predictions:') ||
+        trimmed.includes('JRAが調教後馬体重を発表') ||
+        trimmed.includes('構成案：') ||
+        trimmed.includes('導入：') ||
+        trimmed.includes('タイトル：') ||
+        trimmed.includes('ディスクリプション：') ||
+        trimmed.includes('文末の多様化') ||
+        trimmed.includes('「かなり」の使用制限') ||
+        trimmed.includes('見出しの多様化') ||
+        trimmed.includes('Markdownテーブルの使用') ||
+        trimmed.includes('禁止表現')
+      ));
+      
+    if (isEcho) {
+      cleaned = true;
+      return false;
+    }
+    return true;
+  });
+  
+  return {
+    content: filteredLines.join('\n'),
+    cleaned
+  };
+}
+
 export function autoRepairDraftMarkdown(markdownText: string): { content: string; changes: string[] } {
   const changes: string[] = [];
-  let parsed;
+  
+  // 複数フロントマターや指示メタデータの混入を事前クリーンアップ
+  let targetText = markdownText.replace(/\r\n/g, '\n');
+  const fmBlocks = targetText.split('---');
+  if (fmBlocks.length > 3) {
+    let targetFmIndex = -1;
+    for (let i = fmBlocks.length - 2; i >= 0; i--) {
+      const block = fmBlocks[i];
+      if (block.includes('title:') && block.includes('description:')) {
+        targetFmIndex = i;
+        break;
+      }
+    }
+    if (targetFmIndex !== -1) {
+      const actualFm = fmBlocks[targetFmIndex].trim();
+      const actualBody = fmBlocks.slice(targetFmIndex + 1).join('---').trim();
+      targetText = `---\n${actualFm}\n---\n\n${actualBody}`;
+      changes.push('重複したフロントマターや指示メタデータの混入をクリーンアップ');
+    }
+  }
 
+  let parsed;
   try {
-    parsed = matter(markdownText);
+    parsed = matter(targetText);
   } catch {
     return { content: markdownText, changes: ['Frontmatterのパースに失敗したため自動補正をスキップ'] };
   }
 
   const data = { ...parsed.data };
   let content = parsed.content.replace(/\r\n/g, '\n').trim();
+  
+  // プロンプトオウム返しの除去
+  const echoClean = cleanPromptEchoes(content);
+  if (echoClean.cleaned) {
+    content = echoClean.content.trim();
+    changes.push('本文からプロンプトオウム返しのゴミテキストを除去');
+  }
+
   const beforeTitle = String(data.title || '');
   const beforeDescription = String(data.description || '');
   const beforeContent = content;

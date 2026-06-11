@@ -217,7 +217,12 @@ function buildEvidencePack(order: WriteOrder): EvidencePack {
   const keyMetrics = order.reference_data?.key_metrics;
   const courseStats = (order.reference_data as Record<string, unknown> | undefined)?.course_stats;
   const predictions = (order.reference_data as Record<string, unknown> | undefined)?.predictions;
-  const metricRows = countMetricRows(keyMetrics) + countMetricRows(courseStats) + countMetricRows(predictions);
+  const horseNumberAdvantages = (order.reference_data as Record<string, unknown> | undefined)?.horse_number_advantages;
+  const metricRows =
+    countMetricRows(keyMetrics) +
+    countMetricRows(courseStats) +
+    countMetricRows(predictions) +
+    countMetricRows(horseNumberAdvantages);
 
   return {
     hasDataMetrics: metricRows > 0 || Boolean(order.reference_data?.race_name || order.reference_data?.race_date),

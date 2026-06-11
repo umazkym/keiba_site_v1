@@ -7,7 +7,7 @@ const FRONTEND_ROOT = path.basename(process.cwd()) === 'frontend'
 const ARTICLES_DIR = path.join(FRONTEND_ROOT, 'content', 'articles');
 
 const RULES = {
-  minBodyChars: 2000,
+  minBodyChars: Number.parseInt(process.env.ARTICLE_MIN_BODY_CHARS || '3000', 10) || 3000,
   titleMin: 30,
   titleMax: 50,
   descriptionMin: 120,

@@ -263,8 +263,9 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
     chunks = [races_to_process[i:i + chunk_size] for i in range(0, len(races_to_process), chunk_size)]
 
     model_tiers = _parse_model_tiers("GEMINI_RACE_MODEL_TIERS", [
-        "gemini-2.5-flash-lite",
-        "gemini-2.5-flash",
+        "gemini-3.5-flash",
+        "gemini-3-flash-preview",
+        "gemma-4-31b-it",
     ])
     
     # Google AI Studioの実効上限はプロジェクトごとに異なるため、ここでは1ジョブ内のソフト上限として扱う。

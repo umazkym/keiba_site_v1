@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getGeminiModelTiers } from './model_tiers';
+import { getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
 import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
 
 // APIキーは環境変数から取得
@@ -28,8 +28,15 @@ export type WriteOrder = {
     news_reason?: string;
     search_intent?: string;
     search_intent_label?: string;
+    search_angle_label?: string;
     calendar_race?: string;
     days_to_race?: number;
+    matched_race?: Record<string, string | number | null>;
+    predictions?: Record<string, string | number>[];
+    course_stats?: Record<string, string | number>[];
+    horse_number_advantages?: Record<string, string | number>[];
+    topic_bridge?: Record<string, unknown>;
+    ai_analysis_text?: string;
     source_cards?: {
       source_url: string;
       source_name: string;
@@ -55,6 +62,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - 重賞記事では、情報過多で迷っている読者に「枠順・脚質・斤量・人気のどこから確認するか」を示す。
 - 平場向けの記事では、全頭を深く見られない読者に「買うレース」と「見送るレース」を分ける初期判断を渡す。
 - ニュース起点の記事では、外部ニュースの焼き直しではなく「発表・話題を受けて、UMA-FREEで何を確認すべきか」を整理する。
+- 入力に「Gemma SEO/構成ブリーフ」が含まれる場合は、検索意図・見出し候補・不足観点のメモとして使う。ただし新しい数値や事実の根拠にはしない。
 - 煽り、断定しすぎ、機械的なSEO文は避ける。数字を根拠に、競馬ファンが自然に読める実務的な文章にする。
 
 【書き方の原則（重要）】
@@ -132,6 +140,9 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - theme_cluster が "news_context" または "race_update" の場合、reference_data.key_metrics はニュース本文の要約ではなく「確認済みの事実テーブル」として扱う。表にない日付・頭数・発表内容を勝手に補完しない。
 - ニュース記事では、外部ソースの文章を言い換えて長く展開しない。外部事実は短く置き、その後に「出馬表で確認する順番」「馬場・枠順・脚質の見方」「/races/today への導線」へ移る。
 - reference_data.search_intent_label がある場合、その検索意図を記事の中心に置く。たとえば「枠順」なら枠順確定後にどこを見るか、「出走馬」なら出走馬一覧から脚質・騎手・馬場をどう確認するかを主題にする。
+- reference_data.topic_bridge がある場合、複数ニュースの話題をそのまま並べず、topic_bridge.primary_angle と merge_policy に沿って「外部ニュースの話題」→「UMA-FREE内部データで確認する順番」へ接続する。
+- reference_data.predictions、course_stats、horse_number_advantages、ai_analysis_text、matched_race がある場合、それらはUMA-FREEが収集した内部データとして扱う。追い切り、前走後コメント、SNS話題、騎手ニュースなどの定性的な材料は、これらの数値や出馬表確認と結び付けて書く。
+- 外部ニュース由来の追い切り評価や陣営コメントだけで評価を断定しない。AI偏差値、コース統計、馬番傾向がある場合は「評価を上げる材料」「確認を残す材料」「人気なら慎重に見る条件」に分ける。
 - reference_data.days_to_race がある場合、開催までの日数に合わせて書く。開催前なら「直前に確認する順番」、開催後なら「次に同条件を見る時の確認材料」に寄せる。
 
 【フォーマット要件】
@@ -143,8 +154,8 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - 見出し（H2・H3）：数字を含む見出しを最低1つ入れる。ただし全見出しを「3つの〜」に寄せない。同じ語尾の見出しを繰り返さない。
 - 枠順別のデータ等は見やすくするため、【必ず1つ以上のMarkdown形式のデータテーブル】（| で区切る表）にすること。リスト代用は不可。ただし表の数値は入力JSONに存在する値だけを使う。
 - 数値を使う場合は期間・条件・母数を必ず明記する。
-- 本文2,300〜2,800字を目安にし、最低2,000字は必ず超える。ただし水増し禁止。短くなりそうな場合は、入力データから読み取れる「扱い方」「疑う条件」「当日の確認順序」「サンプル数が少ない場合の注意点」を具体化して厚みを出す。
-- 生成後に本文量を自分で確認し、2,000字未満になりそうなら、架空の数値や外部情報を足さず、「出馬表で見る順番」「人気馬を疑う条件」「買い足す前の確認順」のうち不足している観点を追加する。
+- 本文3,400〜4,200字を目安にし、最低3,000字は必ず超える。ただし水増し禁止。短くなりそうな場合は、入力データから読み取れる「扱い方」「疑う条件」「当日の確認順序」「サンプル数が少ない場合の注意点」「検索読者が次に調べる観点」を具体化して厚みを出す。
+- 生成後に本文量を自分で確認し、3,000字未満になりそうなら、架空の数値や外部情報を足さず、「出馬表で見る順番」「人気馬を疑う条件」「買い足す前の確認順」「評価を下げる条件」「ニュース後に確認する材料」のうち不足している観点を追加する。
 - 本文中のCTAは /races/today または reference_data.race_url のみ。存在確認できないURLや仮のURLは書かない。
 
 【記事の締め方 ― 確認ポイントセクション必須】
@@ -200,13 +211,15 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
   - タイトル構成: 「[ニュース内の主要語]｜出馬表で見る確認ポイント[数字]」（30〜50文字）
   - ニュースの全文要約は禁止。reference_data.key_metrics と research_sources.allowed_claims で確認できる事実だけを短く扱う。
   - 記事の主役は「その話題を受けて、出馬表・馬場・枠順・脚質・AI予想のどこを見るか」に置く。
+  - reference_data.topic_bridge や内部データがある場合、複数ソースの話題を1つの確認順に束ね、外部ニュースの羅列にしない。
   - 外部ソース名やURLを本文内に並べない。必要な事実は「確認されている材料」として扱う。
   - 最後の見出しは「## このニュースの確認ポイント」にする。
 ・"race_update": レース関連ニュースから既存の重賞・日別レース導線へつなぐ記事。以下のルールに従う:
   - タイトル構成: 「[レース名][年]｜ニュース後に見る確認ポイント[数字]」（30〜50文字）
-  - 枠順確定、出走予定、馬場、騎手変更など、レース前に検索される語を自然に含める。
+  - 枠順確定、出走予定、馬場、追い切り、前走後評価、陣営コメント、騎手変更、話題馬など、レース前に検索される語を自然に含める。
+  - reference_data.predictions、course_stats、horse_number_advantages がある場合、ニュースの話題と内部データを別々に扱わず、直前に確認する順序として接続する。
   - 最新情報の断定より、/races/today で当日確認する順番を優先する。
-  - 最後の見出しは「## このレース of 買い目ポイント」にする。
+  - 最後の見出しは「## このレースの買い目ポイント」にする。
 
 【カテゴリの決定ルール】
 theme_clusterの値に応じてcategoryを以下のように決定する。
@@ -243,6 +256,129 @@ function isRetryableGeminiError(error: unknown): boolean {
   return /429|quota|rate limit|resource exhausted|too many requests/i.test(message);
 }
 
+function logGeminiUsage(prefix: string, response: any): void {
+  const usage = response?.usageMetadata;
+  if (!usage) {
+    console.log(`${prefix} token usage: usageMetadata unavailable`);
+    return;
+  }
+
+  const promptTokens = usage.promptTokenCount ?? 'unknown';
+  const outputTokens = usage.candidatesTokenCount ?? 'unknown';
+  const totalTokens = usage.totalTokenCount ?? 'unknown';
+  console.log(`${prefix} token usage: input=${promptTokens} output=${outputTokens} total=${totalTokens}`);
+}
+
+type ArticleStrategyBrief = {
+  primary_search_intent: string;
+  title_angles: string[];
+  section_plan: string[];
+  expansion_angles: string[];
+  long_tail_terms: string[];
+  fact_guardrails: string[];
+  internal_link_flow: string[];
+};
+
+const STRATEGY_BRIEF_SYSTEM_PROMPT = `あなたはUMA-FREEの記事戦略担当だ。
+WriteOrderを読み、検索流入を増やすための構成ブリーフをJSONだけで返す。
+
+【役割】
+- 検索ユーザーの意図を、出馬表・馬場・枠順・脚質・AI予想の確認順へ変換する。
+- 本文を厚くするための安全な追加観点を出す。
+- ただし、入力JSONにない数値、馬名、成績、外部事実は絶対に作らない。
+- 煽り、過剰な断定、購入を強く促す表現は避ける。
+
+【出力JSON】
+{
+  "primary_search_intent": "検索ユーザーがこの記事で解決したいことを1文で書く",
+  "title_angles": ["30〜50文字のタイトルで使える自然な切り口を3件"],
+  "section_plan": ["H2見出し候補を5〜7件。最低2件は数字を含める"],
+  "expansion_angles": ["3,000字以上にするために深掘りできる安全な観点を5件"],
+  "long_tail_terms": ["本文に自然に含めたい検索語を5〜10件"],
+  "fact_guardrails": ["捏造を避けるための注意点を3〜5件"],
+  "internal_link_flow": ["記事末尾から/races/todayへ自然につなぐ観点を2〜3件"]
+}`;
+
+function toStringArray(value: unknown, fallback: string[] = []): string[] {
+  if (!Array.isArray(value)) return fallback;
+  return value
+    .map(item => String(item || '').trim())
+    .filter(Boolean)
+    .slice(0, 10);
+}
+
+function normalizeStrategyBrief(value: any): ArticleStrategyBrief {
+  return {
+    primary_search_intent: String(value?.primary_search_intent || '').trim(),
+    title_angles: toStringArray(value?.title_angles),
+    section_plan: toStringArray(value?.section_plan),
+    expansion_angles: toStringArray(value?.expansion_angles),
+    long_tail_terms: toStringArray(value?.long_tail_terms),
+    fact_guardrails: toStringArray(value?.fact_guardrails),
+    internal_link_flow: toStringArray(value?.internal_link_flow),
+  };
+}
+
+function parseJsonObject(text: string): any {
+  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('JSON object not found in strategy response.');
+    return JSON.parse(match[0]);
+  }
+}
+
+async function buildArticleStrategyBrief(order: WriteOrder, genAI: GoogleGenerativeAI): Promise<ArticleStrategyBrief | null> {
+  const modelTiers = getGeminiModelTiers('GEMINI_STRATEGY_MODEL_TIERS');
+  const prompt = `以下のWriteOrderから、検索流入と記事の厚みを増やすための構成ブリーフを作る。\n\n${JSON.stringify(order, null, 2)}`;
+
+  for (const currentModelName of modelTiers) {
+    try {
+      console.log(`[Strategy] Trying model: ${currentModelName}`);
+      const model = genAI.getGenerativeModel({
+        model: currentModelName,
+        systemInstruction: STRATEGY_BRIEF_SYSTEM_PROMPT,
+        generationConfig: {
+          temperature: 0.2,
+          topP: 0.75,
+          responseMimeType: 'application/json',
+        },
+      });
+
+      reserveGeminiRequest({
+        scope: 'article',
+        model: currentModelName,
+        purpose: 'strategy-brief',
+        target: order.target_keyword,
+      });
+      const result = await model.generateContent(prompt);
+      logGeminiUsage(`[Strategy] ${currentModelName}`, result.response);
+      const text = result.response.text() || '';
+      const brief = normalizeStrategyBrief(parseJsonObject(text));
+      if (!brief.primary_search_intent && brief.section_plan.length === 0) {
+        throw new Error('Strategy brief was empty.');
+      }
+      console.log(`[Strategy] Brief created: sections=${brief.section_plan.length} expansion=${brief.expansion_angles.length}`);
+      return brief;
+    } catch (e: any) {
+      if (e instanceof GeminiQuotaExceededError) {
+        console.warn(`[Strategy Warning] ${currentModelName} quota guard: ${e.message}`);
+        if (e.kind === 'total') return null;
+        continue;
+      }
+      console.warn(`[Strategy Warning] ${currentModelName} failed: ${e.message || String(e)}`);
+      if (!isRetryableGeminiError(e)) {
+        continue;
+      }
+    }
+  }
+
+  console.warn('[Strategy] 構成ブリーフの生成に失敗したため、WriteOrderのみで初稿を生成します。');
+  return null;
+}
+
 /**
  * ライターエンジンを実行し、指定されたWriteOrderに基づいて記事ドラフトを生成する
  */
@@ -256,9 +392,15 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
     }
     const genAI = new GoogleGenerativeAI(apiKey);
     const modelTiers = getGeminiModelTiers('GEMINI_WRITER_MODEL_TIERS');
+    console.log(`[Writer] LLM strategy: ${getArticleLlmStrategySummary()}`);
 
-    const prompt = `以下の入力データ（WriteOrder）に基づいて記事を生成する。\n\n${JSON.stringify(order, null, 2)}`;
+    const strategyBrief = await buildArticleStrategyBrief(order, genAI);
+    const strategySection = strategyBrief
+      ? `\n\n【Gemma SEO/構成ブリーフ】\n${JSON.stringify(strategyBrief, null, 2)}`
+      : '';
+    const prompt = `以下の入力データ（WriteOrder）に基づいて記事を生成する。${strategySection}\n\n【WriteOrder】\n${JSON.stringify(order, null, 2)}`;
     console.log(`[Writer] Generating draft for keyword: ${order.target_keyword}...`);
+    console.log(`[Writer] Prompt size estimate: system=${SYSTEM_PROMPT.length} chars order_prompt=${prompt.length} chars`);
 
     let result;
     let usedModel = '';
@@ -288,6 +430,7 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
             result = await model.generateContent(prompt);
             usedModel = currentModelName;
             console.log(`[Writer] Model succeeded: ${usedModel}`);
+            logGeminiUsage(`[Writer] ${usedModel}`, result.response);
             break; // 成功したら抜ける
         } catch (e: any) {
             if (e instanceof GeminiQuotaExceededError) {
@@ -316,6 +459,7 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
 
     // Markdownのコードブロックマーカー(```markdown)がAIの癖で出力された場合は除去する
     text = text.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '');
+    console.log(`[Writer] Draft length: ${text.replace(/\s/g, '').length} chars`);
 
     // 一時ディレクトリ (pending) に保存
     const now = new Date();

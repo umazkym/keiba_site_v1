@@ -3,7 +3,7 @@ import path from 'path';
 import matter from 'gray-matter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { checkSEO, SEO_RULES } from './seo_checker';
-import { getGeminiModelTiers } from './model_tiers';
+import { getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
 import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
 
 const DEFAULT_BUYING_POINT_HEADING = '## このコースの買い目ポイント';
@@ -631,6 +631,9 @@ function lengthExpansionBlocks(data: Record<string, any>): string[] {
     `## 出馬表で使う3つの順番\n\n${target}を見る時は、最初に表の数字、次に当日の条件、最後に人気との釣り合いを確認する。数字が強い条件でも、当日の馬場や枠順が合わなければ軸にはしにくい。反対に数字が控えめでも、少頭数、内外の伸び、先行馬の少なさなどが重なれば、相手候補として残す理由になる。\n\n出馬表では、馬の能力だけでなく、どの位置から競馬を進めるかを見たい。逃げ先行が多い時は差し馬の届く条件を確認し、前が楽になりそうな時は内外のロスを見直す。数字をそのまま買うのではなく、当日の隊列に置き換えると、買いと見送りの線を引きやすくなる。`,
     `## 数字を疑う2つの条件\n\n1つ目は母数が少ないケースだ。勝率や回収率が高く見えても、対象レースが少ない場合は偶然の影響を受けやすい。そうした数字は軸の決め手ではなく、相手候補を広げる材料として扱う。2つ目は人気とのズレが大きいケースだ。数字が良くても人気が過度に集まっているなら、買い目の中心に置く前に馬場や脚質の裏付けを確認したい。\n\n数字を疑うことは、データを軽視することではない。数字が強い理由を出馬表で確認し、説明できる時だけ重く扱う。説明できない数字は抑えまでに留め、当日の条件が合う馬を優先する。これだけでも、買い目の広げすぎを避けやすくなる。`,
     `## オッズを見る前の3つの線引き\n\nオッズを見る前に、買い、抑え、見送りの線を先に置く。買いは、データと当日の条件がそろう馬に限る。抑えは、どちらか一方に強い材料がある馬にする。見送りは、数字が弱い、条件が合わない、人気だけが先行している馬に付ける。この線引きを先に作ると、直前に人気が動いても判断を戻しやすい。\n\nオッズは最後の調整材料として使う。買いに入れた馬が想定以上に売れているなら、点数を絞る。抑えの馬が売れていないなら、相手候補として残す価値がある。見送りにした馬は、明確な条件変化が出ない限り買い目へ戻さない。こうした順番を守ると、データ記事を実際の馬券検討に使いやすくなる。`,
+    `## 条件が変わる日の2つの見直し\n\n同じ数字でも、当日の条件が変われば扱い方は変わる。まず見直したいのは馬場だ。良馬場で残っていた傾向が、雨や乾きかけの馬場でも同じとは限らない。時計が速い日は位置取りを重く見て、力のいる馬場では最後まで脚を使えるタイプを残す。次に見るのは頭数と隊列だ。少頭数なら外を回すロスが小さくなり、多頭数なら内で包まれるリスクや外を回される距離ロスが大きくなる。\n\nこの見直しを入れると、表の数字をそのまま使う場面と、当日の条件で評価を調整する場面を分けられる。数字が強い馬でも、条件が反対に出るなら相手までに下げる。数字が控えめな馬でも、馬場や隊列が向くなら買い目に残す理由ができる。`,
+    `## 人気と評価を分ける3つのメモ\n\n人気を確認する前に、評価の理由を短く残しておく。1つ目はデータで評価する理由、2つ目は当日の条件で評価を上げる理由、3つ目は評価を下げる理由だ。買い目を決める直前は情報が増えやすく、人気の動きだけで判断が揺れやすい。先にメモを作っておくと、人気が上がった馬をそのまま買うのか、相手までに留めるのかを落ち着いて分けられる。\n\n評価を上げる理由がデータだけなら、馬場や脚質の確認を残す。評価を上げる理由が当日の条件だけなら、過去データとの相性を確認する。評価を下げる理由が複数ある馬は、人気が落ちても無理に戻さない。この順番なら、検索で記事を読んだ後に出馬表へ移った時も、確認する場所がはっきりする。`,
+    `## 最後に確認する2つのズレ\n\n最後に見るのは、データ評価と当日の見え方のズレだ。データで評価できる馬が、出馬表では不利な枠や苦しい隊列になっていないかを確認する。反対に、データだけでは強く見えない馬でも、当日の馬場や相手関係で走りやすい形になっていないかを見る。この2つを分けると、買い目を増やす理由と減らす理由が自然に整理される。\n\nもう1つは、人気と評価のズレだ。評価を上げる材料があるのに人気が控えめなら、相手候補として残す余地がある。評価を下げたい条件があるのに人気が集まるなら、軸には置かず抑えまでにする。検索で記事を読んだ後は、このズレを出馬表で確認してから買い目を決めたい。`,
   ];
 
   if (theme === 'grade_race_preview') {
@@ -661,7 +664,7 @@ function lengthExpansionBlocks(data: Record<string, any>): string[] {
 }
 
 function ensureMinimumBodyLength(content: string, data: Record<string, any>): string {
-  const targetLength = SEO_RULES.min_word_count + 80;
+  const targetLength = SEO_RULES.min_word_count + 120;
   let result = content.trim();
   if (bodyPlainLength(result) >= SEO_RULES.min_word_count) return result;
 
@@ -728,6 +731,7 @@ STEP 2：構造チェック
 ・チェックマークやバツ印などの装飾記号、煽りの強い「最強」「圧倒的」「狙い撃つ」「買うな」「消去対象」が残っていないか
 ・重賞記事は、人気馬を煽るだけでなく「疑う条件」「買い足す条件」「見送る条件」が分かれているか
 ・平場向け記事は、短時間で複数レースを見る読者が使える初期判断になっているか
+・Gemma複数観点レビューが付いている場合は、検索意図、本文の厚み、トーン・事実性の指摘を優先順に反映すること
 ・文字数不足を補うために、勝率、回収率、枠順別成績、斤量別成績などの新しい数値を作らないこと
 STEP 3：フォーマットとSEOのチェック
 ・タイトルの文字数（30〜50文字）と構成
@@ -736,7 +740,7 @@ STEP 3：フォーマットとSEOのチェック
 ※関連記事プレースホルダーは要求しない。本文中に「関連記事」セクションや「[関連記事：...]」は追加しないこと。
 ※存在確認できないURL、仮URL、単独行の「(/course-xxx)」のような壊れたリンク片は必ず削除すること。
 ※本文を長くしすぎない。必要な修正だけ行い、表・数値・母数・期間は壊さないこと。
-※本文の文字数不足が大きい場合は、定型段落で水増しせずREJECTEDにすること。
+※本文が3,000字未満の場合は、入力にある材料だけで「確認順」「疑う条件」「買い足す前の線引き」を補う。数字を増やせない場合は、数字を作らず判断プロセスを具体化すること。
 
 【JSON出力フォーマット】
 以下のJSONスキーマに従って出力する。Markdownのコードブロックなどは含めず、純粋なJSON文字列のみを出力すること。
@@ -764,6 +768,195 @@ function isRetryableGeminiError(error: unknown): boolean {
   return /429|quota|rate limit|resource exhausted|too many requests/i.test(message);
 }
 
+function geminiUsageLine(prefix: string, response: any): string {
+  const usage = response?.usageMetadata;
+  if (!usage) return `${prefix} token usage: usageMetadata unavailable`;
+
+  const promptTokens = usage.promptTokenCount ?? 'unknown';
+  const outputTokens = usage.candidatesTokenCount ?? 'unknown';
+  const totalTokens = usage.totalTokenCount ?? 'unknown';
+  return `${prefix} token usage: input=${promptTokens} output=${outputTokens} total=${totalTokens}`;
+}
+
+type GemmaReviewPass = {
+  id: string;
+  label: string;
+  instruction: string;
+};
+
+type GemmaReviewResult = {
+  promptBrief: string;
+  log: string;
+};
+
+const GEMMA_REVIEW_SYSTEM_PROMPT = `あなたはUMA-FREEの副編集者だ。
+与えられたMarkdown記事を、指定された観点だけで添削する。
+
+【厳守】
+- 本文全文の書き直しはしない。
+- 入力にない数値、馬名、成績、外部事実を作らない。
+- 表の列や行を増やす提案は、入力データに同じ値がある場合だけに限る。
+- 煽り、購入を急かす表現、過度な断定を避ける。
+- 出力はJSONのみ。
+
+【JSON形式】
+{
+  "status": "APPROVED" | "NEEDS_WORK",
+  "priority_actions": ["最優先で直すことを1〜5件"],
+  "safe_expansion_sections": [
+    {
+      "heading": "追加または強化したい見出し",
+      "reason": "検索意図や読者行動に対する必要性",
+      "must_not_add": "作ってはいけない数値・事実"
+    }
+  ],
+  "rewrite_notes": ["置換や言い換えの方針を1〜5件"],
+  "seo_terms_to_naturally_include": ["自然に入れる検索語を0〜8件"],
+  "risk_notes": ["事実性・広告審査・読者信頼のリスクを0〜5件"]
+}`;
+
+const GEMMA_REVIEW_PASSES: GemmaReviewPass[] = [
+  {
+    id: 'search-intent',
+    label: '検索意図レビュー',
+    instruction: '検索流入を増やす観点で、title/description/H2/冒頭が検索意図に合うかを確認する。ロングテール語は自然に本文へ入るものだけ提案する。',
+  },
+  {
+    id: 'depth',
+    label: '本文深掘りレビュー',
+    instruction: '3,000字以上でも薄く見えないよう、入力データだけで深掘りできる確認順、疑う条件、買い足す前の線引きを提案する。',
+  },
+  {
+    id: 'tone-fact',
+    label: 'トーン・事実性レビュー',
+    instruction: '禁止語、過剰表現、数値の捏造リスク、外部情報の扱い、PR/広告審査上の違和感を確認する。',
+  },
+];
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value || '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function isGemmaReviewEnabled(): boolean {
+  return (process.env.ARTICLE_GEMMA_REVIEW_ENABLED || 'true').toLowerCase() !== 'false';
+}
+
+function compactGemmaReviewText(value: string, maxLength = 1800): string {
+  const text = value.replace(/\s+/g, ' ').trim();
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+}
+
+async function runSingleGemmaReviewPass(input: {
+  genAI: GoogleGenerativeAI;
+  pass: GemmaReviewPass;
+  currentContent: string;
+  mechanicalLog: string;
+  attempt: number;
+  target: string;
+}): Promise<{ responseText: string; usageLog: string; model: string } | null> {
+  const modelTiers = getGeminiModelTiers('GEMINI_GEMMA_REVIEW_MODEL_TIERS');
+  const prompt = [
+    `【添削観点】${input.pass.label}`,
+    input.pass.instruction,
+    '',
+    '【事前の機械チェック結果】',
+    input.mechanicalLog,
+    '',
+    '【Markdown記事】',
+    '```markdown',
+    input.currentContent,
+    '```',
+  ].join('\n');
+
+  for (const currentModelName of modelTiers) {
+    try {
+      console.log(`[GemmaReview] Attempt ${input.attempt} ${input.pass.label} - Trying model: ${currentModelName}`);
+      const model = input.genAI.getGenerativeModel({
+        model: currentModelName,
+        systemInstruction: GEMMA_REVIEW_SYSTEM_PROMPT,
+        generationConfig: {
+          temperature: 0.15,
+          topP: 0.75,
+          responseMimeType: 'application/json',
+        },
+      });
+
+      reserveGeminiRequest({
+        scope: 'article',
+        model: currentModelName,
+        purpose: `gemma-review-${input.pass.id}-attempt-${input.attempt}`,
+        target: input.target,
+      });
+      const response = await model.generateContent(prompt);
+      const usageLog = geminiUsageLine(
+        `[GemmaReview] Attempt ${input.attempt} ${input.pass.id} ${currentModelName}`,
+        response.response
+      );
+      console.log(usageLog);
+
+      return {
+        responseText: response.response.text() || '',
+        usageLog,
+        model: currentModelName,
+      };
+    } catch (e: any) {
+      if (e instanceof GeminiQuotaExceededError) {
+        console.warn(`[GemmaReview Warning] ${currentModelName} quota guard: ${e.message}`);
+        if (e.kind === 'total') return null;
+        continue;
+      }
+      console.warn(`[GemmaReview Warning] ${currentModelName} failed: ${e.message || String(e)}`);
+      if (!isRetryableGeminiError(e)) {
+        continue;
+      }
+    }
+  }
+
+  return null;
+}
+
+async function buildGemmaReviewBrief(input: {
+  genAI: GoogleGenerativeAI;
+  currentContent: string;
+  mechanicalLog: string;
+  attempt: number;
+  target: string;
+}): Promise<GemmaReviewResult> {
+  if (!isGemmaReviewEnabled()) {
+    return { promptBrief: '', log: '\n[GemmaReview] disabled by ARTICLE_GEMMA_REVIEW_ENABLED=false\n' };
+  }
+
+  const maxPasses = Math.min(
+    GEMMA_REVIEW_PASSES.length,
+    parsePositiveInt(process.env.ARTICLE_GEMMA_REVIEW_PASSES, GEMMA_REVIEW_PASSES.length)
+  );
+  const maxAttempts = parsePositiveInt(process.env.ARTICLE_GEMMA_REVIEW_ATTEMPTS, 3);
+  if (input.attempt > maxAttempts || maxPasses <= 0) {
+    return { promptBrief: '', log: `\n[GemmaReview] skipped on attempt ${input.attempt}\n` };
+  }
+
+  const briefParts: string[] = [];
+  const logParts: string[] = [`\n[GemmaReview] Attempt ${input.attempt}: ${maxPasses} passes\n`];
+
+  for (const pass of GEMMA_REVIEW_PASSES.slice(0, maxPasses)) {
+    const result = await runSingleGemmaReviewPass({ ...input, pass });
+    if (!result) {
+      logParts.push(`- ${pass.label}: skipped or failed`);
+      continue;
+    }
+
+    const compacted = compactGemmaReviewText(result.responseText);
+    briefParts.push(`### ${pass.label} (${result.model})\n${compacted}`);
+    logParts.push(`- ${pass.label}: ${result.model}\n  ${result.usageLog}\n  ${compacted}`);
+  }
+
+  return {
+    promptBrief: briefParts.join('\n\n'),
+    log: logParts.join('\n') + '\n',
+  };
+}
+
 export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED' | 'REJECTED'; log: string, newDraftPath?: string; retryable?: boolean }> {
   let retryableApiFailure = false;
 
@@ -786,6 +979,7 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
     }
     const genAI = new GoogleGenerativeAI(apiKey);
     const modelTiers = getGeminiModelTiers('GEMINI_EDITOR_MODEL_TIERS');
+    console.log(`[Editor] LLM strategy: ${getArticleLlmStrategySummary()}`);
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       console.log(`[Editor] Running AI evaluation (Attempt ${attempt})...`);
@@ -803,7 +997,25 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
 
       allLogs += `\n[Attempt ${attempt} Mechanical Check]\n${mechanicalLog}\n`;
 
-      const prompt = `以下のドラフト記事（Markdown）を編集確認する。\n\n【事前の機械チェック結果】\n${mechanicalLog}\n\n\`\`\`markdown\n${currentContent}\n\`\`\``;
+      const parsedForReview = matter(currentContent);
+      const targetForReview = String(
+        parsedForReview.data.target_keyword || parsedForReview.data.title || path.basename(filePath, '.md')
+      );
+      const gemmaReview = await buildGemmaReviewBrief({
+        genAI,
+        currentContent,
+        mechanicalLog,
+        attempt,
+        target: targetForReview,
+      });
+      if (gemmaReview.log) {
+        allLogs += gemmaReview.log;
+      }
+      const gemmaReviewSection = gemmaReview.promptBrief
+        ? `\n\n【Gemma複数観点レビュー】\n${gemmaReview.promptBrief}\n`
+        : '';
+
+      const prompt = `以下のドラフト記事（Markdown）を編集確認する。\n\n【事前の機械チェック結果】\n${mechanicalLog}${gemmaReviewSection}\n\n\`\`\`markdown\n${currentContent}\n\`\`\``;
 
       let response: any = null;
       let generateFailed = true;
@@ -830,6 +1042,9 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
             target: parsedForQuota.data.target_keyword || parsedForQuota.data.title,
           });
           response = await model.generateContent(prompt);
+          const usageLine = geminiUsageLine(`[Editor] Attempt ${attempt} ${currentModelName}`, response.response);
+          console.log(usageLine);
+          allLogs += `\n[Attempt ${attempt} Token Usage]\n${usageLine}\n`;
           generateFailed = false;
           break; // 成功したら次へ
         } catch (e: any) {

@@ -1,11 +1,16 @@
 import matter from 'gray-matter';
 
+function parsePositiveIntEnv(name: string, fallback: number): number {
+  const parsed = Number.parseInt(process.env[name] || '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export const SEO_RULES = {
   title_min_chars: 30,
   title_max_chars: 50,
   description_min_chars: 120,
   description_max_chars: 160,
-  min_word_count: 2000,
+  min_word_count: parsePositiveIntEnv('ARTICLE_MIN_BODY_CHARS', 3000),
   require_today_race_cta: true,
   require_buying_point_heading: true,
   require_data_table_or_list: true,

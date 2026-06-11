@@ -17,11 +17,12 @@ import hashlib
 import json
 import os
 import re
+import sys
 import time
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import requests
 
@@ -35,12 +36,22 @@ except Exception:
 
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if BACKEND_ROOT not in sys.path:
+    sys.path.insert(0, BACKEND_ROOT)
+
 WRITE_ORDERS_DIR = os.path.join(PROJECT_ROOT, "data", "write_orders")
 POSTED_HISTORY_PATH = os.path.join(PROJECT_ROOT, "data", "posted_history.json")
 NEWS_HISTORY_PATH = os.path.join(PROJECT_ROOT, "data", "news_topic_history.json")
 ARTICLES_DIR = os.path.join(PROJECT_ROOT, "frontend", "content", "articles")
 
 JST = timezone(timedelta(hours=9))
+
+SessionLocal = None  # type: ignore[assignment]
+models = None  # type: ignore[assignment]
+text = None  # type: ignore[assignment]
+DB_IMPORT_ERROR = ""
+DB_IMPORT_ATTEMPTED = False
 
 DEFAULT_INCLUDE_DOMAINS = [
     "jra.go.jp",
@@ -77,12 +88,20 @@ QUERY_TEMPLATES = [
     "JRA 公式 競馬 ニュース 重賞 出走予定 枠順 確定 {year}",
     "JRA 公式 重賞 出走馬 馬場 発表 {year}",
     "競馬 ニュース 重賞 枠順 出走予定 騎手変更 馬場 {year}",
+    "競馬 ニュース 重賞 追い切り 調教 評価 {year}",
+    "競馬 ニュース 重賞 前走 陣営コメント 厩舎コメント {year}",
+    "競馬 ニュース 重賞 話題馬 騎手 乗り替わり {year}",
+    "競馬 SNS 話題 注目馬 騎手 重賞 {year}",
     "地方競馬 ニュース 重賞 出走予定 枠順 {year}",
 ]
 
 RACE_QUERY_INTENTS = [
     "枠順 出走馬 出走予定",
-    "馬場 追い切り 騎手変更",
+    "追い切り 調教 最終追い",
+    "前走 陣営コメント 厩舎コメント",
+    "馬場 天気 脚質",
+    "話題馬 騎手 乗り替わり",
+    "SNS 話題 注目馬",
 ]
 
 SOURCE_METRIC_REJECT_PATTERN = re.compile(
@@ -91,6 +110,7 @@ SOURCE_METRIC_REJECT_PATTERN = re.compile(
 
 HIGH_VALUE_TOPIC_PATTERN = re.compile(
     r"G1|G2|G3|Ｇ１|Ｇ２|Ｇ３|重賞|枠順|出走予定|出走馬|馬場|騎手変更|開催|"
+    r"追い切り|調教|最終追い|前走|陣営|厩舎|コメント|話題馬|注目馬|SNS|騎手|乗り替わり|"
     r"ダービー|オークス|安田記念|宝塚記念|有馬記念|ジャパンカップ|天皇賞|皐月賞|菊花賞|桜花賞|"
     r"マイルCS|スプリンターズS|高松宮記念|フェブラリーS|チャンピオンズC|ホープフルS"
 )
@@ -102,11 +122,100 @@ RACE_NAME_PATTERN = re.compile(
 SEARCH_INTENT_RULES = [
     ("waku", "枠順", re.compile(r"枠順|枠順確定|抽選|ゲート"), 30),
     ("entries", "出走馬", re.compile(r"出走予定|出走馬|登録馬|出馬表|出走"), 26),
-    ("track_condition", "馬場", re.compile(r"馬場|天気|雨|稍重|重馬場|不良馬場|良馬場"), 22),
-    ("training", "追い切り", re.compile(r"追い切り|調教|最終追い"), 20),
-    ("jockey_change", "騎手変更", re.compile(r"騎手変更|乗り替わり|鞍上"), 20),
+    ("training", "追い切り", re.compile(r"追い切り|調教|最終追い|坂路|ウッド|併せ馬"), 28),
+    ("previous_run", "前走後評価", re.compile(r"前走|巻き返し|立て直し|休み明け|敗因|上積み|反動"), 24),
+    ("stable_comment", "陣営コメント", re.compile(r"陣営|厩舎|調教師|助手|コメント|手応え|状態|思惑"), 22),
+    ("track_condition", "馬場", re.compile(r"馬場|天気|雨|稍重|重馬場|不良馬場|良馬場|道悪|脚質"), 22),
+    ("jockey_change", "騎手変更", re.compile(r"騎手変更|乗り替わり|鞍上|騎手|ジョッキー"), 20),
+    ("sns_buzz", "話題馬・騎手", re.compile(r"SNS|Ｘ|Xで|話題|反響|注目馬|有力馬|ファン|騎手|ジョッキー"), 20),
     ("schedule", "開催情報", re.compile(r"開催|日程|発走|確定"), 14),
 ]
+
+KEYWORD_LABEL_BY_INTENT = {
+    "waku": "枠順",
+    "entries": "出走馬",
+    "training": "追い切り",
+    "previous_run": "前走後評価",
+    "stable_comment": "陣営コメント",
+    "track_condition": "馬場",
+    "jockey_change": "騎手変更",
+    "sns_buzz": "話題馬 騎手",
+    "schedule": "開催情報",
+    "ai_prediction": "AI予想",
+}
+
+ANGLE_RULES_BY_INTENT = {
+    "training": [
+        ("最終追い切り", re.compile(r"最終追い|最終追切|最終調教")),
+        ("坂路追い", re.compile(r"坂路")),
+        ("ウッド追い", re.compile(r"ウッド|CW|Wコース")),
+        ("調教評価", re.compile(r"調教|追い切り|追切")),
+    ],
+    "previous_run": [
+        ("巻き返し条件", re.compile(r"巻き返し|反撃|立て直し")),
+        ("敗因整理", re.compile(r"敗因|凡走|大敗|崩れ")),
+        ("上積み", re.compile(r"上積み|良化|成長")),
+        ("前走後評価", re.compile(r"前走|前回")),
+    ],
+    "stable_comment": [
+        ("厩舎コメント", re.compile(r"厩舎|調教師|助手")),
+        ("状態面", re.compile(r"状態|仕上がり|気配|手応え")),
+        ("陣営コメント", re.compile(r"陣営|コメント")),
+    ],
+    "sns_buzz": [
+        ("騎手ニュース", re.compile(r"騎手|ジョッキー|鞍上|乗り替わり")),
+        ("注目馬", re.compile(r"注目馬|有力馬")),
+        ("話題馬", re.compile(r"話題|SNS|Ｘ|Xで|反響")),
+    ],
+    "track_condition": [
+        ("道悪馬場", re.compile(r"道悪|重馬場|不良馬場|稍重|雨")),
+        ("天気馬場", re.compile(r"天気|雨|気温")),
+        ("馬場傾向", re.compile(r"馬場|脚質")),
+    ],
+    "jockey_change": [
+        ("乗り替わり", re.compile(r"乗り替わり|騎手変更|鞍上")),
+        ("騎手ニュース", re.compile(r"騎手|ジョッキー")),
+    ],
+    "entries": [
+        ("登録馬", re.compile(r"登録馬|特別登録")),
+        ("出馬表", re.compile(r"出馬表|出走馬")),
+        ("出走予定", re.compile(r"出走予定|出走")),
+    ],
+    "waku": [
+        ("枠順確定", re.compile(r"枠順確定|枠順")),
+        ("ゲート確認", re.compile(r"ゲート|抽選")),
+    ],
+}
+
+VENUE_SLUGS = {
+    "札幌": "sapporo",
+    "函館": "hakodate",
+    "福島": "fukushima",
+    "新潟": "niigata",
+    "東京": "tokyo",
+    "中山": "nakayama",
+    "中京": "chukyo",
+    "京都": "kyoto",
+    "阪神": "hanshin",
+    "小倉": "kokura",
+    "門別": "monbetsu",
+    "盛岡": "morioka",
+    "水沢": "mizusawa",
+    "浦和": "urawa",
+    "船橋": "funabashi",
+    "大井": "ohi",
+    "川崎": "kawasaki",
+    "金沢": "kanazawa",
+    "笠松": "kasamatsu",
+    "名古屋": "nagoya",
+    "園田": "sonoda",
+    "姫路": "himeji",
+    "高知": "kochi",
+    "佐賀": "saga",
+    "帯広": "obihiro",
+    "帯広ば": "obihiro",
+    "ばんえい帯広": "obihiro",
+}
 
 
 @dataclass(frozen=True)
@@ -170,6 +279,7 @@ class TopicCandidate:
     theme_cluster: str
     search_intent: str
     search_intent_label: str
+    search_angle_label: str
     score: float
     reason: str
     race_name: str
@@ -204,6 +314,27 @@ def parse_csv_env(name: str, fallback: Sequence[str]) -> List[str]:
     if not raw:
         return list(fallback)
     return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def ensure_db_modules() -> bool:
+    global SessionLocal, models, text, DB_IMPORT_ERROR, DB_IMPORT_ATTEMPTED
+    if DB_IMPORT_ATTEMPTED:
+        return SessionLocal is not None and models is not None and text is not None
+
+    DB_IMPORT_ATTEMPTED = True
+    try:
+        from database.database import SessionLocal as imported_session_local
+        from database import models as imported_models
+        from sqlalchemy import text as imported_text
+    except Exception as exc:
+        DB_IMPORT_ERROR = str(exc)
+        return False
+
+    SessionLocal = imported_session_local
+    models = imported_models
+    text = imported_text
+    DB_IMPORT_ERROR = ""
+    return True
 
 
 def compact_text(value: str, max_length: int = 180) -> str:
@@ -344,10 +475,25 @@ def infer_target_year(title: str, demand: Optional[RaceDemand]) -> str:
     return str(current_jst().year)
 
 
-def make_topic_key(race_name: str, title: str, search_intent: str, demand: Optional[RaceDemand]) -> str:
+def detect_angle_label(search_intent: str, title: str, content: str = "", query: str = "") -> str:
+    joined = f"{title} {content} {query}"
+    for label, pattern in ANGLE_RULES_BY_INTENT.get(search_intent, []):
+        if pattern.search(joined):
+            return label
+    return keyword_label_for_intent(search_intent, "")
+
+
+def make_topic_key(
+    race_name: str,
+    title: str,
+    search_intent: str,
+    demand: Optional[RaceDemand],
+    angle_label: str = "",
+) -> str:
     year = infer_target_year(title, demand)
     base = race_name or (demand.name if demand else title)
-    return normalize_key(f"{base}{year}:{search_intent}")
+    angle = angle_label or keyword_label_for_intent(search_intent, "")
+    return normalize_key(f"{base}{year}:{search_intent}:{angle}")
 
 
 def recent_news_history(days: int) -> List[Dict[str, Any]]:
@@ -364,15 +510,6 @@ def recent_news_history(days: int) -> List[Dict[str, Any]]:
         if parsed.astimezone(JST) >= cutoff:
             recent.append(item)
     return recent
-
-
-def recent_race_counts(days: int) -> Dict[str, int]:
-    counts: Dict[str, int] = {}
-    for item in recent_news_history(days):
-        race = normalize_key(str(item.get("race_name") or ""))
-        if race:
-            counts[race] = counts.get(race, 0) + 1
-    return counts
 
 
 def sentence_split(content: str) -> List[str]:
@@ -470,7 +607,8 @@ def load_known_topic_keys() -> Set[str]:
             if key:
                 known.add(normalize_key(str(key)))
 
-    for item in load_json_array(NEWS_HISTORY_PATH):
+    recent_history_days = parse_positive_int(os.environ.get("KEIBA_NEWS_RECENT_TOPIC_DEDUP_DAYS"), 2)
+    for item in recent_news_history(recent_history_days):
         for key in (item.get("topic_key"), item.get("target_keyword"), item.get("source_url")):
             if key:
                 known.add(normalize_key(str(key)))
@@ -491,13 +629,15 @@ def build_queries_node(state: WorkflowState) -> WorkflowState:
 
     queries: List[str] = []
     max_focus_races = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_FOCUS_RACES"), 3), 5)
-    for race, _days in focus_races(now)[:max_focus_races]:
-        primary_alias = race.aliases[0] if race.aliases else race.name
-        for intent_words in RACE_QUERY_INTENTS:
-            queries.append(f"{primary_alias} {year} {intent_words} JRA 公式")
+    focus_entries = focus_races(now)[:max_focus_races]
+    for intent_words in RACE_QUERY_INTENTS:
+        for race, _days in focus_entries:
+            primary_alias = race.aliases[0] if race.aliases else race.name
+            source_hint = "競馬 ニュース" if re.search(r"SNS|話題馬|注目馬", intent_words) else "JRA 公式 競馬ニュース"
+            queries.append(f"{primary_alias} {year} {intent_words} {source_hint}")
 
     queries.extend(template.format(year=year) for template in QUERY_TEMPLATES)
-    max_queries = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_QUERIES_PER_RUN"), 6), 10)
+    max_queries = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_QUERIES_PER_RUN"), 8), 12)
 
     deduped: List[str] = []
     seen: Set[str] = set()
@@ -583,8 +723,10 @@ def score_source(title: str, content: str, url_value: str) -> float:
 
     if HIGH_VALUE_TOPIC_PATTERN.search(joined):
         score += 24
-    if re.search(r"枠順|出走予定|出走馬|馬場|騎手変更|開催", joined):
+    if re.search(r"枠順|出走予定|出走馬|馬場|騎手変更|開催|追い切り|調教|前走|陣営|コメント|話題馬|注目馬", joined):
         score += 16
+    if re.search(r"追い切り|調教|前走|陣営|厩舎|話題馬|SNS|注目馬|騎手|乗り替わり", joined):
+        score += 10
     if re.search(r"G1|G2|G3|Ｇ１|Ｇ２|Ｇ３|重賞", joined):
         score += 12
     score += intent_score
@@ -643,14 +785,26 @@ def filter_sources_node(state: WorkflowState) -> WorkflowState:
     return state
 
 
-def make_target_keyword(card: SourceCard, race_name: str, search_intent_label: str, demand: Optional[RaceDemand]) -> str:
+def keyword_label_for_intent(search_intent: str, search_intent_label: str) -> str:
+    return KEYWORD_LABEL_BY_INTENT.get(search_intent, search_intent_label or "AI予想")
+
+
+def make_target_keyword(
+    card: SourceCard,
+    race_name: str,
+    search_intent: str,
+    search_intent_label: str,
+    search_angle_label: str,
+    demand: Optional[RaceDemand],
+) -> str:
     title = re.sub(r"【[^】]+】|\[[^\]]+]", "", card.title).strip()
     year = infer_target_year(title, demand)
+    keyword_label = search_angle_label or keyword_label_for_intent(search_intent, search_intent_label)
 
     if race_name:
-        if search_intent_label == "AI予想":
+        if search_intent == "ai_prediction":
             return f"{race_name}{year} AI予想"
-        return f"{race_name}{year} {search_intent_label} AI予想"
+        return f"{race_name}{year} {keyword_label} AI予想"
 
     normalized_title = re.sub(r"\s+", " ", title)
     normalized_title = re.sub(r"https?://\S+", "", normalized_title)
@@ -669,7 +823,8 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
             continue
 
         search_intent, _label, _score = detect_search_intent(card.title, card.content, card.query)
-        topic_key = make_topic_key(race_name, card.title, search_intent, demand)
+        search_angle_label = detect_angle_label(search_intent, card.title, card.content, card.query)
+        topic_key = make_topic_key(race_name, card.title, search_intent, demand, search_angle_label)
         if not topic_key:
             topic_key = stable_hash(card.url)
         grouped.setdefault(topic_key, []).append(card)
@@ -683,11 +838,12 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
         race_name = extract_race_name_from_text(primary.title, primary.content)
         demand = find_race_demand(f"{primary.title} {primary.content}", race_name)
         search_intent, search_intent_label, intent_score = detect_search_intent(primary.title, primary.content, primary.query)
+        search_angle_label = detect_angle_label(search_intent, primary.title, primary.content, primary.query)
         days_to_race = days_until_race(demand) if demand else None
         if demand and enforce_season_window and days_to_race is not None and not is_in_focus_window(days_to_race):
             continue
 
-        target_keyword = make_target_keyword(primary, race_name, search_intent_label, demand)
+        target_keyword = make_target_keyword(primary, race_name, search_intent, search_intent_label, search_angle_label, demand)
         target_key = normalize_key(target_keyword)
         url_key = normalize_key(primary.url)
         if topic_key in known_keys or target_key in known_keys or url_key in known_keys:
@@ -704,6 +860,8 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
             reason_bits.append(f"レース名検出: {race_name}")
         if search_intent_label:
             reason_bits.append(f"検索意図: {search_intent_label}")
+        if search_angle_label and search_angle_label != search_intent_label:
+            reason_bits.append(f"切り口: {search_angle_label}")
         if demand and days_to_race is not None:
             reason_bits.append(f"開催接近: {days_to_race}日")
         if HIGH_VALUE_TOPIC_PATTERN.search(primary.title + primary.content):
@@ -719,6 +877,7 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
                 theme_cluster=theme_cluster,
                 search_intent=search_intent,
                 search_intent_label=search_intent_label,
+                search_angle_label=search_angle_label,
                 score=score,
                 reason=reason,
                 race_name=race_name,
@@ -753,69 +912,501 @@ def source_cards_to_claim_rows(cards: List[SourceCard]) -> List[Dict[str, str]]:
     return rows[:8]
 
 
+def display_course_type(course_type: str) -> str:
+    if course_type == "ダ":
+        return "ダート"
+    return course_type or ""
+
+
+def normalize_venue_name(venue_name: str) -> str:
+    return re.sub(r"\s+", "", venue_name.strip().replace("競馬場", ""))
+
+
+def venue_slug(venue_name: str) -> str:
+    normalized = normalize_venue_name(venue_name)
+    return VENUE_SLUGS.get(normalized, quote(normalized.lower()))
+
+
+def race_date_to_string(value: Any) -> str:
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value or "")
+
+
+def race_detail_path(race: Any) -> str:
+    race_date = race_date_to_string(getattr(race, "race_date", ""))
+    venue = getattr(race, "venue_name", "")
+    race_number = getattr(race, "race_number", "")
+    if not race_date or not venue or not race_number:
+        return "/races/today"
+    return f"/races/{race_date}/{venue_slug(str(venue))}/{race_number}"
+
+
+def candidate_aliases(candidate: TopicCandidate) -> List[str]:
+    aliases: List[str] = []
+    for value in (candidate.race_name, candidate.calendar_race):
+        if value and value not in aliases:
+            aliases.append(value)
+
+    demand = find_race_demand(
+        f"{candidate.race_name} {candidate.calendar_race} {candidate.title_seed}",
+        candidate.race_name,
+    )
+    if demand:
+        for alias in (demand.name, *demand.aliases):
+            if alias and alias not in aliases:
+                aliases.append(alias)
+    return aliases
+
+
+def matching_race_score(race: Any, aliases: Sequence[str], target_date: date) -> float:
+    race_key = normalize_race_alias(str(getattr(race, "race_name", "")))
+    if not race_key:
+        return -999
+
+    name_score = 0.0
+    for alias in aliases:
+        alias_key = normalize_race_alias(alias)
+        if not alias_key:
+            continue
+        if alias_key == race_key:
+            name_score = max(name_score, 100)
+        elif alias_key in race_key or race_key in alias_key:
+            name_score = max(name_score, 76)
+
+    if name_score <= 0:
+        return -999
+
+    race_date = getattr(race, "race_date", None)
+    if isinstance(race_date, datetime):
+        race_date = race_date.date()
+    date_score = 0.0
+    if isinstance(race_date, date):
+        date_score = max(0, 36 - abs((race_date - target_date).days) * 6)
+
+    horse_bonus = 4 if getattr(race, "total_horses", None) else 0
+    return name_score + date_score + horse_bonus
+
+
+def find_matching_race(db: Any, candidate: TopicCandidate) -> Optional[Any]:
+    if models is None:
+        return None
+
+    aliases = candidate_aliases(candidate)
+    if not aliases:
+        return None
+
+    now_date = current_jst().date()
+    if candidate.days_to_race is not None:
+        target_date = now_date + timedelta(days=candidate.days_to_race)
+    else:
+        demand = find_race_demand(
+            f"{candidate.race_name} {candidate.calendar_race} {candidate.title_seed}",
+            candidate.race_name,
+        )
+        target_date = race_demand_date(demand) if demand else now_date
+
+    start_date = target_date - timedelta(days=5)
+    end_date = target_date + timedelta(days=5)
+
+    races = (
+        db.query(models.Race)
+        .filter(models.Race.race_date >= start_date)
+        .filter(models.Race.race_date <= end_date)
+        .all()
+    )
+    if not races:
+        return None
+
+    scored = [(matching_race_score(race, aliases, target_date), race) for race in races]
+    scored.sort(key=lambda item: item[0], reverse=True)
+    if scored[0][0] < 70:
+        return None
+    return scored[0][1]
+
+
+def prediction_rows(db: Any, race_id: str) -> List[Dict[str, Any]]:
+    if models is None:
+        return []
+    try:
+        predictions = (
+            db.query(models.Prediction)
+            .filter(models.Prediction.race_id == race_id)
+            .filter(models.Prediction.deviation_score.isnot(None))
+            .order_by(models.Prediction.deviation_score.desc())
+            .limit(5)
+            .all()
+        )
+    except Exception:
+        return []
+
+    rows: List[Dict[str, Any]] = []
+    for prediction in predictions:
+        waku_number = getattr(prediction, "waku_number", None)
+        horse_number = getattr(prediction, "horse_number", None)
+        horse_label = f"{horse_number}番" if horse_number else ""
+        if waku_number and horse_number:
+            horse_label = f"{waku_number}枠{horse_number}番"
+
+        row: Dict[str, Any] = {
+            "馬番": horse_label,
+            "馬名": getattr(prediction, "horse_name", ""),
+            "AI偏差値": round(float(prediction.deviation_score), 2),
+            "印": getattr(prediction, "mark", "") or "",
+        }
+        start_indicator = getattr(prediction, "start_1c_indicator", None)
+        if start_indicator is not None:
+            row["先行指標"] = round(float(start_indicator), 1)
+        reason = getattr(prediction, "unpredictable_reason", None)
+        if reason:
+            row["補足"] = compact_text(str(reason), 80)
+        rows.append(row)
+    return rows
+
+
+def course_stat_rows(db: Any, race: Any) -> List[Dict[str, Any]]:
+    if text is None:
+        return []
+
+    venue = getattr(race, "venue_name", "") or ""
+    course_type = getattr(race, "course_type", "") or ""
+    distance = getattr(race, "distance", None)
+    if not venue or not course_type or not distance:
+        return []
+
+    cutoff_date = (current_jst().date() - timedelta(days=365 * 3)).isoformat()
+    try:
+        result = db.execute(
+            text(
+                """
+                SELECT
+                  res.waku_number AS waku_number,
+                  COUNT(res.id) AS runs,
+                  SUM(CASE WHEN res.rank = 1 THEN 1 ELSE 0 END) AS wins,
+                  SUM(CASE WHEN res.rank BETWEEN 1 AND 3 THEN 1 ELSE 0 END) AS places
+                FROM results res
+                JOIN races r ON res.race_id = r.id
+                WHERE r.venue_name = :venue
+                  AND r.course_type = :course_type
+                  AND r.distance = :distance
+                  AND r.race_date >= :cutoff_date
+                  AND res.waku_number BETWEEN 1 AND 8
+                GROUP BY res.waku_number
+                ORDER BY res.waku_number
+                """
+            ),
+            {
+                "venue": venue,
+                "course_type": course_type,
+                "distance": int(distance),
+                "cutoff_date": cutoff_date,
+            },
+        )
+        rows = result.mappings().all()
+    except Exception:
+        return []
+
+    stats: List[Dict[str, Any]] = []
+    for row in rows:
+        runs = int(row.get("runs") or 0)
+        wins = int(row.get("wins") or 0)
+        places = int(row.get("places") or 0)
+        if runs <= 0:
+            continue
+        stats.append(
+            {
+                "枠番": f"{int(row.get('waku_number'))}枠",
+                "出走数": runs,
+                "勝率": f"{round(wins / runs * 100, 1)}%",
+                "複勝率": f"{round(places / runs * 100, 1)}%",
+            }
+        )
+    return stats
+
+
+def horse_number_advantage_rows(db: Any, race: Any) -> List[Dict[str, Any]]:
+    if models is None:
+        return []
+
+    venue = getattr(race, "venue_name", "") or ""
+    course_type = getattr(race, "course_type", "") or ""
+    distance = getattr(race, "distance", None)
+    if not venue or not course_type or not distance:
+        return []
+
+    try:
+        advantages = (
+            db.query(models.HorseNumberAdvantage)
+            .filter(models.HorseNumberAdvantage.venue_name == venue)
+            .filter(models.HorseNumberAdvantage.course_type == course_type)
+            .filter(models.HorseNumberAdvantage.distance == int(distance))
+            .order_by(models.HorseNumberAdvantage.advantage_score.desc())
+            .all()
+        )
+    except Exception:
+        return []
+
+    if not advantages:
+        return []
+
+    selected = advantages[:3]
+    for item in advantages[-2:]:
+        if item not in selected:
+            selected.append(item)
+
+    rows: List[Dict[str, Any]] = []
+    for item in selected:
+        score = float(getattr(item, "advantage_score", 0.0) or 0.0)
+        if score > 0.05:
+            note = "数値上はプラス"
+        elif score < -0.05:
+            note = "評価を下げたい馬番"
+        else:
+            note = "平均付近"
+        rows.append(
+            {
+                "馬番": f"{getattr(item, 'horse_number', '')}番",
+                "有利度スコア": round(score, 3),
+                "見方": note,
+            }
+        )
+    return rows
+
+
+def build_internal_data_bundle(candidate: TopicCandidate) -> Dict[str, Any]:
+    if os.environ.get("KEIBA_NEWS_DB_ENRICH_ENABLED", "true").lower() in {"0", "false", "no"}:
+        return {}
+    if not ensure_db_modules() or SessionLocal is None:
+        return {"db_enrichment_error": DB_IMPORT_ERROR or "database module unavailable"}
+
+    db = SessionLocal()
+    try:
+        race = find_matching_race(db, candidate)
+        if race is None:
+            return {"matched_race": None}
+
+        race_id = getattr(race, "id", "")
+        course_type = display_course_type(str(getattr(race, "course_type", "") or ""))
+        distance = getattr(race, "distance", None)
+        venue = getattr(race, "venue_name", "") or ""
+        condition = f"{venue}競馬場 {course_type}{distance}m" if venue and course_type and distance else venue
+
+        predictions = prediction_rows(db, race_id)
+        course_stats = course_stat_rows(db, race)
+        horse_number_advantages = horse_number_advantage_rows(db, race)
+        ai_analysis_text = compact_text(str(getattr(race, "ai_analysis_text", "") or ""), 220)
+
+        return {
+            "matched_race": {
+                "race_id": race_id,
+                "race_name": getattr(race, "race_name", ""),
+                "race_date": race_date_to_string(getattr(race, "race_date", "")),
+                "venue_name": venue,
+                "race_number": getattr(race, "race_number", None),
+                "course_type": course_type,
+                "distance": distance or 0,
+                "total_horses": getattr(race, "total_horses", None) or 0,
+                "weather": getattr(race, "weather", "") or "",
+                "ground_condition": getattr(race, "ground_condition", "") or "",
+                "condition": condition,
+                "race_url": race_detail_path(race),
+            },
+            "predictions": predictions,
+            "course_stats": course_stats,
+            "horse_number_advantages": horse_number_advantages,
+            "ai_analysis_text": ai_analysis_text,
+            "source": "UMA-FREE DB: races / predictions / results / horse_number_advantages",
+        }
+    except Exception as exc:
+        return {"db_enrichment_error": str(exc)}
+    finally:
+        db.close()
+
+
+def internal_metric_rows(internal_data: Dict[str, Any]) -> List[Dict[str, str]]:
+    rows: List[Dict[str, str]] = []
+    matched = internal_data.get("matched_race")
+    if not isinstance(matched, dict):
+        return rows
+
+    rows.append(
+        {
+            "確認項目": "UMA-FREE該当レース",
+            "内容": f"{matched.get('race_date', '')} {matched.get('venue_name', '')}{matched.get('race_number', '')}R {matched.get('race_name', '')}",
+            "出典種別": "内部データ",
+        }
+    )
+
+    predictions = internal_data.get("predictions")
+    if isinstance(predictions, list) and predictions:
+        top = predictions[0]
+        rows.append(
+            {
+                "確認項目": "AI予想上位",
+                "内容": f"{top.get('馬番', '')} {top.get('馬名', '')} AI偏差値{top.get('AI偏差値', '')}",
+                "出典種別": "内部AI予想",
+            }
+        )
+
+    course_stats = internal_data.get("course_stats")
+    if isinstance(course_stats, list) and course_stats:
+        best = max(course_stats, key=lambda row: float(str(row.get("複勝率", "0")).replace("%", "") or 0))
+        rows.append(
+            {
+                "確認項目": "コース傾向",
+                "内容": f"{matched.get('condition', '')}は{best.get('枠番', '')}の複勝率{best.get('複勝率', '')}を先に確認",
+                "出典種別": "内部成績データ",
+            }
+        )
+
+    advantages = internal_data.get("horse_number_advantages")
+    if isinstance(advantages, list) and advantages:
+        best_advantage = advantages[0]
+        rows.append(
+            {
+                "確認項目": "馬番傾向",
+                "内容": f"{best_advantage.get('馬番', '')}は有利度スコア{best_advantage.get('有利度スコア', '')}",
+                "出典種別": "内部馬番傾向",
+            }
+        )
+    return rows[:4]
+
+
+def topic_bridge(candidate: TopicCandidate, internal_data: Dict[str, Any]) -> Dict[str, Any]:
+    matched = internal_data.get("matched_race")
+    has_internal = isinstance(matched, dict)
+    data_bits: List[str] = []
+    if internal_data.get("predictions"):
+        data_bits.append("AI予想")
+    if internal_data.get("course_stats"):
+        data_bits.append("コース統計")
+    if internal_data.get("horse_number_advantages"):
+        data_bits.append("馬番傾向")
+    if internal_data.get("ai_analysis_text"):
+        data_bits.append("AI展望")
+
+    angle_label = candidate.search_angle_label or candidate.search_intent_label
+    if candidate.search_intent == "training":
+        angle = f"{angle_label}と、AI偏差値上位馬の扱いを分けて確認する"
+    elif candidate.search_intent == "previous_run":
+        angle = f"{angle_label}を、今回の条件替わりと出馬表で確認する"
+    elif candidate.search_intent == "stable_comment":
+        angle = f"{angle_label}を状態面の材料に留め、枠順・脚質・AI予想で裏取りする"
+    elif candidate.search_intent == "sns_buzz":
+        angle = f"{angle_label}を、人気先行か材料ありかで切り分ける"
+    else:
+        angle = f"{angle_label}を、出馬表とUMA-FREEのデータで確認する"
+
+    return {
+        "source_count": len(candidate.source_cards),
+        "primary_angle": angle,
+        "merge_policy": "外部ニュースは話題の入口、勝率・AI偏差値・傾向はUMA-FREE内部データだけを根拠にする",
+        "internal_data_available": data_bits,
+        "matched_race_id": matched.get("race_id") if isinstance(matched, dict) else "",
+        "matched_race_url": matched.get("race_url") if isinstance(matched, dict) else "/races/today",
+        "writer_focus": f"{angle_label}の話題を受けて、当日の出馬表で何を先に見るかを整理する",
+        "has_internal_data": has_internal,
+    }
+
+
+def topic_bridge_rows(candidate: TopicCandidate, internal_data: Dict[str, Any]) -> List[Dict[str, str]]:
+    bridge = topic_bridge(candidate, internal_data)
+    rows = [
+        {
+            "確認項目": "記事の切り口",
+            "内容": str(bridge["primary_angle"]),
+            "出典種別": "複数ソース整理",
+        },
+        {
+            "確認項目": "データの使い分け",
+            "内容": str(bridge["merge_policy"]),
+            "出典種別": "編集ルール",
+        },
+    ]
+    available = bridge.get("internal_data_available")
+    if isinstance(available, list) and available:
+        rows.append(
+            {
+                "確認項目": "内部データ",
+                "内容": " / ".join(str(item) for item in available),
+                "出典種別": "UMA-FREE",
+            }
+        )
+    return rows
+
+
 def build_competing_structure(candidate: TopicCandidate) -> List[str]:
+    angle_label = candidate.search_angle_label or candidate.search_intent_label
     if candidate.article_type == "race_update":
         return [
-            "ニュースで確認された事実",
-            f"{candidate.search_intent_label}を出馬表で確認する順番",
+            "複数ニュースで確認された事実",
+            f"{angle_label}の話題とUMA-FREEデータの結び付け",
+            f"{angle_label}を出馬表で確認する順番",
             "同レースで先に見るべき枠順・脚質・馬場",
             "UMA-FREEの出馬表で確認する順番",
             "買い・抑え・見送りの条件",
         ]
     return [
-        "ニュースで確認された事実",
-        f"{candidate.search_intent_label}として見るべき論点",
+        "複数ニュースで確認された事実",
+        f"{angle_label}の話題とUMA-FREEデータの結び付け",
+        f"{angle_label}として見るべき論点",
         "出馬表や開催情報で確認する順番",
         "買い・抑え・見送りの条件",
     ]
 
 
 def build_write_orders_node(state: WorkflowState) -> WorkflowState:
-    max_orders = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_ORDERS_PER_RUN"), 2), 5)
+    max_orders = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_ORDERS_PER_RUN"), 3), 5)
     min_topic_score = float(os.environ.get("KEIBA_NEWS_MIN_TOPIC_SCORE", "45"))
-    cooldown_days = parse_positive_int(os.environ.get("KEIBA_NEWS_RACE_TOPIC_COOLDOWN_DAYS"), 7)
-    max_topics_per_race_window = parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_TOPICS_PER_RACE_WINDOW"), 2)
-    max_topics_per_race_run = parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN"), 1)
-    recent_counts = recent_race_counts(cooldown_days)
     selected: List[TopicCandidate] = []
-    selected_race_counts: Dict[str, int] = {}
+    selected_angle_keys: Set[str] = set()
 
     for item in state.topic_candidates:
         if item.score < min_topic_score:
             continue
 
-        race_key = normalize_key(item.race_name)
-        if race_key:
-            if recent_counts.get(race_key, 0) >= max_topics_per_race_window:
-                continue
-            if selected_race_counts.get(race_key, 0) >= max_topics_per_race_run:
-                continue
+        race_key = normalize_key(item.race_name or item.calendar_race or item.target_keyword)
+        angle_key = normalize_key(f"{race_key}:{item.search_intent}:{item.search_angle_label or item.search_intent_label}")
+        if angle_key in selected_angle_keys:
+            continue
 
         selected.append(item)
-        if race_key:
-            selected_race_counts[race_key] = selected_race_counts.get(race_key, 0) + 1
+        selected_angle_keys.add(angle_key)
         if len(selected) >= max_orders:
             break
 
     state.selected_topics = selected
 
     for candidate in selected:
+        internal_data = build_internal_data_bundle(candidate)
         source_urls = [card.url for card in candidate.source_cards]
-        key_metrics = source_cards_to_claim_rows(candidate.source_cards)
+        key_metrics = (
+            topic_bridge_rows(candidate, internal_data)
+            + source_cards_to_claim_rows(candidate.source_cards)
+            + internal_metric_rows(internal_data)
+        )
         if not key_metrics:
             continue
+
+        matched_race = internal_data.get("matched_race")
+        race_url = "/races/today"
+        if isinstance(matched_race, dict) and matched_race.get("race_url"):
+            race_url = str(matched_race["race_url"])
 
         order = {
             "target_keyword": candidate.target_keyword,
             "theme_cluster": candidate.theme_cluster,
             "priority": int(min(99, max(35, candidate.score))),
             "has_external_research": True,
+            "has_predictions": bool(internal_data.get("predictions")),
             "reference_data": {
                 "period": current_jst().strftime("%Y年%m月%d日取得"),
                 "condition": "競馬ニュース起点の確認テーマ",
-                "sample_size": len(candidate.source_cards),
+                "sample_size": len(candidate.source_cards) + len(internal_data.get("predictions") or []),
                 "key_metrics": key_metrics,
-                "source": "Tavily Search + 公式・信頼媒体フィルタ",
+                "source": "Tavily Search + 公式・信頼媒体フィルタ + UMA-FREE DB",
                 "article_type": candidate.article_type,
                 "news_topic": candidate.title_seed,
                 "news_topic_key": candidate.topic_key,
@@ -825,6 +1416,14 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "days_to_race": candidate.days_to_race,
                 "search_intent": candidate.search_intent,
                 "search_intent_label": candidate.search_intent_label,
+                "search_angle_label": candidate.search_angle_label,
+                "topic_bridge": topic_bridge(candidate, internal_data),
+                "matched_race": matched_race,
+                "predictions": internal_data.get("predictions") or [],
+                "course_stats": internal_data.get("course_stats") or [],
+                "horse_number_advantages": internal_data.get("horse_number_advantages") or [],
+                "ai_analysis_text": internal_data.get("ai_analysis_text") or "",
+                "db_enrichment_error": internal_data.get("db_enrichment_error", ""),
                 "source_urls": source_urls,
                 "source_cards": [
                     {
@@ -838,7 +1437,7 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                     for card in candidate.source_cards
                 ],
                 "external_research_required": True,
-                "race_url": "/races/today",
+                "race_url": race_url,
             },
             "research_sources": [
                 {
@@ -894,6 +1493,7 @@ def persist_orders_node(state: WorkflowState) -> WorkflowState:
                 "race_name": ref.get("race_name"),
                 "search_intent": ref.get("search_intent"),
                 "search_intent_label": ref.get("search_intent_label"),
+                "search_angle_label": ref.get("search_angle_label"),
                 "days_to_race": ref.get("days_to_race"),
                 "source_url": (ref.get("source_urls") or [""])[0],
                 "score": order.get("priority"),

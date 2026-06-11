@@ -1,5 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import { ARTICLE_LLM_MODELS } from './model_tiers';
+
+const DEFAULT_MODEL_DAILY_LIMITS: Record<string, number> = {
+  [ARTICLE_LLM_MODELS.high]: 20,
+  [ARTICLE_LLM_MODELS.medium]: 20,
+  [ARTICLE_LLM_MODELS.low]: 1500,
+};
+
+const DEFAULT_TOTAL_DAILY_LIMIT = Object.values(DEFAULT_MODEL_DAILY_LIMITS).reduce((sum, limit) => sum + limit, 0);
 
 type GeminiUsageFile = {
   date: string;
@@ -66,7 +75,7 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 }
 
 function parseModelLimits(value: string | undefined): Record<string, number> {
-  if (!value) return {};
+  if (!value) return { ...DEFAULT_MODEL_DAILY_LIMITS };
 
   return value.split(',').reduce<Record<string, number>>((acc, pair) => {
     const [model, rawLimit] = pair.split(/[:=]/).map(part => part.trim());
@@ -75,7 +84,7 @@ function parseModelLimits(value: string | undefined): Record<string, number> {
       acc[model] = limit;
     }
     return acc;
-  }, {});
+  }, { ...DEFAULT_MODEL_DAILY_LIMITS });
 }
 
 export function reserveGeminiRequest(input: {
@@ -87,7 +96,7 @@ export function reserveGeminiRequest(input: {
   const dateKey = getPacificDateKey();
   const usage = readUsage(dateKey);
   const scopeUsage = usage.scopes[input.scope] || { total: 0, byModel: {}, events: [] };
-  const totalLimit = parsePositiveInt(process.env.GEMINI_ARTICLE_DAILY_REQUEST_LIMIT, 10);
+  const totalLimit = parsePositiveInt(process.env.GEMINI_ARTICLE_DAILY_REQUEST_LIMIT, DEFAULT_TOTAL_DAILY_LIMIT);
   const modelLimits = parseModelLimits(process.env.GEMINI_ARTICLE_MODEL_DAILY_LIMITS);
   const modelUsage = scopeUsage.byModel[input.model] || 0;
   const modelLimit = modelLimits[input.model];

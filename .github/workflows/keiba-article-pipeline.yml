@@ -10,12 +10,13 @@ on:
       max_articles:
         description: 'この実行で生成・公開する最大記事数'
         required: true
-        default: '2'
+        default: '3'
         type: choice
         options:
           - '1'
           - '2'
           - '3'
+          - '4'
       run_quality_audit:
         description: '公開済み記事の品質監査を実行する'
         required: true
@@ -34,16 +35,23 @@ jobs:
       contents: write
 
     env:
-      ARTICLE_PIPELINE_MAX_ARTICLES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_articles || '2' }}
-      GEMINI_MODEL_TIERS: gemini-2.5-flash-lite,gemini-2.5-flash
-      GEMINI_ARTICLE_DAILY_REQUEST_LIMIT: "10"
-      KEIBA_NEWS_MAX_ORDERS_PER_RUN: "2"
-      KEIBA_NEWS_MAX_QUERIES_PER_RUN: "6"
+      ARTICLE_PIPELINE_MAX_ARTICLES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_articles || '3' }}
+      ARTICLE_MIN_BODY_CHARS: "3000"
+      ARTICLE_GEMMA_REVIEW_ENABLED: "true"
+      ARTICLE_GEMMA_REVIEW_PASSES: "3"
+      ARTICLE_GEMMA_REVIEW_ATTEMPTS: "3"
+      GEMINI_MODEL_TIERS: gemini-3.5-flash,gemini-3-flash-preview,gemma-4-31b-it
+      GEMINI_STRATEGY_MODEL_TIERS: gemma-4-31b-it,gemini-3-flash-preview
+      GEMINI_WRITER_MODEL_TIERS: gemini-3.5-flash,gemini-3-flash-preview,gemma-4-31b-it
+      GEMINI_GEMMA_REVIEW_MODEL_TIERS: gemma-4-31b-it,gemini-3-flash-preview
+      GEMINI_EDITOR_MODEL_TIERS: gemini-3-flash-preview,gemini-3.5-flash,gemma-4-31b-it
+      GEMINI_ARTICLE_DAILY_REQUEST_LIMIT: "1540"
+      GEMINI_ARTICLE_MODEL_DAILY_LIMITS: gemini-3.5-flash:20,gemini-3-flash-preview:20,gemma-4-31b-it:1500
+      KEIBA_NEWS_MAX_ORDERS_PER_RUN: "3"
+      KEIBA_NEWS_MAX_QUERIES_PER_RUN: "8"
       KEIBA_NEWS_RACE_WINDOW_BEFORE_DAYS: "21"
       KEIBA_NEWS_RACE_WINDOW_AFTER_DAYS: "3"
-      KEIBA_NEWS_RACE_TOPIC_COOLDOWN_DAYS: "7"
-      KEIBA_NEWS_MAX_TOPICS_PER_RACE_WINDOW: "2"
-      KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN: "1"
+      KEIBA_NEWS_RECENT_TOPIC_DEDUP_DAYS: "2"
       ARTICLE_PIPELINE_RESERVE_NEWS_SLOT: "true"
 
     steps:
@@ -106,15 +114,15 @@ jobs:
       - name: Step 1A - Generate News Topic Write Orders
         working-directory: ./backend
         env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           KEIBA_NEWS_MAX_ORDERS_PER_RUN: ${{ env.KEIBA_NEWS_MAX_ORDERS_PER_RUN }}
           KEIBA_NEWS_MAX_QUERIES_PER_RUN: ${{ env.KEIBA_NEWS_MAX_QUERIES_PER_RUN }}
           KEIBA_NEWS_LOOKBACK_DAYS: "7"
           KEIBA_NEWS_RACE_WINDOW_BEFORE_DAYS: ${{ env.KEIBA_NEWS_RACE_WINDOW_BEFORE_DAYS }}
           KEIBA_NEWS_RACE_WINDOW_AFTER_DAYS: ${{ env.KEIBA_NEWS_RACE_WINDOW_AFTER_DAYS }}
-          KEIBA_NEWS_RACE_TOPIC_COOLDOWN_DAYS: ${{ env.KEIBA_NEWS_RACE_TOPIC_COOLDOWN_DAYS }}
-          KEIBA_NEWS_MAX_TOPICS_PER_RACE_WINDOW: ${{ env.KEIBA_NEWS_MAX_TOPICS_PER_RACE_WINDOW }}
-          KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN: ${{ env.KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN }}
+          KEIBA_NEWS_RECENT_TOPIC_DEDUP_DAYS: ${{ env.KEIBA_NEWS_RECENT_TOPIC_DEDUP_DAYS }}
+          KEIBA_NEWS_DB_ENRICH_ENABLED: "true"
         run: python scripts/agents/news_topic_planner.py
 
       - name: Step 1B - Generate Grade Race Write Orders
@@ -135,7 +143,16 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           GEMINI_MODEL_TIERS: ${{ env.GEMINI_MODEL_TIERS }}
+          GEMINI_STRATEGY_MODEL_TIERS: ${{ env.GEMINI_STRATEGY_MODEL_TIERS }}
+          GEMINI_WRITER_MODEL_TIERS: ${{ env.GEMINI_WRITER_MODEL_TIERS }}
+          GEMINI_GEMMA_REVIEW_MODEL_TIERS: ${{ env.GEMINI_GEMMA_REVIEW_MODEL_TIERS }}
+          GEMINI_EDITOR_MODEL_TIERS: ${{ env.GEMINI_EDITOR_MODEL_TIERS }}
           GEMINI_ARTICLE_DAILY_REQUEST_LIMIT: ${{ env.GEMINI_ARTICLE_DAILY_REQUEST_LIMIT }}
+          GEMINI_ARTICLE_MODEL_DAILY_LIMITS: ${{ env.GEMINI_ARTICLE_MODEL_DAILY_LIMITS }}
+          ARTICLE_MIN_BODY_CHARS: ${{ env.ARTICLE_MIN_BODY_CHARS }}
+          ARTICLE_GEMMA_REVIEW_ENABLED: ${{ env.ARTICLE_GEMMA_REVIEW_ENABLED }}
+          ARTICLE_GEMMA_REVIEW_PASSES: ${{ env.ARTICLE_GEMMA_REVIEW_PASSES }}
+          ARTICLE_GEMMA_REVIEW_ATTEMPTS: ${{ env.ARTICLE_GEMMA_REVIEW_ATTEMPTS }}
           ARTICLE_PIPELINE_MAX_ARTICLES: ${{ env.ARTICLE_PIPELINE_MAX_ARTICLES }}
           ARTICLE_PIPELINE_RESERVE_NEWS_SLOT: ${{ env.ARTICLE_PIPELINE_RESERVE_NEWS_SLOT }}
         run: npm run article:pipeline

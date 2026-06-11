@@ -6,6 +6,12 @@ import { checkSEO, SEO_RULES } from './seo_checker';
 import { getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
 import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
 
+function isApiKeyInvalidError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error || '');
+  return /API key was reported as leaked|API_KEY_INVALID|API key not valid|Forbidden|403/i.test(msg);
+}
+
+
 const DEFAULT_BUYING_POINT_HEADING = '## このコースの買い目ポイント';
 const RACE_BUYING_POINT_HEADING = '## このレースの買い目ポイント';
 const NEWS_CONFIRMATION_POINT_HEADING = '## このニュースの確認ポイント';
@@ -797,6 +803,7 @@ const GEMMA_REVIEW_SYSTEM_PROMPT = `あなたはUMA-FREEの副編集者だ。
 - 入力にない数値、馬名、成績、外部事実を作らない。
 - 表の列や行を増やす提案は、入力データに同じ値がある場合だけに限る。
 - 煽り、購入を急かす表現、過度な断定を避ける。
+- 置換や言い換えを提案する際は、記事中のどの部分（修正前）をどう書き換えるか（修正後）の具体的なテキスト対（original と fixed）を提示すること。
 - 出力はJSONのみ。
 
 【JSON形式】
@@ -810,7 +817,12 @@ const GEMMA_REVIEW_SYSTEM_PROMPT = `あなたはUMA-FREEの副編集者だ。
       "must_not_add": "作ってはいけない数値・事実"
     }
   ],
-  "rewrite_notes": ["置換や言い換えの方針を1〜5件"],
+  "rewrite_notes": [
+    {
+      "original": "修正したい箇所の元の文章（完全一致で検索可能な部分）",
+      "fixed": "修正後の具体的な文章（トーンマナーやSEOルールに準拠したもの）"
+    }
+  ],
   "seo_terms_to_naturally_include": ["自然に入れる検索語を0〜8件"],
   "risk_notes": ["事実性・広告審査・読者信頼のリスクを0〜5件"]
 }`;
@@ -901,6 +913,11 @@ async function runSingleGemmaReviewPass(input: {
         model: currentModelName,
       };
     } catch (e: any) {
+      if (isApiKeyInvalidError(e)) {
+        console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
+        console.error(`Google AI Studioで新しいAPIキーを再生成し、.env または GitHub Secrets の GEMINI_API_KEY に設定し直してください。\n`);
+        throw e;
+      }
       if (e instanceof GeminiQuotaExceededError) {
         console.warn(`[GemmaReview Warning] ${currentModelName} quota guard: ${e.message}`);
         if (e.kind === 'total') return null;
@@ -1048,6 +1065,11 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
           generateFailed = false;
           break; // 成功したら次へ
         } catch (e: any) {
+          if (isApiKeyInvalidError(e)) {
+            console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
+            console.error(`Google AI Studioで新しいAPIキーを再生成し、.env または GitHub Secrets の GEMINI_API_KEY に設定し直してください。\n`);
+            throw e;
+          }
           if (e instanceof GeminiQuotaExceededError) {
             console.error(`[Editor Warning] ${currentModelName} quota guard: ${e.message}`);
             if (e.kind === 'total' || i === modelTiers.length - 1) {

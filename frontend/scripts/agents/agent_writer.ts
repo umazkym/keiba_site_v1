@@ -6,6 +6,28 @@ import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
 
 // APIキーは環境変数から取得
 
+function isApiKeyInvalidError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error || '');
+  return /API key was reported as leaked|API_KEY_INVALID|API key not valid|Forbidden|403/i.test(msg);
+}
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function findLastBuyingPointHeading(content: string): number {
+  const pattern = /^##\s+(このコースの買い目ポイント|このレースの買い目ポイント|このニュースの確認ポイント)\s*$/gm;
+  let match: RegExpExecArray | null;
+  let lastIndex = -1;
+  while ((match = pattern.exec(content)) !== null) {
+    lastIndex = match.index;
+  }
+  return lastIndex;
+}
+
+
 export type WriteOrder = {
   target_keyword: string;
   theme_cluster: string;
@@ -283,20 +305,21 @@ const STRATEGY_BRIEF_SYSTEM_PROMPT = `あなたはUMA-FREEの記事戦略担当�
 WriteOrderを読み、検索流入を増やすための構成ブリーフをJSONだけで返す。
 
 【役割】
-- 検索ユーザーの意図を、出馬表・馬場・枠順・脚質・AI予想の確認順へ変換する。
-- 本文を厚くするための安全な追加観点を出す。
+- ユーザーの検索意図（枠順、出走馬、馬場、追い切りなど）を徹底分析し、出馬表やAI予想で確認すべき順序へ置き換える。
+- 検索エンジンで上位表示されるため、ターゲットキーワードに基づき、検索需要が高い関連キーワード（ロングテールキーワード）を抽出し、それらを自然に配置するための構成案を作成する。
+- 本文を厚くし、情報価値（一次情報としての独自データ分析）を高めるための安全な追加観点を提案する。
 - ただし、入力JSONにない数値、馬名、成績、外部事実は絶対に作らない。
 - 煽り、過剰な断定、購入を強く促す表現は避ける。
 
 【出力JSON】
 {
-  "primary_search_intent": "検索ユーザーがこの記事で解決したいことを1文で書く",
-  "title_angles": ["30〜50文字のタイトルで使える自然な切り口を3件"],
-  "section_plan": ["H2見出し候補を5〜7件。最低2件は数字を含める"],
-  "expansion_angles": ["3,000字以上にするために深掘りできる安全な観点を5件"],
-  "long_tail_terms": ["本文に自然に含めたい検索語を5〜10件"],
-  "fact_guardrails": ["捏造を避けるための注意点を3〜5件"],
-  "internal_link_flow": ["記事末尾から/races/todayへ自然につなぐ観点を2〜3件"]
+  "primary_search_intent": "検索ユーザーがこの記事で解決したい具体的な悩みや疑問を1文で書く",
+  "title_angles": ["30〜50文字のタイトルで、ターゲットキーワードを含みつつ、クリックされやすい自然な切り口を3件"],
+  "section_plan": ["検索流入を最大化するためのH2見出し候補を5〜7件。最低2件は具体的な数値や条件を含める"],
+  "expansion_angles": ["3,000字以上にするために深掘りできる、コース形態や当日の馬場状態に応じた安全な分析・確認の観点を5件"],
+  "long_tail_terms": ["本文や見出しに自然に含めたい検索語（例：『馬場状態』『脚質有利』『オッズ妙味』『枠番有利』等）を5〜10件"],
+  "fact_guardrails": ["捏造を避け、正確なデータのみを提示するための注意点を3〜5件"],
+  "internal_link_flow": ["記事の末尾から [今日のAI予想・出馬表](/races/today) へ読者を自然に誘導するための観点を2〜3件"]
 }`;
 
 function toStringArray(value: unknown, fallback: string[] = []): string[] {
@@ -363,6 +386,11 @@ async function buildArticleStrategyBrief(order: WriteOrder, genAI: GoogleGenerat
       console.log(`[Strategy] Brief created: sections=${brief.section_plan.length} expansion=${brief.expansion_angles.length}`);
       return brief;
     } catch (e: any) {
+      if (isApiKeyInvalidError(e)) {
+        console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
+        console.error(`Google AI Studioで新しいAPIキーを再生成し、.env または GitHub Secrets の GEMINI_API_KEY に設定し直してください。\n`);
+        throw e;
+      }
       if (e instanceof GeminiQuotaExceededError) {
         console.warn(`[Strategy Warning] ${currentModelName} quota guard: ${e.message}`);
         if (e.kind === 'total') return null;
@@ -377,6 +405,78 @@ async function buildArticleStrategyBrief(order: WriteOrder, genAI: GoogleGenerat
 
   console.warn('[Strategy] 構成ブリーフの生成に失敗したため、WriteOrderのみで初稿を生成します。');
   return null;
+}
+
+async function expandDraftWithGemma(
+  order: WriteOrder,
+  currentText: string,
+  neededChars: number,
+  genAI: GoogleGenerativeAI
+): Promise<string | null> {
+  const modelName = 'gemma-4-31b-it'; // クォータ制限が緩いモデルを固定で使用
+  const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の編集ライターだ。
+与えられた現在の記事ドラフトとWriteOrderに基づき、記事の文字数を増やしつつ品質と専門性を高めるために、新たなH2セクション（見出しと詳細な解説本文）を1〜2件追加執筆する。
+
+【執筆のルール】
+1. 絶対に架空の数値、成績、馬名などを捏造しない。WriteOrder.reference_dataに明記されている実データ（勝率、複勝率、回収率など）のみを数値根拠として使用すること。データがない場合は、定性的な分析（コース形状の特徴、スタートから最初のコーナーまでの距離、急坂の有無、当日の馬場状態に応じた確認手順など）を詳しく述べる。
+2. 読者が「出馬表で何を確認すべきか」「どのような条件なら評価を上げる/下げるか」という実務的なチェック手順にフォーカスして執筆する。
+3. 煽り表現（「最強」「絶対」「必勝」など）や、AI特有の手癖表現（「いかがでしたか」「今回は〜について解説します」「興味深いことに」など）は一切禁止。
+4. Markdown形式の適切なH2（##）とH3（###）で記述する。
+5. 出力は、追加するセクションのMarkdownテキストのみとすること。前置きや説明は不要。`;
+
+  const prompt = `以下の現在の記事ドラフトとWriteOrder情報に基づき、記事を補強する新しい詳細なH2セクションを執筆してください。
+追加するセクションは、現在のドラフトの「締めセクション（## このコースの買い目ポイント / ## このレースの買い目ポイント / ## このニュースの確認ポイント）」の直前に安全に挿入できるような構成にしてください。
+
+目標追加文字数: 約 ${neededChars} 文字
+
+【現在の記事ドラフト】
+\`\`\`markdown
+${currentText}
+\`\`\`
+
+【WriteOrder】
+${JSON.stringify(order, null, 2)}
+`;
+
+  try {
+    const model = genAI.getGenerativeModel({
+      model: modelName,
+      systemInstruction: SYSTEM_PROMPT,
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.8,
+        topK: 40,
+      }
+    });
+
+    reserveGeminiRequest({
+      scope: 'article',
+      model: modelName,
+      purpose: 'writer-dynamic-expansion',
+      target: order.target_keyword,
+    });
+
+    const response = await model.generateContent(prompt);
+    logGeminiUsage(`[Writer-Expansion] ${modelName}`, response.response);
+    let addition = response.response.text() || '';
+    
+    // Markdownマーカーの除去
+    addition = addition.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
+    if (!addition) return null;
+
+    // 締めセクションの直前に挿入する
+    const headingIndex = findLastBuyingPointHeading(currentText);
+    if (headingIndex < 0) {
+      return `${currentText.trim()}\n\n${addition}`.trim();
+    }
+
+    const before = currentText.slice(0, headingIndex).trim();
+    const after = currentText.slice(headingIndex).trim();
+    return `${before}\n\n${addition}\n\n${after}`.trim();
+  } catch (err: any) {
+    console.error(`[Writer-Expansion Error] ${err.message}`);
+    throw err;
+  }
 }
 
 /**
@@ -433,6 +533,11 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
             logGeminiUsage(`[Writer] ${usedModel}`, result.response);
             break; // 成功したら抜ける
         } catch (e: any) {
+            if (isApiKeyInvalidError(e)) {
+                console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
+                console.error(`Google AI Studioで新しいAPIキーを再生成し、.env または GitHub Secrets の GEMINI_API_KEY に設定し直してください。\n`);
+                throw e;
+            }
             if (e instanceof GeminiQuotaExceededError) {
                 console.error(`[Writer Warning] ${currentModelName} quota guard: ${e.message}`);
                 if (e.kind === 'total' || i === modelTiers.length - 1) {
@@ -460,6 +565,23 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
     // Markdownのコードブロックマーカー(```markdown)がAIの癖で出力された場合は除去する
     text = text.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '');
     console.log(`[Writer] Draft length: ${text.replace(/\s/g, '').length} chars`);
+
+    // Gemmaによる動的拡張
+    const minChars = parsePositiveInt(process.env.ARTICLE_MIN_BODY_CHARS, 3000);
+    const plainLen = text.replace(/\s/g, '').length;
+
+    if (plainLen < minChars) {
+      console.log(`[Writer] Draft length (${plainLen} chars) is below target (${minChars} chars). Expanding dynamically with Gemma...`);
+      try {
+        const expandedText = await expandDraftWithGemma(order, text, minChars - plainLen, genAI);
+        if (expandedText) {
+          text = expandedText;
+          console.log(`[Writer] Expanded draft length: ${text.replace(/\s/g, '').length} chars`);
+        }
+      } catch (err: any) {
+        console.error(`[Writer Warning] Gemma expansion failed, proceeding with original draft: ${err.message}`);
+      }
+    }
 
     // 一時ディレクトリ (pending) に保存
     const now = new Date();

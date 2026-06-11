@@ -482,7 +482,7 @@ ${JSON.stringify(order, null, 2)}
 /**
  * ライターエンジンを実行し、指定されたWriteOrderに基づいて記事ドラフトを生成する
  */
-export async function generateDraft(order: WriteOrder): Promise<{ success: boolean; filePath?: string; error?: string; retryable?: boolean }> {
+export async function generateDraft(order: WriteOrder): Promise<{ success: boolean; filePath?: string; error?: string; retryable?: boolean; apiKeyInvalid?: boolean }> {
   let retryableFailure = false;
 
   try {
@@ -614,10 +614,12 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
 
   } catch (error: any) {
     console.error(`[Writer Error] ${error.message}`);
+    const apiKeyInvalid = isApiKeyInvalidError(error);
     return {
       success: false,
       error: error.message,
-      retryable: retryableFailure || error instanceof GeminiQuotaExceededError || isRetryableGeminiError(error),
+      retryable: !apiKeyInvalid && (retryableFailure || error instanceof GeminiQuotaExceededError || isRetryableGeminiError(error)),
+      apiKeyInvalid,
     };
   }
 }

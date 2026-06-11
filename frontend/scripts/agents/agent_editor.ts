@@ -974,7 +974,7 @@ async function buildGemmaReviewBrief(input: {
   };
 }
 
-export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED' | 'REJECTED'; log: string, newDraftPath?: string; retryable?: boolean }> {
+export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED' | 'REJECTED'; log: string, newDraftPath?: string; retryable?: boolean; apiKeyInvalid?: boolean }> {
   let retryableApiFailure = false;
 
   try {
@@ -1222,10 +1222,12 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
 
   } catch (error: any) {
     console.error(`[Editor Error] ${error.message}`);
+    const apiKeyInvalid = isApiKeyInvalidError(error);
     return {
       status: 'REJECTED',
       log: `エラーにより検証失敗: ${error.message}`,
-      retryable: error instanceof GeminiQuotaExceededError || isRetryableGeminiError(error),
+      retryable: !apiKeyInvalid && (error instanceof GeminiQuotaExceededError || isRetryableGeminiError(error)),
+      apiKeyInvalid,
     };
   }
 }

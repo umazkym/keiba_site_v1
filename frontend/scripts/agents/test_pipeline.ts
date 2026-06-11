@@ -171,6 +171,12 @@ async function runPipeline() {
     
     if (!writerResult.success || !writerResult.filePath) {
       console.error("記事の生成に失敗しました:", writerResult.error);
+      if (writerResult.apiKeyInvalid) {
+        console.error("\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。");
+        console.error("安全のため、現在の write_order は未消費（トップレベル）のまま残し、パイプラインを即座に緊急停止します。");
+        console.error("Google AI Studioで新しいAPIキーを再生成し、環境変数 GEMINI_API_KEY を設定し直してください。\n");
+        process.exit(1);
+      }
       if (writerResult.retryable) {
         console.error("[Pipeline] Geminiの外部制限（クォータ・課金・レート制限等）により停止します。write_orderは未消費のまま残します。");
         stoppedForGeminiLimit = true;
@@ -196,6 +202,13 @@ async function runPipeline() {
     console.log(`\n=== 判定結果: ${reviewResult.status} ===`);
     console.log(reviewResult.log);
     
+    if (reviewResult.apiKeyInvalid) {
+      console.error("\n[CRITICAL ERROR] レビュー中に GEMINI_API_KEY が無効化、または漏洩判定されました。");
+      console.error("安全のため、今回の write_order は未消費のまま残し、パイプラインを即座に緊急停止します。");
+      console.error("Google AI Studioで新しいAPIキーを再生成し、環境変数 GEMINI_API_KEY を設定し直してください。\n");
+      process.exit(1);
+    }
+
     if (reviewResult.retryable) {
       console.error("[Pipeline] Geminiの外部制限（クォータ・課金・レート制限等）によりレビューを停止します。write_orderは未消費のまま残します。");
       stoppedForGeminiLimit = true;

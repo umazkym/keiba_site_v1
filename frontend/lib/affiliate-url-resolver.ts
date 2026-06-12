@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+import { getApiBaseUrl } from './api-base';
 
 type RakutenAffiliateResolveResponse = {
     affiliateUrl?: string;
@@ -39,17 +39,27 @@ const normalizePayload = (
     const affiliateUrl = typeof payload.affiliateUrl === 'string'
         ? payload.affiliateUrl.trim()
         : '';
-    if (!affiliateUrl || affiliateUrl === sourceUrl) return null;
-
     const itemPrice = typeof payload.itemPrice === 'number'
         ? payload.itemPrice
         : Number(payload.itemPrice);
+    const itemName = typeof payload.itemName === 'string' ? payload.itemName : undefined;
+    const imageUrl = typeof payload.imageUrl === 'string' ? payload.imageUrl : undefined;
+    const hasResolvedData = Boolean(
+        affiliateUrl &&
+        (
+            affiliateUrl !== sourceUrl ||
+            itemName ||
+            Number.isFinite(itemPrice) ||
+            imageUrl
+        )
+    );
+    if (!hasResolvedData) return null;
 
     return {
         affiliateUrl,
-        itemName: typeof payload.itemName === 'string' ? payload.itemName : undefined,
+        itemName,
         itemPrice: Number.isFinite(itemPrice) ? itemPrice : undefined,
-        imageUrl: typeof payload.imageUrl === 'string' ? payload.imageUrl : undefined,
+        imageUrl,
     };
 };
 
@@ -97,7 +107,7 @@ export const resolveRakutenAffiliateLink = async (sourceUrl: string) => {
     if (cached) return cached;
 
     try {
-        const endpoint = `${API_BASE_URL}/api/v1/affiliate/rakuten/resolve?url=${encodeURIComponent(normalizedUrl)}`;
+        const endpoint = `${getApiBaseUrl()}/api/v1/affiliate/rakuten/resolve?url=${encodeURIComponent(normalizedUrl)}`;
         const response = await fetch(endpoint);
         if (!response.ok) return null;
 

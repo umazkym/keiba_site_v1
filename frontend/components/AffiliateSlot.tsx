@@ -84,10 +84,13 @@ export const AffiliateSlot = ({
     }, [campaign, links, mainLinks]);
     const linkSignature = links.map((link) => `${link.id}:${link.provider}:${link.url}`).join('|');
     const [resolvedLinks, setResolvedLinks] = useState<Record<string, ResolvedAffiliateLink>>({});
+    const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(() => new Set());
     const slotRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
         let cancelled = false;
+        setResolvedLinks({});
+        setFailedImageUrls(new Set());
         const rakutenLinks = links.filter((link) => link.provider === 'rakuten' && link.url.trim());
         if (rakutenLinks.length === 0) return undefined;
 
@@ -178,6 +181,10 @@ export const AffiliateSlot = ({
     const productPriceLabel = productPreview?.itemPrice
         ? new Intl.NumberFormat('ja-JP').format(productPreview.itemPrice)
         : null;
+    const productPreviewImageUrl = productPreview?.imageUrl && !failedImageUrls.has(productPreview.imageUrl)
+        ? productPreview.imageUrl
+        : null;
+    const fallbackVisualLabel = campaign.fallbackVisualLabel || '競馬グッズ';
 
     return (
         <section
@@ -190,16 +197,30 @@ export const AffiliateSlot = ({
         >
             <div className={isCompact ? 'flex gap-2' : 'flex gap-2.5 sm:gap-3'}>
                 {campaign.type === 'product' ? (
-                    <div className={`${isCompact ? 'h-16 w-16 sm:h-20 sm:w-20' : 'h-20 w-20 sm:h-24 sm:w-24'} flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-slate-50`}>
-                        {productPreview?.imageUrl ? (
+                    <div className={`${isCompact ? 'h-16 w-16 sm:h-20 sm:w-20' : 'h-20 w-20 sm:h-24 sm:w-24'} flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-white`}>
+                        {productPreviewImageUrl ? (
                             <img
-                                src={productPreview.imageUrl}
-                                alt=""
-                                className="h-full w-full object-cover"
+                                src={productPreviewImageUrl}
+                                alt={campaign.title}
+                                className="h-full w-full object-contain p-1.5"
                                 loading="lazy"
+                                decoding="async"
+                                referrerPolicy="no-referrer"
+                                onError={() => {
+                                    setFailedImageUrls((current) => {
+                                        const next = new Set(current);
+                                        next.add(productPreviewImageUrl);
+                                        return next;
+                                    });
+                                }}
                             />
                         ) : (
-                            <Icon className="h-6 w-6 text-slate-300" />
+                            <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-rose-50 via-white to-amber-50 px-1.5 text-center">
+                                <Icon className="mb-1 h-5 w-5 text-rose-300" />
+                                <span className="text-[10px] font-bold leading-tight text-rose-700">
+                                    {fallbackVisualLabel}
+                                </span>
+                            </div>
                         )}
                     </div>
                 ) : (

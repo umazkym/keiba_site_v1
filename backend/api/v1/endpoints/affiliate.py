@@ -75,16 +75,18 @@ def _extract_item_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _first_image_url(item: dict[str, Any]) -> str | None:
-    image_urls = item.get("mediumImageUrls")
-    if not isinstance(image_urls, list) or not image_urls:
-        return None
+    for field_name in ("mediumImageUrls", "smallImageUrls"):
+        image_urls = item.get(field_name)
+        if not isinstance(image_urls, list) or not image_urls:
+            continue
 
-    first = image_urls[0]
-    if isinstance(first, dict):
-        value = first.get("imageUrl")
-        return value if isinstance(value, str) else None
-    if isinstance(first, str):
-        return first
+        first = image_urls[0]
+        if isinstance(first, dict):
+            value = first.get("imageUrl")
+            if isinstance(value, str) and value:
+                return value
+        if isinstance(first, str) and first:
+            return first
     return None
 
 
@@ -128,7 +130,7 @@ def resolve_rakuten_affiliate_url(
         "itemCode": item_code,
         "hits": "1",
         "format": "json",
-        "elements": "itemCode,itemName,itemUrl,affiliateUrl,itemPrice,mediumImageUrls",
+        "elements": "itemCode,itemName,itemUrl,affiliateUrl,itemPrice,mediumImageUrls,smallImageUrls",
     }
     request_url = f"{RAKUTEN_ITEM_SEARCH_ENDPOINT}?{urlencode(params)}"
     request = Request(

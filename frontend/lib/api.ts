@@ -1,6 +1,7 @@
 import { RaceDayPrediction, SpecialPick, MatchupData, TopPayoutHit, WeeklyGradeRace, PredictionAccuracySummary } from "./types";
+import { getApiBaseUrl } from "./api-base";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = getApiBaseUrl();
 const RECENT_RACE_REVALIDATE_SECONDS = 300;
 const DEFAULT_RACE_REVALIDATE_SECONDS = 3600;
 

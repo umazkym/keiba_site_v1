@@ -22,6 +22,8 @@ import { useRewardedAd, type RewardedAdContext } from '@/hooks/useRewardedAd';
 import { sendRaceViewEvent, sendRewardGateEvent } from '@/lib/analytics';
 import { LAST_RACE_STORAGE_KEY, StoredRaceView } from '@/lib/race-memory';
 import { getRaceDetailPath } from '@/lib/race-url';
+import { formatDate } from '@/lib/utils';
+import { RACE_BREADCRUMB_CHANGE_EVENT } from '@/lib/race-breadcrumb-event';
 
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -237,6 +239,19 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             window.localStorage.setItem(LAST_RACE_STORAGE_KEY, JSON.stringify(viewedRace));
         } catch {
             // localStorageが使えない環境では導線保存のみスキップする。
+        }
+
+        if (window.location.pathname.replace(/\/+$/, '') === href.replace(/\/+$/, '')) {
+            window.dispatchEvent(new CustomEvent(RACE_BREADCRUMB_CHANGE_EVENT, {
+                detail: {
+                    items: [
+                        { label: 'ホーム', href: '/' },
+                        { label: 'レース分析', href: '/races/today' },
+                        { label: `${formatDate(currentDate)}のレース分析`, href: `/races/${currentDate}` },
+                        { label: `${venue.venue_name}${activeRace.race_number}R ${activeRace.race_name}`, href: '' },
+                    ],
+                },
+            }));
         }
 
         sendRaceViewEvent({

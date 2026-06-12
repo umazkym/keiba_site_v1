@@ -5,6 +5,10 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { formatDate } from '@/lib/utils';
 import { isValidRaceDate, parseRaceNumberParam, venueSlugToName } from '@/lib/race-url';
+import {
+  RACE_BREADCRUMB_CHANGE_EVENT,
+  type RaceBreadcrumbChangeDetail,
+} from '@/lib/race-breadcrumb-event';
 
 interface BreadcrumbItem {
   label: string;
@@ -18,6 +22,7 @@ type BreadcrumbProps = {
 export function Breadcrumb({ items }: BreadcrumbProps = {}) {
   const pathname = usePathname();
   const [articleTitle, setArticleTitle] = useState<string | null>(null);
+  const [liveItems, setLiveItems] = useState<BreadcrumbItem[] | null>(null);
 
   // 記事ページの場合は、記事タイトルを取得
   useEffect(() => {
@@ -36,6 +41,32 @@ export function Breadcrumb({ items }: BreadcrumbProps = {}) {
       }
     }
   }, [pathname]);
+
+  useEffect(() => {
+    setLiveItems(null);
+  }, [pathname, items]);
+
+  useEffect(() => {
+    const handleRaceBreadcrumbChange = (event: Event) => {
+      const detail = (event as CustomEvent<RaceBreadcrumbChangeDetail>).detail;
+      if (!detail || !Array.isArray(detail.items) || detail.items.length === 0) return;
+
+      const nextItems = detail.items
+        .filter((item) => typeof item.label === 'string' && typeof item.href === 'string')
+        .map((item) => ({
+          label: item.label,
+          href: item.href,
+        }));
+      if (nextItems.length > 0) {
+        setLiveItems(nextItems);
+      }
+    };
+
+    window.addEventListener(RACE_BREADCRUMB_CHANGE_EVENT, handleRaceBreadcrumbChange);
+    return () => {
+      window.removeEventListener(RACE_BREADCRUMB_CHANGE_EVENT, handleRaceBreadcrumbChange);
+    };
+  }, []);
 
   const generateRaceBreadcrumbs = (segments: string[]): BreadcrumbItem[] | null => {
     if (segments[0] !== 'races') return null;
@@ -137,7 +168,7 @@ export function Breadcrumb({ items }: BreadcrumbProps = {}) {
     return breadcrumbs;
   };
 
-  const breadcrumbs = items && items.length > 0 ? items : generateBreadcrumbs();
+  const breadcrumbs = liveItems ?? (items && items.length > 0 ? items : generateBreadcrumbs());
 
   // ホームページのみの場合は表示しない
   if (breadcrumbs.length <= 1) {

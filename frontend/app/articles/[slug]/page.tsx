@@ -85,9 +85,9 @@ export default async function ArticlePage({ params }: Props) {
       "article-page-prose prose prose-slate max-w-none",
       "[overflow-wrap:anywhere]",
       "prose-headings:font-black prose-headings:tracking-tight prose-headings:text-slate-900",
-      "prose-h2:text-2xl prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-3 prose-h2:mt-12 prose-h2:mb-6 prose-h2:scroll-mt-24",
-      "prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3",
-      "prose-p:leading-[1.9] prose-p:text-slate-600",
+      "prose-h2:text-xl prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-2 prose-h2:mt-8 prose-h2:mb-3 prose-h2:scroll-mt-20 sm:prose-h2:text-2xl sm:prose-h2:mt-12 sm:prose-h2:mb-6",
+      "prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-2 sm:prose-h3:text-xl sm:prose-h3:mt-8 sm:prose-h3:mb-3",
+      "prose-p:leading-[1.78] prose-p:text-slate-600 sm:prose-p:leading-[1.9]",
       "prose-a:text-primary prose-a:font-semibold prose-a:no-underline hover:prose-a:text-blue-600",
       "prose-strong:text-slate-900 prose-strong:font-bold",
       "prose-img:border prose-img:border-slate-100",
@@ -98,7 +98,7 @@ export default async function ArticlePage({ params }: Props) {
     ].join(' ');
 
     return (
-      <div className="min-h-screen bg-white py-5 sm:py-8">
+      <div className="min-h-screen bg-white py-2 sm:py-8">
         <ArticleSchema
           title={article.title}
           description={article.description || textContent.substring(0, 160)}
@@ -115,15 +115,15 @@ export default async function ArticlePage({ params }: Props) {
           ]}
         />
 
-        <div className="mx-auto max-w-[920px] px-4">
+        <div className="mx-auto max-w-[920px] px-3 sm:px-4">
           <Breadcrumb />
 
           <article>
             {/* ===== ARTICLE HEADER ===== */}
-            <header className="relative border-b border-slate-200 pb-8">
+            <header className="relative border-b border-slate-200 pb-4 sm:pb-8">
               {/* アイキャッチ画像（フルワイド） */}
               {article.eyecatch && (
-                <div className="relative mb-7 aspect-[16/9] max-h-[320px] w-full overflow-hidden bg-slate-100 sm:aspect-[16/6]">
+                <div className="relative mb-3 aspect-[16/8] max-h-[180px] w-full overflow-hidden bg-slate-100 sm:mb-7 sm:aspect-[16/6] sm:max-h-[320px]">
                   <Image
                     src={article.eyecatch}
                     alt={`${article.title} のアイキャッチ画像`}
@@ -137,7 +137,7 @@ export default async function ArticlePage({ params }: Props) {
 
               {/* メタ情報 + タイトル */}
               <div>
-                <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-400 sm:text-sm">
+                <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-slate-400 sm:mb-4 sm:gap-x-3 sm:text-sm">
                   <Link
                     href={`/articles?category=${encodeURIComponent(article.category)}`}
                     className="text-slate-700 transition-colors hover:text-primary"
@@ -167,13 +167,13 @@ export default async function ArticlePage({ params }: Props) {
                 </div>
 
                 {/* タイトル */}
-                <h1 className="article-page-title text-3xl font-black leading-tight tracking-tight text-slate-950 [overflow-wrap:anywhere] sm:text-4xl md:text-5xl">
+                <h1 className="article-page-title text-[1.55rem] font-black leading-tight tracking-tight text-slate-950 [overflow-wrap:anywhere] sm:text-4xl md:text-5xl">
                   {article.title}
                 </h1>
 
                 {/* リードテキスト */}
                 {article.description && (
-                  <p className="article-page-lead mt-5 max-w-3xl text-base leading-8 text-slate-500 sm:text-lg">
+                  <p className="article-page-lead mt-3 max-w-3xl text-sm leading-6 text-slate-500 sm:mt-5 sm:text-lg sm:leading-8">
                     {article.description}
                   </p>
                 )}
@@ -181,16 +181,16 @@ export default async function ArticlePage({ params }: Props) {
             </header>
 
             {toc.length > 1 && (
-              <details className="mt-4 border border-slate-200 bg-slate-50" aria-label="記事の目次">
-                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-black text-slate-800">
+              <details className="mt-3 border border-slate-200 bg-slate-50 sm:mt-4" aria-label="記事の目次">
+                <summary className="cursor-pointer list-none px-3 py-2 text-xs font-black text-slate-800 sm:px-4 sm:py-3 sm:text-sm">
                   本文の流れを見る
                 </summary>
-                <ol className="grid gap-2 border-t border-slate-200 px-4 py-3 sm:grid-cols-2">
+                <ol className="grid gap-1.5 border-t border-slate-200 px-3 py-2 sm:grid-cols-2 sm:gap-2 sm:px-4 sm:py-3">
                   {toc.map((item, index) => (
                     <li key={item.id}>
                       <a
                         href={`#${item.id}`}
-                        className="flex gap-2 text-sm font-semibold leading-6 text-slate-600 transition-colors hover:text-primary"
+                        className="flex gap-2 text-xs font-semibold leading-5 text-slate-600 transition-colors hover:text-primary sm:text-sm sm:leading-6"
                       >
                         <span className="font-mono text-slate-400">{String(index + 1).padStart(2, '0')}</span>
                         <span>{item.title}</span>
@@ -201,12 +201,12 @@ export default async function ArticlePage({ params }: Props) {
               </details>
             )}
 
-            <div className="mt-5">
+            <div className="mt-4 sm:mt-5">
               <ArticleSearchEntryPanel topHits={topHits} />
             </div>
 
             {/* ===== ARTICLE BODY ===== */}
-            <div className="pb-10">
+            <div className="pb-6 sm:pb-10">
               {(() => {
                 const h2Positions: number[] = [];
                 const searchRegex = /<h2[\s>]/gi;
@@ -223,7 +223,7 @@ export default async function ArticlePage({ params }: Props) {
                   const part3 = enhancedContent.substring(split2);
                   return (
                     <>
-                      <div className={`${proseClass} mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part1 }} />
+                      <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part1 }} />
                       <AdUnit slot="1489598374" analyticsPlacement="article_after_intro" {...stableArticleAdProps} />
                       <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part2 }} />
                       <AdUnit slot="9407670747" analyticsPlacement="article_mid" {...stableArticleAdProps} />
@@ -238,7 +238,7 @@ export default async function ArticlePage({ params }: Props) {
                   const secondPart = enhancedContent.substring(splitPos);
                   return (
                     <>
-                      <div className={`${proseClass} mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: firstPart }} />
+                      <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: firstPart }} />
                       <AdUnit slot="1489598374" analyticsPlacement="article_after_intro" {...stableArticleAdProps} />
                       <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: secondPart }} />
                     </>
@@ -246,17 +246,17 @@ export default async function ArticlePage({ params }: Props) {
                 }
 
                 return (
-                  <div className={`${proseClass} mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: enhancedContent }} />
+                  <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: enhancedContent }} />
                 );
               })()}
             </div>
 
             {/* ===== 記事フッター ===== */}
-            <div className="border-t border-slate-200 pb-8 pt-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="border-t border-slate-200 pb-5 pt-4 sm:pb-8 sm:pt-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                 <Link
                   href={`/articles?category=${encodeURIComponent(article.category)}`}
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition-colors hover:text-primary"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition-colors hover:text-primary sm:gap-2 sm:text-sm"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -265,7 +265,7 @@ export default async function ArticlePage({ params }: Props) {
                 </Link>
                 <Link
                   href="/articles"
-                  className="inline-flex items-center gap-2 bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition-colors duration-200 hover:bg-primary"
+                  className="inline-flex items-center gap-1.5 bg-slate-950 px-4 py-2 text-xs font-bold text-white transition-colors duration-200 hover:bg-primary sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
@@ -275,15 +275,15 @@ export default async function ArticlePage({ params }: Props) {
               </div>
             </div>
 
-            <AffiliateSlot context="article_footer" selectionKey={params.slug} className="mb-8" />
+            <AffiliateSlot context="article_footer" selectionKey={params.slug} className="mb-5 sm:mb-8" />
 
             {/* ===== 関連記事 ===== */}
-            <div className="pb-10">
+            <div className="pb-6 sm:pb-10">
               <RelatedArticles currentSlug={params.slug} count={3} />
             </div>
 
             {/* ===== 広告: 記事本文後 ===== */}
-            <div className="pb-8">
+            <div className="pb-5 sm:pb-8">
               <AdUnit slot="1489598374" analyticsPlacement="article_after_body" {...stableArticleAdProps} />
             </div>
 

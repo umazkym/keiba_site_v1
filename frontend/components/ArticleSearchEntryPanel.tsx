@@ -21,17 +21,17 @@ const FeaturePreviewCard = ({
   icon: ReactNode;
   children: ReactNode;
 }) => (
-  <div className="flex h-full flex-col rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
-    <div className="mb-2 flex items-start gap-2">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-700">
+  <div className="flex h-full flex-col rounded-lg border border-slate-200 bg-white p-2 shadow-sm sm:p-2.5">
+    <div className="mb-1.5 flex items-start gap-2 sm:mb-2">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-700 sm:h-7 sm:w-7">
         {icon}
       </span>
       <div className="min-w-0">
-        <p className="truncate text-[13px] font-bold text-slate-900">{title}</p>
+        <p className="truncate text-xs font-bold text-slate-900 sm:text-[13px]">{title}</p>
       </div>
     </div>
-    <div className="mb-2 min-h-[58px]">{children}</div>
-    <p className="mt-auto line-clamp-2 text-[10px] leading-5 text-slate-500">{description}</p>
+    <div className="mb-1.5 min-h-[48px] sm:mb-2 sm:min-h-[58px]">{children}</div>
+    <p className="mt-auto line-clamp-2 text-[10px] leading-4 text-slate-500 sm:leading-5">{description}</p>
   </div>
 );
 
@@ -39,8 +39,8 @@ export function ArticleSearchEntryPanel({ topHits }: ArticleSearchEntryPanelProp
   const initialHits = topHits ? topHits.slice(0, 5) : [];
 
   return (
-    <section className="space-y-4">
-      <TopHitsDisplay initialHits={initialHits} />
+    <section className="space-y-3 sm:space-y-4">
+      <TopHitsDisplay initialHits={initialHits} compact />
 
       <section>
         <h2 className="sec-title">
@@ -70,7 +70,7 @@ export function ArticleSearchEntryPanel({ topHits }: ArticleSearchEntryPanelProp
             icon={<LineChart className="h-4 w-4" />}
             description="各コーナーでの隊列を予測し、展開の有利不利を確認できます"
           >
-            <div className="flex h-[58px] items-end gap-1.5 rounded-lg bg-slate-50 px-3 pb-2 pt-3">
+            <div className="flex h-12 items-end gap-1.5 rounded-lg bg-slate-50 px-2.5 pb-1.5 pt-2 sm:h-[58px] sm:px-3 sm:pb-2 sm:pt-3">
               {[68, 42, 74, 52, 35].map((height, index) => (
                 <div key={index} className="flex flex-1 flex-col items-center justify-end gap-1">
                   <div className="w-full rounded-t bg-emerald-500/80" style={{ height: `${height}%` }} />

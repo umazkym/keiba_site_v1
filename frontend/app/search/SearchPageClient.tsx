@@ -112,23 +112,23 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
     };
 
     return (
-        <div className="mx-auto px-4 py-8">
+        <div className="mx-auto px-3 py-4 sm:px-4 sm:py-8">
             <div className="max-w-3xl mx-auto">
-                <h1 className="text-3xl font-bold mb-6">サイト内検索</h1>
+                <h1 className="mb-4 text-2xl font-bold sm:mb-6 sm:text-3xl">サイト内検索</h1>
 
                 {/* 検索フォーム */}
-                <form onSubmit={handleSearchChange} className="mb-8">
+                <form onSubmit={handleSearchChange} className="mb-5 sm:mb-8">
                     <div className="flex gap-2">
                         <input
                             type="text"
                             name="q"
                             defaultValue={query}
                             placeholder="キーワードを入力してください..."
-                            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary sm:px-4 sm:py-3 sm:text-base"
                         />
                         <button
                             type="submit"
-                            className="px-6 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark transition-colors"
+                            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark sm:px-6 sm:py-3 sm:text-base"
                         >
                             検索
                         </button>
@@ -137,25 +137,25 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
 
                 {/* 検索結果表示 */}
                 {query && (
-                    <p className="text-lg text-gray-600 mb-6">
+                    <p className="mb-4 text-sm text-gray-600 sm:mb-6 sm:text-lg">
                         「<span className="font-semibold text-gray-800">{query}</span>」の検索結果
                     </p>
                 )}
 
                 {/* ローディング */}
                 {isLoading && (
-                    <div className="flex justify-center items-center py-12">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    <div className="flex items-center justify-center py-8 sm:py-12">
+                        <div className="h-9 w-9 animate-spin rounded-full border-b-2 border-primary sm:h-12 sm:w-12"></div>
                     </div>
                 )}
 
                 {/* 結果なし */}
                 {searchPerformed && !isLoading && results.length === 0 && (
-                    <div className="bg-gray-100 rounded-lg p-8 text-center">
-                        <p className="text-gray-600 mb-4 text-lg">
+                    <div className="rounded-lg bg-gray-100 p-5 text-center sm:p-8">
+                        <p className="mb-3 text-sm text-gray-600 sm:mb-4 sm:text-lg">
                             「{query}」に関連する結果が見つかりませんでした。
                         </p>
-                        <p className="text-gray-500">
+                        <p className="text-sm text-gray-500 sm:text-base">
                             別のキーワードで検索してみてください。
                         </p>
                     </div>
@@ -163,30 +163,30 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
 
                 {/* 結果表示 */}
                 {results.length > 0 && (
-                    <div className="space-y-4">
-                        <div className="text-sm text-gray-500 mb-4">
+                    <div className="space-y-2.5 sm:space-y-4">
+                        <div className="mb-2 text-xs text-gray-500 sm:mb-4 sm:text-sm">
                             {results.length}件の検索結果が見つかりました
                         </div>
                         {results.map((result, index) => (
                             <Link
                                 key={index}
                                 href={result.url}
-                                className="block p-4 border border-gray-200 rounded-lg hover:shadow-lg hover:border-primary transition-all"
+                                className="block rounded-lg border border-gray-200 p-3 transition-all hover:border-primary hover:shadow-lg sm:p-4"
                             >
-                                <div className="flex items-start gap-3">
+                                <div className="flex items-start gap-2.5 sm:gap-3">
                                     <div className="pt-1">
-                                        <span className="inline-block px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded font-semibold">
+                                        <span className="inline-block rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700 sm:px-2 sm:py-1 sm:text-xs">
                                             {getResultLabel(searchIndex.find((item) => item.url === result.url)?.type ?? result.type)}
                                         </span>
                                     </div>
                                     <div className="flex-1">
-                                        <h2 className="text-lg font-semibold text-primary hover:underline mb-2">
+                                        <h2 className="mb-1 text-sm font-semibold text-primary hover:underline sm:mb-2 sm:text-lg">
                                             {result.title}
                                         </h2>
-                                        <p className="text-gray-600 line-clamp-2 text-sm">
+                                        <p className="line-clamp-2 text-xs text-gray-600 sm:text-sm">
                                             {result.description}
                                         </p>
-                                        <p className="text-gray-400 text-xs mt-2">
+                                        <p className="mt-1 text-[10px] text-gray-400 sm:mt-2 sm:text-xs">
                                             {result.url}
                                         </p>
                                     </div>
@@ -198,8 +198,8 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
 
                 {/* 初期表示（検索がまだ実行されていない） */}
                 {!searchPerformed && !query && (
-                    <div className="bg-primary/5 rounded-lg p-8 text-center border-2 border-primary/20">
-                        <p className="text-gray-700 mb-4">
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-5 text-center sm:border-2 sm:p-8">
+                        <p className="mb-3 text-sm text-gray-700 sm:mb-4 sm:text-base">
                             キーワードを入力して、サイト内の記事やページを検索できます。
                         </p>
                         <p className="text-gray-500 text-sm">

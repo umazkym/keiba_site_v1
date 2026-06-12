@@ -8,13 +8,13 @@ export function GradeRaceUpdatePanel({ plan }: GradeRaceUpdatePanelProps) {
   const currentIndex = plan.stages.findIndex((stage) => stage.key === plan.currentStageKey);
 
   return (
-    <section className="border border-slate-200 bg-slate-50 p-4 sm:p-5" aria-label="重賞記事の更新予定">
-      <div className="mb-3">
-        <p className="text-xs font-bold tracking-[0.14em] text-slate-400">重賞記事の更新方針</p>
-        <h2 className="mt-1 text-lg font-black leading-7 text-slate-900">
+    <section className="border border-slate-200 bg-slate-50 p-3 sm:p-5" aria-label="重賞記事の更新予定">
+      <div className="mb-2.5 sm:mb-3">
+        <p className="text-[10px] font-bold tracking-[0.14em] text-slate-400 sm:text-xs">重賞記事の更新方針</p>
+        <h2 className="mt-1 text-base font-black leading-6 text-slate-900 sm:text-lg sm:leading-7">
           同じURLで、レース当日まで情報を更新します
         </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
+        <p className="mt-1.5 text-xs leading-5 text-slate-600 sm:mt-2 sm:text-sm sm:leading-6">
           展望、枠順、前日オッズ、当日朝の馬場を別記事に分けず、このページへ追記して判断材料を集約します。
         </p>
       </div>
@@ -27,7 +27,7 @@ export function GradeRaceUpdatePanel({ plan }: GradeRaceUpdatePanelProps) {
           return (
             <div
               key={stage.key}
-              className={`border p-3 ${
+              className={`border p-2.5 sm:p-3 ${
                 isCurrent
                   ? 'border-primary bg-white'
                   : isDone
@@ -36,13 +36,13 @@ export function GradeRaceUpdatePanel({ plan }: GradeRaceUpdatePanelProps) {
               }`}
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-black text-slate-900">{stage.label}</p>
+                <p className="text-xs font-black text-slate-900 sm:text-sm">{stage.label}</p>
                 <span className={`shrink-0 text-[11px] font-bold ${isDone ? 'text-primary' : 'text-slate-400'}`}>
                   {isCurrent ? '現在' : isDone ? '反映済み' : '予定'}
                 </span>
               </div>
               <p className="mt-1 text-xs font-bold text-slate-500">{stage.timing}</p>
-              <p className="mt-2 text-xs leading-5 text-slate-600">{stage.focus}</p>
+              <p className="mt-1.5 text-[11px] leading-4 text-slate-600 sm:mt-2 sm:text-xs sm:leading-5">{stage.focus}</p>
             </div>
           );
         })}

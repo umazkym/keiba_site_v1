@@ -544,6 +544,141 @@ header.glass {
     }
 }
 
+@media (max-width: 639px) {
+    .mobile-compact-scope p {
+        line-height: 1.65;
+    }
+
+    .mobile-compact-scope .text-4xl {
+        font-size: 1.65rem;
+        line-height: 1.2;
+    }
+
+    .mobile-compact-scope .text-3xl {
+        font-size: 1.5rem;
+        line-height: 1.24;
+    }
+
+    .mobile-compact-scope .text-2xl {
+        font-size: 1.22rem;
+        line-height: 1.28;
+    }
+
+    .mobile-compact-scope .text-xl {
+        font-size: 1.05rem;
+        line-height: 1.35;
+    }
+
+    .mobile-compact-scope .text-lg {
+        font-size: 0.98rem;
+        line-height: 1.45;
+    }
+
+    .mobile-compact-scope .text-base {
+        font-size: 0.9rem;
+    }
+
+    .mobile-compact-scope .leading-8 {
+        line-height: 1.7;
+    }
+
+    .mobile-compact-scope .leading-7 {
+        line-height: 1.58;
+    }
+
+    .mobile-compact-scope .py-24 {
+        padding-top: 3rem;
+        padding-bottom: 3rem;
+    }
+
+    .mobile-compact-scope .py-16,
+    .mobile-compact-scope .py-12,
+    .mobile-compact-scope .py-10 {
+        padding-top: 1.5rem;
+        padding-bottom: 1.5rem;
+    }
+
+    .mobile-compact-scope .py-8 {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+
+    .mobile-compact-scope .py-4 {
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .mobile-compact-scope .pb-14,
+    .mobile-compact-scope .pb-12 {
+        padding-bottom: 2rem;
+    }
+
+    .mobile-compact-scope .pt-8,
+    .mobile-compact-scope .pt-6 {
+        padding-top: 1rem;
+    }
+
+    .mobile-compact-scope .p-8,
+    .mobile-compact-scope .p-6 {
+        padding: 1rem;
+    }
+
+    .mobile-compact-scope .p-5 {
+        padding: 0.875rem;
+    }
+
+    .mobile-compact-scope .p-4 {
+        padding: 0.75rem;
+    }
+
+    .mobile-compact-scope .mt-16 {
+        margin-top: 1.75rem;
+    }
+
+    .mobile-compact-scope .mt-12,
+    .mobile-compact-scope .mt-10,
+    .mobile-compact-scope .mt-8 {
+        margin-top: 1.5rem;
+    }
+
+    .mobile-compact-scope .mt-6 {
+        margin-top: 1rem;
+    }
+
+    .mobile-compact-scope .mb-8,
+    .mobile-compact-scope .mb-6 {
+        margin-bottom: 1rem;
+    }
+
+    .mobile-compact-scope .mb-14,
+    .mobile-compact-scope .mb-10 {
+        margin-bottom: 1.25rem;
+    }
+
+    .mobile-compact-scope .gap-12,
+    .mobile-compact-scope .gap-10,
+    .mobile-compact-scope .gap-8,
+    .mobile-compact-scope .gap-6 {
+        gap: 1rem;
+    }
+
+    .mobile-compact-scope .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+        --tw-space-y-reverse: 0;
+        margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
+        margin-bottom: calc(1rem * var(--tw-space-y-reverse));
+    }
+
+    .mobile-compact-scope .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+        --tw-space-y-reverse: 0;
+        margin-top: calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));
+        margin-bottom: calc(0.75rem * var(--tw-space-y-reverse));
+    }
+
+    .mobile-compact-scope .rounded-2xl {
+        border-radius: 0.875rem;
+    }
+}
+
 /* タブレット用の調整 */
 @media (min-width: 641px) and (max-width: 1024px) {
     .container {
@@ -596,27 +731,72 @@ header.glass {
     .article-page-title,
     .article-page-lead,
     .article-page-prose {
-        max-width: calc(100vw - 3.5rem) !important;
+        max-width: calc(100vw - 2.5rem) !important;
         width: 100%;
     }
 
     .article-page-title {
-        font-size: 1.625rem !important;
-        line-height: 1.28 !important;
-        word-break: break-all;
+        font-size: 1.55rem !important;
+        line-height: 1.24 !important;
+        word-break: normal;
     }
 
     .article-page-prose h1,
     .article-page-prose h2 {
-        font-size: 1.5rem !important;
-        line-height: 1.35 !important;
-        word-break: break-all;
+        font-size: 1.32rem !important;
+        line-height: 1.34 !important;
+        word-break: normal;
+    }
+
+    .article-page-prose h3 {
+        font-size: 1.08rem !important;
+        line-height: 1.38 !important;
+    }
+
+    .article-page-prose {
+        font-size: 0.94rem !important;
+        line-height: 1.78 !important;
+    }
+
+    .article-page-prose p,
+    .article-page-prose ul,
+    .article-page-prose ol {
+        margin-top: 0.9em !important;
+        margin-bottom: 0.9em !important;
+        line-height: 1.78 !important;
+    }
+
+    .article-page-prose li {
+        margin-top: 0.25em !important;
+        margin-bottom: 0.25em !important;
+    }
+
+    .article-page-prose blockquote {
+        margin-top: 1rem !important;
+        margin-bottom: 1rem !important;
+        padding: 0.75rem 0.875rem !important;
+    }
+
+    .article-page-prose img {
+        margin-top: 1rem !important;
+        margin-bottom: 1rem !important;
     }
 }
 
 /* ---------- Prose テーブルスタイル ---------- */
+.article-table-scroll {
+    margin: 1.25rem 0;
+    max-width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    -webkit-overflow-scrolling: touch;
+}
+
 .prose table {
     @apply w-full border-collapse;
+    margin: 0;
     border: 1px solid var(--border);
     border-radius: 8px;
     overflow: hidden;
@@ -648,6 +828,30 @@ header.glass {
 
 .prose table tbody tr:nth-child(even) {
     background-color: #fafbfc;
+}
+
+@media (max-width: 639px) {
+    .article-table-scroll {
+        margin: 1rem 0;
+        border-radius: 6px;
+    }
+
+    .article-table-scroll table {
+        min-width: 560px;
+        font-size: 0.78rem;
+    }
+
+    .article-table-scroll table th,
+    .article-table-scroll table td {
+        padding: 0.45rem 0.5rem;
+        line-height: 1.5;
+        vertical-align: top;
+    }
+}
+
+.article-table-scroll table {
+    border: 0;
+    border-radius: 0;
 }
 
 /* ---------- モバイルメニューアニメーション ---------- */

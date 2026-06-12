@@ -40,7 +40,7 @@ export function enhanceArticleHtml(html: string): { html: string; toc: ArticleTo
   const toc: ArticleTocItem[] = [];
   let index = 0;
 
-  const enhancedHtml = html.replace(/<h2>([\s\S]*?)<\/h2>/g, (_match, innerHtml: string) => {
+  const htmlWithAnchors = html.replace(/<h2>([\s\S]*?)<\/h2>/g, (_match, innerHtml: string) => {
     index += 1;
     const id = `section-${index}`;
     const title = decodeHtmlEntities(stripHtml(innerHtml));
@@ -49,6 +49,10 @@ export function enhanceArticleHtml(html: string): { html: string; toc: ArticleTo
     }
     return `<h2 id="${id}">${innerHtml}</h2>`;
   });
+
+  const enhancedHtml = htmlWithAnchors.replace(/<table([\s\S]*?)<\/table>/g, (match) => (
+    `<div class="article-table-scroll">${match}</div>`
+  ));
 
   return { html: enhancedHtml, toc };
 }

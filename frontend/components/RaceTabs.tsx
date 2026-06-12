@@ -359,7 +359,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             <p className="text-xs sm:text-sm text-gray-500 ml-9 sm:ml-11 font-medium">{activeRace.course_type} {activeRace.distance}m</p>
                         </div>
                         <div>
-                            <h4 className="flex items-center text-sm sm:text-base font-bold text-gray-700 mt-2 mb-1 px-2.5 sm:px-4">
+                            <h4 id="race-prediction-heading" className="flex items-center text-sm sm:text-base font-bold text-gray-700 mt-2 mb-1 px-2.5 sm:px-4">
                                 <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
                                 AI分析
                             </h4>
@@ -431,7 +431,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             <>
                             <div className="mb-2 grid gap-2 xl:grid-cols-2 xl:items-stretch">
                                 <div className="card p-2 sm:p-3 h-full flex flex-col">
-                                    <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
+                                    <div id="race-detail-heading" className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                         <FlagIcon className="w-5 h-5 mr-2 text-primary" />
                                         <span>展開/脚質予測</span>
                                     </div>
@@ -457,7 +457,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
 
                             <div id="race-matchup-section" className="mb-2">
                                 <div className="card p-2 sm:p-3">
-                                    <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
+                                    <div id="race-matchup-heading" className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                         <UsersIcon className="w-5 h-5 mr-2 text-secondary" />
                                         <span>過去対決成績</span>
                                     </div>
@@ -487,7 +487,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
 
                             <div id="race-analysis-section" className="mb-2">
                                 <div className="card p-2 sm:p-3">
-                                    <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
+                                    <div id="race-analysis-heading" className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                         <ChartBarIcon className="w-5 h-5 mr-2 text-accent" />
                                         <span>このレースのデータ分析</span>
                                     </div>

@@ -16,8 +16,8 @@ const findTargetElement = (targetIds: string[]) => {
 };
 
 const getScrollOffset = () => {
-    if (typeof window === 'undefined') return 82;
-    return window.innerWidth < 640 ? 72 : 86;
+    if (typeof window === 'undefined') return 96;
+    return window.innerWidth < 640 ? 86 : 104;
 };
 
 export const scrollToRaceSection = (targetIds: string[]) => {
@@ -36,7 +36,7 @@ export const useRaceSectionNavigation = <TItem extends RaceSectionNavItem>(items
     const updateActiveSection = useCallback(() => {
         if (typeof window === 'undefined' || items.length === 0) return;
 
-        const pivot = window.innerWidth < 640 ? 118 : 132;
+        const pivot = window.innerWidth < 640 ? 132 : 150;
         let nextActiveKey = items[0].key;
 
         for (const item of items) {

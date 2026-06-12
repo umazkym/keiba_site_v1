@@ -78,6 +78,29 @@ const formatShortDate = (date: string) => {
     return `${Number(month)}/${Number(day)}`;
 };
 
+const getRaceDaySummary = (predictions: RaceDayPrediction | null, date: string) => {
+    const jraVenues = predictions?.jra ?? [];
+    const narVenues = predictions?.nar ?? [];
+    const venues = [...jraVenues, ...narVenues];
+    const raceCount = venues.reduce((total, venue) => total + venue.races.length, 0);
+    const firstRaceEntry = venues
+        .flatMap((venue) => venue.races.map((race) => ({ venueName: venue.venue_name, race })))
+        .find(({ race }) => race.predictions.length > 0);
+
+    return {
+        venueCount: venues.length,
+        jraVenueCount: jraVenues.length,
+        narVenueCount: narVenues.length,
+        raceCount,
+        firstRaceHref: firstRaceEntry
+            ? getRaceDetailPath(date, firstRaceEntry.venueName, firstRaceEntry.race.race_number)
+            : `/races/${date}`,
+        firstRaceLabel: firstRaceEntry
+            ? `${firstRaceEntry.venueName}${firstRaceEntry.race.race_number}R ${firstRaceEntry.race.race_name}`
+            : null,
+    };
+};
+
 
 
 /* ------------------------------------------------------------------
@@ -235,6 +258,7 @@ export default async function HomePage() {
 
     const latestArticles = getLatestArticles(6);
     const totalArticles = getAllArticles().length;
+    const raceDaySummary = getRaceDaySummary(predictions, todayStr);
 
     return (
         <div className="py-4 flex flex-col" style={{ gap: 'var(--section-gap)' }}>
@@ -245,26 +269,31 @@ export default async function HomePage() {
 
                     <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto">
                         <h1>
-                            登録不要・完全無料
+                            今日のレース分析を
                             <br />
-                            <span className="text-white">AI競馬データ分析</span>
+                            <span className="text-white">無料で確認</span>
                         </h1>
                         <p>
-                            過去5年以上のレースデータを統計的に分析。中央・地方の全レースに対応しています。
+                            AI偏差値、展開、過去対決成績をひとつのページで確認できます。中央・地方の当日データを毎日更新しています。
                         </p>
 
                         <div className="hero-stats">
-                            <div><div className="num">24</div><div className="lbl">対応競馬場</div></div>
-                            <div><div className="num">中央・地方</div><div className="lbl">全レース無料</div></div>
+                            <div><div className="num">{raceDaySummary.venueCount || 24}</div><div className="lbl">本日の開催場</div></div>
+                            <div><div className="num">{raceDaySummary.raceCount || '全'}</div><div className="lbl">確認できるレース</div></div>
+                            <div><div className="num">中央・地方</div><div className="lbl">対応</div></div>
                             <div><div className="num">{totalArticles}</div><div className="lbl">分析記事</div></div>
-                            <div><div className="num">毎日</div><div className="lbl">データ更新</div></div>
                         </div>
 
                         <div className="mt-6 sm:mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
-                            <Link href={`/races/${todayStr}`} className="hero-btn group justify-center">
+                            <Link href={raceDaySummary.firstRaceHref} className="hero-btn group justify-center">
                                 本日の分析を見る <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
                             </Link>
                         </div>
+                        {raceDaySummary.firstRaceLabel && (
+                            <div className="mt-3 max-w-full truncate rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-slate-300 sm:text-xs">
+                                先に確認できるレース: {raceDaySummary.firstRaceLabel}
+                            </div>
+                        )}
                     </div>
                 </section>
 

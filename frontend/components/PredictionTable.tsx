@@ -109,9 +109,6 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
 
     return (
         <div ref={observerRef}>
-            <div className="mx-2 mb-2 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1.5 text-[10px] font-bold leading-4 text-slate-500 sm:mx-4 sm:text-xs">
-                AI偏差値は50が平均目安です。60台は上位寄り、70以上はかなり高い評価として確認できます。
-            </div>
             {/* PC (md以上) ではテーブル表示 */}
             <div className="hidden md:block overflow-x-auto">
                 <table className="w-full table-fixed">

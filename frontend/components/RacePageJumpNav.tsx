@@ -21,7 +21,7 @@ const items: JumpItem[] = [
         key: 'prediction',
         label: '予想表',
         note: 'AI評価',
-        targetIds: ['race-prediction-section'],
+        targetIds: ['race-prediction-heading', 'race-prediction-section'],
         icon: <SparklesIcon className="h-3.5 w-3.5" />,
         accentClass: 'bg-indigo-50 text-indigo-700 border-indigo-100',
         preview: (
@@ -36,7 +36,7 @@ const items: JumpItem[] = [
         key: 'detail',
         label: '展開材料',
         note: '脚質・枠順',
-        targetIds: ['race-detail-data-section'],
+        targetIds: ['race-detail-heading', 'race-detail-data-section'],
         icon: <FlagIcon className="h-3.5 w-3.5" />,
         accentClass: 'bg-emerald-50 text-emerald-700 border-emerald-100',
         preview: (
@@ -51,7 +51,7 @@ const items: JumpItem[] = [
         key: 'guide',
         label: 'データ解説',
         note: '見方を確認',
-        targetIds: ['race-data-guide-section', 'race-analysis-section', 'race-detail-data-section'],
+        targetIds: ['race-analysis-heading', 'race-data-guide-section', 'race-analysis-section', 'race-detail-data-section'],
         icon: <ChartBarIcon className="h-3.5 w-3.5" />,
         accentClass: 'bg-amber-50 text-amber-700 border-amber-100',
         preview: (
@@ -86,16 +86,12 @@ export function RacePageJumpNav({ className = '' }: RacePageJumpNavProps) {
     const { activeKey, scrollToItem } = useRaceSectionNavigation(items);
 
     return (
-        <section className={`card overflow-hidden border-slate-200 bg-white shadow-sm ${className}`}>
+        <section className={`card hidden overflow-hidden border-slate-200 bg-white shadow-sm md:block ${className}`}>
             <div className="border-b border-slate-100 bg-slate-50/70 px-3 py-2 sm:px-4">
                 <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                        <p className="text-[11px] font-bold text-primary">レース内目次</p>
-                        <h2 className="truncate text-sm font-bold text-slate-900">見たい材料へすぐ移動</h2>
+                        <h2 className="truncate text-sm font-bold text-slate-900">目次</h2>
                     </div>
-                    <span className="hidden rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500 sm:inline-flex">
-                        現在地を表示
-                    </span>
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-2 p-2.5 sm:grid-cols-4 sm:p-3">

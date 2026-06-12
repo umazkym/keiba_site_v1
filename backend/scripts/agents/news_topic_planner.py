@@ -122,6 +122,12 @@ RACE_NAME_PATTERN = re.compile(
     r"([一-龥ァ-ヴーA-Za-z0-9・（）()]{2,24}(?:S|ステークス|カップ|記念|賞|杯|ダービー|オークス|マイル|スプリント|クラシック|レディスクラシック|グランプリ))"
 )
 
+OVERSEAS_KEYWORDS = re.compile(
+    r"サウジカップ|サウジC|ドバイワールドC|ドバイWC|ドバイシーマ|ドバイターフ|ドバイゴールデン|ドバイSC|ドバイワールドカップ|"
+    r"凱旋門賞|香港カップ|香港ヴァーズ|香港マイル|香港スプリント|BCクラシック|ブリーダーズC|BCターフ|マイルチャンピオンシップS|キングジョージ|"
+    r"ケンタッキーダービー|プリークネスS|ベルモントS|海外遠征|海外重賞|中東遠征|サウジアラビア|キングアブドゥルアジーズ|メイダン|ロンシャン|シャティン|アスコット|サンタアニタ"
+)
+
 SEARCH_INTENT_RULES = [
     ("waku", "枠順", re.compile(r"枠順|枠順確定|抽選|ゲート"), 30),
     ("entries", "出走馬", re.compile(r"出走予定|出走馬|登録馬|出馬表|出走"), 26),
@@ -1412,6 +1418,12 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
     state.selected_topics = selected
 
     for candidate in selected:
+        race_name = candidate.race_name or ""
+        calendar_race = candidate.calendar_race or ""
+        title_seed = candidate.title_seed or ""
+        joined_text = f"{race_name} {calendar_race} {title_seed}"
+        is_overseas = bool(OVERSEAS_KEYWORDS.search(joined_text))
+
         internal_data = build_internal_data_bundle(candidate)
         source_urls = [card.url for card in candidate.source_cards]
         key_metrics = (
@@ -1433,6 +1445,8 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
             "priority": int(min(99, max(35, candidate.score))),
             "has_external_research": True,
             "has_predictions": bool(internal_data.get("predictions")),
+            "is_overseas": is_overseas,
+            "category": "海外競馬" if is_overseas else "競馬ニュース",
             "reference_data": {
                 "period": current_jst().strftime("%Y年%m月%d日取得"),
                 "condition": "競馬ニュース起点の確認テーマ",
@@ -1440,6 +1454,8 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "key_metrics": key_metrics,
                 "source": "Tavily Search + 公式・信頼媒体フィルタ + UMA-FREE DB",
                 "article_type": candidate.article_type,
+                "is_overseas": is_overseas,
+                "category": "海外競馬" if is_overseas else "競馬ニュース",
                 "news_topic": candidate.title_seed,
                 "news_topic_key": candidate.topic_key,
                 "news_reason": candidate.reason,

@@ -668,6 +668,8 @@ function normalizeBuyingPointSection(content: string, data: Record<string, any>)
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
+  const isOverseas = data.is_overseas === true || data.overseas === true || data.category === '海外競馬';
+
   const requiredHeadingRegex = new RegExp(`^${requiredHeading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
   if (!requiredHeadingRegex.test(result)) {
     result = `${result}\n\n${requiredHeading}\n\n${fallbackBuyingPoints(data).map(point => `- ${point}`).join('\n')}`;
@@ -675,7 +677,7 @@ function normalizeBuyingPointSection(content: string, data: Record<string, any>)
 
   const headingIndex = findLastBuyingPointHeading(result);
   if (headingIndex < 0) {
-    return `${result}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim();
+    return isOverseas ? result.trim() : `${result}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim();
   }
 
   const before = result.slice(0, headingIndex).trim();
@@ -685,7 +687,9 @@ function normalizeBuyingPointSection(content: string, data: Record<string, any>)
     .trim();
   const normalizedSection = normalizeBuyingPointLines(sectionBody, data);
 
-  return `${before}\n\n${requiredHeading}\n\n${normalizedSection}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim();
+  return isOverseas
+    ? `${before}\n\n${requiredHeading}\n\n${normalizedSection}`.trim()
+    : `${before}\n\n${requiredHeading}\n\n${normalizedSection}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim();
 }
 
 function ensureH2HeadingsHaveNumbers(content: string): string {

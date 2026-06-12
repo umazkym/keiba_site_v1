@@ -176,12 +176,27 @@ FAIL_ON_SNS_ERROR = _env_flag("FAIL_ON_SNS_ERROR", False)
 TWITTER_POST_MAX_RETRIES = _env_int("TWITTER_POST_MAX_RETRIES", 3, minimum=1)
 TWITTER_POST_RETRY_BASE_SECONDS = _env_int("TWITTER_POST_RETRY_BASE_SECONDS", 30, minimum=1)
 ALLOW_X_TRANSIENT_FAILURE_WITH_THREADS = _env_flag("ALLOW_X_TRANSIENT_FAILURE_WITH_THREADS", True)
+THREADS_POST_MAX_RETRIES = _env_int("THREADS_POST_MAX_RETRIES", 3, minimum=1)
+THREADS_POST_RETRY_BASE_SECONDS = _env_int("THREADS_POST_RETRY_BASE_SECONDS", 30, minimum=1)
+ALLOW_THREADS_TRANSIENT_FAILURE_WITH_X = _env_flag("ALLOW_THREADS_TRANSIENT_FAILURE_WITH_X", True)
 
 # ===== Threads API設定 =====
 THREADS_USER_ID = os.getenv("THREADS_USER_ID")
 THREADS_ACCESS_TOKEN = os.getenv("THREADS_ACCESS_TOKEN")
 THREADS_TOKEN_EXPIRY = os.getenv("THREADS_TOKEN_EXPIRY")
 THREADS_MAX_CHARS = 480
+
+
+@dataclass
+class ThreadsPostResult:
+    ok: bool
+    attempted: bool = True
+    post_id: Optional[str] = None
+    transient: bool = False
+    reason: str = ""
+
+    def __bool__(self) -> bool:
+        return self.ok
 
 
 def build_race_url(date_str: str, race_number: Any = None, venue_name: Any = None) -> str:
@@ -394,16 +409,55 @@ def truncate_for_threads(text: str) -> str:
     return '\n'.join(result)
 
 
-def post_to_threads(text: str) -> Optional[str]:
+def _threads_error_payload(response: requests.Response) -> Dict[str, Any]:
+    try:
+        payload = response.json()
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+
+
+def _classify_threads_response(response: requests.Response, phase: str) -> tuple[bool, str]:
+    """Threads APIのレスポンスを一時障害か恒久的な問題かに分ける。"""
+    status = response.status_code
+    payload = _threads_error_payload(response)
+    error_payload = payload.get("error") if isinstance(payload.get("error"), dict) else {}
+    message = str(error_payload.get("message") or "").strip()
+    code = error_payload.get("code")
+    code_text = str(code) if code is not None else ""
+    is_transient = bool(error_payload.get("is_transient"))
+
+    if status == 401 or code_text in {"102", "190"}:
+        return False, f"Threads{phase}の認証エラー({status})"
+    if is_transient:
+        return True, f"Threads{phase}の一時エラー(is_transient=true, code={code_text or '?'})"
+    if status == 429:
+        return True, f"Threads{phase}のレート制限"
+    if 500 <= status <= 599:
+        return True, f"Threads{phase}の一時的なサーバーエラー({status})"
+    if status in {408, 409, 425}:
+        return True, f"Threads{phase}の一時的な受付エラー({status})"
+
+    detail = message or response.text[:120]
+    return False, f"Threads{phase} APIエラー({status}: {detail})"
+
+
+def _sleep_before_threads_retry(attempt: int) -> None:
+    delay = THREADS_POST_RETRY_BASE_SECONDS * attempt + random.randint(0, 10)
+    _log(f"  → {delay}秒後にThreads投稿を再試行します。")
+    time.sleep(delay)
+
+
+def post_to_threads(text: str) -> ThreadsPostResult:
     """Threadsにテキスト投稿を行う。トークン失効時は明確な警告を出力する。"""
     global THREADS_ACCESS_TOKEN
     if not ENABLE_THREADS:
         _log("Threads投稿は ENABLE_THREADS=false のためスキップします。")
-        return None
+        return ThreadsPostResult(ok=False, attempted=False, reason="Threads投稿無効")
 
     if not THREADS_USER_ID or not THREADS_ACCESS_TOKEN:
         _log("⚠️ Threads認証情報未設定。スキップします。")
-        return None
+        return ThreadsPostResult(ok=False, attempted=False, reason="Threads認証情報不足")
 
     text = prepare_short_social_text(
         text,
@@ -415,63 +469,91 @@ def post_to_threads(text: str) -> Optional[str]:
 
     if DRY_RUN:
         _log(f"[DRY_RUN] Threads投稿スキップ:\n{text[:80]}...")
-        return "dry_run_threads_id"
+        return ThreadsPostResult(ok=True, post_id="dry_run_threads_id", reason="DRY_RUN")
 
     base_url = f"https://graph.threads.net/v1.0/{THREADS_USER_ID}"
     headers = {"Authorization": f"Bearer {THREADS_ACCESS_TOKEN}"}
+    last_result = ThreadsPostResult(ok=False, reason="Threads投稿が完了しませんでした")
 
-    try:
-        res = requests.post(
-            f"{base_url}/threads",
-            headers=headers,
-            data={"media_type": "TEXT", "text": text},
-            timeout=30
-        )
-        if res.status_code == 401:
-            _log("❌ Threadsコンテナ作成失敗: 401 Unauthorized")
-            _log("  → 🔑 アクセストークンが失効しています！")
-            _log("  → Meta for Developers で新しいトークンを生成し、GitHub Secrets の THREADS_ACCESS_TOKEN を更新してください")
-            _log(f"  → レスポンス: {res.text[:300]}")
-            return None
-        if res.status_code != 200:
-            _log(f"❌ Threadsコンテナ作成失敗: {res.status_code} - {res.text[:200]}")
-            return None
+    for attempt in range(1, THREADS_POST_MAX_RETRIES + 1):
+        try:
+            res = requests.post(
+                f"{base_url}/threads",
+                headers=headers,
+                data={"media_type": "TEXT", "text": text},
+                timeout=30
+            )
+            if res.status_code == 401:
+                _log("❌ Threadsコンテナ作成失敗: 401 Unauthorized")
+                _log("  → アクセストークンが失効している可能性があります。")
+                _log("  → Meta for Developers で新しいトークンを生成し、GitHub Secrets の THREADS_ACCESS_TOKEN を更新してください")
+                _log(f"  → レスポンス: {res.text[:300]}")
+                return ThreadsPostResult(ok=False, transient=False, reason="Threads認証エラー")
+            if res.status_code != 200:
+                transient, reason = _classify_threads_response(res, "コンテナ作成")
+                _log(f"❌ Threadsコンテナ作成失敗: {res.status_code} - {res.text[:200]} (試行 {attempt}/{THREADS_POST_MAX_RETRIES})")
+                last_result = ThreadsPostResult(ok=False, transient=transient, reason=reason)
+                if transient and attempt < THREADS_POST_MAX_RETRIES:
+                    _sleep_before_threads_retry(attempt)
+                    continue
+                return last_result
 
-        container_id = res.json().get("id")
-        if not container_id:
-            _log("❌ Threadsコンテナ作成: レスポンスにIDが含まれていません")
-            return None
+            container_id = res.json().get("id")
+            if not container_id:
+                _log("❌ Threadsコンテナ作成: レスポンスにIDが含まれていません")
+                return ThreadsPostResult(ok=False, transient=False, reason="ThreadsコンテナIDなし")
 
-        time.sleep(3)
+            time.sleep(3)
 
-        pub_res = requests.post(
-            f"{base_url}/threads_publish",
-            headers=headers,
-            data={"creation_id": container_id},
-            timeout=30
-        )
-        if pub_res.status_code != 200:
-            _log(f"❌ Threads公開失敗: {pub_res.status_code} - {pub_res.text[:200]}")
-            return None
+            pub_res = requests.post(
+                f"{base_url}/threads_publish",
+                headers=headers,
+                data={"creation_id": container_id},
+                timeout=30
+            )
+            if pub_res.status_code != 200:
+                transient, reason = _classify_threads_response(pub_res, "公開")
+                _log(f"❌ Threads公開失敗: {pub_res.status_code} - {pub_res.text[:200]}")
+                if transient:
+                    _log("  → 公開段階の一時エラーは重複投稿防止のため、同一実行内では再公開しません。")
+                return ThreadsPostResult(ok=False, transient=transient, reason=reason)
 
-        post_id = pub_res.json().get("id")
-        _log(f"✅ Threads投稿成功! ID: {post_id}")
-        return post_id
+            post_id = pub_res.json().get("id")
+            if not post_id:
+                _log("❌ Threads公開: レスポンスにIDが含まれていません")
+                return ThreadsPostResult(ok=False, transient=False, reason="Threads投稿IDなし")
+            _log(f"✅ Threads投稿成功! ID: {post_id}")
+            return ThreadsPostResult(ok=True, post_id=str(post_id), reason="投稿成功")
 
-    except Exception as e:
-        _log(f"❌ Threads投稿エラー: {e}")
-        return None
+        except Exception as e:
+            transient = isinstance(e, (requests.Timeout, requests.ConnectionError))
+            reason = "Threads APIへのネットワーク接続エラー" if transient else f"Threads投稿エラー: {e}"
+            _log(f"❌ Threads投稿エラー: {e} (試行 {attempt}/{THREADS_POST_MAX_RETRIES})")
+            last_result = ThreadsPostResult(ok=False, transient=transient, reason=reason)
+            if transient and attempt < THREADS_POST_MAX_RETRIES:
+                _sleep_before_threads_retry(attempt)
+                continue
+            return last_result
+
+    return last_result
+
+
+def post_texts_to_threads_results(texts: List[str], delay_seconds: int = 3) -> List[ThreadsPostResult]:
+    """複数テキストをThreadsへ独立投稿し、各投稿の結果を返す。"""
+    results: List[ThreadsPostResult] = []
+    for idx, text in enumerate(texts, 1):
+        _log(f"Threads投稿 {idx}/{len(texts)} を実行します。")
+        result = post_to_threads(text)
+        results.append(result)
+        if idx < len(texts) and delay_seconds > 0:
+            time.sleep(delay_seconds)
+    return results
 
 
 def post_texts_to_threads(texts: List[str], delay_seconds: int = 3) -> int:
     """複数テキストをThreadsへ独立投稿し、成功件数を返す。"""
-    posted_count = 0
-    for idx, text in enumerate(texts, 1):
-        _log(f"Threads投稿 {idx}/{len(texts)} を実行します。")
-        if post_to_threads(text):
-            posted_count += 1
-        if idx < len(texts) and delay_seconds > 0:
-            time.sleep(delay_seconds)
+    results = post_texts_to_threads_results(texts, delay_seconds=delay_seconds)
+    posted_count = sum(1 for result in results if result.ok)
     return posted_count
 
 
@@ -1564,6 +1646,26 @@ def track_x_result(failures: List[str], context: str, result: TwitterPostResult,
     failures.append(f"X(Twitter): {context}")
 
 
+def track_threads_result(failures: List[str], context: str, result: ThreadsPostResult, x_ok: bool = False) -> None:
+    if result.ok:
+        return
+    if not result.attempted:
+        failures.append(f"Threads: {context}")
+        return
+    if (
+        result.transient
+        and x_ok
+        and ALLOW_THREADS_TRANSIENT_FAILURE_WITH_X
+    ):
+        _log(
+            "⚠️ Threads投稿は一時的な外部要因で失敗しましたが、X投稿が成功したため、"
+            "今回のジョブは失敗扱いにしません。"
+        )
+        _log(f"  → Threads失敗理由: {result.reason}")
+        return
+    failures.append(f"Threads: {context}")
+
+
 def record_post_if_delivered(
     content: str,
     post_type: str,
@@ -2050,12 +2152,18 @@ def main():
                     else:
                         # 2つのツイートテキストを直接渡して投稿（分割なし、スレッド化防止済み）
                         x_result = post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
-                        threads_posted = post_texts_to_threads([tweet_text_1, tweet_text_2])
-                        threads_ok = threads_posted == 2
+                        threads_results = post_texts_to_threads_results([tweet_text_1, tweet_text_2])
+                        threads_ok = len(threads_results) == 2 and all(result.ok for result in threads_results)
                         if ENABLE_TWITTER:
                             track_x_result(sns_failures, "morning_combined", x_result, threads_ok=threads_ok)
                         if ENABLE_THREADS:
-                            track_sns_result(sns_failures, "Threads", "morning_combined", threads_ok)
+                            for result_idx, threads_result in enumerate(threads_results, 1):
+                                track_threads_result(
+                                    sns_failures,
+                                    f"morning_combined:{result_idx}",
+                                    threads_result,
+                                    x_ok=bool(x_result),
+                                )
                         record_post_if_delivered(
                             combined_check_text,
                             "morning_combined",
@@ -2102,11 +2210,12 @@ def main():
                         _log(f"-> 既に投稿済み: morning_pick_only")
                     else:
                         x_result = post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
-                        threads_ok = post_to_threads(tweet_text) is not None
+                        threads_result = post_to_threads(tweet_text)
+                        threads_ok = bool(threads_result)
                         if ENABLE_TWITTER:
                             track_x_result(sns_failures, "morning_pick_only", x_result, threads_ok=threads_ok)
                         if ENABLE_THREADS:
-                            track_sns_result(sns_failures, "Threads", "morning_pick_only", threads_ok)
+                            track_threads_result(sns_failures, "morning_pick_only", threads_result, x_ok=bool(x_result))
                         record_post_if_delivered(tweet_text, "morning_pick_only", today_str, x_result=x_result, threads_ok=threads_ok)
                         if not x_result:
                             _log("⚠️ X投稿は失敗しましたが、Threads投稿は試行済みです")
@@ -2125,11 +2234,12 @@ def main():
                     _log(f"-> 既に投稿済み: afternoon_summary")
                 else:
                     x_result = post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
-                    threads_ok = post_to_threads(tweet_text) is not None
+                    threads_result = post_to_threads(tweet_text)
+                    threads_ok = bool(threads_result)
                     if ENABLE_TWITTER:
                         track_x_result(sns_failures, "afternoon_summary", x_result, threads_ok=threads_ok)
                     if ENABLE_THREADS:
-                        track_sns_result(sns_failures, "Threads", "afternoon_summary", threads_ok)
+                        track_threads_result(sns_failures, "afternoon_summary", threads_result, x_ok=bool(x_result))
                     record_post_if_delivered(tweet_text, "afternoon_summary", today_str, x_result=x_result, threads_ok=threads_ok)
                     if not x_result:
                         _log("⚠️ X投稿は失敗しましたが、Threads投稿は試行済みです")
@@ -2160,11 +2270,12 @@ def main():
                     else:
                         _log("-> 画像生成に失敗しましたが、テキストのみで投稿します")
                         x_result = post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
-                    threads_ok = post_to_threads(tweet_text) is not None
+                    threads_result = post_to_threads(tweet_text)
+                    threads_ok = bool(threads_result)
                     if ENABLE_TWITTER:
                         track_x_result(sns_failures, f"evening_race:{race_name}", x_result, threads_ok=threads_ok)
                     if ENABLE_THREADS:
-                        track_sns_result(sns_failures, "Threads", f"evening_race:{race_name}", threads_ok)
+                        track_threads_result(sns_failures, f"evening_race:{race_name}", threads_result, x_ok=bool(x_result))
                     record_post_if_delivered(tweet_text, "evening_race", tomorrow_str, x_result=x_result, threads_ok=threads_ok)
 
                     # 次の重賞投稿まで120秒待機（スレッド化防止 + レート制限対策）
@@ -2210,11 +2321,12 @@ def main():
                     x_result = post_to_twitter(tweet_text, image_file, post_type="pre_race_remind", target_date=today_str, split_mode=False)
                 else:
                     x_result = post_to_twitter(tweet_text, None, post_type="pre_race_remind", target_date=today_str, split_mode=False)
-                threads_ok = post_to_threads(tweet_text) is not None
+                threads_result = post_to_threads(tweet_text)
+                threads_ok = bool(threads_result)
                 if ENABLE_TWITTER:
                     track_x_result(sns_failures, "pre_race_remind", x_result, threads_ok=threads_ok)
                 if ENABLE_THREADS:
-                    track_sns_result(sns_failures, "Threads", "pre_race_remind", threads_ok)
+                    track_threads_result(sns_failures, "pre_race_remind", threads_result, x_ok=bool(x_result))
                 record_post_if_delivered(tweet_text, "pre_race_remind", today_str, x_result=x_result, threads_ok=threads_ok)
             else:
                 _log("-> 本日の適切な直前リマインダー対象レースがありませんでした。")
@@ -2270,11 +2382,12 @@ def main():
                     target_date=today_str,
                     split_mode=False
                 )
-                threads_ok = post_to_threads(tweet_text) is not None
+                threads_result = post_to_threads(tweet_text)
+                threads_ok = bool(threads_result)
                 if ENABLE_TWITTER:
                     track_x_result(sns_failures, f"hit_immediate:{venue}{race_num}R", x_result, threads_ok=threads_ok)
                 if ENABLE_THREADS:
-                    track_sns_result(sns_failures, "Threads", f"hit_immediate:{venue}{race_num}R", threads_ok)
+                    track_threads_result(sns_failures, f"hit_immediate:{venue}{race_num}R", threads_result, x_ok=bool(x_result))
                 record_post_if_delivered(tweet_text, "hit_immediate", today_str, x_result=x_result, threads_ok=threads_ok)
                 posted_count += 1
 

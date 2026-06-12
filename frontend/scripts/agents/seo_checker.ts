@@ -282,7 +282,9 @@ export function checkSEO(markdownText: string): SEOCheckResult {
 
   // 4. レースページへの自然な内部導線
   // 関連記事はフロント側で自動表示するため、本文内の[関連記事：...]プレースホルダーは要求しない。
-  if (SEO_RULES.require_today_race_cta && !content.includes('/races/today')) {
+  // 海外競馬（is_overseas: true または overseas: true または category: '海外競馬'）の場合は /races/today へのリンクは必須としない。
+  const isOverseas = data.is_overseas === true || data.overseas === true || data.category === '海外競馬';
+  if (SEO_RULES.require_today_race_cta && !isOverseas && !content.includes('/races/today')) {
     errors.push(`今日のAI予想・出馬表への内部リンクがありません。記事末尾に /races/today への自然な導線を含めてください。`);
   }
 

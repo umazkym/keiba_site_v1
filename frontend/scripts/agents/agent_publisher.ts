@@ -527,6 +527,12 @@ async function publishDraft() {
     repairedParsed.data.og_title = repairedParsed.data.title;
     repairedParsed.data.og_description = repairedParsed.data.description;
     repairedParsed.data.og_image = parsed.data.og_image;
+    if (parsed.data.is_overseas !== undefined) {
+      repairedParsed.data.is_overseas = parsed.data.is_overseas;
+    }
+    if (parsed.data.category) {
+      repairedParsed.data.category = parsed.data.category;
+    }
     parsed.data = repairedParsed.data;
 
     // Markdown再シリアライズ

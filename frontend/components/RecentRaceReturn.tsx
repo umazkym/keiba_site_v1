@@ -63,37 +63,29 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
         }
     }, []);
 
-    const sectionClass = `card min-h-[92px] overflow-hidden border-slate-200 bg-white sm:min-h-[62px] ${className}`;
+    const sectionClass = `card min-h-0 overflow-hidden border-slate-200 bg-white ${className}`;
 
     if (!recentRace) {
         return (
             <section className={sectionClass}>
-                <div className="flex flex-col gap-1.5 p-2 sm:flex-row sm:items-center sm:p-2.5">
+                <div className="flex items-center gap-2 p-2 sm:p-2.5">
                     <div className="min-w-0 flex-1">
-                        <p className="mb-0.5 text-[10px] font-bold text-secondary">本日のレース分析</p>
-                        <div className="flex items-baseline gap-1.5 flex-wrap">
-                            <div className="truncate text-xs sm:text-sm font-bold text-slate-900">
+                        <p className="mb-0.5 text-[10px] font-bold leading-none text-secondary">本日のレース分析</p>
+                        <div className="min-w-0">
+                            <div className="truncate text-xs font-bold leading-tight text-slate-900 sm:text-sm">
                                 予測データを確認
                             </div>
-                            <p className="truncate text-[10px] sm:text-xs text-slate-500">
+                            <p className="truncate text-[10px] leading-tight text-slate-500 sm:text-xs">
                                 AI偏差値、枠順傾向、展開予測
                             </p>
                         </div>
                     </div>
-                    <div className="flex gap-1.5 sm:shrink-0">
-                        <Link
-                            href="/races/today"
-                            className="btn-primary flex-1 justify-center px-2.5 py-1 text-[11px] min-h-[30px] sm:flex-none sm:text-xs sm:px-3 sm:py-1.5 sm:min-h-[36px]"
-                        >
-                            今日の分析へ
-                        </Link>
-                        <Link
-                            href="/articles"
-                            className="inline-flex min-h-[30px] flex-1 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-100 sm:flex-none sm:text-xs sm:px-3 sm:py-1.5 sm:min-h-[36px]"
-                        >
-                            記事を読む
-                        </Link>
-                    </div>
+                    <Link
+                        href="/races/today"
+                        className="recent-return-primary shrink-0"
+                    >
+                        今日へ
+                    </Link>
                 </div>
             </section>
         );
@@ -101,35 +93,33 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
 
     return (
         <section className={sectionClass}>
-            <div className="p-2 sm:p-2.5 flex flex-col sm:flex-row sm:items-center gap-1.5">
-                <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-bold text-secondary mb-0.5">前回見ていたレース</p>
-                    <div className="flex items-baseline gap-1.5 flex-wrap">
-                        <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+            <div className="flex items-center gap-2 p-2 sm:p-2.5">
+                <div className="min-w-0 flex-1">
+                    <p className="mb-0.5 text-[10px] font-bold leading-none text-secondary">前回見ていたレース</p>
+                    <div className="min-w-0">
+                        <div className="truncate text-sm font-bold leading-tight text-slate-900 sm:text-sm">
                             {formatRaceDate(recentRace.date)} {recentRace.venueName} {recentRace.raceNumber}R
                             <span className="hidden sm:inline text-xs font-normal text-slate-500 ml-1"> {recentRace.raceName}</span>
                         </div>
                         {recentRace.courseLabel && (
-                            <span className="text-[10px] sm:text-xs text-slate-500 truncate font-medium">
+                            <span className="block truncate text-[10px] font-medium leading-tight text-slate-500 sm:text-xs">
                                 ({recentRace.courseLabel})
                             </span>
                         )}
                     </div>
                 </div>
-                <div className="flex gap-1.5 sm:shrink-0">
-                    <Link
-                        href={recentRace.href}
-                        className="btn-primary flex-1 sm:flex-none justify-center text-[11px] sm:text-xs px-2.5 py-1 min-h-[30px] sm:min-h-[36px] sm:px-3 sm:py-1.5"
-                    >
-                        続きから見る
-                    </Link>
-                    <Link
-                        href="/races/today"
-                        className="flex-1 sm:flex-none inline-flex items-center justify-center px-2.5 py-1 min-h-[30px] sm:min-h-[36px] text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 sm:px-3 sm:py-1.5"
-                    >
-                        今日へ
-                    </Link>
-                </div>
+                <Link
+                    href={recentRace.href}
+                    className="recent-return-primary shrink-0"
+                >
+                    続きから
+                </Link>
+                <Link
+                    href="/races/today"
+                    className="hidden sm:inline-flex sm:flex-none items-center justify-center px-3 py-1.5 min-h-[36px] text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100"
+                >
+                    今日へ
+                </Link>
             </div>
         </section>
     );

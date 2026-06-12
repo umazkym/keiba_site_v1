@@ -206,14 +206,15 @@
         @apply absolute top-0 right-0 w-32 h-32 pointer-events-none;
         background: radial-gradient(circle, rgba(59,130,246,0.06), transparent 70%);
     }
-    .pick-inner { @apply relative z-10 py-2 px-2.5 sm:p-5; }
+    .pick-inner { @apply relative z-10 px-2.5 py-2 sm:p-5; }
     .pick-top { @apply flex items-center justify-between mb-1 sm:mb-2; }
     .pick-badge { @apply text-[10px] sm:text-xs font-bold bg-primary text-white py-0.5 px-2 rounded-md leading-tight; }
-    .pick-score { @apply text-[10px] sm:text-[13px] font-bold text-blue-700 bg-blue-50 border border-blue-100/50 py-0.5 px-1.5 sm:px-2 rounded-full flex items-center gap-1; }
-    .pick-score .val { @apply text-[12px] sm:text-base font-mono tracking-tight; }
-    .pick-name { @apply text-base sm:text-2xl font-extrabold text-primary-dark leading-tight mb-0.5 sm:mb-1; }
-    .pick-meta { @apply text-[10px] sm:text-[13px] text-slate-500 bg-slate-50 border border-slate-100 py-0.5 px-2 rounded-md inline-block mb-1 sm:mb-1.5; }
-    .pick-comment { @apply text-[11px] sm:text-sm text-primary-light leading-relaxed border-t border-slate-100 pt-1 sm:pt-1.5; }
+    .pick-main { @apply flex min-w-0 items-start justify-between gap-2 sm:gap-3; }
+    .pick-score { @apply mt-0.5 flex shrink-0 items-center gap-1 rounded-full border border-blue-100/50 bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold leading-none text-blue-700 sm:mt-0 sm:px-2 sm:text-[13px]; }
+    .pick-score .val { @apply font-mono text-[14px] font-bold tracking-tight sm:text-base; }
+    .pick-name { @apply mb-0.5 text-[17px] font-extrabold leading-tight text-primary-dark sm:mb-1 sm:text-2xl; }
+    .pick-meta { @apply mb-1 inline-block rounded-md border border-slate-100 bg-slate-50 px-1.5 py-0.5 text-[10px] leading-none text-slate-500 sm:mb-1.5 sm:px-2 sm:text-[13px]; }
+    .pick-comment { @apply border-t border-slate-100 pt-1 text-[11px] leading-snug text-primary-light sm:pt-1.5 sm:text-sm sm:leading-relaxed; }
 
     /* === Prototype Additions: Hits Grid === */
     .hits-grid { @apply grid grid-cols-2 lg:grid-cols-5 gap-1.5 sm:gap-2.5; }
@@ -283,6 +284,10 @@
 
     .btn-primary:active {
         box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+    }
+
+    .recent-return-primary {
+        @apply inline-flex min-h-[32px] items-center justify-center rounded-lg bg-primary px-3 py-1 text-[11px] font-bold leading-none text-white shadow-sm transition-all duration-200 active:scale-95 hover:bg-primary-light sm:min-h-[36px] sm:px-3 sm:py-1.5 sm:text-xs;
     }
 
     .adsense-wrapper {

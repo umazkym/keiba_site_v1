@@ -9,14 +9,14 @@ import { getRaceDetailPath } from '@/lib/race-url';
 
 // スケルトンコンポーネント
 const Skeleton = () => (
-    <div className="bg-white p-6 rounded-2xl border border-slate-100 animate-pulse h-[170px]">
+    <div className="h-[96px] animate-pulse rounded-xl border border-slate-100 bg-white p-3 sm:h-[170px] sm:p-6">
         <div className="flex justify-between items-center">
             <div className="h-4 bg-slate-100 rounded w-1/3"></div>
             <div className="h-8 bg-slate-100 rounded-full w-24"></div>
         </div>
-        <div className="h-10 bg-slate-100 rounded w-3/4 mt-4"></div>
-        <div className="h-5 bg-slate-100 rounded w-1/2 mt-2"></div>
-        <div className="h-4 bg-slate-100 rounded w-full mt-4"></div>
+        <div className="h-6 bg-slate-100 rounded w-3/4 mt-3 sm:h-10 sm:mt-4"></div>
+        <div className="h-4 bg-slate-100 rounded w-1/2 mt-1.5 sm:h-5 sm:mt-2"></div>
+        <div className="h-3 bg-slate-100 rounded w-full mt-2 sm:h-4 sm:mt-4"></div>
     </div>
 );
 
@@ -89,18 +89,20 @@ export const SpecialPickCard = ({ pick: initialPick, date }: Props) => {
                            <span id="special-pick-title" className="pick-badge">AI注目馬</span>
                            <span className="text-[10px] sm:text-xs text-muted font-medium hidden sm:inline">{formattedDate}</span>
                         </div>
+                    </div>
+                    <div className="pick-main">
+                        <div className="min-w-0 flex-1">
+                            <p className="pick-name truncate" title={pick.horse_name}>
+                                {pick.horse_name}
+                            </p>
+                            <span className="pick-meta">
+                                {pick.venue_name} {pick.race_number}R <span className="hidden sm:inline">・ {pick.race_name}</span>
+                            </span>
+                        </div>
                         <span className="pick-score">
                             偏差値 <span className="val">{pick.deviation_score.toFixed(2)}</span>
                         </span>
                     </div>
-                    <div className="flex items-baseline justify-between gap-1.5 min-w-0">
-                        <p className="pick-name truncate" title={pick.horse_name}>
-                            {pick.horse_name}
-                        </p>
-                    </div>
-                    <span className="pick-meta">
-                        {pick.venue_name} {pick.race_number}R <span className="hidden sm:inline">・ {pick.race_name}</span>
-                    </span>
                     <p className="pick-comment line-clamp-1 sm:line-clamp-2">
                         {pick.commentary}
                     </p>

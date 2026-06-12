@@ -26,18 +26,6 @@ const gradeStyles: Record<string, {
     },
 };
 
-/**
- * 日付文字列 (YYYY-MM-DD) を JST として正しくフォーマットする。
- * new Date() はローカルTZで解釈するため、UTC文字列として扱って
- * 日付ズレを防ぐ。
- */
-function formatRaceDate(dateStr: string): string {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const date = new Date(y, m - 1, d); // ローカル日付として建てる
-    const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
-    return `${m}/${d}（${dayOfWeek}）`;
-}
-
 /** レース名からグレード接尾辞を除去 */
 function cleanRaceName(name: string): string {
     return name
@@ -58,20 +46,22 @@ export function WeeklyGradeRaces({ races, compact = false }: WeeklyGradeRacesPro
 
     return (
         <section className={compact ? "" : "card"} id="weekly-grade-races">
-            <div className={compact ? "" : "px-3 sm:px-4"}>
-                <h2 className={compact ? "sr-only" : "flex items-center gap-2 text-sm sm:text-base font-bold text-gray-800 mb-2"}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            <div className={compact ? "" : "px-2.5 py-1.5 sm:px-4 sm:py-2"}>
+                <div role="heading" aria-level={2} className={compact ? "sr-only" : "mb-1.5 flex items-center justify-between gap-2"}>
+                    <span className="flex min-w-0 items-center gap-1.5 text-[15px] font-bold leading-tight text-gray-800 sm:text-base">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="var(--color-primary, #2563eb)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                    </svg>
-                    今週の重賞レース
-                </h2>
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                        <span className="truncate">今週の重賞レース</span>
+                    </span>
+                    <span className="hidden text-[10px] font-bold text-slate-400 sm:inline">注目開催</span>
+                </div>
 
                 {/* 横並びでシンプル＆クリーンな「タグ」スタイル */}
-                <div className={`flex flex-wrap gap-2 ${compact ? 'justify-start' : 'justify-center sm:justify-start sm:gap-3'}`}>
+                <div className={`flex gap-1.5 overflow-x-auto pb-0.5 ${compact ? 'flex-wrap justify-start' : 'flex-nowrap sm:flex-wrap sm:justify-start sm:gap-2.5'}`}>
                     {races.map((race) => {
                         const style = gradeStyles[race.grade] || gradeStyles.G3;
-                        const raceDate = formatRaceDate(race.race_date);
                         const displayName = cleanRaceName(race.race_name);
 
                         return (
@@ -79,7 +69,7 @@ export function WeeklyGradeRaces({ races, compact = false }: WeeklyGradeRacesPro
                                 key={race.race_id}
                                 href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
                                 className={`
-                                    flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg
+                                    flex shrink-0 items-center gap-1.5 px-2 py-1 sm:gap-2 sm:px-3 sm:py-1.5 rounded-full sm:rounded-lg
                                     bg-white border border-slate-200 shadow-sm
                                     ${style.card}
                                     transition-all duration-200 group hover:shadow hover:border-primary/30
@@ -90,14 +80,14 @@ export function WeeklyGradeRaces({ races, compact = false }: WeeklyGradeRacesPro
                                 {/* グレードバッジ */}
                                 <span className={`
                                     inline-flex items-center justify-center
-                                    w-[28px] h-[18px] sm:w-[32px] sm:h-[20px] rounded text-[9px] sm:text-[10px] font-bold tracking-wide
+                                    w-[27px] h-[17px] sm:w-[32px] sm:h-[20px] rounded text-[9px] sm:text-[10px] font-bold tracking-wide
                                     ${style.badge}
                                 `}>
                                     {race.grade}
                                 </span>
 
                                 {/* レース名 */}
-                                <span className={`text-[12px] sm:text-[13px] font-bold ${style.label} line-clamp-1 leading-tight`}>
+                                <span className={`max-w-[132px] truncate text-[12px] sm:max-w-none sm:text-[13px] font-bold ${style.label} leading-tight`}>
                                     {displayName}
                                 </span>
                             </Link>

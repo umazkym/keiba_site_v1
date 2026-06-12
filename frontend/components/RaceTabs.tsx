@@ -607,6 +607,17 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         }
     }, [currentDate]);
 
+    const handleJraVenueSelect = useCallback((index: number) => {
+        setJraActivationKey(prev => prev + 1);
+        const venue = jra[index];
+        if (venue && typeof window !== 'undefined' && (window as any).gtag) {
+            (window as any).gtag('event', 'page_view', {
+                page_path: `/races/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
+                page_title: `${venue.venue_name} - レース一覧`,
+            });
+        }
+    }, [jra, currentDate]);
+
     const handleNarVenueSelect = useCallback((index: number) => {
         setNarActivationKey(prev => prev + 1);
         const venue = nar[index];

@@ -93,6 +93,7 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-06-12**:
+  * **RaceTabsデプロイエラー修復**: `RaceTabs.tsx` に欠落していた `handleJraVenueSelect` を復旧し、JRA開催場タブ切り替え時の再描画キー更新とGA計測をNAR側と同等に整理。Vercelデプロイ時の `Cannot find name 'handleJraVenueSelect'` 型エラーを解消し、`npm run build` 成功を確認。
   * **記事生成品質ゲート強化**: `agent_editor.ts` のGemini Editorレスポンスを堅牢なJSON抽出へ変更し、JSONパース失敗やAI Editor非承認時にSEO機械チェックだけで公開承認しないよう修正。Gemma複数観点レビューは構造化メモへ圧縮して最終Editorへ渡し、ノイズ混入を抑制。
   * **検索カニバリ抑制 & 地方重賞対応**: `news_topic_planner.py` に `KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN` を追加し、既定で1実行1レース1本に制限。帝王賞、さきたま杯、関東オークス、JBC、東京大賞典など地方・交流重賞も季節カレンダーとTavilyクエリの対象へ追加。
   * **記事表現ガード追加**: Writer/Editor/SEO Checkerで「軸の筆頭」「消し」「精度の高い予想」「AI偏差値70以上」「絶好枠」などの強い表現を抑制。予測データが空の場合はAI偏差値の具体値・しきい値・予想印を生成しないルールを明文化。

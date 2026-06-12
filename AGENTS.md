@@ -92,6 +92,8 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-06-13**:
+  * **広告表示機会の回復調整**: 6/12のAdSenseレポートでPV増加に対してPage RPMと広告表示回数/PVが低下していたため、全画面広告・Rewarded Ad停止は維持したまま、手動広告の遅延読み込み条件を枠ごとに調整できるよう修正。通常AdUnitは先読み幅をやや拡大し、InFeed枠は高効率枠として広めに先読み、レースページのモバイル追従広告は開始閾値を1400pxから800pxへ緩和。アフィリエイト表示時にもAdSenseのInFeed機会が消えないよう、レース下部に独立したInFeed枠を1枠復帰した。`npx tsc --noEmit` 成功を確認。`next build` はローカル環境で長時間応答せずタイムアウトしたため、別途Vercel/CI側で最終確認する。
 * **2026-06-12**:
   * **スマホ全画面広告・オファーウォール抑止**: AdSenseの全ページ先読みを停止し、手動広告枠が必要になった時だけスクリプトを遅延読み込みする構成へ変更。`NEXT_PUBLIC_ADSENSE_AUTO_ADS_MODE=manual-only`、`NEXT_PUBLIC_FULLSCREEN_AD_MODE=disabled` を既定とし、GAM Rewarded Adは二重フラグで明示許可しない限り起動しないようにして、スマホで閉じられない全画面動画・オファーウォールの再発リスクを下げた。
   * **RaceTabsデプロイエラー修復**: `RaceTabs.tsx` に欠落していた `handleJraVenueSelect` を復旧し、JRA開催場タブ切り替え時の再描画キー更新とGA計測をNAR側と同等に整理。Vercelデプロイ時の `Cannot find name 'handleJraVenueSelect'` 型エラーを解消し、`npm run build` 成功を確認。

@@ -101,6 +101,30 @@ def load_pending_order_keywords():
     
     return keywords
 
+def get_waku_number(horse_number, total_horses):
+    """馬番と出走頭数から公式枠番を計算する"""
+    if total_horses <= 8:
+        return horse_number
+    
+    q = total_horses // 8
+    r = total_horses % 8
+    
+    waku_counts = []
+    for waku_idx in range(8):
+        if (7 - waku_idx) < r:
+            waku_counts.append(q + 1)
+        else:
+            waku_counts.append(q)
+            
+    current_horse = 1
+    for waku_idx in range(8):
+        count = waku_counts[waku_idx]
+        if current_horse <= horse_number < current_horse + count:
+            return waku_idx + 1
+        current_horse += count
+        
+    return None
+
 def fetch_data():
     """
     keiba.db からレース結果・払戻金データを結合して取得する。
@@ -111,6 +135,9 @@ def fetch_data():
     db_url = os.environ.get('DATABASE_URL')
     cutoff_date = (datetime.now() - timedelta(days=365 * ANALYSIS_YEARS)).strftime('%Y-%m-%d')
 
+    # waku_number が NULL になっている2025年以降のデータを含めて集計するため、
+    # SQL側では waku_number BETWEEN 1 AND 8 フィルタを外します（後ほどPython側で復元）。
+    # 代わりに、単勝払戻データが存在するレースのみに集計対象を限定（EXISTS句）します。
     query = f"""
     SELECT 
         r.id AS race_id, 
@@ -135,8 +162,12 @@ def fetch_data():
     WHERE r.course_type IN ('芝', 'ダ')
       AND r.race_date >= '{cutoff_date}'
       AND r.distance IS NOT NULL
-      AND res.waku_number BETWEEN 1 AND 8
       AND res.rank IS NOT NULL
+      AND EXISTS (
+          SELECT 1 FROM race_returns ret_sub 
+          WHERE ret_sub.race_id = r.id 
+            AND ret_sub.bet_type = 'tansho'
+      )
     """
 
     if db_url:
@@ -155,6 +186,21 @@ def fetch_data():
     df['race_date'] = pd.to_datetime(df['race_date'])
     df['rank'] = pd.to_numeric(df['rank'], errors='coerce')
     df['win_payout'] = df['win_payout'].fillna(0) # 払戻金がない（未勝利等）は0
+
+    # 枠番ハイブリッド復元（2025年以降のNULL欠損を補完）
+    if not df.empty:
+        # レースごとの本来の出走頭数 = 馬番の最大値を算出（除外馬対応）
+        race_max_horse = df.groupby('race_id')['horse_number'].transform('max')
+        df['total_horses'] = race_max_horse
+        
+        def restore_waku(row):
+            db_waku = row['waku_number']
+            if pd.notna(db_waku) and 1 <= db_waku <= 8:
+                return int(db_waku)
+            return get_waku_number(row['horse_number'], row['total_horses'])
+            
+        df['waku_number'] = df.apply(restore_waku, axis=1)
+
     return df
 
 def analyze_waku_bias(df):
@@ -257,8 +303,8 @@ def analyze_jockey_bias(df):
         total_win_payout=('win_payout', 'sum')
     ).reset_index()
     
-    # 騎乗回数20回以上に絞る
-    jockey_stats = jockey_stats[jockey_stats['total_runs'] >= 20].copy()
+    # 統計的信頼性を確保するため、騎乗回数30回以上に絞る
+    jockey_stats = jockey_stats[jockey_stats['total_runs'] >= 30].copy()
     
     jockey_stats['win_rate'] = jockey_stats['wins'] / jockey_stats['total_runs']
     jockey_stats['place_rate'] = jockey_stats['places'] / jockey_stats['total_runs']
@@ -468,9 +514,8 @@ def generate_write_order():
 
             print(f"[DataScientist] Anomaly found! Target: {target_keyword} (Score: {row['anomaly_score']:.2f})")
 
-            course_df = df[df['condition'] == condition]
-            period_min = course_df['race_date'].min().strftime('%Y年%m月')
-            period_max = course_df['race_date'].max().strftime('%Y年%m月')
+            period_min = df['race_date'].min().strftime('%Y年%m月')
+            period_max = df['race_date'].max().strftime('%Y年%m月')
             max_runs_val = 0
             key_metrics = []
 

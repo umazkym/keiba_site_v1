@@ -25,9 +25,9 @@ const DEFAULT_ROLE_MODEL_TIERS: Record<string, string[]> = {
     ARTICLE_LLM_MODELS.medium,
   ],
   GEMINI_EDITOR_MODEL_TIERS: [
+    ARTICLE_LLM_MODELS.low,
     ARTICLE_LLM_MODELS.medium,
     ARTICLE_LLM_MODELS.high,
-    ARTICLE_LLM_MODELS.low,
   ],
 };
 

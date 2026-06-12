@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Adsense } from './Adsense';
 import { sendAdImpressionEvent } from '@/lib/analytics';
 import { isManualAdsEnabled } from '@/lib/ad-config';
@@ -14,6 +14,10 @@ type InFeedAdProps = {
     analyticsPlacement?: string;
     /** カードデザインに合わせるための追加CSSクラス */
     className?: string;
+    /** 初回読み込み時に広告リクエストを開始するビューポート外余白 */
+    lazyRootMargin?: string;
+    /** レース切替などの再読み込み時に即時リクエストを許可するビューポート外余白(px) */
+    refreshRootMarginPx?: number;
 };
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
@@ -38,9 +42,15 @@ export const InFeedAd = ({
     refreshKey = '',
     analyticsPlacement = 'infeed',
     className = '',
+    lazyRootMargin = '420px 0px 420px 0px',
+    refreshRootMarginPx = 520,
 }: InFeedAdProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [adUnfilled, setAdUnfilled] = useState(false);
+    const adStyle = useMemo<CSSProperties>(
+        () => ({ display: 'block', minHeight: '160px' }),
+        []
+    );
 
     useEffect(() => {
         setAdUnfilled(false);
@@ -117,10 +127,12 @@ export const InFeedAd = ({
                 client={AD_CLIENT}
                 slot={slot || INFEED_SLOT}
                 refreshKey={refreshKey}
-                style={{ display: 'block', minHeight: '160px' }}
+                style={adStyle}
                 format="fluid"
                 layoutKey={INFEED_LAYOUT_KEY}
                 isResponsive={false}
+                lazyRootMargin={lazyRootMargin}
+                refreshRootMarginPx={refreshRootMarginPx}
             />
         </div>
     );

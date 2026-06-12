@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
+import { ARTICLE_LLM_MODELS, getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
 import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
 
 // APIキーは環境変数から取得
@@ -149,7 +149,8 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - PC検索ではtitleの前半だけで比較されるため、「データ分析」「徹底解説」だけで終わらせず、買い時・疑う条件・当日の確認順序のいずれかを明示する。
 
 【データの正確性（最重要）】
-- 記事に使ってよい数値は、reference_data の key_metrics、course_stats、predictions相当の配列、または race_name / race_date / venue / total_horses / period / condition / sample_size などの明示フィールドに含まれる値だけ。
+- 記事に使ってよい数値は、reference_data の key_metrics、course_stats、predictions相当 of 配列、または race_name / race_date / venue / total_horses / period / condition / sample_size などの明示フィールドに含まれる値だけ。
+- 馬の過去走成績（例：「前走〇〇で2着」「過去に〇〇賞を勝った」など）、対戦成績、個別の脚質（逃げ・差しなど）など、入力である WriteOrder に明記されていない馬の個別事実は絶対に捏造・記述してはならない。WriteOrder に個別馬情報が含まれていない場合は、馬個人のことには一切言及せず、競馬場やコース等のマクロデータ（全体傾向・統計情報）の解説のみに徹底すること。
 - 自分で勝率、回収率、母数、枠順別成績、斤量別成績、脚質別成績、AI偏差値を補完・推測・生成してはならない。
 - reference_data.predictions が空、または has_predictions が false の場合、AI偏差値の具体値、AI偏差値70以上のようなしきい値、上位・下位の断定、予想印（◎○▲△）は書かない。「枠順確定後に出馬表ページで確認する」に留める。
 - AI偏差値や予想印が入力にある場合でも、「軸の筆頭」「信頼度の高い軸」「精度の高い予想」「消し」のような強い表現は使わず、「候補として確認」「相手候補」「評価を下げたい条件」に言い換える。
@@ -388,7 +389,7 @@ async function buildArticleStrategyBrief(order: WriteOrder, genAI: GoogleGenerat
         },
       });
 
-      reserveGeminiRequest({
+      await reserveGeminiRequest({
         scope: 'article',
         model: currentModelName,
         purpose: 'strategy-brief',
@@ -438,9 +439,10 @@ async function expandDraftWithGemma(
 【執筆のルール】
 1. 絶対に架空の数値、成績、馬名などを捏造しない。WriteOrder.reference_dataに明記されている実データ（勝率、複勝率、回収率など）のみを数値根拠として使用すること。データがない場合は、定性的な分析（コース形状の特徴、スタートから最初のコーナーまでの距離、急坂の有無、当日の馬場状態に応じた確認手順など）を詳しく述べる。
 2. 読者が「出馬表で何を確認すべきか」「どのような条件なら評価を上げる/下げるか」という実務的なチェック手順にフォーカスして執筆する。
-3. 煽り表現（「最強」「絶対」「必勝」など）や、AI特有の手癖表現（「いかがでしたか」「今回は〜について解説します」「興味深いことに」など）は一切禁止。
-4. Markdown形式の適切なH2（##）とH3（###）で記述する。
-5. 出力は、追加するセクションのMarkdownテキストのみとすること。前置きや説明は不要。`;
+3. 当日の具体的なオッズ数値や人気の動きについて、予測・断定するような記述（例：「当日は〇〇番人気になる」「オッズは〇〇倍程度」など）は絶対に記述しないこと。具体的な数値を使わず、「人気とのズレ」「オッズの妙味」といった定性的な線引きや、コース固有の普遍的な特徴、出馬表を確認する手順のみに追記を制限すること。
+4. 煽り表現（「最強」「絶対」「必勝」など）や、AI特有の手癖表現（「いかがでしたか」「今回は〜について解説します」「興味深いことに」など）は一切禁止。
+5. Markdown形式の適切なH2（##）とH3（###）で記述する。
+6. 出力は、追加するセクションのMarkdownテキストのみとすること。前置きや説明は不要。`;
 
   const prompt = `以下の現在の記事ドラフトとWriteOrder情報に基づき、記事を補強する新しい詳細なH2セクションを執筆してください。
 追加するセクションは、現在のドラフトの「締めセクション（## このコースの買い目ポイント / ## このレースの買い目ポイント / ## このニュースの確認ポイント）」の直前に安全に挿入できるような構成にしてください。
@@ -467,7 +469,7 @@ ${JSON.stringify(order, null, 2)}
       }
     });
 
-    reserveGeminiRequest({
+    await reserveGeminiRequest({
       scope: 'article',
       model: modelName,
       purpose: 'writer-dynamic-expansion',
@@ -595,7 +597,7 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
         const maxRequestAttempts = geminiRetryAttemptsForModel(currentModelName);
         for (let requestAttempt = 1; requestAttempt <= maxRequestAttempts; requestAttempt++) {
           try {
-            reserveGeminiRequest({
+            await reserveGeminiRequest({
               scope: 'article',
               model: currentModelName,
               purpose: 'writer',
@@ -641,6 +643,36 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
         }
     }
 
+    // すべてのモデルで失敗またはクォータ制限になった場合の Gemma フォールバック
+    if (!result) {
+      console.log(`[Writer] All default model tiers failed or quota exceeded. Attempting automatic fallback to Gemma (${ARTICLE_LLM_MODELS.low})...`);
+      const fallbackModel = ARTICLE_LLM_MODELS.low;
+      const model = genAI.getGenerativeModel({
+        model: fallbackModel,
+        systemInstruction: SYSTEM_PROMPT,
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.8,
+          topK: 40,
+        }
+      });
+      try {
+        await reserveGeminiRequest({
+          scope: 'article',
+          model: fallbackModel,
+          purpose: 'writer-fallback-gemma',
+          target: order.target_keyword,
+        });
+        result = await model.generateContent(prompt);
+        usedModel = fallbackModel;
+        console.log(`[Writer] Fallback to Gemma succeeded: ${usedModel}`);
+        logGeminiUsage(`[Writer-Fallback] ${usedModel}`, result.response);
+      } catch (fallbackErr: any) {
+        console.error(`[Writer Fatal] Gemma fallback also failed: ${fallbackErr.message}`);
+        throw new Error(`すべての生成モデルおよびGemmaフォールバックでの試行が失敗しました。${fallbackErr.message}`);
+      }
+    }
+
     let text = result?.response.text();
 
     if (!text) {
@@ -652,7 +684,33 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
     console.log(`[Writer] Draft length: ${text.replace(/\s/g, '').length} chars`);
 
     // Gemmaによる動的拡張
-    const minChars = parsePositiveInt(process.env.ARTICLE_MIN_BODY_CHARS, 3000);
+    // 記事タイプに応じた文字数閾値の動的判定
+    let minChars = 3000; // デフォルト（フォールバック）
+    const themeCluster = order.theme_cluster || '';
+    const articleType = order.reference_data?.article_type || '';
+    
+    if (
+      themeCluster === 'waku_data' ||
+      themeCluster === 'jockey_data' ||
+      themeCluster === 'popularity_data' ||
+      themeCluster === 'running_style_data' ||
+      themeCluster === 'asset' ||
+      articleType === 'jockey_data' ||
+      articleType === 'popularity_data' ||
+      articleType === 'data'
+    ) {
+      minChars = 1500; // データ・統計系
+    } else if (
+      themeCluster === 'grade_race_preview' ||
+      themeCluster === 'news_context' ||
+      themeCluster === 'race_update' ||
+      articleType === 'grade_race_preview' ||
+      articleType === 'news_context' ||
+      articleType === 'race_update'
+    ) {
+      minChars = 2000; // 重賞・ニュース系
+    }
+
     const plainLen = text.replace(/\s/g, '').length;
 
     if (plainLen < minChars) {

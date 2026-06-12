@@ -3,8 +3,8 @@ import path from 'path';
 import { ARTICLE_LLM_MODELS } from './model_tiers';
 
 const DEFAULT_MODEL_DAILY_LIMITS: Record<string, number> = {
-  [ARTICLE_LLM_MODELS.high]: 20,
-  [ARTICLE_LLM_MODELS.medium]: 20,
+  [ARTICLE_LLM_MODELS.high]: 15,
+  [ARTICLE_LLM_MODELS.medium]: 15,
   [ARTICLE_LLM_MODELS.low]: 1500,
 };
 
@@ -87,12 +87,14 @@ function parseModelLimits(value: string | undefined): Record<string, number> {
   }, { ...DEFAULT_MODEL_DAILY_LIMITS });
 }
 
-export function reserveGeminiRequest(input: {
+let lastNonGemmaRequestTime = 0;
+
+export async function reserveGeminiRequest(input: {
   scope: 'article';
   model: string;
   purpose: string;
   target?: string;
-}): void {
+}): Promise<void> {
   const dateKey = getPacificDateKey();
   const usage = readUsage(dateKey);
   const scopeUsage = usage.scopes[input.scope] || { total: 0, byModel: {}, events: [] };
@@ -115,6 +117,20 @@ export function reserveGeminiRequest(input: {
     );
   }
 
+  // 中性能・高性能モデル (Gemma以外) の呼び出し間に最低 12 秒のインターバルを強制
+  const isGemma = /gemma/i.test(input.model);
+  if (!isGemma) {
+    const now = Date.now();
+    const elapsed = now - lastNonGemmaRequestTime;
+    const minInterval = 12000; // 12秒
+    if (elapsed < minInterval) {
+      const waitMs = minInterval - elapsed;
+      console.log(`[GeminiQuota] Rate limit protection: Sleeping for ${waitMs}ms before requesting ${input.model}...`);
+      await new Promise(resolve => setTimeout(resolve, waitMs));
+    }
+    lastNonGemmaRequestTime = Date.now();
+  }
+
   scopeUsage.total += 1;
   scopeUsage.byModel[input.model] = modelUsage + 1;
   scopeUsage.events.push({
@@ -127,4 +143,20 @@ export function reserveGeminiRequest(input: {
   writeUsage(dateKey, usage);
 
   console.log(`[GeminiQuota] ${input.scope}: ${scopeUsage.total}/${totalLimit} requests reserved for ${input.model}`);
+
+  // モデル監査ログを logs/article_build_audit.json に出力
+  try {
+    const auditPath = path.join(__dirname, '..', '..', '..', 'logs', 'article_build_audit.json');
+    fs.mkdirSync(path.dirname(auditPath), { recursive: true });
+    const auditData = fs.existsSync(auditPath) ? JSON.parse(fs.readFileSync(auditPath, 'utf-8')) : [];
+    auditData.push({
+      timestamp: new Date().toISOString(),
+      model: input.model,
+      purpose: input.purpose,
+      target: input.target || null,
+    });
+    fs.writeFileSync(auditPath, JSON.stringify(auditData, null, 2), 'utf-8');
+  } catch (err: any) {
+    console.error(`[GeminiQuota] Failed to write audit log: ${err.message}`);
+  }
 }

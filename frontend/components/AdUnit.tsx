@@ -31,6 +31,10 @@ type AdUnitProps = {
     minHeight?: string;
     /** 未配信時に枠を畳むか。CLSを抑えるため通常はfalseのまま使う */
     collapseUnfilled?: boolean;
+    /** 初回読み込み時に広告リクエストを開始するビューポート外余白 */
+    lazyRootMargin?: string;
+    /** レース切替などの再読み込み時に即時リクエストを許可するビューポート外余白(px) */
+    refreshRootMarginPx?: number;
 };
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
@@ -62,6 +66,8 @@ export const AdUnit = ({
     refreshKey = '',
     minHeight,
     collapseUnfilled = false,
+    lazyRootMargin,
+    refreshRootMarginPx,
 }: AdUnitProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [adLoaded, setAdLoaded] = useState(false);
@@ -151,6 +157,14 @@ export const AdUnit = ({
 
     const config = placementStyles[placement];
     const reservedMinHeight = minHeight || config.minHeight;
+    const effectiveLazyRootMargin = lazyRootMargin ?? (
+        placement === 'sidebar'
+            ? '500px 0px 500px 0px'
+            : '280px 0px 280px 0px'
+    );
+    const effectiveRefreshRootMarginPx = refreshRootMarginPx ?? (
+        placement === 'sidebar' ? 500 : 360
+    );
     const adStyle = useMemo(
         () => ({ ...placementStyles[placement].adStyle, minHeight: reservedMinHeight }),
         [placement, reservedMinHeight]
@@ -189,6 +203,8 @@ export const AdUnit = ({
                     refreshKey={refreshKey}
                     style={adStyle}
                     isResponsive={true}
+                    lazyRootMargin={effectiveLazyRootMargin}
+                    refreshRootMarginPx={effectiveRefreshRootMarginPx}
                 />
             </div>
         </div>

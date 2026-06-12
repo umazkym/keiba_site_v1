@@ -123,6 +123,7 @@ async function runPipeline() {
   // 最古のwrite_orderから順に処理（未消費のものを優先）
   let attemptedCount = 0;
   let approvedCount = 0;
+  let rejectedStreak = 0; // 連続却下数カウンター
   let stoppedForGeminiLimit = false;
   for (const file of files) {
     const orderPath = path.join(ordersDir, file);
@@ -214,6 +215,7 @@ async function runPipeline() {
       stoppedForGeminiLimit = true;
       break;
     } else if (reviewResult.status === 'REJECTED') {
+      rejectedStreak++;
       if (reviewResult.newDraftPath) {
         console.log(`修正版のファイルが生成されました: ${reviewResult.newDraftPath}`);
       }
@@ -221,11 +223,19 @@ async function runPipeline() {
         ? `editor rejected: ${path.basename(reviewResult.newDraftPath)}`
         : `editor rejected: ${reviewResult.log.slice(0, 120)}`;
       moveToFailed(orderPath, rejectReason);
+
+      if (rejectedStreak >= 3) {
+        console.error(`\n[CRITICAL ERROR] 3回連続で記事が却下（REJECTED）されました。`);
+        console.error("記事品質に系統的な問題が生じている可能性があるため、パイプラインを即座に緊急停止します。\n");
+        process.exit(1);
+      }
+
       if (attemptedCount >= MAX_ARTICLES_PER_RUN) break;
       continue;
     } else if (reviewResult.status === 'APPROVED') {
       console.log(`合格したため、承認済みキューに移動しました: ${reviewResult.newDraftPath}`);
       approvedCount++;
+      rejectedStreak = 0; // 合格時に連続却下カウンターをリセット
     }
 
     // 承認まで進んだwrite_orderのみ消費済みに移動する。

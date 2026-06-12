@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { Adsense } from './Adsense';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { sendAdImpressionEvent } from '../lib/analytics';
@@ -9,6 +9,7 @@ import { isManualAdsEnabled } from '@/lib/ad-config';
 type StickyVariant = 'control' | 'delayed' | 'compact';
 
 const STICKY_VARIANT_KEY = 'mobile_sticky_ad_variant_v2';
+const RACE_PAGE_STICKY_SCROLL_THRESHOLD = 800;
 
 const stickyVariantConfig: Record<StickyVariant, {
     scrollThreshold: number;
@@ -87,11 +88,17 @@ export const MobileStickyAd = () => {
 
         return {
             ...stickyVariantConfig.compact,
-            scrollThreshold: 1400,
-            placement: 'sticky_bottom_race_compact_delayed',
+            // 6/12の実績ではアンカー相当枠の表示回数が少なすぎたため、
+            // レース閲覧を邪魔しない範囲で表示開始を少し早める。
+            scrollThreshold: RACE_PAGE_STICKY_SCROLL_THRESHOLD,
+            placement: 'sticky_bottom_race_compact_balanced',
         };
     }, [isRacePage, variant]);
-    const analyticsVariant = isRacePage ? `${variant}_race_compact_delayed` : variant;
+    const analyticsVariant = isRacePage ? `${variant}_race_compact_balanced` : variant;
+    const stickyAdStyle = useMemo<CSSProperties>(
+        () => ({ display: 'inline-block', width: '100%', height: `${variantConfig.height}px` }),
+        [variantConfig.height]
+    );
 
     // 広告を表示しないページガード
     const noAdPages = [
@@ -228,8 +235,10 @@ export const MobileStickyAd = () => {
                         client="ca-pub-4411270831448240"
                         slot="8529703346" 
                         refreshKey={`mobile-sticky-${pathname}-${raceParam}`}
-                        style={{ display: 'inline-block', width: '100%', height: `${variantConfig.height}px` }}
+                        style={stickyAdStyle}
                         isResponsive={false}
+                        lazyRootMargin="0px 0px 0px 0px"
+                        refreshRootMarginPx={0}
                     />
                 </div>
             </div>

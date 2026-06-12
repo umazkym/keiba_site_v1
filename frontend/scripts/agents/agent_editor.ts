@@ -3,7 +3,7 @@ import path from 'path';
 import matter from 'gray-matter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { checkSEO, SEO_RULES } from './seo_checker';
-import { getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
+import { ARTICLE_LLM_MODELS, getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
 import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
 
 function isApiKeyInvalidError(error: unknown): boolean {
@@ -794,7 +794,7 @@ export function autoRepairDraftMarkdown(markdownText: string): { content: string
   content = normalizeBuyingPointSection(content, data);
   content = ensureH2HeadingsHaveNumbers(content);
   content = ensureNumberInOpening(content, data);
-  content = ensureMinimumBodyLength(content, data);
+  // ensureMinimumBodyLength(content, data) はAIライター側の Gemma 補強に任せるため廃止
   content = normalizeBuyingPointSection(content, data);
   content = ensureH2HeadingsHaveNumbers(content);
   content = sanitizeGeneratedText(content);
@@ -1131,7 +1131,7 @@ async function runSingleGemmaReviewPass(input: {
         },
       });
 
-      reserveGeminiRequest({
+      await reserveGeminiRequest({
         scope: 'article',
         model: currentModelName,
         purpose: `gemma-review-${input.pass.id}-attempt-${input.attempt}`,
@@ -1240,6 +1240,20 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       console.log(`[Editor] Running AI evaluation (Attempt ${attempt})...`);
+      
+      // アテンプトごとのモデル割り当て制御（1, 2はGemma、3は中性能・高性能）
+      let currentModelTiers = modelTiers;
+      if (attempt === 1 || attempt === 2) {
+        currentModelTiers = modelTiers.filter(m => /gemma/i.test(m));
+        if (currentModelTiers.length === 0) {
+          currentModelTiers = [ARTICLE_LLM_MODELS.low];
+        }
+      } else {
+        currentModelTiers = modelTiers.filter(m => !/gemma/i.test(m));
+        if (currentModelTiers.length === 0) {
+          currentModelTiers = [ARTICLE_LLM_MODELS.medium, ARTICLE_LLM_MODELS.high];
+        }
+      }
       const preAttemptRepair = autoRepairDraftMarkdown(currentContent);
       if (preAttemptRepair.changes.length > 0) {
         currentContent = preAttemptRepair.content;
@@ -1276,8 +1290,8 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
       let response: any = null;
       let generateFailed = true;
 
-      for (let i = 0; i < modelTiers.length; i++) {
-        const currentModelName = modelTiers[i];
+      for (let i = 0; i < currentModelTiers.length; i++) {
+        const currentModelName = currentModelTiers[i];
         console.log(`[Editor] Attempt ${attempt} - Trying model: ${currentModelName}`);
         
         const model = genAI.getGenerativeModel({
@@ -1292,19 +1306,19 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
         const maxRequestAttempts = geminiRetryAttemptsForModel(currentModelName);
         for (let requestAttempt = 1; requestAttempt <= maxRequestAttempts; requestAttempt++) {
           try {
-          const parsedForQuota = matter(currentContent);
-          reserveGeminiRequest({
-            scope: 'article',
-            model: currentModelName,
-            purpose: `editor-attempt-${attempt}`,
-            target: parsedForQuota.data.target_keyword || parsedForQuota.data.title,
-          });
-          response = await model.generateContent(prompt);
-          const usageLine = geminiUsageLine(`[Editor] Attempt ${attempt} ${currentModelName}`, response.response);
-          console.log(usageLine);
-          allLogs += `\n[Attempt ${attempt} Token Usage]\n${usageLine}\n`;
-          generateFailed = false;
-          break; // 成功したら次へ
+            const parsedForQuota = matter(currentContent);
+            await reserveGeminiRequest({
+              scope: 'article',
+              model: currentModelName,
+              purpose: `editor-attempt-${attempt}`,
+              target: parsedForQuota.data.target_keyword || parsedForQuota.data.title,
+            });
+            response = await model.generateContent(prompt);
+            const usageLine = geminiUsageLine(`[Editor] Attempt ${attempt} ${currentModelName}`, response.response);
+            console.log(usageLine);
+            allLogs += `\n[Attempt ${attempt} Token Usage]\n${usageLine}\n`;
+            generateFailed = false;
+            break; // 成功したら次へ
           } catch (e: any) {
           if (isApiKeyInvalidError(e)) {
             console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
@@ -1443,6 +1457,40 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
       newDraftPath = filePath.replace('.md', '_revised.md');
       fs.writeFileSync(newDraftPath, currentContent, 'utf-8');
       console.log(`[Editor] Draft was REJECTED after retries. Revised draft saved to: ${newDraftPath}`);
+
+      // 却下ドラフトの data/rejected_articles/ への退避保存
+      try {
+        const rejectedDir = path.join(__dirname, '..', '..', '..', 'data', 'rejected_articles');
+        fs.mkdirSync(rejectedDir, { recursive: true });
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `${path.basename(filePath, '.md')}_${timestamp}.md`;
+        fs.writeFileSync(path.join(rejectedDir, filename), currentContent, 'utf-8');
+        console.log(`[Editor] Rejected draft backed up to: ${path.join(rejectedDir, filename)}`);
+      } catch (err: any) {
+        console.error(`[Editor] Failed to back up rejected draft: ${err.message}`);
+      }
+
+      // logs/editor_rejects.json へのエラー構造化ログ出力
+      try {
+        const rejectsLogPath = path.join(__dirname, '..', '..', '..', 'logs', 'editor_rejects.json');
+        fs.mkdirSync(path.dirname(rejectsLogPath), { recursive: true });
+        const rejectsData = fs.existsSync(rejectsLogPath) ? JSON.parse(fs.readFileSync(rejectsLogPath, 'utf-8')) : [];
+        
+        const parsedMatter = matter(currentContent);
+        const seoResult = checkSEO(currentContent);
+
+        rejectsData.push({
+          timestamp: new Date().toISOString(),
+          filePath,
+          target: parsedMatter.data.target_keyword || parsedMatter.data.title || null,
+          reason: seoResult.errors.join('; '),
+          attemptsCount: 3
+        });
+        fs.writeFileSync(rejectsLogPath, JSON.stringify(rejectsData, null, 2), 'utf-8');
+        console.log(`[Editor] Rejects log updated: ${rejectsLogPath}`);
+      } catch (err: any) {
+        console.error(`[Editor] Failed to write rejects log: ${err.message}`);
+      }
     } else if (finalStatus === 'APPROVED') {
       const approvedDir = path.join(__dirname, '..', '..', 'agents', 'queue', 'approved');
       fs.mkdirSync(approvedDir, { recursive: true });

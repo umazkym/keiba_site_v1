@@ -15,6 +15,10 @@ type AdsenseProps = {
   format?: string;
   /** インフィード広告用のレイアウトキー (data-ad-layout-key) */
   layoutKey?: string;
+  /** 初回読み込み時に広告リクエストを開始するビューポート外余白 */
+  lazyRootMargin?: string;
+  /** レース切替などの再読み込み時に即時リクエストを許可するビューポート外余白(px) */
+  refreshRootMarginPx?: number;
 };
 
 const ADSENSE_SCRIPT_ID = 'uma-adsense-manual-script';
@@ -44,7 +48,18 @@ const ensureAdsenseScript = () => {
   return true;
 };
 
-export const Adsense = ({ client, slot, refreshKey = '', className, style, isResponsive = true, format, layoutKey }: AdsenseProps) => {
+export const Adsense = ({
+  client,
+  slot,
+  refreshKey = '',
+  className,
+  style,
+  isResponsive = true,
+  format,
+  layoutKey,
+  lazyRootMargin = '100px 0px 100px 0px',
+  refreshRootMarginPx = 200,
+}: AdsenseProps) => {
   const pathname = usePathname();
   const adRef = useRef<HTMLDivElement>(null);
   const adLoaded = useRef(false);
@@ -184,7 +199,7 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
     //   「見えないインプレッション」として計上され、Viewable率を壊滅させていた
     if (!isFirstLoad.current) {
       const rect = adContainer.getBoundingClientRect();
-      const isNearViewport = rect.top < window.innerHeight + 200 && rect.bottom > -200;
+      const isNearViewport = rect.top < window.innerHeight + refreshRootMarginPx && rect.bottom > -refreshRootMarginPx;
       
       if (isNearViewport) {
         loadAd();  // 画面内or近辺: 即座にリロード（UX維持）
@@ -204,13 +219,9 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
         }
       },
       {
-        // ★ ビューアビリティ改善: rootMarginを100pxに縮小
-        // 200pxでもActive View viewableが35-50%に留まっていたため、さらに縮小
-        // 100px（約スマホ0.15画面分）に縮小し、ほぼビューポート内に入った時点で読み込み
-        // → ユーザーが実際に閲覧する確率が高い位置でのみ広告がロードされる
-        // データ: report.json分析でViewable率22%の日はRPM¥14, 66%の日はRPM¥32と強い相関
-        // 目標: Active View 35-50% → 55-65%
-        rootMargin: '100px 0px 100px 0px',
+        // 6/12の実績ではPV増に対して広告表示回数/PVが落ちたため、
+        // 自動広告は戻さず、手動枠ごとに先読み幅を調整できるようにする。
+        rootMargin: lazyRootMargin,
         threshold: 0.01,
       }
     );
@@ -220,7 +231,20 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
     return () => {
       observer.disconnect();
     };
-  }, [pathname, refreshKey, client, slot, className, style, isResponsive, scriptReady]);
+  }, [
+    pathname,
+    refreshKey,
+    client,
+    slot,
+    className,
+    style,
+    isResponsive,
+    format,
+    layoutKey,
+    scriptReady,
+    lazyRootMargin,
+    refreshRootMarginPx,
+  ]);
 
   if (!isManualAdsEnabled) return null;
 

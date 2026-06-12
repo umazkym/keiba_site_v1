@@ -205,10 +205,69 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     errors.push(`descriptionが途中で切れている可能性があります。title/descriptionは検索結果で自然に読める文にしてください。`);
   }
 
-  // 3. 文字数（スペース改行を除くおおまかな文字数）
+  // 3. 文字数（スペース改行を除くおおまかな文字数。記事タイプに応じて動的判定）
+  const themeCluster = (data.theme_cluster || '').toString();
+  const articleType = (data.article_type || '').toString();
+  
+  let minChars = 3000; // デフォルト (フォールバック・安全側)
+  if (
+    themeCluster === 'waku_data' ||
+    themeCluster === 'jockey_data' ||
+    themeCluster === 'popularity_data' ||
+    themeCluster === 'running_style_data' ||
+    themeCluster === 'asset' ||
+    articleType === 'jockey_data' ||
+    articleType === 'popularity_data' ||
+    articleType === 'data'
+  ) {
+    minChars = 1500; // データ・統計系
+  } else if (
+    themeCluster === 'grade_race_preview' ||
+    themeCluster === 'news_context' ||
+    themeCluster === 'race_update' ||
+    articleType === 'grade_race_preview' ||
+    articleType === 'news_context' ||
+    articleType === 'race_update'
+  ) {
+    minChars = 2000; // 重賞・ニュース系
+  }
+
   const plainText = content.replace(/\s/g, '');
-  if (plainText.length < SEO_RULES.min_word_count) {
-    errors.push(`本文の文字数が不足: 現在${plainText.length}文字 (最小: ${SEO_RULES.min_word_count})`);
+  if (plainText.length < minChars) {
+    errors.push(`本文の文字数が不足: 現在${plainText.length}文字 (最小: ${minChars}文字, タイプ: ${themeCluster || articleType || 'default'})`);
+  }
+
+  // 重複文検知（30文字以上の同一文の出現）
+  const dupThreshold = Number.parseInt(process.env.ARTICLE_SEO_DUP_CHARS || '30', 10) || 30;
+  if (dupThreshold > 0) {
+    const lines = content.split('\n');
+    const sentences: string[] = [];
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // テーブル行、見出し、空行、箇条書きマーカー等は除外
+      if (trimmed.startsWith('|') || trimmed.startsWith('#') || trimmed === '') {
+        continue;
+      }
+      
+      const parts = trimmed.split(/[。！？]/);
+      for (const part of parts) {
+        // スペースや特定のマークダウン記号、括弧類を除去した純粋な文字列長で評価
+        const clean = part.replace(/\s/g, '').replace(/[、,.\-\[\]()「」]/g, '');
+        if (clean.length >= dupThreshold) {
+          sentences.push(clean);
+        }
+      }
+    }
+    
+    const seen = new Set<string>();
+    for (const s of sentences) {
+      if (seen.has(s)) {
+        errors.push(`本文中に30文字以上の同一文（重複）が検出されました: 「${s.substring(0, 15)}...」`);
+        break;
+      }
+      seen.add(s);
+    }
   }
 
   // 4. レースページへの自然な内部導線

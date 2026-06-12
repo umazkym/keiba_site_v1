@@ -364,8 +364,17 @@ export default function RacePageClient({
                 context="race_after_top_hits"
                 raceType={hasNarRaces ? 'nar' : 'jra'}
                 selectionKey={currentDate}
-                fallback={<InFeedAd refreshKey={`bottom-${currentDate}`} analyticsPlacement="race_after_top_hits" />}
             />
+
+            {hasRaceData && !isLoading && !error && (
+                <InFeedAd
+                    refreshKey={`race-after-top-hits-${currentDate}`}
+                    analyticsPlacement="race_after_top_hits_infeed"
+                    className="mt-1.5 sm:mt-2"
+                    lazyRootMargin="520px 0px 520px 0px"
+                    refreshRootMarginPx={600}
+                />
+            )}
 
             <div className="flex justify-center gap-2 sm:gap-3 my-3 sm:my-4">
                 <Link

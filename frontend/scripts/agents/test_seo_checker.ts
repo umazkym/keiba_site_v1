@@ -1,9 +1,9 @@
 import { checkSEO } from './seo_checker';
 
 const testOnlyFiller = Array.from(
-  { length: 22 },
-  () => '検証用の補足文です。実運用記事ではこのような文章ではなく、出馬表で見る順番、人気とのズレ、馬場や隊列の確認材料を具体化します。ここではSEOチェッカーの文字数条件だけを満たすため、テスト用の本文として残しています。'
-).join('');
+  { length: 120 },
+  (_, i) => `これはテストのダミー文章であり、テスト番号は${i}です。`
+).join('\n');
 
 const validMarkdown = `---
 title: "中山ダート1200m｜8枠複勝率26.8%が教える外枠偏重の買い方"

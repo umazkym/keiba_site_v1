@@ -9,7 +9,7 @@ declare global {
 }
 
 const AD_UNIT_PATH = '/23345285369/uma-free-rewarded-premium';
-const REWARDED_AD_MODE = process.env.NEXT_PUBLIC_REWARDED_AD_MODE ?? 'fallback';
+const REWARDED_AD_MODE = process.env.NEXT_PUBLIC_REWARDED_AD_MODE ?? 'enabled';
 const IS_REWARDED_TEMPORARILY_DISABLED = REWARDED_AD_MODE !== 'enabled';
 const LOADING_TIMEOUT_MS = 5_000;
 const UNAVAILABLE_CACHE_KEY = 'rewarded_ad_unavailable_until';

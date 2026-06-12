@@ -88,13 +88,60 @@ const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
 
 PremiumDetailPlaceholder.displayName = 'PremiumDetailPlaceholder';
 
+const PremiumDetailTeaser = memo(({
+    canUseRewardedAd,
+    isPremiumDetailVisible,
+    onClick,
+}: {
+    canUseRewardedAd: boolean;
+    isPremiumDetailVisible: boolean;
+    onClick: () => void;
+}) => {
+    const buttonLabel = isPremiumDetailVisible
+        ? '詳細データへ移動'
+        : canUseRewardedAd
+            ? '広告を見て詳細データを表示'
+            : '詳細データを表示';
+
+    return (
+        <section className="mb-3 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/80 to-white p-3 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-blue-700">予想表の次に確認したい材料</p>
+                    <h4 className="mt-1 text-sm font-bold leading-tight text-slate-800 sm:text-base">
+                        展開・枠順傾向・過去対決までまとめて確認
+                    </h4>
+                    <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-bold text-slate-500">
+                        <span className="rounded-full border border-blue-100 bg-white px-2 py-1">脚質予測</span>
+                        <span className="rounded-full border border-blue-100 bg-white px-2 py-1">枠順傾向</span>
+                        <span className="rounded-full border border-blue-100 bg-white px-2 py-1">対戦成績</span>
+                        <span className="rounded-full border border-blue-100 bg-white px-2 py-1">データ分析</span>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={onClick}
+                    className="inline-flex min-h-[42px] shrink-0 items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white shadow-sm transition-opacity hover:opacity-90 active:scale-[0.99] sm:min-w-[180px]"
+                >
+                    {buttonLabel}
+                </button>
+            </div>
+        </section>
+    );
+});
+
+PremiumDetailTeaser.displayName = 'PremiumDetailTeaser';
+
 const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, venueActivationKey = 0, isRaceUnlocked, isReady, isLoading, isSupported, unavailableReason, showAd, unlock }: { venue: VenueRaces, raceType: 'jra' | 'nar', articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isRaceUnlocked: (raceId: string) => boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, unavailableReason: string | null, showAd: (context?: RewardedAdContext | string) => boolean, unlock: (raceId?: string) => void }) => {
     const params = useParams();
     const currentDate = params.date as string;
     const gateViewKeysRef = useRef<Set<string>>(new Set());
+    const bridgeViewKeysRef = useRef<Set<string>>(new Set());
     const adAvailabilityKeysRef = useRef<Set<string>>(new Set());
     const premiumViewKeysRef = useRef<Set<string>>(new Set());
     const fallbackKeysRef = useRef<Set<string>>(new Set());
+    const premiumSectionRef = useRef<HTMLDivElement | null>(null);
+    const pendingPremiumScrollRef = useRef(false);
 
     const initialIndex = useMemo(() => {
         if (!initialRaceNumber) return 0;
@@ -172,7 +219,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         return activeRace ? `${venue.venue_name}-${activeRace.race_number}-v${venueActivationKey}` : '';
     }, [venue.venue_name, activeRace, venueActivationKey]);
 
-    const buildRewardContext = useCallback((): RewardedAdContext | null => {
+    const buildRewardContext = useCallback((gatePlacement = 'race_detail_overlay'): RewardedAdContext | null => {
         if (!activeRace) return null;
 
         return {
@@ -181,16 +228,29 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             venue_name: venue.venue_name,
             race_number: activeRace.race_number,
             race_name: activeRace.race_name,
-            gate_placement: 'race_detail_overlay',
+            gate_placement: gatePlacement,
             reward_type: 'race_detail_data',
             ad_status: rewardAdStatus,
             reason: unavailableReason ?? undefined,
         };
     }, [activeRace, currentDate, venue.venue_name, rewardAdStatus, unavailableReason]);
 
-    const handleRewardGateClick = useCallback(() => {
+    const scrollPremiumSectionIntoView = useCallback(() => {
+        if (typeof window === 'undefined') return;
+
+        window.requestAnimationFrame(() => {
+            const node = premiumSectionRef.current;
+            if (!node) return;
+
+            const offset = window.innerWidth < 640 ? 72 : 86;
+            const top = window.scrollY + node.getBoundingClientRect().top - offset;
+            window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        });
+    }, []);
+
+    const handleRewardGateClick = useCallback((gatePlacement = 'race_detail_overlay') => {
         if (!activeRace) return;
-        const context = buildRewardContext();
+        const context = buildRewardContext(gatePlacement);
         if (!context) return;
 
         sendRewardGateEvent('reward_gate_click', context);
@@ -217,6 +277,18 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         });
         unlock(activeRace.id);
     }, [activeRace, buildRewardContext, canUseRewardedAd, isLoading, showAd, unavailableReason, unlock]);
+
+    const handlePremiumTeaserClick = useCallback(() => {
+        if (!activeRace) return;
+
+        if (isPremiumDetailVisible) {
+            scrollPremiumSectionIntoView();
+            return;
+        }
+
+        pendingPremiumScrollRef.current = true;
+        handleRewardGateClick('race_prediction_bridge');
+    }, [activeRace, handleRewardGateClick, isPremiumDetailVisible, scrollPremiumSectionIntoView]);
 
     useEffect(() => {
         if (!activeRace || typeof window === 'undefined') return;
@@ -266,6 +338,20 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
     }, [activeRace, shouldShowRewardGate, buildRewardContext]);
 
     useEffect(() => {
+        if (!activeRace) return;
+        const context = buildRewardContext('race_prediction_bridge');
+        if (!context) return;
+
+        const key = `${activeRace.id}:bridge_view`;
+        if (bridgeViewKeysRef.current.has(key)) return;
+        bridgeViewKeysRef.current.add(key);
+        sendRewardGateEvent('reward_gate_view', {
+            ...context,
+            result: isPremiumDetailVisible ? 'detail_available' : 'detail_locked',
+        });
+    }, [activeRace, buildRewardContext, isPremiumDetailVisible]);
+
+    useEffect(() => {
         if (!activeRace || isActiveRaceUnlocked || !isReady) return;
         if (!isSupported && unavailableReason === 'rewarded_temporarily_disabled') return;
         const context = buildRewardContext();
@@ -281,6 +367,13 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             reason: isSupported ? undefined : unavailableReason ?? 'rewarded_not_available',
         });
     }, [activeRace, isActiveRaceUnlocked, isReady, isSupported, unavailableReason, buildRewardContext]);
+
+    useEffect(() => {
+        if (!pendingPremiumScrollRef.current || !activeRace || !isPremiumDetailVisible || !isPremiumContentReady) return;
+
+        pendingPremiumScrollRef.current = false;
+        scrollPremiumSectionIntoView();
+    }, [activeRace, isPremiumDetailVisible, isPremiumContentReady, scrollPremiumSectionIntoView]);
 
     useEffect(() => {
         if (!activeRace || !isPremiumDetailVisible) return;
@@ -366,6 +459,12 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                         </div>
                     </div>
 
+                    <PremiumDetailTeaser
+                        canUseRewardedAd={canUseRewardedAd}
+                        isPremiumDetailVisible={isPremiumDetailVisible}
+                        onClick={handlePremiumTeaserClick}
+                    />
+
                     <div className="my-3">
                         {(() => {
                             const hasNext = activeRaceIndex < venue.races.length - 1;
@@ -410,6 +509,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                         />
                     )}
 
+                    <div ref={premiumSectionRef}>
                     {/* プレミアム・ロック切り替え部分 */}
                     {(activeRace && isPremiumDetailVisible) ? (
                         !isPremiumContentReady ? (
@@ -556,7 +656,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                         </div>
                                     </div>
                                     <button
-                                        onClick={handleRewardGateClick}
+                                        onClick={() => handleRewardGateClick()}
                                         className="btn-primary w-full text-sm gap-2"
                                     >
                                         {canUseRewardedAd ? (
@@ -569,6 +669,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             </div>
                         </div>
                     ) : null}
+                    </div>
 
                     <DataExplanationPanel showAdvanced={true} />
 

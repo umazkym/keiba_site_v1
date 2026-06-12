@@ -268,7 +268,10 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
 
     useEffect(() => {
         if (!activeRace || isActiveRaceUnlocked || !isReady) return;
-        if (!isSupported && unavailableReason === 'rewarded_temporarily_disabled') return;
+        if (
+            !isSupported &&
+            (unavailableReason === 'rewarded_temporarily_disabled' || unavailableReason === 'rewarded_fullscreen_disabled')
+        ) return;
         const context = buildRewardContext();
         if (!context) return;
 

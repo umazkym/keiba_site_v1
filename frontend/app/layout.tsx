@@ -11,6 +11,7 @@ import { MicrosoftClarity } from "@/components/MicrosoftClarity";
 
 import { Suspense } from "react";
 import { GlobalAdManager } from "@/components/GlobalAdManager";
+import { isAdsenseAutoAdsEnabled } from "@/lib/ad-config";
 
 const inter = Inter({
     subsets: ["latin"],
@@ -133,11 +134,13 @@ export default function RootLayout({
                     }}
                 />
 
-                <script
-                    async
-                    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"
-                    crossOrigin="anonymous"
-                />
+                {isAdsenseAutoAdsEnabled && (
+                    <script
+                        async
+                        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"
+                        crossOrigin="anonymous"
+                    />
+                )}
                 {/* GPT (Google Publisher Tag) for GAM Rewarded Ads
                      ★ パフォーマンス改善: layout.tsxから削除し、useRewardedAd.ts内で動的ロードに変更
                      全ページで約30KB(gzip)のJS読み込みを削減し、Core Web Vitalsを改善

@@ -17,6 +17,33 @@ type AdsenseProps = {
   layoutKey?: string;
 };
 
+const ADSENSE_SCRIPT_ID = 'uma-adsense-manual-script';
+const ADSENSE_SCRIPT_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
+
+const ensureAdsenseScript = () => {
+  if (typeof window === 'undefined') return false;
+
+  const existingAds = (window as any).adsbygoogle;
+  if (!existingAds) {
+    (window as any).adsbygoogle = [];
+  }
+
+  const hasScript =
+    document.getElementById(ADSENSE_SCRIPT_ID) ||
+    document.querySelector(`script[src^="${ADSENSE_SCRIPT_SRC}"]`);
+
+  if (!hasScript) {
+    const script = document.createElement('script');
+    script.id = ADSENSE_SCRIPT_ID;
+    script.async = true;
+    script.src = ADSENSE_SCRIPT_SRC;
+    script.crossOrigin = 'anonymous';
+    document.head.appendChild(script);
+  }
+
+  return true;
+};
+
 export const Adsense = ({ client, slot, refreshKey = '', className, style, isResponsive = true, format, layoutKey }: AdsenseProps) => {
   const pathname = usePathname();
   const adRef = useRef<HTMLDivElement>(null);
@@ -26,20 +53,31 @@ export const Adsense = ({ client, slot, refreshKey = '', className, style, isRes
   const prevPathname = useRef(pathname);
   const isFirstLoad = useRef(true); // 初回読み込みフラグ（lazy load用）
 
-  // GoogleAdSenseスクリプトの初期化を確認
+  // 手動広告枠が必要になった時だけAdSenseスクリプトを読む。
+  // 全ページheadでclient付きスクリプトを先読みすると、自動広告の全画面表示が起動しやすくなるため分離する。
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    ensureAdsenseScript();
+
     const checkScriptReady = () => {
+      if (cancelled) return;
       const ads = (window as any).adsbygoogle;
       // Array.isArray() に加え、スクリプトが即座に読み込まれた場合(オブジェクト化済)の判定も追加
       if (ads && (Array.isArray(ads) || typeof ads.push === 'function' || ads.loaded)) {
         setScriptReady(true);
       } else {
-        const timer = setTimeout(checkScriptReady, 100);
-        return () => clearTimeout(timer);
+        timer = setTimeout(checkScriptReady, 100);
       }
     };
 
     checkScriptReady();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   // refreshKey または pathname が変わったら広告をリフレッシュ準備

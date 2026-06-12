@@ -103,9 +103,9 @@ export function Breadcrumb() {
       className="overflow-hidden"
       aria-label="Breadcrumb"
     >
-      <ol className="flex flex-wrap items-center gap-2 text-sm">
+      <ol className="flex flex-wrap items-center text-xs">
         {breadcrumbs.map((item, index) => (
-          <li key={index} className="flex min-w-0 items-center gap-2">
+          <li key={index} className="flex min-w-0 items-center">
             {item.href ? (
               <>
                 <Link

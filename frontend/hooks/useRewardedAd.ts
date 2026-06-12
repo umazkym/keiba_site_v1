@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { sendRewardGateEvent, type RewardGateEventParams } from '@/lib/analytics';
+import { isRewardedAdsEnabled } from '@/lib/ad-config';
 
 declare global {
     interface Window {
@@ -9,8 +10,7 @@ declare global {
 }
 
 const AD_UNIT_PATH = '/23345285369/uma-free-rewarded-premium';
-const REWARDED_AD_MODE = process.env.NEXT_PUBLIC_REWARDED_AD_MODE ?? 'fallback';
-const IS_REWARDED_TEMPORARILY_DISABLED = REWARDED_AD_MODE !== 'enabled';
+const IS_REWARDED_TEMPORARILY_DISABLED = !isRewardedAdsEnabled;
 const LOADING_TIMEOUT_MS = 5_000;
 const UNAVAILABLE_CACHE_KEY = 'rewarded_ad_unavailable_until';
 const UNAVAILABLE_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -24,7 +24,12 @@ export type RewardedAdUnavailableReason =
     | 'make_rewarded_visible_missing'
     | 'rewarded_recently_unavailable'
     | 'rewarded_temporarily_disabled'
+    | 'rewarded_fullscreen_disabled'
     | null;
+
+const REWARDED_DISABLED_REASON: RewardedAdUnavailableReason = IS_REWARDED_TEMPORARILY_DISABLED
+    ? 'rewarded_fullscreen_disabled'
+    : null;
 
 /**
  * GAM リワード広告のライフサイクルを管理するカスタムフック。
@@ -97,7 +102,7 @@ export function useRewardedAd() {
     const [isLoading, setIsLoading] = useState(!IS_REWARDED_TEMPORARILY_DISABLED);
     const [isSupported, setIsSupported] = useState(!IS_REWARDED_TEMPORARILY_DISABLED);
     const [unavailableReason, setUnavailableReason] = useState<RewardedAdUnavailableReason>(
-        IS_REWARDED_TEMPORARILY_DISABLED ? 'rewarded_temporarily_disabled' : null
+        REWARDED_DISABLED_REASON
     );
 
     // レース単位のアンロック管理
@@ -192,7 +197,7 @@ export function useRewardedAd() {
             setIsSupported(false);
             setIsReady(true);
             setIsLoading(false);
-            setUnavailableReason('rewarded_temporarily_disabled');
+            setUnavailableReason(REWARDED_DISABLED_REASON);
             return;
         }
 

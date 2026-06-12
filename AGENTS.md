@@ -93,6 +93,7 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-06-12**:
+  * **スマホ全画面広告・オファーウォール抑止**: AdSenseの全ページ先読みを停止し、手動広告枠が必要になった時だけスクリプトを遅延読み込みする構成へ変更。`NEXT_PUBLIC_ADSENSE_AUTO_ADS_MODE=manual-only`、`NEXT_PUBLIC_FULLSCREEN_AD_MODE=disabled` を既定とし、GAM Rewarded Adは二重フラグで明示許可しない限り起動しないようにして、スマホで閉じられない全画面動画・オファーウォールの再発リスクを下げた。
   * **RaceTabsデプロイエラー修復**: `RaceTabs.tsx` に欠落していた `handleJraVenueSelect` を復旧し、JRA開催場タブ切り替え時の再描画キー更新とGA計測をNAR側と同等に整理。Vercelデプロイ時の `Cannot find name 'handleJraVenueSelect'` 型エラーを解消し、`npm run build` 成功を確認。
   * **記事生成品質ゲート強化**: `agent_editor.ts` のGemini Editorレスポンスを堅牢なJSON抽出へ変更し、JSONパース失敗やAI Editor非承認時にSEO機械チェックだけで公開承認しないよう修正。Gemma複数観点レビューは構造化メモへ圧縮して最終Editorへ渡し、ノイズ混入を抑制。
   * **検索カニバリ抑制 & 地方重賞対応**: `news_topic_planner.py` に `KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN` を追加し、既定で1実行1レース1本に制限。帝王賞、さきたま杯、関東オークス、JBC、東京大賞典など地方・交流重賞も季節カレンダーとTavilyクエリの対象へ追加。

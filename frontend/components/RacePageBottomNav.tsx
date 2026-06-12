@@ -5,7 +5,6 @@ import { useRaceSectionNavigation, type RaceSectionNavItem } from '@/hooks/useRa
 
 type BottomNavItem = RaceSectionNavItem & {
     label: string;
-    note: string;
     visual: ReactNode;
 };
 
@@ -13,7 +12,6 @@ const bottomNavItems: BottomNavItem[] = [
     {
         key: 'top',
         label: 'TOP',
-        note: '上部',
         targetIds: ['race-page-top'],
         visual: (
             <span className="flex h-4 w-8 items-center justify-center gap-0.5">
@@ -26,7 +24,6 @@ const bottomNavItems: BottomNavItem[] = [
     {
         key: 'prediction',
         label: 'AI偏差値',
-        note: '予想表',
         targetIds: ['race-prediction-heading', 'race-prediction-section'],
         visual: (
             <span className="flex w-8 flex-col gap-0.5">
@@ -39,7 +36,6 @@ const bottomNavItems: BottomNavItem[] = [
     {
         key: 'detail',
         label: 'データ分析',
-        note: '展開',
         targetIds: ['race-detail-heading', 'race-detail-data-section'],
         visual: (
             <span className="flex h-4 w-8 items-end gap-0.5">
@@ -53,7 +49,6 @@ const bottomNavItems: BottomNavItem[] = [
     {
         key: 'matchup',
         label: '対決成績',
-        note: '相性',
         targetIds: ['race-matchup-heading', 'race-matchup-section', 'race-detail-data-section'],
         visual: (
             <span className="grid w-8 grid-cols-3 gap-0.5">
@@ -73,7 +68,7 @@ export function RacePageBottomNav() {
 
     return (
         <nav
-            className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-1.5 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur md:hidden"
+            className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-1 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur md:hidden"
             aria-label="レースページ内ナビゲーション"
         >
             <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
@@ -84,17 +79,15 @@ export function RacePageBottomNav() {
                             key={item.key}
                             type="button"
                             onClick={() => scrollToItem(item)}
-                            className={`flex min-h-[56px] min-w-0 flex-col items-center justify-center rounded-xl px-1 text-center transition-all focus:outline-none focus:ring-2 focus:ring-primary/25 active:scale-[0.98] ${
-                                isActive
+                            className={`flex min-h-[48px] min-w-0 flex-col items-center justify-center rounded-xl px-1 text-center transition-all focus:outline-none focus:ring-2 focus:ring-primary/25 active:scale-[0.98] ${isActive
                                     ? 'bg-primary/10 text-primary'
                                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                            }`}
+                                }`}
                         >
                             <span className={`mb-0.5 flex h-6 w-10 items-center justify-center rounded-lg border ${isActive ? 'border-primary/15 bg-white shadow-sm' : 'border-slate-100 bg-slate-50'}`}>
                                 {item.visual}
                             </span>
                             <span className="w-full truncate text-[10px] font-black leading-tight">{item.label}</span>
-                            <span className="w-full truncate text-[9px] font-bold leading-tight opacity-70">{item.note}</span>
                         </button>
                     );
                 })}

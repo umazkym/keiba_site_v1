@@ -222,7 +222,7 @@ export const AffiliateSlot = ({
                     <h3 className={`${isCompact ? 'text-xs sm:text-[13px]' : 'text-[13px] sm:text-sm'} font-bold leading-tight text-slate-800`}>
                         {campaign.title}
                     </h3>
-                    {campaign.description && (
+                    {campaign.description && !(isCompact && campaign.type === 'voting') && (
                         <p className={`${isCompact ? 'mt-0.5 text-[10px] leading-4 sm:text-[11px]' : 'mt-1 text-[11px] leading-5 sm:text-xs'} text-slate-500`}>
                             {campaign.description}
                         </p>

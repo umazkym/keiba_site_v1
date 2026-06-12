@@ -89,44 +89,100 @@ const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
 PremiumDetailPlaceholder.displayName = 'PremiumDetailPlaceholder';
 
 const PremiumDetailTeaser = memo(({
-    canUseRewardedAd,
     isPremiumDetailVisible,
     onClick,
 }: {
-    canUseRewardedAd: boolean;
     isPremiumDetailVisible: boolean;
     onClick: () => void;
 }) => {
     const buttonLabel = isPremiumDetailVisible
         ? '詳細データへ移動'
-        : canUseRewardedAd
-            ? '広告を見て詳細データを表示'
-            : '詳細データを表示';
+        : '詳細データを下で確認';
 
     return (
-        <section className="mb-3 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/80 to-white p-3 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="border-b border-slate-100 bg-slate-50/60 px-2.5 py-2.5 sm:px-4 sm:py-3">
+            <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold text-blue-700">予想表の次に確認したい材料</p>
-                    <h4 className="mt-1 text-sm font-bold leading-tight text-slate-800 sm:text-base">
-                        展開・枠順傾向・過去対決までまとめて確認
+                    <p className="text-[11px] font-bold text-slate-500">予想表と合わせて見たい材料</p>
+                    <h4 className="mt-0.5 text-sm font-bold leading-tight text-slate-800">
+                        展開・枠順傾向・対戦成績をグラフで確認
                     </h4>
-                    <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-bold text-slate-500">
-                        <span className="rounded-full border border-blue-100 bg-white px-2 py-1">脚質予測</span>
-                        <span className="rounded-full border border-blue-100 bg-white px-2 py-1">枠順傾向</span>
-                        <span className="rounded-full border border-blue-100 bg-white px-2 py-1">対戦成績</span>
-                        <span className="rounded-full border border-blue-100 bg-white px-2 py-1">データ分析</span>
-                    </div>
                 </div>
                 <button
                     type="button"
                     onClick={onClick}
-                    className="inline-flex min-h-[42px] shrink-0 items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white shadow-sm transition-opacity hover:opacity-90 active:scale-[0.99] sm:min-w-[180px]"
+                    className="inline-flex min-h-[34px] shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-primary shadow-sm transition-colors hover:bg-slate-50 active:scale-[0.99]"
                 >
                     {buttonLabel}
                 </button>
             </div>
-        </section>
+            <div className="flex snap-x gap-2 overflow-x-auto scrollbar-hide sm:grid sm:grid-cols-2 lg:grid-cols-4">
+                <div className="flex min-w-[142px] snap-start flex-col rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                    <div className="mb-2 flex items-center gap-2">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
+                            <FlagIcon className="h-4 w-4" />
+                        </span>
+                        <p className="truncate text-[12px] font-bold text-slate-900">脚質予測</p>
+                    </div>
+                    <div className="flex h-10 items-end gap-1 rounded-md bg-slate-50 px-2 pb-1.5 pt-2">
+                        {[68, 42, 74, 52, 35].map((height, index) => (
+                            <div key={index} className="flex flex-1 flex-col items-center justify-end">
+                                <div className="w-full rounded-t bg-emerald-500/80" style={{ height: `${height}%` }} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex min-w-[142px] snap-start flex-col rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                    <div className="mb-2 flex items-center gap-2">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700">
+                            <ChartBarIcon className="h-4 w-4" />
+                        </span>
+                        <p className="truncate text-[12px] font-bold text-slate-900">枠順傾向</p>
+                    </div>
+                    <div className="space-y-1 rounded-md bg-slate-50 p-2">
+                        {[82, 54, 68].map((width, index) => (
+                            <div key={index} className="h-1.5 rounded-full bg-slate-100">
+                                <div className="h-1.5 rounded-full bg-amber-500" style={{ width: `${width}%` }} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex min-w-[142px] snap-start flex-col rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                    <div className="mb-2 flex items-center gap-2">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700">
+                            <UsersIcon className="h-4 w-4" />
+                        </span>
+                        <p className="truncate text-[12px] font-bold text-slate-900">対戦成績</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 rounded-md bg-slate-50 p-1.5 text-center text-[10px] font-bold">
+                        {['+2', '0', '-1', '+1', '+3', '0'].map((value, index) => (
+                            <span
+                                key={`${value}-${index}`}
+                                className={`${value.startsWith('+') ? 'bg-emerald-50 text-emerald-700' : value.startsWith('-') ? 'bg-rose-50 text-rose-700' : 'bg-white text-slate-500'} rounded py-0.5`}
+                            >
+                                {value}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex min-w-[142px] snap-start flex-col rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                    <div className="mb-2 flex items-center gap-2">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700">
+                            <SparklesIcon className="h-4 w-4" />
+                        </span>
+                        <p className="truncate text-[12px] font-bold text-slate-900">分析コメント</p>
+                    </div>
+                    <div className="space-y-1.5 rounded-md bg-slate-50 p-2">
+                        <div className="h-1.5 w-[92%] rounded-full bg-slate-300" />
+                        <div className="h-1.5 w-[74%] rounded-full bg-slate-300" />
+                        <div className="mt-1 flex gap-1">
+                            <span className="rounded bg-white px-1.5 py-0.5 text-[9px] font-bold text-blue-700">展開</span>
+                            <span className="rounded bg-white px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">適性</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 });
 
@@ -136,12 +192,10 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
     const params = useParams();
     const currentDate = params.date as string;
     const gateViewKeysRef = useRef<Set<string>>(new Set());
-    const bridgeViewKeysRef = useRef<Set<string>>(new Set());
     const adAvailabilityKeysRef = useRef<Set<string>>(new Set());
     const premiumViewKeysRef = useRef<Set<string>>(new Set());
     const fallbackKeysRef = useRef<Set<string>>(new Set());
     const premiumSectionRef = useRef<HTMLDivElement | null>(null);
-    const pendingPremiumScrollRef = useRef(false);
 
     const initialIndex = useMemo(() => {
         if (!initialRaceNumber) return 0;
@@ -280,15 +334,8 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
 
     const handlePremiumTeaserClick = useCallback(() => {
         if (!activeRace) return;
-
-        if (isPremiumDetailVisible) {
-            scrollPremiumSectionIntoView();
-            return;
-        }
-
-        pendingPremiumScrollRef.current = true;
-        handleRewardGateClick('race_prediction_bridge');
-    }, [activeRace, handleRewardGateClick, isPremiumDetailVisible, scrollPremiumSectionIntoView]);
+        scrollPremiumSectionIntoView();
+    }, [activeRace, scrollPremiumSectionIntoView]);
 
     useEffect(() => {
         if (!activeRace || typeof window === 'undefined') return;
@@ -338,20 +385,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
     }, [activeRace, shouldShowRewardGate, buildRewardContext]);
 
     useEffect(() => {
-        if (!activeRace) return;
-        const context = buildRewardContext('race_prediction_bridge');
-        if (!context) return;
-
-        const key = `${activeRace.id}:bridge_view`;
-        if (bridgeViewKeysRef.current.has(key)) return;
-        bridgeViewKeysRef.current.add(key);
-        sendRewardGateEvent('reward_gate_view', {
-            ...context,
-            result: isPremiumDetailVisible ? 'detail_available' : 'detail_locked',
-        });
-    }, [activeRace, buildRewardContext, isPremiumDetailVisible]);
-
-    useEffect(() => {
         if (!activeRace || isActiveRaceUnlocked || !isReady) return;
         if (!isSupported && unavailableReason === 'rewarded_temporarily_disabled') return;
         const context = buildRewardContext();
@@ -367,13 +400,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             reason: isSupported ? undefined : unavailableReason ?? 'rewarded_not_available',
         });
     }, [activeRace, isActiveRaceUnlocked, isReady, isSupported, unavailableReason, buildRewardContext]);
-
-    useEffect(() => {
-        if (!pendingPremiumScrollRef.current || !activeRace || !isPremiumDetailVisible || !isPremiumContentReady) return;
-
-        pendingPremiumScrollRef.current = false;
-        scrollPremiumSectionIntoView();
-    }, [activeRace, isPremiumDetailVisible, isPremiumContentReady, scrollPremiumSectionIntoView]);
 
     useEffect(() => {
         if (!activeRace || !isPremiumDetailVisible) return;
@@ -450,6 +476,10 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             </h3>
                             <p className="text-xs sm:text-sm text-gray-500 ml-9 sm:ml-11 font-medium">{activeRace.course_type} {activeRace.distance}m</p>
                         </div>
+                        <PremiumDetailTeaser
+                            isPremiumDetailVisible={isPremiumDetailVisible}
+                            onClick={handlePremiumTeaserClick}
+                        />
                         <div>
                             <h4 className="flex items-center text-sm sm:text-base font-bold text-gray-700 mt-2 mb-1 px-2.5 sm:px-4">
                                 <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
@@ -458,12 +488,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
                         </div>
                     </div>
-
-                    <PremiumDetailTeaser
-                        canUseRewardedAd={canUseRewardedAd}
-                        isPremiumDetailVisible={isPremiumDetailVisible}
-                        onClick={handlePremiumTeaserClick}
-                    />
 
                     <div className="my-3">
                         {(() => {
@@ -497,17 +521,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                         })()}
                         <RaceNavigation />
                     </div>
-
-                    {/* 予想表確認後の自然な区切りに、地方競馬では楽天競馬のPR導線を出す */}
-                    {shouldShowAd && (
-                        <AffiliateSlot
-                            context="race_after_prediction"
-                            raceType={raceType}
-                            venueName={venue.venue_name}
-                            selectionKey={adRefreshKey}
-                            variant={raceType === 'nar' ? 'compact' : 'default'}
-                        />
-                    )}
 
                     <div ref={premiumSectionRef}>
                     {/* プレミアム・ロック切り替え部分 */}
@@ -807,13 +820,6 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
             {nar.length > 0 && (
                 <TabPanel>
                     <div className="p-0 sm:p-2 md:p-3 relative">
-                        <AffiliateSlot
-                            context="race_nar_overview"
-                            raceType="nar"
-                            selectionKey={`${currentDate}-nar-overview`}
-                            variant="compact"
-                            className="mb-3"
-                        />
                         <Tabs defaultIndex={initialNarVenueIndex} onSelect={handleNarVenueSelect} forceRenderTabPanel={false}>
                             <TabList className={venueTabListClass}>
                                 {nar.map(venue => <Tab key={venue.venue_name} className={venueTabClass} selectedClassName={venueSelectedTabClass}>{venue.venue_name}</Tab>)}

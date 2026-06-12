@@ -1,5 +1,4 @@
 export type AffiliateContext =
-    | 'race_nar_overview'
     | 'race_after_prediction'
     | 'race_after_premium_data'
     | 'race_after_top_hits'
@@ -60,10 +59,10 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         id: 'rakuten-keiba-default',
         enabled: true,
         type: 'voting',
-        title: '楽天競馬でこのレースのオッズを確認する',
-        description: '地方競馬のオッズ確認や投票に対応しています。楽天会員であれば登録手続きも進めやすいサービスです。',
+        title: '楽天競馬でオッズ確認',
+        description: '地方競馬のオッズ確認に対応しています。',
         attention: DEFAULT_VOTING_NOTICE,
-        contexts: ['race_nar_overview', 'race_after_prediction', 'race_after_premium_data', 'race_after_top_hits', 'home_nar_voting'],
+        contexts: ['race_after_premium_data', 'home_nar_voting'],
         weight: 520,
         raceScope: {
             raceTypes: ['nar'],
@@ -72,7 +71,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
             {
                 id: 'rakuten-keiba-main',
                 provider: 'rakuten_keiba',
-                label: '楽天競馬でオッズを確認',
+                label: '楽天競馬で確認',
                 url: 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641',
                 enabled: true,
             },

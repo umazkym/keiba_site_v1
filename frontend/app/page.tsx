@@ -274,7 +274,7 @@ export default async function HomePage() {
                             <span className="text-white">無料で確認</span>
                         </h1>
                         <p>
-                            AI偏差値・展開予測・過去対決を1ページに集約。中央・地方全レースのデータを毎朝更新しています。
+                            AI偏差値・展開予測・対戦成績を集約。中央・地方全レースのデータを毎日更新しています。
                         </p>
 
                         <div className="hero-stats">
@@ -289,11 +289,6 @@ export default async function HomePage() {
                                 今日のAI分析を見る <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
                             </Link>
                         </div>
-                        {raceDaySummary.firstRaceLabel && (
-                            <div className="mt-2 sm:mt-3 max-w-full truncate rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-slate-300 sm:px-3 sm:text-xs">
-                                最初に表示されるレース: {raceDaySummary.firstRaceLabel}
-                            </div>
-                        )}
                     </div>
                 </section>
 

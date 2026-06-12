@@ -28,6 +28,34 @@ const VENUE_SLUGS: Record<string, string> = {
     ばんえい帯広: 'obihiro',
 };
 
+const VENUE_SLUG_LABELS: Record<string, string> = {
+    sapporo: '札幌',
+    hakodate: '函館',
+    fukushima: '福島',
+    niigata: '新潟',
+    tokyo: '東京',
+    nakayama: '中山',
+    chukyo: '中京',
+    kyoto: '京都',
+    hanshin: '阪神',
+    kokura: '小倉',
+    monbetsu: '門別',
+    morioka: '盛岡',
+    mizusawa: '水沢',
+    urawa: '浦和',
+    funabashi: '船橋',
+    ohi: '大井',
+    kawasaki: '川崎',
+    kanazawa: '金沢',
+    kasamatsu: '笠松',
+    nagoya: '名古屋',
+    sonoda: '園田',
+    himeji: '姫路',
+    kochi: '高知',
+    saga: '佐賀',
+    obihiro: '帯広ば',
+};
+
 export const RACE_INDEX_PAST_DAYS = 14;
 export const RACE_INDEX_FUTURE_DAYS = 2;
 
@@ -41,6 +69,20 @@ export function normalizeVenueName(venueName: string): string {
 export function venueNameToSlug(venueName: string): string {
     const normalized = normalizeVenueName(venueName);
     return VENUE_SLUGS[normalized] ?? encodeURIComponent(normalized.toLowerCase());
+}
+
+export function venueSlugToName(venueSlug: string): string | null {
+    try {
+        const decodedSlug = decodeURIComponent(venueSlug).trim();
+        const normalizedSlug = decodedSlug.toLowerCase();
+        if (VENUE_SLUG_LABELS[normalizedSlug]) {
+            return VENUE_SLUG_LABELS[normalizedSlug];
+        }
+
+        return /^[a-z0-9-]+$/.test(normalizedSlug) ? null : decodedSlug;
+    } catch {
+        return null;
+    }
 }
 
 export function isVenueSlugForName(slug: string, venueName: string): boolean {

@@ -3,13 +3,19 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { formatDate } from '@/lib/utils';
+import { isValidRaceDate, parseRaceNumberParam, venueSlugToName } from '@/lib/race-url';
 
 interface BreadcrumbItem {
   label: string;
   href: string;
 }
 
-export function Breadcrumb() {
+type BreadcrumbProps = {
+  items?: BreadcrumbItem[];
+};
+
+export function Breadcrumb({ items }: BreadcrumbProps = {}) {
   const pathname = usePathname();
   const [articleTitle, setArticleTitle] = useState<string | null>(null);
 
@@ -31,8 +37,48 @@ export function Breadcrumb() {
     }
   }, [pathname]);
 
+  const generateRaceBreadcrumbs = (segments: string[]): BreadcrumbItem[] | null => {
+    if (segments[0] !== 'races') return null;
+
+    const breadcrumbs: BreadcrumbItem[] = [
+      { label: 'ホーム', href: '/' },
+      { label: 'レース分析', href: '/races/today' },
+    ];
+    const dateSegment = segments[1];
+
+    if (!dateSegment) {
+      return [
+        { label: 'ホーム', href: '/' },
+        { label: 'レース分析', href: '' },
+      ];
+    }
+
+    if (dateSegment === 'today') {
+      breadcrumbs.push({ label: '本日のレース分析', href: '' });
+      return breadcrumbs;
+    }
+
+    if (!isValidRaceDate(dateSegment)) return null;
+
+    const dateLabel = `${formatDate(dateSegment)}のレース分析`;
+    const venueName = segments[2] ? venueSlugToName(segments[2]) : null;
+    const raceNumber = parseRaceNumberParam(segments[3]);
+
+    if (venueName && raceNumber) {
+      breadcrumbs.push({ label: dateLabel, href: `/races/${dateSegment}` });
+      breadcrumbs.push({ label: `${venueName}${raceNumber}R`, href: '' });
+      return breadcrumbs;
+    }
+
+    breadcrumbs.push({ label: dateLabel, href: '' });
+    return breadcrumbs;
+  };
+
   const generateBreadcrumbs = (): BreadcrumbItem[] => {
     const segments = pathname.split('/').filter(Boolean);
+    const raceBreadcrumbs = generateRaceBreadcrumbs(segments);
+    if (raceBreadcrumbs) return raceBreadcrumbs;
+
     const breadcrumbs: BreadcrumbItem[] = [
       { label: 'ホーム', href: '/' }
     ];
@@ -91,7 +137,7 @@ export function Breadcrumb() {
     return breadcrumbs;
   };
 
-  const breadcrumbs = generateBreadcrumbs();
+  const breadcrumbs = items && items.length > 0 ? items : generateBreadcrumbs();
 
   // ホームページのみの場合は表示しない
   if (breadcrumbs.length <= 1) {

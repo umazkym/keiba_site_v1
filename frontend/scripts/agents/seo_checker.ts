@@ -179,6 +179,13 @@ export function checkSEO(markdownText: string): SEOCheckResult {
 
   // 1. タイトルチェック
   const title = (data.title || '').toString();
+  
+  // 過去年＋「最新」の混同チェック
+  const pastYearLatestPattern = /(?:19\d{2}|20[0-2][0-5])\s*年?\s*(?:度|の)?\s*(?:情報|データ|版)?\s*最新|最新\s*(?:情報|データ|版)?\s*(?:19\d{2}|20[0-2][0-5])\s*年?/i;
+  if (pastYearLatestPattern.test(title)) {
+    errors.push(`titleに過去の集計年と「最新」が混同した不整合表現が含まれています（例: 【2024年最新】）。集計期間を明示した表現（例: 【2024年データ分析】）に変更してください。`);
+  }
+
   if (title.length < SEO_RULES.title_min_chars) {
     errors.push(`title文字数が不足: 現在${title.length}文字 (最小: ${SEO_RULES.title_min_chars})`);
   }
@@ -192,6 +199,9 @@ export function checkSEO(markdownText: string): SEOCheckResult {
 
   // 2. ディスクリプションチェック
   const description = (data.description || '').toString();
+  if (pastYearLatestPattern.test(description)) {
+    errors.push(`descriptionに過去の集計年と「最新」が混同した不整合表現が含まれています。`);
+  }
   if (description.length < SEO_RULES.description_min_chars) {
     errors.push(`description文字数が不足: 現在${description.length}文字 (最小: ${SEO_RULES.description_min_chars})`);
   }
@@ -328,6 +338,10 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     const first100 = plainText.substring(0, 100);
     if (!/\d/.test(first100)) {
       errors.push(`本文の冒頭100文字以内に数字が含まれていません。(1文目で核心データを提示してください)`);
+    }
+    const pastYearLatestPattern = /(?:19\d{2}|20[0-2][0-5])\s*年?\s*(?:度|の)?\s*(?:情報|データ|版)?\s*最新|最新\s*(?:情報|データ|版)?\s*(?:19\d{2}|20[0-2][0-5])\s*年?/i;
+    if (pastYearLatestPattern.test(first100)) {
+      errors.push(`本文の冒頭100文字以内に過去の集計年と「最新」が混同した不整合表現が含まれています。`);
     }
   }
 

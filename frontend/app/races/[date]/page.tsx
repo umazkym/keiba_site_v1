@@ -176,7 +176,13 @@ export default async function RacePage({ params }: { params: { date: string } })
                 ]}
             />
 
-            <Breadcrumb />
+            <Breadcrumb
+                items={[
+                    { label: 'ホーム', href: '/' },
+                    { label: 'レース分析', href: '/races/today' },
+                    { label: `${formattedDate}のレース分析`, href: '' },
+                ]}
+            />
 
             <Suspense fallback={<RacePageSkeleton />}>
                 <RacePageClient

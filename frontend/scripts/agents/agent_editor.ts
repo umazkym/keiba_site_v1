@@ -4,7 +4,7 @@ import matter from 'gray-matter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { checkSEO, SEO_RULES } from './seo_checker';
 import { ARTICLE_LLM_MODELS, getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
-import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
+import { GeminiQuotaExceededError, reserveGeminiRequest, rollbackGeminiRequest, recordTokenUsage } from './gemini_quota';
 
 function isApiKeyInvalidError(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error || '');
@@ -231,11 +231,98 @@ function sanitizeGeneratedText(input: string): string {
     text = replaceLiteral(text, banned, BANNED_REPLACEMENTS[banned] ?? '');
   }
 
+  // 装飾記号の機械的除去
+  text = text.replace(/[☆★◆◇▲▼△▽▶◀■□●○※]/g, '');
+  // 過剰な【】の整理（重複の圧縮および空ブラケットの除去）
+  text = text.replace(/【+/g, '【').replace(/】+/g, '】').replace(/【\s*】/g, '');
+
   return repairAwkwardReplacementArtifacts(text)
     .replace(/[ \t]+$/gm, '')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+const PHYSICAL_SPECS = new Set<number>([
+  473.6, 356.5, 352.7, 403.7, 328.4, 329.1, 525.9, 501.6, 310.0, 308.0,
+  658.7, 358.7, 353.9, 293.0, 291.3, 292.0, 295.7, 412.5, 410.7, 266.1,
+  264.3, 262.1, 260.3,
+  1.8, 1.9, 1.6, 2.7, 3.0, 2.1, 2.4, 5.3, 4.4, 0.0, 0.6, 3.5, 0.7, 0.9, 3.4
+]);
+
+function isCriticalReplacement(original: string, fixed: string): boolean {
+  // 数値が含まれるか？
+  const origNums = (original.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+  const fixNums = (fixed.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+  
+  // 数値のリストが異なる（数値が変わっている、増えている、減っているなど）場合はCritical
+  if (JSON.stringify(origNums) !== JSON.stringify(fixNums)) {
+    return true;
+  }
+  
+  // 日付関連キーワード、最新、などの変更がある場合はCritical
+  const dateKeywords = /[年月日]|最新|予想|印|偏差値/i;
+  if (dateKeywords.test(original) || dateKeywords.test(fixed)) {
+    return true;
+  }
+  
+  // それ以外はCosmetic（例：「非常に高い」→「かなり高い」のような文字表現のみの置換失敗など）
+  return false;
+}
+
+function extractNumbersFromEvidence(data: any): Set<number> {
+  const numbers = new Set<number>();
+  const str = JSON.stringify(data);
+  const matches = str.match(/\d+(?:\.\d+)?/g);
+  if (matches) {
+    for (const m of matches) {
+      const num = Number(m);
+      if (!Number.isNaN(num)) {
+        numbers.add(num);
+      }
+    }
+  }
+  return numbers;
+}
+
+function checkFixedValueHallucination(fixed: string, evidenceNumbers: Set<number>): { hasHallucination: boolean, details?: string } {
+  // パターン 1: 騎手名等.*?(\d+\.?\d*)[%％] (勝率・回収率)
+  const pattern1 = /(?:勝率|回収率|複勝率|好走率)[^%％0-9]*?(\d+(?:\.\d+)?)\s*[%％]/g;
+  // パターン 2: 直線.*?(\d+\.?\d*)m または 高低差.*?(\d+\.?\d*)m
+  const pattern2 = /(?:直線|高低差).*?(\d+(?:\.\d+)?)\s*m/g;
+  // パターン 3: (\d+)回.*?(勝率|回収|複勝|騎乗)
+  const pattern3 = /(\d+)\s*回[^回]*?(?:勝率|回収率|複勝率|騎乗)/g;
+
+  let match;
+  
+  // パターン1のチェック
+  pattern1.lastIndex = 0;
+  while ((match = pattern1.exec(fixed)) !== null) {
+    const val = Number(match[1]);
+    if (!evidenceNumbers.has(val)) {
+      return { hasHallucination: true, details: `勝率・回収率系の数値 ${val}% がEvidence Packに存在しません。` };
+    }
+  }
+
+  // パターン2のチェック (物理スペック、例外あり)
+  pattern2.lastIndex = 0;
+  while ((match = pattern2.exec(fixed)) !== null) {
+    const val = Number(match[1]);
+    if (!evidenceNumbers.has(val) && !PHYSICAL_SPECS.has(val)) {
+      return { hasHallucination: true, details: `コース物理諸元の数値 ${val}m がEvidence Packおよび正規コーススペックに存在しません。` };
+    }
+  }
+
+  // パターン3のチェック (実績回数)
+  pattern3.lastIndex = 0;
+  while ((match = pattern3.exec(fixed)) !== null) {
+    const val = Number(match[1]);
+    if (!evidenceNumbers.has(val)) {
+      return { hasHallucination: true, details: `実績・騎乗回数の数値 ${val}回 がEvidence Packに存在しません。` };
+    }
+  }
+
+  return { hasHallucination: false };
 }
 
 function normalizeHref(href: string): string | null {
@@ -827,6 +914,8 @@ STEP 2：構造チェック
 STEP 3：フォーマットとSEOのチェック
 ・タイトルの文字数（30〜50文字）と構成
 ・ディスクリプションの文字数（120〜160文字）
+※過去の集計年（2024年など）と「最新」という単語を近接させて混同した表記（例：【2024年最新】、【2025年最新】など）は機械チェックで即却下されるため【絶対に禁止】する。タイトル、ディスクリプション、本文冒頭でこのような混同表現を見つけた場合は必ず削除・修正すること。
+※代わりに、集計期間であることを明示した代替許容表現（例：【2024年データ分析】、【2024年集計】、2024年実績、など）に書き換えること。
 ※もし「事前の機械チェック結果」でエラーが指摘されている場合は、必ずそれを満たすようにtitleとdescriptionを修正すること。
 ※関連記事プレースホルダーは要求しない。本文中に「関連記事」セクションや「[関連記事：...]」は追加しないこと。
 ※存在確認できないURL、仮URL、単独行の「(/course-xxx)」のような壊れたリンク片は必ず削除すること。
@@ -865,7 +954,8 @@ function sleep(ms: number): Promise<void> {
 
 function geminiRetryAttemptsForModel(modelName: string): number {
   if (/gemma/i.test(modelName)) return 1;
-  return Math.min(3, parsePositiveInt(process.env.ARTICLE_LLM_RETRY_ATTEMPTS, 2));
+  // 503エラー時等の高速フォールバックのため、リトライは最大1回（計2回）に制限
+  return 2;
 }
 
 function geminiRetryDelayMs(requestAttempt: number): number {
@@ -899,6 +989,8 @@ const GEMMA_REVIEW_SYSTEM_PROMPT = `あなたはUMA-FREEの副編集者だ。
 
 【厳守】
 - 本文全文の書き直しはしない。
+- 記事のタイトル（title）および主要見出し（H2）自体の表現変更の提案（rewrite_notes等への記載）は全面禁止する。タイトルと見出しは現状を維持すること。
+- 過去の集計年（2024年など）と「最新」という単語を近接させて混同した表記（例：【2024年最新】など）の提案は【絶対に禁止】する。代わりに、【2024年データ分析】、【2024年集計】、2024年実績などの、集計期間・実績データを明示した代替表現を提案すること。
 - 入力にない数値、馬名、成績、外部事実を作らない。
 - 表の列や行を増やす提案は、入力データに同じ値がある場合だけに限る。
 - 煽り、購入を急かす表現、過度な断定を避ける。
@@ -1034,10 +1126,17 @@ function toBriefItems(value: unknown, limit = 5): string[] {
     .slice(0, limit);
 }
 
-function normalizeGemmaReviewResponse(rawText: string, pass: GemmaReviewPass, model: string): { brief: string; logText: string } {
+function normalizeGemmaReviewResponse(rawText: string, pass: GemmaReviewPass, model: string): { brief: string; logText: string; malformed: boolean } {
   try {
     const parsed = parseModelJsonObject(rawText);
-    const status = String(parsed?.status || 'UNKNOWN').trim();
+    let status = String(parsed?.status || 'UNKNOWN').trim();
+    let malformed = false;
+    
+    if (status === 'UNKNOWN') {
+      status = 'NEEDS_WORK';
+      malformed = true;
+    }
+    
     const lines: string[] = [`### ${pass.label} (${model})`, `status: ${status}`];
 
     const priorityActions = toBriefItems(parsed?.priority_actions, 5);
@@ -1082,17 +1181,17 @@ function normalizeGemmaReviewResponse(rawText: string, pass: GemmaReviewPass, mo
     }
 
     const brief = lines.join('\n');
-    return { brief, logText: brief };
+    return { brief, logText: brief, malformed };
   } catch (e: any) {
     const compacted = compactGemmaReviewText(rawText, 900);
     const fallback = [
       `### ${pass.label} (${model})`,
-      `status: PARSE_FAILED`,
+      `status: NEEDS_WORK`,
       `risk_notes:`,
       `- GemmaレビューのJSON抽出に失敗したため、本文への反映は限定する。${e.message || String(e)}`,
       compacted ? `raw_excerpt: ${compacted}` : '',
     ].filter(Boolean).join('\n');
-    return { brief: fallback, logText: fallback };
+    return { brief: fallback, logText: fallback, malformed: true };
   }
 }
 
@@ -1119,6 +1218,7 @@ async function runSingleGemmaReviewPass(input: {
   ].join('\n');
 
   for (const currentModelName of modelTiers) {
+    let reserved = false;
     try {
       console.log(`[GemmaReview] Attempt ${input.attempt} ${input.pass.label} - Trying model: ${currentModelName}`);
       const model = input.genAI.getGenerativeModel({
@@ -1137,6 +1237,7 @@ async function runSingleGemmaReviewPass(input: {
         purpose: `gemma-review-${input.pass.id}-attempt-${input.attempt}`,
         target: input.target,
       });
+      reserved = true;
       const response = await model.generateContent(prompt);
       const usageLog = geminiUsageLine(
         `[GemmaReview] Attempt ${input.attempt} ${input.pass.id} ${currentModelName}`,
@@ -1144,12 +1245,33 @@ async function runSingleGemmaReviewPass(input: {
       );
       console.log(usageLog);
 
+      const usage = response.response.usageMetadata;
+      if (usage) {
+        await recordTokenUsage({
+          scope: 'article',
+          model: currentModelName,
+          promptTokens: usage.promptTokenCount ?? 0,
+          outputTokens: usage.candidatesTokenCount ?? 0,
+          totalTokens: usage.totalTokenCount ?? 0,
+          target: input.target,
+        });
+      }
+
       return {
         responseText: response.response.text() || '',
         usageLog,
         model: currentModelName,
       };
     } catch (e: any) {
+      if (reserved) {
+        await rollbackGeminiRequest({
+          scope: 'article',
+          model: currentModelName,
+          purpose: `gemma-review-${input.pass.id}-attempt-${input.attempt}`,
+          target: input.target,
+        });
+        reserved = false;
+      }
       if (isApiKeyInvalidError(e)) {
         console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
         console.error(`Google AI Studioで新しいAPIキーを再生成し、.env または GitHub Secrets の GEMINI_API_KEY に設定し直してください。\n`);
@@ -1192,6 +1314,7 @@ async function buildGemmaReviewBrief(input: {
 
   const briefParts: string[] = [];
   const logParts: string[] = [`\n[GemmaReview] Attempt ${input.attempt}: ${maxPasses} passes\n`];
+  let hasMalformed = false;
 
   for (const pass of GEMMA_REVIEW_PASSES.slice(0, maxPasses)) {
     const result = await runSingleGemmaReviewPass({ ...input, pass });
@@ -1203,6 +1326,13 @@ async function buildGemmaReviewBrief(input: {
     const normalized = normalizeGemmaReviewResponse(result.responseText, pass, result.model);
     briefParts.push(normalized.brief);
     logParts.push(`- ${pass.label}: ${result.model}\n  ${result.usageLog}\n${normalized.logText}`);
+    if (normalized.malformed) {
+      hasMalformed = true;
+    }
+  }
+
+  if (hasMalformed) {
+    logParts.push(`\n[GemmaReview Warning] malformed_gemma_response: true\n`);
   }
 
   return {
@@ -1304,48 +1434,75 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
         });
 
         const maxRequestAttempts = geminiRetryAttemptsForModel(currentModelName);
+        let reserved = false;
         for (let requestAttempt = 1; requestAttempt <= maxRequestAttempts; requestAttempt++) {
           try {
             const parsedForQuota = matter(currentContent);
+            const targetStr = parsedForQuota.data.target_keyword || parsedForQuota.data.title || 'editor-target';
             await reserveGeminiRequest({
               scope: 'article',
               model: currentModelName,
               purpose: `editor-attempt-${attempt}`,
-              target: parsedForQuota.data.target_keyword || parsedForQuota.data.title,
+              target: targetStr,
             });
+            reserved = true;
             response = await model.generateContent(prompt);
             const usageLine = geminiUsageLine(`[Editor] Attempt ${attempt} ${currentModelName}`, response.response);
             console.log(usageLine);
             allLogs += `\n[Attempt ${attempt} Token Usage]\n${usageLine}\n`;
+            
+            const usage = response.response.usageMetadata;
+            if (usage) {
+              await recordTokenUsage({
+                scope: 'article',
+                model: currentModelName,
+                promptTokens: usage.promptTokenCount ?? 0,
+                outputTokens: usage.candidatesTokenCount ?? 0,
+                totalTokens: usage.totalTokenCount ?? 0,
+                target: targetStr,
+              });
+            }
+
             generateFailed = false;
             break; // 成功したら次へ
           } catch (e: any) {
-          if (isApiKeyInvalidError(e)) {
-            console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
-            console.error(`Google AI Studioで新しいAPIキーを再生成し、.env または GitHub Secrets の GEMINI_API_KEY に設定し直してください。\n`);
-            throw e;
-          }
-          if (e instanceof GeminiQuotaExceededError) {
-            console.error(`[Editor Warning] ${currentModelName} quota guard: ${e.message}`);
-            if (e.kind === 'total' || i === modelTiers.length - 1) {
+            if (reserved) {
+              const parsedForQuota = matter(currentContent);
+              const targetStr = parsedForQuota.data.target_keyword || parsedForQuota.data.title || 'editor-target';
+              await rollbackGeminiRequest({
+                scope: 'article',
+                model: currentModelName,
+                purpose: `editor-attempt-${attempt}`,
+                target: targetStr,
+              });
+              reserved = false;
+            }
+            if (isApiKeyInvalidError(e)) {
+              console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
+              console.error(`Google AI Studioで新しいAPIキーを再生成し、.env または GitHub Secrets の GEMINI_API_KEY に設定し直してください。\n`);
               throw e;
             }
-            break;
-          }
-          console.error(`[Editor Warning] ${currentModelName} failed: ${e.message}`);
-          allLogs += `\n[Editor Warning] ${currentModelName} failed: ${e.message}\n`;
-          lastApiErrorMessage = e.message || String(e);
-          if (isRetryableGeminiError(e)) {
-            retryableApiFailure = true;
-            if (requestAttempt < maxRequestAttempts) {
-              const waitMs = geminiRetryDelayMs(requestAttempt);
-              console.warn(`[Editor] ${currentModelName} retryable failure. Retrying in ${waitMs}ms (${requestAttempt + 1}/${maxRequestAttempts})...`);
-              allLogs += `[Editor Retry] ${currentModelName} retrying in ${waitMs}ms (${requestAttempt + 1}/${maxRequestAttempts})\n`;
-              await sleep(waitMs);
-              continue;
+            if (e instanceof GeminiQuotaExceededError) {
+              console.error(`[Editor Warning] ${currentModelName} quota guard: ${e.message}`);
+              if (e.kind === 'total' || i === modelTiers.length - 1) {
+                throw e;
+              }
+              break;
             }
-          }
-          break;
+            console.error(`[Editor Warning] ${currentModelName} failed: ${e.message}`);
+            allLogs += `\n[Editor Warning] ${currentModelName} failed: ${e.message}\n`;
+            lastApiErrorMessage = e.message || String(e);
+            if (isRetryableGeminiError(e)) {
+              retryableApiFailure = true;
+              if (requestAttempt < maxRequestAttempts) {
+                const waitMs = geminiRetryDelayMs(requestAttempt);
+                console.warn(`[Editor] ${currentModelName} retryable failure. Retrying in ${waitMs}ms (${requestAttempt + 1}/${maxRequestAttempts})...`);
+                allLogs += `[Editor Retry] ${currentModelName} retrying in ${waitMs}ms (${requestAttempt + 1}/${maxRequestAttempts})\n`;
+                await sleep(waitMs);
+                continue;
+              }
+            }
+            break;
           }
         }
         if (!generateFailed) {
@@ -1384,6 +1541,8 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
 
       let tmpContent = parsedMatter.content;
       let replacementFailed = false;
+      let hasCriticalFailed = false;
+      const evidenceNumbers = extractNumbersFromEvidence(parsedMatter.data);
 
       if (parsedJson.content_replacements && Array.isArray(parsedJson.content_replacements)) {
         for (const rep of parsedJson.content_replacements) {
@@ -1393,10 +1552,35 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
               allLogs += `\n[Editor Protective] AIが表(\`| --- \`)を置換・削除しようとしたため、プログラムが強制ブロックしました。\n`;
               continue;
             }
+
+            // fixed側の数値ハルシネーションチェック
+            const hallucinationCheck = checkFixedValueHallucination(rep.fixed, evidenceNumbers);
+            if (hallucinationCheck.hasHallucination) {
+              replacementFailed = true;
+              hasCriticalFailed = true;
+              allLogs += `\n[Editor Critical Warning] 数値ハルシネーション検出により置換を却下しました: ${hallucinationCheck.details}\n`;
+              continue;
+            }
+
+            const isCritical = isCriticalReplacement(rep.original, rep.fixed);
+            const normalizeOriginal = rep.original.replace(/\r\n/g, '\n').trim();
+            const isFound = tmpContent.replace(/\r\n/g, '\n').includes(normalizeOriginal);
+            
+            if (!isFound) {
+              // カスケード置換ミスマッチへの配慮（すでに前のアテンプト等で適用済み、または現在の本文中に見つからない場合）
+              allLogs += `\n[Editor Warning] 置換対象が現在の本文中に見つからないためスキップされました（過去適用済み等の可能性）: ${rep.original.slice(0, 30)}...\n`;
+              continue;
+            }
+
             const res = applyReplacement(tmpContent, rep.original, rep.fixed);
             if (!res.success) {
               replacementFailed = true;
-              allLogs += `\n[Editor Warning] 置換対象が見つかりません: ${rep.original.slice(0, 30)}...\n`;
+              if (isCritical) {
+                hasCriticalFailed = true;
+                allLogs += `\n[Editor Critical Warning] 重要置換（数値・日付等）の適用に失敗しました: ${rep.original.slice(0, 30)}...\n`;
+              } else {
+                allLogs += `\n[Editor Cosmetic Warning] 軽微な置換の適用に失敗しました（スキップします）: ${rep.original.slice(0, 30)}...\n`;
+              }
             } else {
               tmpContent = res.result;
             }
@@ -1416,17 +1600,18 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
       // パッチ後の内容でSEO再チェック。機械チェック由来のREJECTEDは自動補正後に通れば承認扱いにする。
       const postPatchSeo = checkSEO(currentContent);
       lastReplacementFailed = replacementFailed;
-      if (postPatchSeo.passed && parsedJson.status === 'APPROVED' && !replacementFailed) {
+      const lastHasCriticalFailed = hasCriticalFailed;
+      if (postPatchSeo.passed && parsedJson.status === 'APPROVED' && !hasCriticalFailed) {
         finalStatus = 'APPROVED';
-        allLogs += `\n[Attempt ${attempt}] SEO Passed. Fully APPROVED. Replacement Failed: ${replacementFailed}\n`;
-        break; // 完全合格
+        allLogs += `\n[Attempt ${attempt}] SEO Passed. APPROVED (No Critical replacement failures). Cosmetic Failed Allowed: ${replacementFailed && !hasCriticalFailed}\n`;
+        break; // 合格
       } else {
-        allLogs += `\n[Attempt ${attempt}] AI status was ${parsedJson.status}. Post-patch SEO passed: ${postPatchSeo.passed}. Replacement Failed: ${replacementFailed}`;
+        allLogs += `\n[Attempt ${attempt}] AI status was ${parsedJson.status}. Post-patch SEO passed: ${postPatchSeo.passed}. Replacement Failed: ${replacementFailed}, Critical Failed: ${hasCriticalFailed}`;
         if (postPatchSeo.passed && parsedJson.status !== 'APPROVED') {
           allLogs += `\n[Attempt ${attempt}] SEOは通過しましたが、AI Editorが承認していないため公開承認しません。`;
         }
-        if (postPatchSeo.passed && replacementFailed) {
-          allLogs += `\n[Attempt ${attempt}] SEOは通過しましたが、AI Editorの置換指示が一部未反映のため再確認します。`;
+        if (postPatchSeo.passed && hasCriticalFailed) {
+          allLogs += `\n[Attempt ${attempt}] SEOは通過しましたが、AI Editorの重要置換指示が一部未反映のため再確認します。`;
         }
         if (!postPatchSeo.passed) {
           allLogs += `\n[Attempt ${attempt} Remaining SEO Errors]\n - ${postPatchSeo.errors.join('\n - ')}`;
@@ -1435,6 +1620,7 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
       }
     }
 
+    let lastHasCriticalFailed = false; // ループ外スコープ用
     if (finalStatus === 'REJECTED') {
       const finalRepair = autoRepairDraftMarkdown(currentContent);
       if (finalRepair.changes.length > 0) {
@@ -1444,6 +1630,7 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
 
       const finalSeo = checkSEO(currentContent);
       if (finalSeo.passed && !sawEditorJsonParseFailure && lastParsedEditorStatus === 'APPROVED' && !lastReplacementFailed) {
+        // 全く失敗がなかった場合のみ
         finalStatus = 'APPROVED';
         allLogs += `\n[Final Auto Repair] SEO Passed after AI Editor approval. APPROVED.\n`;
       } else if (finalSeo.passed) {

@@ -230,7 +230,14 @@ export default async function RaceDetailPage({ params }: Props) {
                 ]}
             />
 
-            <Breadcrumb />
+            <Breadcrumb
+                items={[
+                    { label: 'ホーム', href: '/' },
+                    { label: 'レース分析', href: '/races/today' },
+                    { label: `${formattedDate}のレース分析`, href: `/races/${params.date}` },
+                    { label: `${selectedVenue.venue_name}${selectedRace.race_number}R ${selectedRace.race_name}`, href: '' },
+                ]}
+            />
 
             <Suspense fallback={<RacePageSkeleton />}>
                 <RacePageClient

@@ -206,14 +206,14 @@
         @apply absolute top-0 right-0 w-32 h-32 pointer-events-none;
         background: radial-gradient(circle, rgba(59,130,246,0.06), transparent 70%);
     }
-    .pick-inner { @apply relative z-10 p-3 sm:p-5; }
-    .pick-top { @apply flex items-center justify-between mb-2; }
+    .pick-inner { @apply relative z-10 py-2 px-2.5 sm:p-5; }
+    .pick-top { @apply flex items-center justify-between mb-1 sm:mb-2; }
     .pick-badge { @apply text-[10px] sm:text-xs font-bold bg-primary text-white py-0.5 px-2 rounded-md leading-tight; }
-    .pick-score { @apply text-[11px] sm:text-[13px] font-bold text-blue-700 bg-blue-50 border border-blue-100/50 py-0.5 px-2 rounded-full flex items-center gap-1; }
-    .pick-score .val { @apply text-[14px] sm:text-base font-mono tracking-tight; }
-    .pick-name { @apply text-lg sm:text-2xl font-extrabold text-primary-dark leading-tight mb-1; }
-    .pick-meta { @apply text-[11px] sm:text-[13px] text-slate-500 bg-slate-50 border border-slate-100 py-0.5 px-2 rounded-md inline-block mb-1.5; }
-    .pick-comment { @apply text-[12px] sm:text-sm text-primary-light leading-relaxed border-t border-slate-100 pt-1.5; }
+    .pick-score { @apply text-[10px] sm:text-[13px] font-bold text-blue-700 bg-blue-50 border border-blue-100/50 py-0.5 px-1.5 sm:px-2 rounded-full flex items-center gap-1; }
+    .pick-score .val { @apply text-[12px] sm:text-base font-mono tracking-tight; }
+    .pick-name { @apply text-base sm:text-2xl font-extrabold text-primary-dark leading-tight mb-0.5 sm:mb-1; }
+    .pick-meta { @apply text-[10px] sm:text-[13px] text-slate-500 bg-slate-50 border border-slate-100 py-0.5 px-2 rounded-md inline-block mb-1 sm:mb-1.5; }
+    .pick-comment { @apply text-[11px] sm:text-sm text-primary-light leading-relaxed border-t border-slate-100 pt-1 sm:pt-1.5; }
 
     /* === Prototype Additions: Hits Grid === */
     .hits-grid { @apply grid grid-cols-2 lg:grid-cols-5 gap-1.5 sm:gap-2.5; }
@@ -479,67 +479,58 @@ header.glass {
 /* レスポンシブ改善 */
 @media (max-width: 640px) {
     body {
-        font-size: 16px;
-        /* iOSのズームを防ぐ */
+        font-size: 15px;
     }
 
     .react-tabs__tab {
-        padding: 0.625rem 1rem !important;
-        /* タッチしやすいサイズ */
-        font-size: 0.875rem;
-        min-height: 44px;
-        /* タッチターゲット推奨サイズ */
+        padding: 0.4rem 0.75rem !important;
+        font-size: 0.8rem;
+        min-height: 38px;
     }
 
     .table-wrapper {
         border-radius: 6px;
         margin: 0 -0.5rem;
-        /* モバイルで左右の余白を活用 */
     }
 
     .card {
         border-radius: 12px;
-        /* モバイルで丸みを強調 */
-        margin: 0 0 1rem 0;
+        margin: 0 0 0.5rem 0;
     }
 
-    /* モバイル用のコンテナ調整 */
     .container {
-        padding-left: 1rem;
-        padding-right: 1rem;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
     }
 
-    /* モバイルでの見出しサイズ最適化 */
     h1 {
-        font-size: 1.75rem !important;
-        line-height: 1.3;
+        font-size: 1.4rem !important;
+        line-height: 1.25;
     }
 
     h2 {
-        font-size: 1.5rem !important;
-        line-height: 1.3;
+        font-size: 1.25rem !important;
+        line-height: 1.25;
     }
 
     h3 {
-        font-size: 1.25rem !important;
-        line-height: 1.4;
+        font-size: 1.1rem !important;
+        line-height: 1.3;
     }
 
-    /* ボタンのタッチターゲットサイズ */
     .btn-primary {
-        min-height: 48px;
-        padding: 0.75rem 1.5rem;
-        font-size: 1rem;
+        min-height: 40px;
+        padding: 0.5rem 1.25rem;
+        font-size: 0.875rem;
     }
 
-    /* モバイルでのテーブル */
     .matchup-table {
         font-size: 0.75rem;
     }
 
     .matchup-table th,
     .matchup-table td {
-        padding: 0.3rem 0.4rem;
+        padding: 0.25rem 0.35rem;
     }
 }
 

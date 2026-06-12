@@ -28,7 +28,7 @@ type Props = {
 
 const RacePageSkeleton = () => (
     <div className="py-4">
-        <div className="sticky top-14 sm:top-16 z-40 glass mb-5 p-2 sm:p-3">
+        <div className="glass mb-5 p-2 sm:p-3">
             <div className="animate-pulse flex items-center justify-between max-w-[280px] sm:max-w-sm mx-auto">
                 <div className="bg-slate-200 h-9 w-10 text-white px-4 py-2.5 rounded-xl shadow-sm"></div>
                 <div className="flex-grow flex justify-center">

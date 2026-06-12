@@ -345,7 +345,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
 
     return (
         <div id={`venue-${venue.venue_name}`}>
-            <div className="sticky top-14 sm:top-16 z-30 bg-white/95 backdrop-blur-sm -mx-2 px-2 sm:mx-0 sm:px-0 py-1.5 shadow-sm border-b border-gray-100">
+            <div className="sticky top-14 lg:top-16 z-30 bg-white/95 backdrop-blur-sm -mx-2 px-2 lg:mx-0 lg:px-0 py-1.5 shadow-sm border-b border-gray-100">
                 <RaceSelector races={venue.races} selectedIndex={activeRaceIndex} onSelectRace={handleRaceSelect} />
             </div>
             {activeRace && (
@@ -436,9 +436,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                         <span>展開/脚質予測</span>
                                     </div>
                                     <div className="px-2 pb-2 sm:px-3 sm:pb-3 flex-1">
-                                        <div className="p-1.5 sm:p-5 border bg-white rounded-lg h-full">
-                                            <StartPositionChart predictions={activeRace.predictions} />
-                                        </div>
+                                        <StartPositionChart predictions={activeRace.predictions} />
                                     </div>
                                 </div>
 
@@ -448,25 +446,13 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                         <span>このコースの枠順傾向</span>
                                     </div>
                                     <div className="px-2 pb-2 sm:px-3 sm:pb-3 flex-1">
-                                        <div className="p-1.5 sm:p-5 border bg-white rounded-lg h-full">
-                                            <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
-                                        </div>
+                                        <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
                                     </div>
                                 </div>
                             </div>
 
                             <div id="race-matchup-section" className="mb-2">
-                                <div className="card p-2 sm:p-3">
-                                    <div id="race-matchup-heading" className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
-                                        <UsersIcon className="w-5 h-5 mr-2 text-secondary" />
-                                        <span>過去対決成績</span>
-                                    </div>
-                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3">
-                                        <div className="p-1 sm:p-5 border bg-white rounded-lg">
-                                            <MatchupTable race={activeRace} />
-                                        </div>
-                                    </div>
-                                </div>
+                                <MatchupTable race={activeRace} />
                             </div>
 
                             {/* 対決成績の直後は高意欲ユーザーが多いため、地方競馬は楽天導線を優先 */}
@@ -486,17 +472,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             )}
 
                             <div id="race-analysis-section" className="mb-2">
-                                <div className="card p-2 sm:p-3">
-                                    <div id="race-analysis-heading" className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
-                                        <ChartBarIcon className="w-5 h-5 mr-2 text-accent" />
-                                        <span>このレースのデータ分析</span>
-                                    </div>
-                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3">
-                                        <div className="p-2 sm:p-4 border bg-white rounded-lg">
-                                            <RaceAnalysis race={activeRace} />
-                                        </div>
-                                    </div>
-                                </div>
+                                <RaceAnalysis race={activeRace} />
                             </div>
                             </>
                         )
@@ -512,24 +488,12 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                                 <span>展開/脚質予測</span>
                                             </div>
                                             <div className="px-2 pb-2 sm:px-3 sm:pb-3">
-                                                <div className="p-1.5 sm:p-5 border bg-white rounded-lg">
-                                                    <StartPositionChart predictions={activeRace.predictions} />
-                                                </div>
+                                                <StartPositionChart predictions={activeRace.predictions} />
                                             </div>
                                         </div>
                                     </div>
                                     <div className="mb-2">
-                                        <div className="card p-2 sm:p-3">
-                                            <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
-                                                <UsersIcon className="w-5 h-5 mr-2 text-secondary" />
-                                                <span>過去対決成績</span>
-                                            </div>
-                                            <div className="px-2 pb-2 sm:px-3 sm:pb-3">
-                                                <div className="p-1 sm:p-5 border bg-white rounded-lg">
-                                                    <MatchupTable race={activeRace} />
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <MatchupTable race={activeRace} />
                                     </div>
                                 </div>
                             </div>

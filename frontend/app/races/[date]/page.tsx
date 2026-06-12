@@ -17,7 +17,7 @@ import {
 // ▼▼▼▼▼【ISR導入】▼▼▼▼▼
 // 従来: export const dynamic = 'force-dynamic' で毎回フルSSR
 // 変更: ISRに切り替え。api.tsのfetchに revalidate を設定済み。
-// レースデータは1日2〜3回の定時バッチ更新のため、リアルタイムSSRは不要。
+// レースデータは1日2〜3回の定時バッチ更新のため、リアルタイムSSRいらず。
 // ▲▲▲▲▲【ISR導入ここまで】▲▲▲▲▲
 
 export async function generateMetadata(
@@ -40,7 +40,7 @@ export async function generateMetadata(
         title = `${formattedDate} ${venueName} ${race}R のAI競馬データ分析 | UMA-FREE`;
         description = `AIによる${formattedDate} ${venueName}競馬場 ${race}Rの無料データ分析。偏差値、対戦成績、枠順データで詳細分析。`;
         // レース詳細は日付ページ内の状態として扱い、canonicalは日付ページへ集約する。
-        // クエリ付きURLの大量重複を避け、Search Consoleのcanonical差し替えを減らす。
+        // クエリ付きURLの大量重複を避け、Search Console of canonical差し替えを減らす。
         canonicalUrl = `/races/${params.date}`;
     }
 
@@ -59,7 +59,7 @@ export async function generateMetadata(
 
 const RacePageSkeleton = () => (
     <div className="py-4">
-        <div className="sticky top-14 sm:top-16 z-40 glass mb-5 p-2 sm:p-3">
+        <div className="glass mb-5 p-2 sm:p-3">
             <div className="animate-pulse flex items-center justify-between max-w-[280px] sm:max-w-sm mx-auto">
                 <div className="bg-slate-200 h-9 w-10 text-white px-4 py-2.5 rounded-xl shadow-sm"></div>
                 <div className="flex-grow flex justify-center">
@@ -103,7 +103,6 @@ export default async function RacePage({ params }: { params: { date: string } })
             console.log(`[Data Info] No prediction data found for ${params.date}. Returning 404.`);
             notFound();
         }
-        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
         const mainRace = predictionData?.jra?.[0]?.races?.[0] || predictionData?.nar?.[0]?.races?.[0];
 
@@ -156,17 +155,10 @@ export default async function RacePage({ params }: { params: { date: string } })
         notFound();
     }
 
-    // ▼▼▼▼▼【修正】predictionDataがnullの可能性を再度チェック（try-catchを抜けたがデータがnullの場合）▼▼▼▼▼
-    // 上部のチェックで既に notFound() が呼ばれているはずだが、念のためここでもチェックする
-    // ただし、try-catch内で例外が発生した場合は、このreturnには到達しない
     if (!predictionData) {
-        // このコードパスには通常到達しないはずだが、
-        // tryブロック内でエラーが発生せず、predictionDataがnullのままの場合（現在はcatchで処理）
-        // のフォールバックとして
         console.log(`[Data Info] Fallback check: No prediction data for ${params.date}. Returning 404.`);
         notFound();
     }
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 
     return (
         <>

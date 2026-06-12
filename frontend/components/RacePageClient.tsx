@@ -71,29 +71,29 @@ const DateNavigator = ({
     }, [onDateChange]);
 
     return (
-        <div className="flex items-center justify-between w-full max-w-[280px] sm:max-w-sm mx-auto bg-white/60 backdrop-blur-sm border border-slate-200 rounded-xl p-1 shadow-sm">
+        <div className="flex items-center justify-between w-full max-w-[280px] sm:max-w-sm mx-auto bg-white/60 backdrop-blur-sm border border-slate-200 rounded-xl p-0.5 sm:p-1 shadow-sm">
             <button
                 onClick={(e) => handleDateShift(e, -1)}
-                className="p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-md transition-all duration-200"
+                className="p-1.5 sm:p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-md transition-all duration-200"
                 aria-label="前日へ"
             >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                <svg className="w-4 h-4 sm:w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             </button>
             <div className="flex items-center gap-2">
                 <input
                     type="date"
                     value={currentDate}
                     onChange={handleDateInputChange}
-                    className="border-none bg-transparent text-text-primary font-bold text-[15px] sm:text-base focus:ring-0 p-0 text-center font-mono cursor-pointer"
+                    className="border-none bg-transparent text-text-primary font-bold text-sm sm:text-base focus:ring-0 p-0 text-center font-mono cursor-pointer"
                     aria-label="日付を選択"
                 />
             </div>
             <button
                 onClick={(e) => handleDateShift(e, 1)}
-                className="p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-md transition-all duration-200"
+                className="p-1.5 sm:p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-md transition-all duration-200"
                 aria-label="翌日へ"
             >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                <svg className="w-4 h-4 sm:w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </button>
         </div>
     );
@@ -132,9 +132,6 @@ export default function RacePageClient({
     const [predictionData, setPredictionData] = useState<RaceDayPrediction | null>(initialPredictionData);
     const [isLoading, setIsLoading] = useState(!initialPredictionData);
     const [error, setError] = useState<string | null>(null);
-    // ▼▼▼▼▼【初期値をsearchParamsから同期的に取得】▼▼▼▼▼
-    // 従来: useState(null) → 初回レース切替でkeyが変わりRaceTabs再マウント
-    // 変更: searchParamsの値を初期値として使用 → 最初からkeyが安定
     const [initialVenue, setInitialVenue] = useState<string | null>(() => {
         if (routeInitialVenueName) return routeInitialVenueName;
         const venue = searchParams.get('venue');
@@ -149,19 +146,11 @@ export default function RacePageClient({
         }
         return null;
     });
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
     const hasScrolled = useRef(false);
-    const isInitialLoad = useRef(true); // ★ 初回レンダリング判定用
+    const isInitialLoad = useRef(true);
 
-    // ▼▼▼▼▼【二重フェッチ解消】▼▼▼▼▼
-    // 従来: initialDateが変わるたびに毎回fetchDataを実行（SSRで取得済みでも再フェッチ）
-    // 変更: 初回レンダリング時はSSRで取得した initialPredictionData をそのまま使用。
-    //       日付が変わった場合（DateNavigatorでの操作→router.push→再マウント時は
-    //       isInitialLoadがtrueにリセットされるため、SSRデータがあればスキップ）。
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
     useEffect(() => {
         const fetchData = async (dateToFetch: string) => {
-            // 日付フォーマット検証
             if (!isValidDateFormat(dateToFetch)) {
                 setError("無効な日付形式です。YYYY-MM-DD形式で指定してください。");
                 setIsLoading(false);
@@ -190,10 +179,7 @@ export default function RacePageClient({
             document.title = `競馬AIデータ分析 | ${formatDate(initialDate)}`;
         }
 
-        // SSRで取得済みのデータがある場合はクライアント側の再取得で上書きしない。
-        // React Strict Modeのeffect再実行やローカルCORS差で、正常な初期データが「データなし」に
-        // 置き換わるのを防ぐ。
-        if (initialPredictionData) {
+        if (initialPredictionData && isInitialLoad.current) {
             isInitialLoad.current = false;
             setPredictionData(initialPredictionData);
             setIsLoading(false);
@@ -202,10 +188,9 @@ export default function RacePageClient({
         }
         isInitialLoad.current = false;
 
-        // 日付が変わった場合のみフェッチ実行
         fetchData(initialDate);
 
-    }, [initialDate]);
+    }, [initialDate, initialPredictionData]);
 
     useEffect(() => {
         if (routeInitialVenueName || routeInitialRaceNumber) {
@@ -245,6 +230,17 @@ export default function RacePageClient({
 
                             if (raceData) {
                                 const raceElement = document.getElementById(`race-${raceData.id}`);
+                                if (raceElement) {
+                                    const rect = raceElement.getBoundingClientRect();
+                                    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+                                    const elementTop = rect.top + scrollTop;
+                                    // 1024px未満（モバイル・タブレット）はセレクターが2行になり高くなるため、大きめのオフセットにする
+                                    const offset = window.innerWidth < 1024 ? 160 : 140;
+                                    window.scrollTo({
+                                        top: Math.max(0, elementTop - offset),
+                                        behavior: 'smooth'
+                                    });
+                                }
                             }
                         }, 500);
                     }
@@ -268,7 +264,6 @@ export default function RacePageClient({
         return today.toISOString().split("T")[0];
     };
 
-    const todayStr = getTodayString();
     const hasNarRaces = (predictionData?.nar?.length ?? 0) > 0;
     const hasRaceData = Boolean(
         predictionData && ((predictionData.jra?.length ?? 0) > 0 || (predictionData.nar?.length ?? 0) > 0)
@@ -335,15 +330,15 @@ export default function RacePageClient({
             {/* 変更: 日付ナビ→レースデータ→的中ランキング→バナー広告（レースデータを最速で表示） */}
             {/* ▲▲▲▲▲【ファーストビュー改善ここまで】▲▲▲▲▲ */}
             {/* ★ここからstickyを削除し、スクロールで自然に消えるようにして画面領域を確保 */}
-            <div className="glass mb-2 sm:mb-3 p-1.5 sm:p-3 relative z-10 shadow-sm border-b border-white/40">
-                <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
+            <div className="glass mb-2 sm:mb-3 p-1 sm:p-3 relative z-10 shadow-sm border-b border-white/40">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-4 flex-wrap">
                     <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
                     <button
                         onClick={(e) => {
                             handleDateChange(getTodayString());
                             e.currentTarget.blur();
                         }}
-                        className="bg-primary text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg shadow-sm hover:bg-primary-dark transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-light text-sm font-bold whitespace-nowrap min-h-[40px] sm:min-h-[44px]"
+                        className="bg-primary text-white px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg shadow-sm hover:bg-primary-dark transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-bold whitespace-nowrap min-h-[34px] sm:min-h-[44px]"
                     >
                         今日
                     </button>

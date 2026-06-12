@@ -100,7 +100,7 @@ export function Breadcrumb() {
 
   return (
     <nav
-      className="overflow-hidden px-4 py-3"
+      className="overflow-hidden"
       aria-label="Breadcrumb"
     >
       <ol className="flex flex-wrap items-center gap-2 text-sm">

@@ -16,8 +16,9 @@ const findTargetElement = (targetIds: string[]) => {
 };
 
 const getScrollOffset = () => {
-    if (typeof window === 'undefined') return 96;
-    return window.innerWidth < 640 ? 86 : 104;
+    if (typeof window === 'undefined') return 160;
+    // 1024px未満（モバイル・タブレット）はセレクターが2行になり高くなるため、大きめのオフセットにする
+    return window.innerWidth < 1024 ? 160 : 140;
 };
 
 export const scrollToRaceSection = (targetIds: string[]) => {
@@ -36,7 +37,8 @@ export const useRaceSectionNavigation = <TItem extends RaceSectionNavItem>(items
     const updateActiveSection = useCallback(() => {
         if (typeof window === 'undefined' || items.length === 0) return;
 
-        const pivot = window.innerWidth < 640 ? 132 : 150;
+        // pivot値を1024px基準に調整
+        const pivot = window.innerWidth < 1024 ? 170 : 155;
         let nextActiveKey = items[0].key;
 
         for (const item of items) {

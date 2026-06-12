@@ -56,7 +56,7 @@ const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: numb
 
 const Skeleton = ({ compact = false }: { compact?: boolean }) => (
     <div className="animate-pulse">
-        <div className="h-7 bg-gray-200 rounded w-1/2 mb-2"></div>
+        <div className="h-6 bg-gray-200 rounded w-1/2 mb-2"></div>
         {compact ? (
             <div className="space-y-2">
                 {[...Array(5)].map((_, i) => (
@@ -66,7 +66,7 @@ const Skeleton = ({ compact = false }: { compact?: boolean }) => (
         ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2">
                 {[...Array(5)].map((_, i) => (
-                    <div key={i} className={`h-20 sm:h-24 bg-gray-100 rounded-lg border border-gray-200 ${i === 4 ? 'col-span-2 sm:col-span-1' : ''}`}></div>
+                    <div key={i} className={`h-14 sm:h-24 bg-gray-100 rounded-lg border border-gray-200 ${i === 4 ? 'col-span-2 sm:col-span-1' : ''}`}></div>
                 ))}
             </div>
         )}
@@ -113,7 +113,7 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
     return (
         <div>
             {!compact && (
-                <h2 className="sec-title px-1 mb-2">
+                <h2 className="sec-title px-1 mb-1.5 sm:mb-2">
                     <TrophyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
                     <span className="whitespace-nowrap ml-1">高配当的中ランキング</span>
                     <span className="text-[10px] sm:text-xs font-normal text-muted ml-1.5 whitespace-nowrap self-end mb-0.5">(直近7日)</span>
@@ -149,7 +149,7 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
                         ))}
                         {/* モバイルで右下が空くのでネイティブ広告で穴埋め（PC時は5列なので非表示） */}
                         {isManualAdsEnabled && hits.length === 5 && (
-                            <div className="block h-full lg:hidden rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col justify-center items-center min-h-[140px] p-2">
+                            <div className="block h-full lg:hidden rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col justify-center items-center min-h-[92px] p-1.5 sm:min-h-[140px] sm:p-2">
                                 <span className="text-[9px] text-slate-400 mb-1">スポンサーリンク</span>
                                 <div className="w-full h-full flex items-center justify-center overflow-hidden">
                                     <NativeCardAd slot="1489598374" variant="article" className="w-full" analyticsPlacement="top_hits_mobile_gap" />

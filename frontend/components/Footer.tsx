@@ -6,23 +6,23 @@ export const Footer = () => {
     const stickyAdSpacing = isManualAdsEnabled ? 'mb-[80px] xl:mb-0' : '';
 
     return (
-        <footer className={`bg-primary text-slate-300 py-8 sm:py-16 relative z-0 ${stickyAdSpacing}`}>
+        <footer className={`bg-primary text-slate-300 py-5 sm:py-16 relative z-0 ${stickyAdSpacing}`}>
             {/* mb-[80px]でMobileStickyAd(70px + max-h 80px + border)の実高さと合わせる */}
             <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6">
                 {/* メインフッターコンテンツ（3カラム） */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-12 mb-8 sm:mb-12">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-12 mb-5 sm:mb-12">
                     {/* サイト情報 */}
                     <div>
-                        <h3 className="font-bold text-white text-lg sm:text-xl mb-3 sm:mb-4 tracking-tight">UMA-FREE</h3>
-                        <p className="text-xs sm:text-sm text-slate-400 leading-[1.8] max-w-sm">
+                        <h3 className="font-bold text-white text-base sm:text-xl mb-2 sm:mb-4 tracking-tight">UMA-FREE</h3>
+                        <p className="text-[11px] sm:text-sm text-slate-400 leading-[1.7] sm:leading-[1.8] max-w-sm">
                             過去5年以上のレースデータをAIで分析し、中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を完全無料で提供する競馬データ分析サイトです。
                         </p>
                     </div>
 
                     {/* コンテンツリンク */}
                     <div>
-                        <h3 className="font-bold text-white text-sm sm:text-base mb-3 sm:mb-4">コンテンツ</h3>
-                        <ul className="space-y-2 sm:space-y-3">
+                        <h3 className="font-bold text-white text-sm sm:text-base mb-2 sm:mb-4">コンテンツ</h3>
+                        <ul className="grid grid-cols-2 gap-x-3 gap-y-1 sm:block sm:space-y-3">
                             <li>
                                 <Link href="/articles" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     分析記事一覧
@@ -59,8 +59,8 @@ export const Footer = () => {
 
                     {/* ポリシーリンク */}
                     <div>
-                        <h3 className="font-bold text-white text-sm sm:text-base mb-3 sm:mb-4">サイトポリシー</h3>
-                        <ul className="space-y-2 sm:space-y-3">
+                        <h3 className="font-bold text-white text-sm sm:text-base mb-2 sm:mb-4">サイトポリシー</h3>
+                        <ul className="grid grid-cols-2 gap-x-3 gap-y-1 sm:block sm:space-y-3">
                             <li>
                                 <Link href="/advertising" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     広告について
@@ -91,12 +91,12 @@ export const Footer = () => {
                 </div>
 
                 {/* 区切り線 */}
-                <div className="border-t border-slate-800 pt-8 mt-4">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <p className="text-sm text-slate-500">
+                <div className="border-t border-slate-800 pt-4 sm:pt-8 mt-3 sm:mt-4">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
+                        <p className="text-xs sm:text-sm text-slate-500">
                             &copy; {new Date().getFullYear()} UMA-FREE. All Rights Reserved.
                         </p>
-                        <p className="text-xs text-slate-500 max-w-md text-center sm:text-right leading-relaxed">
+                        <p className="text-[10px] sm:text-xs text-slate-500 max-w-md text-center sm:text-right leading-relaxed">
                             本サイトは統計情報の提供を目的としており、投票の推奨ではありません。
                         </p>
                     </div>

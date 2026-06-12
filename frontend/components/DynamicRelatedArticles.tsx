@@ -77,36 +77,36 @@ export function DynamicRelatedArticles({
     }
 
     return (
-        <section className="mt-6 sm:mt-8 mb-4 sm:mb-6">
-            <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4 flex items-center justify-between">
+        <section className="mt-3 sm:mt-8 mb-3 sm:mb-6">
+            <h3 className="text-sm sm:text-lg font-bold text-gray-800 mb-2 sm:mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-5 sm:h-6 bg-secondary rounded-full"></span>
+                    <span className="w-1.5 h-4 sm:h-6 bg-secondary rounded-full"></span>
                     関連する分析記事
                 </div>
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
                 {relatedArticles.map((article) => (
                     <Link
                         href={`/articles/${article.slug}`}
                         key={article.slug}
-                        className="block group border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-white"
+                        className="flex group border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-white sm:block"
                     >
-                        <div className="relative w-full h-32 sm:h-40 overflow-hidden bg-slate-100">
+                        <div className="relative h-20 w-24 shrink-0 sm:w-full sm:h-40 overflow-hidden bg-slate-100">
                             <Image
                                 src={article.eyecatch || '/images/articles/data-analysis-eyecatch.png'}
                                 alt={article.title}
                                 fill
-                                sizes="(max-width: 640px) 100vw, 33vw"
+                                sizes="(max-width: 640px) 96px, 33vw"
                                 style={{ objectFit: 'cover', objectPosition: 'center' }}
                                 className="transition-transform duration-500 group-hover:scale-105"
                             />
                         </div>
-                        <div className="p-3 sm:p-4 flex flex-col justify-between flex-grow">
+                        <div className="p-2 sm:p-4 flex min-w-0 flex-col justify-center sm:justify-between flex-grow">
                             <div>
-                                <span className="inline-block bg-slate-200 text-primary-dark text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full mb-2">
+                                <span className="inline-block bg-slate-200 text-primary-dark text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full mb-1 sm:mb-2">
                                     {article.category}
                                 </span>
-                                <h4 className="font-bold text-sm sm:text-base mb-1 text-text-primary group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+                                <h4 className="font-bold text-xs sm:text-base mb-0 text-text-primary group-hover:text-primary transition-colors line-clamp-2 leading-snug">
                                     {article.title}
                                 </h4>
                             </div>

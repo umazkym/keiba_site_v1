@@ -77,7 +77,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
 
     // レスポンシブ設定
     // 高さ削減: 320 -> 180 (gap排除のため大幅圧縮)
-    const chartHeight = isMobile ? 180 : 300;
+    const chartHeight = isMobile ? 150 : 300;
     const chartMargin = isMobile
         ? { top: 10, right: 0, left: 0, bottom: 0 }
         : { top: 30, right: 15, left: 10, bottom: 35 };
@@ -86,8 +86,8 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
 
     return (
         // パディング・背景削除 (フラット化)
-        <div className="my-4 md:p-4 md:bg-white md:border md:rounded-lg md:shadow-inner h-full flex flex-col justify-center">
-            <h4 className="font-bold text-center mb-1 text-gray-700 text-sm md:text-base md:mb-2">{chartTitle}</h4>
+        <div className="my-1.5 md:my-4 md:p-4 md:bg-white md:border md:rounded-lg md:shadow-inner h-full flex flex-col justify-center">
+            <h4 className="font-bold text-center mb-0.5 text-gray-700 text-xs md:text-base md:mb-2">{chartTitle}</h4>
             <div style={{ width: '100%', height: chartHeight }}>
                 <ResponsiveContainer>
                     <BarChart
@@ -124,7 +124,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                     </BarChart>
                 </ResponsiveContainer>
             </div>
-            <div className="flex justify-center gap-4 text-xs md:text-sm text-gray-700 mt-1 font-medium">
+            <div className="flex justify-center gap-3 text-[10px] md:text-sm text-gray-700 mt-0.5 md:mt-1 font-medium">
                 <span className="flex items-center gap-1">
                     <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgba(34, 197, 94, 0.9)' }}></span>
                     <span>有利</span>

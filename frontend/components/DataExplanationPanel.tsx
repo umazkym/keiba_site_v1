@@ -55,21 +55,21 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
     ];
 
     const renderExplanationItem = (item: ExplanationItem) => (
-        <div key={item.title} className="rounded-lg border border-slate-200 bg-white p-3">
-            <h4 className="mb-1 text-sm font-bold text-gray-800">{item.title}</h4>
-            <p className="mb-2 text-xs leading-relaxed text-gray-700 sm:text-sm">{item.description}</p>
-            <div className="rounded border-l-4 border-blue-400 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-gray-700">
+        <div key={item.title} className="rounded-lg border border-slate-200 bg-white p-2 sm:p-3">
+            <h4 className="mb-0.5 text-xs sm:text-sm font-bold text-gray-800">{item.title}</h4>
+            <p className="mb-1.5 text-[11px] leading-relaxed text-gray-700 sm:text-sm">{item.description}</p>
+            <div className="rounded border-l-4 border-blue-400 bg-blue-50 px-2 py-1.5 sm:px-3 sm:py-2 text-[11px] sm:text-xs leading-relaxed text-gray-700">
                 {item.example}
             </div>
         </div>
     );
 
     return (
-        <div className="mb-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:mb-4">
+        <div className="mb-1.5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:mb-4">
             {/* アコーディオンのヘッダー */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-between p-2.5 sm:p-4 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between p-2 sm:p-4 hover:bg-gray-50 transition-colors"
             >
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 text-left">
                     <h4 className="font-bold text-gray-800 text-xs sm:text-base">AI指標について</h4>
@@ -81,16 +81,16 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
 
             {/* アコーディオンのコンテンツ */}
             {isExpanded && (
-                <div className="border-t border-gray-200 bg-slate-50 p-3 sm:p-4">
+                <div className="border-t border-gray-200 bg-slate-50 p-2 sm:p-4">
                     {/* 基本指標セクション */}
-                    <div className="mb-4">
-                        <h3 className="mb-2 border-b-2 border-primary pb-2 text-sm font-bold text-gray-800">
+                    <div className="mb-3 sm:mb-4">
+                        <h3 className="mb-1.5 sm:mb-2 border-b-2 border-primary pb-1.5 sm:pb-2 text-sm font-bold text-gray-800">
                             基本指標
                         </h3>
-                        <p className="mb-3 text-xs text-gray-600 sm:text-sm">
+                        <p className="mb-2 sm:mb-3 text-xs text-gray-600 sm:text-sm">
                             レース分析でまず確認したい基本指標です。
                         </p>
-                        <div className="grid gap-3 lg:grid-cols-2">
+                        <div className="grid gap-2 sm:gap-3 lg:grid-cols-2">
                             {basicExplanations.map(renderExplanationItem)}
                         </div>
                     </div>
@@ -104,15 +104,15 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
                             <p className="mb-3 text-xs text-gray-600 sm:text-sm">
                                 多角的な分析に用いる補助的な指標です。
                             </p>
-                            <div className="grid gap-3 lg:grid-cols-2">
+                            <div className="grid gap-2 sm:gap-3 lg:grid-cols-2">
                                 {advancedExplanations.map(renderExplanationItem)}
                             </div>
                         </div>
                     )}
 
                     {/* 免責事項 */}
-                    <div className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-3">
-                        <p className="text-xs leading-relaxed text-gray-700 sm:text-sm">
+                    <div className="mt-3 sm:mt-4 rounded-lg border border-amber-100 bg-amber-50 px-2 py-2 sm:px-3 sm:py-3">
+                        <p className="text-[11px] leading-relaxed text-gray-700 sm:text-sm">
                             <strong>ご注意:</strong> これらの指標は過去データに基づく統計的な分析結果です。当日の馬の状態や天候、騎手の判断など、数値化できない要素も多数あります。予想の参考としてご活用ください。
                         </p>
                     </div>

@@ -212,13 +212,13 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
         if (!selectedHorse) return null;
 
         return (
-        <div className="p-2.5">
-            <label htmlFor="horse-select" className="mb-1.5 block text-xs font-bold text-slate-600">基準馬</label>
+        <div className="p-2">
+            <label htmlFor="horse-select" className="mb-1 block text-[11px] font-bold text-slate-600">基準馬</label>
                 <select
                     id="horse-select"
                     value={selectedHorseId}
                     onChange={(e) => setSelectedHorseId(e.target.value)}
-                    className="block w-full rounded-md border border-slate-300 bg-white p-2 text-base"
+                    className="block w-full rounded-md border border-slate-300 bg-white p-1.5 text-sm"
                 >
                     {sortedHorsesForSelect.map(h => (
                         <option key={h.horse_id} value={h.horse_id}>
@@ -227,7 +227,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                     ))}
                 </select>
 
-                <div className="mt-2 grid grid-cols-2 gap-1.5">
+                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                     {sortedHorsesForSelect.filter(h => h.horse_id !== selectedHorseId).map(opponent => {
                         const record = matchupData?.matchup_data[`${selectedHorse.horse_id}_vs_${opponent.horse_id}`];
                         const netWins = record ? record.win - record.loss : 0;
@@ -279,10 +279,10 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                                 appendTo={() => document.body}
                                 delay={[100, 200]}
                             >
-                                <div className={`flex min-h-[42px] items-center justify-between gap-1 rounded-md border px-2 py-1.5 ${bgColor} ${borderColor}`}>
+                                <div className={`flex min-h-[36px] items-center justify-between gap-1 rounded-md border px-1.5 py-1 ${bgColor} ${borderColor}`}>
                                     <div className="flex min-w-0 items-center gap-1.5">
                                         <HorseNumberCircle number={opponent.horse_number} waku={opponent.waku_number} compact />
-                                        <span className="truncate text-xs font-semibold text-slate-700">{opponent.horse_name}</span>
+                                        <span className="truncate text-[11px] font-semibold text-slate-700">{opponent.horse_name}</span>
                                     </div>
                                     <div className="ml-1 flex-shrink-0 whitespace-nowrap text-xs">{resultText}</div>
                                 </div>
@@ -299,9 +299,9 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
         <div className="bg-white">
             <Tippy singleton={source} theme="light-border" placement="top" animation="shift-away" interactive={true} appendTo={() => document.body} delay={[100, 200]} />
 
-            <div className="flex flex-col gap-2 border-b border-slate-200 p-2.5 md:flex-row md:items-center md:justify-between md:p-3">
+            <div className="flex flex-col gap-1.5 border-b border-slate-200 p-2 md:flex-row md:items-center md:justify-between md:p-3">
                 <div className='flex items-center gap-2'>
-                    <h3 className="whitespace-nowrap text-xs font-bold text-slate-800 md:text-sm">過去対決成績</h3>
+                    <h3 id="race-matchup-heading" className="whitespace-nowrap text-xs font-bold text-slate-800 md:text-sm">過去対決成績</h3>
                     <Tippy
                         content={
                             <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
@@ -319,12 +319,12 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         <span className='flex h-4 w-4 flex-shrink-0 cursor-help items-center justify-center rounded-full bg-slate-400 text-xs font-bold text-white md:h-5 md:w-5 md:text-sm'>?</span>
                     </Tippy>
                 </div>
-                <div className="flex w-full flex-col gap-1 text-xs md:w-auto md:flex-row md:items-center md:gap-2 md:text-sm">
+                <div className="flex w-full flex-col gap-1 text-[11px] md:w-auto md:flex-row md:items-center md:gap-2 md:text-sm">
                     <label htmlFor="start-date" className="shrink-0 font-semibold text-slate-500 md:font-medium">期間</label>
                     <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 md:flex md:w-auto">
-                        <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-1 text-xs md:w-auto md:text-sm" />
+                        <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-1 text-[11px] md:w-auto md:text-sm" />
                         <span className="shrink-0 text-slate-400">-</span>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-1 text-xs md:w-auto md:text-sm" />
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-1 text-[11px] md:w-auto md:text-sm" />
                     </div>
                 </div>
             </div>

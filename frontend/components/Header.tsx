@@ -40,16 +40,16 @@ export const Header = () => {
     return (
         <header className="glass sticky top-0 z-50 transition-all duration-300">
             <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6">
-                <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
+                <div className="flex h-12 items-center justify-between gap-2 sm:h-16 sm:gap-4">
                     {/* ロゴ */}
-                    <Link href="/" className="flex items-center gap-3 group shrink-0" aria-label="ウマFREE ホーム">
+                    <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0" aria-label="ウマFREE ホーム">
                         <Image
                             src="/new-logo.webp"
                             alt="UMA-FREE ロゴ"
                             width={40}
                             height={40}
                             priority
-                            className="w-10 h-10 sm:w-12 sm:h-12"
+                            className="h-8 w-8 sm:h-12 sm:w-12"
                         />
                         <div className="flex flex-col hidden sm:flex">
                             <span className="text-xl sm:text-2xl font-bold tracking-tight text-primary">
@@ -81,24 +81,24 @@ export const Header = () => {
                     <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                         <Link
                             href="/search"
-                            className="p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            className="p-1.5 sm:p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             aria-label="サイト内検索"
                             title="検索"
                         >
-                            <SearchIcon className="w-5 h-5" />
+                            <SearchIcon className="h-5 w-5" />
                         </Link>
 
                         {/* モバイルメニューボタン */}
                         <button
                             onClick={toggleMenu}
-                            className="md:hidden p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            className="md:hidden p-1.5 sm:p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             aria-label={isMenuOpen ? 'メニューを閉じる' : 'メニューを開く'}
                             aria-expanded={isMenuOpen}
                         >
                             {isMenuOpen ? (
-                                <XIcon className="w-6 h-6" />
+                                <XIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                             ) : (
-                                <MenuIcon className="w-6 h-6" />
+                                <MenuIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                             )}
                         </button>
                     </div>

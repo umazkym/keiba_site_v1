@@ -104,44 +104,44 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
 
     // ========== レンダリング ==========
     return (
-        <div className="space-y-2 sm:space-y-4">
-            <h3 className="text-sm sm:text-lg font-bold text-gray-800 border-b-2 border-primary pb-1 sm:pb-2">このレースのデ－タ分析</h3>
+        <div className="space-y-1.5 sm:space-y-4">
+            <h3 id="race-analysis-heading" className="text-sm sm:text-lg font-bold text-gray-800 border-b-2 border-primary pb-1 sm:pb-2">このレースのデ－タ分析</h3>
 
             {race.ai_analysis_text && (
-                <div className="bg-gradient-to-br from-indigo-50/50 to-blue-50/30 rounded-lg p-2.5 sm:p-5 border border-indigo-200 shadow-sm mb-3 sm:mb-6 relative overflow-hidden">
-                    <h4 className="flex items-center text-primary font-bold mb-1.5 sm:mb-3 text-xs sm:text-lg relative z-10">
+                <div className="bg-gradient-to-br from-indigo-50/50 to-blue-50/30 rounded-lg p-2 sm:p-5 border border-indigo-200 shadow-sm mb-2 sm:mb-6 relative overflow-hidden">
+                    <h4 className="flex items-center text-primary font-bold mb-1 sm:mb-3 text-xs sm:text-lg relative z-10">
                         <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
                         AIレース展望・展開予想
                     </h4>
-                    <div className="text-gray-800 text-xs sm:text-[15px] leading-relaxed whitespace-pre-wrap relative z-10">
+                    <div className="text-gray-800 text-[11px] sm:text-[15px] leading-[1.65] sm:leading-relaxed whitespace-pre-wrap relative z-10">
                         {race.ai_analysis_text}
                     </div>
                 </div>
             )}
 
-            <div className="grid gap-2 sm:gap-4 lg:grid-cols-2">
+            <div className="grid gap-1.5 sm:gap-4 lg:grid-cols-2">
                 <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-primary">
                     <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">出走馬の能力分析</h4>
-                    <p className="text-gray-700 text-[11px] sm:text-sm leading-relaxed">{generateAbilityAnalysis()}</p>
+                    <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateAbilityAnalysis()}</p>
                 </div>
 
                 <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-accent">
                     <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">スタートからの展開予想</h4>
-                    <p className="text-gray-700 text-[11px] sm:text-sm leading-relaxed">{generateStartAnalysis()}</p>
+                    <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateStartAnalysis()}</p>
                 </div>
 
                 <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary">
                     <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">枠順による影響</h4>
-                    <p className="text-gray-700 text-[11px] sm:text-sm leading-relaxed">{generateFrameAnalysis()}</p>
+                    <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateFrameAnalysis()}</p>
                 </div>
 
                 <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary-dark">
                     <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">馬券戦略の方向性</h4>
-                    <p className="text-gray-700 text-[11px] sm:text-sm leading-relaxed">{generateStrategyAnalysis()}</p>
+                    <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateStrategyAnalysis()}</p>
                 </div>
             </div>
 
-            <div className="p-2 sm:p-3 text-[10px] sm:text-xs italic">
+            <div className="p-1.5 sm:p-3 text-[10px] sm:text-xs italic leading-[1.6]">
                 <p>このデータ分析はあくまで推定値です。実際のレースでは天候や馬場状態、騎手の判断、馬の調子など予測不可能な要因が大きく影響します。最終的な投票判断はご自身の責任でお願いします。</p>
             </div>
         </div>

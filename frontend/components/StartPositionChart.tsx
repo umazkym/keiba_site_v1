@@ -61,9 +61,9 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
     const maxScore = Math.max(...scores);
     const scoreRange = maxScore - minScore;
     const sortedByNumber = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
-    const chartHeight = isMobile ? 180 : 300;
-    const topPadding = isMobile ? 18 : 28;
-    const bottomPadding = isMobile ? 18 : 38;
+    const chartHeight = isMobile ? 148 : 300;
+    const topPadding = isMobile ? 15 : 28;
+    const bottomPadding = isMobile ? 15 : 38;
     const laneCount = Math.max(sortedByNumber.length, 1);
     const markerSpacing = laneCount > 1 ? (chartHeight - topPadding - bottomPadding) / (laneCount - 1) : 0;
 
@@ -92,7 +92,7 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
                     );
                 })}
             </div>
-            <div className="flex justify-between text-xs md:text-sm text-gray-600 mt-2 md:mt-3 px-2 font-medium">
+            <div className="flex justify-between text-[10px] md:text-sm text-gray-600 mt-1.5 md:mt-3 px-2 font-medium">
                 <span className="flex items-center"><span className="mr-1"></span><span className="hidden md:inline">後方・差し</span><span className="md:hidden">後</span></span>
                 <span className="hidden md:inline">中団</span><span className="md:hidden">中</span>
                 <span className="flex items-center"><span className="hidden md:inline">先行・逃げ</span><span className="md:hidden">先</span><span className="ml-1"></span></span>

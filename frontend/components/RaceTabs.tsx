@@ -329,15 +329,15 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
 
         return (
-            <div className="my-3">
+            <div className="my-2 sm:my-3">
                 <div className="flex justify-between items-center gap-2">
                     {hasPrev && prevRace ? (
-                        <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 font-bold shadow-sm">
+                        <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 font-bold shadow-sm">
                             &larr; {prevRace.race_number}Rへ
                         </button>
                     ) : <div className="flex-1" />}
                     {hasNext && nextRace ? (
-                        <button onClick={() => handleRaceSelect(activeRaceIndex + 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 font-bold shadow-sm">
+                        <button onClick={() => handleRaceSelect(activeRaceIndex + 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 font-bold shadow-sm">
                             {nextRace.race_number}Rへ &rarr;
                         </button>
                     ) : <div className="flex-1" />}
@@ -348,21 +348,21 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
 
     return (
         <div id={`venue-${venue.venue_name}`}>
-            <div className="sticky top-14 lg:top-16 z-30 bg-white/95 backdrop-blur-sm -mx-2 px-2 lg:mx-0 lg:px-0 py-1 lg:py-1.5 shadow-sm border-b border-gray-100">
+            <div className="sticky top-14 lg:top-16 z-30 bg-white/95 backdrop-blur-sm -mx-2 px-2 lg:mx-0 lg:px-0 py-0.5 lg:py-1.5 shadow-sm border-b border-gray-100">
                 <RaceSelector races={venue.races} selectedIndex={activeRaceIndex} onSelectRace={handleRaceSelect} />
             </div>
             {activeRace && (
                 <div id={`race-${activeRace.id}`} className="mt-1">
-                    <div id="race-prediction-section" className="card mb-1.5 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="bg-white px-2.5 py-1.5 sm:p-4 border-b border-gray-200">
-                            <h3 className="text-base sm:text-lg font-bold flex items-center text-gray-800">
-                                <span className="bg-primary text-white rounded-md w-7 h-7 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2 font-mono font-bold text-sm sm:text-base">{activeRace.race_number}R</span>
+                    <div id="race-prediction-section" className="card mb-1 overflow-hidden border border-gray-200 shadow-sm sm:mb-1.5">
+                        <div className="bg-white px-2.5 py-1 sm:p-4 border-b border-gray-200">
+                            <h3 className="text-[15px] sm:text-lg font-bold flex items-center text-gray-800">
+                                <span className="bg-primary text-white rounded-md w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-1.5 sm:mr-2 font-mono font-bold text-xs sm:text-base">{activeRace.race_number}R</span>
                                 <span className="truncate">{activeRace.race_name}</span>
                             </h3>
-                            <p className="text-xs sm:text-sm text-gray-500 ml-9 sm:ml-11 font-medium">{activeRace.course_type} {activeRace.distance}m</p>
+                            <p className="text-[11px] sm:text-sm text-gray-500 ml-7 sm:ml-11 font-medium leading-tight">{activeRace.course_type} {activeRace.distance}m</p>
                         </div>
                         <div>
-                            <h4 id="race-prediction-heading" className="flex items-center text-sm sm:text-base font-bold text-gray-700 mt-1 mb-0.5 px-2.5 sm:px-4">
+                            <h4 id="race-prediction-heading" className="flex items-center text-[13px] sm:text-base font-bold text-gray-700 mt-1 mb-0.5 px-2.5 sm:px-4">
                                 <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
                                 AI分析
                             </h4>
@@ -392,7 +392,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                         </>
                     )}
 
-                    <div className="my-2 sm:my-3">
+                    <div className="my-1.5 sm:my-3">
                         {(() => {
                             const hasNext = activeRaceIndex < venue.races.length - 1;
                             const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
@@ -401,9 +401,9 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 return (
                                     <div
                                         onClick={() => handleRaceSelect(activeRaceIndex + 1)}
-                                        className="flex items-center gap-3 p-2.5 sm:p-3 bg-gradient-to-r from-blue-50/80 to-slate-50 border border-blue-100 rounded-xl mb-1.5 cursor-pointer hover:border-blue-200 transition-colors active:scale-[0.99]"
+                                        className="flex items-center gap-2 p-2 sm:gap-3 sm:p-3 bg-gradient-to-r from-blue-50/80 to-slate-50 border border-blue-100 rounded-xl mb-1 cursor-pointer hover:border-blue-200 transition-colors active:scale-[0.99]"
                                     >
-                                        <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                                        <div className="h-8 w-8 sm:w-9 sm:h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
                                             <span className="text-xs font-bold text-primary">{nextRace.race_number}R</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -432,23 +432,23 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             <PremiumDetailPlaceholder showAd={Boolean(shouldShowAd)} />
                         ) : (
                             <>
-                            <div className="mb-1.5 grid gap-2 xl:grid-cols-2 xl:items-stretch">
-                                <div className="card p-1.5 sm:p-3 h-full flex flex-col">
-                                    <div id="race-detail-heading" className="flex items-center text-sm sm:text-base font-bold text-gray-800 p-1.5 sm:p-2.5">
-                                        <FlagIcon className="w-5 h-5 mr-2 text-primary" />
+                            <div className="mb-1 grid gap-1.5 sm:gap-2 xl:grid-cols-2 xl:items-stretch">
+                                <div className="card p-1 sm:p-3 h-full flex flex-col">
+                                    <div id="race-detail-heading" className="flex items-center text-[13px] sm:text-base font-bold text-gray-800 p-1 sm:p-2.5">
+                                        <FlagIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-primary" />
                                         <span>展開/脚質予測</span>
                                     </div>
-                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3 flex-1">
+                                    <div className="px-1.5 pb-1.5 sm:px-3 sm:pb-3 flex-1">
                                         <StartPositionChart predictions={activeRace.predictions} />
                                     </div>
                                 </div>
 
-                                <div className="card p-1.5 sm:p-3 h-full flex flex-col">
-                                    <div className="flex items-center text-sm sm:text-base font-bold text-gray-800 p-1.5 sm:p-2.5">
-                                        <ChartBarIcon className="w-5 h-5 mr-2 text-accent" />
+                                <div className="card p-1 sm:p-3 h-full flex flex-col">
+                                    <div className="flex items-center text-[13px] sm:text-base font-bold text-gray-800 p-1 sm:p-2.5">
+                                        <ChartBarIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-accent" />
                                         <span>このコースの枠順傾向</span>
                                     </div>
-                                    <div className="px-2 pb-2 sm:px-3 sm:pb-3 flex-1">
+                                    <div className="px-1.5 pb-1.5 sm:px-3 sm:pb-3 flex-1">
                                         <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
                                     </div>
                                 </div>
@@ -656,18 +656,18 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         return <div className="p-6 text-center text-muted card">対象日のレースデータがありません。</div>;
     }
 
-    const mainTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-2 sm:gap-4 border-b-2 border-slate-200 mb-2 sm:mb-4";
-    const mainTabClass = "snap-start min-w-max px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-base font-bold text-slate-400 bg-transparent cursor-pointer hover:text-slate-600 transition-all outline-none border-b-2 border-transparent -mb-[2px]";
+    const mainTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-2 sm:gap-4 border-b-2 border-slate-200 mb-1.5 sm:mb-4";
+    const mainTabClass = "snap-start min-w-max px-3 sm:px-6 py-1.5 sm:py-4 text-xs sm:text-base font-bold text-slate-400 bg-transparent cursor-pointer hover:text-slate-600 transition-all outline-none border-b-2 border-transparent -mb-[2px]";
     const mainSelectedTabClass = "!text-primary !border-primary";
 
-    const venueTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1 sm:gap-2 mb-2 sm:mb-4 p-0.5 sm:p-1 bg-slate-100/60 rounded-lg sm:rounded-xl w-max border border-slate-200/50 max-w-full";
-    const venueTabClass = "snap-start min-w-max px-3 sm:px-5 py-1 sm:py-2.5 text-[11px] sm:text-sm font-bold text-slate-500 rounded-md sm:rounded-lg cursor-pointer hover:text-slate-700 hover:bg-slate-200/60 transition-all outline-none";
+    const venueTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1 sm:gap-2 mb-1.5 sm:mb-4 p-0.5 sm:p-1 bg-slate-100/60 rounded-lg sm:rounded-xl w-max border border-slate-200/50 max-w-full";
+    const venueTabClass = "snap-start min-w-max px-2.5 sm:px-5 py-1 sm:py-2.5 text-[11px] sm:text-sm font-bold text-slate-500 rounded-md sm:rounded-lg cursor-pointer hover:text-slate-700 hover:bg-slate-200/60 transition-all outline-none";
     const venueSelectedTabClass = "!text-primary !bg-white shadow-sm !border-slate-200";
 
     const { isRaceUnlocked, isReady, isLoading: isAdLoading, isSupported, unavailableReason, showAd, unlock } = useRewardedAd();
 
     return (
-        <Tabs defaultIndex={initialTopTabIndex} onSelect={handleTopTabSelect} className="mt-4" forceRenderTabPanel={false}>
+        <Tabs defaultIndex={initialTopTabIndex} onSelect={handleTopTabSelect} className="mt-1.5 sm:mt-4" forceRenderTabPanel={false}>
             <TabList className={mainTabListClass}>
                 {jra.length > 0 && <Tab className={mainTabClass} selectedClassName={mainSelectedTabClass}>中央競馬</Tab>}
                 {nar.length > 0 && <Tab className={mainTabClass} selectedClassName={mainSelectedTabClass}>地方競馬</Tab>}

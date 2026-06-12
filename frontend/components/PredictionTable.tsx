@@ -27,7 +27,7 @@ const getWakuColorClasses = (waku: number | null): string => {
 };
 
 const HorseNumberCircle = ({ number, waku }: { number: number, waku: number | null }) => (
-    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm shrink-0 ${getWakuColorClasses(waku)}`}>
+    <div className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-[10px] border shadow-sm shrink-0 sm:h-6 sm:w-6 sm:text-xs sm:border-2 ${getWakuColorClasses(waku)}`}>
         {number}
     </div>
 );
@@ -71,7 +71,7 @@ const DeviationScoreBadge = ({ score }: { score: number | null | undefined }) =>
     const meta = getDeviationScoreMeta(score);
 
     return (
-        <span className={`inline-flex min-w-[52px] items-center justify-center rounded-full border px-2 py-1 text-[11px] font-black leading-none sm:min-w-[58px] sm:text-xs ${meta.className}`}>
+        <span className={`inline-flex min-w-[46px] items-center justify-center rounded-full border px-1.5 py-0.5 text-[10px] font-black leading-none sm:min-w-[58px] sm:px-2 sm:py-1 sm:text-xs ${meta.className}`}>
             {meta.label}
         </span>
     );
@@ -158,24 +158,24 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
             {/* スマホ (md未満) ではカードリスト表示 */}
             <div className="md:hidden bg-white">
                 {/* モバイル用ヘッダー行（PC同様に列名を表示） */}
-                <div className="flex items-center gap-2 px-2 py-1 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-text-secondary tracking-wider">
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-text-secondary tracking-wider">
                     <div className="min-w-[3rem]">印・馬番</div>
                     <div className="flex-1">馬名</div>
                     <div className="w-12 text-right">AI偏差値</div>
                 </div>
                 <div className="divide-y divide-slate-100">
                 {race.predictions.map((p, index) => (
-                        <div key={`${race.id}-${p.horse_number}-mobile`} className={`px-2 py-1.5 transition-colors hover:bg-slate-50 ${index % 2 !== 0 ? 'bg-slate-50/50' : ''}`}>
-                            <div className="flex items-center gap-2">
+                        <div key={`${race.id}-${p.horse_number}-mobile`} className={`px-2 py-1 transition-colors hover:bg-slate-50 ${index % 2 !== 0 ? 'bg-slate-50/50' : ''}`}>
+                            <div className="flex items-center gap-1.5">
                                 {/* 左: 印+馬番 */}
                                 <div className="flex flex-row items-center gap-1.5 shrink-0 min-w-[3rem]">
-                                    <span className="text-base font-extrabold text-text-primary leading-none w-4 text-center">{p.mark || '—'}</span>
+                                    <span className="text-sm font-extrabold text-text-primary leading-none w-4 text-center">{p.mark || '—'}</span>
                                     <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
                                 </div>
 
                                 {/* 中: 馬名 */}
                                 <div className="flex-1 min-w-0">
-                                    <div className="font-bold text-xs leading-snug text-text-primary line-clamp-2">{p.horse_name}</div>
+                                    <div className="font-bold text-[12px] leading-snug text-text-primary line-clamp-1">{p.horse_name}</div>
                                 </div>
 
                                 {/* 右: 偏差値 */}

@@ -84,7 +84,7 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
     const variantStyles: Record<string, { container: string; height: string }> = {
         article: {
             container: 'relative flex items-center border border-border rounded-xl overflow-hidden bg-white transition-all duration-200 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)]',
-            height: '90px', // 記事カードと同等の高さ
+            height: '76px', // モバイルの記事カードに合わせて控えめに確保
         },
         pick: {
             container: 'relative border border-border rounded-xl overflow-hidden bg-white transition-all duration-200 hover:shadow-[0_4px_20px_rgba(15,23,42,0.08)]',

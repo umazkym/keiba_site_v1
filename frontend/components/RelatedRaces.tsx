@@ -77,15 +77,15 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
     const current = new Date(year, month - 1, day);
 
     return (
-        <div className="mt-4 sm:mt-8 p-4 sm:p-6 bg-blue-50/50 rounded-xl border border-blue-100">
-            <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4 flex items-center">
-                <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="mt-2 sm:mt-8 p-2.5 sm:p-6 bg-blue-50/50 rounded-xl border border-blue-100">
+            <h3 className="text-sm sm:text-lg font-bold text-gray-800 mb-2 sm:mb-4 flex items-center">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 他の日付の分析もチェック
             </h3>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                 {relatedDates.map(date => {
                     const [y, m, d] = date.split('-').map(Number);
                     const dateObj = new Date(y, m - 1, d);
@@ -98,7 +98,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                             href={`/races/${date}`}
                             className="group relative bg-white p-2 sm:p-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-blue-300"
                         >
-                            <div className="font-bold text-gray-800 group-hover:text-blue-600">
+                            <div className="font-bold text-sm sm:text-base text-gray-800 group-hover:text-blue-600">
                                 {m}月{d}日 ({['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()]})
                             </div>
                             <div className="absolute top-2 right-2 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -109,10 +109,10 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                 })}
             </div>
 
-            <div className="mt-4 sm:mt-5 text-center">
+            <div className="mt-2.5 sm:mt-5 text-center">
                 <Link
                     href="/"
-                    className="inline-flex items-center justify-center bg-white border border-blue-200 hover:bg-blue-50 text-blue-600 font-bold py-2 sm:py-2.5 px-6 rounded-lg shadow-sm w-full sm:w-auto transition-colors text-sm sm:text-base"
+                    className="inline-flex items-center justify-center bg-white border border-blue-200 hover:bg-blue-50 text-blue-600 font-bold py-2 sm:py-2.5 px-6 rounded-lg shadow-sm w-full sm:w-auto transition-colors text-xs sm:text-base"
                 >
                     トップページに戻る
                     <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

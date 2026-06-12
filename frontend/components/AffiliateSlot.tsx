@@ -21,6 +21,7 @@ type AffiliateSlotProps = {
     raceType?: RaceType;
     venueName?: string;
     selectionKey?: string;
+    variant?: 'default' | 'compact';
     className?: string;
     fallback?: ReactNode;
 };
@@ -48,6 +49,7 @@ export const AffiliateSlot = ({
     raceType,
     venueName,
     selectionKey = '',
+    variant = 'default',
     className = '',
     fallback = null,
 }: AffiliateSlotProps) => {
@@ -166,6 +168,7 @@ export const AffiliateSlot = ({
     }
 
     const Icon = campaign.type === 'voting' ? Ticket : ShoppingBag;
+    const isCompact = variant === 'compact';
     const iconWrapperClassName = campaign.type === 'voting'
         ? 'bg-rose-50 text-rose-700'
         : 'bg-emerald-50 text-emerald-700';
@@ -179,12 +182,15 @@ export const AffiliateSlot = ({
     return (
         <section
             ref={slotRef}
-            className={`my-2 sm:my-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm ${className}`}
+            className={`${isCompact ? 'my-2 rounded-xl border border-rose-100 bg-white p-2.5 shadow-sm' : 'my-2 sm:my-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm'} ${className}`}
+            data-affiliate-context={context}
+            data-affiliate-campaign={campaign.id}
+            data-affiliate-variant={variant}
             aria-label={`${campaign.title} 広告リンク`}
         >
-            <div className="flex gap-3">
+            <div className={isCompact ? 'flex gap-2.5' : 'flex gap-3'}>
                 {campaign.type === 'product' ? (
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-slate-50 sm:h-24 sm:w-24">
+                    <div className={`${isCompact ? 'h-16 w-16 sm:h-20 sm:w-20' : 'h-20 w-20 sm:h-24 sm:w-24'} flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-slate-50`}>
                         {productPreview?.imageUrl ? (
                             <img
                                 src={productPreview.imageUrl}
@@ -197,13 +203,13 @@ export const AffiliateSlot = ({
                         )}
                     </div>
                 ) : (
-                    <span className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconWrapperClassName}`}>
-                        <Icon className="h-4 w-4" />
+                    <span className={`mt-1 flex shrink-0 items-center justify-center rounded-lg ${isCompact ? 'h-7 w-7' : 'h-8 w-8'} ${iconWrapperClassName}`}>
+                        <Icon className={isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
                     </span>
                 )}
 
                 <div className="min-w-0 flex-1">
-                    <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                    <div className={`${isCompact ? 'mb-1' : 'mb-1.5'} flex flex-wrap items-center gap-1.5`}>
                         <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
                             PR
                         </span>
@@ -213,16 +219,16 @@ export const AffiliateSlot = ({
                             </span>
                         )}
                     </div>
-                    <h3 className="text-[13px] font-bold leading-tight text-slate-800 sm:text-sm">
+                    <h3 className={`${isCompact ? 'text-xs sm:text-[13px]' : 'text-[13px] sm:text-sm'} font-bold leading-tight text-slate-800`}>
                         {campaign.title}
                     </h3>
                     {campaign.description && (
-                        <p className="mt-1 text-[11px] leading-5 text-slate-500 sm:text-xs">
+                        <p className={`${isCompact ? 'mt-0.5 text-[10px] leading-4 sm:text-[11px]' : 'mt-1 text-[11px] leading-5 sm:text-xs'} text-slate-500`}>
                             {campaign.description}
                         </p>
                     )}
 
-                    <div className="mt-2 flex flex-col gap-2">
+                    <div className={`${isCompact ? 'mt-1.5' : 'mt-2'} flex flex-col gap-2`}>
                         <div className={`grid gap-2 ${mainLinks.length > 1 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
                             {mainLinks.map((link) => (
                                 <a
@@ -239,7 +245,7 @@ export const AffiliateSlot = ({
                                         race_type: raceType,
                                         venue_name: venueName,
                                     })}
-                                    className={`inline-flex min-h-[40px] items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${providerClassNames[link.provider]}`}
+                                    className={`inline-flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${isCompact ? 'min-h-[36px]' : 'min-h-[40px]'} ${providerClassNames[link.provider]}`}
                                 >
                                     <span className="min-w-0 truncate">{link.label || providerLabels[link.provider]}</span>
                                     <ExternalLink className="h-3.5 w-3.5 shrink-0" />
@@ -278,7 +284,7 @@ export const AffiliateSlot = ({
             </div>
 
             {campaign.attention && (
-                <p className="mt-2 border-t border-slate-100 pt-2 text-[10px] leading-4 text-slate-400">
+                <p className={`${isCompact ? 'mt-1.5 pt-1.5' : 'mt-2 pt-2'} border-t border-slate-100 text-[10px] leading-4 text-slate-400`}>
                     {campaign.attention}
                 </p>
             )}

@@ -399,16 +399,14 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                         <RaceNavigation />
                     </div>
 
-                    {/* ★ CTR改善: ロック前の「全ユーザーが見る」位置にInFeedAd配置 */}
-                    {/* 変更前: AdUnit（バナー広告） → CTR 0.36%と低迷 */}
-                    {/* 変更後: InFeedAd（コンテンツカード風） → コンテンツに溶け込みCTR向上を狙う */}
-                    {/* InFeedAdは以前ロック解除後のみ表示(L240)だったが、大半のユーザーの目に触れていなかった */}
+                    {/* 予想表確認後の自然な区切りに、地方競馬では楽天競馬のPR導線を出す */}
                     {shouldShowAd && (
                         <AffiliateSlot
                             context="race_after_prediction"
                             raceType={raceType}
                             venueName={venue.venue_name}
                             selectionKey={adRefreshKey}
+                            variant={raceType === 'nar' ? 'compact' : 'default'}
                         />
                     )}
 
@@ -458,9 +456,20 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 </div>
                             </div>
 
-                            {/* ★ ビューアビリティ改善: 対決成績の直後（自然な区切り）に広告配置 */}
+                            {/* 対決成績の直後は高意欲ユーザーが多いため、地方競馬は楽天導線を優先 */}
                             {shouldShowAd && (
-                                <InFeedAd refreshKey={`premium-mid-${adRefreshKey}`} analyticsPlacement="race_premium_mid" />
+                                raceType === 'nar' ? (
+                                    <AffiliateSlot
+                                        context="race_after_premium_data"
+                                        raceType="nar"
+                                        venueName={venue.venue_name}
+                                        selectionKey={`premium-${adRefreshKey}`}
+                                        variant="compact"
+                                        className="mb-2"
+                                    />
+                                ) : (
+                                    <InFeedAd refreshKey={`premium-mid-${adRefreshKey}`} analyticsPlacement="race_premium_mid" />
+                                )
                             )}
 
                             <div className="mb-2">
@@ -697,6 +706,13 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
             {nar.length > 0 && (
                 <TabPanel>
                     <div className="p-0 sm:p-2 md:p-3 relative">
+                        <AffiliateSlot
+                            context="race_nar_overview"
+                            raceType="nar"
+                            selectionKey={`${currentDate}-nar-overview`}
+                            variant="compact"
+                            className="mb-3"
+                        />
                         <Tabs defaultIndex={initialNarVenueIndex} onSelect={handleNarVenueSelect} forceRenderTabPanel={false}>
                             <TabList className={venueTabListClass}>
                                 {nar.map(venue => <Tab key={venue.venue_name} className={venueTabClass} selectedClassName={venueSelectedTabClass}>{venue.venue_name}</Tab>)}

@@ -80,7 +80,18 @@ export const MobileStickyAd = () => {
     const searchParams = useSearchParams();
     const raceParam = searchParams.get('race') || '';
     const containerRef = useRef<HTMLDivElement>(null);
-    const variantConfig = useMemo(() => stickyVariantConfig[variant], [variant]);
+    const isRacePage = pathname.startsWith('/races/');
+    const variantConfig = useMemo(() => {
+        const baseConfig = stickyVariantConfig[variant];
+        if (!isRacePage) return baseConfig;
+
+        return {
+            ...stickyVariantConfig.compact,
+            scrollThreshold: 1400,
+            placement: 'sticky_bottom_race_compact_delayed',
+        };
+    }, [isRacePage, variant]);
+    const analyticsVariant = isRacePage ? `${variant}_race_compact_delayed` : variant;
 
     // 広告を表示しないページガード
     const noAdPages = [
@@ -136,7 +147,7 @@ export const MobileStickyAd = () => {
                         placement: variantConfig.placement,
                         format: 'sticky_bottom',
                         slot: '8529703346',
-                        variant,
+                        variant: analyticsVariant,
                     });
                     observer.disconnect();
                     return true;
@@ -167,7 +178,7 @@ export const MobileStickyAd = () => {
             window.clearTimeout(statusTimer);
             observer.disconnect();
         };
-    }, [pathname, raceParam, variantConfig.placement, variant]);  // ★ raceParam追加: レース切替時もMutationObserverを再作成
+    }, [pathname, raceParam, variantConfig.placement, analyticsVariant]);  // ★ raceParam追加: レース切替時もMutationObserverを再作成
 
     const handleDismiss = () => {
         setIsDismissed(true);
@@ -183,7 +194,7 @@ export const MobileStickyAd = () => {
     return (
         <div 
             ref={containerRef}
-            data-ad-variant={variant}
+            data-ad-variant={analyticsVariant}
             className={`xl:hidden fixed bottom-0 left-0 right-0 w-full z-50 transition-all duration-500 transform shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] ${
                 isVisible ? 'translate-y-0 opacity-100' : 'translate-y-[120px] opacity-0 pointer-events-none'
             }`}

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { PredictionTable } from '@/components/PredictionTable';
@@ -47,8 +47,48 @@ const CollapsibleSection = memo(({ title, icon, children }: { title: string, ico
 
 CollapsibleSection.displayName = 'CollapsibleSection';
 
+const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
+    <>
+        <div className="mb-2 grid gap-2 xl:grid-cols-2 xl:items-stretch" aria-hidden="true">
+            {[0, 1].map((index) => (
+                <div key={index} className="card p-2 sm:p-3 min-h-[250px]">
+                    <div className="flex items-center p-2 sm:p-3">
+                        <div className="h-5 w-5 rounded bg-slate-100" />
+                        <div className="ml-2 h-4 w-32 rounded bg-slate-100" />
+                    </div>
+                    <div className="px-2 pb-2 sm:px-3 sm:pb-3">
+                        <div className="h-[180px] rounded-lg border bg-slate-50" />
+                    </div>
+                </div>
+            ))}
+        </div>
+        <div className="mb-2 card p-2 sm:p-3 min-h-[220px]" aria-hidden="true">
+            <div className="flex items-center p-2 sm:p-3">
+                <div className="h-5 w-5 rounded bg-slate-100" />
+                <div className="ml-2 h-4 w-28 rounded bg-slate-100" />
+            </div>
+            <div className="px-2 pb-2 sm:px-3 sm:pb-3">
+                <div className="h-[140px] rounded-lg border bg-slate-50" />
+            </div>
+        </div>
+        {showAd && (
+            <div className="mb-2 min-h-[180px] rounded-xl border border-slate-200 bg-slate-50" aria-hidden="true" />
+        )}
+        <div className="mb-2 card p-2 sm:p-3 min-h-[220px]" aria-hidden="true">
+            <div className="flex items-center p-2 sm:p-3">
+                <div className="h-5 w-5 rounded bg-slate-100" />
+                <div className="ml-2 h-4 w-36 rounded bg-slate-100" />
+            </div>
+            <div className="px-2 pb-2 sm:px-3 sm:pb-3">
+                <div className="h-[140px] rounded-lg border bg-slate-50" />
+            </div>
+        </div>
+    </>
+));
+
+PremiumDetailPlaceholder.displayName = 'PremiumDetailPlaceholder';
+
 const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, venueActivationKey = 0, isRaceUnlocked, isReady, isLoading, isSupported, unavailableReason, showAd, unlock }: { venue: VenueRaces, raceType: 'jra' | 'nar', articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isRaceUnlocked: (raceId: string) => boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, unavailableReason: string | null, showAd: (context?: RewardedAdContext | string) => boolean, unlock: (raceId?: string) => void }) => {
-    const router = useRouter();
     const params = useParams();
     const currentDate = params.date as string;
     const gateViewKeysRef = useRef<Set<string>>(new Set());
@@ -69,32 +109,59 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
     const canUseRewardedAd = isSupported && isReady && !isLoading;
     const isPremiumDetailVisible = isActiveRaceUnlocked || !canUseRewardedAd;
     const shouldShowRewardGate = Boolean(activeRace && !isPremiumDetailVisible);
+    const [isPremiumContentReady, setIsPremiumContentReady] = useState(false);
+    const previousInitialRaceNumberRef = useRef(initialRaceNumber);
 
     // ブラウザ「戻る」対応
     useEffect(() => {
+        if (previousInitialRaceNumberRef.current === initialRaceNumber) return;
+        previousInitialRaceNumberRef.current = initialRaceNumber;
+
         if (initialRaceNumber) {
             const newIndex = venue.races.findIndex(r => r.race_number === initialRaceNumber);
-            if (newIndex >= 0 && newIndex !== activeRaceIndex) {
-                setActiveRaceIndex(newIndex);
+            if (newIndex >= 0) {
+                setActiveRaceIndex(prev => prev === newIndex ? prev : newIndex);
             }
         }
     }, [initialRaceNumber, venue.races]);
 
+    useEffect(() => {
+        setIsPremiumContentReady(false);
+        if (!activeRace || !isPremiumDetailVisible) return;
+
+        const timer = window.setTimeout(() => {
+            setIsPremiumContentReady(true);
+        }, 120);
+
+        return () => window.clearTimeout(timer);
+    }, [activeRace?.id, isPremiumDetailVisible]);
+
+    const scrollVenueIntoView = useCallback(() => {
+        if (typeof window === 'undefined') return;
+
+        window.requestAnimationFrame(() => {
+            const raceContent = document.getElementById(`venue-${venue.venue_name}`);
+            if (!raceContent) return;
+
+            const offset = window.innerWidth < 640 ? 68 : 82;
+            const top = window.scrollY + raceContent.getBoundingClientRect().top - offset;
+            window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+        });
+    }, [venue.venue_name]);
+
     const handleRaceSelect = useCallback((index: number) => {
+        if (index === activeRaceIndex) return;
+
         setActiveRaceIndex(index);
         const selectedRace = venue.races[index];
         if (selectedRace) {
             const newUrl = getRaceDetailPath(currentDate, venue.venue_name, selectedRace.race_number);
-            router.push(newUrl, { scroll: false });
-
-            setTimeout(() => {
-                const raceContent = document.getElementById(`venue-${venue.venue_name}`);
-                if (raceContent) {
-                    raceContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            }, 100);
+            if (typeof window !== 'undefined') {
+                window.history.replaceState(window.history.state, '', newUrl);
+            }
+            scrollVenueIntoView();
         }
-    }, [venue, router, currentDate]);
+    }, [activeRaceIndex, venue.races, venue.venue_name, currentDate, scrollVenueIntoView]);
 
     // ★ ビューアビリティ改善: 条件を5→3頭に緩和し、ほぼ全レースで広告表示
     const shouldShowAd = useMemo(() => {
@@ -347,7 +414,10 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
 
                     {/* プレミアム・ロック切り替え部分 */}
                     {(activeRace && isPremiumDetailVisible) ? (
-                        <>
+                        !isPremiumContentReady ? (
+                            <PremiumDetailPlaceholder showAd={Boolean(shouldShowAd)} />
+                        ) : (
+                            <>
                             <div className="mb-2 grid gap-2 xl:grid-cols-2 xl:items-stretch">
                                 <div className="card p-2 sm:p-3 h-full flex flex-col">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
@@ -406,7 +476,8 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                     </div>
                                 </div>
                             </div>
-                        </>
+                            </>
+                        )
                     ) : shouldShowRewardGate ? (
                         <div className="relative mb-2 overflow-hidden rounded-2xl" style={{ minHeight: '320px' }}>
                             {/* 背景: ぼかした実データ */}

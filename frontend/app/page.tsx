@@ -268,19 +268,6 @@ export default async function HomePage() {
                     </div>
                 </section>
 
-                {/* ── 高配当的中ランキング ── */}
-                <section>
-                    <TopHitsDisplay initialHits={topHits} />
-                </section>
-
-                {/* ── 前回見ていたレース（リピーター向け） ── */}
-                <RecentRaceReturn />
-
-                {/* ── 今週の重賞 ── */}
-                {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
-                    <WeeklyGradeRaces races={weeklyGradeRaces} />
-                )}
-
                 {/* ── 本日の開催 ── */}
                 <section className="venue-links">
                     <h2>
@@ -331,7 +318,20 @@ export default async function HomePage() {
                     )}
                 </section>
 
-                <AdUnit slot="8529703346" placement="inline" analyticsPlacement="home_after_value_preview" />
+                <AdUnit slot="8529703346" placement="inline" analyticsPlacement="home_after_today_races" />
+
+                {/* ── 前回見ていたレース（リピーター向け） ── */}
+                <RecentRaceReturn />
+
+                {/* ── 今週の重賞 ── */}
+                {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
+                    <WeeklyGradeRaces races={weeklyGradeRaces} />
+                )}
+
+                {/* ── 高配当的中ランキング ── */}
+                <section>
+                    <TopHitsDisplay initialHits={topHits} />
+                </section>
             </div>
 
             {/* ── 今日の分析注目馬 ── */}

@@ -182,7 +182,7 @@ export const AffiliateSlot = ({
     return (
         <section
             ref={slotRef}
-            className={`${isCompact ? 'my-2 rounded-xl border border-rose-100 bg-white p-2.5 shadow-sm' : 'my-2 sm:my-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm'} ${className}`}
+            className={`${isCompact ? 'my-2 rounded-xl border border-rose-100 bg-rose-50/35 p-2.5 shadow-sm' : 'my-2 sm:my-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm'} ${className}`}
             data-affiliate-context={context}
             data-affiliate-campaign={campaign.id}
             data-affiliate-variant={variant}
@@ -210,8 +210,8 @@ export const AffiliateSlot = ({
 
                 <div className="min-w-0 flex-1">
                     <div className={`${isCompact ? 'mb-1' : 'mb-1.5'} flex flex-wrap items-center gap-1.5`}>
-                        <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
-                            PR
+                        <span className="rounded border border-rose-100 bg-white px-1.5 py-0.5 text-[10px] font-bold text-rose-700 sm:text-[11px]">
+                            PR / スポンサー
                         </span>
                         {productPriceLabel && (
                             <span className="rounded border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
@@ -222,7 +222,7 @@ export const AffiliateSlot = ({
                     <h3 className={`${isCompact ? 'text-xs sm:text-[13px]' : 'text-[13px] sm:text-sm'} font-bold leading-tight text-slate-800`}>
                         {campaign.title}
                     </h3>
-                    {campaign.description && !(isCompact && campaign.type === 'voting') && (
+                    {campaign.description && (
                         <p className={`${isCompact ? 'mt-0.5 text-[10px] leading-4 sm:text-[11px]' : 'mt-1 text-[11px] leading-5 sm:text-xs'} text-slate-500`}>
                             {campaign.description}
                         </p>

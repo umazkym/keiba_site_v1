@@ -368,15 +368,25 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                     </div>
 
                     {shouldShowAd && (
-                        <AdUnit
-                            slot="8529703346"
-                            placement="inline"
-                            analyticsPlacement="race_after_prediction_card"
-                            refreshKey={`race-top-${adRefreshKey}`}
-                            minHeight="72px"
-                            collapseUnfilled={true}
-                            className="my-2"
-                        />
+                        <>
+                            <AdUnit
+                                slot="8529703346"
+                                placement="inline"
+                                analyticsPlacement="race_after_prediction_card"
+                                refreshKey={`race-top-${adRefreshKey}`}
+                                minHeight="72px"
+                                collapseUnfilled={true}
+                                className="my-2"
+                            />
+                            <AffiliateSlot
+                                context="race_after_prediction"
+                                raceType={raceType}
+                                venueName={venue.venue_name}
+                                selectionKey={`prediction-${adRefreshKey}`}
+                                variant="compact"
+                                className="mb-2"
+                            />
+                        </>
                     )}
 
                     <div className="my-3">

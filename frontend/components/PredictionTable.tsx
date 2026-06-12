@@ -32,6 +32,51 @@ const HorseNumberCircle = ({ number, waku }: { number: number, waku: number | nu
     </div>
 );
 
+const getDeviationScoreMeta = (score: number | null | undefined) => {
+    if (score == null) {
+        return {
+            label: '--',
+            className: 'bg-slate-100 text-slate-400 border-slate-200',
+        };
+    }
+
+    if (score >= 70) {
+        return {
+            label: score.toFixed(1),
+            className: 'bg-rose-600 text-white border-rose-700',
+        };
+    }
+
+    if (score >= 60) {
+        return {
+            label: score.toFixed(1),
+            className: 'bg-orange-500 text-white border-orange-600',
+        };
+    }
+
+    if (score >= 50) {
+        return {
+            label: score.toFixed(1),
+            className: 'bg-amber-100 text-amber-800 border-amber-200',
+        };
+    }
+
+    return {
+        label: score.toFixed(1),
+        className: 'bg-slate-100 text-slate-600 border-slate-200',
+    };
+};
+
+const DeviationScoreBadge = ({ score }: { score: number | null | undefined }) => {
+    const meta = getDeviationScoreMeta(score);
+
+    return (
+        <span className={`inline-flex min-w-[52px] items-center justify-center rounded-full border px-2 py-1 text-[11px] font-black leading-none sm:min-w-[58px] sm:text-xs ${meta.className}`}>
+            {meta.label}
+        </span>
+    );
+};
+
 export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePrediction, refreshKey?: string }) => {
     const pathname = usePathname();
     const observerRef = useRef<HTMLDivElement>(null);
@@ -64,6 +109,9 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
 
     return (
         <div ref={observerRef}>
+            <div className="mx-2 mb-2 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1.5 text-[10px] font-bold leading-4 text-slate-500 sm:mx-4 sm:text-xs">
+                AI偏差値は50が平均目安です。60台は上位寄り、70以上はかなり高い評価として確認できます。
+            </div>
             {/* PC (md以上) ではテーブル表示 */}
             <div className="hidden md:block overflow-x-auto">
                 <table className="w-full table-fixed">
@@ -101,7 +149,9 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                                         <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
                                     </td>
                                     <td className="px-2 py-3 whitespace-nowrap font-bold text-text-primary truncate">{p.horse_name}</td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-right font-bold text-primary-dark font-mono text-base bg-blue-50/20 group-hover:bg-blue-50/40 transition-colors">{p.deviation_score != null ? p.deviation_score.toFixed(2) : '---'}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-right bg-blue-50/20 group-hover:bg-blue-50/40 transition-colors">
+                                        <DeviationScoreBadge score={p.deviation_score} />
+                                    </td>
                                 </tr>
                         ))}
                     </tbody>
@@ -128,14 +178,12 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
 
                                 {/* 中: 馬名 */}
                                 <div className="flex-1 min-w-0">
-                                    <div className="font-bold text-xs text-text-primary truncate">{p.horse_name}</div>
+                                    <div className="font-bold text-xs leading-snug text-text-primary line-clamp-2">{p.horse_name}</div>
                                 </div>
 
-                                {/* 右: 偏差値（数値のみ） */}
-                                <div className="shrink-0 w-12 text-right">
-                                    <span className="font-bold text-primary-dark text-sm font-mono">
-                                        {p.deviation_score != null ? p.deviation_score.toFixed(1) : '--'}
-                                    </span>
+                                {/* 右: 偏差値 */}
+                                <div className="shrink-0 w-14 text-right">
+                                    <DeviationScoreBadge score={p.deviation_score} />
                                 </div>
                             </div>
                         </div>

@@ -16,6 +16,7 @@ import { InFeedAd } from "@/components/InFeedAd";
 import { RecentRaceReturn } from "@/components/RecentRaceReturn";
 import { AffiliateSlot } from "@/components/AffiliateSlot";
 import { RacePageJumpNav } from "@/components/RacePageJumpNav";
+import { RacePageBottomNav } from "@/components/RacePageBottomNav";
 
 // 日付フォーマット検証関数
 /**
@@ -328,7 +329,7 @@ export default function RacePageClient({
     };
 
     return (
-        <div className="mx-auto max-w-6xl py-4">
+        <div id="race-page-top" className="mx-auto max-w-6xl py-4 pb-24 md:pb-4">
             {/* ▼▼▼▼▼【ファーストビュー改善】▼▼▼▼▼ */}
             {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
             {/* 変更: 日付ナビ→レースデータ→的中ランキング→バナー広告（レースデータを最速で表示） */}
@@ -369,6 +370,13 @@ export default function RacePageClient({
                 <TopHitsDisplay initialHits={initialTopHits} />
             </div>
 
+            <AffiliateSlot
+                context="race_after_top_hits"
+                raceType={hasNarRaces ? 'nar' : 'jra'}
+                selectionKey={currentDate}
+                fallback={<InFeedAd refreshKey={`bottom-${currentDate}`} analyticsPlacement="race_after_top_hits" />}
+            />
+
             {/* ★ 回遊性向上: 他の日付への導線を追加 */}
             <div className="flex justify-center gap-2 sm:gap-3 my-3 sm:my-4">
                 <Link
@@ -384,15 +392,6 @@ export default function RacePageClient({
                     翌日のデータ →
                 </Link>
             </div>
-
-            {/* ★ CTR改善: 的中ランキング後の広告をInFeedAdに変更 */}
-            {/* バナー広告よりコンテンツカード風の方がCTRが高い */}
-            <AffiliateSlot
-                context="race_after_top_hits"
-                raceType={hasNarRaces ? 'nar' : 'jra'}
-                selectionKey={currentDate}
-                fallback={<InFeedAd refreshKey={`bottom-${currentDate}`} analyticsPlacement="race_after_top_hits" />}
-            />
 
             {/* ★ 回遊性改善: 分析記事への導線を追加 */}
             {/* データ根拠: 記事ページのエンゲージメント時間はレースページの3-10倍
@@ -456,6 +455,10 @@ export default function RacePageClient({
                     をご覧ください。
                 </p>
             </section>
+
+            {hasRaceData && !isLoading && !error && (
+                <RacePageBottomNav />
+            )}
         </div>
     );
 }

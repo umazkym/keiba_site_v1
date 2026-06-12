@@ -2,11 +2,11 @@
 
 import type { ReactNode } from 'react';
 import { ChartBarIcon, FlagIcon, SparklesIcon, UsersIcon } from './Icons';
+import { useRaceSectionNavigation, type RaceSectionNavItem } from '@/hooks/useRaceSectionNavigation';
 
-type JumpItem = {
+type JumpItem = RaceSectionNavItem & {
     label: string;
     note: string;
-    targetIds: string[];
     icon: ReactNode;
     accentClass: string;
     preview: ReactNode;
@@ -16,22 +16,9 @@ type RacePageJumpNavProps = {
     className?: string;
 };
 
-const scrollToFirstTarget = (targetIds: string[]) => {
-    if (typeof window === 'undefined') return;
-
-    const target = targetIds
-        .map((id) => document.getElementById(id))
-        .find((element): element is HTMLElement => Boolean(element));
-
-    if (!target) return;
-
-    const offset = window.innerWidth < 640 ? 68 : 82;
-    const top = window.scrollY + target.getBoundingClientRect().top - offset;
-    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-};
-
 const items: JumpItem[] = [
     {
+        key: 'prediction',
         label: '予想表',
         note: 'AI評価',
         targetIds: ['race-prediction-section'],
@@ -46,6 +33,7 @@ const items: JumpItem[] = [
         ),
     },
     {
+        key: 'detail',
         label: '展開材料',
         note: '脚質・枠順',
         targetIds: ['race-detail-data-section'],
@@ -60,6 +48,7 @@ const items: JumpItem[] = [
         ),
     },
     {
+        key: 'guide',
         label: 'データ解説',
         note: '見方を確認',
         targetIds: ['race-data-guide-section', 'race-analysis-section', 'race-detail-data-section'],
@@ -77,6 +66,7 @@ const items: JumpItem[] = [
         ),
     },
     {
+        key: 'articles',
         label: '関連記事',
         note: '復習・深掘り',
         targetIds: ['race-related-articles-section', 'race-page-articles-section'],
@@ -93,6 +83,8 @@ const items: JumpItem[] = [
 ];
 
 export function RacePageJumpNav({ className = '' }: RacePageJumpNavProps) {
+    const { activeKey, scrollToItem } = useRaceSectionNavigation(items);
+
     return (
         <section className={`card overflow-hidden border-slate-200 bg-white shadow-sm ${className}`}>
             <div className="border-b border-slate-100 bg-slate-50/70 px-3 py-2 sm:px-4">
@@ -102,33 +94,40 @@ export function RacePageJumpNav({ className = '' }: RacePageJumpNavProps) {
                         <h2 className="truncate text-sm font-bold text-slate-900">見たい材料へすぐ移動</h2>
                     </div>
                     <span className="hidden rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500 sm:inline-flex">
-                        タップで移動
+                        現在地を表示
                     </span>
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-2 p-2.5 sm:grid-cols-4 sm:p-3">
-                {items.map((item) => (
-                    <button
-                        key={item.label}
-                        type="button"
-                        onClick={() => scrollToFirstTarget(item.targetIds)}
-                        className="group min-w-0 rounded-xl border border-slate-200 bg-white p-2 text-left shadow-sm ring-1 ring-slate-100 transition-all hover:border-primary/40 hover:bg-slate-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/25 active:scale-[0.99]"
-                    >
-                        <div className="mb-1.5 flex items-center gap-2">
-                            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${item.accentClass}`}>
-                                {item.icon}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                                <p className="truncate text-[12px] font-bold leading-tight text-slate-900 sm:text-[13px]">{item.label}</p>
-                                <p className="truncate text-[10px] font-medium text-slate-500">{item.note}</p>
+                {items.map((item) => {
+                    const isActive = activeKey === item.key;
+                    return (
+                        <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => scrollToItem(item)}
+                            className={`group min-w-0 rounded-xl border p-2 text-left shadow-sm ring-1 transition-all hover:border-primary/40 hover:bg-slate-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/25 active:scale-[0.99] ${
+                                isActive
+                                    ? 'border-primary/40 bg-primary/5 ring-primary/15'
+                                    : 'border-slate-200 bg-white ring-slate-100'
+                            }`}
+                        >
+                            <div className="mb-1.5 flex items-center gap-2">
+                                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${item.accentClass}`}>
+                                    {item.icon}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-[12px] font-bold leading-tight text-slate-900 sm:text-[13px]">{item.label}</p>
+                                    <p className="truncate text-[10px] font-medium text-slate-500">{item.note}</p>
+                                </div>
+                                <span className={`text-sm font-bold transition-colors ${isActive ? 'text-primary' : 'text-slate-300 group-hover:text-primary'}`}>→</span>
                             </div>
-                            <span className="text-sm font-bold text-slate-300 transition-colors group-hover:text-primary">→</span>
-                        </div>
-                        <div className="rounded-lg bg-slate-50 p-1.5">
-                            {item.preview}
-                        </div>
-                    </button>
-                ))}
+                            <div className={`rounded-lg p-1.5 ${isActive ? 'bg-white' : 'bg-slate-50'}`}>
+                                {item.preview}
+                            </div>
+                        </button>
+                    );
+                })}
             </div>
         </section>
     );

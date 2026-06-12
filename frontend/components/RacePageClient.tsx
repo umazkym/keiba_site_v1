@@ -327,10 +327,7 @@ export default function RacePageClient({
         <div id="race-page-top" className="mx-auto max-w-6xl py-4 pb-24 md:pb-4">
             {/* ▼▼▼▼▼【ファーストビュー改善】▼▼▼▼▼ */}
             {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
-            {/* 変更: 日付ナビ→レースデータ→的中ランキング→バナー広告（レースデータを最速で表示） */}
-            {/* ▲▲▲▲▲【ファーストビュー改善ここまで】▲▲▲▲▲ */}
-            {/* ★ここからstickyを削除し、スクロールで自然に消えるようにして画面領域を確保 */}
-            <div className="glass mb-2 sm:mb-3 p-1 sm:p-3 relative z-10 shadow-sm border-b border-white/40">
+            <div className="glass mb-1.5 sm:mb-3 p-1 sm:p-2 relative z-10 shadow-sm border-b border-white/40">
                 <div className="flex items-center justify-center gap-1.5 sm:gap-4 flex-wrap">
                     <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
                     <button
@@ -345,23 +342,21 @@ export default function RacePageClient({
                 </div>
             </div>
 
-            <RecentRaceReturn className="mb-2 sm:mb-3" />
+            <RecentRaceReturn className="mb-1.5 sm:mb-3" />
 
             {hasRaceData && !isLoading && !error && (
-                <RacePageJumpNav className="mb-2 sm:mb-3" />
+                <RacePageJumpNav className="mb-1.5 sm:mb-3" />
             )}
 
-            {/* 🏆 今週の重賞セクション */}
             {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
-                <div className="mb-2 sm:mb-3">
+                <div className="mb-1.5 sm:mb-3">
                     <WeeklyGradeRaces races={weeklyGradeRaces} />
                 </div>
             )}
 
             {renderContent()}
 
-            {/* 的中ランキング: レースデータの後に配置 */}
-            <div className="mt-2 sm:mt-4 mb-1 sm:mb-3">
+            <div className="mt-1.5 sm:mt-3 mb-1 sm:mb-2">
                 <TopHitsDisplay initialHits={initialTopHits} />
             </div>
 
@@ -372,7 +367,6 @@ export default function RacePageClient({
                 fallback={<InFeedAd refreshKey={`bottom-${currentDate}`} analyticsPlacement="race_after_top_hits" />}
             />
 
-            {/* ★ 回遊性向上: 他の日付への導線を追加 */}
             <div className="flex justify-center gap-2 sm:gap-3 my-3 sm:my-4">
                 <Link
                     href={`/races/${getShiftedDate(currentDate, -1)}`}
@@ -388,13 +382,8 @@ export default function RacePageClient({
                 </Link>
             </div>
 
-            {/* ★ 回遊性改善: 分析記事への導線を追加 */}
-            {/* データ根拠: 記事ページのエンゲージメント時間はレースページの3-10倍
-              → 広告のViewable率が高い → RPM向上
-              レースページ: 収益効率 $0.0001-0.0006/session
-              記事ページ(about-ai等): 収益効率 $0.0025/session（4-25倍） */}
             {articlesMeta && articlesMeta.length > 0 && (
-                <section id="race-page-articles-section" className="mt-3 sm:mt-4 mb-2 sm:mb-3 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                <section id="race-page-articles-section" className="mt-2 sm:mt-3 mb-1.5 sm:mb-2 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                     <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
                         <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                             <span className="w-1.5 h-5 bg-primary rounded-full"></span>
@@ -443,7 +432,7 @@ export default function RacePageClient({
             )}
 
             {/* サイト紹介テキスト（SEO・AdSense対策：重複回避のため最小限に） */}
-            <section className="mt-2 sm:mt-3 bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">
+            <section className="mt-1.5 sm:mt-2.5 bg-white rounded-xl border border-slate-200 p-3 text-center shadow-sm">
                 <p className="text-sm text-gray-600">
                     より詳しいAIデータ分析の仕組みや、サイトの使い方は
                     <Link href="/about" className="text-primary hover:underline font-semibold mx-1">運営者情報・このサイトについて</Link>

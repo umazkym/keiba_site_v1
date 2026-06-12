@@ -345,13 +345,13 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
 
     return (
         <div id={`venue-${venue.venue_name}`}>
-            <div className="sticky top-14 lg:top-16 z-30 bg-white/95 backdrop-blur-sm -mx-2 px-2 lg:mx-0 lg:px-0 py-1.5 shadow-sm border-b border-gray-100">
+            <div className="sticky top-14 lg:top-16 z-30 bg-white/95 backdrop-blur-sm -mx-2 px-2 lg:mx-0 lg:px-0 py-1 lg:py-1.5 shadow-sm border-b border-gray-100">
                 <RaceSelector races={venue.races} selectedIndex={activeRaceIndex} onSelectRace={handleRaceSelect} />
             </div>
             {activeRace && (
                 <div id={`race-${activeRace.id}`} className="mt-1">
-                    <div id="race-prediction-section" className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
-                        <div className="bg-white px-2.5 py-2 sm:p-4 border-b border-gray-200">
+                    <div id="race-prediction-section" className="card mb-1.5 overflow-hidden border border-gray-200 shadow-sm">
+                        <div className="bg-white px-2.5 py-1.5 sm:p-4 border-b border-gray-200">
                             <h3 className="text-base sm:text-lg font-bold flex items-center text-gray-800">
                                 <span className="bg-primary text-white rounded-md w-7 h-7 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2 font-mono font-bold text-sm sm:text-base">{activeRace.race_number}R</span>
                                 <span className="truncate">{activeRace.race_name}</span>
@@ -359,7 +359,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             <p className="text-xs sm:text-sm text-gray-500 ml-9 sm:ml-11 font-medium">{activeRace.course_type} {activeRace.distance}m</p>
                         </div>
                         <div>
-                            <h4 id="race-prediction-heading" className="flex items-center text-sm sm:text-base font-bold text-gray-700 mt-2 mb-1 px-2.5 sm:px-4">
+                            <h4 id="race-prediction-heading" className="flex items-center text-sm sm:text-base font-bold text-gray-700 mt-1 mb-0.5 px-2.5 sm:px-4">
                                 <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
                                 AI分析
                             </h4>
@@ -389,7 +389,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                         </>
                     )}
 
-                    <div className="my-3">
+                    <div className="my-2 sm:my-3">
                         {(() => {
                             const hasNext = activeRaceIndex < venue.races.length - 1;
                             const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
@@ -398,7 +398,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 return (
                                     <div
                                         onClick={() => handleRaceSelect(activeRaceIndex + 1)}
-                                        className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50/80 to-slate-50 border border-blue-100 rounded-xl mb-2 cursor-pointer hover:border-blue-200 transition-colors active:scale-[0.99]"
+                                        className="flex items-center gap-3 p-2.5 sm:p-3 bg-gradient-to-r from-blue-50/80 to-slate-50 border border-blue-100 rounded-xl mb-1.5 cursor-pointer hover:border-blue-200 transition-colors active:scale-[0.99]"
                                     >
                                         <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
                                             <span className="text-xs font-bold text-primary">{nextRace.race_number}R</span>
@@ -429,9 +429,9 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             <PremiumDetailPlaceholder showAd={Boolean(shouldShowAd)} />
                         ) : (
                             <>
-                            <div className="mb-2 grid gap-2 xl:grid-cols-2 xl:items-stretch">
-                                <div className="card p-2 sm:p-3 h-full flex flex-col">
-                                    <div id="race-detail-heading" className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
+                            <div className="mb-1.5 grid gap-2 xl:grid-cols-2 xl:items-stretch">
+                                <div className="card p-1.5 sm:p-3 h-full flex flex-col">
+                                    <div id="race-detail-heading" className="flex items-center text-sm sm:text-base font-bold text-gray-800 p-1.5 sm:p-2.5">
                                         <FlagIcon className="w-5 h-5 mr-2 text-primary" />
                                         <span>展開/脚質予測</span>
                                     </div>
@@ -440,8 +440,8 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                     </div>
                                 </div>
 
-                                <div className="card p-2 sm:p-3 h-full flex flex-col">
-                                    <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
+                                <div className="card p-1.5 sm:p-3 h-full flex flex-col">
+                                    <div className="flex items-center text-sm sm:text-base font-bold text-gray-800 p-1.5 sm:p-2.5">
                                         <ChartBarIcon className="w-5 h-5 mr-2 text-accent" />
                                         <span>このコースの枠順傾向</span>
                                     </div>
@@ -451,7 +451,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 </div>
                             </div>
 
-                            <div id="race-matchup-section" className="mb-2">
+                            <div id="race-matchup-section" className="mb-1.5">
                                 <MatchupTable race={activeRace} />
                             </div>
 
@@ -464,14 +464,14 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                         venueName={venue.venue_name}
                                         selectionKey={`premium-${adRefreshKey}`}
                                         variant="compact"
-                                        className="mb-2"
+                                        className="mb-1.5"
                                     />
                                 ) : (
                                     <InFeedAd refreshKey={`premium-mid-${adRefreshKey}`} analyticsPlacement="race_premium_mid" />
                                 )
                             )}
 
-                            <div id="race-analysis-section" className="mb-2">
+                            <div id="race-analysis-section" className="mb-1.5">
                                 <RaceAnalysis race={activeRace} />
                             </div>
                             </>
@@ -607,19 +607,6 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         }
     }, [currentDate]);
 
-    const { isRaceUnlocked, isReady, isLoading: isAdLoading, isSupported, unavailableReason, showAd, unlock } = useRewardedAd();
-
-    const handleJraVenueSelect = useCallback((index: number) => {
-        setJraActivationKey(prev => prev + 1);
-        const venue = jra[index];
-        if (venue && typeof window !== 'undefined' && (window as any).gtag) {
-            (window as any).gtag('event', 'page_view', {
-                page_path: `/races/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
-                page_title: `${venue.venue_name} - レース一覧`,
-            });
-        }
-    }, [jra, currentDate]);
-
     const handleNarVenueSelect = useCallback((index: number) => {
         setNarActivationKey(prev => prev + 1);
         const venue = nar[index];
@@ -655,13 +642,15 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         return <div className="p-6 text-center text-muted card">対象日のレースデータがありません。</div>;
     }
 
-    const mainTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-2 sm:gap-4 border-b-2 border-slate-200 mb-4";
-    const mainTabClass = "snap-start min-w-max px-4 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-bold text-slate-400 bg-transparent cursor-pointer hover:text-slate-600 transition-all outline-none border-b-2 border-transparent -mb-[2px]";
+    const mainTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-2 sm:gap-4 border-b-2 border-slate-200 mb-2 sm:mb-4";
+    const mainTabClass = "snap-start min-w-max px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-base font-bold text-slate-400 bg-transparent cursor-pointer hover:text-slate-600 transition-all outline-none border-b-2 border-transparent -mb-[2px]";
     const mainSelectedTabClass = "!text-primary !border-primary";
 
-    const venueTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1.5 sm:gap-2 mb-4 p-1 bg-slate-100/60 rounded-xl w-max border border-slate-200/50 max-w-full";
-    const venueTabClass = "snap-start min-w-max px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-slate-500 rounded-lg cursor-pointer hover:text-slate-700 hover:bg-slate-200/60 transition-all outline-none";
+    const venueTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1 sm:gap-2 mb-2 sm:mb-4 p-0.5 sm:p-1 bg-slate-100/60 rounded-lg sm:rounded-xl w-max border border-slate-200/50 max-w-full";
+    const venueTabClass = "snap-start min-w-max px-3 sm:px-5 py-1 sm:py-2.5 text-[11px] sm:text-sm font-bold text-slate-500 rounded-md sm:rounded-lg cursor-pointer hover:text-slate-700 hover:bg-slate-200/60 transition-all outline-none";
     const venueSelectedTabClass = "!text-primary !bg-white shadow-sm !border-slate-200";
+
+    const { isRaceUnlocked, isReady, isLoading: isAdLoading, isSupported, unavailableReason, showAd, unlock } = useRewardedAd();
 
     return (
         <Tabs defaultIndex={initialTopTabIndex} onSelect={handleTopTabSelect} className="mt-4" forceRenderTabPanel={false}>

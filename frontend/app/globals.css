@@ -493,7 +493,8 @@ header.glass {
         margin: 0 -0.5rem;
     }
 
-    .card {
+    .card,
+    .pick-card {
         border-radius: 0px !important;
         border-left: none !important;
         border-right: none !important;

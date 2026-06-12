@@ -53,7 +53,7 @@
         background-color: var(--bg);
         color: var(--text);
         word-break: break-word;
-        min-height: 100vh;
+        min-height: 100dvh;
         position: relative;
         font-family: 'Inter', 'Noto Sans JP', sans-serif;
     }
@@ -494,8 +494,12 @@ header.glass {
     }
 
     .card {
-        border-radius: 12px;
-        margin: 0 0 0.5rem 0;
+        border-radius: 0px !important;
+        border-left: none !important;
+        border-right: none !important;
+        box-shadow: none !important;
+        margin-left: -0.75rem !important;
+        margin-right: -0.75rem !important;
     }
 
     .container {

@@ -150,7 +150,7 @@ export default function RootLayout({
                 <SoftwareApplicationSchema />
 
                 <Header />
-                <main className="w-full max-w-7xl mx-auto p-3 sm:p-4 md:p-6 min-h-screen">
+                <main className="w-full max-w-7xl mx-auto p-3 sm:p-4 md:p-6 min-h-[calc(100dvh-56px)] sm:min-h-[calc(100dvh-64px)]">
                     {/* メインコンテンツエリア */}
                     <div className="w-full">
                         {children}

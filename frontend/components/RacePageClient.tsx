@@ -15,6 +15,7 @@ import DisclaimerAlert from "@/components/DisclaimerAlert";
 import { InFeedAd } from "@/components/InFeedAd";
 import { RecentRaceReturn } from "@/components/RecentRaceReturn";
 import { AffiliateSlot } from "@/components/AffiliateSlot";
+import { RacePageJumpNav } from "@/components/RacePageJumpNav";
 
 // 日付フォーマット検証関数
 /**
@@ -268,6 +269,9 @@ export default function RacePageClient({
 
     const todayStr = getTodayString();
     const hasNarRaces = (predictionData?.nar?.length ?? 0) > 0;
+    const hasRaceData = Boolean(
+        predictionData && ((predictionData.jra?.length ?? 0) > 0 || (predictionData.nar?.length ?? 0) > 0)
+    );
 
     const renderContent = ({ showSpecialPick = true }: { showSpecialPick?: boolean } = {}) => {
         if (isLoading) {
@@ -347,6 +351,10 @@ export default function RacePageClient({
 
             <RecentRaceReturn className="mb-2 sm:mb-3" />
 
+            {hasRaceData && !isLoading && !error && (
+                <RacePageJumpNav className="mb-2 sm:mb-3" />
+            )}
+
             {/* 🏆 今週の重賞セクション */}
             {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
                 <div className="mb-2 sm:mb-3">
@@ -392,7 +400,7 @@ export default function RacePageClient({
               レースページ: 収益効率 $0.0001-0.0006/session
               記事ページ(about-ai等): 収益効率 $0.0025/session（4-25倍） */}
             {articlesMeta && articlesMeta.length > 0 && (
-                <section className="mt-3 sm:mt-4 mb-2 sm:mb-3 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                <section id="race-page-articles-section" className="mt-3 sm:mt-4 mb-2 sm:mb-3 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                     <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
                         <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                             <span className="w-1.5 h-5 bg-primary rounded-full"></span>

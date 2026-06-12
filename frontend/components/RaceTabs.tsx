@@ -89,110 +89,6 @@ const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
 
 PremiumDetailPlaceholder.displayName = 'PremiumDetailPlaceholder';
 
-const PremiumDetailTeaser = memo(({
-    isPremiumDetailVisible,
-    onJumpToPrediction,
-    onJumpToPremium,
-    onJumpToAnalysis,
-}: {
-    isPremiumDetailVisible: boolean;
-    onJumpToPrediction: () => void;
-    onJumpToPremium: () => void;
-    onJumpToAnalysis: () => void;
-}) => {
-    const premiumLabel = isPremiumDetailVisible ? '詳細データ' : '詳細データ';
-
-    return (
-        <div className="border-b border-slate-100 bg-slate-50/60 px-2.5 py-2.5 sm:px-4 sm:py-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold text-slate-500">レース内目次</p>
-                    <h4 className="mt-0.5 text-sm font-bold leading-tight text-slate-800">見たい分析へ移動</h4>
-                </div>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                <button
-                    type="button"
-                    onClick={onJumpToPrediction}
-                    className="flex min-h-[74px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-2 text-left shadow-sm transition-colors hover:bg-slate-50 active:scale-[0.99]"
-                >
-                    <div className="mb-2 flex items-center gap-2">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700">
-                            <SparklesIcon className="h-3.5 w-3.5" />
-                        </span>
-                        <p className="truncate text-[12px] font-bold text-slate-900">AI分析</p>
-                    </div>
-                    <div className="space-y-1.5 rounded-md bg-slate-50 p-2">
-                        <div className="h-1.5 w-[92%] rounded-full bg-blue-500" />
-                        <div className="h-1.5 w-[74%] rounded-full bg-slate-300" />
-                        <div className="h-1.5 w-[58%] rounded-full bg-amber-400" />
-                    </div>
-                </button>
-                <button
-                    type="button"
-                    onClick={onJumpToPremium}
-                    className="flex min-h-[74px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-2 text-left shadow-sm transition-colors hover:bg-slate-50 active:scale-[0.99]"
-                >
-                    <div className="mb-2 flex items-center gap-2">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
-                            <FlagIcon className="h-3.5 w-3.5" />
-                        </span>
-                        <p className="truncate text-[12px] font-bold text-slate-900">脚質予測</p>
-                    </div>
-                    <div className="flex h-8 items-end gap-1 rounded-md bg-slate-50 px-2 pb-1 pt-1.5">
-                        {[68, 42, 74, 52].map((height, index) => (
-                            <div key={index} className="flex flex-1 flex-col justify-end">
-                                <div className="w-full rounded-t bg-emerald-500/80" style={{ height: `${height}%` }} />
-                            </div>
-                        ))}
-                    </div>
-                </button>
-                <button
-                    type="button"
-                    onClick={onJumpToPremium}
-                    className="flex min-h-[74px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-2 text-left shadow-sm transition-colors hover:bg-slate-50 active:scale-[0.99]"
-                >
-                    <div className="mb-2 flex items-center gap-2">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700">
-                            <ChartBarIcon className="h-3.5 w-3.5" />
-                        </span>
-                        <p className="truncate text-[12px] font-bold text-slate-900">{premiumLabel}</p>
-                    </div>
-                    <div className="space-y-1 rounded-md bg-slate-50 p-2">
-                        {[82, 54, 68].map((width, index) => (
-                            <div key={index} className="h-1.5 rounded-full bg-slate-100">
-                                <div className="h-1.5 rounded-full bg-amber-500" style={{ width: `${width}%` }} />
-                            </div>
-                        ))}
-                    </div>
-                </button>
-                <button
-                    type="button"
-                    onClick={onJumpToAnalysis}
-                    className="flex min-h-[74px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-2 text-left shadow-sm transition-colors hover:bg-slate-50 active:scale-[0.99]"
-                >
-                    <div className="mb-2 flex items-center gap-2">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700">
-                            <UsersIcon className="h-3.5 w-3.5" />
-                        </span>
-                        <p className="truncate text-[12px] font-bold text-slate-900">対戦・解説</p>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1 rounded-md bg-slate-50 p-1.5 text-center text-[10px] font-bold">
-                        <span className="rounded bg-emerald-50 py-0.5 text-emerald-700">+2</span>
-                        <span className="rounded bg-white py-0.5 text-slate-500">0</span>
-                        <span className="rounded bg-rose-50 py-0.5 text-rose-700">-1</span>
-                        <span className="rounded bg-emerald-50 py-0.5 text-emerald-700">+1</span>
-                        <span className="rounded bg-emerald-50 py-0.5 text-emerald-700">+3</span>
-                        <span className="rounded bg-white py-0.5 text-slate-500">0</span>
-                    </div>
-                </button>
-            </div>
-        </div>
-    );
-});
-
-PremiumDetailTeaser.displayName = 'PremiumDetailTeaser';
-
 const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, venueActivationKey = 0, isRaceUnlocked, isReady, isLoading, isSupported, unavailableReason, showAd, unlock }: { venue: VenueRaces, raceType: 'jra' | 'nar', articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isRaceUnlocked: (raceId: string) => boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, unavailableReason: string | null, showAd: (context?: RewardedAdContext | string) => boolean, unlock: (raceId?: string) => void }) => {
     const params = useParams();
     const currentDate = params.date as string;
@@ -200,9 +96,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
     const adAvailabilityKeysRef = useRef<Set<string>>(new Set());
     const premiumViewKeysRef = useRef<Set<string>>(new Set());
     const fallbackKeysRef = useRef<Set<string>>(new Set());
-    const predictionSectionRef = useRef<HTMLDivElement | null>(null);
-    const premiumSectionRef = useRef<HTMLDivElement | null>(null);
-    const analysisSectionRef = useRef<HTMLDivElement | null>(null);
 
     const initialIndex = useMemo(() => {
         if (!initialRaceNumber) return 0;
@@ -296,21 +189,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         };
     }, [activeRace, currentDate, venue.venue_name, rewardAdStatus, unavailableReason]);
 
-    const scrollElementIntoView = useCallback((node: HTMLElement | null) => {
-        if (typeof window === 'undefined') return;
-        if (!node) return;
-
-        window.requestAnimationFrame(() => {
-            const offset = window.innerWidth < 640 ? 72 : 86;
-            const top = window.scrollY + node.getBoundingClientRect().top - offset;
-            window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-        });
-    }, []);
-
-    const scrollPremiumSectionIntoView = useCallback(() => {
-        scrollElementIntoView(premiumSectionRef.current);
-    }, [scrollElementIntoView]);
-
     const handleRewardGateClick = useCallback((gatePlacement = 'race_detail_overlay') => {
         if (!activeRace) return;
         const context = buildRewardContext(gatePlacement);
@@ -340,23 +218,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         });
         unlock(activeRace.id);
     }, [activeRace, buildRewardContext, canUseRewardedAd, isLoading, showAd, unavailableReason, unlock]);
-
-    const handlePremiumTeaserClick = useCallback(() => {
-        if (!activeRace) return;
-        scrollPremiumSectionIntoView();
-    }, [activeRace, scrollPremiumSectionIntoView]);
-
-    const handlePredictionJump = useCallback(() => {
-        scrollElementIntoView(predictionSectionRef.current);
-    }, [scrollElementIntoView]);
-
-    const handleAnalysisJump = useCallback(() => {
-        if (isPremiumDetailVisible && analysisSectionRef.current) {
-            scrollElementIntoView(analysisSectionRef.current);
-            return;
-        }
-        scrollPremiumSectionIntoView();
-    }, [isPremiumDetailVisible, scrollElementIntoView, scrollPremiumSectionIntoView]);
 
     useEffect(() => {
         if (!activeRace || typeof window === 'undefined') return;
@@ -489,7 +350,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             </div>
             {activeRace && (
                 <div id={`race-${activeRace.id}`} className="mt-1">
-                    <div className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
+                    <div id="race-prediction-section" className="card mb-2 overflow-hidden border border-gray-200 shadow-sm">
                         <div className="bg-white px-2.5 py-2 sm:p-4 border-b border-gray-200">
                             <h3 className="text-base sm:text-lg font-bold flex items-center text-gray-800">
                                 <span className="bg-primary text-white rounded-md w-7 h-7 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-2 font-mono font-bold text-sm sm:text-base">{activeRace.race_number}R</span>
@@ -497,13 +358,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             </h3>
                             <p className="text-xs sm:text-sm text-gray-500 ml-9 sm:ml-11 font-medium">{activeRace.course_type} {activeRace.distance}m</p>
                         </div>
-                        <PremiumDetailTeaser
-                            isPremiumDetailVisible={isPremiumDetailVisible}
-                            onJumpToPrediction={handlePredictionJump}
-                            onJumpToPremium={handlePremiumTeaserClick}
-                            onJumpToAnalysis={handleAnalysisJump}
-                        />
-                        <div ref={predictionSectionRef}>
+                        <div>
                             <h4 className="flex items-center text-sm sm:text-base font-bold text-gray-700 mt-2 mb-1 px-2.5 sm:px-4">
                                 <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
                                 AI分析
@@ -557,7 +412,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                         <RaceNavigation />
                     </div>
 
-                    <div ref={premiumSectionRef}>
+                    <div id="race-detail-data-section">
                     {/* プレミアム・ロック切り替え部分 */}
                     {(activeRace && isPremiumDetailVisible) ? (
                         !isPremiumContentReady ? (
@@ -590,7 +445,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 </div>
                             </div>
 
-                            <div ref={analysisSectionRef} className="mb-2">
+                            <div id="race-matchup-section" className="mb-2">
                                 <div className="card p-2 sm:p-3">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                         <UsersIcon className="w-5 h-5 mr-2 text-secondary" />
@@ -620,7 +475,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 )
                             )}
 
-                            <div className="mb-2">
+                            <div id="race-analysis-section" className="mb-2">
                                 <div className="card p-2 sm:p-3">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                         <ChartBarIcon className="w-5 h-5 mr-2 text-accent" />
@@ -719,7 +574,9 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                     ) : null}
                     </div>
 
-                    <DataExplanationPanel showAdvanced={true} />
+                    <div id="race-data-guide-section">
+                        <DataExplanationPanel showAdvanced={true} />
+                    </div>
 
                     {/* 広告過密削減のため、データ解説後のInFeedAdを廃止 */}
 
@@ -727,12 +584,14 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
 
                     {/* MultiplexAd削除: 最下部のviewable率が極端に低い広告を廃止（Active View 27-45%改善施策） */}
 
-                    <DynamicRelatedArticles
-                        venueName={activeRace.venue_name}
-                        courseType={activeRace.course_type}
-                        distance={activeRace.distance}
-                        articlesMeta={articlesMeta}
-                    />
+                    <div id="race-related-articles-section">
+                        <DynamicRelatedArticles
+                            venueName={activeRace.venue_name}
+                            courseType={activeRace.course_type}
+                            distance={activeRace.distance}
+                            articlesMeta={articlesMeta}
+                        />
+                    </div>
                 </div>
             )}
         </div>

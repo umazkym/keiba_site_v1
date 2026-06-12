@@ -11,12 +11,12 @@ const DisclaimerAlert = () => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
-        <div className="bg-amber-50 border-l-4 border-amber-500 rounded-r-lg shadow-sm mb-4 mt-2 relative overflow-hidden">
+        <div className="bg-amber-50 border-l-4 border-amber-500 rounded-r-lg shadow-sm mb-2 mt-1.5 relative overflow-hidden">
             {/* モバイル: コンパクト1行表示（タップで展開） */}
             <div className="md:hidden">
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 text-left"
+                    className="w-full flex items-center justify-between px-3 py-2 text-left"
                 >
                     <div className="flex items-center gap-2">
                         <svg className="h-4 w-4 text-amber-500 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -29,7 +29,7 @@ const DisclaimerAlert = () => {
                     </svg>
                 </button>
                 {isExpanded && (
-                    <div className="px-3 pb-3 text-xs text-amber-700 leading-relaxed space-y-1.5 border-t border-amber-200 pt-2">
+                    <div className="px-3 pb-2.5 text-xs text-amber-700 leading-relaxed space-y-1.5 border-t border-amber-200 pt-2">
                         <p>当サイトが提供するAI偏差値および各種予想データは、過去のレース結果等に基づく統計的な参考情報であり、<strong>的中や利益を保証するものではありません。</strong></p>
                         <p>馬券の購入はユーザー様ご自身の判断と責任において行ってください。</p>
                         <p className="text-[10px] text-amber-600/80">※20歳未満の方の勝馬投票券の購入は競馬法（第28条）により禁止されています。</p>
@@ -37,7 +37,7 @@ const DisclaimerAlert = () => {
                 )}
             </div>
             {/* デスクトップ: 従来通り全文表示 */}
-            <div className="hidden md:block p-4 sm:p-5">
+            <div className="hidden md:block p-3">
                 <div className="flex items-start">
                     <div className="flex-shrink-0 mt-0.5">
                         <svg className="h-5 w-5 text-amber-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -45,10 +45,10 @@ const DisclaimerAlert = () => {
                         </svg>
                     </div>
                     <div className="ml-3">
-                        <h3 className="text-sm font-bold text-amber-800 mb-1">
+                        <h3 className="text-sm font-bold text-amber-800">
                             【免責事項】馬券のご購入は自己責任で
                         </h3>
-                        <div className="mt-2 text-xs sm:text-sm text-amber-700 leading-relaxed space-y-2">
+                        <div className="mt-1.5 text-xs text-amber-700 leading-relaxed space-y-1.5">
                             <p>当サイトが提供するAI偏差値および各種予想データは、過去のレース結果等に基づく統計的な参考情報であり、<strong>的中や利益を保証するものではありません。</strong></p>
                             <p>馬券の購入はユーザー様ご自身の完全な判断と責任において行ってください。当サイトの情報を利用して生じたいかなる損害・損失についても、運営者は一切の責任を負いかねます。</p>
                             <p className="text-xs text-amber-600/90 pt-1">※20歳未満の方の勝馬投票券の購入は競馬法（第28条）により禁止されています。</p>

@@ -58,12 +58,8 @@ export function WeeklyGradeRaces({ races, compact = false }: WeeklyGradeRacesPro
 
     return (
         <section className={compact ? "" : "card"} id="weekly-grade-races">
-            <div className={compact ? "" : "p-3 sm:p-4"}>
-                <h2 className={compact ? "sr-only" : ""} style={{
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    fontSize: '15px', fontWeight: 700, margin: '0 0 8px',
-                    color: 'var(--color-heading, #1a1a2e)',
-                }}>
+            <div className={compact ? "" : "px-3 sm:px-4"}>
+                <h2 className={compact ? "sr-only" : "flex items-center gap-2 text-sm sm:text-base font-bold text-gray-800 mb-2"}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                         stroke="var(--color-primary, #2563eb)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />

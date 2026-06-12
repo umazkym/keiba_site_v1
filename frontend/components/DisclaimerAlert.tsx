@@ -11,7 +11,7 @@ const DisclaimerAlert = () => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
-        <div className="bg-amber-50 border-l-4 border-amber-500 rounded-r-lg shadow-sm mb-2 mt-1.5 relative overflow-hidden">
+        <div className="bg-amber-50 border-l-4 border-amber-500 rounded-r-lg shadow-sm my-1 relative overflow-hidden">
             {/* モバイル: コンパクト1行表示（タップで展開） */}
             <div className="md:hidden">
                 <button

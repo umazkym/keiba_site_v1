@@ -59,8 +59,8 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         id: 'rakuten-keiba-default',
         enabled: true,
         type: 'voting',
-        title: '楽天競馬でオッズを確認',
-        description: '地方競馬のオッズ確認や投票に対応しています。楽天会員であればポイントも利用できます。',
+        title: 'このレースのオッズを楽天競馬で確認',
+        description: 'AI分析を参考にしたら、実際のオッズもチェック。楽天ポイントを使った馬券購入にも対応しています。',
         attention: DEFAULT_VOTING_NOTICE,
         contexts: ['race_after_prediction', 'race_after_premium_data', 'race_after_top_hits', 'home_nar_voting'],
         weight: 1200,
@@ -71,7 +71,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
             {
                 id: 'rakuten-keiba-main',
                 provider: 'rakuten_keiba',
-                label: '楽天競馬でオッズを見る',
+                label: '楽天競馬で確認・投票する',
                 url: 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641',
                 enabled: true,
             },
@@ -82,7 +82,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         enabled: true,
         type: 'product',
         title: 'サラブレッドコレクション ぬいぐるみ（イクイノックス / ドウデュース）',
-        description: '大人気のイクイノックスとドウデュース。お部屋やデスクに飾りやすいサイズ（高さ約20cm）の競走馬ぬいぐるみです。競馬ファンへのプレゼントにも。',
+        description: 'イクイノックス・ドウデュースの競走馬ぬいぐるみ（高さ約20cm）。デスクやリビングにも馴染みやすく、競馬ファンへのギフトとしても人気です。',
         contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 100,
         links: [
@@ -106,8 +106,8 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         id: 'keiba-tshirt-collection',
         enabled: true,
         type: 'product',
-        title: 'おもしろ競馬系文字Tシャツ（競馬用語・名言）',
-        description: '競馬用語や競走馬をモチーフにした文字Tシャツです。競馬場での観戦や日常使いに。',
+        title: '競馬用語・名言Tシャツ｜競馬場の観戦やギフトに',
+        description: '競馬用語や名セリフをプリントしたTシャツ。競馬場での観戦はもちろん、競馬好きへのプレゼントとしても喜ばれます。',
         contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 80,
         links: [
@@ -132,7 +132,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         enabled: true,
         type: 'product',
         title: '栗東トレセン実使用 幸運の馬蹄（古蹄鉄）',
-        description: '栗東トレーニングセンターのサラブレッドが実際に使用した本物の蹄鉄。魔除けや幸運を呼ぶお守りとして、玄関やリビングのインテリアに。',
+        description: '栗東トレーニングセンターで実際にレースを走った馬の蹄鉄。古来より幸運のシンボルとされており、インテリアや縁起物として飾れます。',
         contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 70,
         links: [

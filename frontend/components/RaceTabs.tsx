@@ -12,6 +12,7 @@ import { MatchupTable } from './MatchupTable';
 import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './Icons';
 import { InFeedAd } from './InFeedAd';
+import { AdUnit } from './AdUnit';
 import { AffiliateSlot } from './AffiliateSlot';
 import { RelatedRaces } from './RelatedRaces';
 import { DataExplanationPanel } from './DataExplanationPanel';
@@ -90,54 +91,72 @@ PremiumDetailPlaceholder.displayName = 'PremiumDetailPlaceholder';
 
 const PremiumDetailTeaser = memo(({
     isPremiumDetailVisible,
-    onClick,
+    onJumpToPrediction,
+    onJumpToPremium,
+    onJumpToAnalysis,
 }: {
     isPremiumDetailVisible: boolean;
-    onClick: () => void;
+    onJumpToPrediction: () => void;
+    onJumpToPremium: () => void;
+    onJumpToAnalysis: () => void;
 }) => {
-    const buttonLabel = isPremiumDetailVisible
-        ? '詳細データへ移動'
-        : '詳細データを下で確認';
+    const premiumLabel = isPremiumDetailVisible ? '詳細データ' : '詳細データ';
 
     return (
         <div className="border-b border-slate-100 bg-slate-50/60 px-2.5 py-2.5 sm:px-4 sm:py-3">
-            <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-2 flex items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold text-slate-500">予想表と合わせて見たい材料</p>
-                    <h4 className="mt-0.5 text-sm font-bold leading-tight text-slate-800">
-                        展開・枠順傾向・対戦成績をグラフで確認
-                    </h4>
+                    <p className="text-[11px] font-bold text-slate-500">レース内目次</p>
+                    <h4 className="mt-0.5 text-sm font-bold leading-tight text-slate-800">見たい分析へ移動</h4>
                 </div>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                 <button
                     type="button"
-                    onClick={onClick}
-                    className="inline-flex min-h-[34px] shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-primary shadow-sm transition-colors hover:bg-slate-50 active:scale-[0.99]"
+                    onClick={onJumpToPrediction}
+                    className="flex min-h-[74px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-2 text-left shadow-sm transition-colors hover:bg-slate-50 active:scale-[0.99]"
                 >
-                    {buttonLabel}
-                </button>
-            </div>
-            <div className="flex snap-x gap-2 overflow-x-auto scrollbar-hide sm:grid sm:grid-cols-2 lg:grid-cols-4">
-                <div className="flex min-w-[142px] snap-start flex-col rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
                     <div className="mb-2 flex items-center gap-2">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
-                            <FlagIcon className="h-4 w-4" />
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700">
+                            <SparklesIcon className="h-3.5 w-3.5" />
+                        </span>
+                        <p className="truncate text-[12px] font-bold text-slate-900">AI分析</p>
+                    </div>
+                    <div className="space-y-1.5 rounded-md bg-slate-50 p-2">
+                        <div className="h-1.5 w-[92%] rounded-full bg-blue-500" />
+                        <div className="h-1.5 w-[74%] rounded-full bg-slate-300" />
+                        <div className="h-1.5 w-[58%] rounded-full bg-amber-400" />
+                    </div>
+                </button>
+                <button
+                    type="button"
+                    onClick={onJumpToPremium}
+                    className="flex min-h-[74px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-2 text-left shadow-sm transition-colors hover:bg-slate-50 active:scale-[0.99]"
+                >
+                    <div className="mb-2 flex items-center gap-2">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
+                            <FlagIcon className="h-3.5 w-3.5" />
                         </span>
                         <p className="truncate text-[12px] font-bold text-slate-900">脚質予測</p>
                     </div>
-                    <div className="flex h-10 items-end gap-1 rounded-md bg-slate-50 px-2 pb-1.5 pt-2">
-                        {[68, 42, 74, 52, 35].map((height, index) => (
-                            <div key={index} className="flex flex-1 flex-col items-center justify-end">
+                    <div className="flex h-8 items-end gap-1 rounded-md bg-slate-50 px-2 pb-1 pt-1.5">
+                        {[68, 42, 74, 52].map((height, index) => (
+                            <div key={index} className="flex flex-1 flex-col justify-end">
                                 <div className="w-full rounded-t bg-emerald-500/80" style={{ height: `${height}%` }} />
                             </div>
                         ))}
                     </div>
-                </div>
-                <div className="flex min-w-[142px] snap-start flex-col rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                </button>
+                <button
+                    type="button"
+                    onClick={onJumpToPremium}
+                    className="flex min-h-[74px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-2 text-left shadow-sm transition-colors hover:bg-slate-50 active:scale-[0.99]"
+                >
                     <div className="mb-2 flex items-center gap-2">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700">
-                            <ChartBarIcon className="h-4 w-4" />
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700">
+                            <ChartBarIcon className="h-3.5 w-3.5" />
                         </span>
-                        <p className="truncate text-[12px] font-bold text-slate-900">枠順傾向</p>
+                        <p className="truncate text-[12px] font-bold text-slate-900">{premiumLabel}</p>
                     </div>
                     <div className="space-y-1 rounded-md bg-slate-50 p-2">
                         {[82, 54, 68].map((width, index) => (
@@ -146,41 +165,27 @@ const PremiumDetailTeaser = memo(({
                             </div>
                         ))}
                     </div>
-                </div>
-                <div className="flex min-w-[142px] snap-start flex-col rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                </button>
+                <button
+                    type="button"
+                    onClick={onJumpToAnalysis}
+                    className="flex min-h-[74px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-2 text-left shadow-sm transition-colors hover:bg-slate-50 active:scale-[0.99]"
+                >
                     <div className="mb-2 flex items-center gap-2">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700">
-                            <UsersIcon className="h-4 w-4" />
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700">
+                            <UsersIcon className="h-3.5 w-3.5" />
                         </span>
-                        <p className="truncate text-[12px] font-bold text-slate-900">対戦成績</p>
+                        <p className="truncate text-[12px] font-bold text-slate-900">対戦・解説</p>
                     </div>
                     <div className="grid grid-cols-3 gap-1 rounded-md bg-slate-50 p-1.5 text-center text-[10px] font-bold">
-                        {['+2', '0', '-1', '+1', '+3', '0'].map((value, index) => (
-                            <span
-                                key={`${value}-${index}`}
-                                className={`${value.startsWith('+') ? 'bg-emerald-50 text-emerald-700' : value.startsWith('-') ? 'bg-rose-50 text-rose-700' : 'bg-white text-slate-500'} rounded py-0.5`}
-                            >
-                                {value}
-                            </span>
-                        ))}
+                        <span className="rounded bg-emerald-50 py-0.5 text-emerald-700">+2</span>
+                        <span className="rounded bg-white py-0.5 text-slate-500">0</span>
+                        <span className="rounded bg-rose-50 py-0.5 text-rose-700">-1</span>
+                        <span className="rounded bg-emerald-50 py-0.5 text-emerald-700">+1</span>
+                        <span className="rounded bg-emerald-50 py-0.5 text-emerald-700">+3</span>
+                        <span className="rounded bg-white py-0.5 text-slate-500">0</span>
                     </div>
-                </div>
-                <div className="flex min-w-[142px] snap-start flex-col rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-                    <div className="mb-2 flex items-center gap-2">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700">
-                            <SparklesIcon className="h-4 w-4" />
-                        </span>
-                        <p className="truncate text-[12px] font-bold text-slate-900">分析コメント</p>
-                    </div>
-                    <div className="space-y-1.5 rounded-md bg-slate-50 p-2">
-                        <div className="h-1.5 w-[92%] rounded-full bg-slate-300" />
-                        <div className="h-1.5 w-[74%] rounded-full bg-slate-300" />
-                        <div className="mt-1 flex gap-1">
-                            <span className="rounded bg-white px-1.5 py-0.5 text-[9px] font-bold text-blue-700">展開</span>
-                            <span className="rounded bg-white px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">適性</span>
-                        </div>
-                    </div>
-                </div>
+                </button>
             </div>
         </div>
     );
@@ -195,7 +200,9 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
     const adAvailabilityKeysRef = useRef<Set<string>>(new Set());
     const premiumViewKeysRef = useRef<Set<string>>(new Set());
     const fallbackKeysRef = useRef<Set<string>>(new Set());
+    const predictionSectionRef = useRef<HTMLDivElement | null>(null);
     const premiumSectionRef = useRef<HTMLDivElement | null>(null);
+    const analysisSectionRef = useRef<HTMLDivElement | null>(null);
 
     const initialIndex = useMemo(() => {
         if (!initialRaceNumber) return 0;
@@ -289,18 +296,20 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         };
     }, [activeRace, currentDate, venue.venue_name, rewardAdStatus, unavailableReason]);
 
-    const scrollPremiumSectionIntoView = useCallback(() => {
+    const scrollElementIntoView = useCallback((node: HTMLElement | null) => {
         if (typeof window === 'undefined') return;
+        if (!node) return;
 
         window.requestAnimationFrame(() => {
-            const node = premiumSectionRef.current;
-            if (!node) return;
-
             const offset = window.innerWidth < 640 ? 72 : 86;
             const top = window.scrollY + node.getBoundingClientRect().top - offset;
             window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
         });
     }, []);
+
+    const scrollPremiumSectionIntoView = useCallback(() => {
+        scrollElementIntoView(premiumSectionRef.current);
+    }, [scrollElementIntoView]);
 
     const handleRewardGateClick = useCallback((gatePlacement = 'race_detail_overlay') => {
         if (!activeRace) return;
@@ -336,6 +345,18 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         if (!activeRace) return;
         scrollPremiumSectionIntoView();
     }, [activeRace, scrollPremiumSectionIntoView]);
+
+    const handlePredictionJump = useCallback(() => {
+        scrollElementIntoView(predictionSectionRef.current);
+    }, [scrollElementIntoView]);
+
+    const handleAnalysisJump = useCallback(() => {
+        if (isPremiumDetailVisible && analysisSectionRef.current) {
+            scrollElementIntoView(analysisSectionRef.current);
+            return;
+        }
+        scrollPremiumSectionIntoView();
+    }, [isPremiumDetailVisible, scrollElementIntoView, scrollPremiumSectionIntoView]);
 
     useEffect(() => {
         if (!activeRace || typeof window === 'undefined') return;
@@ -478,9 +499,11 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                         </div>
                         <PremiumDetailTeaser
                             isPremiumDetailVisible={isPremiumDetailVisible}
-                            onClick={handlePremiumTeaserClick}
+                            onJumpToPrediction={handlePredictionJump}
+                            onJumpToPremium={handlePremiumTeaserClick}
+                            onJumpToAnalysis={handleAnalysisJump}
                         />
-                        <div>
+                        <div ref={predictionSectionRef}>
                             <h4 className="flex items-center text-sm sm:text-base font-bold text-gray-700 mt-2 mb-1 px-2.5 sm:px-4">
                                 <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
                                 AI分析
@@ -488,6 +511,18 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
                         </div>
                     </div>
+
+                    {shouldShowAd && (
+                        <AdUnit
+                            slot="8529703346"
+                            placement="inline"
+                            analyticsPlacement="race_after_prediction_card"
+                            refreshKey={`race-top-${adRefreshKey}`}
+                            minHeight="72px"
+                            collapseUnfilled={true}
+                            className="my-2"
+                        />
+                    )}
 
                     <div className="my-3">
                         {(() => {
@@ -555,7 +590,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 </div>
                             </div>
 
-                            <div className="mb-2">
+                            <div ref={analysisSectionRef} className="mb-2">
                                 <div className="card p-2 sm:p-3">
                                     <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                         <UsersIcon className="w-5 h-5 mr-2 text-secondary" />

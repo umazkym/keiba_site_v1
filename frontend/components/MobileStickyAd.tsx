@@ -9,7 +9,7 @@ import { isManualAdsEnabled } from '@/lib/ad-config';
 type StickyVariant = 'control' | 'delayed' | 'compact';
 
 const STICKY_VARIANT_KEY = 'mobile_sticky_ad_variant_v2';
-const RACE_PAGE_STICKY_SCROLL_THRESHOLD = 800;
+const RACE_PAGE_STICKY_SCROLL_THRESHOLD = 520;
 
 const stickyVariantConfig: Record<StickyVariant, {
     scrollThreshold: number;
@@ -88,8 +88,8 @@ export const MobileStickyAd = () => {
 
         return {
             ...stickyVariantConfig.compact,
-            // 6/12の実績ではアンカー相当枠の表示回数が少なすぎたため、
-            // レース閲覧を邪魔しない範囲で表示開始を少し早める。
+            // 6/12-13の実績ではオファーウォール停止中にアンカー相当枠の表示回数が不足したため、
+            // レース閲覧を邪魔しない範囲で表示開始を早める。
             scrollThreshold: RACE_PAGE_STICKY_SCROLL_THRESHOLD,
             placement: 'sticky_bottom_race_compact_balanced',
         };
@@ -130,7 +130,7 @@ export const MobileStickyAd = () => {
         handleScroll();
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [isMounted, variantConfig.scrollThreshold, pathname, raceParam]);;
+    }, [isMounted, variantConfig.scrollThreshold, pathname, raceParam]);
 
     // パス変更・レース切替でリフレッシュする際、ステータスを戻す
     // ★ raceParam追加: pathname + raceParam両方の変化に反応

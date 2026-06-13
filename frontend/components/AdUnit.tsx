@@ -160,10 +160,10 @@ export const AdUnit = ({
     const effectiveLazyRootMargin = lazyRootMargin ?? (
         placement === 'sidebar'
             ? '500px 0px 500px 0px'
-            : '280px 0px 280px 0px'
+            : '720px 0px 720px 0px'
     );
     const effectiveRefreshRootMarginPx = refreshRootMarginPx ?? (
-        placement === 'sidebar' ? 500 : 360
+        placement === 'sidebar' ? 500 : 560
     );
     const adStyle = useMemo(
         () => ({ ...placementStyles[placement].adStyle, minHeight: reservedMinHeight }),

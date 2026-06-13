@@ -11,7 +11,7 @@ import { MicrosoftClarity } from "@/components/MicrosoftClarity";
 
 import { Suspense } from "react";
 import { GlobalAdManager } from "@/components/GlobalAdManager";
-import { isAdsenseAutoAdsEnabled } from "@/lib/ad-config";
+import { shouldLoadAdsensePageLevelScript } from "@/lib/ad-config";
 
 const inter = Inter({
     subsets: ["latin"],
@@ -134,7 +134,10 @@ export default function RootLayout({
                     }}
                 />
 
-                {isAdsenseAutoAdsEnabled && (
+                {/* オファーウォールはAdSenseのページレベル機能として配信されるため、
+                    手動広告運用中でもこのスクリプトだけは先読みする。
+                    全画面自動広告のON/OFFはAdSense管理画面側で制御する前提。 */}
+                {shouldLoadAdsensePageLevelScript && (
                     <script
                         async
                         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"

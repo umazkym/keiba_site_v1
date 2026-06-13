@@ -394,6 +394,8 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 refreshKey={`race-top-${adRefreshKey}`}
                                 minHeight="72px"
                                 collapseUnfilled={true}
+                                lazyRootMargin="760px 0px 760px 0px"
+                                refreshRootMarginPx={720}
                                 className="my-2"
                             />
                             <AffiliateSlot
@@ -473,19 +475,32 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 <MatchupTable race={activeRace} />
                             </div>
 
-                            {/* 対決成績の直後は高意欲ユーザーが多いため、地方競馬は楽天導線を優先 */}
+                            {/* 対決成績の直後は高意欲ユーザーが多いため、AdSenseを残した上で地方競馬は楽天導線も添える */}
                             {shouldShowAd && (
                                 raceType === 'nar' ? (
-                                    <AffiliateSlot
-                                        context="race_after_premium_data"
-                                        raceType="nar"
-                                        venueName={venue.venue_name}
-                                        selectionKey={`premium-${adRefreshKey}`}
-                                        variant="compact"
-                                        className="mb-1.5"
-                                    />
+                                    <>
+                                        <InFeedAd
+                                            refreshKey={`premium-mid-nar-${adRefreshKey}`}
+                                            analyticsPlacement="race_premium_mid_nar"
+                                            lazyRootMargin="760px 0px 760px 0px"
+                                            refreshRootMarginPx={720}
+                                        />
+                                        <AffiliateSlot
+                                            context="race_after_premium_data"
+                                            raceType="nar"
+                                            venueName={venue.venue_name}
+                                            selectionKey={`premium-${adRefreshKey}`}
+                                            variant="compact"
+                                            className="mb-1.5"
+                                        />
+                                    </>
                                 ) : (
-                                    <InFeedAd refreshKey={`premium-mid-${adRefreshKey}`} analyticsPlacement="race_premium_mid" />
+                                    <InFeedAd
+                                        refreshKey={`premium-mid-${adRefreshKey}`}
+                                        analyticsPlacement="race_premium_mid"
+                                        lazyRootMargin="760px 0px 760px 0px"
+                                        refreshRootMarginPx={720}
+                                    />
                                 )
                             )}
 

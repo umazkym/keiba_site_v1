@@ -78,6 +78,8 @@ export default async function ArticlePage({ params }: Props) {
       placement: 'inline' as const,
       minHeight: '280px',
       collapseUnfilled: false,
+      lazyRootMargin: '760px 0px 760px 0px',
+      refreshRootMarginPx: 720,
       className: 'article-ad-slot',
     };
 

@@ -410,18 +410,16 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             </div>
                         </div>
 
-                        {raceType === 'nar' && (
-                            <AffiliateSlot
-                                context="race_after_prediction"
-                                raceType="nar"
-                                venueName={venue.venue_name}
-                                selectionKey={`prediction-${adRefreshKey}`}
-                                variant="compact"
-                                className="my-1.5 sm:my-2"
-                            />
-                        )}
+                        <AffiliateSlot
+                            context="race_after_prediction"
+                            raceType={raceType}
+                            venueName={venue.venue_name}
+                            selectionKey={`prediction-${adRefreshKey}`}
+                            variant="compact"
+                            className="my-1.5 sm:my-2"
+                        />
 
-                        {shouldShowAd && (
+                        {shouldShowAd && raceType !== 'nar' && (
                             <InFeedAd
                                 refreshKey={`prediction-read-${adRefreshKey}`}
                                 analyticsPlacement="race_after_prediction"

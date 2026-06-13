@@ -85,7 +85,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         title: 'サラブレッドコレクション ぬいぐるみ（イクイノックス / ドウデュース）',
         description: 'イクイノックス・ドウデュースの競走馬ぬいぐるみ（高さ約20cm）。デスクやリビングにも馴染みやすく、競馬ファンへのギフトとしても人気です。',
         fallbackVisualLabel: 'ぬいぐるみ',
-        contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
+        contexts: ['race_after_prediction', 'race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 100,
         links: [
             {
@@ -111,7 +111,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         title: '競馬用語・名言Tシャツ｜競馬場の観戦やギフトに',
         description: '競馬用語や名セリフをプリントしたTシャツ。競馬場での観戦はもちろん、競馬好きへのプレゼントとしても喜ばれます。',
         fallbackVisualLabel: 'Tシャツ',
-        contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
+        contexts: ['race_after_prediction', 'race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 80,
         links: [
             {
@@ -137,7 +137,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         title: '栗東トレセン実使用 幸運の馬蹄（古蹄鉄）',
         description: '栗東トレーニングセンターで実際にレースを走った馬の蹄鉄。古来より幸運のシンボルとされており、インテリアや縁起物として飾れます。',
         fallbackVisualLabel: '馬蹄グッズ',
-        contexts: ['race_after_top_hits', 'article_footer', 'home_goods'],
+        contexts: ['race_after_prediction', 'race_after_top_hits', 'article_footer', 'home_goods'],
         weight: 70,
         links: [
             {

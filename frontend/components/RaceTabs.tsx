@@ -462,19 +462,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                         </div>
                                     </div>
                                 </div>
-
-                                <div id="race-analysis-section" className="mb-1.5">
-                                    <RaceAnalysis race={activeRace} />
-                                </div>
-
-                                {shouldShowAd && (
-                                    <InFeedAd
-                                        refreshKey={`premium-after-analysis-${adRefreshKey}`}
-                                        analyticsPlacement="race_after_analysis"
-                                        lazyRootMargin="760px 0px 760px 0px"
-                                        refreshRootMarginPx={720}
-                                    />
-                                )}
                                 </>
                             )
                         ) : shouldShowRewardGate ? (
@@ -547,6 +534,22 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 </div>
                             </div>
                         ) : null}
+
+                        {/* AIレース展望（常時表示、SEO・滞在時間向上） */}
+                        <div id="race-analysis-section" className="mb-1.5">
+                            <RaceAnalysis race={activeRace} />
+                        </div>
+
+                        {/* プレミアム解除時のみ、展望コメントの下にInFeedAdを表示 */}
+                        {isPremiumDetailVisible && shouldShowAd && (
+                            <InFeedAd
+                                refreshKey={`premium-after-analysis-${adRefreshKey}`}
+                                analyticsPlacement="race_after_analysis"
+                                className="my-1.5 sm:my-2"
+                                lazyRootMargin="760px 0px 760px 0px"
+                                refreshRootMarginPx={720}
+                            />
+                        )}
                         </div>
 
                         <div className="my-1.5 sm:my-3">

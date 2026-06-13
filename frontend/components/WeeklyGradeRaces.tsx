@@ -48,7 +48,6 @@ export function WeeklyGradeRaces({ races, compact = false, predictions }: Weekly
                         <span className="w-1 h-4 sm:h-5 rounded-sm shrink-0 bg-amber-500"></span>
                         <span className="truncate">今週の重賞レース</span>
                     </span>
-                    <span className="text-[10px] font-bold text-slate-400">注目開催</span>
                 </div>
 
                 {/* G1レースの強調表示（フルワイド専用カード） */}

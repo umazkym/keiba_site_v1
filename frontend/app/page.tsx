@@ -243,6 +243,29 @@ const getVenueNamesString = (predictions: RaceDayPrediction | null) => {
     return `本日開催の${venues.join('・')}`;
 };
 
+type HeroDataCardProps = {
+    title: string;
+    description: string;
+    icon: ReactNode;
+    accentClass: string;
+    children: ReactNode;
+};
+
+const HeroDataCard = ({ title, description, icon, accentClass, children }: HeroDataCardProps) => (
+    <div className="group min-w-0 rounded-lg bg-white p-2 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md h-full flex flex-col justify-between">
+        <div className="mb-1.5 flex min-w-0 items-center gap-1.5">
+            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${accentClass}`}>
+                {icon}
+            </span>
+            <div className="min-w-0">
+                <div className="truncate text-[11px] font-bold leading-none text-slate-950 sm:text-xs">{title}</div>
+                <div className="mt-0.5 truncate text-[9px] font-semibold leading-none text-slate-500">{description}</div>
+            </div>
+        </div>
+        <div className="rounded-md bg-slate-50 p-1.5 mt-auto h-[38px] flex items-center justify-center w-full">{children}</div>
+    </div>
+);
+
 const getCategoryBadgeClass = (category: string) => {
     switch (category) {
         case '重賞':
@@ -298,139 +321,70 @@ export default async function HomePage() {
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         {getFormattedUpdateDate()}
                     </span>
-                    <h1 className="text-white font-extrabold tracking-tight leading-tight text-[23px] sm:text-4xl mb-2">
+                    <h1 className="text-white font-extrabold tracking-tight leading-tight !text-[17px] sm:!text-[24px] mb-2">
                         {raceDaySummary.venueCount > 0
                             ? <>{getVenueNamesString(predictions)}<br />全{raceDaySummary.raceCount}レース分析公開中</>
                             : <>今日のレース分析を<br />無料で確認</>
                         }
                     </h1>
-                    <p className="text-slate-300 text-xs sm:text-base leading-relaxed mb-4 max-w-xl">
-                        展開予測・対戦成績・枠順傾向をひと目で確認。登録不要で、中央・地方の分析データを毎日無料で確認できます。
+                    <p className="text-slate-300 text-xs sm:text-base leading-relaxed pb-2 mb-4 max-w-xl">
+                        展開・対戦成績・枠順傾向をひと目で確認。登録不要で中央・地方の分析データを毎日無料で確認できます。
                     </p>
-                    <div className="flex gap-2.5 overflow-x-auto scrollbar-hide p-2 mb-4 w-full rounded-xl bg-slate-900/40 border border-slate-800 backdrop-blur-sm md:grid md:grid-cols-5 md:overflow-x-visible md:gap-3">
-                        {/* AI偏差値 */}
-                        <div className="group min-w-0 shrink-0 w-[145px] md:w-auto rounded-xl border p-2.5 text-left shadow-sm ring-1 transition-all border-indigo-500/20 bg-indigo-950/20 ring-indigo-500/10 hover:border-indigo-500/40">
-                            <div className="mb-2 flex items-center gap-2">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-indigo-950/60 text-indigo-400 border-indigo-900/50">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                                        <path d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"></path>
-                                        <path d="M18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"></path>
-                                    </svg>
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12px] font-bold leading-none text-white sm:text-[13px]">AI偏差値</p>
-                                </div>
+                    <div className="mb-4 grid w-full grid-cols-2 gap-2 rounded-xl sm:grid-cols-4 sm:gap-2.5">
+                        <HeroDataCard
+                            title="AI偏差値"
+                            description="出走馬の能力をスコア化"
+                            icon={<Gauge className="h-3.5 w-3.5" />}
+                            accentClass="bg-blue-50 text-blue-700"
+                        >
+                            <div className="space-y-1 w-full">
+                                <span className="block h-1.5 w-[88%] rounded-full bg-blue-600" />
+                                <span className="block h-1.5 w-[64%] rounded-full bg-amber-400" />
+                                <span className="block h-1.5 w-[72%] rounded-full bg-slate-300" />
                             </div>
-                            <p className="text-[10px] font-medium text-slate-400 leading-tight mb-2.5 h-6 flex items-center">全馬能力を数値化</p>
-                            <div className="rounded-lg p-1.5 bg-slate-950/40">
-                                <div className="space-y-1">
-                                    <span className="block h-1.5 w-[88%] rounded-full bg-blue-500"></span>
-                                    <span className="block h-1.5 w-[64%] rounded-full bg-amber-400"></span>
-                                    <span className="block h-1.5 w-[72%] rounded-full bg-slate-300"></span>
-                                </div>
-                            </div>
-                        </div>
+                        </HeroDataCard>
 
-                        {/* 対決成績 */}
-                        <div className="group min-w-0 shrink-0 w-[145px] md:w-auto rounded-xl border p-2.5 text-left shadow-sm ring-1 transition-all border-blue-500/20 bg-blue-950/20 ring-blue-500/10 hover:border-blue-500/40">
-                            <div className="mb-2 flex items-center gap-2">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-blue-950/60 text-blue-400 border-blue-900/50">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                                        <circle cx="9" cy="7" r="4"></circle>
-                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                    </svg>
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12px] font-bold leading-none text-white sm:text-[13px]">対決成績</p>
-                                </div>
+                        <HeroDataCard
+                            title="対戦成績"
+                            description="過去の直接対決での勝敗比較"
+                            icon={<Swords className="h-3.5 w-3.5" />}
+                            accentClass="bg-indigo-50 text-indigo-700"
+                        >
+                            <div className="grid grid-cols-3 gap-1 text-center text-[9px] font-bold w-full">
+                                <span className="rounded bg-emerald-50 py-0.5 text-emerald-700">+2</span>
+                                <span className="rounded bg-slate-100 py-0.5 text-slate-500">0</span>
+                                <span className="rounded bg-rose-50 py-0.5 text-rose-700">-1</span>
+                                <span className="rounded bg-slate-100 py-0.5 text-slate-500">0</span>
+                                <span className="rounded bg-emerald-50 py-0.5 text-emerald-700">+1</span>
+                                <span className="rounded bg-slate-100 py-0.5 text-slate-500">0</span>
                             </div>
-                            <p className="text-[10px] font-medium text-slate-400 leading-tight mb-2.5 h-6 flex items-center">直接対決から分析</p>
-                            <div className="rounded-lg p-1.5 bg-slate-950/40">
-                                <div className="grid grid-cols-3 gap-1 text-center text-[9px] font-bold">
-                                    <span className="rounded bg-emerald-950/50 py-0.5 text-emerald-400">+2</span>
-                                    <span className="rounded bg-slate-900/85 py-0.5 text-slate-400">0</span>
-                                    <span className="rounded bg-rose-950/50 py-0.5 text-rose-400">-1</span>
-                                    <span className="rounded bg-slate-900/85 py-0.5 text-slate-400">0</span>
-                                    <span className="rounded bg-emerald-950/50 py-0.5 text-emerald-400">+1</span>
-                                    <span className="rounded bg-slate-900/85 py-0.5 text-slate-400">0</span>
-                                </div>
-                            </div>
-                        </div>
+                        </HeroDataCard>
 
-                        {/* 展開/脚質 */}
-                        <div className="group min-w-0 shrink-0 w-[145px] md:w-auto rounded-xl border p-2.5 text-left shadow-sm ring-1 transition-all border-emerald-500/20 bg-emerald-950/20 ring-emerald-500/10 hover:border-emerald-500/40">
-                            <div className="mb-2 flex items-center gap-2">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-emerald-950/60 text-emerald-400 border-emerald-900/50">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
-                                        <line x1="4" y1="22" x2="4" y2="15"></line>
-                                    </svg>
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12px] font-bold leading-none text-white sm:text-[13px]">展開/脚質</p>
-                                </div>
+                        <HeroDataCard
+                            title="展開/脚質"
+                            description="スタートでの位置取りを予測"
+                            icon={<LineChart className="h-3.5 w-3.5" />}
+                            accentClass="bg-emerald-50 text-emerald-700"
+                        >
+                            <div className="flex h-6 items-end gap-1 w-full">
+                                {[54, 76, 38, 64].map((height, index) => (
+                                    <span key={index} className="flex-1 rounded-t bg-emerald-500/80" style={{ height: `${height}%` }} />
+                                ))}
                             </div>
-                            <p className="text-[10px] font-medium text-slate-400 leading-tight mb-2.5 h-6 flex items-center">脚質から展開予測</p>
-                            <div className="rounded-lg p-1.5 bg-slate-950/40">
-                                <div className="flex h-7 items-end gap-1">
-                                    <span className="flex-1 rounded-t bg-emerald-500/80" style={{ height: '54%' }}></span>
-                                    <span className="flex-1 rounded-t bg-emerald-500/80" style={{ height: '76%' }}></span>
-                                    <span className="flex-1 rounded-t bg-emerald-500/80" style={{ height: '38%' }}></span>
-                                    <span className="flex-1 rounded-t bg-emerald-500/80" style={{ height: '64%' }}></span>
-                                </div>
-                            </div>
-                        </div>
+                        </HeroDataCard>
 
-                        {/* 枠順傾向 */}
-                        <div className="group min-w-0 shrink-0 w-[145px] md:w-auto rounded-xl border p-2.5 text-left shadow-sm ring-1 transition-all border-amber-500/20 bg-amber-950/20 ring-amber-500/10 hover:border-amber-500/40">
-                            <div className="mb-2 flex items-center gap-2">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-amber-950/60 text-amber-400 border-amber-900/50">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                                        <path d="M3 3v18h18"></path>
-                                        <path d="M18 17V9"></path>
-                                        <path d="M13 17V5"></path>
-                                        <path d="M8 17v-3"></path>
-                                    </svg>
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12px] font-bold leading-none text-white sm:text-[13px]">枠順傾向</p>
-                                </div>
+                        <HeroDataCard
+                            title="枠順傾向"
+                            description="コース別の有利な枠順を分析"
+                            icon={<BarChart3 className="h-3.5 w-3.5" />}
+                            accentClass="bg-amber-50 text-amber-700"
+                        >
+                            <div className="flex h-6 items-end gap-1 w-full">
+                                {[82, 42, 66, 36].map((height, index) => (
+                                    <span key={index} className="flex-1 rounded-t bg-blue-500/80" style={{ height: `${height}%` }} />
+                                ))}
                             </div>
-                            <p className="text-[10px] font-medium text-slate-400 leading-tight mb-2.5 h-6 flex items-center">コース枠有利不利</p>
-                            <div className="rounded-lg p-1.5 bg-slate-950/40">
-                                <div className="flex h-7 items-end gap-1">
-                                    <span className="flex-1 rounded-t bg-blue-500/80" style={{ height: '82%' }}></span>
-                                    <span className="flex-1 rounded-t bg-blue-500/80" style={{ height: '42%' }}></span>
-                                    <span className="flex-1 rounded-t bg-blue-500/80" style={{ height: '66%' }}></span>
-                                    <span className="flex-1 rounded-t bg-blue-500/80" style={{ height: '36%' }}></span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* AI展望 */}
-                        <div className="group min-w-0 shrink-0 w-[145px] md:w-auto rounded-xl border p-2.5 text-left shadow-sm ring-1 transition-all border-violet-500/20 bg-violet-950/20 ring-violet-500/10 hover:border-violet-500/40">
-                            <div className="mb-2 flex items-center gap-2">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-violet-950/60 text-violet-400 border-violet-900/50">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                                        <path d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"></path>
-                                        <path d="M18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"></path>
-                                    </svg>
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12px] font-bold leading-none text-white sm:text-[13px]">AI展望</p>
-                                </div>
-                            </div>
-                            <p className="text-[10px] font-medium text-slate-400 leading-tight mb-2.5 h-6 flex items-center">狙い目と見所解説</p>
-                            <div className="rounded-lg p-1.5 bg-slate-950/40">
-                                <div className="space-y-1">
-                                    <span className="block h-1.5 w-full rounded-full bg-slate-600"></span>
-                                    <span className="block h-1.5 w-[76%] rounded-full bg-slate-500"></span>
-                                    <span className="block h-1.5 w-[52%] rounded-full bg-blue-500"></span>
-                                </div>
-                            </div>
-                        </div>
+                        </HeroDataCard>
                     </div>
                     <Link href={raceDaySummary.firstRaceHref} className="cta">
                         今日のレース分析を無料で見る →
@@ -509,7 +463,6 @@ export default async function HomePage() {
                     <section className="pick-section card rounded-xl">
                         <h2 className="section-title">
                             <span>本日の分析注目馬</span>
-                            <span className="section-note">本命・妙味・地方</span>
                         </h2>
                         <SpecialPickCard pick={specialPick} date={todayStr} predictions={predictions} />
                     </section>

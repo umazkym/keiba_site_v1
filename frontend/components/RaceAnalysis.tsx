@@ -152,7 +152,7 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
 
             <details className="group" open={false}>
                 <summary className="flex items-center justify-between cursor-pointer list-none py-1">
-                    <span className="text-xs sm:text-sm font-bold text-slate-600">統計分析詳細</span>
+                    <span className="text-xs sm:text-sm font-bold text-slate-600"></span>
                     <div className="flex items-center gap-1">
                         <span className="text-xs sm:text-sm font-bold text-blue-600 group-open:hidden">続きを読む ▼</span>
                         <span className="text-xs sm:text-sm font-bold text-slate-400 hidden group-open:inline">閉じる ▲</span>

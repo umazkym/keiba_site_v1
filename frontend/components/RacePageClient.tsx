@@ -443,7 +443,7 @@ export default function RacePageClient({
             )}
 
             {/* SEO・回遊導線 */}
-            <section className="mt-1.5 sm:mt-2.5 bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+            {/* <section className="mt-1.5 sm:mt-2.5 bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
                 <div className="flex flex-wrap gap-2 justify-center text-sm text-gray-600">
                     <Link href="/grade-races" className="text-primary hover:underline font-semibold">重賞・G1一覧</Link>
                     <span className="text-slate-300">|</span>
@@ -453,7 +453,7 @@ export default function RacePageClient({
                     <span className="text-slate-300">|</span>
                     <Link href="/about" className="text-primary hover:underline font-semibold">このサイトについて</Link>
                 </div>
-            </section>
+            </section> */}
 
             {hasRaceData && !isLoading && !error && (
                 <RacePageBottomNav />

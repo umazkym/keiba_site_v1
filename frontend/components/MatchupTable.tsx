@@ -81,7 +81,7 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
     const { matchup_data } = matchupData;
     const sortedHorses = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
     const isCompact = sortedHorses.length >= 16;
-    const firstColPercent = isCompact ? 15 : 19;
+    const firstColPercent = isCompact ? 24 : 20;
     const horseColPercent = (100 - firstColPercent) / Math.max(sortedHorses.length, 1);
 
     return (
@@ -123,48 +123,48 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
                                         <span className='truncate text-[11px] font-semibold text-slate-700' title={rowHorse.horse_name}>{rowHorse.horse_name}</span>
                                     </div>
                                 </th>
-                            {sortedHorses.map((colHorse) => {
-                                if (colHorse.horse_id === rowHorse.horse_id) return <td key={colHorse.horse_id} className="border-b border-slate-100 bg-slate-100"></td>;
-                                const record = matchup_data[`${rowHorse.horse_id}_vs_${colHorse.horse_id}`];
-                                let content = <div className="flex h-7 items-center justify-center"><span className="text-[11px] text-slate-300">-</span></div>;
-                                let cellClass = 'bg-white';
-                                let textColorClass = 'text-slate-500';
+                                {sortedHorses.map((colHorse) => {
+                                    if (colHorse.horse_id === rowHorse.horse_id) return <td key={colHorse.horse_id} className="border-b border-slate-100 bg-slate-100"></td>;
+                                    const record = matchup_data[`${rowHorse.horse_id}_vs_${colHorse.horse_id}`];
+                                    let content = <div className="flex h-7 items-center justify-center"><span className="text-[11px] text-slate-300">-</span></div>;
+                                    let cellClass = 'bg-white';
+                                    let textColorClass = 'text-slate-500';
 
-                                if (record && (record.win > 0 || record.loss > 0 || record.draw > 0)) {
-                                    const netWins = record.win - record.loss;
-                                    if (netWins > 0) {
-                                        cellClass = 'bg-emerald-50';
-                                        textColorClass = 'text-green-700';
-                                    } else if (netWins < 0) {
-                                        cellClass = 'bg-rose-50';
-                                        textColorClass = 'text-red-700';
-                                    } else {
-                                        cellClass = 'bg-slate-100';
-                                        textColorClass = 'text-slate-700';
+                                    if (record && (record.win > 0 || record.loss > 0 || record.draw > 0)) {
+                                        const netWins = record.win - record.loss;
+                                        if (netWins > 0) {
+                                            cellClass = 'bg-emerald-50';
+                                            textColorClass = 'text-green-700';
+                                        } else if (netWins < 0) {
+                                            cellClass = 'bg-rose-50';
+                                            textColorClass = 'text-red-700';
+                                        } else {
+                                            cellClass = 'bg-slate-100';
+                                            textColorClass = 'text-slate-700';
+                                        }
+                                        content = (
+                                            <div className="flex h-7 flex-col items-center justify-center leading-none">
+                                                <span className={`font-bold ${isCompact ? 'text-[11px]' : 'text-xs'} ${textColorClass}`}>{netWins > 0 ? `+${netWins}` : netWins}</span>
+                                                {!isCompact && (
+                                                    <span className="mt-0.5 w-full truncate text-center text-[9px] tracking-tighter text-slate-500">{record.win}-{record.loss}-{record.draw}</span>
+                                                )}
+                                            </div>
+                                        );
                                     }
-                                    content = (
-                                        <div className="flex h-7 flex-col items-center justify-center leading-none">
-                                            <span className={`font-bold ${isCompact ? 'text-[11px]' : 'text-xs'} ${textColorClass}`}>{netWins > 0 ? `+${netWins}` : netWins}</span>
-                                            {!isCompact && (
-                                                <span className="mt-0.5 w-full truncate text-center text-[9px] tracking-tighter text-slate-500">{record.win}-{record.loss}-{record.draw}</span>
-                                            )}
-                                        </div>
+                                    return (
+                                        <td key={colHorse.horse_id} className={`border-b border-slate-100 p-0 ${cellClass}`}>
+                                            <Tippy
+                                                singleton={tippySingleton}
+                                                content={record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : ''}
+                                            >
+                                                {content}
+                                            </Tippy>
+                                        </td>
                                     );
-                                }
-                                return (
-                                    <td key={colHorse.horse_id} className={`border-b border-slate-100 p-0 ${cellClass}`}>
-                                        <Tippy
-                                            singleton={tippySingleton}
-                                            content={record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : ''}
-                                        >
-                                            {content}
-                                        </Tippy>
-                                    </td>
-                                );
-                            })}
-                        </tr>
-                    );
-                })}
+                                })}
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
         </div>
@@ -175,7 +175,7 @@ const MobileMatrixView = ({ predictions, matchupData, tippySingleton }: { predic
     const { matchup_data } = matchupData;
     const sortedHorses = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
     const isFullGate = sortedHorses.length >= 16;
-    const firstColPercent = isFullGate ? 18 : 21;
+    const firstColPercent = isFullGate ? 12 : 18;
     const horseColPercent = (100 - firstColPercent) / Math.max(sortedHorses.length, 1);
     const rowHeightClass = isFullGate ? 'h-[21px]' : 'h-[24px]';
     const resultTextClass = isFullGate ? 'text-[8px]' : 'text-[9px]';
@@ -183,7 +183,7 @@ const MobileMatrixView = ({ predictions, matchupData, tippySingleton }: { predic
 
     return (
         <div className="table-wrapper">
-            <table className="matchup-table w-full table-fixed text-center">
+            <table className={`matchup-table w-full table-fixed text-center ${isFullGate ? 'matchup-table-compact' : ''}`}>
                 <colgroup>
                     <col style={{ width: `${firstColPercent}%` }} />
                     {sortedHorses.map((horse) => (
@@ -192,17 +192,19 @@ const MobileMatrixView = ({ predictions, matchupData, tippySingleton }: { predic
                 </colgroup>
                 <thead>
                     <tr className="border-b border-slate-200 bg-slate-50">
-                        <th className="px-0.5 py-1 text-left align-bottom text-[9px] font-bold text-slate-500">馬</th>
+                        <th className={`px-0.5 py-1.5 text-left text-[9px] font-bold text-slate-500 ${isFullGate ? 'align-middle' : 'align-bottom'}`}>馬名</th>
                         {sortedHorses.map((horse) => (
-                            <th key={horse.horse_id} className="border-l border-slate-100 px-0 py-1 align-bottom" title={horse.horse_name}>
-                                <div className="flex flex-col items-center justify-end gap-0.5">
+                            <th key={horse.horse_id} className={`border-l border-slate-100 px-0 py-1.5 ${isFullGate ? 'align-middle' : 'align-bottom'}`} title={horse.horse_name}>
+                                <div className={`flex flex-col items-center gap-0.5 ${isFullGate ? 'justify-center' : 'justify-end'}`}>
                                     <MobileHorseBadge horse={horse} totalHorses={sortedHorses.length} />
-                                    <span
-                                        className={`${headerNameHeightClass} text-[8px] font-semibold leading-none text-slate-600`}
-                                        style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }}
-                                    >
-                                        {getShortHorseName(horse.horse_name)}
-                                    </span>
+                                    {!isFullGate && (
+                                        <span
+                                            className={`${headerNameHeightClass} text-[8px] font-semibold leading-none text-slate-600`}
+                                            style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }}
+                                        >
+                                            {getShortHorseName(horse.horse_name)}
+                                        </span>
+                                    )}
                                 </div>
                             </th>
                         ))}
@@ -211,7 +213,7 @@ const MobileMatrixView = ({ predictions, matchupData, tippySingleton }: { predic
                 <tbody>
                     {sortedHorses.map((rowHorse, rowIndex) => (
                         <tr key={rowHorse.horse_id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
-                            <th className={`border-b border-slate-100 px-0.5 text-left sticky-col ${rowHeightClass}`}>
+                            <th className={`border-b border-slate-100 px-0.5 text-left mobile-sticky-col ${rowHeightClass}`}>
                                 <div className="flex min-w-0 items-center gap-0.5">
                                     <MobileHorseBadge horse={rowHorse} totalHorses={sortedHorses.length} />
                                     <span className="min-w-0 truncate text-[9px] font-semibold leading-none text-slate-700" title={rowHorse.horse_name}>

@@ -307,20 +307,21 @@ export default async function HomePage() {
                     <p className="text-slate-300 text-xs sm:text-base leading-relaxed mb-4 max-w-xl">
                         展開予測・対戦成績・枠順傾向をひと目で確認。登録不要で、中央・地方の分析データを毎日無料で確認できます。
                     </p>
-                    <div className="grid grid-cols-2 gap-2 p-2.5 sm:grid-cols-5 sm:p-3 mb-4 rounded-xl bg-slate-900/40 border border-slate-800 backdrop-blur-sm">
-                        <div className="group min-w-0 rounded-xl border p-2 text-left shadow-sm ring-1 transition-all border-primary/40 bg-primary/5 ring-primary/15">
-                            <div className="mb-1.5 flex items-center gap-2">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-indigo-50 text-indigo-700 border-indigo-100">
+                    <div className="flex gap-2.5 overflow-x-auto scrollbar-hide p-2 mb-4 w-full rounded-xl bg-slate-900/40 border border-slate-800 backdrop-blur-sm md:grid md:grid-cols-5 md:overflow-x-visible md:gap-3">
+                        {/* AI偏差値 */}
+                        <div className="group min-w-0 shrink-0 w-[145px] md:w-auto rounded-xl border p-2.5 text-left shadow-sm ring-1 transition-all border-indigo-500/20 bg-indigo-950/20 ring-indigo-500/10 hover:border-indigo-500/40">
+                            <div className="mb-2 flex items-center gap-2">
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-indigo-950/60 text-indigo-400 border-indigo-900/50">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
                                         <path d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"></path>
                                         <path d="M18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"></path>
                                     </svg>
                                 </span>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12px] font-bold leading-tight text-white sm:text-[13px]">AI偏差値</p>
-                                    <p className="text-[9px] font-medium text-slate-400 leading-tight">全馬の能力をスコア化して比較</p>
+                                    <p className="truncate text-[12px] font-bold leading-none text-white sm:text-[13px]">AI偏差値</p>
                                 </div>
                             </div>
+                            <p className="text-[10px] font-medium text-slate-400 leading-tight mb-2.5 h-6 flex items-center">全馬能力を数値化</p>
                             <div className="rounded-lg p-1.5 bg-slate-950/40">
                                 <div className="space-y-1">
                                     <span className="block h-1.5 w-[88%] rounded-full bg-blue-500"></span>
@@ -330,9 +331,10 @@ export default async function HomePage() {
                             </div>
                         </div>
 
-                        <div className="group min-w-0 rounded-xl border p-2 text-left shadow-sm ring-1 transition-all border-slate-750 bg-slate-900/20 ring-slate-800">
-                            <div className="mb-1.5 flex items-center gap-2">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-blue-950/50 text-blue-400 border-blue-900/50">
+                        {/* 対決成績 */}
+                        <div className="group min-w-0 shrink-0 w-[145px] md:w-auto rounded-xl border p-2.5 text-left shadow-sm ring-1 transition-all border-blue-500/20 bg-blue-950/20 ring-blue-500/10 hover:border-blue-500/40">
+                            <div className="mb-2 flex items-center gap-2">
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-blue-950/60 text-blue-400 border-blue-900/50">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="9" cy="7" r="4"></circle>
@@ -341,10 +343,10 @@ export default async function HomePage() {
                                     </svg>
                                 </span>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12px] font-bold leading-tight text-white sm:text-[13px]">対決成績</p>
-                                    <p className="text-[9px] font-medium text-slate-400 leading-tight">過去の対戦成績から相性を分析</p>
+                                    <p className="truncate text-[12px] font-bold leading-none text-white sm:text-[13px]">対決成績</p>
                                 </div>
                             </div>
+                            <p className="text-[10px] font-medium text-slate-400 leading-tight mb-2.5 h-6 flex items-center">直接対決から分析</p>
                             <div className="rounded-lg p-1.5 bg-slate-950/40">
                                 <div className="grid grid-cols-3 gap-1 text-center text-[9px] font-bold">
                                     <span className="rounded bg-emerald-950/50 py-0.5 text-emerald-400">+2</span>
@@ -357,19 +359,20 @@ export default async function HomePage() {
                             </div>
                         </div>
 
-                        <div className="group min-w-0 rounded-xl border p-2 text-left shadow-sm ring-1 transition-all border-slate-750 bg-slate-900/20 ring-slate-800">
-                            <div className="mb-1.5 flex items-center gap-2">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-emerald-950/50 text-emerald-400 border-emerald-900/50">
+                        {/* 展開/脚質 */}
+                        <div className="group min-w-0 shrink-0 w-[145px] md:w-auto rounded-xl border p-2.5 text-left shadow-sm ring-1 transition-all border-emerald-500/20 bg-emerald-950/20 ring-emerald-500/10 hover:border-emerald-500/40">
+                            <div className="mb-2 flex items-center gap-2">
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-emerald-950/60 text-emerald-400 border-emerald-900/50">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
                                         <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
                                         <line x1="4" y1="22" x2="4" y2="15"></line>
                                     </svg>
                                 </span>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12px] font-bold leading-tight text-white sm:text-[13px]">展開/脚質</p>
-                                    <p className="text-[9px] font-medium text-slate-400 leading-tight">脚質からレース展開を予測</p>
+                                    <p className="truncate text-[12px] font-bold leading-none text-white sm:text-[13px]">展開/脚質</p>
                                 </div>
                             </div>
+                            <p className="text-[10px] font-medium text-slate-400 leading-tight mb-2.5 h-6 flex items-center">脚質から展開予測</p>
                             <div className="rounded-lg p-1.5 bg-slate-950/40">
                                 <div className="flex h-7 items-end gap-1">
                                     <span className="flex-1 rounded-t bg-emerald-500/80" style={{ height: '54%' }}></span>
@@ -380,9 +383,10 @@ export default async function HomePage() {
                             </div>
                         </div>
 
-                        <div className="group min-w-0 rounded-xl border p-2 text-left shadow-sm ring-1 transition-all border-slate-750 bg-slate-900/20 ring-slate-800">
-                            <div className="mb-1.5 flex items-center gap-2">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-amber-950/50 text-amber-400 border-amber-900/50">
+                        {/* 枠順傾向 */}
+                        <div className="group min-w-0 shrink-0 w-[145px] md:w-auto rounded-xl border p-2.5 text-left shadow-sm ring-1 transition-all border-amber-500/20 bg-amber-950/20 ring-amber-500/10 hover:border-amber-500/40">
+                            <div className="mb-2 flex items-center gap-2">
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-amber-950/60 text-amber-400 border-amber-900/50">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
                                         <path d="M3 3v18h18"></path>
                                         <path d="M18 17V9"></path>
@@ -391,10 +395,10 @@ export default async function HomePage() {
                                     </svg>
                                 </span>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12px] font-bold leading-tight text-white sm:text-[13px]">枠順傾向</p>
-                                    <p className="text-[9px] font-medium text-slate-400 leading-tight">コースの枠順有利不利を分析</p>
+                                    <p className="truncate text-[12px] font-bold leading-none text-white sm:text-[13px]">枠順傾向</p>
                                 </div>
                             </div>
+                            <p className="text-[10px] font-medium text-slate-400 leading-tight mb-2.5 h-6 flex items-center">コース枠有利不利</p>
                             <div className="rounded-lg p-1.5 bg-slate-950/40">
                                 <div className="flex h-7 items-end gap-1">
                                     <span className="flex-1 rounded-t bg-blue-500/80" style={{ height: '82%' }}></span>
@@ -405,19 +409,20 @@ export default async function HomePage() {
                             </div>
                         </div>
 
-                        <div className="group min-w-0 rounded-xl border p-2 text-left shadow-sm ring-1 transition-all border-slate-750 bg-slate-900/20 ring-slate-800 col-span-2 sm:col-span-1">
-                            <div className="mb-1.5 flex items-center gap-2">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-indigo-950/50 text-indigo-400 border-indigo-900/50">
+                        {/* AI展望 */}
+                        <div className="group min-w-0 shrink-0 w-[145px] md:w-auto rounded-xl border p-2.5 text-left shadow-sm ring-1 transition-all border-violet-500/20 bg-violet-950/20 ring-violet-500/10 hover:border-violet-500/40">
+                            <div className="mb-2 flex items-center gap-2">
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border bg-violet-950/60 text-violet-400 border-violet-900/50">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
                                         <path d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"></path>
                                         <path d="M18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"></path>
                                     </svg>
                                 </span>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12px] font-bold leading-tight text-white sm:text-[13px]">AI展望</p>
-                                    <p className="text-[9px] font-medium text-slate-400 leading-tight">AIによる見どころと狙い目の解説</p>
+                                    <p className="truncate text-[12px] font-bold leading-none text-white sm:text-[13px]">AI展望</p>
                                 </div>
                             </div>
+                            <p className="text-[10px] font-medium text-slate-400 leading-tight mb-2.5 h-6 flex items-center">狙い目と見所解説</p>
                             <div className="rounded-lg p-1.5 bg-slate-950/40">
                                 <div className="space-y-1">
                                     <span className="block h-1.5 w-full rounded-full bg-slate-600"></span>
@@ -584,7 +589,6 @@ export default async function HomePage() {
                     <div className="card rounded-xl p-4 bg-white border border-slate-200">
                         <h2 className="section-title">
                             <span>関連コンテンツ</span>
-                            <span className="section-note">導線</span>
                         </h2>
                         <div className="side-list">
                             <Link href={`/races/${todayStr}`} className="resume-card">
@@ -592,7 +596,7 @@ export default async function HomePage() {
                                 <strong>全レース一覧</strong>
                                 <span className="resume-action mt-2">確認する</span>
                             </Link>
-                            <Link href="/grade-races" className="resume-card mt-2">
+                            {/* <Link href="/grade-races" className="resume-card mt-2">
                                 <small>重賞カレンダー</small>
                                 <strong>重賞・G1一覧</strong>
                                 <span className="resume-action mt-2">見る</span>
@@ -606,7 +610,7 @@ export default async function HomePage() {
                                 <small>騎手データ</small>
                                 <strong>騎手別成績</strong>
                                 <span className="resume-action mt-2">見る</span>
-                            </Link>
+                            </Link> */}
                         </div>
                     </div>
                 </aside>

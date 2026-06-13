@@ -385,6 +385,16 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                     <div className="grid gap-3">
                         {/* 前後レースナビ（上部） */}
                         <RaceNavigation />
+
+                        <AffiliateSlot
+                            context="race_after_prediction"
+                            raceType={raceType}
+                            venueName={venue.venue_name}
+                            selectionKey={`prediction-${adRefreshKey}`}
+                            variant={raceType === 'nar' ? 'default' : 'compact'}
+                            className="my-1.5 sm:my-2"
+                        />
+
                         <div id="race-prediction-section" className="card mb-1 overflow-hidden border border-gray-200 shadow-sm sm:mb-1.5">
                             <div className="bg-white px-2.5 py-1 sm:p-4 border-b border-gray-200">
                                 <h3 className="text-[15px] sm:text-lg font-bold flex items-center text-gray-800">
@@ -409,15 +419,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
                             </div>
                         </div>
-
-                        <AffiliateSlot
-                            context="race_after_prediction"
-                            raceType={raceType}
-                            venueName={venue.venue_name}
-                            selectionKey={`prediction-${adRefreshKey}`}
-                            variant={raceType === 'nar' ? 'default' : 'compact'}
-                            className="my-1.5 sm:my-2"
-                        />
 
                         {shouldShowAd && raceType !== 'nar' && (
                             <InFeedAd

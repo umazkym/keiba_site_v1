@@ -415,7 +415,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             raceType={raceType}
                             venueName={venue.venue_name}
                             selectionKey={`prediction-${adRefreshKey}`}
-                            variant="compact"
+                            variant={raceType === 'nar' ? 'default' : 'compact'}
                             className="my-1.5 sm:my-2"
                         />
 
@@ -440,23 +440,23 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                     <MatchupTable race={activeRace} />
                                 </div>
 
-                                <div className="mb-1 grid gap-1.5 sm:gap-2 xl:grid-cols-2 xl:items-stretch">
-                                    <div className="card p-1 sm:p-3 h-full flex flex-col">
+                                <div className="mb-1.5 flex flex-col gap-1.5 sm:gap-2">
+                                    <div className="card p-1.5 sm:p-3 flex flex-col">
                                         <div id="race-detail-heading" className="flex items-center text-[13px] sm:text-base font-bold text-gray-800 p-1 sm:p-2.5">
                                             <FlagIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-primary" />
                                             <span>展開/脚質予測</span>
                                         </div>
-                                        <div className="px-1.5 pb-1.5 sm:px-3 sm:pb-3 flex-1">
+                                        <div className="px-1 sm:px-2.5 pb-1 sm:pb-2.5 flex-1">
                                             <StartPositionChart predictions={activeRace.predictions} />
                                         </div>
                                     </div>
 
-                                    <div className="card p-1 sm:p-3 h-full flex flex-col">
+                                    <div className="card p-1.5 sm:p-3 flex flex-col">
                                         <div id="race-frame-heading" className="flex items-center text-[13px] sm:text-base font-bold text-gray-800 p-1 sm:p-2.5">
                                             <ChartBarIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-accent" />
                                             <span>このコースの枠順傾向</span>
                                         </div>
-                                        <div className="px-1.5 pb-1.5 sm:px-3 sm:pb-3 flex-1">
+                                        <div className="px-1 sm:px-2.5 pb-1 sm:pb-2.5 flex-1">
                                             <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
                                         </div>
                                     </div>

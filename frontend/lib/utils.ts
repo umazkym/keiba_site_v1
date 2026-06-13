@@ -16,3 +16,31 @@ export const formatDate = (dateString: string): string => {
         return '日付不明';
     }
 };
+
+export const getWakuNumber = (horseNumber: number, totalHorses: number): number | null => {
+    if (totalHorses <= 8) {
+        return horseNumber;
+    }
+    const q = Math.floor(totalHorses / 8);
+    const r = totalHorses % 8;
+    
+    const wakuCounts: number[] = [];
+    for (let wakuIdx = 0; wakuIdx < 8; wakuIdx++) {
+        if ((7 - wakuIdx) < r) {
+            wakuCounts.push(q + 1);
+        } else {
+            wakuCounts.push(q);
+        }
+    }
+    
+    let currentHorse = 1;
+    for (let wakuIdx = 0; wakuIdx < 8; wakuIdx++) {
+        const count = wakuCounts[wakuIdx];
+        if (horseNumber >= currentHorse && horseNumber < currentHorse + count) {
+            return wakuIdx + 1;
+        }
+        currentHorse += count;
+    }
+    
+    return null;
+};

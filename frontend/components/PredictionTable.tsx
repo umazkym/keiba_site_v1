@@ -3,6 +3,7 @@
 
 import { RacePrediction } from '@/lib/types';
 import React, { useEffect, useRef } from 'react';
+import { getWakuNumber } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import { sendReadCompleteEvent } from '../lib/analytics';
 import Tippy from '@tippyjs/react';
@@ -113,33 +114,38 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                     </tr>
                 </thead>
                 <tbody>
-                    {race.predictions.map((p) => (
-                        <tr key={`${race.id}-${p.horse_number}`}>
-                            <td className="mark">{p.mark || '−'}</td>
-                            <td>
-                                <HorseNumberCircle number={p.horse_number} waku={p.waku_number} />
-                            </td>
-                            <td>
-                                <div className="flex items-center gap-1.5 truncate font-bold text-slate-800">
-                                    <span className="truncate text-xs sm:text-sm">{p.horse_name}</span>
-                                </div>
-                            </td>
-                            <td style={{ textAlign: 'right' }}>
-                                <DeviationScoreBadge score={p.deviation_score} />
-                            </td>
-                            <td style={{ textAlign: 'center' }}>
-                                {(() => {
-                                    const pos = getPositionIndicator(p.start_1c_indicator, minScore, maxScore);
-                                    if (!pos) return <span className="badge badge-slate position">-</span>;
-                                    return (
-                                        <span className={pos.className}>
-                                            {pos.label}
-                                        </span>
-                                    );
-                                })()}
-                            </td>
-                        </tr>
-                    ))}
+                    {race.predictions.map((p) => {
+                        const resolvedWaku = (p.waku_number && p.waku_number >= 1 && p.waku_number <= 8)
+                            ? p.waku_number
+                            : getWakuNumber(p.horse_number, race.predictions.length);
+                        return (
+                            <tr key={`${race.id}-${p.horse_number}`}>
+                                <td className="mark">{p.mark || '−'}</td>
+                                <td>
+                                    <HorseNumberCircle number={p.horse_number} waku={resolvedWaku} />
+                                </td>
+                                <td>
+                                    <div className="flex items-center gap-1.5 truncate font-bold text-slate-800">
+                                        <span className="truncate text-xs sm:text-sm">{p.horse_name}</span>
+                                    </div>
+                                </td>
+                                <td style={{ textAlign: 'right' }}>
+                                    <DeviationScoreBadge score={p.deviation_score} />
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                    {(() => {
+                                        const pos = getPositionIndicator(p.start_1c_indicator, minScore, maxScore);
+                                        if (!pos) return <span className="badge badge-slate position">-</span>;
+                                        return (
+                                            <span className={pos.className}>
+                                                {pos.label}
+                                            </span>
+                                        );
+                                    })()}
+                                </td>
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
         </div>

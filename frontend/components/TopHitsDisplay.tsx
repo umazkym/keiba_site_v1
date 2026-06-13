@@ -130,8 +130,8 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
     return (
         <div>
             {!compact && (
-                <h2 className="sec-title px-1 mb-1.5 sm:mb-2">
-                    <TrophyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
+                <h2 className="sec-title px-1 mb-1.5 sm:mb-2 flex items-center">
+                    <TrophyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 shrink-0" />
                     <span className="whitespace-nowrap ml-1">高配当的中ランキング</span>
                     <span className="text-[10px] sm:text-xs font-normal text-muted ml-1.5 whitespace-nowrap self-end mb-0.5">({getDateRangeLabel()})</span>
                 </h2>

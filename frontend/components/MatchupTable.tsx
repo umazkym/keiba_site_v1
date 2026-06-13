@@ -5,6 +5,7 @@ import 'tippy.js/dist/tippy.css';
 import 'tippy.js/animations/shift-away.css';
 import 'tippy.js/themes/light-border.css';
 import { getFilteredMatchups } from '@/lib/api';
+import { getWakuNumber } from '@/lib/utils';
 
 const getWakuColorClasses = (waku: number | null): string => {
     switch (waku) {
@@ -32,11 +33,16 @@ const getShortHorseName = (horseName: string): string => {
     return Array.from(trimmedName).slice(0, 3).join('');
 };
 
-const MobileHorseBadge = ({ horse }: { horse: HorsePrediction }) => (
-    <span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border text-[8px] font-bold leading-none ${getWakuColorClasses(horse.waku_number)}`}>
-        {horse.horse_number}
-    </span>
-);
+const MobileHorseBadge = ({ horse, totalHorses }: { horse: HorsePrediction, totalHorses: number }) => {
+    const resolvedWaku = (horse.waku_number && horse.waku_number >= 1 && horse.waku_number <= 8)
+        ? horse.waku_number
+        : getWakuNumber(horse.horse_number, totalHorses);
+    return (
+        <span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border text-[8px] font-bold leading-none ${getWakuColorClasses(resolvedWaku)}`}>
+            {horse.horse_number}
+        </span>
+    );
+};
 
 const MatchupTooltipContent = ({ rowHorse, colHorse, record }: { rowHorse: HorsePrediction, colHorse: HorsePrediction, record: MatchupRecord }) => (
     <div className="text-left p-2 bg-white rounded-lg shadow-xl border border-gray-200 max-w-sm">
@@ -90,24 +96,33 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
                 <thead>
                     <tr className="border-b border-slate-200 bg-slate-50">
                         <th className="px-1 py-2 text-left text-[11px] font-bold text-slate-500">馬名</th>
-                        {sortedHorses.map(horse => (
-                            <th key={horse.horse_id} className="px-0.5 py-1" title={horse.horse_name}>
-                                <div className='flex items-center justify-center'>
-                                    <HorseNumberCircle number={horse.horse_number} waku={horse.waku_number} compact={isCompact} />
-                                </div>
-                            </th>
-                        ))}
+                        {sortedHorses.map(horse => {
+                            const resolvedWaku = (horse.waku_number && horse.waku_number >= 1 && horse.waku_number <= 8)
+                                ? horse.waku_number
+                                : getWakuNumber(horse.horse_number, sortedHorses.length);
+                            return (
+                                <th key={horse.horse_id} className="px-0.5 py-1" title={horse.horse_name}>
+                                    <div className='flex items-center justify-center'>
+                                        <HorseNumberCircle number={horse.horse_number} waku={resolvedWaku} compact={isCompact} />
+                                    </div>
+                                </th>
+                            );
+                        })}
                     </tr>
                 </thead>
                 <tbody>
-                    {sortedHorses.map((rowHorse, rowIndex) => (
-                        <tr key={rowHorse.horse_id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
-                            <th className="border-b border-slate-100 px-1 py-1 text-left sticky-col">
-                                <div className='flex min-w-0 items-center gap-1.5'>
-                                    <HorseNumberCircle number={rowHorse.horse_number} waku={rowHorse.waku_number} compact={isCompact} />
-                                    <span className='truncate text-[11px] font-semibold text-slate-700' title={rowHorse.horse_name}>{rowHorse.horse_name}</span>
-                                </div>
-                            </th>
+                    {sortedHorses.map((rowHorse, rowIndex) => {
+                        const resolvedWaku = (rowHorse.waku_number && rowHorse.waku_number >= 1 && rowHorse.waku_number <= 8)
+                            ? rowHorse.waku_number
+                            : getWakuNumber(rowHorse.horse_number, sortedHorses.length);
+                        return (
+                            <tr key={rowHorse.horse_id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
+                                <th className="border-b border-slate-100 px-1 py-1 text-left sticky-col">
+                                    <div className='flex min-w-0 items-center gap-1.5'>
+                                        <HorseNumberCircle number={rowHorse.horse_number} waku={resolvedWaku} compact={isCompact} />
+                                        <span className='truncate text-[11px] font-semibold text-slate-700' title={rowHorse.horse_name}>{rowHorse.horse_name}</span>
+                                    </div>
+                                </th>
                             {sortedHorses.map((colHorse) => {
                                 if (colHorse.horse_id === rowHorse.horse_id) return <td key={colHorse.horse_id} className="border-b border-slate-100 bg-slate-100"></td>;
                                 const record = matchup_data[`${rowHorse.horse_id}_vs_${colHorse.horse_id}`];
@@ -148,7 +163,8 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
                                 );
                             })}
                         </tr>
-                    ))}
+                    );
+                })}
                 </tbody>
             </table>
         </div>
@@ -180,7 +196,7 @@ const MobileMatrixView = ({ predictions, matchupData, tippySingleton }: { predic
                         {sortedHorses.map((horse) => (
                             <th key={horse.horse_id} className="border-l border-slate-100 px-0 py-1 align-bottom" title={horse.horse_name}>
                                 <div className="flex flex-col items-center justify-end gap-0.5">
-                                    <MobileHorseBadge horse={horse} />
+                                    <MobileHorseBadge horse={horse} totalHorses={sortedHorses.length} />
                                     <span
                                         className={`${headerNameHeightClass} text-[8px] font-semibold leading-none text-slate-600`}
                                         style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }}
@@ -197,7 +213,7 @@ const MobileMatrixView = ({ predictions, matchupData, tippySingleton }: { predic
                         <tr key={rowHorse.horse_id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
                             <th className={`border-b border-slate-100 px-0.5 text-left sticky-col ${rowHeightClass}`}>
                                 <div className="flex min-w-0 items-center gap-0.5">
-                                    <MobileHorseBadge horse={rowHorse} />
+                                    <MobileHorseBadge horse={rowHorse} totalHorses={sortedHorses.length} />
                                     <span className="min-w-0 truncate text-[9px] font-semibold leading-none text-slate-700" title={rowHorse.horse_name}>
                                         {getShortHorseName(rowHorse.horse_name)}
                                     </span>

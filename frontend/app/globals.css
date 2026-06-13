@@ -1576,12 +1576,10 @@ header.glass {
 .horse-no.waku2 { background: #111827; color: white; }
 .horse-no.waku3 { background: #dc2626; color: white; }
 .horse-no.waku4 { background: #2563eb; color: white; }
-.horse-no.waku5 { background: #e11d48; color: white; }
-.horse-no.waku6 { background: #059669; color: white; }
-.horse-no.waku7 { background: #8b5cf6; color: white; }
-.horse-no.waku8 { background: #f59e0b; color: white; }
-.horse-no.waku10 { background: #fbbf24; color: #111827; }
-.horse-no.waku11 { background: #1d4ed8; color: white; }
+.horse-no.waku5 { background: #eab308; color: #111827; }
+.horse-no.waku6 { background: #16a34a; color: white; }
+.horse-no.waku7 { background: #ea580c; color: white; }
+.horse-no.waku8 { background: #ec4899; color: white; }
 
 .score {
   display: inline-flex;

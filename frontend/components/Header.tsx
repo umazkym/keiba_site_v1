@@ -69,12 +69,6 @@ export const Header = () => {
                         <Link href={`/races/${todayStr}`} className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             本日の分析
                         </Link>
-                        <Link href="/grade-races" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
-                            重賞
-                        </Link>
-                        <Link href="/courses" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
-                            コース
-                        </Link>
                         <Link href="/articles" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             記事
                         </Link>

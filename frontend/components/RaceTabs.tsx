@@ -383,17 +383,29 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             {activeRace && (
                 <div id={`race-${activeRace.id}`} className="race-detail-layout mt-1">
                     <div className="grid gap-3">
+                        {raceType === 'nar' ? (
+                            <AffiliateSlot
+                                context="race_after_prediction"
+                                raceType="nar"
+                                venueName={venue.venue_name}
+                                selectionKey={`prediction-${adRefreshKey}`}
+                                variant="default"
+                                className="my-1.5 sm:my-2"
+                            />
+                        ) : (
+                            shouldShowAd && !shouldSuppressAdsInDevelopment && (
+                                <InFeedAd
+                                    refreshKey={`prediction-top-${adRefreshKey}`}
+                                    analyticsPlacement="race_before_prediction"
+                                    className="my-1.5 sm:my-2"
+                                    lazyRootMargin="400px 0px 400px 0px"
+                                    refreshRootMarginPx={400}
+                                />
+                            )
+                        )}
+
                         {/* 前後レースナビ（上部） */}
                         <RaceNavigation />
-
-                        <AffiliateSlot
-                            context="race_after_prediction"
-                            raceType={raceType}
-                            venueName={venue.venue_name}
-                            selectionKey={`prediction-${adRefreshKey}`}
-                            variant={raceType === 'nar' ? 'default' : 'compact'}
-                            className="my-1.5 sm:my-2"
-                        />
 
                         <div id="race-prediction-section" className="card mb-1 overflow-hidden border border-gray-200 shadow-sm sm:mb-1.5">
                             <div className="bg-white px-2.5 py-1 sm:p-4 border-b border-gray-200">

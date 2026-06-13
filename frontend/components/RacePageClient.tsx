@@ -268,9 +268,10 @@ export default function RacePageClient({
     const hasRaceData = Boolean(
         predictionData && ((predictionData.jra?.length ?? 0) > 0 || (predictionData.nar?.length ?? 0) > 0)
     );
-    const primaryNarVenueName = predictionData?.nar?.some((venue) => venue.venue_name === initialVenue)
+    const matchedNarVenueName = initialVenue && predictionData?.nar?.some((venue) => venue.venue_name === initialVenue)
         ? initialVenue
-        : predictionData?.nar?.[0]?.venue_name;
+        : undefined;
+    const primaryNarVenueName = matchedNarVenueName ?? predictionData?.nar?.[0]?.venue_name;
 
     const renderContent = ({ showSpecialPick = true }: { showSpecialPick?: boolean } = {}) => {
         if (isLoading) {

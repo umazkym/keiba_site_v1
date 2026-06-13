@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Noto_Sans_JP, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -13,40 +12,17 @@ import { Suspense } from "react";
 import { GlobalAdManager } from "@/components/GlobalAdManager";
 import { shouldLoadAdsensePageLevelScript } from "@/lib/ad-config";
 
-const inter = Inter({
-    subsets: ["latin"],
-    variable: '--font-inter',
-    preload: true,
-    display: 'swap'
-});
-
-const notoSansJP = Noto_Sans_JP({
-    subsets: ["latin"],
-    variable: '--font-noto-sans-jp',
-    preload: true,
-    display: 'swap'
-});
-
-const robotoMono = Roboto_Mono({
-    subsets: ["latin"],
-    variable: '--font-roboto-mono',
-    preload: true,
-    display: 'swap'
-});
-
 export const metadata: Metadata = {
     metadataBase: new URL("https://uma-free.com"),
     title: {
         default: "UMA-FREE - AI競馬データ分析・統計情報サイト",
         template: "%s | UMA-FREE",
     },
-    // ★ SEO改善: 検索クエリ「競馬 データ分析」(CTR 20%)、「馬場状態」(11表示)、
-    // 「ルメール 得意コース」(23表示)等の実検索ワードを反映
     description: "競馬データ分析サイト。中央・地方の全レースをAIが無料分析。馬場状態の勝率影響、騎手の得意コース、枠順・距離適性、馬体重増減と成績の関係をデータで解説。登録不要で今すぐ使えます。",
     icons: {
         icon: "/new-logo.webp",
         shortcut: "/new-logo.webp",
-        apple: "/new-logo.png", // AppleはWebP非対応の場合があるためPNG維持
+        apple: "/new-logo.png",
     },
     other: {
         'google-adsense-account': 'ca-pub-4411270831448240',
@@ -79,8 +55,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
-    maximumScale: 5, // Allow zooming for accessibility, but provide a ceiling
-}
+    maximumScale: 5,
+};
 
 export default function RootLayout({
     children,
@@ -149,7 +125,7 @@ export default function RootLayout({
                      全ページで約30KB(gzip)のJS読み込みを削減し、Core Web Vitalsを改善
                      Rewarded Adはレースページでのみ使用されるため、他ページでは不要 */}
             </head>
-            <body className={`${inter.variable} ${notoSansJP.variable} ${robotoMono.variable} font-sans bg-surface text-text-primary antialiased`}>
+            <body className="font-sans bg-surface text-text-primary antialiased">
                 {/* 構造化マークアップ：Organization, Website, SoftwareApplication */}
                 <OrganizationSchema />
                 <WebsiteSchema />

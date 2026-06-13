@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { isManualAdsEnabled } from '@/lib/ad-config';
+import {
+  isManualAdsEnabled,
+  isProductionRuntime,
+  shouldShowDevAdPlaceholders,
+  shouldSuppressAdsInDevelopment,
+} from '@/lib/ad-config';
 
 type AdsenseProps = {
   client: string;
@@ -67,10 +72,13 @@ export const Adsense = ({
   const prevRefreshKey = useRef(refreshKey);
   const prevPathname = useRef(pathname);
   const isFirstLoad = useRef(true); // 初回読み込みフラグ（lazy load用）
+  const shouldRenderAd = isManualAdsEnabled && !shouldSuppressAdsInDevelopment;
 
   // 手動広告枠が必要になった時だけAdSenseスクリプトを読む。
   // 全ページheadでclient付きスクリプトを先読みすると、自動広告の全画面表示が起動しやすくなるため分離する。
   useEffect(() => {
+    if (!shouldRenderAd || !isProductionRuntime) return;
+
     let timer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
 
@@ -93,7 +101,7 @@ export const Adsense = ({
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, []);
+  }, [shouldRenderAd]);
 
   // refreshKey または pathname が変わったら広告をリフレッシュ準備
   // ★ CLS防止: リフレッシュ前にコンテナの高さをロックし、画面ジャンプを防ぐ
@@ -119,6 +127,8 @@ export const Adsense = ({
 
   // メイン広告読み込みエフェクト
   useEffect(() => {
+    if (!shouldRenderAd || !isProductionRuntime) return;
+
     const adContainer = adRef.current;
     if (!adContainer || adLoaded.current || !scriptReady) {
       return;
@@ -244,12 +254,13 @@ export const Adsense = ({
     scriptReady,
     lazyRootMargin,
     refreshRootMarginPx,
+    shouldRenderAd,
   ]);
 
-  if (!isManualAdsEnabled) return null;
+  if (!shouldRenderAd) return null;
 
-  // 開発環境ではプレースホルダーを表示
-  if (process.env.NODE_ENV !== 'production') {
+  // ローカルで広告枠の位置を確認したい場合のみ明示的に表示する
+  if (shouldShowDevAdPlaceholders) {
     return (
       <div
         className={`bg-gray-200 border-2 border-dashed border-gray-400 text-gray-500 flex items-center justify-center ${className || ''}`}

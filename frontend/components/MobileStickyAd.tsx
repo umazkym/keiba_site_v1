@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { Adsense } from './Adsense';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { sendAdImpressionEvent } from '../lib/analytics';
-import { isManualAdsEnabled } from '@/lib/ad-config';
+import { isManualAdsEnabled, shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 
 type StickyVariant = 'control' | 'delayed' | 'compact';
 
@@ -108,7 +108,10 @@ export const MobileStickyAd = () => {
         '/terms',
         '/advertising',
     ];
-    const shouldShowAds = isManualAdsEnabled && !noAdPages.some(path => pathname === path);
+    const shouldShowAds =
+        isManualAdsEnabled &&
+        !shouldSuppressAdsInDevelopment &&
+        !noAdPages.some(path => pathname === path);
 
     useEffect(() => {
         setIsMounted(true);
@@ -205,7 +208,10 @@ export const MobileStickyAd = () => {
             className={`xl:hidden fixed bottom-0 left-0 right-0 w-full z-50 transition-all duration-500 transform shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] ${
                 isVisible ? 'translate-y-0 opacity-100' : 'translate-y-[120px] opacity-0 pointer-events-none'
             }`}
-            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
+            style={{
+                bottom: isRacePage ? 'calc(env(safe-area-inset-bottom, 0px) + 56px)' : 0,
+                paddingBottom: isRacePage ? 0 : 'env(safe-area-inset-bottom, 0)',
+            }}
         >
             <div className={`relative bg-white/95 backdrop-blur-sm border-t border-slate-200 transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
                 {/* 閉じるボタン（絶対に配置し、UXを担保） */}

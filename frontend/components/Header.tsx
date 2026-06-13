@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useState, useCallback, useEffect } from 'react';
 import { SearchIcon, MenuIcon, XIcon } from '@/components/Icons';
 
@@ -43,12 +42,13 @@ export const Header = () => {
                 <div className="flex h-12 items-center justify-between gap-2 sm:h-16 sm:gap-4">
                     {/* ロゴ */}
                     <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0" aria-label="ウマFREE ホーム">
-                        <Image
+                        <img
                             src="/new-logo.webp"
                             alt="UMA-FREE ロゴ"
-                            width={40}
-                            height={40}
-                            priority
+                            width="40"
+                            height="40"
+                            loading="eager"
+                            decoding="async"
                             className="h-8 w-8 sm:h-12 sm:w-12"
                         />
                         <div className="flex flex-col hidden sm:flex">
@@ -68,6 +68,12 @@ export const Header = () => {
                         </Link>
                         <Link href={`/races/${todayStr}`} className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             本日の分析
+                        </Link>
+                        <Link href="/grade-races" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
+                            重賞
+                        </Link>
+                        <Link href="/courses" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
+                            コース
                         </Link>
                         <Link href="/articles" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             記事
@@ -117,7 +123,7 @@ export const Header = () => {
                     aria-label="モバイルナビゲーション"
                 >
                     <div className="flex items-center gap-2 px-4 py-4 mb-2 bg-slate-50 border-b border-slate-100">
-                        <Image src="/new-logo.webp" alt="UMA-FREE" width={24} height={24} className="w-6 h-6" />
+                        <img src="/new-logo.webp" alt="UMA-FREE" width="24" height="24" className="w-6 h-6" loading="eager" decoding="async" />
                         <span className="text-base font-bold tracking-tight text-primary">UMA-FREE</span>
                     </div>
                     <Link

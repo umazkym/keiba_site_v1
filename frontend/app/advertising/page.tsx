@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { BreadcrumbSchema } from '@/components/StructuredData';
+import { InfoPageShell, PolicySection } from "@/components/InfoPageLayout";
 
 export const metadata: Metadata = {
     title: "広告について",
@@ -157,6 +158,43 @@ const advertisingContent: AdvertisingContent = {
     ],
 };
 
+function HtmlText({ html }: { html: string }) {
+    return <p dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function AdvertisingContentSection({ section }: { section: Section }) {
+    return (
+        <PolicySection title={section.title}>
+            {section.content && typeof section.content === "string" && <HtmlText html={section.content} />}
+            {section.intro && <p>{section.intro}</p>}
+
+            {section.subsections?.map((subsection) => (
+                <div key={subsection.title} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                    <h3 className="text-base font-black text-slate-900 sm:text-lg">{subsection.title}</h3>
+                    {subsection.intro && <p className="mt-2">{subsection.intro}</p>}
+                    {Array.isArray(subsection.content) &&
+                        subsection.content.map((p) => <HtmlText key={p} html={p} />)}
+                    {subsection.items && (
+                        <ul className="mt-3 list-disc space-y-2 pl-5">
+                            {subsection.items.map((item) => (
+                                <li key={item}>{item}</li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            ))}
+
+            {section.items && (
+                <ul className="list-disc space-y-2 pl-5">
+                    {section.items.map((item) => (
+                        <li key={item}>{item}</li>
+                    ))}
+                </ul>
+            )}
+        </PolicySection>
+    );
+}
+
 export default function AdvertisingPage() {
     return (
         <>
@@ -167,56 +205,16 @@ export default function AdvertisingPage() {
                 ]}
             />
             <Breadcrumb />
-            <div className="py-4 sm:py-8">
-                <div className="mx-auto">
-                    <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-4 sm:mb-6 border-b-2 border-primary pb-3 sm:pb-4">{advertisingContent.title}</h1>
-                    <div className="flex flex-col gap-8 text-gray-700 leading-8">
-                        <p className="text-sm text-gray-500">{advertisingContent.lastUpdated}</p>
-                        <p className="text-base">{advertisingContent.introduction}</p>
-                        {advertisingContent.sections.map((section, index) => (
-                            <section key={index} className="flex flex-col gap-3 sm:gap-4">
-                                <h2 className="text-xl font-bold text-text-primary mb-4 pb-2 border-b border-border">{section.title}</h2>
-
-                                {section.content && typeof section.content === "string" && (
-                                    <p className="text-base" dangerouslySetInnerHTML={{ __html: section.content }} />
-                                )}
-
-                                {section.intro && (
-                                    <p className="text-base">{section.intro}</p>
-                                )}
-
-                                {section.subsections?.map((subsection, subIndex) => (
-                                    <div key={subIndex} className="flex flex-col gap-2 sm:gap-3">
-                                        <h3 className="text-lg sm:text-xl font-bold text-gray-700 mt-3 sm:mt-4 mb-1">{subsection.title}</h3>
-                                        {subsection.intro && <p className="text-base">{subsection.intro}</p>}
-                                        {Array.isArray(subsection.content) ? (
-                                            subsection.content.map((p, pIndex) => (
-                                                <p key={pIndex} className="mt-2 text-base" dangerouslySetInnerHTML={{ __html: p }} />
-                                            ))
-                                        ) : (
-                                            subsection.items && (
-                                                <ul className="list-disc list-inside flex flex-col gap-2 mt-2">
-                                                    {subsection.items.map((item, itemIndex) => (
-                                                        <li key={itemIndex} className="text-base">{item}</li>
-                                                    ))}
-                                                </ul>
-                                            )
-                                        )}
-                                    </div>
-                                ))}
-
-                                {section.items && (
-                                    <ul className="list-disc list-inside flex flex-col gap-2 mt-2">
-                                        {section.items.map((item, itemIndex) => (
-                                            <li key={itemIndex} className="text-base">{item}</li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </section>
-                        ))}
-                    </div>
-                </div>
-            </div>
+            <InfoPageShell
+                eyebrow="AD POLICY"
+                title={advertisingContent.title}
+                updated={advertisingContent.lastUpdated}
+                description={advertisingContent.introduction}
+            >
+                {advertisingContent.sections.map((section) => (
+                    <AdvertisingContentSection key={section.title} section={section} />
+                ))}
+            </InfoPageShell>
         </>
     );
 }

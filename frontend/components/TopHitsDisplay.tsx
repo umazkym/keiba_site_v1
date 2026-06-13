@@ -3,26 +3,28 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getTopPayoutHits } from '@/lib/api';
 import { TopPayoutHit } from '@/lib/types';
-import { NativeCardAd } from '@/components/NativeCardAd';
 import { TrophyIcon } from './Icons';
-import { Adsense } from './Adsense';
 import { getRaceDetailPath } from '@/lib/race-url';
-import { isManualAdsEnabled } from '@/lib/ad-config';
 
 const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: number, compact?: boolean }) => {
-    let rankClass = 'rank-default';
-    if (rank === 1) rankClass = 'rank-1';
-    else if (rank === 2) rankClass = 'rank-2';
-    else if (rank === 3) rankClass = 'rank-3';
+    const raceDate = new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+    const rankTone = rank === 1
+        ? 'border-amber-200 bg-amber-50 text-amber-700'
+        : rank === 2
+            ? 'border-slate-200 bg-slate-50 text-slate-600'
+            : rank === 3
+                ? 'border-orange-200 bg-orange-50 text-orange-700'
+                : 'border-blue-100 bg-blue-50 text-blue-700';
 
     if (compact) {
         return (
             <div className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-100 bg-white px-2.5 py-2 transition-colors hover:border-slate-200 hover:bg-slate-50">
-                <span className={`hit-rank ${rankClass} shrink-0`}>{rank}位</span>
+                <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-black ${rankTone}`}>
+                    {rank}
+                </span>
                 <div className="min-w-0 flex-1">
                     <div className="truncate text-[11px] font-bold text-slate-800">
-                        {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
-                        {' '}{hit.venue_name}{hit.race_number}R
+                        {raceDate} {hit.venue_name}{hit.race_number}R
                     </div>
                     <div className="truncate text-[10px] text-slate-400" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
                         {hit.bet_type}: {hit.winning_numbers}
@@ -36,18 +38,27 @@ const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: numb
     }
 
     return (
-        <div className="hit-card flex flex-col items-start justify-center h-full">
-            <div className="hit-top w-full">
-                <span className={`hit-rank ${rankClass}`}>{rank}位</span>
-                <span className="hit-payout">{hit.payout.toLocaleString()}円</span>
-            </div>
-            <div className="text-left w-full">
-                <div className="hit-info">
-                    {new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
-                    {' '}{hit.venue_name}{hit.race_number}R
+        <div className="group flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 sm:px-3.5 sm:py-3">
+            <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-black ${rankTone}`}>
+                {rank}位
+            </span>
+            <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-sm font-black text-slate-900 sm:text-base">
+                        {hit.payout.toLocaleString()}円
+                    </span>
+                    <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
+                        {hit.bet_type}
+                    </span>
                 </div>
-                <div className="hit-bet" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
-                    {hit.bet_type}: {hit.winning_numbers}
+                <div className="mt-0.5 truncate text-[11px] font-semibold text-slate-500 sm:text-xs">
+                    {raceDate} {hit.venue_name}{hit.race_number}R
+                </div>
+            </div>
+            <div className="shrink-0 text-right">
+                <div className="text-[10px] font-bold text-slate-400">組番</div>
+                <div className="max-w-[92px] truncate text-xs font-black text-slate-700 sm:max-w-[120px]" title={hit.winning_numbers}>
+                    {hit.winning_numbers}
                 </div>
             </div>
         </div>
@@ -78,14 +89,12 @@ const Skeleton = ({ compact = false }: { compact?: boolean }) => (
 export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?: TopPayoutHit[], compact?: boolean }) => {
     const [hits, setHits] = useState<TopPayoutHit[]>(initialHits || []);
     const [isLoading, setIsLoading] = useState(!initialHits);
-    const [showAd, setShowAd] = useState((initialHits || []).length > 0);
 
     useEffect(() => {
         // SSRで既にデータがある場合はスキップ
         if (initialHits) {
             setHits(initialHits);
             setIsLoading(false);
-            setShowAd(initialHits.length > 0);
             return;
         }
 
@@ -95,7 +104,6 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
                 const data = await getTopPayoutHits();
                 const sortedAndLimitedHits = data.slice(0, 5);
                 setHits(sortedAndLimitedHits);
-                setShowAd(sortedAndLimitedHits.length > 0);
             } catch (e) {
                 console.error("Failed to fetch top hits:", e);
             } finally {
@@ -110,13 +118,22 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
         return <Skeleton compact={compact} />;
     }
 
+    const getDateRangeLabel = () => {
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+        const end = new Date(now);
+        const start = new Date(now);
+        start.setDate(start.getDate() - 6);
+        const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+        return `${fmt(start)}〜${fmt(end)}`;
+    };
+
     return (
         <div>
             {!compact && (
                 <h2 className="sec-title px-1 mb-1.5 sm:mb-2">
                     <TrophyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
                     <span className="whitespace-nowrap ml-1">高配当的中ランキング</span>
-                    <span className="text-[10px] sm:text-xs font-normal text-muted ml-1.5 whitespace-nowrap self-end mb-0.5">(直近7日)</span>
+                    <span className="text-[10px] sm:text-xs font-normal text-muted ml-1.5 whitespace-nowrap self-end mb-0.5">({getDateRangeLabel()})</span>
                 </h2>
             )}
             {hits.length === 0 ? (
@@ -137,7 +154,7 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
                 </div>
             ) : (
                 <>
-                    <div className="hits-grid">
+                    <div className="grid grid-cols-1 gap-2">
                         {hits.map((hit, index) => (
                             <Link
                                 key={`${hit.race_id}-${hit.winning_numbers}`}
@@ -147,28 +164,7 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
                                 <HitCard hit={hit} rank={index + 1} />
                             </Link>
                         ))}
-                        {/* モバイルで右下が空くのでネイティブ広告で穴埋め（PC時は5列なので非表示） */}
-                        {isManualAdsEnabled && hits.length === 5 && (
-                            <div className="block h-full lg:hidden rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col justify-center items-center min-h-[92px] p-1.5 sm:min-h-[140px] sm:p-2">
-                                <span className="text-[9px] text-slate-400 mb-1">スポンサーリンク</span>
-                                <div className="w-full h-full flex items-center justify-center overflow-hidden">
-                                    <NativeCardAd slot="1489598374" variant="article" className="w-full" analyticsPlacement="top_hits_mobile_gap" />
-                                </div>
-                            </div>
-                        )}
                     </div>
-                    {/* AdSense審査通過後に有効化する
-                    {showAd && (
-                        <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                            <div className="text-[10px] text-gray-400 text-center mb-2">スポンサーリンク</div>
-                            <Adsense
-                                client="ca-pub-4411270831448240"
-                                slot="3207214308"
-                                style={{ minHeight: '60px' }}
-                            />
-                        </div>
-                    )}
-                    */}
                 </>
             )}
         </div>

@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 interface SearchResult {
-    type: 'article' | 'page';
+    type: SearchIndexItem['type'];
     title: string;
     description: string;
     url: string;
@@ -67,6 +67,21 @@ function getResultLabel(type: SearchIndexItem['type']) {
     }
 }
 
+function getBadgeClass(type: SearchIndexItem['type']) {
+    switch (type) {
+        case 'article':
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+        case 'course':
+            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        case 'jockey':
+            return 'bg-purple-50 text-purple-700 border-purple-200';
+        case 'grade':
+            return 'bg-amber-50 text-amber-700 border-amber-200';
+        default:
+            return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
+}
+
 export default function SearchPageClient({ searchIndex }: { searchIndex: SearchIndexItem[] }) {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -85,19 +100,19 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
         setIsLoading(true);
         setSearchPerformed(true);
 
-        const results: SearchResult[] = searchIndex
+        const nextResults: SearchResult[] = searchIndex
             .map((item) => ({ item, score: scoreResult(item, searchQuery) }))
             .filter(({ score }) => score > 0)
             .sort((a, b) => b.score - a.score)
-            .slice(0, 20)
+            .slice(0, 24)
             .map(({ item }) => ({
-                type: item.type === 'article' ? 'article' : 'page',
+                type: item.type,
                 title: item.title,
                 description: item.description,
                 url: item.url,
             }));
 
-        setResults(results);
+        setResults(nextResults);
         setIsLoading(false);
     };
 
@@ -112,102 +127,98 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
     };
 
     return (
-        <div className="mx-auto px-3 py-4 sm:px-4 sm:py-8">
-            <div className="max-w-3xl mx-auto">
-                <h1 className="mb-4 text-2xl font-bold sm:mb-6 sm:text-3xl">サイト内検索</h1>
-
-                {/* 検索フォーム */}
-                <form onSubmit={handleSearchChange} className="mb-5 sm:mb-8">
-                    <div className="flex gap-2">
+        <div className="mx-auto w-full max-w-5xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
+            <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
+                <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
+                <p className="text-xs font-bold tracking-[0.16em] text-slate-400">SITE SEARCH</p>
+                <h1 className="mt-2 text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
+                    サイト内検索
+                </h1>
+                <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
+                    記事、レース関連ページ、運営情報をキーワードで探せます。レース名、騎手名、コース名などで検索してください。
+                </p>
+                <form onSubmit={handleSearchChange} className="mt-5">
+                    <div className="flex gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2">
                         <input
                             type="text"
                             name="q"
                             defaultValue={query}
-                            placeholder="キーワードを入力してください..."
-                            className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary sm:px-4 sm:py-3 sm:text-base"
+                            placeholder="例: 宝塚記念、東京芝2000m、騎手"
+                            className="min-w-0 flex-1 rounded-xl border border-transparent bg-white px-3 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-primary sm:px-4"
                         />
                         <button
                             type="submit"
-                            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark sm:px-6 sm:py-3 sm:text-base"
+                            className="shrink-0 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-primary sm:px-6"
                         >
                             検索
                         </button>
                     </div>
                 </form>
+            </header>
 
-                {/* 検索結果表示 */}
+            <main className="mt-5">
                 {query && (
-                    <p className="mb-4 text-sm text-gray-600 sm:mb-6 sm:text-lg">
-                        「<span className="font-semibold text-gray-800">{query}</span>」の検索結果
-                    </p>
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-bold text-slate-600">
+                            「<span className="text-slate-950">{query}</span>」の検索結果
+                        </p>
+                        {!isLoading && searchPerformed && (
+                            <p className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-500">
+                                {results.length}件
+                            </p>
+                        )}
+                    </div>
                 )}
 
-                {/* ローディング */}
                 {isLoading && (
-                    <div className="flex items-center justify-center py-8 sm:py-12">
-                        <div className="h-9 w-9 animate-spin rounded-full border-b-2 border-primary sm:h-12 sm:w-12"></div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-soft">
+                        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />
                     </div>
                 )}
 
-                {/* 結果なし */}
                 {searchPerformed && !isLoading && results.length === 0 && (
-                    <div className="rounded-lg bg-gray-100 p-5 text-center sm:p-8">
-                        <p className="mb-3 text-sm text-gray-600 sm:mb-4 sm:text-lg">
-                            「{query}」に関連する結果が見つかりませんでした。
-                        </p>
-                        <p className="text-sm text-gray-500 sm:text-base">
-                            別のキーワードで検索してみてください。
-                        </p>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-soft">
+                        <p className="font-bold text-slate-700">関連する結果が見つかりませんでした。</p>
+                        <p className="mt-2 text-sm text-slate-500">別のキーワードで検索してみてください。</p>
                     </div>
                 )}
 
-                {/* 結果表示 */}
                 {results.length > 0 && (
-                    <div className="space-y-2.5 sm:space-y-4">
-                        <div className="mb-2 text-xs text-gray-500 sm:mb-4 sm:text-sm">
-                            {results.length}件の検索結果が見つかりました
-                        </div>
-                        {results.map((result, index) => (
+                    <div className="grid gap-3 md:grid-cols-2">
+                        {results.map((result) => (
                             <Link
-                                key={index}
+                                key={`${result.type}-${result.url}`}
                                 href={result.url}
-                                className="block rounded-lg border border-gray-200 p-3 transition-all hover:border-primary hover:shadow-lg sm:p-4"
+                                className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated"
                             >
-                                <div className="flex items-start gap-2.5 sm:gap-3">
-                                    <div className="pt-1">
-                                        <span className="inline-block rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700 sm:px-2 sm:py-1 sm:text-xs">
-                                            {getResultLabel(searchIndex.find((item) => item.url === result.url)?.type ?? result.type)}
-                                        </span>
-                                    </div>
-                                    <div className="flex-1">
-                                        <h2 className="mb-1 text-sm font-semibold text-primary hover:underline sm:mb-2 sm:text-lg">
-                                            {result.title}
-                                        </h2>
-                                        <p className="line-clamp-2 text-xs text-gray-600 sm:text-sm">
-                                            {result.description}
-                                        </p>
-                                        <p className="mt-1 text-[10px] text-gray-400 sm:mt-2 sm:text-xs">
-                                            {result.url}
-                                        </p>
-                                    </div>
-                                </div>
+                                <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black ${getBadgeClass(result.type)}`}>
+                                    {getResultLabel(result.type)}
+                                </span>
+                                <h2 className="mt-3 line-clamp-2 text-base font-black leading-snug text-slate-950 group-hover:text-primary">
+                                    {result.title}
+                                </h2>
+                                <p className="mt-2 line-clamp-2 text-sm leading-7 text-slate-600">{result.description}</p>
+                                <p className="mt-3 truncate text-xs font-semibold text-slate-400">{result.url}</p>
                             </Link>
                         ))}
                     </div>
                 )}
 
-                {/* 初期表示（検索がまだ実行されていない） */}
                 {!searchPerformed && !query && (
-                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-5 text-center sm:border-2 sm:p-8">
-                        <p className="mb-3 text-sm text-gray-700 sm:mb-4 sm:text-base">
-                            キーワードを入力して、サイト内の記事やページを検索できます。
-                        </p>
-                        <p className="text-gray-500 text-sm">
-                            AI競馬分析、レース情報、運営情報などを検索してみてください。
-                        </p>
-                    </div>
+                    <section className="grid gap-3 md:grid-cols-3">
+                        {[
+                            { label: 'レース名で探す', body: '宝塚記念、函館スプリントSなどの重賞名で検索できます。' },
+                            { label: '条件で探す', body: '東京芝2000m、馬場、馬体重など、気になる材料で探せます。' },
+                            { label: '使い方を探す', body: 'FAQ、運営情報、AI偏差値の見方も検索対象です。' },
+                        ].map((item) => (
+                            <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+                                <h2 className="text-base font-black text-slate-950">{item.label}</h2>
+                                <p className="mt-2 text-sm leading-7 text-slate-600">{item.body}</p>
+                            </div>
+                        ))}
+                    </section>
                 )}
-            </div>
+            </main>
         </div>
     );
 }

@@ -15,7 +15,7 @@ export const Footer = () => {
                     <div>
                         <h3 className="font-bold text-white text-base sm:text-xl mb-2 sm:mb-4 tracking-tight">UMA-FREE</h3>
                         <p className="text-[11px] sm:text-sm text-slate-400 leading-[1.7] sm:leading-[1.8] max-w-sm">
-                            過去5年以上のレースデータをAIで分析し、中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を完全無料で提供する競馬データ分析サイトです。
+                            豊富な過去レースデータをAIで分析。中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を登録不要・完全無料で提供する競馬データ分析サイトです。
                         </p>
                     </div>
 
@@ -25,7 +25,7 @@ export const Footer = () => {
                         <ul className="grid grid-cols-2 gap-x-3 gap-y-1 sm:block sm:space-y-3">
                             <li>
                                 <Link href="/articles" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
-                                    分析記事一覧
+                                    データ分析記事
                                 </Link>
                             </li>
                             <li>

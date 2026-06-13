@@ -10,18 +10,6 @@ type BottomNavItem = RaceSectionNavItem & {
 
 const bottomNavItems: BottomNavItem[] = [
     {
-        key: 'top',
-        label: 'TOP',
-        targetIds: ['race-page-top'],
-        visual: (
-            <span className="flex h-4 w-8 items-center justify-center gap-0.5">
-                <span className="h-2.5 w-1.5 rounded-sm bg-primary/70" />
-                <span className="h-3.5 w-1.5 rounded-sm bg-primary" />
-                <span className="h-2 w-1.5 rounded-sm bg-primary/50" />
-            </span>
-        ),
-    },
-    {
         key: 'prediction',
         label: 'AI偏差値',
         targetIds: ['race-prediction-heading', 'race-prediction-section'],
@@ -34,8 +22,23 @@ const bottomNavItems: BottomNavItem[] = [
         ),
     },
     {
-        key: 'detail',
-        label: 'データ分析',
+        key: 'matchup',
+        label: '対決成績',
+        targetIds: ['race-matchup-heading', 'race-matchup-section'],
+        visual: (
+            <span className="grid w-8 grid-cols-3 gap-0.5">
+                <span className="h-1.5 rounded-sm bg-emerald-200" />
+                <span className="h-1.5 rounded-sm bg-slate-200" />
+                <span className="h-1.5 rounded-sm bg-rose-200" />
+                <span className="h-1.5 rounded-sm bg-slate-200" />
+                <span className="h-1.5 rounded-sm bg-emerald-300" />
+                <span className="h-1.5 rounded-sm bg-slate-200" />
+            </span>
+        ),
+    },
+    {
+        key: 'start',
+        label: '展開',
         targetIds: ['race-detail-heading', 'race-detail-data-section'],
         visual: (
             <span className="flex h-4 w-8 items-end gap-0.5">
@@ -47,17 +50,27 @@ const bottomNavItems: BottomNavItem[] = [
         ),
     },
     {
-        key: 'matchup',
-        label: '対決成績',
-        targetIds: ['race-matchup-heading', 'race-matchup-section', 'race-detail-data-section'],
+        key: 'frame',
+        label: '枠順',
+        targetIds: ['race-frame-heading'],
         visual: (
-            <span className="grid w-8 grid-cols-3 gap-0.5">
-                <span className="h-1.5 rounded-sm bg-emerald-200" />
-                <span className="h-1.5 rounded-sm bg-slate-200" />
-                <span className="h-1.5 rounded-sm bg-rose-200" />
-                <span className="h-1.5 rounded-sm bg-slate-200" />
-                <span className="h-1.5 rounded-sm bg-emerald-300" />
-                <span className="h-1.5 rounded-sm bg-slate-200" />
+            <span className="flex h-4 w-8 items-end gap-0.5">
+                <span className="h-4 flex-1 rounded-t bg-blue-500" />
+                <span className="h-2 flex-1 rounded-t bg-slate-300" />
+                <span className="h-3 flex-1 rounded-t bg-blue-400" />
+                <span className="h-1.5 flex-1 rounded-t bg-slate-300" />
+            </span>
+        ),
+    },
+    {
+        key: 'analysis',
+        label: '展望',
+        targetIds: ['race-analysis-heading', 'race-analysis-section'],
+        visual: (
+            <span className="flex w-8 flex-col gap-0.5">
+                <span className="h-1 w-full rounded-full bg-slate-400" />
+                <span className="h-1 w-[82%] rounded-full bg-blue-400" />
+                <span className="h-1 w-[62%] rounded-full bg-slate-300" />
             </span>
         ),
     },
@@ -71,7 +84,7 @@ export function RacePageBottomNav() {
             className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] pt-0.5 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur md:hidden"
             aria-label="レースページ内ナビゲーション"
         >
-            <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
+            <div className="mx-auto grid max-w-md grid-cols-5 gap-0.5">
                 {bottomNavItems.map((item) => {
                     const isActive = activeKey === item.key;
                     return (
@@ -87,7 +100,7 @@ export function RacePageBottomNav() {
                             <span className={`mb-0.5 flex h-5 w-9 items-center justify-center rounded-lg border ${isActive ? 'border-primary/15 bg-white shadow-sm' : 'border-slate-100 bg-slate-50'}`}>
                                 {item.visual}
                             </span>
-                            <span className="w-full truncate text-[10px] font-black leading-tight">{item.label}</span>
+                            <span className="w-full truncate text-[9px] font-black leading-tight min-[380px]:text-[10px]">{item.label}</span>
                         </button>
                     );
                 })}

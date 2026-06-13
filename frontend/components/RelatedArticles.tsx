@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { getRelatedArticles } from '@/lib/articles';
 
 interface RelatedArticlesProps {
@@ -31,14 +30,13 @@ export function RelatedArticles({ currentSlug, count = 3 }: RelatedArticlesProps
             key={article.slug}
             className="group flex h-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:shadow-md sm:block sm:rounded-xl"
           >
-            <div className="relative h-24 w-28 shrink-0 overflow-hidden bg-slate-100 sm:h-48 sm:w-full">
-              <Image
-                src={article.eyecatch}
+            <div className="h-24 w-28 shrink-0 overflow-hidden bg-slate-100 sm:h-48 sm:w-full">
+              <img
+                src={article.eyecatch || '/images/articles/data-analysis-eyecatch.png'}
                 alt={article.title}
-                fill
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                style={{ objectFit: 'cover', objectPosition: 'center' }}
-                className="transition-transform duration-500 group-hover:scale-105"
+                loading="lazy"
+                decoding="async"
+                className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
               />
             </div>
             <div className="flex min-w-0 flex-grow flex-col p-3 sm:p-6">

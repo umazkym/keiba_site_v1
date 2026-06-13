@@ -65,8 +65,9 @@ export default function GradeRaceDetailPage({ params }: Props) {
         ]}
       />
       <Breadcrumb />
-      <article className="mx-auto max-w-5xl px-4 pb-12 pt-6">
-        <header className="border-b border-slate-200 pb-8">
+      <article className="mx-auto max-w-5xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
+        <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
+          <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
           <p className="text-xs font-bold tracking-[0.18em] text-slate-400">{race.grade} RACE HUB</p>
           <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
             {race.name} {race.date}
@@ -76,14 +77,14 @@ export default function GradeRaceDetailPage({ params }: Props) {
           </p>
           <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">{race.summary}</p>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link href="/races/today" className="bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary">
+            <Link href="/races/today" className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary">
               当日のAI予想を見る
             </Link>
           </div>
         </header>
 
         <section className="mt-8 grid gap-4 md:grid-cols-2">
-          <div className="border border-slate-200 bg-white p-5">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <h2 className="text-xl font-black text-slate-950">レース前に見るポイント</h2>
             <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
               {race.focusPoints.map((point) => (
@@ -92,11 +93,11 @@ export default function GradeRaceDetailPage({ params }: Props) {
             </ul>
           </div>
 
-          <div className="border border-slate-200 bg-slate-50 p-5">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-soft">
             <h2 className="text-xl font-black text-slate-950">更新の流れ</h2>
             <div className="mt-4 space-y-3">
               {race.updateStages.map((stage) => (
-                <div key={stage.label} className="bg-white p-4">
+                <div key={stage.label} className="rounded-xl bg-white p-4 shadow-soft">
                   <p className="text-xs font-black text-primary">{stage.label} / {stage.timing}</p>
                   <p className="mt-2 text-sm leading-7 text-slate-600">{stage.body}</p>
                 </div>
@@ -116,7 +117,7 @@ export default function GradeRaceDetailPage({ params }: Props) {
               "不利・出遅れ・進路ロス",
               "次走で評価を上げる馬",
             ].map((item) => (
-              <div key={item} className="border border-slate-200 bg-white p-4 text-sm font-bold text-slate-700">
+              <div key={item} className="rounded-xl border border-slate-200 bg-white p-4 text-sm font-bold text-slate-700 shadow-soft">
                 {item}
               </div>
             ))}
@@ -130,7 +131,7 @@ export default function GradeRaceDetailPage({ params }: Props) {
         <section className="mt-10 grid gap-4 md:grid-cols-2">
           <div>
             <h2 className="text-2xl font-black text-slate-950">関連データ</h2>
-            <div className="mt-4 divide-y divide-slate-200 border-y border-slate-200 bg-white">
+            <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
               {race.relatedLinks.map((link) => (
                 <Link key={link.href} href={link.href} className="block p-4 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-primary">
                   {link.label}
@@ -139,7 +140,7 @@ export default function GradeRaceDetailPage({ params }: Props) {
             </div>
           </div>
 
-          <div className="border border-slate-200 bg-slate-50 p-5">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-soft">
             <h2 className="text-xl font-black text-slate-950">X投稿の導線</h2>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               投稿先はトップページではなく、このレース、関連コース、関連騎手ページへ直接送る方針です。
@@ -149,7 +150,7 @@ export default function GradeRaceDetailPage({ params }: Props) {
                 <a
                   key={theme}
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${theme}\n${race.name}のデータ整理はこちら`) }&url=${encodeURIComponent(`https://uma-free.com/grade-races/${race.slug}`)}`}
-                  className="block bg-white p-3 text-sm font-bold text-slate-700 hover:text-primary"
+                  className="block rounded-xl bg-white p-3 text-sm font-bold text-slate-700 shadow-soft hover:text-primary"
                 >
                   {theme}
                 </a>

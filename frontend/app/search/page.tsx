@@ -6,6 +6,7 @@ import { AdUnit } from '@/components/AdUnit';
 import { BreadcrumbSchema } from '@/components/StructuredData';
 import { getAllArticlesMeta } from '@/lib/articles';
 import { gradeRaceProfiles } from '@/lib/grade-race-content';
+import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 
 export const metadata: Metadata = {
     title: 'サイト内検索',
@@ -72,6 +73,7 @@ function buildSearchIndex(): SearchIndexItem[] {
 
 export default function SearchPage() {
     const searchIndex = buildSearchIndex();
+    const shouldRenderAds = !shouldSuppressAdsInDevelopment;
 
     return (
         <>
@@ -86,9 +88,11 @@ export default function SearchPage() {
                 <SearchPageClient searchIndex={searchIndex} />
             </Suspense>
             {/* ★ 検索結果閲覧後の自然な位置に広告配置 */}
-            <div className="max-w-3xl mx-auto px-4 pb-8">
-                <AdUnit slot="9407670747" placement="inline" />
-            </div>
+            {shouldRenderAds && (
+                <div className="max-w-3xl mx-auto px-4 pb-8">
+                    <AdUnit slot="9407670747" placement="inline" />
+                </div>
+            )}
         </>
     );
 }

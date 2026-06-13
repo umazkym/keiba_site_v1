@@ -77,7 +77,7 @@ const DateNavigator = ({
                 className="p-1.5 sm:p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-md transition-all duration-200"
                 aria-label="前日へ"
             >
-                <svg className="w-4 h-4 sm:w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             </button>
             <div className="flex items-center gap-2">
                 <input
@@ -93,7 +93,7 @@ const DateNavigator = ({
                 className="p-1.5 sm:p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-md transition-all duration-200"
                 aria-label="翌日へ"
             >
-                <svg className="w-4 h-4 sm:w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </button>
         </div>
     );
@@ -268,11 +268,6 @@ export default function RacePageClient({
     const hasRaceData = Boolean(
         predictionData && ((predictionData.jra?.length ?? 0) > 0 || (predictionData.nar?.length ?? 0) > 0)
     );
-    const matchedNarVenueName = initialVenue && predictionData?.nar?.some((venue) => venue.venue_name === initialVenue)
-        ? initialVenue
-        : undefined;
-    const primaryNarVenueName = matchedNarVenueName ?? predictionData?.nar?.[0]?.venue_name;
-
     const renderContent = ({ showSpecialPick = true }: { showSpecialPick?: boolean } = {}) => {
         if (isLoading) {
             return <RaceTabsSkeleton />;
@@ -309,25 +304,6 @@ export default function RacePageClient({
         }
         return (
             <>
-                <DisclaimerAlert />
-
-                {hasNarRaces && (
-                    <div className="mx-2 mb-1.5 sm:mb-2">
-                        <AffiliateSlot
-                            context="race_after_prediction"
-                            raceType="nar"
-                            venueName={primaryNarVenueName}
-                            selectionKey={`disclaimer-${currentDate}-${primaryNarVenueName ?? 'nar'}`}
-                            variant="compact"
-                        />
-                    </div>
-                )}
-
-                {showSpecialPick && (
-                    <div className="mx-2">
-                        <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
-                    </div>
-                )}
                 <RaceTabs
                     key={`${currentDate}-${initialVenue ?? 'all'}-${initialRaceNumber ?? 'all'}`}
                     data={predictionData}
@@ -335,12 +311,20 @@ export default function RacePageClient({
                     initialVenueName={initialVenue}
                     initialRaceNumber={initialRaceNumber}
                 />
+
+                {showSpecialPick && (
+                    <div className="mx-2 mt-2">
+                        <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
+                    </div>
+                )}
+
+                <DisclaimerAlert />
             </>
         );
     };
 
     return (
-        <div id="race-page-top" className="mx-auto max-w-6xl py-2 pb-24 md:pb-4">
+        <div id="race-page-top" className="mx-auto max-w-6xl py-2 pb-40 md:pb-4">
             {/* ▼▼▼▼▼【ファーストビュー改善】▼▼▼▼▼ */}
             {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
             <div className="glass mb-1.5 sm:mb-3 p-1 sm:p-2 relative z-10 shadow-sm border-b border-white/40">
@@ -366,7 +350,7 @@ export default function RacePageClient({
 
             {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
                 <div className="mb-1.5 sm:mb-3">
-                    <WeeklyGradeRaces races={weeklyGradeRaces} />
+                    <WeeklyGradeRaces races={weeklyGradeRaces} predictions={predictionData} />
                 </div>
             )}
 
@@ -380,6 +364,8 @@ export default function RacePageClient({
                 context="race_after_top_hits"
                 raceType={hasNarRaces ? 'nar' : 'jra'}
                 selectionKey={currentDate}
+                variant="compact"
+                className="my-1.5 sm:my-2"
             />
 
             {hasRaceData && !isLoading && !error && (
@@ -456,13 +442,17 @@ export default function RacePageClient({
                 </section>
             )}
 
-            {/* サイト紹介テキスト（SEO・AdSense対策：重複回避のため最小限に） */}
-            <section className="mt-1.5 sm:mt-2.5 bg-white rounded-xl border border-slate-200 p-3 text-center shadow-sm">
-                <p className="text-sm text-gray-600">
-                    より詳しいAIデータ分析の仕組みや、サイトの使い方は
-                    <Link href="/about" className="text-primary hover:underline font-semibold mx-1">運営者情報・このサイトについて</Link>
-                    をご覧ください。
-                </p>
+            {/* SEO・回遊導線 */}
+            <section className="mt-1.5 sm:mt-2.5 bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+                <div className="flex flex-wrap gap-2 justify-center text-sm text-gray-600">
+                    <Link href="/grade-races" className="text-primary hover:underline font-semibold">重賞・G1一覧</Link>
+                    <span className="text-slate-300">|</span>
+                    <Link href="/courses" className="text-primary hover:underline font-semibold">コース分析</Link>
+                    <span className="text-slate-300">|</span>
+                    <Link href="/jockeys" className="text-primary hover:underline font-semibold">騎手別成績</Link>
+                    <span className="text-slate-300">|</span>
+                    <Link href="/about" className="text-primary hover:underline font-semibold">このサイトについて</Link>
+                </div>
             </section>
 
             {hasRaceData && !isLoading && !error && (

@@ -19,8 +19,8 @@ type RacePageJumpNavProps = {
 const items: JumpItem[] = [
     {
         key: 'prediction',
-        label: '予想表',
-        note: 'AI評価',
+        label: 'AI偏差値',
+        note: '全頭比較',
         targetIds: ['race-prediction-heading', 'race-prediction-section'],
         icon: <SparklesIcon className="h-3.5 w-3.5" />,
         accentClass: 'bg-indigo-50 text-indigo-700 border-indigo-100',
@@ -33,27 +33,12 @@ const items: JumpItem[] = [
         ),
     },
     {
-        key: 'detail',
-        label: '展開材料',
-        note: '脚質・枠順',
-        targetIds: ['race-detail-heading', 'race-detail-data-section'],
-        icon: <FlagIcon className="h-3.5 w-3.5" />,
-        accentClass: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-        preview: (
-            <div className="flex h-7 items-end gap-1">
-                {[54, 76, 38, 64].map((height, index) => (
-                    <span key={index} className="flex-1 rounded-t bg-emerald-500/80" style={{ height: `${height}%` }} />
-                ))}
-            </div>
-        ),
-    },
-    {
-        key: 'guide',
-        label: 'データ解説',
-        note: '見方を確認',
-        targetIds: ['race-analysis-heading', 'race-data-guide-section', 'race-analysis-section', 'race-detail-data-section'],
-        icon: <ChartBarIcon className="h-3.5 w-3.5" />,
-        accentClass: 'bg-amber-50 text-amber-700 border-amber-100',
+        key: 'matchup',
+        label: '対決成績',
+        note: '直接比較',
+        targetIds: ['race-matchup-heading', 'race-matchup-section'],
+        icon: <UsersIcon className="h-3.5 w-3.5" />,
+        accentClass: 'bg-blue-50 text-blue-700 border-blue-100',
         preview: (
             <div className="grid grid-cols-3 gap-1 text-center text-[9px] font-bold">
                 <span className="rounded bg-emerald-50 py-0.5 text-emerald-700">+2</span>
@@ -66,12 +51,42 @@ const items: JumpItem[] = [
         ),
     },
     {
-        key: 'articles',
-        label: '関連記事',
-        note: '復習・深掘り',
-        targetIds: ['race-related-articles-section', 'race-page-articles-section'],
-        icon: <UsersIcon className="h-3.5 w-3.5" />,
-        accentClass: 'bg-blue-50 text-blue-700 border-blue-100',
+        key: 'start',
+        label: '展開/脚質',
+        note: '位置取り',
+        targetIds: ['race-detail-heading', 'race-detail-data-section'],
+        icon: <FlagIcon className="h-3.5 w-3.5" />,
+        accentClass: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+        preview: (
+            <div className="flex h-7 items-end gap-1">
+                {[54, 76, 38, 64].map((height, index) => (
+                    <span key={index} className="flex-1 rounded-t bg-emerald-500/80" style={{ height: `${height}%` }} />
+                ))}
+            </div>
+        ),
+    },
+    {
+        key: 'frame',
+        label: '枠順傾向',
+        note: 'コース別',
+        targetIds: ['race-frame-heading'],
+        icon: <ChartBarIcon className="h-3.5 w-3.5" />,
+        accentClass: 'bg-amber-50 text-amber-700 border-amber-100',
+        preview: (
+            <div className="flex h-7 items-end gap-1">
+                {[82, 42, 66, 36].map((height, index) => (
+                    <span key={index} className="flex-1 rounded-t bg-blue-500/80" style={{ height: `${height}%` }} />
+                ))}
+            </div>
+        ),
+    },
+    {
+        key: 'analysis',
+        label: 'AI展望',
+        note: 'テキスト',
+        targetIds: ['race-analysis-heading', 'race-analysis-section'],
+        icon: <SparklesIcon className="h-3.5 w-3.5" />,
+        accentClass: 'bg-indigo-50 text-indigo-700 border-indigo-100',
         preview: (
             <div className="space-y-1">
                 <span className="block h-1.5 w-full rounded-full bg-slate-300" />
@@ -90,11 +105,11 @@ export function RacePageJumpNav({ className = '' }: RacePageJumpNavProps) {
             <div className="border-b border-slate-100 bg-slate-50/70 px-3 py-2 sm:px-4">
                 <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                        <h2 className="truncate text-sm font-bold text-slate-900">目次</h2>
+                        <h2 className="truncate text-sm font-bold text-slate-900">データの確認順</h2>
                     </div>
                 </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 p-2.5 sm:grid-cols-4 sm:p-3">
+            <div className="grid grid-cols-2 gap-2 p-2.5 sm:grid-cols-5 sm:p-3">
                 {items.map((item) => {
                     const isActive = activeKey === item.key;
                     return (

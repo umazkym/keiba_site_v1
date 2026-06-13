@@ -4,6 +4,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { AdUnit } from '@/components/AdUnit';
 import { BreadcrumbSchema, FAQSchema } from '@/components/StructuredData';
 import { faqItems } from '@/lib/faq-content';
+import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 
 export const metadata: Metadata = {
     title: 'よくある質問',
@@ -22,6 +23,8 @@ export const metadata: Metadata = {
 };
 
 export default function FAQPage() {
+    const shouldRenderAds = !shouldSuppressAdsInDevelopment;
+
     return (
         <div className="flex flex-col min-h-screen">
             <FAQSchema faqs={faqItems.map(({ question, answer }) => ({ question, answer }))} />
@@ -33,15 +36,19 @@ export default function FAQPage() {
             />
             <Breadcrumb />
             {/* 広告: FAQページ上部（ブレッドクラム直下） */}
-            <div className="mx-auto px-4 pt-4 w-full max-w-[800px]">
-                <AdUnit slot="1489598374" placement="banner" />
-            </div>
+            {shouldRenderAds && (
+                <div className="mx-auto px-4 pt-4 w-full max-w-[800px]">
+                    <AdUnit slot="1489598374" placement="banner" />
+                </div>
+            )}
             <div className="w-full bg-surface">
                 <FAQClient />
                 {/* 広告: FAQコンテンツ後 */}
-                <div className="mx-auto px-4 pb-8">
-                    <AdUnit slot="9407670747" placement="inline" />
-                </div>
+                {shouldRenderAds && (
+                    <div className="mx-auto px-4 pb-8">
+                        <AdUnit slot="9407670747" placement="inline" />
+                    </div>
+                )}
             </div>
         </div>
     );

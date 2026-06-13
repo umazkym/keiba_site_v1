@@ -19,6 +19,7 @@ const getWakuColorClasses = (waku: number | null): string => {
         default: return 'bg-gray-200 text-black border-gray-400';
     }
 };
+
 const HorseNumberCircle = ({ number, waku, compact = false }: { number: number, waku: number | null, compact?: boolean }) => (
     <div className={`${compact ? 'h-5 w-5 text-[10px] border' : 'h-7 w-7 text-sm border-2'} rounded-full flex items-center justify-center font-bold shadow-sm shrink-0 ${getWakuColorClasses(waku)}`}>
         {number}
@@ -78,8 +79,8 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
     const horseColPercent = (100 - firstColPercent) / Math.max(sortedHorses.length, 1);
 
     return (
-        <div className="overflow-hidden border border-slate-200 bg-white">
-            <table className="w-full table-fixed border-collapse text-center">
+        <div className="table-wrapper">
+            <table className="matchup-table w-full table-fixed text-center">
                 <colgroup>
                     <col style={{ width: `${firstColPercent}%` }} />
                     {sortedHorses.map((horse) => (
@@ -101,7 +102,7 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
                 <tbody>
                     {sortedHorses.map((rowHorse, rowIndex) => (
                         <tr key={rowHorse.horse_id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
-                            <th className="border-b border-slate-100 px-1 py-1 text-left">
+                            <th className="border-b border-slate-100 px-1 py-1 text-left sticky-col">
                                 <div className='flex min-w-0 items-center gap-1.5'>
                                     <HorseNumberCircle number={rowHorse.horse_number} waku={rowHorse.waku_number} compact={isCompact} />
                                     <span className='truncate text-[11px] font-semibold text-slate-700' title={rowHorse.horse_name}>{rowHorse.horse_name}</span>
@@ -165,8 +166,8 @@ const MobileMatrixView = ({ predictions, matchupData, tippySingleton }: { predic
     const headerNameHeightClass = isFullGate ? 'h-[34px]' : 'h-[38px]';
 
     return (
-        <div className="overflow-hidden border border-slate-200 bg-white">
-            <table className="w-full table-fixed border-collapse text-center">
+        <div className="table-wrapper">
+            <table className="matchup-table w-full table-fixed text-center">
                 <colgroup>
                     <col style={{ width: `${firstColPercent}%` }} />
                     {sortedHorses.map((horse) => (
@@ -194,7 +195,7 @@ const MobileMatrixView = ({ predictions, matchupData, tippySingleton }: { predic
                 <tbody>
                     {sortedHorses.map((rowHorse, rowIndex) => (
                         <tr key={rowHorse.horse_id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
-                            <th className={`border-b border-slate-100 px-0.5 text-left ${rowHeightClass}`}>
+                            <th className={`border-b border-slate-100 px-0.5 text-left sticky-col ${rowHeightClass}`}>
                                 <div className="flex min-w-0 items-center gap-0.5">
                                     <MobileHorseBadge horse={rowHorse} />
                                     <span className="min-w-0 truncate text-[9px] font-semibold leading-none text-slate-700" title={rowHorse.horse_name}>
@@ -310,9 +311,8 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
 
     const isDataEmpty = !matchupData || Object.keys(matchupData.matchup_data).length === 0;
 
-
     return (
-        <div className="bg-white">
+        <div className="card">
             <Tippy singleton={source} theme="light-border" placement="top" animation="shift-away" interactive={true} appendTo={() => document.body} delay={[100, 200]} />
 
             <div className="flex flex-col gap-1.5 border-b border-slate-200 p-2 md:flex-row md:items-center md:justify-between md:p-3">

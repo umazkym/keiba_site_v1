@@ -1,5 +1,34 @@
 import { RacePrediction } from '@/lib/types';
-import { SparklesIcon } from './Icons';
+
+const sanitizeRaceAnalysisText = (text: string): string => {
+    const replacements: Array<[RegExp, string]> = [
+        [/断然の存在/g, '目立つ存在'],
+        [/断然/g, '目立って'],
+        [/絶対的な本命/g, '目立つ上位候補'],
+        [/波乱の余地は極めて少ない/g, '上位評価を中心に確認したい'],
+        [/極めて/g, 'かなり'],
+        [/容易に想像できる/g, '想定しやすい'],
+        [/相当な脚力が要求される/g, '展開面の条件確認が必要になる'],
+        [/突き放す公算が高い/g, '評価を上げやすい'],
+        [/公算/g, '可能性'],
+        [/抜けている/g, '上位に入る'],
+        [/確実/g, '可能性'],
+        [/上位(\d+)頭の壁は厚い/g, '上位$1頭とは評価差があります'],
+        [/壁は厚い/g, '評価差があります'],
+        [/苦しい/g, '評価を下げたい条件になりやすい'],
+        [/圧倒的な偏差値を誇る/g, '高い偏差値を示す'],
+        [/圧倒的な/g, '高い'],
+        [/圧倒的に/g, '大きく'],
+        [/信頼度が最も高い/g, '評価上位として確認したい'],
+        [/信頼度/g, '評価'],
+        [/最も高い/g, '上位です'],
+        [/馬券/g, '投票判断'],
+    ];
+
+    return replacements.reduce((current, [pattern, replacement]) => (
+        current.replace(pattern, replacement)
+    ), text);
+};
 
 /**
  * レース全体の統計分析コンテンツを生成するコンポーネント
@@ -51,11 +80,11 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
         if (!topHorse) return "AI偏差値データが不足しているため、詳細な能力分析は控えさせていただきます。";
 
         if (deviationRange > 15) {
-            return `このレースは出走馬の実力差が大きく、全体的に縦長の力関係となっています。中でもAI偏差値トップの${topHorse.horse_number}番「${topHorse.horse_name}」（偏差値${maxDeviation.toFixed(1)}）が抜けた評価を受けており、レースの中心になりそうです。最高値と最低値（${minDeviation.toFixed(1)}）の差は${deviationRange.toFixed(1)}と大きく、実力下位の馬が上位に食い込むのは厳しいかもしれません。${topHorse.horse_name}を軸に据えたシンプルな組み立てが有効な傾向があります。`;
+            return `このレースは出走馬のAI偏差値に大きな開きがあり、全体的に評価差が出ている構成です。中でもAI偏差値トップの${topHorse.horse_number}番「${topHorse.horse_name}」（偏差値${maxDeviation.toFixed(1)}）が高く評価されています。最高値と最低値（${minDeviation.toFixed(1)}）の差は${deviationRange.toFixed(1)}と大きいため、まずは上位評価馬の条件を丁寧に確認したいレースです。`;
         } else if (deviationRange > 8) {
-            return `各馬のAI偏差値に中程度の開きがあり、上位陣にある程度絞られそうなレースです。トップ評価の${topHorse.horse_number}番「${topHorse.horse_name}」（偏差値${maxDeviation.toFixed(1)}）が優勢ではありますが、絶対的とは言えません。最低値（${minDeviation.toFixed(1)}）との差は${deviationRange.toFixed(1)}となっており、上位評価の数頭を中心としつつ、展開次第で入り込める中位の馬も押さえておく構成が適しています。`;
+            return `各馬のAI偏差値に中程度の開きがあり、上位評価馬を中心に確認したいレースです。トップ評価の${topHorse.horse_number}番「${topHorse.horse_name}」（偏差値${maxDeviation.toFixed(1)}）は目立つ存在ですが、展開や馬場次第で中位評価の馬が評価を上げる余地もあります。`;
         } else {
-            return `最高評価の${topHorse.horse_number}番「${topHorse.horse_name}」（偏差値${maxDeviation.toFixed(1)}）を含め、出走馬間の偏差値の差が小さい（差はわずか${deviationRange.toFixed(1)}）大混戦です。突出した能力を持つ馬がいないため、道中の位置取りや騎手の仕掛けのタイミングなど、展開一つで大きく着順が入れ替わる可能性が高いレースです。能力値だけでなく、多角的な視点から広く検討することをおすすめします。`;
+            return `最高評価の${topHorse.horse_number}番「${topHorse.horse_name}」（偏差値${maxDeviation.toFixed(1)}）を含め、出走馬間の偏差値差が小さいレースです。道中の位置取りや仕掛けのタイミングなど、展開面の確認も重要になります。能力値だけでなく、対決成績や枠順傾向も合わせて見たい構成です。`;
         }
     };
 
@@ -92,58 +121,72 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
         const topHorse = [...race.predictions].filter(p => p.deviation_score !== null).sort((a, b) => (b.deviation_score as number) - (a.deviation_score as number))[0];
 
         if (topMarkedHorses.length > 0 && darkHorses.length > 0) {
-            return `◎や〇の印がついた有力馬に加え、▲や△の伏兵馬も混在するレースです。基本的には${topHorse?.horse_name || '高い評価の馬'}を中心に据えつつも、展開次第でヒモ荒れの可能性が十分にあります。軸を固定し、相手を手広く流す戦略などが一考です。`;
+            return `◎や〇の印がついた上位評価馬に加え、▲や△の相手候補もいるレースです。まずは${topHorse?.horse_name || '高い評価の馬'}の条件を確認しつつ、展開次第で浮上しそうな馬がいないかを見ておきたい構成です。`;
         } else if (topMarkedHorses.length >= 3) {
-            return `◎や〇の印を獲得した有力候補が${topMarkedHorses.length}頭おり、上位拮抗の様相です。1頭の軸に絞り切るのはリスクが伴うため、複数頭のボックスやフォーメーションなどで手広く構えることで、思わぬ取りこぼしを防ぐ戦略が効果的です。`;
+            return `◎や〇の印がついた上位評価馬が${topMarkedHorses.length}頭おり、上位の比較が大事になりそうです。AI偏差値だけでなく、過去対決成績や脚質予測を合わせて確認すると、評価の優先順位を整理しやすくなります。`;
         } else if (darkHorses.length >= 2) {
-            return `▲や△の印がついた不気味な伏兵馬が複数存在しています。上位人気の馬が崩れた際に一気に波乱となるケースがあり、穴狙いの方にとっては面白い構成です。思わぬ高配当を狙うなら、手広くカバーする券種が適しているでしょう。`;
+            return `▲や△の印がついた相手候補が複数います。上位評価馬だけでなく、展開や枠順が合う馬を確認しておくと、オッズ妙味を判断する材料になりそうです。`;
         } else {
-            return `印の分布からも、比較的順当に決まりやすい堅実な構成と分析されています。${topHorse?.horse_name || 'トップ評価の馬'}を中心に、相手候補を絞って確認する進め方が合うレースと言えそうです。`;
+            return `印の分布を見ると、上位評価馬を中心に確認しやすい構成です。${topHorse?.horse_name || 'トップ評価の馬'}の条件が当日の馬場や展開に合うかを見ながら、相手候補を整理したいレースです。`;
         }
     };
 
     // ========== レンダリング ==========
     return (
-        <div className="space-y-1.5 sm:space-y-4">
-            <h3 id="race-analysis-heading" className="text-sm sm:text-lg font-bold text-gray-800 border-b-2 border-primary pb-1 sm:pb-2">このレースのデ－タ分析</h3>
+        <div className="card section">
+            {/* AI展望コメントは常時表示（SEO・滞在時間向上） */}
+            <div className="flex items-center justify-between mb-2">
+                <h2 className="section-title mb-0" id="race-analysis-heading">
+                    <span>AIレース展望</span>
+                </h2>
+            </div>
 
             {race.ai_analysis_text && (
-                <div className="bg-gradient-to-br from-indigo-50/50 to-blue-50/30 rounded-lg p-2 sm:p-5 border border-indigo-200 shadow-sm mb-2 sm:mb-6 relative overflow-hidden">
-                    <h4 className="flex items-center text-primary font-bold mb-1 sm:mb-3 text-xs sm:text-lg relative z-10">
-                        <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
-                        AIレース展望・展開予想
-                    </h4>
-                    <div className="text-gray-800 text-[11px] sm:text-[15px] leading-[1.65] sm:leading-relaxed whitespace-pre-wrap relative z-10">
-                        {race.ai_analysis_text}
-                    </div>
+                <div className="analysis-preview mb-3 sm:mb-4">
+                    <h3>AI展望コメント</h3>
+                    <p className="whitespace-pre-wrap">
+                        {sanitizeRaceAnalysisText(race.ai_analysis_text)}
+                    </p>
                 </div>
             )}
 
-            <div className="grid gap-1.5 sm:gap-4 lg:grid-cols-2">
-                <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-primary">
-                    <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">出走馬の能力分析</h4>
-                    <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateAbilityAnalysis()}</p>
-                </div>
+            <details className="group" open={false}>
+                <summary className="flex items-center justify-between cursor-pointer list-none py-1">
+                    <span className="text-xs sm:text-sm font-bold text-slate-600">統計分析詳細</span>
+                    <div className="flex items-center gap-1">
+                        <span className="text-xs sm:text-sm font-bold text-blue-600 group-open:hidden">続きを読む ▼</span>
+                        <span className="text-xs sm:text-sm font-bold text-slate-400 hidden group-open:inline">閉じる ▲</span>
+                    </div>
+                </summary>
 
-                <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-accent">
-                    <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">スタートからの展開予想</h4>
-                    <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateStartAnalysis()}</p>
-                </div>
+                <div className="space-y-3 sm:space-y-4 mt-3 sm:mt-5">
+                    <div className="grid gap-1.5 sm:gap-4 lg:grid-cols-2">
+                        <div className="bg-white rounded-lg p-2.5 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-primary">
+                            <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">出走馬の能力分析</h4>
+                            <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateAbilityAnalysis()}</p>
+                        </div>
 
-                <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary">
-                    <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">枠順による影響</h4>
-                    <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateFrameAnalysis()}</p>
-                </div>
+                        <div className="bg-white rounded-lg p-2.5 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-accent">
+                            <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">スタートからの展開予想</h4>
+                            <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateStartAnalysis()}</p>
+                        </div>
 
-                <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary-dark">
-                    <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">馬券戦略の方向性</h4>
-                    <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateStrategyAnalysis()}</p>
-                </div>
-            </div>
+                        <div className="bg-white rounded-lg p-2.5 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary">
+                            <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">枠順による影響</h4>
+                            <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateFrameAnalysis()}</p>
+                        </div>
 
-            <div className="p-1.5 sm:p-3 text-[10px] sm:text-xs italic leading-[1.6]">
-                <p>このデータ分析はあくまで推定値です。実際のレースでは天候や馬場状態、騎手の判断、馬の調子など予測不可能な要因が大きく影響します。最終的な投票判断はご自身の責任でお願いします。</p>
-            </div>
+                        <div className="bg-white rounded-lg p-2.5 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary-dark">
+                            <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">検討材料のまとめ</h4>
+                            <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateStrategyAnalysis()}</p>
+                        </div>
+                    </div>
+
+                    <div className="p-1.5 sm:p-3 text-[10px] sm:text-xs italic leading-[1.6] text-slate-400">
+                        <p>このデータ分析はあくまで推定値です。実際のレースでは天候や馬場状態、騎手の判断、馬の調子など予測不可能な要因が大きく影響します。最終的な買い目の判断はご自身の責任でお願いします。</p>
+                    </div>
+                </div>
+            </details>
         </div>
     );
 };

@@ -27,10 +27,10 @@ export default function HorseWeightPage() {
     mainEntity: [
       {
         "@type": "Question",
-        name: "馬体重が10kg以上増えていたら消しですか？",
+        name: "馬体重が10kg以上増えていたら評価を下げるべきですか？",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "必ず消しではありません。休み明け、3歳馬の成長分、過去の好走体重への回帰なら評価を下げすぎない方がよい場合があります。",
+          text: "必ず評価を下げる必要はありません。休み明け、3歳馬の成長分、過去の好走体重への回帰なら評価を下げすぎない方がよい場合があります。",
         },
       },
       {
@@ -38,7 +38,7 @@ export default function HorseWeightPage() {
         name: "馬体重はいつ予想に入れますか？",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "基本の能力評価を作ったあと、直前の状態確認として使います。買う理由よりも、人気馬のリスク確認として使うと判断しやすくなります。",
+          text: "基本の能力評価を作ったあと、直前の状態確認として使います。評価を上げる理由よりも、人気馬のリスク確認として使うと判断しやすくなります。",
         },
       },
     ],
@@ -86,14 +86,14 @@ export default function HorseWeightPage() {
             <div className="mb-3 h-1.5 w-12 rounded-full bg-accent" />
             <h3 className="text-lg font-black text-slate-950">減りすぎ</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              連戦続きで大幅に絞れている馬は、消耗や輸送疲れが疑われます。人気馬でも軸には据えづらく、ヒモ評価に留めるのが無難です。
+              連戦続きで大幅に絞れている馬は、消耗や輸送疲れが疑われます。人気馬でも中心には据えづらく、相手候補に留めるのが無難です。
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <div className="mb-3 h-1.5 w-12 rounded-full bg-blue-600" />
             <h3 className="text-lg font-black text-slate-950">増えすぎ</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              太め残りと成長増は意味が違います。休み明けで追い切りの動きが良ければ、体重増だけを理由に切るのは早計です。
+              太め残りと成長増は意味が違います。休み明けで追い切りの動きが良ければ、体重増だけを理由に評価を下げすぎるのは早計です。
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
@@ -110,7 +110,7 @@ export default function HorseWeightPage() {
           <ol className="mt-4 space-y-3 text-sm leading-8 text-slate-600">
             <li className="rounded-xl border-l-4 border-accent bg-white p-4 shadow-soft">
               <strong className="text-slate-950">1. 能力評価を先に作る。</strong>
-              馬体重は買い目を決める材料ではなく、リスクを測る材料です。
+              馬体重は最終判断を決める材料ではなく、リスクを測る材料です。
             </li>
             <li className="rounded-xl border-l-4 border-blue-600 bg-white p-4 shadow-soft">
               <strong className="text-slate-950">2. 上位人気馬の増減に注目する。</strong>

@@ -63,7 +63,7 @@ export default function TrackConditionPage() {
             馬場状態とは？良・稍重・重・不良の違い
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
-            馬場状態が変われば、当然ながら「走れる馬」も変わります。良馬場の能力序列をそのまま信じるのか、それとも道悪適性を重く見るのか。馬場の特性を理解することで、人気馬の信頼度や穴馬の激走パターンを的確に読み解けるようになります。
+            馬場状態が変われば、当然ながら「走れる馬」も変わります。良馬場の能力序列をそのまま信じるのか、それとも道悪適性を重く見るのか。馬場の特性を理解することで、人気馬の信頼度や人気薄の見直し材料を整理しやすくなります。
           </p>
         </header>
 
@@ -92,7 +92,7 @@ export default function TrackConditionPage() {
             <div className="mb-3 h-1.5 w-12 rounded-full bg-blue-600" />
             <h3 className="text-lg font-black text-slate-950">脚質を見る</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              道悪で前が粘るか差しが届くかは、含水率やコース形態で変わります。同日の他レースで前後どちらが有利かを掴んでから本命レースに臨むのが定石です。
+              道悪で前が粘るか差しが届くかは、含水率やコース形態で変わります。同日の他レースで前後どちらが有利かを掴んでから対象レースに臨むのが定石です。
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
@@ -113,7 +113,7 @@ export default function TrackConditionPage() {
             </li>
             <li className="rounded-xl border-l-4 border-blue-600 bg-white p-4 shadow-soft">
               <strong className="text-slate-950">2. 馬場で序列を動かす。</strong>
-              道悪経験がない人気馬を1段下げ、重馬場巧者をヒモに加える、といった補正を入れます。
+              道悪経験がない人気馬を1段下げ、重馬場巧者を相手候補に加える、といった補正を入れます。
             </li>
             <li className="rounded-xl border-l-4 border-emerald-600 bg-white p-4 shadow-soft">
               <strong className="text-slate-950">3. 当日のレース傾向で裏を取る。</strong>

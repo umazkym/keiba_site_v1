@@ -12,7 +12,6 @@ import { MatchupTable } from './MatchupTable';
 import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './Icons';
 import { InFeedAd } from './InFeedAd';
-import { AdUnit } from './AdUnit';
 import { AffiliateSlot } from './AffiliateSlot';
 import { RelatedRaces } from './RelatedRaces';
 import { DataExplanationPanel } from './DataExplanationPanel';
@@ -24,6 +23,7 @@ import { LAST_RACE_STORAGE_KEY, StoredRaceView } from '@/lib/race-memory';
 import { getRaceDetailPath } from '@/lib/race-url';
 import { formatDate } from '@/lib/utils';
 import { RACE_BREADCRUMB_CHANGE_EVENT } from '@/lib/race-breadcrumb-event';
+import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -52,6 +52,18 @@ CollapsibleSection.displayName = 'CollapsibleSection';
 
 const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
     <>
+        <div className="mb-2 card p-2 sm:p-3 min-h-[220px]" aria-hidden="true">
+            <div className="flex items-center p-2 sm:p-3">
+                <div className="h-5 w-5 rounded bg-slate-100" />
+                <div className="ml-2 h-4 w-28 rounded bg-slate-100" />
+            </div>
+            <div className="px-2 pb-2 sm:px-3 sm:pb-3">
+                <div className="h-[140px] rounded-lg border bg-slate-50" />
+            </div>
+        </div>
+        {showAd && (
+            <div className="mb-2 min-h-[180px] rounded-xl border border-slate-200 bg-slate-50" aria-hidden="true" />
+        )}
         <div className="mb-2 grid gap-2 xl:grid-cols-2 xl:items-stretch" aria-hidden="true">
             {[0, 1].map((index) => (
                 <div key={index} className="card p-2 sm:p-3 min-h-[250px]">
@@ -65,18 +77,6 @@ const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
                 </div>
             ))}
         </div>
-        <div className="mb-2 card p-2 sm:p-3 min-h-[220px]" aria-hidden="true">
-            <div className="flex items-center p-2 sm:p-3">
-                <div className="h-5 w-5 rounded bg-slate-100" />
-                <div className="ml-2 h-4 w-28 rounded bg-slate-100" />
-            </div>
-            <div className="px-2 pb-2 sm:px-3 sm:pb-3">
-                <div className="h-[140px] rounded-lg border bg-slate-50" />
-            </div>
-        </div>
-        {showAd && (
-            <div className="mb-2 min-h-[180px] rounded-xl border border-slate-200 bg-slate-50" aria-hidden="true" />
-        )}
         <div className="mb-2 card p-2 sm:p-3 min-h-[220px]" aria-hidden="true">
             <div className="flex items-center p-2 sm:p-3">
                 <div className="h-5 w-5 rounded bg-slate-100" />
@@ -364,233 +364,295 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
     return (
         <div id={`venue-${venue.venue_name}`}>
             <div className="sticky top-14 lg:top-16 z-30 bg-white/95 backdrop-blur-sm -mx-2 px-2 lg:mx-0 lg:px-0 py-0.5 lg:py-1.5 shadow-sm border-b border-gray-100">
+                {activeRace && (
+                    <div className="text-[10px] sm:text-xs text-gray-600 font-semibold px-2.5 mb-1 flex items-center justify-between gap-2 border-b border-gray-100/50 pb-1 flex-wrap">
+                        <span className="truncate">{formatDate(currentDate)} {venue.venue_name} {activeRace.race_number}R {activeRace.race_name}</span>
+                        {(() => {
+                            const favorite = activeRace.predictions.find(p => p.mark === '◎');
+                            if (!favorite) return null;
+                            return (
+                                <span className="shrink-0 text-primary">
+                                    ◎ {favorite.horse_name} <span className="font-mono bg-blue-50 px-1 rounded font-bold">{favorite.deviation_score?.toFixed(1)}</span>
+                                </span>
+                            );
+                        })()}
+                    </div>
+                )}
                 <RaceSelector races={venue.races} selectedIndex={activeRaceIndex} onSelectRace={handleRaceSelect} />
             </div>
             {activeRace && (
-                <div id={`race-${activeRace.id}`} className="mt-1">
-                    <div id="race-prediction-section" className="card mb-1 overflow-hidden border border-gray-200 shadow-sm sm:mb-1.5">
-                        <div className="bg-white px-2.5 py-1 sm:p-4 border-b border-gray-200">
-                            <h3 className="text-[15px] sm:text-lg font-bold flex items-center text-gray-800">
-                                <span className="bg-primary text-white rounded-md w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-1.5 sm:mr-2 font-mono font-bold text-xs sm:text-base">{activeRace.race_number}R</span>
-                                <span className="truncate">{activeRace.race_name}</span>
-                            </h3>
-                            <p className="text-[11px] sm:text-sm text-gray-500 ml-7 sm:ml-11 font-medium leading-tight">{activeRace.course_type} {activeRace.distance}m</p>
-                        </div>
-                        <div>
-                            <h4 id="race-prediction-heading" className="flex items-center text-[13px] sm:text-base font-bold text-gray-700 mt-1 mb-0.5 px-2.5 sm:px-4">
-                                <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
-                                AI分析
-                            </h4>
-                            <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
-                        </div>
-                    </div>
-
-                    {shouldShowAd && (
-                        <>
-                            <AdUnit
-                                slot="8529703346"
-                                placement="inline"
-                                analyticsPlacement="race_after_prediction_card"
-                                refreshKey={`race-top-${adRefreshKey}`}
-                                minHeight="72px"
-                                collapseUnfilled={true}
-                                lazyRootMargin="760px 0px 760px 0px"
-                                refreshRootMarginPx={720}
-                                className="my-2"
-                            />
-                        </>
-                    )}
-
-                    <div className="my-1.5 sm:my-3">
-                        {(() => {
-                            const hasNext = activeRaceIndex < venue.races.length - 1;
-                            const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
-                            const nextTopHorse = nextRace?.predictions?.[0];
-                            if (nextTopHorse && nextRace) {
-                                return (
-                                    <div
-                                        onClick={() => handleRaceSelect(activeRaceIndex + 1)}
-                                        className="flex items-center gap-2 p-2 sm:gap-3 sm:p-3 bg-gradient-to-r from-blue-50/80 to-slate-50 border border-blue-100 rounded-xl mb-1 cursor-pointer hover:border-blue-200 transition-colors active:scale-[0.99]"
-                                    >
-                                        <div className="h-8 w-8 sm:w-9 sm:h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
-                                            <span className="text-xs font-bold text-primary">{nextRace.race_number}R</span>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[11px] text-slate-500">次のレース</p>
-                                            <p className="text-xs sm:text-sm font-bold text-primary truncate">
-                                                {nextRace.race_name}
-                                            </p>
-                                        </div>
-                                        <div className="max-w-[104px] shrink-0 text-right sm:max-w-[160px]">
-                                            <p className="text-[10px] text-slate-400">AI 1位</p>
-                                            <p className="truncate text-xs font-bold text-primary" title={nextTopHorse.horse_name}>{nextTopHorse.horse_name}</p>
-                                        </div>
-                                        <span className="text-primary text-sm">→</span>
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })()}
+                <div id={`race-${activeRace.id}`} className="race-detail-layout mt-1">
+                    <div className="grid gap-3">
+                        {/* 前後レースナビ（上部） */}
                         <RaceNavigation />
-                    </div>
+                        <div id="race-prediction-section" className="card mb-1 overflow-hidden border border-gray-200 shadow-sm sm:mb-1.5">
+                            <div className="bg-white px-2.5 py-1 sm:p-4 border-b border-gray-200">
+                                <h3 className="text-[15px] sm:text-lg font-bold flex items-center text-gray-800">
+                                    <span className="bg-primary text-white rounded-md w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-1.5 sm:mr-2 font-mono font-bold text-xs sm:text-base">{activeRace.race_number}R</span>
+                                    <span className="truncate">{activeRace.race_name}</span>
+                                </h3>
+                                <p className="text-[11px] sm:text-sm text-gray-500 ml-7 sm:ml-11 font-medium leading-tight">{activeRace.course_type} {activeRace.distance}m</p>
+                            </div>
+                            <div>
+                                <h4 id="race-prediction-heading" className="flex items-center text-[13px] sm:text-base font-bold text-gray-700 mt-1 mb-0.5 px-2.5 sm:px-4">
+                                    <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
+                                    AI偏差値
+                                </h4>
+                                {/* 印 of 凡例 */}
+                                <div className="flex gap-1 sm:gap-1.5 overflow-x-auto px-2.5 sm:px-4 pb-1 text-[10px] sm:text-[11px] font-bold" aria-label="印の凡例">
+                                    <span className="shrink-0 inline-flex items-center h-5 sm:h-6 px-1.5 sm:px-2 rounded-full bg-amber-50 text-amber-800 border border-amber-200">◎ 本命</span>
+                                    <span className="shrink-0 inline-flex items-center h-5 sm:h-6 px-1.5 sm:px-2 rounded-full bg-blue-50 text-blue-700 border border-blue-200">○ 対抗</span>
+                                    <span className="shrink-0 inline-flex items-center h-5 sm:h-6 px-1.5 sm:px-2 rounded-full bg-purple-50 text-purple-700 border border-purple-200">▲ 3番手</span>
+                                    <span className="shrink-0 inline-flex items-center h-5 sm:h-6 px-1.5 sm:px-2 rounded-full bg-green-50 text-green-700 border border-green-200">△ 相手候補</span>
+                                    <span className="shrink-0 inline-flex items-center h-5 sm:h-6 px-1.5 sm:px-2 rounded-full bg-slate-100 text-slate-600 border border-slate-200">☆ ひと押し候補</span>
+                                </div>
+                                <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
+                            </div>
+                        </div>
 
-                    <div id="race-detail-data-section">
-                    {/* プレミアム・ロック切り替え部分 */}
-                    {(activeRace && isPremiumDetailVisible) ? (
-                        !isPremiumContentReady ? (
-                            <PremiumDetailPlaceholder showAd={Boolean(shouldShowAd)} />
-                        ) : (
-                            <>
-                            <div className="mb-1 grid gap-1.5 sm:gap-2 xl:grid-cols-2 xl:items-stretch">
-                                <div className="card p-1 sm:p-3 h-full flex flex-col">
-                                    <div id="race-detail-heading" className="flex items-center text-[13px] sm:text-base font-bold text-gray-800 p-1 sm:p-2.5">
-                                        <FlagIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-primary" />
-                                        <span>展開/脚質予測</span>
+                        {raceType === 'nar' && (
+                            <AffiliateSlot
+                                context="race_after_prediction"
+                                raceType="nar"
+                                venueName={venue.venue_name}
+                                selectionKey={`prediction-${adRefreshKey}`}
+                                variant="compact"
+                                className="my-1.5 sm:my-2"
+                            />
+                        )}
+
+                        {shouldShowAd && (
+                            <InFeedAd
+                                refreshKey={`prediction-read-${adRefreshKey}`}
+                                analyticsPlacement="race_after_prediction"
+                                className="my-1.5 sm:my-2"
+                                lazyRootMargin="640px 0px 640px 0px"
+                                refreshRootMarginPx={640}
+                            />
+                        )}
+
+                        <div id="race-detail-data-section">
+                        {/* プレミアム・ロック切り替え部分 */}
+                        {(activeRace && isPremiumDetailVisible) ? (
+                            !isPremiumContentReady ? (
+                                <PremiumDetailPlaceholder showAd={Boolean(shouldShowAd)} />
+                            ) : (
+                                <>
+                                <div id="race-matchup-section" className="mb-1.5">
+                                    <MatchupTable race={activeRace} />
+                                </div>
+
+                                <div className="mb-1 grid gap-1.5 sm:gap-2 xl:grid-cols-2 xl:items-stretch">
+                                    <div className="card p-1 sm:p-3 h-full flex flex-col">
+                                        <div id="race-detail-heading" className="flex items-center text-[13px] sm:text-base font-bold text-gray-800 p-1 sm:p-2.5">
+                                            <FlagIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-primary" />
+                                            <span>展開/脚質予測</span>
+                                        </div>
+                                        <div className="px-1.5 pb-1.5 sm:px-3 sm:pb-3 flex-1">
+                                            <StartPositionChart predictions={activeRace.predictions} />
+                                        </div>
                                     </div>
-                                    <div className="px-1.5 pb-1.5 sm:px-3 sm:pb-3 flex-1">
-                                        <StartPositionChart predictions={activeRace.predictions} />
+
+                                    <div className="card p-1 sm:p-3 h-full flex flex-col">
+                                        <div id="race-frame-heading" className="flex items-center text-[13px] sm:text-base font-bold text-gray-800 p-1 sm:p-2.5">
+                                            <ChartBarIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-accent" />
+                                            <span>このコースの枠順傾向</span>
+                                        </div>
+                                        <div className="px-1.5 pb-1.5 sm:px-3 sm:pb-3 flex-1">
+                                            <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="card p-1 sm:p-3 h-full flex flex-col">
-                                    <div className="flex items-center text-[13px] sm:text-base font-bold text-gray-800 p-1 sm:p-2.5">
-                                        <ChartBarIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-accent" />
-                                        <span>このコースの枠順傾向</span>
-                                    </div>
-                                    <div className="px-1.5 pb-1.5 sm:px-3 sm:pb-3 flex-1">
-                                        <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
-                                    </div>
+                                <div id="race-analysis-section" className="mb-1.5">
+                                    <RaceAnalysis race={activeRace} />
                                 </div>
-                            </div>
 
-                            <div id="race-matchup-section" className="mb-1.5">
-                                <MatchupTable race={activeRace} />
-                            </div>
-
-                            {/* 対決成績の直後は高意欲ユーザーが多いため、AdSenseを残した上で地方競馬は楽天導線も添える */}
-                            {shouldShowAd && (
-                                raceType === 'nar' ? (
-                                    <>
-                                        <InFeedAd
-                                            refreshKey={`premium-mid-nar-${adRefreshKey}`}
-                                            analyticsPlacement="race_premium_mid_nar"
-                                            lazyRootMargin="760px 0px 760px 0px"
-                                            refreshRootMarginPx={720}
-                                        />
-                                        <AffiliateSlot
-                                            context="race_after_premium_data"
-                                            raceType="nar"
-                                            venueName={venue.venue_name}
-                                            selectionKey={`premium-${adRefreshKey}`}
-                                            variant="compact"
-                                            className="mb-1.5"
-                                        />
-                                    </>
-                                ) : (
+                                {shouldShowAd && (
                                     <InFeedAd
-                                        refreshKey={`premium-mid-${adRefreshKey}`}
-                                        analyticsPlacement="race_premium_mid"
+                                        refreshKey={`premium-after-analysis-${adRefreshKey}`}
+                                        analyticsPlacement="race_after_analysis"
                                         lazyRootMargin="760px 0px 760px 0px"
                                         refreshRootMarginPx={720}
                                     />
-                                )
-                            )}
-
-                            <div id="race-analysis-section" className="mb-1.5">
-                                <RaceAnalysis race={activeRace} />
-                            </div>
-                            </>
-                        )
-                    ) : shouldShowRewardGate ? (
-                        <div className="relative mb-2 overflow-hidden rounded-2xl" style={{ minHeight: '320px' }}>
-                            {/* 背景: ぼかした実データ */}
-                            <div className="select-none pointer-events-none" aria-hidden="true">
-                                <div className="blur-[6px] opacity-60">
-                                    <div className="mb-2">
-                                        <div className="card p-2 sm:p-3">
-                                            <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
-                                                <FlagIcon className="w-5 h-5 mr-2 text-primary" />
-                                                <span>展開/脚質予測</span>
-                                            </div>
-                                            <div className="px-2 pb-2 sm:px-3 sm:pb-3">
-                                                <StartPositionChart predictions={activeRace.predictions} />
+                                )}
+                                </>
+                            )
+                        ) : shouldShowRewardGate ? (
+                            <div className="relative mb-2 overflow-hidden rounded-2xl" style={{ minHeight: '320px' }}>
+                                {/* 背景: ぼかした実データ */}
+                                <div className="select-none pointer-events-none" aria-hidden="true">
+                                    <div className="blur-[6px] opacity-60">
+                                        <div className="mb-2">
+                                            <MatchupTable race={activeRace} />
+                                        </div>
+                                        <div className="mb-2">
+                                            <div className="card p-2 sm:p-3">
+                                                <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
+                                                    <FlagIcon className="w-5 h-5 mr-2 text-primary" />
+                                                    <span>展開/脚質予測</span>
+                                                </div>
+                                                <div className="px-2 pb-2 sm:px-3 sm:pb-3">
+                                                    <StartPositionChart predictions={activeRace.predictions} />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="mb-2">
-                                        <MatchupTable race={activeRace} />
+                                </div>
+
+                                {/* オーバーレイ: 4つの分析データプレビュー + 解除ボタン */}
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/30 via-white/70 to-white/95 px-4">
+                                    <div className="text-center max-w-sm w-full">
+                                        <p className="text-[13px] sm:text-sm font-bold text-slate-800 mb-3">このレースの詳細分析を表示</p>
+                                        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-4 text-left">
+                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
+                                                <UsersIcon className="w-3.5 h-3.5 text-secondary shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">過去対決成績</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">出走馬同士の直接比較</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
+                                                <FlagIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">脚質予測</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">各コーナーの位置取り</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
+                                                <ChartBarIcon className="w-3.5 h-3.5 text-accent shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">枠順傾向</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">コース別の有利枠</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
+                                                <SparklesIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">AIレース展望</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">展開・適性の解説</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleRewardGateClick()}
+                                            className="btn-primary w-full text-sm gap-2"
+                                        >
+                                            {canUseRewardedAd ? (
+                                                '広告を見て詳細分析を表示'
+                                            ) : (
+                                                '詳細分析を表示'
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* オーバーレイ: 4つの分析データプレビュー + 解除ボタン */}
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/30 via-white/70 to-white/95 px-4">
-                                <div className="text-center max-w-sm w-full">
-                                    <p className="text-[13px] sm:text-sm font-bold text-slate-800 mb-3">このレースの詳細分析を表示</p>
-                                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-4 text-left">
-                                        <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
-                                            <FlagIcon className="w-3.5 h-3.5 text-primary shrink-0" />
-                                            <div className="min-w-0">
-                                                <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">脚質予測</p>
-                                                <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">各コーナーの位置取り</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
-                                            <UsersIcon className="w-3.5 h-3.5 text-secondary shrink-0" />
-                                            <div className="min-w-0">
-                                                <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">対戦成績</p>
-                                                <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">過去の直接対決</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
-                                            <ChartBarIcon className="w-3.5 h-3.5 text-accent shrink-0" />
-                                            <div className="min-w-0">
-                                                <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">枠順傾向</p>
-                                                <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">コース別の有利枠</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
-                                            <SparklesIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                                            <div className="min-w-0">
-                                                <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">AI分析</p>
-                                                <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">展開・適性の解説</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => handleRewardGateClick()}
-                                        className="btn-primary w-full text-sm gap-2"
-                                    >
-                                        {canUseRewardedAd ? (
-                                            '広告を見て詳細分析を表示'
-                                        ) : (
-                                            '詳細分析を表示'
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
+                        ) : null}
                         </div>
-                    ) : null}
+
+                        <div className="my-1.5 sm:my-3">
+                            {(() => {
+                                const hasNext = activeRaceIndex < venue.races.length - 1;
+                                const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
+                                const nextTopHorse = nextRace?.predictions?.[0];
+                                if (nextTopHorse && nextRace) {
+                                    return (
+                                        <div
+                                            onClick={() => handleRaceSelect(activeRaceIndex + 1)}
+                                            className="flex items-center gap-2 p-2 sm:gap-3 sm:p-3 bg-gradient-to-r from-blue-50/80 to-slate-50 border border-blue-100 rounded-xl mb-1 cursor-pointer hover:border-blue-200 transition-colors active:scale-[0.99]"
+                                        >
+                                            <div className="h-8 w-8 sm:w-9 sm:h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                                                <span className="text-xs font-bold text-primary">{nextRace.race_number}R</span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] text-slate-500">次のレース</p>
+                                                <p className="text-xs sm:text-sm font-bold text-primary truncate">
+                                                    {nextRace.race_name}
+                                                </p>
+                                            </div>
+                                            <div className="max-w-[104px] shrink-0 text-right sm:max-w-[160px]">
+                                                <p className="text-[10px] text-slate-400">AI 1位</p>
+                                                <p className="truncate text-xs font-bold text-primary" title={nextTopHorse.horse_name}>{nextTopHorse.horse_name}</p>
+                                            </div>
+                                            <span className="text-primary text-sm">→</span>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
+                            <RaceNavigation />
+                        </div>
+
+                        <div id="race-data-guide-section">
+                            <DataExplanationPanel showAdvanced={true} />
+                        </div>
+
+                        {/* 広告過密削減のため、データ解説後のInFeedAdを廃止 */}
+
+                        <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
+
+                        {/* MultiplexAd削除: 最下部のviewable率が極端に低い広告を廃止（Active View 27-45%改善施策） */}
+
+                        <div id="race-related-articles-section">
+                            <DynamicRelatedArticles
+                                venueName={activeRace.venue_name}
+                                courseType={activeRace.course_type}
+                                distance={activeRace.distance}
+                                articlesMeta={articlesMeta}
+                            />
+                        </div>
                     </div>
 
-                    <div id="race-data-guide-section">
-                        <DataExplanationPanel showAdvanced={true} />
-                    </div>
+                    <aside className="side-panel grid gap-3">
+                        <section className="card side-card">
+                            <h2 className="section-title">同日レース</h2>
+                            <div className="side-list">
+                                {venue.races.map((r, idx) => {
+                                    const isCurrent = idx === activeRaceIndex;
+                                    const topHorse = r.predictions?.[0];
+                                    return (
+                                        <button
+                                            key={r.id}
+                                            onClick={() => handleRaceSelect(idx)}
+                                            className={`side-link w-full text-left transition-all ${isCurrent ? '!bg-blue-50 !border-blue-300' : 'hover:bg-slate-50'}`}
+                                            style={{ display: 'grid', gridTemplateColumns: '42px 1fr', gap: '10px', alignItems: 'center' }}
+                                        >
+                                            <span className={`flex items-center justify-center h-[34px] rounded-lg text-xs font-bold ${isCurrent ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                                                {r.race_number}R
+                                            </span>
+                                            <div className="min-w-0">
+                                                <span className="font-bold block truncate text-slate-800 text-xs sm:text-sm">{r.race_name}</span>
+                                                {topHorse && (
+                                                    <small className="text-slate-500 text-[10px] block truncate">
+                                                        AI1位: {topHorse.horse_name} ({topHorse.deviation_score?.toFixed(1)})
+                                                    </small>
+                                                )}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </section>
 
-                    {/* 広告過密削減のため、データ解説後のInFeedAdを廃止 */}
+                        {shouldShowAd && !shouldSuppressAdsInDevelopment && (
+                            <div className="ad ad-large">
+                                <InFeedAd
+                                    refreshKey={`side-ad-${adRefreshKey}`}
+                                    analyticsPlacement="race_sidebar"
+                                    lazyRootMargin="400px 0px 400px 0px"
+                                    refreshRootMarginPx={400}
+                                />
+                            </div>
+                        )}
 
-                    <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
-
-                    {/* MultiplexAd削除: 最下部のviewable率が極端に低い広告を廃止（Active View 27-45%改善施策） */}
-
-                    <div id="race-related-articles-section">
-                        <DynamicRelatedArticles
-                            venueName={activeRace.venue_name}
-                            courseType={activeRace.course_type}
-                            distance={activeRace.distance}
-                            articlesMeta={articlesMeta}
+                        <AffiliateSlot
+                            context="race_after_prediction"
+                            raceType={raceType}
+                            venueName={venue.venue_name}
+                            selectionKey={`sidebar-${adRefreshKey}`}
+                            className="w-full"
                         />
-                    </div>
+                    </aside>
                 </div>
             )}
         </div>
@@ -655,11 +717,12 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
     }, [nar, currentDate]);
 
     const isInitialVenueInJra = useMemo(() => jra.some(v => v.venue_name === initialVenueName), [jra, initialVenueName]);
+    const isInitialVenueInNar = useMemo(() => nar.some(v => v.venue_name === initialVenueName), [nar, initialVenueName]);
     const initialTopTabIndex = useMemo(() => {
         if (isInitialVenueInJra) return 0;
-        if (nar.some(v => v.venue_name === initialVenueName)) return 1;
-        return jra.length > 0 ? 0 : 1;
-    }, [isInitialVenueInJra, nar, jra.length, initialVenueName]);
+        if (isInitialVenueInNar) return jra.length > 0 ? 1 : 0;
+        return 0;
+    }, [isInitialVenueInJra, isInitialVenueInNar, jra.length]);
 
     const initialJraVenueIndex = useMemo(() => {
         if (!initialVenueName) return 0;
@@ -673,6 +736,8 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
         return index >= 0 ? index : 0;
     }, [nar, initialVenueName]);
 
+    const { isRaceUnlocked, isReady, isLoading: isAdLoading, isSupported, unavailableReason, showAd, unlock } = useRewardedAd();
+
     // ★ 全てのフックの後で早期リターン
     if (isEmpty) {
         return <div className="p-6 text-center text-muted card">対象日のレースデータがありません。</div>;
@@ -685,8 +750,6 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
     const venueTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1 sm:gap-2 mb-1.5 sm:mb-4 p-0.5 sm:p-1 bg-slate-100/60 rounded-lg sm:rounded-xl w-max border border-slate-200/50 max-w-full";
     const venueTabClass = "snap-start min-w-max px-2.5 sm:px-5 py-1 sm:py-2.5 text-[11px] sm:text-sm font-bold text-slate-500 rounded-md sm:rounded-lg cursor-pointer hover:text-slate-700 hover:bg-slate-200/60 transition-all outline-none";
     const venueSelectedTabClass = "!text-primary !bg-white shadow-sm !border-slate-200";
-
-    const { isRaceUnlocked, isReady, isLoading: isAdLoading, isSupported, unavailableReason, showAd, unlock } = useRewardedAd();
 
     return (
         <Tabs defaultIndex={initialTopTabIndex} onSelect={handleTopTabSelect} className="mt-1.5 sm:mt-4" forceRenderTabPanel={false}>

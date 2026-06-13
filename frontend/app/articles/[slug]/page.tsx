@@ -1,7 +1,6 @@
 import { getAllArticleSlugs, getArticleBySlug } from '../../../lib/articles';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import Link from 'next/link';
 import { ArticleSchema, BreadcrumbSchema } from '@/components/StructuredData';
 import { Breadcrumb } from '@/components/Breadcrumb';
@@ -9,8 +8,6 @@ import { RelatedArticles } from '@/components/RelatedArticles';
 import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
 import { enhanceArticleHtml } from '@/lib/article-ux';
-import { ArticleSearchEntryPanel } from '@/components/ArticleSearchEntryPanel';
-import { getTopPayoutHits } from '@/lib/api';
 import { AffiliateSlot } from '@/components/AffiliateSlot';
 
 type Props = {
@@ -65,7 +62,6 @@ export async function generateStaticParams() {
 export default async function ArticlePage({ params }: Props) {
   try {
     const article = await getArticleBySlug(params.slug);
-    const topHits = await getTopPayoutHits();
 
     const textContent = article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, '');
     const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
@@ -126,13 +122,12 @@ export default async function ArticlePage({ params }: Props) {
               {/* アイキャッチ画像（フルワイド） */}
               {article.eyecatch && (
                 <div className="relative mb-3 aspect-[16/8] max-h-[180px] w-full overflow-hidden bg-slate-100 sm:mb-7 sm:aspect-[16/6] sm:max-h-[320px]">
-                  <Image
+                  <img
                     src={article.eyecatch}
                     alt={`${article.title} のアイキャッチ画像`}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 800px"
-                    style={{ objectFit: 'cover' }}
-                    priority
+                    loading="eager"
+                    decoding="async"
+                    className="h-full w-full object-cover"
                   />
                 </div>
               )}
@@ -185,7 +180,7 @@ export default async function ArticlePage({ params }: Props) {
             {toc.length > 1 && (
               <details className="mt-3 border border-slate-200 bg-slate-50 sm:mt-4" aria-label="記事の目次">
                 <summary className="cursor-pointer list-none px-3 py-2 text-xs font-black text-slate-800 sm:px-4 sm:py-3 sm:text-sm">
-                  本文の流れを見る
+                  この記事で確認できること
                 </summary>
                 <ol className="grid gap-1.5 border-t border-slate-200 px-3 py-2 sm:grid-cols-2 sm:gap-2 sm:px-4 sm:py-3">
                   {toc.map((item, index) => (
@@ -204,7 +199,19 @@ export default async function ArticlePage({ params }: Props) {
             )}
 
             <div className="mt-4 sm:mt-5">
-              <ArticleSearchEntryPanel topHits={topHits} />
+              {/* 小型導線 */}
+              <div className="my-3 p-3 bg-gradient-to-r from-blue-50/50 to-slate-50 border border-blue-100 rounded-xl flex items-center justify-between gap-3 shadow-sm">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-800 leading-tight">本日のレースデータ公開中</p>
+                  <p className="text-[10px] text-slate-500">AI偏差値、枠順傾向、展開予測を無料で確認できます</p>
+                </div>
+                <Link
+                  href="/races/today"
+                  className="shrink-0 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary-light transition-all shadow-sm whitespace-nowrap active:scale-95"
+                >
+                  本日のレース分析を確認する
+                </Link>
+              </div>
             </div>
 
             {/* ===== ARTICLE BODY ===== */}
@@ -272,7 +279,7 @@ export default async function ArticlePage({ params }: Props) {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
                   </svg>
-                  記事一覧へ
+                  ほかの記事を確認する
                 </Link>
               </div>
             </div>

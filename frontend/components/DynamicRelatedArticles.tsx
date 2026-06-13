@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Article } from '@/lib/articles';
 
 interface DynamicRelatedArticlesProps {
@@ -91,14 +90,13 @@ export function DynamicRelatedArticles({
                         key={article.slug}
                         className="flex group border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-white sm:block"
                     >
-                        <div className="relative h-20 w-24 shrink-0 sm:w-full sm:h-40 overflow-hidden bg-slate-100">
-                            <Image
+                        <div className="h-20 w-24 shrink-0 overflow-hidden bg-slate-100 sm:h-40 sm:w-full">
+                            <img
                                 src={article.eyecatch || '/images/articles/data-analysis-eyecatch.png'}
                                 alt={article.title}
-                                fill
-                                sizes="(max-width: 640px) 96px, 33vw"
-                                style={{ objectFit: 'cover', objectPosition: 'center' }}
-                                className="transition-transform duration-500 group-hover:scale-105"
+                                loading="lazy"
+                                decoding="async"
+                                className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                             />
                         </div>
                         <div className="p-2 sm:p-4 flex min-w-0 flex-col justify-center sm:justify-between flex-grow">

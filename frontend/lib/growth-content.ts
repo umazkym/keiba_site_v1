@@ -57,7 +57,7 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "yutaka-take",
     name: "武豊",
-    searchTitle: "武豊の得意コースと買い時",
+    searchTitle: "武豊の得意コースと評価材料",
     metaDescription:
       "武豊騎手の得意コースを、芝中距離、京都、東京、差し脚質との相性から整理。人気時に信頼する条件と評価を下げる場面をまとめます。",
     lead:
@@ -82,7 +82,7 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "christophe-lemaire",
     name: "クリストフ・ルメール",
-    searchTitle: "ルメールの得意コースと買い時",
+    searchTitle: "ルメールの得意コースと評価材料",
     metaDescription:
       "ルメール騎手の得意コースを東京・中距離・上位人気時の安定感から整理。人気馬を信頼する条件と過剰人気を疑う場面を解説します。",
     lead:
@@ -107,9 +107,9 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "yuga-kawada",
     name: "川田将雅",
-    searchTitle: "川田将雅の得意コースと買い時",
+    searchTitle: "川田将雅の得意コースと評価材料",
     metaDescription:
-      "川田将雅騎手の得意コースを先行力、人気馬の安定感、短距離から中距離の位置取りで整理。買い時と見送り条件をまとめます。",
+      "川田将雅騎手の得意コースを先行力、人気馬の安定感、短距離から中距離の位置取りで整理。評価を上げたい条件と慎重に見たい条件をまとめます。",
     lead:
       "スタート直後の位置取りの巧さが武器で、先行力のある馬に騎乗した時の安定感は抜群です。人気馬を崩さず走らせる堅実さがある反面、差し一辺倒の馬では持ち味が出にくい場面もあります。",
     summary:
@@ -132,13 +132,13 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "takeshi-yokoyama",
     name: "横山武史",
-    searchTitle: "横山武史の得意コースと買い時",
+    searchTitle: "横山武史の得意コースと評価材料",
     metaDescription:
       "横山武史騎手の得意条件を中山、札幌、先行馬、展開判断から整理。人気時の信頼条件と評価を下げる場面を解説します。",
     lead:
       "小回りコースで早めに動ける馬との相性が光る騎手。中山・札幌では積極的な位置取りがハマりやすく、機動力のある先行馬に騎乗すると信頼度が上がります。東京のような直線勝負では持ち味が出にくい場面も。",
     summary:
-      "中山・札幌の芝中距離、ダートの先行馬、コーナーから押し上げられる脚質が合う時に買いたい騎手です。末脚一辺倒の馬では割り引きが必要です。",
+      "中山・札幌の芝中距離、ダートの先行馬、コーナーから押し上げられる脚質が合う時に評価を上げたい騎手です。末脚一辺倒の馬では割り引きが必要です。",
     strengths: ["中山の小回り", "札幌芝2000m", "好位から早めに動く競馬", "スタミナ型の先行馬"],
     checkpoints: [
       "東京芝のような直線勝負のコースでは、一段割り引いて考える。",
@@ -157,7 +157,7 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "keita-tosaki",
     name: "戸崎圭太",
-    searchTitle: "戸崎圭太の得意コースと買い時",
+    searchTitle: "戸崎圭太の得意コースと評価材料",
     metaDescription:
       "戸崎圭太騎手の得意条件を東京、中山、ダート中距離、好位差しから整理。人気馬を信頼する場面と相手候補に抑える場面をまとめます。",
     lead:
@@ -182,9 +182,9 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "rusei-sakai",
     name: "坂井瑠星",
-    searchTitle: "坂井瑠星の得意コースと買い時",
+    searchTitle: "坂井瑠星の得意コースと評価材料",
     metaDescription:
-      "坂井瑠星騎手の得意条件を先行力、ダート短距離、積極策から整理。買い時と過剰人気を疑う条件を解説します。",
+      "坂井瑠星騎手の得意条件を先行力、ダート短距離、積極策から整理。評価を上げたい条件と過剰人気を疑う条件を解説します。",
     lead:
       "積極的にハナや好位を主張する騎乗が持ち味で、ダート短距離や中京を中心に結果を出しています。海外遠征でもスタイルが崩れにくい点は注目に値します。差し馬への騎乗時は展開頼みになりやすい面もあります。",
     summary:
@@ -207,7 +207,7 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "hiroaki-matsuyama",
     name: "松山弘平",
-    searchTitle: "松山弘平の得意コースと買い時",
+    searchTitle: "松山弘平の得意コースと評価材料",
     metaDescription:
       "松山弘平騎手の得意条件を関西圏、先行馬、ダート、芝中距離から整理。軸にしやすい条件と割引条件をまとめます。",
     lead:
@@ -232,7 +232,7 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "kosei-miura",
     name: "三浦皇成",
-    searchTitle: "三浦皇成の得意コースと買い時",
+    searchTitle: "三浦皇成の得意コースと評価材料",
     metaDescription:
       "三浦皇成騎手の得意条件を中山、東京、ダート短距離、人気薄の好走パターンから整理します。",
     lead:
@@ -257,7 +257,7 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "akira-sugawara",
     name: "菅原明良",
-    searchTitle: "菅原明良の得意コースと買い時",
+    searchTitle: "菅原明良の得意コースと評価材料",
     metaDescription:
       "菅原明良騎手の得意条件を関東圏、差し馬、ローカル開催、人気とのズレから整理します。",
     lead:
@@ -282,7 +282,7 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "mirai-iwata",
     name: "岩田望来",
-    searchTitle: "岩田望来の得意コースと買い時",
+    searchTitle: "岩田望来の得意コースと評価材料",
     metaDescription:
       "岩田望来騎手の得意条件を関西圏、先行馬、芝マイル、ダート中距離から整理。安定感を評価する場面をまとめます。",
     lead:
@@ -307,11 +307,11 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "atsuki-nishimura",
     name: "西村淳也",
-    searchTitle: "西村淳也の得意コースと買い時",
+    searchTitle: "西村淳也の得意コースと評価材料",
     metaDescription:
       "西村淳也騎手の得意条件をローカル開催、小倉、中京、先行馬から整理。人気薄で拾う条件をまとめます。",
     lead:
-      "小倉や中京などのローカル開催で、先行力のある馬とのコンビで粘り込むパターンが多い騎手です。中央の主要場での瞬発力勝負には対応しきれない場面もありますが、ローカルの人気薄で「それでも前で粘る」馬に乗ると消しにくい存在になります。",
+      "小倉や中京などのローカル開催で、先行力のある馬とのコンビで粘り込むパターンが多い騎手です。中央の主要場での瞬発力勝負には対応しきれない場面もありますが、ローカルの人気薄で前で粘る馬に乗ると相手候補に残しやすい存在になります。",
     summary:
       "小倉芝1200m、中京芝2000mが狙い目。ローカル開催の先行馬がベストマッチです。差し馬では当日の馬場傾向次第。",
     strengths: ["小倉芝1200m", "中京芝2000m", "ローカル先行馬", "人気薄の粘り込み"],
@@ -332,9 +332,9 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "yuji-tannai",
     name: "丹内祐次",
-    searchTitle: "丹内祐次の得意コースと買い時",
+    searchTitle: "丹内祐次の得意コースと評価材料",
     metaDescription:
-      "丹内祐次騎手の得意条件を札幌、函館、福島、小回り、先行馬から整理。ローカル開催で確認したい買い時をまとめます。",
+      "丹内祐次騎手の得意条件を札幌、函館、福島、小回り、先行馬から整理。ローカル開催で確認したい評価材料をまとめます。",
     lead:
       "札幌・函館の洋芝や福島の小回りを主戦場とするローカル巧者。洋芝でしぶとく脚を使える馬や、先行力のある馬との組み合わせで相手候補に残しやすい騎手です。中央の主要場では瞬発力勝負で劣勢になりがちです。",
     summary:
@@ -357,7 +357,7 @@ export const jockeyProfiles: JockeyProfile[] = [
   {
     slug: "kazuo-yokoyama",
     name: "横山和生",
-    searchTitle: "横山和生の得意コースと買い時",
+    searchTitle: "横山和生の得意コースと評価材料",
     metaDescription:
       "横山和生騎手の得意条件を逃げ先行、小回り、長距離、馬のリズム重視の騎乗から整理します。",
     lead:

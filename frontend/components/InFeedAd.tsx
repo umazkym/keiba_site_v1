@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Adsense } from './Adsense';
 import { sendAdImpressionEvent } from '@/lib/analytics';
-import { isManualAdsEnabled } from '@/lib/ad-config';
+import { isManualAdsEnabled, shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 
 type InFeedAdProps = {
     /** 広告スロットID（省略時はインフィード専用スロットを使用） */
@@ -103,7 +103,7 @@ export const InFeedAd = ({
         };
     }, [refreshKey, analyticsPlacement, slot]);
 
-    if (!isManualAdsEnabled) return null;
+    if (!isManualAdsEnabled || shouldSuppressAdsInDevelopment) return null;
 
     return (
         <div

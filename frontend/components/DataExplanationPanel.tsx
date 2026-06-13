@@ -72,7 +72,7 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
                 className="w-full flex items-center justify-between p-2 sm:p-4 hover:bg-gray-50 transition-colors"
             >
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 text-left">
-                    <h4 className="font-bold text-gray-800 text-xs sm:text-base">AI指標について</h4>
+                    <h4 className="font-bold text-gray-800 text-xs sm:text-base">AI偏差値・枠順傾向の見方</h4>
                 </div>
                 <span className="text-xs font-semibold text-primary sm:text-sm">
                     {isExpanded ? '詳細を閉じる' : '詳細を見る'}

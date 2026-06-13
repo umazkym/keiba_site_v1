@@ -24,8 +24,9 @@ export default function CoursesPage() {
         ]}
       />
       <Breadcrumb />
-      <div className="mx-auto max-w-6xl px-4 pb-12 pt-6">
-        <header className="border-b border-slate-200 pb-8">
+      <div className="mx-auto max-w-6xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
+        <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
+          <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
           <p className="text-xs font-bold tracking-[0.18em] text-slate-400">COURSE DATA</p>
           <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
             競馬場・コース別データ分析
@@ -41,7 +42,7 @@ export default function CoursesPage() {
             <Link
               key={`${course.venue}-${course.course}`}
               href={`/courses/${course.venue}/${course.course}`}
-              className="group border border-slate-200 bg-white p-5 transition-colors hover:border-slate-400"
+              className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated"
             >
               <p className="text-xs font-bold text-slate-400">{course.venueName}</p>
               <h2 className="mt-1 text-xl font-black text-slate-950 group-hover:text-primary">
@@ -50,7 +51,7 @@ export default function CoursesPage() {
               <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-600">{course.lead}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {course.stats.slice(0, 2).map((stat) => (
-                  <span key={stat.label} className="bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+                  <span key={stat.label} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
                     {stat.value}
                   </span>
                 ))}

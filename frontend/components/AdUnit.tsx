@@ -4,7 +4,7 @@ import { useRef, useState, useEffect, useMemo } from 'react';
 import { Adsense } from './Adsense';
 import { SkeletonBox as SkeletonLoader } from './SkeletonLoader';
 import { sendAdImpressionEvent, type AdFormat } from '../lib/analytics';
-import { isManualAdsEnabled } from '@/lib/ad-config';
+import { isManualAdsEnabled, shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 
 /**
  * 広告ユニットの配置タイプ
@@ -175,7 +175,7 @@ export const AdUnit = ({
     const shouldCollapse = adUnfilled && collapseUnfilled;
     const containerStyle = shouldCollapse ? { display: 'none' } : { minHeight: reservedMinHeight };
 
-    if (!isManualAdsEnabled) return null;
+    if (!isManualAdsEnabled || shouldSuppressAdsInDevelopment) return null;
 
     return (
         <div

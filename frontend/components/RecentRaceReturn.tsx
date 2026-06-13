@@ -70,13 +70,13 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
             <section className={sectionClass}>
                 <div className="flex items-center gap-2 p-2 sm:p-2.5">
                     <div className="min-w-0 flex-1">
-                        <p className="mb-0.5 text-[10px] font-bold leading-none text-secondary">本日のレース分析</p>
+                        <p className="mb-0.5 text-[10px] font-bold leading-none text-secondary">本日のレースデータを確認</p>
                         <div className="min-w-0">
                             <div className="truncate text-xs font-bold leading-tight text-slate-900 sm:text-sm">
-                                予測データを確認
+                                AI偏差値、枠順傾向、展開予測
                             </div>
                             <p className="truncate text-[10px] leading-tight text-slate-500 sm:text-xs">
-                                AI偏差値、枠順傾向、展開予測
+                                中央・地方 全レース毎日無料分析
                             </p>
                         </div>
                     </div>
@@ -84,7 +84,7 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
                         href="/races/today"
                         className="recent-return-primary shrink-0"
                     >
-                        今日へ
+                        確認する
                     </Link>
                 </div>
             </section>
@@ -95,7 +95,7 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
         <section className={sectionClass}>
             <div className="flex items-center gap-2 p-2 sm:p-2.5">
                 <div className="min-w-0 flex-1">
-                    <p className="mb-0.5 text-[10px] font-bold leading-none text-secondary">前回見ていたレース</p>
+                    <p className="mb-0.5 text-[10px] font-bold leading-none text-secondary">前回確認していたレース</p>
                     <div className="min-w-0">
                         <div className="truncate text-sm font-bold leading-tight text-slate-900 sm:text-sm">
                             {formatRaceDate(recentRace.date)} {recentRace.venueName} {recentRace.raceNumber}R
@@ -110,9 +110,9 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
                 </div>
                 <Link
                     href={recentRace.href}
-                    className="recent-return-primary shrink-0"
+                    className="recent-return-primary shrink-0 text-center whitespace-nowrap px-2.5 sm:px-3 text-xs py-1.5"
                 >
-                    続きから
+                    {recentRace.venueName}{recentRace.raceNumber}Rに戻る
                 </Link>
                 <Link
                     href="/races/today"

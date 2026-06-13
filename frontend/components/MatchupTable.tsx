@@ -25,6 +25,18 @@ const HorseNumberCircle = ({ number, waku, compact = false }: { number: number, 
     </div>
 );
 
+const getShortHorseName = (horseName: string): string => {
+    const trimmedName = horseName.trim();
+    if (!trimmedName) return '-';
+    return Array.from(trimmedName).slice(0, 3).join('');
+};
+
+const MobileHorseBadge = ({ horse }: { horse: HorsePrediction }) => (
+    <span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border text-[8px] font-bold leading-none ${getWakuColorClasses(horse.waku_number)}`}>
+        {horse.horse_number}
+    </span>
+);
+
 const MatchupTooltipContent = ({ rowHorse, colHorse, record }: { rowHorse: HorsePrediction, colHorse: HorsePrediction, record: MatchupRecord }) => (
     <div className="text-left p-2 bg-white rounded-lg shadow-xl border border-gray-200 max-w-sm">
         <h4 className="font-bold border-b border-gray-200 pb-1 mb-2">{rowHorse.horse_name} vs {colHorse.horse_name}</h4>
@@ -142,6 +154,110 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
     );
 };
 
+const MobileMatrixView = ({ predictions, matchupData, tippySingleton }: { predictions: HorsePrediction[], matchupData: MatchupData, tippySingleton: any }) => {
+    const { matchup_data } = matchupData;
+    const sortedHorses = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
+    const isFullGate = sortedHorses.length >= 16;
+    const firstColPercent = isFullGate ? 18 : 21;
+    const horseColPercent = (100 - firstColPercent) / Math.max(sortedHorses.length, 1);
+    const rowHeightClass = isFullGate ? 'h-[21px]' : 'h-[24px]';
+    const resultTextClass = isFullGate ? 'text-[8px]' : 'text-[9px]';
+    const headerNameHeightClass = isFullGate ? 'h-[34px]' : 'h-[38px]';
+
+    return (
+        <div className="overflow-hidden border border-slate-200 bg-white">
+            <table className="w-full table-fixed border-collapse text-center">
+                <colgroup>
+                    <col style={{ width: `${firstColPercent}%` }} />
+                    {sortedHorses.map((horse) => (
+                        <col key={horse.horse_id} style={{ width: `${horseColPercent}%` }} />
+                    ))}
+                </colgroup>
+                <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                        <th className="px-0.5 py-1 text-left align-bottom text-[9px] font-bold text-slate-500">馬</th>
+                        {sortedHorses.map((horse) => (
+                            <th key={horse.horse_id} className="border-l border-slate-100 px-0 py-1 align-bottom" title={horse.horse_name}>
+                                <div className="flex flex-col items-center justify-end gap-0.5">
+                                    <MobileHorseBadge horse={horse} />
+                                    <span
+                                        className={`${headerNameHeightClass} text-[8px] font-semibold leading-none text-slate-600`}
+                                        style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }}
+                                    >
+                                        {getShortHorseName(horse.horse_name)}
+                                    </span>
+                                </div>
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {sortedHorses.map((rowHorse, rowIndex) => (
+                        <tr key={rowHorse.horse_id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
+                            <th className={`border-b border-slate-100 px-0.5 text-left ${rowHeightClass}`}>
+                                <div className="flex min-w-0 items-center gap-0.5">
+                                    <MobileHorseBadge horse={rowHorse} />
+                                    <span className="min-w-0 truncate text-[9px] font-semibold leading-none text-slate-700" title={rowHorse.horse_name}>
+                                        {getShortHorseName(rowHorse.horse_name)}
+                                    </span>
+                                </div>
+                            </th>
+                            {sortedHorses.map((colHorse) => {
+                                if (colHorse.horse_id === rowHorse.horse_id) {
+                                    return (
+                                        <td key={colHorse.horse_id} className="border-b border-l border-slate-100 bg-slate-100 p-0">
+                                            <div className={`${rowHeightClass} flex items-center justify-center`}>
+                                                <span className="h-1 w-1 rounded-full bg-slate-300" />
+                                            </div>
+                                        </td>
+                                    );
+                                }
+
+                                const record = matchup_data[`${rowHorse.horse_id}_vs_${colHorse.horse_id}`];
+                                let cellClass = 'bg-white';
+                                let textColorClass = 'text-slate-400';
+                                let displayValue = '-';
+
+                                if (record && (record.win > 0 || record.loss > 0 || record.draw > 0)) {
+                                    const netWins = record.win - record.loss;
+                                    displayValue = netWins > 0 ? `+${netWins}` : `${netWins}`;
+                                    if (netWins > 0) {
+                                        cellClass = 'bg-emerald-50';
+                                        textColorClass = 'text-green-700';
+                                    } else if (netWins < 0) {
+                                        cellClass = 'bg-rose-50';
+                                        textColorClass = 'text-red-700';
+                                    } else {
+                                        cellClass = 'bg-slate-100';
+                                        textColorClass = 'text-slate-700';
+                                    }
+                                }
+
+                                const cellContent = (
+                                    <div className={`${rowHeightClass} flex items-center justify-center leading-none`}>
+                                        <span className={`${resultTextClass} font-bold ${textColorClass}`}>{displayValue}</span>
+                                    </div>
+                                );
+
+                                return (
+                                    <td key={colHorse.horse_id} className={`border-b border-l border-slate-100 p-0 ${cellClass}`}>
+                                        <Tippy
+                                            singleton={tippySingleton}
+                                            content={record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : ''}
+                                        >
+                                            {cellContent}
+                                        </Tippy>
+                                    </td>
+                                );
+                            })}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
 export const MatchupTable = ({ race }: { race: RacePrediction }) => {
     // race.race_date (例: "2025-08-18") を基準に日付オブジェクトを生成します。
     // タイムゾーンの問題を避けるため、UTCとして扱います。
@@ -164,28 +280,15 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
 
     const [source, target] = useSingleton();
 
-    const sortedHorsesForSelect = React.useMemo(() => [...race.predictions].sort((a, b) => a.horse_number - b.horse_number), [race.predictions]);
-    const [selectedHorseId, setSelectedHorseId] = useState<string>(sortedHorsesForSelect[0]?.horse_id || '');
-
-    // ▼▼▼▼▼【クリティカルバグ修正: 2R以降のモバイル対戦成績が空になる問題】▼▼▼▼▼
-    // 原因: useState初期値は初回マウント時のrace.predictionsの馬IDで固定される
-    //       VenuePanelが再マウントされないため、raceが変わっても古い馬IDのまま
-    //       → renderMobileView()でfindがnullを返す → 何も表示されない
-    // 修正: race.idが変わったらselectedHorseId/startDate/endDateをリセット
+    // レース切り替え時は集計期間をレース日に合わせ直します。
     useEffect(() => {
-        const newHorses = [...race.predictions].sort((a, b) => a.horse_number - b.horse_number);
-        if (newHorses.length > 0) {
-            setSelectedHorseId(newHorses[0].horse_id);
-        }
-        // 日付範囲もレースに合わせてリセット
         const newRaceDate = new Date(race.race_date + 'T00:00:00Z');
         const newDayBefore = new Date(newRaceDate);
         newDayBefore.setUTCDate(newRaceDate.getUTCDate() - 1);
         const newYearStart = new Date(Date.UTC(newRaceDate.getUTCFullYear(), 0, 1));
         setStartDate(newYearStart.toISOString().split('T')[0]);
         setEndDate(newDayBefore.toISOString().split('T')[0]);
-    }, [race.id]);
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+    }, [race.id, race.race_date]);
 
 
     useEffect(() => {
@@ -206,93 +309,6 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
     }, [race.id, startDate, endDate]);
 
     const isDataEmpty = !matchupData || Object.keys(matchupData.matchup_data).length === 0;
-
-    const renderMobileView = () => {
-        const selectedHorse = sortedHorsesForSelect.find(h => h.horse_id === selectedHorseId);
-        if (!selectedHorse) return null;
-
-        return (
-        <div className="p-2">
-            <label htmlFor="horse-select" className="mb-1 block text-[11px] font-bold text-slate-600">基準馬</label>
-                <select
-                    id="horse-select"
-                    value={selectedHorseId}
-                    onChange={(e) => setSelectedHorseId(e.target.value)}
-                    className="block w-full rounded-md border border-slate-300 bg-white p-1.5 text-sm"
-                >
-                    {sortedHorsesForSelect.map(h => (
-                        <option key={h.horse_id} value={h.horse_id}>
-                            {h.horse_number}番 {h.horse_name}
-                        </option>
-                    ))}
-                </select>
-
-                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                    {sortedHorsesForSelect.filter(h => h.horse_id !== selectedHorseId).map(opponent => {
-                        const record = matchupData?.matchup_data[`${selectedHorse.horse_id}_vs_${opponent.horse_id}`];
-                        const netWins = record ? record.win - record.loss : 0;
-
-                        let resultText = <span className="text-slate-400 text-xs">-</span>;
-                        let bgColor = 'bg-white';
-                        let borderColor = 'border-slate-200';
-                        if (record && (record.win > 0 || record.loss > 0 || record.draw > 0)) {
-                            if (netWins > 0) {
-                                bgColor = 'bg-emerald-50';
-                                borderColor = 'border-emerald-100';
-                                resultText = (
-                                    <>
-                                        <span className="font-bold text-sm text-green-700">
-                                            +{netWins}
-                                        </span>
-                                    </>
-                                );
-                            } else if (netWins < 0) {
-                                bgColor = 'bg-rose-50';
-                                borderColor = 'border-rose-100';
-                                resultText = (
-                                    <>
-                                        <span className="font-bold text-sm text-red-700">
-                                            {netWins}
-                                        </span>
-                                    </>
-                                );
-                            } else {
-                                bgColor = 'bg-slate-100';
-                                borderColor = 'border-slate-200';
-                                resultText = (
-                                    <>
-                                        <span className="font-bold text-sm text-slate-700">
-                                            {netWins}
-                                        </span>
-                                    </>
-                                );
-                            }
-                        }
-
-                        return (
-                            <Tippy
-                                key={opponent.horse_id}
-                                content={record ? <MatchupTooltipContent rowHorse={selectedHorse} colHorse={opponent} record={record} /> : ''}
-                                placement="top"
-                                interactive={true}
-                                theme="light-border"
-                                appendTo={() => document.body}
-                                delay={[100, 200]}
-                            >
-                                <div className={`flex min-h-[36px] items-center justify-between gap-1 rounded-md border px-1.5 py-1 ${bgColor} ${borderColor}`}>
-                                    <div className="flex min-w-0 items-center gap-1.5">
-                                        <HorseNumberCircle number={opponent.horse_number} waku={opponent.waku_number} compact />
-                                        <span className="truncate text-[11px] font-semibold text-slate-700">{opponent.horse_name}</span>
-                                    </div>
-                                    <div className="ml-1 flex-shrink-0 whitespace-nowrap text-xs">{resultText}</div>
-                                </div>
-                            </Tippy>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-    };
 
 
     return (
@@ -340,7 +356,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                             <TableView predictions={race.predictions} matchupData={matchupData} tippySingleton={target} />
                         </div>
                         <div className="md:hidden">
-                            {renderMobileView()}
+                            <MobileMatrixView predictions={race.predictions} matchupData={matchupData} tippySingleton={target} />
                         </div>
                     </>
             )}

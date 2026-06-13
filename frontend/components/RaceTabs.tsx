@@ -398,14 +398,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 refreshRootMarginPx={720}
                                 className="my-2"
                             />
-                            <AffiliateSlot
-                                context="race_after_prediction"
-                                raceType={raceType}
-                                venueName={venue.venue_name}
-                                selectionKey={`prediction-${adRefreshKey}`}
-                                variant="compact"
-                                className="mb-2"
-                            />
                         </>
                     )}
 

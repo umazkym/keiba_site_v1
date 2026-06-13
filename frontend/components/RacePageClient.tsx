@@ -268,6 +268,9 @@ export default function RacePageClient({
     const hasRaceData = Boolean(
         predictionData && ((predictionData.jra?.length ?? 0) > 0 || (predictionData.nar?.length ?? 0) > 0)
     );
+    const primaryNarVenueName = predictionData?.nar?.some((venue) => venue.venue_name === initialVenue)
+        ? initialVenue
+        : predictionData?.nar?.[0]?.venue_name;
 
     const renderContent = ({ showSpecialPick = true }: { showSpecialPick?: boolean } = {}) => {
         if (isLoading) {
@@ -307,8 +310,20 @@ export default function RacePageClient({
             <>
                 <DisclaimerAlert />
 
+                {hasNarRaces && (
+                    <div className="mx-2 mb-1.5 sm:mb-2">
+                        <AffiliateSlot
+                            context="race_after_prediction"
+                            raceType="nar"
+                            venueName={primaryNarVenueName}
+                            selectionKey={`disclaimer-${currentDate}-${primaryNarVenueName ?? 'nar'}`}
+                            variant="compact"
+                        />
+                    </div>
+                )}
+
                 {showSpecialPick && (
-                    <div className="mb-2">
+                    <div className="mx-2">
                         <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
                     </div>
                 )}

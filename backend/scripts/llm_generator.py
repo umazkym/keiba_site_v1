@@ -262,10 +262,11 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
 
     chunks = [races_to_process[i:i + chunk_size] for i in range(0, len(races_to_process), chunk_size)]
 
+    # モデル選定ポリシー: 賢さ重視（gemini-3.5-flash -> gemini-3-flash-preview -> gemini-3.1-flash-lite の順でフォールバック）
     model_tiers = _parse_model_tiers("GEMINI_RACE_MODEL_TIERS", [
         "gemini-3.5-flash",
         "gemini-3-flash-preview",
-        "gemma-4-31b-it",
+        "gemini-3.1-flash-lite",
     ])
     
     # Google AI Studioの実効上限はプロジェクトごとに異なるため、ここでは1ジョブ内のソフト上限として扱う。
@@ -422,12 +423,18 @@ def generate_analyses_in_batches(db: Session, target_races: List[str]):
                     break
                 continue  # chunk_idxを進めず同じチャンクをリトライ
             
-            # 503 or UNAVAILABLE 等の一時的エラー → 連続エラーをカウントし、閾値超えでフォールバック
-            consecutive_errors += 1
-            if ("503" in error_str or "unavailable" in error_str.lower() or "500" in error_str) and consecutive_errors >= CONSECUTIVE_ERROR_LIMIT:
-                print(f"[LLM Generator] {current_model} has failed {consecutive_errors} times consecutively. Falling back to next tier.")
-                if not _do_fallback():
-                    break
+            # 503 or UNAVAILABLE 等の一時的エラー
+            if "503" in error_str or "unavailable" in error_str.lower() or "500" in error_str:
+                consecutive_errors += 1
+                if consecutive_errors >= CONSECUTIVE_ERROR_LIMIT:
+                    print(f"[LLM Generator] {current_model} has failed {consecutive_errors} times consecutively. Falling back to next tier.")
+                    if not _do_fallback():
+                        break
+                else:
+                    # 一時的エラーの場合は、短時間待機して同じモデルで同じチャンクをリトライ
+                    wait_sec = 2.0 * consecutive_errors
+                    print(f"[LLM Generator] Temporary error (503/500/unavailable) on {current_model}. Waiting {wait_sec}s before retry #{consecutive_errors}...")
+                    time.sleep(wait_sec)
                 continue  # chunk_idxを進めず同じチャンクをリトライ
             
             # その他のエラーは次のチャンクへ

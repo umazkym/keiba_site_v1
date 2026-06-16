@@ -139,6 +139,7 @@ def resolve_rakuten_affiliate_url(
             "Accept": "application/json",
             "User-Agent": "UMA-FREE/1.0",
             "accessKey": settings.access_key,
+            "Origin": "https://uma-free.com",
         },
     )
 

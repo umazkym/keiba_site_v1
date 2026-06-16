@@ -16,9 +16,9 @@
 ### 技術スタックとインフラ
 | コンポーネント | 技術スタック / プラットフォーム | 補足情報 |
 | :--- | :--- | :--- |
-| **バックエンド** | Python, FastAPI, SQLAlchemy, Uvicorn | Renderにてホスト。Cloud Runの固定送信元IP: `35.252.200.91` |
+| **バックエンド** | Python, FastAPI, SQLAlchemy, Uvicorn | Renderにてホスト。Cloud Run（送信元IPは動的 / 楽天APIドメイン認証へ移行） |
 | **フロントエンド** | TypeScript, Next.js 14 (App Router), React, Tailwind CSS | Vercelにてホスト。 |
-| **データベース** | GCE VM (keiba-db) | 固定IP: `34.182.6.97` (楽天APIの許可IPに登録済み) |
+| **データベース** | GCE VM (keiba-db) | 固定IP: `34.182.6.97`（SSL＋パスワード認証接続） |
 
 ### ローカル開発環境の起動
 * **バックエンド起動**: `PS C:\Users\zk-ht\Keiba\keiba_site_v1\backend> uvicorn main:app --reload`
@@ -93,6 +93,10 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-06-17**:
+  * **GCP固定ネットワーク費（Networking）の完全削減と楽天APIドメイン認証移行**: 
+    GCPの固定維持費（月額約 ¥6,000〜）を削減するため、Cloud RunのVPCコネクタ接続を解除し、GCP上のCloud NAT（`rakuten-cloudrun-nat`）、ルーター（`rakuten-nat-router`）、VPC Accessコネクタを削除。さらに、未使用となった旧固定IP（`35.252.200.91`）を解放してペナルティ課金を停止。本番DB（VM `keiba-db` / `34.182.6.97`）は `e2-micro` にてRUNNING（稼働中）を安全に維持。
+    楽天アフィリエイトAPIの2026年新基盤移行に伴い、認証をIP制限から「ドメイン（Allowed Origins）制限」に変更。楽天Developersコンソール側でWeb Application型へ変更してAllowed Originsにサイトドメインを登録し、バックエンドコード（`affiliate.py`）にてリクエストヘッダーに `Origin` を付与するように修正。アフィリエイトURLの解決・報酬トラッキング（ID紐付け）やサイト表示への悪影響がないことをローカル疎通テストにて検証済み。
 * **2026-06-13**:
   * **ホーム/レース詳細UIの残差分修正**: localhost確認で残っていた薄青の空広告枠を解消するため、`.ad` / `.ad-large` / `.ad-wide` をプレースホルダー表示から中立ラッパーへ変更し、開発環境では広告親枠ごと非表示にする条件を追加。高配当的中ランキングは旧CSS依存をやめ、払戻金・式別・組番・レース情報が崩れないカード型リストへ再設計。レースページ下部のPR枠はコンパクト表示へ調整し、関連分析記事サムネイルも直接画像表示へ統一。`npx tsc --noEmit`、`npm run build`、`curl` による `localhost:3000` トップ/レース詳細と `localhost:8000` API疎通成功を確認。Browser確認はWindowsサンドボックス権限エラーで未実施。
   * **localhost表示崩れの復旧**: HTML回収後に `output.css` 側だけへ残っていたモバイルメニューCSSを `globals.css` へ復旧し、デスクトップでメニュー縦リストが常時展開される問題を修正。ローカル開発時はAdSense/インフィード/追従広告の大きなプレースホルダーを既定で非表示にし、必要時のみ `NEXT_PUBLIC_SHOW_DEV_AD_PLACEHOLDERS=enabled` で確認できる構成へ変更。ヘッダーロゴとホーム記事サムネはローカル確認時の `/_next/image` 接続断に巻き込まれにくいよう直接画像表示へ変更。`npx tsc --noEmit`、`npm run build`、バックエンドAPI疎通成功を確認。

@@ -1208,7 +1208,7 @@ async function runSingleGemmaReviewPass(input: {
   target: string;
 }): Promise<{ responseText: string; usageLog: string; model: string } | null> {
   const modelTiers = getGeminiModelTiers('GEMINI_GEMMA_REVIEW_MODEL_TIERS');
-  const prompt = [
+  const basePrompt = [
     `【添削観点】${input.pass.label}`,
     input.pass.instruction,
     '',
@@ -1225,15 +1225,21 @@ async function runSingleGemmaReviewPass(input: {
     let reserved = false;
     try {
       console.log(`[GemmaReview] Attempt ${input.attempt} ${input.pass.label} - Trying model: ${currentModelName}`);
+      const isGemma = /gemma/i.test(currentModelName);
+      
       const model = input.genAI.getGenerativeModel({
         model: currentModelName,
-        systemInstruction: GEMMA_REVIEW_SYSTEM_PROMPT,
+        systemInstruction: isGemma ? undefined : GEMMA_REVIEW_SYSTEM_PROMPT,
         generationConfig: {
           temperature: 0.15,
           topP: 0.75,
           responseMimeType: 'application/json',
         },
       });
+
+      const finalPrompt = isGemma
+        ? `${GEMMA_REVIEW_SYSTEM_PROMPT}\n\n${basePrompt}`
+        : basePrompt;
 
       await reserveGeminiRequest({
         scope: 'article',
@@ -1242,7 +1248,7 @@ async function runSingleGemmaReviewPass(input: {
         target: input.target,
       });
       reserved = true;
-      const response = await model.generateContent(prompt);
+      const response = await model.generateContent(finalPrompt);
       const usageLog = geminiUsageLine(
         `[GemmaReview] Attempt ${input.attempt} ${input.pass.id} ${currentModelName}`,
         response.response
@@ -1375,19 +1381,12 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
     for (let attempt = 1; attempt <= 3; attempt++) {
       console.log(`[Editor] Running AI evaluation (Attempt ${attempt})...`);
       
-      // アテンプトごとのモデル割り当て制御（1, 2はGemma、3は中性能・高性能）
-      let currentModelTiers = modelTiers;
-      if (attempt === 1 || attempt === 2) {
-        currentModelTiers = modelTiers.filter(m => /gemma/i.test(m));
-        if (currentModelTiers.length === 0) {
-          currentModelTiers = [ARTICLE_LLM_MODELS.low];
-        }
-      } else {
-        currentModelTiers = modelTiers.filter(m => !/gemma/i.test(m));
-        if (currentModelTiers.length === 0) {
-          currentModelTiers = [ARTICLE_LLM_MODELS.medium, ARTICLE_LLM_MODELS.high];
-        }
-      }
+      // アテンプトごとのモデル割り当て制御
+      // 【モデル選定戦略の意図（賢さ重視・フォールバック順）】:
+      // Editor は記事の品質審査・表現精査・置換指示など高精度な判断が必要なため「賢さ重視」のモデル選定を採用。
+      // 全アテンプト共通: high (gemini-3.5-flash, RPD:20) → medium (gemini-3-flash-preview, RPD:20) → low/lite (gemini-3.1-flash-lite, RPD:500) の順で試行。
+      // 上位モデルが 503/429/クォータ超過の場合に限り次のモデルへ自動フォールバック。Lite は最終手段。
+      const currentModelTiers = modelTiers;
       const preAttemptRepair = autoRepairDraftMarkdown(currentContent);
       if (preAttemptRepair.changes.length > 0) {
         currentContent = preAttemptRepair.content;
@@ -1419,7 +1418,12 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
         ? `\n\n【Gemma複数観点レビュー】\n${gemmaReview.promptBrief}\n`
         : '';
 
-      const prompt = `以下のドラフト記事（Markdown）を編集確認する。\n\n【事前の機械チェック結果】\n${mechanicalLog}${gemmaReviewSection}\n\n\`\`\`markdown\n${currentContent}\n\`\`\``;
+      let parseWarning = '';
+      if (attempt > 1 && sawEditorJsonParseFailure) {
+        parseWarning = `【極めて重要】前回の出力はJSONとして正しくパースできませんでした。応答にMarkdownのコードブロック( \`\`\`json と \`\`\` )や、挨拶、解説文、余計な文字列を含めては【絶対に禁止】します。必ず純粋な { "status": ... } のJSON文字列のみを直接出力してください。\n\n`;
+      }
+
+      const basePrompt = `${parseWarning}以下のドラフト記事（Markdown）を編集確認する。\n\n【事前の機械チェック結果】\n${mechanicalLog}${gemmaReviewSection}\n\n\`\`\`markdown\n${currentContent}\n\`\`\``;
 
       let response: any = null;
       let generateFailed = true;
@@ -1427,15 +1431,20 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
       for (let i = 0; i < currentModelTiers.length; i++) {
         const currentModelName = currentModelTiers[i];
         console.log(`[Editor] Attempt ${attempt} - Trying model: ${currentModelName}`);
+        const isGemma = /gemma/i.test(currentModelName);
         
         const model = genAI.getGenerativeModel({
           model: currentModelName,
-          systemInstruction: EDITOR_SYSTEM_PROMPT,
+          systemInstruction: isGemma ? undefined : EDITOR_SYSTEM_PROMPT,
           generationConfig: {
             temperature: 0.1,
             responseMimeType: "application/json"
           }
         });
+
+        const finalPrompt = isGemma
+          ? `${EDITOR_SYSTEM_PROMPT}\n\n${basePrompt}`
+          : basePrompt;
 
         const maxRequestAttempts = geminiRetryAttemptsForModel(currentModelName);
         let reserved = false;
@@ -1450,7 +1459,7 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
               target: targetStr,
             });
             reserved = true;
-            response = await model.generateContent(prompt);
+            response = await model.generateContent(finalPrompt);
             const usageLine = geminiUsageLine(`[Editor] Attempt ${attempt} ${currentModelName}`, response.response);
             console.log(usageLine);
             allLogs += `\n[Attempt ${attempt} Token Usage]\n${usageLine}\n`;
@@ -1500,8 +1509,8 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
               retryableApiFailure = true;
               if (requestAttempt < maxRequestAttempts) {
                 const waitMs = geminiRetryDelayMs(requestAttempt);
-                console.warn(`[Editor] ${currentModelName} retryable failure. Retrying in ${waitMs}ms (${requestAttempt + 1}/${maxRequestAttempts})...`);
-                allLogs += `[Editor Retry] ${currentModelName} retrying in ${waitMs}ms (${requestAttempt + 1}/${maxRequestAttempts})\n`;
+                console.warn(`[Editor] ${currentModelName} temporary failure (503 Overloaded / Rate limit). Retrying in ${waitMs}ms (${requestAttempt + 1}/${maxRequestAttempts})...`);
+                allLogs += `[Editor Retry] ${currentModelName} temporary API overload/retryable error (503/429 etc.) detected. Sleeping for ${waitMs}ms before retry (${requestAttempt + 1}/${maxRequestAttempts})\n`;
                 await sleep(waitMs);
                 continue;
               }
@@ -1515,15 +1524,29 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
       }
 
       if (generateFailed || !response) {
-         allLogs += `\n[Editor Fatal] すべてのモデルでAPIリクエストが失敗しました。\n`;
-         if (retryableApiFailure) {
+         allLogs += `\n[Attempt ${attempt} Fatal] すべてのモデルでAPIリクエストが失敗しました。\n`;
+         if (retryableApiFailure && attempt === 3) {
+           // 最終アテンプトまで全て失敗した場合のみ、例外をスローして停止
            throw new Error(`Gemini APIの外部制限（クォータ・課金・レート制限等）によりレビューを完了できませんでした。${lastApiErrorMessage}`);
          }
-         break;
+         if (!retryableApiFailure) {
+           // 503/429以外（APIキー無効など）の致命的エラーは即座にループを抜ける
+           break;
+         }
+         // 503一時障害の場合は、次のアテンプトに期待して継続する（指数バックオフ待機）
+         const coolDownMs = 15000 * attempt; // 15秒, 30秒
+         console.warn(`[Editor] Attempt ${attempt} failed due to temporary API error (503/429 etc.). Sleeping for ${coolDownMs}ms before attempt ${attempt + 1}...`);
+         allLogs += `[Editor Sleep] Temporary API error (503/429 etc.) on attempt ${attempt}. Cooling down for ${coolDownMs}ms...\n`;
+         await sleep(coolDownMs);
+         continue;
       }
 
       const editorText = response.response.text() || '';
-      allLogs += `\n[Attempt ${attempt} AI Editor JSON Response]\n${editorText}\n`;
+      // ログ肥大化防止：editorTextが長い場合は切り詰めてログに記録
+      const logText = editorText.length > 2000
+        ? `${editorText.slice(0, 2000)}... (truncated total ${editorText.length} chars)`
+        : editorText;
+      allLogs += `\n[Attempt ${attempt} AI Editor JSON Response]\n${logText}\n`;
 
       let parsedJson: any = null;
       try {

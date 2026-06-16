@@ -269,11 +269,11 @@ export async function recordTokenUsage(input: {
 }): Promise<void> {
   const calculatedTokens = input.promptTokens + input.outputTokens;
   
-  // 異常トークン検知 (乖離が1.5倍以上、またはトータル30k以上)
-  const isAbnormal = (input.totalTokens >= calculatedTokens * 1.5) || (input.totalTokens >= 30000);
+  // 異常トークン検知 (出力が20k以上、またはトータル50k以上など、無限ループや暴走のみを検知)
+  const isAbnormal = (input.outputTokens >= 20000) || (input.totalTokens >= 50000);
   
   if (isAbnormal) {
-    console.warn(`[GeminiQuota] Abnormal token detected! input=${input.promptTokens}, output=${input.outputTokens}, total=${input.totalTokens}`);
+    console.warn(`[GeminiQuota] Abnormal token detected! model=${input.model}, input=${input.promptTokens}, output=${input.outputTokens}, total=${input.totalTokens}`);
   }
 
   // TPM計算には実計算値を適用

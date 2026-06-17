@@ -81,7 +81,8 @@ class WeeklyGradeRace(BaseModel):
     venue_name: str
     race_number: int
     race_name: str
-    grade: str  # "G1", "G2", "G3"
+    race_type: Optional[str] = None
+    grade: str  # "G1", "G2", "G3", "Jpn1", "Jpn2", "Jpn3", "地方重賞"
 
 
 class AccuracyRate(BaseModel):

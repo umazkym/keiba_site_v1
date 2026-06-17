@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get("/weekly-grade-races", response_model=List[race_schema.WeeklyGradeRace])
 def read_weekly_grade_races(db: Session = Depends(get_db)):
     """
-    今週の重賞レース（G1/G2/G3）を返すエンドポイント。
+    近日開催の中央・地方重賞を返すエンドポイント。
 
     ⚠️ 重要: この定義は /{target_date} より前に置くこと。
     FastAPI はルートを定義順に評価するため、

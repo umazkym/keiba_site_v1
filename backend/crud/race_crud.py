@@ -793,15 +793,17 @@ _JRA_GRADE_RACES: Dict[str, str] = {
 }
 
 
-def _detect_grade(race_name: str) -> str:
+def _detect_grade(race_name: str, race_type: str = "") -> str:
     """
-    レース名からグレード (G1/G2/G3) を判定する（3層防御）。
+    レース名からグレードを判定する。
 
     Layer 1: race_name 内のグレード接尾辞を正規表現で検出
              → パーサー修正後の新データで機能（例: "高松宮記念（G1）"）
-    Layer 2: 辞書の完全一致・前方一致
+    Layer 2: 地方競馬のJpn表記・重賞表記を検出
+             → 交流重賞、地方重賞で機能（例: "帝王賞Jpn1", "川崎マイラーズ重賞"）
+    Layer 3: 辞書の完全一致・前方一致
              → パーサー修正前の旧データで機能（例: "日経賞"）
-    Layer 3: 辞書の部分一致（フォールバック）
+    Layer 4: 辞書の部分一致（フォールバック）
              → 表記ゆれ対策
     """
     if not race_name:
@@ -815,14 +817,32 @@ def _detect_grade(race_name: str) -> str:
     if grade_match:
         return grade_match.group(1)
 
-    # GI/GII/GIII 表記にも対応
-    for kw, grade in [('GⅠ', 'G1'), ('GI', 'G1'), ('Ｇ１', 'G1'),
+    # 地方交流重賞の Jpn 表記に対応する。
+    # DB上には "Jpn1" / "JpnI" / "(JpnIII)" など複数の表記が残る。
+    jpn_match = _re.search(r'Jpn\s*([1-3]|I{1,3}|Ⅰ|Ⅱ|Ⅲ|１|２|３)', name, _re.IGNORECASE)
+    if jpn_match:
+        raw_grade = jpn_match.group(1).upper()
+        jpn_grade_map = {
+            "1": "Jpn1", "１": "Jpn1", "I": "Jpn1", "Ⅰ": "Jpn1",
+            "2": "Jpn2", "２": "Jpn2", "II": "Jpn2", "Ⅱ": "Jpn2",
+            "3": "Jpn3", "３": "Jpn3", "III": "Jpn3", "Ⅲ": "Jpn3",
+        }
+        return jpn_grade_map.get(raw_grade, "")
+
+    # GI/GII/GIII 表記にも対応。GIII/GIIはGIを内包するため、長い表記から判定する。
+    for kw, grade in [('GⅢ', 'G3'), ('GIII', 'G3'), ('Ｇ３', 'G3'),
                       ('GⅡ', 'G2'), ('GII', 'G2'), ('Ｇ２', 'G2'),
-                      ('GⅢ', 'G3'), ('GIII', 'G3'), ('Ｇ３', 'G3')]:
+                      ('GⅠ', 'G1'), ('GI', 'G1'), ('Ｇ１', 'G1')]:
         if kw in name:
             return grade
 
-    # ── Layer 2: 辞書の完全一致 → 前方一致 ──
+    # 地方競馬ではグレードが「重賞」として保存されることがある。
+    # 通常レース名に含まれる「重賞級」「重賞開催記念」などは拾わないよう、
+    # レース名末尾の明示的な重賞表記だけを対象にする。
+    if race_type == '地方' and _re.search(r'重賞\s*$', name):
+        return "地方重賞"
+
+    # ── Layer 3: 辞書の完全一致 → 前方一致 ──
     # 旧データ（グレード接尾辞が除去済み）のための照合
     # グレード接尾辞を除いた部分で照合する
     name_without_grade = _re.sub(r'\s*[（(]G[1-3][）)]$', '', name)
@@ -835,7 +855,7 @@ def _detect_grade(race_name: str) -> str:
         if name_without_grade.startswith(key) or key.startswith(name_without_grade):
             return grade
 
-    # ── Layer 3: 部分一致（フォールバック） ──
+    # ── Layer 4: 部分一致（フォールバック） ──
     for key, grade in sorted(_JRA_GRADE_RACES.items(), key=lambda x: -len(x[0])):
         if key in name_without_grade or name_without_grade in key:
             return grade
@@ -845,16 +865,16 @@ def _detect_grade(race_name: str) -> str:
 
 def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:
     """
-    今週の重賞レース（中央競馬のG1/G2/G3）を返す。
+    近日開催の重賞レース（中央競馬・地方競馬）を返す。
 
-    「今週」の定義:
-    - 月〜木: その週の土曜〜日曜
-    - 金〜日: 当日〜その週の日曜
+    「近日」の定義:
+    - 今日から14日以内
+      中央競馬は週末中心だが、地方競馬の重賞・交流重賞は平日開催も多いため、
+      週末だけに絞らず直近期間を横断して見る。
 
     グレード判定:
       DB上の race_name にはグレード接尾辞がないため、
-      全レースを取得してから _detect_grade() で
-      固定辞書を用いてフィルタリングする。
+      全レースを取得してから _detect_grade() でフィルタリングする。
     """
     cache_key = "weekly_grade_races"
     cached = _weekly_grade_cache.get(cache_key)
@@ -863,38 +883,38 @@ def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:
 
     JST = timezone(timedelta(hours=9))
     today = datetime.now(JST).date()
-    weekday = today.weekday()  # 0=月, 6=日
+    start_date = today
+    end_date = today + timedelta(days=13)
 
-    if weekday <= 3:  # 月〜木
-        days_to_saturday = 5 - weekday
-        start_date = today + timedelta(days=days_to_saturday)
-        end_date = start_date + timedelta(days=1)  # 日曜
-    else:  # 金〜日
-        start_date = today
-        days_to_sunday = 6 - weekday
-        end_date = today + timedelta(days=days_to_sunday)
-
-    # 重賞は通常 10R 以降で行われるため、候補を絞る
     results = db.query(
         models.Race.id,
         models.Race.race_date,
         models.Race.venue_name,
         models.Race.race_number,
         models.Race.race_name,
+        models.Race.race_type,
     ).filter(
         models.Race.race_date.between(start_date, end_date),
-        models.Race.race_type == '中央',
+        models.Race.race_type.in_(['中央', '地方']),
         models.Race.predictions.any(),
         models.Race.venue_name.isnot(None),
         models.Race.race_number.isnot(None),
         models.Race.race_name.isnot(None),
-        models.Race.race_number >= 9,
     ).order_by(models.Race.race_date, models.Race.race_number).all()
 
-    grade_priority = {"G1": 0, "G2": 1, "G3": 2}
+    grade_priority = {
+        "G1": 0,
+        "Jpn1": 1,
+        "G2": 2,
+        "Jpn2": 3,
+        "G3": 4,
+        "Jpn3": 5,
+        "地方重賞": 6,
+    }
+    race_type_priority = {"中央": 0, "地方": 1}
     races = []
     for r in results:
-        grade = _detect_grade(r.race_name)
+        grade = _detect_grade(r.race_name, r.race_type)
         if not grade:  # 辞書にマッチしない = 非重賞
             continue
         races.append({
@@ -903,10 +923,16 @@ def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:
             "venue_name": r.venue_name,
             "race_number": r.race_number,
             "race_name": r.race_name,
+            "race_type": r.race_type,
             "grade": grade,
         })
 
-    races.sort(key=lambda x: (grade_priority.get(x["grade"], 9), x["race_date"]))
+    races.sort(key=lambda x: (
+        x["race_date"],
+        race_type_priority.get(x.get("race_type", ""), 9),
+        grade_priority.get(x["grade"], 9),
+        x["race_number"],
+    ))
 
     # 重賞は週に数回しか変わらない（1時間キャッシュ）
     _weekly_grade_cache.set(cache_key, races, 3600)

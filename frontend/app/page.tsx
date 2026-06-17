@@ -397,8 +397,8 @@ export default async function HomePage() {
                 ) : (
                     <div className="grade-focus card rounded-xl flex flex-col justify-center items-center p-6 text-center">
                         <span className="badge badge-slate mb-2">重賞情報</span>
-                        <h2 className="text-slate-900 font-bold text-lg">近日開催の重賞はありません</h2>
-                        <p className="text-slate-500 text-xs mt-1">次回の重賞データ更新をお待ちください。</p>
+                        <h2 className="text-slate-900 font-bold text-lg">中央・地方の重賞データを更新中です</h2>
+                        <p className="text-slate-500 text-xs mt-1">近日開催の注目レースは、データ取得後にこちらへ表示されます。</p>
                     </div>
                 )}
             </div>

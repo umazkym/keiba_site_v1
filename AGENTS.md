@@ -16,13 +16,21 @@
 ### 技術スタックとインフラ
 | コンポーネント | 技術スタック / プラットフォーム | 補足情報 |
 | :--- | :--- | :--- |
-| **バックエンド** | Python, FastAPI, SQLAlchemy, Uvicorn | Renderにてホスト。Cloud Run（送信元IPは動的 / 楽天APIドメイン認証へ移行） |
+| **バックエンド** | Python, FastAPI, SQLAlchemy, Uvicorn | Cloud Runにてホスト。楽天APIはIP制限ではなくドメイン（Allowed Origins）認証へ移行済み。 |
 | **フロントエンド** | TypeScript, Next.js 14 (App Router), React, Tailwind CSS | Vercelにてホスト。 |
-| **データベース** | GCE VM (keiba-db) | 固定IP: `34.182.6.97`（SSL＋パスワード認証接続） |
+| **データベース** | GCE VM (keiba-db) | 外部IPv4なし。内部IP `10.138.0.2` のPostgreSQLへCloud RunはDirect VPC egress、GitHub Actions/保守作業はIAP TCPトンネル経由で接続。 |
 
 ### ローカル開発環境の起動
 * **バックエンド起動**: `PS C:\Users\zk-ht\Keiba\keiba_site_v1\backend> uvicorn main:app --reload`
 * **フロントエンド起動**: `PS C:\Users\zk-ht\Keiba\keiba_site_v1\frontend> npm run dev`
+
+### 本番DB接続・保守時の注意
+* **DB本体は移動していない**: 本番PostgreSQLは従来通りGCE VM `keiba-db` 上で稼働。変更されたのは外部公開IPを廃止し、接続経路を内部/IAP経由へ切り替えた点のみ。
+* **Cloud RunからのDB接続**: Cloud Run `keiba-site-v1` は `run.googleapis.com/network-interfaces` と `run.googleapis.com/vpc-access-egress=private-ranges-only` を利用し、VPC内部IP `10.138.0.2:5432` へ接続する。楽天APIなど外部通信は通常の外向き経路を維持。
+* **GitHub ActionsからのDB接続**: `.github/actions/setup-iap-db/action.yml` でGoogle OIDC認証後、IAP TCPトンネルを `127.0.0.1:15432` に張り、既存の `DATABASE_URL` を実行時だけlocalhostへ差し替える。Actions側のスクリプトは従来通り `DATABASE_URL` を参照する。
+* **手元やCloud ShellからDBへ入る場合**: 旧外部IP `34.182.6.97` へ直接接続してはいけない。必要時は次のようにIAPトンネルを張ってから `127.0.0.1:15432` へ接続する。
+  `gcloud compute start-iap-tunnel keiba-db 5432 --project=keiba-api-project --zone=us-west1-b --local-host-port=127.0.0.1:15432`
+* **ファイアウォール前提**: `allow-postgres`、`default-allow-ssh`、`default-allow-rdp` は無効化済み。DB/SSH保守は `allow-iap-postgres-keiba-db`（IAP→5432）と `allow-iap-ssh-keiba-db`（IAP→22）のみを利用する。外部IPv4や0.0.0.0/0のDB公開を復活させない。
 
 ---
 
@@ -102,6 +110,11 @@
   * **GCP固定ネットワーク費（Networking）の完全削減と楽天APIドメイン認証移行**: 
     GCPの固定維持費（月額約 ¥6,000〜）を削減するため、Cloud RunのVPCコネクタ接続を解除し、GCP上のCloud NAT（`rakuten-cloudrun-nat`）、ルーター（`rakuten-nat-router`）、VPC Accessコネクタを削除。さらに、未使用となった旧固定IP（`35.252.200.91`）を解放してペナルティ課金を停止。本番DB（VM `keiba-db` / `34.182.6.97`）は `e2-micro` にてRUNNING（稼働中）を安全に維持。
     楽天アフィリエイトAPIの2026年新基盤移行に伴い、認証をIP制限から「ドメイン（Allowed Origins）制限」に変更。楽天Developersコンソール側でWeb Application型へ変更してAllowed Originsにサイトドメインを登録し、バックエンドコード（`affiliate.py`）にてリクエストヘッダーに `Origin` を付与するように修正。アフィリエイトURLの解決・報酬トラッキング（ID紐付け）やサイト表示への悪影響がないことをローカル疎通テストにて検証済み。
+  * **DB外部IPv4廃止とIAP/内部IP接続への完全移行**:
+    GCPの日額課金を1日20円以下へ近づけるため、DB VM `keiba-db` の外部IPv4課金要因を撤去。Cloud Run `keiba-site-v1` にDirect VPC egress（`private-ranges-only`）を設定し、`DATABASE_URL` の接続先を外部IP `34.182.6.97` から内部IP `10.138.0.2` へ切り替えた。`/api/v1/predictions/stats/accuracy?days=30` がHTTP 200を返すことを確認し、サイト/バックエンドAPIからDB参照が継続できる状態を検証済み。
+    GitHub Actionsは `.github/actions/setup-iap-db/action.yml` を追加し、Workload Identity Federation（Pool `github-actions-pool` / Provider `github-actions-provider` / Service Account `github-actions-iap-db@keiba-api-project.iam.gserviceaccount.com`）でGoogle認証後、IAP TCPトンネルを `127.0.0.1:15432` に張る構成へ変更。データ取得、結果取得、記事生成、SNS投稿系workflowは、既存 `DATABASE_URL` secretを実行時にlocalhostへ差し替えるため、各スクリプトのDB参照方法は従来通り。
+    `allow-postgres`（0.0.0.0/0→5432）、`default-allow-ssh`、`default-allow-rdp` は無効化。IAP用に `allow-iap-postgres-keiba-db`（35.235.240.0/20→5432）と `allow-iap-ssh-keiba-db`（35.235.240.0/20→22）を作成し、保守経路を維持。予約IP `keiba-db-ip` とVMの `external-nat` access configを削除し、`gcloud compute instances list` で `EXTERNAL_IP` が空であること、IAP DBトンネルが外部IP削除後も疎通することを確認済み。
+    これによりDB本体・データは従来通りGCE VM `keiba-db` に残したまま、外部公開DBから内部/IAP接続へ移行。今後、ローカルやCloud ShellからDBへ入る場合は旧外部IPではなくIAPトンネルを利用すること。外部IPv4、Cloud NAT、Serverless VPC Access、Artifact RegistryのSKUは翌日以降のBillingで反映確認する。
 * **2026-06-13**:
   * **ホーム/レース詳細UIの残差分修正**: localhost確認で残っていた薄青の空広告枠を解消するため、`.ad` / `.ad-large` / `.ad-wide` をプレースホルダー表示から中立ラッパーへ変更し、開発環境では広告親枠ごと非表示にする条件を追加。高配当的中ランキングは旧CSS依存をやめ、払戻金・式別・組番・レース情報が崩れないカード型リストへ再設計。レースページ下部のPR枠はコンパクト表示へ調整し、関連分析記事サムネイルも直接画像表示へ統一。`npx tsc --noEmit`、`npm run build`、`curl` による `localhost:3000` トップ/レース詳細と `localhost:8000` API疎通成功を確認。Browser確認はWindowsサンドボックス権限エラーで未実施。
   * **localhost表示崩れの復旧**: HTML回収後に `output.css` 側だけへ残っていたモバイルメニューCSSを `globals.css` へ復旧し、デスクトップでメニュー縦リストが常時展開される問題を修正。ローカル開発時はAdSense/インフィード/追従広告の大きなプレースホルダーを既定で非表示にし、必要時のみ `NEXT_PUBLIC_SHOW_DEV_AD_PLACEHOLDERS=enabled` で確認できる構成へ変更。ヘッダーロゴとホーム記事サムネはローカル確認時の `/_next/image` 接続断に巻き込まれにくいよう直接画像表示へ変更。`npx tsc --noEmit`、`npm run build`、バックエンドAPI疎通成功を確認。

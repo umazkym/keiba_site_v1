@@ -96,7 +96,8 @@ export interface WeeklyGradeRace {
     venue_name: string;
     race_number: number;
     race_name: string;
-    grade: string; // "G1", "G2", "G3"
+    race_type?: "中央" | "地方" | string | null;
+    grade: string; // "G1", "G2", "G3", "Jpn1", "Jpn2", "Jpn3", "地方重賞"
 }
 
 export interface AccuracyRate {

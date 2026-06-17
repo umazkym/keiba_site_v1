@@ -101,6 +101,9 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-06-18**:
+  * **GitHub ActionsのPython依存キャッシュ失敗修正**:
+    添付ログで `KeibaAnalysisTool` の `Daily Keiba Data Update` が `actions/setup-python@v5` の `cache: pip` により `No file ... matched to [**/requirements.txt or **/pyproject.toml]` で停止していた問題を修正。`KeibaAnalysisTool` 側に `requirements.txt` を追加し、`daily_scrape.yml` のキャッシュ参照と依存インストールを同ファイルへ統一した。あわせて `keiba_site_v1` 側の `keiba-article-pipeline.yml` も `cache-dependency-path: backend/requirements.txt` を明示し、同種の依存ファイル探索エラーを予防した。
 * **2026-06-17**:
   * **中央・地方重賞の近日表示対応**:
     ホーム上部の重賞枠が中央競馬のみの取得条件になっていたため、`get_weekly_grade_races` を今日から14日以内の中央・地方重賞を返す構成へ変更。地方の `Jpn1/Jpn2/Jpn3` とレース名末尾の `重賞` 表記を検出し、通常レース名に含まれる「重賞級」などは拾わないようにした。`WeeklyGradeRaces` は「近日の重賞レース」として中央・地方を区分表示し、G1/Jpn1級は注目開催カードで表示。`py_compile`、`npx tsc --noEmit`、`npm run build` 成功を確認。

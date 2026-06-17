@@ -692,8 +692,9 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
     console.log(`[Writer] Draft length: ${text.replace(/\s/g, '').length} chars`);
 
     // Gemmaによる動的拡張
-    // 記事タイプに応じた文字数閾値の動的判定
-    let minChars = 3000; // デフォルト（フォールバック）
+    // 記事タイプ別の目安は残しつつ、ARTICLE_MIN_BODY_CHARS を下回らないようにする。
+    const configuredMinChars = parsePositiveInt(process.env.ARTICLE_MIN_BODY_CHARS, 3000);
+    let minChars = configuredMinChars;
     const themeCluster = order.theme_cluster || '';
     const articleType = order.reference_data?.article_type || '';
     
@@ -707,7 +708,7 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
       articleType === 'popularity_data' ||
       articleType === 'data'
     ) {
-      minChars = 1500; // データ・統計系
+      minChars = Math.max(configuredMinChars, 1500); // データ・統計系
     } else if (
       themeCluster === 'grade_race_preview' ||
       themeCluster === 'news_context' ||
@@ -716,7 +717,7 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
       articleType === 'news_context' ||
       articleType === 'race_update'
     ) {
-      minChars = 2000; // 重賞・ニュース系
+      minChars = Math.max(configuredMinChars, 2000); // 重賞・ニュース系
     }
 
     const plainLen = text.replace(/\s/g, '').length;

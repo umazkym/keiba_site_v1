@@ -17,6 +17,10 @@ on:
         required: false
         default: '2'
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
@@ -37,6 +41,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
+
+      - name: Set up IAP database tunnel
+        uses: ./.github/actions/setup-iap-db
+        with:
+          database_url: ${{ secrets.DATABASE_URL }}
 
       - name: Calculate target date
         id: calc_date
@@ -63,7 +72,6 @@ jobs:
         working-directory: backend
         env:
           PYTHONPATH: .
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
           RACE_BATCH_SIZE: '3'

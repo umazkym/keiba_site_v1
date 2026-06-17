@@ -219,7 +219,8 @@ export function checkSEO(markdownText: string): SEOCheckResult {
   const themeCluster = (data.theme_cluster || '').toString();
   const articleType = (data.article_type || '').toString();
   
-  let minChars = 3000; // デフォルト (フォールバック・安全側)
+  const configuredMinChars = SEO_RULES.min_word_count;
+  let minChars = configuredMinChars; // ARTICLE_MIN_BODY_CHARS を全タイプの下限として扱う
   if (
     themeCluster === 'waku_data' ||
     themeCluster === 'jockey_data' ||
@@ -230,7 +231,7 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     articleType === 'popularity_data' ||
     articleType === 'data'
   ) {
-    minChars = 1500; // データ・統計系
+    minChars = Math.max(configuredMinChars, 1500); // データ・統計系
   } else if (
     themeCluster === 'grade_race_preview' ||
     themeCluster === 'news_context' ||
@@ -239,7 +240,7 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     articleType === 'news_context' ||
     articleType === 'race_update'
   ) {
-    minChars = 2000; // 重賞・ニュース系
+    minChars = Math.max(configuredMinChars, 2000); // 重賞・ニュース系
   }
 
   const plainText = content.replace(/\s/g, '');

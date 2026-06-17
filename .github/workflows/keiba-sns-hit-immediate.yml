@@ -5,6 +5,10 @@ on:
     - cron: '0 10 * * 0,6'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   fetch-results-and-post:
     runs-on: ubuntu-latest
@@ -26,11 +30,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
+      - name: Set up IAP database tunnel
+        uses: ./.github/actions/setup-iap-db
+        with:
+          database_url: ${{ secrets.DATABASE_URL }}
+
       - name: Step 1 - Fetch Today Results
         working-directory: backend
         env:
           PYTHONPATH: .
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
           RACE_BATCH_SIZE: '3'
           SELENIUM_PAGE_LOAD_TIMEOUT: '40'
@@ -42,7 +50,6 @@ jobs:
         working-directory: backend
         env:
           PYTHONPATH: .
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TWITTER_CONSUMER_KEY: ${{ secrets.TWITTER_CONSUMER_KEY }}
           TWITTER_CONSUMER_SECRET: ${{ secrets.TWITTER_CONSUMER_SECRET }}
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}

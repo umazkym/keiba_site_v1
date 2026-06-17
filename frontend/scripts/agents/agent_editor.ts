@@ -77,6 +77,8 @@ const BANNED_REPLACEMENTS: Record<string, string> = {
   '信頼度の高い軸候補': '候補として確認したい馬',
   '信頼度の高い軸': '候補として確認したい馬',
   '精度の高い予想': '根拠を確認しやすい予想',
+  'より精度の高い馬券検討': '判断材料を整理しやすい馬券検討',
+  '精度の高い馬券検討': '判断材料を整理しやすい馬券検討',
   '消し': '評価を下げる',
   '絶好枠': '条件が合う枠',
   '買い目の構築が可能': '買い目を整理しやすくなる',
@@ -333,6 +335,18 @@ function checkFixedValueHallucination(fixed: string, evidenceNumbers: Set<number
   }
 
   return { hasHallucination: false };
+}
+
+function isUnsafeLongFormReplacement(original: string, fixed: string): boolean {
+  const normalizedOriginal = original.replace(/\r\n/g, '\n').trim();
+  const normalizedFixed = fixed.replace(/\r\n/g, '\n').trim();
+  const originalLines = normalizedOriginal.split('\n').filter(line => line.trim()).length;
+  const fixedLines = normalizedFixed.split('\n').filter(line => line.trim()).length;
+  const originalPlainLength = normalizedOriginal.replace(/\s/g, '').length;
+  const fixedPlainLength = normalizedFixed.replace(/\s/g, '').length;
+  const replacesHeadingOnly = originalLines === 1 && /^#{2,6}\s+/.test(normalizedOriginal);
+
+  return replacesHeadingOnly && (fixedLines >= 4 || fixedPlainLength > originalPlainLength + 240);
 }
 
 function normalizeHref(href: string): string | null {
@@ -936,6 +950,7 @@ STEP 3：フォーマットとSEOのチェック
 ※本文を長くしすぎない。必要な修正だけ行い、表・数値・母数・期間は壊さないこと。
 ※本文が3,000字未満の場合は、入力にある材料だけで「確認順」「慎重に見る条件」「相手候補に残す前の線引き」を補う。数字を増やせない場合は、数字を作らず判断プロセスを具体化すること。
 ※content_replacements の fixed フィールドに、Evidence Packで確認できない勝率・複勝率・回収率・好走率などのパーセンテージ（%）を残してはいけない。元の本文に未確認の%値がある場合は、その数値を引き継がず「データで確認する」「傾向を確認する」など数値なしの自然な文に置き換えること。
+※content_replacements は局所的な文言修正に限定する。見出し1行を複数段落の本文に置き換える、または新しいH2セクションをfixedへ丸ごと追加する行為は禁止。文字数不足はシステム側の安全な補足処理で補う。
 
 【JSON出力フォーマット】
 以下のJSONスキーマに従って出力する。Markdownのコードブロックなどは含めず、純粋なJSON文字列のみを出力すること。
@@ -1593,6 +1608,14 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
             // 暴走したAIが差分パッチを利用して表を壊そうとした場合はプログラム側で防御
             if (rep.original.includes('| ---') || rep.original.includes('| :---') || rep.original.includes('--- |')) {
               allLogs += `\n[Editor Protective] AIが表(\`| --- \`)を置換・削除しようとしたため、プログラムが強制ブロックしました。\n`;
+              continue;
+            }
+
+            if (isUnsafeLongFormReplacement(rep.original, rep.fixed)) {
+              replacementFailed = true;
+              hasCriticalFailed = true;
+              criticalFeedbackItems.push('見出し1行を長い本文セクションへ置換する指示は、根拠不明の本文追加につながるためブロックされました。');
+              allLogs += `\n[Editor Critical Warning] 長文セクション追加をcontent_replacementsで行おうとしたため置換を却下しました: ${rep.original.slice(0, 30)}...\n`;
               continue;
             }
 

@@ -33,6 +33,7 @@ jobs:
 
     permissions:
       contents: write
+      id-token: write
 
     env:
       ARTICLE_PIPELINE_MAX_ARTICLES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_articles || '3' }}
@@ -63,12 +64,12 @@ jobs:
 
       - name: Preflight - Check Required Secrets
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_ORIGINAL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: |
           missing=0
-          if [ -z "$DATABASE_URL" ]; then
+          if [ -z "$DATABASE_URL_ORIGINAL" ]; then
             echo "::error::DATABASE_URL secret is required for write order generation."
             missing=1
           fi
@@ -118,10 +119,14 @@ jobs:
           git config --global user.name "${{ secrets.GIT_USER_NAME || 'github-actions[bot]' }}"
           git config --global user.email "${{ secrets.GIT_USER_EMAIL || 'github-actions[bot]@users.noreply.github.com' }}"
 
+      - name: Set up IAP database tunnel
+        uses: ./.github/actions/setup-iap-db
+        with:
+          database_url: ${{ secrets.DATABASE_URL }}
+
       - name: Step 1A - Generate News Topic Write Orders
         working-directory: ./backend
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           KEIBA_NEWS_MAX_ORDERS_PER_RUN: ${{ env.KEIBA_NEWS_MAX_ORDERS_PER_RUN }}
           KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN: ${{ env.KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN }}
@@ -135,14 +140,10 @@ jobs:
 
       - name: Step 1B - Generate Grade Race Write Orders
         working-directory: ./backend
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/agents/grade_race_writer.py
 
       - name: Step 1C - Generate Statistical Write Order (Data Scientist)
         working-directory: ./backend
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/agents/data_scientist.py
 
       - name: Step 2 & 3 - Generate Draft and Review

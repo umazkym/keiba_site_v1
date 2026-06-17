@@ -6,6 +6,10 @@ on:
     - cron: '0 5 * * 0,6'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   sns-post:
     runs-on: ubuntu-latest
@@ -26,12 +30,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
+
+      - name: Set up IAP database tunnel
+        uses: ./.github/actions/setup-iap-db
+        with:
+          database_url: ${{ secrets.DATABASE_URL }}
           
       - name: Post to SNS (Pre-Race)
         working-directory: backend
         env:
           PYTHONPATH: .
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TWITTER_CONSUMER_KEY: ${{ secrets.TWITTER_CONSUMER_KEY }}
           TWITTER_CONSUMER_SECRET: ${{ secrets.TWITTER_CONSUMER_SECRET }}
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}

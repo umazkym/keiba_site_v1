@@ -7,8 +7,10 @@ import { getRaceDetailPath } from '@/lib/race-url';
 function cleanRaceName(name: string): string {
     return name
         .replace(/\s*[（(]?(?:G[1-3]|GI{1,3}|G[ⅠⅡⅢ]|Ｇ[１２３]|J・G[1-3]|Jpn(?:[1-3]|I{1,3}|[ⅠⅡⅢ]))[）)]?/giu, '')
+        .replace(/[〔［\[].*?[〕］\]]/gu, '')
         .replace(/\s*地方重賞\s*$/u, '')
         .replace(/\s*重賞\s*$/u, '')
+        .replace(/\s*[（(].*$/u, '')
         .replace(/\s*\(.*?\)$/, '')
         .trim();
 }
@@ -49,9 +51,10 @@ interface WeeklyGradeRacesProps {
     races: WeeklyGradeRace[];
     compact?: boolean;
     predictions?: RaceDayPrediction | null;
+    title?: string;
 }
 
-export function WeeklyGradeRaces({ races, compact = false, predictions }: WeeklyGradeRacesProps) {
+export function WeeklyGradeRaces({ races, compact = false, predictions, title = "近日の重賞レース" }: WeeklyGradeRacesProps) {
     if (!races || races.length === 0) {
         return null;
     }
@@ -126,7 +129,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions }: Weekly
                 <div role="heading" aria-level={2} className={compact ? "sr-only" : "mb-2.5 flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5"}>
                     <span className="flex min-w-0 items-center gap-1.5 text-[15px] font-bold leading-tight text-gray-800 sm:text-base">
                         <span className="w-1 h-4 sm:h-5 rounded-sm shrink-0 bg-amber-500"></span>
-                        <span className="truncate">近日の重賞レース</span>
+                        <span className="truncate">{title}</span>
                     </span>
                 </div>
 

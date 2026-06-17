@@ -102,6 +102,9 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-06-17**:
+  * **中央・地方重賞の近日表示対応**:
+    ホーム上部の重賞枠が中央競馬のみの取得条件になっていたため、`get_weekly_grade_races` を今日から14日以内の中央・地方重賞を返す構成へ変更。地方の `Jpn1/Jpn2/Jpn3` とレース名末尾の `重賞` 表記を検出し、通常レース名に含まれる「重賞級」などは拾わないようにした。`WeeklyGradeRaces` は「近日の重賞レース」として中央・地方を区分表示し、G1/Jpn1級は注目開催カードで表示。`py_compile`、`npx tsc --noEmit`、`npm run build` 成功を確認。
+    デプロイ後、API側の重賞枠が空でもホームには当日の全レースデータが存在するケースがあったため、ホーム側で `predictions` から当日重賞を補完抽出する処理を追加。`赤レンガ記念〔H3〕(ウエストオーバー賞 重賞`、`トリトン争覇 重賞`、`園田FCスプリント 重賞` のような地方重賞表記を拾い、表示名から副題・グレード表記を整理するようにした。該当がない場合は「本日開催の重賞はありません」と表示し、今日のレース分析導線を出す構成へ変更。`npx tsc --noEmit`、`py_compile`、`npm run build` 成功を確認。
   * **記事生成パイプラインの公開ブロックと数値ハルシネーション対策**:
     `validate_article_links.js` で既存記事の「大きくな」系の不自然な置換残りが検出され、承認済み記事の公開前にワークフローが停止する問題を修正。`naturalize_existing_articles.js` に同系統の補正を追加し、既存記事11本へ適用して `article:validate-links` を通過させた。あわせて `keiba-article-pipeline.yml` のリンク検証をLLM生成前のプリフライトへ移動し、既存記事の問題でWriteOrder消費後に公開だけ止まる事故を防止。
     Writer/Editor/ArticleFlow側では、Evidence Packに存在しない勝率・複勝率・回収率などの%値をpost-writer段階でcritical扱いに格上げし、Editorの再試行時にも前回却下された未確認数値をプロンプトへ明示するよう修正。Writer/Editorプロンプトから例示用の具体%値や「買い足す」など強めの表現を減らし、未確認数値は数値なしの確認手順へ言い換える方針に統一。`npx tsc --noEmit`、`npm run article:validate-links`、`npm run article:audit-quality`、`npm run build` 成功を確認。

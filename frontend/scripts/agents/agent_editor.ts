@@ -245,6 +245,47 @@ function sanitizeGeneratedText(input: string): string {
     .trim();
 }
 
+function isDrawConfirmedData(data: Record<string, any>): boolean {
+  const drawStatus = String(data.draw_status || '').toLowerCase();
+  if (drawStatus) return drawStatus === 'confirmed';
+  if (data.draw_confirmed === true) return true;
+  return String(data.search_angle_label || '') === '枠順発表後';
+}
+
+function isDrawRelatedDraft(data: Record<string, any>, content: string): boolean {
+  const text = [
+    data.title,
+    data.description,
+    data.target_keyword,
+    data.theme_cluster,
+    data.article_type,
+    data.update_stage,
+    data.search_intent,
+    data.search_intent_label,
+    data.search_angle_label,
+    content.slice(0, 800),
+  ].map(value => String(value || '')).join(' ');
+
+  return /枠順|馬番|出馬表|waku|draw_confirmed/i.test(text);
+}
+
+function normalizeUnconfirmedDrawPhrasing(input: string): string {
+  return input
+    .replace(/枠順が確定した今/g, '枠順発表前の段階では')
+    .replace(/枠順が決まった今/g, '枠順発表前の段階では')
+    .replace(/枠順が発表された今/g, '枠順発表前の段階では')
+    .replace(/枠順が発表されたことで/g, '枠順が発表された後は')
+    .replace(/枠順が決まったことで/g, '枠順が発表された後は')
+    .replace(/枠順が確定した後/g, '枠順が発表された後')
+    .replace(/枠順が確定した際/g, '枠順が発表された際')
+    .replace(/枠順が確定した/g, '枠順が発表された')
+    .replace(/枠順を発表/g, '枠順が発表された後に確認')
+    .replace(/出馬表が発表された/g, '出馬表が公開された後')
+    .replace(/枠順確定後/g, '枠順発表後')
+    .replace(/枠順確定/g, '枠順発表前')
+    .replace(/枠順という新たな情報を踏まえ/g, '枠順発表後の新たな情報を踏まえ');
+}
+
 const PHYSICAL_SPECS = new Set<number>([
   473.6, 356.5, 352.7, 403.7, 328.4, 329.1, 525.9, 501.6, 310.0, 308.0,
   658.7, 358.7, 353.9, 293.0, 291.3, 292.0, 295.7, 412.5, 410.7, 266.1,
@@ -901,8 +942,27 @@ export function autoRepairDraftMarkdown(markdownText: string): { content: string
   const beforeDescription = String(data.description || '');
   const beforeContent = content;
 
-  data.title = fitTitleToSeo(beforeTitle, data, content);
-  data.description = fitDescriptionToSeo(beforeDescription, { ...data, title: data.title });
+  if (isDrawRelatedDraft(data, content) && !isDrawConfirmedData(data)) {
+    data.draw_status = 'pre_draw';
+    if (data.update_stage === 'draw_confirmed') {
+      data.update_stage = 'one_week_before';
+    }
+    for (const key of ['title', 'description', 'target_keyword', 'og_title', 'og_description']) {
+      if (typeof data[key] === 'string') {
+        data[key] = normalizeUnconfirmedDrawPhrasing(data[key]);
+      }
+    }
+    if (Array.isArray(data.keywords)) {
+      data.keywords = data.keywords.map((keyword: unknown) =>
+        typeof keyword === 'string' ? normalizeUnconfirmedDrawPhrasing(keyword) : keyword
+      );
+    }
+    content = normalizeUnconfirmedDrawPhrasing(content);
+    changes.push('未確定の枠順表現を発表前の表現へ補正');
+  }
+
+  data.title = fitTitleToSeo(String(data.title || beforeTitle), data, content);
+  data.description = fitDescriptionToSeo(String(data.description || beforeDescription), { ...data, title: data.title });
 
   content = sanitizeGeneratedText(content);
   content = unwrapDisallowedLinks(content);
@@ -951,6 +1011,7 @@ STEP 3：フォーマットとSEOのチェック
 ※本文が3,000字未満の場合は、入力にある材料だけで「確認順」「慎重に見る条件」「相手候補に残す前の線引き」を補う。数字を増やせない場合は、数字を作らず判断プロセスを具体化すること。
 ※content_replacements の fixed フィールドに、Evidence Packで確認できない勝率・複勝率・回収率・好走率などのパーセンテージ（%）を残してはいけない。元の本文に未確認の%値がある場合は、その数値を引き継がず「データで確認する」「傾向を確認する」など数値なしの自然な文に置き換えること。
 ※content_replacements は局所的な文言修正に限定する。見出し1行を複数段落の本文に置き換える、または新しいH2セクションをfixedへ丸ごと追加する行為は禁止。文字数不足はシステム側の安全な補足処理で補う。
+※frontmatter の draw_status が "confirmed" でない枠順記事では、「枠順確定」「枠順が確定した今」「枠順が発表されたことで」など発表済みと読める表現を使わない。「枠順発表前」「枠順発表後に確認する材料」に直すこと。
 
 【JSON出力フォーマット】
 以下のJSONスキーマに従って出力する。Markdownのコードブロックなどは含めず、純粋なJSON文字列のみを出力すること。

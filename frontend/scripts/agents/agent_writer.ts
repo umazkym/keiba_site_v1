@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import matter from 'gray-matter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ARTICLE_LLM_MODELS, getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
 import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
@@ -51,6 +52,8 @@ export type WriteOrder = {
     search_intent?: string;
     search_intent_label?: string;
     search_angle_label?: string;
+    draw_status?: string;
+    draw_confirmed?: boolean;
     calendar_race?: string;
     days_to_race?: number;
     matched_race?: Record<string, string | number | null>;
@@ -124,7 +127,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 代わりに以下を使い分ける：
   数値提示型：「入力済みデータで差が出ている枠同士の比較」
   問題提起型：「なぜ内枠人気馬が崩れるのか」
-  行動提示型：「枠順確定後に最初に確認すること」
+  行動提示型：「枠順発表後に最初に確認すること」
   対比型：「良馬場と道悪で変わる先行馬の評価」
 
 ■ データの見せ方
@@ -158,10 +161,10 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - 馬名、過去実績（例: どのレースを勝ったか）、対戦成績、個別の脚質（逃げ・差しなど）など、入力である WriteOrder に明記されていない馬の個別事実は絶対に捏造・記述してはならない。WriteOrder に個別馬情報が含まれていない場合は、馬個人のことには一切言及せず、競馬場やコース等のマクロデータ（全体傾向・統計情報）の解説のみに徹底すること。
 - 自分で勝率、回収率、母数、枠順別成績、斤量別成績、脚質別成績、AI偏差値を補完・推測・生成してはならない。
 - 勝率、複勝率、連対率、好走率、単勝回収率、複勝回収率などのパーセンテージ（%）は、reference_data に明示されている値だけを使用する。根拠がない場合は、数値を出さず「出馬表ページで確認する」「当日のデータで確認する」と表現する。
-- reference_data.predictions が空、または has_predictions が false の場合、AI偏差値の具体値、AI偏差値70以上のようなしきい値、上位・下位の断定、予想印（◎○▲△）は書かない。「枠順確定後に出馬表ページで確認する」に留める。
+- reference_data.predictions が空、または has_predictions が false の場合、AI偏差値の具体値、AI偏差値70以上のようなしきい値、上位・下位の断定、予想印（◎○▲△）は書かない。「枠順発表後に出馬表ページで確認する」に留める。
 - AI偏差値や予想印が入力にある場合でも、「軸の筆頭」「信頼度の高い軸」「精度の高い予想」「消し」のような強い表現は使わず、「候補として確認」「相手候補」「評価を下げたい条件」に言い換える。
 - データテーブルを作る場合は、入力JSONに存在する列名と値を使う。入力にない列を足さない。入力にない行を増やさない。
-- 入力に枠順別・脚質別・斤量別の実数がない場合、そのテーブルは作らない。「未取得」「枠順確定後に確認」など、分かる範囲の定性的な説明に留める。
+- 入力に枠順別・脚質別・斤量別の実数がない場合、そのテーブルは作らない。「未取得」「枠順発表後に確認」など、分かる範囲の定性的な説明に留める。
 - reference_data.course_stats が空で key_metrics も空の場合は、レース名・開催日・会場・条件など、入力にある事実だけを小さな確認表にする。
 - 数値の見栄えを良くするための丸め、線形補完、平均値の作成は禁止。必要な計算は、入力にすでに計算済みの値がある場合だけ使う。
 - 「過去3年」などの期間表現は reference_data.period に従う。period がない場合は期間を断定しない。
@@ -171,7 +174,8 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - research_sources に含まれない外部情報やURLを新たに足してはいけない。
 - theme_cluster が "news_context" または "race_update" の場合、reference_data.key_metrics はニュース本文の要約ではなく「確認済みの事実テーブル」として扱う。表にない日付・頭数・発表内容を勝手に補完しない。
 - ニュース記事では、外部ソースの文章を言い換えて長く展開しない。外部事実は短く置き、その後に「出馬表で確認する順番」「馬場・枠順・脚質の見方」「/races/today への導線」へ移る。
-- reference_data.search_intent_label がある場合、その検索意図を記事の中心に置く。たとえば「枠順」なら枠順確定後にどこを見るか、「出走馬」なら出走馬一覧から脚質・騎手・馬場をどう確認するかを主題にする。
+- reference_data.search_intent_label がある場合、その検索意図を記事の中心に置く。たとえば「枠順」なら reference_data.draw_status が "confirmed" の時だけ発表後の確認順として書き、"pre_draw" や未指定の場合は枠順発表前に準備する確認順として書く。「出走馬」なら出走馬一覧から脚質・騎手・馬場をどう確認するかを主題にする。
+- reference_data.draw_status が "confirmed" でない場合、「枠順確定」「枠順が確定した今」「枠順が発表されたことで」「枠順が決まった今」など、枠順発表済みと読める表現は禁止する。「枠順発表前」「枠順発表後に確認する材料」「出馬表で確認する順番」に留める。
 - reference_data.topic_bridge がある場合、複数ニュースの話題をそのまま並べず、topic_bridge.primary_angle と merge_policy に沿って「外部ニュースの話題」→「UMA-FREE内部データで確認する順番」へ接続する。
 - reference_data.predictions、course_stats、horse_number_advantages、ai_analysis_text、matched_race がある場合、それらはUMA-FREEが収集した内部データとして扱う。追い切り、前走後コメント、SNS話題、騎手ニュースなどの定性的な材料は、これらの数値や出馬表確認と結び付けて書く。
 - 外部ニュース由来の追い切り評価や陣営コメントだけで評価を断定しない。AI偏差値、コース統計、馬番傾向がある場合は「評価を上げる材料」「確認を残す材料」「人気なら慎重に見る条件」に分ける。
@@ -225,13 +229,13 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 ・"running_style_data": コース形態と脚質の有利不利。直線距離や坂の有無を根拠にする。
 ・"grade_race_preview": 重賞レースのプレビュー記事。以下のルールに従う:
   - タイトル構成: 「[レース名][年] AI予想｜[確認すべきデータの核心]」（30〜50文字）
-  - G1・G2は新規URLを乱立させず、同じ記事を「1週間前の展望」「枠順確定後」「前日更新」「当日朝更新」の4段階で育てる前提で書く。
+  - G1・G2は新規URLを乱立させず、同じ記事を「1週間前の展望」「枠順発表後」「前日更新」「当日朝更新」の4段階で育てる前提で書く。
   - frontmatterには update_stage を入れる。値は one_week_before / draw_confirmed / eve_update / race_morning のいずれか。
   - 追記更新を想定し、古い判断を消すのではなく「どの条件なら評価を上げるか」「どの条件なら見送るか」を更新後も読み返せる形にする。
   - 導入: レースの基本情報（開催場・コース・距離）を1〜2文で簡潔に。
   - コース傾向セクション必須: reference_data のデータから傾向をMarkdownテーブルで提示。
   - 予測データがある場合: 偏差値上位の馬を印（◎○▲△）付きで分析。
-  - 予測データがない場合: コース傾向と過去データに絞って記述。「最新のAI偏差値・AI予想印は枠順確定後に出馬表ページで無料公開されます」と一文添え、reference_data.race_url のリンクを配置。
+  - 予測データがない場合: コース傾向と過去データに絞って記述。「最新のAI偏差値・AI予想印は枠順発表後に出馬表ページで無料公開されます」と一文添え、reference_data.race_url のリンクを配置。
   - 読者は直前の不安解消を求めている。人気馬を煽るのではなく、慎重に見る条件・評価を上げる材料・見送りを検討する条件を分けて書く。
   - 重賞記事で禁止する表現パターン：
     「〜騎手が乗るなら信頼できる」（主観）
@@ -250,7 +254,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
   - 最後の見出しは「## このニュースの確認ポイント」にする。
 ・"race_update": レース関連ニュースから既存の重賞・日別レース導線へつなぐ記事。以下のルールに従う:
   - タイトル構成: 「[レース名][年]｜ニュース後に見る確認ポイント[数字]」（30〜50文字）
-  - 枠順確定、出走予定、馬場、追い切り、前走後評価、陣営コメント、騎手変更、話題馬など、レース前に検索される語を自然に含める。
+  - 枠順発表、出走予定、馬場、追い切り、前走後評価、陣営コメント、騎手変更、話題馬など、レース前に検索される語を自然に含める。ただし reference_data.draw_status が "confirmed" でない場合は、枠順発表済みとは書かない。
   - reference_data.predictions、course_stats、horse_number_advantages がある場合、ニュースの話題と内部データを別々に扱わず、直前に確認する順序として接続する。
   - 地方競馬の重賞・交流重賞では、開催場名（大井、川崎、船橋、浦和、門別、園田、高知、佐賀、帯広など）、ナイター、馬場、距離、交流重賞の条件差を自然に含める。中央G1風の煽り見出しに寄せない。
   - 最新情報の断定より、/races/today で当日確認する順番を優先する。
@@ -280,6 +284,7 @@ theme_cluster: ""
 category: ""
 article_type: ""
 update_stage: ""
+draw_status: ""
 draft: true
 ---
 
@@ -561,6 +566,22 @@ function cleanWriterPromptEchoesAndMeta(markdownText: string): string {
   return filteredLines.join('\n');
 }
 
+function normalizeDraftDrawMetadata(markdownText: string, order: WriteOrder): string {
+  const drawStatus = String(order.reference_data?.draw_status || '');
+  if (!drawStatus) return markdownText;
+
+  try {
+    const parsed = matter(markdownText);
+    parsed.data.draw_status = drawStatus;
+    if (drawStatus !== 'confirmed' && parsed.data.update_stage === 'draw_confirmed') {
+      parsed.data.update_stage = 'one_week_before';
+    }
+    return matter.stringify(`${parsed.content.trim()}\n`, parsed.data);
+  } catch {
+    return markdownText;
+  }
+}
+
 /**
  * ライターエンジンを実行し、指定されたWriteOrderに基づいて記事ドラフトを生成する
  */
@@ -689,6 +710,7 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
 
     // Markdownのコードブロックマーカー(```markdown)がAIの癖で出力された場合は除去する
     text = text.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '');
+    text = normalizeDraftDrawMetadata(text, order);
     console.log(`[Writer] Draft length: ${text.replace(/\s/g, '').length} chars`);
 
     // Gemmaによる動的拡張

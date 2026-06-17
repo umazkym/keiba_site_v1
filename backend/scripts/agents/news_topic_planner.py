@@ -140,6 +140,16 @@ SEARCH_INTENT_RULES = [
     ("schedule", "開催情報", re.compile(r"開催|日程|発走|確定"), 14),
 ]
 
+DRAW_PRE_ANNOUNCEMENT_PATTERN = re.compile(
+    r"(?:枠順|馬番|出馬表).{0,16}(?:発表予定|発表日|発表は|いつ|見込み|予定)|"
+    r"(?:発表予定|発表日).{0,16}(?:枠順|馬番|出馬表)"
+)
+
+DRAW_CONFIRMED_PATTERN = re.compile(
+    r"枠順確定|枠順が確定|枠順が発表された|枠順を発表|枠順決定|枠順が決定|"
+    r"馬番確定|馬番が確定|ゲート番.*確定|出馬表確定|出馬表が発表された|出馬表が公開された|出馬表を発表"
+)
+
 KEYWORD_LABEL_BY_INTENT = {
     "waku": "枠順",
     "entries": "出走馬",
@@ -191,7 +201,8 @@ ANGLE_RULES_BY_INTENT = {
         ("出走予定", re.compile(r"出走予定|出走")),
     ],
     "waku": [
-        ("枠順確定", re.compile(r"枠順確定|枠順")),
+        ("枠順発表後", DRAW_CONFIRMED_PATTERN),
+        ("枠順発表前", re.compile(r"枠順|抽選|ゲート")),
         ("ゲート確認", re.compile(r"ゲート|抽選")),
     ],
 }
@@ -496,6 +507,14 @@ def infer_target_year(title: str, demand: Optional[RaceDemand]) -> str:
 
 
 def detect_angle_label(search_intent: str, title: str, content: str = "", query: str = "") -> str:
+    if search_intent == "waku":
+        source_text = f"{title} {content}"
+        if DRAW_PRE_ANNOUNCEMENT_PATTERN.search(source_text):
+            return "枠順発表前"
+        if DRAW_CONFIRMED_PATTERN.search(source_text):
+            return "枠順発表後"
+        return "枠順発表前"
+
     joined = f"{title} {content} {query}"
     for label, pattern in ANGLE_RULES_BY_INTENT.get(search_intent, []):
         if pattern.search(joined):
@@ -1439,6 +1458,10 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
         if isinstance(matched_race, dict) and matched_race.get("race_url"):
             race_url = str(matched_race["race_url"])
 
+        draw_status = ""
+        if candidate.search_intent == "waku":
+            draw_status = "confirmed" if candidate.search_angle_label == "枠順発表後" else "pre_draw"
+
         order = {
             "target_keyword": candidate.target_keyword,
             "theme_cluster": candidate.theme_cluster,
@@ -1465,6 +1488,7 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "search_intent": candidate.search_intent,
                 "search_intent_label": candidate.search_intent_label,
                 "search_angle_label": candidate.search_angle_label,
+                "draw_status": draw_status,
                 "topic_bridge": topic_bridge(candidate, internal_data),
                 "matched_race": matched_race,
                 "predictions": internal_data.get("predictions") or [],

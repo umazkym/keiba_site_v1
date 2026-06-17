@@ -27,7 +27,7 @@ export const gradeRaceUpdateStages: GradeRaceUpdateStage[] = [
   },
   {
     key: 'draw_confirmed',
-    label: '枠順確定後',
+    label: '枠順発表後',
     timing: '枠順発表後',
     focus: '枠順、脚質、隊列、内外の有利不利を更新',
   },
@@ -56,7 +56,9 @@ function inferCurrentStage(article: Article): GradeRaceUpdateStageKey {
   const text = `${article.title} ${article.description} ${article.targetKeyword || ''}`;
   if (/当日朝|当日更新|直前更新|最終確認/.test(text)) return 'race_morning';
   if (/前日|前夜|オッズ/.test(text)) return 'eve_update';
-  if (/枠順|馬番|出馬表/.test(text)) return 'draw_confirmed';
+  if (/枠順確定|枠順が確定|枠順発表後|枠順が発表された|枠順を発表|馬番確定|馬番が確定|出馬表発表後|出馬表が発表された|出馬表が公開された|出馬表を発表/.test(text)) {
+    return 'draw_confirmed';
+  }
   return 'one_week_before';
 }
 

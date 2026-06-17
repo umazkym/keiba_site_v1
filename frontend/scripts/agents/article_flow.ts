@@ -92,6 +92,19 @@ function addIssue(state: ArticleFlowState, node: string, severity: FlowSeverity,
   state.issues.push({ node, severity, message });
 }
 
+function isDrawConfirmedReference(ref: Record<string, unknown>): boolean {
+  const drawStatus = String(ref.draw_status || '').toLowerCase();
+  return (
+    drawStatus === 'confirmed' ||
+    ref.draw_confirmed === true ||
+    String(ref.search_angle_label || '') === '枠順発表後'
+  );
+}
+
+function hasConfirmedDrawClaim(text: string): boolean {
+  return /枠順確定|枠順が確定|枠順発表後|枠順が発表された|枠順を発表|馬番確定|馬番が確定|出馬表発表後|出馬表が発表された|出馬表が公開された|出馬表を発表|draw_confirmed/i.test(text);
+}
+
 function classifyArticleType(order: WriteOrder): ArticleType {
   const cluster = order.theme_cluster || '';
   if (cluster === 'grade_race_preview') return 'grade_race_preview';
@@ -490,6 +503,23 @@ function validatePreDraftState(order: WriteOrder, state: ArticleFlowState): void
     const ref = order.reference_data as Record<string, unknown>;
     if (!ref.news_topic && !ref.key_metrics) {
       addIssue(state, 'Evidence Builder', 'critical', 'news article requires news_topic or key_metrics.');
+    }
+    const drawClaimText = [
+      order.target_keyword,
+      ref.news_topic,
+      ref.news_reason,
+      ref.search_intent,
+      ref.search_intent_label,
+      ref.search_angle_label,
+      ref.update_stage,
+    ].map(value => String(value || '')).join(' ');
+    if (hasConfirmedDrawClaim(drawClaimText) && !isDrawConfirmedReference(ref)) {
+      addIssue(
+        state,
+        'Evidence Builder',
+        'critical',
+        '枠順確定・枠順発表後の記事には reference_data.draw_status=confirmed が必要です。未発表段階の記事は枠順発表前の確認順として生成してください。'
+      );
     }
     if ((order.research_sources?.length || 0) === 0 && !ref.source_cards) {
       addIssue(state, 'Research Filter', 'warning', 'news article has no attached research_sources. Continue only if WriteOrder has enough key_metrics.');

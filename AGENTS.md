@@ -94,6 +94,9 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-06-17**:
+  * **記事生成パイプラインの公開ブロックと数値ハルシネーション対策**:
+    `validate_article_links.js` で既存記事の「大きくな」系の不自然な置換残りが検出され、承認済み記事の公開前にワークフローが停止する問題を修正。`naturalize_existing_articles.js` に同系統の補正を追加し、既存記事11本へ適用して `article:validate-links` を通過させた。あわせて `keiba-article-pipeline.yml` のリンク検証をLLM生成前のプリフライトへ移動し、既存記事の問題でWriteOrder消費後に公開だけ止まる事故を防止。
+    Writer/Editor/ArticleFlow側では、Evidence Packに存在しない勝率・複勝率・回収率などの%値をpost-writer段階でcritical扱いに格上げし、Editorの再試行時にも前回却下された未確認数値をプロンプトへ明示するよう修正。Writer/Editorプロンプトから例示用の具体%値や「買い足す」など強めの表現を減らし、未確認数値は数値なしの確認手順へ言い換える方針に統一。`npx tsc --noEmit`、`npm run article:validate-links`、`npm run article:audit-quality`、`npm run build` 成功を確認。
   * **GCP固定ネットワーク費（Networking）の完全削減と楽天APIドメイン認証移行**: 
     GCPの固定維持費（月額約 ¥6,000〜）を削減するため、Cloud RunのVPCコネクタ接続を解除し、GCP上のCloud NAT（`rakuten-cloudrun-nat`）、ルーター（`rakuten-nat-router`）、VPC Accessコネクタを削除。さらに、未使用となった旧固定IP（`35.252.200.91`）を解放してペナルティ課金を停止。本番DB（VM `keiba-db` / `34.182.6.97`）は `e2-micro` にてRUNNING（稼働中）を安全に維持。
     楽天アフィリエイトAPIの2026年新基盤移行に伴い、認証をIP制限から「ドメイン（Allowed Origins）制限」に変更。楽天Developersコンソール側でWeb Application型へ変更してAllowed Originsにサイトドメインを登録し、バックエンドコード（`affiliate.py`）にてリクエストヘッダーに `Origin` を付与するように修正。アフィリエイトURLの解決・報酬トラッキング（ID紐付け）やサイト表示への悪影響がないことをローカル疎通テストにて検証済み。

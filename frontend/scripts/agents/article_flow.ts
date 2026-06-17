@@ -174,7 +174,7 @@ function normalizeEvidenceToken(value: unknown): string | null {
   if (value === null || value === undefined) return null;
   const text = String(value).trim();
   if (!text) return null;
-  return text.replace(/\s+/g, '');
+  return text.replace(/\s+/g, '').replace(/％/g, '%');
 }
 
 function collectEvidenceTokens(value: unknown, tokens: Set<string>): void {
@@ -590,9 +590,44 @@ function collectExternalLinks(content: string): string[] {
   return links;
 }
 
+function normalizeMetricToken(token: string): string {
+  return token.replace(/\s+/g, '').replace(/％/g, '%');
+}
+
+function isAllowedMetricToken(token: string, allowed: Set<string>, targetKeyword: string): boolean {
+  const normalized = normalizeMetricToken(token);
+  if (allowed.has(normalized) || targetKeyword.includes(normalized)) return true;
+
+  const numericOnly = normalized.match(/^\d+(?:\.\d+)?/)?.[0];
+  return Boolean(numericOnly && allowed.has(numericOnly));
+}
+
 function collectMetricTokens(content: string): string[] {
-  const matches = content.match(/\d+(?:\.\d+)?(?:%|回|頭|レース|R|kg|m|年|月|日)/g) || [];
-  return Array.from(new Set(matches.map(token => token.replace(/\s+/g, ''))));
+  const matches = content.match(/\d+(?:\.\d+)?(?:[%％]|回|頭|レース|R|kg|m|年|月|日)/g) || [];
+  return Array.from(new Set(matches.map(normalizeMetricToken)));
+}
+
+function collectUnverifiedPercentageMetrics(content: string, allowed: Set<string>, targetKeyword: string): string[] {
+  const metricNames = '(?:勝率|連対率|複勝率|好走率|回収率|単勝回収率|複勝回収率|的中率)';
+  const patterns = [
+    new RegExp(`${metricNames}[^。\\n%％]{0,30}?(\\d+(?:\\.\\d+)?)\\s*[%％]`, 'g'),
+    new RegExp(`(\\d+(?:\\.\\d+)?)\\s*[%％][^。\\n]{0,16}?${metricNames}`, 'g'),
+  ];
+  const genericAllowed = new Set(['0%', '100%']);
+  const result = new Set<string>();
+
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(content)) !== null) {
+      const token = normalizeMetricToken(`${match[1]}%`);
+      if (genericAllowed.has(token)) continue;
+      if (!isAllowedMetricToken(token, allowed, targetKeyword)) {
+        result.add(token);
+      }
+    }
+  }
+
+  return Array.from(result);
 }
 
 function validateDraftContent(order: WriteOrder, state: ArticleFlowState, content: string): void {
@@ -605,9 +640,20 @@ function validateDraftContent(order: WriteOrder, state: ArticleFlowState, conten
   }
 
   const allowed = new Set(state.evidence_pack.allowedTokens);
+  const unknownPercentageMetrics = collectUnverifiedPercentageMetrics(content, allowed, order.target_keyword);
+  if (unknownPercentageMetrics.length > 0) {
+    addIssue(
+      state,
+      'Fact Checker',
+      'critical',
+      `hallucinated percentage metrics detected: ${unknownPercentageMetrics.slice(0, 12).join(', ')}`
+    );
+  }
+
+  const criticalTokenSet = new Set(unknownPercentageMetrics);
   const unknownMetricTokens = collectMetricTokens(content)
-    .filter(token => !allowed.has(token))
-    .filter(token => !order.target_keyword.includes(token));
+    .filter(token => !criticalTokenSet.has(token))
+    .filter(token => !isAllowedMetricToken(token, allowed, order.target_keyword));
 
   if (unknownMetricTokens.length > 0) {
     addIssue(

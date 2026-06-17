@@ -178,17 +178,12 @@ export async function reserveGeminiRequest(input: {
     lastNonGemmaRequestTime = Date.now();
   }
 
-  // 中性能・高性能モデル (Gemma以外) の呼び出し間に最低限のインターバルを強制
+  // 中性能・高性能モデル (Gemma以外) の呼び出し間に最低 12 秒のインターバルを强制
   const isGemma = /gemma/i.test(input.model);
   if (!isGemma) {
     const now = Date.now();
     const elapsed = now - lastNonGemmaRequestTime;
-    // RPM制限に応じた適切なインターバルを設定
-    // gemini-3.1-flash-lite (low) は RPM 15 なので最低 4秒
-    // gemini-3.5-flash (high) / gemini-3-flash-preview (medium) は RPM 5 なので最低 12秒
-    const isLite = /lite/i.test(input.model);
-    const minInterval = isLite ? 4000 : 12000;
-    
+    const minInterval = 12000; // 12秒
     if (elapsed < minInterval) {
       const waitMs = minInterval - elapsed;
       console.log(`[GeminiQuota] Rate limit protection: Sleeping for ${waitMs}ms before requesting ${input.model}...`);

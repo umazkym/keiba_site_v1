@@ -69,6 +69,13 @@ export type AffiliateImpressionParams = {
     venue_name?: string;
 };
 
+export type RaceNavigationMethod =
+    | 'race_selector'
+    | 'previous_button'
+    | 'next_button'
+    | 'analysis_next_button'
+    | 'same_day_list';
+
 const compactParams = (params: Record<string, unknown>) => {
     return Object.fromEntries(
         Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -91,14 +98,18 @@ const inferPageType = () => {
 };
 
 /**
- * 記事の最下部など、特定の位置まで熟読された際に送信するイベント
- * @param category - コンテンツのカテゴリ (例: race_prediction)
- * @param pagePath - 現在のページパス
+ * 予想表が画面内に表示された際に送信するイベント。
+ * 記事の読了とは意味が異なるため、read_complete とは分離する。
  */
-export const sendReadCompleteEvent = (category: string, pagePath: string) => {
-    sendGAEvent('event', 'read_complete', {
-        content_category: category,
-        page_path: pagePath,
+export const sendPredictionTableViewEvent = (params: {
+    pagePath: string;
+    raceId: string;
+    raceNumber: number;
+}) => {
+    sendGAEvent('event', 'prediction_table_view', {
+        page_path: params.pagePath,
+        race_id: params.raceId,
+        race_number: params.raceNumber,
     });
 };
 
@@ -131,8 +142,69 @@ export const sendRaceViewEvent = (params: {
     venue_name: string;
     race_number: number;
     race_name: string;
+    race_type: 'jra' | 'nar';
 }) => {
     sendGAEvent('event', 'race_view_custom', params);
+};
+
+/**
+ * 中央・地方タブの切り替えを計測する。
+ * 仮想PVにはせず、実ページ表示と画面内操作を明確に分ける。
+ */
+export const sendRaceGroupSelectEvent = (params: {
+    race_date: string;
+    race_type: 'jra' | 'nar';
+}) => {
+    sendGAEvent('event', 'race_group_select', params);
+};
+
+/**
+ * 同一日ページ内の競馬場タブ切り替えを計測する。
+ */
+export const sendRaceVenueSelectEvent = (params: {
+    race_date: string;
+    race_type: 'jra' | 'nar';
+    venue_name: string;
+}) => {
+    sendGAEvent('event', 'race_venue_select', params);
+};
+
+/**
+ * 同一競馬場内での前後レース・レース番号選択を計測する。
+ */
+export const sendRaceNavigationEvent = (params: {
+    race_date: string;
+    venue_name: string;
+    race_type: 'jra' | 'nar';
+    from_race_number: number;
+    to_race_number: number;
+    navigation_method: RaceNavigationMethod;
+}) => {
+    sendGAEvent('event', 'race_navigation', params);
+};
+
+/**
+ * 記事本文の末尾まで到達した際に1回だけ送信する。
+ */
+export const sendArticleReadCompleteEvent = (params: {
+    article_slug: string;
+    article_category: string;
+    reading_time_min: number;
+    page_path: string;
+}) => {
+    sendGAEvent('event', 'article_read_complete', params);
+};
+
+/**
+ * 記事からレースページへ進んだクリックを計測する。
+ */
+export const sendArticleRaceClickEvent = (params: {
+    article_slug: string;
+    article_category: string;
+    link_path: string;
+    link_placement: string;
+}) => {
+    sendGAEvent('event', 'article_race_click', params);
 };
 
 /**

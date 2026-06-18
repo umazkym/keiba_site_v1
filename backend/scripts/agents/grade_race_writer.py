@@ -414,14 +414,33 @@ def build_write_order(race: Dict[str, Any]) -> Dict[str, Any]:
     grade = race['grade']
     year = race_date[:4]
     
-    target_keyword = f"{race_name}{year} AI予想 無料"
-    
     # Phase 2: DBから追加データを取得
     predictions = _get_predictions_from_db(race_id)
     details = _get_race_details_from_db(race_id)
     course_type = details['course_type'] or '芝'
     distance = details['distance'] or 0
     total_horses = details['total_horses'] or 0
+    has_predictions = len(predictions) > 0
+    draw_confirmed = has_predictions and all(
+        p.get('horse_number') and p.get('waku_number')
+        for p in predictions
+    )
+    race_day = datetime.strptime(race_date, '%Y-%m-%d').date()
+    days_to_race = (race_day - datetime.now(JST).date()).days
+    if days_to_race <= 0:
+        race_phase = 'race_day'
+    elif days_to_race <= 2:
+        race_phase = 'final_48h'
+    else:
+        race_phase = 'race_week'
+
+    search_intent = 'ai_prediction' if has_predictions else 'field_analysis'
+    search_intent_label = 'AI予想' if has_predictions else '出走構成・適性'
+    target_keyword = (
+        f"{race_name}{year} AI予想 無料"
+        if has_predictions
+        else f"{race_name}{year} 出走予定 コース分析"
+    )
     
     course_text = f"{venue}競馬場 {course_type}{distance}m" if distance > 0 else f"{venue}競馬場"
     
@@ -443,29 +462,55 @@ def build_write_order(race: Dict[str, Any]) -> Dict[str, Any]:
     venue_encoded = urllib.parse.quote(venue)
     race_url = f"https://uma-free.com/races/{race_date}?race={race.get('race_number', '')}&venue={venue_encoded}"
     
+    if has_predictions:
+        competing_structure = [
+            f'{race_name}{year}の開催条件と出走構成',
+            'AI偏差値と入力済みデータの比較',
+            'コース特性と距離適性',
+            '評価を上げる材料と慎重に見る条件',
+            '当日の出馬表で更新する項目',
+        ]
+        content_focus = 'AI偏差値を出走構成、距離適性、コース特性と照合し、数値だけで評価を決めない'
+    else:
+        competing_structure = [
+            f'{race_name}{year}の公式日程と開催条件',
+            '出走予定馬を比較する観点',
+            'コース特性と距離適性',
+            '現段階で確認できる事実と未発表情報',
+            '出馬表公開後に更新する項目',
+        ]
+        content_focus = '開催条件、出走構成、距離適性を主役にし、未発表の枠順や追い切りを定型的に広げない'
+
     return {
         'target_keyword': target_keyword,
         'theme_cluster': 'grade_race_preview',
         'priority': 100 - race['grade_priority'] * 10,  # G1=90, G2=80, G3=70
-        'has_predictions': len(predictions) > 0,
+        'has_predictions': has_predictions,
         'reference_data': {
             'race_name': f"{race_name}({grade})",
             'race_date': race_date,
+            'scheduled_race_date': race_date,
+            'days_to_race': days_to_race,
+            'race_phase': race_phase,
             'race_url': race_url,
             'venue': course_text,
             'total_horses': total_horses,
+            'search_intent': search_intent,
+            'search_intent_label': search_intent_label,
+            'search_angle_label': search_intent_label,
+            'draw_status': 'confirmed' if draw_confirmed else 'pre_draw',
+            'topic_bridge': {
+                'writer_focus': content_focus,
+                'primary_search_intent': search_intent,
+                'avoid_overuse': [] if search_intent in {'waku', 'training'} else ['枠順', '追い切り'],
+            },
             'period': f"{race_date}開催",
             'condition': course_text,
             'course_stats': course_stats,
             'key_metrics': top_horses_metrics,
             'source': 'UMA-FREE AI分析データ',
         },
-        'competing_article_structure': [
-            f'{race_name}{year}の出走馬と枠順',
-            'AI偏差値ランキングと上位馬の分析',
-            f'コース特性と傾向',
-            '馬券戦略と注目馬まとめ',
-        ],
+        'competing_article_structure': competing_structure,
         'article_type': 'grade_race_preview',
         'race_id': race_id,
     }
@@ -493,14 +538,13 @@ def generate_grade_race_orders() -> int:
 
     for race in upcoming:
         race_name = race['race_name']
-        year = race['race_date'][:4]
-        target_keyword = f"{race_name}{year} AI予想 無料"
+        order = build_write_order(race)
+        target_keyword = order['target_keyword']
 
         if target_keyword in all_known_keywords:
             print(f"[GradeRaceWriter] スキップ（生成済み）: {target_keyword}")
             continue
 
-        order = build_write_order(race)
         now = datetime.now()
         timestamp = now.strftime('%Y%m%d_%H%M%S')
         filename = f"{timestamp}_{race['race_id'][-6:]}.json"

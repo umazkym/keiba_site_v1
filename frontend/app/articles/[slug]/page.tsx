@@ -9,6 +9,7 @@ import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
 import { enhanceArticleHtml } from '@/lib/article-ux';
 import { AffiliateSlot } from '@/components/AffiliateSlot';
+import { ArticleEngagementTracker } from '@/components/ArticleEngagementTracker';
 
 type Props = {
   params: { slug: string };
@@ -23,6 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const description = article.description ||
       `【競馬データ分析】${rawDescription}...`;
 
+    const canonicalSlug = article.canonicalSlug || params.slug;
     const imageUrl = article.eyecatch.startsWith('http')
       ? article.eyecatch
       : `https://uma-free.com${article.eyecatch}`;
@@ -33,7 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       openGraph: {
         title: article.title,
         description,
-        url: `https://uma-free.com/articles/${params.slug}`,
+        url: `https://uma-free.com/articles/${canonicalSlug}`,
         type: 'article',
         siteName: 'UMA-FREE',
         locale: 'ja_JP',
@@ -46,7 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         images: [imageUrl],
       },
       alternates: {
-        canonical: `/articles/${params.slug}`,
+        canonical: `/articles/${canonicalSlug}`,
       },
     };
   } catch (error) {
@@ -67,7 +69,8 @@ export default async function ArticlePage({ params }: Props) {
     const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
     const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
 
-    const articleUrl = `https://uma-free.com/articles/${params.slug}`;
+    const canonicalSlug = article.canonicalSlug || params.slug;
+    const articleUrl = `https://uma-free.com/articles/${canonicalSlug}`;
     const datePublished = new Date(article.date).toISOString();
     const dateModified = new Date(article.lastUpdated || article.date).toISOString();
     const stableArticleAdProps = {
@@ -116,7 +119,7 @@ export default async function ArticlePage({ params }: Props) {
         <div className="mx-auto max-w-[920px] px-3 sm:px-4">
           <Breadcrumb />
 
-          <article>
+          <article data-article-slug={params.slug}>
             {/* ===== ARTICLE HEADER ===== */}
             <header className="relative border-b border-slate-200 pb-4 sm:pb-8">
               {/* アイキャッチ画像（フルワイド） */}
@@ -207,6 +210,7 @@ export default async function ArticlePage({ params }: Props) {
                 </div>
                 <Link
                   href="/races/today"
+                  data-analytics-placement="article_top_cta"
                   className="shrink-0 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary-light transition-all shadow-sm whitespace-nowrap active:scale-95"
                 >
                   本日のレース分析を確認する
@@ -259,6 +263,12 @@ export default async function ArticlePage({ params }: Props) {
                 );
               })()}
             </div>
+
+            <ArticleEngagementTracker
+              slug={params.slug}
+              category={article.category}
+              readingTimeMin={readingTimeMin}
+            />
 
             {/* ===== 記事フッター ===== */}
             <div className="border-t border-slate-200 pb-5 pt-4 sm:pb-8 sm:pt-6">

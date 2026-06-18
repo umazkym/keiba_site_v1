@@ -454,7 +454,24 @@ function isPointHeadingText(heading: string): boolean {
   return POINT_HEADING_TEXTS.includes(heading.trim());
 }
 
-function suffixForTheme(themeCluster: unknown, seed: string): string {
+function suffixForTheme(themeCluster: unknown, seed: string, searchIntent?: unknown): string {
+  const suffixesByIntent: Record<string, string[]> = {
+    race_profile: ['開催条件から見る評価軸', 'コースと距離の確認順', 'レース条件を読む3点'],
+    field_analysis: ['出走構成から見る評価軸', '距離適性と相手関係の見方', 'メンバー比較の確認順'],
+    past_trends: ['過去傾向の使い分け', '今年も使える条件を整理', '過去結果から見る3点'],
+    local_matchup: ['中央馬と地方馬の比較軸', '交流重賞で見る条件差', '所属別に決めない評価順'],
+    result_review: ['結果から見直す評価軸', '展開と事前評価のずれ', '次走へ残す確認材料'],
+    previous_run: ['前走から変わる条件', 'ローテーションの確認順', '条件替わりで見る評価軸'],
+    stable_comment: ['コメントと事実の分け方', '陣営発言を扱う確認順', '状態面を決め手にしない見方'],
+    track_condition: ['馬場変化で見る評価軸', '良馬場と道悪の確認順', 'コース状態から見る3点'],
+    training: ['追い切りを実戦へつなぐ見方', '調教評価を分ける3点', '最終追いと条件の確認順'],
+    waku: ['枠順とコース形態の確認順', '内外だけで決めない評価軸', '位置取りから見る枠順'],
+  };
+  const intentSuffixes = suffixesByIntent[String(searchIntent || '')];
+  if (intentSuffixes) {
+    return intentSuffixes[stableIndex(seed, intentSuffixes.length)];
+  }
+
   const suffixesByTheme: Record<string, string[]> = {
     jockey_data: [
       '勝率と回収率で残す騎手',
@@ -514,7 +531,7 @@ function suffixForTheme(themeCluster: unknown, seed: string): string {
 function fitTitleToSeo(title: string, data: Record<string, any>, content: string): string {
   let result = sanitizeGeneratedText(title).replace(/^["']|["']$/g, '');
   const fallbackBase = compactForTitle(data.target_keyword || result || '競馬データ');
-  const suffix = suffixForTheme(data.theme_cluster, fallbackBase);
+  const suffix = suffixForTheme(data.theme_cluster, fallbackBase, data.search_intent);
   const numberInContent = content.match(/\d+(?:\.\d+)?%?/)?.[0] || '3点';
 
   if (!/\d/.test(result)) {
@@ -624,7 +641,35 @@ function descriptionAdditionsForTheme(themeCluster: unknown): string[] {
 
 function fitDescriptionToSeo(description: string, data: Record<string, any>): string {
   const target = compactForTitle(data.target_keyword || data.title || 'この条件');
-  const additions = descriptionAdditionsForTheme(data.theme_cluster);
+  const additionsByIntent: Record<string, string[]> = {
+    race_profile: [
+      '公式日程と開催条件を起点に、コース形態、距離、出走構成から評価を組み立てる順番を整理します。',
+      '枠順や追い切りへ寄せず、レース固有の条件と当日更新する材料を分けて確認できます。',
+    ],
+    field_analysis: [
+      '出走構成、距離適性、相手関係、斤量、ローテーションを分け、比較する順番を整理します。',
+      '個別馬の材料を入力済みデータの範囲で照合し、評価を上げる条件と慎重に見る条件を確認できます。',
+    ],
+    past_trends: [
+      '過去結果から残る傾向と、今年の開催条件では使いにくい傾向を分けて整理します。',
+      'データを機械的に当てはめず、コース、距離、出走構成の違いから確認順を組み立てます。',
+    ],
+    local_matchup: [
+      '中央馬と地方馬を所属だけで比べず、コース経験、輸送、距離適性、相手関係から整理します。',
+      '交流重賞ならではの条件差を分け、当日の出馬表で確認したい材料をまとめます。',
+    ],
+    result_review: [
+      '確定した結果を展開、位置取り、馬場、事前評価との差に分け、次走へ残す材料を整理します。',
+      'レース前情報へ戻らず、評価を上げたい内容と条件が変われば慎重に見たい内容を確認できます。',
+    ],
+    previous_run: [
+      '前走内容と今回の距離、コース、相手関係の変化を分け、評価を見直す順番を整理します。',
+      '着順だけに寄らず、ローテーションと条件替わりから上積みと慎重材料を確認できます。',
+    ],
+  };
+  const additions =
+    additionsByIntent[String(data.search_intent || '')] ||
+    descriptionAdditionsForTheme(data.theme_cluster);
 
   let result = sanitizeGeneratedText(description)
     .replace(/徹底分析/g, '整理')
@@ -659,6 +704,58 @@ function findLastBuyingPointHeading(content: string): number {
 
 function fallbackBuyingPoints(data: Record<string, any>): string[] {
   const theme = String(data.theme_cluster || '');
+  const intent = String(data.search_intent || '');
+  const pointsByIntent: Record<string, string[]> = {
+    race_profile: [
+      '確認: 開催場、距離、コース形態を先にそろえ、今年の出走構成と合う条件を確認する。',
+      '相手候補: コース経験や距離適性を入力済みデータで裏付けられる馬を残す。',
+      '慎重: レース名の印象だけで評価し、今年の条件差を見ていない馬は重く扱わない。',
+      '条件付き: 当日の馬場や頭数が変わる時は、コース特性の使い方を更新する。',
+    ],
+    field_analysis: [
+      '確認: 出走構成を距離適性、相手関係、斤量、ローテーションに分けて比較する。',
+      '相手候補: 複数の比較軸で大きな不安がない馬を候補として残す。',
+      '慎重: 1つの話題だけで評価が上がった馬は、他の条件との釣り合いを見る。',
+      '条件付き: 出走取消や騎手変更が出た時は、メンバー構成を組み直す。',
+    ],
+    past_trends: [
+      '確認: 過去傾向は今年も同じ開催場、距離、条件で使えるかを先に見る。',
+      '相手候補: 傾向と今年の出走構成が重なる条件を持つ馬を残す。',
+      '慎重: 母数が少ない傾向や開催条件が変わった数字は決め手にしない。',
+      '条件付き: 当日の馬場や頭数が過去集計と違う時は評価を調整する。',
+    ],
+    local_matchup: [
+      '確認: 中央・地方の所属より、コース経験、輸送、距離適性を先に比較する。',
+      '相手候補: 開催場への適性を入力済みデータで確認できる馬を残す。',
+      '慎重: 実績の格だけで条件差を無視した評価は重く扱わない。',
+      '条件付き: 馬場や発走時刻の違いがある時は、過去走との比較条件をそろえる。',
+    ],
+    result_review: [
+      '確認: 確定結果を展開、位置取り、馬場、事前評価との差に分けて振り返る。',
+      '評価材料: 条件に左右されにくい内容は次走でも確認候補として残す。',
+      '慎重: 展開や馬場の助けが大きかった内容は、条件替わりで同じ評価を置かない。',
+      '条件付き: 次走で距離やコースが変わる馬は、今回の結果をそのまま当てはめない。',
+    ],
+    previous_run: [
+      '確認: 前走の着順より、今回変わる距離、コース、相手関係を先に見る。',
+      '相手候補: 条件替わりで前走より走りやすくなる根拠がある馬を残す。',
+      '慎重: 前走の展開や馬場に恵まれた馬は、同じ形を前提にしない。',
+      '条件付き: 間隔や斤量が変わる時は、前走評価の重みを調整する。',
+    ],
+    training: [
+      '確認: 追い切りは時計、負荷、併せ方を分け、確認済みの事実だけを扱う。',
+      '相手候補: 調教内容と今回条件の両方に不安が少ない馬を残す。',
+      '慎重: 追い切り評価だけで人気が集まる馬は、実戦条件との接点を見る。',
+      '条件付き: 調教過程と輸送やレース間隔が異なる時は評価を調整する。',
+    ],
+    waku: [
+      '確認: 枠順はコース形態と想定する位置取りを組み合わせて見る。',
+      '相手候補: 内外の不利を脚質や先行力で補える馬を残す。',
+      '慎重: 枠番だけで評価が上がった馬は、出走構成との釣り合いを見る。',
+      '条件付き: 当日の馬場で内外の伸びが変わる時は枠評価を更新する。',
+    ],
+  };
+  if (pointsByIntent[intent]) return pointsByIntent[intent];
   if (theme === 'jockey_data') {
     return [
       '買い: 勝率と騎乗回数がそろう騎手は、人気との釣り合いを見て軸候補にする。',
@@ -800,9 +897,43 @@ function insertBeforeFinalPointSection(content: string, insertion: string): stri
   return `${before}\n\n${insertion.trim()}\n\n${after}`.trim();
 }
 
+function raceIntentExpansionBlocks(data: Record<string, any>): string[] {
+  const intent = String(data.search_intent || 'race_profile');
+  const target = compactForTitle(data.target_keyword || data.title || 'このレース');
+  const phase = String(data.race_phase || '');
+  const isPostRace = phase === 'post_race' || intent === 'result_review';
+  const focus = String(data.content_focus || data.topic_bridge?.writer_focus || '').trim();
+
+  const primaryBlocks: Record<string, string> = {
+    race_profile: `## 開催条件を3層に分けて見る\n\n${target}では、レース名だけで過去のイメージを当てはめず、開催場、距離、コース形態の順に条件をそろえたい。最初に確認するのは、直線の長さやコーナーの回り方など、走り方へ直接影響する舞台設定だ。次に出走資格や斤量条件を見て、最後に今年のメンバー構成を重ねる。この順番なら、枠順や追い切りが未発表の段階でも、レース固有の論点を整理できる。\n\n同じ距離でも開催場が変われば求められる加速や持続力は変わる。過去傾向を使う時は、今回と条件がそろう集計かを確認し、違う条件の数字は参考材料までに留める。`,
+    field_analysis: `## 出走構成を4つの比較軸に分ける\n\n${target}のメンバー比較では、馬名を並べるだけでなく、距離適性、コース経験、斤量、ローテーションの4点に分ける。どれか1つが優れていても、他の条件で負担が増えるなら評価は一段落ち着かせたい。反対に派手な話題がなくても、複数の比較軸で不安が少ない馬は候補として残しやすい。\n\n個別馬の事実はWriteOrderに含まれる範囲だけを使う。情報がない項目を推測で埋めず、未確認の部分は当日の出馬表で更新する項目として残す。`,
+    past_trends: `## 過去傾向を今年へ移す前の3条件\n\n${target}で過去結果を使う時は、開催場、距離、出走条件が今年とそろっているかを先に確認する。集計期間が長くても、施行条件が変わっていれば同じ重みでは扱えない。次に母数を見て、少数例の偏りを決め手にしない。最後に今年の出走構成を重ね、傾向が働きやすい組み合わせかを見直す。\n\n過去傾向は答えではなく比較の土台になる。今回と共通する条件だけを残し、違う条件は評価を下げる材料ではなく、慎重に扱う理由として記録する。`,
+    local_matchup: `## 中央馬と地方馬を所属だけで比べない\n\n${target}のような交流重賞では、所属の違いよりも開催場の経験、輸送、距離適性、普段戦う相手関係を分けて見る。中央所属という理由だけで上げず、地方所属という理由だけで下げない。小回り、直線、砂質、ナイターなど、その競馬場で走る時に変わる条件を先にそろえる。\n\n比較する情報が入力にない場合は、実績を推測で補わない。当日の出馬表とUMA-FREEの内部データで確認する項目を明示し、所属ラベルだけで結論を作らないことが重要になる。`,
+    previous_run: `## 前走から変わる条件を先に拾う\n\n${target}では、前走の着順だけで評価を引き継がず、距離、コース、相手関係、斤量、レース間隔の変化を見る。前走と同じ走り方を再現しやすい条件なのか、別の対応が必要なのかを分けると、巻き返し材料と慎重材料が混ざりにくい。\n\n前走で有利だった展開や馬場が今回は再現しない可能性もある。逆に前走で合わなかった条件が変わるなら、着順だけでは見えない見直し余地が生まれる。`,
+    training: `## 追い切りを3つの事実に分ける\n\n${target}の追い切りは、時計、負荷、併せ方を分けて確認する。時計だけを切り取って評価せず、どのコースで、どの程度の負荷をかけ、併せた相手とどう動いたかを確認済みの範囲で整理したい。入力にない調教時計や状態評価は作らない。\n\n追い切りは状態面の材料であり、距離適性や相手関係を上書きするものではない。実戦条件との接点が説明できる時だけ評価材料として残す。`,
+    waku: `## 枠順をコース形態と位置取りへ置き換える\n\n${target}の枠順は、内外の番号だけで評価しない。スタートから最初のコーナーまでの距離、コーナーの数、想定する位置取りを重ね、どこでロスが生まれるかを確認する。発表済みの枠順だけを扱い、未確認の馬番や並びは補わない。\n\n内枠でも包まれる可能性があり、外枠でも先行力や頭数によって負担は変わる。枠番を結論ではなく、走り方を具体化する材料として使う。`,
+    result_review: `## 結果を4つの要素へ分解する\n\n${target}の振り返りでは、確定着順、展開、位置取り、馬場の4点を分ける。着順だけで事前評価の正誤を決めず、想定した走りができたか、条件の助けや不利がどこにあったかを確認する。入力にない通過順や不利は推測で補わない。\n\n次走へ残すのは、条件が変わっても再現しやすい内容だ。展開や馬場への依存が大きい場合は、同じ評価を置く条件を限定する。`,
+  };
+
+  const opening = primaryBlocks[intent] || primaryBlocks.race_profile;
+  const shared = [
+    `## 確認済み情報と未確認情報を分ける\n\n記事で扱う材料は、公式日程や発表済み情報、UMA-FREEの内部データ、まだ更新を待つ情報の3層に分ける。確認済みの事実は本文の土台にできるが、未発表の項目を一般論で埋めると、どの重賞でも同じ内容になってしまう。${focus || '選ばれた検索意図を主役にし、関係の薄い材料は広げない。'}\n\n未確認情報は弱点ではなく、更新箇所を明確にするための余白になる。何が分かっていて、何を当日に確認するのかを分ける方が、読者は記事を使いやすい。`,
+    `## 比較材料の重さをそろえる\n\n複数の材料を比べる時は、事実の確度と今回条件への近さをそろえたい。公式発表と推測、今回と同条件の実績と別条件の実績を同じ重さで並べると、評価理由がぼやける。今回の開催条件に近く、入力済みデータで確認できる材料から先に置く。\n\n補助材料は結論を強めるために数を増やすのではなく、主題と矛盾しないかを確かめるために使う。理由が重複する項目はまとめ、違う角度の材料だけを残す。`,
+    `## 話題性と評価を切り離す2段階\n\n最初の段階では、ニュースで大きく扱われたかではなく、今回の条件と接点があるかを確認する。次の段階で、UMA-FREEの入力済みデータと照合し、評価を上げる材料、判断を保留する材料、慎重に見る材料へ分ける。話題の大きさは人気へ影響しても、適性の根拠そのものにはならない。\n\nこの2段階を守ると、注目度の高い馬だけで記事が埋まるのを避けられる。情報量が少ない馬も、確認できる条件があれば同じ比較軸に置ける。`,
+    isPostRace
+      ? `## 次走へ残す材料と今回限りの材料\n\nレース後は、今回の結果をそのまま次走評価へ持ち込まない。開催場、距離、馬場、相手関係が変わっても残る内容と、今回の展開で強く出た内容を分ける。前者は次走の確認候補になり、後者は同じ条件が重なった時だけ使う材料になる。\n\n結果を振り返る目的は、後から正解へ寄せることではない。事前に置いた比較軸のどこが機能し、どこを更新すべきかを記録することにある。`
+      : `## 更新情報で変える項目を限定する\n\nレースが近づくと情報は増えるが、記事全体を毎回組み替える必要はない。出走取消、騎手変更、馬場発表など、主題へ直接影響する情報だけを更新する。関係の薄いニュースまで足すと、最初に整理した比較軸が見えにくくなる。\n\n更新前に残した条件と、更新後に変わった条件を分ければ、読者は判断の変化を追いやすい。新しい情報が出ても、理由なく評価を反転させない。`,
+    `## 最後に残す3つのメモ\n\n記事を読み終えた時点で残すのは、評価を上げる材料、慎重に見る条件、追加確認する項目の3つで十分だ。材料が複数重なる場合でも、同じ理由を言い換えて数を増やさない。異なる比較軸で裏付けられているかを確認する。\n\n追加確認する項目は、入力にない事実を埋める場所ではない。最新の出馬表や確定結果で更新し、最初に置いた評価理由が維持できるかを確かめるために使う。`,
+  ];
+  return [opening, ...shared];
+}
+
 function lengthExpansionBlocks(data: Record<string, any>): string[] {
   const theme = String(data.theme_cluster || data.article_type || '');
   const target = compactForTitle(data.target_keyword || data.title || 'このレース');
+  if (theme === 'grade_race_preview' || theme === 'news_context' || theme === 'race_update') {
+    return raceIntentExpansionBlocks(data);
+  }
   const genericBlocks = [
     `## 出馬表で使う3つの順番\n\n${target}を見る時は、最初に表の数字、次に当日の条件、最後に人気との釣り合いを確認する。数字が強い条件でも、当日の馬場や枠順が合わなければ軸にはしにくい。反対に数字が控えめでも、少頭数、内外の伸び、先行馬の少なさなどが重なれば、相手候補として残す理由になる。\n\n出馬表では、馬の能力だけでなく、どの位置から競馬を進めるかを見たい。逃げ先行が多い時は差し馬の届く条件を確認し、前が楽になりそうな時は内外のロスを見直す。数字をそのまま買うのではなく、当日の隊列に置き換えると、買いと見送りの線を引きやすくなる。`,
     `## 数字を疑う2つの条件\n\n1つ目は母数が少ないケースだ。勝率や回収率が高く見えても、対象レースが少ない場合は偶然の影響を受けやすい。そうした数字は軸の決め手ではなく、相手候補を広げる材料として扱う。2つ目は人気とのズレが大きいケースだ。数字が良くても人気が過度に集まっているなら、買い目の中心に置く前に馬場や脚質の裏付けを確認したい。\n\n数字を疑うことは、データを軽視することではない。数字が強い理由を出馬表で確認し、説明できる時だけ重く扱う。説明できない数字は抑えまでに留め、当日の条件が合う馬を優先する。これだけでも、買い目の広げすぎを避けやすくなる。`,
@@ -993,6 +1124,9 @@ STEP 2：構造チェック
 ・1文目に核心データと、読者が最初に確認すべき材料が含まれているか
 ・見出しに数字と結論が含まれているか（最後の「このコースの買い目ポイント」「このレースの買い目ポイント」「このニュースの確認ポイント」は例外）
 ・「まとめ」や「総論」などの見出しが存在しないか
+・frontmatter の search_intent と content_focus が記事の中心になっているか
+・search_intent が "waku" でないのに枠順が複数H2へ広がっていないか、"training" でないのに追い切りが主題化されていないか
+・race_phase が "post_race" の記事に、枠順発表や最終追い切りなどレース前の確認手順が混入していないか
 ・記事末尾にテーマに応じた確認ポイント見出しがあり、最後に「最新の出馬表とAI予想は [今日のAI予想・出馬表](/races/today) で無料公開中。」が自然に入っているか
 ・チェックマークやバツ印などの装飾記号、煽りの強い「最強」「圧倒的」「狙い撃つ」「買うな」「消去対象」が残っていないか
 ・重賞記事は、人気馬を煽るだけでなく「評価を上げる材料」「慎重に見る条件」「見送りを検討する条件」が分かれているか
@@ -1113,7 +1247,7 @@ const GEMMA_REVIEW_PASSES: GemmaReviewPass[] = [
   {
     id: 'search-intent',
     label: '検索意図レビュー',
-    instruction: '検索流入を増やす観点で、title/description/H2/冒頭が検索意図に合うかを確認する。ロングテール語は自然に本文へ入るものだけ提案する。',
+    instruction: 'frontmatterのsearch_intent、race_phase、content_focusを基準に、title/description/H2/冒頭が開催段階と検索意図に合うかを確認する。枠順・追い切りは主題の場合だけ提案する。',
   },
   {
     id: 'depth',

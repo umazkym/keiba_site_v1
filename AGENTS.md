@@ -101,6 +101,17 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-06-18**:
+  * **収益ファネル計測の正常化と検索カニバリ抑制**:
+    GA4のページビューがAdSenseページビューを大きく上回っていた原因を調査し、`RaceTabs.tsx` が中央・地方タブと競馬場タブの切り替えを仮想`page_view`として送信していた処理を廃止。`race_group_select`、`race_venue_select`、`race_navigation`へ分離し、実ページ表示とレース画面内操作を区別できる構成へ変更した。予想表の表示時に送っていた旧`read_complete`は`prediction_table_view`へ改名し、記事本文末尾への到達を`article_read_complete`、記事からレースページへの遷移を`article_race_click`として新規計測。アフィリエイトクリックを含むGA4キーイベント候補と推奨ファネルを`docs/analytics_measurement_plan.md`へ整理した。
+    リワード広告の意図的な停止中は詳細データ閲覧を`open_access`として扱い、利用不可・自動フォールバックの診断イベントを各レース単位で大量送信しないよう、日付・競馬場・理由単位へ抑制。検索表示が多くCTRの低かった馬場状態、馬体重、オッズ妙味の記事タイトル・descriptionを検索意図に合わせて更新し、宝塚記念の重複4記事には検索実績のある中心記事への`canonical_slug`を設定した。`npx tsc --noEmit`、`npm run article:validate-links`、`npm run build`成功。生成HTMLのcanonicalと配信チャンク内の新イベントも確認。Browser実確認はWindowsサンドボックスの起動権限エラーで未実施。
+  * **重賞日程連動と記事テーマ偏重の修正**:
+    `news_topic_planner.py` が主要G1中心の手書き日程と、先頭から「枠順」「追い切り」を並べたTavilyクエリに依存していたため、2026年の実開催日と記事内容がずれる問題を修正。JRA公式重賞一覧と地方重賞スケジュールを1実行あたり低頻度で取得し、公式日程を内蔵カレンダーより優先する構成へ変更した。2026年は、さきたま杯を6月24日、帝王賞を7月1日として扱い、府中牝馬S、しらさぎS、ラジオNIKKEI賞、函館記念なども対象へ追加。
+    開催までの日数を `early_preview / field_building / race_week / final_48h / race_day / post_race` に分類し、早期はコース・過去傾向・出走構成、直前は馬場・陣営情報、終了後は結果回顧へ切り替えるロジックを追加。レース後に枠順・追い切り記事を生成せず、1回の生成で枠順・追い切り系は合計1本までに制限した。検索意図判定はTavilyクエリよりソースのタイトル・本文を重く評価し、公式日程に一致しないレース記事は既定で候補外とした。
+    Writer/Editor/文字数補完も `search_intent` と `race_phase` を引き継ぎ、出走構成、コース条件、過去傾向、中央馬と地方馬の比較、前走、結果回顧など主題別に展開するよう変更。主題でない枠順・追い切りを定型H2として追加しないガードを導入した。`grade_race_writer.py` も予測未取得時は「AI予想」ではなく出走構成・コース分析を中心にする構成へ変更。誤った段階で公開されていた帝王賞の最終追い切り記事と、レース終了後に公開された宝塚記念の事前記事は `draft: true` へ戻し、`frontend/lib/articles.ts` で下書きを一覧・サイトマップ・個別ページから除外するようにした。
+    `backend/tests/test_news_topic_planner.py` を追加し、日程、クエリ分散、検索意図、レース後ガードの4件を検証。`unittest`、`py_compile`、`npx tsc --noEmit`、`npm run article:validate-links`、`npm run build` 成功を確認。記事品質監査は既存100記事に由来するcritical 10件・warning 298件を報告したが、コマンド自体は完走した。
+  * **重賞記事の対象期間を開催前7日・開催後3日に短縮**:
+    SEO上の検索需要と記事内容の鮮度をそろえるため、`KEIBA_NEWS_RACE_WINDOW_BEFORE_DAYS` を21日から7日へ変更し、開催後は従来通り3日までとした。コード内フォールバック値、GitHub Actions、`.env.example` を同じ `7 / 3` に統一。開催後の検索クエリは `result_review` のみに限定し、過去傾向・枠順・追い切りなどの事前テーマを生成しない構成へ変更した。月またぎの日程取得処理は維持される。境界値（開催7日前・8日前・3日後・4日後）と結果回顧限定を含む回帰テスト5件、`py_compile` 成功を確認。
 * **2026-06-17**:
   * **中央・地方重賞の近日表示対応**:
     ホーム上部の重賞枠が中央競馬のみの取得条件になっていたため、`get_weekly_grade_races` を今日から14日以内の中央・地方重賞を返す構成へ変更。地方の `Jpn1/Jpn2/Jpn3` とレース名末尾の `重賞` 表記を検出し、通常レース名に含まれる「重賞級」などは拾わないようにした。`WeeklyGradeRaces` は「近日の重賞レース」として中央・地方を区分表示し、G1/Jpn1級は注目開催カードで表示。`py_compile`、`npx tsc --noEmit`、`npm run build` 成功を確認。

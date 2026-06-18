@@ -13,7 +13,7 @@ theme_cluster: race_update
 category: 重賞攻略
 article_type: race_update
 update_stage: draw_confirmed
-draft: false
+draft: true
 date: '2026-06-17T13:55:03.905Z'
 og_type: article
 og_title: 宝塚記念2026｜枠順確定後に見る阪神芝2200mの確認ポイント5

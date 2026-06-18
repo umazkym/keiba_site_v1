@@ -5,7 +5,7 @@ import { RacePrediction } from '@/lib/types';
 import React, { useEffect, useRef } from 'react';
 import { getWakuNumber } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
-import { sendReadCompleteEvent } from '../lib/analytics';
+import { sendPredictionTableViewEvent } from '../lib/analytics';
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
 import 'tippy.js/animations/shift-away.css';
@@ -52,14 +52,18 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
         
         const observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting) {
-                sendReadCompleteEvent('race_prediction', pathname || '');
+                sendPredictionTableViewEvent({
+                    pagePath: pathname || '',
+                    raceId: race.id,
+                    raceNumber: race.race_number,
+                });
                 observer.disconnect();
             }
         }, { threshold: 0.3 });
         
         observer.observe(el);
         return () => observer.disconnect();
-    }, [pathname]);
+    }, [pathname, race.id, race.race_number]);
 
     const hasAnyScore = race.predictions.some(p => p.deviation_score !== null && p.deviation_score !== undefined);
     const hasReason = race.predictions.some(p => Boolean(p.unpredictable_reason));

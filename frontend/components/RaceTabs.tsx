@@ -18,7 +18,14 @@ import { DataExplanationPanel } from './DataExplanationPanel';
 import { DynamicRelatedArticles } from './DynamicRelatedArticles';
 import { Article } from '@/lib/articles';
 import { useRewardedAd, type RewardedAdContext } from '@/hooks/useRewardedAd';
-import { sendRaceViewEvent, sendRewardGateEvent } from '@/lib/analytics';
+import {
+    sendRaceGroupSelectEvent,
+    sendRaceNavigationEvent,
+    sendRaceVenueSelectEvent,
+    sendRaceViewEvent,
+    sendRewardGateEvent,
+    type RaceNavigationMethod,
+} from '@/lib/analytics';
 import { LAST_RACE_STORAGE_KEY, StoredRaceView } from '@/lib/race-memory';
 import { getRaceDetailPath } from '@/lib/race-url';
 import { formatDate } from '@/lib/utils';
@@ -91,6 +98,10 @@ const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
 
 PremiumDetailPlaceholder.displayName = 'PremiumDetailPlaceholder';
 
+const isIntentionalRewardedDisableReason = (reason: string | null) => {
+    return reason === 'rewarded_temporarily_disabled' || reason === 'rewarded_fullscreen_disabled';
+};
+
 const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, venueActivationKey = 0, isRaceUnlocked, isReady, isLoading, isSupported, unavailableReason, showAd, unlock }: { venue: VenueRaces, raceType: 'jra' | 'nar', articlesMeta: Omit<Article, 'content'>[], initialRaceNumber?: number | null, venueActivationKey?: number, isRaceUnlocked: (raceId: string) => boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, unavailableReason: string | null, showAd: (context?: RewardedAdContext | string) => boolean, unlock: (raceId?: string) => void }) => {
     const params = useParams();
     const currentDate = params.date as string;
@@ -152,19 +163,27 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         });
     }, [venue.venue_name]);
 
-    const handleRaceSelect = useCallback((index: number) => {
-        if (index === activeRaceIndex) return;
+    const handleRaceSelect = useCallback((index: number, navigationMethod: RaceNavigationMethod = 'race_selector') => {
+        if (!activeRace || index === activeRaceIndex) return;
 
-        setActiveRaceIndex(index);
         const selectedRace = venue.races[index];
         if (selectedRace) {
+            sendRaceNavigationEvent({
+                race_date: currentDate,
+                venue_name: venue.venue_name,
+                race_type: raceType,
+                from_race_number: activeRace.race_number,
+                to_race_number: selectedRace.race_number,
+                navigation_method: navigationMethod,
+            });
+            setActiveRaceIndex(index);
             const newUrl = getRaceDetailPath(currentDate, venue.venue_name, selectedRace.race_number);
             if (typeof window !== 'undefined') {
                 window.history.replaceState(window.history.state, '', newUrl);
             }
             scrollVenueIntoView();
         }
-    }, [activeRaceIndex, venue.races, venue.venue_name, currentDate, scrollVenueIntoView]);
+    }, [activeRace, activeRaceIndex, venue.races, venue.venue_name, currentDate, raceType, scrollVenueIntoView]);
 
     // ★ ビューアビリティ改善: 条件を5→3頭に緩和し、ほぼ全レースで広告表示
     const shouldShowAd = useMemo(() => {
@@ -259,6 +278,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             venue_name: venue.venue_name,
             race_number: activeRace.race_number,
             race_name: activeRace.race_name,
+            race_type: raceType,
         });
     }, [
         activeRace?.id,
@@ -267,6 +287,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         activeRace?.course_type,
         activeRace?.distance,
         currentDate,
+        raceType,
         venue.venue_name,
     ]);
 
@@ -291,7 +312,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         if (!context) return;
 
         const status = isSupported ? 'ready' : 'unavailable';
-        const key = `${activeRace.id}:${status}`;
+        const key = `${currentDate}:${venue.venue_name}:${status}:${unavailableReason ?? 'none'}`;
         if (adAvailabilityKeysRef.current.has(key)) return;
         adAvailabilityKeysRef.current.add(key);
         sendRewardGateEvent(isSupported ? 'reward_ad_ready' : 'reward_ad_unavailable', {
@@ -309,10 +330,15 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         const key = `${activeRace.id}:premium_view`;
         if (premiumViewKeysRef.current.has(key)) return;
         premiumViewKeysRef.current.add(key);
+        const isOpenAccess = isIntentionalRewardedDisableReason(unavailableReason);
         sendRewardGateEvent('premium_data_view', {
             ...context,
-            result: isActiveRaceUnlocked ? 'reward_unlocked' : 'soft_fallback',
-            reason: isActiveRaceUnlocked
+            result: isActiveRaceUnlocked
+                ? 'reward_unlocked'
+                : isOpenAccess
+                    ? 'open_access'
+                    : 'soft_fallback',
+            reason: isActiveRaceUnlocked || isOpenAccess
                 ? undefined
                 : isLoading
                     ? 'rewarded_soft_fallback_while_loading'
@@ -322,10 +348,11 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
 
     useEffect(() => {
         if (!activeRace || isActiveRaceUnlocked || canUseRewardedAd) return;
+        if (isIntentionalRewardedDisableReason(unavailableReason)) return;
         const context = buildRewardContext();
         if (!context) return;
 
-        const key = `${activeRace.id}:soft_fallback`;
+        const key = `${currentDate}:${venue.venue_name}:${unavailableReason ?? 'rewarded_unavailable'}:soft_fallback`;
         if (fallbackKeysRef.current.has(key)) return;
         fallbackKeysRef.current.add(key);
         sendRewardGateEvent('reward_fallback_used', {
@@ -347,12 +374,12 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             <div className="my-2 sm:my-3">
                 <div className="flex justify-between items-center gap-2">
                     {hasPrev && prevRace ? (
-                        <button onClick={() => handleRaceSelect(activeRaceIndex - 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 font-bold shadow-sm">
+                        <button onClick={() => handleRaceSelect(activeRaceIndex - 1, 'previous_button')} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 font-bold shadow-sm">
                             &larr; {prevRace.race_number}Rへ
                         </button>
                     ) : <div className="flex-1" />}
                     {hasNext && nextRace ? (
-                        <button onClick={() => handleRaceSelect(activeRaceIndex + 1)} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 font-bold shadow-sm">
+                        <button onClick={() => handleRaceSelect(activeRaceIndex + 1, 'next_button')} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 font-bold shadow-sm">
                             {nextRace.race_number}Rへ &rarr;
                         </button>
                     ) : <div className="flex-1" />}
@@ -378,7 +405,11 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                         })()}
                     </div>
                 )}
-                <RaceSelector races={venue.races} selectedIndex={activeRaceIndex} onSelectRace={handleRaceSelect} />
+                <RaceSelector
+                    races={venue.races}
+                    selectedIndex={activeRaceIndex}
+                    onSelectRace={(index) => handleRaceSelect(index, 'race_selector')}
+                />
             </div>
             {activeRace && (
                 <div id={`race-${activeRace.id}`} className="race-detail-layout mt-1">
@@ -572,7 +603,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 if (nextTopHorse && nextRace) {
                                     return (
                                         <div
-                                            onClick={() => handleRaceSelect(activeRaceIndex + 1)}
+                                            onClick={() => handleRaceSelect(activeRaceIndex + 1, 'analysis_next_button')}
                                             className="flex items-center gap-2 p-2 sm:gap-3 sm:p-3 bg-gradient-to-r from-blue-50/80 to-slate-50 border border-blue-100 rounded-xl mb-1 cursor-pointer hover:border-blue-200 transition-colors active:scale-[0.99]"
                                         >
                                             <div className="h-8 w-8 sm:w-9 sm:h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
@@ -627,7 +658,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                     return (
                                         <button
                                             key={r.id}
-                                            onClick={() => handleRaceSelect(idx)}
+                                            onClick={() => handleRaceSelect(idx, 'same_day_list')}
                                             className={`side-link w-full text-left transition-all ${isCurrent ? '!bg-blue-50 !border-blue-300' : 'hover:bg-slate-50'}`}
                                             style={{ display: 'grid', gridTemplateColumns: '42px 1fr', gap: '10px', alignItems: 'center' }}
                                         >
@@ -695,26 +726,34 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
     const [jraActivationKey, setJraActivationKey] = useState(0);
     const [narActivationKey, setNarActivationKey] = useState(0);
 
+    const availableRaceTypes = useMemo<Array<'jra' | 'nar'>>(() => {
+        const types: Array<'jra' | 'nar'> = [];
+        if (jra.length > 0) types.push('jra');
+        if (nar.length > 0) types.push('nar');
+        return types;
+    }, [jra.length, nar.length]);
+
     const handleTopTabSelect = useCallback((index: number) => {
-        if (index === 0) setJraActivationKey(prev => prev + 1);
+        const raceType = availableRaceTypes[index];
+        if (!raceType) return;
+
+        if (raceType === 'jra') setJraActivationKey(prev => prev + 1);
         else setNarActivationKey(prev => prev + 1);
 
-        if (typeof window !== 'undefined' && (window as any).gtag) {
-            const tabName = index === 0 ? '中央競馬' : '地方競馬';
-            (window as any).gtag('event', 'page_view', {
-                page_path: `/races/${currentDate}?tab=${encodeURIComponent(tabName)}`,
-                page_title: `${tabName} - レース一覧`,
-            });
-        }
-    }, [currentDate]);
+        sendRaceGroupSelectEvent({
+            race_date: currentDate,
+            race_type: raceType,
+        });
+    }, [availableRaceTypes, currentDate]);
 
     const handleJraVenueSelect = useCallback((index: number) => {
         setJraActivationKey(prev => prev + 1);
         const venue = jra[index];
-        if (venue && typeof window !== 'undefined' && (window as any).gtag) {
-            (window as any).gtag('event', 'page_view', {
-                page_path: `/races/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
-                page_title: `${venue.venue_name} - レース一覧`,
+        if (venue) {
+            sendRaceVenueSelectEvent({
+                race_date: currentDate,
+                race_type: 'jra',
+                venue_name: venue.venue_name,
             });
         }
     }, [jra, currentDate]);
@@ -722,10 +761,11 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
     const handleNarVenueSelect = useCallback((index: number) => {
         setNarActivationKey(prev => prev + 1);
         const venue = nar[index];
-        if (venue && typeof window !== 'undefined' && (window as any).gtag) {
-            (window as any).gtag('event', 'page_view', {
-                page_path: `/races/${currentDate}?venue=${encodeURIComponent(venue.venue_name)}`,
-                page_title: `${venue.venue_name} - レース一覧`,
+        if (venue) {
+            sendRaceVenueSelectEvent({
+                race_date: currentDate,
+                race_type: 'nar',
+                venue_name: venue.venue_name,
             });
         }
     }, [nar, currentDate]);

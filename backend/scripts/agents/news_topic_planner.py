@@ -25,6 +25,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 from urllib.parse import quote, urlparse
 
 import requests
+from bs4 import BeautifulSoup
 
 try:
     from dotenv import load_dotenv
@@ -85,26 +86,44 @@ TRUSTED_MEDIA_PATTERNS = (
 )
 
 QUERY_TEMPLATES = [
-    "JRA 公式 競馬 ニュース 重賞 出走予定 枠順 確定 {year}",
-    "JRA 公式 重賞 出走馬 馬場 発表 {year}",
-    "競馬 ニュース 重賞 枠順 出走予定 騎手変更 馬場 {year}",
-    "競馬 ニュース 重賞 追い切り 調教 評価 {year}",
-    "競馬 ニュース 重賞 前走 陣営コメント 厩舎コメント {year}",
-    "競馬 ニュース 重賞 話題馬 騎手 乗り替わり {year}",
-    "競馬 SNS 話題 注目馬 騎手 重賞 {year}",
-    "地方競馬 ニュース 重賞 出走予定 枠順 {year}",
-    "NAR 公式 地方競馬 交流重賞 出走予定 枠順 {year}",
-    "地方競馬 交流重賞 帝王賞 東京大賞典 JBC かしわ記念 {year}",
+    "JRA 公式 重賞 開催日程 出走予定 コース {year}",
+    "JRA 公式 重賞 登録馬 ローテーション 前走 {year}",
+    "地方競馬 公式 重賞 開催日程 出走予定 交流競走 {year}",
+    "競馬 重賞 結果 回顧 レース後 コメント {year}",
 ]
 
-RACE_QUERY_INTENTS = [
-    "枠順 出走馬 出走予定",
-    "追い切り 調教 最終追い",
-    "前走 陣営コメント 厩舎コメント",
-    "馬場 天気 脚質",
-    "話題馬 騎手 乗り替わり",
-    "SNS 話題 注目馬",
-]
+QUERY_TERMS_BY_INTENT = {
+    "race_profile": "レース傾向 コース 距離 過去傾向",
+    "field_analysis": "出走予定 登録馬 出走構成 距離適性",
+    "past_trends": "過去結果 傾向 好走条件 コース",
+    "previous_run": "前走 ローテーション 条件替わり",
+    "stable_comment": "陣営コメント 厩舎コメント 状態",
+    "track_condition": "馬場 天気 コース傾向",
+    "jockey_change": "騎手 乗り替わり 鞍上",
+    "local_matchup": "交流重賞 中央馬 地方馬 適性",
+    "entries": "出走馬 出走予定 登録馬",
+    "waku": "枠順 発表 出馬表",
+    "training": "追い切り 調教 最終追い",
+    "result_review": "結果 回顧 勝因 敗因 レース後",
+}
+
+NAR_VENUES = {
+    "門別",
+    "盛岡",
+    "水沢",
+    "浦和",
+    "船橋",
+    "大井",
+    "川崎",
+    "金沢",
+    "笠松",
+    "名古屋",
+    "園田",
+    "姫路",
+    "高知",
+    "佐賀",
+    "帯広ば",
+}
 
 SOURCE_METRIC_REJECT_PATTERN = re.compile(
     r"勝率|複勝率|連対率|回収率|単勝回収|複勝回収|AI偏差値|指数|予想印|本命|穴馬|オッズ|買い目"
@@ -129,14 +148,19 @@ OVERSEAS_KEYWORDS = re.compile(
 )
 
 SEARCH_INTENT_RULES = [
-    ("waku", "枠順", re.compile(r"枠順|枠順確定|抽選|ゲート"), 30),
-    ("entries", "出走馬", re.compile(r"出走予定|出走馬|登録馬|出馬表|出走"), 26),
-    ("training", "追い切り", re.compile(r"追い切り|調教|最終追い|坂路|ウッド|併せ馬"), 28),
+    ("result_review", "結果・回顧", re.compile(r"レース結果|結果|回顧|勝因|敗因|レース後|優勝|制した|着順"), 34),
+    ("local_matchup", "中央馬と地方馬の比較", re.compile(r"交流重賞|中央馬|地方馬|JRA勢|地方勢|遠征馬"), 28),
+    ("field_analysis", "出走構成・適性", re.compile(r"出走構成|メンバー構成|距離適性|コース適性|相手関係|斤量|世代比較"), 27),
+    ("past_trends", "過去傾向", re.compile(r"過去\d+年|過去結果|傾向|好走条件|歴代|データ分析"), 26),
+    ("race_profile", "レース条件・コース", re.compile(r"開催日程|開催情報|コース|距離|舞台|レース概要|条件|特徴"), 25),
+    ("entries", "出走馬", re.compile(r"出走予定|出走馬|登録馬|特別登録|出馬表|出走"), 26),
     ("previous_run", "前走後評価", re.compile(r"前走|巻き返し|立て直し|休み明け|敗因|上積み|反動"), 24),
     ("stable_comment", "陣営コメント", re.compile(r"陣営|厩舎|調教師|助手|コメント|手応え|状態|思惑"), 22),
     ("track_condition", "馬場", re.compile(r"馬場|天気|雨|稍重|重馬場|不良馬場|良馬場|道悪|脚質"), 22),
     ("jockey_change", "騎手変更", re.compile(r"騎手変更|乗り替わり|鞍上|騎手|ジョッキー"), 20),
     ("sns_buzz", "話題馬・騎手", re.compile(r"SNS|Ｘ|Xで|話題|反響|注目馬|有力馬|ファン|騎手|ジョッキー"), 20),
+    ("training", "追い切り", re.compile(r"追い切り|調教|最終追い|坂路|ウッド|併せ馬"), 28),
+    ("waku", "枠順", re.compile(r"枠順|枠順確定|抽選|ゲート|馬番"), 30),
     ("schedule", "開催情報", re.compile(r"開催|日程|発走|確定"), 14),
 ]
 
@@ -154,6 +178,11 @@ KEYWORD_LABEL_BY_INTENT = {
     "waku": "枠順",
     "entries": "出走馬",
     "training": "追い切り",
+    "race_profile": "レース条件",
+    "field_analysis": "出走構成",
+    "past_trends": "過去傾向",
+    "local_matchup": "中央馬と地方馬",
+    "result_review": "結果回顧",
     "previous_run": "前走後評価",
     "stable_comment": "陣営コメント",
     "track_condition": "馬場",
@@ -164,6 +193,24 @@ KEYWORD_LABEL_BY_INTENT = {
 }
 
 ANGLE_RULES_BY_INTENT = {
+    "result_review": [
+        ("結果回顧", re.compile(r"結果|回顧|勝因|敗因|レース後")),
+    ],
+    "local_matchup": [
+        ("中央馬と地方馬の比較", re.compile(r"中央馬|地方馬|JRA勢|地方勢|交流重賞")),
+    ],
+    "field_analysis": [
+        ("出走構成", re.compile(r"出走構成|メンバー構成|相手関係")),
+        ("距離・コース適性", re.compile(r"距離適性|コース適性|条件替わり")),
+        ("斤量と世代比較", re.compile(r"斤量|世代比較|古馬|3歳")),
+    ],
+    "past_trends": [
+        ("過去傾向", re.compile(r"過去|傾向|好走条件|データ")),
+    ],
+    "race_profile": [
+        ("開催条件", re.compile(r"開催日程|開催情報|レース概要|条件")),
+        ("コースの特徴", re.compile(r"コース|距離|舞台|特徴")),
+    ],
     "training": [
         ("最終追い切り", re.compile(r"最終追い|最終追切|最終調教")),
         ("坂路追い", re.compile(r"坂路")),
@@ -246,6 +293,12 @@ class RaceDemand:
     day: int
     grade: str
     base_score: int
+    year: Optional[int] = None
+    venue: str = ""
+    distance: str = ""
+    conditions: str = ""
+    source_kind: str = "fallback"
+    source_url: str = ""
 
 
 RACE_DEMAND_CALENDAR: Tuple[RaceDemand, ...] = (
@@ -261,12 +314,17 @@ RACE_DEMAND_CALENDAR: Tuple[RaceDemand, ...] = (
     RaceDemand("オークス", ("オークス", "優駿牝馬"), 5, 24, "G1", 42),
     RaceDemand("日本ダービー", ("日本ダービー", "東京優駿", "ダービー"), 5, 31, "G1", 48),
     RaceDemand("安田記念", ("安田記念",), 6, 7, "G1", 40),
-    RaceDemand("関東オークス", ("関東オークス",), 6, 10, "JpnII", 32),
+    RaceDemand("関東オークス", ("関東オークス",), 6, 17, "JpnII", 32, 2026, "川崎", "2100m", "3歳牝馬", "nar"),
     RaceDemand("函館SS", ("函館SS", "函館スプリントS", "函館スプリントステークス"), 6, 13, "G3", 30),
     RaceDemand("宝塚記念", ("宝塚記念",), 6, 14, "G1", 46),
-    # 地方・交流重賞も検索流入が見込めるため、近似日で季節外れの拾いすぎを抑える。
-    RaceDemand("さきたま杯", ("さきたま杯",), 6, 17, "JpnI", 36),
-    RaceDemand("帝王賞", ("帝王賞",), 6, 24, "JpnI", 44),
+    RaceDemand("府中牝馬S", ("府中牝馬S", "府中牝馬ステークス"), 6, 21, "G3", 30, 2026, "東京", "芝1800m", "3歳以上牝馬", "jra"),
+    RaceDemand("しらさぎS", ("しらさぎS", "しらさぎステークス"), 6, 21, "G3", 30, 2026, "阪神", "芝1600m", "3歳以上", "jra"),
+    RaceDemand("さきたま杯", ("さきたま杯",), 6, 24, "JpnI", 40, 2026, "浦和", "1400m", "3歳以上", "nar"),
+    RaceDemand("ラジオNIKKEI賞", ("ラジオNIKKEI賞", "ラジオNIKKEI"), 6, 28, "G3", 30, 2026, "福島", "芝1800m", "3歳", "jra"),
+    RaceDemand("函館記念", ("函館記念",), 6, 28, "G3", 30, 2026, "函館", "芝2000m", "3歳以上", "jra"),
+    RaceDemand("帝王賞", ("帝王賞",), 7, 1, "JpnI", 46, 2026, "大井", "2000m", "4歳以上", "nar"),
+    RaceDemand("北九州記念", ("北九州記念",), 7, 5, "G3", 30, 2026, "小倉", "芝1200m", "3歳以上", "jra"),
+    RaceDemand("スパーキングレディーカップ", ("スパーキングレディーカップ",), 7, 8, "JpnIII", 32, 2026, "川崎", "1600m", "3歳以上牝馬", "nar"),
     RaceDemand("スプリンターズS", ("スプリンターズS", "スプリンターズステークス"), 9, 27, "G1", 38),
     RaceDemand("ジャパンダートクラシック", ("ジャパンダートクラシック", "JDC"), 10, 7, "JpnI", 38),
     RaceDemand("秋華賞", ("秋華賞",), 10, 18, "G1", 38),
@@ -418,9 +476,224 @@ def current_jst() -> datetime:
     return datetime.now(JST)
 
 
+_RACE_SCHEDULE_CACHE: Dict[Tuple[int, int], Tuple[RaceDemand, ...]] = {}
+
+
+def normalize_grade_label(value: str) -> str:
+    normalized = re.sub(r"\s+", "", value or "")
+    replacements = {
+        "GⅠ": "G1",
+        "GⅡ": "G2",
+        "GⅢ": "G3",
+        "J・GⅢ": "JG3",
+        "JpnI": "JpnI",
+        "JpnII": "JpnII",
+        "JpnIII": "JpnIII",
+        "Jpn1": "JpnI",
+        "Jpn2": "JpnII",
+        "Jpn3": "JpnIII",
+    }
+    return replacements.get(normalized, normalized)
+
+
+def base_score_for_grade(grade: str) -> int:
+    normalized = normalize_grade_label(grade)
+    return {
+        "G1": 44,
+        "JpnI": 44,
+        "G2": 36,
+        "JpnII": 36,
+        "G3": 30,
+        "JpnIII": 32,
+        "JG3": 18,
+        "重賞": 22,
+    }.get(normalized, 20)
+
+
+def aliases_for_schedule_race(name: str) -> Tuple[str, ...]:
+    aliases: List[str] = [name]
+    if name.endswith("S"):
+        aliases.append(f"{name[:-1]}ステークス")
+    if name.endswith("C"):
+        aliases.append(f"{name[:-1]}カップ")
+    if "ステークス" in name:
+        aliases.append(name.replace("ステークス", "S"))
+    if "カップ" in name:
+        aliases.append(name.replace("カップ", "C"))
+    return tuple(dict.fromkeys(alias for alias in aliases if alias))
+
+
+def schedule_identity(name: str) -> str:
+    return (
+        normalize_key(name)
+        .replace("ステークス", "s")
+        .replace("スプリント", "s")
+        .replace("カップ", "c")
+    )
+
+
+def parse_jra_schedule_html(html_text: str, year: int) -> List[RaceDemand]:
+    soup = BeautifulSoup(html_text, "lxml")
+    venue_pattern = r"札幌|函館|福島|新潟|東京|中山|中京|京都|阪神|小倉"
+    row_pattern = re.compile(
+        rf"^(?P<month>\d{{1,2}})月(?P<day>\d{{1,2}})日\s+\S+\s+"
+        rf"(?P<grade>J\s*・\s*G[ⅠⅡⅢ]|G[ⅠⅡⅢ])\s+"
+        rf"(?P<name>.+?)\s+(?P<venue>{venue_pattern})\s+"
+        rf"(?P<conditions>.+?)\s+(?P<surface>芝|ダ|障)\s+(?P<distance>[\d,]+)\s*メートル"
+    )
+    entries: List[RaceDemand] = []
+    for row in soup.find_all("tr"):
+        text_value = " ".join(row.stripped_strings)
+        match = row_pattern.search(text_value)
+        if not match:
+            continue
+        name = match.group("name").strip()
+        grade = normalize_grade_label(match.group("grade"))
+        surface = {"ダ": "ダート", "障": "障害"}.get(match.group("surface"), match.group("surface"))
+        distance = match.group("distance").replace(",", "")
+        entries.append(
+            RaceDemand(
+                name=name,
+                aliases=aliases_for_schedule_race(name),
+                month=int(match.group("month")),
+                day=int(match.group("day")),
+                grade=grade,
+                base_score=base_score_for_grade(grade),
+                year=year,
+                venue=match.group("venue"),
+                distance=f"{surface}{distance}m",
+                conditions=match.group("conditions").strip(),
+                source_kind="jra",
+                source_url=f"https://www.jra.go.jp/datafile/seiseki/replay/{year}/jyusyo.html",
+            )
+        )
+    return entries
+
+
+def parse_nar_schedule_html(html_text: str, year: int) -> List[RaceDemand]:
+    soup = BeautifulSoup(html_text, "lxml")
+    venue_pattern = "|".join(sorted(NAR_VENUES, key=len, reverse=True))
+    row_pattern = re.compile(
+        rf"^(?P<month>\d{{1,2}})/(?P<day>\d{{1,2}})\([^)]+\)\s+"
+        rf"(?P<name>.+?)\s+(?P<grade>Jpn[123]|重賞)\s+"
+        rf"(?P<venue>{venue_pattern})\s+(?P<distance>\d+m)\s+(?P<conditions>.+)$"
+    )
+    entries: List[RaceDemand] = []
+    for row in soup.find_all("tr"):
+        text_value = " ".join(row.stripped_strings)
+        match = row_pattern.search(text_value)
+        if not match:
+            continue
+        name = match.group("name").strip()
+        grade = normalize_grade_label(match.group("grade"))
+        entries.append(
+            RaceDemand(
+                name=name,
+                aliases=aliases_for_schedule_race(name),
+                month=int(match.group("month")),
+                day=int(match.group("day")),
+                grade=grade,
+                base_score=base_score_for_grade(grade),
+                year=year,
+                venue=match.group("venue"),
+                distance=match.group("distance"),
+                conditions=match.group("conditions").strip(),
+                source_kind="nar",
+                source_url=f"https://nar.sp.netkeiba.com/top/schedule.html?year={year}&month={int(match.group('month'))}",
+            )
+        )
+    return entries
+
+
+def schedule_months_in_window(now: datetime) -> List[Tuple[int, int]]:
+    before, after = focus_window()
+    start = now.date() - timedelta(days=after + 2)
+    end = now.date() + timedelta(days=before + 2)
+    months: List[Tuple[int, int]] = []
+    cursor = date(start.year, start.month, 1)
+    while cursor <= end:
+        months.append((cursor.year, cursor.month))
+        cursor = date(cursor.year + (1 if cursor.month == 12 else 0), 1 if cursor.month == 12 else cursor.month + 1, 1)
+    return months
+
+
+def fetch_remote_race_schedule(now: datetime) -> List[RaceDemand]:
+    remote_enabled = os.environ.get("KEIBA_NEWS_REMOTE_SCHEDULE_ENABLED", "true").lower() not in {
+        "0",
+        "false",
+        "no",
+    }
+    if not remote_enabled:
+        return []
+
+    timeout_seconds = min(parse_positive_int(os.environ.get("KEIBA_NEWS_SCHEDULE_TIMEOUT_SECONDS"), 15), 30)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; UMA-FREE schedule verifier/1.0)",
+        "Accept-Language": "ja,en;q=0.7",
+    }
+    entries: List[RaceDemand] = []
+
+    try:
+        response = requests.get(
+            f"https://www.jra.go.jp/datafile/seiseki/replay/{now.year}/jyusyo.html",
+            headers=headers,
+            timeout=timeout_seconds,
+        )
+        response.raise_for_status()
+        response.encoding = "cp932"
+        entries.extend(parse_jra_schedule_html(response.text, now.year))
+    except Exception as exc:
+        print(f"[NewsPlanner] JRA重賞日程の取得に失敗。内蔵日程へフォールバック: {exc}")
+
+    for year, month in schedule_months_in_window(now):
+        try:
+            response = requests.get(
+                f"https://nar.sp.netkeiba.com/top/schedule.html?year={year}&month={month}",
+                headers=headers,
+                timeout=timeout_seconds,
+            )
+            response.raise_for_status()
+            response.encoding = "utf-8"
+            entries.extend(parse_nar_schedule_html(response.text, year))
+        except Exception as exc:
+            print(f"[NewsPlanner] 地方重賞日程の取得に失敗 ({year}-{month:02d})。内蔵日程へフォールバック: {exc}")
+    return entries
+
+
+def available_race_demands(now: Optional[datetime] = None) -> Tuple[RaceDemand, ...]:
+    base_now = now or current_jst()
+    cache_key = (base_now.year, base_now.month)
+    cached = _RACE_SCHEDULE_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    merged: Dict[Tuple[str, int, int, int], RaceDemand] = {}
+    for entry in RACE_DEMAND_CALENDAR:
+        entry_year = entry.year or base_now.year
+        if entry.year is not None and entry.year not in {base_now.year - 1, base_now.year, base_now.year + 1}:
+            continue
+        key = (schedule_identity(entry.name), entry_year, entry.month, entry.day)
+        merged[key] = entry
+
+    for entry in fetch_remote_race_schedule(base_now):
+        identity = schedule_identity(entry.name)
+        entry_year = entry.year or base_now.year
+        for existing_key in list(merged):
+            if existing_key[0] == identity and existing_key[1] == entry_year:
+                merged.pop(existing_key, None)
+        key = (identity, entry_year, entry.month, entry.day)
+        merged[key] = entry
+
+    schedule = tuple(merged.values())
+    _RACE_SCHEDULE_CACHE[cache_key] = schedule
+    return schedule
+
+
 def race_demand_date(entry: RaceDemand, now: Optional[datetime] = None) -> date:
     base_now = now or current_jst()
-    target = date(base_now.year, entry.month, entry.day)
+    target = date(entry.year or base_now.year, entry.month, entry.day)
+    if entry.year is not None:
+        return target
     delta = (target - base_now.date()).days
     if delta < -180:
         target = date(base_now.year + 1, entry.month, entry.day)
@@ -435,7 +708,7 @@ def days_until_race(entry: RaceDemand, now: Optional[datetime] = None) -> int:
 
 
 def focus_window() -> Tuple[int, int]:
-    before = parse_positive_int(os.environ.get("KEIBA_NEWS_RACE_WINDOW_BEFORE_DAYS"), 21)
+    before = parse_positive_int(os.environ.get("KEIBA_NEWS_RACE_WINDOW_BEFORE_DAYS"), 7)
     after = parse_positive_int(os.environ.get("KEIBA_NEWS_RACE_WINDOW_AFTER_DAYS"), 3)
     return before, after
 
@@ -465,12 +738,16 @@ def normalize_race_alias(value: str) -> str:
     return normalize_key(value).replace("ステークス", "s").replace("スプリント", "s")
 
 
-def find_race_demand(text: str, race_name: str = "") -> Optional[RaceDemand]:
+def find_race_demand(
+    text: str,
+    race_name: str = "",
+    schedule: Optional[Sequence[RaceDemand]] = None,
+) -> Optional[RaceDemand]:
     haystack = normalize_race_alias(f"{race_name} {text}")
     if not haystack:
         return None
 
-    for entry in RACE_DEMAND_CALENDAR:
+    for entry in schedule or available_race_demands():
         for alias in (entry.name, *entry.aliases):
             alias_key = normalize_race_alias(alias)
             if alias_key and alias_key in haystack:
@@ -478,23 +755,114 @@ def find_race_demand(text: str, race_name: str = "") -> Optional[RaceDemand]:
     return None
 
 
-def focus_races(now: Optional[datetime] = None) -> List[Tuple[RaceDemand, int]]:
+def focus_races(
+    now: Optional[datetime] = None,
+    schedule: Optional[Sequence[RaceDemand]] = None,
+) -> List[Tuple[RaceDemand, int]]:
     base_now = now or current_jst()
     entries: List[Tuple[RaceDemand, int]] = []
-    for entry in RACE_DEMAND_CALENDAR:
+    for entry in schedule or available_race_demands(base_now):
         days = days_until_race(entry, base_now)
         if is_in_focus_window(days):
             entries.append((entry, days))
-    entries.sort(key=lambda item: (abs(item[1]), -item[0].base_score))
+    entries.sort(
+        key=lambda item: (
+            -(item[0].base_score + race_window_score(item[1])),
+            abs(item[1]),
+            race_demand_date(item[0], base_now),
+            item[0].name,
+        )
+    )
     return entries
 
 
 def detect_search_intent(title: str, content: str = "", query: str = "") -> Tuple[str, str, int]:
-    joined = f"{title} {content} {query}"
+    ranked: List[Tuple[float, str, str, int]] = []
     for key, label, pattern, score in SEARCH_INTENT_RULES:
-        if pattern.search(joined):
-            return key, label, score
-    return "ai_prediction", "AI予想", 12
+        title_hits = len(pattern.findall(title))
+        content_hits = len(pattern.findall(content))
+        query_hits = len(pattern.findall(query))
+        if title_hits + content_hits + query_hits == 0:
+            continue
+
+        # 検索クエリに含めた語だけで記事テーマを決めると、先頭クエリの
+        # 「枠順」「追い切り」に全件が吸い寄せられる。タイトルと本文を重くする。
+        weighted = score + title_hits * 9 + content_hits * 3 + query_hits * 0.5
+        if title_hits + content_hits == 0:
+            weighted -= 18
+        ranked.append((weighted, key, label, score))
+
+    if not ranked:
+        return "race_profile", "レース条件・コース", 16
+    ranked.sort(key=lambda item: (-item[0], -item[3], item[1]))
+    _, key, label, score = ranked[0]
+    return key, label, score
+
+
+def race_phase(days_to_race: int) -> str:
+    if days_to_race < 0:
+        return "post_race"
+    if days_to_race == 0:
+        return "race_day"
+    if days_to_race <= 2:
+        return "final_48h"
+    if days_to_race <= 5:
+        return "race_week"
+    if days_to_race <= 10:
+        return "field_building"
+    return "early_preview"
+
+
+def query_intents_for_race(entry: RaceDemand, days_to_race: int) -> List[str]:
+    phase = race_phase(days_to_race)
+    is_local = entry.source_kind == "nar" or entry.venue in NAR_VENUES or entry.grade.startswith("Jpn")
+
+    if phase == "post_race":
+        return ["result_review"]
+    if phase == "race_day":
+        intents = ["field_analysis", "track_condition", "waku", "stable_comment"]
+    elif phase == "final_48h":
+        intents = ["field_analysis", "track_condition", "stable_comment", "waku", "training"]
+    elif phase == "race_week":
+        intents = ["field_analysis", "previous_run", "stable_comment", "track_condition", "training"]
+    elif phase == "field_building":
+        intents = ["field_analysis", "race_profile", "previous_run", "entries", "jockey_change"]
+    else:
+        intents = ["race_profile", "past_trends", "field_analysis", "entries", "previous_run"]
+
+    if is_local and "local_matchup" not in intents:
+        intents.insert(1, "local_matchup")
+    return intents
+
+
+def intent_has_source_evidence(intent: str, title: str, content: str) -> bool:
+    for key, _label, pattern, _score in SEARCH_INTENT_RULES:
+        if key == intent:
+            return bool(pattern.search(f"{title} {content}"))
+    return False
+
+
+def normalize_intent_for_race_phase(
+    intent: str,
+    days_to_race: Optional[int],
+    title: str,
+    content: str,
+) -> Optional[str]:
+    if days_to_race is None:
+        return intent
+
+    if days_to_race < 0:
+        return "result_review" if intent_has_source_evidence("result_review", title, content) else None
+
+    # 枠順・追い切りは、検索クエリに語があるだけでは主題にしない。
+    # 開催が近く、かつ取得ソース自体に明示された場合だけ採用する。
+    if intent == "waku":
+        if days_to_race > 4 or not intent_has_source_evidence("waku", title, content):
+            return "field_analysis"
+    if intent == "training":
+        if days_to_race > 5 or not intent_has_source_evidence("training", title, content):
+            return "previous_run"
+    return intent
 
 
 def infer_target_year(title: str, demand: Optional[RaceDemand]) -> str:
@@ -667,16 +1035,43 @@ def build_queries_node(state: WorkflowState) -> WorkflowState:
         return state
 
     queries: List[str] = []
-    max_focus_races = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_FOCUS_RACES"), 3), 5)
+    max_focus_races = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_FOCUS_RACES"), 4), 6)
     focus_entries = focus_races(now)[:max_focus_races]
-    for intent_words in RACE_QUERY_INTENTS:
-        for race, _days in focus_entries:
+    max_queries = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_QUERIES_PER_RUN"), 8), 12)
+    intent_caps = {
+        "waku": 1,
+        "training": 1,
+        "track_condition": 2,
+        "result_review": 2,
+    }
+    intent_counts: Dict[str, int] = {}
+
+    # 1巡目で各レースに1クエリずつ配り、2巡目以降で深掘りする。
+    # これにより上位レースの枠順・追い切りだけで上限を使い切らない。
+    for round_index in range(3):
+        for race, days in focus_entries:
+            available_intents = query_intents_for_race(race, days)
+            chosen_intent = ""
+            for intent in available_intents[round_index:]:
+                cap = intent_caps.get(intent, max_queries)
+                if intent_counts.get(intent, 0) >= cap:
+                    continue
+                chosen_intent = intent
+                break
+            if not chosen_intent:
+                continue
+
+            intent_counts[chosen_intent] = intent_counts.get(chosen_intent, 0) + 1
             primary_alias = race.aliases[0] if race.aliases else race.name
-            source_hint = "競馬 ニュース" if re.search(r"SNS|話題馬|注目馬", intent_words) else "JRA 公式 競馬ニュース"
+            intent_words = QUERY_TERMS_BY_INTENT[chosen_intent]
+            source_hint = "地方競馬 公式 競馬ニュース" if race.source_kind == "nar" else "JRA 公式 競馬ニュース"
             queries.append(f"{primary_alias} {year} {intent_words} {source_hint}")
+            if len(queries) >= max_queries:
+                break
+        if len(queries) >= max_queries:
+            break
 
     queries.extend(template.format(year=year) for template in QUERY_TEMPLATES)
-    max_queries = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_QUERIES_PER_RUN"), 8), 12)
 
     deduped: List[str] = []
     seen: Set[str] = set()
@@ -758,20 +1153,26 @@ def score_source(title: str, content: str, url_value: str) -> float:
     joined = f"{title} {content}"
     race_name = extract_race_name_from_text(title, content)
     demand = find_race_demand(joined, race_name)
-    _intent_key, _intent_label, intent_score = detect_search_intent(title, content)
+    intent_key, _intent_label, intent_score = detect_search_intent(title, content)
 
     if HIGH_VALUE_TOPIC_PATTERN.search(joined):
         score += 24
-    if re.search(r"枠順|出走予定|出走馬|馬場|騎手変更|開催|追い切り|調教|前走|陣営|コメント|話題馬|注目馬", joined):
+    if re.search(r"開催|日程|コース|距離|出走予定|出走馬|登録馬|前走|結果|回顧|交流重賞", joined):
         score += 16
-    if re.search(r"追い切り|調教|前走|陣営|厩舎|話題馬|SNS|注目馬|騎手|乗り替わり", joined):
-        score += 10
+    if re.search(r"枠順|追い切り|調教", joined):
+        score += 5
     if re.search(r"G1|G2|G3|Ｇ１|Ｇ２|Ｇ３|重賞", joined):
         score += 12
     score += intent_score
     if demand:
         days = days_until_race(demand)
         score += demand.base_score + race_window_score(days)
+        if days < 0 and intent_key != "result_review":
+            score -= 55
+        if intent_key == "waku" and days > 4:
+            score -= 24
+        if intent_key == "training" and days > 5:
+            score -= 20
     elif race_name:
         score -= 18
     if re.search(r"予想|買い目|的中|オッズ", joined):
@@ -841,12 +1242,19 @@ def make_target_keyword(
     keyword_label = search_angle_label or keyword_label_for_intent(search_intent, search_intent_label)
 
     if race_name:
+        if search_intent == "result_review":
+            return f"{race_name}{year} 結果 回顧"
         if search_intent == "ai_prediction":
             return f"{race_name}{year} AI予想"
         if search_intent in {
             "waku",
             "entries",
             "training",
+            "race_profile",
+            "field_analysis",
+            "past_trends",
+            "local_matchup",
+            "result_review",
             "previous_run",
             "stable_comment",
             "track_condition",
@@ -866,14 +1274,33 @@ def make_target_keyword(
 def cluster_topics_node(state: WorkflowState) -> WorkflowState:
     grouped: Dict[str, List[SourceCard]] = {}
     enforce_season_window = os.environ.get("KEIBA_NEWS_ENFORCE_SEASON_WINDOW", "true").lower() not in {"0", "false", "no"}
+    require_schedule_match = os.environ.get("KEIBA_NEWS_REQUIRE_SCHEDULE_MATCH", "true").lower() not in {
+        "0",
+        "false",
+        "no",
+    }
 
     for card in state.source_cards:
         race_name = extract_race_name_from_text(card.title, card.content)
         demand = find_race_demand(f"{card.title} {card.content}", race_name)
+        if race_name and not demand and require_schedule_match:
+            continue
+        if demand:
+            race_name = demand.name
         if demand and enforce_season_window and not is_in_focus_window(days_until_race(demand)):
             continue
 
         search_intent, _label, _score = detect_search_intent(card.title, card.content, card.query)
+        days_to_race = days_until_race(demand) if demand else None
+        normalized_intent = normalize_intent_for_race_phase(
+            search_intent,
+            days_to_race,
+            card.title,
+            card.content,
+        )
+        if normalized_intent is None:
+            continue
+        search_intent = normalized_intent
         search_angle_label = detect_angle_label(search_intent, card.title, card.content, card.query)
         topic_key = make_topic_key(race_name, card.title, search_intent, demand, search_angle_label)
         if not topic_key:
@@ -888,9 +1315,23 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
         primary = cards[0]
         race_name = extract_race_name_from_text(primary.title, primary.content)
         demand = find_race_demand(f"{primary.title} {primary.content}", race_name)
+        if race_name and not demand and require_schedule_match:
+            continue
+        if demand:
+            race_name = demand.name
         search_intent, search_intent_label, intent_score = detect_search_intent(primary.title, primary.content, primary.query)
-        search_angle_label = detect_angle_label(search_intent, primary.title, primary.content, primary.query)
         days_to_race = days_until_race(demand) if demand else None
+        normalized_intent = normalize_intent_for_race_phase(
+            search_intent,
+            days_to_race,
+            primary.title,
+            primary.content,
+        )
+        if normalized_intent is None:
+            continue
+        search_intent = normalized_intent
+        search_intent_label = KEYWORD_LABEL_BY_INTENT.get(search_intent, search_intent_label)
+        search_angle_label = detect_angle_label(search_intent, primary.title, primary.content, primary.query)
         if demand and enforce_season_window and days_to_race is not None and not is_in_focus_window(days_to_race):
             continue
 
@@ -1339,16 +1780,55 @@ def topic_bridge(candidate: TopicCandidate, internal_data: Dict[str, Any]) -> Di
         data_bits.append("AI展望")
 
     angle_label = candidate.search_angle_label or candidate.search_intent_label
-    if candidate.search_intent == "training":
-        angle = f"{angle_label}と、AI偏差値上位馬の扱いを分けて確認する"
-    elif candidate.search_intent == "previous_run":
-        angle = f"{angle_label}を、今回の条件替わりと出馬表で確認する"
-    elif candidate.search_intent == "stable_comment":
-        angle = f"{angle_label}を状態面の材料に留め、枠順・脚質・AI予想で裏取りする"
-    elif candidate.search_intent == "sns_buzz":
-        angle = f"{angle_label}を、人気先行か材料ありかで切り分ける"
-    else:
-        angle = f"{angle_label}を、出馬表とUMA-FREEのデータで確認する"
+    guidance_by_intent = {
+        "race_profile": (
+            f"{angle_label}を起点に、開催場・距離・コース形態が求める適性を整理する",
+            "開催条件とコース特性を主役にし、枠順や追い切りは未発表なら広げない",
+        ),
+        "field_analysis": (
+            f"{angle_label}から、距離適性・相手関係・斤量・ローテーションの違いを整理する",
+            "出走構成の比較を主役にし、個別馬の事実は入力済みデータの範囲だけで扱う",
+        ),
+        "past_trends": (
+            f"{angle_label}を、今回も使える条件と今年は変わる条件に分ける",
+            "過去傾向を機械的に当てはめず、開催条件と出走構成の違いを先に確認する",
+        ),
+        "local_matchup": (
+            f"{angle_label}を、所属・コース経験・輸送・距離適性の観点で整理する",
+            "交流重賞の条件差を主役にし、中央G1風の書き方へ寄せない",
+        ),
+        "result_review": (
+            f"{angle_label}を、展開・馬場・位置取り・事前評価との差に分けて振り返る",
+            "レース後の記事として書き、枠順発表前や追い切り確認のCTAへ戻さない",
+        ),
+        "training": (
+            f"{angle_label}を状態面の一材料として扱い、入力済みの出走データと分けて確認する",
+            "追い切りだけで評価を断定せず、同じ調教表現を複数見出しへ繰り返さない",
+        ),
+        "waku": (
+            f"{angle_label}を、コース形態と位置取りの関係に限定して確認する",
+            "枠順を主題にするのは発表済みの事実がある場合だけとし、他テーマへ横展開しない",
+        ),
+        "previous_run": (
+            f"{angle_label}を、今回の距離・コース・相手関係の変化と照合する",
+            "前走の着順だけでなく、条件替わりで評価が変わる理由を整理する",
+        ),
+        "stable_comment": (
+            f"{angle_label}を確認済み事実と見解に分け、出走条件との接点を整理する",
+            "コメントを結論にせず、入力済みデータと矛盾しない範囲で扱う",
+        ),
+        "track_condition": (
+            f"{angle_label}がコース適性と位置取りへ与える影響を整理する",
+            "天気予報を断定せず、良馬場と道悪で変わる確認項目を分ける",
+        ),
+    }
+    angle, writer_focus = guidance_by_intent.get(
+        candidate.search_intent,
+        (
+            f"{angle_label}を、出馬表とUMA-FREEの入力済みデータで確認する",
+            f"{angle_label}を主役にし、関係の薄い枠順・追い切り・馬場を定型的に足さない",
+        ),
+    )
 
     return {
         "source_count": len(candidate.source_cards),
@@ -1357,7 +1837,9 @@ def topic_bridge(candidate: TopicCandidate, internal_data: Dict[str, Any]) -> Di
         "internal_data_available": data_bits,
         "matched_race_id": matched.get("race_id") if isinstance(matched, dict) else "",
         "matched_race_url": matched.get("race_url") if isinstance(matched, dict) else "/races/today",
-        "writer_focus": f"{angle_label}の話題を受けて、当日の出馬表で何を先に見るかを整理する",
+        "writer_focus": writer_focus,
+        "primary_search_intent": candidate.search_intent,
+        "avoid_overuse": ["枠順", "追い切り"] if candidate.search_intent not in {"waku", "training"} else [],
         "has_internal_data": has_internal,
     }
 
@@ -1390,12 +1872,73 @@ def topic_bridge_rows(candidate: TopicCandidate, internal_data: Dict[str, Any]) 
 
 def build_competing_structure(candidate: TopicCandidate) -> List[str]:
     angle_label = candidate.search_angle_label or candidate.search_intent_label
+    structures_by_intent = {
+        "race_profile": [
+            "公式日程と開催条件",
+            "コース形態と距離が求める適性",
+            "今年の出走構成で変わる論点",
+            "入力済みデータから確認できる材料",
+            "レース当日までに更新する項目",
+        ],
+        "field_analysis": [
+            "出走予定馬とメンバー構成",
+            "距離・コース適性の比較軸",
+            "前走から変わる条件",
+            "斤量・所属・相手関係の見方",
+            "UMA-FREEの出馬表で確認する順番",
+        ],
+        "past_trends": [
+            "過去結果から残る傾向",
+            "今年も使える条件と使いにくい条件",
+            "開催場・距離・出走構成の違い",
+            "入力済みデータとの照合",
+            "当日に更新する判断材料",
+        ],
+        "local_matchup": [
+            "交流重賞の開催条件",
+            "中央馬と地方馬で異なる比較軸",
+            "コース経験・輸送・距離適性",
+            "所属だけで評価を決めない条件",
+            "当日の出馬表で確認する順番",
+        ],
+        "result_review": [
+            "確定した結果とレース条件",
+            "展開・位置取り・馬場の振り返り",
+            "事前評価と実戦のずれ",
+            "評価を上げたい内容と慎重に見る内容",
+            "次走で条件が変わる馬の見方",
+        ],
+        "previous_run": [
+            "前走内容を事実ベースで整理",
+            "今回の距離・コース・相手関係との差",
+            "上積みと反動を分ける材料",
+            "出走構成の中での位置付け",
+            "当日の出馬表で確認する順番",
+        ],
+        "training": [
+            "追い切りで確認された事実",
+            "時計・負荷・併せ方を分ける見方",
+            "調教評価と実戦条件を混同しない線引き",
+            "入力済みデータとの照合",
+            "追い切り以外で残す確認項目",
+        ],
+        "waku": [
+            "枠順発表で確定した事実",
+            "コース形態と位置取りの関係",
+            "内外だけで評価を決めない条件",
+            "出走構成と脚質の組み合わせ",
+            "当日の馬場で更新する項目",
+        ],
+    }
+    intent_structure = structures_by_intent.get(candidate.search_intent)
+    if intent_structure:
+        return intent_structure
     if candidate.article_type == "race_update":
         return [
             "複数ニュースで確認された事実",
             f"{angle_label}の話題とUMA-FREEデータの結び付け",
             f"{angle_label}を出馬表で確認する順番",
-            "同レースで先に見るべき枠順・脚質・馬場",
+            "同レースで先に見るべき開催条件と出走構成",
             "UMA-FREEの出馬表で確認する順番",
             "確認・相手候補・慎重に見る条件",
         ]
@@ -1415,6 +1958,7 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
     selected: List[TopicCandidate] = []
     selected_angle_keys: Set[str] = set()
     selected_race_counts: Dict[str, int] = {}
+    narrow_topic_count = 0
 
     for item in state.topic_candidates:
         if item.score < min_topic_score:
@@ -1426,11 +1970,15 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
             continue
         if race_key and selected_race_counts.get(race_key, 0) >= max_topics_per_race:
             continue
+        if item.search_intent in {"waku", "training"} and narrow_topic_count >= 1:
+            continue
 
         selected.append(item)
         selected_angle_keys.add(angle_key)
         if race_key:
             selected_race_counts[race_key] = selected_race_counts.get(race_key, 0) + 1
+        if item.search_intent in {"waku", "training"}:
+            narrow_topic_count += 1
         if len(selected) >= max_orders:
             break
 
@@ -1462,6 +2010,10 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
         if candidate.search_intent == "waku":
             draw_status = "confirmed" if candidate.search_angle_label == "枠順発表後" else "pre_draw"
 
+        schedule_entry = find_race_demand(joined_text, race_name)
+        scheduled_date = race_demand_date(schedule_entry).isoformat() if schedule_entry else ""
+        phase = race_phase(candidate.days_to_race) if candidate.days_to_race is not None else ""
+
         order = {
             "target_keyword": candidate.target_keyword,
             "theme_cluster": candidate.theme_cluster,
@@ -1485,6 +2037,12 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "race_name": candidate.race_name,
                 "calendar_race": candidate.calendar_race,
                 "days_to_race": candidate.days_to_race,
+                "race_phase": phase,
+                "scheduled_race_date": scheduled_date,
+                "scheduled_venue": schedule_entry.venue if schedule_entry else "",
+                "scheduled_distance": schedule_entry.distance if schedule_entry else "",
+                "scheduled_conditions": schedule_entry.conditions if schedule_entry else "",
+                "schedule_source_url": schedule_entry.source_url if schedule_entry else "",
                 "search_intent": candidate.search_intent,
                 "search_intent_label": candidate.search_intent_label,
                 "search_angle_label": candidate.search_angle_label,

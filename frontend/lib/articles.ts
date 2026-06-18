@@ -21,6 +21,7 @@ export interface Article {
   themeCluster?: string;
   lastUpdated?: string;
   updateStage?: string;
+  canonicalSlug?: string;
 }
 
 const VENUE_NAMES = [
@@ -42,6 +43,10 @@ function normalizeStringArray(value: unknown): string[] {
   }
 
   return [];
+}
+
+function isDraftArticle(data: Record<string, unknown>): boolean {
+  return data.draft === true || String(data.draft || '').toLowerCase() === 'true';
 }
 
 function cleanArticleMarkdownForRender(markdown: string): string {
@@ -77,13 +82,14 @@ function extractDateFromSlug(slug: string): string | null {
 // 全記事を取得する関数
 export function getAllArticles(): Article[] {
   const fileNames = fs.readdirSync(articlesDirectory);
-  const allArticles = fileNames.map((fileName) => {
+  const allArticles = fileNames.flatMap((fileName) => {
     const slug = fileName.replace(/\.md$/, '');
     const fullPath = path.join(articlesDirectory, fileName);
     const fileContents = fs.readFileSync(fullPath, 'utf8');
     const { data, content } = matter(fileContents);
+    if (isDraftArticle(data)) return [];
 
-    return {
+    return [{
       slug,
       content, // ここでは変換せず、生のMarkdownを返す
       title: data.title || '無題',
@@ -97,7 +103,8 @@ export function getAllArticles(): Article[] {
       themeCluster: data.theme_cluster || '',
       lastUpdated: data.last_updated || '',
       updateStage: data.update_stage || '',
-    };
+      canonicalSlug: data.canonical_slug || '',
+    }];
   });
 
   // 日付の降順で記事をソート
@@ -113,10 +120,14 @@ export function getAllArticles(): Article[] {
 // 全記事のスラッグを取得する関数 (generateStaticParams用)
 export function getAllArticleSlugs(): { slug: string }[] {
   const fileNames = fs.readdirSync(articlesDirectory);
-  return fileNames.map((fileName) => {
-    return {
+  return fileNames.flatMap((fileName) => {
+    const fullPath = path.join(articlesDirectory, fileName);
+    const fileContents = fs.readFileSync(fullPath, 'utf8');
+    const { data } = matter(fileContents);
+    if (isDraftArticle(data)) return [];
+    return [{
       slug: fileName.replace(/\.md$/, ''),
-    };
+    }];
   });
 }
 
@@ -161,6 +172,9 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
   const fullPath = path.join(articlesDirectory, `${slug}.md`);
   const fileContents = fs.readFileSync(fullPath, 'utf8');
   const { data, content } = matter(fileContents);
+  if (isDraftArticle(data)) {
+    throw new Error('下書き記事は公開できません。');
+  }
   const cleanedContent = cleanArticleMarkdownForRender(content);
 
   // MarkdownをHTMLに変換 (GFMプラグインを使用してテーブル等をサポート)
@@ -184,6 +198,7 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     themeCluster: data.theme_cluster || '',
     lastUpdated: data.last_updated || '',
     updateStage: data.update_stage || '',
+    canonicalSlug: data.canonical_slug || '',
   };
 }
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲

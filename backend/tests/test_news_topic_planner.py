@@ -112,7 +112,11 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 run_id="schedule-backfill-test",
                 fetched_at=planner.current_jst().isoformat(),
             )
-            planner.cluster_topics_node(state)
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+            ):
+                planner.cluster_topics_node(state)
             fuchu = next(
                 (
                     candidate
@@ -135,6 +139,57 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 for order in state.write_orders
             }
             self.assertIn("府中牝馬S", selected_races)
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_generic_news_rejects_stale_explicit_event_date(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-06-20"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        try:
+            stale_url = "https://news.netkeiba.com/stale-kyoto-track"
+            fresh_url = "https://news.netkeiba.com/fresh-tokyo-track"
+            state = planner.WorkflowState(
+                run_id="generic-date-freshness-test",
+                fetched_at=planner.current_jst().isoformat(),
+                source_cards=[
+                    planner.SourceCard(
+                        title="京都競馬場の馬場傾向",
+                        url=stale_url,
+                        content="2月14日の京都競馬場は芝の内側に傷みが見られた。",
+                        query="競馬 馬場 最新",
+                        source_name="news.netkeiba.com",
+                        source_type="trusted_media",
+                        score=100,
+                        fetched_at=planner.current_jst().isoformat(),
+                        allowed_claims=["2月14日の京都競馬場は芝の内側に傷みが見られた。"],
+                    ),
+                    planner.SourceCard(
+                        title="東京競馬場の馬場傾向",
+                        url=fresh_url,
+                        content="6月20日の東京競馬場について当日の馬場状態を確認する。",
+                        query="競馬 馬場 最新",
+                        source_name="news.netkeiba.com",
+                        source_type="trusted_media",
+                        score=100,
+                        fetched_at=planner.current_jst().isoformat(),
+                        allowed_claims=["6月20日の東京競馬場について当日の馬場状態を確認する。"],
+                    ),
+                ],
+            )
+            planner.cluster_topics_node(state)
+            candidate_urls = {
+                card.url
+                for candidate in state.topic_candidates
+                for card in candidate.source_cards
+            }
+
+            self.assertNotIn(stale_url, candidate_urls)
+            self.assertIn(fresh_url, candidate_urls)
         finally:
             if previous_now is None:
                 os.environ.pop("KEIBA_NEWS_NOW", None)

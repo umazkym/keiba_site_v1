@@ -101,6 +101,9 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-06-20**:
+  * **一般ニュースの季節外れ日付を遮断**:
+    6月19日の記事生成で、重賞名を持たない `news_context` が重賞カレンダーの期間判定対象外となり、2月14日の京都競馬場（2回5日目）の馬場情報を現在のニュースとして公開した問題を修正。一般ニュースのタイトル・本文から `YYYY年M月D日`、`M月D日`、ISO日付を抽出し、Tavily検索のlookback期間または直近開催期間から外れた明示日付しかないソースを候補から除外する。SEO Checkerにも `scheduled_race_date` を持たない `news_context` の日付鮮度チェックを追加し、公開日から7日以上離れた開催日だけを扱う記事を拒否する。誤公開された京都馬場記事は `draft: true` へ戻した。
 * **2026-06-19**:
   * **記事画像軽量化・広告CLS・hydrationエラー対策**:
     共通アイキャッチ4枚（`data-analysis-eyecatch.png`、`beginner.png`、`jockey.png`、`jyusyo-eyecatch.png`）を同じ1024px PNGのままパレット最適化し、合計約3.1MBから約124KBへ削減。参照URLを変えず、記事・関連記事・ホームの既存表示を維持した。AdSense枠はGoogleが空振り時に祖先要素へ `min-height: 0 !important` を付与する挙動を確認したため、通常フローの独立スペーサーと絶対配置の広告DOMを分離し、デスクトップ280px・モバイル250px、インフィード220pxを予約する構造へ変更。未配信広告の `aria-hidden` を外し、非表示時は `visibility` とポインター制御でフォーカス可能な広告要素との競合を避けた。ページレベルAdSenseスクリプトはhydration後に動的読込し、ヘッダーの日付と的中ランキング期間、関連日付導線をSSRとブラウザで決定的な値へ変更。`npx tsc --noEmit`、`npm run article:validate-links`、`npm run build`成功。ローカル本番ビルドをホーム・記事・レース詳細、PC・モバイル幅で確認し、React #422/#425は再現せず、広告空振り後も予約高が維持されることを確認した。

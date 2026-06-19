@@ -477,6 +477,64 @@ def current_jst() -> datetime:
     return datetime.now(JST)
 
 
+def explicit_event_dates(text_value: str, now: Optional[datetime] = None) -> List[date]:
+    base_now = now or current_jst()
+    found: List[date] = []
+    seen: Set[date] = set()
+    patterns = (
+        re.compile(r"(?:(?P<year>20\d{2})年)?(?P<month>\d{1,2})月(?P<day>\d{1,2})日"),
+        re.compile(r"(?P<year>20\d{2})[-/](?P<month>\d{1,2})[-/](?P<day>\d{1,2})"),
+    )
+
+    for pattern in patterns:
+        for match in pattern.finditer(text_value):
+            year_text = match.groupdict().get("year")
+            month = int(match.group("month"))
+            day = int(match.group("day"))
+            candidate_years = [int(year_text)] if year_text else [
+                base_now.year - 1,
+                base_now.year,
+                base_now.year + 1,
+            ]
+            candidates: List[date] = []
+            for year in candidate_years:
+                try:
+                    candidates.append(date(year, month, day))
+                except ValueError:
+                    continue
+            if not candidates:
+                continue
+            candidate = min(
+                candidates,
+                key=lambda item: abs((item - base_now.date()).days),
+            )
+            if candidate not in seen:
+                seen.add(candidate)
+                found.append(candidate)
+    return found
+
+
+def generic_source_is_fresh(
+    title: str,
+    content: str,
+    now: Optional[datetime] = None,
+) -> bool:
+    base_now = now or current_jst()
+    event_dates = explicit_event_dates(f"{title} {content}", base_now)
+    if not event_dates:
+        return True
+
+    lookback_days = min(
+        parse_positive_int(os.environ.get("KEIBA_NEWS_LOOKBACK_DAYS"), 7),
+        30,
+    )
+    before_days, _after_days = focus_window()
+    return any(
+        -lookback_days <= (event_date - base_now.date()).days <= before_days
+        for event_date in event_dates
+    )
+
+
 _RACE_SCHEDULE_CACHE: Dict[Tuple[int, int], Tuple[RaceDemand, ...]] = {}
 
 
@@ -1381,6 +1439,8 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
             race_name = demand.name
         if demand and enforce_season_window and not is_in_focus_window(days_until_race(demand)):
             continue
+        if not demand and enforce_season_window and not generic_source_is_fresh(card.title, card.content):
+            continue
 
         search_intent, _label, _score = detect_search_intent(card.title, card.content, card.query)
         days_to_race = days_until_race(demand) if demand else None
@@ -1411,6 +1471,8 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
             continue
         if demand:
             race_name = demand.name
+        if not demand and enforce_season_window and not generic_source_is_fresh(primary.title, primary.content):
+            continue
         search_intent, search_intent_label, intent_score = detect_search_intent(primary.title, primary.content, primary.query)
         days_to_race = days_until_race(demand) if demand else None
         normalized_intent = normalize_intent_for_race_phase(

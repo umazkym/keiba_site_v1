@@ -194,6 +194,55 @@ export function checkSEO(markdownText: string): SEOCheckResult {
       `開催前のレースを結果回顧として公開できません。scheduled_race_date=${scheduledRaceDate}, article_date=${articleDate}, search_intent=${searchIntent || '(empty)'}, race_phase=${racePhase || '(empty)'}`
     );
   }
+
+  if (!scheduledRaceDate && String(data.theme_cluster || '') === 'news_context') {
+    const articleTimestamp = Date.parse(`${articleDate}T00:00:00Z`);
+    const articleYear = Number(articleDate.slice(0, 4));
+    const explicitEventTimestamps: number[] = [];
+    const dateText = `${data.title || ''} ${data.description || ''} ${content}`;
+    const datePattern = /(?:(20\d{2})年)?(\d{1,2})月(\d{1,2})日/g;
+    let dateMatch: RegExpExecArray | null;
+
+    while ((dateMatch = datePattern.exec(dateText)) !== null) {
+      const explicitYear = dateMatch[1] ? Number(dateMatch[1]) : null;
+      const month = Number(dateMatch[2]);
+      const day = Number(dateMatch[3]);
+      const yearCandidates = explicitYear
+        ? [explicitYear]
+        : [articleYear - 1, articleYear, articleYear + 1];
+      const candidates = yearCandidates.flatMap(year => {
+        const timestamp = Date.UTC(year, month - 1, day);
+        const parsedDate = new Date(timestamp);
+        const isValid = (
+          parsedDate.getUTCFullYear() === year &&
+          parsedDate.getUTCMonth() === month - 1 &&
+          parsedDate.getUTCDate() === day
+        );
+        return isValid ? [timestamp] : [];
+      });
+      if (candidates.length === 0) continue;
+
+      explicitEventTimestamps.push(
+        candidates.reduce((nearest, candidate) => (
+          Math.abs(candidate - articleTimestamp) < Math.abs(nearest - articleTimestamp)
+            ? candidate
+            : nearest
+        ))
+      );
+    }
+
+    const freshnessWindowMs = 7 * 86_400_000;
+    if (
+      explicitEventTimestamps.length > 0 &&
+      !explicitEventTimestamps.some(
+        timestamp => Math.abs(timestamp - articleTimestamp) <= freshnessWindowMs
+      )
+    ) {
+      errors.push(
+        `news_contextの記事内に公開日から7日以上離れた開催日だけが含まれています。古いニュースを現在の馬場・開催情報として公開しないでください。article_date=${articleDate}`
+      );
+    }
+  }
   
   // 空文字はエラー
   if (!content || content.trim() === '') {

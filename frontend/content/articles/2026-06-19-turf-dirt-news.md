@@ -18,7 +18,7 @@ search_intent: track_condition
 race_phase: ''
 scheduled_race_date: ''
 content_focus: 天気馬場がコース適性と位置取りへ与える影響を整理する
-draft: false
+draft: true
 date: '2026-06-19T00:37:59.509Z'
 og_type: article
 og_title: 【京都競馬】14日の馬場傾向と外差し・差し警戒の確認ポイント3選

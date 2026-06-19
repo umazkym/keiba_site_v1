@@ -101,6 +101,19 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-06-19**:
+  * **開催前の回顧記事防止と直近重賞の候補補完**:
+    6月21日開催予定の一條記念みちのく大賞典が、6月19日時点で `search_intent=result_review`、`race_phase=post_race` の回顧記事として公開された問題を修正。開催前に検索結果から「結果」「優勝」等を検出した場合は前年以前の材料とみなし、当年の結果回顧ではなく `past_trends` へ変換する。Tavilyに適切な記事が見つからなくても、公式重賞日程から開催直前の未作成レース候補を補完し、府中牝馬SやしらさぎSなどが検索結果の偶然で候補から消えない構成へ変更。下書き記事は重複判定から除外し、誤公開された一條記念みちのく大賞典記事は `draft: true` へ戻した。ArticleFlowでは開催日から算出した段階とWriteOrderの `race_phase` を照合し、Writer後のfrontmatterが `search_intent`、`race_phase`、`scheduled_race_date` を改変した場合もcriticalで拒否。SEO Checkerにも未来開催日の結果回顧を公開不可とする機械ゲートを追加した。
+  * **ホーム当日開催の空表示を自動復旧**:
+    当日データ投入前に生成されたホームのISRキャッシュが「本日のレースデータはありません」を保持し、Cloud Run API側では開催データが反映済みでも最初の閲覧者へ古い空状態を返す問題を修正。通常時は従来の30分ISRを維持し、サーバー描画時の中央・地方開催がともに空の場合だけ、ブラウザ側から当日APIをキャッシュなしで再取得する `HomeTodayVenues` を追加した。初回取得でも空の場合は1分後に一度だけ再確認し、未反映時の文言も「データはありません」ではなく更新中であることが分かる表現へ変更。地方開催が取得できた時点で競馬場カードと楽天競馬導線を復旧する。
+  * **収益ファネル計測の本番反映とGA4管理画面設定**:
+    6月18日に実装した収益ファネル計測を本番へ反映。初回Vercelビルドは、記事ページから参照する新規ファイル `frontend/components/ArticleEngagementTracker.tsx` がGit管理対象に含まれておらず、`Module not found: Can't resolve '@/components/ArticleEngagementTracker'` で失敗した。ユーザーが同ファイル、`docs/analytics_measurement_plan.md`、`backend/tests/test_news_topic_planner.py`を追加し、コミット`2bae3eb`（`収益ファネル計測と記事導線を改善`）を`main`へpushした後、Vercelビルド・デプロイが正常完了した。
+    GA4では`affiliate_click`と`article_race_click`をキーイベントとして登録。`affiliate_click`は本番ストリーム`uma-free`でデータ検出済み。`article_race_click`もキーイベント登録済みで、記事内の`/races/...`導線クリックから送信する構成になっている。通常レポートへの反映には時間差があるため、未検出表示の場合はTag AssistantまたはDebugViewで記事からレースページへ移動し、イベント発火を確認する。
+    イベントスコープのカスタムディメンションとして、`provider`（アフィリエイト提供元）、`context`（アフィリエイト配置）、`navigation_method`（レース移動方法）、`race_type`（レース種別）、`venue_name`（競馬場）、`article_category`（記事カテゴリ）、`article_slug`（記事スラッグ）、`link_placement`（記事リンク位置）を登録。高カーディナリティ化しやすい`race_id`と`link_path`はカスタムディメンションにしていない。
+    Tag Assistantで`https://uma-free.com`へ接続し、Googleタグ`G-10PZFRV2BX`の検出、`affiliate_impression`、`ad_impression_custom`、ページビュー等の送信を確認。Search ConsoleではモバイルCore Web VitalsのCLS・INPについて検証開始の操作を実施し、URLグループ単位の28日間評価を待つ状態とした。Analytics Admin APIやPageSpeed Insights APIを使うPowerShellコマンドは補助的な確認手段であり、今回は実行していない。
+  * **広告アカウント通知と性能課題の整理**:
+    Google Ad Managerネットワーク`23345285369`の「過去90日間インプレッションなし・今後90日で無効化予定」という通知は、現在一時停止中のGAM Rewarded Adに関するもの。収益稼働中のAdSense自動広告、手動広告、アンカー広告、オファーウォールとは別系統のため、現行運用では緊急対応不要。Rewarded Adを再開しない場合は無効化を許容し、再開する場合のみGAM側の配信設定と在庫を再検証する。
+    Lighthouseモバイル診断はPerformance 65、Accessibility 93、Best Practices 100、SEO 100。ラボ値はFCP 3.8秒、LCP 6.9秒、TBT 120ms、CLS 0で、`/images/articles/data-analysis-eyecatch.png`が約808KBと大きく、画像最適化による削減余地が大きい。また広告コンテナ内のフォーカス可能要素と`aria-hidden`の組み合わせがアクセシビリティ監査で指摘された。Search Consoleの実ユーザーデータでは62 URLのグループがCLS 0.49、INP 1,023msで不良判定だが、これは過去28日間のローリングデータであり、修正反映後も即時には解消されない。画像軽量化、広告コンポーネントの`aria-hidden`見直し、LCP・INPの追加改善は未実装の次期対応項目として残す。
 * **2026-06-18**:
   * **収益ファネル計測の正常化と検索カニバリ抑制**:
     GA4のページビューがAdSenseページビューを大きく上回っていた原因を調査し、`RaceTabs.tsx` が中央・地方タブと競馬場タブの切り替えを仮想`page_view`として送信していた処理を廃止。`race_group_select`、`race_venue_select`、`race_navigation`へ分離し、実ページ表示とレース画面内操作を区別できる構成へ変更した。予想表の表示時に送っていた旧`read_complete`は`prediction_table_view`へ改名し、記事本文末尾への到達を`article_read_complete`、記事からレースページへの遷移を`article_race_click`として新規計測。アフィリエイトクリックを含むGA4キーイベント候補と推奨ファネルを`docs/analytics_measurement_plan.md`へ整理した。

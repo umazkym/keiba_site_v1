@@ -171,6 +171,29 @@ export function checkSEO(markdownText: string): SEOCheckResult {
   }
 
   const { data, content } = parsed;
+
+  const normalizeDateOnly = (value: unknown): string | null => {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return match ? `${match[1]}-${match[2]}-${match[3]}` : null;
+  };
+  const scheduledRaceDate = normalizeDateOnly(data.scheduled_race_date);
+  const articleDate = normalizeDateOnly(data.date) || new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  const searchIntent = String(data.search_intent || '');
+  const racePhase = String(data.race_phase || '');
+  if (
+    scheduledRaceDate &&
+    scheduledRaceDate > articleDate &&
+    (searchIntent === 'result_review' || racePhase === 'post_race')
+  ) {
+    errors.push(
+      `開催前のレースを結果回顧として公開できません。scheduled_race_date=${scheduledRaceDate}, article_date=${articleDate}, search_intent=${searchIntent || '(empty)'}, race_phase=${racePhase || '(empty)'}`
+    );
+  }
   
   // 空文字はエラー
   if (!content || content.trim() === '') {

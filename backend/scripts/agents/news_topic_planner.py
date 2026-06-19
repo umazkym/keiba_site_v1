@@ -375,6 +375,7 @@ class TopicCandidate:
     calendar_race: str
     days_to_race: Optional[int]
     source_cards: List[SourceCard]
+    is_schedule_backfill: bool = False
 
 
 @dataclass
@@ -854,6 +855,12 @@ def normalize_intent_for_race_phase(
     if days_to_race < 0:
         return "result_review" if intent_has_source_evidence("result_review", title, content) else None
 
+    # 開催前に検索結果の「結果」「優勝」などを拾った場合、それは前年以前の
+    # レース結果であり、当年レースの回顧として扱ってはいけない。
+    # 過去結果は今年の条件と照合する材料として「過去傾向」へ変換する。
+    if intent == "result_review":
+        return "past_trends"
+
     # 枠順・追い切りは、検索クエリに語があるだけでは主題にしない。
     # 開催が近く、かつ取得ソース自体に明示された場合だけ採用する。
     if intent == "waku":
@@ -978,6 +985,12 @@ def load_existing_article_keywords() -> Set[str]:
             if not content.startswith("---"):
                 continue
             frontmatter = content.split("---", 2)[1]
+            is_draft = any(
+                line.strip().lower() == "draft: true"
+                for line in frontmatter.splitlines()
+            )
+            if is_draft:
+                continue
             for line in frontmatter.splitlines():
                 if line.strip().startswith("target_keyword:"):
                     keyword = line.split(":", 1)[1].strip().strip("\"'")
@@ -1024,6 +1037,85 @@ def load_known_topic_keys() -> Set[str]:
         known.add(normalize_key(keyword))
 
     return known
+
+
+def schedule_source_url(entry: RaceDemand, now: Optional[datetime] = None) -> str:
+    if entry.source_url:
+        return entry.source_url
+    base_now = now or current_jst()
+    if entry.source_kind == "jra":
+        return f"https://www.jra.go.jp/datafile/seiseki/replay/{base_now.year}/jyusyo.html"
+    return (
+        "https://nar.sp.netkeiba.com/top/schedule.html"
+        f"?year={race_demand_date(entry, base_now).year}&month={entry.month}"
+    )
+
+
+def schedule_backfill_candidate(
+    entry: RaceDemand,
+    days_to_race: int,
+    now: Optional[datetime] = None,
+) -> TopicCandidate:
+    base_now = now or current_jst()
+    scheduled_date = race_demand_date(entry, base_now)
+    intents = query_intents_for_race(entry, days_to_race)
+    search_intent = intents[0] if intents else "race_profile"
+    search_intent_label = KEYWORD_LABEL_BY_INTENT.get(search_intent, "レース条件")
+    source_url = schedule_source_url(entry, base_now)
+    distance_text = f"、{entry.distance}" if entry.distance else ""
+    conditions_text = f"、{entry.conditions}" if entry.conditions else ""
+    claim = (
+        f"{entry.name}は{scheduled_date.isoformat()}に{entry.venue or '開催競馬場'}で"
+        f"行われる{entry.grade}競走{distance_text}{conditions_text}。"
+    )
+    source_type = classify_source_type(source_url)
+    card = SourceCard(
+        title=f"{entry.name} {scheduled_date.isoformat()} 開催日程",
+        url=source_url,
+        content=claim,
+        query=f"{entry.name} {scheduled_date.year} 公式日程",
+        source_name=hostname(source_url),
+        source_type=source_type,
+        score=float(120 + entry.base_score + race_window_score(days_to_race)),
+        fetched_at=base_now.isoformat(),
+        allowed_claims=[claim],
+    )
+    search_angle_label = search_intent_label
+    topic_key = make_topic_key(
+        entry.name,
+        card.title,
+        search_intent,
+        entry,
+        search_angle_label,
+    )
+    target_keyword = make_target_keyword(
+        card,
+        entry.name,
+        search_intent,
+        search_intent_label,
+        search_angle_label,
+        entry,
+    )
+    return TopicCandidate(
+        topic_key=topic_key,
+        target_keyword=target_keyword,
+        title_seed=card.title,
+        article_type="race_update",
+        theme_cluster="race_update",
+        search_intent=search_intent,
+        search_intent_label=search_intent_label,
+        search_angle_label=search_angle_label,
+        score=card.score + 50,
+        reason=(
+            f"公式日程から補完 / レース名検出: {entry.name} / "
+            f"検索意図: {search_intent_label} / 開催接近: {days_to_race}日"
+        ),
+        race_name=entry.name,
+        calendar_race=entry.name,
+        days_to_race=days_to_race,
+        source_cards=[card],
+        is_schedule_backfill=True,
+    )
 
 
 def build_queries_node(state: WorkflowState) -> WorkflowState:
@@ -1378,6 +1470,29 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
                 source_cards=cards[:3],
             )
         )
+
+    # Tavilyの検索結果に適切な記事がない場合でも、直近の公式重賞日程から
+    # 最低限の記事候補を補完する。これにより、検索結果の偶然に左右されて
+    # 府中牝馬Sなど開催直前の重賞が丸ごと候補から消えることを防ぐ。
+    represented_races = {
+        normalize_race_alias(candidate.race_name or candidate.calendar_race)
+        for candidate in candidates
+        if candidate.race_name or candidate.calendar_race
+    }
+    published_or_pending_keywords = load_existing_article_keywords() | load_pending_order_keywords()
+    max_focus_races = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_FOCUS_RACES"), 4), 6)
+    for entry, days_to_race in focus_races()[:max_focus_races]:
+        if days_to_race < 0:
+            continue
+        race_key = normalize_race_alias(entry.name)
+        if race_key in represented_races:
+            continue
+        race_year_key = normalize_key(f"{entry.name}{race_demand_date(entry).year}")
+        if any(race_year_key in normalize_key(keyword) for keyword in published_or_pending_keywords):
+            continue
+
+        candidates.append(schedule_backfill_candidate(entry, days_to_race))
+        represented_races.add(race_key)
 
     state.topic_candidates = sorted(candidates, key=lambda item: item.score, reverse=True)
     return state

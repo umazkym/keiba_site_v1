@@ -87,9 +87,18 @@ async function fetchWithRetry(
     return fetch(url, options);
 }
 
-export async function getPredictionsForDate(date: string): Promise<RaceDayPrediction | null> {
+export async function getPredictionsForDate(
+    date: string,
+    options: { bypassCache?: boolean } = {},
+): Promise<RaceDayPrediction | null> {
     try {
-        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/${date}`, { next: { revalidate: getRaceDataRevalidate(date) } });
+        const requestOptions: RequestInit & { next?: { revalidate?: number } } = options.bypassCache
+            ? { cache: 'no-store' }
+            : { next: { revalidate: getRaceDataRevalidate(date) } };
+        const res = await fetchWithRetry(
+            `${API_BASE_URL}/api/v1/predictions/${date}`,
+            requestOptions,
+        );
         if (!res.ok) {
             if (res.status === 404) {
                 console.log(`No predictions found for date ${date}, returning empty data.`);

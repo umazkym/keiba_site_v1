@@ -11,13 +11,13 @@ import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
 import { WeeklyGradeRaces } from '@/components/WeeklyGradeRaces';
 import { RecentRaceReturn } from '@/components/RecentRaceReturn';
+import { HomeTodayVenues } from '@/components/HomeTodayVenues';
 import { getSpecialPick, getPredictionsForDate, getWeeklyGradeRaces, getTopPayoutHits } from '@/lib/api';
 import { getLatestArticles, getAllArticles } from '../lib/articles';
 
 import DisclaimerAlert from '@/components/DisclaimerAlert';
 import { AdUnit } from '@/components/AdUnit';
 import { NativeCardAd } from '@/components/NativeCardAd';
-import { AffiliateSlot } from '@/components/AffiliateSlot';
 import type { Metadata } from 'next';
 import type { RaceDayPrediction, WeeklyGradeRace } from '@/lib/types';
 import { getRaceDetailPath } from '@/lib/race-url';
@@ -512,35 +512,10 @@ export default async function HomePage() {
                     <span className="section-note">毎日更新</span>
                 </h2>
 
-                <div className="venue-grid">
-                    {predictions && predictions.jra?.map(venue => (
-                        <Link key={venue.venue_name} href={venue.races[0] ? getRaceDetailPath(todayStr, venue.venue_name, venue.races[0].race_number) : `/races/${todayStr}`} className="venue-chip">
-                            <strong>{venue.venue_name}</strong>
-                            <small>全{venue.races.length}R</small>
-                            <span className="venue-state">分析公開</span>
-                        </Link>
-                    ))}
-                    {predictions && predictions.nar?.map(venue => (
-                        <Link key={venue.venue_name} href={venue.races[0] ? getRaceDetailPath(todayStr, venue.venue_name, venue.races[0].race_number) : `/races/${todayStr}`} className="venue-chip">
-                            <strong>{venue.venue_name}</strong>
-                            <small>全{venue.races.length}R</small>
-                            <span className="venue-state muted">地方競馬</span>
-                        </Link>
-                    ))}
-                    {(!predictions || ((predictions.jra?.length ?? 0) === 0 && (predictions.nar?.length ?? 0) === 0)) && (
-                        <p className="col-span-full text-sm text-slate-500 text-center py-4">本日のレースデータはありません。</p>
-                    )}
-                </div>
-
-                {/* 地方競馬ネット投票アフィリエイト */}
-                {predictions && predictions.nar && predictions.nar.length > 0 && (
-                    <AffiliateSlot
-                        context="home_nar_voting"
-                        raceType="nar"
-                        selectionKey={todayStr}
-                        className="mt-4"
-                    />
-                )}
+                <HomeTodayVenues
+                    date={todayStr}
+                    initialPredictions={predictions}
+                />
 
                 {!shouldSuppressAdsInDevelopment && (
                     <div className="ad ad-wide mt-4">

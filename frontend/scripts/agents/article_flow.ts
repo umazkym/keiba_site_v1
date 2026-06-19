@@ -105,6 +105,91 @@ function hasConfirmedDrawClaim(text: string): boolean {
   return /枠順確定|枠順が確定|枠順発表後|枠順が発表された|枠順を発表|馬番確定|馬番が確定|出馬表発表後|出馬表が発表された|出馬表が公開された|出馬表を発表|draw_confirmed/i.test(text);
 }
 
+function normalizeDateOnly(value: unknown): string | null {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : null;
+}
+
+function currentJstDateString(): string {
+  const configuredNow = normalizeDateOnly(process.env.KEIBA_NEWS_NOW);
+  if (configuredNow) return configuredNow;
+
+  const parts = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const year = parts.find(part => part.type === 'year')?.value;
+  const month = parts.find(part => part.type === 'month')?.value;
+  const day = parts.find(part => part.type === 'day')?.value;
+  return `${year}-${month}-${day}`;
+}
+
+function daysBetweenDateStrings(fromDate: string, toDate: string): number {
+  const [fromYear, fromMonth, fromDay] = fromDate.split('-').map(Number);
+  const [toYear, toMonth, toDay] = toDate.split('-').map(Number);
+  const fromUtc = Date.UTC(fromYear, fromMonth - 1, fromDay);
+  const toUtc = Date.UTC(toYear, toMonth - 1, toDay);
+  return Math.round((toUtc - fromUtc) / 86_400_000);
+}
+
+function expectedRacePhase(daysToRace: number): string {
+  if (daysToRace < 0) return 'post_race';
+  if (daysToRace === 0) return 'race_day';
+  if (daysToRace <= 2) return 'final_48h';
+  if (daysToRace <= 5) return 'race_week';
+  if (daysToRace <= 10) return 'field_building';
+  return 'early_preview';
+}
+
+function validateRaceTimingReference(ref: Record<string, unknown>, state: ArticleFlowState): void {
+  const scheduledRaceDate = normalizeDateOnly(ref.scheduled_race_date);
+  if (!scheduledRaceDate) return;
+
+  const daysToRace = daysBetweenDateStrings(currentJstDateString(), scheduledRaceDate);
+  const expectedPhase = expectedRacePhase(daysToRace);
+  const searchIntent = String(ref.search_intent || '');
+  const racePhase = String(ref.race_phase || '');
+
+  if (daysToRace >= 0 && searchIntent === 'result_review') {
+    addIssue(
+      state,
+      'Demand Planner',
+      'critical',
+      `開催前のレースを結果回顧として生成できません。scheduled_race_date=${scheduledRaceDate}, days_to_race=${daysToRace}`
+    );
+  }
+  if (racePhase && racePhase !== expectedPhase) {
+    addIssue(
+      state,
+      'Demand Planner',
+      'critical',
+      `開催日とrace_phaseが不整合です。scheduled_race_date=${scheduledRaceDate}, expected=${expectedPhase}, actual=${racePhase}`
+    );
+  }
+}
+
+function validateDraftMetadata(
+  order: WriteOrder,
+  state: ArticleFlowState,
+  draftData: Record<string, any>,
+): void {
+  const ref = order.reference_data as Record<string, unknown>;
+  for (const key of ['search_intent', 'race_phase', 'scheduled_race_date'] as const) {
+    const expected = String(ref[key] || '');
+    const actual = String(draftData[key] || '');
+    if (expected && actual !== expected) {
+      addIssue(
+        state,
+        'Fact Checker',
+        'critical',
+        `frontmatter.${key}がWriteOrderと不一致です。expected=${expected}, actual=${actual || '(empty)'}`
+      );
+    }
+  }
+}
+
 function classifyArticleType(order: WriteOrder): ArticleType {
   const cluster = order.theme_cluster || '';
   if (cluster === 'grade_race_preview') return 'grade_race_preview';
@@ -524,6 +609,7 @@ function validatePreDraftState(order: WriteOrder, state: ArticleFlowState): void
     if ((order.research_sources?.length || 0) === 0 && !ref.source_cards) {
       addIssue(state, 'Research Filter', 'warning', 'news article has no attached research_sources. Continue only if WriteOrder has enough key_metrics.');
     }
+    validateRaceTimingReference(ref, state);
   }
 
   if (state.research_decision.needsExternalResearch && !state.research_decision.tavilyEnabled) {
@@ -736,6 +822,9 @@ export function runPostWriterArticleFlow(order: WriteOrder, draftPath: string): 
   const raw = fs.readFileSync(draftPath, 'utf-8');
   const parsed = safeMatter(raw);
   validatePreDraftState(order, state);
+  if (parsed) {
+    validateDraftMetadata(order, state, parsed.data);
+  }
   validateDraftContent(order, state, parsed?.content || raw);
 
   const status = statusFromIssues(state);

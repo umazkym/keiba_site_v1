@@ -3,6 +3,7 @@ import os
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 os.environ["KEIBA_NEWS_REMOTE_SCHEDULE_ENABLED"] = "false"
@@ -90,6 +91,56 @@ class NewsTopicPlannerTest(unittest.TestCase):
             ),
             "result_review",
         )
+
+    def test_pre_race_result_source_is_converted_to_past_trends(self) -> None:
+        self.assertEqual(
+            planner.normalize_intent_for_race_phase(
+                "result_review",
+                2,
+                "前年の府中牝馬S結果",
+                "過去の優勝馬と着順を振り返る。",
+            ),
+            "past_trends",
+        )
+
+    def test_schedule_backfill_keeps_fuchu_himba_in_candidates(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-06-19"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        try:
+            state = planner.WorkflowState(
+                run_id="schedule-backfill-test",
+                fetched_at=planner.current_jst().isoformat(),
+            )
+            planner.cluster_topics_node(state)
+            fuchu = next(
+                (
+                    candidate
+                    for candidate in state.topic_candidates
+                    if candidate.race_name == "府中牝馬S"
+                ),
+                None,
+            )
+
+            self.assertIsNotNone(fuchu)
+            self.assertTrue(fuchu.is_schedule_backfill)
+            self.assertEqual(fuchu.days_to_race, 2)
+            self.assertEqual(fuchu.search_intent, "field_analysis")
+            self.assertNotEqual(fuchu.search_intent, "result_review")
+
+            with patch.object(planner, "build_internal_data_bundle", return_value={}):
+                planner.build_write_orders_node(state)
+            selected_races = {
+                order["reference_data"]["race_name"]
+                for order in state.write_orders
+            }
+            self.assertIn("府中牝馬S", selected_races)
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            planner._RACE_SCHEDULE_CACHE.clear()
 
 
 if __name__ == "__main__":

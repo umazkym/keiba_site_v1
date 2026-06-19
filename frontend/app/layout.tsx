@@ -11,6 +11,8 @@ import { MicrosoftClarity } from "@/components/MicrosoftClarity";
 import { Suspense } from "react";
 import { GlobalAdManager } from "@/components/GlobalAdManager";
 import { shouldLoadAdsensePageLevelScript } from "@/lib/ad-config";
+import { getJstTodayString } from "@/lib/race-url";
+import { AdSensePageLevelScript } from "@/components/AdSensePageLevelScript";
 
 export const metadata: Metadata = {
     metadataBase: new URL("https://uma-free.com"),
@@ -63,6 +65,8 @@ export default function RootLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const todayString = getJstTodayString();
+
     return (
         <html lang="ja">
             <head>
@@ -110,16 +114,6 @@ export default function RootLayout({
                     }}
                 />
 
-                {/* オファーウォールはAdSenseのページレベル機能として配信されるため、
-                    手動広告運用中でもこのスクリプトだけは先読みする。
-                    全画面自動広告のON/OFFはAdSense管理画面側で制御する前提。 */}
-                {shouldLoadAdsensePageLevelScript && (
-                    <script
-                        async
-                        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4411270831448240"
-                        crossOrigin="anonymous"
-                    />
-                )}
                 {/* GPT (Google Publisher Tag) for GAM Rewarded Ads
                      ★ パフォーマンス改善: layout.tsxから削除し、useRewardedAd.ts内で動的ロードに変更
                      全ページで約30KB(gzip)のJS読み込みを削減し、Core Web Vitalsを改善
@@ -131,7 +125,7 @@ export default function RootLayout({
                 <WebsiteSchema />
                 <SoftwareApplicationSchema />
 
-                <Header />
+                <Header todayString={todayString} />
                 <main className="mobile-compact-scope w-full max-w-7xl mx-auto p-2 sm:p-4 md:p-6 min-h-[calc(100dvh-48px)] sm:min-h-[calc(100dvh-64px)]">
                     {/* メインコンテンツエリア */}
                     <div className="w-full">
@@ -147,6 +141,7 @@ export default function RootLayout({
                 <Footer />
                 {/* CookieConsent削除済み: Google側のGDPR同意メッセージに一元化 */}
                 <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || ""} />
+                <AdSensePageLevelScript enabled={shouldLoadAdsensePageLevelScript} />
             </body>
         </html>
     );

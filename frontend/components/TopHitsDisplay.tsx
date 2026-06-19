@@ -6,6 +6,25 @@ import { TopPayoutHit } from '@/lib/types';
 import { TrophyIcon } from './Icons';
 import { getRaceDetailPath } from '@/lib/race-url';
 
+const formatShortRaceDate = (date: string): string => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+    if (!match) return date;
+    return `${Number(match[2])}/${Number(match[3])}`;
+};
+
+const getDateRangeLabel = (hits: TopPayoutHit[]): string => {
+    const dates = hits
+        .map((hit) => hit.race_date)
+        .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+        .sort();
+
+    if (dates.length === 0) return '直近の実績';
+
+    const start = formatShortRaceDate(dates[0]);
+    const end = formatShortRaceDate(dates[dates.length - 1]);
+    return start === end ? start : `${start}〜${end}`;
+};
+
 const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: number, compact?: boolean }) => {
     const raceDate = new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
     const rankTone = rank === 1
@@ -118,22 +137,13 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
         return <Skeleton compact={compact} />;
     }
 
-    const getDateRangeLabel = () => {
-        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-        const end = new Date(now);
-        const start = new Date(now);
-        start.setDate(start.getDate() - 6);
-        const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
-        return `${fmt(start)}〜${fmt(end)}`;
-    };
-
     return (
         <div>
             {!compact && (
                 <h2 className="sec-title px-1 mb-1.5 sm:mb-2 flex items-center">
                     <TrophyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 shrink-0" />
                     <span className="whitespace-nowrap ml-1">高配当的中ランキング</span>
-                    <span className="text-[10px] sm:text-xs font-normal text-muted ml-1.5 whitespace-nowrap self-end mb-0.5">({getDateRangeLabel()})</span>
+                    <span className="text-[10px] sm:text-xs font-normal text-muted ml-1.5 whitespace-nowrap self-end mb-0.5">({getDateRangeLabel(hits)})</span>
                 </h2>
             )}
             {hits.length === 0 ? (

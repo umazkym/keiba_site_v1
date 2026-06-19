@@ -131,32 +131,33 @@ export const AdUnit = ({
 
     // 配置タイプに応じたスタイル設定
     const placementStyles: Record<AdPlacement, {
-        containerClass: string;
-        minHeight: string;
+        wrapperClass: string;
+        contentClass: string;
+        reserveClass: string;
         adStyle: React.CSSProperties;
     }> = {
         inline: {
-            containerClass: 'my-1 sm:my-3 flex flex-col items-center justify-center w-full',
-            // ★ Viewability改善: 0→90pxに変更
-            // 広告がビューポートに十分な面積を確保し、Active View viewable判定の閾値（50%表示 + 1秒）を満たしやすくする
-            // AdSenseデータ: viewability 35.17% → 50%目標
-            minHeight: '90px',
+            wrapperClass: 'my-1 sm:my-3 w-full',
+            contentClass: 'flex flex-col items-center justify-center',
+            reserveClass: 'ad-slot-reserve-inline',
             adStyle: { width: '100%' },
         },
         banner: {
-            containerClass: 'my-2 sm:my-4 flex flex-col items-center justify-center w-full',
-            minHeight: '80px',
-            adStyle: { width: '100%', minHeight: '80px' },
+            wrapperClass: 'my-2 sm:my-4 w-full',
+            contentClass: 'flex flex-col items-center justify-center',
+            reserveClass: 'ad-slot-reserve-banner',
+            adStyle: { width: '100%' },
         },
         sidebar: {
-            containerClass: 'mb-4 w-full',
-            minHeight: '200px',
-            adStyle: { width: '100%', minHeight: '200px' },
+            wrapperClass: 'mb-4 w-full',
+            contentClass: '',
+            reserveClass: 'ad-slot-reserve-sidebar',
+            adStyle: { width: '100%' },
         },
     };
 
     const config = placementStyles[placement];
-    const reservedMinHeight = minHeight || config.minHeight;
+    const reservedMinHeight = minHeight;
     const effectiveLazyRootMargin = lazyRootMargin ?? (
         placement === 'sidebar'
             ? '500px 0px 500px 0px'
@@ -166,46 +167,55 @@ export const AdUnit = ({
         placement === 'sidebar' ? 500 : 560
     );
     const adStyle = useMemo(
-        () => ({ ...placementStyles[placement].adStyle, minHeight: reservedMinHeight }),
+        () => ({
+            ...placementStyles[placement].adStyle,
+            ...(reservedMinHeight ? { minHeight: reservedMinHeight } : {}),
+        }),
         [placement, reservedMinHeight]
     );
 
     // unfilledの場合も、原則として予約した高さは残してCLSを防ぐ。
     // どうしても畳みたい箇所だけ collapseUnfilled を明示する。
     const shouldCollapse = adUnfilled && collapseUnfilled;
-    const containerStyle = shouldCollapse ? { display: 'none' } : { minHeight: reservedMinHeight };
+    const spacerStyle = reservedMinHeight ? { minHeight: reservedMinHeight } : undefined;
 
     if (!isManualAdsEnabled || shouldSuppressAdsInDevelopment) return null;
 
     return (
         <div
-            ref={containerRef}
-            className={`ad-unit-container ${collapseUnfilled ? 'ad-collapse-unfilled' : 'ad-preserve-space'} ${config.containerClass} ${className} ${shouldCollapse ? 'hidden m-0 p-0' : ''} relative`}
-            style={containerStyle}
-            aria-hidden={adUnfilled && !adLoaded ? true : undefined}
+            className={`ad-layout-wrapper ${collapseUnfilled ? 'ad-collapse-unfilled' : 'ad-preserve-space'} ${config.wrapperClass} ${className} ${shouldCollapse ? 'hidden m-0 p-0' : ''}`}
+            data-ad-state={adLoaded ? 'filled' : adUnfilled ? 'unfilled' : 'loading'}
         >
-            {/* 広告未ロード時（リフレッシュ中含む）はスケルトンを表示して視線を繋ぎ止める */}
-            {!adLoaded && !adUnfilled && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-50/80 rounded-xl z-0">
-                    <SkeletonLoader className="w-[90%] h-[80%] rounded-lg opacity-50" />
-                </div>
-            )}
-            <div className={`ad-highlight w-full z-10 relative ${!adLoaded ? 'opacity-0' : 'opacity-100 transition-opacity duration-500'}`}>
-                {/* 広告がロードされた場合のみラベルを表示 */}
-                {label && adLoaded && (
-                    <div className="text-[10px] text-gray-400 text-center mb-1 tracking-wider select-none">
-                        {label}
+            {/* Googleが広告DOMの祖先へmin-height:0を指定しても、通常フローのスペーサーで高さを維持する。 */}
+            <div className={`ad-layout-spacer ${config.reserveClass}`} style={spacerStyle} aria-hidden="true" />
+            <div
+                className={`ad-slot-shell absolute inset-0 w-full ${config.contentClass} ${adUnfilled ? 'invisible pointer-events-none' : ''}`}
+            >
+                <div ref={containerRef} className="ad-unit-container relative h-full w-full">
+                    {/* 広告未ロード時（リフレッシュ中含む）はスケルトンを表示して視線を繋ぎ止める */}
+                    {!adLoaded && !adUnfilled && (
+                        <div className="absolute inset-0 z-0 flex items-center justify-center rounded-xl bg-slate-50/80">
+                            <SkeletonLoader className="h-[80%] w-[90%] rounded-lg opacity-50" />
+                        </div>
+                    )}
+                    <div className={`ad-highlight relative z-10 w-full ${!adLoaded ? 'opacity-0' : 'opacity-100 transition-opacity duration-500'}`}>
+                        {/* 広告がロードされた場合のみラベルを表示 */}
+                        {label && adLoaded && (
+                            <div className="mb-1 select-none text-center text-[10px] tracking-wider text-gray-400">
+                                {label}
+                            </div>
+                        )}
+                        <Adsense
+                            client={AD_CLIENT}
+                            slot={slot}
+                            refreshKey={refreshKey}
+                            style={adStyle}
+                            isResponsive={true}
+                            lazyRootMargin={effectiveLazyRootMargin}
+                            refreshRootMarginPx={effectiveRefreshRootMarginPx}
+                        />
                     </div>
-                )}
-                <Adsense
-                    client={AD_CLIENT}
-                    slot={slot}
-                    refreshKey={refreshKey}
-                    style={adStyle}
-                    isResponsive={true}
-                    lazyRootMargin={effectiveLazyRootMargin}
-                    refreshRootMarginPx={effectiveRefreshRootMarginPx}
-                />
+                </div>
             </div>
         </div>
     );

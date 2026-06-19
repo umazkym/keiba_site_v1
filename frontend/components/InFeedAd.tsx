@@ -48,7 +48,7 @@ export const InFeedAd = ({
     const containerRef = useRef<HTMLDivElement>(null);
     const [adUnfilled, setAdUnfilled] = useState(false);
     const adStyle = useMemo<CSSProperties>(
-        () => ({ display: 'block', minHeight: '160px' }),
+        () => ({ display: 'block', minHeight: '200px' }),
         []
     );
 
@@ -109,8 +109,7 @@ export const InFeedAd = ({
         <div
             ref={containerRef}
             className={`overflow-hidden rounded-xl border-l-[3px] border-l-blue-200 border border-y-slate-200 border-r-slate-200 shadow-sm relative w-full bg-slate-50 p-1.5 sm:p-3 mt-2 mb-2 ${adUnfilled ? 'invisible pointer-events-none' : ''} ${className}`}
-            style={{ minHeight: '180px' }}
-            aria-hidden={adUnfilled ? true : undefined}
+            style={{ minHeight: '220px' }}
         >
 
             {/* 広告ラベル: コンテンツとの誤認を防ぐための表示 */}

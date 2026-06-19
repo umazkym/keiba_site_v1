@@ -105,7 +105,6 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
             ref={containerRef}
             className={`${style.container} ${className} ${adUnfilled ? 'invisible pointer-events-none' : ''}`}
             style={{ minHeight: style.height }}
-            aria-hidden={adUnfilled ? true : undefined}
         >
             <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-white/85 text-[9px] text-slate-400 font-medium z-10 pointer-events-none">
                 広告

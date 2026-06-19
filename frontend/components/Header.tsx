@@ -4,7 +4,11 @@ import Link from 'next/link';
 import { useState, useCallback, useEffect } from 'react';
 import { SearchIcon, MenuIcon, XIcon } from '@/components/Icons';
 
-export const Header = () => {
+type HeaderProps = {
+    todayString: string;
+};
+
+export const Header = ({ todayString }: HeaderProps) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const toggleMenu = useCallback(() => {
@@ -26,15 +30,6 @@ export const Header = () => {
             document.body.style.overflow = '';
         };
     }, [isMenuOpen]);
-
-    const getTodayString = () => {
-        const today = new Date(
-            new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
-        );
-        return today.toISOString().split("T")[0];
-    };
-
-    const todayStr = getTodayString();
 
     return (
         <header className="glass sticky top-0 z-50 transition-all duration-300">
@@ -66,7 +61,7 @@ export const Header = () => {
                         <Link href="/" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             ホーム
                         </Link>
-                        <Link href={`/races/${todayStr}`} className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
+                        <Link href={`/races/${todayString}`} className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             本日の分析
                         </Link>
                         <Link href="/articles" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
@@ -128,7 +123,7 @@ export const Header = () => {
                         ホーム
                     </Link>
                     <Link
-                        href={`/races/${todayStr}`}
+                        href={`/races/${todayString}`}
                         className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
                         onClick={closeMenu}
                     >

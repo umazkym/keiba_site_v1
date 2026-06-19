@@ -428,13 +428,41 @@ td.no-match {
 }
 
 /* 広告ユニットコンテナ: CLS防止のためmin-height予約 */
-.ad-unit-container {
+.ad-layout-wrapper {
+    position: relative;
     contain: layout;
     overflow: hidden;
 }
 
+.ad-layout-spacer {
+    width: 100%;
+    pointer-events: none;
+}
+
+/*
+ * レスポンシブ広告が後から拡張して本文を押し下げないよう、配置ごとに初期高を予約する。
+ * 記事本文内など minHeight を明示した箇所ではインライン指定が優先される。
+ */
+.ad-slot-reserve-inline {
+    min-height: 250px;
+}
+
+.ad-slot-reserve-banner {
+    min-height: 100px;
+}
+
+.ad-slot-reserve-sidebar {
+    min-height: 250px;
+}
+
+@media (min-width: 640px) {
+    .ad-slot-reserve-inline {
+        min-height: 280px;
+    }
+}
+
 /* 明示的に許可した広告枠だけ、未配信時に畳む。通常の広告枠は高さを保ってCLSを避ける */
-.ad-unit-container.ad-collapse-unfilled:has(ins[data-ad-status^="unfill"]) {
+.ad-layout-wrapper.ad-collapse-unfilled:has(ins[data-ad-status^="unfill"]) {
     max-height: 0 !important;
     min-height: 0 !important;
     overflow: hidden;

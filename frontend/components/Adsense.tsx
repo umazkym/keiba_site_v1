@@ -73,6 +73,16 @@ export const Adsense = ({
   const prevPathname = useRef(pathname);
   const isFirstLoad = useRef(true); // 初回読み込みフラグ（lazy load用）
   const shouldRenderAd = isManualAdsEnabled && !shouldSuppressAdsInDevelopment;
+  const configuredMinHeight = style?.minHeight;
+
+  const restoreConfiguredMinHeight = (container: HTMLDivElement) => {
+    container.style.minHeight =
+      configuredMinHeight === undefined || configuredMinHeight === null
+        ? ''
+        : typeof configuredMinHeight === 'number'
+          ? `${configuredMinHeight}px`
+          : configuredMinHeight;
+  };
 
   // 手動広告枠が必要になった時だけAdSenseスクリプトを読む。
   // 全ページheadでclient付きスクリプトを先読みすると、自動広告の全画面表示が起動しやすくなるため分離する。
@@ -177,8 +187,8 @@ export const Adsense = ({
         const adStatusObserver = new MutationObserver(() => {
           const status = ins.getAttribute('data-ad-status');
           if (status === 'filled' || status?.startsWith('unfill')) {
-            // 新しい広告が描画完了 → 高さロック解除
-            adContainer.style.minHeight = '';
+            // 新しい広告が描画完了 → 一時ロックだけ解除し、呼び出し元の予約高は維持
+            restoreConfiguredMinHeight(adContainer);
             adStatusObserver.disconnect();
           }
         });
@@ -191,13 +201,13 @@ export const Adsense = ({
         // ここで data-ad-status="unfilled" を自前で付けると、AdSenseの応答が遅いだけの広告まで
         // 親コンポーネント側で非表示になってしまうため、配信ステータスはGoogleが付与した値だけを信頼する。
         setTimeout(() => {
-          adContainer.style.minHeight = '';
+          restoreConfiguredMinHeight(adContainer);
           adStatusObserver.disconnect();
         }, 10_000);
       } catch (err) {
         console.error('adsbygoogle.push() error:', err);
-        // エラー時もロック解除
-        adContainer.style.minHeight = '';
+        // エラー時も一時ロックだけ解除し、予約高は維持
+        restoreConfiguredMinHeight(adContainer);
       }
     };
 
@@ -255,6 +265,7 @@ export const Adsense = ({
     lazyRootMargin,
     refreshRootMarginPx,
     shouldRenderAd,
+    configuredMinHeight,
   ]);
 
   if (!shouldRenderAd) return null;

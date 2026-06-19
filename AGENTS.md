@@ -102,6 +102,8 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-06-19**:
+  * **記事画像軽量化・広告CLS・hydrationエラー対策**:
+    共通アイキャッチ4枚（`data-analysis-eyecatch.png`、`beginner.png`、`jockey.png`、`jyusyo-eyecatch.png`）を同じ1024px PNGのままパレット最適化し、合計約3.1MBから約124KBへ削減。参照URLを変えず、記事・関連記事・ホームの既存表示を維持した。AdSense枠はGoogleが空振り時に祖先要素へ `min-height: 0 !important` を付与する挙動を確認したため、通常フローの独立スペーサーと絶対配置の広告DOMを分離し、デスクトップ280px・モバイル250px、インフィード220pxを予約する構造へ変更。未配信広告の `aria-hidden` を外し、非表示時は `visibility` とポインター制御でフォーカス可能な広告要素との競合を避けた。ページレベルAdSenseスクリプトはhydration後に動的読込し、ヘッダーの日付と的中ランキング期間、関連日付導線をSSRとブラウザで決定的な値へ変更。`npx tsc --noEmit`、`npm run article:validate-links`、`npm run build`成功。ローカル本番ビルドをホーム・記事・レース詳細、PC・モバイル幅で確認し、React #422/#425は再現せず、広告空振り後も予約高が維持されることを確認した。
   * **開催前の回顧記事防止と直近重賞の候補補完**:
     6月21日開催予定の一條記念みちのく大賞典が、6月19日時点で `search_intent=result_review`、`race_phase=post_race` の回顧記事として公開された問題を修正。開催前に検索結果から「結果」「優勝」等を検出した場合は前年以前の材料とみなし、当年の結果回顧ではなく `past_trends` へ変換する。Tavilyに適切な記事が見つからなくても、公式重賞日程から開催直前の未作成レース候補を補完し、府中牝馬SやしらさぎSなどが検索結果の偶然で候補から消えない構成へ変更。下書き記事は重複判定から除外し、誤公開された一條記念みちのく大賞典記事は `draft: true` へ戻した。ArticleFlowでは開催日から算出した段階とWriteOrderの `race_phase` を照合し、Writer後のfrontmatterが `search_intent`、`race_phase`、`scheduled_race_date` を改変した場合もcriticalで拒否。SEO Checkerにも未来開催日の結果回顧を公開不可とする機械ゲートを追加した。
   * **ホーム当日開催の空表示を自動復旧**:

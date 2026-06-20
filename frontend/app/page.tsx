@@ -19,7 +19,7 @@ import DisclaimerAlert from '@/components/DisclaimerAlert';
 import { AdUnit } from '@/components/AdUnit';
 import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
-import type { RaceDayPrediction, WeeklyGradeRace } from '@/lib/types';
+import type { RaceDayPrediction } from '@/lib/types';
 import { getRaceDetailPath } from '@/lib/race-url';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 
@@ -99,97 +99,6 @@ const getRaceDaySummary = (predictions: RaceDayPrediction | null, date: string) 
             ? `${firstRaceEntry.venueName}${firstRaceEntry.race.race_number}R ${firstRaceEntry.race.race_name}`
             : null,
     };
-};
-
-const normalizeGradeText = (value: string) => value.replace(/\s+/g, '').toUpperCase();
-
-const detectGradeFromRaceName = (raceName: string, raceType: '中央' | '地方'): string => {
-    const name = raceName.trim();
-    if (!name) return "";
-
-    const bracketGrade = name.match(/[（(](G[1-3])[）)]/iu);
-    if (bracketGrade?.[1]) {
-        return bracketGrade[1].toUpperCase();
-    }
-
-    const jpnGrade = name.match(/Jpn\s*([1-3]|I{1,3}|Ⅰ|Ⅱ|Ⅲ|１|２|３)/iu);
-    if (jpnGrade?.[1]) {
-        const raw = normalizeGradeText(jpnGrade[1]);
-        const map: Record<string, string> = {
-            "1": "Jpn1",
-            "１": "Jpn1",
-            "I": "Jpn1",
-            "Ⅰ": "Jpn1",
-            "2": "Jpn2",
-            "２": "Jpn2",
-            "II": "Jpn2",
-            "Ⅱ": "Jpn2",
-            "3": "Jpn3",
-            "３": "Jpn3",
-            "III": "Jpn3",
-            "Ⅲ": "Jpn3",
-        };
-        return map[raw] ?? "";
-    }
-
-    const normalizedName = normalizeGradeText(name);
-    if (/(GIII|GⅢ|Ｇ３|G3|Ｇ3|ＧⅢ)/u.test(normalizedName)) return "G3";
-    if (/(GII|GⅡ|Ｇ２|G2|Ｇ2|ＧⅡ)/u.test(normalizedName)) return "G2";
-    if (/(GI|GⅠ|Ｇ１|G1|Ｇ1|ＧⅠ)/u.test(normalizedName)) return "G1";
-
-    if (raceType === '地方' && /重賞\s*[）)\]〕】]*$/u.test(name)) {
-        return "地方重賞";
-    }
-
-    return "";
-};
-
-const getTodayGradeRacesFromPredictions = (
-    predictions: RaceDayPrediction | null,
-    date: string,
-): WeeklyGradeRace[] => {
-    if (!predictions) return [];
-
-    const raceGroups: Array<{ raceType: '中央' | '地方'; venues: RaceDayPrediction['jra'] }> = [
-        { raceType: '中央', venues: predictions.jra ?? [] },
-        { raceType: '地方', venues: predictions.nar ?? [] },
-    ];
-
-    return raceGroups.flatMap(({ raceType, venues }) =>
-        venues.flatMap((venue) =>
-            venue.races.flatMap((race) => {
-                const grade = detectGradeFromRaceName(race.race_name, raceType);
-                if (!grade) return [];
-
-                return [{
-                    race_id: race.id,
-                    race_date: race.race_date || date,
-                    venue_name: venue.venue_name,
-                    race_number: race.race_number,
-                    race_name: race.race_name,
-                    race_type: raceType,
-                    grade,
-                }];
-            }),
-        ),
-    );
-};
-
-const mergeTodayGradeRaces = (
-    weeklyGradeRaces: WeeklyGradeRace[],
-    predictedGradeRaces: WeeklyGradeRace[],
-    date: string,
-) => {
-    const merged = new Map<string, WeeklyGradeRace>();
-
-    [...weeklyGradeRaces.filter((race) => race.race_date === date), ...predictedGradeRaces].forEach((race) => {
-        const key = `${race.race_date}-${race.venue_name}-${race.race_number}`;
-        if (!merged.has(key)) {
-            merged.set(key, race);
-        }
-    });
-
-    return Array.from(merged.values());
 };
 
 const FeaturePreviewCard = ({
@@ -398,11 +307,6 @@ export default async function HomePage() {
     const latestArticles = getLatestArticles(6);
     const totalArticles = getAllArticles().length;
     const raceDaySummary = getRaceDaySummary(predictions, todayStr);
-    const todayGradeRaces = mergeTodayGradeRaces(
-        weeklyGradeRaces,
-        getTodayGradeRacesFromPredictions(predictions, todayStr),
-        todayStr,
-    );
 
     return (
         <div className="space-y-4">
@@ -487,14 +391,14 @@ export default async function HomePage() {
                     </Link>
                 </section>
 
-                {/* 本日開催の重賞 */}
-                {todayGradeRaces.length > 0 ? (
-                    <WeeklyGradeRaces races={todayGradeRaces} predictions={predictions} title="本日の重賞レース" />
+                {/* レースページと同じ近日重賞表示 */}
+                {weeklyGradeRaces.length > 0 ? (
+                    <WeeklyGradeRaces races={weeklyGradeRaces} predictions={predictions} />
                 ) : (
                     <div className="grade-focus card rounded-xl flex flex-col justify-center items-center p-6 text-center">
                         <span className="badge badge-slate mb-2">重賞情報</span>
-                        <h2 className="text-slate-900 font-bold text-lg">本日開催の重賞はありません</h2>
-                        <p className="text-slate-500 text-xs mt-1">中央・地方のレース分析は本日分も無料で確認できます。</p>
+                        <h2 className="text-slate-900 font-bold text-lg">近日の重賞情報を確認中です</h2>
+                        <p className="text-slate-500 text-xs mt-1">開催情報が反映されるまで少し時間がかかる場合があります。</p>
                         <Link href={raceDaySummary.firstRaceHref} className="cta mt-4">
                             今日のレース分析を無料で見る →
                         </Link>

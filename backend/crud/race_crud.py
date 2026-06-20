@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import desc, or_, func, case, and_
 from database import models
 from datetime import date, timedelta, datetime, timezone
@@ -177,8 +177,11 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
     # matchupは /matchups/{race_id} エンドポイントで個別提供するため不要
     races_with_preds = db.query(models.Race)\
         .options(
-            joinedload(models.Race.predictions),
-            joinedload(models.Race.results).joinedload(models.Result.horse),
+            # 複数の一対多リレーションをjoinedloadすると、
+            # predictions件数 × results件数の直積になり、DB通信量が膨らむ。
+            # selectinloadで個別取得し、返却内容を維持したまま行数を抑える。
+            selectinload(models.Race.predictions),
+            selectinload(models.Race.results).selectinload(models.Result.horse),
             # joinedload(models.Race.matchup) ← 削除: OOMの原因
         )\
         .filter(models.Race.id.in_(valid_race_ids_query))\

@@ -2,6 +2,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from api.v1.endpoints import affiliate as affiliate_v1
 from api.v1.endpoints import races as races_v1
 from database.database import engine, Base
@@ -39,6 +40,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# レース一覧のJSONは数百KBになるため、対応ブラウザ・SSR取得時のみgzip圧縮する。
+# 1KB未満の小さいレスポンスは圧縮せず、CPU負荷と応答遅延を増やさない。
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=1024,
+    compresslevel=6,
 )
 
 # APIルーターをインクルード

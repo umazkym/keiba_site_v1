@@ -102,6 +102,10 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-06-20**:
+  * **GCP課金監査とAPI通信・DB取得・自動デプロイの低コスト化**:
+    GCP構成と直近29日のCloud Runメトリクスを確認し、DB VM `keiba-db` は無料枠対象の `us-west1-b / e2-micro / pd-standard 30GB`、外部IPv4なし、Cloud NAT・VPCコネクタなし、Cloud Runは最小インスタンス指定なし・request-based課金・最大3インスタンスで、固定費を抑えた構成であることを確認した。Cloud Runは132,804リクエスト、CPU約20,573 vCPU秒、メモリ約9,483 GiB秒で無料枠内。一方、当日レースAPIの実測レスポンスは約391KBでgzip未使用だったため、`GZipMiddleware`を追加し、1KB以上の応答を圧縮レベル6で配信する構成へ変更。実データ相当では約79.7KB、約79.6%削減できることを確認した。
+    `get_predictions_by_date` は `predictions` と `results` を同時に `joinedload` して直積的に行数が増える構成だったため、`selectinload`へ変更し、レスポンス構造を維持したままDB内部通信量とメモリ使用量を抑える形へ変更。gzip適用、小レスポンス非圧縮、予測・結果・馬番傾向の返却互換性を検証する `backend/tests/test_api_cost_optimizations.py` を追加し、同テスト2件、既存記事生成テスト8件、`py_compile`が成功した。
+    Cloud BuildのGitHubトリガーは、Dockerfileとビルドコンテキストがともに`backend`配下のみであることを確認し、`includedFiles: backend/**`を設定。フロントエンド、記事、ドキュメントだけのpushでは不要なCloud Runビルドを起動せず、バックエンド変更時は従来通り自動ビルド・デプロイする。Artifact Registryには14日超のイメージ削除・最新10件保持のクリーンアップポリシーが設定済みで、追加の手動削除は行わない。
   * **トップの重賞枠をレースページと統一**:
     トップページだけ近日重賞APIの結果を当日分へ絞り込み、重賞がない日は独自の空表示へ差し替えていた構成を廃止。レース日別ページと同じ `WeeklyGradeRaces` を、同じ「近日の重賞レース」タイトル・今日から14日間の中央/地方重賞・G1/Jpn1級の注目カード・その他重賞の区分表示でそのまま利用する形へ統一した。API取得失敗時のみ「近日の重賞情報を確認中です」と表示する。
   * **一般ニュースの季節外れ日付を遮断**:

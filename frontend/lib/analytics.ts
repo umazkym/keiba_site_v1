@@ -1,4 +1,5 @@
 import { sendGAEvent } from '@next/third-parties/google';
+import { sendClarityEvent } from '@/lib/clarity';
 
 /**
  * GA4 カスタムイベント送信用ヘルパー関数群
@@ -111,6 +112,9 @@ export const sendPredictionTableViewEvent = (params: {
         race_id: params.raceId,
         race_number: params.raceNumber,
     });
+    sendClarityEvent('prediction_table_view', {
+        race_number: params.raceNumber,
+    });
 };
 
 /**
@@ -145,6 +149,11 @@ export const sendRaceViewEvent = (params: {
     race_type: 'jra' | 'nar';
 }) => {
     sendGAEvent('event', 'race_view_custom', params);
+    sendClarityEvent('race_view', {
+        race_type: params.race_type,
+        venue_name: params.venue_name,
+        race_number: params.race_number,
+    });
 };
 
 /**
@@ -156,6 +165,9 @@ export const sendRaceGroupSelectEvent = (params: {
     race_type: 'jra' | 'nar';
 }) => {
     sendGAEvent('event', 'race_group_select', params);
+    sendClarityEvent('race_group_select', {
+        race_type: params.race_type,
+    });
 };
 
 /**
@@ -167,6 +179,10 @@ export const sendRaceVenueSelectEvent = (params: {
     venue_name: string;
 }) => {
     sendGAEvent('event', 'race_venue_select', params);
+    sendClarityEvent('race_venue_select', {
+        race_type: params.race_type,
+        venue_name: params.venue_name,
+    });
 };
 
 /**
@@ -181,6 +197,11 @@ export const sendRaceNavigationEvent = (params: {
     navigation_method: RaceNavigationMethod;
 }) => {
     sendGAEvent('event', 'race_navigation', params);
+    sendClarityEvent('race_navigation', {
+        race_type: params.race_type,
+        venue_name: params.venue_name,
+        navigation_method: params.navigation_method,
+    });
 };
 
 /**
@@ -193,6 +214,9 @@ export const sendArticleReadCompleteEvent = (params: {
     page_path: string;
 }) => {
     sendGAEvent('event', 'article_read_complete', params);
+    sendClarityEvent('article_read_complete', {
+        article_category: params.article_category,
+    });
 };
 
 /**
@@ -205,6 +229,10 @@ export const sendArticleRaceClickEvent = (params: {
     link_placement: string;
 }) => {
     sendGAEvent('event', 'article_race_click', params);
+    sendClarityEvent('article_race_click', {
+        article_category: params.article_category,
+        link_placement: params.link_placement,
+    });
 };
 
 /**
@@ -224,6 +252,13 @@ export const sendPredictionViewEvent = (accuracy: PredictAccuracy) => {
  */
 export const sendRewardGateEvent = (eventName: RewardGateEventName, params: RewardGateEventParams = {}) => {
     sendGAEvent('event', eventName, compactParams(params));
+    sendClarityEvent(eventName, {
+        venue_name: params.venue_name,
+        gate_placement: params.gate_placement,
+        ad_status: params.ad_status,
+        result: params.result,
+        reason: params.reason,
+    });
 };
 
 export const sendAffiliateClickEvent = (params: AffiliateClickParams) => {
@@ -231,6 +266,12 @@ export const sendAffiliateClickEvent = (params: AffiliateClickParams) => {
         ...params,
         affiliate_page_type: inferPageType(),
     }));
+    sendClarityEvent('affiliate_click', {
+        affiliate_provider: params.provider,
+        affiliate_context: params.context,
+        affiliate_campaign_type: params.campaign_type,
+        race_type: params.race_type,
+    });
 };
 
 export const sendAffiliateImpressionEvent = (params: AffiliateImpressionParams) => {
@@ -238,4 +279,9 @@ export const sendAffiliateImpressionEvent = (params: AffiliateImpressionParams) 
         ...params,
         affiliate_page_type: inferPageType(),
     }));
+    sendClarityEvent('affiliate_impression', {
+        affiliate_context: params.context,
+        affiliate_campaign_type: params.campaign_type,
+        race_type: params.race_type,
+    });
 };

@@ -20,7 +20,6 @@ import { AdUnit } from '@/components/AdUnit';
 import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
 import type { RaceDayPrediction } from '@/lib/types';
-import { getRaceDetailPath } from '@/lib/race-url';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 
 // ISR: データ更新は1日2〜3回（06:00, 13:30 JST）のバッチ処理のため、
@@ -83,21 +82,9 @@ const getRaceDaySummary = (predictions: RaceDayPrediction | null, date: string) 
     const narVenues = predictions?.nar ?? [];
     const venues = [...jraVenues, ...narVenues];
     const raceCount = venues.reduce((total, venue) => total + venue.races.length, 0);
-    const firstRaceEntry = venues
-        .flatMap((venue) => venue.races.map((race) => ({ venueName: venue.venue_name, race })))
-        .find(({ race }) => race.predictions.length > 0);
-
     return {
         venueCount: venues.length,
-        jraVenueCount: jraVenues.length,
-        narVenueCount: narVenues.length,
         raceCount,
-        firstRaceHref: firstRaceEntry
-            ? getRaceDetailPath(date, firstRaceEntry.venueName, firstRaceEntry.race.race_number)
-            : `/races/${date}`,
-        firstRaceLabel: firstRaceEntry
-            ? `${firstRaceEntry.venueName}${firstRaceEntry.race.race_number}R ${firstRaceEntry.race.race_name}`
-            : null,
     };
 };
 
@@ -252,7 +239,7 @@ type HeroDataCardProps = {
 };
 
 const HeroDataCard = ({ title, description, icon, accentClass, children }: HeroDataCardProps) => (
-    <div className="group min-w-0 rounded-lg bg-white p-2 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md h-full flex flex-col justify-between">
+    <div className="min-w-0 rounded-lg bg-white p-2 text-left shadow-sm h-full flex flex-col justify-between">
         <div className="mb-1.5 flex min-w-0 items-center gap-1.5">
             <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${accentClass}`}>
                 {icon}
@@ -386,7 +373,7 @@ export default async function HomePage() {
                             </div>
                         </HeroDataCard>
                     </div>
-                    <Link href={raceDaySummary.firstRaceHref} className="cta">
+                    <Link href={`/races/${todayStr}`} className="cta">
                         今日のレース分析を無料で見る →
                     </Link>
                 </section>
@@ -399,7 +386,7 @@ export default async function HomePage() {
                         <span className="badge badge-slate mb-2">重賞情報</span>
                         <h2 className="text-slate-900 font-bold text-lg">近日の重賞情報を確認中です</h2>
                         <p className="text-slate-500 text-xs mt-1">開催情報が反映されるまで少し時間がかかる場合があります。</p>
-                        <Link href={raceDaySummary.firstRaceHref} className="cta mt-4">
+                        <Link href={`/races/${todayStr}`} className="cta mt-4">
                             今日のレース分析を無料で見る →
                         </Link>
                     </div>

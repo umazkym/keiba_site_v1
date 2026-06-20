@@ -102,6 +102,9 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-06-20**:
+  * **Clarity API監査・誤操作削減・収益導線の録画連携**:
+    Microsoft Clarity Data Export APIから直近72時間を、URL、端末、流入元、地域、キャンペーンの8クエリで取得する`backend/scripts/export_clarity_insights.py`を追加。APIトークンを成果物へ含めず、JSON、CSV、Markdownを`analysis_results/clarity/20260620T105522Z`へ出力した。人による359セッションに対してボット108件、モバイル73.0%、PC25.6%、デッドクリック15.88%、クイックバック25.63%、JavaScriptエラー2.51%を確認。PCのデッドクリックは27.17%で、東京11RではPCの45.45%に発生していた。
+    現在表示中のレース番号とPC同日レース一覧が押せる見た目のまま無反応になる構造を、`aria-current="page"`付きの非操作要素へ変更。ホームの非リンク機能カードからホバー移動を外し、「今日のレース分析」CTAは特定1Rではなく当日一覧へ着地させた。Clarityにはページ領域、レース閲覧・移動、予想表表示、記事読了、記事からレースへの移動、アフィリエイト表示・クリック、リワード関連のカスタムイベントを追加し、収益につながる操作の録画を絞り込めるようにした。`npx tsc --noEmit`、`npm run build`、Clarity取得スクリプトの`py_compile`が成功。詳細は`docs/clarity_optimization_audit_20260620.md`に整理した。
   * **GCP課金監査とAPI通信・DB取得・自動デプロイの低コスト化**:
     GCP構成と直近29日のCloud Runメトリクスを確認し、DB VM `keiba-db` は無料枠対象の `us-west1-b / e2-micro / pd-standard 30GB`、外部IPv4なし、Cloud NAT・VPCコネクタなし、Cloud Runは最小インスタンス指定なし・request-based課金・最大3インスタンスで、固定費を抑えた構成であることを確認した。Cloud Runは132,804リクエスト、CPU約20,573 vCPU秒、メモリ約9,483 GiB秒で無料枠内。一方、当日レースAPIの実測レスポンスは約391KBでgzip未使用だったため、`GZipMiddleware`を追加し、1KB以上の応答を圧縮レベル6で配信する構成へ変更。実データ相当では約79.7KB、約79.6%削減できることを確認した。
     `get_predictions_by_date` は `predictions` と `results` を同時に `joinedload` して直積的に行数が増える構成だったため、`selectinload`へ変更し、レスポンス構造を維持したままDB内部通信量とメモリ使用量を抑える形へ変更。gzip適用、小レスポンス非圧縮、予測・結果・馬番傾向の返却互換性を検証する `backend/tests/test_api_cost_optimizations.py` を追加し、同テスト2件、既存記事生成テスト8件、`py_compile`が成功した。

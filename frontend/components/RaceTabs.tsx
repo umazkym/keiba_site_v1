@@ -655,24 +655,48 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 {venue.races.map((r, idx) => {
                                     const isCurrent = idx === activeRaceIndex;
                                     const topHorse = r.predictions?.[0];
-                                    return (
-                                        <button
-                                            key={r.id}
-                                            onClick={() => handleRaceSelect(idx, 'same_day_list')}
-                                            className={`side-link w-full text-left transition-all ${isCurrent ? '!bg-blue-50 !border-blue-300' : 'hover:bg-slate-50'}`}
-                                            style={{ display: 'grid', gridTemplateColumns: '42px 1fr', gap: '10px', alignItems: 'center' }}
-                                        >
+                                    const raceLabel = (
+                                        <>
                                             <span className={`flex items-center justify-center h-[34px] rounded-lg text-xs font-bold ${isCurrent ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
                                                 {r.race_number}R
                                             </span>
                                             <div className="min-w-0">
                                                 <span className="font-bold block truncate text-slate-800 text-xs sm:text-sm">{r.race_name}</span>
-                                                {topHorse && (
+                                                {isCurrent ? (
+                                                    <small className="text-blue-600 text-[10px] block truncate font-semibold">
+                                                        表示中
+                                                    </small>
+                                                ) : topHorse && (
                                                     <small className="text-slate-500 text-[10px] block truncate">
                                                         AI1位: {topHorse.horse_name} ({topHorse.deviation_score?.toFixed(1)})
                                                     </small>
                                                 )}
                                             </div>
+                                        </>
+                                    );
+
+                                    if (isCurrent) {
+                                        return (
+                                            <div
+                                                key={r.id}
+                                                aria-current="page"
+                                                className="side-link w-full text-left !bg-blue-50 !border-blue-300 cursor-default"
+                                                style={{ display: 'grid', gridTemplateColumns: '42px 1fr', gap: '10px', alignItems: 'center' }}
+                                            >
+                                                {raceLabel}
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <button
+                                            key={r.id}
+                                            type="button"
+                                            onClick={() => handleRaceSelect(idx, 'same_day_list')}
+                                            className="side-link w-full text-left transition-all hover:bg-slate-50"
+                                            style={{ display: 'grid', gridTemplateColumns: '42px 1fr', gap: '10px', alignItems: 'center' }}
+                                        >
+                                            {raceLabel}
                                         </button>
                                     );
                                 })}

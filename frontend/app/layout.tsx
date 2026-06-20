@@ -13,6 +13,7 @@ import { GlobalAdManager } from "@/components/GlobalAdManager";
 import { shouldLoadAdsensePageLevelScript } from "@/lib/ad-config";
 import { getJstTodayString } from "@/lib/race-url";
 import { AdSensePageLevelScript } from "@/components/AdSensePageLevelScript";
+import { ClarityPageContext } from "@/components/ClarityPageContext";
 
 export const metadata: Metadata = {
     metadataBase: new URL("https://uma-free.com"),
@@ -120,6 +121,7 @@ export default function RootLayout({
                      Rewarded Adはレースページでのみ使用されるため、他ページでは不要 */}
             </head>
             <body className="font-sans bg-surface text-text-primary antialiased">
+                <ClarityPageContext />
                 {/* 構造化マークアップ：Organization, Website, SoftwareApplication */}
                 <OrganizationSchema />
                 <WebsiteSchema />

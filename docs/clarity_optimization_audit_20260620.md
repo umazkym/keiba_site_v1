@@ -2,6 +2,9 @@
 
 更新日: 2026-06-20
 
+> [!IMPORTANT]
+> 本文書はData Export APIで取得できる集計データの初回監査であり、録画・ヒートマップ・JavaScriptエラー本文・収益突合を含む完全監査ではない。2026-06-21時点の完了状況と不足項目は`docs/clarity_completeness_review_20260621.md`を参照する。
+
 ## 取得条件
 
 - 対象: UMA-FREE（Clarity Project ID: `x3vmax3h3t`）
@@ -106,7 +109,7 @@ PowerShellでリポジトリ直下から実行する。
   --top-rows 25
 ```
 
-`full`は8リクエスト、`core`は4リクエストを使う。同じ日に再実行する場合はClarityの日次10回制限に注意する。
+`full`は8リクエスト、`core`は4リクエスト、`pulse`は2リクエストを使う。同じUTC日に再実行する場合はClarityの日次10回制限に注意する。
 
 ## 次回判定
 

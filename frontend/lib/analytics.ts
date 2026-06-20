@@ -77,6 +77,11 @@ export type RaceNavigationMethod =
     | 'analysis_next_button'
     | 'same_day_list';
 
+export type HomeRaceEntryMethod =
+    | 'hero_cta'
+    | 'grade_fallback'
+    | 'venue_card';
+
 const compactParams = (params: Record<string, unknown>) => {
     return Object.fromEntries(
         Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -133,6 +138,29 @@ export const sendAdImpressionEvent = (params: string | AdImpressionParams) => {
         ad_slot: normalized.slot,
         ad_variant: normalized.variant,
         ad_page_type: inferPageType(),
+    });
+    sendClarityEvent('ad_impression_custom', {
+        ad_placement: normalized.placement,
+        ad_format: normalized.format,
+        ad_page_type: inferPageType(),
+    });
+};
+
+/**
+ * ホームから当日レースへ進む入口を計測する。
+ * ホームのクイックバックと、その後の予想表閲覧を入口別に比較するために使う。
+ */
+export const sendHomeRaceEntryClickEvent = (params: {
+    race_date: string;
+    entry_method: HomeRaceEntryMethod;
+    race_type?: 'jra' | 'nar';
+    venue_name?: string;
+}) => {
+    sendGAEvent('event', 'home_race_entry_click', compactParams(params));
+    sendClarityEvent('home_race_entry_click', {
+        home_entry_method: params.entry_method,
+        race_type: params.race_type,
+        venue_name: params.venue_name,
     });
 };
 

@@ -45,6 +45,11 @@ CORE_QUERIES = (
     ExportQuery("acquisition", ("Source", "Medium", "Channel")),
 )
 
+PULSE_QUERIES = (
+    ExportQuery("overview", ()),
+    ExportQuery("content_device", ("URL", "Device")),
+)
+
 FULL_QUERIES = CORE_QUERIES + (
     ExportQuery("content_device", ("URL", "Device")),
     ExportQuery("content_source", ("URL", "Source")),
@@ -79,9 +84,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--profile",
-        choices=("core", "full"),
+        choices=("pulse", "core", "full"),
         default="full",
-        help="coreは4リクエスト、fullは8リクエストを使用します。既定値: full",
+        help=(
+            "pulseは2リクエスト、coreは4リクエスト、"
+            "fullは8リクエストを使用します。既定値: full"
+        ),
     )
     parser.add_argument(
         "--num-days",
@@ -552,7 +560,12 @@ def export_query_csvs(output_dir: Path, query_name: str, payload: Any) -> list[s
 
 def main() -> int:
     args = parse_args()
-    queries = CORE_QUERIES if args.profile == "core" else FULL_QUERIES
+    if args.profile == "pulse":
+        queries = PULSE_QUERIES
+    elif args.profile == "core":
+        queries = CORE_QUERIES
+    else:
+        queries = FULL_QUERIES
     if len(queries) > MAX_REQUESTS_PER_DAY:
         raise RuntimeError(
             f"リクエスト数がClarityの日次上限{MAX_REQUESTS_PER_DAY}を超えています。"

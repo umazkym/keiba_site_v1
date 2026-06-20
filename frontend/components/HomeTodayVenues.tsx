@@ -6,6 +6,7 @@ import { AffiliateSlot } from '@/components/AffiliateSlot';
 import { getPredictionsForDate } from '@/lib/api';
 import { getRaceDetailPath } from '@/lib/race-url';
 import type { RaceDayPrediction } from '@/lib/types';
+import { sendHomeRaceEntryClickEvent } from '@/lib/analytics';
 
 type RefreshStatus = 'ready' | 'checking' | 'waiting' | 'empty';
 
@@ -85,6 +86,14 @@ export function HomeTodayVenues({
                         href={venue.races[0]
                             ? getRaceDetailPath(date, venue.venue_name, venue.races[0].race_number)
                             : `/races/${date}`}
+                        onClick={() => {
+                            sendHomeRaceEntryClickEvent({
+                                race_date: date,
+                                entry_method: 'venue_card',
+                                race_type: 'jra',
+                                venue_name: venue.venue_name,
+                            });
+                        }}
                         className="venue-chip"
                     >
                         <strong>{venue.venue_name}</strong>
@@ -99,6 +108,14 @@ export function HomeTodayVenues({
                         href={venue.races[0]
                             ? getRaceDetailPath(date, venue.venue_name, venue.races[0].race_number)
                             : `/races/${date}`}
+                        onClick={() => {
+                            sendHomeRaceEntryClickEvent({
+                                race_date: date,
+                                entry_method: 'venue_card',
+                                race_type: 'nar',
+                                venue_name: venue.venue_name,
+                            });
+                        }}
                         className="venue-chip"
                     >
                         <strong>{venue.venue_name}</strong>

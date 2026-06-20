@@ -17,6 +17,7 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | イベント名 | 発火条件 | 主なパラメータ | 用途 |
 | --- | --- | --- | --- |
 | `race_group_select` | 中央・地方タブを選択 | `race_date`, `race_type` | 開催区分の利用状況 |
+| `home_race_entry_click` | ホームから当日レースへ移動 | `race_date`, `entry_method`, `race_type`, `venue_name` | ホーム入口別の送客 |
 | `race_venue_select` | 競馬場タブを選択 | `race_date`, `race_type`, `venue_name` | 競馬場間の巡回 |
 | `race_view_custom` | レースデータを表示 | `race_date`, `race_type`, `venue_name`, `race_number` | 1セッション当たりの閲覧レース数 |
 | `race_navigation` | 前後レースやレース番号から移動 | `from_race_number`, `to_race_number`, `navigation_method` | 次レース導線の比較 |
@@ -50,11 +51,13 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 
 ### レース巡回
 
-1. レースページの`page_view`
-2. `race_view_custom`
-3. `prediction_table_view`
-4. `race_navigation`
-5. 次レースの`race_view_custom`
+1. ホームの`page_view`
+2. `home_race_entry_click`
+3. レースページの`page_view`
+4. `race_view_custom`
+5. `prediction_table_view`
+6. `race_navigation`
+7. 次レースの`race_view_custom`
 
 ## レポート上の注意
 

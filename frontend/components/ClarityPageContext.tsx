@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { sendClarityEvent, setClarityTag } from '@/lib/clarity';
+import { setClarityTag } from '@/lib/clarity';
 
 const ENTRY_AREA_STORAGE_KEY = 'uma-free:clarity-entry-area';
 
@@ -28,7 +28,6 @@ export const ClarityPageContext = () => {
     useEffect(() => {
         const pageArea = inferPageArea(pathname);
         setClarityTag('visited_area', pageArea);
-        sendClarityEvent(`view_${pageArea}`);
 
         try {
             const existingEntryArea = window.sessionStorage.getItem(ENTRY_AREA_STORAGE_KEY);

@@ -21,6 +21,7 @@ import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
 import type { RaceDayPrediction } from '@/lib/types';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
+import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
 
 // ISR: データ更新は1日2〜3回（06:00, 13:30 JST）のバッチ処理のため、
 // 30分間キャッシュでも十分な鮮度を維持しつつ、Origin Transfer/CPUを大幅削減。
@@ -373,9 +374,14 @@ export default async function HomePage() {
                             </div>
                         </HeroDataCard>
                     </div>
-                    <Link href={`/races/${todayStr}`} className="cta">
+                    <HomeRaceEntryLink
+                        href={`/races/${todayStr}`}
+                        raceDate={todayStr}
+                        entryMethod="hero_cta"
+                        className="cta"
+                    >
                         今日のレース分析を無料で見る →
-                    </Link>
+                    </HomeRaceEntryLink>
                 </section>
 
                 {/* レースページと同じ近日重賞表示 */}
@@ -386,9 +392,14 @@ export default async function HomePage() {
                         <span className="badge badge-slate mb-2">重賞情報</span>
                         <h2 className="text-slate-900 font-bold text-lg">近日の重賞情報を確認中です</h2>
                         <p className="text-slate-500 text-xs mt-1">開催情報が反映されるまで少し時間がかかる場合があります。</p>
-                        <Link href={`/races/${todayStr}`} className="cta mt-4">
+                        <HomeRaceEntryLink
+                            href={`/races/${todayStr}`}
+                            raceDate={todayStr}
+                            entryMethod="grade_fallback"
+                            className="cta mt-4"
+                        >
                             今日のレース分析を無料で見る →
-                        </Link>
+                        </HomeRaceEntryLink>
                     </div>
                 )}
             </div>

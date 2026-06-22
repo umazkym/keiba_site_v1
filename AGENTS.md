@@ -101,10 +101,13 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-06-22**:
+  * **中央競馬ページへの楽天競馬導線追加**:
+    土日のアクセスが中央競馬ページへ集中すると、地方競馬限定だった楽天競馬アフィリエイトの表示機会が減る構成を見直した。中央競馬向けに `rakuten-keiba-jra-audience` キャンペーンを追加し、「地方競馬も確認する方へ」「楽天競馬の案内を見る」と、中央競馬の投票先であるように誤認させない文言へ分離。中央競馬のレース詳細では、AI偏差値表直後にあった手動InFeed広告を楽天競馬枠へ置き換え、広告枠数を増やさずモバイルでも確認しやすい位置へ配置した。PCサイドバーの重複表示は地方競馬だけに限定した。`npx tsc --noEmit`、`npm run build`成功を確認。
 * **2026-06-20**:
   * **Clarity監査の完全性再確認とホーム収益導線計測の補完（2026-06-21 01:35 JST）**:
     前回のData Export API監査は集計範囲の初回調査であり、録画、ヒートマップ、JavaScriptエラー本文、GA4/AdSense/アフィリエイト突合が未完了であることを明文化した。UTC日次枠の残り2回を使う`pulse`プロファイルを追加し、最新24時間を再取得。164セッション、ボット79、ページ/セッション4.06、デッドクリック15.85%、クイックバック32.32%、JavaScriptエラー1.83%で、デッドクリックは72時間値15.88%から横ばい。東京11RのPCは10セッション中50%にデッドクリックが残っていたが、修正前後が混在するため効果判定は保留とした。
-    公開サイトではClarityタグ`x3vmax3h3t`、収集POST、当日一覧CTA、ホームカードのホバー削除、`affiliate_click`イベントと関連タグの本番発火を確認した。ホームからレースへ進む入口を`home_race_entry_click`として`hero_cta / grade_fallback / venue_card`別にGA4とClarityへ送信し、`ad_impression_custom`もClarity録画へ連携する処理を追加。標準ページ計測と重複する`view_home`等のカスタムイベントは削除した。`npx tsc --noEmit`、`npm run build`、Python構文検証が成功。残課題と完了条件は`docs/clarity_completeness_review_20260621.md`へ整理した。
+    公開サイトではClarityタグ`x3vmax3h3t`、収集POST、当日一覧CTA、ホームカードのホバー削除、`affiliate_click`イベントと関連タグの本番発火を確認した。ホームからレースへ進む入口を`home_race_entry_click`として`hero_cta / grade_fallback / venue_card`別にGA4とClarityへ送信し、公開サイトで`home_entry_method=hero_cta`と`home_race_entry_click`の本番発火まで確認。`ad_impression_custom`もClarity録画へ連携する処理を追加したが、広告が`filled`の時だけ発火するため、空振りした自動検証環境では実発火未確認。標準ページ計測と重複する`view_home`等のカスタムイベントは削除した。`npx tsc --noEmit`、`npm run build`、Python構文検証が成功。残課題と完了条件は`docs/clarity_completeness_review_20260621.md`へ整理した。
   * **Clarity API監査・誤操作削減・収益導線の録画連携**:
     Microsoft Clarity Data Export APIから直近72時間を、URL、端末、流入元、地域、キャンペーンの8クエリで取得する`backend/scripts/export_clarity_insights.py`を追加。APIトークンを成果物へ含めず、JSON、CSV、Markdownを`analysis_results/clarity/20260620T105522Z`へ出力した。人による359セッションに対してボット108件、モバイル73.0%、PC25.6%、デッドクリック15.88%、クイックバック25.63%、JavaScriptエラー2.51%を確認。PCのデッドクリックは27.17%で、東京11RではPCの45.45%に発生していた。
     現在表示中のレース番号とPC同日レース一覧が押せる見た目のまま無反応になる構造を、`aria-current="page"`付きの非操作要素へ変更。ホームの非リンク機能カードからホバー移動を外し、「今日のレース分析」CTAは特定1Rではなく当日一覧へ着地させた。Clarityにはページ領域、レース閲覧・移動、予想表表示、記事読了、記事からレースへの移動、アフィリエイト表示・クリック、リワード関連のカスタムイベントを追加し、収益につながる操作の録画を絞り込めるようにした。`npx tsc --noEmit`、`npm run build`、Clarity取得スクリプトの`py_compile`が成功。詳細は`docs/clarity_optimization_audit_20260620.md`に整理した。

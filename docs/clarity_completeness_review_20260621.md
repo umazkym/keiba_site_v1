@@ -23,8 +23,8 @@
 | ホーム非リンクカードのホバー修正 | 完了・本番反映済み | 本番でホバー移動クラス0件を確認 |
 | ホームCTAの着地先修正 | 完了・本番反映済み | 本番CTAが`/races/2026-06-21`を指すことを確認 |
 | アフィリエイトClarityイベント | 完了・本番発火確認済み | `affiliate_click`と関連タグ4件の発火を疑似クリックで確認 |
-| ホーム入口クリック計測 | ローカル実装済み | `home_race_entry_click`を追加。まだ本番発火未確認 |
-| 広告表示のClarity連携 | ローカル実装済み | `ad_impression_custom`をClarityにも送信。まだ本番発火未確認 |
+| ホーム入口クリック計測 | 完了・本番発火確認済み | `home_race_entry_click`と`home_entry_method=hero_cta`の発火を公開サイトで確認 |
+| 広告表示のClarity連携 | 本番コード反映済み | `ad_impression_custom`をClarityにも送信。広告が`filled`になった時だけ発火するため、空振りした検証ブラウザでは実発火未確認 |
 
 ## 最新24時間の追加取得
 
@@ -127,7 +127,7 @@ Clarityは入力値、数値、メール等を既定でマスクするが、実�
 
 以下を満たした時点で、Clarity監査を「詳細確認完了」と判断する。
 
-1. 本番で`home_race_entry_click`と`ad_impression_custom`の発火を確認。
+1. 本番で広告配信時の`ad_impression_custom`発火を確認。`home_race_entry_click`は確認済み。
 2. 上記5種類の録画を合計50本確認。
 3. 主要4ページのPC・モバイルヒートマップを確認。
 4. JavaScriptエラー5件を発生元別に分類。

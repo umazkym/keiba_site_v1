@@ -79,6 +79,28 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         ],
     },
     {
+        id: 'rakuten-keiba-jra-audience',
+        enabled: true,
+        type: 'voting',
+        title: '地方競馬も確認する方へ',
+        description: '中央競馬の分析とあわせて地方競馬も見る場合は、楽天競馬で開催情報やオッズを確認できます。初めて利用する方は、会員登録方法や対象条件をリンク先でご確認ください。',
+        attention: DEFAULT_VOTING_NOTICE,
+        contexts: ['race_after_prediction', 'race_after_top_hits'],
+        weight: 1200,
+        raceScope: {
+            raceTypes: ['jra'],
+        },
+        links: [
+            {
+                id: 'rakuten-keiba-jra-main',
+                provider: 'rakuten_keiba',
+                label: '楽天競馬の案内を見る',
+                url: 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641',
+                enabled: true,
+            },
+        ],
+    },
+    {
         id: 'horse-plush-equinox-doudeuce',
         enabled: true,
         type: 'product',

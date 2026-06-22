@@ -463,13 +463,14 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             </div>
                         </div>
 
-                        {shouldShowAd && raceType !== 'nar' && (
-                            <InFeedAd
-                                refreshKey={`prediction-read-${adRefreshKey}`}
-                                analyticsPlacement="race_after_prediction"
+                        {raceType === 'jra' && (
+                            <AffiliateSlot
+                                context="race_after_prediction"
+                                raceType="jra"
+                                venueName={venue.venue_name}
+                                selectionKey={`prediction-read-${adRefreshKey}`}
+                                variant="default"
                                 className="my-1.5 sm:my-2"
-                                lazyRootMargin="640px 0px 640px 0px"
-                                refreshRootMarginPx={640}
                             />
                         )}
 
@@ -714,13 +715,15 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             </div>
                         )}
 
-                        <AffiliateSlot
-                            context="race_after_prediction"
-                            raceType={raceType}
-                            venueName={venue.venue_name}
-                            selectionKey={`sidebar-${adRefreshKey}`}
-                            className="w-full"
-                        />
+                        {raceType === 'nar' && (
+                            <AffiliateSlot
+                                context="race_after_prediction"
+                                raceType="nar"
+                                venueName={venue.venue_name}
+                                selectionKey={`sidebar-${adRefreshKey}`}
+                                className="w-full"
+                            />
+                        )}
                     </aside>
                 </div>
             )}

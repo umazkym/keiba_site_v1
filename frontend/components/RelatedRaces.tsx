@@ -93,6 +93,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                         <Link
                             key={date}
                             href={`/races/${date}`}
+                            prefetch={false}
                             className="group relative bg-white p-2 sm:p-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-blue-300"
                         >
                             <div className="font-bold text-sm sm:text-base text-gray-800 group-hover:text-blue-600">

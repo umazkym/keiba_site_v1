@@ -131,7 +131,7 @@ export default function TrackConditionPage() {
             <Link href="/courses" className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
               コース別データ
             </Link>
-            <Link href="/races/today" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-primary-light">
+            <Link prefetch={false} href="/races/today" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-primary-light">
               本日の分析を見る
             </Link>
           </div>

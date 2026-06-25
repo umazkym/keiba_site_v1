@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import RacePageClient from "@/components/RacePageClient";
-import { getPredictionsForDate, getSpecialPick, getTopPayoutHits, getWeeklyGradeRaces } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { RaceDayPrediction, RacePrediction, SpecialPick, TopPayoutHit, VenueRaces, WeeklyGradeRace } from "@/lib/types";
+import { RaceDayPrediction, RacePrediction, VenueRaces } from "@/lib/types";
 import { Suspense } from 'react';
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { notFound, redirect } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { BreadcrumbSchema } from '@/components/StructuredData';
-import { getAllArticlesMeta } from '@/lib/articles';
+import { getRaceArticleMeta } from '@/lib/articles';
 import {
     getRaceDetailPath,
     getRaceIndexPolicy,
@@ -17,6 +16,18 @@ import {
     isValidRaceDate,
     parseRaceNumberParam,
 } from '@/lib/race-url';
+import {
+    getRacePageData,
+    getStrictPredictionsForDate,
+    hasRaceDayData,
+} from '@/lib/race-page-data';
+
+export const revalidate = 3600;
+export const dynamicParams = true;
+
+export function generateStaticParams() {
+    return [];
+}
 
 type Props = {
     params: {
@@ -59,17 +70,6 @@ function findRaceByStablePath(
     return null;
 }
 
-async function getRacePageData(date: string) {
-    const [predictions, specialPick, topHits, gradeRaces] = await Promise.all([
-        getPredictionsForDate(date),
-        getSpecialPick(date),
-        getTopPayoutHits(),
-        getWeeklyGradeRaces(),
-    ]);
-
-    return { predictions, specialPick, topHits, gradeRaces };
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const raceNumber = parseRaceNumberParam(params.race);
     const formattedDate = formatDate(params.date);
@@ -86,7 +86,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         };
     }
 
-    const predictionData = await getPredictionsForDate(params.date);
+    const predictionData = await getStrictPredictionsForDate(params.date);
     const selected = findRaceByStablePath(predictionData, params.venue, raceNumber);
     const raceName = selected?.race.race_name;
     const venueName = selected?.venue.venue_name;
@@ -131,40 +131,27 @@ export default async function RaceDetailPage({ params }: Props) {
         notFound();
     }
 
-    let predictionData: RaceDayPrediction | null = null;
-    let specialPickData: SpecialPick | null = null;
-    let topHitsData: TopPayoutHit[] = [];
-    let weeklyGradeRaces: WeeklyGradeRace[] = [];
     let selectedRace: RacePrediction | null = null;
     let selectedVenue: VenueRaces | null = null;
-    const articlesMeta = getAllArticlesMeta();
+    const articlesMeta = getRaceArticleMeta();
 
-    try {
-        const { predictions, specialPick, topHits, gradeRaces } = await getRacePageData(params.date);
-        predictionData = predictions;
-        specialPickData = specialPick;
-        topHitsData = topHits;
-        weeklyGradeRaces = gradeRaces;
+    const {
+        predictions: predictionData,
+        specialPick: specialPickData,
+        topHits: topHitsData,
+        gradeRaces: weeklyGradeRaces,
+    } = await getRacePageData(params.date);
 
-        if (!predictionData || ((predictionData.jra?.length ?? 0) === 0 && (predictionData.nar?.length ?? 0) === 0)) {
-            notFound();
-        }
-
-        const selected = findRaceByStablePath(predictionData, params.venue, raceNumber);
-        if (!selected) {
-            notFound();
-        }
-
-        selectedRace = selected.race;
-        selectedVenue = selected.venue;
-    } catch (error) {
-        console.error(`[Build Warning] Failed to fetch race detail for ${params.date}/${params.venue}/${params.race}. Error:`, error);
+    if (!hasRaceDayData(predictionData)) {
         notFound();
     }
 
-    if (!predictionData || !selectedRace || !selectedVenue) {
+    const selected = findRaceByStablePath(predictionData, params.venue, raceNumber);
+    if (!selected) {
         notFound();
     }
+    selectedRace = selected.race;
+    selectedVenue = selected.venue;
 
     const canonicalPath = getRaceDetailPath(params.date, selectedVenue.venue_name, selectedRace.race_number);
     const requestedPath = `/races/${params.date}/${params.venue.toLowerCase()}/${raceNumber}`;

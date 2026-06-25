@@ -17,26 +17,8 @@ const nextConfig = {
     ];
   },
 
-  // ▼▼▼▼▼【修正】Cache-Control ヘッダを追加▼▼▼▼▼
-  // /races/[date] はページ自体がsearchParamsによってDynamic Renderingになっているため、
-  // Next.jsの自動キャッシュが効かない。そのためVercelのCDNに対して
-  // s-maxage（CDNキャッシュ時間）とstale-while-revalidate（猶予時間）を明示的に指定し、
-  // サーバー側で生成したレスポンスをCDNに保持させる。
-  // ※ searchParamsを含むURLはキャッシュキーが異なるため、CDNは各URLを別々にキャッシュする。
-  //   これにより同一URLへの2回目以降のアクセスはOriginに届かなくなる。
-  // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
   async headers() {
     return [
-      {
-        // レースページ: 30分CDNキャッシュ、バックグラウンドで最大1時間更新猶予
-        source: '/races/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 's-maxage=1800, stale-while-revalidate=3600',
-          },
-        ],
-      },
       {
         // サイトマップ: 24時間CDNキャッシュ（revalidate=86400 と一致させる）
         source: '/sitemap.xml',

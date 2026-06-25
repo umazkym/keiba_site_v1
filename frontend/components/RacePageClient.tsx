@@ -10,7 +10,7 @@ import { WeeklyGradeRaces } from "@/components/WeeklyGradeRaces";
 import { formatDate } from "@/lib/utils";
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { getPredictionsForDate } from "@/lib/api";
-import { Article } from "@/lib/articles";
+import { RaceArticleMeta } from "@/lib/articles";
 import DisclaimerAlert from "@/components/DisclaimerAlert";
 import { InFeedAd } from "@/components/InFeedAd";
 import { RecentRaceReturn } from "@/components/RecentRaceReturn";
@@ -105,7 +105,7 @@ type RacePageClientProps = {
     initialSpecialPick?: SpecialPick | null;
     initialTopHits?: TopPayoutHit[];
     weeklyGradeRaces?: WeeklyGradeRace[];
-    articlesMeta: Omit<Article, 'content'>[];
+    articlesMeta: RaceArticleMeta[];
     initialVenueName?: string | null;
     initialRaceNumber?: number | null;
 };
@@ -179,7 +179,15 @@ export default function RacePageClient({
             document.title = `競馬AIデータ分析 | ${formatDate(initialDate)}`;
         }
 
-        if (initialPredictionData && isInitialLoad.current) {
+        const hasInitialRaceData = Boolean(
+            initialPredictionData
+            && (
+                initialPredictionData.jra.length > 0
+                || initialPredictionData.nar.length > 0
+            )
+        );
+
+        if (hasInitialRaceData && isInitialLoad.current) {
             isInitialLoad.current = false;
             setPredictionData(initialPredictionData);
             setIsLoading(false);
@@ -287,6 +295,7 @@ export default function RacePageClient({
                     </p>
                     <Link
                         href={`/races/${getTodayString()}`}
+                        prefetch={false}
                         className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg shadow-sm transition-colors"
                     >
                         本日のレース分析を見る
@@ -381,12 +390,14 @@ export default function RacePageClient({
             <div className="flex justify-center gap-2 sm:gap-3 my-3 sm:my-4">
                 <Link
                     href={`/races/${getShiftedDate(currentDate, -1)}`}
+                    prefetch={false}
                     className="flex-1 max-w-[160px] inline-flex items-center justify-center px-2 py-2.5 text-[11px] sm:text-[13px] font-bold text-slate-600 bg-white border border-slate-200 rounded-xl transition-all duration-200 min-h-[44px] hover:bg-slate-50 hover:text-primary hover:border-slate-300 hover:shadow-sm"
                 >
                     ← 前日のデータ
                 </Link>
                 <Link
                     href={`/races/${getShiftedDate(currentDate, 1)}`}
+                    prefetch={false}
                     className="flex-1 max-w-[160px] inline-flex items-center justify-center px-2 py-2.5 text-[11px] sm:text-[13px] font-bold text-slate-600 bg-white border border-slate-200 rounded-xl transition-all duration-200 min-h-[44px] hover:bg-slate-50 hover:text-primary hover:border-slate-300 hover:shadow-sm"
                 >
                     翌日のデータ →

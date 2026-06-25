@@ -472,7 +472,7 @@ export default async function AccuracyPage({
               <Link href="/keiba-data" className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700 hover:text-primary">
                 データの見方へ
               </Link>
-              <Link href="/races/today" className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-light">
+              <Link prefetch={false} href="/races/today" className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-light">
                 本日の分析を見る
               </Link>
             </div>

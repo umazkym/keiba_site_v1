@@ -230,7 +230,7 @@ export default function KeibaDataPage() {
               コースの癖、馬場、馬体重、騎手の条件適性を先に固めてから、最後の比較材料としてAI偏差値を使う流れを推奨しています。
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Link href="/races/today" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-primary-light">
+              <Link prefetch={false} href="/races/today" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-primary-light">
                 この見方で本日のレースを見る
               </Link>
               <Link href="/results/accuracy" className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-bold text-slate-700 hover:text-primary">

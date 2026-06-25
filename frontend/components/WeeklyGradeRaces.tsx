@@ -103,6 +103,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, title = 
                         return (
                             <Link
                                 key={race.race_id}
+                                prefetch={false}
                                 href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
                                 className="inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm transition-all duration-200 hover:shadow hover:border-blue-500/30 no-underline active:scale-95"
                             >
@@ -144,6 +145,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, title = 
                             return (
                                 <Link
                                     key={race.race_id}
+                                    prefetch={false}
                                     href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
                                     className="grade-focus card rounded-xl no-underline"
                                 >

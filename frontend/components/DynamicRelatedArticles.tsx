@@ -2,13 +2,13 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { Article } from '@/lib/articles';
+import { RaceArticleMeta } from '@/lib/articles';
 
 interface DynamicRelatedArticlesProps {
     venueName: string;
     courseType: string | null;
     distance: number | null;
-    articlesMeta: Omit<Article, 'content'>[];
+    articlesMeta: RaceArticleMeta[];
     count?: number;
 }
 

@@ -13,10 +13,12 @@ export const HomeRaceEntryLink = ({
     raceDate,
     entryMethod,
     children,
+    prefetch = false,
     ...linkProps
 }: HomeRaceEntryLinkProps) => (
     <Link
         {...linkProps}
+        prefetch={prefetch}
         onClick={() => {
             sendHomeRaceEntryClickEvent({
                 race_date: raceDate,

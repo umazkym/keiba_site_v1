@@ -82,6 +82,7 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
                     </div>
                     <Link
                         href="/races/today"
+                        prefetch={false}
                         className="recent-return-primary shrink-0"
                     >
                         確認する
@@ -110,12 +111,14 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
                 </div>
                 <Link
                     href={recentRace.href}
+                    prefetch={false}
                     className="recent-return-primary shrink-0 text-center whitespace-nowrap px-2.5 sm:px-3 text-xs py-1.5"
                 >
                     {recentRace.venueName}{recentRace.raceNumber}Rに戻る
                 </Link>
                 <Link
                     href="/races/today"
+                    prefetch={false}
                     className="hidden sm:inline-flex sm:flex-none items-center justify-center px-3 py-1.5 min-h-[36px] text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100"
                 >
                     今日へ

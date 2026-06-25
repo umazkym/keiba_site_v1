@@ -228,6 +228,7 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions }: Props)
             {/* 注目馬情報カード */}
             <Link
                 href={getRaceDetailPath(effectiveDate, currentPick.venue_name, currentPick.race_number)}
+                prefetch={false}
                 className="block group"
             >
                 <div className="relative overflow-hidden rounded-xl bg-slate-50/50 hover:bg-slate-50 p-3.5 border border-slate-100 transition-all group-hover:border-primary/20">

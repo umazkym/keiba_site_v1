@@ -112,7 +112,7 @@ export default function CoursePage({ params }: Props) {
             <p className="mt-2 text-sm leading-7 text-slate-600">
               ここで確認したコース傾向を踏まえて、当日の出走馬をチェックしてみてください。
             </p>
-            <Link href="/races/today" className="mt-4 inline-flex rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary">
+            <Link prefetch={false} href="/races/today" className="mt-4 inline-flex rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary">
               今日の該当レースを確認する
             </Link>
           </div>

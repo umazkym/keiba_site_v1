@@ -61,10 +61,10 @@ export const Header = ({ todayString }: HeaderProps) => {
                         <Link href="/" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             ホーム
                         </Link>
-                        <Link href={`/races/${todayString}`} className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
+                        <Link prefetch={false} href={`/races/${todayString}`} className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             本日の分析
                         </Link>
-                        <Link href="/articles" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
+                        <Link prefetch={false} href="/articles" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
                             記事
                         </Link>
                         <Link href="/faq" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors duration-200">
@@ -123,6 +123,7 @@ export const Header = ({ todayString }: HeaderProps) => {
                         ホーム
                     </Link>
                     <Link
+                        prefetch={false}
                         href={`/races/${todayString}`}
                         className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
                         onClick={closeMenu}
@@ -130,6 +131,7 @@ export const Header = ({ todayString }: HeaderProps) => {
                         本日の分析
                     </Link>
                     <Link
+                        prefetch={false}
                         href="/articles"
                         className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
                         onClick={closeMenu}

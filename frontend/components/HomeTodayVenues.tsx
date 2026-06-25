@@ -83,6 +83,7 @@ export function HomeTodayVenues({
                 {jraVenues.map((venue) => (
                     <Link
                         key={venue.venue_name}
+                        prefetch={false}
                         href={venue.races[0]
                             ? getRaceDetailPath(date, venue.venue_name, venue.races[0].race_number)
                             : `/races/${date}`}
@@ -105,6 +106,7 @@ export function HomeTodayVenues({
                 {narVenues.map((venue) => (
                     <Link
                         key={venue.venue_name}
+                        prefetch={false}
                         href={venue.races[0]
                             ? getRaceDetailPath(date, venue.venue_name, venue.races[0].race_number)
                             : `/races/${date}`}

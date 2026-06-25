@@ -138,6 +138,7 @@ export function ArticleSearchEntryPanel({ topHits }: ArticleSearchEntryPanelProp
       <div className="flex justify-center">
         <Link
           href="/races/today"
+          prefetch={false}
           className="hero-btn group justify-center border border-slate-200"
         >
           本日の分析を見る

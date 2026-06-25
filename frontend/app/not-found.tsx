@@ -35,6 +35,7 @@ export default function NotFound() {
                     {/* 今日のレース分析（最優先導線） */}
                     <Link
                         href="/races/today"
+                        prefetch={false}
                         className="bg-primary/5 rounded-lg border-2 border-primary/20 p-6 hover:border-primary transition-colors group"
                     >
                         <div className="flex items-start gap-4">

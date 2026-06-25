@@ -450,7 +450,7 @@ export default async function HomePage() {
                                 <span>最新の分析記事</span>
                                 <span className="section-note">新着順</span>
                             </h2>
-                            <Link href="/articles" className="text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors pr-1">
+                            <Link prefetch={false} href="/articles" className="text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors pr-1">
                                 すべて見る →
                             </Link>
                         </div>
@@ -520,7 +520,7 @@ export default async function HomePage() {
                             <span>関連コンテンツ</span>
                         </h2>
                         <div className="side-list">
-                            <Link href={`/races/${todayStr}`} className="resume-card">
+                            <Link prefetch={false} href={`/races/${todayStr}`} className="resume-card">
                                 <small>本日のデータ</small>
                                 <strong>全レース一覧</strong>
                                 <span className="resume-action mt-2">確認する</span>

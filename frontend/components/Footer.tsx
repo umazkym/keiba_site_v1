@@ -24,7 +24,7 @@ export const Footer = () => {
                         <h3 className="font-bold text-white text-sm sm:text-base mb-2 sm:mb-4">コンテンツ</h3>
                         <ul className="grid grid-cols-2 gap-x-3 gap-y-1 sm:block sm:space-y-3">
                             <li>
-                                <Link href="/articles" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
+                                <Link prefetch={false} href="/articles" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     データ分析記事
                                 </Link>
                             </li>

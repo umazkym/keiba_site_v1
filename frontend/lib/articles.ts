@@ -24,6 +24,15 @@ export interface Article {
   canonicalSlug?: string;
 }
 
+export type ArticleMeta = Omit<Article, 'content'>;
+
+export type RaceArticleMeta = Pick<
+  Article,
+  'slug' | 'title' | 'date' | 'eyecatch' | 'category'
+>;
+
+let cachedArticles: Article[] | null = null;
+
 const VENUE_NAMES = [
   '札幌', '函館', '福島', '新潟', '東京', '中山', '中京', '京都', '阪神', '小倉',
   '大井', '川崎', '船橋', '浦和', '門別', '盛岡', '水沢', '金沢', '笠松', '名古屋',
@@ -81,6 +90,10 @@ function extractDateFromSlug(slug: string): string | null {
 
 // 全記事を取得する関数
 export function getAllArticles(): Article[] {
+  if (cachedArticles) {
+    return cachedArticles;
+  }
+
   const fileNames = fs.readdirSync(articlesDirectory);
   const allArticles = fileNames.flatMap((fileName) => {
     const slug = fileName.replace(/\.md$/, '');
@@ -108,33 +121,38 @@ export function getAllArticles(): Article[] {
   });
 
   // 日付の降順で記事をソート
-  return allArticles.sort((a, b) => {
+  cachedArticles = allArticles.sort((a, b) => {
     if (a.date < b.date) {
       return 1;
     } else {
       return -1;
     }
   });
+
+  return cachedArticles;
 }
 
 // 全記事のスラッグを取得する関数 (generateStaticParams用)
 export function getAllArticleSlugs(): { slug: string }[] {
-  const fileNames = fs.readdirSync(articlesDirectory);
-  return fileNames.flatMap((fileName) => {
-    const fullPath = path.join(articlesDirectory, fileName);
-    const fileContents = fs.readFileSync(fullPath, 'utf8');
-    const { data } = matter(fileContents);
-    if (isDraftArticle(data)) return [];
-    return [{
-      slug: fileName.replace(/\.md$/, ''),
-    }];
-  });
+  return getAllArticles().map(({ slug }) => ({ slug }));
 }
 
 // クライアントコンポーネントへ渡すためのメタデータのみ（content抜き）を取得する関数
-export function getAllArticlesMeta(): Omit<Article, 'content'>[] {
+export function getAllArticlesMeta(): ArticleMeta[] {
   const allArticles = getAllArticles();
   return allArticles.map(({ content, ...meta }) => meta);
+}
+
+// レースページへ渡す項目を表示に必要な最小限へ絞り、HTML/RSCサイズを抑える。
+export function getRaceArticleMeta(): RaceArticleMeta[] {
+  const allArticles = getAllArticles();
+  return allArticles.map((article) => ({
+    slug: article.slug,
+    title: article.title,
+    date: article.date,
+    eyecatch: article.eyecatch,
+    category: article.category,
+  }));
 }
 
 // 最新の記事を指定した件数だけ取得する関数

@@ -155,6 +155,7 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
                     {hits.map((hit, index) => (
                         <Link
                             key={`${hit.race_id}-${hit.winning_numbers}`}
+                            prefetch={false}
                             href={getRaceDetailPath(hit.race_date, hit.venue_name, hit.race_number)}
                             className="block"
                         >
@@ -168,6 +169,7 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
                         {hits.map((hit, index) => (
                             <Link
                                 key={`${hit.race_id}-${hit.winning_numbers}`}
+                                prefetch={false}
                                 href={getRaceDetailPath(hit.race_date, hit.venue_name, hit.race_number)}
                                 className="block h-full"
                             >

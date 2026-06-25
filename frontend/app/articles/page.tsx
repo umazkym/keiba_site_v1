@@ -332,7 +332,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               <p className="mt-2 text-xs leading-6 text-slate-600">
                 記事で確認した観点を、当日の出走表やAI偏差値と照合できます。
               </p>
-              <Link href="/races/today" className="mt-3 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-xs font-bold text-white hover:bg-primary">
+              <Link prefetch={false} href="/races/today" className="mt-3 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-xs font-bold text-white hover:bg-primary">
                 今日の分析を見る
               </Link>
             </div>

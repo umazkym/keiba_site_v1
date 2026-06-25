@@ -77,7 +77,7 @@ export default function GradeRaceDetailPage({ params }: Props) {
           </p>
           <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">{race.summary}</p>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link href="/races/today" className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary">
+            <Link prefetch={false} href="/races/today" className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary">
               当日のAI予想を見る
             </Link>
           </div>

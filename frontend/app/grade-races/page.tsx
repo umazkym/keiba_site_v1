@@ -102,7 +102,7 @@ export default function GradeRacesPage() {
           <p className="mt-2 text-sm leading-7 text-slate-600">
             当日の出走表、AI偏差値、脚質予測、対戦成績はレース分析ページで確認できます。
           </p>
-          <Link href="/races/today" className="mt-4 inline-flex rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary">
+          <Link prefetch={false} href="/races/today" className="mt-4 inline-flex rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary">
             本日の分析を見る
           </Link>
         </section>

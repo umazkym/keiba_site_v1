@@ -89,7 +89,7 @@ async function fetchWithRetry(
 
 export async function getPredictionsForDate(
     date: string,
-    options: { bypassCache?: boolean } = {},
+    options: { bypassCache?: boolean; throwOnError?: boolean } = {},
 ): Promise<RaceDayPrediction | null> {
     try {
         const requestOptions: RequestInit & { next?: { revalidate?: number } } = options.bypassCache
@@ -104,7 +104,11 @@ export async function getPredictionsForDate(
                 console.log(`No predictions found for date ${date}, returning empty data.`);
                 return { jra: [], nar: [] };
             }
-            console.error(`Failed to fetch data from API. Status: ${res.status}`);
+            const message = `Failed to fetch data from API. Status: ${res.status}`;
+            console.error(message);
+            if (options.throwOnError) {
+                throw new Error(message);
+            }
             return null;
         }
         const data = await res.json();
@@ -114,6 +118,9 @@ export async function getPredictionsForDate(
         // TypeError: Cannot read properties of undefined (reading 'push'/'length') を防止する
         if (!data || typeof data !== 'object') {
             console.error(`[getPredictionsForDate] Invalid response body for ${date}:`, data);
+            if (options.throwOnError) {
+                throw new Error(`Invalid prediction response for ${date}`);
+            }
             return null;
         }
         return {
@@ -122,6 +129,9 @@ export async function getPredictionsForDate(
         };
     } catch (error: any) {
         console.error("A network or fetch error occurred in getPredictionsForDate:", error.message);
+        if (options.throwOnError) {
+            throw error;
+        }
         return null;
     }
 }

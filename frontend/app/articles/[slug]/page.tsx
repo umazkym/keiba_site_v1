@@ -210,6 +210,7 @@ export default async function ArticlePage({ params }: Props) {
                 </div>
                 <Link
                   href="/races/today"
+                  prefetch={false}
                   data-analytics-placement="article_top_cta"
                   className="shrink-0 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary-light transition-all shadow-sm whitespace-nowrap active:scale-95"
                 >

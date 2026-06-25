@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import {
+    getJstTodayString,
     getRaceDetailPath,
     isValidRaceDate,
     parseRaceNumberParam,
@@ -24,6 +25,17 @@ export function middleware(request: NextRequest) {
     // クエリ付き詳細URLは /races/YYYY-MM-DD/venue-slug/R へ統一する。
     // venueのみ・raceのみ・余分なクエリは日付ページへ集約して重複URLを増やさない。
     if (pathname.startsWith('/races/')) {
+        // /races/today はビルド時の日付ではなく、アクセス時点のJST日付へ転送する。
+        if (pathname === '/races/today') {
+            const newUrl = new URL(request.url);
+            newUrl.pathname = `/races/${getJstTodayString()}`;
+            newUrl.search = '';
+
+            return NextResponse.redirect(newUrl, {
+                status: 307,
+            });
+        }
+
         const dateOnlyMatch = pathname.match(/^\/races\/([^/]+)$/);
         const detailMatch = pathname.match(/^\/races\/([^/]+)\/([^/]+)\/([^/]+)$/);
 

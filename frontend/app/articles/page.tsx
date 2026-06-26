@@ -204,9 +204,11 @@ function GradeRaceDirectoryDetails({
         <div className="grid gap-2">
           {sections.map((section) => (
             <section key={section.id} aria-label={section.title}>
-              <div className="mb-1 flex items-center justify-between gap-2 px-2 text-[11px] font-black text-slate-500">
+              <div className="mb-1 flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-black text-slate-800">
                 <span>{section.title}</span>
-                <span>{section.groupCount}件</span>
+                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-slate-600 shadow-sm">
+                  {section.groupCount}件
+                </span>
               </div>
               <EntityDirectoryLinks groups={section.groups} />
             </section>

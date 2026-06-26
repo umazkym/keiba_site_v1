@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { AdUnit } from './AdUnit';
 
 /**
@@ -13,7 +13,6 @@ import { AdUnit } from './AdUnit';
 export const FooterAd = () => {
     try {
         const pathname = usePathname();
-        const searchParams = useSearchParams();
 
         // 広告を表示しないページ（ポリシー系・個人情報系）
         const noAdPages = [
@@ -28,10 +27,9 @@ export const FooterAd = () => {
 
         if (!shouldShow) return null;
 
-        // ▼▼▼▼▼【広告リフレッシュ対応】▼▼▼▼▼
-        // pathname + searchParams からrefreshKeyを生成
-        const refreshKey = `footer-${pathname}-${searchParams.get('race') || ''}-${searchParams.get('venue') || ''}`;
-        // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+        // 旧クエリ付きレースURLはmiddlewareで安定パスへ集約しているため、
+        // 広告リフレッシュキーはpathnameだけで十分。
+        const refreshKey = `footer-${pathname}`;
 
         return (
             <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6 pb-4">

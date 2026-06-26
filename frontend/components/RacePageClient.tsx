@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from 'next/link';
 import { RaceDayPrediction, SpecialPick, TopPayoutHit, WeeklyGradeRace } from "@/lib/types";
 import { RaceTabs } from "@/components/RaceTabs";
@@ -127,25 +127,12 @@ export default function RacePageClient({
     initialRaceNumber: routeInitialRaceNumber = null,
 }: RacePageClientProps) {
     const router = useRouter();
-    const searchParams = useSearchParams();
     const [currentDate, setCurrentDate] = useState(initialDate);
     const [predictionData, setPredictionData] = useState<RaceDayPrediction | null>(initialPredictionData);
     const [isLoading, setIsLoading] = useState(!initialPredictionData);
     const [error, setError] = useState<string | null>(null);
-    const [initialVenue, setInitialVenue] = useState<string | null>(() => {
-        if (routeInitialVenueName) return routeInitialVenueName;
-        const venue = searchParams.get('venue');
-        return venue ? decodeURIComponent(venue) : null;
-    });
-    const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(() => {
-        if (routeInitialRaceNumber) return routeInitialRaceNumber;
-        const raceStr = searchParams.get('race');
-        if (raceStr) {
-            const num = parseInt(raceStr, 10);
-            return isNaN(num) ? null : num;
-        }
-        return null;
-    });
+    const [initialVenue, setInitialVenue] = useState<string | null>(routeInitialVenueName);
+    const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(routeInitialRaceNumber);
     const hasScrolled = useRef(false);
     const isInitialLoad = useRef(true);
 
@@ -198,25 +185,9 @@ export default function RacePageClient({
     }, [initialDate, initialPredictionData]);
 
     useEffect(() => {
-        if (routeInitialVenueName || routeInitialRaceNumber) {
-            setInitialVenue(routeInitialVenueName);
-            setInitialRaceNumber(routeInitialRaceNumber);
-            return;
-        }
-
-        const venue = searchParams.get('venue');
-        const raceStr = searchParams.get('race');
-
-        if (venue) {
-            setInitialVenue(decodeURIComponent(venue));
-        }
-        if (raceStr) {
-            const raceNum = parseInt(raceStr, 10);
-            if (!isNaN(raceNum)) {
-                setInitialRaceNumber(raceNum);
-            }
-        }
-    }, [searchParams, routeInitialVenueName, routeInitialRaceNumber]);
+        setInitialVenue(routeInitialVenueName);
+        setInitialRaceNumber(routeInitialRaceNumber);
+    }, [routeInitialVenueName, routeInitialRaceNumber]);
 
     useEffect(() => {
         if (!hasScrolled.current && initialVenue && initialRaceNumber && predictionData) {

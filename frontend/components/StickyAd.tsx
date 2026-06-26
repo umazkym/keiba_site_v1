@@ -3,7 +3,7 @@
 
 import { Adsense } from './Adsense';
 import { useEffect, useState, useCallback } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 /**
  * デスクトップ右サイドバー追従広告
@@ -20,13 +20,10 @@ export const StickyAd = () => {
     const [isMounted, setIsMounted] = useState(false);
     const [isDismissed, setIsDismissed] = useState(false);
     const pathname = usePathname();
-    const searchParams = useSearchParams();
 
-    // ▼▼▼▼▼【広告リフレッシュ対応】▼▼▼▼▼
-    // pathname + searchParams（race, venue）からrefreshKeyを生成
-    // レース切替時にsearchParamsが変わるため、広告がリフレッシュされる
-    const refreshKey = `${pathname}-${searchParams.get('race') || ''}-${searchParams.get('venue') || ''}`;
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
+    // 旧クエリ付きレースURLはmiddlewareで安定パスへ集約しているため、
+    // 広告リフレッシュキーはpathnameだけで十分。
+    const refreshKey = pathname;
 
     useEffect(() => {
         setIsMounted(true);

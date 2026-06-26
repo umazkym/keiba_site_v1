@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { Adsense } from './Adsense';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { sendAdImpressionEvent } from '../lib/analytics';
 import { isManualAdsEnabled, shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 
@@ -75,11 +75,6 @@ export const MobileStickyAd = () => {
     const [hasScrolled, setHasScrolled] = useState(false);
     const [variant, setVariant] = useState<StickyVariant>('control');
     const pathname = usePathname();
-    // ★ レース切替リフレッシュ対応: searchParamsのraceを取得
-    // pathnameはレース切替（?race=3&venue=東京）で変化しないため、
-    // 追従広告が同じ広告を表示し続けてバナーブラインドネスを引き起こしていた
-    const searchParams = useSearchParams();
-    const raceParam = searchParams.get('race') || '';
     const containerRef = useRef<HTMLDivElement>(null);
     const isRacePage = pathname.startsWith('/races/');
     const variantConfig = useMemo(() => {
@@ -133,14 +128,14 @@ export const MobileStickyAd = () => {
         handleScroll();
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [isMounted, variantConfig.scrollThreshold, pathname, raceParam]);
+    }, [isMounted, variantConfig.scrollThreshold, pathname]);
 
-    // パス変更・レース切替でリフレッシュする際、ステータスを戻す
-    // ★ raceParam追加: pathname + raceParam両方の変化に反応
+    // パス変更でリフレッシュする際、ステータスを戻す。
+    // 旧クエリURLはmiddlewareで安定パスへ集約しているため、searchParamsは参照しない。
     useEffect(() => {
         setAdStatus('loading');
         setHasScrolled(false);
-    }, [pathname, raceParam]);
+    }, [pathname]);
 
     // MutationObserverで広告のロード完了/空振り(unfilled)を検知
     useEffect(() => {
@@ -188,7 +183,7 @@ export const MobileStickyAd = () => {
             window.clearTimeout(statusTimer);
             observer.disconnect();
         };
-    }, [pathname, raceParam, variantConfig.placement, analyticsVariant]);  // ★ raceParam追加: レース切替時もMutationObserverを再作成
+    }, [pathname, variantConfig.placement, analyticsVariant]);
 
     const handleDismiss = () => {
         setIsDismissed(true);
@@ -240,7 +235,7 @@ export const MobileStickyAd = () => {
                     <Adsense
                         client="ca-pub-4411270831448240"
                         slot="8529703346" 
-                        refreshKey={`mobile-sticky-${pathname}-${raceParam}`}
+                        refreshKey={`mobile-sticky-${pathname}`}
                         style={stickyAdStyle}
                         isResponsive={false}
                         lazyRootMargin="0px 0px 0px 0px"

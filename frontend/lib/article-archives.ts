@@ -12,6 +12,8 @@ import type { GradeRaceProfile } from "@/lib/grade-race-content";
 import { getGradeRaceProfile, gradeRaceProfiles } from "@/lib/grade-race-content";
 
 export type ArticleArchiveKind = "grade-races" | "races" | "jockeys" | "courses";
+export type GradeRaceCircuit = "jra" | "nar" | "overseas";
+export type GradeRaceClass = "g1" | "g2" | "g3" | "jpn1" | "jpn2" | "jpn3" | "local" | "overseas" | "other";
 
 export type ArticleArchiveGroup = {
   key: string;
@@ -26,6 +28,8 @@ export type ArticleArchiveGroup = {
   articleCount: number;
   latestDate: string;
   scheduledDate?: string;
+  gradeRaceCircuit?: GradeRaceCircuit;
+  gradeRaceClass?: GradeRaceClass;
 };
 
 export const articleArchiveKinds: Array<{
@@ -94,6 +98,8 @@ type AdditionalGradeRaceSeed = {
   venue?: string;
   course?: string;
   date?: string;
+  circuit?: GradeRaceCircuit;
+  gradeClass?: GradeRaceClass;
 };
 
 const additionalGradeRaceSeeds: AdditionalGradeRaceSeed[] = [
@@ -107,15 +113,66 @@ const additionalGradeRaceSeeds: AdditionalGradeRaceSeed[] = [
   { slug: "shirasagi-stakes", name: "しらさぎS", grade: "重賞", aliases: ["しらさぎS", "しらさぎステークス"], venue: "阪神", course: "芝1600m" },
   { slug: "ichijo-kinen-michinoku-daishoten", name: "一條記念みちのく大賞典", grade: "地方重賞", aliases: ["一條記念みちのく大賞典", "みちのく大賞典"], venue: "水沢", course: "ダート2000m" },
   { slug: "aka-renga-kinen", name: "赤レンガ記念", grade: "地方重賞", aliases: ["赤レンガ記念"], venue: "門別", course: "ダート2000m" },
+  { slug: "sakitama-hai", name: "さきたま杯", grade: "Jpn1", aliases: ["さきたま杯"], venue: "浦和", course: "ダート1400m", date: "2026-06-24" },
+  { slug: "teio-sho", name: "帝王賞", grade: "Jpn1", aliases: ["帝王賞"], venue: "大井", course: "ダート2000m", date: "2026-07-01" },
+  { slug: "queen-sho", name: "クイーン賞", grade: "Jpn3", aliases: ["クイーン賞"], venue: "船橋", course: "ダート1800m", date: "2026-02-11" },
   { slug: "radio-nikkei-sho", name: "ラジオNIKKEI賞", grade: "G3", aliases: ["ラジオNIKKEI賞", "ラジオＮＩＫＫＥＩ賞"], venue: "福島", course: "芝1800m" },
   { slug: "hakodate-kinen", name: "函館記念", grade: "G3", aliases: ["函館記念"], venue: "函館", course: "芝2000m" },
   { slug: "froilein-cup", name: "フロイラインカップ", grade: "地方重賞", aliases: ["フロイラインカップ"], venue: "門別", course: "ダート1700m" },
+  { slug: "kanazawa-summer-cup", name: "金沢サマーカップ", grade: "地方重賞", aliases: ["金沢サマーカップ"], venue: "金沢", course: "ダート1400m", date: "2026-06-28" },
+  { slug: "sapphire-sho", name: "サファイア賞", grade: "地方重賞", aliases: ["サファイア賞"], venue: "盛岡", course: "芝2400m", date: "2026-06-28" },
   { slug: "unicorn-stakes", name: "ユニコーンS", grade: "G3", aliases: ["ユニコーンS", "ユニコーンステークス"], venue: "京都", course: "ダート1900m" },
   { slug: "artemis-stakes", name: "アルテミスS", grade: "G3", aliases: ["アルテミスS", "アルテミスステークス"], venue: "東京", course: "芝1600m" },
   { slug: "kikka-sho", name: "菊花賞", grade: "G1", aliases: ["菊花賞"], venue: "京都", course: "芝3000m" },
   { slug: "elizabeth-queen-cup", name: "エリザベス女王杯", grade: "G1", aliases: ["エリザベス女王杯"], venue: "京都", course: "芝2200m" },
   { slug: "dubai-world-cup", name: "ドバイWC", grade: "海外G1", aliases: ["ドバイWC", "ドバイワールドカップ"] },
 ];
+
+function normalizeGradeLabel(grade: string): string {
+  return grade.replace(/\s+/g, "").toUpperCase();
+}
+
+function inferGradeRaceMeta(
+  grade: string,
+  venue = "",
+  explicitCircuit?: GradeRaceCircuit,
+  explicitClass?: GradeRaceClass,
+): { circuit: GradeRaceCircuit; gradeClass: GradeRaceClass } {
+  const normalized = normalizeGradeLabel(grade);
+  if (explicitCircuit && explicitClass) {
+    return { circuit: explicitCircuit, gradeClass: explicitClass };
+  }
+  if (normalized.includes("海外")) {
+    return { circuit: "overseas", gradeClass: "overseas" };
+  }
+  if (normalized === "JPN1" || normalized === "JPNI") {
+    return { circuit: "nar", gradeClass: "jpn1" };
+  }
+  if (normalized === "JPN2" || normalized === "JPNII") {
+    return { circuit: "nar", gradeClass: "jpn2" };
+  }
+  if (normalized === "JPN3" || normalized === "JPNIII") {
+    return { circuit: "nar", gradeClass: "jpn3" };
+  }
+  if (normalized.includes("地方")) {
+    return { circuit: "nar", gradeClass: "local" };
+  }
+  if (normalized === "G1" || normalized === "GI") {
+    return { circuit: "jra", gradeClass: "g1" };
+  }
+  if (normalized === "G2" || normalized === "GII") {
+    return { circuit: "jra", gradeClass: "g2" };
+  }
+  if (normalized === "G3" || normalized === "GIII") {
+    return { circuit: "jra", gradeClass: "g3" };
+  }
+
+  const localVenues = ["門別", "盛岡", "水沢", "浦和", "船橋", "大井", "川崎", "金沢", "笠松", "名古屋", "園田", "姫路", "高知", "佐賀"];
+  if (explicitCircuit === "nar" || localVenues.some((localVenue) => venue.includes(localVenue))) {
+    return { circuit: "nar", gradeClass: "local" };
+  }
+  return { circuit: explicitCircuit || "jra", gradeClass: explicitClass || "other" };
+}
 
 export function getGradeRaceArticleAliases(race: GradeRaceProfile): string[] {
   const bracketAlias = race.name.match(/[（(]([^）)]+)[）)]/)?.[1] || "";
@@ -130,6 +187,7 @@ export function getJockeyArticleAliases(jockey: JockeyProfile): string[] {
 
 function gradeRaceToArchiveGroup(race: GradeRaceProfile): ArticleArchiveGroup {
   const articles = getArticlesByGradeRaceEntity(race.slug, getGradeRaceArticleAliases(race), 100);
+  const gradeMeta = inferGradeRaceMeta(race.grade, race.venue);
   return {
     key: race.slug,
     title: race.name,
@@ -143,12 +201,15 @@ function gradeRaceToArchiveGroup(race: GradeRaceProfile): ArticleArchiveGroup {
     articleCount: articles.length,
     latestDate: formatLatestDate(articles),
     scheduledDate: formatScheduledDate(articles, race.date),
+    gradeRaceCircuit: gradeMeta.circuit,
+    gradeRaceClass: gradeMeta.gradeClass,
   };
 }
 
 function additionalGradeRaceToArchiveGroup(seed: AdditionalGradeRaceSeed): ArticleArchiveGroup {
   const articles = getArticlesByGradeRaceEntity(seed.slug, [seed.name, ...seed.aliases], 100);
   const courseLabel = [seed.venue, seed.course].filter(Boolean).join("");
+  const gradeMeta = inferGradeRaceMeta(seed.grade, seed.venue, seed.circuit, seed.gradeClass);
   return {
     key: seed.slug,
     title: seed.name,
@@ -162,6 +223,8 @@ function additionalGradeRaceToArchiveGroup(seed: AdditionalGradeRaceSeed): Artic
     articleCount: articles.length,
     latestDate: formatLatestDate(articles),
     scheduledDate: formatScheduledDate(articles, seed.date || ""),
+    gradeRaceCircuit: gradeMeta.circuit,
+    gradeRaceClass: gradeMeta.gradeClass,
   };
 }
 
@@ -260,6 +323,53 @@ export function getGradeRaceArticleArchiveGroups(): ArticleArchiveGroup[] {
     .filter((seed) => !profileKeys.has(seed.slug))
     .map(additionalGradeRaceToArchiveGroup);
   return sortArchiveGroups([...profileGroups, ...additionalGroups]);
+}
+
+export type GradeRaceArchiveSection = {
+  id: string;
+  title: string;
+  groups: ArticleArchiveGroup[];
+  groupCount: number;
+  articleCount: number;
+};
+
+const gradeRaceArchiveSectionDefinitions: Array<{
+  id: string;
+  title: string;
+  circuit: GradeRaceCircuit;
+  classes: GradeRaceClass[];
+}> = [
+  { id: "jra-g1", title: "中央 G1", circuit: "jra", classes: ["g1"] },
+  { id: "jra-g2", title: "中央 G2", circuit: "jra", classes: ["g2"] },
+  { id: "jra-g3", title: "中央 G3", circuit: "jra", classes: ["g3"] },
+  { id: "jra-other", title: "中央 その他", circuit: "jra", classes: ["other"] },
+  { id: "nar-jpn1", title: "地方 Jpn1", circuit: "nar", classes: ["jpn1"] },
+  { id: "nar-jpn2", title: "地方 Jpn2", circuit: "nar", classes: ["jpn2"] },
+  { id: "nar-jpn3", title: "地方 Jpn3", circuit: "nar", classes: ["jpn3"] },
+  { id: "nar-local", title: "地方 その他重賞", circuit: "nar", classes: ["local"] },
+  { id: "overseas", title: "海外", circuit: "overseas", classes: ["overseas"] },
+];
+
+export function getGradeRaceArticleArchiveSections(
+  groups = getGradeRaceArticleArchiveGroups(),
+): GradeRaceArchiveSection[] {
+  const visibleGroups = groups.filter((group) => group.articleCount > 0);
+  return gradeRaceArchiveSectionDefinitions
+    .map((section) => {
+      const sectionGroups = visibleGroups.filter(
+        (group) =>
+          group.gradeRaceCircuit === section.circuit &&
+          section.classes.includes(group.gradeRaceClass || "other"),
+      );
+      return {
+        id: section.id,
+        title: section.title,
+        groups: sectionGroups,
+        groupCount: sectionGroups.length,
+        articleCount: sectionGroups.reduce((sum, group) => sum + group.articleCount, 0),
+      };
+    })
+    .filter((section) => section.groupCount > 0);
 }
 
 export function getJockeyArticleArchiveGroups(): ArticleArchiveGroup[] {

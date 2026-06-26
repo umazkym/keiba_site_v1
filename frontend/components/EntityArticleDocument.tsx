@@ -2,6 +2,9 @@ import Link from "next/link";
 import type { Article, ArticleMeta } from "@/lib/articles";
 import { ArticleSchema } from "@/components/StructuredData";
 import { enhanceArticleHtml } from "@/lib/article-ux";
+import { AdUnit } from "@/components/AdUnit";
+import { AffiliateSlot } from "@/components/AffiliateSlot";
+import { MultiplexAd } from "@/components/MultiplexAd";
 
 type EntityArticleDocumentProps = {
   article: Article;
@@ -43,31 +46,34 @@ export function ArticleThemeNavigator({
   if (articles.length <= 1) return null;
 
   return (
-    <nav className="mb-4 rounded-xl border border-slate-200 bg-white p-3 sm:mb-5 sm:p-4" aria-label="同じテーマの記事">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-black text-slate-950 sm:text-base">同じテーマ</p>
-          {canonicalHref && canonicalLabel && (
-            <Link href={canonicalHref} className="mt-1 block truncate text-xs font-bold text-primary hover:text-blue-600">
-              {canonicalLabel}
-            </Link>
-          )}
+    <nav className="mb-3 rounded-xl border border-slate-200 bg-white p-2.5 sm:mb-5 sm:p-3" aria-label="記事切り替え">
+      <div className="mb-2 flex items-center justify-between gap-3 px-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-black text-slate-950 sm:text-base">{canonicalLabel || "記事"}</span>
+          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">
+            {articles.length}
+          </span>
         </div>
-        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">
-          {articles.length}件
-        </span>
+        {canonicalHref && (
+          <Link href={canonicalHref} className="shrink-0 rounded-full bg-slate-950 px-3 py-1 text-[11px] font-black text-white hover:bg-primary">
+            一覧
+          </Link>
+        )}
       </div>
-      <div className="grid max-h-[260px] gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2">
+      <div
+        className="flex max-h-[220px] gap-1.5 overflow-x-auto overflow-y-hidden pb-1 sm:grid sm:max-h-[240px] sm:grid-cols-2 sm:overflow-y-auto sm:pr-1 lg:grid-cols-3"
+        style={{ scrollbarWidth: "thin" }}
+      >
         {articles.map((item) => {
           const isCurrent = item.slug === currentSlug;
           const className =
-            "min-h-[48px] rounded-lg border px-2.5 py-1.5 text-left transition-colors";
+            "min-h-[58px] w-[230px] shrink-0 rounded-lg border px-2.5 py-1.5 text-left transition-colors sm:w-auto sm:shrink";
           const content = (
             <>
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
                 <time dateTime={new Date(item.date).toISOString()}>{formatShortDate(item.date)}</time>
                 <span>{item.category}</span>
-                {isCurrent && <span className="text-primary">表示中</span>}
+                {isCurrent && <span className="text-primary">現在</span>}
               </div>
               <p className="mt-1 line-clamp-2 text-xs font-black leading-snug text-slate-800 sm:text-sm">
                 {item.title}
@@ -114,6 +120,14 @@ export function EntityArticleDocument({
   const datePublished = new Date(article.date).toISOString();
   const dateModified = new Date(article.lastUpdated || article.date).toISOString();
   const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
+  const stableArticleAdProps = {
+    placement: "inline" as const,
+    minHeight: "280px",
+    collapseUnfilled: false,
+    lazyRootMargin: "760px 0px 760px 0px",
+    refreshRootMarginPx: 720,
+    className: "article-ad-slot",
+  };
   const imageUrl = article.eyecatch.startsWith("http")
     ? article.eyecatch
     : `https://uma-free.com${article.eyecatch}`;
@@ -131,6 +145,68 @@ export function EntityArticleDocument({
     "prose-blockquote:border-l-4 prose-blockquote:border-slate-300 prose-blockquote:bg-slate-50 prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:not-italic prose-blockquote:text-slate-700",
     "prose-ul:marker:text-slate-400 prose-ol:marker:text-slate-400 prose-ol:marker:font-bold",
   ].join(" ");
+
+  const renderArticleBody = () => {
+    const h2Positions: number[] = [];
+    const searchRegex = /<h2[\s>]/gi;
+    let match;
+    while ((match = searchRegex.exec(enhancedContent)) !== null) {
+      h2Positions.push(match.index);
+    }
+
+    const isLongArticle = enhancedContent.length >= 6000;
+
+    if (h2Positions.length >= 7) {
+      const split1 = h2Positions[1];
+      const split2 = h2Positions[4];
+      const part1 = enhancedContent.substring(0, split1);
+      const part2 = enhancedContent.substring(split1, split2);
+      const part3 = enhancedContent.substring(split2);
+      return (
+        <>
+          <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part1 }} />
+          <AdUnit slot="1489598374" analyticsPlacement="entity_article_after_intro" {...stableArticleAdProps} />
+          <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part2 }} />
+          <AdUnit slot="9407670747" analyticsPlacement="entity_article_mid" {...stableArticleAdProps} />
+          <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part3 }} />
+        </>
+      );
+    }
+
+    if (h2Positions.length >= 4 && isLongArticle) {
+      const split1 = h2Positions[1];
+      const split2 = h2Positions[Math.min(3, h2Positions.length - 1)];
+      const part1 = enhancedContent.substring(0, split1);
+      const part2 = enhancedContent.substring(split1, split2);
+      const part3 = enhancedContent.substring(split2);
+      return (
+        <>
+          <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part1 }} />
+          <AdUnit slot="1489598374" analyticsPlacement="entity_article_after_intro" {...stableArticleAdProps} />
+          <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part2 }} />
+          <AdUnit slot="9407670747" analyticsPlacement="entity_article_mid_long" {...stableArticleAdProps} />
+          <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part3 }} />
+        </>
+      );
+    }
+
+    if (h2Positions.length >= 4) {
+      const splitPos = h2Positions[1];
+      const firstPart = enhancedContent.substring(0, splitPos);
+      const secondPart = enhancedContent.substring(splitPos);
+      return (
+        <>
+          <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: firstPart }} />
+          <AdUnit slot="1489598374" analyticsPlacement="entity_article_after_intro" {...stableArticleAdProps} />
+          <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: secondPart }} />
+        </>
+      );
+    }
+
+    return (
+      <div className={`${proseClass} mt-5 pb-8 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: enhancedContent }} />
+    );
+  };
 
   return (
     <>
@@ -221,7 +297,15 @@ export function EntityArticleDocument({
           </details>
         )}
 
-        <div className={`${proseClass} mt-5 pb-8 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: enhancedContent }} />
+        <div className="pb-6 sm:pb-10">{renderArticleBody()}</div>
+
+        <AffiliateSlot context="article_footer" selectionKey={article.slug} className="mb-5 sm:mb-8" />
+
+        <div className="pb-5 sm:pb-8">
+          <AdUnit slot="1489598374" analyticsPlacement="entity_article_after_body" {...stableArticleAdProps} />
+        </div>
+
+        <MultiplexAd slot="9407670747" />
       </article>
     </>
   );

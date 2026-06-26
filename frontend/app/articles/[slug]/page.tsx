@@ -33,7 +33,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const description = article.description ||
       `【競馬データ分析】${rawDescription}...`;
 
-    const canonicalPath = resolveArticleCanonicalPath(article, params.slug);
+    const articleArchiveGroup = getArticleArchiveGroupForArticle(article);
+    const canonicalPath = article.canonicalPath || articleArchiveGroup?.href || resolveArticleCanonicalPath(article, params.slug);
     const canonicalUrl = `https://uma-free.com${canonicalPath}`;
     const imageUrl = article.eyecatch.startsWith('http')
       ? article.eyecatch
@@ -79,9 +80,9 @@ export default async function ArticlePage({ params }: Props) {
     const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
     const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
 
-    const canonicalPath = resolveArticleCanonicalPath(article, params.slug);
-    const articleUrl = `https://uma-free.com${canonicalPath}`;
     const articleArchiveGroup = getArticleArchiveGroupForArticle(article);
+    const canonicalPath = article.canonicalPath || articleArchiveGroup?.href || resolveArticleCanonicalPath(article, params.slug);
+    const articleUrl = `https://uma-free.com${canonicalPath}`;
     const datePublished = new Date(article.date).toISOString();
     const dateModified = new Date(article.lastUpdated || article.date).toISOString();
     const stableArticleAdProps = {

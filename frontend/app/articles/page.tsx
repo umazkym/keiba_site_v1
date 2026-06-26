@@ -6,7 +6,11 @@ import { AdUnit } from "@/components/AdUnit";
 import { MultiplexAd } from "@/components/MultiplexAd";
 import { BreadcrumbSchema } from "@/components/StructuredData";
 import { shouldSuppressAdsInDevelopment } from "@/lib/ad-config";
-import { getArticleArchiveTotals, getUpcomingGradeRaceArticleGroups } from "@/lib/article-archives";
+import {
+  getArticleArchiveTotals,
+  getGradeRaceArticleArchiveSections,
+  getUpcomingGradeRaceArticleGroups,
+} from "@/lib/article-archives";
 import type { Metadata } from "next";
 
 interface ArticlesPageProps {
@@ -18,6 +22,7 @@ interface ArticlesPageProps {
 
 type ArticleLike = ReturnType<typeof getAllArticles>[number];
 type ArchiveGroupList = ReturnType<typeof getArticleArchiveTotals>["gradeRaceGroups"];
+type GradeRaceSectionList = ReturnType<typeof getGradeRaceArticleArchiveSections>;
 
 export async function generateMetadata({ searchParams }: ArticlesPageProps): Promise<Metadata> {
   const selectedCategory = searchParams.category;
@@ -173,6 +178,45 @@ function EntityDirectoryLinks({ groups }: { groups: ArchiveGroupList }) {
   );
 }
 
+function GradeRaceDirectoryDetails({
+  id,
+  sections,
+  defaultOpen = false,
+}: {
+  id: string;
+  sections: GradeRaceSectionList;
+  defaultOpen?: boolean;
+}) {
+  const groupCount = sections.reduce((sum, section) => sum + section.groupCount, 0);
+  const articleCount = sections.reduce((sum, section) => sum + section.articleCount, 0);
+  if (groupCount === 0) return null;
+
+  return (
+    <details id={id} className="group scroll-mt-20 rounded-xl border border-slate-200 bg-white" open={defaultOpen}>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-black text-slate-800">
+        <span>重賞</span>
+        <span className="flex items-center gap-2">
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{articleCount}</span>
+          <span className="text-slate-400 transition-transform group-open:rotate-90">›</span>
+        </span>
+      </summary>
+      <div className="max-h-[390px] overflow-y-auto border-t border-slate-100 p-1.5">
+        <div className="grid gap-2">
+          {sections.map((section) => (
+            <section key={section.id} aria-label={section.title}>
+              <div className="mb-1 flex items-center justify-between gap-2 px-2 text-[11px] font-black text-slate-500">
+                <span>{section.title}</span>
+                <span>{section.groupCount}件</span>
+              </div>
+              <EntityDirectoryLinks groups={section.groups} />
+            </section>
+          ))}
+        </div>
+      </div>
+    </details>
+  );
+}
+
 function EntityDirectoryDetails({
   id,
   title,
@@ -203,10 +247,16 @@ function EntityDirectoryDetails({
   );
 }
 
-function MobileEntityDirectory({ archiveTotals }: { archiveTotals: ReturnType<typeof getArticleArchiveTotals> }) {
+function MobileEntityDirectory({
+  archiveTotals,
+  gradeRaceSections,
+}: {
+  archiveTotals: ReturnType<typeof getArticleArchiveTotals>;
+  gradeRaceSections: GradeRaceSectionList;
+}) {
   return (
     <section className="mt-3 grid gap-2 lg:hidden" aria-label="記事テーマ">
-      <EntityDirectoryDetails id="grade-races" title="重賞" groups={archiveTotals.gradeRaceGroups} />
+      <GradeRaceDirectoryDetails id="grade-races" sections={gradeRaceSections} />
       <EntityDirectoryDetails id="races" title="レース" groups={archiveTotals.raceGroups} />
       <EntityDirectoryDetails id="jockeys" title="騎手" groups={archiveTotals.jockeyGroups} />
       <EntityDirectoryDetails id="courses" title="コース" groups={archiveTotals.courseGroups} />
@@ -221,6 +271,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
   const selectedTag = searchParams.tag;
   const shouldRenderAds = !shouldSuppressAdsInDevelopment;
   const archiveTotals = getArticleArchiveTotals();
+  const gradeRaceSections = getGradeRaceArticleArchiveSections(archiveTotals.gradeRaceGroups);
   const upcomingGradeRaceGroups = getUpcomingGradeRaceArticleGroups(4);
 
   let filteredArticles = selectedCategory
@@ -290,7 +341,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
           </div>
         </header>
 
-        <MobileEntityDirectory archiveTotals={archiveTotals} />
+        <MobileEntityDirectory archiveTotals={archiveTotals} gradeRaceSections={gradeRaceSections} />
 
         <div className="mt-3 grid gap-5 lg:mt-5 lg:grid-cols-[minmax(0,1fr)_280px]">
           <main className="min-w-0">
@@ -339,7 +390,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
             <nav className="hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-soft lg:block" aria-label="記事テーマ">
               <p className="mb-2 px-1 text-xs font-bold tracking-[0.14em] text-slate-400">THEME</p>
               <div className="space-y-2">
-                <EntityDirectoryDetails id="sidebar-grade-races" title="重賞" groups={archiveTotals.gradeRaceGroups} defaultOpen />
+                <GradeRaceDirectoryDetails id="sidebar-grade-races" sections={gradeRaceSections} defaultOpen />
                 <EntityDirectoryDetails id="sidebar-races" title="レース" groups={archiveTotals.raceGroups} />
                 <EntityDirectoryDetails id="sidebar-jockeys" title="騎手" groups={archiveTotals.jockeyGroups} defaultOpen />
                 <EntityDirectoryDetails id="sidebar-courses" title="コース" groups={archiveTotals.courseGroups} defaultOpen />

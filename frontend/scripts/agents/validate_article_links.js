@@ -76,6 +76,19 @@ function validateHref(file, type, href, slugs, issues) {
 
   const pathname = stripQueryAndHash(normalized);
 
+  if (
+    pathname === '/articles/grade-races' ||
+    pathname === '/articles/races' ||
+    pathname === '/articles/jockeys' ||
+    pathname === '/articles/courses' ||
+    pathname.startsWith('/articles/grade-races/') ||
+    pathname.startsWith('/articles/races/') ||
+    pathname.startsWith('/articles/jockeys/') ||
+    pathname.startsWith('/articles/courses/')
+  ) {
+    return;
+  }
+
   if (pathname.startsWith('/articles/')) {
     const slug = decodeURIComponent(pathname.replace('/articles/', '').replace(/\/$/, ''));
     if (!slugs.has(slug)) {

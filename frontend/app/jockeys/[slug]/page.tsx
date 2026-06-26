@@ -125,6 +125,8 @@ export default function JockeyPage({ params }: Props) {
           title={`${profile.name}の記事`}
           description="騎手別データ、得意コース、条件替わりの見方など、この騎手名に紐づく記事を自動で集約しています。"
           articles={jockeyArticles}
+          archiveHref={`/articles/jockeys/${profile.slug}`}
+          archiveLabel="記事アーカイブ"
         />
 
         <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">

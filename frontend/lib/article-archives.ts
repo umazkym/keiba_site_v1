@@ -1,0 +1,242 @@
+import type { ArticleMeta } from "@/lib/articles";
+import {
+  getAllArticles,
+  getArticlesByCourseEntity,
+  getArticlesByEntity,
+  getArticlesByGradeRaceEntity,
+  getArticlesByJockeyEntity,
+} from "@/lib/articles";
+import type { CourseProfile, JockeyProfile } from "@/lib/growth-content";
+import { courseProfiles, getCourseProfile, getJockeyProfile, jockeyProfiles } from "@/lib/growth-content";
+import type { GradeRaceProfile } from "@/lib/grade-race-content";
+import { getGradeRaceProfile, gradeRaceProfiles } from "@/lib/grade-race-content";
+
+export type ArticleArchiveKind = "grade-races" | "races" | "jockeys" | "courses";
+
+export type ArticleArchiveGroup = {
+  key: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  href: string;
+  profileHref: string;
+  profileLabel: string;
+  badges: string[];
+  articles: ArticleMeta[];
+  articleCount: number;
+  latestDate: string;
+};
+
+export const articleArchiveKinds: Array<{
+  kind: ArticleArchiveKind | "all";
+  label: string;
+  href: string;
+  description: string;
+}> = [
+  {
+    kind: "all",
+    label: "すべて",
+    href: "/articles",
+    description: "新着順で記事を確認する",
+  },
+  {
+    kind: "grade-races",
+    label: "重賞別",
+    href: "/articles/grade-races",
+    description: "G1・重賞名から読む",
+  },
+  {
+    kind: "races",
+    label: "レース名別",
+    href: "/articles/races",
+    description: "レース名から読む",
+  },
+  {
+    kind: "jockeys",
+    label: "騎手別",
+    href: "/articles/jockeys",
+    description: "騎手名から読む",
+  },
+  {
+    kind: "courses",
+    label: "コース別",
+    href: "/articles/courses",
+    description: "競馬場と距離から読む",
+  },
+];
+
+function formatLatestDate(articles: ArticleMeta[]): string {
+  return articles[0]?.date || "";
+}
+
+function sortArchiveGroups(groups: ArticleArchiveGroup[]): ArticleArchiveGroup[] {
+  return [...groups].sort((a, b) => {
+    if (a.articleCount !== b.articleCount) return b.articleCount - a.articleCount;
+    if (a.latestDate !== b.latestDate) return a.latestDate < b.latestDate ? 1 : -1;
+    return a.title.localeCompare(b.title, "ja");
+  });
+}
+
+export function getGradeRaceArticleAliases(race: GradeRaceProfile): string[] {
+  const bracketAlias = race.name.match(/[（(]([^）)]+)[）)]/)?.[1] || "";
+  const baseRaceName = race.name.replace(/[（(][^）)]+[）)]/g, "");
+  return [race.name, baseRaceName, bracketAlias].filter(Boolean);
+}
+
+export function getJockeyArticleAliases(jockey: JockeyProfile): string[] {
+  const shortName = jockey.searchTitle.split("の")[0];
+  return [jockey.name, shortName].filter(Boolean);
+}
+
+function gradeRaceToArchiveGroup(race: GradeRaceProfile): ArticleArchiveGroup {
+  const articles = getArticlesByGradeRaceEntity(race.slug, getGradeRaceArticleAliases(race), 100);
+  return {
+    key: race.slug,
+    title: race.name,
+    subtitle: `${race.grade} / ${race.venue}${race.course}`,
+    description: race.summary,
+    href: `/articles/grade-races/${race.slug}`,
+    profileHref: `/grade-races/${race.slug}`,
+    profileLabel: "重賞データを見る",
+    badges: [race.grade, race.venue, race.course],
+    articles,
+    articleCount: articles.length,
+    latestDate: formatLatestDate(articles),
+  };
+}
+
+function jockeyToArchiveGroup(jockey: JockeyProfile): ArticleArchiveGroup {
+  const articles = getArticlesByJockeyEntity(jockey.slug, getJockeyArticleAliases(jockey), 100);
+  return {
+    key: jockey.slug,
+    title: jockey.name,
+    subtitle: jockey.searchTitle,
+    description: jockey.summary,
+    href: `/articles/jockeys/${jockey.slug}`,
+    profileHref: `/jockeys/${jockey.slug}`,
+    profileLabel: "騎手データを見る",
+    badges: jockey.strengths.slice(0, 3),
+    articles,
+    articleCount: articles.length,
+    latestDate: formatLatestDate(articles),
+  };
+}
+
+function courseToArchiveGroup(course: CourseProfile): ArticleArchiveGroup {
+  const articles = getArticlesByCourseEntity(
+    course.venue,
+    course.course,
+    course.venueName,
+    course.courseName,
+    100,
+  );
+  return {
+    key: `${course.venue}-${course.course}`,
+    title: `${course.venueName}${course.courseName}`,
+    subtitle: course.title,
+    description: course.lead,
+    href: `/articles/courses/${course.venue}/${course.course}`,
+    profileHref: `/courses/${course.venue}/${course.course}`,
+    profileLabel: "コースデータを見る",
+    badges: [course.venueName, course.courseName, ...course.stats.slice(0, 1).map((stat) => stat.value)],
+    articles,
+    articleCount: articles.length,
+    latestDate: formatLatestDate(articles),
+  };
+}
+
+function articleTitleForRaceGroup(article: ArticleMeta, entityKey: string): string {
+  const keyword = article.targetKeyword || article.title || entityKey;
+  return keyword
+    .replace(/20\d{2}/g, "")
+    .replace(/AI予想|ai予想|無料|攻略|展望|直前|最終|枠順確定後|枠順|前日更新|前日|当日朝更新|当日朝|データ|分析|予想|ポイント|確認/g, "")
+    .replace(/[｜|:：].*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim() || entityKey;
+}
+
+function getRaceEntityKeys(): string[] {
+  return Array.from(
+    new Set(
+      getAllArticles()
+        .filter((article) => article.entityType === "race" && article.entityKey)
+        .map((article) => article.entityKey as string),
+    ),
+  ).sort();
+}
+
+export function getRaceArticleArchiveGroups(): ArticleArchiveGroup[] {
+  const groups = getRaceEntityKeys().map((entityKey) => {
+    const articles = getArticlesByEntity({
+      entityType: "race",
+      entityKey,
+      entityPath: `/articles/races/${entityKey}`,
+      count: 100,
+    });
+    const firstArticle = articles[0];
+    const title = firstArticle ? articleTitleForRaceGroup(firstArticle, entityKey) : entityKey;
+    return {
+      key: entityKey,
+      title,
+      subtitle: "レース名別の記事",
+      description: firstArticle?.description || `${title}に紐づく記事を1本のURLで更新していきます。`,
+      href: `/articles/races/${entityKey}`,
+      profileHref: "/races/today",
+      profileLabel: "本日のレースを見る",
+      badges: ["レース名", firstArticle?.category || "記事"].filter(Boolean),
+      articles,
+      articleCount: articles.length,
+      latestDate: formatLatestDate(articles),
+    };
+  });
+
+  return sortArchiveGroups(groups);
+}
+
+export function getGradeRaceArticleArchiveGroups(): ArticleArchiveGroup[] {
+  return sortArchiveGroups(gradeRaceProfiles.map(gradeRaceToArchiveGroup));
+}
+
+export function getJockeyArticleArchiveGroups(): ArticleArchiveGroup[] {
+  return sortArchiveGroups(jockeyProfiles.map(jockeyToArchiveGroup));
+}
+
+export function getCourseArticleArchiveGroups(): ArticleArchiveGroup[] {
+  return sortArchiveGroups(courseProfiles.map(courseToArchiveGroup));
+}
+
+export function getRaceArticleArchiveGroup(slug: string): ArticleArchiveGroup | null {
+  return getRaceArticleArchiveGroups().find((group) => group.key === slug) || null;
+}
+
+export function getGradeRaceArticleArchiveGroup(slug: string): ArticleArchiveGroup | null {
+  const race = getGradeRaceProfile(slug);
+  return race ? gradeRaceToArchiveGroup(race) : null;
+}
+
+export function getJockeyArticleArchiveGroup(slug: string): ArticleArchiveGroup | null {
+  const jockey = getJockeyProfile(slug);
+  return jockey ? jockeyToArchiveGroup(jockey) : null;
+}
+
+export function getCourseArticleArchiveGroup(venue: string, course: string): ArticleArchiveGroup | null {
+  const profile = getCourseProfile(venue, course);
+  return profile ? courseToArchiveGroup(profile) : null;
+}
+
+export function getArticleArchiveTotals() {
+  const gradeRaceGroups = getGradeRaceArticleArchiveGroups();
+  const raceGroups = getRaceArticleArchiveGroups();
+  const jockeyGroups = getJockeyArticleArchiveGroups();
+  const courseGroups = getCourseArticleArchiveGroups();
+  return {
+    gradeRaceCount: gradeRaceGroups.reduce((sum, group) => sum + group.articleCount, 0),
+    raceCount: raceGroups.reduce((sum, group) => sum + group.articleCount, 0),
+    jockeyCount: jockeyGroups.reduce((sum, group) => sum + group.articleCount, 0),
+    courseCount: courseGroups.reduce((sum, group) => sum + group.articleCount, 0),
+    gradeRaceGroups,
+    raceGroups,
+    jockeyGroups,
+    courseGroups,
+  };
+}

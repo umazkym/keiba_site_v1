@@ -5,6 +5,8 @@ type EntityArticleSectionProps = {
   title: string;
   description?: string;
   articles: ArticleMeta[];
+  archiveHref?: string;
+  archiveLabel?: string;
 };
 
 function formatDate(date: string) {
@@ -15,7 +17,13 @@ function formatDate(date: string) {
   });
 }
 
-export function EntityArticleSection({ title, description, articles }: EntityArticleSectionProps) {
+export function EntityArticleSection({
+  title,
+  description,
+  articles,
+  archiveHref,
+  archiveLabel = "記事アーカイブを見る",
+}: EntityArticleSectionProps) {
   if (articles.length === 0) {
     return null;
   }
@@ -29,9 +37,19 @@ export function EntityArticleSection({ title, description, articles }: EntityArt
             <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">{description}</p>
           )}
         </div>
-        <span className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
-          {articles.length}件
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
+            {articles.length}件
+          </span>
+          {archiveHref && (
+            <Link
+              href={archiveHref}
+              className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white hover:bg-primary"
+            >
+              {archiveLabel}
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">

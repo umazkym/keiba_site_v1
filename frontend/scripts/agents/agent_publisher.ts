@@ -228,7 +228,7 @@ function inferCourseEntity(text: string): { entityKey: string; entityPath: strin
     const courseSlug = `${courseType}-${match[2]}m`;
     return {
       entityKey: `${venueSlug}-${courseSlug}`,
-      entityPath: `/courses/${venueSlug}/${courseSlug}`,
+      entityPath: `/articles/courses/${venueSlug}/${courseSlug}`,
     };
   }
   return null;
@@ -246,7 +246,7 @@ function inferPublishedArticleMetadata(data: Record<string, any>): Record<string
     if (text.includes(raceName)) {
       nextData.entity_type = 'grade_race';
       nextData.entity_key = slug;
-      nextData.entity_path = `/grade-races/${slug}`;
+      nextData.entity_path = `/articles/grade-races/${slug}`;
       nextData.content_target = nextData.content_target || 'grade_race_trend_article';
       return nextData;
     }
@@ -256,7 +256,7 @@ function inferPublishedArticleMetadata(data: Record<string, any>): Record<string
     if (text.includes(jockeyName)) {
       nextData.entity_type = 'jockey';
       nextData.entity_key = slug;
-      nextData.entity_path = `/jockeys/${slug}`;
+      nextData.entity_path = `/articles/jockeys/${slug}`;
       nextData.content_target = nextData.content_target || 'jockey_support_article';
       return nextData;
     }
@@ -273,10 +273,30 @@ function inferPublishedArticleMetadata(data: Record<string, any>): Record<string
   return nextData;
 }
 
+function canonicalEntityArticlePath(entityType: string, entityKey: string): string {
+  if (!entityType || !entityKey) return '';
+  if (entityType === 'grade_race') return `/articles/grade-races/${entityKey}`;
+  if (entityType === 'jockey') return `/articles/jockeys/${entityKey}`;
+  if (entityType === 'race' && /^[a-z0-9-]+$/.test(entityKey)) return `/articles/races/${entityKey}`;
+  if (entityType === 'course') {
+    const [venue, ...courseParts] = entityKey.split('-');
+    const course = courseParts.join('-');
+    if (venue && course) return `/articles/courses/${venue}/${course}`;
+  }
+  return '';
+}
+
 function normalizePublishedArticleMetadata(data: Record<string, any>): Record<string, any> {
   const nextData = inferPublishedArticleMetadata(data);
-  const entityPath = normalizeInternalCanonicalPath(nextData.entity_path);
+  let entityPath = normalizeInternalCanonicalPath(nextData.entity_path);
   const canonicalPath = normalizeInternalCanonicalPath(nextData.canonical_path);
+  const entityType = normalizeEntityValue(nextData.entity_type);
+  const entityKey = normalizeEntityValue(nextData.entity_key);
+  const stableEntityPath = canonicalEntityArticlePath(entityType, entityKey);
+
+  if (stableEntityPath) {
+    entityPath = stableEntityPath;
+  }
 
   if (entityPath) {
     nextData.entity_path = entityPath;
@@ -286,6 +306,8 @@ function normalizePublishedArticleMetadata(data: Record<string, any>): Record<st
 
   if (canonicalPath) {
     nextData.canonical_path = canonicalPath;
+  } else if (entityPath && /^\/articles\/(grade-races|jockeys|courses|races)\//.test(entityPath)) {
+    nextData.canonical_path = entityPath;
   } else {
     delete nextData.canonical_path;
   }
@@ -293,12 +315,11 @@ function normalizePublishedArticleMetadata(data: Record<string, any>): Record<st
   return nextData;
 }
 
-function findExistingGradeRaceArticlePath(data: Record<string, any>): string | null {
-  if (!isGradeRaceDraft(data) || !fs.existsSync(ARTICLES_DIR)) return null;
-
+function findExistingEntityArticlePath(data: Record<string, any>): string | null {
+  if (!fs.existsSync(ARTICLES_DIR)) return null;
   const draftEntityType = normalizeEntityValue(data.entity_type);
   const draftEntityKey = normalizeEntityValue(data.entity_key);
-  const draftCanonicalPath = normalizeInternalCanonicalPath(data.canonical_path);
+  const draftCanonicalPath = normalizeInternalCanonicalPath(data.canonical_path || data.entity_path);
   const draftKey = normalizeGradeRaceKey(`${data.target_keyword || ''} ${data.title || ''}`);
   if (!draftKey && !draftEntityKey && !draftCanonicalPath) return null;
 
@@ -307,15 +328,15 @@ function findExistingGradeRaceArticlePath(data: Record<string, any>): string | n
     try {
       const content = fs.readFileSync(fullPath, 'utf-8');
       const parsed = matter(content);
-      if (!isGradeRaceDraft(parsed.data)) continue;
+      if (parsed.data.draft === true || String(parsed.data.draft || '').toLowerCase() === 'true') continue;
 
       const articleEntityType = normalizeEntityValue(parsed.data.entity_type);
       const articleEntityKey = normalizeEntityValue(parsed.data.entity_key);
-      const articleCanonicalPath = normalizeInternalCanonicalPath(parsed.data.canonical_path);
+      const articleCanonicalPath = normalizeInternalCanonicalPath(parsed.data.canonical_path || parsed.data.entity_path);
 
       if (
-        draftEntityType === 'grade_race' &&
-        articleEntityType === 'grade_race' &&
+        draftEntityType &&
+        articleEntityType === draftEntityType &&
         draftEntityKey &&
         articleEntityKey === draftEntityKey
       ) {
@@ -327,7 +348,13 @@ function findExistingGradeRaceArticlePath(data: Record<string, any>): string | n
       }
 
       const articleKey = normalizeGradeRaceKey(`${parsed.data.target_keyword || ''} ${parsed.data.title || ''}`);
-      if (draftKey && articleKey && (articleKey === draftKey || articleKey.includes(draftKey) || draftKey.includes(articleKey))) {
+      if (
+        isGradeRaceDraft(data) &&
+        isGradeRaceDraft(parsed.data) &&
+        draftKey &&
+        articleKey &&
+        (articleKey === draftKey || articleKey.includes(draftKey) || draftKey.includes(articleKey))
+      ) {
         return fullPath;
       }
     } catch {
@@ -338,7 +365,7 @@ function findExistingGradeRaceArticlePath(data: Record<string, any>): string | n
   return null;
 }
 
-function updateExistingGradeRaceArticle(destPath: string, parsedDraft: any, now: Date): void {
+function updateExistingEntityArticle(destPath: string, parsedDraft: any, now: Date): void {
   const existing = matter(fs.readFileSync(destPath, 'utf-8'));
   const nextData = normalizePublishedArticleMetadata({
     ...existing.data,
@@ -555,6 +582,7 @@ async function publishDraft() {
   const affectedVenues = new Set<string>();
   const approvedFilesToRemove: string[] = [];
   const writtenArticlePaths: string[] = [];
+  const updatedArticleBackups: Array<{ path: string; content: string }> = [];
   let skippedCount = 0;
 
   for (const targetFile of files) {
@@ -566,16 +594,19 @@ async function publishDraft() {
     const now = new Date();
     parsed.data = normalizePublishedArticleMetadata(parsed.data);
 
-    const existingGradeArticlePath = findExistingGradeRaceArticlePath(parsed.data);
-    if (existingGradeArticlePath) {
-      updateExistingGradeRaceArticle(existingGradeArticlePath, parsed, now);
-      const existingSlug = path.basename(existingGradeArticlePath, '.md');
-      console.log(`[Publisher] Updated existing grade race article: ${existingSlug}`);
+    const existingEntityArticlePath = findExistingEntityArticlePath(parsed.data);
+    if (existingEntityArticlePath) {
+      updatedArticleBackups.push({
+        path: existingEntityArticlePath,
+        content: fs.readFileSync(existingEntityArticlePath, 'utf-8'),
+      });
+      updateExistingEntityArticle(existingEntityArticlePath, parsed, now);
+      const existingSlug = path.basename(existingEntityArticlePath, '.md');
+      console.log(`[Publisher] Updated existing entity article: ${existingSlug}`);
 
       const venue = extractVenue(targetKeyword);
       if (venue) affectedVenues.add(venue);
       publishedSlugs.push(existingSlug);
-      writtenArticlePaths.push(existingGradeArticlePath);
 
       const idx = findHistoryIndex(history, oldId, targetKeyword);
       if (idx !== -1) {
@@ -754,6 +785,10 @@ async function publishDraft() {
         fs.unlinkSync(articlePath);
         console.warn(`[Publisher] Rolled back article after validation failure: ${path.basename(articlePath)}`);
       }
+    }
+    for (const backup of updatedArticleBackups.reverse()) {
+      fs.writeFileSync(backup.path, backup.content, 'utf-8');
+      console.warn(`[Publisher] Restored updated article after validation failure: ${path.basename(backup.path)}`);
     }
     throw validationErr;
   }

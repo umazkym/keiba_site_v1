@@ -61,6 +61,12 @@ export default function GradeRacesPage() {
             重賞レースは、検索需要がレース週に集中します。
             UMA-FREEでは、枠順確定前、枠順確定後、当日、レース後の4段階で確認すべきデータを分けて整理します。
           </p>
+          <Link
+            href="/articles/grade-races"
+            className="mt-5 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary"
+          >
+            重賞別の記事アーカイブを見る
+          </Link>
         </header>
 
         <section className="mt-8">

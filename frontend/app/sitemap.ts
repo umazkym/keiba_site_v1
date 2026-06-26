@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next'
 import { getAllArticles } from '@/lib/articles';
 import { getAllRaceUrls, getWeeklyGradeRaces } from '@/lib/api';
 import { gradeRaceProfiles } from '@/lib/grade-race-content';
+import { courseProfiles, jockeyProfiles } from '@/lib/growth-content';
 import { getRaceDetailPath, getRaceIndexPolicy } from '@/lib/race-url';
 
 // ▼▼▼▼▼【修正1】revalidate を追加▼▼▼▼▼
@@ -24,8 +25,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         '/advertising': { changeFrequency: 'monthly', priority: 0.5 },
         '/contact': { changeFrequency: 'monthly', priority: 0.6 },
         '/grade-races': { changeFrequency: 'weekly', priority: 0.8 },
+        '/courses': { changeFrequency: 'weekly', priority: 0.75 },
+        '/jockeys': { changeFrequency: 'weekly', priority: 0.75 },
         '/privacy': { changeFrequency: 'monthly', priority: 0.5 },
         '/articles': { changeFrequency: 'weekly', priority: 0.9 },
+        '/articles/grade-races': { changeFrequency: 'weekly', priority: 0.86 },
+        '/articles/races': { changeFrequency: 'weekly', priority: 0.84 },
+        '/articles/jockeys': { changeFrequency: 'weekly', priority: 0.84 },
+        '/articles/courses': { changeFrequency: 'weekly', priority: 0.84 },
         '/search': { changeFrequency: 'weekly', priority: 0.5 },
         '/terms': { changeFrequency: 'monthly', priority: 0.5 },
         '/faq': { changeFrequency: 'monthly', priority: 0.7 },
@@ -53,6 +60,55 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: 'weekly' as const,
         priority: 0.82,
     }));
+
+    const gradeRaceArticleArchiveRoutes = gradeRaceProfiles.map((race) => ({
+        url: `${BASE_URL}/articles/grade-races/${race.slug}`,
+        lastModified: siteLastModified,
+        changeFrequency: 'weekly' as const,
+        priority: 0.82,
+    }));
+
+    const jockeyHubRoutes = jockeyProfiles.map((jockey) => ({
+        url: `${BASE_URL}/jockeys/${jockey.slug}`,
+        lastModified: siteLastModified,
+        changeFrequency: 'weekly' as const,
+        priority: 0.74,
+    }));
+
+    const jockeyArticleArchiveRoutes = jockeyProfiles.map((jockey) => ({
+        url: `${BASE_URL}/articles/jockeys/${jockey.slug}`,
+        lastModified: siteLastModified,
+        changeFrequency: 'weekly' as const,
+        priority: 0.78,
+    }));
+
+    const courseHubRoutes = courseProfiles.map((course) => ({
+        url: `${BASE_URL}/courses/${course.venue}/${course.course}`,
+        lastModified: siteLastModified,
+        changeFrequency: 'weekly' as const,
+        priority: 0.74,
+    }));
+
+    const courseArticleArchiveRoutes = courseProfiles.map((course) => ({
+        url: `${BASE_URL}/articles/courses/${course.venue}/${course.course}`,
+        lastModified: siteLastModified,
+        changeFrequency: 'weekly' as const,
+        priority: 0.78,
+    }));
+
+    const raceArticleArchiveRoutes = articles
+        .filter((article) => article.entityType === 'race' && article.entityKey)
+        .reduce((rows, article) => {
+            const path = `${BASE_URL}/articles/races/${article.entityKey}`;
+            if (rows.some((row) => row.url === path)) return rows;
+            rows.push({
+                url: path,
+                lastModified: new Date(article.lastUpdated || article.date),
+                changeFrequency: 'weekly' as const,
+                priority: 0.78,
+            });
+            return rows;
+        }, [] as MetadataRoute.Sitemap);
 
     // レースURLは安定パスだけを掲載し、index対象も直近中心に絞る。
     // 古いクエリ付き詳細URLはミドルウェアで301され、サイトマップには載せない。
@@ -96,5 +152,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.65,
     }));
 
-    return [...staticRoutes, ...articleRoutes, ...gradeRaceHubRoutes, ...raceDateRoutes, ...raceDetailRoutes];
+    return [
+        ...staticRoutes,
+        ...articleRoutes,
+        ...gradeRaceHubRoutes,
+        ...gradeRaceArticleArchiveRoutes,
+        ...raceArticleArchiveRoutes,
+        ...jockeyHubRoutes,
+        ...jockeyArticleArchiveRoutes,
+        ...courseHubRoutes,
+        ...courseArticleArchiveRoutes,
+        ...raceDateRoutes,
+        ...raceDetailRoutes,
+    ];
 }

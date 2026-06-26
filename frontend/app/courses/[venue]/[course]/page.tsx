@@ -108,6 +108,8 @@ export default function CoursePage({ params }: Props) {
           title={`${profile.venueName}${profile.courseName}の記事`}
           description="枠順、騎手、人気、脚質など、このコース条件に紐づく記事を自動で集約しています。コースページを起点に、切り口の違う分析へ回遊できます。"
           articles={courseArticles}
+          archiveHref={`/articles/courses/${profile.venue}/${profile.course}`}
+          archiveLabel="記事アーカイブ"
         />
 
         <section className="mt-8 grid gap-5 md:grid-cols-2">

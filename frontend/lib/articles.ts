@@ -41,6 +41,7 @@ type EntityArticleQuery = {
   entityType: string;
   entityKey: string;
   entityPath?: string;
+  entityPaths?: string[];
   terms?: string[];
   count?: number;
 };
@@ -208,12 +209,15 @@ export function getArticlesByEntity({
   entityType,
   entityKey,
   entityPath = '',
+  entityPaths = [],
   terms = [],
   count = 8,
 }: EntityArticleQuery): ArticleMeta[] {
   const normalizedEntityType = entityType.trim();
   const normalizedEntityKey = entityKey.trim();
-  const normalizedEntityPath = entityPath.trim().replace(/\/+$/, '');
+  const normalizedEntityPaths = [entityPath, ...entityPaths]
+    .map((pathName) => pathName.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
   const normalizedTerms = terms
     .map((term) => term.trim())
     .filter(Boolean)
@@ -229,10 +233,10 @@ export function getArticlesByEntity({
       if (article.entityType === normalizedEntityType && article.entityKey === normalizedEntityKey) {
         score += 12;
       }
-      if (normalizedEntityPath && article.entityPath === normalizedEntityPath) {
+      if (normalizedEntityPaths.includes(article.entityPath || '')) {
         score += 10;
       }
-      if (normalizedEntityPath && article.canonicalPath === normalizedEntityPath) {
+      if (normalizedEntityPaths.includes(article.canonicalPath || '')) {
         score += 10;
       }
       if (article.entityKey === normalizedEntityKey) {
@@ -272,7 +276,8 @@ export function getArticlesByGradeRaceEntity(slug: string, raceNames: string[], 
   return getArticlesByEntity({
     entityType: 'grade_race',
     entityKey: slug,
-    entityPath: `/grade-races/${slug}`,
+    entityPath: `/articles/grade-races/${slug}`,
+    entityPaths: [`/grade-races/${slug}`],
     terms: raceNames,
     count,
   });
@@ -288,7 +293,8 @@ export function getArticlesByCourseEntity(
   return getArticlesByEntity({
     entityType: 'course',
     entityKey: `${venue}-${course}`,
-    entityPath: `/courses/${venue}/${course}`,
+    entityPath: `/articles/courses/${venue}/${course}`,
+    entityPaths: [`/courses/${venue}/${course}`],
     terms: courseSearchTerms(venueName, courseName),
     count,
   });
@@ -298,7 +304,8 @@ export function getArticlesByJockeyEntity(slug: string, jockeyNames: string[], c
   return getArticlesByEntity({
     entityType: 'jockey',
     entityKey: slug,
-    entityPath: `/jockeys/${slug}`,
+    entityPath: `/articles/jockeys/${slug}`,
+    entityPaths: [`/jockeys/${slug}`],
     terms: jockeyNames,
     count,
   });

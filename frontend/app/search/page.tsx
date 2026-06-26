@@ -6,6 +6,12 @@ import { AdUnit } from '@/components/AdUnit';
 import { BreadcrumbSchema } from '@/components/StructuredData';
 import { getAllArticlesMeta } from '@/lib/articles';
 import { gradeRaceProfiles } from '@/lib/grade-race-content';
+import {
+    getCourseArticleArchiveGroups,
+    getGradeRaceArticleArchiveGroups,
+    getJockeyArticleArchiveGroups,
+    getRaceArticleArchiveGroups,
+} from '@/lib/article-archives';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 
 export const metadata: Metadata = {
@@ -68,7 +74,38 @@ function buildSearchIndex(): SearchIndexItem[] {
         keywords: [race.name, race.grade, race.venue, race.course, '重賞', 'G1', '枠順'],
     }));
 
-    return [...staticPages, ...gradeRaces, ...articles];
+    const archivePages: SearchIndexItem[] = [
+        ...getGradeRaceArticleArchiveGroups().map((group) => ({
+            type: 'grade' as const,
+            title: `${group.title}の記事アーカイブ`,
+            description: group.description,
+            url: group.href,
+            keywords: [group.title, group.subtitle, '重賞', '記事', ...group.badges],
+        })),
+        ...getRaceArticleArchiveGroups().map((group) => ({
+            type: 'race' as const,
+            title: `${group.title}の記事`,
+            description: group.description,
+            url: group.href,
+            keywords: [group.title, group.subtitle, 'レース', '記事', ...group.badges],
+        })),
+        ...getJockeyArticleArchiveGroups().map((group) => ({
+            type: 'jockey' as const,
+            title: `${group.title}の記事アーカイブ`,
+            description: group.description,
+            url: group.href,
+            keywords: [group.title, group.subtitle, '騎手', '記事', ...group.badges],
+        })),
+        ...getCourseArticleArchiveGroups().map((group) => ({
+            type: 'course' as const,
+            title: `${group.title}の記事アーカイブ`,
+            description: group.description,
+            url: group.href,
+            keywords: [group.title, group.subtitle, 'コース', '記事', ...group.badges],
+        })),
+    ];
+
+    return [...staticPages, ...gradeRaces, ...archivePages, ...articles];
 }
 
 export default function SearchPage() {

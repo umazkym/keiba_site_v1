@@ -12,7 +12,7 @@ interface SearchResult {
 }
 
 export interface SearchIndexItem {
-    type: 'article' | 'page' | 'course' | 'jockey' | 'grade';
+    type: 'article' | 'page' | 'course' | 'jockey' | 'grade' | 'race';
     title: string;
     description: string;
     url: string;
@@ -62,6 +62,8 @@ function getResultLabel(type: SearchIndexItem['type']) {
             return '騎手';
         case 'grade':
             return '重賞';
+        case 'race':
+            return 'レース';
         default:
             return 'ページ';
     }
@@ -77,6 +79,8 @@ function getBadgeClass(type: SearchIndexItem['type']) {
             return 'bg-purple-50 text-purple-700 border-purple-200';
         case 'grade':
             return 'bg-amber-50 text-amber-700 border-amber-200';
+        case 'race':
+            return 'bg-orange-50 text-orange-700 border-orange-200';
         default:
             return 'bg-slate-100 text-slate-700 border-slate-200';
     }

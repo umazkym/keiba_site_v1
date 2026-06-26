@@ -34,6 +34,12 @@ export default function JockeysPage() {
             同じ騎手でも、競馬場や距離が変われば成績は大きく異なります。
             主要13騎手について、評価を上げたい条件と慎重に見たい条件を整理しました。
           </p>
+          <Link
+            href="/articles/jockeys"
+            className="mt-5 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary"
+          >
+            騎手別の記事アーカイブを見る
+          </Link>
         </header>
 
         <section className="mt-8 grid gap-4 md:grid-cols-2">

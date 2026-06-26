@@ -14,7 +14,8 @@ theme_cluster: race_update
 entity_type: grade_race
 entity_key: takarazuka-kinen
 season_year: '2026'
-entity_path: /grade-races/takarazuka-kinen
+entity_path: /articles/grade-races/takarazuka-kinen
+canonical_path: /articles/grade-races/takarazuka-kinen
 content_target: grade_race_main_article
 category: 重賞攻略
 article_type: race_update

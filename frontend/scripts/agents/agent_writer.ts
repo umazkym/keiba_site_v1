@@ -210,7 +210,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - 数値を使う場合は期間・条件・母数を必ず明記する。
 - 本文3,400〜4,200字を目安にし、最低3,000字は必ず超える。ただし水増し禁止。短くなりそうな場合は、入力データから読み取れる「扱い方」「慎重に見る条件」「当日の確認順序」「サンプル数が少ない場合の注意点」「検索読者が次に調べる観点」を具体化して厚みを出す。
 - 生成後に本文量を自分で確認し、3,000字未満になりそうなら、架空の数値や外部情報を足さず、「出馬表で見る順番」「人気馬を慎重に見る条件」「相手候補に残す前の確認順」「評価を下げる条件」「ニュース後に確認する材料」のうち不足している観点を追加する。
-- 本文中のCTAは /races/today、reference_data.race_url、WriteOrder.entity_path / reference_data.entity_path、または WriteOrder.canonical_path / reference_data.canonical_path のみ。entity_path と canonical_path は /grade-races/、/courses/、/jockeys/ で始まる内部URLの場合だけ使用できる。存在確認できないURLや仮のURLは書かない。
+- 本文中のCTAは /races/today、reference_data.race_url、WriteOrder.entity_path / reference_data.entity_path、または WriteOrder.canonical_path / reference_data.canonical_path のみ。entity_path は /articles/grade-races/、/articles/courses/、/articles/jockeys/、/grade-races/、/courses/、/jockeys/ で始まる内部URLの場合だけ使用できる。canonical_path は重複統合が必要な場合だけ使用し、通常の記事カテゴリ所属には使わない。存在確認できないURLや仮のURLは書かない。
 
 【記事の締め方 ― 確認ポイントセクション必須】
 記事の最後のセクションは、theme_clusterに応じて以下の見出しで締める。

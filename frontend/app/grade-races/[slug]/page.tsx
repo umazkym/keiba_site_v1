@@ -119,6 +119,8 @@ export default function GradeRaceDetailPage({ params }: Props) {
           title={`${race.name}の記事`}
           description="展望、枠順、追い切り、結果回顧など、この重賞名に紐づく記事を自動で集約しています。年ごとのトレンド記事を読み返しながら、固定の重賞ページに評価を重ねます。"
           articles={raceArticles}
+          archiveHref={`/articles/grade-races/${race.slug}`}
+          archiveLabel="記事アーカイブ"
         />
 
         <section className="mt-10">

@@ -1,5 +1,3 @@
-import { normalizeGradeRaceSlug } from "./grade-race-hubs";
-
 export type GradeRaceStage = {
   label: string;
   timing: string;
@@ -20,6 +18,49 @@ export type GradeRaceProfile = {
   relatedLinks: { label: string; href: string }[];
   xPostThemes: string[];
 };
+
+export const legacyGradeRaceSlugRedirects: Record<string, string> = {
+  "2026-nihon-derby": "nihon-derby",
+  "2026-yasuda-kinen": "yasuda-kinen",
+  "2026-takarazuka-kinen": "takarazuka-kinen",
+  "2026-sprinters-stakes": "sprinters-stakes",
+  "2026-tenno-sho-autumn": "tenno-sho-autumn",
+  "2026-japan-cup": "japan-cup",
+  "2026-mile-championship": "mile-championship",
+  "2026-arima-kinen": "arima-kinen",
+};
+
+const gradeRaceNameAliases: Array<{ slug: string; names: string[] }> = [
+  { slug: "nihon-derby", names: ["東京優駿", "日本ダービー"] },
+  { slug: "yasuda-kinen", names: ["安田記念"] },
+  { slug: "takarazuka-kinen", names: ["宝塚記念"] },
+  { slug: "sprinters-stakes", names: ["スプリンターズステークス", "スプリンターズS"] },
+  { slug: "tenno-sho-autumn", names: ["天皇賞秋", "天皇賞（秋）", "天皇賞(秋)"] },
+  { slug: "japan-cup", names: ["ジャパンカップ"] },
+  { slug: "mile-championship", names: ["マイルチャンピオンシップ", "マイルCS"] },
+  { slug: "arima-kinen", names: ["有馬記念"] },
+];
+
+function normalizeGradeRaceName(name: string): string {
+  return name
+    .replace(/\s+/gu, "")
+    .replace(/[（）()]/gu, "")
+    .replace(/[・･]/gu, "")
+    .toUpperCase();
+}
+
+export function normalizeGradeRaceSlug(slug: string): string {
+  return legacyGradeRaceSlugRedirects[slug] ?? slug;
+}
+
+export function getGradeRaceHubPathByName(raceName: string): string | null {
+  const normalizedRaceName = normalizeGradeRaceName(raceName);
+  const matched = gradeRaceNameAliases.find((entry) =>
+    entry.names.some((name) => normalizedRaceName.includes(normalizeGradeRaceName(name)))
+  );
+
+  return matched ? `/grade-races/${matched.slug}` : null;
+}
 
 export const gradeRaceProfiles: GradeRaceProfile[] = [
   {

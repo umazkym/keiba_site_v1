@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { WeeklyGradeRace, RaceDayPrediction } from '@/lib/types';
 import { getRaceDetailPath } from '@/lib/race-url';
-import { getGradeRaceHubPathByName } from '@/lib/grade-race-hubs';
+import { getGradeRaceHubPathByName } from '@/lib/grade-race-content';
 
 /** レース名からグレード接尾辞を除去 */
 function cleanRaceName(name: string): string {

@@ -24,6 +24,16 @@ export function middleware(request: NextRequest) {
     // 1. レースページURL正規化（301リダイレクト）
     // クエリ付き詳細URLは /races/YYYY-MM-DD/venue-slug/R へ統一する。
     // venueのみ・raceのみ・余分なクエリは日付ページへ集約して重複URLを増やさない。
+    if (pathname === '/races' || pathname === '/races/') {
+        const newUrl = new URL(request.url);
+        newUrl.pathname = `/races/${getJstTodayString()}`;
+        newUrl.search = '';
+
+        return NextResponse.redirect(newUrl, {
+            status: 307,
+        });
+    }
+
     if (pathname.startsWith('/races/')) {
         // /races/today はビルド時の日付ではなく、アクセス時点のJST日付へ転送する。
         if (pathname === '/races/today') {
@@ -37,7 +47,19 @@ export function middleware(request: NextRequest) {
         }
 
         const dateOnlyMatch = pathname.match(/^\/races\/([^/]+)$/);
+        const venueOnlyMatch = pathname.match(/^\/races\/([^/]+)\/([^/]+)$/);
         const detailMatch = pathname.match(/^\/races\/([^/]+)\/([^/]+)\/([^/]+)$/);
+
+        if (venueOnlyMatch) {
+            const [, date] = venueOnlyMatch;
+            const newUrl = new URL(request.url);
+            newUrl.pathname = isValidRaceDate(date) ? `/races/${date}` : '/races/today';
+            newUrl.search = '';
+
+            return NextResponse.redirect(newUrl, {
+                status: 301,
+            });
+        }
 
         if (detailMatch) {
             const [, date, venueSlug, raceParam] = detailMatch;
@@ -108,6 +130,9 @@ export function middleware(request: NextRequest) {
             'distance-suitability-data': '2025-10-26-distance-suitability-data',
             'track-condition': '2025-10-26-ground-condition-impact',
             'horse-weight': '2025-11-11-weight-change-impact-analysis',
+            '2026-03-24-kyotodirt1200m-waku-data': '2026-03-26-kyotodirt1200m-waku-data',
+            '2026-03-25-kyotodirt1200m-waku-data': '2026-03-26-kyotodirt1200m-waku-data',
+            'nakayama-gate-data-hub': '2025-10-04-nakayama-dirt-1200m-data-analysis',
         };
 
         // 日付プレフィックスなしのslugが存在する場合、正しいslugにリダイレクト
@@ -117,6 +142,33 @@ export function middleware(request: NextRequest) {
 
             return NextResponse.redirect(newUrl, {
                 status: 301, // 恒久的リダイレクト
+            });
+        }
+    }
+
+    // 2.1. 旧カテゴリURLを現行カテゴリへ集約する。
+    // Search Consoleでソフト404扱いになった旧カテゴリ名だけを対象にし、
+    // 記事一覧そのものや現行カテゴリのURL構造は変えない。
+    if (pathname === '/articles') {
+        const selectedCategory = searchParams.get('category');
+        const categoryRedirects: { [key: string]: string } = {
+            'course-data': 'コース分析',
+            '騎手データ分析': '騎手分析',
+            '血統・馬券コラム': '馬券・統計',
+        };
+
+        if (selectedCategory && categoryRedirects[selectedCategory]) {
+            const newUrl = new URL(request.url);
+            const tag = searchParams.get('tag');
+            newUrl.pathname = '/articles';
+            newUrl.search = '';
+            newUrl.searchParams.set('category', categoryRedirects[selectedCategory]);
+            if (tag) {
+                newUrl.searchParams.set('tag', tag);
+            }
+
+            return NextResponse.redirect(newUrl, {
+                status: 301,
             });
         }
     }
@@ -140,6 +192,7 @@ export function middleware(request: NextRequest) {
         '/grade-races/derby': '/grade-races/2026-nihon-derby',
         '/grade-races/yasuda': '/grade-races/2026-yasuda-kinen',
         '/grade-races/takarazuka': '/grade-races/2026-takarazuka-kinen',
+        '/guides': '/articles',
     };
 
     if (legacyPathRedirects[pathname]) {
@@ -168,7 +221,7 @@ export function middleware(request: NextRequest) {
     }
 
     // 4. タイポURL（/racなど）を正しいURLにリダイレクト
-    if (pathname.startsWith('/rac') && !pathname.startsWith('/races/')) {
+    if (/^\/rac(?=\d{4}-\d{2}-\d{2}(?:\/|$))/.test(pathname)) {
         // /rac2024-12-05 のようなタイポを /races/2024-12-05 に修正
         const correctedPath = pathname.replace(/^\/rac/, '/races/');
         const newUrl = new URL(request.url);

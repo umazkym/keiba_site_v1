@@ -141,6 +141,66 @@ RACE_NAME_PATTERN = re.compile(
     r"([一-龥ァ-ヴーA-Za-z0-9・（）()]{2,24}(?:S|ステークス|カップ|記念|賞|杯|ダービー|オークス|マイル|スプリント|クラシック|レディスクラシック|グランプリ))"
 )
 
+GRADE_RACE_ENTITY_ALIASES = {
+    "february-stakes": ["フェブラリーS", "フェブラリーステークス"],
+    "takamatsunomiya-kinen": ["高松宮記念"],
+    "osaka-hai": ["大阪杯"],
+    "oka-sho": ["桜花賞"],
+    "satsuki-sho": ["皐月賞"],
+    "tenno-sho-spring": ["天皇賞春", "天皇賞(春)", "天皇賞（春）"],
+    "nhk-mile-cup": ["NHKマイルC", "NHKマイルカップ"],
+    "victoria-mile": ["ヴィクトリアマイル"],
+    "oaks": ["オークス", "優駿牝馬"],
+    "nihon-derby": ["日本ダービー", "東京優駿"],
+    "yasuda-kinen": ["安田記念"],
+    "takarazuka-kinen": ["宝塚記念"],
+    "sprinters-stakes": ["スプリンターズS", "スプリンターズステークス"],
+    "shuka-sho": ["秋華賞"],
+    "kikuka-sho": ["菊花賞"],
+    "tenno-sho-autumn": ["天皇賞秋", "天皇賞(秋)", "天皇賞（秋）"],
+    "queen-elizabeth-cup": ["エリザベス女王杯"],
+    "mile-championship": ["マイルCS", "マイルチャンピオンシップ"],
+    "japan-cup": ["ジャパンカップ"],
+    "champions-cup": ["チャンピオンズC", "チャンピオンズカップ"],
+    "hanshin-juvenile-fillies": ["阪神JF", "阪神ジュベナイルF"],
+    "asahi-hai-futurity-stakes": ["朝日杯FS", "朝日杯フューチュリティS"],
+    "arima-kinen": ["有馬記念"],
+    "hopeful-stakes": ["ホープフルS", "ホープフルステークス"],
+    "teio-sho": ["帝王賞"],
+    "tokyo-daishoten": ["東京大賞典"],
+    "sakitama-hai": ["さきたま杯"],
+    "jbc-classic": ["JBCクラシック"],
+    "hakodate-kinen": ["函館記念"],
+    "radio-nikkei-sho": ["ラジオNIKKEI賞"],
+}
+
+GRADE_RACE_HUB_SLUGS = {
+    "nihon-derby",
+    "yasuda-kinen",
+    "takarazuka-kinen",
+    "sprinters-stakes",
+    "tenno-sho-autumn",
+    "japan-cup",
+    "mile-championship",
+    "arima-kinen",
+}
+
+
+def normalize_race_entity_text(value: str) -> str:
+    return re.sub(r"[\s　・（）()【】「」『』]", "", value).lower()
+
+
+def grade_race_entity_key(race_name: str) -> str:
+    normalized = normalize_race_entity_text(race_name)
+    for slug, aliases in GRADE_RACE_ENTITY_ALIASES.items():
+        if any(normalize_race_entity_text(alias) in normalized for alias in aliases):
+            return slug
+    return ""
+
+
+def grade_race_canonical_path(entity_key: str) -> str:
+    return f"/grade-races/{entity_key}" if entity_key in GRADE_RACE_HUB_SLUGS else ""
+
 OVERSEAS_KEYWORDS = re.compile(
     r"サウジカップ|サウジC|ドバイワールドC|ドバイWC|ドバイシーマ|ドバイターフ|ドバイゴールデン|ドバイSC|ドバイワールドカップ|"
     r"凱旋門賞|香港カップ|香港ヴァーズ|香港マイル|香港スプリント|BCクラシック|ブリーダーズC|BCターフ|マイルチャンピオンシップS|キングジョージ|"
@@ -2190,10 +2250,27 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
         schedule_entry = find_race_demand(joined_text, race_name)
         scheduled_date = race_demand_date(schedule_entry).isoformat() if schedule_entry else ""
         phase = race_phase(candidate.days_to_race) if candidate.days_to_race is not None else ""
+        entity_source_name = race_name or calendar_race
+        entity_key = grade_race_entity_key(entity_source_name) if entity_source_name else ""
+        entity_path = grade_race_canonical_path(entity_key)
+        canonical_path = ""
+        season_year = int(scheduled_date[:4]) if entity_key and scheduled_date else current_jst().year
+        entity_type = "grade_race" if entity_key else ""
+        content_target = (
+            "grade_race_trend_article"
+            if entity_path
+            else ("grade_race_trend_article" if entity_key else "news_article")
+        )
 
         order = {
             "target_keyword": candidate.target_keyword,
             "theme_cluster": candidate.theme_cluster,
+            "entity_type": entity_type,
+            "entity_key": entity_key,
+            "season_year": season_year if entity_key else "",
+            "entity_path": entity_path,
+            "canonical_path": canonical_path,
+            "content_target": content_target,
             "priority": int(min(99, max(35, candidate.score))),
             "has_external_research": True,
             "has_predictions": bool(internal_data.get("predictions")),
@@ -2206,6 +2283,12 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "key_metrics": key_metrics,
                 "source": "Tavily Search + 公式・信頼媒体フィルタ + UMA-FREE DB",
                 "article_type": candidate.article_type,
+                "entity_type": entity_type,
+                "entity_key": entity_key,
+                "season_year": season_year if entity_key else "",
+                "entity_path": entity_path,
+                "canonical_path": canonical_path,
+                "content_target": content_target,
                 "is_overseas": is_overseas,
                 "category": "海外競馬" if is_overseas else "競馬ニュース",
                 "news_topic": candidate.title_seed,

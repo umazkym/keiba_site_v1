@@ -5,6 +5,11 @@ description: "宝塚記念2026の調教後馬体重発表を受け、マイユ�
 keywords: ["宝塚記念2026", "ゲート確認", "AI予想", "馬体重", "出馬表"]
 target_keyword: "宝塚記念2026 ゲート確認 AI予想"
 theme_cluster: "race_update"
+entity_type: grade_race
+entity_key: takarazuka-kinen
+season_year: '2026'
+entity_path: /grade-races/takarazuka-kinen
+content_target: grade_race_trend_article
 category: "重賞攻略"
 article_type: "race_update"
 update_stage: "draw_confirmed"

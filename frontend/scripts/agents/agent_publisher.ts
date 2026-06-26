@@ -45,8 +45,8 @@ const raceNameMap: Record<string, string> = {
   'スプリンターズステークス': 'sprinters-stakes',
   '秋華賞': 'shuka-sho',
   '菊花賞': 'kikuka-sho',
-  '天皇賞(秋)': 'tenno-sho-aki',
-  '天皇賞秋': 'tenno-sho-aki',
+  '天皇賞(秋)': 'tenno-sho-autumn',
+  '天皇賞秋': 'tenno-sho-autumn',
   'エリザベス女王杯': 'queen-elizabeth-cup',
   'マイルCS': 'mile-championship',
   'マイルチャンピオンシップ': 'mile-championship',
@@ -188,11 +188,45 @@ function normalizeGradeRaceKey(value: string): string {
     .trim();
 }
 
+function normalizeEntityValue(value: unknown): string {
+  return String(value || '').trim().toLowerCase();
+}
+
+function normalizeInternalCanonicalPath(value: unknown): string {
+  const raw = String(value || '').trim();
+  if (!raw.startsWith('/')) return '';
+  if (!/^\/(grade-races|courses|jockeys|articles)\//.test(raw)) return '';
+  return raw.replace(/\/+$/, '');
+}
+
+function normalizePublishedArticleMetadata(data: Record<string, any>): Record<string, any> {
+  const nextData = { ...data };
+  const entityPath = normalizeInternalCanonicalPath(nextData.entity_path);
+  const canonicalPath = normalizeInternalCanonicalPath(nextData.canonical_path);
+
+  if (entityPath) {
+    nextData.entity_path = entityPath;
+  } else {
+    delete nextData.entity_path;
+  }
+
+  if (canonicalPath) {
+    nextData.canonical_path = canonicalPath;
+  } else {
+    delete nextData.canonical_path;
+  }
+
+  return nextData;
+}
+
 function findExistingGradeRaceArticlePath(data: Record<string, any>): string | null {
   if (!isGradeRaceDraft(data) || !fs.existsSync(ARTICLES_DIR)) return null;
 
+  const draftEntityType = normalizeEntityValue(data.entity_type);
+  const draftEntityKey = normalizeEntityValue(data.entity_key);
+  const draftCanonicalPath = normalizeInternalCanonicalPath(data.canonical_path);
   const draftKey = normalizeGradeRaceKey(`${data.target_keyword || ''} ${data.title || ''}`);
-  if (!draftKey) return null;
+  if (!draftKey && !draftEntityKey && !draftCanonicalPath) return null;
 
   for (const file of fs.readdirSync(ARTICLES_DIR).filter((f) => f.endsWith('.md'))) {
     const fullPath = path.join(ARTICLES_DIR, file);
@@ -201,8 +235,25 @@ function findExistingGradeRaceArticlePath(data: Record<string, any>): string | n
       const parsed = matter(content);
       if (!isGradeRaceDraft(parsed.data)) continue;
 
+      const articleEntityType = normalizeEntityValue(parsed.data.entity_type);
+      const articleEntityKey = normalizeEntityValue(parsed.data.entity_key);
+      const articleCanonicalPath = normalizeInternalCanonicalPath(parsed.data.canonical_path);
+
+      if (
+        draftEntityType === 'grade_race' &&
+        articleEntityType === 'grade_race' &&
+        draftEntityKey &&
+        articleEntityKey === draftEntityKey
+      ) {
+        return fullPath;
+      }
+
+      if (draftCanonicalPath && articleCanonicalPath && draftCanonicalPath === articleCanonicalPath) {
+        return fullPath;
+      }
+
       const articleKey = normalizeGradeRaceKey(`${parsed.data.target_keyword || ''} ${parsed.data.title || ''}`);
-      if (articleKey && (articleKey === draftKey || articleKey.includes(draftKey) || draftKey.includes(articleKey))) {
+      if (draftKey && articleKey && (articleKey === draftKey || articleKey.includes(draftKey) || draftKey.includes(articleKey))) {
         return fullPath;
       }
     } catch {
@@ -215,7 +266,7 @@ function findExistingGradeRaceArticlePath(data: Record<string, any>): string | n
 
 function updateExistingGradeRaceArticle(destPath: string, parsedDraft: any, now: Date): void {
   const existing = matter(fs.readFileSync(destPath, 'utf-8'));
-  const nextData = {
+  const nextData = normalizePublishedArticleMetadata({
     ...existing.data,
     ...parsedDraft.data,
     draft: false,
@@ -226,7 +277,7 @@ function updateExistingGradeRaceArticle(destPath: string, parsedDraft: any, now:
     og_title: parsedDraft.data.title || existing.data.title,
     og_description: parsedDraft.data.description || existing.data.description,
     og_image: existing.data.og_image || `https://uma-free.com/og/${path.basename(destPath, '.md')}.png`,
-  };
+  });
 
   fs.writeFileSync(destPath, matter.stringify(parsedDraft.content.trim() + '\n', nextData), 'utf-8');
 }
@@ -439,6 +490,7 @@ async function publishDraft() {
     const targetKeyword = String(parsed.data.target_keyword || parsed.data.title || 'article');
     const oldId = path.basename(targetFile, '.md');
     const now = new Date();
+    parsed.data = normalizePublishedArticleMetadata(parsed.data);
 
     const existingGradeArticlePath = findExistingGradeRaceArticlePath(parsed.data);
     if (existingGradeArticlePath) {
@@ -460,6 +512,10 @@ async function publishDraft() {
           path: `content/articles/${existingSlug}.md`,
           updated_existing: true,
           published_at: now.toISOString(),
+          entity_type: parsed.data.entity_type || '',
+          entity_key: parsed.data.entity_key || '',
+          entity_path: parsed.data.entity_path || '',
+          canonical_path: parsed.data.canonical_path || '',
         };
       } else {
         history.push({
@@ -470,6 +526,10 @@ async function publishDraft() {
           path: `content/articles/${existingSlug}.md`,
           updated_existing: true,
           published_at: now.toISOString(),
+          entity_type: parsed.data.entity_type || '',
+          entity_key: parsed.data.entity_key || '',
+          entity_path: parsed.data.entity_path || '',
+          canonical_path: parsed.data.canonical_path || '',
         });
       }
 
@@ -533,6 +593,7 @@ async function publishDraft() {
     if (parsed.data.category) {
       repairedParsed.data.category = parsed.data.category;
     }
+    repairedParsed.data = normalizePublishedArticleMetadata(repairedParsed.data);
     parsed.data = repairedParsed.data;
 
     // Markdown再シリアライズ
@@ -553,6 +614,10 @@ async function publishDraft() {
         history[idx].draft = false;
         history[idx].published_at = now.toISOString();
         history[idx].slug = slug;
+        history[idx].entity_type = parsed.data.entity_type || '';
+        history[idx].entity_key = parsed.data.entity_key || '';
+        history[idx].entity_path = parsed.data.entity_path || '';
+        history[idx].canonical_path = parsed.data.canonical_path || '';
         // 施策G: 収益ポテンシャルスコアの初期フィールドを追加
         if (history[idx].estimated_monthly_searches === undefined) {
           history[idx].estimated_monthly_searches = null;
@@ -578,6 +643,10 @@ async function publishDraft() {
           draft: false,
           published_at: now.toISOString(),
           slug,
+          entity_type: parsed.data.entity_type || '',
+          entity_key: parsed.data.entity_key || '',
+          entity_path: parsed.data.entity_path || '',
+          canonical_path: parsed.data.canonical_path || '',
           estimated_monthly_searches: null,
           actual_pv_30d: null,
           ad_revenue_30d: null,

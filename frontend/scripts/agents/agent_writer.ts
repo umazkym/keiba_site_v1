@@ -32,6 +32,12 @@ function findLastBuyingPointHeading(content: string): number {
 export type WriteOrder = {
   target_keyword: string;
   theme_cluster: string;
+  entity_type?: string;
+  entity_key?: string;
+  season_year?: string | number;
+  entity_path?: string;
+  canonical_path?: string;
+  content_target?: string;
   research_sources?: {
     source_url: string;
     source_name: string;
@@ -61,6 +67,12 @@ export type WriteOrder = {
     course_stats?: Record<string, string | number>[];
     horse_number_advantages?: Record<string, string | number>[];
     topic_bridge?: Record<string, unknown>;
+    entity_type?: string;
+    entity_key?: string;
+    season_year?: string | number;
+    entity_path?: string;
+    canonical_path?: string;
+    content_target?: string;
     ai_analysis_text?: string;
     source_cards?: {
       source_url: string;
@@ -180,6 +192,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - reference_data.draw_status が "confirmed" でない場合、「枠順確定」「枠順が確定した今」「枠順が発表されたことで」「枠順が決まった今」など、枠順発表済みと読める表現は禁止する。「枠順発表前」「枠順発表後に確認する材料」「出馬表で確認する順番」に留める。
 - reference_data.topic_bridge がある場合、複数ニュースの話題をそのまま並べず、topic_bridge.primary_angle と merge_policy に沿って「外部ニュースの話題」→「UMA-FREE内部データで確認する順番」へ接続する。
 - frontmatter の search_intent、race_phase、scheduled_race_date、content_focus には、reference_data の同名値と topic_bridge.writer_focus を省略せずコピーする。Editorが主題を維持するために使う。
+- WriteOrder または reference_data に entity_type、entity_key、season_year、entity_path、canonical_path、content_target がある場合は、frontmatterへ同じ値を省略せずコピーする。重賞名・コース名・年度をまたいでSEO評価を集約するための管理情報なので、本文の都合で書き換えない。
 - reference_data.predictions、course_stats、horse_number_advantages、ai_analysis_text、matched_race がある場合、それらはUMA-FREEが収集した内部データとして扱う。外部の定性的な材料は search_intent と直接関係するものだけを、これらの数値や出走条件と結び付けて書く。
 - 外部ニュース由来の追い切り評価や陣営コメントだけで評価を断定しない。AI偏差値、コース統計、馬番傾向がある場合は「評価を上げる材料」「確認を残す材料」「人気なら慎重に見る条件」に分ける。
 - reference_data.days_to_race がある場合、開催までの日数に合わせて書く。開催前なら「直前に確認する順番」、開催後なら「次に同条件を見る時の確認材料」に寄せる。
@@ -197,7 +210,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - 数値を使う場合は期間・条件・母数を必ず明記する。
 - 本文3,400〜4,200字を目安にし、最低3,000字は必ず超える。ただし水増し禁止。短くなりそうな場合は、入力データから読み取れる「扱い方」「慎重に見る条件」「当日の確認順序」「サンプル数が少ない場合の注意点」「検索読者が次に調べる観点」を具体化して厚みを出す。
 - 生成後に本文量を自分で確認し、3,000字未満になりそうなら、架空の数値や外部情報を足さず、「出馬表で見る順番」「人気馬を慎重に見る条件」「相手候補に残す前の確認順」「評価を下げる条件」「ニュース後に確認する材料」のうち不足している観点を追加する。
-- 本文中のCTAは /races/today または reference_data.race_url のみ。存在確認できないURLや仮のURLは書かない。
+- 本文中のCTAは /races/today、reference_data.race_url、WriteOrder.entity_path / reference_data.entity_path、または WriteOrder.canonical_path / reference_data.canonical_path のみ。entity_path と canonical_path は /grade-races/、/courses/、/jockeys/ で始まる内部URLの場合だけ使用できる。存在確認できないURLや仮のURLは書かない。
 
 【記事の締め方 ― 確認ポイントセクション必須】
 記事の最後のセクションは、theme_clusterに応じて以下の見出しで締める。
@@ -292,6 +305,12 @@ search_intent: ""
 race_phase: ""
 scheduled_race_date: ""
 content_focus: ""
+entity_type: ""
+entity_key: ""
+season_year: ""
+entity_path: ""
+canonical_path: ""
+content_target: ""
 draft: true
 ---
 
@@ -590,6 +609,45 @@ function normalizeDraftDrawMetadata(markdownText: string, order: WriteOrder): st
   }
 }
 
+function orderMetadataValue(order: WriteOrder, key: keyof WriteOrder): string {
+  const topLevelValue = order[key];
+  const referenceValue = order.reference_data?.[String(key)];
+  const raw = topLevelValue ?? referenceValue ?? '';
+  return String(raw).trim();
+}
+
+function normalizeCanonicalPath(value: string): string {
+  if (!value.startsWith('/')) return '';
+  if (!/^\/(grade-races|courses|jockeys|articles)\//.test(value)) return '';
+  return value.replace(/\/+$/, '');
+}
+
+function normalizeDraftEntityMetadata(markdownText: string, order: WriteOrder): string {
+  const entityType = orderMetadataValue(order, 'entity_type');
+  const entityKey = orderMetadataValue(order, 'entity_key');
+  const seasonYear = orderMetadataValue(order, 'season_year');
+  const contentTarget = orderMetadataValue(order, 'content_target');
+  const entityPath = normalizeCanonicalPath(orderMetadataValue(order, 'entity_path'));
+  const canonicalPath = normalizeCanonicalPath(orderMetadataValue(order, 'canonical_path'));
+
+  if (!entityType && !entityKey && !seasonYear && !contentTarget && !entityPath && !canonicalPath) {
+    return markdownText;
+  }
+
+  try {
+    const parsed = matter(markdownText);
+    if (entityType) parsed.data.entity_type = entityType;
+    if (entityKey) parsed.data.entity_key = entityKey;
+    if (seasonYear) parsed.data.season_year = seasonYear;
+    if (contentTarget) parsed.data.content_target = contentTarget;
+    if (entityPath) parsed.data.entity_path = entityPath;
+    if (canonicalPath) parsed.data.canonical_path = canonicalPath;
+    return matter.stringify(`${parsed.content.trim()}\n`, parsed.data);
+  } catch {
+    return markdownText;
+  }
+}
+
 /**
  * ライターエンジンを実行し、指定されたWriteOrderに基づいて記事ドラフトを生成する
  */
@@ -719,6 +777,7 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
     // Markdownのコードブロックマーカー(```markdown)がAIの癖で出力された場合は除去する
     text = text.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '');
     text = normalizeDraftDrawMetadata(text, order);
+    text = normalizeDraftEntityMetadata(text, order);
     console.log(`[Writer] Draft length: ${text.replace(/\s/g, '').length} chars`);
 
     // Gemmaによる動的拡張
@@ -791,6 +850,8 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
 
     // プロンプトオウム返しの除去と複数フロントマターのクリーンアップ
     text = cleanWriterPromptEchoesAndMeta(text);
+    text = normalizeDraftDrawMetadata(text, order);
+    text = normalizeDraftEntityMetadata(text, order);
 
     fs.writeFileSync(filePath, text, 'utf-8');
 

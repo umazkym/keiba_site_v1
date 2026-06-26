@@ -2,6 +2,7 @@ import os
 import json
 import sqlite3
 import glob
+import re
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -19,6 +20,41 @@ SEARCH_DEMAND_WEIGHT = {
     '中山': 1.4, '東京': 1.4, '阪神': 1.3, '京都': 1.3,
     '中京': 1.1, '新潟': 1.0, '小倉': 0.9, '函館': 0.85,
     '福島': 0.9, '札幌': 0.85
+}
+
+VENUE_SLUGS = {
+    '札幌': 'sapporo',
+    '函館': 'hakodate',
+    '福島': 'fukushima',
+    '新潟': 'niigata',
+    '東京': 'tokyo',
+    '中山': 'nakayama',
+    '中京': 'chukyo',
+    '京都': 'kyoto',
+    '阪神': 'hanshin',
+    '小倉': 'kokura',
+}
+
+COURSE_PROFILE_PATHS = {
+    ('nakayama', 'dirt-1200m'),
+    ('tokyo', 'turf-2000m'),
+    ('tokyo', 'turf-2400m'),
+    ('kyoto', 'turf-1800m'),
+    ('niigata', 'turf-1000m'),
+    ('hanshin', 'dirt-1400m'),
+    ('sapporo', 'turf-2000m'),
+    ('tokyo', 'dirt-1600m'),
+    ('tokyo', 'turf-1600m'),
+    ('nakayama', 'dirt-1800m'),
+    ('nakayama', 'turf-1200m'),
+    ('chukyo', 'turf-2000m'),
+    ('chukyo', 'dirt-1200m'),
+    ('fukushima', 'turf-1800m'),
+    ('hanshin', 'turf-1600m'),
+    ('kyoto', 'dirt-1800m'),
+    ('kokura', 'turf-1200m'),
+    ('hakodate', 'turf-1200m'),
+    ('nakayama', 'turf-2500m'),
 }
 
 # 施策A: 開催カレンダー（各競馬場の主要開催月）
@@ -100,6 +136,38 @@ def load_pending_order_keywords():
             continue
     
     return keywords
+
+def course_entity_from_condition(condition: str):
+    """コース条件名から内部資産IDと既存コースページへのcanonicalを組み立てる"""
+    for venue_name, venue_slug in VENUE_SLUGS.items():
+        if not condition.startswith(venue_name):
+            continue
+
+        rest = condition[len(venue_name):]
+        match = re.search(r'(芝|ダート|ダ)(\d{3,4})m', rest)
+        if not match:
+            return {
+                "entity_key": "",
+                "canonical_path": "",
+            }
+
+        course_kind = 'dirt' if match.group(1) in {'ダート', 'ダ'} else 'turf'
+        course_slug = f"{course_kind}-{match.group(2)}m"
+        entity_key = f"{venue_slug}-{course_slug}"
+        canonical_path = (
+            f"/courses/{venue_slug}/{course_slug}"
+            if (venue_slug, course_slug) in COURSE_PROFILE_PATHS
+            else ""
+        )
+        return {
+            "entity_key": entity_key,
+            "canonical_path": canonical_path,
+        }
+
+    return {
+        "entity_key": "",
+        "canonical_path": "",
+    }
 
 def get_waku_number(horse_number, total_horses):
     """馬番と出走頭数から公式枠番を計算する"""
@@ -516,6 +584,12 @@ def generate_write_order():
 
             period_min = df['race_date'].min().strftime('%Y年%m月')
             period_max = df['race_date'].max().strftime('%Y年%m月')
+            season_year = int(df['race_date'].max().year)
+            course_entity = course_entity_from_condition(condition)
+            entity_key = course_entity["entity_key"]
+            entity_path = course_entity["canonical_path"]
+            canonical_path = ""
+            content_target = "course_hub_support" if entity_path else "course_data_article"
             max_runs_val = 0
             key_metrics = []
 
@@ -564,8 +638,20 @@ def generate_write_order():
             order = {
                 "target_keyword": target_keyword,
                 "theme_cluster": theme_id,
+                "entity_type": "course" if entity_key else "",
+                "entity_key": entity_key,
+                "season_year": season_year if entity_key else "",
+                "entity_path": entity_path,
+                "canonical_path": canonical_path,
+                "content_target": content_target,
                 "priority": 10,
                 "reference_data": {
+                    "entity_type": "course" if entity_key else "",
+                    "entity_key": entity_key,
+                    "season_year": season_year if entity_key else "",
+                    "entity_path": entity_path,
+                    "canonical_path": canonical_path,
+                    "content_target": content_target,
                     "period": f"{period_min}〜{period_max}",
                     "condition": f"{condition} 良〜不良",
                     "sample_size": max_runs_val,

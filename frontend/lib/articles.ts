@@ -22,6 +22,12 @@ export interface Article {
   lastUpdated?: string;
   updateStage?: string;
   canonicalSlug?: string;
+  canonicalPath?: string;
+  entityType?: string;
+  entityKey?: string;
+  seasonYear?: string;
+  entityPath?: string;
+  contentTarget?: string;
 }
 
 export type ArticleMeta = Omit<Article, 'content'>;
@@ -56,6 +62,17 @@ function normalizeStringArray(value: unknown): string[] {
 
 function isDraftArticle(data: Record<string, unknown>): boolean {
   return data.draft === true || String(data.draft || '').toLowerCase() === 'true';
+}
+
+function normalizeInternalCanonicalPath(value: unknown): string {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw || /^https?:\/\//i.test(raw) || !raw.startsWith('/')) return '';
+  return raw.length > 1 ? raw.replace(/\/+$/, '') : raw;
+}
+
+function normalizeOptionalString(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
 }
 
 function cleanArticleMarkdownForRender(markdown: string): string {
@@ -117,6 +134,12 @@ export function getAllArticles(): Article[] {
       lastUpdated: data.last_updated || '',
       updateStage: data.update_stage || '',
       canonicalSlug: data.canonical_slug || '',
+      canonicalPath: normalizeInternalCanonicalPath(data.canonical_path || data.canonicalPath),
+      entityType: normalizeOptionalString(data.entity_type || data.entityType),
+      entityKey: normalizeOptionalString(data.entity_key || data.entityKey),
+      seasonYear: normalizeOptionalString(data.season_year || data.seasonYear),
+      entityPath: normalizeInternalCanonicalPath(data.entity_path || data.entityPath),
+      contentTarget: normalizeOptionalString(data.content_target || data.contentTarget),
     }];
   });
 
@@ -217,6 +240,12 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     lastUpdated: data.last_updated || '',
     updateStage: data.update_stage || '',
     canonicalSlug: data.canonical_slug || '',
+    canonicalPath: normalizeInternalCanonicalPath(data.canonical_path || data.canonicalPath),
+    entityType: normalizeOptionalString(data.entity_type || data.entityType),
+    entityKey: normalizeOptionalString(data.entity_key || data.entityKey),
+    seasonYear: normalizeOptionalString(data.season_year || data.seasonYear),
+    entityPath: normalizeInternalCanonicalPath(data.entity_path || data.entityPath),
+    contentTarget: normalizeOptionalString(data.content_target || data.contentTarget),
   };
 }
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
@@ -238,11 +267,24 @@ export function getRelatedArticles(currentSlug: string, count: number = 3): Arti
       article.category,
       article.targetKeyword || '',
       article.themeCluster || '',
+      article.entityType || '',
+      article.entityKey || '',
+      article.entityPath || '',
+      article.contentTarget || '',
       ...article.tags,
       ...article.keywords,
     ].join(' ');
 
     const signals = new Set<string>();
+    if (article.entityType && article.entityKey) {
+      signals.add(`entity:${article.entityType}:${article.entityKey}`);
+    }
+    if (article.canonicalPath) {
+      signals.add(`canonical:${article.canonicalPath}`);
+    }
+    if (article.entityPath) {
+      signals.add(`entity-path:${article.entityPath}`);
+    }
     for (const venue of VENUE_NAMES) {
       if (text.includes(venue)) signals.add(`venue:${venue}`);
     }
@@ -270,7 +312,11 @@ export function getRelatedArticles(currentSlug: string, count: number = 3): Arti
       const articleSignals = buildSignals(article);
       for (const signal of articleSignals) {
         if (currentSignals.has(signal)) {
-          score += signal.startsWith('venue:') ? 4 : 2;
+          if (signal.startsWith('entity:') || signal.startsWith('canonical:') || signal.startsWith('entity-path:')) {
+            score += 7;
+          } else {
+            score += signal.startsWith('venue:') ? 4 : 2;
+          }
         }
       }
 

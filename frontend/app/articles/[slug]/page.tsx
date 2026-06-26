@@ -15,6 +15,13 @@ type Props = {
   params: { slug: string };
 };
 
+function resolveArticleCanonicalPath(article: { canonicalPath?: string; canonicalSlug?: string }, fallbackSlug: string): string {
+  if (article.canonicalPath && article.canonicalPath.startsWith('/')) {
+    return article.canonicalPath;
+  }
+  return `/articles/${article.canonicalSlug || fallbackSlug}`;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const article = await getArticleBySlug(params.slug);
@@ -24,7 +31,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const description = article.description ||
       `【競馬データ分析】${rawDescription}...`;
 
-    const canonicalSlug = article.canonicalSlug || params.slug;
+    const canonicalPath = resolveArticleCanonicalPath(article, params.slug);
+    const canonicalUrl = `https://uma-free.com${canonicalPath}`;
     const imageUrl = article.eyecatch.startsWith('http')
       ? article.eyecatch
       : `https://uma-free.com${article.eyecatch}`;
@@ -35,7 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       openGraph: {
         title: article.title,
         description,
-        url: `https://uma-free.com/articles/${canonicalSlug}`,
+        url: canonicalUrl,
         type: 'article',
         siteName: 'UMA-FREE',
         locale: 'ja_JP',
@@ -48,7 +56,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         images: [imageUrl],
       },
       alternates: {
-        canonical: `/articles/${canonicalSlug}`,
+        canonical: canonicalPath,
       },
     };
   } catch (error) {
@@ -69,8 +77,8 @@ export default async function ArticlePage({ params }: Props) {
     const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
     const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
 
-    const canonicalSlug = article.canonicalSlug || params.slug;
-    const articleUrl = `https://uma-free.com/articles/${canonicalSlug}`;
+    const canonicalPath = resolveArticleCanonicalPath(article, params.slug);
+    const articleUrl = `https://uma-free.com${canonicalPath}`;
     const datePublished = new Date(article.date).toISOString();
     const dateModified = new Date(article.lastUpdated || article.date).toISOString();
     const stableArticleAdProps = {

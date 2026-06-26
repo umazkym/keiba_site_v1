@@ -11,6 +11,11 @@ keywords:
   - 競馬予想
 target_keyword: 宝塚記念2026 枠順 AI予想
 theme_cluster: race_update
+entity_type: grade_race
+entity_key: takarazuka-kinen
+season_year: '2026'
+entity_path: /grade-races/takarazuka-kinen
+content_target: grade_race_main_article
 category: 重賞攻略
 article_type: race_update
 update_stage: draw_confirmed

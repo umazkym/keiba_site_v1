@@ -57,6 +57,58 @@ JRA_VENUE_MAP = {
     '06': '中山', '07': '中京', '08': '京都', '09': '阪神', '10': '小倉'
 }
 
+GRADE_RACE_ENTITY_ALIASES = {
+    'february-stakes': ['フェブラリーS', 'フェブラリーステークス'],
+    'takamatsunomiya-kinen': ['高松宮記念'],
+    'osaka-hai': ['大阪杯'],
+    'oka-sho': ['桜花賞'],
+    'satsuki-sho': ['皐月賞'],
+    'tenno-sho-spring': ['天皇賞春', '天皇賞(春)', '天皇賞（春）'],
+    'nhk-mile-cup': ['NHKマイルC', 'NHKマイルカップ'],
+    'victoria-mile': ['ヴィクトリアマイル'],
+    'oaks': ['オークス', '優駿牝馬'],
+    'nihon-derby': ['日本ダービー', '東京優駿'],
+    'yasuda-kinen': ['安田記念'],
+    'takarazuka-kinen': ['宝塚記念'],
+    'sprinters-stakes': ['スプリンターズS', 'スプリンターズステークス'],
+    'shuka-sho': ['秋華賞'],
+    'kikuka-sho': ['菊花賞'],
+    'tenno-sho-autumn': ['天皇賞秋', '天皇賞(秋)', '天皇賞（秋）'],
+    'queen-elizabeth-cup': ['エリザベス女王杯'],
+    'mile-championship': ['マイルCS', 'マイルチャンピオンシップ'],
+    'japan-cup': ['ジャパンカップ'],
+    'champions-cup': ['チャンピオンズC', 'チャンピオンズカップ'],
+    'hanshin-juvenile-fillies': ['阪神JF', '阪神ジュベナイルF'],
+    'asahi-hai-futurity-stakes': ['朝日杯FS', '朝日杯フューチュリティS'],
+    'arima-kinen': ['有馬記念'],
+    'hopeful-stakes': ['ホープフルS', 'ホープフルステークス'],
+    'hakodate-kinen': ['函館記念'],
+    'radio-nikkei-sho': ['ラジオNIKKEI賞'],
+}
+
+GRADE_RACE_HUB_SLUGS = {
+    'nihon-derby',
+    'yasuda-kinen',
+    'takarazuka-kinen',
+    'sprinters-stakes',
+    'tenno-sho-autumn',
+    'japan-cup',
+    'mile-championship',
+    'arima-kinen',
+}
+
+
+def _normalize_race_entity_text(value: str) -> str:
+    return re.sub(r'[\s　・（）()【】「」『』]', '', value).lower()
+
+
+def _grade_race_entity_key(race_name: str) -> str:
+    normalized = _normalize_race_entity_text(race_name)
+    for slug, aliases in GRADE_RACE_ENTITY_ALIASES.items():
+        if any(_normalize_race_entity_text(alias) in normalized for alias in aliases):
+            return slug
+    return ''
+
 
 # =============================================================================
 # Phase 1: netkeibaからグレードレースを検出
@@ -413,6 +465,10 @@ def build_write_order(race: Dict[str, Any]) -> Dict[str, Any]:
     race_id = race['race_id']
     grade = race['grade']
     year = race_date[:4]
+    entity_key = _grade_race_entity_key(race_name)
+    canonical_path = f"/grade-races/{entity_key}" if entity_key in GRADE_RACE_HUB_SLUGS else ""
+    entity_path = canonical_path
+    content_target = "grade_race_main_update" if canonical_path else "grade_race_article"
     
     # Phase 2: DBから追加データを取得
     predictions = _get_predictions_from_db(race_id)
@@ -484,9 +540,21 @@ def build_write_order(race: Dict[str, Any]) -> Dict[str, Any]:
     return {
         'target_keyword': target_keyword,
         'theme_cluster': 'grade_race_preview',
+        'entity_type': 'grade_race',
+        'entity_key': entity_key,
+        'season_year': int(year),
+        'entity_path': entity_path,
+        'canonical_path': canonical_path,
+        'content_target': content_target,
         'priority': 100 - race['grade_priority'] * 10,  # G1=90, G2=80, G3=70
         'has_predictions': has_predictions,
         'reference_data': {
+            'entity_type': 'grade_race',
+            'entity_key': entity_key,
+            'season_year': int(year),
+            'entity_path': entity_path,
+            'canonical_path': canonical_path,
+            'content_target': content_target,
             'race_name': f"{race_name}({grade})",
             'race_date': race_date,
             'scheduled_race_date': race_date,

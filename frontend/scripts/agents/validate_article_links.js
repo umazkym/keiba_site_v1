@@ -108,7 +108,7 @@ function validateHref(file, type, href, slugs, issues) {
     return;
   }
 
-  if (pathname.startsWith('/courses/') || pathname.startsWith('/jockeys/')) {
+  if (pathname.startsWith('/courses/') || pathname.startsWith('/jockeys/') || pathname.startsWith('/grade-races/')) {
     return;
   }
 

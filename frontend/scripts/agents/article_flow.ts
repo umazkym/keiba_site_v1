@@ -188,6 +188,22 @@ function validateDraftMetadata(
       );
     }
   }
+
+  for (const key of ['entity_type', 'entity_key', 'season_year', 'entity_path', 'canonical_path', 'content_target'] as const) {
+    const orderValue = (order as unknown as Record<string, unknown>)[key];
+    const expected = String(orderValue || ref[key] || '').trim();
+    if (!expected) continue;
+
+    const actual = String(draftData[key] || '').trim();
+    if (actual !== expected) {
+      addIssue(
+        state,
+        'Fact Checker',
+        'critical',
+        `frontmatter.${key}がWriteOrderと不一致です。expected=${expected}, actual=${actual || '(empty)'}`
+      );
+    }
+  }
 }
 
 function classifyArticleType(order: WriteOrder): ArticleType {

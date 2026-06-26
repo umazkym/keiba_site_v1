@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Article } from "@/lib/articles";
+import type { Article, ArticleMeta } from "@/lib/articles";
 import { ArticleSchema } from "@/components/StructuredData";
 import { enhanceArticleHtml } from "@/lib/article-ux";
 
@@ -10,6 +10,7 @@ type EntityArticleDocumentProps = {
   backLabel: string;
   profileHref?: string;
   profileLabel?: string;
+  relatedArticles?: ArticleMeta[];
 };
 
 function formatDate(date: string) {
@@ -20,6 +21,71 @@ function formatDate(date: string) {
   });
 }
 
+function formatShortDate(date: string) {
+  return new Date(date).toLocaleDateString("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+  });
+}
+
+function EntityArticleList({
+  articles,
+  currentSlug,
+}: {
+  articles: ArticleMeta[];
+  currentSlug: string;
+}) {
+  if (articles.length <= 1) return null;
+
+  return (
+    <section className="mt-4 rounded-xl border border-slate-200 bg-white p-3 sm:mt-5 sm:p-4" aria-label="同じテーマの記事">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-black text-slate-950 sm:text-base">同じテーマ</h2>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">
+          {articles.length}
+        </span>
+      </div>
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        {articles.map((item) => {
+          const isCurrent = item.slug === currentSlug;
+          const className =
+            "min-h-[48px] rounded-lg border px-2.5 py-1.5 text-left transition-colors";
+          const content = (
+            <>
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                <time dateTime={new Date(item.date).toISOString()}>{formatShortDate(item.date)}</time>
+                <span>{item.category}</span>
+                {isCurrent && <span className="text-primary">表示中</span>}
+              </div>
+              <p className="mt-1 line-clamp-2 text-xs font-black leading-snug text-slate-800 sm:text-sm">
+                {item.title}
+              </p>
+            </>
+          );
+
+          if (isCurrent) {
+            return (
+              <div key={item.slug} className={`${className} border-primary/30 bg-blue-50/50`} aria-current="page">
+                {content}
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              key={item.slug}
+              href={`/articles/${item.slug}`}
+              className={`${className} border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white`}
+            >
+              {content}
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function EntityArticleDocument({
   article,
   canonicalPath,
@@ -27,6 +93,7 @@ export function EntityArticleDocument({
   backLabel,
   profileHref,
   profileLabel,
+  relatedArticles = [],
 }: EntityArticleDocumentProps) {
   const articleUrl = `https://uma-free.com${canonicalPath}`;
   const textContent = article.content.replace(/<[^>]*>/g, "").replace(/\s+/g, "");
@@ -110,6 +177,8 @@ export function EntityArticleDocument({
             </p>
           )}
         </header>
+
+        <EntityArticleList articles={relatedArticles} currentSlug={article.slug} />
 
         {toc.length > 1 && (
           <details className="mt-3 border border-slate-200 bg-slate-50 sm:mt-4" aria-label="記事の目次">

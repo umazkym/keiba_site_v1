@@ -65,7 +65,14 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
           { name: group.title, url: `https://uma-free.com${group.href}` },
         ]}
       />
-      <Breadcrumb />
+      <Breadcrumb
+        items={[
+          { label: "ホーム", href: "/" },
+          { label: "記事", href: "/articles" },
+          { label: "重賞", href: "/articles#grade-races" },
+          { label: group.title, href: "" },
+        ]}
+      />
       <div className="mx-auto w-full max-w-6xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
         <EntityArticleDocument
           article={article}
@@ -74,6 +81,7 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
           backLabel="重賞"
           profileHref={group.profileHref}
           profileLabel={group.profileLabel}
+          relatedArticles={group.articles}
         />
       </div>
     </>

@@ -43,25 +43,25 @@ export const articleArchiveKinds: Array<{
     kind: "grade-races",
     label: "重賞別",
     href: "/articles#grade-races",
-    description: "G1・重賞名から読む",
+    description: "G1・重賞名",
   },
   {
     kind: "races",
     label: "レース名別",
     href: "/articles#races",
-    description: "レース名から読む",
+    description: "レース名",
   },
   {
     kind: "jockeys",
     label: "騎手別",
     href: "/articles#jockeys",
-    description: "騎手名から読む",
+    description: "騎手名",
   },
   {
     kind: "courses",
     label: "コース別",
     href: "/articles#courses",
-    description: "競馬場と距離から読む",
+    description: "競馬場と距離",
   },
 ];
 

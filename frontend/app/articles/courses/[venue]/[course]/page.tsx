@@ -71,7 +71,14 @@ export default async function CourseArticleArchiveDetailPage({ params }: Props) 
           { name: group.title, url: `https://uma-free.com${group.href}` },
         ]}
       />
-      <Breadcrumb />
+      <Breadcrumb
+        items={[
+          { label: "ホーム", href: "/" },
+          { label: "記事", href: "/articles" },
+          { label: "コース", href: "/articles#courses" },
+          { label: group.title, href: "" },
+        ]}
+      />
       <div className="mx-auto w-full max-w-6xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
         <EntityArticleDocument
           article={article}
@@ -80,6 +87,7 @@ export default async function CourseArticleArchiveDetailPage({ params }: Props) 
           backLabel="コース"
           profileHref={group.profileHref}
           profileLabel={group.profileLabel}
+          relatedArticles={group.articles}
         />
       </div>
     </>

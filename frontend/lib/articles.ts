@@ -37,6 +37,14 @@ export type RaceArticleMeta = Pick<
   'slug' | 'title' | 'date' | 'eyecatch' | 'category'
 >;
 
+type EntityArticleQuery = {
+  entityType: string;
+  entityKey: string;
+  entityPath?: string;
+  terms?: string[];
+  count?: number;
+};
+
 let cachedArticles: Article[] | null = null;
 
 const VENUE_NAMES = [
@@ -73,6 +81,36 @@ function normalizeInternalCanonicalPath(value: unknown): string {
 function normalizeOptionalString(value: unknown): string {
   if (value === null || value === undefined) return '';
   return String(value).trim();
+}
+
+function normalizeEntitySearchText(value: string): string {
+  return value
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
+    .replace(/[\s　・（）()【】「」『』｜|:：\-_/]/g, '')
+    .toLowerCase();
+}
+
+function articleMetaText(article: Article): string {
+  return [
+    article.slug,
+    article.title,
+    article.description,
+    article.category,
+    article.targetKeyword || '',
+    article.themeCluster || '',
+    article.entityType || '',
+    article.entityKey || '',
+    article.entityPath || '',
+    article.canonicalPath || '',
+    article.contentTarget || '',
+    ...article.tags,
+    ...article.keywords,
+  ].join(' ');
+}
+
+function toArticleMeta(article: Article): ArticleMeta {
+  const { content, ...meta } = article;
+  return meta;
 }
 
 function cleanArticleMarkdownForRender(markdown: string): string {
@@ -163,7 +201,107 @@ export function getAllArticleSlugs(): { slug: string }[] {
 // クライアントコンポーネントへ渡すためのメタデータのみ（content抜き）を取得する関数
 export function getAllArticlesMeta(): ArticleMeta[] {
   const allArticles = getAllArticles();
-  return allArticles.map(({ content, ...meta }) => meta);
+  return allArticles.map(toArticleMeta);
+}
+
+export function getArticlesByEntity({
+  entityType,
+  entityKey,
+  entityPath = '',
+  terms = [],
+  count = 8,
+}: EntityArticleQuery): ArticleMeta[] {
+  const normalizedEntityType = entityType.trim();
+  const normalizedEntityKey = entityKey.trim();
+  const normalizedEntityPath = entityPath.trim().replace(/\/+$/, '');
+  const normalizedTerms = terms
+    .map((term) => term.trim())
+    .filter(Boolean)
+    .flatMap((term) => [term, normalizeEntitySearchText(term)])
+    .filter(Boolean);
+
+  const scored = getAllArticles()
+    .map((article) => {
+      let score = 0;
+      const metaText = articleMetaText(article);
+      const normalizedMetaText = normalizeEntitySearchText(metaText);
+
+      if (article.entityType === normalizedEntityType && article.entityKey === normalizedEntityKey) {
+        score += 12;
+      }
+      if (normalizedEntityPath && article.entityPath === normalizedEntityPath) {
+        score += 10;
+      }
+      if (normalizedEntityPath && article.canonicalPath === normalizedEntityPath) {
+        score += 10;
+      }
+      if (article.entityKey === normalizedEntityKey) {
+        score += 6;
+      }
+
+      for (const term of normalizedTerms) {
+        if (term.length < 2) continue;
+        if (metaText.includes(term)) score += 3;
+        if (normalizedMetaText.includes(term)) score += 2;
+      }
+
+      if (score === 0) return null;
+      return { article, score };
+    })
+    .filter((entry): entry is { article: Article; score: number } => entry !== null)
+    .sort((a, b) => {
+      if (a.score !== b.score) return b.score - a.score;
+      return a.article.date < b.article.date ? 1 : -1;
+    });
+
+  return scored.slice(0, count).map((entry) => toArticleMeta(entry.article));
+}
+
+function courseSearchTerms(venueName: string, courseName: string): string[] {
+  const compactCourse = courseName.replace(/\s+/g, '');
+  const shortDirtCourse = compactCourse.replace('ダート', 'ダ');
+  return [
+    `${venueName}${compactCourse}`,
+    `${venueName}${shortDirtCourse}`,
+    `${venueName} ${compactCourse}`,
+    `${venueName} ${shortDirtCourse}`,
+  ];
+}
+
+export function getArticlesByGradeRaceEntity(slug: string, raceNames: string[], count = 8): ArticleMeta[] {
+  return getArticlesByEntity({
+    entityType: 'grade_race',
+    entityKey: slug,
+    entityPath: `/grade-races/${slug}`,
+    terms: raceNames,
+    count,
+  });
+}
+
+export function getArticlesByCourseEntity(
+  venue: string,
+  course: string,
+  venueName: string,
+  courseName: string,
+  count = 8,
+): ArticleMeta[] {
+  return getArticlesByEntity({
+    entityType: 'course',
+    entityKey: `${venue}-${course}`,
+    entityPath: `/courses/${venue}/${course}`,
+    terms: courseSearchTerms(venueName, courseName),
+    count,
+  });
+}
+
+export function getArticlesByJockeyEntity(slug: string, jockeyNames: string[], count = 8): ArticleMeta[] {
+  return getArticlesByEntity({
+    entityType: 'jockey',
+    entityKey: slug,
+    entityPath: `/jockeys/${slug}`,
+    terms: jockeyNames,
+    count,
+  });
 }
 
 // レースページへ渡す項目を表示に必要な最小限へ絞り、HTML/RSCサイズを抑える。

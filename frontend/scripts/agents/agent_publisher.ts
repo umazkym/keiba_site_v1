@@ -83,6 +83,25 @@ const extraMap: Record<string, string> = {
   '血統': 'blood',
 };
 
+const jockeyNameMap: Record<string, string> = {
+  '武豊': 'yutaka-take',
+  'ルメール': 'christophe-lemaire',
+  'クリストフ・ルメール': 'christophe-lemaire',
+  'C.ルメール': 'christophe-lemaire',
+  'Ｃ.ルメール': 'christophe-lemaire',
+  '川田将雅': 'yuga-kawada',
+  '横山武史': 'takeshi-yokoyama',
+  '戸崎圭太': 'keita-tosaki',
+  '坂井瑠星': 'rusei-sakai',
+  '松山弘平': 'hiroaki-matsuyama',
+  '三浦皇成': 'kosei-miura',
+  '菅原明良': 'akira-sugawara',
+  '岩田望来': 'mirai-iwata',
+  '西村淳也': 'atsuki-nishimura',
+  '丹内祐次': 'yuji-tannai',
+  '横山和生': 'kazuo-yokoyama',
+};
+
 /**
  * 施策E: target_keyword から競馬場名を抽出する
  */
@@ -199,8 +218,63 @@ function normalizeInternalCanonicalPath(value: unknown): string {
   return raw.replace(/\/+$/, '');
 }
 
-function normalizePublishedArticleMetadata(data: Record<string, any>): Record<string, any> {
+function inferCourseEntity(text: string): { entityKey: string; entityPath: string } | null {
+  for (const [venueName, venueSlug] of Object.entries(venueMap)) {
+    const pattern = new RegExp(`${venueName}\\s*(芝|ダート|ダ)\\s*(\\d{3,4})m`);
+    const match = text.match(pattern);
+    if (!match) continue;
+
+    const courseType = match[1] === '芝' ? 'turf' : 'dirt';
+    const courseSlug = `${courseType}-${match[2]}m`;
+    return {
+      entityKey: `${venueSlug}-${courseSlug}`,
+      entityPath: `/courses/${venueSlug}/${courseSlug}`,
+    };
+  }
+  return null;
+}
+
+function inferPublishedArticleMetadata(data: Record<string, any>): Record<string, any> {
   const nextData = { ...data };
+  if (nextData.entity_type && nextData.entity_key) {
+    return nextData;
+  }
+
+  const text = `${nextData.target_keyword || ''} ${nextData.title || ''} ${nextData.description || ''}`;
+
+  for (const [raceName, slug] of Object.entries(raceNameMap).sort((a, b) => b[0].length - a[0].length)) {
+    if (text.includes(raceName)) {
+      nextData.entity_type = 'grade_race';
+      nextData.entity_key = slug;
+      nextData.entity_path = `/grade-races/${slug}`;
+      nextData.content_target = nextData.content_target || 'grade_race_trend_article';
+      return nextData;
+    }
+  }
+
+  for (const [jockeyName, slug] of Object.entries(jockeyNameMap).sort((a, b) => b[0].length - a[0].length)) {
+    if (text.includes(jockeyName)) {
+      nextData.entity_type = 'jockey';
+      nextData.entity_key = slug;
+      nextData.entity_path = `/jockeys/${slug}`;
+      nextData.content_target = nextData.content_target || 'jockey_support_article';
+      return nextData;
+    }
+  }
+
+  const courseEntity = inferCourseEntity(text);
+  if (courseEntity) {
+    nextData.entity_type = 'course';
+    nextData.entity_key = courseEntity.entityKey;
+    nextData.entity_path = courseEntity.entityPath;
+    nextData.content_target = nextData.content_target || 'course_data_article';
+  }
+
+  return nextData;
+}
+
+function normalizePublishedArticleMetadata(data: Record<string, any>): Record<string, any> {
+  const nextData = inferPublishedArticleMetadata(data);
   const entityPath = normalizeInternalCanonicalPath(nextData.entity_path);
   const canonicalPath = normalizeInternalCanonicalPath(nextData.canonical_path);
 

@@ -8,7 +8,6 @@ export const metadata: Metadata = {
   title: "競馬場・コース別データ分析",
   description:
     "中山ダート1200m、東京芝2000m、東京芝2400m、新潟芝1000mなど、競馬場と距離ごとの枠順・脚質傾向を無料で確認できます。",
-  robots: { index: false, follow: true },
   alternates: {
     canonical: "/courses",
   },

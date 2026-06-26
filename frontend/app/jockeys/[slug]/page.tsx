@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { BreadcrumbSchema } from "@/components/StructuredData";
+import { EntityArticleSection } from "@/components/EntityArticleSection";
+import { getArticlesByJockeyEntity } from "@/lib/articles";
 import { getJockeyProfile, jockeyProfiles } from "@/lib/growth-content";
 
 type Props = {
@@ -22,7 +24,6 @@ export function generateMetadata({ params }: Props): Metadata {
   return {
     title: profile.searchTitle,
     description: profile.metaDescription,
-    robots: { index: false, follow: true },
     alternates: {
       canonical: `/jockeys/${profile.slug}`,
     },
@@ -32,6 +33,12 @@ export function generateMetadata({ params }: Props): Metadata {
 export default function JockeyPage({ params }: Props) {
   const profile = getJockeyProfile(params.slug);
   if (!profile) notFound();
+  const shortName = profile.searchTitle.split("の")[0];
+  const jockeyArticles = getArticlesByJockeyEntity(
+    profile.slug,
+    [profile.name, shortName].filter(Boolean),
+    10,
+  );
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -113,6 +120,12 @@ export default function JockeyPage({ params }: Props) {
             </div>
           </div>
         </section>
+
+        <EntityArticleSection
+          title={`${profile.name}の記事`}
+          description="騎手別データ、得意コース、条件替わりの見方など、この騎手名に紐づく記事を自動で集約しています。"
+          articles={jockeyArticles}
+        />
 
         <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
           <h2 className="text-xl font-black text-slate-950">当日のレースに活かす</h2>

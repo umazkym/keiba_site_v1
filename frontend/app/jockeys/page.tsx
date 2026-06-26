@@ -8,7 +8,6 @@ export const metadata: Metadata = {
   title: "騎手別 得意コースデータ",
   description:
     "武豊、ルメール、川田将雅、横山武史など主要騎手の得意コースと評価を上げたい条件を整理。競馬データ分析の参考になる無料ガイドです。",
-  robots: { index: false, follow: true },
   alternates: {
     canonical: "/jockeys",
   },

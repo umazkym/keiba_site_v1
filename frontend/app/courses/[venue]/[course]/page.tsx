@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { BreadcrumbSchema } from "@/components/StructuredData";
+import { EntityArticleSection } from "@/components/EntityArticleSection";
+import { getArticlesByCourseEntity } from "@/lib/articles";
 import { courseProfiles, getCourseProfile } from "@/lib/growth-content";
 
 type Props = {
@@ -25,7 +27,6 @@ export function generateMetadata({ params }: Props): Metadata {
   return {
     title: profile.title,
     description: profile.metaDescription,
-    robots: { index: false, follow: true },
     alternates: {
       canonical: `/courses/${profile.venue}/${profile.course}`,
     },
@@ -35,6 +36,13 @@ export function generateMetadata({ params }: Props): Metadata {
 export default function CoursePage({ params }: Props) {
   const profile = getCourseProfile(params.venue, params.course);
   if (!profile) notFound();
+  const courseArticles = getArticlesByCourseEntity(
+    profile.venue,
+    profile.course,
+    profile.venueName,
+    profile.courseName,
+    10,
+  );
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -95,6 +103,12 @@ export default function CoursePage({ params }: Props) {
           <h2 className="text-xl font-black text-slate-950">注意したいポイント</h2>
           <p className="mt-2 text-sm leading-7 text-slate-600">{profile.caution}</p>
         </section>
+
+        <EntityArticleSection
+          title={`${profile.venueName}${profile.courseName}の記事`}
+          description="枠順、騎手、人気、脚質など、このコース条件に紐づく記事を自動で集約しています。コースページを起点に、切り口の違う分析へ回遊できます。"
+          articles={courseArticles}
+        />
 
         <section className="mt-8 grid gap-5 md:grid-cols-2">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">

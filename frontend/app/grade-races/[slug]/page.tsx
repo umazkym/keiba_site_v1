@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { BreadcrumbSchema } from "@/components/StructuredData";
+import { EntityArticleSection } from "@/components/EntityArticleSection";
 import { getGradeRaceProfile, gradeRaceProfiles } from "@/lib/grade-race-content";
+import { getArticlesByGradeRaceEntity } from "@/lib/articles";
 
 type Props = {
   params: { slug: string };
@@ -34,6 +36,13 @@ export function generateMetadata({ params }: Props): Metadata {
 export default function GradeRaceDetailPage({ params }: Props) {
   const race = getGradeRaceProfile(params.slug);
   if (!race) notFound();
+  const bracketAlias = race.name.match(/[（(]([^）)]+)[）)]/)?.[1] || "";
+  const baseRaceName = race.name.replace(/[（(][^）)]+[）)]/g, "");
+  const raceArticles = getArticlesByGradeRaceEntity(
+    race.slug,
+    [race.name, baseRaceName, bracketAlias].filter(Boolean),
+    10,
+  );
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -105,6 +114,12 @@ export default function GradeRaceDetailPage({ params }: Props) {
             </div>
           </div>
         </section>
+
+        <EntityArticleSection
+          title={`${race.name}の記事`}
+          description="展望、枠順、追い切り、結果回顧など、この重賞名に紐づく記事を自動で集約しています。年ごとのトレンド記事を読み返しながら、固定の重賞ページに評価を重ねます。"
+          articles={raceArticles}
+        />
 
         <section className="mt-10">
           <h2 className="text-2xl font-black text-slate-950">レース後回顧テンプレート</h2>

@@ -845,23 +845,36 @@ def _detect_grade(race_name: str, race_type: str = "") -> str:
     if race_type == '地方' and _re.search(r'重賞\s*$', name):
         return "地方重賞"
 
+    # 地方競馬は Jpn 表記または末尾の「重賞」表記だけを採用する。
+    # JRA重賞辞書まで当てると「2歳」が「京王杯2歳S」に部分一致するなど、
+    # 一般条件戦を重賞として拾ってしまう。
+    if race_type == '地方':
+        return ""
+
     # ── Layer 3: 辞書の完全一致 → 前方一致 ──
     # 旧データ（グレード接尾辞が除去済み）のための照合
     # グレード接尾辞を除いた部分で照合する
     name_without_grade = _re.sub(r'\s*[（(]G[1-3][）)]$', '', name)
+    is_generic_condition_name = bool(_re.fullmatch(
+        r'(?:[0-9０-９]+歳|[0-9０-９]+歳以上|[0-9０-９]+歳未勝利|'
+        r'[0-9０-９]+歳新馬|新馬|未勝利|条件戦|一般|選抜|特選)',
+        name_without_grade,
+    ))
 
     if name_without_grade in _JRA_GRADE_RACES:
         return _JRA_GRADE_RACES[name_without_grade]
 
     # 前方一致（長い順に走査して最も具体的なキーを優先）
-    for key, grade in sorted(_JRA_GRADE_RACES.items(), key=lambda x: -len(x[0])):
-        if name_without_grade.startswith(key) or key.startswith(name_without_grade):
-            return grade
+    if not is_generic_condition_name and len(name_without_grade) >= 4:
+        for key, grade in sorted(_JRA_GRADE_RACES.items(), key=lambda x: -len(x[0])):
+            if name_without_grade.startswith(key) or key.startswith(name_without_grade):
+                return grade
 
     # ── Layer 4: 部分一致（フォールバック） ──
-    for key, grade in sorted(_JRA_GRADE_RACES.items(), key=lambda x: -len(x[0])):
-        if key in name_without_grade or name_without_grade in key:
-            return grade
+    if not is_generic_condition_name and len(name_without_grade) >= 4:
+        for key, grade in sorted(_JRA_GRADE_RACES.items(), key=lambda x: -len(x[0])):
+            if key in name_without_grade or name_without_grade in key:
+                return grade
 
     return ""
 

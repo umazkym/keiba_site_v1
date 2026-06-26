@@ -32,6 +32,19 @@ class ApiCostOptimizationTest(unittest.TestCase):
 
         race_crud._predictions_cache.clear()
 
+    def test_grade_detection_does_not_treat_generic_two_year_old_race_as_grade(self) -> None:
+        from crud import race_crud
+
+        self.assertEqual(race_crud._detect_grade("2歳", "地方"), "")
+        self.assertEqual(race_crud._detect_grade("２歳", "地方"), "")
+        self.assertEqual(race_crud._detect_grade("2歳", "中央"), "")
+        self.assertEqual(race_crud._detect_grade("金沢サマーカップ重賞", "地方"), "地方重賞")
+        self.assertEqual(race_crud._detect_grade("サファイア賞重賞", "地方"), "地方重賞")
+        self.assertEqual(race_crud._detect_grade("帝王賞Jpn1", "地方"), "Jpn1")
+        self.assertEqual(race_crud._detect_grade("ラジオNIKKEI賞", "中央"), "G3")
+        self.assertEqual(race_crud._detect_grade("函館記念", "中央"), "G3")
+        self.assertEqual(race_crud._detect_grade("京王杯2歳S", "中央"), "G2")
+
     def test_large_response_is_gzip_encoded(self) -> None:
         response = self.client.get(
             "/",

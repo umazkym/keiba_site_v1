@@ -10,6 +10,8 @@ import { MultiplexAd } from '@/components/MultiplexAd';
 import { enhanceArticleHtml } from '@/lib/article-ux';
 import { AffiliateSlot } from '@/components/AffiliateSlot';
 import { ArticleEngagementTracker } from '@/components/ArticleEngagementTracker';
+import { ArticleThemeNavigator } from '@/components/EntityArticleDocument';
+import { getArticleArchiveGroupForArticle } from '@/lib/article-archives';
 
 type Props = {
   params: { slug: string };
@@ -79,6 +81,7 @@ export default async function ArticlePage({ params }: Props) {
 
     const canonicalPath = resolveArticleCanonicalPath(article, params.slug);
     const articleUrl = `https://uma-free.com${canonicalPath}`;
+    const articleArchiveGroup = getArticleArchiveGroupForArticle(article);
     const datePublished = new Date(article.date).toISOString();
     const dateModified = new Date(article.lastUpdated || article.date).toISOString();
     const stableArticleAdProps = {
@@ -126,6 +129,15 @@ export default async function ArticlePage({ params }: Props) {
 
         <div className="mx-auto max-w-[920px] px-3 sm:px-4">
           <Breadcrumb />
+
+          {articleArchiveGroup && (
+            <ArticleThemeNavigator
+              articles={articleArchiveGroup.articles}
+              currentSlug={article.slug}
+              canonicalHref={articleArchiveGroup.href}
+              canonicalLabel={articleArchiveGroup.title}
+            />
+          )}
 
           <article data-article-slug={params.slug}>
             {/* ===== ARTICLE HEADER ===== */}

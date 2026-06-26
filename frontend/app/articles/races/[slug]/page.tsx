@@ -82,6 +82,7 @@ export default async function RaceArticleArchiveDetailPage({ params }: Props) {
           profileHref={group.profileHref}
           profileLabel={group.profileLabel}
           relatedArticles={group.articles}
+          themeTitle={group.title}
         />
       </div>
     </>

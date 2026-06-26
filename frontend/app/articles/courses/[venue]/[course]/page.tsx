@@ -88,6 +88,7 @@ export default async function CourseArticleArchiveDetailPage({ params }: Props) 
           profileHref={group.profileHref}
           profileLabel={group.profileLabel}
           relatedArticles={group.articles}
+          themeTitle={group.title}
         />
       </div>
     </>

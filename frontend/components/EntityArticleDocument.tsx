@@ -11,6 +11,7 @@ type EntityArticleDocumentProps = {
   profileHref?: string;
   profileLabel?: string;
   relatedArticles?: ArticleMeta[];
+  themeTitle?: string;
 };
 
 function formatDate(date: string) {
@@ -28,24 +29,35 @@ function formatShortDate(date: string) {
   });
 }
 
-function EntityArticleList({
+export function ArticleThemeNavigator({
   articles,
   currentSlug,
+  canonicalHref,
+  canonicalLabel,
 }: {
   articles: ArticleMeta[];
   currentSlug: string;
+  canonicalHref?: string;
+  canonicalLabel?: string;
 }) {
   if (articles.length <= 1) return null;
 
   return (
-    <section className="mt-4 rounded-xl border border-slate-200 bg-white p-3 sm:mt-5 sm:p-4" aria-label="同じテーマの記事">
+    <nav className="mb-4 rounded-xl border border-slate-200 bg-white p-3 sm:mb-5 sm:p-4" aria-label="同じテーマの記事">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-black text-slate-950 sm:text-base">同じテーマ</h2>
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">
-          {articles.length}
+        <div className="min-w-0">
+          <p className="text-sm font-black text-slate-950 sm:text-base">同じテーマ</p>
+          {canonicalHref && canonicalLabel && (
+            <Link href={canonicalHref} className="mt-1 block truncate text-xs font-bold text-primary hover:text-blue-600">
+              {canonicalLabel}
+            </Link>
+          )}
+        </div>
+        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">
+          {articles.length}件
         </span>
       </div>
-      <div className="grid gap-1.5 sm:grid-cols-2">
+      <div className="grid max-h-[260px] gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2">
         {articles.map((item) => {
           const isCurrent = item.slug === currentSlug;
           const className =
@@ -82,7 +94,7 @@ function EntityArticleList({
           );
         })}
       </div>
-    </section>
+    </nav>
   );
 }
 
@@ -94,6 +106,7 @@ export function EntityArticleDocument({
   profileHref,
   profileLabel,
   relatedArticles = [],
+  themeTitle,
 }: EntityArticleDocumentProps) {
   const articleUrl = `https://uma-free.com${canonicalPath}`;
   const textContent = article.content.replace(/<[^>]*>/g, "").replace(/\s+/g, "");
@@ -130,6 +143,15 @@ export function EntityArticleDocument({
         image={imageUrl}
       />
 
+      <div className="mx-auto max-w-[920px]">
+        <ArticleThemeNavigator
+          articles={relatedArticles}
+          currentSlug={article.slug}
+          canonicalHref={canonicalPath}
+          canonicalLabel={themeTitle || article.title}
+        />
+      </div>
+
       <article data-article-slug={article.slug} className="mx-auto max-w-[920px]">
         <header className="relative border-b border-slate-200 pb-4 sm:pb-8">
           {article.eyecatch && (
@@ -151,7 +173,7 @@ export function EntityArticleDocument({
             >
               {backLabel}
             </Link>
-            {profileHref && profileLabel && (
+            {profileHref && profileLabel && profileHref !== backHref && (
               <Link
                 href={profileHref}
                 className="rounded-xl bg-slate-950 px-3 py-1.5 text-xs font-black text-white hover:bg-primary"
@@ -177,8 +199,6 @@ export function EntityArticleDocument({
             </p>
           )}
         </header>
-
-        <EntityArticleList articles={relatedArticles} currentSlug={article.slug} />
 
         {toc.length > 1 && (
           <details className="mt-3 border border-slate-200 bg-slate-50 sm:mt-4" aria-label="記事の目次">

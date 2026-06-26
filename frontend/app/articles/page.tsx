@@ -6,7 +6,7 @@ import { AdUnit } from "@/components/AdUnit";
 import { MultiplexAd } from "@/components/MultiplexAd";
 import { BreadcrumbSchema } from "@/components/StructuredData";
 import { shouldSuppressAdsInDevelopment } from "@/lib/ad-config";
-import { getArticleArchiveTotals } from "@/lib/article-archives";
+import { getArticleArchiveTotals, getUpcomingGradeRaceArticleGroups } from "@/lib/article-archives";
 import type { Metadata } from "next";
 
 interface ArticlesPageProps {
@@ -87,6 +87,52 @@ function ArticleMeta({ article }: { article: ArticleLike }) {
       <span>約{getReadingTime(article.content)}分</span>
       {isNewArticle(article.date) && <span className="font-black text-primary">NEW</span>}
     </div>
+  );
+}
+
+function formatRaceDate(date?: string) {
+  if (!date) return "";
+  return new Date(`${date}T00:00:00+09:00`).toLocaleDateString("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+  });
+}
+
+function UpcomingGradeRacePickup({
+  groups,
+}: {
+  groups: ReturnType<typeof getUpcomingGradeRaceArticleGroups>;
+}) {
+  if (groups.length === 0) return null;
+
+  return (
+    <section className="mb-3 rounded-2xl border border-amber-200/70 bg-amber-50/60 p-3 shadow-soft sm:p-4" aria-label="近日の重賞記事">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-black text-slate-950 sm:text-base">近日の重賞</h2>
+        <span className="text-xs font-bold text-amber-700">{groups.length}</span>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {groups.map((group) => {
+          const latestArticle = group.articles[0];
+          return (
+            <Link
+              key={group.href}
+              href={group.href}
+              className="group rounded-xl border border-amber-200/70 bg-white px-3 py-2 transition-colors hover:border-amber-300 hover:bg-amber-50/40"
+            >
+              <div className="flex items-center justify-between gap-3 text-[11px] font-black text-amber-700">
+                <span>{formatRaceDate(group.scheduledDate)}</span>
+                <span>{group.articleCount}件</span>
+              </div>
+              <p className="mt-1 truncate text-sm font-black text-slate-950 group-hover:text-primary">{group.title}</p>
+              {latestArticle && (
+                <p className="mt-1 line-clamp-1 text-xs font-semibold text-slate-500">{latestArticle.title}</p>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -175,6 +221,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
   const selectedTag = searchParams.tag;
   const shouldRenderAds = !shouldSuppressAdsInDevelopment;
   const archiveTotals = getArticleArchiveTotals();
+  const upcomingGradeRaceGroups = getUpcomingGradeRaceArticleGroups(4);
 
   let filteredArticles = selectedCategory
     ? allArticles.filter((article) => article.category === selectedCategory)
@@ -247,6 +294,8 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
 
         <div className="mt-3 grid gap-5 lg:mt-5 lg:grid-cols-[minmax(0,1fr)_280px]">
           <main className="min-w-0">
+            <UpcomingGradeRacePickup groups={upcomingGradeRaceGroups} />
+
             {filteredArticles.length === 0 ? (
               <div className="rounded-2xl border border-slate-200 bg-white px-4 py-16 text-center shadow-soft">
                 <p className="text-base font-bold text-slate-700">条件に合う記事が見つかりませんでした</p>
@@ -292,8 +341,8 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               <div className="space-y-2">
                 <EntityDirectoryDetails id="sidebar-grade-races" title="重賞" groups={archiveTotals.gradeRaceGroups} defaultOpen />
                 <EntityDirectoryDetails id="sidebar-races" title="レース" groups={archiveTotals.raceGroups} />
-                <EntityDirectoryDetails id="sidebar-jockeys" title="騎手" groups={archiveTotals.jockeyGroups} />
-                <EntityDirectoryDetails id="sidebar-courses" title="コース" groups={archiveTotals.courseGroups} />
+                <EntityDirectoryDetails id="sidebar-jockeys" title="騎手" groups={archiveTotals.jockeyGroups} defaultOpen />
+                <EntityDirectoryDetails id="sidebar-courses" title="コース" groups={archiveTotals.courseGroups} defaultOpen />
               </div>
             </nav>
 

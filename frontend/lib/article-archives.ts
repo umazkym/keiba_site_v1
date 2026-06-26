@@ -25,6 +25,7 @@ export type ArticleArchiveGroup = {
   articles: ArticleMeta[];
   articleCount: number;
   latestDate: string;
+  scheduledDate?: string;
 };
 
 export const articleArchiveKinds: Array<{
@@ -69,6 +70,14 @@ function formatLatestDate(articles: ArticleMeta[]): string {
   return articles[0]?.date || "";
 }
 
+function formatScheduledDate(articles: ArticleMeta[], fallback = ""): string {
+  const dates = articles
+    .map((article) => article.scheduledRaceDate || "")
+    .filter(Boolean)
+    .sort();
+  return dates[0] || fallback;
+}
+
 function sortArchiveGroups(groups: ArticleArchiveGroup[]): ArticleArchiveGroup[] {
   return [...groups].sort((a, b) => {
     if (a.articleCount !== b.articleCount) return b.articleCount - a.articleCount;
@@ -76,6 +85,37 @@ function sortArchiveGroups(groups: ArticleArchiveGroup[]): ArticleArchiveGroup[]
     return a.title.localeCompare(b.title, "ja");
   });
 }
+
+type AdditionalGradeRaceSeed = {
+  slug: string;
+  name: string;
+  grade: string;
+  aliases: string[];
+  venue?: string;
+  course?: string;
+  date?: string;
+};
+
+const additionalGradeRaceSeeds: AdditionalGradeRaceSeed[] = [
+  { slug: "oaks", name: "優駿牝馬（オークス）", grade: "G1", aliases: ["オークス", "優駿牝馬"], venue: "東京", course: "芝2400m" },
+  { slug: "niigata-daishoten", name: "新潟大賞典", grade: "G3", aliases: ["新潟大賞典"], venue: "新潟", course: "芝2000m" },
+  { slug: "heian-stakes", name: "平安S", grade: "G3", aliases: ["平安S", "平安ステークス"], venue: "京都", course: "ダート1900m" },
+  { slug: "meguro-kinen", name: "目黒記念", grade: "G2", aliases: ["目黒記念"], venue: "東京", course: "芝2500m" },
+  { slug: "aoi-stakes", name: "葵S", grade: "G3", aliases: ["葵S", "葵ステークス"], venue: "京都", course: "芝1200m" },
+  { slug: "hakodate-sprint-stakes", name: "函館スプリントS", grade: "G3", aliases: ["函館SS", "函館スプリントS", "函館スプリントステークス"], venue: "函館", course: "芝1200m" },
+  { slug: "fuchu-himba-stakes", name: "府中牝馬S", grade: "G3", aliases: ["府中牝馬S", "府中牝馬ステークス"], venue: "東京", course: "芝1800m" },
+  { slug: "shirasagi-stakes", name: "しらさぎS", grade: "重賞", aliases: ["しらさぎS", "しらさぎステークス"], venue: "阪神", course: "芝1600m" },
+  { slug: "ichijo-kinen-michinoku-daishoten", name: "一條記念みちのく大賞典", grade: "地方重賞", aliases: ["一條記念みちのく大賞典", "みちのく大賞典"], venue: "水沢", course: "ダート2000m" },
+  { slug: "aka-renga-kinen", name: "赤レンガ記念", grade: "地方重賞", aliases: ["赤レンガ記念"], venue: "門別", course: "ダート2000m" },
+  { slug: "radio-nikkei-sho", name: "ラジオNIKKEI賞", grade: "G3", aliases: ["ラジオNIKKEI賞", "ラジオＮＩＫＫＥＩ賞"], venue: "福島", course: "芝1800m" },
+  { slug: "hakodate-kinen", name: "函館記念", grade: "G3", aliases: ["函館記念"], venue: "函館", course: "芝2000m" },
+  { slug: "froilein-cup", name: "フロイラインカップ", grade: "地方重賞", aliases: ["フロイラインカップ"], venue: "門別", course: "ダート1700m" },
+  { slug: "unicorn-stakes", name: "ユニコーンS", grade: "G3", aliases: ["ユニコーンS", "ユニコーンステークス"], venue: "京都", course: "ダート1900m" },
+  { slug: "artemis-stakes", name: "アルテミスS", grade: "G3", aliases: ["アルテミスS", "アルテミスステークス"], venue: "東京", course: "芝1600m" },
+  { slug: "kikka-sho", name: "菊花賞", grade: "G1", aliases: ["菊花賞"], venue: "京都", course: "芝3000m" },
+  { slug: "elizabeth-queen-cup", name: "エリザベス女王杯", grade: "G1", aliases: ["エリザベス女王杯"], venue: "京都", course: "芝2200m" },
+  { slug: "dubai-world-cup", name: "ドバイWC", grade: "海外G1", aliases: ["ドバイWC", "ドバイワールドカップ"] },
+];
 
 export function getGradeRaceArticleAliases(race: GradeRaceProfile): string[] {
   const bracketAlias = race.name.match(/[（(]([^）)]+)[）)]/)?.[1] || "";
@@ -102,6 +142,26 @@ function gradeRaceToArchiveGroup(race: GradeRaceProfile): ArticleArchiveGroup {
     articles,
     articleCount: articles.length,
     latestDate: formatLatestDate(articles),
+    scheduledDate: formatScheduledDate(articles, race.date),
+  };
+}
+
+function additionalGradeRaceToArchiveGroup(seed: AdditionalGradeRaceSeed): ArticleArchiveGroup {
+  const articles = getArticlesByGradeRaceEntity(seed.slug, [seed.name, ...seed.aliases], 100);
+  const courseLabel = [seed.venue, seed.course].filter(Boolean).join("");
+  return {
+    key: seed.slug,
+    title: seed.name,
+    subtitle: [seed.grade, courseLabel].filter(Boolean).join(" / "),
+    description: `${seed.name}に関する出走構成、枠順、馬場、振り返りの記事をまとめます。`,
+    href: `/articles/grade-races/${seed.slug}`,
+    profileHref: "/articles#grade-races",
+    profileLabel: "重賞",
+    badges: [seed.grade, seed.venue || "", seed.course || ""].filter(Boolean),
+    articles,
+    articleCount: articles.length,
+    latestDate: formatLatestDate(articles),
+    scheduledDate: formatScheduledDate(articles, seed.date || ""),
   };
 }
 
@@ -194,7 +254,12 @@ export function getRaceArticleArchiveGroups(): ArticleArchiveGroup[] {
 }
 
 export function getGradeRaceArticleArchiveGroups(): ArticleArchiveGroup[] {
-  return sortArchiveGroups(gradeRaceProfiles.map(gradeRaceToArchiveGroup));
+  const profileGroups = gradeRaceProfiles.map(gradeRaceToArchiveGroup);
+  const profileKeys = new Set(profileGroups.map((group) => group.key));
+  const additionalGroups = additionalGradeRaceSeeds
+    .filter((seed) => !profileKeys.has(seed.slug))
+    .map(additionalGradeRaceToArchiveGroup);
+  return sortArchiveGroups([...profileGroups, ...additionalGroups]);
 }
 
 export function getJockeyArticleArchiveGroups(): ArticleArchiveGroup[] {
@@ -211,7 +276,8 @@ export function getRaceArticleArchiveGroup(slug: string): ArticleArchiveGroup | 
 
 export function getGradeRaceArticleArchiveGroup(slug: string): ArticleArchiveGroup | null {
   const race = getGradeRaceProfile(slug);
-  return race ? gradeRaceToArchiveGroup(race) : null;
+  if (race) return gradeRaceToArchiveGroup(race);
+  return getGradeRaceArticleArchiveGroups().find((group) => group.key === slug) || null;
 }
 
 export function getJockeyArticleArchiveGroup(slug: string): ArticleArchiveGroup | null {
@@ -239,4 +305,47 @@ export function getArticleArchiveTotals() {
     jockeyGroups,
     courseGroups,
   };
+}
+
+function jstDateString(date = new Date()): string {
+  return new Date(date.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function dateDiffDays(date: string, baseDate: string): number {
+  const dateMs = new Date(`${date}T00:00:00+09:00`).getTime();
+  const baseMs = new Date(`${baseDate}T00:00:00+09:00`).getTime();
+  return Math.round((dateMs - baseMs) / 86400000);
+}
+
+export function getUpcomingGradeRaceArticleGroups(count = 4): ArticleArchiveGroup[] {
+  const today = jstDateString();
+  return getGradeRaceArticleArchiveGroups()
+    .filter((group) => group.articleCount > 0 && group.scheduledDate)
+    .map((group) => ({ group, diff: dateDiffDays(group.scheduledDate as string, today) }))
+    .filter(({ diff }) => diff >= -1 && diff <= 14)
+    .sort((a, b) => {
+      if (a.diff !== b.diff) return a.diff - b.diff;
+      if (a.group.articleCount !== b.group.articleCount) return b.group.articleCount - a.group.articleCount;
+      return a.group.title.localeCompare(b.group.title, "ja");
+    })
+    .slice(0, count)
+    .map(({ group }) => group);
+}
+
+export function getArticleArchiveGroupForArticle(article: Pick<ArticleMeta, "slug" | "entityType" | "entityKey" | "entityPath" | "canonicalPath">): ArticleArchiveGroup | null {
+  const groups = [
+    ...getGradeRaceArticleArchiveGroups(),
+    ...getRaceArticleArchiveGroups(),
+    ...getJockeyArticleArchiveGroups(),
+    ...getCourseArticleArchiveGroups(),
+  ].filter((group) => group.articleCount > 0);
+
+  return (
+    groups.find((group) => {
+      if (group.articles.some((item) => item.slug === article.slug)) return true;
+      if (article.entityPath && article.entityPath === group.href) return true;
+      if (article.canonicalPath && article.canonicalPath === group.href) return true;
+      return Boolean(article.entityKey && article.entityKey === group.key);
+    }) || null
+  );
 }

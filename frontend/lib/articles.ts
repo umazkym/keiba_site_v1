@@ -28,6 +28,7 @@ export interface Article {
   seasonYear?: string;
   entityPath?: string;
   contentTarget?: string;
+  scheduledRaceDate?: string;
 }
 
 export type ArticleMeta = Omit<Article, 'content'>;
@@ -179,6 +180,7 @@ export function getAllArticles(): Article[] {
       seasonYear: normalizeOptionalString(data.season_year || data.seasonYear),
       entityPath: normalizeInternalCanonicalPath(data.entity_path || data.entityPath),
       contentTarget: normalizeOptionalString(data.content_target || data.contentTarget),
+      scheduledRaceDate: normalizeOptionalString(data.scheduled_race_date || data.scheduledRaceDate),
     }];
   });
 
@@ -391,6 +393,7 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     seasonYear: normalizeOptionalString(data.season_year || data.seasonYear),
     entityPath: normalizeInternalCanonicalPath(data.entity_path || data.entityPath),
     contentTarget: normalizeOptionalString(data.content_target || data.contentTarget),
+    scheduledRaceDate: normalizeOptionalString(data.scheduled_race_date || data.scheduledRaceDate),
   };
 }
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲

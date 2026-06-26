@@ -196,7 +196,7 @@ export function ArticleArchiveArticleGrid({
                   <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">{article.description}</p>
                 )}
               </div>
-              <span className="mt-4 text-xs font-black text-primary">記事を読む</span>
+              <span className="mt-4 text-xs font-black text-primary">詳細</span>
             </div>
           </Link>
         );

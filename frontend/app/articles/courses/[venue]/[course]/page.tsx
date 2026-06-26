@@ -1,22 +1,27 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArticleArchiveArticleGrid, ArticleArchiveHero, ArticleArchiveNav } from "@/components/ArticleArchive";
 import { EntityArticleDocument } from "@/components/EntityArticleDocument";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { BreadcrumbSchema } from "@/components/StructuredData";
-import { getCourseArticleArchiveGroup } from "@/lib/article-archives";
+import { getCourseArticleArchiveGroup, getCourseArticleArchiveGroups } from "@/lib/article-archives";
 import { getArticleBySlug } from "@/lib/articles";
-import { courseProfiles } from "@/lib/growth-content";
 
 type Props = {
   params: { venue: string; course: string };
 };
 
+export const dynamicParams = false;
+
 export function generateStaticParams() {
-  return courseProfiles.map((profile) => ({
-    venue: profile.venue,
-    course: profile.course,
-  }));
+  return getCourseArticleArchiveGroups()
+    .filter((group) => group.articleCount > 0)
+    .map((group) => {
+      const [venue, ...courseParts] = group.key.split("-");
+      return {
+        venue,
+        course: courseParts.join("-"),
+      };
+    });
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -24,12 +29,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!group) {
     return {
       title: "コース別の記事アーカイブ | UMA-FREE",
-      alternates: { canonical: "/articles/courses" },
+      alternates: { canonical: "/articles" },
     };
   }
   const primaryArticle = group.articles[0]
     ? await getArticleBySlug(group.articles[0].slug)
     : null;
+  if (!primaryArticle) {
+    notFound();
+  }
 
   return {
     title: primaryArticle?.title || `${group.title}の記事 | UMA-FREE`,
@@ -48,6 +56,10 @@ export default async function CourseArticleArchiveDetailPage({ params }: Props) 
   const primaryArticle = group.articles[0]
     ? await getArticleBySlug(group.articles[0].slug)
     : null;
+  if (!primaryArticle) {
+    notFound();
+  }
+  const article = primaryArticle;
 
   return (
     <>
@@ -55,36 +67,20 @@ export default async function CourseArticleArchiveDetailPage({ params }: Props) 
         items={[
           { name: "ホーム", url: "https://uma-free.com" },
           { name: "記事", url: "https://uma-free.com/articles" },
-          { name: "コース別", url: "https://uma-free.com/articles/courses" },
+          { name: "コース", url: "https://uma-free.com/articles#courses" },
           { name: group.title, url: `https://uma-free.com${group.href}` },
         ]}
       />
       <Breadcrumb />
       <div className="mx-auto w-full max-w-6xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
-        {primaryArticle ? (
-          <EntityArticleDocument
-            article={primaryArticle}
-            canonicalPath={group.href}
-            backHref="/articles/courses"
-            backLabel="コース別一覧へ"
-            profileHref={group.profileHref}
-            profileLabel={group.profileLabel}
-          />
-        ) : (
-          <>
-            <ArticleArchiveHero
-              eyebrow="COURSE ARCHIVE"
-              title={`${group.title}の記事`}
-              description={`${group.subtitle}。このコース条件に紐づく記事を1本のURLで更新していきます。`}
-              countLabel="準備中"
-            >
-              <ArticleArchiveNav active="courses" />
-            </ArticleArchiveHero>
-            <section className="mt-6">
-              <ArticleArchiveArticleGrid articles={[]} />
-            </section>
-          </>
-        )}
+        <EntityArticleDocument
+          article={article}
+          canonicalPath={group.href}
+          backHref="/articles#courses"
+          backLabel="コース"
+          profileHref={group.profileHref}
+          profileLabel={group.profileLabel}
+        />
       </div>
     </>
   );

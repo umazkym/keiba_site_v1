@@ -35,10 +35,10 @@ export default function JockeysPage() {
             主要13騎手について、評価を上げたい条件と慎重に見たい条件を整理しました。
           </p>
           <Link
-            href="/articles/jockeys"
+            href="/articles#jockeys"
             className="mt-5 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary"
           >
-            騎手別の記事アーカイブを見る
+            騎手記事
           </Link>
         </header>
 

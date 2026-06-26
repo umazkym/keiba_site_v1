@@ -22,7 +22,7 @@ export function EntityArticleSection({
   description,
   articles,
   archiveHref,
-  archiveLabel = "記事アーカイブを見る",
+  archiveLabel = "記事",
 }: EntityArticleSectionProps) {
   if (articles.length === 0) {
     return null;
@@ -76,7 +76,7 @@ export function EntityArticleSection({
                 <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{article.description}</p>
               )}
             </div>
-            <span className="mt-4 text-xs font-black text-primary">記事を読む</span>
+            <span className="mt-4 text-xs font-black text-primary">詳細</span>
           </Link>
         ))}
       </div>

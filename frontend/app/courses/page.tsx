@@ -35,10 +35,10 @@ export default function CoursesPage() {
             レース当日のAI偏差値を見る前に、コース固有の癖を押さえておくと判断の土台が安定します。
           </p>
           <Link
-            href="/articles/courses"
+            href="/articles#courses"
             className="mt-5 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary"
           >
-            コース別の記事アーカイブを見る
+            コース記事
           </Link>
         </header>
 

@@ -6,7 +6,6 @@ import { AdUnit } from "@/components/AdUnit";
 import { MultiplexAd } from "@/components/MultiplexAd";
 import { BreadcrumbSchema } from "@/components/StructuredData";
 import { shouldSuppressAdsInDevelopment } from "@/lib/ad-config";
-import { ArticleArchiveNav } from "@/components/ArticleArchive";
 import { getArticleArchiveTotals } from "@/lib/article-archives";
 import type { Metadata } from "next";
 
@@ -22,9 +21,9 @@ type ArticleLike = ReturnType<typeof getAllArticles>[number];
 export async function generateMetadata({ searchParams }: ArticlesPageProps): Promise<Metadata> {
   const selectedCategory = searchParams.category;
   let canonicalUrl = "/articles";
-  let title = "競馬データ分析を無料で読む | 重賞・騎手・馬場の実戦コラム";
+  let title = "競馬データ分析記事 | 重賞・騎手・馬場の実戦コラム";
   let description =
-    "競馬データ分析を無料で読める記事一覧。重賞展望、騎手の得意コース、馬場状態、枠順傾向、馬体重、人気別成績など、レース前に確認したい統計コラムを掲載。";
+    "競馬データ分析の記事一覧。重賞展望、騎手の得意コース、馬場状態、枠順傾向、馬体重、人気別成績など、レース前に確認したい統計コラムを掲載。";
 
   if (selectedCategory) {
     title = `${selectedCategory}のデータ分析記事 | 競馬統計コラム`;
@@ -58,17 +57,6 @@ const getCategoryBadgeClass = (category: string) => {
   }
 };
 
-const getFeaturedSummary = (content: string) => {
-  const cleanText = content
-    .replace(/<[^>]*>/g, "")
-    .replace(/#+\s+/g, "")
-    .replace(/[\[\]\(\)\*\-\+_]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return cleanText.length > 118 ? `${cleanText.slice(0, 118)}...` : cleanText;
-};
-
 function getReadingTime(content: string): number {
   const text = content.replace(/<[^>]*>/g, "").replace(/\s+/g, "");
   return Math.max(1, Math.ceil(text.length / 500));
@@ -88,28 +76,6 @@ function formatDate(date: string) {
   });
 }
 
-function ArticleImage({
-  article,
-  className,
-  priority = false,
-}: {
-  article: ArticleLike;
-  className?: string;
-  priority?: boolean;
-}) {
-  return (
-    <div className={`overflow-hidden bg-slate-100 ${className ?? ""}`}>
-      <img
-        src={article.eyecatch}
-        alt={`${article.title} のアイキャッチ画像`}
-        loading={priority ? "eager" : "lazy"}
-        decoding="async"
-        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-      />
-    </div>
-  );
-}
-
 function ArticleMeta({ article }: { article: ArticleLike }) {
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold text-slate-400 sm:text-xs">
@@ -123,45 +89,57 @@ function ArticleMeta({ article }: { article: ArticleLike }) {
   );
 }
 
-function FeaturedArticleCard({ article }: { article: ArticleLike }) {
+function CompactArticleLink({ article }: { article: ArticleLike }) {
   return (
     <Link
       href={`/articles/${article.slug}`}
-      className="group grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated md:grid-cols-[42%_minmax(0,1fr)]"
+      className="group flex min-h-[58px] flex-col justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 transition-colors hover:border-slate-300 hover:bg-slate-50"
     >
-      <ArticleImage article={article} priority className="aspect-[16/10] md:aspect-auto" />
-      <div className="flex min-h-[260px] flex-col justify-between p-4 sm:p-6 lg:p-8">
-        <div>
-          <ArticleMeta article={article} />
-          <h2 className="mt-3 text-xl font-black leading-tight tracking-tight text-slate-950 group-hover:text-primary sm:text-3xl">
-            {article.title}
-          </h2>
-          <p className="mt-4 line-clamp-3 text-sm leading-7 text-slate-600">
-            {getFeaturedSummary(article.content)}
-          </p>
-        </div>
-        <span className="mt-5 inline-flex w-fit rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition-colors group-hover:bg-primary">
-          記事を確認する
-        </span>
+      <div className="min-w-0">
+        <ArticleMeta article={article} />
+        <h3 className="mt-1 line-clamp-2 text-sm font-black leading-snug text-slate-950 group-hover:text-primary sm:text-[15px]">
+          {article.title}
+        </h3>
       </div>
     </Link>
   );
 }
 
-function ArticleCard({ article }: { article: ArticleLike }) {
+function EntityLinkSection({
+  id,
+  title,
+  groups,
+}: {
+  id: string;
+  title: string;
+  groups: ReturnType<typeof getArticleArchiveTotals>["gradeRaceGroups"];
+}) {
+  const visibleGroups = groups.filter((group) => group.articleCount > 0);
+  if (visibleGroups.length === 0) return null;
+
   return (
-    <Link
-      href={`/articles/${article.slug}`}
-      className="group grid grid-cols-[98px_minmax(0,1fr)] gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-soft transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated sm:flex sm:flex-col sm:p-3"
-    >
-      <ArticleImage article={article} className="aspect-[4/3] rounded-xl sm:w-full" />
-      <div className="min-w-0 sm:px-1 sm:pb-1">
-        <ArticleMeta article={article} />
-        <h3 className="mt-2 line-clamp-3 text-sm font-black leading-snug text-slate-950 group-hover:text-primary sm:text-base">
-          {article.title}
-        </h3>
+    <section id={id} className="scroll-mt-20 rounded-2xl border border-slate-200 bg-white p-3 shadow-soft sm:p-4">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-black text-slate-950 sm:text-base">{title}</h2>
+        <span className="text-xs font-bold text-slate-400">{visibleGroups.length}</span>
       </div>
-    </Link>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {visibleGroups.map((group) => (
+          <Link
+            key={group.href}
+            href={group.href}
+            className="group flex min-h-[48px] items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 transition-colors hover:border-slate-300 hover:bg-white"
+          >
+            <span className="min-w-0 truncate text-sm font-black text-slate-800 group-hover:text-primary">
+              {group.title}
+            </span>
+            <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11px] font-black text-slate-500">
+              {group.articleCount}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -181,38 +159,10 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
     filteredArticles = filteredArticles.filter((article) => article.tags && article.tags.includes(selectedTag));
   }
 
-  const featuredArticle = filteredArticles[0];
-  const regularArticles = filteredArticles.slice(1);
   const categoryItems = uniqueCategories.map((category) => ({
     category,
     count: allArticles.filter((article) => article.category === category).length,
   }));
-  const archiveCategoryCards = [
-    {
-      title: "重賞別に読む",
-      href: "/articles/grade-races",
-      count: archiveTotals.gradeRaceCount,
-      description: "G1・重賞名ごとに、展望、枠順、追い切り、回顧をまとめて確認できます。",
-    },
-    {
-      title: "レース名別に読む",
-      href: "/articles/races",
-      count: archiveTotals.raceCount,
-      description: "重賞以外も含め、同じレース名の記事を1本のURLへ更新していきます。",
-    },
-    {
-      title: "騎手別に読む",
-      href: "/articles/jockeys",
-      count: archiveTotals.jockeyCount,
-      description: "騎手名を起点に、得意コースや条件別データの記事へ進めます。",
-    },
-    {
-      title: "コース別に読む",
-      href: "/articles/courses",
-      count: archiveTotals.courseCount,
-      description: "競馬場と距離の条件から、枠順・脚質・馬場傾向の記事を探せます。",
-    },
-  ];
 
   return (
     <>
@@ -233,18 +183,10 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               <h1 className="mt-2 text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
                 {selectedCategory ? `${selectedCategory}分析記事` : "競馬データ分析記事"}
               </h1>
-              <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
-                重賞、騎手、コース、馬場傾向を、レース前の判断材料として確認できます。
-                気になるテーマだけをカテゴリで絞り込めます。
-              </p>
             </div>
             <p className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
               {filteredArticles.length}件
             </p>
-          </div>
-
-          <div className="mt-5">
-            <ArticleArchiveNav active="all" />
           </div>
 
           <div
@@ -276,22 +218,11 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
           </div>
         </header>
 
-        <section className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4" aria-label="記事アーカイブカテゴリ">
-          {archiveCategoryCards.map((card) => (
-            <Link
-              key={card.href}
-              href={card.href}
-              className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-black text-slate-950 group-hover:text-primary">{card.title}</h2>
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">
-                  {card.count}件
-                </span>
-              </div>
-              <p className="mt-2 text-sm leading-7 text-slate-600">{card.description}</p>
-            </Link>
-          ))}
+        <section className="mt-5 grid gap-3" aria-label="記事エンティティ">
+          <EntityLinkSection id="grade-races" title="重賞" groups={archiveTotals.gradeRaceGroups} />
+          <EntityLinkSection id="races" title="レース" groups={archiveTotals.raceGroups} />
+          <EntityLinkSection id="jockeys" title="騎手" groups={archiveTotals.jockeyGroups} />
+          <EntityLinkSection id="courses" title="コース" groups={archiveTotals.courseGroups} />
         </section>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
@@ -300,47 +231,32 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               <div className="rounded-2xl border border-slate-200 bg-white px-4 py-16 text-center shadow-soft">
                 <p className="text-base font-bold text-slate-700">条件に合う記事が見つかりませんでした</p>
                 <Link href="/articles" className="mt-4 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white">
-                  すべての記事を見る
+                  一覧へ
                 </Link>
               </div>
             ) : (
-              <>
-                {featuredArticle && <FeaturedArticleCard article={featuredArticle} />}
-
-                {featuredArticle && shouldRenderAds && (
-                  <div className="mt-5">
-                    <AdUnit slot="1489598374" placement="inline" analyticsPlacement="articles_after_featured" />
-                  </div>
-                )}
-
-                {regularArticles.length > 0 && (
-                  <section className="mt-5">
-                    <div className="mb-3 flex items-end justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-bold tracking-[0.14em] text-slate-400">NEW ARTICLES</p>
-                        <h2 className="mt-1 text-xl font-black text-slate-950">新着・関連コラム</h2>
-                      </div>
-                      <p className="text-xs font-bold text-slate-400">{regularArticles.length}件</p>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {regularArticles.map((article, index) => (
-                        <React.Fragment key={article.slug}>
-                          <ArticleCard article={article} />
-                          {(index === 5 || index === 14) && shouldRenderAds && regularArticles.length > index + 1 && (
-                            <div className="sm:col-span-2 xl:col-span-3">
-                              <AdUnit
-                                slot="8529703346"
-                                placement="inline"
-                                analyticsPlacement={`articles_grid_after_${index + 1}`}
-                              />
-                            </div>
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  </section>
-                )}
-              </>
+              <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-soft sm:p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-base font-black text-slate-950">記事</h2>
+                  <p className="text-xs font-bold text-slate-400">{filteredArticles.length}件</p>
+                </div>
+                <div className="grid gap-2 xl:grid-cols-2">
+                  {filteredArticles.map((article, index) => (
+                    <React.Fragment key={article.slug}>
+                      <CompactArticleLink article={article} />
+                      {(index === 11 || index === 29) && shouldRenderAds && filteredArticles.length > index + 1 && (
+                        <div className="xl:col-span-2">
+                          <AdUnit
+                            slot="8529703346"
+                            placement="inline"
+                            analyticsPlacement={`articles_grid_after_${index + 1}`}
+                          />
+                        </div>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </section>
             )}
 
             {shouldRenderAds && (
@@ -352,18 +268,26 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
 
           <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
             <nav className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft" aria-label="記事アーカイブ">
-              <p className="mb-2 text-xs font-bold tracking-[0.14em] text-slate-400">ARTICLE ARCHIVE</p>
+              <p className="mb-2 text-xs font-bold tracking-[0.14em] text-slate-400">ENTITY</p>
               <div className="space-y-1">
-                {archiveCategoryCards.map((card) => (
-                  <Link
-                    key={card.href}
-                    href={card.href}
-                    className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50"
-                  >
-                    <span>{card.title}</span>
-                    <span className="text-xs opacity-70">{card.count}</span>
-                  </Link>
-                ))}
+                {[
+                  ...archiveTotals.gradeRaceGroups,
+                  ...archiveTotals.raceGroups,
+                  ...archiveTotals.jockeyGroups,
+                  ...archiveTotals.courseGroups,
+                ]
+                  .filter((group) => group.articleCount > 0)
+                  .slice(0, 18)
+                  .map((group) => (
+                    <Link
+                      key={group.href}
+                      href={group.href}
+                      className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                    >
+                      <span className="truncate">{group.title}</span>
+                      <span className="text-xs opacity-70">{group.articleCount}</span>
+                    </Link>
+                  ))}
               </div>
             </nav>
 
@@ -394,15 +318,14 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               </div>
             </nav>
 
-            <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 shadow-soft">
-              <p className="text-sm font-black text-slate-950">本日のレース分析</p>
-              <p className="mt-2 text-xs leading-6 text-slate-600">
-                記事で確認した観点を、当日の出走表やAI偏差値と照合できます。
-              </p>
-              <Link prefetch={false} href="/races/today" className="mt-3 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-xs font-bold text-white hover:bg-primary">
-                今日の分析を見る
-              </Link>
-            </div>
+            <Link
+              prefetch={false}
+              href="/races/today"
+              className="flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm font-black text-slate-950 shadow-soft hover:border-blue-200 hover:bg-blue-50"
+            >
+              <span>本日のレース分析</span>
+              <span className="rounded-full bg-white px-2 py-0.5 text-xs text-blue-700">今日</span>
+            </Link>
 
             {/* ★ PCサイドバー広告
                 モバイルでは非表示（hidden）、PCのみ表示（lg:block）。

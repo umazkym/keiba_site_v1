@@ -336,6 +336,24 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                 今日の分析を見る
               </Link>
             </div>
+
+            {/* ★ PCサイドバー広告
+                モバイルでは非表示（hidden）、PCのみ表示（lg:block）。
+                記事一覧はPC訪問者が約40%（Clarity 72h計測）のため、
+                スクロールせずに目に入るAbove the fold付近の表示機会を確保。
+                stickyなasideに配置するため、スクロール中も視認性が高い。 */}
+            {shouldSuppressAdsInDevelopment ? null : (
+              <div className="hidden lg:block">
+                <AdUnit
+                  slot="1489598374"
+                  placement="sidebar"
+                  analyticsPlacement="articles_sidebar"
+                  minHeight="280px"
+                  collapseUnfilled={false}
+                  lazyRootMargin="400px 0px 400px 0px"
+                />
+              </div>
+            )}
           </aside>
         </div>
       </div>

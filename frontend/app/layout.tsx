@@ -85,6 +85,12 @@ export default function RootLayout({
                 {/* AdSenseアカウントメタタグ */}
                 <meta name="google-adsense-account" content="ca-pub-4411270831448240" />
 
+                {/* ★ Google Discover 大画像プレビュー許可
+                    1,200px以上のアイキャッチを持つ記事・重賞ページがDiscoverで
+                    大画像サムネイルとして表示されるための必須設定。
+                    CTRが数倍変わるケースがあるため、必ず設定しておく。 */}
+                <meta name="robots" content="max-image-preview:large" />
+
                 {/* Bing Webmaster Tools 認証メタタグ
                     Bingからの流入が294セッション（Google 350の84%）あるため登録必須。
                     登録手順: https://www.bing.com/webmasters/ でサイト追加 →

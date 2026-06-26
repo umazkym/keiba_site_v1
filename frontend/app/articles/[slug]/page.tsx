@@ -229,6 +229,10 @@ export default async function ArticlePage({ params }: Props) {
                   h2Positions.push(match.index);
                 }
 
+                // ★ 長文判定: HTML文字数 6,000字以上 ≒ 本文約3,000字以上
+                const isLongArticle = enhancedContent.length >= 6000;
+
+                // H2が7本以上: 3分割 → 本文内2枠（変更なし）
                 if (h2Positions.length >= 7) {
                   const split1 = h2Positions[1];
                   const split2 = h2Positions[4];
@@ -246,6 +250,26 @@ export default async function ArticlePage({ params }: Props) {
                   );
                 }
 
+                // ★ H2が4〜6本かつ長文: 3分割 → 本文内2枠（新規追加）
+                // H2[1]で1回目、H2[3]（存在しない場合はH2[2]）で2回目を挿入
+                if (h2Positions.length >= 4 && isLongArticle) {
+                  const split1 = h2Positions[1];
+                  const split2 = h2Positions[Math.min(3, h2Positions.length - 1)];
+                  const part1 = enhancedContent.substring(0, split1);
+                  const part2 = enhancedContent.substring(split1, split2);
+                  const part3 = enhancedContent.substring(split2);
+                  return (
+                    <>
+                      <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part1 }} />
+                      <AdUnit slot="1489598374" analyticsPlacement="article_after_intro" {...stableArticleAdProps} />
+                      <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part2 }} />
+                      <AdUnit slot="9407670747" analyticsPlacement="article_mid_long" {...stableArticleAdProps} />
+                      <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part3 }} />
+                    </>
+                  );
+                }
+
+                // H2が4〜6本で短め: 2分割 → 本文内1枠（従来通り）
                 if (h2Positions.length >= 4) {
                   const splitPos = h2Positions[1];
                   const firstPart = enhancedContent.substring(0, splitPos);
@@ -264,6 +288,7 @@ export default async function ArticlePage({ params }: Props) {
                 );
               })()}
             </div>
+
 
             <ArticleEngagementTracker
               slug={params.slug}

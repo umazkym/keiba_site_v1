@@ -175,9 +175,6 @@ export default function RacePageClient({
         };
 
         setCurrentDate(initialDate);
-        if (isValidDateFormat(initialDate)) {
-            document.title = `競馬AIデータ分析 | ${formatDate(initialDate)}`;
-        }
 
         const hasInitialRaceData = Boolean(
             initialPredictionData

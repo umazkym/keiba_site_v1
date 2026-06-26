@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { WeeklyGradeRace, RaceDayPrediction } from '@/lib/types';
 import { getRaceDetailPath } from '@/lib/race-url';
+import { getGradeRaceHubPathByName } from '@/lib/grade-race-hubs';
 
 /** レース名からグレード接尾辞を除去 */
 function cleanRaceName(name: string): string {
@@ -141,13 +142,13 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, title = 
                             const displayName = cleanRaceName(race.race_name);
                             const topHorse = findTopHorse(race.venue_name, race.race_number);
                             const raceTypeLabel = getRaceTypeLabel(race);
+                            const racePath = getRaceDetailPath(race.race_date, race.venue_name, race.race_number);
+                            const hubPath = getGradeRaceHubPathByName(race.race_name);
 
                             return (
-                                <Link
+                                <article
                                     key={race.race_id}
-                                    prefetch={false}
-                                    href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
-                                    className="grade-focus card rounded-xl no-underline"
+                                    className="grade-focus card rounded-xl"
                                 >
                                     <span className="badge badge-amber text-[10px] sm:text-xs">
                                         {raceTypeLabel} {formatGrade(race.grade)} 注目開催
@@ -166,7 +167,29 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, title = 
                                             <span className="grade-score">{topHorse.score?.toFixed(1) || '--'}</span>
                                         </div>
                                     )}
-                                </Link>
+
+                                    <div className={`mt-1 grid gap-2 ${hubPath ? 'sm:grid-cols-2' : ''}`}>
+                                        {hubPath && (
+                                            <Link
+                                                prefetch={false}
+                                                href={hubPath}
+                                                className="inline-flex min-h-[38px] items-center justify-center rounded-lg bg-slate-950 px-3 py-2 text-center text-xs font-bold text-white no-underline transition-colors hover:bg-primary"
+                                            >
+                                                重賞データを見る
+                                            </Link>
+                                        )}
+                                        <Link
+                                            prefetch={false}
+                                            href={racePath}
+                                            className={`inline-flex min-h-[38px] items-center justify-center rounded-lg px-3 py-2 text-center text-xs font-bold no-underline transition-colors ${hubPath
+                                                ? 'border border-slate-200 bg-white text-slate-700 hover:border-primary/30 hover:text-primary'
+                                                : 'bg-slate-950 text-white hover:bg-primary'
+                                                }`}
+                                        >
+                                            当日のAI偏差値を見る
+                                        </Link>
+                                    </div>
+                                </article>
                             );
                         })}
                     </div>

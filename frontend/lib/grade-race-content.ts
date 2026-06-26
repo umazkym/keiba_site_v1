@@ -1,3 +1,5 @@
+import { normalizeGradeRaceSlug } from "./grade-race-hubs";
+
 export type GradeRaceStage = {
   label: string;
   timing: string;
@@ -21,7 +23,7 @@ export type GradeRaceProfile = {
 
 export const gradeRaceProfiles: GradeRaceProfile[] = [
   {
-    slug: "2026-nihon-derby",
+    slug: "nihon-derby",
     name: "東京優駿（日本ダービー）",
     grade: "G1",
     date: "2026-05-31",
@@ -65,7 +67,7 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
     ],
   },
   {
-    slug: "2026-yasuda-kinen",
+    slug: "yasuda-kinen",
     name: "安田記念",
     grade: "G1",
     date: "2026-06-07",
@@ -109,7 +111,7 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
     ],
   },
   {
-    slug: "2026-takarazuka-kinen",
+    slug: "takarazuka-kinen",
     name: "宝塚記念",
     grade: "G1",
     date: "2026-06-14",
@@ -152,7 +154,7 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
     ],
   },
   {
-    slug: "2026-sprinters-stakes",
+    slug: "sprinters-stakes",
     name: "スプリンターズステークス",
     grade: "G1",
     date: "2026-10-04",
@@ -196,7 +198,7 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
     ],
   },
   {
-    slug: "2026-tenno-sho-autumn",
+    slug: "tenno-sho-autumn",
     name: "天皇賞（秋）",
     grade: "G1",
     date: "2026-11-01",
@@ -239,7 +241,7 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
     ],
   },
   {
-    slug: "2026-japan-cup",
+    slug: "japan-cup",
     name: "ジャパンカップ",
     grade: "G1",
     date: "2026-11-29",
@@ -282,7 +284,7 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
     ],
   },
   {
-    slug: "2026-mile-championship",
+    slug: "mile-championship",
     name: "マイルチャンピオンシップ",
     grade: "G1",
     date: "2026-11-22",
@@ -325,7 +327,7 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
     ],
   },
   {
-    slug: "2026-arima-kinen",
+    slug: "arima-kinen",
     name: "有馬記念",
     grade: "G1",
     date: "2026-12-27",
@@ -370,5 +372,6 @@ export const gradeRaceProfiles: GradeRaceProfile[] = [
 ];
 
 export function getGradeRaceProfile(slug: string): GradeRaceProfile | undefined {
-  return gradeRaceProfiles.find((profile) => profile.slug === slug);
+  const canonicalSlug = normalizeGradeRaceSlug(slug);
+  return gradeRaceProfiles.find((profile) => profile.slug === canonicalSlug);
 }

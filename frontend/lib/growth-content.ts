@@ -664,7 +664,7 @@ export const courseProfiles: CourseProfile[] = [
     ],
     caution: "短距離でも坂があるため、スピードだけで評価を決めません。",
     relatedArticles: [
-      { label: "スプリンターズSページ", href: "/grade-races/2026-sprinters-stakes" },
+      { label: "スプリンターズSページ", href: "/grade-races/sprinters-stakes" },
       { label: "馬場状態の見方", href: "/keiba-data/track-condition" },
     ],
   },

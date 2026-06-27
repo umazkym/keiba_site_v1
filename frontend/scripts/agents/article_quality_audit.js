@@ -23,6 +23,8 @@ const RULES = {
   ],
 };
 
+const REQUIRED_POINT_HEADING_PATTERN = /^##\s+(?:このコースの買い目ポイント|このレースの買い目ポイント|このニュースの確認ポイント|この競馬場の確認ポイント|この騎手を確認するポイント|このテーマの確認ポイント)\s*$/m;
+
 function getArticleFiles() {
   if (!fs.existsSync(ARTICLES_DIR)) return [];
   return fs.readdirSync(ARTICLES_DIR)
@@ -248,7 +250,7 @@ function auditArticle(file) {
     addIssue(issues, file, 'warning', 'cta', 'missing race page CTA');
   }
 
-  if (!/^##\s+このコースの買い目ポイント\s*$/m.test(content)) {
+  if (!REQUIRED_POINT_HEADING_PATTERN.test(content)) {
     addIssue(issues, file, 'warning', 'buying_points', 'missing required buying-point section');
   }
 

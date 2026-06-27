@@ -432,6 +432,15 @@ function buildTavilyQueries(order: WriteOrder, articleType: ArticleType): string
   const raceName = String(ref.race_name || '').replace(/\([^)]*\)/g, '').trim();
   const raceDate = String(ref.race_date || '').trim();
   const venue = String(ref.venue || ref.condition || '').trim();
+  const explicitQueries = Array.isArray(ref.external_research_queries)
+    ? ref.external_research_queries.map(query => String(query || '').trim()).filter(Boolean)
+    : String(ref.external_research_query || '').trim()
+      ? [String(ref.external_research_query).trim()]
+      : [];
+
+  if (explicitQueries.length > 0) {
+    return explicitQueries;
+  }
 
   if (articleType === 'grade_race_preview' && raceName) {
     return [
@@ -454,10 +463,6 @@ function buildTavilyQueries(order: WriteOrder, articleType: ArticleType): string
       `${raceNameForNews || order.target_keyword} JRA 公式 ニュース`,
       newsTopic || `${order.target_keyword} 競馬 ニュース`,
     ].filter(Boolean);
-  }
-
-  if (ref.external_research_query) {
-    return [String(ref.external_research_query)];
   }
 
   return [];

@@ -21,7 +21,7 @@ function determineCategory(data: Record<string, any>, filename: string): string 
   const combined = `${keyword} ${title} ${slug}`;
 
   // theme_clusterベースの判定（最優先）
-  if (themeCluster === 'grade_race_preview') return '重賞プレビュー';
+  if (themeCluster === 'grade_race_preview') return '重賞攻略';
 
   // キーワードベースの判定
   if (combined.includes('枠順') || combined.includes('waku'))
@@ -31,7 +31,7 @@ function determineCategory(data: Record<string, any>, filename: string): string 
   if (combined.includes('芝') || combined.includes('turf'))
     return '枠順データ';
   if (combined.includes('ai予想') || combined.includes('重賞') || combined.includes('stakes') || combined.includes('cup') || combined.includes('kinen'))
-    return '重賞プレビュー';
+    return '重賞攻略';
   if (combined.includes('騎手') || combined.includes('jockey'))
     return '騎手分析';
   if (combined.includes('初心者') || combined.includes('ガイド') || combined.includes('入門') || combined.includes('guide') || combined.includes('beginner') || combined.includes('manual') || combined.includes('terms') || combined.includes('access'))

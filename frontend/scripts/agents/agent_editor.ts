@@ -15,12 +15,29 @@ function isApiKeyInvalidError(error: unknown): boolean {
 const DEFAULT_BUYING_POINT_HEADING = '## このコースの買い目ポイント';
 const RACE_BUYING_POINT_HEADING = '## このレースの買い目ポイント';
 const NEWS_CONFIRMATION_POINT_HEADING = '## このニュースの確認ポイント';
+const COURSE_VENUE_POINT_HEADING = '## この競馬場の確認ポイント';
+const JOCKEY_POINT_HEADING = '## この騎手を確認するポイント';
+const BEGINNER_POINT_HEADING = '## このテーマの確認ポイント';
 const REQUIRED_TODAY_RACE_CTA = '最新の出馬表とAI予想は [今日のAI予想・出馬表](/races/today) で無料公開中。';
 const POINT_HEADING_TEXTS = [
   'このコースの買い目ポイント',
   'このレースの買い目ポイント',
   'このニュースの確認ポイント',
+  'この競馬場の確認ポイント',
+  'この騎手を確認するポイント',
+  'このテーマの確認ポイント',
 ];
+const POINT_HEADING_PATTERN_SOURCE = POINT_HEADING_TEXTS
+  .map(text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  .join('|');
+
+function pointHeadingLineRegex(flags = 'gm'): RegExp {
+  return new RegExp(`^##\\s+(?:${POINT_HEADING_PATTERN_SOURCE})\\s*$`, flags);
+}
+
+function pointHeadingNormalizeRegex(): RegExp {
+  return new RegExp(`^(?:#{1,6}\\s*){0,2}(?:${POINT_HEADING_PATTERN_SOURCE})\\s*$`, 'gm');
+}
 
 const BANNED_REPLACEMENTS: Record<string, string> = {
   'いかがでしたか': '',
@@ -447,6 +464,9 @@ function requiredPointHeadingForData(data: Record<string, any>): string {
   const theme = String(data.theme_cluster || data.article_type || '');
   if (theme === 'news_context') return NEWS_CONFIRMATION_POINT_HEADING;
   if (theme === 'race_update' || theme === 'grade_race_preview') return RACE_BUYING_POINT_HEADING;
+  if (theme === 'course_venue') return COURSE_VENUE_POINT_HEADING;
+  if (theme === 'jockey_profile') return JOCKEY_POINT_HEADING;
+  if (theme === 'beginner_guide') return BEGINNER_POINT_HEADING;
   return DEFAULT_BUYING_POINT_HEADING;
 }
 
@@ -477,6 +497,21 @@ function suffixForTheme(themeCluster: unknown, seed: string, searchIntent?: unkn
       '勝率と回収率で残す騎手',
       '人気とのズレを見る騎手データ',
       '軸候補を絞る騎手成績',
+    ],
+    jockey_profile: [
+      '成績と得意条件の確認順',
+      '人気時に慎重に見る条件',
+      'リーディング成績の使い方',
+    ],
+    course_venue: [
+      '全距離の確認順',
+      '芝とダートの見方',
+      '距離別に見る評価軸',
+    ],
+    beginner_guide: [
+      '最初に見る確認順',
+      '迷わないための基本',
+      '出馬表で使う見方',
     ],
     grade_race_preview: [
       '枠順と偏差値の確認順',
@@ -693,7 +728,7 @@ function fitDescriptionToSeo(description: string, data: Record<string, any>): st
 }
 
 function findLastBuyingPointHeading(content: string): number {
-  const pattern = /^##\s+(このコースの買い目ポイント|このレースの買い目ポイント|このニュースの確認ポイント)\s*$/gm;
+  const pattern = pointHeadingLineRegex();
   let match: RegExpExecArray | null;
   let lastIndex = -1;
   while ((match = pattern.exec(content)) !== null) {
@@ -825,7 +860,7 @@ function normalizeBuyingPointLines(sectionText: string, data: Record<string, any
 function normalizeBuyingPointSection(content: string, data: Record<string, any>): string {
   const requiredHeading = requiredPointHeadingForData(data);
   let result = content
-    .replace(/^(?:#{1,6}\s*){0,2}(?:このコースの買い目ポイント|このレースの買い目ポイント|このニュースの確認ポイント)\s*$/gm, requiredHeading)
+    .replace(pointHeadingNormalizeRegex(), requiredHeading)
     .replace(/^.*\[今日のAI予想・出馬表]\(\/races\/today\).*$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
@@ -845,7 +880,7 @@ function normalizeBuyingPointSection(content: string, data: Record<string, any>)
   const before = result.slice(0, headingIndex).trim();
   const sectionWithHeading = result.slice(headingIndex);
   const sectionBody = sectionWithHeading
-    .replace(/^##\s+(?:このコースの買い目ポイント|このレースの買い目ポイント|このニュースの確認ポイント)\s*$/m, '')
+    .replace(pointHeadingLineRegex('m'), '')
     .trim();
   const normalizedSection = normalizeBuyingPointLines(sectionBody, data);
 
@@ -1122,7 +1157,7 @@ STEP 1：禁止ワードスキャン
 記事全文から、導入テンプレート、AI手癖表現、誇張表現などの禁止ワードを抽出し、修正文言を作成する。
 STEP 2：構造チェック
 ・1文目に核心データと、読者が最初に確認すべき材料が含まれているか
-・見出しに数字と結論が含まれているか（最後の「このコースの買い目ポイント」「このレースの買い目ポイント」「このニュースの確認ポイント」は例外）
+・見出しに数字と結論が含まれているか（最後のテーマ別確認ポイント見出しは例外）
 ・「まとめ」や「総論」などの見出しが存在しないか
 ・frontmatter の search_intent と content_focus が記事の中心になっているか
 ・search_intent が "waku" でないのに枠順が複数H2へ広がっていないか、"training" でないのに追い切りが主題化されていないか

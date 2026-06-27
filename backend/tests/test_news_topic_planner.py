@@ -32,6 +32,21 @@ class NewsTopicPlannerTest(unittest.TestCase):
         self.assertEqual(planner.race_demand_date(sakitama).isoformat(), "2026-06-24")
         self.assertEqual(planner.race_demand_date(teio).isoformat(), "2026-07-01")
 
+    def test_local_grade_schedule_files_are_loaded(self) -> None:
+        schedule = planner.available_race_demands()
+        radio_nikkei = planner.find_race_demand("ラジオNIKKEI賞", schedule=schedule)
+        kanazawa_summer = planner.find_race_demand("金沢サマーカップ", schedule=schedule)
+
+        self.assertIsNotNone(radio_nikkei)
+        self.assertEqual(planner.race_demand_date(radio_nikkei).isoformat(), "2026-06-28")
+        self.assertEqual(radio_nikkei.venue, "福島")
+        self.assertEqual(radio_nikkei.distance, "芝1800m")
+
+        self.assertIsNotNone(kanazawa_summer)
+        self.assertEqual(planner.race_demand_date(kanazawa_summer).isoformat(), "2026-06-28")
+        self.assertEqual(kanazawa_summer.venue, "金沢")
+        self.assertEqual(kanazawa_summer.distance, "1700m")
+
     def test_query_builder_distributes_races_and_intents(self) -> None:
         state = planner.WorkflowState(
             run_id="test",

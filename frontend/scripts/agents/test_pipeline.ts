@@ -14,6 +14,7 @@ const MAX_ARTICLES_PER_RUN = Math.max(
   Number.parseInt(process.env.ARTICLE_PIPELINE_MAX_ARTICLES || '2', 10) || 2
 );
 const RESERVE_NEWS_SLOT = (process.env.ARTICLE_PIPELINE_RESERVE_NEWS_SLOT || 'true').toLowerCase() !== 'false';
+const RESERVE_EVERGREEN_SLOT = (process.env.ARTICLE_PIPELINE_RESERVE_EVERGREEN_SLOT || 'true').toLowerCase() !== 'false';
 
 /**
  * 既存記事のtarget_keywordを全て取得する（重複チェック用）
@@ -72,16 +73,42 @@ function isNewsOrder(order: any): boolean {
   return cluster === 'news_context' || cluster === 'race_update';
 }
 
-function prioritizeOrderFiles<T extends { file: string; order: any; priority: number }>(items: T[]): T[] {
-  if (!RESERVE_NEWS_SLOT || MAX_ARTICLES_PER_RUN < 2) return items;
+function isEvergreenOrder(order: any): boolean {
+  const cluster = String(order?.theme_cluster || order?.reference_data?.article_type || '');
+  const category = String(order?.category || order?.reference_data?.category || '');
+  if (cluster === 'news_context' || cluster === 'race_update' || cluster === 'grade_race_preview') return false;
+  if (['course_venue', 'jockey_profile', 'beginner_guide', 'guide'].includes(cluster)) return true;
+  return ['コース分析', '騎手分析', '入門ガイド', '馬券・統計'].includes(category);
+}
 
-  const newsIndex = items.findIndex(item => isNewsOrder(item.order));
-  if (newsIndex < 0 || newsIndex < MAX_ARTICLES_PER_RUN) return items;
+function reserveSlot<T extends { file: string; order: any; priority: number }>(
+  items: T[],
+  predicate: (order: any) => boolean,
+  targetIndex: number,
+  label: string,
+): T[] {
+  if (targetIndex < 0 || targetIndex >= MAX_ARTICLES_PER_RUN) return items;
+  if (items.slice(0, MAX_ARTICLES_PER_RUN).some(item => predicate(item.order))) return items;
+
+  const foundIndex = items.findIndex((item, index) => index >= MAX_ARTICLES_PER_RUN && predicate(item.order));
+  if (foundIndex < 0) return items;
 
   const result = [...items];
-  const [newsItem] = result.splice(newsIndex, 1);
-  result.splice(MAX_ARTICLES_PER_RUN - 1, 0, newsItem);
-  console.log(`[Pipeline] ニュース枠を予約: ${newsItem.file} を今回の処理枠に移動`);
+  const [reservedItem] = result.splice(foundIndex, 1);
+  result.splice(targetIndex, 0, reservedItem);
+  console.log(`[Pipeline] ${label}枠を予約: ${reservedItem.file} を今回の処理枠に移動`);
+  return result;
+}
+
+function prioritizeOrderFiles<T extends { file: string; order: any; priority: number }>(items: T[]): T[] {
+  let result = [...items];
+  if (RESERVE_NEWS_SLOT && MAX_ARTICLES_PER_RUN >= 2) {
+    const newsTargetIndex = MAX_ARTICLES_PER_RUN >= 3 ? MAX_ARTICLES_PER_RUN - 2 : MAX_ARTICLES_PER_RUN - 1;
+    result = reserveSlot(result, isNewsOrder, newsTargetIndex, 'ニュース');
+  }
+  if (RESERVE_EVERGREEN_SLOT && MAX_ARTICLES_PER_RUN >= 3) {
+    result = reserveSlot(result, isEvergreenOrder, MAX_ARTICLES_PER_RUN - 1, '常設コラム');
+  }
   return result;
 }
 

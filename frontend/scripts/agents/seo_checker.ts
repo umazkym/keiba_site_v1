@@ -122,6 +122,9 @@ const REQUIRED_POINT_HEADINGS = [
   'このコースの買い目ポイント',
   'このレースの買い目ポイント',
   'このニュースの確認ポイント',
+  'この競馬場の確認ポイント',
+  'この騎手を確認するポイント',
+  'このテーマの確認ポイント',
 ];
 
 const REQUIRED_POINT_HEADING_PATTERN = new RegExp(
@@ -362,7 +365,7 @@ export function checkSEO(markdownText: string): SEOCheckResult {
   }
 
   if (SEO_RULES.require_buying_point_heading && !REQUIRED_POINT_HEADING_PATTERN.test(content)) {
-    errors.push(`記事末尾のH2「このコースの買い目ポイント」「このレースの買い目ポイント」「このニュースの確認ポイント」のいずれかがありません。まとめ見出しではなく、判断の箇条書きで締めてください。`);
+    errors.push(`記事末尾にテーマに応じた確認ポイントH2がありません。まとめ見出しではなく、判断の箇条書きで締めてください。`);
   }
 
   // 5. データテーブルまたはリストの存在

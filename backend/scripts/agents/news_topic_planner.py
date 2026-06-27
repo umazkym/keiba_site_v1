@@ -45,6 +45,8 @@ WRITE_ORDERS_DIR = os.path.join(PROJECT_ROOT, "data", "write_orders")
 POSTED_HISTORY_PATH = os.path.join(PROJECT_ROOT, "data", "posted_history.json")
 NEWS_HISTORY_PATH = os.path.join(PROJECT_ROOT, "data", "news_topic_history.json")
 ARTICLES_DIR = os.path.join(PROJECT_ROOT, "frontend", "content", "articles")
+LOCAL_JRA_GRADE_SCHEDULE_PATH = os.path.join(PROJECT_ROOT, "中央競馬重賞一覧.txt")
+LOCAL_NAR_GRADE_SCHEDULE_PATH = os.path.join(PROJECT_ROOT, "地方競馬重賞一覧.txt")
 
 JST = timezone(timedelta(hours=9))
 
@@ -608,9 +610,13 @@ def normalize_grade_label(value: str) -> str:
         "JpnI": "JpnI",
         "JpnII": "JpnII",
         "JpnIII": "JpnIII",
+        "JpnⅠ": "JpnI",
+        "JpnⅡ": "JpnII",
+        "JpnⅢ": "JpnIII",
         "Jpn1": "JpnI",
         "Jpn2": "JpnII",
         "Jpn3": "JpnIII",
+        "地方重賞": "重賞",
     }
     return replacements.get(normalized, normalized)
 
@@ -724,6 +730,128 @@ def parse_nar_schedule_html(html_text: str, year: int) -> List[RaceDemand]:
     return entries
 
 
+def normalize_schedule_course_text(course_text: str) -> str:
+    text_value = re.sub(r"\s+", "", course_text or "")
+    text_value = text_value.replace(",", "")
+    text_value = text_value.replace("メートル", "m")
+    text_value = text_value.replace("ダ", "ダート", 1) if text_value.startswith("ダ") else text_value
+    return text_value
+
+
+def parse_local_jra_schedule_html(html_text: str, year: int) -> List[RaceDemand]:
+    soup = BeautifulSoup(html_text, "lxml")
+    entries: List[RaceDemand] = []
+    for row in soup.select("tbody tr"):
+        date_cell = row.select_one("td.date")
+        race_cell = row.select_one("td.race")
+        venue_cell = row.select_one("td.place")
+        condition_cell = row.select_one("td.age")
+        course_cell = row.select_one("td.course")
+        if not date_cell or not race_cell or not venue_cell or not course_cell:
+            continue
+
+        date_match = re.search(r"(\d{1,2})月(\d{1,2})日", date_cell.get_text(" ", strip=True))
+        if not date_match:
+            continue
+
+        grade_text = race_cell.select_one(".grade_icon")
+        grade = normalize_grade_label(grade_text.get_text(strip=True) if grade_text else "重賞")
+        if grade_text:
+            grade_text.extract()
+        race_name = race_cell.get_text(" ", strip=True)
+        if not race_name:
+            continue
+
+        course_label = normalize_schedule_course_text(course_cell.get_text("", strip=True))
+        entries.append(
+            RaceDemand(
+                name=race_name,
+                aliases=aliases_for_schedule_race(race_name),
+                month=int(date_match.group(1)),
+                day=int(date_match.group(2)),
+                grade=grade,
+                base_score=base_score_for_grade(grade),
+                year=year,
+                venue=venue_cell.get_text(" ", strip=True),
+                distance=course_label,
+                conditions=condition_cell.get_text(" ", strip=True) if condition_cell else "",
+                source_kind="jra_local",
+                source_url=f"https://www.jra.go.jp/datafile/seiseki/replay/{year}/jyusyo.html",
+            )
+        )
+    return entries
+
+
+def parse_local_nar_schedule_html(html_text: str, year: int) -> List[RaceDemand]:
+    soup = BeautifulSoup(html_text, "lxml")
+    entries: List[RaceDemand] = []
+    for item in soup.select("li"):
+        date_text = item.select_one("p.date")
+        name_text = item.select_one("p.name")
+        venue_text = item.select_one("p.area")
+        course_text = item.select_one("p.course")
+        if not date_text or not name_text or not venue_text or not course_text:
+            continue
+
+        date_match = re.search(r"(\d{1,2})/(\d{1,2})", date_text.get_text(" ", strip=True))
+        if not date_match:
+            continue
+
+        race_name = name_text.get_text(" ", strip=True)
+        venue = venue_text.get_text(" ", strip=True)
+        grade_node = item.select_one("p.icon.--grade, p.icon.--other")
+        grade = normalize_grade_label(grade_node.get_text(" ", strip=True) if grade_node else "地方重賞")
+        if grade.startswith("重賞"):
+            grade = "重賞"
+        if not race_name or not venue:
+            continue
+
+        entries.append(
+            RaceDemand(
+                name=race_name,
+                aliases=aliases_for_schedule_race(race_name),
+                month=int(date_match.group(1)),
+                day=int(date_match.group(2)),
+                grade=grade,
+                base_score=base_score_for_grade(grade),
+                year=year,
+                venue=venue,
+                distance=normalize_schedule_course_text(course_text.get_text(" ", strip=True)),
+                conditions="地方競馬重賞",
+                source_kind="nar",
+                source_url="https://www.keiba.go.jp/dirtrace/race_horse/grade_race/index.html",
+            )
+        )
+    return entries
+
+
+def detect_local_schedule_year(html_text: str, fallback_year: int) -> int:
+    years = [int(match) for match in re.findall(r"20\d{2}", html_text or "")]
+    if not years:
+        return fallback_year
+    year_counts: Dict[int, int] = {}
+    for year in years:
+        year_counts[year] = year_counts.get(year, 0) + 1
+    return sorted(year_counts.items(), key=lambda item: (-item[1], item[0]))[0][0]
+
+
+def load_local_race_schedule(now: datetime) -> List[RaceDemand]:
+    entries: List[RaceDemand] = []
+    for path_value, parser in (
+        (LOCAL_JRA_GRADE_SCHEDULE_PATH, parse_local_jra_schedule_html),
+        (LOCAL_NAR_GRADE_SCHEDULE_PATH, parse_local_nar_schedule_html),
+    ):
+        if not os.path.exists(path_value):
+            continue
+        try:
+            with open(path_value, "r", encoding="utf-8") as f:
+                html_text = f.read()
+            entries.extend(parser(html_text, detect_local_schedule_year(html_text, now.year)))
+        except Exception as exc:
+            print(f"[NewsPlanner] ローカル重賞日程の読み込みに失敗 ({os.path.basename(path_value)}): {exc}")
+    return entries
+
+
 def schedule_months_in_window(now: datetime) -> List[Tuple[int, int]]:
     before, after = focus_window()
     start = now.date() - timedelta(days=after + 2)
@@ -787,21 +915,26 @@ def available_race_demands(now: Optional[datetime] = None) -> Tuple[RaceDemand, 
         return cached
 
     merged: Dict[Tuple[str, int, int, int], RaceDemand] = {}
-    for entry in RACE_DEMAND_CALENDAR:
+
+    def merge_entry(entry: RaceDemand) -> None:
         entry_year = entry.year or base_now.year
         if entry.year is not None and entry.year not in {base_now.year - 1, base_now.year, base_now.year + 1}:
-            continue
-        key = (schedule_identity(entry.name), entry_year, entry.month, entry.day)
-        merged[key] = entry
-
-    for entry in fetch_remote_race_schedule(base_now):
+            return
         identity = schedule_identity(entry.name)
-        entry_year = entry.year or base_now.year
         for existing_key in list(merged):
             if existing_key[0] == identity and existing_key[1] == entry_year:
                 merged.pop(existing_key, None)
-        key = (identity, entry_year, entry.month, entry.day)
+        key = (schedule_identity(entry.name), entry_year, entry.month, entry.day)
         merged[key] = entry
+
+    for entry in RACE_DEMAND_CALENDAR:
+        merge_entry(entry)
+
+    for entry in fetch_remote_race_schedule(base_now):
+        merge_entry(entry)
+
+    for entry in load_local_race_schedule(base_now):
+        merge_entry(entry)
 
     schedule = tuple(merged.values())
     _RACE_SCHEDULE_CACHE[cache_key] = schedule

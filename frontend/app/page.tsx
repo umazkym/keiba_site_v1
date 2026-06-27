@@ -474,7 +474,7 @@ export default async function HomePage() {
                                         </span>
                                         <h3 className="line-clamp-2">{article.title}</h3>
                                         <div className="meta">
-                                            <span>{new Date(article.date).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}</span>
+                                            <span>{formatShortDate(article.date)}</span>
                                             <span>約{Math.max(1, Math.ceil(article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, '').length / 500))}分</span>
                                         </div>
                                     </div>

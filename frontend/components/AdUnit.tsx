@@ -183,22 +183,22 @@ export const AdUnit = ({
 
     return (
         <div
-            className={`ad-layout-wrapper ${collapseUnfilled ? 'ad-collapse-unfilled' : 'ad-preserve-space'} ${config.wrapperClass} ${className} ${shouldCollapse ? 'hidden m-0 p-0' : ''}`}
+            className={`ad-layout-wrapper relative ${collapseUnfilled ? 'ad-collapse-unfilled' : 'ad-preserve-space'} ${config.wrapperClass} ${className} ${shouldCollapse ? 'hidden m-0 p-0' : ''}`}
             data-ad-state={adLoaded ? 'filled' : adUnfilled ? 'unfilled' : 'loading'}
         >
             {/* Googleが広告DOMの祖先へmin-height:0を指定しても、通常フローのスペーサーで高さを維持する。 */}
             <div className={`ad-layout-spacer ${config.reserveClass}`} style={spacerStyle} aria-hidden="true" />
             <div
-                className={`ad-slot-shell absolute inset-0 w-full ${config.contentClass} ${adUnfilled ? 'invisible pointer-events-none' : ''}`}
+                className={`ad-slot-shell absolute inset-0 w-full ${config.contentClass} ${adUnfilled ? 'invisible pointer-events-none' : ''} ${!adLoaded ? 'pointer-events-none' : ''}`}
             >
                 <div ref={containerRef} className="ad-unit-container relative h-full w-full">
                     {/* 広告未ロード時（リフレッシュ中含む）はスケルトンを表示して視線を繋ぎ止める */}
                     {!adLoaded && !adUnfilled && (
-                        <div className="absolute inset-0 z-0 flex items-center justify-center rounded-xl bg-slate-50/80">
+                        <div className="absolute inset-0 z-0 flex items-center justify-center rounded-xl bg-slate-50/80 pointer-events-none">
                             <SkeletonLoader className="h-[80%] w-[90%] rounded-lg opacity-50" />
                         </div>
                     )}
-                    <div className={`ad-highlight relative z-10 w-full ${!adLoaded ? 'opacity-0' : 'opacity-100 transition-opacity duration-500'}`}>
+                    <div className={`ad-highlight relative z-10 w-full ${!adLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-500'}`}>
                         {/* 広告がロードされた場合のみラベルを表示 */}
                         {label && adLoaded && (
                             <div className="mb-1 select-none text-center text-[10px] tracking-wider text-gray-400">

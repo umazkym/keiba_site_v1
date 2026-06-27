@@ -25,7 +25,10 @@ WRITE_ORDERS_DIR = os.path.join(PROJECT_ROOT, "data", "write_orders")
 POSTED_HISTORY_PATH = os.path.join(PROJECT_ROOT, "data", "posted_history.json")
 EVERGREEN_HISTORY_PATH = os.path.join(PROJECT_ROOT, "data", "evergreen_topic_history.json")
 ARTICLES_DIR = os.path.join(PROJECT_ROOT, "frontend", "content", "articles")
+REFERENCE_DATA_SUMMARY_PATH = os.path.join(PROJECT_ROOT, "docs", "reference_data_summary.md")
 
+# ルート直下のtxtは移行期間中の補助スナップショット。将来削除されても、
+# docs/reference_data_summary.md から常設コラム候補を生成できる構成を維持する。
 JRA_JOCKEY_LEADING_PATH = os.path.join(PROJECT_ROOT, "中央競馬ジョッキーリーディング.txt")
 NAR_JOCKEY_LEADING_PATH = os.path.join(PROJECT_ROOT, "地方競馬ジョッキーリーディング.txt")
 JRA_COURSE_LIST_PATH = os.path.join(PROJECT_ROOT, "中央競馬ｺｰｽ一覧.txt")
@@ -197,6 +200,112 @@ def parse_positive_int(value: Optional[str], fallback: int) -> int:
         return fallback
 
 
+def clean_markdown_cell(value: str) -> str:
+    text = re.sub(r"<[^>]+>", "", value or "")
+    text = text.replace("**", "").replace("`", "")
+    text = re.sub(r"\s+", " ", text.replace("　", " ")).strip()
+    return text
+
+
+def split_markdown_row(line: str) -> List[str]:
+    raw = line.strip()
+    if not raw.startswith("|") or not raw.endswith("|"):
+        return []
+    return [clean_markdown_cell(cell) for cell in raw.strip("|").split("|")]
+
+
+def is_markdown_separator(cells: Sequence[str]) -> bool:
+    return bool(cells) and all(re.fullmatch(r":?-{2,}:?", cell.strip()) for cell in cells)
+
+
+def read_reference_summary() -> str:
+    if not os.path.exists(REFERENCE_DATA_SUMMARY_PATH):
+        return ""
+    with open(REFERENCE_DATA_SUMMARY_PATH, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def reference_source_name() -> str:
+    return os.path.join("docs", os.path.basename(REFERENCE_DATA_SUMMARY_PATH)).replace("\\", "/")
+
+
+def extract_reference_section(markdown: str, heading_prefix: str) -> str:
+    pattern = re.compile(
+        rf"^##\s+{re.escape(heading_prefix)}[\s\S]*?(?=^---\s*$\s*^##\s+|\Z)",
+        re.MULTILINE,
+    )
+    match = pattern.search(markdown)
+    return match.group(0) if match else ""
+
+
+def extract_markdown_tables(section: str) -> List[Tuple[List[str], List[List[str]]]]:
+    tables: List[Tuple[List[str], List[List[str]]]] = []
+    current: List[str] = []
+    for line in section.splitlines():
+        if line.strip().startswith("|") and line.strip().endswith("|"):
+            current.append(line)
+            continue
+        if current:
+            table = parse_markdown_table(current)
+            if table:
+                tables.append(table)
+            current = []
+    if current:
+        table = parse_markdown_table(current)
+        if table:
+            tables.append(table)
+    return tables
+
+
+def parse_markdown_table(lines: Sequence[str]) -> Optional[Tuple[List[str], List[List[str]]]]:
+    rows = [split_markdown_row(line) for line in lines]
+    rows = [row for row in rows if row]
+    if len(rows) < 2:
+        return None
+    header = rows[0]
+    body = rows[1:]
+    if body and is_markdown_separator(body[0]):
+        body = body[1:]
+    body = [row for row in body if len(row) == len(header) and not is_markdown_separator(row)]
+    if not body:
+        return None
+    return header, body
+
+
+def reference_table_by_heading(heading_prefix: str) -> Optional[Tuple[List[str], List[List[str]]]]:
+    section = extract_reference_section(read_reference_summary(), heading_prefix)
+    tables = extract_markdown_tables(section)
+    return tables[0] if tables else None
+
+
+def value_from_row(header: Sequence[str], row: Sequence[str], name: str) -> str:
+    for index, header_name in enumerate(header):
+        if clean_markdown_cell(header_name) == name and index < len(row):
+            return clean_markdown_cell(row[index])
+    return ""
+
+
+def parse_distance_entries(raw: str) -> List[str]:
+    values: List[str] = []
+    for item in re.split(r"[,、]", raw or ""):
+        cleaned = clean_markdown_cell(item)
+        cleaned = re.sub(r"\s+", "", cleaned)
+        match = re.search(r"(\d{3,4}m)(?:\(([^)]+)\)|（([^）]+)）)?", cleaned)
+        if not match:
+            continue
+        label = match.group(1)
+        note = match.group(2) or match.group(3) or ""
+        if note and "芝あり" not in note:
+            label += f"（{note}）"
+        values.append(label)
+    return values
+
+
+def merge_source_names(*names: str) -> str:
+    values = [name for name in dict.fromkeys(name for name in names if name)]
+    return "+".join(values)
+
+
 def load_json_array(path_value: str) -> List[Dict[str, Any]]:
     if not os.path.exists(path_value):
         return []
@@ -286,9 +395,203 @@ def topic_is_known(target_keyword: str, extra_key: str, known_keys: Set[str]) ->
     return normalized_target in known_keys or (normalized_extra and normalized_extra in known_keys)
 
 
+def parse_reference_jra_jockey_topics() -> List[JockeyTopic]:
+    table = reference_table_by_heading("1.")
+    if not table:
+        return []
+    header, rows = table
+    topics: List[JockeyTopic] = []
+    source = reference_source_name()
+    for row in rows:
+        rank_raw = value_from_row(header, row, "順位")
+        if not rank_raw.isdigit():
+            continue
+        rank = int(rank_raw)
+        name = normalize_name(value_from_row(header, row, "騎手名"))
+        metric = {
+            "順位": f"{rank}位",
+            "騎手": name,
+            "所属": "JRA",
+            "騎乗回数": value_from_row(header, row, "騎乗回数"),
+            "1着": value_from_row(header, row, "1着"),
+            "2着": value_from_row(header, row, "2着"),
+            "3着": value_from_row(header, row, "3着"),
+            "勝率": value_from_row(header, row, "勝率"),
+            "連対率": value_from_row(header, row, "連対率"),
+            "3着内率": value_from_row(header, row, "3着内率"),
+        }
+        topics.append(JockeyTopic(name=name, circuit="中央", rank=rank, source_file=source, rows=(metric,)))
+    return topics
+
+
+def parse_reference_nar_jockey_topics() -> List[JockeyTopic]:
+    table = reference_table_by_heading("2.")
+    if not table:
+        return []
+    header, rows = table
+    topics: List[JockeyTopic] = []
+    source = reference_source_name()
+    for row in rows:
+        rank_raw = value_from_row(header, row, "順位")
+        if not rank_raw.isdigit():
+            continue
+        rank = int(rank_raw)
+        name = normalize_name(value_from_row(header, row, "騎手名"))
+        metric = {
+            "順位": f"{rank}位",
+            "騎手": name,
+            "所属": value_from_row(header, row, "所属"),
+            "騎乗回数": value_from_row(header, row, "騎乗回数"),
+            "1着": value_from_row(header, row, "1着"),
+            "2着": value_from_row(header, row, "2着"),
+            "3着": value_from_row(header, row, "3着"),
+            "勝率": value_from_row(header, row, "勝率"),
+            "連対率": value_from_row(header, row, "連対率"),
+            "3着内率": value_from_row(header, row, "3着内率"),
+        }
+        topics.append(JockeyTopic(name=name, circuit="地方", rank=rank, source_file=source, rows=(metric,)))
+    return topics
+
+
+def merge_jockey_topics(reference_topics: Sequence[JockeyTopic], file_topics: Sequence[JockeyTopic]) -> List[JockeyTopic]:
+    merged: Dict[str, JockeyTopic] = {}
+    for topic in reference_topics:
+        merged[normalize_name(topic.name)] = topic
+    for topic in file_topics:
+        key = normalize_name(topic.name)
+        if key not in merged:
+            merged[key] = topic
+    return sorted(merged.values(), key=lambda item: item.rank)
+
+
+def parse_reference_jra_course_topics() -> List[CourseVenueTopic]:
+    table = reference_table_by_heading("5.")
+    if not table:
+        return []
+    header, rows = table
+    source = reference_source_name()
+    topics: List[CourseVenueTopic] = []
+    for row in rows:
+        venue = value_from_row(header, row, "競馬場")
+        feature = value_from_row(header, row, "特徴・確認ポイント")
+        course_rows: List[Dict[str, str]] = []
+        for distance in parse_distance_entries(value_from_row(header, row, "芝コース")):
+            course_rows.append(
+                {
+                    "競馬場": venue,
+                    "区分": "中央",
+                    "回り": "",
+                    "コース": f"芝{distance}",
+                    "確認ポイント": feature or f"{venue}芝{distance}は、スタート位置と直線の形を確認する。",
+                    "リファレンス要点": feature,
+                }
+            )
+        for distance in parse_distance_entries(value_from_row(header, row, "ダートコース")):
+            course_rows.append(
+                {
+                    "競馬場": venue,
+                    "区分": "中央",
+                    "回り": "",
+                    "コース": f"ダート{distance}",
+                    "確認ポイント": feature or f"{venue}ダート{distance}は、スタート位置とコーナーまでの距離を確認する。",
+                    "リファレンス要点": feature,
+                }
+            )
+        if course_rows:
+            topics.append(CourseVenueTopic(venue=venue, circuit="中央", source_file=source, rows=tuple(course_rows)))
+    return sorted(topics, key=lambda item: COURSE_VENUE_PRIORITY.index(item.venue) if item.venue in COURSE_VENUE_PRIORITY else 999)
+
+
+def parse_reference_nar_course_topics() -> List[CourseVenueTopic]:
+    table = reference_table_by_heading("6.")
+    if not table:
+        return []
+    header, rows = table
+    source = reference_source_name()
+    topics: List[CourseVenueTopic] = []
+    for row in rows:
+        venue = value_from_row(header, row, "競馬場")
+        turn = value_from_row(header, row, "回り")
+        feature = value_from_row(header, row, "特徴・コース解説")
+        course_rows: List[Dict[str, str]] = []
+        for distance in parse_distance_entries(value_from_row(header, row, "主要距離（ダート）")):
+            course = nar_course_label(venue, distance)
+            course_rows.append(
+                {
+                    "競馬場": venue,
+                    "区分": "地方",
+                    "回り": turn,
+                    "コース": course,
+                    "確認ポイント": feature or f"{venue}{course}は、回り方向と直線までの位置取りを確認する。",
+                    "リファレンス要点": feature,
+                }
+            )
+        if venue == "盛岡" and not any(row_data["コース"].startswith("芝") for row_data in course_rows):
+            course_rows.append(
+                {
+                    "競馬場": venue,
+                    "区分": "地方",
+                    "回り": turn,
+                    "コース": "芝1600m",
+                    "確認ポイント": feature or "盛岡は地方では珍しい芝コースを持つため、芝適性も確認する。",
+                    "リファレンス要点": feature,
+                }
+            )
+        if course_rows:
+            topics.append(CourseVenueTopic(venue=venue, circuit="地方", source_file=source, rows=tuple(course_rows)))
+    return sorted(topics, key=lambda item: COURSE_VENUE_PRIORITY.index(item.venue) if item.venue in COURSE_VENUE_PRIORITY else 999)
+
+
+def compact_course_key(course: str) -> str:
+    return re.sub(r"（[^）]+）|\([^)]*\)|\s+", "", course or "")
+
+
+def merge_course_topics(file_topics: Sequence[CourseVenueTopic], reference_topics: Sequence[CourseVenueTopic]) -> List[CourseVenueTopic]:
+    reference_by_venue = {topic.venue: topic for topic in reference_topics}
+    file_by_venue = {topic.venue: topic for topic in file_topics}
+    merged: List[CourseVenueTopic] = []
+    for venue in COURSE_VENUE_PRIORITY + sorted((set(reference_by_venue) | set(file_by_venue)) - set(COURSE_VENUE_PRIORITY)):
+        file_topic = file_by_venue.get(venue)
+        reference_topic = reference_by_venue.get(venue)
+        if not file_topic and not reference_topic:
+            continue
+        if not file_topic:
+            merged.append(reference_topic)  # type: ignore[arg-type]
+            continue
+        if not reference_topic:
+            merged.append(file_topic)
+            continue
+
+        reference_rows_by_key = {compact_course_key(row.get("コース", "")): row for row in reference_topic.rows}
+        rows: List[Dict[str, str]] = []
+        seen: Set[str] = set()
+        for row in file_topic.rows:
+            course = row.get("コース", "")
+            key = compact_course_key(course)
+            reference_row = reference_rows_by_key.get(key)
+            merged_row = dict(row)
+            if reference_row:
+                feature = reference_row.get("リファレンス要点") or reference_row.get("確認ポイント") or ""
+                if feature:
+                    merged_row["リファレンス要点"] = feature
+                    merged_row["確認ポイント"] = feature
+            rows.append(merged_row)
+            seen.add(key)
+
+        for reference_row in reference_topic.rows:
+            key = compact_course_key(reference_row.get("コース", ""))
+            if key and key not in seen:
+                rows.append(dict(reference_row))
+                seen.add(key)
+
+        source = merge_source_names(file_topic.source_file, reference_topic.source_file)
+        merged.append(CourseVenueTopic(venue=venue, circuit=file_topic.circuit, source_file=source, rows=tuple(rows)))
+    return merged
+
+
 def parse_jra_course_topics() -> List[CourseVenueTopic]:
     if not os.path.exists(JRA_COURSE_LIST_PATH):
-        return []
+        return parse_reference_jra_course_topics()
     with open(JRA_COURSE_LIST_PATH, "r", encoding="utf-8") as f:
         soup = BeautifulSoup(f.read(), "lxml")
 
@@ -333,12 +636,13 @@ def parse_jra_course_topics() -> List[CourseVenueTopic]:
         if row not in topics[current_venue]:
             topics[current_venue].append(row)
 
-    result = [
+    file_topics = [
         CourseVenueTopic(venue=venue, circuit="中央", source_file=os.path.basename(JRA_COURSE_LIST_PATH), rows=tuple(rows))
         for venue, rows in topics.items()
         if rows
     ]
-    return sorted(result, key=lambda item: COURSE_VENUE_PRIORITY.index(item.venue) if item.venue in COURSE_VENUE_PRIORITY else 999)
+    file_topics = sorted(file_topics, key=lambda item: COURSE_VENUE_PRIORITY.index(item.venue) if item.venue in COURSE_VENUE_PRIORITY else 999)
+    return merge_course_topics(file_topics, parse_reference_jra_course_topics())
 
 
 def nar_course_label(venue: str, distance: str) -> str:
@@ -352,7 +656,7 @@ def nar_course_label(venue: str, distance: str) -> str:
 
 def parse_nar_course_topics() -> List[CourseVenueTopic]:
     if not os.path.exists(NAR_COURSE_LIST_PATH):
-        return []
+        return parse_reference_nar_course_topics()
     with open(NAR_COURSE_LIST_PATH, "r", encoding="utf-8") as f:
         soup = BeautifulSoup(f.read(), "lxml")
 
@@ -377,17 +681,18 @@ def parse_nar_course_topics() -> List[CourseVenueTopic]:
         if row_data not in grouped[venue]:
             grouped[venue].append(row_data)
 
-    result = [
+    file_topics = [
         CourseVenueTopic(venue=venue, circuit="地方", source_file=os.path.basename(NAR_COURSE_LIST_PATH), rows=tuple(rows))
         for venue, rows in grouped.items()
         if rows
     ]
-    return sorted(result, key=lambda item: COURSE_VENUE_PRIORITY.index(item.venue) if item.venue in COURSE_VENUE_PRIORITY else 999)
+    file_topics = sorted(file_topics, key=lambda item: COURSE_VENUE_PRIORITY.index(item.venue) if item.venue in COURSE_VENUE_PRIORITY else 999)
+    return merge_course_topics(file_topics, parse_reference_nar_course_topics())
 
 
 def parse_jra_jockey_topics() -> List[JockeyTopic]:
     if not os.path.exists(JRA_JOCKEY_LEADING_PATH):
-        return []
+        return parse_reference_jra_jockey_topics()
     with open(JRA_JOCKEY_LEADING_PATH, "r", encoding="utf-8") as f:
         soup = BeautifulSoup(f.read(), "lxml")
 
@@ -420,12 +725,12 @@ def parse_jra_jockey_topics() -> List[JockeyTopic]:
                 rows=(metric,),
             )
         )
-    return topics
+    return merge_jockey_topics(parse_reference_jra_jockey_topics(), topics)
 
 
 def parse_nar_jockey_topics() -> List[JockeyTopic]:
     if not os.path.exists(NAR_JOCKEY_LEADING_PATH):
-        return []
+        return parse_reference_nar_jockey_topics()
     with open(NAR_JOCKEY_LEADING_PATH, "r", encoding="utf-8") as f:
         soup = BeautifulSoup(f.read(), "lxml")
 
@@ -462,7 +767,7 @@ def parse_nar_jockey_topics() -> List[JockeyTopic]:
                 rows=(metric,),
             )
         )
-    return topics
+    return merge_jockey_topics(parse_reference_nar_jockey_topics(), topics)
 
 
 def beginner_topics() -> List[BeginnerTopic]:
@@ -947,7 +1252,7 @@ def candidates_for_kind(kind: str, known_keys: Set[str]) -> List[GeneratedOrder]
         topics = parse_jra_course_topics() + parse_nar_course_topics()
         orders = [build_course_order(topic) for topic in topics]
     elif kind == "jockey":
-        topics = parse_jra_jockey_topics()[:30] + parse_nar_jockey_topics()[:30]
+        topics = parse_jra_jockey_topics() + parse_nar_jockey_topics()
         orders = [build_jockey_order(topic) for topic in topics]
     elif kind == "beginner":
         orders = [build_beginner_order(topic) for topic in beginner_topics()]

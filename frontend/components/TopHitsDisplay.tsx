@@ -26,7 +26,7 @@ const getDateRangeLabel = (hits: TopPayoutHit[]): string => {
 };
 
 const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: number, compact?: boolean }) => {
-    const raceDate = new Date(hit.race_date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+    const raceDate = formatShortRaceDate(hit.race_date);
     const rankTone = rank === 1
         ? 'border-amber-200 bg-amber-50 text-amber-700'
         : rank === 2

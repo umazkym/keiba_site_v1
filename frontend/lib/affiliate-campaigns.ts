@@ -1,5 +1,3 @@
-import { RAKUTEN_KEIBA_AFFILIATE_URL } from '@/lib/rakuten-keiba-affiliate';
-
 export type AffiliateContext =
     | 'race_after_prediction'
     | 'race_after_premium_data'
@@ -56,6 +54,7 @@ export type AffiliateFilter = {
 };
 
 const DEFAULT_VOTING_NOTICE = '※馬券の購入は20歳以上の方のみ対象です。';
+const RAKUTEN_KEIBA_AFFILIATE_URL = 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641';
 
 export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
     {

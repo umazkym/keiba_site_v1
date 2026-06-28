@@ -42,14 +42,12 @@ const HeaderAffiliateLink = () => {
             onClick={handleClick}
             data-affiliate-context={HEADER_AFFILIATE_EVENT.context}
             data-affiliate-campaign={HEADER_AFFILIATE_EVENT.campaign_id}
-            className="inline-flex h-8 items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 text-xs font-bold text-emerald-800 transition-colors duration-200 hover:border-emerald-300 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 sm:h-9 sm:gap-1.5 sm:px-3"
+            className="inline-flex h-8 items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-1.5 text-[10px] font-bold text-rose-700 transition-colors duration-200 hover:border-rose-300 hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 sm:h-9 sm:gap-1.5 sm:px-3 sm:text-xs"
             aria-label="PR 楽天競馬で地方競馬の投票案内を見る"
             title="PR 楽天競馬で地方競馬の投票案内を見る。馬券の購入は20歳以上の方のみ対象です。"
         >
-            <span className="rounded bg-emerald-700 px-1 py-0.5 text-[10px] leading-none text-white">PR</span>
-            <span className="hidden xl:inline">楽天競馬の投票案内</span>
-            <span className="hidden sm:inline xl:hidden">楽天競馬</span>
-            <span className="sm:hidden">楽天競馬</span>
+            <span className="rounded bg-rose-600 px-1 py-0.5 text-[10px] leading-none text-white">PR</span>
+            <span>地方競馬の投票は楽天競馬で</span>
             <span aria-hidden="true" className="text-[13px] leading-none">→</span>
         </a>
     );

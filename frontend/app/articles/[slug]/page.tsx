@@ -8,7 +8,6 @@ import { RelatedArticles } from '@/components/RelatedArticles';
 import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
 import { enhanceArticleHtml } from '@/lib/article-ux';
-import { AffiliateSlot } from '@/components/AffiliateSlot';
 import { ArticleEngagementTracker } from '@/components/ArticleEngagementTracker';
 import { ArticleThemeNavigator } from '@/components/EntityArticleDocument';
 import { getArticleArchiveGroupForArticle } from '@/lib/article-archives';
@@ -340,8 +339,6 @@ export default async function ArticlePage({ params }: Props) {
                 </Link>
               </div>
             </div>
-
-            <AffiliateSlot context="article_footer" selectionKey={params.slug} className="mb-5 sm:mb-8" />
 
             {/* ===== 関連記事 ===== */}
             <div className="pb-6 sm:pb-10">

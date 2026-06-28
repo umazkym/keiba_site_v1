@@ -3,7 +3,6 @@ import type { Article, ArticleMeta } from "@/lib/articles";
 import { ArticleSchema } from "@/components/StructuredData";
 import { enhanceArticleHtml } from "@/lib/article-ux";
 import { AdUnit } from "@/components/AdUnit";
-import { AffiliateSlot } from "@/components/AffiliateSlot";
 import { MultiplexAd } from "@/components/MultiplexAd";
 
 type EntityArticleDocumentProps = {
@@ -298,8 +297,6 @@ export function EntityArticleDocument({
         )}
 
         <div className="pb-6 sm:pb-10">{renderArticleBody()}</div>
-
-        <AffiliateSlot context="article_footer" selectionKey={article.slug} className="mb-5 sm:mb-8" />
 
         <div className="pb-5 sm:pb-8">
           <AdUnit slot="1489598374" analyticsPlacement="entity_article_after_body" {...stableArticleAdProps} />

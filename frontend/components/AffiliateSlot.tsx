@@ -36,7 +36,7 @@ const providerLabels: Record<AffiliateProvider, string> = {
 };
 
 const providerClassNames: Record<AffiliateProvider, string> = {
-    rakuten_keiba: 'border-rose-600 bg-rose-600 text-white hover:bg-rose-700 hover:border-rose-700 shadow-sm',
+    rakuten_keiba: 'border-rose-200 bg-white text-rose-700 hover:border-rose-300 hover:bg-rose-50',
     spat4: 'border-sky-600 bg-sky-600 text-white hover:bg-sky-700 hover:border-sky-700 shadow-sm',
     oddspark: 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700 hover:border-amber-700 shadow-sm',
     rakuten: 'border-rose-600 bg-rose-600 text-white hover:bg-rose-700 hover:border-rose-700 shadow-sm',
@@ -173,7 +173,7 @@ export const AffiliateSlot = ({
     const Icon = campaign.type === 'voting' ? Ticket : ShoppingBag;
     const isCompact = variant === 'compact';
     const iconWrapperClassName = campaign.type === 'voting'
-        ? 'bg-rose-50 text-rose-700'
+        ? 'border border-rose-100 bg-white text-rose-600'
         : 'bg-emerald-50 text-emerald-700';
     const productPreview = campaign.type === 'product'
         ? links.map((link) => resolvedLinks[link.id]).find((link) => link?.imageUrl || link?.itemPrice || link?.itemName)
@@ -185,11 +185,18 @@ export const AffiliateSlot = ({
         ? productPreview.imageUrl
         : null;
     const fallbackVisualLabel = campaign.fallbackVisualLabel || '競馬グッズ';
+    const sectionClassName = isCompact
+        ? campaign.type === 'voting'
+            ? 'my-1.5 sm:my-2 rounded-lg border border-rose-100 bg-rose-50/30 p-2 sm:p-2.5'
+            : 'my-1.5 sm:my-2 rounded-xl border border-rose-100 bg-rose-50/35 p-2 shadow-sm sm:p-2.5'
+        : campaign.type === 'voting'
+            ? 'my-1.5 sm:my-3 rounded-lg border border-rose-100 bg-rose-50/25 p-2.5 sm:p-3'
+            : 'my-1.5 sm:my-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-3';
 
     return (
         <section
             ref={slotRef}
-            className={`${isCompact ? 'my-1.5 sm:my-2 rounded-xl border border-rose-100 bg-rose-50/35 p-2 shadow-sm sm:p-2.5' : 'my-1.5 sm:my-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-3'} ${className}`}
+            className={`${sectionClassName} ${className}`}
             data-affiliate-context={context}
             data-affiliate-campaign={campaign.id}
             data-affiliate-variant={variant}
@@ -231,8 +238,8 @@ export const AffiliateSlot = ({
 
                 <div className="min-w-0 flex-1">
                     <div className={`${isCompact ? 'mb-1' : 'mb-1.5'} flex flex-wrap items-center gap-1.5`}>
-                        <span className="rounded border border-rose-100 bg-white px-1.5 py-0.5 text-[10px] font-bold text-rose-700 sm:text-[11px]">
-                            PR / スポンサー
+                        <span className="rounded border border-rose-100 bg-white px-1.5 py-0.5 text-[10px] font-bold text-rose-600 sm:text-[11px]">
+                            PR
                         </span>
                         {productPriceLabel && (
                             <span className="rounded border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
@@ -240,7 +247,7 @@ export const AffiliateSlot = ({
                             </span>
                         )}
                     </div>
-                    <h3 className={`${isCompact ? 'text-xs sm:text-[13px]' : 'text-sm sm:text-sm'} font-bold leading-tight text-slate-800`}>
+                    <h3 className={`${isCompact ? 'text-xs sm:text-[13px]' : 'text-sm sm:text-sm'} font-bold leading-tight text-slate-700`}>
                         {campaign.title}
                     </h3>
                     {campaign.description && (

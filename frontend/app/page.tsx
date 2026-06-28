@@ -24,7 +24,6 @@ import {
 
 import DisclaimerAlert from '@/components/DisclaimerAlert';
 import { AdUnit } from '@/components/AdUnit';
-import { AffiliateSlot } from '@/components/AffiliateSlot';
 import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
@@ -476,15 +475,6 @@ export default async function HomePage() {
                             )}
                         </div>
                     </section>
-
-                    {!shouldSuppressAdsInDevelopment && (
-                        <AffiliateSlot
-                            context="home_goods"
-                            selectionKey={todayStr}
-                            variant="compact"
-                            className="!my-0"
-                        />
-                    )}
 
                     {/* よくある質問 */}
                     <section className="faq card rounded-xl">

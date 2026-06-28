@@ -1,5 +1,6 @@
 import { RaceDayPrediction, SpecialPick, MatchupData, TopPayoutHit, WeeklyGradeRace, PredictionAccuracySummary } from "./types";
 import { getApiBaseUrl } from "./api-base";
+import { getUpcomingGradeRaceScheduleFallbacks, mergeWeeklyGradeRacesWithSchedule } from "./grade-race-schedule";
 
 const API_BASE_URL = getApiBaseUrl();
 const RECENT_RACE_REVALIDATE_SECONDS = 300;
@@ -194,17 +195,24 @@ export async function getAllRaceUrls(): Promise<{ race_date: string; venue_name:
     }
 }
 
-export async function getWeeklyGradeRaces(): Promise<WeeklyGradeRace[]> {
+export async function getWeeklyGradeRaces(
+    options: { includeScheduleFallback?: boolean } = {},
+): Promise<WeeklyGradeRace[]> {
+    const includeScheduleFallback = options.includeScheduleFallback ?? true;
     try {
         const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/weekly-grade-races`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.warn(`Could not fetch weekly grade races. Status: ${res.status}`);
-            return [];
+            return includeScheduleFallback ? getUpcomingGradeRaceScheduleFallbacks() : [];
         }
-        return res.json();
+        const data = await res.json();
+        const apiRaces = Array.isArray(data) ? data : [];
+        return includeScheduleFallback
+            ? mergeWeeklyGradeRacesWithSchedule(apiRaces)
+            : apiRaces;
     } catch (error: any) {
         console.error("An error occurred in getWeeklyGradeRaces:", error.message);
-        return [];
+        return includeScheduleFallback ? getUpcomingGradeRaceScheduleFallbacks() : [];
     }
 }
 

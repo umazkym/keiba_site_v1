@@ -71,6 +71,7 @@ const BANNED_REPLACEMENTS: Record<string, string> = {
   '断言': '整理',
   '論証': '説明',
   '解明': '整理',
+  '無条件': '条件を見ずに',
   '✅': '',
   '❌': '',
   'と思っていませんか': '',
@@ -153,6 +154,8 @@ function replaceLiteral(input: string, search: string, replacement: string): str
 
 function applyContextualToneReplacements(input: string): string {
   return input
+    .replace(/無条件で/g, '条件を確認せずに')
+    .replace(/無条件に/g, '条件を確認せずに')
     .replace(/圧倒的な/g, '高い')
     .replace(/圧倒的に/g, '大きく')
     .replace(/圧倒的です/g, '高いです')

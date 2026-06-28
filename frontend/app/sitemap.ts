@@ -110,7 +110,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // 古いクエリ付き詳細URLはミドルウェアで301され、サイトマップには載せない。
     const [allRaces, weeklyGradeRaces] = await Promise.all([
         getAllRaceUrls(),
-        getWeeklyGradeRaces(),
+        getWeeklyGradeRaces({ includeScheduleFallback: false }),
     ]);
 
     const sitemapRaceRows = [

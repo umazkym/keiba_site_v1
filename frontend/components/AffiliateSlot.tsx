@@ -250,11 +250,11 @@ export const AffiliateSlot = ({
                     <h3 className={`${isCompact ? 'text-xs sm:text-[13px]' : 'text-sm sm:text-sm'} font-bold leading-tight text-slate-700`}>
                         {campaign.title}
                     </h3>
-                    {campaign.description && (
+                    {/* {campaign.description && (
                         <p className={`${isCompact ? 'mt-0.5 text-[10px] leading-4 sm:text-[11px]' : 'mt-0.5 sm:mt-1 text-[11px] leading-[1.55] sm:leading-5 sm:text-xs'} text-slate-500`}>
                             {campaign.description}
                         </p>
-                    )}
+                    )} */}
 
                     <div className={`${isCompact ? 'mt-1.5' : 'mt-1.5 sm:mt-2'} flex flex-col gap-1.5 sm:gap-2`}>
                         <div className={`grid gap-1.5 sm:gap-2 ${mainLinks.length > 1 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ExternalLink, ShoppingBag, Ticket } from 'lucide-react';
 import {
     type AffiliateContext,
@@ -86,6 +86,9 @@ export const AffiliateSlot = ({
     const [resolvedLinks, setResolvedLinks] = useState<Record<string, ResolvedAffiliateLink>>({});
     const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(() => new Set());
     const slotRef = useRef<HTMLElement | null>(null);
+    const setSlotRef = useCallback((node: HTMLElement | null) => {
+        slotRef.current = node;
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -192,16 +195,43 @@ export const AffiliateSlot = ({
         : campaign.type === 'voting'
             ? 'my-1.5 sm:my-3 rounded-lg border border-rose-100 bg-rose-50/25 p-2.5 sm:p-3'
             : 'my-1.5 sm:my-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-3';
+    const wholeSlotLink = campaign.type === 'voting' && mainLinks.length === 1 && subLinks.length === 0
+        ? mainLinks[0]
+        : null;
+    const wholeSlotHref = wholeSlotLink
+        ? resolvedLinks[wholeSlotLink.id]?.affiliateUrl || wholeSlotLink.url
+        : '';
+    const trackAffiliateClick = (link: typeof links[number]) => {
+        sendAffiliateClickEvent({
+            campaign_id: campaign.id,
+            link_id: link.id,
+            provider: link.provider,
+            context,
+            campaign_type: campaign.type,
+            race_type: raceType,
+            venue_name: venueName,
+        });
+    };
 
     return (
         <section
-            ref={slotRef}
-            className={`${sectionClassName} ${className}`}
+            ref={setSlotRef}
+            className={`${sectionClassName} ${wholeSlotLink ? 'relative cursor-pointer transition-colors hover:border-rose-200 hover:bg-rose-50/50 focus-within:ring-2 focus-within:ring-rose-500/20' : ''} ${className}`}
             data-affiliate-context={context}
             data-affiliate-campaign={campaign.id}
             data-affiliate-variant={variant}
             aria-label={`${campaign.title} 広告リンク`}
         >
+            {wholeSlotLink && (
+                <a
+                    href={wholeSlotHref}
+                    target="_blank"
+                    rel="sponsored nofollow noopener noreferrer"
+                    onClick={() => trackAffiliateClick(wholeSlotLink)}
+                    className="absolute inset-0 z-10 rounded-lg focus:outline-none"
+                    aria-label={`${wholeSlotLink.label || providerLabels[wholeSlotLink.provider]}を開く`}
+                />
+            )}
             <div className={isCompact ? 'flex gap-2' : 'flex gap-2.5 sm:gap-3'}>
                 {campaign.type === 'product' ? (
                     <div className={`${isCompact ? 'h-16 w-16 sm:h-20 sm:w-20' : 'h-20 w-20 sm:h-24 sm:w-24'} flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-white`}>
@@ -257,29 +287,28 @@ export const AffiliateSlot = ({
                     )} */}
 
                     <div className={`${isCompact ? 'mt-1.5' : 'mt-1.5 sm:mt-2'} flex flex-col gap-1.5 sm:gap-2`}>
-                        <div className={`grid gap-1.5 sm:gap-2 ${mainLinks.length > 1 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
-                            {mainLinks.map((link) => (
-                                <a
-                                    key={link.id}
-                                    href={resolvedLinks[link.id]?.affiliateUrl || link.url}
-                                    target="_blank"
-                                    rel="sponsored nofollow noopener noreferrer"
-                                    onClick={() => sendAffiliateClickEvent({
-                                        campaign_id: campaign.id,
-                                        link_id: link.id,
-                                        provider: link.provider,
-                                        context,
-                                        campaign_type: campaign.type,
-                                        race_type: raceType,
-                                        venue_name: venueName,
-                                    })}
-                                    className={`inline-flex items-center justify-between gap-2 rounded-lg border px-3 py-1.5 sm:py-2 text-xs font-bold transition-colors ${isCompact ? 'min-h-[32px] sm:min-h-[36px]' : 'min-h-[34px] sm:min-h-[40px]'} ${providerClassNames[link.provider]}`}
-                                >
-                                    <span className="min-w-0 truncate">{link.label || providerLabels[link.provider]}</span>
-                                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                                </a>
-                            ))}
-                        </div>
+                        {wholeSlotLink ? (
+                            <div className={`inline-flex w-full items-center justify-between gap-2 rounded-lg border border-rose-100 bg-white/80 px-3 py-1.5 text-xs font-bold text-rose-700 ${isCompact ? 'min-h-[32px] sm:min-h-[36px]' : 'min-h-[34px] sm:min-h-[40px]'}`}>
+                                <span className="min-w-0 truncate">{wholeSlotLink.label || providerLabels[wholeSlotLink.provider]}</span>
+                                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                            </div>
+                        ) : (
+                            <div className={`grid gap-1.5 sm:gap-2 ${mainLinks.length > 1 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
+                                {mainLinks.map((link) => (
+                                    <a
+                                        key={link.id}
+                                        href={resolvedLinks[link.id]?.affiliateUrl || link.url}
+                                        target="_blank"
+                                        rel="sponsored nofollow noopener noreferrer"
+                                        onClick={() => trackAffiliateClick(link)}
+                                        className={`inline-flex items-center justify-between gap-2 rounded-lg border px-3 py-1.5 sm:py-2 text-xs font-bold transition-colors ${isCompact ? 'min-h-[32px] sm:min-h-[36px]' : 'min-h-[34px] sm:min-h-[40px]'} ${providerClassNames[link.provider]}`}
+                                    >
+                                        <span className="min-w-0 truncate">{link.label || providerLabels[link.provider]}</span>
+                                        <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                    </a>
+                                ))}
+                            </div>
+                        )}
 
                         {subLinks.length > 0 && (
                             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
@@ -290,15 +319,7 @@ export const AffiliateSlot = ({
                                         href={resolvedLinks[link.id]?.affiliateUrl || link.url}
                                         target="_blank"
                                         rel="sponsored nofollow noopener noreferrer"
-                                        onClick={() => sendAffiliateClickEvent({
-                                            campaign_id: campaign.id,
-                                            link_id: link.id,
-                                            provider: link.provider,
-                                            context,
-                                            campaign_type: campaign.type,
-                                            race_type: raceType,
-                                            venue_name: venueName,
-                                        })}
+                                        onClick={() => trackAffiliateClick(link)}
                                         className="font-semibold text-rose-600 hover:text-rose-700 hover:underline inline-flex items-center gap-0.5"
                                     >
                                         {providerLabels[link.provider]}

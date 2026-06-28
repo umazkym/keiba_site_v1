@@ -48,28 +48,6 @@ function formatRaceDate(date: string): string {
     return date.replace(/-/g, '/');
 }
 
-function hasRaceDetailPath(race: WeeklyGradeRace): boolean {
-    return Number.isFinite(race.race_number) && race.race_number > 0;
-}
-
-function getRaceLinkPath(race: WeeklyGradeRace): string {
-    if (hasRaceDetailPath(race)) {
-        return getRaceDetailPath(race.race_date, race.venue_name, race.race_number);
-    }
-
-    return getGradeRaceHubPathByName(race.race_name) || `/races/${race.race_date}`;
-}
-
-function formatRacePlace(race: WeeklyGradeRace): string {
-    return hasRaceDetailPath(race)
-        ? `${race.venue_name}${race.race_number}R`
-        : race.venue_name;
-}
-
-function raceNumberForSort(race: WeeklyGradeRace): number {
-    return hasRaceDetailPath(race) ? race.race_number : 99;
-}
-
 interface WeeklyGradeRacesProps {
     races: WeeklyGradeRace[];
     compact?: boolean;
@@ -102,7 +80,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, title = 
         const typePriority = { '中央': 0, '地方': 1 };
         const typeDiff = typePriority[getRaceTypeLabel(a)] - typePriority[getRaceTypeLabel(b)];
         if (typeDiff !== 0) return typeDiff;
-        return raceNumberForSort(a) - raceNumberForSort(b);
+        return a.race_number - b.race_number;
     });
     const focusRaces = sortedRaces.filter(isFocusRace);
     const otherRaces = sortedRaces.filter(race => !isFocusRace(race));
@@ -127,7 +105,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, title = 
                             <Link
                                 key={race.race_id}
                                 prefetch={false}
-                                href={getRaceLinkPath(race)}
+                                href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
                                 className="inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm transition-all duration-200 hover:shadow hover:border-blue-500/30 no-underline active:scale-95"
                             >
                                 <span className={`badge ${badgeColorClass}`}>
@@ -137,7 +115,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, title = 
                                     {displayName}
                                 </span>
                                 <span className="text-[10px] font-bold text-slate-400 leading-none">
-                                    {race.race_date.slice(5).replace('-', '/')} {formatRacePlace(race)}
+                                    {race.race_date.slice(5).replace('-', '/')} {race.venue_name}{race.race_number}R
                                 </span>
                             </Link>
                         );
@@ -162,11 +140,9 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, title = 
                     <div className="grid gap-3 mb-3">
                         {focusRaces.map((race) => {
                             const displayName = cleanRaceName(race.race_name);
-                            const topHorse = hasRaceDetailPath(race)
-                                ? findTopHorse(race.venue_name, race.race_number)
-                                : null;
+                            const topHorse = findTopHorse(race.venue_name, race.race_number);
                             const raceTypeLabel = getRaceTypeLabel(race);
-                            const racePath = getRaceLinkPath(race);
+                            const racePath = getRaceDetailPath(race.race_date, race.venue_name, race.race_number);
                             const hubPath = getGradeRaceHubPathByName(race.race_name);
 
                             return (
@@ -179,7 +155,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, title = 
                                     </span>
                                     <h2>{displayName}</h2>
                                     <p>
-                                        {formatRacePlace(race)} · {formatRaceDate(race.race_date)}。公開データをもとに、出走馬の評価や展開材料を確認できます。
+                                        {race.venue_name} {race.race_number}R · {formatRaceDate(race.race_date)}。公開データをもとに、出走馬の評価や展開材料を確認できます。
                                     </p>
 
                                     {topHorse && (
@@ -210,7 +186,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, title = 
                                                 : 'bg-slate-950 text-white hover:bg-primary'
                                                 }`}
                                         >
-                                            {hasRaceDetailPath(race) ? '当日のAI偏差値を見る' : '当日レース一覧を見る'}
+                                            当日のAI偏差値を見る
                                         </Link>
                                     </div>
                                 </article>

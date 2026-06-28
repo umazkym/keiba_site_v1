@@ -1,3 +1,5 @@
+import { RAKUTEN_KEIBA_AFFILIATE_URL } from '@/lib/rakuten-keiba-affiliate';
+
 export type AffiliateContext =
     | 'race_after_prediction'
     | 'race_after_premium_data'
@@ -73,7 +75,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
                 id: 'rakuten-keiba-main',
                 provider: 'rakuten_keiba',
                 label: '楽天競馬でオッズを確認',
-                url: 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641',
+                url: RAKUTEN_KEIBA_AFFILIATE_URL,
                 enabled: true,
             },
         ],
@@ -95,7 +97,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
                 id: 'rakuten-keiba-jra-main',
                 provider: 'rakuten_keiba',
                 label: '楽天競馬の案内を見る',
-                url: 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641',
+                url: RAKUTEN_KEIBA_AFFILIATE_URL,
                 enabled: true,
             },
         ],

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useCallback, useEffect } from 'react';
 import { SearchIcon, MenuIcon, XIcon } from '@/components/Icons';
+import { HeaderAffiliateLink } from '@/components/HeaderAffiliateLink';
 
 type HeaderProps = {
     todayString: string;
@@ -74,6 +75,8 @@ export const Header = ({ todayString }: HeaderProps) => {
 
                     {/* 検索ボタンとメニューボタン（右側） */}
                     <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                        <HeaderAffiliateLink />
+
                         <Link
                             href="/search"
                             className="p-1.5 sm:p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20"

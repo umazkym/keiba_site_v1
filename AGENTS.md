@@ -102,6 +102,8 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-06-28**:
+  * **楽天競馬ヘッダー導線の追加**:
+    楽天競馬アフィリエイトのクリック数に対して登録が伸びていない状況を受け、全ページ共通ヘッダーへ控えめな「PR 地方競馬の投票」リンクを追加。既存の楽天競馬URLを共通定数化し、ヘッダークリックは `affiliate_click` の `site_header` としてGA4/Clarityへ送信する。広告審査・読者信頼を損なわないよう、`PR` 表記、`rel="sponsored nofollow noopener noreferrer"`、20歳以上対象のtitle文言を維持する。
   * **Vercel Fast Origin Transfer無料枠対策の追加削減**:
     Vercel HobbyのFast Origin Transfer 10GB到達通知を受け、トップページとレース詳細ページの転送量を再監査。トップページは全レース・全馬の予測データをClient Componentへ複数回渡していたため、開催場要約、注目馬3枠、重賞上位馬だけを抽出する `home-page-summary.ts` を追加し、`HomeTodayVenues`、`SpecialPickCard`、`WeeklyGradeRaces` は要約propsで描画する形へ変更した。トップの当日API取得は5分ではなく30分再検証を明示し、`index.html` は約1.17MBから約105KB、`index.rsc` は約1.02MBから約49KBへ削減。レース詳細ページは選択レース中心の初期データだけを渡し、通常レース詳細URLの大量ISR生成を抑えるため、サイトマップ掲載は日付ページと重賞詳細中心へ絞った。`npx tsc --noEmit`、`npm run build` 成功。
   * **記事公開ゲートの「無条件」補正追加**:

@@ -113,13 +113,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         getWeeklyGradeRaces(),
     ]);
 
+    const freshRaceRows = allRaces.filter((race) => getRaceIndexPolicy(race.race_date).index);
     const sitemapRaceRows = [
-        ...allRaces.filter((race) => getRaceIndexPolicy(race.race_date).index),
+        ...freshRaceRows,
         ...weeklyGradeRaces,
     ];
 
     const seenRaceUrls = new Set<string>();
-    const raceDetailRoutes = sitemapRaceRows
+    // 詳細URLは重賞中心に絞る。通常レースは日付ページから確認できる形にして、
+    // botが多数のISR詳細ページを一気に生成する転送量リスクを抑える。
+    const raceDetailRoutes = weeklyGradeRaces
         .map((race) => ({
             race,
             path: getRaceDetailPath(race.race_date, race.venue_name, race.race_number),

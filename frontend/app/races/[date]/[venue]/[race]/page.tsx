@@ -70,6 +70,22 @@ function findRaceByStablePath(
     return null;
 }
 
+function buildSelectedRacePredictionData(
+    predictionData: RaceDayPrediction,
+    selectedVenue: VenueRaces,
+    selectedRace: RacePrediction,
+): RaceDayPrediction {
+    const isJraVenue = (predictionData.jra ?? []).some((venue) => venue.venue_name === selectedVenue.venue_name);
+    const venueData = {
+        ...selectedVenue,
+        races: [selectedRace],
+    };
+
+    return isJraVenue
+        ? { jra: [venueData], nar: [] }
+        : { jra: [], nar: [venueData] };
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const raceNumber = parseRaceNumberParam(params.race);
     const formattedDate = formatDate(params.date);
@@ -152,6 +168,11 @@ export default async function RaceDetailPage({ params }: Props) {
     }
     selectedRace = selected.race;
     selectedVenue = selected.venue;
+    const selectedPredictionData = buildSelectedRacePredictionData(
+        predictionData,
+        selectedVenue,
+        selectedRace,
+    );
 
     const canonicalPath = getRaceDetailPath(params.date, selectedVenue.venue_name, selectedRace.race_number);
     const requestedPath = `/races/${params.date}/${params.venue.toLowerCase()}/${raceNumber}`;
@@ -229,7 +250,7 @@ export default async function RaceDetailPage({ params }: Props) {
             <Suspense fallback={<RacePageSkeleton />}>
                 <RacePageClient
                     initialDate={params.date}
-                    initialPredictionData={predictionData}
+                    initialPredictionData={selectedPredictionData}
                     initialSpecialPick={specialPickData}
                     initialTopHits={topHitsData}
                     weeklyGradeRaces={weeklyGradeRaces}

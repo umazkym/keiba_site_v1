@@ -5,11 +5,16 @@ import Link from 'next/link';
 import { SpecialPick, RaceDayPrediction } from "@/lib/types";
 import { formatDate } from '@/lib/utils';
 import { getRaceDetailPath } from '@/lib/race-url';
+import {
+    extractHomeSpecialPicks,
+    type HomeSpecialPickSet,
+} from '@/lib/home-page-summary';
 
 type Props = {
     pick?: SpecialPick | null;
     date?: string;
     predictions?: RaceDayPrediction | null;
+    precomputedPicks?: HomeSpecialPickSet;
 };
 
 // スケルトン
@@ -29,7 +34,7 @@ const Skeleton = () => (
     </div>
 );
 
-export const SpecialPickCard = ({ pick: initialPick, date, predictions }: Props) => {
+export const SpecialPickCard = ({ pick: initialPick, date, predictions, precomputedPicks }: Props) => {
     const [activeTab, setActiveTab] = useState<'favored' | 'value' | 'nar'>('favored');
 
     const getEffectiveDate = () => {
@@ -44,126 +49,8 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions }: Props)
 
     // 予測データから注目馬を動的に抽出
     const extractedPicks = useMemo(() => {
-        if (!predictions) {
-            // predictionsが無い場合はinitialPickを本命候補に入れる
-            return {
-                favored: initialPick || null,
-                value: null,
-                nar: null
-            };
-        }
-
-        const jraVenues = predictions.jra ?? [];
-        const narVenues = predictions.nar ?? [];
-        const allVenues = [...jraVenues, ...narVenues];
-
-        const allHorses: Array<{
-            horse_name: string;
-            horse_id: string;
-            venue_name: string;
-            race_number: number;
-            race_name: string;
-            race_id: string;
-            deviation_score: number;
-            mark: string;
-            is_nar: boolean;
-        }> = [];
-
-        allVenues.forEach(venue => {
-            const isNar = narVenues.some(nv => nv.venue_name === venue.venue_name);
-            venue.races.forEach(race => {
-                race.predictions.forEach(p => {
-                    if (p.deviation_score != null) {
-                        allHorses.push({
-                            horse_id: p.horse_id,
-                            horse_name: p.horse_name,
-                            venue_name: venue.venue_name,
-                            race_number: race.race_number,
-                            race_name: race.race_name,
-                            race_id: race.id,
-                            deviation_score: p.deviation_score,
-                            mark: p.mark,
-                            is_nar: isNar,
-                        });
-                    }
-                });
-            });
-        });
-
-        if (allHorses.length === 0) {
-            return {
-                favored: initialPick || null,
-                value: null,
-                nar: null
-            };
-        }
-
-        const selectTopHorse = <T extends { deviation_score: number }>(horses: T[]): T | null => {
-            if (horses.length === 0) return null;
-            return horses.reduce((max, horse) => horse.deviation_score > max.deviation_score ? horse : max, horses[0]);
-        };
-
-        // 1. 本命候補 (◎の中で偏差値最大。なければ全体の最大)
-        const favCandidates = allHorses.filter(h => h.mark === '◎');
-        const bestFav = selectTopHorse(favCandidates) ?? selectTopHorse(allHorses);
-
-        if (!bestFav) {
-            return {
-                favored: initialPick || null,
-                value: null,
-                nar: null
-            };
-        }
-
-        const favoredPick: SpecialPick = {
-            horse_id: bestFav.horse_id,
-            horse_name: bestFav.horse_name,
-            race_id: bestFav.race_id,
-            race_name: bestFav.race_name,
-            venue_name: bestFav.venue_name,
-            race_number: bestFav.race_number,
-            deviation_score: bestFav.deviation_score,
-            commentary: `AI偏差値 ${bestFav.deviation_score.toFixed(1)}。本日の全開催を通じて上位に位置する評価です。能力面の条件は整っており、当日の馬場状態や展開面も合わせて確認したい一頭です。`,
-        };
-
-        // 2. 地方注目 (NARの中から◎で偏差値最大。なければ地方開催の上位評価)
-        const narCandidates = allHorses.filter(h => h.is_nar && h.mark === '◎');
-        const narPool = allHorses.filter(h => h.is_nar);
-        const bestNar = selectTopHorse(narCandidates) ?? selectTopHorse(narPool);
-
-        const narPick: SpecialPick | null = bestNar ? {
-            horse_id: bestNar.horse_id,
-            horse_name: bestNar.horse_name,
-            race_id: bestNar.race_id,
-            race_name: bestNar.race_name,
-            venue_name: bestNar.venue_name,
-            race_number: bestNar.race_number,
-            deviation_score: bestNar.deviation_score,
-            commentary: `AI偏差値 ${bestNar.deviation_score.toFixed(1)}。本日の地方競馬（NAR）開催の中で目立つ評価を受けています。ダート適性と馬場の利条件を合わせて判断材料にしたい一頭。`,
-        } : null;
-
-        // 3. オッズ妙味 (◎以外で○▲△☆の中から偏差値最大。なければ本命以外の最大)
-        const valueCandidates = allHorses.filter(h =>
-            h.horse_id !== bestFav.horse_id &&
-            (h.mark === '○' || h.mark === '▲' || h.mark === '△' || h.mark === '☆' || h.mark === '〇')
-        );
-        const bestValue = valueCandidates.length > 0
-            ? valueCandidates.reduce((max, h) => h.deviation_score > max.deviation_score ? h : max, valueCandidates[0])
-            : allHorses.find(h => h.horse_id !== bestFav.horse_id) || bestFav;
-
-        const valuePick: SpecialPick = {
-            horse_id: bestValue.horse_id,
-            horse_name: bestValue.horse_name,
-            race_id: bestValue.race_id,
-            race_name: bestValue.race_name,
-            venue_name: bestValue.venue_name,
-            race_number: bestValue.race_number,
-            deviation_score: bestValue.deviation_score,
-            commentary: `AI偏差値 ${bestValue.deviation_score.toFixed(1)}。展開面や枠順条件次第で評価を上げたい相手候補です。人気馬とのオッズ差も考慮しながら判断材料にしたい一頭。`,
-        };
-
-        return { favored: favoredPick, value: valuePick, nar: narPick };
-    }, [predictions, initialPick]);
+        return precomputedPicks ?? extractHomeSpecialPicks(predictions ?? null, initialPick);
+    }, [precomputedPicks, predictions, initialPick]);
 
     // NARのピックが無い場合は、デフォルトタブをfavoredにし、narタブを選べなくする
     useEffect(() => {

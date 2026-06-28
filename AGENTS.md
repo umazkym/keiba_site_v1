@@ -102,6 +102,8 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-06-28**:
+  * **Vercel Fast Origin Transfer無料枠対策の追加削減**:
+    Vercel HobbyのFast Origin Transfer 10GB到達通知を受け、トップページとレース詳細ページの転送量を再監査。トップページは全レース・全馬の予測データをClient Componentへ複数回渡していたため、開催場要約、注目馬3枠、重賞上位馬だけを抽出する `home-page-summary.ts` を追加し、`HomeTodayVenues`、`SpecialPickCard`、`WeeklyGradeRaces` は要約propsで描画する形へ変更した。トップの当日API取得は5分ではなく30分再検証を明示し、`index.html` は約1.17MBから約105KB、`index.rsc` は約1.02MBから約49KBへ削減。レース詳細ページは選択レース中心の初期データだけを渡し、通常レース詳細URLの大量ISR生成を抑えるため、サイトマップ掲載は日付ページと重賞詳細中心へ絞った。`npx tsc --noEmit`、`npm run build` 成功。
   * **記事公開ゲートの「無条件」補正追加**:
     添付ログで、承認済み記事の公開直前に `article:validate-links` が「無条件」を強すぎる表現として検出し、同時公開予定の記事をロールバックしていたことを確認。SEO Checkerの禁止語とEditorの自動補正へ「無条件」の置換を追加した。トップの近日重賞欄は時間差でAPI表示が復旧する運用前提のため、静的な先日程フォールバックは使わず、従来通りDB/API由来の直近重賞だけを表示する。
 * **2026-06-27**:

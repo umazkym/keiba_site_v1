@@ -3,6 +3,10 @@ import Link from 'next/link';
 import { WeeklyGradeRace, RaceDayPrediction } from '@/lib/types';
 import { getRaceDetailPath } from '@/lib/race-url';
 import { getGradeRaceHubPathByName } from '@/lib/grade-race-content';
+import {
+    getGradeRaceSummaryKey,
+    type GradeRaceTopHorseMap,
+} from '@/lib/home-page-summary';
 
 /** レース名からグレード接尾辞を除去 */
 function cleanRaceName(name: string): string {
@@ -52,22 +56,26 @@ interface WeeklyGradeRacesProps {
     races: WeeklyGradeRace[];
     compact?: boolean;
     predictions?: RaceDayPrediction | null;
+    topHorses?: GradeRaceTopHorseMap;
     title?: string;
 }
 
-export function WeeklyGradeRaces({ races, compact = false, predictions, title = "近日の重賞レース" }: WeeklyGradeRacesProps) {
+export function WeeklyGradeRaces({ races, compact = false, predictions, topHorses, title = "近日の重賞レース" }: WeeklyGradeRacesProps) {
     if (!races || races.length === 0) {
         return null;
     }
 
     // 本日の開催データから該当レースの本命馬(◎)の情報を検索
-    const findTopHorse = (venueName: string, raceNumber: number) => {
+    const findTopHorse = (race: WeeklyGradeRace) => {
+        const summary = topHorses?.[getGradeRaceSummaryKey(race.race_date, race.venue_name, race.race_number)];
+        if (summary) return summary;
+
         if (!predictions) return null;
         const allVenues = [...(predictions.jra ?? []), ...(predictions.nar ?? [])];
-        const venue = allVenues.find(v => v.venue_name === venueName);
-        const race = venue?.races.find(r => r.race_number === raceNumber);
-        if (!race || race.predictions.length === 0) return null;
-        const favorite = race.predictions.find(p => p.mark === '◎') || race.predictions[0];
+        const venue = allVenues.find(v => v.venue_name === race.venue_name);
+        const predictionRace = venue?.races.find(r => r.race_number === race.race_number);
+        if (!predictionRace || predictionRace.predictions.length === 0) return null;
+        const favorite = predictionRace.predictions.find(p => p.mark === '◎') || predictionRace.predictions[0];
         return {
             horseName: favorite.horse_name,
             score: favorite.deviation_score,
@@ -140,7 +148,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, title = 
                     <div className="grid gap-3 mb-3">
                         {focusRaces.map((race) => {
                             const displayName = cleanRaceName(race.race_name);
-                            const topHorse = findTopHorse(race.venue_name, race.race_number);
+                            const topHorse = findTopHorse(race);
                             const raceTypeLabel = getRaceTypeLabel(race);
                             const racePath = getRaceDetailPath(race.race_date, race.venue_name, race.race_number);
                             const hubPath = getGradeRaceHubPathByName(race.race_name);

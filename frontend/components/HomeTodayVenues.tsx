@@ -4,35 +4,38 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AffiliateSlot } from '@/components/AffiliateSlot';
 import { getPredictionsForDate } from '@/lib/api';
+import {
+    summarizeHomeVenues,
+    type HomeVenueSummary,
+} from '@/lib/home-page-summary';
 import { getRaceDetailPath } from '@/lib/race-url';
-import type { RaceDayPrediction } from '@/lib/types';
 import { sendHomeRaceEntryClickEvent } from '@/lib/analytics';
 
 type RefreshStatus = 'ready' | 'checking' | 'waiting' | 'empty';
 
 type HomeTodayVenuesProps = {
     date: string;
-    initialPredictions: RaceDayPrediction | null;
+    initialVenues: HomeVenueSummary[];
 };
 
-const hasVenueData = (predictions: RaceDayPrediction | null): boolean => (
-    Boolean((predictions?.jra?.length ?? 0) > 0 || (predictions?.nar?.length ?? 0) > 0)
+const hasVenueData = (venues: HomeVenueSummary[]): boolean => (
+    venues.length > 0
 );
 
 export function HomeTodayVenues({
     date,
-    initialPredictions,
+    initialVenues,
 }: HomeTodayVenuesProps) {
-    const initialHasVenueData = hasVenueData(initialPredictions);
-    const [predictions, setPredictions] = useState<RaceDayPrediction | null>(initialPredictions);
+    const initialHasVenueData = hasVenueData(initialVenues);
+    const [venues, setVenues] = useState<HomeVenueSummary[]>(initialVenues);
     const [status, setStatus] = useState<RefreshStatus>(
         initialHasVenueData ? 'ready' : 'checking',
     );
     const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
-        if (hasVenueData(initialPredictions)) {
-            setPredictions(initialPredictions);
+        if (hasVenueData(initialVenues)) {
+            setVenues(initialVenues);
             setStatus('ready');
             return;
         }
@@ -46,8 +49,9 @@ export function HomeTodayVenues({
 
             if (cancelled) return;
 
-            if (hasVenueData(freshPredictions)) {
-                setPredictions(freshPredictions);
+            const freshVenues = summarizeHomeVenues(freshPredictions);
+            if (hasVenueData(freshVenues)) {
+                setVenues(freshVenues);
                 setStatus('ready');
                 return;
             }
@@ -71,10 +75,10 @@ export function HomeTodayVenues({
                 clearTimeout(retryTimer);
             }
         };
-    }, [date, initialPredictions, refreshKey]);
+    }, [date, initialVenues, refreshKey]);
 
-    const jraVenues = predictions?.jra ?? [];
-    const narVenues = predictions?.nar ?? [];
+    const jraVenues = venues.filter((venue) => venue.race_type === 'jra');
+    const narVenues = venues.filter((venue) => venue.race_type === 'nar');
     const showVenues = jraVenues.length > 0 || narVenues.length > 0;
 
     return (
@@ -84,8 +88,8 @@ export function HomeTodayVenues({
                     <Link
                         key={venue.venue_name}
                         prefetch={false}
-                        href={venue.races[0]
-                            ? getRaceDetailPath(date, venue.venue_name, venue.races[0].race_number)
+                        href={venue.first_race_number
+                            ? getRaceDetailPath(date, venue.venue_name, venue.first_race_number)
                             : `/races/${date}`}
                         onClick={() => {
                             sendHomeRaceEntryClickEvent({
@@ -98,7 +102,7 @@ export function HomeTodayVenues({
                         className="venue-chip"
                     >
                         <strong>{venue.venue_name}</strong>
-                        <small>全{venue.races.length}R</small>
+                        <small>全{venue.race_count}R</small>
                         <span className="venue-state">分析公開</span>
                     </Link>
                 ))}
@@ -107,8 +111,8 @@ export function HomeTodayVenues({
                     <Link
                         key={venue.venue_name}
                         prefetch={false}
-                        href={venue.races[0]
-                            ? getRaceDetailPath(date, venue.venue_name, venue.races[0].race_number)
+                        href={venue.first_race_number
+                            ? getRaceDetailPath(date, venue.venue_name, venue.first_race_number)
                             : `/races/${date}`}
                         onClick={() => {
                             sendHomeRaceEntryClickEvent({
@@ -121,7 +125,7 @@ export function HomeTodayVenues({
                         className="venue-chip"
                     >
                         <strong>{venue.venue_name}</strong>
-                        <small>全{venue.races.length}R</small>
+                        <small>全{venue.race_count}R</small>
                         <span className="venue-state muted">地方競馬</span>
                     </Link>
                 ))}

@@ -89,12 +89,12 @@ async function fetchWithRetry(
 
 export async function getPredictionsForDate(
     date: string,
-    options: { bypassCache?: boolean; throwOnError?: boolean } = {},
+    options: { bypassCache?: boolean; throwOnError?: boolean; revalidateSeconds?: number } = {},
 ): Promise<RaceDayPrediction | null> {
     try {
         const requestOptions: RequestInit & { next?: { revalidate?: number } } = options.bypassCache
             ? { cache: 'no-store' }
-            : { next: { revalidate: getRaceDataRevalidate(date) } };
+            : { next: { revalidate: options.revalidateSeconds ?? getRaceDataRevalidate(date) } };
         const res = await fetchWithRetry(
             `${API_BASE_URL}/api/v1/predictions/${date}`,
             requestOptions,
@@ -136,9 +136,12 @@ export async function getPredictionsForDate(
     }
 }
 
-export async function getSpecialPick(date: string): Promise<SpecialPick | null> {
+export async function getSpecialPick(
+    date: string,
+    options: { revalidateSeconds?: number } = {},
+): Promise<SpecialPick | null> {
     try {
-        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/special-pick/${date}`, { next: { revalidate: getRaceDataRevalidate(date) } });
+        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/special-pick/${date}`, { next: { revalidate: options.revalidateSeconds ?? getRaceDataRevalidate(date) } });
         if (!res.ok) {
             console.warn(`Could not fetch special pick for ${date}. Status: ${res.status}`);
             return null;

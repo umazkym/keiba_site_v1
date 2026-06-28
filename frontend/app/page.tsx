@@ -13,14 +13,20 @@ import { WeeklyGradeRaces } from '@/components/WeeklyGradeRaces';
 import { RecentRaceReturn } from '@/components/RecentRaceReturn';
 import { HomeTodayVenues } from '@/components/HomeTodayVenues';
 import { getSpecialPick, getPredictionsForDate, getWeeklyGradeRaces, getTopPayoutHits } from '@/lib/api';
-import { getLatestArticles, getAllArticles } from '../lib/articles';
+import { getLatestArticles } from '../lib/articles';
+import {
+    buildGradeRaceTopHorseMap,
+    extractHomeSpecialPicks,
+    getHomeRaceDaySummary,
+    getHomeVenueNamesString,
+    summarizeHomeVenues,
+} from '@/lib/home-page-summary';
 
 import DisclaimerAlert from '@/components/DisclaimerAlert';
 import { AdUnit } from '@/components/AdUnit';
 import { AffiliateSlot } from '@/components/AffiliateSlot';
 import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
-import type { RaceDayPrediction } from '@/lib/types';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
 
@@ -77,17 +83,6 @@ const formatShortDate = (date: string) => {
     const [, month, day] = date.split('-');
     if (!month || !day) return date;
     return `${Number(month)}/${Number(day)}`;
-};
-
-const getRaceDaySummary = (predictions: RaceDayPrediction | null, date: string) => {
-    const jraVenues = predictions?.jra ?? [];
-    const narVenues = predictions?.nar ?? [];
-    const venues = [...jraVenues, ...narVenues];
-    const raceCount = venues.reduce((total, venue) => total + venue.races.length, 0);
-    return {
-        venueCount: venues.length,
-        raceCount,
-    };
 };
 
 const FeaturePreviewCard = ({
@@ -224,14 +219,6 @@ const getFormattedUpdateDate = () => {
     return `${month}/${day} 7:00頃更新`;
 };
 
-const getVenueNamesString = (predictions: RaceDayPrediction | null) => {
-    const jraVenues = predictions?.jra?.map(v => v.venue_name) ?? [];
-    const narVenues = predictions?.nar?.map(v => v.venue_name) ?? [];
-    const venues = [...jraVenues, ...narVenues];
-    if (venues.length === 0) return "";
-    return `本日開催の${venues.join('・')}`;
-};
-
 type HeroDataCardProps = {
     title: string;
     description: string;
@@ -274,12 +261,13 @@ const getCategoryBadgeClass = (category: string) => {
 
 export default async function HomePage() {
     const todayStr = getTodayString();
+    const homeRevalidateSeconds = 1800;
     const [specialPick, predictions, weeklyGradeRaces, topHits] = await Promise.all([
-        getSpecialPick(todayStr).catch(e => {
+        getSpecialPick(todayStr, { revalidateSeconds: homeRevalidateSeconds }).catch(e => {
             console.error("Failed to fetch special pick:", e);
             return null;
         }),
-        getPredictionsForDate(todayStr).catch(e => {
+        getPredictionsForDate(todayStr, { revalidateSeconds: homeRevalidateSeconds }).catch(e => {
             console.error("Failed to fetch predictions:", e);
             return null;
         }),
@@ -294,8 +282,10 @@ export default async function HomePage() {
     ]);
 
     const latestArticles = getLatestArticles(6);
-    const totalArticles = getAllArticles().length;
-    const raceDaySummary = getRaceDaySummary(predictions, todayStr);
+    const homeVenues = summarizeHomeVenues(predictions);
+    const raceDaySummary = getHomeRaceDaySummary(homeVenues);
+    const homeSpecialPicks = extractHomeSpecialPicks(predictions, specialPick);
+    const gradeRaceTopHorses = buildGradeRaceTopHorseMap(predictions, weeklyGradeRaces);
 
     return (
         <div className="space-y-4">
@@ -312,7 +302,7 @@ export default async function HomePage() {
                     </span>
                     <h1 className="text-white font-extrabold tracking-tight leading-tight !text-[17px] sm:!text-[24px] mb-2">
                         {raceDaySummary.venueCount > 0
-                            ? <>{getVenueNamesString(predictions)}<br />全{raceDaySummary.raceCount}レース分析公開中</>
+                            ? <>{getHomeVenueNamesString(homeVenues)}<br />全{raceDaySummary.raceCount}レース分析公開中</>
                             : <>今日のレース分析を<br />無料で確認</>
                         }
                     </h1>
@@ -387,7 +377,7 @@ export default async function HomePage() {
 
                 {/* レースページと同じ近日重賞表示 */}
                 {weeklyGradeRaces.length > 0 ? (
-                    <WeeklyGradeRaces races={weeklyGradeRaces} predictions={predictions} />
+                    <WeeklyGradeRaces races={weeklyGradeRaces} topHorses={gradeRaceTopHorses} />
                 ) : (
                     <div className="grade-focus card rounded-xl flex flex-col justify-center items-center p-6 text-center">
                         <span className="badge badge-slate mb-2">重賞情報</span>
@@ -417,7 +407,7 @@ export default async function HomePage() {
 
                 <HomeTodayVenues
                     date={todayStr}
-                    initialPredictions={predictions}
+                    initialVenues={homeVenues}
                 />
 
                 {!shouldSuppressAdsInDevelopment && (
@@ -441,7 +431,7 @@ export default async function HomePage() {
                         <h2 className="section-title">
                             <span>本日の分析注目馬</span>
                         </h2>
-                        <SpecialPickCard pick={specialPick} date={todayStr} predictions={predictions} />
+                        <SpecialPickCard pick={specialPick} date={todayStr} precomputedPicks={homeSpecialPicks} />
                     </section>
 
                     {/* 最新の分析記事 */}

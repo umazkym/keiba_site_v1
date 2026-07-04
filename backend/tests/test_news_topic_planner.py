@@ -36,6 +36,7 @@ class NewsTopicPlannerTest(unittest.TestCase):
         schedule = planner.available_race_demands()
         radio_nikkei = planner.find_race_demand("ラジオNIKKEI賞", schedule=schedule)
         kanazawa_summer = planner.find_race_demand("金沢サマーカップ", schedule=schedule)
+        kitakyushu = planner.find_race_demand("北九州記念", schedule=schedule)
 
         self.assertIsNotNone(radio_nikkei)
         self.assertEqual(planner.race_demand_date(radio_nikkei).isoformat(), "2026-06-28")
@@ -46,6 +47,12 @@ class NewsTopicPlannerTest(unittest.TestCase):
         self.assertEqual(planner.race_demand_date(kanazawa_summer).isoformat(), "2026-06-28")
         self.assertEqual(kanazawa_summer.venue, "金沢")
         self.assertEqual(kanazawa_summer.distance, "1700m")
+
+        self.assertIsNotNone(kitakyushu)
+        self.assertEqual(planner.race_demand_date(kitakyushu).isoformat(), "2026-07-05")
+        self.assertEqual(kitakyushu.venue, "小倉")
+        self.assertEqual(kitakyushu.distance, "芝1200m")
+        self.assertEqual(planner.grade_race_entity_key("北九州記念"), "kitakyushu-kinen")
 
     def test_query_builder_distributes_races_and_intents(self) -> None:
         state = planner.WorkflowState(
@@ -159,6 +166,55 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 os.environ.pop("KEIBA_NEWS_NOW", None)
             else:
                 os.environ["KEIBA_NEWS_NOW"] = previous_now
+            planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_schedule_backfill_keeps_kitakyushu_kinen_on_race_day(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        previous_max_focus = os.environ.get("KEIBA_NEWS_MAX_FOCUS_RACES")
+        previous_max_orders = os.environ.get("KEIBA_NEWS_MAX_ORDERS_PER_RUN")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-07-05"
+        os.environ["KEIBA_NEWS_MAX_FOCUS_RACES"] = "4"
+        os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = "3"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        try:
+            state = planner.WorkflowState(
+                run_id="kitakyushu-backfill-test",
+                fetched_at=planner.current_jst().isoformat(),
+            )
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "build_internal_data_bundle", return_value={}),
+            ):
+                planner.cluster_topics_node(state)
+                planner.build_write_orders_node(state)
+
+            selected_races = [
+                order["reference_data"]["race_name"]
+                for order in state.write_orders
+            ]
+            self.assertIn("北九州記念", selected_races)
+            kitakyushu_order = next(
+                order
+                for order in state.write_orders
+                if order["reference_data"]["race_name"] == "北九州記念"
+            )
+            self.assertEqual(kitakyushu_order["target_keyword"], "北九州記念2026 出走構成 確認ポイント")
+            self.assertEqual(kitakyushu_order["reference_data"]["scheduled_race_date"], "2026-07-05")
+            self.assertEqual(kitakyushu_order["reference_data"]["entity_key"], "kitakyushu-kinen")
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            if previous_max_focus is None:
+                os.environ.pop("KEIBA_NEWS_MAX_FOCUS_RACES", None)
+            else:
+                os.environ["KEIBA_NEWS_MAX_FOCUS_RACES"] = previous_max_focus
+            if previous_max_orders is None:
+                os.environ.pop("KEIBA_NEWS_MAX_ORDERS_PER_RUN", None)
+            else:
+                os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = previous_max_orders
             planner._RACE_SCHEDULE_CACHE.clear()
 
     def test_generic_news_rejects_stale_explicit_event_date(self) -> None:

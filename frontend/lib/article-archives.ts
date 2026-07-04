@@ -118,6 +118,7 @@ const additionalGradeRaceSeeds: AdditionalGradeRaceSeed[] = [
   { slug: "queen-sho", name: "クイーン賞", grade: "Jpn3", aliases: ["クイーン賞"], venue: "船橋", course: "ダート1800m", date: "2026-02-11" },
   { slug: "radio-nikkei-sho", name: "ラジオNIKKEI賞", grade: "G3", aliases: ["ラジオNIKKEI賞", "ラジオＮＩＫＫＥＩ賞"], venue: "福島", course: "芝1800m" },
   { slug: "hakodate-kinen", name: "函館記念", grade: "G3", aliases: ["函館記念"], venue: "函館", course: "芝2000m" },
+  { slug: "kitakyushu-kinen", name: "北九州記念", grade: "G3", aliases: ["北九州記念"], venue: "小倉", course: "芝1200m", date: "2026-07-05" },
   { slug: "froilein-cup", name: "フロイラインカップ", grade: "地方重賞", aliases: ["フロイラインカップ"], venue: "門別", course: "ダート1700m" },
   { slug: "kanazawa-summer-cup", name: "金沢サマーカップ", grade: "地方重賞", aliases: ["金沢サマーカップ"], venue: "金沢", course: "ダート1400m", date: "2026-06-28" },
   { slug: "sapphire-sho", name: "サファイア賞", grade: "地方重賞", aliases: ["サファイア賞"], venue: "盛岡", course: "芝2400m", date: "2026-06-28" },

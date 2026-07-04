@@ -60,6 +60,7 @@ const raceNameMap: Record<string, string> = {
   '有馬記念': 'arima-kinen',
   'ホープフルS': 'hopeful-stakes',
   'ホープフルステークス': 'hopeful-stakes',
+  '北九州記念': 'kitakyushu-kinen',
 };
 
 const extraMap: Record<string, string> = {

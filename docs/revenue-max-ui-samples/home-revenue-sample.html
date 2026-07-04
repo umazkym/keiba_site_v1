@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UMA-FREE ホーム改善サンプル</title>
+  <style>
+    :root {
+      --primary: #0f172a;
+      --primary-soft: #1e293b;
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --amber: #f59e0b;
+      --green: #059669;
+      --rose: #e11d48;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-300: #cbd5e1;
+      --slate-500: #64748b;
+      --slate-700: #334155;
+      --surface: #ffffff;
+      --shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--slate-50);
+      color: var(--primary);
+      font-family: "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+      letter-spacing: 0;
+    }
+    a { color: inherit; text-decoration: none; }
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+    }
+    .header-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .brand img { width: 38px; height: 38px; border-radius: 8px; }
+    .brand strong { display: block; font-size: 20px; line-height: 1.1; }
+    .brand span { display: block; color: var(--slate-500); font-size: 11px; font-weight: 700; }
+    .nav {
+      display: flex;
+      gap: 20px;
+      color: var(--slate-700);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 18px 18px 92px;
+    }
+    .stack { display: grid; gap: 16px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 10px;
+      font-size: 16px;
+      line-height: 1.35;
+    }
+    .section-title span:first-child {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title span:first-child::before {
+      content: "";
+      width: 4px;
+      height: 18px;
+      border-radius: 999px;
+      background: var(--blue);
+    }
+    .section-note { color: var(--slate-500); font-size: 11px; font-weight: 700; }
+    .resume {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .resume-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .resume-card {
+      display: grid;
+      gap: 6px;
+      padding: 12px;
+      border: 1px solid var(--slate-200);
+      border-radius: 10px;
+      background: linear-gradient(180deg, #fff, #f8fafc);
+    }
+    .resume-card strong {
+      font-size: 14px;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .resume-card small { color: var(--slate-500); font-size: 11px; font-weight: 700; }
+    .resume-action {
+      justify-self: start;
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 8px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.8fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+    .hero {
+      position: relative;
+      padding: 28px;
+      color: white;
+      background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(15, 23, 42, 0.98)),
+        var(--primary);
+      border-color: #1e293b;
+    }
+    .hero .update {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #dbeafe;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .hero h1 {
+      margin: 0;
+      color: white;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.18;
+    }
+    .hero p {
+      max-width: 650px;
+      margin: 12px 0 0;
+      color: #cbd5e1;
+      font-size: 15px;
+      line-height: 1.8;
+      font-weight: 600;
+    }
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .stat {
+      padding: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .stat b { display: block; color: white; font-size: 24px; line-height: 1.1; }
+    .stat span { color: #cbd5e1; font-size: 11px; font-weight: 800; }
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      margin-top: 18px;
+      padding: 0 22px;
+      border-radius: 10px;
+      background: white;
+      color: var(--primary);
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .grade-focus {
+      padding: 16px;
+      display: grid;
+      align-content: stretch;
+      gap: 10px;
+      background: linear-gradient(135deg, #fffbeb, #ffffff 48%, #eff6ff);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      min-height: 22px;
+      padding: 0 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 900;
+      border: 1px solid transparent;
+    }
+    .badge-amber { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+    .badge-green { background: #dcfce7; color: #047857; border-color: #bbf7d0; }
+    .badge-slate { background: var(--slate-100); color: var(--slate-700); border-color: var(--slate-200); }
+    .grade-focus h2 { margin: 0; font-size: 24px; line-height: 1.25; }
+    .grade-focus p { margin: 0; color: var(--slate-500); font-size: 13px; line-height: 1.7; font-weight: 700; }
+    .top-horse {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin-top: auto;
+      padding: 11px;
+      border: 1px solid rgba(37, 99, 235, 0.16);
+      border-radius: 10px;
+      background: white;
+    }
+    .score { color: var(--blue); font-size: 22px; font-weight: 900; }
+    .venue-section { padding: 16px; }
+    .venue-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .venue-chip {
+      min-height: 74px;
+      padding: 10px;
+      border: 1px solid var(--slate-200);
+      border-radius: 10px;
+      background: #fff;
+      display: grid;
+      gap: 5px;
+    }
+    .venue-chip strong { font-size: 15px; }
+    .venue-chip small { color: var(--slate-500); font-size: 11px; font-weight: 800; }
+    .venue-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--green);
+      font-size: 10px;
+      font-weight: 900;
+    }
+    .venue-state::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+    .venue-state.muted { color: var(--slate-500); }
+    .ad {
+      display: grid;
+      place-items: center;
+      min-height: 96px;
+      border: 1px dashed #bfdbfe;
+      border-radius: 12px;
+      background: #eff6ff;
+      color: #64748b;
+      text-align: center;
+      font-weight: 800;
+    }
+    .ad small { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 11px; }
+    .ad-large { min-height: 250px; }
+    .ad-wide { min-height: 110px; margin-top: 12px; }
+    .main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 16px;
+      align-items: start;
+    }
+    .hits { padding: 16px; }
+    .hit-list { display: grid; gap: 8px; }
+    .hit {
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 11px;
+      border: 1px solid var(--slate-200);
+      border-radius: 10px;
+      background: white;
+    }
+    .hit:first-child { border-color: #fde68a; background: #fffbeb; }
+    .hit .rank { color: var(--amber); font-weight: 900; }
+    .hit .amount { color: #dc2626; font-weight: 900; }
+    .pick-section { padding: 16px; }
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .tab {
+      min-height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--slate-200);
+      background: var(--slate-50);
+      color: var(--slate-700);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .pick-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      padding: 14px;
+      border: 1px solid var(--slate-200);
+      border-radius: 10px;
+      background: linear-gradient(180deg, #fff, #f8fafc);
+    }
+    .pick-card h3 { margin: 0 0 4px; font-size: 22px; }
+    .pick-card p { margin: 0; color: var(--slate-500); font-size: 13px; line-height: 1.7; font-weight: 700; }
+    .bar-track {
+      height: 7px;
+      margin-top: 10px;
+      border-radius: 999px;
+      background: var(--slate-200);
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      width: 75%;
+      border-radius: 999px;
+      background: var(--blue);
+    }
+    .score-panel { text-align: right; color: var(--blue); font-size: 32px; font-weight: 900; }
+    .score-panel small { display: block; color: var(--slate-500); font-size: 11px; }
+    .affiliate {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid #fecdd3;
+      border-radius: 10px;
+      background: #fff1f2;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+    .affiliate h3 { margin: 0; font-size: 14px; }
+    .affiliate p { margin: 4px 0 0; color: #9f1239; font-size: 12px; line-height: 1.55; font-weight: 700; }
+    .affiliate a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 8px;
+      background: #e11d48;
+      color: white;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .articles { padding: 16px; }
+    .article-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .article {
+      border: 1px solid var(--slate-200);
+      border-radius: 10px;
+      background: white;
+      overflow: hidden;
+      min-height: 210px;
+    }
+    .thumb {
+      min-height: 92px;
+      display: grid;
+      place-items: center;
+      padding: 10px;
+      color: var(--slate-700);
+      font-size: 13px;
+      font-weight: 900;
+      text-align: center;
+    }
+    .thumb.gold { background: #fef3c7; color: #92400e; }
+    .thumb.blue { background: #dbeafe; color: #1d4ed8; }
+    .thumb.green { background: #dcfce7; color: #047857; }
+    .thumb.purple { background: #ede9fe; color: #6d28d9; }
+    .article-body { padding: 10px; }
+    .article-body h3 { margin: 6px 0 8px; font-size: 13px; line-height: 1.55; }
+    .meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--slate-500);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .native-ad {
+      display: grid;
+      place-items: center;
+      min-height: 210px;
+      border: 1px solid var(--slate-200);
+      border-radius: 10px;
+      background: linear-gradient(180deg, #fff, #f8fafc);
+      text-align: center;
+      padding: 12px;
+    }
+    .faq { padding: 14px 16px; }
+    .faq-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 13px 0;
+      border-top: 1px solid var(--slate-200);
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .sticky-ad {
+      display: none;
+      position: fixed;
+      left: 50%;
+      bottom: 12px;
+      transform: translateX(-50%);
+      z-index: 30;
+      width: min(760px, calc(100vw - 24px));
+      min-height: 54px;
+      grid-template-columns: 72px 1fr 36px;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--slate-200);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 12px 34px rgba(15, 23, 42, 0.18);
+      color: var(--slate-500);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .sticky-ad .slot {
+      min-height: 38px;
+      border-radius: 8px;
+      background: var(--slate-100);
+      display: grid;
+      place-items: center;
+    }
+    @media (max-width: 820px) {
+      .header-inner { padding: 8px 10px; }
+      .brand img { width: 30px; height: 30px; }
+      .brand strong { font-size: 15px; }
+      .brand span { display: none; }
+      .nav { gap: 12px; font-size: 12px; }
+      .shell { padding: 8px 10px 84px; }
+      .stack { gap: 10px; }
+      .card { border-radius: 10px; box-shadow: none; }
+      .resume { padding: 10px; }
+      .resume-row {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        padding-bottom: 2px;
+      }
+      .resume-card { min-width: 224px; scroll-snap-align: start; }
+      .hero-grid { grid-template-columns: 1fr; gap: 10px; }
+      .hero { padding: 16px; }
+      .hero .update { margin-bottom: 8px; font-size: 10px; }
+      .hero h1 { font-size: 23px; }
+      .hero p { font-size: 12px; line-height: 1.65; margin-top: 8px; }
+      .hero-stats { margin-top: 12px; gap: 5px; }
+      .stat { padding: 8px 5px; border-radius: 8px; }
+      .stat b { font-size: 17px; }
+      .stat span { font-size: 9px; }
+      .cta { width: 100%; min-height: 40px; margin-top: 12px; font-size: 13px; }
+      .grade-focus { padding: 12px; }
+      .grade-focus h2 { font-size: 19px; }
+      .venue-section, .hits, .pick-section, .articles, .faq { padding: 12px; }
+      .venue-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .venue-chip { min-height: 68px; }
+      .main-grid { grid-template-columns: 1fr; gap: 10px; }
+      .ad-large { min-height: 210px; }
+      .hit { grid-template-columns: 32px 1fr auto; gap: 8px; padding: 9px; }
+      .hit .amount { font-size: 14px; }
+      .tabs { gap: 6px; }
+      .tab { font-size: 11px; min-height: 34px; }
+      .pick-card { grid-template-columns: 1fr; gap: 10px; }
+      .pick-card h3 { font-size: 20px; }
+      .score-panel { text-align: left; font-size: 28px; }
+      .affiliate { grid-template-columns: 1fr; }
+      .affiliate a { width: 100%; }
+      .article-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .article { min-height: 192px; }
+      .thumb { min-height: 76px; }
+      .native-ad { min-height: 192px; }
+      .sticky-ad {
+        width: calc(100vw - 18px);
+        bottom: 8px;
+        grid-template-columns: 48px 1fr 26px;
+        font-size: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#">
+        <img src="../../frontend/public/new-logo.webp" alt="UMA-FREE">
+        <span>
+          <strong>UMA-FREE</strong>
+          <span>中央・地方 全レース毎日無料分析</span>
+        </span>
+      </a>
+      <nav class="nav" aria-label="主要ナビゲーション">
+        <a href="#">今日の分析</a>
+        <a href="#">重賞</a>
+        <a href="#">記事</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell stack">
+    <section class="resume card">
+      <h2 class="section-title"><span>最近確認したレース</span><span class="section-note">再訪ユーザー向け</span></h2>
+      <div class="resume-row">
+        <a class="resume-card" href="#">
+          <small>6/13 函館</small>
+          <strong>9R 奥尻特別</strong>
+          <small>芝2000m・11頭</small>
+          <span class="resume-action">途中から確認</span>
+        </a>
+        <a class="resume-card" href="#">
+          <small>6/13 東京</small>
+          <strong>11R ジューンS</strong>
+          <small>AI 1位: マイネルバース</small>
+          <span class="resume-action">結果を見る</span>
+        </a>
+        <a class="resume-card" href="#">
+          <small>注目開催</small>
+          <strong>宝塚記念 2026</strong>
+          <small>6/14 阪神 11R</small>
+          <span class="resume-action">重賞を見る</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="hero-grid">
+      <div class="hero card">
+        <span class="update">2026年6月13日（土） 07:05 更新済</span>
+        <h1>函館・東京・阪神など<br>全58レース分析公開中</h1>
+        <p>展開予測・対戦成績・枠順傾向をひと目で確認。登録不要で、中央・地方の分析データを毎日無料で確認できます。</p>
+        <div class="hero-stats" aria-label="本日の概要">
+          <div class="stat"><b>5</b><span>本日の開催場</span></div>
+          <div class="stat"><b>58</b><span>分析済レース</span></div>
+          <div class="stat"><b>両方</b><span>中央・地方対応</span></div>
+          <div class="stat"><b>97</b><span>競馬攻略記事</span></div>
+        </div>
+        <a class="cta" href="#">今日の全レース分析を見る →</a>
+      </div>
+
+      <a class="grade-focus card" href="#">
+        <span class="badge badge-amber">G1 明日開催</span>
+        <h2>宝塚記念 2026</h2>
+        <p>6月14日（日）阪神 芝2200m・18頭。公開データをもとに、枠順と展開材料を確認できます。</p>
+        <div class="top-horse">
+          <div>
+            <span class="badge badge-blue">AI上位評価</span>
+            <strong style="display:block;margin-top:5px;">マイユニバース</strong>
+          </div>
+          <span class="score">68.4</span>
+        </div>
+      </a>
+    </section>
+
+    <section class="venue-section card">
+      <h2 class="section-title"><span>本日の開催（6/13）</span><span class="section-note">状態更新</span></h2>
+      <div class="venue-grid">
+        <a class="venue-chip" href="#"><strong>函館</strong><small>全12R・9R進行中</small><span class="venue-state">進行中</span></a>
+        <a class="venue-chip" href="#"><strong>東京</strong><small>全12R・9R進行中</small><span class="venue-state">進行中</span></a>
+        <a class="venue-chip" href="#"><strong>阪神</strong><small>全12R・9R進行中</small><span class="venue-state">進行中</span></a>
+        <a class="venue-chip" href="#"><strong>佐賀</strong><small>全11R</small><span class="venue-state muted">地方競馬</span></a>
+        <a class="venue-chip" href="#"><strong>高知</strong><small>全11R</small><span class="venue-state muted">地方競馬</span></a>
+      </div>
+      <div class="affiliate">
+        <div>
+          <span class="badge badge-amber">PR / スポンサー</span>
+          <h3>地方競馬のオッズ確認・ネット投票</h3>
+          <p>地方開催を確認しているユーザー向けに、楽天競馬の導線を自然に表示します。</p>
+        </div>
+        <a href="#" rel="sponsored nofollow noopener noreferrer">楽天競馬で確認 →</a>
+      </div>
+      <div class="ad ad-wide"><div><small>スポンサーリンク</small>広告枠 320×100</div></div>
+    </section>
+
+    <section class="main-grid">
+      <div class="stack">
+        <section class="hits card">
+          <h2 class="section-title"><span>高配当的中ランキング</span><span class="section-note">直近7日</span></h2>
+          <div class="hit-list">
+            <a class="hit" href="#"><span class="rank">1</span><strong>6/9 水沢 8R</strong><span class="amount">226,590円</span></a>
+            <a class="hit" href="#"><span class="rank">2</span><strong>6/7 東京 4R<br><small>3連単: 3→17→16</small></strong><span class="amount">99,190円</span></a>
+            <a class="hit" href="#"><span class="rank">3</span><strong>6/7 高知 3R<br><small>3連単: 2→1→4</small></strong><span class="amount">51,230円</span></a>
+          </div>
+        </section>
+
+        <section class="pick-section card">
+          <h2 class="section-title"><span>本日の分析注目馬</span><span class="section-note">3分類で確認</span></h2>
+          <div class="tabs" role="presentation">
+            <button class="tab active">本命候補</button>
+            <button class="tab">オッズ妙味</button>
+            <button class="tab">地方注目</button>
+          </div>
+          <a class="pick-card" href="#">
+            <div>
+              <span class="badge badge-slate">阪神 8R・AI偏差値</span>
+              <h3>オリーブガーデン</h3>
+              <p>先行力が高く、時計が掛かりやすい展開なら評価を保ちやすい条件です。</p>
+              <div class="bar-track"><div class="bar-fill"></div></div>
+            </div>
+            <div class="score-panel">75.3<small>/ 100点</small></div>
+          </a>
+          <div class="affiliate">
+            <div>
+              <span class="badge badge-amber">PR / 関連商品</span>
+              <h3>レース観戦前のデータ確認に使いやすい競馬本</h3>
+              <p>物販枠は記事・データ閲覧の流れを妨げない位置に限定します。</p>
+            </div>
+            <a href="#" rel="sponsored nofollow noopener noreferrer">商品を見る →</a>
+          </div>
+        </section>
+
+        <section class="articles card">
+          <h2 class="section-title"><span>最新の分析記事</span><span class="section-note">4枚目にPR枠</span></h2>
+          <div class="article-grid">
+            <a class="article" href="#">
+              <div class="thumb gold">重賞 G1<br>宝塚記念 2026</div>
+              <div class="article-body"><span class="badge badge-amber">重賞攻略</span><h3>宝塚記念2026 AI予想｜枠順確定後の確認ポイント</h3><div class="meta"><span>6/12</span><span>3分</span></div></div>
+            </a>
+            <a class="article" href="#">
+              <div class="thumb blue">競馬ニュース<br>海外遠征データ</div>
+              <div class="article-body"><span class="badge badge-blue">競馬ニュース</span><h3>サウジカップ2026結果分析｜海外適性を振り返る</h3><div class="meta"><span>6/12</span><span>5分</span></div></div>
+            </a>
+            <a class="article" href="#">
+              <div class="thumb green">騎手分析<br>阪神コースデータ</div>
+              <div class="article-body"><span class="badge badge-green">騎手分析</span><h3>阪神芝1600m騎手データ｜中枠検討と外枠の傾向</h3><div class="meta"><span>4/22</span><span>4分</span></div></div>
+            </a>
+            <div class="native-ad">
+              <div>
+                <span class="badge badge-slate">PR</span>
+                <h3 style="margin:10px 0 6px;font-size:14px;">オッズ確認・ネット投票サービス</h3>
+                <p style="margin:0;color:#64748b;font-size:12px;line-height:1.7;">対象レースに合わせて表示するネイティブ広告枠</p>
+              </div>
+            </div>
+          </div>
+          <div class="ad ad-wide"><div><small>スポンサーリンク</small>広告枠 300×250</div></div>
+        </section>
+
+        <section class="faq card">
+          <h2 class="section-title"><span>よくある質問</span><span class="section-note">最小表示</span></h2>
+          <div class="faq-row"><span>本当に無料ですか？</span><span>＋</span></div>
+          <div class="faq-row"><span>データはいつ更新されますか？</span><span>＋</span></div>
+          <div class="faq-row"><span>モバイルでも使えますか？</span><span>＋</span></div>
+        </section>
+      </div>
+
+      <aside class="stack">
+        <div class="ad ad-large"><div><small>スポンサーリンク</small>広告枠 300×250<br>高配当ランキング直後</div></div>
+        <div class="card" style="padding:14px;">
+          <h2 class="section-title"><span>回遊導線</span><span class="section-note">PC補助</span></h2>
+          <a class="resume-card" href="#"><small>本日のデータ</small><strong>全レース一覧</strong><span class="resume-action">確認する</span></a>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <div class="sticky-ad" aria-hidden="true">
+    <span>広告</span>
+    <div class="slot">スティッキーフッター広告 320×50</div>
+    <span style="text-align:center;">×</span>
+  </div>
+</body>
+</html>

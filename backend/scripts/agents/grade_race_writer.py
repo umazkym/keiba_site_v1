@@ -84,6 +84,7 @@ GRADE_RACE_ENTITY_ALIASES = {
     'hopeful-stakes': ['ホープフルS', 'ホープフルステークス'],
     'hakodate-kinen': ['函館記念'],
     'radio-nikkei-sho': ['ラジオNIKKEI賞'],
+    'kitakyushu-kinen': ['北九州記念'],
 }
 
 GRADE_RACE_HUB_SLUGS = {

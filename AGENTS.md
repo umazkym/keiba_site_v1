@@ -114,6 +114,8 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-07-05**:
+  * **重賞カレンダー主導の記事生成スケジュール化**:
+    重賞名検索の流入を優先するため、`news_topic_planner.py` を重賞カレンダー締切ベースへ拡張。中央重賞は金曜11:45 JST以降の枠順確定後候補と16:45 JST以降の結果回顧更新、地方重賞は2日前直前記事のみを生成対象にした。優先順位はG1、Jpn1、G2、Jpn2、G3、Jpn3、その他重賞の順に明示し、2日前を過ぎた未生成重賞は `missed_preview` として補完する。WriteOrderには競馬場・距離・コースを含むSEOキーワード、`update_stage`、`deadline_status`、結果確定フラグを持たせ、既存重賞記事は同URL更新で育てる。Actionsへ11:45/16:45 JST実行を追加し、旧GradeRaceWriterは既定OFF。`py_compile`、`test_news_topic_planner.py`、`npx tsc --noEmit`、`npm run article:validate-links`、`npm run article:audit-quality`、`npm run build` 成功。品質監査のcritical/warningは既存記事由来の残課題として継続。
   * **北九州記念の専用記事追加と重賞エンティティ補完**:
     北九州記念は `news_topic_planner.py` の日程補完では候補化されていたが、公開済み記事ディレクトリでは6月29日以降の記事がなく、北九州記念専用記事が存在しなかった。さらに、重賞エンティティのalias、PublisherのraceNameMap、記事アーカイブseedに北九州記念が未登録で、生成・公開後も重賞アーカイブへ接続しにくい状態だった。`2026-07-05-kitakyushu-kinen-2026-field-analysis.md` を追加し、北九州記念を `kitakyushu-kinen` として planner、grade_race_writer、publisher、記事アーカイブへ登録。7月5日のrace-day補完でWriteOrder対象に残る回帰テストも追加した。`py_compile`、`test_news_topic_planner.py`、`npx tsc --noEmit`、`npm run article:validate-links`、`npm run article:audit-quality`、`npm run build` 成功。品質監査のcritical/warningは既存記事由来の残課題として継続。
 * **2026-06-29**:

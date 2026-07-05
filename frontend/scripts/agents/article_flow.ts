@@ -148,11 +148,16 @@ function validateRaceTimingReference(ref: Record<string, unknown>, state: Articl
   if (!scheduledRaceDate) return;
 
   const daysToRace = daysBetweenDateStrings(currentJstDateString(), scheduledRaceDate);
-  const expectedPhase = expectedRacePhase(daysToRace);
   const searchIntent = String(ref.search_intent || '');
   const racePhase = String(ref.race_phase || '');
+  const resultConfirmed =
+    ref.result_confirmed === true ||
+    String(ref.update_stage || '') === 'result_review';
+  const expectedPhase = searchIntent === 'result_review' && resultConfirmed
+    ? 'post_race'
+    : expectedRacePhase(daysToRace);
 
-  if (daysToRace >= 0 && searchIntent === 'result_review') {
+  if (daysToRace >= 0 && searchIntent === 'result_review' && !resultConfirmed) {
     addIssue(
       state,
       'Demand Planner',

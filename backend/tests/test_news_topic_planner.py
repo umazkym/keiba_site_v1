@@ -75,6 +75,185 @@ class NewsTopicPlannerTest(unittest.TestCase):
         self.assertTrue(planner.is_in_focus_window(-3))
         self.assertFalse(planner.is_in_focus_window(-4))
 
+    def test_grade_priority_order_follows_search_demand_policy(self) -> None:
+        self.assertLess(planner.grade_priority_rank("G1"), planner.grade_priority_rank("JpnI"))
+        self.assertLess(planner.grade_priority_rank("JpnI"), planner.grade_priority_rank("G2"))
+        self.assertLess(planner.grade_priority_rank("G2"), planner.grade_priority_rank("JpnII"))
+        self.assertLess(planner.grade_priority_rank("JpnII"), planner.grade_priority_rank("G3"))
+        self.assertLess(planner.grade_priority_rank("G3"), planner.grade_priority_rank("JpnIII"))
+        self.assertLess(planner.grade_priority_rank("JpnIII"), planner.grade_priority_rank("重賞"))
+
+    def test_jra_grade_preview_waits_for_friday_draw_time(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-07-03T11:44:00+09:00"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        try:
+            kitakyushu = planner.find_race_demand("北九州記念")
+            self.assertIsNotNone(kitakyushu)
+            self.assertEqual(planner.days_until_race(kitakyushu), 2)
+            self.assertEqual(planner.preview_deadline_status(kitakyushu, 2), "")
+
+            os.environ["KEIBA_NEWS_NOW"] = "2026-07-03T11:45:00+09:00"
+            planner._RACE_SCHEDULE_CACHE.clear()
+            self.assertEqual(planner.preview_deadline_status(kitakyushu, 2), "due_preview")
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_calendar_deadline_generates_jra_draw_article_with_course_keywords(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        previous_max_orders = os.environ.get("KEIBA_NEWS_MAX_ORDERS_PER_RUN")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-07-03T11:45:00+09:00"
+        os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = "3"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        try:
+            state = planner.WorkflowState(
+                run_id="jra-draw-deadline-test",
+                fetched_at=planner.current_jst().isoformat(),
+            )
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "build_internal_data_bundle", return_value={}),
+            ):
+                planner.cluster_topics_node(state)
+                planner.build_write_orders_node(state)
+
+            order = next(
+                order
+                for order in state.write_orders
+                if order["reference_data"]["race_name"] == "北九州記念"
+            )
+            self.assertEqual(order["target_keyword"], "北九州記念2026 枠順確定後 確認ポイント")
+            self.assertEqual(order["reference_data"]["update_stage"], "draw_confirmed")
+            self.assertEqual(order["reference_data"]["draw_status"], "confirmed")
+            self.assertIn("北九州記念 小倉", order["reference_data"]["keywords"])
+            self.assertIn("小倉芝1200m 傾向", order["reference_data"]["keywords"])
+            self.assertEqual(order["priority"], planner.grade_calendar_priority("G3", "due_preview"))
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            if previous_max_orders is None:
+                os.environ.pop("KEIBA_NEWS_MAX_ORDERS_PER_RUN", None)
+            else:
+                os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = previous_max_orders
+            planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_missed_preview_is_backfilled_until_race_day(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-07-05T08:00:00+09:00"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        try:
+            state = planner.WorkflowState(
+                run_id="missed-preview-test",
+                fetched_at=planner.current_jst().isoformat(),
+            )
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "build_internal_data_bundle", return_value={}),
+            ):
+                planner.cluster_topics_node(state)
+                planner.build_write_orders_node(state)
+
+            order = next(
+                order
+                for order in state.write_orders
+                if order["reference_data"]["race_name"] == "北九州記念"
+            )
+            self.assertEqual(order["reference_data"]["deadline_status"], "missed_preview")
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_jra_result_review_requires_result_data_and_updates_existing_entity(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-07-05T16:45:00+09:00"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        try:
+            kitakyushu = planner.find_race_demand("北九州記念")
+            self.assertIsNotNone(kitakyushu)
+            preview_key = planner.grade_race_stage_key(
+                planner.grade_race_identity_key(kitakyushu),
+                "2026",
+                planner.PREVIEW_STAGE_KEY,
+            )
+            state = planner.WorkflowState(
+                run_id="jra-result-review-test",
+                fetched_at=planner.current_jst().isoformat(),
+            )
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value={preview_key}),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "grade_race_has_results", return_value=True),
+                patch.object(planner, "build_internal_data_bundle", return_value={"results": [{"着順": 1, "馬番": 1, "馬名": "確認馬"}]}),
+            ):
+                planner.cluster_topics_node(state)
+                planner.build_write_orders_node(state)
+
+            order = next(
+                order
+                for order in state.write_orders
+                if order["reference_data"]["race_name"] == "北九州記念"
+            )
+            self.assertEqual(order["target_keyword"], "北九州記念2026 結果 回顧")
+            self.assertEqual(order["reference_data"]["update_stage"], "result_review")
+            self.assertTrue(order["reference_data"]["result_confirmed"])
+            self.assertEqual(order["reference_data"]["race_phase"], "post_race")
+            self.assertEqual(order["reference_data"]["entity_key"], "kitakyushu-kinen")
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_nar_grade_does_not_generate_result_review(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-07-08T16:45:00+09:00"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        try:
+            state = planner.WorkflowState(
+                run_id="nar-no-result-review-test",
+                fetched_at=planner.current_jst().isoformat(),
+            )
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "grade_race_has_results", return_value=True),
+            ):
+                planner.cluster_topics_node(state)
+
+            result_candidates = [
+                candidate
+                for candidate in state.topic_candidates
+                if candidate.search_intent == "result_review"
+                and candidate.race_name == "スパーキングレディーカップ"
+            ]
+            self.assertEqual(result_candidates, [])
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            planner._RACE_SCHEDULE_CACHE.clear()
+
     def test_source_text_outweighs_query_hint(self) -> None:
         intent, _label, _score = planner.detect_search_intent(
             "府中牝馬Sの過去10年傾向とコース条件",
@@ -137,6 +316,8 @@ class NewsTopicPlannerTest(unittest.TestCase):
             with (
                 patch.object(planner, "load_existing_article_keywords", return_value=set()),
                 patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
             ):
                 planner.cluster_topics_node(state)
             fuchu = next(
@@ -184,6 +365,8 @@ class NewsTopicPlannerTest(unittest.TestCase):
             with (
                 patch.object(planner, "load_existing_article_keywords", return_value=set()),
                 patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
                 patch.object(planner, "build_internal_data_bundle", return_value={}),
             ):
                 planner.cluster_topics_node(state)
@@ -199,7 +382,8 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 for order in state.write_orders
                 if order["reference_data"]["race_name"] == "北九州記念"
             )
-            self.assertEqual(kitakyushu_order["target_keyword"], "北九州記念2026 出走構成 確認ポイント")
+            self.assertEqual(kitakyushu_order["target_keyword"], "北九州記念2026 枠順確定後 確認ポイント")
+            self.assertEqual(kitakyushu_order["reference_data"]["deadline_status"], "missed_preview")
             self.assertEqual(kitakyushu_order["reference_data"]["scheduled_race_date"], "2026-07-05")
             self.assertEqual(kitakyushu_order["reference_data"]["entity_key"], "kitakyushu-kinen")
         finally:

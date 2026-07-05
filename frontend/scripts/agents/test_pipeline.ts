@@ -73,6 +73,25 @@ function isNewsOrder(order: any): boolean {
   return cluster === 'news_context' || cluster === 'race_update';
 }
 
+function isUrgentGradeRaceOrder(order: any): boolean {
+  const ref = order?.reference_data || {};
+  const entityType = String(order?.entity_type || ref.entity_type || '');
+  const cluster = String(order?.theme_cluster || ref.article_type || '');
+  const deadlineStatus = String(ref.deadline_status || '');
+  const updateStage = String(ref.update_stage || '');
+  return (
+    entityType === 'grade_race' &&
+    (cluster === 'race_update' || cluster === 'grade_race_preview') &&
+    (
+      deadlineStatus === 'due_preview' ||
+      deadlineStatus === 'missed_preview' ||
+      deadlineStatus === 'due_result_review' ||
+      updateStage === 'draw_confirmed' ||
+      updateStage === 'result_review'
+    )
+  );
+}
+
 function isEvergreenOrder(order: any): boolean {
   const cluster = String(order?.theme_cluster || order?.reference_data?.article_type || '');
   const category = String(order?.category || order?.reference_data?.category || '');
@@ -102,11 +121,17 @@ function reserveSlot<T extends { file: string; order: any; priority: number }>(
 
 function prioritizeOrderFiles<T extends { file: string; order: any; priority: number }>(items: T[]): T[] {
   let result = [...items];
+  const urgentGradeRaceCount = result.filter(item => isUrgentGradeRaceOrder(item.order)).length;
+  if (urgentGradeRaceCount >= MAX_ARTICLES_PER_RUN) {
+    return result;
+  }
+
   if (RESERVE_NEWS_SLOT && MAX_ARTICLES_PER_RUN >= 2) {
     const newsTargetIndex = MAX_ARTICLES_PER_RUN >= 3 ? MAX_ARTICLES_PER_RUN - 2 : MAX_ARTICLES_PER_RUN - 1;
     result = reserveSlot(result, isNewsOrder, newsTargetIndex, 'ニュース');
   }
-  if (RESERVE_EVERGREEN_SLOT && MAX_ARTICLES_PER_RUN >= 3) {
+
+  if (RESERVE_EVERGREEN_SLOT && MAX_ARTICLES_PER_RUN >= 3 && urgentGradeRaceCount < MAX_ARTICLES_PER_RUN - 1) {
     result = reserveSlot(result, isEvergreenOrder, MAX_ARTICLES_PER_RUN - 1, '常設コラム');
   }
   return result;

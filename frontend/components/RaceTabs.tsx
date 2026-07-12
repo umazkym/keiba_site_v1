@@ -11,7 +11,6 @@ import { StartPositionChart } from './StartPositionChart';
 import { MatchupTable } from './MatchupTable';
 import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './Icons';
-import { InFeedAd } from './InFeedAd';
 import { AffiliateSlot } from './AffiliateSlot';
 import { RelatedRaces } from './RelatedRaces';
 import { DataExplanationPanel } from './DataExplanationPanel';
@@ -30,7 +29,6 @@ import { LAST_RACE_STORAGE_KEY, StoredRaceView } from '@/lib/race-memory';
 import { getRaceDetailPath } from '@/lib/race-url';
 import { formatDate } from '@/lib/utils';
 import { RACE_BREADCRUMB_CHANGE_EVENT } from '@/lib/race-breadcrumb-event';
-import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 
 const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -414,18 +412,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             {activeRace && (
                 <div id={`race-${activeRace.id}`} className="race-detail-layout mt-1">
                     <div className="grid gap-3">
-                        {raceType === 'jra' && (
-                            shouldShowAd && !shouldSuppressAdsInDevelopment && (
-                                <InFeedAd
-                                    refreshKey={`prediction-top-${adRefreshKey}`}
-                                    analyticsPlacement="race_before_prediction"
-                                    className="my-1.5 sm:my-2"
-                                    lazyRootMargin="400px 0px 400px 0px"
-                                    refreshRootMarginPx={400}
-                                />
-                            )
-                        )}
-
                         {/* 前後レースナビ（上部） */}
                         <RaceNavigation />
 
@@ -573,16 +559,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                             <RaceAnalysis race={activeRace} />
                         </div>
 
-                        {/* プレミアム解除時のみ、展望コメントの下にInFeedAdを表示 */}
-                        {isPremiumDetailVisible && shouldShowAd && (
-                            <InFeedAd
-                                refreshKey={`premium-after-analysis-${adRefreshKey}`}
-                                analyticsPlacement="race_after_analysis"
-                                className="my-1.5 sm:my-2"
-                                lazyRootMargin="760px 0px 760px 0px"
-                                refreshRootMarginPx={720}
-                            />
-                        )}
                         </div>
 
                         <div className="my-1.5 sm:my-3">
@@ -692,17 +668,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 })}
                             </div>
                         </section>
-
-                        {shouldShowAd && !shouldSuppressAdsInDevelopment && (
-                            <div className="ad ad-large">
-                                <InFeedAd
-                                    refreshKey={`side-ad-${adRefreshKey}`}
-                                    analyticsPlacement="race_sidebar"
-                                    lazyRootMargin="400px 0px 400px 0px"
-                                    refreshRootMarginPx={400}
-                                />
-                            </div>
-                        )}
 
                     </aside>
                 </div>

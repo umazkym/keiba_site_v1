@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Adsense } from './Adsense';
 import { sendAdImpressionEvent } from '@/lib/analytics';
 import { isManualAdsEnabled, shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
+import { useAdViewableEvent } from '@/hooks/useAdViewableEvent';
 
 type InFeedAdProps = {
     /** 広告スロットID（省略時はインフィード専用スロットを使用） */
@@ -46,6 +47,7 @@ export const InFeedAd = ({
     refreshRootMarginPx = 720,
 }: InFeedAdProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const [adLoaded, setAdLoaded] = useState(false);
     const [adUnfilled, setAdUnfilled] = useState(false);
     const adStyle = useMemo<CSSProperties>(
         () => ({ display: 'block', minHeight: '200px' }),
@@ -53,6 +55,7 @@ export const InFeedAd = ({
     );
 
     useEffect(() => {
+        setAdLoaded(false);
         setAdUnfilled(false);
     }, [refreshKey]);
 
@@ -68,6 +71,7 @@ export const InFeedAd = ({
 
             const status = ins.getAttribute('data-ad-status');
             if (status === 'filled') {
+                setAdLoaded(true);
                 sendAdImpressionEvent({
                     placement: analyticsPlacement,
                     format: 'in_feed',
@@ -76,6 +80,7 @@ export const InFeedAd = ({
                 observer.disconnect();
                 return true;
             } else if (status?.startsWith('unfill')) {
+                setAdLoaded(false);
                 setAdUnfilled(true);
                 observer.disconnect();
                 return true;
@@ -102,6 +107,17 @@ export const InFeedAd = ({
             observer.disconnect();
         };
     }, [refreshKey, analyticsPlacement, slot]);
+
+    useAdViewableEvent({
+        targetRef: containerRef,
+        isFilled: adLoaded,
+        refreshKey,
+        ad: {
+            placement: analyticsPlacement,
+            format: 'in_feed',
+            slot: slot || INFEED_SLOT,
+        },
+    });
 
     if (!isManualAdsEnabled || shouldSuppressAdsInDevelopment) return null;
 

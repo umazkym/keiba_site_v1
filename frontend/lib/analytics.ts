@@ -24,6 +24,8 @@ export type AdImpressionParams = {
     variant?: string;
 };
 
+export type AdViewableParams = AdImpressionParams;
+
 export type RewardGateEventName =
     | 'reward_gate_view'
     | 'reward_gate_click'
@@ -123,8 +125,8 @@ export const sendPredictionTableViewEvent = (params: {
 };
 
 /**
- * 特定の配置の広告が画面内にインプレッション（表示）された際に送信するイベント
- * @param params - 広告の配置位置、形式、スロットなど
+ * AdSenseが広告を配信した時点で送信する互換イベント。
+ * 実視認の判定には sendAdViewableEvent を使用する。
  */
 export const sendAdImpressionEvent = (params: string | AdImpressionParams) => {
     const normalized =
@@ -143,6 +145,26 @@ export const sendAdImpressionEvent = (params: string | AdImpressionParams) => {
         ad_placement: normalized.placement,
         ad_format: normalized.format,
         ad_page_type: inferPageType(),
+    });
+};
+
+/**
+ * 広告枠の50%以上が1秒間画面内にあったときに送信する実視認イベント。
+ */
+export const sendAdViewableEvent = (params: AdViewableParams) => {
+    const eventParams = {
+        ad_placement: params.placement,
+        ad_format: params.format,
+        ad_slot: params.slot,
+        ad_variant: params.variant,
+        ad_page_type: inferPageType(),
+    };
+
+    sendGAEvent('event', 'ad_viewable_custom', eventParams);
+    sendClarityEvent('ad_viewable_custom', {
+        ad_placement: params.placement,
+        ad_format: params.format,
+        ad_page_type: eventParams.ad_page_type,
     });
 };
 

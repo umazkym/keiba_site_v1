@@ -64,6 +64,7 @@ yarn-error.log*
 
 # Generated images for SNS posts
 /sns_images_dist/
+/youtube_video_dist/
 
 /analysis_results/
 

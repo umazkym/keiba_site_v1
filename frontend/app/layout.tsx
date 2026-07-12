@@ -8,8 +8,6 @@ import { MicrosoftClarity } from "@/components/MicrosoftClarity";
 // CookieConsent削除: AdSense/GoogleのGDPR同意メッセージと重複して2種類のポップアップが表示されるUX問題を解消
 // 日本向けサイトではGDPR準拠Cookie同意バナーは法的に不要。Google側の同意管理に一元化
 
-import { Suspense } from "react";
-import { GlobalAdManager } from "@/components/GlobalAdManager";
 import { shouldLoadAdsensePageLevelScript } from "@/lib/ad-config";
 import { getJstTodayString } from "@/lib/race-url";
 import { AdSensePageLevelScript } from "@/components/AdSensePageLevelScript";
@@ -139,11 +137,6 @@ export default function RootLayout({
                     <div className="w-full">
                         {children}
                     </div>
-                    
-                    {/* モバイル下部追従等、DOMフローに影響しない広告マネージャー */}
-                    <Suspense fallback={null}>
-                        <GlobalAdManager />
-                    </Suspense>
                 </main>
                 {/* フッター直前の全ページ共通広告はユーザーの要望により撤去（UIスッキリ化のため） */}
                 <Footer />

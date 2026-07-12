@@ -5,6 +5,7 @@ import { Adsense } from './Adsense';
 import { SkeletonBox as SkeletonLoader } from './SkeletonLoader';
 import { sendAdImpressionEvent, type AdFormat } from '../lib/analytics';
 import { isManualAdsEnabled, shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
+import { useAdViewableEvent } from '@/hooks/useAdViewableEvent';
 
 /**
  * 広告ユニットの配置タイプ
@@ -178,6 +179,17 @@ export const AdUnit = ({
     // どうしても畳みたい箇所だけ collapseUnfilled を明示する。
     const shouldCollapse = adUnfilled && collapseUnfilled;
     const spacerStyle = reservedMinHeight ? { minHeight: reservedMinHeight } : undefined;
+
+    useAdViewableEvent({
+        targetRef: containerRef,
+        isFilled: adLoaded,
+        refreshKey,
+        ad: {
+            placement: analyticsPlacement ?? placement,
+            format: AD_FORMAT_BY_PLACEMENT[placement],
+            slot,
+        },
+    });
 
     if (!isManualAdsEnabled || shouldSuppressAdsInDevelopment) return null;
 

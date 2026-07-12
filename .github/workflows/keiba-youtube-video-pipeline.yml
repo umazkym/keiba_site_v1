@@ -1,0 +1,83 @@
+name: Keiba YouTube Video Pipeline
+
+on:
+  schedule:
+    # 毎日 UTC 11:00 = JST 20:00。13:30 JSTの翌日予測取得後に動画を生成する。
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: '対象日 YYYY-MM-DD。未指定なら翌日JST'
+        required: false
+        type: string
+      dry_run:
+        description: 'true の場合は生成だけ行い、YouTube投稿しない'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      max_shorts:
+        description: 'Shorts生成上限'
+        required: false
+        default: '3'
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  generate-and-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Set up IAP database tunnel
+        uses: ./.github/actions/setup-iap-db
+        with:
+          database_url: ${{ secrets.DATABASE_URL }}
+
+      - name: Generate and upload YouTube videos
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+          YOUTUBE_UPLOAD_ENABLED: ${{ secrets.YOUTUBE_UPLOAD_ENABLED }}
+          YOUTUBE_MAX_SHORTS: ${{ github.event.inputs.max_shorts || '3' }}
+          TZ: Asia/Tokyo
+        run: |
+          EXTRA_ARGS=""
+          if [ -n "${{ github.event.inputs.target_date }}" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --target-date ${{ github.event.inputs.target_date }}"
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --dry-run --skip-upload"
+          fi
+          python scripts/youtube_video_pipeline.py --max-shorts "${YOUTUBE_MAX_SHORTS}" $EXTRA_ARGS
+

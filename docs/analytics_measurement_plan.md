@@ -24,6 +24,8 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `prediction_table_view` | AI偏差値表が画面内に入る | `race_id`, `race_number`, `page_path` | 予想表の実閲覧 |
 | `article_read_complete` | 記事本文の末尾へ到達 | `article_slug`, `article_category`, `reading_time_min` | 記事読了率 |
 | `article_race_click` | 記事からレースページへ移動 | `article_slug`, `link_path`, `link_placement` | 記事からレースへの送客 |
+| `ad_impression_custom` | AdSenseが広告を配信 | `ad_placement`, `ad_format`, `ad_slot`, `ad_page_type` | 配信済み広告の母数 |
+| `ad_viewable_custom` | 広告枠の50%以上が1秒間画面内に表示 | `ad_placement`, `ad_format`, `ad_slot`, `ad_page_type` | 配置別の実視認と収益性 |
 | `affiliate_impression` | アフィリエイト枠の40%以上が表示 | `campaign_id`, `provider`, `context` | アフィリエイト表示母数 |
 | `affiliate_click` | アフィリエイトリンクをクリック | `campaign_id`, `provider`, `context`, `link_id` | アフィリエイト送客 |
 | `premium_data_view` | 詳細データを表示 | `race_id`, `result` | 詳細データの利用状況 |
@@ -37,6 +39,12 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 3. `reward_ad_granted`（リワード広告を再開した場合のみ）
 
 `article_read_complete`と`race_view_custom`は利用状況を見る指標であり、キーイベントにはしない。
+
+## 広告収益の判定基準
+
+- AdSenseが配信済みと判断した時点は`ad_impression_custom`、実視認は`ad_viewable_custom`として区別する。
+- 配置別の収益判断は、AdSenseのPublisher Adsレポートと`ad_viewable_custom`を同じ期間・同じページ種別で比較する。
+- GA4で登録するイベントスコープのカスタム定義は、`ad_placement`、`ad_format`、`ad_slot`、`ad_page_type`、既存の`context`・`provider`、追加した`affiliate_page_type`とする。
 
 ## 推奨ファネル
 

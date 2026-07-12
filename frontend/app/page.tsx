@@ -79,9 +79,9 @@ const getTodayString = () => {
 };
 
 const formatShortDate = (date: string) => {
-    const [, month, day] = date.split('-');
-    if (!month || !day) return date;
-    return `${Number(month)}/${Number(day)}`;
+    const matched = date.match(/^\d{4}-(\d{2})-(\d{2})/);
+    if (!matched) return date;
+    return `${Number(matched[1])}/${Number(matched[2])}`;
 };
 
 const FeaturePreviewCard = ({

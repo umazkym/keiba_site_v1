@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Adsense } from './Adsense';
 import { sendAdImpressionEvent } from '@/lib/analytics';
 import { isManualAdsEnabled, shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
+import { useAdViewableEvent } from '@/hooks/useAdViewableEvent';
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
 
@@ -26,9 +27,11 @@ type NativeCardAdProps = {
 
 export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', className = '', analyticsPlacement = 'native_card' }: NativeCardAdProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const [adLoaded, setAdLoaded] = useState(false);
     const [adUnfilled, setAdUnfilled] = useState(false);
 
     useEffect(() => {
+        setAdLoaded(false);
         setAdUnfilled(false);
     }, [refreshKey]);
 
@@ -44,6 +47,7 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
 
             const status = ins.getAttribute('data-ad-status');
             if (status === 'filled') {
+                setAdLoaded(true);
                 sendAdImpressionEvent({
                     placement: analyticsPlacement,
                     format: 'native_card',
@@ -53,6 +57,7 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
                 observer.disconnect();
                 return true;
             } else if (status?.startsWith('unfill')) {
+                setAdLoaded(false);
                 setAdUnfilled(true);
                 observer.disconnect();
                 return true;
@@ -79,6 +84,18 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
             observer.disconnect();
         };
     }, [refreshKey, analyticsPlacement, slot, variant]);
+
+    useAdViewableEvent({
+        targetRef: containerRef,
+        isFilled: adLoaded,
+        refreshKey,
+        ad: {
+            placement: analyticsPlacement,
+            format: 'native_card',
+            slot,
+            variant,
+        },
+    });
 
     // バリアントに応じたスタイル
     const variantStyles: Record<string, { container: string; height: string }> = {

@@ -145,6 +145,43 @@ function extractDateFromSlug(slug: string): string | null {
   return null;
 }
 
+function normalizeArticleDateValue(value: unknown, fieldName: string): string | null {
+  if (value === null || value === undefined || value === '') return null;
+
+  const source = value instanceof Date
+    ? value.toISOString()
+    : typeof value === 'string'
+      ? value.trim()
+      : String(value).trim();
+  const matched = source.match(/^(\d{4}-\d{2}-\d{2})(?:[T\s].*)?$/);
+
+  if (matched) {
+    const parsed = new Date(`${matched[1]}T00:00:00Z`);
+    if (!Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(matched[1])) {
+      return matched[1];
+    }
+  }
+
+  const parsed = new Date(source);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+
+  throw new Error(`記事フロントマターの${fieldName}が不正です: ${source}`);
+}
+
+function resolveArticleDate(data: Record<string, unknown>, slug: string): string {
+  const explicitValue = data.date ?? data.article_published_time ?? data.last_updated;
+  const normalizedExplicitDate = normalizeArticleDateValue(explicitValue, 'date');
+  if (normalizedExplicitDate) return normalizedExplicitDate;
+
+  return (extractDateFromSlug(slug) ?? new Date().toISOString()).slice(0, 10);
+}
+
+function resolveLastUpdatedDate(data: Record<string, unknown>): string {
+  return normalizeArticleDateValue(data.last_updated, 'last_updated') ?? '';
+}
+
 // 全記事を取得する関数
 export function getAllArticles(): Article[] {
   if (cachedArticles) {
@@ -163,7 +200,7 @@ export function getAllArticles(): Article[] {
       slug,
       content, // ここでは変換せず、生のMarkdownを返す
       title: data.title || '無題',
-      date: data.date || data.article_published_time || data.last_updated || extractDateFromSlug(slug) || new Date().toISOString(),
+      date: resolveArticleDate(data, slug),
       description: data.description || '',
       eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
       category: data.category || '未分類',
@@ -171,7 +208,7 @@ export function getAllArticles(): Article[] {
       keywords: normalizeStringArray(data.keywords),
       targetKeyword: data.target_keyword || '',
       themeCluster: data.theme_cluster || '',
-      lastUpdated: data.last_updated || '',
+      lastUpdated: resolveLastUpdatedDate(data),
       updateStage: data.update_stage || '',
       canonicalSlug: data.canonical_slug || '',
       canonicalPath: normalizeInternalCanonicalPath(data.canonical_path || data.canonicalPath),
@@ -376,7 +413,7 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     slug,
     content: contentHtml, // HTML化されたコンテンツを返す
     title: data.title || '無題',
-    date: data.date || data.article_published_time || data.last_updated || extractDateFromSlug(slug) || new Date().toISOString(),
+    date: resolveArticleDate(data, slug),
     description: data.description || '',
     eyecatch: data.eyecatch || '/images/articles/data-analysis-eyecatch.png',
     category: data.category || '未分類',
@@ -384,7 +421,7 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     keywords: normalizeStringArray(data.keywords),
     targetKeyword: data.target_keyword || '',
     themeCluster: data.theme_cluster || '',
-    lastUpdated: data.last_updated || '',
+    lastUpdated: resolveLastUpdatedDate(data),
     updateStage: data.update_stage || '',
     canonicalSlug: data.canonical_slug || '',
     canonicalPath: normalizeInternalCanonicalPath(data.canonical_path || data.canonicalPath),

@@ -35,6 +35,7 @@ export function middleware(request: NextRequest) {
     }
 
     if (pathname.startsWith('/races/')) {
+        const todayPath = `/races/${getJstTodayString()}`;
         // /races/today はビルド時の日付ではなく、アクセス時点のJST日付へ転送する。
         if (pathname === '/races/today') {
             const newUrl = new URL(request.url);
@@ -53,7 +54,7 @@ export function middleware(request: NextRequest) {
         if (venueOnlyMatch) {
             const [, date] = venueOnlyMatch;
             const newUrl = new URL(request.url);
-            newUrl.pathname = isValidRaceDate(date) ? `/races/${date}` : '/races/today';
+            newUrl.pathname = isValidRaceDate(date) ? `/races/${date}` : todayPath;
             newUrl.search = '';
 
             return NextResponse.redirect(newUrl, {
@@ -67,7 +68,7 @@ export function middleware(request: NextRequest) {
 
             if (!isValidRaceDate(date) || !raceNumber) {
                 const newUrl = new URL(request.url);
-                newUrl.pathname = isValidRaceDate(date) ? `/races/${date}` : '/races/today';
+                newUrl.pathname = isValidRaceDate(date) ? `/races/${date}` : todayPath;
                 newUrl.search = '';
 
                 return NextResponse.redirect(newUrl, {
@@ -89,7 +90,7 @@ export function middleware(request: NextRequest) {
 
         if (dateOnlyMatch && !isValidRaceDate(dateOnlyMatch[1]) && dateOnlyMatch[1] !== 'today') {
             const newUrl = new URL(request.url);
-            newUrl.pathname = '/races/today';
+            newUrl.pathname = todayPath;
             newUrl.search = '';
 
             return NextResponse.redirect(newUrl, {

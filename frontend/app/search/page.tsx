@@ -17,7 +17,7 @@ import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 export const metadata: Metadata = {
     title: 'サイト内検索',
     description: 'UMA-FREEサイト内の記事やページを検索します。AI競馬分析、レース情報、よくある質問などを検索してみてください。',
-    robots: 'index, follow',
+    robots: 'noindex, follow',
     openGraph: {
         title: 'サイト内検索',
         description: 'UMA-FREEサイト内の記事やレース情報を検索。AI競馬分析データ、初心者ガイド、FAQ等を検索できます。',

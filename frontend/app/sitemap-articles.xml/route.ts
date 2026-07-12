@@ -30,7 +30,7 @@ export async function GET() {
 ${articles
   .map((article) => `  <url>
     <loc>${BASE_URL}/articles/${escapeXml(article.slug)}</loc>
-    <lastmod>${new Date(article.date).toISOString()}</lastmod>
+    <lastmod>${new Date(article.lastUpdated || article.date).toISOString()}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`)

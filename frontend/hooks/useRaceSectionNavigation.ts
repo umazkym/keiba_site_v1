@@ -21,6 +21,11 @@ const getScrollOffset = () => {
     return window.innerWidth < 1024 ? 160 : 140;
 };
 
+const getScrollBehavior = (): ScrollBehavior => {
+    if (typeof window === 'undefined') return 'auto';
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+};
+
 export const scrollToRaceSection = (targetIds: string[]) => {
     if (typeof window === 'undefined') return;
 
@@ -28,7 +33,7 @@ export const scrollToRaceSection = (targetIds: string[]) => {
     if (!target) return;
 
     const top = window.scrollY + target.getBoundingClientRect().top - getScrollOffset();
-    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    window.scrollTo({ top: Math.max(0, top), behavior: getScrollBehavior() });
 };
 
 export const useRaceSectionNavigation = <TItem extends RaceSectionNavItem>(items: readonly TItem[]) => {

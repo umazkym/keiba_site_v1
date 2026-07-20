@@ -91,12 +91,41 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
         return a.race_number - b.race_number;
     });
     const focusRaces = sortedRaces.filter(isFocusRace);
-    const otherRaces = sortedRaces.filter(race => !isFocusRace(race));
-    const jraOtherRaces = otherRaces.filter(race => getRaceTypeLabel(race) === '中央');
-    const narOtherRaces = otherRaces.filter(race => getRaceTypeLabel(race) === '地方');
+    const listRaces = compact ? sortedRaces.slice(0, 3) : sortedRaces.filter(race => !isFocusRace(race));
+    const compactRemainingRaces = compact ? sortedRaces.slice(3) : [];
+    const jraListRaces = listRaces.filter(race => getRaceTypeLabel(race) === '中央');
+    const narListRaces = listRaces.filter(race => getRaceTypeLabel(race) === '地方');
 
-    const renderCompactRaceGroup = (label: '中央' | '地方', groupRaces: WeeklyGradeRace[]) => {
+    const renderCompactRaceGroup = (
+        label: '中央' | '地方',
+        groupRaces: WeeklyGradeRace[],
+        allowMobileCollapse = true,
+    ) => {
         if (groupRaces.length === 0) return null;
+
+        const renderRaceLink = (race: WeeklyGradeRace, className = '') => {
+            const displayName = cleanRaceName(race.race_name);
+            const badgeColorClass = getGradeBadgeClass(race.grade);
+
+            return (
+                <Link
+                    key={race.race_id}
+                    prefetch={false}
+                    href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
+                    className={`inline-flex min-h-[44px] min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 no-underline transition-colors duration-150 hover:border-blue-300 hover:bg-slate-50 ${className}`}
+                >
+                    <span className={`badge shrink-0 ${badgeColorClass}`}>
+                        {formatGrade(race.grade)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[12px] font-bold leading-tight text-slate-700 sm:text-[13px]">
+                        {displayName}
+                    </span>
+                    <span className="shrink-0 text-[10px] font-bold leading-none text-slate-500">
+                        {race.race_date.slice(5).replace('-', '/')} {race.venue_name}{race.race_number}R
+                    </span>
+                </Link>
+            );
+        };
 
         return (
             <div className="grid gap-1.5">
@@ -104,37 +133,43 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
                     <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
                     <span>{label}の重賞</span>
                 </div>
-                <div className="flex gap-1.5 overflow-x-auto pb-0.5 flex-nowrap sm:flex-wrap sm:justify-start sm:gap-2">
-                    {groupRaces.map((race) => {
-                        const displayName = cleanRaceName(race.race_name);
-                        const badgeColorClass = getGradeBadgeClass(race.grade);
-
-                        return (
-                            <Link
-                                key={race.race_id}
-                                prefetch={false}
-                                href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
-                                className="inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm transition-all duration-200 hover:shadow hover:border-blue-500/30 no-underline active:scale-95"
-                            >
-                                <span className={`badge ${badgeColorClass}`}>
-                                    {formatGrade(race.grade)}
-                                </span>
-                                <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 leading-tight">
-                                    {displayName}
-                                </span>
-                                <span className="text-[10px] font-bold text-slate-400 leading-none">
-                                    {race.race_date.slice(5).replace('-', '/')} {race.venue_name}{race.race_number}R
-                                </span>
-                            </Link>
-                        );
-                    })}
+                <div className="grid gap-1.5 sm:grid-cols-2">
+                    {groupRaces.slice(0, 3).map((race) => renderRaceLink(race))}
+                    {groupRaces.slice(3).map((race) => renderRaceLink(race, allowMobileCollapse ? 'hidden sm:inline-flex' : ''))}
                 </div>
+                {allowMobileCollapse && groupRaces.length > 3 && (
+                    <details className="group sm:hidden">
+                        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-600">
+                            ほか{groupRaces.length - 3}件を表示
+                        </summary>
+                        <div className="mt-1.5 grid gap-1.5">
+                            {groupRaces.slice(3).map((race) => renderRaceLink(race))}
+                        </div>
+                    </details>
+                )}
             </div>
         );
     };
 
+    const renderRaceSummaryLink = (race: WeeklyGradeRace, className = '') => (
+        <Link
+            key={race.race_id}
+            prefetch={false}
+            href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
+            aria-label={`${getRaceTypeLabel(race)} ${formatGrade(race.grade)} ${cleanRaceName(race.race_name)} ${race.race_date.slice(5).replace('-', '/')} ${race.venue_name}${race.race_number}R`}
+            className={`inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1.5 no-underline transition-colors duration-150 hover:border-blue-300 hover:bg-slate-50 ${className}`}
+        >
+            <span className={`badge shrink-0 ${getGradeBadgeClass(race.grade)}`}>
+                {formatGrade(race.grade)}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-slate-700 sm:text-xs">
+                {cleanRaceName(race.race_name)}
+            </span>
+        </Link>
+    );
+
     return (
-        <section className={compact ? "" : "card rounded-xl"} id="weekly-grade-races">
+        <section className={compact ? "" : "grade-races-panel"} id="weekly-grade-races">
             <div className={compact ? "" : "px-3 py-2 sm:px-4 sm:py-3"}>
                 <div role="heading" aria-level={2} className={compact ? "sr-only" : "mb-2.5 flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5"}>
                     <span className="flex min-w-0 items-center gap-1.5 text-[15px] font-bold leading-tight text-gray-800 sm:text-base">
@@ -144,7 +179,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
                 </div>
 
                 {/* G1/Jpn1級の強調表示（フルワイド専用カード） */}
-                {focusRaces.length > 0 && (
+                {!compact && focusRaces.length > 0 && (
                     <div className="grid gap-3 mb-3">
                         {focusRaces.map((race) => {
                             const displayName = cleanRaceName(race.race_name);
@@ -156,7 +191,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
                             return (
                                 <article
                                     key={race.race_id}
-                                    className="grade-focus card rounded-xl"
+                                    className="grade-focus"
                                 >
                                     <span className="badge badge-amber text-[10px] sm:text-xs">
                                         {raceTypeLabel} {formatGrade(race.grade)} 注目開催
@@ -181,7 +216,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
                                             <Link
                                                 prefetch={false}
                                                 href={hubPath}
-                                                className="inline-flex min-h-[38px] items-center justify-center rounded-lg bg-slate-950 px-3 py-2 text-center text-xs font-bold text-white no-underline transition-colors hover:bg-primary"
+                                                className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-950 px-3 py-2 text-center text-xs font-bold text-white no-underline transition-colors duration-150 hover:bg-primary"
                                             >
                                                 重賞データを見る
                                             </Link>
@@ -189,7 +224,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
                                         <Link
                                             prefetch={false}
                                             href={racePath}
-                                            className={`inline-flex min-h-[38px] items-center justify-center rounded-lg px-3 py-2 text-center text-xs font-bold no-underline transition-colors ${hubPath
+                                            className={`inline-flex min-h-[44px] items-center justify-center rounded-lg px-3 py-2 text-center text-xs font-bold no-underline transition-colors duration-150 ${hubPath
                                                 ? 'border border-slate-200 bg-white text-slate-700 hover:border-primary/30 hover:text-primary'
                                                 : 'bg-slate-950 text-white hover:bg-primary'
                                                 }`}
@@ -203,10 +238,39 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
                     </div>
                 )}
 
-                {otherRaces.length > 0 && (
-                    <div className="grid gap-2">
-                        {renderCompactRaceGroup('中央', jraOtherRaces)}
-                        {renderCompactRaceGroup('地方', narOtherRaces)}
+                {!compact && listRaces.length > 0 && (
+                    <details className="group">
+                        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700 transition-colors duration-150 hover:bg-slate-100">
+                            <span>そのほかの重賞</span>
+                            <span className="text-slate-500">{listRaces.length}件</span>
+                        </summary>
+                        <div className="mt-2 grid gap-2">
+                            {renderCompactRaceGroup('中央', jraListRaces)}
+                            {renderCompactRaceGroup('地方', narListRaces)}
+                        </div>
+                    </details>
+                )}
+
+                {compact && (
+                    <div className="grid gap-1.5">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                            <span>近日の重賞</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+                            {listRaces.map((race) => renderRaceSummaryLink(race))}
+                            {compactRemainingRaces.map((race) => renderRaceSummaryLink(race, 'hidden sm:inline-flex'))}
+                        </div>
+                        {compactRemainingRaces.length > 0 && (
+                        <details className="group mt-1.5 sm:hidden">
+                            <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-600">
+                                ほか{compactRemainingRaces.length}件を表示
+                            </summary>
+                            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                                {compactRemainingRaces.map((race) => renderRaceSummaryLink(race))}
+                            </div>
+                        </details>
+                        )}
                     </div>
                 )}
             </div>

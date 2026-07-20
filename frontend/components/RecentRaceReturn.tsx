@@ -119,7 +119,7 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
                 <Link
                     href="/races/today"
                     prefetch={false}
-                    className="hidden sm:inline-flex sm:flex-none items-center justify-center px-3 py-1.5 min-h-[36px] text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100"
+                    className="hidden min-h-[44px] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 sm:inline-flex sm:flex-none"
                 >
                     今日へ
                 </Link>

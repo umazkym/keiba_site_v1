@@ -1,12 +1,4 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
-import {
-    BarChart3,
-    Gauge,
-    LineChart,
-    ListChecks,
-    Swords,
-} from 'lucide-react';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
 import { WeeklyGradeRaces } from '@/components/WeeklyGradeRaces';
@@ -28,6 +20,7 @@ import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
+import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 
 // ISR: データ更新は1日2〜3回（06:00, 13:30 JST）のバッチ処理のため、
 // 30分間キャッシュでも十分な鮮度を維持しつつ、Origin Transfer/CPUを大幅削減。
@@ -72,10 +65,24 @@ const homepageFaqItems = [
     },
 ];
 
+const getJstDateParts = () => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(new Date());
+
+    return {
+        year: parts.find(part => part.type === 'year')?.value ?? '',
+        month: parts.find(part => part.type === 'month')?.value ?? '',
+        day: parts.find(part => part.type === 'day')?.value ?? '',
+    };
+};
+
 const getTodayString = () => {
-    const now = new Date();
-    const jstDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-    return jstDate.toISOString().split('T')[0];
+    const { year, month, day } = getJstDateParts();
+    return `${year}-${month}-${day}`;
 };
 
 const formatShortDate = (date: string) => {
@@ -84,162 +91,10 @@ const formatShortDate = (date: string) => {
     return `${Number(matched[1])}/${Number(matched[2])}`;
 };
 
-const FeaturePreviewCard = ({
-    title,
-    label,
-    description,
-    icon,
-    children,
-}: {
-    title: string;
-    label: string;
-    description: string;
-    icon: ReactNode;
-    children: ReactNode;
-}) => (
-    <div
-        className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-3"
-    >
-        <div className="mb-2 flex items-start gap-2 sm:mb-3">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700 sm:h-8 sm:w-8">
-                {icon}
-            </span>
-            <div className="min-w-0">
-                <p className="text-[10px] font-semibold text-slate-400">{label}</p>
-                <p className="truncate text-xs font-bold text-slate-900 sm:text-[13px]">{title}</p>
-            </div>
-        </div>
-        <div className="mb-2 min-h-[54px] sm:mb-3 sm:min-h-[76px]">{children}</div>
-        <p className="mt-auto text-[10px] leading-[1.55] text-slate-500 sm:text-[11px] sm:leading-relaxed">{description}</p>
-    </div>
-);
-
-const AnalysisFeatures = () => (
-    <section>
-        <h2 className="sec-title">
-            <span className="bar bg-secondary"></span>
-            本サイト独自の分析データ
-        </h2>
-
-        <div className="grid gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            <FeaturePreviewCard
-                label="独自指標"
-                title="AI偏差値"
-                icon={<Gauge className="h-4 w-4" />}
-                description="過去走・適性・展開力を独自アルゴリズムで数値化し、出走全頭を一覧で比較できます"
-            >
-                <div className="space-y-1.5 sm:space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                        <span>上位候補</span><span>偏差値</span>
-                    </div>
-                    <div className="h-1.5 sm:h-2 rounded-full bg-slate-100"><div className="h-1.5 sm:h-2 w-[88%] rounded-full bg-blue-600" /></div>
-                    <div className="h-1.5 sm:h-2 rounded-full bg-slate-100"><div className="h-1.5 sm:h-2 w-[72%] rounded-full bg-slate-500" /></div>
-                    <div className="h-1.5 sm:h-2 rounded-full bg-slate-100"><div className="h-1.5 sm:h-2 w-[61%] rounded-full bg-amber-500" /></div>
-                </div>
-            </FeaturePreviewCard>
-
-            <FeaturePreviewCard
-                label="馬同士の直接比較"
-                title="対戦成績"
-                icon={<Swords className="h-4 w-4" />}
-                description="出走馬同士の過去の直接対決をマトリクスで表示しています"
-            >
-                <div className="grid grid-cols-3 gap-1 text-center text-[10px] sm:gap-1.5 sm:text-[11px] font-bold">
-                    {['+2', '0', '-1', '+1', '+3', '0', '-2', '+1', '+2'].map((value, index) => (
-                        <span
-                            key={`${value}-${index}`}
-                            className={`rounded-md py-1 sm:py-1.5 ${value.startsWith('+') ? 'bg-emerald-50 text-emerald-700' : value.startsWith('-') ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-500'}`}
-                        >
-                            {value}
-                        </span>
-                    ))}
-                </div>
-            </FeaturePreviewCard>
-
-            <FeaturePreviewCard
-                label="レース展開"
-                title="脚質予測"
-                icon={<LineChart className="h-4 w-4" />}
-                description="各コーナーでの隊列をシミュレーションし、展開の有利不利を確認できます"
-            >
-                <div className="flex h-[54px] sm:h-[74px] items-end gap-1.5 rounded-lg bg-slate-50 px-2 sm:px-3 pb-1.5 sm:pb-2 pt-2 sm:pt-3">
-                    {[68, 42, 74, 52, 35].map((height, index) => (
-                        <div key={index} className="flex flex-1 flex-col items-center justify-end gap-1">
-                            <div className="w-full rounded-t bg-emerald-500/80" style={{ height: `${height}%` }} />
-                            <span className="text-[9px] font-semibold text-slate-400">{index + 1}C</span>
-                        </div>
-                    ))}
-                </div>
-            </FeaturePreviewCard>
-
-            <FeaturePreviewCard
-                label="コース別データ"
-                title="枠順傾向"
-                icon={<BarChart3 className="h-4 w-4" />}
-                description="コース・距離・馬場状態ごとの枠順別勝率を集計しています"
-            >
-                <div className="space-y-1.5">
-                    {[82, 54, 68, 40].map((width, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                            <span className="w-7 text-[10px] font-semibold text-slate-400">{index + 1}枠</span>
-                            <div className="h-1.5 sm:h-2 flex-1 rounded-full bg-slate-100">
-                                <div className="h-1.5 sm:h-2 rounded-full bg-amber-500" style={{ width: `${width}%` }} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </FeaturePreviewCard>
-
-            <FeaturePreviewCard
-                label="テキスト解説"
-                title="AIレース展望"
-                icon={<ListChecks className="h-4 w-4" />}
-                description="展開予想・適性評価・リスク要因をテキストで解説しています"
-            >
-                <div className="space-y-1 rounded-lg bg-slate-50 p-2 text-[10px] text-slate-600 sm:space-y-1.5 sm:p-2.5">
-                    <div className="h-1.5 w-[92%] rounded-full bg-slate-300" />
-                    <div className="h-1.5 w-[74%] rounded-full bg-slate-300" />
-                    <div className="mt-1.5 sm:mt-2 flex flex-wrap gap-1">
-                        <span className="rounded bg-white px-1.5 py-1 text-[10px] font-semibold text-blue-700">展開</span>
-                        <span className="rounded bg-white px-1.5 py-1 text-[10px] font-semibold text-emerald-700">適性</span>
-                        <span className="rounded bg-white px-1.5 py-1 text-[10px] font-semibold text-amber-700">リスク</span>
-                    </div>
-                </div>
-            </FeaturePreviewCard>
-        </div>
-    </section>
-);
-
 const getFormattedUpdateDate = () => {
-    const now = new Date();
-    const jstDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-    const month = jstDate.getMonth() + 1;
-    const day = jstDate.getDate();
-    return `${month}/${day} 7:00頃更新`;
+    const { month, day } = getJstDateParts();
+    return `${Number(month)}/${Number(day)} 7:00頃更新`;
 };
-
-type HeroDataCardProps = {
-    title: string;
-    description: string;
-    icon: ReactNode;
-    accentClass: string;
-    children: ReactNode;
-};
-
-const HeroDataCard = ({ title, description, icon, accentClass, children }: HeroDataCardProps) => (
-    <div className="min-w-0 rounded-lg bg-white p-2 text-left shadow-sm h-full flex flex-col justify-between">
-        <div className="mb-1.5 flex min-w-0 items-center gap-1.5">
-            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${accentClass}`}>
-                {icon}
-            </span>
-            <div className="min-w-0">
-                <div className="truncate text-[11px] font-bold leading-none text-slate-950 sm:text-xs">{title}</div>
-                <div className="mt-0.5 truncate text-[9px] font-semibold leading-none text-slate-500">{description}</div>
-            </div>
-        </div>
-        <div className="rounded-md bg-slate-50 p-1.5 mt-auto h-[38px] flex items-center justify-center w-full">{children}</div>
-    </div>
-);
 
 const getCategoryBadgeClass = (category: string) => {
     switch (category) {
@@ -295,8 +150,8 @@ export default async function HomePage() {
             <div className="hero-grid">
                 {/* ヒーローセクション */}
                 <section className="hero card rounded-xl">
-                    <span className="update font-extrabold rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/95 backdrop-blur-sm inline-flex items-center gap-1.5 mb-3">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="update inline-flex items-center gap-1.5 text-xs font-extrabold text-white/95">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                         {getFormattedUpdateDate()}
                     </span>
                     <h1 className="text-white font-extrabold tracking-tight leading-tight !text-[17px] sm:!text-[24px] mb-2">
@@ -308,69 +163,14 @@ export default async function HomePage() {
                     <p className="text-slate-300 text-xs sm:text-base leading-relaxed pb-2 mb-4 max-w-xl">
                         展開・対戦成績・枠順傾向をひと目で確認。登録不要で中央・地方の分析データを毎日無料で確認できます。
                     </p>
-                    <div className="mb-4 grid w-full grid-cols-2 gap-2 rounded-xl sm:grid-cols-4 sm:gap-2.5">
-                        <HeroDataCard
-                            title="AI偏差値"
-                            description="出走馬の能力をスコア化"
-                            icon={<Gauge className="h-3.5 w-3.5" />}
-                            accentClass="bg-blue-50 text-blue-700"
-                        >
-                            <div className="space-y-1 w-full">
-                                <span className="block h-1.5 w-[88%] rounded-full bg-blue-600" />
-                                <span className="block h-1.5 w-[64%] rounded-full bg-amber-400" />
-                                <span className="block h-1.5 w-[72%] rounded-full bg-slate-300" />
-                            </div>
-                        </HeroDataCard>
-
-                        <HeroDataCard
-                            title="対戦成績"
-                            description="過去の直接対決での勝敗比較"
-                            icon={<Swords className="h-3.5 w-3.5" />}
-                            accentClass="bg-indigo-50 text-indigo-700"
-                        >
-                            <div className="grid grid-cols-3 gap-1 text-center text-[9px] font-bold w-full">
-                                <span className="rounded bg-emerald-50 py-0.5 text-emerald-700">+2</span>
-                                <span className="rounded bg-slate-100 py-0.5 text-slate-500">0</span>
-                                <span className="rounded bg-rose-50 py-0.5 text-rose-700">-1</span>
-                                <span className="rounded bg-slate-100 py-0.5 text-slate-500">0</span>
-                                <span className="rounded bg-emerald-50 py-0.5 text-emerald-700">+1</span>
-                                <span className="rounded bg-slate-100 py-0.5 text-slate-500">0</span>
-                            </div>
-                        </HeroDataCard>
-
-                        <HeroDataCard
-                            title="展開/脚質"
-                            description="スタートでの位置取りを予測"
-                            icon={<LineChart className="h-3.5 w-3.5" />}
-                            accentClass="bg-emerald-50 text-emerald-700"
-                        >
-                            <div className="flex h-6 items-end gap-1 w-full">
-                                {[54, 76, 38, 64].map((height, index) => (
-                                    <span key={index} className="flex-1 rounded-t bg-emerald-500/80" style={{ height: `${height}%` }} />
-                                ))}
-                            </div>
-                        </HeroDataCard>
-
-                        <HeroDataCard
-                            title="枠順傾向"
-                            description="コース別の有利な枠順を分析"
-                            icon={<BarChart3 className="h-3.5 w-3.5" />}
-                            accentClass="bg-amber-50 text-amber-700"
-                        >
-                            <div className="flex h-6 items-end gap-1 w-full">
-                                {[82, 42, 66, 36].map((height, index) => (
-                                    <span key={index} className="flex-1 rounded-t bg-blue-500/80" style={{ height: `${height}%` }} />
-                                ))}
-                            </div>
-                        </HeroDataCard>
-                    </div>
+                    <RaceAnalysisValueGrid className="mb-4" />
                     <HomeRaceEntryLink
                         href={`/races/${todayStr}`}
                         raceDate={todayStr}
                         entryMethod="hero_cta"
                         className="cta"
                     >
-                        今日のレース分析を無料で見る →
+                        今日のレース分析を見る <span aria-hidden="true">→</span>
                     </HomeRaceEntryLink>
                 </section>
 
@@ -378,7 +178,7 @@ export default async function HomePage() {
                 {weeklyGradeRaces.length > 0 ? (
                     <WeeklyGradeRaces races={weeklyGradeRaces} topHorses={gradeRaceTopHorses} />
                 ) : (
-                    <div className="grade-focus card rounded-xl flex flex-col justify-center items-center p-6 text-center">
+                    <div className="grade-focus flex flex-col justify-center items-center p-6 text-center">
                         <span className="badge badge-slate mb-2">重賞情報</span>
                         <h2 className="text-slate-900 font-bold text-lg">近日の重賞情報を確認中です</h2>
                         <p className="text-slate-500 text-xs mt-1">開催情報が反映されるまで少し時間がかかる場合があります。</p>
@@ -388,7 +188,7 @@ export default async function HomePage() {
                             entryMethod="grade_fallback"
                             className="cta mt-4"
                         >
-                            今日のレース分析を無料で見る →
+                            今日のレース分析を見る <span aria-hidden="true">→</span>
                         </HomeRaceEntryLink>
                     </div>
                 )}
@@ -445,16 +245,16 @@ export default async function HomePage() {
                             </Link>
                         </div>
 
-                        <div className={`grid grid-cols-2 gap-3 ${shouldSuppressAdsInDevelopment ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
                             {latestArticles.slice(0, 3).map((article) => (
-                                <Link href={`/articles/${article.slug}`} key={article.slug} className="article group">
-                                    <div className="thumb relative overflow-hidden bg-slate-100">
+                                <Link prefetch={false} href={`/articles/${article.slug}`} key={article.slug} className="article group flex min-h-0 sm:block">
+                                    <div className="thumb relative h-20 w-24 shrink-0 overflow-hidden bg-slate-100 sm:h-auto sm:w-auto">
                                         <img
                                             src={article.eyecatch || '/images/articles/data-analysis-eyecatch.png'}
                                             alt={article.title}
                                             loading="lazy"
                                             decoding="async"
-                                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                            className="h-full w-full object-cover"
                                         />
                                     </div>
                                     <div className="article-body">
@@ -471,7 +271,9 @@ export default async function HomePage() {
                             ))}
                             {/* 4枚目のネイティブ広告枠 */}
                             {!shouldSuppressAdsInDevelopment && (
-                                <NativeCardAd slot="1489598374" variant="article" className="h-full" analyticsPlacement="home_article_feed_1" />
+                                <div className="md:col-span-3">
+                                    <NativeCardAd slot="1489598374" variant="article" className="h-full" analyticsPlacement="home_article_feed_1" />
+                                </div>
                             )}
                         </div>
                     </section>
@@ -487,7 +289,7 @@ export default async function HomePage() {
                                 <details key={index} className="border-t border-slate-200 first:border-0">
                                     <summary className="list-none cursor-pointer py-3 text-sm font-bold text-slate-900 flex justify-between items-center hover:bg-slate-50 px-2 rounded">
                                         <span>{item.question}</span>
-                                        <span className="text-xs text-slate-400">▼</span>
+                                        <span className="text-xs text-slate-500">▼</span>
                                     </summary>
                                     <div className="pb-3 px-2 text-xs leading-relaxed text-slate-500">
                                         {item.answer}

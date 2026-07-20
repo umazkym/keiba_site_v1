@@ -24,7 +24,7 @@ const config: Config = {
         },
         secondary: {
           DEFAULT: "#64748b", // Slate 500
-          light: "#94a3b8",   // Slate 400
+          light: "#64748b",   // Slate 500（小さい文字でも可読性を確保）
           dark: "#475569",    // Slate 600
         },
         accent: {
@@ -38,7 +38,7 @@ const config: Config = {
           DEFAULT: "#0f172a",  // Slate 900
           primary: "#0f172a",  // Slate 900
           secondary: "#475569",// Slate 600
-          muted: "#94a3b8",    // Slate 400
+          muted: "#64748b",    // Slate 500
         },
         border: "#f1f5f9",     // Slate 100 (Softer border)
       },
@@ -66,9 +66,9 @@ const config: Config = {
         sm: "0.25rem",
       },
       boxShadow: {
-        soft: "0 4px 20px -2px rgba(15, 23, 42, 0.05)",
+        soft: "none",
         elevated: "0 10px 30px -5px rgba(15, 23, 42, 0.08)",
-        glow: "0 0 15px rgba(245, 158, 11, 0.3)",
+        glow: "none",
       },
       animation: {
         'slide-up': 'slide-up 0.4s ease-out forwards',

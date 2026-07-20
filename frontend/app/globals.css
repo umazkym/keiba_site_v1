@@ -14,7 +14,7 @@
 
     /* セカンダリーカラー：Slate 500 */
     --color-secondary: #64748b;
-    --color-secondary-light: #94a3b8;
+    --color-secondary-light: #64748b;
     --color-secondary-dark: #475569;
 
     /* アクセントカラー：Amber 500 */
@@ -25,10 +25,10 @@
     /* 背景とテキストカラー */
     --bg: #f8fafc;
     --surface: #ffffff;
-    --muted: #94a3b8;
+    --muted: #64748b;
     --border: #e2e8f0;
     --text: #0f172a;
-    --soft-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    --soft-shadow: none;
     --elevated-shadow: 0 12px 34px rgba(15, 23, 42, 0.18);
 
     /* セクション間のギャップ（モバイル/デスクトップ自動切替） */
@@ -78,7 +78,8 @@
     }
 
     a {
-        @apply transition-all duration-200;
+        transition-property: color, background-color, border-color, text-decoration-color, opacity;
+        transition-duration: 160ms;
         color: inherit;
     }
 
@@ -147,49 +148,41 @@
 /* ---------- コンポーネントユーティリティ ---------- */
 @layer components {
     .card {
-        @apply bg-surface rounded-2xl border transition-all duration-300;
+        @apply rounded-xl border bg-surface;
         border-color: var(--border);
-        box-shadow: var(--soft-shadow);
+        box-shadow: none;
     }
 
     /* Unified Micro-interaction: Hover Lift */
     .hover-lift {
-        @apply transition-all duration-300;
+        @apply transition-colors duration-150;
     }
 
     .hover-lift:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--elevated-shadow);
-        border-color: #e2e8f0;
+        border-color: #cbd5e1;
+        background-color: #f8fafc;
     }
 
 
 
     /* Glassmorphism utility */
     .glass {
-        @apply bg-white/80 backdrop-blur-md border-b border-slate-200/50;
+        @apply border-b border-slate-200 bg-white/95 backdrop-blur-sm;
     }
 
     .btn-primary {
-        @apply inline-flex items-center justify-center font-bold rounded-xl transition-all duration-200 active:scale-95;
+        @apply inline-flex items-center justify-center rounded-lg font-bold transition-colors duration-150;
         padding: 0.75rem 1.5rem;
         background: var(--color-primary);
         color: white;
-        box-shadow: 0 4px 14px 0 rgba(15, 23, 42, 0.2);
     }
 
     .btn-primary:hover {
         background: var(--color-primary-light);
-        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.15);
-        transform: translateY(-1px);
-    }
-
-    .btn-primary:active {
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
     }
 
     .recent-return-primary {
-        @apply inline-flex min-h-[32px] items-center justify-center rounded-lg bg-primary px-3 py-1 text-[11px] font-bold leading-none text-white shadow-sm transition-all duration-200 active:scale-95 hover:bg-primary-light sm:min-h-[36px] sm:px-3 sm:py-1.5 sm:text-xs;
+        @apply inline-flex min-h-[44px] items-center justify-center rounded-lg bg-primary px-3 py-1 text-[11px] font-bold leading-none text-white transition-colors duration-150 hover:bg-primary-light sm:px-3 sm:py-1.5 sm:text-xs;
     }
 
     .adsense-wrapper {
@@ -211,7 +204,7 @@
     }
 
     .skip-link {
-        @apply sr-only focus:not-sr-only inline-block px-3 py-2 rounded-md font-medium;
+        @apply sr-only focus:not-sr-only fixed left-2 top-2 z-[100] inline-block rounded-md px-3 py-2 font-medium;
         background: white;
         border: 1px solid var(--border);
     }
@@ -228,7 +221,7 @@
         width: 40px;
         height: 3px;
         border-radius: 2px;
-        background: linear-gradient(90deg, transparent, var(--border), transparent);
+        background: var(--border);
     }
 
     /* ネイティブ風広告スタイル: コンテンツと自然に馴染む */
@@ -262,8 +255,6 @@
             pointer-events: none;
             background: rgba(15, 23, 42, 0.32);
             opacity: 0;
-            -webkit-backdrop-filter: blur(2px);
-            backdrop-filter: blur(2px);
             transition: opacity 0.24s ease;
         }
 
@@ -505,12 +496,10 @@ header.glass {
 
     .card,
     .pick-card {
-        border-radius: 0px !important;
-        border-left: none !important;
-        border-right: none !important;
+        border-radius: 10px !important;
         box-shadow: none !important;
-        margin-left: -0.75rem !important;
-        margin-right: -0.75rem !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
     }
 
     .container {
@@ -871,26 +860,7 @@ header.glass {
     border-radius: 0;
 }
 
-/* === UI/UX Improvement Samples Integration === */
-:root {
-  --primary-color: #0f172a;
-  --primary-soft-color: #1e293b;
-  --blue-color: #2563eb;
-  --blue-soft-color: #eff6ff;
-  --amber-color: #f59e0b;
-  --green-color: #059669;
-  --rose-color: #e11d48;
-  --slate-50-color: #f8fafc;
-  --slate-100-color: #f1f5f9;
-  --slate-200-color: #e2e8f0;
-  --slate-300-color: #cbd5e1;
-  --slate-500-color: #64748b;
-  --slate-700-color: #334155;
-  --surface-color: #ffffff;
-  --shadow-color: 0 8px 22px rgba(15, 23, 42, 0.06);
-}
-
-/* 収益導線UIの追加ルール */
+/* === UMA-FREE page patterns === */
 .section-title {
   display: flex;
   align-items: center;
@@ -979,7 +949,7 @@ header.glass {
   padding: 12px;
   border: 1px solid var(--slate-200-color);
   border-radius: 10px;
-  background: linear-gradient(180deg, #fff, #f8fafc);
+  background: #fff;
 }
 .resume-card strong {
   font-size: 14px;
@@ -1017,17 +987,15 @@ header.glass {
   position: relative;
   padding: 22px;
   color: white;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(15, 23, 42, 0.98)), var(--primary-color);
+  background: var(--primary-color);
   border: 1px solid var(--primary-soft-color);
+  border-top: 3px solid var(--amber-color);
 }
 .hero .update {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   margin-bottom: 10px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
   color: #dbeafe;
   font-size: 11px;
   font-weight: 800;
@@ -1046,28 +1014,52 @@ header.glass {
   line-height: 1.7;
   font-weight: 600;
 }
-.hero-stats {
+.hero-analysis-flow {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 14px 0 2px;
+  padding: 0;
+  border-block: 1px solid rgba(255, 255, 255, 0.14);
+  list-style: none;
+}
+.hero-analysis-flow li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
   gap: 8px;
-  margin-top: 18px;
-}
-.stat {
   padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
 }
-.stat b {
+.hero-analysis-flow li:last-child {
+  border-right: 0;
+}
+.hero-analysis-flow span:last-child {
+  min-width: 0;
+}
+.hero-analysis-flow b {
   display: block;
   color: white;
-  font-size: 24px;
-  line-height: 1.1;
+  font-size: 12px;
+  line-height: 1.3;
 }
-.stat span {
+.hero-analysis-flow small {
+  display: block;
+  margin-top: 2px;
   color: #cbd5e1;
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.hero-flow-icon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fbbf24;
 }
 .cta {
   display: inline-flex;
@@ -1081,20 +1073,30 @@ header.glass {
   color: var(--primary-color);
   font-size: 12px;
   font-weight: 900;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+  background: #f8fafc;
+  color: #1d4ed8;
 }
 
 /* Grade focus card */
+.grade-races-panel {
+  min-width: 0;
+  align-self: stretch;
+  border: 1px solid var(--slate-200-color);
+  border-radius: 12px;
+  background: #ffffff;
+}
 .grade-focus {
   padding: 16px;
   display: grid;
   align-content: stretch;
   gap: 10px;
-  background: linear-gradient(135deg, #fffbeb, #ffffff 48%, #eff6ff);
+  background: #ffffff;
+  border: 1px solid var(--slate-200-color);
+  border-top: 3px solid var(--amber-color);
+  border-radius: 12px;
 }
 .grade-focus h2 {
   margin: 0;
@@ -1278,7 +1280,7 @@ header.glass {
   padding: 14px;
   border: 1px solid var(--slate-200-color);
   border-radius: 10px;
-  background: linear-gradient(180deg, #fff, #f8fafc);
+  background: #fff;
 }
 .pick-card h3 {
   margin: 0 0 4px;
@@ -1372,7 +1374,7 @@ header.glass {
   min-height: 210px;
   border: 1px solid var(--slate-200-color);
   border-radius: 10px;
-  background: linear-gradient(180deg, #fff, #f8fafc);
+  background: #fff;
   text-align: center;
   padding: 12px;
 }
@@ -1658,7 +1660,7 @@ header.glass {
   padding: 14px;
   border: 1px solid var(--slate-200-color);
   border-radius: 12px;
-  background: linear-gradient(180deg, #fff, #f8fafc);
+  background: #fff;
 }
 .analysis-preview h3 {
   margin: 0 0 8px;
@@ -1805,23 +1807,26 @@ header.glass {
     line-height: 1.6;
     margin-top: 7px;
   }
-  .hero-stats {
-    margin-top: 12px;
-    gap: 5px;
+  .hero-analysis-flow {
+    margin-top: 10px;
   }
-  .stat {
-    padding: 8px 5px;
-    border-radius: 8px;
+  .hero-analysis-flow li {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+    padding: 8px 4px;
+    text-align: center;
   }
-  .stat b {
-    font-size: 17px;
+  .hero-analysis-flow small {
+    display: none;
   }
-  .stat span {
-    font-size: 9px;
+  .hero-flow-icon {
+    width: 26px;
+    height: 26px;
   }
   .cta {
     width: 100%;
-    min-height: 38px;
+    min-height: 44px;
     margin-top: 10px;
     font-size: 12px;
   }
@@ -1882,10 +1887,10 @@ header.glass {
     gap: 8px;
   }
   .article {
-    min-height: 192px;
+    min-height: 0;
   }
   .thumb {
-    min-height: 76px;
+    min-height: 80px;
   }
   .native-ad {
     min-height: 192px;
@@ -2023,5 +2028,46 @@ header.glass {
     .scrollbar-hide::-webkit-scrollbar {
         display: none;
         /* Chrome, Safari and Opera */
+    }
+}
+
+/* ---------- accessibility preferences ---------- */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .glass,
+    .mobile-menu-overlay,
+    [class*="backdrop-blur"] {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+
+    .glass {
+        background: #ffffff !important;
+    }
+}
+
+@media (prefers-contrast: more) {
+    :root {
+        --border: #94a3b8;
+        --slate-200-color: #94a3b8;
+        --slate-500-color: #475569;
+    }
+
+    :focus-visible {
+        outline-width: 3px;
     }
 }

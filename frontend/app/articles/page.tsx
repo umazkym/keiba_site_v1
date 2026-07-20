@@ -84,7 +84,7 @@ function formatDate(date: string) {
 
 function ArticleMeta({ article }: { article: ArticleLike }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold text-slate-400 sm:text-xs">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold text-slate-500 sm:text-xs">
       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${getCategoryBadgeClass(article.category)}`}>
         {article.category}
       </span>
@@ -111,7 +111,7 @@ function UpcomingGradeRacePickup({
   if (groups.length === 0) return null;
 
   return (
-    <section className="mb-3 rounded-2xl border border-amber-200/70 bg-amber-50/60 p-3 shadow-soft sm:p-4" aria-label="近日の重賞記事">
+    <section className="mb-3 rounded-xl border border-amber-200/70 bg-amber-50/60 p-3 sm:p-4" aria-label="近日の重賞記事">
       <div className="mb-2 flex items-center justify-between gap-3">
         <h2 className="text-sm font-black text-slate-950 sm:text-base">近日の重賞</h2>
         <span className="text-xs font-bold text-amber-700">{groups.length}</span>
@@ -144,6 +144,7 @@ function UpcomingGradeRacePickup({
 function CompactArticleLink({ article }: { article: ArticleLike }) {
   return (
     <Link
+      prefetch={false}
       href={`/articles/${article.slug}`}
       className="group flex min-h-[58px] flex-col justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 transition-colors hover:border-slate-300 hover:bg-slate-50"
     >
@@ -300,11 +301,11 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
       <Breadcrumb />
 
       <div className="mx-auto w-full max-w-[1200px] px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
-        <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
+        <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
-              <p className="text-xs font-bold tracking-[0.16em] text-slate-400">競馬統計コラム</p>
+              <p className="text-xs font-bold text-slate-500">競馬統計コラム</p>
               <h1 className="mt-2 text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
                 {selectedCategory ? `${selectedCategory}分析記事` : "競馬データ分析記事"}
               </h1>
@@ -350,17 +351,17 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
             <UpcomingGradeRacePickup groups={upcomingGradeRaceGroups} />
 
             {filteredArticles.length === 0 ? (
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-16 text-center shadow-soft">
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-16 text-center">
                 <p className="text-base font-bold text-slate-700">条件に合う記事が見つかりませんでした</p>
                 <Link href="/articles" className="mt-4 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white">
                   一覧へ
                 </Link>
               </div>
             ) : (
-              <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-soft sm:p-4">
+              <section className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <h2 className="text-base font-black text-slate-950">記事</h2>
-                  <p className="text-xs font-bold text-slate-400">{filteredArticles.length}件</p>
+                  <p className="text-xs font-bold text-slate-500">{filteredArticles.length}件</p>
                 </div>
                 <div className="grid gap-2 xl:grid-cols-2">
                   {filteredArticles.map((article, index) => (
@@ -389,8 +390,8 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
           </main>
 
           <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-            <nav className="hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-soft lg:block" aria-label="記事テーマ">
-              <p className="mb-2 px-1 text-xs font-bold tracking-[0.14em] text-slate-400">THEME</p>
+            <nav className="hidden rounded-xl border border-slate-200 bg-white p-3 lg:block" aria-label="記事テーマ">
+              <p className="mb-2 px-1 text-xs font-bold text-slate-600">記事テーマ</p>
               <div className="space-y-2">
                 <GradeRaceDirectoryDetails id="sidebar-grade-races" sections={gradeRaceSections} defaultOpen />
                 <EntityDirectoryDetails id="sidebar-races" title="レース" groups={archiveTotals.raceGroups} />
@@ -399,8 +400,8 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               </div>
             </nav>
 
-            <nav className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft" aria-label="記事カテゴリ">
-              <p className="mb-2 text-xs font-bold tracking-[0.14em] text-slate-400">CATEGORY</p>
+            <nav className="rounded-xl border border-slate-200 bg-white p-4" aria-label="記事カテゴリ">
+              <p className="mb-2 text-xs font-bold text-slate-600">記事カテゴリ</p>
               <Link
                 href="/articles"
                 className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
@@ -429,7 +430,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
             <Link
               prefetch={false}
               href="/races/today"
-              className="flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm font-black text-slate-950 shadow-soft hover:border-blue-200 hover:bg-blue-50"
+              className="flex min-h-[44px] items-center justify-between rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3 text-sm font-black text-slate-950 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50"
             >
               <span>本日のレース分析</span>
               <span className="rounded-full bg-white px-2 py-0.5 text-xs text-blue-700">今日</span>

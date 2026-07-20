@@ -125,6 +125,9 @@ export default function RootLayout({
                      Rewarded Adはレースページでのみ使用されるため、他ページでは不要 */}
             </head>
             <body className="font-sans bg-surface text-text-primary antialiased">
+                <a href="#main-content" className="skip-link">
+                    本文へ移動
+                </a>
                 <ClarityPageContext />
                 {/* 構造化マークアップ：Organization, Website, SoftwareApplication */}
                 <OrganizationSchema />
@@ -132,7 +135,7 @@ export default function RootLayout({
                 <SoftwareApplicationSchema />
 
                 <Header todayString={todayString} />
-                <main className="mobile-compact-scope w-full max-w-7xl mx-auto p-2 sm:p-4 md:p-6 min-h-[calc(100dvh-48px)] sm:min-h-[calc(100dvh-64px)]">
+                <main id="main-content" tabIndex={-1} className="mobile-compact-scope w-full max-w-7xl mx-auto p-2 sm:p-4 md:p-6 min-h-[calc(100dvh-48px)] sm:min-h-[calc(100dvh-64px)]">
                     {/* メインコンテンツエリア */}
                     <div className="w-full">
                         {children}

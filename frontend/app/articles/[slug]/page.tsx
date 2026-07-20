@@ -11,6 +11,7 @@ import { enhanceArticleHtml } from '@/lib/article-ux';
 import { ArticleEngagementTracker } from '@/components/ArticleEngagementTracker';
 import { ArticleThemeNavigator } from '@/components/EntityArticleDocument';
 import { getArticleArchiveGroupForArticle } from '@/lib/article-archives';
+import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 
 type Props = {
   params: { slug: string };
@@ -94,7 +95,7 @@ export default async function ArticlePage({ params }: Props) {
     };
 
     const proseClass = [
-      "article-page-prose prose prose-slate max-w-none",
+      "article-page-prose prose prose-slate mx-auto max-w-[72ch]",
       "[overflow-wrap:anywhere]",
       "prose-headings:font-black prose-headings:tracking-tight prose-headings:text-slate-900",
       "prose-h2:text-xl prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-2 prose-h2:mt-8 prose-h2:mb-3 prose-h2:scroll-mt-20 sm:prose-h2:text-2xl sm:prose-h2:mt-12 sm:prose-h2:mb-6",
@@ -142,22 +143,9 @@ export default async function ArticlePage({ params }: Props) {
           <article data-article-slug={params.slug}>
             {/* ===== ARTICLE HEADER ===== */}
             <header className="relative border-b border-slate-200 pb-4 sm:pb-8">
-              {/* アイキャッチ画像（フルワイド） */}
-              {article.eyecatch && (
-                <div className="relative mb-3 aspect-[16/8] max-h-[180px] w-full overflow-hidden bg-slate-100 sm:mb-7 sm:aspect-[16/6] sm:max-h-[320px]">
-                  <img
-                    src={article.eyecatch}
-                    alt={`${article.title} のアイキャッチ画像`}
-                    loading="eager"
-                    decoding="async"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              )}
-
-              {/* メタ情報 + タイトル */}
+              {/* メタ情報 → タイトル → リードの順に、記事の内容を先に伝える */}
               <div>
-                <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-slate-400 sm:mb-4 sm:gap-x-3 sm:text-sm">
+                <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-slate-500 sm:mb-4 sm:gap-x-3 sm:text-sm">
                   <Link
                     href={`/articles?category=${encodeURIComponent(article.category)}`}
                     className="text-slate-700 transition-colors hover:text-primary"
@@ -193,11 +181,53 @@ export default async function ArticlePage({ params }: Props) {
 
                 {/* リードテキスト */}
                 {article.description && (
-                  <p className="article-page-lead mt-3 max-w-3xl text-sm leading-6 text-slate-500 sm:mt-5 sm:text-lg sm:leading-8">
+                  <p className="article-page-lead mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:mt-5 sm:text-lg sm:leading-8">
                     {article.description}
                   </p>
                 )}
+
+                <section
+                  className="mt-4 rounded-xl border border-blue-200 bg-slate-50 p-3 sm:mt-6 sm:p-4"
+                  aria-labelledby="article-site-value-title"
+                >
+                  <div className="mb-3 sm:mb-4">
+                    <p className="text-[11px] font-black text-blue-700">UMA-FREEのレース分析</p>
+                    <h2 id="article-site-value-title" className="mt-1 text-base font-black leading-snug text-slate-950 sm:text-xl">
+                      記事とあわせて、今日の全レースを4つの視点で確認
+                    </h2>
+                    <p className="mt-1 text-xs leading-5 text-slate-600 sm:text-sm sm:leading-6">
+                      中央・地方の各レースを、AI偏差値・対戦成績・展開・枠順傾向で比較できます。登録不要で、すべて無料です。
+                    </p>
+                  </div>
+
+                  <RaceAnalysisValueGrid />
+
+                  <div className="mt-3 flex justify-stretch sm:justify-end">
+                    <Link
+                      href="/races/today"
+                      prefetch={false}
+                      data-analytics-placement="article_value_guide"
+                      className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-black text-white transition-colors duration-150 hover:bg-primary-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:w-auto"
+                    >
+                      今日の全レース分析を見る
+                      <span className="ml-1" aria-hidden="true">→</span>
+                    </Link>
+                  </div>
+                </section>
               </div>
+
+              {/* アイキャッチは内容を把握した後の補助ビジュアルとして配置 */}
+              {article.eyecatch && (
+                <div className="relative mt-4 aspect-[16/8] max-h-[180px] w-full overflow-hidden rounded-lg bg-slate-100 sm:mt-7 sm:aspect-[16/6] sm:max-h-[320px]">
+                  <img
+                    src={article.eyecatch}
+                    alt={`${article.title} のアイキャッチ画像`}
+                    loading="eager"
+                    decoding="async"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              )}
             </header>
 
             {toc.length > 1 && (
@@ -220,24 +250,6 @@ export default async function ArticlePage({ params }: Props) {
                 </ol>
               </details>
             )}
-
-            <div className="mt-4 sm:mt-5">
-              {/* 小型導線 */}
-              <div className="my-3 p-3 bg-gradient-to-r from-blue-50/50 to-slate-50 border border-blue-100 rounded-xl flex items-center justify-between gap-3 shadow-sm">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-800 leading-tight">本日のレースデータ公開中</p>
-                  <p className="text-[10px] text-slate-500">AI偏差値、枠順傾向、展開予測を無料で確認できます</p>
-                </div>
-                <Link
-                  href="/races/today"
-                  prefetch={false}
-                  data-analytics-placement="article_top_cta"
-                  className="shrink-0 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary-light transition-all shadow-sm whitespace-nowrap active:scale-95"
-                >
-                  本日のレース分析を確認する
-                </Link>
-              </div>
-            </div>
 
             {/* ===== ARTICLE BODY ===== */}
             <div className="pb-6 sm:pb-10">

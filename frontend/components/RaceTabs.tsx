@@ -38,7 +38,7 @@ const CollapsibleSection = memo(({ title, icon, children }: { title: string, ico
     };
 
     return (
-        <details className="card transition-all duration-300" onToggle={handleToggle}>
+        <details className="card" onToggle={handleToggle}>
             <summary className="flex items-center text-md font-bold text-gray-800 cursor-pointer list-none p-2 sm:p-3">
                 <div className="w-6 h-6 mr-2 flex-shrink-0 text-primary">{icon}</div>
                 <span className="whitespace-nowrap">{title}</span>
@@ -484,7 +484,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 </>
                             )
                         ) : shouldShowRewardGate ? (
-                            <div className="relative mb-2 overflow-hidden rounded-2xl" style={{ minHeight: '320px' }}>
+                            <div className="relative mb-2 overflow-hidden rounded-xl" style={{ minHeight: '320px' }}>
                                 {/* 背景: ぼかした実データ */}
                                 <div className="select-none pointer-events-none" aria-hidden="true">
                                     <div className="blur-[6px] opacity-60">
@@ -506,7 +506,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 </div>
 
                                 {/* オーバーレイ: 4つの分析データプレビュー + 解除ボタン */}
-                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/30 via-white/70 to-white/95 px-4">
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 px-4">
                                     <div className="text-center max-w-sm w-full">
                                         <p className="text-[13px] sm:text-sm font-bold text-slate-800 mb-3">このレースの詳細分析を表示</p>
                                         <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-4 text-left">
@@ -514,28 +514,28 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                                 <UsersIcon className="w-3.5 h-3.5 text-secondary shrink-0" />
                                                 <div className="min-w-0">
                                                     <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">過去対決成績</p>
-                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">出走馬同士の直接比較</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-500 leading-tight">出走馬同士の直接比較</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
                                                 <FlagIcon className="w-3.5 h-3.5 text-primary shrink-0" />
                                                 <div className="min-w-0">
                                                     <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">脚質予測</p>
-                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">各コーナーの位置取り</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-500 leading-tight">各コーナーの位置取り</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
                                                 <ChartBarIcon className="w-3.5 h-3.5 text-accent shrink-0" />
                                                 <div className="min-w-0">
                                                     <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">枠順傾向</p>
-                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">コース別の有利枠</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-500 leading-tight">コース別の有利枠</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
                                                 <SparklesIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                                                 <div className="min-w-0">
                                                     <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">AIレース展望</p>
-                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">展開・適性の解説</p>
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-500 leading-tight">展開・適性の解説</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -568,9 +568,10 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 const nextTopHorse = nextRace?.predictions?.[0];
                                 if (nextTopHorse && nextRace) {
                                     return (
-                                        <div
+                                        <button
+                                            type="button"
                                             onClick={() => handleRaceSelect(activeRaceIndex + 1, 'analysis_next_button')}
-                                            className="flex items-center gap-2 p-2 sm:gap-3 sm:p-3 bg-gradient-to-r from-blue-50/80 to-slate-50 border border-blue-100 rounded-xl mb-1 cursor-pointer hover:border-blue-200 transition-colors active:scale-[0.99]"
+                                            className="mb-1 flex w-full items-center gap-2 rounded-xl border border-blue-100 bg-blue-50/70 p-2 text-left transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 sm:gap-3 sm:p-3"
                                         >
                                             <div className="h-8 w-8 sm:w-9 sm:h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
                                                 <span className="text-xs font-bold text-primary">{nextRace.race_number}R</span>
@@ -582,11 +583,11 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                                 </p>
                                             </div>
                                             <div className="max-w-[104px] shrink-0 text-right sm:max-w-[160px]">
-                                                <p className="text-[10px] text-slate-400">AI 1位</p>
+                                                <p className="text-[10px] text-slate-500">AI 1位</p>
                                                 <p className="truncate text-xs font-bold text-primary" title={nextTopHorse.horse_name}>{nextTopHorse.horse_name}</p>
                                             </div>
                                             <span className="text-primary text-sm">→</span>
-                                        </div>
+                                        </button>
                                     );
                                 }
                                 return null;
@@ -659,7 +660,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                             key={r.id}
                                             type="button"
                                             onClick={() => handleRaceSelect(idx, 'same_day_list')}
-                                            className="side-link w-full text-left transition-all hover:bg-slate-50"
+                                            className="side-link w-full text-left transition-colors duration-150 hover:bg-slate-50"
                                             style={{ display: 'grid', gridTemplateColumns: '42px 1fr', gap: '10px', alignItems: 'center' }}
                                         >
                                             {raceLabel}
@@ -770,11 +771,11 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
     }
 
     const mainTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-2 sm:gap-4 border-b-2 border-slate-200 mb-1.5 sm:mb-4";
-    const mainTabClass = "snap-start min-w-max px-3 sm:px-6 py-1.5 sm:py-4 text-xs sm:text-base font-bold text-slate-400 bg-transparent cursor-pointer hover:text-slate-600 transition-all outline-none border-b-2 border-transparent -mb-[2px]";
+    const mainTabClass = "snap-start min-w-max px-3 sm:px-6 py-1.5 sm:py-4 text-xs sm:text-base font-bold text-slate-500 bg-transparent cursor-pointer hover:text-slate-700 transition-colors duration-150 outline-none border-b-2 border-transparent -mb-[2px]";
     const mainSelectedTabClass = "!text-primary !border-primary";
 
     const venueTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1 sm:gap-2 mb-1.5 sm:mb-4 p-0.5 sm:p-1 bg-slate-100/60 rounded-lg sm:rounded-xl w-max border border-slate-200/50 max-w-full";
-    const venueTabClass = "snap-start min-w-max px-2.5 sm:px-5 py-1 sm:py-2.5 text-[11px] sm:text-sm font-bold text-slate-500 rounded-md sm:rounded-lg cursor-pointer hover:text-slate-700 hover:bg-slate-200/60 transition-all outline-none";
+    const venueTabClass = "snap-start min-w-max px-2.5 sm:px-5 py-1 sm:py-2.5 text-[11px] sm:text-sm font-bold text-slate-500 rounded-md sm:rounded-lg cursor-pointer hover:text-slate-700 hover:bg-slate-200/60 transition-colors duration-150 outline-none";
     const venueSelectedTabClass = "!text-primary !bg-white shadow-sm !border-slate-200";
 
     return (

@@ -71,10 +71,10 @@ const DateNavigator = ({
     }, [onDateChange]);
 
     return (
-        <div className="flex items-center justify-between w-full max-w-[280px] sm:max-w-sm mx-auto bg-white/60 backdrop-blur-sm border border-slate-200 rounded-xl p-0.5 sm:p-1 shadow-sm">
+        <div className="mx-auto flex w-full max-w-[300px] items-center justify-between rounded-lg border border-slate-300 bg-white p-0.5 sm:max-w-sm">
             <button
                 onClick={(e) => handleDateShift(e, -1)}
-                className="p-1.5 sm:p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-md transition-all duration-200"
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-text-secondary transition-colors duration-150 hover:bg-slate-100 hover:text-primary"
                 aria-label="前日へ"
             >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -84,13 +84,13 @@ const DateNavigator = ({
                     type="date"
                     value={currentDate}
                     onChange={handleDateInputChange}
-                    className="border-none bg-transparent text-text-primary font-bold text-sm sm:text-base focus:ring-0 p-0 text-center font-mono cursor-pointer"
+                    className="min-h-[44px] cursor-pointer border-none bg-transparent p-0 text-center font-mono text-sm font-bold text-text-primary focus:ring-0 sm:text-base"
                     aria-label="日付を選択"
                 />
             </div>
             <button
                 onClick={(e) => handleDateShift(e, 1)}
-                className="p-1.5 sm:p-2 text-text-secondary hover:text-primary hover:bg-slate-100 rounded-md transition-all duration-200"
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-text-secondary transition-colors duration-150 hover:bg-slate-100 hover:text-primary"
                 aria-label="翌日へ"
             >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
@@ -115,6 +115,10 @@ const getShiftedDate = (dateStr: string, days: number) => {
     const date = new Date(Date.UTC(y, m - 1, d + days));
     return date.toISOString().split('T')[0];
 };
+
+const getPreferredScrollBehavior = (): ScrollBehavior => (
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+);
 
 export default function RacePageClient({
     initialDate,
@@ -214,7 +218,7 @@ export default function RacePageClient({
                                     const offset = window.innerWidth < 1024 ? 160 : 140;
                                     window.scrollTo({
                                         top: Math.max(0, elementTop - offset),
-                                        behavior: 'smooth'
+                                        behavior: getPreferredScrollBehavior()
                                     });
                                 }
                             }
@@ -304,7 +308,7 @@ export default function RacePageClient({
         <div id="race-page-top" className="mx-auto max-w-6xl py-2 pb-40 md:pb-4">
             {/* ▼▼▼▼▼【ファーストビュー改善】▼▼▼▼▼ */}
             {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
-            <div className="glass mb-1.5 sm:mb-3 p-1 sm:p-2 relative z-10 shadow-sm border-b border-white/40">
+            <div className="relative z-10 mb-1.5 border-b border-slate-200 bg-slate-50 p-1 sm:mb-3 sm:p-2">
                 <div className="flex items-center justify-center gap-1.5 sm:gap-4 flex-wrap">
                     <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
                     <button
@@ -312,7 +316,7 @@ export default function RacePageClient({
                             handleDateChange(getTodayString());
                             e.currentTarget.blur();
                         }}
-                        className="bg-primary text-white px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg shadow-sm hover:bg-primary-dark transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-light text-xs sm:text-sm font-bold whitespace-nowrap min-h-[34px] sm:min-h-[44px]"
+                        className="min-h-[44px] whitespace-nowrap rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white transition-colors duration-150 hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary-light sm:px-4 sm:py-2.5 sm:text-sm"
                     >
                         今日
                     </button>
@@ -327,7 +331,7 @@ export default function RacePageClient({
 
             {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
                 <div className="mb-1.5 sm:mb-3">
-                    <WeeklyGradeRaces races={weeklyGradeRaces} predictions={predictionData} />
+                    <WeeklyGradeRaces races={weeklyGradeRaces} predictions={predictionData} compact />
                 </div>
             )}
 
@@ -359,14 +363,14 @@ export default function RacePageClient({
                 <Link
                     href={`/races/${getShiftedDate(currentDate, -1)}`}
                     prefetch={false}
-                    className="flex-1 max-w-[160px] inline-flex items-center justify-center px-2 py-2.5 text-[11px] sm:text-[13px] font-bold text-slate-600 bg-white border border-slate-200 rounded-xl transition-all duration-200 min-h-[44px] hover:bg-slate-50 hover:text-primary hover:border-slate-300 hover:shadow-sm"
+                    className="inline-flex min-h-[44px] max-w-[160px] flex-1 items-center justify-center rounded-lg border border-slate-200 bg-white px-2 py-2.5 text-[11px] font-bold text-slate-600 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-primary sm:text-[13px]"
                 >
                     ← 前日のデータ
                 </Link>
                 <Link
                     href={`/races/${getShiftedDate(currentDate, 1)}`}
                     prefetch={false}
-                    className="flex-1 max-w-[160px] inline-flex items-center justify-center px-2 py-2.5 text-[11px] sm:text-[13px] font-bold text-slate-600 bg-white border border-slate-200 rounded-xl transition-all duration-200 min-h-[44px] hover:bg-slate-50 hover:text-primary hover:border-slate-300 hover:shadow-sm"
+                    className="inline-flex min-h-[44px] max-w-[160px] flex-1 items-center justify-center rounded-lg border border-slate-200 bg-white px-2 py-2.5 text-[11px] font-bold text-slate-600 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-primary sm:text-[13px]"
                 >
                     翌日のデータ →
                 </Link>
@@ -384,6 +388,7 @@ export default function RacePageClient({
                         {articlesMeta.slice(0, 3).map((article) => (
                             <Link
                                 key={article.slug}
+                                prefetch={false}
                                 href={`/articles/${article.slug}`}
                                 className="group flex sm:flex-col gap-3 sm:gap-0 items-start p-2 sm:p-0 rounded-lg hover:bg-slate-50 transition-colors"
                             >
@@ -392,7 +397,7 @@ export default function RacePageClient({
                                         <img
                                             src={article.eyecatch}
                                             alt={article.title}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                            className="h-full w-full object-cover"
                                         />
                                     )}
                                 </div>

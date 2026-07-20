@@ -5,7 +5,7 @@
 | SOP | 主な対象 | 読むタイミング |
 | --- | --- | --- |
 | `task-intake-and-sop-routing.sop.md` | 依頼受付、作業分類、SOP選択 | 複数領域にまたがる依頼、調査から実装まで含む依頼 |
-| `frontend-build-release-verification.sop.md` | Next.js、React、Tailwind、広告表示を含むUI変更 | `frontend/`、`frontend/components/`、`frontend/app/`、`frontend/lib/` を触る前 |
+| `frontend-build-release-verification.sop.md` | Next.js、React、Tailwind、デザイン監査、広告表示を含むUI変更 | `frontend/`、`frontend/components/`、`frontend/app/`、`frontend/lib/`、`DESIGN.md` を触る前 |
 | `article-quality-gate.sop.md` | 記事生成、記事編集、Writer/Editor/SEO Checker | `frontend/scripts/agents/`、`backend/scripts/agents/`、`frontend/content/articles/` を触る前 |
 | `monetization-affiliate-ads-ux.sop.md` | AdSense、AffiliateSlot、楽天競馬導線、PR表記 | 広告枠、アフィリエイト、レースページ/記事ページの収益導線を変える前 |
 | `production-db-iap-maintenance.sop.md` | 本番DB、IAPトンネル、GitHub ActionsのDB接続 | `DATABASE_URL`、DB保守、`.github/actions/setup-iap-db`、DB系workflowを扱う前 |

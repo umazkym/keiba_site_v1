@@ -2,7 +2,7 @@
 
 ## Overview
 
-このSOPは、Next.js/React/Tailwindを含むフロントエンド変更で、表示崩れ、型エラー、広告CLS、過剰なプリフェッチ、計測イベントの混線を防ぐための確認手順です。
+このSOPは、Next.js/React/Tailwindを含むフロントエンド変更で、表示崩れ、型エラー、広告CLS、過剰なプリフェッチ、計測イベントの混線、UI反パターンの再発を防ぐための確認手順です。
 
 ## Parameters
 
@@ -40,7 +40,20 @@ Constraints for parameter acquisition:
 - You MUST preserve stable dimensions for ad slots and repeated race UI elements to reduce layout shift.
 - You MUST NOT add flashy animations, excessive emoji, or marketing-like copy because the site depends on natural media quality and AdSense trust.
 
-### 3. Preserve routing and cache behavior
+### 3. Apply the design system
+
+`DESIGN.md`を読み、画面の主役、色の役割、文字、角丸、影、動きを既存のUMA-FREE設計へ合わせます。
+
+**Constraints:**
+
+- You MUST define one primary information target for each changed page and keep the order `first see -> compare -> act` clear.
+- You MUST use Navy for structure, Blue for actions/selections, Amber for AI analysis, Rose for Rakuten Keiba PR, and domain colors only for their documented meanings.
+- You MUST keep normal radii at 8-12px, reserve pills for tags or states, and reserve broad shadows for sticky UI, menus, and overlays.
+- You MUST use explicit color, background, border, opacity transitions instead of `transition-all`, and respect reduced motion and reduced transparency preferences.
+- You MUST test real operational edges such as long horse names, 18 runners, missing scores, zero/many grade races, long article titles, wide tables, and unfilled ads when they intersect the changed surface.
+- You MUST NOT add hover lift, image zoom, press scaling, decorative glass, or decorative gradients because those patterns weaken information hierarchy and make the UI look templated.
+
+### 4. Preserve routing and cache behavior
 
 Next.js App Router、ISR、prefetchの意図を確認します。
 
@@ -50,18 +63,21 @@ Next.js App Router、ISR、prefetchの意図を確認します。
 - You MUST check `revalidate`, `dynamicParams`, and fetch cache changes when touching `frontend/app/races/` or the home page.
 - You MUST NOT turn race date/detail routes back into always-dynamic pages without documenting the cost and cache impact because these routes previously caused excess Function usage and cache misses.
 
-### 4. Validate locally
+### 5. Validate locally
 
 変更範囲に応じて型検査とビルドを実行します。
 
 **Constraints:**
 
 - You MUST run `npx tsc --noEmit` from `frontend/` for TypeScript changes.
+- You MUST run `npm run design:audit` from `frontend/` when changing the home, race, article, header, global CSS, or shared design rules.
 - You SHOULD run `npm run build` from `frontend/` for App Router, middleware, sitemap, ad, or page-level changes.
 - You SHOULD run `npm run article:validate-links` when article rendering or content links are affected.
+- You MUST NOT run `next dev`, `next build`, and `tsc` concurrently because they can replace `.next/types` while another process reads it and cause misleading `TS6053` missing-file failures.
+- You MUST NOT raise a `design:audit` allowance without documenting the narrow exception in the audit script because broad exceptions make the regression gate ineffective.
 - You MUST report validation commands that could not be run and why.
 
-### 5. Review final user-visible behavior
+### 6. Review final user-visible behavior
 
 完了前に、表示・導線・計測の意図が保たれているか確認します。
 
@@ -70,11 +86,13 @@ Next.js App Router、ISR、prefetchの意図を確認します。
 - You MUST verify that affiliate links retain PR disclosure and sponsored/nofollow/noopener/noreferrer rel values when touched.
 - You MUST verify that GA4/Clarity event names remain distinct from real `page_view` when touching analytics.
 - You SHOULD inspect likely mobile breakpoints when layout risk is meaningful.
+- You SHOULD inspect 375px, 390px, 768px, 1024px, and 1440px for broad page-level changes, with 390x844 used to confirm race-table reachability.
 - You MUST NOT claim visual verification if no browser or screenshot check was performed because build success alone does not prove mobile layout or ad spacing is correct.
 
 ## Source references
 
 - `AGENTS.md`
+- `DESIGN.md`
 - `frontend/package.json`
 - `docs/analytics_measurement_plan.md`
 - `docs/clarity_completeness_review_20260621.md`

@@ -1,86 +1,49 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { ChartBarIcon, FlagIcon, SparklesIcon, UsersIcon } from './Icons';
-import { useRaceSectionNavigation, type RaceSectionNavItem } from '@/hooks/useRaceSectionNavigation';
-
-type JumpItem = RaceSectionNavItem & {
-    label: string;
-    note: string;
-    icon: ReactNode;
-};
+import {
+    raceAnalysisFeatures,
+    raceAnalysisSectionTrackingItems,
+    RaceAnalysisFeatureIcon,
+    RaceAnalysisFeatureVisual,
+} from '@/components/RaceAnalysisValueGrid';
+import { useRaceSectionNavigation } from '@/hooks/useRaceSectionNavigation';
 
 type RacePageJumpNavProps = {
     className?: string;
 };
 
-const items: JumpItem[] = [
-    {
-        key: 'prediction',
-        label: 'AI偏差値',
-        note: '全頭比較',
-        targetIds: ['race-prediction-heading', 'race-prediction-section'],
-        icon: <SparklesIcon className="h-4 w-4" />,
-    },
-    {
-        key: 'matchup',
-        label: '対決成績',
-        note: '直接比較',
-        targetIds: ['race-matchup-heading', 'race-matchup-section'],
-        icon: <UsersIcon className="h-4 w-4" />,
-    },
-    {
-        key: 'start',
-        label: '展開・脚質',
-        note: '位置取り',
-        targetIds: ['race-detail-heading', 'race-detail-data-section'],
-        icon: <FlagIcon className="h-4 w-4" />,
-    },
-    {
-        key: 'frame',
-        label: '枠順傾向',
-        note: 'コース別',
-        targetIds: ['race-frame-heading'],
-        icon: <ChartBarIcon className="h-4 w-4" />,
-    },
-    {
-        key: 'analysis',
-        label: 'AI展望',
-        note: 'テキスト',
-        targetIds: ['race-analysis-heading', 'race-analysis-section'],
-        icon: <SparklesIcon className="h-4 w-4" />,
-    },
-];
-
 export function RacePageJumpNav({ className = '' }: RacePageJumpNavProps) {
-    const { activeKey, scrollToItem } = useRaceSectionNavigation(items);
+    const { activeKey, scrollToItem } = useRaceSectionNavigation(raceAnalysisSectionTrackingItems);
 
     return (
         <nav
             className={`hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block ${className}`}
             aria-label="レースデータの確認順"
         >
-            <div className="grid grid-cols-5 divide-x divide-slate-200">
-                {items.map((item) => {
-                    const isActive = activeKey === item.key;
+            <div className="grid grid-cols-4 divide-x divide-slate-200">
+                {raceAnalysisFeatures.map((feature) => {
+                    const isActive = activeKey === feature.key;
                     return (
                         <button
-                            key={item.key}
+                            key={feature.key}
                             type="button"
-                            onClick={() => scrollToItem(item)}
+                            onClick={() => scrollToItem(feature)}
                             aria-current={isActive ? 'location' : undefined}
-                            className={`flex min-h-[52px] min-w-0 items-center justify-center gap-2 px-2 text-left transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 ${isActive
-                                ? 'bg-slate-950 text-white'
-                                : 'bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+                            className={`flex min-h-[64px] min-w-0 items-center justify-center gap-2 border-b-2 px-3 py-2 text-left transition-colors duration-150 focus:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 ${isActive
+                                ? 'border-blue-600 bg-blue-50/80 text-slate-950'
+                                : 'border-transparent bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-950'
                                 }`}
                         >
-                            <span className="shrink-0" aria-hidden="true">{item.icon}</span>
-                            <span className="min-w-0">
-                                <span className="block truncate text-xs font-bold">{item.label}</span>
-                                <span className={`block truncate text-[10px] font-semibold ${isActive ? 'text-slate-300' : 'text-slate-500'}`}>
-                                    {item.note}
+                            <span className="flex min-w-0 items-center gap-1.5">
+                                <RaceAnalysisFeatureIcon feature={feature} />
+                                <span className={`whitespace-nowrap text-xs ${isActive ? 'font-black' : 'font-bold'}`}>
+                                    {feature.compactTitle}
                                 </span>
                             </span>
+                            <span className={`flex h-7 w-20 shrink-0 items-center rounded bg-slate-50 px-2 ${isActive ? 'opacity-100' : 'opacity-70'}`}>
+                                <RaceAnalysisFeatureVisual type={feature.visual} compact />
+                            </span>
+                            {isActive && <span className="sr-only">（表示中）</span>}
                         </button>
                     );
                 })}

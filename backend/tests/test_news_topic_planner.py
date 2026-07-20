@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import os
 import sys
 import unittest
@@ -401,7 +402,7 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = previous_max_orders
             planner._RACE_SCHEDULE_CACHE.clear()
 
-    def test_generic_news_rejects_stale_explicit_event_date(self) -> None:
+    def test_trusted_media_only_is_never_a_publishable_candidate(self) -> None:
         previous_now = os.environ.get("KEIBA_NEWS_NOW")
         os.environ["KEIBA_NEWS_NOW"] = "2026-06-20"
         planner._RACE_SCHEDULE_CACHE.clear()
@@ -444,13 +445,106 @@ class NewsTopicPlannerTest(unittest.TestCase):
             }
 
             self.assertNotIn(stale_url, candidate_urls)
-            self.assertIn(fresh_url, candidate_urls)
+            self.assertNotIn(fresh_url, candidate_urls)
         finally:
             if previous_now is None:
                 os.environ.pop("KEIBA_NEWS_NOW", None)
             else:
                 os.environ["KEIBA_NEWS_NOW"] = previous_now
             planner._RACE_SCHEDULE_CACHE.clear()
+
+    def test_official_course_topic_is_classified_without_media_dependency(self) -> None:
+        official_card = planner.SourceCard(
+            title="東京競馬場のコース紹介",
+            url="https://www.jra.go.jp/facilities/race/tokyo/course/",
+            content="東京競馬場の芝コースは左回りで、直線距離は525.9メートル。",
+            query="東京競馬場 コース 公式",
+            source_name="www.jra.go.jp",
+            source_type="official",
+            score=100,
+            fetched_at=planner.current_jst().isoformat(),
+            allowed_claims=["東京競馬場の芝コースの直線距離は525.9メートル。"],
+        )
+
+        classified = planner.classify_publishable_generic_topic([official_card], "track_condition")
+
+        self.assertEqual(
+            classified,
+            ("course_venue", "course_venue", "東京競馬場 コース分析"),
+        )
+
+    def test_official_but_off_topic_analogy_is_rejected(self) -> None:
+        athletics_card = planner.SourceCard(
+            title="陸上競技の中距離選手",
+            url="https://www.example.go.jp/athletics/",
+            content="陸上の1500メートル選手の走りを芝2000メートルへ類推する。",
+            query="陸上 中距離",
+            source_name="www.example.go.jp",
+            source_type="official",
+            score=100,
+            fetched_at=planner.current_jst().isoformat(),
+            allowed_claims=["陸上の1500メートル選手が出場した。"],
+        )
+
+        self.assertIsNone(planner.classify_publishable_generic_topic([athletics_card], "race_profile"))
+
+    def test_writer_evidence_contains_only_official_and_uma_free_rows(self) -> None:
+        official_card = planner.SourceCard(
+            title="京都競馬場のコース紹介",
+            url="https://www.jra.go.jp/facilities/race/kyoto/course/",
+            content="京都ダートコースの直線距離は329.1メートル。",
+            query="京都競馬場 コース 公式",
+            source_name="www.jra.go.jp",
+            source_type="official",
+            score=100,
+            fetched_at=planner.current_jst().isoformat(),
+            allowed_claims=["京都ダートコースの直線距離は329.1メートル。"],
+        )
+        media_card = planner.SourceCard(
+            title="外部記事の推奨馬",
+            url="https://news.example.com/pick",
+            content="第三者の推奨内容。",
+            query="競馬 推奨",
+            source_name="news.example.com",
+            source_type="trusted_media",
+            score=90,
+            fetched_at=planner.current_jst().isoformat(),
+            allowed_claims=["推奨馬はテストホース。"],
+        )
+        candidate = planner.TopicCandidate(
+            topic_key="kyoto-course",
+            target_keyword="京都競馬場 コース分析",
+            title_seed="京都競馬場のコース分析",
+            article_type="course_venue",
+            theme_cluster="course_venue",
+            search_intent="track_condition",
+            search_intent_label="馬場",
+            search_angle_label="コース",
+            score=100,
+            reason="公式コース情報",
+            race_name="",
+            calendar_race="",
+            days_to_race=None,
+            source_cards=[official_card, media_card],
+        )
+        evidence = planner.build_writer_evidence(
+            candidate,
+            {
+                "matched_race": {
+                    "race_date": "2026-07-21",
+                    "venue_name": "京都",
+                    "race_number": 11,
+                    "race_name": "テスト競走",
+                }
+            },
+        )
+
+        self.assertEqual(evidence["facts"], [{"text": official_card.allowed_claims[0], "origin": "official"}])
+        self.assertTrue(evidence["metrics"])
+        self.assertTrue(all(row["origin"] == "uma_free" for row in evidence["metrics"]))
+        serialized = json.dumps(evidence, ensure_ascii=False)
+        self.assertNotIn(media_card.title, serialized)
+        self.assertNotIn(media_card.url, serialized)
 
 
 if __name__ == "__main__":

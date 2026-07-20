@@ -55,6 +55,29 @@ export const dataHubLinks: Array<LinkItem & { description: string }> = [
 
 export const jockeyProfiles: JockeyProfile[] = [
   {
+    slug: "ryo-nobata",
+    name: "野畑凌",
+    searchTitle: "野畑凌の2026年成績と浦和での確認材料",
+    metaDescription:
+      "野畑凌騎手の2026年地方競馬成績と、浦和競馬場で騎乗馬を見るときの確認順を整理。勝率、連対率、人気、枠順、脚質を分けて確認できます。",
+    lead:
+      "川崎競馬・佐藤博紀厩舎所属。2026年は7月17日までに地方競馬で131勝、勝率14.8％、連対率25.4％を記録しています。騎乗馬を評価するときは、年度成績に加えて各馬の近走と当日のコース条件を確認します。",
+    summary:
+      "年度成績と人気別成績を基準に置き、浦和では短い直線へ入る前の位置、枠と脚質の組み合わせ、当日の進路傾向を重ねて判断します。",
+    strengths: ["2026年131勝", "2026年勝率14.8％", "2026年連対率25.4％", "地方競馬通算607勝"],
+    checkpoints: [
+      "騎手の年度成績より先に、騎乗馬の近走内容と同距離実績を確認する。",
+      "浦和では枠番号だけでなく、周囲の先行馬を含めて最初のコーナーまでの隊列を考える。",
+      "前半レースの4コーナー位置と進路から、当日の馬場傾向を補正する。",
+    ],
+    relatedArticles: [
+      { label: "野畑凌騎手2026年成績", href: "/articles/2026-07-16-600jockey-news" },
+    ],
+    courseLinks: [
+      { label: "今日の地方競馬を確認", href: "/races/today" },
+    ],
+  },
+  {
     slug: "yutaka-take",
     name: "武豊",
     searchTitle: "武豊の得意コースと評価材料",

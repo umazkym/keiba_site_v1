@@ -19,7 +19,7 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 }
 
 function findLastBuyingPointHeading(content: string): number {
-  const pattern = /^##\s+(このコースの買い目ポイント|このレースの買い目ポイント|このニュースの確認ポイント|この競馬場の確認ポイント|この騎手を確認するポイント|このテーマの確認ポイント)\s*$/gm;
+  const pattern = /^##\s+(このコースの買い目ポイント|このレースの買い目ポイント|このコースの確認ポイント|このレースの確認ポイント|この競馬場の確認ポイント|この騎手を確認するポイント|このテーマの確認ポイント)\s*$/gm;
   let match: RegExpExecArray | null;
   let lastIndex = -1;
   while ((match = pattern.exec(content)) !== null) {
@@ -28,6 +28,17 @@ function findLastBuyingPointHeading(content: string): number {
   return lastIndex;
 }
 
+
+export type WriterEvidenceFact = {
+  text: string;
+  origin: 'official' | 'uma_free';
+};
+
+export type WriterEvidence = {
+  facts: WriterEvidenceFact[];
+  metrics: Array<{ label: string; value: string | number; origin: 'uma_free' }>;
+  as_of: string;
+};
 
 export type WriteOrder = {
   target_keyword: string;
@@ -51,7 +62,8 @@ export type WriteOrder = {
     condition: string;
     sample_size: number;
     key_metrics: Record<string, string | number>[];
-    source: string;
+    source?: string;
+    writer_evidence?: WriterEvidence;
     article_type?: string;
     news_topic?: string;
     news_reason?: string;
@@ -90,6 +102,112 @@ export type WriteOrder = {
   has_predictions?: boolean;
 };
 
+const WRITER_HIDDEN_REFERENCE_KEYS = new Set([
+  'source',
+  'source_cards',
+  'source_urls',
+  'schedule_source_url',
+  'external_research_required',
+  'external_research_queries',
+  'external_research_query',
+  'news_topic',
+  'news_topic_key',
+  'news_reason',
+  'db_enrichment_error',
+]);
+
+const WRITER_HIDDEN_METRIC_ORIGIN_PATTERN = /信頼媒体|編集ルール|複数ソース整理|外部ソース/i;
+const WRITER_HIDDEN_METRIC_LABEL_PATTERN = /外部ソース|使える事実|データの使い分け|記事の切り口/i;
+const WRITER_UNSAFE_VALUE_PATTERN = /https?:\/\/|netkeiba|日刊スポーツ|スポーツ報知|スポニチ|サンスポ|デイリースポーツ|東スポ|競馬ブック|競馬ラボ|外部ニュース|外部ソース|信頼媒体|編集ルール|Tavily|推奨馬|推奨買い目|コメント/i;
+
+function sanitizeWriterEvidence(value: unknown): WriterEvidence | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const raw = value as Record<string, unknown>;
+  const facts = Array.isArray(raw.facts)
+    ? raw.facts
+      .map(item => {
+        const row = item as Record<string, unknown>;
+        const origin = String(row?.origin || '');
+        const text = String(row?.text || '').trim();
+        if (!text || (origin !== 'official' && origin !== 'uma_free')) return null;
+        if (WRITER_UNSAFE_VALUE_PATTERN.test(text)) return null;
+        return { text, origin } as WriterEvidenceFact;
+      })
+      .filter((item): item is WriterEvidenceFact => item !== null)
+    : [];
+  const metrics = Array.isArray(raw.metrics)
+    ? raw.metrics
+      .map(item => {
+        if (!item || typeof item !== 'object') return null;
+        const row = item as Record<string, unknown>;
+        const rawOrigin = String(row.origin || row['出典種別'] || '').toLowerCase();
+        const origin = /uma[_ -]?free|内部/.test(rawOrigin) ? 'uma_free' : rawOrigin;
+        const label = String(row.label || row['確認項目'] || '').trim();
+        const value = row.value ?? row['内容'];
+        const normalizedValue = typeof value === 'number' ? value : String(value || '').trim();
+        if (origin !== 'uma_free' || !label || normalizedValue === '') return null;
+        if (WRITER_UNSAFE_VALUE_PATTERN.test(`${label} ${normalizedValue}`)) return null;
+        return { label, value: normalizedValue, origin: 'uma_free' as const };
+      })
+      .filter((item): item is { label: string; value: string | number; origin: 'uma_free' } => item !== null)
+    : [];
+  const asOf = String(raw.as_of || '').trim();
+  if (facts.length === 0 && metrics.length === 0) return undefined;
+  return { facts, metrics, as_of: asOf };
+}
+
+/**
+ * 媒体名や検索経路などの制作情報をLLMへ渡さず、公開文に使える事実だけへ絞る。
+ * 元のWriteOrderは監査ログとFact Checkerで使うため変更しない。
+ */
+export function buildWriterFacingOrder(order: WriteOrder): WriteOrder {
+  const referenceData: Record<string, unknown> = { ...order.reference_data };
+  for (const key of WRITER_HIDDEN_REFERENCE_KEYS) {
+    delete referenceData[key];
+  }
+
+  const keyMetrics = Array.isArray(referenceData.key_metrics)
+    ? referenceData.key_metrics
+      .map(item => {
+        if (!item || typeof item !== 'object') return null;
+        const row = item as Record<string, unknown>;
+        const origin = String(row['出典種別'] || row.origin || '');
+        const label = String(row['確認項目'] || row.label || '').trim();
+        const value = row['内容'] ?? row.value;
+        const normalizedValue = typeof value === 'number' ? value : String(value || '').trim();
+        if (!label || normalizedValue === '') return null;
+        if (WRITER_HIDDEN_METRIC_ORIGIN_PATTERN.test(origin) || WRITER_HIDDEN_METRIC_LABEL_PATTERN.test(label)) return null;
+        if (WRITER_UNSAFE_VALUE_PATTERN.test(`${label} ${normalizedValue}`)) return null;
+        return { label, value: normalizedValue };
+      })
+      .filter((item): item is { label: string; value: string | number } => item !== null)
+    : [];
+  referenceData.key_metrics = keyMetrics;
+
+  const topicBridge = referenceData.topic_bridge;
+  if (topicBridge && typeof topicBridge === 'object') {
+    const bridge = topicBridge as Record<string, unknown>;
+    referenceData.topic_bridge = {
+      writer_focus: bridge.writer_focus,
+      primary_search_intent: bridge.primary_search_intent,
+      avoid_overuse: bridge.avoid_overuse,
+    };
+  }
+
+  const writerEvidence = sanitizeWriterEvidence(referenceData.writer_evidence);
+  if (writerEvidence) {
+    referenceData.writer_evidence = writerEvidence;
+  } else {
+    delete referenceData.writer_evidence;
+  }
+
+  return {
+    ...order,
+    research_sources: undefined,
+    reference_data: referenceData as WriteOrder['reference_data'],
+  };
+}
+
 const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の編集ライターだ。
 与えられたJSONデータをもとに、Markdown形式の記事を執筆する。
 
@@ -98,7 +216,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - 予想ページを繰り返し見る読者には、出馬表を見る前の判断メモとして使える内容にする。
 - 重賞記事では、公式日程、開催までの日数、reference_data.search_intent に合わせて主題を1つ定める。コース、出走構成、前走、交流重賞の条件差、結果回顧など、選ばれた主題を深く扱う。
 - 平場向けの記事では、全頭を深く見られない読者に「確認を優先するレース」と「慎重に見るレース」を分ける初期判断を渡す。
-- ニュース起点の記事では、外部ニュースの焼き直しではなく「発表・話題を受けて、UMA-FREEで何を確認すべきか」を整理する。
+- 公式の開催情報を扱う記事でも、発表元の紹介ではなく、レース・コース・騎手など競馬固有の主題から書き始める。
 - 地方競馬・交流重賞の記事では、中央競馬と同じ書き方に寄せすぎず、開催場、ナイター、馬場、距離、交流重賞なら中央馬と地方馬の条件差を「確認順」として整理する。
 - 入力に「Gemma SEO/構成ブリーフ」が含まれる場合は、検索意図・見出し候補・不足観点のメモとして使う。ただし新しい数値や事実の根拠にはしない。
 - 煽り、断定しすぎ、機械的なSEO文は避ける。数字を根拠に、競馬ファンが自然に読める実務的な文章にする。
@@ -180,21 +298,18 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - reference_data.course_stats が空で key_metrics も空の場合は、レース名・開催日・会場・条件など、入力にある事実だけを小さな確認表にする。
 - 数値の見栄えを良くするための丸め、線形補完、平均値の作成は禁止。必要な計算は、入力にすでに計算済みの値がある場合だけ使う。
 - 「過去3年」などの期間表現は reference_data.period に従う。period がない場合は期間を断定しない。
-- tavily_results、research_sources、external_research、web_research などの外部リサーチ情報が入力に含まれる場合、それは制度・開催情報・公式発表・注目点の補足にだけ使う。勝率、複勝率、回収率、騎乗回数、AI偏差値、枠順別成績、脚質別成績、斤量別成績の根拠には使わない。
-- 外部リサーチ由来の話題を使う場合も、本文内に外部リンクは置かない。出典管理はシステム側のresearch_sourcesで行う前提とし、本文はUMA-FREE内の導線だけにする。
-- research_sources の allowed_claims は「外部文脈として触れてよい話題」だけであり、記事の主役にしない。本文では「公式発表では〜」のような外部依存の言い回しを乱用せず、UMA-FREEのデータ確認順序を補助する範囲に留める。
-- research_sources に含まれない外部情報やURLを新たに足してはいけない。
-- theme_cluster が "news_context" または "race_update" の場合、reference_data.key_metrics はニュース本文の要約ではなく「確認済みの事実テーブル」として扱う。表にない日付・頭数・発表内容を勝手に補完しない。
-- ニュース記事では、外部ソースの文章を言い換えて長く展開しない。外部事実は短く置き、その後は reference_data.search_intent と topic_bridge.writer_focus に沿って分析する。
+- reference_data.writer_evidence.facts は公式情報から独立確認した事実、metrics はUMA-FREEの掲載数値として扱う。入力にない事実や数値は補わない。
+- 媒体名、コラム名、外部記事の紹介、引用、第三者の推奨馬や買い目は本文へ書かない。入力に混入していても使用しない。
+- 公式事実を使う場合も「公式発表によると」の紹介調を繰り返さず、確認済みの開催条件として簡潔に記述する。
+- theme_cluster が "race_update" の場合、reference_data.key_metrics は確認済みの事実テーブルとして扱う。表にない日付・頭数・発表内容を勝手に補完しない。
 - reference_data.search_intent_label がある場合、その検索意図だけを記事の中心に置く。「レース条件」なら開催場・距離・コース形態、「出走構成」なら距離適性・相手関係・斤量・ローテーション、「中央馬と地方馬」なら所属、コース経験、輸送、距離適性、「結果回顧」なら確定結果、展開、位置取り、事前評価との差を扱う。
 - reference_data.topic_bridge.avoid_overuse に語がある場合、その語を独立したH2へ広げず、主題との接点が確認できる時だけ短く触れる。特に search_intent が "waku" でない記事で枠順を、"training" でない記事で追い切りを定型的に追加しない。
 - reference_data.race_phase が "post_race" の場合、記事は結果・回顧として書く。「枠順発表後に確認」「最終追い切りを見る」などレース前へ戻る構成は禁止する。
 - reference_data.draw_status が "confirmed" でない場合、「枠順確定」「枠順が確定した今」「枠順が発表されたことで」「枠順が決まった今」など、枠順発表済みと読める表現は禁止する。「枠順発表前」「枠順発表後に確認する材料」「出馬表で確認する順番」に留める。
-- reference_data.topic_bridge がある場合、複数ニュースの話題をそのまま並べず、topic_bridge.primary_angle と merge_policy に沿って「外部ニュースの話題」→「UMA-FREE内部データで確認する順番」へ接続する。
+- reference_data.topic_bridge がある場合は writer_focus に沿って主題を一つに絞り、関係の薄い論点を定型的に追加しない。
 - frontmatter の search_intent、race_phase、scheduled_race_date、content_focus には、reference_data の同名値と topic_bridge.writer_focus を省略せずコピーする。Editorが主題を維持するために使う。
 - WriteOrder または reference_data に entity_type、entity_key、season_year、entity_path、canonical_path、content_target がある場合は、frontmatterへ同じ値を省略せずコピーする。重賞名・コース名・年度をまたいでSEO評価を集約するための管理情報なので、本文の都合で書き換えない。
-- reference_data.predictions、course_stats、horse_number_advantages、ai_analysis_text、matched_race がある場合、それらはUMA-FREEが収集した内部データとして扱う。外部の定性的な材料は search_intent と直接関係するものだけを、これらの数値や出走条件と結び付けて書く。
-- 外部ニュース由来の追い切り評価や陣営コメントだけで評価を断定しない。AI偏差値、コース統計、馬番傾向がある場合は「評価を上げる材料」「確認を残す材料」「人気なら慎重に見る条件」に分ける。
+- reference_data.predictions、course_stats、horse_number_advantages、ai_analysis_text、matched_race がある場合、それらは掲載データとして扱い、「内部データ」「制作方針」のような読者に不要な説明は書かない。
 - reference_data.days_to_race がある場合、開催までの日数に合わせて書く。開催前なら「直前に確認する順番」、開催後なら「次に同条件を見る時の確認材料」に寄せる。
 
 【フォーマット要件】
@@ -209,12 +324,11 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - 枠順別のデータ等は見やすくするため、【必ず1つ以上のMarkdown形式のデータテーブル】（| で区切る表）にすること。リスト代用は不可。ただし表の数値は入力JSONに存在する値だけを使う。
 - 数値を使う場合は期間・条件・母数を必ず明記する。
 - 本文3,400〜4,200字を目安にし、最低3,000字は必ず超える。ただし水増し禁止。短くなりそうな場合は、入力データから読み取れる「扱い方」「慎重に見る条件」「当日の確認順序」「サンプル数が少ない場合の注意点」「検索読者が次に調べる観点」を具体化して厚みを出す。
-- 生成後に本文量を自分で確認し、3,000字未満になりそうなら、架空の数値や外部情報を足さず、「出馬表で見る順番」「人気馬を慎重に見る条件」「相手候補に残す前の確認順」「評価を下げる条件」「ニュース後に確認する材料」のうち不足している観点を追加する。
+- 生成後に本文量を自分で確認し、3,000字未満になりそうなら、架空の数値や外部情報を足さず、「出馬表で見る順番」「人気馬を慎重に見る条件」「相手候補に残す前の確認順」「評価を下げる条件」「直前に確認する材料」のうち不足している観点を追加する。
 - 本文中のCTAは /races/today、reference_data.race_url、WriteOrder.entity_path / reference_data.entity_path、または WriteOrder.canonical_path / reference_data.canonical_path のみ。entity_path は /articles/grade-races/、/articles/courses/、/articles/jockeys/、/grade-races/、/courses/、/jockeys/ で始まる内部URLの場合だけ使用できる。canonical_path は重複統合が必要な場合だけ使用し、通常の記事カテゴリ所属には使わない。存在確認できないURLや仮のURLは書かない。
 
 【記事の締め方 ― 確認ポイントセクション必須】
 記事の最後のセクションは、theme_clusterに応じて以下の見出しで締める。
-- "news_context": ## このニュースの確認ポイント
 - "race_update" または "grade_race_preview": ## このレースの買い目ポイント
 - "course_venue": ## この競馬場の確認ポイント
 - "jockey_profile": ## この騎手を確認するポイント
@@ -226,7 +340,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
   - 相手候補: 人気とのズレが出やすい先行馬は、相手候補として残す材料になる。
   - 慎重: 評価を下げたい条件に当てはまる人気馬は、馬場と展開を合わせて確認する。
   - 条件付き: 内で脚をためられる先行馬だけ拾う。
-ニュース記事では、数値がない項目に数字を付け足さず、「確認」「相手候補」「慎重」「条件付き」の判断ラベルで整理する。
+数値がない項目には数字を付け足さず、「確認」「相手候補」「慎重」「条件付き」の判断ラベルで整理する。
 その後、以下の1文で記事を閉じる:
 「最新の出馬表とAI予想は [今日のAI予想・出馬表](/races/today) で無料公開中。」
 
@@ -246,8 +360,8 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 ・"jockey_data": 騎手のコース成績記事。「勝率は高いが回収率は低い」等の人気とのズレを掘り下げる。
 ・"popularity_data": 配当傾向と上位人気の信頼度。「堅いコースか荒れるコースか」を明確にする。
 ・"running_style_data": コース形態と脚質の有利不利。直線距離や坂の有無を根拠にする。
-・"course_venue": 競馬場単位のコース分析記事。距離ごとに別記事化せず、reference_data.key_metrics の各距離を表で整理し、短距離・マイル・中距離・長距離の確認順を1本の記事内で分ける。外部記事の焼き直しではなく、UMA-FREEの出馬表で当日確認する順番へ接続する。
-・"jockey_profile": 騎手分析記事。リーディング表の勝率・連対率・3着内率を入口にし、得意コースや近況は research_sources の allowed_claims と入力データの範囲で扱う。特定騎手を「信頼できる」と断定せず、人気時に慎重に見る条件と相手候補に残す条件を分ける。
+・"course_venue": 競馬場単位のコース分析記事。距離ごとに別記事化せず、reference_data.key_metrics の各距離を表で整理し、短距離・マイル・中距離・長距離の確認順を1本の記事内で分ける。出馬表で当日確認する順番へ接続する。
+・"jockey_profile": 騎手分析記事。リーディング表の勝率・連対率・3着内率を入口にし、得意コースや近況は writer_evidence と入力データの範囲で扱う。特定騎手を「信頼できる」と断定せず、人気時に慎重に見る条件と相手候補に残す条件を分ける。
 ・"beginner_guide": 入門ガイド記事。競馬初心者がレースページを見る前に迷いやすい順番を整理する。専門用語を増やしすぎず、最後は /races/today で確認できる操作に自然につなげる。
 ・"grade_race_preview": 重賞レースのプレビュー記事。以下のルールに従う:
   - タイトル構成: 「[レース名][年]｜[競馬場・距離]で確認したい材料」（30〜50文字）。検索語としてレース名、年、開催場、距離またはコース種別を前半に自然に入れる。
@@ -269,20 +383,13 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
     「〇〇コースでの複勝率が〇〇%なので、
      同条件なら候補として確認したい」
     「前走から条件が変わる点として〜がある」
-・"news_context": 競馬ニュース起点の記事。以下のルールに従う:
-  - タイトル構成: 「[ニュース内の主要語]｜出馬表で見る確認ポイント[数字]」（30〜50文字）
-  - ニュースの全文要約は禁止。reference_data.key_metrics と research_sources.allowed_claims で確認できる事実だけを短く扱う。
-  - 記事の主役は「その話題を受けて、出馬表・馬場・枠順・脚質・AI予想のどこを見るか」に置く。
-  - reference_data.topic_bridge や内部データがある場合、複数ソースの話題を1つの確認順に束ね、外部ニュースの羅列にしない。
-  - 外部ソース名やURLを本文内に並べない。必要な事実は「確認されている材料」として扱う。
-  - 最後の見出しは「## このニュースの確認ポイント」にする。
-・"race_update": レース関連ニュースから既存の重賞・日別レース導線へつなぐ記事。以下のルールに従う:
-  - タイトル構成: 「[レース名][年]｜ニュース後に見る確認ポイント[数字]」（30〜50文字）
+・"race_update": 公式の開催条件と掲載データから既存の重賞・日別レース導線へつなぐ記事。以下のルールに従う:
+  - タイトル構成: 「[レース名][年]｜直前に見る確認ポイント[数字]」（30〜50文字）
   - reference_data.search_intent と competing_article_structure にないレース前キーワードをSEO目的で追加しない。枠順、追い切り、馬場を一律に並べず、選ばれた主題を深く掘り下げる。
   - reference_data.entity_type が "grade_race" の場合は重賞カレンダー記事として扱う。タイトルとkeywordsには、レース名、年、競馬場、距離またはコース種別を自然に含める。
   - update_stage が draw_confirmed の場合は、枠順発表後に出馬表で何を確認するかを中心にする。枠順そのものが入力にない場合は、枠順別の有利不利を断定せず、枠順と脚質・馬場を照合する手順に留める。
   - update_stage が result_review、または search_intent が result_review の場合は、中央重賞の結果確定後更新として書く。reference_data.results にない着順、通過順、不利、コメントを補わず、確定結果とコース・距離条件から見直す材料を整理する。
-  - reference_data.predictions、course_stats、horse_number_advantages がある場合、ニュースの話題と内部データを別々に扱わず、直前に確認する順序として接続する。
+  - reference_data.predictions、course_stats、horse_number_advantages がある場合、数値同士を直前に確認する順序として接続する。
   - 地方競馬の重賞・交流重賞では、開催場名（大井、川崎、船橋、浦和、門別、園田、高知、佐賀、帯広など）、ナイター、馬場、距離、交流重賞の条件差を自然に含める。中央G1風の煽り見出しに寄せない。
   - 最新情報の断定より、/races/today で当日確認する順番を優先する。
   - 最後の見出しは「## このレースの買い目ポイント」にする。
@@ -299,7 +406,6 @@ theme_clusterの値に応じてcategoryを以下のように決定する。
   - "course_venue" -> "コース分析"
   - "beginner_guide" -> "入門ガイド"
   - "grade_race_preview" -> "重賞攻略"
-  - "news_context" -> "競馬ニュース"
   - "race_update" -> "重賞攻略"
 
 【出力形式】
@@ -499,7 +605,7 @@ async function expandDraftWithGemma(
 7. 出力は、追加するセクションのMarkdownテキストのみとすること。前置きや説明は不要。`;
 
   const prompt = `以下の現在の記事ドラフトとWriteOrder情報に基づき、記事を補強する新しい詳細なH2セクションを執筆してください。
-追加するセクションは、現在のドラフトの「締めセクション（## このコースの買い目ポイント / ## このレースの買い目ポイント / ## このニュースの確認ポイント / ## この競馬場の確認ポイント / ## この騎手を確認するポイント / ## このテーマの確認ポイント）」の直前に安全に挿入できるような構成にしてください。
+追加するセクションは、現在のドラフトの「締めセクション（## このコースの買い目ポイント / ## このレースの買い目ポイント / ## この競馬場の確認ポイント / ## この騎手を確認するポイント / ## このテーマの確認ポイント）」の直前に安全に挿入できるような構成にしてください。
 
 目標追加文字数: 約 ${neededChars} 文字
 
@@ -720,11 +826,12 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
     const modelTiers = getGeminiModelTiers('GEMINI_WRITER_MODEL_TIERS');
     console.log(`[Writer] LLM strategy: ${getArticleLlmStrategySummary()}`);
 
-    const strategyBrief = await buildArticleStrategyBrief(order, genAI);
+    const writerOrder = buildWriterFacingOrder(order);
+    const strategyBrief = await buildArticleStrategyBrief(writerOrder, genAI);
     const strategySection = strategyBrief
       ? `\n\n【Gemma SEO/構成ブリーフ】\n${JSON.stringify(strategyBrief, null, 2)}`
       : '';
-    const prompt = `以下の入力データ（WriteOrder）に基づいて記事を生成する。${strategySection}\n\n【WriteOrder】\n${JSON.stringify(order, null, 2)}`;
+    const prompt = `以下の入力データ（WriteOrder）に基づいて記事を生成する。${strategySection}\n\n【WriteOrder】\n${JSON.stringify(writerOrder, null, 2)}`;
     console.log(`[Writer] Generating draft for keyword: ${order.target_keyword}...`);
     console.log(`[Writer] Prompt size estimate: system=${SYSTEM_PROMPT.length} chars order_prompt=${prompt.length} chars`);
 
@@ -858,10 +965,8 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
       minChars = Math.max(configuredMinChars, 1500); // データ・統計系
     } else if (
       themeCluster === 'grade_race_preview' ||
-      themeCluster === 'news_context' ||
       themeCluster === 'race_update' ||
       articleType === 'grade_race_preview' ||
-      articleType === 'news_context' ||
       articleType === 'race_update'
     ) {
       minChars = Math.max(configuredMinChars, 2000); // 重賞・ニュース系
@@ -872,7 +977,7 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
     if (plainLen < minChars) {
       console.log(`[Writer] Draft length (${plainLen} chars) is below target (${minChars} chars). Expanding dynamically with Gemma...`);
       try {
-        const expandedText = await expandDraftWithGemma(order, text, minChars - plainLen, genAI);
+        const expandedText = await expandDraftWithGemma(writerOrder, text, minChars - plainLen, genAI);
         if (expandedText) {
           text = expandedText;
           console.log(`[Writer] Expanded draft length: ${text.replace(/\s/g, '').length} chars`);

@@ -448,23 +448,23 @@ BuildQueries
 
 ### 役割
 
-競馬ニュースをそのまま要約して公開するのではなく、検索需要が出やすい話題を検出し、UMA-FREEの既存記事生成パイプラインで扱える `write_order.json` に変換する。毎日実行される前提のため、広いニュース検索だけに頼らず、直近21日以内から開催後3日以内の重賞を優先してTavilyクエリを組み立てる。さらに、該当レースをDBで照合できる場合は、AI予想、コース統計、馬番有利度、AI展望テキストをWriteOrderへ自動合流し、外部ニュースと内部データを同じ確認順に束ねる。
+外部検索は検索需要の発見にだけ使い、記事本文の根拠にはしない。直近21日以内から開催後3日以内の重賞を優先して候補を作り、レース、競馬場、騎手、公式制度、承認済み入門テーマへ分類する。該当レースをDBで照合できる場合は、AI予想、コース統計、馬番有利度、AI展望テキストをWriteOrderへ合流する。Writerへ渡す根拠は、公式発表から独立確認した事実とUMA-FREE保有データだけに限定する。
 
 ### 検索流入最大化ロジック
 
 - 直近重賞カレンダーから、宝塚記念、函館SS、有馬記念に加え、帝王賞、さきたま杯、関東オークス、JBC、東京大賞典など地方・交流重賞も優先クエリに入れる
-- Tavily結果を `枠順`、`出走馬`、`馬場`、`追い切り`、`前走後評価`、`陣営コメント`、`騎手変更`、`話題馬・騎手`、`開催情報`、`AI予想` の検索意図に分類する
+- Tavily結果を `枠順`、`出走馬`、`馬場`、`追い切り`、`前走後評価`、`騎手変更`、`開催情報`、`AI予想` の検索意図に分類する
 - target_keyword は `宝塚記念2026 AI予想`、`宝塚記念2026 枠順 確認ポイント`、`帝王賞2026 追い切り 確認ポイント` のように、AI予想記事と直前確認記事の検索意図を分ける
 - 同じ検索意図の中でも、`追い切り` を `最終追い切り`、`坂路追い`、`調教評価` のように細分化し、記事の切り口を `search_angle_label` として保存する
 - 季節外れのレースは原則として採用しない。例: 6月実行時の皐月賞ニュースは、直近開催の流入が見込めないためスコアを落とし、採用対象から外す
 - 既存記事や未消費WriteOrderと同じ `target_keyword` は必ず避ける。同一レースの記事は既定で1実行1本までに抑え、枠順・追い切り・馬場などの切り口は同一記事を育てる前提で扱う。必要な場合のみ `KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN` で上限を調整する
 - 直近の `news_topic_history.json` は2日分だけ同一topic_key・同一URLの再利用を避けるために使い、長期のレース単位クールダウンには使わない
-- `article:pipeline` 側ではニュース枠を1本予約し、通常のデータ記事にTavily起点記事が押し出されないようにする
+- `article:pipeline` 側ではレース更新枠を1本予約し、直近重賞の記事が常設記事だけに押し出されないようにする
 
 ### 採用するトピック
 
-- JRA、NAR、競馬場公式、または信頼媒体で確認できる話題
-- 直近の重賞、G1/G2/G3、枠順確定、出走予定、出走馬、馬場、追い切り、前走後評価、陣営コメント、騎手変更、話題馬・騎手、開催情報
+- JRA、NAR、競馬場公式で確認できる事実、またはUMA-FREE保有データを持つ話題
+- 直近の重賞、G1/G2/G3、枠順確定、出走予定、出走馬、馬場、追い切り、前走後評価、騎手変更、開催情報
 - `/races/today` や重賞記事、コース分析記事へ自然に回遊できる話題
 - 既存記事、`posted_history.json`、未消費WriteOrder、`news_topic_history.json` と重複しない話題
 
@@ -472,19 +472,23 @@ BuildQueries
 
 - SNSや掲示板だけが根拠の話題
 - 外部記事の本文を言い換えるだけになる話題
+- 外部媒体だけが根拠の話題、第三者の推奨馬・買い目・コメントが主題になる話題
+- 競馬と直接関係しないスポーツ・芸能等からの類推
 - オッズ、予想印、勝率、回収率など、UMA-FREEのDBで検証できない数値が主役になる話題
 - 炎上、処分、故障など、事実確認や表現リスクが高く、馬券検討の確認順に落としにくい話題
 
 ### WriteOrderの扱い
 
-ニュースPlannerは `theme_cluster` を以下のどちらかで出力する。
+Plannerは `theme_cluster` を競馬固有の以下の型で出力する。
 
-- `news_context`: 一般的な競馬ニュースを、出馬表で確認する順番へ変換する記事
-- `race_update`: レース名を検出できたニュースを、重賞・日別レース導線へつなぐ記事
+- `race_update`: レース名と公式情報またはUMA-FREEデータを持つ更新記事
+- `course_venue`: 公式コース情報とコースデータを扱う記事
+- `jockey_profile`: 公式プロフィールと騎手データを扱う記事
+- `beginner_guide`: 公式制度または承認済みテーマを扱う入門記事
 
-`reference_data.key_metrics` には、ニュース本文の要約ではなく、採用済みソースから抽出した「確認済みの事実テーブル」を入れる。Writerはこの表と `research_sources.allowed_claims` だけを外部文脈として使い、勝率、回収率、AI偏差値などの主要数値は外部ソースから作らない。
+`reference_data.writer_evidence` には、`official`の`facts`、`uma_free`の`metrics`、確認日時`as_of`だけを入れる。外部媒体のSourceCard、タイトル、URL、要約、検索クエリは企画発見ログにだけ保持し、Writer向けJSONから除去する。勝率、回収率、AI偏差値などの数値はUMA-FREE保有データに存在するときだけ使う。
 
-`reference_data` には `search_intent`、`search_intent_label`、`search_angle_label`、`calendar_race`、`days_to_race`、`topic_bridge` も保存する。該当レースをDBで照合できた場合は、`matched_race`、`predictions`、`course_stats`、`horse_number_advantages`、`ai_analysis_text` も保存する。これにより、後続のWriter/Editorがニュース本文の焼き直しではなく、検索意図に合った確認順へ記事を寄せられる。
+`reference_data` には `search_intent`、`search_intent_label`、`search_angle_label`、`calendar_race`、`days_to_race`、`topic_bridge` も保存する。該当レースをDBで照合できた場合は、`matched_race`、`predictions`、`course_stats`、`horse_number_advantages`、`ai_analysis_text` も保存する。後続のWriter/Editorは記事テーマそのものから書き始め、企画発見経路を読者向けに説明しない。
 
 ### 自動公開の考え方
 

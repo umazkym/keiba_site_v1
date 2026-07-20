@@ -20,10 +20,17 @@ const RULES = {
     { pattern: /必勝|絶対に当たる|絶対的|絶対条件|完全攻略|最強|圧倒的|狙い撃つ/, reason: 'overconfident betting phrase' },
     { pattern: /投資|資金配分|期待値|儲か|稼げ|爆益|勝てる/, reason: 'profit-like or financial phrase' },
     { pattern: /結論から言うと|興味深いことに|と言えるでしょう/, reason: 'AI-like phrase' },
+    { pattern: /netkeiba|日刊スポーツ|スポーツ報知|スポニチ|サンスポ|デイリースポーツ|東スポ|競馬ブック|競馬ラボ/i, reason: 'external media attribution' },
+    { pattern: /コラム|外部ニュース|外部ソース|外部情報|信頼媒体|話題の入口|ニュース起点|ニュースを入口/i, reason: 'source-dependent framing' },
+    { pattern: /内部データ|編集ルール|確認方針|Tavily|出典種別|公式ソース/i, reason: 'production meta language' },
+    { pattern: /報道によると|各メディアで|報じられ(?:た|て|る)|によると|ニュース(?:等|で|として)/i, reason: 'quote-like attribution' },
+    { pattern: /推奨馬|推奨買い目|第三者コメント|関係者コメント|陣営コメント|厩舎コメント|取材内容|インタビュー/i, reason: 'third-party recommendation or comment dependency' },
+    { pattern: /本記事では|本稿では/i, reason: 'article-production preamble' },
+    { pattern: /陸上|駅伝|マラソン|サッカー|野球|バスケット|テニス|ゴルフ|芸能|ドラマ|映画/, reason: 'off-topic analogy' },
   ],
 };
 
-const REQUIRED_POINT_HEADING_PATTERN = /^##\s+(?:このコースの買い目ポイント|このレースの買い目ポイント|このニュースの確認ポイント|この競馬場の確認ポイント|この騎手を確認するポイント|このテーマの確認ポイント)\s*$/m;
+const REQUIRED_POINT_HEADING_PATTERN = /^##\s+(?:このコースの買い目ポイント|このレースの買い目ポイント|このコースの確認ポイント|このレースの確認ポイント|この競馬場の確認ポイント|この騎手を確認するポイント|このテーマの確認ポイント)\s*$/m;
 
 function getArticleFiles() {
   if (!fs.existsSync(ARTICLES_DIR)) return [];
@@ -168,6 +175,7 @@ function detectSyntheticTableRisk(content) {
     const rows = parseTableRows(table);
     if (rows.length < 6) continue;
 
+    const headers = rows[0];
     const width = Math.max(...rows.map(row => row.length));
     let monotonicPercentColumns = 0;
 
@@ -182,8 +190,35 @@ function detectSyntheticTableRisk(content) {
       }
     }
 
-    if (monotonicPercentColumns >= 2) {
+    const naturallySortedTable = /順位|人気/.test(headers[0] || '');
+    if (!naturallySortedTable && monotonicPercentColumns >= 3) {
       risks.push(`table ${index + 1}: ${monotonicPercentColumns} percentage columns are strictly monotonic`);
+    }
+
+    const sampleColumn = headers.findIndex(header => /出走回数|騎乗回数|馬数|母数/.test(header));
+    if (sampleColumn >= 0) {
+      const countRatePairs = [
+        { count: /勝利数|^1着$/, rate: /^勝率$/ },
+        { count: /連対数/, rate: /^連対率$/ },
+        { count: /複勝数/, rate: /^複勝率$/ },
+      ];
+      for (const pair of countRatePairs) {
+        const countColumn = headers.findIndex(header => pair.count.test(header));
+        const rateColumn = headers.findIndex(header => pair.rate.test(header));
+        if (countColumn < 0 || rateColumn < 0) continue;
+
+        let inconsistentRows = 0;
+        for (const row of rows.slice(1)) {
+          const sample = Number(String(row[sampleColumn] || '').replace(/,/g, ''));
+          const count = Number(String(row[countColumn] || '').replace(/,/g, ''));
+          const rate = toPercentNumber(row[rateColumn] || '');
+          if (!Number.isFinite(sample) || sample <= 0 || !Number.isFinite(count) || rate === null) continue;
+          if (Math.abs((count / sample) * 100 - rate) > 1.1) inconsistentRows++;
+        }
+        if (inconsistentRows >= 2) {
+          risks.push(`table ${index + 1}: ${pair.rate.source} disagrees with count/sample in ${inconsistentRows} rows`);
+        }
+      }
     }
   }
 
@@ -211,6 +246,22 @@ function auditArticle(file) {
   const title = String(data.title || '');
   const description = String(data.description || '');
   const themeCluster = String(data.theme_cluster || '');
+  const articleType = String(data.article_type || '');
+  const category = String(data.category || '');
+
+  if (themeCluster === 'news_context' || articleType === 'news_context') {
+    addIssue(issues, file, 'critical', 'source_independence', 'news_context is not publishable');
+  }
+  if (category === '競馬ニュース') {
+    addIssue(issues, file, 'critical', 'source_independence', '競馬ニュース category must be reclassified');
+  }
+
+  const entityType = String(data.entity_type || '');
+  const entityKey = String(data.entity_key || '');
+  const entityPath = String(data.entity_path || '');
+  if (entityType === 'jockey' && entityKey && entityPath && !entityPath.endsWith(`/${entityKey}`)) {
+    addIssue(issues, file, 'critical', 'entity', `jockey entity_path does not match entity_key: ${entityKey} / ${entityPath}`);
+  }
 
   for (const key of RULES.requiredFrontmatter) {
     if (!data[key]) addIssue(issues, file, 'warning', 'frontmatter', `missing ${key}`);
@@ -242,7 +293,9 @@ function auditArticle(file) {
     addIssue(issues, file, 'warning', 'body_length', `body length ${bodyChars}, expected at least ${RULES.minBodyChars}`);
   }
 
-  if (!/^\s*\|.+\|\s*$/m.test(content)) {
+  const dataCentricThemes = new Set(['asset', 'waku_data', 'jockey_data', 'popularity_data', 'running_style_data', 'grade_race_preview', 'race_update']);
+  const needsDataTable = dataCentricThemes.has(themeCluster) || /AI偏差値|勝率|複勝率|回収率|有利度スコア/.test(content);
+  if (needsDataTable && !/^\s*\|.+\|\s*$/m.test(content)) {
     addIssue(issues, file, 'warning', 'data_format', 'missing markdown data table');
   }
 

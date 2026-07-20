@@ -122,7 +122,6 @@ export const SEO_RULES = {
 const REQUIRED_POINT_HEADINGS = [
   'このコースの買い目ポイント',
   'このレースの買い目ポイント',
-  'このニュースの確認ポイント',
   'この競馬場の確認ポイント',
   'この騎手を確認するポイント',
   'このテーマの確認ポイント',
@@ -136,6 +135,60 @@ const REQUIRED_POINT_HEADING_PATTERN = new RegExp(
 export interface SEOCheckResult {
   passed: boolean;
   errors: string[];
+}
+
+const SOURCE_INDEPENDENCE_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
+  {
+    pattern: /netkeiba|日刊スポーツ|スポーツ報知|スポニチ|サンスポ|デイリースポーツ|東スポ|競馬ブック|競馬ラボ/i,
+    reason: '外部メディア名',
+  },
+  {
+    pattern: /コラム|外部ニュース|外部ソース|外部情報|信頼媒体|話題の入口|ニュース起点|ニュースを入口/i,
+    reason: '外部記事への依存を示す表現',
+  },
+  {
+    pattern: /内部データ|編集ルール|確認方針|Tavily|出典種別|公式ソース/i,
+    reason: '制作工程のメタ表現',
+  },
+  {
+    pattern: /報道によると|各メディアで|報じられ(?:た|て|る)|によると|ニュース(?:等|で|として)/i,
+    reason: '引用・報道調の表現',
+  },
+  {
+    pattern: /推奨馬|推奨買い目|第三者コメント|関係者コメント|陣営コメント|厩舎コメント|取材内容|インタビュー/i,
+    reason: '第三者の推奨・コメントへの依存',
+  },
+  {
+    pattern: /本記事では|本稿では/i,
+    reason: '記事制作を説明する前置き',
+  },
+];
+
+export function checkSourceIndependence(markdownText: string): SEOCheckResult {
+  let parsed;
+  try {
+    parsed = matter(markdownText);
+  } catch {
+    return { passed: false, errors: ['Frontmatterのパースに失敗しました。'] };
+  }
+
+  const errors: string[] = [];
+  const data = parsed.data || {};
+  const scanTarget = `${JSON.stringify(data)}\n${parsed.content || ''}`;
+  if (String(data.theme_cluster || '') === 'news_context' || String(data.article_type || '') === 'news_context') {
+    errors.push('news_contextは公開できません。競馬固有の記事タイプへ再分類してください。');
+  }
+  if (String(data.category || '') === '競馬ニュース') {
+    errors.push('競馬ニュースカテゴリは公開できません。内容に応じた専門カテゴリへ再分類してください。');
+  }
+  for (const { pattern, reason } of SOURCE_INDEPENDENCE_PATTERNS) {
+    const match = scanTarget.match(pattern);
+    if (match) {
+      errors.push(`${reason}が含まれています: 「${match[0]}」`);
+    }
+  }
+
+  return { passed: errors.length === 0, errors };
 }
 
 function collectMarkdownLinks(content: string): string[] {
@@ -175,6 +228,7 @@ export function checkSEO(markdownText: string): SEOCheckResult {
   }
 
   const { data, content } = parsed;
+  errors.push(...checkSourceIndependence(markdownText).errors);
 
   const normalizeDateOnly = (value: unknown): string | null => {
     const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -199,55 +253,6 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     );
   }
 
-  if (!scheduledRaceDate && String(data.theme_cluster || '') === 'news_context') {
-    const articleTimestamp = Date.parse(`${articleDate}T00:00:00Z`);
-    const articleYear = Number(articleDate.slice(0, 4));
-    const explicitEventTimestamps: number[] = [];
-    const dateText = `${data.title || ''} ${data.description || ''} ${content}`;
-    const datePattern = /(?:(20\d{2})年)?(\d{1,2})月(\d{1,2})日/g;
-    let dateMatch: RegExpExecArray | null;
-
-    while ((dateMatch = datePattern.exec(dateText)) !== null) {
-      const explicitYear = dateMatch[1] ? Number(dateMatch[1]) : null;
-      const month = Number(dateMatch[2]);
-      const day = Number(dateMatch[3]);
-      const yearCandidates = explicitYear
-        ? [explicitYear]
-        : [articleYear - 1, articleYear, articleYear + 1];
-      const candidates = yearCandidates.flatMap(year => {
-        const timestamp = Date.UTC(year, month - 1, day);
-        const parsedDate = new Date(timestamp);
-        const isValid = (
-          parsedDate.getUTCFullYear() === year &&
-          parsedDate.getUTCMonth() === month - 1 &&
-          parsedDate.getUTCDate() === day
-        );
-        return isValid ? [timestamp] : [];
-      });
-      if (candidates.length === 0) continue;
-
-      explicitEventTimestamps.push(
-        candidates.reduce((nearest, candidate) => (
-          Math.abs(candidate - articleTimestamp) < Math.abs(nearest - articleTimestamp)
-            ? candidate
-            : nearest
-        ))
-      );
-    }
-
-    const freshnessWindowMs = 7 * 86_400_000;
-    if (
-      explicitEventTimestamps.length > 0 &&
-      !explicitEventTimestamps.some(
-        timestamp => Math.abs(timestamp - articleTimestamp) <= freshnessWindowMs
-      )
-    ) {
-      errors.push(
-        `news_contextの記事内に公開日から7日以上離れた開催日だけが含まれています。古いニュースを現在の馬場・開催情報として公開しないでください。article_date=${articleDate}`
-      );
-    }
-  }
-  
   // 空文字はエラー
   if (!content || content.trim() === '') {
     return { passed: false, errors: ['本文が空です。'] };
@@ -310,10 +315,8 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     minChars = Math.max(configuredMinChars, 1500); // データ・統計系
   } else if (
     themeCluster === 'grade_race_preview' ||
-    themeCluster === 'news_context' ||
     themeCluster === 'race_update' ||
     articleType === 'grade_race_preview' ||
-    articleType === 'news_context' ||
     articleType === 'race_update'
   ) {
     minChars = Math.max(configuredMinChars, 2000); // 重賞・ニュース系

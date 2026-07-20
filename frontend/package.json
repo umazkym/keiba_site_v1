@@ -12,6 +12,9 @@
     "article:publish": "npx --yes tsx scripts/agents/agent_publisher.ts",
     "article:validate-links": "node -e \"eval(require('fs').readFileSync('scripts/agents/validate_article_links.js','utf8'))\"",
     "article:audit-quality": "node -e \"eval(require('fs').readFileSync('scripts/agents/article_quality_audit.js','utf8'))\"",
+    "article:remediate-independence": "node scripts/agents/remediate_source_independence.js",
+    "article:remediate-independence:apply": "node scripts/agents/remediate_source_independence.js --apply",
+    "article:test-independence": "npx --yes tsx scripts/agents/test_source_independence.ts",
     "article:tone-fix": "node scripts/agents/improve_article_tone.js",
     "article:tone-fix:apply": "node scripts/agents/improve_article_tone.js --apply",
     "article:tone-audit": "node scripts/agents/article_quality_audit.js --json | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log('Critical:', d.summary.critical, '/ Warning:', d.summary.warning);\""

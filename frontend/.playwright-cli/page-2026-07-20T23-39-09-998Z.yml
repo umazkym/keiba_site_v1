@@ -1,0 +1,509 @@
+- generic [active] [ref=e1]:
+  - link "本文へ移動" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=e3]:
+    - generic [ref=e5]:
+      - link "ウマFREE ホーム" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img "UMA-FREE ロゴ" [ref=e7]
+        - generic [ref=e8]:
+          - generic [ref=e9]: UMA-FREE
+          - paragraph [ref=e10]: 完全無料のAI競馬分析
+      - navigation "主要ナビゲーション" [ref=e11]:
+        - link "ホーム" [ref=e12] [cursor=pointer]:
+          - /url: /
+        - link "本日の分析" [ref=e13] [cursor=pointer]:
+          - /url: /races/2026-07-21
+        - link "記事" [ref=e14] [cursor=pointer]:
+          - /url: /articles
+        - link "よくある質問" [ref=e15] [cursor=pointer]:
+          - /url: /faq
+      - generic [ref=e16]:
+        - link "PR 楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で。馬券の購入は20歳以上の方のみ対象です" [ref=e17] [cursor=pointer]:
+          - /url: https://ad2.trafficgate.net/t/r/14/1958/318200_397641
+          - generic [ref=e18]: PR
+          - generic [ref=e19]: 地方競馬の投票は楽天競馬で
+          - generic [ref=e20]: →
+        - link "サイト内検索" [ref=e21] [cursor=pointer]:
+          - /url: /search
+  - main [ref=e25]:
+    - generic [ref=e26]:
+      - navigation "Breadcrumb" [ref=e27]:
+        - list [ref=e28]:
+          - listitem [ref=e29]:
+            - link "ホーム" [ref=e30] [cursor=pointer]:
+              - /url: /
+            - generic [ref=e31]: /
+          - listitem [ref=e32]:
+            - link "レース分析" [ref=e33] [cursor=pointer]:
+              - /url: /races/today
+            - generic [ref=e34]: /
+          - listitem [ref=e35]:
+            - generic [ref=e36]: 2026年07月21日 (火)のレース分析
+      - generic [ref=e37]:
+        - generic [ref=e39]:
+          - generic [ref=e40]:
+            - button "前日へ" [ref=e41] [cursor=pointer]
+            - textbox "日付を選択" [ref=e45] [cursor=pointer]: 2026-07-21
+            - button "翌日へ" [ref=e46] [cursor=pointer]
+          - button "今日" [ref=e49] [cursor=pointer]
+        - generic [ref=e51]:
+          - generic [ref=e52]:
+            - paragraph [ref=e53]: 本日のレースデータを確認
+            - generic [ref=e54]:
+              - generic [ref=e55]: AI偏差値、枠順傾向、展開予測
+              - paragraph [ref=e56]: 中央・地方 全レース毎日無料分析
+          - link "確認する" [ref=e57] [cursor=pointer]:
+            - /url: /races/today
+        - navigation "レースデータの確認順" [ref=e58]:
+          - generic [ref=e59]:
+            - button "AI偏差値 （表示中）" [ref=e60] [cursor=pointer]:
+              - generic [ref=e61]: AI偏差値
+              - generic [ref=e72]: （表示中）
+            - button "対戦比較" [ref=e73] [cursor=pointer]:
+              - generic [ref=e87]:
+                - generic [ref=e88]: "+2"
+                - generic [ref=e89]: "0"
+                - generic [ref=e90]: "-1"
+            - button "展開・脚質" [ref=e91] [cursor=pointer]
+            - button "枠順傾向" [ref=e104] [cursor=pointer]
+        - generic [ref=e116]:
+          - tablist [ref=e117]:
+            - tab "地方競馬" [selected] [ref=e118] [cursor=pointer]
+          - tabpanel "地方競馬" [ref=e119]:
+            - generic [ref=e121]:
+              - tablist [ref=e122]:
+                - tab "大井" [selected] [ref=e123] [cursor=pointer]
+                - tab "盛岡" [ref=e124] [cursor=pointer]
+                - tab "門別" [ref=e125] [cursor=pointer]
+              - tabpanel "大井" [ref=e126]:
+                - generic [ref=e127]:
+                  - generic [ref=e128]:
+                    - generic [ref=e129]:
+                      - generic [ref=e130]: 2026年07月21日 (火) 大井 1R 3歳八九十(3歳九)
+                      - generic [ref=e131]: ◎ ウインデイブレイク 70.9
+                    - navigation "同日のレース" [ref=e132]:
+                      - generic "1Rを表示中" [ref=e133]:
+                        - text: 1R
+                        - generic [ref=e134]: ダ
+                      - button "2R ダ" [ref=e135] [cursor=pointer]:
+                        - text: 2R
+                        - generic [ref=e136]: ダ
+                      - button "3R ダ" [ref=e137] [cursor=pointer]:
+                        - text: 3R
+                        - generic [ref=e138]: ダ
+                      - button "4R ダ" [ref=e139] [cursor=pointer]:
+                        - text: 4R
+                        - generic [ref=e140]: ダ
+                      - button "5R ダ" [ref=e141] [cursor=pointer]:
+                        - text: 5R
+                        - generic [ref=e142]: ダ
+                      - button "6R ダ" [ref=e143] [cursor=pointer]:
+                        - text: 6R
+                        - generic [ref=e144]: ダ
+                      - button "7R ダ" [ref=e145] [cursor=pointer]:
+                        - text: 7R
+                        - generic [ref=e146]: ダ
+                      - button "8R ダ" [ref=e147] [cursor=pointer]:
+                        - text: 8R
+                        - generic [ref=e148]: ダ
+                      - button "9R ダ" [ref=e149] [cursor=pointer]:
+                        - text: 9R
+                        - generic [ref=e150]: ダ
+                      - button "10R ダ" [ref=e151] [cursor=pointer]:
+                        - text: 10R
+                        - generic [ref=e152]: ダ
+                      - button "11R ダ" [ref=e153] [cursor=pointer]:
+                        - text: 11R
+                        - generic [ref=e154]: ダ
+                      - button "12R ダ" [ref=e155] [cursor=pointer]:
+                        - text: 12R
+                        - generic [ref=e156]: ダ
+                  - generic [ref=e157]:
+                    - generic [ref=e158]:
+                      - button "2Rへ →" [ref=e161] [cursor=pointer]
+                      - generic [ref=e162]:
+                        - generic [ref=e163]:
+                          - heading "1R 3歳八九十(3歳九)" [level=3] [ref=e164]:
+                            - generic [ref=e165]: 1R
+                            - generic [ref=e166]: 3歳八九十(3歳九)
+                          - paragraph [ref=e167]: ダ 1600m
+                        - generic [ref=e168]:
+                          - heading "AI偏差値" [level=4] [ref=e169]
+                          - generic "印の凡例" [ref=e173]:
+                            - generic [ref=e174]: ◎ 本命
+                            - generic [ref=e175]: ○ 対抗
+                            - generic [ref=e176]: ▲ 3番手
+                            - generic [ref=e177]: △ 相手候補
+                            - generic [ref=e178]: ☆ ひと押し候補
+                          - table [ref=e180]:
+                            - rowgroup [ref=e187]:
+                              - row [ref=e188]:
+                                - columnheader "印" [ref=e189]
+                                - columnheader "馬番" [ref=e190]
+                                - columnheader "馬名" [ref=e191]
+                                - columnheader "AI偏差値 ?" [ref=e192]:
+                                  - generic [ref=e193]:
+                                    - generic [ref=e194]: AI偏差値
+                                    - generic [ref=e195]: "?"
+                                - columnheader "位置" [ref=e196]
+                            - rowgroup [ref=e197]:
+                              - row [ref=e198]:
+                                - cell "◎" [ref=e199]
+                                - cell "6" [ref=e200]
+                                - cell "ウインデイブレイク" [ref=e202]
+                                - cell "70.9" [ref=e205]
+                                - cell "後方" [ref=e207]
+                              - row [ref=e209]:
+                                - cell "〇" [ref=e210]
+                                - cell "10" [ref=e211]
+                                - cell "ムービングアップ" [ref=e213]
+                                - cell "58.7" [ref=e216]
+                                - cell "先行" [ref=e218]
+                              - row [ref=e220]:
+                                - cell "▲" [ref=e221]
+                                - cell "5" [ref=e222]
+                                - cell "グレートロッタリー" [ref=e224]
+                                - cell "57.4" [ref=e227]
+                                - cell "後方" [ref=e229]
+                              - row [ref=e231]:
+                                - cell "△" [ref=e232]
+                                - cell "1" [ref=e233]
+                                - cell "ジョテイ" [ref=e235]
+                                - cell "55.0" [ref=e238]
+                                - cell "後方" [ref=e240]
+                              - row [ref=e242]:
+                                - cell "☆" [ref=e243]
+                                - cell "7" [ref=e244]
+                                - cell "エイシンシームレス" [ref=e246]
+                                - cell "50.6" [ref=e249]
+                                - cell "先行" [ref=e251]
+                              - row [ref=e253]:
+                                - cell "−" [ref=e254]
+                                - cell "8" [ref=e255]
+                                - cell "タツノロマンス" [ref=e257]
+                                - cell "49.8" [ref=e260]
+                                - cell "中団" [ref=e262]
+                              - row [ref=e264]:
+                                - cell "−" [ref=e265]
+                                - cell "9" [ref=e266]
+                                - cell "ビハインドヘッド" [ref=e268]
+                                - cell "48.6" [ref=e271]
+                                - cell "後方" [ref=e273]
+                              - row [ref=e275]:
+                                - cell "−" [ref=e276]
+                                - cell "4" [ref=e277]
+                                - cell "ヤマジュンハッピ" [ref=e279]
+                                - cell "46.2" [ref=e282]
+                                - cell "後方" [ref=e284]
+                              - row [ref=e286]:
+                                - cell "−" [ref=e287]
+                                - cell "3" [ref=e288]
+                                - cell "パイナップルケーキ" [ref=e290]
+                                - cell "41.9" [ref=e293]
+                                - cell "後方" [ref=e295]
+                              - row [ref=e297]:
+                                - cell "−" [ref=e298]
+                                - cell "11" [ref=e299]
+                                - cell "デスピナ" [ref=e301]
+                                - cell "36.4" [ref=e304]
+                                - cell "中団" [ref=e306]
+                              - row [ref=e308]:
+                                - cell "−" [ref=e309]
+                                - cell "2" [ref=e310]
+                                - cell "ユリシスバタフライ" [ref=e312]
+                                - cell "34.5" [ref=e315]
+                                - cell "先行" [ref=e317]
+                      - region "楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で 広告リンク" [ref=e319] [cursor=pointer]:
+                        - link "今すぐチェックを開く" [ref=e320]:
+                          - /url: https://ad2.trafficgate.net/t/r/14/1958/318200_397641
+                        - generic [ref=e325]:
+                          - generic [ref=e326]: PR
+                          - heading "楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で" [level=3] [ref=e328]
+                          - generic [ref=e329]: 今すぐチェック
+                        - paragraph [ref=e336]: ※馬券の購入は20歳以上の方のみ対象です。
+                      - generic [ref=e365]:
+                        - heading "AIレース展望" [level=2] [ref=e367]
+                        - group [ref=e369]:
+                          - generic "続きを読む ▼" [ref=e370] [cursor=pointer]
+                      - generic [ref=e373]:
+                        - button "2R 次のレース 3歳八九十(3歳九) AI 1位 グラスリッキー →" [ref=e374] [cursor=pointer]:
+                          - generic [ref=e375]: 2R
+                          - generic [ref=e377]:
+                            - paragraph [ref=e378]: 次のレース
+                            - paragraph [ref=e379]: 3歳八九十(3歳九)
+                          - generic [ref=e380]:
+                            - paragraph [ref=e381]: AI 1位
+                            - paragraph [ref=e382]: グラスリッキー
+                          - generic [ref=e383]: →
+                        - button "2Rへ →" [ref=e386] [cursor=pointer]
+                      - button "AI偏差値・枠順傾向の見方 詳細を見る" [ref=e389] [cursor=pointer]:
+                        - heading "AI偏差値・枠順傾向の見方" [level=4] [ref=e391]
+                        - generic [ref=e392]: 詳細を見る
+                      - generic [ref=e393]:
+                        - heading "他の日付の分析もチェック" [level=3] [ref=e394]
+                        - generic [ref=e397]:
+                          - link "7月19日 (日) →" [ref=e398] [cursor=pointer]:
+                            - /url: /races/2026-07-19
+                            - generic [ref=e399]: 7月19日 (日)
+                            - generic [ref=e400]: →
+                          - link "7月20日 (月) →" [ref=e401] [cursor=pointer]:
+                            - /url: /races/2026-07-20
+                            - generic [ref=e402]: 7月20日 (月)
+                            - generic [ref=e403]: →
+                          - link "7月22日 (水) →" [ref=e404] [cursor=pointer]:
+                            - /url: /races/2026-07-22
+                            - generic [ref=e405]: 7月22日 (水)
+                            - generic [ref=e406]: →
+                        - link "トップページに戻る" [ref=e408] [cursor=pointer]:
+                          - /url: /
+                      - generic [ref=e412]:
+                        - heading [level=3] [ref=e413]
+                        - generic [ref=e416]:
+                          - link "サンタアニタトロフィー2026｜大井1600mの適性と斤量差を確認する5つのポイント 海外競馬 サンタアニタトロフィー2026｜大井1600mの適性と斤量差を確認する5つのポイント" [ref=e417] [cursor=pointer]:
+                            - /url: /articles/2026-07-20-2026-ebd99ac8
+                            - img "サンタアニタトロフィー2026｜大井1600mの適性と斤量差を確認する5つのポイント" [ref=e419]
+                            - generic [ref=e421]:
+                              - generic [ref=e422]: 海外競馬
+                              - heading "サンタアニタトロフィー2026｜大井1600mの適性と斤量差を確認する5つのポイント" [level=4] [ref=e423]
+                          - link "【大井ダート2000m】スタミナと持続力が必須｜2026年帝王賞の開催条件 重賞攻略 【大井ダート2000m】スタミナと持続力が必須｜2026年帝王賞の開催条件" [ref=e424] [cursor=pointer]:
+                            - /url: /articles/2026-06-30-2026-3f0ec455
+                            - img "【大井ダート2000m】スタミナと持続力が必須｜2026年帝王賞の開催条件" [ref=e426]
+                            - generic [ref=e428]:
+                              - generic [ref=e429]: 重賞攻略
+                              - heading "【大井ダート2000m】スタミナと持続力が必須｜2026年帝王賞の開催条件" [level=4] [ref=e430]
+                          - link "【東京ダート1600m】騎手成績から紐解く芝スタートと外枠の狙い目 騎手分析 【東京ダート1600m】騎手成績から紐解く芝スタートと外枠の狙い目" [ref=e431] [cursor=pointer]:
+                            - /url: /articles/2026-04-11-tokyodirt1600m-jockey-data
+                            - img "【東京ダート1600m】騎手成績から紐解く芝スタートと外枠の狙い目" [ref=e433]
+                            - generic [ref=e435]:
+                              - generic [ref=e436]: 騎手分析
+                              - heading "【東京ダート1600m】騎手成績から紐解く芝スタートと外枠の狙い目" [level=4] [ref=e437]
+                    - complementary [ref=e438]:
+                      - generic [ref=e439]:
+                        - heading "同日レース" [level=2] [ref=e440]
+                        - generic [ref=e441]:
+                          - generic [ref=e442]:
+                            - generic [ref=e443]: 1R
+                            - generic [ref=e444]:
+                              - generic [ref=e445]: 3歳八九十(3歳九)
+                              - generic [ref=e446]: 表示中
+                          - 'button "2R 3歳八九十(3歳九) AI1位: グラスリッキー (68.9)" [ref=e447] [cursor=pointer]':
+                            - generic [ref=e448]: 2R
+                            - generic [ref=e449]:
+                              - generic [ref=e450]: 3歳八九十(3歳九)
+                              - generic [ref=e451]: "AI1位: グラスリッキー (68.9)"
+                          - 'button "3R 3歳八九十(3歳九) AI1位: プラヤデルカルメン (67.6)" [ref=e452] [cursor=pointer]':
+                            - generic [ref=e453]: 3R
+                            - generic [ref=e454]:
+                              - generic [ref=e455]: 3歳八九十(3歳九)
+                              - generic [ref=e456]: "AI1位: プラヤデルカルメン (67.6)"
+                          - 'button "4R 2歳新馬 AI1位: ポッドマデラ ()" [ref=e457] [cursor=pointer]':
+                            - generic [ref=e458]: 4R
+                            - generic [ref=e459]:
+                              - generic [ref=e460]: 2歳新馬
+                              - generic [ref=e461]: "AI1位: ポッドマデラ ()"
+                          - 'button "5R 2歳新馬 AI1位: ランサスゴールド ()" [ref=e462] [cursor=pointer]':
+                            - generic [ref=e463]: 5R
+                            - generic [ref=e464]:
+                              - generic [ref=e465]: 2歳新馬
+                              - generic [ref=e466]: "AI1位: ランサスゴールド ()"
+                          - 'button "6R C2九十 AI1位: コロラドフォンテン (67.7)" [ref=e467] [cursor=pointer]':
+                            - generic [ref=e468]: 6R
+                            - generic [ref=e469]:
+                              - generic [ref=e470]: C2九十
+                              - generic [ref=e471]: "AI1位: コロラドフォンテン (67.7)"
+                          - 'button "7R C2九十 AI1位: ミルトマジック (72.8)" [ref=e472] [cursor=pointer]':
+                            - generic [ref=e473]: 7R
+                            - generic [ref=e474]:
+                              - generic [ref=e475]: C2九十
+                              - generic [ref=e476]: "AI1位: ミルトマジック (72.8)"
+                          - 'button "8R ブランデー・フィックス賞(C1) AI1位: クールブリーズ (63.0)" [ref=e477] [cursor=pointer]':
+                            - generic [ref=e478]: 8R
+                            - generic [ref=e479]:
+                              - generic [ref=e480]: ブランデー・フィックス賞(C1)
+                              - generic [ref=e481]: "AI1位: クールブリーズ (63.0)"
+                          - 'button "9R C1七八 AI1位: オーシンレーベン (67.0)" [ref=e482] [cursor=pointer]':
+                            - generic [ref=e483]: 9R
+                            - generic [ref=e484]:
+                              - generic [ref=e485]: C1七八
+                              - generic [ref=e486]: "AI1位: オーシンレーベン (67.0)"
+                          - 'button "10R わし座特別競走(C2) AI1位: リュウジンオー (68.6)" [ref=e487] [cursor=pointer]':
+                            - generic [ref=e488]: 10R
+                            - generic [ref=e489]:
+                              - generic [ref=e490]: わし座特別競走(C2)
+                              - generic [ref=e491]: "AI1位: リュウジンオー (68.6)"
+                          - 'button "11R デネブ賞競走(B2) AI1位: ラブミーモンロー (64.5)" [ref=e492] [cursor=pointer]':
+                            - generic [ref=e493]: 11R
+                            - generic [ref=e494]:
+                              - generic [ref=e495]: デネブ賞競走(B2)
+                              - generic [ref=e496]: "AI1位: ラブミーモンロー (64.5)"
+                          - 'button "12R 三宅坂賞競走(B3) AI1位: メイショウタビズキ (68.3)" [ref=e497] [cursor=pointer]':
+                            - generic [ref=e498]: 12R
+                            - generic [ref=e499]:
+                              - generic [ref=e500]: 三宅坂賞競走(B3)
+                              - generic [ref=e501]: "AI1位: メイショウタビズキ (68.3)"
+        - generic [ref=e503]:
+          - button "本命候補" [ref=e505] [cursor=pointer]
+          - link "2026年07月21日 (火) · 大井 7R ミルトマジック C2九十 AI偏差値 72.8 AI偏差値 72.79！大井7R の ミルトマジック を詳しく見る → 分析データを詳しく確認する →" [ref=e506] [cursor=pointer]:
+            - /url: /races/2026-07-21/ohi/7
+            - generic [ref=e507]:
+              - generic [ref=e508]:
+                - generic [ref=e509]:
+                  - generic [ref=e510]: 2026年07月21日 (火) · 大井 7R
+                  - heading "ミルトマジック" [level=3] [ref=e511]
+                  - text: C2九十
+                - generic [ref=e512]:
+                  - generic [ref=e513]: AI偏差値
+                  - generic [ref=e514]: "72.8"
+              - paragraph [ref=e518]: AI偏差値 72.79！大井7R の ミルトマジック を詳しく見る →
+              - generic [ref=e519]: 分析データを詳しく確認する →
+        - button "免責事項：AI分析は参考情報です" [ref=e522] [cursor=pointer]
+        - generic [ref=e530]:
+          - heading "高配当的中ランキング (7/14〜7/19)" [level=2] [ref=e531]:
+            - generic [ref=e538]: 高配当的中ランキング
+            - generic [ref=e539]: (7/14〜7/19)
+          - generic [ref=e540]:
+            - link "1位 261,920円 3連単 7/19 福島8R 組番 13→3→6" [ref=e541] [cursor=pointer]:
+              - /url: /races/2026-07-19/fukushima/8
+              - generic [ref=e542]:
+                - generic [ref=e543]: 1位
+                - generic [ref=e544]:
+                  - generic [ref=e545]:
+                    - generic [ref=e546]: 261,920円
+                    - generic [ref=e547]: 3連単
+                  - generic [ref=e548]: 7/19 福島8R
+                - generic [ref=e549]:
+                  - generic [ref=e550]: 組番
+                  - generic "13→3→6" [ref=e551]
+            - link "2位 159,330円 3連単 7/16 園田10R 組番 4→3→9" [ref=e552] [cursor=pointer]:
+              - /url: /races/2026-07-16/sonoda/10
+              - generic [ref=e553]:
+                - generic [ref=e554]: 2位
+                - generic [ref=e555]:
+                  - generic [ref=e556]:
+                    - generic [ref=e557]: 159,330円
+                    - generic [ref=e558]: 3連単
+                  - generic [ref=e559]: 7/16 園田10R
+                - generic [ref=e560]:
+                  - generic [ref=e561]: 組番
+                  - generic "4→3→9" [ref=e562]
+            - link "3位 109,520円 3連単 7/14 金沢2R 組番 6→2→9" [ref=e563] [cursor=pointer]:
+              - /url: /races/2026-07-14/kanazawa/2
+              - generic [ref=e564]:
+                - generic [ref=e565]: 3位
+                - generic [ref=e566]:
+                  - generic [ref=e567]:
+                    - generic [ref=e568]: 109,520円
+                    - generic [ref=e569]: 3連単
+                  - generic [ref=e570]: 7/14 金沢2R
+                - generic [ref=e571]:
+                  - generic [ref=e572]: 組番
+                  - generic "6→2→9" [ref=e573]
+            - link "4位 108,270円 3連単 7/17 園田12R 組番 1→4→9" [ref=e574] [cursor=pointer]:
+              - /url: /races/2026-07-17/sonoda/12
+              - generic [ref=e575]:
+                - generic [ref=e576]: 4位
+                - generic [ref=e577]:
+                  - generic [ref=e578]:
+                    - generic [ref=e579]: 108,270円
+                    - generic [ref=e580]: 3連単
+                  - generic [ref=e581]: 7/17 園田12R
+                - generic [ref=e582]:
+                  - generic [ref=e583]: 組番
+                  - generic "1→4→9" [ref=e584]
+            - link "5位 96,560円 3連単 7/18 高知12R 組番 8→6→12" [ref=e585] [cursor=pointer]:
+              - /url: /races/2026-07-18/kochi/12
+              - generic [ref=e586]:
+                - generic [ref=e587]: 5位
+                - generic [ref=e588]:
+                  - generic [ref=e589]:
+                    - generic [ref=e590]: 96,560円
+                    - generic [ref=e591]: 3連単
+                  - generic [ref=e592]: 7/18 高知12R
+                - generic [ref=e593]:
+                  - generic [ref=e594]: 組番
+                  - generic "8→6→12" [ref=e595]
+        - region "楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で 広告リンク" [ref=e596] [cursor=pointer]:
+          - link "今すぐチェックを開く" [ref=e597]:
+            - /url: https://ad2.trafficgate.net/t/r/14/1958/318200_397641
+          - generic [ref=e602]:
+            - generic [ref=e603]: PR
+            - heading "楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で" [level=3] [ref=e605]
+            - generic [ref=e606]: 今すぐチェック
+          - paragraph [ref=e613]: ※馬券の購入は20歳以上の方のみ対象です。
+        - generic [ref=e614]: 広告
+        - generic [ref=e616]:
+          - link "← 前日のデータ" [ref=e617] [cursor=pointer]:
+            - /url: /races/2026-07-20
+          - link "翌日のデータ →" [ref=e618] [cursor=pointer]:
+            - /url: /races/2026-07-22
+        - generic [ref=e619]:
+          - heading "関連する分析記事" [level=2] [ref=e621]
+          - generic [ref=e623]:
+            - link "福島芝1200m枠順データ分析｜1枠の勝率17.6%が示す内枠有利の構造 コース分析 福島芝1200m枠順データ分析｜1枠の勝率17.6%が示す内枠有利の構造" [ref=e624] [cursor=pointer]:
+              - /url: /articles/2026-03-20-fukushimaturf1200m-waku-data
+              - img "福島芝1200m枠順データ分析｜1枠の勝率17.6%が示す内枠有利の構造" [ref=e626]
+              - generic [ref=e627]:
+                - generic [ref=e628]: コース分析
+                - heading "福島芝1200m枠順データ分析｜1枠の勝率17.6%が示す内枠有利の構造" [level=3] [ref=e629]
+            - link "【岩田望来騎手】2026年成績から探る好走パターンと馬券の確認順 ｜ 騎手データ 騎手分析 【岩田望来騎手】2026年成績から探る好走パターンと馬券の確認順 ｜ 騎手データ" [ref=e630] [cursor=pointer]:
+              - /url: /articles/2026-07-20-jockey-2026-b96bd967
+              - img "【岩田望来騎手】2026年成績から探る好走パターンと馬券の確認順 ｜ 騎手データ" [ref=e632]
+              - generic [ref=e633]:
+                - generic [ref=e634]: 騎手分析
+                - heading "【岩田望来騎手】2026年成績から探る好走パターンと馬券の確認順 ｜ 騎手データ" [level=3] [ref=e635]
+            - link "C.ルメール騎手の2026年実績データ分析：勝率28%超の傾向と馬券検討のポイント 騎手分析 C.ルメール騎手の2026年実績データ分析：勝率28%超の傾向と馬券検討のポイント" [ref=e636] [cursor=pointer]:
+              - /url: /articles/2026-07-20-cjockey-2026
+              - img "C.ルメール騎手の2026年実績データ分析：勝率28%超の傾向と馬券検討のポイント" [ref=e638]
+              - generic [ref=e639]:
+                - generic [ref=e640]: 騎手分析
+                - heading "C.ルメール騎手の2026年実績データ分析：勝率28%超の傾向と馬券検討のポイント" [level=3] [ref=e641]
+          - link "すべての記事を見る" [ref=e643] [cursor=pointer]:
+            - /url: /articles
+  - contentinfo [ref=e646]:
+    - generic [ref=e647]:
+      - generic [ref=e648]:
+        - generic [ref=e649]:
+          - heading "UMA-FREE" [level=3] [ref=e650]
+          - paragraph [ref=e651]: 豊富な過去レースデータをAIで分析。中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を登録不要・完全無料で提供する競馬データ分析サイトです。
+        - generic [ref=e652]:
+          - heading "コンテンツ" [level=3] [ref=e653]
+          - list [ref=e654]:
+            - listitem [ref=e655]:
+              - link "データ分析記事" [ref=e656] [cursor=pointer]:
+                - /url: /articles
+            - listitem [ref=e657]:
+              - link "よくある質問" [ref=e658] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=e659]:
+              - link "このサイトについて" [ref=e660] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e661]:
+              - link "AI予測モデルについて" [ref=e662] [cursor=pointer]:
+                - /url: /about-ai
+            - listitem [ref=e663]:
+              - link "公式Xアカウント" [ref=e664] [cursor=pointer]:
+                - /url: https://x.com/umafree_ai
+                - text: 公式X (Twitter)
+        - generic [ref=e665]:
+          - heading "サイトポリシー" [level=3] [ref=e666]
+          - list [ref=e667]:
+            - listitem [ref=e668]:
+              - link "広告について" [ref=e669] [cursor=pointer]:
+                - /url: /advertising
+            - listitem [ref=e670]:
+              - link "お問い合わせ" [ref=e671] [cursor=pointer]:
+                - /url: /contact
+            - listitem [ref=e672]:
+              - link "プライバシーポリシー" [ref=e673] [cursor=pointer]:
+                - /url: /privacy
+            - listitem [ref=e674]:
+              - link "利用規約" [ref=e675] [cursor=pointer]:
+                - /url: /terms
+            - listitem [ref=e676]:
+              - link "サイトマップ" [ref=e677] [cursor=pointer]:
+                - /url: /sitemap
+      - generic [ref=e679]:
+        - paragraph [ref=e680]: © 2026 UMA-FREE. All Rights Reserved.
+        - paragraph [ref=e681]: 本サイトは統計情報の提供を目的としており、投票の推奨ではありません。
+  - alert [ref=e682]

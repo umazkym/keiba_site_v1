@@ -186,34 +186,26 @@ export default async function ArticlePage({ params }: Props) {
                   </p>
                 )}
 
-                <section
-                  className="mt-4 rounded-xl border border-blue-200 bg-slate-50 p-3 sm:mt-6 sm:p-4"
-                  aria-labelledby="article-site-value-title"
+                <Link
+                  href="/races/today"
+                  prefetch={false}
+                  data-analytics-placement="article_value_guide"
+                  data-analytics-variant="compact_four"
+                  className="mt-4 block min-h-[44px] cursor-pointer rounded-xl border border-blue-200 bg-slate-50 p-3 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:mt-6"
+                  aria-label="今日の全レース分析を見る。AI偏差値、対戦比較、展開・脚質、枠順傾向を確認できます"
                 >
-                  <div className="mb-3 sm:mb-4">
-                    <p className="text-[11px] font-black text-blue-700">UMA-FREEのレース分析</p>
-                    <h2 id="article-site-value-title" className="mt-1 text-base font-black leading-snug text-slate-950 sm:text-xl">
-                      記事とあわせて、今日の全レースを4つの視点で確認
-                    </h2>
-                    <p className="mt-1 text-xs leading-5 text-slate-600 sm:text-sm sm:leading-6">
-                      中央・地方の各レースを、AI偏差値・対戦成績・展開・枠順傾向で比較できます。登録不要で、すべて無料です。
-                    </p>
-                  </div>
-
-                  <RaceAnalysisValueGrid />
-
-                  <div className="mt-3 flex justify-stretch sm:justify-end">
-                    <Link
-                      href="/races/today"
-                      prefetch={false}
-                      data-analytics-placement="article_value_guide"
-                      className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-black text-white transition-colors duration-150 hover:bg-primary-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:w-auto"
-                    >
-                      今日の全レース分析を見る
-                      <span className="ml-1" aria-hidden="true">→</span>
-                    </Link>
-                  </div>
-                </section>
+                  <section aria-labelledby="article-site-value-title">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <h2 id="article-site-value-title" className="text-sm font-black leading-tight text-slate-950 sm:text-base">
+                        今日の全レースを4つの視点で確認
+                      </h2>
+                      <span className="shrink-0 text-[11px] font-black text-blue-700 sm:text-xs">
+                        全レース分析へ <span aria-hidden="true">→</span>
+                      </span>
+                    </div>
+                    <RaceAnalysisValueGrid variant="compact" />
+                  </section>
+                </Link>
               </div>
 
               {/* アイキャッチは内容を把握した後の補助ビジュアルとして配置 */}

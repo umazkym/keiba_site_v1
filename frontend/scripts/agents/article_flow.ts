@@ -1,9 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
-import { WriteOrder } from './agent_writer';
+import { buildWriterFacingOrder, WriteOrder } from './agent_writer';
+import { checkSourceIndependence } from './seo_checker';
 
-type ArticleType = 'data' | 'grade_race_preview' | 'news_context' | 'race_update' | 'beginner' | 'guide' | 'rewrite';
+type ArticleType = 'data' | 'grade_race_preview' | 'race_update' | 'beginner' | 'guide' | 'rewrite';
 type FlowStatus = 'APPROVED' | 'REJECTED';
 type FlowSeverity = 'info' | 'warning' | 'critical';
 
@@ -214,7 +215,7 @@ function validateDraftMetadata(
 function classifyArticleType(order: WriteOrder): ArticleType {
   const cluster = order.theme_cluster || '';
   if (cluster === 'grade_race_preview') return 'grade_race_preview';
-  if (cluster === 'news_context') return 'news_context';
+  if (cluster === 'news_context') return 'rewrite';
   if (cluster === 'race_update') return 'race_update';
   if (/beginner|初心者|guide|manual/i.test(cluster) || /始め方|買い方|用語|ガイド|マニュアル/.test(order.target_keyword)) {
     return 'beginner';
@@ -328,15 +329,16 @@ function countMetricRows(value: unknown): number {
 }
 
 function buildEvidencePack(order: WriteOrder): EvidencePack {
+  const writerOrder = buildWriterFacingOrder(order);
   const tokens = new Set<string>();
-  collectEvidenceTokens(order.target_keyword, tokens);
-  collectEvidenceTokens(order.theme_cluster, tokens);
-  collectEvidenceTokens(order.reference_data, tokens);
+  collectEvidenceTokens(writerOrder.target_keyword, tokens);
+  collectEvidenceTokens(writerOrder.theme_cluster, tokens);
+  collectEvidenceTokens(writerOrder.reference_data, tokens);
 
-  const keyMetrics = order.reference_data?.key_metrics;
-  const courseStats = (order.reference_data as Record<string, unknown> | undefined)?.course_stats;
-  const predictions = (order.reference_data as Record<string, unknown> | undefined)?.predictions;
-  const horseNumberAdvantages = (order.reference_data as Record<string, unknown> | undefined)?.horse_number_advantages;
+  const keyMetrics = writerOrder.reference_data?.key_metrics;
+  const courseStats = (writerOrder.reference_data as Record<string, unknown> | undefined)?.course_stats;
+  const predictions = (writerOrder.reference_data as Record<string, unknown> | undefined)?.predictions;
+  const horseNumberAdvantages = (writerOrder.reference_data as Record<string, unknown> | undefined)?.horse_number_advantages;
   const metricRows =
     countMetricRows(keyMetrics) +
     countMetricRows(courseStats) +
@@ -344,15 +346,15 @@ function buildEvidencePack(order: WriteOrder): EvidencePack {
     countMetricRows(horseNumberAdvantages);
 
   return {
-    hasDataMetrics: metricRows > 0 || Boolean(order.reference_data?.race_name || order.reference_data?.race_date),
+    hasDataMetrics: metricRows > 0 || Boolean(writerOrder.reference_data?.race_name || writerOrder.reference_data?.race_date),
     allowedTokens: Array.from(tokens).sort(),
     metricRows,
-    source: String(order.reference_data?.source || 'unknown'),
+    source: 'verified_writer_evidence',
   };
 }
 
 function decideResearch(order: WriteOrder, articleType: ArticleType): ResearchDecision {
-  if ((articleType === 'news_context' || articleType === 'race_update') && (order.research_sources?.length || 0) > 0) {
+  if (articleType === 'race_update' && (order.research_sources || []).some(source => source.source_type === 'official')) {
     return {
       needsExternalResearch: false,
       reason: 'News research sources were already attached by News Topic Planner.',
@@ -362,7 +364,6 @@ function decideResearch(order: WriteOrder, articleType: ArticleType): ResearchDe
 
   const needsExternalResearch =
     articleType === 'grade_race_preview' ||
-    articleType === 'news_context' ||
     articleType === 'race_update' ||
     articleType === 'beginner' ||
     articleType === 'guide' ||
@@ -461,12 +462,11 @@ function buildTavilyQueries(order: WriteOrder, articleType: ArticleType): string
     ];
   }
 
-  if (articleType === 'news_context' || articleType === 'race_update') {
-    const newsTopic = String(ref.news_topic || '').trim();
+  if (articleType === 'race_update') {
     const raceNameForNews = String(ref.race_name || '').trim();
     return [
-      `${raceNameForNews || order.target_keyword} JRA 公式 ニュース`,
-      newsTopic || `${order.target_keyword} 競馬 ニュース`,
+      `${raceNameForNews || order.target_keyword} JRA NAR 公式 開催情報`,
+      `${raceNameForNews || order.target_keyword} 公式 出馬表`,
     ].filter(Boolean);
   }
 
@@ -512,7 +512,7 @@ function sourceFromTavilyResult(result: TavilySearchResult, fetchedAt: string): 
   if (!url || !content || !title) return null;
 
   const sourceType = classifySourceType(url);
-  if (sourceType === 'other') return null;
+  if (sourceType !== 'official') return null;
 
   const allowedClaims = extractAllowedClaims(content);
   if (allowedClaims.length === 0) return null;
@@ -532,7 +532,7 @@ async function runTavilyResearch(order: WriteOrder, state: ArticleFlowState): Pr
 
   const maxQueries = parsePositiveInt(process.env.TAVILY_ARTICLE_MAX_QUERIES, 2);
   const maxResults = Math.min(parsePositiveInt(process.env.TAVILY_ARTICLE_MAX_RESULTS, 3), 5);
-  const includeDomains = parseCsvEnv('TAVILY_ARTICLE_INCLUDE_DOMAINS', ['jra.jp', 'jra.go.jp']);
+  const includeDomains = parseCsvEnv('TAVILY_ARTICLE_INCLUDE_DOMAINS', ['jra.jp', 'jra.go.jp', 'keiba.go.jp']);
   const queries = buildTavilyQueries(order, state.article_type).slice(0, maxQueries);
   const seenUrls = new Set<string>();
   const fetchedAt = new Date().toISOString();
@@ -582,7 +582,7 @@ function createInitialState(order: WriteOrder): ArticleFlowState {
     related_articles: collectRelatedArticles(order),
     evidence_pack: evidencePack,
     research_decision: decideResearch(order, articleType),
-    research_sources: [],
+    research_sources: (order.research_sources || []).filter(source => source.source_type === 'official'),
     tavily_usage_credits: 0,
     issues: [],
   };
@@ -594,6 +594,9 @@ function validatePreDraftState(order: WriteOrder, state: ArticleFlowState): void
   }
   if (!order.theme_cluster) {
     addIssue(state, 'Demand Planner', 'critical', 'theme_cluster is required.');
+  }
+  if (order.theme_cluster === 'news_context' || order.reference_data?.article_type === 'news_context') {
+    addIssue(state, 'Demand Planner', 'critical', 'news_contextは公開不可です。競馬固有のテーマへ再分類してください。');
   }
   if (!order.reference_data) {
     addIssue(state, 'Evidence Builder', 'critical', 'reference_data is required.');
@@ -610,10 +613,10 @@ function validatePreDraftState(order: WriteOrder, state: ArticleFlowState): void
     }
   }
 
-  if (state.article_type === 'news_context' || state.article_type === 'race_update') {
+  if (state.article_type === 'race_update') {
     const ref = order.reference_data as Record<string, unknown>;
-    if (!ref.news_topic && !ref.key_metrics) {
-      addIssue(state, 'Evidence Builder', 'critical', 'news article requires news_topic or key_metrics.');
+    if (!ref.key_metrics && !ref.writer_evidence) {
+      addIssue(state, 'Evidence Builder', 'critical', 'race_updateにはkey_metricsまたはwriter_evidenceが必要です。');
     }
     const drawClaimText = [
       order.target_keyword,
@@ -632,8 +635,9 @@ function validatePreDraftState(order: WriteOrder, state: ArticleFlowState): void
         '枠順確定・枠順発表後の記事には reference_data.draw_status=confirmed が必要です。未発表段階の記事は枠順発表前の確認順として生成してください。'
       );
     }
-    if ((order.research_sources?.length || 0) === 0 && !ref.source_cards) {
-      addIssue(state, 'Research Filter', 'warning', 'news article has no attached research_sources. Continue only if WriteOrder has enough key_metrics.');
+    const hasOfficialEvidence = state.research_sources.some(source => source.source_type === 'official');
+    if (!hasOfficialEvidence && state.evidence_pack.metricRows === 0) {
+      addIssue(state, 'Research Filter', 'critical', 'race_updateには公式確認事項またはUMA-FREE掲載データが必要です。');
     }
     validateRaceTimingReference(ref, state);
   }
@@ -832,8 +836,8 @@ function statusFromIssues(state: ArticleFlowState): FlowStatus {
 
 export async function runPreDraftArticleFlow(order: WriteOrder): Promise<ArticleFlowResult> {
   const state = createInitialState(order);
-  validatePreDraftState(order, state);
   await runTavilyResearch(order, state);
+  validatePreDraftState(order, state);
 
   const status = statusFromIssues(state);
   return {
@@ -850,6 +854,9 @@ export function runPostWriterArticleFlow(order: WriteOrder, draftPath: string): 
   validatePreDraftState(order, state);
   if (parsed) {
     validateDraftMetadata(order, state, parsed.data);
+  }
+  for (const error of checkSourceIndependence(raw).errors) {
+    addIssue(state, 'Source Independence', 'critical', error);
   }
   validateDraftContent(order, state, parsed?.content || raw);
 

@@ -13,7 +13,7 @@ const MAX_ARTICLES_PER_RUN = Math.max(
   1,
   Number.parseInt(process.env.ARTICLE_PIPELINE_MAX_ARTICLES || '2', 10) || 2
 );
-const RESERVE_NEWS_SLOT = (process.env.ARTICLE_PIPELINE_RESERVE_NEWS_SLOT || 'true').toLowerCase() !== 'false';
+const RESERVE_RACE_UPDATE_SLOT = (process.env.ARTICLE_PIPELINE_RESERVE_RACE_UPDATE_SLOT || 'true').toLowerCase() !== 'false';
 const RESERVE_EVERGREEN_SLOT = (process.env.ARTICLE_PIPELINE_RESERVE_EVERGREEN_SLOT || 'true').toLowerCase() !== 'false';
 
 /**
@@ -68,9 +68,9 @@ function getUniqueDestination(directory: string, fileName: string): string {
   return path.join(directory, `${parsed.name}_${Date.now()}${parsed.ext}`);
 }
 
-function isNewsOrder(order: any): boolean {
+function isRaceUpdateOrder(order: any): boolean {
   const cluster = String(order?.theme_cluster || order?.reference_data?.article_type || '');
-  return cluster === 'news_context' || cluster === 'race_update';
+  return cluster === 'race_update';
 }
 
 function isUrgentGradeRaceOrder(order: any): boolean {
@@ -95,7 +95,7 @@ function isUrgentGradeRaceOrder(order: any): boolean {
 function isEvergreenOrder(order: any): boolean {
   const cluster = String(order?.theme_cluster || order?.reference_data?.article_type || '');
   const category = String(order?.category || order?.reference_data?.category || '');
-  if (cluster === 'news_context' || cluster === 'race_update' || cluster === 'grade_race_preview') return false;
+  if (cluster === 'race_update' || cluster === 'grade_race_preview') return false;
   if (['course_venue', 'jockey_profile', 'beginner_guide', 'guide'].includes(cluster)) return true;
   return ['コース分析', '騎手分析', '入門ガイド', '馬券・統計'].includes(category);
 }
@@ -126,9 +126,9 @@ function prioritizeOrderFiles<T extends { file: string; order: any; priority: nu
     return result;
   }
 
-  if (RESERVE_NEWS_SLOT && MAX_ARTICLES_PER_RUN >= 2) {
-    const newsTargetIndex = MAX_ARTICLES_PER_RUN >= 3 ? MAX_ARTICLES_PER_RUN - 2 : MAX_ARTICLES_PER_RUN - 1;
-    result = reserveSlot(result, isNewsOrder, newsTargetIndex, 'ニュース');
+  if (RESERVE_RACE_UPDATE_SLOT && MAX_ARTICLES_PER_RUN >= 2) {
+    const raceUpdateTargetIndex = MAX_ARTICLES_PER_RUN >= 3 ? MAX_ARTICLES_PER_RUN - 2 : MAX_ARTICLES_PER_RUN - 1;
+    result = reserveSlot(result, isRaceUpdateOrder, raceUpdateTargetIndex, 'レース更新');
   }
 
   if (RESERVE_EVERGREEN_SLOT && MAX_ARTICLES_PER_RUN >= 3 && urgentGradeRaceCount < MAX_ARTICLES_PER_RUN - 1) {
@@ -208,6 +208,17 @@ async function runPipeline() {
     }
     if (preDraftFlow.state.research_sources.length > 0) {
       order.research_sources = preDraftFlow.state.research_sources;
+      const existingEvidence = order.reference_data.writer_evidence || { facts: [], metrics: [], as_of: '' };
+      const officialFacts = preDraftFlow.state.research_sources.flatMap(source =>
+        source.source_type === 'official'
+          ? source.allowed_claims.map(text => ({ text, origin: 'official' as const }))
+          : []
+      );
+      order.reference_data.writer_evidence = {
+        facts: [...(existingEvidence.facts || []), ...officialFacts].slice(0, 8),
+        metrics: existingEvidence.metrics || [],
+        as_of: new Date().toISOString(),
+      };
       console.log(`[ArticleFlow] research_sources attached: ${order.research_sources.length}`);
     }
 

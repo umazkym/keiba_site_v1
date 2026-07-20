@@ -305,7 +305,7 @@ export default function RacePageClient({
     };
 
     return (
-        <div id="race-page-top" className="mx-auto max-w-6xl py-2 pb-40 md:pb-4">
+        <div id="race-page-top" className="mx-auto max-w-6xl py-2 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-4">
             {/* ▼▼▼▼▼【ファーストビュー改善】▼▼▼▼▼ */}
             {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
             <div className="relative z-10 mb-1.5 border-b border-slate-200 bg-slate-50 p-1 sm:mb-3 sm:p-2">

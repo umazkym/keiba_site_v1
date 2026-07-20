@@ -1,12 +1,12 @@
 """
-競馬ニュース起点の記事WriteOrder生成スクリプト。
+検索需要起点の記事WriteOrder生成スクリプト。
 
-Tavilyで取得したニュース候補をそのまま要約記事にせず、
+Tavilyで取得した候補は企画発見だけに使い、
 UMA-FREEの自動記事生成パイプラインへ渡せるWriteOrderへ変換する。
 
 設計意図:
   - LangGraph風に、状態(State)を複数ノードで順番に変換する
-  - 外部記事本文の焼き直しではなく、公式・信頼媒体の「使ってよい事実」だけを抽出する
+  - Writerへ渡す事実は公式発表とUMA-FREE保有データだけに限定する
   - 既存の Writer / Editor / Publisher に接続し、完全自動公開フローへ流す
 """
 
@@ -1889,7 +1889,60 @@ def make_target_keyword(
     normalized_title = re.sub(r"\s+", " ", title)
     normalized_title = re.sub(r"https?://\S+", "", normalized_title)
     normalized_title = normalized_title[:30].strip(" 、。-_|｜")
-    return f"{normalized_title} 競馬ニュース"
+    return f"{normalized_title} 確認ポイント"
+
+
+OFF_TOPIC_NEWS_PATTERN = re.compile(
+    r"陸上|駅伝|マラソン|サッカー|野球|バスケット|テニス|ゴルフ|芸能|ドラマ|映画"
+)
+BEGINNER_TOPIC_PATTERN = re.compile(
+    r"出馬表|オッズ|馬券(?:種類|の買い方)?|競馬用語|控除率|パドック|馬場状態|脚質|枠順の見方"
+)
+
+
+def extract_venue_from_text(text: str) -> str:
+    for venue in sorted(VENUE_SLUGS, key=len, reverse=True):
+        if venue in text:
+            return venue
+    return ""
+
+
+def extract_jockey_from_text(text: str) -> str:
+    match = re.search(r"([一-龯々ヶァ-ヴー]{2,8})騎手", text)
+    return match.group(1) if match else ""
+
+
+def classify_publishable_generic_topic(
+    cards: List[SourceCard],
+    search_intent: str,
+) -> Optional[Tuple[str, str, str]]:
+    """一般候補を競馬固有の記事型へ寄せ、根拠の薄い話題は公開候補にしない。"""
+    joined = " ".join(f"{card.title} {card.content}" for card in cards)
+    if OFF_TOPIC_NEWS_PATTERN.search(joined):
+        return None
+
+    # レースに紐付かない候補は、少なくとも公式情報が1件必要。
+    # trusted_media は話題探索には使えるが、単独では公開根拠にしない。
+    if not any(card.source_type == "official" for card in cards):
+        return None
+
+    venue = extract_venue_from_text(joined)
+    if venue and re.search(r"競馬場|コース|芝\d|ダート\d|馬場", joined):
+        return "course_venue", "course_venue", f"{venue}競馬場 コース分析"
+
+    jockey = extract_jockey_from_text(joined)
+    if jockey:
+        return "jockey_profile", "jockey_profile", f"{jockey}騎手 成績 確認ポイント"
+
+    if BEGINNER_TOPIC_PATTERN.search(joined):
+        intent_keyword = {
+            "waku": "枠順の見方",
+            "track_condition": "馬場状態の見方",
+            "jockey_change": "騎手変更の見方",
+        }.get(search_intent, "出馬表の見方")
+        return "beginner_guide", "beginner_guide", f"競馬 {intent_keyword} 基本"
+
+    return None
 
 
 def cluster_topics_node(state: WorkflowState) -> WorkflowState:
@@ -1961,13 +2014,18 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
             continue
 
         target_keyword = make_target_keyword(primary, race_name, search_intent, search_intent_label, search_angle_label, demand)
+        if race_name:
+            article_type = "race_update"
+            theme_cluster = "race_update"
+        else:
+            generic_classification = classify_publishable_generic_topic(cards, search_intent)
+            if generic_classification is None:
+                continue
+            article_type, theme_cluster, target_keyword = generic_classification
         target_key = normalize_key(target_keyword)
         url_key = normalize_key(primary.url)
         if topic_key in known_keys or target_key in known_keys or url_key in known_keys:
             continue
-
-        article_type = "race_update" if race_name else "news_context"
-        theme_cluster = "race_update" if race_name else "news_context"
         source_bonus = min(len(cards), 3) * 5
         score = primary.score + source_bonus + intent_score
         reason_bits = []
@@ -1983,13 +2041,13 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
             reason_bits.append(f"開催接近: {days_to_race}日")
         if HIGH_VALUE_TOPIC_PATTERN.search(primary.title + primary.content):
             reason_bits.append("検索需要が高い競馬トピック")
-        reason = " / ".join(reason_bits) or "競馬ニュース候補"
+        reason = " / ".join(reason_bits) or "競馬テーマ候補"
 
         candidates.append(
             TopicCandidate(
                 topic_key=topic_key,
                 target_keyword=target_keyword,
-                title_seed=primary.title,
+                title_seed=primary.title if race_name else target_keyword,
                 article_type=article_type,
                 theme_cluster=theme_cluster,
                 search_intent=search_intent,
@@ -2083,24 +2141,43 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
 
 
 def source_cards_to_claim_rows(cards: List[SourceCard]) -> List[Dict[str, str]]:
+    """Writerへ渡せる公式事実だけを、媒体タイトルを含めずに整形する。"""
     rows: List[Dict[str, str]] = []
-    for index, card in enumerate(cards, start=1):
-        rows.append(
-            {
-                "確認項目": f"外部ソース{index}",
-                "内容": card.title,
-                "出典種別": "公式" if card.source_type == "official" else "信頼媒体",
-            }
-        )
-        for claim in card.allowed_claims[:2]:
+    official_cards = [card for card in cards if card.source_type == "official"]
+    for card_index, card in enumerate(official_cards, start=1):
+        for claim_index, claim in enumerate(card.allowed_claims[:2], start=1):
             rows.append(
                 {
-                    "確認項目": f"使える事実{index}",
+                    "確認項目": f"公式確認事項{card_index}-{claim_index}",
                     "内容": claim,
-                    "出典種別": "公式" if card.source_type == "official" else "信頼媒体",
+                    "出典種別": "公式",
                 }
             )
     return rows[:8]
+
+
+def build_writer_evidence(candidate: TopicCandidate, internal_data: Dict[str, Any]) -> Dict[str, Any]:
+    facts = [
+        {"text": claim, "origin": "official"}
+        for card in candidate.source_cards
+        if card.source_type == "official"
+        for claim in card.allowed_claims[:2]
+        if claim.strip()
+    ]
+    metrics = [
+        {
+            "label": str(row.get("確認項目") or "").strip(),
+            "value": str(row.get("内容") or "").strip(),
+            "origin": "uma_free",
+        }
+        for row in internal_metric_rows(internal_data)
+        if str(row.get("確認項目") or "").strip() and str(row.get("内容") or "").strip()
+    ]
+    return {
+        "facts": facts[:8],
+        "metrics": metrics,
+        "as_of": current_jst().isoformat(),
+    }
 
 
 def display_course_type(course_type: str) -> str:
@@ -2621,7 +2698,7 @@ def topic_bridge(candidate: TopicCandidate, internal_data: Dict[str, Any]) -> Di
     return {
         "source_count": len(candidate.source_cards),
         "primary_angle": angle,
-        "merge_policy": "外部ニュースは話題の入口、勝率・AI偏差値・傾向はUMA-FREE内部データだけを根拠にする",
+        "evidence_policy": "公式の確認事項と掲載データだけを根拠にする",
         "internal_data_available": data_bits,
         "matched_race_id": matched.get("race_id") if isinstance(matched, dict) else "",
         "matched_race_url": matched.get("race_url") if isinstance(matched, dict) else "/races/today",
@@ -2642,8 +2719,8 @@ def topic_bridge_rows(candidate: TopicCandidate, internal_data: Dict[str, Any]) 
         },
         {
             "確認項目": "データの使い分け",
-            "内容": str(bridge["merge_policy"]),
-            "出典種別": "編集ルール",
+            "内容": str(bridge["evidence_policy"]),
+            "出典種別": "確認方針",
         },
     ]
     available = bridge.get("internal_data_available")
@@ -2781,13 +2858,10 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
 
         internal_data = build_internal_data_bundle(candidate)
         source_urls = [card.url for card in candidate.source_cards]
-        key_metrics = (
-            topic_bridge_rows(candidate, internal_data)
-            + source_cards_to_claim_rows(candidate.source_cards)
-            + internal_metric_rows(internal_data)
-        )
+        key_metrics = source_cards_to_claim_rows(candidate.source_cards) + internal_metric_rows(internal_data)
         if not key_metrics:
             continue
+        writer_evidence = build_writer_evidence(candidate, internal_data)
 
         matched_race = internal_data.get("matched_race")
         race_url = "/races/today"
@@ -2814,10 +2888,25 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
         canonical_path = ""
         season_year = int(scheduled_date[:4]) if entity_key and scheduled_date else current_jst().year
         entity_type = "grade_race" if (entity_key or schedule_entry or calendar_race) else ""
+        content_target_by_theme = {
+            "course_venue": "course_venue_article",
+            "jockey_profile": "jockey_profile_article",
+            "beginner_guide": "beginner_guide_article",
+        }
         content_target = (
             "grade_race_trend_article"
             if entity_type == "grade_race"
-            else "news_article"
+            else content_target_by_theme.get(candidate.theme_cluster, "race_update_article")
+        )
+        category_by_theme = {
+            "course_venue": "コース分析",
+            "jockey_profile": "騎手分析",
+            "beginner_guide": "入門ガイド",
+        }
+        article_category = (
+            "海外競馬"
+            if is_overseas
+            else ("重賞攻略" if entity_type == "grade_race" else category_by_theme.get(candidate.theme_cluster, "重賞攻略"))
         )
         order_priority = candidate.order_priority or int(min(99, max(35, candidate.score)))
         seo_keywords = candidate.seo_keywords
@@ -2863,14 +2952,15 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
             "has_external_research": True,
             "has_predictions": bool(internal_data.get("predictions")),
             "is_overseas": is_overseas,
-            "category": "海外競馬" if is_overseas else ("重賞攻略" if entity_type == "grade_race" else "競馬ニュース"),
+            "category": article_category,
             "keywords": seo_keywords,
             "reference_data": {
                 "period": current_jst().strftime("%Y年%m月%d日取得"),
-                "condition": "競馬ニュース起点の確認テーマ",
+                "condition": candidate.search_intent_label or candidate.target_keyword,
                 "sample_size": len(candidate.source_cards) + len(internal_data.get("predictions") or []),
                 "key_metrics": key_metrics,
-                "source": "Tavily Search + 公式・信頼媒体フィルタ + UMA-FREE DB",
+                "source": "公式確認事項・UMA-FREE掲載データ",
+                "writer_evidence": writer_evidence,
                 "article_type": candidate.article_type,
                 "entity_type": entity_type,
                 "entity_key": entity_key,
@@ -2879,7 +2969,7 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "canonical_path": canonical_path,
                 "content_target": content_target,
                 "is_overseas": is_overseas,
-                "category": "海外競馬" if is_overseas else ("重賞攻略" if entity_type == "grade_race" else "競馬ニュース"),
+                "category": article_category,
                 "keywords": seo_keywords,
                 "seo_keywords": seo_keywords,
                 "update_stage": candidate.update_stage,

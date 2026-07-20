@@ -4,6 +4,7 @@ import matter from 'gray-matter';
 import { execSync } from 'child_process';
 import { createHash } from 'crypto';
 import { autoRepairDraftMarkdown } from './agent_editor';
+import { checkSourceIndependence } from './seo_checker';
 
 const APPROVED_DIR = path.join(__dirname, '..', '..', 'agents', 'queue', 'approved');
 const ARTICLES_DIR = path.join(__dirname, '..', '..', 'content', 'articles');
@@ -127,7 +128,6 @@ function determineCategory(data: Record<string, any>): string {
   // theme_clusterベースの判定（最優先）
   if (themeCluster === 'grade_race_preview') return '重賞攻略';
   if (themeCluster === 'race_update') return '重賞攻略';
-  if (themeCluster === 'news_context') return '競馬ニュース';
   if (themeCluster === 'course_venue') return 'コース分析';
   if (themeCluster === 'jockey_profile') return '騎手分析';
   if (themeCluster === 'beginner_guide') return '入門ガイド';
@@ -597,6 +597,16 @@ async function publishDraft() {
     const oldId = path.basename(targetFile, '.md');
     const now = new Date();
     parsed.data = normalizePublishedArticleMetadata(parsed.data);
+
+    const sourceIndependence = checkSourceIndependence(matter.stringify(parsed.content, parsed.data));
+    if (!sourceIndependence.passed) {
+      console.warn(`[Publisher] Source-independence gate rejected: ${targetFile}`);
+      for (const error of sourceIndependence.errors) {
+        console.warn(`[Publisher] - ${error}`);
+      }
+      skippedCount++;
+      continue;
+    }
 
     const existingEntityArticlePath = findExistingEntityArticlePath(parsed.data);
     if (existingEntityArticlePath) {

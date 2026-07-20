@@ -25,7 +25,8 @@ Constraints for parameter acquisition:
 **Constraints:**
 
 - You MUST inspect relevant files under `frontend/scripts/agents/`, `backend/scripts/agents/`, `.github/workflows/keiba-article-pipeline.yml`, or `frontend/content/articles/`.
-- You MUST check whether the task affects `news_context`, `grade_race_preview`, `race_update`, `course_venue`, `jockey_profile`, or `beginner_guide`.
+- You MUST check whether the task affects `grade_race_preview`, `race_update`, `course_venue`, `jockey_profile`, or `beginner_guide`.
+- You MUST reject legacy `news_context` orders before Writer execution and reclassify them into a horse-racing-specific article type.
 - You MUST NOT treat all article types the same because external research, evidence needs, and seasonal freshness differ.
 
 ### 2. Preserve evidence discipline
@@ -35,7 +36,9 @@ Constraints for parameter acquisition:
 **Constraints:**
 
 - You MUST require DB, prediction data, or explicit Evidence Pack for win rate, place rate, return rate, sample count, AI score, frame data, leg type data, and jockey metrics.
-- You MUST keep Tavily or web research as context only, not as a source for invented performance metrics.
+- You MUST use Tavily or web research only for topic discovery and independent verification of official facts. External media titles, URLs, summaries, recommendations, and comments MUST NOT enter Writer input.
+- You MUST limit WriterEvidence origins to `official` and `uma_free`, with `facts`, `metrics`, and `as_of` explicitly separated.
+- You MUST reject articles containing external media names, column names, quote-like attribution, third-party recommendations/comments, production meta language, or off-topic analogies.
 - You MUST preserve freshness checks for date-specific news and race context.
 - You MUST NOT allow the LLM to invent missing prediction values, race results, odds, rankings, or threshold claims because this directly damages trust and search quality.
 
@@ -70,6 +73,7 @@ Constraints for parameter acquisition:
 - You MUST run Python syntax checks for changed backend article scripts.
 - You SHOULD run targeted backend unit tests such as `test_news_topic_planner.py` or `test_editorial_evergreen_planner.py` when planner behavior changes.
 - You SHOULD run `npm run article:validate-links` and `npm run article:audit-quality` from `frontend/` when article Markdown or article validation logic changes.
+- You SHOULD run `npm run article:test-independence` when planner, Writer, Editor, SEO Checker, Publisher, or evidence sanitization changes.
 - You SHOULD run `npx tsc --noEmit` when TypeScript agent scripts or article rendering types change.
 
 ## Source references
@@ -103,3 +107,7 @@ article_task: SEO Checkerに禁止語を追加する
 ### 品質監査が既存記事で大量に警告を出す
 
 今回変更で新しく悪化したものと既存の残課題を分けて報告します。既存記事を一括修正する場合は、検索流入やcanonicalの影響があるため別作業として扱います。
+
+### 外部媒体依存が既存記事へ残っている
+
+`npm run article:remediate-independence` で対象を確認し、記事単位で意味を保てる場合のみ `npm run article:remediate-independence:apply` を実行します。媒体依存が主題そのものの場合は、単純置換せず公式事実・UMA-FREE掲載データで全面改稿するか、関連性の高い記事へ統合して301転送します。

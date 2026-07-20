@@ -4,6 +4,11 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: '/articles/2026-07-20-shepherds-choice-news',
+        destination: '/articles/2026-06-25-news-1ebdc1e8',
+        statusCode: 301,
+      },
+      {
         source: '/:path*',
         has: [
           {

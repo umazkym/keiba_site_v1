@@ -280,13 +280,25 @@ def load_past_results(db: Session, horse_name: str, results: List[Dict[str, Any]
     db.commit()
 
 def save_prediction(db: Session, race_id: str, predictions: List[Dict[str, Any]]):
-    db.query(models.Prediction).filter(models.Prediction.race_id == race_id).delete()
-    db.commit() 
-    
+    """
+    1レース分の予測を同一トランザクション内で置き換える。
+
+    削除だけを先にコミットすると、再生成中や挿入失敗時に公開APIから
+    予測が消える。削除と追加をまとめて確定し、失敗時は旧データへ戻す。
+    """
     preds_to_load = [{'race_id': race_id, **p} for p in predictions]
-    if preds_to_load:
+    if not preds_to_load:
+        return
+
+    try:
+        db.query(models.Prediction).filter(
+            models.Prediction.race_id == race_id
+        ).delete(synchronize_session=False)
         db.bulk_insert_mappings(models.Prediction, preds_to_load)
-    db.commit()
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 def save_horse_number_advantages(db: Session, advantages: List[Dict[str, Any]]):
     if not advantages: return

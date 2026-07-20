@@ -2,8 +2,9 @@ name: Keiba Data Fetch (Morning Today)
 
 on:
   schedule:
+    # 地方競馬と祝日開催を含む当日データを毎朝確認する。
     # JST 06:30 = UTC 21:30 (前日)
-    - cron: '30 21 * * 4,5,6'
+    - cron: '30 21 * * *'
   workflow_dispatch:
 
 permissions:

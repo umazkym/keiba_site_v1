@@ -7,7 +7,7 @@ import time
 import random
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import func, select
+from sqlalchemy import func
 from database import models
 from scripts.scraper import get_shutuba_html_content, get_race_result_html_content, get_horse_page_html, get_race_list_html
 from scripts import parser, database_loader, predictor
@@ -278,44 +278,17 @@ def update_race_results(db: Session, target_date: datetime.date):
 def insert_new_predictions(db: Session, target_date: datetime.date):
     """
     指定日の出走表を取得し、予測を生成してDBに保存する。
+
+    更新中も公開中の予測を維持するため、既存データの一括削除は行わない。
+    新しい予測が完成したレースだけを save_prediction() で原子的に置き換え、
+    取得失敗や予測生成失敗が起きたレースは前回の正常データを残す。
     """
     print(f"\n--- [PREDICTIONS] Inserting new predictions for {target_date.strftime('%Y-%m-%d')} ---")
 
-    # --- 既存の予測・マッチアップをクリーンアップ ---
-    try:
-        print(f"  -> Cleaning predictions/matchups for {target_date.strftime('%Y-%m-%d')}...")
-        races_for_date_stmt = select(models.Race.id).where(models.Race.race_date == target_date)
-
-        # ★ クリーンアップループバグ修正
-        # 旧: while True + LIMIT でレースを削除せず無限ループ → 1034件という誤表示
-        # 新: 1クエリで全件取得してからまとめて削除
-        all_race_ids_for_cleanup = [
-            r[0] for r in db.execute(races_for_date_stmt).fetchall()
-        ]
-        total_cleaned = len(all_race_ids_for_cleanup)
-
-        if all_race_ids_for_cleanup:
-            db.query(models.Matchup).filter(
-                models.Matchup.race_id.in_(all_race_ids_for_cleanup)
-            ).delete(synchronize_session=False)
-            db.query(models.Prediction).filter(
-                models.Prediction.race_id.in_(all_race_ids_for_cleanup)
-            ).delete(synchronize_session=False)
-            db.commit()
-            del all_race_ids_for_cleanup
-            gc.collect()
-
-        if total_cleaned > 0:
-            print(f"  -> Cleaned predictions/matchups for {total_cleaned} races.")
-        else:
-            print(f"  -> No existing predictions found for {target_date.strftime('%Y-%m-%d')}")
-
-    except Exception as e:
-        print(f"  -> An error occurred during cleanup, rolling back: {e}")
-        db.rollback()
-        return
-    finally:
-        gc.collect()
+    print(
+        "  -> Existing predictions remain available until each refreshed race "
+        "is ready to replace them."
+    )
 
     # キャッシュされたレース一覧から race_id を収集
     all_race_ids: List[Tuple[str, bool]] = []

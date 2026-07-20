@@ -113,6 +113,9 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-07-20**:
+  * **当日レース更新中の一時欠損を解消**:
+    予測再生成ジョブが対象日すべての既存予測を先に削除・コミットし、再収集が終わるまで公開APIが404になる問題を修正。既存予測を維持したまま、新しい予測が完成したレースだけを削除・追加の同一トランザクションで置き換える構成へ変更し、取得・挿入失敗時は前回の正常データを残す。地方競馬と祝日開催を取りこぼさないよう当日朝のデータ取得を毎日実行へ変更。原子的置換、挿入失敗時のロールバック、レース一覧取得失敗時の旧データ維持を回帰テストで確認し、関連7テストとPython構文検証が成功。
 * **2026-07-05**:
   * **重賞カレンダー主導の記事生成スケジュール化**:
     重賞名検索の流入を優先するため、`news_topic_planner.py` を重賞カレンダー締切ベースへ拡張。中央重賞は金曜11:45 JST以降の枠順確定後候補と16:45 JST以降の結果回顧更新、地方重賞は2日前直前記事のみを生成対象にした。優先順位はG1、Jpn1、G2、Jpn2、G3、Jpn3、その他重賞の順に明示し、2日前を過ぎた未生成重賞は `missed_preview` として補完する。WriteOrderには競馬場・距離・コースを含むSEOキーワード、`update_stage`、`deadline_status`、結果確定フラグを持たせ、既存重賞記事は同URL更新で育てる。Actionsへ11:45/16:45 JST実行を追加し、旧GradeRaceWriterは既定OFF。`py_compile`、`test_news_topic_planner.py`、`npx tsc --noEmit`、`npm run article:validate-links`、`npm run article:audit-quality`、`npm run build` 成功。品質監査のcritical/warningは既存記事由来の残課題として継続。

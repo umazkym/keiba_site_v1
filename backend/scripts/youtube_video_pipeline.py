@@ -23,8 +23,10 @@ from scripts.social_video.data_loader import (  # noqa: E402
     normalize_venues,
     pick_shorts_targets,
 )
+from scripts.social_video.create_design_contact_sheet import create_contact_sheet  # noqa: E402
 from scripts.social_video.registry import VideoPostRegistry, make_registry_key  # noqa: E402
 from scripts.social_video.renderer import RenderedVideo, render_long_video, render_short_video  # noqa: E402
+from scripts.social_video.visual_assets import validate_asset_library  # noqa: E402
 from scripts.social_video.youtube_client import YouTubeClient, build_publish_at  # noqa: E402
 
 
@@ -81,6 +83,25 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
     target_date = args.target_date or get_target_date()
     output_dir = Path(args.output_dir or DEFAULT_OUTPUT_DIR) / target_date
     output_dir.mkdir(parents=True, exist_ok=True)
+    asset_validation = validate_asset_library()
+    asset_validation_path = output_dir / "asset-validation.json"
+    asset_validation_path.write_text(
+        json.dumps(asset_validation.to_dict(), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(
+        "動画素材を検証しました: "
+        f"写真{asset_validation.image_count}件 / コース{asset_validation.course_count}件 / "
+        f"音声{asset_validation.audio_count}件 / "
+        f"エラー{asset_validation.error_count}件 / 警告{asset_validation.warning_count}件"
+    )
+    if asset_validation.error_count:
+        issue_summary = " / ".join(
+            f"{issue.code}: {issue.path or issue.message}"
+            for issue in asset_validation.issues
+            if issue.severity == "error"
+        )
+        raise RuntimeError(f"動画素材の権利・形式検証に失敗しました: {issue_summary}")
 
     if args.input_json:
         venues = _load_input_json(Path(args.input_json), target_date)
@@ -120,11 +141,18 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
                 "video_path": str(item.video_path) if item.video_path else None,
                 "thumbnail_path": str(item.thumbnail_path),
                 "metadata_path": str(item.metadata_path),
+                "publishable": item.publishable,
+                "publish_block_reasons": item.publish_block_reasons,
+                "selected_assets": item.selected_assets,
             }
             for item in rendered
         ],
+        "asset_validation": asset_validation.to_dict(),
+        "asset_validation_path": str(asset_validation_path),
     }
     (output_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    contact_sheet = create_contact_sheet(output_dir, output_dir / "design-contact-sheet.png")
+    print(f"デザイン確認シート: {contact_sheet}")
     print(f"動画生成サマリー: {output_dir / 'summary.json'}")
     return rendered
 
@@ -139,6 +167,10 @@ def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None
     client = YouTubeClient()
     privacy_status = args.privacy_status
     for item in rendered:
+        if not item.publishable:
+            reasons = " / ".join(item.publish_block_reasons) or "素材要件を満たしていません"
+            print(f"素材不足のためYouTube投稿をスキップ: {item.video_type} {item.stable_id} ({reasons})")
+            continue
         registry_key = make_registry_key(target_date, item.video_type, item.stable_id)
         if not args.force and registry.is_posted(registry_key, target_date):
             print(f"既に投稿済みのためスキップ: {item.video_type} {item.stable_id}")

@@ -1,0 +1,29 @@
+{
+  "images/default/wide/horse01.jpg": {
+    "credit": "UMA-FREE制作素材",
+    "license": "UMA-FREE管理素材・動画内利用",
+    "focus": [0.58, 0.52]
+  },
+  "images/default/wide/horse02.jpg": {
+    "credit": "UMA-FREE制作素材",
+    "license": "UMA-FREE管理素材・動画内利用",
+    "focus": [0.58, 0.52]
+  },
+  "images/default/vertical/horse01.jpg": {
+    "credit": "UMA-FREE制作素材",
+    "license": "UMA-FREE管理素材・動画内利用",
+    "focus": [0.50, 0.64]
+  },
+  "images/default/vertical/horse02.jpg": {
+    "credit": "UMA-FREE制作素材",
+    "license": "UMA-FREE管理素材・動画内利用",
+    "focus": [0.50, 0.64]
+  },
+  "audio/common/わいわいミュージック・タイム.mp3": {
+    "title": "わいわいミュージック・タイム",
+    "credit": "こばっと / DOVA-SYNDROME",
+    "source": "https://dova-s.jp/bgm/detail/23535",
+    "license": "DOVA-SYNDROME 音源利用ライセンス",
+    "volume": 0.16
+  }
+}

@@ -69,7 +69,31 @@ yarn-error.log*
 /analysis_results/
 
 /.claude
+/.codex/skills/ui-ux-pro-max/
 /backend/data
 /.antigravity
 .vercel
 .env*
+
+# ローカル検証・画面確認・個人分析の成果物
+/.tmp/
+/output/
+/scratch/
+/after_html.txt
+/分析レポート/
+
+# docs/reference_data_summary.mdへ集約済みのローカル参照スナップショット
+/中央競馬ジョッキーリーディング.txt
+/中央競馬重賞一覧.txt
+/中央競馬ｺｰｽ一覧.txt
+/地方競馬ジョッキーリーディング.txt
+/地方競馬重賞一覧.txt
+/地方競馬ｺｰｽ一覧.txt
+
+# BGM原本は素材サイトの再配布禁止条件に従い、非公開ストレージで管理する
+/backend/scripts/social_video/assets/audio/**/*.mp3
+/backend/scripts/social_video/assets/audio/**/*.m4a
+/backend/scripts/social_video/assets/audio/**/*.aac
+/backend/scripts/social_video/assets/audio/**/*.wav
+/backend/scripts/social_video/assets/audio/**/*.flac
+/backend/scripts/social_video/assets/audio/**/*.ogg

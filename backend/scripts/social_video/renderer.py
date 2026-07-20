@@ -6,42 +6,58 @@ import os
 import shutil
 import subprocess
 import textwrap
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional, Sequence
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
 from .data_loader import HorseVideoData, RaceVideoData, VenueVideoData, build_video_url, top_by_deviation, top_by_position
-from .visual_assets import VisualAsset, resolve_visual_asset
+from .visual_assets import (
+    AudioAsset,
+    CourseAsset,
+    VisualAsset,
+    asset_credit_lines,
+    audio_asset_metadata,
+    course_asset_metadata,
+    resolve_audio_asset,
+    resolve_course_asset,
+    resolve_visual_asset,
+    visual_asset_metadata,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 FONT_DIR = PROJECT_ROOT / "backend" / "fonts"
-LOGO_PATH = FONT_DIR / "new-logo.png"
+BRAND_LOGO_CANDIDATES = (
+    PROJECT_ROOT / "frontend" / "public" / "new-logo.png",
+    PROJECT_ROOT / "frontend" / "public" / "new-logo.webp",
+    FONT_DIR / "new-logo.png",
+)
 
 FONT_BLACK = "NotoSansJP-Black"
 FONT_BOLD = "NotoSansJP-Bold"
 FONT_REGULAR = "NotoSansJP-Regular"
 WINDOWS_FONT_DIR = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
 
-PAPER = (246, 243, 235)
-PAPER_DARK = (231, 225, 212)
-CHARCOAL = (18, 24, 28)
-CHARCOAL_SOFT = (36, 43, 47)
-DEEP_GREEN = (10, 82, 62)
-GREEN_DARK = (7, 58, 46)
-BURGUNDY = (139, 45, 46)
-EDITORIAL_GOLD = (190, 149, 63)
-EDITORIAL_GOLD_DARK = (135, 95, 28)
-INK_DARK = (25, 29, 30)
-INK_MUTED = (92, 99, 99)
-RULE = (191, 185, 172)
+PAPER = (247, 244, 237)
+PAPER_DARK = (235, 231, 221)
+CHARCOAL = (18, 23, 27)
+CHARCOAL_SOFT = (43, 49, 52)
+DEEP_GREEN = (14, 90, 67)
+GREEN_DARK = (8, 62, 47)
+BURGUNDY = (157, 52, 56)
+EDITORIAL_GOLD = (200, 155, 60)
+EDITORIAL_GOLD_DARK = (145, 105, 35)
+INK_DARK = (18, 23, 27)
+INK_MUTED = (115, 122, 124)
+RULE = (198, 193, 181)
 TURF_LIGHT = (221, 232, 210)
 TRACK_BEIGE = (210, 190, 153)
 
-# 旧ヘルパーが参照する互換エイリアス。v4の描画では役割別の上記色を直接使う。
+# 旧ヘルパーが参照する互換エイリアス。v6の描画では役割別の上記色を直接使う。
 BG_CANVAS = PAPER
 POP_BLUE = CHARCOAL
 POP_BLUE_LIGHT = CHARCOAL_SOFT
@@ -55,7 +71,7 @@ POP_GOLD_DARK = EDITORIAL_GOLD_DARK
 TURF = DEEP_GREEN
 POP_PINK = BURGUNDY
 POP_TEAL = DEEP_GREEN
-CARD_BG = (255, 254, 250)
+CARD_BG = (252, 250, 245)
 CARD_SOFT = PAPER_DARK
 SHADOW_POP = CHARCOAL
 BG_BLACK = CHARCOAL
@@ -91,15 +107,21 @@ DEEP_2 = BG_BLACK
 PANEL = PANEL_BG
 PANEL_DARK = (20, 40, 47)
 
-FULL_CTA = "全頭データは概要欄のUMA-FREEで確認"
-SHORT_CTA = "全頭データは概要欄のUMA-FREEで確認"
+SITE_CLAIM = "中央・地方 全レースを毎日無料公開"
+SITE_NO_REGISTRATION = "登録不要"
+FEATURE_ITEMS = (
+    ("AI偏差値", "能力を数値化", "deviation"),
+    ("対戦成績", "過去の直接対決", "matchup"),
+    ("位置取り予測", "序盤の隊列予測", "position"),
+    ("枠順傾向", "全コース別に集計", "waku"),
+)
 LONG_VENUE_SLIDE_SECONDS = 3.5
 LONG_RACE_SLIDE_SECONDS = 4.2
 LONG_POSITION_SLIDE_SECONDS = 3.2
 LONG_OUTRO_SECONDS = 4.0
-SHORT_RACE_SLIDE_SECONDS = 5.5
-SHORT_POSITION_SLIDE_SECONDS = 6.0
-SHORT_OUTRO_SECONDS = 3.0
+SHORT_RACE_SLIDE_SECONDS = 5.0
+SHORT_POSITION_SLIDE_SECONDS = 5.5
+SHORT_OUTRO_SECONDS = 3.5
 VIDEO_FPS = 30
 KEN_BURNS_ZOOM_TO = 1.0
 CROSSFADE_SECONDS = 0.16
@@ -120,6 +142,9 @@ class RenderedVideo:
     thumbnail_path: Path
     metadata_path: Path
     publish_offset_minutes: int
+    publishable: bool = True
+    publish_block_reasons: List[str] = field(default_factory=list)
+    selected_assets: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -135,11 +160,14 @@ class RankCardStyle:
 
 def _font(name: str, size: int) -> ImageFont.FreeTypeFont:
     requested = Path(name)
+    noto_weight = "Bold" if "Black" in name or "Bold" in name else "Regular"
     candidates = [
         requested if requested.is_absolute() else WINDOWS_FONT_DIR / name,
         FONT_DIR / name,
         WINDOWS_FONT_DIR / "NotoSansJP-VF.ttf",
         WINDOWS_FONT_DIR / "BIZ-UDGothicB.ttc",
+        Path(f"/usr/share/fonts/opentype/noto/NotoSansCJK-{noto_weight}.ttc"),
+        Path(f"/usr/share/fonts/opentype/noto/NotoSansCJKjp-{noto_weight}.otf"),
         FONT_DIR / "MPLUSRounded1c-Bold.ttf",
         FONT_DIR / "MPLUSRounded1c-Regular.ttf",
     ]
@@ -154,6 +182,37 @@ def _font(name: str, size: int) -> ImageFont.FreeTypeFont:
                     pass
             return font
     return ImageFont.load_default()
+
+
+def _resolve_brand_logo_path() -> Optional[Path]:
+    explicit = os.getenv("SOCIAL_VIDEO_BRAND_LOGO_PATH", "").strip()
+    candidates = (Path(explicit), *BRAND_LOGO_CANDIDATES) if explicit else BRAND_LOGO_CANDIDATES
+    return next((path.resolve() for path in candidates if path.is_file()), None)
+
+
+@lru_cache(maxsize=12)
+def _load_brand_logo(path_text: str, diameter: int) -> Image.Image:
+    with Image.open(path_text) as source:
+        logo = source.convert("RGBA")
+    side = min(logo.size)
+    left = (logo.width - side) // 2
+    top = (logo.height - side) // 2
+    logo = logo.crop((left, top, left + side, top + side)).resize((diameter, diameter), Image.Resampling.LANCZOS)
+    mask = Image.new("L", (diameter, diameter), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, diameter - 1, diameter - 1), fill=255)
+    logo.putalpha(mask)
+    return logo
+
+
+def _brand_logo_metadata() -> Optional[dict]:
+    path = _resolve_brand_logo_path()
+    if path is None:
+        return None
+    try:
+        relative = path.relative_to(PROJECT_ROOT).as_posix()
+    except ValueError:
+        relative = str(path)
+    return {"type": "brand_logo", "path": str(path), "asset_id": relative}
 
 
 def _safe_filename(text: str) -> str:
@@ -244,13 +303,20 @@ def _fit_text_no_ellipsis(
     max_lines: int = 1,
 ) -> tuple[ImageFont.ImageFont, List[str]]:
     cleaned = (text or "").replace(chr(46) * 3, "").replace(chr(8230), "").strip()
+    expected_text = cleaned.replace("\r", "").replace("\n", "")
     for size in range(max_size, min_size - 1, -2):
         font = _font(font_name, size)
         lines = _fit_text(draw, cleaned, font, max_width, max_lines)
         if not lines:
             return font, []
         line_height = max(_text_size(draw, line, font)[1] for line in lines)
-        if len(lines) <= max_lines and all(_text_size(draw, line, font)[0] <= max_width for line in lines) and line_height > 0:
+        rendered_text = "".join(lines).replace("\r", "").replace("\n", "")
+        if (
+            rendered_text == expected_text
+            and len(lines) <= max_lines
+            and all(_text_size(draw, line, font)[0] <= max_width for line in lines)
+            and line_height > 0
+        ):
             return font, lines
     font = _font(font_name, min_size)
     lines = _fit_text(draw, cleaned, font, max_width, max_lines)[:max_lines]
@@ -478,24 +544,24 @@ def _hero_score_text(horse: Optional[HorseVideoData]) -> str:
 
 def _hero_horse_label(horse: Optional[HorseVideoData]) -> str:
     if not horse:
-        return "上位評価を確認"
+        return "データ集計中"
     return f"{horse.horse_number}番 {horse.horse_name}"
 
 
 def _waku_color(waku_number: Optional[int]) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
     palette = {
-        1: ((255, 255, 255), (26, 26, 26)),
-        2: ((26, 26, 26), (255, 255, 255)),
-        3: ((228, 0, 43), (255, 255, 255)),
-        4: ((0, 102, 179), (255, 255, 255)),
-        5: ((255, 212, 0), (26, 26, 26)),
-        6: ((0, 153, 68), (255, 255, 255)),
-        7: ((243, 152, 0), (26, 26, 26)),
-        8: ((236, 109, 171), (58, 12, 34)),
+        1: ((255, 255, 255), (17, 24, 39)),
+        2: ((17, 24, 39), (255, 255, 255)),
+        3: ((220, 38, 38), (255, 255, 255)),
+        4: ((37, 99, 235), (255, 255, 255)),
+        5: ((234, 179, 8), (17, 24, 39)),
+        6: ((22, 163, 74), (255, 255, 255)),
+        7: ((234, 88, 12), (255, 255, 255)),
+        8: ((236, 72, 153), (255, 255, 255)),
     }
     if waku_number in palette:
         return palette[waku_number]
-    return (POP_GOLD, TEXT_OUTLINE)
+    return (229, 231, 235), (17, 24, 39)
 
 
 def _draw_horse_number_badge(
@@ -506,13 +572,16 @@ def _draw_horse_number_badge(
     stroke_width: int = 6,
 ) -> None:
     number = horse.horse_number if horse else 0
-    fill, text_fill = _waku_color(horse.waku_number if horse else None)
+    frame_fill, text_fill = _waku_color(horse.waku_number if horse else None)
     cx, cy = center
-    box = (cx - diameter // 2, cy - diameter // 2, cx + diameter // 2, cy + diameter // 2)
-    draw.ellipse((box[0] + 9, box[1] + 11, box[2] + 9, box[3] + 11), fill=(0, 0, 0))
-    draw.ellipse(box, fill=fill, outline=TEXT_OUTLINE, width=stroke_width)
-    font = _font(FONT_BLACK, int(diameter * 0.47))
-    draw.text((cx, cy - int(diameter * 0.22)), str(number or "-"), font=font, fill=text_fill, anchor="ma")
+    radius = diameter / 2
+    box = (round(cx - radius), round(cy - radius), round(cx + radius), round(cy + radius))
+    if horse and horse.waku_number == 1:
+        draw.ellipse(box, fill=frame_fill, outline=(203, 213, 225), width=max(1, min(2, stroke_width)))
+    else:
+        draw.ellipse(box, fill=frame_fill)
+    font = _font("Inter-Black.ttf", max(18, round(diameter * 0.46)))
+    draw.text((cx, cy), str(number or "-"), font=font, fill=text_fill, anchor="mm")
 
 
 def _draw_score_ring(
@@ -751,10 +820,11 @@ def _hero_background(
     target_date: str,
     venue_name: str,
     race_number: Optional[int],
+    asset_override: Optional[VisualAsset] = None,
 ) -> tuple[Image.Image, Optional[VisualAsset]]:
     compact = size[1] > size[0]
     orientation = "vertical" if compact else "wide"
-    asset = resolve_visual_asset(target_date, venue_name, race_number, orientation)
+    asset = asset_override or resolve_visual_asset(target_date, venue_name, race_number, orientation)
     if asset is None:
         return _draw_fallback_race_visual(size, compact), None
 
@@ -774,44 +844,242 @@ def _apply_photo_scrim(image: Image.Image, compact: bool) -> Image.Image:
     width, height = image.size
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
-    draw.rectangle((0, 0, width, height), fill=(8, 13, 15, 54))
     if compact:
-        draw.rectangle((0, 0, width, int(height * 0.64)), fill=(8, 13, 15, 118))
-        steps = 18
-        start_y = int(height * 0.50)
-        end_y = int(height * 0.82)
-        for idx in range(steps):
-            ratio = idx / max(steps - 1, 1)
-            alpha = round(118 * (1 - ratio))
-            y1 = round(start_y + (end_y - start_y) * ratio)
-            y2 = round(start_y + (end_y - start_y) * (idx + 1) / steps)
-            draw.rectangle((0, y1, width, y2), fill=(8, 13, 15, alpha))
+        start_y = int(height * 0.34)
+        end_y = int(height * 0.72)
+        draw.rectangle((0, 0, width, start_y), fill=(8, 13, 15, 142))
+        for y in range(start_y, end_y + 1):
+            ratio = (y - start_y) / max(end_y - start_y, 1)
+            alpha = round(142 + (16 - 142) * ratio)
+            draw.line((0, y, width, y), fill=(8, 13, 15, alpha))
+        draw.rectangle((0, end_y + 1, width, height), fill=(8, 13, 15, 10))
     else:
-        draw.rectangle((0, 0, int(width * 0.52), height), fill=(8, 13, 15, 174))
-        steps = 24
-        start_x = int(width * 0.42)
-        end_x = int(width * 0.72)
-        for idx in range(steps):
-            ratio = idx / max(steps - 1, 1)
-            alpha = round(174 * (1 - ratio))
-            x1 = round(start_x + (end_x - start_x) * ratio)
-            x2 = round(start_x + (end_x - start_x) * (idx + 1) / steps)
-            draw.rectangle((x1, 0, x2, height), fill=(8, 13, 15, alpha))
+        start_x = int(width * 0.40)
+        end_x = int(width * 0.66)
+        draw.rectangle((0, 0, start_x, height), fill=(8, 13, 15, 170))
+        for x in range(start_x, end_x + 1):
+            ratio = (x - start_x) / max(end_x - start_x, 1)
+            alpha = round(170 + (8 - 170) * ratio)
+            draw.line((x, 0, x, height), fill=(8, 13, 15, alpha))
+        draw.rectangle((end_x + 1, 0, width, height), fill=(8, 13, 15, 8))
     return Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
 
 
-def _draw_v4_brand(draw: ImageDraw.ImageDraw, x: int, y: int, compact: bool = False, light: bool = True) -> None:
-    mark = 48 if compact else 54
-    fill = WHITE if light else DEEP_GREEN
-    draw.rounded_rectangle((x, y, x + mark, y + mark), radius=8, fill=DEEP_GREEN if light else CHARCOAL)
-    draw.text((x + mark // 2, y + 5), "U", font=_font("Inter-Black.ttf", 30 if compact else 34), fill=WHITE, anchor="ma")
-    draw.text((x + mark + 18, y + 4), "UMA-FREE", font=_font(FONT_BLACK, 28 if compact else 31), fill=fill)
+def _draw_brand_lockup(
+    image: Image.Image,
+    draw: ImageDraw.ImageDraw,
+    x: int,
+    y: int,
+    compact: bool = False,
+    light: bool = True,
+    logo_size: Optional[int] = None,
+) -> None:
+    diameter = logo_size or (48 if compact else 56)
+    fill = WHITE if light else INK_DARK
+    logo_path = _resolve_brand_logo_path()
+    if logo_path is not None:
+        logo = _load_brand_logo(str(logo_path), diameter)
+        image.paste(logo, (x, y), logo)
+    else:
+        draw.ellipse((x, y, x + diameter, y + diameter), fill=WHITE, outline=EDITORIAL_GOLD, width=3)
+        draw.text((x + diameter // 2, y + 5), "U", font=_font("Inter-Black.ttf", int(diameter * 0.58)), fill=EDITORIAL_GOLD, anchor="ma")
+    text_x = x + diameter + 14
+    draw.text((text_x, y + (8 if compact else 10)), "UMA-FREE", font=_font("Inter-Bold.ttf", 25 if compact else 28), fill=fill)
 
 
-def _draw_asset_credit(draw: ImageDraw.ImageDraw, asset: Optional[VisualAsset], width: int, height: int) -> None:
-    if asset is None or not asset.credit:
+def _draw_editorial_header(
+    image: Image.Image,
+    draw: ImageDraw.ImageDraw,
+    size: tuple[int, int],
+    race: RaceVideoData,
+    section: str,
+) -> None:
+    width, height = size
+    compact = height > width
+    left = 60
+    right = width - (180 if compact else 60)
+    top = 72 if compact else 26
+    _draw_brand_lockup(image, draw, left, top, compact=compact, light=False)
+    if compact:
+        draw.text((right, top + 2), f"RACE {race.race_number:02d} / 12", font=_font("Inter-Bold.ttf", 23), fill=INK_MUTED, anchor="ra")
+        draw.line((left, 158, right, 158), fill=RULE, width=2)
+        draw.text((left, 188), f"{race.venue_name}{race.race_number}R  {race.course_label}", font=_font(FONT_BOLD, 28), fill=DEEP_GREEN)
+        _draw_fit_text_no_ellipsis(draw, race.display_name, (left, 252), FONT_BLACK, 53, 32, right - left, INK_DARK, max_lines=2, line_gap=5)
+        section_font = _font(FONT_BOLD, 25)
+        draw.text((left, 390), section, font=section_font, fill=INK_MUTED)
+        section_width, _ = _text_size(draw, section, section_font)
+        draw.line((left + section_width + 24, 409, right, 409), fill=EDITORIAL_GOLD, width=4)
+    else:
+        draw.text((330, top + 1), f"{race.venue_name}{race.race_number}R  {race.course_label}", font=_font(FONT_BOLD, 27), fill=DEEP_GREEN)
+        _draw_fit_text_no_ellipsis(draw, race.display_name, (620, top - 5), FONT_BLACK, 40, 27, 820, INK_DARK, max_lines=1)
+        draw.text((right, top + 3), f"{section}  {race.race_number:02d}/12", font=_font(FONT_BOLD, 25), fill=INK_MUTED, anchor="ra")
+        draw.line((left, 92, right, 92), fill=RULE, width=2)
+        progress = round((right - left) * min(12, max(1, race.race_number)) / 12)
+        draw.line((left, 92, left + progress, 92), fill=EDITORIAL_GOLD, width=5)
+
+
+def _draw_score_bar_v5(
+    draw: ImageDraw.ImageDraw,
+    box: tuple[int, int, int, int],
+    score: Optional[float],
+    fill: tuple[int, int, int] = EDITORIAL_GOLD,
+) -> None:
+    x1, y1, x2, y2 = box
+    draw.rectangle(box, fill=(214, 211, 202))
+    if score is None:
         return
-    draw.text((width - 24, height - 28), f"素材: {asset.credit}", font=_font(FONT_REGULAR, 15), fill=(224, 224, 216), anchor="ra")
+    ratio = max(0.04, min(1.0, (score - 45.0) / 30.0))
+    draw.rectangle((x1, y1, x1 + round((x2 - x1) * ratio), y2), fill=fill)
+
+
+def _draw_feature_graphic(
+    draw: ImageDraw.ImageDraw,
+    box: tuple[int, int, int, int],
+    graphic_type: str,
+) -> None:
+    x1, y1, x2, y2 = box
+    width = max(1, x2 - x1)
+    height = max(1, y2 - y1)
+    blue = (37, 99, 235)
+    emerald = (16, 185, 129)
+    amber = (245, 158, 11)
+    slate = (148, 163, 184)
+    rose = (225, 29, 72)
+
+    if graphic_type == "deviation":
+        bar_h = max(4, height // 7)
+        for index, (ratio, color) in enumerate(((0.88, blue), (0.64, amber), (0.72, slate))):
+            top = y1 + index * (bar_h + max(4, bar_h // 2))
+            draw.rectangle((x1, top, x2, top + bar_h), fill=(226, 232, 240))
+            draw.rectangle((x1, top, x1 + round(width * ratio), top + bar_h), fill=color)
+        return
+
+    if graphic_type == "matchup":
+        gap = max(3, width // 40)
+        cell_w = (width - gap * 2) // 3
+        cell_h = (height - gap) // 2
+        values = (("+2", (236, 253, 245), (4, 120, 87)), ("0", (241, 245, 249), (100, 116, 139)), ("-1", (255, 241, 242), (190, 18, 60)), ("0", (241, 245, 249), (100, 116, 139)), ("+1", (236, 253, 245), (4, 120, 87)), ("0", (241, 245, 249), (100, 116, 139)))
+        font = _font("Inter-Bold.ttf", max(10, round(min(cell_w, cell_h) * 0.44)))
+        for index, (value, fill, text_fill) in enumerate(values):
+            column = index % 3
+            row = index // 3
+            left = x1 + column * (cell_w + gap)
+            top = y1 + row * (cell_h + gap)
+            draw.rectangle((left, top, left + cell_w, top + cell_h), fill=fill)
+            draw.text((left + cell_w // 2, top + cell_h // 2), value, font=font, fill=text_fill, anchor="mm")
+        return
+
+    values = (0.54, 0.76, 0.38, 0.64) if graphic_type == "position" else (0.82, 0.42, 0.66, 0.36)
+    color = emerald if graphic_type == "position" else blue
+    gap = max(5, width // 20)
+    bar_w = (width - gap * 3) // 4
+    for index, ratio in enumerate(values):
+        left = x1 + index * (bar_w + gap)
+        bar_height = max(5, round(height * ratio))
+        draw.rectangle((left, y2 - bar_height, left + bar_w, y2), fill=color)
+
+
+def _draw_feature_grid(
+    draw: ImageDraw.ImageDraw,
+    box: tuple[int, int, int, int],
+    columns: int,
+    compact: bool,
+    show_descriptions: bool,
+) -> None:
+    x1, y1, x2, y2 = box
+    rows = math.ceil(len(FEATURE_ITEMS) / columns)
+    gap = 10 if compact else 14
+    tile_w = (x2 - x1 - gap * (columns - 1)) // columns
+    tile_h = (y2 - y1 - gap * (rows - 1)) // rows
+    for index, (title, description, graphic_type) in enumerate(FEATURE_ITEMS):
+        column = index % columns
+        row = index // columns
+        left = x1 + column * (tile_w + gap)
+        top = y1 + row * (tile_h + gap)
+        right = left + tile_w
+        bottom = top + tile_h
+        draw.rectangle((left, top, right, bottom), fill=(252, 250, 245), outline=(203, 213, 225), width=1)
+        graphic_w = min(round(tile_w * 0.34), 126 if not compact else 108)
+        graphic_box = (left + 14, top + 18, left + 14 + graphic_w, bottom - 18)
+        _draw_feature_graphic(draw, graphic_box, graphic_type)
+        text_x = graphic_box[2] + 16
+        title_size = 24 if not compact else 23
+        draw.text((text_x, top + 16), title, font=_font(FONT_BOLD, title_size), fill=INK_DARK)
+        if show_descriptions:
+            _draw_fit_text_no_ellipsis(
+                draw,
+                description,
+                (text_x, top + 52),
+                FONT_REGULAR,
+                18 if not compact else 17,
+                14,
+                max(60, right - text_x - 12),
+                INK_MUTED,
+                max_lines=1,
+            )
+
+
+def _draw_site_claim_line(
+    draw: ImageDraw.ImageDraw,
+    x: int,
+    y: int,
+    max_width: int,
+    compact: bool,
+) -> None:
+    claim_size = 27 if not compact else 25
+    claim_font = _fit_font_for_width(draw, SITE_CLAIM, FONT_BOLD, claim_size, 20, max_width - 150)
+    draw.text((x, y), SITE_CLAIM, font=claim_font, fill=WHITE)
+    claim_width, claim_height = _text_size(draw, SITE_CLAIM, claim_font)
+    badge_w = 126 if not compact else 118
+    badge_h = max(34, claim_height + 8)
+    badge_x = min(x + max_width - badge_w, x + claim_width + 18)
+    draw.rectangle((badge_x, y - 3, badge_x + badge_w, y - 3 + badge_h), fill=EDITORIAL_GOLD)
+    draw.text(
+        (badge_x + badge_w // 2, y - 3 + badge_h // 2),
+        SITE_NO_REGISTRATION,
+        font=_font(FONT_BOLD, 18 if not compact else 17),
+        fill=INK_DARK,
+        anchor="mm",
+    )
+
+
+def _draw_photo_score_module(
+    draw: ImageDraw.ImageDraw,
+    box: tuple[int, int, int, int],
+    horse: Optional[HorseVideoData],
+    compact: bool,
+    score_override: Optional[float] = None,
+    show_score: bool = True,
+) -> None:
+    x1, y1, x2, y2 = box
+    score = score_override if score_override is not None else (horse.deviation_score if horse else None)
+    draw.rectangle(box, fill=(15, 21, 25))
+    draw.rectangle((x1, y1, x1 + 8, y2), fill=EDITORIAL_GOLD)
+    badge_d = 86 if compact else 82
+    _draw_horse_number_badge(draw, (x1 + 70, y1 + (y2 - y1) // 2), horse, badge_d, stroke_width=3)
+    name_x = x1 + 140
+    _draw_fit_text_no_ellipsis(
+        draw,
+        horse.horse_name if horse else "データ集計中",
+        (name_x, y1 + 26),
+        FONT_BLACK,
+        42 if compact else 38,
+        25,
+        (x2 - x1) - 430,
+        WHITE,
+        max_lines=1,
+        stroke_width=2,
+        stroke_fill=TEXT_OUTLINE,
+    )
+    position_label = horse.position_label if horse and horse.position_label in {"先行", "中団", "後方"} else "未確定"
+    draw.text((name_x, y1 + 84), f"位置取り  {position_label}", font=_font(FONT_REGULAR, 21 if not compact else 23), fill=(214, 215, 210))
+    score_x = x2 - 34
+    if show_score and score is not None:
+        draw.text((score_x, y1 + 12), _score_text(score), font=_font("Inter-Black.ttf", 104 if compact else 96), fill=EDITORIAL_GOLD, anchor="ra")
+        draw.text((score_x, y1 + 114), "AI偏差値", font=_font(FONT_REGULAR, 20), fill=WHITE, anchor="ra")
+    elif show_score:
+        draw.text((score_x, y1 + 50), "集計中", font=_font(FONT_BLACK, 34), fill=EDITORIAL_GOLD, anchor="ra")
+        draw.text((score_x, y1 + 114), "AI偏差値", font=_font(FONT_REGULAR, 20), fill=WHITE, anchor="ra")
 
 
 def _draw_intro_slide(
@@ -824,65 +1092,111 @@ def _draw_intro_slide(
     score_override: Optional[float] = None,
     venue_name: str = "",
     race_number: Optional[int] = None,
+    visual_asset: Optional[VisualAsset] = None,
+    show_score: bool = True,
 ) -> None:
     width, height = size
     compact = height > width
-    image, asset = _hero_background(size, target_date, venue_name, race_number)
+    image, _ = _hero_background(size, target_date, venue_name, race_number, visual_asset)
     image = _apply_photo_scrim(image, compact)
     draw = ImageDraw.Draw(image)
-    margin = 72 if not compact else 60
+    margin = 68 if not compact else 60
     date_text = _display_short_date(target_date)
-    score_text = f"{score_override:.1f}" if score_override is not None else _hero_score_text(hero_horse)
-    horse_label = hero_horse.horse_name if hero_horse else "上位評価"
 
     if not compact:
-        _draw_v4_brand(draw, margin, 48, compact=False, light=True)
-        draw.rounded_rectangle((margin, 134, margin + 360, 192), radius=8, fill=DEEP_GREEN)
-        draw.text((margin + 22, 145), f"{date_text}  {race_label or venue_name}", font=_font(FONT_BOLD, 28), fill=WHITE)
+        _draw_brand_lockup(image, draw, margin, 42, compact=False, light=True)
+        _draw_site_claim_line(draw, 330, 58, 570, compact=False)
+        draw.line((margin, 112, 880, 112), fill=EDITORIAL_GOLD, width=4)
+        draw.text(
+            (margin, 132),
+            "  ".join(part for part in (date_text, race_label or venue_name) if part),
+            font=_font(FONT_BOLD, 30),
+            fill=(236, 235, 229),
+        )
         _draw_fit_text_no_ellipsis(
             draw,
             headline,
-            (margin, 250),
+            (margin, 208),
             FONT_BLACK,
-            88,
-            54,
+            144,
+            72,
+            900,
+            WHITE,
+            max_lines=2,
+            line_gap=2,
+            stroke_width=3,
+            stroke_fill=TEXT_OUTLINE,
+        )
+        _draw_feature_grid(draw, (margin, 520, 900, 770), columns=2, compact=False, show_descriptions=False)
+        _draw_photo_score_module(
+            draw,
+            (margin, 786, 900, 1000),
+            hero_horse,
+            compact=False,
+            score_override=score_override,
+            show_score=show_score,
+        )
+    else:
+        _draw_brand_lockup(image, draw, margin, 80, compact=True, light=True)
+        draw.text((width - margin, 84), date_text, font=_font(FONT_BOLD, 27), fill=WHITE, anchor="ra")
+        draw.line((margin, 168, width - 180, 168), fill=EDITORIAL_GOLD, width=4)
+        draw.text((margin, 194), race_label or venue_name, font=_font(FONT_BOLD, 30), fill=(236, 235, 229))
+        _draw_fit_text_no_ellipsis(
+            draw,
+            headline,
+            (margin, 270),
+            FONT_BLACK,
+            82,
+            48,
             840,
             WHITE,
             max_lines=2,
-            line_gap=8,
-            stroke_width=5,
+            line_gap=5,
+            stroke_width=3,
             stroke_fill=TEXT_OUTLINE,
         )
-        draw.text((margin, 545), "AI偏差値", font=_font(FONT_BOLD, 34), fill=(232, 221, 192))
-        draw.text((margin, 586), score_text, font=_font("Inter-Black.ttf", 142), fill=EDITORIAL_GOLD, stroke_width=3, stroke_fill=TEXT_OUTLINE)
-        _draw_horse_number_badge(draw, (margin + 78, 846), hero_horse, 92, stroke_width=4)
-        _draw_fit_text_no_ellipsis(draw, horse_label, (margin + 148, 808), FONT_BLACK, 48, 30, 620, WHITE, max_lines=1, stroke_width=4, stroke_fill=TEXT_OUTLINE)
-        draw.text((margin + 148, 870), "注目スコア上位", font=_font(FONT_BOLD, 25), fill=(222, 220, 208))
-    else:
-        _draw_v4_brand(draw, margin, 92, compact=True, light=True)
-        draw.text((width - margin, 104), date_text, font=_font(FONT_BOLD, 28), fill=WHITE, anchor="ra")
-        draw.rounded_rectangle((margin, 238, width - margin, 302), radius=8, fill=DEEP_GREEN)
-        draw.text((margin + 24, 250), race_label or venue_name, font=_font(FONT_BOLD, 31), fill=WHITE)
-        _draw_fit_text_no_ellipsis(
+        _draw_photo_score_module(
             draw,
-            headline,
-            (margin, 360),
-            FONT_BLACK,
-            72,
-            43,
-            width - margin * 2,
-            WHITE,
-            max_lines=2,
-            line_gap=10,
-            stroke_width=5,
-            stroke_fill=TEXT_OUTLINE,
+            (margin, 650, 920, 864),
+            hero_horse,
+            compact=True,
+            score_override=score_override,
+            show_score=show_score,
         )
-        draw.text((margin, 650), "AI偏差値", font=_font(FONT_BOLD, 34), fill=(232, 221, 192))
-        draw.text((margin, 700), score_text, font=_font("Inter-Black.ttf", 176), fill=EDITORIAL_GOLD, stroke_width=4, stroke_fill=TEXT_OUTLINE)
-        _draw_horse_number_badge(draw, (margin + 66, 1032), hero_horse, 94, stroke_width=4)
-        _draw_fit_text_no_ellipsis(draw, horse_label, (margin + 138, 992), FONT_BLACK, 48, 30, width - margin * 2 - 138, WHITE, max_lines=1, stroke_width=4, stroke_fill=TEXT_OUTLINE)
-        draw.text((margin + 138, 1056), "注目スコア上位", font=_font(FONT_BOLD, 27), fill=(226, 224, 213))
-    _draw_asset_credit(draw, asset, width, height)
+    _save_slide(image, path, size)
+
+
+def _draw_short_site_intro_slide(
+    path: Path,
+    target_date: str,
+    size: tuple[int, int],
+    venue_name: str,
+    race_number: Optional[int],
+    visual_asset: Optional[VisualAsset],
+) -> None:
+    width, height = size
+    image, _ = _hero_background(size, target_date, venue_name, race_number, visual_asset)
+    image = ImageEnhance.Color(image).enhance(0.72)
+    overlay = Image.new("RGBA", size, (10, 15, 18, 142))
+    image = Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(image)
+    left = 60
+    right = 900
+    _draw_brand_lockup(image, draw, left, 80, compact=True, light=True)
+    draw.text((right, 84), _display_short_date(target_date), font=_font(FONT_BOLD, 27), fill=WHITE, anchor="ra")
+    draw.line((left, 168, right, 168), fill=EDITORIAL_GOLD, width=4)
+    draw.multiline_text(
+        (left, 250),
+        "中央・地方 全レースを\n毎日無料公開",
+        font=_font(FONT_BLACK, 58),
+        fill=WHITE,
+        spacing=4,
+        stroke_width=2,
+        stroke_fill=TEXT_OUTLINE,
+    )
+    draw.rectangle((left, 430, left + 150, 480), fill=EDITORIAL_GOLD)
+    draw.text((left + 75, 455), SITE_NO_REGISTRATION, font=_font(FONT_BOLD, 22), fill=INK_DARK, anchor="mm")
+    _draw_feature_grid(draw, (left, 520, right, 1110), columns=2, compact=True, show_descriptions=True)
     _save_slide(image, path, size)
 
 
@@ -891,53 +1205,54 @@ def _draw_venue_title_slide(path: Path, venue: VenueVideoData, target_date: str,
     compact = height > width
     image = Image.new("RGB", (width, height), PAPER)
     draw = ImageDraw.Draw(image)
-    margin = 64 if not compact else 52
-    date_text = _display_date(target_date)
+    margin = 60
     grade_line = _grade_line(venue)
     if not compact:
-        draw.rectangle((0, 0, width, 132), fill=DEEP_GREEN)
-        _draw_v4_brand(draw, margin, 39, compact=False, light=True)
-        draw.text((width - margin, 42), f"{_display_short_date(target_date)}  {venue.race_type}競馬", font=_font(FONT_BOLD, 29), fill=WHITE, anchor="ra")
-        draw.text((margin, 184), f"{venue.venue_name} 全レース一覧", font=_font(FONT_BLACK, 62), fill=INK_DARK)
-        draw.text((margin, 264), grade_line, font=_font(FONT_BOLD, 29), fill=DEEP_GREEN)
-
+        _draw_brand_lockup(image, draw, margin, 28, compact=False, light=False)
+        draw.text((width - margin, 32), f"{_display_short_date(target_date)}  {venue.race_type}競馬", font=_font(FONT_BOLD, 25), fill=INK_MUTED, anchor="ra")
+        draw.line((margin, 94, width - margin, 94), fill=RULE, width=2)
+        draw.text((margin, 130), venue.venue_name, font=_font(FONT_BLACK, 76), fill=INK_DARK)
+        draw.text((margin + 310, 160), "本日のレース", font=_font(FONT_BOLD, 27), fill=EDITORIAL_GOLD_DARK)
+        draw.text((width - margin, 154), grade_line, font=_font(FONT_BOLD, 27), fill=DEEP_GREEN, anchor="ra")
         races = venue.races[:12]
         column_count = 2 if len(races) > 6 else 1
         rows_per_column = math.ceil(len(races) / column_count) if races else 1
-        gap = 34
+        gap = 46
         column_w = (width - margin * 2 - gap * (column_count - 1)) // column_count
-        table_y = 332
-        row_h = min(104, max(76, (height - table_y - 90) // rows_per_column))
+        table_y = 252
+        row_h = min(118, max(86, (height - table_y - 74) // rows_per_column))
         for idx, race in enumerate(races):
             column = idx // rows_per_column
             row = idx % rows_per_column
             x = margin + column * (column_w + gap)
             y = table_y + row * row_h
             horse = (top_by_deviation(race, 1) or [None])[0]
-            draw.rectangle((x, y, x + column_w, y + row_h - 8), fill=(255, 254, 250), outline=RULE, width=2)
-            draw.rectangle((x, y, x + 94, y + row_h - 8), fill=DEEP_GREEN)
-            draw.text((x + 47, y + 20), f"{race.race_number}R", font=_font(FONT_BLACK, 30), fill=WHITE, anchor="ma")
-            _draw_fit_text_no_ellipsis(draw, race.display_name, (x + 120, y + 12), FONT_BLACK, 29, 20, column_w - 420, INK_DARK, max_lines=1)
+            draw.line((x, y + row_h - 10, x + column_w, y + row_h - 10), fill=RULE, width=2)
+            draw.text((x, y + 8), f"{race.race_number:02d}", font=_font("Inter-Black.ttf", 43), fill=EDITORIAL_GOLD)
+            draw.text((x + 60, y + 24), "R", font=_font("Inter-Bold.ttf", 20), fill=INK_MUTED)
+            if race.grade:
+                draw.rectangle((x + 100, y + 12, x + 112, y + row_h - 22), fill=EDITORIAL_GOLD)
+            _draw_fit_text_no_ellipsis(draw, race.display_name, (x + 132, y + 10), FONT_BLACK, 29, 20, column_w - 410, INK_DARK, max_lines=1)
+            draw.text((x + 132, y + 55), race.course_label, font=_font(FONT_REGULAR, 20), fill=INK_MUTED)
             if horse:
-                _draw_horse_number_badge(draw, (x + column_w - 238, y + (row_h - 8) // 2), horse, 50, stroke_width=2)
-                draw.text((x + column_w - 190, y + 15), "AI偏差値", font=_font(FONT_BOLD, 19), fill=INK_MUTED)
-                draw.text((x + column_w - 24, y + 10), _score_text(horse.deviation_score), font=_font("Inter-Black.ttf", 36), fill=EDITORIAL_GOLD_DARK, anchor="ra")
-        draw.text((width - margin, height - 50), "1Rから順にAI偏差値と位置取りを確認", font=_font(FONT_BOLD, 25), fill=INK_MUTED, anchor="ra")
+                _draw_horse_number_badge(draw, (x + column_w - 178, y + 45), horse, 48, stroke_width=2)
+                draw.text((x + column_w - 18, y + 10), _score_text(horse.deviation_score), font=_font("Inter-Black.ttf", 38), fill=EDITORIAL_GOLD_DARK, anchor="ra")
+                draw.text((x + column_w - 18, y + 58), "AI偏差値", font=_font(FONT_BOLD, 16), fill=INK_MUTED, anchor="ra")
+        draw.text((width - margin, height - 38), "1R〜12R  AI偏差値・位置取り", font=_font(FONT_REGULAR, 21), fill=INK_MUTED, anchor="ra")
     else:
-        draw.rectangle((0, 0, width, 170), fill=DEEP_GREEN)
-        _draw_v4_brand(draw, margin, 70, compact=True, light=True)
-        draw.text((margin, 230), f"{venue.venue_name} 全レース", font=_font(FONT_BLACK, 58), fill=INK_DARK)
-        draw.text((margin, 310), f"{date_text} / {grade_line}", font=_font(FONT_BOLD, 27), fill=DEEP_GREEN)
-        y = 390
+        _draw_brand_lockup(image, draw, margin, 76, compact=True, light=False)
+        draw.line((margin, 154, width - 180, 154), fill=RULE, width=2)
+        draw.text((margin, 198), venue.venue_name, font=_font(FONT_BLACK, 64), fill=INK_DARK)
+        draw.text((margin, 286), f"{_display_date(target_date)} / {grade_line}", font=_font(FONT_BOLD, 25), fill=DEEP_GREEN)
+        y = 360
         for race in venue.races[:9]:
             horse = (top_by_deviation(race, 1) or [None])[0]
-            draw.rectangle((margin, y, width - margin, y + 116), fill=CARD_BG, outline=RULE, width=2)
-            draw.rectangle((margin, y, margin + 118, y + 116), fill=DEEP_GREEN)
-            draw.text((margin + 59, y + 34), f"{race.race_number}R", font=_font(FONT_BLACK, 34), fill=WHITE, anchor="ma")
-            _draw_fit_text_no_ellipsis(draw, race.display_name, (margin + 144, y + 14), FONT_BLACK, 30, 21, width - margin * 2 - 350, INK_DARK, max_lines=1)
+            draw.line((margin, y + 108, width - 180, y + 108), fill=RULE, width=2)
+            draw.text((margin, y + 8), f"{race.race_number:02d}", font=_font("Inter-Black.ttf", 42), fill=EDITORIAL_GOLD)
+            _draw_fit_text_no_ellipsis(draw, race.display_name, (margin + 92, y + 10), FONT_BLACK, 29, 20, 520, INK_DARK, max_lines=1)
             if horse:
-                draw.text((width - margin - 24, y + 38), _score_text(horse.deviation_score), font=_font("Inter-Black.ttf", 38), fill=EDITORIAL_GOLD_DARK, anchor="ra")
-            y += 134
+                draw.text((width - 180, y + 12), _score_text(horse.deviation_score), font=_font("Inter-Black.ttf", 36), fill=EDITORIAL_GOLD_DARK, anchor="ra")
+            y += 120
     _save_slide(image, path, size)
 
 
@@ -1017,124 +1332,163 @@ def _draw_rank_card(
 ) -> None:
     x1, y1, x2, y2 = xy
     style = _rank_card_style(rank, compact)
-    radius = 14 if compact else 10
-    draw.rounded_rectangle(xy, radius=radius, fill=style.bg, outline=style.border, width=style.border_width)
-    if rank == 1:
-        draw.rectangle((x1, y1, x1 + (10 if compact else 12), y2), fill=EDITORIAL_GOLD)
-
-    badge_d = 56 if compact else 52
+    draw.rectangle(xy, fill=style.bg, outline=style.border, width=style.border_width)
+    accent_w = 10 if rank == 1 else 5
+    draw.rectangle((x1, y1, x1 + accent_w, y2), fill=style.badge_fill)
+    card_h = y2 - y1
+    badge_d = 54 if compact else 50
     badge_x = x1 + 28
-    badge_y = y1 + 28
-    draw.ellipse((badge_x, badge_y, badge_x + badge_d, badge_y + badge_d), fill=style.badge_fill)
-    draw.text((badge_x + badge_d // 2, badge_y + 10), str(rank), font=_font("Inter-Black.ttf", 29), fill=style.badge_text, anchor="ma")
+    badge_y = y1 + 26
+    draw.text((badge_x, badge_y + 7), f"{rank}位", font=_font(FONT_BLACK, 28), fill=EDITORIAL_GOLD_DARK)
 
-    horse_badge_d = 64 if compact else 58
-    horse_badge_x = badge_x + badge_d + 34
-    badge_center_y = y1 + 58 if not compact else y1 + 64
-    _draw_horse_number_badge(draw, (horse_badge_x + horse_badge_d // 2, badge_center_y), horse, horse_badge_d, stroke_width=3)
-    name_x = horse_badge_x + horse_badge_d + 20
-    score_area = 190 if compact else 170
-    max_name_width = max(170, x2 - name_x - score_area)
+    horse_badge_d = 66 if rank == 1 else 56
+    horse_x = badge_x + badge_d + 42
+    _draw_horse_number_badge(draw, (horse_x + horse_badge_d // 2, y1 + 54), horse, horse_badge_d, stroke_width=3)
+    name_x = horse_x + horse_badge_d + 20
+    score_reserved = 230 if rank == 1 else 170
     _draw_fit_text_no_ellipsis(
         draw,
         horse.horse_name,
-        (name_x, y1 + 24),
+        (name_x, y1 + 22),
         FONT_BLACK,
-        36 if rank == 1 else 31,
+        38 if rank == 1 else 30,
         20,
-        max_name_width,
+        max(150, x2 - name_x - score_reserved),
         INK_DARK,
         max_lines=1,
     )
-    draw.text((name_x, y1 + 78), f"位置取り  {horse.position_label or '-'}", font=_font(FONT_BOLD, 22 if not compact else 24), fill=INK_MUTED)
-    draw.text((x2 - 28, y1 + 14), _score_text(horse.deviation_score), font=_font("Inter-Black.ttf", style.score_size), fill=style.score_fill, anchor="ra")
-    draw.text((x2 - 30, y1 + 84), "AI偏差値", font=_font(FONT_BOLD, 18 if not compact else 20), fill=INK_MUTED, anchor="ra")
+    position = horse.position_label if horse.position_label in {"先行", "中団", "後方"} else "未確定"
+    draw.text((name_x, y1 + 76), f"位置取り  {position}", font=_font(FONT_REGULAR, 21), fill=INK_MUTED)
+
+    score_size = 118 if rank == 1 and card_h > 200 else style.score_size
+    score_y = y1 + (70 if rank == 1 and card_h > 200 else 12)
+    draw.text((x2 - 30, score_y), _score_text(horse.deviation_score), font=_font("Inter-Black.ttf", score_size), fill=style.score_fill, anchor="ra")
+    label_y = y1 + 40 if rank == 1 and card_h > 200 else y1 + 84
+    draw.text((x2 - 32, label_y), "AI偏差値", font=_font(FONT_REGULAR, 18 if not compact else 20), fill=INK_MUTED, anchor="ra")
+    if rank == 1 and card_h > 200:
+        bar_y = y2 - 30
+        _draw_score_bar_v5(draw, (name_x, bar_y, x2 - 30, bar_y + 12), horse.deviation_score)
+    else:
+        _draw_score_bar_v5(
+            draw,
+            (name_x, y2 - 22, x2 - 30, y2 - 12),
+            horse.deviation_score,
+            fill=style.badge_fill,
+        )
 
 
-def _draw_race_slide(path: Path, race: RaceVideoData, target_date: str, size: tuple[int, int], utm_content: str) -> None:
+def _position_badge_colors(label: str) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+    if label == "先行":
+        return DEEP_GREEN, WHITE
+    if label == "後方":
+        return INK_DARK, WHITE
+    if label == "中団":
+        return PAPER_DARK, INK_DARK
+    return (224, 222, 215), INK_MUTED
+
+
+def _draw_ranking_row(
+    draw: ImageDraw.ImageDraw,
+    xy: tuple[int, int, int, int],
+    rank: int,
+    horse: HorseVideoData,
+    compact: bool,
+    alternate: bool,
+) -> None:
+    x1, y1, x2, y2 = xy
+    row_fill = PAPER_DARK if alternate else CARD_BG
+    draw.rectangle(xy, fill=row_fill, outline=RULE, width=1)
+    rank_w = 76 if compact else 92
+    badge_w = 88 if compact else 110
+    score_w = 190 if compact else 230
+    position_w = 150 if compact else 220
+    draw.text((x1 + 16, y1 + 19), f"{rank}位", font=_font(FONT_BOLD, 25 if compact else 26), fill=INK_MUTED)
+    badge_d = 52 if compact else 54
+    badge_x = x1 + rank_w + badge_w // 2
+    _draw_horse_number_badge(draw, (badge_x, (y1 + y2) // 2), horse, badge_d, stroke_width=2)
+    name_x = x1 + rank_w + badge_w
+    right_name = x2 - score_w - position_w
+    _draw_fit_text_no_ellipsis(
+        draw,
+        horse.horse_name,
+        (name_x, y1 + (19 if compact else 18)),
+        FONT_BOLD,
+        27 if compact else 27,
+        17,
+        max(120, right_name - name_x - 18),
+        INK_DARK,
+        max_lines=1,
+    )
+    position = horse.position_label if horse.position_label in {"先行", "中団", "後方"} else "未確定"
+    badge_fill, badge_text = _position_badge_colors(position)
+    pos_x1 = x2 - score_w - position_w + 18
+    pos_x2 = x2 - score_w - 18
+    badge_h = 52 if compact else max(42, y2 - y1 - 32)
+    pos_y1 = (y1 + y2 - badge_h) // 2
+    pos_y2 = pos_y1 + badge_h
+    draw.rectangle((pos_x1, pos_y1, pos_x2, pos_y2), fill=badge_fill)
+    draw.text(((pos_x1 + pos_x2) // 2, pos_y1 + 12), position, font=_font(FONT_BOLD, 19 if compact else 19), fill=badge_text, anchor="ma")
+    draw.text((x2 - 28, y1 + 7), _score_text(horse.deviation_score), font=_font("Inter-Black.ttf", 52 if compact else 48), fill=EDITORIAL_GOLD_DARK, anchor="ra")
+
+
+def _draw_race_slide(
+    path: Path,
+    race: RaceVideoData,
+    target_date: str,
+    size: tuple[int, int],
+    utm_content: str,
+    visible_rank_count: Optional[int] = None,
+) -> None:
     width, height = size
     compact = height > width
     image = Image.new("RGB", (width, height), PAPER)
     draw = ImageDraw.Draw(image)
     margin = 60
-    race_label = f"{race.venue_name}{race.race_number}R"
-    if race.grade:
-        race_label += f" {race.grade}"
-    top_horses = top_by_deviation(race, 8 if not compact else 3)
+    top_horses = top_by_deviation(race, 8 if not compact else max(1, min(5, visible_rank_count or 5)))
 
     if not compact:
-        draw.rectangle((0, 0, width, 142), fill=DEEP_GREEN)
-        _draw_v4_brand(draw, margin, 42, compact=False, light=True)
-        draw.text((margin + 310, 44), race_label, font=_font(FONT_BOLD, 29), fill=(226, 235, 228))
-        _draw_fit_text_no_ellipsis(draw, race.display_name, (margin + 310, 78), FONT_BLACK, 43, 27, 980, WHITE, max_lines=1)
-        draw.text((width - margin, 44), f"AI偏差値  Race {race.race_number}/12", font=_font(FONT_BLACK, 31), fill=WHITE, anchor="ra")
-
-        card_y = 184
+        _draw_editorial_header(image, draw, size, race, "AI偏差値")
+        card_y = 122
         if top_horses:
-            _draw_rank_card(draw, (margin, card_y, 1030, card_y + 282), 1, top_horses[0], compact=False)
-            if len(top_horses) > 1:
-                _draw_rank_card(draw, (1060, card_y, width - margin, card_y + 128), 2, top_horses[1], compact=False)
-            if len(top_horses) > 2:
-                _draw_rank_card(draw, (1060, card_y + 154, width - margin, card_y + 282), 3, top_horses[2], compact=False)
+            _draw_rank_card(draw, (margin, card_y, width - margin, card_y + 250), 1, top_horses[0], compact=False)
         if not top_horses:
-            draw.rectangle((margin, card_y, width - margin, card_y + 282), fill=CARD_BG, outline=RULE, width=2)
-            draw.text((width // 2, card_y + 104), "出走馬データを確認中です", font=_font(FONT_BLACK, 40), fill=INK_DARK, anchor="ma")
-
-        table_y = 522
-        table_x = margin
-        table_w = width - margin * 2
-        col_widths = [110, 130, table_w - 110 - 130 - 230 - 230, 230, 230]
-        headers = ["順位", "馬番", "馬名", "AI偏差値", "位置取り"]
-        x = table_x
-        for header, col_w in zip(headers, col_widths):
-            draw.rectangle((x, table_y, x + col_w, table_y + 62), fill=CHARCOAL)
-            draw.text((x + col_w // 2, table_y + 15), header, font=_font(FONT_BOLD, 23), fill=WHITE, anchor="ma")
-            x += col_w
-        rows = top_horses[3:8]
-        for offset, horse in enumerate(rows):
-            rank = offset + 4
-            y = table_y + 62 + offset * 78
-            row_fill = CARD_BG if offset % 2 == 0 else PAPER_DARK
-            x = table_x
-            values = [str(rank), str(horse.horse_number), horse.horse_name, _score_text(horse.deviation_score), horse.position_label or "-"]
-            for col_idx, (value, col_w) in enumerate(zip(values, col_widths)):
-                draw.rectangle((x, y, x + col_w, y + 78), fill=row_fill, outline=RULE, width=1)
-                if col_idx == 1:
-                    _draw_horse_number_badge(draw, (x + col_w // 2, y + 39), horse, 50, stroke_width=2)
-                elif col_idx == 2:
-                    _draw_fit_text_no_ellipsis(draw, value, (x + 20, y + 20), FONT_BOLD, 28, 19, col_w - 40, INK_DARK, max_lines=1)
-                else:
-                    fill = EDITORIAL_GOLD_DARK if col_idx == 3 else INK_DARK
-                    draw.text((x + col_w // 2, y + 20), value, font=_font("Inter-Bold.ttf" if col_idx == 3 else FONT_BOLD, 29), fill=fill, anchor="ma")
-                x += col_w
-        if not rows:
-            draw.rectangle((table_x, table_y + 62, table_x + table_w, table_y + 244), fill=CARD_BG, outline=RULE, width=2)
-            draw.text((width // 2, table_y + 122), "続きの出走馬データはサイトで確認できます", font=_font(FONT_BOLD, 31), fill=INK_MUTED, anchor="ma")
-
-        draw.rectangle((0, height - 50, width, height), fill=CHARCOAL)
-        progress_width = round((width - margin * 2) * min(12, max(1, race.race_number)) / 12)
-        draw.rectangle((margin, height - 18, margin + progress_width, height - 10), fill=EDITORIAL_GOLD)
+            draw.rectangle((margin, card_y, width - margin, card_y + 250), fill=CARD_BG, outline=RULE, width=2)
+            draw.text((width // 2, card_y + 90), "出走馬データを集計中", font=_font(FONT_BOLD, 38), fill=INK_DARK, anchor="ma")
+        row_y = 382
+        row_h = 84
+        for offset, horse in enumerate(top_horses[1:8], start=2):
+            _draw_ranking_row(
+                draw,
+                (margin, row_y, width - margin, row_y + row_h),
+                offset,
+                horse,
+                compact=False,
+                alternate=offset % 2 == 1,
+            )
+            row_y += row_h
+        draw.line((margin, height - 34, width - margin, height - 34), fill=RULE, width=2)
     else:
         safe_left = 60
         safe_right = 900
-        draw.rectangle((0, 0, width, 220), fill=DEEP_GREEN)
-        _draw_v4_brand(draw, safe_left, 96, compact=True, light=True)
-        draw.text((safe_right, 104), f"Race {race.race_number}/12", font=_font("Inter-Bold.ttf", 27), fill=WHITE, anchor="ra")
-        draw.text((safe_left, 274), race_label, font=_font(FONT_BOLD, 31), fill=DEEP_GREEN)
-        _draw_fit_text_no_ellipsis(draw, race.display_name, (safe_left, 326), FONT_BLACK, 54, 34, safe_right - safe_left, INK_DARK, max_lines=2, line_gap=5)
-        draw.text((safe_left, 448), "AI偏差値 上位3頭", font=_font(FONT_BLACK, 36), fill=INK_DARK)
-
-        y = 520
-        heights = [250, 190, 190]
-        for idx, horse in enumerate(top_horses[:3], start=1):
-            card_h = heights[idx - 1]
-            _draw_rank_card(draw, (safe_left, y, safe_right, y + card_h), idx, horse, compact=True)
-            y += card_h + 24
+        _draw_editorial_header(image, draw, size, race, "AI偏差値 上位5頭")
+        y = 444
+        if top_horses:
+            _draw_rank_card(draw, (safe_left, y, safe_right, y + 290), 1, top_horses[0], compact=True)
+            y += 310
+        for idx, horse in enumerate(top_horses[1:5], start=2):
+            _draw_ranking_row(
+                draw,
+                (safe_left, y, safe_right, y + 150),
+                idx,
+                horse,
+                compact=True,
+                alternate=idx % 2 == 1,
+            )
+            y += 162
         if not top_horses:
             draw.rectangle((safe_left, y, safe_right, y + 220), fill=CARD_BG, outline=RULE, width=2)
-            draw.text((width // 2, y + 82), "出走馬データを確認中です", font=_font(FONT_BLACK, 34), fill=INK_DARK, anchor="ma")
-        draw.text((safe_left, 1372), "次は位置取り", font=_font(FONT_BOLD, 28), fill=INK_MUTED)
-        draw.line((safe_left, 1428, safe_right, 1428), fill=RULE, width=3)
+            draw.text((width // 2, y + 82), "出走馬データを集計中", font=_font(FONT_BOLD, 33), fill=INK_DARK, anchor="ma")
+        draw.line((safe_left, 1450, safe_right, 1450), fill=RULE, width=2)
     _save_slide(image, path, size)
 
 
@@ -1152,21 +1506,104 @@ def _draw_position_token(
     xy: tuple[int, int],
     max_width: int,
     compact: bool,
+    row_height: int,
 ) -> None:
     x, y = xy
-    badge = 54 if compact else 48
-    _draw_horse_number_badge(draw, (x + badge // 2, y + badge // 2), horse, badge, stroke_width=2)
+    token_h = max(34, row_height - 4)
+    badge = max(28, min(48, token_h - 8))
+    center_y = y + token_h // 2
+    draw.rectangle((x, y, x + max_width, y + token_h), fill=(252, 250, 245), outline=RULE, width=1)
+    _draw_horse_number_badge(draw, (x + 12 + badge // 2, center_y), horse, badge, stroke_width=1)
     _draw_fit_text_no_ellipsis(
         draw,
         horse.horse_name,
-        (x + badge + 12, y + (8 if compact else 7)),
+        (x + badge + 26, center_y - (14 if compact else 13)),
         FONT_BOLD,
-        25 if compact else 23,
-        17,
-        max_width - badge - 14,
+        min(23 if compact else 22, max(16, round(row_height * 0.38))),
+        14,
+        max_width - badge - 34,
         INK_DARK,
         max_lines=1,
     )
+
+
+def _overlay_course_asset(
+    image: Image.Image,
+    asset: Optional[CourseAsset],
+    bounds: tuple[int, int, int, int],
+    opacity: float = 0.62,
+) -> Image.Image:
+    if asset is None:
+        return image
+    try:
+        with Image.open(asset.path) as source:
+            course = source.convert("RGBA")
+    except OSError:
+        return image
+    alpha = course.getchannel("A")
+    bbox = alpha.getbbox()
+    if bbox is None:
+        return image
+    course = course.crop(bbox)
+    original_alpha = course.getchannel("A")
+    muted = ImageEnhance.Color(course.convert("RGB")).enhance(0.24)
+    muted = ImageEnhance.Contrast(muted).enhance(0.84)
+    muted = ImageEnhance.Brightness(muted).enhance(1.08)
+    muted = Image.blend(muted, Image.new("RGB", muted.size, PAPER), 0.22)
+    course = muted.convert("RGBA")
+    course.putalpha(original_alpha)
+    box_width = max(1, bounds[2] - bounds[0])
+    box_height = max(1, bounds[3] - bounds[1])
+    scale = min(box_width / course.width, box_height / course.height)
+    resized = course.resize(
+        (max(1, round(course.width * scale)), max(1, round(course.height * scale))),
+        Image.Resampling.LANCZOS,
+    )
+    alpha = resized.getchannel("A").point(lambda value: round(value * max(0.0, min(1.0, opacity))))
+    resized.putalpha(alpha)
+    left = bounds[0] + (box_width - resized.width) // 2
+    top = bounds[1] + (box_height - resized.height) // 2
+    base = image.convert("RGBA")
+    outline_alpha = alpha.filter(ImageFilter.MaxFilter(11)).point(lambda value: min(120, value))
+    outline = Image.new("RGBA", resized.size, (47, 67, 59, 0))
+    outline.putalpha(outline_alpha)
+    base.alpha_composite(outline, (left, top))
+    base.alpha_composite(resized, (left, top))
+    return base.convert("RGB")
+
+
+def _lane_label_fill(label: str) -> tuple[int, int, int]:
+    if label == "先行":
+        return DEEP_GREEN
+    if label == "後方":
+        return INK_DARK
+    if label == "中団":
+        return CHARCOAL_SOFT
+    return INK_MUTED
+
+
+def _draw_position_lane(
+    draw: ImageDraw.ImageDraw,
+    box: tuple[int, int, int, int],
+    label: str,
+    horses: Sequence[HorseVideoData],
+    compact: bool,
+    row_step_override: Optional[int] = None,
+) -> None:
+    x1, y1, x2, y2 = box
+    draw.rectangle(box, fill=(250, 248, 242), outline=RULE, width=2)
+    header_h = 52 if compact else 56
+    draw.rectangle((x1, y1, x2, y1 + header_h), fill=_lane_label_fill(label))
+    draw.text((x1 + 20, y1 + (10 if compact else 11)), label, font=_font(FONT_BLACK, 23 if compact else 24), fill=WHITE)
+    draw.text((x2 - 18, y1 + (13 if compact else 14)), f"{len(horses)}頭", font=_font(FONT_BOLD, 18), fill=(231, 232, 227), anchor="ra")
+    inner_margin = 12 if compact else 14
+    token_width = max(150, x2 - x1 - inner_margin * 2)
+    row_step = row_step_override or (62 if compact else 70)
+    start_y = y1 + header_h + 8
+    for index, horse in enumerate(horses):
+        token_x = x1 + inner_margin
+        token_y = start_y + index * row_step
+        _draw_position_token(draw, horse, (token_x, token_y), token_width, compact=compact, row_height=row_step)
 
 
 def _draw_position_slide(path: Path, race: RaceVideoData, target_date: str, size: tuple[int, int]) -> None:
@@ -1175,114 +1612,149 @@ def _draw_position_slide(path: Path, race: RaceVideoData, target_date: str, size
     image = Image.new("RGB", size, PAPER)
     draw = ImageDraw.Draw(image)
     groups = _position_groups(race)
-    race_label = f"{race.venue_name}{race.race_number}R"
-    if race.grade:
-        race_label += f" {race.grade}"
-
+    course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
+    lane_groups: List[tuple[str, List[HorseVideoData]]] = [
+        ("先行", groups["先行"]),
+        ("中団", groups["中団"]),
+        ("後方", groups["後方"]),
+    ]
+    unknown_horses = groups["-"]
     if not compact:
         margin = 60
-        draw.rectangle((0, 0, width, 142), fill=DEEP_GREEN)
-        _draw_v4_brand(draw, margin, 42, compact=False, light=True)
-        draw.text((margin + 310, 44), race_label, font=_font(FONT_BOLD, 29), fill=(226, 235, 228))
-        _draw_fit_text_no_ellipsis(draw, race.display_name, (margin + 310, 78), FONT_BLACK, 43, 27, 980, WHITE, max_lines=1)
-        draw.text((width - margin, 44), "位置取り", font=_font(FONT_BLACK, 34), fill=WHITE, anchor="ra")
-
-        track = (margin, 210, width - margin, height - 106)
-        draw.rounded_rectangle(track, radius=120, fill=TRACK_BEIGE)
-        inset = 34
-        infield = (track[0] + inset, track[1] + inset, track[2] - inset, track[3] - inset)
-        draw.rounded_rectangle(infield, radius=92, fill=TURF_LIGHT)
-        labels = ["先行", "中団", "後方"]
-        zone_w = (infield[2] - infield[0]) // 3
-        for idx, label in enumerate(labels):
-            x1 = infield[0] + idx * zone_w
-            x2 = infield[2] if idx == 2 else x1 + zone_w
-            if idx:
-                draw.line((x1, infield[1] + 38, x1, infield[3] - 38), fill=(177, 185, 166), width=3)
-            draw.rounded_rectangle((x1 + 24, infield[1] + 24, x1 + 154, infield[1] + 70), radius=8, fill=DEEP_GREEN if idx == 0 else CHARCOAL_SOFT)
-            draw.text((x1 + 89, infield[1] + 32), label, font=_font(FONT_BLACK, 23), fill=WHITE, anchor="ma")
-            horses = groups[label]
-            token_w = zone_w - 64
-            for row, horse in enumerate(horses[:7]):
-                _draw_position_token(draw, horse, (x1 + 34, infield[1] + 104 + row * 74), token_w, compact=False)
-            if len(horses) > 7:
-                draw.text((x1 + 36, infield[3] - 48), f"ほか{len(horses) - 7}頭", font=_font(FONT_BOLD, 20), fill=INK_MUTED)
-        draw.text((track[0] + 8, track[1] - 42), "スタート", font=_font(FONT_BOLD, 22), fill=DEEP_GREEN)
-        draw.text((track[2] - 8, track[1] - 42), "ゴール", font=_font(FONT_BOLD, 22), fill=BURGUNDY, anchor="ra")
-        draw.rectangle((0, height - 50, width, height), fill=CHARCOAL)
-        progress_width = round((width - margin * 2) * min(12, max(1, race.race_number)) / 12)
-        draw.rectangle((margin, height - 18, margin + progress_width, height - 10), fill=EDITORIAL_GOLD)
+        _draw_editorial_header(image, draw, size, race, "位置取り")
+        course_box = (margin + 110, 120, width - margin - 110, height - 30)
+        if course_asset is not None:
+            image = _overlay_course_asset(image, course_asset, course_box, opacity=0.10)
+            draw = ImageDraw.Draw(image)
+        lane_top = 126
+        available_bottom = 970
+        max_rows = max((len(horses) for _, horses in lane_groups), default=0)
+        fixed_height = 64 + (80 if unknown_horses else 0)
+        row_units = max_rows + len(unknown_horses)
+        row_step = max(34, min(62, (available_bottom - lane_top - fixed_height) // max(1, row_units)))
+        lane_bottom = lane_top + 64 + max_rows * row_step
+        gap = 20
+        lane_width = (width - margin * 2 - gap * (len(lane_groups) - 1)) // len(lane_groups)
+        for index, (label, horses) in enumerate(lane_groups):
+            x1 = margin + index * (lane_width + gap)
+            _draw_position_lane(
+                draw,
+                (x1, lane_top, x1 + lane_width, lane_bottom),
+                label,
+                horses,
+                compact=False,
+                row_step_override=row_step,
+            )
+        if unknown_horses:
+            unknown_top = lane_bottom + 16
+            unknown_bottom = unknown_top + 64 + len(unknown_horses) * row_step
+            _draw_position_lane(
+                draw,
+                (margin, unknown_top, width - margin, unknown_bottom),
+                "位置未確定",
+                unknown_horses,
+                compact=False,
+                row_step_override=row_step,
+            )
+        if course_asset is not None:
+            draw.text((width - margin, height - 34), f"{race.venue_name} コース形状", font=_font(FONT_BOLD, 17), fill=INK_MUTED, anchor="ra")
     else:
         safe_left = 60
         safe_right = 900
-        draw.rectangle((0, 0, width, 220), fill=DEEP_GREEN)
-        _draw_v4_brand(draw, safe_left, 96, compact=True, light=True)
-        draw.text((safe_right, 104), f"Race {race.race_number}/12", font=_font("Inter-Bold.ttf", 27), fill=WHITE, anchor="ra")
-        draw.text((safe_left, 274), race_label, font=_font(FONT_BOLD, 31), fill=DEEP_GREEN)
-        _draw_fit_text_no_ellipsis(draw, race.display_name, (safe_left, 326), FONT_BLACK, 50, 32, safe_right - safe_left, INK_DARK, max_lines=2, line_gap=5)
-        draw.text((safe_left, 448), "位置取り", font=_font(FONT_BLACK, 38), fill=INK_DARK)
+        _draw_editorial_header(image, draw, size, race, "位置取り")
+        draw.text((safe_left, 440), "先行  →  中団  →  後方", font=_font(FONT_BOLD, 22), fill=INK_MUTED)
 
-        track = (safe_left, 520, safe_right, 1440)
-        draw.rounded_rectangle(track, radius=76, fill=TRACK_BEIGE)
-        draw.rounded_rectangle((track[0] + 24, track[1] + 24, track[2] - 24, track[3] - 24), radius=58, fill=TURF_LIGHT)
-        labels = ["先行", "中団", "後方"]
-        zone_h = (track[3] - track[1] - 48) // 3
-        for idx, label in enumerate(labels):
-            y1 = track[1] + 24 + idx * zone_h
-            if idx:
-                draw.line((track[0] + 52, y1, track[2] - 52, y1), fill=(177, 185, 166), width=3)
-            draw.rounded_rectangle((track[0] + 48, y1 + 26, track[0] + 180, y1 + 76), radius=8, fill=DEEP_GREEN if idx == 0 else CHARCOAL_SOFT)
-            draw.text((track[0] + 114, y1 + 36), label, font=_font(FONT_BLACK, 24), fill=WHITE, anchor="ma")
-            horses = groups[label][:6]
-            for item_idx, horse in enumerate(horses):
-                column = item_idx % 2
-                row = item_idx // 2
-                x = track[0] + 220 + column * 300
-                y = y1 + 26 + row * 76
-                _draw_position_token(draw, horse, (x, y), 282, compact=True)
-        draw.text((safe_left, 1484), "スタートから序盤の隊列イメージ", font=_font(FONT_BOLD, 27), fill=INK_MUTED)
+        course_box = (safe_left + 80, 450, safe_right - 80, 1450)
+        if course_asset is not None:
+            image = _overlay_course_asset(image, course_asset, course_box, opacity=0.11)
+            draw = ImageDraw.Draw(image)
+        y = 486
+        gap = 10
+        compact_groups = [*lane_groups]
+        if unknown_horses:
+            compact_groups.append(("位置未確定", unknown_horses))
+        total_rows = sum(len(horses) for _, horses in compact_groups)
+        fixed_height = len(compact_groups) * 60 + max(0, len(compact_groups) - 1) * gap
+        available_for_rows = max(0, 1450 - y - fixed_height)
+        compact_row_step = max(34, min(52, available_for_rows // max(1, total_rows)))
+        for label, horses in compact_groups:
+            lane_h = 60 + len(horses) * compact_row_step
+            _draw_position_lane(
+                draw,
+                (safe_left, y, safe_right, y + lane_h),
+                label,
+                horses,
+                compact=True,
+                row_step_override=compact_row_step,
+            )
+            y += lane_h + gap
+        draw.line((safe_left, 1460, safe_right, 1460), fill=RULE, width=2)
     _save_slide(image, path, size)
 
 
-def _draw_outro_slide(path: Path, target_date: str, size: tuple[int, int], utm_content: str) -> None:
+def _draw_outro_slide(
+    path: Path,
+    target_date: str,
+    size: tuple[int, int],
+    utm_content: str,
+    venue_name: str = "",
+    race_number: Optional[int] = None,
+    visual_asset: Optional[VisualAsset] = None,
+) -> None:
     width, height = size
     compact = height > width
-    image = Image.new("RGB", (width, height), PAPER)
+    image, _ = _hero_background(size, target_date, venue_name, race_number, visual_asset)
+    image = ImageEnhance.Color(image).enhance(0.42)
+    image = ImageEnhance.Brightness(image).enhance(0.72)
+    overlay = Image.new("RGBA", size, (10, 15, 18, 118 if compact else 96))
+    image = Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
     draw = ImageDraw.Draw(image)
     margin = 68 if not compact else 60
 
     if not compact:
-        draw.rectangle((0, 0, width, 146), fill=DEEP_GREEN)
-        _draw_v4_brand(draw, margin, 44, compact=False, light=True)
-        draw.text((width - margin, 49), _display_short_date(target_date), font=_font(FONT_BOLD, 29), fill=WHITE, anchor="ra")
-        draw.text((width // 2, 250), "全頭データをまとめて確認", font=_font(FONT_BLACK, 68), fill=INK_DARK, anchor="ma")
-        draw.text((width // 2, 338), "AI偏差値・位置取り・枠順傾向", font=_font(FONT_BOLD, 34), fill=DEEP_GREEN, anchor="ma")
-        draw.line((margin, 424, width - margin, 424), fill=RULE, width=3)
-        items = [("01", "全レース"), ("02", "全頭のAI偏差値"), ("03", "位置取りと枠順傾向")]
-        item_w = (width - margin * 2) // 3
-        for idx, (number, label) in enumerate(items):
-            x = margin + idx * item_w
-            draw.text((x + item_w // 2, 486), number, font=_font("Inter-Black.ttf", 58), fill=EDITORIAL_GOLD, anchor="ma")
-            draw.text((x + item_w // 2, 574), label, font=_font(FONT_BLACK, 31), fill=INK_DARK, anchor="ma")
-        cta_y = 704
-        draw.rounded_rectangle((margin, cta_y, width - margin, cta_y + 164), radius=12, fill=BURGUNDY)
-        draw.text((width // 2, cta_y + 37), FULL_CTA, font=_fit_font_for_width(draw, FULL_CTA, FONT_BLACK, 43, 30, width - margin * 2 - 100), fill=WHITE, anchor="ma")
-        draw.text((width // 2, cta_y + 100), "uma-free.com", font=_font("Inter-Bold.ttf", 34), fill=(244, 224, 201), anchor="ma")
+        _draw_brand_lockup(image, draw, margin, 48, compact=False, light=True)
+        draw.text((width - margin, 50), _display_short_date(target_date), font=_font(FONT_BOLD, 27), fill=WHITE, anchor="ra")
+        draw.line((margin, 122, width - margin, 122), fill=EDITORIAL_GOLD, width=4)
+        draw.multiline_text(
+            (margin, 168),
+            "中央・地方の全レース分析データを\n毎日無料で公開",
+            font=_font(FONT_BLACK, 54),
+            fill=WHITE,
+            spacing=2,
+            stroke_width=2,
+            stroke_fill=TEXT_OUTLINE,
+        )
+        draw.rectangle((margin, 302, margin + 146, 348), fill=EDITORIAL_GOLD)
+        draw.text((margin + 73, 325), SITE_NO_REGISTRATION, font=_font(FONT_BOLD, 21), fill=INK_DARK, anchor="mm")
+        _draw_feature_grid(draw, (margin, 380, width - margin, 620), columns=4, compact=False, show_descriptions=True)
+        cta_y = 664
+        cta_right = 1470
+        draw.rectangle((margin, cta_y, cta_right, cta_y + 214), fill=(15, 21, 25))
+        draw.rectangle((margin, cta_y, margin + 8, cta_y + 214), fill=BURGUNDY)
+        draw.text((margin + 42, cta_y + 34), "概要欄のリンクからUMA-FREEへ", font=_font(FONT_BOLD, 39), fill=WHITE)
+        draw.text((margin + 42, cta_y + 100), "または「UMA-FREE」で検索", font=_font(FONT_REGULAR, 28), fill=(232, 230, 219))
+        draw.text((cta_right - 36, cta_y + 154), "uma-free.com", font=_font("Inter-Bold.ttf", 31), fill=EDITORIAL_GOLD, anchor="ra")
     else:
-        draw.rectangle((0, 0, width, 220), fill=DEEP_GREEN)
-        _draw_v4_brand(draw, margin, 96, compact=True, light=True)
-        draw.text((margin, 330), "全頭データを\nまとめて確認", font=_font(FONT_BLACK, 64), fill=INK_DARK, spacing=12)
-        draw.text((margin, 520), "AI偏差値・位置取り・枠順傾向", font=_font(FONT_BOLD, 30), fill=DEEP_GREEN)
-        draw.line((margin, 590, width - margin, 590), fill=RULE, width=3)
-        y = 670
-        for number, label in [("01", "全レース"), ("02", "全頭のAI偏差値"), ("03", "位置取りと枠順傾向")]:
-            draw.text((margin, y), number, font=_font("Inter-Black.ttf", 50), fill=EDITORIAL_GOLD)
-            draw.text((margin + 118, y + 10), label, font=_font(FONT_BLACK, 34), fill=INK_DARK)
-            y += 146
-        cta_y = 1160
-        draw.rounded_rectangle((margin, cta_y, width - margin, cta_y + 230), radius=18, fill=BURGUNDY)
-        _draw_fit_text_no_ellipsis(draw, SHORT_CTA, (width // 2, cta_y + 44), FONT_BLACK, 42, 29, width - margin * 2 - 80, WHITE, max_lines=2, line_gap=8, anchor="ma")
-        draw.text((width // 2, cta_y + 164), "uma-free.com", font=_font("Inter-Bold.ttf", 34), fill=(244, 224, 201), anchor="ma")
+        _draw_brand_lockup(image, draw, margin, 82, compact=True, light=True)
+        draw.line((margin, 168, 900, 168), fill=EDITORIAL_GOLD, width=4)
+        draw.multiline_text(
+            (margin, 240),
+            "中央・地方 全レースを\n毎日無料公開",
+            font=_font(FONT_BLACK, 56),
+            fill=WHITE,
+            spacing=4,
+            stroke_width=2,
+            stroke_fill=TEXT_OUTLINE,
+        )
+        draw.rectangle((margin, 408, margin + 142, 454), fill=EDITORIAL_GOLD)
+        draw.text((margin + 71, 431), SITE_NO_REGISTRATION, font=_font(FONT_BOLD, 20), fill=INK_DARK, anchor="mm")
+        _draw_feature_grid(draw, (margin, 500, 900, 1080), columns=2, compact=True, show_descriptions=True)
+        cta_y = 1130
+        draw.rectangle((margin, cta_y, 900, cta_y + 276), fill=(15, 21, 25))
+        draw.rectangle((margin, cta_y, margin + 8, cta_y + 276), fill=BURGUNDY)
+        draw.text((margin + 38, cta_y + 34), "概要欄のリンクからUMA-FREEへ", font=_fit_font_for_width(draw, "概要欄のリンクからUMA-FREEへ", FONT_BOLD, 36, 27, 760), fill=WHITE)
+        draw.text((margin + 38, cta_y + 100), "または「UMA-FREE」で検索", font=_font(FONT_REGULAR, 25), fill=(232, 230, 219))
+        draw.text((margin + 38, cta_y + 190), "uma-free.com", font=_font("Inter-Bold.ttf", 30), fill=EDITORIAL_GOLD)
 
     _save_slide(image, path, size)
 
@@ -1297,51 +1769,45 @@ def _draw_thumbnail(
     venue_name: str = "",
     race_number: Optional[int] = None,
     grade: str = "",
+    visual_asset: Optional[VisualAsset] = None,
 ) -> None:
     width, height = size
     compact = height > width
-    image, asset = _hero_background(size, target_date, venue_name, race_number)
+    image, _ = _hero_background(size, target_date, venue_name, race_number, visual_asset)
     image = _apply_photo_scrim(image, compact)
     draw = ImageDraw.Draw(image)
     margin = 68 if not compact else 56
     date_text = _display_short_date(target_date)
     headline = title.strip() or "全レース"
-    score_text = _hero_score_text(hero_horse)
-    horse_name = hero_horse.horse_name if hero_horse else "上位評価"
 
     if not compact:
-        _draw_v4_brand(draw, margin, 52, compact=False, light=True)
+        _draw_brand_lockup(image, draw, margin, 44, compact=False, light=True, logo_size=64)
+        _draw_site_claim_line(draw, 330, 60, 570, compact=False)
+        draw.line((margin, 114, 900, 114), fill=EDITORIAL_GOLD, width=4)
         chip_text = "  ".join(part for part in (date_text, venue_name, grade) if part)
-        chip_w = min(680, max(340, 42 + len(chip_text) * 32))
-        draw.rounded_rectangle((margin, 144, margin + chip_w, 208), radius=8, fill=DEEP_GREEN)
-        draw.text((margin + 24, 154), chip_text, font=_font(FONT_BOLD, 30), fill=WHITE)
+        draw.text((margin, 136), chip_text, font=_font(FONT_BOLD, 30), fill=(236, 235, 229))
         _draw_fit_text_no_ellipsis(
             draw,
             headline,
-            (margin, 272),
+            (margin, 212),
             FONT_BLACK,
-            96,
-            56,
-            950,
+            154,
+            76,
+            920,
             WHITE,
             max_lines=2,
-            line_gap=8,
-            stroke_width=6,
+            line_gap=0,
+            stroke_width=3,
             stroke_fill=TEXT_OUTLINE,
         )
-        draw.text((margin, 612), "AI偏差値", font=_font(FONT_BOLD, 34), fill=(235, 229, 209), stroke_width=3, stroke_fill=TEXT_OUTLINE)
-        draw.text((margin, 650), score_text, font=_font("Inter-Black.ttf", 150), fill=EDITORIAL_GOLD, stroke_width=4, stroke_fill=TEXT_OUTLINE)
-        _draw_horse_number_badge(draw, (margin + 68, 940), hero_horse, 88, stroke_width=4)
-        _draw_fit_text_no_ellipsis(draw, horse_name, (margin + 136, 900), FONT_BLACK, 47, 30, 660, WHITE, max_lines=1, stroke_width=4, stroke_fill=TEXT_OUTLINE)
+        _draw_feature_grid(draw, (margin, 520, 900, 770), columns=2, compact=False, show_descriptions=False)
+        _draw_photo_score_module(draw, (margin, 792, 900, 1004), hero_horse, compact=False)
     else:
-        _draw_v4_brand(draw, margin, 88, compact=True, light=True)
-        draw.text((width - margin, 100), date_text, font=_font(FONT_BOLD, 28), fill=WHITE, anchor="ra")
-        _draw_fit_text_no_ellipsis(draw, headline, (margin, 310), FONT_BLACK, 74, 44, width - margin * 2, WHITE, max_lines=2, line_gap=8, stroke_width=5, stroke_fill=TEXT_OUTLINE)
-        draw.text((margin, 650), "AI偏差値", font=_font(FONT_BOLD, 34), fill=(235, 229, 209))
-        draw.text((margin, 700), score_text, font=_font("Inter-Black.ttf", 170), fill=EDITORIAL_GOLD, stroke_width=4, stroke_fill=TEXT_OUTLINE)
-        _draw_horse_number_badge(draw, (margin + 66, 1050), hero_horse, 92, stroke_width=4)
-        _draw_fit_text_no_ellipsis(draw, horse_name, (margin + 136, 1008), FONT_BLACK, 48, 30, width - margin * 2 - 136, WHITE, max_lines=1, stroke_width=4, stroke_fill=TEXT_OUTLINE)
-    _draw_asset_credit(draw, asset, width, height)
+        _draw_brand_lockup(image, draw, margin, 82, compact=True, light=True)
+        draw.text((width - margin, 84), date_text, font=_font(FONT_BOLD, 27), fill=WHITE, anchor="ra")
+        draw.line((margin, 168, 900, 168), fill=EDITORIAL_GOLD, width=4)
+        _draw_fit_text_no_ellipsis(draw, headline, (margin, 264), FONT_BLACK, 82, 48, 840, WHITE, max_lines=2, line_gap=5, stroke_width=3, stroke_fill=TEXT_OUTLINE)
+        _draw_photo_score_module(draw, (margin, 650, 920, 864), hero_horse, compact=True)
     _save_slide(image, path, size)
 
 
@@ -1417,7 +1883,9 @@ def _concat_motion_clips(
 
     filter_parts: List[str] = []
     for idx in range(len(clip_paths)):
-        filter_parts.append(f"[{idx}:v]setpts=PTS-STARTPTS,fps={fps},format=yuv420p[v{idx}]")
+        filter_parts.append(
+            f"[{idx}:v]fps={fps},format=yuv420p,settb=AVTB,setpts=PTS-STARTPTS[v{idx}]"
+        )
 
     previous = "[v0]"
     offset = max(0.0, durations[0] - fade)
@@ -1451,14 +1919,24 @@ def _concat_motion_clips(
     subprocess.run(command, check=True)
 
 
-def _add_bgm_if_configured(ffmpeg: str, video_path: Path, output_path: Path) -> bool:
-    bgm = os.getenv("SOCIAL_VIDEO_BGM_PATH")
-    if not bgm:
-        return False
-    bgm_path = Path(bgm)
-    if not bgm_path.exists():
-        raise RuntimeError(f"SOCIAL_VIDEO_BGM_PATH が見つかりません: {bgm_path}")
-    volume = os.getenv("SOCIAL_VIDEO_BGM_VOLUME", "0.20")
+def _add_bgm(
+    ffmpeg: str,
+    video_path: Path,
+    output_path: Path,
+    audio_asset: AudioAsset,
+    duration_seconds: float,
+) -> None:
+    fade_in = min(0.6, max(0.1, duration_seconds * 0.1))
+    fade_out = min(0.8, max(0.1, duration_seconds * 0.15))
+    fade_out_start = max(fade_in, duration_seconds - fade_out)
+    audio_filter = (
+        "[1:a]loudnorm=I=-18:TP=-1.5:LRA=11,"
+        "aresample=48000,"
+        f"volume={audio_asset.volume:.4f},"
+        f"afade=t=in:st=0:d={fade_in:.3f},"
+        f"afade=t=out:st={fade_out_start:.3f}:d={fade_out:.3f},"
+        f"atrim=0:{duration_seconds:.3f},asetpts=N/SR/TB[bgm]"
+    )
     command = [
         ffmpeg,
         "-y",
@@ -1467,9 +1945,9 @@ def _add_bgm_if_configured(ffmpeg: str, video_path: Path, output_path: Path) -> 
         "-stream_loop",
         "-1",
         "-i",
-        str(bgm_path),
+        str(audio_asset.path),
         "-filter_complex",
-        f"[1:a]volume={volume}[bgm]",
+        audio_filter,
         "-map",
         "0:v",
         "-map",
@@ -1478,22 +1956,44 @@ def _add_bgm_if_configured(ffmpeg: str, video_path: Path, output_path: Path) -> 
         "copy",
         "-c:a",
         "aac",
+        "-b:a",
+        "192k",
+        "-t",
+        f"{duration_seconds:.3f}",
         "-shortest",
         "-movflags",
         "+faststart",
         str(output_path),
     ]
     subprocess.run(command, check=True)
-    return True
 
 
-def render_mp4(slides: Sequence[Slide], output_path: Path, width: int, height: int) -> None:
+def _timeline_duration(slides: Sequence[Slide], use_crossfade: bool) -> float:
+    duration = sum(max(0.0, slide.duration_seconds) for slide in slides)
+    if use_crossfade and len(slides) > 1:
+        fade = min(CROSSFADE_SECONDS, max(0.04, min(slide.duration_seconds for slide in slides) * 0.45))
+        duration -= fade * (len(slides) - 1)
+    return max(0.1, duration)
+
+
+def render_mp4(
+    slides: Sequence[Slide],
+    output_path: Path,
+    width: int,
+    height: int,
+    audio_asset: Optional[AudioAsset] = None,
+) -> None:
     ffmpeg = os.getenv("FFMPEG_BINARY") or shutil.which("ffmpeg")
     if not ffmpeg:
         raise RuntimeError("ffmpegが見つかりません。ローカル検証では --skip-video を使うか、ffmpegをインストールしてください。")
-    if os.getenv("SOCIAL_VIDEO_DISABLE_MOTION") == "1":
+    if audio_asset is None and os.getenv("SOCIAL_VIDEO_BGM_PATH"):
+        audio_asset = resolve_audio_asset("", "short" if height > width else "venue_long", output_path.stem)
+    disable_motion = os.getenv("SOCIAL_VIDEO_DISABLE_MOTION") == "1"
+    duration_seconds = _timeline_duration(slides, use_crossfade=not disable_motion)
+    if disable_motion:
         manifest = output_path.with_suffix(".concat.txt")
         _write_concat_manifest(slides, manifest)
+        video_without_audio = output_path.with_suffix(".video.mp4") if audio_asset else output_path
         command = [
             ffmpeg,
             "-y",
@@ -1507,31 +2007,40 @@ def render_mp4(slides: Sequence[Slide], output_path: Path, width: int, height: i
             f"fps={VIDEO_FPS},format=yuv420p,scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2",
             "-movflags",
             "+faststart",
-            str(output_path),
+            str(video_without_audio),
         ]
         subprocess.run(command, check=True)
+        if audio_asset:
+            _add_bgm(ffmpeg, video_without_audio, output_path, audio_asset, duration_seconds)
+            try:
+                video_without_audio.unlink()
+            except OSError:
+                pass
         return
 
     motion_dir = output_path.parent / f".{output_path.stem}_motion"
     if motion_dir.exists():
         shutil.rmtree(motion_dir)
     motion_dir.mkdir(parents=True, exist_ok=True)
-    clip_paths: List[Path] = []
-    durations: List[float] = []
-    for idx, slide in enumerate(slides):
-        clip_path = motion_dir / f"clip_{idx:03d}.mp4"
-        _render_static_clip(ffmpeg, slide, clip_path, width, height, VIDEO_FPS)
-        clip_paths.append(clip_path)
-        durations.append(slide.duration_seconds)
+    try:
+        clip_paths: List[Path] = []
+        durations: List[float] = []
+        for idx, slide in enumerate(slides):
+            clip_path = motion_dir / f"clip_{idx:03d}.mp4"
+            _render_static_clip(ffmpeg, slide, clip_path, width, height, VIDEO_FPS)
+            clip_paths.append(clip_path)
+            durations.append(slide.duration_seconds)
 
-    video_without_audio = output_path.with_suffix(".video.mp4") if os.getenv("SOCIAL_VIDEO_BGM_PATH") else output_path
-    _concat_motion_clips(ffmpeg, clip_paths, durations, video_without_audio, VIDEO_FPS)
-    if video_without_audio != output_path:
-        _add_bgm_if_configured(ffmpeg, video_without_audio, output_path)
-        try:
-            video_without_audio.unlink()
-        except OSError:
-            pass
+        video_without_audio = output_path.with_suffix(".video.mp4") if audio_asset else output_path
+        _concat_motion_clips(ffmpeg, clip_paths, durations, video_without_audio, VIDEO_FPS)
+        if audio_asset:
+            _add_bgm(ffmpeg, video_without_audio, output_path, audio_asset, duration_seconds)
+            try:
+                video_without_audio.unlink()
+            except OSError:
+                pass
+    finally:
+        shutil.rmtree(motion_dir, ignore_errors=True)
 
 
 def _write_metadata(path: Path, payload: dict) -> None:
@@ -1547,8 +2056,22 @@ def _draw_intro_sequence(
     race_label: str,
     venue_name: str,
     race_number: Optional[int] = None,
+    visual_asset: Optional[VisualAsset] = None,
 ) -> List[Slide]:
     target_score = hero_horse.deviation_score if hero_horse and hero_horse.deviation_score is not None else None
+    compact = size[1] > size[0]
+    slides: List[Slide] = []
+    if compact:
+        site_intro = video_dir / "000_site_intro.png"
+        _draw_short_site_intro_slide(
+            site_intro,
+            target_date,
+            size,
+            venue_name,
+            race_number,
+            visual_asset,
+        )
+        slides.append(Slide(site_intro, 0.65))
     if target_score is None:
         intro = video_dir / "000_intro.png"
         _draw_intro_slide(
@@ -1560,15 +2083,18 @@ def _draw_intro_sequence(
             race_label=race_label,
             venue_name=venue_name,
             race_number=race_number,
+            visual_asset=visual_asset,
         )
-        return [Slide(intro, 2.5)]
+        slides.append(Slide(intro, 1.85 if compact else 2.5))
+        return slides
 
-    slides: List[Slide] = []
     frame_count = 7
     for frame in range(frame_count):
-        ratio = frame / max(frame_count - 1, 1)
+        show_score = frame > 0
+        ratio = max(0.0, (frame - 1) / max(frame_count - 2, 1))
         eased = 1 - (1 - ratio) * (1 - ratio)
-        score_value = target_score * eased
+        start_score = min(50.0, target_score)
+        score_value = start_score + (target_score - start_score) * eased
         path = video_dir / f"000_intro_{frame:02d}.png"
         _draw_intro_slide(
             path,
@@ -1580,35 +2106,52 @@ def _draw_intro_sequence(
             score_override=score_value,
             venue_name=venue_name,
             race_number=race_number,
+            visual_asset=visual_asset,
+            show_score=show_score,
         )
-        slides.append(Slide(path, 0.15 if frame < frame_count - 1 else 1.6))
+        if compact:
+            duration = 0.10 if frame < frame_count - 1 else 1.25
+        else:
+            duration = 0.18 if frame < frame_count - 1 else 1.42
+        slides.append(Slide(path, duration))
     return slides
 
 
 def _long_title(venue: VenueVideoData, target_date: str) -> str:
     grade_names = "・".join(race.display_name for race in venue.grade_races[:2])
     if grade_names:
-        return f"【{grade_names}】{venue.venue_name} 全レースAI分析 {target_date}"
-    return f"【{venue.venue_name}】全レースAI分析 {target_date}"
+        return f"【{grade_names}】{venue.venue_name} 全レースデータ {target_date}"
+    return f"【{venue.venue_name}】全レースデータ {target_date}"
 
 
-def _description(title: str, target_date: str, url: str, venue_name: Optional[str] = None) -> str:
+def _description(
+    title: str,
+    target_date: str,
+    url: str,
+    venue_name: Optional[str] = None,
+    credit_lines: Sequence[str] = (),
+) -> str:
     venue_line = f"{venue_name}の" if venue_name else ""
-    return textwrap.dedent(
+    description = textwrap.dedent(
         f"""\
         {title}
 
-        {venue_line}AI偏差値、位置取り、枠順傾向をレース順に整理しています。
-        詳細な出走馬データはUMA-FREEで無料公開しています。
+        UMA-FREEでは、中央・地方競馬の全レース分析データを毎日無料で掲載しています。登録は不要です。
+        {venue_line}AI偏差値、過去対戦成績、位置取り予測、枠順傾向をレース順に掲載しています。
+        全頭分のデータはUMA-FREEに掲載しています。
 
         ▼当日の全レース分析
         {url}
 
-        ※本動画は過去データをもとにした確認材料です。結果を保証するものではありません。
+        ※本動画は過去データをもとにした参考情報です。結果を保証するものではありません。
 
-        #競馬 #AI予想 #UMA_FREE
+        #競馬 #競馬データ #UMA_FREE
         """
     ).strip()
+    unique_credits = list(dict.fromkeys(line.strip() for line in credit_lines if line.strip()))
+    if unique_credits:
+        description += "\n\n素材クレジット\n" + "\n".join(f"- {line}" for line in unique_credits)
+    return description
 
 
 def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path, skip_video: bool = False) -> RenderedVideo:
@@ -1620,6 +2163,21 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
     title = _long_title(venue, target_date)
     slides: List[Slide] = []
     hero_race, hero_horse = _best_horse_for_venue(venue)
+    hero_race_number = hero_race.race_number if hero_race else None
+    visual_asset = resolve_visual_asset(
+        target_date,
+        venue.venue_name,
+        hero_race_number,
+        "wide",
+        selection_key=stable_id,
+    )
+    audio_asset = resolve_audio_asset(target_date, "venue_long", stable_id)
+    publish_block_reasons: List[str] = []
+    if visual_asset is None:
+        publish_block_reasons.append("長尺用の横写真が見つかりません")
+    if audio_asset is None:
+        publish_block_reasons.append("長尺用BGMが見つかりません")
+    publishable = not publish_block_reasons
     grade_names = " / ".join(race.display_name for race in venue.grade_races[:2])
     thumb_title = grade_names or f"{venue.venue_name} 全{len(venue.races)}R"
     hero_label = f"{venue.venue_name}{hero_race.race_number}R" if hero_race else venue.venue_name
@@ -1633,7 +2191,8 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
             hero_horse=hero_horse,
             race_label=hero_label,
             venue_name=venue.venue_name,
-            race_number=hero_race.race_number if hero_race else None,
+            race_number=hero_race_number,
+            visual_asset=visual_asset,
         )
     )
 
@@ -1653,7 +2212,15 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         slide_index += 1
 
     outro = video_dir / "999_outro.png"
-    _draw_outro_slide(outro, target_date, size, utm_content)
+    _draw_outro_slide(
+        outro,
+        target_date,
+        size,
+        utm_content,
+        venue_name=venue.venue_name,
+        race_number=hero_race_number,
+        visual_asset=visual_asset,
+    )
     slides.append(Slide(outro, LONG_OUTRO_SECONDS))
 
     thumbnail = video_dir / "thumbnail.png"
@@ -1667,38 +2234,69 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         size,
         hero_horse=hero_horse,
         venue_name=venue.venue_name,
-        race_number=hero_race.race_number if hero_race else None,
+        race_number=hero_race_number,
         grade=hero_grade,
+        visual_asset=visual_asset,
     )
 
     video_path: Optional[Path] = video_dir / f"{stable_id}.mp4"
     if skip_video:
         video_path = None
     else:
-        render_mp4(slides, video_path, *size)
+        render_mp4(slides, video_path, *size, audio_asset=audio_asset)
 
     url = build_video_url(target_date, utm_content, venue.venue_name)
+    course_assets: dict[str, CourseAsset] = {}
+    for race in venue.races:
+        course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
+        if course_asset is not None:
+            course_assets[course_asset.asset_id] = course_asset
+    selected_assets = {
+        "brand_logo": _brand_logo_metadata(),
+        "hero_image": visual_asset_metadata(visual_asset),
+        "thumbnail_image": visual_asset_metadata(visual_asset),
+        "bgm": audio_asset_metadata(audio_asset),
+        "courses": [course_asset_metadata(asset) for asset in course_assets.values()],
+    }
+    credits = asset_credit_lines(visual_asset, audio_asset)
     metadata_path = video_dir / "metadata.json"
     metadata = {
         "video_type": "venue_long",
         "stable_id": stable_id,
         "title": title,
-        "description": _description(title, target_date, url, venue.venue_name),
+        "description": _description(title, target_date, url, venue.venue_name, credits),
         "tags": ["競馬", "AI予想", "UMA-FREE", venue.venue_name, *(race.display_name for race in venue.grade_races[:2])],
         "target_date": target_date,
         "url": url,
         "video_path": str(video_path) if video_path else None,
         "thumbnail_path": str(thumbnail),
         "utm_content": utm_content,
+        "publishable": publishable,
+        "publish_block_reasons": publish_block_reasons,
+        "selected_assets": selected_assets,
+        "asset_warnings": publish_block_reasons,
     }
     _write_metadata(metadata_path, metadata)
-    return RenderedVideo("venue_long", stable_id, title, metadata["description"], metadata["tags"], video_path, thumbnail, metadata_path, 0)
+    return RenderedVideo(
+        "venue_long",
+        stable_id,
+        title,
+        metadata["description"],
+        metadata["tags"],
+        video_path,
+        thumbnail,
+        metadata_path,
+        0,
+        publishable,
+        publish_block_reasons,
+        selected_assets,
+    )
 
 
 def _short_title(race: RaceVideoData, target_date: str) -> str:
     if race.grade:
-        return f"【{race.display_name}】AI偏差値と位置取り {target_date} #shorts"
-    return f"【{race.venue_name}{race.race_number}R】AI偏差値と位置取り {target_date} #shorts"
+        return f"【{race.display_name}】AI偏差値・位置取り {target_date} #shorts"
+    return f"【{race.venue_name}{race.race_number}R】AI偏差値・位置取り {target_date} #shorts"
 
 
 def _draw_short_position_slide(path: Path, race: RaceVideoData, target_date: str, size: tuple[int, int], utm_content: str) -> None:
@@ -1714,6 +2312,29 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
     title = _short_title(race, target_date)
     slides: List[Slide] = []
     hero_horse = _best_horse_for_race(race)
+    visual_asset = resolve_visual_asset(
+        target_date,
+        race.venue_name,
+        race.race_number,
+        "vertical",
+        selection_key=stable_id,
+    )
+    thumbnail_asset = resolve_visual_asset(
+        target_date,
+        race.venue_name,
+        race.race_number,
+        "wide",
+        selection_key=f"{stable_id}:thumbnail",
+    )
+    audio_asset = resolve_audio_asset(target_date, "short", stable_id)
+    publish_block_reasons: List[str] = []
+    if visual_asset is None:
+        publish_block_reasons.append("Shorts用の縦写真が見つかりません")
+    if thumbnail_asset is None:
+        publish_block_reasons.append("Shortsサムネイル用の横写真が見つかりません")
+    if audio_asset is None:
+        publish_block_reasons.append("Shorts用BGMが見つかりません")
+    publishable = not publish_block_reasons
 
     slides.extend(
         _draw_intro_sequence(
@@ -1725,19 +2346,37 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
             race_label=f"{race.venue_name}{race.race_number}R",
             venue_name=race.venue_name,
             race_number=race.race_number,
+            visual_asset=visual_asset,
         )
     )
 
-    race_slide = video_dir / "001_race.png"
-    _draw_race_slide(race_slide, race, target_date, size, utm_content)
-    slides.append(Slide(race_slide, SHORT_RACE_SLIDE_SECONDS))
+    reveal_steps = [(1, 0.15), (3, 0.15), (5, SHORT_RACE_SLIDE_SECONDS - 0.30)]
+    for visible_count, duration in reveal_steps:
+        race_slide = video_dir / f"001_race_{visible_count:02d}.png"
+        _draw_race_slide(
+            race_slide,
+            race,
+            target_date,
+            size,
+            utm_content,
+            visible_rank_count=visible_count,
+        )
+        slides.append(Slide(race_slide, duration))
 
     position_slide = video_dir / "002_position.png"
     _draw_short_position_slide(position_slide, race, target_date, size, utm_content)
     slides.append(Slide(position_slide, SHORT_POSITION_SLIDE_SECONDS))
 
     outro = video_dir / "999_outro.png"
-    _draw_outro_slide(outro, target_date, size, utm_content)
+    _draw_outro_slide(
+        outro,
+        target_date,
+        size,
+        utm_content,
+        venue_name=race.venue_name,
+        race_number=race.race_number,
+        visual_asset=visual_asset,
+    )
     slides.append(Slide(outro, SHORT_OUTRO_SECONDS))
 
     thumbnail = video_dir / "thumbnail.png"
@@ -1751,21 +2390,33 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         venue_name=race.venue_name,
         race_number=race.race_number,
         grade=race.grade or "",
+        visual_asset=thumbnail_asset,
     )
 
     video_path: Optional[Path] = video_dir / f"{stable_id}.mp4"
     if skip_video:
         video_path = None
     else:
-        render_mp4(slides, video_path, *size)
+        render_mp4(slides, video_path, *size, audio_asset=audio_asset)
 
     url = build_video_url(target_date, utm_content, race.venue_name, race.race_number)
+    course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
+    selected_assets = {
+        "brand_logo": _brand_logo_metadata(),
+        "hero_image": visual_asset_metadata(visual_asset),
+        "thumbnail_image": visual_asset_metadata(thumbnail_asset),
+        "bgm": audio_asset_metadata(audio_asset),
+        "course": course_asset_metadata(course_asset),
+    }
+    credits = asset_credit_lines(visual_asset, audio_asset)
+    if thumbnail_asset is not None:
+        credits.extend(asset_credit_lines(thumbnail_asset, None))
     metadata_path = video_dir / "metadata.json"
     metadata = {
         "video_type": "short",
         "stable_id": stable_id,
         "title": title,
-        "description": _description(title, target_date, url, race.venue_name),
+        "description": _description(title, target_date, url, race.venue_name, credits),
         "tags": ["競馬", "AI予想", "UMA-FREE", "Shorts", race.venue_name, race.display_name],
         "target_date": target_date,
         "url": url,
@@ -1773,6 +2424,23 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         "thumbnail_path": str(thumbnail),
         "utm_content": utm_content,
         "publish_order": index,
+        "publishable": publishable,
+        "publish_block_reasons": publish_block_reasons,
+        "selected_assets": selected_assets,
+        "asset_warnings": publish_block_reasons,
     }
     _write_metadata(metadata_path, metadata)
-    return RenderedVideo("short", stable_id, title, metadata["description"], metadata["tags"], video_path, thumbnail, metadata_path, 10 + index * 10)
+    return RenderedVideo(
+        "short",
+        stable_id,
+        title,
+        metadata["description"],
+        metadata["tags"],
+        video_path,
+        thumbnail,
+        metadata_path,
+        10 + index * 10,
+        publishable,
+        publish_block_reasons,
+        selected_assets,
+    )

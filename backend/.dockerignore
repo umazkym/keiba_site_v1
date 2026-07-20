@@ -1,0 +1,12 @@
+# Cloud Run APIでは動画生成素材を使用しない。
+# GitHub Actionsの動画パイプラインだけが参照する大容量資産を本番イメージから除外する。
+scripts/social_video/assets/audio/
+scripts/social_video/assets/courses/
+scripts/social_video/assets/images/
+
+# ローカル専用データ・キャッシュ
+*.db
+*.sqlite3
+__pycache__/
+*.pyc
+tests/

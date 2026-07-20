@@ -58,6 +58,22 @@ class RaceVideoData:
         return bool(self.grade)
 
 
+def infer_waku_number(horse_number: int, total_horses: int) -> Optional[int]:
+    """フロントエンドのgetWakuNumberと同じ規則で枠番を補完する。"""
+    if horse_number <= 0 or total_horses <= 0 or horse_number > total_horses:
+        return None
+    if total_horses <= 8:
+        return horse_number
+
+    quotient, remainder = divmod(total_horses, 8)
+    current_horse = 1
+    for waku_index in range(8):
+        count = quotient + (1 if (7 - waku_index) < remainder else 0)
+        if current_horse <= horse_number < current_horse + count:
+            return waku_index + 1
+        current_horse += count
+    return None
+
 @dataclass
 class VenueVideoData:
     venue_name: str
@@ -201,6 +217,10 @@ def _normalize_race(raw: Dict[str, Any], grade_map: Dict[str, Dict[str, Any]]) -
                 start_1c_indicator=_to_float(item.get("start_1c_indicator")),
             )
         )
+    total_horses = len([horse for horse in predictions if horse.horse_number > 0])
+    for horse in predictions:
+        if horse.waku_number is None or not 1 <= horse.waku_number <= 8:
+            horse.waku_number = infer_waku_number(horse.horse_number, total_horses)
     _position_labels(predictions)
     predictions.sort(key=lambda horse: (horse.horse_number <= 0, horse.horse_number))
     return RaceVideoData(
@@ -259,4 +279,3 @@ def pick_shorts_targets(venues: List[VenueVideoData], max_shorts: int) -> List[R
         return (grade_weight, main_weight, -top_score)
 
     return sorted(candidates, key=priority)[:max(0, max_shorts)]
-

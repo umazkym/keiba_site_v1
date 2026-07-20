@@ -44,10 +44,10 @@ jobs:
           cache: 'pip'
           cache-dependency-path: backend/requirements.txt
 
-      - name: Install FFmpeg
+      - name: Install FFmpeg and Japanese fonts
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg fonts-noto-cjk
 
       - name: Install dependencies
         run: |
@@ -58,6 +58,22 @@ jobs:
         uses: ./.github/actions/setup-iap-db
         with:
           database_url: ${{ secrets.DATABASE_URL }}
+
+      - name: Download licensed BGM from private storage
+        env:
+          SOCIAL_VIDEO_BGM_GCS_URI: gs://keiba-api-project-private-social-assets/audio/waiwai-music-time.mp3
+        run: |
+          set -euo pipefail
+          mkdir -p backend/scripts/social_video/assets/audio/common
+          gcloud storage cp "$SOCIAL_VIDEO_BGM_GCS_URI" \
+            backend/scripts/social_video/assets/audio/common/わいわいミュージック・タイム.mp3
+
+      - name: Validate social video assets
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: |
+          python scripts/social_video/validate_assets.py --json-output ../youtube_video_dist/asset-validation.json
 
       - name: Generate and upload YouTube videos
         working-directory: backend
@@ -81,3 +97,17 @@ jobs:
           fi
           python scripts/youtube_video_pipeline.py --max-shorts "${YOUTUBE_MAX_SHORTS}" $EXTRA_ARGS
 
+      - name: Upload social video validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-video-validation-${{ github.run_id }}
+          path: |
+            youtube_video_dist/**/asset-validation.json
+            youtube_video_dist/**/summary.json
+            youtube_video_dist/**/thumbnail.png
+            youtube_video_dist/**/thumbnail_246x138.png
+            youtube_video_dist/**/design-contact-sheet.png
+            youtube_video_dist/**/shorts-ui-overlay.png
+          if-no-files-found: warn
+          retention-days: 7

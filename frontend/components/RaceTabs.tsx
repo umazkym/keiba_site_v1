@@ -362,47 +362,23 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         });
     }, [activeRace, isActiveRaceUnlocked, canUseRewardedAd, isLoading, unavailableReason, buildRewardContext]);
 
-    const RaceNavigation = () => {
-        const hasPrev = activeRaceIndex > 0;
-        const hasNext = activeRaceIndex < venue.races.length - 1;
-        const prevRace = hasPrev ? venue.races[activeRaceIndex - 1] : null;
-        const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
-
-        return (
-            <div className="my-2 sm:my-3">
-                <div className="flex justify-between items-center gap-2">
-                    {hasPrev && prevRace ? (
-                        <button onClick={() => handleRaceSelect(activeRaceIndex - 1, 'previous_button')} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 font-bold shadow-sm">
-                            &larr; {prevRace.race_number}Rへ
-                        </button>
-                    ) : <div className="flex-1" />}
-                    {hasNext && nextRace ? (
-                        <button onClick={() => handleRaceSelect(activeRaceIndex + 1, 'next_button')} className="btn-primary flex-1 text-center text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 font-bold shadow-sm">
-                            {nextRace.race_number}Rへ &rarr;
-                        </button>
-                    ) : <div className="flex-1" />}
-                </div>
-            </div>
-        );
-    };
-
     return (
         <div id={`venue-${venue.venue_name}`}>
-            <div className="sticky top-14 lg:top-16 z-30 bg-white/95 backdrop-blur-sm -mx-2 px-2 lg:mx-0 lg:px-0 py-0.5 lg:py-1.5 shadow-sm border-b border-gray-100">
-                {activeRace && (
-                    <div className="text-[10px] sm:text-xs text-gray-600 font-semibold px-2.5 mb-1 flex items-center justify-between gap-2 border-b border-gray-100/50 pb-1 flex-wrap">
-                        <span className="truncate">{formatDate(currentDate)} {venue.venue_name} {activeRace.race_number}R {activeRace.race_name}</span>
-                        {(() => {
-                            const favorite = activeRace.predictions.find(p => p.mark === '◎');
-                            if (!favorite) return null;
-                            return (
-                                <span className="shrink-0 text-primary">
-                                    ◎ {favorite.horse_name} <span className="font-mono bg-blue-50 px-1 rounded font-bold">{favorite.deviation_score?.toFixed(1)}</span>
-                                </span>
-                            );
-                        })()}
-                    </div>
-                )}
+            {activeRace && (
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-slate-100 bg-white px-2.5 py-2 text-[11px] font-semibold text-slate-600 sm:text-xs">
+                    <span className="truncate">{formatDate(currentDate)} {venue.venue_name} {activeRace.race_number}R {activeRace.race_name}</span>
+                    {(() => {
+                        const favorite = activeRace.predictions.find(p => p.mark === '◎');
+                        if (!favorite) return null;
+                        return (
+                            <span className="shrink-0 text-primary">
+                                ◎ {favorite.horse_name} <span className="rounded bg-blue-50 px-1 font-mono font-bold">{favorite.deviation_score?.toFixed(1)}</span>
+                            </span>
+                        );
+                    })()}
+                </div>
+            )}
+            <div className="sticky top-12 z-30 -mx-2 border-b border-slate-200 bg-white px-2 py-1 shadow-sm sm:top-16 lg:mx-0 lg:px-0">
                 <RaceSelector
                     races={venue.races}
                     selectedIndex={activeRaceIndex}
@@ -412,9 +388,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             {activeRace && (
                 <div id={`race-${activeRace.id}`} className="race-detail-layout mt-1">
                     <div className="grid gap-3">
-                        {/* 前後レースナビ（上部） */}
-                        <RaceNavigation />
-
                         <div id="race-prediction-section" className="card mb-1 overflow-hidden border border-gray-200 shadow-sm sm:mb-1.5">
                             <div className="bg-white px-2.5 py-1 sm:p-4 border-b border-gray-200">
                                 <h3 className="text-[15px] sm:text-lg font-bold flex items-center text-gray-800">
@@ -592,7 +565,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 }
                                 return null;
                             })()}
-                            <RaceNavigation />
                         </div>
 
                         <div id="race-data-guide-section">

@@ -18,7 +18,6 @@ export const RaceSelector = ({ races, selectedIndex, onSelectRace }: Props) => {
             title={`${race.race_number}Rを表示中`}
           >
             {race.race_number}R
-            <small>{race.course_type ? (race.course_type.includes("芝") ? "芝" : "ダ") : ""}</small>
           </span>
         ) : (
           <button
@@ -28,10 +27,9 @@ export const RaceSelector = ({ races, selectedIndex, onSelectRace }: Props) => {
               onSelectRace(index);
               e.currentTarget.blur();
             }}
-            className="race-tab active:scale-95 transition-transform"
+            className="race-tab transition-colors duration-150"
           >
             {race.race_number}R
-            <small>{race.course_type ? (race.course_type.includes("芝") ? "芝" : "ダ") : ""}</small>
           </button>
         )
       ))}

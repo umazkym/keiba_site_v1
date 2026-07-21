@@ -12,13 +12,17 @@ function isApiKeyInvalidError(error: unknown): boolean {
 }
 
 
-const DEFAULT_BUYING_POINT_HEADING = '## このコースの買い目ポイント';
-const RACE_BUYING_POINT_HEADING = '## このレースの買い目ポイント';
-const COURSE_VENUE_POINT_HEADING = '## この競馬場の確認ポイント';
+const DEFAULT_BUYING_POINT_HEADING = '## このコースで確認したい判断材料';
+const RACE_BUYING_POINT_HEADING = '## このレースで確認したい判断材料';
+const COURSE_VENUE_POINT_HEADING = '## この競馬場で確認したい判断材料';
 const JOCKEY_POINT_HEADING = '## この騎手を確認するポイント';
-const BEGINNER_POINT_HEADING = '## このテーマの確認ポイント';
+const BEGINNER_POINT_HEADING = '## このテーマで確認したい判断材料';
 const REQUIRED_TODAY_RACE_CTA = '最新の出馬表とAI予想は [今日のAI予想・出馬表](/races/today) で無料公開中。';
 const POINT_HEADING_TEXTS = [
+  'このコースで確認したい判断材料',
+  'このレースで確認したい判断材料',
+  'この競馬場で確認したい判断材料',
+  'このテーマで確認したい判断材料',
   'このコースの買い目ポイント',
   'このレースの買い目ポイント',
   'この競馬場の確認ポイント',
@@ -73,7 +77,7 @@ const BANNED_REPLACEMENTS: Record<string, string> = {
   '✅': '',
   '❌': '',
   'と思っていませんか': '',
-  'この記事をお読みいただければ': 'この記事では',
+  'この記事をお読みいただければ': '扱う内容は',
   'オカルトや個人の感覚ではなく': 'データを手掛かりに',
   '曖昧な勘に頼るのではなく': '数字を確認しながら',
   '結論から言うと': '',
@@ -114,6 +118,11 @@ const BANNED_REPLACEMENTS: Record<string, string> = {
   '資金を集中': '買い目を絞る',
   '勝負する': '評価する',
   '勝負気配': '状態の良さ',
+  'ニュース後': '更新後',
+  'ニュース起点': '開催条件を起点とした',
+  'ニュースで': '更新情報で',
+  '枠順発表前前': '枠順発表前',
+  ' of ': 'の',
   'としての完全な': 'としての',
   'プラスである': 'が評価できる',
   'マイナスである': 'がリスクになる',
@@ -779,37 +788,37 @@ function fallbackBuyingPoints(data: Record<string, any>): string[] {
     ],
   };
   if (pointsByIntent[intent]) return pointsByIntent[intent];
-  if (theme === 'jockey_data') {
+  if (theme === 'jockey_data' || theme === 'jockey_profile') {
     return [
-      '買い: 勝率と騎乗回数がそろう騎手は、人気との釣り合いを見て軸候補にする。',
-      '抑え: 回収率だけが高い騎手は、相手候補として配当に厚みを出す。',
-      '見送り: 勝率が低く人気だけ先行する騎乗は、評価を下げる。',
+      '確認: 勝率と騎乗回数を分け、今回の騎乗馬と条件が合うかを見る。',
+      '相手候補: 複勝率と騎乗馬の近走がそろう場合に候補として残す。',
+      '慎重: 騎手名だけで人気が先行する騎乗は、馬側の条件を優先する。',
       '条件付き: 馬場悪化や少頭数では、先行できる馬との組み合わせを優先する。',
     ];
   }
 
   if (theme === 'grade_race_preview') {
     return [
-      '買い: AI偏差値上位でも枠順と脚質を合わせて、軸にできるか確認する。',
-      '抑え: コース傾向に合う馬は、人気が落ちるなら相手に残す。',
-      '見送り: 評価が低く展開の助けも必要な馬は、買い目を広げすぎない。',
+      '確認: AI偏差値上位でも、枠順と脚質が合うかを確かめる。',
+      '相手候補: コース傾向に合う馬は、人気との釣り合いを見て候補に残す。',
+      '慎重: 評価が低く展開の助けも必要な馬は、条件をもう一度確認する。',
       '条件付き: 馬場が変わる日は、当日の時計と内外の伸びを見て評価を調整する。',
     ];
   }
 
   if (theme === 'race_update') {
     return [
-      '買い: 発表内容と枠順、脚質がかみ合う馬は、軸候補として最初に確認する。',
-      '抑え: コース傾向に合う馬は、人気が落ちるなら相手に残す。',
-      '見送り: 話題性だけで人気が先行する馬は、AI偏差値と馬場適性を見て評価を下げる。',
+      '確認: 発表済みの枠順と脚質がかみ合うかを最初に見る。',
+      '相手候補: コース傾向に合う馬は、人気との釣り合いを見て候補に残す。',
+      '慎重: 話題性だけで人気が先行する馬は、AI偏差値と馬場適性を照合する。',
       '条件付き: 騎手変更や馬場悪化がある日は、直前の出馬表で評価を調整する。',
     ];
   }
 
   return [
-    '買い: 勝率と複勝率がそろう条件は、軸候補として最初に確認する。',
-    '抑え: 回収率に妙味が残る条件は、相手候補として買い目に残す。',
-    '見送り: 数字が低く人気だけ先行する条件は、評価を下げる。',
+    '確認: 勝率と複勝率がそろう条件を最初に見る。',
+    '相手候補: 回収率に妙味が残る条件は、母数を見て候補に残す。',
+    '慎重: 数字が低く人気だけ先行する条件は、評価を見直す。',
     '条件付き: 馬場や頭数が変わる日は、直前の出馬表で脚質との相性を確認する。',
   ];
 }
@@ -888,7 +897,7 @@ function ensureNumberInOpening(content: string, data: Record<string, any>): stri
   if (/\d/.test(plainText.slice(0, 100))) return content;
 
   const target = compactForTitle(data.target_keyword || data.title || 'この条件');
-  return `${target}では、まず3つの数字を順に確認すると買い目の優先順位を決めやすい。\n\n${content}`;
+  return `${target}では、まず3つの数字を順に確認すると判断の優先順位を決めやすい。\n\n${content}`;
 }
 
 function bodyPlainLength(content: string): number {

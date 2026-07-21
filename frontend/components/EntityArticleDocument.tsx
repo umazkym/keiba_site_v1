@@ -4,6 +4,7 @@ import { ArticleSchema } from "@/components/StructuredData";
 import { enhanceArticleHtml } from "@/lib/article-ux";
 import { AdUnit } from "@/components/AdUnit";
 import { MultiplexAd } from "@/components/MultiplexAd";
+import { RaceAnalysisValueGrid } from "@/components/RaceAnalysisValueGrid";
 
 type EntityArticleDocumentProps = {
   article: Article;
@@ -24,13 +25,6 @@ function formatDate(date: string) {
   });
 }
 
-function formatShortDate(date: string) {
-  return new Date(date).toLocaleDateString("ja-JP", {
-    month: "numeric",
-    day: "numeric",
-  });
-}
-
 export function ArticleThemeNavigator({
   articles,
   currentSlug,
@@ -44,6 +38,23 @@ export function ArticleThemeNavigator({
 }) {
   if (articles.length <= 1) return null;
 
+  const currentIndex = articles.findIndex(item => item.slug === currentSlug);
+  const previousArticle = currentIndex > 0 ? articles[currentIndex - 1] : null;
+  const nextArticle = currentIndex >= 0 && currentIndex < articles.length - 1 ? articles[currentIndex + 1] : null;
+
+  const ArticleDirectionLink = ({ article, label, align }: { article: ArticleMeta | null; label: string; align: 'left' | 'right' }) => {
+    if (!article) return <span aria-hidden="true" />;
+    return (
+      <Link
+        href={`/articles/${article.slug}`}
+        className={`flex min-h-11 min-w-0 flex-col justify-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 ${align === 'right' ? 'text-right' : 'text-left'}`}
+      >
+        <span className="text-[10px] font-bold text-slate-400">{label}</span>
+        <span className="truncate text-xs font-black text-slate-800">{article.title}</span>
+      </Link>
+    );
+  };
+
   return (
     <nav className="mb-3 rounded-xl border border-slate-200 bg-white p-2.5 sm:mb-5 sm:p-3" aria-label="記事切り替え">
       <div className="mb-2 flex items-center justify-between gap-3 px-1">
@@ -53,51 +64,16 @@ export function ArticleThemeNavigator({
             {articles.length}
           </span>
         </div>
-        {canonicalHref && (
-          <Link href={canonicalHref} className="shrink-0 rounded-full bg-slate-950 px-3 py-1 text-[11px] font-black text-white hover:bg-primary">
+        <span className="text-[11px] font-bold text-slate-400">前後の記事へ移動</span>
+      </div>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-1.5">
+        <ArticleDirectionLink article={previousArticle} label="← 前の記事" align="left" />
+        {canonicalHref ? (
+          <Link href={canonicalHref} className="flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-700 transition-colors duration-150 hover:border-slate-300 hover:bg-white">
             一覧
           </Link>
-        )}
-      </div>
-      <div
-        className="flex max-h-[220px] gap-1.5 overflow-x-auto overflow-y-hidden pb-1 sm:grid sm:max-h-[240px] sm:grid-cols-2 sm:overflow-y-auto sm:pr-1 lg:grid-cols-3"
-        style={{ scrollbarWidth: "thin" }}
-      >
-        {articles.map((item) => {
-          const isCurrent = item.slug === currentSlug;
-          const className =
-            "min-h-[58px] w-[230px] shrink-0 rounded-lg border px-2.5 py-1.5 text-left transition-colors sm:w-auto sm:shrink";
-          const content = (
-            <>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
-                <time dateTime={new Date(item.date).toISOString()}>{formatShortDate(item.date)}</time>
-                <span>{item.category}</span>
-                {isCurrent && <span className="text-primary">現在</span>}
-              </div>
-              <p className="mt-1 line-clamp-2 text-xs font-black leading-snug text-slate-800 sm:text-sm">
-                {item.title}
-              </p>
-            </>
-          );
-
-          if (isCurrent) {
-            return (
-              <div key={item.slug} className={`${className} border-primary/30 bg-blue-50/50`} aria-current="page">
-                {content}
-              </div>
-            );
-          }
-
-          return (
-            <Link
-              key={item.slug}
-              href={`/articles/${item.slug}`}
-              className={`${className} border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white`}
-            >
-              {content}
-            </Link>
-          );
-        })}
+        ) : <span aria-hidden="true" />}
+        <ArticleDirectionLink article={nextArticle} label="次の記事 →" align="right" />
       </div>
     </nav>
   );
@@ -130,6 +106,9 @@ export function EntityArticleDocument({
   const imageUrl = article.eyecatch.startsWith("http")
     ? article.eyecatch
     : `https://uma-free.com${article.eyecatch}`;
+  const shouldShowEyecatch = Boolean(
+    article.eyecatch && !article.eyecatch.endsWith('/images/articles/data-analysis-eyecatch.png'),
+  );
 
   const proseClass = [
     "article-page-prose prose prose-slate max-w-none",
@@ -229,7 +208,7 @@ export function EntityArticleDocument({
 
       <article data-article-slug={article.slug} className="mx-auto max-w-[920px]">
         <header className="relative border-b border-slate-200 pb-4 sm:pb-8">
-          {article.eyecatch && (
+          {shouldShowEyecatch && (
             <div className="relative mb-3 aspect-[16/8] max-h-[180px] w-full overflow-hidden bg-slate-100 sm:mb-7 sm:aspect-[16/6] sm:max-h-[320px]">
               <img
                 src={article.eyecatch}
@@ -273,6 +252,27 @@ export function EntityArticleDocument({
               {article.description}
             </p>
           )}
+
+          <Link
+            href="/races/today"
+            prefetch={false}
+            data-analytics-placement="article_value_guide"
+            data-analytics-variant="compact_four"
+            className="mt-4 block min-h-[44px] rounded-xl border border-blue-200 bg-slate-50 p-3 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:mt-6"
+            aria-label="今日の全レース分析を見る。AI偏差値、対戦比較、展開・脚質、枠順傾向を確認できます"
+          >
+            <section aria-labelledby="entity-article-site-value-title">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h2 id="entity-article-site-value-title" className="text-sm font-black leading-tight text-slate-950 sm:text-base">
+                  今日の全レースを4つの視点で確認
+                </h2>
+                <span className="shrink-0 text-[11px] font-black text-blue-700 sm:text-xs">
+                  全レース分析へ <span aria-hidden="true">→</span>
+                </span>
+              </div>
+              <RaceAnalysisValueGrid variant="compact" />
+            </section>
+          </Link>
         </header>
 
         {toc.length > 1 && (

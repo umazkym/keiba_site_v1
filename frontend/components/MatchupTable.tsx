@@ -33,6 +33,12 @@ const getShortHorseName = (horseName: string): string => {
     return Array.from(trimmedName).slice(0, 3).join('');
 };
 
+const formatCompactDate = (date: string): string => {
+    const [, month, day] = date.split('-');
+    if (!month || !day) return date;
+    return `${Number(month)}/${Number(day)}`;
+};
+
 const MobileHorseBadge = ({ horse, totalHorses }: { horse: HorsePrediction, totalHorses: number }) => {
     const resolvedWaku = (horse.waku_number && horse.waku_number >= 1 && horse.waku_number <= 8)
         ? horse.waku_number
@@ -353,12 +359,23 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         <span className='flex h-4 w-4 flex-shrink-0 cursor-help items-center justify-center rounded-full bg-slate-400 text-xs font-bold text-white md:h-5 md:w-5 md:text-sm'>?</span>
                     </Tippy>
                 </div>
-                <div className="flex w-full flex-col gap-1 text-[11px] md:w-auto md:flex-row md:items-center md:gap-2 md:text-sm">
+                <details className="w-full rounded-lg border border-slate-200 bg-slate-50 md:hidden">
+                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 text-[11px] font-semibold text-slate-600">
+                        <span>集計期間 {formatCompactDate(startDate)}–{formatCompactDate(endDate)}</span>
+                        <span aria-hidden="true" className="text-slate-400">⌄</span>
+                    </summary>
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 border-t border-slate-200 bg-white p-2">
+                        <input aria-label="集計開始日" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-2 text-[11px]" />
+                        <span className="shrink-0 text-slate-400">–</span>
+                        <input aria-label="集計終了日" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-2 text-[11px]" />
+                    </div>
+                </details>
+                <div className="hidden w-full flex-col gap-1 text-[11px] md:flex md:w-auto md:flex-row md:items-center md:gap-2 md:text-sm">
                     <label htmlFor="start-date" className="shrink-0 font-semibold text-slate-500 md:font-medium">期間</label>
                     <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 md:flex md:w-auto">
                         <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-1 text-[11px] md:w-auto md:text-sm" />
                         <span className="shrink-0 text-slate-400">-</span>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-1 text-[11px] md:w-auto md:text-sm" />
+                        <input aria-label="集計終了日" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-1 text-[11px] md:w-auto md:text-sm" />
                     </div>
                 </div>
             </div>

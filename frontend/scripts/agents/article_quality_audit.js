@@ -27,10 +27,15 @@ const RULES = {
     { pattern: /推奨馬|推奨買い目|第三者コメント|関係者コメント|陣営コメント|厩舎コメント|取材内容|インタビュー/i, reason: 'third-party recommendation or comment dependency' },
     { pattern: /本記事では|本稿では/i, reason: 'article-production preamble' },
     { pattern: /陸上|駅伝|マラソン|サッカー|野球|バスケット|テニス|ゴルフ|芸能|ドラマ|映画/, reason: 'off-topic analogy' },
+    { pattern: /ニュース後|ニュース起点/, reason: 'news-dependent heading or framing' },
+    { pattern: /\bof\b/i, reason: 'mixed English word in Japanese copy' },
+    { pattern: /軸の筆頭|消去対象|精度の高い予想|AI偏差値70以上|絶好枠/, reason: 'overly strong betting evaluation' },
   ],
 };
 
-const REQUIRED_POINT_HEADING_PATTERN = /^##\s+(?:このコースの買い目ポイント|このレースの買い目ポイント|このコースの確認ポイント|このレースの確認ポイント|この競馬場の確認ポイント|この騎手を確認するポイント|このテーマの確認ポイント)\s*$/m;
+const CONFIRMATION_POINT_HEADING_PATTERN = /^##\s+.*(?:確認ポイント|確認順|確認手順|判断材料|確認すること|確認したいこと|評価基準).*$/m;
+const DUPLICATED_TERM_PATTERN = /(組み立て|確認ポイント|確認手順|判断材料|確認|分析|枠順|発表|ニュース|データ|レース|競馬|馬券|騎手|コース|前|後)\1/;
+const NAR_VENUE_PATTERN = /大井|川崎|船橋|浦和|盛岡|水沢|金沢|笠松|名古屋|園田|姫路|高知|佐賀|門別|帯広/;
 
 function getArticleFiles() {
   if (!fs.existsSync(ARTICLES_DIR)) return [];
@@ -303,8 +308,8 @@ function auditArticle(file) {
     addIssue(issues, file, 'warning', 'cta', 'missing race page CTA');
   }
 
-  if (!REQUIRED_POINT_HEADING_PATTERN.test(content)) {
-    addIssue(issues, file, 'warning', 'buying_points', 'missing required buying-point section');
+  if (!CONFIRMATION_POINT_HEADING_PATTERN.test(content)) {
+    addIssue(issues, file, 'warning', 'confirmation_points', 'missing a neutral confirmation or decision-material section');
   }
 
   if (themeCluster === 'grade_race_preview' && !data.update_stage) {
@@ -320,6 +325,15 @@ function auditArticle(file) {
     if (match) {
       addIssue(issues, file, 'critical', 'tone', `${reason}: ${match[0]}`);
     }
+  }
+
+  const duplicatedTerm = raw.match(DUPLICATED_TERM_PATTERN);
+  if (duplicatedTerm) {
+    addIssue(issues, file, 'critical', 'copy', `duplicated term: ${duplicatedTerm[0]}`);
+  }
+
+  if (category === '海外競馬' && NAR_VENUE_PATTERN.test(`${title}\n${description}\n${content}`)) {
+    addIssue(issues, file, 'critical', 'category', '海外競馬 category conflicts with a NAR venue');
   }
 
   for (const href of collectMarkdownLinks(content)) {

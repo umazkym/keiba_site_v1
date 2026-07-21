@@ -101,6 +101,11 @@ export const SEO_RULES = {
     "念頭に置いて馬券",
     "以上のことから",
     "勝負気配",
+    "ニュース後",
+    "ニュース起点",
+    "ニュースで",
+    "枠順発表前前",
+    " of ",
     // 生成記事の公開後レビューで見つかった、読み手に過度な確信や購入誘導を与える表現
     "回収率を高め",
     "回収率向上",
@@ -120,11 +125,11 @@ export const SEO_RULES = {
 };
 
 const REQUIRED_POINT_HEADINGS = [
-  'このコースの買い目ポイント',
-  'このレースの買い目ポイント',
-  'この競馬場の確認ポイント',
+  'このコースで確認したい判断材料',
+  'このレースで確認したい判断材料',
+  'この競馬場で確認したい判断材料',
   'この騎手を確認するポイント',
-  'このテーマの確認ポイント',
+  'このテーマで確認したい判断材料',
 ];
 
 const REQUIRED_POINT_HEADING_PATTERN = new RegExp(
@@ -162,6 +167,14 @@ const SOURCE_INDEPENDENCE_PATTERNS: Array<{ pattern: RegExp; reason: string }> =
     pattern: /本記事では|本稿では/i,
     reason: '記事制作を説明する前置き',
   },
+  {
+    pattern: /ニュース後|ニュース起点/i,
+    reason: 'ニュース依存の見出し・構成',
+  },
+  {
+    pattern: /\bof\b/i,
+    reason: '日本語文中へ混入した英単語',
+  },
 ];
 
 export function checkSourceIndependence(markdownText: string): SEOCheckResult {
@@ -180,6 +193,14 @@ export function checkSourceIndependence(markdownText: string): SEOCheckResult {
   }
   if (String(data.category || '') === '競馬ニュース') {
     errors.push('競馬ニュースカテゴリは公開できません。内容に応じた専門カテゴリへ再分類してください。');
+  }
+  const narVenuePattern = /大井|川崎|船橋|浦和|盛岡|水沢|金沢|笠松|名古屋|園田|姫路|高知|佐賀|門別|帯広/;
+  if (String(data.category || '') === '海外競馬' && narVenuePattern.test(scanTarget)) {
+    errors.push('海外競馬カテゴリとNAR開催場が矛盾しています。開催区分を確認してください。');
+  }
+  const duplicatedTerm = scanTarget.match(/(確認|分析|枠順|発表|ニュース|データ|レース|競馬|馬券|騎手|コース|前|後)\1/);
+  if (duplicatedTerm) {
+    errors.push(`同一語の連続が含まれています: 「${duplicatedTerm[0]}」`);
   }
   for (const { pattern, reason } of SOURCE_INDEPENDENCE_PATTERNS) {
     const match = scanTarget.match(pattern);

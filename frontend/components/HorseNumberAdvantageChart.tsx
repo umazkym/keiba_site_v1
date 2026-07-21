@@ -32,6 +32,16 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
     // ★ここを修正: 配列をコピーしてからソート
     const sortedAdvantages = [...advantages].sort((a, b) => a.horse_number - b.horse_number);
     const scores = sortedAdvantages.map(item => item.advantage_score);
+    const maxScore = Math.max(...scores);
+    const minScore = Math.min(...scores);
+    const chartData = sortedAdvantages.map(item => ({
+        ...item,
+        display_label: Math.abs(item.advantage_score) >= 0.03
+            || item.advantage_score === maxScore
+            || item.advantage_score === minScore
+            ? item.advantage_score.toFixed(2)
+            : '',
+    }));
     const yAxisDomain = [
         Math.floor((Math.min(...scores, -0.1) - 0.05) * 20) / 20,
         Math.ceil((Math.max(...scores, 0.1) + 0.05) * 20) / 20
@@ -91,7 +101,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
             <div style={{ width: '100%', height: chartHeight }}>
                 <ResponsiveContainer>
                     <BarChart
-                        data={sortedAdvantages}
+                        data={chartData}
                         margin={chartMargin}
                     >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
@@ -108,13 +118,12 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }} />
                         <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={1.5} />
                         <Bar dataKey="advantage_score" radius={[4, 4, 0, 0]}>
-                            {sortedAdvantages.map((entry, index) => (
+                            {chartData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={getBarColor(entry.advantage_score)} />
                             ))}
                             <LabelList
-                                dataKey="advantage_score"
+                                dataKey="display_label"
                                 position="top"
-                                formatter={(value: any) => typeof value === 'number' ? value.toFixed(2) : value}
                                 fill="#374151"
                                 fontSize={labelFontSize}
                                 fontWeight={600}

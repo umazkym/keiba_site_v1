@@ -85,6 +85,9 @@ export default async function ArticlePage({ params }: Props) {
     const articleUrl = `https://uma-free.com${canonicalPath}`;
     const datePublished = new Date(article.date).toISOString();
     const dateModified = new Date(article.lastUpdated || article.date).toISOString();
+    const shouldShowEyecatch = Boolean(
+      article.eyecatch && !article.eyecatch.endsWith('/images/articles/data-analysis-eyecatch.png'),
+    );
     const stableArticleAdProps = {
       placement: 'inline' as const,
       minHeight: '280px',
@@ -209,7 +212,7 @@ export default async function ArticlePage({ params }: Props) {
               </div>
 
               {/* アイキャッチは内容を把握した後の補助ビジュアルとして配置 */}
-              {article.eyecatch && (
+              {shouldShowEyecatch && (
                 <div className="relative mt-4 aspect-[16/8] max-h-[180px] w-full overflow-hidden rounded-lg bg-slate-100 sm:mt-7 sm:aspect-[16/6] sm:max-h-[320px]">
                   <img
                     src={article.eyecatch}
@@ -334,7 +337,7 @@ export default async function ArticlePage({ params }: Props) {
                 </Link>
                 <Link
                   href="/articles"
-                  className="inline-flex items-center gap-1.5 bg-slate-950 px-4 py-2 text-xs font-bold text-white transition-colors duration-200 hover:bg-primary sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-slate-400 hover:bg-slate-50 hover:text-primary sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />

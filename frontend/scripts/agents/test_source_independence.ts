@@ -103,4 +103,34 @@ article_type: news_context
 assert.equal(mediaDependent.passed, false);
 assert.ok(mediaDependent.errors.length >= 3);
 
+const invalidNarCategory = checkSourceIndependence(`---
+title: サンタアニタトロフィー2026の確認ポイント
+description: 大井競馬場のダート1600mを確認します。
+keywords:
+  - 大井競馬場
+category: 海外競馬
+theme_cluster: race_update
+article_type: race_update
+---
+大井競馬場で開催される重賞を確認します。
+`);
+assert.equal(invalidNarCategory.passed, false);
+assert.ok(invalidNarCategory.errors.some(error => error.includes('NAR開催場')));
+
+const malformedCopy = checkSourceIndependence(`---
+title: 枠順発表前前の確認
+description: 数字 of 強弱を整理します。
+keywords:
+  - 枠順
+category: 重賞攻略
+theme_cluster: race_update
+article_type: race_update
+---
+ニュース後に確認します。
+`);
+assert.equal(malformedCopy.passed, false);
+assert.ok(malformedCopy.errors.some(error => error.includes('同一語の連続')));
+assert.ok(malformedCopy.errors.some(error => error.includes('英単語')));
+assert.ok(malformedCopy.errors.some(error => error.includes('ニュース依存')));
+
 console.log('[SourceIndependenceTest] 公式事実・UMA-FREE指標だけがWriterへ渡ることを確認しました。');

@@ -2,6 +2,11 @@ import matter from 'gray-matter';
 import { autoRepairDraftMarkdown } from './agent_editor';
 import { checkSEO } from './seo_checker';
 
+const autoRepairFiller = Array.from(
+  { length: 150 },
+  (_, index) => `確認材料${index}では、枠順、馬場、脚質を分け、当日の出馬表と照合する。`,
+).join('\n');
+
 const shortRaceUpdateDraft = `---
 title: "皐月賞2026｜枠順と馬場で見る直前確認ポイント3点"
 description: "皐月賞2026の出馬表を確認する前に、枠順、馬場、脚質の順番を整理します。ニュース後に買い目へ反映する条件と評価を下げる条件を分け、直前の判断材料を確認できます。"
@@ -25,11 +30,13 @@ draft: true
 | 馬場 | 内外の伸びと脚質評価を分けるため |
 | 脚質 | 隊列と仕掛けのタイミングを見るため |
 
-## このレースの買い目ポイント
+${autoRepairFiller}
 
-- 買い: 枠順と脚質がかみ合う馬は最初に確認する。
-- 抑え: 馬場が向く馬は相手候補として残す。
-- 見送り: 話題性だけで人気が先行する馬は評価を下げる。
+## このレースで確認したい判断材料
+
+- 確認: 枠順と脚質がかみ合う馬は最初に見る。
+- 相手候補: 馬場が向く馬は候補として残す。
+- 慎重: 話題性だけで人気が先行する馬は評価を見直す。
 
 最新の出馬表とAI予想は [今日のAI予想・出馬表](/races/today) で無料公開中。
 `;

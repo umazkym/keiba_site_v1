@@ -16,7 +16,7 @@ category: コース分析
 article_type: course_venue
 update_stage: ''
 draw_status: pre_draw
-search_intent: 笠松競馬場の各距離におけるコース形状の特徴と、先行有利な小回りコース特有 of 攻略ポイントを把握したい。
+search_intent: 笠松競馬場の各距離におけるコース形状の特徴と、先行有利な小回りコース特有の確認ポイントを把握したい。
 race_phase: ''
 scheduled_race_date: ''
 content_focus: 距離ごとに記事を分けず、競馬場ごとに芝・ダート・障害または地方の各距離を1本で整理する。

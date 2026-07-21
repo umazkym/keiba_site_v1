@@ -89,11 +89,11 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
         <div ref={observerRef} className="overflow-x-auto w-full" data-refresh-key={refreshKey || undefined}>
             <table className="table">
                 <colgroup>
-                    <col style={{ width: '48px' }} />
-                    <col style={{ width: '54px' }} />
+                    <col style={{ width: '34px' }} />
+                    <col style={{ width: '42px' }} />
                     <col />
-                    <col style={{ width: '92px' }} />
-                    <col style={{ width: '74px' }} />
+                    <col style={{ width: '76px' }} />
+                    <col style={{ width: '56px' }} />
                 </colgroup>
                 <thead>
                     <tr>

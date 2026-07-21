@@ -12,6 +12,7 @@ import {
   getUpcomingGradeRaceArticleGroups,
 } from "@/lib/article-archives";
 import type { Metadata } from "next";
+import { MobileArticleThemeDirectory } from "@/components/MobileArticleThemeDirectory";
 
 interface ArticlesPageProps {
   searchParams: {
@@ -71,8 +72,8 @@ function getReadingTime(content: string): number {
 function isNewArticle(dateStr: string): boolean {
   const date = new Date(dateStr);
   const now = new Date();
-  const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
-  return diffDays <= 14;
+  const diffHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+  return diffHours >= 0 && diffHours <= 72;
 }
 
 function formatDate(date: string) {
@@ -111,19 +112,19 @@ function UpcomingGradeRacePickup({
   if (groups.length === 0) return null;
 
   return (
-    <section className="mb-3 rounded-xl border border-amber-200/70 bg-amber-50/60 p-3 sm:p-4" aria-label="近日の重賞記事">
+    <section className="mb-3 overflow-hidden rounded-xl border-l-4 border-amber-400 bg-white shadow-sm ring-1 ring-slate-200" aria-label="近日の重賞記事">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-black text-slate-950 sm:text-base">近日の重賞</h2>
-        <span className="text-xs font-bold text-amber-700">{groups.length}</span>
+        <h2 className="px-3 pt-3 text-sm font-black text-slate-950 sm:px-4 sm:text-base">近日の重賞</h2>
+        <span className="px-3 pt-3 text-xs font-bold text-amber-700 sm:px-4">{groups.length}</span>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="divide-y divide-slate-100 border-t border-slate-100 sm:grid sm:grid-cols-2 sm:divide-y-0">
         {groups.map((group) => {
           const latestArticle = group.articles[0];
           return (
             <Link
               key={group.href}
               href={group.href}
-              className="group rounded-xl border border-amber-200/70 bg-white px-3 py-2 transition-colors hover:border-amber-300 hover:bg-amber-50/40"
+              className="group px-3 py-2.5 transition-colors duration-150 hover:bg-amber-50/50 sm:border-b sm:border-slate-100 sm:px-4"
             >
               <div className="flex items-center justify-between gap-3 text-[11px] font-black text-amber-700">
                 <span>{formatRaceDate(group.scheduledDate)}</span>
@@ -146,7 +147,7 @@ function CompactArticleLink({ article }: { article: ArticleLike }) {
     <Link
       prefetch={false}
       href={`/articles/${article.slug}`}
-      className="group flex min-h-[58px] flex-col justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 transition-colors hover:border-slate-300 hover:bg-slate-50"
+      className="group flex min-h-[64px] flex-col justify-center border-b border-slate-100 bg-white px-3 py-2.5 transition-colors duration-150 last:border-b-0 hover:bg-slate-50 sm:rounded-xl sm:border sm:border-slate-200 sm:px-3 sm:py-2 sm:hover:border-slate-300"
     >
       <div className="min-w-0">
         <ArticleMeta article={article} />
@@ -250,23 +251,6 @@ function EntityDirectoryDetails({
   );
 }
 
-function MobileEntityDirectory({
-  archiveTotals,
-  gradeRaceSections,
-}: {
-  archiveTotals: ReturnType<typeof getArticleArchiveTotals>;
-  gradeRaceSections: GradeRaceSectionList;
-}) {
-  return (
-    <section className="mt-3 grid gap-2 lg:hidden" aria-label="記事テーマ">
-      <GradeRaceDirectoryDetails id="grade-races" sections={gradeRaceSections} />
-      <EntityDirectoryDetails id="races" title="レース" groups={archiveTotals.raceGroups} />
-      <EntityDirectoryDetails id="jockeys" title="騎手" groups={archiveTotals.jockeyGroups} />
-      <EntityDirectoryDetails id="courses" title="コース" groups={archiveTotals.courseGroups} />
-    </section>
-  );
-}
-
 export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
   const allArticles = getAllArticles();
   const uniqueCategories = getUniqueCategories();
@@ -316,12 +300,11 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
           </div>
 
           <div
-            className="mt-5 flex gap-2 overflow-x-auto pb-1 scrollbar-hide"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            className="mt-5 flex flex-wrap gap-2"
           >
             <Link
               href="/articles"
-              className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-colors sm:text-sm ${
+              className={`rounded-full px-3 py-2 text-xs font-bold transition-colors sm:px-4 sm:text-sm ${
                 !selectedCategory ? "bg-slate-950 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               }`}
             >
@@ -331,7 +314,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               <Link
                 key={category}
                 href={`/articles?category=${encodeURIComponent(category)}`}
-                className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-colors sm:text-sm ${
+                className={`rounded-full px-3 py-2 text-xs font-bold transition-colors sm:px-4 sm:text-sm ${
                   selectedCategory === category
                     ? "bg-slate-950 text-white"
                     : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -344,7 +327,11 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
           </div>
         </header>
 
-        <MobileEntityDirectory archiveTotals={archiveTotals} gradeRaceSections={gradeRaceSections} />
+        <MobileArticleThemeDirectory
+          gradeRaceSections={gradeRaceSections}
+          jockeyGroups={archiveTotals.jockeyGroups}
+          courseGroups={archiveTotals.courseGroups}
+        />
 
         <div className="mt-3 grid gap-5 lg:mt-5 lg:grid-cols-[minmax(0,1fr)_280px]">
           <main className="min-w-0">
@@ -358,12 +345,12 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                 </Link>
               </div>
             ) : (
-              <section className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
+              <section className="overflow-hidden rounded-xl border border-slate-200 bg-white sm:p-4">
+                <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-3 sm:mb-3 sm:border-b-0 sm:px-0 sm:py-0">
                   <h2 className="text-base font-black text-slate-950">記事</h2>
                   <p className="text-xs font-bold text-slate-500">{filteredArticles.length}件</p>
                 </div>
-                <div className="grid gap-2 xl:grid-cols-2">
+                <div className="grid gap-0 sm:gap-2 xl:grid-cols-2">
                   {filteredArticles.map((article, index) => (
                     <React.Fragment key={article.slug}>
                       <CompactArticleLink article={article} />

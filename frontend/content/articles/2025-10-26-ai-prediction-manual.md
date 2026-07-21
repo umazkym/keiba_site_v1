@@ -1,8 +1,9 @@
 ---
-title: AI競馬予想の使い方｜UMA-FREE偏差値60以上の活用と買い目の組み立て組み立て
+title: AI競馬予想の使い方｜UMA-FREE偏差値の見方と判断材料の整理
 date: '2025-10-26'
+last_updated: '2026-07-21'
 description: >-
-  UMA-FREEのAI競馬分析データを活用し、主観を排除したデータ活用としての競馬組み立てを解説。AI偏差値60以上の信頼性と、オッズ妙味を組み合わせた合理的な買い目の組み立てプロセスを定義する。
+  UMA-FREEのAI競馬分析データを判断材料として活用する方法を解説。AI偏差値の相対評価、オッズとの見比べ方、当日の出走条件を確認する順序を整理する。
 keywords: '競馬, データ分析, AI予想, UMA-FREE, AI偏差値, 買い目の組み立て, オッズ妙味, オッズ'
 eyecatch: /images/articles/beginner.png
 category: 入門ガイド

@@ -267,11 +267,13 @@
             display: block;
             position: fixed;
             top: 48px;
+            bottom: 0;
             left: 0;
             right: 0;
             z-index: 50;
-            max-height: calc(100dvh - 48px);
+            height: calc(100dvh - 48px);
             overflow-y: auto;
+            overscroll-behavior: contain;
             border-top: 1px solid var(--slate-100-color);
             background: #ffffff;
             box-shadow: 0 18px 28px rgba(15, 23, 42, 0.12);
@@ -296,7 +298,7 @@
     @media (min-width: 640px) and (max-width: 767px) {
         .mobile-menu-panel {
             top: 64px;
-            max-height: calc(100dvh - 64px);
+            height: calc(100dvh - 64px);
         }
     }
 }
@@ -1481,20 +1483,18 @@ header.glass {
 }
 
 .race-selector {
-  position: sticky;
-  top: 51px;
-  z-index: 25;
-  padding: 8px;
+  padding: 4px;
   display: flex;
-  gap: 7px;
+  gap: 6px;
   overflow-x: auto;
-  background: rgba(248, 250, 252, 0.96);
+  background: #ffffff;
   border: 1px solid var(--slate-200-color);
   border-radius: 12px;
 }
 .race-tab {
   min-width: 62px;
-  padding: 8px 7px;
+  min-height: 44px;
+  padding: 7px;
   border: 1px solid var(--slate-200-color);
   border-radius: 9px;
   background: white;
@@ -1720,7 +1720,7 @@ header.glass {
 
 .side-panel {
   position: sticky;
-  top: 96px;
+  top: 136px;
 }
 .side-card {
   padding: 14px;
@@ -1926,14 +1926,13 @@ header.glass {
     font-size: 11px;
   }
   .race-selector {
-    top: 64px;
     border-radius: 0;
     border-left: 0;
     border-right: 0;
-    padding: 6px 8px;
+    padding: 3px 4px;
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 5px;
+    gap: 4px;
     overflow-x: visible;
   }
   .race-detail-layout {
@@ -1944,8 +1943,9 @@ header.glass {
   .race-tab {
     min-width: 0;
     width: 100%;
+    min-height: 44px;
     padding: 5px 2px;
-    font-size: 11px;
+    font-size: 12px;
     display: flex;
     align-items: center;
     justify-content: center;

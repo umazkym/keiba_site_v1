@@ -49,7 +49,7 @@ const HeaderAffiliateLink = () => {
         >
             <span className="rounded bg-rose-600 px-1 py-0.5 text-[10px] leading-none text-white">PR</span>
             <span className="hidden sm:inline">地方競馬の投票は楽天競馬で</span>
-            <span className="sm:hidden">地方競馬は楽天競馬</span>
+            <span className="sm:hidden">楽天競馬</span>
             <span aria-hidden="true" className="text-[13px] leading-none">→</span>
         </a>
     );
@@ -59,7 +59,7 @@ export const Header = ({ todayString }: HeaderProps) => {
     const pathname = usePathname();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuButtonRef = useRef<HTMLButtonElement>(null);
-    const menuPanelRef = useRef<HTMLElement>(null);
+    const menuPanelRef = useRef<HTMLDivElement>(null);
 
     const navItems = [
         { href: '/', label: 'ホーム', prefetch: undefined, isActive: pathname === '/' },
@@ -79,22 +79,33 @@ export const Header = ({ todayString }: HeaderProps) => {
         }
     }, []);
 
-    // メニュー展開時にbodyのスクロールをロック
+    // メニュー展開時に背景スクロールを止め、最初の主要リンクへフォーカスを移す。
     useEffect(() => {
-        let focusTimer: number | undefined;
+        let focusFrame: number | undefined;
+        let visibleFrame: number | undefined;
+        const previousOverflow = document.body.style.overflow;
         if (isMenuOpen) {
             document.body.style.overflow = 'hidden';
-            focusTimer = window.setTimeout(() => {
-                menuPanelRef.current?.querySelector<HTMLAnchorElement>('a')?.focus();
-            }, 0);
+            // visibilityの反映後にフォーカスする。1フレームだけではSafariで
+            // 直前のメニューボタンへ残ることがあるため、描画を2回待つ。
+            visibleFrame = window.requestAnimationFrame(() => {
+                focusFrame = window.requestAnimationFrame(() => {
+                    menuPanelRef.current
+                        ?.querySelector<HTMLAnchorElement>('[data-menu-initial-focus="true"]')
+                        ?.focus({ preventScroll: true });
+                });
+            });
         } else {
-            document.body.style.overflow = '';
+            document.body.style.overflow = previousOverflow;
         }
         return () => {
-            if (focusTimer !== undefined) {
-                window.clearTimeout(focusTimer);
+            if (visibleFrame !== undefined) {
+                window.cancelAnimationFrame(visibleFrame);
             }
-            document.body.style.overflow = '';
+            if (focusFrame !== undefined) {
+                window.cancelAnimationFrame(focusFrame);
+            }
+            document.body.style.overflow = previousOverflow;
         };
     }, [isMenuOpen]);
 
@@ -105,6 +116,25 @@ export const Header = ({ todayString }: HeaderProps) => {
             if (event.key === 'Escape') {
                 event.preventDefault();
                 closeMenu(true);
+                return;
+            }
+
+            if (event.key !== 'Tab') return;
+
+            const focusableElements = menuPanelRef.current?.querySelectorAll<HTMLElement>(
+                'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+            );
+            if (!focusableElements || focusableElements.length === 0) return;
+
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+
+            if (event.shiftKey && document.activeElement === firstElement) {
+                event.preventDefault();
+                lastElement.focus();
+            } else if (!event.shiftKey && document.activeElement === lastElement) {
+                event.preventDefault();
+                firstElement.focus();
             }
         };
 
@@ -112,10 +142,15 @@ export const Header = ({ todayString }: HeaderProps) => {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [closeMenu, isMenuOpen]);
 
+    useEffect(() => {
+        setIsMenuOpen(false);
+    }, [pathname]);
+
     return (
-        <header className="glass sticky top-0 z-50">
-            <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6">
-                <div className="flex h-12 items-center justify-between gap-2 sm:h-16 sm:gap-4">
+        <>
+            <header className="glass sticky top-0 z-50">
+                <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6">
+                    <div className="flex h-12 items-center justify-between gap-2 sm:h-16 sm:gap-4">
                     {/* ロゴ */}
                     <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0" aria-label="ウマFREE ホーム">
                         <img
@@ -184,35 +219,51 @@ export const Header = ({ todayString }: HeaderProps) => {
                             )}
                         </button>
                     </div>
+                    </div>
                 </div>
+            </header>
 
-                {/* モバイルメニューオーバーレイ（タップで閉じる） */}
-                <div
-                    className={`mobile-menu-overlay ${isMenuOpen ? 'active' : ''}`}
-                    onClick={() => closeMenu(true)}
-                    aria-hidden="true"
-                />
+            {/* backdrop-filterを持つヘッダー外へ置き、fixedの基準をビューポートへ固定する。 */}
+            <div
+                className={`mobile-menu-overlay ${isMenuOpen ? 'active' : ''}`}
+                onClick={() => closeMenu(true)}
+                aria-hidden="true"
+            />
 
-                {/* モバイルメニューパネル（スライドアニメーション） */}
-                <nav
-                    ref={menuPanelRef}
-                    id="mobile-navigation"
-                    className={`mobile-menu-panel ${isMenuOpen ? 'open' : ''}`}
-                    aria-label="モバイルナビゲーション"
-                    aria-hidden={!isMenuOpen}
-                >
-                    <div className="flex items-center gap-2 px-4 py-4 mb-2 bg-slate-50 border-b border-slate-100">
-                        <img src="/new-logo.webp" alt="UMA-FREE" width="24" height="24" className="w-6 h-6" loading="eager" decoding="async" />
+            <div
+                ref={menuPanelRef}
+                id="mobile-navigation"
+                role="dialog"
+                aria-modal="true"
+                aria-label="モバイルナビゲーション"
+                aria-hidden={!isMenuOpen}
+                className={`mobile-menu-panel ${isMenuOpen ? 'open' : ''}`}
+            >
+                <div className="flex min-h-12 items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2">
+                    <div className="flex items-center gap-2">
+                        <img src="/new-logo.webp" alt="" width="24" height="24" className="h-6 w-6" loading="eager" decoding="async" />
                         <span className="text-base font-bold tracking-tight text-primary">UMA-FREE</span>
                     </div>
+                    <button
+                        type="button"
+                        tabIndex={isMenuOpen ? 0 : -1}
+                        onClick={() => closeMenu(true)}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 transition-colors duration-150 hover:bg-white hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        aria-label="メニューを閉じる"
+                    >
+                        <XIcon className="h-5 w-5" />
+                    </button>
+                </div>
+                <nav aria-label="モバイル主要ナビゲーション">
                     {navItems.map((item) => (
                         <Link
                             key={item.href}
                             prefetch={item.prefetch}
                             href={item.href}
                             tabIndex={isMenuOpen ? 0 : -1}
+                            data-menu-initial-focus={item.href === '/' ? 'true' : undefined}
                             aria-current={item.isActive ? 'page' : undefined}
-                            className={`block border-b border-slate-100 px-4 py-3 text-sm font-medium transition-colors duration-150 ${item.isActive
+                            className={`flex min-h-11 items-center border-b border-slate-100 px-4 py-2 text-sm font-medium transition-colors duration-150 ${item.isActive
                                 ? 'bg-slate-100 text-primary'
                                 : 'text-text-primary hover:bg-slate-50 hover:text-primary'
                                 }`}
@@ -224,48 +275,34 @@ export const Header = ({ todayString }: HeaderProps) => {
                     <Link
                         href="/search"
                         tabIndex={isMenuOpen ? 0 : -1}
-                        className="block px-4 py-3 text-sm font-medium text-text-primary hover:text-primary hover:bg-slate-50 transition-colors duration-200 border-b border-slate-50"
+                        className="flex min-h-11 items-center border-b border-slate-100 px-4 py-2 text-sm font-medium text-text-primary transition-colors duration-150 hover:bg-slate-50 hover:text-primary"
                         onClick={() => closeMenu()}
                     >
                         検索
                     </Link>
-                    <div className="px-4 py-4 bg-slate-50/80">
-                        <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 font-mono">その他</p>
-                        <Link
-                            href="/about"
-                            tabIndex={isMenuOpen ? 0 : -1}
-                            className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
-                            onClick={() => closeMenu()}
-                        >
-                            このサイトについて
-                        </Link>
-                        <Link
-                            href="/advertising"
-                            tabIndex={isMenuOpen ? 0 : -1}
-                            className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
-                            onClick={() => closeMenu()}
-                        >
-                            広告について
-                        </Link>
-                        <Link
-                            href="/contact"
-                            tabIndex={isMenuOpen ? 0 : -1}
-                            className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
-                            onClick={() => closeMenu()}
-                        >
-                            お問い合わせ
-                        </Link>
-                        <Link
-                            href="/privacy"
-                            tabIndex={isMenuOpen ? 0 : -1}
-                            className="block py-2 text-sm text-text-secondary hover:text-primary transition-colors duration-200"
-                            onClick={() => closeMenu()}
-                        >
-                            プライバシーポリシー
-                        </Link>
-                    </div>
                 </nav>
+                <div className="bg-slate-50 px-4 py-3">
+                    <p className="mb-2 font-mono text-xs font-bold uppercase tracking-wider text-text-muted">その他</p>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                        {[
+                            { href: '/about', label: 'このサイトについて' },
+                            { href: '/advertising', label: '広告について' },
+                            { href: '/contact', label: 'お問い合わせ' },
+                            { href: '/privacy', label: 'プライバシーポリシー' },
+                        ].map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                tabIndex={isMenuOpen ? 0 : -1}
+                                className="flex min-h-11 items-center text-sm text-text-secondary transition-colors duration-150 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                                onClick={() => closeMenu()}
+                            >
+                                {item.label}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
             </div>
-        </header>
+        </>
     );
 };

@@ -30,6 +30,26 @@ const sources = targetFiles.map((relativePath) => {
   };
 });
 
+const extendedTargetFiles = [
+  'components/PredictionTable.tsx',
+  'components/RaceAnalysis.tsx',
+  'components/StartPositionChart.tsx',
+  'components/HorseNumberAdvantageChart.tsx',
+  'components/RelatedRaces.tsx',
+  'components/DynamicRelatedArticles.tsx',
+  'components/DisclaimerAlert.tsx',
+  'components/MobileArticleThemeDirectory.tsx',
+  'components/EntityArticleDocument.tsx',
+  'components/ArticleBody.tsx',
+  'components/AdSensePageLevelScript.tsx',
+  'lib/page-scroll-lock.ts',
+];
+const extendedSources = extendedTargetFiles.map((relativePath) => ({
+  relativePath,
+  content: fs.readFileSync(path.join(root, relativePath), 'utf8'),
+}));
+const extendedContent = extendedSources.map(({ content }) => content).join('\n');
+
 const countMatches = (content, pattern) => Array.from(content.matchAll(pattern)).length;
 
 const rules = [
@@ -100,6 +120,12 @@ const layout = sources.find(({ relativePath }) => relativePath === 'app/layout.t
 const raceNavigation = sources.find(({ relativePath }) => relativePath === 'hooks/useRaceSectionNavigation.ts').content;
 const racePageClient = sources.find(({ relativePath }) => relativePath === 'components/RacePageClient.tsx').content;
 const weeklyGradeRaces = sources.find(({ relativePath }) => relativePath === 'components/WeeklyGradeRaces.tsx').content;
+const predictionTable = extendedSources.find(({ relativePath }) => relativePath === 'components/PredictionTable.tsx').content;
+const raceAnalysis = extendedSources.find(({ relativePath }) => relativePath === 'components/RaceAnalysis.tsx').content;
+const articleBody = extendedSources.find(({ relativePath }) => relativePath === 'components/ArticleBody.tsx').content;
+const mobileArticleThemes = extendedSources.find(({ relativePath }) => relativePath === 'components/MobileArticleThemeDirectory.tsx').content;
+const entityArticleDocument = extendedSources.find(({ relativePath }) => relativePath === 'components/EntityArticleDocument.tsx').content;
+const adSensePageLevel = extendedSources.find(({ relativePath }) => relativePath === 'components/AdSensePageLevelScript.tsx').content;
 
 const checks = [
   {
@@ -132,6 +158,61 @@ const checks = [
     id: 'grade-race-no-hidden-rail',
     description: '重賞一覧がモバイルの隠れた横レールに依存しない',
     passed: !weeklyGradeRaces.includes('overflow-x-auto'),
+  },
+  {
+    id: 'extended-no-transition-all',
+    description: 'レース・記事・広告の追加監査対象にtransition-allがない',
+    passed: !/\btransition-all\b/.test(extendedContent),
+  },
+  {
+    id: 'extended-no-hover-motion',
+    description: 'レース・記事の追加監査対象にhover拡大・移動がない',
+    passed: !/(?:hover|group-hover|active):[^\s"'`]*(?:translate|scale)/.test(extendedContent),
+  },
+  {
+    id: 'no-global-mobile-tailwind-rewrite',
+    description: '全ページのTailwind余白を上書きするmobile-compact-scopeを使わない',
+    passed: !globals.includes('mobile-compact-scope') && !layout.includes('mobile-compact-scope'),
+  },
+  {
+    id: 'race-dedicated-table-styles',
+    description: '予想表が汎用table/score/positionクラスへ依存しない',
+    passed: predictionTable.includes('race-prediction-table')
+      && !predictionTable.includes('className="table"')
+      && !predictionTable.includes('className="score')
+      && !predictionTable.includes(' position"'),
+  },
+  {
+    id: 'race-analysis-full-accordion',
+    description: 'AIレース展望全体が閉じたdetailsになっている',
+    passed: raceAnalysis.includes('<details className="race-panel group overflow-hidden">')
+      && !raceAnalysis.includes('analysis-preview')
+      && !raceAnalysis.includes('section-title'),
+  },
+  {
+    id: 'article-wide-layout',
+    description: '記事本文を1080px紙面幅で表示する',
+    passed: articleBody.includes('w-full max-w-none')
+      && entityArticleDocument.includes('max-w-[1080px]'),
+  },
+  {
+    id: 'mobile-article-theme-collapsed',
+    description: 'モバイル記事テーマが初期状態で折りたたまれる',
+    passed: mobileArticleThemes.includes('const [isOpen, setIsOpen] = useState(false)')
+      && mobileArticleThemes.includes('{isOpen && <div id="mobile-article-theme-panel"'),
+  },
+  {
+    id: 'article-switcher-height',
+    description: '記事切り替えナビが52px以内で空列を描画しない',
+    passed: entityArticleDocument.includes('h-[52px]')
+      && entityArticleDocument.includes('if (!article) return null;'),
+  },
+  {
+    id: 'adsense-scroll-recovery',
+    description: 'Google広告UI終了後のoverflow/padding復旧監視がある',
+    passed: adSensePageLevel.includes('hasVisibleGoogleDialog')
+      && adSensePageLevel.includes('bodyPaddingTop')
+      && adSensePageLevel.includes('MutationObserver'),
   },
 ];
 

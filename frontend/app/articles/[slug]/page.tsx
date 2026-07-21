@@ -12,6 +12,8 @@ import { ArticleEngagementTracker } from '@/components/ArticleEngagementTracker'
 import { ArticleThemeNavigator } from '@/components/EntityArticleDocument';
 import { getArticleArchiveGroupForArticle } from '@/lib/article-archives';
 import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
+import { ArticleBody } from '@/components/ArticleBody';
+import { UserRound } from 'lucide-react';
 
 type Props = {
   params: { slug: string };
@@ -97,24 +99,8 @@ export default async function ArticlePage({ params }: Props) {
       className: 'article-ad-slot',
     };
 
-    const proseClass = [
-      "article-page-prose prose prose-slate mx-auto max-w-[72ch]",
-      "[overflow-wrap:anywhere]",
-      "prose-headings:font-black prose-headings:tracking-tight prose-headings:text-slate-900",
-      "prose-h2:text-xl prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-2 prose-h2:mt-8 prose-h2:mb-3 prose-h2:scroll-mt-20 sm:prose-h2:text-2xl sm:prose-h2:mt-12 sm:prose-h2:mb-6",
-      "prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-2 sm:prose-h3:text-xl sm:prose-h3:mt-8 sm:prose-h3:mb-3",
-      "prose-p:leading-[1.78] prose-p:text-slate-600 sm:prose-p:leading-[1.9]",
-      "prose-a:text-primary prose-a:font-semibold prose-a:no-underline hover:prose-a:text-blue-600",
-      "prose-strong:text-slate-900 prose-strong:font-bold",
-      "prose-img:border prose-img:border-slate-100",
-      "prose-blockquote:border-l-4 prose-blockquote:border-slate-300 prose-blockquote:bg-slate-50 prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:not-italic prose-blockquote:text-slate-700",
-      "prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-slate-800 prose-code:font-mono prose-code:text-sm",
-      "prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-xl",
-      "prose-ul:marker:text-slate-400 prose-ol:marker:text-slate-400 prose-ol:marker:font-bold",
-    ].join(' ');
-
     return (
-      <div className="min-h-screen bg-white py-2 sm:py-8">
+      <div className="article-detail-scope min-h-screen bg-white py-1 sm:py-8">
         <ArticleSchema
           title={article.title}
           description={article.description || textContent.substring(0, 160)}
@@ -131,7 +117,7 @@ export default async function ArticlePage({ params }: Props) {
           ]}
         />
 
-        <div className="mx-auto max-w-[920px] px-3 sm:px-4">
+        <div className="mx-auto max-w-[1080px] px-0 sm:px-4">
           <Breadcrumb />
 
           {articleArchiveGroup && (
@@ -167,8 +153,9 @@ export default async function ArticlePage({ params }: Props) {
                   <span>
                     約{readingTimeMin}分
                   </span>
-                  <Link href="/about" className="text-slate-500 transition-colors hover:text-primary">
-                    著者: おとうふや
+                  <Link href="/about" className="inline-flex items-center gap-1 text-slate-500 transition-colors hover:text-primary">
+                    <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>著者: おとうふや</span>
                   </Link>
                   {article.lastUpdated && (
                     <span>
@@ -248,72 +235,7 @@ export default async function ArticlePage({ params }: Props) {
 
             {/* ===== ARTICLE BODY ===== */}
             <div className="pb-6 sm:pb-10">
-              {(() => {
-                const h2Positions: number[] = [];
-                const searchRegex = /<h2[\s>]/gi;
-                let match;
-                while ((match = searchRegex.exec(enhancedContent)) !== null) {
-                  h2Positions.push(match.index);
-                }
-
-                // ★ 長文判定: HTML文字数 6,000字以上 ≒ 本文約3,000字以上
-                const isLongArticle = enhancedContent.length >= 6000;
-
-                // H2が7本以上: 3分割 → 本文内2枠（変更なし）
-                if (h2Positions.length >= 7) {
-                  const split1 = h2Positions[1];
-                  const split2 = h2Positions[4];
-                  const part1 = enhancedContent.substring(0, split1);
-                  const part2 = enhancedContent.substring(split1, split2);
-                  const part3 = enhancedContent.substring(split2);
-                  return (
-                    <>
-                      <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part1 }} />
-                      <AdUnit slot="1489598374" analyticsPlacement="article_after_intro" {...stableArticleAdProps} />
-                      <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part2 }} />
-                      <AdUnit slot="9407670747" analyticsPlacement="article_mid" {...stableArticleAdProps} />
-                      <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part3 }} />
-                    </>
-                  );
-                }
-
-                // ★ H2が4〜6本かつ長文: 3分割 → 本文内2枠（新規追加）
-                // H2[1]で1回目、H2[3]（存在しない場合はH2[2]）で2回目を挿入
-                if (h2Positions.length >= 4 && isLongArticle) {
-                  const split1 = h2Positions[1];
-                  const split2 = h2Positions[Math.min(3, h2Positions.length - 1)];
-                  const part1 = enhancedContent.substring(0, split1);
-                  const part2 = enhancedContent.substring(split1, split2);
-                  const part3 = enhancedContent.substring(split2);
-                  return (
-                    <>
-                      <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part1 }} />
-                      <AdUnit slot="1489598374" analyticsPlacement="article_after_intro" {...stableArticleAdProps} />
-                      <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part2 }} />
-                      <AdUnit slot="9407670747" analyticsPlacement="article_mid_long" {...stableArticleAdProps} />
-                      <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part3 }} />
-                    </>
-                  );
-                }
-
-                // H2が4〜6本で短め: 2分割 → 本文内1枠（従来通り）
-                if (h2Positions.length >= 4) {
-                  const splitPos = h2Positions[1];
-                  const firstPart = enhancedContent.substring(0, splitPos);
-                  const secondPart = enhancedContent.substring(splitPos);
-                  return (
-                    <>
-                      <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: firstPart }} />
-                      <AdUnit slot="1489598374" analyticsPlacement="article_after_intro" {...stableArticleAdProps} />
-                      <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: secondPart }} />
-                    </>
-                  );
-                }
-
-                return (
-                  <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: enhancedContent }} />
-                );
-              })()}
+              <ArticleBody html={enhancedContent} analyticsPrefix="article" />
             </div>
 
 

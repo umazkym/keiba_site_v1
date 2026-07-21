@@ -11,7 +11,7 @@ const DisclaimerAlert = () => {
     const bodyId = useId();
 
     return (
-        <div className="relative left-1/2 my-0.5 w-screen -translate-x-1/2 overflow-hidden border-l-4 border-amber-500 bg-amber-50 shadow-sm md:left-auto md:my-1 md:w-auto md:translate-x-0 md:rounded-r-lg">
+        <div className="my-2 w-full overflow-hidden rounded-r-lg border-l-4 border-amber-500 bg-amber-50 md:my-3">
             <button
                 type="button"
                 onClick={() => setIsExpanded(!isExpanded)}

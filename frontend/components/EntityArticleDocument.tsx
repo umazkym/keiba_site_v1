@@ -5,6 +5,8 @@ import { enhanceArticleHtml } from "@/lib/article-ux";
 import { AdUnit } from "@/components/AdUnit";
 import { MultiplexAd } from "@/components/MultiplexAd";
 import { RaceAnalysisValueGrid } from "@/components/RaceAnalysisValueGrid";
+import { ArticleBody } from "@/components/ArticleBody";
+import { UserRound } from "lucide-react";
 
 type EntityArticleDocumentProps = {
   article: Article;
@@ -43,11 +45,11 @@ export function ArticleThemeNavigator({
   const nextArticle = currentIndex >= 0 && currentIndex < articles.length - 1 ? articles[currentIndex + 1] : null;
 
   const ArticleDirectionLink = ({ article, label, align }: { article: ArticleMeta | null; label: string; align: 'left' | 'right' }) => {
-    if (!article) return <span aria-hidden="true" />;
+    if (!article) return null;
     return (
       <Link
         href={`/articles/${article.slug}`}
-        className={`flex min-h-11 min-w-0 flex-col justify-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 ${align === 'right' ? 'text-right' : 'text-left'}`}
+        className={`flex min-h-[50px] min-w-0 flex-col justify-center px-2.5 py-1 transition-colors duration-150 hover:bg-slate-50 ${align === 'right' ? 'text-right' : 'text-left'}`}
       >
         <span className="text-[10px] font-bold text-slate-400">{label}</span>
         <span className="truncate text-xs font-black text-slate-800">{article.title}</span>
@@ -55,24 +57,21 @@ export function ArticleThemeNavigator({
     );
   };
 
+  const visibleItemCount = Number(Boolean(previousArticle)) + Number(Boolean(canonicalHref)) + Number(Boolean(nextArticle));
+
   return (
-    <nav className="mb-3 rounded-xl border border-slate-200 bg-white p-2.5 sm:mb-5 sm:p-3" aria-label="記事切り替え">
-      <div className="mb-2 flex items-center justify-between gap-3 px-1">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-black text-slate-950 sm:text-base">{canonicalLabel || "記事"}</span>
-          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">
-            {articles.length}
-          </span>
-        </div>
-        <span className="text-[11px] font-bold text-slate-400">前後の記事へ移動</span>
-      </div>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-1.5">
+    <nav className="mb-2 h-[52px] overflow-hidden rounded-lg border border-slate-200 bg-white sm:mb-4" aria-label={`${canonicalLabel || '記事'}の記事切り替え`}>
+      <div
+        className="grid h-full items-stretch divide-x divide-slate-200"
+        style={{ gridTemplateColumns: `repeat(${Math.max(visibleItemCount, 1)}, minmax(0, 1fr))` }}
+      >
         <ArticleDirectionLink article={previousArticle} label="← 前の記事" align="left" />
         {canonicalHref ? (
-          <Link href={canonicalHref} className="flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-700 transition-colors duration-150 hover:border-slate-300 hover:bg-white">
-            一覧
+          <Link href={canonicalHref} className="flex min-h-[50px] min-w-0 flex-col items-center justify-center bg-slate-50 px-2 text-xs font-black text-slate-700 transition-colors duration-150 hover:bg-white">
+            <span>一覧</span>
+            <span className="text-[10px] text-slate-500">{articles.length}記事</span>
           </Link>
-        ) : <span aria-hidden="true" />}
+        ) : null}
         <ArticleDirectionLink article={nextArticle} label="次の記事 →" align="right" />
       </div>
     </nav>
@@ -110,82 +109,6 @@ export function EntityArticleDocument({
     article.eyecatch && !article.eyecatch.endsWith('/images/articles/data-analysis-eyecatch.png'),
   );
 
-  const proseClass = [
-    "article-page-prose prose prose-slate max-w-none",
-    "[overflow-wrap:anywhere]",
-    "prose-headings:font-black prose-headings:tracking-tight prose-headings:text-slate-900",
-    "prose-h2:text-xl prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-2 prose-h2:mt-8 prose-h2:mb-3 prose-h2:scroll-mt-20 sm:prose-h2:text-2xl sm:prose-h2:mt-12 sm:prose-h2:mb-6",
-    "prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-2 sm:prose-h3:text-xl sm:prose-h3:mt-8 sm:prose-h3:mb-3",
-    "prose-p:leading-[1.78] prose-p:text-slate-600 sm:prose-p:leading-[1.9]",
-    "prose-a:text-primary prose-a:font-semibold prose-a:no-underline hover:prose-a:text-blue-600",
-    "prose-strong:text-slate-900 prose-strong:font-bold",
-    "prose-img:border prose-img:border-slate-100",
-    "prose-blockquote:border-l-4 prose-blockquote:border-slate-300 prose-blockquote:bg-slate-50 prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:not-italic prose-blockquote:text-slate-700",
-    "prose-ul:marker:text-slate-400 prose-ol:marker:text-slate-400 prose-ol:marker:font-bold",
-  ].join(" ");
-
-  const renderArticleBody = () => {
-    const h2Positions: number[] = [];
-    const searchRegex = /<h2[\s>]/gi;
-    let match;
-    while ((match = searchRegex.exec(enhancedContent)) !== null) {
-      h2Positions.push(match.index);
-    }
-
-    const isLongArticle = enhancedContent.length >= 6000;
-
-    if (h2Positions.length >= 7) {
-      const split1 = h2Positions[1];
-      const split2 = h2Positions[4];
-      const part1 = enhancedContent.substring(0, split1);
-      const part2 = enhancedContent.substring(split1, split2);
-      const part3 = enhancedContent.substring(split2);
-      return (
-        <>
-          <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part1 }} />
-          <AdUnit slot="1489598374" analyticsPlacement="entity_article_after_intro" {...stableArticleAdProps} />
-          <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part2 }} />
-          <AdUnit slot="9407670747" analyticsPlacement="entity_article_mid" {...stableArticleAdProps} />
-          <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part3 }} />
-        </>
-      );
-    }
-
-    if (h2Positions.length >= 4 && isLongArticle) {
-      const split1 = h2Positions[1];
-      const split2 = h2Positions[Math.min(3, h2Positions.length - 1)];
-      const part1 = enhancedContent.substring(0, split1);
-      const part2 = enhancedContent.substring(split1, split2);
-      const part3 = enhancedContent.substring(split2);
-      return (
-        <>
-          <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part1 }} />
-          <AdUnit slot="1489598374" analyticsPlacement="entity_article_after_intro" {...stableArticleAdProps} />
-          <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part2 }} />
-          <AdUnit slot="9407670747" analyticsPlacement="entity_article_mid_long" {...stableArticleAdProps} />
-          <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: part3 }} />
-        </>
-      );
-    }
-
-    if (h2Positions.length >= 4) {
-      const splitPos = h2Positions[1];
-      const firstPart = enhancedContent.substring(0, splitPos);
-      const secondPart = enhancedContent.substring(splitPos);
-      return (
-        <>
-          <div className={`${proseClass} mt-5 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: firstPart }} />
-          <AdUnit slot="1489598374" analyticsPlacement="entity_article_after_intro" {...stableArticleAdProps} />
-          <div className={`${proseClass} sm:prose-lg`} dangerouslySetInnerHTML={{ __html: secondPart }} />
-        </>
-      );
-    }
-
-    return (
-      <div className={`${proseClass} mt-5 pb-8 sm:mt-8 sm:prose-lg`} dangerouslySetInnerHTML={{ __html: enhancedContent }} />
-    );
-  };
-
   return (
     <>
       <ArticleSchema
@@ -197,7 +120,7 @@ export function EntityArticleDocument({
         image={imageUrl}
       />
 
-      <div className="mx-auto max-w-[920px]">
+      <div className="mx-auto max-w-[1080px]">
         <ArticleThemeNavigator
           articles={relatedArticles}
           currentSlug={article.slug}
@@ -206,7 +129,7 @@ export function EntityArticleDocument({
         />
       </div>
 
-      <article data-article-slug={article.slug} className="mx-auto max-w-[920px]">
+      <article data-article-slug={article.slug} className="mx-auto max-w-[1080px]">
         <header className="relative border-b border-slate-200 pb-4 sm:pb-8">
           {shouldShowEyecatch && (
             <div className="relative mb-3 aspect-[16/8] max-h-[180px] w-full overflow-hidden bg-slate-100 sm:mb-7 sm:aspect-[16/6] sm:max-h-[320px]">
@@ -241,6 +164,10 @@ export function EntityArticleDocument({
             <span className="text-slate-700">{article.category}</span>
             <time dateTime={datePublished}>{formatDate(article.date)}</time>
             <span>約{readingTimeMin}分</span>
+            <Link href="/about" className="inline-flex items-center gap-1 transition-colors duration-150 hover:text-primary">
+              <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>著者: おとうふや</span>
+            </Link>
             {article.lastUpdated && <span>更新日 {formatDate(article.lastUpdated)}</span>}
           </div>
 
@@ -296,7 +223,9 @@ export function EntityArticleDocument({
           </details>
         )}
 
-        <div className="pb-6 sm:pb-10">{renderArticleBody()}</div>
+        <div className="pb-6 sm:pb-10">
+          <ArticleBody html={enhancedContent} analyticsPrefix="entity_article" />
+        </div>
 
         <div className="pb-5 sm:pb-8">
           <AdUnit slot="1489598374" analyticsPlacement="entity_article_after_body" {...stableArticleAdProps} />

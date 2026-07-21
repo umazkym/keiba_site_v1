@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { SearchIcon, MenuIcon, XIcon } from '@/components/Icons';
 import { sendAffiliateClickEvent, sendAffiliateImpressionEvent } from '@/lib/analytics';
+import { acquirePageScrollLock } from '@/lib/page-scroll-lock';
 
 type HeaderProps = {
     todayString: string;
@@ -81,23 +82,20 @@ export const Header = ({ todayString }: HeaderProps) => {
 
     // メニュー展開時に背景スクロールを止め、最初の主要リンクへフォーカスを移す。
     useEffect(() => {
+        if (!isMenuOpen) return undefined;
+
         let focusFrame: number | undefined;
         let visibleFrame: number | undefined;
-        const previousOverflow = document.body.style.overflow;
-        if (isMenuOpen) {
-            document.body.style.overflow = 'hidden';
-            // visibilityの反映後にフォーカスする。1フレームだけではSafariで
-            // 直前のメニューボタンへ残ることがあるため、描画を2回待つ。
-            visibleFrame = window.requestAnimationFrame(() => {
-                focusFrame = window.requestAnimationFrame(() => {
-                    menuPanelRef.current
-                        ?.querySelector<HTMLAnchorElement>('[data-menu-initial-focus="true"]')
-                        ?.focus({ preventScroll: true });
-                });
+        const releaseScrollLock = acquirePageScrollLock();
+        // visibilityの反映後にフォーカスする。1フレームだけではSafariで
+        // 直前のメニューボタンへ残ることがあるため、描画を2回待つ。
+        visibleFrame = window.requestAnimationFrame(() => {
+            focusFrame = window.requestAnimationFrame(() => {
+                menuPanelRef.current
+                    ?.querySelector<HTMLAnchorElement>('[data-menu-initial-focus="true"]')
+                    ?.focus({ preventScroll: true });
             });
-        } else {
-            document.body.style.overflow = previousOverflow;
-        }
+        });
         return () => {
             if (visibleFrame !== undefined) {
                 window.cancelAnimationFrame(visibleFrame);
@@ -105,7 +103,7 @@ export const Header = ({ todayString }: HeaderProps) => {
             if (focusFrame !== undefined) {
                 window.cancelAnimationFrame(focusFrame);
             }
-            document.body.style.overflow = previousOverflow;
+            releaseScrollLock();
         };
     }, [isMenuOpen]);
 
@@ -148,7 +146,7 @@ export const Header = ({ todayString }: HeaderProps) => {
 
     return (
         <>
-            <header className="glass sticky top-0 z-50">
+            <header data-site-header className="glass sticky top-0 z-50">
                 <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6">
                     <div className="flex h-12 items-center justify-between gap-2 sm:h-16 sm:gap-4">
                     {/* ロゴ */}

@@ -55,7 +55,7 @@ const GroupLinks = ({ groups }: { groups: ArchiveGroup[] }) => (
                 className="flex min-h-11 items-center justify-between gap-3 px-3 py-2 text-sm font-bold text-slate-700 transition-colors duration-150 hover:bg-slate-50 hover:text-primary"
             >
                 <span className="min-w-0 truncate">{group.title}</span>
-                <span className="shrink-0 text-[11px] font-black text-slate-400">{group.articleCount}</span>
+                <span className="shrink-0 text-[11px] font-black text-slate-500">{group.articleCount}記事</span>
             </Link>
         ))}
     </div>
@@ -63,6 +63,7 @@ const GroupLinks = ({ groups }: { groups: ArchiveGroup[] }) => (
 
 export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, courseGroups }: Props) {
     const [activeTheme, setActiveTheme] = useState<ThemeKey>('grade');
+    const [isOpen, setIsOpen] = useState(false);
     const gradeCount = gradeRaceSections.reduce((sum, section) => sum + section.articleCount, 0);
     const themes: Array<{ key: ThemeKey; label: string; count: number }> = [
         { key: 'grade', label: '重賞', count: gradeCount },
@@ -71,8 +72,8 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
     ];
 
     return (
-        <section className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white lg:hidden" aria-label="記事テーマ">
-            <div className="grid grid-cols-3 divide-x divide-slate-200 border-b border-slate-200" role="tablist" aria-label="記事テーマを選択">
+        <section className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white lg:hidden" aria-label="記事テーマ">
+            <div className={`grid grid-cols-3 divide-x divide-slate-200 ${isOpen ? 'border-b border-slate-200' : ''}`} role="tablist" aria-label="記事テーマを選択">
                 {themes.map(theme => {
                     const isActive = activeTheme === theme.key;
                     return (
@@ -82,7 +83,15 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                             role="tab"
                             aria-selected={isActive}
                             aria-controls="mobile-article-theme-panel"
-                            onClick={() => setActiveTheme(theme.key)}
+                            aria-expanded={isActive && isOpen}
+                            onClick={() => {
+                                if (isActive) {
+                                    setIsOpen(current => !current);
+                                } else {
+                                    setActiveTheme(theme.key);
+                                    setIsOpen(true);
+                                }
+                            }}
                             className={`flex min-h-11 items-center justify-center gap-1.5 border-t-2 px-2 text-xs font-black transition-colors duration-150 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 ${isActive
                                 ? 'border-blue-600 bg-blue-50/70 text-slate-950'
                                 : 'border-transparent bg-white text-slate-500 hover:bg-slate-50'
@@ -91,18 +100,23 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                             <ThemeIcon theme={theme.key} />
                             <span>{theme.label}</span>
                             <span className="text-[10px] text-slate-400">{theme.count}</span>
+                            {isActive && (
+                                <svg aria-hidden="true" viewBox="0 0 20 20" className={`h-3 w-3 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
+                                </svg>
+                            )}
                         </button>
                     );
                 })}
             </div>
-            <div id="mobile-article-theme-panel" role="tabpanel" className="max-h-[300px] overflow-y-auto overscroll-contain">
+            {isOpen && <div id="mobile-article-theme-panel" role="tabpanel" className="max-h-[240px] overflow-y-auto overscroll-contain">
                 {activeTheme === 'grade' && (
                     <div className="divide-y divide-slate-200">
                         {gradeRaceSections.map(section => (
                             <section key={section.id} aria-label={section.title}>
                                 <div className="flex items-center justify-between bg-slate-50 px-3 py-1.5 text-[11px] font-black text-slate-600">
                                     <span>{section.title}</span>
-                                    <span>{section.articleCount}件</span>
+                                    <span>{section.groups.length}レース / {section.articleCount}記事</span>
                                 </div>
                                 <GroupLinks groups={section.groups} />
                             </section>
@@ -111,7 +125,7 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                 )}
                 {activeTheme === 'jockey' && <GroupLinks groups={jockeyGroups} />}
                 {activeTheme === 'course' && <GroupLinks groups={courseGroups} />}
-            </div>
+            </div>}
         </section>
     );
 }

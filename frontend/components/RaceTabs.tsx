@@ -29,35 +29,12 @@ import { LAST_RACE_STORAGE_KEY, StoredRaceView } from '@/lib/race-memory';
 import { getRaceDetailPath } from '@/lib/race-url';
 import { formatDate } from '@/lib/utils';
 import { RACE_BREADCRUMB_CHANGE_EVENT } from '@/lib/race-breadcrumb-event';
-
-const CollapsibleSection = memo(({ title, icon, children }: { title: string, icon: React.ReactNode, children: React.ReactNode }) => {
-    const [isOpen, setIsOpen] = useState(false);
-
-    const handleToggle = (e: React.SyntheticEvent<HTMLDetailsElement>) => {
-        setIsOpen(e.currentTarget.open);
-    };
-
-    return (
-        <details className="card" onToggle={handleToggle}>
-            <summary className="flex items-center text-md font-bold text-gray-800 cursor-pointer list-none p-2 sm:p-3">
-                <div className="w-6 h-6 mr-2 flex-shrink-0 text-primary">{icon}</div>
-                <span className="whitespace-nowrap">{title}</span>
-                <div className={`ml-auto transform transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`}>
-                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
-                </div>
-            </summary>
-            <div className="px-2 pb-2 sm:px-3 sm:pb-3">
-                {children}
-            </div>
-        </details>
-    );
-});
-
-CollapsibleSection.displayName = 'CollapsibleSection';
+import { RACE_ACTIVE_SUMMARY_EVENT, type RaceActiveSummary } from '@/lib/race-active-event';
+import { getRaceTopObstructionHeight } from '@/hooks/useRaceSectionNavigation';
 
 const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
     <>
-        <div className="mb-2 card p-2 sm:p-3 min-h-[220px]" aria-hidden="true">
+        <div className="race-panel mb-2 min-h-[220px] p-2 sm:p-3" aria-hidden="true">
             <div className="flex items-center p-2 sm:p-3">
                 <div className="h-5 w-5 rounded bg-slate-100" />
                 <div className="ml-2 h-4 w-28 rounded bg-slate-100" />
@@ -71,7 +48,7 @@ const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
         )}
         <div className="mb-2 grid gap-2 xl:grid-cols-2 xl:items-stretch" aria-hidden="true">
             {[0, 1].map((index) => (
-                <div key={index} className="card p-2 sm:p-3 min-h-[250px]">
+                <div key={index} className="race-panel min-h-[250px] p-2 sm:p-3">
                     <div className="flex items-center p-2 sm:p-3">
                         <div className="h-5 w-5 rounded bg-slate-100" />
                         <div className="ml-2 h-4 w-32 rounded bg-slate-100" />
@@ -82,7 +59,7 @@ const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
                 </div>
             ))}
         </div>
-        <div className="mb-2 card p-2 sm:p-3 min-h-[220px]" aria-hidden="true">
+        <div className="race-panel mb-2 min-h-[220px] p-2 sm:p-3" aria-hidden="true">
             <div className="flex items-center p-2 sm:p-3">
                 <div className="h-5 w-5 rounded bg-slate-100" />
                 <div className="ml-2 h-4 w-36 rounded bg-slate-100" />
@@ -155,8 +132,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             const raceContent = document.getElementById(`venue-${venue.venue_name}`);
             if (!raceContent) return;
 
-            const offset = window.innerWidth < 640 ? 68 : 82;
-            const top = window.scrollY + raceContent.getBoundingClientRect().top - offset;
+            const top = window.scrollY + raceContent.getBoundingClientRect().top - getRaceTopObstructionHeight();
             window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
         });
     }, [venue.venue_name]);
@@ -251,6 +227,14 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             courseLabel: `${activeRace.course_type} ${activeRace.distance}m`,
             viewedAt: Date.now(),
         };
+
+        const activeSummary: RaceActiveSummary = {
+            venueName: venue.venue_name,
+            raceNumber: activeRace.race_number,
+            raceName: activeRace.race_name,
+            courseLabel: `${activeRace.course_type} ${activeRace.distance}m`,
+        };
+        window.dispatchEvent(new CustomEvent(RACE_ACTIVE_SUMMARY_EVENT, { detail: activeSummary }));
 
         try {
             window.localStorage.setItem(LAST_RACE_STORAGE_KEY, JSON.stringify(viewedRace));
@@ -365,30 +349,38 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
     return (
         <div id={`venue-${venue.venue_name}`}>
             {activeRace && (
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-slate-100 bg-white px-2.5 py-2 text-[11px] font-semibold text-slate-600 sm:text-xs">
-                    <span className="truncate">{formatDate(currentDate)} {venue.venue_name} {activeRace.race_number}R {activeRace.race_name}</span>
-                    {(() => {
-                        const favorite = activeRace.predictions.find(p => p.mark === '◎');
-                        if (!favorite) return null;
-                        return (
-                            <span className="shrink-0 text-primary">
-                                ◎ {favorite.horse_name} <span className="rounded bg-blue-50 px-1 font-mono font-bold">{favorite.deviation_score?.toFixed(1)}</span>
-                            </span>
-                        );
-                    })()}
+                <div
+                    data-race-mobile-selector
+                    className="sticky top-12 z-30 -mx-2 flex h-14 items-stretch border-y border-slate-200 bg-white shadow-sm sm:top-16 lg:hidden"
+                >
+                    <div className="flex w-[116px] shrink-0 items-center gap-1.5 border-r border-slate-200 bg-slate-950 px-2 text-white">
+                        <span className="flex h-8 min-w-9 items-center justify-center rounded-md bg-white/10 font-mono text-[11px] font-black">
+                            {activeRace.race_number}R
+                        </span>
+                        <span className="min-w-0">
+                            <span className="block truncate text-[11px] font-black">{venue.venue_name}</span>
+                            <span className="block truncate text-[9px] font-semibold text-slate-300">{activeRace.race_name}</span>
+                        </span>
+                    </div>
+                    <RaceSelector
+                        races={venue.races}
+                        selectedIndex={activeRaceIndex}
+                        onSelectRace={(index) => handleRaceSelect(index, 'race_selector')}
+                    />
                 </div>
             )}
-            <div className="sticky top-12 z-30 -mx-2 border-b border-slate-200 bg-white px-2 py-1 shadow-sm sm:top-16 lg:mx-0 lg:px-0">
-                <RaceSelector
-                    races={venue.races}
-                    selectedIndex={activeRaceIndex}
-                    onSelectRace={(index) => handleRaceSelect(index, 'race_selector')}
-                />
-            </div>
             {activeRace && (
-                <div id={`race-${activeRace.id}`} className="race-detail-layout mt-1">
-                    <div className="grid gap-3">
-                        <div id="race-prediction-section" className="card mb-1 overflow-hidden border border-gray-200 shadow-sm sm:mb-1.5">
+                <div
+                    id={`race-${activeRace.id}`}
+                    className="race-detail-layout mt-1"
+                    data-active-race-summary="true"
+                    data-venue-name={venue.venue_name}
+                    data-race-number={activeRace.race_number}
+                    data-race-name={activeRace.race_name}
+                    data-course-label={`${activeRace.course_type} ${activeRace.distance}m`}
+                >
+                    <div className="grid gap-2 sm:gap-3">
+                        <div id="race-prediction-section" className="race-panel mb-1 overflow-hidden sm:mb-1.5">
                             <div className="bg-white px-2.5 py-1 sm:p-4 border-b border-gray-200">
                                 <h3 className="text-[15px] sm:text-lg font-bold flex items-center text-gray-800">
                                     <span className="bg-primary text-white rounded-md w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-1.5 sm:mr-2 font-mono font-bold text-xs sm:text-base">{activeRace.race_number}R</span>
@@ -397,17 +389,16 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 <p className="text-[11px] sm:text-sm text-gray-500 ml-7 sm:ml-11 font-medium leading-tight">{activeRace.course_type} {activeRace.distance}m</p>
                             </div>
                             <div>
-                                <h4 id="race-prediction-heading" className="flex items-center text-[13px] sm:text-base font-bold text-gray-700 mt-1 mb-0.5 px-2.5 sm:px-4">
-                                    <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent mr-1.5" />
+                                <h4 id="race-prediction-heading" className="race-section-heading mx-2.5 mb-1 mt-1.5 sm:mx-4 sm:my-2">
                                     AI偏差値
                                 </h4>
                                 {/* 印 of 凡例 */}
                                 <div className="flex gap-1 sm:gap-1.5 overflow-x-auto px-2.5 sm:px-4 pb-1 text-[10px] sm:text-[11px] font-bold" aria-label="印の凡例">
-                                    <span className="shrink-0 inline-flex items-center h-5 sm:h-6 px-1.5 sm:px-2 rounded-full bg-amber-50 text-amber-800 border border-amber-200">◎ 本命</span>
-                                    <span className="shrink-0 inline-flex items-center h-5 sm:h-6 px-1.5 sm:px-2 rounded-full bg-blue-50 text-blue-700 border border-blue-200">○ 対抗</span>
-                                    <span className="shrink-0 inline-flex items-center h-5 sm:h-6 px-1.5 sm:px-2 rounded-full bg-purple-50 text-purple-700 border border-purple-200">▲ 3番手</span>
-                                    <span className="shrink-0 inline-flex items-center h-5 sm:h-6 px-1.5 sm:px-2 rounded-full bg-green-50 text-green-700 border border-green-200">△ 相手候補</span>
-                                    <span className="shrink-0 inline-flex items-center h-5 sm:h-6 px-1.5 sm:px-2 rounded-full bg-slate-100 text-slate-600 border border-slate-200">☆ ひと押し候補</span>
+                                    <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 text-amber-800 sm:h-6 sm:px-2">◎：本命</span>
+                                    <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-blue-200 bg-blue-50 px-1.5 text-blue-700 sm:h-6 sm:px-2">○：対抗</span>
+                                    <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-purple-200 bg-purple-50 px-1.5 text-purple-700 sm:h-6 sm:px-2">▲：単穴</span>
+                                    <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-green-200 bg-green-50 px-1.5 text-green-700 sm:h-6 sm:px-2">△：連下</span>
+                                    <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-slate-200 bg-slate-100 px-1.5 text-slate-600 sm:h-6 sm:px-2">☆：星</span>
                                 </div>
                                 <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
                             </div>
@@ -434,19 +425,17 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                 </div>
 
                                 <div className="mb-1.5 flex flex-col gap-1.5 sm:gap-2">
-                                    <div className="card p-1.5 sm:p-3 flex flex-col">
-                                        <div id="race-detail-heading" className="flex items-center text-[13px] sm:text-base font-bold text-gray-800 p-1 sm:p-2.5">
-                                            <FlagIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-primary" />
+                                    <div className="race-panel flex flex-col p-1.5 sm:p-3">
+                                        <div id="race-detail-heading" className="race-section-heading mx-1 mb-1 sm:mx-2.5 sm:mb-2">
                                             <span>展開/脚質予測</span>
                                         </div>
-                                        <div className="px-1 sm:px-2.5 pb-1 sm:pb-2.5 flex-1">
+                                        <div className="flex-1 px-1 pb-1 sm:px-2.5 sm:pb-2">
                                             <StartPositionChart predictions={activeRace.predictions} />
                                         </div>
                                     </div>
 
-                                    <div className="card p-1.5 sm:p-3 flex flex-col">
-                                        <div id="race-frame-heading" className="flex items-center text-[13px] sm:text-base font-bold text-gray-800 p-1 sm:p-2.5">
-                                            <ChartBarIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-accent" />
+                                    <div className="race-panel flex flex-col p-1.5 sm:p-3">
+                                        <div id="race-frame-heading" className="race-section-heading mx-1 mb-1 sm:mx-2.5 sm:mb-2">
                                             <span>このコースの枠順傾向</span>
                                         </div>
                                         <div className="px-1 sm:px-2.5 pb-1 sm:pb-2.5 flex-1">
@@ -465,7 +454,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                             <MatchupTable race={activeRace} />
                                         </div>
                                         <div className="mb-2">
-                                            <div className="card p-2 sm:p-3">
+                                            <div className="race-panel p-2 sm:p-3">
                                                 <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
                                                     <FlagIcon className="w-5 h-5 mr-2 text-primary" />
                                                     <span>展開/脚質予測</span>
@@ -587,9 +576,9 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                         </div>
                     </div>
 
-                    <aside className="side-panel grid gap-3">
-                        <section className="card side-card">
-                            <h2 className="section-title">同日レース</h2>
+                    <aside className="side-panel hidden gap-3 lg:grid">
+                        <section className="race-panel side-card">
+                            <h2 className="race-section-heading">同日レース</h2>
                             <div className="side-list">
                                 {venue.races.map((r, idx) => {
                                     const isCurrent = idx === activeRaceIndex;
@@ -739,7 +728,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
 
     // ★ 全てのフックの後で早期リターン
     if (isEmpty) {
-        return <div className="p-6 text-center text-muted card">対象日のレースデータがありません。</div>;
+        return <div className="race-panel p-6 text-center text-muted">対象日のレースデータがありません。</div>;
     }
 
     const mainTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-2 sm:gap-4 border-b-2 border-slate-200 mb-1.5 sm:mb-4";

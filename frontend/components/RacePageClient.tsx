@@ -17,6 +17,7 @@ import { RecentRaceReturn } from "@/components/RecentRaceReturn";
 import { AffiliateSlot } from "@/components/AffiliateSlot";
 import { RacePageJumpNav } from "@/components/RacePageJumpNav";
 import { RacePageBottomNav } from "@/components/RacePageBottomNav";
+import { getRaceTopObstructionHeight } from "@/hooks/useRaceSectionNavigation";
 
 // 日付フォーマット検証関数
 /**
@@ -214,10 +215,8 @@ export default function RacePageClient({
                                     const rect = raceElement.getBoundingClientRect();
                                     const scrollTop = window.scrollY || document.documentElement.scrollTop;
                                     const elementTop = rect.top + scrollTop;
-                                    // 1024px未満（モバイル・タブレット）はセレクターが2行になり高くなるため、大きめのオフセットにする
-                                    const offset = window.innerWidth < 1024 ? 160 : 140;
                                     window.scrollTo({
-                                        top: Math.max(0, elementTop - offset),
+                                        top: Math.max(0, elementTop - getRaceTopObstructionHeight()),
                                         behavior: getPreferredScrollBehavior()
                                     });
                                 }
@@ -305,7 +304,7 @@ export default function RacePageClient({
     };
 
     return (
-        <div id="race-page-top" className="mx-auto max-w-6xl py-2 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-4">
+        <div id="race-page-top" className="race-page-scope mx-auto max-w-6xl py-2 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-4">
             {/* ▼▼▼▼▼【ファーストビュー改善】▼▼▼▼▼ */}
             {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
             <div className="relative z-10 mb-1.5 border-b border-slate-200 bg-slate-50 p-1 sm:mb-3 sm:p-2">
@@ -375,56 +374,6 @@ export default function RacePageClient({
                     翌日のデータ →
                 </Link>
             </div>
-
-            {articlesMeta && articlesMeta.length > 0 && (
-                <section id="race-page-articles-section" className="mt-2 sm:mt-3 mb-1.5 sm:mb-2 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
-                        <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                            <span className="w-1.5 h-5 bg-primary rounded-full"></span>
-                            関連する分析記事
-                        </h2>
-                    </div>
-                    <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {articlesMeta.slice(0, 3).map((article) => (
-                            <Link
-                                key={article.slug}
-                                prefetch={false}
-                                href={`/articles/${article.slug}`}
-                                className="group flex sm:flex-col gap-3 sm:gap-0 items-start p-2 sm:p-0 rounded-lg hover:bg-slate-50 transition-colors"
-                            >
-                                <div className="shrink-0 w-16 h-16 sm:w-full sm:h-28 rounded-lg sm:rounded-b-none overflow-hidden bg-slate-100 relative">
-                                    {article.eyecatch && (
-                                        <img
-                                            src={article.eyecatch}
-                                            alt={article.title}
-                                            className="h-full w-full object-cover"
-                                        />
-                                    )}
-                                </div>
-                                <div className="flex-1 min-w-0 sm:p-3">
-                                    <span className="inline-block text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded mb-1">
-                                        {article.category}
-                                    </span>
-                                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 line-clamp-2 leading-snug group-hover:text-primary transition-colors">
-                                        {article.title}
-                                    </h3>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                    <div className="px-4 pb-3 text-center">
-                        <Link
-                            href="/articles"
-                            className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:text-primary-dark transition-colors"
-                        >
-                            すべての記事を見る
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                            </svg>
-                        </Link>
-                    </div>
-                </section>
-            )}
 
             {/* SEO・回遊導線 */}
             {/* <section className="mt-1.5 sm:mt-2.5 bg-white rounded-xl border border-slate-200 p-3 shadow-sm">

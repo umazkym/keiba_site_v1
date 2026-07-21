@@ -336,12 +336,12 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
     const isDataEmpty = !matchupData || Object.keys(matchupData.matchup_data).length === 0;
 
     return (
-        <div className="card">
+        <div className="race-panel overflow-hidden">
             <Tippy singleton={source} theme="light-border" placement="top" animation="shift-away" interactive={true} appendTo={() => document.body} delay={[100, 200]} />
 
             <div className="flex flex-col gap-1.5 border-b border-slate-200 p-2 md:flex-row md:items-center md:justify-between md:p-3">
                 <div className='flex items-center gap-2'>
-                    <h3 id="race-matchup-heading" className="whitespace-nowrap text-xs font-bold text-slate-800 md:text-sm">過去対決成績</h3>
+                    <h3 id="race-matchup-heading" className="race-section-heading mb-0 whitespace-nowrap">過去対決成績</h3>
                     <Tippy
                         content={
                             <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>

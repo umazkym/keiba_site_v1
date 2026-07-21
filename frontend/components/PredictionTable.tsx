@@ -11,17 +11,31 @@ import 'tippy.js/dist/tippy.css';
 import 'tippy.js/animations/shift-away.css';
 import 'tippy.js/themes/light-border.css';
 
+const getWakuClasses = (waku: number | null) => {
+    switch (waku) {
+        case 1: return 'border border-slate-300 bg-white text-slate-900';
+        case 2: return 'bg-slate-950 text-white';
+        case 3: return 'bg-red-600 text-white';
+        case 4: return 'bg-blue-600 text-white';
+        case 5: return 'bg-yellow-400 text-slate-950';
+        case 6: return 'bg-green-600 text-white';
+        case 7: return 'bg-orange-600 text-white';
+        case 8: return 'bg-pink-500 text-white';
+        default: return 'bg-slate-200 text-slate-900';
+    }
+};
+
 const HorseNumberCircle = ({ number, waku }: { number: number, waku: number | null }) => (
-    <span className={`horse-no waku${waku || ''}`}>
+    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-black sm:h-7 sm:w-7 sm:text-xs ${getWakuClasses(waku)}`}>
         {number}
     </span>
 );
 
 const DeviationScoreBadge = ({ score }: { score: number | null | undefined }) => {
-    if (score == null) return <span className="score low">--</span>;
+    if (score == null) return <span className="race-score-badge race-score-badge-low">--</span>;
     const isLow = score < 50;
     return (
-        <span className={`score ${isLow ? 'low' : ''}`}>
+        <span className={`race-score-badge ${isLow ? 'race-score-badge-low' : ''}`}>
             {score.toFixed(1)}
         </span>
     );
@@ -31,15 +45,20 @@ const getPositionIndicator = (indicator: number | null | undefined, minScore: nu
     if (indicator == null) return null;
     const scoreRange = maxScore - minScore;
     if (scoreRange < 0.01) {
-        return { label: '中団', className: 'badge badge-purple position' };
+        return { label: '中団', className: 'border-purple-200 bg-purple-50 text-purple-700' };
     }
     const ratio = (indicator - minScore) / scoreRange;
     if (ratio < 0.35) {
-        return { label: '後方', className: 'badge position' };
+        return { label: '後方', className: 'border-slate-200 bg-slate-50 text-slate-600' };
     } else if (ratio > 0.65) {
-        return { label: '先行', className: 'badge badge-blue position' };
+        return { label: '先行', className: 'border-blue-200 bg-blue-50 text-blue-700' };
     }
-    return { label: '中団', className: 'badge badge-purple position' };
+    return { label: '中団', className: 'border-purple-200 bg-purple-50 text-purple-700' };
+};
+
+const normalizePredictionMark = (mark: string | null | undefined) => {
+    if (!mark) return '−';
+    return mark.replace(/〇/g, '○');
 };
 
 export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePrediction, refreshKey?: string }) => {
@@ -86,22 +105,22 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
     }
 
     return (
-        <div ref={observerRef} className="overflow-x-auto w-full" data-refresh-key={refreshKey || undefined}>
-            <table className="table">
+        <div ref={observerRef} className="w-full overflow-x-auto" data-refresh-key={refreshKey || undefined}>
+            <table className="race-prediction-table">
                 <colgroup>
-                    <col style={{ width: '34px' }} />
-                    <col style={{ width: '42px' }} />
+                    <col style={{ width: '32px' }} />
+                    <col style={{ width: '38px' }} />
                     <col />
-                    <col style={{ width: '76px' }} />
-                    <col style={{ width: '56px' }} />
+                    <col style={{ width: '72px' }} />
+                    <col style={{ width: '52px' }} />
                 </colgroup>
                 <thead>
                     <tr>
-                        <th className="mark" style={{ textAlign: 'center' }}>印</th>
-                        <th>馬番</th>
-                        <th>馬名</th>
-                        <th style={{ textAlign: 'right' }}>
-                            <div className="flex items-center justify-end gap-1">
+                        <th className="text-center">印</th>
+                        <th className="whitespace-nowrap text-center">馬番</th>
+                        <th className="text-left">馬名</th>
+                        <th className="text-center">
+                            <div className="flex items-center justify-center gap-0.5 whitespace-nowrap">
                                 <span>AI偏差値</span>
                                 <Tippy content={
                                     <div className='p-2.5 text-sm text-left max-w-xs bg-white text-text-primary rounded-xl shadow-elevated border border-slate-100'>
@@ -114,7 +133,7 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                                 </Tippy>
                             </div>
                         </th>
-                        <th style={{ textAlign: 'center' }}>位置</th>
+                        <th className="whitespace-nowrap text-center">位置</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -124,8 +143,8 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                             : getWakuNumber(p.horse_number, race.predictions.length);
                         return (
                             <tr key={`${race.id}-${p.horse_number}`}>
-                                <td className="mark">{p.mark || '−'}</td>
-                                <td>
+                                <td className="text-center text-lg font-black leading-none">{normalizePredictionMark(p.mark)}</td>
+                                <td className="text-center">
                                     <HorseNumberCircle number={p.horse_number} waku={resolvedWaku} />
                                 </td>
                                 <td>
@@ -133,15 +152,15 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                                         <span className="truncate text-xs sm:text-sm">{p.horse_name}</span>
                                     </div>
                                 </td>
-                                <td style={{ textAlign: 'right' }}>
+                                <td className="text-center">
                                     <DeviationScoreBadge score={p.deviation_score} />
                                 </td>
-                                <td style={{ textAlign: 'center' }}>
+                                <td className="text-center">
                                     {(() => {
                                         const pos = getPositionIndicator(p.start_1c_indicator, minScore, maxScore);
-                                        if (!pos) return <span className="badge badge-slate position">-</span>;
+                                        if (!pos) return <span className="race-position-badge border-slate-200 bg-slate-50 text-slate-500">-</span>;
                                         return (
-                                            <span className={pos.className}>
+                                            <span className={`race-position-badge ${pos.className}`}>
                                                 {pos.label}
                                             </span>
                                         );

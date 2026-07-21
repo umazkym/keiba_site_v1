@@ -60,6 +60,8 @@ Constraints for parameter acquisition:
 - You MUST preserve reserved height or stable wrappers for ad slots.
 - You MUST consider mobile vertical density and anchor ad interference when changing spacing.
 - You SHOULD verify layout at narrow mobile widths when changing race or article monetization UI.
+- You MUST keep Google dialog scroll locks while an Offerwall or consent dialog is visibly active, then restore stale `body/html` overflow and Google-injected top/bottom padding after the dialog or anchor is dismissed.
+- You MUST centralize site-owned scroll locks so a mobile menu cleanup does not overwrite an active Google dialog lock, and vice versa.
 - You MUST NOT rely on ad fill behavior for layout stability because unfilled ads can still alter parent styles.
 
 ### 5. Validate tracking and build

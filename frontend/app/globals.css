@@ -552,141 +552,6 @@ header.glass {
     }
 }
 
-@media (max-width: 639px) {
-    .mobile-compact-scope p {
-        line-height: 1.65;
-    }
-
-    .mobile-compact-scope .text-4xl {
-        font-size: 1.65rem;
-        line-height: 1.2;
-    }
-
-    .mobile-compact-scope .text-3xl {
-        font-size: 1.5rem;
-        line-height: 1.24;
-    }
-
-    .mobile-compact-scope .text-2xl {
-        font-size: 1.22rem;
-        line-height: 1.28;
-    }
-
-    .mobile-compact-scope .text-xl {
-        font-size: 1.05rem;
-        line-height: 1.35;
-    }
-
-    .mobile-compact-scope .text-lg {
-        font-size: 0.98rem;
-        line-height: 1.45;
-    }
-
-    .mobile-compact-scope .text-base {
-        font-size: 0.9rem;
-    }
-
-    .mobile-compact-scope .leading-8 {
-        line-height: 1.7;
-    }
-
-    .mobile-compact-scope .leading-7 {
-        line-height: 1.58;
-    }
-
-    .mobile-compact-scope .py-24 {
-        padding-top: 3rem;
-        padding-bottom: 3rem;
-    }
-
-    .mobile-compact-scope .py-16,
-    .mobile-compact-scope .py-12,
-    .mobile-compact-scope .py-10 {
-        padding-top: 1.5rem;
-        padding-bottom: 1.5rem;
-    }
-
-    .mobile-compact-scope .py-8 {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-    }
-
-    .mobile-compact-scope .py-4 {
-        padding-top: 0.75rem;
-        padding-bottom: 0.75rem;
-    }
-
-    .mobile-compact-scope .pb-14,
-    .mobile-compact-scope .pb-12 {
-        padding-bottom: 2rem;
-    }
-
-    .mobile-compact-scope .pt-8,
-    .mobile-compact-scope .pt-6 {
-        padding-top: 1rem;
-    }
-
-    .mobile-compact-scope .p-8,
-    .mobile-compact-scope .p-6 {
-        padding: 1rem;
-    }
-
-    .mobile-compact-scope .p-5 {
-        padding: 0.875rem;
-    }
-
-    .mobile-compact-scope .p-4 {
-        padding: 0.75rem;
-    }
-
-    .mobile-compact-scope .mt-16 {
-        margin-top: 1.75rem;
-    }
-
-    .mobile-compact-scope .mt-12,
-    .mobile-compact-scope .mt-10,
-    .mobile-compact-scope .mt-8 {
-        margin-top: 1.5rem;
-    }
-
-    .mobile-compact-scope .mt-6 {
-        margin-top: 1rem;
-    }
-
-    .mobile-compact-scope .mb-8,
-    .mobile-compact-scope .mb-6 {
-        margin-bottom: 1rem;
-    }
-
-    .mobile-compact-scope .mb-14,
-    .mobile-compact-scope .mb-10 {
-        margin-bottom: 1.25rem;
-    }
-
-    .mobile-compact-scope .gap-12,
-    .mobile-compact-scope .gap-10,
-    .mobile-compact-scope .gap-8,
-    .mobile-compact-scope .gap-6 {
-        gap: 1rem;
-    }
-
-    .mobile-compact-scope .space-y-6 > :not([hidden]) ~ :not([hidden]) {
-        --tw-space-y-reverse: 0;
-        margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
-        margin-bottom: calc(1rem * var(--tw-space-y-reverse));
-    }
-
-    .mobile-compact-scope .space-y-4 > :not([hidden]) ~ :not([hidden]) {
-        --tw-space-y-reverse: 0;
-        margin-top: calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));
-        margin-bottom: calc(0.75rem * var(--tw-space-y-reverse));
-    }
-
-    .mobile-compact-scope .rounded-2xl {
-        border-radius: 0.875rem;
-    }
-}
-
 /* タブレット用の調整 */
 @media (min-width: 641px) and (max-width: 1024px) {
     .container {
@@ -739,7 +604,7 @@ header.glass {
     .article-page-title,
     .article-page-lead,
     .article-page-prose {
-        max-width: calc(100vw - 2.5rem) !important;
+        max-width: calc(100vw - 1rem) !important;
         width: 100%;
     }
 
@@ -1491,6 +1356,101 @@ header.glass {
   border: 1px solid var(--slate-200-color);
   border-radius: 12px;
 }
+
+.race-panel {
+  border: 1px solid var(--slate-200-color);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.race-section-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--primary-color);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.race-section-heading::before {
+  width: 4px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--blue-color);
+  content: "";
+}
+
+.race-prediction-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.race-prediction-table th {
+  height: 32px;
+  padding: 5px 4px;
+  border-bottom: 1px solid var(--slate-200-color);
+  background: var(--slate-50-color);
+  color: var(--slate-600, #475569);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+.race-prediction-table td {
+  height: 39px;
+  padding: 5px 4px;
+  border-bottom: 1px solid var(--slate-100-color);
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+.race-prediction-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.race-score-badge {
+  display: inline-flex;
+  min-width: 50px;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ffedd5;
+  padding: 4px 6px;
+  color: #c2410c;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.race-score-badge-low {
+  background: var(--slate-100-color);
+  color: var(--slate-500-color);
+}
+
+.race-position-badge {
+  display: inline-flex;
+  min-width: 40px;
+  min-height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-width: 1px;
+  border-radius: 999px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
 .race-tab {
   min-width: 62px;
   min-height: 44px;
@@ -1709,13 +1669,19 @@ header.glass {
 
 .race-detail-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
   width: 100%;
   max-width: 1180px;
   margin: 0 auto;
-  padding-bottom: 64px;
+  padding-bottom: 16px;
+}
+
+@media (min-width: 1024px) {
+  .race-detail-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
 }
 
 .side-panel {
@@ -1926,14 +1892,14 @@ header.glass {
     font-size: 11px;
   }
   .race-selector {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 0;
     border-radius: 0;
-    border-left: 0;
-    border-right: 0;
-    padding: 3px 4px;
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    padding: 5px 4px;
+    display: flex;
     gap: 4px;
-    overflow-x: visible;
+    overflow-x: auto;
   }
   .race-detail-layout {
     grid-template-columns: 1fr;
@@ -1941,8 +1907,8 @@ header.glass {
     padding-bottom: 16px;
   }
   .race-tab {
-    min-width: 0;
-    width: 100%;
+    min-width: 44px;
+    width: 44px;
     min-height: 44px;
     padding: 5px 2px;
     font-size: 12px;

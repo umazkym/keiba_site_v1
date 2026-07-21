@@ -76,35 +76,31 @@ export function DynamicRelatedArticles({
     }
 
     return (
-        <section className="mt-3 sm:mt-8 mb-3 sm:mb-6">
-            <h3 className="text-sm sm:text-lg font-bold text-gray-800 mb-2 sm:mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-4 sm:h-6 bg-secondary rounded-full"></span>
-                    関連する分析記事
-                </div>
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+        <section className="mb-3 mt-3 sm:mb-5 sm:mt-5">
+            <h3 className="race-section-heading mb-2 sm:mb-3">関連する分析記事</h3>
+            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3 sm:gap-3">
                 {relatedArticles.map((article) => (
                     <Link
                         href={`/articles/${article.slug}`}
                         key={article.slug}
-                        className="flex group border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-white sm:block"
+                        prefetch={false}
+                        className="group flex min-h-[68px] overflow-hidden rounded-lg border border-slate-200 bg-white transition-[border-color,background-color] duration-150 hover:border-slate-300 hover:bg-slate-50 sm:block"
                     >
-                        <div className="h-20 w-24 shrink-0 overflow-hidden bg-slate-100 sm:h-40 sm:w-full">
+                        <div className="h-[68px] w-14 shrink-0 overflow-hidden bg-slate-100 sm:h-28 sm:w-full">
                             <img
                                 src={article.eyecatch || '/images/articles/data-analysis-eyecatch.png'}
                                 alt={article.title}
                                 loading="lazy"
                                 decoding="async"
-                                className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                                className="h-full w-full object-cover object-center"
                             />
                         </div>
-                        <div className="p-2 sm:p-4 flex min-w-0 flex-col justify-center sm:justify-between flex-grow">
+                        <div className="flex min-w-0 flex-grow flex-col justify-center p-2 sm:justify-between sm:p-3">
                             <div>
-                                <span className="inline-block bg-slate-200 text-primary-dark text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full mb-1 sm:mb-2">
+                                <span className="mb-0.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-primary-dark sm:mb-1 sm:text-[10px]">
                                     {article.category}
                                 </span>
-                                <h4 className="font-bold text-xs sm:text-base mb-0 text-text-primary group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+                                <h4 className="mb-0 line-clamp-2 text-[11px] font-bold leading-snug text-text-primary transition-colors group-hover:text-primary sm:text-sm">
                                     {article.title}
                                 </h4>
                             </div>

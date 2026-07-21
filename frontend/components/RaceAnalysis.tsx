@@ -45,12 +45,8 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
         .filter(p => p.deviation_score !== null)
         .map(p => p.deviation_score as number);
 
-    const avgDeviation = deviationScores.length > 0
-        ? deviationScores.reduce((a, b) => a + b, 0) / deviationScores.length
-        : 0;
-
-    const maxDeviation = Math.max(...deviationScores);
-    const minDeviation = Math.min(...deviationScores);
+    const maxDeviation = deviationScores.length > 0 ? Math.max(...deviationScores) : 0;
+    const minDeviation = deviationScores.length > 0 ? Math.min(...deviationScores) : 0;
     const deviationRange = maxDeviation - minDeviation;
 
     const strongStartHorses = race.predictions.filter(
@@ -70,7 +66,7 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
         )
         : null;
 
-    const topMarkedHorses = race.predictions.filter(p => p.mark === '◎' || p.mark === '〇');
+    const topMarkedHorses = race.predictions.filter(p => p.mark === '◎' || p.mark === '〇' || p.mark === '○');
     const darkHorses = race.predictions.filter(p => p.mark === '▲' || p.mark === '△');
 
     // ========== 分析文言の生成 ==========
@@ -133,60 +129,41 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
 
     // ========== レンダリング ==========
     return (
-        <div className="card section">
-            {/* AI展望コメントは常時表示（SEO・滞在時間向上） */}
-            <div className="flex items-center justify-between mb-2">
-                <h2 className="section-title mb-0" id="race-analysis-heading">
-                    <span>AIレース展望</span>
-                </h2>
+        <details className="race-panel group overflow-hidden">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 transition-colors duration-150 hover:bg-slate-50 sm:px-4">
+                <h2 className="race-section-heading mb-0" id="race-analysis-heading">AIレース展望</h2>
+                <span className="shrink-0 text-xs font-bold text-blue-700 group-open:hidden">展望を開く</span>
+                <span className="hidden shrink-0 text-xs font-bold text-slate-600 group-open:inline">閉じる</span>
+            </summary>
+
+            <div className="space-y-2 border-t border-slate-200 bg-slate-50 p-2 sm:space-y-3 sm:p-4">
+                {race.ai_analysis_text && (
+                    <section className="rounded-lg border border-slate-200 bg-white p-2.5 sm:p-4">
+                        <h3 className="mb-1 text-xs font-black text-slate-800 sm:text-sm">AI展望コメント</h3>
+                        <p className="whitespace-pre-wrap text-[11px] font-semibold leading-[1.65] text-slate-700 sm:text-sm sm:leading-7">
+                            {sanitizeRaceAnalysisText(race.ai_analysis_text)}
+                        </p>
+                    </section>
+                )}
+
+                <div className="grid gap-2 lg:grid-cols-2">
+                    {[
+                        ['出走馬の能力分析', generateAbilityAnalysis(), 'border-l-blue-600'],
+                        ['スタートからの展開予想', generateStartAnalysis(), 'border-l-amber-500'],
+                        ['枠順による影響', generateFrameAnalysis(), 'border-l-emerald-600'],
+                        ['検討材料のまとめ', generateStrategyAnalysis(), 'border-l-indigo-600'],
+                    ].map(([title, body, borderClass]) => (
+                        <section key={title} className={`rounded-lg border border-slate-200 border-l-4 bg-white p-2.5 sm:p-4 ${borderClass}`}>
+                            <h3 className="mb-1 text-xs font-black text-slate-800 sm:text-sm">{title}</h3>
+                            <p className="text-[11px] leading-[1.65] text-slate-700 sm:text-sm sm:leading-7">{body}</p>
+                        </section>
+                    ))}
+                </div>
+
+                <p className="px-1 text-[10px] leading-[1.6] text-slate-500 sm:text-xs">
+                    この分析は過去データに基づく推定です。天候、馬場状態、騎手の判断、馬の状態などにより結果は変わります。
+                </p>
             </div>
-
-            {race.ai_analysis_text && (
-                <div className="analysis-preview mb-3 sm:mb-4">
-                    <h3>AI展望コメント</h3>
-                    <p className="whitespace-pre-wrap">
-                        {sanitizeRaceAnalysisText(race.ai_analysis_text)}
-                    </p>
-                </div>
-            )}
-
-            <details className="group" open={false}>
-                <summary className="flex items-center justify-between cursor-pointer list-none py-1">
-                    <span className="text-xs sm:text-sm font-bold text-slate-600"></span>
-                    <div className="flex items-center gap-1">
-                        <span className="text-xs sm:text-sm font-bold text-blue-600 group-open:hidden">続きを読む ▼</span>
-                        <span className="text-xs sm:text-sm font-bold text-slate-400 hidden group-open:inline">閉じる ▲</span>
-                    </div>
-                </summary>
-
-                <div className="space-y-3 sm:space-y-4 mt-3 sm:mt-5">
-                    <div className="grid gap-1.5 sm:gap-4 lg:grid-cols-2">
-                        <div className="bg-white rounded-lg p-2.5 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-primary">
-                            <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">出走馬の能力分析</h4>
-                            <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateAbilityAnalysis()}</p>
-                        </div>
-
-                        <div className="bg-white rounded-lg p-2.5 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-accent">
-                            <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">スタートからの展開予想</h4>
-                            <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateStartAnalysis()}</p>
-                        </div>
-
-                        <div className="bg-white rounded-lg p-2.5 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary">
-                            <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">枠順による影響</h4>
-                            <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateFrameAnalysis()}</p>
-                        </div>
-
-                        <div className="bg-white rounded-lg p-2.5 sm:p-4 shadow-sm border border-gray-200 border-l-4 border-l-secondary-dark">
-                            <h4 className="font-bold text-gray-800 mb-1 sm:mb-2 text-xs sm:text-lg">検討材料のまとめ</h4>
-                            <p className="text-gray-700 text-[11px] sm:text-sm leading-[1.6] sm:leading-relaxed">{generateStrategyAnalysis()}</p>
-                        </div>
-                    </div>
-
-                    <div className="p-1.5 sm:p-3 text-[10px] sm:text-xs italic leading-[1.6] text-slate-400">
-                        <p>このデータ分析はあくまで推定値です。実際のレースでは天候や馬場状態、騎手の判断、馬の調子など予測不可能な要因が大きく影響します。最終的な買い目の判断はご自身の責任でお願いします。</p>
-                    </div>
-                </div>
-            </details>
-        </div>
+        </details>
     );
 };

@@ -83,21 +83,16 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
         );
     };
 
-    const chartTitle = `このコースの枠順傾向 (${courseType || ''}${distance || ''}m)`;
-
-    // レスポンシブ設定
-    // 高さ削減: 320 -> 180 (gap排除のため大幅圧縮)
-    const chartHeight = isMobile ? 150 : 300;
+    const chartLabel = `このコースの枠順傾向 ${courseType || ''}${distance || ''}m`;
+    const chartHeight = isMobile ? 112 : 200;
     const chartMargin = isMobile
-        ? { top: 10, right: 0, left: 0, bottom: 0 }
-        : { top: 30, right: 15, left: 10, bottom: 35 };
+        ? { top: 12, right: 0, left: 0, bottom: 0 }
+        : { top: 22, right: 10, left: 8, bottom: 12 };
     const xAxisFontSize = isMobile ? 10 : 13;
     const labelFontSize = isMobile ? 9 : 10;
 
     return (
-        // パディング・背景削除 (フラット化)
-        <div className="my-1.5 md:my-4 md:p-4 md:bg-white md:border md:rounded-lg md:shadow-inner h-full flex flex-col justify-center">
-            <h4 className="font-bold text-center mb-0.5 text-gray-700 text-xs md:text-base md:mb-2">{chartTitle}</h4>
+        <div className="flex h-full flex-col justify-center" aria-label={chartLabel}>
             <div style={{ width: '100%', height: chartHeight }}>
                 <ResponsiveContainer>
                     <BarChart
@@ -112,7 +107,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                             tickLine={false}
                             interval={0}
                             // ラベル削除（馬番表記をなくす）
-                            height={isMobile ? 20 : 50}
+                            height={isMobile ? 18 : 28}
                         />
                         <YAxis hide domain={yAxisDomain} />
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }} />
@@ -133,7 +128,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
                     </BarChart>
                 </ResponsiveContainer>
             </div>
-            <div className="flex justify-center gap-3 text-[10px] md:text-sm text-gray-700 mt-0.5 md:mt-1 font-medium">
+            <div className="mt-0.5 flex justify-center gap-3 text-[10px] font-medium text-slate-700 md:text-xs">
                 <span className="flex items-center gap-1">
                     <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgba(34, 197, 94, 0.9)' }}></span>
                     <span>有利</span>

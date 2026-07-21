@@ -38,9 +38,7 @@ export const getRaceTopObstructionHeight = () => {
     if (typeof window === 'undefined') return 128;
 
     const header = document.querySelector<HTMLElement>('[data-site-header]');
-    const pageNavigation = window.innerWidth >= 1024
-        ? document.querySelector<HTMLElement>('[data-race-jump-nav]')
-        : document.querySelector<HTMLElement>('[data-race-mobile-selector]');
+    const pageNavigation = document.querySelector<HTMLElement>('[data-race-selector-sticky]');
     const headerHeight = isVisible(header) ? header!.getBoundingClientRect().height : 0;
     const navigationHeight = isVisible(pageNavigation) ? pageNavigation!.getBoundingClientRect().height : 0;
 

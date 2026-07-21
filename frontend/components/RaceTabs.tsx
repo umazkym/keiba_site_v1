@@ -7,6 +7,7 @@ import { PredictionTable } from '@/components/PredictionTable';
 import { RaceAnalysis } from '@/components/RaceAnalysis';
 import { VenueRaces, RaceDayPrediction } from '@/lib/types';
 import { RaceSelector } from './RaceSelector';
+import { RacePageJumpNav } from './RacePageJumpNav';
 import { StartPositionChart } from './StartPositionChart';
 import { MatchupTable } from './MatchupTable';
 import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
@@ -29,7 +30,6 @@ import { LAST_RACE_STORAGE_KEY, StoredRaceView } from '@/lib/race-memory';
 import { getRaceDetailPath } from '@/lib/race-url';
 import { formatDate } from '@/lib/utils';
 import { RACE_BREADCRUMB_CHANGE_EVENT } from '@/lib/race-breadcrumb-event';
-import { RACE_ACTIVE_SUMMARY_EVENT, type RaceActiveSummary } from '@/lib/race-active-event';
 import { getRaceTopObstructionHeight } from '@/hooks/useRaceSectionNavigation';
 
 const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
@@ -228,14 +228,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             viewedAt: Date.now(),
         };
 
-        const activeSummary: RaceActiveSummary = {
-            venueName: venue.venue_name,
-            raceNumber: activeRace.race_number,
-            raceName: activeRace.race_name,
-            courseLabel: `${activeRace.course_type} ${activeRace.distance}m`,
-        };
-        window.dispatchEvent(new CustomEvent(RACE_ACTIVE_SUMMARY_EVENT, { detail: activeSummary }));
-
         try {
             window.localStorage.setItem(LAST_RACE_STORAGE_KEY, JSON.stringify(viewedRace));
         } catch {
@@ -350,16 +342,17 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
         <div id={`venue-${venue.venue_name}`}>
             {activeRace && (
                 <div
+                    data-race-selector-sticky
                     data-race-mobile-selector
-                    className="sticky top-12 z-30 -mx-2 flex h-14 items-stretch border-y border-slate-200 bg-white shadow-sm sm:top-16 lg:hidden"
+                    className="sticky top-14 z-30 mx-1 my-2 flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm sm:top-[4.5rem] sm:mx-0 lg:h-14 lg:flex-row"
                 >
-                    <div className="flex w-[116px] shrink-0 items-center gap-1.5 border-r border-slate-200 bg-slate-950 px-2 text-white">
-                        <span className="flex h-8 min-w-9 items-center justify-center rounded-md bg-white/10 font-mono text-[11px] font-black">
+                    <div className="flex h-8 shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-950 px-2.5 text-white lg:h-full lg:w-[210px] lg:border-b-0 lg:border-r">
+                        <span className="flex h-6 min-w-9 items-center justify-center rounded-md bg-white/10 font-mono text-[11px] font-black lg:h-8">
                             {activeRace.race_number}R
                         </span>
                         <span className="min-w-0">
-                            <span className="block truncate text-[11px] font-black">{venue.venue_name}</span>
-                            <span className="block truncate text-[9px] font-semibold text-slate-300">{activeRace.race_name}</span>
+                            <span className="block truncate text-[11px] font-black">{venue.venue_name} {activeRace.race_name}</span>
+                            <span className="block truncate text-[9px] font-semibold text-slate-300">{activeRace.course_type} {activeRace.distance}m</span>
                         </span>
                     </div>
                     <RaceSelector
@@ -372,7 +365,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             {activeRace && (
                 <div
                     id={`race-${activeRace.id}`}
-                    className="race-detail-layout mt-1"
+                    className="race-detail-layout mt-2"
                     data-active-race-summary="true"
                     data-venue-name={venue.venue_name}
                     data-race-number={activeRace.race_number}
@@ -381,19 +374,19 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                 >
                     <div className="grid gap-2 sm:gap-3">
                         <div id="race-prediction-section" className="race-panel mb-1 overflow-hidden sm:mb-1.5">
-                            <div className="bg-white px-2.5 py-1 sm:p-4 border-b border-gray-200">
-                                <h3 className="text-[15px] sm:text-lg font-bold flex items-center text-gray-800">
+                            <div className="border-b border-gray-200 bg-white px-3 py-2.5 sm:p-4">
+                                <h3 className="flex items-center text-[15px] font-bold text-gray-800 sm:text-lg">
                                     <span className="bg-primary text-white rounded-md w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-1.5 sm:mr-2 font-mono font-bold text-xs sm:text-base">{activeRace.race_number}R</span>
                                     <span className="truncate">{activeRace.race_name}</span>
                                 </h3>
-                                <p className="text-[11px] sm:text-sm text-gray-500 ml-7 sm:ml-11 font-medium leading-tight">{activeRace.course_type} {activeRace.distance}m</p>
+                                <p className="ml-7 mt-0.5 text-[11px] font-medium leading-tight text-gray-500 sm:ml-11 sm:text-sm">{activeRace.course_type} {activeRace.distance}m</p>
                             </div>
                             <div>
-                                <h4 id="race-prediction-heading" className="race-section-heading mx-2.5 mb-1 mt-1.5 sm:mx-4 sm:my-2">
+                                <h4 id="race-prediction-heading" className="race-section-heading race-prediction-heading">
                                     AI偏差値
                                 </h4>
                                 {/* 印 of 凡例 */}
-                                <div className="flex gap-1 sm:gap-1.5 overflow-x-auto px-2.5 sm:px-4 pb-1 text-[10px] sm:text-[11px] font-bold" aria-label="印の凡例">
+                                <div className="flex gap-1 overflow-x-auto px-3 pb-2 text-[10px] font-bold sm:gap-1.5 sm:px-4 sm:pb-1 sm:text-[11px]" aria-label="印の凡例">
                                     <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 text-amber-800 sm:h-6 sm:px-2">◎：本命</span>
                                     <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-blue-200 bg-blue-50 px-1.5 text-blue-700 sm:h-6 sm:px-2">○：対抗</span>
                                     <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-purple-200 bg-purple-50 px-1.5 text-purple-700 sm:h-6 sm:px-2">▲：単穴</span>
@@ -576,61 +569,8 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                         </div>
                     </div>
 
-                    <aside className="side-panel hidden gap-3 lg:grid">
-                        <section className="race-panel side-card">
-                            <h2 className="race-section-heading">同日レース</h2>
-                            <div className="side-list">
-                                {venue.races.map((r, idx) => {
-                                    const isCurrent = idx === activeRaceIndex;
-                                    const topHorse = r.predictions?.[0];
-                                    const raceLabel = (
-                                        <>
-                                            <span className={`flex items-center justify-center h-[34px] rounded-lg text-xs font-bold ${isCurrent ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                                                {r.race_number}R
-                                            </span>
-                                            <div className="min-w-0">
-                                                <span className="font-bold block truncate text-slate-800 text-xs sm:text-sm">{r.race_name}</span>
-                                                {isCurrent ? (
-                                                    <small className="text-blue-600 text-[10px] block truncate font-semibold">
-                                                        表示中
-                                                    </small>
-                                                ) : topHorse && (
-                                                    <small className="text-slate-500 text-[10px] block truncate">
-                                                        AI1位: {topHorse.horse_name} ({topHorse.deviation_score?.toFixed(1)})
-                                                    </small>
-                                                )}
-                                            </div>
-                                        </>
-                                    );
-
-                                    if (isCurrent) {
-                                        return (
-                                            <div
-                                                key={r.id}
-                                                aria-current="page"
-                                                className="side-link w-full text-left !bg-blue-50 !border-blue-300 cursor-default"
-                                                style={{ display: 'grid', gridTemplateColumns: '42px 1fr', gap: '10px', alignItems: 'center' }}
-                                            >
-                                                {raceLabel}
-                                            </div>
-                                        );
-                                    }
-
-                                    return (
-                                        <button
-                                            key={r.id}
-                                            type="button"
-                                            onClick={() => handleRaceSelect(idx, 'same_day_list')}
-                                            className="side-link w-full text-left transition-colors duration-150 hover:bg-slate-50"
-                                            style={{ display: 'grid', gridTemplateColumns: '42px 1fr', gap: '10px', alignItems: 'center' }}
-                                        >
-                                            {raceLabel}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </section>
-
+                    <aside className="side-panel hidden lg:block">
+                        <RacePageJumpNav />
                     </aside>
                 </div>
             )}

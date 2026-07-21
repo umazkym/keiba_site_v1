@@ -25,6 +25,32 @@ type ArticleLike = ReturnType<typeof getAllArticles>[number];
 type ArchiveGroupList = ReturnType<typeof getArticleArchiveTotals>["gradeRaceGroups"];
 type GradeRaceSectionList = ReturnType<typeof getGradeRaceArticleArchiveSections>;
 
+function normalizeArticleThemeGradeSections(sections: GradeRaceSectionList): GradeRaceSectionList {
+  const byId = new Map(sections.map((section) => [section.id, section]));
+  const emptySection = (id: string, title: string) => ({ id, title, groups: [], groupCount: 0, articleCount: 0 });
+  const getSection = (id: string, title: string) => byId.get(id) ?? emptySection(id, title);
+  const localOther = getSection("nar-local", "地方 その他重賞");
+  const overseas = getSection("overseas", "海外");
+  const otherGroups = [...localOther.groups, ...overseas.groups];
+
+  return [
+    getSection("jra-g1", "G1"),
+    getSection("jra-g2", "G2"),
+    getSection("jra-g3", "G3"),
+    getSection("jra-other", "その他（中央）"),
+    getSection("nar-jpn1", "Jpn1"),
+    getSection("nar-jpn2", "Jpn2"),
+    getSection("nar-jpn3", "Jpn3"),
+    {
+      id: "nar-other",
+      title: "その他（地方・海外）",
+      groups: otherGroups,
+      groupCount: otherGroups.length,
+      articleCount: localOther.articleCount + overseas.articleCount,
+    },
+  ];
+}
+
 export async function generateMetadata({ searchParams }: ArticlesPageProps): Promise<Metadata> {
   const selectedCategory = searchParams.category;
   let canonicalUrl = "/articles";
@@ -180,6 +206,33 @@ function EntityDirectoryLinks({ groups }: { groups: ArchiveGroupList }) {
   );
 }
 
+function getGradeSectionLabel(sectionId: string, fallback: string) {
+  const labels: Record<string, string> = {
+    "jra-g1": "G1",
+    "jra-g2": "G2",
+    "jra-g3": "G3",
+    "jra-other": "その他",
+    "nar-jpn1": "Jpn1",
+    "nar-jpn2": "Jpn2",
+    "nar-jpn3": "Jpn3",
+    "nar-other": "その他",
+  };
+  return labels[sectionId] ?? fallback;
+}
+
+function getGradeSectionTone(sectionId: string) {
+  if (sectionId === "jra-g1" || sectionId === "nar-jpn1") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+  if (sectionId === "jra-g2" || sectionId === "nar-jpn2") {
+    return "border-red-200 bg-red-50 text-red-950";
+  }
+  if (sectionId === "jra-g3" || sectionId === "nar-jpn3") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-950";
+  }
+  return "border-slate-200 bg-slate-50 text-slate-800";
+}
+
 function GradeRaceDirectoryDetails({
   id,
   sections,
@@ -203,25 +256,22 @@ function GradeRaceDirectoryDetails({
         </span>
       </summary>
       <div className="max-h-[390px] overflow-y-auto border-t border-slate-100 p-1.5">
-        <div className="grid gap-2">
+        <div className="grid gap-1.5">
           {sections.map((section) => (
-            <section key={section.id} aria-label={section.title}>
-              <div className={`mb-1 flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-xs font-black ${
-                section.id === 'jra-g1' || section.id === 'nar-jpn1'
-                  ? 'border-amber-200 bg-amber-50 text-amber-900'
-                  : section.id === 'jra-g2' || section.id === 'nar-jpn2'
-                    ? 'border-red-200 bg-red-50 text-red-900'
-                    : section.id === 'jra-g3' || section.id === 'nar-jpn3'
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                      : 'border-slate-200 bg-slate-50 text-slate-800'
-              }`}>
-                <span>{section.title}</span>
-                <span className="rounded bg-white px-2 py-0.5 text-[10px] text-slate-600">
-                  {section.groupCount}レース / {section.articleCount}記事
+            <details key={section.id} className={`group/grade overflow-hidden rounded-lg border ${getGradeSectionTone(section.id)}`}>
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
+                <span>{getGradeSectionLabel(section.id, section.title)}</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="rounded bg-white px-2 py-0.5 text-[10px] text-slate-600">
+                    {section.groupCount}レース / {section.articleCount}記事
+                  </span>
+                  <span aria-hidden="true" className="text-slate-500 transition-transform duration-150 group-open/grade:rotate-90">›</span>
                 </span>
+              </summary>
+              <div className="border-t border-current/10 bg-white p-1">
+                <EntityDirectoryLinks groups={section.groups} />
               </div>
-              <EntityDirectoryLinks groups={section.groups} />
-            </section>
+            </details>
           ))}
         </div>
       </div>
@@ -266,7 +316,9 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
   const selectedTag = searchParams.tag;
   const shouldRenderAds = !shouldSuppressAdsInDevelopment;
   const archiveTotals = getArticleArchiveTotals();
-  const gradeRaceSections = getGradeRaceArticleArchiveSections(archiveTotals.gradeRaceGroups);
+  const gradeRaceSections = normalizeArticleThemeGradeSections(
+    getGradeRaceArticleArchiveSections(archiveTotals.gradeRaceGroups),
+  );
   const upcomingGradeRaceGroups = getUpcomingGradeRaceArticleGroups(4);
 
   let filteredArticles = selectedCategory
@@ -388,7 +440,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
             <nav className="hidden rounded-xl border border-slate-200 bg-white p-3 lg:block" aria-label="記事テーマ">
               <p className="mb-2 px-1 text-xs font-bold text-slate-600">記事テーマ</p>
               <div className="space-y-2">
-                <GradeRaceDirectoryDetails id="sidebar-grade-races" sections={gradeRaceSections} defaultOpen />
+                <GradeRaceDirectoryDetails id="sidebar-grade-races" sections={gradeRaceSections} />
                 <EntityDirectoryDetails id="sidebar-races" title="レース" groups={archiveTotals.raceGroups} />
                 <EntityDirectoryDetails id="sidebar-jockeys" title="騎手" groups={archiveTotals.jockeyGroups} />
                 <EntityDirectoryDetails id="sidebar-courses" title="コース" groups={archiveTotals.courseGroups} />

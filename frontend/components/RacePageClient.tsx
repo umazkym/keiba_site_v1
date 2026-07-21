@@ -15,7 +15,6 @@ import DisclaimerAlert from "@/components/DisclaimerAlert";
 import { InFeedAd } from "@/components/InFeedAd";
 import { RecentRaceReturn } from "@/components/RecentRaceReturn";
 import { AffiliateSlot } from "@/components/AffiliateSlot";
-import { RacePageJumpNav } from "@/components/RacePageJumpNav";
 import { RacePageBottomNav } from "@/components/RacePageBottomNav";
 import { getRaceTopObstructionHeight } from "@/hooks/useRaceSectionNavigation";
 
@@ -323,10 +322,6 @@ export default function RacePageClient({
             </div>
 
             <RecentRaceReturn className="mb-1.5 sm:mb-3" />
-
-            {hasRaceData && !isLoading && !error && (
-                <RacePageJumpNav className="mb-1.5 sm:mb-3" />
-            )}
 
             {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
                 <div className="mb-1.5 sm:mb-3">

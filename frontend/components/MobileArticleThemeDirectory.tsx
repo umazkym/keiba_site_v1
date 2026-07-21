@@ -61,6 +61,27 @@ const GroupLinks = ({ groups }: { groups: ArchiveGroup[] }) => (
     </div>
 );
 
+const getGradeSectionLabel = (sectionId: string, fallback: string) => {
+    const labels: Record<string, string> = {
+        'jra-g1': 'G1',
+        'jra-g2': 'G2',
+        'jra-g3': 'G3',
+        'jra-other': 'その他',
+        'nar-jpn1': 'Jpn1',
+        'nar-jpn2': 'Jpn2',
+        'nar-jpn3': 'Jpn3',
+        'nar-other': 'その他',
+    };
+    return labels[sectionId] ?? fallback;
+};
+
+const getGradeSectionTone = (sectionId: string) => {
+    if (sectionId === 'jra-g1' || sectionId === 'nar-jpn1') return 'border-amber-200 bg-amber-50 text-amber-950';
+    if (sectionId === 'jra-g2' || sectionId === 'nar-jpn2') return 'border-red-200 bg-red-50 text-red-950';
+    if (sectionId === 'jra-g3' || sectionId === 'nar-jpn3') return 'border-emerald-200 bg-emerald-50 text-emerald-950';
+    return 'border-slate-200 bg-slate-50 text-slate-800';
+};
+
 export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, courseGroups }: Props) {
     const [activeTheme, setActiveTheme] = useState<ThemeKey>('grade');
     const [isOpen, setIsOpen] = useState(false);
@@ -109,17 +130,24 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                     );
                 })}
             </div>
-            {isOpen && <div id="mobile-article-theme-panel" role="tabpanel" className="max-h-[240px] overflow-y-auto overscroll-contain">
+            {isOpen && <div id="mobile-article-theme-panel" role="tabpanel" className="max-h-[420px] overflow-y-auto overscroll-contain">
                 {activeTheme === 'grade' && (
-                    <div className="divide-y divide-slate-200">
+                    <div className="grid gap-1.5 p-1.5">
                         {gradeRaceSections.map(section => (
-                            <section key={section.id} aria-label={section.title}>
-                                <div className="flex items-center justify-between bg-slate-50 px-3 py-1.5 text-[11px] font-black text-slate-600">
-                                    <span>{section.title}</span>
-                                    <span>{section.groups.length}レース / {section.articleCount}記事</span>
+                            <details key={section.id} className={`group/grade overflow-hidden rounded-lg border ${getGradeSectionTone(section.id)}`}>
+                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-1.5 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
+                                    <span>{getGradeSectionLabel(section.id, section.title)}</span>
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="rounded bg-white px-2 py-0.5 text-[10px] text-slate-600">
+                                            {section.groups.length}レース / {section.articleCount}記事
+                                        </span>
+                                        <span aria-hidden="true" className="text-slate-500 transition-transform duration-150 group-open/grade:rotate-90">›</span>
+                                    </span>
+                                </summary>
+                                <div className="border-t border-current/10 bg-white">
+                                    <GroupLinks groups={section.groups} />
                                 </div>
-                                <GroupLinks groups={section.groups} />
-                            </section>
+                            </details>
                         ))}
                     </div>
                 )}

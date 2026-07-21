@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { RacePrediction } from "@/lib/types";
 
 type Props = {
@@ -8,19 +7,16 @@ type Props = {
 };
 
 export const RaceSelector = ({ races, selectedIndex, onSelectRace }: Props) => {
-  const selectedRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    selectedRef.current?.scrollIntoView({ block: 'nearest', inline: 'center' });
-  }, [selectedIndex]);
-
   return (
-    <nav className="race-selector scrollbar-hide w-full" aria-label="同日のレース">
+    <nav
+      className="race-selector w-full"
+      aria-label="同日のレース"
+      style={{ gridTemplateColumns: `repeat(${Math.max(races.length, 1)}, minmax(0, 1fr))` }}
+    >
       {races.map((race, index) => (
         selectedIndex === index ? (
           <span
             key={race.id}
-            ref={selectedRef}
             className="race-tab active cursor-default"
             aria-current="page"
             title={`${race.race_number}Rを表示中`}

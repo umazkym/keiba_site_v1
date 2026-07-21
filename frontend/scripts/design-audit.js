@@ -15,6 +15,7 @@ const targetFiles = [
   'components/RacePageClient.tsx',
   'components/RacePageJumpNav.tsx',
   'components/RacePageBottomNav.tsx',
+  'components/RaceSelector.tsx',
   'components/RaceTabs.tsx',
   'hooks/useRaceSectionNavigation.ts',
 ];
@@ -126,6 +127,11 @@ const articleBody = extendedSources.find(({ relativePath }) => relativePath === 
 const mobileArticleThemes = extendedSources.find(({ relativePath }) => relativePath === 'components/MobileArticleThemeDirectory.tsx').content;
 const entityArticleDocument = extendedSources.find(({ relativePath }) => relativePath === 'components/EntityArticleDocument.tsx').content;
 const adSensePageLevel = extendedSources.find(({ relativePath }) => relativePath === 'components/AdSensePageLevelScript.tsx').content;
+const articlesPage = sources.find(({ relativePath }) => relativePath === 'app/articles/page.tsx').content;
+const raceJumpNav = sources.find(({ relativePath }) => relativePath === 'components/RacePageJumpNav.tsx').content;
+const raceSelector = sources.find(({ relativePath }) => relativePath === 'components/RaceSelector.tsx').content;
+const raceTabs = sources.find(({ relativePath }) => relativePath === 'components/RaceTabs.tsx').content;
+const startPositionChart = extendedSources.find(({ relativePath }) => relativePath === 'components/StartPositionChart.tsx').content;
 
 const checks = [
   {
@@ -200,6 +206,35 @@ const checks = [
     description: 'モバイル記事テーマが初期状態で折りたたまれる',
     passed: mobileArticleThemes.includes('const [isOpen, setIsOpen] = useState(false)')
       && mobileArticleThemes.includes('{isOpen && <div id="mobile-article-theme-panel"'),
+  },
+  {
+    id: 'grade-race-nested-accordion',
+    description: '重賞テーマがグレード見出しと重賞一覧の二段階アコーディオンになっている',
+    passed: articlesPage.includes('group/grade')
+      && mobileArticleThemes.includes('group/grade')
+      && articlesPage.includes('"jra-other": "その他"')
+      && articlesPage.includes('"nar-other": "その他"'),
+  },
+  {
+    id: 'race-selector-no-horizontal-rail',
+    description: '1〜12Rを横スクロールに隠さず均等グリッドで表示する',
+    passed: raceSelector.includes('gridTemplateColumns')
+      && !raceSelector.includes('scrollIntoView')
+      && !globals.includes('.race-selector {\n  padding: 4px;\n  display: flex'),
+  },
+  {
+    id: 'desktop-analysis-sidebar',
+    description: 'PC右側が同日レースの重複ではなく4分析ナビになっている',
+    passed: raceTabs.includes('<RacePageJumpNav />')
+      && !raceTabs.includes('同日レース')
+      && raceJumpNav.includes('data-race-analysis-sidebar'),
+  },
+  {
+    id: 'mobile-pace-chart-parity',
+    description: 'スマホの展開・脚質もPCと同じ位置取りグラフを短い高さで使う',
+    passed: startPositionChart.includes('height={164}')
+      && startPositionChart.includes('<TrackView')
+      && !startPositionChart.includes('grid grid-cols-3 gap-1.5 md:hidden'),
   },
   {
     id: 'article-switcher-height',

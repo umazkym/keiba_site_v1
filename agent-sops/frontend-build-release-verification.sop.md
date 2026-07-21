@@ -87,7 +87,7 @@ Next.js App Router、ISR、prefetchの意図を確認します。
 - You MUST verify that GA4/Clarity event names remain distinct from real `page_view` when touching analytics.
 - You SHOULD inspect likely mobile breakpoints when layout risk is meaningful.
 - You SHOULD inspect 375px, 390px, 768px, 1024px, and 1440px for broad page-level changes, with 390x844 used to confirm race-table reachability.
-- You SHOULD measure fixed race UI after changes: the mobile race selector should remain within 56px excluding the site header, the closed mobile article-theme bar within 44px, and the article switcher within 52px.
+- You SHOULD measure fixed race UI after changes: the combined current-race summary and 1〜12R selector should remain within 88px excluding the site header, show every race number without horizontal scrolling, and keep at least 8px visual separation from the site header. The closed mobile article-theme bar should remain within 44px and the article switcher within 52px.
 - You MUST NOT claim visual verification if no browser or screenshot check was performed because build success alone does not prove mobile layout or ad spacing is correct.
 
 ## Source references

@@ -47,13 +47,13 @@ jobs:
       ARTICLE_GEMMA_REVIEW_ATTEMPTS: "3"
       ARTICLE_LLM_RETRY_ATTEMPTS: "2"
       ARTICLE_LLM_RETRY_BASE_MS: "12000"
-      GEMINI_MODEL_TIERS: gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-flash-lite
-      GEMINI_STRATEGY_MODEL_TIERS: gemini-3.1-flash-lite,gemini-3-flash-preview
-      GEMINI_WRITER_MODEL_TIERS: gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-flash-lite
-      GEMINI_GEMMA_REVIEW_MODEL_TIERS: gemini-3.1-flash-lite,gemini-3-flash-preview
-      GEMINI_EDITOR_MODEL_TIERS: gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-flash-lite
-      GEMINI_ARTICLE_DAILY_REQUEST_LIMIT: "540"
-      GEMINI_ARTICLE_MODEL_DAILY_LIMITS: gemini-3.5-flash:20,gemini-3-flash-preview:20,gemini-3.1-flash-lite:500
+      GEMINI_MODEL_TIERS: gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite
+      GEMINI_STRATEGY_MODEL_TIERS: gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash
+      GEMINI_WRITER_MODEL_TIERS: gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite
+      GEMINI_GEMMA_REVIEW_MODEL_TIERS: gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash
+      GEMINI_EDITOR_MODEL_TIERS: gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite
+      GEMINI_ARTICLE_DAILY_REQUEST_LIMIT: "1040"
+      GEMINI_ARTICLE_MODEL_DAILY_LIMITS: gemini-3.6-flash:20,gemini-3.5-flash:20,gemini-3.5-flash-lite:500,gemini-3.1-flash-lite:500
       KEIBA_NEWS_MAX_ORDERS_PER_RUN: "3"
       KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN: "1"
       KEIBA_NEWS_MAX_QUERIES_PER_RUN: "8"

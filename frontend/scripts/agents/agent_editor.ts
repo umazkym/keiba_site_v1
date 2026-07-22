@@ -1621,7 +1621,7 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
       // アテンプトごとのモデル割り当て制御
       // 【モデル選定戦略の意図（賢さ重視・フォールバック順）】:
       // Editor は記事の品質審査・表現精査・置換指示など高精度な判断が必要なため「賢さ重視」のモデル選定を採用。
-      // 全アテンプト共通: high (gemini-3.5-flash, RPD:20) → medium (gemini-3-flash-preview, RPD:20) → low/lite (gemini-3.1-flash-lite, RPD:500) の順で試行。
+      // 全アテンプト共通: 3.6 Flash → 3.5 Flash → 3.5 Flash Lite → 3.1 Flash Lite の順で試行。
       // 上位モデルが 503/429/クォータ超過の場合に限り次のモデルへ自動フォールバック。Lite は最終手段。
       const currentModelTiers = modelTiers;
       const preAttemptRepair = autoRepairDraftMarkdown(currentContent);

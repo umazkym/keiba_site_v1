@@ -113,6 +113,9 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-07-22**:
+  * **記事生成LLMをGemini 3.6世代の4段階構成へ更新**:
+    WriterとEditorは `gemini-3.6-flash`、`gemini-3.5-flash`、`gemini-3.5-flash-lite`、`gemini-3.1-flash-lite` の品質順でフォールバックし、呼び出し回数の多いStrategyと複数観点レビューはRPD 500のLite系を優先する。モデル別のRPM、TPM、RPDを共通定義へ集約し、GitHub Actionsの日次合計上限を1,040へ同期。指定値に従い `gemini-3.1-flash-lite` のTPMは250として扱う。`npx tsc --noEmit` と `npm run article:test-independence` が成功。
 * **2026-07-21**:
   * **4分析グラフィックの復帰と記事流入から当日レースへの導線強化**:
     AI偏差値、対戦成績、展開・脚質、枠順傾向をミニグラフで示す共有コンポーネントを追加し、ホームのヒーローと全記事のタイトル・リード直後へ統合。記事では4つの分析価値を説明した後に「今日の全レース分析を見る」CTAを1つだけ配置し、`/races/today`、`prefetch={false}`、既存の`article_race_click`計測を維持した。ホームの日付生成がJST日付をUTCへ再変換して前日URLを作る場合があったため、`Intl.DateTimeFormat(...).formatToParts`で年月日を直接構成し、更新表示、開催一覧、CTAを当日URLへ統一。390pxでは2列、1440pxでは4列表示と横スクロールなしを実ブラウザで確認し、`npx tsc --noEmit`、`npm run design:audit`、221記事のリンク検証、`npm run build`が成功。

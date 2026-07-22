@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import { ARTICLE_LLM_MODELS } from './model_tiers';
+import { ARTICLE_LLM_MODELS, ARTICLE_LLM_MODEL_LIMITS } from './model_tiers';
 
 const DEFAULT_MODEL_DAILY_LIMITS: Record<string, number> = {
-  [ARTICLE_LLM_MODELS.high]: 15,
-  [ARTICLE_LLM_MODELS.medium]: 15,
-  [ARTICLE_LLM_MODELS.low]: 1500,
+  [ARTICLE_LLM_MODELS.high]: ARTICLE_LLM_MODEL_LIMITS[ARTICLE_LLM_MODELS.high].rpd,
+  [ARTICLE_LLM_MODELS.medium]: ARTICLE_LLM_MODEL_LIMITS[ARTICLE_LLM_MODELS.medium].rpd,
+  [ARTICLE_LLM_MODELS.efficient]: ARTICLE_LLM_MODEL_LIMITS[ARTICLE_LLM_MODELS.efficient].rpd,
+  [ARTICLE_LLM_MODELS.reserve]: ARTICLE_LLM_MODEL_LIMITS[ARTICLE_LLM_MODELS.reserve].rpd,
 };
 
 const DEFAULT_TOTAL_DAILY_LIMIT = Object.values(DEFAULT_MODEL_DAILY_LIMITS).reduce((sum, limit) => sum + limit, 0);
@@ -126,17 +127,19 @@ function parseModelLimits(value: string | undefined): Record<string, number> {
   }, { ...DEFAULT_MODEL_DAILY_LIMITS });
 }
 
-let lastNonGemmaRequestTime = 0;
-let recentRequests: { at: number; tokens: number }[] = [];
+const recentModelRequestTimes: Record<string, number[]> = {};
+let recentRequests: { at: number; tokens: number; model: string }[] = [];
 
 function cleanOldRequests() {
   const now = Date.now();
   recentRequests = recentRequests.filter(req => now - req.at < 60000);
 }
 
-function getRecentTokensSum(): number {
+function getRecentTokensSum(model: string): number {
   cleanOldRequests();
-  return recentRequests.reduce((sum, req) => sum + req.tokens, 0);
+  return recentRequests
+    .filter(req => req.model === model)
+    .reduce((sum, req) => sum + req.tokens, 0);
 }
 
 export async function reserveGeminiRequest(input: {
@@ -167,30 +170,34 @@ export async function reserveGeminiRequest(input: {
     );
   }
 
-  // TPM セーフガードスリープ
+  const limits = ARTICLE_LLM_MODEL_LIMITS[input.model as keyof typeof ARTICLE_LLM_MODEL_LIMITS];
+
+  // モデル別TPMセーフガード。直近利用が枠を使い切った場合は計測窓が空くまで待つ。
   cleanOldRequests();
-  const currentTpm = getRecentTokensSum();
-  const tpmLimit = 180000; // 180K
+  const currentTpm = getRecentTokensSum(input.model);
+  const tpmLimit = limits?.tpm ?? 250_000;
   if (currentTpm >= tpmLimit) {
-    const sleepSec = 30 + Math.floor(Math.random() * 31); // 30〜60秒
-    console.log(`[GeminiQuota] TPM Safeguard sleep: Current TPM=${currentTpm} >= ${tpmLimit}. Sleeping for ${sleepSec}s...`);
-    await new Promise(resolve => setTimeout(resolve, sleepSec * 1000));
-    lastNonGemmaRequestTime = Date.now();
+    const oldest = recentRequests
+      .filter(req => req.model === input.model)
+      .sort((a, b) => a.at - b.at)[0];
+    const waitMs = Math.max(1_000, 60_000 - (Date.now() - oldest.at) + 250);
+    console.log(`[GeminiQuota] TPM protection: model=${input.model}, current=${currentTpm}, limit=${tpmLimit}. Sleeping for ${waitMs}ms...`);
+    await new Promise(resolve => setTimeout(resolve, waitMs));
+    cleanOldRequests();
   }
 
-  // 中性能・高性能モデル (Gemma以外) の呼び出し間に最低 12 秒のインターバルを强制
-  const isGemma = /gemma/i.test(input.model);
-  if (!isGemma) {
-    const now = Date.now();
-    const elapsed = now - lastNonGemmaRequestTime;
-    const minInterval = 12000; // 12秒
-    if (elapsed < minInterval) {
-      const waitMs = minInterval - elapsed;
-      console.log(`[GeminiQuota] Rate limit protection: Sleeping for ${waitMs}ms before requesting ${input.model}...`);
-      await new Promise(resolve => setTimeout(resolve, waitMs));
-    }
-    lastNonGemmaRequestTime = Date.now();
+  // モデル別RPMを均等間隔へ変換し、短時間の集中呼び出しを防ぐ。
+  const rpm = limits?.rpm ?? 5;
+  const minInterval = Math.ceil(60_000 / rpm);
+  const requestTimes = recentModelRequestTimes[input.model] || [];
+  const lastRequestTime = requestTimes.at(-1) || 0;
+  const elapsed = Date.now() - lastRequestTime;
+  if (elapsed < minInterval) {
+    const waitMs = minInterval - elapsed;
+    console.log(`[GeminiQuota] RPM protection: model=${input.model}, rpm=${rpm}. Sleeping for ${waitMs}ms...`);
+    await new Promise(resolve => setTimeout(resolve, waitMs));
   }
+  recentModelRequestTimes[input.model] = [...requestTimes.filter(at => Date.now() - at < 60_000), Date.now()];
 
   scopeUsage.total += 1;
   scopeUsage.byModel[input.model] = modelUsage + 1;
@@ -252,11 +259,7 @@ export async function rollbackGeminiRequest(input: {
     console.log(`[GeminiQuota] Rollback successful: ${scopeUsage.total} total requests remain.`);
   }
 
-  // ロールバック時も lastNonGemmaRequestTime を更新して12秒インターバルを強制維持
-  const isGemma = /gemma/i.test(input.model);
-  if (!isGemma) {
-    lastNonGemmaRequestTime = Date.now();
-  }
+  // APIへ到達した失敗もRPMを消費するため、モデル別の呼び出し時刻は戻さない。
 }
 
 export async function recordTokenUsage(input: {
@@ -279,7 +282,8 @@ export async function recordTokenUsage(input: {
   // TPM計算には実計算値を適用
   recentRequests.push({
     at: Date.now(),
-    tokens: calculatedTokens
+    tokens: calculatedTokens,
+    model: input.model,
   });
 
   // 監査ログに記録

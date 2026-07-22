@@ -591,7 +591,7 @@ async function expandDraftWithGemma(
   neededChars: number,
   genAI: GoogleGenerativeAI
 ): Promise<string | null> {
-  const modelName = ARTICLE_LLM_MODELS.low; // クォータ制限が緩いモデルを固定で使用
+  const modelName = ARTICLE_LLM_MODELS.efficient; // RPD 500の高効率モデルを固定で使用
   const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の編集ライターだ。
 与えられた現在の記事ドラフトとWriteOrderに基づき、記事の文字数を増やしつつ品質と専門性を高めるために、新たなH2セクション（見出しと詳細な解説本文）を1〜2件追加執筆する。
 
@@ -904,8 +904,8 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
 
     // すべてのモデルで失敗またはクォータ制限になった場合の Gemma フォールバック
     if (!result) {
-      console.log(`[Writer] All default model tiers failed or quota exceeded. Attempting automatic fallback to Gemma (${ARTICLE_LLM_MODELS.low})...`);
-      const fallbackModel = ARTICLE_LLM_MODELS.low;
+      console.log(`[Writer] All default model tiers failed or quota exceeded. Attempting automatic fallback (${ARTICLE_LLM_MODELS.reserve})...`);
+      const fallbackModel = ARTICLE_LLM_MODELS.reserve;
       const model = genAI.getGenerativeModel({
         model: fallbackModel,
         systemInstruction: SYSTEM_PROMPT,

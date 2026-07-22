@@ -16,12 +16,19 @@ type GradeRaceSection = {
     articleCount: number;
 };
 
+type CourseVenueSection = {
+    id: string;
+    title: string;
+    groups: ArchiveGroup[];
+    articleCount: number;
+};
+
 type ThemeKey = 'grade' | 'jockey' | 'course';
 
 type Props = {
     gradeRaceSections: GradeRaceSection[];
     jockeyGroups: ArchiveGroup[];
-    courseGroups: ArchiveGroup[];
+    courseSections: CourseVenueSection[];
 };
 
 const ThemeIcon = ({ theme }: { theme: ThemeKey }) => {
@@ -76,24 +83,22 @@ const getGradeSectionLabel = (sectionId: string, fallback: string) => {
 };
 
 const getGradeSectionTone = (sectionId: string) => {
-    if (sectionId === 'jra-g1' || sectionId === 'nar-jpn1') return 'border-amber-200 bg-amber-50 text-amber-950';
-    if (sectionId === 'jra-g2' || sectionId === 'nar-jpn2') return 'border-red-200 bg-red-50 text-red-950';
-    if (sectionId === 'jra-g3' || sectionId === 'nar-jpn3') return 'border-emerald-200 bg-emerald-50 text-emerald-950';
+    void sectionId;
     return 'border-slate-200 bg-slate-50 text-slate-800';
 };
 
-export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, courseGroups }: Props) {
+export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, courseSections }: Props) {
     const [activeTheme, setActiveTheme] = useState<ThemeKey>('grade');
     const [isOpen, setIsOpen] = useState(false);
     const gradeCount = gradeRaceSections.reduce((sum, section) => sum + section.articleCount, 0);
     const themes: Array<{ key: ThemeKey; label: string; count: number }> = [
         { key: 'grade', label: '重賞', count: gradeCount },
         { key: 'jockey', label: '騎手', count: jockeyGroups.filter(group => group.articleCount > 0).length },
-        { key: 'course', label: 'コース', count: courseGroups.filter(group => group.articleCount > 0).length },
+        { key: 'course', label: 'コース', count: courseSections.reduce((sum, section) => sum + section.groups.length, 0) },
     ];
 
     return (
-        <section className="article-theme-sticky mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white lg:hidden" aria-label="記事テーマ">
+        <section className="article-theme-sticky mt-2 overflow-hidden rounded-lg border-0 bg-white lg:hidden" aria-label="記事テーマ">
             <div className={`grid grid-cols-3 divide-x divide-slate-200 ${isOpen ? 'border-b border-slate-200' : ''}`} role="tablist" aria-label="記事テーマを選択">
                 {themes.map(theme => {
                     const isActive = activeTheme === theme.key;
@@ -152,7 +157,24 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                     </div>
                 )}
                 {activeTheme === 'jockey' && <GroupLinks groups={jockeyGroups} />}
-                {activeTheme === 'course' && <GroupLinks groups={courseGroups} />}
+                {activeTheme === 'course' && (
+                    <div className="grid gap-1.5 p-1.5">
+                        {courseSections.map(section => (
+                            <details key={section.id} className="group/venue overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-800">
+                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-1.5 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
+                                    <span>{section.title}</span>
+                                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                                        <span>{section.groups.length}コース / {section.articleCount}記事</span>
+                                        <span aria-hidden="true" className="transition-transform duration-150 group-open/venue:rotate-90">›</span>
+                                    </span>
+                                </summary>
+                                <div className="border-t border-slate-200 bg-white">
+                                    <GroupLinks groups={section.groups} />
+                                </div>
+                            </details>
+                        ))}
+                    </div>
+                )}
             </div>}
         </section>
     );

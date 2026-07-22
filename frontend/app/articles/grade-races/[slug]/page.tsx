@@ -82,8 +82,6 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
           backLabel="重賞"
           profileHref={group.profileHref}
           profileLabel={group.profileLabel}
-          relatedArticles={group.articles}
-          themeTitle={group.title}
         />
       </div>
     </>

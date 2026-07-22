@@ -82,8 +82,6 @@ export default async function JockeyArticleArchiveDetailPage({ params }: Props) 
           backLabel="騎手"
           profileHref={group.profileHref}
           profileLabel={group.profileLabel}
-          relatedArticles={group.articles}
-          themeTitle={group.title}
         />
       </div>
     </>

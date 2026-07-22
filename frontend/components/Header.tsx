@@ -150,7 +150,7 @@ export const Header = ({ todayString }: HeaderProps) => {
         setIsHeaderVisible(true);
     }, [pathname]);
 
-    // 下方向の閲覧中は本文へ高さを譲り、上へ戻した瞬間に主要導線を復帰させる。
+    // 本文の途中では方向にかかわらず退避し、ページ最上部へ戻った時だけ復帰する。
     useEffect(() => {
         if (isMenuOpen) {
             setIsHeaderVisible(true);
@@ -158,34 +158,10 @@ export const Header = ({ todayString }: HeaderProps) => {
         }
 
         let frameId = 0;
-        let lastScrollY = Math.max(0, window.scrollY);
-        let accumulatedDelta = 0;
-
         const updateVisibility = () => {
             frameId = 0;
             const nextScrollY = Math.max(0, window.scrollY);
-            const delta = nextScrollY - lastScrollY;
-
-            if (nextScrollY <= 16) {
-                accumulatedDelta = 0;
-                setIsHeaderVisible(true);
-            } else if (delta !== 0) {
-                if (Math.sign(delta) !== Math.sign(accumulatedDelta)) {
-                    accumulatedDelta = delta;
-                } else {
-                    accumulatedDelta += delta;
-                }
-
-                if (nextScrollY > 72 && accumulatedDelta >= 24) {
-                    accumulatedDelta = 0;
-                    setIsHeaderVisible(false);
-                } else if (accumulatedDelta <= -12) {
-                    accumulatedDelta = 0;
-                    setIsHeaderVisible(true);
-                }
-            }
-
-            lastScrollY = nextScrollY;
+            setIsHeaderVisible(nextScrollY <= 8);
         };
 
         const requestUpdate = () => {
@@ -194,6 +170,7 @@ export const Header = ({ todayString }: HeaderProps) => {
         };
 
         window.addEventListener('scroll', requestUpdate, { passive: true });
+        requestUpdate();
         return () => {
             if (frameId) window.cancelAnimationFrame(frameId);
             window.removeEventListener('scroll', requestUpdate);
@@ -230,7 +207,6 @@ export const Header = ({ todayString }: HeaderProps) => {
                 data-site-header
                 data-site-header-visible={isHeaderVisible ? 'true' : 'false'}
                 className={`glass site-header sticky top-0 z-50 ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
-                onFocusCapture={() => setIsHeaderVisible(true)}
             >
                 <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6">
                     <div className="flex h-12 items-center justify-between gap-2 sm:h-16 sm:gap-4">

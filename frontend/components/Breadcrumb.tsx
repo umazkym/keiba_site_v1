@@ -190,21 +190,21 @@ export function Breadcrumb({ items }: BreadcrumbProps = {}) {
 
   return (
     <nav
-      className="overflow-hidden"
+      className="breadcrumb-nav"
       aria-label="Breadcrumb"
     >
-      <ol className="flex flex-wrap items-center text-xs">
+      <ol className="flex min-w-0 items-center text-xs sm:flex-wrap">
         {breadcrumbs.map((item, index) => (
-          <li key={index} className="flex min-w-0 items-center">
+          <li key={index} className="breadcrumb-item flex min-w-0 items-center">
             {item.href ? (
               <>
                 <Link
                   href={item.href}
-                  className="text-primary hover:text-primary-dark font-semibold transition-colors"
+                  className="whitespace-nowrap text-slate-600 hover:text-primary font-semibold transition-colors"
                 >
                   {item.label}
                 </Link>
-                <span className="text-slate-400 mx-1">/</span>
+                <span className="mx-1 text-slate-300" aria-hidden="true">/</span>
               </>
             ) : (
               <span className="breadcrumb-current font-semibold text-text-primary">

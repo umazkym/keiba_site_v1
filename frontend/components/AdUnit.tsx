@@ -2,7 +2,6 @@
 
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { Adsense } from './Adsense';
-import { SkeletonBox as SkeletonLoader } from './SkeletonLoader';
 import { sendAdImpressionEvent, type AdFormat } from '../lib/analytics';
 import { isManualAdsEnabled, shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 import { useAdViewableEvent } from '@/hooks/useAdViewableEvent';
@@ -204,10 +203,10 @@ export const AdUnit = ({
                 className={`ad-slot-shell absolute inset-0 w-full ${config.contentClass} ${adUnfilled ? 'invisible pointer-events-none' : ''} ${!adLoaded ? 'pointer-events-none' : ''}`}
             >
                 <div ref={containerRef} className="ad-unit-container relative h-full w-full">
-                    {/* 広告未ロード時（リフレッシュ中含む）はスケルトンを表示して視線を繋ぎ止める */}
+                    {/* スクロール中の再描画負荷を抑えるため、広告待機面は静止表示にする。 */}
                     {!adLoaded && !adUnfilled && (
-                        <div className="absolute inset-0 z-0 flex items-center justify-center rounded-xl bg-slate-50/80 pointer-events-none">
-                            <SkeletonLoader className="h-[80%] w-[90%] rounded-lg opacity-50" />
+                        <div className="absolute inset-0 z-0 flex items-center justify-center rounded-lg bg-slate-50 pointer-events-none">
+                            <span className="text-[10px] font-semibold tracking-wider text-slate-300">広告</span>
                         </div>
                     )}
                     <div className={`ad-highlight relative z-10 w-full ${!adLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-500'}`}>

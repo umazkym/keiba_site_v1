@@ -57,7 +57,7 @@ const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: numb
     }
 
     return (
-        <div className="group flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 sm:px-3.5 sm:py-3">
+        <div className="group flex min-w-0 items-center gap-3 bg-white px-2 py-2.5 transition-colors duration-150 hover:bg-slate-50 sm:rounded-lg sm:border sm:border-slate-200 sm:px-3.5 sm:py-3">
             <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-black ${rankTone}`}>
                 {rank}位
             </span>
@@ -165,7 +165,7 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
                 </div>
             ) : (
                 <>
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="divide-y divide-slate-100 sm:grid sm:grid-cols-1 sm:gap-2 sm:divide-y-0">
                         {hits.map((hit, index) => (
                             <Link
                                 key={`${hit.race_id}-${hit.winning_numbers}`}

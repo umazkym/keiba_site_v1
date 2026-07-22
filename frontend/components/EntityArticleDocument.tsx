@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Article, ArticleMeta } from "@/lib/articles";
+import type { Article } from "@/lib/articles";
 import { ArticleSchema } from "@/components/StructuredData";
 import { enhanceArticleHtml } from "@/lib/article-ux";
 import { AdUnit } from "@/components/AdUnit";
@@ -14,60 +14,7 @@ type EntityArticleDocumentProps = {
   backLabel: string;
   profileHref?: string;
   profileLabel?: string;
-  relatedArticles?: ArticleMeta[];
-  themeTitle?: string;
 };
-
-export function ArticleThemeNavigator({
-  articles,
-  currentSlug,
-  canonicalHref,
-  canonicalLabel,
-}: {
-  articles: ArticleMeta[];
-  currentSlug: string;
-  canonicalHref?: string;
-  canonicalLabel?: string;
-}) {
-  if (articles.length <= 1) return null;
-
-  const currentIndex = articles.findIndex(item => item.slug === currentSlug);
-  const previousArticle = currentIndex > 0 ? articles[currentIndex - 1] : null;
-  const nextArticle = currentIndex >= 0 && currentIndex < articles.length - 1 ? articles[currentIndex + 1] : null;
-
-  const ArticleDirectionLink = ({ article, label, align }: { article: ArticleMeta | null; label: string; align: 'left' | 'right' }) => {
-    if (!article) return null;
-    return (
-      <Link
-        href={`/articles/${article.slug}`}
-        className={`flex min-h-[50px] min-w-0 flex-col justify-center px-2.5 py-1 transition-colors duration-150 hover:bg-slate-50 ${align === 'right' ? 'text-right' : 'text-left'}`}
-      >
-        <span className="text-[10px] font-bold text-slate-400">{label}</span>
-        <span className="truncate text-xs font-black text-slate-800">{article.title}</span>
-      </Link>
-    );
-  };
-
-  const visibleItemCount = Number(Boolean(previousArticle)) + Number(Boolean(canonicalHref)) + Number(Boolean(nextArticle));
-
-  return (
-    <nav className="mb-2 h-[52px] overflow-hidden rounded-lg border border-slate-200 bg-white sm:mb-4" aria-label={`${canonicalLabel || '記事'}の記事切り替え`}>
-      <div
-        className="grid h-full items-stretch divide-x divide-slate-200"
-        style={{ gridTemplateColumns: `repeat(${Math.max(visibleItemCount, 1)}, minmax(0, 1fr))` }}
-      >
-        <ArticleDirectionLink article={previousArticle} label="← 前の記事" align="left" />
-        {canonicalHref ? (
-          <Link href={canonicalHref} className="flex min-h-[50px] min-w-0 flex-col items-center justify-center bg-slate-50 px-2 text-xs font-black text-slate-700 transition-colors duration-150 hover:bg-white">
-            <span>一覧</span>
-            <span className="text-[10px] text-slate-500">{articles.length}記事</span>
-          </Link>
-        ) : null}
-        <ArticleDirectionLink article={nextArticle} label="次の記事 →" align="right" />
-      </div>
-    </nav>
-  );
-}
 
 export function EntityArticleDocument({
   article,
@@ -76,8 +23,6 @@ export function EntityArticleDocument({
   backLabel,
   profileHref,
   profileLabel,
-  relatedArticles = [],
-  themeTitle,
 }: EntityArticleDocumentProps) {
   const articleUrl = `https://uma-free.com${canonicalPath}`;
   const textContent = article.content.replace(/<[^>]*>/g, "").replace(/\s+/g, "");
@@ -109,15 +54,6 @@ export function EntityArticleDocument({
         dateModified={dateModified}
         image={imageUrl}
       />
-
-      <div className="mx-auto max-w-[1080px]">
-        <ArticleThemeNavigator
-          articles={relatedArticles}
-          currentSlug={article.slug}
-          canonicalHref={canonicalPath}
-          canonicalLabel={themeTitle || article.title}
-        />
-      </div>
 
       <article data-article-slug={article.slug} className="mx-auto max-w-[1080px]">
         <header className="relative border-b border-slate-200 pb-4 sm:pb-8">
@@ -202,7 +138,7 @@ export function EntityArticleDocument({
           </details>
         )}
 
-        <div className="pb-6 sm:pb-10">
+        <div className="px-1 pb-6 sm:px-0 sm:pb-10">
           <ArticleBody html={enhancedContent} analyticsPrefix="entity_article" />
         </div>
 

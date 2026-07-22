@@ -9,7 +9,6 @@ import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
 import { enhanceArticleHtml } from '@/lib/article-ux';
 import { ArticleEngagementTracker } from '@/components/ArticleEngagementTracker';
-import { ArticleThemeNavigator } from '@/components/EntityArticleDocument';
 import { getArticleArchiveGroupForArticle } from '@/lib/article-archives';
 import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 import { ArticleBody } from '@/components/ArticleBody';
@@ -119,15 +118,6 @@ export default async function ArticlePage({ params }: Props) {
         <div className="mx-auto max-w-[1080px] px-0 sm:px-4">
           <Breadcrumb />
 
-          {articleArchiveGroup && (
-            <ArticleThemeNavigator
-              articles={articleArchiveGroup.articles}
-              currentSlug={article.slug}
-              canonicalHref={articleArchiveGroup.href}
-              canonicalLabel={articleArchiveGroup.title}
-            />
-          )}
-
           <article data-article-slug={params.slug}>
             {/* ===== ARTICLE HEADER ===== */}
             <header className="relative border-b border-slate-200 pb-4 sm:pb-8">
@@ -202,7 +192,7 @@ export default async function ArticlePage({ params }: Props) {
             )}
 
             {/* ===== ARTICLE BODY ===== */}
-            <div className="pb-6 sm:pb-10">
+            <div className="px-1 pb-6 sm:px-0 sm:pb-10">
               <ArticleBody html={enhancedContent} analyticsPrefix="article" />
             </div>
 

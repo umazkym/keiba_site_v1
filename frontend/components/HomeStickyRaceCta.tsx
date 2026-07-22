@@ -5,9 +5,10 @@ import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
 
 type HomeStickyRaceCtaProps = {
     raceDate: string;
+    raceCount: number;
 };
 
-export function HomeStickyRaceCta({ raceDate }: HomeStickyRaceCtaProps) {
+export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProps) {
     const [isVisible, setIsVisible] = useState(false);
 
     const updateVisibility = useCallback(() => {
@@ -52,15 +53,19 @@ export function HomeStickyRaceCta({ raceDate }: HomeStickyRaceCtaProps) {
             className={`home-sticky-race-cta ${isVisible ? 'home-sticky-race-cta-visible' : ''}`}
             aria-hidden={!isVisible}
         >
-            <div className="mx-auto flex h-11 max-w-[1600px] items-center px-2 sm:px-4 md:px-6">
+            <div className="mx-auto flex h-12 max-w-[1600px] items-center px-2 sm:px-4 md:px-6">
                 <HomeRaceEntryLink
                     href={`/races/${raceDate}`}
                     raceDate={raceDate}
                     entryMethod="sticky_cta"
                     tabIndex={isVisible ? 0 : -1}
-                    className="flex h-9 w-full items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-black text-white transition-colors duration-150 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 sm:mx-auto sm:max-w-md"
+                    className="flex h-10 w-full items-center rounded-md bg-blue-600 pl-2.5 pr-1.5 text-white transition-colors duration-150 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 sm:mx-auto sm:max-w-md"
                 >
-                    本日のレース分析を見る <span className="ml-1" aria-hidden="true">→</span>
+                    {raceCount > 0 && (
+                        <span className="mr-2 shrink-0 rounded bg-white/15 px-1.5 py-1 font-mono text-[10px] font-black">本日{raceCount}R</span>
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-center text-[13px] font-black">レース分析を見る</span>
+                    <span className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded bg-blue-700 text-sm font-black" aria-hidden="true">→</span>
                 </HomeRaceEntryLink>
             </div>
         </div>

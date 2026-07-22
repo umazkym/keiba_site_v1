@@ -132,6 +132,7 @@ const raceJumpNav = sources.find(({ relativePath }) => relativePath === 'compone
 const raceSelector = sources.find(({ relativePath }) => relativePath === 'components/RaceSelector.tsx').content;
 const raceTabs = sources.find(({ relativePath }) => relativePath === 'components/RaceTabs.tsx').content;
 const startPositionChart = extendedSources.find(({ relativePath }) => relativePath === 'components/StartPositionChart.tsx').content;
+const header = sources.find(({ relativePath }) => relativePath === 'components/Header.tsx').content;
 
 const checks = [
   {
@@ -208,6 +209,13 @@ const checks = [
       && mobileArticleThemes.includes('{isOpen && <div id="mobile-article-theme-panel"'),
   },
   {
+    id: 'course-venue-nested-accordion',
+    description: 'コーステーマが競馬場から各コースを開く二段階構造になっている',
+    passed: articlesPage.includes('groupCourseArchivesByVenue')
+      && mobileArticleThemes.includes('group/venue')
+      && mobileArticleThemes.includes('courseSections'),
+  },
+  {
     id: 'grade-race-nested-accordion',
     description: '重賞テーマがグレード見出しと重賞一覧の二段階アコーディオンになっている',
     passed: articlesPage.includes('group/grade')
@@ -237,10 +245,16 @@ const checks = [
       && !startPositionChart.includes('grid grid-cols-3 gap-1.5 md:hidden'),
   },
   {
-    id: 'article-switcher-height',
-    description: '記事切り替えナビが52px以内で空列を描画しない',
-    passed: entityArticleDocument.includes('h-[52px]')
-      && entityArticleDocument.includes('if (!article) return null;'),
+    id: 'header-top-only',
+    description: '共通ヘッダーがページ最上部だけ表示される',
+    passed: header.includes('nextScrollY <= 8')
+      && !header.includes('accumulatedDelta'),
+  },
+  {
+    id: 'article-top-switcher-removed',
+    description: '省略表示ばかりになる記事上部の前後ナビを置かない',
+    passed: !entityArticleDocument.includes('ArticleThemeNavigator')
+      && !entityArticleDocument.includes('前の記事'),
   },
   {
     id: 'adsense-scroll-recovery',

@@ -143,8 +143,8 @@ export default async function HomePage() {
     const gradeRaceTopHorses = buildGradeRaceTopHorseMap(predictions, weeklyGradeRaces);
 
     return (
-        <div className="space-y-4">
-            <HomeStickyRaceCta raceDate={todayStr} />
+        <div className="home-page-scope touch-pan-y space-y-2.5 overscroll-y-auto sm:space-y-4">
+            <HomeStickyRaceCta raceDate={todayStr} raceCount={raceDaySummary.raceCount} />
             {/* ── 1. 最近確認したレース ── */}
             <RecentRaceReturn />
 
@@ -222,7 +222,7 @@ export default async function HomePage() {
             {/* ── 4. メイングリッド (2カラム) ── */}
             <div className="main-grid">
                 {/* 左スタック */}
-                <div className="space-y-4">
+                <div className="space-y-2.5 sm:space-y-4">
                     {/* 高配当的中ランキング */}
                     <section className="hits card rounded-xl">
                         <TopHitsDisplay initialHits={topHits} />

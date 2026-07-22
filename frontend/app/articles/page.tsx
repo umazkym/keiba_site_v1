@@ -24,6 +24,12 @@ interface ArticlesPageProps {
 type ArticleLike = ReturnType<typeof getAllArticles>[number];
 type ArchiveGroupList = ReturnType<typeof getArticleArchiveTotals>["gradeRaceGroups"];
 type GradeRaceSectionList = ReturnType<typeof getGradeRaceArticleArchiveSections>;
+type CourseVenueSection = {
+  id: string;
+  title: string;
+  groups: ArchiveGroupList;
+  articleCount: number;
+};
 
 function normalizeArticleThemeGradeSections(sections: GradeRaceSectionList): GradeRaceSectionList {
   const byId = new Map(sections.map((section) => [section.id, section]));
@@ -49,6 +55,28 @@ function normalizeArticleThemeGradeSections(sections: GradeRaceSectionList): Gra
       articleCount: localOther.articleCount + overseas.articleCount,
     },
   ];
+}
+
+function groupCourseArchivesByVenue(groups: ArchiveGroupList): CourseVenueSection[] {
+  const sections = new Map<string, CourseVenueSection>();
+
+  groups.filter((group) => group.articleCount > 0).forEach((group) => {
+    const pathSegments = group.href.split("/").filter(Boolean);
+    const courseSegmentIndex = pathSegments.indexOf("courses");
+    const venueId = courseSegmentIndex >= 0 ? pathSegments[courseSegmentIndex + 1] : group.key.split("-")[0];
+    const venueTitle = group.badges[0] || group.title;
+    const current = sections.get(venueId) ?? {
+      id: venueId,
+      title: venueTitle,
+      groups: [],
+      articleCount: 0,
+    };
+    current.groups.push(group);
+    current.articleCount += group.articleCount;
+    sections.set(venueId, current);
+  });
+
+  return Array.from(sections.values()).sort((left, right) => left.title.localeCompare(right.title, "ja"));
 }
 
 export async function generateMetadata({ searchParams }: ArticlesPageProps): Promise<Metadata> {
@@ -221,15 +249,7 @@ function getGradeSectionLabel(sectionId: string, fallback: string) {
 }
 
 function getGradeSectionTone(sectionId: string) {
-  if (sectionId === "jra-g1" || sectionId === "nar-jpn1") {
-    return "border-amber-200 bg-amber-50 text-amber-950";
-  }
-  if (sectionId === "jra-g2" || sectionId === "nar-jpn2") {
-    return "border-red-200 bg-red-50 text-red-950";
-  }
-  if (sectionId === "jra-g3" || sectionId === "nar-jpn3") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-950";
-  }
+  void sectionId;
   return "border-slate-200 bg-slate-50 text-slate-800";
 }
 
@@ -309,6 +329,47 @@ function EntityDirectoryDetails({
   );
 }
 
+function CourseDirectoryDetails({
+  id,
+  sections,
+}: {
+  id: string;
+  sections: CourseVenueSection[];
+}) {
+  const courseCount = sections.reduce((sum, section) => sum + section.groups.length, 0);
+  if (courseCount === 0) return null;
+
+  return (
+    <details id={id} className="group scroll-mt-20 rounded-lg border border-slate-200 bg-white">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-black text-slate-800">
+        <span>コース</span>
+        <span className="flex items-center gap-2">
+          <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{courseCount}</span>
+          <span className="text-slate-400 transition-transform group-open:rotate-90">›</span>
+        </span>
+      </summary>
+      <div className="max-h-[390px] overflow-y-auto border-t border-slate-100 p-1.5">
+        <div className="grid gap-1.5">
+          {sections.map((section) => (
+            <details key={section.id} className="group/venue overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-800">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-xs font-black">
+                <span>{section.title}</span>
+                <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                  <span>{section.groups.length}コース / {section.articleCount}記事</span>
+                  <span aria-hidden="true" className="transition-transform group-open/venue:rotate-90">›</span>
+                </span>
+              </summary>
+              <div className="border-t border-slate-200 bg-white p-1">
+                <EntityDirectoryLinks groups={section.groups} />
+              </div>
+            </details>
+          ))}
+        </div>
+      </div>
+    </details>
+  );
+}
+
 export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
   const allArticles = getAllArticles();
   const uniqueCategories = getUniqueCategories();
@@ -319,6 +380,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
   const gradeRaceSections = normalizeArticleThemeGradeSections(
     getGradeRaceArticleArchiveSections(archiveTotals.gradeRaceGroups),
   );
+  const courseVenueSections = groupCourseArchivesByVenue(archiveTotals.courseGroups);
   const upcomingGradeRaceGroups = getUpcomingGradeRaceArticleGroups(4);
 
   let filteredArticles = selectedCategory
@@ -390,7 +452,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
         <MobileArticleThemeDirectory
           gradeRaceSections={gradeRaceSections}
           jockeyGroups={archiveTotals.jockeyGroups}
-          courseGroups={archiveTotals.courseGroups}
+          courseSections={courseVenueSections}
         />
 
         <div className="mt-3 grid gap-5 lg:mt-5 lg:grid-cols-[minmax(0,1fr)_280px]">
@@ -436,14 +498,14 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
             )}
           </main>
 
-          <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <aside className="article-desktop-sidebar space-y-3 lg:sticky lg:self-start">
             <nav className="hidden rounded-xl border border-slate-200 bg-white p-3 lg:block" aria-label="記事テーマ">
               <p className="mb-2 px-1 text-xs font-bold text-slate-600">記事テーマ</p>
               <div className="space-y-2">
                 <GradeRaceDirectoryDetails id="sidebar-grade-races" sections={gradeRaceSections} />
                 <EntityDirectoryDetails id="sidebar-races" title="レース" groups={archiveTotals.raceGroups} />
                 <EntityDirectoryDetails id="sidebar-jockeys" title="騎手" groups={archiveTotals.jockeyGroups} />
-                <EntityDirectoryDetails id="sidebar-courses" title="コース" groups={archiveTotals.courseGroups} />
+                <CourseDirectoryDetails id="sidebar-courses" sections={courseVenueSections} />
               </div>
             </nav>
 

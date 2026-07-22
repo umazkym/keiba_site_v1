@@ -100,15 +100,15 @@ export const NativeCardAd = ({ slot, refreshKey = '', variant = 'article', class
     // バリアントに応じたスタイル
     const variantStyles: Record<string, { container: string; height: string }> = {
         article: {
-            container: 'relative flex items-center border border-border rounded-xl overflow-hidden bg-white transition-all duration-200 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)]',
+            container: 'relative flex items-center overflow-hidden rounded-lg border border-border bg-white transition-[border-color,box-shadow] duration-150 hover:border-slate-300',
             height: '76px', // モバイルの記事カードに合わせて控えめに確保
         },
         pick: {
-            container: 'relative border border-border rounded-xl overflow-hidden bg-white transition-all duration-200 hover:shadow-[0_4px_20px_rgba(15,23,42,0.08)]',
+            container: 'relative overflow-hidden rounded-lg border border-border bg-white transition-[border-color,box-shadow] duration-150 hover:border-slate-300',
             height: '120px',
         },
         venue: {
-            container: 'relative bg-white border border-border rounded-xl overflow-hidden transition-all duration-200',
+            container: 'relative overflow-hidden rounded-lg border border-border bg-white transition-colors duration-150',
             height: '100px',
         },
     };

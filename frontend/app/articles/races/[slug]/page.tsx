@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: {
       canonical: group.href,
     },
-    robots: { index: false, follow: true },
+    robots: { index: true, follow: true },
   };
 }
 

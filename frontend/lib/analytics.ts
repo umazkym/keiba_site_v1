@@ -1,5 +1,12 @@
-import { sendGAEvent } from '@next/third-parties/google';
 import { sendClarityEvent } from '@/lib/clarity';
+
+declare global {
+    interface Window {
+        dataLayer?: unknown[];
+        gtag?: (...args: unknown[]) => void;
+        __umaGaReady?: boolean;
+    }
+}
 
 /**
  * GA4 カスタムイベント送信用ヘルパー関数群
@@ -85,10 +92,50 @@ export type HomeRaceEntryMethod =
     | 'grade_fallback'
     | 'venue_card';
 
+type QueuedAnalyticsEvent = {
+    eventName: string;
+    params: Record<string, unknown>;
+};
+
+const MAX_QUEUED_EVENTS = 100;
+const queuedAnalyticsEvents: QueuedAnalyticsEvent[] = [];
+let isGaReadyListenerAttached = false;
+
 const compactParams = (params: Record<string, unknown>) => {
     return Object.fromEntries(
         Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
     );
+};
+
+const flushQueuedAnalyticsEvents = () => {
+    if (typeof window === 'undefined' || !window.__umaGaReady || typeof window.gtag !== 'function') return;
+
+    while (queuedAnalyticsEvents.length > 0) {
+        const event = queuedAnalyticsEvents.shift();
+        if (event) window.gtag('event', event.eventName, event.params);
+    }
+};
+
+const ensureGaReadyListener = () => {
+    if (typeof window === 'undefined' || isGaReadyListenerAttached) return;
+    isGaReadyListenerAttached = true;
+    window.addEventListener('uma:ga-ready', flushQueuedAnalyticsEvents, { once: true });
+};
+
+const sendAnalyticsEvent = (eventName: string, params: Record<string, unknown> = {}) => {
+    if (typeof window === 'undefined') return;
+
+    const compactedParams = compactParams(params);
+    if (window.__umaGaReady && typeof window.gtag === 'function') {
+        window.gtag('event', eventName, compactedParams);
+        return;
+    }
+
+    if (queuedAnalyticsEvents.length >= MAX_QUEUED_EVENTS) {
+        queuedAnalyticsEvents.shift();
+    }
+    queuedAnalyticsEvents.push({ eventName, params: compactedParams });
+    ensureGaReadyListener();
 };
 
 const inferPageType = () => {
@@ -115,7 +162,7 @@ export const sendPredictionTableViewEvent = (params: {
     raceId: string;
     raceNumber: number;
 }) => {
-    sendGAEvent('event', 'prediction_table_view', {
+    sendAnalyticsEvent('prediction_table_view', {
         page_path: params.pagePath,
         race_id: params.raceId,
         race_number: params.raceNumber,
@@ -135,7 +182,7 @@ export const sendAdImpressionEvent = (params: string | AdImpressionParams) => {
             ? { placement: params, format: 'display_inline' as const }
             : params;
 
-    sendGAEvent('event', 'ad_impression_custom', {
+    sendAnalyticsEvent('ad_impression_custom', {
         ad_placement: normalized.placement,
         ad_format: normalized.format,
         ad_slot: normalized.slot,
@@ -161,7 +208,7 @@ export const sendAdViewableEvent = (params: AdViewableParams) => {
         ad_page_type: inferPageType(),
     };
 
-    sendGAEvent('event', 'ad_viewable_custom', eventParams);
+    sendAnalyticsEvent('ad_viewable_custom', eventParams);
     sendClarityEvent('ad_viewable_custom', {
         ad_placement: params.placement,
         ad_format: params.format,
@@ -179,7 +226,7 @@ export const sendHomeRaceEntryClickEvent = (params: {
     race_type?: 'jra' | 'nar';
     venue_name?: string;
 }) => {
-    sendGAEvent('event', 'home_race_entry_click', compactParams(params));
+    sendAnalyticsEvent('home_race_entry_click', params);
     sendClarityEvent('home_race_entry_click', {
         home_entry_method: params.entry_method,
         race_type: params.race_type,
@@ -199,7 +246,7 @@ export const sendRaceViewEvent = (params: {
     race_name: string;
     race_type: 'jra' | 'nar';
 }) => {
-    sendGAEvent('event', 'race_view_custom', params);
+    sendAnalyticsEvent('race_view', params);
     sendClarityEvent('race_view', {
         race_type: params.race_type,
         venue_name: params.venue_name,
@@ -215,7 +262,7 @@ export const sendRaceGroupSelectEvent = (params: {
     race_date: string;
     race_type: 'jra' | 'nar';
 }) => {
-    sendGAEvent('event', 'race_group_select', params);
+    sendAnalyticsEvent('race_group_select', params);
     sendClarityEvent('race_group_select', {
         race_type: params.race_type,
     });
@@ -229,7 +276,7 @@ export const sendRaceVenueSelectEvent = (params: {
     race_type: 'jra' | 'nar';
     venue_name: string;
 }) => {
-    sendGAEvent('event', 'race_venue_select', params);
+    sendAnalyticsEvent('race_venue_select', params);
     sendClarityEvent('race_venue_select', {
         race_type: params.race_type,
         venue_name: params.venue_name,
@@ -247,7 +294,7 @@ export const sendRaceNavigationEvent = (params: {
     to_race_number: number;
     navigation_method: RaceNavigationMethod;
 }) => {
-    sendGAEvent('event', 'race_navigation', params);
+    sendAnalyticsEvent('race_navigation', params);
     sendClarityEvent('race_navigation', {
         race_type: params.race_type,
         venue_name: params.venue_name,
@@ -264,7 +311,7 @@ export const sendArticleReadCompleteEvent = (params: {
     reading_time_min: number;
     page_path: string;
 }) => {
-    sendGAEvent('event', 'article_read_complete', params);
+    sendAnalyticsEvent('article_read_complete', params);
     sendClarityEvent('article_read_complete', {
         article_category: params.article_category,
     });
@@ -279,7 +326,7 @@ export const sendArticleRaceClickEvent = (params: {
     link_path: string;
     link_placement: string;
 }) => {
-    sendGAEvent('event', 'article_race_click', params);
+    sendAnalyticsEvent('article_race_click', params);
     sendClarityEvent('article_race_click', {
         article_category: params.article_category,
         link_placement: params.link_placement,
@@ -292,7 +339,7 @@ export const sendArticleRaceClickEvent = (params: {
  * @param accuracy - 予想が的中したかどうかのフラグ
  */
 export const sendPredictionViewEvent = (accuracy: PredictAccuracy) => {
-    sendGAEvent('event', 'prediction_view', {
+    sendAnalyticsEvent('prediction_view', {
         predict_accuracy: accuracy,
     });
 };
@@ -302,7 +349,7 @@ export const sendPredictionViewEvent = (accuracy: PredictAccuracy) => {
  * GA4でファネルを組めるよう、イベント名を細かく分けて送る。
  */
 export const sendRewardGateEvent = (eventName: RewardGateEventName, params: RewardGateEventParams = {}) => {
-    sendGAEvent('event', eventName, compactParams(params));
+    sendAnalyticsEvent(eventName, params);
     sendClarityEvent(eventName, {
         venue_name: params.venue_name,
         gate_placement: params.gate_placement,
@@ -313,10 +360,10 @@ export const sendRewardGateEvent = (eventName: RewardGateEventName, params: Rewa
 };
 
 export const sendAffiliateClickEvent = (params: AffiliateClickParams) => {
-    sendGAEvent('event', 'affiliate_click', compactParams({
+    sendAnalyticsEvent('affiliate_click', {
         ...params,
         affiliate_page_type: inferPageType(),
-    }));
+    });
     sendClarityEvent('affiliate_click', {
         affiliate_provider: params.provider,
         affiliate_context: params.context,
@@ -326,13 +373,52 @@ export const sendAffiliateClickEvent = (params: AffiliateClickParams) => {
 };
 
 export const sendAffiliateImpressionEvent = (params: AffiliateImpressionParams) => {
-    sendGAEvent('event', 'affiliate_impression', compactParams({
+    sendAnalyticsEvent('affiliate_impression', {
         ...params,
         affiliate_page_type: inferPageType(),
-    }));
+    });
     sendClarityEvent('affiliate_impression', {
         affiliate_context: params.context,
         affiliate_campaign_type: params.campaign_type,
         race_type: params.race_type,
+    });
+};
+
+export const sendWebVitalEvent = (params: {
+    metric_name: string;
+    metric_id: string;
+    value: number;
+    rating: string;
+    navigation_type: string;
+    release_id: string;
+}) => {
+    sendAnalyticsEvent('web_vital', {
+        ...params,
+        page_path: typeof window === 'undefined' ? undefined : window.location.pathname,
+        page_type: inferPageType(),
+    });
+};
+
+export const sendAdsenseOfferwallViewEvent = (params: { path_group: string }) => {
+    sendAnalyticsEvent('adsense_offerwall_view', {
+        path_group: params.path_group,
+        page_path: typeof window === 'undefined' ? undefined : window.location.pathname,
+        page_type: inferPageType(),
+    });
+    sendClarityEvent('adsense_offerwall_view', {
+        path_group: params.path_group,
+        page_type: inferPageType(),
+    });
+};
+
+export const sendAdExperimentExposureEvent = (params: {
+    experiment_id: string;
+    variant: string;
+    slot_id: string;
+    page_type?: string;
+}) => {
+    sendAnalyticsEvent('ad_experiment_exposure', {
+        ...params,
+        page_type: params.page_type || inferPageType(),
     });
 };

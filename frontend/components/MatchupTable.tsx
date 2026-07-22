@@ -1,11 +1,10 @@
+'use client';
+
 import { RacePrediction, MatchupRecord, HorsePrediction, MatchupData } from '@/lib/types';
 import React, { useState, useEffect } from 'react';
-import Tippy, { useSingleton } from '@tippyjs/react';
-import 'tippy.js/dist/tippy.css';
-import 'tippy.js/animations/shift-away.css';
-import 'tippy.js/themes/light-border.css';
 import { getFilteredMatchups } from '@/lib/api';
 import { getWakuNumber } from '@/lib/utils';
+import { AccessibleInfo } from '@/components/AccessibleInfo';
 
 const getWakuColorClasses = (waku: number | null): string => {
     switch (waku) {
@@ -50,8 +49,14 @@ const MobileHorseBadge = ({ horse, totalHorses }: { horse: HorsePrediction, tota
     );
 };
 
-const MatchupTooltipContent = ({ rowHorse, colHorse, record }: { rowHorse: HorsePrediction, colHorse: HorsePrediction, record: MatchupRecord }) => (
-    <div className="text-left p-2 bg-white rounded-lg shadow-xl border border-gray-200 max-w-sm">
+type MatchupSelection = {
+    rowHorse: HorsePrediction;
+    colHorse: HorsePrediction;
+    record: MatchupRecord;
+};
+
+const MatchupDetails = ({ rowHorse, colHorse, record }: MatchupSelection) => (
+    <div className="max-w-xl text-left text-slate-700">
         <h4 className="font-bold border-b border-gray-200 pb-1 mb-2">{rowHorse.horse_name} vs {colHorse.horse_name}</h4>
         <div className="font-semibold mb-2 text-center text-lg">
             <span className="text-green-500">{record.win}</span>
@@ -83,7 +88,7 @@ const MatchupTooltipContent = ({ rowHorse, colHorse, record }: { rowHorse: Horse
     </div>
 );
 
-const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: HorsePrediction[], matchupData: MatchupData, tippySingleton: any }) => {
+const TableView = ({ predictions, matchupData, onSelect }: { predictions: HorsePrediction[]; matchupData: MatchupData; onSelect: (selection: MatchupSelection) => void }) => {
     const { matchup_data } = matchupData;
     const sortedHorses = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
     const isCompact = sortedHorses.length >= 16;
@@ -159,12 +164,16 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
                                     }
                                     return (
                                         <td key={colHorse.horse_id} className={`border-b border-slate-100 p-0 ${cellClass}`}>
-                                            <Tippy
-                                                singleton={tippySingleton}
-                                                content={record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : ''}
-                                            >
-                                                {content}
-                                            </Tippy>
+                                            {record ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onSelect({ rowHorse, colHorse, record })}
+                                                    className="block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600"
+                                                    aria-label={`${rowHorse.horse_name}から見た${colHorse.horse_name}との対戦詳細を表示`}
+                                                >
+                                                    {content}
+                                                </button>
+                                            ) : content}
                                         </td>
                                     );
                                 })}
@@ -177,7 +186,7 @@ const TableView = ({ predictions, matchupData, tippySingleton }: { predictions: 
     );
 };
 
-const MobileMatrixView = ({ predictions, matchupData, tippySingleton }: { predictions: HorsePrediction[], matchupData: MatchupData, tippySingleton: any }) => {
+const MobileMatrixView = ({ predictions, matchupData, onSelect }: { predictions: HorsePrediction[]; matchupData: MatchupData; onSelect: (selection: MatchupSelection) => void }) => {
     const { matchup_data } = matchupData;
     const sortedHorses = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
     const isFullGate = sortedHorses.length >= 16;
@@ -266,12 +275,16 @@ const MobileMatrixView = ({ predictions, matchupData, tippySingleton }: { predic
 
                                 return (
                                     <td key={colHorse.horse_id} className={`border-b border-l border-slate-100 p-0 ${cellClass}`}>
-                                        <Tippy
-                                            singleton={tippySingleton}
-                                            content={record ? <MatchupTooltipContent rowHorse={rowHorse} colHorse={colHorse} record={record} /> : ''}
-                                        >
-                                            {cellContent}
-                                        </Tippy>
+                                        {record ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => onSelect({ rowHorse, colHorse, record })}
+                                                className="block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600"
+                                                aria-label={`${rowHorse.horse_name}から見た${colHorse.horse_name}との対戦詳細を表示`}
+                                            >
+                                                {cellContent}
+                                            </button>
+                                        ) : cellContent}
                                     </td>
                                 );
                             })}
@@ -302,8 +315,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
     const [matchupData, setMatchupData] = useState<MatchupData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    const [source, target] = useSingleton();
+    const [selectedMatchup, setSelectedMatchup] = useState<MatchupSelection | null>(null);
 
     // レース切り替え時は集計期間をレース日に合わせ直します。
     useEffect(() => {
@@ -333,31 +345,29 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
         fetchFilteredData();
     }, [race.id, startDate, endDate]);
 
+    useEffect(() => {
+        setSelectedMatchup(null);
+    }, [race.id, startDate, endDate]);
+
     const isDataEmpty = !matchupData || Object.keys(matchupData.matchup_data).length === 0;
 
     return (
         <div className="race-panel overflow-hidden">
-            <Tippy singleton={source} theme="light-border" placement="top" animation="shift-away" interactive={true} appendTo={() => document.body} delay={[100, 200]} />
-
             <div className="flex flex-col gap-1.5 border-b border-slate-200 p-2 md:flex-row md:items-center md:justify-between md:p-3">
                 <div className='flex items-center gap-2'>
                     <h3 id="race-matchup-heading" className="race-section-heading mb-0 whitespace-nowrap">過去対決成績</h3>
-                    <Tippy
-                        content={
-                            <div className='p-2 text-sm text-left max-w-xs bg-white text-gray-800 rounded-lg shadow-lg border'>
-                                <p className='font-bold mb-1 border-b pb-1'>過去対決成績とは？</p>
-                                <p className='text-xs mt-2'>出走馬同士が過去に同じレースで直接対決した際の成績です。</p>
-                                <ul className='text-xs mt-2 list-disc list-inside space-y-1'>
-                                    <li><strong>数値：</strong>左の馬から見た勝ち越し数（勝ち数 - 負け数）。</li>
-                                    <li><strong>( )内の数字：</strong>(勝-負-分) の内訳です。</li>
-                                    <li><strong>集計期間：</strong>右上のカレンダーで変更できます。</li>
-                                </ul>
-                            </div>
-                        }
-                        placement="top-start" interactive={true} theme="light-border" appendTo={() => document.body}
+                    <AccessibleInfo
+                        label="過去対決成績の説明を表示"
+                        buttonClassName="h-6 w-6 bg-slate-200 text-xs font-bold text-slate-700 transition-colors duration-150 hover:bg-slate-300"
                     >
-                        <span className='flex h-4 w-4 flex-shrink-0 cursor-help items-center justify-center rounded-full bg-slate-400 text-xs font-bold text-white md:h-5 md:w-5 md:text-sm'>?</span>
-                    </Tippy>
+                        <span className="mb-1 block font-bold text-slate-900">過去対決成績とは？</span>
+                        <span className="block">出走馬同士が過去に同じレースで直接対決した際の成績です。</span>
+                        <ul className="mt-2 list-disc space-y-1 pl-4">
+                            <li><strong>数値：</strong>左の馬から見た勝ち越し数（勝ち数 - 負け数）。</li>
+                            <li><strong>内訳：</strong>勝-負-分の順です。</li>
+                            <li><strong>集計期間：</strong>日付欄から変更できます。</li>
+                        </ul>
+                    </AccessibleInfo>
                 </div>
                 <details className="w-full rounded-lg border border-slate-200 bg-slate-50 md:hidden">
                     <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 text-[11px] font-semibold text-slate-600">
@@ -388,12 +398,28 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                     ? <div className="text-center text-gray-500 py-4"><p>指定された期間の直接対決データはありません。</p></div>
                     : <>
                         <div className="hidden md:block">
-                            <TableView predictions={race.predictions} matchupData={matchupData} tippySingleton={target} />
+                            <TableView predictions={race.predictions} matchupData={matchupData} onSelect={setSelectedMatchup} />
                         </div>
                         <div className="md:hidden">
-                            <MobileMatrixView predictions={race.predictions} matchupData={matchupData} tippySingleton={target} />
+                            <MobileMatrixView predictions={race.predictions} matchupData={matchupData} onSelect={setSelectedMatchup} />
                         </div>
                     </>
+            )}
+
+            {selectedMatchup && (
+                <section className="border-t border-slate-200 bg-slate-50 p-3" aria-live="polite" aria-label="選択した対戦成績の詳細">
+                    <div className="mb-2 flex items-start justify-between gap-3">
+                        <p className="text-xs font-bold text-slate-500">選択した組み合わせ</p>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedMatchup(null)}
+                            className="inline-flex min-h-11 cursor-pointer items-center rounded-lg px-3 text-xs font-bold text-slate-600 transition-colors duration-150 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                        >
+                            閉じる
+                        </button>
+                    </div>
+                    <MatchupDetails {...selectedMatchup} />
+                </section>
             )}
         </div>
     );

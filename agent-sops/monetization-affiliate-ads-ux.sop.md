@@ -75,12 +75,44 @@ Constraints for parameter acquisition:
 - You MUST run `npx tsc --noEmit` for TypeScript changes.
 - You SHOULD run `npm run build` when page-level ad or affiliate placement changes.
 
+### 6. Protect revenue when running experiments
+
+広告実験は設定変更だけでなく、終了判断日と復元手順までを一つの作業として扱います。
+
+**Constraints:**
+
+- You MUST record every monetization experiment in `docs/monetization_experiments.md` before changing production ad behavior.
+- You MUST create a Codex reminder for 09:00 JST on the decision date and record its automation ID before starting a new experiment.
+- You MUST NOT automatically end an AdSense experiment because dashboard data, day-of-week mix, and delayed revenue need human review.
+- You MUST extend the experiment and update the reminder together when the minimum sample has not been reached.
+- You MUST apply the winning or original configuration in the same operation that ends the experiment so the site is not left without its intended ads.
+- You MUST create follow-up reminders for 09:00 JST on the next day and seven days after ending an experiment.
+- You MUST restore the original configuration immediately for policy warnings, broad ad delivery failures, an Offerwall that blocks access, or serious mobile interaction regressions.
+- You MUST NOT start a second ad experiment while another monetization experiment is awaiting a decision because overlapping changes prevent reliable revenue attribution and make rollback unsafe.
+- You MUST use AdSense revenue per 1,000 human sessions as the primary KPI and keep prediction-table use, race navigation, ad impressions, Clarity friction, and mobile CWV as revenue-protection guardrails.
+- You MUST NOT start a new ad experiment until the GA4 `(not set)` share has remained below 5% for seven consecutive days because incomplete attribution can make a harmful variant appear profitable.
+- You MUST normally wait for at least seven days and 500 target race sessions. After that point, restore the original only when revenue per 1,000 target sessions is at least 15% lower, same-weekday site revenue is also lower, `prediction_table_view` or `race_navigation` is at least 10% lower, and missing data cannot explain the result.
+- You MUST adopt a variation only when revenue per 1,000 target sessions is at least 5% higher, both race-operation metrics decline by less than 10%, dead-click and quick-back rates worsen by less than 2 points each, mobile CLS is at most 0.1, and no policy or interaction problem exists.
+- You MUST extend for seven days when the revenue difference is within ±5%, guardrails conflict, or the minimum sample has not been reached. A single estimated-revenue day is never sufficient.
+
+### 7. Decide and verify on the scheduled day
+
+09:00 JSTのリマインド後に、前日までの確定データだけで判断します。
+
+**Constraints:**
+
+- You MUST freeze the comparison periods in AdSense, GA4, Clarity, and Search Console and save screenshots of the experiment and original settings before ending anything.
+- You MUST write variant revenue, target sessions, race-operation rates, and CWV into the ledger before deciding immediate stop, early stop, normal end, or extension.
+- You MUST verify production ad delivery, the prediction table, race switching, and mobile layout immediately after applying the selected setting.
+- You MUST restore the original when the next-day or seven-day revenue per 1,000 human sessions is at least 10% below the pre-end baseline and traffic volume or weekday mix does not explain it.
+
 ## Source references
 
 - `AGENTS.md`
 - `docs/analytics_measurement_plan.md`
 - `docs/clarity_optimization_audit_20260620.md`
 - `docs/clarity_completeness_review_20260621.md`
+- `docs/monetization_experiments.md`
 - `docs/system/05_広告収益化戦略.md`
 - `docs/system-documentation/17_GA4広告収益最大化設定.md`
 

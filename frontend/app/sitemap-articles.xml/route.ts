@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllArticles } from '@/lib/articles';
+import { getCanonicalArticleSitemapEntries } from '@/lib/article-sitemap';
 
 const BASE_URL = 'https://uma-free.com';
 
@@ -23,14 +23,14 @@ function escapeXml(value: string) {
 }
 
 export async function GET() {
-  const articles = getAllArticles();
+  const articles = getCanonicalArticleSitemapEntries();
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${articles
   .map((article) => `  <url>
-    <loc>${BASE_URL}/articles/${escapeXml(article.slug)}</loc>
-    <lastmod>${new Date(article.lastUpdated || article.date).toISOString()}</lastmod>
+    <loc>${escapeXml(`${BASE_URL}${article.path}`)}</loc>
+    <lastmod>${article.lastModified.toISOString()}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`)

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
 import { useParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { PredictionTable } from '@/components/PredictionTable';
@@ -8,9 +9,6 @@ import { RaceAnalysis } from '@/components/RaceAnalysis';
 import { VenueRaces, RaceDayPrediction } from '@/lib/types';
 import { RaceSelector, type RaceSelectorLink } from './RaceSelector';
 import { RacePageJumpNav } from './RacePageJumpNav';
-import { StartPositionChart } from './StartPositionChart';
-import { MatchupTable } from './MatchupTable';
-import { HorseNumberAdvantageChart } from './HorseNumberAdvantageChart';
 import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './Icons';
 import { AffiliateSlot } from './AffiliateSlot';
 import { RelatedRaces } from './RelatedRaces';
@@ -31,6 +29,28 @@ import { getRaceDetailPath } from '@/lib/race-url';
 import { formatDate } from '@/lib/utils';
 import { RACE_BREADCRUMB_CHANGE_EVENT } from '@/lib/race-breadcrumb-event';
 import { getRaceTopObstructionHeight } from '@/hooks/useRaceSectionNavigation';
+
+const MatchupTable = dynamic(
+    () => import('./MatchupTable').then((module) => module.MatchupTable),
+    {
+        ssr: false,
+        loading: () => <div className="race-panel min-h-[260px] bg-slate-50" aria-busy="true" aria-label="対戦成績を読み込み中" />,
+    },
+);
+const StartPositionChart = dynamic(
+    () => import('./StartPositionChart').then((module) => module.StartPositionChart),
+    {
+        ssr: false,
+        loading: () => <div className="min-h-32 rounded-lg bg-slate-50 md:min-h-[184px]" aria-busy="true" aria-label="展開予測を読み込み中" />,
+    },
+);
+const HorseNumberAdvantageChart = dynamic(
+    () => import('./HorseNumberAdvantageChart').then((module) => module.HorseNumberAdvantageChart),
+    {
+        ssr: false,
+        loading: () => <div className="min-h-32 rounded-lg bg-slate-50 md:min-h-[196px]" aria-busy="true" aria-label="枠順傾向を読み込み中" />,
+    },
+);
 
 const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
     <>
@@ -98,7 +118,9 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
     const canUseRewardedAd = isSupported && isReady && !isLoading;
     const isPremiumDetailVisible = isActiveRaceUnlocked || !canUseRewardedAd;
     const shouldShowRewardGate = Boolean(activeRace && !isPremiumDetailVisible);
-    const [isPremiumContentReady, setIsPremiumContentReady] = useState(false);
+    const isWaitingForRewardDecision = isLoading
+        && !isActiveRaceUnlocked
+        && !isIntentionalRewardedDisableReason(unavailableReason);
     const previousInitialRaceNumberRef = useRef(initialRaceNumber);
 
     // ブラウザ「戻る」対応
@@ -113,17 +135,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
             }
         }
     }, [initialRaceNumber, venue.races]);
-
-    useEffect(() => {
-        setIsPremiumContentReady(false);
-        if (!activeRace || !isPremiumDetailVisible) return;
-
-        const timer = window.setTimeout(() => {
-            setIsPremiumContentReady(true);
-        }, 120);
-
-        return () => window.clearTimeout(timer);
-    }, [activeRace?.id, isPremiumDetailVisible]);
 
     const scrollVenueIntoView = useCallback(() => {
         if (typeof window === 'undefined') return;
@@ -423,7 +434,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                         <div id="race-detail-data-section">
                         {/* プレミアム・ロック切り替え部分 */}
                         {(activeRace && isPremiumDetailVisible) ? (
-                            !isPremiumContentReady ? (
+                            isWaitingForRewardDecision ? (
                                 <PremiumDetailPlaceholder showAd={Boolean(shouldShowAd)} />
                             ) : (
                                 <>

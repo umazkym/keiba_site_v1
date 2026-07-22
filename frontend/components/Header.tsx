@@ -183,20 +183,36 @@ export const Header = ({ todayString }: HeaderProps) => {
         const header = headerRef.current;
         if (!header) return undefined;
 
+        let frameId = 0;
+        let previousHeight = -1;
+        let previousOffset = '';
         const updateHeaderMetrics = () => {
+            frameId = 0;
             const height = header.offsetHeight || (window.innerWidth >= 640 ? 64 : 48);
-            root.style.setProperty('--site-header-height', `${height}px`);
-            root.style.setProperty('--site-header-offset', isHeaderVisible ? `${height}px` : '0px');
+            const heightValue = `${height}px`;
+            const offsetValue = isHeaderVisible ? heightValue : '0px';
+            if (height === previousHeight && offsetValue === previousOffset) return;
+
+            previousHeight = height;
+            previousOffset = offsetValue;
+            root.style.setProperty('--site-header-height', heightValue);
+            root.style.setProperty('--site-header-offset', offsetValue);
+            window.dispatchEvent(new Event('uma:header-metrics-change'));
+        };
+        const requestHeaderMetrics = () => {
+            if (frameId) return;
+            frameId = window.requestAnimationFrame(updateHeaderMetrics);
         };
 
-        updateHeaderMetrics();
-        const resizeObserver = new ResizeObserver(updateHeaderMetrics);
+        requestHeaderMetrics();
+        const resizeObserver = new ResizeObserver(requestHeaderMetrics);
         resizeObserver.observe(header);
-        window.addEventListener('resize', updateHeaderMetrics);
+        window.addEventListener('resize', requestHeaderMetrics);
 
         return () => {
+            if (frameId) window.cancelAnimationFrame(frameId);
             resizeObserver.disconnect();
-            window.removeEventListener('resize', updateHeaderMetrics);
+            window.removeEventListener('resize', requestHeaderMetrics);
         };
     }, [isHeaderVisible]);
 

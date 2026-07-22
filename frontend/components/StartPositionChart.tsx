@@ -1,7 +1,5 @@
 'use client';
 
-import Tippy from '@tippyjs/react';
-import 'tippy.js/dist/tippy.css';
 import { HorsePrediction } from '@/lib/types';
 
 const getWakuColor = (waku: number | null): string => {
@@ -18,19 +16,13 @@ const getWakuColor = (waku: number | null): string => {
     }
 };
 
-const HorseMarker = ({ horse, position, top, compact = false }: { horse: HorsePrediction; position: number; top: number; compact?: boolean }) => (
-    <Tippy
-        content={(
-            <div className="text-sm">
-                <div className="font-bold">{horse.horse_name}</div>
-                <div>スコア: {horse.start_1c_indicator?.toFixed(1) || 'N/A'}</div>
-            </div>
-        )}
-        placement="top"
-    >
+const HorseMarker = ({ horse, position, top, compact = false }: { horse: HorsePrediction; position: number; top: number; compact?: boolean }) => {
+    const scoreLabel = horse.start_1c_indicator?.toFixed(1) || '算出なし';
+    return (
         <span
-            className="absolute flex cursor-help flex-col items-center transition-[top,left] duration-300"
-            aria-label={`${horse.horse_number}番 ${horse.horse_name}`}
+            className="absolute flex flex-col items-center transition-[top,left] duration-300"
+            aria-label={`${horse.horse_number}番 ${horse.horse_name}、位置取りスコア${scoreLabel}`}
+            title={`${horse.horse_name} / スコア ${scoreLabel}`}
             style={{
                 top: `${top}px`,
                 left: `${position}%`,
@@ -47,8 +39,8 @@ const HorseMarker = ({ horse, position, top, compact = false }: { horse: HorsePr
                 </span>
             )}
         </span>
-    </Tippy>
-);
+    );
+};
 
 const TrackView = ({
     horses,

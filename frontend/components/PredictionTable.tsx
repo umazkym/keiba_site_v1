@@ -6,10 +6,7 @@ import React, { useEffect, useRef } from 'react';
 import { getWakuNumber } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import { sendPredictionTableViewEvent } from '../lib/analytics';
-import Tippy from '@tippyjs/react';
-import 'tippy.js/dist/tippy.css';
-import 'tippy.js/animations/shift-away.css';
-import 'tippy.js/themes/light-border.css';
+import { AccessibleInfo } from '@/components/AccessibleInfo';
 
 const getWakuClasses = (waku: number | null) => {
     switch (waku) {
@@ -122,15 +119,13 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                         <th className="text-center">
                             <div className="flex items-center justify-center gap-0.5 whitespace-nowrap">
                                 <span>AI偏差値</span>
-                                <Tippy content={
-                                    <div className='p-2.5 text-sm text-left max-w-xs bg-white text-text-primary rounded-xl shadow-elevated border border-slate-100'>
-                                        <p className='font-bold mb-1.5 text-primary'>AI偏差値とは？</p>
-                                        <p className='text-xs text-text-secondary leading-[1.7]'>過去のレースタイムなどからAIが算出した馬の能力指数です。数値が高いほど、高く評価していることを示します。</p>
-                                    </div>
-                                } placement="top" interactive={true} theme="light-border" appendTo={() => document.body}
+                                <AccessibleInfo
+                                    label="AI偏差値の説明を表示"
+                                    buttonClassName="h-6 w-6 bg-slate-200 text-[11px] font-bold text-slate-700 transition-colors duration-150 hover:bg-slate-300"
                                 >
-                                    <span className='w-4 h-4 bg-slate-300 hover:bg-slate-400 transition-colors text-white rounded-full flex items-center justify-center text-[10px] font-bold cursor-help'>?</span>
-                                </Tippy>
+                                    <span className="mb-1 block font-bold text-primary">AI偏差値とは？</span>
+                                    過去のレースタイムなどからAIが算出した馬の能力指数です。数値が高いほど、高く評価していることを示します。
+                                </AccessibleInfo>
                             </div>
                         </th>
                         <th className="whitespace-nowrap text-center">位置</th>

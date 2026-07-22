@@ -27,7 +27,7 @@ entity_type: course
 entity_key: hakodate-turf-1200m
 season_year: '2026'
 entity_path: /articles/courses/hakodate/turf-1200m
-canonical_path: /articles/courses/hakodate/turf-1200m
+canonical_path: /courses/hakodate/turf-1200m
 content_target: grade_race_trend_article
 draft: false
 date: '2026-07-14T09:38:10.426Z'

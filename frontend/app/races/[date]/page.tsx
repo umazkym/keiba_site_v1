@@ -32,7 +32,7 @@ export async function generateMetadata(
     const indexPolicy = getRaceIndexPolicy(params.date);
 
     return {
-        title: `${formattedDate}のAI競馬データ分析 | UMA-FREE`,
+        title: `${formattedDate}のAI競馬データ分析`,
         description: `${formattedDate}の中央・地方競馬の全レースをAIが無料でデータ分析。馬券検討に役立つ統計情報を毎日更新。`,
         alternates: {
             canonical: `/races/${params.date}`,

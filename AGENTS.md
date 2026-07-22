@@ -114,6 +114,8 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-07-22**:
+  * **広告収益保護の実験運用基盤とレース画面軽量化を実装**:
+    `docs/monetization_experiments.md` を正式台帳として追加し、Offerwall実験を `ADS-OFFERWALL-2026-06` として遡及登録。2026-07-29 09:00 JSTの終了判断リマインドと、記事CTAの14日固定観測を確認する2026-08-04 09:00 JSTのリマインドを登録し、リマインド未登録時は開始不可、サンプル不足時は7日延長、終了時は勝者または元設定を同時反映する手順を広告SOPへ固定した。GA4はhead内でConsent Mode、gtag.js、configをClient Componentより先に初期化し、準備前イベントの一度だけ送信するキュー、`web_vital`、`adsense_offerwall_view`、`ad_experiment_exposure`を追加。レース切替は仮想PVを送らず`race_view`へ統一した。RechartsをCSSグラフへ、Tippy/Popper群を共有のアクセシブル補足UIへ置換し、分析の遅延ロード、IntersectionObserverによるセクション判定、広告オーバーレイ監視の一元化を実施。レースルートのFirst Load JSは144KBとなり180KB以下を達成した。記事・画像サイトマップをSearch Consoleへ送信し成功、canonical限定、旧URLの一段301、重複タイトル、馬場状態記事を改善。375/390/768/1024/1440px、18頭表示、横スクロールなし、補足UIのEsc操作、ブラウザエラーなしを確認し、`npx tsc --noEmit`、`npm run build`、`npm run design:audit`、リンク・記事品質・SOP検証が成功。
   * **記事生成LLMをGemini 3.6世代の4段階構成へ更新**:
     WriterとEditorは `gemini-3.6-flash`、`gemini-3.5-flash`、`gemini-3.5-flash-lite`、`gemini-3.1-flash-lite` の品質順でフォールバックし、呼び出し回数の多いStrategyと複数観点レビューはRPD 500のLite系を優先する。モデル別のRPM、TPM、RPDを共通定義へ集約し、GitHub Actionsの日次合計上限を1,040へ同期。指定値に従い `gemini-3.1-flash-lite` のTPMは250として扱う。`npx tsc --noEmit` と `npm run article:test-independence` が成功。
 * **2026-07-21**:

@@ -95,7 +95,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     if (!isValidRaceDate(params.date) || !raceNumber) {
         return {
-            title: `${formattedDate}のAI競馬データ分析 | UMA-FREE`,
+            title: `${formattedDate}のAI競馬データ分析`,
             description: `${formattedDate}の中央・地方競馬のAI競馬データ分析。`,
             alternates: { canonical: `/races/${params.date}` },
             robots: { index: false, follow: true },
@@ -113,8 +113,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         ? `${selected.race.course_type}${selected.race.distance}m`
         : '';
     const seoTitle = selected
-        ? `${venueName}${raceNumber}R ${raceName} AI予想・出走馬分析 | UMA-FREE`
-        : `${formattedDate} ${raceNumber}R AI競馬データ分析 | UMA-FREE`;
+        ? `${venueName}${raceNumber}R ${raceName} AI予想・出走馬分析`
+        : `${formattedDate} ${raceNumber}R AI競馬データ分析`;
+    const socialTitle = `${seoTitle} | UMA-FREE`;
     const seoDescription = selected
         ? `${formattedDate} ${venueName}${raceNumber}R ${raceName}${courseLabel ? `（${courseLabel}）` : ''}のAI予想。出走馬のAI偏差値、枠順、脚質、展開材料を無料で確認できます。`
         : `${formattedDate} ${raceNumber}RのAI競馬データ分析。AI偏差値、枠順、脚質、展開材料を確認できます。`;
@@ -126,7 +127,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             canonical: canonicalUrl,
         },
         openGraph: {
-            title: seoTitle,
+            title: socialTitle,
             description: seoDescription,
             url: `https://uma-free.com${canonicalUrl}`,
             siteName: 'UMA-FREE',

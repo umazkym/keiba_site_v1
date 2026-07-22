@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { GoogleAnalytics } from "@next/third-parties/google";
 import { OrganizationSchema, WebsiteSchema, SoftwareApplicationSchema } from "@/components/StructuredData";
 import { MicrosoftClarity } from "@/components/MicrosoftClarity";
 // CookieConsent削除: AdSense/GoogleのGDPR同意メッセージと重複して2種類のポップアップが表示されるUX問題を解消
@@ -12,6 +11,8 @@ import { shouldLoadAdsensePageLevelScript } from "@/lib/ad-config";
 import { getJstTodayString } from "@/lib/race-url";
 import { AdSensePageLevelScript } from "@/components/AdSensePageLevelScript";
 import { ClarityPageContext } from "@/components/ClarityPageContext";
+import { GoogleAnalyticsBootstrap } from "@/components/GoogleAnalyticsBootstrap";
+import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 
 export const metadata: Metadata = {
     metadataBase: new URL("https://uma-free.com"),
@@ -65,6 +66,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     const todayString = getJstTodayString();
+    const gaId = process.env.NEXT_PUBLIC_GA_ID || "";
 
     return (
         <html lang="ja">
@@ -98,26 +100,8 @@ export default function RootLayout({
                 {/* PWA: ホーム画面追加対応 */}
                 <link rel="manifest" href="/manifest.json" />
 
+                <GoogleAnalyticsBootstrap gaId={gaId} />
                 <MicrosoftClarity />
-
-                {/* ★ Consent Mode v2: デフォルトgranted設定
-                    日本のユーザーにはGDPR同意は法的に不要。
-                    これにより Google Funding Choices（AdSenseの自動GDPR同意ポップアップ）が表示されなくなる。
-                    adsbygoogle.js よりも先に実行される必要がある。 */}
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `
-                            window.dataLayer = window.dataLayer || [];
-                            function gtag(){dataLayer.push(arguments);}
-                            gtag('consent', 'default', {
-                                'ad_storage': 'granted',
-                                'ad_user_data': 'granted',
-                                'ad_personalization': 'granted',
-                                'analytics_storage': 'granted'
-                            });
-                        `,
-                    }}
-                />
 
                 {/* GPT (Google Publisher Tag) for GAM Rewarded Ads
                      ★ パフォーマンス改善: layout.tsxから削除し、useRewardedAd.ts内で動的ロードに変更
@@ -129,6 +113,7 @@ export default function RootLayout({
                     本文へ移動
                 </a>
                 <ClarityPageContext />
+                <WebVitalsReporter />
                 {/* 構造化マークアップ：Organization, Website, SoftwareApplication */}
                 <OrganizationSchema />
                 <WebsiteSchema />
@@ -144,7 +129,6 @@ export default function RootLayout({
                 {/* フッター直前の全ページ共通広告はユーザーの要望により撤去（UIスッキリ化のため） */}
                 <Footer />
                 {/* CookieConsent削除済み: Google側のGDPR同意メッセージに一元化 */}
-                <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || ""} />
                 <AdSensePageLevelScript enabled={shouldLoadAdsensePageLevelScript} />
             </body>
         </html>

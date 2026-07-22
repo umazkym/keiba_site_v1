@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { getGoogleAdOverlaySnapshot, GOOGLE_AD_OVERLAY_EVENT } from '@/lib/google-ad-overlay';
 
 export type RaceSectionNavItem = {
     key: string;
@@ -26,16 +27,7 @@ const isVisible = (element: HTMLElement | null) => {
 };
 
 const getVisibleTopAnchorHeight = () => {
-    const candidates = document.querySelectorAll<HTMLElement>(
-        'ins.adsbygoogle-noablate[data-anchor-status="displayed"], ins.adsbygoogle[data-anchor-status="displayed"]',
-    );
-
-    return Array.from(candidates).reduce((height, element) => {
-        if (!isVisible(element)) return height;
-        const rect = element.getBoundingClientRect();
-        if (rect.top > 8 || rect.bottom < 24) return height;
-        return Math.max(height, Math.min(rect.height, 160));
-    }, 0);
+    return Math.min(getGoogleAdOverlaySnapshot().topAnchorHeight, 160);
 };
 
 export const getRaceTopObstructionHeight = () => {
@@ -67,47 +59,47 @@ export const scrollToRaceSection = (targetIds: string[]) => {
 export const useRaceSectionNavigation = <TItem extends RaceSectionNavItem>(items: readonly TItem[]) => {
     const [activeKey, setActiveKey] = useState(items[0]?.key ?? '');
 
-    const updateActiveSection = useCallback(() => {
-        if (typeof window === 'undefined' || items.length === 0) return;
-
-        const pivot = getRaceTopObstructionHeight() + 12;
-        let nextActiveKey = items[0].key;
-
-        for (const item of items) {
-            const target = findTargetElement(item.targetIds);
-            if (!target) continue;
-
-            if (target.getBoundingClientRect().top <= pivot) {
-                nextActiveKey = item.key;
-            }
-        }
-
-        setActiveKey(nextActiveKey);
-    }, [items]);
-
     useEffect(() => {
-        if (typeof window === 'undefined') return undefined;
+        if (typeof window === 'undefined' || items.length === 0) return undefined;
 
-        let frameId = 0;
-        const requestUpdate = () => {
-            window.cancelAnimationFrame(frameId);
-            frameId = window.requestAnimationFrame(updateActiveSection);
+        let observer: IntersectionObserver | null = null;
+        const targets = items
+            .map((item) => ({ item, target: findTargetElement(item.targetIds) }))
+            .filter((entry): entry is { item: TItem; target: HTMLElement } => Boolean(entry.target));
+
+        const updateActiveSection = () => {
+            const pivot = getRaceTopObstructionHeight() + 12;
+            let nextActiveKey = items[0].key;
+            for (const { item, target } of targets) {
+                if (target.getBoundingClientRect().top <= pivot) nextActiveKey = item.key;
+            }
+            setActiveKey((current) => current === nextActiveKey ? current : nextActiveKey);
         };
 
-        requestUpdate();
-        const firstTimer = window.setTimeout(requestUpdate, 400);
-        const secondTimer = window.setTimeout(requestUpdate, 1200);
-        window.addEventListener('scroll', requestUpdate, { passive: true });
-        window.addEventListener('resize', requestUpdate);
+        const connectObserver = () => {
+            observer?.disconnect();
+            const pivot = Math.min(getRaceTopObstructionHeight() + 12, window.innerHeight - 1);
+            const bottomMargin = Math.max(0, window.innerHeight - pivot - 1);
+            observer = new IntersectionObserver(updateActiveSection, {
+                rootMargin: `-${pivot}px 0px -${bottomMargin}px 0px`,
+                threshold: 0,
+            });
+            targets.forEach(({ target }) => observer?.observe(target));
+            updateActiveSection();
+        };
+
+        connectObserver();
+        window.addEventListener('resize', connectObserver);
+        window.addEventListener(GOOGLE_AD_OVERLAY_EVENT, connectObserver);
+        window.addEventListener('uma:header-metrics-change', connectObserver);
 
         return () => {
-            window.cancelAnimationFrame(frameId);
-            window.clearTimeout(firstTimer);
-            window.clearTimeout(secondTimer);
-            window.removeEventListener('scroll', requestUpdate);
-            window.removeEventListener('resize', requestUpdate);
+            observer?.disconnect();
+            window.removeEventListener('resize', connectObserver);
+            window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, connectObserver);
+            window.removeEventListener('uma:header-metrics-change', connectObserver);
         };
-    }, [updateActiveSection]);
+    }, [items]);
 
     const scrollToItem = useCallback((item: RaceSectionNavItem) => {
         setActiveKey(item.key);

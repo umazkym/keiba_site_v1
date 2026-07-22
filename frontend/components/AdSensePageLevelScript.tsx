@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 import { hasSiteScrollLock, hasVisibleGoogleDialog } from '@/lib/page-scroll-lock';
+import { sendAdsenseOfferwallViewEvent } from '@/lib/analytics';
+import { publishGoogleAdOverlaySnapshot } from '@/lib/google-ad-overlay';
 
 type AdSensePageLevelScriptProps = {
     enabled: boolean;
@@ -10,6 +12,7 @@ type AdSensePageLevelScriptProps = {
 const SCRIPT_ID = 'uma-adsense-page-level-script';
 const SCRIPT_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
 const GOOGLE_UI_SELECTOR = '.fc-dialog-container, .fc-monetization-dialog-container, .fc-consent-root, ins.adsbygoogle-noablate[data-anchor-status]';
+const OFFERWALL_SELECTOR = '.fc-monetization-dialog-container';
 
 const isVisibleAnchor = (element: HTMLElement) => {
     const style = window.getComputedStyle(element);
@@ -22,9 +25,19 @@ const isVisibleAnchor = (element: HTMLElement) => {
         && (rect.top <= 8 || rect.bottom >= window.innerHeight - 8);
 };
 
-const hasVisibleGoogleAnchor = () => Array.from(document.querySelectorAll<HTMLElement>(
+const getVisibleGoogleAnchors = () => Array.from(document.querySelectorAll<HTMLElement>(
     'ins.adsbygoogle-noablate[data-anchor-status="displayed"], ins.adsbygoogle[data-anchor-status="displayed"]',
-)).some(isVisibleAnchor);
+)).filter(isVisibleAnchor);
+
+const isVisibleOfferwall = () => Array.from(document.querySelectorAll<HTMLElement>(OFFERWALL_SELECTOR)).some((element) => {
+    const style = window.getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number(style.opacity || '1') > 0
+        && rect.height >= 120
+        && rect.width >= window.innerWidth * 0.6;
+});
 
 /**
  * 自動広告・オファーウォール用のページレベルスクリプト。
@@ -46,12 +59,37 @@ export const AdSensePageLevelScript = ({ enabled }: AdSensePageLevelScriptProps)
         let wasBlocking = false;
         let restoreTimer = 0;
         let frameId = 0;
+        let offerwallWasVisible = false;
 
         const restoreIfReleased = () => {
             const dialogIsVisible = hasVisibleGoogleDialog();
-            const anchorIsVisible = hasVisibleGoogleAnchor();
+            const offerwallVisible = isVisibleOfferwall();
+            const visibleAnchors = getVisibleGoogleAnchors();
+            const topAnchorHeight = visibleAnchors.reduce((height, element) => {
+                const rect = element.getBoundingClientRect();
+                return rect.top <= 8 ? Math.max(height, Math.ceil(rect.height)) : height;
+            }, 0);
+            const bottomAnchorHeight = visibleAnchors.reduce((height, element) => {
+                const rect = element.getBoundingClientRect();
+                return rect.bottom >= window.innerHeight - 8 ? Math.max(height, Math.ceil(rect.height)) : height;
+            }, 0);
+            const anchorIsVisible = topAnchorHeight > 0 || bottomAnchorHeight > 0;
             const isBlocking = dialogIsVisible || anchorIsVisible;
             observedGoogleUi = observedGoogleUi || Boolean(document.querySelector(GOOGLE_UI_SELECTOR));
+
+            publishGoogleAdOverlaySnapshot({
+                offerwallVisible,
+                dialogVisible: dialogIsVisible,
+                topAnchorHeight,
+                bottomAnchorHeight,
+            });
+
+            if (offerwallVisible && !offerwallWasVisible) {
+                sendAdsenseOfferwallViewEvent({
+                    path_group: window.location.pathname.startsWith('/races') ? '/races' : 'other',
+                });
+            }
+            offerwallWasVisible = offerwallVisible;
 
             if (isBlocking) {
                 wasBlocking = true;
@@ -62,7 +100,7 @@ export const AdSensePageLevelScript = ({ enabled }: AdSensePageLevelScriptProps)
 
             window.clearTimeout(restoreTimer);
             restoreTimer = window.setTimeout(() => {
-                if (hasVisibleGoogleDialog() || hasVisibleGoogleAnchor() || hasSiteScrollLock()) return;
+                if (hasVisibleGoogleDialog() || getVisibleGoogleAnchors().length > 0 || hasSiteScrollLock()) return;
 
                 const scrollTop = window.scrollY;
                 if (document.body.style.overflow === 'hidden') {
@@ -83,11 +121,11 @@ export const AdSensePageLevelScript = ({ enabled }: AdSensePageLevelScriptProps)
             frameId = window.requestAnimationFrame(restoreIfReleased);
         };
         const observer = new MutationObserver(requestCheck);
-        observer.observe(document.documentElement, {
+        observer.observe(document.body, {
             attributes: true,
             childList: true,
             subtree: true,
-            attributeFilter: ['class', 'style', 'aria-hidden', 'data-anchor-status'],
+            attributeFilter: ['aria-hidden', 'data-anchor-status'],
         });
         window.addEventListener('pageshow', requestCheck);
         window.addEventListener('popstate', requestCheck);
@@ -114,6 +152,12 @@ export const AdSensePageLevelScript = ({ enabled }: AdSensePageLevelScriptProps)
             window.removeEventListener('pageshow', requestCheck);
             window.removeEventListener('popstate', requestCheck);
             window.removeEventListener('resize', requestCheck);
+            publishGoogleAdOverlaySnapshot({
+                offerwallVisible: false,
+                dialogVisible: false,
+                topAnchorHeight: 0,
+                bottomAnchorHeight: 0,
+            });
         };
     }, [enabled]);
 

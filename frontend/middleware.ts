@@ -203,6 +203,9 @@ export function middleware(request: NextRequest) {
         '/grade-races/sprinters-s': '/grade-races/sprinters-stakes',
         '/grade-races/tenno-sho': '/grade-races/tenno-sho-autumn',
         '/grade-races/mile-cs': '/grade-races/mile-championship',
+        '/articles/courses/hakodate/turf-1200m': '/courses/hakodate/turf-1200m',
+        '/articles/jockeys/yuji-tannai': '/jockeys/yuji-tannai',
+        '/courses/nakayama': '/courses',
         '/guides': '/articles',
     };
 
@@ -285,6 +288,7 @@ export const config = {
         '/data/:path*',
         '/jockey/:path*',
         '/course/:path*',
+        '/courses/:path*',
         '/accuracy',
         '/results',
         '/grade-races/:path*',

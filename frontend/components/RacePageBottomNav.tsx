@@ -9,72 +9,64 @@ import {
     RaceAnalysisFeatureVisual,
 } from '@/components/RaceAnalysisValueGrid';
 import { useRaceSectionNavigation } from '@/hooks/useRaceSectionNavigation';
+import {
+    getGoogleAdOverlaySnapshot,
+    GOOGLE_AD_OVERLAY_EVENT,
+    type GoogleAdOverlaySnapshot,
+} from '@/lib/google-ad-overlay';
 
 export function RacePageBottomNav() {
     const { activeKey, scrollToItem } = useRaceSectionNavigation(raceAnalysisSectionTrackingItems);
     const [isInAnalysisRange, setIsInAnalysisRange] = useState(false);
-    const [hasBottomAnchorAd, setHasBottomAnchorAd] = useState(false);
+    const [googleOverlay, setGoogleOverlay] = useState(getGoogleAdOverlaySnapshot);
 
-    const updateVisibility = useCallback(() => {
+    const observeAnalysisRange = useCallback(() => {
         const predictionSection = document.getElementById('race-prediction-section');
         const analysisEnd = document.getElementById('race-related-articles-section')
             ?? document.getElementById('race-analysis-section');
         if (!predictionSection || !analysisEnd) {
             setIsInAnalysisRange(false);
-            return;
+            return () => undefined;
         }
 
-        const predictionRect = predictionSection.getBoundingClientRect();
-        const analysisEndRect = analysisEnd.getBoundingClientRect();
-        setIsInAnalysisRange(
-            predictionRect.top <= window.innerHeight - 48
-            && analysisEndRect.bottom > 48,
-        );
-
-        const adCandidates = document.querySelectorAll<HTMLElement>(
-            'ins.adsbygoogle-noablate, ins.adsbygoogle[data-anchor-status], [data-google-query-id][style*="position: fixed"]',
-        );
-        const bottomAnchorIsVisible = Array.from(adCandidates).some((element) => {
-            const style = window.getComputedStyle(element);
-            const rect = element.getBoundingClientRect();
-            return style.display !== 'none'
-                && style.visibility !== 'hidden'
-                && Number(style.opacity || '1') > 0
-                && rect.height >= 24
-                && rect.width >= window.innerWidth * 0.45
-                && rect.top >= window.innerHeight * 0.45
-                && rect.bottom >= window.innerHeight - 4;
+        let hasReachedPrediction = false;
+        let hasNotPassedEnd = true;
+        const syncRange = () => setIsInAnalysisRange(hasReachedPrediction && hasNotPassedEnd);
+        const predictionObserver = new IntersectionObserver(([entry]) => {
+            hasReachedPrediction = entry.isIntersecting
+                || entry.boundingClientRect.top <= window.innerHeight - 48;
+            syncRange();
         });
-        setHasBottomAnchorAd(bottomAnchorIsVisible);
+        const endObserver = new IntersectionObserver(([entry]) => {
+            hasNotPassedEnd = entry.isIntersecting || entry.boundingClientRect.bottom > 48;
+            syncRange();
+        });
+        predictionObserver.observe(predictionSection);
+        endObserver.observe(analysisEnd);
+
+        return () => {
+            predictionObserver.disconnect();
+            endObserver.disconnect();
+        };
     }, []);
 
     useEffect(() => {
-        let frameId = 0;
-        const requestUpdate = () => {
-            window.cancelAnimationFrame(frameId);
-            frameId = window.requestAnimationFrame(updateVisibility);
+        const disconnectRangeObservers = observeAnalysisRange();
+        const handleOverlayChange = (event: Event) => {
+            setGoogleOverlay((event as CustomEvent<GoogleAdOverlaySnapshot>).detail);
         };
-        const observer = new MutationObserver(requestUpdate);
-
-        observer.observe(document.body, {
-            attributes: true,
-            childList: true,
-            subtree: true,
-            attributeFilter: ['class', 'style', 'data-anchor-status'],
-        });
-        window.addEventListener('scroll', requestUpdate, { passive: true });
-        window.addEventListener('resize', requestUpdate);
-        requestUpdate();
+        window.addEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange);
 
         return () => {
-            window.cancelAnimationFrame(frameId);
-            observer.disconnect();
-            window.removeEventListener('scroll', requestUpdate);
-            window.removeEventListener('resize', requestUpdate);
+            disconnectRangeObservers();
+            window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange);
         };
-    }, [updateVisibility]);
+    }, [observeAnalysisRange]);
 
-    const isVisible = isInAnalysisRange && !hasBottomAnchorAd;
+    const isVisible = isInAnalysisRange
+        && !googleOverlay.offerwallVisible
+        && !googleOverlay.dialogVisible
+        && googleOverlay.bottomAnchorHeight === 0;
 
     return (
         <nav

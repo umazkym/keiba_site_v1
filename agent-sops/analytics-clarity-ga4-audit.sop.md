@@ -88,7 +88,7 @@ Constraints for parameter acquisition:
 
 ```text
 audit_goal: 記事からレースへの送客が測れているか確認する
-target_events: article_read_complete, article_race_click, race_view_custom
+target_events: article_read_complete, article_race_click, race_view
 ```
 
 ### Example Output

@@ -106,6 +106,19 @@ Constraints for parameter acquisition:
 - You MUST verify production ad delivery, the prediction table, race switching, and mobile layout immediately after applying the selected setting.
 - You MUST restore the original when the next-day or seven-day revenue per 1,000 human sessions is at least 10% below the pre-end baseline and traffic volume or weekday mix does not explain it.
 
+### 8. Run article-to-race navigation experiments without changing ads
+
+重賞記事から個別レースへのブリッジ実験は、既存AdSense枠、Offerwall、自動アンカー、広告除外設定を固定して行います。対象はPublisherが一意一致と予測ありを検証した記事だけとし、データ未準備記事を表示率やCTRの母数へ混ぜません。
+
+**Constraints:**
+
+- You MUST create the deployment-relative D+1 and D+14 09:00 JST reminders before enabling the experiment; reminder failure blocks activation.
+- You MUST measure `article_race_preview_view → article_race_click → race_view → prediction_table_view → race_navigation` and pass exact attribution through sessionStorage only to the first matching race view.
+- You MUST wait for 14 days and at least 500 eligible article sessions before the formal decision, unless an immediate safety condition is met.
+- You MUST keep revenue per 1,000 human sessions from declining and restore the prior article display if revenue falls by at least 10% without a traffic, weekday, or AdSense-market explanation.
+- You MUST disable the bridge, not the ads, when reverting this experiment.
+- You MUST NOT increase ad count or move article ads while this experiment is running because simultaneous ad changes would invalidate revenue attribution.
+
 ## Source references
 
 - `AGENTS.md`

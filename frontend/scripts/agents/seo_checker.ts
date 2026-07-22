@@ -385,7 +385,11 @@ export function checkSEO(markdownText: string): SEOCheckResult {
   // 関連記事はフロント側で自動表示するため、本文内の[関連記事：...]プレースホルダーは要求しない。
   // 海外競馬（is_overseas: true または overseas: true または category: '海外競馬'）の場合は /races/today へのリンクは必須としない。
   const isOverseas = data.is_overseas === true || data.overseas === true || data.category === '海外競馬';
-  if (SEO_RULES.require_today_race_cta && !isOverseas && !content.includes('/races/today')) {
+  const isGradeRace = String(data.entity_type || '') === 'grade_race';
+  if (isGradeRace && content.includes('/races/today')) {
+    errors.push('重賞記事の本文に /races/today を含めないでください。検証済みレース導線はページ側で表示します。');
+  }
+  if (SEO_RULES.require_today_race_cta && !isOverseas && !isGradeRace && !content.includes('/races/today')) {
     errors.push(`今日のAI予想・出馬表への内部リンクがありません。記事末尾に /races/today への自然な導線を含めてください。`);
   }
 
@@ -467,7 +471,7 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     const lastLine = lastLineMatch[1];
     const isForbiddenEnding = endingForbiddenPatterns.some(pattern => pattern.test(lastLine));
     if (isForbiddenEnding) {
-      errors.push(`記事の末尾が定型文や過剰な総括で終わっています（「...${lastLine.substring(Math.max(0, lastLine.length - 15))}」）。確認ポイントと /races/today への自然な導線で締めてください。`);
+      errors.push(`記事の末尾が定型文や過剰な総括で終わっています（「...${lastLine.substring(Math.max(0, lastLine.length - 15))}」）。テーマに応じた確認ポイントで締めてください。`);
     }
   }
 

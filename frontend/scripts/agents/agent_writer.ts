@@ -325,7 +325,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - 数値を使う場合は期間・条件・母数を必ず明記する。
 - 本文3,400〜4,200字を目安にし、最低3,000字は必ず超える。ただし水増し禁止。短くなりそうな場合は、入力データから読み取れる「扱い方」「慎重に見る条件」「当日の確認順序」「サンプル数が少ない場合の注意点」「検索読者が次に調べる観点」を具体化して厚みを出す。
 - 生成後に本文量を自分で確認し、3,000字未満になりそうなら、架空の数値や外部情報を足さず、「出馬表で見る順番」「人気馬を慎重に見る条件」「相手候補に残す前の確認順」「評価を下げる条件」「直前に確認する材料」のうち不足している観点を追加する。
-- 本文中のCTAは /races/today、reference_data.race_url、WriteOrder.entity_path / reference_data.entity_path、または WriteOrder.canonical_path / reference_data.canonical_path のみ。entity_path は /articles/grade-races/、/articles/courses/、/articles/jockeys/、/grade-races/、/courses/、/jockeys/ で始まる内部URLの場合だけ使用できる。canonical_path は重複統合が必要な場合だけ使用し、通常の記事カテゴリ所属には使わない。存在確認できないURLや仮のURLは書かない。
+- 重賞記事（entity_type が "grade_race"）では、本文中に /races/today や個別レースCTAを生成しない。検証済みレース導線はページ側で表示する。常設記事だけ、本文中のCTAに /races/today を使用できる。存在確認できないURLや仮のURLは書かない。
 
 【記事の締め方 ― 確認ポイントセクション必須】
 記事の最後のセクションは、theme_clusterに応じて以下の見出しで締める。
@@ -342,7 +342,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
   - 条件付き: 内で脚をためられる先行馬だけ拾う。
 数値がない項目には数字を付け足さず、「確認」「相手候補」「慎重」「条件付き」の判断ラベルで整理する。
 その後、以下の1文で記事を閉じる:
-「最新の出馬表とAI予想は [今日のAI予想・出馬表](/races/today) で無料公開中。」
+常設記事だけ「最新の出馬表とAI予想は [今日のAI予想・出馬表](/races/today) で無料公開中。」を使用する。重賞記事ではこの文を出力しない。
 
 【禁止事項】
 - 「まとめ」「総論」「おわりに」の見出しは禁止。代わりに記事種別に合う確認材料の見出しで締める。
@@ -391,7 +391,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
   - update_stage が result_review、または search_intent が result_review の場合は、中央重賞の結果確定後更新として書く。reference_data.results にない着順、通過順、不利、コメントを補わず、確定結果とコース・距離条件から見直す材料を整理する。
   - reference_data.predictions、course_stats、horse_number_advantages がある場合、数値同士を直前に確認する順序として接続する。
   - 地方競馬の重賞・交流重賞では、開催場名（大井、川崎、船橋、浦和、門別、園田、高知、佐賀、帯広など）、ナイター、馬場、距離、交流重賞の条件差を自然に含める。中央G1風の煽り見出しに寄せない。
-  - 最新情報の断定より、/races/today で当日確認する順番を優先する。
+  - 最新情報を断定しない。重賞記事のレース導線はページ側で検証後に表示するため、本文へ /races/today を置かない。
   - 最後の見出しは「## このレースで確認したい判断材料」にする。
 
 【カテゴリの決定ルール】
@@ -497,7 +497,7 @@ WriteOrderを読み、検索流入を増やすための構成ブリーフをJSON
   "expansion_angles": ["3,000字以上にするため、選ばれた検索意図を深掘りできる安全な分析・比較の観点を5件"],
   "long_tail_terms": ["主題と直接関係し、本文や見出しに自然に含めたい検索語を5〜10件。枠順・追い切りは主題の場合だけ含める"],
   "fact_guardrails": ["捏造を避け、正確なデータのみを提示するための注意点を3〜5件"],
-  "internal_link_flow": ["記事の末尾から [今日のAI予想・出馬表](/races/today) へ読者を自然に誘導するための観点を2〜3件"]
+  "internal_link_flow": ["重賞記事はページ側の検証済みレース導線へ任せ、常設記事だけ /races/today へ自然につなぐための観点を2〜3件"]
 }`;
 
 function toStringArray(value: unknown, fallback: string[] = []): string[] {
@@ -735,6 +735,14 @@ function normalizeDraftCalendarMetadata(markdownText: string, order: WriteOrder)
   const searchIntent = String(ref.search_intent || '').trim();
   const racePhase = String(ref.race_phase || '').trim();
   const scheduledRaceDate = String(ref.scheduled_race_date || '').trim();
+  const raceName = String(ref.race_name || ref.calendar_race || '').trim();
+  const scheduledVenue = String(ref.scheduled_venue || '').trim();
+  const matchedRace = ref.matched_race && typeof ref.matched_race === 'object'
+    ? ref.matched_race as Record<string, unknown>
+    : {};
+  const raceId = String(matchedRace.race_id || '').trim();
+  const raceUrl = String(matchedRace.race_url || ref.race_url || '').trim();
+  const raceNumber = Number.parseInt(String(matchedRace.race_number || ''), 10);
   const keywordCandidates = [
     ...(Array.isArray((order as any).keywords) ? (order as any).keywords : []),
     ...(Array.isArray(ref.seo_keywords) ? ref.seo_keywords : []),
@@ -753,6 +761,12 @@ function normalizeDraftCalendarMetadata(markdownText: string, order: WriteOrder)
     if (searchIntent) parsed.data.search_intent = searchIntent;
     if (racePhase) parsed.data.race_phase = racePhase;
     if (scheduledRaceDate) parsed.data.scheduled_race_date = scheduledRaceDate;
+    if (raceName) parsed.data.race_name = raceName;
+    if (scheduledVenue) parsed.data.scheduled_venue = scheduledVenue;
+    if (raceId) parsed.data.race_id = raceId;
+    if (/^\/races\/\d{4}-\d{2}-\d{2}\/[a-z0-9%.-]+\/\d{1,2}$/.test(raceUrl)) parsed.data.race_url = raceUrl;
+    if (Number.isInteger(raceNumber) && raceNumber > 0) parsed.data.race_number = raceNumber;
+    parsed.data.race_bridge_enabled = false;
     if (ref.result_confirmed === true) parsed.data.result_confirmed = true;
     if (keywordCandidates.length > 0) {
       const existing = Array.isArray(parsed.data.keywords)
@@ -801,6 +815,7 @@ function normalizeDraftEntityMetadata(markdownText: string, order: WriteOrder): 
     const parsed = matter(markdownText);
     if (entityType) parsed.data.entity_type = entityType;
     if (entityKey) parsed.data.entity_key = entityKey;
+    if (entityKey && entityType === 'grade_race') parsed.data.race_entity_key = entityKey;
     if (seasonYear) parsed.data.season_year = seasonYear;
     if (contentTarget) parsed.data.content_target = contentTarget;
     if (entityPath) parsed.data.entity_path = entityPath;

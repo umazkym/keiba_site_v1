@@ -1,6 +1,6 @@
 # UMA-FREE 収益ファネル計測設計
 
-更新日: 2026-07-22
+更新日: 2026-07-23
 
 ## 目的
 
@@ -19,11 +19,12 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `race_group_select` | 中央・地方タブを選択 | `race_date`, `race_type` | 開催区分の利用状況 |
 | `home_race_entry_click` | ホームから当日レースへ移動 | `race_date`, `entry_method`, `race_type`, `venue_name` | ホーム入口別の送客 |
 | `race_venue_select` | 競馬場タブを選択 | `race_date`, `race_type`, `venue_name` | 競馬場間の巡回 |
-| `race_view` | レースデータを表示 | `race_date`, `race_type`, `venue_name`, `race_number` | 1セッション当たりの閲覧レース数 |
+| `race_view` | レースデータを表示 | `race_id`, `race_date`, `race_type`, `venue_name`, `race_number`, 記事流入時のみ`entry_source`, `source_article_slug`, `article_entry_method`, `article_destination_type` | 1セッション当たりの閲覧レース数と記事送客後の到達 |
 | `race_navigation` | 前後レースやレース番号から移動 | `from_race_number`, `to_race_number`, `navigation_method` | 次レース導線の比較 |
 | `prediction_table_view` | AI偏差値表が画面内に入る | `race_id`, `race_number`, `page_path` | 予想表の実閲覧 |
 | `article_read_complete` | 記事本文の末尾へ到達 | `article_slug`, `article_category`, `reading_time_min` | 記事読了率 |
-| `article_race_click` | 記事からレースページへ移動 | `article_slug`, `link_path`, `link_placement` | 記事からレースへの送客 |
+| `article_race_preview_view` | 検証済みレースブリッジの50%以上が初回表示 | `article_slug`, `race_id`, `race_name`, `race_date`, `preview_state`, `link_placement` | 有効な導線表示セッションの母数 |
+| `article_race_click` | 記事からレースページへ移動 | `article_slug`, `link_path`, `link_placement`, `destination_type`, `race_id`, `race_name`, `race_date`, `preview_state` | 記事から正確なレースへの送客 |
 | `ad_impression_custom` | AdSenseが広告を配信 | `ad_placement`, `ad_format`, `ad_slot`, `ad_page_type` | 配信済み広告の母数 |
 | `ad_viewable_custom` | 広告枠の50%以上が1秒間画面内に表示 | `ad_placement`, `ad_format`, `ad_slot`, `ad_page_type` | 配置別の実視認と収益性 |
 | `affiliate_impression` | アフィリエイト枠の40%以上が表示 | `campaign_id`, `provider`, `context` | アフィリエイト表示母数 |
@@ -63,11 +64,16 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 ### 記事からレース
 
 1. 記事の`page_view`
-2. `article_read_complete`
+2. `article_race_preview_view`
 3. `article_race_click`
-4. `race_view`
-5. `affiliate_impression`
-6. `affiliate_click`
+4. 記事流入属性付き`race_view`
+5. `prediction_table_view`
+6. `race_navigation`
+7. `article_read_complete`と記事広告イベントは離脱・収益保護の並行指標として比較する
+
+`article_race_preview_view`の母数には`race_bridge_enabled=true`で正常表示された記事だけを含める。予測未作成や曖昧一致でブリッジを描画しない記事をCTRの母数へ入れない。
+
+クリック時の流入属性は`sessionStorage`へ30分だけ保持し、最初の対応する`race_view`へ付与後に削除する。別の`race_id`へ到達した場合は誤帰属せず破棄する。URLクエリへ流入情報を付けない。
 
 ### レース巡回
 
@@ -85,3 +91,4 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 - 旧`read_complete`は記事読了ではなく予想表の表示を表していたため、新しい`article_read_complete`と比較しない。
 - リワード広告を意図的に停止している期間は、通常公開を`premium_data_view.result=open_access`として扱う。
 - 2026-07-20〜21のUI変更が30日集計へ混在するため、広告・CTA判断では2026-07-22以降の期間を分離する。
+- 2026-07-23実装のレースブリッジは、本番デプロイ日Dより前の汎用CTAと同一期間へ混在させない。`metadata_only`は一時API障害時の静的リンク表示であり、上位3頭が表示された`available`と分けて集計する。

@@ -68,12 +68,22 @@ export function ArticleEngagementTracker({
       const placement =
         anchor.dataset.analyticsPlacement ||
         (anchor.closest('.article-page-prose') ? 'article_body' : 'article_navigation');
+      const destinationType = url.pathname === '/races/today'
+        ? 'today'
+        : /^\/races\/\d{4}-\d{2}-\d{2}$/.test(url.pathname)
+          ? 'race_date'
+          : 'exact_race';
 
       sendArticleRaceClickEvent({
         article_slug: slug,
         article_category: category,
         link_path: `${url.pathname}${url.search}`,
         link_placement: placement,
+        destination_type: destinationType,
+        race_id: anchor.dataset.raceId,
+        race_name: anchor.dataset.raceName,
+        race_date: anchor.dataset.raceDate,
+        preview_state: anchor.dataset.previewState as 'available' | 'metadata_only' | 'unavailable' | 'generic' | undefined,
       });
     };
 

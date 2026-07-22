@@ -854,6 +854,8 @@ function normalizeBuyingPointSection(content: string, data: Record<string, any>)
     .trim();
 
   const isOverseas = data.is_overseas === true || data.overseas === true || data.category === '海外競馬';
+  const isGradeRace = String(data.entity_type || '') === 'grade_race';
+  const shouldAppendTodayCta = !isOverseas && !isGradeRace;
 
   const requiredHeadingRegex = new RegExp(`^${requiredHeading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
   if (!requiredHeadingRegex.test(result)) {
@@ -862,7 +864,7 @@ function normalizeBuyingPointSection(content: string, data: Record<string, any>)
 
   const headingIndex = findLastBuyingPointHeading(result);
   if (headingIndex < 0) {
-    return isOverseas ? result.trim() : `${result}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim();
+    return shouldAppendTodayCta ? `${result}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim() : result.trim();
   }
 
   const before = result.slice(0, headingIndex).trim();
@@ -872,9 +874,9 @@ function normalizeBuyingPointSection(content: string, data: Record<string, any>)
     .trim();
   const normalizedSection = normalizeBuyingPointLines(sectionBody, data);
 
-  return isOverseas
-    ? `${before}\n\n${requiredHeading}\n\n${normalizedSection}`.trim()
-    : `${before}\n\n${requiredHeading}\n\n${normalizedSection}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim();
+  return shouldAppendTodayCta
+    ? `${before}\n\n${requiredHeading}\n\n${normalizedSection}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim()
+    : `${before}\n\n${requiredHeading}\n\n${normalizedSection}`.trim();
 }
 
 function ensureH2HeadingsHaveNumbers(content: string): string {
@@ -1142,7 +1144,7 @@ STEP 2：構造チェック
 ・frontmatter の search_intent と content_focus が記事の中心になっているか
 ・search_intent が "waku" でないのに枠順が複数H2へ広がっていないか、"training" でないのに追い切りが主題化されていないか
 ・race_phase が "post_race" の記事に、枠順発表や最終追い切りなどレース前の確認手順が混入していないか
-・記事末尾にテーマに応じた確認ポイント見出しがあり、最後に「最新の出馬表とAI予想は [今日のAI予想・出馬表](/races/today) で無料公開中。」が自然に入っているか
+・記事末尾にテーマに応じた確認ポイント見出しがあるか。entity_type が "grade_race" の記事には /races/today のCTAを入れず、常設記事だけ自然な導線を置く
 ・チェックマークやバツ印などの装飾記号、煽りの強い「最強」「圧倒的」「狙い撃つ」「買うな」「消去対象」が残っていないか
 ・重賞記事は、人気馬を煽るだけでなく「評価を上げる材料」「慎重に見る条件」「見送りを検討する条件」が分かれているか
 ・平場向け記事は、短時間で複数レースを見る読者が使える初期判断になっているか

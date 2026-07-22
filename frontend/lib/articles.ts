@@ -29,6 +29,14 @@ export interface Article {
   entityPath?: string;
   contentTarget?: string;
   scheduledRaceDate?: string;
+  raceName?: string;
+  raceEntityKey?: string;
+  scheduledVenue?: string;
+  raceNumber?: number;
+  raceId?: string;
+  raceUrl?: string;
+  raceBridgeEnabled: boolean;
+  raceBridgeVerifiedAt?: string;
 }
 
 export type ArticleMeta = Omit<Article, 'content'>;
@@ -85,6 +93,15 @@ function normalizeOptionalString(value: unknown): string {
   return String(value).trim();
 }
 
+function normalizeOptionalInteger(value: unknown): number | undefined {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function normalizeBoolean(value: unknown): boolean {
+  return value === true || String(value || '').trim().toLowerCase() === 'true';
+}
+
 function normalizeEntitySearchText(value: string): string {
   return value
     .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
@@ -115,7 +132,7 @@ function toArticleMeta(article: Article): ArticleMeta {
   return meta;
 }
 
-function cleanArticleMarkdownForRender(markdown: string): string {
+function cleanArticleMarkdownForRender(markdown: string, data: Record<string, unknown> = {}): string {
   let cleaned = markdown.replace(/\r\n/g, '\n');
 
   // 旧記事の本文末に残っている手動関連記事は、ページ側の関連記事コンポーネントと重複する。
@@ -127,6 +144,15 @@ function cleanArticleMarkdownForRender(markdown: string): string {
 
   // パブリッシュ時の置換失敗で単独行として残った "(/course-...)" のような壊れたURL片を消す。
   cleaned = cleaned.replace(/^\s*\(\/[^)\s]+\)\s*$/gm, '');
+
+  // 重賞記事のレース導線はページ側の検証済みブリッジへ集約する。
+  // 本文末尾の旧汎用CTAだけを除き、本文中の説明リンクまでは推測で変更しない。
+  if (normalizeOptionalString(data.entity_type || data.entityType) === 'grade_race') {
+    cleaned = cleaned.replace(
+      /^.*\[今日のAI予想・出馬表]\(\/races\/today\).*$/gm,
+      '',
+    );
+  }
 
   return cleaned.replace(/\n{3,}/g, '\n\n').trim();
 }
@@ -218,6 +244,14 @@ export function getAllArticles(): Article[] {
       entityPath: normalizeInternalCanonicalPath(data.entity_path || data.entityPath),
       contentTarget: normalizeOptionalString(data.content_target || data.contentTarget),
       scheduledRaceDate: normalizeOptionalString(data.scheduled_race_date || data.scheduledRaceDate),
+      raceName: normalizeOptionalString(data.race_name || data.raceName),
+      raceEntityKey: normalizeOptionalString(data.race_entity_key || data.raceEntityKey || data.entity_key || data.entityKey),
+      scheduledVenue: normalizeOptionalString(data.scheduled_venue || data.scheduledVenue),
+      raceNumber: normalizeOptionalInteger(data.race_number || data.raceNumber),
+      raceId: normalizeOptionalString(data.race_id || data.raceId),
+      raceUrl: normalizeInternalCanonicalPath(data.race_url || data.raceUrl),
+      raceBridgeEnabled: normalizeBoolean(data.race_bridge_enabled || data.raceBridgeEnabled),
+      raceBridgeVerifiedAt: normalizeOptionalString(data.race_bridge_verified_at || data.raceBridgeVerifiedAt),
     }];
   });
 
@@ -400,7 +434,7 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
   if (isDraftArticle(data)) {
     throw new Error('下書き記事は公開できません。');
   }
-  const cleanedContent = cleanArticleMarkdownForRender(content);
+  const cleanedContent = cleanArticleMarkdownForRender(content, data);
 
   // MarkdownをHTMLに変換 (GFMプラグインを使用してテーブル等をサポート)
   const processedContent = await remark()
@@ -431,6 +465,14 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     entityPath: normalizeInternalCanonicalPath(data.entity_path || data.entityPath),
     contentTarget: normalizeOptionalString(data.content_target || data.contentTarget),
     scheduledRaceDate: normalizeOptionalString(data.scheduled_race_date || data.scheduledRaceDate),
+    raceName: normalizeOptionalString(data.race_name || data.raceName),
+    raceEntityKey: normalizeOptionalString(data.race_entity_key || data.raceEntityKey || data.entity_key || data.entityKey),
+    scheduledVenue: normalizeOptionalString(data.scheduled_venue || data.scheduledVenue),
+    raceNumber: normalizeOptionalInteger(data.race_number || data.raceNumber),
+    raceId: normalizeOptionalString(data.race_id || data.raceId),
+    raceUrl: normalizeInternalCanonicalPath(data.race_url || data.raceUrl),
+    raceBridgeEnabled: normalizeBoolean(data.race_bridge_enabled || data.raceBridgeEnabled),
+    raceBridgeVerifiedAt: normalizeOptionalString(data.race_bridge_verified_at || data.raceBridgeVerifiedAt),
   };
 }
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ ここまで修正 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲

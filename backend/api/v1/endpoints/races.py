@@ -79,6 +79,23 @@ def read_prediction_accuracy_summary(
     return result
 
 
+@router.get(
+    "/article-preview/{target_date}",
+    response_model=race_schema.ArticleRacePreviewResponse,
+)
+def read_article_race_preview(
+    target_date: date,
+    response: Response,
+    race_name: str = Query(..., min_length=2, max_length=80, description="記事が対象とする正式レース名"),
+    db: Session = Depends(get_db),
+):
+    """検証済み記事導線に必要なレース情報と上位3頭だけを返す。"""
+    result = race_crud.get_article_race_preview(db=db, target_date=target_date, race_name=race_name)
+    max_age = 3600 if target_date < datetime.now(_JST).date() else 300
+    response.headers["Cache-Control"] = f"public, max-age={max_age}, stale-while-revalidate=60"
+    return result
+
+
 @router.get("/{target_date}", response_model=race_schema.RaceDayPrediction)
 def read_predictions_for_date(target_date: date, response: Response, db: Session = Depends(get_db)):
     """

@@ -6,6 +6,9 @@ from typing import Dict, Any, List, Optional
 from collections import defaultdict
 import time
 import threading
+import re
+import unicodedata
+from urllib.parse import quote
 
 # ==============================================================================
 # TTLキャッシュ（Neon通信量削減）
@@ -72,6 +75,113 @@ _weekly_grade_cache = _TTLCache(max_entries=5)
 _special_pick_cache = _TTLCache(max_entries=10)
 _matchup_cache = _TTLCache(max_entries=30)
 _accuracy_cache = _TTLCache(max_entries=5)
+_article_preview_cache = _TTLCache(max_entries=100)
+
+
+_VENUE_SLUGS = {
+    "札幌": "sapporo", "函館": "hakodate", "福島": "fukushima", "新潟": "niigata",
+    "東京": "tokyo", "中山": "nakayama", "中京": "chukyo", "京都": "kyoto",
+    "阪神": "hanshin", "小倉": "kokura", "門別": "monbetsu", "盛岡": "morioka",
+    "水沢": "mizusawa", "浦和": "urawa", "船橋": "funabashi", "大井": "ohi",
+    "川崎": "kawasaki", "金沢": "kanazawa", "笠松": "kasamatsu", "名古屋": "nagoya",
+    "園田": "sonoda", "姫路": "himeji", "高知": "kochi", "佐賀": "saga",
+    "帯広": "obihiro", "帯広ば": "obihiro", "ばんえい帯広": "obihiro",
+}
+
+
+def _normalize_article_race_name(value: str) -> str:
+    """記事とDBのレース名を一意照合するための保守的な正規化。"""
+    normalized = unicodedata.normalize("NFKC", value or "")
+    normalized = re.sub(r"20\d{2}年?", "", normalized)
+    normalized = re.sub(r"^第\d+回", "", normalized)
+    normalized = re.sub(
+        r"[（(]?(?:Jpn|G)(?:[123]|I{1,3})[)）]?$",
+        "",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(r"[\s　・･()（）【】「」『』\[\]｜|:：_-]", "", normalized)
+    return normalized.casefold()
+
+
+def _article_race_url(race: models.Race) -> str:
+    venue_name = re.sub(r"\s+", "", (race.venue_name or "").replace("競馬場", ""))
+    venue = _VENUE_SLUGS.get(venue_name, quote(venue_name.lower()))
+    return f"/races/{race.race_date.isoformat()}/{venue}/{race.race_number}"
+
+
+def _article_preview_cache_ttl(target_date: date) -> int:
+    """記事プレビューは現在・未来を5分、過去を1時間キャッシュする。"""
+    return 3600 if target_date < datetime.now(_JST).date() else 300
+
+
+def get_article_race_preview(db: Session, target_date: date, race_name: str) -> Dict[str, Any]:
+    """
+    記事導線用の最小レスポンスを返す。
+
+    同日内で正規化名が一意に一致した場合だけレースを返し、部分一致や推測は行わない。
+    """
+    normalized_name = _normalize_article_race_name(race_name)
+    cache_key = f"article_preview:{target_date.isoformat()}:{normalized_name}"
+    cached = _article_preview_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    now = datetime.now(timezone.utc)
+    if not normalized_name:
+        result = {"status": "not_found", "race": None, "top_predictions": [], "as_of": now}
+        _article_preview_cache.set(cache_key, result, _article_preview_cache_ttl(target_date))
+        return result
+
+    races = (
+        db.query(models.Race)
+        .options(selectinload(models.Race.predictions))
+        .filter(models.Race.race_date == target_date)
+        .order_by(models.Race.venue_name, models.Race.race_number)
+        .all()
+    )
+    matched = [race for race in races if _normalize_article_race_name(race.race_name) == normalized_name]
+    if len(matched) != 1:
+        result = {"status": "not_found", "race": None, "top_predictions": [], "as_of": now}
+        _article_preview_cache.set(cache_key, result, _article_preview_cache_ttl(target_date))
+        return result
+
+    race = matched[0]
+    predictions = sorted(
+        [item for item in race.predictions if item.deviation_score is not None],
+        key=lambda item: (
+            item.deviation_score is not None,
+            item.deviation_score if item.deviation_score is not None else float("-inf"),
+            -item.horse_number,
+        ),
+        reverse=True,
+    )[:3]
+    status = "available" if predictions else "race_only"
+    result = {
+        "status": status,
+        "race": {
+            "id": race.id,
+            "race_date": race.race_date,
+            "venue_name": race.venue_name,
+            "race_number": race.race_number,
+            "race_name": race.race_name,
+            "course_type": race.course_type,
+            "distance": race.distance,
+            "race_url": _article_race_url(race),
+        },
+        "top_predictions": [
+            {
+                "horse_number": item.horse_number,
+                "horse_name": item.horse_name,
+                "deviation_score": item.deviation_score,
+                "mark": item.mark,
+            }
+            for item in predictions
+        ],
+        "as_of": now,
+    }
+    _article_preview_cache.set(cache_key, result, _article_preview_cache_ttl(target_date))
+    return result
 
 
 def invalidate_predictions_cache(target_date: date) -> None:

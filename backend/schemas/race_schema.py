@@ -1,7 +1,7 @@
 # C:\Users\tnszk\program\GitHub\backend\schemas\race_schema.py
-from pydantic import BaseModel, ConfigDict
-from datetime import date
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, ConfigDict, Field
+from datetime import date, datetime
+from typing import List, Optional, Dict, Any, Literal
 
 class ResultSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -52,6 +52,31 @@ class VenueRaces(BaseModel):
 class RaceDayPrediction(BaseModel):
     jra: List[VenueRaces]
     nar: List[VenueRaces]
+
+
+class ArticleRacePreviewPrediction(BaseModel):
+    horse_number: int
+    horse_name: str
+    deviation_score: Optional[float] = None
+    mark: str
+
+
+class ArticleRacePreviewRace(BaseModel):
+    id: str
+    race_date: date
+    venue_name: str
+    race_number: int
+    race_name: str
+    course_type: Optional[str] = None
+    distance: Optional[int] = None
+    race_url: str
+
+
+class ArticleRacePreviewResponse(BaseModel):
+    status: Literal["available", "race_only", "not_found"]
+    race: Optional[ArticleRacePreviewRace] = None
+    top_predictions: List[ArticleRacePreviewPrediction] = Field(default_factory=list)
+    as_of: datetime
 
 class SpecialPick(BaseModel):
     model_config = ConfigDict(from_attributes=True)

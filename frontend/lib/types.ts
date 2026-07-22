@@ -100,6 +100,31 @@ export interface WeeklyGradeRace {
     grade: string; // "G1", "G2", "G3", "Jpn1", "Jpn2", "Jpn3", "地方重賞"
 }
 
+export interface ArticleRacePreviewPrediction {
+    horse_number: number;
+    horse_name: string;
+    deviation_score: number | null;
+    mark: string;
+}
+
+export interface ArticleRacePreviewRace {
+    id: string;
+    race_date: string;
+    venue_name: string;
+    race_number: number;
+    race_name: string;
+    course_type: string | null;
+    distance: number | null;
+    race_url: string;
+}
+
+export interface ArticleRacePreviewResponse {
+    status: 'available' | 'race_only' | 'not_found';
+    race: ArticleRacePreviewRace | null;
+    top_predictions: ArticleRacePreviewPrediction[];
+    as_of: string;
+}
+
 export interface AccuracyRate {
     label: string;
     races: number;

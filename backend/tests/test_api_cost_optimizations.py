@@ -31,6 +31,7 @@ class ApiCostOptimizationTest(unittest.TestCase):
         from crud import race_crud
 
         race_crud._predictions_cache.clear()
+        race_crud._article_preview_cache.clear()
 
     def test_grade_detection_does_not_treat_generic_two_year_old_race_as_grade(self) -> None:
         from crud import race_crud
@@ -169,6 +170,106 @@ class ApiCostOptimizationTest(unittest.TestCase):
             self.assertIsNone(returned_race["matchup"])
 
             json.dumps(result, ensure_ascii=False, default=str)
+        finally:
+            db.close()
+            engine.dispose()
+
+    def test_article_preview_requires_unique_exact_name_and_predictions(self) -> None:
+        from crud import race_crud
+
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(bind=engine)
+        db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
+        target_date = date(2026, 7, 20)
+        try:
+            race = models.Race(
+                id="202607203512",
+                race_date=target_date,
+                venue_name="盛岡",
+                race_number=12,
+                race_name="マーキュリーカップJpn3",
+                race_type="地方",
+                course_type="ダ",
+                distance=2000,
+            )
+            db.add(race)
+            db.flush()
+            db.add_all([
+                models.Prediction(
+                    race_id=race.id,
+                    horse_id="horse-1",
+                    horse_name="長い馬名の確認用競走馬一号",
+                    horse_number=1,
+                    deviation_score=68.4,
+                    mark="◎",
+                ),
+                models.Prediction(
+                    race_id=race.id,
+                    horse_id="horse-2",
+                    horse_name="確認馬二",
+                    horse_number=2,
+                    deviation_score=None,
+                    mark="",
+                ),
+            ])
+            db.commit()
+
+            result = race_crud.get_article_race_preview(db, target_date, "マーキュリーカップ")
+            self.assertEqual(result["status"], "available")
+            self.assertEqual(result["race"]["race_url"], "/races/2026-07-20/morioka/12")
+            self.assertEqual(result["top_predictions"][0]["horse_name"], "長い馬名の確認用競走馬一号")
+            race_crud._article_preview_cache.clear()
+            normalized_result = race_crud.get_article_race_preview(
+                db,
+                target_date,
+                "第30回マーキュリーカップ（JpnIII）",
+            )
+            self.assertEqual(normalized_result["status"], "available")
+            self.assertEqual(normalized_result["race"]["id"], race.id)
+            self.assertEqual(
+                race_crud.get_article_race_preview(db, target_date, "マーキュリー")["status"],
+                "not_found",
+            )
+
+            duplicate = models.Race(
+                id="202607203511",
+                race_date=target_date,
+                venue_name="盛岡",
+                race_number=11,
+                race_name="マーキュリーカップ",
+                race_type="地方",
+            )
+            db.add(duplicate)
+            db.commit()
+            race_crud._article_preview_cache.clear()
+            self.assertEqual(
+                race_crud.get_article_race_preview(db, target_date, "マーキュリーカップ")["status"],
+                "not_found",
+            )
+        finally:
+            db.close()
+            engine.dispose()
+
+    def test_article_preview_returns_race_only_without_predictions(self) -> None:
+        from crud import race_crud
+
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(bind=engine)
+        db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
+        target_date = date(2026, 7, 23)
+        try:
+            db.add(models.Race(
+                id="202607233601",
+                race_date=target_date,
+                venue_name="門別",
+                race_number=1,
+                race_name="確認用重賞",
+                race_type="地方",
+            ))
+            db.commit()
+            result = race_crud.get_article_race_preview(db, target_date, "確認用重賞")
+            self.assertEqual(result["status"], "race_only")
+            self.assertEqual(result["top_predictions"], [])
         finally:
             db.close()
             engine.dispose()

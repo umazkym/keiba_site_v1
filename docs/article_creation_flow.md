@@ -563,10 +563,28 @@ Plannerは `theme_cluster` を競馬固有の以下の型で出力する。
 - 外部リサーチを使った場合、出典が記録されている
 - 3,000文字以上で、水増しではなく判断材料が増えている
 - title/descriptionが検索結果で自然に読める
-- `/races/today` または対象レースページへの導線がある
+- 常設記事には`/races/today`への自然な導線がある。重賞記事は検証済みの個別レース導線だけを表示し、データ未準備時は導線DOMや予約余白がなくても公開できる
 - 過度な断定、収益保証、煽りがない
 - 既存記事と検索意図が重なりすぎていない
 - AdSense審査に不利な薄い自動生成記事に見えない
+
+## 重賞記事の年度URLと個別レース導線
+
+重賞記事は検索意図ごとにURLを増やさず、共有レジストリ`frontend/content/reference/grade-race-entities.json`の`entity_key`と開催年を使い、`/articles/{entity-key}-{season-year}`で管理する。同一重賞・同一年度の更新段階は`field_building → race_week → final_48h → draw_confirmed → post_race`の順とし、後退させない。Publisherは`entity_type + entity_key + season_year`を同一記事の識別キーにし、同じH2見出しを更新、既存の固有セクションは保持する。
+
+個別記事は自己canonicalを維持する。`/articles/grade-races/{entity-key}`は最新記事本文を複製せず、年度別記事を案内する重賞ハブとする。既存URLの移行はSearch Console過去28日のクリック0かつ表示100未満の単独記事だけを候補にし、クリック1以上または表示100以上は28日間保護する。複数記事の統合は品質監査後に行い、年度付きURLへ一段の301で転送する。
+
+`race_bridge_enabled`は常に`false`から始め、Publisherだけが次の全条件を検証して`true`にできる。
+
+1. 開催日と正規化したレース名がDB上の1レースへ一意に一致する
+2. 正確な個別レースURLを生成できる
+3. 公開可能な予測データが1頭以上ある
+4. 軽量プレビューAPIが正常応答し、race IDとURLが記事メタデータに一致する
+5. 記事年度と開催年が一致する
+
+さらに、D+1とD+14の9:00 JSTリマインド登録後に`ARTICLE_RACE_BRIDGE_EXPERIMENT_ACTIVE=true`と`ARTICLE_RACE_BRIDGE_REMINDER_ID`がPublisher環境へ設定されていることを開始条件とする。どちらかが欠ける場合は、レースデータが揃っていても`false`を維持する。
+
+Writerは重賞記事本文に`/races/today`や個別レースCTAを書かない。Publisherの検証に失敗した場合は記事本文を公開できるが、ブリッジは無効のままにし、外枠、ローディング、予約スペースを描画しない。ブラウザ側でタイトルからレースを推測したり、別レースや`/races/today`へフォールバックしたりしない。検証済み記事で一時的なAPI障害が起きた場合だけ、保存済みのレース名、日付、競馬場、正確なURLを使う静的リンクを残し、予測欄は表示しない。
 
 ## 参照
 

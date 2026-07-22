@@ -9,9 +9,11 @@ import { AdUnit } from '@/components/AdUnit';
 import { MultiplexAd } from '@/components/MultiplexAd';
 import { enhanceArticleHtml } from '@/lib/article-ux';
 import { ArticleEngagementTracker } from '@/components/ArticleEngagementTracker';
-import { getArticleArchiveGroupForArticle } from '@/lib/article-archives';
 import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 import { ArticleBody } from '@/components/ArticleBody';
+import { ArticleRaceBridge } from '@/components/ArticleRaceBridge';
+import { getArticleRacePreview } from '@/lib/api';
+import { hasValidArticleRaceBridgeMetadata, shouldRenderArticleRaceBridge } from '@/lib/article-race-bridge';
 
 type Props = {
   params: { slug: string };
@@ -33,8 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const description = article.description ||
       `【競馬データ分析】${rawDescription}...`;
 
-    const articleArchiveGroup = getArticleArchiveGroupForArticle(article);
-    const canonicalPath = article.canonicalPath || articleArchiveGroup?.href || resolveArticleCanonicalPath(article, params.slug);
+    const canonicalPath = resolveArticleCanonicalPath(article, params.slug);
     const canonicalUrl = `https://uma-free.com${canonicalPath}`;
     const imageUrl = article.eyecatch.startsWith('http')
       ? article.eyecatch
@@ -80,8 +81,7 @@ export default async function ArticlePage({ params }: Props) {
     const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
     const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
 
-    const articleArchiveGroup = getArticleArchiveGroupForArticle(article);
-    const canonicalPath = article.canonicalPath || articleArchiveGroup?.href || resolveArticleCanonicalPath(article, params.slug);
+    const canonicalPath = resolveArticleCanonicalPath(article, params.slug);
     const articleUrl = `https://uma-free.com${canonicalPath}`;
     const datePublished = new Date(article.date).toISOString();
     const dateModified = new Date(article.lastUpdated || article.date).toISOString();
@@ -96,6 +96,21 @@ export default async function ArticlePage({ params }: Props) {
       refreshRootMarginPx: 720,
       className: 'article-ad-slot',
     };
+    const bridgeMetadata = {
+      enabled: article.raceBridgeEnabled,
+      entityType: article.entityType,
+      raceName: article.raceName,
+      scheduledRaceDate: article.scheduledRaceDate,
+      seasonYear: article.seasonYear,
+      raceId: article.raceId,
+      raceUrl: article.raceUrl,
+    };
+    const hasValidBridgeMetadata = hasValidArticleRaceBridgeMetadata(bridgeMetadata);
+    const racePreview = hasValidBridgeMetadata
+      ? await getArticleRacePreview(article.scheduledRaceDate as string, article.raceName as string)
+      : null;
+    const shouldRenderRaceBridge = shouldRenderArticleRaceBridge(bridgeMetadata, racePreview);
+    const shouldRenderGenericGuide = article.entityType !== 'grade_race';
 
     return (
       <div className="article-detail-scope min-h-screen bg-white py-1 sm:py-8">
@@ -134,26 +149,43 @@ export default async function ArticlePage({ params }: Props) {
                   </p>
                 )}
 
-                <Link
-                  href="/races/today"
-                  prefetch={false}
-                  data-analytics-placement="article_value_guide"
-                  data-analytics-variant="compact_four"
-                  className="mt-4 block min-h-[44px] cursor-pointer rounded-xl border border-blue-200 bg-slate-50 p-3 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:mt-6"
-                  aria-label="今日の全レース分析を見る。AI偏差値、対戦比較、展開・脚質、枠順傾向を確認できます"
-                >
-                  <section aria-labelledby="article-site-value-title">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <h2 id="article-site-value-title" className="text-sm font-black leading-tight text-slate-950 sm:text-base">
-                        今日の全レースを4つの視点で確認
-                      </h2>
-                      <span className="shrink-0 text-[11px] font-black text-blue-700 sm:text-xs">
-                        全レース分析へ <span aria-hidden="true">→</span>
-                      </span>
-                    </div>
-                    <RaceAnalysisValueGrid variant="compact" />
-                  </section>
-                </Link>
+                {shouldRenderRaceBridge && (
+                  <ArticleRaceBridge
+                    articleSlug={params.slug}
+                    articleCategory={article.category}
+                    raceId={article.raceId as string}
+                    raceName={article.raceName as string}
+                    raceDate={article.scheduledRaceDate as string}
+                    venueName={article.scheduledVenue || ''}
+                    raceNumber={article.raceNumber}
+                    raceUrl={article.raceUrl as string}
+                    preview={racePreview}
+                  />
+                )}
+
+                {shouldRenderGenericGuide && (
+                  <Link
+                    href="/races/today"
+                    prefetch={false}
+                    data-analytics-placement="article_value_guide"
+                    data-analytics-variant="compact_four"
+                    data-preview-state="generic"
+                    className="mt-4 block min-h-[44px] cursor-pointer rounded-xl border border-blue-200 bg-slate-50 p-3 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:mt-6"
+                    aria-label="今日の全レース分析を見る。AI偏差値、対戦比較、展開・脚質、枠順傾向を確認できます"
+                  >
+                    <section aria-labelledby="article-site-value-title">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <h2 id="article-site-value-title" className="text-sm font-black leading-tight text-slate-950 sm:text-base">
+                          今日の全レースを4つの視点で確認
+                        </h2>
+                        <span className="shrink-0 text-[11px] font-black text-blue-700 sm:text-xs">
+                          全レース分析へ <span aria-hidden="true">→</span>
+                        </span>
+                      </div>
+                      <RaceAnalysisValueGrid variant="compact" />
+                    </section>
+                  </Link>
+                )}
               </div>
 
               {/* アイキャッチは内容を把握した後の補助ビジュアルとして配置 */}

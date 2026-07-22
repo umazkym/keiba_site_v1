@@ -1,4 +1,4 @@
-import { RaceDayPrediction, SpecialPick, MatchupData, TopPayoutHit, WeeklyGradeRace, PredictionAccuracySummary } from "./types";
+import { ArticleRacePreviewResponse, RaceDayPrediction, SpecialPick, MatchupData, TopPayoutHit, WeeklyGradeRace, PredictionAccuracySummary } from "./types";
 import { getApiBaseUrl } from "./api-base";
 
 const API_BASE_URL = getApiBaseUrl();
@@ -37,6 +37,12 @@ function getRaceDataRevalidate(date: string): number {
     return recentDates.has(date)
         ? RECENT_RACE_REVALIDATE_SECONDS
         : DEFAULT_RACE_REVALIDATE_SECONDS;
+}
+
+function getArticlePreviewRevalidate(date: string): number {
+    return date < formatJstDate(new Date())
+        ? DEFAULT_RACE_REVALIDATE_SECONDS
+        : RECENT_RACE_REVALIDATE_SECONDS;
 }
 
 // ▼▼▼▼▼【ISR導入】▼▼▼▼▼
@@ -132,6 +138,38 @@ export async function getPredictionsForDate(
         if (options.throwOnError) {
             throw error;
         }
+        return null;
+    }
+}
+
+export async function getArticleRacePreview(
+    raceDate: string,
+    raceName: string,
+): Promise<ArticleRacePreviewResponse | null> {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raceDate) || !raceName.trim()) return null;
+
+    try {
+        const res = await fetchWithRetry(
+            `${API_BASE_URL}/api/v1/predictions/article-preview/${raceDate}?race_name=${encodeURIComponent(raceName.trim())}`,
+            { next: { revalidate: getArticlePreviewRevalidate(raceDate) } },
+        );
+        if (!res.ok) {
+            console.warn(`Could not fetch article race preview for ${raceDate}. Status: ${res.status}`);
+            return null;
+        }
+
+        const data = await res.json();
+        if (
+            !data
+            || !['available', 'race_only', 'not_found'].includes(data.status)
+            || !Array.isArray(data.top_predictions)
+        ) {
+            console.error('[getArticleRacePreview] Invalid response body:', data);
+            return null;
+        }
+        return data as ArticleRacePreviewResponse;
+    } catch (error) {
+        console.error('[getArticleRacePreview] Failed:', error);
         return null;
     }
 }

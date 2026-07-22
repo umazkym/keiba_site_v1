@@ -10,6 +10,7 @@ import type { CourseProfile, JockeyProfile } from "@/lib/growth-content";
 import { courseProfiles, getCourseProfile, getJockeyProfile, jockeyProfiles } from "@/lib/growth-content";
 import type { GradeRaceProfile } from "@/lib/grade-race-content";
 import { getGradeRaceProfile, gradeRaceProfiles } from "@/lib/grade-race-content";
+import { gradeRaceEntities } from "@/lib/grade-race-entities";
 
 export type ArticleArchiveKind = "grade-races" | "races" | "jockeys" | "courses";
 export type GradeRaceCircuit = "jra" | "nar" | "overseas";
@@ -102,7 +103,7 @@ type AdditionalGradeRaceSeed = {
   gradeClass?: GradeRaceClass;
 };
 
-const additionalGradeRaceSeeds: AdditionalGradeRaceSeed[] = [
+const additionalGradeRaceSeedOverrides: AdditionalGradeRaceSeed[] = [
   { slug: "oaks", name: "優駿牝馬（オークス）", grade: "G1", aliases: ["オークス", "優駿牝馬"], venue: "東京", course: "芝2400m" },
   { slug: "niigata-daishoten", name: "新潟大賞典", grade: "G3", aliases: ["新潟大賞典"], venue: "新潟", course: "芝2000m" },
   { slug: "heian-stakes", name: "平安S", grade: "G3", aliases: ["平安S", "平安ステークス"], venue: "京都", course: "ダート1900m" },
@@ -132,6 +133,27 @@ const additionalGradeRaceSeeds: AdditionalGradeRaceSeed[] = [
   { slug: "kikka-sho", name: "菊花賞", grade: "G1", aliases: ["菊花賞"], venue: "京都", course: "芝3000m" },
   { slug: "elizabeth-queen-cup", name: "エリザベス女王杯", grade: "G1", aliases: ["エリザベス女王杯"], venue: "京都", course: "芝2200m" },
   { slug: "dubai-world-cup", name: "ドバイWC", grade: "海外G1", aliases: ["ドバイWC", "ドバイワールドカップ"] },
+];
+
+const overrideBySlug = new Map(additionalGradeRaceSeedOverrides.map((seed) => [seed.slug, seed]));
+const sharedGradeRaceSeeds: AdditionalGradeRaceSeed[] = gradeRaceEntities.map((entity) => {
+  const override = overrideBySlug.get(entity.entity_key);
+  return {
+    slug: entity.entity_key,
+    name: override?.name || entity.name,
+    grade: override?.grade || entity.grade,
+    aliases: Array.from(new Set([entity.name, ...entity.aliases, ...(override?.aliases || [])])),
+    venue: override?.venue,
+    course: override?.course,
+    date: override?.date,
+    circuit: override?.circuit || entity.circuit,
+    gradeClass: override?.gradeClass,
+  };
+});
+const sharedEntityKeys = new Set(sharedGradeRaceSeeds.map((seed) => seed.slug));
+const additionalGradeRaceSeeds: AdditionalGradeRaceSeed[] = [
+  ...sharedGradeRaceSeeds,
+  ...additionalGradeRaceSeedOverrides.filter((seed) => !sharedEntityKeys.has(seed.slug)),
 ];
 
 function normalizeGradeLabel(grade: string): string {

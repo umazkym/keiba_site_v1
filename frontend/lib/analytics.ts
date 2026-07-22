@@ -92,6 +92,53 @@ export type HomeRaceEntryMethod =
     | 'grade_fallback'
     | 'venue_card';
 
+export type ArticleRaceDestinationType = 'exact_race' | 'race_date' | 'today';
+export type ArticleRacePreviewState = 'available' | 'metadata_only' | 'unavailable' | 'generic';
+
+type ArticleRaceAttribution = {
+    article_slug: string;
+    link_placement: string;
+    destination_type: ArticleRaceDestinationType;
+    link_path: string;
+    race_id?: string;
+    race_name?: string;
+    race_date?: string;
+    preview_state?: ArticleRacePreviewState;
+    stored_at: number;
+};
+
+const ARTICLE_RACE_ATTRIBUTION_KEY = 'uma_article_race_attribution_v1';
+const ARTICLE_RACE_ATTRIBUTION_TTL_MS = 30 * 60 * 1000;
+
+function storeArticleRaceAttribution(attribution: ArticleRaceAttribution): void {
+    if (typeof window === 'undefined') return;
+    try {
+        window.sessionStorage.setItem(ARTICLE_RACE_ATTRIBUTION_KEY, JSON.stringify(attribution));
+    } catch {
+        // ストレージが使えない環境ではイベント送信だけを維持する。
+    }
+}
+
+function consumeArticleRaceAttribution(raceId?: string): ArticleRaceAttribution | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.sessionStorage.getItem(ARTICLE_RACE_ATTRIBUTION_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as ArticleRaceAttribution;
+        const expired = !parsed.stored_at || Date.now() - parsed.stored_at > ARTICLE_RACE_ATTRIBUTION_TTL_MS;
+        const wrongRace = Boolean(parsed.race_id && raceId && parsed.race_id !== raceId);
+        if (expired || wrongRace) {
+            window.sessionStorage.removeItem(ARTICLE_RACE_ATTRIBUTION_KEY);
+            return null;
+        }
+        window.sessionStorage.removeItem(ARTICLE_RACE_ATTRIBUTION_KEY);
+        return parsed;
+    } catch {
+        // sessionStorage自体が拒否された環境では、追加操作を行わず通常計測を続ける。
+        return null;
+    }
+}
+
 type QueuedAnalyticsEvent = {
     eventName: string;
     params: Record<string, unknown>;
@@ -240,17 +287,30 @@ export const sendHomeRaceEntryClickEvent = (params: {
  * 収益改善の判断軸として競馬場・レース番号単位のイベントを送る。
  */
 export const sendRaceViewEvent = (params: {
+    race_id?: string;
     race_date: string;
     venue_name: string;
     race_number: number;
     race_name: string;
     race_type: 'jra' | 'nar';
 }) => {
-    sendAnalyticsEvent('race_view', params);
+    const articleAttribution = consumeArticleRaceAttribution(params.race_id);
+    const attributedParams = articleAttribution
+        ? {
+            ...params,
+            entry_source: 'article',
+            source_article_slug: articleAttribution.article_slug,
+            article_entry_method: articleAttribution.link_placement,
+            article_destination_type: articleAttribution.destination_type,
+        }
+        : params;
+    sendAnalyticsEvent('race_view', attributedParams);
     sendClarityEvent('race_view', {
         race_type: params.race_type,
         venue_name: params.venue_name,
         race_number: params.race_number,
+        entry_source: articleAttribution ? 'article' : 'direct_or_other',
+        article_entry_method: articleAttribution?.link_placement,
     });
 };
 
@@ -325,10 +385,38 @@ export const sendArticleRaceClickEvent = (params: {
     article_category: string;
     link_path: string;
     link_placement: string;
+    destination_type: ArticleRaceDestinationType;
+    race_id?: string;
+    race_name?: string;
+    race_date?: string;
+    preview_state?: ArticleRacePreviewState;
 }) => {
+    storeArticleRaceAttribution({
+        ...params,
+        stored_at: Date.now(),
+    });
     sendAnalyticsEvent('article_race_click', params);
     sendClarityEvent('article_race_click', {
         article_category: params.article_category,
+        link_placement: params.link_placement,
+        destination_type: params.destination_type,
+        preview_state: params.preview_state,
+    });
+};
+
+export const sendArticleRacePreviewViewEvent = (params: {
+    article_slug: string;
+    article_category: string;
+    race_id: string;
+    race_name: string;
+    race_date: string;
+    preview_state: ArticleRacePreviewState;
+    link_placement: string;
+}) => {
+    sendAnalyticsEvent('article_race_preview_view', params);
+    sendClarityEvent('article_race_preview_view', {
+        article_category: params.article_category,
+        preview_state: params.preview_state,
         link_placement: params.link_placement,
     });
 };

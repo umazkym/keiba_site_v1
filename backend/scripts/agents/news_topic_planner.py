@@ -45,6 +45,13 @@ WRITE_ORDERS_DIR = os.path.join(PROJECT_ROOT, "data", "write_orders")
 POSTED_HISTORY_PATH = os.path.join(PROJECT_ROOT, "data", "posted_history.json")
 NEWS_HISTORY_PATH = os.path.join(PROJECT_ROOT, "data", "news_topic_history.json")
 ARTICLES_DIR = os.path.join(PROJECT_ROOT, "frontend", "content", "articles")
+GRADE_RACE_ENTITY_REGISTRY_PATH = os.path.join(
+    PROJECT_ROOT,
+    "frontend",
+    "content",
+    "reference",
+    "grade-race-entities.json",
+)
 LOCAL_JRA_GRADE_SCHEDULE_PATH = os.path.join(PROJECT_ROOT, "中央競馬重賞一覧.txt")
 LOCAL_NAR_GRADE_SCHEDULE_PATH = os.path.join(PROJECT_ROOT, "地方競馬重賞一覧.txt")
 
@@ -197,6 +204,33 @@ GRADE_RACE_HUB_SLUGS = {
 }
 
 
+def load_shared_grade_race_entities() -> Dict[str, List[str]]:
+    """Python/TypeScript共通の重賞識別レジストリを読み込む。"""
+    try:
+        with open(GRADE_RACE_ENTITY_REGISTRY_PATH, "r", encoding="utf-8") as handle:
+            rows = json.load(handle)
+        registry: Dict[str, List[str]] = {}
+        for row in rows if isinstance(rows, list) else []:
+            if not isinstance(row, dict):
+                continue
+            entity_key = str(row.get("entity_key") or "").strip()
+            name = str(row.get("name") or "").strip()
+            aliases = [str(value).strip() for value in row.get("aliases", []) if str(value).strip()]
+            merged_aliases = list(dict.fromkeys([name, *aliases]))
+            if re.fullmatch(r"[a-z0-9-]+", entity_key) and merged_aliases:
+                registry[entity_key] = merged_aliases
+        return registry
+    except (OSError, ValueError, TypeError) as error:
+        print(f"[Planner] 重賞識別レジストリを読めません。内蔵定義へフォールバックします: {error}")
+        return {}
+
+
+_SHARED_GRADE_RACE_ENTITY_ALIASES = load_shared_grade_race_entities()
+if _SHARED_GRADE_RACE_ENTITY_ALIASES:
+    GRADE_RACE_ENTITY_ALIASES = _SHARED_GRADE_RACE_ENTITY_ALIASES
+    GRADE_RACE_HUB_SLUGS = set(GRADE_RACE_ENTITY_ALIASES)
+
+
 def normalize_race_entity_text(value: str) -> str:
     return re.sub(r"[\s　・（）()【】「」『』]", "", value).lower()
 
@@ -210,7 +244,7 @@ def grade_race_entity_key(race_name: str) -> str:
 
 
 def grade_race_canonical_path(entity_key: str) -> str:
-    return f"/grade-races/{entity_key}" if entity_key in GRADE_RACE_HUB_SLUGS else ""
+    return f"/articles/grade-races/{entity_key}" if entity_key in GRADE_RACE_HUB_SLUGS else ""
 
 OVERSEAS_KEYWORDS = re.compile(
     r"サウジカップ|サウジC|ドバイワールドC|ドバイWC|ドバイシーマ|ドバイターフ|ドバイゴールデン|ドバイSC|ドバイワールドカップ|"
@@ -2864,7 +2898,7 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
         writer_evidence = build_writer_evidence(candidate, internal_data)
 
         matched_race = internal_data.get("matched_race")
-        race_url = "/races/today"
+        race_url = ""
         if isinstance(matched_race, dict) and matched_race.get("race_url"):
             race_url = str(matched_race["race_url"])
 
@@ -2944,6 +2978,7 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
             "theme_cluster": candidate.theme_cluster,
             "entity_type": entity_type,
             "entity_key": entity_key,
+            "race_entity_key": entity_key,
             "season_year": season_year if entity_type else "",
             "entity_path": entity_path,
             "canonical_path": canonical_path,
@@ -2964,6 +2999,7 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "article_type": candidate.article_type,
                 "entity_type": entity_type,
                 "entity_key": entity_key,
+                "race_entity_key": entity_key,
                 "season_year": season_year if entity_type else "",
                 "entity_path": entity_path,
                 "canonical_path": canonical_path,
@@ -2978,7 +3014,7 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "news_topic": candidate.title_seed,
                 "news_topic_key": candidate.topic_key,
                 "news_reason": candidate.reason,
-                "race_name": candidate.race_name,
+                "race_name": entity_source_name,
                 "calendar_race": candidate.calendar_race,
                 "days_to_race": candidate.days_to_race,
                 "race_phase": phase,
@@ -2995,6 +3031,9 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "draw_status": draw_status,
                 "topic_bridge": topic_bridge(candidate, internal_data),
                 "matched_race": matched_race,
+                "race_id": matched_race.get("race_id") if isinstance(matched_race, dict) else "",
+                "race_number": matched_race.get("race_number") if isinstance(matched_race, dict) else "",
+                "race_bridge_enabled": False,
                 "results": internal_data.get("results") or [],
                 "predictions": internal_data.get("predictions") or [],
                 "course_stats": internal_data.get("course_stats") or [],

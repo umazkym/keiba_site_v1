@@ -5,6 +5,9 @@ import { execSync } from 'child_process';
 import { createHash } from 'crypto';
 import { autoRepairDraftMarkdown } from './agent_editor';
 import { checkSourceIndependence } from './seo_checker';
+import { findGradeRaceEntity } from '../../lib/grade-race-entities';
+import { getApiBaseUrl } from '../../lib/api-base';
+import { getSeasonalGradeRaceSlug } from '../../lib/article-seasonal-routing';
 
 const APPROVED_DIR = path.join(__dirname, '..', '..', 'agents', 'queue', 'approved');
 const ARTICLES_DIR = path.join(__dirname, '..', '..', 'content', 'articles');
@@ -183,8 +186,13 @@ function generateSlug(targetKeyword: string, date: Date): string {
   return `${dateStr}-${slug}`;
 }
 
-function resolveUniqueSlug(targetKeyword: string, date: Date): string {
-  const baseSlug = generateSlug(targetKeyword, date);
+function resolveUniqueSlug(data: Record<string, any>, targetKeyword: string, date: Date): string {
+  const semanticSlug = getSeasonalGradeRaceSlug(
+    data.entity_type,
+    data.entity_key,
+    data.season_year,
+  ) || '';
+  const baseSlug = semanticSlug || generateSlug(targetKeyword, date);
   let slug = baseSlug;
   let suffix = 2;
 
@@ -245,6 +253,16 @@ function inferPublishedArticleMetadata(data: Record<string, any>): Record<string
   }
 
   const text = `${nextData.target_keyword || ''} ${nextData.title || ''} ${nextData.description || ''}`;
+
+  const sharedEntity = findGradeRaceEntity(text);
+  if (sharedEntity) {
+    nextData.entity_type = 'grade_race';
+    nextData.entity_key = sharedEntity.entity_key;
+    nextData.race_entity_key = sharedEntity.entity_key;
+    nextData.entity_path = `/articles/grade-races/${sharedEntity.entity_key}`;
+    nextData.content_target = nextData.content_target || 'grade_race_trend_article';
+    return nextData;
+  }
 
   for (const [raceName, slug] of Object.entries(raceNameMap).sort((a, b) => b[0].length - a[0].length)) {
     if (text.includes(raceName)) {
@@ -310,7 +328,7 @@ function normalizePublishedArticleMetadata(data: Record<string, any>): Record<st
 
   if (canonicalPath) {
     nextData.canonical_path = canonicalPath;
-  } else if (entityPath && /^\/articles\/(grade-races|jockeys|courses|races)\//.test(entityPath)) {
+  } else if (entityType !== 'grade_race' && entityPath && /^\/articles\/(grade-races|jockeys|courses|races)\//.test(entityPath)) {
     nextData.canonical_path = entityPath;
   } else {
     delete nextData.canonical_path;
@@ -325,6 +343,7 @@ function findExistingEntityArticlePath(data: Record<string, any>): string | null
   const draftEntityKey = normalizeEntityValue(data.entity_key);
   const draftCanonicalPath = normalizeInternalCanonicalPath(data.canonical_path || data.entity_path);
   const draftKey = normalizeGradeRaceKey(`${data.target_keyword || ''} ${data.title || ''}`);
+  const draftSeasonYear = String(data.season_year || '').trim();
   if (!draftKey && !draftEntityKey && !draftCanonicalPath) return null;
 
   for (const file of fs.readdirSync(ARTICLES_DIR).filter((f) => f.endsWith('.md'))) {
@@ -337,17 +356,24 @@ function findExistingEntityArticlePath(data: Record<string, any>): string | null
       const articleEntityType = normalizeEntityValue(parsed.data.entity_type);
       const articleEntityKey = normalizeEntityValue(parsed.data.entity_key);
       const articleCanonicalPath = normalizeInternalCanonicalPath(parsed.data.canonical_path || parsed.data.entity_path);
+      const articleSeasonYear = String(parsed.data.season_year || '').trim();
 
       if (
         draftEntityType &&
         articleEntityType === draftEntityType &&
         draftEntityKey &&
-        articleEntityKey === draftEntityKey
+        articleEntityKey === draftEntityKey &&
+        (draftEntityType !== 'grade_race' || (draftSeasonYear && articleSeasonYear === draftSeasonYear))
       ) {
         return fullPath;
       }
 
-      if (draftCanonicalPath && articleCanonicalPath && draftCanonicalPath === articleCanonicalPath) {
+      if (
+        draftCanonicalPath
+        && articleCanonicalPath
+        && draftCanonicalPath === articleCanonicalPath
+        && (draftEntityType !== 'grade_race' || (draftSeasonYear && articleSeasonYear === draftSeasonYear))
+      ) {
         return fullPath;
       }
 
@@ -355,6 +381,7 @@ function findExistingEntityArticlePath(data: Record<string, any>): string | null
       if (
         isGradeRaceDraft(data) &&
         isGradeRaceDraft(parsed.data) &&
+        !draftEntityKey &&
         draftKey &&
         articleKey &&
         (articleKey === draftKey || articleKey.includes(draftKey) || draftKey.includes(articleKey))
@@ -369,8 +396,136 @@ function findExistingEntityArticlePath(data: Record<string, any>): string | null
   return null;
 }
 
-function updateExistingEntityArticle(destPath: string, parsedDraft: any, now: Date): void {
+async function verifyArticleRaceBridge(data: Record<string, any>): Promise<Record<string, any>> {
+  const nextData: Record<string, any> = { ...data, race_bridge_enabled: false };
+  delete nextData.race_bridge_verified_at;
+  if (normalizeEntityValue(nextData.entity_type) !== 'grade_race') return nextData;
+
+  const experimentActive = String(process.env.ARTICLE_RACE_BRIDGE_EXPERIMENT_ACTIVE || '').toLowerCase() === 'true';
+  const reminderId = String(process.env.ARTICLE_RACE_BRIDGE_REMINDER_ID || '').trim();
+  if (!experimentActive || !reminderId) {
+    console.log('[Publisher Bridge] 見送り: 実験開始フラグまたは判断日リマインドIDが未登録');
+    return nextData;
+  }
+
+  const raceName = String(nextData.race_name || '').trim();
+  const raceDate = String(nextData.scheduled_race_date || '').trim();
+  const storedRaceId = String(nextData.race_id || '').trim();
+  const storedRaceUrl = String(nextData.race_url || '').trim();
+  const seasonYear = String(nextData.season_year || '').trim();
+  const entityKey = String(nextData.race_entity_key || nextData.entity_key || '').trim();
+  const registryEntity = findGradeRaceEntity(raceName);
+
+  if (
+    !raceName
+    || !/^20\d{2}-\d{2}-\d{2}$/.test(raceDate)
+    || !/^20\d{2}$/.test(seasonYear)
+    || !raceDate.startsWith(`${seasonYear}-`)
+    || !entityKey
+    || !registryEntity
+    || registryEntity.entity_key !== entityKey
+  ) {
+    console.log(`[Publisher Bridge] 見送り: 必須メタデータ不足 (${raceName || 'race_nameなし'})`);
+    return nextData;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  try {
+    const apiBaseUrl = getApiBaseUrl();
+    const response = await fetch(
+      `${apiBaseUrl}/api/v1/predictions/article-preview/${raceDate}?race_name=${encodeURIComponent(raceName)}`,
+      { signal: controller.signal, headers: { Accept: 'application/json' } },
+    );
+    if (!response.ok) {
+      console.log(`[Publisher Bridge] 見送り: preview API ${response.status} (${raceName})`);
+      return nextData;
+    }
+    const preview = await response.json() as Record<string, any>;
+    const previewRace = preview.race && typeof preview.race === 'object' ? preview.race : {};
+    const verifiedRaceId = String(previewRace.id || '').trim();
+    const verifiedRaceUrl = String(previewRace.race_url || '').trim();
+    const exactRaceUrl = /^\/races\/\d{4}-\d{2}-\d{2}\/[a-z0-9%.-]+\/\d{1,2}$/.test(verifiedRaceUrl);
+    if (
+      preview.status !== 'available'
+      || !verifiedRaceId
+      || !exactRaceUrl
+      || String(previewRace.race_date || '') !== raceDate
+      || (storedRaceId && storedRaceId !== verifiedRaceId)
+      || (storedRaceUrl && storedRaceUrl !== verifiedRaceUrl)
+      || !Array.isArray(preview.top_predictions)
+      || preview.top_predictions.length < 1
+    ) {
+      console.log(`[Publisher Bridge] 見送り: 一意一致または予測データを確認できません (${raceName})`);
+      return nextData;
+    }
+
+    nextData.race_bridge_enabled = true;
+    nextData.race_bridge_verified_at = new Date().toISOString();
+    nextData.race_bridge_reminder_id = reminderId;
+    nextData.race_id = verifiedRaceId;
+    nextData.race_url = verifiedRaceUrl;
+    nextData.race_entity_key = entityKey;
+    nextData.race_number = Number(previewRace.race_number || nextData.race_number || 0) || undefined;
+    nextData.scheduled_venue = String(previewRace.venue_name || nextData.scheduled_venue || '');
+    console.log(`[Publisher Bridge] 有効化: ${raceName} -> ${verifiedRaceUrl}`);
+    return nextData;
+  } catch (error) {
+    console.log(`[Publisher Bridge] 見送り: preview APIに接続できません (${raceName})`, error);
+    return nextData;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+const UPDATE_STAGE_RANK: Record<string, number> = {
+  field_building: 10,
+  one_week_before: 20,
+  race_week: 20,
+  final_48h: 30,
+  draw_confirmed: 40,
+  post_race: 50,
+  result_review: 50,
+};
+
+function mergeSeasonalGradeRaceContent(existingContent: string, incomingContent: string): string {
+  const sectionPattern = /^##\s+(.+)$/gm;
+  const splitSections = (content: string) => {
+    const matches = [...content.matchAll(sectionPattern)];
+    const intro = matches[0] ? content.slice(0, matches[0].index).trim() : content.trim();
+    const sections = matches.map((match, index) => {
+      const start = match.index as number;
+      const end = matches[index + 1]?.index ?? content.length;
+      return {
+        key: String(match[1] || '').normalize('NFKC').replace(/[\s　・:：|｜]/g, '').toLowerCase(),
+        body: content.slice(start, end).trim(),
+      };
+    });
+    return { intro, sections };
+  };
+
+  const existing = splitSections(existingContent);
+  const incoming = splitSections(incomingContent);
+  const incomingKeys = new Set(incoming.sections.map((section) => section.key));
+  const preserved = existing.sections.filter((section) => !incomingKeys.has(section.key));
+  return [incoming.intro, ...incoming.sections.map((section) => section.body), ...preserved.map((section) => section.body)]
+    .filter(Boolean)
+    .join('\n\n')
+    .trim();
+}
+
+function updateExistingEntityArticle(destPath: string, parsedDraft: any, now: Date): boolean {
   const existing = matter(fs.readFileSync(destPath, 'utf-8'));
+  const existingStage = String(existing.data.update_stage || '').trim();
+  const incomingStage = String(parsedDraft.data.update_stage || '').trim();
+  if (
+    existingStage
+    && incomingStage
+    && (UPDATE_STAGE_RANK[incomingStage] || 0) < (UPDATE_STAGE_RANK[existingStage] || 0)
+  ) {
+    console.warn(`[Publisher] 更新段階の逆行を拒否: ${existingStage} -> ${incomingStage}`);
+    return false;
+  }
   const nextData = normalizePublishedArticleMetadata({
     ...existing.data,
     ...parsedDraft.data,
@@ -383,8 +538,27 @@ function updateExistingEntityArticle(destPath: string, parsedDraft: any, now: Da
     og_description: parsedDraft.data.description || existing.data.description,
     og_image: existing.data.og_image || `https://uma-free.com/og/${path.basename(destPath, '.md')}.png`,
   });
+  if (existing.data.race_bridge_enabled === true && parsedDraft.data.race_bridge_enabled !== true) {
+    nextData.race_bridge_enabled = true;
+    nextData.race_bridge_verified_at = existing.data.race_bridge_verified_at;
+    nextData.race_bridge_reminder_id = existing.data.race_bridge_reminder_id;
+    nextData.race_id = existing.data.race_id;
+    nextData.race_url = existing.data.race_url;
+    nextData.race_entity_key = existing.data.race_entity_key || existing.data.entity_key;
+    nextData.race_name = existing.data.race_name;
+    nextData.scheduled_race_date = existing.data.scheduled_race_date;
+    nextData.scheduled_venue = existing.data.scheduled_venue;
+    nextData.race_number = existing.data.race_number;
+    console.log('[Publisher Bridge] 再検証失敗のため、既存の検証済み導線メタデータを保持');
+  }
+  const isSeasonalGradeRace = normalizeEntityValue(nextData.entity_type) === 'grade_race'
+    && /^20\d{2}$/.test(String(nextData.season_year || ''));
+  const nextContent = isSeasonalGradeRace
+    ? mergeSeasonalGradeRaceContent(existing.content, parsedDraft.content)
+    : parsedDraft.content.trim();
 
-  fs.writeFileSync(destPath, matter.stringify(parsedDraft.content.trim() + '\n', nextData), 'utf-8');
+  fs.writeFileSync(destPath, matter.stringify(`${nextContent}\n`, nextData), 'utf-8');
+  return true;
 }
 
 function loadPublishedArticleKeywords(): Set<string> {
@@ -596,7 +770,7 @@ async function publishDraft() {
     const targetKeyword = String(parsed.data.target_keyword || parsed.data.title || 'article');
     const oldId = path.basename(targetFile, '.md');
     const now = new Date();
-    parsed.data = normalizePublishedArticleMetadata(parsed.data);
+    parsed.data = await verifyArticleRaceBridge(normalizePublishedArticleMetadata(parsed.data));
 
     const sourceIndependence = checkSourceIndependence(matter.stringify(parsed.content, parsed.data));
     if (!sourceIndependence.passed) {
@@ -614,7 +788,11 @@ async function publishDraft() {
         path: existingEntityArticlePath,
         content: fs.readFileSync(existingEntityArticlePath, 'utf-8'),
       });
-      updateExistingEntityArticle(existingEntityArticlePath, parsed, now);
+      if (!updateExistingEntityArticle(existingEntityArticlePath, parsed, now)) {
+        updatedArticleBackups.pop();
+        skippedCount++;
+        continue;
+      }
       const existingSlug = path.basename(existingEntityArticlePath, '.md');
       console.log(`[Publisher] Updated existing entity article: ${existingSlug}`);
 
@@ -665,7 +843,7 @@ async function publishDraft() {
       continue;
     }
 
-    const slug = resolveUniqueSlug(targetKeyword, now);
+    const slug = resolveUniqueSlug(parsed.data, targetKeyword, now);
     const newFilename = `${slug}.md`;
     const destPath = path.join(ARTICLES_DIR, newFilename);
 

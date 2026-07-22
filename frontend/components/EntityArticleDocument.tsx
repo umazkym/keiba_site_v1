@@ -6,6 +6,7 @@ import { AdUnit } from "@/components/AdUnit";
 import { MultiplexAd } from "@/components/MultiplexAd";
 import { RaceAnalysisValueGrid } from "@/components/RaceAnalysisValueGrid";
 import { ArticleBody } from "@/components/ArticleBody";
+import { ArticleEngagementTracker } from "@/components/ArticleEngagementTracker";
 
 type EntityArticleDocumentProps = {
   article: Article;
@@ -28,6 +29,7 @@ export function EntityArticleDocument({
   const textContent = article.content.replace(/<[^>]*>/g, "").replace(/\s+/g, "");
   const datePublished = new Date(article.date).toISOString();
   const dateModified = new Date(article.lastUpdated || article.date).toISOString();
+  const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
   const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
   const stableArticleAdProps = {
     placement: "inline" as const,
@@ -100,6 +102,7 @@ export function EntityArticleDocument({
             prefetch={false}
             data-analytics-placement="article_value_guide"
             data-analytics-variant="compact_four"
+            data-preview-state="generic"
             className="mt-4 block min-h-[44px] rounded-xl border border-blue-200 bg-slate-50 p-3 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:mt-6"
             aria-label="今日の全レース分析を見る。AI偏差値、対戦比較、展開・脚質、枠順傾向を確認できます"
           >
@@ -141,6 +144,12 @@ export function EntityArticleDocument({
         <div className="px-1 pb-6 sm:px-0 sm:pb-10">
           <ArticleBody html={enhancedContent} analyticsPrefix="entity_article" />
         </div>
+
+        <ArticleEngagementTracker
+          slug={article.slug}
+          category={article.category}
+          readingTimeMin={readingTimeMin}
+        />
 
         <div className="pb-5 sm:pb-8">
           <AdUnit slot="1489598374" analyticsPlacement="entity_article_after_body" {...stableArticleAdProps} />

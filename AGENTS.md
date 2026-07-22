@@ -113,6 +113,9 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-07-23**:
+  * **重賞記事から検証済み個別レースへ送客する収益保護ブリッジを実装**:
+    記事からレースへの直接遷移2.18%、主要重賞記事の同一ページ離脱94.2〜98.7%を受け、広告枠・Offerwall・自動アンカーを変更せず、個別レース導線だけを再設計した。Python/TypeScript共通の重賞識別レジストリ、開催日と正規化名を一意照合する軽量プレビューAPI、実AI偏差値上位3頭を表示する`ArticleRaceBridge`、記事から最初の一致レースまでのsessionStorage計測を追加。`race_bridge_enabled`は既定falseで、Publisherがrace ID、年度、正確なURL、予測データを検証できた場合だけ有効化する。無効時はDOM・ローディング・予約余白を出さず、検証後の一時API障害では保存済みの正確なリンクだけを残す。既存223記事のオフラインdry-runは重賞候補69件すべて必須メタデータ不足で、自動補完・有効化は0件。新規重賞記事は`{entity-key}-{season-year}`で同一年度を段階更新し、重賞ハブは本文複製から年度別記事一覧へ変更した。分析・実験台帳・計測計画・記事フロー・デザイン規則・記事/広告SOPへ判断と復元手順を記録した。
 * **2026-07-22**:
   * **広告収益保護の実験運用基盤とレース画面軽量化を実装**:
     `docs/monetization_experiments.md` を正式台帳として追加し、Offerwall実験を `ADS-OFFERWALL-2026-06` として遡及登録。2026-07-29 09:00 JSTの終了判断、2026-07-30 09:00 JSTのGA4・CWV準備判定、記事CTAの14日固定観測を確認する2026-08-04 09:00 JSTのリマインドを登録し、リマインド未登録時は開始不可、サンプル不足時は7日延長、終了時は勝者または元設定を同時反映する手順を広告SOPへ固定した。GA4はhead内でConsent Mode、gtag.js、configをClient Componentより先に初期化し、準備前イベントの一度だけ送信するキュー、`web_vital`、`adsense_offerwall_view`、`ad_experiment_exposure`を追加。レース切替は仮想PVを送らず`race_view`へ統一した。RechartsをCSSグラフへ、Tippy/Popper群を共有のアクセシブル補足UIへ置換し、分析の遅延ロード、IntersectionObserverによるセクション判定、広告オーバーレイ監視の一元化を実施。レースルートのFirst Load JSは144KBとなり180KB以下を達成した。記事・画像サイトマップをSearch Consoleへ送信し成功、canonical限定、旧URLの一段301、重複タイトル、馬場状態記事を改善。再監査で記事サイトマップ155件中54件が自己canonicalながら`noindex`だったため、重複元をcanonical集約したまま集約ページをindex可能へ修正した。375/390/768/1024/1440px、18頭表示、横スクロールなし、補足UIのEsc操作、ブラウザエラーなしを確認し、`npx tsc --noEmit`、`npm run build`、`npm run design:audit`、リンク・記事品質・SOP検証が成功。

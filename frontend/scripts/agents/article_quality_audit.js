@@ -304,8 +304,28 @@ function auditArticle(file) {
     addIssue(issues, file, 'warning', 'data_format', 'missing markdown data table');
   }
 
-  if (!content.includes('/races/today') && !/\/races\/\d{4}-\d{2}-\d{2}/.test(content)) {
+  const isGradeRaceArticle = String(data.entity_type || '') === 'grade_race';
+  if (isGradeRaceArticle && content.includes('/races/today')) {
+    addIssue(issues, file, 'warning', 'cta', 'grade race article body must not contain the generic /races/today CTA');
+  }
+  if (!isGradeRaceArticle && !content.includes('/races/today') && !/\/races\/\d{4}-\d{2}-\d{2}/.test(content)) {
     addIssue(issues, file, 'warning', 'cta', 'missing race page CTA');
+  }
+
+  if (data.race_bridge_enabled === true || String(data.race_bridge_enabled || '').toLowerCase() === 'true') {
+    const hasBridgeMetadata = Boolean(
+      data.race_name
+      && data.race_entity_key
+      && /^20\d{2}-\d{2}-\d{2}$/.test(String(data.scheduled_race_date || ''))
+      && data.scheduled_venue
+      && data.race_id
+      && /^\/races\/\d{4}-\d{2}-\d{2}\/[a-z0-9%.-]+\/\d{1,2}$/.test(String(data.race_url || ''))
+      && data.race_bridge_verified_at
+      && data.race_bridge_reminder_id
+    );
+    if (!hasBridgeMetadata) {
+      addIssue(issues, file, 'critical', 'race_bridge', 'enabled race bridge is missing verified exact-race metadata');
+    }
   }
 
   if (!CONFIRMATION_POINT_HEADING_PATTERN.test(content)) {

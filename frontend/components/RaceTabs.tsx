@@ -271,6 +271,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
         }
 
         sendRaceViewEvent({
+            race_id: activeRace.id,
             race_date: currentDate,
             venue_name: venue.venue_name,
             race_number: activeRace.race_number,

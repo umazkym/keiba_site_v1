@@ -6,7 +6,6 @@ import { AdUnit } from "@/components/AdUnit";
 import { MultiplexAd } from "@/components/MultiplexAd";
 import { RaceAnalysisValueGrid } from "@/components/RaceAnalysisValueGrid";
 import { ArticleBody } from "@/components/ArticleBody";
-import { UserRound } from "lucide-react";
 
 type EntityArticleDocumentProps = {
   article: Article;
@@ -18,14 +17,6 @@ type EntityArticleDocumentProps = {
   relatedArticles?: ArticleMeta[];
   themeTitle?: string;
 };
-
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 export function ArticleThemeNavigator({
   articles,
@@ -90,7 +81,6 @@ export function EntityArticleDocument({
 }: EntityArticleDocumentProps) {
   const articleUrl = `https://uma-free.com${canonicalPath}`;
   const textContent = article.content.replace(/<[^>]*>/g, "").replace(/\s+/g, "");
-  const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
   const datePublished = new Date(article.date).toISOString();
   const dateModified = new Date(article.lastUpdated || article.date).toISOString();
   const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
@@ -158,17 +148,6 @@ export function EntityArticleDocument({
                 {profileLabel}
               </Link>
             )}
-          </div>
-
-          <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-slate-400 sm:mb-4 sm:gap-x-3 sm:text-sm">
-            <span className="text-slate-700">{article.category}</span>
-            <time dateTime={datePublished}>{formatDate(article.date)}</time>
-            <span>約{readingTimeMin}分</span>
-            <Link href="/about" className="inline-flex items-center gap-1 transition-colors duration-150 hover:text-primary">
-              <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>著者: おとうふや</span>
-            </Link>
-            {article.lastUpdated && <span>更新日 {formatDate(article.lastUpdated)}</span>}
           </div>
 
           <h1 className="article-page-title text-[1.55rem] font-black leading-tight tracking-tight text-slate-950 [overflow-wrap:anywhere] sm:text-4xl md:text-5xl">

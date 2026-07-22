@@ -16,6 +16,7 @@ import { InFeedAd } from "@/components/InFeedAd";
 import { RecentRaceReturn } from "@/components/RecentRaceReturn";
 import { AffiliateSlot } from "@/components/AffiliateSlot";
 import { RacePageBottomNav } from "@/components/RacePageBottomNav";
+import type { RaceSelectorLink } from '@/components/RaceSelector';
 import { getRaceTopObstructionHeight } from "@/hooks/useRaceSectionNavigation";
 
 // 日付フォーマット検証関数
@@ -108,6 +109,7 @@ type RacePageClientProps = {
     articlesMeta: RaceArticleMeta[];
     initialVenueName?: string | null;
     initialRaceNumber?: number | null;
+    initialRaceLinks?: RaceSelectorLink[];
 };
 
 const getShiftedDate = (dateStr: string, days: number) => {
@@ -129,6 +131,7 @@ export default function RacePageClient({
     articlesMeta,
     initialVenueName: routeInitialVenueName = null,
     initialRaceNumber: routeInitialRaceNumber = null,
+    initialRaceLinks,
 }: RacePageClientProps) {
     const router = useRouter();
     const [currentDate, setCurrentDate] = useState(initialDate);
@@ -289,6 +292,7 @@ export default function RacePageClient({
                     articlesMeta={articlesMeta}
                     initialVenueName={initialVenue}
                     initialRaceNumber={initialRaceNumber}
+                    initialRaceLinks={initialRaceLinks}
                 />
 
                 {showSpecialPick && (

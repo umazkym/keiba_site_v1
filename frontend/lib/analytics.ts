@@ -81,6 +81,7 @@ export type RaceNavigationMethod =
 
 export type HomeRaceEntryMethod =
     | 'hero_cta'
+    | 'sticky_cta'
     | 'grade_fallback'
     | 'venue_card';
 

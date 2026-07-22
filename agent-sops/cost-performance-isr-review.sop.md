@@ -47,6 +47,7 @@ Constraints for parameter acquisition:
 **Constraints:**
 
 - You MUST avoid passing all races and all horses to broad home or listing components when summaries are sufficient.
+- レース詳細で同一競馬場の1〜12R導線が必要な場合も、選択レースの完全データへ他レースの`raceNumber`と`href`だけを添え、操作性のために全レース・全馬データをClient Componentへ再送しない。
 - You MUST preserve `prefetch={false}` for dynamic race/article links that can trigger expensive route work before user intent.
 - You SHOULD avoid sitemap expansion to low-value dynamic detail pages.
 - You MUST NOT reintroduce large RSC or HTML payloads for convenience because transfer usage has already hit Vercel Hobby limits.

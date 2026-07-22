@@ -18,7 +18,11 @@ const findTargetElement = (targetIds: string[]) => {
 const isVisible = (element: HTMLElement | null) => {
     if (!element) return false;
     const style = window.getComputedStyle(element);
-    return style.display !== 'none' && style.visibility !== 'hidden' && element.getBoundingClientRect().height > 0;
+    const rect = element.getBoundingClientRect();
+    return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && rect.height > 0
+        && rect.bottom > 0;
 };
 
 const getVisibleTopAnchorHeight = () => {

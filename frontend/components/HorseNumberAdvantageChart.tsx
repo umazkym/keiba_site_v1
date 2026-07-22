@@ -84,7 +84,7 @@ export const HorseNumberAdvantageChart: React.FC<Props> = ({ advantages, courseT
     };
 
     const chartLabel = `このコースの枠順傾向 ${courseType || ''}${distance || ''}m`;
-    const chartHeight = isMobile ? 112 : 200;
+    const chartHeight = isMobile ? 128 : 196;
     const chartMargin = isMobile
         ? { top: 12, right: 0, left: 0, bottom: 0 }
         : { top: 22, right: 10, left: 8, bottom: 12 };

@@ -173,6 +173,13 @@ export default async function RaceDetailPage({ params }: Props) {
         selectedVenue,
         selectedRace,
     );
+    const initialRaceLinks = selectedVenue.races
+        .slice()
+        .sort((left, right) => left.race_number - right.race_number)
+        .map(race => ({
+            raceNumber: race.race_number,
+            href: getRaceDetailPath(params.date, selectedVenue.venue_name, race.race_number),
+        }));
 
     const canonicalPath = getRaceDetailPath(params.date, selectedVenue.venue_name, selectedRace.race_number);
     const requestedPath = `/races/${params.date}/${params.venue.toLowerCase()}/${raceNumber}`;
@@ -257,6 +264,7 @@ export default async function RaceDetailPage({ params }: Props) {
                     articlesMeta={articlesMeta}
                     initialVenueName={selectedVenue.venue_name}
                     initialRaceNumber={selectedRace.race_number}
+                    initialRaceLinks={initialRaceLinks}
                 />
             </Suspense>
         </>

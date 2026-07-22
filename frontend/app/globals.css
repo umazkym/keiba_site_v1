@@ -50,11 +50,15 @@
     --slate-700-color: #334155;
     --surface-color: #ffffff;
     --shadow-color: 0 8px 22px rgba(15, 23, 42, 0.06);
+    --site-header-height: 48px;
+    --site-header-offset: 48px;
 }
 
 @media (min-width: 640px) {
     :root {
         --section-gap: 2rem;
+        --site-header-height: 64px;
+        --site-header-offset: 64px;
     }
 }
 
@@ -266,12 +270,12 @@
         .mobile-menu-panel {
             display: block;
             position: fixed;
-            top: 48px;
+            top: var(--site-header-height);
             bottom: 0;
             left: 0;
             right: 0;
-            z-index: 50;
-            height: calc(100dvh - 48px);
+            z-index: 49;
+            height: calc(100dvh - var(--site-header-height));
             overflow-y: auto;
             overscroll-behavior: contain;
             border-top: 1px solid var(--slate-100-color);
@@ -280,9 +284,7 @@
             opacity: 0;
             pointer-events: none;
             visibility: hidden;
-            transform: translateY(-8px);
             transition:
-                transform 0.26s cubic-bezier(0.16, 1, 0.3, 1),
                 opacity 0.2s ease,
                 visibility 0.2s ease;
         }
@@ -291,14 +293,6 @@
             opacity: 1;
             pointer-events: auto;
             visibility: visible;
-            transform: translateY(0);
-        }
-    }
-
-    @media (min-width: 640px) and (max-width: 767px) {
-        .mobile-menu-panel {
-            top: 64px;
-            height: calc(100dvh - 64px);
         }
     }
 }
@@ -474,7 +468,47 @@ body {
 /* Google Auto Ads 上部アンカー広告のヘッダー重なり対策 */
 /* Auto Adsがトップアンカーを挿入した場合、stickyヘッダーと重ならないようz-indexを調整 */
 header.glass {
-    z-index: 40 !important; /* Google Adsの上部アンカー(z-index: 2147483646)より低いが、他要素より高い */
+    z-index: 50 !important; /* Google Adsの上部アンカーより低く、サイト内の固定UIより高く保つ */
+}
+
+.site-header {
+    transform: translateY(0);
+    transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+    will-change: transform;
+}
+
+.site-header-hidden {
+    pointer-events: none;
+    transform: translateY(-100%);
+}
+
+.home-sticky-race-cta {
+    position: fixed;
+    z-index: 39;
+    top: var(--site-header-offset);
+    right: 0;
+    left: 0;
+    border-bottom: 1px solid var(--slate-200-color);
+    background: #ffffff;
+    box-shadow: 0 2px 3px rgba(15, 23, 42, 0.12);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-100%);
+    transition: top 180ms cubic-bezier(0.2, 0, 0, 1), transform 160ms ease, opacity 120ms ease;
+}
+
+.home-sticky-race-cta-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.article-theme-sticky {
+    position: sticky;
+    z-index: 38;
+    top: calc(var(--site-header-offset) + 4px);
+    box-shadow: 0 2px 3px rgba(15, 23, 42, 0.1);
+    transition: top 180ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* レスポンシブ改善 */
@@ -1694,7 +1728,26 @@ header.glass {
 
 .side-panel {
   position: sticky;
-  top: 136px;
+  top: calc(var(--site-header-offset) + 72px);
+  transition: top 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.race-sticky-selector {
+  top: calc(var(--site-header-offset) + 8px);
+  box-shadow: 0 -10px 0 var(--bg), 0 1px 3px rgba(15, 23, 42, 0.12);
+  transition: top 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.race-analysis-visual {
+  height: 150px;
+  min-height: 150px;
+}
+
+@media (min-width: 768px) {
+  .race-analysis-visual {
+    height: 220px;
+    min-height: 220px;
+  }
 }
 .side-card {
   padding: 14px;

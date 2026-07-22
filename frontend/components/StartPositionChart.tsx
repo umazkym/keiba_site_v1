@@ -125,7 +125,7 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
                     horses={sortedByNumber}
                     minScore={minScore}
                     scoreRange={scoreRange}
-                    height={164}
+                    height={128}
                     laneCount={8}
                     compact
                 />
@@ -136,7 +136,7 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
                     horses={sortedByNumber}
                     minScore={minScore}
                     scoreRange={scoreRange}
-                    height={220}
+                    height={184}
                     laneCount={sortedByNumber.length}
                 />
             </div>

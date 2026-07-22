@@ -17,17 +17,18 @@ export function RacePageBottomNav() {
 
     const updateVisibility = useCallback(() => {
         const predictionSection = document.getElementById('race-prediction-section');
-        const analysisSection = document.getElementById('race-analysis-section');
-        if (!predictionSection || !analysisSection) {
+        const analysisEnd = document.getElementById('race-related-articles-section')
+            ?? document.getElementById('race-analysis-section');
+        if (!predictionSection || !analysisEnd) {
             setIsInAnalysisRange(false);
             return;
         }
 
         const predictionRect = predictionSection.getBoundingClientRect();
-        const analysisRect = analysisSection.getBoundingClientRect();
+        const analysisEndRect = analysisEnd.getBoundingClientRect();
         setIsInAnalysisRange(
-            predictionRect.top <= window.innerHeight - 72
-            && analysisRect.bottom > 64,
+            predictionRect.top <= window.innerHeight - 48
+            && analysisEndRect.bottom > 48,
         );
 
         const adCandidates = document.querySelectorAll<HTMLElement>(
@@ -77,7 +78,7 @@ export function RacePageBottomNav() {
 
     return (
         <nav
-            className={`fixed inset-x-0 bottom-0 z-40 border-t border-slate-300 bg-slate-50/95 px-1.5 pb-[calc(env(safe-area-inset-bottom)+0.125rem)] pt-0.5 shadow-[0_-4px_14px_rgba(15,23,42,0.10)] backdrop-blur-sm transition-[transform,opacity] duration-200 lg:hidden ${isVisible
+            className={`fixed inset-x-0 bottom-0 z-40 border-t border-slate-300 bg-white px-1 pb-[calc(env(safe-area-inset-bottom)+0.0625rem)] pt-px shadow-[0_-3px_10px_rgba(15,23,42,0.10)] transition-[transform,opacity] duration-200 lg:hidden ${isVisible
                 ? 'translate-y-0 opacity-100'
                 : 'pointer-events-none translate-y-full opacity-0'
                 }`}
@@ -94,18 +95,18 @@ export function RacePageBottomNav() {
                             onClick={() => scrollToItem(feature)}
                             tabIndex={isVisible ? 0 : -1}
                             aria-current={isActive ? 'location' : undefined}
-                            className={`flex min-h-[50px] min-w-0 flex-col items-center justify-center border-t-2 px-1 py-0.5 text-center transition-colors duration-150 focus:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 ${isActive
+                            className={`flex min-h-11 min-w-0 flex-col items-center justify-center border-t-2 px-1 py-px text-center transition-colors duration-150 focus:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 ${isActive
                                 ? 'border-blue-600 bg-blue-50/80 text-slate-950'
                                 : 'border-transparent bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-950'
                                 }`}
                         >
-                            <span className="mb-0.5 flex min-w-0 items-center justify-center gap-1">
+                            <span className="flex min-w-0 items-center justify-center gap-1">
                                 <RaceAnalysisFeatureIcon feature={feature} />
                                 <span className={`whitespace-nowrap text-[11px] leading-none tracking-[-0.02em] ${isActive ? 'font-black' : 'font-bold'}`}>
                                     {feature.compactTitle}
                                 </span>
                             </span>
-                            <span className={`flex h-4 w-full max-w-[54px] items-center rounded bg-slate-50 px-1 ${isActive ? 'opacity-100' : 'opacity-70'}`}>
+                            <span className={`flex h-3 w-full max-w-[52px] items-center rounded bg-slate-50 px-1 ${isActive ? 'opacity-100' : 'opacity-70'}`}>
                                 <RaceAnalysisFeatureVisual type={feature.visual} compact />
                             </span>
                             {isActive && <span className="sr-only">（表示中）</span>}

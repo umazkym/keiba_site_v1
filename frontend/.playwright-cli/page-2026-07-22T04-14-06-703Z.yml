@@ -1,0 +1,328 @@
+- generic [active] [ref=e1]:
+  - link "本文へ移動" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=e3]:
+    - generic [ref=e5]:
+      - link "ウマFREE ホーム" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img "UMA-FREE ロゴ" [ref=e7]
+        - generic [ref=e8]:
+          - generic [ref=e9]: UMA-FREE
+          - paragraph [ref=e10]: 完全無料のAI競馬分析
+      - navigation "主要ナビゲーション" [ref=e11]:
+        - link "ホーム" [ref=e12] [cursor=pointer]:
+          - /url: /
+        - link "本日の分析" [ref=e13] [cursor=pointer]:
+          - /url: /races/2026-07-22
+        - link "記事" [ref=e14] [cursor=pointer]:
+          - /url: /articles
+        - link "よくある質問" [ref=e15] [cursor=pointer]:
+          - /url: /faq
+      - generic [ref=e16]:
+        - link "PR 楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で。馬券の購入は20歳以上の方のみ対象です" [ref=e17] [cursor=pointer]:
+          - /url: https://ad2.trafficgate.net/t/r/14/1958/318200_397641
+          - generic [ref=e18]: PR
+          - generic [ref=e19]: 地方競馬の投票は楽天競馬で
+          - generic [ref=e20]: →
+        - link "サイト内検索" [ref=e21] [cursor=pointer]:
+          - /url: /search
+  - main [ref=e25]:
+    - generic [ref=e27]:
+      - generic:
+        - generic:
+          - link:
+            - /url: /races/2026-07-22
+            - text: 本日のレース分析を見る
+            - generic: →
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - paragraph [ref=e31]: 本日のレースデータを確認
+          - generic [ref=e32]:
+            - generic [ref=e33]: AI偏差値、枠順傾向、展開予測
+            - paragraph [ref=e34]: 中央・地方 全レース毎日無料分析
+        - link "確認する" [ref=e35] [cursor=pointer]:
+          - /url: /races/today
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]: 7/22 7:00頃更新
+          - heading "本日開催の園田・大井・笠松・門別 全48レース分析公開中" [level=1] [ref=e40]: 本日開催の園田・大井・笠松・門別全48レース分析公開中
+          - paragraph [ref=e41]: 展開・対戦成績・枠順傾向をひと目で確認。登録不要で中央・地方の分析データを毎日無料で確認できます。
+          - list "UMA-FREEで確認できる4つの分析" [ref=e42]:
+            - listitem [ref=e43]:
+              - generic [ref=e49]:
+                - generic [ref=e50]: AI偏差値
+                - generic [ref=e51]: 出走馬の能力をスコア化
+            - listitem [ref=e57]:
+              - generic [ref=e69]:
+                - generic [ref=e70]: 対戦成績
+                - generic [ref=e71]: 過去の直接対決を比較
+              - generic [ref=e73]:
+                - generic [ref=e74]: "+2"
+                - generic [ref=e75]: "0"
+                - generic [ref=e76]: "-1"
+                - generic [ref=e77]: "0"
+                - generic [ref=e78]: "+1"
+                - generic [ref=e79]: "0"
+            - listitem [ref=e80]:
+              - generic [ref=e86]:
+                - generic [ref=e87]: 展開・脚質
+                - generic [ref=e88]: 序盤の位置取りを予測
+            - listitem [ref=e95]:
+              - generic [ref=e100]:
+                - generic [ref=e101]: 枠順傾向
+                - generic [ref=e102]: コース別の枠順を分析
+          - link "本日のレース分析を見る" [ref=e109] [cursor=pointer]:
+            - /url: /races/2026-07-22
+            - text: 本日のレース分析を見る
+            - generic [ref=e110]: →
+        - generic [ref=e112]:
+          - heading "近日の重賞レース" [level=2] [ref=e113]
+          - group [ref=e117]:
+            - generic "そのほかの重賞 2件" [ref=e118] [cursor=pointer]:
+              - generic [ref=e119]: そのほかの重賞
+              - generic [ref=e120]: 2件
+      - generic [ref=e121]:
+        - heading "本日の開催（7/22） 毎日更新" [level=2] [ref=e122]:
+          - generic [ref=e123]: 本日の開催（7/22）
+          - generic [ref=e126]: 毎日更新
+        - generic [ref=e127]:
+          - link "園田 全12R 地方競馬" [ref=e128] [cursor=pointer]:
+            - /url: /races/2026-07-22/sonoda/1
+            - strong [ref=e129]: 園田
+            - generic [ref=e130]: 全12R
+            - generic [ref=e131]: 地方競馬
+          - link "大井 全12R 地方競馬" [ref=e132] [cursor=pointer]:
+            - /url: /races/2026-07-22/ohi/1
+            - strong [ref=e133]: 大井
+            - generic [ref=e134]: 全12R
+            - generic [ref=e135]: 地方競馬
+          - link "笠松 全12R 地方競馬" [ref=e136] [cursor=pointer]:
+            - /url: /races/2026-07-22/kasamatsu/1
+            - strong [ref=e137]: 笠松
+            - generic [ref=e138]: 全12R
+            - generic [ref=e139]: 地方競馬
+          - link "門別 全12R 地方競馬" [ref=e140] [cursor=pointer]:
+            - /url: /races/2026-07-22/monbetsu/1
+            - strong [ref=e141]: 門別
+            - generic [ref=e142]: 全12R
+            - generic [ref=e143]: 地方競馬
+        - region "楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で 広告リンク" [ref=e144] [cursor=pointer]:
+          - link "今すぐチェックを開く" [ref=e145]:
+            - /url: https://ad2.trafficgate.net/t/r/14/1958/318200_397641
+          - generic [ref=e150]:
+            - generic [ref=e151]: PR
+            - heading "楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で" [level=3] [ref=e153]
+            - generic [ref=e154]: 今すぐチェック
+          - paragraph [ref=e161]: ※馬券の購入は20歳以上の方のみ対象です。
+        - generic [ref=e163]:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - insertion
+      - generic [ref=e164]:
+        - generic [ref=e165]:
+          - generic [ref=e167]:
+            - heading "高配当的中ランキング (7/16〜7/19)" [level=2] [ref=e168]:
+              - generic [ref=e175]: 高配当的中ランキング
+              - generic [ref=e176]: (7/16〜7/19)
+            - generic [ref=e177]:
+              - link "1位 261,920円 3連単 7/19 福島8R 組番 13→3→6" [ref=e178] [cursor=pointer]:
+                - /url: /races/2026-07-19/fukushima/8
+                - generic [ref=e179]:
+                  - generic [ref=e180]: 1位
+                  - generic [ref=e181]:
+                    - generic [ref=e182]:
+                      - generic [ref=e183]: 261,920円
+                      - generic [ref=e184]: 3連単
+                    - generic [ref=e185]: 7/19 福島8R
+                  - generic [ref=e186]:
+                    - generic [ref=e187]: 組番
+                    - generic "13→3→6" [ref=e188]
+              - link "2位 159,330円 3連単 7/16 園田10R 組番 4→3→9" [ref=e189] [cursor=pointer]:
+                - /url: /races/2026-07-16/sonoda/10
+                - generic [ref=e190]:
+                  - generic [ref=e191]: 2位
+                  - generic [ref=e192]:
+                    - generic [ref=e193]:
+                      - generic [ref=e194]: 159,330円
+                      - generic [ref=e195]: 3連単
+                    - generic [ref=e196]: 7/16 園田10R
+                  - generic [ref=e197]:
+                    - generic [ref=e198]: 組番
+                    - generic "4→3→9" [ref=e199]
+              - link "3位 108,270円 3連単 7/17 園田12R 組番 1→4→9" [ref=e200] [cursor=pointer]:
+                - /url: /races/2026-07-17/sonoda/12
+                - generic [ref=e201]:
+                  - generic [ref=e202]: 3位
+                  - generic [ref=e203]:
+                    - generic [ref=e204]:
+                      - generic [ref=e205]: 108,270円
+                      - generic [ref=e206]: 3連単
+                    - generic [ref=e207]: 7/17 園田12R
+                  - generic [ref=e208]:
+                    - generic [ref=e209]: 組番
+                    - generic "1→4→9" [ref=e210]
+              - link "4位 96,560円 3連単 7/18 高知12R 組番 8→6→12" [ref=e211] [cursor=pointer]:
+                - /url: /races/2026-07-18/kochi/12
+                - generic [ref=e212]:
+                  - generic [ref=e213]: 4位
+                  - generic [ref=e214]:
+                    - generic [ref=e215]:
+                      - generic [ref=e216]: 96,560円
+                      - generic [ref=e217]: 3連単
+                    - generic [ref=e218]: 7/18 高知12R
+                  - generic [ref=e219]:
+                    - generic [ref=e220]: 組番
+                    - generic "8→6→12" [ref=e221]
+              - link "5位 89,070円 3連単 7/17 浦和11R 組番 6→10→5" [ref=e222] [cursor=pointer]:
+                - /url: /races/2026-07-17/urawa/11
+                - generic [ref=e223]:
+                  - generic [ref=e224]: 5位
+                  - generic [ref=e225]:
+                    - generic [ref=e226]:
+                      - generic [ref=e227]: 89,070円
+                      - generic [ref=e228]: 3連単
+                    - generic [ref=e229]: 7/17 浦和11R
+                  - generic [ref=e230]:
+                    - generic [ref=e231]: 組番
+                    - generic "6→10→5" [ref=e232]
+          - generic [ref=e233]:
+            - heading "本日の分析注目馬" [level=2] [ref=e234]
+            - generic [ref=e236]:
+              - generic [ref=e237]:
+                - button "本命候補" [ref=e238] [cursor=pointer]
+                - button "オッズ妙味" [ref=e239] [cursor=pointer]
+                - button "地方注目" [ref=e240] [cursor=pointer]
+              - link "2026年07月22日 (水) · 大井 5R ブラックモノリス アメリカンピーナッツバター賞(C2七) AI偏差値 73.6 AI偏差値 73.6。本日の全開催を通じて上位に位置する評価です。能力面の条件は整っており、当日の馬場状態や展開面も合わせて確認したい一頭です。 分析データを詳しく確認する →" [ref=e241] [cursor=pointer]:
+                - /url: /races/2026-07-22/ohi/5
+                - generic [ref=e242]:
+                  - generic [ref=e243]:
+                    - generic [ref=e244]:
+                      - generic [ref=e245]: 2026年07月22日 (水) · 大井 5R
+                      - heading "ブラックモノリス" [level=3] [ref=e246]
+                      - text: アメリカンピーナッツバター賞(C2七)
+                    - generic [ref=e247]:
+                      - generic [ref=e248]: AI偏差値
+                      - generic [ref=e249]: "73.6"
+                  - paragraph [ref=e253]: AI偏差値 73.6。本日の全開催を通じて上位に位置する評価です。能力面の条件は整っており、当日の馬場状態や展開面も合わせて確認したい一頭です。
+                  - generic [ref=e254]: 分析データを詳しく確認する →
+          - generic [ref=e256]:
+            - generic [ref=e257]:
+              - heading "最新の分析記事 新着順" [level=2] [ref=e258]:
+                - generic [ref=e259]: 最新の分析記事
+                - generic [ref=e260]: 新着順
+              - link "すべて見る →" [ref=e261] [cursor=pointer]:
+                - /url: /articles
+            - generic [ref=e262]:
+              - link "【松山弘平騎手】2026年実績データと馬券検討時の確認ポイント｜騎手分析 騎手分析 【松山弘平騎手】2026年実績データと馬券検討時の確認ポイント｜騎手分析 7/21 約6分" [ref=e263] [cursor=pointer]:
+                - /url: /articles/2026-07-21-jockey-2026-285e8b71
+                - img "【松山弘平騎手】2026年実績データと馬券検討時の確認ポイント｜騎手分析" [ref=e265]
+                - generic [ref=e266]:
+                  - generic [ref=e267]: 騎手分析
+                  - heading "【松山弘平騎手】2026年実績データと馬券検討時の確認ポイント｜騎手分析" [level=3] [ref=e268]
+                  - generic [ref=e269]:
+                    - generic [ref=e270]: 7/21
+                    - generic [ref=e271]: 約6分
+              - link "福島芝1200m枠順データ分析｜1枠の勝率17.6%が示す内枠有利の構造 コース分析 福島芝1200m枠順データ分析｜1枠の勝率17.6%が示す内枠有利の構造 7/21 約6分" [ref=e272] [cursor=pointer]:
+                - /url: /articles/2026-03-20-fukushimaturf1200m-waku-data
+                - img "福島芝1200m枠順データ分析｜1枠の勝率17.6%が示す内枠有利の構造" [ref=e274]
+                - generic [ref=e275]:
+                  - generic [ref=e276]: コース分析
+                  - heading "福島芝1200m枠順データ分析｜1枠の勝率17.6%が示す内枠有利の構造" [level=3] [ref=e277]
+                  - generic [ref=e278]:
+                    - generic [ref=e279]: 7/21
+                    - generic [ref=e280]: 約6分
+              - link "【岩田望来騎手】2026年成績から探る好走パターンと馬券の確認順 ｜ 騎手データ 騎手分析 【岩田望来騎手】2026年成績から探る好走パターンと馬券の確認順 ｜ 騎手データ 7/20 約7分" [ref=e281] [cursor=pointer]:
+                - /url: /articles/2026-07-20-jockey-2026-b96bd967
+                - img "【岩田望来騎手】2026年成績から探る好走パターンと馬券の確認順 ｜ 騎手データ" [ref=e283]
+                - generic [ref=e284]:
+                  - generic [ref=e285]: 騎手分析
+                  - heading "【岩田望来騎手】2026年成績から探る好走パターンと馬券の確認順 ｜ 騎手データ" [level=3] [ref=e286]
+                  - generic [ref=e287]:
+                    - generic [ref=e288]: 7/20
+                    - generic [ref=e289]: 約7分
+              - generic [ref=e290]: 広告
+          - generic [ref=e293]:
+            - heading "よくある質問 初めての方へ" [level=2] [ref=e294]:
+              - generic [ref=e295]: よくある質問
+              - generic [ref=e296]: 初めての方へ
+            - generic [ref=e297]:
+              - group [ref=e298]:
+                - generic "本当に無料ですか？ ▼" [ref=e299] [cursor=pointer]:
+                  - generic [ref=e300]: 本当に無料ですか？
+                  - generic [ref=e301]: ▼
+              - group [ref=e302]:
+                - generic "データはいつ更新されますか？ ▼" [ref=e303] [cursor=pointer]:
+                  - generic [ref=e304]: データはいつ更新されますか？
+                  - generic [ref=e305]: ▼
+              - group [ref=e306]:
+                - generic "分析の精度はどのくらいですか？ ▼" [ref=e307] [cursor=pointer]:
+                  - generic [ref=e308]: 分析の精度はどのくらいですか？
+                  - generic [ref=e309]: ▼
+              - group [ref=e310]:
+                - generic "モバイルでも使えますか？ ▼" [ref=e311] [cursor=pointer]:
+                  - generic [ref=e312]: モバイルでも使えますか？
+                  - generic [ref=e313]: ▼
+        - complementary [ref=e314]:
+          - generic [ref=e316]:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - insertion
+          - generic [ref=e317]:
+            - heading "関連コンテンツ" [level=2] [ref=e318]
+            - link "本日のデータ 全レース一覧 確認する" [ref=e321] [cursor=pointer]:
+              - /url: /races/2026-07-22
+              - generic [ref=e322]: 本日のデータ
+              - strong [ref=e323]: 全レース一覧
+              - generic [ref=e324]: 確認する
+      - button "免責事項：AI分析は参考情報です" [ref=e326] [cursor=pointer]
+  - contentinfo [ref=e333]:
+    - generic [ref=e334]:
+      - generic [ref=e335]:
+        - generic [ref=e336]:
+          - heading "UMA-FREE" [level=3] [ref=e337]
+          - paragraph [ref=e338]: 豊富な過去レースデータをAIで分析。中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を登録不要・完全無料で提供する競馬データ分析サイトです。
+        - generic [ref=e339]:
+          - heading "コンテンツ" [level=3] [ref=e340]
+          - list [ref=e341]:
+            - listitem [ref=e342]:
+              - link "データ分析記事" [ref=e343] [cursor=pointer]:
+                - /url: /articles
+            - listitem [ref=e344]:
+              - link "よくある質問" [ref=e345] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=e346]:
+              - link "このサイトについて" [ref=e347] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e348]:
+              - link "AI予測モデルについて" [ref=e349] [cursor=pointer]:
+                - /url: /about-ai
+            - listitem [ref=e350]:
+              - link "公式Xアカウント" [ref=e351] [cursor=pointer]:
+                - /url: https://x.com/umafree_ai
+                - text: 公式X (Twitter)
+        - generic [ref=e352]:
+          - heading "サイトポリシー" [level=3] [ref=e353]
+          - list [ref=e354]:
+            - listitem [ref=e355]:
+              - link "広告について" [ref=e356] [cursor=pointer]:
+                - /url: /advertising
+            - listitem [ref=e357]:
+              - link "お問い合わせ" [ref=e358] [cursor=pointer]:
+                - /url: /contact
+            - listitem [ref=e359]:
+              - link "プライバシーポリシー" [ref=e360] [cursor=pointer]:
+                - /url: /privacy
+            - listitem [ref=e361]:
+              - link "利用規約" [ref=e362] [cursor=pointer]:
+                - /url: /terms
+            - listitem [ref=e363]:
+              - link "サイトマップ" [ref=e364] [cursor=pointer]:
+                - /url: /sitemap
+      - generic [ref=e366]:
+        - paragraph [ref=e367]: © 2026 UMA-FREE. All Rights Reserved.
+        - paragraph [ref=e368]: 本サイトは統計情報の提供を目的としており、投票の推奨ではありません。
+  - alert [ref=e369]

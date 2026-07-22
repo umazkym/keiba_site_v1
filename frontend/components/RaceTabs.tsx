@@ -6,7 +6,7 @@ import 'react-tabs/style/react-tabs.css';
 import { PredictionTable } from '@/components/PredictionTable';
 import { RaceAnalysis } from '@/components/RaceAnalysis';
 import { VenueRaces, RaceDayPrediction } from '@/lib/types';
-import { RaceSelector } from './RaceSelector';
+import { RaceSelector, type RaceSelectorLink } from './RaceSelector';
 import { RacePageJumpNav } from './RacePageJumpNav';
 import { StartPositionChart } from './StartPositionChart';
 import { MatchupTable } from './MatchupTable';
@@ -77,7 +77,7 @@ const isIntentionalRewardedDisableReason = (reason: string | null) => {
     return reason === 'rewarded_temporarily_disabled' || reason === 'rewarded_fullscreen_disabled';
 };
 
-const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, venueActivationKey = 0, isRaceUnlocked, isReady, isLoading, isSupported, unavailableReason, showAd, unlock }: { venue: VenueRaces, raceType: 'jra' | 'nar', articlesMeta: RaceArticleMeta[], initialRaceNumber?: number | null, venueActivationKey?: number, isRaceUnlocked: (raceId: string) => boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, unavailableReason: string | null, showAd: (context?: RewardedAdContext | string) => boolean, unlock: (raceId?: string) => void }) => {
+const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, raceLinks, venueActivationKey = 0, isRaceUnlocked, isReady, isLoading, isSupported, unavailableReason, showAd, unlock }: { venue: VenueRaces, raceType: 'jra' | 'nar', articlesMeta: RaceArticleMeta[], initialRaceNumber?: number | null, raceLinks?: RaceSelectorLink[], venueActivationKey?: number, isRaceUnlocked: (raceId: string) => boolean, isReady: boolean, isLoading: boolean, isSupported: boolean, unavailableReason: string | null, showAd: (context?: RewardedAdContext | string) => boolean, unlock: (raceId?: string) => void }) => {
     const params = useParams();
     const currentDate = params.date as string;
     const gateViewKeysRef = useRef<Set<string>>(new Set());
@@ -158,6 +158,18 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
             scrollVenueIntoView();
         }
     }, [activeRace, activeRaceIndex, venue.races, venue.venue_name, currentDate, raceType, scrollVenueIntoView]);
+
+    const handleRaceLinkSelect = useCallback((raceNumber: number) => {
+        if (!activeRace || raceNumber === activeRace.race_number) return;
+        sendRaceNavigationEvent({
+            race_date: currentDate,
+            venue_name: venue.venue_name,
+            race_type: raceType,
+            from_race_number: activeRace.race_number,
+            to_race_number: raceNumber,
+            navigation_method: 'race_selector',
+        });
+    }, [activeRace, currentDate, raceType, venue.venue_name]);
 
     // ★ ビューアビリティ改善: 条件を5→3頭に緩和し、ほぼ全レースで広告表示
     const shouldShowAd = useMemo(() => {
@@ -344,7 +356,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                 <div
                     data-race-selector-sticky
                     data-race-mobile-selector
-                    className="sticky top-14 z-30 mx-1 my-2 flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm sm:top-[4.5rem] sm:mx-0 lg:h-14 lg:flex-row"
+                    className="race-sticky-selector sticky z-30 mx-1 my-2 flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white sm:mx-0 lg:h-14 lg:flex-row"
                 >
                     <div className="flex h-8 shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-950 px-2.5 text-white lg:h-full lg:w-[210px] lg:border-b-0 lg:border-r">
                         <span className="flex h-6 min-w-9 items-center justify-center rounded-md bg-white/10 font-mono text-[11px] font-black lg:h-8">
@@ -359,6 +371,8 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                         races={venue.races}
                         selectedIndex={activeRaceIndex}
                         onSelectRace={(index) => handleRaceSelect(index, 'race_selector')}
+                        raceLinks={raceLinks}
+                        onSelectRaceLink={handleRaceLinkSelect}
                     />
                 </div>
             )}
@@ -422,7 +436,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                         <div id="race-detail-heading" className="race-section-heading mx-1 mb-1 sm:mx-2.5 sm:mb-2">
                                             <span>展開/脚質予測</span>
                                         </div>
-                                        <div className="flex-1 px-1 pb-1 sm:px-2.5 sm:pb-2">
+                                        <div className="race-analysis-visual px-1 pb-1 sm:px-2.5 sm:pb-2">
                                             <StartPositionChart predictions={activeRace.predictions} />
                                         </div>
                                     </div>
@@ -431,7 +445,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
                                         <div id="race-frame-heading" className="race-section-heading mx-1 mb-1 sm:mx-2.5 sm:mb-2">
                                             <span>このコースの枠順傾向</span>
                                         </div>
-                                        <div className="px-1 sm:px-2.5 pb-1 sm:pb-2.5 flex-1">
+                                        <div className="race-analysis-visual px-1 pb-1 sm:px-2.5 sm:pb-2.5">
                                             <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
                                         </div>
                                     </div>
@@ -580,7 +594,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, ven
 
 VenuePanel.displayName = 'VenuePanel';
 
-export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumber }: { data: RaceDayPrediction, articlesMeta: RaceArticleMeta[], initialVenueName?: string | null, initialRaceNumber?: number | null }) => {
+export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumber, initialRaceLinks }: { data: RaceDayPrediction, articlesMeta: RaceArticleMeta[], initialVenueName?: string | null, initialRaceNumber?: number | null, initialRaceLinks?: RaceSelectorLink[] }) => {
     // ★ 防御的チェック: data.jra/nar が undefined の場合も安全に処理
     const jra = data?.jra ?? [];
     const nar = data?.nar ?? [];
@@ -694,7 +708,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                             </TabList>
                             {jra.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} raceType="jra" articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isRaceUnlocked={isRaceUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} unavailableReason={unavailableReason} showAd={showAd} unlock={unlock} />
+                                    <VenuePanel venue={venue} raceType="jra" articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} raceLinks={initialVenueName === venue.venue_name ? initialRaceLinks : undefined} isRaceUnlocked={isRaceUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} unavailableReason={unavailableReason} showAd={showAd} unlock={unlock} />
                                 </TabPanel>
                             ))}
                         </Tabs>
@@ -710,7 +724,7 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
                             </TabList>
                             {nar.map(venue => (
                                 <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} raceType="nar" articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} isRaceUnlocked={isRaceUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} unavailableReason={unavailableReason} showAd={showAd} unlock={unlock} />
+                                    <VenuePanel venue={venue} raceType="nar" articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} raceLinks={initialVenueName === venue.venue_name ? initialRaceLinks : undefined} isRaceUnlocked={isRaceUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} unavailableReason={unavailableReason} showAd={showAd} unlock={unlock} />
                                 </TabPanel>
                             ))}
                         </Tabs>

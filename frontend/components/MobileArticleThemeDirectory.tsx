@@ -93,7 +93,7 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
     ];
 
     return (
-        <section className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white lg:hidden" aria-label="記事テーマ">
+        <section className="article-theme-sticky mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white lg:hidden" aria-label="記事テーマ">
             <div className={`grid grid-cols-3 divide-x divide-slate-200 ${isOpen ? 'border-b border-slate-200' : ''}`} role="tablist" aria-label="記事テーマを選択">
                 {themes.map(theme => {
                     const isActive = activeTheme === theme.key;

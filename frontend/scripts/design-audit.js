@@ -232,7 +232,7 @@ const checks = [
   {
     id: 'mobile-pace-chart-parity',
     description: 'スマホの展開・脚質もPCと同じ位置取りグラフを短い高さで使う',
-    passed: startPositionChart.includes('height={164}')
+    passed: startPositionChart.includes('height={128}')
       && startPositionChart.includes('<TrackView')
       && !startPositionChart.includes('grid grid-cols-3 gap-1.5 md:hidden'),
   },

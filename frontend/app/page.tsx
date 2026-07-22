@@ -20,6 +20,7 @@ import { NativeCardAd } from '@/components/NativeCardAd';
 import type { Metadata } from 'next';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
+import { HomeStickyRaceCta } from '@/components/HomeStickyRaceCta';
 import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 
 // ISR: データ更新は1日2〜3回（06:00, 13:30 JST）のバッチ処理のため、
@@ -143,6 +144,7 @@ export default async function HomePage() {
 
     return (
         <div className="space-y-4">
+            <HomeStickyRaceCta raceDate={todayStr} />
             {/* ── 1. 最近確認したレース ── */}
             <RecentRaceReturn />
 
@@ -168,9 +170,10 @@ export default async function HomePage() {
                         href={`/races/${todayStr}`}
                         raceDate={todayStr}
                         entryMethod="hero_cta"
+                        data-home-primary-race-cta
                         className="cta"
                     >
-                        今日のレース分析を見る <span aria-hidden="true">→</span>
+                        本日のレース分析を見る <span aria-hidden="true">→</span>
                     </HomeRaceEntryLink>
                 </section>
 

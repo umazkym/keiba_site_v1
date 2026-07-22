@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import type { ComponentProps } from 'react';
-import { sendHomeRaceEntryClickEvent } from '@/lib/analytics';
+import { sendHomeRaceEntryClickEvent, type HomeRaceEntryMethod } from '@/lib/analytics';
 
 type HomeRaceEntryLinkProps = Omit<ComponentProps<typeof Link>, 'onClick'> & {
     raceDate: string;
-    entryMethod: 'hero_cta' | 'grade_fallback';
+    entryMethod: HomeRaceEntryMethod;
 };
 
 export const HomeRaceEntryLink = ({

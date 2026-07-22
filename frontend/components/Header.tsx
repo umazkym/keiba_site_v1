@@ -59,6 +59,8 @@ const HeaderAffiliateLink = () => {
 export const Header = ({ todayString }: HeaderProps) => {
     const pathname = usePathname();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+    const headerRef = useRef<HTMLElement>(null);
     const menuButtonRef = useRef<HTMLButtonElement>(null);
     const menuPanelRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +72,10 @@ export const Header = ({ todayString }: HeaderProps) => {
     ] as const;
 
     const toggleMenu = useCallback(() => {
-        setIsMenuOpen(prev => !prev);
+        setIsMenuOpen(prev => {
+            if (!prev) setIsHeaderVisible(true);
+            return !prev;
+        });
     }, []);
 
     const closeMenu = useCallback((restoreFocus = false) => {
@@ -142,11 +147,91 @@ export const Header = ({ todayString }: HeaderProps) => {
 
     useEffect(() => {
         setIsMenuOpen(false);
+        setIsHeaderVisible(true);
     }, [pathname]);
+
+    // 下方向の閲覧中は本文へ高さを譲り、上へ戻した瞬間に主要導線を復帰させる。
+    useEffect(() => {
+        if (isMenuOpen) {
+            setIsHeaderVisible(true);
+            return undefined;
+        }
+
+        let frameId = 0;
+        let lastScrollY = Math.max(0, window.scrollY);
+        let accumulatedDelta = 0;
+
+        const updateVisibility = () => {
+            frameId = 0;
+            const nextScrollY = Math.max(0, window.scrollY);
+            const delta = nextScrollY - lastScrollY;
+
+            if (nextScrollY <= 16) {
+                accumulatedDelta = 0;
+                setIsHeaderVisible(true);
+            } else if (delta !== 0) {
+                if (Math.sign(delta) !== Math.sign(accumulatedDelta)) {
+                    accumulatedDelta = delta;
+                } else {
+                    accumulatedDelta += delta;
+                }
+
+                if (nextScrollY > 72 && accumulatedDelta >= 24) {
+                    accumulatedDelta = 0;
+                    setIsHeaderVisible(false);
+                } else if (accumulatedDelta <= -12) {
+                    accumulatedDelta = 0;
+                    setIsHeaderVisible(true);
+                }
+            }
+
+            lastScrollY = nextScrollY;
+        };
+
+        const requestUpdate = () => {
+            if (frameId) return;
+            frameId = window.requestAnimationFrame(updateVisibility);
+        };
+
+        window.addEventListener('scroll', requestUpdate, { passive: true });
+        return () => {
+            if (frameId) window.cancelAnimationFrame(frameId);
+            window.removeEventListener('scroll', requestUpdate);
+        };
+    }, [isMenuOpen]);
+
+    // sticky要素がヘッダーの実高と表示状態を共通参照できるようにする。
+    useEffect(() => {
+        const root = document.documentElement;
+        const header = headerRef.current;
+        if (!header) return undefined;
+
+        const updateHeaderMetrics = () => {
+            const height = header.offsetHeight || (window.innerWidth >= 640 ? 64 : 48);
+            root.style.setProperty('--site-header-height', `${height}px`);
+            root.style.setProperty('--site-header-offset', isHeaderVisible ? `${height}px` : '0px');
+        };
+
+        updateHeaderMetrics();
+        const resizeObserver = new ResizeObserver(updateHeaderMetrics);
+        resizeObserver.observe(header);
+        window.addEventListener('resize', updateHeaderMetrics);
+
+        return () => {
+            resizeObserver.disconnect();
+            window.removeEventListener('resize', updateHeaderMetrics);
+        };
+    }, [isHeaderVisible]);
 
     return (
         <>
-            <header data-site-header className="glass sticky top-0 z-50">
+            <header
+                ref={headerRef}
+                data-site-header
+                data-site-header-visible={isHeaderVisible ? 'true' : 'false'}
+                className={`glass site-header sticky top-0 z-50 ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
+                onFocusCapture={() => setIsHeaderVisible(true)}
+            >
                 <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6">
                     <div className="flex h-12 items-center justify-between gap-2 sm:h-16 sm:gap-4">
                     {/* ロゴ */}
@@ -237,21 +322,6 @@ export const Header = ({ todayString }: HeaderProps) => {
                 aria-hidden={!isMenuOpen}
                 className={`mobile-menu-panel ${isMenuOpen ? 'open' : ''}`}
             >
-                <div className="flex min-h-12 items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2">
-                    <div className="flex items-center gap-2">
-                        <img src="/new-logo.webp" alt="" width="24" height="24" className="h-6 w-6" loading="eager" decoding="async" />
-                        <span className="text-base font-bold tracking-tight text-primary">UMA-FREE</span>
-                    </div>
-                    <button
-                        type="button"
-                        tabIndex={isMenuOpen ? 0 : -1}
-                        onClick={() => closeMenu(true)}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 transition-colors duration-150 hover:bg-white hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                        aria-label="メニューを閉じる"
-                    >
-                        <XIcon className="h-5 w-5" />
-                    </button>
-                </div>
                 <nav aria-label="モバイル主要ナビゲーション">
                     {navItems.map((item) => (
                         <Link

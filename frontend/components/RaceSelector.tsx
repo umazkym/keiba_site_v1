@@ -1,39 +1,72 @@
+import Link from 'next/link';
 import { RacePrediction } from "@/lib/types";
+
+export type RaceSelectorLink = {
+  raceNumber: number;
+  href: string;
+};
 
 type Props = {
   races: RacePrediction[];
   selectedIndex: number;
   onSelectRace: (index: number) => void;
+  raceLinks?: RaceSelectorLink[];
+  onSelectRaceLink?: (raceNumber: number) => void;
 };
 
-export const RaceSelector = ({ races, selectedIndex, onSelectRace }: Props) => {
+export const RaceSelector = ({ races, selectedIndex, onSelectRace, raceLinks, onSelectRaceLink }: Props) => {
+  const selectedRaceNumber = races[selectedIndex]?.race_number;
+  const options = raceLinks?.length
+    ? raceLinks.map(link => ({
+        key: `race-link-${link.raceNumber}`,
+        raceNumber: link.raceNumber,
+        href: link.href,
+        raceIndex: races.findIndex(race => race.race_number === link.raceNumber),
+      }))
+    : races.map((race, index) => ({
+        key: race.id,
+        raceNumber: race.race_number,
+        href: null,
+        raceIndex: index,
+      }));
+
   return (
     <nav
       className="race-selector w-full"
       aria-label="同日のレース"
-      style={{ gridTemplateColumns: `repeat(${Math.max(races.length, 1)}, minmax(0, 1fr))` }}
+      style={{ gridTemplateColumns: `repeat(${Math.max(options.length, 1)}, minmax(0, 1fr))` }}
     >
-      {races.map((race, index) => (
-        selectedIndex === index ? (
+      {options.map(option => (
+        selectedRaceNumber === option.raceNumber ? (
           <span
-            key={race.id}
+            key={option.key}
             className="race-tab active cursor-default"
             aria-current="page"
-            title={`${race.race_number}Rを表示中`}
+            title={`${option.raceNumber}Rを表示中`}
           >
-            {race.race_number}R
+            {option.raceNumber}R
           </span>
+        ) : option.href ? (
+          <Link
+            key={option.key}
+            href={option.href}
+            prefetch={false}
+            onClick={() => onSelectRaceLink?.(option.raceNumber)}
+            className="race-tab flex items-center justify-center transition-colors duration-150"
+          >
+            {option.raceNumber}R
+          </Link>
         ) : (
           <button
-            key={race.id}
+            key={option.key}
             type="button"
             onClick={(e) => {
-              onSelectRace(index);
+              onSelectRace(option.raceIndex);
               e.currentTarget.blur();
             }}
             className="race-tab transition-colors duration-150"
           >
-            {race.race_number}R
+            {option.raceNumber}R
           </button>
         )
       ))}

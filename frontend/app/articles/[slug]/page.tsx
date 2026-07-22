@@ -13,7 +13,6 @@ import { ArticleThemeNavigator } from '@/components/EntityArticleDocument';
 import { getArticleArchiveGroupForArticle } from '@/lib/article-archives';
 import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 import { ArticleBody } from '@/components/ArticleBody';
-import { UserRound } from 'lucide-react';
 
 type Props = {
   params: { slug: string };
@@ -132,38 +131,7 @@ export default async function ArticlePage({ params }: Props) {
           <article data-article-slug={params.slug}>
             {/* ===== ARTICLE HEADER ===== */}
             <header className="relative border-b border-slate-200 pb-4 sm:pb-8">
-              {/* メタ情報 → タイトル → リードの順に、記事の内容を先に伝える */}
               <div>
-                <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-slate-500 sm:mb-4 sm:gap-x-3 sm:text-sm">
-                  <Link
-                    href={`/articles?category=${encodeURIComponent(article.category)}`}
-                    className="text-slate-700 transition-colors hover:text-primary"
-                  >
-                    {article.category}
-                  </Link>
-                  <time
-                    dateTime={datePublished}
-                  >
-                    {new Date(article.date).toLocaleDateString('ja-JP', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </time>
-                  <span>
-                    約{readingTimeMin}分
-                  </span>
-                  <Link href="/about" className="inline-flex items-center gap-1 text-slate-500 transition-colors hover:text-primary">
-                    <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>著者: おとうふや</span>
-                  </Link>
-                  {article.lastUpdated && (
-                    <span>
-                      更新日 {new Date(article.lastUpdated).toLocaleDateString('ja-JP')}
-                    </span>
-                  )}
-                </div>
-
                 {/* タイトル */}
                 <h1 className="article-page-title text-[1.55rem] font-black leading-tight tracking-tight text-slate-950 [overflow-wrap:anywhere] sm:text-4xl md:text-5xl">
                   {article.title}

@@ -22,17 +22,22 @@ from .data_loader import (
     pick_featured_race,
     top_by_deviation,
 )
+from .motion import AudioCue, MotionLayer, MotionScene, render_motion_scenes, resolve_motion_profile
 from .video_package import VideoPackage, build_content_hash, build_rights_manifest_hash
 from .visual_assets import (
     AudioAsset,
     CourseAsset,
+    VideoAsset,
     VisualAsset,
     asset_credit_lines,
     audio_asset_metadata,
     course_asset_metadata,
     resolve_audio_asset,
     resolve_course_asset,
+    resolve_sfx_assets,
+    resolve_video_asset,
     resolve_visual_asset,
+    video_asset_metadata,
     visual_asset_metadata,
 )
 
@@ -59,6 +64,7 @@ GREEN_DARK = (8, 62, 47)
 BURGUNDY = (157, 52, 56)
 EDITORIAL_GOLD = (200, 155, 60)
 EDITORIAL_GOLD_DARK = (145, 105, 35)
+DATA_BLUE = (47, 111, 237)
 INK_DARK = (18, 23, 27)
 INK_MUTED = (115, 122, 124)
 RULE = (198, 193, 181)
@@ -123,12 +129,23 @@ FEATURE_ITEMS = (
     ("位置取り予測", "序盤の隊列予測", "position"),
     ("枠順傾向", "全コース別に集計", "waku"),
 )
-LONG_VENUE_SLIDE_SECONDS = 2.0
-LONG_RACE_SLIDE_SECONDS = 4.2
-LONG_POSITION_SLIDE_SECONDS = 3.2
-LONG_OUTRO_SECONDS = 4.0
+LONG_INTRO_SECONDS = 2.2
+LONG_RACE_SCENE_SECONDS = 6.0
+LONG_OUTRO_SECONDS = 3.0
+SHORT_SCENE_SECONDS = 15.5
+LONG_CONTENT_LEFT = 44
+LONG_CONTENT_RIGHT = 1876
+LONG_CONTENT_WIDTH = LONG_CONTENT_RIGHT - LONG_CONTENT_LEFT
+LONG_DATA_PANEL_BOTTOM = 824
+LONG_CTA_Y = 848
+LONG_SITE_ACCESS_CTA = "サイトへのアクセスは概要欄のリンクから"
+SHORT_SITE_ACCESS_CTA = "サイトへのアクセスはプロフィールのリンクから"
+# 旧テスト・補助スクリプト向けの互換値。本線は1レース1シーンを使用する。
+LONG_VENUE_SLIDE_SECONDS = LONG_INTRO_SECONDS
+LONG_RACE_SLIDE_SECONDS = LONG_RACE_SCENE_SECONDS
+LONG_POSITION_SLIDE_SECONDS = 0.0
 SHORT_RACE_SLIDE_SECONDS = 5.0
-SHORT_POSITION_SLIDE_SECONDS = 5.5
+SHORT_POSITION_SLIDE_SECONDS = 4.0
 SHORT_OUTRO_SECONDS = 3.5
 VIDEO_FPS = 30
 KEN_BURNS_ZOOM_TO = 1.0
@@ -1688,6 +1705,619 @@ def _draw_position_slide(path: Path, race: RaceVideoData, target_date: str, size
     _save_slide(image, path, size)
 
 
+def _save_transparent_layer(image: Image.Image, path: Path) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.convert("RGBA").save(path, optimize=True)
+    return path
+
+
+def _compose_motion_preview(
+    background_path: Path,
+    layers: Sequence[tuple[Path, int, int]],
+    destination: Path,
+) -> Path:
+    with Image.open(background_path) as source:
+        preview = source.convert("RGBA")
+    for layer_path, x, y in layers:
+        with Image.open(layer_path) as source:
+            layer = source.convert("RGBA")
+        preview.alpha_composite(layer, (x, y))
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    preview.convert("RGB").save(destination)
+    return destination
+
+
+def _broadcast_panel(
+    size: tuple[int, int],
+    fill: tuple[int, int, int, int] = (20, 29, 32, 244),
+    border: tuple[int, int, int, int] = (69, 82, 83, 255),
+    radius: int = 20,
+) -> Image.Image:
+    width, height = size
+    image = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((1, 1, width - 2, height - 2), radius=radius, fill=fill, outline=border, width=2)
+    return image
+
+
+def _draw_broadcast_race_base(
+    path: Path,
+    race: RaceVideoData,
+    size: tuple[int, int],
+) -> Path:
+    width, height = size
+    image = Image.new("RGB", size, CHARCOAL)
+    draw = ImageDraw.Draw(image)
+    for x in range(0, width, 80):
+        draw.line((x, 0, x, height), fill=(24, 33, 36), width=1)
+    for y in range(0, height, 80):
+        draw.line((0, y, width, y), fill=(24, 33, 36), width=1)
+    draw.rectangle((0, 0, width, 18), fill=DEEP_GREEN)
+    draw.rectangle((0, 18, width, 23), fill=EDITORIAL_GOLD)
+    # 背景は「面」だけで左右の情報群を分ける。外枠を付けると、
+    # ランキングカード・位置取りレーン・CTAの枠線と重なって階層が崩れる。
+    draw.rounded_rectangle((LONG_CONTENT_LEFT, 170, 1114, LONG_DATA_PANEL_BOTTOM), radius=18, fill=(12, 20, 23))
+    draw.rounded_rectangle((1136, 170, 1876, LONG_DATA_PANEL_BOTTOM), radius=18, fill=(12, 20, 23))
+    draw.line((60, 1048, width - 60, 1048), fill=(68, 78, 80), width=3)
+
+    course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
+    if course_asset is not None:
+        try:
+            with Image.open(course_asset.path) as source:
+                course = source.convert("RGBA")
+            alpha = course.getchannel("A")
+            bbox = alpha.getbbox()
+            if bbox:
+                course = course.crop(bbox)
+                course.thumbnail((590, 560), Image.Resampling.LANCZOS)
+                course_alpha = course.getchannel("A").point(lambda value: round(value * 0.16))
+                tint = Image.new("RGBA", course.size, (*DEEP_GREEN, 0))
+                tint.putalpha(course_alpha)
+                image = image.convert("RGBA")
+                image.alpha_composite(
+                    tint,
+                    (1506 - course.width // 2, 510 - course.height // 2),
+                )
+                image = image.convert("RGB")
+        except OSError:
+            pass
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(path)
+    return path
+
+
+def _draw_broadcast_header_layer(
+    path: Path,
+    race: RaceVideoData,
+    target_date: str,
+    progress_index: int,
+    progress_total: int,
+) -> Path:
+    image = Image.new("RGBA", (1832, 122), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.text((0, 3), f"{race.race_number:02d}", font=_font("Inter-Black.ttf", 88), fill=EDITORIAL_GOLD)
+    draw.text((112, 48), "R", font=_font("Inter-Bold.ttf", 30), fill=WHITE)
+    draw.line((164, 12, 164, 108), fill=(82, 94, 95), width=2)
+    _draw_fit_text_no_ellipsis(
+        draw,
+        race.display_name,
+        (194, 4),
+        FONT_BLACK,
+        48,
+        28,
+        1040,
+        WHITE,
+        max_lines=1,
+    )
+    grade = f"  {race.grade}" if race.grade else ""
+    draw.text(
+        (196, 70),
+        f"{race.venue_name}  {_display_short_date(target_date)}  {race.course_label}{grade}",
+        font=_font(FONT_BOLD, 24),
+        fill=(188, 198, 196),
+    )
+    draw.text((1828, 12), f"{progress_index:02d} / {progress_total:02d}", font=_font("Inter-Black.ttf", 40), fill=WHITE, anchor="ra")
+    draw.text((1828, 67), "RACE PREVIEW", font=_font("Inter-Bold.ttf", 18), fill=EDITORIAL_GOLD, anchor="ra")
+    return _save_transparent_layer(image, path)
+
+
+def _draw_broadcast_rank_layer(
+    path: Path,
+    horse: HorseVideoData,
+    rank: int,
+    size: tuple[int, int],
+    score_override: Optional[float] = None,
+    show_score: bool = True,
+    right_safe_padding: int = 0,
+) -> Path:
+    width, height = size
+    top_rank = rank == 1
+    image = _broadcast_panel(
+        size,
+        fill=(244, 241, 232, 252) if top_rank else (31, 41, 44, 252),
+        border=(*EDITORIAL_GOLD, 255) if top_rank else (76, 91, 93, 255),
+        radius=18,
+    )
+    draw = ImageDraw.Draw(image)
+    foreground = INK_DARK if top_rank else WHITE
+    muted = (82, 91, 91) if top_rank else (175, 185, 184)
+    accent = EDITORIAL_GOLD if top_rank else DATA_BLUE if rank == 2 else DEEP_GREEN
+    draw.rectangle((0, 0, 12 if top_rank else 8, height), fill=accent)
+    draw.text((30, 20 if top_rank else 16), f"{rank}", font=_font("Inter-Black.ttf", 62 if top_rank else 48), fill=accent)
+    draw.text((84, 46 if top_rank else 37), "位", font=_font(FONT_BLACK, 24 if top_rank else 21), fill=muted)
+    badge_d = 76 if top_rank else 62
+    _draw_horse_number_badge(draw, (166, height // 2), horse, badge_d, stroke_width=3)
+    name_x = 222
+    _draw_fit_text_no_ellipsis(
+        draw,
+        horse.horse_name,
+        (name_x, 24 if top_rank else 18),
+        FONT_BLACK,
+        42 if top_rank else 34,
+        22,
+        width - name_x - 260 - right_safe_padding,
+        foreground,
+        max_lines=1,
+    )
+    position = horse.position_label if horse.position_label in {"先行", "中団", "後方"} else "不明"
+    draw.text(
+        (name_x, 88 if top_rank else 72),
+        f"位置取り  {position}",
+        font=_font(FONT_BOLD, 23 if top_rank else 20),
+        fill=muted,
+    )
+    score_value = score_override if score_override is not None else horse.deviation_score
+    if show_score:
+        draw.text(
+            (width - 28 - right_safe_padding, 8 if top_rank else 5),
+            _score_text(score_value),
+            font=_font("Inter-Black.ttf", 92 if top_rank else 72),
+            fill=EDITORIAL_GOLD_DARK if top_rank else WHITE,
+            anchor="ra",
+        )
+        draw.text(
+            (width - 32 - right_safe_padding, 98 if top_rank else 78),
+            "AI偏差値",
+            font=_font(FONT_BOLD, 19),
+            fill=muted,
+            anchor="ra",
+        )
+    bar_y = height - 18
+    bar_right = width - 30 - right_safe_padding
+    draw.rounded_rectangle((name_x, bar_y - 6, bar_right, bar_y), radius=3, fill=(91, 102, 102))
+    if horse.deviation_score is not None:
+        ratio = max(0.05, min(1.0, (horse.deviation_score - 40.0) / 35.0))
+        draw.rounded_rectangle(
+            (name_x, bar_y - 6, name_x + round((bar_right - name_x) * ratio), bar_y),
+            radius=3,
+            fill=accent,
+        )
+    return _save_transparent_layer(image, path)
+
+
+def _draw_broadcast_score_fragment(path: Path, score: Optional[float]) -> Path:
+    image = Image.new("RGBA", (246, 150), (244, 241, 232, 255))
+    draw = ImageDraw.Draw(image)
+    draw.text(
+        (220, 2),
+        _score_text(score),
+        font=_font("Inter-Black.ttf", 92),
+        fill=EDITORIAL_GOLD_DARK,
+        anchor="ra",
+    )
+    draw.text((216, 98), "AI偏差値", font=_font(FONT_BOLD, 19), fill=(82, 91, 91), anchor="ra")
+    return _save_transparent_layer(image, path)
+
+
+def _draw_broadcast_position_lane_layer(
+    path: Path,
+    label: str,
+    horses: Sequence[HorseVideoData],
+    ranked_numbers: dict[int, int],
+) -> Path:
+    width, height = 704, 144
+    image = _broadcast_panel((width, height), fill=(24, 34, 36, 246), border=(61, 75, 77, 255), radius=14)
+    draw = ImageDraw.Draw(image)
+    label_fill = _lane_label_fill(label if label != "不明" else "")
+    draw.rounded_rectangle((12, 12, 116, height - 12), radius=10, fill=label_fill)
+    draw.text((64, 48), label, font=_font(FONT_BLACK, 25), fill=WHITE, anchor="mm")
+    draw.text((64, 91), f"{len(horses)}頭", font=_font(FONT_BOLD, 17), fill=(225, 230, 225), anchor="mm")
+    columns = 8
+    token_d = 42
+    token_zone_left = 146
+    token_zone_right = width - 32
+    step_x = 66
+    row_count = max(1, math.ceil(len(horses) / columns))
+    step_y = 44 if row_count >= 3 else 48
+    first_row_y = height // 2 - ((row_count - 1) * step_y) // 2
+    for index, horse in enumerate(horses):
+        column = index % columns
+        row = index // columns
+        row_start_index = row * columns
+        horses_in_row = min(columns, max(0, len(horses) - row_start_index))
+        occupied_width = max(0, horses_in_row - 1) * step_x
+        row_start_x = token_zone_left + max(
+            0,
+            (token_zone_right - token_zone_left - occupied_width) // 2,
+        )
+        center = (row_start_x + column * step_x, first_row_y + row * step_y)
+        rank = ranked_numbers.get(horse.horse_number)
+        if rank is not None:
+            draw.ellipse(
+                (
+                    center[0] - token_d // 2 - 4,
+                    center[1] - token_d // 2 - 4,
+                    center[0] + token_d // 2 + 4,
+                    center[1] + token_d // 2 + 4,
+                ),
+                outline=EDITORIAL_GOLD,
+                width=4,
+            )
+            draw.text(
+                (center[0] + 24, center[1] - 24),
+                str(rank),
+                font=_font("Inter-Black.ttf", 14),
+                fill=EDITORIAL_GOLD,
+                anchor="mm",
+            )
+        _draw_horse_number_badge(draw, center, horse, token_d, stroke_width=1)
+    return _save_transparent_layer(image, path)
+
+
+ANALYSIS_FEATURES = (
+    ("AI偏差値", "全頭の能力比較", "score", DATA_BLUE),
+    ("対戦成績", "過去の直接対決", "matchup", (99, 102, 241)),
+    ("展開・脚質", "全馬の位置取り", "pace", (18, 148, 105)),
+    ("枠順傾向", "コース別データ", "frame", EDITORIAL_GOLD),
+)
+
+
+def _draw_analysis_feature_visual(
+    draw: ImageDraw.ImageDraw,
+    box: tuple[int, int, int, int],
+    visual_type: str,
+    accent: tuple[int, int, int],
+) -> None:
+    left, top, right, bottom = box
+    width = right - left
+    height = bottom - top
+    if visual_type == "score":
+        ratios = (0.88, 0.64, 0.74)
+        for index, ratio in enumerate(ratios):
+            y = top + 3 + index * max(6, height // 3)
+            draw.rounded_rectangle(
+                (left, y, right, y + 4),
+                radius=2,
+                fill=(68, 79, 81),
+            )
+            draw.rounded_rectangle(
+                (left, y, left + round(width * ratio), y + 4),
+                radius=2,
+                fill=accent if index == 0 else (126, 139, 140),
+            )
+        return
+    if visual_type == "matchup":
+        values = (("+2", (25, 112, 84)), ("0", (65, 76, 79)), ("-1", (137, 58, 67)))
+        chip_width = max(22, (width - 8) // 3)
+        for index, (value, fill) in enumerate(values):
+            x = left + index * (chip_width + 4)
+            draw.rounded_rectangle((x, top, x + chip_width, bottom), radius=5, fill=fill)
+            draw.text(
+                (x + chip_width // 2, top + height // 2),
+                value,
+                font=_font("Inter-Bold.ttf", max(12, min(18, height - 5))),
+                fill=WHITE,
+                anchor="mm",
+            )
+        return
+
+    ratios = (0.56, 0.84, 0.42, 0.68) if visual_type == "pace" else (0.86, 0.45, 0.70, 0.38)
+    bar_gap = 5
+    bar_width = max(5, (width - bar_gap * 3) // 4)
+    for index, ratio in enumerate(ratios):
+        x = left + index * (bar_width + bar_gap)
+        bar_height = max(5, round(height * ratio))
+        draw.rounded_rectangle(
+            (x, bottom - bar_height, x + bar_width, bottom),
+            radius=3,
+            fill=accent if index == 0 else (94, 111, 111),
+        )
+
+
+def _draw_analysis_feature_strip(
+    path: Path,
+    size: tuple[int, int],
+    *,
+    stacked: bool = False,
+    outlined: bool = True,
+    right_safe_padding: int = 0,
+) -> Path:
+    width, height = size
+    image = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    columns = 2 if stacked else 4
+    rows = 2 if stacked else 1
+    gap = 8
+    cell_width = (width - gap * (columns - 1)) // columns
+    cell_height = (height - gap * (rows - 1)) // rows
+
+    for index, (label, description, visual_type, accent) in enumerate(ANALYSIS_FEATURES):
+        column = index % columns
+        row = index // columns
+        left = column * (cell_width + gap)
+        top = row * (cell_height + gap)
+        right = left + cell_width
+        bottom = top + cell_height
+        cell_options: dict[str, object] = {
+            "radius": 10,
+            "fill": (19, 29, 31, 252),
+        }
+        if outlined:
+            cell_options.update({"outline": (61, 76, 77, 255), "width": 2})
+        draw.rounded_rectangle((left, top, right, bottom), **cell_options)
+        draw.rectangle((left, top, left + 6, bottom), fill=accent)
+        if stacked:
+            draw.text((left + 20, top + 15), label, font=_font(FONT_BLACK, 27), fill=WHITE)
+            draw.text(
+                (left + 20, top + 52),
+                description,
+                font=_font(FONT_BOLD, 17),
+                fill=(183, 195, 191),
+            )
+            content_right = right - (right_safe_padding if column == columns - 1 else 0)
+            visual_box = (content_right - 118, top + 23, content_right - 18, bottom - 22)
+        else:
+            draw.text((left + 18, top + 11), label, font=_font(FONT_BLACK, 23), fill=WHITE)
+            draw.text(
+                (left + 18, top + 43),
+                description,
+                font=_font(FONT_BOLD, 15),
+                fill=(183, 195, 191),
+            )
+            visual_box = (right - 112, top + 22, right - 18, bottom - 18)
+        _draw_analysis_feature_visual(draw, visual_box, visual_type, accent)
+    return _save_transparent_layer(image, path)
+
+
+def _draw_broadcast_cta_layer(path: Path, compact: bool = False) -> Path:
+    size = (864, 210) if compact else (LONG_CONTENT_WIDTH, 186)
+    image = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    # CTAは全周を囲まず、左のゴールド線だけで重要度を示す。
+    # 周囲のカード枠との二重線・三重線を防ぎ、視線を文言へ戻す。
+    draw.rounded_rectangle((0, 0, size[0] - 1, size[1] - 1), radius=14, fill=(8, 16, 18, 246))
+    draw.rectangle((0, 0, 8, size[1]), fill=EDITORIAL_GOLD)
+    if compact:
+        draw.text((34, 28), "サイトへのアクセスは", font=_font(FONT_BOLD, 30), fill=WHITE)
+        draw.text((34, 84), "プロフィールのリンクから", font=_font(FONT_BLACK, 42), fill=EDITORIAL_GOLD)
+        draw.text((size[0] - 26, 170), "UMA-FREE", font=_font("Inter-Black.ttf", 23), fill=WHITE, anchor="ra")
+    else:
+        draw.text((30, 9), LONG_SITE_ACCESS_CTA, font=_font(FONT_BLACK, 35), fill=EDITORIAL_GOLD)
+        feature_path = _draw_analysis_feature_strip(
+            path.with_name(f"{path.stem}_features.png"),
+            (size[0] - 52, 104),
+            outlined=False,
+        )
+        with Image.open(feature_path) as feature_source:
+            image.alpha_composite(feature_source.convert("RGBA"), (26, 68))
+    return _save_transparent_layer(image, path)
+
+
+def _draw_motion_wipe_layer(path: Path, height: int) -> Path:
+    width = 220
+    image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    for x in range(width):
+        alpha = round(125 * (x / max(1, width - 1)))
+        ImageDraw.Draw(image).line((x, 0, x, height), fill=(8, 16, 18, alpha), width=1)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((width - 22, 0, width - 1, height), fill=(*EDITORIAL_GOLD, 245))
+    draw.rectangle((width - 30, 0, width - 24, height), fill=(255, 248, 215, 210))
+    return _save_transparent_layer(image, path)
+
+
+def _draw_progress_tick_layer(path: Path) -> Path:
+    image = Image.new("RGBA", (92, 7), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((0, 0, 91, 6), radius=3, fill=EDITORIAL_GOLD)
+    return _save_transparent_layer(image, path)
+
+
+def _build_long_race_motion_scene(
+    video_dir: Path,
+    race: RaceVideoData,
+    target_date: str,
+    progress_index: int,
+    progress_total: int,
+) -> MotionScene:
+    scene_prefix = video_dir / f"{progress_index + 1:03d}_{race.race_number:02d}r"
+    background = _draw_broadcast_race_base(scene_prefix.with_name(f"{scene_prefix.name}_base.png"), race, (1920, 1080))
+    header = _draw_broadcast_header_layer(
+        scene_prefix.with_name(f"{scene_prefix.name}_header.png"),
+        race,
+        target_date,
+        progress_index,
+        progress_total,
+    )
+    top_horses = top_by_deviation(race, 3)
+    rank_specs = [
+        (44, 188, 1070, 220),
+        (44, 428, 1070, 188),
+        (44, 636, 1070, 188),
+    ]
+    rank_layers: list[tuple[Path, int, int]] = []
+    score_layers: list[tuple[Path, int, int, float, float]] = []
+    for rank, horse in enumerate(top_horses, start=1):
+        x, y, card_w, card_h = rank_specs[rank - 1]
+        layer_path = _draw_broadcast_rank_layer(
+            scene_prefix.with_name(f"{scene_prefix.name}_rank_{rank}.png"),
+            horse,
+            rank,
+            (card_w, card_h),
+            show_score=rank != 1,
+        )
+        rank_layers.append((layer_path, x, y))
+        if rank == 1:
+            target_score = horse.deviation_score
+            frame_count = 7
+            for frame in range(frame_count):
+                ratio = frame / max(1, frame_count - 1)
+                eased = 1 - (1 - ratio) * (1 - ratio)
+                if target_score is None:
+                    score = None
+                else:
+                    start_score = min(50.0, target_score)
+                    score = start_score + (target_score - start_score) * eased
+                start = 0.70 + frame * (0.80 / frame_count)
+                end = (
+                    LONG_RACE_SCENE_SECONDS
+                    if frame == frame_count - 1
+                    else 0.70 + (frame + 1) * (0.80 / frame_count) + 0.02
+                )
+                score_path = _draw_broadcast_score_fragment(
+                    scene_prefix.with_name(f"{scene_prefix.name}_score_{frame:02d}.png"),
+                    score,
+                )
+                score_layers.append((score_path, x + card_w - 254, y + 8, start, end))
+
+    groups = _position_groups(race)
+    ranked_numbers = {horse.horse_number: rank for rank, horse in enumerate(top_horses, start=1)}
+    position_layers: list[tuple[Path, int, int]] = []
+    lane_specs = [
+        ("先行", groups["先行"]),
+        ("中団", groups["中団"]),
+        ("後方", groups["後方"]),
+        ("不明", groups["-"]),
+    ]
+    for lane_index, (label, horses) in enumerate(lane_specs):
+        lane_path = _draw_broadcast_position_lane_layer(
+            scene_prefix.with_name(f"{scene_prefix.name}_lane_{lane_index}.png"),
+            label,
+            horses,
+            ranked_numbers,
+        )
+        position_layers.append((lane_path, 1154, 188 + lane_index * 158))
+
+    cta = _draw_broadcast_cta_layer(scene_prefix.with_name(f"{scene_prefix.name}_cta.png"))
+    wipe = _draw_motion_wipe_layer(scene_prefix.with_name(f"{scene_prefix.name}_wipe.png"), 1080)
+    progress = _draw_progress_tick_layer(scene_prefix.with_name(f"{scene_prefix.name}_progress.png"))
+    preview = scene_prefix.with_name(f"{scene_prefix.name}_race.png")
+    _compose_motion_preview(
+        background,
+        [
+            (header, 44, 36),
+            *rank_layers,
+            *[(layer_path, x, y) for layer_path, x, y, _, _ in score_layers[-1:]],
+            *position_layers,
+            (cta, LONG_CONTENT_LEFT, LONG_CTA_Y),
+            (progress, 910, 1045),
+        ],
+        preview,
+    )
+
+    layers: list[MotionLayer] = [
+        MotionLayer(
+            wipe,
+            x=1920,
+            y=0,
+            start_seconds=0.0,
+            end_seconds=0.32,
+            enter_duration=0.30,
+            start_x=-220,
+            end_x=1920,
+            easing="ease_out",
+            z_index=100,
+        ),
+        MotionLayer(
+            header,
+            x=44,
+            y=36,
+            start_seconds=0.15,
+            end_seconds=LONG_RACE_SCENE_SECONDS,
+            enter_duration=0.32,
+            start_x=-36,
+            end_x=44,
+            z_index=10,
+        ),
+    ]
+    for rank, (layer_path, x, y) in enumerate(rank_layers, start=1):
+        start = 0.45 + (rank - 1) * 0.12
+        layers.append(
+            MotionLayer(
+                layer_path,
+                x=x,
+                y=y,
+                start_seconds=start,
+                end_seconds=LONG_RACE_SCENE_SECONDS,
+                enter_duration=0.30,
+                start_x=x - 84,
+                end_x=x,
+                z_index=20 + rank,
+            )
+        )
+    for frame, (layer_path, x, y, start, end) in enumerate(score_layers):
+        layers.append(
+            MotionLayer(
+                layer_path,
+                x=x,
+                y=y,
+                start_seconds=start,
+                end_seconds=end,
+                enter_duration=0.0,
+                exit_duration=0.0,
+                z_index=28 + frame,
+            )
+        )
+    for lane_index, (layer_path, x, y) in enumerate(position_layers):
+        start = 1.20 + lane_index * 0.20
+        layers.append(
+            MotionLayer(
+                layer_path,
+                x=x,
+                y=y,
+                start_seconds=start,
+                end_seconds=LONG_RACE_SCENE_SECONDS,
+                enter_duration=0.30,
+                start_x=x + 70,
+                end_x=x,
+                z_index=30 + lane_index,
+            )
+        )
+    layers.extend(
+        [
+            MotionLayer(
+                cta,
+                x=LONG_CONTENT_LEFT,
+                y=LONG_CTA_Y,
+                start_seconds=0.32,
+                end_seconds=LONG_RACE_SCENE_SECONDS,
+                enter_duration=0.28,
+                start_y=LONG_CTA_Y + 36,
+                end_y=LONG_CTA_Y,
+                z_index=50,
+            ),
+            MotionLayer(
+                progress,
+                x=1784,
+                y=1045,
+                start_seconds=0.30,
+                end_seconds=5.86,
+                enter_duration=5.56,
+                start_x=60,
+                end_x=1768,
+                easing="linear",
+                z_index=60,
+            ),
+        ]
+    )
+    return MotionScene(
+        background_path=background,
+        duration_seconds=LONG_RACE_SCENE_SECONDS,
+        preview_path=preview,
+        layers=layers,
+        scene_id=f"race-{race.race_number}",
+    )
+
+
 def _draw_outro_slide(
     path: Path,
     target_date: str,
@@ -1711,25 +2341,40 @@ def _draw_outro_slide(
         _draw_brand_lockup(image, draw, margin, 48, compact=False, light=True)
         draw.text((width - margin, 50), _display_short_date(target_date), font=_font(FONT_BOLD, 27), fill=WHITE, anchor="ra")
         draw.line((margin, 122, width - margin, 122), fill=EDITORIAL_GOLD, width=4)
-        draw.multiline_text(
-            (margin, 168),
-            "中央・地方の全レース分析データを\n毎日無料で公開",
-            font=_font(FONT_BLACK, 54),
-            fill=WHITE,
-            spacing=2,
-            stroke_width=2,
-            stroke_fill=TEXT_OUTLINE,
+        draw.text((margin, 176), "全頭データをサイトで確認", font=_font(FONT_BLACK, 69), fill=WHITE, stroke_width=2, stroke_fill=TEXT_OUTLINE)
+        draw.text(
+            (margin, 278),
+            "動画では上位3頭と位置取りを要約。詳しい比較データはUMA-FREEへ。",
+            font=_font(FONT_BOLD, 28),
+            fill=(223, 229, 225),
         )
-        draw.rectangle((margin, 302, margin + 146, 348), fill=EDITORIAL_GOLD)
-        draw.text((margin + 73, 325), SITE_NO_REGISTRATION, font=_font(FONT_BOLD, 21), fill=INK_DARK, anchor="mm")
-        _draw_feature_grid(draw, (margin, 380, width - margin, 620), columns=4, compact=False, show_descriptions=True)
-        cta_y = 664
-        cta_right = 1470
-        draw.rectangle((margin, cta_y, cta_right, cta_y + 214), fill=(15, 21, 25))
-        draw.rectangle((margin, cta_y, margin + 8, cta_y + 214), fill=BURGUNDY)
-        draw.text((margin + 42, cta_y + 34), "概要欄のリンクからUMA-FREEへ", font=_font(FONT_BOLD, 39), fill=WHITE)
-        draw.text((margin + 42, cta_y + 100), "または「UMA-FREE」で検索", font=_font(FONT_REGULAR, 28), fill=(232, 230, 219))
-        draw.text((cta_right - 36, cta_y + 154), "uma-free.com", font=_font("Inter-Bold.ttf", 31), fill=EDITORIAL_GOLD, anchor="ra")
+        chip_y = 378
+        chip_gap = 18
+        chip_width = 390
+        for index, (label, sublabel) in enumerate(
+            (
+                ("全頭AI偏差値", "全出走馬を一覧"),
+                ("対戦成績", "過去の直接対決"),
+                ("枠順傾向", "コース別に確認"),
+            )
+        ):
+            x = margin + index * (chip_width + chip_gap)
+            draw.rounded_rectangle(
+                (x, chip_y, x + chip_width, chip_y + 154),
+                radius=14,
+                fill=(12, 22, 24),
+                outline=(79, 93, 93),
+                width=2,
+            )
+            draw.rectangle((x, chip_y, x + 7, chip_y + 154), fill=DEEP_GREEN if index != 1 else DATA_BLUE)
+            draw.text((x + 28, chip_y + 26), label, font=_font(FONT_BLACK, 31), fill=WHITE)
+            draw.text((x + 28, chip_y + 88), sublabel, font=_font(FONT_REGULAR, 22), fill=(192, 202, 198))
+        draw.rectangle((margin, 592, 1535, 870), fill=(7, 15, 17), outline=(87, 101, 101), width=2)
+        draw.rectangle((margin, 592, margin + 10, 870), fill=EDITORIAL_GOLD)
+        draw.text((margin + 44, 626), "サイトへのアクセスは", font=_font(FONT_BOLD, 37), fill=(216, 223, 219))
+        draw.text((margin + 44, 692), "概要欄のリンクから", font=_font(FONT_BLACK, 70), fill=EDITORIAL_GOLD)
+        draw.text((margin + 46, 798), "登録不要 / 毎日無料公開", font=_font(FONT_BOLD, 27), fill=WHITE)
+        draw.text((1496, 801), "uma-free.com", font=_font("Inter-Black.ttf", 31), fill=WHITE, anchor="ra")
     else:
         _draw_brand_lockup(image, draw, margin, 82, compact=True, light=True)
         draw.line((margin, 168, 900, 168), fill=EDITORIAL_GOLD, width=4)
@@ -1748,7 +2393,7 @@ def _draw_outro_slide(
         cta_y = 1130
         draw.rectangle((margin, cta_y, 900, cta_y + 276), fill=(15, 21, 25))
         draw.rectangle((margin, cta_y, margin + 8, cta_y + 276), fill=BURGUNDY)
-        profile_cta = "プロフィールのリンクから全頭データを確認"
+        profile_cta = SHORT_SITE_ACCESS_CTA
         draw.text((margin + 38, cta_y + 34), profile_cta, font=_fit_font_for_width(draw, profile_cta, FONT_BOLD, 36, 25, 760), fill=WHITE)
         draw.text((margin + 38, cta_y + 100), "または「UMA-FREE」で検索", font=_font(FONT_REGULAR, 25), fill=(232, 230, 219))
         draw.text((margin + 38, cta_y + 190), "uma-free.com", font=_font("Inter-Bold.ttf", 30), fill=EDITORIAL_GOLD)
@@ -1778,33 +2423,46 @@ def _draw_thumbnail(
     headline = title.strip() or "全レース"
 
     if not compact:
-        _draw_brand_lockup(image, draw, margin, 44, compact=False, light=True, logo_size=64)
-        _draw_site_claim_line(draw, 330, 60, 570, compact=False)
-        draw.line((margin, 114, 900, 114), fill=EDITORIAL_GOLD, width=4)
-        chip_text = "  ".join(part for part in (date_text, venue_name, grade) if part)
-        draw.text((margin, 136), chip_text, font=_font(FONT_BOLD, 30), fill=(236, 235, 229))
+        _draw_brand_lockup(image, draw, margin, 42, compact=False, light=True, logo_size=64)
+        draw.rectangle((margin, 132, 1240, 138), fill=EDITORIAL_GOLD)
+        chip_text = "  /  ".join(part for part in (date_text, venue_name, grade) if part)
+        draw.text((margin, 166), chip_text, font=_font(FONT_BOLD, 32), fill=(236, 235, 229))
         _draw_fit_text_no_ellipsis(
             draw,
             headline,
-            (margin, 212),
+            (margin, 244),
             FONT_BLACK,
-            154,
-            76,
-            920,
+            166,
+            78,
+            1190,
             WHITE,
             max_lines=2,
             line_gap=0,
-            stroke_width=3,
+            stroke_width=4,
             stroke_fill=TEXT_OUTLINE,
         )
-        draw.text(
-            (margin, 570),
-            subtitle or "全レース AI偏差値・位置取り",
-            font=_font(FONT_BOLD, 31),
-            fill=(236, 235, 229),
-        )
-        draw.line((margin, 624, 900, 624), fill=(236, 235, 229), width=2)
-        _draw_photo_score_module(draw, (margin, 660, 900, 964), hero_horse, compact=False)
+        subtitle_text = subtitle or "全レース AI偏差値・位置取り"
+        draw.rectangle((margin, 724, 1030, 792), fill=(8, 16, 18))
+        draw.rectangle((margin, 724, margin + 9, 792), fill=EDITORIAL_GOLD)
+        draw.text((margin + 30, 738), subtitle_text, font=_font(FONT_BLACK, 31), fill=WHITE)
+        score_box = (margin, 828, 790, 1000)
+        draw.rounded_rectangle(score_box, radius=16, fill=(8, 16, 18), outline=(102, 111, 108), width=2)
+        if hero_horse:
+            _draw_horse_number_badge(draw, (margin + 64, 914), hero_horse, 72, stroke_width=3)
+            _draw_fit_text_no_ellipsis(
+                draw,
+                hero_horse.horse_name,
+                (margin + 120, 856),
+                FONT_BLACK,
+                36,
+                23,
+                410,
+                WHITE,
+                max_lines=1,
+            )
+            draw.text((margin + 120, 924), "AI偏差値", font=_font(FONT_BOLD, 22), fill=(202, 210, 206))
+            draw.text((score_box[2] - 28, 842), _score_text(hero_horse.deviation_score), font=_font("Inter-Black.ttf", 94), fill=EDITORIAL_GOLD, anchor="ra")
+        draw.text((width - margin, height - 52), "UMA-FREE", font=_font("Inter-Black.ttf", 28), fill=WHITE, anchor="ra")
     else:
         _draw_brand_lockup(image, draw, margin, 82, compact=True, light=True)
         draw.text((width - margin, 84), date_text, font=_font(FONT_BOLD, 27), fill=WHITE, anchor="ra")
@@ -1928,18 +2586,41 @@ def _add_bgm(
     output_path: Path,
     audio_asset: AudioAsset,
     duration_seconds: float,
+    audio_cues: Sequence[AudioCue] = (),
 ) -> None:
     fade_in = min(0.6, max(0.1, duration_seconds * 0.1))
     fade_out = min(0.8, max(0.1, duration_seconds * 0.15))
     fade_out_start = max(fade_in, duration_seconds - fade_out)
-    audio_filter = (
+    filter_parts = [
         "[1:a]loudnorm=I=-18:TP=-1.5:LRA=11,"
         "aresample=48000,"
         f"volume={audio_asset.volume:.4f},"
         f"afade=t=in:st=0:d={fade_in:.3f},"
         f"afade=t=out:st={fade_out_start:.3f}:d={fade_out:.3f},"
         f"atrim=0:{duration_seconds:.3f},asetpts=N/SR/TB[bgm]"
-    )
+    ]
+    cue_labels: list[str] = []
+    cue_inputs: list[str] = []
+    for index, cue in enumerate(audio_cues, start=2):
+        cue_inputs.extend(["-i", str(cue.asset_path)])
+        label = f"cue{index}"
+        delay_ms = max(0, round(cue.start_seconds * 1000))
+        filter_parts.append(
+            f"[{index}:a]aresample=48000,volume={max(0.0, min(1.0, cue.volume)):.4f},"
+            f"atrim=0:{max(0.05, cue.max_duration):.3f},"
+            f"afade=t=out:st={max(0.02, cue.max_duration - 0.10):.3f}:d=0.10,"
+            f"adelay={delay_ms}:all=1[{label}]"
+        )
+        cue_labels.append(f"[{label}]")
+    if cue_labels:
+        filter_parts.append(
+            f"[bgm]{''.join(cue_labels)}amix=inputs={1 + len(cue_labels)}:"
+            f"duration=first:normalize=0,alimiter=limit=0.891,"
+            f"atrim=0:{duration_seconds:.3f}[mix]"
+        )
+        audio_map = "[mix]"
+    else:
+        audio_map = "[bgm]"
     command = [
         ffmpeg,
         "-y",
@@ -1949,12 +2630,13 @@ def _add_bgm(
         "-1",
         "-i",
         str(audio_asset.path),
+        *cue_inputs,
         "-filter_complex",
-        audio_filter,
+        ";".join(filter_parts),
         "-map",
         "0:v",
         "-map",
-        "[bgm]",
+        audio_map,
         "-c:v",
         "copy",
         "-c:a",
@@ -2046,6 +2728,57 @@ def render_mp4(
         shutil.rmtree(motion_dir, ignore_errors=True)
 
 
+def render_motion_video(
+    scenes: Sequence[MotionScene],
+    output_path: Path,
+    width: int,
+    height: int,
+    audio_asset: Optional[AudioAsset] = None,
+) -> None:
+    """Broadcast Editorialのレイヤーシーンを動画化し、既存BGMを付与する。"""
+
+    ffmpeg = os.getenv("FFMPEG_BINARY") or shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise RuntimeError(
+            "ffmpegが見つかりません。ローカル検証では --skip-video を使うか、ffmpegをインストールしてください。"
+        )
+    video_without_audio = output_path.with_suffix(".video.mp4") if audio_asset else output_path
+    duration_seconds = render_motion_scenes(
+        scenes,
+        video_without_audio,
+        width,
+        height,
+        VIDEO_FPS,
+    )
+    if audio_asset:
+        timeline_cues: list[AudioCue] = []
+        scene_offset = 0.0
+        for scene in scenes:
+            for cue in scene.audio_cues:
+                timeline_cues.append(
+                    AudioCue(
+                        asset_path=cue.asset_path,
+                        start_seconds=scene_offset + cue.start_seconds,
+                        volume=cue.volume,
+                        max_duration=cue.max_duration,
+                        cue_type=cue.cue_type,
+                    )
+                )
+            scene_offset += scene.duration_seconds
+        _add_bgm(
+            ffmpeg,
+            video_without_audio,
+            output_path,
+            audio_asset,
+            duration_seconds,
+            audio_cues=timeline_cues,
+        )
+        try:
+            video_without_audio.unlink()
+        except OSError:
+            pass
+
+
 def _write_metadata(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -2106,6 +2839,707 @@ def _draw_intro_sequence(
     return slides
 
 
+def _draw_broadcast_intro_overlay(
+    path: Path,
+    target_date: str,
+    headline: str,
+    race_label: str,
+    scope_label: str,
+    size: tuple[int, int],
+) -> Path:
+    width, height = size
+    compact = height > width
+    image = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    margin = 60 if compact else 68
+    _draw_brand_lockup(image, draw, margin, 76 if compact else 42, compact=compact, light=True)
+    draw.text(
+        (width - (180 if compact else margin), 84 if compact else 52),
+        _display_short_date(target_date),
+        font=_font(FONT_BOLD, 27),
+        fill=WHITE,
+        anchor="ra",
+    )
+    if compact:
+        draw.text((margin, 260), race_label, font=_font(FONT_BOLD, 31), fill=(229, 232, 227))
+        _draw_fit_text_no_ellipsis(
+            draw,
+            headline,
+            (margin, 328),
+            FONT_BLACK,
+            84,
+            50,
+            820,
+            WHITE,
+            max_lines=2,
+            line_gap=3,
+            stroke_width=3,
+            stroke_fill=TEXT_OUTLINE,
+        )
+        draw.rectangle((margin, 560, 900, 626), fill=(9, 17, 19, 226))
+        draw.text((margin + 26, 575), scope_label, font=_font(FONT_BLACK, 30), fill=EDITORIAL_GOLD)
+    else:
+        draw.text((margin, 148), race_label, font=_font(FONT_BOLD, 30), fill=(229, 232, 227))
+        _draw_fit_text_no_ellipsis(
+            draw,
+            headline,
+            (margin, 214),
+            FONT_BLACK,
+            138,
+            70,
+            1030,
+            WHITE,
+            max_lines=2,
+            line_gap=0,
+            stroke_width=3,
+            stroke_fill=TEXT_OUTLINE,
+        )
+        draw.rectangle((margin, 570, 978, 642), fill=(9, 17, 19, 226))
+        draw.text((margin + 28, 584), scope_label, font=_font(FONT_BLACK, 34), fill=EDITORIAL_GOLD)
+    return _save_transparent_layer(image, path)
+
+
+def _draw_intro_score_layer(
+    path: Path,
+    horse: Optional[HorseVideoData],
+    score: Optional[float],
+    compact: bool,
+) -> Path:
+    size = (840, 214) if compact else (910, 216)
+    image = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    _draw_photo_score_module(
+        draw,
+        (0, 0, size[0], size[1]),
+        horse,
+        compact=compact,
+        score_override=score,
+        show_score=True,
+    )
+    return _save_transparent_layer(image, path)
+
+
+def _build_intro_motion_scene(
+    video_dir: Path,
+    target_date: str,
+    headline: str,
+    size: tuple[int, int],
+    hero_horse: Optional[HorseVideoData],
+    race_label: str,
+    scope_label: str,
+    venue_name: str,
+    race_number: Optional[int],
+    visual_asset: Optional[VisualAsset],
+    video_asset: Optional[VideoAsset],
+    duration_seconds: float,
+    scene_prefix: str = "000_intro",
+) -> MotionScene:
+    compact = size[1] > size[0]
+    background_image, _ = _hero_background(
+        size,
+        target_date,
+        venue_name,
+        race_number,
+        visual_asset,
+    )
+    background_image = _apply_photo_scrim(background_image, compact)
+    background = video_dir / f"{scene_prefix}_base.png"
+    _save_slide(background_image, background, size)
+    overlay = _draw_broadcast_intro_overlay(
+        video_dir / f"{scene_prefix}_title.png",
+        target_date,
+        headline,
+        race_label,
+        scope_label,
+        size,
+    )
+    rail = Image.new("RGBA", (820 if compact else 1050, 7), (*EDITORIAL_GOLD, 255))
+    rail_path = _save_transparent_layer(rail, video_dir / f"{scene_prefix}_rail.png")
+    score_y = 680 if compact else 700
+    score_x = 60 if compact else 68
+    score_layers: list[tuple[Path, float, float]] = []
+    target_score = hero_horse.deviation_score if hero_horse else None
+    if target_score is None:
+        score_path = _draw_intro_score_layer(
+            video_dir / f"{scene_prefix}_score_00.png",
+            hero_horse,
+            None,
+            compact,
+        )
+        score_layers.append((score_path, 0.70, duration_seconds))
+    else:
+        frame_count = 7
+        for frame in range(frame_count):
+            ratio = frame / max(1, frame_count - 1)
+            eased = 1 - (1 - ratio) * (1 - ratio)
+            start_score = min(50.0, target_score)
+            score = start_score + (target_score - start_score) * eased
+            start = 0.70 + frame * (0.74 / frame_count)
+            end = duration_seconds if frame == frame_count - 1 else 0.70 + (frame + 1) * (0.74 / frame_count) + 0.02
+            score_path = _draw_intro_score_layer(
+                video_dir / f"{scene_prefix}_score_{frame:02d}.png",
+                hero_horse,
+                score,
+                compact,
+            )
+            score_layers.append((score_path, start, end))
+    wipe = _draw_motion_wipe_layer(video_dir / f"{scene_prefix}_wipe.png", size[1])
+    preview = video_dir / f"{scene_prefix}.png"
+    _compose_motion_preview(
+        background,
+        [
+            (rail_path, 60 if compact else 68, 184 if compact else 118),
+            (overlay, 0, 0),
+            (score_layers[-1][0], score_x, score_y),
+        ],
+        preview,
+    )
+    layers: list[MotionLayer] = []
+    render_background = background
+    if video_asset is not None:
+        render_background = video_asset.path
+        scrim = Image.new("RGBA", size, (7, 14, 16, 154 if compact else 132))
+        scrim_path = _save_transparent_layer(scrim, video_dir / f"{scene_prefix}_video_scrim.png")
+        layers.append(
+            MotionLayer(
+                scrim_path,
+                0,
+                0,
+                0.0,
+                duration_seconds,
+                enter_duration=0.0,
+                z_index=1,
+            )
+        )
+    layers.extend([
+        MotionLayer(
+            rail_path,
+            x=60 if compact else 68,
+            y=184 if compact else 118,
+            start_seconds=0.02,
+            end_seconds=duration_seconds,
+            enter_duration=0.42,
+            start_x=-(820 if compact else 1050),
+            end_x=60 if compact else 68,
+            z_index=10,
+        ),
+        MotionLayer(
+            overlay,
+            x=0,
+            y=0,
+            start_seconds=0.06,
+            end_seconds=duration_seconds,
+            enter_duration=0.34,
+            start_x=-76,
+            end_x=0,
+            z_index=20,
+        ),
+    ])
+    for frame, (score_path, start, end) in enumerate(score_layers):
+        layers.append(
+            MotionLayer(
+                score_path,
+                x=score_x,
+                y=score_y,
+                start_seconds=start,
+                end_seconds=end,
+                enter_duration=0.0,
+                z_index=30 + frame,
+            )
+        )
+    if not compact:
+        layers.append(
+            MotionLayer(
+                wipe,
+                x=size[0],
+                y=0,
+                start_seconds=duration_seconds - 0.30,
+                end_seconds=duration_seconds,
+                enter_duration=0.30,
+                start_x=-220,
+                end_x=size[0],
+                z_index=100,
+            )
+        )
+    return MotionScene(
+        background_path=render_background,
+        duration_seconds=duration_seconds,
+        preview_path=preview,
+        layers=layers,
+        scene_id=scene_prefix,
+    )
+
+
+def _build_outro_motion_scene(
+    video_dir: Path,
+    target_date: str,
+    size: tuple[int, int],
+    utm_content: str,
+    venue_name: str,
+    race_number: Optional[int],
+    visual_asset: Optional[VisualAsset],
+    duration_seconds: float,
+    prefix: str = "999_outro",
+) -> MotionScene:
+    final_path = video_dir / f"{prefix}.png"
+    _draw_outro_slide(
+        final_path,
+        target_date,
+        size,
+        utm_content,
+        venue_name=venue_name,
+        race_number=race_number,
+        visual_asset=visual_asset,
+    )
+    highlight = Image.new("RGBA", (620 if size[0] > size[1] else 690, 7), (*EDITORIAL_GOLD, 255))
+    highlight_path = _save_transparent_layer(highlight, video_dir / f"{prefix}_highlight.png")
+    compact = size[1] > size[0]
+    return MotionScene(
+        background_path=final_path,
+        duration_seconds=duration_seconds,
+        preview_path=final_path,
+        layers=[
+            MotionLayer(
+                highlight_path,
+                x=68 if not compact else 60,
+                y=936 if not compact else 1438,
+                start_seconds=0.18,
+                end_seconds=duration_seconds,
+                enter_duration=0.46,
+                start_x=-700,
+                end_x=68 if not compact else 60,
+                z_index=10,
+            )
+        ],
+        scene_id=prefix,
+    )
+
+
+SHORT_COLUMN_X = 108
+SHORT_COLUMN_WIDTH = 864
+SHORT_COLUMN_RIGHT = SHORT_COLUMN_X + SHORT_COLUMN_WIDTH
+SHORT_CRITICAL_RIGHT = 936
+SHORT_ANALYSIS_FOOTER_Y = 1318
+SHORT_PHASE_TIMINGS = (
+    ("000_cover.png", 0.0, 1.20),
+    ("001_ranking.png", 1.20, 5.00),
+    ("002_position.png", 5.00, 9.00),
+    ("003_hero.png", 9.00, 12.00),
+    ("999_outro.png", 12.00, SHORT_SCENE_SECONDS),
+)
+SHORT_TRANSITION_TIMES = tuple(timing[1] for timing in SHORT_PHASE_TIMINGS[1:])
+
+
+def _validate_short_content_layers(
+    layers: Sequence[MotionLayer],
+    size: tuple[int, int],
+) -> None:
+    """Shortsの主要コンテンツが重ならず、全フレームで画面内に収まることを検証する。"""
+
+    phase_names = {timing[0] for timing in SHORT_PHASE_TIMINGS}
+    phase_layers = sorted(
+        (layer for layer in layers if layer.image_path.name in phase_names),
+        key=lambda layer: layer.start_seconds,
+    )
+    if len(phase_layers) != len(SHORT_PHASE_TIMINGS):
+        raise ValueError("Shortsの表示フェーズが不足しています")
+    for previous, current in zip(phase_layers, phase_layers[1:]):
+        if current.start_seconds < previous.end_seconds:
+            raise ValueError(
+                "Shortsの前後フェーズが時間上で重複しています: "
+                f"{previous.image_path.name} / {current.image_path.name}"
+            )
+
+    content_names = phase_names | {"000_short_analysis_footer.png"}
+    canvas_width, canvas_height = size
+    for layer in layers:
+        if layer.image_path.name not in content_names:
+            continue
+        with Image.open(layer.image_path) as source:
+            alpha = source.convert("RGBA").getchannel("A")
+            bounds = alpha.getbbox()
+        if bounds is None:
+            continue
+        positions = {
+            (
+                layer.x if x is None else x,
+                layer.y if y is None else y,
+            )
+            for x, y in (
+                (None, None),
+                (layer.start_x, layer.start_y),
+                (layer.end_x, layer.end_y),
+            )
+        }
+        for x, y in positions:
+            left = x + bounds[0]
+            top = y + bounds[1]
+            right = x + bounds[2]
+            bottom = y + bounds[3]
+            if left < 0 or top < 0 or right > canvas_width or bottom > canvas_height:
+                raise ValueError(
+                    "Shortsの主要コンテンツが画面外へ出ています: "
+                    f"{layer.image_path.name} bounds=({left},{top},{right},{bottom})"
+                )
+
+
+def _short_phase_header(
+    draw: ImageDraw.ImageDraw,
+    race: RaceVideoData,
+    target_date: str,
+    label: str,
+) -> None:
+    draw.text(
+        (SHORT_COLUMN_X, 294),
+        f"{race.venue_name}{race.race_number}R",
+        font=_font(FONT_BOLD, 30),
+        fill=EDITORIAL_GOLD,
+    )
+    draw.text(
+        (SHORT_CRITICAL_RIGHT, 296),
+        _display_short_date(target_date),
+        font=_font(FONT_BOLD, 24),
+        fill=(213, 221, 217),
+        anchor="ra",
+    )
+    _draw_fit_text_no_ellipsis(
+        draw,
+        race.display_name,
+        (SHORT_COLUMN_X, 350),
+        FONT_BLACK,
+        58,
+        38,
+        SHORT_CRITICAL_RIGHT - SHORT_COLUMN_X,
+        WHITE,
+        max_lines=2,
+        line_gap=1,
+    )
+    draw.text((SHORT_COLUMN_X, 478), label, font=_font(FONT_BLACK, 30), fill=DATA_BLUE)
+
+
+def _draw_short_analysis_footer(path: Path) -> Path:
+    image = Image.new("RGBA", (SHORT_COLUMN_WIDTH, 250), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.text(
+        (0, 0),
+        SHORT_SITE_ACCESS_CTA,
+        font=_font(FONT_BLACK, 25),
+        fill=WHITE,
+    )
+    feature_path = _draw_analysis_feature_strip(
+        path.with_name(f"{path.stem}_features.png"),
+        (SHORT_COLUMN_WIDTH, 208),
+        stacked=True,
+        right_safe_padding=18,
+    )
+    with Image.open(feature_path) as feature_source:
+        image.alpha_composite(feature_source.convert("RGBA"), (0, 42))
+    return _save_transparent_layer(image, path)
+
+
+def _draw_short_cover_phase(
+    path: Path,
+    race: RaceVideoData,
+    target_date: str,
+    hero_horse: Optional[HorseVideoData],
+) -> Path:
+    image = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    # 背景面は画面中央へ配置し、重要文字だけ右側の操作UIを避ける。
+    draw.rounded_rectangle((72, 270, 1008, 1290), radius=22, fill=(7, 14, 16, 218))
+    _short_phase_header(draw, race, target_date, "AI偏差値 TOP3")
+    draw.line((SHORT_COLUMN_X, 538, SHORT_COLUMN_RIGHT, 538), fill=EDITORIAL_GOLD, width=5)
+    if hero_horse is not None:
+        score_layer = _draw_broadcast_rank_layer(
+            path.with_name(f"{path.stem}_hero_card.png"),
+            hero_horse,
+            1,
+            (SHORT_COLUMN_WIDTH, 278),
+            right_safe_padding=12,
+        )
+        with Image.open(score_layer) as source:
+            image.alpha_composite(source.convert("RGBA"), (SHORT_COLUMN_X, 590))
+    draw = ImageDraw.Draw(image)
+    draw.text(
+        (SHORT_COLUMN_X, 950),
+        "上位3頭と全馬の位置取りを15秒で確認",
+        font=_font(FONT_BOLD, 27),
+        fill=(218, 225, 221),
+    )
+    draw.text(
+        (SHORT_COLUMN_X, 1006),
+        "対戦成績やコース別の枠順傾向も全レース掲載",
+        font=_font(FONT_BOLD, 24),
+        fill=EDITORIAL_GOLD,
+    )
+    return _save_transparent_layer(image, path)
+
+
+def _draw_short_ranking_phase(
+    path: Path,
+    race: RaceVideoData,
+    target_date: str,
+) -> Path:
+    image = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    _short_phase_header(draw, race, target_date, "AI偏差値 上位3頭")
+    top_horses = top_by_deviation(race, 3)
+    y_positions = (558, 826, 1046)
+    heights = (246, 202, 202)
+    for rank, horse in enumerate(top_horses, start=1):
+        card_path = _draw_broadcast_rank_layer(
+            path.with_name(f"{path.stem}_rank_{rank}.png"),
+            horse,
+            rank,
+            (SHORT_COLUMN_WIDTH, heights[rank - 1]),
+            right_safe_padding=12,
+        )
+        with Image.open(card_path) as source:
+            image.alpha_composite(source.convert("RGBA"), (SHORT_COLUMN_X, y_positions[rank - 1]))
+    return _save_transparent_layer(image, path)
+
+
+def _draw_short_position_phase(
+    path: Path,
+    race: RaceVideoData,
+    target_date: str,
+) -> Path:
+    image = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    _short_phase_header(draw, race, target_date, "全馬の位置取り")
+    groups = _position_groups(race)
+    top_horses = top_by_deviation(race, 3)
+    ranked_numbers = {horse.horse_number: rank for rank, horse in enumerate(top_horses, start=1)}
+    for lane_index, (label, horses) in enumerate(
+        (
+            ("先行", groups["先行"]),
+            ("中団", groups["中団"]),
+            ("後方", groups["後方"]),
+            ("不明", groups["-"]),
+        )
+    ):
+        lane_path = _draw_broadcast_position_lane_layer(
+            path.with_name(f"{path.stem}_lane_{lane_index}.png"),
+            label,
+            horses,
+            ranked_numbers,
+        )
+        with Image.open(lane_path) as source:
+            lane = source.convert("RGBA").resize((SHORT_COLUMN_WIDTH, 164), Image.Resampling.LANCZOS)
+        image.alpha_composite(lane, (SHORT_COLUMN_X, 570 + lane_index * 174))
+    draw = ImageDraw.Draw(image)
+    draw.text(
+        (SHORT_COLUMN_X, 1276),
+        "金枠はAI偏差値上位3頭",
+        font=_font(FONT_BOLD, 24),
+        fill=EDITORIAL_GOLD,
+    )
+    return _save_transparent_layer(image, path)
+
+
+def _draw_short_hero_phase(
+    path: Path,
+    race: RaceVideoData,
+    target_date: str,
+    hero_horse: Optional[HorseVideoData],
+) -> Path:
+    image = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    _short_phase_header(draw, race, target_date, "AI偏差値 1位")
+    if hero_horse is not None:
+        card_path = _draw_broadcast_rank_layer(
+            path.with_name(f"{path.stem}_card.png"),
+            hero_horse,
+            1,
+            (SHORT_COLUMN_WIDTH, 344),
+            right_safe_padding=12,
+        )
+        with Image.open(card_path) as source:
+            image.alpha_composite(source.convert("RGBA"), (SHORT_COLUMN_X, 620))
+    draw = ImageDraw.Draw(image)
+    draw.text(
+        (SHORT_COLUMN_X, 1018),
+        "対戦成績・展開・脚質・枠順傾向もサイトで公開",
+        font=_font(FONT_BOLD, 26),
+        fill=(218, 225, 221),
+    )
+    draw.text(
+        (SHORT_COLUMN_X, 1072),
+        "全レースを同じ4視点で比較できます",
+        font=_font(FONT_BOLD, 23),
+        fill=EDITORIAL_GOLD,
+    )
+    draw.line((SHORT_COLUMN_X, 1126, SHORT_COLUMN_RIGHT, 1126), fill=EDITORIAL_GOLD, width=4)
+    return _save_transparent_layer(image, path)
+
+
+def _draw_short_cta_phase(
+    path: Path,
+    race: RaceVideoData,
+    target_date: str,
+) -> Path:
+    image = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    _short_phase_header(draw, race, target_date, "全頭データ・対戦成績・枠順傾向")
+    cta_path = _draw_broadcast_cta_layer(path.with_name(f"{path.stem}_panel.png"), compact=True)
+    with Image.open(cta_path) as source:
+        image.alpha_composite(source.convert("RGBA"), (SHORT_COLUMN_X, 630))
+    draw = ImageDraw.Draw(image)
+    draw.text(
+        (SHORT_COLUMN_X, 900),
+        "登録不要 / 毎日無料公開",
+        font=_font(FONT_BOLD, 28),
+        fill=(219, 226, 222),
+    )
+    draw.text(
+        (SHORT_COLUMN_X, 970),
+        "uma-free.com",
+        font=_font("Inter-Black.ttf", 42),
+        fill=EDITORIAL_GOLD,
+    )
+    return _save_transparent_layer(image, path)
+
+
+def _build_short_motion_scene(
+    video_dir: Path,
+    race: RaceVideoData,
+    target_date: str,
+    hero_horse: Optional[HorseVideoData],
+    visual_asset: Optional[VisualAsset],
+    video_asset: Optional[VideoAsset],
+) -> MotionScene:
+    size = (1080, 1920)
+    background_image, _ = _hero_background(
+        size,
+        target_date,
+        race.venue_name,
+        race.race_number,
+        visual_asset,
+    )
+    background_image = ImageEnhance.Color(background_image).enhance(0.34)
+    overlay = Image.new("RGBA", size, (7, 14, 16, 170))
+    background_image = Image.alpha_composite(background_image.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(background_image)
+    _draw_brand_lockup(background_image, draw, SHORT_COLUMN_X, 82, compact=True, light=True)
+    draw.line((SHORT_COLUMN_X, 174, SHORT_COLUMN_RIGHT, 174), fill=EDITORIAL_GOLD, width=4)
+    background = video_dir / "000_short_base.png"
+    _save_slide(background_image, background, size)
+
+    cover = _draw_short_cover_phase(video_dir / "000_cover.png", race, target_date, hero_horse)
+    ranking = _draw_short_ranking_phase(video_dir / "001_ranking.png", race, target_date)
+    position = _draw_short_position_phase(video_dir / "002_position.png", race, target_date)
+    hero = _draw_short_hero_phase(video_dir / "003_hero.png", race, target_date, hero_horse)
+    cta = _draw_short_cta_phase(video_dir / "999_outro.png", race, target_date)
+    analysis_footer = _draw_short_analysis_footer(video_dir / "000_short_analysis_footer.png")
+    wipe = _draw_motion_wipe_layer(video_dir / "000_short_wipe.png", size[1])
+    progress_horizontal = _draw_progress_tick_layer(video_dir / "000_short_progress_horizontal.png")
+    with Image.open(progress_horizontal) as source:
+        progress_vertical = source.convert("RGBA").rotate(90, expand=True)
+    progress = _save_transparent_layer(progress_vertical, video_dir / "000_short_progress.png")
+
+    for phase_path, preview_name in (
+        (cover, "000_intro.png"),
+        (ranking, "001_race.png"),
+        (position, "002_position_preview.png"),
+        (hero, "003_hero_preview.png"),
+        (cta, "999_outro_preview.png"),
+    ):
+        _compose_motion_preview(
+            background,
+            [(phase_path, 0, 0), (analysis_footer, SHORT_COLUMN_X, SHORT_ANALYSIS_FOOTER_Y)],
+            video_dir / preview_name,
+        )
+    final_preview = video_dir / "999_outro_preview.png"
+
+    layers: list[MotionLayer] = []
+    render_background = background
+    if video_asset is not None:
+        render_background = video_asset.path
+        video_scrim = Image.new("RGBA", size, (7, 14, 16, 176))
+        scrim_draw = ImageDraw.Draw(video_scrim)
+        _draw_brand_lockup(video_scrim, scrim_draw, SHORT_COLUMN_X, 82, compact=True, light=True)
+        scrim_draw.line((SHORT_COLUMN_X, 174, SHORT_COLUMN_RIGHT, 174), fill=EDITORIAL_GOLD, width=4)
+        scrim_path = _save_transparent_layer(video_scrim, video_dir / "000_short_video_scrim.png")
+        layers.append(
+            MotionLayer(
+                scrim_path,
+                0,
+                0,
+                0.0,
+                SHORT_SCENE_SECONDS,
+                enter_duration=0.0,
+                z_index=1,
+            )
+        )
+    phase_paths = {
+        "000_cover.png": cover,
+        "001_ranking.png": ranking,
+        "002_position.png": position,
+        "003_hero.png": hero,
+        "999_outro.png": cta,
+    }
+    layers.extend([
+        MotionLayer(
+            phase_paths[name],
+            0,
+            0,
+            start,
+            end,
+            enter_duration=0.0 if start == 0.0 else 0.14,
+            exit_duration=0.0,
+            z_index=10 + index * 10,
+        )
+        for index, (name, start, end) in enumerate(SHORT_PHASE_TIMINGS)
+    ])
+    layers.extend([
+        MotionLayer(
+            analysis_footer,
+            SHORT_COLUMN_X,
+            SHORT_ANALYSIS_FOOTER_Y,
+            0.0,
+            SHORT_SCENE_SECONDS,
+            enter_duration=0.22,
+            start_y=SHORT_ANALYSIS_FOOTER_Y + 30,
+            end_y=SHORT_ANALYSIS_FOOTER_Y,
+            z_index=65,
+        ),
+        MotionLayer(
+            progress,
+            1008,
+            1580,
+            0.15,
+            15.30,
+            enter_duration=15.15,
+            start_y=300,
+            end_y=1580,
+            easing="linear",
+            z_index=70,
+        ),
+    ])
+    for transition_index, start in enumerate(SHORT_TRANSITION_TIMES):
+        layers.append(
+            MotionLayer(
+                wipe,
+                size[0],
+                0,
+                start,
+                start + 0.28,
+                enter_duration=0.28,
+                start_x=-220,
+                end_x=size[0],
+                z_index=90 + transition_index,
+            )
+        )
+    _validate_short_content_layers(layers, size)
+    return MotionScene(
+        background_path=render_background,
+        duration_seconds=SHORT_SCENE_SECONDS,
+        preview_path=final_preview,
+        layers=layers,
+        scene_id=f"short-{race.id}",
+    )
+
+
 def _long_title(venue: VenueVideoData, target_date: str) -> str:
     grade_names = "・".join(race.display_name for race in venue.grade_races[:2])
     scope = "新馬戦を除く対象レース" if venue.excluded_races else "全レース"
@@ -2162,7 +3596,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
     size = (1920, 1080)
     utm_content = f"venue_long_{_safe_filename(venue.venue_name)}"
     title = _long_title(venue, target_date)
-    slides: List[Slide] = []
+    scenes: List[MotionScene] = []
     hero_race, hero_horse = _best_horse_for_venue(venue)
     hero_race_number = hero_race.race_number if hero_race else None
     visual_asset = resolve_visual_asset(
@@ -2172,7 +3606,15 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         "wide",
         selection_key=stable_id,
     )
+    motion_video_asset = resolve_video_asset(
+        target_date,
+        venue.venue_name,
+        hero_race_number,
+        "wide",
+        selection_key=stable_id,
+    )
     audio_asset = resolve_audio_asset(target_date, "venue_long", stable_id)
+    sfx_assets = resolve_sfx_assets(target_date, "venue_long", stable_id)
     publish_block_reasons: List[str] = []
     if visual_asset is None:
         publish_block_reasons.append("長尺用の横写真が見つかりません")
@@ -2187,46 +3629,50 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
     )
     hero_label = f"{venue.venue_name}{hero_race.race_number}R" if hero_race else venue.venue_name
 
-    slides.extend(
-        _draw_intro_sequence(
-            video_dir,
-            target_date,
-            thumb_title,
-            size,
+    scope_label = (
+        f"対象{len(venue.races)}レース AI偏差値（新馬戦除く）"
+        if venue.excluded_races
+        else f"全{len(venue.races)}レース AI偏差値"
+    )
+    scenes.append(
+        _build_intro_motion_scene(
+            video_dir=video_dir,
+            target_date=target_date,
+            headline=thumb_title,
+            size=size,
             hero_horse=hero_horse,
             race_label=hero_label,
+            scope_label=scope_label,
             venue_name=venue.venue_name,
             race_number=hero_race_number,
             visual_asset=visual_asset,
+            video_asset=motion_video_asset,
+            duration_seconds=LONG_INTRO_SECONDS,
         )
     )
-
-    venue_title = video_dir / "001_venue.png"
-    _draw_venue_title_slide(venue_title, venue, target_date, size)
-    slides.append(Slide(venue_title, LONG_VENUE_SLIDE_SECONDS))
-
-    slide_index = 2
-    for race in venue.races:
-        ranking_path = video_dir / f"{slide_index:03d}_{race.race_number:02d}r_ai.png"
-        _draw_race_slide(ranking_path, race, target_date, size, utm_content)
-        slides.append(Slide(ranking_path, LONG_RACE_SLIDE_SECONDS))
-        slide_index += 1
-        position_path = video_dir / f"{slide_index:03d}_{race.race_number:02d}r_position.png"
-        _draw_position_slide(position_path, race, target_date, size)
-        slides.append(Slide(position_path, LONG_POSITION_SLIDE_SECONDS))
-        slide_index += 1
-
-    outro = video_dir / "999_outro.png"
-    _draw_outro_slide(
-        outro,
-        target_date,
-        size,
-        utm_content,
-        venue_name=venue.venue_name,
-        race_number=hero_race_number,
-        visual_asset=visual_asset,
+    for progress_index, race in enumerate(venue.races, start=1):
+        scenes.append(
+            _build_long_race_motion_scene(
+                video_dir,
+                race,
+                target_date,
+                progress_index,
+                len(venue.races),
+            )
+        )
+    scenes.append(
+        _build_outro_motion_scene(
+            video_dir,
+            target_date,
+            size,
+            utm_content,
+            venue.venue_name,
+            hero_race_number,
+            visual_asset,
+            LONG_OUTRO_SECONDS,
+        )
     )
-    slides.append(Slide(outro, LONG_OUTRO_SECONDS))
+    _attach_long_audio_cues(scenes, sfx_assets)
 
     thumbnail = video_dir / "thumbnail.jpg"
     subtitle = (
@@ -2252,7 +3698,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
     if skip_video:
         video_path = None
     else:
-        render_mp4(slides, video_path, *size, audio_asset=audio_asset)
+        render_motion_video(scenes, video_path, *size, audio_asset=audio_asset)
 
     if hero_race_number is None:
         raise RuntimeError(f"代表レースを選定できません: {venue.venue_name}")
@@ -2266,10 +3712,17 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         "brand_logo": _brand_logo_metadata(),
         "hero_image": visual_asset_metadata(visual_asset),
         "thumbnail_image": visual_asset_metadata(visual_asset),
+        "intro_video": video_asset_metadata(motion_video_asset),
         "bgm": audio_asset_metadata(audio_asset),
+        "sfx": [audio_asset_metadata(asset) for asset in sfx_assets.values()],
         "courses": [course_asset_metadata(asset) for asset in course_assets.values()],
     }
-    credits = asset_credit_lines(visual_asset, audio_asset)
+    credits = asset_credit_lines(
+        visual_asset,
+        audio_asset,
+        motion_video_asset,
+        tuple(sfx_assets.values()),
+    )
     excluded_race_labels = [
         f"{race.race_number}R {race.display_name}"
         for race in venue.excluded_races
@@ -2296,6 +3749,8 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
             "excluded_race_ids": [race.id for race in venue.excluded_races],
             "destination_url": url,
             "rights_manifest_hash": rights_manifest_hash,
+            "design_system": "broadcast_editorial_v8",
+            "motion_profile": resolve_motion_profile(),
         }
     )
     metadata_path = video_dir / "metadata.json"
@@ -2329,6 +3784,11 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         "publish_block_reasons": publish_block_reasons,
         "selected_assets": selected_assets,
         "asset_warnings": publish_block_reasons,
+        "design_system": "broadcast_editorial_v8",
+        "motion_profile": resolve_motion_profile(),
+        "scene_count": len(scenes),
+        "race_scene_seconds": LONG_RACE_SCENE_SECONDS,
+        "estimated_duration_seconds": sum(scene.duration_seconds for scene in scenes),
     }
     _write_metadata(metadata_path, metadata)
     return RenderedVideo(
@@ -2362,6 +3822,54 @@ def _short_title(race: RaceVideoData, target_date: str) -> str:
     return f"【{race.venue_name}{race.race_number}R】AI偏差値上位3頭・位置取り｜{target_date} #Shorts"
 
 
+def _append_audio_cue(
+    scene: MotionScene,
+    assets: dict[str, AudioAsset],
+    cue_type: str,
+    start_seconds: float,
+    volume_scale: float = 1.0,
+    max_duration: float = 0.8,
+) -> None:
+    asset = assets.get(cue_type)
+    if asset is None:
+        return
+    scene.audio_cues.append(
+        AudioCue(
+            asset_path=asset.path,
+            start_seconds=start_seconds,
+            volume=max(0.0, min(1.0, asset.volume * volume_scale)),
+            max_duration=max_duration,
+            cue_type=cue_type,
+        )
+    )
+
+
+def _attach_long_audio_cues(
+    scenes: Sequence[MotionScene],
+    sfx_assets: dict[str, AudioAsset],
+) -> None:
+    if not scenes:
+        return
+    _append_audio_cue(scenes[0], sfx_assets, "whoosh", 0.02, 1.0, 0.9)
+    _append_audio_cue(scenes[0], sfx_assets, "score_reveal", 0.72, 0.85, 0.7)
+    for scene in scenes[1:-1]:
+        _append_audio_cue(scene, sfx_assets, "transition", 0.02, 0.52, 0.45)
+        _append_audio_cue(scene, sfx_assets, "data_tick", 0.52, 0.44, 0.35)
+    if len(scenes) > 1:
+        _append_audio_cue(scenes[-1], sfx_assets, "cta", 0.22, 0.82, 0.9)
+
+
+def _attach_short_audio_cues(
+    scene: MotionScene,
+    sfx_assets: dict[str, AudioAsset],
+) -> None:
+    _append_audio_cue(scene, sfx_assets, "whoosh", 0.02, 1.0, 0.9)
+    _append_audio_cue(scene, sfx_assets, "data_tick", 1.18, 0.62, 0.35)
+    _append_audio_cue(scene, sfx_assets, "transition", 4.92, 0.64, 0.5)
+    _append_audio_cue(scene, sfx_assets, "score_reveal", 9.05, 0.86, 0.8)
+    _append_audio_cue(scene, sfx_assets, "cta", 11.82, 0.92, 0.9)
+
+
 def _draw_short_position_slide(path: Path, race: RaceVideoData, target_date: str, size: tuple[int, int], utm_content: str) -> None:
     _draw_position_slide(path, race, target_date, size)
 
@@ -2373,7 +3881,6 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
     size = (1080, 1920)
     utm_content = f"short_{_safe_filename(race.id)}"
     title = _short_title(race, target_date)
-    slides: List[Slide] = []
     hero_horse = _best_horse_for_race(race)
     visual_asset = resolve_visual_asset(
         target_date,
@@ -2382,7 +3889,15 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         "vertical",
         selection_key=stable_id,
     )
+    motion_video_asset = resolve_video_asset(
+        target_date,
+        race.venue_name,
+        race.race_number,
+        "vertical",
+        selection_key=stable_id,
+    )
     audio_asset = resolve_audio_asset(target_date, "short", stable_id)
+    sfx_assets = resolve_sfx_assets(target_date, "short", stable_id)
     publish_block_reasons: List[str] = []
     if visual_asset is None:
         publish_block_reasons.append("Shorts用の縦写真が見つかりません")
@@ -2390,48 +3905,15 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         publish_block_reasons.append("Shorts用BGMが見つかりません")
     publishable = not publish_block_reasons
 
-    slides.extend(
-        _draw_intro_sequence(
-            video_dir,
-            target_date,
-            race.display_name,
-            size,
-            hero_horse=hero_horse,
-            race_label=f"{race.venue_name}{race.race_number}R",
-            venue_name=race.venue_name,
-            race_number=race.race_number,
-            visual_asset=visual_asset,
-        )
-    )
-
-    reveal_steps = [(1, 0.15), (2, 0.15), (3, SHORT_RACE_SLIDE_SECONDS - 0.30)]
-    for visible_count, duration in reveal_steps:
-        race_slide = video_dir / f"001_race_{visible_count:02d}.png"
-        _draw_race_slide(
-            race_slide,
-            race,
-            target_date,
-            size,
-            utm_content,
-            visible_rank_count=visible_count,
-        )
-        slides.append(Slide(race_slide, duration))
-
-    position_slide = video_dir / "002_position.png"
-    _draw_short_position_slide(position_slide, race, target_date, size, utm_content)
-    slides.append(Slide(position_slide, SHORT_POSITION_SLIDE_SECONDS))
-
-    outro = video_dir / "999_outro.png"
-    _draw_outro_slide(
-        outro,
+    scene = _build_short_motion_scene(
+        video_dir,
+        race,
         target_date,
-        size,
-        utm_content,
-        venue_name=race.venue_name,
-        race_number=race.race_number,
-        visual_asset=visual_asset,
+        hero_horse,
+        visual_asset,
+        motion_video_asset,
     )
-    slides.append(Slide(outro, SHORT_OUTRO_SECONDS))
+    _attach_short_audio_cues(scene, sfx_assets)
 
     thumbnail = video_dir / "thumbnail.jpg"
     _draw_thumbnail(
@@ -2451,7 +3933,7 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
     if skip_video:
         video_path = None
     else:
-        render_mp4(slides, video_path, *size, audio_asset=audio_asset)
+        render_motion_video([scene], video_path, *size, audio_asset=audio_asset)
 
     url = build_video_url(target_date, utm_content, race.venue_name, race.race_number)
     course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
@@ -2459,10 +3941,17 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         "brand_logo": _brand_logo_metadata(),
         "hero_image": visual_asset_metadata(visual_asset),
         "cover_frame_image": visual_asset_metadata(visual_asset),
+        "background_video": video_asset_metadata(motion_video_asset),
         "bgm": audio_asset_metadata(audio_asset),
+        "sfx": [audio_asset_metadata(asset) for asset in sfx_assets.values()],
         "course": course_asset_metadata(course_asset),
     }
-    credits = asset_credit_lines(visual_asset, audio_asset)
+    credits = asset_credit_lines(
+        visual_asset,
+        audio_asset,
+        motion_video_asset,
+        tuple(sfx_assets.values()),
+    )
     description = _description(title, target_date, url, race.venue_name, credits, is_short=True)
     tags = ["競馬", "AI偏差値", "UMA-FREE", "Shorts", race.venue_name, race.display_name]
     rights_manifest_hash = build_rights_manifest_hash(selected_assets)
@@ -2477,6 +3966,8 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
             "race_ids": [race.id],
             "destination_url": url,
             "rights_manifest_hash": rights_manifest_hash,
+            "design_system": "broadcast_editorial_v8",
+            "motion_profile": resolve_motion_profile(),
         }
     )
     metadata_path = video_dir / "metadata.json"
@@ -2502,6 +3993,10 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         "publish_block_reasons": publish_block_reasons,
         "selected_assets": selected_assets,
         "asset_warnings": publish_block_reasons,
+        "design_system": "broadcast_editorial_v8",
+        "motion_profile": resolve_motion_profile(),
+        "scene_count": 1,
+        "estimated_duration_seconds": scene.duration_seconds,
     }
     _write_metadata(metadata_path, metadata)
     return RenderedVideo(

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Iterable, List, Tuple
@@ -18,7 +21,9 @@ SHEET_BG = (229, 227, 220)
 CELL_BG = (248, 246, 240)
 CELL_RULE = (180, 178, 169)
 LABEL = (18, 23, 27)
-SHORTS_SAFE_BOUNDS = (60, 250, 900, 1480)
+# カードの面は画面中央に置き、文字・数値だけをこの範囲へ収める。
+# 右端はYouTubeの操作ボタン、下端は説明欄UIとの重なりを確認するための境界。
+SHORTS_SAFE_BOUNDS = (96, 280, 948, 1600)
 
 
 def _first(paths: Iterable[Path]) -> Path | None:
@@ -43,26 +48,67 @@ def _collect_review_images(date_root: Path, prefix: str) -> List[Tuple[str, Path
             long_thumbnail = long_dir / "thumbnail.png"
         candidates = [
             ("長尺サムネイル", long_thumbnail),
-            ("長尺AI偏差値", _first(long_dir.glob("*_ai.png"))),
-            ("長尺位置取り", _first(long_dir.glob("*_position.png"))),
+            ("長尺導入", long_dir / "000_intro.png"),
+            ("長尺1レース統合", _first(long_dir.glob("*_race.png"))),
             ("長尺アウトロ", long_dir / "999_outro.png"),
         ]
         for label, path in candidates:
             if path and path.exists():
                 items.append((f"{prefix}{label}", path))
+        motion_frame_dir = long_dir / "motion-frames"
+        for path in sorted(motion_frame_dir.glob("race-*.png")):
+            label = path.stem.removeprefix("race-").replace("_", ".")
+            items.append((f"{prefix}1レース t={label}秒", path))
 
     if short_dir:
         candidates = [
-            ("Shorts表紙", _first(short_dir.glob("000_intro_*.png"))),
-            ("Shorts冒頭", _last(short_dir.glob("000_intro_*.png"))),
-            ("Shortsランキング", _last(short_dir.glob("001_race_*.png"))),
-            ("Shorts位置取り", short_dir / "002_position.png"),
-            ("Shortsアウトロ", short_dir / "999_outro.png"),
+            ("Shorts表紙", short_dir / "000_intro.png"),
+            ("Shortsランキング", short_dir / "001_race.png"),
+            ("Shorts位置取り", short_dir / "002_position_preview.png"),
+            ("Shorts1位", short_dir / "003_hero_preview.png"),
+            ("Shortsアウトロ", short_dir / "999_outro_preview.png"),
         ]
         for label, path in candidates:
             if path and path.exists():
                 items.append((f"{prefix}{label}", path))
     return items
+
+
+def _extract_long_motion_frames(date_root: Path) -> list[Path]:
+    ffmpeg = os.getenv("FFMPEG_BINARY") or shutil.which("ffmpeg")
+    if not ffmpeg:
+        return []
+    long_root = date_root / "long"
+    long_dir = _first(path for path in long_root.glob("*") if path.is_dir()) if long_root.exists() else None
+    if long_dir is None:
+        return []
+    video_path = _first(long_dir.glob("*.mp4"))
+    if video_path is None:
+        return []
+    frame_dir = long_dir / "motion-frames"
+    frame_dir.mkdir(parents=True, exist_ok=True)
+    created: list[Path] = []
+    for relative_seconds in (0.0, 0.6, 1.5, 3.0, 5.5):
+        destination = frame_dir / f"race-{relative_seconds:.1f}".replace(".", "_")
+        destination = destination.with_suffix(".png")
+        subprocess.run(
+            [
+                ffmpeg,
+                "-y",
+                "-loglevel",
+                "error",
+                "-ss",
+                f"{renderer.LONG_INTRO_SECONDS + relative_seconds:.3f}",
+                "-i",
+                str(video_path),
+                "-frames:v",
+                "1",
+                str(destination),
+            ],
+            check=True,
+        )
+        created.append(destination)
+    return created
 
 
 def _resolve_date_root(root: Path) -> Path:
@@ -118,15 +164,16 @@ def create_contact_sheet(
     baseline_root: Path | None = None,
 ) -> Path:
     current_root = _resolve_date_root(output_root)
+    _extract_long_motion_frames(current_root)
     items: List[Tuple[str, Path]] = []
     if baseline_root:
         items.extend(_collect_review_images(_resolve_date_root(baseline_root), "旧版 / "))
-    current_items = _collect_review_images(current_root, "v7 / ")
+    current_items = _collect_review_images(current_root, "v8 / ")
     items.extend(current_items)
     short_source = next((path for label, path in current_items if label.endswith("Shortsランキング")), None)
     if short_source is not None:
         overlay_path = _create_shorts_ui_overlay(short_source, destination.with_name("shorts-ui-overlay.png"))
-        items.append(("v7 / Shorts UI安全領域", overlay_path))
+        items.append(("v8 / Shorts UI安全領域", overlay_path))
     if not items:
         raise RuntimeError(f"レビュー対象PNGが見つかりません: {current_root}")
 
@@ -153,13 +200,59 @@ def create_contact_sheet(
     sheet.save(destination)
 
     for label, path in items:
-        if label.endswith("長尺サムネイル") and label.startswith("v7"):
+        if label.endswith("長尺サムネイル") and label.startswith("v8"):
             with Image.open(path) as thumbnail:
                 thumbnail.convert("RGB").resize((246, 138), Image.Resampling.LANCZOS).save(
                     destination.with_name("thumbnail_246x138.png")
                 )
             break
     return destination
+
+
+def create_motion_review_videos(output_root: Path) -> list[Path]:
+    """手動dry-run向けに、冒頭の短いレビュー動画だけを作る。"""
+
+    date_root = _resolve_date_root(output_root)
+    ffmpeg = os.getenv("FFMPEG_BINARY") or shutil.which("ffmpeg")
+    if not ffmpeg:
+        return []
+    created: list[Path] = []
+    long_video = _first((date_root / "long").glob("*/*.mp4")) if (date_root / "long").exists() else None
+    short_video = _first((date_root / "shorts").glob("*/*.mp4")) if (date_root / "shorts").exists() else None
+    review_dir = date_root / "motion-review"
+    review_dir.mkdir(parents=True, exist_ok=True)
+    for source, destination, duration, max_width in (
+        (long_video, review_dir / "motion-review-long.mp4", 19.0, 960),
+        (short_video, review_dir / "motion-review-short.mp4", 15.0, 540),
+    ):
+        if source is None:
+            continue
+        subprocess.run(
+            [
+                ffmpeg,
+                "-y",
+                "-i",
+                str(source),
+                "-t",
+                f"{duration:.1f}",
+                "-vf",
+                f"scale='min({max_width},iw)':-2",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
+                "-movflags",
+                "+faststart",
+                str(destination),
+            ],
+            check=True,
+        )
+        created.append(destination)
+    return created
 
 
 def parse_args() -> argparse.Namespace:

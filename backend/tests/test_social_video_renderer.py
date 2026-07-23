@@ -35,6 +35,8 @@ from scripts.social_video.visual_assets import (
     AudioAsset,
     resolve_audio_asset,
     resolve_course_asset,
+    resolve_sfx_assets,
+    resolve_video_asset,
     resolve_visual_asset,
     validate_asset_library,
 )
@@ -268,6 +270,64 @@ class SocialVideoRendererTest(unittest.TestCase):
             self.assertIsNotNone(short_asset)
             self.assertEqual(short_asset.path.name, "common.mp3")
 
+    def test_video_asset_selection_is_deterministic_and_local(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            folder = root / "video" / "default" / "wide"
+            folder.mkdir(parents=True)
+            (folder / "race-a.mp4").write_bytes(b"video-a")
+            (folder / "race-b.mp4").write_bytes(b"video-b")
+            (root / "credits.json").write_text(
+                json.dumps(
+                    {
+                        "video/default/wide/race-a.mp4": {
+                            "credit": "UMA-FREE",
+                            "license": "商用利用・加工可",
+                        },
+                        "video/default/wide/race-b.mp4": {
+                            "credit": "UMA-FREE",
+                            "license": "商用利用・加工可",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {"SOCIAL_VIDEO_ASSET_ROOT": str(root)}, clear=False), patch.object(
+                visual_assets,
+                "_probe_video",
+                return_value=(True, 10.0, (1920, 1080), ""),
+            ):
+                first = resolve_video_asset("2026-07-12", "函館", 11, "wide", "stable")
+                second = resolve_video_asset("2026-07-12", "函館", 11, "wide", "stable")
+            self.assertIsNotNone(first)
+            self.assertEqual(first.path, second.path)
+            self.assertIn(first.path.name, {"race-a.mp4", "race-b.mp4"})
+
+    def test_sfx_selection_uses_cue_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            folder = root / "audio" / "sfx" / "cta"
+            folder.mkdir(parents=True)
+            cue = folder / "cta.wav"
+            cue.write_bytes(b"audio")
+            (root / "credits.json").write_text(
+                json.dumps(
+                    {
+                        "audio/sfx/cta/cta.wav": {
+                            "title": "CTA",
+                            "credit": "UMA-FREE",
+                            "license": "商用利用可",
+                            "volume": 0.12,
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with patch.object(visual_assets, "_probe_audio", return_value=(True, 0.5, "")):
+                assets = resolve_sfx_assets("2026-07-12", "short", "stable", root)
+            self.assertEqual(set(assets), {"cta"})
+            self.assertEqual(assets["cta"].volume, 0.12)
+
     def test_course_asset_prefers_surface_specific_then_venue_default(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -400,17 +460,17 @@ class SocialVideoRendererTest(unittest.TestCase):
             (date_root / "summary.json").write_text("{}\n", encoding="utf-8")
             for path in [
                 long_dir / "thumbnail.jpg",
-                long_dir / "001_11r_ai.png",
-                long_dir / "002_11r_position.png",
+                long_dir / "000_intro.png",
+                long_dir / "002_11r_race.png",
                 long_dir / "999_outro.png",
             ]:
                 Image.new("RGB", (1920, 1080), "white").save(path)
             for path in [
-                short_dir / "000_intro_00.png",
-                short_dir / "000_intro_06.png",
-                short_dir / "001_race_03.png",
-                short_dir / "002_position.png",
-                short_dir / "999_outro.png",
+                short_dir / "000_intro.png",
+                short_dir / "001_race.png",
+                short_dir / "002_position_preview.png",
+                short_dir / "003_hero_preview.png",
+                short_dir / "999_outro_preview.png",
             ]:
                 Image.new("RGB", (1080, 1920), "white").save(path)
             destination = date_root / "design-contact-sheet.png"
@@ -489,37 +549,225 @@ class SocialVideoRendererTest(unittest.TestCase):
             races.append(race)
         venue = VenueVideoData("函館", "中央", races)
 
-        with tempfile.TemporaryDirectory() as temp_dir, patch.object(
-            renderer, "_draw_intro_sequence", return_value=[]
-        ), patch.object(renderer, "_draw_venue_title_slide"), patch.object(
-            renderer, "_draw_race_slide"
-        ) as draw_race, patch.object(
-            renderer, "_draw_position_slide"
-        ) as draw_position, patch.object(
-            renderer, "_draw_outro_slide"
-        ), patch.object(
-            renderer, "_draw_thumbnail"
-        ) as draw_thumbnail, patch.object(
-            renderer, "resolve_visual_asset", return_value=None
-        ), patch.object(
-            renderer, "resolve_audio_asset", return_value=None
-        ), patch.object(
-            renderer, "resolve_course_asset", return_value=None
-        ):
-            package = renderer.render_long_video(
-                venue,
-                "2026-07-12",
-                Path(temp_dir),
-                skip_video=True,
-            )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            dummy = root / "dummy.png"
+            Image.new("RGB", (16, 9), "black").save(dummy)
+            intro_scene = renderer.MotionScene(dummy, renderer.LONG_INTRO_SECONDS, dummy, scene_id="intro")
+            outro_scene = renderer.MotionScene(dummy, renderer.LONG_OUTRO_SECONDS, dummy, scene_id="outro")
 
-        self.assertEqual([call.args[1].race_number for call in draw_race.call_args_list], [1, 2, 3])
-        self.assertEqual([call.args[1].race_number for call in draw_position.call_args_list], [1, 2, 3])
-        self.assertTrue(all(call.args[3] == (1920, 1080) for call in draw_race.call_args_list))
-        self.assertTrue(all(call.args[3] == (1920, 1080) for call in draw_position.call_args_list))
+            def build_race_scene(
+                _video_dir: Path,
+                race: RaceVideoData,
+                _target_date: str,
+                _progress_index: int,
+                _progress_total: int,
+            ) -> renderer.MotionScene:
+                return renderer.MotionScene(
+                    dummy,
+                    renderer.LONG_RACE_SCENE_SECONDS,
+                    dummy,
+                    scene_id=f"race-{race.race_number}",
+                )
+
+            with patch.object(
+                renderer, "_build_intro_motion_scene", return_value=intro_scene
+            ), patch.object(
+                renderer, "_build_long_race_motion_scene", side_effect=build_race_scene
+            ) as build_race, patch.object(
+                renderer, "_build_outro_motion_scene", return_value=outro_scene
+            ), patch.object(
+            renderer, "_draw_thumbnail"
+            ) as draw_thumbnail, patch.object(
+                renderer, "resolve_visual_asset", return_value=None
+            ), patch.object(
+                renderer, "resolve_video_asset", return_value=None
+            ), patch.object(
+                renderer, "resolve_audio_asset", return_value=None
+            ), patch.object(
+                renderer, "resolve_sfx_assets", return_value={}
+            ), patch.object(
+                renderer, "resolve_course_asset", return_value=None
+            ):
+                package = renderer.render_long_video(
+                    venue,
+                    "2026-07-12",
+                    root,
+                    skip_video=True,
+                )
+
+        self.assertEqual([call.args[1].race_number for call in build_race.call_args_list], [1, 2, 3])
+        self.assertEqual([call.args[3] for call in build_race.call_args_list], [1, 2, 3])
+        self.assertTrue(all(call.args[4] == 3 for call in build_race.call_args_list))
         self.assertEqual(package.race_ids, ["race-1", "race-2", "race-3"])
         self.assertTrue(package.title.startswith("【函館】"))
         self.assertEqual(draw_thumbnail.call_args.args[1], "函館 全3R")
+
+    def test_long_race_scene_contains_top_three_and_all_position_tokens_once(self) -> None:
+        race = _race()
+        race.predictions[-1].position_label = "-"
+        with tempfile.TemporaryDirectory() as temp_dir, patch.object(
+            renderer,
+            "_draw_broadcast_position_lane_layer",
+            wraps=renderer._draw_broadcast_position_lane_layer,
+        ) as draw_lane, patch.object(
+            renderer,
+            "_draw_broadcast_rank_layer",
+            wraps=renderer._draw_broadcast_rank_layer,
+        ) as draw_rank:
+            scene = renderer._build_long_race_motion_scene(
+                Path(temp_dir),
+                race,
+                race.race_date,
+                1,
+                11,
+            )
+            self.assertTrue(scene.preview_path.exists())
+
+        self.assertEqual(scene.duration_seconds, 6.0)
+        self.assertEqual(draw_rank.call_count, 3)
+        lane_horses = [
+            horse.horse_number
+            for call in draw_lane.call_args_list
+            for horse in call.args[2]
+        ]
+        self.assertEqual(sorted(lane_horses), list(range(1, 19)))
+        self.assertEqual(len(lane_horses), 18)
+        self.assertEqual([call.args[1] for call in draw_lane.call_args_list], ["先行", "中団", "後方", "不明"])
+
+    def test_position_lane_centers_one_and_two_rows_vertically(self) -> None:
+        ranked_numbers: dict[int, int] = {}
+        with tempfile.TemporaryDirectory() as temp_dir, patch.object(
+            renderer,
+            "_draw_horse_number_badge",
+        ) as draw_badge:
+            renderer._draw_broadcast_position_lane_layer(
+                Path(temp_dir) / "one-row.png",
+                "先行",
+                [_horse(index, "先行") for index in range(1, 7)],
+                ranked_numbers,
+            )
+            one_row_centers = [call.args[1] for call in draw_badge.call_args_list]
+            draw_badge.reset_mock()
+            renderer._draw_broadcast_position_lane_layer(
+                Path(temp_dir) / "two-rows.png",
+                "中団",
+                [_horse(index, "中団") for index in range(1, 10)],
+                ranked_numbers,
+            )
+            two_row_centers = [call.args[1] for call in draw_badge.call_args_list]
+
+        self.assertEqual({center[1] for center in one_row_centers}, {72})
+        self.assertEqual({center[1] for center in two_row_centers}, {48, 96})
+        self.assertEqual((one_row_centers[0][0] + one_row_centers[-1][0]) // 2, 409)
+        first_two_row = [center for center in two_row_centers if center[1] == 48]
+        second_two_row = [center for center in two_row_centers if center[1] == 96]
+        self.assertEqual((first_two_row[0][0] + first_two_row[-1][0]) // 2, 409)
+        self.assertEqual([center[0] for center in second_two_row], [409])
+
+    def test_long_race_scene_keeps_detail_navigation_visible(self) -> None:
+        race = _race()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scene = renderer._build_long_race_motion_scene(
+                Path(temp_dir),
+                race,
+                race.race_date,
+                1,
+                11,
+            )
+            cta = next(layer for layer in scene.layers if layer.image_path.name.endswith("_cta.png"))
+            with Image.open(cta.image_path) as image:
+                cta_size = image.size
+        self.assertLessEqual(cta.start_seconds, 0.35)
+        self.assertEqual(cta.end_seconds, renderer.LONG_RACE_SCENE_SECONDS)
+        self.assertEqual(cta_size, (renderer.LONG_CONTENT_WIDTH, 186))
+        self.assertEqual(cta.x, renderer.LONG_CONTENT_LEFT)
+        self.assertEqual(cta.x + cta_size[0], renderer.LONG_CONTENT_RIGHT)
+        self.assertEqual(cta.y, renderer.LONG_CTA_Y)
+        self.assertGreaterEqual(
+            renderer.LONG_CTA_Y - renderer.LONG_DATA_PANEL_BOTTOM,
+            24,
+        )
+
+    def test_access_cta_copy_is_platform_specific_and_not_redundant(self) -> None:
+        self.assertEqual(
+            renderer.LONG_SITE_ACCESS_CTA,
+            "サイトへのアクセスは概要欄のリンクから",
+        )
+        self.assertEqual(
+            renderer.SHORT_SITE_ACCESS_CTA,
+            "サイトへのアクセスはプロフィールのリンクから",
+        )
+        source = (
+            inspect.getsource(renderer._draw_broadcast_cta_layer)
+            + inspect.getsource(renderer._draw_short_analysis_footer)
+        )
+        self.assertNotIn("このレースの詳細をチェック", source)
+        self.assertNotIn("全レースに詳細4分析を掲載", source)
+        self.assertNotIn("全レースに4つの詳細分析を掲載", source)
+
+    def test_short_motion_scene_has_cover_at_zero_and_cta_until_end(self) -> None:
+        race = _race()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            scene = renderer._build_short_motion_scene(
+                Path(temp_dir),
+                race,
+                race.race_date,
+                race.predictions[0],
+                None,
+                None,
+            )
+            self.assertTrue(scene.preview_path.exists())
+            cover = next(layer for layer in scene.layers if layer.image_path.name == "000_cover.png")
+            cta = next(layer for layer in scene.layers if layer.image_path.name == "999_outro.png")
+            analysis_footer = next(
+                layer
+                for layer in scene.layers
+                if layer.image_path.name == "000_short_analysis_footer.png"
+            )
+            with Image.open(analysis_footer.image_path) as footer_image:
+                footer_center_x = analysis_footer.x + footer_image.width // 2
+            phase_names = {timing[0] for timing in renderer.SHORT_PHASE_TIMINGS}
+            phase_layers = sorted(
+                (
+                    layer
+                    for layer in scene.layers
+                    if layer.image_path.name in phase_names
+                ),
+                key=lambda layer: layer.start_seconds,
+            )
+        self.assertEqual(scene.duration_seconds, 15.5)
+        self.assertEqual(cover.start_seconds, 0.0)
+        self.assertEqual(cta.end_seconds, 15.5)
+        self.assertEqual(analysis_footer.start_seconds, 0.0)
+        self.assertEqual(analysis_footer.end_seconds, 15.5)
+        self.assertEqual(
+            (analysis_footer.x, analysis_footer.y),
+            (renderer.SHORT_COLUMN_X, renderer.SHORT_ANALYSIS_FOOTER_Y),
+        )
+        self.assertEqual(footer_center_x, 540)
+        self.assertEqual(
+            renderer.SHORT_COLUMN_X + renderer.SHORT_COLUMN_WIDTH,
+            renderer.SHORT_COLUMN_RIGHT,
+        )
+        self.assertEqual(len(phase_layers), 5)
+        for previous, current in zip(phase_layers, phase_layers[1:]):
+            self.assertLessEqual(previous.end_seconds, current.start_seconds)
+            self.assertIsNone(current.start_x)
+            self.assertIsNone(current.start_y)
+
+    def test_motion_overlay_uses_end_exclusive_interval(self) -> None:
+        from scripts.social_video import motion
+
+        source = inspect.getsource(motion.render_motion_scene)
+        self.assertIn("gte(t,", source)
+        self.assertIn("*lt(t,", source)
+        self.assertNotIn("between(t,", source)
+
+    def test_motion_profile_rejects_unknown_value(self) -> None:
+        with patch.dict(os.environ, {"SOCIAL_VIDEO_MOTION_PROFILE": "unknown"}, clear=False):
+            with self.assertRaises(ValueError):
+                renderer.resolve_motion_profile()
 
     def test_video_clip_renderer_does_not_use_zoompan(self) -> None:
         source = inspect.getsource(renderer._render_static_clip)
@@ -574,6 +822,61 @@ class SocialVideoRendererTest(unittest.TestCase):
                 renderer.render_mp4([renderer.Slide(image_path, 0.4)], output_path, 320, 180)
             self.assertTrue(output_path.exists())
             self.assertFalse((root / ".output_motion").exists())
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpegとffprobeが必要です")
+    def test_motion_scene_renders_h264_and_removes_scene_clips(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            background = root / "background.png"
+            preview = root / "preview.png"
+            layer = root / "layer.png"
+            Image.new("RGB", (320, 180), "navy").save(background)
+            Image.new("RGB", (320, 180), "navy").save(preview)
+            Image.new("RGBA", (80, 40), (200, 155, 60, 255)).save(layer)
+            scene = renderer.MotionScene(
+                background,
+                0.6,
+                preview,
+                layers=[
+                    renderer.MotionLayer(
+                        layer,
+                        120,
+                        70,
+                        0.1,
+                        0.6,
+                        start_x=40,
+                        end_x=120,
+                    )
+                ],
+            )
+            output = root / "motion.mp4"
+            with patch.dict(
+                os.environ,
+                {"SOCIAL_VIDEO_MOTION_PROFILE": "standard", "SOCIAL_VIDEO_BGM_PATH": ""},
+                clear=False,
+            ):
+                renderer.render_motion_video([scene], output, 320, 180)
+            result = subprocess.run(
+                [
+                    shutil.which("ffprobe") or "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=codec_name,width,height",
+                    "-of",
+                    "json",
+                    str(output),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            stream = json.loads(result.stdout)["streams"][0]
+            self.assertEqual(stream["codec_name"], "h264")
+            self.assertEqual((stream["width"], stream["height"]), (320, 180))
+            self.assertFalse((root / ".motion_motion").exists())
 
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpegとffprobeが必要です")
     def test_motion_mode_preserves_timeline_duration(self) -> None:
@@ -641,6 +944,22 @@ class SocialVideoRendererTest(unittest.TestCase):
 
             codes = {issue.code for issue in report.issues if issue.severity == "error"}
             self.assertIn("image_rights_metadata_missing", codes)
+
+    def test_asset_validation_rejects_video_without_rights_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            folder = root / "video" / "default" / "wide"
+            folder.mkdir(parents=True)
+            (folder / "uncredited.mp4").write_bytes(b"video")
+            (root / "credits.json").write_text("{}\n", encoding="utf-8")
+            with patch.object(
+                visual_assets,
+                "_probe_video",
+                return_value=(True, 10.0, (1920, 1080), ""),
+            ):
+                report = validate_asset_library(root)
+            codes = {issue.code for issue in report.issues if issue.severity == "error"}
+            self.assertIn("video_rights_metadata_missing", codes)
 
 
 if __name__ == "__main__":

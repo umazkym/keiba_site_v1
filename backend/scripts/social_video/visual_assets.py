@@ -17,8 +17,10 @@ DEFAULT_MANIFEST_PATH = ASSET_ROOT / "manifest.json"
 DEFAULT_CREDITS_PATH = ASSET_ROOT / "credits.json"
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 AUDIO_EXTENSIONS = {".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg"}
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm"}
 MAX_ASSET_BYTES = 100 * 1024 * 1024
 WARN_ASSET_BYTES = 25 * 1024 * 1024
+MAX_VIDEO_LIBRARY_BYTES = 40 * 1024 * 1024
 COURSE_VENUE_SLUGS = {
     "東京": "tokyo",
     "中京": "chukyo",
@@ -48,6 +50,7 @@ LOCAL_COURSE_VENUE_SLUGS = {
     "浦和": "urawa",
 }
 COURSE_SURFACE_SUFFIXES = {"芝": "turf", "ダート": "dirt"}
+SFX_CUE_TYPES = ("whoosh", "data_tick", "score_reveal", "transition", "cta")
 
 
 @dataclass(frozen=True)
@@ -70,6 +73,17 @@ class AudioAsset:
     source_url: str = ""
     license: str = ""
     volume: float = 0.20
+    asset_id: str = ""
+
+
+@dataclass(frozen=True)
+class VideoAsset:
+    path: Path
+    focus: tuple[float, float] = (0.5, 0.5)
+    credit: str = ""
+    source: str = "default"
+    source_url: str = ""
+    license: str = ""
     asset_id: str = ""
 
 
@@ -103,11 +117,15 @@ class AssetValidationReport:
     image_count: int = 0
     course_count: int = 0
     audio_count: int = 0
+    video_count: int = 0
+    video_bytes: int = 0
     checked_count: int = 0
     default_wide_available: bool = False
     default_vertical_available: bool = False
     long_audio_available: bool = False
     shorts_audio_available: bool = False
+    default_wide_video_available: bool = False
+    default_vertical_video_available: bool = False
     issues: list[AssetIssue] = field(default_factory=list)
 
     @property
@@ -124,11 +142,15 @@ class AssetValidationReport:
             "image_count": self.image_count,
             "course_count": self.course_count,
             "audio_count": self.audio_count,
+            "video_count": self.video_count,
+            "video_bytes": self.video_bytes,
             "checked_count": self.checked_count,
             "default_wide_available": self.default_wide_available,
             "default_vertical_available": self.default_vertical_available,
             "long_audio_available": self.long_audio_available,
             "shorts_audio_available": self.shorts_audio_available,
+            "default_wide_video_available": self.default_wide_video_available,
+            "default_vertical_video_available": self.default_vertical_video_available,
             "error_count": self.error_count,
             "warning_count": self.warning_count,
             "issues": [issue.to_dict() for issue in self.issues],
@@ -264,6 +286,45 @@ def _probe_audio(path: Path) -> tuple[bool, Optional[float], str]:
         return True, duration, ""
     except (OSError, subprocess.SubprocessError, json.JSONDecodeError, TypeError, ValueError) as exc:
         return False, None, f"ffprobeで音声を読み込めません: {exc}"
+
+
+def _probe_video(path: Path) -> tuple[bool, Optional[float], Optional[tuple[int, int]], str]:
+    if not _is_size_usable(path):
+        return False, None, None, "ファイルサイズが100MB以上です"
+    ffprobe = _ffprobe_binary()
+    if not ffprobe:
+        return True, None, None, "ffprobeがないため動画デコード確認を省略しました"
+    command = [
+        ffprobe,
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=codec_name,width,height,r_frame_rate:format=duration",
+        "-of",
+        "json",
+        str(path),
+    ]
+    try:
+        result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=30)
+        payload = json.loads(result.stdout or "{}")
+        streams = payload.get("streams") or []
+        if not streams:
+            return False, None, None, "映像ストリームが見つかりません"
+        stream = streams[0]
+        width = int(stream.get("width") or 0)
+        height = int(stream.get("height") or 0)
+        duration_raw = (payload.get("format") or {}).get("duration")
+        duration = float(duration_raw) if duration_raw not in {None, ""} else None
+        codec = str(stream.get("codec_name") or "")
+        if codec not in {"h264", "hevc", "vp9", "av1"}:
+            return False, duration, (width, height), f"非対応の動画コーデックです: {codec or '不明'}"
+        if width <= 0 or height <= 0 or (duration is not None and duration <= 0):
+            return False, duration, (width, height), "動画の解像度または長さが不正です"
+        return True, duration, (width, height), ""
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        return False, None, None, f"ffprobeで動画を読み込めません: {exc}"
 
 
 def _candidate_files(folder: Path, extensions: set[str], readable_check: Any) -> list[Path]:
@@ -422,6 +483,86 @@ def resolve_audio_asset(
     )
 
 
+def resolve_sfx_assets(
+    target_date: str,
+    video_type: str,
+    stable_id: str,
+    root: Optional[Path] = None,
+) -> dict[str, AudioAsset]:
+    resolved_root = (root or _asset_root()).resolve()
+    _, credits = load_asset_credits(resolved_root)
+    resolved: dict[str, AudioAsset] = {}
+    for cue_type in SFX_CUE_TYPES:
+        folder = resolved_root / "audio" / "sfx" / cue_type
+        candidates = _candidate_files(
+            folder,
+            AUDIO_EXTENSIONS,
+            lambda candidate: _probe_audio(candidate)[0],
+        )
+        path = _stable_pick(
+            candidates,
+            f"{target_date}:{video_type}:{stable_id}:{cue_type}",
+        )
+        if path is None:
+            continue
+        metadata = _metadata_for(path, resolved_root, credits)
+        resolved[cue_type] = AudioAsset(
+            path=path,
+            title=str(metadata.get("title") or path.stem).strip(),
+            credit=str(metadata.get("credit") or "").strip(),
+            source=f"folder:sfx/{cue_type}",
+            source_url=str(metadata.get("source") or "").strip(),
+            license=str(metadata.get("license") or "").strip(),
+            volume=_clamp_volume(metadata.get("volume"), 0.16),
+            asset_id=_relative_asset_id(path, resolved_root),
+        )
+    return resolved
+
+
+def resolve_video_asset(
+    target_date: str,
+    venue_name: str,
+    race_number: Optional[int],
+    orientation: str,
+    selection_key: str = "",
+) -> Optional[VideoAsset]:
+    if orientation not in {"wide", "vertical"}:
+        raise ValueError(f"orientationはwideまたはverticalを指定してください: {orientation}")
+    root = _asset_root()
+    _, credits = load_asset_credits(root)
+    folders: list[tuple[Path, str]] = []
+    if race_number:
+        folders.append(
+            (
+                root / "video" / "races" / target_date / venue_name / str(race_number) / orientation,
+                "folder:race",
+            )
+        )
+    folders.append((root / "video" / "venues" / venue_name / orientation, "folder:venue"))
+    folders.append((root / "video" / "default" / orientation, "folder:default"))
+    stable_key = selection_key or f"{target_date}:{venue_name}:{race_number}:{orientation}:video"
+    for folder, source in folders:
+        candidates = _candidate_files(
+            folder,
+            VIDEO_EXTENSIONS,
+            lambda candidate: _probe_video(candidate)[0],
+        )
+        path = _stable_pick(candidates, f"{stable_key}:{source}")
+        if path is None:
+            continue
+        metadata = _metadata_for(path, root, credits)
+        return VideoAsset(
+            path=path.resolve(),
+            focus=_clamp_focus(metadata.get(f"focus_{orientation}", metadata.get("focus"))),
+            credit=str(metadata.get("credit") or "").strip(),
+            source=source,
+            source_url=str(metadata.get("source") or "").strip(),
+            license=str(metadata.get("license") or "").strip(),
+            asset_id=_relative_asset_id(path, root),
+        )
+    return None
+
+
 def resolve_course_asset(
     venue_name: str,
     course_type: str = "",
@@ -483,6 +624,21 @@ def audio_asset_metadata(asset: Optional[AudioAsset]) -> Optional[dict[str, Any]
     }
 
 
+def video_asset_metadata(asset: Optional[VideoAsset]) -> Optional[dict[str, Any]]:
+    if asset is None:
+        return None
+    return {
+        "type": "video",
+        "asset_id": asset.asset_id,
+        "path": str(asset.path),
+        "selection_source": asset.source,
+        "focus": list(asset.focus),
+        "credit": asset.credit,
+        "source": asset.source_url,
+        "license": asset.license,
+    }
+
+
 def course_asset_metadata(asset: Optional[CourseAsset]) -> Optional[dict[str, Any]]:
     if asset is None:
         return None
@@ -495,7 +651,12 @@ def course_asset_metadata(asset: Optional[CourseAsset]) -> Optional[dict[str, An
     }
 
 
-def asset_credit_lines(visual: Optional[VisualAsset], audio: Optional[AudioAsset]) -> list[str]:
+def asset_credit_lines(
+    visual: Optional[VisualAsset],
+    audio: Optional[AudioAsset],
+    video: Optional[VideoAsset] = None,
+    sfx_assets: Sequence[AudioAsset] = (),
+) -> list[str]:
     lines: list[str] = []
     if visual and visual.credit:
         line = f"写真: {visual.credit}"
@@ -507,6 +668,19 @@ def asset_credit_lines(visual: Optional[VisualAsset], audio: Optional[AudioAsset
         line = f"BGM: {label}"
         if audio.source_url:
             line += f" {audio.source_url}"
+        lines.append(line)
+    if video and video.credit:
+        line = f"映像: {video.credit}"
+        if video.source_url:
+            line += f" {video.source_url}"
+        lines.append(line)
+    for sfx in sfx_assets:
+        if not (sfx.credit or sfx.source_url):
+            continue
+        label = " / ".join(value for value in (sfx.title, sfx.credit) if value)
+        line = f"効果音: {label}"
+        if sfx.source_url:
+            line += f" {sfx.source_url}"
         lines.append(line)
     return lines
 
@@ -530,6 +704,7 @@ def validate_asset_library(root: Optional[Path] = None) -> AssetValidationReport
     recognized_ids: set[str] = set()
     valid_images: set[Path] = set()
     valid_audio: set[Path] = set()
+    valid_videos: set[Path] = set()
     for path in _iter_asset_files(resolved_root, "images"):
         report.checked_count += 1
         relative = _relative_asset_id(path, resolved_root)
@@ -632,10 +807,76 @@ def validate_asset_library(root: Optional[Path] = None) -> AssetValidationReport
         if not usable:
             report.issues.append(AssetIssue("error", "audio_invalid", reason, relative))
             continue
-        if duration is not None and duration < 5:
+        if duration is not None and duration < 5 and "/sfx/" not in f"/{relative}":
             report.issues.append(AssetIssue("warning", "audio_too_short", f"音声が5秒未満です: {duration:.2f}秒", relative))
         valid_audio.add(path.resolve())
         report.audio_count += 1
+
+    video_probe_missing_reported = False
+    for path in _iter_asset_files(resolved_root, "video"):
+        report.checked_count += 1
+        relative = _relative_asset_id(path, resolved_root)
+        recognized_ids.add(relative)
+        if path.suffix.lower() not in VIDEO_EXTENSIONS:
+            report.issues.append(AssetIssue("warning", "unsupported_video", "非対応の動画形式です", relative))
+            continue
+        try:
+            size = path.stat().st_size
+        except OSError as exc:
+            report.issues.append(AssetIssue("error", "video_stat_failed", str(exc), relative))
+            continue
+        report.video_bytes += size
+        if size >= MAX_ASSET_BYTES:
+            report.issues.append(AssetIssue("error", "asset_too_large", "100MB以上の素材は使用できません", relative))
+            continue
+        metadata = credits.get(relative, {})
+        if not str(metadata.get("license") or "").strip() or not str(metadata.get("credit") or "").strip():
+            report.issues.append(
+                AssetIssue(
+                    "error",
+                    "video_rights_metadata_missing",
+                    "動画素材にはcredits.jsonでcreditとlicenseの登録が必要です",
+                    relative,
+                )
+            )
+        usable, duration, dimensions, reason = _probe_video(path)
+        if reason.startswith("ffprobeがない") and not video_probe_missing_reported:
+            report.issues.append(AssetIssue("warning", "ffprobe_missing", reason, relative))
+            video_probe_missing_reported = True
+        if not usable:
+            report.issues.append(AssetIssue("error", "video_invalid", reason, relative))
+            continue
+        if duration is not None and not 6 <= duration <= 30:
+            report.issues.append(
+                AssetIssue(
+                    "warning",
+                    "video_duration_outside_recommended",
+                    f"動画素材の推奨尺6〜30秒外です: {duration:.2f}秒",
+                    relative,
+                )
+            )
+        if dimensions is not None:
+            width, height = dimensions
+            if "/wide/" in f"/{relative}" and (width < 1920 or height < 1080 or width <= height):
+                report.issues.append(
+                    AssetIssue("warning", "wide_video_resolution_low", f"横動画の推奨仕様外です: {width}x{height}", relative)
+                )
+            if "/vertical/" in f"/{relative}" and (width < 1080 or height < 1920 or height <= width):
+                report.issues.append(
+                    AssetIssue("warning", "vertical_video_resolution_low", f"縦動画の推奨仕様外です: {width}x{height}", relative)
+                )
+        valid_videos.add(path.resolve())
+        report.video_count += 1
+
+    if report.video_bytes > MAX_VIDEO_LIBRARY_BYTES:
+        report.issues.append(
+            AssetIssue(
+                "error",
+                "video_library_too_large",
+                f"動画派生素材の合計が40MBを超えています: {report.video_bytes / 1024 / 1024:.1f}MB",
+                "video",
+            )
+        )
 
     for credit_key in credits:
         if credit_key not in recognized_ids and not (resolved_root / credit_key).exists():
@@ -650,6 +891,10 @@ def validate_asset_library(root: Optional[Path] = None) -> AssetValidationReport
     shorts_audio = (resolved_root / "audio" / "shorts").resolve()
     report.long_audio_available = any(path.parent in {common_audio, long_audio} for path in valid_audio)
     report.shorts_audio_available = any(path.parent in {common_audio, shorts_audio} for path in valid_audio)
+    default_wide_video = (resolved_root / "video" / "default" / "wide").resolve()
+    default_vertical_video = (resolved_root / "video" / "default" / "vertical").resolve()
+    report.default_wide_video_available = any(path.parent == default_wide_video for path in valid_videos)
+    report.default_vertical_video_available = any(path.parent == default_vertical_video for path in valid_videos)
 
     if not report.default_wide_available:
         report.issues.append(AssetIssue("warning", "default_wide_missing", "共通横長写真が未配置です", "images/default/wide"))

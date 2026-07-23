@@ -3,6 +3,7 @@
 scripts/social_video/assets/audio/
 scripts/social_video/assets/courses/
 scripts/social_video/assets/images/
+scripts/social_video/assets/video/
 
 # ローカル専用データ・キャッシュ
 *.db

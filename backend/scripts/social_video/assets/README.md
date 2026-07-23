@@ -11,6 +11,8 @@
 images/default/wide/       共通横長写真（1920x1080以上推奨）
 images/default/vertical/   共通縦長写真（1080x1920以上推奨）
 audio/common/              長尺・Shorts共通BGM
+video/default/wide/        共通横長B-roll（任意）
+video/default/vertical/    共通縦長B-roll（任意）
 ```
 
 長尺とShortsで曲を分ける場合は、`audio/long/`と`audio/shorts/`へ配置します。
@@ -24,6 +26,28 @@ images/races/2026-07-13/函館/11/vertical/
 ```
 
 同じフォルダに複数素材を置くと、日付と動画IDから毎回同じ素材を自動選択します。
+
+## Broadcast Editorial用動画素材
+
+動画素材は任意です。未配置時は権利確認済み写真を使い、導入とShortsのデザインを維持します。
+
+```text
+video/default/wide/
+video/default/vertical/
+video/venues/函館/wide/
+video/venues/函館/vertical/
+video/races/2026-07-13/函館/11/wide/
+video/races/2026-07-13/函館/11/vertical/
+```
+
+- 横長: 1920x1080以上、H.264 MP4、29.97fpsまたは30fps、8〜15秒
+- 縦長: 1080x1920以上、H.264 MP4、30fps、6〜10秒
+- 文字、ロゴ、BGM、放送局ウォーターマークが焼き込まれていないこと
+- 主役を中央寄りにし、Shortsの右側・下部へ重要情報を置かないこと
+- リポジトリへ置く派生動画の合計は40MB以内
+- 4Kなどの原本はリポジトリへ置かず、管理元で保管すること
+
+再配布不可の素材はGitへ含めず、既存の非公開Cloud StorageからActions実行時に取得してください。
 
 ## コース形状素材
 
@@ -51,6 +75,7 @@ courses/local/funabashi_course_texture.png 船橋
 - 写真: `.jpg`、`.jpeg`、`.png`、`.webp`
 - コース形状: 背景透過の`.png`
 - 音声: `.mp3`、`.m4a`、`.aac`、`.wav`、`.flac`、`.ogg`
+- 動画: `.mp4`、`.mov`、`.m4v`、`.webm`
 - 100MB以上の単一ファイルは使用しません
 - 25MBを超える素材はリポジトリ肥大化を防ぐため圧縮を推奨します
 
@@ -73,12 +98,32 @@ courses/local/funabashi_course_texture.png 船橋
     "source": "https://example.com/music",
     "license": "利用条件",
     "volume": 0.18
+  },
+  "video/default/wide/race-01.mp4": {
+    "credit": "素材提供者名",
+    "source": "https://example.com/source",
+    "license": "YouTube・Instagram商用利用および加工可",
+    "focus": [0.5, 0.5]
   }
 }
 ```
 
 `focus`はクロップ時に残す写真上の中心位置を0から1で指定します。未指定時は`[0.5, 0.5]`です。
 `volume`は0から1で指定し、未指定時は`0.20`です。
+
+## 効果音
+
+効果音は次のフォルダへ配置します。未配置でも動画生成・公開は継続し、BGMだけを使用します。
+
+```text
+audio/sfx/whoosh/
+audio/sfx/data_tick/
+audio/sfx/score_reveal/
+audio/sfx/transition/
+audio/sfx/cta/
+```
+
+WAV 48kHz、0.15〜1.0秒を推奨します。各ファイルにも`credits.json`の`credit`と`license`が必要です。
 
 ## 検証
 

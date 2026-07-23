@@ -99,6 +99,7 @@ jobs:
           YOUTUBE_READINESS_ATTEMPTS: '3'
           YOUTUBE_READINESS_DELAY_SECONDS: '600'
           YOUTUBE_DAILY_QUOTA_BUDGET: ${{ vars.YOUTUBE_DAILY_QUOTA_BUDGET || '8000' }}
+          SOCIAL_VIDEO_MOTION_PROFILE: 'standard'
           TZ: Asia/Tokyo
         run: |
           EXTRA_ARGS=""
@@ -122,5 +123,6 @@ jobs:
             youtube_video_dist/**/thumbnail_246x138.png
             youtube_video_dist/**/design-contact-sheet.png
             youtube_video_dist/**/shorts-ui-overlay.png
+            youtube_video_dist/**/motion-review/*.mp4
           if-no-files-found: warn
           retention-days: 7

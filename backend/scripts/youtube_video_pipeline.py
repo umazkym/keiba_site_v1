@@ -26,7 +26,10 @@ from scripts.social_video.data_loader import (  # noqa: E402
     order_venues_for_publication,
     pick_shorts_targets,
 )
-from scripts.social_video.create_design_contact_sheet import create_contact_sheet  # noqa: E402
+from scripts.social_video.create_design_contact_sheet import (  # noqa: E402
+    create_contact_sheet,
+    create_motion_review_videos,
+)
 from scripts.social_video.registry import VideoPostRegistry  # noqa: E402
 from scripts.social_video.renderer import RenderedVideo, render_long_video, render_short_video  # noqa: E402
 from scripts.social_video.visual_assets import validate_asset_library  # noqa: E402
@@ -322,6 +325,10 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
     (output_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     contact_sheet = create_contact_sheet(output_dir, output_dir / "design-contact-sheet.png")
     print(f"デザイン確認シート: {contact_sheet}")
+    if args.dry_run and not args.skip_video:
+        review_videos = create_motion_review_videos(output_dir)
+        for review_video in review_videos:
+            print(f"モーション確認動画: {review_video}")
     print(f"動画生成サマリー: {output_dir / 'summary.json'}")
     _append_actions_summary(
         [

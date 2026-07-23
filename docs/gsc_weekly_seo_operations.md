@@ -13,6 +13,30 @@ Search Consoleの確定データから既存記事の低CTR候補を見つけ、
 
 Search Console取得コードが要求するOAuth scopeは`https://www.googleapis.com/auth/webmasters.readonly`だけである。API失敗、403、429、データ不足はGSC監査workflowだけを失敗させ、通常の記事生成workflowには影響しない。
 
+## 外部設定の完了記録
+
+2026年7月23日に、次の初回設定を実画面で確認して完了した。
+
+- Google Cloudプロジェクト`keiba-api-project`でSearch Console APIが有効
+- `github-actions-iap-db@keiba-api-project.iam.gserviceaccount.com`が、Search Consoleの`sc-domain:uma-free.com`へ「制限付き」権限で登録済み
+- GitHub Repository Variable `GSC_SITE_URL`へ`sc-domain:uma-free.com`を登録済み
+
+これらはリポジトリ外の設定であるため、将来の保守では設定済みとして扱い、GSC workflowで403、認証エラー、または変数欠損が実際に確認された場合だけ外部設定を再点検する。正常時に所有者権限へ昇格したり、サービスアカウント鍵を新規発行したりしない。
+
+## 費用
+
+- Search Console APIの利用は無料で、課金ではなく利用上限の対象となる。
+- Search Consoleへのユーザー追加、Google Cloudのサービスアカウント利用、GitHub Repository Variableの登録自体に追加の継続料金はない。
+- 定期監査は`ubuntu-latest`を週1回利用する。公開リポジトリの標準GitHub-hosted runnerは無料で、非公開リポジトリでは契約プランの無料分数を消費し、超過時だけGitHub Actionsの料金条件が適用される。
+- 監査artifactは小容量のJSON、Markdown、記事inventoryだけを90日保持する。料金リスクを避けるため、artifactやActions全体の保存容量が契約プランの無料枠を超えていないかを月次の課金確認に含める。
+- 定期監査はGeminiによる改稿を実行せず、Search Consoleの読み取りと候補レポート作成だけを行う。Gemini利用が発生するのは、正確な`article_slug`を指定した手動改稿時だけである。
+
+公式条件:
+
+- [Search Console API Pricing](https://developers.google.com/webmaster-tools/pricing)
+- [Search Console API Usage Limits](https://developers.google.com/webmaster-tools/limits)
+- [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+
 ## 週次レポートの確認
 
 Actions Summaryと`gsc-seo-audit-{run_id}` artifactで次を確認する。

@@ -106,11 +106,14 @@ Search Consoleは既存記事の検索意図と改善優先度の判断にだけ
 - You MUST limit a GSC rewrite to title, description, keywords, lead text, and existing H2 labels.
 - You MUST reject the rewrite before file mutation if number tokens, tables, H2 bodies, links, canonical, publication date, entity metadata, `update_stage`, ad metadata, or verified race-bridge metadata change.
 - You MUST publish only the existing `rewrite_target_slug` file and MUST NOT generate a new slug, article file, redirect, or canonical because the rewrite must preserve the indexed URL exactly.
+- You MUST consult `docs/gsc_weekly_seo_operations.md` before diagnosing GSC authentication or cost because it records the completed external setup and the applicable free-tier conditions.
+- You MUST treat the recorded external setup as completed unless a current workflow or API response proves that access or configuration was removed; do not request unnecessary owner permission or service-account keys.
 
 ## Source references
 
 - `AGENTS.md`
 - `docs/article_creation_flow.md`
+- `docs/gsc_weekly_seo_operations.md`
 - `docs/reference_data_summary.md`
 - `docs/system-documentation/13_記事生成AIトーンマナー定義書.md`
 - `docs/system-documentation/14_自動記事生成システム全体仕様書.md`

@@ -457,6 +457,19 @@ class SocialVideoRendererTest(unittest.TestCase):
         title = renderer._long_title(VenueVideoData("阪神", "中央", [race]), "2026-06-28")
         self.assertTrue(title.startswith("【宝塚記念】阪神 全レース"))
 
+    def test_long_title_discloses_excluded_newcomer_race(self) -> None:
+        race = _race()
+        newcomer = _race()
+        newcomer.id = "newcomer"
+        newcomer.race_number = 2
+        newcomer.race_name = "2歳新馬"
+        newcomer.predictions = []
+        title = renderer._long_title(
+            VenueVideoData("笠松", "地方", [race], excluded_races=[newcomer]),
+            "2026-07-24",
+        )
+        self.assertIn("新馬戦を除く対象レース", title)
+
     def test_long_ranking_slide_limits_rows_to_top_five(self) -> None:
         race = _race()
         with tempfile.TemporaryDirectory() as temp_dir:

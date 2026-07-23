@@ -85,6 +85,7 @@ class VenueVideoData:
     venue_name: str
     race_type: str
     races: List[RaceVideoData]
+    excluded_races: List[RaceVideoData] = field(default_factory=list)
 
     @property
     def grade_races(self) -> List[RaceVideoData]:

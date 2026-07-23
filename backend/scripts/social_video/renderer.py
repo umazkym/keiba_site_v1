@@ -1206,7 +1206,8 @@ def _draw_venue_title_slide(path: Path, venue: VenueVideoData, target_date: str,
         draw.text((width - margin, 32), f"{_display_short_date(target_date)}  {venue.race_type}競馬", font=_font(FONT_BOLD, 25), fill=INK_MUTED, anchor="ra")
         draw.line((margin, 94, width - margin, 94), fill=RULE, width=2)
         draw.text((margin, 130), venue.venue_name, font=_font(FONT_BLACK, 76), fill=INK_DARK)
-        draw.text((margin + 310, 160), "本日のレース", font=_font(FONT_BOLD, 27), fill=EDITORIAL_GOLD_DARK)
+        race_heading = "AI偏差値対象レース（新馬戦除く）" if venue.excluded_races else "本日のレース"
+        draw.text((margin + 310, 160), race_heading, font=_font(FONT_BOLD, 27), fill=EDITORIAL_GOLD_DARK)
         draw.text((width - margin, 154), grade_line, font=_font(FONT_BOLD, 27), fill=DEEP_GREEN, anchor="ra")
         races = venue.races[:12]
         column_count = 2 if len(races) > 6 else 1
@@ -2107,9 +2108,10 @@ def _draw_intro_sequence(
 
 def _long_title(venue: VenueVideoData, target_date: str) -> str:
     grade_names = "・".join(race.display_name for race in venue.grade_races[:2])
+    scope = "新馬戦を除く対象レース" if venue.excluded_races else "全レース"
     if grade_names:
-        return f"【{grade_names}】{venue.venue_name} 全レース AI偏差値・位置取り｜{target_date}"
-    return f"【{venue.venue_name}】全レース AI偏差値・位置取り｜{target_date}"
+        return f"【{grade_names}】{venue.venue_name} {scope} AI偏差値・位置取り｜{target_date}"
+    return f"【{venue.venue_name}】{scope} AI偏差値・位置取り｜{target_date}"
 
 
 def _description(
@@ -2119,6 +2121,7 @@ def _description(
     venue_name: Optional[str] = None,
     credit_lines: Sequence[str] = (),
     is_short: bool = False,
+    excluded_race_labels: Sequence[str] = (),
 ) -> str:
     venue_line = f"{venue_name}の" if venue_name else ""
     entry_line = (
@@ -2141,6 +2144,11 @@ def _description(
         #競馬 #競馬データ #UMA_FREE
         """
     ).strip()
+    if excluded_race_labels:
+        description += (
+            "\n\n※AI偏差値の算出対象外となる新馬戦は収録していません: "
+            + "、".join(excluded_race_labels)
+        )
     unique_credits = list(dict.fromkeys(line.strip() for line in credit_lines if line.strip()))
     if unique_credits:
         description += "\n\n素材クレジット\n" + "\n".join(f"- {line}" for line in unique_credits)
@@ -2172,7 +2180,11 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         publish_block_reasons.append("長尺用BGMが見つかりません")
     publishable = not publish_block_reasons
     grade_names = " / ".join(race.display_name for race in venue.grade_races[:2])
-    thumb_title = grade_names or f"{venue.venue_name} 全{len(venue.races)}R"
+    thumb_title = grade_names or (
+        f"{venue.venue_name} 対象{len(venue.races)}R"
+        if venue.excluded_races
+        else f"{venue.venue_name} 全{len(venue.races)}R"
+    )
     hero_label = f"{venue.venue_name}{hero_race.race_number}R" if hero_race else venue.venue_name
 
     slides.extend(
@@ -2217,7 +2229,11 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
     slides.append(Slide(outro, LONG_OUTRO_SECONDS))
 
     thumbnail = video_dir / "thumbnail.jpg"
-    subtitle = f"全{len(venue.races)}R  AI偏差値・位置取り"
+    subtitle = (
+        f"対象{len(venue.races)}R（新馬戦除く） AI偏差値・位置取り"
+        if venue.excluded_races
+        else f"全{len(venue.races)}R  AI偏差値・位置取り"
+    )
     hero_grade = hero_race.grade if hero_race and hero_race.grade else ""
     _draw_thumbnail(
         thumbnail,
@@ -2254,7 +2270,18 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         "courses": [course_asset_metadata(asset) for asset in course_assets.values()],
     }
     credits = asset_credit_lines(visual_asset, audio_asset)
-    description = _description(title, target_date, url, venue.venue_name, credits)
+    excluded_race_labels = [
+        f"{race.race_number}R {race.display_name}"
+        for race in venue.excluded_races
+    ]
+    description = _description(
+        title,
+        target_date,
+        url,
+        venue.venue_name,
+        credits,
+        excluded_race_labels=excluded_race_labels,
+    )
     tags = ["競馬", "AI偏差値", "UMA-FREE", venue.venue_name, *(race.display_name for race in venue.grade_races[:2])]
     rights_manifest_hash = build_rights_manifest_hash(selected_assets)
     content_hash = build_content_hash(
@@ -2266,6 +2293,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
             "description": description,
             "tags": tags,
             "race_ids": [race.id for race in venue.races],
+            "excluded_race_ids": [race.id for race in venue.excluded_races],
             "destination_url": url,
             "rights_manifest_hash": rights_manifest_hash,
         }
@@ -2280,6 +2308,15 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         "target_date": target_date,
         "venue_name": venue.venue_name,
         "race_ids": [race.id for race in venue.races],
+        "excluded_races": [
+            {
+                "race_id": race.id,
+                "race_number": race.race_number,
+                "race_name": race.display_name,
+                "reason": "新馬戦のためAI偏差値算出対象外",
+            }
+            for race in venue.excluded_races
+        ],
         "aspect_ratio": "16:9",
         "url": url,
         "video_path": str(video_path) if video_path else None,

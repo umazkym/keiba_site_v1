@@ -24,7 +24,7 @@ Constraints for parameter acquisition:
 
 **Constraints:**
 
-- You MUST inspect `frontend/components/AffiliateSlot.tsx`, `frontend/lib/affiliate-campaigns.ts`, `frontend/components/AdUnit.tsx`, `frontend/components/GlobalAdManager.tsx`, and relevant page components when affected.
+- You MUST inspect `frontend/components/AffiliateSlot.tsx`, `frontend/lib/affiliate-campaigns.ts`, `frontend/components/AdUnit.tsx`, `frontend/components/AdSensePageLevelScript.tsx`, and relevant page components when affected.
 - You MUST identify whether the surface appears before, inside, or after the main user task.
 - You MUST check whether GA4/Clarity events are emitted for impression and click behavior.
 - You MUST NOT place monetization UI inside prediction tables, sticky selectors, or dense race navigation because it increases accidental interaction and harms race browsing.
@@ -71,6 +71,7 @@ Constraints for parameter acquisition:
 **Constraints:**
 
 - You MUST preserve `affiliate_impression`, `affiliate_click`, and relevant context/campaign parameters when touching affiliate components.
+- You MUST send singular `provider` and `link_id` on both affiliate impression and click events. Keep `providers` on impressions only for compatibility with multi-link slots.
 - You SHOULD preserve or update Clarity custom event linkage when adding new monetization events.
 - You MUST run `npx tsc --noEmit` for TypeScript changes.
 - You SHOULD run `npm run build` when page-level ad or affiliate placement changes.
@@ -153,4 +154,4 @@ provider: rakuten_keiba
 
 ### クリックは多いが成約が伸びない
 
-リンクを派手にする前に、Clarity録画、入口文言、ページ文脈、誤認の有無を確認します。中央競馬ページでは地方競馬サービスであることを控えめに明示します。
+リンクを派手にする前に、成果条件、提携状態、Cookie期間、反映時間、配置別リンクの発行可否、Clarity録画、入口文言、ページ文脈、誤認の有無を確認します。新規登録が成果条件なら、既存会員や投票画面閲覧だけの利用者へ広く露出せず、対象者と必要な登録情報を明示します。単一リンクの投票カードでも枠全体をリンクにせず、44px以上の明示CTAだけを操作対象にします。中央競馬ページでは地方競馬サービスへの導線を原則表示しません。

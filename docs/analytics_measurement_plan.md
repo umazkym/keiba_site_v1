@@ -27,8 +27,8 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `article_race_click` | 記事からレースページへ移動 | `article_slug`, `link_path`, `link_placement`, `destination_type`, `race_id`, `race_name`, `race_date`, `preview_state` | 記事から正確なレースへの送客 |
 | `ad_impression_custom` | AdSenseが広告を配信 | `ad_placement`, `ad_format`, `ad_slot`, `ad_page_type` | 配信済み広告の母数 |
 | `ad_viewable_custom` | 広告枠の50%以上が1秒間画面内に表示 | `ad_placement`, `ad_format`, `ad_slot`, `ad_page_type` | 配置別の実視認と収益性 |
-| `affiliate_impression` | アフィリエイト枠の40%以上が表示 | `campaign_id`, `provider`, `context` | アフィリエイト表示母数 |
-| `affiliate_click` | アフィリエイトリンクをクリック | `campaign_id`, `provider`, `context`, `link_id` | アフィリエイト送客 |
+| `affiliate_impression` | アフィリエイト枠の40%以上が表示 | `campaign_id`, `link_id`, `provider`, `providers`, `context`, `campaign_type`, `link_count`, `race_type`, `venue_name` | アフィリエイト表示母数 |
+| `affiliate_click` | アフィリエイトリンクをクリック | `campaign_id`, `link_id`, `provider`, `context`, `campaign_type`, `race_type`, `venue_name` | アフィリエイト送客 |
 | `premium_data_view` | 詳細データを表示 | `race_id`, `result` | 詳細データの利用状況 |
 | `web_vital` | 固定20%サンプルのセッションでWeb Vitalsを計測 | `metric_name`, `metric_id`, `value`, `rating`, `navigation_type`, `page_path`, `page_type`, `release_id` | リリース・ページ種別ごとのLCP、INP、CLS |
 | `adsense_offerwall_view` | AdSense Offerwallが非表示から表示へ変わった時に1回 | `path_group`, `page_path`, `page_type` | Offerwall到達後のレース操作・離脱との比較 |
@@ -50,6 +50,8 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 3. `reward_ad_granted`（リワード広告を再開した場合のみ）
 
 `article_read_complete`と`race_view`は利用状況を見る指標であり、キーイベントにはしない。
+
+`affiliate_impression`の`provider`は表示枠の主リンク提供元を表し、`affiliate_click`の`provider`と同じ値を使う。`providers`は複数リンクを持つ既存枠との互換用に残すが、配置別CTRは単数の`provider`、`context`、`campaign_id`、`link_id`で集計する。TrafficGateの日別レポートに表示回数がない場合も、サイト側の`affiliate_impression`を母数にする。
 
 ## 広告収益の判定基準
 
@@ -92,3 +94,4 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 - リワード広告を意図的に停止している期間は、通常公開を`premium_data_view.result=open_access`として扱う。
 - 2026-07-20〜21のUI変更が30日集計へ混在するため、広告・CTA判断では2026-07-22以降の期間を分離する。
 - 2026-07-23実装のレースブリッジは、本番デプロイ日Dより前の汎用CTAと同一期間へ混在させない。`metadata_only`は一時API障害時の静的リンク表示であり、上位3頭が表示された`available`と分けて集計する。
+- 楽天競馬の適格化実験は`NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=qualified_nar`へ切り替えた本番反映日をDとする。Dより前のレガシー導線、ヘッダー、JRA、日別ページ下部の表示・クリックを実験母数へ混ぜない。

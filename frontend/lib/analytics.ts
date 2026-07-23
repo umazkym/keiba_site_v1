@@ -71,7 +71,9 @@ export type AffiliateClickParams = {
 
 export type AffiliateImpressionParams = {
     campaign_id: string;
-    providers: string;
+    link_id: string;
+    provider: string;
+    providers?: string;
     context: string;
     campaign_type: string;
     link_count: number;
@@ -453,6 +455,7 @@ export const sendAffiliateClickEvent = (params: AffiliateClickParams) => {
         affiliate_page_type: inferPageType(),
     });
     sendClarityEvent('affiliate_click', {
+        affiliate_link_id: params.link_id,
         affiliate_provider: params.provider,
         affiliate_context: params.context,
         affiliate_campaign_type: params.campaign_type,
@@ -466,6 +469,8 @@ export const sendAffiliateImpressionEvent = (params: AffiliateImpressionParams) 
         affiliate_page_type: inferPageType(),
     });
     sendClarityEvent('affiliate_impression', {
+        affiliate_link_id: params.link_id,
+        affiliate_provider: params.provider,
         affiliate_context: params.context,
         affiliate_campaign_type: params.campaign_type,
         race_type: params.race_type,

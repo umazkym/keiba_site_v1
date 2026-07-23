@@ -127,3 +127,47 @@ Offerwallの次に検討する実験は「閉じる選択肢」の比較、そ�
 3. D+14以降、完全な14日分が揃う日の09:00へ`uma-free-cta-14`を更新する。
 4. 両リマインドの登録後だけPublisher環境へ`ARTICLE_RACE_BRIDGE_EXPERIMENT_ACTIVE=true`と`ARTICLE_RACE_BRIDGE_REMINDER_ID={判断日自動化ID}`を設定する。
 5. リマインド更新に失敗した場合、または上記2環境値のどちらかがない場合は、Publisherが`race_bridge_enabled=false`を維持する。
+
+## 実装待ち: AFF-RAKUTEN-QUALIFIED-NAR-2026-08
+
+| 項目 | 内容 |
+| --- | --- |
+| 実験ID | `AFF-RAKUTEN-QUALIFIED-NAR-2026-08` |
+| 目的 | 楽天競馬を初めて利用する意思がある地方競馬ユーザーへ導線を限定し、誤タップを減らしながら発生率を確認する |
+| 変更前基準 | 2026-06-10〜2026-07-22の完全日でTrafficGateクリック502件、発生0件。2026-07-23は途中日のため除外 |
+| 原案 | 共通ヘッダー、ホーム、JRA/NAR予想表直後、日別ページ下部に同一リンクを表示。投票系カード全体がリンク |
+| バリエーション | ホームの地方競馬開催一覧直後と、地方競馬のAI偏差値表直後だけに新規登録向けCTAを表示。CTAだけをリンクにする |
+| 実装状態 | 2026-07-23にコードと計測を実装。`NEXT_PUBLIC_RAKUTEN_KEIBA_MODE`の既定値は`legacy`で、本番表示変更は未開始 |
+| 開始前提 | Offerwall終了後7日確認が完了し、記事レースブリッジが開始済みならそのD+14判断も完了していること |
+| 外部確認 | TrafficGateでMID 1958の提携状態、成果条件、Cookie期間、反映時間、対象外条件を確認。502クリック・発生0件を提示し、自己登録テストは行わない |
+| 配置別URL | `home_nar_voting`、`race_after_prediction_nar`をTrafficGateで発行してVercel環境値へ設定。発行不可の場合だけ現URLを継続し、配置別成果帰属不可を本欄へ追記 |
+| 開始日時D | 未定。開始条件を満たし、D+28 09:00 JSTリマインドを登録したうえで`NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=qualified_nar`を反映した時刻 |
+| 最低期間・サンプル | 完全な28日間、対象の地方競馬・ホーム500人間セッション、TrafficGateクリック200件をすべて満たす |
+| 主指標 | TrafficGate発生件数 ÷ TrafficGateクリック数 |
+| 収益保護指標 | サイト全体のAdSense＋アフィリエイト収益 / 1,000人間セッション、`prediction_table_view`、`race_navigation`、`home_race_entry_click`、モバイルCLS・INP、デッドクリック |
+| 採用条件 | 200クリック時点で発生2件以上、主要操作が10%以上低下せず、収益/1,000人間セッションも低下しない |
+| 延長条件 | 200クリック時点で発生0〜1件なら14日延長し、400クリックまで確認する |
+| 停止条件 | 400件の適格クリックで発生0件、リンク異常、提携停止、ポリシー警告、重大な誤タップ、モバイル操作阻害のいずれか |
+| 復元方法 | `NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=legacy`へ戻す。外部URL環境値は残してもよいが、再開判断までは適格化モードへ切り替えない |
+| 判断リマインド | 未登録。Dが未確定のため実験は開始しない。開始操作と同時にD+28 09:00 JSTで作成し、IDを本欄へ記録する |
+
+### 配置別URL環境値
+
+| 配置 | 環境値 | 適格化モードでの表示 |
+| --- | --- | --- |
+| サイト共通ヘッダー | `NEXT_PUBLIC_RAKUTEN_KEIBA_SITE_HEADER_URL` | 非表示 |
+| ホーム地方開催一覧直後 | `NEXT_PUBLIC_RAKUTEN_KEIBA_HOME_NAR_URL` | 表示 |
+| NAR AI偏差値表直後 | `NEXT_PUBLIC_RAKUTEN_KEIBA_RACE_NAR_URL` | 表示 |
+| JRA AI偏差値表直後 | `NEXT_PUBLIC_RAKUTEN_KEIBA_RACE_JRA_URL` | 非表示 |
+| 日別ページ下部 | `NEXT_PUBLIC_RAKUTEN_KEIBA_TOP_HITS_URL` | 非表示 |
+
+空欄またはTrafficGate以外のURLが設定された場合は、検証済みの現行URLへフォールバックする。配置別URLの発行可否を確認するまでは、URL差分だけを理由に実験を開始しない。
+
+### 開始・判断手順
+
+1. TrafficGateの回答と配置別URLを台帳へ記録し、本番リンクが新規会員登録キャンペーンへ到達することを確認する。
+2. Offerwallと記事レースブリッジの前提完了を確認し、AdSense、自動アンカー、記事レースブリッジの設定を固定する。
+3. D+28 09:00 JSTの判断リマインドを作成し、IDを台帳へ記録する。
+4. Vercelへ2つの表示対象URLと`NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=qualified_nar`を設定してデプロイし、その時刻をDとする。
+5. GA4で40%以上表示時に`affiliate_impression`が1回、CTA押下時に`affiliate_click`が1回だけ送られ、両イベントの`provider`、`context`、`campaign_id`、`link_id`、`race_type`が一致することを確認する。
+6. D+28時点で最低条件を満たさない場合は判断せず、条件を満たす日へリマインドを更新する。200クリックで発生0〜1件の場合は14日延長する。

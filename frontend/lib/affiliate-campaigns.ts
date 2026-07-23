@@ -4,7 +4,8 @@ export type AffiliateContext =
     | 'race_after_top_hits'
     | 'article_footer'
     | 'home_goods'
-    | 'home_nar_voting';
+    | 'home_nar_voting'
+    | 'site_header';
 
 export type AffiliateCampaignType = 'voting' | 'product';
 
@@ -17,6 +18,13 @@ export type AffiliateProvider =
     | 'official';
 
 export type RaceType = 'jra' | 'nar';
+export type RakutenKeibaMode = 'legacy' | 'qualified_nar';
+export type RakutenKeibaPlacement =
+    | 'site_header'
+    | 'home_nar_voting'
+    | 'race_after_prediction_nar'
+    | 'race_after_prediction_jra'
+    | 'race_after_top_hits';
 
 export type AffiliateLink = {
     id: string;
@@ -38,6 +46,9 @@ export type AffiliateCampaign = {
     weight?: number;
     startAt?: string;
     endAt?: string;
+    rakutenMode?: RakutenKeibaMode;
+    ctaOnly?: boolean;
+    showDescription?: boolean;
     raceScope?: {
         raceTypes?: RaceType[];
         includeVenues?: string[];
@@ -51,10 +62,61 @@ export type AffiliateFilter = {
     raceType?: RaceType;
     venueName?: string;
     now?: Date;
+    rakutenMode?: RakutenKeibaMode;
 };
 
 const DEFAULT_VOTING_NOTICE = '※馬券の購入は20歳以上の方のみ対象です。';
-const RAKUTEN_KEIBA_AFFILIATE_URL = 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641';
+const DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL = 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641';
+
+const normalizeTrafficGateUrl = (value: string | undefined) => {
+    const candidate = value?.trim();
+    if (!candidate) return DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL;
+
+    try {
+        const parsed = new URL(candidate);
+        if (parsed.protocol === 'https:' && parsed.hostname === 'ad2.trafficgate.net') {
+            return parsed.toString();
+        }
+    } catch {
+        // 不正な公開環境値では既存の検証済みリンクへ戻す。
+    }
+
+    return DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL;
+};
+
+export const RAKUTEN_KEIBA_MODE: RakutenKeibaMode =
+    process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_MODE === 'qualified_nar'
+        ? 'qualified_nar'
+        : 'legacy';
+
+export const shouldShowRakutenKeibaHeader = (
+    mode: RakutenKeibaMode = RAKUTEN_KEIBA_MODE
+) => mode !== 'qualified_nar';
+
+export const RAKUTEN_KEIBA_AFFILIATE_URLS: Record<RakutenKeibaPlacement, string> = {
+    site_header: normalizeTrafficGateUrl(process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_SITE_HEADER_URL),
+    home_nar_voting: normalizeTrafficGateUrl(process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_HOME_NAR_URL),
+    race_after_prediction_nar: normalizeTrafficGateUrl(process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_RACE_NAR_URL),
+    race_after_prediction_jra: normalizeTrafficGateUrl(process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_RACE_JRA_URL),
+    race_after_top_hits: normalizeTrafficGateUrl(process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_TOP_HITS_URL),
+};
+
+export const getRakutenKeibaPlacement = (
+    context: AffiliateContext,
+    raceType?: RaceType
+): RakutenKeibaPlacement => {
+    if (context === 'site_header') return 'site_header';
+    if (context === 'home_nar_voting') return 'home_nar_voting';
+    if (context === 'race_after_top_hits') return 'race_after_top_hits';
+    return raceType === 'jra' ? 'race_after_prediction_jra' : 'race_after_prediction_nar';
+};
+
+export const getRakutenKeibaAffiliateUrl = (
+    context: AffiliateContext,
+    raceType?: RaceType
+) => {
+    return RAKUTEN_KEIBA_AFFILIATE_URLS[getRakutenKeibaPlacement(context, raceType)];
+};
 
 export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
     {
@@ -66,6 +128,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         attention: DEFAULT_VOTING_NOTICE,
         contexts: ['race_after_prediction', 'race_after_premium_data', 'race_after_top_hits', 'home_nar_voting'],
         weight: 1200,
+        rakutenMode: 'legacy',
         raceScope: {
             raceTypes: ['nar'],
         },
@@ -74,7 +137,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
                 id: 'rakuten-keiba-main',
                 provider: 'rakuten_keiba',
                 label: '今すぐチェック',
-                url: RAKUTEN_KEIBA_AFFILIATE_URL,
+                url: DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL,
                 enabled: true,
             },
         ],
@@ -88,6 +151,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         attention: DEFAULT_VOTING_NOTICE,
         contexts: ['race_after_prediction', 'race_after_top_hits'],
         weight: 1200,
+        rakutenMode: 'legacy',
         raceScope: {
             raceTypes: ['jra'],
         },
@@ -96,7 +160,57 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
                 id: 'rakuten-keiba-jra-main',
                 provider: 'rakuten_keiba',
                 label: '今すぐチェック',
-                url: RAKUTEN_KEIBA_AFFILIATE_URL,
+                url: DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL,
+                enabled: true,
+            },
+        ],
+    },
+    {
+        id: 'rakuten-keiba-qualified-nar-race',
+        enabled: true,
+        type: 'voting',
+        title: '楽天競馬を初めて利用する方へ',
+        description: '地方競馬全場に対応。会員登録には楽天会員情報と銀行口座の登録が必要です。',
+        attention: DEFAULT_VOTING_NOTICE,
+        contexts: ['race_after_prediction'],
+        weight: 1200,
+        rakutenMode: 'qualified_nar',
+        ctaOnly: true,
+        showDescription: true,
+        raceScope: {
+            raceTypes: ['nar'],
+        },
+        links: [
+            {
+                id: 'rakuten-keiba-qualified-nar-race-main',
+                provider: 'rakuten_keiba',
+                label: '新規登録キャンペーンを確認',
+                url: DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL,
+                enabled: true,
+            },
+        ],
+    },
+    {
+        id: 'rakuten-keiba-qualified-nar-home',
+        enabled: true,
+        type: 'voting',
+        title: '楽天競馬を初めて利用する方へ',
+        description: '地方競馬全場に対応。会員登録には楽天会員情報と銀行口座の登録が必要です。',
+        attention: DEFAULT_VOTING_NOTICE,
+        contexts: ['home_nar_voting'],
+        weight: 1200,
+        rakutenMode: 'qualified_nar',
+        ctaOnly: true,
+        showDescription: true,
+        raceScope: {
+            raceTypes: ['nar'],
+        },
+        links: [
+            {
+                id: 'rakuten-keiba-qualified-nar-home-main',
+                provider: 'rakuten_keiba',
+                label: '新規登録キャンペーンを確認',
+                url: DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL,
                 enabled: true,
             },
         ],
@@ -269,9 +383,11 @@ export const getAffiliateCampaignsForContext = ({
     raceType,
     venueName,
     now = new Date(),
+    rakutenMode = RAKUTEN_KEIBA_MODE,
 }: AffiliateFilter) => {
     return AFFILIATE_CAMPAIGNS.filter((campaign) => {
         if (campaign.enabled === false) return false;
+        if (campaign.rakutenMode && campaign.rakutenMode !== rakutenMode) return false;
         if (!campaign.contexts.includes(context)) return false;
         if (!isActiveByDate(campaign, now)) return false;
         if (!matchesRaceScope(campaign, raceType, venueName)) return false;

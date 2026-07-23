@@ -38,6 +38,7 @@ Constraints for parameter acquisition:
 - You MUST require DB, prediction data, or explicit Evidence Pack for win rate, place rate, return rate, sample count, AI score, frame data, leg type data, and jockey metrics.
 - You MUST use Tavily or web research only for topic discovery and independent verification of official facts. External media titles, URLs, summaries, recommendations, and comments MUST NOT enter Writer input.
 - You MUST limit WriterEvidence origins to `official` and `uma_free`, with `facts`, `metrics`, and `as_of` explicitly separated.
+- You MUST preserve verified internal `key_metrics` in both legacy `label/value` form and multi-column table form. Multi-column rows keep their original scalar column names and values, while provenance, source URLs, media names, and production metadata are removed before Writer execution.
 - You MUST reject articles containing external media names, column names, quote-like attribution, third-party recommendations/comments, production meta language, or off-topic analogies.
 - You MUST preserve freshness checks for date-specific news and race context.
 - You MUST NOT allow the LLM to invent missing prediction values, race results, odds, rankings, or threshold claims because this directly damages trust and search quality.
@@ -74,6 +75,7 @@ Constraints for parameter acquisition:
 - You SHOULD run targeted backend unit tests such as `test_news_topic_planner.py` or `test_editorial_evergreen_planner.py` when planner behavior changes.
 - You SHOULD run `npm run article:validate-links` and `npm run article:audit-quality` from `frontend/` when article Markdown or article validation logic changes.
 - You SHOULD run `npm run article:test-independence` when planner, Writer, Editor, SEO Checker, Publisher, or evidence sanitization changes.
+- Evidence sanitization tests MUST cover a verified multi-column row that produces `evidence_rows > 0` and an external-source-only row that remains rejected.
 - You SHOULD run `npx tsc --noEmit` when TypeScript agent scripts or article rendering types change.
 
 ### 6. Gate grade-race URLs and race bridges

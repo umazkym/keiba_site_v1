@@ -5,13 +5,15 @@ import { usePathname } from 'next/navigation';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { SearchIcon, MenuIcon, XIcon } from '@/components/Icons';
 import { sendAffiliateClickEvent, sendAffiliateImpressionEvent } from '@/lib/analytics';
+import {
+    getRakutenKeibaAffiliateUrl,
+    shouldShowRakutenKeibaHeader,
+} from '@/lib/affiliate-campaigns';
 import { acquirePageScrollLock } from '@/lib/page-scroll-lock';
 
 type HeaderProps = {
     todayString: string;
 };
-
-const RAKUTEN_KEIBA_AFFILIATE_URL = 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641';
 
 const HEADER_AFFILIATE_EVENT = {
     campaign_id: 'rakuten-keiba-header',
@@ -25,6 +27,8 @@ const HeaderAffiliateLink = () => {
     useEffect(() => {
         sendAffiliateImpressionEvent({
             campaign_id: HEADER_AFFILIATE_EVENT.campaign_id,
+            link_id: HEADER_AFFILIATE_EVENT.link_id,
+            provider: HEADER_AFFILIATE_EVENT.provider,
             providers: HEADER_AFFILIATE_EVENT.provider,
             context: HEADER_AFFILIATE_EVENT.context,
             campaign_type: HEADER_AFFILIATE_EVENT.campaign_type,
@@ -38,7 +42,7 @@ const HeaderAffiliateLink = () => {
 
     return (
         <a
-            href={RAKUTEN_KEIBA_AFFILIATE_URL}
+            href={getRakutenKeibaAffiliateUrl('site_header')}
             target="_blank"
             rel="sponsored nofollow noopener noreferrer"
             onClick={handleClick}
@@ -267,7 +271,7 @@ export const Header = ({ todayString }: HeaderProps) => {
 
                     {/* 検索ボタンとメニューボタン（右側） */}
                     <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                        <HeaderAffiliateLink />
+                        {shouldShowRakutenKeibaHeader() && <HeaderAffiliateLink />}
 
                         <Link
                             href="/search"

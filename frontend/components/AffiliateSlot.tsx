@@ -6,8 +6,10 @@ import {
     type AffiliateContext,
     type AffiliateProvider,
     type RaceType,
+    type RakutenKeibaMode,
     getActiveAffiliateLinks,
     getAffiliateCampaignsForContext,
+    getRakutenKeibaAffiliateUrl,
     selectWeightedAffiliateCampaign,
 } from '@/lib/affiliate-campaigns';
 import { sendAffiliateClickEvent, sendAffiliateImpressionEvent } from '@/lib/analytics';
@@ -24,6 +26,7 @@ type AffiliateSlotProps = {
     variant?: 'default' | 'compact';
     className?: string;
     fallback?: ReactNode;
+    rakutenMode?: RakutenKeibaMode;
 };
 
 const providerLabels: Record<AffiliateProvider, string> = {
@@ -52,13 +55,22 @@ export const AffiliateSlot = ({
     variant = 'default',
     className = '',
     fallback = null,
+    rakutenMode,
 }: AffiliateSlotProps) => {
-    const campaigns = getAffiliateCampaignsForContext({ context, raceType, venueName });
+    const campaigns = getAffiliateCampaignsForContext({ context, raceType, venueName, rakutenMode });
     const seed = `${context}:${raceType ?? 'all'}:${venueName ?? 'all'}:${selectionKey}`;
     const campaign = selectWeightedAffiliateCampaign(campaigns, seed);
     const links = useMemo(() => {
-        return campaign ? getActiveAffiliateLinks(campaign) : [];
-    }, [campaign]);
+        if (!campaign) return [];
+
+        return getActiveAffiliateLinks(campaign).map((link) => {
+            if (link.provider !== 'rakuten_keiba') return link;
+            return {
+                ...link,
+                url: getRakutenKeibaAffiliateUrl(context, raceType),
+            };
+        });
+    }, [campaign, context, raceType]);
     const mainLinks = useMemo(() => {
         if (campaign?.type === 'voting') {
             // 投票系: 最初の1リンクのみ主ボタンにする（将来複数対応時の保険）
@@ -129,9 +141,12 @@ export const AffiliateSlot = ({
         if (!node) return undefined;
 
         const providers = Array.from(new Set(links.map((link) => link.provider))).join(',');
+        const primaryLink = mainLinks[0] ?? links[0];
         const sendImpression = () => {
             sendAffiliateImpressionEvent({
                 campaign_id: campaign.id,
+                link_id: primaryLink.id,
+                provider: primaryLink.provider,
                 providers,
                 context,
                 campaign_type: campaign.type,
@@ -163,7 +178,7 @@ export const AffiliateSlot = ({
         return () => {
             observer.disconnect();
         };
-    }, [campaign, context, links, raceType, venueName]);
+    }, [campaign, context, links, mainLinks, raceType, venueName]);
 
     if (!campaign) {
         return <>{fallback}</>;
@@ -195,7 +210,10 @@ export const AffiliateSlot = ({
         : campaign.type === 'voting'
             ? 'my-1.5 sm:my-3 rounded-lg border border-rose-100 bg-rose-50/25 p-2.5 sm:p-3'
             : 'my-1.5 sm:my-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-3';
-    const wholeSlotLink = campaign.type === 'voting' && mainLinks.length === 1 && subLinks.length === 0
+    const wholeSlotLink = !campaign.ctaOnly
+        && campaign.type === 'voting'
+        && mainLinks.length === 1
+        && subLinks.length === 0
         ? mainLinks[0]
         : null;
     const wholeSlotHref = wholeSlotLink
@@ -280,11 +298,11 @@ export const AffiliateSlot = ({
                     <h3 className={`${isCompact ? 'text-xs sm:text-[13px]' : 'text-sm sm:text-sm'} font-bold leading-tight text-slate-700`}>
                         {campaign.title}
                     </h3>
-                    {/* {campaign.description && (
-                        <p className={`${isCompact ? 'mt-0.5 text-[10px] leading-4 sm:text-[11px]' : 'mt-0.5 sm:mt-1 text-[11px] leading-[1.55] sm:leading-5 sm:text-xs'} text-slate-500`}>
+                    {campaign.showDescription && campaign.description && (
+                        <p className={`${isCompact ? 'mt-1 text-[11px] leading-[1.55]' : 'mt-1 text-[11px] leading-[1.55] sm:text-xs sm:leading-5'} text-slate-600`}>
                             {campaign.description}
                         </p>
-                    )} */}
+                    )}
 
                     <div className={`${isCompact ? 'mt-1.5' : 'mt-1.5 sm:mt-2'} flex flex-col gap-1.5 sm:gap-2`}>
                         {wholeSlotLink ? (
@@ -301,7 +319,7 @@ export const AffiliateSlot = ({
                                         target="_blank"
                                         rel="sponsored nofollow noopener noreferrer"
                                         onClick={() => trackAffiliateClick(link)}
-                                        className={`inline-flex items-center justify-between gap-2 rounded-lg border px-3 py-1.5 sm:py-2 text-xs font-bold transition-colors ${isCompact ? 'min-h-[32px] sm:min-h-[36px]' : 'min-h-[34px] sm:min-h-[40px]'} ${providerClassNames[link.provider]}`}
+                                        className={`inline-flex items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30 ${campaign.ctaOnly ? 'min-h-11' : isCompact ? 'min-h-[32px] sm:min-h-[36px]' : 'min-h-[34px] sm:min-h-[40px]'} ${providerClassNames[link.provider]}`}
                                     >
                                         <span className="min-w-0 truncate">{link.label || providerLabels[link.provider]}</span>
                                         <ExternalLink className="h-3.5 w-3.5 shrink-0" />
@@ -333,7 +351,7 @@ export const AffiliateSlot = ({
             </div>
 
             {campaign.attention && (
-                <p className={`${isCompact ? 'mt-1.5 pt-1.5' : 'mt-1.5 pt-1.5 sm:mt-2 sm:pt-2'} border-t border-slate-100 text-[10px] leading-4 text-slate-400`}>
+                <p className={`${isCompact ? 'mt-1.5 pt-1.5' : 'mt-1.5 pt-1.5 sm:mt-2 sm:pt-2'} border-t border-slate-100 ${campaign.ctaOnly ? 'text-[11px] text-slate-500' : 'text-[10px] text-slate-400'} leading-4`}>
                     {campaign.attention}
                 </p>
             )}

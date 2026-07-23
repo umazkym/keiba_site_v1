@@ -116,9 +116,54 @@ const WRITER_HIDDEN_REFERENCE_KEYS = new Set([
   'db_enrichment_error',
 ]);
 
-const WRITER_HIDDEN_METRIC_ORIGIN_PATTERN = /信頼媒体|編集ルール|複数ソース整理|外部ソース/i;
+const WRITER_HIDDEN_METRIC_ORIGIN_PATTERN = /信頼媒体|編集ルール|複数ソース整理|外部ソース|trusted[_ -]?media|external|reference|other/i;
 const WRITER_HIDDEN_METRIC_LABEL_PATTERN = /外部ソース|使える事実|データの使い分け|記事の切り口/i;
+const WRITER_HIDDEN_METRIC_FIELD_PATTERN = /^(?:出典(?:種別)?|参照元|参照URL|媒体(?:名|URL)?|制作(?:情報|メタ)|origin|provenance|source(?:[_-].*)?|url|media(?:[_-].*)?|meta(?:data)?(?:[_-].*)?|fetched_at)$/i;
 const WRITER_UNSAFE_VALUE_PATTERN = /https?:\/\/|netkeiba|日刊スポーツ|スポーツ報知|スポニチ|サンスポ|デイリースポーツ|東スポ|競馬ブック|競馬ラボ|外部ニュース|外部ソース|信頼媒体|編集ルール|Tavily|推奨馬|推奨買い目|コメント/i;
+
+function normalizeWriterMetricValue(value: unknown): string | number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized === '' ? null : normalized;
+}
+
+function sanitizeKeyMetricRow(item: unknown): Record<string, string | number> | null {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+  const row = item as Record<string, unknown>;
+  const origin = [
+    row['出典種別'],
+    row.origin,
+    row.provenance,
+    row.source_type,
+  ].map(value => String(value || '').trim()).filter(Boolean).join(' ');
+
+  if (WRITER_HIDDEN_METRIC_ORIGIN_PATTERN.test(origin)) return null;
+
+  const label = String(row['確認項目'] || row.label || '').trim();
+  const normalizedValue = normalizeWriterMetricValue(row['内容'] ?? row.value);
+  if (label && normalizedValue !== null) {
+    if (WRITER_HIDDEN_METRIC_LABEL_PATTERN.test(label)) return null;
+    if (WRITER_UNSAFE_VALUE_PATTERN.test(`${label} ${normalizedValue}`)) return null;
+    return { label, value: normalizedValue };
+  }
+
+  const sanitizedRow: Record<string, string | number> = {};
+  for (const [rawKey, rawValue] of Object.entries(row)) {
+    const key = rawKey.trim();
+    if (!key || WRITER_HIDDEN_METRIC_FIELD_PATTERN.test(key)) continue;
+
+    const value = normalizeWriterMetricValue(rawValue);
+    if (value === null) continue;
+    if (WRITER_HIDDEN_METRIC_LABEL_PATTERN.test(key)) continue;
+    if (WRITER_UNSAFE_VALUE_PATTERN.test(`${key} ${value}`)) continue;
+    sanitizedRow[key] = value;
+  }
+
+  return Object.keys(sanitizedRow).length > 0 ? sanitizedRow : null;
+}
 
 function sanitizeWriterEvidence(value: unknown): WriterEvidence | undefined {
   if (!value || typeof value !== 'object') return undefined;
@@ -168,19 +213,8 @@ export function buildWriterFacingOrder(order: WriteOrder): WriteOrder {
 
   const keyMetrics = Array.isArray(referenceData.key_metrics)
     ? referenceData.key_metrics
-      .map(item => {
-        if (!item || typeof item !== 'object') return null;
-        const row = item as Record<string, unknown>;
-        const origin = String(row['出典種別'] || row.origin || '');
-        const label = String(row['確認項目'] || row.label || '').trim();
-        const value = row['内容'] ?? row.value;
-        const normalizedValue = typeof value === 'number' ? value : String(value || '').trim();
-        if (!label || normalizedValue === '') return null;
-        if (WRITER_HIDDEN_METRIC_ORIGIN_PATTERN.test(origin) || WRITER_HIDDEN_METRIC_LABEL_PATTERN.test(label)) return null;
-        if (WRITER_UNSAFE_VALUE_PATTERN.test(`${label} ${normalizedValue}`)) return null;
-        return { label, value: normalizedValue };
-      })
-      .filter((item): item is { label: string; value: string | number } => item !== null)
+      .map(sanitizeKeyMetricRow)
+      .filter((item): item is Record<string, string | number> => item !== null)
     : [];
   referenceData.key_metrics = keyMetrics;
 

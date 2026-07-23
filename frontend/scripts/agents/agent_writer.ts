@@ -41,6 +41,8 @@ export type WriterEvidence = {
 };
 
 export type WriteOrder = {
+  operation?: 'create' | 'rewrite';
+  rewrite_target_slug?: string;
   target_keyword: string;
   theme_cluster: string;
   entity_type?: string;
@@ -237,6 +239,7 @@ export function buildWriterFacingOrder(order: WriteOrder): WriteOrder {
 
   return {
     ...order,
+    operation: order.operation || 'create',
     research_sources: undefined,
     reference_data: referenceData as WriteOrder['reference_data'],
   };

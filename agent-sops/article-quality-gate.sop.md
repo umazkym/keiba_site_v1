@@ -92,6 +92,21 @@ Constraints for parameter acquisition:
 - You MUST require `ARTICLE_RACE_BRIDGE_EXPERIMENT_ACTIVE=true` and a non-empty `ARTICLE_RACE_BRIDGE_REMINDER_ID` before Publisher enables a bridge because reminders are a mandatory revenue-protection gate.
 - You MUST protect existing URLs with at least one Search Console click or 100 impressions in the last 28 days; migrations require a direct, loop-free 301 and a self-canonical destination.
 
+### 7. Gate GSC-assisted rewrites
+
+Search Consoleは既存記事の検索意図と改善優先度の判断にだけ使い、記事の事実根拠には使いません。週次監査と手動改稿は通常の記事生成枠から分離します。
+
+**Constraints:**
+
+- You MUST keep grade-race creation and same-season staged updates driven by the race calendar even when GSC has zero or missing data.
+- You MUST exclude grade-race articles from normal GSC rewrites from 7 days before through 3 days after the scheduled race and leave those updates to `update_stage`.
+- You MUST NOT rewrite a prior-season grade-race article into the current-season version because current-season creation uses a new year-qualified URL.
+- You MUST require one exact published candidate slug and a 28-day cooldown before a GSC rewrite.
+- You MUST use GSC queries only to infer search intent. Raw queries and GSC metrics MUST NOT enter WriterEvidence or support factual claims because Search Console is not evidence for racing facts.
+- You MUST limit a GSC rewrite to title, description, keywords, lead text, and existing H2 labels.
+- You MUST reject the rewrite before file mutation if number tokens, tables, H2 bodies, links, canonical, publication date, entity metadata, `update_stage`, ad metadata, or verified race-bridge metadata change.
+- You MUST publish only the existing `rewrite_target_slug` file and MUST NOT generate a new slug, article file, redirect, or canonical because the rewrite must preserve the indexed URL exactly.
+
 ## Source references
 
 - `AGENTS.md`
@@ -100,6 +115,7 @@ Constraints for parameter acquisition:
 - `docs/system-documentation/13_記事生成AIトーンマナー定義書.md`
 - `docs/system-documentation/14_自動記事生成システム全体仕様書.md`
 - `.github/workflows/keiba-article-pipeline.yml`
+- `.github/workflows/keiba-gsc-seo.yml`
 
 ## Examples
 

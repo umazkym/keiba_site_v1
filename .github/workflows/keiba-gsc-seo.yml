@@ -1,0 +1,142 @@
+name: Keiba GSC Weekly SEO Audit
+
+on:
+  schedule:
+    # 毎週水曜 09:15 JST（UTCでは水曜00:15）
+    - cron: '15 0 * * 3'
+  workflow_dispatch:
+    inputs:
+      article_slug:
+        description: 'GSC改善候補に表示された正確な記事slug（1件のみ）'
+        required: true
+        type: string
+
+concurrency:
+  # 通常の記事生成・公開と同時にmainへ書き込まない。
+  group: keiba-article-auto-pipeline
+  cancel-in-progress: false
+
+jobs:
+  audit-and-optional-rewrite:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      id-token: write
+
+    env:
+      GSC_SITE_URL: ${{ vars.GSC_SITE_URL || 'sc-domain:uma-free.com' }}
+      GEMINI_EDITOR_MODEL_TIERS: gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: pip install -r requirements.txt
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: keiba-api-project
+          workload_identity_provider: projects/761440273070/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+          service_account: github-actions-iap-db@keiba-api-project.iam.gserviceaccount.com
+          create_credentials_file: true
+
+      - name: Prepare Report Directory
+        shell: bash
+        run: mkdir -p "$RUNNER_TEMP/gsc-seo"
+
+      - name: Export Public Canonical Article Inventory
+        working-directory: ./frontend
+        run: npm run gsc:export-inventory -- --output "$RUNNER_TEMP/gsc-seo/article-inventory.json"
+
+      - name: Analyze Finalized Search Console Data
+        run: >-
+          python backend/scripts/agents/gsc_seo_analyzer.py
+          --inventory "$RUNNER_TEMP/gsc-seo/article-inventory.json"
+          --output "$RUNNER_TEMP/gsc-seo/report.json"
+          --summary "$RUNNER_TEMP/gsc-seo/summary.md"
+          --site-url "$GSC_SITE_URL"
+
+      - name: Add Audit to Actions Summary
+        shell: bash
+        run: cat "$RUNNER_TEMP/gsc-seo/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload GSC Audit Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gsc-seo-audit-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/gsc-seo/report.json
+            ${{ runner.temp }}/gsc-seo/summary.md
+            ${{ runner.temp }}/gsc-seo/article-inventory.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Validate Manual Rewrite Input
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          ARTICLE_SLUG: ${{ inputs.article_slug }}
+          TARGET_REF: ${{ github.ref }}
+        run: |
+          if [ "$TARGET_REF" != "refs/heads/main" ]; then
+            echo "::error::GSC改稿はmainブランチからだけ実行できます。"
+            exit 1
+          fi
+          if ! [[ "$ARTICLE_SLUG" =~ ^[a-z0-9][a-z0-9-]{0,199}$ ]]; then
+            echo "::error::article_slugは英小文字・数字・ハイフンだけで指定してください。"
+            exit 1
+          fi
+
+      - name: Generate One Guarded GSC Rewrite
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: ./frontend
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ARTICLE_SLUG: ${{ inputs.article_slug }}
+        run: >-
+          npm run gsc:rewrite --
+          --report "$RUNNER_TEMP/gsc-seo/report.json"
+          --slug "$ARTICLE_SLUG"
+
+      - name: Validate Rewrite Before Publish
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: ./frontend
+        run: |
+          npm run gsc:test-rewrite
+          npm run article:test-independence
+          npm run article:validate-links
+          npm run article:audit-quality
+          npx tsc --noEmit
+
+      - name: Configure Git
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config --global user.name "${{ secrets.GIT_USER_NAME || 'github-actions[bot]' }}"
+          git config --global user.email "${{ secrets.GIT_USER_EMAIL || 'github-actions[bot]@users.noreply.github.com' }}"
+
+      - name: Publish Exact Existing Article
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: ./frontend
+        env:
+          ARTICLE_PUBLISH_OPERATION: gsc_rewrite
+        run: npm run article:publish

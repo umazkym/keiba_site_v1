@@ -4,10 +4,15 @@ import matter from 'gray-matter';
 import { execSync } from 'child_process';
 import { createHash } from 'crypto';
 import { autoRepairDraftMarkdown } from './agent_editor';
-import { checkSourceIndependence } from './seo_checker';
+import { checkSEO, checkSourceIndependence } from './seo_checker';
 import { findGradeRaceEntity } from '../../lib/grade-race-entities';
 import { getApiBaseUrl } from '../../lib/api-base';
 import { getSeasonalGradeRaceSlug } from '../../lib/article-seasonal-routing';
+import {
+  assertSafeArticleSlug,
+  finalizeGscRewriteFrontmatter,
+  validateGscRewrite,
+} from './gsc_rewrite_guard';
 
 const APPROVED_DIR = path.join(__dirname, '..', '..', 'agents', 'queue', 'approved');
 const ARTICLES_DIR = path.join(__dirname, '..', '..', 'content', 'articles');
@@ -612,6 +617,15 @@ function findHistoryIndex(history: any[], draftId: string, targetKeyword: string
   return -1;
 }
 
+function findPublishedHistoryIndexBySlug(history: any[], slug: string): number {
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (String(history[i]?.slug || '') === slug && history[i]?.draft !== true) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 function removeDraftHistory(history: any[], draftId: string, targetKeyword: string): any[] {
   return history.filter((h: any) => {
     if (h.id === draftId) return false;
@@ -744,7 +758,15 @@ async function publishDraft() {
     return;
   }
 
-  const files = fs.readdirSync(APPROVED_DIR).filter(f => f.endsWith('.md')).sort();
+  let files = fs.readdirSync(APPROVED_DIR).filter(f => f.endsWith('.md')).sort();
+  if (process.env.ARTICLE_PUBLISH_OPERATION === 'gsc_rewrite') {
+    files = files.filter(file => file.startsWith('gsc-rewrite-'));
+    if (files.length !== 1) {
+      throw new Error(
+        `[Publisher] GSC改稿は承認済み原稿が正確に1件必要です: ${files.length}件`,
+      );
+    }
+  }
   if (files.length === 0) {
     console.log('[Publisher] No approved drafts to publish. Exiting.');
     return;
@@ -770,6 +792,105 @@ async function publishDraft() {
     const targetKeyword = String(parsed.data.target_keyword || parsed.data.title || 'article');
     const oldId = path.basename(targetFile, '.md');
     const now = new Date();
+
+    if (parsed.data.operation === 'rewrite') {
+      const rewriteTargetSlug = String(parsed.data.rewrite_target_slug || '').trim();
+      assertSafeArticleSlug(rewriteTargetSlug);
+      const rewriteTargetPath = path.join(ARTICLES_DIR, `${rewriteTargetSlug}.md`);
+      if (!fs.existsSync(rewriteTargetPath)) {
+        throw new Error(`[Publisher] GSC改稿対象が存在しません: ${rewriteTargetSlug}`);
+      }
+
+      const originalMarkdown = fs.readFileSync(rewriteTargetPath, 'utf-8');
+      const queuedGuard = validateGscRewrite(originalMarkdown, content);
+      if (!queuedGuard.passed) {
+        throw new Error(
+          `[Publisher] GSC改稿の許可範囲外の差分を検出しました: ${targetFile}\n- ${queuedGuard.errors.join('\n- ')}`,
+        );
+      }
+
+      const sourceIndependence = checkSourceIndependence(content);
+      if (!sourceIndependence.passed) {
+        throw new Error(
+          `[Publisher] GSC改稿が独立性ゲートで拒否されました: ${targetFile}\n- ${sourceIndependence.errors.join('\n- ')}`,
+        );
+      }
+      const seoCheck = checkSEO(content);
+      if (!seoCheck.passed) {
+        throw new Error(
+          `[Publisher] GSC改稿がSEOゲートで拒否されました: ${targetFile}\n- ${seoCheck.errors.join('\n- ')}`,
+        );
+      }
+
+      const originalParsed = matter(originalMarkdown);
+      const finalData = finalizeGscRewriteFrontmatter(
+        originalParsed.data,
+        parsed.data,
+        now.toISOString(),
+      );
+      const finalContent = matter.stringify(parsed.content, finalData);
+      const finalGuard = validateGscRewrite(originalMarkdown, finalContent);
+      if (!finalGuard.passed) {
+        throw new Error(
+          `[Publisher] GSC改稿の公開前差分ガードで拒否されました: ${targetFile}\n- ${finalGuard.errors.join('\n- ')}`,
+        );
+      }
+
+      updatedArticleBackups.push({
+        path: rewriteTargetPath,
+        content: originalMarkdown,
+      });
+      fs.writeFileSync(rewriteTargetPath, finalContent, 'utf-8');
+      approvedFilesToRemove.push(filePath);
+      publishedSlugs.push(rewriteTargetSlug);
+
+      const historyIndex = findPublishedHistoryIndexBySlug(history, rewriteTargetSlug);
+      const rewriteRecord = {
+        rewritten_at: now.toISOString(),
+        period_end: String(parsed.data.gsc_rewrite_period_end || ''),
+        estimated_missed_clicks: Number(parsed.data.gsc_rewrite_score || 0),
+      };
+      if (historyIndex !== -1) {
+        const previousRewriteHistory = Array.isArray(history[historyIndex].rewrite_history)
+          ? history[historyIndex].rewrite_history
+          : [];
+        history[historyIndex] = {
+          ...history[historyIndex],
+          title: finalData.title || history[historyIndex].title || '',
+          keywords: finalData.keywords || history[historyIndex].keywords || [],
+          last_updated: now.toISOString(),
+          gsc_last_rewritten_at: now.toISOString(),
+          gsc_last_rewrite_period_end: rewriteRecord.period_end,
+          rewrite_score: rewriteRecord.estimated_missed_clicks,
+          rewrite_history: [...previousRewriteHistory, rewriteRecord],
+        };
+      } else {
+        history.push({
+          id: `gsc-rewrite-${rewriteTargetSlug}`,
+          title: finalData.title || '',
+          target_keyword: targetKeyword,
+          theme_cluster: originalParsed.data.theme_cluster || '',
+          keywords: finalData.keywords || [],
+          posted_at: originalParsed.data.date || now.toISOString(),
+          draft: false,
+          published_at: originalParsed.data.date || now.toISOString(),
+          slug: rewriteTargetSlug,
+          entity_type: originalParsed.data.entity_type || '',
+          entity_key: originalParsed.data.entity_key || '',
+          entity_path: originalParsed.data.entity_path || '',
+          canonical_path: originalParsed.data.canonical_path || '',
+          last_updated: now.toISOString(),
+          gsc_last_rewritten_at: now.toISOString(),
+          gsc_last_rewrite_period_end: rewriteRecord.period_end,
+          rewrite_score: rewriteRecord.estimated_missed_clicks,
+          rewrite_history: [rewriteRecord],
+        });
+      }
+
+      console.log(`[Publisher] GSC改稿を既存記事へ反映: ${rewriteTargetSlug}`);
+      continue;
+    }
+
     parsed.data = await verifyArticleRaceBridge(normalizePublishedArticleMetadata(parsed.data));
 
     const sourceIndependence = checkSourceIndependence(matter.stringify(parsed.content, parsed.data));

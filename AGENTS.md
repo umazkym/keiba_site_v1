@@ -114,6 +114,8 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-07-23**:
+  * **GSC週次SEO監査と重賞投稿スケジュール保護を実装**:
+    Search Consoleの確定済み直近28日と直前28日を毎週水曜09:15 JSTに比較し、公開中・自己canonicalの記事から表示100以上、平均順位4〜20位、順位帯CTR中央値に対する推定取りこぼしクリック上位10件をActions Summaryとartifactへ出す監査workflowを追加した。開催7日前から開催後3日の重賞は季節需要へ分離し、08:00、11:45、16:45 JSTのカレンダー主導生成と年度付き新規URLを維持する。手動改稿はGSC候補の正確なslug1件だけを対象に、title、description、keywords、導入文、H2文言へ限定し、数値、表、本文、リンク、canonical、公開日、entity、更新段階、広告・レースブリッジの差分を拒否する。改稿クエリはEvidenceへ渡さず、同一slugへ28日クールダウンを適用する。重賞予約変数を`ARTICLE_PIPELINE_RESERVE_RACE_UPDATE_SLOT`へ統一し、緊急重賞3件が通常の最大3枠をすべて使える挙動を固定した。広告配置、Offerwall、公開API、DB、計測イベントは変更していない。
   * **記事自動生成CIの複数列Evidence回帰を修復**:
     Writer向けサニタイズが`label/value`形式だけを残し、騎手リーディングやData Scientistの複数列`key_metrics`を空にしていたため、列名とスカラー値を保持しつつ、外部出典行、URL、媒体名、制作メタだけを除去する構成へ修正した。`jockey_profile`と`jockey_data`で`evidence_rows > 0`、外部情報だけのデータ記事は拒否となる回帰テストを追加。川田将雅騎手の記事は2026年6月26日時点の検証済み成績だけで同じcanonicalのまま改稿し、未根拠のオッズ、得意条件、厩舎相性、歩様、強い購入誘導を削除した。13 workflowの`checkout`、`setup-node`、`setup-python`をNode 24対応のv7へ更新し、プロジェクトのNode.js 20とPython 3.11は維持した。広告配置、Offerwall、記事レースブリッジ実験、Geminiモデル構成は変更していない。
   * **楽天競馬アフィリエイトの適格化実験を安全な待機状態で実装**:

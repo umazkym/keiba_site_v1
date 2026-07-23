@@ -20,6 +20,10 @@
     "article:test-independence": "npx --yes tsx scripts/agents/test_source_independence.ts",
     "article:test-routing": "npx --yes tsx scripts/agents/test_article_seasonal_routing.ts",
     "article:test-race-bridge": "npx --yes tsx scripts/agents/test_article_race_bridge.ts",
+    "article:test-order-priority": "npx --yes tsx scripts/agents/test_article_order_priority.ts",
+    "gsc:export-inventory": "npx --yes tsx scripts/agents/export_gsc_article_inventory.ts",
+    "gsc:rewrite": "npx --yes tsx scripts/agents/gsc_seo_rewrite.ts",
+    "gsc:test-rewrite": "npx --yes tsx scripts/agents/test_gsc_seo_rewrite.ts",
     "article:tone-fix": "node scripts/agents/improve_article_tone.js",
     "article:tone-fix:apply": "node scripts/agents/improve_article_tone.js --apply",
     "article:tone-audit": "node scripts/agents/article_quality_audit.js --json | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log('Critical:', d.summary.critical, '/ Warning:', d.summary.warning);\""

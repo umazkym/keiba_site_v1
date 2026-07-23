@@ -4,6 +4,7 @@ import { runPostWriterArticleFlow, runPreDraftArticleFlow } from './article_flow
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import { prioritizeOrderFiles } from './article_order_priority';
 
 // .env.local などを読み込む (dotenv等)
 import * as dotenv from 'dotenv';
@@ -68,75 +69,6 @@ function getUniqueDestination(directory: string, fileName: string): string {
   return path.join(directory, `${parsed.name}_${Date.now()}${parsed.ext}`);
 }
 
-function isRaceUpdateOrder(order: any): boolean {
-  const cluster = String(order?.theme_cluster || order?.reference_data?.article_type || '');
-  return cluster === 'race_update';
-}
-
-function isUrgentGradeRaceOrder(order: any): boolean {
-  const ref = order?.reference_data || {};
-  const entityType = String(order?.entity_type || ref.entity_type || '');
-  const cluster = String(order?.theme_cluster || ref.article_type || '');
-  const deadlineStatus = String(ref.deadline_status || '');
-  const updateStage = String(ref.update_stage || '');
-  return (
-    entityType === 'grade_race' &&
-    (cluster === 'race_update' || cluster === 'grade_race_preview') &&
-    (
-      deadlineStatus === 'due_preview' ||
-      deadlineStatus === 'missed_preview' ||
-      deadlineStatus === 'due_result_review' ||
-      updateStage === 'draw_confirmed' ||
-      updateStage === 'result_review'
-    )
-  );
-}
-
-function isEvergreenOrder(order: any): boolean {
-  const cluster = String(order?.theme_cluster || order?.reference_data?.article_type || '');
-  const category = String(order?.category || order?.reference_data?.category || '');
-  if (cluster === 'race_update' || cluster === 'grade_race_preview') return false;
-  if (['course_venue', 'jockey_profile', 'beginner_guide', 'guide'].includes(cluster)) return true;
-  return ['コース分析', '騎手分析', '入門ガイド', '馬券・統計'].includes(category);
-}
-
-function reserveSlot<T extends { file: string; order: any; priority: number }>(
-  items: T[],
-  predicate: (order: any) => boolean,
-  targetIndex: number,
-  label: string,
-): T[] {
-  if (targetIndex < 0 || targetIndex >= MAX_ARTICLES_PER_RUN) return items;
-  if (items.slice(0, MAX_ARTICLES_PER_RUN).some(item => predicate(item.order))) return items;
-
-  const foundIndex = items.findIndex((item, index) => index >= MAX_ARTICLES_PER_RUN && predicate(item.order));
-  if (foundIndex < 0) return items;
-
-  const result = [...items];
-  const [reservedItem] = result.splice(foundIndex, 1);
-  result.splice(targetIndex, 0, reservedItem);
-  console.log(`[Pipeline] ${label}枠を予約: ${reservedItem.file} を今回の処理枠に移動`);
-  return result;
-}
-
-function prioritizeOrderFiles<T extends { file: string; order: any; priority: number }>(items: T[]): T[] {
-  let result = [...items];
-  const urgentGradeRaceCount = result.filter(item => isUrgentGradeRaceOrder(item.order)).length;
-  if (urgentGradeRaceCount >= MAX_ARTICLES_PER_RUN) {
-    return result;
-  }
-
-  if (RESERVE_RACE_UPDATE_SLOT && MAX_ARTICLES_PER_RUN >= 2) {
-    const raceUpdateTargetIndex = MAX_ARTICLES_PER_RUN >= 3 ? MAX_ARTICLES_PER_RUN - 2 : MAX_ARTICLES_PER_RUN - 1;
-    result = reserveSlot(result, isRaceUpdateOrder, raceUpdateTargetIndex, 'レース更新');
-  }
-
-  if (RESERVE_EVERGREEN_SLOT && MAX_ARTICLES_PER_RUN >= 3 && urgentGradeRaceCount < MAX_ARTICLES_PER_RUN - 1) {
-    result = reserveSlot(result, isEvergreenOrder, MAX_ARTICLES_PER_RUN - 1, '常設コラム');
-  }
-  return result;
-}
-
 async function runPipeline() {
   console.log("=== UMA-FREE 記事生成パイプライン テスト開始 ===");
 
@@ -163,7 +95,11 @@ async function runPipeline() {
     } catch {
       return { file: f, order: null, priority: 0 };
     }
-  }).sort((a, b) => b.priority - a.priority || a.file.localeCompare(b.file)));
+  }).sort((a, b) => b.priority - a.priority || a.file.localeCompare(b.file)), {
+    maxArticles: MAX_ARTICLES_PER_RUN,
+    reserveRaceUpdateSlot: RESERVE_RACE_UPDATE_SLOT,
+    reserveEvergreenSlot: RESERVE_EVERGREEN_SLOT,
+  });
 
   const files = sortedFiles.map(item => item.file);
 

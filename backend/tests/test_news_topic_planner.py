@@ -84,6 +84,41 @@ class NewsTopicPlannerTest(unittest.TestCase):
         self.assertLess(planner.grade_priority_rank("G3"), planner.grade_priority_rank("JpnIII"))
         self.assertLess(planner.grade_priority_rank("JpnIII"), planner.grade_priority_rank("重賞"))
 
+    def test_grade_write_order_is_generated_without_gsc_configuration(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        previous_gsc_site_url = os.environ.pop("GSC_SITE_URL", None)
+        os.environ["KEIBA_NEWS_NOW"] = "2026-07-03T11:45:00+09:00"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        try:
+            state = planner.WorkflowState(
+                run_id="grade-without-gsc-test",
+                fetched_at=planner.current_jst().isoformat(),
+            )
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "build_internal_data_bundle", return_value={}),
+            ):
+                planner.cluster_topics_node(state)
+                planner.build_write_orders_node(state)
+
+            self.assertTrue(
+                any(
+                    order["reference_data"].get("race_name") == "北九州記念"
+                    for order in state.write_orders
+                )
+            )
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            if previous_gsc_site_url is not None:
+                os.environ["GSC_SITE_URL"] = previous_gsc_site_url
+            planner._RACE_SCHEDULE_CACHE.clear()
+
     def test_jra_grade_preview_waits_for_friday_draw_time(self) -> None:
         previous_now = os.environ.get("KEIBA_NEWS_NOW")
         os.environ["KEIBA_NEWS_NOW"] = "2026-07-03T11:44:00+09:00"

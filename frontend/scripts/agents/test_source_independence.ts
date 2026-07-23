@@ -64,6 +64,7 @@ const order: WriteOrder = {
 const writerOrder = buildWriterFacingOrder(order);
 const serialized = JSON.stringify(writerOrder);
 
+assert.equal(writerOrder.operation, 'create');
 assert.equal(writerOrder.research_sources, undefined);
 assert.equal('source_cards' in writerOrder.reference_data, false);
 assert.equal('external_research_query' in writerOrder.reference_data, false);

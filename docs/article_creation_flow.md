@@ -586,6 +586,14 @@ Plannerは `theme_cluster` を競馬固有の以下の型で出力する。
 
 Writerは重賞記事本文に`/races/today`や個別レースCTAを書かない。Publisherの検証に失敗した場合は記事本文を公開できるが、ブリッジは無効のままにし、外枠、ローディング、予約スペースを描画しない。ブラウザ側でタイトルからレースを推測したり、別レースや`/races/today`へフォールバックしたりしない。検証済み記事で一時的なAPI障害が起きた場合だけ、保存済みのレース名、日付、競馬場、正確なURLを使う静的リンクを残し、予測欄は表示しない。
 
+## GSC週次監査と限定改稿
+
+`.github/workflows/keiba-gsc-seo.yml`は毎週水曜09:15 JSTに、Search Consoleの確定済み直近28日と直前28日を読み取り専用で比較する。対象は公開中・indexable・自己canonicalの`/articles/`だけとし、表示100以上かつ平均順位4〜20位の記事を順位帯別CTR中央値と比較する。推定取りこぼしクリック順の上位10件、季節重賞、同一クエリで各20表示以上の複数canonicalを、Actions SummaryとJSON artifactへ出力する。GSC API、権限、データ不足による失敗はこの監査workflow内だけで終了し、通常記事生成には影響させない。
+
+開催7日前から開催後3日までの重賞記事は通常のGSC改稿候補から除外し、既存の`update_stage`処理へ委ねる。重賞の08:00、11:45、16:45 JST実行と年度付き新規URLを優先し、GSCデータの有無をWriteOrder生成条件にしない。過年度記事を当年度版へ書き換えず、同じ重賞・同じ年度の記事だけを段階更新する。
+
+GSC改稿はartifact確認後、`workflow_dispatch`へ正確な`article_slug`を1件指定した場合だけ実行する。検索クエリは検索意図の参考に限り、WriterEvidenceや本文の事実根拠へ渡さない。変更可能範囲はtitle、description、keywords、導入文、既存H2文言だけで、数値集合、表、H2配下本文、リンク、canonical、公開日、entity、`update_stage`、広告・レースブリッジ情報の差分を公開前に拒否する。Publisherは対象の既存Markdownだけを上書きし、`last_updated`と改稿履歴を更新する。同一slugは28日間再改稿しない。
+
 ## 参照
 
 - Google Search Central: Creating helpful, reliable, people-first content
@@ -595,3 +603,4 @@ Writerは重賞記事本文に`/races/today`や個別レースCTAを書かない
 - Google AI for Developers: Gemini API rate limits
 - Tavily: Pricing and API Credits
 - LangChain Docs: LangGraph workflows and agents
+- `docs/gsc_weekly_seo_operations.md`

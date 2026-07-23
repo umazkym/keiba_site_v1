@@ -12,6 +12,7 @@ import { getJstTodayString } from "@/lib/race-url";
 import { AdSensePageLevelScript } from "@/components/AdSensePageLevelScript";
 import { ClarityPageContext } from "@/components/ClarityPageContext";
 import { GoogleAnalyticsBootstrap } from "@/components/GoogleAnalyticsBootstrap";
+import { TrafficAttributionCapture } from "@/components/TrafficAttributionCapture";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 
 export const metadata: Metadata = {
@@ -109,6 +110,7 @@ export default function RootLayout({
                      Rewarded Adはレースページでのみ使用されるため、他ページでは不要 */}
             </head>
             <body className="font-sans bg-surface text-text-primary antialiased">
+                <TrafficAttributionCapture />
                 <a href="#main-content" className="skip-link">
                     本文へ移動
                 </a>

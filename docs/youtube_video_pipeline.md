@@ -1,81 +1,167 @@
-# YouTube自動動画生成・投稿パイプライン
+# YouTube自動集客基盤 v7
 
-UMA-FREEへの検索外流入を増やすため、翌日開催分のレースデータからYouTube向け動画を自動生成します。AIによる動画生成は使わず、既存APIのデータをPillowとFFmpegでスライド動画化します。
+UMA-FREEへの検索外流入を増やすため、翌日開催分の確定済みレースデータから動画を生成し、YouTubeへ非公開投稿または予約公開します。映像、画像、音声、文章の生成AIは使用せず、Pillow、FFmpeg、UMA-FREEの実データ、権利確認済み素材だけを利用します。
 
-## 生成内容
+## 日次の生成内容
 
-- 会場別長尺: 翌日の開催会場ごとに1本。冒頭でUMA-FREEの無料分析内容を紹介し、1Rから順番にAI偏差値・位置取り・コース条件を表示します。
-- Shorts: 1日最大3本。重賞、メインレース、AI偏差値上位が明確なレースを優先します。
-- サムネイル: 重賞がある会場では重賞名を優先表示します。
+- 会場別長尺: 開催会場ごとに1本。1Rから最終Rまで、各レース約7.4秒でAI偏差値上位5頭と位置取りを表示します。
+- Short: 1日1本。G1、Jpn1、G2、Jpn2、G3、Jpn3、その他重賞の順で優先し、重賞がない日は11R、出走頭数、会場コードの順で決定します。
+- 公開時刻: Shortは20:10 JST、最優先会場は20:30、残りの会場は20:40から10分間隔です。
+- GitHub Actionsは毎日19:17 JSTに開始し、翌日データが不完全な場合は10分間隔で最大3回確認します。
 
-## デザイン方針
+会場は1Rから最大レース番号までが連続し、すべてのレースに実在馬名と有効なAI偏差値がある場合だけ公開対象になります。WorkflowではIAPトンネル経由のDBを正本とし、レース表に存在して予測表に存在しないレースも欠損として検知します。不完全な会場は会場単位で保留し、正常な会場は維持します。保留が発生したWorkflowは正常会場の処理後に失敗終了し、GitHubの通知とActions Summaryで把握できるようにします。
 
-- v6は「競馬写真＋スポーツ誌紙面」のRace Editorialデザインです。Editorial GridとSwiss Modernismを基礎に、写真、紙面、隊列レーン、サイト誘導を同じ情報階層で構成します。ネオン、HUD、星空、レーダー装飾は使用しません。
-- ブランド表示は公式の `frontend/public/new-logo.png` を円形マスクで使用し、WebP、バックエンド同梱PNGの順にフォールバックします。`SOCIAL_VIDEO_BRAND_LOGO_PATH` で任意ロゴへ差し替えられます。公式ロゴの青紫はブランド専用で、順位やデータ区分には流用しません。
-- 写真は `backend/scripts/social_video/assets/images` へ配置します。レース別、競馬場別、共通画像の順で解決し、同じフォルダの複数素材は日付と動画IDから決定的に選択します。外部URL、参考サイトから保存した画像、権利未確認素材は使用しません。素材がない場合は写真なしのコース図へ切り替えます。
-- 共通横写真は `images/default/wide`、共通縦写真は `images/default/vertical` へ配置します。横長は1920x1080以上、縦長は1080x1920以上を推奨します。任意の `credits.json` でクロップの `focus`、出典、ライセンス、クレジットを登録できます。
-- 既存の `manifest.json` 明示指定と `SOCIAL_VIDEO_ASSET_MANIFEST` は互換維持します。`SOCIAL_VIDEO_ASSET_ROOT` では素材ルート自体を差し替えられます。
-- サムネイルは1920x1080の独立テンプレートです。レース名・競馬場・日付・グレード、注目馬の馬番・馬名・AI偏差値に加え、`中央・地方 全レースを毎日無料公開`、`登録不要`、トップページと共通の4要素グラフィックを表示します。CTA、斜めリボン、放射線、順位カードは表示しません。
-- サムネイル右下15%×下8%には重要情報を置かず、YouTubeの再生時間表示との衝突を避けます。
-- 長尺は1レースにつき `AI偏差値` と `位置取り` の2画面です。AI偏差値画面は1位を主役面、2〜8位を同一ルールの連続比較表として表示します。
-- 位置取り画面は中央 `backend/scripts/social_video/assets/courses/central/`、地方 `backend/scripts/social_video/assets/courses/local/` の透過コースPNGを低彩度の会場識別用透かしとして使用します。長尺は左から `先行・中団・後方` の3レーン、Shortsは上から同じ順序で配置し、各レーン内は1列で全馬を省略せず表示します。位置取り不明馬は中団へ混ぜず、`位置未確定` の独立行へ配置します。
-- 馬番は本サイトと同じ影なしの塗りつぶし真円とし、1白、2黒、3赤、4青、5黄、6緑、7橙、8桃を適用します。1枠だけ薄い境界線を付け、2〜8枠は境界線を付けません。枠番欠損時は本サイトと同じ計算で出走頭数と馬番から補完します。
-- Shortsは1080x1920で、重要情報を `X=60-900`、`Y=250-1480` に配置します。冒頭、AI偏差値、位置取り、CTAの4場面とし、上位5頭は1位、2〜3位、4〜5位の順に短い時差で表示します。位置取りは最大18頭を2列レーンで全頭表示します。途中画面には小型ロゴだけを置き、CTAやURLを常時表示しません。
-- 長尺・Shortsの最終画面には4要素グラフィックを再掲し、`概要欄のリンクからUMA-FREEへ` を主導線、`または「UMA-FREE」で検索` を補助導線として表示します。
-- 日本語はNoto Sans JP、数値はInterを使用します。見出しはBlack、馬名と順位はBold、補足説明はRegularと役割を固定します。写真上の大見出しだけ単一アウトラインを使い、紙面上の表や本文には縁取りを使いません。
-- 冒頭は最初のフレームで数値を隠し、AI偏差値の平均値 `50.0` から最終値へカウントアップします。スコア欠損時は `集計中` と表示し、架空値や `0.0` は描画しません。拡大・Ken Burnsズームは使用せず、シーン間に約0.16秒のクロスフェードだけを入れます。`SOCIAL_VIDEO_DISABLE_MOTION=1` では静止concatへ戻せます。
-- 音声は権利確認済みBGMを `assets/audio/long`、`assets/audio/shorts`、または `assets/audio/common` へ配置します。複数曲は日付・動画種別・動画IDで決定的にローテーションします。`SOCIAL_VIDEO_BGM_PATH` の明示指定を最優先し、`SOCIAL_VIDEO_BGM_VOLUME` も互換維持します。DOVA-SYNDROME等の素材原本は再配布を避けるためGitへ含めず、非公開Cloud StorageからGitHub Actions実行時だけ取得します。
-- BGMは動画尺までループし、音量正規化、曲別音量、0.6秒フェードイン、0.8秒フェードアウトを適用してAACで格納します。素材がない場合は無音の確認用動画を生成しますが、YouTube投稿は動画単位で停止します。
-- クレジットは動画画面には表示せず、`credits.json` に登録されている素材だけYouTube概要欄へ自動追記します。写真・音声に`credit`と`license`がない場合は素材検証をエラーにし、権利情報が曖昧なまま自動公開されることを防ぎます。
-- 長い見出しやレース名は、省略記号を使わず、フォント縮小、最大2行折り返し、最後にハードカットの順で処理します。
-- 長いUTM付きURLは動画画面には出さず、概要欄metadataにだけ保持します。
-- 4要素グラフィックはトップページと同じ構造で、`AI偏差値`の比較バー、`対戦成績`の比較マトリクス、`位置取り予測`の隊列バー、`枠順傾向`の枠別バーをPillowで再描画します。画面内の文言は機能名と事実説明に絞り、広告的な言い回しや抽象的なコピーは使用しません。
-- 本番API取得時は、出走馬データが空のレースや `サンプル` 系のプレースホルダー馬名が混入したレースを除外します。検証JSONでは確認用に許容します。
+Actions遅延などで予約時刻が5分以内または過去になった場合、別の時刻へ自動変更しません。その日の投稿を失敗終了し、固定時刻を守れない動画が意図せず公開されることを防ぎます。
 
-## 実行例
+## デザイン
 
-最初に素材ライブラリを検証します。
+- 現行のRace Editorialを維持し、紙面色、チャコール、深緑、ゴールド、Noto Sans JP、Interを使用します。
+- 横長動画は1920×1080、Shortは1080×1920、H.264、AAC 48kHzで生成します。
+- 横長冒頭は日付、会場または重賞、代表馬、AI偏差値・位置取りの収録内容に限定します。汎用的な機能紹介画面は挟みません。
+- AI偏差値画面は横長が上位5頭、Shortが上位3頭です。長い馬名は省略記号を使わずフォントを縮小します。
+- 位置取りは先行、中団、後方、位置未確定を分離し、最大18頭を一度ずつ表示します。
+- サムネイルは重賞名を最優先し、会場、日付、全レース収録、代表馬を補助情報にします。JPEG quality 90で保存し、YouTube上限の2MB未満を検証します。
+- ShortはカスタムサムネイルAPIを呼びません。最初のフレームをレース固有の表紙にし、縦動画の最後は「プロフィールのリンクから全頭データを確認」と表示します。
+- 拡大、Ken Burns、派手な演出は使わず、約0.16秒のクロスフェードだけを使用します。
+
+素材は`backend/scripts/social_video/assets/`で管理します。写真、コース図、BGMは`credits.json`の`credit`と`license`を必須とし、不足時は投稿を停止します。BGM原本はGitへ含めず、既存の非公開Cloud StorageからActions実行時だけ取得します。
+
+## サイト導線と計測
+
+動画の遷移先は必ず既存のレース詳細URLです。
+
+```text
+https://uma-free.com/races/YYYY-MM-DD/{venueSlug}/{raceNumber}
+```
+
+競馬場slugは`frontend/lib/venue-slugs.json`をPythonとNext.jsで共有します。会場別動画は重賞または代表レース、Shortは収録レースへ直接移動します。旧クエリ型の`?venue=...&race=...`は生成しません。
+
+横長動画の説明欄1行目に次のUTM付きURLを置きます。
+
+```text
+utm_source=youtube
+utm_medium=video
+utm_campaign=YYYYMMDD_preview
+utm_content={stable_video_key}
+```
+
+Shortsの説明欄URLは主要導線にせず、チャンネルプロフィールのUMA-FREEリンクを利用します。プロフィールには次を一度設定してください。
+
+```text
+https://uma-free.com/?utm_source=youtube&utm_medium=profile&utm_campaign=channel
+```
+
+サイトでは最初の`race_view`へ`entry_source=youtube`、`source_video_key`、`video_format`、`source_venue`を付けます。プロフィールリンクでホームや記事へ入った場合も、`channel_profile`を最大30分保持して次のレース到達へ引き継ぎます。タブやレース切り替えによる仮想`page_view`は送信しません。
+
+## 投稿モード
+
+Repository Variable `YOUTUBE_PUBLICATION_MODE`で状態を切り替えます。
+
+| 値 | 動作 |
+| --- | --- |
+| `disabled` | 動画生成だけを行い、YouTubeへ送信しない |
+| `private_review` | `privacyStatus=private`で投稿し、`publishAt`は設定しない |
+| `scheduled_public` | `privacyStatus=private`で投稿し、`publishAt`により予約公開する |
+
+Workflowの安全な既定値は`private_review`です。`YOUTUBE_UPLOAD_ENABLED=true`も設定されている場合だけAPIへ送信します。`scheduled_public`へ切り替える前に3開催日連続で非公開検証を行います。
+
+## 重複防止と再開
+
+`video_publications`テーブルへ次の状態を保存します。
+
+```text
+planned
+  -> uploaded
+  -> thumbnail_set / thumbnail_skipped
+  -> processing
+  -> private_review / scheduled
+  -> published
+```
+
+動画IDはアップロード直後、サムネイル設定より前に保存します。途中で失敗した場合は同じ動画IDから再開し、動画を作り直しません。同一の対象日、動画種別、stable IDで内容hashが変わった場合は自動投稿を停止します。`--force`と投稿時の`--disable-registry`は許可しません。
+
+Shortは`thumbnail_skipped`、横長だけが`thumbnail_set`へ進みます。アップロード後は`videos.list`で処理完了、拒否、公開状態、予約時刻を確認し、確認できない動画を成功扱いにしません。
+
+日次実行時には直近7日間の`scheduled`を照合し、公開済みなら`published`へ更新します。公開予定から1時間を過ぎても非公開、処理拒否、動画ID欠損のいずれかならエラーを保存します。素材・権利保留または直近7日間の投稿エラーが1件でもある日は、Repository Variableが`scheduled_public`でも当日分を自動的に`private_review`へ落とします。予測欠損だけの場合は該当会場を除外し、正常会場の予約は維持します。すでにYouTubeへ予約済みの同日動画がある場合は`videos.update`で`publishAt`を削除し、`videos.list`で非公開を再確認します。Actions Summaryには直近7日間の状態件数とエラー件数を表示します。
+
+DB接続は既存のIAPトンネルと`127.0.0.1:15432`への実行時書き換えを維持します。旧外部IPや公開PostgreSQLは使用しません。
+
+## 設定
+
+### GitHub Secrets
+
+- `DATABASE_URL`
+- `API_BASE_URL`
+- `YOUTUBE_CLIENT_ID`
+- `YOUTUBE_CLIENT_SECRET`
+- `YOUTUBE_REFRESH_TOKEN`
+- `YOUTUBE_CHANNEL_ID`
+- `YOUTUBE_UPLOAD_ENABLED`
+
+`YOUTUBE_REFRESH_TOKEN`は限定的な`youtube.upload`ではなく、予約解除にも対応する`https://www.googleapis.com/auth/youtube`スコープで発行したものを使います。3日間の非公開試験前に、認証チャンネルが`YOUTUBE_CHANNEL_ID`と一致することをWorkflowで確認します。
+
+### Repository Variables
+
+- `YOUTUBE_PUBLICATION_MODE`: 初期値`private_review`
+- `YOUTUBE_PUBLISH_TIME_JST`: 初期値`20:30`
+- `YOUTUBE_DAILY_QUOTA_BUDGET`: 初期値`8000`
+
+ワークフローは1日1回、最大90分、Short 1本に固定します。アップロード前に動画本数、横長サムネイル数、状態確認回数からAPIクォータを概算し、設定上限を超える場合は投稿しません。MP4はartifactへ保存せず、権利検証、サマリー、サムネイル、コンタクトシート、Shorts安全領域だけを7日保存します。
+
+## ローカル検証
+
+素材検証:
 
 ```powershell
 cd backend
 python scripts/social_video/validate_assets.py
 ```
 
-```powershell
-cd backend
-python scripts/youtube_video_pipeline.py --target-date 2026-07-07 --dry-run --skip-upload
-```
-
-ローカルにFFmpegがない場合は、PNGとmetadataだけ確認できます。
+PNG、metadata、コンタクトシートだけを生成:
 
 ```powershell
 cd backend
-python scripts/youtube_video_pipeline.py --target-date 2026-07-07 --dry-run --skip-upload --skip-video
+python scripts/youtube_video_pipeline.py --target-date 2026-07-24 --publication-mode disabled --dry-run --skip-upload --skip-video
 ```
 
-生成後は、長尺、Shorts、246×138サムネイル、Shorts UI安全領域をまとめたコンタクトシートが自動生成されます。手動で再生成する場合は次のコマンドを使います。
+動画まで生成:
 
 ```powershell
 cd backend
-python scripts/social_video/create_design_contact_sheet.py ..\youtube_video_dist\2026-07-07
+python scripts/youtube_video_pipeline.py --target-date 2026-07-24 --publication-mode disabled --dry-run --skip-upload
 ```
 
-旧版と並べる場合は `--baseline-root` を指定します。
+非公開アップロード:
 
-## GitHub Secrets
+```powershell
+cd backend
+$env:YOUTUBE_UPLOAD_ENABLED="true"
+python scripts/youtube_video_pipeline.py --target-date 2026-07-24 --publication-mode private_review
+```
 
-- `YOUTUBE_CLIENT_ID`
-- `YOUTUBE_CLIENT_SECRET`
-- `YOUTUBE_REFRESH_TOKEN`
-- `YOUTUBE_CHANNEL_ID`
-- `YOUTUBE_UPLOAD_ENABLED`
-- `API_BASE_URL`
+コンタクトシートの再生成:
 
-`YOUTUBE_UPLOAD_ENABLED=true` のときだけYouTubeへ投稿します。YouTube API監査が完了するまでは、生成検証またはprivate投稿で運用してください。
-写真またはBGMが不足する動画は `publishable=false` として生成だけ行い、その動画のアップロードをスキップします。選択素材と停止理由は各 `metadata.json` と日付単位の `summary.json` で確認できます。
+```powershell
+cd backend
+python scripts/social_video/create_design_contact_sheet.py ..\youtube_video_dist\2026-07-24
+```
 
-GitHub ActionsはNoto Sans CJKを導入し、非公開Cloud StorageからBGMを取得した上で動画を生成します。素材検証結果、`summary.json`、サムネイル、コンタクトシート、Shorts UI安全領域は7日間artifactへ保存します。写真とコース画像はリポジトリ、音源原本は非公開ストレージに分離して管理します。
+## 3開催日の公開判定
 
-## 計測
+各日について次を確認します。
 
-概要欄URLには `utm_source=youtube`、`utm_medium=video`、`utm_campaign=YYYYMMDD_preview`、`utm_content` を付与します。GA4ではYouTube流入を動画種別・会場・レース単位で確認できます。
+1. すべての完成会場に長尺が1本あり、Shortがちょうど1本である。
+2. YouTube上で処理が完了し、重複動画がない。
+3. 横長説明欄の1行目が正しいレース詳細へ移動する。
+4. Shortの表紙と上位3頭がスマートフォンで読める。
+5. 246×138サムネイルで重賞名または会場名が読める。
+6. 素材権利エラー、プレースホルダー、強い購入誘導表現がない。
+7. GA4 DebugViewでYouTube属性付き`race_view`が一度だけ発火する。
+
+3日すべて合格し、YouTube APIプロジェクトの公開制限とチャンネルの高度な機能を確認した後、Repository Variableを`scheduled_public`へ一度だけ変更します。既存の非公開試験動画は自動公開せず、切り替え後に生成する翌日分から予約公開します。
+
+公開開始後7日間はActions Summaryの`published`件数、エラー件数、保留会場を毎日確認し、GA4では`utm_content`別セッション、YouTube属性付き`race_view`、その後の`prediction_table_view`を同じ日付範囲で確認します。GA4の集計値はAnalytics管理画面で確定値を確認し、Actions側のDB状態と混同しません。
+
+## 将来のInstagram対応
+
+レンダラーはプラットフォーム非依存の`VideoPackage`を返します。縦動画にはYouTube固有のUIや「概要欄」の表現を焼き込まず、動画、表紙、キャプション要素、遷移先、権利hashを分離しています。Instagram連携時は同じ1080×1920成果物へ投稿アダプターを追加し、レンダラーを複製しません。

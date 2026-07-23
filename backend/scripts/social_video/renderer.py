@@ -6,7 +6,7 @@ import os
 import shutil
 import subprocess
 import textwrap
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
@@ -14,7 +14,15 @@ from typing import List, Optional, Sequence
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
-from .data_loader import HorseVideoData, RaceVideoData, VenueVideoData, build_video_url, top_by_deviation, top_by_position
+from .data_loader import (
+    HorseVideoData,
+    RaceVideoData,
+    VenueVideoData,
+    build_video_url,
+    pick_featured_race,
+    top_by_deviation,
+)
+from .video_package import VideoPackage, build_content_hash, build_rights_manifest_hash
 from .visual_assets import (
     AudioAsset,
     CourseAsset,
@@ -115,7 +123,7 @@ FEATURE_ITEMS = (
     ("位置取り予測", "序盤の隊列予測", "position"),
     ("枠順傾向", "全コース別に集計", "waku"),
 )
-LONG_VENUE_SLIDE_SECONDS = 3.5
+LONG_VENUE_SLIDE_SECONDS = 2.0
 LONG_RACE_SLIDE_SECONDS = 4.2
 LONG_POSITION_SLIDE_SECONDS = 3.2
 LONG_OUTRO_SECONDS = 4.0
@@ -131,20 +139,7 @@ class Slide:
     duration_seconds: float
 
 
-@dataclass
-class RenderedVideo:
-    video_type: str
-    stable_id: str
-    title: str
-    description: str
-    tags: List[str]
-    video_path: Optional[Path]
-    thumbnail_path: Path
-    metadata_path: Path
-    publish_offset_minutes: int
-    publishable: bool = True
-    publish_block_reasons: List[str] = field(default_factory=list)
-    selected_assets: dict = field(default_factory=dict)
+RenderedVideo = VideoPackage
 
 
 @dataclass(frozen=True)
@@ -524,18 +519,8 @@ def _best_horse_for_race(race: RaceVideoData) -> Optional[HorseVideoData]:
 
 
 def _best_horse_for_venue(venue: VenueVideoData) -> tuple[Optional[RaceVideoData], Optional[HorseVideoData]]:
-    best_race: Optional[RaceVideoData] = None
-    best_horse: Optional[HorseVideoData] = None
-    best_score = -999.0
-    for race in venue.races:
-        horse = _best_horse_for_race(race)
-        if horse is None or horse.deviation_score is None:
-            continue
-        if horse.deviation_score > best_score:
-            best_score = horse.deviation_score
-            best_race = race
-            best_horse = horse
-    return best_race, best_horse
+    featured_race = pick_featured_race(venue)
+    return featured_race, _best_horse_for_race(featured_race) if featured_race else None
 
 
 def _hero_score_text(horse: Optional[HorseVideoData]) -> str:
@@ -754,7 +739,10 @@ def _draw_horse_watermark(
 def _save_slide(image: Image.Image, path: Path, expected_size: tuple[int, int]) -> None:
     if image.size != expected_size:
         raise RuntimeError(f"画像サイズが不正です: {path} expected={expected_size} actual={image.size}")
-    image.save(path)
+    if path.suffix.lower() in {".jpg", ".jpeg"}:
+        image.save(path, format="JPEG", quality=90, optimize=True, progressive=True)
+    else:
+        image.save(path)
 
 
 def _cover_crop(source: Image.Image, size: tuple[int, int], focus: tuple[float, float]) -> Image.Image:
@@ -1127,10 +1115,16 @@ def _draw_intro_slide(
             stroke_width=3,
             stroke_fill=TEXT_OUTLINE,
         )
-        _draw_feature_grid(draw, (margin, 520, 900, 770), columns=2, compact=False, show_descriptions=False)
+        draw.text(
+            (margin, 574),
+            "1Rから順に AI偏差値・位置取りを確認",
+            font=_font(FONT_BOLD, 29),
+            fill=(236, 235, 229),
+        )
+        draw.line((margin, 626, 900, 626), fill=(236, 235, 229), width=2)
         _draw_photo_score_module(
             draw,
-            (margin, 786, 900, 1000),
+            (margin, 666, 900, 958),
             hero_horse,
             compact=False,
             score_override=score_override,
@@ -1444,7 +1438,8 @@ def _draw_race_slide(
     image = Image.new("RGB", (width, height), PAPER)
     draw = ImageDraw.Draw(image)
     margin = 60
-    top_horses = top_by_deviation(race, 8 if not compact else max(1, min(5, visible_rank_count or 5)))
+    rank_limit = 5 if not compact else max(1, min(3, visible_rank_count or 3))
+    top_horses = top_by_deviation(race, rank_limit)
 
     if not compact:
         _draw_editorial_header(image, draw, size, race, "AI偏差値")
@@ -1454,9 +1449,9 @@ def _draw_race_slide(
         if not top_horses:
             draw.rectangle((margin, card_y, width - margin, card_y + 250), fill=CARD_BG, outline=RULE, width=2)
             draw.text((width // 2, card_y + 90), "出走馬データを集計中", font=_font(FONT_BOLD, 38), fill=INK_DARK, anchor="ma")
-        row_y = 382
-        row_h = 84
-        for offset, horse in enumerate(top_horses[1:8], start=2):
+        row_y = 392
+        row_h = 142
+        for offset, horse in enumerate(top_horses[1:5], start=2):
             _draw_ranking_row(
                 draw,
                 (margin, row_y, width - margin, row_y + row_h),
@@ -1470,12 +1465,12 @@ def _draw_race_slide(
     else:
         safe_left = 60
         safe_right = 900
-        _draw_editorial_header(image, draw, size, race, "AI偏差値 上位5頭")
+        _draw_editorial_header(image, draw, size, race, "AI偏差値 上位3頭")
         y = 444
         if top_horses:
             _draw_rank_card(draw, (safe_left, y, safe_right, y + 290), 1, top_horses[0], compact=True)
             y += 310
-        for idx, horse in enumerate(top_horses[1:5], start=2):
+        for idx, horse in enumerate(top_horses[1:3], start=2):
             _draw_ranking_row(
                 draw,
                 (safe_left, y, safe_right, y + 150),
@@ -1752,7 +1747,8 @@ def _draw_outro_slide(
         cta_y = 1130
         draw.rectangle((margin, cta_y, 900, cta_y + 276), fill=(15, 21, 25))
         draw.rectangle((margin, cta_y, margin + 8, cta_y + 276), fill=BURGUNDY)
-        draw.text((margin + 38, cta_y + 34), "概要欄のリンクからUMA-FREEへ", font=_fit_font_for_width(draw, "概要欄のリンクからUMA-FREEへ", FONT_BOLD, 36, 27, 760), fill=WHITE)
+        profile_cta = "プロフィールのリンクから全頭データを確認"
+        draw.text((margin + 38, cta_y + 34), profile_cta, font=_fit_font_for_width(draw, profile_cta, FONT_BOLD, 36, 25, 760), fill=WHITE)
         draw.text((margin + 38, cta_y + 100), "または「UMA-FREE」で検索", font=_font(FONT_REGULAR, 25), fill=(232, 230, 219))
         draw.text((margin + 38, cta_y + 190), "uma-free.com", font=_font("Inter-Bold.ttf", 30), fill=EDITORIAL_GOLD)
 
@@ -1800,8 +1796,14 @@ def _draw_thumbnail(
             stroke_width=3,
             stroke_fill=TEXT_OUTLINE,
         )
-        _draw_feature_grid(draw, (margin, 520, 900, 770), columns=2, compact=False, show_descriptions=False)
-        _draw_photo_score_module(draw, (margin, 792, 900, 1004), hero_horse, compact=False)
+        draw.text(
+            (margin, 570),
+            subtitle or "全レース AI偏差値・位置取り",
+            font=_font(FONT_BOLD, 31),
+            fill=(236, 235, 229),
+        )
+        draw.line((margin, 624, 900, 624), fill=(236, 235, 229), width=2)
+        _draw_photo_score_module(draw, (margin, 660, 900, 964), hero_horse, compact=False)
     else:
         _draw_brand_lockup(image, draw, margin, 82, compact=True, light=True)
         draw.text((width - margin, 84), date_text, font=_font(FONT_BOLD, 27), fill=WHITE, anchor="ra")
@@ -2061,17 +2063,6 @@ def _draw_intro_sequence(
     target_score = hero_horse.deviation_score if hero_horse and hero_horse.deviation_score is not None else None
     compact = size[1] > size[0]
     slides: List[Slide] = []
-    if compact:
-        site_intro = video_dir / "000_site_intro.png"
-        _draw_short_site_intro_slide(
-            site_intro,
-            target_date,
-            size,
-            venue_name,
-            race_number,
-            visual_asset,
-        )
-        slides.append(Slide(site_intro, 0.65))
     if target_score is None:
         intro = video_dir / "000_intro.png"
         _draw_intro_slide(
@@ -2085,7 +2076,7 @@ def _draw_intro_sequence(
             race_number=race_number,
             visual_asset=visual_asset,
         )
-        slides.append(Slide(intro, 1.85 if compact else 2.5))
+        slides.append(Slide(intro, 1.85 if compact else 2.0))
         return slides
 
     frame_count = 7
@@ -2109,10 +2100,7 @@ def _draw_intro_sequence(
             visual_asset=visual_asset,
             show_score=show_score,
         )
-        if compact:
-            duration = 0.10 if frame < frame_count - 1 else 1.25
-        else:
-            duration = 0.18 if frame < frame_count - 1 else 1.42
+        duration = 0.10 if frame < frame_count - 1 else 1.25
         slides.append(Slide(path, duration))
     return slides
 
@@ -2120,8 +2108,8 @@ def _draw_intro_sequence(
 def _long_title(venue: VenueVideoData, target_date: str) -> str:
     grade_names = "・".join(race.display_name for race in venue.grade_races[:2])
     if grade_names:
-        return f"【{grade_names}】{venue.venue_name} 全レースデータ {target_date}"
-    return f"【{venue.venue_name}】全レースデータ {target_date}"
+        return f"【{grade_names}】{venue.venue_name} 全レース AI偏差値・位置取り｜{target_date}"
+    return f"【{venue.venue_name}】全レース AI偏差値・位置取り｜{target_date}"
 
 
 def _description(
@@ -2130,18 +2118,23 @@ def _description(
     url: str,
     venue_name: Optional[str] = None,
     credit_lines: Sequence[str] = (),
+    is_short: bool = False,
 ) -> str:
     venue_line = f"{venue_name}の" if venue_name else ""
+    entry_line = (
+        "全頭データはチャンネルプロフィールのUMA-FREEから確認できます。"
+        if is_short
+        else f"全頭データを見る: {url}"
+    )
     description = textwrap.dedent(
         f"""\
+        {entry_line}
+
         {title}
 
         UMA-FREEでは、中央・地方競馬の全レース分析データを毎日無料で掲載しています。登録は不要です。
         {venue_line}AI偏差値、過去対戦成績、位置取り予測、枠順傾向をレース順に掲載しています。
-        全頭分のデータはUMA-FREEに掲載しています。
-
-        ▼当日の全レース分析
-        {url}
+        データ基準日: {target_date}
 
         ※本動画は過去データをもとにした参考情報です。結果を保証するものではありません。
 
@@ -2223,8 +2216,8 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
     )
     slides.append(Slide(outro, LONG_OUTRO_SECONDS))
 
-    thumbnail = video_dir / "thumbnail.png"
-    subtitle = "AI偏差値"
+    thumbnail = video_dir / "thumbnail.jpg"
+    subtitle = f"全{len(venue.races)}R  AI偏差値・位置取り"
     hero_grade = hero_race.grade if hero_race and hero_race.grade else ""
     _draw_thumbnail(
         thumbnail,
@@ -2245,7 +2238,9 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
     else:
         render_mp4(slides, video_path, *size, audio_asset=audio_asset)
 
-    url = build_video_url(target_date, utm_content, venue.venue_name)
+    if hero_race_number is None:
+        raise RuntimeError(f"代表レースを選定できません: {venue.venue_name}")
+    url = build_video_url(target_date, utm_content, venue.venue_name, hero_race_number)
     course_assets: dict[str, CourseAsset] = {}
     for race in venue.races:
         course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
@@ -2259,18 +2254,40 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         "courses": [course_asset_metadata(asset) for asset in course_assets.values()],
     }
     credits = asset_credit_lines(visual_asset, audio_asset)
+    description = _description(title, target_date, url, venue.venue_name, credits)
+    tags = ["競馬", "AI偏差値", "UMA-FREE", venue.venue_name, *(race.display_name for race in venue.grade_races[:2])]
+    rights_manifest_hash = build_rights_manifest_hash(selected_assets)
+    content_hash = build_content_hash(
+        {
+            "video_type": "venue_long",
+            "stable_id": stable_id,
+            "target_date": target_date,
+            "title": title,
+            "description": description,
+            "tags": tags,
+            "race_ids": [race.id for race in venue.races],
+            "destination_url": url,
+            "rights_manifest_hash": rights_manifest_hash,
+        }
+    )
     metadata_path = video_dir / "metadata.json"
     metadata = {
         "video_type": "venue_long",
         "stable_id": stable_id,
         "title": title,
-        "description": _description(title, target_date, url, venue.venue_name, credits),
-        "tags": ["競馬", "AI予想", "UMA-FREE", venue.venue_name, *(race.display_name for race in venue.grade_races[:2])],
+        "description": description,
+        "tags": tags,
         "target_date": target_date,
+        "venue_name": venue.venue_name,
+        "race_ids": [race.id for race in venue.races],
+        "aspect_ratio": "16:9",
         "url": url,
         "video_path": str(video_path) if video_path else None,
         "thumbnail_path": str(thumbnail),
         "utm_content": utm_content,
+        "rights_manifest_hash": rights_manifest_hash,
+        "content_hash": content_hash,
+        "thumbnail_required": True,
         "publishable": publishable,
         "publish_block_reasons": publish_block_reasons,
         "selected_assets": selected_assets,
@@ -2278,25 +2295,34 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
     }
     _write_metadata(metadata_path, metadata)
     return RenderedVideo(
-        "venue_long",
-        stable_id,
-        title,
-        metadata["description"],
-        metadata["tags"],
-        video_path,
-        thumbnail,
-        metadata_path,
-        0,
-        publishable,
-        publish_block_reasons,
-        selected_assets,
+        video_type="venue_long",
+        stable_id=stable_id,
+        title=title,
+        description=description,
+        tags=tags,
+        video_path=video_path,
+        thumbnail_path=thumbnail,
+        metadata_path=metadata_path,
+        publish_offset_minutes=0,
+        publishable=publishable,
+        publish_block_reasons=publish_block_reasons,
+        selected_assets=selected_assets,
+        target_date=target_date,
+        venue_name=venue.venue_name,
+        race_ids=[race.id for race in venue.races],
+        aspect_ratio="16:9",
+        destination_url=url,
+        utm_content=utm_content,
+        rights_manifest_hash=rights_manifest_hash,
+        content_hash=content_hash,
+        thumbnail_required=True,
     )
 
 
 def _short_title(race: RaceVideoData, target_date: str) -> str:
     if race.grade:
-        return f"【{race.display_name}】AI偏差値・位置取り {target_date} #shorts"
-    return f"【{race.venue_name}{race.race_number}R】AI偏差値・位置取り {target_date} #shorts"
+        return f"【{race.display_name}】AI偏差値上位3頭・位置取り｜{target_date} #Shorts"
+    return f"【{race.venue_name}{race.race_number}R】AI偏差値上位3頭・位置取り｜{target_date} #Shorts"
 
 
 def _draw_short_position_slide(path: Path, race: RaceVideoData, target_date: str, size: tuple[int, int], utm_content: str) -> None:
@@ -2319,19 +2345,10 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         "vertical",
         selection_key=stable_id,
     )
-    thumbnail_asset = resolve_visual_asset(
-        target_date,
-        race.venue_name,
-        race.race_number,
-        "wide",
-        selection_key=f"{stable_id}:thumbnail",
-    )
     audio_asset = resolve_audio_asset(target_date, "short", stable_id)
     publish_block_reasons: List[str] = []
     if visual_asset is None:
         publish_block_reasons.append("Shorts用の縦写真が見つかりません")
-    if thumbnail_asset is None:
-        publish_block_reasons.append("Shortsサムネイル用の横写真が見つかりません")
     if audio_asset is None:
         publish_block_reasons.append("Shorts用BGMが見つかりません")
     publishable = not publish_block_reasons
@@ -2350,7 +2367,7 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         )
     )
 
-    reveal_steps = [(1, 0.15), (3, 0.15), (5, SHORT_RACE_SLIDE_SECONDS - 0.30)]
+    reveal_steps = [(1, 0.15), (2, 0.15), (3, SHORT_RACE_SLIDE_SECONDS - 0.30)]
     for visible_count, duration in reveal_steps:
         race_slide = video_dir / f"001_race_{visible_count:02d}.png"
         _draw_race_slide(
@@ -2379,7 +2396,7 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
     )
     slides.append(Slide(outro, SHORT_OUTRO_SECONDS))
 
-    thumbnail = video_dir / "thumbnail.png"
+    thumbnail = video_dir / "thumbnail.jpg"
     _draw_thumbnail(
         thumbnail,
         race.display_name,
@@ -2390,7 +2407,7 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         venue_name=race.venue_name,
         race_number=race.race_number,
         grade=race.grade or "",
-        visual_asset=thumbnail_asset,
+        visual_asset=visual_asset,
     )
 
     video_path: Optional[Path] = video_dir / f"{stable_id}.mp4"
@@ -2404,25 +2421,45 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
     selected_assets = {
         "brand_logo": _brand_logo_metadata(),
         "hero_image": visual_asset_metadata(visual_asset),
-        "thumbnail_image": visual_asset_metadata(thumbnail_asset),
+        "cover_frame_image": visual_asset_metadata(visual_asset),
         "bgm": audio_asset_metadata(audio_asset),
         "course": course_asset_metadata(course_asset),
     }
     credits = asset_credit_lines(visual_asset, audio_asset)
-    if thumbnail_asset is not None:
-        credits.extend(asset_credit_lines(thumbnail_asset, None))
+    description = _description(title, target_date, url, race.venue_name, credits, is_short=True)
+    tags = ["競馬", "AI偏差値", "UMA-FREE", "Shorts", race.venue_name, race.display_name]
+    rights_manifest_hash = build_rights_manifest_hash(selected_assets)
+    content_hash = build_content_hash(
+        {
+            "video_type": "short",
+            "stable_id": stable_id,
+            "target_date": target_date,
+            "title": title,
+            "description": description,
+            "tags": tags,
+            "race_ids": [race.id],
+            "destination_url": url,
+            "rights_manifest_hash": rights_manifest_hash,
+        }
+    )
     metadata_path = video_dir / "metadata.json"
     metadata = {
         "video_type": "short",
         "stable_id": stable_id,
         "title": title,
-        "description": _description(title, target_date, url, race.venue_name, credits),
-        "tags": ["競馬", "AI予想", "UMA-FREE", "Shorts", race.venue_name, race.display_name],
+        "description": description,
+        "tags": tags,
         "target_date": target_date,
+        "venue_name": race.venue_name,
+        "race_ids": [race.id],
+        "aspect_ratio": "9:16",
         "url": url,
         "video_path": str(video_path) if video_path else None,
         "thumbnail_path": str(thumbnail),
         "utm_content": utm_content,
+        "rights_manifest_hash": rights_manifest_hash,
+        "content_hash": content_hash,
+        "thumbnail_required": False,
         "publish_order": index,
         "publishable": publishable,
         "publish_block_reasons": publish_block_reasons,
@@ -2431,16 +2468,25 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
     }
     _write_metadata(metadata_path, metadata)
     return RenderedVideo(
-        "short",
-        stable_id,
-        title,
-        metadata["description"],
-        metadata["tags"],
-        video_path,
-        thumbnail,
-        metadata_path,
-        10 + index * 10,
-        publishable,
-        publish_block_reasons,
-        selected_assets,
+        video_type="short",
+        stable_id=stable_id,
+        title=title,
+        description=description,
+        tags=tags,
+        video_path=video_path,
+        thumbnail_path=thumbnail,
+        metadata_path=metadata_path,
+        publish_offset_minutes=-20,
+        publishable=publishable,
+        publish_block_reasons=publish_block_reasons,
+        selected_assets=selected_assets,
+        target_date=target_date,
+        venue_name=race.venue_name,
+        race_ids=[race.id],
+        aspect_ratio="9:16",
+        destination_url=url,
+        utm_content=utm_content,
+        rights_manifest_hash=rights_manifest_hash,
+        content_hash=content_hash,
+        thumbnail_required=False,
     )

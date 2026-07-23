@@ -2,8 +2,8 @@ name: Keiba YouTube Video Pipeline
 
 on:
   schedule:
-    # 毎日 UTC 11:00 = JST 20:00。13:30 JSTの翌日予測取得後に動画を生成する。
-    - cron: '0 11 * * *'
+    # 毎日 UTC 10:17 = JST 19:17。毎時0分付近のActions混雑を避ける。
+    - cron: '17 10 * * *'
   workflow_dispatch:
     inputs:
       target_date:
@@ -18,11 +18,19 @@ on:
         options:
           - 'false'
           - 'true'
-      max_shorts:
-        description: 'Shorts生成上限'
+      publication_mode:
+        description: '投稿モード。通常の3日間検証はprivate_review'
         required: false
-        default: '3'
-        type: string
+        default: 'private_review'
+        type: choice
+        options:
+          - 'disabled'
+          - 'private_review'
+          - 'scheduled_public'
+
+concurrency:
+  group: keiba-youtube-video-${{ github.event.inputs.target_date || 'scheduled' }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -31,7 +39,7 @@ permissions:
 jobs:
   generate-and-upload:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 90
 
     steps:
       - name: Checkout repository
@@ -85,7 +93,12 @@ jobs:
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
           YOUTUBE_UPLOAD_ENABLED: ${{ secrets.YOUTUBE_UPLOAD_ENABLED }}
-          YOUTUBE_MAX_SHORTS: ${{ github.event.inputs.max_shorts || '3' }}
+          YOUTUBE_PUBLICATION_MODE: ${{ github.event.inputs.publication_mode || vars.YOUTUBE_PUBLICATION_MODE || 'private_review' }}
+          YOUTUBE_PUBLISH_TIME_JST: ${{ vars.YOUTUBE_PUBLISH_TIME_JST || '20:30' }}
+          YOUTUBE_MAX_SHORTS: '1'
+          YOUTUBE_READINESS_ATTEMPTS: '3'
+          YOUTUBE_READINESS_DELAY_SECONDS: '600'
+          YOUTUBE_DAILY_QUOTA_BUDGET: ${{ vars.YOUTUBE_DAILY_QUOTA_BUDGET || '8000' }}
           TZ: Asia/Tokyo
         run: |
           EXTRA_ARGS=""
@@ -95,7 +108,7 @@ jobs:
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             EXTRA_ARGS="$EXTRA_ARGS --dry-run --skip-upload"
           fi
-          python scripts/youtube_video_pipeline.py --max-shorts "${YOUTUBE_MAX_SHORTS}" $EXTRA_ARGS
+          python scripts/youtube_video_pipeline.py --max-shorts 1 $EXTRA_ARGS
 
       - name: Upload social video validation artifacts
         if: always()
@@ -105,7 +118,7 @@ jobs:
           path: |
             youtube_video_dist/**/asset-validation.json
             youtube_video_dist/**/summary.json
-            youtube_video_dist/**/thumbnail.png
+            youtube_video_dist/**/thumbnail.jpg
             youtube_video_dist/**/thumbnail_246x138.png
             youtube_video_dist/**/design-contact-sheet.png
             youtube_video_dist/**/shorts-ui-overlay.png

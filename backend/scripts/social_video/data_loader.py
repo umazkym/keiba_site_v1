@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import json
 import os
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import requests
 
@@ -13,6 +17,8 @@ import requests
 SITE_BASE_URL = "https://uma-free.com"
 DEFAULT_API_BASE_URL = "https://keiba-site-v1-761440273070.us-west1.run.app"
 JST = timezone(timedelta(hours=9))
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+VENUE_SLUGS_PATH = PROJECT_ROOT / "frontend" / "lib" / "venue-slugs.json"
 
 
 @dataclass
@@ -93,22 +99,65 @@ def get_target_date(default_days_ahead: int = 1) -> str:
     return (get_jst_today() + timedelta(days=default_days_ahead)).isoformat()
 
 
-def build_race_url(date_str: str, venue_name: str = "", race_number: Any = "") -> str:
-    params: List[str] = [
-        "utm_source=youtube",
-        "utm_medium=video",
-        f"utm_campaign={date_str.replace('-', '')}_preview",
-    ]
-    if venue_name:
-        params.append(f"venue={quote(str(venue_name))}")
-    if race_number:
-        params.append(f"race={quote(str(race_number))}")
-    return f"{SITE_BASE_URL}/races/{date_str}?{'&'.join(params)}"
+def normalize_venue_name(venue_name: str) -> str:
+    return re.sub(r"\s+", "", str(venue_name or "").strip().removesuffix("競馬場"))
+
+
+@lru_cache(maxsize=1)
+def load_venue_slug_registry() -> Dict[str, Dict[str, str]]:
+    try:
+        payload = json.loads(VENUE_SLUGS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"競馬場slugレジストリを読み込めません: {VENUE_SLUGS_PATH} ({exc})") from exc
+    aliases = payload.get("aliases")
+    labels = payload.get("labels")
+    if not isinstance(aliases, dict) or not isinstance(labels, dict):
+        raise RuntimeError(f"競馬場slugレジストリの形式が不正です: {VENUE_SLUGS_PATH}")
+    return {
+        "aliases": {str(key): str(value) for key, value in aliases.items()},
+        "labels": {str(key): str(value) for key, value in labels.items()},
+    }
+
+
+def venue_name_to_slug(venue_name: str) -> str:
+    normalized = normalize_venue_name(venue_name)
+    aliases = load_venue_slug_registry()["aliases"]
+    return aliases.get(normalized, quote(normalized.lower(), safe=""))
+
+
+def build_race_path(date_str: str, venue_name: str = "", race_number: Any = "") -> str:
+    if venue_name and race_number:
+        try:
+            normalized_race_number = int(race_number)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"レース番号が不正です: {race_number}") from exc
+        return f"/races/{date_str}/{venue_name_to_slug(venue_name)}/{normalized_race_number}"
+    return f"/races/{date_str}"
+
+
+def build_race_url(
+    date_str: str,
+    venue_name: str = "",
+    race_number: Any = "",
+    utm_content: str = "",
+) -> str:
+    params = {
+        "utm_source": "youtube",
+        "utm_medium": "video",
+        "utm_campaign": f"{date_str.replace('-', '')}_preview",
+    }
+    if utm_content:
+        params["utm_content"] = utm_content
+    return f"{SITE_BASE_URL}{build_race_path(date_str, venue_name, race_number)}?{urlencode(params)}"
 
 
 def build_video_url(date_str: str, utm_content: str, venue_name: str = "", race_number: Any = "") -> str:
-    base = build_race_url(date_str, venue_name=venue_name, race_number=race_number)
-    return f"{base}&utm_content={quote(utm_content)}"
+    return build_race_url(
+        date_str,
+        venue_name=venue_name,
+        race_number=race_number,
+        utm_content=utm_content,
+    )
 
 
 def _api_base_url() -> str:
@@ -251,7 +300,92 @@ def normalize_venues(payload: Dict[str, Any], weekly_grade_races: List[Dict[str,
     return venues
 
 
+def merge_expected_races(
+    venues: List[VenueVideoData],
+    expected_races: Iterable[Any],
+    target_date: str,
+) -> List[VenueVideoData]:
+    """DBに存在する全レースを基準に、予測未生成レースを空データとして補う。
+
+    公開APIは予測を1件も持たないレースを返さないため、そのままでは
+    「会場の全レースが揃ったか」を判定できない。ここで空レースを補い、
+    後段の会場単位品質ゲートに確実に検知させる。
+    """
+    venue_map = {
+        (venue.race_type, normalize_venue_name(venue.venue_name)): venue
+        for venue in venues
+    }
+    existing_race_ids = {
+        race.id
+        for venue in venues
+        for race in venue.races
+    }
+
+    for expected in expected_races:
+        race_id = str(getattr(expected, "id", "") or "")
+        race_type = str(getattr(expected, "race_type", "") or "")
+        venue_name = str(getattr(expected, "venue_name", "") or "")
+        race_number = _to_int(getattr(expected, "race_number", 0))
+        if not race_id or race_id in existing_race_ids or not race_type or not venue_name or race_number <= 0:
+            continue
+
+        key = (race_type, normalize_venue_name(venue_name))
+        venue = venue_map.get(key)
+        if venue is None:
+            venue = VenueVideoData(venue_name=venue_name, race_type=race_type, races=[])
+            venues.append(venue)
+            venue_map[key] = venue
+
+        venue.races.append(
+            RaceVideoData(
+                id=race_id,
+                race_date=target_date,
+                venue_name=venue_name,
+                race_number=race_number,
+                race_name=str(getattr(expected, "race_name", "") or ""),
+                course_type=getattr(expected, "course_type", None),
+                distance=_to_int(getattr(expected, "distance", None))
+                if getattr(expected, "distance", None) is not None
+                else None,
+                predictions=[],
+            )
+        )
+        existing_race_ids.add(race_id)
+
+    for venue in venues:
+        venue.races.sort(key=lambda race: race.race_number)
+    return sorted(venues, key=lambda venue: (venue.race_type, venue_name_to_slug(venue.venue_name)))
+
+
+def _load_venues_for_date_from_database(target_date: str) -> List[VenueVideoData]:
+    """IAPトンネル後の本番DBを正本として翌日の全レースを取得する。"""
+    from crud import race_crud
+    from database import models
+    from database.database import SessionLocal
+
+    parsed_date = date.fromisoformat(target_date)
+    db = SessionLocal()
+    try:
+        expected_races = (
+            db.query(models.Race)
+            .filter(
+                models.Race.race_date == parsed_date,
+                models.Race.race_type.in_(["中央", "地方"]),
+            )
+            .order_by(models.Race.venue_name, models.Race.race_number)
+            .all()
+        )
+        payload = race_crud.get_predictions_by_date(db, parsed_date)
+        weekly_grade_races = race_crud.get_weekly_grade_races(db)
+        venues = normalize_venues(payload, weekly_grade_races, target_date)
+        return merge_expected_races(venues, expected_races, target_date)
+    finally:
+        db.close()
+
+
 def load_venues_for_date(target_date: str) -> List[VenueVideoData]:
+    if os.getenv("DATABASE_URL"):
+        return _load_venues_for_date_from_database(target_date)
     payload = fetch_race_day_payload(target_date)
     weekly_grade_races = fetch_weekly_grade_races()
     return normalize_venues(payload, weekly_grade_races, target_date)
@@ -267,15 +401,61 @@ def top_by_position(race: RaceVideoData, limit: int = 2) -> List[HorseVideoData]
     return sorted(scored, key=lambda horse: horse.start_1c_indicator or -999, reverse=True)[:limit]
 
 
+def grade_priority(grade: Optional[str]) -> int:
+    normalized = str(grade or "").upper().replace(" ", "")
+    normalized = (
+        normalized.replace("Ｇ", "G")
+        .replace("Ⅰ", "1")
+        .replace("Ⅱ", "2")
+        .replace("Ⅲ", "3")
+        .replace("J・G", "JG")
+        .replace("J-G", "JG")
+    )
+    priorities = {
+        "G1": 0,
+        "JPN1": 1,
+        "JG1": 1,
+        "G2": 2,
+        "JPN2": 3,
+        "JG2": 3,
+        "G3": 4,
+        "JPN3": 5,
+        "JG3": 5,
+    }
+    if normalized in priorities:
+        return priorities[normalized]
+    return 6 if normalized else 99
+
+
+def race_feature_priority(race: RaceVideoData) -> tuple[int, int, int, int, str, str]:
+    grade_rank = grade_priority(race.grade)
+    is_graded = grade_rank < 99
+    main_rank = 0 if race.race_number == 11 else 1
+    field_size = len([horse for horse in race.predictions if horse.horse_number > 0])
+    return (
+        grade_rank,
+        0 if is_graded else main_rank,
+        -field_size,
+        race.race_number,
+        venue_name_to_slug(race.venue_name),
+        race.id,
+    )
+
+
+def pick_featured_race(venue: VenueVideoData) -> Optional[RaceVideoData]:
+    return min(venue.races, key=race_feature_priority) if venue.races else None
+
+
+def order_venues_for_publication(venues: List[VenueVideoData]) -> List[VenueVideoData]:
+    def venue_priority(venue: VenueVideoData) -> tuple:
+        featured = pick_featured_race(venue)
+        return race_feature_priority(featured) if featured else (999, 999, 0, 999, venue.venue_name, "")
+
+    return sorted(venues, key=venue_priority)
+
+
 def pick_shorts_targets(venues: List[VenueVideoData], max_shorts: int) -> List[RaceVideoData]:
     candidates: List[RaceVideoData] = []
     for venue in venues:
         candidates.extend(venue.races)
-
-    def priority(race: RaceVideoData) -> tuple[int, float, int]:
-        top_score = max((horse.deviation_score or 0 for horse in race.predictions), default=0)
-        grade_weight = 0 if race.is_grade_race else 1
-        main_weight = 0 if race.race_number in {10, 11, 12} else 1
-        return (grade_weight, main_weight, -top_score)
-
-    return sorted(candidates, key=priority)[:max(0, max_shorts)]
+    return sorted(candidates, key=race_feature_priority)[:max(0, max_shorts)]

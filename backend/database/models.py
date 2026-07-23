@@ -127,3 +127,34 @@ class SnsPost(Base):
     __table_args__ = (
         UniqueConstraint('content_hash', 'target_date', name='_sns_post_unique'),
     )
+
+
+class VideoPublication(Base):
+    """外部動画プラットフォームへの投稿を段階的に再開するための状態管理。"""
+
+    __tablename__ = "video_publications"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    platform = Column(String, nullable=False, index=True)
+    target_date = Column(Date, nullable=False, index=True)
+    video_type = Column(String, nullable=False)
+    stable_id = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="planned", index=True)
+    remote_video_id = Column(String, nullable=True, index=True)
+    scheduled_at = Column(DateTime, nullable=True)
+    content_hash = Column(String, nullable=False)
+    attempt_count = Column(Integer, nullable=False, default=0)
+    last_error = Column(String, nullable=True)
+    metadata_json = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "platform",
+            "target_date",
+            "video_type",
+            "stable_id",
+            name="_video_publication_unique",
+        ),
+    )

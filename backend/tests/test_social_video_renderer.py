@@ -21,7 +21,15 @@ if str(BACKEND_DIR) not in sys.path:
 from scripts.social_video import renderer
 from scripts.social_video.create_design_contact_sheet import create_contact_sheet
 from scripts import youtube_video_pipeline
-from scripts.social_video.data_loader import HorseVideoData, RaceVideoData, infer_waku_number
+from scripts.social_video.data_loader import (
+    HorseVideoData,
+    RaceVideoData,
+    VenueVideoData,
+    build_video_url,
+    infer_waku_number,
+    order_venues_for_publication,
+    pick_shorts_targets,
+)
 from scripts.social_video import visual_assets
 from scripts.social_video.visual_assets import (
     AudioAsset,
@@ -72,7 +80,7 @@ class SocialVideoRendererTest(unittest.TestCase):
     def test_intro_sequence_hides_first_score_and_never_counts_from_zero(self) -> None:
         race = _race()
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch.object(renderer, "_draw_intro_slide") as draw_intro, patch.object(renderer, "_draw_short_site_intro_slide"):
+            with patch.object(renderer, "_draw_intro_slide") as draw_intro:
                 slides = renderer._draw_intro_sequence(
                     Path(temp_dir),
                     race.race_date,
@@ -83,9 +91,8 @@ class SocialVideoRendererTest(unittest.TestCase):
                     venue_name="函館",
                     race_number=11,
                 )
-        self.assertEqual(len(slides), 8)
-        self.assertAlmostEqual(sum(slide.duration_seconds for slide in slides), 2.5)
-        self.assertEqual(slides[0].duration_seconds, 0.65)
+        self.assertEqual(len(slides), 7)
+        self.assertAlmostEqual(sum(slide.duration_seconds for slide in slides), 1.85)
         calls = draw_intro.call_args_list
         self.assertFalse(calls[0].kwargs["show_score"])
         visible_scores = [call.kwargs["score_override"] for call in calls[1:]]
@@ -313,8 +320,8 @@ class SocialVideoRendererTest(unittest.TestCase):
             self.assertFalse(rendered.publishable)
             self.assertTrue(rendered.thumbnail_path.exists())
             self.assertIn("Shorts用の縦写真が見つかりません", rendered.publish_block_reasons)
-            self.assertIn("Shortsサムネイル用の横写真が見つかりません", rendered.publish_block_reasons)
             self.assertIn("Shorts用BGMが見つかりません", rendered.publish_block_reasons)
+            self.assertFalse(rendered.thumbnail_required)
             metadata = json.loads(rendered.metadata_path.read_text(encoding="utf-8"))
             self.assertFalse(metadata["publishable"])
             self.assertEqual(metadata["selected_assets"]["brand_logo"]["type"], "brand_logo")
@@ -339,11 +346,13 @@ class SocialVideoRendererTest(unittest.TestCase):
                 target_date="2026-07-12",
                 skip_upload=False,
                 dry_run=False,
-                disable_registry=True,
-                privacy_status="private",
+                disable_registry=False,
+                publication_mode="private_review",
                 force=False,
                 publish_time_jst="20:30",
-                notify_subscribers=False,
+                quota_budget=8000,
+                processing_timeout_seconds=1,
+                processing_poll_seconds=1,
             )
             with patch.object(youtube_video_pipeline, "_env_flag", return_value=True):
                 with patch.object(youtube_video_pipeline, "VideoPostRegistry"):
@@ -356,7 +365,7 @@ class SocialVideoRendererTest(unittest.TestCase):
         hero = race.predictions[0]
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            thumbnail = root / "thumbnail.png"
+            thumbnail = root / "thumbnail.jpg"
             position_wide = root / "position-wide.png"
             position_vertical = root / "position-vertical.png"
             renderer._draw_thumbnail(
@@ -374,6 +383,7 @@ class SocialVideoRendererTest(unittest.TestCase):
             renderer._draw_position_slide(position_vertical, race, race.race_date, (1080, 1920))
             with Image.open(thumbnail) as image:
                 self.assertEqual(image.size, (1920, 1080))
+            self.assertLess(thumbnail.stat().st_size, 2 * 1024 * 1024)
             with Image.open(position_wide) as image:
                 self.assertEqual(image.size, (1920, 1080))
             with Image.open(position_vertical) as image:
@@ -389,14 +399,14 @@ class SocialVideoRendererTest(unittest.TestCase):
             short_dir.mkdir(parents=True)
             (date_root / "summary.json").write_text("{}\n", encoding="utf-8")
             for path in [
-                long_dir / "thumbnail.png",
+                long_dir / "thumbnail.jpg",
                 long_dir / "001_11r_ai.png",
                 long_dir / "002_11r_position.png",
                 long_dir / "999_outro.png",
             ]:
                 Image.new("RGB", (1920, 1080), "white").save(path)
             for path in [
-                short_dir / "000_site_intro.png",
+                short_dir / "000_intro_00.png",
                 short_dir / "000_intro_06.png",
                 short_dir / "001_race_03.png",
                 short_dir / "002_position.png",
@@ -413,6 +423,90 @@ class SocialVideoRendererTest(unittest.TestCase):
                 self.assertEqual(image.size, (246, 138))
             with Image.open(date_root / "shorts-ui-overlay.png") as image:
                 self.assertEqual(image.size, (1080, 1920))
+
+    def test_video_urls_use_exact_race_route_and_utm_content(self) -> None:
+        url = build_video_url("2026-07-12", "venue_long_函館", "函館", 11)
+        self.assertEqual(
+            url,
+            "https://uma-free.com/races/2026-07-12/hakodate/11"
+            "?utm_source=youtube&utm_medium=video&utm_campaign=20260712_preview&utm_content=venue_long_%E5%87%BD%E9%A4%A8",
+        )
+        self.assertNotIn("?venue=", url)
+
+    def test_daily_short_selection_prefers_highest_grade_then_main_race(self) -> None:
+        g1 = _race()
+        g1.id = "g1"
+        g1.grade = "G1"
+        g1.venue_name = "東京"
+        g3 = _race()
+        g3.id = "g3"
+        g3.grade = "G3"
+        g3.venue_name = "函館"
+        venues = [
+            VenueVideoData("函館", "中央", [g3]),
+            VenueVideoData("東京", "中央", [g1]),
+        ]
+        selected = pick_shorts_targets(venues, 1)
+        self.assertEqual([race.id for race in selected], ["g1"])
+        self.assertEqual([venue.venue_name for venue in order_venues_for_publication(venues)], ["東京", "函館"])
+
+    def test_long_title_prioritizes_grade_race_name(self) -> None:
+        race = _race()
+        race.race_name = "宝塚記念"
+        race.grade = "G1"
+        title = renderer._long_title(VenueVideoData("阪神", "中央", [race]), "2026-06-28")
+        self.assertTrue(title.startswith("【宝塚記念】阪神 全レース"))
+
+    def test_long_ranking_slide_limits_rows_to_top_five(self) -> None:
+        race = _race()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "ranking.png"
+            with patch.object(renderer, "_draw_ranking_row") as draw_row:
+                renderer._draw_race_slide(output, race, race.race_date, (1920, 1080), "venue_long_test")
+        self.assertEqual(draw_row.call_count, 4)
+
+    def test_long_video_records_every_race_once_in_number_order(self) -> None:
+        races = []
+        for race_number in (1, 2, 3):
+            race = _race()
+            race.id = f"race-{race_number}"
+            race.race_number = race_number
+            race.race_name = f"{race_number}R"
+            race.grade = None
+            races.append(race)
+        venue = VenueVideoData("函館", "中央", races)
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch.object(
+            renderer, "_draw_intro_sequence", return_value=[]
+        ), patch.object(renderer, "_draw_venue_title_slide"), patch.object(
+            renderer, "_draw_race_slide"
+        ) as draw_race, patch.object(
+            renderer, "_draw_position_slide"
+        ) as draw_position, patch.object(
+            renderer, "_draw_outro_slide"
+        ), patch.object(
+            renderer, "_draw_thumbnail"
+        ) as draw_thumbnail, patch.object(
+            renderer, "resolve_visual_asset", return_value=None
+        ), patch.object(
+            renderer, "resolve_audio_asset", return_value=None
+        ), patch.object(
+            renderer, "resolve_course_asset", return_value=None
+        ):
+            package = renderer.render_long_video(
+                venue,
+                "2026-07-12",
+                Path(temp_dir),
+                skip_video=True,
+            )
+
+        self.assertEqual([call.args[1].race_number for call in draw_race.call_args_list], [1, 2, 3])
+        self.assertEqual([call.args[1].race_number for call in draw_position.call_args_list], [1, 2, 3])
+        self.assertTrue(all(call.args[3] == (1920, 1080) for call in draw_race.call_args_list))
+        self.assertTrue(all(call.args[3] == (1920, 1080) for call in draw_position.call_args_list))
+        self.assertEqual(package.race_ids, ["race-1", "race-2", "race-3"])
+        self.assertTrue(package.title.startswith("【函館】"))
+        self.assertEqual(draw_thumbnail.call_args.args[1], "函館 全3R")
 
     def test_video_clip_renderer_does_not_use_zoompan(self) -> None:
         source = inspect.getsource(renderer._render_static_clip)

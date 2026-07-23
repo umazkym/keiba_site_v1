@@ -111,6 +111,15 @@ type ArticleRaceAttribution = {
 
 const ARTICLE_RACE_ATTRIBUTION_KEY = 'uma_article_race_attribution_v1';
 const ARTICLE_RACE_ATTRIBUTION_TTL_MS = 30 * 60 * 1000;
+const YOUTUBE_ATTRIBUTION_KEY = 'uma_youtube_attribution_v1';
+const YOUTUBE_ATTRIBUTION_TTL_MS = 30 * 60 * 1000;
+
+type YouTubeAttribution = {
+    source_video_key: string;
+    video_format: 'venue_long' | 'short';
+    source_venue: string;
+    stored_at: number;
+};
 
 function storeArticleRaceAttribution(attribution: ArticleRaceAttribution): void {
     if (typeof window === 'undefined') return;
@@ -137,6 +146,77 @@ function consumeArticleRaceAttribution(raceId?: string): ArticleRaceAttribution 
         return parsed;
     } catch {
         // sessionStorage自体が拒否された環境では、追加操作を行わず通常計測を続ける。
+        return null;
+    }
+}
+
+function clearArticleRaceAttribution(): void {
+    if (typeof window === 'undefined') return;
+    try {
+        window.sessionStorage.removeItem(ARTICLE_RACE_ATTRIBUTION_KEY);
+    } catch {
+        // ストレージが使えない環境でもYouTube流入の計測は継続する。
+    }
+}
+
+function captureYouTubeAttribution(sourceVenue: string): YouTubeAttribution | null {
+    if (typeof window === 'undefined') return null;
+    const searchParams = new URLSearchParams(window.location.search);
+    const source = (searchParams.get('utm_source') || '').trim().toLowerCase();
+    const medium = (searchParams.get('utm_medium') || '').trim().toLowerCase();
+    const utmContent = (searchParams.get('utm_content') || '').trim().slice(0, 100);
+    const isVideoLink = medium === 'video' && Boolean(utmContent);
+    const isChannelProfileLink = medium === 'profile';
+    if (source !== 'youtube' || (!isVideoLink && !isChannelProfileLink)) return null;
+    const sourceVideoKey = utmContent || 'channel_profile';
+
+    const attribution: YouTubeAttribution = {
+        source_video_key: sourceVideoKey,
+        video_format: isChannelProfileLink || sourceVideoKey.startsWith('short_') ? 'short' : 'venue_long',
+        source_venue: sourceVenue,
+        stored_at: Date.now(),
+    };
+    try {
+        window.sessionStorage.setItem(YOUTUBE_ATTRIBUTION_KEY, JSON.stringify(attribution));
+    } catch {
+        // sessionStorageが拒否されても現在URLから返した属性で計測する。
+    }
+    return attribution;
+}
+
+export function captureYouTubeEntryAttribution(): void {
+    if (typeof window === 'undefined') return;
+    const isRaceDetail = /^\/races\/\d{4}-\d{2}-\d{2}\/[^/]+\/\d+\/?$/u.test(window.location.pathname);
+    if (isRaceDetail) return;
+    captureYouTubeAttribution('');
+}
+
+function consumeYouTubeAttribution(sourceVenue: string): YouTubeAttribution | null {
+    if (typeof window === 'undefined') return null;
+    const captured = captureYouTubeAttribution(sourceVenue);
+    if (captured) {
+        try {
+            window.sessionStorage.removeItem(YOUTUBE_ATTRIBUTION_KEY);
+        } catch {
+            // 現在URLの属性を返せるため削除失敗は無視する。
+        }
+        return captured;
+    }
+    try {
+        const raw = window.sessionStorage.getItem(YOUTUBE_ATTRIBUTION_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as YouTubeAttribution;
+        const expired = !parsed.stored_at || Date.now() - parsed.stored_at > YOUTUBE_ATTRIBUTION_TTL_MS;
+        if (expired || !parsed.source_video_key) {
+            window.sessionStorage.removeItem(YOUTUBE_ATTRIBUTION_KEY);
+            return null;
+        }
+        window.sessionStorage.removeItem(YOUTUBE_ATTRIBUTION_KEY);
+        return {
+            ...parsed,
+            source_venue: parsed.source_venue || sourceVenue,
+        };
+    } catch {
         return null;
     }
 }
@@ -296,22 +376,34 @@ export const sendRaceViewEvent = (params: {
     race_name: string;
     race_type: 'jra' | 'nar';
 }) => {
-    const articleAttribution = consumeArticleRaceAttribution(params.race_id);
-    const attributedParams = articleAttribution
+    const youtubeAttribution = consumeYouTubeAttribution(params.venue_name);
+    if (youtubeAttribution) clearArticleRaceAttribution();
+    const articleAttribution = youtubeAttribution ? null : consumeArticleRaceAttribution(params.race_id);
+    const attributedParams = youtubeAttribution
         ? {
+            ...params,
+            entry_source: 'youtube',
+            source_video_key: youtubeAttribution.source_video_key,
+            video_format: youtubeAttribution.video_format,
+            source_venue: youtubeAttribution.source_venue,
+        }
+        : articleAttribution
+          ? {
             ...params,
             entry_source: 'article',
             source_article_slug: articleAttribution.article_slug,
             article_entry_method: articleAttribution.link_placement,
             article_destination_type: articleAttribution.destination_type,
         }
-        : params;
+          : params;
     sendAnalyticsEvent('race_view', attributedParams);
     sendClarityEvent('race_view', {
         race_type: params.race_type,
         venue_name: params.venue_name,
         race_number: params.race_number,
-        entry_source: articleAttribution ? 'article' : 'direct_or_other',
+        entry_source: youtubeAttribution ? 'youtube' : articleAttribution ? 'article' : 'direct_or_other',
+        source_video_key: youtubeAttribution?.source_video_key,
+        video_format: youtubeAttribution?.video_format,
         article_entry_method: articleAttribution?.link_placement,
     });
 };

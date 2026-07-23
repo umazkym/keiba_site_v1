@@ -19,7 +19,7 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `race_group_select` | 中央・地方タブを選択 | `race_date`, `race_type` | 開催区分の利用状況 |
 | `home_race_entry_click` | ホームから当日レースへ移動 | `race_date`, `entry_method`, `race_type`, `venue_name` | ホーム入口別の送客 |
 | `race_venue_select` | 競馬場タブを選択 | `race_date`, `race_type`, `venue_name` | 競馬場間の巡回 |
-| `race_view` | レースデータを表示 | `race_id`, `race_date`, `race_type`, `venue_name`, `race_number`, 記事流入時のみ`entry_source`, `source_article_slug`, `article_entry_method`, `article_destination_type` | 1セッション当たりの閲覧レース数と記事送客後の到達 |
+| `race_view` | レースデータを表示 | `race_id`, `race_date`, `race_type`, `venue_name`, `race_number`。記事流入時は`entry_source=article`, `source_article_slug`, `article_entry_method`, `article_destination_type`。YouTube流入時は`entry_source=youtube`, `source_video_key`, `video_format`, `source_venue` | 1セッション当たりの閲覧レース数と記事・YouTube送客後の到達 |
 | `race_navigation` | 前後レースやレース番号から移動 | `from_race_number`, `to_race_number`, `navigation_method` | 次レース導線の比較 |
 | `prediction_table_view` | AI偏差値表が画面内に入る | `race_id`, `race_number`, `page_path` | 予想表の実閲覧 |
 | `article_read_complete` | 記事本文の末尾へ到達 | `article_slug`, `article_category`, `reading_time_min` | 記事読了率 |
@@ -87,6 +87,16 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 6. `race_navigation`
 7. 次レースの`race_view`
 
+### YouTubeからレース
+
+1. YouTube会場別動画の説明欄リンク、またはチャンネルプロフィールリンク
+2. UTM付きレース詳細ページの実`page_view`
+3. YouTube流入属性付きの最初の`race_view`
+4. `prediction_table_view`
+5. `race_navigation`
+
+動画リンクは`utm_source=youtube`、`utm_medium=video`、`utm_campaign=YYYYMMDD_preview`、`utm_content={stable_video_key}`を使用する。Shorts向けチャンネルプロフィールリンクは`utm_source=youtube`、`utm_medium=profile`、`utm_campaign=channel`とし、入口ページで`channel_profile`として保持する。流入属性は`sessionStorage`へ最大30分保持し、最初の`race_view`へ一度だけ付与する。`video_format`は`venue_long`または`short`とし、タブ・レース切り替えによる仮想`page_view`は送らない。YouTube UTMと記事流入属性が同時に残っている場合は、現在URLで確認できるYouTube流入を優先し、古い記事属性を破棄する。
+
 ## レポート上の注意
 
 - 2026-06-18以前のGA4ページビューには、タブ・競馬場切り替えによる仮想PVが含まれる。
@@ -94,4 +104,5 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 - リワード広告を意図的に停止している期間は、通常公開を`premium_data_view.result=open_access`として扱う。
 - 2026-07-20〜21のUI変更が30日集計へ混在するため、広告・CTA判断では2026-07-22以降の期間を分離する。
 - 2026-07-23実装のレースブリッジは、本番デプロイ日Dより前の汎用CTAと同一期間へ混在させない。`metadata_only`は一時API障害時の静的リンク表示であり、上位3頭が表示された`available`と分けて集計する。
+- YouTube v7の公開開始日Dまでは`private_review`期間として扱い、通常流入の評価対象へ含めない。D以降は`utm_content`別のセッション、YouTube属性付き`race_view`、`prediction_table_view`を同じ期間で比較する。
 - 楽天競馬の適格化実験は`NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=qualified_nar`へ切り替えた本番反映日をDとする。Dより前のレガシー導線、ヘッダー、JRA、日別ページ下部の表示・クリックを実験母数へ混ぜない。

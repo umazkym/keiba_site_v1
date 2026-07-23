@@ -38,8 +38,11 @@ def _collect_review_images(date_root: Path, prefix: str) -> List[Tuple[str, Path
     short_dir = _first(path for path in short_root.glob("*") if path.is_dir()) if short_root.exists() else None
 
     if long_dir:
+        long_thumbnail = long_dir / "thumbnail.jpg"
+        if not long_thumbnail.exists():
+            long_thumbnail = long_dir / "thumbnail.png"
         candidates = [
-            ("長尺サムネイル", long_dir / "thumbnail.png"),
+            ("長尺サムネイル", long_thumbnail),
             ("長尺AI偏差値", _first(long_dir.glob("*_ai.png"))),
             ("長尺位置取り", _first(long_dir.glob("*_position.png"))),
             ("長尺アウトロ", long_dir / "999_outro.png"),
@@ -50,7 +53,7 @@ def _collect_review_images(date_root: Path, prefix: str) -> List[Tuple[str, Path
 
     if short_dir:
         candidates = [
-            ("Shortsサイト紹介", short_dir / "000_site_intro.png"),
+            ("Shorts表紙", _first(short_dir.glob("000_intro_*.png"))),
             ("Shorts冒頭", _last(short_dir.glob("000_intro_*.png"))),
             ("Shortsランキング", _last(short_dir.glob("001_race_*.png"))),
             ("Shorts位置取り", short_dir / "002_position.png"),
@@ -118,12 +121,12 @@ def create_contact_sheet(
     items: List[Tuple[str, Path]] = []
     if baseline_root:
         items.extend(_collect_review_images(_resolve_date_root(baseline_root), "旧版 / "))
-    current_items = _collect_review_images(current_root, "v6 / ")
+    current_items = _collect_review_images(current_root, "v7 / ")
     items.extend(current_items)
     short_source = next((path for label, path in current_items if label.endswith("Shortsランキング")), None)
     if short_source is not None:
         overlay_path = _create_shorts_ui_overlay(short_source, destination.with_name("shorts-ui-overlay.png"))
-        items.append(("v6 / Shorts UI安全領域", overlay_path))
+        items.append(("v7 / Shorts UI安全領域", overlay_path))
     if not items:
         raise RuntimeError(f"レビュー対象PNGが見つかりません: {current_root}")
 
@@ -150,7 +153,7 @@ def create_contact_sheet(
     sheet.save(destination)
 
     for label, path in items:
-        if label.endswith("長尺サムネイル") and label.startswith("v6"):
+        if label.endswith("長尺サムネイル") and label.startswith("v7"):
             with Image.open(path) as thumbnail:
                 thumbnail.convert("RGB").resize((246, 138), Image.Resampling.LANCZOS).save(
                     destination.with_name("thumbnail_246x138.png")

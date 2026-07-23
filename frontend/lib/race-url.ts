@@ -1,60 +1,7 @@
-const VENUE_SLUGS: Record<string, string> = {
-    札幌: 'sapporo',
-    函館: 'hakodate',
-    福島: 'fukushima',
-    新潟: 'niigata',
-    東京: 'tokyo',
-    中山: 'nakayama',
-    中京: 'chukyo',
-    京都: 'kyoto',
-    阪神: 'hanshin',
-    小倉: 'kokura',
-    門別: 'monbetsu',
-    盛岡: 'morioka',
-    水沢: 'mizusawa',
-    浦和: 'urawa',
-    船橋: 'funabashi',
-    大井: 'ohi',
-    川崎: 'kawasaki',
-    金沢: 'kanazawa',
-    笠松: 'kasamatsu',
-    名古屋: 'nagoya',
-    園田: 'sonoda',
-    姫路: 'himeji',
-    高知: 'kochi',
-    佐賀: 'saga',
-    帯広: 'obihiro',
-    帯広ば: 'obihiro',
-    ばんえい帯広: 'obihiro',
-};
+import venueSlugs from './venue-slugs.json';
 
-const VENUE_SLUG_LABELS: Record<string, string> = {
-    sapporo: '札幌',
-    hakodate: '函館',
-    fukushima: '福島',
-    niigata: '新潟',
-    tokyo: '東京',
-    nakayama: '中山',
-    chukyo: '中京',
-    kyoto: '京都',
-    hanshin: '阪神',
-    kokura: '小倉',
-    monbetsu: '門別',
-    morioka: '盛岡',
-    mizusawa: '水沢',
-    urawa: '浦和',
-    funabashi: '船橋',
-    ohi: '大井',
-    kawasaki: '川崎',
-    kanazawa: '金沢',
-    kasamatsu: '笠松',
-    nagoya: '名古屋',
-    sonoda: '園田',
-    himeji: '姫路',
-    kochi: '高知',
-    saga: '佐賀',
-    obihiro: '帯広ば',
-};
+const VENUE_SLUGS: Record<string, string> = venueSlugs.aliases;
+const VENUE_SLUG_LABELS: Record<string, string> = venueSlugs.labels;
 
 export const RACE_INDEX_PAST_DAYS = 14;
 export const RACE_INDEX_FUTURE_DAYS = 2;

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import unittest
@@ -23,6 +24,7 @@ from scripts.social_video.youtube_client import (
     YouTubeUploadResult,
     YouTubeVideoStatus,
     build_publish_at,
+    build_publish_schedule,
     estimate_quota_units,
 )
 
@@ -97,6 +99,8 @@ def _args(mode: str) -> SimpleNamespace:
         force=False,
         publication_mode=mode,
         publish_time_jst="20:30",
+        publish_min_lead_minutes=20,
+        max_publish_shift_minutes=240,
         quota_budget=8000,
         processing_timeout_seconds=1,
         processing_poll_seconds=1,
@@ -182,13 +186,48 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             with patch.object(youtube_video_pipeline, "_env_flag", return_value=True), patch.object(
                 youtube_video_pipeline, "VideoPostRegistry", return_value=registry
             ), patch.object(youtube_video_pipeline, "YouTubeClient", return_value=client), patch.object(
-                youtube_video_pipeline, "build_publish_at", return_value="2099-07-11T11:30:00Z"
+                youtube_video_pipeline,
+                "build_publish_schedule",
+                return_value=(["2099-07-11T11:30:00Z"], 0),
             ):
                 youtube_video_pipeline._upload_all(_args("scheduled_public"), [package])
 
         self.assertEqual(client.insert_video.call_args.kwargs["publish_at"], "2099-07-11T11:30:00Z")
         client.set_thumbnail.assert_called_once_with("video-id", package.thumbnail_path)
         self.assertEqual(registry.transitions[-1], "scheduled")
+
+    def test_delayed_schedule_is_uploaded_and_reported_without_losing_order(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            package = _package(temp_root, "short", thumbnail_required=False)
+            summary_path = temp_root / "summary.md"
+            registry = FakeRegistry()
+            client = _youtube_client()
+            shifted_publish_at = "2099-07-11T12:10:00Z"
+            with patch.dict(
+                os.environ,
+                {"GITHUB_STEP_SUMMARY": str(summary_path)},
+                clear=False,
+            ), patch.object(
+                youtube_video_pipeline, "_env_flag", return_value=True
+            ), patch.object(
+                youtube_video_pipeline, "VideoPostRegistry", return_value=registry
+            ), patch.object(
+                youtube_video_pipeline, "YouTubeClient", return_value=client
+            ), patch.object(
+                youtube_video_pipeline,
+                "build_publish_schedule",
+                return_value=([shifted_publish_at], 60),
+            ):
+                youtube_video_pipeline._upload_all(_args("scheduled_public"), [package])
+            summary_text = summary_path.read_text(encoding="utf-8")
+
+        self.assertEqual(
+            client.insert_video.call_args.kwargs["publish_at"],
+            shifted_publish_at,
+        )
+        self.assertEqual(registry.existing.metadata["schedule_shift_minutes"], 60)
+        self.assertIn("遅延時刻補正", summary_text)
 
     def test_scheduled_mode_falls_back_to_private_when_an_asset_is_blocked(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -430,6 +469,55 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         target_date = (datetime.now(JST).date() + timedelta(days=1)).isoformat()
         with self.assertRaisesRegex(RuntimeError, "時刻を自動変更せず投稿を中止"):
             build_publish_at(target_date, "00:00", 0)
+
+    def test_delayed_actions_run_shifts_all_publish_slots_without_changing_order(self) -> None:
+        publish_times, shift_minutes = build_publish_schedule(
+            "2026-07-27",
+            "20:30",
+            [-20, 0, 10, 20],
+            now_jst=datetime(2026, 7, 26, 20, 43, tzinfo=JST),
+            minimum_lead_minutes=20,
+            maximum_shift_minutes=240,
+        )
+
+        self.assertEqual(shift_minutes, 60)
+        self.assertEqual(
+            publish_times,
+            [
+                "2026-07-26T12:10:00Z",
+                "2026-07-26T12:30:00Z",
+                "2026-07-26T12:40:00Z",
+                "2026-07-26T12:50:00Z",
+            ],
+        )
+
+    def test_on_time_actions_run_keeps_requested_publish_slots(self) -> None:
+        publish_times, shift_minutes = build_publish_schedule(
+            "2026-07-27",
+            "20:30",
+            [-20, 0, 10],
+            now_jst=datetime(2026, 7, 26, 19, 30, tzinfo=JST),
+        )
+
+        self.assertEqual(shift_minutes, 0)
+        self.assertEqual(
+            publish_times,
+            [
+                "2026-07-26T11:10:00Z",
+                "2026-07-26T11:30:00Z",
+                "2026-07-26T11:40:00Z",
+            ],
+        )
+
+    def test_excessively_late_actions_run_is_rejected(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "古い内容の自動公開を中止"):
+            build_publish_schedule(
+                "2026-07-27",
+                "20:30",
+                [-20, 0],
+                now_jst=datetime(2026, 7, 27, 1, 0, tzinfo=JST),
+                maximum_shift_minutes=240,
+            )
 
     def test_authenticated_channel_must_match_configured_channel(self) -> None:
         client = YouTubeClient.__new__(YouTubeClient)

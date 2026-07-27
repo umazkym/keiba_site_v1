@@ -35,7 +35,7 @@ from scripts.social_video.renderer import RenderedVideo, render_long_video, rend
 from scripts.social_video.visual_assets import validate_asset_library  # noqa: E402
 from scripts.social_video.youtube_client import (  # noqa: E402
     YouTubeClient,
-    build_publish_at,
+    build_publish_schedule,
     estimate_quota_units,
     parse_publish_at,
     validate_publication_mode,
@@ -484,27 +484,51 @@ def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None
     if safety_reasons:
         uploaded_lines.append(f"- 安全ゲート: {', '.join(safety_reasons)}")
 
-    publish_at_by_key: Dict[Tuple[str, str], Optional[str]] = {}
-    for item in rendered:
-        if not item.publishable:
-            continue
-        publish_at_by_key[(item.video_type, item.stable_id)] = (
-            build_publish_at(target_date, args.publish_time_jst, item.publish_offset_minutes)
-            if publication_mode == "scheduled_public"
-            else None
+    publishable_items = [item for item in rendered if item.publishable]
+    publish_at_by_key: Dict[Tuple[str, str], Optional[str]] = {
+        (item.video_type, item.stable_id): None
+        for item in publishable_items
+    }
+    schedule_shift_minutes = 0
+    if publication_mode == "scheduled_public":
+        publish_schedule, schedule_shift_minutes = build_publish_schedule(
+            target_date,
+            args.publish_time_jst,
+            [item.publish_offset_minutes for item in publishable_items],
+            minimum_lead_minutes=args.publish_min_lead_minutes,
+            maximum_shift_minutes=args.max_publish_shift_minutes,
         )
+        publish_at_by_key.update(
+            {
+                (item.video_type, item.stable_id): publish_at
+                for item, publish_at in zip(publishable_items, publish_schedule)
+            }
+        )
+        if schedule_shift_minutes:
+            first_publish_at = min(
+                datetime.fromisoformat(value.replace("Z", "+00:00"))
+                for value in publish_schedule
+            ).astimezone(timezone(timedelta(hours=9)))
+            delay_message = (
+                "GitHub Actionsの起動遅延に合わせ、公開順と間隔を維持したまま"
+                f"全予約を{schedule_shift_minutes}分後ろ倒ししました"
+                f"（最初の公開: {first_publish_at.strftime('%Y-%m-%d %H:%M JST')}）"
+            )
+            print(delay_message)
+            uploaded_lines.append(f"- 遅延時刻補正: {delay_message}")
 
     reserved_records = {}
     try:
-        for item in rendered:
-            if not item.publishable:
-                continue
+        for item in publishable_items:
+            publication_metadata = item.publication_metadata()
+            if schedule_shift_minutes:
+                publication_metadata["schedule_shift_minutes"] = schedule_shift_minutes
             reserved_records[(item.video_type, item.stable_id)] = registry.reserve(
                 target_date=target_date,
                 video_type=item.video_type,
                 stable_id=item.stable_id,
                 content_hash=item.content_hash,
-                metadata=item.publication_metadata(),
+                metadata=publication_metadata,
             )
     except Exception as exc:
         uploaded_lines.append(f"- 投稿前検証で停止: {exc}")
@@ -572,7 +596,10 @@ def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None
                     "uploaded",
                     remote_video_id=video_id,
                     scheduled_at=parse_publish_at(publish_at),
-                    metadata={"watch_url": result.watch_url},
+                    metadata={
+                        "watch_url": result.watch_url,
+                        "schedule_shift_minutes": schedule_shift_minutes,
+                    },
                 )
 
             if publication_mode == "private_review" and record.scheduled_at is not None:
@@ -666,6 +693,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-venues", type=int, default=None, help="検証用に生成会場数を制限")
     parser.add_argument("--max-shorts", type=int, default=int(os.getenv("YOUTUBE_MAX_SHORTS", "1")), help="Shorts生成上限。v7では最大1本")
     parser.add_argument("--publish-time-jst", default=os.getenv("YOUTUBE_PUBLISH_TIME_JST", "20:30"), help="翌日分を公開予約するJST時刻 HH:MM")
+    parser.add_argument(
+        "--publish-min-lead-minutes",
+        type=int,
+        default=int(os.getenv("YOUTUBE_PUBLISH_MIN_LEAD_MINUTES", "20")),
+        help="遅延時に最初の予約公開まで確保する最低猶予分数",
+    )
+    parser.add_argument(
+        "--max-publish-shift-minutes",
+        type=int,
+        default=int(os.getenv("YOUTUBE_MAX_PUBLISH_SHIFT_MINUTES", "240")),
+        help="GitHub Actions遅延時に許可する予約時刻の最大後ろ倒し分数",
+    )
     parser.add_argument(
         "--publication-mode",
         default=os.getenv("YOUTUBE_PUBLICATION_MODE", "disabled"),

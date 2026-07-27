@@ -6,7 +6,8 @@ UMA-FREEへの検索外流入を増やすため、翌日開催分の確定済み
 
 - 会場別長尺: 開催会場ごとに1本。新馬戦を除く対象レースを実際のレース番号順に収録し、各レース約6秒の1シーン内でAI偏差値上位3頭と全馬の位置取りを表示します。
 - Short: 1日1本。G1、Jpn1、G2、Jpn2、G3、Jpn3、その他重賞の順で優先し、重賞がない日は11R、出走頭数、会場コードの順で決定します。
-- 公開時刻: Shortは20:10 JST、最優先会場は20:30、残りの会場は20:40から10分間隔です。
+- 基準公開時刻: Shortは20:10 JST、最優先会場は20:30、残りの会場は20:40から10分間隔です。
+- GitHub Actionsの起動が遅れた場合は、最初の公開まで20分の猶予を確保できる次の10分枠へ、全動画を同じ分数だけ後ろ倒しします。Short→最優先会場→残り会場の順序と間隔は維持します。
 - GitHub Actionsは毎日19:17 JSTに開始し、翌日データが不完全な場合は10分間隔で最大3回確認します。
 
 会場は1Rから最大レース番号までが連続し、すべてのレースに実在馬名と有効なAI偏差値がある場合だけ公開対象になります。WorkflowではIAPトンネル経由のDBを正本とし、レース表に存在して予測表に存在しないレースも欠損として検知します。不完全な会場は会場単位で保留し、正常な会場は維持します。保留が発生したWorkflowは正常会場の処理後に失敗終了し、GitHubの通知とActions Summaryで把握できるようにします。
@@ -74,6 +75,8 @@ Repository Variable `YOUTUBE_PUBLICATION_MODE`で状態を切り替えます。
 
 Workflowの安全な既定値は`private_review`です。`YOUTUBE_UPLOAD_ENABLED=true`も設定されている場合だけAPIへ送信します。`scheduled_public`へ切り替える前に3開催日連続で非公開検証を行います。
 
+GitHub Actionsの`on.schedule`は指定時刻どおりに起動する保証がありません。`scheduled_public`でレンダリング完了時点から最初の基準公開時刻まで20分未満の場合、公開列全体を10分単位で後ろへ移動します。後ろ倒しが240分を超える場合は、古い翌日情報を深夜に公開しないため停止します。遅延補正の有無、補正分数、最初の公開時刻はActions Summaryへ記録します。
+
 ## 重複防止と再開
 
 `video_publications`テーブルへ次の状態を保存します。
@@ -113,6 +116,8 @@ DB接続は既存のIAPトンネルと`127.0.0.1:15432`への実行時書き換�
 
 - `YOUTUBE_PUBLICATION_MODE`: 初期値`private_review`
 - `YOUTUBE_PUBLISH_TIME_JST`: 初期値`20:30`
+- `YOUTUBE_PUBLISH_MIN_LEAD_MINUTES`: 初期値`20`
+- `YOUTUBE_MAX_PUBLISH_SHIFT_MINUTES`: 初期値`240`
 - `YOUTUBE_DAILY_QUOTA_BUDGET`: 初期値`8000`
 
 ワークフローは1日1回、最大90分、Short 1本に固定します。アップロード前に動画本数、横長サムネイル数、状態確認回数からAPIクォータを概算し、設定上限を超える場合は投稿しません。日次実行ではMP4をartifactへ保存しません。手動`workflow_dispatch`かつ`dry_run=true`の場合だけ、横長19秒以内とShort 15秒の縮小レビューMP4を7日保存します。

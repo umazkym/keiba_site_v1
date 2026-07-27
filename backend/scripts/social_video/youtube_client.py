@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import math
 import mimetypes
 import os
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Sequence, Tuple
 
 
 JST = timezone(timedelta(hours=9))
@@ -46,7 +47,11 @@ def validate_publication_mode(value: str) -> str:
     return normalized
 
 
-def build_publish_at(target_date: str, publish_time_jst: str, offset_minutes: int = 0) -> str:
+def _requested_publish_datetime(
+    target_date: str,
+    publish_time_jst: str,
+    offset_minutes: int = 0,
+) -> datetime:
     publish_date = datetime.fromisoformat(target_date).date() - timedelta(days=1)
     try:
         hour_text, minute_text = publish_time_jst.split(":", 1)
@@ -64,13 +69,77 @@ def build_publish_at(target_date: str, publish_time_jst: str, offset_minutes: in
         minute,
         tzinfo=JST,
     ) + timedelta(minutes=offset_minutes)
-    now_jst = datetime.now(JST)
-    if publish_dt <= now_jst + timedelta(minutes=5):
+    return publish_dt
+
+
+def build_publish_at(
+    target_date: str,
+    publish_time_jst: str,
+    offset_minutes: int = 0,
+    *,
+    now_jst: Optional[datetime] = None,
+) -> str:
+    publish_dt = _requested_publish_datetime(target_date, publish_time_jst, offset_minutes)
+    effective_now_jst = (now_jst or datetime.now(JST)).astimezone(JST)
+    if publish_dt <= effective_now_jst + timedelta(minutes=5):
         raise RuntimeError(
             "予約公開時刻を過ぎています。時刻を自動変更せず投稿を中止します: "
             f"{publish_dt.isoformat()}"
         )
     return publish_dt.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def build_publish_schedule(
+    target_date: str,
+    publish_time_jst: str,
+    offsets_minutes: Sequence[int],
+    *,
+    now_jst: Optional[datetime] = None,
+    minimum_lead_minutes: int = 20,
+    slot_minutes: int = 10,
+    maximum_shift_minutes: int = 240,
+) -> Tuple[List[str], int]:
+    """Actions遅延時も公開順を保ったまま、予約枠全体を安全に後ろへ移動する。"""
+    offsets = [int(offset) for offset in offsets_minutes]
+    if not offsets:
+        return [], 0
+    if minimum_lead_minutes < 5:
+        raise ValueError("予約公開までの最低猶予は5分以上にしてください。")
+    if slot_minutes <= 0:
+        raise ValueError("予約公開枠の単位は1分以上にしてください。")
+    if maximum_shift_minutes < 0:
+        raise ValueError("予約公開の最大後ろ倒し時間は0分以上にしてください。")
+
+    effective_now_jst = (now_jst or datetime.now(JST)).astimezone(JST)
+    requested_datetimes = [
+        _requested_publish_datetime(target_date, publish_time_jst, offset)
+        for offset in offsets
+    ]
+    earliest_requested = min(requested_datetimes)
+    minimum_publish_at = effective_now_jst + timedelta(minutes=minimum_lead_minutes)
+    shift_minutes = 0
+    if earliest_requested <= minimum_publish_at:
+        required_seconds = (minimum_publish_at - earliest_requested).total_seconds()
+        required_minutes = max(0, math.ceil(required_seconds / 60))
+        shift_minutes = (
+            (required_minutes + slot_minutes - 1) // slot_minutes
+        ) * slot_minutes
+        if shift_minutes > maximum_shift_minutes:
+            raise RuntimeError(
+                "GitHub Actionsの遅延が許容範囲を超えたため、古い内容の自動公開を中止します: "
+                f"必要な後ろ倒し={shift_minutes}分 / 上限={maximum_shift_minutes}分"
+            )
+
+    effective_datetimes = [
+        requested + timedelta(minutes=shift_minutes)
+        for requested in requested_datetimes
+    ]
+    if min(effective_datetimes) <= effective_now_jst + timedelta(minutes=5):
+        raise RuntimeError("予約公開までの安全な猶予を確保できません。")
+    return [
+        publish_dt.astimezone(UTC).isoformat().replace("+00:00", "Z")
+        for publish_dt in effective_datetimes
+    ], shift_minutes
 
 
 def parse_publish_at(value: Optional[str]) -> Optional[datetime]:

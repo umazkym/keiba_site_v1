@@ -29,7 +29,6 @@ from .visual_assets import (
     CourseAsset,
     VideoAsset,
     VisualAsset,
-    asset_credit_lines,
     audio_asset_metadata,
     course_asset_metadata,
     resolve_audio_asset,
@@ -138,8 +137,8 @@ LONG_CONTENT_RIGHT = 1876
 LONG_CONTENT_WIDTH = LONG_CONTENT_RIGHT - LONG_CONTENT_LEFT
 LONG_DATA_PANEL_BOTTOM = 824
 LONG_CTA_Y = 848
-LONG_SITE_ACCESS_CTA = "サイトへのアクセスは概要欄のリンクから"
-SHORT_SITE_ACCESS_CTA = "サイトへのアクセスはプロフィールのリンクから"
+LONG_SITE_ACCESS_CTA = "その他の分析情報は概要欄のサイトから"
+SHORT_SITE_ACCESS_CTA = "その他の分析情報は概要欄のサイトから"
 # 旧テスト・補助スクリプト向けの互換値。本線は1レース1シーンを使用する。
 LONG_VENUE_SLIDE_SECONDS = LONG_INTRO_SECONDS
 LONG_RACE_SLIDE_SECONDS = LONG_RACE_SCENE_SECONDS
@@ -2088,8 +2087,19 @@ def _draw_broadcast_cta_layer(path: Path, compact: bool = False) -> Path:
     draw.rounded_rectangle((0, 0, size[0] - 1, size[1] - 1), radius=14, fill=(8, 16, 18, 246))
     draw.rectangle((0, 0, 8, size[1]), fill=EDITORIAL_GOLD)
     if compact:
-        draw.text((34, 28), "サイトへのアクセスは", font=_font(FONT_BOLD, 30), fill=WHITE)
-        draw.text((34, 84), "プロフィールのリンクから", font=_font(FONT_BLACK, 42), fill=EDITORIAL_GOLD)
+        draw.text(
+            (34, 66),
+            SHORT_SITE_ACCESS_CTA,
+            font=_fit_font_for_width(
+                draw,
+                SHORT_SITE_ACCESS_CTA,
+                FONT_BLACK,
+                42,
+                28,
+                size[0] - 68,
+            ),
+            fill=EDITORIAL_GOLD,
+        )
         draw.text((size[0] - 26, 170), "UMA-FREE", font=_font("Inter-Black.ttf", 23), fill=WHITE, anchor="ra")
     else:
         draw.text((30, 9), LONG_SITE_ACCESS_CTA, font=_font(FONT_BLACK, 35), fill=EDITORIAL_GOLD)
@@ -2371,8 +2381,8 @@ def _draw_outro_slide(
             draw.text((x + 28, chip_y + 88), sublabel, font=_font(FONT_REGULAR, 22), fill=(192, 202, 198))
         draw.rectangle((margin, 592, 1535, 870), fill=(7, 15, 17), outline=(87, 101, 101), width=2)
         draw.rectangle((margin, 592, margin + 10, 870), fill=EDITORIAL_GOLD)
-        draw.text((margin + 44, 626), "サイトへのアクセスは", font=_font(FONT_BOLD, 37), fill=(216, 223, 219))
-        draw.text((margin + 44, 692), "概要欄のリンクから", font=_font(FONT_BLACK, 70), fill=EDITORIAL_GOLD)
+        draw.text((margin + 44, 626), "その他の分析情報は", font=_font(FONT_BOLD, 37), fill=(216, 223, 219))
+        draw.text((margin + 44, 692), "概要欄のサイトから", font=_font(FONT_BLACK, 70), fill=EDITORIAL_GOLD)
         draw.text((margin + 46, 798), "登録不要 / 毎日無料公開", font=_font(FONT_BOLD, 27), fill=WHITE)
         draw.text((1496, 801), "uma-free.com", font=_font("Inter-Black.ttf", 31), fill=WHITE, anchor="ra")
     else:
@@ -2393,8 +2403,8 @@ def _draw_outro_slide(
         cta_y = 1130
         draw.rectangle((margin, cta_y, 900, cta_y + 276), fill=(15, 21, 25))
         draw.rectangle((margin, cta_y, margin + 8, cta_y + 276), fill=BURGUNDY)
-        profile_cta = SHORT_SITE_ACCESS_CTA
-        draw.text((margin + 38, cta_y + 34), profile_cta, font=_fit_font_for_width(draw, profile_cta, FONT_BOLD, 36, 25, 760), fill=WHITE)
+        site_cta = SHORT_SITE_ACCESS_CTA
+        draw.text((margin + 38, cta_y + 34), site_cta, font=_fit_font_for_width(draw, site_cta, FONT_BOLD, 36, 25, 760), fill=WHITE)
         draw.text((margin + 38, cta_y + 100), "または「UMA-FREE」で検索", font=_font(FONT_REGULAR, 25), fill=(232, 230, 219))
         draw.text((margin + 38, cta_y + 190), "uma-free.com", font=_font("Inter-Bold.ttf", 30), fill=EDITORIAL_GOLD)
 
@@ -3550,28 +3560,19 @@ def _long_title(venue: VenueVideoData, target_date: str) -> str:
 
 def _description(
     title: str,
-    target_date: str,
     url: str,
     venue_name: Optional[str] = None,
-    credit_lines: Sequence[str] = (),
-    is_short: bool = False,
     excluded_race_labels: Sequence[str] = (),
 ) -> str:
     venue_line = f"{venue_name}の" if venue_name else ""
-    entry_line = (
-        "全頭データはチャンネルプロフィールのUMA-FREEから確認できます。"
-        if is_short
-        else f"全頭データを見る: {url}"
-    )
     description = textwrap.dedent(
         f"""\
-        {entry_line}
+        {url}
 
         {title}
 
         UMA-FREEでは、中央・地方競馬の全レース分析データを毎日無料で掲載しています。登録は不要です。
         {venue_line}AI偏差値、過去対戦成績、位置取り予測、枠順傾向をレース順に掲載しています。
-        データ基準日: {target_date}
 
         ※本動画は過去データをもとにした参考情報です。結果を保証するものではありません。
 
@@ -3583,9 +3584,6 @@ def _description(
             "\n\n※AI偏差値の算出対象外となる新馬戦は収録していません: "
             + "、".join(excluded_race_labels)
         )
-    unique_credits = list(dict.fromkeys(line.strip() for line in credit_lines if line.strip()))
-    if unique_credits:
-        description += "\n\n素材クレジット\n" + "\n".join(f"- {line}" for line in unique_credits)
     return description
 
 
@@ -3717,22 +3715,14 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         "sfx": [audio_asset_metadata(asset) for asset in sfx_assets.values()],
         "courses": [course_asset_metadata(asset) for asset in course_assets.values()],
     }
-    credits = asset_credit_lines(
-        visual_asset,
-        audio_asset,
-        motion_video_asset,
-        tuple(sfx_assets.values()),
-    )
     excluded_race_labels = [
         f"{race.race_number}R {race.display_name}"
         for race in venue.excluded_races
     ]
     description = _description(
         title,
-        target_date,
         url,
         venue.venue_name,
-        credits,
         excluded_race_labels=excluded_race_labels,
     )
     tags = ["競馬", "AI偏差値", "UMA-FREE", venue.venue_name, *(race.display_name for race in venue.grade_races[:2])]
@@ -3946,13 +3936,7 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         "sfx": [audio_asset_metadata(asset) for asset in sfx_assets.values()],
         "course": course_asset_metadata(course_asset),
     }
-    credits = asset_credit_lines(
-        visual_asset,
-        audio_asset,
-        motion_video_asset,
-        tuple(sfx_assets.values()),
-    )
-    description = _description(title, target_date, url, race.venue_name, credits, is_short=True)
+    description = _description(title, url, race.venue_name)
     tags = ["競馬", "AI偏差値", "UMA-FREE", "Shorts", race.venue_name, race.display_name]
     rights_manifest_hash = build_rights_manifest_hash(selected_assets)
     content_hash = build_content_hash(

@@ -153,12 +153,8 @@ def build_race_url(
 
 
 def build_video_url(date_str: str, utm_content: str, venue_name: str = "", race_number: Any = "") -> str:
-    return build_race_url(
-        date_str,
-        venue_name=venue_name,
-        race_number=race_number,
-        utm_content=utm_content,
-    )
+    """YouTubeの横長・Shortで共通利用する公開サイトURLを返す。"""
+    return SITE_BASE_URL
 
 
 def _api_base_url() -> str:

@@ -89,13 +89,14 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 
 ### YouTubeからレース
 
-1. YouTube会場別動画の説明欄リンク、またはチャンネルプロフィールリンク
-2. UTM付きレース詳細ページの実`page_view`
-3. YouTube流入属性付きの最初の`race_view`
-4. `prediction_table_view`
-5. `race_navigation`
+1. YouTube動画またはShortの説明欄にある`https://uma-free.com`
+2. トップページの実`page_view`
+3. ホームからレースページへの遷移
+4. `race_view`
+5. `prediction_table_view`
+6. `race_navigation`
 
-動画リンクは`utm_source=youtube`、`utm_medium=video`、`utm_campaign=YYYYMMDD_preview`、`utm_content={stable_video_key}`を使用する。Shorts向けチャンネルプロフィールリンクは`utm_source=youtube`、`utm_medium=profile`、`utm_campaign=channel`とし、入口ページで`channel_profile`として保持する。流入属性は`sessionStorage`へ最大30分保持し、最初の`race_view`へ一度だけ付与する。`video_format`は`venue_long`または`short`とし、タブ・レース切り替えによる仮想`page_view`は送らない。YouTube UTMと記事流入属性が同時に残っている場合は、現在URLで確認できるYouTube流入を優先し、古い記事属性を破棄する。
+2026-07-28以降に生成する横長動画とShortは、説明欄URLを`https://uma-free.com`へ統一し、UTMクエリを付けない。GA4ではブラウザから参照元が渡された場合のYouTube流入を標準の参照元・メディアで確認する。動画別の`utm_content`、`source_video_key`、`video_format`、`source_venue`は新規リンクから取得できないため、廃止前のデータと連続した動画別指標として扱わない。既存のUTM付きリンクから入ったセッションに対する互換処理は残し、タブ・レース切り替えによる仮想`page_view`は送らない。
 
 ## レポート上の注意
 
@@ -104,5 +105,5 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 - リワード広告を意図的に停止している期間は、通常公開を`premium_data_view.result=open_access`として扱う。
 - 2026-07-20〜21のUI変更が30日集計へ混在するため、広告・CTA判断では2026-07-22以降の期間を分離する。
 - 2026-07-23実装のレースブリッジは、本番デプロイ日Dより前の汎用CTAと同一期間へ混在させない。`metadata_only`は一時API障害時の静的リンク表示であり、上位3頭が表示された`available`と分けて集計する。
-- YouTube v7の公開開始日Dまでは`private_review`期間として扱い、通常流入の評価対象へ含めない。D以降は`utm_content`別のセッション、YouTube属性付き`race_view`、`prediction_table_view`を同じ期間で比較する。
+- YouTube v7の公開開始日Dまでは`private_review`期間として扱い、通常流入の評価対象へ含めない。2026-07-28のURL統一後はYouTube参照元のトップページ流入、ホームからレースへの遷移、`race_view`、`prediction_table_view`を同じ期間で比較し、旧`utm_content`別集計とは期間を分ける。
 - 楽天競馬の適格化実験は`NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=qualified_nar`へ切り替えた本番反映日をDとする。Dより前のレガシー導線、ヘッダー、JRA、日別ページ下部の表示・クリックを実験母数へ混ぜない。

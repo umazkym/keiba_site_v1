@@ -211,9 +211,9 @@ def load_asset_credits(root: Optional[Path] = None) -> tuple[Path, dict[str, dic
     try:
         payload = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"素材クレジットを読み込めません: {path} ({exc})") from exc
+        raise RuntimeError(f"素材権利メタデータを読み込めません: {path} ({exc})") from exc
     if not isinstance(payload, dict):
-        raise RuntimeError(f"素材クレジットのルートはobjectである必要があります: {path}")
+        raise RuntimeError(f"素材権利メタデータのルートはobjectである必要があります: {path}")
     normalized: dict[str, dict[str, Any]] = {}
     for raw_key, value in payload.items():
         if isinstance(raw_key, str) and isinstance(value, dict):

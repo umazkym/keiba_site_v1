@@ -484,14 +484,25 @@ class SocialVideoRendererTest(unittest.TestCase):
             with Image.open(date_root / "shorts-ui-overlay.png") as image:
                 self.assertEqual(image.size, (1080, 1920))
 
-    def test_video_urls_use_exact_race_route_and_utm_content(self) -> None:
+    def test_video_urls_use_the_same_site_root_without_utm(self) -> None:
         url = build_video_url("2026-07-12", "venue_long_函館", "函館", 11)
-        self.assertEqual(
-            url,
-            "https://uma-free.com/races/2026-07-12/hakodate/11"
-            "?utm_source=youtube&utm_medium=video&utm_campaign=20260712_preview&utm_content=venue_long_%E5%87%BD%E9%A4%A8",
+        self.assertEqual(url, "https://uma-free.com")
+        self.assertNotIn("utm_", url)
+
+    def test_video_description_has_one_site_link_without_date_or_credit(self) -> None:
+        description = renderer._description(
+            "テスト動画",
+            "https://uma-free.com",
+            "函館",
+            excluded_race_labels=("5R 2歳新馬",),
         )
-        self.assertNotIn("?venue=", url)
+
+        self.assertEqual(description.splitlines()[0], "https://uma-free.com")
+        self.assertEqual(description.count("https://uma-free.com"), 1)
+        self.assertNotIn("データ基準日", description)
+        self.assertNotIn("素材クレジット", description)
+        self.assertNotIn("DOVA-SYNDROME", description)
+        self.assertIn("5R 2歳新馬", description)
 
     def test_daily_short_selection_prefers_highest_grade_then_main_race(self) -> None:
         g1 = _race()
@@ -689,19 +700,22 @@ class SocialVideoRendererTest(unittest.TestCase):
             24,
         )
 
-    def test_access_cta_copy_is_platform_specific_and_not_redundant(self) -> None:
+    def test_access_cta_copy_is_unified_and_not_redundant(self) -> None:
         self.assertEqual(
             renderer.LONG_SITE_ACCESS_CTA,
-            "サイトへのアクセスは概要欄のリンクから",
+            "その他の分析情報は概要欄のサイトから",
         )
         self.assertEqual(
             renderer.SHORT_SITE_ACCESS_CTA,
-            "サイトへのアクセスはプロフィールのリンクから",
+            "その他の分析情報は概要欄のサイトから",
         )
         source = (
             inspect.getsource(renderer._draw_broadcast_cta_layer)
+            + inspect.getsource(renderer._draw_outro_slide)
             + inspect.getsource(renderer._draw_short_analysis_footer)
         )
+        self.assertNotIn("サイトへのアクセスは概要欄のリンクから", source)
+        self.assertNotIn("サイトへのアクセスはプロフィールのリンクから", source)
         self.assertNotIn("このレースの詳細をチェック", source)
         self.assertNotIn("全レースに詳細4分析を掲載", source)
         self.assertNotIn("全レースに4つの詳細分析を掲載", source)

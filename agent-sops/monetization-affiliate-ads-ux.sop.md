@@ -84,8 +84,11 @@ Constraints for parameter acquisition:
 
 - You MUST record every monetization experiment in `docs/monetization_experiments.md` before changing production ad behavior.
 - You MUST create a Codex reminder for 09:00 JST on the decision date and record its automation ID before starting a new experiment.
+- You MUST verify in the management UI whether the treatment has a simultaneously measured control group and random allocation before calling it an A/B experiment.
+- You MUST NOT use treatment-only impressions as proof of incremental revenue when no concurrent control exists because additional impressions cannot supply the missing counterfactual.
 - You MUST NOT automatically end an AdSense experiment because dashboard data, day-of-week mix, and delayed revenue need human review.
-- You MUST extend the experiment and update the reminder together when the minimum sample has not been reached.
+- You MUST extend a controlled experiment and update the reminder together when its minimum sample has not been reached.
+- You MUST NOT extend an uncontrolled rollout indefinitely only to reach a treatment-impression threshold because additional treatment impressions cannot create a missing control; after a predefined safety-observation date, record causal impact as undetermined and either restore the prior setting, fix the rollout as the operating baseline, or start a separate controlled experiment.
 - You MUST apply the winning or original configuration in the same operation that ends the experiment so the site is not left without its intended ads.
 - You MUST create follow-up reminders for 09:00 JST on the next day and seven days after ending an experiment.
 - You MUST restore the original configuration immediately for policy warnings, broad ad delivery failures, an Offerwall that blocks access, or serious mobile interaction regressions.
@@ -104,6 +107,8 @@ Constraints for parameter acquisition:
 
 - You MUST freeze the comparison periods in AdSense, GA4, Clarity, and Search Console and save screenshots of the experiment and original settings before ending anything.
 - You MUST write variant revenue, target sessions, race-operation rates, and CWV into the ledger before deciding immediate stop, early stop, normal end, or extension.
+- You MUST write `因果効果は判定不能` when the management UI has no concurrent control, and treat absolute treatment revenue only as operational evidence rather than uplift.
+- You MAY keep an uncontrolled rollout as a fixed baseline when it has positive absolute revenue, no policy problem, and no material guardrail regression; record that this is a baseline decision, not a causal adoption result.
 - You MUST verify production ad delivery, the prediction table, race switching, and mobile layout immediately after applying the selected setting.
 - You MUST restore the original when the next-day or seven-day revenue per 1,000 human sessions is at least 10% below the pre-end baseline and traffic volume or weekday mix does not explain it.
 

@@ -526,10 +526,11 @@ class SocialVideoRendererTest(unittest.TestCase):
         race.race_name = "宝塚記念"
         race.grade = "G1"
         title = renderer._long_title(VenueVideoData("阪神", "中央", [race]), "2026-06-28")
-        self.assertTrue(title.startswith("【宝塚記念】阪神 全レース"))
+        self.assertEqual(title, "6/28 阪神｜全1R AI予想｜宝塚記念開催｜2026")
 
     def test_long_title_discloses_excluded_newcomer_race(self) -> None:
         race = _race()
+        race.grade = None
         newcomer = _race()
         newcomer.id = "newcomer"
         newcomer.race_number = 2
@@ -539,7 +540,38 @@ class SocialVideoRendererTest(unittest.TestCase):
             VenueVideoData("笠松", "地方", [race], excluded_races=[newcomer]),
             "2026-07-24",
         )
-        self.assertIn("新馬戦を除く対象レース", title)
+        self.assertEqual(title, "7/24 笠松｜対象1R AI予想（新馬戦除く）｜2026")
+
+    def test_long_title_keeps_mobile_essential_prefix_short_for_every_venue(self) -> None:
+        venue_registry = json.loads(
+            (renderer.PROJECT_ROOT / "frontend" / "lib" / "venue-slugs.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        race = _race()
+        races = [race] * 12
+        for venue_name in venue_registry["aliases"]:
+            with self.subTest(venue_name=venue_name):
+                venue = VenueVideoData(venue_name, "地方", races)
+                essential = renderer._long_title_essential(venue, "2026-12-31")
+                title = renderer._long_title(venue, "2026-12-31")
+                self.assertLessEqual(len(essential), 26)
+                self.assertTrue(title.startswith(essential))
+                self.assertIn(f"12/31 {venue_name}", essential)
+                self.assertIn("全12R AI予想", essential)
+
+    def test_short_title_starts_with_date_venue_and_single_race_scope(self) -> None:
+        race = _race()
+        race.venue_name = "川崎"
+        race.race_number = 11
+        race.race_name = "川崎記念"
+        race.grade = "Jpn1"
+        title = renderer._short_title(race, "2026-07-30")
+        self.assertEqual(
+            title,
+            "7/30 川崎11R｜AI予想TOP3｜川崎記念｜2026 #Shorts",
+        )
+        self.assertNotIn("全レース", title)
 
     def test_long_ranking_slide_limits_rows_to_top_five(self) -> None:
         race = _race()
@@ -611,7 +643,7 @@ class SocialVideoRendererTest(unittest.TestCase):
         self.assertEqual([call.args[3] for call in build_race.call_args_list], [1, 2, 3])
         self.assertTrue(all(call.args[4] == 3 for call in build_race.call_args_list))
         self.assertEqual(package.race_ids, ["race-1", "race-2", "race-3"])
-        self.assertTrue(package.title.startswith("【函館】"))
+        self.assertTrue(package.title.startswith("7/12 函館｜全3R AI予想"))
         self.assertEqual(draw_thumbnail.call_args.args[1], "函館 全3R")
 
     def test_long_race_scene_contains_top_three_and_all_position_tokens_once(self) -> None:

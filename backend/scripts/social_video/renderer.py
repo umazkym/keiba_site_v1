@@ -3550,12 +3550,29 @@ def _build_short_motion_scene(
     )
 
 
+def _title_date_parts(target_date: str) -> tuple[str, str]:
+    parsed = date.fromisoformat(target_date)
+    return f"{parsed.month}/{parsed.day}", str(parsed.year)
+
+
+def _long_title_essential(venue: VenueVideoData, target_date: str) -> str:
+    date_label, _ = _title_date_parts(target_date)
+    if venue.excluded_races:
+        scope = f"対象{len(venue.races)}R AI予想（新馬戦除く）"
+    else:
+        scope = f"全{len(venue.races)}R AI予想"
+    return f"{date_label} {venue.venue_name}｜{scope}"
+
+
 def _long_title(venue: VenueVideoData, target_date: str) -> str:
-    grade_names = "・".join(race.display_name for race in venue.grade_races[:2])
-    scope = "新馬戦を除く対象レース" if venue.excluded_races else "全レース"
-    if grade_names:
-        return f"【{grade_names}】{venue.venue_name} {scope} AI偏差値・位置取り｜{target_date}"
-    return f"【{venue.venue_name}】{scope} AI偏差値・位置取り｜{target_date}"
+    essential = _long_title_essential(venue, target_date)
+    _, year_label = _title_date_parts(target_date)
+    featured_race = pick_featured_race(venue)
+    parts = [essential]
+    if featured_race is not None and featured_race.is_grade_race:
+        parts.append(f"{featured_race.display_name}開催")
+    parts.append(year_label)
+    return "｜".join(parts)[:100].rstrip("｜・ ")
 
 
 def _description(
@@ -3807,9 +3824,11 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
 
 
 def _short_title(race: RaceVideoData, target_date: str) -> str:
+    date_label, year_label = _title_date_parts(target_date)
+    essential = f"{date_label} {race.venue_name}{race.race_number}R｜AI予想TOP3"
     if race.grade:
-        return f"【{race.display_name}】AI偏差値上位3頭・位置取り｜{target_date} #Shorts"
-    return f"【{race.venue_name}{race.race_number}R】AI偏差値上位3頭・位置取り｜{target_date} #Shorts"
+        return f"{essential}｜{race.display_name}｜{year_label} #Shorts"[:100].rstrip("｜・ ")
+    return f"{essential}｜{year_label} #Shorts"
 
 
 def _append_audio_cue(

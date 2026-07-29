@@ -12,6 +12,7 @@
 | `analytics-clarity-ga4-audit.sop.md` | GA4、Clarity、収益ファネル、イベント設計 | 計測イベント、Clarity監査、収益ファネル分析を扱う前 |
 | `cost-performance-isr-review.sop.md` | ISR、prefetch、Vercel転送量、Cloud Runコスト | レースページ、トップページ、API応答、キャッシュ、ビルド負荷を扱う前 |
 | `sop-authoring.sop.md` | SOPの作成・更新 | 反復手順を新規SOP化、または既存SOPを改訂するとき |
+| `social-video-multiplatform-publishing.sop.md` | Threads、Instagram、Facebook、TikTok、Pinterest、Blueskyの動画投稿 | SNS動画の追加・モード変更・認証・重複・計測を扱う前 |
 
 ## ルーティングの原則
 

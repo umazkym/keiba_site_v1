@@ -2,12 +2,12 @@
 
 import { useEffect } from 'react';
 
-import { captureYouTubeEntryAttribution } from '@/lib/analytics';
+import { captureSocialVideoEntryAttribution } from '@/lib/analytics';
 
 
 export function TrafficAttributionCapture() {
     useEffect(() => {
-        captureYouTubeEntryAttribution();
+        captureSocialVideoEntryAttribution();
     }, []);
 
     return null;

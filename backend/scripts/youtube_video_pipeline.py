@@ -296,6 +296,7 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
     rendered = _assign_publish_offsets(rendered, venues)
     summary = {
         "target_date": target_date,
+        "generated_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "count": len(rendered),
         "publication_mode": validate_publication_mode(args.publication_mode),
         "blocked_venues": blocked_venues,
@@ -309,7 +310,15 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
                 "thumbnail_path": str(item.thumbnail_path),
                 "metadata_path": str(item.metadata_path),
                 "destination_url": item.destination_url,
+                "destination_path": item.destination_path,
                 "utm_content": item.utm_content,
+                "race_number": item.race_number,
+                "race_name": item.race_name,
+                "vertical_cover_path": str(item.vertical_cover_path) if item.vertical_cover_path else None,
+                "variant_video_paths": {
+                    name: str(path)
+                    for name, path in sorted(item.variant_video_paths.items())
+                },
                 "publish_offset_minutes": item.publish_offset_minutes,
                 "content_hash": item.content_hash,
                 "rights_manifest_hash": item.rights_manifest_hash,

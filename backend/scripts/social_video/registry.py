@@ -10,7 +10,13 @@ from typing import Any, Dict, Iterable, List, Optional
 
 
 JST = timezone(timedelta(hours=9))
-TERMINAL_PUBLICATION_STATUSES = {"private_review", "scheduled", "published"}
+TERMINAL_PUBLICATION_STATUSES = {
+    "private_review",
+    "scheduled",
+    "draft",
+    "processing",
+    "published",
+}
 
 
 def _project_root() -> Path:
@@ -56,7 +62,7 @@ class PublicationRecord:
 
 
 class VideoPostRegistry:
-    """YouTube投稿を動画ID単位で再開可能にするDBレジストリ。"""
+    """動画投稿を投稿先・動画ID単位で再開可能にするDBレジストリ。"""
 
     def __init__(self, enabled: bool = True) -> None:
         self.enabled = enabled and bool(os.getenv("DATABASE_URL"))

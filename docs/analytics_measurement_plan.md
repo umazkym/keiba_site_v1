@@ -1,6 +1,6 @@
 # UMA-FREE 収益ファネル計測設計
 
-更新日: 2026-07-23
+更新日: 2026-07-30
 
 ## 目的
 
@@ -19,7 +19,7 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `race_group_select` | 中央・地方タブを選択 | `race_date`, `race_type` | 開催区分の利用状況 |
 | `home_race_entry_click` | ホームから当日レースへ移動 | `race_date`, `entry_method`, `race_type`, `venue_name` | ホーム入口別の送客 |
 | `race_venue_select` | 競馬場タブを選択 | `race_date`, `race_type`, `venue_name` | 競馬場間の巡回 |
-| `race_view` | レースデータを表示 | `race_id`, `race_date`, `race_type`, `venue_name`, `race_number`。記事流入時は`entry_source=article`, `source_article_slug`, `article_entry_method`, `article_destination_type`。YouTube流入時は`entry_source=youtube`, `source_video_key`, `video_format`, `source_venue` | 1セッション当たりの閲覧レース数と記事・YouTube送客後の到達 |
+| `race_view` | レースデータを表示 | `race_id`, `race_date`, `race_type`, `venue_name`, `race_number`。記事流入時は`entry_source=article`, `source_article_slug`, `article_entry_method`, `article_destination_type`。旧YouTube UTM流入時は`entry_source=youtube`, `source_video_key`, `video_format`, `source_venue`。SNS動画流入時は`entry_source=social_video`, `source_platform`, `source_content_key`, `video_format`, `source_venue` | 1セッション当たりの閲覧レース数と記事・動画送客後の到達 |
 | `race_navigation` | 前後レースやレース番号から移動 | `from_race_number`, `to_race_number`, `navigation_method` | 次レース導線の比較 |
 | `prediction_table_view` | AI偏差値表が画面内に入る | `race_id`, `race_number`, `page_path` | 予想表の実閲覧 |
 | `article_read_complete` | 記事本文の末尾へ到達 | `article_slug`, `article_category`, `reading_time_min` | 記事読了率 |
@@ -98,6 +98,20 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 
 2026-07-28以降に生成する横長動画とShortは、説明欄URLを`https://uma-free.com`へ統一し、UTMクエリを付けない。GA4ではブラウザから参照元が渡された場合のYouTube流入を標準の参照元・メディアで確認する。動画別の`utm_content`、`source_video_key`、`video_format`、`source_venue`は新規リンクから取得できないため、廃止前のデータと連続した動画別指標として扱わない。既存のUTM付きリンクから入ったセッションに対する互換処理は残し、タブ・レース切り替えによる仮想`page_view`は送らない。
 
+### SNS動画からレース
+
+1. Threads、Instagram、Facebook、TikTok、Pinterest、Blueskyのネイティブ動画
+2. 個別レースURL、またはInstagram/TikTokのプロフィールURL
+3. サイトの実`page_view`
+4. `entry_source=social_video`付き`race_view`
+5. `prediction_table_view`
+6. `race_navigation`
+7. `ad_viewable_custom`
+
+SNS用UTMは`utm_medium=organic_social`、`utm_campaign=daily_race_video`へ統一する。Instagram/TikTokのプロフィールリンクだけは`utm_campaign=profile`とする。属性は`sessionStorage`へ30分保持し、最初の`race_view`へ一度だけ付与して削除する。YouTube互換処理と同様に仮想`page_view`は追加しない。
+
+GA4ではイベントスコープのカスタム定義へ`source_platform`、`source_content_key`、`video_format`を登録する。媒体別の効果は再生数だけで判断せず、SNSセッションから`race_view`、`prediction_table_view`、`race_navigation`、`ad_viewable_custom`へ進んだ割合で比較する。
+
 ## レポート上の注意
 
 - 2026-06-18以前のGA4ページビューには、タブ・競馬場切り替えによる仮想PVが含まれる。
@@ -106,4 +120,5 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 - 2026-07-20〜21のUI変更が30日集計へ混在するため、広告・CTA判断では2026-07-22以降の期間を分離する。
 - 2026-07-23実装のレースブリッジは、本番デプロイ日Dより前の汎用CTAと同一期間へ混在させない。`metadata_only`は一時API障害時の静的リンク表示であり、上位3頭が表示された`available`と分けて集計する。
 - YouTube v7の公開開始日Dまでは`private_review`期間として扱い、通常流入の評価対象へ含めない。2026-07-28のURL統一後はYouTube参照元のトップページ流入、ホームからレースへの遷移、`race_view`、`prediction_table_view`を同じ期間で比較し、旧`utm_content`別集計とは期間を分ける。
+- SNS動画は媒体ごとの`public`切り替え日をDとして別々に集計する。`validate`と`draft`期間は流入効果の母数へ含めず、複数媒体を同日に公開開始した場合は因果分離できないことを明記する。
 - 楽天競馬の適格化実験は`NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=qualified_nar`へ切り替えた本番反映日をDとする。Dより前のレガシー導線、ヘッダー、JRA、日別ページ下部の表示・クリックを実験母数へ混ぜない。

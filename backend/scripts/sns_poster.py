@@ -172,6 +172,10 @@ X_ACCOUNT_HANDLE = (_env_value("X_ACCOUNT_HANDLE", "TWITTER_SCREEN_NAME", defaul
 DRY_RUN = _env_flag("DRY_RUN", False)
 ENABLE_TWITTER = _env_flag("ENABLE_TWITTER", True)
 ENABLE_THREADS = _env_flag("ENABLE_THREADS", True)
+THREADS_EVENING_VIDEO_REPLACES_TEXT = _env_flag(
+    "THREADS_EVENING_VIDEO_REPLACES_TEXT",
+    False,
+)
 FAIL_ON_SNS_ERROR = _env_flag("FAIL_ON_SNS_ERROR", False)
 TWITTER_POST_MAX_RETRIES = _env_int("TWITTER_POST_MAX_RETRIES", 3, minimum=1)
 TWITTER_POST_RETRY_BASE_SECONDS = _env_int("TWITTER_POST_RETRY_BASE_SECONDS", 30, minimum=1)
@@ -618,8 +622,7 @@ def refresh_threads_token_if_needed() -> None:
                 THREADS_ACCESS_TOKEN = new_token
                 _log("✅ Threadsトークン更新成功! (今回の実行から新トークンを使用)")
             _log("=" * 50)
-            _log("⚠️ 以下をGitHub Secretsに手動で更新してください:")
-            _log(f"  THREADS_ACCESS_TOKEN = {new_token}")
+            _log("⚠️ 更新後のトークンをログへ表示せず、GitHub Secretsを手動更新してください。")
             _log(f"  THREADS_TOKEN_EXPIRY = {new_expiry}")
             _log("=" * 50)
         else:
@@ -2234,7 +2237,15 @@ def main():
                     _log(f"-> 既に投稿済み: afternoon_summary")
                 else:
                     x_result = post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
-                    threads_result = post_to_threads(tweet_text)
+                    threads_result = (
+                        ThreadsPostResult(
+                            ok=False,
+                            attempted=False,
+                            reason="夕方の動画投稿へ置換",
+                        )
+                        if THREADS_EVENING_VIDEO_REPLACES_TEXT
+                        else post_to_threads(tweet_text)
+                    )
                     threads_ok = bool(threads_result)
                     if ENABLE_TWITTER:
                         track_x_result(sns_failures, "afternoon_summary", x_result, threads_ok=threads_ok)
@@ -2274,7 +2285,7 @@ def main():
                     threads_ok = bool(threads_result)
                     if ENABLE_TWITTER:
                         track_x_result(sns_failures, f"evening_race:{race_name}", x_result, threads_ok=threads_ok)
-                    if ENABLE_THREADS:
+                    if ENABLE_THREADS and not THREADS_EVENING_VIDEO_REPLACES_TEXT:
                         track_threads_result(sns_failures, f"evening_race:{race_name}", threads_result, x_ok=bool(x_result))
                     record_post_if_delivered(tweet_text, "evening_race", tomorrow_str, x_result=x_result, threads_ok=threads_ok)
 

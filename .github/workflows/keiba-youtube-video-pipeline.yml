@@ -84,6 +84,8 @@ jobs:
           python scripts/social_video/validate_assets.py --json-output ../youtube_video_dist/asset-validation.json
 
       - name: Generate and upload YouTube videos
+        id: youtube_pipeline
+        continue-on-error: true
         working-directory: backend
         env:
           PYTHONPATH: .
@@ -113,6 +115,61 @@ jobs:
           fi
           python scripts/youtube_video_pipeline.py --max-shorts 1 $EXTRA_ARGS
 
+      - name: Distribute daily short to organic social platforms
+        id: social_distribution
+        if: always()
+        continue-on-error: true
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+          SOCIAL_VIDEO_THREADS_MODE: ${{ vars.SOCIAL_VIDEO_THREADS_MODE || 'validate' }}
+          SOCIAL_VIDEO_INSTAGRAM_MODE: ${{ vars.SOCIAL_VIDEO_INSTAGRAM_MODE || 'validate' }}
+          SOCIAL_VIDEO_FACEBOOK_MODE: ${{ vars.SOCIAL_VIDEO_FACEBOOK_MODE || 'validate' }}
+          SOCIAL_VIDEO_TIKTOK_MODE: ${{ vars.SOCIAL_VIDEO_TIKTOK_MODE || 'validate' }}
+          SOCIAL_VIDEO_PINTEREST_MODE: ${{ vars.SOCIAL_VIDEO_PINTEREST_MODE || 'validate' }}
+          SOCIAL_VIDEO_BLUESKY_MODE: ${{ vars.SOCIAL_VIDEO_BLUESKY_MODE || 'validate' }}
+          SOCIAL_VIDEO_STAGING_GCS_BUCKET: ${{ vars.SOCIAL_VIDEO_STAGING_GCS_BUCKET }}
+          SOCIAL_VIDEO_GCS_SIGNING_SERVICE_ACCOUNT: ${{ vars.SOCIAL_VIDEO_GCS_SIGNING_SERVICE_ACCOUNT }}
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
+          TIKTOK_AUTO_PUBLISH_CONSENT: ${{ vars.TIKTOK_AUTO_PUBLISH_CONSENT || 'false' }}
+          TIKTOK_APP_AUDITED: ${{ vars.TIKTOK_APP_AUDITED || 'false' }}
+          TIKTOK_PRIVACY_LEVEL: ${{ vars.TIKTOK_PRIVACY_LEVEL || 'SELF_ONLY' }}
+          PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+          PINTEREST_BOARD_ID: ${{ vars.PINTEREST_BOARD_ID }}
+          BLUESKY_HANDLE: ${{ vars.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          TZ: Asia/Tokyo
+        run: |
+          EXTRA_ARGS=""
+          if [ -n "${{ github.event.inputs.target_date }}" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --target-date ${{ github.event.inputs.target_date }}"
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --force-validate"
+          fi
+          python scripts/social_video_distribution.py $EXTRA_ARGS
+
+      - name: Verify distribution outcomes
+        if: always()
+        env:
+          YOUTUBE_OUTCOME: ${{ steps.youtube_pipeline.outcome }}
+          SOCIAL_OUTCOME: ${{ steps.social_distribution.outcome }}
+        run: |
+          if [ "$YOUTUBE_OUTCOME" != "success" ]; then
+            echo "YouTube生成・投稿処理が失敗しました。"
+            exit 1
+          fi
+          if [ "$SOCIAL_OUTCOME" != "success" ]; then
+            echo "SNS動画配信処理が失敗しました。"
+            exit 1
+          fi
+
       - name: Upload social video validation artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -121,6 +178,7 @@ jobs:
           path: |
             youtube_video_dist/**/asset-validation.json
             youtube_video_dist/**/summary.json
+            youtube_video_dist/**/social-distribution-summary.json
             youtube_video_dist/**/thumbnail.jpg
             youtube_video_dist/**/thumbnail_246x138.png
             youtube_video_dist/**/design-contact-sheet.png

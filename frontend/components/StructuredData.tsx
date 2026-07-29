@@ -1,11 +1,13 @@
 // Server Component - 構造化データはSSR時にHTMLに直接含める必要がある
 // 'use client' と next/script の strategy="afterInteractive" は使用しない
+import { getConfiguredSocialLinks } from '@/lib/social-links';
 
 /**
  * 組織情報のSchema.org構造化データ
  * このコンポーネントはサイト全体で1度だけ使用
  */
 export function OrganizationSchema() {
+    const sameAs = getConfiguredSocialLinks().map((socialLink) => socialLink.url);
     const organizationSchema = {
         "@context": "https://schema.org",
         "@type": "Organization",
@@ -13,7 +15,7 @@ export function OrganizationSchema() {
         "url": "https://uma-free.com",
         "logo": "https://uma-free.com/new-logo.png",
         "description": "競馬データ分析サイト。中央・地方の全レースをAIが無料分析。馬場状態の勝率影響、騎手の得意コース、枠順・距離適性、馬体重増減と成績の関係をデータで解説。登録不要で今すぐ使えます。",
-        "sameAs": ["https://x.com/umafree_ai"],
+        "sameAs": sameAs,
         "contactPoint": {
             "@type": "ContactPoint",
             "contactType": "General",

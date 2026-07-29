@@ -385,6 +385,10 @@ class SocialVideoRendererTest(unittest.TestCase):
             metadata = json.loads(rendered.metadata_path.read_text(encoding="utf-8"))
             self.assertFalse(metadata["publishable"])
             self.assertEqual(metadata["selected_assets"]["brand_logo"]["type"], "brand_logo")
+            self.assertEqual(metadata["race_number"], 11)
+            self.assertTrue(metadata["destination_path"].endswith("/11"))
+            self.assertIn("tiktok_clean", metadata["variant_video_paths"])
+            self.assertTrue(rendered.vertical_cover_path.exists())
 
     def test_upload_skips_only_unpublishable_video(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -528,7 +532,7 @@ class SocialVideoRendererTest(unittest.TestCase):
         title = renderer._long_title(VenueVideoData("阪神", "中央", [race]), "2026-06-28")
         self.assertEqual(title, "6/28 阪神｜全1R AI予想｜宝塚記念開催｜2026")
 
-    def test_long_title_discloses_excluded_newcomer_race(self) -> None:
+    def test_long_title_does_not_expose_excluded_newcomer_detail(self) -> None:
         race = _race()
         race.grade = None
         newcomer = _race()
@@ -540,7 +544,9 @@ class SocialVideoRendererTest(unittest.TestCase):
             VenueVideoData("笠松", "地方", [race], excluded_races=[newcomer]),
             "2026-07-24",
         )
-        self.assertEqual(title, "7/24 笠松｜対象1R AI予想（新馬戦除く）｜2026")
+        self.assertEqual(title, "7/24 笠松｜全1R AI予想｜2026")
+        self.assertNotIn("新馬", title)
+        self.assertNotIn("対象", title)
 
     def test_long_title_keeps_mobile_essential_prefix_short_for_every_venue(self) -> None:
         venue_registry = json.loads(
@@ -739,7 +745,7 @@ class SocialVideoRendererTest(unittest.TestCase):
         )
         self.assertEqual(
             renderer.SHORT_SITE_ACCESS_CTA,
-            "その他の分析情報は概要欄のサイトから",
+            "その他の分析情報はUMA-FREEで公開",
         )
         source = (
             inspect.getsource(renderer._draw_broadcast_cta_layer)

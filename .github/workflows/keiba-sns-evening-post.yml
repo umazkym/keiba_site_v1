@@ -52,6 +52,7 @@ jobs:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
           ENABLE_TWITTER: 'true'
           ENABLE_THREADS: 'true'
+          THREADS_EVENING_VIDEO_REPLACES_TEXT: ${{ vars.SOCIAL_VIDEO_THREADS_MODE == 'public' }}
           FAIL_ON_SNS_ERROR: 'true'
           ALLOW_X_TRANSIENT_FAILURE_WITH_THREADS: 'true'
           TWITTER_POST_MAX_RETRIES: '3'

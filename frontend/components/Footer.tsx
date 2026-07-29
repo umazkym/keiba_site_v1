@@ -1,7 +1,9 @@
 import Link from 'next/link';
-import { TwitterIcon } from 'lucide-react';
+import { getConfiguredSocialLinks } from '@/lib/social-links';
 
 export const Footer = () => {
+    const socialLinks = getConfiguredSocialLinks();
+
     return (
         <footer className="bg-primary text-slate-300 py-5 sm:py-16 relative z-0">
             <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6">
@@ -39,17 +41,19 @@ export const Footer = () => {
                                     AI予測モデルについて
                                 </Link>
                             </li>
-                            <li>
-                                <Link
-                                    href="https://x.com/umafree_ai"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1.5 py-1"
-                                    aria-label="公式Xアカウント"
-                                >
-                                    公式X (Twitter)
-                                </Link>
-                            </li>
+                            {socialLinks.map((socialLink) => (
+                                <li key={socialLink.platform}>
+                                    <Link
+                                        href={socialLink.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1.5 py-1"
+                                        aria-label={`${socialLink.label}アカウント`}
+                                    >
+                                        {socialLink.label}
+                                    </Link>
+                                </li>
+                            ))}
                         </ul>
                     </div>
 

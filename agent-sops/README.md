@@ -45,3 +45,4 @@ npm run agent-sops:skills -- --output .claude/skills
 - `analytics-clarity-ga4-audit.sop.md`: GA4/Clarity収益ファネル監査。
 - `cost-performance-isr-review.sop.md`: Vercel/Cloud Run/ISR/転送量の低コスト運用確認。
 - `sop-authoring.sop.md`: SOP自体の作成・更新。
+- `social-video-multiplatform-publishing.sop.md`: 複数SNSへの動画配信、認証、重複防止、UTM計測。

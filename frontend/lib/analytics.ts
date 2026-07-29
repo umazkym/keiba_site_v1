@@ -112,10 +112,20 @@ type ArticleRaceAttribution = {
 const ARTICLE_RACE_ATTRIBUTION_KEY = 'uma_article_race_attribution_v1';
 const ARTICLE_RACE_ATTRIBUTION_TTL_MS = 30 * 60 * 1000;
 const YOUTUBE_ATTRIBUTION_KEY = 'uma_youtube_attribution_v1';
-const YOUTUBE_ATTRIBUTION_TTL_MS = 30 * 60 * 1000;
+const SOCIAL_VIDEO_ATTRIBUTION_KEY = 'uma_social_video_attribution_v2';
+const SOCIAL_VIDEO_ATTRIBUTION_TTL_MS = 30 * 60 * 1000;
+const ORGANIC_VIDEO_PLATFORMS = new Set([
+    'threads',
+    'instagram',
+    'facebook',
+    'tiktok',
+    'pinterest',
+    'bluesky',
+]);
 
-type YouTubeAttribution = {
-    source_video_key: string;
+type SocialVideoAttribution = {
+    source_platform: string;
+    source_content_key: string;
     video_format: 'venue_long' | 'short';
     source_venue: string;
     stored_at: number;
@@ -159,43 +169,60 @@ function clearArticleRaceAttribution(): void {
     }
 }
 
-function captureYouTubeAttribution(sourceVenue: string): YouTubeAttribution | null {
+function captureSocialVideoAttribution(sourceVenue: string): SocialVideoAttribution | null {
     if (typeof window === 'undefined') return null;
     const searchParams = new URLSearchParams(window.location.search);
     const source = (searchParams.get('utm_source') || '').trim().toLowerCase();
     const medium = (searchParams.get('utm_medium') || '').trim().toLowerCase();
+    const campaign = (searchParams.get('utm_campaign') || '').trim().toLowerCase();
     const utmContent = (searchParams.get('utm_content') || '').trim().slice(0, 100);
-    const isVideoLink = medium === 'video' && Boolean(utmContent);
-    const isChannelProfileLink = medium === 'profile';
-    if (source !== 'youtube' || (!isVideoLink && !isChannelProfileLink)) return null;
-    const sourceVideoKey = utmContent || 'channel_profile';
+    const isYouTubeVideoLink = source === 'youtube' && medium === 'video' && Boolean(utmContent);
+    const isYouTubeProfileLink = source === 'youtube' && medium === 'profile';
+    const isOrganicSocialVideo =
+        ORGANIC_VIDEO_PLATFORMS.has(source) &&
+        medium === 'organic_social' &&
+        (campaign === 'daily_race_video' || campaign === 'profile');
+    if (!isYouTubeVideoLink && !isYouTubeProfileLink && !isOrganicSocialVideo) return null;
+    const contentKey =
+        utmContent ||
+        (source === 'youtube' ? 'channel_profile' : `${source}_profile`);
 
-    const attribution: YouTubeAttribution = {
-        source_video_key: sourceVideoKey,
-        video_format: isChannelProfileLink || sourceVideoKey.startsWith('short_') ? 'short' : 'venue_long',
+    const attribution: SocialVideoAttribution = {
+        source_platform: source,
+        source_content_key: contentKey,
+        video_format:
+            source !== 'youtube' ||
+            isYouTubeProfileLink ||
+            contentKey.startsWith('short_')
+                ? 'short'
+                : 'venue_long',
         source_venue: sourceVenue,
         stored_at: Date.now(),
     };
     try {
-        window.sessionStorage.setItem(YOUTUBE_ATTRIBUTION_KEY, JSON.stringify(attribution));
+        window.sessionStorage.setItem(SOCIAL_VIDEO_ATTRIBUTION_KEY, JSON.stringify(attribution));
     } catch {
         // sessionStorageが拒否されても現在URLから返した属性で計測する。
     }
     return attribution;
 }
 
-export function captureYouTubeEntryAttribution(): void {
+export function captureSocialVideoEntryAttribution(): void {
     if (typeof window === 'undefined') return;
     const isRaceDetail = /^\/races\/\d{4}-\d{2}-\d{2}\/[^/]+\/\d+\/?$/u.test(window.location.pathname);
     if (isRaceDetail) return;
-    captureYouTubeAttribution('');
+    captureSocialVideoAttribution('');
 }
 
-function consumeYouTubeAttribution(sourceVenue: string): YouTubeAttribution | null {
+/** 旧コンポーネント・テスト向けの互換エクスポート。 */
+export const captureYouTubeEntryAttribution = captureSocialVideoEntryAttribution;
+
+function consumeSocialVideoAttribution(sourceVenue: string): SocialVideoAttribution | null {
     if (typeof window === 'undefined') return null;
-    const captured = captureYouTubeAttribution(sourceVenue);
+    const captured = captureSocialVideoAttribution(sourceVenue);
     if (captured) {
         try {
+            window.sessionStorage.removeItem(SOCIAL_VIDEO_ATTRIBUTION_KEY);
             window.sessionStorage.removeItem(YOUTUBE_ATTRIBUTION_KEY);
         } catch {
             // 現在URLの属性を返せるため削除失敗は無視する。
@@ -203,18 +230,30 @@ function consumeYouTubeAttribution(sourceVenue: string): YouTubeAttribution | nu
         return captured;
     }
     try {
-        const raw = window.sessionStorage.getItem(YOUTUBE_ATTRIBUTION_KEY);
+        const raw =
+            window.sessionStorage.getItem(SOCIAL_VIDEO_ATTRIBUTION_KEY) ||
+            window.sessionStorage.getItem(YOUTUBE_ATTRIBUTION_KEY);
         if (!raw) return null;
-        const parsed = JSON.parse(raw) as YouTubeAttribution;
-        const expired = !parsed.stored_at || Date.now() - parsed.stored_at > YOUTUBE_ATTRIBUTION_TTL_MS;
-        if (expired || !parsed.source_video_key) {
+        const parsed = JSON.parse(raw) as SocialVideoAttribution & {
+            source_video_key?: string;
+        };
+        const contentKey = parsed.source_content_key || parsed.source_video_key || '';
+        const expired =
+            !parsed.stored_at ||
+            Date.now() - parsed.stored_at > SOCIAL_VIDEO_ATTRIBUTION_TTL_MS;
+        if (expired || !contentKey) {
+            window.sessionStorage.removeItem(SOCIAL_VIDEO_ATTRIBUTION_KEY);
             window.sessionStorage.removeItem(YOUTUBE_ATTRIBUTION_KEY);
             return null;
         }
+        window.sessionStorage.removeItem(SOCIAL_VIDEO_ATTRIBUTION_KEY);
         window.sessionStorage.removeItem(YOUTUBE_ATTRIBUTION_KEY);
         return {
-            ...parsed,
+            source_platform: parsed.source_platform || 'youtube',
+            source_content_key: contentKey,
+            video_format: parsed.video_format,
             source_venue: parsed.source_venue || sourceVenue,
+            stored_at: parsed.stored_at,
         };
     } catch {
         return null;
@@ -376,16 +415,26 @@ export const sendRaceViewEvent = (params: {
     race_name: string;
     race_type: 'jra' | 'nar';
 }) => {
-    const youtubeAttribution = consumeYouTubeAttribution(params.venue_name);
-    if (youtubeAttribution) clearArticleRaceAttribution();
-    const articleAttribution = youtubeAttribution ? null : consumeArticleRaceAttribution(params.race_id);
-    const attributedParams = youtubeAttribution
-        ? {
+    const socialVideoAttribution = consumeSocialVideoAttribution(params.venue_name);
+    if (socialVideoAttribution) clearArticleRaceAttribution();
+    const articleAttribution = socialVideoAttribution ? null : consumeArticleRaceAttribution(params.race_id);
+    const isYouTubeAttribution = socialVideoAttribution?.source_platform === 'youtube';
+    const attributedParams = socialVideoAttribution
+        ? isYouTubeAttribution
+          ? {
             ...params,
             entry_source: 'youtube',
-            source_video_key: youtubeAttribution.source_video_key,
-            video_format: youtubeAttribution.video_format,
-            source_venue: youtubeAttribution.source_venue,
+            source_video_key: socialVideoAttribution.source_content_key,
+            video_format: socialVideoAttribution.video_format,
+            source_venue: socialVideoAttribution.source_venue,
+          }
+          : {
+            ...params,
+            entry_source: 'social_video',
+            source_platform: socialVideoAttribution.source_platform,
+            source_content_key: socialVideoAttribution.source_content_key,
+            video_format: socialVideoAttribution.video_format,
+            source_venue: socialVideoAttribution.source_venue,
         }
         : articleAttribution
           ? {
@@ -401,9 +450,19 @@ export const sendRaceViewEvent = (params: {
         race_type: params.race_type,
         venue_name: params.venue_name,
         race_number: params.race_number,
-        entry_source: youtubeAttribution ? 'youtube' : articleAttribution ? 'article' : 'direct_or_other',
-        source_video_key: youtubeAttribution?.source_video_key,
-        video_format: youtubeAttribution?.video_format,
+        entry_source: socialVideoAttribution
+            ? isYouTubeAttribution
+                ? 'youtube'
+                : 'social_video'
+            : articleAttribution
+              ? 'article'
+              : 'direct_or_other',
+        source_platform: socialVideoAttribution?.source_platform,
+        source_content_key: socialVideoAttribution?.source_content_key,
+        source_video_key: isYouTubeAttribution
+            ? socialVideoAttribution?.source_content_key
+            : undefined,
+        video_format: socialVideoAttribution?.video_format,
         article_entry_method: articleAttribution?.link_placement,
     });
 };

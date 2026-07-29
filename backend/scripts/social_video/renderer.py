@@ -18,6 +18,7 @@ from .data_loader import (
     HorseVideoData,
     RaceVideoData,
     VenueVideoData,
+    build_race_path,
     build_video_url,
     pick_featured_race,
     top_by_deviation,
@@ -138,7 +139,8 @@ LONG_CONTENT_WIDTH = LONG_CONTENT_RIGHT - LONG_CONTENT_LEFT
 LONG_DATA_PANEL_BOTTOM = 824
 LONG_CTA_Y = 848
 LONG_SITE_ACCESS_CTA = "その他の分析情報は概要欄のサイトから"
-SHORT_SITE_ACCESS_CTA = "その他の分析情報は概要欄のサイトから"
+SHORT_SITE_ACCESS_CTA = "その他の分析情報はUMA-FREEで公開"
+SHORT_CLEAN_INFORMATION_CTA = "4つの分析視点で全レースを毎日整理"
 # 旧テスト・補助スクリプト向けの互換値。本線は1レース1シーンを使用する。
 LONG_VENUE_SLIDE_SECONDS = LONG_INTRO_SECONDS
 LONG_RACE_SLIDE_SECONDS = LONG_RACE_SCENE_SECONDS
@@ -3227,12 +3229,12 @@ def _short_phase_header(
     draw.text((SHORT_COLUMN_X, 478), label, font=_font(FONT_BLACK, 30), fill=DATA_BLUE)
 
 
-def _draw_short_analysis_footer(path: Path) -> Path:
+def _draw_short_analysis_footer(path: Path, *, branded: bool = True) -> Path:
     image = Image.new("RGBA", (SHORT_COLUMN_WIDTH, 250), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
     draw.text(
         (0, 0),
-        SHORT_SITE_ACCESS_CTA,
+        SHORT_SITE_ACCESS_CTA if branded else SHORT_CLEAN_INFORMATION_CTA,
         font=_font(FONT_BLACK, 25),
         fill=WHITE,
     )
@@ -3252,6 +3254,8 @@ def _draw_short_cover_phase(
     race: RaceVideoData,
     target_date: str,
     hero_horse: Optional[HorseVideoData],
+    *,
+    branded: bool = True,
 ) -> Path:
     image = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
@@ -3278,7 +3282,9 @@ def _draw_short_cover_phase(
     )
     draw.text(
         (SHORT_COLUMN_X, 1006),
-        "対戦成績やコース別の枠順傾向も全レース掲載",
+        "対戦成績やコース別の枠順傾向も全レース掲載"
+        if branded
+        else "対戦成績やコース別の枠順傾向も同じ基準で整理",
         font=_font(FONT_BOLD, 24),
         fill=EDITORIAL_GOLD,
     )
@@ -3352,6 +3358,8 @@ def _draw_short_hero_phase(
     race: RaceVideoData,
     target_date: str,
     hero_horse: Optional[HorseVideoData],
+    *,
+    branded: bool = True,
 ) -> Path:
     image = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
@@ -3369,7 +3377,9 @@ def _draw_short_hero_phase(
     draw = ImageDraw.Draw(image)
     draw.text(
         (SHORT_COLUMN_X, 1018),
-        "対戦成績・展開・脚質・枠順傾向もサイトで公開",
+        "対戦成績・展開・脚質・枠順傾向もサイトで公開"
+        if branded
+        else "対戦成績・展開・脚質・枠順傾向もあわせて確認",
         font=_font(FONT_BOLD, 26),
         fill=(218, 225, 221),
     )
@@ -3387,26 +3397,55 @@ def _draw_short_cta_phase(
     path: Path,
     race: RaceVideoData,
     target_date: str,
+    *,
+    branded: bool = True,
 ) -> Path:
     image = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
     _short_phase_header(draw, race, target_date, "全頭データ・対戦成績・枠順傾向")
-    cta_path = _draw_broadcast_cta_layer(path.with_name(f"{path.stem}_panel.png"), compact=True)
-    with Image.open(cta_path) as source:
-        image.alpha_composite(source.convert("RGBA"), (SHORT_COLUMN_X, 630))
-    draw = ImageDraw.Draw(image)
-    draw.text(
-        (SHORT_COLUMN_X, 900),
-        "登録不要 / 毎日無料公開",
-        font=_font(FONT_BOLD, 28),
-        fill=(219, 226, 222),
-    )
-    draw.text(
-        (SHORT_COLUMN_X, 970),
-        "uma-free.com",
-        font=_font("Inter-Black.ttf", 42),
-        fill=EDITORIAL_GOLD,
-    )
+    if branded:
+        cta_path = _draw_broadcast_cta_layer(path.with_name(f"{path.stem}_panel.png"), compact=True)
+        with Image.open(cta_path) as source:
+            image.alpha_composite(source.convert("RGBA"), (SHORT_COLUMN_X, 630))
+        draw = ImageDraw.Draw(image)
+        draw.text(
+            (SHORT_COLUMN_X, 900),
+            "登録不要 / 毎日無料公開",
+            font=_font(FONT_BOLD, 28),
+            fill=(219, 226, 222),
+        )
+        draw.text(
+            (SHORT_COLUMN_X, 970),
+            "uma-free.com",
+            font=_font("Inter-Black.ttf", 42),
+            fill=EDITORIAL_GOLD,
+        )
+    else:
+        draw.rounded_rectangle(
+            (SHORT_COLUMN_X, 620, SHORT_COLUMN_RIGHT, 1030),
+            radius=18,
+            fill=(10, 25, 30, 222),
+            outline=EDITORIAL_GOLD,
+            width=3,
+        )
+        draw.text(
+            (SHORT_COLUMN_X + 36, 704),
+            "AI偏差値・位置取り",
+            font=_font(FONT_BLACK, 40),
+            fill=WHITE,
+        )
+        draw.text(
+            (SHORT_COLUMN_X + 36, 778),
+            "対戦成績・枠順傾向",
+            font=_font(FONT_BLACK, 40),
+            fill=WHITE,
+        )
+        draw.text(
+            (SHORT_COLUMN_X + 36, 888),
+            "過去データをもとにした参考情報です",
+            font=_font(FONT_BOLD, 25),
+            fill=EDITORIAL_GOLD,
+        )
     return _save_transparent_layer(image, path)
 
 
@@ -3417,6 +3456,8 @@ def _build_short_motion_scene(
     hero_horse: Optional[HorseVideoData],
     visual_asset: Optional[VisualAsset],
     video_asset: Optional[VideoAsset],
+    *,
+    branded: bool = True,
 ) -> MotionScene:
     size = (1080, 1920)
     background_image, _ = _hero_background(
@@ -3430,17 +3471,38 @@ def _build_short_motion_scene(
     overlay = Image.new("RGBA", size, (7, 14, 16, 170))
     background_image = Image.alpha_composite(background_image.convert("RGBA"), overlay).convert("RGB")
     draw = ImageDraw.Draw(background_image)
-    _draw_brand_lockup(background_image, draw, SHORT_COLUMN_X, 82, compact=True, light=True)
+    if branded:
+        _draw_brand_lockup(background_image, draw, SHORT_COLUMN_X, 82, compact=True, light=True)
     draw.line((SHORT_COLUMN_X, 174, SHORT_COLUMN_RIGHT, 174), fill=EDITORIAL_GOLD, width=4)
     background = video_dir / "000_short_base.png"
     _save_slide(background_image, background, size)
 
-    cover = _draw_short_cover_phase(video_dir / "000_cover.png", race, target_date, hero_horse)
+    cover = _draw_short_cover_phase(
+        video_dir / "000_cover.png",
+        race,
+        target_date,
+        hero_horse,
+        branded=branded,
+    )
     ranking = _draw_short_ranking_phase(video_dir / "001_ranking.png", race, target_date)
     position = _draw_short_position_phase(video_dir / "002_position.png", race, target_date)
-    hero = _draw_short_hero_phase(video_dir / "003_hero.png", race, target_date, hero_horse)
-    cta = _draw_short_cta_phase(video_dir / "999_outro.png", race, target_date)
-    analysis_footer = _draw_short_analysis_footer(video_dir / "000_short_analysis_footer.png")
+    hero = _draw_short_hero_phase(
+        video_dir / "003_hero.png",
+        race,
+        target_date,
+        hero_horse,
+        branded=branded,
+    )
+    cta = _draw_short_cta_phase(
+        video_dir / "999_outro.png",
+        race,
+        target_date,
+        branded=branded,
+    )
+    analysis_footer = _draw_short_analysis_footer(
+        video_dir / "000_short_analysis_footer.png",
+        branded=branded,
+    )
     wipe = _draw_motion_wipe_layer(video_dir / "000_short_wipe.png", size[1])
     progress_horizontal = _draw_progress_tick_layer(video_dir / "000_short_progress_horizontal.png")
     with Image.open(progress_horizontal) as source:
@@ -3467,7 +3529,8 @@ def _build_short_motion_scene(
         render_background = video_asset.path
         video_scrim = Image.new("RGBA", size, (7, 14, 16, 176))
         scrim_draw = ImageDraw.Draw(video_scrim)
-        _draw_brand_lockup(video_scrim, scrim_draw, SHORT_COLUMN_X, 82, compact=True, light=True)
+        if branded:
+            _draw_brand_lockup(video_scrim, scrim_draw, SHORT_COLUMN_X, 82, compact=True, light=True)
         scrim_draw.line((SHORT_COLUMN_X, 174, SHORT_COLUMN_RIGHT, 174), fill=EDITORIAL_GOLD, width=4)
         scrim_path = _save_transparent_layer(video_scrim, video_dir / "000_short_video_scrim.png")
         layers.append(
@@ -3557,11 +3620,7 @@ def _title_date_parts(target_date: str) -> tuple[str, str]:
 
 def _long_title_essential(venue: VenueVideoData, target_date: str) -> str:
     date_label, _ = _title_date_parts(target_date)
-    if venue.excluded_races:
-        scope = f"対象{len(venue.races)}R AI予想（新馬戦除く）"
-    else:
-        scope = f"全{len(venue.races)}R AI予想"
-    return f"{date_label} {venue.venue_name}｜{scope}"
+    return f"{date_label} {venue.venue_name}｜全{len(venue.races)}R AI予想"
 
 
 def _long_title(venue: VenueVideoData, target_date: str) -> str:
@@ -3921,8 +3980,21 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         hero_horse,
         visual_asset,
         motion_video_asset,
+        branded=True,
     )
     _attach_short_audio_cues(scene, sfx_assets)
+    tiktok_video_dir = video_dir / "tiktok-clean"
+    tiktok_video_dir.mkdir(parents=True, exist_ok=True)
+    tiktok_scene = _build_short_motion_scene(
+        tiktok_video_dir,
+        race,
+        target_date,
+        hero_horse,
+        visual_asset,
+        motion_video_asset,
+        branded=False,
+    )
+    _attach_short_audio_cues(tiktok_scene, sfx_assets)
 
     thumbnail = video_dir / "thumbnail.jpg"
     _draw_thumbnail(
@@ -3939,10 +4011,13 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
     )
 
     video_path: Optional[Path] = video_dir / f"{stable_id}.mp4"
+    tiktok_video_path: Optional[Path] = tiktok_video_dir / f"{stable_id}_clean.mp4"
     if skip_video:
         video_path = None
+        tiktok_video_path = None
     else:
         render_motion_video([scene], video_path, *size, audio_asset=audio_asset)
+        render_motion_video([tiktok_scene], tiktok_video_path, *size, audio_asset=audio_asset)
 
     url = build_video_url(target_date, utm_content, race.venue_name, race.race_number)
     course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
@@ -3986,7 +4061,19 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         "aspect_ratio": "9:16",
         "url": url,
         "video_path": str(video_path) if video_path else None,
+        "variant_video_paths": {
+            "standard": str(video_path) if video_path else None,
+            "tiktok_clean": str(tiktok_video_path) if tiktok_video_path else None,
+        },
         "thumbnail_path": str(thumbnail),
+        "vertical_cover_path": str(video_dir / "000_intro.png"),
+        "destination_path": build_race_path(
+            target_date,
+            race.venue_name,
+            race.race_number,
+        ),
+        "race_number": race.race_number,
+        "race_name": race.display_name,
         "utm_content": utm_content,
         "rights_manifest_hash": rights_manifest_hash,
         "content_hash": content_hash,
@@ -4020,7 +4107,15 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         race_ids=[race.id],
         aspect_ratio="9:16",
         destination_url=url,
+        destination_path=build_race_path(target_date, race.venue_name, race.race_number),
         utm_content=utm_content,
+        race_number=race.race_number,
+        race_name=race.display_name,
+        vertical_cover_path=video_dir / "000_intro.png",
+        variant_video_paths={
+            **({"standard": video_path} if video_path else {}),
+            **({"tiktok_clean": tiktok_video_path} if tiktok_video_path else {}),
+        },
         rights_manifest_hash=rights_manifest_hash,
         content_hash=content_hash,
         thumbnail_required=False,

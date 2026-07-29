@@ -62,6 +62,7 @@ class VisualAsset:
     source_url: str = ""
     license: str = ""
     asset_id: str = ""
+    allowed_platforms: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -74,6 +75,7 @@ class AudioAsset:
     license: str = ""
     volume: float = 0.20
     asset_id: str = ""
+    allowed_platforms: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -85,6 +87,7 @@ class VideoAsset:
     source_url: str = ""
     license: str = ""
     asset_id: str = ""
+    allowed_platforms: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -232,6 +235,20 @@ def _metadata_for(path: Path, root: Path, credits: dict[str, dict[str, Any]]) ->
     return credits.get(_relative_asset_id(path, root), {})
 
 
+def _normalize_allowed_platforms(value: Any) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    return tuple(
+        sorted(
+            {
+                str(item).strip().lower()
+                for item in value
+                if str(item).strip()
+            }
+        )
+    )
+
+
 def _is_size_usable(path: Path) -> bool:
     try:
         return path.stat().st_size < MAX_ASSET_BYTES
@@ -365,6 +382,7 @@ def _visual_from_path(
         source_url=str(metadata.get("source") or "").strip(),
         license=str(metadata.get("license") or "").strip(),
         asset_id=_relative_asset_id(path, root),
+        allowed_platforms=_normalize_allowed_platforms(metadata.get("allowed_platforms")),
     )
 
 
@@ -480,6 +498,7 @@ def resolve_audio_asset(
         license=str(metadata.get("license") or "").strip(),
         volume=volume,
         asset_id=_relative_asset_id(path, resolved_root),
+        allowed_platforms=_normalize_allowed_platforms(metadata.get("allowed_platforms")),
     )
 
 
@@ -515,6 +534,7 @@ def resolve_sfx_assets(
             license=str(metadata.get("license") or "").strip(),
             volume=_clamp_volume(metadata.get("volume"), 0.16),
             asset_id=_relative_asset_id(path, resolved_root),
+            allowed_platforms=_normalize_allowed_platforms(metadata.get("allowed_platforms")),
         )
     return resolved
 
@@ -559,6 +579,7 @@ def resolve_video_asset(
             source_url=str(metadata.get("source") or "").strip(),
             license=str(metadata.get("license") or "").strip(),
             asset_id=_relative_asset_id(path, root),
+            allowed_platforms=_normalize_allowed_platforms(metadata.get("allowed_platforms")),
         )
     return None
 
@@ -605,6 +626,7 @@ def visual_asset_metadata(asset: Optional[VisualAsset]) -> Optional[dict[str, An
         "credit": asset.credit,
         "source": asset.source_url,
         "license": asset.license,
+        "allowed_platforms": list(asset.allowed_platforms),
     }
 
 
@@ -621,6 +643,7 @@ def audio_asset_metadata(asset: Optional[AudioAsset]) -> Optional[dict[str, Any]
         "source": asset.source_url,
         "license": asset.license,
         "volume": asset.volume,
+        "allowed_platforms": list(asset.allowed_platforms),
     }
 
 
@@ -636,6 +659,7 @@ def video_asset_metadata(asset: Optional[VideoAsset]) -> Optional[dict[str, Any]
         "credit": asset.credit,
         "source": asset.source_url,
         "license": asset.license,
+        "allowed_platforms": list(asset.allowed_platforms),
     }
 
 

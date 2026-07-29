@@ -2,21 +2,25 @@
   "images/default/wide/horse01.jpg": {
     "credit": "UMA-FREE制作素材",
     "license": "UMA-FREE管理素材・動画内利用",
+    "allowed_platforms": ["youtube", "threads", "instagram", "facebook", "tiktok", "pinterest", "bluesky"],
     "focus": [0.58, 0.52]
   },
   "images/default/wide/horse02.jpg": {
     "credit": "UMA-FREE制作素材",
     "license": "UMA-FREE管理素材・動画内利用",
+    "allowed_platforms": ["youtube", "threads", "instagram", "facebook", "tiktok", "pinterest", "bluesky"],
     "focus": [0.58, 0.52]
   },
   "images/default/vertical/horse01.jpg": {
     "credit": "UMA-FREE制作素材",
     "license": "UMA-FREE管理素材・動画内利用",
+    "allowed_platforms": ["youtube", "threads", "instagram", "facebook", "tiktok", "pinterest", "bluesky"],
     "focus": [0.50, 0.64]
   },
   "images/default/vertical/horse02.jpg": {
     "credit": "UMA-FREE制作素材",
     "license": "UMA-FREE管理素材・動画内利用",
+    "allowed_platforms": ["youtube", "threads", "instagram", "facebook", "tiktok", "pinterest", "bluesky"],
     "focus": [0.50, 0.64]
   },
   "audio/common/わいわいミュージック・タイム.mp3": {
@@ -24,6 +28,8 @@
     "credit": "こばっと / DOVA-SYNDROME",
     "source": "https://dova-s.jp/bgm/detail/23535",
     "license": "DOVA-SYNDROME 音源利用ライセンス",
+    "allowed_platforms": ["youtube", "threads", "instagram", "facebook", "tiktok", "pinterest", "bluesky"],
+    "license_verified_at": "2026-07-30",
     "volume": 0.16
   }
 }

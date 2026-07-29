@@ -38,7 +38,12 @@ class VideoPackage:
     race_ids: List[str] = field(default_factory=list)
     aspect_ratio: str = "16:9"
     destination_url: str = ""
+    destination_path: str = ""
     utm_content: str = ""
+    race_number: int = 0
+    race_name: str = ""
+    vertical_cover_path: Optional[Path] = None
+    variant_video_paths: dict[str, Path] = field(default_factory=dict)
     rights_manifest_hash: str = ""
     content_hash: str = ""
     thumbnail_required: bool = True
@@ -50,7 +55,15 @@ class VideoPackage:
             "race_ids": self.race_ids,
             "aspect_ratio": self.aspect_ratio,
             "destination_url": self.destination_url,
+            "destination_path": self.destination_path,
             "utm_content": self.utm_content,
+            "race_number": self.race_number,
+            "race_name": self.race_name,
+            "vertical_cover_path": str(self.vertical_cover_path) if self.vertical_cover_path else None,
+            "variant_video_paths": {
+                name: str(path)
+                for name, path in sorted(self.variant_video_paths.items())
+            },
             "rights_manifest_hash": self.rights_manifest_hash,
             "thumbnail_required": self.thumbnail_required,
         }

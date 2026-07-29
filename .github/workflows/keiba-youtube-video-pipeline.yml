@@ -2,8 +2,8 @@ name: Keiba YouTube Video Pipeline
 
 on:
   schedule:
-    # 毎日 UTC 10:17 = JST 19:17。毎時0分付近のActions混雑を避ける。
-    - cron: '17 10 * * *'
+    # 毎日 UTC 08:17 = JST 17:17。19:00の同時公開まで生成・確認時間を確保する。
+    - cron: '17 8 * * *'
   workflow_dispatch:
     inputs:
       target_date:
@@ -94,7 +94,7 @@ jobs:
           YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
           YOUTUBE_UPLOAD_ENABLED: ${{ secrets.YOUTUBE_UPLOAD_ENABLED }}
           YOUTUBE_PUBLICATION_MODE: ${{ github.event.inputs.publication_mode || vars.YOUTUBE_PUBLICATION_MODE || 'private_review' }}
-          YOUTUBE_PUBLISH_TIME_JST: ${{ vars.YOUTUBE_PUBLISH_TIME_JST || '20:30' }}
+          YOUTUBE_PUBLISH_TIME_JST: '19:00'
           YOUTUBE_PUBLISH_MIN_LEAD_MINUTES: ${{ vars.YOUTUBE_PUBLISH_MIN_LEAD_MINUTES || '20' }}
           YOUTUBE_MAX_PUBLISH_SHIFT_MINUTES: ${{ vars.YOUTUBE_MAX_PUBLISH_SHIFT_MINUTES || '240' }}
           YOUTUBE_MAX_SHORTS: '1'

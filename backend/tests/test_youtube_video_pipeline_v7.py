@@ -98,7 +98,7 @@ def _args(mode: str) -> SimpleNamespace:
         disable_registry=False,
         force=False,
         publication_mode=mode,
-        publish_time_jst="20:30",
+        publish_time_jst="19:00",
         publish_min_lead_minutes=20,
         max_publish_shift_minutes=240,
         quota_budget=8000,
@@ -123,7 +123,7 @@ def _package(root: Path, video_type: str, thumbnail_required: bool) -> VideoPack
         video_path=video,
         thumbnail_path=thumbnail,
         metadata_path=metadata,
-        publish_offset_minutes=-20 if video_type == "short" else 0,
+        publish_offset_minutes=0,
         target_date="2099-07-12",
         venue_name="東京",
         race_ids=["race-1"],
@@ -470,51 +470,67 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "時刻を自動変更せず投稿を中止"):
             build_publish_at(target_date, "00:00", 0)
 
-    def test_delayed_actions_run_shifts_all_publish_slots_without_changing_order(self) -> None:
+    def test_all_videos_keep_same_time_when_delayed(self) -> None:
         publish_times, shift_minutes = build_publish_schedule(
             "2026-07-27",
-            "20:30",
-            [-20, 0, 10, 20],
-            now_jst=datetime(2026, 7, 26, 20, 43, tzinfo=JST),
+            "19:00",
+            [0, 0, 0, 0],
+            now_jst=datetime(2026, 7, 26, 18, 43, tzinfo=JST),
             minimum_lead_minutes=20,
             maximum_shift_minutes=240,
         )
 
-        self.assertEqual(shift_minutes, 60)
+        self.assertEqual(shift_minutes, 10)
         self.assertEqual(
             publish_times,
             [
-                "2026-07-26T12:10:00Z",
-                "2026-07-26T12:30:00Z",
-                "2026-07-26T12:40:00Z",
-                "2026-07-26T12:50:00Z",
+                "2026-07-26T10:10:00Z",
+                "2026-07-26T10:10:00Z",
+                "2026-07-26T10:10:00Z",
+                "2026-07-26T10:10:00Z",
             ],
         )
 
-    def test_on_time_actions_run_keeps_requested_publish_slots(self) -> None:
+    def test_on_time_actions_run_schedules_every_video_at_1900(self) -> None:
         publish_times, shift_minutes = build_publish_schedule(
             "2026-07-27",
-            "20:30",
-            [-20, 0, 10],
-            now_jst=datetime(2026, 7, 26, 19, 30, tzinfo=JST),
+            "19:00",
+            [0, 0, 0],
+            now_jst=datetime(2026, 7, 26, 17, 30, tzinfo=JST),
         )
 
         self.assertEqual(shift_minutes, 0)
         self.assertEqual(
             publish_times,
             [
-                "2026-07-26T11:10:00Z",
-                "2026-07-26T11:30:00Z",
-                "2026-07-26T11:40:00Z",
+                "2026-07-26T10:00:00Z",
+                "2026-07-26T10:00:00Z",
+                "2026-07-26T10:00:00Z",
             ],
         )
+
+    def test_assign_publish_offsets_sets_short_and_all_venues_to_zero(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            long_video = _package(root, "venue_long", thumbnail_required=True)
+            short_video = _package(root, "short", thumbnail_required=False)
+            long_video.publish_offset_minutes = 30
+            short_video.publish_offset_minutes = -20
+
+            ordered = youtube_video_pipeline._assign_publish_offsets(
+                [long_video, short_video],
+                [],
+            )
+
+        self.assertEqual([item.video_type for item in ordered], ["short", "venue_long"])
+        self.assertEqual([item.publish_offset_minutes for item in ordered], [0, 0])
 
     def test_excessively_late_actions_run_is_rejected(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "古い内容の自動公開を中止"):
             build_publish_schedule(
                 "2026-07-27",
-                "20:30",
-                [-20, 0],
+                "19:00",
+                [0, 0],
                 now_jst=datetime(2026, 7, 27, 1, 0, tzinfo=JST),
                 maximum_shift_minutes=240,
             )

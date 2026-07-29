@@ -409,7 +409,7 @@ class SocialVideoRendererTest(unittest.TestCase):
                 disable_registry=False,
                 publication_mode="private_review",
                 force=False,
-                publish_time_jst="20:30",
+                publish_time_jst="19:00",
                 quota_budget=8000,
                 processing_timeout_seconds=1,
                 processing_poll_seconds=1,

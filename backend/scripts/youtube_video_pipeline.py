@@ -23,7 +23,6 @@ from scripts.social_video.data_loader import (  # noqa: E402
     get_target_date,
     load_venues_for_date,
     normalize_venues,
-    order_venues_for_publication,
     pick_shorts_targets,
 )
 from scripts.social_video.create_design_contact_sheet import (  # noqa: E402
@@ -182,11 +181,13 @@ def _load_venues_with_readiness(
 
 
 def _assign_publish_offsets(rendered: List[RenderedVideo], venues: List[VenueVideoData]) -> List[RenderedVideo]:
-    ordered_venues = order_venues_for_publication(venues)
-    venue_offsets = {venue.venue_name: index * 10 for index, venue in enumerate(ordered_venues)}
+    del venues
     for item in rendered:
-        item.publish_offset_minutes = -20 if item.video_type == "short" else venue_offsets.get(item.venue_name, 0)
-    return sorted(rendered, key=lambda item: (item.publish_offset_minutes, item.video_type, item.stable_id))
+        item.publish_offset_minutes = 0
+    return sorted(
+        rendered,
+        key=lambda item: (0 if item.video_type == "short" else 1, item.stable_id),
+    )
 
 
 def _apply_content_safety_gate(rendered: List[RenderedVideo]) -> None:
@@ -510,7 +511,7 @@ def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None
                 for value in publish_schedule
             ).astimezone(timezone(timedelta(hours=9)))
             delay_message = (
-                "GitHub Actionsの起動遅延に合わせ、公開順と間隔を維持したまま"
+                "GitHub Actionsの起動遅延に合わせ、全動画の同時公開を維持したまま"
                 f"全予約を{schedule_shift_minutes}分後ろ倒ししました"
                 f"（最初の公開: {first_publish_at.strftime('%Y-%m-%d %H:%M JST')}）"
             )
@@ -692,7 +693,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", help="出力ディレクトリ。未指定なら youtube_video_dist")
     parser.add_argument("--max-venues", type=int, default=None, help="検証用に生成会場数を制限")
     parser.add_argument("--max-shorts", type=int, default=int(os.getenv("YOUTUBE_MAX_SHORTS", "1")), help="Shorts生成上限。v7では最大1本")
-    parser.add_argument("--publish-time-jst", default=os.getenv("YOUTUBE_PUBLISH_TIME_JST", "20:30"), help="翌日分を公開予約するJST時刻 HH:MM")
+    parser.add_argument("--publish-time-jst", default=os.getenv("YOUTUBE_PUBLISH_TIME_JST", "19:00"), help="翌日分を公開予約するJST時刻 HH:MM")
     parser.add_argument(
         "--publish-min-lead-minutes",
         type=int,

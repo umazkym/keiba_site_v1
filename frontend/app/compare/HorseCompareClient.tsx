@@ -176,7 +176,8 @@ export default function HorseCompareClient() {
     const maxPlaceRate = useMemo(() => Math.max(...details.map((d) => d.overall.place_rate), 0), [details]);
 
     return (
-        <main className="mx-auto max-w-7xl px-3 pb-14 pt-3 sm:px-4">
+        <main className="mx-auto max-w-6xl px-3 pb-14 pt-3 sm:px-4">
+
             <DataHubNav currentPath="/compare" />
 
             <header className="mt-5 border-b border-slate-200 pb-5">

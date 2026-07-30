@@ -122,16 +122,16 @@ export default function KeibaDataPage() {
                 <DataHubNav currentPath="/keiba-data" />
 
                 {/* ヒーローヘッダー */}
-                <header className="relative mt-5 overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-slate-900 via-slate-850 to-blue-950 p-5 text-white shadow-md sm:p-7">
+                <header className="relative mt-5 overflow-hidden rounded-2xl border border-blue-100 bg-slate-900 p-6 text-white shadow-md sm:p-8">
                     <div className="relative z-10 max-w-3xl">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/20 px-3 py-1 text-xs font-black text-blue-300 backdrop-blur-xs border border-blue-400/30">
                             <Sparkles className="h-3.5 w-3.5 text-blue-400" aria-hidden="true" />
                             競馬データ・分析ハブ
                         </span>
-                        <h1 className="mt-3 text-2xl font-black leading-snug tracking-tight sm:text-4xl">
+                        <h1 className="mt-3.5 text-2xl font-black leading-snug tracking-tight !text-white sm:text-4xl">
                             競馬データを自由自在に比較・分析
                         </h1>
-                        <p className="mt-2 text-xs leading-relaxed text-slate-300 sm:text-sm sm:leading-6">
+                        <p className="mt-2.5 text-xs leading-relaxed !text-slate-200 sm:text-sm sm:leading-6">
                             競走馬・騎手・調教師の過去成績から、コース別（芝・ダート・距離）の枠順・脚質傾向まで。気になる馬を2〜5頭選んで成績比較したり、マイデータでお気に入り管理できます。
                         </p>
                     </div>
@@ -172,22 +172,22 @@ export default function KeibaDataPage() {
                                 <Link
                                     key={card.href}
                                     href={card.href}
-                                    className={`group flex flex-col justify-between rounded-xl border p-4.5 transition-all duration-200 hover:shadow-md ${card.accentBg}`}
+                                    className={`group flex flex-col justify-between rounded-2xl border p-5 sm:p-6 transition-all duration-200 hover:shadow-md ${card.accentBg}`}
                                 >
                                     <div>
                                         <div className="flex items-center justify-between">
-                                            <span className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold shadow-xs ${card.iconBg}`}>
-                                                <Icon className="h-5 w-5" aria-hidden="true" />
+                                            <span className={`flex h-11 w-11 items-center justify-center rounded-xl font-bold shadow-xs ${card.iconBg}`}>
+                                                <Icon className="h-5.5 w-5.5" aria-hidden="true" />
                                             </span>
                                         </div>
-                                        <h3 className="mt-4 text-base font-black text-slate-950 group-hover:text-blue-700">
+                                        <h3 className="mt-5 text-base font-black text-slate-950 group-hover:text-blue-700">
                                             {card.title}
                                         </h3>
-                                        <p className="mt-1.5 text-xs leading-5 text-slate-600">
+                                        <p className="mt-2 text-xs leading-5 text-slate-600">
                                             {card.description}
                                         </p>
                                     </div>
-                                    <div className="mt-4 flex items-center justify-end text-xs font-black text-blue-600 group-hover:underline">
+                                    <div className="mt-5 flex items-center justify-end text-xs font-black text-blue-600 group-hover:underline">
                                         開く
                                         <ChevronRight className="h-4 w-4" aria-hidden="true" />
                                     </div>
@@ -196,6 +196,7 @@ export default function KeibaDataPage() {
                         })}
                     </div>
                 </section>
+
 
 
                 {/* 競馬場コース選択 */}

@@ -81,7 +81,9 @@ planned
 
 動画IDはアップロード直後、サムネイル設定より前に保存します。途中で失敗した場合は同じ動画IDから再開し、動画を作り直しません。同一の対象日、動画種別、stable IDで内容hashが変わった場合は自動投稿を停止します。`--force`と投稿時の`--disable-registry`は許可しません。
 
-Shortは`thumbnail_skipped`、横長だけが`thumbnail_set`へ進みます。アップロード後は`videos.list`で処理完了、拒否、公開状態、予約時刻を確認し、確認できない動画を成功扱いにしません。
+Shortは`thumbnail_skipped`、横長だけが`thumbnail_set`へ進みます。アップロード後は`videos.list`で処理完了、拒否、公開状態、予約時刻を確認します。アップロード直後に動画一覧への反映が遅れて空応答になった場合は、処理確認の上限時間まで同じ動画IDを再照会します。`processing`は再開可能な中間状態として扱い、再実行時に新しい動画を作りません。既存動画が元の予約時刻を過ぎて公開済みなら`published`へ確定し、未処理の後続動画から再開します。
+
+生成サマリーのShort項目には`target_date`、`venue_name`、`race_number`、`race_name`、`destination_path`を必ず残します。複数SNS配信はこの情報を正本として投稿文と遷移先を組み立てるため、いずれかが欠けるサマリーを成功扱いにしません。
 
 日次実行時には直近7日間の`scheduled`を照合し、公開済みなら`published`へ更新します。公開予定から1時間を過ぎても非公開、処理拒否、動画ID欠損のいずれかならエラーを保存します。素材・権利保留または直近7日間の投稿エラーが1件でもある日は、Repository Variableが`scheduled_public`でも当日分を自動的に`private_review`へ落とします。予測欠損だけの場合は該当会場を除外し、正常会場の予約は維持します。すでにYouTubeへ予約済みの同日動画がある場合は`videos.update`で`publishAt`を削除し、`videos.list`で非公開を再確認します。Actions Summaryには直近7日間の状態件数とエラー件数を表示します。
 

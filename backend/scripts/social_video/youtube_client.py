@@ -33,6 +33,10 @@ class YouTubeVideoStatus:
     rejection_reason: Optional[str]
 
 
+class YouTubeVideoStatusUnavailableError(RuntimeError):
+    """アップロード直後など、動画状態が一時的に一覧へ現れない場合の再試行可能エラー。"""
+
+
 def _require_env(name: str) -> str:
     value = os.getenv(name)
     if not value:
@@ -277,7 +281,9 @@ class YouTubeClient:
         ).execute()
         items = response.get("items") or []
         if not items:
-            raise RuntimeError(f"YouTube上の動画状態を取得できません: {video_id}")
+            raise YouTubeVideoStatusUnavailableError(
+                f"YouTube上の動画状態を取得できません: {video_id}"
+            )
         item = items[0]
         status = item.get("status") or {}
         processing = item.get("processingDetails") or {}
@@ -321,18 +327,35 @@ class YouTubeClient:
     ) -> YouTubeVideoStatus:
         deadline = time.monotonic() + max(1, timeout_seconds)
         while True:
-            status = self.get_video_status(video_id)
+            try:
+                status = self.get_video_status(video_id)
+            except YouTubeVideoStatusUnavailableError as exc:
+                if time.monotonic() >= deadline:
+                    raise RuntimeError(
+                        f"YouTube動画の状態確認がタイムアウトしました: {video_id}"
+                    ) from exc
+                time.sleep(max(1, poll_interval_seconds))
+                continue
             if status.processing_status in {"failed", "terminated"} or status.upload_status in {"failed", "rejected", "deleted"}:
                 reason = status.failure_reason or status.rejection_reason or status.processing_status or status.upload_status
                 raise RuntimeError(f"YouTube動画の処理に失敗しました: {video_id} ({reason})")
             processed = status.processing_status == "succeeded" or status.upload_status == "processed"
             if processed:
+                expected = parse_publish_at(expected_publish_at)
+                now_utc = datetime.now(UTC).replace(tzinfo=None)
+                if status.privacy_status == "public":
+                    if expected is None or now_utc < expected:
+                        raise RuntimeError(
+                            f"YouTube動画が意図しない公開状態です: {video_id} ({status.privacy_status})"
+                        )
+                    return status
                 if status.privacy_status != "private":
-                    raise RuntimeError(f"YouTube動画が意図しない公開状態です: {video_id} ({status.privacy_status})")
+                    raise RuntimeError(
+                        f"YouTube動画が意図しない公開状態です: {video_id} ({status.privacy_status})"
+                    )
                 if expected_publish_at and not status.publish_at:
                     raise RuntimeError(f"YouTube動画に予約公開時刻が反映されていません: {video_id}")
                 if expected_publish_at and status.publish_at:
-                    expected = parse_publish_at(expected_publish_at)
                     actual = parse_publish_at(status.publish_at)
                     if expected is None or actual is None or abs((actual - expected).total_seconds()) > 1:
                         raise RuntimeError(

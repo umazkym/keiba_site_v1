@@ -114,6 +114,8 @@
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
 * **2026-07-30**:
+  * **YouTube投稿直後の状態反映遅延と途中再開を修復**:
+    7月31日対象のShortアップロード直後にYouTube `videos.list`が一時的な空応答となり、Shortは公開された一方で後続の会場別長尺が未投稿になった。空応答を処理確認タイムアウトまで再試行し、`processing`を再開可能な中間状態へ変更。再実行時は保存済み動画IDと元の予約時刻を維持し、予約時刻後に公開済みなら`published`へ確定して未処理動画から続行する。SNS配信が参照する生成サマリーには会場名を追加し、対象日・会場・レース番号・遷移先の欠落を防止した。
   * **YouTube Shortの複数SNS日次配信基盤を実装**:
     最優先レースの縦動画1本をThreads、Instagram Reels、Facebook Reels、TikTok、Pinterest Video Pin、Blueskyへ公式APIで配信する共通ランナーを追加した。X動画は費用上の方針に従い対象外とし、既存テキスト・画像投稿を維持する。媒体別`disabled/validate/draft/public`、投稿先別content hash、`video_publications`による重複防止、失敗分離、240分の鮮度ゲート、非公開GCS署名URL、Actions Summaryを実装。既定は外部POST・DB・GCS変更を行わない`validate`とした。TikTokにはロゴ、URL、外部誘導文を焼き込まない専用動画を同時生成する。SNS別UTMと最初の`race_view`への30分一度限りの属性継承、設定済み公式SNSだけをフッターとOrganization JSON-LDへ表示する構成も追加した。
   * **YouTube Studio実績を基に改善優先度を固定**:

@@ -14,7 +14,6 @@ TERMINAL_PUBLICATION_STATUSES = {
     "private_review",
     "scheduled",
     "draft",
-    "processing",
     "published",
 }
 

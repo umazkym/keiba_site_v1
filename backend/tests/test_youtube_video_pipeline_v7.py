@@ -23,6 +23,7 @@ from scripts.social_video.youtube_client import (
     YouTubeClient,
     YouTubeUploadResult,
     YouTubeVideoStatus,
+    YouTubeVideoStatusUnavailableError,
     build_publish_at,
     build_publish_schedule,
     estimate_quota_units,
@@ -272,6 +273,50 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         client.insert_video.assert_not_called()
         client.set_thumbnail.assert_called_once_with("existing-video", package.thumbnail_path)
 
+    def test_resume_processing_record_preserves_schedule_and_accepts_published_video(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            package = _package(Path(temp_dir), "short", thumbnail_required=False)
+            original_publish_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=5)
+            existing = PublicationRecord(
+                platform="youtube",
+                target_date="2099-07-12",
+                video_type="short",
+                stable_id=package.stable_id,
+                status="processing",
+                content_hash=package.content_hash,
+                remote_video_id="existing-video",
+                scheduled_at=original_publish_at,
+                attempt_count=2,
+                last_error="YouTube上の動画状態を取得できません: existing-video",
+                metadata={},
+            )
+            registry = FakeRegistry(existing)
+            client = _youtube_client()
+            client.wait_for_processing.return_value = YouTubeVideoStatus(
+                video_id="existing-video",
+                processing_status="succeeded",
+                upload_status="processed",
+                privacy_status="public",
+                publish_at=None,
+                failure_reason=None,
+                rejection_reason=None,
+            )
+            with patch.object(youtube_video_pipeline, "_env_flag", return_value=True), patch.object(
+                youtube_video_pipeline, "VideoPostRegistry", return_value=registry
+            ), patch.object(youtube_video_pipeline, "YouTubeClient", return_value=client), patch.object(
+                youtube_video_pipeline,
+                "build_publish_schedule",
+                return_value=(["2099-07-11T12:30:00Z"], 60),
+            ):
+                youtube_video_pipeline._upload_all(_args("scheduled_public"), [package])
+
+        client.insert_video.assert_not_called()
+        self.assertEqual(registry.existing.status, "published")
+        self.assertEqual(
+            client.wait_for_processing.call_args.kwargs["expected_publish_at"],
+            original_publish_at.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z"),
+        )
+
     def test_content_hash_change_stops_before_creating_another_video(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             package = _package(Path(temp_dir), "venue_long", thumbnail_required=True)
@@ -464,6 +509,76 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
                 timeout_seconds=1,
                 poll_interval_seconds=1,
             )
+
+    def test_processing_check_retries_temporary_status_visibility_lag(self) -> None:
+        client = YouTubeClient.__new__(YouTubeClient)
+        completed = YouTubeVideoStatus(
+            video_id="video-id",
+            processing_status="succeeded",
+            upload_status="processed",
+            privacy_status="private",
+            publish_at=None,
+            failure_reason=None,
+            rejection_reason=None,
+        )
+        client.get_video_status = Mock(
+            side_effect=[
+                YouTubeVideoStatusUnavailableError(
+                    "YouTube上の動画状態を取得できません: video-id"
+                ),
+                completed,
+            ]
+        )
+
+        with patch("scripts.social_video.youtube_client.time.sleep") as sleep:
+            status = client.wait_for_processing(
+                "video-id",
+                timeout_seconds=10,
+                poll_interval_seconds=1,
+            )
+
+        self.assertEqual(status, completed)
+        sleep.assert_called_once_with(1)
+
+    def test_processing_check_accepts_public_video_after_scheduled_time(self) -> None:
+        client = YouTubeClient.__new__(YouTubeClient)
+        client.get_video_status = Mock(
+            return_value=YouTubeVideoStatus(
+                video_id="video-id",
+                processing_status="succeeded",
+                upload_status="processed",
+                privacy_status="public",
+                publish_at=None,
+                failure_reason=None,
+                rejection_reason=None,
+            )
+        )
+        expected = (
+            datetime.now(timezone.utc) - timedelta(minutes=1)
+        ).isoformat().replace("+00:00", "Z")
+
+        status = client.wait_for_processing(
+            "video-id",
+            expected_publish_at=expected,
+            timeout_seconds=1,
+            poll_interval_seconds=1,
+        )
+
+        self.assertEqual(status.privacy_status, "public")
+
+    def test_video_summary_keeps_social_distribution_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            package = _package(Path(temp_dir), "short", thumbnail_required=False)
+            package.destination_path = "/races/2099-07-12/tokyo/11"
+            package.race_number = 11
+            package.race_name = "テスト競走"
+
+            summary = youtube_video_pipeline._video_summary(package)
+
+        self.assertEqual(summary["target_date"], "2099-07-12")
+        self.assertEqual(summary["venue_name"], "東京")
+        self.assertEqual(summary["race_number"], 11)
+        self.assertEqual(summary["destination_path"], "/races/2099-07-12/tokyo/11")
 
     def test_late_schedule_is_rejected_instead_of_silently_shifted(self) -> None:
         target_date = (datetime.now(JST).date() + timedelta(days=1)).isoformat()

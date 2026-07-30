@@ -9,7 +9,7 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -29,7 +29,7 @@ from scripts.social_video.create_design_contact_sheet import (  # noqa: E402
     create_contact_sheet,
     create_motion_review_videos,
 )
-from scripts.social_video.registry import VideoPostRegistry  # noqa: E402
+from scripts.social_video.registry import PublicationRecord, VideoPostRegistry  # noqa: E402
 from scripts.social_video.renderer import RenderedVideo, render_long_video, render_short_video  # noqa: E402
 from scripts.social_video.visual_assets import validate_asset_library  # noqa: E402
 from scripts.social_video.youtube_client import (  # noqa: E402
@@ -220,6 +220,36 @@ def _append_actions_summary(lines: List[str]) -> None:
         handle.write("\n".join(lines) + "\n")
 
 
+def _video_summary(item: RenderedVideo) -> dict:
+    return {
+        "video_type": item.video_type,
+        "stable_id": item.stable_id,
+        "title": item.title,
+        "video_path": str(item.video_path) if item.video_path else None,
+        "thumbnail_path": str(item.thumbnail_path),
+        "metadata_path": str(item.metadata_path),
+        "target_date": item.target_date,
+        "venue_name": item.venue_name,
+        "destination_url": item.destination_url,
+        "destination_path": item.destination_path,
+        "utm_content": item.utm_content,
+        "race_number": item.race_number,
+        "race_name": item.race_name,
+        "vertical_cover_path": str(item.vertical_cover_path) if item.vertical_cover_path else None,
+        "variant_video_paths": {
+            name: str(path)
+            for name, path in sorted(item.variant_video_paths.items())
+        },
+        "publish_offset_minutes": item.publish_offset_minutes,
+        "content_hash": item.content_hash,
+        "rights_manifest_hash": item.rights_manifest_hash,
+        "thumbnail_required": item.thumbnail_required,
+        "publishable": item.publishable,
+        "publish_block_reasons": item.publish_block_reasons,
+        "selected_assets": item.selected_assets,
+    }
+
+
 def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
     target_date = args.target_date or get_target_date()
     output_dir = Path(args.output_dir or DEFAULT_OUTPUT_DIR) / target_date
@@ -301,34 +331,7 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
         "publication_mode": validate_publication_mode(args.publication_mode),
         "blocked_venues": blocked_venues,
         "excluded_newcomer_races": excluded_newcomer_races,
-        "videos": [
-            {
-                "video_type": item.video_type,
-                "stable_id": item.stable_id,
-                "title": item.title,
-                "video_path": str(item.video_path) if item.video_path else None,
-                "thumbnail_path": str(item.thumbnail_path),
-                "metadata_path": str(item.metadata_path),
-                "destination_url": item.destination_url,
-                "destination_path": item.destination_path,
-                "utm_content": item.utm_content,
-                "race_number": item.race_number,
-                "race_name": item.race_name,
-                "vertical_cover_path": str(item.vertical_cover_path) if item.vertical_cover_path else None,
-                "variant_video_paths": {
-                    name: str(path)
-                    for name, path in sorted(item.variant_video_paths.items())
-                },
-                "publish_offset_minutes": item.publish_offset_minutes,
-                "content_hash": item.content_hash,
-                "rights_manifest_hash": item.rights_manifest_hash,
-                "thumbnail_required": item.thumbnail_required,
-                "publishable": item.publishable,
-                "publish_block_reasons": item.publish_block_reasons,
-                "selected_assets": item.selected_assets,
-            }
-            for item in rendered
-        ],
+        "videos": [_video_summary(item) for item in rendered],
         "asset_validation": asset_validation.to_dict(),
         "asset_validation_path": str(asset_validation_path),
     }
@@ -366,6 +369,22 @@ def _utc_naive(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value
     return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _format_publish_at(value: Optional[datetime]) -> Optional[str]:
+    if value is None:
+        return None
+    aware = value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+    return aware.isoformat().replace("+00:00", "Z")
+
+
+def _is_retryable_status_visibility_error(record: PublicationRecord) -> bool:
+    return bool(
+        record.remote_video_id
+        and record.status in {"uploaded", "thumbnail_set", "thumbnail_skipped", "processing"}
+        and record.last_error
+        and "YouTube上の動画状態を取得できません" in record.last_error
+    )
 
 
 def _reconcile_recent_publications(
@@ -452,12 +471,25 @@ def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None
     client.validate_channel()
     reconciliation_lines, reconciliation_checks, reconciliation_errors = _reconcile_recent_publications(registry, client)
     recent_records = registry.list_recent(days=7)
-    recent_errors = [record for record in recent_records if record.last_error]
+    retryable_recent_errors = [
+        record
+        for record in recent_records
+        if record.last_error and _is_retryable_status_visibility_error(record)
+    ]
+    recent_errors = [
+        record
+        for record in recent_records
+        if record.last_error and not _is_retryable_status_visibility_error(record)
+    ]
     status_counts: Dict[str, int] = {}
     for record in recent_records:
         status_counts[record.status] = status_counts.get(record.status, 0) + 1
     status_summary = ", ".join(f"{status}={count}" for status, count in sorted(status_counts.items())) or "記録なし"
     reconciliation_lines.append(f"- 直近7日DB状態: {status_summary} / errors={len(recent_errors)}")
+    if retryable_recent_errors:
+        reconciliation_lines.append(
+            f"- 状態反映待ちから再開: {len(retryable_recent_errors)}件"
+        )
     safety_reasons: List[str] = []
     if any(not item.publishable for item in rendered):
         safety_reasons.append("素材・権利ゲート保留あり")
@@ -585,6 +617,12 @@ def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None
             raise RuntimeError(f"動画ファイルが生成されていないためアップロードできません: {item.stable_id}")
 
         publish_at = publish_at_by_key[(item.video_type, item.stable_id)]
+        if (
+            publication_mode == "scheduled_public"
+            and record.remote_video_id
+            and record.scheduled_at is not None
+        ):
+            publish_at = _format_publish_at(record.scheduled_at)
         mode_label = f"予約公開 {publish_at}" if publish_at else "非公開レビュー"
         print(f"YouTubeへ投稿します: {item.title} ({mode_label})")
         try:

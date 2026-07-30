@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Search } from 'lucide-react';
+import { ArrowRight, CircleDot, MapPinned, Search, UserRound, UsersRound } from 'lucide-react';
 import {
     DATA_ENTITY_LABELS,
     splitPersonDisplayName,
@@ -22,6 +22,29 @@ const SEARCH_PLACEHOLDERS: Record<SearchableEntityType, string> = {
     jockey: '騎手名を入力',
     trainer: '調教師名を入力',
     course: '例：東京芝1600m',
+};
+
+/** エンティティタイプ別のバッジ色とアイコン */
+const ENTITY_BADGE_STYLES: Record<SearchableEntityType, {
+    className: string;
+    Icon: typeof CircleDot;
+}> = {
+    horse: {
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+        Icon: CircleDot,
+    },
+    jockey: {
+        className: 'border-blue-200 bg-blue-50 text-blue-800',
+        Icon: UserRound,
+    },
+    trainer: {
+        className: 'border-violet-200 bg-violet-50 text-violet-800',
+        Icon: UsersRound,
+    },
+    course: {
+        className: 'border-amber-200 bg-amber-50 text-amber-800',
+        Icon: MapPinned,
+    },
 };
 
 export function DataSearchPanel({
@@ -92,7 +115,8 @@ export function DataSearchPanel({
     return (
         <section aria-labelledby={`${inputId}-heading`} className="overflow-hidden rounded-xl border border-slate-300 bg-white">
             <div className="border-b border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4">
-                <h2 id={`${inputId}-heading`} className="text-sm font-black text-slate-900">
+                <h2 id={`${inputId}-heading`} className="flex items-center gap-2 text-sm font-black text-slate-900">
+                    <Search className="h-4 w-4 text-slate-500" aria-hidden="true" />
                     {heading}
                 </h2>
             </div>
@@ -100,8 +124,8 @@ export function DataSearchPanel({
                 <label htmlFor={inputId} className="mb-1.5 block text-xs font-bold text-slate-600">
                     {entityType ? `${DATA_ENTITY_LABELS[entityType]}名で検索` : 'キーワード'}
                 </label>
-                <div className="flex min-h-12 items-center rounded-lg border border-slate-300 bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-blue-100">
-                    <Search className="ml-3 h-5 w-5 shrink-0 text-slate-500" aria-hidden="true" />
+                <div className="flex min-h-12 items-center rounded-lg border border-slate-300 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                    <Search className="ml-3 h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
                     <input
                         id={inputId}
                         type="search"
@@ -109,12 +133,12 @@ export function DataSearchPanel({
                         onChange={(event) => setQuery(event.target.value)}
                         placeholder={placeholder}
                         autoComplete="off"
-                        className="min-h-11 min-w-0 flex-1 bg-transparent px-3 py-2 text-base font-semibold text-slate-950 outline-none placeholder:font-normal placeholder:text-slate-500"
+                        className="min-h-11 min-w-0 flex-1 bg-transparent px-3 py-2 text-base font-semibold text-slate-950 outline-none placeholder:font-normal placeholder:text-slate-400"
                     />
                     {completeQuery && (
                         <Link
                             href={`/search?q=${encodeURIComponent(completeQuery)}`}
-                            className="mr-1.5 inline-flex min-h-10 shrink-0 items-center rounded-md bg-slate-950 px-3 text-sm font-bold text-white transition-colors duration-150 hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                            className="mr-1.5 inline-flex min-h-10 shrink-0 items-center rounded-md bg-blue-600 px-3 text-sm font-bold text-white transition-colors duration-150 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                         >
                             全検索
                         </Link>
@@ -129,7 +153,7 @@ export function DataSearchPanel({
                             id={`${inputId}-affiliation`}
                             value={affiliation}
                             onChange={(event) => setAffiliation(event.target.value)}
-                            className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-blue-100"
+                            className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                         >
                             <option value="">すべての所属</option>
                             {TRAINER_AFFILIATION_OPTIONS.map((option) => (
@@ -162,20 +186,23 @@ export function DataSearchPanel({
                 )}
                 {!isLoading && results.length > 0 && (
                     <div className="divide-y divide-slate-100">
-                        {results.map((item) => {
+                        {results.map((item, index) => {
                             const display = splitPersonDisplayName(
                                 item.name,
                                 item.entity_type,
                                 item.affiliation,
                             );
+                            const badge = ENTITY_BADGE_STYLES[item.entity_type as SearchableEntityType];
+                            const BadgeIcon = badge?.Icon;
                             return (
                                 <Link
                                     key={`${item.entity_type}-${item.id}`}
                                     href={item.url}
                                     prefetch={false}
-                                    className="grid min-h-14 grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                                    className={`grid min-h-14 grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${index % 2 === 1 ? 'bg-slate-50/40' : ''}`}
                                 >
-                                    <span className="inline-flex min-h-7 items-center rounded-md border border-slate-200 bg-slate-100 px-2 text-[11px] font-black text-slate-700">
+                                    <span className={`inline-flex min-h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-black ${badge?.className ?? 'border-slate-200 bg-slate-100 text-slate-700'}`}>
+                                        {BadgeIcon && <BadgeIcon className="h-3 w-3" aria-hidden="true" />}
                                         {DATA_ENTITY_LABELS[item.entity_type as SearchableEntityType] ?? 'データ'}
                                     </span>
                                     <span className="min-w-0">

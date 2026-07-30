@@ -17,26 +17,31 @@ const SURFACE_STYLES: Record<CourseSurface, {
     label: string;
     marker: string;
     link: string;
+    headerBg: string;
 }> = {
     turf: {
         label: '芝',
         marker: 'bg-emerald-600',
-        link: 'border-emerald-200 bg-emerald-50 text-emerald-950 hover:border-emerald-400 hover:bg-emerald-100',
+        headerBg: 'text-emerald-800',
+        link: 'border-emerald-200 bg-emerald-50 text-emerald-950 hover:border-emerald-400 hover:bg-emerald-100 hover:shadow-sm',
     },
     dirt: {
         label: 'ダート',
         marker: 'bg-amber-700',
-        link: 'border-amber-200 bg-amber-50 text-amber-950 hover:border-amber-400 hover:bg-amber-100',
+        headerBg: 'text-amber-900',
+        link: 'border-amber-200 bg-amber-50 text-amber-950 hover:border-amber-400 hover:bg-amber-100 hover:shadow-sm',
     },
     obstacle: {
         label: '障害',
         marker: 'bg-violet-700',
-        link: 'border-violet-200 bg-violet-50 text-violet-950 hover:border-violet-400 hover:bg-violet-100',
+        headerBg: 'text-violet-800',
+        link: 'border-violet-200 bg-violet-50 text-violet-950 hover:border-violet-400 hover:bg-violet-100 hover:shadow-sm',
     },
     other: {
         label: 'その他',
         marker: 'bg-slate-600',
-        link: 'border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400 hover:bg-slate-100',
+        headerBg: 'text-slate-700',
+        link: 'border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400 hover:bg-slate-100 hover:shadow-sm',
     },
 };
 
@@ -81,6 +86,13 @@ function buildVenueGroups(directory: DataEntityDirectory): VenueCourseGroup[] {
         ));
 }
 
+/** 競馬場合計コース数を算出 */
+function getTotalCourseCount(group: VenueCourseGroup): number {
+    let count = 0;
+    group.itemsBySurface.forEach((items) => { count += items.length; });
+    return count;
+}
+
 function VenueJumpLinks({
     title,
     groups,
@@ -97,9 +109,12 @@ function VenueJumpLinks({
                     <a
                         key={group.venueSlug}
                         href={`#venue-${group.venueSlug}`}
-                        className="inline-flex min-h-10 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                        className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-sm font-bold text-slate-800 transition-all duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     >
                         {group.venueName}
+                        <span className="text-[10px] font-bold tabular-nums text-slate-400">
+                            {getTotalCourseCount(group)}
+                        </span>
                     </a>
                 ))}
             </div>
@@ -114,11 +129,12 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
             aria-labelledby={`venue-${group.venueSlug}-heading`}
             className="scroll-mt-24 overflow-hidden rounded-xl border border-slate-200 bg-white"
         >
-            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-950 px-4 py-2.5 text-white">
+            {/* ヘッダーの色差別化：中央=bg-slate-900、地方=bg-slate-700 */}
+            <div className={`flex items-center justify-between border-b border-slate-200 px-4 py-2.5 text-white ${group.isCentral ? 'bg-slate-900' : 'bg-slate-700'}`}>
                 <h3 id={`venue-${group.venueSlug}-heading`} className="text-base font-black text-white">
                     {group.venueName}競馬場
                 </h3>
-                <span className="text-xs font-bold text-slate-300">
+                <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${group.isCentral ? 'bg-white/15 text-white' : 'bg-amber-500/20 text-amber-200'}`}>
                     {group.isCentral ? '中央' : '地方'}
                 </span>
             </div>
@@ -134,23 +150,30 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
                         >
                             <div className="flex min-h-11 items-center gap-2 self-start">
                                 <span className={`h-3 w-3 shrink-0 rounded-sm ${style.marker}`} aria-hidden="true" />
-                                <h4 className="text-sm font-black text-slate-800">{style.label}</h4>
+                                <h4 className={`text-sm font-black ${style.headerBg}`}>{style.label}</h4>
                             </div>
-                            <div className="grid grid-cols-2 gap-1.5 min-[420px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+                            <div className="grid grid-cols-3 gap-1.5 min-[420px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
                                 {items.map((course) => (
                                     <Link
                                         key={course.url}
                                         href={course.url}
                                         prefetch={false}
-                                        className={`group flex min-h-11 items-center justify-between rounded-md border px-2.5 text-sm font-black transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${style.link}`}
+                                        className={`group flex min-h-11 flex-col items-start justify-center rounded-md border px-2.5 py-1 text-sm font-black transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${style.link}`}
                                     >
-                                        <span className="font-mono tabular-nums">
-                                            {course.distance == null ? course.name : `${course.distance}m`}
+                                        <span className="flex w-full items-center justify-between">
+                                            <span className="font-mono tabular-nums">
+                                                {course.distance == null ? course.name : `${course.distance}m`}
+                                            </span>
+                                            <ChevronRight
+                                                className="h-3.5 w-3.5 opacity-40 transition-opacity duration-150 group-hover:opacity-100"
+                                                aria-hidden="true"
+                                            />
                                         </span>
-                                        <ChevronRight
-                                            className="h-3.5 w-3.5 opacity-60 transition-opacity duration-150 group-hover:opacity-100"
-                                            aria-hidden="true"
-                                        />
+                                        {course.sampleSize > 0 && (
+                                            <span className="mt-0.5 text-[10px] font-bold tabular-nums opacity-50">
+                                                {course.sampleSize.toLocaleString('ja-JP')}走
+                                            </span>
+                                        )}
                                     </Link>
                                 ))}
                             </div>
@@ -196,6 +219,22 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
                         <VenueJumpLinks title="地方競馬" groups={localGroups} />
                     </nav>
 
+                    {/* 芝/ダート/障害 凡例 */}
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-slate-600">
+                        <span className="inline-flex items-center gap-1.5">
+                            <span className="h-3 w-3 rounded-sm bg-emerald-600" aria-hidden="true" />
+                            芝
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                            <span className="h-3 w-3 rounded-sm bg-amber-700" aria-hidden="true" />
+                            ダート
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                            <span className="h-3 w-3 rounded-sm bg-violet-700" aria-hidden="true" />
+                            障害
+                        </span>
+                    </div>
+
                     {centralGroups.length > 0 && (
                         <div className="mt-5">
                             <h2 className="mb-3 border-b border-slate-300 pb-2 text-xl font-black text-slate-950">
@@ -215,7 +254,7 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
                                 <h2 className="text-xl font-black text-slate-950">地方競馬</h2>
                                 <a
                                     href="#top"
-                                    className="text-xs font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                    className="text-xs font-bold text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                 >
                                     競馬場一覧へ戻る
                                 </a>

@@ -33,24 +33,32 @@ const relatedTools = [
         label: 'AI予測成績',
         description: 'AI偏差値上位馬の勝率・3着以内率を確認',
         icon: BarChart3,
+        accent: 'bg-blue-100 text-blue-700',
+        hoverBorder: 'hover:border-l-blue-500',
     },
     {
         href: '/compare',
         label: '競走馬を比較',
         description: '2〜5頭の近走と得意条件を横並びで比較',
         icon: GitCompareArrows,
+        accent: 'bg-amber-100 text-amber-700',
+        hoverBorder: 'hover:border-l-amber-500',
     },
     {
         href: '/my-data',
         label: 'マイデータ',
         description: '保存した馬・人・コースと閲覧履歴を確認',
         icon: Bookmark,
+        accent: 'bg-emerald-100 text-emerald-700',
+        hoverBorder: 'hover:border-l-emerald-500',
     },
     {
         href: '/races/today',
         label: '本日のレース',
         description: '出走馬のAI偏差値と4つの分析を確認',
         icon: CalendarDays,
+        accent: 'bg-violet-100 text-violet-700',
+        hoverBorder: 'hover:border-l-violet-500',
     },
 ];
 
@@ -72,7 +80,7 @@ function VenueLinks({
                         <Link
                             key={slug}
                             href={`/courses#venue-${slug}`}
-                            className="inline-flex min-h-10 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                            className="inline-flex min-h-9 items-center rounded-md border border-slate-200 bg-white px-2.5 text-sm font-bold text-slate-800 transition-all duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                         >
                             {name}
                         </Link>
@@ -111,7 +119,7 @@ export default function KeibaDataPage() {
                 <DataDirectoryNav />
 
                 <header className="mt-5 border-b border-slate-200 pb-5">
-                    <p className="text-xs font-bold text-slate-500">UMA-FREE</p>
+                    <p className="text-xs font-bold text-slate-500">競馬データベース</p>
                     <h1 className="mt-1 max-w-4xl text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
                         競馬データベース
                     </h1>
@@ -136,7 +144,7 @@ export default function KeibaDataPage() {
                         </div>
                         <Link
                             href="/courses"
-                            className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             コース一覧
                             <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -174,9 +182,9 @@ export default function KeibaDataPage() {
                                     key={tool.href}
                                     href={tool.href}
                                     prefetch={tool.href === '/compare' ? false : undefined}
-                                    className="grid min-h-16 grid-cols-[36px_1fr_auto] items-center gap-3 border-b border-slate-100 px-4 py-3 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:border-r"
+                                    className={`grid min-h-16 grid-cols-[36px_1fr_auto] items-center gap-3 border-b border-l-2 border-l-transparent border-b-slate-100 px-4 py-3 transition-all duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 sm:border-r ${tool.hoverBorder}`}
                                 >
-                                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                                    <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${tool.accent}`}>
                                         <Icon className="h-4 w-4" aria-hidden="true" />
                                     </span>
                                     <span className="min-w-0">

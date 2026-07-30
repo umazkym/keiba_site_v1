@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { BreadcrumbSchema } from '@/components/StructuredData';
-import { DataDirectoryView } from '@/components/DataDirectoryView';
-import { getDataEntityDirectory } from '@/lib/api';
+import { CourseDirectoryView } from '@/components/CourseDirectoryView';
+import { getCompleteCourseDirectory } from '@/lib/api';
 
 
 export const revalidate = 3600;
@@ -14,9 +14,9 @@ export const metadata: Metadata = {
 };
 
 export default async function CoursesPage() {
-    const directory = await getDataEntityDirectory('course', {
-        limit: 100,
-        indexableOnly: true,
+    const directory = await getCompleteCourseDirectory({
+        indexableOnly: false,
+        maximumItems: 500,
     });
     return (
         <>
@@ -27,12 +27,11 @@ export default async function CoursesPage() {
                 ]}
             />
             <Breadcrumb />
-            <DataDirectoryView
-                entityType="course"
+            <CourseDirectoryView
                 directory={directory ?? {
                     entity_type: 'course',
                     total: 0,
-                    limit: 100,
+                    limit: 500,
                     offset: 0,
                     items: [],
                 }}

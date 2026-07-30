@@ -57,11 +57,16 @@ export function DataEntityDetailView({
                 </p>
                 <div className="mt-1 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                        <h1 className="text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
-                            {entity.name}
+                        <h1 className="flex flex-wrap items-center gap-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+                            <span>{entity.name}</span>
+                            {entity.affiliation && (
+                                <span className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-black text-slate-700 sm:text-sm">
+                                    {entity.affiliation}所属
+                                </span>
+                            )}
                         </h1>
                         <p className="mt-2 text-sm leading-7 text-slate-600">
-                            過去のレース結果を条件別に再集計しています。母数と更新日を合わせて確認してください。
+                            コース、距離、馬場状態、人気別の成績を、対象数と最終出走日とともに確認できます。
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">

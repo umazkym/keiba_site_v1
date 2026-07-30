@@ -38,7 +38,7 @@ class GrowthDataApiTest(unittest.TestCase):
             for index in range(1, 7)
         ]
         jockey = models.Jockey(id="jockey-1", name="確認騎手")
-        trainer = models.Trainer(id="trainer-1", name="確認調教師")
+        trainer = models.Trainer(id="trainer-1", name="愛知錦見勇夫")
         races = [
             models.Race(
                 id="202606010511",
@@ -151,6 +151,18 @@ class GrowthDataApiTest(unittest.TestCase):
         self.assertEqual(len(validated.prediction_history), 3)
 
     def test_course_detail_and_race_features_are_schema_valid(self) -> None:
+        directory = growth_crud.list_entities(
+            self.db,
+            "course",
+            limit=100,
+            indexable_only=False,
+        )
+        validated_directory = growth_schema.EntityDirectoryResponse.model_validate(directory)
+        self.assertEqual(validated_directory.items[0].venue_name, "東京")
+        self.assertEqual(validated_directory.items[0].course_type, "芝")
+        self.assertEqual(validated_directory.items[0].distance, 1600)
+        self.assertEqual(validated_directory.items[0].race_count, 2)
+
         course = growth_crud.get_course_detail(self.db, "tokyo", "turf-1600m")
         self.assertIsNotNone(course)
         validated_course = growth_schema.CourseDetailResponse.model_validate(course)
@@ -163,6 +175,26 @@ class GrowthDataApiTest(unittest.TestCase):
         self.assertEqual(len(validated_features.runners), 2)
         self.assertEqual(validated_features.runners[0].horse_overall.sample_size, 2)
         self.assertEqual(validated_features.runners[0].horse_condition.sample_size, 2)
+
+    def test_trainer_affiliation_is_separated_from_name(self) -> None:
+        detail = growth_crud.get_entity_detail(self.db, "trainer", "trainer-1")
+        self.assertIsNotNone(detail)
+        validated = growth_schema.EntityDetailResponse.model_validate(detail)
+        self.assertEqual(validated.entity.name, "錦見勇夫")
+        self.assertEqual(validated.entity.affiliation, "愛知")
+
+        search = growth_crud.search_entities(self.db, "錦見", limit=10)
+        validated_search = growth_schema.SearchResponse.model_validate(search)
+        trainer_result = next(
+            item for item in validated_search.items if item.entity_type == "trainer"
+        )
+        self.assertEqual(trainer_result.name, "錦見勇夫")
+        self.assertEqual(trainer_result.affiliation, "愛知")
+
+    def test_obihiro_course_accepts_200_metres(self) -> None:
+        parsed = growth_crud._parse_course("obihiro", "dirt-200m")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed[2], 200)
 
     def test_race_series_matches_normalized_name(self) -> None:
         series = growth_crud.get_race_series(self.db, "確認ステークス")

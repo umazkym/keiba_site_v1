@@ -65,6 +65,39 @@ _ENTITY_MIN_SAMPLE = {
     "trainer": 50,
     "course": 100,
 }
+_TRAINER_AFFILIATIONS = (
+    "栃木・宇都宮",
+    "ばんえい帯広",
+    "北海道",
+    "美浦",
+    "栗東",
+    "岩手",
+    "上山",
+    "新潟",
+    "金沢",
+    "愛知",
+    "笠松",
+    "兵庫",
+    "福山",
+    "益田",
+    "高知",
+    "中津",
+    "佐賀",
+    "荒尾",
+    "高崎",
+    "大井",
+    "川崎",
+    "船橋",
+    "浦和",
+    "門別",
+    "盛岡",
+    "水沢",
+    "名古屋",
+    "園田",
+    "姫路",
+    "帯広",
+    "外国",
+)
 _CACHE_MAX_ENTRIES = 512
 
 
@@ -163,6 +196,21 @@ def _course_label(course_type: Optional[str], distance: Optional[int]) -> str:
     return f"{type_label}{distance}m" if distance else type_label
 
 
+def _person_display_name(entity_type: str, raw_name: Optional[str]) -> Tuple[str, Optional[str]]:
+    name = (raw_name or "").strip()
+    if entity_type != "trainer":
+        return name, None
+
+    parenthesized = re.fullmatch(r"[（(]([^）)]+)[）)]\s*(.+)", name)
+    if parenthesized:
+        return parenthesized.group(2).strip(), parenthesized.group(1).strip()
+
+    for affiliation in _TRAINER_AFFILIATIONS:
+        if name.startswith(affiliation) and len(name) >= len(affiliation) + 2:
+            return name[len(affiliation):].strip(), affiliation
+    return name, None
+
+
 def _venue_slug(venue_name: str) -> str:
     normalized = (venue_name or "").strip().replace("競馬場", "")
     return _VENUE_SLUGS.get(normalized, quote(normalized.lower(), safe=""))
@@ -249,16 +297,29 @@ def _entity_summary(
     last_race_date: Optional[date],
     indexable: bool,
     url: str,
+    *,
+    affiliation: Optional[str] = None,
+    venue_name: Optional[str] = None,
+    venue_slug: Optional[str] = None,
+    course_type: Optional[str] = None,
+    distance: Optional[int] = None,
+    race_count: Optional[int] = None,
 ) -> Dict[str, Any]:
     return {
         "entity_type": entity_type,
         "id": entity_id,
         "name": name,
         "subtitle": subtitle,
+        "affiliation": affiliation,
         "url": url,
         "sample_size": int(sample_size or 0),
         "last_race_date": last_race_date,
         "indexable": indexable,
+        "venue_name": venue_name,
+        "venue_slug": venue_slug,
+        "course_type": course_type,
+        "distance": distance,
+        "race_count": race_count,
     }
 
 
@@ -309,19 +370,20 @@ def _directory_people_or_horses(
     )
     label = {"horse": "競走馬", "jockey": "騎手", "trainer": "調教師"}[entity_type]
     path = {"horse": "horses", "jockey": "jockeys/data", "trainer": "trainers"}[entity_type]
-    items = [
-        _entity_summary(
+    items = []
+    for row in rows:
+        display_name, affiliation = _person_display_name(entity_type, row[1])
+        items.append(_entity_summary(
             entity_type,
             str(row[0]),
-            row[1],
+            display_name,
             f"{label}データ・過去{int(row[2])}走",
             int(row[2]),
             row[3],
             int(row[2]) >= minimum_sample and _is_recent(row[3], dataset_last),
             f"/{path}/{quote(str(row[0]), safe='')}",
-        )
-        for row in rows
-    ]
+            affiliation=affiliation,
+        ))
     return {
         "entity_type": entity_type,
         "total": total,
@@ -382,6 +444,11 @@ def _directory_courses(
             latest,
             samples_int >= _ENTITY_MIN_SAMPLE["course"],
             f"/courses/{venue_slug}/{course_slug}",
+            venue_name=venue_name,
+            venue_slug=venue_slug,
+            course_type=_course_type_label(course_type),
+            distance=int(distance) if distance is not None else None,
+            race_count=int(races or 0),
         ))
     return {
         "entity_type": "course",
@@ -471,11 +538,13 @@ def search_entities(
         _, dataset_last = _dataset_range(db)
         for entity_id, name, samples, latest in rows:
             samples_int = int(samples or 0)
+            display_name, affiliation = _person_display_name(entity_type, name)
             items.append({
                 "entity_type": entity_type,
                 "id": str(entity_id),
-                "name": name,
+                "name": display_name,
                 "description": f"{label}データ・集計対象{samples_int}走",
+                "affiliation": affiliation,
                 "url": f"/{path}/{quote(str(entity_id), safe='')}",
                 "sample_size": samples_int,
                 "indexable": (
@@ -752,10 +821,11 @@ def get_entity_detail(
     _, dataset_last = _dataset_range(db)
     label = {"horse": "競走馬", "jockey": "騎手", "trainer": "調教師"}[entity_type]
     path = {"horse": "horses", "jockey": "jockeys/data", "trainer": "trainers"}[entity_type]
+    display_name, affiliation = _person_display_name(entity_type, entity.name)
     summary = _entity_summary(
         entity_type,
         str(entity.id),
-        entity.name,
+        display_name,
         f"{label}データ・集計対象{overall['sample_size']}走",
         overall["sample_size"],
         last_race_date,
@@ -764,6 +834,7 @@ def get_entity_detail(
             and _is_recent(last_race_date, dataset_last)
         ),
         f"/{path}/{quote(str(entity.id), safe='')}",
+        affiliation=affiliation,
     )
     result = {
         "entity": summary,
@@ -788,7 +859,8 @@ def _parse_course(venue_slug: str, course_slug: str) -> Optional[Tuple[str, Tupl
     if not venue_name or not match:
         return None
     distance = int(match.group(2))
-    if distance < 800 or distance > 5000:
+    minimum_distance = 200 if venue_slug.lower() == "obihiro" else 800
+    if distance < minimum_distance or distance > 5000:
         return None
     return venue_name, _COURSE_SLUG_TO_TYPES[match.group(1)], distance
 
@@ -894,6 +966,10 @@ def get_course_detail(
         last_date,
         overall["sample_size"] >= _ENTITY_MIN_SAMPLE["course"],
         f"/courses/{venue_slug}/{course_slug}",
+        venue_name=venue_name,
+        venue_slug=venue_slug,
+        course_type=course_type,
+        distance=distance,
     )
 
     top_jockeys = _segment_stats(
@@ -910,7 +986,10 @@ def get_course_detail(
         db,
         filters + [models.Result.trainer_id.isnot(None)],
         (models.Trainer.id, models.Trainer.name),
-        lambda values: (str(values[0]), str(values[1] or "調教師名不明")),
+        lambda values: (
+            str(values[0]),
+            _person_display_name("trainer", str(values[1] or "調教師名不明"))[0],
+        ),
         joins=((models.Trainer, models.Result.trainer_id == models.Trainer.id),),
         minimum_sample=10,
         limit=10,

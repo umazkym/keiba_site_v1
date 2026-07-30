@@ -27,10 +27,16 @@ class EntitySummary(BaseModel):
     id: str
     name: str
     subtitle: str
+    affiliation: Optional[str] = None
     url: str
     sample_size: int
     last_race_date: Optional[date] = None
     indexable: bool
+    venue_name: Optional[str] = None
+    venue_slug: Optional[str] = None
+    course_type: Optional[str] = None
+    distance: Optional[int] = None
+    race_count: Optional[int] = None
 
 
 class EntityDirectoryResponse(BaseModel):
@@ -46,6 +52,7 @@ class SearchResult(BaseModel):
     id: str
     name: str
     description: str
+    affiliation: Optional[str] = None
     url: str
     sample_size: int
     indexable: bool

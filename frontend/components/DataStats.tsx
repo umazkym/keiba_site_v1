@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { FrameNumberBadge, RaceNumberBadge } from '@/components/RaceNumberBadge';
 import type {
     DataRecentRun,
     RateSummary,
@@ -52,12 +53,14 @@ export function SegmentStatsTable({
     items,
     linkPrefix,
     minimumNotice = 2,
+    labelKind = 'plain',
 }: {
     title: string;
     description?: string;
     items: SegmentStat[];
     linkPrefix?: string;
     minimumNotice?: number;
+    labelKind?: 'plain' | 'frame';
 }) {
     if (items.length === 0) return null;
     return (
@@ -81,7 +84,12 @@ export function SegmentStatsTable({
                         {items.map((item) => (
                             <tr key={item.key}>
                                 <th className="px-4 py-3 text-left font-bold text-slate-800">
-                                    {linkPrefix ? (
+                                    {labelKind === 'frame' && Number.isInteger(Number(item.key)) ? (
+                                        <span className="inline-flex items-center gap-2">
+                                            <FrameNumberBadge frameNumber={Number(item.key)} />
+                                            <span>{item.label}</span>
+                                        </span>
+                                    ) : linkPrefix ? (
                                         <Link
                                             prefetch={false}
                                             href={`${linkPrefix}${item.key}`}
@@ -131,11 +139,12 @@ export function RecentRunsTable({
                 <h2 className="text-lg font-black text-slate-950">{title}</h2>
             </div>
             <div className="overflow-x-auto">
-                <table className="w-full min-w-[680px] text-sm">
+                <table className="w-full min-w-[740px] text-sm">
                     <thead className="bg-slate-50 text-xs text-slate-600">
                         <tr>
                             <th className="px-4 py-2 text-left">日付・レース</th>
                             {showHorse && <th className="px-3 py-2 text-left">馬</th>}
+                            <th className="px-3 py-2 text-center">馬番</th>
                             <th className="px-3 py-2 text-left">条件</th>
                             <th className="px-3 py-2 text-right">着順</th>
                             <th className="px-3 py-2 text-right">人気</th>
@@ -166,6 +175,12 @@ export function RecentRunsTable({
                                         ) : '—'}
                                     </td>
                                 )}
+                                <td className="px-3 py-3 text-center">
+                                    <RaceNumberBadge
+                                        horseNumber={run.horse_number}
+                                        frameNumber={run.waku_number}
+                                    />
+                                </td>
                                 <td className="px-3 py-3 text-slate-600">{run.course_label}</td>
                                 <td className="px-3 py-3 text-right font-mono font-black tabular-nums text-slate-950">
                                     {run.rank ?? '—'}

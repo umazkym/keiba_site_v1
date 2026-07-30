@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { BreadcrumbSchema } from '@/components/StructuredData';
 import { DataDirectoryView } from '@/components/DataDirectoryView';
@@ -38,14 +37,6 @@ export default async function JockeysPage() {
                     items: [],
                 }}
             />
-            <div className="mx-auto -mt-8 max-w-6xl px-3 pb-14 sm:px-4">
-                <Link
-                    href="/articles#jockeys"
-                    className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors duration-150 hover:text-primary"
-                >
-                    騎手記事も確認する
-                </Link>
-            </div>
         </>
     );
 }

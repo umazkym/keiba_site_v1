@@ -188,10 +188,16 @@ export interface DataEntitySummary {
     id: string;
     name: string;
     subtitle: string;
+    affiliation?: string | null;
     url: string;
     sample_size: number;
     last_race_date: string | null;
     indexable: boolean;
+    venue_name?: string | null;
+    venue_slug?: string | null;
+    course_type?: string | null;
+    distance?: number | null;
+    race_count?: number | null;
 }
 
 export interface DataEntityDirectory {
@@ -207,6 +213,7 @@ export interface DataSearchResult {
     id: string;
     name: string;
     description: string;
+    affiliation?: string | null;
     url: string;
     sample_size: number;
     indexable: boolean;

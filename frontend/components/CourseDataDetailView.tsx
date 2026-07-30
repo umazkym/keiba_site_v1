@@ -67,6 +67,7 @@ export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
                     description="同じコース条件における枠番ごとの成績です。"
                     items={detail.segments.waku ?? []}
                     minimumNotice={10}
+                    labelKind="frame"
                 />
                 <SegmentStatsTable
                     title="馬番別"

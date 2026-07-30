@@ -17,6 +17,11 @@ import {
     WeeklyGradeRace,
 } from "./types";
 import { getApiBaseUrl } from "./api-base";
+import {
+    normalizeDataEntitySummary,
+    normalizeDataSearchResult,
+    splitPersonDisplayName,
+} from "./data-directory";
 
 const API_BASE_URL = getApiBaseUrl();
 const RECENT_RACE_REVALIDATE_SECONDS = 300;
@@ -323,7 +328,15 @@ async function getDataApiJson<T>(
 }
 
 export async function getGrowthDataSummary(): Promise<GrowthDataSummary | null> {
-    return getDataApiJson<GrowthDataSummary>('/summary', { revalidate: 21600 });
+    const summary = await getDataApiJson<GrowthDataSummary>('/summary', { revalidate: 21600 });
+    if (!summary) return null;
+    return {
+        ...summary,
+        featured_courses: summary.featured_courses.map(normalizeDataEntitySummary),
+        active_horses: summary.active_horses.map(normalizeDataEntitySummary),
+        active_jockeys: summary.active_jockeys.map(normalizeDataEntitySummary),
+        active_trainers: summary.active_trainers.map(normalizeDataEntitySummary),
+    };
 }
 
 export async function getDataEntityDirectory(
@@ -335,10 +348,55 @@ export async function getDataEntityDirectory(
         offset: String(Math.max(0, options.offset ?? 0)),
         indexable_only: String(options.indexableOnly ?? false),
     });
-    return getDataApiJson<DataEntityDirectory>(
+    const directory = await getDataApiJson<DataEntityDirectory>(
         `/directories/${entityType}?${params.toString()}`,
         { revalidate: 3600 },
     );
+    if (!directory) return null;
+    return {
+        ...directory,
+        items: directory.items.map(normalizeDataEntitySummary),
+    };
+}
+
+export async function getCompleteCourseDirectory(
+    options: { indexableOnly?: boolean; maximumItems?: number } = {},
+): Promise<DataEntityDirectory | null> {
+    const pageSize = 100;
+    const maximumItems = Math.max(pageSize, Math.min(options.maximumItems ?? 500, 500));
+    const firstPage = await getDataEntityDirectory('course', {
+        limit: pageSize,
+        offset: 0,
+        indexableOnly: options.indexableOnly,
+    });
+    if (!firstPage) return null;
+
+    const cappedTotal = Math.min(firstPage.total, maximumItems);
+    const remainingOffsets: number[] = [];
+    for (let offset = pageSize; offset < cappedTotal; offset += pageSize) {
+        remainingOffsets.push(offset);
+    }
+    const remainingPages = await Promise.all(
+        remainingOffsets.map((offset) => getDataEntityDirectory('course', {
+            limit: pageSize,
+            offset,
+            indexableOnly: options.indexableOnly,
+        })),
+    );
+    const seen = new Set<string>();
+    const items = [firstPage, ...remainingPages.filter((page) => page !== null)]
+        .flatMap((page) => page?.items ?? [])
+        .filter((item) => {
+            if (seen.has(item.url)) return false;
+            seen.add(item.url);
+            return true;
+        });
+
+    return {
+        ...firstPage,
+        limit: maximumItems,
+        items,
+    };
 }
 
 export async function searchDataEntities(
@@ -351,10 +409,15 @@ export async function searchDataEntities(
         q: normalized,
         limit: String(Math.max(1, Math.min(limit, 40))),
     });
-    return getDataApiJson<DataSearchResponse>(
+    const result = await getDataApiJson<DataSearchResponse>(
         `/search?${params.toString()}`,
         { cache: 'no-store' },
     );
+    if (!result) return null;
+    return {
+        ...result,
+        items: result.items.map(normalizeDataSearchResult),
+    };
 }
 
 export async function getDataEntityDetail(
@@ -366,20 +429,34 @@ export async function getDataEntityDetail(
         jockey: 'jockeys',
         trainer: 'trainers',
     };
-    return getDataApiJson<DataEntityDetail>(
+    const detail = await getDataApiJson<DataEntityDetail>(
         `/${paths[entityType]}/${encodeURIComponent(entityId)}`,
         { revalidate: 3600 },
     );
+    if (!detail) return null;
+    return {
+        ...detail,
+        entity: normalizeDataEntitySummary(detail.entity),
+    };
 }
 
 export async function getCourseDataDetail(
     venueSlug: string,
     courseSlug: string,
 ): Promise<CourseDataDetail | null> {
-    return getDataApiJson<CourseDataDetail>(
+    const detail = await getDataApiJson<CourseDataDetail>(
         `/courses/${encodeURIComponent(venueSlug)}/${encodeURIComponent(courseSlug)}`,
         { revalidate: 21600 },
     );
+    if (!detail) return null;
+    return {
+        ...detail,
+        entity: normalizeDataEntitySummary(detail.entity),
+        top_trainers: detail.top_trainers.map((item) => ({
+            ...item,
+            label: splitPersonDisplayName(item.label, 'trainer').name,
+        })),
+    };
 }
 
 export async function getRaceSeriesData(name: string): Promise<RaceSeriesData | null> {

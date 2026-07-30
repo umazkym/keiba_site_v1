@@ -115,7 +115,7 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
             className="scroll-mt-24 overflow-hidden rounded-xl border border-slate-200 bg-white"
         >
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-950 px-4 py-2.5 text-white">
-                <h3 id={`venue-${group.venueSlug}-heading`} className="text-base font-black">
+                <h3 id={`venue-${group.venueSlug}-heading`} className="text-base font-black text-white">
                     {group.venueName}競馬場
                 </h3>
                 <span className="text-xs font-bold text-slate-300">

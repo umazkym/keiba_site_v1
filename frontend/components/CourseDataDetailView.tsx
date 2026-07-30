@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { DataDirectoryNav } from '@/components/DataDirectoryNav';
 import { DataEntityTracker } from '@/components/DataEntityTracker';
 import { DataFavoriteButton } from '@/components/DataFavoriteButton';
 import { RateSummaryStrip, RecentRunsTable, SegmentStatsTable } from '@/components/DataStats';
@@ -19,7 +20,9 @@ const BET_TYPE_LABELS: Record<string, string> = {
 export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
     const entity = detail.entity;
     return (
-        <article className="mx-auto max-w-6xl px-3 pb-14 pt-4 sm:px-4">
+        <article className="mx-auto max-w-6xl px-3 pb-14 pt-3 sm:px-4">
+            <DataDirectoryNav current="course" />
+
             <DataEntityTracker
                 entityType="course"
                 entityId={entity.id}
@@ -29,18 +32,18 @@ export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
                 sampleSize={entity.sample_size}
                 indexable={entity.indexable}
             />
-            <header className="border-b border-slate-200 pb-5">
+            <header className="mt-5 border-b border-slate-200 pb-5">
                 <p className="text-xs font-bold text-slate-500">
-                    {detail.venue_name}競馬場・コースデータ
+                    {detail.venue_name}競馬場・コースデータ詳細
                 </p>
                 <div className="mt-1 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                        <h1 className="text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
-                            {entity.name}の枠順・脚質・騎手データ
+                        <h1 className="text-2xl font-black leading-tight text-slate-950 sm:text-4xl">
+                            {entity.name}の枠順・脚質・騎手傾向
                         </h1>
-                        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
-                            過去結果を同じ競馬場・コース種別・距離で再集計しています。
-                            馬場状態、人気、枠順、位置取りの順に確認できます。
+                        <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-7">
+                            同競馬場・コース種別・距離のレース結果を集計。
+                            枠順有利不利、位置取り、人気別傾向、得意騎手・調教師を分析できます。
                         </p>
                     </div>
                     <DataFavoriteButton
@@ -51,7 +54,7 @@ export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
                         url={entity.url}
                     />
                 </div>
-                <p className="mt-3 text-xs font-semibold text-slate-500">
+                <p className="mt-3 text-xs font-bold text-slate-500">
                     集計期間 {detail.analysis_start_date ?? '—'}〜{detail.analysis_end_date ?? '—'}
                     {' / '}対象 {entity.sample_size.toLocaleString('ja-JP')}頭
                 </p>
@@ -64,7 +67,7 @@ export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
             <div className="mt-6 grid gap-5 lg:grid-cols-2">
                 <SegmentStatsTable
                     title="枠番別"
-                    description="同じコース条件における枠番ごとの成績です。"
+                    description="公式1〜8枠別の成績です。"
                     items={detail.segments.waku ?? []}
                     minimumNotice={10}
                     labelKind="frame"
@@ -77,6 +80,7 @@ export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
                 />
                 <SegmentStatsTable
                     title="馬場状態別"
+                    description="良・稍重・重・不良別の成績傾向。"
                     items={detail.segments.grounds ?? []}
                     minimumNotice={10}
                 />
@@ -92,15 +96,15 @@ export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
                     minimumNotice={10}
                 />
                 <SegmentStatsTable
-                    title="騎手別"
-                    description="10走以上の騎手を3着以内率順で表示します。"
+                    title="注目の騎手成績"
+                    description="10走以上の騎手を3着以内率順で表示。タップで騎手データへ。"
                     items={detail.top_jockeys}
                     linkPrefix="/jockeys/data/"
                     minimumNotice={10}
                 />
                 <SegmentStatsTable
-                    title="調教師別"
-                    description="10走以上の調教師を3着以内率順で表示します。"
+                    title="注目の調教師成績"
+                    description="10走以上の調教師を3着以内率順で表示。タップで調教師データへ。"
                     items={detail.top_trainers}
                     linkPrefix="/trainers/"
                     minimumNotice={10}
@@ -108,36 +112,36 @@ export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
             </div>
 
             {detail.payout_stats.length > 0 && (
-                <section className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 px-4 py-3">
-                        <h2 className="text-lg font-black text-slate-950">払戻分布</h2>
-                        <p className="mt-1 text-xs leading-6 text-slate-600">
-                            的中を示すものではなく、同条件で記録された払戻額の分布です。
+                <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+                    <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                        <h2 className="text-lg font-black text-slate-950">配当・払戻分布</h2>
+                        <p className="mt-0.5 text-xs leading-5 text-slate-600">
+                            このコース条件で記録された過去払戻額の統計値です。
                         </p>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[500px] text-sm">
                             <thead className="bg-slate-50 text-xs text-slate-600">
                                 <tr>
-                                    <th className="px-4 py-2 text-left">券種</th>
-                                    <th className="px-3 py-2 text-right">対象</th>
-                                    <th className="px-3 py-2 text-right">平均払戻</th>
-                                    <th className="px-4 py-2 text-right">最高払戻</th>
+                                    <th className="px-4 py-2 text-left font-black">券種</th>
+                                    <th className="px-3 py-2 text-right font-black">対象</th>
+                                    <th className="px-3 py-2 text-right font-black">平均払戻</th>
+                                    <th className="px-4 py-2 text-right font-black">最高払戻</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {detail.payout_stats.map((item) => (
-                                    <tr key={item.bet_type}>
+                                    <tr key={item.bet_type} className="hover:bg-slate-50/50">
                                         <th className="px-4 py-3 text-left font-bold text-slate-800">
                                             {BET_TYPE_LABELS[item.bet_type] ?? item.bet_type}
                                         </th>
                                         <td className="px-3 py-3 text-right font-mono tabular-nums text-slate-600">
                                             {item.sample_size.toLocaleString('ja-JP')}
                                         </td>
-                                        <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-800">
+                                        <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-900">
                                             {item.average_payout.toLocaleString('ja-JP')}円
                                         </td>
-                                        <td className="px-4 py-3 text-right font-mono font-bold tabular-nums text-slate-800">
+                                        <td className="px-4 py-3 text-right font-mono font-bold tabular-nums text-amber-800">
                                             {item.max_payout.toLocaleString('ja-JP')}円
                                         </td>
                                     </tr>
@@ -149,24 +153,31 @@ export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
             )}
 
             <div className="mt-6">
-                <RecentRunsTable title="最近の勝ち馬" runs={detail.recent_races} showHorse />
+                <RecentRunsTable title="このコースの最近の勝ち馬" runs={detail.recent_races} showHorse />
             </div>
 
-            <section className="mt-6 flex flex-wrap gap-2 border-t border-slate-200 pt-5">
+            <section className="mt-6 flex flex-wrap gap-3 border-t border-slate-200 pt-5">
                 <Link
                     prefetch={false}
                     href="/races/today"
-                    className="inline-flex min-h-11 items-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white transition-colors duration-150 hover:bg-primary"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-5 py-2 text-xs font-bold text-white transition-colors duration-150 hover:bg-blue-600"
                 >
-                    今日のレースを確認
+                    本日のレースと照合
                 </Link>
                 <Link
                     href={`/articles/courses/${detail.venue_slug}/${detail.entity.id.split('/')[1]}`}
-                    className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors duration-150 hover:text-primary"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-blue-300 hover:text-blue-700"
                 >
-                    関連記事
+                    関連記事を見る
+                </Link>
+                <Link
+                    href="/compare"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-5 py-2 text-xs font-bold text-amber-900 transition-colors duration-150 hover:bg-amber-100"
+                >
+                    競走馬横並び比較
                 </Link>
             </section>
         </article>
     );
 }
+

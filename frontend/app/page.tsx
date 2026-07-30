@@ -293,16 +293,16 @@ export default async function HomePage() {
                         </div>
                         <div className="grid sm:grid-cols-2">
                             {[
+                                { href: '/compare', label: '競走馬を横並び比較', note: '2〜5頭の成績・得意条件を比較' },
+                                { href: '/my-data', label: 'マイデータ', note: '保存した馬・人・コースと履歴' },
                                 { href: '/horses', label: '競走馬データ', note: '近走・得意条件・AI偏差値履歴' },
                                 { href: '/courses', label: 'コースデータ', note: '枠順・脚質・馬場・払戻分布' },
-                                { href: '/jockeys', label: '騎手データ', note: '競馬場・距離・馬場状態別' },
-                                { href: '/trainers', label: '調教師データ', note: '管理馬の条件別成績' },
                             ].map((item) => (
                                 <Link
                                     key={item.href}
                                     prefetch={false}
                                     href={item.href}
-                                    className="min-h-16 border-b border-slate-100 px-4 py-3 transition-colors duration-150 hover:bg-slate-50 sm:border-r"
+                                    className="min-h-16 border-b border-slate-100 px-4 py-3 transition-colors duration-150 hover:bg-blue-50/60 sm:border-r"
                                 >
                                     <span className="block font-black text-slate-900">{item.label}</span>
                                     <span className="mt-0.5 block text-xs text-slate-500">{item.note}</span>
@@ -312,11 +312,12 @@ export default async function HomePage() {
                         <Link
                             href="/keiba-data"
                             prefetch={false}
-                            className="flex min-h-11 items-center justify-center bg-slate-950 px-4 py-2 text-sm font-bold text-white transition-colors duration-150 hover:bg-primary"
+                            className="flex min-h-11 items-center justify-center bg-slate-950 px-4 py-2 text-sm font-bold text-white transition-colors duration-150 hover:bg-blue-600"
                         >
-                            競馬データベースを開く
+                            競馬データベース・分析ハブを開く
                         </Link>
                     </section>
+
 
                     {/* よくある質問 */}
                     <section className="faq card rounded-xl">

@@ -11,6 +11,40 @@ function formatRate(value: number): string {
     return `${value.toFixed(1)}%`;
 }
 
+/** 着順カラーバッジ取得 */
+function getRankBadge(rank: number | null | undefined) {
+    if (rank == null) return <span className="text-slate-400">—</span>;
+    if (rank === 1) {
+        return (
+            <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-md border border-amber-300 bg-amber-100 px-1.5 font-mono text-xs font-black text-amber-950 shadow-2xs">
+                1着
+            </span>
+        );
+    }
+    if (rank === 2) {
+        return (
+            <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-md border border-slate-300 bg-slate-200 px-1.5 font-mono text-xs font-black text-slate-900 shadow-2xs">
+                2着
+            </span>
+        );
+    }
+    if (rank === 3) {
+        return (
+            <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-md border border-orange-200 bg-orange-100 px-1.5 font-mono text-xs font-bold text-orange-950 shadow-2xs">
+                3着
+            </span>
+        );
+    }
+    if (rank <= 5) {
+        return (
+            <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-1.5 font-mono text-xs font-bold text-slate-800">
+                {rank}着
+            </span>
+        );
+    }
+    return <span className="font-mono text-xs text-slate-500">{rank}着</span>;
+}
+
 export function RateSummaryStrip({
     summary,
     label = '集計成績',
@@ -63,6 +97,10 @@ export function SegmentStatsTable({
     labelKind?: 'plain' | 'frame';
 }) {
     if (items.length === 0) return null;
+
+    // 勝率の最大値を特定してハイライト
+    const maxWinRate = Math.max(...items.map((i) => i.win_rate));
+
     return (
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-4 py-3">
@@ -81,38 +119,42 @@ export function SegmentStatsTable({
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {items.map((item) => (
-                            <tr key={item.key}>
-                                <th className="px-4 py-3 text-left font-bold text-slate-800">
-                                    {labelKind === 'frame' && Number.isInteger(Number(item.key)) ? (
-                                        <span className="inline-flex items-center gap-2">
-                                            <FrameNumberBadge frameNumber={Number(item.key)} />
-                                            <span>{item.label}</span>
-                                        </span>
-                                    ) : linkPrefix ? (
-                                        <Link
-                                            prefetch={false}
-                                            href={`${linkPrefix}${item.key}`}
-                                            className="transition-colors duration-150 hover:text-primary"
-                                        >
-                                            {item.label}
-                                        </Link>
-                                    ) : item.label}
-                                </th>
-                                <td className="px-3 py-3 text-right font-mono tabular-nums text-slate-600">
-                                    {item.sample_size.toLocaleString('ja-JP')}
-                                </td>
-                                <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-800">
-                                    {formatRate(item.win_rate)}
-                                </td>
-                                <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-800">
-                                    {formatRate(item.place_rate)}
-                                </td>
-                                <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-600">
-                                    {item.average_popularity == null ? '—' : item.average_popularity.toFixed(1)}
-                                </td>
-                            </tr>
-                        ))}
+                        {items.map((item) => {
+                            const isTopWinRate = maxWinRate > 0 && item.win_rate === maxWinRate && item.sample_size >= 3;
+                            return (
+                                <tr key={item.key} className={isTopWinRate ? 'bg-amber-50/40' : undefined}>
+                                    <th className="px-4 py-3 text-left font-bold text-slate-800">
+                                        {labelKind === 'frame' && Number.isInteger(Number(item.key)) ? (
+                                            <span className="inline-flex items-center gap-2">
+                                                <FrameNumberBadge frameNumber={Number(item.key)} />
+                                                <span>{item.label}</span>
+                                            </span>
+                                        ) : linkPrefix ? (
+                                            <Link
+                                                prefetch={false}
+                                                href={`${linkPrefix}${item.key}`}
+                                                className="transition-colors duration-150 hover:text-primary"
+                                            >
+                                                {item.label}
+                                            </Link>
+                                        ) : item.label}
+                                    </th>
+                                    <td className="px-3 py-3 text-right font-mono tabular-nums text-slate-600">
+                                        {item.sample_size.toLocaleString('ja-JP')}
+                                    </td>
+                                    <td className={`px-3 py-3 text-right font-mono font-bold tabular-nums ${isTopWinRate ? 'text-amber-800 font-black' : 'text-slate-800'}`}>
+                                        {formatRate(item.win_rate)}
+                                        {isTopWinRate && <span className="ml-1 text-[10px]" title="最高勝率">👑</span>}
+                                    </td>
+                                    <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-800">
+                                        {formatRate(item.place_rate)}
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-600">
+                                        {item.average_popularity == null ? '—' : item.average_popularity.toFixed(1)}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -143,33 +185,35 @@ export function RecentRunsTable({
                     <thead className="bg-slate-50 text-xs text-slate-600">
                         <tr>
                             <th className="px-4 py-2 text-left">日付・レース</th>
-                            {showHorse && <th className="px-3 py-2 text-left">馬</th>}
-                            <th className="px-3 py-2 text-center">馬番</th>
-                            <th className="px-3 py-2 text-left">条件</th>
-                            <th className="px-3 py-2 text-right">着順</th>
+                            {showHorse && <th className="px-3 py-2 text-left">競走馬</th>}
+                            <th className="px-3 py-2 text-center">枠・馬番</th>
+                            <th className="px-3 py-2 text-left">コース・条件</th>
+                            <th className="px-3 py-2 text-center">着順</th>
                             <th className="px-3 py-2 text-right">人気</th>
                             <th className="px-4 py-2 text-right">馬体重</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {runs.map((run) => (
-                            <tr key={`${run.race_id}-${run.horse_id ?? ''}`}>
+                            <tr key={`${run.race_id}-${run.horse_id ?? ''}`} className="hover:bg-slate-50/60">
                                 <td className="px-4 py-3">
                                     <Link
                                         prefetch={false}
                                         href={run.url}
-                                        className="font-bold text-slate-800 transition-colors duration-150 hover:text-primary"
+                                        className="font-bold text-slate-900 transition-colors duration-150 hover:text-blue-600"
                                     >
-                                        <span className="block text-xs text-slate-500">
+                                        <span className="block text-xs font-semibold text-slate-500">
                                             {run.race_date} {run.venue_name}{run.race_number}R
                                         </span>
-                                        <span className="mt-0.5 block max-w-[240px] truncate">{run.race_name}</span>
+                                        <span className="mt-0.5 block max-w-[240px] truncate text-sm font-black" title={run.race_name}>
+                                            {run.race_name}
+                                        </span>
                                     </Link>
                                 </td>
                                 {showHorse && (
-                                    <td className="px-3 py-3 font-bold text-slate-700">
+                                    <td className="px-3 py-3 font-bold text-slate-800 max-w-[160px] truncate">
                                         {run.horse_id ? (
-                                            <Link prefetch={false} href={`/horses/${encodeURIComponent(run.horse_id)}`} className="hover:text-primary">
+                                            <Link prefetch={false} href={`/horses/${encodeURIComponent(run.horse_id)}`} className="hover:text-blue-600" title={run.horse_name ?? ''}>
                                                 {run.horse_name ?? '—'}
                                             </Link>
                                         ) : '—'}
@@ -181,19 +225,22 @@ export function RecentRunsTable({
                                         frameNumber={run.waku_number}
                                     />
                                 </td>
-                                <td className="px-3 py-3 text-slate-600">{run.course_label}</td>
-                                <td className="px-3 py-3 text-right font-mono font-black tabular-nums text-slate-950">
-                                    {run.rank ?? '—'}
+                                <td className="px-3 py-3 text-xs font-bold text-slate-700 max-w-[180px] truncate" title={run.course_label}>
+                                    {run.course_label}
+                                </td>
+                                <td className="px-3 py-3 text-center">
+                                    {getRankBadge(run.rank)}
                                 </td>
                                 <td className="px-3 py-3 text-right font-mono tabular-nums text-slate-600">
-                                    {run.popularity ?? '—'}
+                                    {run.popularity == null ? '—' : `${run.popularity}人気`}
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-600">
+                                <td className="px-4 py-3 text-right font-mono tabular-nums text-xs text-slate-600">
                                     {run.horse_weight == null
                                         ? '—'
                                         : `${run.horse_weight}kg${run.horse_weight_diff == null ? '' : ` (${run.horse_weight_diff >= 0 ? '+' : ''}${run.horse_weight_diff})`}`}
                                 </td>
                             </tr>
+
                         ))}
                     </tbody>
                 </table>
@@ -201,3 +248,5 @@ export function RecentRunsTable({
         </section>
     );
 }
+
+

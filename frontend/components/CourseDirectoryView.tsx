@@ -196,47 +196,46 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
 
             <header className="mt-5 border-b border-slate-200 pb-5">
                 <p className="text-xs font-bold text-slate-500">競馬データベース</p>
-                <h1 className="mt-1 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
-                    競馬場・コースデータ
+                <h1 className="mt-1 text-2xl font-black leading-tight text-slate-950 sm:text-4xl">
+                    競馬場・コース別データ一覧
                 </h1>
-                <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
-                    競馬場を選び、芝・ダート・障害ごとに距離を確認できます。
-                    各距離から枠番、馬番、脚質、騎手、調教師の条件別成績へ進めます。
+                <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-7">
+                    中央競馬・地方競馬の全競馬場と各コース・距離（芝・ダート・障害）ごとに、枠順・脚質・馬場傾向や騎手・調教師成績を無料で確認できます。
                 </p>
             </header>
 
             {groups.length === 0 ? (
-                <section className="mt-5 rounded-xl border border-slate-200 bg-white p-5">
+                <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
                     <h2 className="font-black text-slate-900">コースデータを取得できませんでした</h2>
-                    <p className="mt-2 text-sm leading-7 text-slate-600">
-                        時間を置いて再度お試しください。レース検索はサイト内検索から利用できます。
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                        時間を置いて再度お試しください。
                     </p>
                 </section>
             ) : (
                 <>
-                    <nav aria-label="競馬場へ移動" className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-3 sm:px-4">
+                    <nav aria-label="競馬場へ移動" className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-1 sm:px-4 shadow-xs">
                         <VenueJumpLinks title="中央競馬" groups={centralGroups} />
                         <VenueJumpLinks title="地方競馬" groups={localGroups} />
                     </nav>
 
                     {/* 芝/ダート/障害 凡例 */}
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-slate-600">
+                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 px-1 text-xs font-bold text-slate-600">
                         <span className="inline-flex items-center gap-1.5">
-                            <span className="h-3 w-3 rounded-sm bg-emerald-600" aria-hidden="true" />
-                            芝
+                            <span className="h-3 w-3 rounded-xs bg-emerald-600" aria-hidden="true" />
+                            芝コース
                         </span>
                         <span className="inline-flex items-center gap-1.5">
-                            <span className="h-3 w-3 rounded-sm bg-amber-700" aria-hidden="true" />
-                            ダート
+                            <span className="h-3 w-3 rounded-xs bg-amber-700" aria-hidden="true" />
+                            ダートコース
                         </span>
                         <span className="inline-flex items-center gap-1.5">
-                            <span className="h-3 w-3 rounded-sm bg-violet-700" aria-hidden="true" />
-                            障害
+                            <span className="h-3 w-3 rounded-xs bg-violet-700" aria-hidden="true" />
+                            障害コース
                         </span>
                     </div>
 
                     {centralGroups.length > 0 && (
-                        <div className="mt-5">
+                        <div className="mt-6">
                             <h2 className="mb-3 border-b border-slate-300 pb-2 text-xl font-black text-slate-950">
                                 中央競馬
                             </h2>
@@ -271,3 +270,4 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
         </main>
     );
 }
+

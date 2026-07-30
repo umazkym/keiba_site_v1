@@ -7,20 +7,20 @@ import { CourseDataDetailView } from '@/components/CourseDataDetailView';
 import { EntityArticleSection } from '@/components/EntityArticleSection';
 import { getCourseDataDetail } from '@/lib/api';
 import { getArticlesByCourseEntity } from '@/lib/articles';
-import { courseProfiles, getCourseProfile } from '@/lib/growth-content';
+import { getCourseProfile } from '@/lib/growth-content';
 
 
 export const revalidate = 21600;
+export const dynamicParams = true;
 
 type Props = {
     params: { venue: string; course: string };
 };
 
 export function generateStaticParams() {
-    return courseProfiles.map((profile) => ({
-        venue: profile.venue,
-        course: profile.course,
-    }));
+    // DB集計APIをVercelビルド中に19コース分同時実行しない。
+    // 初回アクセス時に生成し、以後は6時間ISRキャッシュする。
+    return [];
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

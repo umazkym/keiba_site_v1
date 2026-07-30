@@ -21,6 +21,9 @@ import { getApiBaseUrl } from "./api-base";
 const API_BASE_URL = getApiBaseUrl();
 const RECENT_RACE_REVALIDATE_SECONDS = 300;
 const DEFAULT_RACE_REVALIDATE_SECONDS = 3600;
+const IS_NEXT_PRODUCTION_BUILD = process.env.NEXT_PHASE === 'phase-production-build';
+const BUILD_FETCH_TIMEOUT_MS = 8000;
+const RUNTIME_FETCH_TIMEOUT_MS = 20000;
 
 function formatJstDate(date: Date): string {
     const parts = new Intl.DateTimeFormat('ja-JP', {
@@ -84,12 +87,20 @@ function getArticlePreviewRevalidate(date: string): number {
 async function fetchWithRetry(
     url: string,
     options: RequestInit & { next?: { revalidate?: number } },
-    retries: number = 1,
-    delayMs: number = 3000
+    retries: number = IS_NEXT_PRODUCTION_BUILD ? 0 : 1,
+    delayMs: number = 3000,
+    timeoutMs: number = IS_NEXT_PRODUCTION_BUILD
+        ? BUILD_FETCH_TIMEOUT_MS
+        : RUNTIME_FETCH_TIMEOUT_MS,
 ): Promise<Response> {
     for (let attempt = 0; attempt <= retries; attempt++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         try {
-            const res = await fetch(url, options);
+            const res = await fetch(url, {
+                ...options,
+                signal: options.signal ?? controller.signal,
+            });
             // 5xx エラーの場合はリトライ対象（コールドスタートでの一時的な失敗）
             if (res.status >= 500 && attempt < retries) {
                 console.warn(`[fetchWithRetry] ${url} returned ${res.status}, retrying in ${delayMs}ms... (attempt ${attempt + 1}/${retries + 1})`);
@@ -99,15 +110,17 @@ async function fetchWithRetry(
             return res;
         } catch (error) {
             if (attempt < retries) {
-                console.warn(`[fetchWithRetry] ${url} fetch failed, retrying in ${delayMs}ms... (attempt ${attempt + 1}/${retries + 1})`);
+                const reason = error instanceof Error ? error.name : 'UnknownError';
+                console.warn(`[fetchWithRetry] ${url} failed with ${reason}, retrying in ${delayMs}ms... (attempt ${attempt + 1}/${retries + 1})`);
                 await new Promise(resolve => setTimeout(resolve, delayMs));
                 continue;
             }
             throw error;
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
-    // フォールバック（到達しないはずだが型安全のため）
-    return fetch(url, options);
+    throw new Error(`Failed to fetch ${url}`);
 }
 
 export async function getPredictionsForDate(

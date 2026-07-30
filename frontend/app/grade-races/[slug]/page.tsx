@@ -6,15 +6,19 @@ import { BreadcrumbSchema } from "@/components/StructuredData";
 import { EntityArticleSection } from "@/components/EntityArticleSection";
 import { RaceSeriesPanel } from "@/components/RaceSeriesPanel";
 import { getRaceSeriesData } from "@/lib/api";
-import { getGradeRaceProfile, gradeRaceProfiles } from "@/lib/grade-race-content";
+import { getGradeRaceProfile } from "@/lib/grade-race-content";
 import { getArticlesByGradeRaceEntity } from "@/lib/articles";
 
 type Props = {
   params: { slug: string };
 };
 
+export const revalidate = 21600;
+export const dynamicParams = true;
+
 export function generateStaticParams() {
-  return gradeRaceProfiles.map((race) => ({ slug: race.slug }));
+  // 年度別DB集計は初回アクセス時に生成し、以後は6時間ISRキャッシュする。
+  return [];
 }
 
 export function generateMetadata({ params }: Props): Metadata {

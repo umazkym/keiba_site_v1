@@ -3,6 +3,10 @@ import { getDataSitemapEntries } from '@/lib/api';
 
 const BASE_URL = 'https://uma-free.com';
 
+// 数千URLのDB集計をVercelビルド時に実行しない。
+// 応答は下部のs-maxageでCDNキャッシュする。
+export const dynamic = 'force-dynamic';
+
 function escapeXml(value: string) {
   return value.replace(/[<>&'"]/g, (char) => {
     switch (char) {

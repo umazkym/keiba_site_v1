@@ -181,7 +181,8 @@ export default function HorseCompareClient() {
 
             <header className="mt-5 border-b border-slate-200 pb-5">
                 <p className="text-xs font-bold text-slate-500">競馬データベース</p>
-                <h1 className="mt-1 text-2xl font-black text-slate-950 sm:text-4xl">競走馬を横並びで比較</h1>
+                <h1 className="mt-1 text-2xl font-black text-slate-950 sm:text-4xl">競走馬の成績比較</h1>
+
                 <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-7">
                     最大5頭まで、過去成績、勝率、3着以内率、得意コース、AI偏差値履歴を同じ基準で確認できます。
                 </p>
@@ -296,7 +297,8 @@ export default function HorseCompareClient() {
                         </div>
                         <div className="rounded-xl border border-slate-200 bg-white p-4">
                             <span className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500 font-mono text-xs font-black text-white">3</span>
-                            <p className="mt-2 text-sm font-black text-slate-900">同じ指標で横並び比較</p>
+                            <p className="mt-2 text-sm font-black text-slate-900">同じ基準で成績比較</p>
+
                             <p className="mt-1 text-xs leading-relaxed text-slate-500">過去成績、勝率、得意コース、AI偏差値を一目で判定。</p>
                         </div>
                     </div>

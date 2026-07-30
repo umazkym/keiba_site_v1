@@ -60,7 +60,8 @@ function buildSearchIndex(): SearchIndexItem[] {
         {
             type: 'page',
             title: '競走馬比較',
-            description: '2〜5頭の近走、条件別成績、AI偏差値履歴を横並びで比較します。',
+            description: '2〜5頭の近走、条件別成績、AI偏差値履歴を比較します。',
+
             url: '/compare',
             keywords: ['馬比較', '競走馬', '近走', '比較'],
         },

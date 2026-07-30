@@ -293,7 +293,8 @@ export default async function HomePage() {
                         </div>
                         <div className="grid sm:grid-cols-2">
                             {[
-                                { href: '/compare', label: '競走馬を横並び比較', note: '2〜5頭の成績・得意条件を比較' },
+                                { href: '/compare', label: '競走馬の成績比較', note: '2〜5頭の成績・得意条件を比較' },
+
                                 { href: '/my-data', label: 'マイデータ', note: '保存した馬・人・コースと履歴' },
                                 { href: '/horses', label: '競走馬データ', note: '近走・得意条件・AI偏差値履歴' },
                                 { href: '/courses', label: 'コースデータ', note: '枠順・脚質・馬場・払戻分布' },

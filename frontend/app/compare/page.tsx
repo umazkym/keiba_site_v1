@@ -6,7 +6,8 @@ import HorseCompareClient from './HorseCompareClient';
 
 export const metadata: Metadata = {
     title: '競走馬比較｜近走・得意条件・AI偏差値',
-    description: '2〜5頭の競走馬について、過去成績、勝率、3着以内率、得意コース、AI偏差値履歴を横並びで比較できます。',
+    description: '最大5頭の競走馬について、過去成績、勝率、3着以内率、得意コース、AI偏差値履歴を同じ基準で比較できます。',
+
     robots: { index: false, follow: true },
     alternates: { canonical: '/compare' },
 };

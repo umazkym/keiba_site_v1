@@ -41,11 +41,10 @@ const popularSearchTags = [
 const featureCards = [
     {
         href: '/compare',
-        title: '競走馬を横並びで比較',
-        description: '2〜5頭の近走、勝率、3着内率、得意コース、AI偏差値履歴を同じ基準でスッキリ比較。',
+        title: '競走馬の成績比較',
+        description: '2〜5頭の近走成績、勝率、3着内率、得意コース、AI偏差値履歴を同じ基準でスッキリ比較。',
         icon: GitCompareArrows,
-        badge: '自分だけの比較',
-        accentBg: 'bg-amber-50 border-amber-200 text-amber-900 hover:border-amber-400',
+        accentBg: 'bg-amber-50/70 border-amber-200 text-amber-950 hover:border-amber-400',
         iconBg: 'bg-amber-500 text-white',
     },
     {
@@ -53,8 +52,7 @@ const featureCards = [
         title: 'マイデータで保存・出走チェック',
         description: '気になる馬・騎手・コースをお気に入り保存。本日出走する馬のアラート機能も搭載。',
         icon: Bookmark,
-        badge: 'お気に入り管理',
-        accentBg: 'bg-emerald-50 border-emerald-200 text-emerald-900 hover:border-emerald-400',
+        accentBg: 'bg-emerald-50/70 border-emerald-200 text-emerald-950 hover:border-emerald-400',
         iconBg: 'bg-emerald-600 text-white',
     },
     {
@@ -62,8 +60,7 @@ const featureCards = [
         title: '本日の開催レースと照合',
         description: '本日開催されるレース出走馬のAI偏差値、対戦成績、展開脚質、枠順有利不利を確認。',
         icon: CalendarDays,
-        badge: '本日開催',
-        accentBg: 'bg-violet-50 border-violet-200 text-violet-900 hover:border-violet-400',
+        accentBg: 'bg-violet-50/70 border-violet-200 text-violet-950 hover:border-violet-400',
         iconBg: 'bg-violet-600 text-white',
     },
 ];
@@ -129,13 +126,13 @@ export default function KeibaDataPage() {
                     <div className="relative z-10 max-w-3xl">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/20 px-3 py-1 text-xs font-black text-blue-300 backdrop-blur-xs border border-blue-400/30">
                             <Sparkles className="h-3.5 w-3.5 text-blue-400" aria-hidden="true" />
-                            データ分析 & 比較ハブ
+                            競馬データ・分析ハブ
                         </span>
                         <h1 className="mt-3 text-2xl font-black leading-snug tracking-tight sm:text-4xl">
                             競馬データを自由自在に比較・分析
                         </h1>
                         <p className="mt-2 text-xs leading-relaxed text-slate-300 sm:text-sm sm:leading-6">
-                            競走馬・騎手・調教師の過去成績から、コース別（芝・ダート・距離）の枠順・脚質傾向まで。気になる馬を2〜5頭選んで横並び比較したり、マイデータでお気に入り管理できます。
+                            競走馬・騎手・調教師の過去成績から、コース別（芝・ダート・距離）の枠順・脚質傾向まで。気になる馬を2〜5頭選んで成績比較したり、マイデータでお気に入り管理できます。
                         </p>
                     </div>
                 </header>
@@ -165,7 +162,7 @@ export default function KeibaDataPage() {
                     <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
                         <Compass className="h-5 w-5 text-blue-600" aria-hidden="true" />
                         <h2 id="core-features-heading" className="text-xl font-black text-slate-950">
-                            おすすめ分析ツール
+                            分析・比較機能
                         </h2>
                     </div>
                     <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -175,15 +172,12 @@ export default function KeibaDataPage() {
                                 <Link
                                     key={card.href}
                                     href={card.href}
-                                    className={`group flex flex-col justify-between rounded-xl border p-4 transition-all duration-200 hover:shadow-md ${card.accentBg}`}
+                                    className={`group flex flex-col justify-between rounded-xl border p-4.5 transition-all duration-200 hover:shadow-md ${card.accentBg}`}
                                 >
                                     <div>
                                         <div className="flex items-center justify-between">
                                             <span className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold shadow-xs ${card.iconBg}`}>
                                                 <Icon className="h-5 w-5" aria-hidden="true" />
-                                            </span>
-                                            <span className="rounded-full bg-white/80 px-2.5 py-0.5 text-[11px] font-black text-slate-700 border border-slate-200">
-                                                {card.badge}
                                             </span>
                                         </div>
                                         <h3 className="mt-4 text-base font-black text-slate-950 group-hover:text-blue-700">
@@ -194,7 +188,7 @@ export default function KeibaDataPage() {
                                         </p>
                                     </div>
                                     <div className="mt-4 flex items-center justify-end text-xs font-black text-blue-600 group-hover:underline">
-                                        使ってみる
+                                        開く
                                         <ChevronRight className="h-4 w-4" aria-hidden="true" />
                                     </div>
                                 </Link>
@@ -202,6 +196,7 @@ export default function KeibaDataPage() {
                         })}
                     </div>
                 </section>
+
 
                 {/* 競馬場コース選択 */}
                 <section className="mt-8" aria-labelledby="course-search-heading">

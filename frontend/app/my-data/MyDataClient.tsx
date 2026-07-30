@@ -372,7 +372,8 @@ export default function MyDataClient() {
                 </div>
                 {comparison.length < 2 ? (
                     <p className="px-4 py-5 text-xs leading-6 text-slate-600">
-                        2頭以上の馬を選択すると、横並びで勝率・得意コース・AI偏差値を比較できます。
+                        2頭以上の馬を選択すると、勝率・得意コース・AI偏差値をまとめて比較できます。
+
                     </p>
                 ) : (
                     <div className="p-4">

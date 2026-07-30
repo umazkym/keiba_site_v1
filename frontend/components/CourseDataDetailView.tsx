@@ -174,7 +174,8 @@ export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
                     href="/compare"
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-5 py-2 text-xs font-bold text-amber-900 transition-colors duration-150 hover:bg-amber-100"
                 >
-                    競走馬横並び比較
+                    競走馬の成績比較
+
                 </Link>
             </section>
         </article>

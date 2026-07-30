@@ -26,9 +26,16 @@ import {
 const API_BASE_URL = getApiBaseUrl();
 const RECENT_RACE_REVALIDATE_SECONDS = 300;
 const DEFAULT_RACE_REVALIDATE_SECONDS = 3600;
-const IS_NEXT_PRODUCTION_BUILD = process.env.NEXT_PHASE === 'phase-production-build';
 const BUILD_FETCH_TIMEOUT_MS = 8000;
 const RUNTIME_FETCH_TIMEOUT_MS = 20000;
+
+function isNextProductionBuild(): boolean {
+    return (
+        process.env.NEXT_PHASE === 'phase-production-build' ||
+        process.env.IS_NEXT_PRODUCTION_BUILD === 'true' ||
+        process.env.NEXT_PHASE?.includes('build') === true
+    );
+}
 
 function formatJstDate(date: Date): string {
     const parts = new Intl.DateTimeFormat('ja-JP', {
@@ -48,7 +55,7 @@ function formatJstDate(date: Date): string {
 function addDays(dateString: string, days: number): string {
     const [year, month, day] = dateString.split('-').map(Number);
     const date = new Date(Date.UTC(year, month - 1, day + days));
-    return date.toISOString().slice(0, 10);
+    return formatJstDate(date);
 }
 
 function getRaceDataRevalidate(date: string): number {
@@ -92,31 +99,35 @@ function getArticlePreviewRevalidate(date: string): number {
 async function fetchWithRetry(
     url: string,
     options: RequestInit & { next?: { revalidate?: number } },
-    retries: number = IS_NEXT_PRODUCTION_BUILD ? 0 : 1,
+    retries?: number,
     delayMs: number = 3000,
-    timeoutMs: number = IS_NEXT_PRODUCTION_BUILD
-        ? BUILD_FETCH_TIMEOUT_MS
-        : RUNTIME_FETCH_TIMEOUT_MS,
+    timeoutMs?: number,
 ): Promise<Response> {
-    for (let attempt = 0; attempt <= retries; attempt++) {
+    const isBuild = isNextProductionBuild();
+    const effectiveRetries = retries ?? (isBuild ? 0 : 1);
+    const effectiveTimeoutMs = timeoutMs ?? (isBuild
+        ? BUILD_FETCH_TIMEOUT_MS
+        : RUNTIME_FETCH_TIMEOUT_MS);
+
+    for (let attempt = 0; attempt <= effectiveRetries; attempt++) {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        const timeoutId = setTimeout(() => controller.abort(), effectiveTimeoutMs);
         try {
             const res = await fetch(url, {
                 ...options,
                 signal: options.signal ?? controller.signal,
             });
             // 5xx エラーの場合はリトライ対象（コールドスタートでの一時的な失敗）
-            if (res.status >= 500 && attempt < retries) {
-                console.warn(`[fetchWithRetry] ${url} returned ${res.status}, retrying in ${delayMs}ms... (attempt ${attempt + 1}/${retries + 1})`);
+            if (res.status >= 500 && attempt < effectiveRetries) {
+                console.warn(`[fetchWithRetry] ${url} returned ${res.status}, retrying in ${delayMs}ms... (attempt ${attempt + 1}/${effectiveRetries + 1})`);
                 await new Promise(resolve => setTimeout(resolve, delayMs));
                 continue;
             }
             return res;
         } catch (error) {
-            if (attempt < retries) {
+            if (attempt < effectiveRetries) {
                 const reason = error instanceof Error ? error.name : 'UnknownError';
-                console.warn(`[fetchWithRetry] ${url} failed with ${reason}, retrying in ${delayMs}ms... (attempt ${attempt + 1}/${retries + 1})`);
+                console.warn(`[fetchWithRetry] ${url} failed with ${reason}, retrying in ${delayMs}ms... (attempt ${attempt + 1}/${effectiveRetries + 1})`);
                 await new Promise(resolve => setTimeout(resolve, delayMs));
                 continue;
             }

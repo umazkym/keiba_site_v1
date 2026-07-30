@@ -84,6 +84,23 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['@/components', '@/lib'],
   },
+  // Vercelビルドマシンでの静的生成ワーカータイムアウトを 60s -> 180s に延長
+  staticPageGenerationTimeout: 180,
 };
 
-export default nextConfig;
+export default (phase) => {
+  const isBuild = phase === 'phase-production-build';
+  process.env.NEXT_PHASE = phase;
+  if (isBuild) {
+    process.env.IS_NEXT_PRODUCTION_BUILD = 'true';
+  }
+  return {
+    ...nextConfig,
+    env: {
+      ...nextConfig.env,
+      NEXT_PHASE: phase,
+      IS_NEXT_PRODUCTION_BUILD: isBuild ? 'true' : 'false',
+    },
+  };
+};
+

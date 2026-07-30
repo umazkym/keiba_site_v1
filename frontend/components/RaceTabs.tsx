@@ -5,6 +5,8 @@ import dynamic from 'next/dynamic';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { PredictionTable } from '@/components/PredictionTable';
+import { RaceConditionComparison } from '@/components/RaceConditionComparison';
+import { RaceHorseActions } from '@/components/RaceHorseActions';
 import { RaceAnalysis } from '@/components/RaceAnalysis';
 import { VenueRaces, RaceDayPrediction } from '@/lib/types';
 import { RaceSelector, type RaceSelectorLink } from './RaceSelector';
@@ -420,6 +422,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                                     <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-slate-200 bg-slate-100 px-1.5 text-slate-600 sm:h-6 sm:px-2">☆：星</span>
                                 </div>
                                 <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
+                                <RaceHorseActions predictions={activeRace.predictions} />
                             </div>
                         </div>
 
@@ -431,6 +434,8 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                             variant="compact"
                             className="my-1 sm:my-1.5"
                         />
+
+                        <RaceConditionComparison raceId={activeRace.id} />
 
                         <div id="race-detail-data-section">
                         {/* プレミアム・ロック切り替え部分 */}

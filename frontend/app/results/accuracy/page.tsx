@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: "AI予想の成績",
   description:
     "UMA-FREEのAI偏差値1位の勝率・3着以内率を、期間別・条件別に集計。成績が出やすい条件と慎重に見たい条件を同時に確認できます。",
-  robots: { index: false, follow: true },
+  robots: { index: true, follow: true },
   alternates: {
     canonical: "/results/accuracy",
   },
@@ -382,6 +382,8 @@ export default async function AccuracyPage({
             <section className="mt-8 grid gap-4 lg:grid-cols-2">
               <ConditionPanel title="コース種別の傾向" items={summary.by_course_type} />
               <ConditionPanel title="距離別の傾向" items={summary.by_distance} />
+              <ConditionPanel title="競馬場別の傾向" items={summary.by_venue ?? []} />
+              <ConditionPanel title="AI偏差値帯別の傾向" items={summary.by_score_band ?? []} />
             </section>
 
             <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50/70 p-5 shadow-soft sm:p-6">

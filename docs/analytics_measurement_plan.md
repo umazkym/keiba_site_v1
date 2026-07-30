@@ -33,6 +33,10 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `web_vital` | 固定20%サンプルのセッションでWeb Vitalsを計測 | `metric_name`, `metric_id`, `value`, `rating`, `navigation_type`, `page_path`, `page_type`, `release_id` | リリース・ページ種別ごとのLCP、INP、CLS |
 | `adsense_offerwall_view` | AdSense Offerwallが非表示から表示へ変わった時に1回 | `path_group`, `page_path`, `page_type` | Offerwall到達後のレース操作・離脱との比較 |
 | `ad_experiment_exposure` | サイト側で広告実験のバリエーションが確定 | `experiment_id`, `variant`, `slot_id`, `page_type` | セッション固定広告実験の母数 |
+| `data_entity_view` | 馬・騎手・調教師・コース・重賞の詳細データが表示 | `entity_type`, `entity_id`, `sample_size`, `indexable` | データ対象別の閲覧数と十分な母数を持つページの利用状況 |
+| `data_search` | 横断検索または比較画面の検索結果を表示 | `query_length`, `result_count`, `search_surface` | 検索需要、0件率、検索面ごとの回遊 |
+| `data_favorite` | ブラウザ内のマイデータへ対象を追加・解除 | `action`, `entity_type`, `entity_id` | 保存対象と再訪につながる機能の利用状況 |
+| `horse_compare` | 比較対象の追加・解除・表示・全解除 | `action`, `horse_count` | 複数馬比較の利用数と比較頭数 |
 
 ## GA4初期化順
 
@@ -86,6 +90,19 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 5. `prediction_table_view`
 6. `race_navigation`
 7. 次レースの`race_view`
+
+### 無料データベースから当日レース
+
+1. `/keiba-data`またはディレクトリの実`page_view`
+2. `data_search`
+3. 詳細ページの実`page_view`
+4. `data_entity_view`
+5. `data_favorite`または`horse_compare`
+6. 出走予定リンクからレースページの実`page_view`
+7. `race_view`
+8. `prediction_table_view`
+
+詳細データ内のタブ切り替え、保存、比較操作では仮想`page_view`を送らない。検索文字列や馬名などの自由入力値はGA4へ送らず、検索文字数と結果件数だけを送る。保存内容はブラウザの`localStorage`に保持し、GA4には対象IDと操作種別だけを送る。
 
 ### YouTubeからレース
 

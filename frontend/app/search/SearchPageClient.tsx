@@ -3,6 +3,8 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { sendDataSearchEvent } from '@/lib/analytics';
+import type { DataSearchResponse } from '@/lib/types';
 
 interface SearchResult {
     type: SearchIndexItem['type'];
@@ -12,7 +14,7 @@ interface SearchResult {
 }
 
 export interface SearchIndexItem {
-    type: 'article' | 'page' | 'course' | 'jockey' | 'grade' | 'race';
+    type: 'article' | 'page' | 'course' | 'horse' | 'jockey' | 'trainer' | 'grade' | 'race';
     title: string;
     description: string;
     url: string;
@@ -58,8 +60,12 @@ function getResultLabel(type: SearchIndexItem['type']) {
             return '記事';
         case 'course':
             return 'コース';
+        case 'horse':
+            return '競走馬';
         case 'jockey':
             return '騎手';
+        case 'trainer':
+            return '調教師';
         case 'grade':
             return '重賞';
         case 'race':
@@ -75,8 +81,12 @@ function getBadgeClass(type: SearchIndexItem['type']) {
             return 'bg-blue-50 text-blue-700 border-blue-200';
         case 'course':
             return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        case 'horse':
+            return 'bg-cyan-50 text-cyan-800 border-cyan-200';
         case 'jockey':
             return 'bg-purple-50 text-purple-700 border-purple-200';
+        case 'trainer':
+            return 'bg-indigo-50 text-indigo-800 border-indigo-200';
         case 'grade':
             return 'bg-amber-50 text-amber-700 border-amber-200';
         case 'race':
@@ -104,7 +114,7 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
         setIsLoading(true);
         setSearchPerformed(true);
 
-        const nextResults: SearchResult[] = searchIndex
+        const localResults: SearchResult[] = searchIndex
             .map((item) => ({ item, score: scoreResult(item, searchQuery) }))
             .filter(({ score }) => score > 0)
             .sort((a, b) => b.score - a.score)
@@ -116,7 +126,37 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
                 url: item.url,
             }));
 
+        let dataResults: SearchResult[] = [];
+        try {
+            const response = await fetch(`/api/data/search?q=${encodeURIComponent(searchQuery.trim())}`, {
+                cache: 'no-store',
+            });
+            if (response.ok) {
+                const data = await response.json() as DataSearchResponse;
+                dataResults = data.items.map((item) => ({
+                    type: item.entity_type,
+                    title: item.name,
+                    description: item.description,
+                    url: item.url,
+                }));
+            }
+        } catch {
+            // データAPIが一時的に利用できない場合も記事・静的ページ検索は維持する。
+        }
+        const seen = new Set<string>();
+        const nextResults = [...dataResults, ...localResults]
+            .filter((item) => {
+                if (seen.has(item.url)) return false;
+                seen.add(item.url);
+                return true;
+            })
+            .slice(0, 30);
         setResults(nextResults);
+        sendDataSearchEvent({
+            query_length: searchQuery.trim().length,
+            result_count: nextResults.length,
+            search_surface: 'site_search',
+        });
         setIsLoading(false);
     };
 
@@ -193,7 +233,8 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
                             <Link
                                 key={`${result.type}-${result.url}`}
                                 href={result.url}
-                                className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated"
+                                prefetch={false}
+                                className="group rounded-xl border border-slate-200 bg-white p-4 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50"
                             >
                                 <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black ${getBadgeClass(result.type)}`}>
                                     {getResultLabel(result.type)}

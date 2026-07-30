@@ -71,6 +71,7 @@ export const Header = ({ todayString }: HeaderProps) => {
     const navItems = [
         { href: '/', label: 'ホーム', prefetch: undefined, isActive: pathname === '/' },
         { href: `/races/${todayString}`, label: '本日の分析', prefetch: false, isActive: pathname.startsWith('/races') },
+        { href: '/keiba-data', label: 'データベース', prefetch: false, isActive: pathname.startsWith('/keiba-data') || pathname.startsWith('/horses') || pathname.startsWith('/jockeys') || pathname.startsWith('/trainers') || pathname.startsWith('/courses') || pathname.startsWith('/compare') || pathname.startsWith('/my-data') },
         { href: '/articles', label: '記事', prefetch: false, isActive: pathname.startsWith('/articles') },
         { href: '/faq', label: 'よくある質問', prefetch: undefined, isActive: pathname === '/faq' },
     ] as const;

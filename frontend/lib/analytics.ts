@@ -315,6 +315,12 @@ const inferPageType = () => {
     if (pathname.startsWith('/articles/')) return 'article';
     if (/^\/races\/\d{4}-\d{2}-\d{2}\/[^/]+\/\d{1,2}$/.test(pathname)) return 'race_detail';
     if (pathname.startsWith('/races/')) return 'race_day';
+    if (pathname.startsWith('/horses/')) return 'horse_data';
+    if (pathname.startsWith('/jockeys/')) return 'jockey_data';
+    if (pathname.startsWith('/trainers/')) return 'trainer_data';
+    if (pathname.startsWith('/courses/')) return 'course_data';
+    if (pathname.startsWith('/my-data')) return 'my_data';
+    if (pathname.startsWith('/compare')) return 'horse_compare';
     if (pathname.startsWith('/keiba-data')) return 'data_guide';
     if (pathname.startsWith('/results/')) return 'results';
     if (pathname === '/faq') return 'faq';
@@ -665,4 +671,51 @@ export const sendAdExperimentExposureEvent = (params: {
         ...params,
         page_type: params.page_type || inferPageType(),
     });
+};
+
+export type DataEntityEventType = 'course' | 'horse' | 'jockey' | 'trainer' | 'grade';
+
+export const sendDataEntityViewEvent = (params: {
+    entity_type: DataEntityEventType;
+    entity_id: string;
+    sample_size: number;
+    indexable: boolean;
+}) => {
+    sendAnalyticsEvent('data_entity_view', params);
+    sendClarityEvent('data_entity_view', {
+        entity_type: params.entity_type,
+        indexable: params.indexable,
+    });
+};
+
+export const sendDataSearchEvent = (params: {
+    query_length: number;
+    result_count: number;
+    search_surface: 'site_search' | 'data_hub' | 'compare';
+}) => {
+    sendAnalyticsEvent('data_search', params);
+    sendClarityEvent('data_search', {
+        result_count: params.result_count,
+        search_surface: params.search_surface,
+    });
+};
+
+export const sendDataFavoriteEvent = (params: {
+    action: 'add' | 'remove';
+    entity_type: DataEntityEventType;
+    entity_id: string;
+}) => {
+    sendAnalyticsEvent('data_favorite', params);
+    sendClarityEvent('data_favorite', {
+        action: params.action,
+        entity_type: params.entity_type,
+    });
+};
+
+export const sendHorseCompareEvent = (params: {
+    action: 'add' | 'remove' | 'view' | 'clear';
+    horse_count: number;
+}) => {
+    sendAnalyticsEvent('horse_compare', params);
+    sendClarityEvent('horse_compare', params);
 };

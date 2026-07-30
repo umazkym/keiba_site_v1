@@ -1,4 +1,21 @@
-import { ArticleRacePreviewResponse, RaceDayPrediction, SpecialPick, MatchupData, TopPayoutHit, WeeklyGradeRace, PredictionAccuracySummary } from "./types";
+import {
+    ArticleRacePreviewResponse,
+    CourseDataDetail,
+    DataEntityDetail,
+    DataEntityDirectory,
+    DataEntityType,
+    DataSearchResponse,
+    DataSitemapEntry,
+    GrowthDataSummary,
+    MatchupData,
+    PredictionAccuracySummary,
+    RaceDataFeatures,
+    RaceDayPrediction,
+    RaceSeriesData,
+    SpecialPick,
+    TopPayoutHit,
+    WeeklyGradeRace,
+} from "./types";
 import { getApiBaseUrl } from "./api-base";
 
 const API_BASE_URL = getApiBaseUrl();
@@ -265,4 +282,111 @@ export async function getPredictionAccuracySummary(days: number = 30): Promise<P
         console.error("An error occurred in getPredictionAccuracySummary:", error.message);
         return null;
     }
+}
+
+async function getDataApiJson<T>(
+    path: string,
+    options: { revalidate?: number; cache?: RequestCache } = {},
+): Promise<T | null> {
+    try {
+        const requestOptions: RequestInit & { next?: { revalidate?: number } } = options.cache
+            ? { cache: options.cache }
+            : { next: { revalidate: options.revalidate ?? 3600 } };
+        const response = await fetchWithRetry(
+            `${API_BASE_URL}/api/v1/data${path}`,
+            requestOptions,
+        );
+        if (!response.ok) {
+            if (response.status !== 404) {
+                console.warn(`[getDataApiJson] ${path} returned ${response.status}`);
+            }
+            return null;
+        }
+        return response.json() as Promise<T>;
+    } catch (error) {
+        console.error(`[getDataApiJson] ${path} failed:`, error);
+        return null;
+    }
+}
+
+export async function getGrowthDataSummary(): Promise<GrowthDataSummary | null> {
+    return getDataApiJson<GrowthDataSummary>('/summary', { revalidate: 21600 });
+}
+
+export async function getDataEntityDirectory(
+    entityType: Exclude<DataEntityType, 'grade'>,
+    options: { limit?: number; offset?: number; indexableOnly?: boolean } = {},
+): Promise<DataEntityDirectory | null> {
+    const params = new URLSearchParams({
+        limit: String(Math.max(1, Math.min(options.limit ?? 24, 100))),
+        offset: String(Math.max(0, options.offset ?? 0)),
+        indexable_only: String(options.indexableOnly ?? false),
+    });
+    return getDataApiJson<DataEntityDirectory>(
+        `/directories/${entityType}?${params.toString()}`,
+        { revalidate: 3600 },
+    );
+}
+
+export async function searchDataEntities(
+    query: string,
+    limit: number = 20,
+): Promise<DataSearchResponse | null> {
+    const normalized = query.trim();
+    if (!normalized) return { query: '', total: 0, items: [] };
+    const params = new URLSearchParams({
+        q: normalized,
+        limit: String(Math.max(1, Math.min(limit, 40))),
+    });
+    return getDataApiJson<DataSearchResponse>(
+        `/search?${params.toString()}`,
+        { cache: 'no-store' },
+    );
+}
+
+export async function getDataEntityDetail(
+    entityType: 'horse' | 'jockey' | 'trainer',
+    entityId: string,
+): Promise<DataEntityDetail | null> {
+    const paths = {
+        horse: 'horses',
+        jockey: 'jockeys',
+        trainer: 'trainers',
+    };
+    return getDataApiJson<DataEntityDetail>(
+        `/${paths[entityType]}/${encodeURIComponent(entityId)}`,
+        { revalidate: 3600 },
+    );
+}
+
+export async function getCourseDataDetail(
+    venueSlug: string,
+    courseSlug: string,
+): Promise<CourseDataDetail | null> {
+    return getDataApiJson<CourseDataDetail>(
+        `/courses/${encodeURIComponent(venueSlug)}/${encodeURIComponent(courseSlug)}`,
+        { revalidate: 21600 },
+    );
+}
+
+export async function getRaceSeriesData(name: string): Promise<RaceSeriesData | null> {
+    if (!name.trim()) return null;
+    return getDataApiJson<RaceSeriesData>(
+        `/race-series?name=${encodeURIComponent(name.trim())}`,
+        { revalidate: 21600 },
+    );
+}
+
+export async function getRaceDataFeatures(raceId: string): Promise<RaceDataFeatures | null> {
+    if (!raceId.trim()) return null;
+    return getDataApiJson<RaceDataFeatures>(
+        `/races/${encodeURIComponent(raceId)}/features`,
+        { revalidate: 3600 },
+    );
+}
+
+export async function getDataSitemapEntries(): Promise<DataSitemapEntry[]> {
+    return (
+        await getDataApiJson<DataSitemapEntry[]>('/sitemap', { revalidate: 21600 })
+    ) ?? [];
 }

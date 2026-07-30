@@ -125,7 +125,7 @@ export function Breadcrumb({ items }: BreadcrumbProps = {}) {
         'courses': 'コース別データ',
         'grade-races': '重賞データ',
         'jockeys': '騎手別データ',
-        'keiba-data': 'データの見方',
+        'keiba-data': '競馬データベース',
         'results': 'AI予想成績',
         'accuracy': 'AI予想の成績',
         'horse-weight': '馬体重増減',

@@ -586,6 +586,8 @@ def get_prediction_accuracy_summary(db: Session, days: int = 30) -> Dict[str, An
     top3_total = 0
     condition_stats: Dict[str, Dict[str, int]] = defaultdict(lambda: {"races": 0, "top1_place": 0, "top3_place": 0, "top3_total": 0})
     distance_stats: Dict[str, Dict[str, int]] = defaultdict(lambda: {"races": 0, "top1_place": 0, "top3_place": 0, "top3_total": 0})
+    venue_stats: Dict[str, Dict[str, int]] = defaultdict(lambda: {"races": 0, "top1_place": 0, "top3_place": 0, "top3_total": 0})
+    score_band_stats: Dict[str, Dict[str, int]] = defaultdict(lambda: {"races": 0, "top1_place": 0, "top3_place": 0, "top3_total": 0})
     misses: List[Dict[str, Any]] = []
 
     for predictions in race_groups:
@@ -617,7 +619,23 @@ def get_prediction_accuracy_summary(db: Session, days: int = 30) -> Dict[str, An
 
         course_label = top1.course_type or "不明"
         bucket = _distance_bucket(top1.distance)
-        for store, label in [(condition_stats, course_label), (distance_stats, bucket)]:
+        score = float(top1.deviation_score or 0)
+        if score >= 70:
+            score_band = "70以上"
+        elif score >= 65:
+            score_band = "65〜69.9"
+        elif score >= 60:
+            score_band = "60〜64.9"
+        elif score >= 55:
+            score_band = "55〜59.9"
+        else:
+            score_band = "54.9以下"
+        for store, label in [
+            (condition_stats, course_label),
+            (distance_stats, bucket),
+            (venue_stats, top1.venue_name or "不明"),
+            (score_band_stats, score_band),
+        ]:
             store[label]["races"] += 1
             if top1_placed:
                 store[label]["top1_place"] += 1
@@ -644,6 +662,8 @@ def get_prediction_accuracy_summary(db: Session, days: int = 30) -> Dict[str, An
         "top3_place": _rate("AI偏差値上位3頭の複勝内率", top3_place_hits, top3_total, race_count),
         "by_course_type": serialize_conditions(condition_stats),
         "by_distance": serialize_conditions(distance_stats),
+        "by_venue": serialize_conditions(venue_stats),
+        "by_score_band": serialize_conditions(score_band_stats),
         "recent_misses": misses[:6],
     }
 

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from api.v1.endpoints import affiliate as affiliate_v1
+from api.v1.endpoints import data as data_v1
 from api.v1.endpoints import races as races_v1
 from database.database import engine, Base
 from dotenv import load_dotenv
@@ -53,6 +54,7 @@ app.add_middleware(
 # APIルーターをインクルード
 app.include_router(races_v1.router, prefix="/api/v1/predictions", tags=["predictions"])
 app.include_router(affiliate_v1.router, prefix="/api/v1/affiliate", tags=["affiliate"])
+app.include_router(data_v1.router, prefix="/api/v1/data", tags=["data"])
 
 @app.get("/")
 def read_root():

@@ -14,6 +14,7 @@ import { ClarityPageContext } from "@/components/ClarityPageContext";
 import { GoogleAnalyticsBootstrap } from "@/components/GoogleAnalyticsBootstrap";
 import { TrafficAttributionCapture } from "@/components/TrafficAttributionCapture";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
+import { PwaRegistration } from "@/components/PwaRegistration";
 
 export const metadata: Metadata = {
     metadataBase: new URL("https://uma-free.com"),
@@ -116,6 +117,7 @@ export default function RootLayout({
                 </a>
                 <ClarityPageContext />
                 <WebVitalsReporter />
+                <PwaRegistration />
                 {/* 構造化マークアップ：Organization, Website, SoftwareApplication */}
                 <OrganizationSchema />
                 <WebsiteSchema />

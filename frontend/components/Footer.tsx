@@ -22,6 +22,26 @@ export const Footer = () => {
                         <h3 className="font-bold text-white text-sm sm:text-base mb-2 sm:mb-4">コンテンツ</h3>
                         <ul className="grid grid-cols-2 gap-x-3 gap-y-1 sm:block sm:space-y-3">
                             <li>
+                                <Link prefetch={false} href="/keiba-data" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
+                                    競馬データベース
+                                </Link>
+                            </li>
+                            <li>
+                                <Link prefetch={false} href="/horses" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
+                                    競走馬データ
+                                </Link>
+                            </li>
+                            <li>
+                                <Link prefetch={false} href="/courses" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
+                                    コースデータ
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/my-data" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
+                                    マイデータ
+                                </Link>
+                            </li>
+                            <li>
                                 <Link prefetch={false} href="/articles" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors py-1 block sm:inline">
                                     データ分析記事
                                 </Link>

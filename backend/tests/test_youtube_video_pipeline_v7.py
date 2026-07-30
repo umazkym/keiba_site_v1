@@ -694,6 +694,40 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         self.assertIn("published", registry.transitions)
         self.assertTrue(any("公開確認" in line for line in lines))
 
+    def test_reconciliation_marks_manually_published_review_video_as_published(self) -> None:
+        record = PublicationRecord(
+            platform="youtube",
+            target_date="2099-07-12",
+            video_type="venue_long",
+            stable_id="venue_sonoda",
+            status="private_review",
+            content_hash="hash",
+            remote_video_id="video-id",
+            scheduled_at=None,
+            attempt_count=1,
+            last_error=None,
+            metadata={},
+        )
+        registry = FakeRegistry(record)
+        client = _youtube_client()
+        client.get_video_status.return_value = YouTubeVideoStatus(
+            video_id="video-id",
+            processing_status="succeeded",
+            upload_status="processed",
+            privacy_status="public",
+            publish_at=None,
+            failure_reason=None,
+            rejection_reason=None,
+        )
+
+        lines, checks, errors = youtube_video_pipeline._reconcile_recent_publications(registry, client)
+
+        self.assertEqual(checks, 1)
+        self.assertEqual(errors, [])
+        self.assertEqual(registry.existing.status, "published")
+        self.assertTrue(registry.existing.metadata["published_via_manual_review"])
+        self.assertTrue(any("公開確認" in line for line in lines))
+
 
 if __name__ == "__main__":
     unittest.main()

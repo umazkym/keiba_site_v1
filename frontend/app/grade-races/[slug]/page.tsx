@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { BreadcrumbSchema } from "@/components/StructuredData";
 import { EntityArticleSection } from "@/components/EntityArticleSection";
+import { RaceSeriesPanel } from "@/components/RaceSeriesPanel";
+import { getRaceSeriesData } from "@/lib/api";
 import { getGradeRaceProfile, gradeRaceProfiles } from "@/lib/grade-race-content";
 import { getArticlesByGradeRaceEntity } from "@/lib/articles";
 
@@ -33,9 +35,10 @@ export function generateMetadata({ params }: Props): Metadata {
   };
 }
 
-export default function GradeRaceDetailPage({ params }: Props) {
+export default async function GradeRaceDetailPage({ params }: Props) {
   const race = getGradeRaceProfile(params.slug);
   if (!race) notFound();
+  const seriesData = await getRaceSeriesData(race.name);
   const bracketAlias = race.name.match(/[（(]([^）)]+)[）)]/)?.[1] || "";
   const baseRaceName = race.name.replace(/[（(][^）)]+[）)]/g, "");
   const raceArticles = getArticlesByGradeRaceEntity(
@@ -122,6 +125,8 @@ export default function GradeRaceDetailPage({ params }: Props) {
           archiveHref={`/articles/grade-races/${race.slug}`}
           archiveLabel="記事アーカイブ"
         />
+
+        <RaceSeriesPanel data={seriesData} />
 
         <section className="mt-10">
           <h2 className="text-2xl font-black text-slate-950">レース後回顧テンプレート</h2>

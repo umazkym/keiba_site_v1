@@ -281,6 +281,43 @@ export default async function HomePage() {
                         </div>
                     </section>
 
+                    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                        <div className="border-b border-slate-200 px-4 py-3">
+                            <h2 className="section-title">
+                                <span>過去データを調べる</span>
+                                <span className="section-note">馬・人・コース</span>
+                            </h2>
+                            <p className="mt-1 text-xs leading-6 text-slate-600">
+                                過去レースを競走馬、騎手、調教師、コースごとに再集計しています。
+                            </p>
+                        </div>
+                        <div className="grid sm:grid-cols-2">
+                            {[
+                                { href: '/horses', label: '競走馬データ', note: '近走・得意条件・AI偏差値履歴' },
+                                { href: '/courses', label: 'コースデータ', note: '枠順・脚質・馬場・払戻分布' },
+                                { href: '/jockeys', label: '騎手データ', note: '競馬場・距離・馬場状態別' },
+                                { href: '/trainers', label: '調教師データ', note: '管理馬の条件別成績' },
+                            ].map((item) => (
+                                <Link
+                                    key={item.href}
+                                    prefetch={false}
+                                    href={item.href}
+                                    className="min-h-16 border-b border-slate-100 px-4 py-3 transition-colors duration-150 hover:bg-slate-50 sm:border-r"
+                                >
+                                    <span className="block font-black text-slate-900">{item.label}</span>
+                                    <span className="mt-0.5 block text-xs text-slate-500">{item.note}</span>
+                                </Link>
+                            ))}
+                        </div>
+                        <Link
+                            href="/keiba-data"
+                            prefetch={false}
+                            className="flex min-h-11 items-center justify-center bg-slate-950 px-4 py-2 text-sm font-bold text-white transition-colors duration-150 hover:bg-primary"
+                        >
+                            競馬データベースを開く
+                        </Link>
+                    </section>
+
                     {/* よくある質問 */}
                     <section className="faq card rounded-xl">
                         <h2 className="section-title">
@@ -320,21 +357,16 @@ export default async function HomePage() {
                                 <strong>全レース一覧</strong>
                                 <span className="resume-action mt-2">確認する</span>
                             </Link>
-                            {/* <Link href="/grade-races" className="resume-card mt-2">
-                                <small>重賞カレンダー</small>
-                                <strong>重賞・G1一覧</strong>
-                                <span className="resume-action mt-2">見る</span>
+                            <Link prefetch={false} href="/keiba-data" className="resume-card mt-2">
+                                <small>過去データ</small>
+                                <strong>競馬データベース</strong>
+                                <span className="resume-action mt-2">調べる</span>
                             </Link>
-                            <Link href="/courses" className="resume-card mt-2">
-                                <small>コース別データ</small>
-                                <strong>コース分析ハブ</strong>
-                                <span className="resume-action mt-2">見る</span>
+                            <Link href="/my-data" className="resume-card mt-2">
+                                <small>保存・履歴</small>
+                                <strong>マイデータ</strong>
+                                <span className="resume-action mt-2">開く</span>
                             </Link>
-                            <Link href="/jockeys" className="resume-card mt-2">
-                                <small>騎手データ</small>
-                                <strong>騎手別成績</strong>
-                                <span className="resume-action mt-2">見る</span>
-                            </Link> */}
                         </div>
                     </div>
                 </aside>

@@ -34,6 +34,7 @@ export default function robots(): MetadataRoute.Robots {
         sitemap: [
             'https://uma-free.com/sitemap.xml',
             'https://uma-free.com/sitemap-articles.xml',
+            'https://uma-free.com/sitemap-data.xml',
             'https://uma-free.com/sitemap-images.xml',
         ],
     }

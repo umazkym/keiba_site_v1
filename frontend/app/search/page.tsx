@@ -16,7 +16,7 @@ import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 
 export const metadata: Metadata = {
     title: 'サイト内検索',
-    description: 'UMA-FREEサイト内の記事やページを検索します。AI競馬分析、レース情報、よくある質問などを検索してみてください。',
+    description: '競走馬、騎手、調教師、コース、重賞、記事を横断検索できます。',
     robots: 'noindex, follow',
     openGraph: {
         title: 'サイト内検索',
@@ -49,6 +49,20 @@ function buildSearchIndex(): SearchIndexItem[] {
             description: '中央・地方競馬の当日レースをAI偏差値、脚質予測、枠順傾向で確認できます。',
             url: '/races/today',
             keywords: ['本日', '今日', 'AI予想', 'レース', '出馬表', '偏差値'],
+        },
+        {
+            type: 'page',
+            title: '競馬データベース',
+            description: '馬、騎手、調教師、コース、AI予測成績を横断して確認できます。',
+            url: '/keiba-data',
+            keywords: ['データベース', '競走馬', '騎手', '調教師', 'コース'],
+        },
+        {
+            type: 'page',
+            title: '競走馬比較',
+            description: '2〜5頭の近走、条件別成績、AI偏差値履歴を横並びで比較します。',
+            url: '/compare',
+            keywords: ['馬比較', '競走馬', '近走', '比較'],
         },
         {
             type: 'page',

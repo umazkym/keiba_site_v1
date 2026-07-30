@@ -72,15 +72,18 @@ export default function SitemapPage() {
       title: "データと記事",
       links: [
         { label: "データ分析記事", href: "/articles", description: "重賞、騎手、コース、馬場などの記事一覧です。" },
-        { label: "競馬データの見方", href: "/keiba-data", description: "レース前に確認するデータの順番を整理しています。" },
+        { label: "馬場状態の見方", href: "/keiba-data/track-condition", description: "馬場状態ごとの違いと確認順を整理しています。" },
         { label: "AI予想成績", href: "/results/accuracy", description: "AI偏差値の成績を期間別・条件別に確認できます。" },
       ],
     },
     {
       title: "データハブ",
       links: [
+        { label: "競馬データベース", href: "/keiba-data", description: "競走馬、騎手、調教師、コースを横断して調べられます。" },
+        { label: "競走馬データ", href: "/horses", description: "近走と条件別成績、AI偏差値履歴を確認できます。" },
         { label: "コース別データ", href: "/courses", description: "競馬場・距離ごとの傾向を確認できます。" },
         { label: "騎手別データ", href: "/jockeys", description: "主要騎手の条件別傾向を整理しています。" },
+        { label: "調教師別データ", href: "/trainers", description: "管理馬の条件別成績を確認できます。" },
         { label: "重賞データ", href: "/grade-races", description: "G1・G2・G3の個別ハブです。" },
       ],
     },
@@ -100,6 +103,7 @@ export default function SitemapPage() {
         { label: "利用規約", href: "/terms" },
         { label: "広告について", href: "/advertising" },
         { label: "XML Sitemap", href: "/sitemap.xml" },
+        { label: "データページXML Sitemap", href: "/sitemap-data.xml" },
       ],
     },
   ];

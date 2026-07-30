@@ -161,5 +161,217 @@ export interface PredictionAccuracySummary {
     top3_place: AccuracyRate;
     by_course_type: AccuracyCondition[];
     by_distance: AccuracyCondition[];
+    by_venue: AccuracyCondition[];
+    by_score_band: AccuracyCondition[];
     recent_misses: AccuracyMissCase[];
+}
+
+export type DataEntityType = 'course' | 'horse' | 'jockey' | 'trainer' | 'grade';
+
+export interface RateSummary {
+    sample_size: number;
+    wins: number;
+    places: number;
+    win_rate: number;
+    place_rate: number;
+    average_rank: number | null;
+    average_popularity: number | null;
+}
+
+export interface SegmentStat extends RateSummary {
+    key: string;
+    label: string;
+}
+
+export interface DataEntitySummary {
+    entity_type: DataEntityType;
+    id: string;
+    name: string;
+    subtitle: string;
+    url: string;
+    sample_size: number;
+    last_race_date: string | null;
+    indexable: boolean;
+}
+
+export interface DataEntityDirectory {
+    entity_type: DataEntityType;
+    total: number;
+    limit: number;
+    offset: number;
+    items: DataEntitySummary[];
+}
+
+export interface DataSearchResult {
+    entity_type: DataEntityType;
+    id: string;
+    name: string;
+    description: string;
+    url: string;
+    sample_size: number;
+    indexable: boolean;
+}
+
+export interface DataSearchResponse {
+    query: string;
+    total: number;
+    items: DataSearchResult[];
+}
+
+export interface DataRecentRun {
+    race_id: string;
+    race_date: string;
+    venue_name: string;
+    race_number: number;
+    race_name: string;
+    course_label: string;
+    horse_id: string | null;
+    horse_name: string | null;
+    horse_number: number | null;
+    rank: number | null;
+    popularity: number | null;
+    odds: number | null;
+    waku_number: number | null;
+    horse_weight: number | null;
+    horse_weight_diff: number | null;
+    agari_3f: number | null;
+    corner_positions: number[];
+    url: string;
+}
+
+export interface DataUpcomingRace {
+    race_id: string;
+    race_date: string;
+    venue_name: string;
+    race_number: number;
+    race_name: string;
+    course_label: string;
+    horse_id: string | null;
+    horse_name: string | null;
+    horse_number: number | null;
+    deviation_score: number | null;
+    mark: string | null;
+    url: string;
+}
+
+export interface PredictionHistoryItem {
+    race_id: string;
+    race_date: string;
+    venue_name: string;
+    race_number: number;
+    race_name: string;
+    deviation_score: number | null;
+    mark: string;
+    rank: number | null;
+    url: string;
+}
+
+export interface DataEntityDetail {
+    entity: DataEntitySummary;
+    overall: RateSummary;
+    segments: Record<string, SegmentStat[]>;
+    recent_runs: DataRecentRun[];
+    upcoming_races: DataUpcomingRace[];
+    prediction_history: PredictionHistoryItem[];
+    as_of: string;
+}
+
+export interface PayoutStat {
+    bet_type: string;
+    sample_size: number;
+    average_payout: number;
+    max_payout: number;
+}
+
+export interface CourseDataDetail {
+    entity: DataEntitySummary;
+    venue_name: string;
+    venue_slug: string;
+    course_type: string;
+    distance: number;
+    analysis_start_date: string | null;
+    analysis_end_date: string | null;
+    overall: RateSummary;
+    segments: Record<string, SegmentStat[]>;
+    top_jockeys: SegmentStat[];
+    top_trainers: SegmentStat[];
+    payout_stats: PayoutStat[];
+    recent_races: DataRecentRun[];
+    as_of: string;
+}
+
+export interface GrowthCounts {
+    races: number;
+    results: number;
+    horses: number;
+    jockeys: number;
+    trainers: number;
+    course_conditions: number;
+    first_race_date: string | null;
+    last_race_date: string | null;
+}
+
+export interface GrowthDataSummary {
+    counts: GrowthCounts;
+    featured_courses: DataEntitySummary[];
+    active_horses: DataEntitySummary[];
+    active_jockeys: DataEntitySummary[];
+    active_trainers: DataEntitySummary[];
+    as_of: string;
+}
+
+export interface SeriesRace {
+    race_id: string;
+    race_date: string;
+    venue_name: string;
+    race_number: number;
+    race_name: string;
+    course_label: string;
+    field_size: number | null;
+    winner_name: string | null;
+    winner_popularity: number | null;
+    top_prediction_name: string | null;
+    top_prediction_rank: number | null;
+    url: string;
+}
+
+export interface RaceSeriesData {
+    name: string;
+    sample_size: number;
+    winner_popularity: SegmentStat[];
+    history: SeriesRace[];
+    as_of: string;
+}
+
+export interface RunnerFeature {
+    horse_id: string;
+    horse_name: string;
+    horse_number: number | null;
+    jockey_id: string | null;
+    jockey_name: string | null;
+    trainer_id: string | null;
+    trainer_name: string | null;
+    deviation_score: number | null;
+    mark: string | null;
+    horse_overall: RateSummary;
+    horse_condition: RateSummary;
+    jockey_condition: RateSummary;
+    trainer_condition: RateSummary;
+}
+
+export interface RaceDataFeatures {
+    race_id: string;
+    race_date: string;
+    venue_name: string;
+    race_number: number;
+    race_name: string;
+    course_label: string;
+    runners: RunnerFeature[];
+    as_of: string;
+}
+
+export interface DataSitemapEntry {
+    url: string;
+    entity_type: DataEntityType;
+    last_modified: string | null;
 }

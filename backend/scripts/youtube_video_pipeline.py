@@ -391,21 +391,27 @@ def _reconcile_recent_publications(
     registry: VideoPostRegistry,
     client: YouTubeClient,
 ) -> Tuple[List[str], int, List[str]]:
-    """公開時刻を過ぎた予約動画を照合し、publishedまたはエラーへ更新する。"""
+    """予約公開と手動公開された非公開レビュー動画をYouTube状態へ同期する。"""
     now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
     lines: List[str] = []
     errors: List[str] = []
     checks = 0
-    records = registry.list_recent(days=7, statuses={"scheduled"})
+    records = registry.list_recent(days=7, statuses={"scheduled", "private_review"})
     for record in records:
-        if not record.remote_video_id or record.scheduled_at is None:
-            error = f"予約レコードに動画IDまたは公開時刻がありません: {record.stable_id}"
+        if not record.remote_video_id:
+            error = f"投稿レコードに動画IDがありません: {record.stable_id}"
             registry.record_error(record.target_date, record.video_type, record.stable_id, error)
             errors.append(error)
             continue
-        scheduled_at = _utc_naive(record.scheduled_at)
-        if scheduled_at > now_utc:
-            continue
+        scheduled_at = _utc_naive(record.scheduled_at) if record.scheduled_at is not None else None
+        if record.status == "scheduled":
+            if scheduled_at is None:
+                error = f"予約レコードに公開時刻がありません: {record.stable_id}"
+                registry.record_error(record.target_date, record.video_type, record.stable_id, error)
+                errors.append(error)
+                continue
+            if scheduled_at > now_utc:
+                continue
         try:
             status = client.get_video_status(record.remote_video_id)
             checks += 1
@@ -429,14 +435,21 @@ def _reconcile_recent_publications(
                         "upload_status": status.upload_status,
                         "privacy_status": status.privacy_status,
                         "published_checked_at": now_utc.isoformat() + "Z",
+                        "published_via_manual_review": record.status == "private_review",
                     },
                 )
                 lines.append(f"- 公開確認: {record.stable_id}")
-            elif now_utc > scheduled_at + timedelta(hours=1):
+            elif (
+                record.status == "scheduled"
+                and scheduled_at is not None
+                and now_utc > scheduled_at + timedelta(hours=1)
+            ):
                 raise RuntimeError(
                     "予約公開時刻から1時間を過ぎても公開状態になっていません"
                     f"（privacyStatus={status.privacy_status}）"
                 )
+            elif record.status == "private_review":
+                lines.append(f"- 非公開レビュー継続: {record.stable_id}")
             else:
                 lines.append(f"- 公開反映待ち: {record.stable_id}")
         except Exception as exc:
@@ -445,7 +458,7 @@ def _reconcile_recent_publications(
             errors.append(error)
             lines.append(f"- 公開確認エラー: {error}")
     if not records:
-        lines.append("- 直近の予約公開照合: 対象なし")
+        lines.append("- 直近の公開状態照合: 対象なし")
     return lines, checks, errors
 
 

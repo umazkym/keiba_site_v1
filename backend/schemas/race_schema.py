@@ -146,4 +146,6 @@ class PredictionAccuracySummary(BaseModel):
     top3_place: AccuracyRate
     by_course_type: List[AccuracyCondition]
     by_distance: List[AccuracyCondition]
+    by_venue: List[AccuracyCondition] = Field(default_factory=list)
+    by_score_band: List[AccuracyCondition] = Field(default_factory=list)
     recent_misses: List[AccuracyMissCase]

@@ -10,6 +10,7 @@ from schemas import growth_schema
 
 
 router = APIRouter()
+growth_router = APIRouter()
 
 
 def _set_cache(response: Response, max_age: int, stale: int = 300) -> None:
@@ -163,6 +164,34 @@ def read_race_features(
         response.headers["Cache-Control"] = "no-store"
         raise HTTPException(status_code=404, detail="Race data not found")
     _set_cache(response, 3600, 300)
+    return result
+
+
+@growth_router.post(
+    "/data/compare/horses",
+    response_model=growth_schema.HorseComparisonResponse,
+)
+@router.post(
+    "/compare/horses",
+    response_model=growth_schema.HorseComparisonResponse,
+)
+def compare_horses(
+    payload: growth_schema.HorseComparisonRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    result = growth_crud.get_horse_comparison(
+        db,
+        payload.horse_ids,
+        venue_name=payload.venue_name,
+        course_type=payload.course_type,
+        distance=payload.distance,
+        ground_condition=payload.ground_condition,
+    )
+    if result is None:
+        response.headers["Cache-Control"] = "no-store"
+        raise HTTPException(status_code=404, detail="Horse comparison data not found")
+    response.headers["Cache-Control"] = "private, max-age=0, no-store"
     return result
 
 

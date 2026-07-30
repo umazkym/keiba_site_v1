@@ -1,6 +1,6 @@
 # UMA-FREE 収益ファネル計測設計
 
-更新日: 2026-07-30
+更新日: 2026-07-31
 
 ## 目的
 
@@ -19,7 +19,7 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `race_group_select` | 中央・地方タブを選択 | `race_date`, `race_type` | 開催区分の利用状況 |
 | `home_race_entry_click` | ホームから当日レースへ移動 | `race_date`, `entry_method`, `race_type`, `venue_name` | ホーム入口別の送客 |
 | `race_venue_select` | 競馬場タブを選択 | `race_date`, `race_type`, `venue_name` | 競馬場間の巡回 |
-| `race_view` | レースデータを表示 | `race_id`, `race_date`, `race_type`, `venue_name`, `race_number`。記事流入時は`entry_source=article`, `source_article_slug`, `article_entry_method`, `article_destination_type`。旧YouTube UTM流入時は`entry_source=youtube`, `source_video_key`, `video_format`, `source_venue`。SNS動画流入時は`entry_source=social_video`, `source_platform`, `source_content_key`, `video_format`, `source_venue` | 1セッション当たりの閲覧レース数と記事・動画送客後の到達 |
+| `race_view` | レースデータを表示 | `race_id`, `race_date`, `race_type`, `venue_name`, `race_number`。記事流入時は`entry_source=article`、動画流入時は対応する流入属性、出走予定リンク流入時は`entry_source=data_upcoming`, `data_entry_method=upcoming_race` | 1セッション当たりの閲覧レース数と記事・動画・データ送客後の到達 |
 | `race_navigation` | 前後レースやレース番号から移動 | `from_race_number`, `to_race_number`, `navigation_method` | 次レース導線の比較 |
 | `prediction_table_view` | AI偏差値表が画面内に入る | `race_id`, `race_number`, `page_path` | 予想表の実閲覧 |
 | `article_read_complete` | 記事本文の末尾へ到達 | `article_slug`, `article_category`, `reading_time_min` | 記事読了率 |
@@ -37,6 +37,15 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `data_search` | 横断検索または比較画面の検索結果を表示 | `query_length`, `result_count`, `search_surface` | 検索需要、0件率、検索面ごとの回遊 |
 | `data_favorite` | ブラウザ内のマイデータへ対象を追加・解除 | `action`, `entity_type`, `entity_id` | 保存対象と再訪につながる機能の利用状況 |
 | `horse_compare` | 比較対象の追加・解除・表示・全解除 | `action`, `horse_count` | 複数馬比較の利用数と比較頭数 |
+| `data_hub_action_click` | データトップの3主導線を選択 | `action`, `destination_type` | 今日の比較・名前検索・コース確認の入口別利用 |
+| `data_search_result_click` | 検索候補から詳細または比較追加を選択 | `entity_type`, `result_position`, `result_count`, `search_surface`, `sample_size_bucket` | 自由入力を送らず検索結果の有用性を確認 |
+| `compare_result_view` | 2〜5頭の比較API結果を表示 | `horse_count`, `condition_scope`, `comparable_count` | 比較完了数と10走以上の比較可能馬数 |
+| `compare_condition_change` | 同条件比較の条件を確定して再集計 | `changed_field`, `horse_count`, `has_ground_condition` | 条件指定を伴う比較利用 |
+| `compare_race_click` | 比較結果の直近5走からレースへ移動 | `horse_position`, `run_position`, `destination_type` | 比較から実レース確認への遷移 |
+| `upcoming_race_click` | 個別データの出走予定からレースへ移動 | `entity_type`, `relative_date_bucket`, `link_placement` | 保存・個別閲覧から当日レースへの接続 |
+| `saved_user_return` | 保存内容を持つ利用者が24時間以上空けてマイデータへ再訪 | `saved_type_count`, `favorite_count_bucket`, `comparison_count`, `days_since_last_visit_bucket` | 保存利用者の再訪率 |
+| `pricing_survey_response` | 販売前アンケートへ1ブラウザ1回回答 | `response`, `surface` | 月390円の利用意向。申込み・決済ではない |
+| `pricing_survey_view` | 販売前アンケートが対象利用者へ初回表示 | `surface` | 月390円利用意向率の分母 |
 
 ## GA4初期化順
 
@@ -94,15 +103,22 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 ### 無料データベースから当日レース
 
 1. `/keiba-data`またはディレクトリの実`page_view`
-2. `data_search`
-3. 詳細ページの実`page_view`
-4. `data_entity_view`
+2. `data_hub_action_click`または`data_search`
+3. `data_search_result_click`
+4. 詳細ページの実`page_view`と`data_entity_view`
 5. `data_favorite`または`horse_compare`
-6. 出走予定リンクからレースページの実`page_view`
-7. `race_view`
-8. `prediction_table_view`
+6. `compare_result_view`
+7. `compare_condition_change`または`compare_race_click`
+8. `upcoming_race_click`
+9. レースページの実`page_view`
+10. `race_view`
+11. `prediction_table_view`
 
-詳細データ内のタブ切り替え、保存、比較操作では仮想`page_view`を送らない。検索文字列や馬名などの自由入力値はGA4へ送らず、検索文字数と結果件数だけを送る。保存内容はブラウザの`localStorage`に保持し、GA4には対象IDと操作種別だけを送る。
+再訪は別コホートとして、保存操作後の`page_view`から7日以内の`saved_user_return`を確認する。販売前アンケートを有効化した期間だけ`pricing_survey_response`を重ね、`use_at_390`の回答数と対象セッション比率を算出する。
+
+詳細データ内のタブ切り替え、保存、比較操作では仮想`page_view`を送らない。検索文字列、馬名、騎手名、調教師名、保存内容、比較セット内容はGA4へ送らない。新しいデータ価値イベントには対象種別、結果順位、件数、母数帯、条件指定の有無だけを送る。既存`data_entity_view`と`data_favorite`の`entity_id`は従来契約として残すが、新イベントへは引き継がない。
+
+GA4のイベントスコープのカスタム定義には、`action`、`destination_type`、`search_surface`、`sample_size_bucket`、`condition_scope`、`comparable_count`、`relative_date_bucket`、`days_since_last_visit_bucket`、`response`、`surface`を登録する。Clarityカスタムイベントは同名で送るが、検索語や固有名詞をタグへ含めない。
 
 ### YouTubeからレース
 

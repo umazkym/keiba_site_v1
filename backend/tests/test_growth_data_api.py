@@ -4,6 +4,7 @@ import unittest
 from datetime import date
 from pathlib import Path
 
+from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -18,6 +19,7 @@ from crud import growth_crud
 from database import models
 from database.database import Base
 from schemas import growth_schema
+from scripts.agents.data_value_quality_audit import run_audit
 
 
 class GrowthDataApiTest(unittest.TestCase):
@@ -175,6 +177,95 @@ class GrowthDataApiTest(unittest.TestCase):
         self.assertEqual(len(validated_features.runners), 2)
         self.assertEqual(validated_features.runners[0].horse_overall.sample_size, 2)
         self.assertEqual(validated_features.runners[0].horse_condition.sample_size, 2)
+
+    def test_horse_comparison_matches_conditions_and_preserves_input_order(self) -> None:
+        comparison = growth_crud.get_horse_comparison(
+            self.db,
+            ["horse-2", "horse-1"],
+            venue_name="東京競馬場",
+            course_type="芝",
+            distance=1600,
+        )
+        self.assertIsNotNone(comparison)
+        validated = growth_schema.HorseComparisonResponse.model_validate(comparison)
+        self.assertEqual([item.horse_id for item in validated.horses], ["horse-2", "horse-1"])
+        self.assertEqual(validated.conditions.venue_name, "東京")
+        self.assertEqual(validated.data_as_of_date, date(2026, 6, 15))
+        self.assertEqual(validated.horses[0].overall.sample_size, 2)
+        self.assertEqual(validated.horses[0].matched_condition.sample_size, 2)
+        self.assertEqual(validated.horses[0].sample_quality, "insufficient")
+        self.assertIsNone(validated.horses[0].wilson_lower_bound)
+        self.assertEqual(len(validated.horses[0].recent_runs), 2)
+
+        good_only = growth_crud.get_horse_comparison(
+            self.db,
+            ["horse-1", "horse-2"],
+            venue_name="東京",
+            course_type="芝",
+            distance=1600,
+            ground_condition="良",
+        )
+        self.assertIsNotNone(good_only)
+        validated_good = growth_schema.HorseComparisonResponse.model_validate(good_only)
+        self.assertEqual(validated_good.horses[0].matched_condition.sample_size, 1)
+        self.assertEqual(validated_good.conditions.ground_condition, "良")
+
+    def test_horse_comparison_request_enforces_two_to_five_unique_horses(self) -> None:
+        common = {
+            "venue_name": "東京",
+            "course_type": "芝",
+            "distance": 1600,
+        }
+        two = growth_schema.HorseComparisonRequest(
+            horse_ids=["horse-1", "horse-2"],
+            **common,
+        )
+        five = growth_schema.HorseComparisonRequest(
+            horse_ids=[f"horse-{index}" for index in range(1, 6)],
+            **common,
+        )
+        self.assertEqual(len(two.horse_ids), 2)
+        self.assertEqual(len(five.horse_ids), 5)
+
+        for invalid_ids in (
+            ["horse-1"],
+            [f"horse-{index}" for index in range(1, 7)],
+            ["horse-1", "horse-1"],
+        ):
+            with self.assertRaises(ValidationError):
+                growth_schema.HorseComparisonRequest(
+                    horse_ids=invalid_ids,
+                    **common,
+                )
+
+    def test_sample_quality_and_wilson_lower_bound(self) -> None:
+        self.assertEqual(growth_crud._sample_quality(4), "insufficient")
+        self.assertEqual(growth_crud._sample_quality(5), "reference")
+        self.assertEqual(growth_crud._sample_quality(9), "reference")
+        self.assertEqual(growth_crud._sample_quality(10), "comparable")
+        self.assertIsNone(growth_crud._wilson_lower_bound(0, 0))
+        self.assertAlmostEqual(
+            growth_crud._wilson_lower_bound(6, 10) or 0,
+            31.27,
+            places=2,
+        )
+
+    def test_horse_comparison_returns_none_when_any_horse_is_missing(self) -> None:
+        comparison = growth_crud.get_horse_comparison(
+            self.db,
+            ["horse-1", "missing-horse"],
+            venue_name="東京",
+            course_type="芝",
+            distance=1600,
+        )
+        self.assertIsNone(comparison)
+
+    def test_data_value_quality_audit_is_read_only_and_schema_stable(self) -> None:
+        report = run_audit(self.db, today=date(2026, 6, 16))
+        self.assertEqual(report["status"], "ok")
+        self.assertEqual(report["counts"]["races"], 3)
+        self.assertEqual(report["anomalies"]["invalid_rank_count"], 0)
+        self.assertTrue(report["approval_required"]["data_repair"])
 
     def test_trainer_affiliation_is_separated_from_name(self) -> None:
         detail = growth_crud.get_entity_detail(self.db, "trainer", "trainer-1")

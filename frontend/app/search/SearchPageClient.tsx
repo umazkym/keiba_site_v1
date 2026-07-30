@@ -3,7 +3,11 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { sendDataSearchEvent } from '@/lib/analytics';
+import {
+    sendDataSearchEvent,
+    sendDataSearchResultClickEvent,
+    type DataEntityEventType,
+} from '@/lib/analytics';
 import type { DataSearchResponse } from '@/lib/types';
 
 interface SearchResult {
@@ -11,6 +15,7 @@ interface SearchResult {
     title: string;
     description: string;
     url: string;
+    sampleSize?: number;
 }
 
 export interface SearchIndexItem {
@@ -96,6 +101,17 @@ function getBadgeClass(type: SearchIndexItem['type']) {
     }
 }
 
+function isDataEntityType(type: SearchIndexItem['type']): type is DataEntityEventType {
+    return ['course', 'horse', 'jockey', 'trainer', 'grade'].includes(type);
+}
+
+function sampleSizeBucket(sampleSize: number): '0_4' | '5_9' | '10_49' | '50_plus' {
+    if (sampleSize < 5) return '0_4';
+    if (sampleSize < 10) return '5_9';
+    if (sampleSize < 50) return '10_49';
+    return '50_plus';
+}
+
 export default function SearchPageClient({ searchIndex }: { searchIndex: SearchIndexItem[] }) {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -138,6 +154,7 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
                     title: item.name,
                     description: item.description,
                     url: item.url,
+                    sampleSize: item.sample_size,
                 }));
             }
         } catch {
@@ -229,11 +246,21 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
 
                 {results.length > 0 && (
                     <div className="grid gap-3 md:grid-cols-2">
-                        {results.map((result) => (
+                        {results.map((result, index) => (
                             <Link
                                 key={`${result.type}-${result.url}`}
                                 href={result.url}
                                 prefetch={false}
+                                onClick={() => {
+                                    if (!isDataEntityType(result.type)) return;
+                                    sendDataSearchResultClickEvent({
+                                        entity_type: result.type,
+                                        result_position: index + 1,
+                                        result_count: results.length,
+                                        search_surface: 'site_search',
+                                        sample_size_bucket: sampleSizeBucket(result.sampleSize ?? 0),
+                                    });
+                                }}
                                 className="group rounded-xl border border-slate-200 bg-white p-4 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50"
                             >
                                 <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black ${getBadgeClass(result.type)}`}>

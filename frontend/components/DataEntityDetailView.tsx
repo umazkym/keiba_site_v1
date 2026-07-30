@@ -5,6 +5,7 @@ import { DataEntityTracker } from '@/components/DataEntityTracker';
 import { DataFavoriteButton } from '@/components/DataFavoriteButton';
 import { HorseCompareButton } from '@/components/HorseCompareButton';
 import { RateSummaryStrip, RecentRunsTable, SegmentStatsTable } from '@/components/DataStats';
+import { UpcomingRaceTrackedLink } from '@/components/UpcomingRaceTrackedLink';
 import type { DataEntityDetail } from '@/lib/types';
 
 
@@ -101,7 +102,7 @@ export function DataEntityDetailView({
             </div>
 
             {detail.upcoming_races.length > 0 && (
-                <section className="mt-6 overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/60 shadow-xs">
+                <section className="mt-6 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/60">
                     <div className="flex items-center gap-2 border-b border-blue-200 bg-blue-100/50 px-4 py-3">
                         <CalendarDays className="h-5 w-5 text-blue-700" aria-hidden="true" />
                         <h2 className="font-black text-blue-950">直近の出走予定・開催データ</h2>
@@ -112,12 +113,15 @@ export function DataEntityDetailView({
                                 key={`${race.race_id}-${race.horse_id ?? ''}`}
                                 className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 transition-colors duration-150 hover:bg-blue-50"
                             >
-                                <Link prefetch={false} href={race.url} className="min-w-0 flex-1">
-                                    <span className="block text-xs font-bold text-slate-500">
-                                        {race.race_date} {race.venue_name}{race.race_number}R
-                                    </span>
-                                    <span className="mt-0.5 block font-black text-slate-900 hover:text-blue-600">{race.race_name}</span>
-                                </Link>
+                                <UpcomingRaceTrackedLink
+                                    href={race.url}
+                                    raceDate={race.race_date}
+                                    venueName={race.venue_name}
+                                    raceNumber={race.race_number}
+                                    raceName={race.race_name}
+                                    entityType={entityType}
+                                    raceId={race.race_id}
+                                />
                                 <div className="flex shrink-0 items-center gap-2">
                                     <span className="hidden text-right text-xs font-bold text-slate-600 sm:block">
                                         {race.deviation_score == null ? race.course_label : `AI偏差値 ${race.deviation_score.toFixed(1)}`}
@@ -169,7 +173,7 @@ export function DataEntityDetailView({
             </div>
 
             {entityType === 'horse' && detail.prediction_history.length > 0 && (
-                <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+                <section className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
                     <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
                         <h2 className="text-lg font-black text-slate-950">AI偏差値の履歴</h2>
                         <p className="mt-0.5 text-xs leading-5 text-slate-600">
@@ -204,4 +208,3 @@ export function DataEntityDetailView({
         </article>
     );
 }
-

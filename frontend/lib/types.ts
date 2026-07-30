@@ -377,6 +377,43 @@ export interface RaceDataFeatures {
     as_of: string;
 }
 
+export type HorseComparisonSampleQuality = 'insufficient' | 'reference' | 'comparable';
+
+export interface HorseComparisonRequest {
+    horse_ids: string[];
+    venue_name: string;
+    course_type: '芝' | 'ダート' | '障害';
+    distance: number;
+    ground_condition?: string | null;
+}
+
+export interface HorseComparisonCondition {
+    venue_name: string;
+    course_type: '芝' | 'ダート' | '障害';
+    distance: number;
+    ground_condition: string | null;
+}
+
+export interface HorseComparisonItem {
+    horse_id: string;
+    horse_name: string;
+    url: string;
+    overall: RateSummary;
+    matched_condition: RateSummary;
+    recent_runs: DataRecentRun[];
+    sample_quality: HorseComparisonSampleQuality;
+    wilson_lower_bound: number | null;
+}
+
+export interface HorseComparisonResponse {
+    conditions: HorseComparisonCondition;
+    horses: HorseComparisonItem[];
+    analysis_start_date: string | null;
+    analysis_end_date: string | null;
+    data_as_of_date: string | null;
+    as_of: string;
+}
+
 export interface DataSitemapEntry {
     url: string;
     entity_type: DataEntityType;

@@ -112,7 +112,7 @@ export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
             </div>
 
             {detail.payout_stats.length > 0 && (
-                <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+                <section className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
                     <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
                         <h2 className="text-lg font-black text-slate-950">配当・払戻分布</h2>
                         <p className="mt-0.5 text-xs leading-5 text-slate-600">
@@ -181,4 +181,3 @@ export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
         </article>
     );
 }
-

@@ -88,6 +88,7 @@ export function DataDirectoryView({
                 <DataSearchPanel
                     entityType={entityType}
                     heading={`${content.itemLabel}を名前で探す`}
+                    searchSurface="directory"
                 />
             </div>
 
@@ -116,7 +117,7 @@ export function DataDirectoryView({
                 ) : (
                     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                         {/* ヘッダー上部のアクセントライン */}
-                        <div className="h-0.5 bg-gradient-to-r from-slate-800 via-slate-600 to-slate-400" />
+                        <div className="h-px bg-slate-300" />
                         <div className={`hidden border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-600 sm:grid sm:items-center sm:gap-3 ${desktopColumns}`}>
                             <span>{content.itemLabel}</span>
                             {hasAffiliation && <span>所属</span>}

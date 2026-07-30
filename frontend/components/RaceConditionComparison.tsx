@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { sendCompareResultViewEvent } from '@/lib/analytics';
 import type { RaceDataFeatures } from '@/lib/types';
 
 
@@ -22,7 +23,15 @@ export function RaceConditionComparison({ raceId }: { raceId: string }) {
                 cache: 'no-store',
             });
             if (response.ok) {
-                setData(await response.json() as RaceDataFeatures);
+                const next = await response.json() as RaceDataFeatures;
+                setData(next);
+                sendCompareResultViewEvent({
+                    horse_count: next.runners.length,
+                    condition_scope: 'venue_surface_distance',
+                    comparable_count: next.runners.filter(
+                        (runner) => runner.horse_condition.sample_size >= 10,
+                    ).length,
+                });
             }
         } finally {
             setLoaded(true);
@@ -38,7 +47,7 @@ export function RaceConditionComparison({ raceId }: { raceId: string }) {
             }}
         >
             <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-bold text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 sm:px-4">
-                <span>出走馬・騎手・調教師の同条件成績</span>
+                <span>このレースと同じ競馬場・コース・距離で比較</span>
                 <span className="text-xs font-semibold text-slate-500">過去データ</span>
             </summary>
             <div className="border-t border-slate-200">

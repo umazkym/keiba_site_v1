@@ -1,0 +1,132 @@
+name: Keiba Data Value Operations
+
+on:
+  schedule:
+    # 毎日07:45 JST（UTCでは前日22:45）
+    - cron: '45 22 * * *'
+    # 毎週水曜09:45 JST（UTCでは水曜00:45）
+    - cron: '45 0 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: keiba-data-value-operations
+  cancel-in-progress: false
+
+jobs:
+  daily-quality-audit:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '45 22 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install read-only audit dependencies
+        run: pip install sqlalchemy psycopg2-binary python-dotenv
+
+      - name: Set up IAP database tunnel
+        uses: ./.github/actions/setup-iap-db
+        with:
+          database_url: ${{ secrets.DATABASE_URL }}
+
+      - name: Prepare report directory
+        shell: bash
+        run: mkdir -p "$RUNNER_TEMP/data-value-quality"
+
+      - name: Run read-only data quality audit
+        env:
+          PYTHONPATH: backend
+        run: >-
+          python backend/scripts/agents/data_value_quality_audit.py
+          --output-json "$RUNNER_TEMP/data-value-quality/report.json"
+          --summary "$RUNNER_TEMP/data-value-quality/summary.md"
+
+      - name: Add quality audit to Actions Summary
+        shell: bash
+        run: cat "$RUNNER_TEMP/data-value-quality/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload quality audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-value-quality-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/data-value-quality/report.json
+            ${{ runner.temp }}/data-value-quality/summary.md
+          if-no-files-found: error
+          retention-days: 30
+
+  weekly-funnel-report:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '45 0 * * 3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GA4_PROPERTY_ID: ${{ vars.GA4_PROPERTY_ID }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: keiba-api-project
+          workload_identity_provider: projects/761440273070/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+          service_account: github-actions-iap-db@keiba-api-project.iam.gserviceaccount.com
+          create_credentials_file: true
+
+      - name: Record missing GA4 configuration
+        if: env.GA4_PROPERTY_ID == ''
+        shell: bash
+        run: |
+          echo "# UMA-FREE データ価値ファネル" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "GA4_PROPERTY_IDが未設定のため週次集計を実行していません。" >> "$GITHUB_STEP_SUMMARY"
+          echo "サービスアカウントをGA4プロパティの閲覧者へ追加し、Repository Variableを設定してください。" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install GA4 report dependencies
+        if: env.GA4_PROPERTY_ID != ''
+        run: pip install google-api-python-client google-auth
+
+      - name: Prepare report directory
+        if: env.GA4_PROPERTY_ID != ''
+        shell: bash
+        run: mkdir -p "$RUNNER_TEMP/data-value-funnel"
+
+      - name: Generate 28-day data value funnel
+        if: env.GA4_PROPERTY_ID != ''
+        run: >-
+          python backend/scripts/agents/data_value_funnel_report.py
+          --days 28
+          --output-json "$RUNNER_TEMP/data-value-funnel/report.json"
+          --summary "$RUNNER_TEMP/data-value-funnel/summary.md"
+
+      - name: Add funnel report to Actions Summary
+        if: env.GA4_PROPERTY_ID != ''
+        shell: bash
+        run: cat "$RUNNER_TEMP/data-value-funnel/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload funnel report artifact
+        if: env.GA4_PROPERTY_ID != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-value-funnel-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/data-value-funnel/report.json
+            ${{ runner.temp }}/data-value-funnel/summary.md
+          if-no-files-found: error
+          retention-days: 90

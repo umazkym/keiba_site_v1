@@ -1267,6 +1267,132 @@ def _bulk_rates(
     return {str(row[0]): _rate_from_row(row[1:]) for row in rows}
 
 
+def _sample_quality(sample_size: int) -> str:
+    if sample_size < 5:
+        return "insufficient"
+    if sample_size < 10:
+        return "reference"
+    return "comparable"
+
+
+def _wilson_lower_bound(successes: int, sample_size: int) -> Optional[float]:
+    if sample_size <= 0:
+        return None
+    bounded_successes = min(max(int(successes), 0), int(sample_size))
+    z = 1.959963984540054
+    proportion = bounded_successes / sample_size
+    z_squared = z * z
+    denominator = 1 + z_squared / sample_size
+    centre = proportion + z_squared / (2 * sample_size)
+    margin = z * math.sqrt(
+        (proportion * (1 - proportion) + z_squared / (4 * sample_size))
+        / sample_size
+    )
+    return round(max(0.0, (centre - margin) / denominator) * 100, 2)
+
+
+def get_horse_comparison(
+    db: Session,
+    horse_ids: Sequence[str],
+    *,
+    venue_name: str,
+    course_type: str,
+    distance: int,
+    ground_condition: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    normalized_ids = [str(horse_id).strip() for horse_id in horse_ids]
+    if not 2 <= len(normalized_ids) <= 5 or len(set(normalized_ids)) != len(normalized_ids):
+        raise ValueError("horse_ids must contain 2 to 5 unique values")
+
+    normalized_venue = venue_name.strip().replace("競馬場", "")
+    normalized_ground = ground_condition.strip() if ground_condition else None
+    course_types = _COURSE_SLUG_TO_TYPES.get(
+        _COURSE_TYPE_TO_SLUG.get(course_type, ""),
+        (course_type,),
+    )
+    cache_key = ":".join([
+        "horse-comparison",
+        ",".join(normalized_ids),
+        normalized_venue,
+        course_type,
+        str(distance),
+        normalized_ground or "-",
+    ])
+    cached = _cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    horse_rows = (
+        db.query(models.Horse)
+        .filter(models.Horse.id.in_(normalized_ids))
+        .all()
+    )
+    horses_by_id = {str(horse.id): horse for horse in horse_rows}
+    if len(horses_by_id) != len(normalized_ids):
+        return None
+
+    condition_filters = [
+        models.Race.venue_name == normalized_venue,
+        models.Race.course_type.in_(course_types),
+        models.Race.distance == distance,
+    ]
+    if normalized_ground:
+        condition_filters.append(models.Race.ground_condition == normalized_ground)
+
+    overall_rates = _bulk_rates(
+        db,
+        models.Result.horse_id,
+        normalized_ids,
+    )
+    matched_rates = _bulk_rates(
+        db,
+        models.Result.horse_id,
+        normalized_ids,
+        condition_filters,
+    )
+    analysis_start_date, analysis_end_date = _dataset_range(db)
+    items: List[Dict[str, Any]] = []
+    for horse_id in normalized_ids:
+        horse = horses_by_id[horse_id]
+        overall = overall_rates.get(horse_id, _empty_rate())
+        matched = matched_rates.get(horse_id, _empty_rate())
+        sample_size = int(matched["sample_size"])
+        items.append({
+            "horse_id": horse_id,
+            "horse_name": horse.name,
+            "url": f"/horses/{quote(horse_id, safe='')}",
+            "overall": overall,
+            "matched_condition": matched,
+            "recent_runs": _recent_runs(
+                db,
+                [models.Result.horse_id == horse_id],
+                limit=5,
+            ),
+            "sample_quality": _sample_quality(sample_size),
+            "wilson_lower_bound": (
+                _wilson_lower_bound(int(matched["places"]), sample_size)
+                if sample_size >= 10
+                else None
+            ),
+        })
+
+    result = {
+        "conditions": {
+            "venue_name": normalized_venue,
+            "course_type": _course_type_label(course_type),
+            "distance": distance,
+            "ground_condition": normalized_ground,
+        },
+        "horses": items,
+        "analysis_start_date": analysis_start_date,
+        "analysis_end_date": analysis_end_date,
+        "data_as_of_date": analysis_end_date,
+        "as_of": _now(),
+    }
+    _cache.set(cache_key, result, 600)
+    return result
+
+
 def get_race_features(db: Session, race_id: str) -> Optional[Dict[str, Any]]:
     cache_key = f"race-features:{race_id}"
     cached = _cache.get(cache_key)

@@ -1,15 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import {
-    Bookmark,
-    CalendarDays,
-    ChevronRight,
-    Compass,
-    GitCompareArrows,
-    Search,
-    Sparkles,
-} from 'lucide-react';
+import { ChevronRight, Search } from 'lucide-react';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { DataHubActionLink } from '@/components/DataHubActionLink';
 import { DataHubNav } from '@/components/DataHubNav';
 import { DataSearchPanel } from '@/components/DataSearchPanel';
 import { BreadcrumbSchema } from '@/components/StructuredData';
@@ -24,7 +17,7 @@ export const revalidate = 21600;
 
 export const metadata: Metadata = {
     title: '競馬データベース｜競走馬・騎手・調教師・コース成績',
-    description: '競走馬、騎手、調教師、競馬場・コース、AI予測成績を名前や条件から無料で検索・比較できます。',
+    description: '競走馬、騎手、調教師、競馬場・コースの成績を、出走数を伴う同じ条件で無料比較できます。',
     robots: { index: true, follow: true },
     alternates: { canonical: '/keiba-data' },
 };
@@ -33,36 +26,9 @@ const popularSearchTags = [
     { label: 'C.ルメール', query: 'ルメール' },
     { label: '川田将雅', query: '川田' },
     { label: '武豊', query: '武豊' },
-    { label: '東京 芝2000m', query: '東京 芝2000m' },
+    { label: '東京 芝1600m', query: '東京 芝1600m' },
     { label: '中山 芝2000m', query: '中山 芝2000m' },
-    { label: '阪神 ダ1800m', query: '阪神 ダ1800m' },
-];
-
-const featureCards = [
-    {
-        href: '/compare',
-        title: '競走馬の成績比較',
-        description: '2〜5頭の近走成績、勝率、3着内率、得意コース、AI偏差値履歴を同じ基準でスッキリ比較。',
-        icon: GitCompareArrows,
-        accentBg: 'bg-amber-50/70 border-amber-200 text-amber-950 hover:border-amber-400',
-        iconBg: 'bg-amber-500 text-white',
-    },
-    {
-        href: '/my-data',
-        title: 'マイデータで保存・出走チェック',
-        description: '気になる馬・騎手・コースをお気に入り保存。本日出走する馬のアラート機能も搭載。',
-        icon: Bookmark,
-        accentBg: 'bg-emerald-50/70 border-emerald-200 text-emerald-950 hover:border-emerald-400',
-        iconBg: 'bg-emerald-600 text-white',
-    },
-    {
-        href: '/races/today',
-        title: '本日の開催レースと照合',
-        description: '本日開催されるレース出走馬のAI偏差値、対戦成績、展開脚質、枠順有利不利を確認。',
-        icon: CalendarDays,
-        accentBg: 'bg-violet-50/70 border-violet-200 text-violet-950 hover:border-violet-400',
-        iconBg: 'bg-violet-600 text-white',
-    },
+    { label: '阪神 ダート1800m', query: '阪神 ダート1800m' },
 ];
 
 function VenueLinks({
@@ -83,7 +49,7 @@ function VenueLinks({
                         <Link
                             key={slug}
                             href={`/courses#venue-${slug}`}
-                            className="inline-flex min-h-9 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs sm:text-sm font-bold text-slate-800 transition-all duration-150 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                            className="inline-flex min-h-9 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-800 transition-colors duration-150 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:text-sm"
                         >
                             {name}
                         </Link>
@@ -121,86 +87,62 @@ export default function KeibaDataPage() {
             <main id="top" className="mx-auto max-w-6xl px-3 pb-14 pt-3 sm:px-4">
                 <DataHubNav currentPath="/keiba-data" />
 
-                {/* ヒーローヘッダー */}
-                <header className="relative mt-5 overflow-hidden rounded-2xl border border-blue-100 bg-slate-900 p-6 text-white shadow-md sm:p-8">
-                    <div className="relative z-10 max-w-3xl">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/20 px-3 py-1 text-xs font-black text-blue-300 backdrop-blur-xs border border-blue-400/30">
-                            <Sparkles className="h-3.5 w-3.5 text-blue-400" aria-hidden="true" />
-                            競馬データ・分析ハブ
-                        </span>
-                        <h1 className="mt-3.5 text-2xl font-black leading-snug tracking-tight !text-white sm:text-4xl">
-                            競馬データを自由自在に比較・分析
-                        </h1>
-                        <p className="mt-2.5 text-xs leading-relaxed !text-slate-200 sm:text-sm sm:leading-6">
-                            競走馬・騎手・調教師の過去成績から、コース別（芝・ダート・距離）の枠順・脚質傾向まで。気になる馬を2〜5頭選んで成績比較したり、マイデータでお気に入り管理できます。
-                        </p>
-                    </div>
+                <header className="mt-4 min-h-[136px] rounded-xl border border-slate-800 bg-slate-900 p-4 text-white sm:min-h-0 sm:p-6">
+                    <p className="text-xs font-bold text-blue-200">競馬データベース</p>
+                    <h1 className="mt-1.5 text-2xl font-black leading-tight !text-white sm:text-3xl">
+                        競走馬・騎手・コースを同じ条件で比較
+                    </h1>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 !text-slate-200">
+                        東京芝1600mなど条件を揃え、勝率・3着以内率を出走数と一緒に確認できます。
+                    </p>
                 </header>
 
-                {/* 検索パネル + クイックタグ */}
-                <div className="mt-6">
-                    <DataSearchPanel heading="競走馬・騎手・調教師・コースを横断検索" />
-                    <div className="mt-3 flex flex-wrap items-center gap-1.5 px-1">
+                <section id="data-search" className="mt-4 scroll-mt-24">
+                    <DataSearchPanel heading="馬名・騎手名・調教師名・コース条件から検索" />
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 px-1">
                         <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
                             <Search className="h-3.5 w-3.5" aria-hidden="true" />
-                            よく検索される条件:
+                            検索例
                         </span>
                         {popularSearchTags.map((tag) => (
                             <Link
                                 key={tag.label}
                                 href={`/search?q=${encodeURIComponent(tag.query)}`}
-                                className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-bold text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                                className="inline-flex min-h-8 items-center rounded-md border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
                             >
                                 {tag.label}
                             </Link>
                         ))}
                     </div>
-                </div>
+                </section>
 
-                {/* 主要機能カード */}
-                <section className="mt-8" aria-labelledby="core-features-heading">
-                    <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-                        <Compass className="h-5 w-5 text-blue-600" aria-hidden="true" />
-                        <h2 id="core-features-heading" className="text-xl font-black text-slate-950">
-                            分析・比較機能
-                        </h2>
-                    </div>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                        {featureCards.map((card) => {
-                            const Icon = card.icon;
-                            return (
-                                <Link
-                                    key={card.href}
-                                    href={card.href}
-                                    className={`group flex flex-col justify-between rounded-2xl border p-5 sm:p-6 transition-all duration-200 hover:shadow-md ${card.accentBg}`}
-                                >
-                                    <div>
-                                        <div className="flex items-center justify-between">
-                                            <span className={`flex h-11 w-11 items-center justify-center rounded-xl font-bold shadow-xs ${card.iconBg}`}>
-                                                <Icon className="h-5.5 w-5.5" aria-hidden="true" />
-                                            </span>
-                                        </div>
-                                        <h3 className="mt-5 text-base font-black text-slate-950 group-hover:text-blue-700">
-                                            {card.title}
-                                        </h3>
-                                        <p className="mt-2 text-xs leading-5 text-slate-600">
-                                            {card.description}
-                                        </p>
-                                    </div>
-                                    <div className="mt-5 flex items-center justify-end text-xs font-black text-blue-600 group-hover:underline">
-                                        開く
-                                        <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                                    </div>
-                                </Link>
-                            );
-                        })}
+                <section className="mt-5" aria-labelledby="data-actions-heading">
+                    <h2 id="data-actions-heading" className="text-lg font-black text-slate-950">
+                        目的から選ぶ
+                    </h2>
+                    <div className="mt-2 grid gap-2 lg:grid-cols-3">
+                        <DataHubActionLink
+                            action="today_compare"
+                            href="/races/today"
+                            title="今日の出走馬を比較"
+                            description="当日のレースから同じ競馬場・コース・距離の成績を確認"
+                        />
+                        <DataHubActionLink
+                            action="name_search"
+                            href="#data-search"
+                            title="馬名・騎手名から検索"
+                            description="名前の一部から個別成績と直近の結果を確認"
+                        />
+                        <DataHubActionLink
+                            action="course_lookup"
+                            href="#course-search"
+                            title="競馬場・距離からコース傾向"
+                            description="芝・ダート・障害と距離を分けて条件別成績を確認"
+                        />
                     </div>
                 </section>
 
-
-
-                {/* 競馬場コース選択 */}
-                <section className="mt-8" aria-labelledby="course-search-heading">
+                <section id="course-search" className="mt-7 scroll-mt-24" aria-labelledby="course-search-heading">
                     <div className="flex flex-wrap items-end justify-between gap-2 border-b border-slate-300 pb-2">
                         <div>
                             <h2 id="course-search-heading" className="text-xl font-black text-slate-950">
@@ -218,11 +160,11 @@ export default function KeibaDataPage() {
                             <ChevronRight className="h-4 w-4" aria-hidden="true" />
                         </Link>
                     </div>
-                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-1 sm:px-4">
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1 sm:px-4">
                         <VenueLinks title="中央競馬" slugs={CENTRAL_VENUE_ORDER} />
                         <VenueLinks title="地方競馬" slugs={LOCAL_VENUE_ORDER} />
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs font-bold text-slate-600 px-1">
+                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 px-1 text-xs font-bold text-slate-600">
                         <span className="inline-flex items-center gap-1.5">
                             <span className="h-3 w-3 rounded-xs bg-emerald-600" aria-hidden="true" />
                             芝コース
@@ -241,4 +183,3 @@ export default function KeibaDataPage() {
         </>
     );
 }
-

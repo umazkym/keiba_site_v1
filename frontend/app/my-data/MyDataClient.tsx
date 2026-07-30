@@ -11,15 +11,18 @@ import {
     MapPinned,
     Search,
     Settings,
-    Sparkles,
     Trash2,
     UserRound,
     UsersRound,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { DataHubNav } from '@/components/DataHubNav';
+import { PricingInterestSurvey } from '@/components/PricingInterestSurvey';
 import { PwaInstallButton } from '@/components/PwaInstallButton';
-import { sendHorseCompareEvent } from '@/lib/analytics';
+import {
+    sendHorseCompareEvent,
+    sendSavedUserReturnEvent,
+} from '@/lib/analytics';
 import {
     clearHorseComparison,
     DATA_FAVORITES_KEY,
@@ -45,6 +48,23 @@ const ENTITY_ICON_MAP: Record<string, {
     trainer: { Icon: UsersRound, className: 'text-violet-600', label: '調教師' },
     course: { Icon: MapPinned, className: 'text-amber-700', label: 'コース' },
 };
+
+const MY_DATA_LAST_VISIT_KEY = 'uma_my_data_last_visit_v1';
+const MY_DATA_RETURN_SESSION_KEY = 'uma_my_data_return_tracked_v1';
+
+function favoriteCountBucket(count: number): '0' | '1' | '2_5' | '6_plus' {
+    if (count === 0) return '0';
+    if (count === 1) return '1';
+    if (count <= 5) return '2_5';
+    return '6_plus';
+}
+
+function returnDaysBucket(days: number): '1_2' | '3_6' | '7_13' | '14_plus' {
+    if (days < 3) return '1_2';
+    if (days < 7) return '3_6';
+    if (days < 14) return '7_13';
+    return '14_plus';
+}
 
 function SavedEntityList({
     title,
@@ -72,7 +92,7 @@ function SavedEntityList({
     const hasMore = filteredItems.length > 10;
 
     return (
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                     <h2 className="font-black text-slate-950">{title}</h2>
@@ -194,6 +214,27 @@ export default function MyDataClient() {
         };
     }, [refresh]);
 
+    useEffect(() => {
+        const now = Date.now();
+        const previous = Number(window.localStorage.getItem(MY_DATA_LAST_VISIT_KEY) || 0);
+        const storedFavorites = readFavorites();
+        const storedComparison = readHorseComparison();
+        const hasSavedData = storedFavorites.length > 0 || storedComparison.length > 0;
+        const elapsedDays = previous > 0 ? Math.floor((now - previous) / 86_400_000) : 0;
+        const alreadyTracked = window.sessionStorage.getItem(MY_DATA_RETURN_SESSION_KEY) === '1';
+
+        if (hasSavedData && elapsedDays >= 1 && !alreadyTracked) {
+            window.sessionStorage.setItem(MY_DATA_RETURN_SESSION_KEY, '1');
+            sendSavedUserReturnEvent({
+                saved_type_count: new Set(storedFavorites.map((item) => item.entity_type)).size,
+                favorite_count_bucket: favoriteCountBucket(storedFavorites.length),
+                comparison_count: storedComparison.length,
+                days_since_last_visit_bucket: returnDaysBucket(elapsedDays),
+            });
+        }
+        window.localStorage.setItem(MY_DATA_LAST_VISIT_KEY, String(now));
+    }, []);
+
     const clearStoredList = (key: string) => {
         window.localStorage.removeItem(key);
         window.dispatchEvent(new CustomEvent(MY_DATA_UPDATED_EVENT));
@@ -247,7 +288,7 @@ export default function MyDataClient() {
 
             {/* 統計＆クイックアクションカード */}
             <section className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
                     <div className="h-1 -mx-4 -mt-4 mb-3 bg-emerald-600" />
                     <div className="flex items-center justify-between">
                         <Bookmark className="h-5 w-5 text-emerald-600" aria-hidden="true" />
@@ -267,7 +308,7 @@ export default function MyDataClient() {
                     )}
                 </div>
 
-                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
                     <div className="h-1 -mx-4 -mt-4 mb-3 bg-amber-500" />
                     <div className="flex items-center justify-between">
                         <GitCompareArrows className="h-5 w-5 text-amber-600" aria-hidden="true" />
@@ -280,13 +321,13 @@ export default function MyDataClient() {
                             href="/compare"
                             className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-900 border border-amber-200 hover:bg-amber-100"
                         >
-                            <Sparkles className="h-3.5 w-3.5 text-amber-600" aria-hidden="true" />
+                            <GitCompareArrows className="h-3.5 w-3.5 text-amber-600" aria-hidden="true" />
                             比較表を開く
                         </Link>
                     )}
                 </div>
 
-                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
                     <div className="h-1 -mx-4 -mt-4 mb-3 bg-blue-500" />
                     <div className="flex items-center justify-between">
                         <Clock3 className="h-5 w-5 text-blue-600" aria-hidden="true" />
@@ -298,7 +339,7 @@ export default function MyDataClient() {
             </section>
 
             {/* 設定セクション */}
-            <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+            <section className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
                     <Settings className="h-4 w-4 text-slate-500" aria-hidden="true" />
                     <h2 className="text-xs font-black text-slate-800">アプリ設定 & ショートカット</h2>
@@ -356,7 +397,7 @@ export default function MyDataClient() {
             </div>
 
             {/* 比較中の馬 */}
-            <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+            <section className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                     <h2 className="font-black text-slate-950">比較中の競走馬</h2>
                     {comparison.length > 0 && (
@@ -399,6 +440,11 @@ export default function MyDataClient() {
                 )}
             </section>
 
+            <PricingInterestSurvey
+                surface="my_data"
+                eligible={favorites.length > 0 || comparison.length >= 2}
+            />
+
             {/* 下部データ操作 */}
             <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
                 <Link href="/keiba-data" className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-blue-600">
@@ -427,4 +473,3 @@ export default function MyDataClient() {
         </main>
     );
 }
-

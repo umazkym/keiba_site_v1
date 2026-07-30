@@ -114,6 +114,7 @@ const ARTICLE_RACE_ATTRIBUTION_TTL_MS = 30 * 60 * 1000;
 const YOUTUBE_ATTRIBUTION_KEY = 'uma_youtube_attribution_v1';
 const SOCIAL_VIDEO_ATTRIBUTION_KEY = 'uma_social_video_attribution_v2';
 const SOCIAL_VIDEO_ATTRIBUTION_TTL_MS = 30 * 60 * 1000;
+const DATA_UPCOMING_ATTRIBUTION_KEY = 'uma_data_upcoming_attribution_v1';
 const ORGANIC_VIDEO_PLATFORMS = new Set([
     'threads',
     'instagram',
@@ -166,6 +167,33 @@ function clearArticleRaceAttribution(): void {
         window.sessionStorage.removeItem(ARTICLE_RACE_ATTRIBUTION_KEY);
     } catch {
         // ストレージが使えない環境でもYouTube流入の計測は継続する。
+    }
+}
+
+function storeDataUpcomingAttribution(raceId: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+        window.sessionStorage.setItem(DATA_UPCOMING_ATTRIBUTION_KEY, JSON.stringify({
+            race_id: raceId,
+            stored_at: Date.now(),
+        }));
+    } catch {
+        // 保存不可でもクリックイベント自体は送信する。
+    }
+}
+
+function consumeDataUpcomingAttribution(raceId?: string): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+        const raw = window.sessionStorage.getItem(DATA_UPCOMING_ATTRIBUTION_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw) as { race_id?: string; stored_at?: number };
+        const expired = !parsed.stored_at || Date.now() - parsed.stored_at > ARTICLE_RACE_ATTRIBUTION_TTL_MS;
+        const matches = Boolean(raceId && parsed.race_id === raceId);
+        window.sessionStorage.removeItem(DATA_UPCOMING_ATTRIBUTION_KEY);
+        return !expired && matches;
+    } catch {
+        return false;
     }
 }
 
@@ -424,6 +452,9 @@ export const sendRaceViewEvent = (params: {
     const socialVideoAttribution = consumeSocialVideoAttribution(params.venue_name);
     if (socialVideoAttribution) clearArticleRaceAttribution();
     const articleAttribution = socialVideoAttribution ? null : consumeArticleRaceAttribution(params.race_id);
+    const dataUpcomingAttribution = socialVideoAttribution || articleAttribution
+        ? false
+        : consumeDataUpcomingAttribution(params.race_id);
     const isYouTubeAttribution = socialVideoAttribution?.source_platform === 'youtube';
     const attributedParams = socialVideoAttribution
         ? isYouTubeAttribution
@@ -450,6 +481,12 @@ export const sendRaceViewEvent = (params: {
             article_entry_method: articleAttribution.link_placement,
             article_destination_type: articleAttribution.destination_type,
         }
+          : dataUpcomingAttribution
+            ? {
+                ...params,
+                entry_source: 'data_upcoming',
+                data_entry_method: 'upcoming_race',
+            }
           : params;
     sendAnalyticsEvent('race_view', attributedParams);
     sendClarityEvent('race_view', {
@@ -462,6 +499,8 @@ export const sendRaceViewEvent = (params: {
                 : 'social_video'
             : articleAttribution
               ? 'article'
+              : dataUpcomingAttribution
+                ? 'data_upcoming'
               : 'direct_or_other',
         source_platform: socialVideoAttribution?.source_platform,
         source_content_key: socialVideoAttribution?.source_content_key,
@@ -691,7 +730,7 @@ export const sendDataEntityViewEvent = (params: {
 export const sendDataSearchEvent = (params: {
     query_length: number;
     result_count: number;
-    search_surface: 'site_search' | 'data_hub' | 'compare';
+    search_surface: 'site_search' | 'data_hub' | 'directory' | 'compare';
 }) => {
     sendAnalyticsEvent('data_search', params);
     sendClarityEvent('data_search', {
@@ -718,4 +757,95 @@ export const sendHorseCompareEvent = (params: {
 }) => {
     sendAnalyticsEvent('horse_compare', params);
     sendClarityEvent('horse_compare', params);
+};
+
+export const sendDataHubActionClickEvent = (params: {
+    action: 'today_compare' | 'name_search' | 'course_lookup';
+    destination_type: 'race' | 'search' | 'course';
+}) => {
+    sendAnalyticsEvent('data_hub_action_click', params);
+    sendClarityEvent('data_hub_action_click', params);
+};
+
+export const sendDataSearchResultClickEvent = (params: {
+    entity_type: DataEntityEventType;
+    result_position: number;
+    result_count: number;
+    search_surface: 'site_search' | 'data_hub' | 'directory' | 'compare';
+    sample_size_bucket: '0_4' | '5_9' | '10_49' | '50_plus';
+}) => {
+    sendAnalyticsEvent('data_search_result_click', params);
+    sendClarityEvent('data_search_result_click', {
+        entity_type: params.entity_type,
+        result_position: params.result_position,
+        search_surface: params.search_surface,
+    });
+};
+
+export const sendCompareResultViewEvent = (params: {
+    horse_count: number;
+    condition_scope: 'venue_surface_distance' | 'venue_surface_distance_ground';
+    comparable_count: number;
+}) => {
+    sendAnalyticsEvent('compare_result_view', params);
+    sendClarityEvent('compare_result_view', params);
+};
+
+export const sendCompareConditionChangeEvent = (params: {
+    changed_field: 'venue' | 'course_type' | 'distance' | 'ground_condition' | 'apply';
+    horse_count: number;
+    has_ground_condition: boolean;
+}) => {
+    sendAnalyticsEvent('compare_condition_change', params);
+    sendClarityEvent('compare_condition_change', params);
+};
+
+export const sendCompareRaceClickEvent = (params: {
+    horse_position: number;
+    run_position: number;
+    destination_type: 'past_race' | 'horse_detail';
+}) => {
+    sendAnalyticsEvent('compare_race_click', params);
+    sendClarityEvent('compare_race_click', params);
+};
+
+export const sendUpcomingRaceClickEvent = (params: {
+    entity_type: 'horse' | 'jockey' | 'trainer';
+    relative_date_bucket: 'today' | 'tomorrow' | 'later';
+    link_placement: 'entity_detail';
+    target_race_id: string;
+}) => {
+    storeDataUpcomingAttribution(params.target_race_id);
+    const eventParams = {
+        entity_type: params.entity_type,
+        relative_date_bucket: params.relative_date_bucket,
+        link_placement: params.link_placement,
+    };
+    sendAnalyticsEvent('upcoming_race_click', eventParams);
+    sendClarityEvent('upcoming_race_click', eventParams);
+};
+
+export const sendSavedUserReturnEvent = (params: {
+    saved_type_count: number;
+    favorite_count_bucket: '0' | '1' | '2_5' | '6_plus';
+    comparison_count: number;
+    days_since_last_visit_bucket: '1_2' | '3_6' | '7_13' | '14_plus';
+}) => {
+    sendAnalyticsEvent('saved_user_return', params);
+    sendClarityEvent('saved_user_return', params);
+};
+
+export const sendPricingSurveyResponseEvent = (params: {
+    response: 'use_at_390' | 'consider_by_features' | 'free_only' | 'not_needed';
+    surface: 'my_data' | 'compare';
+}) => {
+    sendAnalyticsEvent('pricing_survey_response', params);
+    sendClarityEvent('pricing_survey_response', params);
+};
+
+export const sendPricingSurveyViewEvent = (params: {
+    surface: 'my_data' | 'compare';
+}) => {
+    sendAnalyticsEvent('pricing_survey_view', params);
+    sendClarityEvent('pricing_survey_view', params);
 };

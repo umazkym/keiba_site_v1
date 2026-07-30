@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 EntityType = Literal["course", "horse", "jockey", "trainer", "grade"]
@@ -213,6 +213,67 @@ class RaceFeatureResponse(BaseModel):
     race_name: str
     course_label: str
     runners: List[RunnerFeature] = Field(default_factory=list)
+    as_of: datetime
+
+
+class HorseComparisonRequest(BaseModel):
+    horse_ids: List[str] = Field(min_length=2, max_length=5)
+    venue_name: str = Field(min_length=1, max_length=20)
+    course_type: Literal["芝", "ダート", "障害"]
+    distance: int = Field(ge=200, le=5000)
+    ground_condition: Optional[str] = Field(default=None, max_length=20)
+
+    @field_validator("horse_ids")
+    @classmethod
+    def validate_horse_ids(cls, values: List[str]) -> List[str]:
+        normalized = [value.strip() for value in values]
+        if any(not value for value in normalized):
+            raise ValueError("horse_ids must not contain empty values")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("horse_ids must contain unique values")
+        return normalized
+
+    @field_validator("venue_name")
+    @classmethod
+    def normalize_venue_name(cls, value: str) -> str:
+        normalized = value.strip().replace("競馬場", "")
+        if not normalized:
+            raise ValueError("venue_name must not be empty")
+        return normalized
+
+    @field_validator("ground_condition")
+    @classmethod
+    def normalize_ground_condition(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class HorseComparisonCondition(BaseModel):
+    venue_name: str
+    course_type: Literal["芝", "ダート", "障害"]
+    distance: int
+    ground_condition: Optional[str] = None
+
+
+class HorseComparisonItem(BaseModel):
+    horse_id: str
+    horse_name: str
+    url: str
+    overall: RateSummary
+    matched_condition: RateSummary
+    recent_runs: List[RecentRun] = Field(default_factory=list)
+    sample_quality: Literal["insufficient", "reference", "comparable"]
+    wilson_lower_bound: Optional[float] = None
+
+
+class HorseComparisonResponse(BaseModel):
+    conditions: HorseComparisonCondition
+    horses: List[HorseComparisonItem] = Field(default_factory=list)
+    analysis_start_date: Optional[date] = None
+    analysis_end_date: Optional[date] = None
+    data_as_of_date: Optional[date] = None
     as_of: datetime
 
 

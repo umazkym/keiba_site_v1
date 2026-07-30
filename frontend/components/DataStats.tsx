@@ -98,9 +98,6 @@ export function SegmentStatsTable({
 }) {
     if (items.length === 0) return null;
 
-    // 勝率の最大値を特定してハイライト
-    const maxWinRate = Math.max(...items.map((i) => i.win_rate));
-
     return (
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-4 py-3">
@@ -120,9 +117,8 @@ export function SegmentStatsTable({
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {items.map((item) => {
-                            const isTopWinRate = maxWinRate > 0 && item.win_rate === maxWinRate && item.sample_size >= 3;
                             return (
-                                <tr key={item.key} className={isTopWinRate ? 'bg-amber-50/40' : undefined}>
+                                <tr key={item.key}>
                                     <th className="px-4 py-3 text-left font-bold text-slate-800">
                                         {labelKind === 'frame' && Number.isInteger(Number(item.key)) ? (
                                             <span className="inline-flex items-center gap-2">
@@ -142,9 +138,8 @@ export function SegmentStatsTable({
                                     <td className="px-3 py-3 text-right font-mono tabular-nums text-slate-600">
                                         {item.sample_size.toLocaleString('ja-JP')}
                                     </td>
-                                    <td className={`px-3 py-3 text-right font-mono font-bold tabular-nums ${isTopWinRate ? 'text-amber-800 font-black' : 'text-slate-800'}`}>
+                                    <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-800">
                                         {formatRate(item.win_rate)}
-                                        {isTopWinRate && <span className="ml-1 text-[10px]" title="最高勝率">👑</span>}
                                     </td>
                                     <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-800">
                                         {formatRate(item.place_rate)}
@@ -248,5 +243,4 @@ export function RecentRunsTable({
         </section>
     );
 }
-
 

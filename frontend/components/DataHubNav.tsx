@@ -27,7 +27,7 @@ interface NavItem {
     activeColor: string;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const PRIMARY_ITEMS: NavItem[] = [
     {
         href: '/keiba-data',
         label: 'データトップ',
@@ -51,6 +51,9 @@ const NAV_ITEMS: NavItem[] = [
         color: 'text-emerald-600',
         activeColor: 'border-emerald-600 bg-emerald-50/80 text-emerald-900 font-black',
     },
+];
+
+const DIRECTORY_ITEMS: NavItem[] = [
     {
         href: '/horses',
         label: '競走馬',
@@ -102,10 +105,9 @@ export function DataHubNav({ currentPath }: { currentPath?: string }) {
         };
     }, []);
 
-    return (
-        <nav aria-label="競馬データナビゲーション" className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-            <div className="flex overflow-x-auto scrollbar-none divide-x divide-slate-100 sm:grid sm:grid-cols-7">
-                {NAV_ITEMS.map((item) => {
+    const renderItems = (items: NavItem[], columns: string) => (
+        <div className={`grid ${columns} divide-x divide-slate-100`}>
+            {items.map((item) => {
                     const Icon = item.icon;
                     const isCurrent = activePath === item.href || (item.href !== '/keiba-data' && activePath.startsWith(item.href));
                     const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0;
@@ -115,7 +117,7 @@ export function DataHubNav({ currentPath }: { currentPath?: string }) {
                             key={item.href}
                             href={item.href}
                             aria-current={isCurrent ? 'page' : undefined}
-                            className={`group relative flex min-w-[76px] flex-1 flex-col items-center justify-center px-1.5 py-2.5 text-[11px] transition-all duration-150 sm:min-h-12 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs ${
+                            className={`relative flex min-h-12 flex-col items-center justify-center px-1.5 py-2 text-[11px] transition-colors duration-150 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs ${
                                 isCurrent
                                     ? `border-b-2 ${item.activeColor}`
                                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -123,13 +125,11 @@ export function DataHubNav({ currentPath }: { currentPath?: string }) {
                         >
                             <span className="relative flex items-center justify-center">
                                 <Icon
-                                    className={`h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110 ${
-                                        isCurrent ? 'scale-105' : item.color
-                                    }`}
+                                    className={`h-4 w-4 shrink-0 ${isCurrent ? '' : item.color}`}
                                     aria-hidden="true"
                                 />
                                 {badgeCount > 0 && (
-                                    <span className="absolute -right-2 -top-1.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-amber-500 px-1 font-mono text-[9px] font-black text-white shadow-xs">
+                                    <span className="absolute -right-2 -top-1.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-amber-500 px-1 font-mono text-[9px] font-black text-white">
                                         {badgeCount}
                                     </span>
                                 )}
@@ -138,8 +138,17 @@ export function DataHubNav({ currentPath }: { currentPath?: string }) {
                         </Link>
                     );
                 })}
+        </div>
+    );
+
+    return (
+        <nav aria-label="競馬データナビゲーション" className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div aria-label="主な操作">
+                {renderItems(PRIMARY_ITEMS, 'grid-cols-3')}
+            </div>
+            <div className="border-t border-slate-200 bg-slate-50/50" aria-label="データ分類">
+                {renderItems(DIRECTORY_ITEMS, 'grid-cols-4')}
             </div>
         </nav>
     );
 }
-

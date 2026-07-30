@@ -1,13 +1,28 @@
 'use client';
 
 import Link from 'next/link';
-import { Bookmark, CalendarDays, GitCompareArrows, Plus, Search, Trash2, X } from 'lucide-react';
+import {
+    Bookmark,
+    GitCompareArrows,
+    Plus,
+    Search,
+    Trash2,
+    X,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DataHubNav } from '@/components/DataHubNav';
 import {
+    sendCompareConditionChangeEvent,
+    sendCompareRaceClickEvent,
+    sendCompareResultViewEvent,
     sendDataSearchEvent,
+    sendDataSearchResultClickEvent,
     sendHorseCompareEvent,
 } from '@/lib/analytics';
+import {
+    CENTRAL_VENUE_ORDER,
+    LOCAL_VENUE_ORDER,
+} from '@/lib/data-directory';
 import {
     clearHorseComparison,
     MY_DATA_UPDATED_EVENT,
@@ -17,45 +32,80 @@ import {
     toggleHorseComparison,
     type SavedHorseComparison,
 } from '@/lib/my-data';
-import type { DataEntityDetail, DataSearchResponse } from '@/lib/types';
+import { venueSlugToName } from '@/lib/race-url';
+import type {
+    DataSearchResponse,
+    HorseComparisonRequest,
+    HorseComparisonResponse,
+    HorseComparisonSampleQuality,
+} from '@/lib/types';
 
+
+type ComparisonCondition = Omit<HorseComparisonRequest, 'horse_ids'>;
+
+const VENUE_OPTIONS = [...CENTRAL_VENUE_ORDER, ...LOCAL_VENUE_ORDER]
+    .map((slug) => venueSlugToName(slug))
+    .filter((name): name is string => Boolean(name));
+
+const DEFAULT_CONDITION: ComparisonCondition = {
+    venue_name: '東京',
+    course_type: '芝',
+    distance: 1600,
+    ground_condition: null,
+};
+
+const SAMPLE_LABELS: Record<HorseComparisonSampleQuality, {
+    label: string;
+    className: string;
+}> = {
+    insufficient: {
+        label: '少数データ',
+        className: 'border-red-200 bg-red-50 text-red-800',
+    },
+    reference: {
+        label: '参考値',
+        className: 'border-amber-300 bg-amber-50 text-amber-900',
+    },
+    comparable: {
+        label: '比較対象',
+        className: 'border-emerald-300 bg-emerald-50 text-emerald-900',
+    },
+};
 
 function displayRate(value: number): string {
     return `${value.toFixed(1)}%`;
 }
 
-/** 着順に応じた色・バッジを返す */
-function getRankColor(rank: number | null | undefined) {
-    if (rank == null) return <span className="text-slate-400">—</span>;
-    if (rank === 1) return <span className="rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 font-mono text-xs font-black text-amber-950">1着</span>;
-    if (rank === 2) return <span className="rounded-md border border-slate-300 bg-slate-200 px-1.5 py-0.5 font-mono text-xs font-black text-slate-900">2着</span>;
-    if (rank === 3) return <span className="rounded-md border border-orange-200 bg-orange-100 px-1.5 py-0.5 font-mono text-xs font-bold text-orange-950">3着</span>;
-    return <span className="font-mono text-xs font-semibold text-slate-600">{rank}着</span>;
+function displayRank(rank: number | null | undefined): string {
+    return rank == null ? '—' : `${rank}着`;
 }
 
-/** AI偏差値に応じた色を返す */
-function getDeviationColor(score: number | null | undefined): string {
-    if (score == null) return 'text-slate-400';
-    if (score >= 60) return 'text-amber-700 font-black';
-    if (score >= 50) return 'text-slate-800 font-bold';
-    return 'text-slate-500';
+function sampleSizeBucket(sampleSize: number): '0_4' | '5_9' | '10_49' | '50_plus' {
+    if (sampleSize < 5) return '0_4';
+    if (sampleSize < 10) return '5_9';
+    if (sampleSize < 50) return '10_49';
+    return '50_plus';
 }
 
-/** 勝率/3着率の棒グラフの幅を計算 */
-function getRateBarWidth(rate: number): string {
-    const clamped = Math.min(Math.max(rate, 0), 100);
-    return `${clamped}%`;
+function conditionLabel(condition: HorseComparisonResponse['conditions']): string {
+    return [
+        condition.venue_name,
+        `${condition.course_type}${condition.distance}m`,
+        condition.ground_condition ? `馬場 ${condition.ground_condition}` : null,
+    ].filter(Boolean).join('・');
 }
 
 export default function HorseCompareClient() {
     const [saved, setSaved] = useState<SavedHorseComparison[]>([]);
     const [favorites, setFavorites] = useState<ReturnType<typeof readFavorites>>([]);
-    const [details, setDetails] = useState<DataEntityDetail[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [comparison, setComparison] = useState<HorseComparisonResponse | null>(null);
+    const [loading, setLoading] = useState(false);
     const [query, setQuery] = useState('');
     const [searchResults, setSearchResults] = useState<DataSearchResponse['items']>([]);
     const [searching, setSearching] = useState(false);
     const [error, setError] = useState('');
+    const [draftCondition, setDraftCondition] = useState<ComparisonCondition>(DEFAULT_CONDITION);
+    const [appliedCondition, setAppliedCondition] = useState<ComparisonCondition>(DEFAULT_CONDITION);
 
     const refreshSaved = useCallback(() => {
         setSaved(readHorseComparison());
@@ -66,45 +116,73 @@ export default function HorseCompareClient() {
         refreshSaved();
         const handleUpdate = () => refreshSaved();
         window.addEventListener(MY_DATA_UPDATED_EVENT, handleUpdate);
-        return () => window.removeEventListener(MY_DATA_UPDATED_EVENT, handleUpdate);
+        window.addEventListener('storage', handleUpdate);
+        return () => {
+            window.removeEventListener(MY_DATA_UPDATED_EVENT, handleUpdate);
+            window.removeEventListener('storage', handleUpdate);
+        };
     }, [refreshSaved]);
+
+    const savedKey = useMemo(
+        () => saved.map((horse) => horse.id).join(','),
+        [saved],
+    );
 
     useEffect(() => {
         let cancelled = false;
-        const fetchDetails = async () => {
-            setLoading(true);
-            setError('');
-            if (saved.length === 0) {
-                setDetails([]);
+        const fetchComparison = async () => {
+            if (saved.length < 2) {
+                setComparison(null);
                 setLoading(false);
                 return;
             }
+            setLoading(true);
+            setError('');
             try {
-                const responses = await Promise.all(
-                    saved.map(async (horse) => {
-                        const response = await fetch(
-                            `/api/data/entities/horse/${encodeURIComponent(horse.id)}`,
-                            { cache: 'no-store' },
-                        );
-                        return response.ok ? response.json() as Promise<DataEntityDetail> : null;
+                const response = await fetch('/api/data/compare/horses', {
+                    method: 'POST',
+                    cache: 'no-store',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        horse_ids: saved.map((horse) => horse.id),
+                        ...appliedCondition,
                     }),
-                );
-                if (!cancelled) {
-                    const next = responses.filter((item): item is DataEntityDetail => item !== null);
-                    setDetails(next);
-                    sendHorseCompareEvent({ action: 'view', horse_count: next.length });
-                }
+                });
+                if (!response.ok) throw new Error('compare failed');
+                const next = await response.json() as HorseComparisonResponse;
+                if (cancelled) return;
+                setComparison(next);
+                const comparableCount = next.horses.filter(
+                    (horse) => horse.sample_quality === 'comparable',
+                ).length;
+                sendHorseCompareEvent({ action: 'view', horse_count: next.horses.length });
+                sendCompareResultViewEvent({
+                    horse_count: next.horses.length,
+                    condition_scope: next.conditions.ground_condition
+                        ? 'venue_surface_distance_ground'
+                        : 'venue_surface_distance',
+                    comparable_count: comparableCount,
+                });
             } catch {
-                if (!cancelled) setError('比較データを取得できませんでした。');
+                if (!cancelled) {
+                    setComparison(null);
+                    setError('比較データを取得できませんでした。条件を確認して再度お試しください。');
+                }
             } finally {
                 if (!cancelled) setLoading(false);
             }
         };
-        void fetchDetails();
+        void fetchComparison();
         return () => {
             cancelled = true;
         };
-    }, [saved]);
+    }, [
+        appliedCondition.course_type,
+        appliedCondition.distance,
+        appliedCondition.ground_condition,
+        appliedCondition.venue_name,
+        savedKey,
+    ]);
 
     const runSearch = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -138,8 +216,22 @@ export default function HorseCompareClient() {
         refreshSaved();
     };
 
-    const addHorse = (id: string, name: string, url: string) => {
-        const result = toggleHorseComparison({ id, name, url });
+    const addHorse = (
+        item: DataSearchResponse['items'][number],
+        resultPosition: number,
+    ) => {
+        sendDataSearchResultClickEvent({
+            entity_type: 'horse',
+            result_position: resultPosition,
+            result_count: searchResults.length,
+            search_surface: 'compare',
+            sample_size_bucket: sampleSizeBucket(item.sample_size),
+        });
+        const result = toggleHorseComparison({
+            id: item.id,
+            name: item.name,
+            url: item.url,
+        });
         if (result.full) {
             setError('比較できる馬は5頭までです。');
             return;
@@ -151,78 +243,84 @@ export default function HorseCompareClient() {
         refreshSaved();
     };
 
-    const handleToggleFavorite = (detail: DataEntityDetail) => {
+    const handleToggleFavorite = (horse: HorseComparisonResponse['horses'][number]) => {
         toggleFavorite({
             entity_type: 'horse',
-            id: detail.entity.id,
-            name: detail.entity.name,
-            subtitle: detail.entity.subtitle,
-            url: detail.entity.url,
+            id: horse.horse_id,
+            name: horse.horse_name,
+            subtitle: `集計対象${horse.overall.sample_size}走`,
+            url: horse.url,
         });
         refreshSaved();
     };
 
-
-    const courseRows = useMemo(() => {
-        const keys = new Set<string>();
-        details.forEach((detail) => {
-            (detail.segments.courses ?? []).slice(0, 5).forEach((item) => keys.add(item.key));
+    const applyCondition = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!Number.isInteger(draftCondition.distance) || draftCondition.distance < 200) {
+            setError('距離は200m以上の整数で指定してください。');
+            return;
+        }
+        setError('');
+        setAppliedCondition({ ...draftCondition });
+        sendCompareConditionChangeEvent({
+            changed_field: 'apply',
+            horse_count: saved.length,
+            has_ground_condition: Boolean(draftCondition.ground_condition),
         });
-        return [...keys].slice(0, 10);
-    }, [details]);
+    };
 
-    // 指標トップ馬の特定
-    const maxWinRate = useMemo(() => Math.max(...details.map((d) => d.overall.win_rate), 0), [details]);
-    const maxPlaceRate = useMemo(() => Math.max(...details.map((d) => d.overall.place_rate), 0), [details]);
+    const comparableHorses = comparison?.horses.filter(
+        (horse) => horse.sample_quality === 'comparable' && horse.wilson_lower_bound != null,
+    ) ?? [];
+    const topWilson = comparableHorses.length >= 2
+        ? Math.max(...comparableHorses.map((horse) => horse.wilson_lower_bound ?? 0))
+        : null;
 
     return (
         <main className="mx-auto max-w-6xl px-3 pb-14 pt-3 sm:px-4">
-
             <DataHubNav currentPath="/compare" />
 
-            <header className="mt-5 border-b border-slate-200 pb-5">
+            <header className="mt-4 border-b border-slate-200 pb-4">
                 <p className="text-xs font-bold text-slate-500">競馬データベース</p>
-                <h1 className="mt-1 text-2xl font-black text-slate-950 sm:text-4xl">競走馬の成績比較</h1>
-
-                <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-7">
-                    最大5頭まで、過去成績、勝率、3着以内率、得意コース、AI偏差値履歴を同じ基準で確認できます。
+                <h1 className="mt-1 text-2xl font-black text-slate-950 sm:text-3xl">競走馬の成績比較</h1>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                    通算成績と、競馬場・芝ダート・距離を揃えた成績を分けて確認します。率には必ず出走数を併記します。
                 </p>
             </header>
 
-            {/* 検索セクション */}
-            <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+            <section className="mt-4 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                 <form onSubmit={runSearch} className="flex flex-col gap-2 sm:flex-row">
                     <label htmlFor="horse-compare-search" className="sr-only">比較する馬を検索</label>
                     <input
                         id="horse-compare-search"
                         value={query}
                         onChange={(event) => setQuery(event.target.value)}
-                        placeholder="馬名を入力して検索（例: ドゥデュース、キセキ）"
-                        className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        placeholder="比較する馬名を入力"
+                        className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     />
                     <button
                         type="submit"
                         disabled={searching}
-                        className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-amber-600 px-5 py-2 text-sm font-bold text-white transition-colors duration-150 hover:bg-amber-700 disabled:cursor-wait disabled:bg-slate-400"
+                        className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-bold text-white transition-colors duration-150 hover:bg-blue-700 disabled:cursor-wait disabled:bg-slate-400"
                     >
                         <Search className="h-4 w-4" aria-hidden="true" />
                         {searching ? '検索中' : '馬を検索'}
                     </button>
                 </form>
                 {searchResults.length > 0 && (
-                    <div className="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-sm">
-                        {searchResults.map((item) => (
+                    <div className="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+                        {searchResults.map((item, index) => (
                             <button
                                 key={item.id}
                                 type="button"
-                                onClick={() => addHorse(item.id, item.name, item.url)}
-                                className="flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors duration-150 hover:bg-blue-50"
+                                onClick={() => addHorse(item, index + 1)}
+                                className="flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-blue-50"
                             >
                                 <span className="min-w-0 flex-1">
                                     <span className="block truncate font-bold text-slate-900">{item.name}</span>
                                     <span className="block truncate text-xs text-slate-500">{item.description}</span>
                                 </span>
-                                <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700 border border-blue-200">
+                                <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">
                                     <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                                     追加
                                 </span>
@@ -233,21 +331,20 @@ export default function HorseCompareClient() {
                 {error && <p className="mt-3 text-sm font-bold text-red-700">{error}</p>}
             </section>
 
-            {/* 選択中の馬タグ */}
-            <section className="mt-4 flex flex-wrap items-center gap-2">
+            <section className="mt-3 flex flex-wrap items-center gap-2" aria-label="比較中の競走馬">
                 {saved.map((horse, index) => (
-                    <span key={horse.id} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white pl-2 pr-1 text-sm font-bold text-slate-800 shadow-2xs">
-                        <span className="flex h-5 w-5 items-center justify-center rounded-md bg-slate-100 font-mono text-[11px] font-black text-slate-600">
+                    <span key={horse.id} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white pl-2 pr-1 text-sm font-bold text-slate-800">
+                        <span className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 font-mono text-[11px] font-black text-slate-600">
                             {index + 1}
                         </span>
-                        <Link prefetch={false} href={horse.url} className="px-1 max-w-[140px] truncate hover:text-blue-600" title={horse.name}>
+                        <Link prefetch={false} href={horse.url} className="max-w-[150px] truncate px-1 hover:text-blue-600" title={horse.name}>
                             {horse.name}
                         </Link>
                         <button
                             type="button"
                             onClick={() => removeHorse(horse)}
                             aria-label={`${horse.name}を比較から外す`}
-                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition-colors duration-150 hover:bg-red-50 hover:text-red-600"
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-slate-400 transition-colors duration-150 hover:bg-red-50 hover:text-red-600"
                         >
                             <X className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
@@ -261,7 +358,7 @@ export default function HorseCompareClient() {
                             sendHorseCompareEvent({ action: 'clear', horse_count: 0 });
                             refreshSaved();
                         }}
-                        className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 px-3 text-xs font-bold text-slate-500 transition-colors hover:text-red-600"
+                        className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 px-3 text-xs font-bold text-slate-500 transition-colors duration-150 hover:text-red-600"
                     >
                         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         すべて外す
@@ -269,236 +366,300 @@ export default function HorseCompareClient() {
                 )}
             </section>
 
-            {loading ? (
-                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-600">
-                    比較データを読み込んでいます...
-                </div>
-            ) : details.length < 2 ? (
-                /* 空状態ガイド */
-                <section className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-8">
-                    <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
-                            <GitCompareArrows className="h-5 w-5" aria-hidden="true" />
-                        </span>
+            {saved.length < 2 ? (
+                <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="flex items-start gap-3">
+                        <GitCompareArrows className="mt-0.5 h-5 w-5 text-blue-600" aria-hidden="true" />
                         <div>
                             <h2 className="text-lg font-black text-slate-950">2頭以上の競走馬を選択してください</h2>
-                            <p className="text-xs leading-5 text-slate-600">上の検索窓、または各馬の詳細ページから追加できます。</p>
-                        </div>
-                    </div>
-                    <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500 font-mono text-xs font-black text-white">1</span>
-                            <p className="mt-2 text-sm font-black text-slate-900">馬名で検索</p>
-                            <p className="mt-1 text-xs leading-relaxed text-slate-500">上の入力欄にお探しの馬名を入力して検索します。</p>
-                        </div>
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500 font-mono text-xs font-black text-white">2</span>
-                            <p className="mt-2 text-sm font-black text-slate-900">比較へ追加</p>
-                            <p className="mt-1 text-xs leading-relaxed text-slate-500">検索結果や馬データ詳細画面から最大5頭まで登録。</p>
-                        </div>
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500 font-mono text-xs font-black text-white">3</span>
-                            <p className="mt-2 text-sm font-black text-slate-900">同じ基準で成績比較</p>
-
-                            <p className="mt-1 text-xs leading-relaxed text-slate-500">過去成績、勝率、得意コース、AI偏差値を一目で判定。</p>
+                            <p className="mt-1 text-sm leading-6 text-slate-600">
+                                馬名で検索して最大5頭まで追加すると、通算と同条件の成績を分けて表示します。
+                            </p>
                         </div>
                     </div>
                 </section>
             ) : (
-                <div className="mt-6 space-y-6">
-                    {/* メイン比較テーブル */}
-                    <section className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
-                        <div className="h-1 bg-gradient-to-r from-amber-500 via-blue-600 to-emerald-600" />
-                        <table className="w-full min-w-[720px] border-collapse text-sm">
-                            <thead className="bg-slate-50">
-                                <tr>
-                                    <th className="sticky left-0 z-20 w-36 border-b border-r border-slate-200 bg-slate-50 px-4 py-3 text-left text-xs font-black text-slate-600 shadow-xs">
-                                        比較項目
-                                    </th>
-                                    {details.map((detail) => {
-                                        const isFav = favorites.some((f) => f.id === detail.entity.id);
-                                        const hasUpcoming = detail.upcoming_races.length > 0;
-                                        return (
-                                            <th key={detail.entity.id} className="min-w-[180px] border-b border-r border-slate-200 px-4 py-3 text-left last:border-r-0">
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <Link prefetch={false} href={detail.entity.url} className="block truncate text-base font-black text-slate-950 hover:text-blue-600" title={detail.entity.name}>
-                                                        {detail.entity.name}
-                                                    </Link>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleToggleFavorite(detail)}
-                                                        title={isFav ? 'お気に入りから外す' : 'お気に入り保存'}
-                                                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition-colors ${
-                                                            isFav
-                                                                ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
-                                                                : 'border-slate-200 bg-white text-slate-400 hover:text-emerald-600'
-                                                        }`}
-                                                    >
-                                                        <Bookmark className="h-3.5 w-3.5" fill={isFav ? 'currentColor' : 'none'} aria-hidden="true" />
-                                                    </button>
-                                                </div>
-                                                {hasUpcoming && (
-                                                    <Link
-                                                        href={detail.upcoming_races[0].url}
-                                                        className="mt-1 inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-black text-blue-700 border border-blue-200 hover:bg-blue-100"
-                                                    >
-                                                        <CalendarDays className="h-3 w-3" aria-hidden="true" />
-                                                        本日出走予定あり
-                                                    </Link>
-                                                )}
-                                            </th>
-                                        );
-                                    })}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {/* 対象走数 */}
-                                <tr>
-                                    <th className="sticky left-0 z-10 border-r border-slate-200 bg-white px-4 py-3 text-left text-xs font-bold text-slate-500 shadow-xs">対象</th>
-                                    {details.map((detail) => (
-                                        <td key={detail.entity.id} className="border-r border-slate-100 px-4 py-3 font-mono font-bold tabular-nums text-slate-800 last:border-r-0">
-                                            {detail.overall.sample_size}走
-                                        </td>
+                <>
+                    <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4" aria-labelledby="condition-heading">
+                        <div>
+                            <h2 id="condition-heading" className="text-lg font-black text-slate-950">同条件比較の条件</h2>
+                            <p className="mt-1 text-xs leading-5 text-slate-600">
+                                馬場状態を指定しない場合は、良・稍重・重・不良をまとめて集計します。
+                            </p>
+                        </div>
+                        <form onSubmit={applyCondition} className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_1fr_1fr_auto] lg:items-end">
+                            <label className="text-xs font-bold text-slate-700">
+                                競馬場
+                                <select
+                                    value={draftCondition.venue_name}
+                                    onChange={(event) => setDraftCondition((current) => ({
+                                        ...current,
+                                        venue_name: event.target.value,
+                                    }))}
+                                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                >
+                                    {VENUE_OPTIONS.map((venue) => (
+                                        <option key={venue} value={venue}>{venue}</option>
                                     ))}
-                                </tr>
-                                {/* 勝率 with bar */}
-                                <tr className="bg-slate-50/40">
-                                    <th className="sticky left-0 z-10 border-r border-slate-200 bg-slate-50 px-4 py-3 text-left text-xs font-bold text-slate-500 shadow-xs">勝率</th>
-                                    {details.map((detail) => {
-                                        const isTop = maxWinRate > 0 && detail.overall.win_rate === maxWinRate;
-                                        return (
-                                            <td key={detail.entity.id} className={`border-r border-slate-100 px-4 py-3 last:border-r-0 ${isTop ? 'bg-amber-50/50' : ''}`}>
-                                                <div className="flex items-center justify-between">
-                                                    <span className={`font-mono font-bold tabular-nums ${isTop ? 'text-amber-800 font-black' : 'text-slate-800'}`}>
-                                                        {displayRate(detail.overall.win_rate)}
-                                                    </span>
-                                                    {isTop && <span className="rounded-md bg-amber-500 px-1.5 py-0.2 text-[9px] font-black text-white">👑 BEST</span>}
-                                                </div>
-                                                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-                                                    <div className={`h-full rounded-full transition-all duration-300 ${isTop ? 'bg-amber-500' : 'bg-blue-500'}`} style={{ width: getRateBarWidth(detail.overall.win_rate) }} />
-                                                </div>
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                                {/* 3着以内率 with bar */}
-                                <tr>
-                                    <th className="sticky left-0 z-10 border-r border-slate-200 bg-white px-4 py-3 text-left text-xs font-bold text-slate-500 shadow-xs">3着以内率</th>
-                                    {details.map((detail) => {
-                                        const isTop = maxPlaceRate > 0 && detail.overall.place_rate === maxPlaceRate;
-                                        return (
-                                            <td key={detail.entity.id} className={`border-r border-slate-100 px-4 py-3 last:border-r-0 ${isTop ? 'bg-emerald-50/40' : ''}`}>
-                                                <div className="flex items-center justify-between">
-                                                    <span className={`font-mono font-bold tabular-nums ${isTop ? 'text-emerald-800 font-black' : 'text-slate-800'}`}>
-                                                        {displayRate(detail.overall.place_rate)}
-                                                    </span>
-                                                    {isTop && <span className="rounded-md bg-emerald-600 px-1.5 py-0.2 text-[9px] font-black text-white">👑 BEST</span>}
-                                                </div>
-                                                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-                                                    <div className="h-full rounded-full bg-emerald-500 transition-all duration-300" style={{ width: getRateBarWidth(detail.overall.place_rate) }} />
-                                                </div>
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                                {/* 平均人気 */}
-                                <tr className="bg-slate-50/40">
-                                    <th className="sticky left-0 z-10 border-r border-slate-200 bg-slate-50 px-4 py-3 text-left text-xs font-bold text-slate-500 shadow-xs">平均人気</th>
-                                    {details.map((detail) => (
-                                        <td key={detail.entity.id} className="border-r border-slate-100 px-4 py-3 font-mono font-bold tabular-nums text-slate-800 last:border-r-0">
-                                            {detail.overall.average_popularity == null ? '—' : `${detail.overall.average_popularity.toFixed(1)}人気`}
-                                        </td>
-                                    ))}
-                                </tr>
-                                {/* 最終出走 */}
-                                <tr>
-                                    <th className="sticky left-0 z-10 border-r border-slate-200 bg-white px-4 py-3 text-left text-xs font-bold text-slate-500 shadow-xs">最終出走</th>
-                                    {details.map((detail) => (
-                                        <td key={detail.entity.id} className="border-r border-slate-100 px-4 py-3 text-xs font-semibold tabular-nums text-slate-700 last:border-r-0">
-                                            {detail.entity.last_race_date ?? '—'}
-                                        </td>
-                                    ))}
-                                </tr>
-                                {/* 直近AI偏差値 */}
-                                <tr className="bg-slate-50/40">
-                                    <th className="sticky left-0 z-10 border-r border-slate-200 bg-slate-50 px-4 py-3 text-left text-xs font-bold text-slate-500 shadow-xs">直近AI偏差値</th>
-                                    {details.map((detail) => {
-                                        const score = detail.prediction_history[0]?.deviation_score;
-                                        return (
-                                            <td key={detail.entity.id} className={`border-r border-slate-100 px-4 py-3 font-mono tabular-nums last:border-r-0 ${getDeviationColor(score)}`}>
-                                                {score == null ? '—' : score.toFixed(1)}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                                {/* 直近着順 */}
-                                <tr>
-                                    <th className="sticky left-0 z-10 border-r border-slate-200 bg-white px-4 py-3 text-left text-xs font-bold text-slate-500 shadow-xs">直近着順</th>
-                                    {details.map((detail) => {
-                                        const rank = detail.recent_runs[0]?.rank;
-                                        return (
-                                            <td key={detail.entity.id} className="border-r border-slate-100 px-4 py-3 last:border-r-0">
-                                                {getRankColor(rank)}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            </tbody>
-                        </table>
+                                </select>
+                            </label>
+                            <label className="text-xs font-bold text-slate-700">
+                                コース
+                                <select
+                                    value={draftCondition.course_type}
+                                    onChange={(event) => setDraftCondition((current) => ({
+                                        ...current,
+                                        course_type: event.target.value as ComparisonCondition['course_type'],
+                                    }))}
+                                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                >
+                                    <option value="芝">芝</option>
+                                    <option value="ダート">ダート</option>
+                                    <option value="障害">障害</option>
+                                </select>
+                            </label>
+                            <label className="text-xs font-bold text-slate-700">
+                                距離
+                                <span className="mt-1 flex min-h-11 items-center rounded-lg border border-slate-300 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                                    <input
+                                        type="number"
+                                        min={200}
+                                        max={5000}
+                                        step={10}
+                                        value={draftCondition.distance}
+                                        onChange={(event) => setDraftCondition((current) => ({
+                                            ...current,
+                                            distance: Number(event.target.value),
+                                        }))}
+                                        className="min-h-10 min-w-0 flex-1 rounded-lg px-3 text-sm font-bold text-slate-900 outline-none"
+                                    />
+                                    <span className="pr-3 text-xs text-slate-500">m</span>
+                                </span>
+                            </label>
+                            <label className="text-xs font-bold text-slate-700">
+                                馬場状態
+                                <select
+                                    value={draftCondition.ground_condition ?? ''}
+                                    onChange={(event) => setDraftCondition((current) => ({
+                                        ...current,
+                                        ground_condition: event.target.value || null,
+                                    }))}
+                                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                >
+                                    <option value="">指定なし</option>
+                                    <option value="良">良</option>
+                                    <option value="稍重">稍重</option>
+                                    <option value="重">重</option>
+                                    <option value="不良">不良</option>
+                                </select>
+                            </label>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-900 px-5 text-sm font-bold text-white transition-colors duration-150 hover:bg-blue-700 disabled:cursor-wait disabled:bg-slate-400"
+                            >
+                                {loading ? '集計中' : 'この条件で比較'}
+                            </button>
+                        </form>
                     </section>
 
-                    {/* コース別3着以内率 */}
-                    {courseRows.length > 0 && (
-                        <section className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
-                            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-                                <h2 className="font-black text-slate-950">主なコース別3着以内率の比較</h2>
-                            </div>
-                            <table className="w-full min-w-[720px] border-collapse text-sm">
-                                <thead className="bg-slate-50 text-xs text-slate-600">
-                                    <tr>
-                                        <th className="sticky left-0 z-20 w-44 border-b border-r border-slate-200 bg-slate-50 px-4 py-2.5 text-left font-black">コース</th>
-                                        {details.map((detail) => (
-                                            <th key={detail.entity.id} className="min-w-[160px] border-b border-r border-slate-200 px-4 py-2.5 text-right font-black max-w-[160px] truncate last:border-r-0">
-                                                {detail.entity.name}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {courseRows.map((courseKey, rowIndex) => {
-                                        const label = details
-                                            .flatMap((detail) => detail.segments.courses ?? [])
-                                            .find((item) => item.key === courseKey)?.label ?? courseKey;
-                                        return (
-                                            <tr key={courseKey} className={rowIndex % 2 === 1 ? 'bg-slate-50/40' : ''}>
-                                                <th className={`sticky left-0 z-10 border-r border-slate-200 px-4 py-3 text-left text-xs font-bold text-slate-800 shadow-xs ${rowIndex % 2 === 1 ? 'bg-slate-50' : 'bg-white'}`}>
-                                                    {label}
-                                                </th>
-                                                {details.map((detail) => {
-                                                    const stat = (detail.segments.courses ?? []).find((item) => item.key === courseKey);
-                                                    return (
-                                                        <td key={detail.entity.id} className="border-r border-slate-100 px-4 py-3 text-right last:border-r-0">
-                                                            {stat ? (
-                                                                <span className="inline-flex flex-col items-end">
-                                                                    <span className="font-mono font-bold tabular-nums text-slate-900">{displayRate(stat.place_rate)}</span>
-                                                                    <span className="text-[10px] tabular-nums text-slate-400">({stat.sample_size}走)</span>
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-slate-300">—</span>
-                                                            )}
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </section>
+                    {loading && !comparison && (
+                        <p className="mt-5 rounded-xl border border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-600">
+                            比較データを読み込んでいます。
+                        </p>
                     )}
-                </div>
+
+                    {comparison && (
+                        <div className="mt-5 space-y-5">
+                            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white" aria-labelledby="overall-comparison-heading">
+                                <div className="border-b border-slate-200 px-4 py-3">
+                                    <h2 id="overall-comparison-heading" className="text-lg font-black text-slate-950">1. 通算成績</h2>
+                                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                                        条件が異なるため順位付けは行いません。出走数と率を合わせて確認してください。
+                                    </p>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[720px] text-sm">
+                                        <thead className="bg-slate-50 text-xs text-slate-600">
+                                            <tr>
+                                                <th className="px-4 py-2.5 text-left">競走馬</th>
+                                                <th className="px-3 py-2.5 text-right">出走数</th>
+                                                <th className="px-3 py-2.5 text-right">勝率</th>
+                                                <th className="px-3 py-2.5 text-right">3着以内率</th>
+                                                <th className="px-4 py-2.5 text-right">平均人気</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {comparison.horses.map((horse, index) => {
+                                                const isFavorite = favorites.some((item) => item.id === horse.horse_id);
+                                                return (
+                                                    <tr key={horse.horse_id} className={index % 2 === 1 ? 'bg-slate-50/40' : undefined}>
+                                                        <th className="px-4 py-3 text-left">
+                                                            <span className="flex items-center gap-2">
+                                                                <Link prefetch={false} href={horse.url} className="font-black text-slate-950 hover:text-blue-700">
+                                                                    {horse.horse_name}
+                                                                </Link>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleToggleFavorite(horse)}
+                                                                    aria-label={isFavorite ? `${horse.horse_name}をお気に入りから外す` : `${horse.horse_name}をお気に入りへ保存`}
+                                                                    className={`flex h-8 w-8 items-center justify-center rounded-md border transition-colors duration-150 ${
+                                                                        isFavorite
+                                                                            ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                                                                            : 'border-slate-200 text-slate-400 hover:border-emerald-300 hover:text-emerald-700'
+                                                                    }`}
+                                                                >
+                                                                    <Bookmark className="h-3.5 w-3.5" fill={isFavorite ? 'currentColor' : 'none'} aria-hidden="true" />
+                                                                </button>
+                                                            </span>
+                                                        </th>
+                                                        <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-800">{horse.overall.sample_size}走</td>
+                                                        <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-800">
+                                                            {displayRate(horse.overall.win_rate)} <span className="text-xs font-normal text-slate-500">({horse.overall.sample_size})</span>
+                                                        </td>
+                                                        <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-800">
+                                                            {displayRate(horse.overall.place_rate)} <span className="text-xs font-normal text-slate-500">({horse.overall.sample_size})</span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-700">
+                                                            {horse.overall.average_popularity == null ? '—' : `${horse.overall.average_popularity.toFixed(1)}人気`}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white" aria-labelledby="matched-comparison-heading">
+                                <div className="border-b border-slate-200 px-4 py-3">
+                                    <h2 id="matched-comparison-heading" className="text-lg font-black text-slate-950">2. 同条件成績</h2>
+                                    <p className="mt-1 text-sm font-bold text-blue-800">{conditionLabel(comparison.conditions)}</p>
+                                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                                        10走以上の馬だけを比較対象とし、3着以内率の95% Wilson下限値で比較上位を判定します。
+                                    </p>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[820px] text-sm">
+                                        <thead className="bg-slate-50 text-xs text-slate-600">
+                                            <tr>
+                                                <th className="px-4 py-2.5 text-left">競走馬</th>
+                                                <th className="px-3 py-2.5 text-left">母数区分</th>
+                                                <th className="px-3 py-2.5 text-right">勝率</th>
+                                                <th className="px-3 py-2.5 text-right">3着以内率</th>
+                                                <th className="px-4 py-2.5 text-right">Wilson下限</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {comparison.horses.map((horse, index) => {
+                                                const sample = SAMPLE_LABELS[horse.sample_quality];
+                                                const isComparisonLeader = (
+                                                    topWilson != null
+                                                    && horse.wilson_lower_bound === topWilson
+                                                );
+                                                return (
+                                                    <tr key={horse.horse_id} className={index % 2 === 1 ? 'bg-slate-50/40' : undefined}>
+                                                        <th className="px-4 py-3 text-left font-black text-slate-950">
+                                                            {horse.horse_name}
+                                                            {isComparisonLeader && (
+                                                                <span className="ml-2 inline-flex rounded-md border border-blue-300 bg-blue-50 px-1.5 py-0.5 text-[11px] font-black text-blue-800">
+                                                                    比較上位
+                                                                </span>
+                                                            )}
+                                                        </th>
+                                                        <td className="px-3 py-3">
+                                                            <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-bold ${sample.className}`}>
+                                                                {sample.label}・{horse.matched_condition.sample_size}走
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-800">
+                                                            {displayRate(horse.matched_condition.win_rate)} <span className="text-xs font-normal text-slate-500">({horse.matched_condition.sample_size})</span>
+                                                        </td>
+                                                        <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-800">
+                                                            {displayRate(horse.matched_condition.place_rate)} <span className="text-xs font-normal text-slate-500">({horse.matched_condition.sample_size})</span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right font-mono font-bold tabular-nums text-slate-800">
+                                                            {horse.wilson_lower_bound == null ? '—' : `${horse.wilson_lower_bound.toFixed(2)}%`}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="border-t border-slate-100 px-4 py-2 text-[11px] leading-5 text-slate-500">
+                                    <p>5走未満は「少数データ」で順位付けなし、5〜9走は「参考値」、10走以上を「比較対象」とします。</p>
+                                    <p>
+                                        集計期間: {comparison.analysis_start_date ?? '—'}〜{comparison.analysis_end_date ?? '—'}
+                                    </p>
+                                    <p>データ基準日: {comparison.data_as_of_date ?? '—'}</p>
+                                </div>
+                            </section>
+
+                            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white" aria-labelledby="recent-runs-heading">
+                                <div className="border-b border-slate-200 px-4 py-3">
+                                    <h2 id="recent-runs-heading" className="text-lg font-black text-slate-950">直近5走</h2>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[760px] text-sm">
+                                        <thead className="bg-slate-50 text-xs text-slate-600">
+                                            <tr>
+                                                <th className="px-4 py-2.5 text-left">競走馬</th>
+                                                <th className="px-3 py-2.5 text-left">日付・レース</th>
+                                                <th className="px-3 py-2.5 text-left">コース</th>
+                                                <th className="px-3 py-2.5 text-right">人気</th>
+                                                <th className="px-4 py-2.5 text-right">着順</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {comparison.horses.flatMap((horse, horseIndex) => (
+                                                horse.recent_runs.length > 0
+                                                    ? horse.recent_runs.map((run, runIndex) => (
+                                                        <tr key={`${horse.horse_id}-${run.race_id}`}>
+                                                            <th className="px-4 py-3 text-left font-bold text-slate-900">
+                                                                {runIndex === 0 ? horse.horse_name : ''}
+                                                            </th>
+                                                            <td className="px-3 py-3">
+                                                                <Link
+                                                                    prefetch={false}
+                                                                    href={run.url}
+                                                                    onClick={() => {
+                                                                        sendCompareRaceClickEvent({
+                                                                            horse_position: horseIndex + 1,
+                                                                            run_position: runIndex + 1,
+                                                                            destination_type: 'past_race',
+                                                                        });
+                                                                    }}
+                                                                    className="font-bold text-slate-900 hover:text-blue-700"
+                                                                >
+                                                                    <span className="block text-xs font-semibold text-slate-500">
+                                                                        {run.race_date} {run.venue_name}{run.race_number}R
+                                                                    </span>
+                                                                    <span className="block max-w-[260px] truncate" title={run.race_name}>{run.race_name}</span>
+                                                                </Link>
+                                                            </td>
+                                                            <td className="px-3 py-3 text-xs font-bold text-slate-700">{run.course_label}</td>
+                                                            <td className="px-3 py-3 text-right font-mono tabular-nums text-slate-700">
+                                                                {run.popularity == null ? '—' : `${run.popularity}人気`}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right font-mono font-bold tabular-nums text-slate-800">{displayRank(run.rank)}</td>
+                                                        </tr>
+                                                    ))
+                                                    : [(
+                                                        <tr key={`${horse.horse_id}-empty`}>
+                                                            <th className="px-4 py-3 text-left font-bold text-slate-900">{horse.horse_name}</th>
+                                                            <td colSpan={4} className="px-3 py-3 text-slate-500">直近走データはありません。</td>
+                                                        </tr>
+                                                    )]
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        </div>
+                    )}
+                </>
             )}
         </main>
     );
 }
-

@@ -8,6 +8,10 @@ import {
     splitPersonDisplayName,
     TRAINER_AFFILIATION_OPTIONS,
 } from '@/lib/data-directory';
+import {
+    sendDataSearchEvent,
+    sendDataSearchResultClickEvent,
+} from '@/lib/analytics';
 import type {
     DataEntityType,
     DataSearchResult,
@@ -47,12 +51,21 @@ const ENTITY_BADGE_STYLES: Record<SearchableEntityType, {
     },
 };
 
+function sampleSizeBucket(sampleSize: number): '0_4' | '5_9' | '10_49' | '50_plus' {
+    if (sampleSize < 5) return '0_4';
+    if (sampleSize < 10) return '5_9';
+    if (sampleSize < 50) return '10_49';
+    return '50_plus';
+}
+
 export function DataSearchPanel({
     entityType,
     heading = 'データを検索',
+    searchSurface = 'data_hub',
 }: {
     entityType?: SearchableEntityType;
     heading?: string;
+    searchSurface?: 'data_hub' | 'directory';
 }) {
     const inputId = useId();
     const [query, setQuery] = useState('');
@@ -91,6 +104,11 @@ export function DataSearchPanel({
                     .slice(0, entityType ? 20 : 12);
                 setResults(nextResults);
                 setHasSearched(true);
+                sendDataSearchEvent({
+                    query_length: normalized.length,
+                    result_count: nextResults.length,
+                    search_surface: searchSurface,
+                });
             } catch (error) {
                 if (controller.signal.aborted) return;
                 setResults([]);
@@ -105,7 +123,7 @@ export function DataSearchPanel({
             window.clearTimeout(timer);
             controller.abort();
         };
-    }, [affiliation, entityType, query]);
+    }, [affiliation, entityType, query, searchSurface]);
 
     const placeholder = entityType
         ? SEARCH_PLACEHOLDERS[entityType]
@@ -199,6 +217,15 @@ export function DataSearchPanel({
                                     key={`${item.entity_type}-${item.id}`}
                                     href={item.url}
                                     prefetch={false}
+                                    onClick={() => {
+                                        sendDataSearchResultClickEvent({
+                                            entity_type: item.entity_type,
+                                            result_position: index + 1,
+                                            result_count: results.length,
+                                            search_surface: searchSurface,
+                                            sample_size_bucket: sampleSizeBucket(item.sample_size),
+                                        });
+                                    }}
                                     className={`grid min-h-14 grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${index % 2 === 1 ? 'bg-slate-50/40' : ''}`}
                                 >
                                     <span className={`inline-flex min-h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-black ${badge?.className ?? 'border-slate-200 bg-slate-100 text-slate-700'}`}>

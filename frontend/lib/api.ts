@@ -7,6 +7,8 @@ import {
     DataSearchResponse,
     DataSitemapEntry,
     GrowthDataSummary,
+    HorseComparisonRequest,
+    HorseComparisonResponse,
     MatchupData,
     PredictionAccuracySummary,
     RaceDataFeatures,
@@ -484,6 +486,32 @@ export async function getRaceDataFeatures(raceId: string): Promise<RaceDataFeatu
         `/races/${encodeURIComponent(raceId)}/features`,
         { revalidate: 3600 },
     );
+}
+
+export async function compareHorseData(
+    payload: HorseComparisonRequest,
+): Promise<HorseComparisonResponse | null> {
+    try {
+        const response = await fetchWithRetry(
+            `${API_BASE_URL}/api/v1/data/compare/horses`,
+            {
+                method: 'POST',
+                cache: 'no-store',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            },
+        );
+        if (!response.ok) {
+            if (response.status !== 404) {
+                console.warn(`[compareHorseData] returned ${response.status}`);
+            }
+            return null;
+        }
+        return response.json() as Promise<HorseComparisonResponse>;
+    } catch (error) {
+        console.error('[compareHorseData] failed:', error);
+        return null;
+    }
 }
 
 export async function getDataSitemapEntries(): Promise<DataSitemapEntry[]> {

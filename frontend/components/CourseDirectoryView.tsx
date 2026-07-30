@@ -23,25 +23,25 @@ const SURFACE_STYLES: Record<CourseSurface, {
         label: '芝',
         marker: 'bg-emerald-600',
         headerBg: 'text-emerald-800',
-        link: 'border-emerald-200 bg-emerald-50 text-emerald-950 hover:border-emerald-400 hover:bg-emerald-100 hover:shadow-sm',
+        link: 'border-emerald-200 bg-emerald-50 text-emerald-950 hover:border-emerald-400 hover:bg-emerald-100',
     },
     dirt: {
         label: 'ダート',
         marker: 'bg-amber-700',
         headerBg: 'text-amber-900',
-        link: 'border-amber-200 bg-amber-50 text-amber-950 hover:border-amber-400 hover:bg-amber-100 hover:shadow-sm',
+        link: 'border-amber-200 bg-amber-50 text-amber-950 hover:border-amber-400 hover:bg-amber-100',
     },
     obstacle: {
         label: '障害',
         marker: 'bg-violet-700',
         headerBg: 'text-violet-800',
-        link: 'border-violet-200 bg-violet-50 text-violet-950 hover:border-violet-400 hover:bg-violet-100 hover:shadow-sm',
+        link: 'border-violet-200 bg-violet-50 text-violet-950 hover:border-violet-400 hover:bg-violet-100',
     },
     other: {
         label: 'その他',
         marker: 'bg-slate-600',
         headerBg: 'text-slate-700',
-        link: 'border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400 hover:bg-slate-100 hover:shadow-sm',
+        link: 'border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-400 hover:bg-slate-100',
     },
 };
 
@@ -109,7 +109,7 @@ function VenueJumpLinks({
                     <a
                         key={group.venueSlug}
                         href={`#venue-${group.venueSlug}`}
-                        className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-sm font-bold text-slate-800 transition-all duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                        className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-sm font-bold text-slate-800 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     >
                         {group.venueName}
                         <span className="text-[10px] font-bold tabular-nums text-slate-400">
@@ -158,7 +158,7 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
                                         key={course.url}
                                         href={course.url}
                                         prefetch={false}
-                                        className={`group flex min-h-11 flex-col items-start justify-center rounded-md border px-2.5 py-1 text-sm font-black transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${style.link}`}
+                                        className={`group flex min-h-11 flex-col items-start justify-center rounded-md border px-2.5 py-1 text-sm font-black transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${style.link}`}
                                     >
                                         <span className="flex w-full items-center justify-between">
                                             <span className="font-mono tabular-nums">
@@ -205,7 +205,7 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
             </header>
 
             {groups.length === 0 ? (
-                <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
+                <section className="mt-5 rounded-xl border border-slate-200 bg-white p-6">
                     <h2 className="font-black text-slate-900">コースデータを取得できませんでした</h2>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
                         時間を置いて再度お試しください。
@@ -213,7 +213,7 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
                 </section>
             ) : (
                 <>
-                    <nav aria-label="競馬場へ移動" className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-1 sm:px-4 shadow-xs">
+                    <nav aria-label="競馬場へ移動" className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1 sm:px-4">
                         <VenueJumpLinks title="中央競馬" groups={centralGroups} />
                         <VenueJumpLinks title="地方競馬" groups={localGroups} />
                     </nav>
@@ -270,4 +270,3 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
         </main>
     );
 }
-

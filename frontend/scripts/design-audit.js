@@ -51,6 +51,34 @@ const extendedSources = extendedTargetFiles.map((relativePath) => ({
 }));
 const extendedContent = extendedSources.map(({ content }) => content).join('\n');
 
+const dataTargetFiles = [
+  'app/keiba-data/page.tsx',
+  'app/compare/HorseCompareClient.tsx',
+  'app/my-data/MyDataClient.tsx',
+  'components/CourseDataDetailView.tsx',
+  'components/CourseDirectoryView.tsx',
+  'components/DataDirectoryView.tsx',
+  'components/DataEntityDetailView.tsx',
+  'components/DataHubActionLink.tsx',
+  'components/DataHubNav.tsx',
+  'components/DataSearchPanel.tsx',
+  'components/DataStats.tsx',
+  'components/PricingInterestSurvey.tsx',
+  'components/RaceConditionComparison.tsx',
+  'components/UpcomingRaceTrackedLink.tsx',
+];
+const dataSources = dataTargetFiles.map((relativePath) => {
+  const absolutePath = path.join(root, relativePath);
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(`データ画面の監査対象が見つかりません: ${relativePath}`);
+  }
+  return {
+    relativePath,
+    content: fs.readFileSync(absolutePath, 'utf8'),
+  };
+});
+const dataContent = dataSources.map(({ content }) => content).join('\n');
+
 const countMatches = (content, pattern) => Array.from(content.matchAll(pattern)).length;
 
 const rules = [
@@ -133,6 +161,9 @@ const raceSelector = sources.find(({ relativePath }) => relativePath === 'compon
 const raceTabs = sources.find(({ relativePath }) => relativePath === 'components/RaceTabs.tsx').content;
 const startPositionChart = extendedSources.find(({ relativePath }) => relativePath === 'components/StartPositionChart.tsx').content;
 const header = sources.find(({ relativePath }) => relativePath === 'components/Header.tsx').content;
+const dataHubPage = dataSources.find(({ relativePath }) => relativePath === 'app/keiba-data/page.tsx').content;
+const dataHubNav = dataSources.find(({ relativePath }) => relativePath === 'components/DataHubNav.tsx').content;
+const horseCompare = dataSources.find(({ relativePath }) => relativePath === 'app/compare/HorseCompareClient.tsx').content;
 
 const checks = [
   {
@@ -262,6 +293,39 @@ const checks = [
     passed: adSensePageLevel.includes('hasVisibleGoogleDialog')
       && adSensePageLevel.includes('bodyPaddingTop')
       && adSensePageLevel.includes('MutationObserver'),
+  },
+  {
+    id: 'data-pages-no-prohibited-decoration',
+    description: 'データ画面群に禁止モーション・装飾グラデーション・絵文字・広い影がない',
+    passed: !/\btransition-all\b/.test(dataContent)
+      && !/(?:hover|group-hover|active):[^\s"'`]*(?:translate|scale)/.test(dataContent)
+      && !/\bbg-gradient-(?:to-[tblr]{1,2}|radial|conic)\b/.test(dataContent)
+      && !/[👑✨🔥🏇]/u.test(dataContent)
+      && !/\bshadow-(?:sm|md|lg|xl|2xl|3xl)\b/.test(dataContent)
+      && !/\brounded-2xl\b/.test(dataContent),
+  },
+  {
+    id: 'data-nav-visible-mobile-grid',
+    description: 'データナビが主操作3列・分類4列でモバイルにも全項目を表示する',
+    passed: dataHubNav.includes("'grid-cols-3'")
+      && dataHubNav.includes("'grid-cols-4'")
+      && !dataHubNav.includes('overflow-x-auto'),
+  },
+  {
+    id: 'data-hub-concrete-value-copy',
+    description: 'データトップが同条件・出走数を具体的に説明する',
+    passed: dataHubPage.includes('競走馬・騎手・コースを同じ条件で比較')
+      && dataHubPage.includes('勝率・3着以内率を出走数と一緒に確認できます。'),
+  },
+  {
+    id: 'horse-comparison-sample-contract',
+    description: '比較画面が通算順位を避け、母数区分とWilson下限値を明示する',
+    passed: horseCompare.includes('条件が異なるため順位付けは行いません')
+      && horseCompare.includes('少数データ')
+      && horseCompare.includes('参考値')
+      && horseCompare.includes('比較対象')
+      && horseCompare.includes('Wilson下限')
+      && !horseCompare.includes('BEST'),
   },
 ];
 

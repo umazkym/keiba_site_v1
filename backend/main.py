@@ -55,6 +55,12 @@ app.add_middleware(
 app.include_router(races_v1.router, prefix="/api/v1/predictions", tags=["predictions"])
 app.include_router(affiliate_v1.router, prefix="/api/v1/affiliate", tags=["affiliate"])
 app.include_router(data_v1.router, prefix="/api/v1/data", tags=["data"])
+app.include_router(
+    data_v1.growth_router,
+    prefix="/api/v1/growth",
+    tags=["growth-data"],
+)
+
 
 @app.get("/")
 def read_root():

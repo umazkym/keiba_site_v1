@@ -499,6 +499,7 @@ from datetime import date, timedelta
 from typing import Optional, List, Dict, Any
 from collections import defaultdict
 from . import database_loader
+from .race_classification import is_newcomer_race_name
 from tqdm import tqdm
 import os
 
@@ -696,7 +697,7 @@ def create_predictions_for_race(race_id: str, db: Session) -> Optional[List[Dict
 
         unpredictable_reason = None
         if target_race.race_name:
-            if "新馬" in target_race.race_name:
+            if is_newcomer_race_name(target_race.race_name):
                 unpredictable_reason = "新馬戦のため、予測対象外です。"
             elif "障害" in target_race.race_name or target_race.course_type == '障':
                 unpredictable_reason = "障害戦のため、予測対象外です。"

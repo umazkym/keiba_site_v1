@@ -354,7 +354,11 @@ def merge_expected_races(
     return sorted(venues, key=lambda venue: (venue.race_type, venue_name_to_slug(venue.venue_name)))
 
 
-def _load_venues_for_date_from_database(target_date: str) -> List[VenueVideoData]:
+def _load_venues_for_date_from_database(
+    target_date: str,
+    *,
+    force_refresh: bool = False,
+) -> List[VenueVideoData]:
     """IAPトンネル後の本番DBを正本として翌日の全レースを取得する。"""
     from crud import race_crud
     from database import models
@@ -363,6 +367,8 @@ def _load_venues_for_date_from_database(target_date: str) -> List[VenueVideoData
     parsed_date = date.fromisoformat(target_date)
     db = SessionLocal()
     try:
+        if force_refresh:
+            race_crud.invalidate_predictions_cache(parsed_date)
         expected_races = (
             db.query(models.Race)
             .filter(
@@ -380,9 +386,16 @@ def _load_venues_for_date_from_database(target_date: str) -> List[VenueVideoData
         db.close()
 
 
-def load_venues_for_date(target_date: str) -> List[VenueVideoData]:
+def load_venues_for_date(
+    target_date: str,
+    *,
+    force_refresh: bool = False,
+) -> List[VenueVideoData]:
     if os.getenv("DATABASE_URL"):
-        return _load_venues_for_date_from_database(target_date)
+        return _load_venues_for_date_from_database(
+            target_date,
+            force_refresh=force_refresh,
+        )
     payload = fetch_race_day_payload(target_date)
     weekly_grade_races = fetch_weekly_grade_races()
     return normalize_venues(payload, weekly_grade_races, target_date)

@@ -122,3 +122,9 @@ changed_paths: frontend/components/RacePageClient.tsx, frontend/components/Affil
 ### `npm run build` が既存警告で失敗する
 
 失敗箇所が今回変更と関係するかを分けて報告し、今回変更由来なら修正します。無関係な既存問題は勝手に大きく直さず、ユーザーに残リスクとして伝えます。
+
+### 静的生成が0件のまま60秒で一括タイムアウトする
+
+個別ページの表示量だけでなく、ビルド中に実行される外部API fetchを確認します。fetchにはビルド時の短い中断上限を設け、API依存の大量な動的パスは`generateStaticParams`で全件を返さず、初回アクセス時に生成するオンデマンドISRへ移します。数千URLを返すDBサイトマップはビルド時生成を避け、動的Route HandlerとCDNキャッシュを組み合わせます。
+
+`staticPageGenerationTimeout`を延ばすだけの対応は、停止時間を長くするだけで外部API無応答を解消しないため行いません。修正後は通常APIと無応答APIの両方で`npm run build`が完走することを確認します。

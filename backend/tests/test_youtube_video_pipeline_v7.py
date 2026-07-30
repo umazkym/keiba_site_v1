@@ -4,10 +4,10 @@ import os
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -15,6 +15,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from scripts import youtube_video_pipeline
+from scripts.social_video import data_loader
 from scripts.social_video.data_loader import HorseVideoData, RaceVideoData, VenueVideoData, merge_expected_races
 from scripts.social_video.registry import PublicationRecord
 from scripts.social_video.video_package import VideoPackage, build_content_hash
@@ -427,6 +428,144 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         self.assertEqual([race.race_number for race in publishable[0].races], [1, 3])
         self.assertEqual([race.race_number for race in publishable[0].excluded_races], [2])
         self.assertEqual(excluded, {"笠松": ["2R 2歳新馬"]})
+
+    def test_branded_nar_debut_is_excluded_without_blocking_venue(self) -> None:
+        valid_horse = HorseVideoData("通常馬", 1, 1, "", 60.0, 0.5)
+        normal_race = RaceVideoData(
+            "race-1",
+            "2026-07-31",
+            "名古屋",
+            1,
+            "3歳条件",
+            "ダート",
+            1500,
+            predictions=[valid_horse],
+        )
+        branded_debut = RaceVideoData(
+            "race-3",
+            "2026-07-31",
+            "名古屋",
+            3,
+            "ゴールデンデビュー名古屋(2歳)",
+            "ダート",
+            900,
+            predictions=[],
+        )
+        second_race = RaceVideoData(
+            "race-2",
+            "2026-07-31",
+            "名古屋",
+            2,
+            "3歳条件",
+            "ダート",
+            1500,
+            predictions=[valid_horse],
+        )
+
+        publishable, blocked, excluded = youtube_video_pipeline._prepare_publishable_venues(
+            [VenueVideoData("名古屋", "地方", [normal_race, second_race, branded_debut])],
+            allow_placeholder_data=False,
+        )
+
+        self.assertEqual(blocked, {})
+        self.assertEqual([race.race_number for race in publishable[0].races], [1, 2])
+        self.assertEqual([race.race_number for race in publishable[0].excluded_races], [3])
+        self.assertEqual(
+            excluded,
+            {"名古屋": ["3R ゴールデンデビュー名古屋(2歳)"]},
+        )
+
+    def test_readiness_retry_forces_database_refresh(self) -> None:
+        target_date = "2026-07-31"
+        valid_horse = HorseVideoData("通常馬", 1, 1, "", 60.0, 0.5)
+        preceding_races = [
+            RaceVideoData(
+                f"race-{race_number}",
+                target_date,
+                "川崎",
+                race_number,
+                f"{race_number}R",
+                "ダート",
+                1500,
+                predictions=[valid_horse],
+            )
+            for race_number in range(1, 12)
+        ]
+        invalid_race = RaceVideoData(
+            "race-12",
+            target_date,
+            "川崎",
+            12,
+            "ファイナルアンサー賞(C1)",
+            "ダート",
+            1500,
+            predictions=[],
+        )
+        valid_race = RaceVideoData(
+            "race-12",
+            target_date,
+            "川崎",
+            12,
+            "ファイナルアンサー賞(C1)",
+            "ダート",
+            1500,
+            predictions=[valid_horse],
+        )
+        args = SimpleNamespace(
+            input_json=None,
+            readiness_attempts=3,
+            readiness_delay_seconds=0,
+            allow_placeholder_data=False,
+        )
+
+        with patch.object(
+            youtube_video_pipeline,
+            "load_venues_for_date",
+            side_effect=[
+                [VenueVideoData("川崎", "地方", [*preceding_races, invalid_race])],
+                [VenueVideoData("川崎", "地方", [*preceding_races, valid_race])],
+            ],
+        ) as load_venues, patch.object(youtube_video_pipeline.time, "sleep"):
+            publishable, blocked, excluded = youtube_video_pipeline._load_venues_with_readiness(
+                args,
+                target_date,
+            )
+
+        self.assertEqual([venue.venue_name for venue in publishable], ["川崎"])
+        self.assertEqual(blocked, {})
+        self.assertEqual(excluded, {})
+        self.assertEqual(
+            load_venues.call_args_list,
+            [
+                call(target_date, force_refresh=False),
+                call(target_date, force_refresh=True),
+            ],
+        )
+
+    def test_database_force_refresh_invalidates_prediction_cache(self) -> None:
+        db = Mock()
+        db.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+
+        with patch(
+            "database.database.SessionLocal",
+            return_value=db,
+        ), patch(
+            "crud.race_crud.invalidate_predictions_cache",
+        ) as invalidate_cache, patch(
+            "crud.race_crud.get_predictions_by_date",
+            return_value={"jra": [], "nar": []},
+        ), patch(
+            "crud.race_crud.get_weekly_grade_races",
+            return_value=[],
+        ):
+            venues = data_loader._load_venues_for_date_from_database(
+                "2026-07-31",
+                force_refresh=True,
+            )
+
+        self.assertEqual(venues, [])
+        invalidate_cache.assert_called_once_with(date(2026, 7, 31))
+        db.close.assert_called_once_with()
 
     def test_placeholder_horse_name_blocks_venue(self) -> None:
         placeholder = HorseVideoData("サンプル馬", 1, 1, "", 60.0, 0.5)

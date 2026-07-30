@@ -39,6 +39,7 @@ from scripts.social_video.youtube_client import (  # noqa: E402
     parse_publish_at,
     validate_publication_mode,
 )
+from scripts.race_classification import is_newcomer_race_name  # noqa: E402
 
 
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "youtube_video_dist"
@@ -80,7 +81,7 @@ def _has_publishable_predictions(race: RaceVideoData) -> bool:
 
 def _is_newcomer_race(race: RaceVideoData) -> bool:
     """予測処理と同じ判定で、新馬戦を動画対象外にする。"""
-    return "新馬" in str(race.race_name or "")
+    return is_newcomer_race_name(race.race_name)
 
 
 def _all_venue_races(venue: VenueVideoData) -> List[RaceVideoData]:
@@ -166,7 +167,7 @@ def _load_venues_with_readiness(
     last_blocked: Dict[str, str] = {}
     last_excluded_newcomer_races: Dict[str, List[str]] = {}
     for attempt in range(1, attempts + 1):
-        venues = load_venues_for_date(target_date)
+        venues = load_venues_for_date(target_date, force_refresh=attempt > 1)
         last_publishable, last_blocked, last_excluded_newcomer_races = _prepare_publishable_venues(
             venues,
             allow_placeholder_data=args.allow_placeholder_data,

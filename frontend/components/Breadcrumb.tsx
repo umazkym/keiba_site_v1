@@ -19,26 +19,119 @@ type BreadcrumbProps = {
   items?: BreadcrumbItem[];
 };
 
+const STATIC_LABEL_MAP: Record<string, string> = {
+  // メイン機能・データベース
+  'keiba-data': '競馬データベース',
+  'courses': 'コース別データ',
+  'horses': '競走馬データ',
+  'jockeys': '騎手別データ',
+  'trainers': '調教師別データ',
+  'compare': '競走馬比較',
+  'my-data': 'マイデータ',
+  'search': 'サイト内検索',
+  'results': 'AI予想成績',
+  'accuracy': '成績・検証',
+  'races': 'レース分析',
+  'today': '本日のレース',
+  'articles': '記事',
+
+  // 記事カテゴリ・特集
+  'grade-races': '重賞データ',
+  'horse-weight': '馬体重増減',
+  'site-selection': 'サイトの選び方',
+  'track-condition': '馬場状態',
+
+  // サイト情報・ポリシー
+  'about': '運営者情報',
+  'about-ai': 'AI予想の仕組み',
+  'faq': 'よくある質問',
+  'contact': 'お問い合わせ',
+  'privacy': 'プライバシーポリシー',
+  'terms': '利用規約',
+  'advertising': '広告について',
+  'sitemap': 'サイトマップ',
+
+  // 主要重賞スラッグ
+  'nihon-derby': '日本ダービー',
+  'yasuda-kinen': '安田記念',
+  'takarazuka-kinen': '宝塚記念',
+  'sprinters-stakes': 'スプリンターズS',
+  'tenno-sho-autumn': '天皇賞（秋）',
+  'japan-cup': 'ジャパンカップ',
+  'mile-championship': 'マイルCS',
+  'arima-kinen': '有馬記念',
+  '2026-nihon-derby': '日本ダービー',
+  '2026-yasuda-kinen': '安田記念',
+  '2026-takarazuka-kinen': '宝塚記念',
+  '2026-sprinters-stakes': 'スプリンターズS',
+  '2026-tenno-sho-autumn': '天皇賞（秋）',
+  '2026-japan-cup': 'ジャパンカップ',
+  '2026-mile-championship': 'マイルCS',
+  '2026-arima-kinen': '有馬記念',
+};
+
+function parseSegmentLabel(segment: string, isLast: boolean, pageTitle: string | null): string {
+  // 1. 静的マッピング
+  if (STATIC_LABEL_MAP[segment]) {
+    return STATIC_LABEL_MAP[segment];
+  }
+
+  // 2. 競馬場スラッグ（tokyo -> 東京, hanshin -> 阪神 など）
+  const venueName = venueSlugToName(segment);
+  if (venueName) {
+    return venueName;
+  }
+
+  // 3. コース条件スラッグ（turf-1600m -> 芝1600m, dirt-1800m -> ダート1800m）
+  const courseMatch = segment.match(/^(turf|dirt|obstacle)-(\d+m)$/i);
+  if (courseMatch) {
+    const surfaceMap: Record<string, string> = {
+      turf: '芝',
+      dirt: 'ダート',
+      obstacle: '障害',
+    };
+    const surface = surfaceMap[courseMatch[1].toLowerCase()] || courseMatch[1];
+    return `${surface}${courseMatch[2]}`;
+  }
+
+  // 4. 最後のセグメントで DOM (h1) からタイトルが取れている場合
+  if (isLast && pageTitle) {
+    const cleaned = pageTitle
+      .split(/[｜|]/)[0]
+      .trim();
+    if (cleaned && cleaned.length < 40) {
+      return cleaned;
+    }
+  }
+
+  // 5. 日付フォーマット（YYYY-MM-DD）
+  if (/^\d{4}-\d{2}-\d{2}$/.test(segment)) {
+    return formatDate(segment);
+  }
+
+  // 6. デフォルトフォールバック（ハイフン区切りを単語化）
+  return decodeURIComponent(segment)
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 export function Breadcrumb({ items }: BreadcrumbProps = {}) {
   const pathname = usePathname();
-  const [articleTitle, setArticleTitle] = useState<string | null>(null);
+  const [pageTitle, setPageTitle] = useState<string | null>(null);
   const [liveItems, setLiveItems] = useState<BreadcrumbItem[] | null>(null);
 
-  // 記事ページの場合は、記事タイトルを取得
+  // ページタイトルを DOM から取得（記事・詳細ページ用）
   useEffect(() => {
-    if (pathname.startsWith('/articles/')) {
-      const slug = pathname.split('/').pop();
-      if (slug) {
-        try {
-          // window.articleTitleという方法もありますが、代わりにdom内から取得
-          const h1 = document.querySelector('h1');
-          if (h1) {
-            setArticleTitle(h1.textContent || null);
-          }
-        } catch (error) {
-          console.error('Failed to get article title:', error);
-        }
+    try {
+      const h1 = document.querySelector('h1');
+      if (h1 && h1.textContent) {
+        setPageTitle(h1.textContent.trim());
+      } else {
+        setPageTitle(null);
       }
+    } catch {
+      setPageTitle(null);
     }
   }, [pathname]);
 
@@ -111,69 +204,16 @@ export function Breadcrumb({ items }: BreadcrumbProps = {}) {
     if (raceBreadcrumbs) return raceBreadcrumbs;
 
     const breadcrumbs: BreadcrumbItem[] = [
-      { label: 'ホーム', href: '/' }
+      { label: 'ホーム', href: '/' },
     ];
 
     let currentPath = '';
     segments.forEach((segment, index) => {
       currentPath += `/${segment}`;
+      const isLast = index === segments.length - 1;
+      const label = parseSegmentLabel(segment, isLast, pageTitle);
 
-      // URLスラッグを日本語ラベルに変換
-      const labelMap: { [key: string]: string } = {
-        'articles': '記事',
-        'races': 'レース分析',
-        'courses': 'コース別データ',
-        'grade-races': '重賞データ',
-        'jockeys': '騎手別データ',
-        'trainers': '調教師別データ',
-        'horses': '競走馬データ',
-        'keiba-data': '競馬データベース',
-        'results': 'AI予想成績',
-        'accuracy': 'AI予想の成績',
-        'horse-weight': '馬体重増減',
-        'site-selection': 'サイトの選び方',
-        'track-condition': '馬場状態',
-        'nihon-derby': '日本ダービー',
-        'yasuda-kinen': '安田記念',
-        'takarazuka-kinen': '宝塚記念',
-        'sprinters-stakes': 'スプリンターズS',
-        'tenno-sho-autumn': '天皇賞（秋）',
-        'japan-cup': 'ジャパンカップ',
-        'mile-championship': 'マイルCS',
-        'arima-kinen': '有馬記念',
-        '2026-nihon-derby': '日本ダービー',
-        '2026-yasuda-kinen': '安田記念',
-        '2026-takarazuka-kinen': '宝塚記念',
-        '2026-sprinters-stakes': 'スプリンターズS',
-        '2026-tenno-sho-autumn': '天皇賞（秋）',
-        '2026-japan-cup': 'ジャパンカップ',
-        '2026-mile-championship': 'マイルCS',
-        '2026-arima-kinen': '有馬記念',
-        'about': '運営者情報',
-        'faq': 'よくある質問',
-        'contact': 'お問い合わせ',
-        'privacy': 'プライバシーポリシー',
-        'terms': '利用規約',
-        'advertising': '広告について',
-      };
-
-      let label = labelMap[segment];
-
-      if (!label) {
-        // 記事ページで最後のセグメントの場合、記事タイトルを使用
-        if (pathname.startsWith('/articles/') && index === segments.length - 1 && articleTitle) {
-          label = articleTitle;
-        } else {
-          // 日付またはスラッグの場合は、デコードして表示
-          label = decodeURIComponent(segment)
-            .split('-')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-        }
-      }
-
-      // 最後のセグメント（現在のページ）の場合、リンクにしない
-      if (index === segments.length - 1) {
+      if (isLast) {
         breadcrumbs.push({ label, href: '' });
       } else {
         breadcrumbs.push({ label, href: currentPath });
@@ -202,14 +242,14 @@ export function Breadcrumb({ items }: BreadcrumbProps = {}) {
               <>
                 <Link
                   href={item.href}
-                  className="whitespace-nowrap text-slate-600 hover:text-primary font-semibold transition-colors"
+                  className="whitespace-nowrap font-semibold text-slate-600 transition-colors hover:text-blue-600"
                 >
                   {item.label}
                 </Link>
                 <span className="mx-1 text-slate-300" aria-hidden="true">/</span>
               </>
             ) : (
-              <span className="breadcrumb-current font-semibold text-text-primary">
+              <span className="breadcrumb-current font-semibold text-slate-900">
                 {item.label}
               </span>
             )}

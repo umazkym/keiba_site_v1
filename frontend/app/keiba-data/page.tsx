@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-    BarChart3,
     Bookmark,
     CalendarDays,
     ChevronRight,
@@ -29,20 +28,11 @@ export const metadata: Metadata = {
 
 const relatedTools = [
     {
-        href: '/results/accuracy',
-        label: 'AI予測成績',
-        description: 'AI偏差値上位馬の勝率・3着以内率を確認',
-        icon: BarChart3,
-        accent: 'bg-blue-100 text-blue-700',
-        hoverBorder: 'hover:border-l-blue-500',
-    },
-    {
         href: '/compare',
         label: '競走馬を比較',
         description: '2〜5頭の近走と得意条件を横並びで比較',
         icon: GitCompareArrows,
         accent: 'bg-amber-100 text-amber-700',
-        hoverBorder: 'hover:border-l-amber-500',
     },
     {
         href: '/my-data',
@@ -50,7 +40,6 @@ const relatedTools = [
         description: '保存した馬・人・コースと閲覧履歴を確認',
         icon: Bookmark,
         accent: 'bg-emerald-100 text-emerald-700',
-        hoverBorder: 'hover:border-l-emerald-500',
     },
     {
         href: '/races/today',
@@ -58,7 +47,6 @@ const relatedTools = [
         description: '出走馬のAI偏差値と4つの分析を確認',
         icon: CalendarDays,
         accent: 'bg-violet-100 text-violet-700',
-        hoverBorder: 'hover:border-l-violet-500',
     },
 ];
 
@@ -174,7 +162,7 @@ export default function KeibaDataPage() {
                     <h2 id="related-tools-heading" className="border-b border-slate-300 pb-2 text-xl font-black text-slate-950">
                         関連機能
                     </h2>
-                    <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white sm:grid sm:grid-cols-2">
+                    <div className="mt-3 grid gap-3 sm:grid-cols-3">
                         {relatedTools.map((tool) => {
                             const Icon = tool.icon;
                             return (
@@ -182,16 +170,18 @@ export default function KeibaDataPage() {
                                     key={tool.href}
                                     href={tool.href}
                                     prefetch={tool.href === '/compare' ? false : undefined}
-                                    className={`grid min-h-16 grid-cols-[36px_1fr_auto] items-center gap-3 border-b border-l-2 border-l-transparent border-b-slate-100 px-4 py-3 transition-all duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 sm:border-r ${tool.hoverBorder}`}
+                                    className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 transition-all duration-150 hover:border-blue-400 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                 >
-                                    <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${tool.accent}`}>
-                                        <Icon className="h-4 w-4" aria-hidden="true" />
-                                    </span>
-                                    <span className="min-w-0">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <span className={`flex h-10 w-10 items-center justify-center rounded-lg ${tool.accent}`}>
+                                            <Icon className="h-5 w-5" aria-hidden="true" />
+                                        </span>
+                                        <ChevronRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                                    </div>
+                                    <div className="mt-3">
                                         <span className="block font-black text-slate-950">{tool.label}</span>
-                                        <span className="mt-0.5 block text-xs leading-5 text-slate-500">{tool.description}</span>
-                                    </span>
-                                    <ChevronRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                                        <span className="mt-1 block text-xs leading-5 text-slate-500">{tool.description}</span>
+                                    </div>
                                 </Link>
                             );
                         })}

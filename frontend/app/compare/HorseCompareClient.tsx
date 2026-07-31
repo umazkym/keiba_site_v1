@@ -284,7 +284,7 @@ export default function HorseCompareClient() {
                 <p className="text-xs font-bold text-slate-500">競馬データベース</p>
                 <h1 className="mt-1 text-2xl font-black text-slate-950 sm:text-3xl">競走馬の成績比較</h1>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                    通算成績と、競馬場・芝ダート・距離を揃えた成績を分けて確認します。率には必ず出走数を併記します。
+                    通算成績や各コースごとに成績を確認出来ます。
                 </p>
             </header>
 
@@ -371,9 +371,9 @@ export default function HorseCompareClient() {
                     <div className="flex items-start gap-3">
                         <GitCompareArrows className="mt-0.5 h-5 w-5 text-blue-600" aria-hidden="true" />
                         <div>
-                            <h2 className="text-lg font-black text-slate-950">2頭以上の競走馬を選択してください</h2>
+                            <h2 className="text-lg font-black text-slate-950">2頭以上の馬を選択してください</h2>
                             <p className="mt-1 text-sm leading-6 text-slate-600">
-                                馬名で検索して最大5頭まで追加すると、通算と同条件の成績を分けて表示します。
+                                最大5頭まで追加出来ます。
                             </p>
                         </div>
                     </div>

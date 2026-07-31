@@ -183,7 +183,7 @@ export function DataSearchPanel({
                 <p className="mt-1.5 text-xs leading-5 text-slate-500">
                     {entityType === 'trainer'
                         ? '所属だけでも絞り込めます。所属は氏名とは分けて表示します。'
-                        : '2文字以上で候補を表示します。漢字、カナ、コース条件で検索できます。'}
+                        : '2文字以上で候補を表示します。'}
                 </p>
             </div>
 

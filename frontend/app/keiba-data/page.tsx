@@ -90,10 +90,10 @@ export default function KeibaDataPage() {
                 <header className="mt-4 min-h-[136px] rounded-xl border border-slate-800 bg-slate-900 p-4 text-white sm:min-h-0 sm:p-6">
                     <p className="text-xs font-bold text-blue-200">競馬データベース</p>
                     <h1 className="mt-1.5 text-2xl font-black leading-tight !text-white sm:text-3xl">
-                        競走馬・騎手・コースを同じ条件で比較
+                        競走馬・騎手・コースを比較
                     </h1>
                     <p className="mt-2 max-w-3xl text-sm leading-6 !text-slate-200">
-                        東京芝1600mなど条件を揃え、勝率・3着以内率を出走数と一緒に確認できます。
+                        条件を揃えて各種データの比較が可能です。
                     </p>
                 </header>
 
@@ -125,7 +125,7 @@ export default function KeibaDataPage() {
                             action="today_compare"
                             href="/races/today"
                             title="今日の出走馬を比較"
-                            description="当日のレースから同じ競馬場・コース・距離の成績を確認"
+                            description="本日開催のレースを確認"
                         />
                         <DataHubActionLink
                             action="name_search"
@@ -137,7 +137,7 @@ export default function KeibaDataPage() {
                             action="course_lookup"
                             href="#course-search"
                             title="競馬場・距離からコース傾向"
-                            description="芝・ダート・障害と距離を分けて条件別成績を確認"
+                            description="コースや距離を分けて条件別の成績を確認"
                         />
                     </div>
                 </section>
@@ -149,7 +149,7 @@ export default function KeibaDataPage() {
                                 競馬場からコースを探す
                             </h2>
                             <p className="mt-1 text-xs leading-5 text-slate-500">
-                                競馬場を選ぶと、芝・ダート・障害ごとの距離一覧へ移動します。
+                                競馬場を選ぶと、コースごとの距離一覧へ移動します。
                             </p>
                         </div>
                         <Link

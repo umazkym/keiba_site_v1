@@ -282,7 +282,7 @@ export default function MyDataClient() {
                 <p className="text-xs font-bold text-slate-500">競馬データベース</p>
                 <h1 className="mt-1 text-2xl font-black text-slate-950 sm:text-4xl">マイデータ</h1>
                 <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-7">
-                    会員登録不要で、お気に入りの競走馬・騎手・コース・比較データ・閲覧履歴を端末内に自動保存できます。
+                    確認した情報を端末に保存できます。
                 </p>
             </header>
 
@@ -347,9 +347,10 @@ export default function MyDataClient() {
                 <div className="divide-y divide-slate-100">
                     <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <h3 className="text-sm font-black text-slate-900">ホーム画面に追加 (PWA)</h3>
+                            <h3 className="text-sm font-black text-slate-900">ホーム画面に追加</h3>
                             <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                                スマホのホーム画面に追加すると、次回からアプリ感覚でマイデータに直接アクセスできます。
+                                ホーム画面に追加すると、直接データを確認出来ます。<br />
+                                <span className="text-slate-400">※Safariの共有メニュー &gt; 「ホーム画面に追加」を選択</span>
                             </p>
                         </div>
                         <PwaInstallButton />
@@ -360,7 +361,7 @@ export default function MyDataClient() {
                             <div>
                                 <h3 className="text-sm font-black text-slate-900">レース開催通知</h3>
                                 <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                                    お気に入り馬の出走日や重賞の通知を受け取れます。いつでも変更可能です。
+                                    お気に入り馬の出走日や重賞の通知を受け取れます。
                                 </p>
                             </div>
                         </div>

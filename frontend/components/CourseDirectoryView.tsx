@@ -158,19 +158,19 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
                                         key={course.url}
                                         href={course.url}
                                         prefetch={false}
-                                        className={`group flex min-h-11 flex-col items-start justify-center rounded-md border px-2.5 py-1 text-sm font-black transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${style.link}`}
+                                        className={`group flex min-h-11 flex-col items-start justify-center rounded-md border px-2 py-1 text-xs sm:text-sm font-black transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${style.link}`}
                                     >
-                                        <span className="flex w-full items-center justify-between">
-                                            <span className="font-mono tabular-nums">
+                                        <span className="flex w-full items-center justify-between gap-0.5">
+                                            <span className="font-mono tabular-nums whitespace-nowrap text-xs sm:text-sm">
                                                 {course.distance == null ? course.name : `${course.distance}m`}
                                             </span>
                                             <ChevronRight
-                                                className="h-3.5 w-3.5 opacity-40 transition-opacity duration-150 group-hover:opacity-100"
+                                                className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 opacity-40 transition-opacity duration-150 group-hover:opacity-100"
                                                 aria-hidden="true"
                                             />
                                         </span>
                                         {course.sampleSize > 0 && (
-                                            <span className="mt-0.5 text-[10px] font-bold tabular-nums opacity-50">
+                                            <span className="mt-0.5 text-[10px] font-bold tabular-nums opacity-50 whitespace-nowrap">
                                                 {course.sampleSize.toLocaleString('ja-JP')}走
                                             </span>
                                         )}
@@ -200,7 +200,7 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
                     競馬場・コース別データ一覧
                 </h1>
                 <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-7">
-                    中央競馬・地方競馬の全競馬場と各コース・距離（芝・ダート・障害）ごとに、枠順・脚質・馬場傾向や騎手・調教師成績を無料で確認できます。
+                    中央・地方の全競馬場と各コース・距離ごとに、枠順・脚質・馬場傾向や騎手・調教師成績を確認できます。
                 </p>
             </header>
 

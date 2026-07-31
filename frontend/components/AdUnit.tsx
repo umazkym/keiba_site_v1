@@ -3,7 +3,12 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { Adsense } from './Adsense';
 import { sendAdImpressionEvent, type AdFormat } from '../lib/analytics';
-import { isManualAdsEnabled, shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
+import {
+    DEV_AD_TEST_STATUS,
+    isManualAdsEnabled,
+    shouldShowDevAdPlaceholders,
+    shouldSuppressAdsInDevelopment,
+} from '@/lib/ad-config';
 import { useAdViewableEvent } from '@/hooks/useAdViewableEvent';
 
 /**
@@ -13,6 +18,7 @@ import { useAdViewableEvent } from '@/hooks/useAdViewableEvent';
  * - sidebar: サイドバー用（デスクトップ向け）
  */
 type AdPlacement = 'inline' | 'banner' | 'sidebar';
+export type AdUnitStatus = 'loading' | 'filled' | 'unfilled';
 
 type AdUnitProps = {
     /** 広告スロットID */
@@ -21,6 +27,8 @@ type AdUnitProps = {
     placement?: AdPlacement;
     /** GA4計測用の詳細な広告位置名 */
     analyticsPlacement?: string;
+    /** 広告実験の割当名 */
+    analyticsVariant?: string;
     /** カスタムクラス名 */
     className?: string;
     /** 追加ラベルテキスト */
@@ -35,6 +43,8 @@ type AdUnitProps = {
     lazyRootMargin?: string;
     /** レース切替などの再読み込み時に即時リクエストを許可するビューポート外余白(px) */
     refreshRootMarginPx?: number;
+    /** Googleが返した配信状態を親コンポーネントへ通知 */
+    onStatusChange?: (status: AdUnitStatus) => void;
 };
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
@@ -61,6 +71,7 @@ export const AdUnit = ({
     slot,
     placement = 'inline',
     analyticsPlacement,
+    analyticsVariant,
     className = '',
     label = 'スポンサーリンク',
     refreshKey = '',
@@ -68,16 +79,50 @@ export const AdUnit = ({
     collapseUnfilled = false,
     lazyRootMargin,
     refreshRootMarginPx,
+    onStatusChange,
 }: AdUnitProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const devStatusKeyRef = useRef('');
     const [adLoaded, setAdLoaded] = useState(false);
     const [adUnfilled, setAdUnfilled] = useState(false);
 
     // refreshKeyが変わったらステートをリセット
     useEffect(() => {
+        devStatusKeyRef.current = '';
         setAdLoaded(false);
         setAdUnfilled(false);
-    }, [refreshKey]);
+        onStatusChange?.('loading');
+    }, [onStatusChange, refreshKey]);
+
+    // ローカル画面検証では ?ad_test_status=filled|unfilled でGoogle応答を再現する。
+    useEffect(() => {
+        if (!shouldShowDevAdPlaceholders || typeof window === 'undefined') return;
+
+        const requestedStatus = DEV_AD_TEST_STATUS
+            || new URLSearchParams(window.location.search).get('ad_test_status');
+        if (requestedStatus !== 'filled' && requestedStatus !== 'unfilled') return;
+
+        const statusKey = `${refreshKey}:${slot}:${requestedStatus}`;
+        if (devStatusKeyRef.current === statusKey) return;
+        devStatusKeyRef.current = statusKey;
+
+        if (requestedStatus === 'filled') {
+            setAdLoaded(true);
+            setAdUnfilled(false);
+            sendAdImpressionEvent({
+                placement: analyticsPlacement ?? placement,
+                format: AD_FORMAT_BY_PLACEMENT[placement],
+                slot,
+                variant: analyticsVariant,
+            });
+            onStatusChange?.('filled');
+            return;
+        }
+
+        setAdLoaded(false);
+        setAdUnfilled(true);
+        onStatusChange?.('unfilled');
+    }, [analyticsPlacement, analyticsVariant, onStatusChange, placement, refreshKey, slot]);
 
     // MutationObserverで広告のロード完了を検知
     useEffect(() => {
@@ -96,12 +141,15 @@ export const AdUnit = ({
                         placement: analyticsPlacement ?? placement,
                         format: AD_FORMAT_BY_PLACEMENT[placement],
                         slot,
+                        variant: analyticsVariant,
                     });
+                    onStatusChange?.('filled');
                     observer.disconnect();
                     return true;
                 } else if (status?.startsWith('unfill')) {
                     setAdUnfilled(true);
                     setAdLoaded(false);
+                    onStatusChange?.('unfilled');
                     observer.disconnect();
                     return true;
                 }
@@ -127,7 +175,7 @@ export const AdUnit = ({
             window.clearTimeout(statusTimer);
             observer.disconnect();
         };
-    }, [refreshKey, placement, analyticsPlacement, slot]); // refreshKey変更時にobserverも再設定
+    }, [refreshKey, placement, analyticsPlacement, analyticsVariant, onStatusChange, slot]); // refreshKey変更時にobserverも再設定
 
     // 配置タイプに応じたスタイル設定
     const placementStyles: Record<AdPlacement, {
@@ -187,6 +235,7 @@ export const AdUnit = ({
             placement: analyticsPlacement ?? placement,
             format: AD_FORMAT_BY_PLACEMENT[placement],
             slot,
+            variant: analyticsVariant,
         },
     });
 
@@ -196,6 +245,8 @@ export const AdUnit = ({
         <div
             className={`ad-layout-wrapper relative ${collapseUnfilled ? 'ad-collapse-unfilled' : 'ad-preserve-space'} ${config.wrapperClass} ${className} ${shouldCollapse ? 'hidden m-0 p-0' : ''}`}
             data-ad-state={adLoaded ? 'filled' : adUnfilled ? 'unfilled' : 'loading'}
+            data-ad-variant={analyticsVariant}
+            data-dev-ad-test-status={shouldShowDevAdPlaceholders ? DEV_AD_TEST_STATUS || undefined : undefined}
         >
             {/* Googleが広告DOMの祖先へmin-height:0を指定しても、通常フローのスペーサーで高さを維持する。 */}
             <div className={`ad-layout-spacer ${config.reserveClass}`} style={spacerStyle} aria-hidden="true" />

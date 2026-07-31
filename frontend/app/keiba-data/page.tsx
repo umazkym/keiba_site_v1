@@ -90,10 +90,10 @@ export default function KeibaDataPage() {
                 <header className="mt-4 min-h-[136px] rounded-xl border border-slate-800 bg-slate-900 p-4 text-white sm:min-h-0 sm:p-6">
                     <p className="text-xs font-bold text-blue-200">競馬データベース</p>
                     <h1 className="mt-1.5 text-2xl font-black leading-tight !text-white sm:text-3xl">
-                        競走馬・騎手・コースを比較
+                        競走馬・騎手・コースを同じ条件で比較
                     </h1>
                     <p className="mt-2 max-w-3xl text-sm leading-6 !text-slate-200">
-                        条件を揃えて各種データの比較が可能です。
+                        勝率・3着以内率を出走数と一緒に確認できます。
                     </p>
                 </header>
 

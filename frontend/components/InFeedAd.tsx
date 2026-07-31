@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Adsense } from './Adsense';
 import { sendAdImpressionEvent } from '@/lib/analytics';
-import { isManualAdsEnabled, shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
+import {
+    DEV_AD_TEST_STATUS,
+    RACE_LEGACY_INFEED_SLOT,
+    isManualAdsEnabled,
+    shouldShowDevAdPlaceholders,
+    shouldSuppressAdsInDevelopment,
+} from '@/lib/ad-config';
 import { useAdViewableEvent } from '@/hooks/useAdViewableEvent';
 
 type InFeedAdProps = {
@@ -13,6 +19,8 @@ type InFeedAdProps = {
     refreshKey?: string;
     /** GA4計測用の詳細な広告位置名 */
     analyticsPlacement?: string;
+    /** 広告実験の割当名 */
+    analyticsVariant?: string;
     /** カードデザインに合わせるための追加CSSクラス */
     className?: string;
     /** 初回読み込み時に広告リクエストを開始するビューポート外余白 */
@@ -23,7 +31,6 @@ type InFeedAdProps = {
 
 const AD_CLIENT = 'ca-pub-4411270831448240';
 // ★ AdSenseで新規作成した「インフィード」形式の専用スロット
-const INFEED_SLOT = '7367648888';
 const INFEED_LAYOUT_KEY = '-g0+4h+46-dp+9m';
 
 /**
@@ -42,11 +49,13 @@ export const InFeedAd = ({
     slot,
     refreshKey = '',
     analyticsPlacement = 'infeed',
+    analyticsVariant,
     className = '',
     lazyRootMargin = '680px 0px 680px 0px',
     refreshRootMarginPx = 720,
 }: InFeedAdProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const devStatusKeyRef = useRef('');
     const [adLoaded, setAdLoaded] = useState(false);
     const [adUnfilled, setAdUnfilled] = useState(false);
     const adStyle = useMemo<CSSProperties>(
@@ -55,9 +64,39 @@ export const InFeedAd = ({
     );
 
     useEffect(() => {
+        devStatusKeyRef.current = '';
         setAdLoaded(false);
         setAdUnfilled(false);
     }, [refreshKey]);
+
+    // ローカル画面検証では ?ad_test_status=filled|unfilled でGoogle応答を再現する。
+    useEffect(() => {
+        if (!shouldShowDevAdPlaceholders || typeof window === 'undefined') return;
+
+        const requestedStatus = DEV_AD_TEST_STATUS
+            || new URLSearchParams(window.location.search).get('ad_test_status');
+        if (requestedStatus !== 'filled' && requestedStatus !== 'unfilled') return;
+
+        const resolvedSlot = slot || RACE_LEGACY_INFEED_SLOT;
+        const statusKey = `${refreshKey}:${resolvedSlot}:${requestedStatus}`;
+        if (devStatusKeyRef.current === statusKey) return;
+        devStatusKeyRef.current = statusKey;
+
+        if (requestedStatus === 'filled') {
+            setAdLoaded(true);
+            setAdUnfilled(false);
+            sendAdImpressionEvent({
+                placement: analyticsPlacement,
+                format: 'in_feed',
+                slot: resolvedSlot,
+                variant: analyticsVariant,
+            });
+            return;
+        }
+
+        setAdLoaded(false);
+        setAdUnfilled(true);
+    }, [analyticsPlacement, analyticsVariant, refreshKey, slot]);
 
     useEffect(() => {
         if (process.env.NODE_ENV !== 'production') return;
@@ -75,7 +114,8 @@ export const InFeedAd = ({
                 sendAdImpressionEvent({
                     placement: analyticsPlacement,
                     format: 'in_feed',
-                    slot: slot || INFEED_SLOT,
+                    slot: slot || RACE_LEGACY_INFEED_SLOT,
+                    variant: analyticsVariant,
                 });
                 observer.disconnect();
                 return true;
@@ -106,7 +146,7 @@ export const InFeedAd = ({
             window.clearTimeout(statusTimer);
             observer.disconnect();
         };
-    }, [refreshKey, analyticsPlacement, slot]);
+    }, [refreshKey, analyticsPlacement, analyticsVariant, slot]);
 
     useAdViewableEvent({
         targetRef: containerRef,
@@ -115,7 +155,8 @@ export const InFeedAd = ({
         ad: {
             placement: analyticsPlacement,
             format: 'in_feed',
-            slot: slot || INFEED_SLOT,
+            slot: slot || RACE_LEGACY_INFEED_SLOT,
+            variant: analyticsVariant,
         },
     });
 
@@ -126,6 +167,9 @@ export const InFeedAd = ({
             ref={containerRef}
             className={`overflow-hidden rounded-xl border-l-[3px] border-l-blue-200 border border-y-slate-200 border-r-slate-200 shadow-sm relative w-full bg-slate-50 p-1.5 sm:p-3 mt-2 mb-2 ${adUnfilled ? 'invisible pointer-events-none' : ''} ${className}`}
             style={{ minHeight: '220px' }}
+            data-ad-state={adLoaded ? 'filled' : adUnfilled ? 'unfilled' : 'loading'}
+            data-ad-variant={analyticsVariant}
+            data-dev-ad-test-status={shouldShowDevAdPlaceholders ? DEV_AD_TEST_STATUS || undefined : undefined}
         >
 
             {/* 広告ラベル: コンテンツとの誤認を防ぐための表示 */}
@@ -140,7 +184,7 @@ export const InFeedAd = ({
               */}
             <Adsense
                 client={AD_CLIENT}
-                slot={slot || INFEED_SLOT}
+                slot={slot || RACE_LEGACY_INFEED_SLOT}
                 refreshKey={refreshKey}
                 style={adStyle}
                 format="fluid"

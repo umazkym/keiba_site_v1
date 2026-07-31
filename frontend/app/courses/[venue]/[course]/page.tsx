@@ -8,6 +8,7 @@ import { EntityArticleSection } from '@/components/EntityArticleSection';
 import { getCourseDataDetail } from '@/lib/api';
 import { getArticlesByCourseEntity } from '@/lib/articles';
 import { getCourseProfile } from '@/lib/growth-content';
+import { getCourseArticleArchiveGroup } from '@/lib/article-archives';
 
 
 export const revalidate = 21600;
@@ -47,6 +48,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CoursePage({ params }: Props) {
     const detail = await getCourseDataDetail(params.venue, params.course);
     if (detail) {
+        const courseSlug = detail.entity.id.split('/')[1] ?? params.course;
+        const articleArchive = getCourseArticleArchiveGroup(detail.venue_slug, courseSlug);
+        const relatedArticleHref = articleArchive && articleArchive.articleCount > 0
+            ? articleArchive.href
+            : null;
         return (
             <>
                 <BreadcrumbSchema
@@ -71,7 +77,7 @@ export default async function CoursePage({ params }: Props) {
                     }}
                 />
                 <Breadcrumb />
-                <CourseDataDetailView detail={detail} />
+                <CourseDataDetailView detail={detail} relatedArticleHref={relatedArticleHref} />
             </>
         );
     }
@@ -126,7 +132,7 @@ export default async function CoursePage({ params }: Props) {
                     title={`${profile.venueName}${profile.courseName}の記事`}
                     description="このコース条件に紐づく記事を集約しています。"
                     articles={courseArticles}
-                    archiveHref={`/articles/courses/${profile.venue}/${profile.course}`}
+                    archiveHref={courseArticles.length > 0 ? `/articles/courses/${profile.venue}/${profile.course}` : undefined}
                     archiveLabel="記事アーカイブ"
                 />
                 <Link prefetch={false} href="/races/today" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary">

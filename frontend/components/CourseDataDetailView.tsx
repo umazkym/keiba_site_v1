@@ -17,7 +17,7 @@ const BET_TYPE_LABELS: Record<string, string> = {
     sanrentan: '3連単',
 };
 
-export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
+export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: CourseDataDetail; relatedArticleHref: string | null }) {
     const entity = detail.entity;
     return (
         <article className="mx-auto max-w-6xl px-3 pb-14 pt-3 sm:px-4">
@@ -164,12 +164,14 @@ export function CourseDataDetailView({ detail }: { detail: CourseDataDetail }) {
                 >
                     本日のレースと照合
                 </Link>
-                <Link
-                    href={`/articles/courses/${detail.venue_slug}/${detail.entity.id.split('/')[1]}`}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-blue-300 hover:text-blue-700"
-                >
-                    関連記事を見る
-                </Link>
+                {relatedArticleHref && (
+                    <Link
+                        href={relatedArticleHref}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-blue-300 hover:text-blue-700"
+                    >
+                        関連記事を見る
+                    </Link>
+                )}
                 <Link
                     href="/compare"
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-5 py-2 text-xs font-bold text-amber-900 transition-colors duration-150 hover:bg-amber-100"

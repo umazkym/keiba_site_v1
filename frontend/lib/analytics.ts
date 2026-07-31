@@ -1,10 +1,15 @@
 import { sendClarityEvent } from '@/lib/clarity';
+import { RACE_REVENUE_EXPERIMENT_ID } from '@/lib/ad-config';
+
+export const ANALYTICS_MEASUREMENT_RELEASE_ID =
+    process.env.NEXT_PUBLIC_ANALYTICS_RELEASE_ID ?? '2026-08-01-ga-route-v2';
 
 declare global {
     interface Window {
         dataLayer?: unknown[];
         gtag?: (...args: unknown[]) => void;
         __umaGaReady?: boolean;
+        __umaSuppressedPageViewPath?: string;
     }
 }
 
@@ -303,6 +308,33 @@ const compactParams = (params: Record<string, unknown>) => {
     );
 };
 
+const normalizePagePath = (pathname: string) => {
+    const normalized = pathname.replace(/\/+$/, '');
+    return normalized || '/';
+};
+
+/**
+ * 同一レースページ内の選択状態だけをURLへ反映する。
+ * App Router側でpathnameが更新されても、次のpage_viewを明示的に抑止する。
+ */
+export const replaceRaceHistoryPathWithoutPageView = (pathname: string) => {
+    if (typeof window === 'undefined') return;
+
+    const normalizedPath = normalizePagePath(pathname);
+    window.__umaSuppressedPageViewPath = normalizedPath;
+    window.history.replaceState(window.history.state, '', normalizedPath);
+};
+
+export const consumeSuppressedPageViewPath = (pathname: string) => {
+    if (typeof window === 'undefined') return false;
+
+    const normalizedPath = normalizePagePath(pathname);
+    if (window.__umaSuppressedPageViewPath !== normalizedPath) return false;
+
+    delete window.__umaSuppressedPageViewPath;
+    return true;
+};
+
 const flushQueuedAnalyticsEvents = () => {
     if (typeof window === 'undefined' || !window.__umaGaReady || typeof window.gtag !== 'function') return;
 
@@ -321,7 +353,16 @@ const ensureGaReadyListener = () => {
 const sendAnalyticsEvent = (eventName: string, params: Record<string, unknown> = {}) => {
     if (typeof window === 'undefined') return;
 
-    const compactedParams = compactParams(params);
+    const compactedParams = compactParams({
+        measurement_release_id: ANALYTICS_MEASUREMENT_RELEASE_ID,
+        ...params,
+    });
+    if (process.env.NODE_ENV !== 'production') {
+        const debugKey = `umaEventCount${eventName.replace(/(^|_)([a-z])/g, (_, __, letter: string) => letter.toUpperCase())}`;
+        const currentCount = Number(document.documentElement.dataset[debugKey] ?? '0');
+        document.documentElement.dataset[debugKey] = String(currentCount + 1);
+        document.documentElement.dataset.umaLastAnalyticsEvent = eventName;
+    }
     if (window.__umaGaReady && typeof window.gtag === 'function') {
         window.gtag('event', eventName, compactedParams);
         return;
@@ -332,6 +373,11 @@ const sendAnalyticsEvent = (eventName: string, params: Record<string, unknown> =
     }
     queuedAnalyticsEvents.push({ eventName, params: compactedParams });
     ensureGaReadyListener();
+};
+
+export const setAnalyticsUserProperties = (properties: Record<string, string>) => {
+    if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
+    window.gtag('set', 'user_properties', compactParams(properties));
 };
 
 const inferPageType = () => {
@@ -389,11 +435,15 @@ export const sendAdImpressionEvent = (params: string | AdImpressionParams) => {
         ad_format: normalized.format,
         ad_slot: normalized.slot,
         ad_variant: normalized.variant,
+        experiment_id: normalized.variant ? RACE_REVENUE_EXPERIMENT_ID : undefined,
         ad_page_type: inferPageType(),
     });
     sendClarityEvent('ad_impression_custom', {
         ad_placement: normalized.placement,
         ad_format: normalized.format,
+        ad_slot: normalized.slot,
+        ad_variant: normalized.variant,
+        experiment_id: normalized.variant ? RACE_REVENUE_EXPERIMENT_ID : undefined,
         ad_page_type: inferPageType(),
     });
 };
@@ -407,6 +457,7 @@ export const sendAdViewableEvent = (params: AdViewableParams) => {
         ad_format: params.format,
         ad_slot: params.slot,
         ad_variant: params.variant,
+        experiment_id: params.variant ? RACE_REVENUE_EXPERIMENT_ID : undefined,
         ad_page_type: inferPageType(),
     };
 
@@ -414,6 +465,9 @@ export const sendAdViewableEvent = (params: AdViewableParams) => {
     sendClarityEvent('ad_viewable_custom', {
         ad_placement: params.placement,
         ad_format: params.format,
+        ad_slot: params.slot,
+        ad_variant: params.variant,
+        experiment_id: params.variant ? RACE_REVENUE_EXPERIMENT_ID : undefined,
         ad_page_type: eventParams.ad_page_type,
     });
 };
@@ -704,10 +758,18 @@ export const sendAdExperimentExposureEvent = (params: {
     experiment_id: string;
     variant: string;
     slot_id: string;
+    ad_placement: string;
     page_type?: string;
 }) => {
     sendAnalyticsEvent('ad_experiment_exposure', {
         ...params,
+        page_type: params.page_type || inferPageType(),
+    });
+    sendClarityEvent('ad_experiment_exposure', {
+        experiment_id: params.experiment_id,
+        variant: params.variant,
+        slot_id: params.slot_id,
+        ad_placement: params.ad_placement,
         page_type: params.page_type || inferPageType(),
     });
 };

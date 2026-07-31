@@ -1,6 +1,6 @@
 # UMA-FREE 収益ファネル計測設計
 
-更新日: 2026-07-31
+更新日: 2026-08-01
 
 ## 目的
 
@@ -11,6 +11,8 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 - `page_view` は実際にページが表示された場合だけ使用する。
 - 中央・地方タブ、競馬場タブ、同一競馬場内のレース切り替えでは送信しない。
 - レース切り替えは `race_view` と `race_navigation` で評価する。
+- GA4拡張計測のページ読込はON、「ブラウザの履歴イベントに基づくページの変更」は2026-08-01にOFFへ変更済み。
+- サイト側はGAスクリプトの実ロード後に初回`page_view`を明示送信する。Next.jsのpathname変更だけを通常遷移として送信し、レース切替で使う`history.replaceState`は次のpathname観測から除外する。
 
 ## イベント一覧
 
@@ -25,14 +27,14 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `article_read_complete` | 記事本文の末尾へ到達 | `article_slug`, `article_category`, `reading_time_min` | 記事読了率 |
 | `article_race_preview_view` | 検証済みレースブリッジの50%以上が初回表示 | `article_slug`, `race_id`, `race_name`, `race_date`, `preview_state`, `link_placement` | 有効な導線表示セッションの母数 |
 | `article_race_click` | 記事からレースページへ移動 | `article_slug`, `link_path`, `link_placement`, `destination_type`, `race_id`, `race_name`, `race_date`, `preview_state` | 記事から正確なレースへの送客 |
-| `ad_impression_custom` | AdSenseが広告を配信 | `ad_placement`, `ad_format`, `ad_slot`, `ad_page_type` | 配信済み広告の母数 |
-| `ad_viewable_custom` | 広告枠の50%以上が1秒間画面内に表示 | `ad_placement`, `ad_format`, `ad_slot`, `ad_page_type` | 配置別の実視認と収益性 |
+| `ad_impression_custom` | AdSenseが広告を配信 | `ad_placement`, `ad_format`, `ad_slot`, `ad_page_type`, `ad_variant`, `experiment_id` | 配信済み広告の母数 |
+| `ad_viewable_custom` | 広告枠の50%以上が1秒間画面内に表示 | `ad_placement`, `ad_format`, `ad_slot`, `ad_page_type`, `ad_variant`, `experiment_id` | 配置別の実視認と収益性 |
 | `affiliate_impression` | アフィリエイト枠の40%以上が表示 | `campaign_id`, `link_id`, `provider`, `providers`, `context`, `campaign_type`, `link_count`, `race_type`, `venue_name` | アフィリエイト表示母数 |
 | `affiliate_click` | アフィリエイトリンクをクリック | `campaign_id`, `link_id`, `provider`, `context`, `campaign_type`, `race_type`, `venue_name` | アフィリエイト送客 |
 | `premium_data_view` | 詳細データを表示 | `race_id`, `result` | 詳細データの利用状況 |
 | `web_vital` | 固定20%サンプルのセッションでWeb Vitalsを計測 | `metric_name`, `metric_id`, `value`, `rating`, `navigation_type`, `page_path`, `page_type`, `release_id` | リリース・ページ種別ごとのLCP、INP、CLS |
 | `adsense_offerwall_view` | AdSense Offerwallが非表示から表示へ変わった時に1回 | `path_group`, `page_path`, `page_type` | Offerwall到達後のレース操作・離脱との比較 |
-| `ad_experiment_exposure` | サイト側で広告実験のバリエーションが確定 | `experiment_id`, `variant`, `slot_id`, `page_type` | セッション固定広告実験の母数 |
+| `ad_experiment_exposure` | サイト側で広告実験のバリエーションが確定 | `experiment_id`, `variant`, `slot_id`, `ad_placement`, `page_type` | セッション固定広告実験の母数 |
 | `data_entity_view` | 馬・騎手・調教師・コース・重賞の詳細データが表示 | `entity_type`, `entity_id`, `sample_size`, `indexable` | データ対象別の閲覧数と十分な母数を持つページの利用状況 |
 | `data_search` | 横断検索または比較画面の検索結果を表示 | `query_length`, `result_count`, `search_surface` | 検索需要、0件率、検索面ごとの回遊 |
 | `data_favorite` | ブラウザ内のマイデータへ対象を追加・解除 | `action`, `entity_type`, `entity_id` | 保存対象と再訪につながる機能の利用状況 |
@@ -49,10 +51,22 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 
 ## GA4初期化順
 
-- Root LayoutのheadでConsent Mode、`gtag('js')`、`gtag('config')`をこの順にdataLayerへ積む。
+- Root LayoutのheadでConsent Modeの既定値と`dataLayer`/`gtag`ラッパーだけを先に用意し、`__umaGaReady=false`とする。
+- `gtag.js`の`onLoad`後に、`gtag('js')`、`gtag('config', {send_page_view:false})`、明示的な初回`page_view`、`__umaGaReady=true`、`uma:ga-ready`の順で実行する。
 - Client Componentが初期化前に発生させたカスタムイベントは最大100件の内部キューへ保持し、`uma:ga-ready`後に一度だけ送信する。
-- GA4スクリプトをbody末尾で初期化しない。流入元確定前のカスタムイベント送信を避け、`(not set)`セッションを抑えるためである。
+- 通常のNext.js pathname変更はサイト側が明示`page_view`を1回送る。レース切替の`history.replaceState`では抑止対象pathnameを1回消費し、`page_view`を送らない。
+- すべてのサイト側カスタムイベントへ`measurement_release_id`を自動付与する。2026-08-01版は`2026-08-01-ga-route-v2`。
+- GA4スクリプトの実ロード前に`config`や初回`page_view`を送らない。流入元確定前のイベント送信と`(not set)`セッションを抑えるためである。
 - `web_vital`は個人情報を含めず、セッション単位の固定20%サンプルとする。
+
+## MOBILE-RACE-ENGAGED-AD-2026-08の割り当て
+
+- `NEXT_PUBLIC_RACE_REVENUE_EXPERIMENT_MODE`は`legacy | split | engaged_display`の3値で、未設定・不正値は`legacy`。
+- `split`は1023px以下だけを対象に、`sessionStorage`へ保存した乱数でタブセッション固定50/50とする。1024px以上は常に`legacy`で、実験露出母数へ含めない。
+- variant確定時にGA4ユーザープロパティとClarityタグの`ad_experiment_id`、`ad_experiment_variant`を同じ値で設定する。既存集計互換として`monetization_experiment`、`monetization_variant`も維持する。
+- `ad_experiment_exposure`はタブセッション内の最初の対象レースページで1回だけ送る。
+- 原案slotは`7367648888`、バリエーションslotは`7550236816`、バリエーション配置は`race_after_analysis_engaged`。
+- 主指標の分母は`ad_experiment_exposure`のvariant別モバイル人間セッションとし、広告要求数やページビューを分母にしない。
 
 ## GA4管理画面でキーイベントに指定する項目
 
@@ -70,7 +84,7 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 
 - AdSenseが配信済みと判断した時点は`ad_impression_custom`、実視認は`ad_viewable_custom`として区別する。
 - 配置別の収益判断は、AdSenseのPublisher Adsレポートと`ad_viewable_custom`を同じ期間・同じページ種別で比較する。
-- GA4で登録するイベントスコープのカスタム定義は、`ad_placement`、`ad_format`、`ad_slot`、`ad_page_type`、既存の`context`・`provider`、追加した`affiliate_page_type`とする。
+- GA4で登録するイベントスコープのカスタム定義は、`ad_placement`、`ad_format`、`ad_slot`、`ad_page_type`、`ad_variant`、`experiment_id`、`measurement_release_id`、既存の`context`・`provider`、追加した`affiliate_page_type`とする。
 - 新しい広告実験はGA4の`(not set)`比率が7日連続で5%未満になってから開始する。
 - モバイルp75の合格基準はLCP 2.5秒以下、INP 200ms以下、CLS 0.1以下とし、リリース後の実測で確認する。
 
@@ -155,3 +169,6 @@ GA4ではイベントスコープのカスタム定義へ`source_platform`、`so
 - YouTube v7の公開開始日Dまでは`private_review`期間として扱い、通常流入の評価対象へ含めない。2026-07-28のURL統一後はYouTube参照元のトップページ流入、ホームからレースへの遷移、`race_view`、`prediction_table_view`を同じ期間で比較し、旧`utm_content`別集計とは期間を分ける。
 - SNS動画は媒体ごとの`public`切り替え日をDとして別々に集計する。`validate`と`draft`期間は流入効果の母数へ含めず、複数媒体を同日に公開開始した場合は因果分離できないことを明記する。
 - 楽天競馬の適格化実験は`NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=qualified_nar`へ切り替えた本番反映日をDとする。Dより前のレガシー導線、ヘッダー、JRA、日別ページ下部の表示・クリックを実験母数へ混ぜない。
+- `ARTICLE-RACE-BRIDGE-2026-07`は2026-08-01に有効対象0件で未成立終了した。`article_race_preview_view`の0件期間を効果0として扱わない。
+- `MOBILE-RACE-ENGAGED-AD-2026-08`は`NEXT_PUBLIC_RACE_REVENUE_EXPERIMENT_MODE=split`を本番反映した時刻をDとする。準備期間の`legacy`、ローカルプレースホルダー、1024px以上を実験母数へ含めない。
+- 新広告試作の集計は`measurement_release_id=2026-08-01-ga-route-v2`以降に限定し、旧リリースの重複ページビューが混在する期間と分ける。

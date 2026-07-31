@@ -18,6 +18,7 @@ import { AffiliateSlot } from "@/components/AffiliateSlot";
 import { RacePageBottomNav } from "@/components/RacePageBottomNav";
 import type { RaceSelectorLink } from '@/components/RaceSelector';
 import { getRaceTopObstructionHeight } from "@/hooks/useRaceSectionNavigation";
+import { useRaceRevenueExperiment } from "@/hooks/useRaceRevenueExperiment";
 
 // 日付フォーマット検証関数
 /**
@@ -142,6 +143,7 @@ export default function RacePageClient({
     const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(routeInitialRaceNumber);
     const hasScrolled = useRef(false);
     const isInitialLoad = useRef(true);
+    const raceRevenueExperiment = useRaceRevenueExperiment();
 
     useEffect(() => {
         const fetchData = async (dateToFetch: string) => {
@@ -293,6 +295,9 @@ export default function RacePageClient({
                     initialVenueName={initialVenue}
                     initialRaceNumber={initialRaceNumber}
                     initialRaceLinks={initialRaceLinks}
+                    engagedAdSlot={raceRevenueExperiment.shouldRenderEngagedSlot
+                        ? raceRevenueExperiment.engagedAdSlot
+                        : undefined}
                 />
 
                 {showSpecialPick && (
@@ -307,7 +312,12 @@ export default function RacePageClient({
     };
 
     return (
-        <div id="race-page-top" className="race-page-scope mx-auto max-w-6xl py-2 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-4">
+        <div
+            id="race-page-top"
+            className="race-page-scope mx-auto max-w-6xl py-2 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-4"
+            data-race-revenue-variant={raceRevenueExperiment.ready ? raceRevenueExperiment.variant : 'pending'}
+            data-race-revenue-eligible={raceRevenueExperiment.eligible ? 'true' : 'false'}
+        >
             {/* ▼▼▼▼▼【ファーストビュー改善】▼▼▼▼▼ */}
             {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
             <div className="relative z-10 mb-1.5 border-b border-slate-200 bg-slate-50 p-1 sm:mb-3 sm:p-2">
@@ -347,10 +357,11 @@ export default function RacePageClient({
                 className="my-1.5 sm:my-2"
             />
 
-            {hasRaceData && !isLoading && !error && (
+            {hasRaceData && !isLoading && !error && raceRevenueExperiment.shouldRenderLegacySlot && (
                 <InFeedAd
                     refreshKey={`race-after-top-hits-${currentDate}`}
                     analyticsPlacement="race_after_top_hits_infeed"
+                    analyticsVariant={raceRevenueExperiment.eligible ? 'legacy' : undefined}
                     className="mt-1.5 sm:mt-2"
                     lazyRootMargin="520px 0px 520px 0px"
                     refreshRootMarginPx={600}

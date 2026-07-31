@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { EntityArticleDocument } from "@/components/EntityArticleDocument";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { BreadcrumbSchema } from "@/components/StructuredData";
@@ -10,7 +10,7 @@ type Props = {
   params: { slug: string };
 };
 
-export const dynamicParams = false;
+export const dynamicParams = true;
 
 export function generateStaticParams() {
   return getJockeyArticleArchiveGroups()
@@ -30,7 +30,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? await getArticleBySlug(group.articles[0].slug)
     : null;
   if (!primaryArticle) {
-    notFound();
+    return {
+      title: `${group.title} | UMA-FREE`,
+      alternates: { canonical: group.profileHref },
+      robots: { index: false, follow: true },
+    };
   }
 
   return {
@@ -52,7 +56,7 @@ export default async function JockeyArticleArchiveDetailPage({ params }: Props) 
     ? await getArticleBySlug(group.articles[0].slug)
     : null;
   if (!primaryArticle) {
-    notFound();
+    permanentRedirect(group.profileHref);
   }
   const article = primaryArticle;
 

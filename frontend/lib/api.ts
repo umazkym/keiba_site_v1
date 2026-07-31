@@ -240,15 +240,25 @@ export async function getSpecialPick(
     }
 }
 
-export async function getFilteredMatchups(raceId: string, startDate: string, endDate: string): Promise<MatchupData | null> {
+export async function getFilteredMatchups(
+    raceId: string,
+    startDate: string,
+    endDate: string,
+    signal?: AbortSignal,
+): Promise<MatchupData | null> {
     try {
-        const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/predictions/matchups/${raceId}?start_date=${startDate}&end_date=${endDate}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithRetry(
+            `${API_BASE_URL}/api/v1/predictions/matchups/${raceId}?start_date=${startDate}&end_date=${endDate}`,
+            { next: { revalidate: 3600 }, signal },
+            signal ? 0 : undefined,
+        );
         if (!res.ok) {
             console.warn(`Could not fetch filtered matchups for ${raceId}. Status: ${res.status}`);
             return null;
         }
         return res.json();
     } catch (error: any) {
+        if (signal?.aborted || error?.name === 'AbortError') throw error;
         console.error("A network or fetch error occurred in getFilteredMatchups:", error.message);
         return null;
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import { RacePrediction, MatchupRecord, HorsePrediction, MatchupData } from '@/lib/types';
-import React, { useState, useEffect } from 'react';
+import React, { startTransition, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { getFilteredMatchups } from '@/lib/api';
 import { getWakuNumber } from '@/lib/utils';
 import { AccessibleInfo } from '@/components/AccessibleInfo';
@@ -36,6 +36,37 @@ const formatCompactDate = (date: string): string => {
     const [, month, day] = date.split('-');
     if (!month || !day) return date;
     return `${Number(month)}/${Number(day)}`;
+};
+
+const matchupCache = new Map<string, MatchupData>();
+
+const getDefaultDateRange = (raceDateString: string) => {
+    const raceDate = new Date(`${raceDateString}T00:00:00Z`);
+    const dayBeforeRace = new Date(raceDate);
+    dayBeforeRace.setUTCDate(raceDate.getUTCDate() - 1);
+    const yearStart = new Date(Date.UTC(raceDate.getUTCFullYear(), 0, 1));
+    return {
+        startDate: yearStart.toISOString().split('T')[0],
+        endDate: dayBeforeRace.toISOString().split('T')[0],
+    };
+};
+
+const MatchupMatrixSkeleton = ({ runnerCount }: { runnerCount: number }) => {
+    const rows = Math.max(1, runnerCount);
+    const compact = runnerCount >= 16;
+    return (
+        <div className="overflow-hidden bg-white" aria-hidden="true">
+            <div className={`${compact ? 'h-[42px]' : 'h-[50px]'} border-b border-slate-200 bg-slate-50`} />
+            {Array.from({ length: rows }).map((_, index) => (
+                <div
+                    key={index}
+                    className={`${compact ? 'h-[21px]' : 'h-[28px]'} border-b border-slate-100 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}
+                >
+                    <div className="h-full w-[18%] border-r border-slate-100 bg-slate-100/70" />
+                </div>
+            ))}
+        </div>
+    );
 };
 
 const MobileHorseBadge = ({ horse, totalHorses }: { horse: HorsePrediction, totalHorses: number }) => {
@@ -297,20 +328,15 @@ const MobileMatrixView = ({ predictions, matchupData, onSelect }: { predictions:
 };
 
 export const MatchupTable = ({ race }: { race: RacePrediction }) => {
-    // race.race_date (例: "2025-08-18") を基準に日付オブジェクトを生成します。
-    // タイムゾーンの問題を避けるため、UTCとして扱います。
-    const raceDate = new Date(race.race_date + 'T00:00:00Z');
-
-    // レース開催日の前日を計算します。
-    const dayBeforeRace = new Date(raceDate);
-    dayBeforeRace.setUTCDate(raceDate.getUTCDate() - 1);
-
-    // レース開催年の1月1日を計算します。
-    const yearStart = new Date(Date.UTC(raceDate.getUTCFullYear(), 0, 1));
-
-    // toISOString()は 'YYYY-MM-DDTHH:mm:ss.sssZ' 形式なので、'T'で分割して日付部分のみ取得します。
-    const [startDate, setStartDate] = useState(yearStart.toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState(dayBeforeRace.toISOString().split('T')[0]);
+    const defaultDateRange = useMemo(
+        () => getDefaultDateRange(race.race_date),
+        [race.race_date],
+    );
+    const [dateRange, setDateRange] = useState(() => ({
+        raceId: race.id,
+        ...defaultDateRange,
+    }));
+    const { startDate, endDate } = dateRange;
 
     const [matchupData, setMatchupData] = useState<MatchupData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -319,37 +345,58 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
 
     // レース切り替え時は集計期間をレース日に合わせ直します。
     useEffect(() => {
-        const newRaceDate = new Date(race.race_date + 'T00:00:00Z');
-        const newDayBefore = new Date(newRaceDate);
-        newDayBefore.setUTCDate(newRaceDate.getUTCDate() - 1);
-        const newYearStart = new Date(Date.UTC(newRaceDate.getUTCFullYear(), 0, 1));
-        setStartDate(newYearStart.toISOString().split('T')[0]);
-        setEndDate(newDayBefore.toISOString().split('T')[0]);
-    }, [race.id, race.race_date]);
-
+        setDateRange({ raceId: race.id, ...defaultDateRange });
+    }, [defaultDateRange, race.id]);
 
     useEffect(() => {
+        if (dateRange.raceId !== race.id) return undefined;
+
+        const controller = new AbortController();
+        const cacheKey = `${race.id}:${startDate}:${endDate}`;
+        const cached = matchupCache.get(cacheKey);
+        if (cached) {
+            setMatchupData(cached);
+            setIsLoading(false);
+            setError(null);
+            return () => controller.abort();
+        }
+
         const fetchFilteredData = async () => {
             setIsLoading(true);
             setError(null);
+            setMatchupData(null);
             try {
-                const data = await getFilteredMatchups(race.id, startDate, endDate);
-                setMatchupData(data);
+                const data = await getFilteredMatchups(race.id, startDate, endDate, controller.signal);
+                if (!data) throw new Error('matchup_data_unavailable');
+                matchupCache.set(cacheKey, data);
+                startTransition(() => setMatchupData(data));
             } catch (e) {
-                setError("データの取得に失敗しました。");
+                if (controller.signal.aborted) return;
+                setError('データの取得に失敗しました。');
                 console.error(e);
             } finally {
-                setIsLoading(false);
+                if (!controller.signal.aborted) setIsLoading(false);
             }
         };
         fetchFilteredData();
-    }, [race.id, startDate, endDate]);
+
+        return () => controller.abort();
+    }, [dateRange.raceId, endDate, race.id, startDate]);
 
     useEffect(() => {
         setSelectedMatchup(null);
     }, [race.id, startDate, endDate]);
 
+    const isDateRangeCurrent = dateRange.raceId === race.id;
+    const showLoadingState = isLoading || !isDateRangeCurrent;
     const isDataEmpty = !matchupData || Object.keys(matchupData.matchup_data).length === 0;
+    const runnerCount = race.predictions.length;
+    const mobileMinHeight = 50 + Math.max(1, runnerCount) * (runnerCount >= 16 ? 21 : 28);
+    const desktopMinHeight = 50 + Math.max(1, runnerCount) * 36;
+    const stableRegionStyle = {
+        '--matchup-mobile-min-height': `${mobileMinHeight}px`,
+        '--matchup-desktop-min-height': `${desktopMinHeight}px`,
+    } as CSSProperties;
 
     return (
         <div className="race-panel overflow-hidden">
@@ -375,36 +422,50 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         <span aria-hidden="true" className="text-slate-400">⌄</span>
                     </summary>
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 border-t border-slate-200 bg-white p-2">
-                        <input aria-label="集計開始日" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-2 text-[11px]" />
+                        <input aria-label="集計開始日" type="date" value={startDate} onChange={e => setDateRange(current => ({ ...current, startDate: e.target.value }))} className="min-w-0 rounded border border-slate-300 p-2 text-[11px]" />
                         <span className="shrink-0 text-slate-400">–</span>
-                        <input aria-label="集計終了日" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-2 text-[11px]" />
+                        <input aria-label="集計終了日" type="date" value={endDate} onChange={e => setDateRange(current => ({ ...current, endDate: e.target.value }))} className="min-w-0 rounded border border-slate-300 p-2 text-[11px]" />
                     </div>
                 </details>
                 <div className="hidden w-full flex-col gap-1 text-[11px] md:flex md:w-auto md:flex-row md:items-center md:gap-2 md:text-sm">
                     <label htmlFor="start-date" className="shrink-0 font-semibold text-slate-500 md:font-medium">期間</label>
                     <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 md:flex md:w-auto">
-                        <input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-1 text-[11px] md:w-auto md:text-sm" />
+                        <input id="start-date" type="date" value={startDate} onChange={e => setDateRange(current => ({ ...current, startDate: e.target.value }))} className="min-w-0 rounded border border-slate-300 p-1 text-[11px] md:w-auto md:text-sm" />
                         <span className="shrink-0 text-slate-400">-</span>
-                        <input aria-label="集計終了日" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="min-w-0 rounded border border-slate-300 p-1 text-[11px] md:w-auto md:text-sm" />
+                        <input aria-label="集計終了日" type="date" value={endDate} onChange={e => setDateRange(current => ({ ...current, endDate: e.target.value }))} className="min-w-0 rounded border border-slate-300 p-1 text-[11px] md:w-auto md:text-sm" />
                     </div>
                 </div>
             </div>
 
-            {isLoading && <div className="text-center p-6 text-gray-500">対決データを読み込み中...</div>}
-            {error && <div className="text-center p-6 text-red-500">{error}</div>}
+            <div
+                className="min-h-[var(--matchup-mobile-min-height)] md:min-h-[var(--matchup-desktop-min-height)]"
+                style={stableRegionStyle}
+                aria-live="polite"
+            >
+                {showLoadingState && (
+                    <div aria-busy="true" aria-label="対決データを読み込み中">
+                        <MatchupMatrixSkeleton runnerCount={runnerCount} />
+                    </div>
+                )}
+                {!showLoadingState && error && (
+                    <div className="flex min-h-[inherit] items-center justify-center p-6 text-center text-sm text-red-600">
+                        {error}
+                    </div>
+                )}
 
-            {!isLoading && !error && matchupData && (
-                isDataEmpty
-                    ? <div className="text-center text-gray-500 py-4"><p>指定された期間の直接対決データはありません。</p></div>
-                    : <>
-                        <div className="hidden md:block">
-                            <TableView predictions={race.predictions} matchupData={matchupData} onSelect={setSelectedMatchup} />
-                        </div>
-                        <div className="md:hidden">
-                            <MobileMatrixView predictions={race.predictions} matchupData={matchupData} onSelect={setSelectedMatchup} />
-                        </div>
-                    </>
-            )}
+                {!showLoadingState && !error && matchupData && (
+                    isDataEmpty
+                        ? <div className="flex min-h-[inherit] items-center justify-center p-6 text-center text-sm text-slate-500"><p>指定された期間の直接対決データはありません。</p></div>
+                        : <>
+                            <div className="hidden md:block">
+                                <TableView predictions={race.predictions} matchupData={matchupData} onSelect={setSelectedMatchup} />
+                            </div>
+                            <div className="md:hidden">
+                                <MobileMatrixView predictions={race.predictions} matchupData={matchupData} onSelect={setSelectedMatchup} />
+                            </div>
+                        </>
+                )}
+            </div>
 
             {selectedMatchup && (
                 <section className="border-t border-slate-200 bg-slate-50 p-3" aria-live="polite" aria-label="選択した対戦成績の詳細">

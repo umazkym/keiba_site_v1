@@ -20,10 +20,11 @@ export const useAdViewableEvent = ({
     ad,
 }: UseAdViewableEventOptions) => {
     const hasSentRef = useRef(false);
+    const { placement, format, slot, variant } = ad;
 
     useEffect(() => {
         hasSentRef.current = false;
-    }, [refreshKey, ad.placement, ad.format, ad.slot, ad.variant]);
+    }, [refreshKey, placement, format, slot, variant]);
 
     useEffect(() => {
         if (!isFilled || typeof window === 'undefined' || hasSentRef.current) return undefined;
@@ -33,7 +34,7 @@ export const useAdViewableEvent = ({
 
         if (!('IntersectionObserver' in window)) {
             hasSentRef.current = true;
-            sendAdViewableEvent(ad);
+            sendAdViewableEvent({ placement, format, slot, variant });
             return undefined;
         }
 
@@ -55,7 +56,7 @@ export const useAdViewableEvent = ({
             timer = window.setTimeout(() => {
                 if (!isVisible || hasSentRef.current) return;
                 hasSentRef.current = true;
-                sendAdViewableEvent(ad);
+                sendAdViewableEvent({ placement, format, slot, variant });
                 observer.disconnect();
             }, 1000);
         }, { threshold: [0, 0.5, 1] });
@@ -66,5 +67,5 @@ export const useAdViewableEvent = ({
             if (timer !== null) window.clearTimeout(timer);
             observer.disconnect();
         };
-    }, [ad, isFilled, targetRef]);
+    }, [format, isFilled, placement, slot, targetRef, variant]);
 };

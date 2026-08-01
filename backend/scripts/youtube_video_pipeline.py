@@ -40,7 +40,7 @@ from scripts.social_video.youtube_client import (  # noqa: E402
     parse_publish_at,
     validate_publication_mode,
 )
-from scripts.race_classification import is_newcomer_race_name  # noqa: E402
+from scripts.race_classification import prediction_exclusion_reason  # noqa: E402
 
 
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "youtube_video_dist"
@@ -87,9 +87,13 @@ def _has_publishable_predictions(race: RaceVideoData) -> bool:
     return valid_scored_horse and not has_placeholder
 
 
-def _is_newcomer_race(race: RaceVideoData) -> bool:
-    """予測処理と同じ判定で、新馬戦を動画対象外にする。"""
-    return is_newcomer_race_name(race.race_name)
+def _prediction_exclusion_reason(race: RaceVideoData) -> str:
+    """予測処理と同じ判定で、AI偏差値の算出対象外理由を返す。"""
+    return prediction_exclusion_reason(race.race_name, race.course_type)
+
+
+def _is_prediction_excluded_race(race: RaceVideoData) -> bool:
+    return bool(_prediction_exclusion_reason(race))
 
 
 def _all_venue_races(venue: VenueVideoData) -> List[RaceVideoData]:
@@ -113,7 +117,7 @@ def _venue_readiness_reason(venue: VenueVideoData, allow_placeholder_data: bool)
     invalid_races = [
         race.race_number
         for race in all_races
-        if not _is_newcomer_race(race) and not _has_publishable_predictions(race)
+        if not _is_prediction_excluded_race(race) and not _has_publishable_predictions(race)
     ]
     if invalid_races:
         return f"有効な予測データがないレース: {','.join(f'{number}R' for number in invalid_races)}"
@@ -126,7 +130,7 @@ def _prepare_publishable_venues(
 ) -> Tuple[List[VenueVideoData], Dict[str, str], Dict[str, List[str]]]:
     publishable: List[VenueVideoData] = []
     blocked: Dict[str, str] = {}
-    excluded_newcomer_races: Dict[str, List[str]] = {}
+    excluded_prediction_races: Dict[str, List[str]] = {}
     for venue in venues:
         reason = _venue_readiness_reason(venue, allow_placeholder_data)
         if reason:
@@ -134,11 +138,11 @@ def _prepare_publishable_venues(
             continue
 
         all_races = _all_venue_races(venue)
-        excluded = [race for race in all_races if _is_newcomer_race(race)]
-        eligible = [race for race in all_races if not _is_newcomer_race(race)]
+        excluded = [race for race in all_races if _is_prediction_excluded_race(race)]
+        eligible = [race for race in all_races if not _is_prediction_excluded_race(race)]
         if excluded:
-            excluded_newcomer_races[venue.venue_name] = [
-                f"{race.race_number}R {race.display_name}"
+            excluded_prediction_races[venue.venue_name] = [
+                f"{race.race_number}R {race.display_name}（{_prediction_exclusion_reason(race).rstrip('。')}）"
                 for race in excluded
             ]
         if not eligible:
@@ -151,7 +155,7 @@ def _prepare_publishable_venues(
                 excluded_races=excluded,
             )
         )
-    return publishable, blocked, excluded_newcomer_races
+    return publishable, blocked, excluded_prediction_races
 
 
 def _partition_publishable_venues(
@@ -173,20 +177,20 @@ def _load_venues_with_readiness(
     attempts = max(1, int(args.readiness_attempts))
     last_publishable: List[VenueVideoData] = []
     last_blocked: Dict[str, str] = {}
-    last_excluded_newcomer_races: Dict[str, List[str]] = {}
+    last_excluded_prediction_races: Dict[str, List[str]] = {}
     for attempt in range(1, attempts + 1):
         venues = load_venues_for_date(target_date, force_refresh=attempt > 1)
-        last_publishable, last_blocked, last_excluded_newcomer_races = _prepare_publishable_venues(
+        last_publishable, last_blocked, last_excluded_prediction_races = _prepare_publishable_venues(
             venues,
             allow_placeholder_data=args.allow_placeholder_data,
         )
         if venues and not last_blocked:
-            return last_publishable, last_blocked, last_excluded_newcomer_races
+            return last_publishable, last_blocked, last_excluded_prediction_races
         if attempt < attempts:
             details = " / ".join(f"{venue}: {reason}" for venue, reason in last_blocked.items()) or "開催データなし"
             print(f"動画データ準備待ち ({attempt}/{attempts}): {details}")
             time.sleep(max(0, int(args.readiness_delay_seconds)))
-    return last_publishable, last_blocked, last_excluded_newcomer_races
+    return last_publishable, last_blocked, last_excluded_prediction_races
 
 
 def _assign_publish_offsets(rendered: List[RenderedVideo], venues: List[VenueVideoData]) -> List[RenderedVideo]:
@@ -343,32 +347,32 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
         )
         raise RuntimeError(f"動画素材の権利・形式検証に失敗しました: {issue_summary}")
 
-    venues, blocked_venues, excluded_newcomer_races = _load_venues_with_readiness(args, target_date)
+    venues, blocked_venues, excluded_prediction_races = _load_venues_with_readiness(args, target_date)
     args.incomplete_venues = blocked_venues
-    args.excluded_newcomer_races = excluded_newcomer_races
+    args.excluded_prediction_races = excluded_prediction_races
 
-    if excluded_newcomer_races:
+    if excluded_prediction_races:
         details = " / ".join(
             f"{venue}: {', '.join(races)}"
-            for venue, races in excluded_newcomer_races.items()
+            for venue, races in excluded_prediction_races.items()
         )
-        print(f"新馬戦を動画対象から除外しました: {details}")
+        print(f"AI偏差値算出対象外レースを動画対象から除外しました: {details}")
 
-    only_newcomer_races = not venues and bool(excluded_newcomer_races) and not blocked_venues
+    only_excluded_races = not venues and bool(excluded_prediction_races) and not blocked_venues
 
     if args.max_venues is not None:
         venues = venues[: max(0, args.max_venues)]
 
     if not venues:
-        if only_newcomer_races:
-            message = f"{target_date}は新馬戦を除く動画対象レースがありません。"
+        if only_excluded_races:
+            message = f"{target_date}はAI偏差値の算出対象外レースのみで、動画対象レースがありません。"
             print(f"{message} 動画生成を正常終了します。")
             _append_actions_summary(
                 [
                     f"## YouTube動画生成 {target_date}",
                     "",
                     "- 生成本数: 0",
-                    "- 結果: 新馬戦のみのため動画対象なし",
+                    "- 結果: AI偏差値の算出対象外レースのみのため動画対象なし",
                 ]
             )
             return []
@@ -399,7 +403,7 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
         "count": len(rendered),
         "publication_mode": validate_publication_mode(args.publication_mode),
         "blocked_venues": blocked_venues,
-        "excluded_newcomer_races": excluded_newcomer_races,
+        "excluded_prediction_races": excluded_prediction_races,
         "videos": [_video_summary(item) for item in rendered],
         "asset_validation": asset_validation.to_dict(),
         "asset_validation_path": str(asset_validation_path),
@@ -419,13 +423,13 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
             f"- 生成本数: {len(rendered)}",
             f"- 対象会場: {', '.join(venue.venue_name for venue in venues)}",
             (
-                "- 除外した新馬戦: "
+                "- 除外したAI偏差値算出対象外レース: "
                 + " / ".join(
                     f"{venue}: {', '.join(races)}"
-                    for venue, races in excluded_newcomer_races.items()
+                    for venue, races in excluded_prediction_races.items()
                 )
-                if excluded_newcomer_races
-                else "- 除外した新馬戦: なし"
+                if excluded_prediction_races
+                else "- 除外したAI偏差値算出対象外レース: なし"
             ),
             (
                 "- 保留会場・理由: "

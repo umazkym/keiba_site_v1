@@ -429,7 +429,46 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         self.assertEqual(blocked, {})
         self.assertEqual([race.race_number for race in publishable[0].races], [1, 3])
         self.assertEqual([race.race_number for race in publishable[0].excluded_races], [2])
-        self.assertEqual(excluded, {"笠松": ["2R 2歳新馬"]})
+        self.assertEqual(
+            excluded,
+            {"笠松": ["2R 2歳新馬（新馬戦のため、予測対象外です）"]},
+        )
+
+    def test_obstacle_race_is_excluded_without_blocking_venue(self) -> None:
+        valid_horse = HorseVideoData("通常馬", 1, 1, "", 60.0, 0.5)
+        flat_race = RaceVideoData(
+            "race-1",
+            "2026-08-01",
+            "中京",
+            1,
+            "3歳未勝利",
+            "芝",
+            1600,
+            predictions=[valid_horse],
+        )
+        obstacle_race = RaceVideoData(
+            "race-2",
+            "2026-08-01",
+            "中京",
+            2,
+            "3歳以上障害未勝利",
+            "障",
+            3000,
+            predictions=[],
+        )
+
+        publishable, blocked, excluded = youtube_video_pipeline._prepare_publishable_venues(
+            [VenueVideoData("中京", "中央", [flat_race, obstacle_race])],
+            allow_placeholder_data=False,
+        )
+
+        self.assertEqual(blocked, {})
+        self.assertEqual([race.race_number for race in publishable[0].races], [1])
+        self.assertEqual([race.race_number for race in publishable[0].excluded_races], [2])
+        self.assertEqual(
+            excluded,
+            {"中京": ["2R 3歳以上障害未勝利（障害戦のため、予測対象外です）"]},
+        )
 
     def test_branded_nar_debut_is_excluded_without_blocking_venue(self) -> None:
         valid_horse = HorseVideoData("通常馬", 1, 1, "", 60.0, 0.5)
@@ -474,7 +513,7 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         self.assertEqual([race.race_number for race in publishable[0].excluded_races], [3])
         self.assertEqual(
             excluded,
-            {"名古屋": ["3R ゴールデンデビュー名古屋(2歳)"]},
+            {"名古屋": ["3R ゴールデンデビュー名古屋(2歳)（新馬戦のため、予測対象外です）"]},
         )
 
     def test_readiness_retry_forces_database_refresh(self) -> None:

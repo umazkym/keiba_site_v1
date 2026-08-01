@@ -14,6 +14,7 @@ from typing import List, Optional, Sequence
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
+from ..race_classification import prediction_exclusion_reason
 from .data_loader import (
     HorseVideoData,
     RaceVideoData,
@@ -1224,7 +1225,7 @@ def _draw_venue_title_slide(path: Path, venue: VenueVideoData, target_date: str,
         draw.text((width - margin, 32), f"{_display_short_date(target_date)}  {venue.race_type}競馬", font=_font(FONT_BOLD, 25), fill=INK_MUTED, anchor="ra")
         draw.line((margin, 94, width - margin, 94), fill=RULE, width=2)
         draw.text((margin, 130), venue.venue_name, font=_font(FONT_BLACK, 76), fill=INK_DARK)
-        race_heading = "AI偏差値対象レース（新馬戦除く）" if venue.excluded_races else "本日のレース"
+        race_heading = "AI偏差値対象レース（算出対象外除く）" if venue.excluded_races else "本日のレース"
         draw.text((margin + 310, 160), race_heading, font=_font(FONT_BOLD, 27), fill=EDITORIAL_GOLD_DARK)
         draw.text((width - margin, 154), grade_line, font=_font(FONT_BOLD, 27), fill=DEEP_GREEN, anchor="ra")
         races = venue.races[:12]
@@ -3657,7 +3658,7 @@ def _description(
     ).strip()
     if excluded_race_labels:
         description += (
-            "\n\n※AI偏差値の算出対象外となる新馬戦は収録していません: "
+            "\n\n※AI偏差値の算出対象外レースは収録していません: "
             + "、".join(excluded_race_labels)
         )
     return description
@@ -3704,7 +3705,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
     hero_label = f"{venue.venue_name}{hero_race.race_number}R" if hero_race else venue.venue_name
 
     scope_label = (
-        f"対象{len(venue.races)}レース AI偏差値（新馬戦除く）"
+        f"対象{len(venue.races)}レース AI偏差値（算出対象外除く）"
         if venue.excluded_races
         else f"全{len(venue.races)}レース AI偏差値"
     )
@@ -3750,7 +3751,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
 
     thumbnail = video_dir / "thumbnail.jpg"
     subtitle = (
-        f"対象{len(venue.races)}R（新馬戦除く） AI偏差値・位置取り"
+        f"対象{len(venue.races)}R（算出対象外除く） AI偏差値・位置取り"
         if venue.excluded_races
         else f"全{len(venue.races)}R  AI偏差値・位置取り"
     )
@@ -3834,7 +3835,8 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
                 "race_id": race.id,
                 "race_number": race.race_number,
                 "race_name": race.display_name,
-                "reason": "新馬戦のためAI偏差値算出対象外",
+                "reason": prediction_exclusion_reason(race.race_name, race.course_type).rstrip("。")
+                or "AI偏差値算出対象外",
             }
             for race in venue.excluded_races
         ],

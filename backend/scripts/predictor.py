@@ -499,7 +499,7 @@ from datetime import date, timedelta
 from typing import Optional, List, Dict, Any
 from collections import defaultdict
 from . import database_loader
-from .race_classification import is_newcomer_race_name
+from .race_classification import prediction_exclusion_reason
 from tqdm import tqdm
 import os
 
@@ -695,12 +695,10 @@ def create_predictions_for_race(race_id: str, db: Session) -> Optional[List[Dict
         if not all_horse_scores:
             return None
 
-        unpredictable_reason = None
-        if target_race.race_name:
-            if is_newcomer_race_name(target_race.race_name):
-                unpredictable_reason = "新馬戦のため、予測対象外です。"
-            elif "障害" in target_race.race_name or target_race.course_type == '障':
-                unpredictable_reason = "障害戦のため、予測対象外です。"
+        unpredictable_reason = prediction_exclusion_reason(
+            target_race.race_name,
+            target_race.course_type,
+        ) or None
 
         horse_ids = [h['horse_id'] for h in all_horse_scores]
 

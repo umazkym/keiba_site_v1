@@ -507,6 +507,18 @@ class SocialVideoRendererTest(unittest.TestCase):
         self.assertNotIn("素材クレジット", description)
         self.assertNotIn("DOVA-SYNDROME", description)
         self.assertIn("5R 2歳新馬", description)
+        self.assertIn("AI偏差値の算出対象外レースは収録していません", description)
+
+    def test_video_description_can_list_an_excluded_obstacle_race(self) -> None:
+        description = renderer._description(
+            "テスト動画",
+            "https://uma-free.com",
+            "中京",
+            excluded_race_labels=("9R 3歳以上障害未勝利",),
+        )
+
+        self.assertIn("9R 3歳以上障害未勝利", description)
+        self.assertNotIn("算出対象外となる新馬戦", description)
 
     def test_daily_short_selection_prefers_highest_grade_then_main_race(self) -> None:
         g1 = _race()

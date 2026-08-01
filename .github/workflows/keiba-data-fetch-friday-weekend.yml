@@ -49,24 +49,17 @@ jobs:
 
       - name: Calculate target date
         id: calc_date
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+          MANUAL_OFFSET: ${{ github.event.inputs.target_offset || '2' }}
         run: |
-          # スケジュール実行時: cron時刻で土曜/日曜を判定
-          # UTC 03:00 (JST 12:00) → 翌日（土曜） offset=1
-          # UTC 06:00 (JST 15:00) → 翌々日（日曜） offset=2
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            HOUR=$(date -u +%H)
-            if [ "$HOUR" -le "4" ]; then
-              OFFSET=1
-            else
-              OFFSET=2
-            fi
-          else
-            OFFSET=${{ github.event.inputs.target_offset || '2' }}
-          fi
-          TARGET_DATE=$(TZ=Asia/Tokyo date -d "+${OFFSET} days" +%Y-%m-%d)
-          echo "target_date=${TARGET_DATE}" >> $GITHUB_OUTPUT
-          echo "offset=${OFFSET}" >> $GITHUB_OUTPUT
-          echo "Fetching data for: ${TARGET_DATE} (offset: ${OFFSET} days)"
+          set -euo pipefail
+          python backend/scripts/social_video/workflow_dates.py friday-weekend \
+            --event-name "$EVENT_NAME" \
+            --event-schedule "$EVENT_SCHEDULE" \
+            --manual-offset "$MANUAL_OFFSET" \
+            --github-output >> "$GITHUB_OUTPUT"
 
       - name: Run pipeline (Weekend Predictions)
         working-directory: backend
@@ -79,5 +72,5 @@ jobs:
           SELENIUM_ELEMENT_WAIT_TIMEOUT: '20'
           TZ: Asia/Tokyo
         run: |
-          echo "Target date: ${{ steps.calc_date.outputs.target_date }}"
+          echo "Target date: ${{ steps.calc_date.outputs.target_date }} (offset: ${{ steps.calc_date.outputs.offset }} days)"
           python run_pipeline.py --date ${{ steps.calc_date.outputs.target_date }} --mode PREDICTIONS_ONLY

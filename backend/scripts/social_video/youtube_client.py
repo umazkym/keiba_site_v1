@@ -99,7 +99,7 @@ def build_publish_schedule(
     offsets_minutes: Sequence[int],
     *,
     now_jst: Optional[datetime] = None,
-    minimum_lead_minutes: int = 20,
+    minimum_lead_minutes: int = 45,
     slot_minutes: int = 10,
     maximum_shift_minutes: int = 240,
 ) -> Tuple[List[str], int]:
@@ -190,7 +190,21 @@ class YouTubeClient:
         return self._service
 
     def validate_channel(self) -> str:
-        response = self._build_service().channels().list(part="id", mine=True).execute()
+        try:
+            response = self._build_service().channels().list(part="id", mine=True).execute()
+        except Exception as exc:
+            try:
+                from google.auth.exceptions import RefreshError
+            except ImportError:
+                RefreshError = ()  # type: ignore[assignment,misc]
+            if isinstance(exc, RefreshError) and "invalid_grant" in str(exc).lower():
+                raise RuntimeError(
+                    "YouTube OAuth refresh tokenが失効または取り消されています。"
+                    "Google Auth Platformの公開ステータスを本番環境にしたうえで、"
+                    "管理アカウントを再認証し、GitHub Actions Secret "
+                    "YOUTUBE_REFRESH_TOKENを新しい値へ更新してください。"
+                ) from exc
+            raise
         items = response.get("items") or []
         if len(items) != 1:
             raise RuntimeError("認証したYouTubeチャンネルを一意に確認できません。")

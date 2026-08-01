@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -45,6 +46,13 @@ from scripts.race_classification import is_newcomer_race_name  # noqa: E402
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "youtube_video_dist"
 PLACEHOLDER_NAME_MARKERS = ("サンプル", "sample", "dummy", "テスト", "test", "?")
 PROHIBITED_VIDEO_PHRASES = ("投資", "必勝", "絶対", "圧倒的", "最強", "消去対象")
+
+
+@dataclass(frozen=True)
+class UploadContext:
+    registry: VideoPostRegistry
+    client: YouTubeClient
+    authenticated_channel_id: str
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -251,6 +259,66 @@ def _video_summary(item: RenderedVideo) -> dict:
     }
 
 
+def _is_upload_requested(args: argparse.Namespace) -> bool:
+    return bool(
+        validate_publication_mode(args.publication_mode) != "disabled"
+        and not args.skip_upload
+        and not args.dry_run
+        and _env_flag("YOUTUBE_UPLOAD_ENABLED", False)
+    )
+
+
+def _preflight_upload(args: argparse.Namespace) -> Optional[UploadContext]:
+    """動画生成前に認証・チャンネル・DBレジストリを検証する。"""
+    if not _is_upload_requested(args):
+        return None
+    if args.disable_registry:
+        raise RuntimeError("投稿時は重複防止レジストリを無効化できません。")
+    if args.force:
+        raise RuntimeError("--forceはv7では使用できません。既存動画を保護したまま状態から再開してください。")
+
+    target_date = args.target_date or get_target_date()
+    try:
+        registry = VideoPostRegistry(enabled=True)
+        if not registry.enabled:
+            raise RuntimeError("動画投稿レジストリを初期化できません。投稿を中止します。")
+    except Exception as exc:
+        _append_actions_summary(
+            [
+                f"## YouTube投稿事前検証 {target_date}",
+                "",
+                "- 結果: 失敗",
+                f"- 原因区分: DBレジストリ検証失敗（{exc}）",
+                "- 生成本数: 0",
+                "- アップロード本数: 0",
+            ]
+        )
+        raise
+
+    try:
+        client = YouTubeClient()
+        authenticated_channel_id = client.validate_channel()
+    except Exception as exc:
+        _append_actions_summary(
+            [
+                f"## YouTube投稿事前検証 {target_date}",
+                "",
+                "- 結果: 失敗",
+                f"- 原因区分: OAuth・チャンネル認証失敗（{exc}）",
+                "- 生成本数: 0",
+                "- アップロード本数: 0",
+            ]
+        )
+        raise
+
+    print(f"YouTube投稿事前検証に成功しました: channel={authenticated_channel_id}")
+    return UploadContext(
+        registry=registry,
+        client=client,
+        authenticated_channel_id=authenticated_channel_id,
+    )
+
+
 def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
     target_date = args.target_date or get_target_date()
     output_dir = Path(args.output_dir or DEFAULT_OUTPUT_DIR) / target_date
@@ -359,7 +427,12 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
                 if excluded_newcomer_races
                 else "- 除外した新馬戦: なし"
             ),
-            f"- 保留会場: {', '.join(blocked_venues) if blocked_venues else 'なし'}",
+            (
+                "- 保留会場・理由: "
+                + " / ".join(f"{venue}: {reason}" for venue, reason in blocked_venues.items())
+                if blocked_venues
+                else "- 保留会場・理由: なし"
+            ),
             f"- 公開モード: {validate_publication_mode(args.publication_mode)}",
         ]
     )
@@ -463,26 +536,24 @@ def _reconcile_recent_publications(
     return lines, checks, errors
 
 
-def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None:
+def _upload_all(
+    args: argparse.Namespace,
+    rendered: List[RenderedVideo],
+    upload_context: Optional[UploadContext] = None,
+) -> None:
     target_date = args.target_date or get_target_date()
     publication_mode = validate_publication_mode(args.publication_mode)
-    upload_enabled = _env_flag("YOUTUBE_UPLOAD_ENABLED", False)
-    if args.skip_upload or args.dry_run or publication_mode == "disabled" or not upload_enabled:
+    if not _is_upload_requested(args):
         print(
             "YouTubeアップロードはスキップします。"
             "YOUTUBE_UPLOAD_ENABLED=trueかつYOUTUBE_PUBLICATION_MODE=private_review/scheduled_publicで有効化できます。"
         )
         return
-    if args.disable_registry:
-        raise RuntimeError("投稿時は重複防止レジストリを無効化できません。")
-    if args.force:
-        raise RuntimeError("--forceはv7では使用できません。既存動画を保護したまま状態から再開してください。")
-
-    registry = VideoPostRegistry(enabled=not args.disable_registry)
-    if not registry.enabled:
-        raise RuntimeError("動画投稿レジストリを初期化できません。投稿を中止します。")
-    client = YouTubeClient()
-    client.validate_channel()
+    context = upload_context or _preflight_upload(args)
+    if context is None:
+        raise RuntimeError("YouTube投稿事前検証の結果を取得できません。")
+    registry = context.registry
+    client = context.client
     reconciliation_lines, reconciliation_checks, reconciliation_errors = _reconcile_recent_publications(registry, client)
     recent_records = registry.list_recent(days=7)
     retryable_recent_errors = [
@@ -537,6 +608,12 @@ def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None
         f"- 実効公開モード: {publication_mode}",
         *reconciliation_lines,
     ]
+    uploaded_count = 0
+    reused_count = 0
+    scheduled_count = 0
+    published_count = 0
+    private_review_count = 0
+    effective_publish_time = "なし（非公開レビュー）"
     if safety_reasons:
         uploaded_lines.append(f"- 安全ゲート: {', '.join(safety_reasons)}")
 
@@ -560,11 +637,13 @@ def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None
                 for item, publish_at in zip(publishable_items, publish_schedule)
             }
         )
-        if schedule_shift_minutes:
+        if publish_schedule:
             first_publish_at = min(
                 datetime.fromisoformat(value.replace("Z", "+00:00"))
                 for value in publish_schedule
             ).astimezone(timezone(timedelta(hours=9)))
+            effective_publish_time = first_publish_at.strftime("%Y-%m-%d %H:%M JST")
+        if schedule_shift_minutes:
             delay_message = (
                 "GitHub Actionsの起動遅延に合わせ、全動画の同時公開を維持したまま"
                 f"全予約を{schedule_shift_minutes}分後ろ倒ししました"
@@ -623,9 +702,17 @@ def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None
                     raise
                 print(f"安全モードのため予約公開を解除: {item.video_type} {item.stable_id}")
                 uploaded_lines.append(f"- 予約解除・非公開維持: {item.title}")
+                private_review_count += 1
                 continue
             print(f"投稿完了済みのためスキップ: {item.video_type} {item.stable_id} ({record.status})")
             uploaded_lines.append(f"- 再利用: {item.title}（{record.status}）")
+            reused_count += 1
+            if record.status == "scheduled":
+                scheduled_count += 1
+            elif record.status == "published":
+                published_count += 1
+            elif record.status == "private_review":
+                private_review_count += 1
             continue
         if item.video_path is None:
             raise RuntimeError(f"動画ファイルが生成されていないためアップロードできません: {item.stable_id}")
@@ -650,6 +737,7 @@ def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None
                     publish_at=publish_at,
                     notify_subscribers=False,
                 )
+                uploaded_count += 1
                 video_id = result.video_id
                 record = registry.transition(
                     target_date,
@@ -733,6 +821,12 @@ def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None
                     "privacy_status": status.privacy_status,
                 },
             )
+            if final_status == "scheduled":
+                scheduled_count += 1
+            elif final_status == "published":
+                published_count += 1
+            else:
+                private_review_count += 1
             watch_url = f"https://www.youtube.com/watch?v={video_id}"
             print(f"YouTube投稿成功: {watch_url} ({final_status})")
             uploaded_lines.append(f"- {final_status}: {item.title} — {watch_url}")
@@ -741,9 +835,31 @@ def _upload_all(args: argparse.Namespace, rendered: List[RenderedVideo]) -> None
                 registry.record_error(target_date, item.video_type, item.stable_id, str(exc))
             except Exception as registry_exc:
                 print(f"警告: 投稿エラー状態の保存にも失敗しました: {registry_exc}")
-            uploaded_lines.append(f"- 失敗: {item.title}（{exc}）")
+            uploaded_lines.extend(
+                [
+                    f"- 失敗: {item.title}（{exc}）",
+                    "- 原因区分: YouTubeアップロード・処理確認失敗",
+                    f"- 生成本数: {len(rendered)}",
+                    f"- 新規アップロード本数: {uploaded_count}",
+                    f"- 予約本数: {scheduled_count}",
+                    f"- 公開本数: {published_count}",
+                    f"- 非公開レビュー本数: {private_review_count}",
+                    f"- 実効公開時刻: {effective_publish_time}",
+                ]
+            )
             _append_actions_summary(uploaded_lines)
             raise
+    uploaded_lines.extend(
+        [
+            f"- 生成本数: {len(rendered)}",
+            f"- 新規アップロード本数: {uploaded_count}",
+            f"- 既存動画再利用本数: {reused_count}",
+            f"- 予約本数: {scheduled_count}",
+            f"- 公開本数: {published_count}",
+            f"- 非公開レビュー本数: {private_review_count}",
+            f"- 実効公開時刻: {effective_publish_time}",
+        ]
+    )
     _append_actions_summary(uploaded_lines)
 
 
@@ -758,7 +874,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--publish-min-lead-minutes",
         type=int,
-        default=int(os.getenv("YOUTUBE_PUBLISH_MIN_LEAD_MINUTES", "20")),
+        default=int(os.getenv("YOUTUBE_PUBLISH_MIN_LEAD_MINUTES", "45")),
         help="遅延時に最初の予約公開まで確保する最低猶予分数",
     )
     parser.add_argument(
@@ -827,9 +943,10 @@ def main() -> None:
             "実DBの確定データで実行してください。"
         )
     args.incomplete_venues = {}
+    upload_context = _preflight_upload(args)
     rendered = _render_all(args)
     if rendered:
-        _upload_all(args, rendered)
+        _upload_all(args, rendered, upload_context=upload_context)
     if args.incomplete_venues and validate_publication_mode(args.publication_mode) != "disabled":
         details = " / ".join(f"{venue}: {reason}" for venue, reason in args.incomplete_venues.items())
         raise RuntimeError(f"一部会場の動画を保留しました: {details}")

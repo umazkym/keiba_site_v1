@@ -95,6 +95,8 @@ class FakeRegistry:
 def _args(mode: str) -> SimpleNamespace:
     return SimpleNamespace(
         target_date="2099-07-12",
+        input_json=None,
+        allow_placeholder_data=False,
         skip_upload=False,
         dry_run=False,
         disable_registry=False,
@@ -616,6 +618,29 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
                 youtube_video_pipeline.main()
         render_all.assert_not_called()
 
+    def test_oauth_preflight_failure_stops_before_render_or_registry_reservation(self) -> None:
+        args = _args("private_review")
+        registry = Mock(enabled=True)
+        client = Mock()
+        client.validate_channel.side_effect = RuntimeError(
+            "YouTube OAuth refresh tokenが失効しています。YOUTUBE_REFRESH_TOKENを更新してください。"
+        )
+        with patch.object(youtube_video_pipeline, "parse_args", return_value=args), patch.object(
+            youtube_video_pipeline, "_env_flag", return_value=True
+        ), patch.object(
+            youtube_video_pipeline, "VideoPostRegistry", return_value=registry
+        ), patch.object(
+            youtube_video_pipeline, "YouTubeClient", return_value=client
+        ), patch.object(
+            youtube_video_pipeline, "_render_all"
+        ) as render_all:
+            with self.assertRaisesRegex(RuntimeError, "YOUTUBE_REFRESH_TOKEN"):
+                youtube_video_pipeline.main()
+
+        render_all.assert_not_called()
+        registry.reserve.assert_not_called()
+        client.insert_video.assert_not_called()
+
     def test_strong_gambling_language_is_rejected_before_upload(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             package = _package(Path(temp_dir), "venue_long", thumbnail_required=True)
@@ -799,6 +824,22 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         client._service = service
         with self.assertRaisesRegex(RuntimeError, "一致しません"):
             client.validate_channel()
+
+    def test_invalid_grant_has_actionable_recovery_message(self) -> None:
+        from google.auth.exceptions import RefreshError
+
+        client = YouTubeClient.__new__(YouTubeClient)
+        client.channel_id = "expected-channel"
+        service = Mock()
+        service.channels.return_value.list.return_value.execute.side_effect = RefreshError(
+            "invalid_grant: Token has been expired or revoked."
+        )
+        client._service = service
+
+        with self.assertRaisesRegex(RuntimeError, "YOUTUBE_REFRESH_TOKEN") as raised:
+            client.validate_channel()
+
+        self.assertIn("本番環境", str(raised.exception))
 
     def test_reconciliation_marks_due_public_video_as_published(self) -> None:
         record = PublicationRecord(

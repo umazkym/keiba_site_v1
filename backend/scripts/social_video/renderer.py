@@ -1213,6 +1213,17 @@ def _draw_short_site_intro_slide(
     _save_slide(image, path, size)
 
 
+def _excluded_race_copy(venue: VenueVideoData) -> tuple[str, str]:
+    """既存の新馬戦除外動画のhashを維持し、障害戦を含む場合だけ汎用表記を返す。"""
+    reasons = [
+        prediction_exclusion_reason(race.race_name, race.course_type)
+        for race in venue.excluded_races
+    ]
+    if reasons and all(reason.startswith("新馬戦") for reason in reasons):
+        return "新馬戦除く", "AI偏差値の算出対象外となる新馬戦"
+    return "算出対象外除く", "AI偏差値の算出対象外レース"
+
+
 def _draw_venue_title_slide(path: Path, venue: VenueVideoData, target_date: str, size: tuple[int, int]) -> None:
     width, height = size
     compact = height > width
@@ -1225,7 +1236,8 @@ def _draw_venue_title_slide(path: Path, venue: VenueVideoData, target_date: str,
         draw.text((width - margin, 32), f"{_display_short_date(target_date)}  {venue.race_type}競馬", font=_font(FONT_BOLD, 25), fill=INK_MUTED, anchor="ra")
         draw.line((margin, 94, width - margin, 94), fill=RULE, width=2)
         draw.text((margin, 130), venue.venue_name, font=_font(FONT_BLACK, 76), fill=INK_DARK)
-        race_heading = "AI偏差値対象レース（算出対象外除く）" if venue.excluded_races else "本日のレース"
+        excluded_scope, _ = _excluded_race_copy(venue)
+        race_heading = f"AI偏差値対象レース（{excluded_scope}）" if venue.excluded_races else "本日のレース"
         draw.text((margin + 310, 160), race_heading, font=_font(FONT_BOLD, 27), fill=EDITORIAL_GOLD_DARK)
         draw.text((width - margin, 154), grade_line, font=_font(FONT_BOLD, 27), fill=DEEP_GREEN, anchor="ra")
         races = venue.races[:12]
@@ -3640,6 +3652,7 @@ def _description(
     url: str,
     venue_name: Optional[str] = None,
     excluded_race_labels: Sequence[str] = (),
+    excluded_race_intro: str = "AI偏差値の算出対象外となる新馬戦",
 ) -> str:
     venue_line = f"{venue_name}の" if venue_name else ""
     description = textwrap.dedent(
@@ -3658,7 +3671,7 @@ def _description(
     ).strip()
     if excluded_race_labels:
         description += (
-            "\n\n※AI偏差値の算出対象外レースは収録していません: "
+            f"\n\n※{excluded_race_intro}は収録していません: "
             + "、".join(excluded_race_labels)
         )
     return description
@@ -3704,8 +3717,9 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
     )
     hero_label = f"{venue.venue_name}{hero_race.race_number}R" if hero_race else venue.venue_name
 
+    excluded_scope, excluded_race_intro = _excluded_race_copy(venue)
     scope_label = (
-        f"対象{len(venue.races)}レース AI偏差値（算出対象外除く）"
+        f"対象{len(venue.races)}レース AI偏差値（{excluded_scope}）"
         if venue.excluded_races
         else f"全{len(venue.races)}レース AI偏差値"
     )
@@ -3751,7 +3765,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
 
     thumbnail = video_dir / "thumbnail.jpg"
     subtitle = (
-        f"対象{len(venue.races)}R（算出対象外除く） AI偏差値・位置取り"
+        f"対象{len(venue.races)}R（{excluded_scope}） AI偏差値・位置取り"
         if venue.excluded_races
         else f"全{len(venue.races)}R  AI偏差値・位置取り"
     )
@@ -3801,6 +3815,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         url,
         venue.venue_name,
         excluded_race_labels=excluded_race_labels,
+        excluded_race_intro=excluded_race_intro,
     )
     tags = ["競馬", "AI偏差値", "UMA-FREE", venue.venue_name, *(race.display_name for race in venue.grade_races[:2])]
     rights_manifest_hash = build_rights_manifest_hash(selected_assets)

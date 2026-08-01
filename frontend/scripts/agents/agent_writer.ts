@@ -41,7 +41,7 @@ export type WriterEvidence = {
 };
 
 export type WriteOrder = {
-  operation?: 'create' | 'rewrite';
+  operation?: 'create' | 'rewrite' | 'grade_race_search_repair';
   rewrite_target_slug?: string;
   target_keyword: string;
   theme_cluster: string;
@@ -72,6 +72,11 @@ export type WriteOrder = {
     search_intent?: string;
     search_intent_label?: string;
     search_angle_label?: string;
+    query_intents?: string[];
+    source_race_entity_key?: string;
+    scheduled_race_date?: string;
+    repair_alert_types?: string[];
+    gsc_repair_report_path?: string;
     draw_status?: string;
     draw_confirmed?: boolean;
     calendar_race?: string;

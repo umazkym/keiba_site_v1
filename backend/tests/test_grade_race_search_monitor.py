@@ -3,6 +3,7 @@ import json
 import sys
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 
 
@@ -42,6 +43,60 @@ class GradeRaceSearchMonitorTest(unittest.TestCase):
         alerts = monitor.detect_search_alerts(rows, self.registry)
         duplicate = next(alert for alert in alerts if alert["type"] == "multiple_article_pages")
         self.assertEqual(duplicate["pages"], ["/articles/a", "/articles/b"])
+
+    def test_query_matching_does_not_capture_suffix_of_another_race(self) -> None:
+        registry = [
+            {"entity_key": "kikuka-sho", "name": "菊花賞", "aliases": ["菊花賞"]},
+            {"entity_key": "oaks", "name": "オークス", "aliases": ["オークス"]},
+            {"entity_key": "summer-cup", "name": "サマーカップ", "aliases": ["サマーカップ"]},
+        ]
+        aliases = monitor.entity_aliases(registry)
+        self.assertIsNone(monitor.match_entity("黒潮菊花賞 2026", aliases))
+        self.assertIsNone(monitor.match_entity("ひまわり賞（オークス）2026", aliases))
+        self.assertIsNone(monitor.match_entity("ルーキーズサマーカップ 2026", aliases))
+
+    def test_builds_one_safe_repair_candidate_for_upcoming_representative(self) -> None:
+        rows = [
+            {"keys": ["2026-07-26", "アイビスサマーダッシュ 2026", "https://uma-free.com/articles/ibis"], "clicks": 27, "impressions": 1053, "position": 9.49},
+            {"keys": ["2026-07-27", "アイビスサマーダッシュ 2026", "https://uma-free.com/articles/ibis"], "clicks": 2, "impressions": 13, "position": 77.88},
+        ]
+        alerts = monitor.detect_search_alerts(rows, self.registry)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            articles_dir = root / "articles"
+            articles_dir.mkdir()
+            (articles_dir / "ibis.md").write_text(
+                """---
+entity_type: grade_race
+entity_key: ibis-summer-dash
+season_year: '2026'
+update_stage: race_week
+scheduled_race_date: '2026-08-02'
+draft: false
+---
+本文
+""",
+                encoding="utf-8",
+            )
+            redirects_path = root / "redirects.json"
+            redirects_path.write_text("[]", encoding="utf-8")
+            candidates = monitor.build_repair_candidates(
+                rows,
+                self.registry,
+                alerts,
+                articles_dir,
+                redirects_path,
+                date(2026, 8, 1),
+            )
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["target_slug"], "ibis")
+        self.assertEqual(candidates[0]["entity_key"], "ibis-summer-dash")
+        self.assertEqual(
+            candidates[0]["alert_types"],
+            ["impression_drop", "position_worsening"],
+        )
+        self.assertEqual(candidates[0]["top_queries"][0]["query"], "アイビスサマーダッシュ 2026")
 
     def test_content_audit_uses_stage_update_date(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

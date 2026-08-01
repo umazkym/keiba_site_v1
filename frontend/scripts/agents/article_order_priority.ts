@@ -8,6 +8,7 @@ export type ArticleOrderPriorityOptions = {
   maxArticles: number;
   reserveRaceUpdateSlot: boolean;
   reserveEvergreenSlot: boolean;
+  aggressiveCoverage?: boolean;
 };
 
 export function isRaceUpdateOrder(order: any): boolean {
@@ -19,13 +20,20 @@ export function isUrgentGradeRaceOrder(order: any): boolean {
   const ref = order?.reference_data || {};
   const entityType = String(order?.entity_type || ref.entity_type || '');
   const cluster = String(order?.theme_cluster || ref.article_type || '');
+  const operation = String(order?.operation || '');
   const deadlineStatus = String(ref.deadline_status || '');
   const updateStage = String(ref.update_stage || '');
+  if (operation === 'grade_race_search_repair' || cluster === 'grade_race_search_repair') {
+    return true;
+  }
   return (
     entityType === 'grade_race'
     && (cluster === 'race_update' || cluster === 'grade_race_preview')
     && (
-      deadlineStatus === 'due_preview'
+      deadlineStatus === 'due_initial'
+      || deadlineStatus === 'due_field_refresh'
+      || deadlineStatus === 'due_race_week'
+      || deadlineStatus === 'due_preview'
       || deadlineStatus === 'missed_preview'
       || deadlineStatus === 'due_result_review'
       || deadlineStatus === 'due_draw_confirmed'
@@ -80,13 +88,28 @@ export function prioritizeOrderFiles<T extends ArticleOrderItem>(
   let result = [...items];
   const urgentItems = result.filter(item => isUrgentGradeRaceOrder(item.order));
 
-  // 緊急重賞が枠数以上ある場合は、通常記事のpriorityにかかわらず全枠を重賞へ渡す。
-  if (urgentItems.length >= maxArticles) {
-    const urgentFiles = new Set(urgentItems.map(item => item.file));
-    return [
-      ...urgentItems,
-      ...result.filter(item => !urgentFiles.has(item.file)),
-    ];
+  // 公開期限に達した重賞と検索急落救済は、件数が枠未満でも必ず先に処理する。
+  // これにより通常記事の高いpriorityや常設予約枠がD-10/D-7更新を押し出さない。
+  if (options.aggressiveCoverage !== false && urgentItems.length > 0) {
+    const selected = urgentItems.slice(0, maxArticles);
+    const selectedFiles = new Set(selected.map(item => item.file));
+    const remaining = result.filter(item => !selectedFiles.has(item.file));
+    let reservedEvergreen: T | undefined;
+    if (
+      options.reserveEvergreenSlot
+      && selected.length === 1
+      && maxArticles >= 3
+    ) {
+      reservedEvergreen = remaining.find(item => isEvergreenOrder(item.order));
+    }
+
+    const fillLimit = maxArticles - selected.length - (reservedEvergreen ? 1 : 0);
+    const fillers = remaining
+      .filter(item => item.file !== reservedEvergreen?.file)
+      .slice(0, Math.max(0, fillLimit));
+    const leading = [...selected, ...fillers, ...(reservedEvergreen ? [reservedEvergreen] : [])];
+    const leadingFiles = new Set(leading.map(item => item.file));
+    return [...leading, ...result.filter(item => !leadingFiles.has(item.file))];
   }
 
   if (options.reserveRaceUpdateSlot && maxArticles >= 2) {

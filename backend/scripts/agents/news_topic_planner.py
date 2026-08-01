@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import time
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
@@ -247,15 +248,55 @@ if _SHARED_GRADE_RACE_ENTITY_ALIASES:
 
 
 def normalize_race_entity_text(value: str) -> str:
-    return re.sub(r"[\s　・（）()【】「」『』]", "", value).lower()
+    normalized = unicodedata.normalize("NFKC", str(value or ""))
+    normalized = re.sub(r"20\d{2}年?", "", normalized)
+    return re.sub(r"[\s　・･（）()【】「」『』｜|:：_\-]", "", normalized).lower()
+
+
+RACE_ENTITY_CONTEXT_PREFIX_PATTERN = re.compile(
+    r"^(?:(?:jra|nar|地方競馬|中央競馬|競馬|重賞|交流重賞|地方重賞|"
+    r"g[123]|jpn(?:i{1,3}|[123])|jg[123]|s[123]|m[123]|bg[123])+)"
+)
+
+
+def grade_race_entity_alias_rows() -> List[Tuple[str, str]]:
+    rows: List[Tuple[str, str]] = []
+    for slug, aliases in GRADE_RACE_ENTITY_ALIASES.items():
+        for alias in aliases:
+            normalized = normalize_race_entity_text(alias)
+            if normalized:
+                rows.append((normalized, slug))
+    return sorted(set(rows), key=lambda item: (-len(item[0]), item[0], item[1]))
 
 
 def grade_race_entity_key(race_name: str) -> str:
     normalized = normalize_race_entity_text(race_name)
-    for slug, aliases in GRADE_RACE_ENTITY_ALIASES.items():
-        if any(normalize_race_entity_text(alias) in normalized for alias in aliases):
-            return slug
+    matches = {
+        slug
+        for alias, slug in grade_race_entity_alias_rows()
+        if alias == normalized
+    }
+    if len(matches) == 1:
+        return next(iter(matches))
     return ""
+
+
+def grade_race_entity_key_from_text(value: str) -> str:
+    """タイトルや検索語の先頭にある重賞だけを安全に解決する。"""
+    normalized = normalize_race_entity_text(value)
+    if not normalized:
+        return ""
+    normalized = RACE_ENTITY_CONTEXT_PREFIX_PATTERN.sub("", normalized)
+    matches = [
+        (alias, slug)
+        for alias, slug in grade_race_entity_alias_rows()
+        if normalized.startswith(alias)
+    ]
+    if not matches:
+        return ""
+    longest = len(matches[0][0])
+    entity_keys = {slug for alias, slug in matches if len(alias) == longest}
+    return next(iter(entity_keys)) if len(entity_keys) == 1 else ""
 
 
 def grade_race_canonical_path(entity_key: str) -> str:
@@ -1540,10 +1581,10 @@ def grade_race_stage_keys_from_fields(fields: Dict[str, Any]) -> Set[str]:
     entity_key = str(fields.get("entity_key") or "").strip()
     race_name = extract_race_name_from_text(text_value)
     if not entity_key:
-        entity_key = grade_race_entity_key(race_name or text_value)
+        entity_key = grade_race_entity_key(race_name) if race_name else grade_race_entity_key_from_text(text_value)
     if not entity_key and race_name:
         entity_key = normalize_race_alias(race_name)
-    if entity_type != "grade_race" and not grade_race_entity_key(text_value) and not entity_key:
+    if entity_type != "grade_race" and not grade_race_entity_key_from_text(text_value) and not entity_key:
         return set()
 
     season_year = infer_stage_key_year(fields)
@@ -1649,8 +1690,10 @@ def schedule_source_url(entry: RaceDemand, now: Optional[datetime] = None) -> st
 def seo_keywords_for_grade_race(
     entry: RaceDemand,
     scheduled_date: date,
-    search_intent: str,
-    search_angle_label: str,
+    update_stage: str,
+    *,
+    has_predictions: bool = False,
+    result_confirmed: bool = False,
 ) -> List[str]:
     year = str(scheduled_date.year)
     keywords = [
@@ -1668,12 +1711,20 @@ def seo_keywords_for_grade_race(
         if entry.venue:
             keywords.append(f"{entry.venue}{entry.distance} 傾向")
         keywords.append(f"{entry.distance} 傾向")
-    if search_intent == "result_review":
+    if update_stage == "post_race" and result_confirmed:
         keywords.extend([f"{entry.name} 結果", f"{entry.name} 回顧", f"{entry.name}{year} 結果"])
     else:
-        keywords.extend([f"{entry.name} 枠順", f"{entry.name} 出馬表", f"{entry.name} AI予想"])
-        if search_intent == "waku" or "枠順" in search_angle_label:
-            keywords.append(f"{entry.name}{year} 枠順確定")
+        keywords.extend([f"{entry.name} 開催日", f"{entry.name} 出走予定", f"{entry.name} コース傾向"])
+        if update_stage in {"race_week", "draw_confirmed", "final_48h", "race_morning"}:
+            keywords.extend([f"{entry.name} 登録馬", f"{entry.name} 比較データ"])
+        if update_stage in {"draw_confirmed", "final_48h", "race_morning"}:
+            keywords.extend([f"{entry.name} 枠順", f"{entry.name} 出馬表", f"{entry.name}{year} 枠順確定"])
+        if update_stage in {"final_48h", "race_morning"}:
+            keywords.extend([f"{entry.name} 展開", f"{entry.name} 脚質", f"{entry.name} 馬場"])
+        if update_stage == "race_morning":
+            keywords.append(f"{entry.name} 当日")
+        if has_predictions:
+            keywords.extend([f"{entry.name} AI分析", f"{entry.name} AI予想"])
     deduped: List[str] = []
     seen: Set[str] = set()
     for keyword in keywords:
@@ -1682,9 +1733,31 @@ def seo_keywords_for_grade_race(
             continue
         seen.add(normalized)
         deduped.append(keyword)
-        if len(deduped) >= 12:
+        if len(deduped) >= 18:
             break
     return deduped
+
+
+def query_intents_for_update_stage(
+    update_stage: str,
+    *,
+    has_predictions: bool = False,
+    result_confirmed: bool = False,
+) -> List[str]:
+    if update_stage == "post_race" and result_confirmed:
+        return ["race_year", "result", "review", "course"]
+    intents = ["race_year", "schedule", "venue", "course", "entries", "past_trends"]
+    if update_stage in {"race_week", "draw_confirmed", "final_48h", "race_morning"}:
+        intents.extend(["registered_field", "comparison"])
+    if update_stage in {"draw_confirmed", "final_48h", "race_morning"}:
+        intents.extend(["draw", "race_card"])
+    if update_stage in {"final_48h", "race_morning"}:
+        intents.extend(["pace", "running_style", "track_condition"])
+    if update_stage == "race_morning":
+        intents.append("race_morning")
+    if has_predictions:
+        intents.append("ai_analysis")
+    return list(dict.fromkeys(intents))
 
 
 def schedule_backfill_candidate(
@@ -1787,7 +1860,7 @@ def schedule_backfill_candidate(
             "post_race": POST_RACE_STAGE_KEY,
             "result_review": POST_RACE_STAGE_KEY,
         }.get(update_stage, "")
-    seo_keywords = seo_keywords_for_grade_race(entry, scheduled_date, search_intent, search_angle_label)
+    seo_keywords = seo_keywords_for_grade_race(entry, scheduled_date, update_stage)
     status_reason = {
         "due_preview": "重賞カレンダー締切到達",
         "missed_preview": "2日前超過の未生成チェック",
@@ -3204,14 +3277,21 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
             else ("重賞攻略" if entity_type == "grade_race" else category_by_theme.get(candidate.theme_cluster, "重賞攻略"))
         )
         order_priority = candidate.order_priority or int(min(99, max(35, candidate.score)))
+        has_predictions = bool(internal_data.get("predictions"))
         seo_keywords = candidate.seo_keywords
-        if not seo_keywords and schedule_entry:
+        if schedule_entry:
             seo_keywords = seo_keywords_for_grade_race(
                 schedule_entry,
                 race_demand_date(schedule_entry),
-                candidate.search_intent,
-                candidate.search_angle_label,
+                update_stage,
+                has_predictions=has_predictions,
+                result_confirmed=result_confirmed,
             )
+        query_intents = query_intents_for_update_stage(
+            update_stage,
+            has_predictions=has_predictions,
+            result_confirmed=result_confirmed,
+        ) if schedule_entry else [candidate.search_intent]
         external_queries: List[str] = []
         if schedule_entry:
             year_text = scheduled_date[:4] if scheduled_date else str(current_jst().year)
@@ -3246,7 +3326,7 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
             "content_target": content_target,
             "priority": order_priority,
             "has_external_research": True,
-            "has_predictions": bool(internal_data.get("predictions")),
+            "has_predictions": has_predictions,
             "is_overseas": is_overseas,
             "category": article_category,
             "keywords": seo_keywords,
@@ -3269,6 +3349,7 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "category": article_category,
                 "keywords": seo_keywords,
                 "seo_keywords": seo_keywords,
+                "query_intents": query_intents,
                 "update_stage": update_stage,
                 "deadline_status": candidate.deadline_status,
                 "schedule_milestone": candidate.schedule_milestone,

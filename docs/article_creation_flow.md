@@ -454,12 +454,13 @@ BuildQueries
 
 - 直近重賞カレンダーから、宝塚記念、函館SS、有馬記念に加え、帝王賞、さきたま杯、関東オークス、JBC、東京大賞典など地方・交流重賞も優先クエリに入れる
 - Tavily結果を `枠順`、`出走馬`、`馬場`、`追い切り`、`前走後評価`、`騎手変更`、`開催情報`、`AI予想` の検索意図に分類する
-- target_keyword は `宝塚記念2026 AI予想`、`宝塚記念2026 枠順 確認ポイント`、`帝王賞2026 追い切り 確認ポイント` のように、AI予想記事と直前確認記事の検索意図を分ける
-- 同じ検索意図の中でも、`追い切り` を `最終追い切り`、`坂路追い`、`調教評価` のように細分化し、記事の切り口を `search_angle_label` として保存する
+- 重賞名を中心に、`出走予定`、`コース`、`枠順`、`AI予想`、`結果`の順で、その時点で確認済みの段階だけを同一年度URLのkeywordsと見出しへ反映する。枠番・馬番がない段階で`枠順`、予測がない段階で`AI予想`、確定着順がない段階で`結果`を使用しない
+- 同一レース内の追い切り、馬場、騎手変更などは別URLへ分けず、代表記事の段階更新へ集約する。検索意図を広げる追加記事は、開催場単位のコース解説など、恒常的かつ明確に別の意図に限る
 - 季節外れのレースは原則として採用しない。例: 6月実行時の皐月賞ニュースは、直近開催の流入が見込めないためスコアを落とし、採用対象から外す
 - 既存記事や未消費WriteOrderと同じ `target_keyword` は必ず避ける。同一レースの記事は既定で1実行1本までに抑え、枠順・追い切り・馬場などの切り口は同一記事を育てる前提で扱う。必要な場合のみ `KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN` で上限を調整する
 - 直近の `news_topic_history.json` は2日分だけ同一topic_key・同一URLの再利用を避けるために使い、長期のレース単位クールダウンには使わない
 - `article:pipeline` 側ではレース更新枠を1本予約し、直近重賞の記事が常設記事だけに押し出されないようにする
+- `KEIBA_ARTICLE_COVERAGE_MODE=aggressive`では、公開期限に到達した重賞更新と検索急落補修を通常の最大3枠より先に処理する。重賞開催場に未作成のコース記事があれば、常設枠でも該当競馬場を優先し、レース名とは異なる検索意図を安全に増やす
 - 初回公開はJRA G1/JpnI=D-21、G2/JpnII=D-14、G3=D-10、過去確定GSC表示300以上の交流・地方主要重賞=D-9、50〜299表示の地方重賞=D-3とする。50表示未満は記事を作らず正規レースページを入口にする
 - 過去需要は`frontend/content/reference/grade-race-search-demand.json`で管理し、未知の地方重賞はD-3を既定とする。前年レースページが平均10位以内かつCTR10%以上なら新記事を作らない
 
@@ -594,9 +595,11 @@ Writerは重賞記事本文に`/races/today`や個別レースCTAを書かない
 
 開催21日前から開催後3日までの重賞記事は通常のGSC改稿候補から除外し、既存の`update_stage`処理へ委ねる。重賞の08:00、11:45、16:45 JST実行を維持し、初回公開後は同じ重賞・同じ年度のURLだけを段階更新する。過年度記事を当年度版へ書き換えず、同一`entity_key + season_year`の新規WriteOrderは既存記事更新へ変換する。
 
-`.github/workflows/keiba-grade-race-search-monitor.yml`は毎日09:15 JSTに確定済みGSCの直近10日を読み取り専用で確認する。前日50表示以上から80%以上の表示減、1日30位以上の順位悪化、同一重賞の複数記事URL、未来レースの`post_race`、事実確認前の`draw_confirmed`、公開中の同一エンティティ重複をActions SummaryとJSON artifactへ出す。監視は記事やSearch Consoleを変更せず、通常の記事生成workflowから独立して失敗を分離する。
+`.github/workflows/keiba-grade-race-search-monitor.yml`は毎日09:15 JSTに確定済みGSCの直近10日を読み取り専用で確認する。前日50表示以上から80%以上の表示減、1日30位以上の順位悪化、同一重賞の複数記事URL、未来レースの`post_race`、事実確認前の`draw_confirmed`、公開中の同一エンティティ重複をActions SummaryとJSON artifactへ出す。この独立監視は記事やSearch Consoleを変更しない。
 
-GSC改稿はartifact確認後、`workflow_dispatch`へ正確な`article_slug`を1件指定した場合だけ実行する。検索クエリは検索意図の参考に限り、WriterEvidenceや本文の事実根拠へ渡さない。変更可能範囲はtitle、description、keywords、導入文、既存H2文言だけで、数値集合、表、H2配下本文、リンク、canonical、公開日、entity、`update_stage`、広告・レースブリッジ情報の差分を公開前に拒否する。Publisherは対象の既存Markdownだけを上書きし、`last_updated`と改稿履歴を更新する。同一slugは28日間再改稿しない。
+16:45 JSTの記事pipelineは同じ監視ロジックを再実行し、表示急減または順位急落がある当年度の代表URLが一意に決まる場合だけ、`grade_race_search_repair`を最大1件作る。対象はD-21〜D0、または結果確定済みのD+1〜D+3で、同一slugには48時間の専用クールダウンを置く。変更はtitle、description、keywords、導入文、既存H2文言だけに限定し、本文の事実、数値、表、リンク、canonical、entity、開催日、`update_stage`を変えない。GSC障害や候補不成立時は補修をスキップし、通常のカレンダー生成を継続する。
+
+通常のGSC改稿はartifact確認後、`workflow_dispatch`へ正確な`article_slug`を1件指定した場合だけ実行する。検索クエリは検索意図の参考に限り、WriterEvidenceや本文の事実根拠へ渡さない。変更可能範囲はtitle、description、keywords、導入文、既存H2文言だけで、数値集合、表、H2配下本文、リンク、canonical、公開日、entity、`update_stage`、広告・レースブリッジ情報の差分を公開前に拒否する。Publisherは対象の既存Markdownだけを上書きし、`last_updated`と改稿履歴を更新する。通常改稿は28日、重賞検索急落補修は48時間の別クールダウンで管理する。
 
 ## 参照
 

@@ -56,7 +56,7 @@ export function normalizeGradeRaceSlug(slug: string): string {
 export function getGradeRaceHubPathByName(raceName: string): string | null {
   const normalizedRaceName = normalizeGradeRaceName(raceName);
   const matched = gradeRaceNameAliases.find((entry) =>
-    entry.names.some((name) => normalizedRaceName.includes(normalizeGradeRaceName(name)))
+    entry.names.some((name) => normalizedRaceName === normalizeGradeRaceName(name))
   );
 
   return matched ? `/grade-races/${matched.slug}` : null;

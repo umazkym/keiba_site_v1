@@ -26,6 +26,11 @@ on:
         required: true
         default: true
         type: boolean
+      run_grade_race_search_repair:
+        description: '確定済みGSCデータから重賞検索急落の安全な救済を実行する'
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: keiba-article-auto-pipeline
@@ -66,6 +71,11 @@ jobs:
       KEIBA_NEWS_REQUIRE_SCHEDULE_MATCH: "true"
       ARTICLE_PIPELINE_RESERVE_RACE_UPDATE_SLOT: "true"
       ARTICLE_PIPELINE_RESERVE_EVERGREEN_SLOT: "true"
+      KEIBA_ARTICLE_COVERAGE_MODE: "aggressive"
+      KEIBA_GRADE_RACE_AUTO_REPAIR_ENABLED: "true"
+      KEIBA_GRADE_RACE_REPAIR_MAX_PER_RUN: "1"
+      KEIBA_GRADE_RACE_REPAIR_COOLDOWN_HOURS: "48"
+      GSC_SITE_URL: ${{ vars.GSC_SITE_URL || 'sc-domain:uma-free.com' }}
       KEIBA_EVERGREEN_MAX_ORDERS_PER_RUN: "1"
       KEIBA_GRADE_RACE_LEGACY_WRITER_ENABLED: "false"
 
@@ -125,6 +135,22 @@ jobs:
         working-directory: ./backend
         run: pip install -r requirements.txt
 
+      - name: Prepare Article Coverage Reports
+        shell: bash
+        run: mkdir -p "$RUNNER_TEMP/article-coverage"
+
+      - name: Audit Grade Race Registry and Upcoming Coverage
+        run: >-
+          python backend/scripts/agents/grade_race_registry_audit.py
+          --registry frontend/content/reference/grade-race-entities.json
+          --output "$RUNNER_TEMP/article-coverage/grade-race-registry.json"
+          --summary "$RUNNER_TEMP/article-coverage/grade-race-registry.md"
+
+      - name: Add Grade Race Registry Audit to Summary
+        if: always()
+        shell: bash
+        run: cat "$RUNNER_TEMP/article-coverage/grade-race-registry.md" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Configure Git
         run: |
           git config --global user.name "${{ secrets.GIT_USER_NAME || 'github-actions[bot]' }}"
@@ -134,6 +160,50 @@ jobs:
         uses: ./.github/actions/setup-iap-db
         with:
           database_url: ${{ secrets.DATABASE_URL }}
+
+      - name: Analyze Finalized Grade Race Search Data for Repair
+        id: grade_race_search_repair_monitor
+        continue-on-error: true
+        if: >-
+          env.KEIBA_GRADE_RACE_AUTO_REPAIR_ENABLED == 'true'
+          && (github.event.schedule == '45 7 * * *' || inputs.run_grade_race_search_repair == true)
+        run: >-
+          python backend/scripts/agents/grade_race_search_monitor.py
+          --site-url "$GSC_SITE_URL"
+          --registry frontend/content/reference/grade-race-entities.json
+          --articles-dir frontend/content/articles
+          --redirects frontend/content/reference/grade-race-canonical-overrides.json
+          --output "$RUNNER_TEMP/article-coverage/grade-race-search.json"
+          --summary "$RUNNER_TEMP/article-coverage/grade-race-search.md"
+
+      - name: Add Grade Race Search Repair Candidates to Summary
+        if: >-
+          env.KEIBA_GRADE_RACE_AUTO_REPAIR_ENABLED == 'true'
+          && (github.event.schedule == '45 7 * * *' || inputs.run_grade_race_search_repair == true)
+          && steps.grade_race_search_repair_monitor.outcome == 'success'
+        shell: bash
+        run: cat "$RUNNER_TEMP/article-coverage/grade-race-search.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Generate One Grade Race Search Repair Order
+        if: >-
+          env.KEIBA_GRADE_RACE_AUTO_REPAIR_ENABLED == 'true'
+          && (github.event.schedule == '45 7 * * *' || inputs.run_grade_race_search_repair == true)
+          && steps.grade_race_search_repair_monitor.outcome == 'success'
+        run: >-
+          python backend/scripts/agents/grade_race_search_repair_planner.py
+          --report "$RUNNER_TEMP/article-coverage/grade-race-search.json"
+          --articles-dir frontend/content/articles
+          --orders-dir data/write_orders
+          --max-orders "$KEIBA_GRADE_RACE_REPAIR_MAX_PER_RUN"
+          --cooldown-hours "$KEIBA_GRADE_RACE_REPAIR_COOLDOWN_HOURS"
+
+      - name: Record Skipped Grade Race Search Repair
+        if: >-
+          env.KEIBA_GRADE_RACE_AUTO_REPAIR_ENABLED == 'true'
+          && (github.event.schedule == '45 7 * * *' || inputs.run_grade_race_search_repair == true)
+          && steps.grade_race_search_repair_monitor.outcome == 'failure'
+        shell: bash
+        run: echo "- GSC重賞検索補修はデータ取得失敗のためスキップし、通常の記事生成を継続します。" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Step 1A - Generate News Topic Write Orders
         working-directory: ./backend
@@ -189,6 +259,8 @@ jobs:
           ARTICLE_PIPELINE_MAX_ARTICLES: ${{ env.ARTICLE_PIPELINE_MAX_ARTICLES }}
           ARTICLE_PIPELINE_RESERVE_RACE_UPDATE_SLOT: ${{ env.ARTICLE_PIPELINE_RESERVE_RACE_UPDATE_SLOT }}
           ARTICLE_PIPELINE_RESERVE_EVERGREEN_SLOT: ${{ env.ARTICLE_PIPELINE_RESERVE_EVERGREEN_SLOT }}
+          KEIBA_ARTICLE_COVERAGE_MODE: ${{ env.KEIBA_ARTICLE_COVERAGE_MODE }}
+          KEIBA_GRADE_RACE_REPAIR_COOLDOWN_HOURS: ${{ env.KEIBA_GRADE_RACE_REPAIR_COOLDOWN_HOURS }}
         run: npm run article:pipeline
 
       - name: Check if article was approved
@@ -209,3 +281,12 @@ jobs:
           echo "Pipeline execution completed successfully!"
           echo "max_articles=${{ env.ARTICLE_PIPELINE_MAX_ARTICLES }}" >> "$GITHUB_STEP_SUMMARY"
           echo "approved_count=${{ steps.check_approved.outputs.approved_count }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Article Coverage Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: article-coverage-${{ github.run_id }}
+          path: ${{ runner.temp }}/article-coverage/
+          if-no-files-found: warn
+          retention-days: 30

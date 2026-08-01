@@ -1247,10 +1247,68 @@ def next_rotation_kinds(max_count: int, history: List[Dict[str, Any]]) -> List[s
     return ordered[: max(max_count, len(rotation))]
 
 
-def candidates_for_kind(kind: str, known_keys: Set[str]) -> List[GeneratedOrder]:
+def seasonal_course_context() -> Dict[str, Dict[str, str]]:
+    """直近10日の公開対象重賞を、常設コース記事の優先付けにだけ使う。"""
+    try:
+        import news_topic_planner as race_planner
+    except Exception as error:
+        print(f"[EvergreenPlanner] 重賞日程を読めないため通常ローテーションを使用: {error}")
+        return {}
+
+    previous_remote = os.environ.get("KEIBA_NEWS_REMOTE_SCHEDULE_ENABLED")
+    os.environ["KEIBA_NEWS_REMOTE_SCHEDULE_ENABLED"] = "false"
+    race_planner._RACE_SCHEDULE_CACHE.clear()
+    try:
+        rows: Dict[str, Dict[str, str]] = {}
+        for entry, days_to_race in race_planner.focus_races():
+            if days_to_race < 0 or days_to_race > 10 or not entry.venue:
+                continue
+            if not race_planner.is_race_article_eligible(entry):
+                continue
+            entity_key = race_planner.grade_race_entity_key(entry.name)
+            if not entity_key or entry.venue in rows:
+                continue
+            rows[entry.venue] = {
+                "entity_key": entity_key,
+                "race_name": entry.name,
+                "race_date": race_planner.race_demand_date(entry).isoformat(),
+            }
+        return rows
+    finally:
+        if previous_remote is None:
+            os.environ.pop("KEIBA_NEWS_REMOTE_SCHEDULE_ENABLED", None)
+        else:
+            os.environ["KEIBA_NEWS_REMOTE_SCHEDULE_ENABLED"] = previous_remote
+        race_planner._RACE_SCHEDULE_CACHE.clear()
+
+
+def candidates_for_kind(
+    kind: str,
+    known_keys: Set[str],
+    seasonal_courses: Optional[Dict[str, Dict[str, str]]] = None,
+) -> List[GeneratedOrder]:
     if kind == "course":
         topics = parse_jra_course_topics() + parse_nar_course_topics()
         orders = [build_course_order(topic) for topic in topics]
+        contexts = seasonal_courses or {}
+        for generated in orders:
+            reference_data = generated.order.get("reference_data") or {}
+            venue = str(reference_data.get("course_venue") or "")
+            context = contexts.get(venue)
+            if not context:
+                continue
+            generated.order["priority"] = max(76, int(generated.order.get("priority") or 0))
+            reference_data["source_race_entity_key"] = context["entity_key"]
+            reference_data["source_race_name"] = context["race_name"]
+            reference_data["source_race_date"] = context["race_date"]
+            reference_data["query_intents"] = ["course", "venue", "distance", "race_context"]
+        orders.sort(
+            key=lambda item: (
+                0 if str((item.order.get("reference_data") or {}).get("course_venue") or "") in contexts else 1,
+                -int(item.order.get("priority") or 0),
+                item.key,
+            )
+        )
     elif kind == "jockey":
         topics = parse_jra_jockey_topics() + parse_nar_jockey_topics()
         orders = [build_jockey_order(topic) for topic in topics]
@@ -1285,13 +1343,17 @@ def generate_evergreen_orders() -> int:
     history = load_json_array(EVERGREEN_HISTORY_PATH)
     selected: List[GeneratedOrder] = []
     used_kinds: Set[str] = set()
+    seasonal_courses = seasonal_course_context()
+    rotation_kinds = next_rotation_kinds(max_orders, history)
+    if seasonal_courses:
+        rotation_kinds = ["course", *[kind for kind in rotation_kinds if kind != "course"]]
 
-    for kind in next_rotation_kinds(max_orders, history):
+    for kind in rotation_kinds:
         if len(selected) >= max_orders:
             break
         if kind in used_kinds:
             continue
-        candidates = candidates_for_kind(kind, known_keys)
+        candidates = candidates_for_kind(kind, known_keys, seasonal_courses)
         if not candidates:
             continue
         chosen = candidates[0]

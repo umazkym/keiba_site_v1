@@ -7,6 +7,7 @@ import {
 } from './gsc_rewrite_guard';
 import {
   buildGscRewriteDraft,
+  ensureGradeRaceRepairCooldown,
   ensureGscRewriteCooldown,
   selectGscRewriteCandidate,
   type GscReport,
@@ -131,6 +132,30 @@ assert.doesNotThrow(() => ensureGscRewriteCooldown(
   { gsc_last_rewritten_at: '2026-06-01T00:00:00.000Z' },
   new Date('2026-07-23T00:00:00.000Z'),
 ));
+
+assert.throws(
+  () => ensureGradeRaceRepairCooldown(
+    { gsc_grade_race_last_repaired_at: '2026-07-22T12:00:00.000Z' },
+    new Date('2026-07-23T00:00:00.000Z'),
+  ),
+  /48時間以内/,
+);
+assert.doesNotThrow(() => ensureGradeRaceRepairCooldown(
+  { gsc_grade_race_last_repaired_at: '2026-07-20T00:00:00.000Z' },
+  new Date('2026-07-23T00:00:00.000Z'),
+));
+
+const repairQueuedData = {
+  ...queued.data,
+  operation: 'grade_race_search_repair',
+};
+const repairFinalized = finalizeGscRewriteFrontmatter(
+  original.data,
+  repairQueuedData,
+  '2026-07-23T00:15:00.000Z',
+);
+assert.equal(repairFinalized.gsc_grade_race_last_repaired_at, '2026-07-23T00:15:00.000Z');
+assert.equal(repairFinalized.gsc_last_rewritten_at, undefined);
 
 const candidate = {
   source_slug: 'course-guide',

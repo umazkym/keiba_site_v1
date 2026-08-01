@@ -99,11 +99,13 @@ Search Consoleは既存記事の検索意図と改善優先度の判断にだけ
 **Constraints:**
 
 - You MUST keep grade-race creation and same-season staged updates driven by the race calendar even when GSC has zero or missing data.
-- You MUST exclude grade-race articles from normal GSC rewrites from 7 days before through 3 days after the scheduled race and leave those updates to `update_stage`.
+- You MUST exclude grade-race articles from normal GSC rewrites from 21 days before through 3 days after the scheduled race and leave factual updates to `update_stage`.
+- As a narrow exception, the 16:45 JST pipeline MAY create at most one `grade_race_search_repair` order when the daily GSC monitor proves an 80% impression drop or a 30-position decline for one exact current-season representative URL. This repair is limited to D-21 through D0, or D+1 through D+3 only after confirmed `post_race` data, and MUST observe a separate 48-hour cooldown.
 - You MUST NOT rewrite a prior-season grade-race article into the current-season version because current-season creation uses a new year-qualified URL.
 - You MUST require one exact published candidate slug and a 28-day cooldown before a GSC rewrite.
 - You MUST use GSC queries only to infer search intent. Raw queries and GSC metrics MUST NOT enter WriterEvidence or support factual claims because Search Console is not evidence for racing facts.
 - You MUST limit a GSC rewrite to title, description, keywords, lead text, and existing H2 labels.
+- You MUST keep `grade_race_search_repair` on the same URL, entity, season, race date, and `update_stage`; it MUST NOT add a new article or advance factual stages.
 - You MUST reject the rewrite before file mutation if number tokens, tables, H2 bodies, links, canonical, publication date, entity metadata, `update_stage`, ad metadata, or verified race-bridge metadata change.
 - You MUST publish only the existing `rewrite_target_slug` file and MUST NOT generate a new slug, article file, redirect, or canonical because the rewrite must preserve the indexed URL exactly.
 - You MUST consult `docs/gsc_weekly_seo_operations.md` before diagnosing GSC authentication or cost because it records the completed external setup and the applicable free-tier conditions.

@@ -105,9 +105,13 @@ def _normalize_race_entity_text(value: str) -> str:
 
 def _grade_race_entity_key(race_name: str) -> str:
     normalized = _normalize_race_entity_text(race_name)
-    for slug, aliases in GRADE_RACE_ENTITY_ALIASES.items():
-        if any(_normalize_race_entity_text(alias) in normalized for alias in aliases):
-            return slug
+    matches = {
+        slug
+        for slug, aliases in GRADE_RACE_ENTITY_ALIASES.items()
+        if any(_normalize_race_entity_text(alias) == normalized for alias in aliases)
+    }
+    if len(matches) == 1:
+        return next(iter(matches))
     return ''
 
 

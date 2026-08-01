@@ -56,6 +56,45 @@ class NewsTopicPlannerTest(unittest.TestCase):
         self.assertEqual(kitakyushu.distance, "芝1200m")
         self.assertEqual(planner.grade_race_entity_key("北九州記念"), "kitakyushu-kinen")
 
+    def test_grade_race_entity_matching_does_not_use_unsafe_substrings(self) -> None:
+        self.assertEqual(planner.grade_race_entity_key("黒潮菊花賞"), "kuroshio-kikuka-sho")
+        self.assertNotEqual(planner.grade_race_entity_key("黒潮菊花賞"), "kikuka-sho")
+        self.assertEqual(planner.grade_race_entity_key("ひまわり賞(オークス)"), "himawari-sho-oaks")
+        self.assertNotEqual(planner.grade_race_entity_key("ひまわり賞(オークス)"), "oaks")
+        self.assertEqual(planner.grade_race_entity_key("ルーキーズサマーカップ"), "rookies-summer-cup")
+        self.assertNotEqual(planner.grade_race_entity_key("ルーキーズサマーカップ"), "summer-cup")
+        self.assertEqual(
+            planner.grade_race_entity_key_from_text("2026 アイビスサマーダッシュ 出走予定"),
+            "ibis-summer-dash",
+        )
+
+    def test_grade_race_query_intents_are_gated_by_verified_stage(self) -> None:
+        elm = planner.find_race_demand("エルムS")
+        self.assertIsNotNone(elm)
+        scheduled = planner.race_demand_date(elm)
+
+        initial = planner.seo_keywords_for_grade_race(elm, scheduled, "field_building")
+        self.assertTrue(any("出走予定" in keyword for keyword in initial))
+        self.assertFalse(any("枠順" in keyword for keyword in initial))
+        self.assertFalse(any("AI予想" in keyword for keyword in initial))
+
+        draw = planner.seo_keywords_for_grade_race(
+            elm,
+            scheduled,
+            "draw_confirmed",
+            has_predictions=True,
+        )
+        self.assertTrue(any("枠順" in keyword for keyword in draw))
+        self.assertTrue(any("AI予想" in keyword for keyword in draw))
+
+        result = planner.seo_keywords_for_grade_race(
+            elm,
+            scheduled,
+            "post_race",
+            result_confirmed=True,
+        )
+        self.assertTrue(any("結果" in keyword for keyword in result))
+
     def test_query_builder_distributes_races_and_intents(self) -> None:
         state = planner.WorkflowState(
             run_id="test",

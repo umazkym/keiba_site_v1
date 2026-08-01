@@ -1,7 +1,9 @@
 import importlib.util
 import sys
+import types
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 PLANNER_PATH = Path(__file__).resolve().parents[1] / "scripts" / "agents" / "editorial_evergreen_planner.py"
@@ -94,6 +96,34 @@ class EditorialEvergreenPlannerTest(unittest.TestCase):
         self.assertEqual(order["reference_data"]["article_type"], "course_venue")
         self.assertGreaterEqual(order["reference_data"]["sample_size"], 10)
         self.assertIn("距離ごとに記事を分けず", order["reference_data"]["content_focus"])
+
+    def test_seasonal_grade_race_prioritizes_related_course_article(self) -> None:
+        class FakeEntry:
+            name = "アイビスサマーダッシュ"
+            venue = "新潟"
+
+        fake_planner = types.SimpleNamespace(
+            _RACE_SCHEDULE_CACHE={},
+            focus_races=lambda: [(FakeEntry(), 1)],
+            is_race_article_eligible=lambda _entry: True,
+            grade_race_entity_key=lambda _name: "ibis-summer-dash",
+            race_demand_date=lambda _entry: planner.current_jst().date(),
+        )
+
+        with patch.dict(sys.modules, {"news_topic_planner": fake_planner}):
+            contexts = planner.seasonal_course_context()
+
+        candidates = planner.candidates_for_kind("course", set(), contexts)
+
+        self.assertEqual(contexts["新潟"]["entity_key"], "ibis-summer-dash")
+        self.assertTrue(candidates)
+        self.assertEqual(candidates[0].order["reference_data"]["course_venue"], "新潟")
+        self.assertGreaterEqual(candidates[0].order["priority"], 76)
+        self.assertEqual(
+            candidates[0].order["reference_data"]["source_race_entity_key"],
+            "ibis-summer-dash",
+        )
+        self.assertIn("course", candidates[0].order["reference_data"]["query_intents"])
 
     def test_beginner_topics_cover_twenty_guides(self) -> None:
         topics = planner.beginner_topics()

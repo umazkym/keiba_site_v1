@@ -14,6 +14,8 @@ const ALLOWED_FRONTMATTER_CHANGES = new Set([
   'gsc_rewrite_score',
   'gsc_last_rewritten_at',
   'gsc_last_rewrite_period_end',
+  'gsc_grade_race_last_repaired_at',
+  'gsc_grade_race_last_repair_period_end',
 ]);
 
 const WORKFLOW_ONLY_FRONTMATTER = new Set([
@@ -204,6 +206,7 @@ export function finalizeGscRewriteFrontmatter(
   revisedData: Record<string, unknown>,
   nowIso: string,
 ): Record<string, unknown> {
+  const isGradeRaceRepair = revisedData.operation === 'grade_race_search_repair';
   const next: Record<string, unknown> = {
     ...originalData,
     title: revisedData.title,
@@ -212,10 +215,15 @@ export function finalizeGscRewriteFrontmatter(
     og_title: revisedData.title,
     og_description: revisedData.description,
     last_updated: nowIso,
-    gsc_last_rewritten_at: nowIso,
-    gsc_last_rewrite_period_end: revisedData.gsc_rewrite_period_end || '',
     draft: false,
   };
+  if (isGradeRaceRepair) {
+    next.gsc_grade_race_last_repaired_at = nowIso;
+    next.gsc_grade_race_last_repair_period_end = revisedData.gsc_rewrite_period_end || '';
+  } else {
+    next.gsc_last_rewritten_at = nowIso;
+    next.gsc_last_rewrite_period_end = revisedData.gsc_rewrite_period_end || '';
+  }
   for (const key of WORKFLOW_ONLY_FRONTMATTER) {
     delete next[key];
   }

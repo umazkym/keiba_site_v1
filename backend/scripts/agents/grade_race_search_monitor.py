@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
@@ -28,6 +29,12 @@ MIN_DROP_BASE_IMPRESSIONS = 50.0
 IMPRESSION_DROP_RATIO = 0.80
 MIN_POSITION_BASE_IMPRESSIONS = 20.0
 POSITION_WORSENING = 30.0
+QUERY_CONTEXT_PREFIX_PATTERN = re.compile(
+    r"^(?:(?:jra|nar|地方競馬|中央競馬|競馬|重賞|交流重賞|地方重賞|"
+    r"g[123]|jpn(?:i{1,3}|[123])|jg[123]|s[123]|m[123]|bg[123]|"
+    r"札幌|函館|福島|新潟|東京|中山|中京|京都|阪神|小倉|門別|盛岡|水沢|"
+    r"浦和|船橋|大井|川崎|金沢|笠松|名古屋|園田|姫路|高知|佐賀|帯広)+)"
+)
 
 
 class GradeRaceMonitorError(RuntimeError):
@@ -64,7 +71,10 @@ class DailyMetrics:
 
 
 def normalize_race_text(value: str) -> str:
-    return re.sub(r"[\s　・（）()【】「」『』]", "", str(value or "")).lower().replace("ステークス", "s").replace("カップ", "c")
+    normalized = unicodedata.normalize("NFKC", str(value or ""))
+    normalized = re.sub(r"20\d{2}年?", "", normalized)
+    normalized = re.sub(r"[\s　・･（）()【】「」『』｜|:：_\-]", "", normalized).lower()
+    return normalized.replace("ステークス", "s").replace("カップ", "c")
 
 
 def load_registry(path: Path) -> list[dict[str, Any]]:
@@ -92,9 +102,15 @@ def entity_aliases(registry: Sequence[Mapping[str, Any]]) -> list[tuple[str, str
 
 def match_entity(query: str, aliases: Sequence[tuple[str, str, str]]) -> tuple[str, str] | None:
     normalized = normalize_race_text(query)
-    for alias, entity_key, display_name in aliases:
-        if alias in normalized:
-            return entity_key, display_name
+    normalized = QUERY_CONTEXT_PREFIX_PATTERN.sub("", normalized)
+    matches = [row for row in aliases if normalized.startswith(row[0])]
+    if not matches:
+        return None
+    longest = len(matches[0][0])
+    top = [row for row in matches if len(row[0]) == longest]
+    entity_keys = {row[1] for row in top}
+    if len(entity_keys) == 1:
+        return top[0][1], top[0][2]
     return None
 
 
@@ -262,15 +278,144 @@ def detect_content_alerts(articles_dir: Path, redirects_path: Path) -> list[dict
     return alerts
 
 
+def published_grade_race_articles(
+    articles_dir: Path,
+    redirects_path: Path,
+) -> dict[str, list[dict[str, str]]]:
+    redirects = redirected_slugs(redirects_path)
+    grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for path in articles_dir.glob("*.md"):
+        if path.stem in redirects:
+            continue
+        fields = parse_frontmatter(path)
+        if fields.get("draft", "false").lower() == "true" or fields.get("entity_type") != "grade_race":
+            continue
+        entity_key = fields.get("entity_key", "")
+        season_year = fields.get("season_year", "")
+        scheduled_race_date = fields.get("scheduled_race_date", "")[:10]
+        if not entity_key or not season_year or not scheduled_race_date:
+            continue
+        grouped[entity_key].append({
+            "slug": path.stem,
+            "season_year": season_year,
+            "scheduled_race_date": scheduled_race_date,
+            "update_stage": fields.get("update_stage", ""),
+            "result_confirmed": fields.get("result_confirmed", "").lower(),
+        })
+    return grouped
+
+
+def top_queries_for_entity(
+    rows: Sequence[Mapping[str, Any]],
+    aliases: Sequence[tuple[str, str, str]],
+    entity_key: str,
+    limit: int = 8,
+) -> list[dict[str, Any]]:
+    grouped: dict[str, DailyMetrics] = defaultdict(DailyMetrics)
+    for row in rows:
+        keys = row.get("keys") or []
+        if len(keys) < 3:
+            continue
+        query = str(keys[1])
+        matched = match_entity(query, aliases)
+        if not matched or matched[0] != entity_key:
+            continue
+        grouped[query].add(row, str(keys[2]))
+    ranked = sorted(
+        grouped.items(),
+        key=lambda item: (-item[1].impressions, -item[1].clicks, item[0]),
+    )
+    return [
+        {
+            "query": query,
+            "clicks": round(metrics.clicks, 3),
+            "impressions": round(metrics.impressions, 3),
+            "ctr": round(metrics.clicks / metrics.impressions, 6) if metrics.impressions else 0.0,
+            "position": round(metrics.position, 3),
+        }
+        for query, metrics in ranked[:limit]
+    ]
+
+
+def build_repair_candidates(
+    rows: Sequence[Mapping[str, Any]],
+    registry: Sequence[Mapping[str, Any]],
+    search_alerts: Sequence[Mapping[str, Any]],
+    articles_dir: Path,
+    redirects_path: Path,
+    base_date: date,
+) -> list[dict[str, Any]]:
+    aliases = entity_aliases(registry)
+    articles = published_grade_race_articles(articles_dir, redirects_path)
+    grouped_alerts: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for alert in search_alerts:
+        if alert.get("type") not in {"impression_drop", "position_worsening"}:
+            continue
+        entity_key = str(alert.get("entity_key") or "")
+        if entity_key:
+            grouped_alerts[entity_key].append(alert)
+
+    candidates: list[dict[str, Any]] = []
+    for entity_key, alerts in grouped_alerts.items():
+        eligible_articles: list[tuple[dict[str, str], date, int]] = []
+        for article_row in articles.get(entity_key, []):
+            try:
+                article_date = date.fromisoformat(article_row["scheduled_race_date"])
+            except ValueError:
+                continue
+            article_days = (article_date - base_date).days
+            article_is_pre_race = 0 <= article_days <= 21
+            article_is_post_race = (
+                -3 <= article_days < 0
+                and article_row.get("update_stage") == "post_race"
+                and article_row.get("result_confirmed") == "true"
+            )
+            if article_is_pre_race or article_is_post_race:
+                eligible_articles.append((article_row, article_date, article_days))
+        if len(eligible_articles) != 1:
+            continue
+        article, scheduled, days_to_race = eligible_articles[0]
+        season_year = article.get("season_year", "")
+        if season_year != str(scheduled.year):
+            continue
+
+        previous_impressions = max(
+            float((alert.get("previous") or {}).get("impressions") or 0)
+            for alert in alerts
+        )
+        latest_impressions = min(
+            float((alert.get("latest") or {}).get("impressions") or 0)
+            for alert in alerts
+        )
+        candidates.append({
+            "entity_key": entity_key,
+            "race_name": str(alerts[0].get("race_name") or entity_key),
+            "season_year": season_year,
+            "scheduled_race_date": article["scheduled_race_date"],
+            "days_to_race": days_to_race,
+            "target_slug": article["slug"],
+            "update_stage": article.get("update_stage", ""),
+            "alert_types": sorted({str(alert.get("type")) for alert in alerts}),
+            "estimated_lost_impressions": round(max(0.0, previous_impressions - latest_impressions), 3),
+            "top_queries": top_queries_for_entity(rows, aliases, entity_key),
+        })
+    return sorted(
+        candidates,
+        key=lambda item: (-float(item["estimated_lost_impressions"]), int(item["days_to_race"]), item["entity_key"]),
+    )
+
+
 def render_summary(report: Mapping[str, Any]) -> str:
     search_alerts = list(report.get("search_alerts") or [])
     content_alerts = list(report.get("content_alerts") or [])
+    repair_candidates = list(report.get("repair_candidates") or [])
     lines = [
         "# 重賞検索の日次監視",
         "",
         f"- 対象期間: {report['window']['start']}〜{report['window']['end']}",
         f"- 検索警告: {len(search_alerts)}件",
         f"- 記事構造警告: {len(content_alerts)}件",
+        f"- 自動救済候補: {len(repair_candidates)}件",
         "",
     ]
     for alert in search_alerts:
@@ -282,6 +427,11 @@ def render_summary(report: Mapping[str, Any]) -> str:
         lines.append(f"- {alert.get('race_name', alert.get('entity_key'))}: {label}")
     for alert in content_alerts:
         lines.append(f"- {alert.get('slug', alert.get('entity_key', '記事'))}: {alert.get('type')}")
+    for candidate in repair_candidates:
+        lines.append(
+            f"- 救済候補 {candidate.get('race_name')}: {candidate.get('target_slug')} "
+            f"(推定表示減 {candidate.get('estimated_lost_impressions')})"
+        )
     if not search_alerts and not content_alerts:
         lines.append("- 警告はありません。")
     lines.append("")
@@ -314,12 +464,23 @@ def main() -> int:
         )
 
     registry = load_registry(Path(args.registry))
+    search_alerts = detect_search_alerts(rows, registry)
+    articles_dir = Path(args.articles_dir)
+    redirects_path = Path(args.redirects)
     report = {
         "generated_at": base.isoformat(),
         "window": {"start": window.start.isoformat(), "end": window.end.isoformat()},
         "rows": len(rows),
-        "search_alerts": detect_search_alerts(rows, registry),
-        "content_alerts": detect_content_alerts(Path(args.articles_dir), Path(args.redirects)),
+        "search_alerts": search_alerts,
+        "content_alerts": detect_content_alerts(articles_dir, redirects_path),
+        "repair_candidates": build_repair_candidates(
+            rows,
+            registry,
+            search_alerts,
+            articles_dir,
+            redirects_path,
+            base.date(),
+        ),
     }
     output = Path(args.output)
     summary = Path(args.summary)
@@ -327,7 +488,11 @@ def main() -> int:
     summary.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     summary.write_text(render_summary(report), encoding="utf-8")
-    print(json.dumps({"search_alerts": len(report["search_alerts"]), "content_alerts": len(report["content_alerts"])}, ensure_ascii=False))
+    print(json.dumps({
+        "search_alerts": len(report["search_alerts"]),
+        "content_alerts": len(report["content_alerts"]),
+        "repair_candidates": len(report["repair_candidates"]),
+    }, ensure_ascii=False))
     return 0
 
 

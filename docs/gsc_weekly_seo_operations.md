@@ -1,8 +1,8 @@
-# GSC週次SEO監査・重賞日次監視・手動改稿 運用手順
+# GSC週次SEO監査・重賞日次監視・限定自動補修・手動改稿 運用手順
 
 ## 目的
 
-Search Consoleの確定データから既存記事の低CTR候補を見つけ、記事URLと事実部分を守ったまま検索結果上の伝わり方だけを改善する。重賞は日次で順位急落とURL分散を監視し、区分・過去需要に応じた初回公開後、同年度の同じURLを事実確認に合わせて更新する。
+Search Consoleの確定データから既存記事の低CTR候補を見つけ、記事URLと事実部分を守ったまま検索結果上の伝わり方だけを改善する。重賞は日次で順位急落とURL分散を監視し、区分・過去需要に応じた初回公開後、同年度の同じURLを事実確認に合わせて更新する。急落が検出された代表URLだけは、16:45 JSTに検索結果向けの限定補修を最大1件実行できる。
 
 ## 初回実行前の設定
 
@@ -59,7 +59,19 @@ Actions Summaryと`gsc-seo-audit-{run_id}` artifactで次を確認する。
 - 同一重賞が2件以上の記事URLへ表示
 - 開催前の`post_race`、枠順確認前の`draw_confirmed`、同一`entity_key + season_year`の公開記事重複
 
-監視は通知材料の作成だけを行い、記事、Search Console、広告設定を変更しない。API失敗は日次監視内だけで終了し、通常の記事生成を止めない。代表URLの統合が必要な場合は、確定済みGSCクリック最大、同数なら表示回数最大のURLを選び、`frontend/content/reference/grade-race-canonical-overrides.json`へ一段301を追加する。
+09:15の独立監視は通知材料の作成だけを行い、記事、Search Console、広告設定を変更しない。API失敗は日次監視内だけで終了し、通常の記事生成を止めない。代表URLの統合が必要な場合は、確定済みGSCクリック最大、同数なら表示回数最大のURLを選び、`frontend/content/reference/grade-race-canonical-overrides.json`へ一段301を追加する。
+
+## 重賞検索急落の限定自動補修
+
+毎日16:45 JSTの`keiba-article-pipeline.yml`は監視データを再取得し、次をすべて満たす場合だけ`grade_race_search_repair`を最大1件生成する。
+
+- 表示回数が前日比80%以上減少、または平均順位が1日で30位以上悪化
+- 当年度の公開中・indexable・自己canonical代表記事が正確に1件
+- frontmatterの`entity_key`、`season_year`、`scheduled_race_date`が候補と一致
+- 開催D-21〜D0、または確定着順を持つ`post_race`のD+1〜D+3
+- 同じslugの前回補修から48時間以上経過
+
+補修できるのはtitle、description、keywords、導入文、既存H2ラベルだけである。H2配下本文、数値、表、リンク、canonical、公開日、entity、開催日、`update_stage`、広告・レースブリッジは固定し、新URLは作らない。生のGSCクエリや指標はWriterEvidenceへ渡さず、競馬事実の根拠にしない。条件不成立、GSC API障害、LLM不承認時は補修をスキップし、通常の記事生成・段階更新を続行する。
 
 ## 重賞の公開・更新日程
 
@@ -75,7 +87,7 @@ Actions Summaryと`gsc-seo-audit-{run_id}` artifactで次を確認する。
 2. Actionsの`Keiba GSC Weekly SEO Audit`をmainブランチから`workflow_dispatch`で実行し、`article_slug`へ選んだslugを入力する。
 3. workflowが同じ実行内で最新GSCレポートを作り直し、そのslugが候補に一意一致する場合だけ改稿する。
 4. title、description、keywords、導入文、H2文言以外に差分があれば公開前に失敗する。
-5. 成功後は、同じslugの再改稿を28日間行わない。
+5. 成功後は、同じslugの通常改稿を28日間行わない。重賞検索急落補修の48時間クールダウンとは別に管理する。
 
 改稿時も数値、表、H2配下本文、リンク、canonical、公開日、entity情報、`update_stage`、広告関連メタデータ、検証済みレースブリッジは維持する。GSCクエリは検索意図の参考に限り、競馬成績や記事本文の根拠にはしない。
 

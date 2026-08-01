@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import { prioritizeOrderFiles } from './article_order_priority';
+import { generateGradeRaceSearchRepair } from './gsc_seo_rewrite';
 
 // .env.local などを読み込む (dotenv等)
 import * as dotenv from 'dotenv';
@@ -16,6 +17,7 @@ const MAX_ARTICLES_PER_RUN = Math.max(
 );
 const RESERVE_RACE_UPDATE_SLOT = (process.env.ARTICLE_PIPELINE_RESERVE_RACE_UPDATE_SLOT || 'true').toLowerCase() !== 'false';
 const RESERVE_EVERGREEN_SLOT = (process.env.ARTICLE_PIPELINE_RESERVE_EVERGREEN_SLOT || 'true').toLowerCase() !== 'false';
+const AGGRESSIVE_COVERAGE = (process.env.KEIBA_ARTICLE_COVERAGE_MODE || 'aggressive').toLowerCase() === 'aggressive';
 
 /**
  * 既存記事のtarget_keywordを全て取得する（重複チェック用）
@@ -99,6 +101,7 @@ async function runPipeline() {
     maxArticles: MAX_ARTICLES_PER_RUN,
     reserveRaceUpdateSlot: RESERVE_RACE_UPDATE_SLOT,
     reserveEvergreenSlot: RESERVE_EVERGREEN_SLOT,
+    aggressiveCoverage: AGGRESSIVE_COVERAGE,
   });
 
   const files = sortedFiles.map(item => item.file);
@@ -126,7 +129,8 @@ async function runPipeline() {
     }
 
     // 既存記事との重複チェック
-    if (seenKeywords.has(order.target_keyword)) {
+    const isGradeRaceSearchRepair = order.operation === 'grade_race_search_repair';
+    if (!isGradeRaceSearchRepair && seenKeywords.has(order.target_keyword)) {
       console.log(`[Pipeline] 重複スキップ（既存記事または同一実行内で処理済み）: ${order.target_keyword}`);
       moveToProcessed(orderPath);
       continue;
@@ -134,6 +138,29 @@ async function runPipeline() {
 
     console.log(`[Input] Loading real order from: ${file}`);
     console.log(`[Input] target_keyword: ${order.target_keyword}`);
+
+    if (isGradeRaceSearchRepair) {
+      const reportPath = String(order.reference_data?.gsc_repair_report_path || '').trim();
+      const targetSlug = String(order.rewrite_target_slug || '').trim();
+      if (!reportPath || !targetSlug) {
+        moveToFailed(orderPath, '重賞検索救済にreport pathまたはtarget slugがありません');
+        continue;
+      }
+      attemptedCount++;
+      try {
+        await generateGradeRaceSearchRepair(reportPath, targetSlug);
+        approvedCount++;
+        rejectedStreak = 0;
+        moveToProcessed(orderPath);
+      } catch (error) {
+        moveToFailed(
+          orderPath,
+          `重賞検索救済に失敗: ${error instanceof Error ? error.message.slice(0, 180) : String(error).slice(0, 180)}`,
+        );
+      }
+      if (attemptedCount >= MAX_ARTICLES_PER_RUN) break;
+      continue;
+    }
 
     const preDraftFlow = await runPreDraftArticleFlow(order);
     console.log(preDraftFlow.log);

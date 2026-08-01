@@ -5,7 +5,7 @@ import { execSync } from 'child_process';
 import { createHash } from 'crypto';
 import { autoRepairDraftMarkdown } from './agent_editor';
 import { checkSEO, checkSourceIndependence } from './seo_checker';
-import { findGradeRaceEntity } from '../../lib/grade-race-entities';
+import { findGradeRaceEntity, findGradeRaceEntityByName } from '../../lib/grade-race-entities';
 import { getApiBaseUrl } from '../../lib/api-base';
 import { getSeasonalGradeRaceSlug } from '../../lib/article-seasonal-routing';
 import gradeRaceCanonicalOverrides from '../../content/reference/grade-race-canonical-overrides.json';
@@ -271,7 +271,7 @@ function validateGradeRacePublication(data: Record<string, any>): string[] {
   const raceDate = String(data.scheduled_race_date || '').trim();
   const updateStage = String(data.update_stage || '').trim();
   const milestone = String(data.schedule_milestone || '').trim();
-  const registryEntity = findGradeRaceEntity(raceName);
+  const registryEntity = findGradeRaceEntityByName(raceName);
 
   if (!entityKey || !registryEntity || registryEntity.entity_key !== entityKey) {
     errors.push(`共有レジストリとentity_keyが一致しません: ${raceName || '(race_nameなし)'}`);
@@ -501,7 +501,7 @@ async function verifyArticleRaceBridge(data: Record<string, any>): Promise<Recor
   const storedRaceUrl = String(nextData.race_url || '').trim();
   const seasonYear = String(nextData.season_year || '').trim();
   const entityKey = String(nextData.race_entity_key || nextData.entity_key || '').trim();
-  const registryEntity = findGradeRaceEntity(raceName);
+  const registryEntity = findGradeRaceEntityByName(raceName);
 
   if (
     !raceName
@@ -883,7 +883,7 @@ async function publishDraft() {
     const oldId = path.basename(targetFile, '.md');
     const now = new Date();
 
-    if (parsed.data.operation === 'rewrite') {
+    if (parsed.data.operation === 'rewrite' || parsed.data.operation === 'grade_race_search_repair') {
       const rewriteTargetSlug = String(parsed.data.rewrite_target_slug || '').trim();
       assertSafeArticleSlug(rewriteTargetSlug);
       const rewriteTargetPath = path.join(ARTICLES_DIR, `${rewriteTargetSlug}.md`);

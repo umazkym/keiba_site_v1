@@ -35,6 +35,25 @@ export type GscReport = {
   seasonal_grade_demand: GscCandidate[];
 };
 
+export type GradeRaceRepairCandidate = {
+  entity_key: string;
+  race_name: string;
+  season_year: string;
+  scheduled_race_date: string;
+  days_to_race: number;
+  target_slug: string;
+  update_stage: string;
+  alert_types: string[];
+  estimated_lost_impressions: number;
+  top_queries: GscQueryInsight[];
+};
+
+export type GradeRaceSearchReport = {
+  generated_at: string;
+  window: { start: string; end: string };
+  repair_candidates: GradeRaceRepairCandidate[];
+};
+
 export type RewriteProposal = {
   title: string;
   description: string;
@@ -47,6 +66,7 @@ const PROJECT_ROOT = path.join(__dirname, '..', '..', '..');
 const ARTICLES_DIR = path.join(PROJECT_ROOT, 'frontend', 'content', 'articles');
 const APPROVED_DIR = path.join(PROJECT_ROOT, 'frontend', 'agents', 'queue', 'approved');
 const REWRITE_COOLDOWN_DAYS = 28;
+const DEFAULT_GRADE_RACE_REPAIR_COOLDOWN_HOURS = 48;
 
 function parseArgs(argv: string[]): { reportPath: string; slug: string } {
   const reportIndex = argv.indexOf('--report');
@@ -124,6 +144,29 @@ export function ensureGscRewriteCooldown(
   if (elapsedDays < REWRITE_COOLDOWN_DAYS) {
     throw new Error(
       `同じ記事は28日以内に再改稿できません。経過=${elapsedDays.toFixed(1)}日`,
+    );
+  }
+}
+
+export function ensureGradeRaceRepairCooldown(
+  data: Record<string, unknown>,
+  now: Date,
+): void {
+  const raw = String(data.gsc_grade_race_last_repaired_at || '').trim();
+  if (!raw) return;
+  const previous = new Date(raw);
+  if (Number.isNaN(previous.getTime())) return;
+  const configured = Number.parseInt(
+    process.env.KEIBA_GRADE_RACE_REPAIR_COOLDOWN_HOURS || '',
+    10,
+  );
+  const cooldownHours = Number.isFinite(configured) && configured > 0
+    ? configured
+    : DEFAULT_GRADE_RACE_REPAIR_COOLDOWN_HOURS;
+  const elapsedHours = (now.getTime() - previous.getTime()) / 3_600_000;
+  if (elapsedHours < cooldownHours) {
+    throw new Error(
+      `同じ重賞記事は${cooldownHours}時間以内に再救済できません。経過=${elapsedHours.toFixed(1)}時間`,
     );
   }
 }
@@ -311,6 +354,89 @@ export async function generateGscRewrite(
   const approvedPath = path.join(APPROVED_DIR, `gsc-rewrite-${slug}.md`);
   fs.writeFileSync(approvedPath, draft, 'utf8');
   console.log(`[GSC Rewrite] 承認キューへ保存: ${approvedPath}`);
+  return approvedPath;
+}
+
+export async function generateGradeRaceSearchRepair(
+  reportPath: string,
+  slug: string,
+): Promise<string> {
+  assertSafeArticleSlug(slug);
+  const report = JSON.parse(fs.readFileSync(reportPath, 'utf8')) as GradeRaceSearchReport;
+  const matches = (report.repair_candidates || []).filter(item => item.target_slug === slug);
+  if (matches.length !== 1) {
+    throw new Error(`指定slugは重賞検索救済候補に一意一致しません: ${slug} (${matches.length}件)`);
+  }
+  const repair = matches[0];
+  const articlePath = path.join(ARTICLES_DIR, `${slug}.md`);
+  if (!fs.existsSync(articlePath)) {
+    throw new Error(`公開記事が存在しません: ${slug}`);
+  }
+  const originalMarkdown = fs.readFileSync(articlePath, 'utf8');
+  const original = matter(originalMarkdown);
+  if (original.data.draft === true || String(original.data.draft || '').toLowerCase() === 'true') {
+    throw new Error('下書き記事は重賞検索救済の対象にできません。');
+  }
+  if (
+    String(original.data.entity_type || '') !== 'grade_race'
+    || String(original.data.entity_key || '') !== repair.entity_key
+    || String(original.data.season_year || '') !== repair.season_year
+    || String(original.data.scheduled_race_date || '').slice(0, 10) !== repair.scheduled_race_date
+  ) {
+    throw new Error('救済候補と公開記事の重賞識別情報が一致しません。');
+  }
+  ensureGradeRaceRepairCooldown(original.data, new Date());
+
+  const candidate: GscCandidate = {
+    source_slug: slug,
+    canonical_path: String(original.data.canonical_path || `/articles/${slug}`),
+    title: String(original.data.title || repair.race_name),
+    estimated_missed_clicks: repair.estimated_lost_impressions,
+    top_queries: repair.top_queries || [],
+  };
+  const order: WriteOrder = {
+    operation: 'grade_race_search_repair',
+    rewrite_target_slug: slug,
+    target_keyword: String(original.data.target_keyword || original.data.title || slug),
+    theme_cluster: 'grade_race_search_repair',
+    entity_type: 'grade_race',
+    entity_key: repair.entity_key,
+    season_year: repair.season_year,
+    reference_data: {
+      period: `${report.window.start}/${report.window.end}`,
+      condition: 'Search Console重賞検索急落の安全な意図調整',
+      sample_size: 0,
+      key_metrics: [],
+      article_type: 'grade_race_search_repair',
+      source_race_entity_key: repair.entity_key,
+      repair_alert_types: repair.alert_types,
+    },
+  };
+  const proposal = await requestProposal(candidate, originalMarkdown);
+  const draft = buildGscRewriteDraft(
+    originalMarkdown,
+    proposal,
+    order,
+    report.window.end,
+    repair.estimated_lost_impressions,
+  );
+  const guard = validateGscRewrite(originalMarkdown, draft);
+  if (!guard.passed) {
+    throw new Error(`重賞検索救済の差分ガードで拒否されました:\n- ${guard.errors.join('\n- ')}`);
+  }
+  const independence = checkSourceIndependence(draft);
+  if (!independence.passed) {
+    throw new Error(`重賞検索救済が独立性ゲートで拒否されました:\n- ${independence.errors.join('\n- ')}`);
+  }
+  const seo = checkSEO(draft);
+  if (!seo.passed) {
+    throw new Error(`重賞検索救済がSEOゲートで拒否されました:\n- ${seo.errors.join('\n- ')}`);
+  }
+
+  fs.mkdirSync(APPROVED_DIR, { recursive: true });
+  const approvedPath = path.join(APPROVED_DIR, `gsc-rewrite-${slug}.md`);
+  fs.writeFileSync(approvedPath, draft, 'utf8');
+  console.log(`[GSC Grade Race Repair] 承認キューへ保存: ${approvedPath}`);
   return approvedPath;
 }
 

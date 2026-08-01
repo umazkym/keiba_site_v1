@@ -460,6 +460,8 @@ BuildQueries
 - 既存記事や未消費WriteOrderと同じ `target_keyword` は必ず避ける。同一レースの記事は既定で1実行1本までに抑え、枠順・追い切り・馬場などの切り口は同一記事を育てる前提で扱う。必要な場合のみ `KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN` で上限を調整する
 - 直近の `news_topic_history.json` は2日分だけ同一topic_key・同一URLの再利用を避けるために使い、長期のレース単位クールダウンには使わない
 - `article:pipeline` 側ではレース更新枠を1本予約し、直近重賞の記事が常設記事だけに押し出されないようにする
+- 初回公開はJRA G1/JpnI=D-21、G2/JpnII=D-14、G3=D-10、過去確定GSC表示300以上の交流・地方主要重賞=D-9、50〜299表示の地方重賞=D-3とする。50表示未満は記事を作らず正規レースページを入口にする
+- 過去需要は`frontend/content/reference/grade-race-search-demand.json`で管理し、未知の地方重賞はD-3を既定とする。前年レースページが平均10位以内かつCTR10%以上なら新記事を作らない
 
 ### 採用するトピック
 
@@ -570,9 +572,9 @@ Plannerは `theme_cluster` を競馬固有の以下の型で出力する。
 
 ## 重賞記事の年度URLと個別レース導線
 
-重賞記事は検索意図ごとにURLを増やさず、共有レジストリ`frontend/content/reference/grade-race-entities.json`の`entity_key`と開催年を使い、`/articles/{entity-key}-{season-year}`で管理する。同一重賞・同一年度の更新段階は`field_building → race_week → final_48h → draw_confirmed → post_race`の順とし、後退させない。Publisherは`entity_type + entity_key + season_year`を同一記事の識別キーにし、同じH2見出しを更新、既存の固有セクションは保持する。
+重賞記事は検索意図ごとにURLを増やさず、共有レジストリ`frontend/content/reference/grade-race-entities.json`の`entity_key`と開催年を使い、`/articles/{entity-key}-{season_year}`で管理する。同一重賞・同一年度の更新段階は`field_building → race_week → draw_confirmed → final_48h → race_morning → post_race`の順とし、後退させない。`draw_confirmed`以降はDBの馬番・枠番、`post_race`は確定着順が存在する場合だけ進める。予定時刻だけでは段階を進めない。Publisherは`entity_type + entity_key + season_year`を一意キーとして同じMarkdownを更新し、`schedule_milestones`へ完了履歴を残す。
 
-個別記事は自己canonicalを維持する。`/articles/grade-races/{entity-key}`は最新記事本文を複製せず、年度別記事を案内する重賞ハブとする。既存URLの移行はSearch Console過去28日のクリック0かつ表示100未満の単独記事だけを候補にし、クリック1以上または表示100以上は28日間保護する。複数記事の統合は品質監査後に行い、年度付きURLへ一段の301で転送する。
+個別記事は自己canonicalを維持する。`/articles/grade-races/{entity-key}`は最新記事本文を複製せず、年度別記事を案内する重賞ハブとする。既存の複数URLは確定済みGSCクリック最大のURLを代表にし、同数なら表示回数を使う。代表と転送元は`frontend/content/reference/grade-race-canonical-overrides.json`へ記録し、一段の301で集約する。コース解説など検索意図が明確に異なる記事だけは別URLを維持する。
 
 `race_bridge_enabled`は常に`false`から始め、Publisherだけが次の全条件を検証して`true`にできる。
 
@@ -590,7 +592,9 @@ Writerは重賞記事本文に`/races/today`や個別レースCTAを書かない
 
 `.github/workflows/keiba-gsc-seo.yml`は毎週水曜09:15 JSTに、Search Consoleの確定済み直近28日と直前28日を読み取り専用で比較する。対象は公開中・indexable・自己canonicalの`/articles/`だけとし、表示100以上かつ平均順位4〜20位の記事を順位帯別CTR中央値と比較する。推定取りこぼしクリック順の上位10件、季節重賞、同一クエリで各20表示以上の複数canonicalを、Actions SummaryとJSON artifactへ出力する。GSC API、権限、データ不足による失敗はこの監査workflow内だけで終了し、通常記事生成には影響させない。
 
-開催7日前から開催後3日までの重賞記事は通常のGSC改稿候補から除外し、既存の`update_stage`処理へ委ねる。重賞の08:00、11:45、16:45 JST実行と年度付き新規URLを優先し、GSCデータの有無をWriteOrder生成条件にしない。過年度記事を当年度版へ書き換えず、同じ重賞・同じ年度の記事だけを段階更新する。
+開催21日前から開催後3日までの重賞記事は通常のGSC改稿候補から除外し、既存の`update_stage`処理へ委ねる。重賞の08:00、11:45、16:45 JST実行を維持し、初回公開後は同じ重賞・同じ年度のURLだけを段階更新する。過年度記事を当年度版へ書き換えず、同一`entity_key + season_year`の新規WriteOrderは既存記事更新へ変換する。
+
+`.github/workflows/keiba-grade-race-search-monitor.yml`は毎日09:15 JSTに確定済みGSCの直近10日を読み取り専用で確認する。前日50表示以上から80%以上の表示減、1日30位以上の順位悪化、同一重賞の複数記事URL、未来レースの`post_race`、事実確認前の`draw_confirmed`、公開中の同一エンティティ重複をActions SummaryとJSON artifactへ出す。監視は記事やSearch Consoleを変更せず、通常の記事生成workflowから独立して失敗を分離する。
 
 GSC改稿はartifact確認後、`workflow_dispatch`へ正確な`article_slug`を1件指定した場合だけ実行する。検索クエリは検索意図の参考に限り、WriterEvidenceや本文の事実根拠へ渡さない。変更可能範囲はtitle、description、keywords、導入文、既存H2文言だけで、数値集合、表、H2配下本文、リンク、canonical、公開日、entity、`update_stage`、広告・レースブリッジ情報の差分を公開前に拒否する。Publisherは対象の既存Markdownだけを上書きし、`last_updated`と改稿履歴を更新する。同一slugは28日間再改稿しない。
 

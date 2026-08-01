@@ -1092,8 +1092,8 @@ export function autoRepairDraftMarkdown(markdownText: string): { content: string
 
   if (isDrawRelatedDraft(data, content) && !isDrawConfirmedData(data)) {
     data.draw_status = 'pre_draw';
-    if (data.update_stage === 'draw_confirmed') {
-      data.update_stage = 'one_week_before';
+    if (['draw_confirmed', 'final_48h', 'race_morning'].includes(String(data.update_stage || ''))) {
+      data.update_stage = 'race_week';
     }
     for (const key of ['title', 'description', 'target_keyword', 'og_title', 'og_description']) {
       if (typeof data[key] === 'string') {

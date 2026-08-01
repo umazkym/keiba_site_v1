@@ -264,6 +264,42 @@ export function checkSEO(markdownText: string): SEOCheckResult {
   }).format(new Date());
   const searchIntent = String(data.search_intent || '');
   const racePhase = String(data.race_phase || '');
+  const updateStage = String(data.update_stage || '');
+  const entityType = String(data.entity_type || '');
+  const entityKey = String(data.entity_key || '');
+  const seasonYear = String(data.season_year || '');
+  const drawStatus = String(data.draw_status || '');
+  const validGradeRaceStages = new Set([
+    'field_building',
+    'race_week',
+    'draw_confirmed',
+    'final_48h',
+    'race_morning',
+    'post_race',
+  ]);
+  if (entityType === 'grade_race') {
+    if (!/^[a-z0-9-]+$/.test(entityKey)) {
+      errors.push('重賞記事のentity_keyが未登録または不正です。共有レジストリの英小文字キーが必要です。');
+    }
+    if (!/^20\d{2}$/.test(seasonYear) || (scheduledRaceDate && !scheduledRaceDate.startsWith(`${seasonYear}-`))) {
+      errors.push('重賞記事のseason_yearとscheduled_race_dateが一致していません。');
+    }
+    if (!validGradeRaceStages.has(updateStage)) {
+      errors.push(`重賞記事のupdate_stageが新しい段階管理に一致しません: ${updateStage || '(empty)'}`);
+    }
+    if (!String(data.schedule_milestone || '').trim()) {
+      errors.push('重賞記事にschedule_milestoneがありません。新規URLではなく同一年度記事の段階更新が必要です。');
+    }
+  }
+  if (
+    ['draw_confirmed', 'final_48h', 'race_morning'].includes(updateStage)
+    && drawStatus !== 'confirmed'
+  ) {
+    errors.push(`馬番・枠番未確認のためupdate_stage=${updateStage}へ進めません。`);
+  }
+  if (updateStage === 'post_race' && data.result_confirmed !== true) {
+    errors.push('確定結果未確認のためpost_raceへ進めません。');
+  }
   if (
     scheduledRaceDate &&
     scheduledRaceDate > articleDate &&

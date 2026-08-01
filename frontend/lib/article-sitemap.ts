@@ -1,5 +1,6 @@
 import { getArticleArchiveGroupForArticle } from '@/lib/article-archives';
 import { getAllArticles } from '@/lib/articles';
+import canonicalOverrides from '@/content/reference/grade-race-canonical-overrides.json';
 
 export type CanonicalArticleSitemapEntry = {
     path: string;
@@ -8,6 +9,9 @@ export type CanonicalArticleSitemapEntry = {
 
 const REDIRECTED_ARTICLE_PATHS = new Set([
     '/articles/courses/hakodate/turf-1200m',
+    ...canonicalOverrides.flatMap((entry) =>
+        entry.redirect_slugs.map((slug) => `/articles/${slug}`),
+    ),
 ]);
 
 const resolveCanonicalPath = (article: ReturnType<typeof getAllArticles>[number]) => {

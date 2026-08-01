@@ -15,7 +15,7 @@ export function GradeRaceUpdatePanel({ plan }: GradeRaceUpdatePanelProps) {
           同じURLで、レース当日まで情報を更新します
         </h2>
         <p className="mt-1.5 text-xs leading-5 text-slate-600 sm:mt-2 sm:text-sm sm:leading-6">
-          展望、枠順、前日オッズ、当日朝の馬場を別記事に分けず、このページへ追記して判断材料を集約します。
+          出走予定、枠順、直前条件、当日朝の馬場、確定結果を別記事に分けず、このページへ追記します。
         </p>
       </div>
 

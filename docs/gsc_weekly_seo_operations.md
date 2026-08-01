@@ -1,8 +1,8 @@
-# GSC週次SEO監査・手動改稿 運用手順
+# GSC週次SEO監査・重賞日次監視・手動改稿 運用手順
 
 ## 目的
 
-Search Consoleの確定データから既存記事の低CTR候補を見つけ、記事URLと事実部分を守ったまま検索結果上の伝わり方だけを改善する。重賞記事の新規生成と同年度更新は、従来どおり重賞カレンダーを優先する。
+Search Consoleの確定データから既存記事の低CTR候補を見つけ、記事URLと事実部分を守ったまま検索結果上の伝わり方だけを改善する。重賞は日次で順位急落とURL分散を監視し、区分・過去需要に応じた初回公開後、同年度の同じURLを事実確認に合わせて更新する。
 
 ## 初回実行前の設定
 
@@ -45,10 +45,29 @@ Actions Summaryと`gsc-seo-audit-{run_id}` artifactで次を確認する。
 - 表示100以上、平均順位4〜20位の候補
 - 同順位帯CTR中央値と推定取りこぼしクリック
 - 上位検索クエリから読み取れる検索意図
-- 開催7日前から開催後3日までの季節重賞
+- 開催21日前から開催後3日までの季節重賞
 - 同一クエリで複数canonicalが各20表示以上のカニバリ候補
 
 季節重賞は通常改稿へ回さない。カニバリ候補も自動統合・リダイレクトせず、別途内容と流入を確認する。
+
+## 重賞の日次監視
+
+`.github/workflows/keiba-grade-race-search-monitor.yml`は毎日09:15 JSTに実行し、確定済みGSCの直近10日と公開記事frontmatterを読み取り専用で監査する。Actions Summaryと`grade-race-search-monitor-{run_id}` artifactで次を確認する。
+
+- 前日50表示以上の重賞クエリが80%以上減少
+- 平均順位が1日で30位以上悪化
+- 同一重賞が2件以上の記事URLへ表示
+- 開催前の`post_race`、枠順確認前の`draw_confirmed`、同一`entity_key + season_year`の公開記事重複
+
+監視は通知材料の作成だけを行い、記事、Search Console、広告設定を変更しない。API失敗は日次監視内だけで終了し、通常の記事生成を止めない。代表URLの統合が必要な場合は、確定済みGSCクリック最大、同数なら表示回数最大のURLを選び、`frontend/content/reference/grade-race-canonical-overrides.json`へ一段301を追加する。
+
+## 重賞の公開・更新日程
+
+- JRA G1/JpnIはD-21、G2/JpnIIはD-14、G3はD-10に初回公開する
+- 過去確定GSC表示300以上の交流・地方主要重賞はD-9、50〜299表示はD-3、50表示未満は記事を作らない
+- 未知の地方重賞はD-3を既定とする
+- `field_building → race_week → draw_confirmed → final_48h → race_morning → post_race`を同じURLで進める
+- 馬番・枠番または確定着順がDBにない場合、予定時刻になっても該当段階へ進めない
 
 ## 手動改稿
 

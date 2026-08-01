@@ -403,9 +403,9 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 ・"grade_race_preview": 重賞レースのプレビュー記事。以下のルールに従う:
   - タイトル構成: 「[レース名][年]｜[競馬場・距離]で確認したい材料」（30〜50文字）。検索語としてレース名、年、開催場、距離またはコース種別を前半に自然に入れる。
   - G1・Jpn1・G2・Jpn2・G3・Jpn3・その他重賞はいずれも新規URLを乱立させず、同じ重賞記事を「枠順発表後」「当日朝更新」「結果回顧」の段階で育てる前提で書く。
-  - frontmatterには update_stage を入れる。値は one_week_before / draw_confirmed / eve_update / race_morning / result_review のいずれか。
+  - frontmatterには update_stage を入れる。値は field_building / race_week / draw_confirmed / final_48h / race_morning / post_race のいずれか。
   - reference_data.seo_keywords または WriteOrder.keywords がある場合、frontmatter.keywords に5〜10件を自然な検索タグとしてコピーする。レース名、年、競馬場、距離、枠順、出馬表、結果回顧など、入力にある語だけを使う。
-  - update_stage が result_review、または search_intent が result_review の場合は、既存記事を結果確定後に更新する記事として書く。レース前の確認順へ戻さず、確定着順、展開の見直し、事前評価との差、次走へ残す材料を、reference_data.results と key_metrics の範囲だけで整理する。
+  - update_stage が post_race、または search_intent が result_review の場合は、既存記事を結果確定後に更新する記事として書く。レース前の確認順へ戻さず、確定着順、展開の見直し、事前評価との差、次走へ残す材料を、reference_data.results と key_metrics の範囲だけで整理する。
   - 追記更新を想定し、古い判断を消すのではなく「どの条件なら評価を上げるか」「どの条件なら見送るか」を更新後も読み返せる形にする。
   - 導入: レースの基本情報（開催場・コース・距離）を1〜2文で簡潔に。
   - コース傾向セクション必須: reference_data のデータから傾向をMarkdownテーブルで提示。
@@ -425,7 +425,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
   - reference_data.search_intent と competing_article_structure にないレース前キーワードをSEO目的で追加しない。枠順、追い切り、馬場を一律に並べず、選ばれた主題を深く掘り下げる。
   - reference_data.entity_type が "grade_race" の場合は重賞カレンダー記事として扱う。タイトルとkeywordsには、レース名、年、競馬場、距離またはコース種別を自然に含める。
   - update_stage が draw_confirmed の場合は、枠順発表後に出馬表で何を確認するかを中心にする。枠順そのものが入力にない場合は、枠順別の有利不利を断定せず、枠順と脚質・馬場を照合する手順に留める。
-  - update_stage が result_review、または search_intent が result_review の場合は、中央重賞の結果確定後更新として書く。reference_data.results にない着順、通過順、不利、コメントを補わず、確定結果とコース・距離条件から見直す材料を整理する。
+  - update_stage が post_race、または search_intent が result_review の場合は、重賞の結果確定後更新として書く。reference_data.results にない着順、通過順、不利、コメントを補わず、確定結果とコース・距離条件から見直す材料を整理する。
   - reference_data.predictions、course_stats、horse_number_advantages がある場合、数値同士を直前に確認する順序として接続する。
   - 地方競馬の重賞・交流重賞では、開催場名（大井、川崎、船橋、浦和、門別、園田、高知、佐賀、帯広など）、ナイター、馬場、距離、交流重賞の条件差を自然に含める。中央G1風の煽り見出しに寄せない。
   - 最新情報を断定しない。重賞記事のレース導線はページ側で検証後に表示するため、本文へ /races/today を置かない。
@@ -757,8 +757,11 @@ function normalizeDraftDrawMetadata(markdownText: string, order: WriteOrder): st
   try {
     const parsed = matter(markdownText);
     parsed.data.draw_status = drawStatus;
-    if (drawStatus !== 'confirmed' && parsed.data.update_stage === 'draw_confirmed') {
-      parsed.data.update_stage = 'one_week_before';
+    if (
+      drawStatus !== 'confirmed'
+      && ['draw_confirmed', 'final_48h', 'race_morning'].includes(String(parsed.data.update_stage || ''))
+    ) {
+      parsed.data.update_stage = 'race_week';
     }
     return matter.stringify(`${parsed.content.trim()}\n`, parsed.data);
   } catch {
@@ -769,6 +772,8 @@ function normalizeDraftDrawMetadata(markdownText: string, order: WriteOrder): st
 function normalizeDraftCalendarMetadata(markdownText: string, order: WriteOrder): string {
   const ref = order.reference_data || {};
   const updateStage = String(ref.update_stage || '').trim();
+  const scheduleMilestone = String(ref.schedule_milestone || '').trim();
+  const scheduleMilestones = String(ref.schedule_milestones || '').trim();
   const searchIntent = String(ref.search_intent || '').trim();
   const racePhase = String(ref.race_phase || '').trim();
   const scheduledRaceDate = String(ref.scheduled_race_date || '').trim();
@@ -795,6 +800,8 @@ function normalizeDraftCalendarMetadata(markdownText: string, order: WriteOrder)
   try {
     const parsed = matter(markdownText);
     if (updateStage) parsed.data.update_stage = updateStage;
+    if (scheduleMilestone) parsed.data.schedule_milestone = scheduleMilestone;
+    if (scheduleMilestones) parsed.data.schedule_milestones = scheduleMilestones;
     if (searchIntent) parsed.data.search_intent = searchIntent;
     if (racePhase) parsed.data.race_phase = racePhase;
     if (scheduledRaceDate) parsed.data.scheduled_race_date = scheduledRaceDate;

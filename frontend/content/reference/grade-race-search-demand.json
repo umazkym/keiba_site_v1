@@ -1,0 +1,42 @@
+{
+  "version": "2026-08-01",
+  "source": "Search Console finalized date-query-page rows",
+  "source_period": {
+    "start": "2026-07-02",
+    "end": "2026-07-29"
+  },
+  "thresholds": {
+    "high_impressions": 300,
+    "medium_impressions": 50
+  },
+  "races": {
+    "北九州記念": { "impressions": 22, "clicks": 1 },
+    "七夕賞": { "impressions": 116, "clicks": 3 },
+    "小倉記念": { "impressions": 4, "clicks": 0 },
+    "函館2歳S": { "impressions": 4, "clicks": 0 },
+    "関屋記念": { "impressions": 61, "clicks": 2 },
+    "東海S": { "impressions": 5, "clicks": 0 },
+    "アイビスサマーダッシュ": { "impressions": 1507, "clicks": 38 },
+    "クイーンS": { "impressions": 47, "clicks": 1 },
+    "マーキュリーカップ": { "impressions": 2668, "clicks": 106 },
+    "星雲賞": { "impressions": 398, "clicks": 32 },
+    "兵庫サマークイーン賞": { "impressions": 158, "clicks": 19 },
+    "旭川記念": { "impressions": 111, "clicks": 15 },
+    "やまびこ賞": { "impressions": 21, "clicks": 3 },
+    "ノースクイーンC": { "impressions": 159, "clicks": 17, "race_page_position": 15.73, "race_page_ctr": 0.1069 },
+    "霧島賞": { "impressions": 22, "clicks": 1 },
+    "いしがきマイラーズ": { "impressions": 103, "clicks": 8 },
+    "トレノ賞": { "impressions": 121, "clicks": 5 },
+    "リリーC": { "impressions": 6, "clicks": 2 },
+    "サンタアニタトロフィー": { "impressions": 26, "clicks": 8 },
+    "王冠賞": { "impressions": 39, "clicks": 3 },
+    "オパールC": { "impressions": 156, "clicks": 26 },
+    "名港盃": { "impressions": 45, "clicks": 4 },
+    "旭岳賞": { "impressions": 156, "clicks": 30 },
+    "スパーキングレディーカップ": { "impressions": 88, "clicks": 2 },
+    "ばんえい大賞典": { "impressions": 1, "clicks": 0 },
+    "サマーC": { "impressions": 4, "clicks": 1 },
+    "若鮎賞": { "impressions": 3, "clicks": 1 },
+    "ポラリスサマースプリント": { "impressions": 1, "clicks": 0 }
+  }
+}

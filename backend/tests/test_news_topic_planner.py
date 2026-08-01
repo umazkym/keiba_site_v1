@@ -9,8 +9,9 @@ from unittest.mock import patch
 
 os.environ["KEIBA_NEWS_REMOTE_SCHEDULE_ENABLED"] = "false"
 os.environ["KEIBA_NEWS_NOW"] = "2026-06-18"
-os.environ["KEIBA_NEWS_RACE_WINDOW_BEFORE_DAYS"] = "7"
+os.environ["KEIBA_NEWS_RACE_WINDOW_BEFORE_DAYS"] = "21"
 os.environ["KEIBA_NEWS_RACE_WINDOW_AFTER_DAYS"] = "3"
+os.environ["KEIBA_NEWS_DB_ENRICH_ENABLED"] = "false"
 
 PLANNER_PATH = Path(__file__).resolve().parents[1] / "scripts" / "agents" / "news_topic_planner.py"
 SPEC = importlib.util.spec_from_file_location("news_topic_planner_test_target", PLANNER_PATH)
@@ -64,15 +65,15 @@ class NewsTopicPlannerTest(unittest.TestCase):
 
         joined = "\n".join(state.queries)
         self.assertIn("さきたま杯", joined)
-        self.assertIn("府中牝馬S", joined)
         self.assertIn("しらさぎS", joined)
-        self.assertNotIn("帝王賞", joined)
+        self.assertIn("帝王賞", joined)
         self.assertLessEqual(joined.count("追い切り"), 1)
         self.assertLessEqual(joined.count("枠順"), 1)
 
-    def test_focus_window_is_seven_days_before_and_three_days_after(self) -> None:
+    def test_focus_window_is_twenty_one_days_before_and_three_days_after(self) -> None:
         self.assertTrue(planner.is_in_focus_window(7))
-        self.assertFalse(planner.is_in_focus_window(8))
+        self.assertTrue(planner.is_in_focus_window(21))
+        self.assertFalse(planner.is_in_focus_window(22))
         self.assertTrue(planner.is_in_focus_window(-3))
         self.assertFalse(planner.is_in_focus_window(-4))
 
@@ -83,6 +84,49 @@ class NewsTopicPlannerTest(unittest.TestCase):
         self.assertLess(planner.grade_priority_rank("JpnII"), planner.grade_priority_rank("G3"))
         self.assertLess(planner.grade_priority_rank("G3"), planner.grade_priority_rank("JpnIII"))
         self.assertLess(planner.grade_priority_rank("JpnIII"), planner.grade_priority_rank("重賞"))
+
+    def test_article_lead_days_follow_grade_and_observed_demand(self) -> None:
+        g1 = planner.RaceDemand("確認G1", ("確認G1",), 12, 1, "G1", 40, source_kind="jra")
+        g2 = planner.RaceDemand("確認G2", ("確認G2",), 12, 1, "G2", 36, source_kind="jra")
+        g3 = planner.RaceDemand("確認G3", ("確認G3",), 12, 1, "G3", 30, source_kind="jra")
+        mercury = planner.find_race_demand("マーキュリーカップ")
+        banei = planner.RaceDemand("ばんえい大賞典", ("ばんえい大賞典",), 7, 20, "重賞", 22, source_kind="nar")
+
+        self.assertEqual(planner.race_article_initial_lead_days(g1), 21)
+        self.assertEqual(planner.race_article_initial_lead_days(g2), 14)
+        self.assertEqual(planner.race_article_initial_lead_days(g3), 10)
+        self.assertIsNotNone(mercury)
+        self.assertEqual(planner.race_article_initial_lead_days(mercury), 9)
+        self.assertIsNone(planner.race_article_initial_lead_days(banei))
+
+    def test_replays_four_observed_search_demand_patterns(self) -> None:
+        ibis = planner.find_race_demand("アイビスサマーダッシュ")
+        mercury = planner.find_race_demand("マーキュリーカップ")
+        opal = planner.find_race_demand("オパールC")
+        north_queen = planner.find_race_demand("ノースクイーンC")
+
+        self.assertIsNotNone(ibis)
+        self.assertIsNotNone(mercury)
+        self.assertIsNotNone(opal)
+        self.assertIsNotNone(north_queen)
+        self.assertEqual(planner.race_article_initial_lead_days(ibis), 10)
+        self.assertEqual(planner.race_article_initial_lead_days(mercury), 9)
+        self.assertEqual(planner.race_article_initial_lead_days(opal), 3)
+        self.assertEqual(planner.race_article_initial_lead_days(north_queen), 3)
+        self.assertTrue(planner.is_race_article_eligible(north_queen))
+
+    def test_schedule_milestone_history_prevents_duplicate_stage_generation(self) -> None:
+        fields = {
+            "entity_type": "grade_race",
+            "entity_key": "ibis-summer-dash",
+            "season_year": "2026",
+            "schedule_milestone": "draw_confirmed",
+            "schedule_milestones": "initial,race_week_d7,draw_confirmed",
+        }
+        keys = planner.grade_race_stage_keys_from_fields(fields)
+        self.assertIn("ibis-summer-dash:2026:initial", keys)
+        self.assertIn("ibis-summer-dash:2026:race_week_d7", keys)
+        self.assertIn("ibis-summer-dash:2026:draw_confirmed", keys)
 
     def test_grade_write_order_is_generated_without_gsc_configuration(self) -> None:
         previous_now = os.environ.get("KEIBA_NEWS_NOW")
@@ -139,7 +183,7 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 os.environ["KEIBA_NEWS_NOW"] = previous_now
             planner._RACE_SCHEDULE_CACHE.clear()
 
-    def test_calendar_deadline_generates_jra_draw_article_with_course_keywords(self) -> None:
+    def test_confirmed_db_draw_generates_jra_draw_update_with_course_keywords(self) -> None:
         previous_now = os.environ.get("KEIBA_NEWS_NOW")
         previous_max_orders = os.environ.get("KEIBA_NEWS_MAX_ORDERS_PER_RUN")
         os.environ["KEIBA_NEWS_NOW"] = "2026-07-03T11:45:00+09:00"
@@ -155,7 +199,19 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 patch.object(planner, "load_pending_order_keywords", return_value=set()),
                 patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
                 patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
-                patch.object(planner, "build_internal_data_bundle", return_value={}),
+                patch.object(planner, "grade_race_has_confirmed_draw", return_value=True),
+                patch.object(
+                    planner,
+                    "build_internal_data_bundle",
+                    return_value={
+                        "matched_race": {"total_horses": 3},
+                        "predictions": [
+                            {"馬番": "1枠1番"},
+                            {"馬番": "2枠2番"},
+                            {"馬番": "3枠3番"},
+                        ],
+                    },
+                ),
             ):
                 planner.cluster_topics_node(state)
                 planner.build_write_orders_node(state)
@@ -170,7 +226,8 @@ class NewsTopicPlannerTest(unittest.TestCase):
             self.assertEqual(order["reference_data"]["draw_status"], "confirmed")
             self.assertIn("北九州記念 小倉", order["reference_data"]["keywords"])
             self.assertIn("小倉芝1200m 傾向", order["reference_data"]["keywords"])
-            self.assertEqual(order["priority"], planner.grade_calendar_priority("G3", "due_preview"))
+            self.assertEqual(order["reference_data"]["schedule_milestone"], "draw_confirmed")
+            self.assertEqual(order["priority"], planner.grade_calendar_priority("G3", "due_draw_confirmed"))
         finally:
             if previous_now is None:
                 os.environ.pop("KEIBA_NEWS_NOW", None)
@@ -182,7 +239,7 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 os.environ["KEIBA_NEWS_MAX_ORDERS_PER_RUN"] = previous_max_orders
             planner._RACE_SCHEDULE_CACHE.clear()
 
-    def test_missed_preview_is_backfilled_until_race_day(self) -> None:
+    def test_unconfirmed_draw_never_advances_beyond_race_week(self) -> None:
         previous_now = os.environ.get("KEIBA_NEWS_NOW")
         os.environ["KEIBA_NEWS_NOW"] = "2026-07-05T08:00:00+09:00"
         planner._RACE_SCHEDULE_CACHE.clear()
@@ -206,7 +263,9 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 for order in state.write_orders
                 if order["reference_data"]["race_name"] == "北九州記念"
             )
-            self.assertEqual(order["reference_data"]["deadline_status"], "missed_preview")
+            self.assertEqual(order["reference_data"]["deadline_status"], "due_race_week")
+            self.assertEqual(order["reference_data"]["update_stage"], "race_week")
+            self.assertEqual(order["reference_data"]["draw_status"], "pre_draw")
         finally:
             if previous_now is None:
                 os.environ.pop("KEIBA_NEWS_NOW", None)
@@ -236,7 +295,17 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 patch.object(planner, "load_existing_grade_race_stage_keys", return_value={preview_key}),
                 patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
                 patch.object(planner, "grade_race_has_results", return_value=True),
-                patch.object(planner, "build_internal_data_bundle", return_value={"results": [{"着順": 1, "馬番": 1, "馬名": "確認馬"}]}),
+                patch.object(
+                    planner,
+                    "build_internal_data_bundle",
+                    return_value={
+                        "results": [
+                            {"着順": 1, "馬番": 1, "馬名": "確認馬1"},
+                            {"着順": 2, "馬番": 2, "馬名": "確認馬2"},
+                            {"着順": 3, "馬番": 3, "馬名": "確認馬3"},
+                        ]
+                    },
+                ),
             ):
                 planner.cluster_topics_node(state)
                 planner.build_write_orders_node(state)
@@ -247,7 +316,7 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 if order["reference_data"]["race_name"] == "北九州記念"
             )
             self.assertEqual(order["target_keyword"], "北九州記念2026 結果 回顧")
-            self.assertEqual(order["reference_data"]["update_stage"], "result_review")
+            self.assertEqual(order["reference_data"]["update_stage"], "post_race")
             self.assertTrue(order["reference_data"]["result_confirmed"])
             self.assertEqual(order["reference_data"]["race_phase"], "post_race")
             self.assertEqual(order["reference_data"]["entity_key"], "kitakyushu-kinen")
@@ -258,7 +327,7 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 os.environ["KEIBA_NEWS_NOW"] = previous_now
             planner._RACE_SCHEDULE_CACHE.clear()
 
-    def test_nar_grade_does_not_generate_result_review(self) -> None:
+    def test_nar_grade_generates_post_race_only_after_results_are_confirmed(self) -> None:
         previous_now = os.environ.get("KEIBA_NEWS_NOW")
         os.environ["KEIBA_NEWS_NOW"] = "2026-07-08T16:45:00+09:00"
         planner._RACE_SCHEDULE_CACHE.clear()
@@ -282,7 +351,8 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 if candidate.search_intent == "result_review"
                 and candidate.race_name == "スパーキングレディーカップ"
             ]
-            self.assertEqual(result_candidates, [])
+            self.assertEqual(len(result_candidates), 1)
+            self.assertEqual(result_candidates[0].update_stage, "post_race")
         finally:
             if previous_now is None:
                 os.environ.pop("KEIBA_NEWS_NOW", None)
@@ -418,8 +488,8 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 for order in state.write_orders
                 if order["reference_data"]["race_name"] == "北九州記念"
             )
-            self.assertEqual(kitakyushu_order["target_keyword"], "北九州記念2026 枠順確定後 確認ポイント")
-            self.assertEqual(kitakyushu_order["reference_data"]["deadline_status"], "missed_preview")
+            self.assertEqual(kitakyushu_order["target_keyword"], "北九州記念2026 出走予定 比較データ")
+            self.assertEqual(kitakyushu_order["reference_data"]["deadline_status"], "due_race_week")
             self.assertEqual(kitakyushu_order["reference_data"]["scheduled_race_date"], "2026-07-05")
             self.assertEqual(kitakyushu_order["reference_data"]["entity_key"], "kitakyushu-kinen")
         finally:

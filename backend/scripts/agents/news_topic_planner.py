@@ -52,6 +52,13 @@ GRADE_RACE_ENTITY_REGISTRY_PATH = os.path.join(
     "reference",
     "grade-race-entities.json",
 )
+GRADE_RACE_SEARCH_DEMAND_PATH = os.path.join(
+    PROJECT_ROOT,
+    "frontend",
+    "content",
+    "reference",
+    "grade-race-search-demand.json",
+)
 LOCAL_JRA_GRADE_SCHEDULE_PATH = os.path.join(PROJECT_ROOT, "中央競馬重賞一覧.txt")
 LOCAL_NAR_GRADE_SCHEDULE_PATH = os.path.join(PROJECT_ROOT, "地方競馬重賞一覧.txt")
 
@@ -62,8 +69,16 @@ CENTRAL_RESULT_READY_HOUR = 16
 CENTRAL_RESULT_READY_MINUTE = 45
 NAR_PREVIEW_READY_HOUR = 8
 NAR_PREVIEW_READY_MINUTE = 0
-PREVIEW_STAGE_KEY = "preview"
-RESULT_REVIEW_STAGE_KEY = "result_review"
+INITIAL_STAGE_KEY = "initial"
+FIELD_REFRESH_STAGE_KEY = "field_refresh_d14"
+RACE_WEEK_STAGE_KEY = "race_week_d7"
+DRAW_CONFIRMED_STAGE_KEY = "draw_confirmed"
+FINAL_48H_STAGE_KEY = "final_48h"
+RACE_MORNING_STAGE_KEY = "race_morning"
+POST_RACE_STAGE_KEY = "post_race"
+# 既存テスト・履歴との互換名。新規処理では実際のマイルストーンを使う。
+PREVIEW_STAGE_KEY = INITIAL_STAGE_KEY
+RESULT_REVIEW_STAGE_KEY = POST_RACE_STAGE_KEY
 
 SessionLocal = None  # type: ignore[assignment]
 models = None  # type: ignore[assignment]
@@ -483,6 +498,7 @@ class TopicCandidate:
     is_schedule_backfill: bool = False
     update_stage: str = ""
     deadline_status: str = ""
+    schedule_milestone: str = ""
     order_priority: int = 0
     seo_keywords: List[str] = field(default_factory=list)
 
@@ -695,13 +711,84 @@ def grade_priority_rank(grade: str) -> int:
 
 
 def grade_calendar_priority(grade: str, deadline_status: str = "") -> int:
+    urgent_priority = {
+        "due_draw_confirmed": 105,
+        "due_final_48h": 110,
+        "due_race_morning": 115,
+        "due_post_race": 120,
+        "due_result_review": 120,
+    }.get(deadline_status)
+    if urgent_priority is not None:
+        return urgent_priority
     rank = grade_priority_rank(grade)
     base = max(82, 102 - rank * 3)
-    if deadline_status == "missed_preview":
-        base += 3
-    if deadline_status == "due_result_review":
-        base += 2
+    urgency_bonus = {
+        "due_initial": 0,
+        "due_field_refresh": 1,
+        "due_race_week": 2,
+        # 旧WriteOrderとの互換
+        "missed_preview": 3,
+    }.get(deadline_status, 0)
+    base += urgency_bonus
     return min(99, base)
+
+
+def load_grade_race_search_demand() -> Dict[str, Dict[str, Any]]:
+    """確定済みGSC監査から作った重賞別需要スナップショットを読む。"""
+    try:
+        with open(GRADE_RACE_SEARCH_DEMAND_PATH, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        races = payload.get("races") if isinstance(payload, dict) else None
+        if not isinstance(races, dict):
+            return {}
+        return {
+            str(name): dict(metrics)
+            for name, metrics in races.items()
+            if isinstance(metrics, dict)
+        }
+    except (OSError, ValueError, TypeError) as error:
+        print(f"[Planner] 重賞検索需要スナップショットを読めません: {error}")
+        return {}
+
+
+GRADE_RACE_SEARCH_DEMAND = load_grade_race_search_demand()
+
+
+def search_demand_profile(entry: RaceDemand) -> Dict[str, Any]:
+    aliases = (entry.name, *entry.aliases)
+    normalized_aliases = {normalize_race_alias(alias) for alias in aliases}
+    for race_name, profile in GRADE_RACE_SEARCH_DEMAND.items():
+        if normalize_race_alias(race_name) in normalized_aliases:
+            return profile
+    return {}
+
+
+def race_article_initial_lead_days(entry: RaceDemand) -> Optional[int]:
+    """過去需要と格に基づく最初の公開日。Noneは記事を作らない。"""
+    grade = normalize_grade_label(entry.grade)
+    if grade in {"G1", "JpnI"}:
+        return 21
+    if grade in {"G2", "JpnII"}:
+        return 14
+    if is_jra_grade_entry(entry) and grade == "G3":
+        return 10
+
+    profile = search_demand_profile(entry)
+    impressions = float(profile.get("impressions") or 0)
+    race_page_position = float(profile.get("race_page_position") or 0)
+    race_page_ctr = float(profile.get("race_page_ctr") or 0)
+    if race_page_position and race_page_position <= 10 and race_page_ctr >= 0.10:
+        return None
+    if impressions >= 300:
+        return 9
+    if profile and impressions < 50:
+        return None
+    # 過去データがない地方重賞、または50〜299表示の地方重賞。
+    return 3
+
+
+def is_race_article_eligible(entry: RaceDemand) -> bool:
+    return race_article_initial_lead_days(entry) is not None
 
 
 def is_jra_grade_entry(entry: RaceDemand) -> bool:
@@ -1086,7 +1173,7 @@ def result_review_is_due(entry: RaceDemand, days_to_race: int, now: Optional[dat
 
 
 def focus_window() -> Tuple[int, int]:
-    before = parse_positive_int(os.environ.get("KEIBA_NEWS_RACE_WINDOW_BEFORE_DAYS"), 7)
+    before = parse_positive_int(os.environ.get("KEIBA_NEWS_RACE_WINDOW_BEFORE_DAYS"), 21)
     after = parse_positive_int(os.environ.get("KEIBA_NEWS_RACE_WINDOW_AFTER_DAYS"), 3)
     return before, after
 
@@ -1107,6 +1194,8 @@ def race_window_score(days_to_race: Optional[int]) -> float:
         return 28
     if 8 <= days_to_race <= 14:
         return 18
+    if 15 <= days_to_race <= 21:
+        return 12
     if days_to_race < 0:
         return 12
     return 10
@@ -1406,6 +1495,42 @@ def infer_stage_key_year(fields: Dict[str, Any]) -> str:
     return str(current_jst().year)
 
 
+def normalize_update_stage(value: Any) -> str:
+    stage = str(value or "").strip()
+    return {
+        "one_week_before": "race_week",
+        "eve_update": "final_48h",
+        "result_review": "post_race",
+    }.get(stage, stage)
+
+
+def milestones_from_fields(fields: Dict[str, Any]) -> Set[str]:
+    raw_history = fields.get("schedule_milestones")
+    if isinstance(raw_history, (list, tuple, set)):
+        values = [str(value).strip() for value in raw_history]
+    else:
+        values = re.split(r"\s*,\s*", str(raw_history or ""))
+    milestones = {value for value in values if value}
+
+    current = str(fields.get("schedule_milestone") or "").strip()
+    if current:
+        milestones.add(current)
+    if milestones:
+        return milestones
+
+    # 旧記事は現在段階だけを最低限の履歴として扱う。
+    stage = normalize_update_stage(fields.get("update_stage"))
+    fallback = {
+        "field_building": INITIAL_STAGE_KEY,
+        "race_week": RACE_WEEK_STAGE_KEY,
+        "draw_confirmed": DRAW_CONFIRMED_STAGE_KEY,
+        "final_48h": FINAL_48H_STAGE_KEY,
+        "race_morning": RACE_MORNING_STAGE_KEY,
+        "post_race": POST_RACE_STAGE_KEY,
+    }.get(stage)
+    return {fallback} if fallback else set()
+
+
 def grade_race_stage_keys_from_fields(fields: Dict[str, Any]) -> Set[str]:
     text_value = " ".join(
         str(fields.get(key) or "")
@@ -1422,21 +1547,11 @@ def grade_race_stage_keys_from_fields(fields: Dict[str, Any]) -> Set[str]:
         return set()
 
     season_year = infer_stage_key_year(fields)
-    search_intent = str(fields.get("search_intent") or "").strip()
-    update_stage = str(fields.get("update_stage") or "").strip()
-    keys: Set[str] = set()
-    preview_key = grade_race_stage_key(entity_key, season_year, PREVIEW_STAGE_KEY)
-    result_key = grade_race_stage_key(entity_key, season_year, RESULT_REVIEW_STAGE_KEY)
-    if search_intent == "result_review" or update_stage == "result_review":
-        if preview_key:
-            keys.add(preview_key)
-        if result_key:
-            keys.add(result_key)
-        return keys
-
-    if preview_key:
-        keys.add(preview_key)
-    return keys
+    return {
+        key
+        for milestone in milestones_from_fields(fields)
+        if (key := grade_race_stage_key(entity_key, season_year, milestone))
+    }
 
 
 def load_existing_grade_race_stage_keys() -> Set[str]:
@@ -1579,6 +1694,7 @@ def schedule_backfill_candidate(
     search_intent_override: str = "",
     update_stage: str = "",
     deadline_status: str = "",
+    schedule_milestone: str = "",
 ) -> TopicCandidate:
     base_now = now or current_jst()
     scheduled_date = race_demand_date(entry, base_now)
@@ -1616,7 +1732,7 @@ def schedule_backfill_candidate(
         allowed_claims=[claim],
     )
     if search_intent == "waku":
-        search_angle_label = "枠順確定後"
+        search_angle_label = "枠順発表後" if update_stage == "draw_confirmed" else "枠順発表前"
     elif search_intent == "result_review":
         search_angle_label = "結果回顧"
     else:
@@ -1636,19 +1752,41 @@ def schedule_backfill_candidate(
         search_angle_label,
         entry,
     )
-    if search_intent == "waku":
+    if search_intent == "waku" and update_stage == "draw_confirmed":
         target_keyword = f"{entry.name}{scheduled_date.year} 枠順確定後 確認ポイント"
-    if search_intent == "result_review":
+    elif search_intent == "result_review":
         target_keyword = f"{entry.name}{scheduled_date.year} 結果 回顧"
+    elif update_stage == "field_building":
+        target_keyword = f"{entry.name}{scheduled_date.year} 出走予定 開催概要 コース傾向"
+    elif update_stage == "race_week":
+        target_keyword = f"{entry.name}{scheduled_date.year} 出走予定 比較データ"
+    elif update_stage == "final_48h":
+        target_keyword = f"{entry.name}{scheduled_date.year} 枠順確定後 最終確認"
+    elif update_stage == "race_morning":
+        target_keyword = f"{entry.name}{scheduled_date.year} 当日 馬場 確認ポイント"
     if not update_stage:
         if search_intent == "result_review":
-            update_stage = "result_review"
+            update_stage = "post_race"
         elif search_intent == "waku":
             update_stage = "draw_confirmed"
         elif days_to_race == 0:
             update_stage = "race_morning"
+        elif days_to_race <= 2:
+            update_stage = "final_48h"
+        elif days_to_race <= 7:
+            update_stage = "race_week"
         else:
-            update_stage = "one_week_before"
+            update_stage = "field_building"
+    if not schedule_milestone:
+        schedule_milestone = {
+            "field_building": INITIAL_STAGE_KEY,
+            "race_week": RACE_WEEK_STAGE_KEY,
+            "draw_confirmed": DRAW_CONFIRMED_STAGE_KEY,
+            "final_48h": FINAL_48H_STAGE_KEY,
+            "race_morning": RACE_MORNING_STAGE_KEY,
+            "post_race": POST_RACE_STAGE_KEY,
+            "result_review": POST_RACE_STAGE_KEY,
+        }.get(update_stage, "")
     seo_keywords = seo_keywords_for_grade_race(entry, scheduled_date, search_intent, search_angle_label)
     status_reason = {
         "due_preview": "重賞カレンダー締切到達",
@@ -1676,6 +1814,7 @@ def schedule_backfill_candidate(
         is_schedule_backfill=True,
         update_stage=update_stage,
         deadline_status=deadline_status,
+        schedule_milestone=schedule_milestone,
         order_priority=grade_calendar_priority(entry.grade, deadline_status),
         seo_keywords=seo_keywords,
     )
@@ -2098,73 +2237,46 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
 
     grade_stage_keys = load_existing_grade_race_stage_keys() | load_pending_grade_race_stage_keys()
 
-    # 重賞カレンダーの締切が来た記事は、Tavily検索結果の偶然に左右されず
-    # 必ず候補化する。中央は枠順確定後と結果反映後、地方は2日前直前記事だけを扱う。
+    # Tavilyの有無とは独立して、重賞ごとの需要時期と事実の反映状況から
+    # 同一年度記事の次の更新だけを候補化する。枠順・結果はDB確認なしで進めない。
     added_calendar_stage_keys: Set[str] = set()
-    for entry, days_to_race in focus_races():
+    max_focus_races = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_FOCUS_RACES"), 10), 12)
+    for entry, days_to_race in focus_races()[:max_focus_races]:
+        if not is_race_article_eligible(entry):
+            continue
         identity_key = grade_race_identity_key(entry)
+        entity_key = grade_race_entity_key(entry.name)
+        if not entity_key:
+            state.issues.append(f"重賞識別レジストリ未登録のため記事候補を停止: {entry.name}")
+            continue
         season_year = str(race_demand_date(entry).year)
-        preview_key = grade_race_stage_key(identity_key, season_year, PREVIEW_STAGE_KEY)
-        result_key = grade_race_stage_key(identity_key, season_year, RESULT_REVIEW_STAGE_KEY)
-
-        status = preview_deadline_status(entry, days_to_race)
-        if status and preview_key not in grade_stage_keys and preview_key not in added_calendar_stage_keys:
-            search_intent = "waku" if is_jra_grade_entry(entry) else "field_analysis"
+        draw_confirmed = days_to_race <= 3 and grade_race_has_confirmed_draw(entry)
+        result_confirmed = days_to_race <= 0 and grade_race_has_results(entry)
+        due_milestones = due_grade_race_milestones(
+            entry,
+            days_to_race,
+            draw_confirmed=draw_confirmed,
+            result_confirmed=result_confirmed,
+        )
+        for milestone, update_stage, search_intent, deadline_status in due_milestones:
+            stage_key = grade_race_stage_key(identity_key, season_year, milestone)
+            if stage_key in grade_stage_keys or stage_key in added_calendar_stage_keys:
+                continue
             candidates.append(
                 schedule_backfill_candidate(
                     entry,
                     days_to_race,
                     search_intent_override=search_intent,
-                    update_stage="draw_confirmed" if search_intent == "waku" else ("race_morning" if days_to_race == 0 else "one_week_before"),
-                    deadline_status=status,
+                    update_stage=update_stage,
+                    deadline_status=deadline_status,
+                    schedule_milestone=milestone,
                 )
             )
-            added_calendar_stage_keys.add(preview_key)
-
-        if (
-            result_review_is_due(entry, days_to_race)
-            and result_key not in grade_stage_keys
-            and result_key not in added_calendar_stage_keys
-            and grade_race_has_results(entry)
-        ):
-            candidates.append(
-                schedule_backfill_candidate(
-                    entry,
-                    days_to_race,
-                    search_intent_override="result_review",
-                    update_stage="result_review",
-                    deadline_status="due_result_review",
-                )
-            )
-            added_calendar_stage_keys.add(result_key)
-
-    # Tavilyの検索結果に適切な記事がない場合でも、直近の公式重賞日程から
-    # 最低限の記事候補を補完する。これにより、検索結果の偶然に左右されて
-    # 府中牝馬Sなど開催直前の重賞が丸ごと候補から消えることを防ぐ。
-    represented_races = {
-        normalize_race_alias(candidate.race_name or candidate.calendar_race)
-        for candidate in candidates
-        if candidate.race_name or candidate.calendar_race
-    }
-    published_or_pending_keywords = load_existing_article_keywords() | load_pending_order_keywords()
-    max_focus_races = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_FOCUS_RACES"), 4), 6)
-    for entry, days_to_race in focus_races()[:max_focus_races]:
-        if days_to_race < 0:
-            continue
-        race_key = normalize_race_alias(entry.name)
-        if race_key in represented_races:
-            continue
-        race_year_key = normalize_key(f"{entry.name}{race_demand_date(entry).year}")
-        if any(race_year_key in normalize_key(keyword) for keyword in published_or_pending_keywords):
-            continue
-        identity_key = grade_race_identity_key(entry)
-        season_year = str(race_demand_date(entry).year)
-        preview_key = grade_race_stage_key(identity_key, season_year, PREVIEW_STAGE_KEY)
-        if preview_key in grade_stage_keys or preview_key in added_calendar_stage_keys:
-            continue
-
-        candidates.append(schedule_backfill_candidate(entry, days_to_race))
-        represented_races.add(race_key)
+            for completed in completed_milestones_for(milestone):
+                completed_key = grade_race_stage_key(identity_key, season_year, completed)
+                if completed_key:
+                    added_calendar_stage_keys.add(completed_key)
+            break
 
     state.topic_candidates = sorted(
         candidates,
@@ -2403,6 +2515,8 @@ def race_result_rows(db: Any, race_id: str) -> List[Dict[str, Any]]:
 
 
 def grade_race_has_results(entry: RaceDemand, now: Optional[datetime] = None) -> bool:
+    if os.environ.get("KEIBA_NEWS_DB_ENRICH_ENABLED", "true").lower() in {"0", "false", "no"}:
+        return False
     if not ensure_db_modules() or SessionLocal is None or models is None:
         return False
 
@@ -2429,6 +2543,98 @@ def grade_race_has_results(entry: RaceDemand, now: Optional[datetime] = None) ->
         return False
     finally:
         db.close()
+
+
+def grade_race_has_confirmed_draw(entry: RaceDemand, now: Optional[datetime] = None) -> bool:
+    """該当レースの馬番・枠番がDBへ反映済みの場合だけTrueにする。"""
+    if os.environ.get("KEIBA_NEWS_DB_ENRICH_ENABLED", "true").lower() in {"0", "false", "no"}:
+        return False
+    if not ensure_db_modules() or SessionLocal is None or models is None:
+        return False
+
+    base_now = now or current_jst()
+    target_date = race_demand_date(entry, base_now)
+    aliases = [entry.name, *entry.aliases]
+    db = SessionLocal()
+    try:
+        races = db.query(models.Race).filter(models.Race.race_date == target_date).all()
+        scored = [(matching_race_score(race, aliases, target_date), race) for race in races]
+        scored.sort(key=lambda item: item[0], reverse=True)
+        if not scored or scored[0][0] < 70:
+            return False
+        race = scored[0][1]
+        total_horses = int(getattr(race, "total_horses", 0) or 0)
+        if total_horses < 2:
+            return False
+        numbered = (
+            db.query(models.Prediction)
+            .filter(models.Prediction.race_id == getattr(race, "id", ""))
+            .filter(models.Prediction.horse_number.isnot(None))
+            .filter(models.Prediction.waku_number.isnot(None))
+            .count()
+        )
+        return numbered >= min(total_horses, 3)
+    except Exception:
+        return False
+    finally:
+        db.close()
+
+
+GRADE_RACE_MILESTONE_ORDER = (
+    INITIAL_STAGE_KEY,
+    FIELD_REFRESH_STAGE_KEY,
+    RACE_WEEK_STAGE_KEY,
+    DRAW_CONFIRMED_STAGE_KEY,
+    FINAL_48H_STAGE_KEY,
+    RACE_MORNING_STAGE_KEY,
+    POST_RACE_STAGE_KEY,
+)
+
+
+def completed_milestones_for(milestone: str) -> List[str]:
+    if milestone not in GRADE_RACE_MILESTONE_ORDER:
+        return [milestone] if milestone else []
+    index = GRADE_RACE_MILESTONE_ORDER.index(milestone)
+    return list(GRADE_RACE_MILESTONE_ORDER[: index + 1])
+
+
+def due_grade_race_milestones(
+    entry: RaceDemand,
+    days_to_race: int,
+    *,
+    now: Optional[datetime] = None,
+    draw_confirmed: bool = False,
+    result_confirmed: bool = False,
+) -> List[Tuple[str, str, str, str]]:
+    """期限到達済みのマイルストーンを優先度順に返す。
+
+    tupleは (milestone, update_stage, search_intent, deadline_status)。
+    """
+    lead_days = race_article_initial_lead_days(entry)
+    if lead_days is None or days_to_race < -focus_window()[1] or days_to_race > lead_days:
+        return []
+
+    base_now = now or current_jst()
+    due: List[Tuple[str, str, str, str]] = []
+    if (
+        result_confirmed
+        and days_to_race <= 0
+        and base_now >= result_review_deadline_at(entry, base_now)
+    ):
+        due.append((POST_RACE_STAGE_KEY, "post_race", "result_review", "due_post_race"))
+    if days_to_race == 0 and draw_confirmed and base_now.hour >= NAR_PREVIEW_READY_HOUR:
+        due.append((RACE_MORNING_STAGE_KEY, "race_morning", "track_condition", "due_race_morning"))
+    if 0 <= days_to_race <= 1 and draw_confirmed:
+        due.append((FINAL_48H_STAGE_KEY, "final_48h", "field_analysis", "due_final_48h"))
+    if days_to_race >= 0 and draw_confirmed:
+        due.append((DRAW_CONFIRMED_STAGE_KEY, "draw_confirmed", "waku", "due_draw_confirmed"))
+    if 0 <= days_to_race <= 7 and lead_days >= 7:
+        due.append((RACE_WEEK_STAGE_KEY, "race_week", "field_analysis", "due_race_week"))
+    if 0 <= days_to_race <= 14 and lead_days >= 21:
+        due.append((FIELD_REFRESH_STAGE_KEY, "field_building", "entries", "due_field_refresh"))
+    if 0 <= days_to_race <= lead_days:
+        due.append((INITIAL_STAGE_KEY, "field_building", "field_analysis", "due_initial"))
+    return due
 
 
 def course_stat_rows(db: Any, race: Any) -> List[Dict[str, Any]]:
@@ -2590,6 +2796,22 @@ def build_internal_data_bundle(candidate: TopicCandidate) -> Dict[str, Any]:
         return {"db_enrichment_error": str(exc)}
     finally:
         db.close()
+
+
+def internal_data_has_confirmed_draw(internal_data: Dict[str, Any]) -> bool:
+    matched = internal_data.get("matched_race")
+    predictions = internal_data.get("predictions")
+    if not isinstance(matched, dict) or not isinstance(predictions, list) or not predictions:
+        return False
+    total_horses = int(matched.get("total_horses") or 0)
+    numbered = 0
+    for row in predictions:
+        if not isinstance(row, dict):
+            continue
+        horse_label = str(row.get("馬番") or "")
+        if re.search(r"\d+番", horse_label):
+            numbered += 1
+    return total_horses >= 2 and numbered >= min(total_horses, 3)
 
 
 def internal_metric_rows(internal_data: Dict[str, Any]) -> List[Dict[str, str]]:
@@ -2891,6 +3113,47 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
         is_overseas = bool(OVERSEAS_KEYWORDS.search(joined_text))
 
         internal_data = build_internal_data_bundle(candidate)
+        draw_confirmed = internal_data_has_confirmed_draw(internal_data)
+        result_rows = internal_data.get("results") if isinstance(internal_data.get("results"), list) else []
+        result_confirmed = len(result_rows) >= 3
+        update_stage = normalize_update_stage(candidate.update_stage)
+        if not update_stage:
+            if candidate.search_intent == "result_review":
+                update_stage = "post_race"
+            elif candidate.days_to_race == 0:
+                update_stage = "race_morning" if draw_confirmed else "race_week"
+            elif candidate.days_to_race is not None and candidate.days_to_race <= 2:
+                update_stage = "final_48h" if draw_confirmed else "race_week"
+            elif candidate.days_to_race is not None and candidate.days_to_race <= 7:
+                update_stage = "race_week"
+            else:
+                update_stage = "field_building"
+
+        if update_stage in {"draw_confirmed", "final_48h", "race_morning"} and not draw_confirmed:
+            if candidate.is_schedule_backfill:
+                state.issues.append(
+                    f"馬番・枠番未確認のため段階更新を停止: {candidate.race_name} / {update_stage}"
+                )
+                continue
+            update_stage = "race_week" if (candidate.days_to_race or 0) <= 7 else "field_building"
+            if candidate.search_intent == "waku":
+                candidate.search_intent = "field_analysis"
+                candidate.search_intent_label = "出走構成・適性"
+                candidate.search_angle_label = "枠順発表前"
+        if update_stage == "post_race" and not result_confirmed:
+            state.issues.append(f"確定結果不足のため結果更新を停止: {candidate.race_name}")
+            continue
+
+        candidate.update_stage = update_stage
+        if not candidate.schedule_milestone:
+            candidate.schedule_milestone = {
+                "field_building": INITIAL_STAGE_KEY,
+                "race_week": RACE_WEEK_STAGE_KEY,
+                "draw_confirmed": DRAW_CONFIRMED_STAGE_KEY,
+                "final_48h": FINAL_48H_STAGE_KEY,
+                "race_morning": RACE_MORNING_STAGE_KEY,
+                "post_race": POST_RACE_STAGE_KEY,
+            }.get(update_stage, "")
         source_urls = [card.url for card in candidate.source_cards]
         key_metrics = source_cards_to_claim_rows(candidate.source_cards) + internal_metric_rows(internal_data)
         if not key_metrics:
@@ -2902,26 +3165,24 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
         if isinstance(matched_race, dict) and matched_race.get("race_url"):
             race_url = str(matched_race["race_url"])
 
-        draw_status = ""
-        if candidate.search_intent == "waku":
-            draw_status = "confirmed" if (
-                candidate.update_stage == "draw_confirmed"
-                or candidate.search_angle_label in {"枠順発表後", "枠順確定後"}
-            ) else "pre_draw"
+        draw_status = "confirmed" if draw_confirmed else "pre_draw"
 
         schedule_entry = find_race_demand(joined_text, race_name)
         scheduled_date = race_demand_date(schedule_entry).isoformat() if schedule_entry else ""
         phase = (
             "post_race"
-            if candidate.search_intent == "result_review"
+            if update_stage == "post_race"
             else (race_phase(candidate.days_to_race) if candidate.days_to_race is not None else "")
         )
         entity_source_name = race_name or calendar_race
         entity_key = grade_race_entity_key(entity_source_name) if entity_source_name else ""
         entity_path = grade_race_canonical_path(entity_key)
         canonical_path = ""
-        season_year = int(scheduled_date[:4]) if entity_key and scheduled_date else current_jst().year
+        season_year = int(scheduled_date[:4]) if scheduled_date else current_jst().year
         entity_type = "grade_race" if (entity_key or schedule_entry or calendar_race) else ""
+        if entity_type == "grade_race" and not entity_key:
+            state.issues.append(f"entity_key未登録のためWriteOrderを停止: {entity_source_name}")
+            continue
         content_target_by_theme = {
             "course_venue": "course_venue_article",
             "jockey_profile": "jockey_profile_article",
@@ -3008,9 +3269,11 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "category": article_category,
                 "keywords": seo_keywords,
                 "seo_keywords": seo_keywords,
-                "update_stage": candidate.update_stage,
+                "update_stage": update_stage,
                 "deadline_status": candidate.deadline_status,
-                "result_confirmed": candidate.search_intent == "result_review",
+                "schedule_milestone": candidate.schedule_milestone,
+                "schedule_milestones": ",".join(completed_milestones_for(candidate.schedule_milestone)),
+                "result_confirmed": result_confirmed and update_stage == "post_race",
                 "news_topic": candidate.title_seed,
                 "news_topic_key": candidate.topic_key,
                 "news_reason": candidate.reason,

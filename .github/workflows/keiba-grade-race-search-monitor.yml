@@ -1,0 +1,70 @@
+name: Keiba Grade Race Search Monitor
+
+on:
+  schedule:
+    # 毎日09:15 JST。Search Consoleの確定済み最終日同士を比較する。
+    - cron: '15 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: keiba-grade-race-search-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      GSC_SITE_URL: ${{ vars.GSC_SITE_URL || 'sc-domain:uma-free.com' }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: pip install -r requirements.txt
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: keiba-api-project
+          workload_identity_provider: projects/761440273070/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+          service_account: github-actions-iap-db@keiba-api-project.iam.gserviceaccount.com
+          create_credentials_file: true
+
+      - name: Prepare Report Directory
+        shell: bash
+        run: mkdir -p "$RUNNER_TEMP/grade-race-search"
+
+      - name: Analyze Finalized Grade Race Queries
+        run: >-
+          python backend/scripts/agents/grade_race_search_monitor.py
+          --site-url "$GSC_SITE_URL"
+          --registry frontend/content/reference/grade-race-entities.json
+          --articles-dir frontend/content/articles
+          --redirects frontend/content/reference/grade-race-canonical-overrides.json
+          --output "$RUNNER_TEMP/grade-race-search/report.json"
+          --summary "$RUNNER_TEMP/grade-race-search/summary.md"
+
+      - name: Add Monitor Result to Actions Summary
+        shell: bash
+        run: cat "$RUNNER_TEMP/grade-race-search/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Monitor Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: grade-race-search-monitor-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/grade-race-search/report.json
+            ${{ runner.temp }}/grade-race-search/summary.md
+          if-no-files-found: error
+          retention-days: 90

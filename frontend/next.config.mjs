@@ -1,5 +1,18 @@
 /** @type {import('next').NextConfig} */
 // Cache bust: 2025-11-18T15:43:00Z
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const canonicalOverrides = require('./content/reference/grade-race-canonical-overrides.json');
+
+const gradeRaceArticleRedirects = canonicalOverrides.flatMap((entry) =>
+  entry.redirect_slugs.map((sourceSlug) => ({
+    source: `/articles/${sourceSlug}`,
+    destination: `/articles/${entry.primary_slug}`,
+    statusCode: 301,
+  })),
+);
+
 const nextConfig = {
   async redirects() {
     return [
@@ -8,6 +21,7 @@ const nextConfig = {
         destination: '/articles/2026-06-25-news-1ebdc1e8',
         statusCode: 301,
       },
+      ...gradeRaceArticleRedirects,
       {
         source: '/:path*',
         has: [
@@ -103,4 +117,3 @@ export default (phase) => {
     },
   };
 };
-

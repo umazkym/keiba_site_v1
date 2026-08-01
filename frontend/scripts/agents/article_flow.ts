@@ -151,9 +151,7 @@ function validateRaceTimingReference(ref: Record<string, unknown>, state: Articl
   const daysToRace = daysBetweenDateStrings(currentJstDateString(), scheduledRaceDate);
   const searchIntent = String(ref.search_intent || '');
   const racePhase = String(ref.race_phase || '');
-  const resultConfirmed =
-    ref.result_confirmed === true ||
-    String(ref.update_stage || '') === 'result_review';
+  const resultConfirmed = ref.result_confirmed === true;
   const expectedPhase = searchIntent === 'result_review' && resultConfirmed
     ? 'post_race'
     : expectedRacePhase(daysToRace);
@@ -182,7 +180,7 @@ function validateDraftMetadata(
   draftData: Record<string, any>,
 ): void {
   const ref = order.reference_data as Record<string, unknown>;
-  for (const key of ['search_intent', 'race_phase', 'scheduled_race_date'] as const) {
+  for (const key of ['search_intent', 'race_phase', 'scheduled_race_date', 'schedule_milestone'] as const) {
     const expected = String(ref[key] || '');
     const actual = String(draftData[key] || '');
     if (expected && actual !== expected) {

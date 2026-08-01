@@ -28,8 +28,14 @@ export function isUrgentGradeRaceOrder(order: any): boolean {
       deadlineStatus === 'due_preview'
       || deadlineStatus === 'missed_preview'
       || deadlineStatus === 'due_result_review'
+      || deadlineStatus === 'due_draw_confirmed'
+      || deadlineStatus === 'due_final_48h'
+      || deadlineStatus === 'due_race_morning'
+      || deadlineStatus === 'due_post_race'
       || updateStage === 'draw_confirmed'
-      || updateStage === 'result_review'
+      || updateStage === 'final_48h'
+      || updateStage === 'race_morning'
+      || updateStage === 'post_race'
     )
   );
 }

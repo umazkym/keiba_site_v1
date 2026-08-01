@@ -1,0 +1,141 @@
+[
+  {
+    "entity_key": "mercury-cup",
+    "season_year": "2026",
+    "primary_slug": "2026-07-13-2026-703ba7b2",
+    "redirect_slugs": [
+      "2026-07-13-2026-503c1de6",
+      "2026-07-13-2026-8da69378",
+      "2026-07-15-2026-44b98512",
+      "2026-07-16-2026-96fe5911"
+    ]
+  },
+  {
+    "entity_key": "sparking-lady-cup",
+    "season_year": "2026",
+    "primary_slug": "2026-07-06-2026-8cddfdbf",
+    "redirect_slugs": [
+      "2026-07-01-2026-24206697",
+      "2026-07-02-2026-07a02d0d",
+      "2026-07-03-2026-bb47f61b",
+      "2026-07-08-2026-2f03e4cd",
+      "2026-07-08-2026-training"
+    ]
+  },
+  {
+    "entity_key": "seiun-sho",
+    "season_year": "2026",
+    "primary_slug": "2026-07-08-2026-jockeynews",
+    "redirect_slugs": [
+      "2026-07-06-2026-0d2b4dc5",
+      "2026-07-07-2026-7d197ba2",
+      "2026-07-07-2026-waku-041308b4"
+    ]
+  },
+  {
+    "entity_key": "hyogo-summer-queen-sho",
+    "season_year": "2026",
+    "primary_slug": "2026-07-09-2026-d313d291",
+    "redirect_slugs": [
+      "2026-07-09-2026-306b640e",
+      "2026-07-10-2026-d0a6b1e1"
+    ]
+  },
+  {
+    "entity_key": "asahikawa-kinen",
+    "season_year": "2026",
+    "primary_slug": "2026-07-10-2026-89762986",
+    "redirect_slugs": [
+      "2026-07-10-2026-89d867fe",
+      "2026-07-12-2026-7cabdba6",
+      "2026-07-12-2026-bfc82d31"
+    ]
+  },
+  {
+    "entity_key": "toreno-sho",
+    "season_year": "2026",
+    "primary_slug": "2026-07-18-2026-9ca0f099",
+    "redirect_slugs": [
+      "2026-07-16-2026-79600d8d"
+    ]
+  },
+  {
+    "entity_key": "hakodate-nisai-stakes",
+    "season_year": "2026",
+    "primary_slug": "2026-07-17-hakodate2s-2026",
+    "redirect_slugs": [
+      "2026-07-11-hakodate2s-2026",
+      "2026-07-14-hakodate2s-2026-race-card",
+      "2026-07-19-hakodate2s-2026"
+    ]
+  },
+  {
+    "entity_key": "kokura-kinen",
+    "season_year": "2026",
+    "primary_slug": "2026-07-16-kokura2026-ee9c79e3",
+    "redirect_slugs": [
+      "2026-07-11-kokura2026-1feb0cbc"
+    ]
+  },
+  {
+    "entity_key": "sekiya-kinen",
+    "season_year": "2026",
+    "primary_slug": "2026-07-18-2026-a4a81484",
+    "redirect_slugs": [
+      "2026-07-26-2026-141b84aa"
+    ]
+  },
+  {
+    "entity_key": "takarazuka-kinen",
+    "season_year": "2026",
+    "primary_slug": "2026-06-11-takarazuka-kinen-2026-waku-ai-yosou",
+    "redirect_slugs": [
+      "2026-06-11-takarazuka-kinen-2026-training-ai-yosou",
+      "2026-06-11-takarazuka-kinen-2026-waku-ai-yosou-2",
+      "2026-06-11-takarazuka-kinen-2026ai-yosou2",
+      "2026-06-12-takarazuka-kinen-2026"
+    ]
+  },
+  {
+    "entity_key": "gifu-seiryu-cup",
+    "season_year": "2026",
+    "primary_slug": "2026-07-07-2026-465ca4cf",
+    "redirect_slugs": [
+      "2026-07-07-2020-c027388f",
+      "2026-07-07-2026-7c6ddedb",
+      "2026-07-09-2026-0e017a02"
+    ]
+  },
+  {
+    "entity_key": "iwawashi-sho",
+    "season_year": "2026",
+    "primary_slug": "2026-07-07-2026-a16d7870",
+    "redirect_slugs": [
+      "2026-07-07-2026-b084083c"
+    ]
+  },
+  {
+    "entity_key": "yamabiko-sho",
+    "season_year": "2026",
+    "primary_slug": "2026-07-09-2026-f68d2b53",
+    "redirect_slugs": [
+      "2026-07-10-2026-6fc388d7"
+    ]
+  },
+  {
+    "entity_key": "kaga-yuzen-sho",
+    "season_year": "2026",
+    "primary_slug": "2026-07-10-2026-303142a2",
+    "redirect_slugs": [
+      "2026-07-10-2026-79caba50"
+    ]
+  },
+  {
+    "entity_key": "sekirei-sho",
+    "season_year": "2026",
+    "primary_slug": "2026-07-04-2000-fbeda3b1",
+    "redirect_slugs": [
+      "2026-07-07-2026-5141edaf"
+    ]
+  }
+]

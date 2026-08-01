@@ -8,6 +8,7 @@ import { checkSEO, checkSourceIndependence } from './seo_checker';
 import { findGradeRaceEntity } from '../../lib/grade-race-entities';
 import { getApiBaseUrl } from '../../lib/api-base';
 import { getSeasonalGradeRaceSlug } from '../../lib/article-seasonal-routing';
+import gradeRaceCanonicalOverrides from '../../content/reference/grade-race-canonical-overrides.json';
 import {
   assertSafeArticleSlug,
   finalizeGscRewriteFrontmatter,
@@ -228,6 +229,74 @@ function normalizeEntityValue(value: unknown): string {
   return String(value || '').trim().toLowerCase();
 }
 
+const GRADE_RACE_STAGE_ORDER = [
+  'field_building',
+  'race_week',
+  'draw_confirmed',
+  'final_48h',
+  'race_morning',
+  'post_race',
+] as const;
+
+const GRADE_RACE_MILESTONE_ORDER = [
+  'initial',
+  'field_refresh_d14',
+  'race_week_d7',
+  'draw_confirmed',
+  'final_48h',
+  'race_morning',
+  'post_race',
+] as const;
+
+function parseMilestoneHistory(value: unknown): string[] {
+  const raw = Array.isArray(value) ? value : String(value || '').split(',');
+  return raw.map((item) => String(item || '').trim()).filter(Boolean);
+}
+
+function mergeMilestoneHistory(existing: unknown, incoming: unknown, current: unknown): string {
+  const values = new Set([
+    ...parseMilestoneHistory(existing),
+    ...parseMilestoneHistory(incoming),
+    String(current || '').trim(),
+  ].filter(Boolean));
+  return GRADE_RACE_MILESTONE_ORDER.filter((milestone) => values.has(milestone)).join(',');
+}
+
+function validateGradeRacePublication(data: Record<string, any>): string[] {
+  if (normalizeEntityValue(data.entity_type) !== 'grade_race') return [];
+  const errors: string[] = [];
+  const entityKey = normalizeEntityValue(data.entity_key);
+  const raceName = String(data.race_name || '').trim();
+  const seasonYear = String(data.season_year || '').trim();
+  const raceDate = String(data.scheduled_race_date || '').trim();
+  const updateStage = String(data.update_stage || '').trim();
+  const milestone = String(data.schedule_milestone || '').trim();
+  const registryEntity = findGradeRaceEntity(raceName);
+
+  if (!entityKey || !registryEntity || registryEntity.entity_key !== entityKey) {
+    errors.push(`共有レジストリとentity_keyが一致しません: ${raceName || '(race_nameなし)'}`);
+  }
+  if (!/^20\d{2}$/.test(seasonYear) || !raceDate.startsWith(`${seasonYear}-`)) {
+    errors.push('season_yearとscheduled_race_dateが一致しません');
+  }
+  if (!(GRADE_RACE_STAGE_ORDER as readonly string[]).includes(updateStage)) {
+    errors.push(`update_stageが不正です: ${updateStage || '(empty)'}`);
+  }
+  if (!(GRADE_RACE_MILESTONE_ORDER as readonly string[]).includes(milestone)) {
+    errors.push(`schedule_milestoneが不正です: ${milestone || '(empty)'}`);
+  }
+  if (
+    ['draw_confirmed', 'final_48h', 'race_morning'].includes(updateStage)
+    && String(data.draw_status || '') !== 'confirmed'
+  ) {
+    errors.push(`${updateStage}にはDBで確認した馬番・枠番が必要です`);
+  }
+  if (updateStage === 'post_race' && data.result_confirmed !== true) {
+    errors.push('post_raceには確定結果が必要です');
+  }
+  return errors;
+}
+
 function normalizeInternalCanonicalPath(value: unknown): string {
   const raw = String(value || '').trim();
   if (!raw.startsWith('/')) return '';
@@ -350,6 +419,19 @@ function findExistingEntityArticlePath(data: Record<string, any>): string | null
   const draftKey = normalizeGradeRaceKey(`${data.target_keyword || ''} ${data.title || ''}`);
   const draftSeasonYear = String(data.season_year || '').trim();
   if (!draftKey && !draftEntityKey && !draftCanonicalPath) return null;
+
+  if (draftEntityType === 'grade_race' && draftEntityKey && draftSeasonYear) {
+    const override = gradeRaceCanonicalOverrides.find((entry) =>
+      entry.entity_key === draftEntityKey && entry.season_year === draftSeasonYear
+    );
+    if (override) {
+      const overridePath = path.join(ARTICLES_DIR, `${override.primary_slug}.md`);
+      if (!fs.existsSync(overridePath)) {
+        throw new Error(`[Publisher] 重賞代表URLのファイルが存在しません: ${override.primary_slug}`);
+      }
+      return overridePath;
+    }
+  }
 
   for (const file of fs.readdirSync(ARTICLES_DIR).filter((f) => f.endsWith('.md'))) {
     const fullPath = path.join(ARTICLES_DIR, file);
@@ -485,12 +567,15 @@ async function verifyArticleRaceBridge(data: Record<string, any>): Promise<Recor
 
 const UPDATE_STAGE_RANK: Record<string, number> = {
   field_building: 10,
-  one_week_before: 20,
   race_week: 20,
-  final_48h: 30,
-  draw_confirmed: 40,
-  post_race: 50,
-  result_review: 50,
+  draw_confirmed: 30,
+  final_48h: 40,
+  race_morning: 50,
+  post_race: 60,
+  // 既存記事の段階を安全に比較するための旧値。
+  one_week_before: 20,
+  eve_update: 40,
+  result_review: 60,
 };
 
 function mergeSeasonalGradeRaceContent(existingContent: string, incomingContent: string): string {
@@ -543,6 +628,11 @@ function updateExistingEntityArticle(destPath: string, parsedDraft: any, now: Da
     og_description: parsedDraft.data.description || existing.data.description,
     og_image: existing.data.og_image || `https://uma-free.com/og/${path.basename(destPath, '.md')}.png`,
   });
+  nextData.schedule_milestones = mergeMilestoneHistory(
+    existing.data.schedule_milestones,
+    parsedDraft.data.schedule_milestones,
+    parsedDraft.data.schedule_milestone,
+  );
   if (existing.data.race_bridge_enabled === true && parsedDraft.data.race_bridge_enabled !== true) {
     nextData.race_bridge_enabled = true;
     nextData.race_bridge_verified_at = existing.data.race_bridge_verified_at;
@@ -891,7 +981,17 @@ async function publishDraft() {
       continue;
     }
 
-    parsed.data = await verifyArticleRaceBridge(normalizePublishedArticleMetadata(parsed.data));
+    parsed.data = normalizePublishedArticleMetadata(parsed.data);
+    const gradeRacePublicationErrors = validateGradeRacePublication(parsed.data);
+    if (gradeRacePublicationErrors.length > 0) {
+      console.warn(`[Publisher] 重賞記事の公開ゲートで拒否: ${targetFile}`);
+      for (const error of gradeRacePublicationErrors) {
+        console.warn(`[Publisher] - ${error}`);
+      }
+      skippedCount++;
+      continue;
+    }
+    parsed.data = await verifyArticleRaceBridge(parsed.data);
 
     const sourceIndependence = checkSourceIndependence(matter.stringify(parsed.content, parsed.data));
     if (!sourceIndependence.passed) {

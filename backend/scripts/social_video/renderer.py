@@ -5,8 +5,9 @@ import math
 import os
 import shutil
 import subprocess
+import tempfile
 import textwrap
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
@@ -134,6 +135,7 @@ LONG_INTRO_SECONDS = 2.2
 LONG_RACE_SCENE_SECONDS = 6.0
 LONG_OUTRO_SECONDS = 3.0
 SHORT_SCENE_SECONDS = 15.5
+SHORT_MAX_COMPILATION_SECONDS = 59.5
 LONG_CONTENT_LEFT = 44
 LONG_CONTENT_RIGHT = 1876
 LONG_CONTENT_WIDTH = LONG_CONTENT_RIGHT - LONG_CONTENT_LEFT
@@ -1214,7 +1216,9 @@ def _draw_short_site_intro_slide(
 
 
 def _excluded_race_copy(venue: VenueVideoData) -> tuple[str, str]:
-    """既存の新馬戦除外動画のhashを維持し、障害戦を含む場合だけ汎用表記を返す。"""
+    """収録対象外レースの内容に合わせて、章見出し用の短い説明を返す。"""
+    if any(race.omission_reason for race in venue.excluded_races):
+        return "対象外・未掲載除く", "AI偏差値の算出対象外・データ未掲載レース"
     reasons = [
         prediction_exclusion_reason(race.race_name, race.course_type)
         for race in venue.excluded_races
@@ -3162,6 +3166,25 @@ SHORT_COMBINED_PHASE_TIMINGS = (
 )
 
 
+def _scaled_short_phase_timings(
+    duration_seconds: float,
+) -> tuple[tuple[str, float, float], ...]:
+    if duration_seconds <= 0:
+        raise ValueError("Shortsのレース表示時間は0秒より長くしてください")
+    scale = duration_seconds / SHORT_COMBINED_RACE_SECONDS
+    return tuple(
+        (name, start * scale, end * scale)
+        for name, start, end in SHORT_COMBINED_PHASE_TIMINGS
+    )
+
+
+def _daily_short_intermediate_duration(race_count: int) -> float:
+    if race_count <= 1:
+        return 0.0
+    available = SHORT_MAX_COMPILATION_SECONDS - SHORT_SCENE_SECONDS
+    return min(SHORT_COMBINED_RACE_SECONDS, available / (race_count - 1))
+
+
 def _validate_short_content_layers(
     layers: Sequence[MotionLayer],
     size: tuple[int, int],
@@ -3480,11 +3503,16 @@ def _build_short_motion_scene(
     *,
     branded: bool = True,
     include_cta: bool = True,
+    duration_seconds: Optional[float] = None,
 ) -> MotionScene:
     size = (1080, 1920)
-    phase_timings = SHORT_PHASE_TIMINGS if include_cta else SHORT_COMBINED_PHASE_TIMINGS
+    if include_cta:
+        scene_duration = SHORT_SCENE_SECONDS
+        phase_timings = SHORT_PHASE_TIMINGS
+    else:
+        scene_duration = duration_seconds or SHORT_COMBINED_RACE_SECONDS
+        phase_timings = _scaled_short_phase_timings(scene_duration)
     transition_times = tuple(timing[1] for timing in phase_timings[1:])
-    scene_duration = SHORT_SCENE_SECONDS if include_cta else SHORT_COMBINED_RACE_SECONDS
     background_image, _ = _hero_background(
         size,
         target_date,
@@ -3711,8 +3739,10 @@ def _race_type_scope(venues: Sequence[VenueVideoData]) -> str:
 def _daily_long_title(venues: Sequence[VenueVideoData], target_date: str) -> str:
     date_label, year_label = _title_date_parts(target_date)
     races = _compilation_races(venues)
-    essential = f"{date_label} 全{len(races)}レースAI分析｜{_race_type_scope(venues)} AI予想"
-    grade_names = "・".join(race.display_name for race in _compilation_grade_races(venues))
+    essential = f"{date_label} 全{len(races)}レースAI分析｜{_race_type_scope(venues)}予想"
+    grade_names = "・".join(
+        race.display_name for race in _compilation_grade_races(venues)[:2]
+    )
     suffix = f"｜{year_label}"
     if grade_names:
         remaining = max(0, 100 - len(essential) - len(suffix) - 1)
@@ -3727,11 +3757,17 @@ def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
     date_label, year_label = _title_date_parts(target_date)
     grade_races = [race for race in races if race.is_grade_race]
     if grade_races:
-        essential = f"{date_label} 重賞AI予想｜競馬予想まとめ"
-        race_names = "・".join(race.display_name for race in grade_races)
+        displayed_names = "・".join(race.display_name for race in grade_races[:2])
+        more = "ほか" if len(grade_races) > 2 else ""
+        essential = (
+            f"{date_label} {displayed_names}{more}｜"
+            f"{len(grade_races)}重賞 AI競馬予想"
+        )
+        race_names = ""
     else:
-        essential = f"{date_label} 各競馬場メインレース｜AI競馬予想"
-        race_names = "・".join(f"{race.venue_name}{race.race_number}R" for race in races)
+        venue_names = "・".join(dict.fromkeys(race.venue_name for race in races))
+        essential = f"{date_label} {venue_names} 11R・最終R｜AI競馬予想TOP3"
+        race_names = ""
     suffix = f"｜{year_label} #Shorts"
     remaining = max(0, 100 - len(essential) - len(suffix) - 1)
     middle = f"｜{race_names[:remaining].rstrip('・｜ ')}" if remaining and race_names else ""
@@ -3754,16 +3790,27 @@ def _daily_compilation_description(
     venues: Sequence[VenueVideoData],
     chapter_lines: Sequence[str] = (),
     short_races: Sequence[RaceVideoData] = (),
+    additional_excluded_labels: Sequence[str] = (),
 ) -> str:
     grade_races = [
         race
         for race in (short_races or _compilation_grade_races(venues))
         if race.is_grade_race
     ]
-    venue_summary = " / ".join(
-        f"{venue.race_type}競馬 {venue.venue_name}（{len(venue.races)}レース）"
-        for venue in venues
-    )
+    if short_races:
+        venue_types = {venue.venue_name: venue.race_type for venue in venues}
+        short_counts: dict[str, int] = {}
+        for race in short_races:
+            short_counts[race.venue_name] = short_counts.get(race.venue_name, 0) + 1
+        venue_summary = " / ".join(
+            f"{venue_types.get(venue_name, '')}競馬 {venue_name}（{count}レース）"
+            for venue_name, count in short_counts.items()
+        )
+    else:
+        venue_summary = " / ".join(
+            f"{venue.race_type}競馬 {venue.venue_name}（{len(venue.races)}レース）"
+            for venue in venues
+        )
     race_summary = " / ".join(
         f"{race.venue_name}{race.race_number}R {race.display_name}"
         for race in short_races
@@ -3790,12 +3837,12 @@ def _daily_compilation_description(
         f"{venue.venue_name}{race.race_number}R {race.display_name}"
         for venue in venues
         for race in venue.excluded_races
-    ]
+    ] + list(additional_excluded_labels)
     if excluded_labels:
         lines.extend(
             (
                 "",
-                "※AI偏差値の算出対象外となる新馬戦・障害戦等は収録していません: "
+                "※AI偏差値の算出対象外・データ未掲載のレースは収録していません: "
                 + "、".join(excluded_labels),
             )
         )
@@ -3968,6 +4015,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
             "motion_profile": resolve_motion_profile(),
         }
     )
+    total_duration_seconds = sum(scene.duration_seconds for scene in scenes)
     metadata_path = video_dir / "metadata.json"
     metadata = {
         "video_type": "venue_long",
@@ -4004,7 +4052,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         "motion_profile": resolve_motion_profile(),
         "scene_count": len(scenes),
         "race_scene_seconds": LONG_RACE_SCENE_SECONDS,
-        "estimated_duration_seconds": sum(scene.duration_seconds for scene in scenes),
+        "estimated_duration_seconds": total_duration_seconds,
     }
     _write_metadata(metadata_path, metadata)
     return RenderedVideo(
@@ -4029,6 +4077,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         rights_manifest_hash=rights_manifest_hash,
         content_hash=content_hash,
         thumbnail_required=True,
+        estimated_duration_seconds=total_duration_seconds,
     )
 
 
@@ -4049,6 +4098,53 @@ def render_daily_long_video(
     stable_id = "daily_all"
     video_dir = output_dir / "long" / stable_id
     video_dir.mkdir(parents=True, exist_ok=True)
+    render_omissions: List[dict] = []
+    filtered_venues: List[VenueVideoData] = []
+    with tempfile.TemporaryDirectory(prefix="race-preflight-", dir=video_dir) as temp_dir:
+        preflight_root = Path(temp_dir)
+        for venue in venues:
+            kept_races: List[RaceVideoData] = []
+            failed_races: List[RaceVideoData] = []
+            for race in venue.races:
+                race_dir = preflight_root / _safe_filename(race.id)
+                race_dir.mkdir(parents=True, exist_ok=True)
+                try:
+                    _build_long_race_motion_scene(
+                        race_dir,
+                        race,
+                        target_date,
+                        1,
+                        1,
+                    )
+                except Exception as exc:
+                    reason = f"描画失敗: {type(exc).__name__}: {str(exc)[:160]}"
+                    failed_races.append(replace(race, omission_reason=reason))
+                    render_omissions.append(
+                        {
+                            "race_id": race.id,
+                            "venue_name": race.venue_name,
+                            "race_number": race.race_number,
+                            "race_name": race.display_name,
+                            "grade": race.grade or "",
+                            "reason": reason,
+                            "category": "render_error",
+                        }
+                    )
+                    continue
+                kept_races.append(race)
+            if kept_races:
+                filtered_venues.append(
+                    VenueVideoData(
+                        venue_name=venue.venue_name,
+                        race_type=venue.race_type,
+                        races=kept_races,
+                        excluded_races=[*venue.excluded_races, *failed_races],
+                    )
+                )
+    venues = filtered_venues
+    races = _compilation_races(venues)
+    if not races:
+        raise RuntimeError("全レースの事前描画に失敗したため、日次横動画を生成できません")
     size = (1920, 1080)
     utm_content = "daily_long_all"
     title = _daily_long_title(venues, target_date)
@@ -4074,8 +4170,9 @@ def render_daily_long_video(
     audio_asset = resolve_audio_asset(target_date, "venue_long", stable_id)
     sfx_assets = resolve_sfx_assets(target_date, "venue_long", stable_id)
     publish_block_reasons: List[str] = []
+    asset_warnings: List[str] = []
     if visual_asset is None:
-        publish_block_reasons.append("日次横動画用の横写真が見つかりません")
+        asset_warnings.append("日次横動画用の横写真が見つからないため代替背景を使用")
     if audio_asset is None:
         publish_block_reasons.append("日次横動画用BGMが見つかりません")
 
@@ -4100,7 +4197,7 @@ def render_daily_long_video(
         )
     )
 
-    chapter_lines = ["00:00 本日の全レースAI分析"]
+    chapter_lines = ["00:00 本日のAI分析まとめ"]
     elapsed_seconds = LONG_INTRO_SECONDS
     chapter_visual_assets: List[Optional[VisualAsset]] = []
     chapter_video_assets: List[Optional[VideoAsset]] = []
@@ -4126,10 +4223,10 @@ def render_daily_long_video(
         chapter_visual_assets.append(venue_visual)
         chapter_video_assets.append(venue_video)
         if venue_visual is None:
-            publish_block_reasons.append(f"{venue.venue_name}章の横写真が見つかりません")
+            asset_warnings.append(f"{venue.venue_name}章は代替背景を使用")
         chapter_lines.append(
             f"{_format_chapter_timestamp(elapsed_seconds)} "
-            f"{venue.race_type}競馬 {venue.venue_name} 全{len(venue.races)}レース"
+            f"{venue.race_type}競馬 {venue.venue_name} 収録{len(venue.races)}レース"
         )
         grade_names = "・".join(race.display_name for race in venue.grade_races)
         venue_headline = grade_names or f"{venue.venue_name} 全{len(venue.races)}レース"
@@ -4258,6 +4355,7 @@ def render_daily_long_video(
             "motion_profile": resolve_motion_profile(),
         }
     )
+    total_duration_seconds = sum(scene.duration_seconds for scene in scenes)
     metadata_path = video_dir / "metadata.json"
     metadata = {
         "video_type": "daily_long",
@@ -4272,6 +4370,7 @@ def render_daily_long_video(
             for venue in venues
         ],
         "race_ids": [race.id for race in races],
+        "render_omissions": render_omissions,
         "aspect_ratio": "16:9",
         "url": url,
         "video_path": str(video_path) if video_path else None,
@@ -4285,12 +4384,12 @@ def render_daily_long_video(
         "publishable": not publish_block_reasons,
         "publish_block_reasons": publish_block_reasons,
         "selected_assets": selected_assets,
-        "asset_warnings": publish_block_reasons,
+        "asset_warnings": asset_warnings,
         "design_system": "broadcast_editorial_v9_daily_compilation",
         "motion_profile": resolve_motion_profile(),
         "scene_count": len(scenes),
         "race_scene_seconds": LONG_RACE_SCENE_SECONDS,
-        "estimated_duration_seconds": sum(scene.duration_seconds for scene in scenes),
+        "estimated_duration_seconds": total_duration_seconds,
     }
     _write_metadata(metadata_path, metadata)
     return RenderedVideo(
@@ -4318,6 +4417,7 @@ def render_daily_long_video(
         rights_manifest_hash=rights_manifest_hash,
         content_hash=content_hash,
         thumbnail_required=True,
+        estimated_duration_seconds=total_duration_seconds,
     )
 
 
@@ -4372,12 +4472,14 @@ def _attach_short_audio_cues(
     *,
     include_cta: bool = True,
 ) -> None:
-    _append_audio_cue(scene, sfx_assets, "whoosh", 0.02, 1.0, 0.9)
-    _append_audio_cue(scene, sfx_assets, "data_tick", 1.18, 0.62, 0.35)
-    _append_audio_cue(scene, sfx_assets, "transition", 4.92, 0.64, 0.5)
-    _append_audio_cue(scene, sfx_assets, "score_reveal", 9.05, 0.86, 0.8)
+    base_duration = SHORT_SCENE_SECONDS if include_cta else SHORT_COMBINED_RACE_SECONDS
+    scale = scene.duration_seconds / base_duration
+    _append_audio_cue(scene, sfx_assets, "whoosh", 0.02 * scale, 1.0, 0.9)
+    _append_audio_cue(scene, sfx_assets, "data_tick", 1.18 * scale, 0.62, 0.35)
+    _append_audio_cue(scene, sfx_assets, "transition", 4.92 * scale, 0.64, 0.5)
+    _append_audio_cue(scene, sfx_assets, "score_reveal", 9.05 * scale, 0.86, 0.8)
     if include_cta:
-        _append_audio_cue(scene, sfx_assets, "cta", 11.82, 0.92, 0.9)
+        _append_audio_cue(scene, sfx_assets, "cta", 11.82 * scale, 0.92, 0.9)
 
 
 def _draw_short_position_slide(path: Path, race: RaceVideoData, target_date: str, size: tuple[int, int], utm_content: str) -> None:
@@ -4582,12 +4684,58 @@ def render_daily_short_video(
     tiktok_video_dir.mkdir(parents=True, exist_ok=True)
     size = (1080, 1920)
     utm_content = "daily_short_compilation"
+    render_omissions: List[dict] = []
+    renderable_races: List[RaceVideoData] = []
+    with tempfile.TemporaryDirectory(prefix="short-preflight-", dir=video_dir) as temp_dir:
+        preflight_root = Path(temp_dir)
+        for race in races:
+            try:
+                for branded in (True, False):
+                    for include_cta in (False, True):
+                        race_dir = (
+                            preflight_root
+                            / _safe_filename(race.id)
+                            / ("brand" if branded else "clean")
+                            / ("cta" if include_cta else "combined")
+                        )
+                        race_dir.mkdir(parents=True, exist_ok=True)
+                        _build_short_motion_scene(
+                            race_dir,
+                            race,
+                            target_date,
+                            _best_horse_for_race(race),
+                            None,
+                            None,
+                            branded=branded,
+                            include_cta=include_cta,
+                            duration_seconds=(
+                                None if include_cta else SHORT_COMBINED_RACE_SECONDS
+                            ),
+                        )
+            except Exception as exc:
+                render_omissions.append(
+                    {
+                        "race_id": race.id,
+                        "venue_name": race.venue_name,
+                        "race_number": race.race_number,
+                        "race_name": race.display_name,
+                        "grade": race.grade or "",
+                        "reason": f"描画失敗: {type(exc).__name__}: {str(exc)[:160]}",
+                        "category": "render_error",
+                    }
+                )
+                continue
+            renderable_races.append(race)
+    races = renderable_races
+    if not races:
+        raise RuntimeError("全対象レースの事前描画に失敗したため、日次Shortsを生成できません")
     title = _daily_short_title(races, target_date)
     lead_race = races[0]
     lead_horse = _best_horse_for_race(lead_race)
     audio_asset = resolve_audio_asset(target_date, "short", stable_id)
     sfx_assets = resolve_sfx_assets(target_date, "short", stable_id)
     publish_block_reasons: List[str] = []
+    asset_warnings: List[str] = []
     if audio_asset is None:
         publish_block_reasons.append("日次Shorts用BGMが見つかりません")
 
@@ -4597,6 +4745,7 @@ def render_daily_short_video(
     motion_video_assets: List[Optional[VideoAsset]] = []
     chapter_lines: List[str] = []
     elapsed_seconds = 0.0
+    intermediate_duration = _daily_short_intermediate_duration(len(races))
     for race_index, race in enumerate(races, start=1):
         race_key = f"{stable_id}_{race.id}"
         visual_asset = resolve_visual_asset(
@@ -4616,8 +4765,8 @@ def render_daily_short_video(
         visual_assets.append(visual_asset)
         motion_video_assets.append(motion_video_asset)
         if visual_asset is None:
-            publish_block_reasons.append(
-                f"{race.venue_name}{race.race_number}R用の縦写真が見つかりません"
+            asset_warnings.append(
+                f"{race.venue_name}{race.race_number}Rは代替背景を使用"
             )
         include_cta = race_index == len(races)
         chapter_lines.append(
@@ -4635,6 +4784,7 @@ def render_daily_short_video(
             motion_video_asset,
             branded=True,
             include_cta=include_cta,
+            duration_seconds=intermediate_duration if not include_cta else None,
         )
         _attach_short_audio_cues(scene, sfx_assets, include_cta=include_cta)
         standard_scenes.append(scene)
@@ -4654,10 +4804,18 @@ def render_daily_short_video(
             motion_video_asset,
             branded=False,
             include_cta=include_cta,
+            duration_seconds=intermediate_duration if not include_cta else None,
         )
         _attach_short_audio_cues(tiktok_scene, sfx_assets, include_cta=include_cta)
         tiktok_scenes.append(tiktok_scene)
         elapsed_seconds += scene.duration_seconds
+
+    total_duration_seconds = sum(scene.duration_seconds for scene in standard_scenes)
+    if total_duration_seconds > SHORT_MAX_COMPILATION_SECONDS + 0.01:
+        raise RuntimeError(
+            "日次Shortsが59.5秒を超えています: "
+            f"{total_duration_seconds:.3f}秒"
+        )
 
     thumbnail = video_dir / "thumbnail.jpg"
     grade_races = [race for race in races if race.is_grade_race]
@@ -4700,6 +4858,10 @@ def render_daily_short_video(
         venues=venues,
         chapter_lines=chapter_lines,
         short_races=races,
+        additional_excluded_labels=[
+            f"{item['venue_name']}{item['race_number']}R {item['race_name']}"
+            for item in render_omissions
+        ],
     )
     tags = [
         "競馬",
@@ -4745,6 +4907,7 @@ def render_daily_short_video(
             "description": description,
             "tags": tags,
             "race_ids": [race.id for race in races],
+            "render_omissions": render_omissions,
             "destination_url": url,
             "rights_manifest_hash": rights_manifest_hash,
             "design_system": "broadcast_editorial_v9_daily_compilation",
@@ -4766,6 +4929,7 @@ def render_daily_short_video(
         "target_date": target_date,
         "venue_name": lead_race.venue_name,
         "race_ids": [race.id for race in races],
+        "render_omissions": render_omissions,
         "featured_races": featured_races,
         "aspect_ratio": "9:16",
         "url": url,
@@ -4792,11 +4956,11 @@ def render_daily_short_video(
         "publishable": not publish_block_reasons,
         "publish_block_reasons": publish_block_reasons,
         "selected_assets": selected_assets,
-        "asset_warnings": publish_block_reasons,
+        "asset_warnings": asset_warnings,
         "design_system": "broadcast_editorial_v9_daily_compilation",
         "motion_profile": resolve_motion_profile(),
         "scene_count": len(standard_scenes),
-        "estimated_duration_seconds": sum(scene.duration_seconds for scene in standard_scenes),
+        "estimated_duration_seconds": total_duration_seconds,
     }
     _write_metadata(metadata_path, metadata)
     return RenderedVideo(
@@ -4834,4 +4998,5 @@ def render_daily_short_video(
         rights_manifest_hash=rights_manifest_hash,
         content_hash=content_hash,
         thumbnail_required=False,
+        estimated_duration_seconds=total_duration_seconds,
     )

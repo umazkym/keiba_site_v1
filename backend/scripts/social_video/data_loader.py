@@ -30,6 +30,7 @@ class HorseVideoData:
     deviation_score: Optional[float]
     start_1c_indicator: Optional[float]
     position_label: str = "-"
+    unpredictable_reason: str = ""
 
 
 @dataclass
@@ -44,6 +45,7 @@ class RaceVideoData:
     grade: Optional[str] = None
     predictions: List[HorseVideoData] = field(default_factory=list)
     horse_number_advantages: List[Dict[str, Any]] = field(default_factory=list)
+    omission_reason: str = ""
 
     @property
     def display_name(self) -> str:
@@ -261,6 +263,7 @@ def _normalize_race(raw: Dict[str, Any], grade_map: Dict[str, Dict[str, Any]]) -
                 mark=str(item.get("mark") or ""),
                 deviation_score=_to_float(item.get("deviation_score")),
                 start_1c_indicator=_to_float(item.get("start_1c_indicator")),
+                unpredictable_reason=str(item.get("unpredictable_reason") or "").strip(),
             )
         )
     total_horses = len([horse for horse in predictions if horse.horse_number > 0])
@@ -294,6 +297,30 @@ def normalize_venues(payload: Dict[str, Any], weekly_grade_races: List[Dict[str,
             races = sorted([race for race in races if race.race_number > 0], key=lambda race: race.race_number)
             if races:
                 venues.append(VenueVideoData(venue_name=str(raw_venue.get("venue_name") or ""), race_type=race_type, races=races))
+    return enrich_missing_race_grades(venues)
+
+
+def enrich_missing_race_grades(
+    venues: List[VenueVideoData],
+) -> List[VenueVideoData]:
+    """近日重賞APIの期間外でも、既存の重賞辞書と名称表記から補完する。"""
+    try:
+        from crud.race_crud import _detect_grade
+    except Exception as exc:
+        # DBエンジン初期化失敗などがあっても、API取得済みの一般レースは利用する。
+        print(
+            "レース名による重賞補完を利用できません: "
+            f"{type(exc).__name__}"
+        )
+        return venues
+
+    for venue in venues:
+        for race in venue.races:
+            if race.grade:
+                continue
+            detected = _detect_grade(race.race_name, venue.race_type)
+            if detected:
+                race.grade = detected
     return venues
 
 
@@ -301,29 +328,37 @@ def merge_expected_races(
     venues: List[VenueVideoData],
     expected_races: Iterable[Any],
     target_date: str,
+    expected_grades: Optional[Dict[str, str]] = None,
 ) -> List[VenueVideoData]:
     """DBに存在する全レースを基準に、予測未生成レースを空データとして補う。
 
     公開APIは予測を1件も持たないレースを返さないため、そのままでは
-    「会場の全レースが揃ったか」を判定できない。ここで空レースを補い、
-    後段の会場単位品質ゲートに確実に検知させる。
+    欠損レースを把握できない。ここで空レースを補い、後段でそのレースだけを
+    除外できるようにする。重賞判定はPredictionの有無に依存させない。
     """
+    grade_by_race_id = expected_grades or {}
     venue_map = {
         (venue.race_type, normalize_venue_name(venue.venue_name)): venue
         for venue in venues
     }
-    existing_race_ids = {
-        race.id
+    existing_races_by_id = {
+        race.id: race
         for venue in venues
         for race in venue.races
     }
+    existing_race_ids = set(existing_races_by_id)
 
     for expected in expected_races:
         race_id = str(getattr(expected, "id", "") or "")
         race_type = str(getattr(expected, "race_type", "") or "")
         venue_name = str(getattr(expected, "venue_name", "") or "")
         race_number = _to_int(getattr(expected, "race_number", 0))
-        if not race_id or race_id in existing_race_ids or not race_type or not venue_name or race_number <= 0:
+        if race_id in existing_race_ids:
+            existing_race = existing_races_by_id[race_id]
+            if not existing_race.grade and grade_by_race_id.get(race_id):
+                existing_race.grade = grade_by_race_id[race_id]
+            continue
+        if not race_id or not race_type or not venue_name or race_number <= 0:
             continue
 
         key = (race_type, normalize_venue_name(venue_name))
@@ -344,10 +379,12 @@ def merge_expected_races(
                 distance=_to_int(getattr(expected, "distance", None))
                 if getattr(expected, "distance", None) is not None
                 else None,
+                grade=grade_by_race_id.get(race_id) or None,
                 predictions=[],
             )
         )
         existing_race_ids.add(race_id)
+        existing_races_by_id[race_id] = venue.races[-1]
 
     for venue in venues:
         venue.races.sort(key=lambda race: race.race_number)
@@ -381,7 +418,16 @@ def _load_venues_for_date_from_database(
         payload = race_crud.get_predictions_by_date(db, parsed_date)
         weekly_grade_races = race_crud.get_weekly_grade_races(db)
         venues = normalize_venues(payload, weekly_grade_races, target_date)
-        return merge_expected_races(venues, expected_races, target_date)
+        expected_grades = {
+            race.id: race_crud._detect_grade(race.race_name, race.race_type)
+            for race in expected_races
+        }
+        return merge_expected_races(
+            venues,
+            expected_races,
+            target_date,
+            expected_grades=expected_grades,
+        )
     finally:
         db.close()
 
@@ -390,15 +436,53 @@ def load_venues_for_date(
     target_date: str,
     *,
     force_refresh: bool = False,
+    diagnostics: Optional[Dict[str, Any]] = None,
 ) -> List[VenueVideoData]:
+    load_diagnostics = diagnostics if diagnostics is not None else {}
     if os.getenv("DATABASE_URL"):
-        return _load_venues_for_date_from_database(
-            target_date,
-            force_refresh=force_refresh,
+        try:
+            venues = _load_venues_for_date_from_database(
+                target_date,
+                force_refresh=force_refresh,
+            )
+            load_diagnostics.update(
+                {
+                    "data_source": "database",
+                    "fallback_used": False,
+                    "database_error_type": "",
+                }
+            )
+            return venues
+        except Exception as exc:
+            # 接続文字列や認証情報をログへ出さず、公開APIへ読み取り経路だけを切り替える。
+            load_diagnostics.update(
+                {
+                    "data_source": "api_fallback",
+                    "fallback_used": True,
+                    "database_error_type": type(exc).__name__,
+                }
+            )
+            print(
+                "本番DBから動画データを取得できないため、公開予測APIへ切り替えます: "
+                f"{type(exc).__name__}"
+            )
+    else:
+        load_diagnostics.update(
+            {
+                "data_source": "api",
+                "fallback_used": False,
+                "database_error_type": "",
+            }
         )
-    payload = fetch_race_day_payload(target_date)
-    weekly_grade_races = fetch_weekly_grade_races()
-    return normalize_venues(payload, weekly_grade_races, target_date)
+
+    try:
+        payload = fetch_race_day_payload(target_date)
+        weekly_grade_races = fetch_weekly_grade_races()
+        return normalize_venues(payload, weekly_grade_races, target_date)
+    except Exception as exc:
+        raise RuntimeError(
+            f"公開予測APIから動画データを取得できません: {type(exc).__name__}"
+        ) from exc
 
 
 def top_by_deviation(race: RaceVideoData, limit: int = 3) -> List[HorseVideoData]:

@@ -2,7 +2,7 @@
 
 ## Overview
 
-YouTube日次統合投稿の認証、データ欠損、途中失敗を安全に切り分け、横長1本とShort 1本を重複なく復旧する手順です。日次自動運用では午後の翌日データ更新完了を起点とし、18:20 JSTの予備起動とDBレジストリで停止・再実行に耐えます。
+YouTube日次統合投稿の認証、データ欠損、途中失敗を安全に切り分け、利用可能なレースで横長1本とShort 1本を重複なく復旧する手順です。日次自動運用では午後の翌日データ更新完了を成否にかかわらず起点とし、18:20 JSTの予備起動とDBレジストリで停止・再実行に耐えます。
 
 ## Parameters
 
@@ -15,7 +15,7 @@ YouTube日次統合投稿の認証、データ欠損、途中失敗を安全に�
 
 ### 1. 原因を生成・認証・データ・アップロードへ分類する
 
-Actions Summaryと失敗ステップを確認し、生成本数、保留会場・欠損R、OAuth事前検証、アップロード本数、予約・公開本数、実効公開時刻を照合します。
+Actions Summaryと失敗ステップを確認し、実収録R、除外Rと理由、データ取得元、再取得回数、重賞収録状況、OAuth事前検証、動画種別ごとのアップロードID、予約・公開本数、実効公開時刻を照合します。
 
 **Constraints:**
 
@@ -35,16 +35,21 @@ Google Auth Platformの対象プロジェクト、OAuthクライアント、認�
 - You MUST NOT print or save OAuth client secrets or tokens in files, logs, summaries, or screenshots because 認証情報が漏えいします。
 - You MUST validate the authenticated channel against `YOUTUBE_CHANNEL_ID` before rendering because別チャンネル投稿と長時間生成後の認証失敗を防ぐ必要があります。
 
-### 3. 対象日のデータ完全性を確認する
+### 3. 対象日の収録可能レースを確認する
 
-データ更新Workflowの完了後、対象日の会場、1Rから最終Rまでの連続性、AI偏差値の算出対象外となる新馬戦・障害戦を除く各Rの有効な予測を確認します。
+データ更新Workflowの完了後、対象日の各レースについて、正常な馬名と有限なAI偏差値を持つ馬が3頭以上いるかを確認します。DBを第1ソース、公開予測APIを第2ソースとし、DB接続失敗時はAPIへ切り替えます。
 
 **Constraints:**
 
-- You MUST stop before rendering or uploading the daily compilation when any venue has missing races or predictions because欠損会場を除いた不完全版を同じ日次stable IDで公開すると安全に差し替えられません。
-- You MUST include missing race numbers in Actions Summary because会場名だけではデータ更新側の復旧対象を特定できません。
-- You MUST require the upstream prediction workflow to retry only incomplete races once and fail its final completeness audit when an eligible race still has no AI deviation score because a false-success starts YouTube with known-missing data.
-- You MUST verify newcomer and obstacle exclusions by their explicit `unpredictable_reason` because an all-null prediction caused by a calculation error is not a valid exclusion.
+- You MUST omit only the affected race when Prediction行なし、全馬スコアなし、予測計算エラー、3頭未満の有効スコア、または描画失敗がある because一部欠損で他会場と当日全体の投稿を止めません。
+- You MUST continue rendering as soon as at least one race is publishable because投稿継続と流入獲得を会場・レース完全性より優先します。
+- You MUST retry data loading twice at 120-second intervals only when all candidate races are empty because部分収録可能な状態で待機すると公開機会を失います。
+- You MUST stop that target date after three total attempts only when no publishable race remains because前日データの流用や架空値の補完は禁止です。
+- You MUST include race numbers, names, grades, omission reasons, source, and retry count in Actions Summary because部分公開の内容と上流の復旧対象を照合できるようにします。
+- You MUST require the upstream prediction workflow to retry incomplete races once, but complete with warnings when at least one race remains renderable because上流の部分欠損をYouTube全停止へ波及させません。
+- You MUST verify newcomer and obstacle exclusions by their explicit `unpredictable_reason` or recognized race classification because an all-null prediction caused by a calculation error is not a valid exclusion。
+- You MUST treat `NewBeginning`を含む初出走レース and comparison-data shortage marked as `予測対象外` as expected exclusions because予測対象外は取得エラーではありません。
+- You MUST compare placeholder horse names by normalized exact match and omit only that horse because`ウイングレイテスト`のような正常馬名を部分一致で拒否してはいけません。
 - You MUST preserve IAP-only database access because本番PostgreSQLを外部公開してはいけません。
 
 ### 4. 非公開で重複なく再実行する
@@ -56,21 +61,23 @@ Google Auth Platformの対象プロジェクト、OAuthクライアント、認�
 - You MUST keep the DB registry and content hash checks enabled because再実行時の重複投稿を防ぎます。
 - You MUST NOT use `--force` or disable the registry because 既存動画IDを見失い外部投稿が重複します。
 - You MUST resume from the saved remote video ID after an upload-stage failure because同じ動画を作り直す必要はありません。
-- You MUST verify generated and uploaded counts as one daily long video plus one daily Short before opening visibility.
+- You MUST verify each available output independently because横動画またはShortの片方が失敗しても成功済みの片方を取り消しません。
+- You MUST verify actual race counts, grade counts, duration, and uploaded video IDs before opening visibility becauseタイトルと概要欄を実収録内容へ一致させます。
 
 ### 5. Studio確認後に公開し、次回同期を確認する
 
-YouTube Studioで処理完了、日付、中央各場から地方各場への章順、総収録R数、Shortの全対象、説明欄先頭URL、映像、音声を確認します。緊急復旧では過去の予約時刻を再利用せず、通知なしで即時公開します。
+YouTube Studioで処理完了、日付、中央各場から地方各場への章順、実収録R数、Shortの収録重賞または各場11R・最終R、59.5秒以下の完成尺、説明欄先頭URL、映像、音声を確認します。緊急復旧では過去の予約時刻を再利用せず、通知なしで即時公開します。
 
 **Constraints:**
 
-- You MUST verify every expected video before changing visibility because一括公開後の差し戻しを避けます。
-- You MUST NOT publish a compilation that omits a held venue or an unprocessed video because 不完全な情報や再生不能動画が公開されます。
+- You MUST verify every successfully uploaded video before changing visibility because一括公開後の差し戻しを避けます。
+- You MUST NOT describe omitted races as included or use `全重賞` when any grade race was omitted because 実収録内容を誤認させます。
+- You MUST keep confirmed BGM rights and the 59.5-second Short duration gate enabled because1分超Shortの権利申し立て時の公開停止リスクを避けます。
 - You MUST compare video IDs with `video_publications` on the next daily run becauseStudioで手動公開した状態をDBの`published`へ同期する必要があります。
 
 ### 6. 次の1開催日を監視する
 
-午後データ更新成功後の`workflow_run`、18:20 JSTの予備cron、単一concurrency、同一公開時刻、部分保留のSummaryを確認します。
+午後データ更新後の成否を問わない`workflow_run`、18:20 JSTの予備cron、単一concurrency、同一公開時刻、部分収録のSummaryを確認します。
 
 **Constraints:**
 
@@ -103,13 +110,17 @@ dry_run: false
 
 Google Auth Platformが本番環境か、管理スコープで再認証したか、Repository Secret `YOUTUBE_REFRESH_TOKEN`だけを新しい値へ交換したかを確認します。動画生成やDB予約は開始しません。
 
-### 欠損会場のため生成本数0でWorkflowが失敗になる
+### 一部レースの予測欠損がある
 
-想定どおりの完全性停止です。Actions Summaryの保留会場・欠損Rをデータ更新側で修復し、同じ対象日を再実行します。アップロード前停止のため、不完全な日次動画は作成されません。
+Actions Summaryの`coverage_status=partial`、除外R、理由、重賞収録状況を確認します。収録可能なレースが1件以上あれば正常な警告付き完了であり、横動画とShortの生成・投稿を継続します。上流側では欠損レースだけを次回取得対象にします。
 
-### 午後データ更新が成功したのに欠損会場が繰り返し保留される
+### 全件ゼロでWorkflowが失敗になる
 
-午後予測処理の最終ログで対象日の完全性監査が実行され、欠損レースだけが1回再取得されているか確認します。対象レースが未復旧なら午後Workflow自体が失敗し、成功時の`workflow_run`でYouTubeを起動してはいけません。18:20 JSTの予備cronでも欠損が残る場合は、日次統合動画を生成せずに停止します。
+初回と120秒間隔の再取得2回が行われたか、DBからAPIへフォールバックしたかを確認します。3回後も正常な馬3頭以上の有限AI偏差値を持つレースが0件なら、その対象日だけ停止します。前日データは再利用しません。
+
+### 午後データ更新Workflowが失敗した
+
+YouTubeの`workflow_run`が起動し、部分保存済みDBまたは公開予測APIから収録可能レースを探索したか確認します。上流失敗そのものはYouTube停止理由にせず、全件ゼロ、両動画生成不能、素材権利検証失敗、認証チャンネル不一致、またはYouTube側の確定的拒否だけを停止理由とします。
 
 ### 連動起動と予備cronが両方動く
 

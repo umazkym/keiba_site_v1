@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
-from dataclasses import dataclass
+import unicodedata
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -49,7 +51,22 @@ from scripts.race_classification import prediction_exclusion_reason  # noqa: E40
 
 
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "youtube_video_dist"
-PLACEHOLDER_NAME_MARKERS = ("サンプル", "sample", "dummy", "テスト", "test", "?")
+PLACEHOLDER_HORSE_NAMES = frozenset(
+    {
+        "",
+        "?",
+        "サンプル",
+        "サンプル馬",
+        "sample",
+        "sample horse",
+        "dummy",
+        "dummy horse",
+        "テスト",
+        "テスト馬",
+        "test",
+        "test horse",
+    }
+)
 PROHIBITED_VIDEO_PHRASES = ("投資", "必勝", "絶対", "圧倒的", "最強", "消去対象")
 
 
@@ -58,6 +75,48 @@ class UploadContext:
     registry: VideoPostRegistry
     client: YouTubeClient
     authenticated_channel_id: str
+
+
+@dataclass(frozen=True)
+class RaceOmission:
+    race_id: str
+    venue_name: str
+    race_number: int
+    race_name: str
+    grade: str
+    reason: str
+    category: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "race_id": self.race_id,
+            "venue_name": self.venue_name,
+            "race_number": self.race_number,
+            "race_name": self.race_name,
+            "grade": self.grade,
+            "reason": self.reason,
+            "category": self.category,
+        }
+
+
+@dataclass(frozen=True)
+class PreparedVideoData:
+    venues: List[VenueVideoData]
+    omitted_races: List[RaceOmission]
+    data_source: str
+    retry_count: int
+    source_race_count: int
+    load_errors: Tuple[str, ...] = ()
+
+    @property
+    def actual_race_count(self) -> int:
+        return sum(len(venue.races) for venue in self.venues)
+
+    @property
+    def coverage_status(self) -> str:
+        if not self.venues:
+            return "empty"
+        return "partial" if self.omitted_races else "complete"
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -77,19 +136,28 @@ def _load_input_json(path: Path, target_date: str):
 
 
 def _is_placeholder_horse_name(name: str) -> bool:
-    normalized = str(name or "").strip().lower()
-    if not normalized:
-        return True
-    return any(marker in normalized for marker in PLACEHOLDER_NAME_MARKERS)
+    normalized = unicodedata.normalize("NFKC", str(name or "")).strip().casefold()
+    return normalized in PLACEHOLDER_HORSE_NAMES
+
+
+def _valid_scored_horses(race: RaceVideoData) -> List[Any]:
+    valid = []
+    for horse in race.predictions:
+        if horse.horse_number <= 0 or _is_placeholder_horse_name(horse.horse_name):
+            continue
+        if horse.deviation_score is None:
+            continue
+        try:
+            if not math.isfinite(float(horse.deviation_score)):
+                continue
+        except (TypeError, ValueError):
+            continue
+        valid.append(horse)
+    return valid
 
 
 def _has_publishable_predictions(race: RaceVideoData) -> bool:
-    valid_scored_horse = any(
-        horse.deviation_score is not None and not _is_placeholder_horse_name(horse.horse_name)
-        for horse in race.predictions
-    )
-    has_placeholder = any(_is_placeholder_horse_name(horse.horse_name) for horse in race.predictions)
-    return valid_scored_horse and not has_placeholder
+    return len(_valid_scored_horses(race)) >= 3
 
 
 def _prediction_exclusion_reason(race: RaceVideoData) -> str:
@@ -109,47 +177,77 @@ def _all_venue_races(venue: VenueVideoData) -> List[RaceVideoData]:
     return sorted(races_by_id.values(), key=lambda race: race.race_number)
 
 
-def _venue_readiness_reason(venue: VenueVideoData, allow_placeholder_data: bool) -> str:
-    if allow_placeholder_data:
-        return ""
-    all_races = _all_venue_races(venue)
-    if not all_races:
-        return "レースがありません"
-    race_numbers = [race.race_number for race in all_races]
-    expected_numbers = list(range(1, max(race_numbers) + 1))
-    if race_numbers != expected_numbers:
-        return f"レース番号が連続していません: {race_numbers}"
-    invalid_races = [
-        race.race_number
-        for race in all_races
-        if not _is_prediction_excluded_race(race) and not _has_publishable_predictions(race)
-    ]
-    if invalid_races:
-        return f"有効な予測データがないレース: {','.join(f'{number}R' for number in invalid_races)}"
-    return ""
+def _race_omission(race: RaceVideoData, *, placeholder_count: int = 0) -> RaceOmission:
+    explicit_reason = _prediction_exclusion_reason(race)
+    reasons = sorted(
+        {
+            horse.unpredictable_reason.strip()
+            for horse in race.predictions
+            if horse.unpredictable_reason.strip()
+        }
+    )
+    valid_count = len(_valid_scored_horses(race))
+    if explicit_reason:
+        reason = explicit_reason.rstrip("。")
+        category = "expected_exclusion"
+    elif reasons and all("予測対象外" in reason for reason in reasons):
+        reason = " / ".join(reasons).rstrip("。")
+        category = "expected_exclusion"
+    elif not race.predictions:
+        reason = "Predictionレコードがありません"
+        category = "missing_predictions"
+    elif any("予測計算中にエラー" in reason for reason in reasons):
+        reason = "予測計算エラーが残っています"
+        category = "prediction_error"
+    else:
+        reason = f"有効なAI偏差値が3頭未満です（{valid_count}頭）"
+        category = "insufficient_scores"
+    if placeholder_count:
+        reason += f" / プレースホルダー馬{placeholder_count}頭を除外"
+    return RaceOmission(
+        race_id=race.id,
+        venue_name=race.venue_name,
+        race_number=race.race_number,
+        race_name=race.display_name,
+        grade=race.grade or "",
+        reason=reason,
+        category=category,
+    )
 
 
 def _prepare_publishable_venues(
     venues: List[VenueVideoData],
     allow_placeholder_data: bool,
-) -> Tuple[List[VenueVideoData], Dict[str, str], Dict[str, List[str]]]:
+) -> Tuple[List[VenueVideoData], List[RaceOmission]]:
     publishable: List[VenueVideoData] = []
-    blocked: Dict[str, str] = {}
-    excluded_prediction_races: Dict[str, List[str]] = {}
+    omissions: List[RaceOmission] = []
     for venue in venues:
-        reason = _venue_readiness_reason(venue, allow_placeholder_data)
-        if reason:
-            blocked[venue.venue_name] = reason
-            continue
-
         all_races = _all_venue_races(venue)
-        excluded = [race for race in all_races if _is_prediction_excluded_race(race)]
-        eligible = [race for race in all_races if not _is_prediction_excluded_race(race)]
-        if excluded:
-            excluded_prediction_races[venue.venue_name] = [
-                f"{race.race_number}R {race.display_name}（{_prediction_exclusion_reason(race).rstrip('。')}）"
-                for race in excluded
-            ]
+        eligible: List[RaceVideoData] = []
+        excluded: List[RaceVideoData] = []
+        for race in all_races:
+            placeholder_count = sum(
+                1 for horse in race.predictions if _is_placeholder_horse_name(horse.horse_name)
+            )
+            clean_predictions = (
+                list(race.predictions)
+                if allow_placeholder_data
+                else [
+                    horse
+                    for horse in race.predictions
+                    if not _is_placeholder_horse_name(horse.horse_name)
+                ]
+            )
+            clean_race = replace(race, predictions=clean_predictions)
+            if allow_placeholder_data and clean_race.predictions:
+                eligible.append(clean_race)
+                continue
+            if not _is_prediction_excluded_race(clean_race) and _has_publishable_predictions(clean_race):
+                eligible.append(clean_race)
+                continue
+            omission = _race_omission(clean_race, placeholder_count=placeholder_count)
+            omissions.append(omission)
+            excluded.append(replace(clean_race, omission_reason=omission.reason))
         if not eligible:
             continue
         publishable.append(
@@ -160,42 +258,89 @@ def _prepare_publishable_venues(
                 excluded_races=excluded,
             )
         )
-    return publishable, blocked, excluded_prediction_races
+    return publishable, omissions
 
 
 def _partition_publishable_venues(
     venues: List[VenueVideoData],
     allow_placeholder_data: bool,
-) -> Tuple[List[VenueVideoData], Dict[str, str]]:
-    publishable, blocked, _ = _prepare_publishable_venues(venues, allow_placeholder_data)
-    return publishable, blocked
+) -> Tuple[List[VenueVideoData], List[RaceOmission]]:
+    return _prepare_publishable_venues(venues, allow_placeholder_data)
 
 
 def _load_venues_with_readiness(
     args: argparse.Namespace,
     target_date: str,
-) -> tuple[List[VenueVideoData], Dict[str, str], Dict[str, List[str]]]:
+) -> PreparedVideoData:
     if args.input_json:
         venues = _load_input_json(Path(args.input_json), target_date)
-        return _prepare_publishable_venues(venues, allow_placeholder_data=args.allow_placeholder_data)
-
-    attempts = max(1, int(args.readiness_attempts))
-    last_publishable: List[VenueVideoData] = []
-    last_blocked: Dict[str, str] = {}
-    last_excluded_prediction_races: Dict[str, List[str]] = {}
-    for attempt in range(1, attempts + 1):
-        venues = load_venues_for_date(target_date, force_refresh=attempt > 1)
-        last_publishable, last_blocked, last_excluded_prediction_races = _prepare_publishable_venues(
+        publishable, omissions = _prepare_publishable_venues(
             venues,
             allow_placeholder_data=args.allow_placeholder_data,
         )
-        if venues and not last_blocked:
-            return last_publishable, last_blocked, last_excluded_prediction_races
+        return PreparedVideoData(
+            venues=publishable,
+            omitted_races=omissions,
+            data_source="input_json",
+            retry_count=0,
+            source_race_count=sum(len(venue.races) for venue in venues),
+        )
+
+    attempts = max(1, int(args.readiness_attempts))
+    last_publishable: List[VenueVideoData] = []
+    last_omissions: List[RaceOmission] = []
+    last_data_source = "unavailable"
+    last_source_race_count = 0
+    load_errors: List[str] = []
+    for attempt in range(1, attempts + 1):
+        diagnostics: Dict[str, Any] = {}
+        try:
+            venues = load_venues_for_date(
+                target_date,
+                force_refresh=attempt > 1,
+                diagnostics=diagnostics,
+            )
+            last_data_source = str(diagnostics.get("data_source") or "unknown")
+            last_source_race_count = sum(len(venue.races) for venue in venues)
+            last_publishable, last_omissions = _prepare_publishable_venues(
+                venues,
+                allow_placeholder_data=args.allow_placeholder_data,
+            )
+        except Exception as exc:
+            venues = []
+            last_publishable = []
+            last_omissions = []
+            last_data_source = "unavailable"
+            error = f"{type(exc).__name__}: 動画データを取得できません"
+            load_errors.append(error)
+            print(f"動画データ取得エラー ({attempt}/{attempts}): {error}")
+        if last_publishable:
+            return PreparedVideoData(
+                venues=last_publishable,
+                omitted_races=last_omissions,
+                data_source=last_data_source,
+                retry_count=attempt - 1,
+                source_race_count=last_source_race_count,
+                load_errors=tuple(load_errors),
+            )
         if attempt < attempts:
-            details = " / ".join(f"{venue}: {reason}" for venue, reason in last_blocked.items()) or "開催データなし"
+            details = (
+                " / ".join(
+                    f"{item.venue_name}{item.race_number}R: {item.reason}"
+                    for item in last_omissions[:8]
+                )
+                or "収録可能なAI分析データなし"
+            )
             print(f"動画データ準備待ち ({attempt}/{attempts}): {details}")
             time.sleep(max(0, int(args.readiness_delay_seconds)))
-    return last_publishable, last_blocked, last_excluded_prediction_races
+    return PreparedVideoData(
+        venues=last_publishable,
+        omitted_races=last_omissions,
+        data_source=last_data_source,
+        retry_count=max(0, attempts - 1),
+        source_race_count=last_source_race_count,
+        load_errors=tuple(load_errors),
+    )
 
 
 def _assign_publish_offsets(rendered: List[RenderedVideo], venues: List[VenueVideoData]) -> List[RenderedVideo]:
@@ -253,6 +398,9 @@ def _video_summary(item: RenderedVideo) -> dict:
         "utm_content": item.utm_content,
         "race_number": item.race_number,
         "race_name": item.race_name,
+        "race_ids": item.race_ids,
+        "actual_race_count": len(item.race_ids),
+        "estimated_duration_seconds": round(item.estimated_duration_seconds, 3),
         "featured_races": item.featured_races,
         "vertical_cover_path": str(item.vertical_cover_path) if item.vertical_cover_path else None,
         "variant_video_paths": {
@@ -353,38 +501,16 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
         )
         raise RuntimeError(f"動画素材の権利・形式検証に失敗しました: {issue_summary}")
 
-    venues, blocked_venues, excluded_prediction_races = _load_venues_with_readiness(args, target_date)
-    args.incomplete_venues = blocked_venues
-    args.excluded_prediction_races = excluded_prediction_races
+    prepared = _load_venues_with_readiness(args, target_date)
+    venues = prepared.venues
+    args.prepared_video_data = prepared
 
-    if excluded_prediction_races:
+    if prepared.omitted_races:
         details = " / ".join(
-            f"{venue}: {', '.join(races)}"
-            for venue, races in excluded_prediction_races.items()
+            f"{item.venue_name}{item.race_number}R {item.race_name}: {item.reason}"
+            for item in prepared.omitted_races
         )
-        print(f"AI偏差値算出対象外レースを動画対象から除外しました: {details}")
-
-    if blocked_venues:
-        details = " / ".join(
-            f"{venue}: {reason}"
-            for venue, reason in blocked_venues.items()
-        )
-        message = (
-            "日次統合動画は開催場をまたいで1本にまとめるため、欠損会場を除いた"
-            f"不完全版は生成しません: {details}"
-        )
-        _append_actions_summary(
-            [
-                f"## YouTube動画生成 {target_date}",
-                "",
-                "- 生成本数: 0",
-                "- 結果: 日次統合動画の完全性ゲートで停止",
-                f"- 保留会場・理由: {details}",
-            ]
-        )
-        raise RuntimeError(message)
-
-    only_excluded_races = not venues and bool(excluded_prediction_races) and not blocked_venues
+        print(f"収録できないレースだけを動画対象から除外しました: {details}")
 
     if args.max_venues is not None:
         venues = venues[: max(0, args.max_venues)]
@@ -392,19 +518,22 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
     venues = order_venues_for_daily_compilation(venues)
 
     if not venues:
-        if only_excluded_races:
-            message = f"{target_date}はAI偏差値の算出対象外レースのみで、動画対象レースがありません。"
-            print(f"{message} 動画生成を正常終了します。")
-            _append_actions_summary(
-                [
-                    f"## YouTube動画生成 {target_date}",
-                    "",
-                    "- 生成本数: 0",
-                    "- 結果: AI偏差値の算出対象外レースのみのため動画対象なし",
-                ]
-            )
-            return []
-        message = f"{target_date}の公開可能な開催データが見つかりません。"
+        message = (
+            f"{target_date}は{prepared.retry_count}回再確認しても、"
+            "3頭以上のAI偏差値を持つ収録可能レースが見つかりません。"
+        )
+        _append_actions_summary(
+            [
+                f"## YouTube動画生成 {target_date}",
+                "",
+                "- 生成本数: 0",
+                "- coverage_status: empty",
+                f"- データ取得元: {prepared.data_source}",
+                f"- 再取得回数: {prepared.retry_count}",
+                f"- 取得レース数: {prepared.source_race_count}",
+                f"- 結果: 全件ゼロのため停止（{message}）",
+            ]
+        )
         if validate_publication_mode(args.publication_mode) != "disabled" and not args.dry_run:
             raise RuntimeError(message)
         print(f"{message} 動画生成を終了します。")
@@ -412,20 +541,26 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
 
     print(f"{target_date} の動画生成を開始します。対象会場: {', '.join(v.venue_name for v in venues)}")
     rendered: List[RenderedVideo] = []
+    render_errors: List[str] = []
     if args.include_long:
         print("日次統合の横動画を生成中: 中央競馬の各場 → 地方競馬")
-        rendered.append(
-            render_daily_long_video(
-                venues,
-                target_date,
-                output_dir,
-                skip_video=args.skip_video,
+        try:
+            rendered.append(
+                render_daily_long_video(
+                    venues,
+                    target_date,
+                    output_dir,
+                    skip_video=args.skip_video,
+                )
             )
-        )
+        except Exception as exc:
+            error = f"横動画: {type(exc).__name__}: {exc}"
+            render_errors.append(error)
+            print(f"横動画の生成に失敗しました。Shortの生成は継続します: {error}")
 
     if args.include_shorts and args.max_shorts > 0:
         shorts_targets = pick_daily_short_races(venues)
-        short_scope = "当日の全重賞" if any(race.is_grade_race for race in shorts_targets) else "各開催場のメインレース"
+        short_scope = "AI分析可能な重賞" if any(race.is_grade_race for race in shorts_targets) else "各開催場のメインレース"
         print(
             f"日次統合のShorts動画を生成中: {short_scope} / "
             + "、".join(
@@ -433,25 +568,87 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
                 for race in shorts_targets
             )
         )
-        rendered.append(
-            render_daily_short_video(
-                shorts_targets,
-                venues,
-                target_date,
-                output_dir,
-                skip_video=args.skip_video,
+        try:
+            rendered.append(
+                render_daily_short_video(
+                    shorts_targets,
+                    venues,
+                    target_date,
+                    output_dir,
+                    skip_video=args.skip_video,
+                )
             )
-        )
+        except Exception as exc:
+            error = f"Short: {type(exc).__name__}: {exc}"
+            render_errors.append(error)
+            print(f"Shortの生成に失敗しました。生成済み横動画の処理は継続します: {error}")
+
+    if not rendered:
+        raise RuntimeError("横動画とShortの両方を生成できませんでした: " + " / ".join(render_errors))
 
     _apply_content_safety_gate(rendered)
     rendered = _assign_publish_offsets(rendered, venues)
+    render_omissions: List[dict[str, Any]] = []
+    for item in rendered:
+        try:
+            metadata = json.loads(item.metadata_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        for omission in metadata.get("render_omissions") or []:
+            if isinstance(omission, dict):
+                render_omissions.append({**omission, "video_type": item.video_type})
+
+    all_omitted_races = [
+        item.to_dict() for item in prepared.omitted_races
+    ] + render_omissions
+    long_video = next((item for item in rendered if item.video_type == "daily_long"), None)
+    long_race_ids = set(long_video.race_ids) if long_video else {
+        race.id for venue in venues for race in venue.races
+    }
+    included_races = [
+        {
+            "race_id": race.id,
+            "venue_name": race.venue_name,
+            "race_number": race.race_number,
+            "race_name": race.display_name,
+            "grade": race.grade or "",
+        }
+        for venue in venues
+        for race in venue.races
+        if race.id in long_race_ids
+    ]
+    included_counts_by_venue: Dict[str, int] = {}
+    for race in included_races:
+        venue_name = str(race["venue_name"])
+        included_counts_by_venue[venue_name] = included_counts_by_venue.get(venue_name, 0) + 1
+    short_video = next((item for item in rendered if item.video_type == "short"), None)
+    included_grade_races = (
+        [race for race in short_video.featured_races if race.get("grade")]
+        if short_video
+        else [race for race in included_races if race.get("grade")]
+    )
+    coverage_status = "partial" if all_omitted_races else prepared.coverage_status
     summary = {
         "target_date": target_date,
         "generated_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "count": len(rendered),
         "publication_mode": validate_publication_mode(args.publication_mode),
-        "blocked_venues": blocked_venues,
-        "excluded_prediction_races": excluded_prediction_races,
+        "included_races": included_races,
+        "omitted_races": all_omitted_races,
+        "included_grade_races": included_grade_races,
+        "omitted_grade_races": [
+            item for item in all_omitted_races if item.get("grade")
+        ],
+        "data_source": prepared.data_source,
+        "retry_count": prepared.retry_count,
+        "coverage_status": coverage_status,
+        "actual_race_count": len(included_races),
+        "duration_seconds": {
+            item.video_type: round(item.estimated_duration_seconds, 3)
+            for item in rendered
+        },
+        "render_errors": render_errors,
+        "load_errors": list(prepared.load_errors),
         "videos": [_video_summary(item) for item in rendered],
         "asset_validation": asset_validation.to_dict(),
         "asset_validation_path": str(asset_validation_path),
@@ -470,20 +667,40 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
             "",
             f"- 生成本数: {len(rendered)}",
             f"- 対象会場: {', '.join(venue.venue_name for venue in venues)}",
+            "- 会場別収録数: "
+            + " / ".join(
+                f"{venue.race_type} {venue.venue_name}="
+                f"{included_counts_by_venue.get(venue.venue_name, 0)}R"
+                for venue in venues
+            ),
+            f"- 実収録レース数: {len(included_races)}",
+            f"- coverage_status: {coverage_status}",
+            f"- データ取得元: {prepared.data_source}",
+            f"- 再取得回数: {prepared.retry_count}",
             (
-                "- 除外したAI偏差値算出対象外レース: "
+                "- 除外レース: "
                 + " / ".join(
-                    f"{venue}: {', '.join(races)}"
-                    for venue, races in excluded_prediction_races.items()
+                    f"{item.get('venue_name')}{item.get('race_number')}R "
+                    f"{item.get('race_name')}（{item.get('reason')}）"
+                    for item in all_omitted_races
                 )
-                if excluded_prediction_races
-                else "- 除外したAI偏差値算出対象外レース: なし"
+                if all_omitted_races
+                else "- 除外レース: なし"
             ),
             (
-                "- 保留会場・理由: "
-                + " / ".join(f"{venue}: {reason}" for venue, reason in blocked_venues.items())
-                if blocked_venues
-                else "- 保留会場・理由: なし"
+                "- 除外重賞: "
+                + " / ".join(
+                    f"{item.get('venue_name')}{item.get('race_number')}R {item.get('race_name')}"
+                    for item in all_omitted_races
+                    if item.get("grade")
+                )
+                if any(item.get("grade") for item in all_omitted_races)
+                else "- 除外重賞: なし"
+            ),
+            (
+                "- 生成エラー: " + " / ".join(render_errors)
+                if render_errors
+                else "- 生成エラー: なし"
             ),
             f"- 公開モード: {validate_publication_mode(args.publication_mode)}",
         ]
@@ -628,8 +845,6 @@ def _upload_all(
             f"- 状態反映待ちから再開: {len(retryable_recent_errors)}件"
         )
     safety_reasons: List[str] = []
-    if any(not item.publishable for item in rendered):
-        safety_reasons.append("素材・権利ゲート保留あり")
     if reconciliation_errors or recent_errors:
         safety_reasons.append("直近7日間の投稿エラーあり")
     if publication_mode == "scheduled_public" and safety_reasons:
@@ -665,6 +880,7 @@ def _upload_all(
     scheduled_count = 0
     published_count = 0
     private_review_count = 0
+    upload_errors: List[str] = []
     effective_publish_time = "なし（非公開レビュー）"
     if safety_reasons:
         uploaded_lines.append(f"- 安全ゲート: {', '.join(safety_reasons)}")
@@ -705,8 +921,8 @@ def _upload_all(
             uploaded_lines.append(f"- 遅延時刻補正: {delay_message}")
 
     reserved_records = {}
-    try:
-        for item in publishable_items:
+    for item in publishable_items:
+        try:
             publication_metadata = item.publication_metadata()
             if schedule_shift_minutes:
                 publication_metadata["schedule_shift_minutes"] = schedule_shift_minutes
@@ -717,16 +933,28 @@ def _upload_all(
                 content_hash=item.content_hash,
                 metadata=publication_metadata,
             )
-    except Exception as exc:
-        uploaded_lines.append(f"- 投稿前検証で停止: {exc}")
-        _append_actions_summary(uploaded_lines)
-        raise
+        except Exception as exc:
+            try:
+                registry.record_error(
+                    target_date,
+                    item.video_type,
+                    item.stable_id,
+                    str(exc),
+                )
+            except Exception as registry_exc:
+                print(f"警告: 投稿予約エラー状態の保存にも失敗しました: {registry_exc}")
+            error = f"{item.video_type} {item.stable_id}: 投稿予約失敗（{exc}）"
+            upload_errors.append(error)
+            uploaded_lines.append(f"- 投稿予約失敗: {item.title}（{exc}）")
 
     for item in rendered:
         if not item.publishable:
             reasons = " / ".join(item.publish_block_reasons) or "素材要件を満たしていません"
             print(f"素材不足のためYouTube投稿をスキップ: {item.video_type} {item.stable_id} ({reasons})")
             uploaded_lines.append(f"- 保留: {item.title}（{reasons}）")
+            continue
+
+        if (item.video_type, item.stable_id) not in reserved_records:
             continue
 
         record = reserved_records[(item.video_type, item.stable_id)]
@@ -749,9 +977,10 @@ def _upload_all(
                     )
                 except Exception as exc:
                     registry.record_error(target_date, item.video_type, item.stable_id, str(exc))
+                    error = f"{item.video_type} {item.stable_id}: 予約解除失敗（{exc}）"
+                    upload_errors.append(error)
                     uploaded_lines.append(f"- 予約解除失敗: {item.title}（{exc}）")
-                    _append_actions_summary(uploaded_lines)
-                    raise
+                    continue
                 print(f"安全モードのため予約公開を解除: {item.video_type} {item.stable_id}")
                 uploaded_lines.append(f"- 予約解除・非公開維持: {item.title}")
                 private_review_count += 1
@@ -766,9 +995,6 @@ def _upload_all(
             elif record.status == "private_review":
                 private_review_count += 1
             continue
-        if item.video_path is None:
-            raise RuntimeError(f"動画ファイルが生成されていないためアップロードできません: {item.stable_id}")
-
         publish_at = publish_at_by_key[(item.video_type, item.stable_id)]
         if (
             publication_mode == "scheduled_public"
@@ -779,6 +1005,10 @@ def _upload_all(
         mode_label = f"予約公開 {publish_at}" if publish_at else "非公開レビュー"
         print(f"YouTubeへ投稿します: {item.title} ({mode_label})")
         try:
+            if item.video_path is None:
+                raise RuntimeError(
+                    f"動画ファイルが生成されていないためアップロードできません: {item.stable_id}"
+                )
             video_id = record.remote_video_id
             if not video_id:
                 result = client.insert_video(
@@ -887,20 +1117,10 @@ def _upload_all(
                 registry.record_error(target_date, item.video_type, item.stable_id, str(exc))
             except Exception as registry_exc:
                 print(f"警告: 投稿エラー状態の保存にも失敗しました: {registry_exc}")
-            uploaded_lines.extend(
-                [
-                    f"- 失敗: {item.title}（{exc}）",
-                    "- 原因区分: YouTubeアップロード・処理確認失敗",
-                    f"- 生成本数: {len(rendered)}",
-                    f"- 新規アップロード本数: {uploaded_count}",
-                    f"- 予約本数: {scheduled_count}",
-                    f"- 公開本数: {published_count}",
-                    f"- 非公開レビュー本数: {private_review_count}",
-                    f"- 実効公開時刻: {effective_publish_time}",
-                ]
-            )
-            _append_actions_summary(uploaded_lines)
-            raise
+            error = f"{item.video_type} {item.stable_id}: {exc}"
+            upload_errors.append(error)
+            uploaded_lines.append(f"- 失敗: {item.title}（{exc}）")
+            continue
     uploaded_lines.extend(
         [
             f"- 生成本数: {len(rendered)}",
@@ -910,9 +1130,19 @@ def _upload_all(
             f"- 公開本数: {published_count}",
             f"- 非公開レビュー本数: {private_review_count}",
             f"- 実効公開時刻: {effective_publish_time}",
+            (
+                "- 投稿エラー: " + " / ".join(upload_errors)
+                if upload_errors
+                else "- 投稿エラー: なし"
+            ),
         ]
     )
     _append_actions_summary(uploaded_lines)
+    if upload_errors:
+        raise RuntimeError(
+            "一部動画の投稿に失敗しました。成功済み動画は維持します: "
+            + " / ".join(upload_errors)
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -944,13 +1174,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--readiness-attempts",
         type=int,
-        default=int(os.getenv("YOUTUBE_READINESS_ATTEMPTS", "1")),
+        default=int(os.getenv("YOUTUBE_READINESS_ATTEMPTS", "3")),
         help="翌日データの準備確認回数",
     )
     parser.add_argument(
         "--readiness-delay-seconds",
         type=int,
-        default=int(os.getenv("YOUTUBE_READINESS_DELAY_SECONDS", "600")),
+        default=int(os.getenv("YOUTUBE_READINESS_DELAY_SECONDS", "120")),
         help="翌日データ再確認までの待機秒数",
     )
     parser.add_argument(
@@ -994,14 +1224,11 @@ def main() -> None:
             "入力JSONまたはプレースホルダー許可を使ったYouTube投稿は禁止しています。"
             "実DBの確定データで実行してください。"
         )
-    args.incomplete_venues = {}
+    args.prepared_video_data = None
     upload_context = _preflight_upload(args)
     rendered = _render_all(args)
     if rendered:
         _upload_all(args, rendered, upload_context=upload_context)
-    if args.incomplete_venues and validate_publication_mode(args.publication_mode) != "disabled":
-        details = " / ".join(f"{venue}: {reason}" for venue, reason in args.incomplete_venues.items())
-        raise RuntimeError(f"一部会場の動画を保留しました: {details}")
 
 
 if __name__ == "__main__":

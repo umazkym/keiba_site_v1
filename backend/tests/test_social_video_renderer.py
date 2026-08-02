@@ -628,14 +628,19 @@ class SocialVideoRendererTest(unittest.TestCase):
         )
 
         self.assertIn("11/1 全2レースAI分析", long_title)
-        self.assertIn("中央競馬・地方競馬 AI予想", long_title)
+        self.assertIn("中央競馬・地方競馬予想", long_title)
         self.assertIn("天皇賞（秋）", long_title)
-        self.assertIn("重賞AI予想", short_title)
-        self.assertIn("競馬予想", short_title)
+        self.assertIn("1重賞 AI競馬予想", short_title)
         self.assertEqual(description.splitlines()[0], "https://uma-free.com")
         self.assertIn("【中央・地方競馬のAI分析をいつでも無料公開中】", description)
         self.assertIn("#競馬 #AI予想 #競馬予想", description)
         self.assertIn("チャプター", description)
+
+    def test_five_grade_short_is_capped_at_59_point_5_seconds(self) -> None:
+        intermediate = renderer._daily_short_intermediate_duration(5)
+
+        self.assertAlmostEqual(intermediate, 11.0)
+        self.assertAlmostEqual(intermediate * 4 + renderer.SHORT_SCENE_SECONDS, 59.5)
 
     def test_daily_compilation_renderers_create_one_long_and_one_short_package(self) -> None:
         central = _race()
@@ -683,6 +688,78 @@ class SocialVideoRendererTest(unittest.TestCase):
             self.assertEqual(short_package.race_ids, ["tokyo-grade", "ooi-main"])
             self.assertEqual(len(short_package.featured_races), 2)
             self.assertTrue(short_package.vertical_cover_path.is_file())
+
+    def test_daily_long_omits_only_a_race_that_fails_preflight_rendering(self) -> None:
+        broken = _race()
+        broken.id = "broken-long"
+        broken.race_number = 1
+        broken.race_name = "描画失敗レース"
+        healthy = _race()
+        healthy.id = "healthy-long"
+        healthy.race_number = 2
+        venue = VenueVideoData("東京", "中央", [broken, healthy])
+        original_builder = renderer._build_long_race_motion_scene
+
+        def build_scene(*args, **kwargs):
+            if args[1].id == "broken-long":
+                raise ValueError("fixture render failure")
+            return original_builder(*args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch.object(
+            renderer,
+            "_build_long_race_motion_scene",
+            side_effect=build_scene,
+        ):
+            package = renderer.render_daily_long_video(
+                [venue],
+                "2026-11-01",
+                Path(temp_dir),
+                skip_video=True,
+            )
+            metadata = json.loads(package.metadata_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(package.race_ids, ["healthy-long"])
+        self.assertEqual(metadata["render_omissions"][0]["race_id"], "broken-long")
+        self.assertIn("描画失敗レース", package.description)
+
+    def test_daily_short_omits_only_a_grade_race_that_fails_preflight_rendering(self) -> None:
+        broken = _race()
+        broken.id = "broken-short"
+        broken.race_number = 10
+        broken.race_name = "除外重賞"
+        broken.grade = "G3"
+        healthy = _race()
+        healthy.id = "healthy-short"
+        healthy.race_number = 11
+        healthy.race_name = "収録重賞"
+        healthy.grade = "G3"
+        venue = VenueVideoData("東京", "中央", [broken, healthy])
+        original_builder = renderer._build_short_motion_scene
+
+        def build_scene(*args, **kwargs):
+            if args[1].id == "broken-short":
+                raise ValueError("fixture render failure")
+            return original_builder(*args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch.object(
+            renderer,
+            "_build_short_motion_scene",
+            side_effect=build_scene,
+        ):
+            package = renderer.render_daily_short_video(
+                [broken, healthy],
+                [venue],
+                "2026-11-01",
+                Path(temp_dir),
+                skip_video=True,
+            )
+            metadata = json.loads(package.metadata_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(package.race_ids, ["healthy-short"])
+        self.assertEqual(metadata["render_omissions"][0]["race_id"], "broken-short")
+        self.assertIn("1重賞 AI競馬予想", package.title)
+        self.assertNotIn("全重賞", package.title)
+        self.assertIn("除外重賞", package.description)
 
     def test_long_title_prioritizes_grade_race_name(self) -> None:
         race = _race()

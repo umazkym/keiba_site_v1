@@ -312,12 +312,20 @@ def _has_valid_deviation_score(row: Any) -> bool:
         return False
 
 
+MIN_VIDEO_SCORED_HORSES = 3
+
+
+def _valid_deviation_score_count(predictions: List[Any]) -> int:
+    return sum(1 for prediction in predictions if _has_valid_deviation_score(prediction))
+
+
 def _prediction_rows_issue(race: Optional[models.Race], predictions: List[Any]) -> Optional[str]:
     if race is None:
         return "Raceレコードがありません"
     if not predictions:
         return "Predictionレコードがありません"
-    if any(_has_valid_deviation_score(prediction) for prediction in predictions):
+    valid_score_count = _valid_deviation_score_count(predictions)
+    if valid_score_count >= MIN_VIDEO_SCORED_HORSES:
         return None
 
     exclusion_reason = prediction_exclusion_reason(race.race_name, race.course_type)
@@ -337,7 +345,40 @@ def _prediction_rows_issue(race: Optional[models.Race], predictions: List[Any]) 
     }
     if "予測計算中にエラーが発生" in reasons:
         return "一般レースの予測計算エラーが残っています"
-    return "一般レースに有効なAI偏差値がありません"
+    if reasons and all("予測対象外" in reason for reason in reasons):
+        return None
+    return (
+        "一般レースの有効なAI偏差値が3頭未満です"
+        f"（{valid_score_count}頭）"
+    )
+
+
+def count_renderable_prediction_races(
+    db: Session,
+    expected_races: List[Tuple[str, bool]],
+) -> int:
+    race_ids = list(dict.fromkeys(race_id for race_id, _ in expected_races))
+    if not race_ids:
+        return 0
+    races = db.query(models.Race).filter(models.Race.id.in_(race_ids)).all()
+    race_by_id = {race.id: race for race in races}
+    predictions = db.query(models.Prediction).filter(
+        models.Prediction.race_id.in_(race_ids)
+    ).all()
+    predictions_by_race: Dict[str, List[models.Prediction]] = {}
+    for prediction in predictions:
+        predictions_by_race.setdefault(prediction.race_id, []).append(prediction)
+    return sum(
+        1
+        for race_id in race_ids
+        if race_by_id.get(race_id) is not None
+        and not prediction_exclusion_reason(
+            race_by_id[race_id].race_name,
+            race_by_id[race_id].course_type,
+        )
+        and _valid_deviation_score_count(predictions_by_race.get(race_id, []))
+        >= MIN_VIDEO_SCORED_HORSES
+    )
 
 
 def _prediction_payload_issue(
@@ -662,11 +703,29 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
             f"  - {issue.format_for_log()}"
             for issue in completeness_issues
         )
-        raise RuntimeError(
-            f"{target_date.strftime('%Y-%m-%d')} の予測データ完全性監査に失敗しました:\n{formatted}"
+        renderable_race_count = count_renderable_prediction_races(db, all_race_ids)
+        if renderable_race_count == 0:
+            raise RuntimeError(
+                f"{target_date.strftime('%Y-%m-%d')} の全対象レースで"
+                f"有効なAI偏差値が3頭以上揃いませんでした:\n{formatted}"
+            )
+        print(
+            "  -> [WARNING] Prediction refresh completed with partial data: "
+            f"renderable={renderable_race_count}, omitted={len(completeness_issues)}\n"
+            f"{formatted}"
         )
-
-    print(f"  -> Prediction completeness audit passed: {len(all_race_ids)} races")
+    else:
+        renderable_race_count = count_renderable_prediction_races(db, all_race_ids)
+        if all_race_ids and renderable_race_count == 0:
+            raise RuntimeError(
+                f"{target_date.strftime('%Y-%m-%d')} の全対象レースで"
+                "有効なAI偏差値が3頭以上揃いませんでした。"
+                "予測対象外レースだけの場合もYouTube側の再取得へ引き継ぎます。"
+            )
+        print(
+            "  -> Prediction completeness audit passed: "
+            f"renderable={renderable_race_count}, checked={len(all_race_ids)}"
+        )
 
     print(f"\n  -> [5/5] Generating AI Analysis text for races in batches")
     try:

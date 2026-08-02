@@ -155,6 +155,20 @@ def _youtube_client() -> Mock:
     return client
 
 
+def _valid_horses(prefix: str = "通常馬") -> list[HorseVideoData]:
+    return [
+        HorseVideoData(
+            f"{prefix}{number}",
+            number,
+            number,
+            "",
+            64.0 - number,
+            float(number),
+        )
+        for number in range(1, 4)
+    ]
+
+
 class YouTubeVideoPipelineV7Test(unittest.TestCase):
     def test_private_review_short_skips_thumbnail_and_publish_at(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -172,6 +186,104 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             registry.transitions,
             ["uploaded", "thumbnail_skipped", "processing", "private_review"],
         )
+
+    def test_one_upload_failure_does_not_prevent_other_video_upload(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            short = _package(root, "short", thumbnail_required=False)
+            long_video = _package(root, "daily_long", thumbnail_required=True)
+            records: dict[tuple[str, str], PublicationRecord] = {}
+            registry = Mock(enabled=True)
+            registry.list_recent.return_value = []
+
+            def reserve(**kwargs) -> PublicationRecord:
+                key = (kwargs["video_type"], kwargs["stable_id"])
+                record = PublicationRecord(
+                    platform="youtube",
+                    target_date=kwargs["target_date"],
+                    video_type=kwargs["video_type"],
+                    stable_id=kwargs["stable_id"],
+                    status="planned",
+                    content_hash=kwargs["content_hash"],
+                    remote_video_id=None,
+                    scheduled_at=None,
+                    attempt_count=1,
+                    last_error=None,
+                    metadata=kwargs["metadata"],
+                )
+                records[key] = record
+                return record
+
+            def transition(target_date, video_type, stable_id, status, **kwargs) -> PublicationRecord:
+                key = (video_type, stable_id)
+                current = records[key]
+                record = PublicationRecord(
+                    platform="youtube",
+                    target_date=target_date,
+                    video_type=video_type,
+                    stable_id=stable_id,
+                    status=status,
+                    content_hash=current.content_hash,
+                    remote_video_id=kwargs.get("remote_video_id") or current.remote_video_id,
+                    scheduled_at=kwargs.get("scheduled_at") or current.scheduled_at,
+                    attempt_count=current.attempt_count,
+                    last_error=None,
+                    metadata=current.metadata,
+                )
+                records[key] = record
+                return record
+
+            registry.reserve.side_effect = reserve
+            registry.transition.side_effect = transition
+            client = _youtube_client()
+            client.insert_video.side_effect = [
+                RuntimeError("Short upload failed"),
+                YouTubeUploadResult("long-video", "https://www.youtube.com/watch?v=long-video"),
+            ]
+            context = youtube_video_pipeline.UploadContext(registry, client, "channel")
+
+            with patch.object(youtube_video_pipeline, "_env_flag", return_value=True):
+                with self.assertRaisesRegex(RuntimeError, "成功済み動画は維持"):
+                    youtube_video_pipeline._upload_all(
+                        _args("private_review"),
+                        [short, long_video],
+                        upload_context=context,
+                    )
+
+        self.assertEqual(client.insert_video.call_count, 2)
+        self.assertEqual(records[("daily_long", long_video.stable_id)].status, "private_review")
+
+    def test_one_registry_reservation_failure_does_not_prevent_other_upload(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            short = _package(root, "short", thumbnail_required=False)
+            long_video = _package(root, "daily_long", thumbnail_required=True)
+            backing_registry = FakeRegistry()
+            registry = Mock(enabled=True)
+            registry.list_recent.side_effect = backing_registry.list_recent
+            registry.transition.side_effect = backing_registry.transition
+            registry.record_error.side_effect = backing_registry.record_error
+
+            def reserve(**kwargs) -> PublicationRecord:
+                if kwargs["video_type"] == "short":
+                    raise RuntimeError("Short content hash mismatch")
+                return backing_registry.reserve(**kwargs)
+
+            registry.reserve.side_effect = reserve
+            client = _youtube_client()
+            context = youtube_video_pipeline.UploadContext(registry, client, "channel")
+
+            with patch.object(youtube_video_pipeline, "_env_flag", return_value=True):
+                with self.assertRaisesRegex(RuntimeError, "成功済み動画は維持"):
+                    youtube_video_pipeline._upload_all(
+                        _args("private_review"),
+                        [short, long_video],
+                        upload_context=context,
+                    )
+
+        client.insert_video.assert_called_once()
+        self.assertEqual(backing_registry.existing.status, "private_review")
+        self.assertTrue(any("content hash mismatch" in error for error in backing_registry.errors))
 
     def test_scheduled_long_sets_thumbnail_and_publish_at(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -233,7 +345,7 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         self.assertEqual(registry.existing.metadata["schedule_shift_minutes"], 60)
         self.assertIn("遅延時刻補正", summary_text)
 
-    def test_scheduled_mode_falls_back_to_private_when_an_asset_is_blocked(self) -> None:
+    def test_unpublishable_item_does_not_downgrade_other_scheduled_video(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             package = _package(Path(temp_dir), "venue_long", thumbnail_required=True)
             blocked = _package(Path(temp_dir), "short", thumbnail_required=False)
@@ -247,8 +359,8 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             ), patch.object(youtube_video_pipeline, "YouTubeClient", return_value=client):
                 youtube_video_pipeline._upload_all(args, [package, blocked])
 
-        self.assertIsNone(client.insert_video.call_args.kwargs["publish_at"])
-        self.assertEqual(registry.transitions[-1], "private_review")
+        self.assertIsNotNone(client.insert_video.call_args.kwargs["publish_at"])
+        self.assertEqual(registry.transitions[-1], "scheduled")
 
     def test_resume_after_insert_reuses_remote_video_id(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -374,11 +486,10 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         self.assertEqual(registry.existing.status, "private_review")
         self.assertIsNone(registry.existing.scheduled_at)
 
-    def test_incomplete_race_blocks_only_its_venue(self) -> None:
-        valid_horse = HorseVideoData("通常馬", 1, 1, "", 60.0, 0.5)
-        valid_race = RaceVideoData("valid", "2026-07-12", "東京", 1, "1R", "芝", 1600, predictions=[valid_horse])
+    def test_incomplete_race_is_omitted_without_blocking_other_venue(self) -> None:
+        valid_race = RaceVideoData("valid", "2026-07-12", "東京", 1, "1R", "芝", 1600, predictions=_valid_horses())
         missing_race = RaceVideoData("missing", "2026-07-12", "大井", 1, "1R", "ダート", 1200, predictions=[])
-        publishable, blocked = youtube_video_pipeline._partition_publishable_venues(
+        publishable, omissions = youtube_video_pipeline._partition_publishable_venues(
             [
                 VenueVideoData("東京", "中央", [valid_race]),
                 VenueVideoData("大井", "地方", [missing_race]),
@@ -386,10 +497,10 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             allow_placeholder_data=False,
         )
         self.assertEqual([venue.venue_name for venue in publishable], ["東京"])
-        self.assertIn("大井", blocked)
+        self.assertEqual([item.race_id for item in omissions], ["missing"])
 
     def test_newcomer_race_is_excluded_without_blocking_venue(self) -> None:
-        valid_horse = HorseVideoData("通常馬", 1, 1, "", 60.0, 0.5)
+        valid_horses = _valid_horses()
         first_race = RaceVideoData(
             "race-1",
             "2026-07-24",
@@ -398,7 +509,7 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             "3歳未勝利",
             "ダート",
             1400,
-            predictions=[valid_horse],
+            predictions=valid_horses,
         )
         newcomer_race = RaceVideoData(
             "race-2",
@@ -418,24 +529,20 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             "2歳特別",
             "ダート",
             1400,
-            predictions=[valid_horse],
+            predictions=valid_horses,
         )
 
-        publishable, blocked, excluded = youtube_video_pipeline._prepare_publishable_venues(
+        publishable, omissions = youtube_video_pipeline._prepare_publishable_venues(
             [VenueVideoData("笠松", "地方", [first_race, newcomer_race, third_race])],
             allow_placeholder_data=False,
         )
 
-        self.assertEqual(blocked, {})
         self.assertEqual([race.race_number for race in publishable[0].races], [1, 3])
         self.assertEqual([race.race_number for race in publishable[0].excluded_races], [2])
-        self.assertEqual(
-            excluded,
-            {"笠松": ["2R 2歳新馬（新馬戦のため、予測対象外です）"]},
-        )
+        self.assertEqual([item.category for item in omissions], ["expected_exclusion"])
 
     def test_obstacle_race_is_excluded_without_blocking_venue(self) -> None:
-        valid_horse = HorseVideoData("通常馬", 1, 1, "", 60.0, 0.5)
+        valid_horses = _valid_horses()
         flat_race = RaceVideoData(
             "race-1",
             "2026-08-01",
@@ -444,7 +551,7 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             "3歳未勝利",
             "芝",
             1600,
-            predictions=[valid_horse],
+            predictions=valid_horses,
         )
         obstacle_race = RaceVideoData(
             "race-2",
@@ -457,21 +564,17 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             predictions=[],
         )
 
-        publishable, blocked, excluded = youtube_video_pipeline._prepare_publishable_venues(
+        publishable, omissions = youtube_video_pipeline._prepare_publishable_venues(
             [VenueVideoData("中京", "中央", [flat_race, obstacle_race])],
             allow_placeholder_data=False,
         )
 
-        self.assertEqual(blocked, {})
         self.assertEqual([race.race_number for race in publishable[0].races], [1])
         self.assertEqual([race.race_number for race in publishable[0].excluded_races], [2])
-        self.assertEqual(
-            excluded,
-            {"中京": ["2R 3歳以上障害未勝利（障害戦のため、予測対象外です）"]},
-        )
+        self.assertEqual([item.category for item in omissions], ["expected_exclusion"])
 
     def test_branded_nar_debut_is_excluded_without_blocking_venue(self) -> None:
-        valid_horse = HorseVideoData("通常馬", 1, 1, "", 60.0, 0.5)
+        valid_horses = _valid_horses()
         normal_race = RaceVideoData(
             "race-1",
             "2026-07-31",
@@ -480,7 +583,7 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             "3歳条件",
             "ダート",
             1500,
-            predictions=[valid_horse],
+            predictions=valid_horses,
         )
         branded_debut = RaceVideoData(
             "race-3",
@@ -500,57 +603,69 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             "3歳条件",
             "ダート",
             1500,
-            predictions=[valid_horse],
+            predictions=valid_horses,
         )
 
-        publishable, blocked, excluded = youtube_video_pipeline._prepare_publishable_venues(
+        publishable, omissions = youtube_video_pipeline._prepare_publishable_venues(
             [VenueVideoData("名古屋", "地方", [normal_race, second_race, branded_debut])],
             allow_placeholder_data=False,
         )
 
-        self.assertEqual(blocked, {})
         self.assertEqual([race.race_number for race in publishable[0].races], [1, 2])
         self.assertEqual([race.race_number for race in publishable[0].excluded_races], [3])
-        self.assertEqual(
-            excluded,
-            {"名古屋": ["3R ゴールデンデビュー名古屋(2歳)（新馬戦のため、予測対象外です）"]},
+        self.assertEqual([item.category for item in omissions], ["expected_exclusion"])
+
+    def test_sonoda_new_beginning_is_an_expected_exclusion(self) -> None:
+        debut = RaceVideoData(
+            "sonoda-debut",
+            "2026-07-29",
+            "園田",
+            3,
+            "NewBeginning 2歳初出走",
+            "ダート",
+            1400,
+            predictions=[],
+        )
+        normal = RaceVideoData(
+            "sonoda-main",
+            "2026-07-29",
+            "園田",
+            11,
+            "園田11R",
+            "ダート",
+            1400,
+            predictions=_valid_horses(),
         )
 
-    def test_readiness_retry_forces_database_refresh(self) -> None:
+        publishable, omissions = youtube_video_pipeline._prepare_publishable_venues(
+            [VenueVideoData("園田", "地方", [debut, normal])],
+            allow_placeholder_data=False,
+        )
+
+        self.assertEqual([race.id for race in publishable[0].races], ["sonoda-main"])
+        self.assertEqual(omissions[0].category, "expected_exclusion")
+
+    def test_all_zero_readiness_retries_and_forces_database_refresh(self) -> None:
         target_date = "2026-07-31"
-        valid_horse = HorseVideoData("通常馬", 1, 1, "", 60.0, 0.5)
-        preceding_races = [
-            RaceVideoData(
-                f"race-{race_number}",
-                target_date,
-                "川崎",
-                race_number,
-                f"{race_number}R",
-                "ダート",
-                1500,
-                predictions=[valid_horse],
-            )
-            for race_number in range(1, 12)
-        ]
         invalid_race = RaceVideoData(
-            "race-12",
+            "race-1",
             target_date,
             "川崎",
-            12,
-            "ファイナルアンサー賞(C1)",
+            1,
+            "1R",
             "ダート",
             1500,
             predictions=[],
         )
         valid_race = RaceVideoData(
-            "race-12",
+            "race-1",
             target_date,
             "川崎",
-            12,
-            "ファイナルアンサー賞(C1)",
+            1,
+            "1R",
             "ダート",
             1500,
-            predictions=[valid_horse],
+            predictions=_valid_horses(),
         )
         args = SimpleNamespace(
             input_json=None,
@@ -563,25 +678,63 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             youtube_video_pipeline,
             "load_venues_for_date",
             side_effect=[
-                [VenueVideoData("川崎", "地方", [*preceding_races, invalid_race])],
-                [VenueVideoData("川崎", "地方", [*preceding_races, valid_race])],
+                [VenueVideoData("川崎", "地方", [invalid_race])],
+                [VenueVideoData("川崎", "地方", [valid_race])],
             ],
         ) as load_venues, patch.object(youtube_video_pipeline.time, "sleep"):
-            publishable, blocked, excluded = youtube_video_pipeline._load_venues_with_readiness(
+            prepared = youtube_video_pipeline._load_venues_with_readiness(
                 args,
                 target_date,
             )
 
-        self.assertEqual([venue.venue_name for venue in publishable], ["川崎"])
-        self.assertEqual(blocked, {})
-        self.assertEqual(excluded, {})
-        self.assertEqual(
-            load_venues.call_args_list,
-            [
-                call(target_date, force_refresh=False),
-                call(target_date, force_refresh=True),
-            ],
+        self.assertEqual([venue.venue_name for venue in prepared.venues], ["川崎"])
+        self.assertEqual(prepared.retry_count, 1)
+        self.assertEqual(load_venues.call_count, 2)
+        self.assertFalse(load_venues.call_args_list[0].kwargs["force_refresh"])
+        self.assertTrue(load_venues.call_args_list[1].kwargs["force_refresh"])
+
+    def test_partial_data_is_used_without_waiting_for_retry(self) -> None:
+        target_date = "2026-08-03"
+        valid = RaceVideoData(
+            "valid",
+            target_date,
+            "盛岡",
+            11,
+            "11R",
+            "ダート",
+            1600,
+            predictions=_valid_horses(),
         )
+        missing = RaceVideoData(
+            "missing",
+            target_date,
+            "盛岡",
+            12,
+            "12R",
+            "ダート",
+            1600,
+            predictions=[],
+        )
+        args = SimpleNamespace(
+            input_json=None,
+            readiness_attempts=3,
+            readiness_delay_seconds=0,
+            allow_placeholder_data=False,
+        )
+
+        with patch.object(
+            youtube_video_pipeline,
+            "load_venues_for_date",
+            return_value=[VenueVideoData("盛岡", "地方", [valid, missing])],
+        ) as load_venues, patch.object(youtube_video_pipeline.time, "sleep") as sleep:
+            prepared = youtube_video_pipeline._load_venues_with_readiness(args, target_date)
+
+        self.assertEqual(prepared.actual_race_count, 1)
+        self.assertEqual(prepared.retry_count, 0)
+        self.assertEqual(prepared.coverage_status, "partial")
+        self.assertEqual([item.race_id for item in prepared.omitted_races], ["missing"])
+        load_venues.assert_called_once()
+        sleep.assert_not_called()
 
     def test_database_force_refresh_invalidates_prediction_cache(self) -> None:
         db = Mock()
@@ -608,22 +761,140 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         invalidate_cache.assert_called_once_with(date(2026, 7, 31))
         db.close.assert_called_once_with()
 
-    def test_placeholder_horse_name_blocks_venue(self) -> None:
+    def test_database_failure_falls_back_to_public_api(self) -> None:
+        diagnostics: dict[str, object] = {}
+        payload = {
+            "jra": [
+                {
+                    "venue_name": "東京",
+                    "races": [
+                        {
+                            "id": "race-1",
+                            "race_date": "2026-08-03",
+                            "venue_name": "東京",
+                            "race_number": 1,
+                            "race_name": "3歳未勝利",
+                            "course_type": "芝",
+                            "distance": 1600,
+                            "predictions": [
+                                {
+                                    "horse_name": f"通常馬{number}",
+                                    "horse_number": number,
+                                    "waku_number": number,
+                                    "deviation_score": 64.0 - number,
+                                    "start_1c_indicator": float(number),
+                                }
+                                for number in range(1, 4)
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "nar": [],
+        }
+
+        with patch.dict(os.environ, {"DATABASE_URL": "postgresql://masked"}), patch.object(
+            data_loader,
+            "_load_venues_for_date_from_database",
+            side_effect=RuntimeError("接続失敗"),
+        ), patch.object(
+            data_loader,
+            "fetch_race_day_payload",
+            return_value=payload,
+        ), patch.object(
+            data_loader,
+            "fetch_weekly_grade_races",
+            return_value=[],
+        ):
+            venues = data_loader.load_venues_for_date(
+                "2026-08-03",
+                diagnostics=diagnostics,
+            )
+
+        self.assertEqual([venue.venue_name for venue in venues], ["東京"])
+        self.assertEqual(diagnostics["data_source"], "api_fallback")
+        self.assertTrue(diagnostics["fallback_used"])
+
+    def test_api_data_infers_grade_outside_weekly_grade_window(self) -> None:
+        payload = {
+            "jra": [
+                {
+                    "venue_name": "新潟",
+                    "races": [
+                        {
+                            "id": "ibis",
+                            "race_date": "2026-08-02",
+                            "venue_name": "新潟",
+                            "race_number": 7,
+                            "race_name": "アイビスSD",
+                            "course_type": "芝",
+                            "distance": 1000,
+                            "predictions": [],
+                        }
+                    ],
+                }
+            ],
+            "nar": [
+                {
+                    "venue_name": "盛岡",
+                    "races": [
+                        {
+                            "id": "local-grade",
+                            "race_date": "2026-08-02",
+                            "venue_name": "盛岡",
+                            "race_number": 11,
+                            "race_name": "せきれい賞重賞",
+                            "course_type": "芝",
+                            "distance": 2400,
+                            "predictions": [],
+                        }
+                    ],
+                }
+            ],
+        }
+
+        venues = data_loader.normalize_venues(payload, [], "2026-08-02")
+
+        self.assertEqual(venues[0].races[0].grade, "G3")
+        self.assertEqual(venues[1].races[0].grade, "地方重賞")
+
+    def test_exact_placeholder_horse_is_removed_and_race_is_omitted(self) -> None:
         placeholder = HorseVideoData("サンプル馬", 1, 1, "", 60.0, 0.5)
         race = RaceVideoData("sample", "2026-07-12", "東京", 1, "1R", "芝", 1600, predictions=[placeholder])
-        publishable, blocked = youtube_video_pipeline._partition_publishable_venues(
+        publishable, omissions = youtube_video_pipeline._partition_publishable_venues(
             [VenueVideoData("東京", "中央", [race])],
             allow_placeholder_data=False,
         )
         self.assertEqual(publishable, [])
-        self.assertIn("東京", blocked)
+        self.assertEqual([item.race_id for item in omissions], ["sample"])
+        self.assertIn("プレースホルダー馬1頭", omissions[0].reason)
+
+    def test_legitimate_horse_name_containing_test_is_publishable(self) -> None:
+        race = RaceVideoData(
+            "grade",
+            "2026-08-02",
+            "新潟",
+            7,
+            "アイビスSD",
+            "芝",
+            1000,
+            grade="G3",
+            predictions=_valid_horses("ウイングレイテスト"),
+        )
+
+        publishable, omissions = youtube_video_pipeline._partition_publishable_venues(
+            [VenueVideoData("新潟", "中央", [race])],
+            allow_placeholder_data=False,
+        )
+
+        self.assertEqual([venue.venue_name for venue in publishable], ["新潟"])
+        self.assertEqual(omissions, [])
 
     def test_database_race_without_predictions_is_added_for_readiness_gate(self) -> None:
-        valid_horse = HorseVideoData("通常馬", 1, 1, "", 60.0, 0.5)
         venue = VenueVideoData(
             "東京",
             "中央",
-            [RaceVideoData("race-1", "2026-07-12", "東京", 1, "1R", "芝", 1600, predictions=[valid_horse])],
+            [RaceVideoData("race-1", "2026-07-12", "東京", 1, "1R", "芝", 1600, predictions=_valid_horses())],
         )
         expected_race = SimpleNamespace(
             id="race-2",
@@ -636,14 +907,20 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             distance=1800,
         )
 
-        merged = merge_expected_races([venue], [expected_race], "2026-07-12")
-        publishable, blocked = youtube_video_pipeline._partition_publishable_venues(
+        merged = merge_expected_races(
+            [venue],
+            [expected_race],
+            "2026-07-12",
+            expected_grades={"race-2": "G3"},
+        )
+        publishable, omissions = youtube_video_pipeline._partition_publishable_venues(
             merged,
             allow_placeholder_data=False,
         )
 
-        self.assertEqual(publishable, [])
-        self.assertIn("有効な予測データがないレース: 2R", blocked["東京"])
+        self.assertEqual([race.id for race in publishable[0].races], ["race-1"])
+        self.assertEqual([item.race_id for item in omissions], ["race-2"])
+        self.assertEqual(omissions[0].grade, "G3")
 
     def test_fixture_or_placeholder_mode_cannot_upload(self) -> None:
         args = _args("private_review")

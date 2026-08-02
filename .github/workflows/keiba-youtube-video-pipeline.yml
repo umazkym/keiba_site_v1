@@ -43,7 +43,6 @@ permissions:
 
 jobs:
   generate-and-upload:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -83,6 +82,8 @@ jobs:
           pip install -r backend/requirements.txt
 
       - name: Set up IAP database tunnel
+        # IAP障害時も公開予測APIへフォールバックして投稿機会を維持する。
+        continue-on-error: true
         uses: ./.github/actions/setup-iap-db
         with:
           database_url: ${{ secrets.DATABASE_URL }}
@@ -121,7 +122,7 @@ jobs:
           YOUTUBE_MAX_PUBLISH_SHIFT_MINUTES: ${{ vars.YOUTUBE_MAX_PUBLISH_SHIFT_MINUTES || '240' }}
           YOUTUBE_MAX_SHORTS: '1'
           YOUTUBE_READINESS_ATTEMPTS: '3'
-          YOUTUBE_READINESS_DELAY_SECONDS: '600'
+          YOUTUBE_READINESS_DELAY_SECONDS: '120'
           YOUTUBE_DAILY_QUOTA_BUDGET: ${{ vars.YOUTUBE_DAILY_QUOTA_BUDGET || '8000' }}
           SOCIAL_VIDEO_MOTION_PROFILE: 'standard'
           TARGET_DATE: ${{ steps.target_date.outputs.target_date }}

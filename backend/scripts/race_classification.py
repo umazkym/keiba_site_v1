@@ -15,6 +15,7 @@ NEWCOMER_RACE_NAME_MARKERS = (
     "ドリームチャレンジ",
     "ファーストステップ",
     "ファーストトライ",
+    "NewBeginning",
 )
 
 

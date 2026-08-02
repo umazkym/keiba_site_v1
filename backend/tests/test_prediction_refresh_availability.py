@@ -70,14 +70,15 @@ class PredictionRefreshAvailabilityTest(unittest.TestCase):
     def _prediction_payload(self, race_id: str, horse_id: str) -> list[dict]:
         return [
             {
-                "horse_id": horse_id,
-                "horse_name": f"更新後の馬-{race_id[-2:]}",
-                "horse_number": 2,
-                "waku_number": 2,
-                "deviation_score": 65.0,
-                "mark": "◎",
+                "horse_id": f"{horse_id}-{number}",
+                "horse_name": f"更新後の馬-{race_id[-2:]}-{number}",
+                "horse_number": number,
+                "waku_number": number,
+                "deviation_score": 66.0 - number,
+                "mark": "◎" if number == 1 else "",
                 "unpredictable_reason": None,
             }
+            for number in range(1, 4)
         ]
 
     def test_refresh_preserves_existing_predictions_but_fails_when_race_data_stays_missing(self) -> None:
@@ -172,8 +173,9 @@ class PredictionRefreshAvailabilityTest(unittest.TestCase):
 
         refreshed = self.db.query(models.Prediction).filter(
             models.Prediction.race_id == self.race_id
-        ).one()
-        self.assertEqual(refreshed.horse_id, f"horse-{self.race_id}")
+        ).order_by(models.Prediction.horse_number).all()
+        self.assertEqual(len(refreshed), 3)
+        self.assertEqual(refreshed[0].horse_id, f"horse-{self.race_id}-1")
 
     def test_newcomer_with_explicit_reason_passes_completeness_audit(self) -> None:
         race = self.db.query(models.Race).filter(models.Race.id == self.race_id).one()
@@ -256,6 +258,40 @@ class PredictionRefreshAvailabilityTest(unittest.TestCase):
         self.assertEqual(len(issues), 1)
         self.assertIn("一般レースの予測計算エラー", issues[0].reason)
 
+    def test_comparison_data_shortage_is_a_normal_prediction_exclusion(self) -> None:
+        self.db.query(models.Prediction).filter(
+            models.Prediction.race_id == self.race_id
+        ).delete(synchronize_session=False)
+        self.db.add(
+            models.Prediction(
+                race_id=self.race_id,
+                horse_id="short-history-horse",
+                horse_name="比較データ不足馬",
+                horse_number=1,
+                waku_number=1,
+                deviation_score=None,
+                mark="—",
+                unpredictable_reason=(
+                    "比較可能な過去データを持つ馬が2頭未満のため、予測対象外です。"
+                ),
+            )
+        )
+        self.db.commit()
+
+        issues = db_handler.audit_prediction_completeness(
+            self.db,
+            [(self.race_id, False)],
+        )
+
+        self.assertEqual(issues, [])
+        self.assertEqual(
+            db_handler.count_renderable_prediction_races(
+                self.db,
+                [(self.race_id, False)],
+            ),
+            0,
+        )
+
     def test_prediction_replacement_rolls_back_to_previous_data_on_insert_error(self) -> None:
         new_predictions = [
             {
@@ -320,6 +356,24 @@ class PredictionRefreshAvailabilityTest(unittest.TestCase):
         workflow = workflow_path.read_text(encoding="utf-8")
 
         self.assertIn("cron: '30 21 * * *'", workflow)
+
+    def test_youtube_workflow_runs_after_upstream_failure_and_retries_only_all_zero(self) -> None:
+        workflow_path = (
+            REPOSITORY_DIR
+            / ".github"
+            / "workflows"
+            / "keiba-youtube-video-pipeline.yml"
+        )
+        workflow = workflow_path.read_text(encoding="utf-8")
+
+        self.assertNotIn("github.event.workflow_run.conclusion == 'success'", workflow)
+        self.assertIn("YOUTUBE_READINESS_ATTEMPTS: '3'", workflow)
+        self.assertIn("YOUTUBE_READINESS_DELAY_SECONDS: '120'", workflow)
+        self.assertIn("cron: '20 9 * * *'", workflow)
+        self.assertRegex(
+            workflow,
+            r"name: Set up IAP database tunnel[\s\S]*?continue-on-error: true",
+        )
 
 
 if __name__ == "__main__":

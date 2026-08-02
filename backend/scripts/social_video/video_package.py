@@ -48,6 +48,7 @@ class VideoPackage:
     rights_manifest_hash: str = ""
     content_hash: str = ""
     thumbnail_required: bool = True
+    estimated_duration_seconds: float = 0.0
 
     def publication_metadata(self) -> dict:
         return {
@@ -68,4 +69,5 @@ class VideoPackage:
             },
             "rights_manifest_hash": self.rights_manifest_hash,
             "thumbnail_required": self.thumbnail_required,
+            "estimated_duration_seconds": self.estimated_duration_seconds,
         }

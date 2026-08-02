@@ -2,7 +2,7 @@
 
 ## Overview
 
-YouTube日次投稿の認証、データ欠損、途中失敗を安全に切り分け、正常会場を維持しながら重複なく復旧する手順です。日次自動運用では午後の翌日データ更新完了を起点とし、18:20 JSTの予備起動とDBレジストリで停止・再実行に耐えます。
+YouTube日次統合投稿の認証、データ欠損、途中失敗を安全に切り分け、横長1本とShort 1本を重複なく復旧する手順です。日次自動運用では午後の翌日データ更新完了を起点とし、18:20 JSTの予備起動とDBレジストリで停止・再実行に耐えます。
 
 ## Parameters
 
@@ -41,7 +41,7 @@ Google Auth Platformの対象プロジェクト、OAuthクライアント、認�
 
 **Constraints:**
 
-- You MUST hold only the venue containing missing races or predictions because正常会場まで停止すると投稿機会を失います。
+- You MUST stop before rendering or uploading the daily compilation when any venue has missing races or predictions because欠損会場を除いた不完全版を同じ日次stable IDで公開すると安全に差し替えられません。
 - You MUST include missing race numbers in Actions Summary because会場名だけではデータ更新側の復旧対象を特定できません。
 - You MUST require the upstream prediction workflow to retry only incomplete races once and fail its final completeness audit when an eligible race still has no AI deviation score because a false-success starts YouTube with known-missing data.
 - You MUST verify newcomer and obstacle exclusions by their explicit `unpredictable_reason` because an all-null prediction caused by a calculation error is not a valid exclusion.
@@ -56,16 +56,16 @@ Google Auth Platformの対象プロジェクト、OAuthクライアント、認�
 - You MUST keep the DB registry and content hash checks enabled because再実行時の重複投稿を防ぎます。
 - You MUST NOT use `--force` or disable the registry because 既存動画IDを見失い外部投稿が重複します。
 - You MUST resume from the saved remote video ID after an upload-stage failure because同じ動画を作り直す必要はありません。
-- You MUST verify generated and uploaded counts against the ready venues plus one Short before opening visibility.
+- You MUST verify generated and uploaded counts as one daily long video plus one daily Short before opening visibility.
 
 ### 5. Studio確認後に公開し、次回同期を確認する
 
-YouTube Studioで処理完了、日付、会場、収録R数、Short対象、説明欄先頭URL、映像、音声を確認します。緊急復旧では過去の予約時刻を再利用せず、通知なしで即時公開します。
+YouTube Studioで処理完了、日付、中央各場から地方各場への章順、総収録R数、Shortの全対象、説明欄先頭URL、映像、音声を確認します。緊急復旧では過去の予約時刻を再利用せず、通知なしで即時公開します。
 
 **Constraints:**
 
 - You MUST verify every expected video before changing visibility because一括公開後の差し戻しを避けます。
-- You MUST NOT publish a held venue or an unprocessed video because 不完全な情報や再生不能動画が公開されます。
+- You MUST NOT publish a compilation that omits a held venue or an unprocessed video because 不完全な情報や再生不能動画が公開されます。
 - You MUST compare video IDs with `video_publications` on the next daily run becauseStudioで手動公開した状態をDBの`published`へ同期する必要があります。
 
 ### 6. 次の1開催日を監視する
@@ -103,13 +103,13 @@ dry_run: false
 
 Google Auth Platformが本番環境か、管理スコープで再認証したか、Repository Secret `YOUTUBE_REFRESH_TOKEN`だけを新しい値へ交換したかを確認します。動画生成やDB予約は開始しません。
 
-### 正常会場だけ投稿されWorkflowが失敗になる
+### 欠損会場のため生成本数0でWorkflowが失敗になる
 
-想定どおりの部分投稿です。Actions Summaryの保留会場・欠損Rをデータ更新側で修復し、同じ対象日を再実行します。既存動画は再利用され、保留会場だけが追加されます。
+想定どおりの完全性停止です。Actions Summaryの保留会場・欠損Rをデータ更新側で修復し、同じ対象日を再実行します。アップロード前停止のため、不完全な日次動画は作成されません。
 
 ### 午後データ更新が成功したのに欠損会場が繰り返し保留される
 
-午後予測処理の最終ログで対象日の完全性監査が実行され、欠損レースだけが1回再取得されているか確認します。対象レースが未復旧なら午後Workflow自体が失敗し、成功時の`workflow_run`でYouTubeを起動してはいけません。18:20 JSTの予備cronでは、既存どおり正常会場だけを重複なく処理します。
+午後予測処理の最終ログで対象日の完全性監査が実行され、欠損レースだけが1回再取得されているか確認します。対象レースが未復旧なら午後Workflow自体が失敗し、成功時の`workflow_run`でYouTubeを起動してはいけません。18:20 JSTの予備cronでも欠損が残る場合は、日次統合動画を生成せずに停止します。
 
 ### 連動起動と予備cronが両方動く
 

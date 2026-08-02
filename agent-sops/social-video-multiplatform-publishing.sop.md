@@ -2,7 +2,7 @@
 
 ## Overview
 
-YouTube用に生成する最優先レースの縦動画を、Threads、Instagram、Facebook、TikTok、Pinterest、Blueskyへ安全に日次配信する手順です。X動画は費用上の理由で対象外とし、公式API、権利ゲート、重複防止、UTM計測を維持します。
+YouTube用に生成する日次統合Short（当日の全重賞、重賞なしは各場メインレース）を、Threads、Instagram、Facebook、TikTok、Pinterest、Blueskyへ安全に日次配信する手順です。X動画は費用上の理由で対象外とし、公式API、権利ゲート、重複防止、UTM計測を維持します。
 
 ## Parameters
 
@@ -15,12 +15,12 @@ YouTube用に生成する最優先レースの縦動画を、Threads、Instagram
 
 ### 1. Confirm scope and source artifact
 
-最優先レースのShortが1本だけあり、公開品質ゲートを通過していることを確認します。
+日次統合Shortが1本だけあり、公開品質ゲートを通過していることを確認します。
 
 **Constraints:**
 
 - You MUST use the generated Short package and its rights manifest because recomputing predictions separately can create inconsistent posts.
-- You MUST verify `target_date`, `destination_path`, `race_number`, `race_name`, `content_hash`, and `rights_manifest_hash`.
+- You MUST verify `target_date`, `destination_path`, `race_number`, `race_name`, `featured_races`, `content_hash`, and `rights_manifest_hash`.
 - You MUST NOT add X video posting because the current operating decision excludes its cost.
 - You MUST NOT publish artifacts older than 240 minutes because stale next-day information can be misleading.
 
@@ -42,6 +42,7 @@ TikTokだけは`tiktok_clean`、その他は`standard`を使用します。
 **Constraints:**
 
 - You MUST use `utm_medium=organic_social` and `utm_campaign=daily_race_video` for direct race links.
+- You MUST build multi-race captions from `featured_races` and disclose every included grade race or main-race scope because単一レースの投稿文では映像内容と一致しません。
 - You MUST use the profile campaign for Instagram and TikTok because their main external path is the profile link.
 - You MUST keep prohibited expressions such as「投資」「必勝」「絶対」「圧倒的」「最強」「消去対象」out of titles and captions because they weaken trust and ad-policy safety.
 - You MUST NOT route users through YouTube because the objective is an independent site-acquisition source.

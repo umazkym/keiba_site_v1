@@ -27,7 +27,9 @@ from scripts.social_video.data_loader import (
     VenueVideoData,
     build_video_url,
     infer_waku_number,
+    order_venues_for_daily_compilation,
     order_venues_for_publication,
+    pick_daily_short_races,
     pick_shorts_targets,
 )
 from scripts.social_video import visual_assets
@@ -537,6 +539,150 @@ class SocialVideoRendererTest(unittest.TestCase):
         selected = pick_shorts_targets(venues, 1)
         self.assertEqual([race.id for race in selected], ["g1"])
         self.assertEqual([venue.venue_name for venue in order_venues_for_publication(venues)], ["東京", "函館"])
+
+    def test_daily_compilation_orders_central_venues_before_local_venues(self) -> None:
+        race = _race()
+        venues = [
+            VenueVideoData("大井", "地方", [race]),
+            VenueVideoData("東京", "中央", [race]),
+            VenueVideoData("川崎", "地方", [race]),
+            VenueVideoData("中京", "中央", [race]),
+        ]
+
+        ordered = order_venues_for_daily_compilation(venues)
+
+        self.assertEqual([venue.race_type for venue in ordered], ["中央", "中央", "地方", "地方"])
+        self.assertEqual({venue.venue_name for venue in ordered[:2]}, {"東京", "中京"})
+
+    def test_daily_short_compilation_selects_every_grade_race(self) -> None:
+        g1 = _race()
+        g1.id = "g1"
+        g1.grade = "G1"
+        g1.venue_name = "東京"
+        g3 = _race()
+        g3.id = "g3"
+        g3.grade = "G3"
+        g3.venue_name = "函館"
+        local_main = _race()
+        local_main.id = "local-main"
+        local_main.grade = None
+        local_main.venue_name = "大井"
+        venues = [
+            VenueVideoData("大井", "地方", [local_main]),
+            VenueVideoData("函館", "中央", [g3]),
+            VenueVideoData("東京", "中央", [g1]),
+        ]
+
+        selected = pick_daily_short_races(venues)
+
+        self.assertEqual([race.id for race in selected], ["g1", "g3"])
+
+    def test_daily_short_compilation_uses_each_venue_main_race_without_grade(self) -> None:
+        tokyo_10 = _race()
+        tokyo_10.id = "tokyo-10"
+        tokyo_10.grade = None
+        tokyo_10.venue_name = "東京"
+        tokyo_10.race_number = 10
+        tokyo_11 = _race()
+        tokyo_11.id = "tokyo-11"
+        tokyo_11.grade = None
+        tokyo_11.venue_name = "東京"
+        local_10 = _race()
+        local_10.id = "local-10"
+        local_10.grade = None
+        local_10.venue_name = "盛岡"
+        local_10.race_number = 10
+
+        selected = pick_daily_short_races(
+            [
+                VenueVideoData("盛岡", "地方", [local_10]),
+                VenueVideoData("東京", "中央", [tokyo_10, tokyo_11]),
+            ]
+        )
+
+        self.assertEqual([race.id for race in selected], ["tokyo-11", "local-10"])
+
+    def test_daily_compilation_titles_and_description_include_search_intent(self) -> None:
+        grade = _race()
+        grade.id = "grade"
+        grade.venue_name = "東京"
+        grade.race_name = "天皇賞（秋）"
+        grade.grade = "G1"
+        local = _race()
+        local.id = "local"
+        local.venue_name = "大井"
+        local.race_name = "大井11R"
+        local.grade = None
+        venues = [
+            VenueVideoData("東京", "中央", [grade]),
+            VenueVideoData("大井", "地方", [local]),
+        ]
+
+        long_title = renderer._daily_long_title(venues, "2026-11-01")
+        short_title = renderer._daily_short_title([grade], "2026-11-01")
+        description = renderer._daily_compilation_description(
+            title=long_title,
+            url="https://uma-free.com",
+            venues=venues,
+            chapter_lines=("00:00 本日の全レースAI分析", "00:02 中央競馬 東京 全1レース"),
+        )
+
+        self.assertIn("11/1 全2レースAI分析", long_title)
+        self.assertIn("中央競馬・地方競馬 AI予想", long_title)
+        self.assertIn("天皇賞（秋）", long_title)
+        self.assertIn("重賞AI予想", short_title)
+        self.assertIn("競馬予想", short_title)
+        self.assertEqual(description.splitlines()[0], "https://uma-free.com")
+        self.assertIn("【中央・地方競馬のAI分析をいつでも無料公開中】", description)
+        self.assertIn("#競馬 #AI予想 #競馬予想", description)
+        self.assertIn("チャプター", description)
+
+    def test_daily_compilation_renderers_create_one_long_and_one_short_package(self) -> None:
+        central = _race()
+        central.id = "tokyo-grade"
+        central.venue_name = "東京"
+        central.race_name = "天皇賞（秋）"
+        central.grade = "G1"
+        local = _race()
+        local.id = "ooi-main"
+        local.venue_name = "大井"
+        local.race_name = "東京大賞典"
+        local.grade = "Jpn1"
+        venues = order_venues_for_daily_compilation(
+            [
+                VenueVideoData("大井", "地方", [local]),
+                VenueVideoData("東京", "中央", [central]),
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir)
+            long_package = renderer.render_daily_long_video(
+                venues,
+                "2026-11-01",
+                output,
+                skip_video=True,
+            )
+            short_package = renderer.render_daily_short_video(
+                [central, local],
+                venues,
+                "2026-11-01",
+                output,
+                skip_video=True,
+            )
+
+            self.assertEqual(long_package.video_type, "daily_long")
+            self.assertEqual(long_package.stable_id, "daily_all")
+            self.assertEqual(long_package.race_ids, ["tokyo-grade", "ooi-main"])
+            self.assertTrue(long_package.thumbnail_path.is_file())
+            self.assertIn("11/1 全2レース AI分析", json.loads(
+                long_package.metadata_path.read_text(encoding="utf-8")
+            )["thumbnail_text"])
+            self.assertEqual(short_package.video_type, "short")
+            self.assertEqual(short_package.stable_id, "daily_short")
+            self.assertEqual(short_package.race_ids, ["tokyo-grade", "ooi-main"])
+            self.assertEqual(len(short_package.featured_races), 2)
+            self.assertTrue(short_package.vertical_cover_path.is_file())
 
     def test_long_title_prioritizes_grade_race_name(self) -> None:
         race = _race()

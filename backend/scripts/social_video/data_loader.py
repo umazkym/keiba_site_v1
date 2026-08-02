@@ -464,8 +464,55 @@ def order_venues_for_publication(venues: List[VenueVideoData]) -> List[VenueVide
     return sorted(venues, key=venue_priority)
 
 
+def order_venues_for_daily_compilation(venues: List[VenueVideoData]) -> List[VenueVideoData]:
+    """日次統合動画向けに、中央競馬を先にして開催場単位で並べる。"""
+
+    race_type_priority = {"中央": 0, "地方": 1}
+    return sorted(
+        venues,
+        key=lambda venue: (
+            race_type_priority.get(str(venue.race_type).strip(), 2),
+            venue_name_to_slug(venue.venue_name),
+        ),
+    )
+
+
 def pick_shorts_targets(venues: List[VenueVideoData], max_shorts: int) -> List[RaceVideoData]:
     candidates: List[RaceVideoData] = []
     for venue in venues:
         candidates.extend(venue.races)
     return sorted(candidates, key=race_feature_priority)[:max(0, max_shorts)]
+
+
+def pick_daily_short_races(venues: List[VenueVideoData]) -> List[RaceVideoData]:
+    """重賞を全件、重賞がなければ各開催場のメインレースを1件ずつ選ぶ。"""
+
+    ordered_venues = order_venues_for_daily_compilation(venues)
+    grade_races = [
+        race
+        for venue in ordered_venues
+        for race in venue.races
+        if race.is_grade_race
+    ]
+    if grade_races:
+        return sorted(
+            grade_races,
+            key=lambda race: (
+                grade_priority(race.grade),
+                0 if any(
+                    venue.race_type == "中央" and venue.venue_name == race.venue_name
+                    for venue in ordered_venues
+                ) else 1,
+                venue_name_to_slug(race.venue_name),
+                race.race_number,
+                race.id,
+            ),
+        )
+
+    main_races: List[RaceVideoData] = []
+    for venue in ordered_venues:
+        if not venue.races:
+            continue
+        race_11 = next((race for race in venue.races if race.race_number == 11), None)
+        main_races.append(race_11 or max(venue.races, key=lambda race: race.race_number))
+    return main_races

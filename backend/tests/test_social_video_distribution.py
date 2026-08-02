@@ -79,6 +79,34 @@ class SocialVideoDistributionTest(unittest.TestCase):
                 else:
                     self.assertEqual(variant.video_path.name, "standard.mp4")
 
+    def test_compilation_package_uses_multi_race_caption_and_title(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            package = _package(Path(temp_dir))
+            package["stable_id"] = "daily_short"
+            package["race_name"] = "重賞2レースまとめ"
+            package["featured_races"] = [
+                {
+                    "venue_name": "東京",
+                    "race_number": 11,
+                    "race_name": "天皇賞（秋）",
+                    "grade": "G1",
+                },
+                {
+                    "venue_name": "阪神",
+                    "race_number": 11,
+                    "race_name": "スワンステークス",
+                    "grade": "G2",
+                },
+            ]
+
+            variant = build_variant(package, platform="threads", mode="validate")
+
+            self.assertEqual(variant.title, "重賞2レース AI偏差値TOP3")
+            self.assertIn("当日の重賞2レース", variant.caption)
+            self.assertIn("天皇賞（秋）", variant.caption)
+            self.assertIn("スワンステークス", variant.caption)
+            self.assertIn("注目2レース", variant.alt_text)
+
     def test_validate_mode_does_not_use_registry_or_external_post(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

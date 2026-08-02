@@ -42,6 +42,7 @@ class VideoPackage:
     utm_content: str = ""
     race_number: int = 0
     race_name: str = ""
+    featured_races: List[dict[str, Any]] = field(default_factory=list)
     vertical_cover_path: Optional[Path] = None
     variant_video_paths: dict[str, Path] = field(default_factory=dict)
     rights_manifest_hash: str = ""
@@ -59,6 +60,7 @@ class VideoPackage:
             "utm_content": self.utm_content,
             "race_number": self.race_number,
             "race_name": self.race_name,
+            "featured_races": self.featured_races,
             "vertical_cover_path": str(self.vertical_cover_path) if self.vertical_cover_path else None,
             "variant_video_paths": {
                 name: str(path)

@@ -125,11 +125,26 @@ def _caption_for(
     race_number: int,
     race_name: str,
     destination_url: str,
+    featured_races: tuple[Mapping[str, Any], ...] = (),
 ) -> str:
-    race_label = f"{venue_name}{race_number}R"
-    if race_name:
-        race_label += f"「{race_name}」"
-    lead = f"{target_date} {race_label}のAI偏差値上位3頭と位置取り予測をまとめました。"
+    if len(featured_races) > 1:
+        race_labels = "、".join(
+            f"{_compact_text(str(item.get('venue_name') or ''))}"
+            f"{max(0, int(item.get('race_number') or 0))}R"
+            f"「{_compact_text(str(item.get('race_name') or ''))}」"
+            for item in featured_races
+        )
+        has_grade = any(_compact_text(str(item.get("grade") or "")) for item in featured_races)
+        scope = "当日の重賞" if has_grade else "各競馬場のメインレース"
+        lead = (
+            f"{target_date} {scope}{len(featured_races)}レースの"
+            f"AI偏差値上位3頭と位置取り予測を1本にまとめました。\n{race_labels}"
+        )
+    else:
+        race_label = f"{venue_name}{race_number}R"
+        if race_name:
+            race_label += f"「{race_name}」"
+        lead = f"{target_date} {race_label}のAI偏差値上位3頭と位置取り予測をまとめました。"
     note = "過去データをもとにした参考情報です。"
     tags = "#競馬 #AI予想 #競馬予想"
     if platform in PROFILE_DESTINATION_PLATFORMS:
@@ -139,7 +154,16 @@ def _caption_for(
     return "\n\n".join((lead, note, cta, tags))
 
 
-def _title_for(venue_name: str, race_number: int, race_name: str) -> str:
+def _title_for(
+    venue_name: str,
+    race_number: int,
+    race_name: str,
+    featured_races: tuple[Mapping[str, Any], ...] = (),
+) -> str:
+    if len(featured_races) > 1:
+        has_grade = any(_compact_text(str(item.get("grade") or "")) for item in featured_races)
+        scope = "重賞" if has_grade else "各場メイン"
+        return f"{scope}{len(featured_races)}レース AI偏差値TOP3"
     suffix = f" {race_name}" if race_name else ""
     return f"{venue_name}{race_number}R AI偏差値TOP3{suffix}"
 
@@ -238,13 +262,18 @@ def build_variant(
     venue_name = _compact_text(str(package.get("venue_name") or ""))
     race_number = int(package.get("race_number") or 0)
     race_name = _compact_text(str(package.get("race_name") or ""))
+    featured_races = tuple(
+        item
+        for item in (package.get("featured_races") or [])
+        if isinstance(item, Mapping)
+    )
     destination_path = str(package.get("destination_path") or "")
     if not target_date or not venue_name or race_number <= 0 or not destination_path:
         raise ValueError("SNS投稿に必要な対象日・会場・レース番号・遷移先が不足しています。")
 
     content_key = build_content_key(target_date, destination_path, race_number)
     destination_url = build_destination_url(normalized_platform, destination_path, content_key)
-    title = _title_for(venue_name, race_number, race_name)
+    title = _title_for(venue_name, race_number, race_name, featured_races)
     caption = _caption_for(
         normalized_platform,
         target_date,
@@ -252,11 +281,18 @@ def build_variant(
         race_number,
         race_name,
         destination_url,
+        featured_races,
     )
-    alt_text = (
-        f"{target_date} {venue_name}{race_number}R"
-        f"{f' {race_name}' if race_name else ''}のAI偏差値上位3頭と位置取り予測"
-    )
+    if len(featured_races) > 1:
+        alt_text = (
+            f"{target_date}の注目{len(featured_races)}レースをまとめた"
+            "AI偏差値上位3頭と位置取り予測"
+        )
+    else:
+        alt_text = (
+            f"{target_date} {venue_name}{race_number}R"
+            f"{f' {race_name}' if race_name else ''}のAI偏差値上位3頭と位置取り予測"
+        )
     variant_paths = dict(package.get("variant_video_paths") or {})
     is_clean_variant = normalized_platform == "tiktok"
     video_key = "tiktok_clean" if is_clean_variant else "standard"

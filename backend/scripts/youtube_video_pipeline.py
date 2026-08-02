@@ -24,14 +24,19 @@ from scripts.social_video.data_loader import (  # noqa: E402
     get_target_date,
     load_venues_for_date,
     normalize_venues,
-    pick_shorts_targets,
+    order_venues_for_daily_compilation,
+    pick_daily_short_races,
 )
 from scripts.social_video.create_design_contact_sheet import (  # noqa: E402
     create_contact_sheet,
     create_motion_review_videos,
 )
 from scripts.social_video.registry import PublicationRecord, VideoPostRegistry  # noqa: E402
-from scripts.social_video.renderer import RenderedVideo, render_long_video, render_short_video  # noqa: E402
+from scripts.social_video.renderer import (  # noqa: E402
+    RenderedVideo,
+    render_daily_long_video,
+    render_daily_short_video,
+)
 from scripts.social_video.visual_assets import validate_asset_library  # noqa: E402
 from scripts.social_video.youtube_client import (  # noqa: E402
     YouTubeClient,
@@ -248,6 +253,7 @@ def _video_summary(item: RenderedVideo) -> dict:
         "utm_content": item.utm_content,
         "race_number": item.race_number,
         "race_name": item.race_name,
+        "featured_races": item.featured_races,
         "vertical_cover_path": str(item.vertical_cover_path) if item.vertical_cover_path else None,
         "variant_video_paths": {
             name: str(path)
@@ -358,10 +364,32 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
         )
         print(f"AI偏差値算出対象外レースを動画対象から除外しました: {details}")
 
+    if blocked_venues:
+        details = " / ".join(
+            f"{venue}: {reason}"
+            for venue, reason in blocked_venues.items()
+        )
+        message = (
+            "日次統合動画は開催場をまたいで1本にまとめるため、欠損会場を除いた"
+            f"不完全版は生成しません: {details}"
+        )
+        _append_actions_summary(
+            [
+                f"## YouTube動画生成 {target_date}",
+                "",
+                "- 生成本数: 0",
+                "- 結果: 日次統合動画の完全性ゲートで停止",
+                f"- 保留会場・理由: {details}",
+            ]
+        )
+        raise RuntimeError(message)
+
     only_excluded_races = not venues and bool(excluded_prediction_races) and not blocked_venues
 
     if args.max_venues is not None:
         venues = venues[: max(0, args.max_venues)]
+
+    venues = order_venues_for_daily_compilation(venues)
 
     if not venues:
         if only_excluded_races:
@@ -385,15 +413,35 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
     print(f"{target_date} の動画生成を開始します。対象会場: {', '.join(v.venue_name for v in venues)}")
     rendered: List[RenderedVideo] = []
     if args.include_long:
-        for venue in venues:
-            print(f"長尺動画を生成中: {venue.venue_name}")
-            rendered.append(render_long_video(venue, target_date, output_dir, skip_video=args.skip_video))
+        print("日次統合の横動画を生成中: 中央競馬の各場 → 地方競馬")
+        rendered.append(
+            render_daily_long_video(
+                venues,
+                target_date,
+                output_dir,
+                skip_video=args.skip_video,
+            )
+        )
 
     if args.include_shorts and args.max_shorts > 0:
-        shorts_targets = pick_shorts_targets(venues, min(1, args.max_shorts))
-        for index, race in enumerate(shorts_targets, start=1):
-            print(f"Shorts動画を生成中: {race.venue_name}{race.race_number}R {race.display_name}")
-            rendered.append(render_short_video(race, target_date, output_dir, index=index, skip_video=args.skip_video))
+        shorts_targets = pick_daily_short_races(venues)
+        short_scope = "当日の全重賞" if any(race.is_grade_race for race in shorts_targets) else "各開催場のメインレース"
+        print(
+            f"日次統合のShorts動画を生成中: {short_scope} / "
+            + "、".join(
+                f"{race.venue_name}{race.race_number}R {race.display_name}"
+                for race in shorts_targets
+            )
+        )
+        rendered.append(
+            render_daily_short_video(
+                shorts_targets,
+                venues,
+                target_date,
+                output_dir,
+                skip_video=args.skip_video,
+            )
+        )
 
     _apply_content_safety_gate(rendered)
     rendered = _assign_publish_offsets(rendered, venues)
@@ -873,7 +921,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input-json", help="ローカルJSONから生成する検証用入力")
     parser.add_argument("--output-dir", help="出力ディレクトリ。未指定なら youtube_video_dist")
     parser.add_argument("--max-venues", type=int, default=None, help="検証用に生成会場数を制限")
-    parser.add_argument("--max-shorts", type=int, default=int(os.getenv("YOUTUBE_MAX_SHORTS", "1")), help="Shorts生成上限。v7では最大1本")
+    parser.add_argument("--max-shorts", type=int, default=int(os.getenv("YOUTUBE_MAX_SHORTS", "1")), help="0でShortsを無効化。1以上では日次統合Shortsを1本生成")
     parser.add_argument("--publish-time-jst", default=os.getenv("YOUTUBE_PUBLISH_TIME_JST", "19:00"), help="翌日分を公開予約するJST時刻 HH:MM")
     parser.add_argument(
         "--publish-min-lead-minutes",

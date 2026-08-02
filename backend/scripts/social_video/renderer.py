@@ -3153,20 +3153,28 @@ SHORT_PHASE_TIMINGS = (
     ("999_outro.png", 12.00, SHORT_SCENE_SECONDS),
 )
 SHORT_TRANSITION_TIMES = tuple(timing[1] for timing in SHORT_PHASE_TIMINGS[1:])
+SHORT_COMBINED_RACE_SECONDS = 12.0
+SHORT_COMBINED_PHASE_TIMINGS = (
+    ("000_cover.png", 0.0, 1.20),
+    ("001_ranking.png", 1.20, 5.00),
+    ("002_position.png", 5.00, 9.00),
+    ("003_hero.png", 9.00, SHORT_COMBINED_RACE_SECONDS),
+)
 
 
 def _validate_short_content_layers(
     layers: Sequence[MotionLayer],
     size: tuple[int, int],
+    phase_timings: Sequence[tuple[str, float, float]] = SHORT_PHASE_TIMINGS,
 ) -> None:
     """Shortsの主要コンテンツが重ならず、全フレームで画面内に収まることを検証する。"""
 
-    phase_names = {timing[0] for timing in SHORT_PHASE_TIMINGS}
+    phase_names = {timing[0] for timing in phase_timings}
     phase_layers = sorted(
         (layer for layer in layers if layer.image_path.name in phase_names),
         key=lambda layer: layer.start_seconds,
     )
-    if len(phase_layers) != len(SHORT_PHASE_TIMINGS):
+    if len(phase_layers) != len(phase_timings):
         raise ValueError("Shortsの表示フェーズが不足しています")
     for previous, current in zip(phase_layers, phase_layers[1:]):
         if current.start_seconds < previous.end_seconds:
@@ -3471,8 +3479,12 @@ def _build_short_motion_scene(
     video_asset: Optional[VideoAsset],
     *,
     branded: bool = True,
+    include_cta: bool = True,
 ) -> MotionScene:
     size = (1080, 1920)
+    phase_timings = SHORT_PHASE_TIMINGS if include_cta else SHORT_COMBINED_PHASE_TIMINGS
+    transition_times = tuple(timing[1] for timing in phase_timings[1:])
+    scene_duration = SHORT_SCENE_SECONDS if include_cta else SHORT_COMBINED_RACE_SECONDS
     background_image, _ = _hero_background(
         size,
         target_date,
@@ -3534,7 +3546,7 @@ def _build_short_motion_scene(
             [(phase_path, 0, 0), (analysis_footer, SHORT_COLUMN_X, SHORT_ANALYSIS_FOOTER_Y)],
             video_dir / preview_name,
         )
-    final_preview = video_dir / "999_outro_preview.png"
+    final_preview = video_dir / ("999_outro_preview.png" if include_cta else "003_hero_preview.png")
 
     layers: list[MotionLayer] = []
     render_background = background
@@ -3552,7 +3564,7 @@ def _build_short_motion_scene(
                 0,
                 0,
                 0.0,
-                SHORT_SCENE_SECONDS,
+                scene_duration,
                 enter_duration=0.0,
                 z_index=1,
             )
@@ -3575,7 +3587,7 @@ def _build_short_motion_scene(
             exit_duration=0.0,
             z_index=10 + index * 10,
         )
-        for index, (name, start, end) in enumerate(SHORT_PHASE_TIMINGS)
+        for index, (name, start, end) in enumerate(phase_timings)
     ])
     layers.extend([
         MotionLayer(
@@ -3583,7 +3595,7 @@ def _build_short_motion_scene(
             SHORT_COLUMN_X,
             SHORT_ANALYSIS_FOOTER_Y,
             0.0,
-            SHORT_SCENE_SECONDS,
+            scene_duration,
             enter_duration=0.22,
             start_y=SHORT_ANALYSIS_FOOTER_Y + 30,
             end_y=SHORT_ANALYSIS_FOOTER_Y,
@@ -3594,15 +3606,15 @@ def _build_short_motion_scene(
             1008,
             1580,
             0.15,
-            15.30,
-            enter_duration=15.15,
+            max(0.30, scene_duration - 0.20),
+            enter_duration=max(0.15, scene_duration - 0.35),
             start_y=300,
             end_y=1580,
             easing="linear",
             z_index=70,
         ),
     ])
-    for transition_index, start in enumerate(SHORT_TRANSITION_TIMES):
+    for transition_index, start in enumerate(transition_times):
         layers.append(
             MotionLayer(
                 wipe,
@@ -3616,10 +3628,10 @@ def _build_short_motion_scene(
                 z_index=90 + transition_index,
             )
         )
-    _validate_short_content_layers(layers, size)
+    _validate_short_content_layers(layers, size, phase_timings)
     return MotionScene(
         background_path=render_background,
-        duration_seconds=SHORT_SCENE_SECONDS,
+        duration_seconds=scene_duration,
         preview_path=final_preview,
         layers=layers,
         scene_id=f"short-{race.id}",
@@ -3675,6 +3687,127 @@ def _description(
             + "、".join(excluded_race_labels)
         )
     return description
+
+
+def _compilation_races(venues: Sequence[VenueVideoData]) -> List[RaceVideoData]:
+    return [race for venue in venues for race in venue.races]
+
+
+def _compilation_grade_races(venues: Sequence[VenueVideoData]) -> List[RaceVideoData]:
+    return [race for race in _compilation_races(venues) if race.is_grade_race]
+
+
+def _race_type_scope(venues: Sequence[VenueVideoData]) -> str:
+    types = {str(venue.race_type).strip() for venue in venues}
+    if "中央" in types and "地方" in types:
+        return "中央競馬・地方競馬"
+    if "中央" in types:
+        return "中央競馬"
+    if "地方" in types:
+        return "地方競馬"
+    return "競馬"
+
+
+def _daily_long_title(venues: Sequence[VenueVideoData], target_date: str) -> str:
+    date_label, year_label = _title_date_parts(target_date)
+    races = _compilation_races(venues)
+    essential = f"{date_label} 全{len(races)}レースAI分析｜{_race_type_scope(venues)} AI予想"
+    grade_names = "・".join(race.display_name for race in _compilation_grade_races(venues))
+    suffix = f"｜{year_label}"
+    if grade_names:
+        remaining = max(0, 100 - len(essential) - len(suffix) - 1)
+        if remaining:
+            essential += f"｜{grade_names[:remaining].rstrip('・｜ ')}"
+    return f"{essential}{suffix}"[:100].rstrip("｜・ ")
+
+
+def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
+    if not races:
+        raise ValueError("Shortsの収録対象レースがありません")
+    date_label, year_label = _title_date_parts(target_date)
+    grade_races = [race for race in races if race.is_grade_race]
+    if grade_races:
+        essential = f"{date_label} 重賞AI予想｜競馬予想まとめ"
+        race_names = "・".join(race.display_name for race in grade_races)
+    else:
+        essential = f"{date_label} 各競馬場メインレース｜AI競馬予想"
+        race_names = "・".join(f"{race.venue_name}{race.race_number}R" for race in races)
+    suffix = f"｜{year_label} #Shorts"
+    remaining = max(0, 100 - len(essential) - len(suffix) - 1)
+    middle = f"｜{race_names[:remaining].rstrip('・｜ ')}" if remaining and race_names else ""
+    return f"{essential}{middle}{suffix}"[:100].rstrip("｜・ ")
+
+
+def _format_chapter_timestamp(seconds: float) -> str:
+    total_seconds = max(0, int(seconds))
+    minutes, second = divmod(total_seconds, 60)
+    hours, minute = divmod(minutes, 60)
+    if hours:
+        return f"{hours:02d}:{minute:02d}:{second:02d}"
+    return f"{minute:02d}:{second:02d}"
+
+
+def _daily_compilation_description(
+    *,
+    title: str,
+    url: str,
+    venues: Sequence[VenueVideoData],
+    chapter_lines: Sequence[str] = (),
+    short_races: Sequence[RaceVideoData] = (),
+) -> str:
+    grade_races = [
+        race
+        for race in (short_races or _compilation_grade_races(venues))
+        if race.is_grade_race
+    ]
+    venue_summary = " / ".join(
+        f"{venue.race_type}競馬 {venue.venue_name}（{len(venue.races)}レース）"
+        for venue in venues
+    )
+    race_summary = " / ".join(
+        f"{race.venue_name}{race.race_number}R {race.display_name}"
+        for race in short_races
+    )
+    lines = [
+        url,
+        "",
+        title,
+        "",
+        "【中央・地方競馬のAI分析をいつでも無料公開中】",
+        "UMA-FREEでは、AI偏差値、過去対戦成績、位置取り予測、枠順傾向を登録不要で確認できます。",
+        "本動画は、当日の競馬予想を検討する際の参考情報として、過去データに基づくAI分析をまとめたものです。",
+    ]
+    if venue_summary:
+        lines.extend(("", f"収録開催場: {venue_summary}"))
+    if race_summary:
+        lines.extend(("", f"収録レース: {race_summary}"))
+    if grade_races:
+        lines.extend(("", "重賞: " + "、".join(race.display_name for race in grade_races)))
+    if chapter_lines:
+        lines.extend(("", "チャプター", *chapter_lines))
+
+    excluded_labels = [
+        f"{venue.venue_name}{race.race_number}R {race.display_name}"
+        for venue in venues
+        for race in venue.excluded_races
+    ]
+    if excluded_labels:
+        lines.extend(
+            (
+                "",
+                "※AI偏差値の算出対象外となる新馬戦・障害戦等は収録していません: "
+                + "、".join(excluded_labels),
+            )
+        )
+    lines.extend(
+        (
+            "",
+            "※本動画は過去データをもとにした参考情報です。結果を保証するものではありません。",
+            "",
+            "#競馬 #AI予想 #競馬予想 #中央競馬 #地方競馬 #UMA_FREE",
+        )
+    )
+    return "\n".join(lines).strip()
 
 
 def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path, skip_video: bool = False) -> RenderedVideo:
@@ -3899,6 +4032,295 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
     )
 
 
+def render_daily_long_video(
+    venues: Sequence[VenueVideoData],
+    target_date: str,
+    output_dir: Path,
+    skip_video: bool = False,
+) -> RenderedVideo:
+    """中央競馬の各場を先に、地方競馬を後にまとめた日次横動画を生成する。"""
+
+    if not venues:
+        raise ValueError("日次統合動画の対象開催場がありません")
+    races = _compilation_races(venues)
+    if not races:
+        raise ValueError("日次統合動画の対象レースがありません")
+
+    stable_id = "daily_all"
+    video_dir = output_dir / "long" / stable_id
+    video_dir.mkdir(parents=True, exist_ok=True)
+    size = (1920, 1080)
+    utm_content = "daily_long_all"
+    title = _daily_long_title(venues, target_date)
+    combined_venue = VenueVideoData("日次統合", "統合", races)
+    hero_race, hero_horse = _best_horse_for_venue(combined_venue)
+    if hero_race is None:
+        raise RuntimeError("日次統合動画の代表レースを選定できません")
+
+    visual_asset = resolve_visual_asset(
+        target_date,
+        hero_race.venue_name,
+        hero_race.race_number,
+        "wide",
+        selection_key=stable_id,
+    )
+    motion_video_asset = resolve_video_asset(
+        target_date,
+        hero_race.venue_name,
+        hero_race.race_number,
+        "wide",
+        selection_key=stable_id,
+    )
+    audio_asset = resolve_audio_asset(target_date, "venue_long", stable_id)
+    sfx_assets = resolve_sfx_assets(target_date, "venue_long", stable_id)
+    publish_block_reasons: List[str] = []
+    if visual_asset is None:
+        publish_block_reasons.append("日次横動画用の横写真が見つかりません")
+    if audio_asset is None:
+        publish_block_reasons.append("日次横動画用BGMが見つかりません")
+
+    scenes: List[MotionScene] = []
+    date_label, _ = _title_date_parts(target_date)
+    thumbnail_headline = f"{date_label} 全{len(races)}レース AI分析"
+    scenes.append(
+        _build_intro_motion_scene(
+            video_dir=video_dir,
+            target_date=target_date,
+            headline=thumbnail_headline,
+            size=size,
+            hero_horse=hero_horse,
+            race_label=_race_type_scope(venues),
+            scope_label="中央競馬の各場から地方競馬へ順に収録",
+            venue_name=hero_race.venue_name,
+            race_number=hero_race.race_number,
+            visual_asset=visual_asset,
+            video_asset=motion_video_asset,
+            duration_seconds=LONG_INTRO_SECONDS,
+            scene_prefix="000_intro",
+        )
+    )
+
+    chapter_lines = ["00:00 本日の全レースAI分析"]
+    elapsed_seconds = LONG_INTRO_SECONDS
+    chapter_visual_assets: List[Optional[VisualAsset]] = []
+    chapter_video_assets: List[Optional[VideoAsset]] = []
+    for venue_index, venue in enumerate(venues, start=1):
+        featured_race = pick_featured_race(venue)
+        if featured_race is None:
+            continue
+        featured_horse = _best_horse_for_race(featured_race)
+        venue_visual = resolve_visual_asset(
+            target_date,
+            venue.venue_name,
+            featured_race.race_number,
+            "wide",
+            selection_key=f"{stable_id}_{venue.venue_name}",
+        )
+        venue_video = resolve_video_asset(
+            target_date,
+            venue.venue_name,
+            featured_race.race_number,
+            "wide",
+            selection_key=f"{stable_id}_{venue.venue_name}",
+        )
+        chapter_visual_assets.append(venue_visual)
+        chapter_video_assets.append(venue_video)
+        if venue_visual is None:
+            publish_block_reasons.append(f"{venue.venue_name}章の横写真が見つかりません")
+        chapter_lines.append(
+            f"{_format_chapter_timestamp(elapsed_seconds)} "
+            f"{venue.race_type}競馬 {venue.venue_name} 全{len(venue.races)}レース"
+        )
+        grade_names = "・".join(race.display_name for race in venue.grade_races)
+        venue_headline = grade_names or f"{venue.venue_name} 全{len(venue.races)}レース"
+        excluded_scope, _ = _excluded_race_copy(venue)
+        scope_label = (
+            f"対象{len(venue.races)}レース AI分析（{excluded_scope}）"
+            if venue.excluded_races
+            else f"全{len(venue.races)}レース AI分析"
+        )
+        scenes.append(
+            _build_intro_motion_scene(
+                video_dir=video_dir,
+                target_date=target_date,
+                headline=venue_headline,
+                size=size,
+                hero_horse=featured_horse,
+                race_label=f"{venue.race_type}競馬  {venue.venue_name}",
+                scope_label=scope_label,
+                venue_name=venue.venue_name,
+                race_number=featured_race.race_number,
+                visual_asset=venue_visual,
+                video_asset=venue_video,
+                duration_seconds=LONG_INTRO_SECONDS,
+                scene_prefix=f"chapter_{venue_index:02d}_{_safe_filename(venue.venue_name)}",
+            )
+        )
+        elapsed_seconds += LONG_INTRO_SECONDS
+        for progress_index, race in enumerate(venue.races, start=1):
+            scenes.append(
+                _build_long_race_motion_scene(
+                    video_dir,
+                    race,
+                    target_date,
+                    progress_index,
+                    len(venue.races),
+                )
+            )
+            elapsed_seconds += LONG_RACE_SCENE_SECONDS
+
+    scenes.append(
+        _build_outro_motion_scene(
+            video_dir,
+            target_date,
+            size,
+            utm_content,
+            hero_race.venue_name,
+            hero_race.race_number,
+            visual_asset,
+            LONG_OUTRO_SECONDS,
+        )
+    )
+    _attach_long_audio_cues(scenes, sfx_assets)
+
+    thumbnail = video_dir / "thumbnail.jpg"
+    grade_label = " / ".join(race.display_name for race in _compilation_grade_races(venues)[:2])
+    _draw_thumbnail(
+        thumbnail,
+        thumbnail_headline,
+        f"{_race_type_scope(venues)}  AI予想" + (f"  {grade_label}" if grade_label else ""),
+        target_date,
+        size,
+        hero_horse=hero_horse,
+        venue_name="中央→地方" if len({venue.race_type for venue in venues}) > 1 else venues[0].race_type,
+        race_number=hero_race.race_number,
+        grade=hero_race.grade or "",
+        visual_asset=visual_asset,
+    )
+
+    video_path: Optional[Path] = video_dir / f"{stable_id}.mp4"
+    if skip_video:
+        video_path = None
+    else:
+        render_motion_video(scenes, video_path, *size, audio_asset=audio_asset)
+
+    url = build_video_url(target_date, utm_content, hero_race.venue_name, hero_race.race_number)
+    description = _daily_compilation_description(
+        title=title,
+        url=url,
+        venues=venues,
+        chapter_lines=chapter_lines,
+    )
+    grade_names = [race.display_name for race in _compilation_grade_races(venues)]
+    tags = [
+        "競馬",
+        "AI予想",
+        "競馬予想",
+        "AI競馬予想",
+        "中央競馬",
+        "地方競馬",
+        "UMA-FREE",
+        *(venue.venue_name for venue in venues),
+        *grade_names,
+    ]
+    course_assets: dict[str, CourseAsset] = {}
+    for race in races:
+        course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
+        if course_asset is not None:
+            course_assets[course_asset.asset_id] = course_asset
+    selected_assets = {
+        "brand_logo": _brand_logo_metadata(),
+        "hero_image": visual_asset_metadata(visual_asset),
+        "chapter_images": [visual_asset_metadata(asset) for asset in chapter_visual_assets],
+        "intro_videos": [
+            video_asset_metadata(asset)
+            for asset in [motion_video_asset, *chapter_video_assets]
+        ],
+        "bgm": audio_asset_metadata(audio_asset),
+        "sfx": [audio_asset_metadata(asset) for asset in sfx_assets.values()],
+        "courses": [course_asset_metadata(asset) for asset in course_assets.values()],
+    }
+    rights_manifest_hash = build_rights_manifest_hash(selected_assets)
+    content_hash = build_content_hash(
+        {
+            "video_type": "daily_long",
+            "stable_id": stable_id,
+            "target_date": target_date,
+            "title": title,
+            "description": description,
+            "tags": tags,
+            "venue_order": [venue.venue_name for venue in venues],
+            "race_ids": [race.id for race in races],
+            "excluded_race_ids": [race.id for venue in venues for race in venue.excluded_races],
+            "destination_url": url,
+            "rights_manifest_hash": rights_manifest_hash,
+            "design_system": "broadcast_editorial_v9_daily_compilation",
+            "motion_profile": resolve_motion_profile(),
+        }
+    )
+    metadata_path = video_dir / "metadata.json"
+    metadata = {
+        "video_type": "daily_long",
+        "stable_id": stable_id,
+        "title": title,
+        "description": description,
+        "tags": tags,
+        "target_date": target_date,
+        "venue_name": "・".join(venue.venue_name for venue in venues),
+        "venue_order": [
+            {"race_type": venue.race_type, "venue_name": venue.venue_name}
+            for venue in venues
+        ],
+        "race_ids": [race.id for race in races],
+        "aspect_ratio": "16:9",
+        "url": url,
+        "video_path": str(video_path) if video_path else None,
+        "thumbnail_path": str(thumbnail),
+        "thumbnail_text": thumbnail_headline,
+        "chapters": chapter_lines,
+        "utm_content": utm_content,
+        "rights_manifest_hash": rights_manifest_hash,
+        "content_hash": content_hash,
+        "thumbnail_required": True,
+        "publishable": not publish_block_reasons,
+        "publish_block_reasons": publish_block_reasons,
+        "selected_assets": selected_assets,
+        "asset_warnings": publish_block_reasons,
+        "design_system": "broadcast_editorial_v9_daily_compilation",
+        "motion_profile": resolve_motion_profile(),
+        "scene_count": len(scenes),
+        "race_scene_seconds": LONG_RACE_SCENE_SECONDS,
+        "estimated_duration_seconds": sum(scene.duration_seconds for scene in scenes),
+    }
+    _write_metadata(metadata_path, metadata)
+    return RenderedVideo(
+        video_type="daily_long",
+        stable_id=stable_id,
+        title=title,
+        description=description,
+        tags=tags,
+        video_path=video_path,
+        thumbnail_path=thumbnail,
+        metadata_path=metadata_path,
+        publish_offset_minutes=0,
+        publishable=not publish_block_reasons,
+        publish_block_reasons=publish_block_reasons,
+        selected_assets=selected_assets,
+        target_date=target_date,
+        venue_name="・".join(venue.venue_name for venue in venues),
+        race_ids=[race.id for race in races],
+        aspect_ratio="16:9",
+        destination_url=url,
+        destination_path=build_race_path(target_date),
+        utm_content=utm_content,
+        race_number=hero_race.race_number,
+        race_name=hero_race.display_name,
+        rights_manifest_hash=rights_manifest_hash,
+        content_hash=content_hash,
+        thumbnail_required=True,
+    )
+
+
 def _short_title(race: RaceVideoData, target_date: str) -> str:
     date_label, year_label = _title_date_parts(target_date)
     essential = f"{date_label} {race.venue_name}{race.race_number}R｜AI予想TOP3"
@@ -3947,12 +4369,15 @@ def _attach_long_audio_cues(
 def _attach_short_audio_cues(
     scene: MotionScene,
     sfx_assets: dict[str, AudioAsset],
+    *,
+    include_cta: bool = True,
 ) -> None:
     _append_audio_cue(scene, sfx_assets, "whoosh", 0.02, 1.0, 0.9)
     _append_audio_cue(scene, sfx_assets, "data_tick", 1.18, 0.62, 0.35)
     _append_audio_cue(scene, sfx_assets, "transition", 4.92, 0.64, 0.5)
     _append_audio_cue(scene, sfx_assets, "score_reveal", 9.05, 0.86, 0.8)
-    _append_audio_cue(scene, sfx_assets, "cta", 11.82, 0.92, 0.9)
+    if include_cta:
+        _append_audio_cue(scene, sfx_assets, "cta", 11.82, 0.92, 0.9)
 
 
 def _draw_short_position_slide(path: Path, race: RaceVideoData, target_date: str, size: tuple[int, int], utm_content: str) -> None:
@@ -4128,6 +4553,279 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         utm_content=utm_content,
         race_number=race.race_number,
         race_name=race.display_name,
+        vertical_cover_path=video_dir / "000_intro.png",
+        variant_video_paths={
+            **({"standard": video_path} if video_path else {}),
+            **({"tiktok_clean": tiktok_video_path} if tiktok_video_path else {}),
+        },
+        rights_manifest_hash=rights_manifest_hash,
+        content_hash=content_hash,
+        thumbnail_required=False,
+    )
+
+
+def render_daily_short_video(
+    races: Sequence[RaceVideoData],
+    venues: Sequence[VenueVideoData],
+    target_date: str,
+    output_dir: Path,
+    skip_video: bool = False,
+) -> RenderedVideo:
+    """当日の全重賞、重賞がない日は各場メインレースを1本のShortへまとめる。"""
+
+    if not races:
+        raise ValueError("日次Shortsの対象レースがありません")
+    stable_id = "daily_short"
+    video_dir = output_dir / "shorts" / stable_id
+    video_dir.mkdir(parents=True, exist_ok=True)
+    tiktok_video_dir = video_dir / "tiktok-clean"
+    tiktok_video_dir.mkdir(parents=True, exist_ok=True)
+    size = (1080, 1920)
+    utm_content = "daily_short_compilation"
+    title = _daily_short_title(races, target_date)
+    lead_race = races[0]
+    lead_horse = _best_horse_for_race(lead_race)
+    audio_asset = resolve_audio_asset(target_date, "short", stable_id)
+    sfx_assets = resolve_sfx_assets(target_date, "short", stable_id)
+    publish_block_reasons: List[str] = []
+    if audio_asset is None:
+        publish_block_reasons.append("日次Shorts用BGMが見つかりません")
+
+    standard_scenes: List[MotionScene] = []
+    tiktok_scenes: List[MotionScene] = []
+    visual_assets: List[Optional[VisualAsset]] = []
+    motion_video_assets: List[Optional[VideoAsset]] = []
+    chapter_lines: List[str] = []
+    elapsed_seconds = 0.0
+    for race_index, race in enumerate(races, start=1):
+        race_key = f"{stable_id}_{race.id}"
+        visual_asset = resolve_visual_asset(
+            target_date,
+            race.venue_name,
+            race.race_number,
+            "vertical",
+            selection_key=race_key,
+        )
+        motion_video_asset = resolve_video_asset(
+            target_date,
+            race.venue_name,
+            race.race_number,
+            "vertical",
+            selection_key=race_key,
+        )
+        visual_assets.append(visual_asset)
+        motion_video_assets.append(motion_video_asset)
+        if visual_asset is None:
+            publish_block_reasons.append(
+                f"{race.venue_name}{race.race_number}R用の縦写真が見つかりません"
+            )
+        include_cta = race_index == len(races)
+        chapter_lines.append(
+            f"{_format_chapter_timestamp(elapsed_seconds)} "
+            f"{race.venue_name}{race.race_number}R {race.display_name}"
+        )
+        standard_scene_dir = video_dir if race_index == 1 else video_dir / f"race_{race_index:02d}"
+        standard_scene_dir.mkdir(parents=True, exist_ok=True)
+        scene = _build_short_motion_scene(
+            standard_scene_dir,
+            race,
+            target_date,
+            _best_horse_for_race(race),
+            visual_asset,
+            motion_video_asset,
+            branded=True,
+            include_cta=include_cta,
+        )
+        _attach_short_audio_cues(scene, sfx_assets, include_cta=include_cta)
+        standard_scenes.append(scene)
+
+        tiktok_scene_dir = (
+            tiktok_video_dir
+            if race_index == 1
+            else tiktok_video_dir / f"race_{race_index:02d}"
+        )
+        tiktok_scene_dir.mkdir(parents=True, exist_ok=True)
+        tiktok_scene = _build_short_motion_scene(
+            tiktok_scene_dir,
+            race,
+            target_date,
+            _best_horse_for_race(race),
+            visual_asset,
+            motion_video_asset,
+            branded=False,
+            include_cta=include_cta,
+        )
+        _attach_short_audio_cues(tiktok_scene, sfx_assets, include_cta=include_cta)
+        tiktok_scenes.append(tiktok_scene)
+        elapsed_seconds += scene.duration_seconds
+
+    thumbnail = video_dir / "thumbnail.jpg"
+    grade_races = [race for race in races if race.is_grade_race]
+    thumbnail_title = (
+        f"重賞{len(grade_races)}レース AI予想"
+        if grade_races
+        else f"各競馬場{len(races)}レース AI予想"
+    )
+    _draw_thumbnail(
+        thumbnail,
+        thumbnail_title,
+        "1本でまとめて確認",
+        target_date,
+        (1920, 1080),
+        hero_horse=lead_horse,
+        venue_name=lead_race.venue_name,
+        race_number=lead_race.race_number,
+        grade=lead_race.grade or "",
+        visual_asset=visual_assets[0],
+    )
+
+    video_path: Optional[Path] = video_dir / f"{stable_id}.mp4"
+    tiktok_video_path: Optional[Path] = tiktok_video_dir / f"{stable_id}_clean.mp4"
+    if skip_video:
+        video_path = None
+        tiktok_video_path = None
+    else:
+        render_motion_video(standard_scenes, video_path, *size, audio_asset=audio_asset)
+        render_motion_video(tiktok_scenes, tiktok_video_path, *size, audio_asset=audio_asset)
+
+    url = build_video_url(
+        target_date,
+        utm_content,
+        lead_race.venue_name,
+        lead_race.race_number,
+    )
+    description = _daily_compilation_description(
+        title=title,
+        url=url,
+        venues=venues,
+        chapter_lines=chapter_lines,
+        short_races=races,
+    )
+    tags = [
+        "競馬",
+        "AI予想",
+        "競馬予想",
+        "AI競馬予想",
+        "Shorts",
+        "UMA-FREE",
+        *(race.venue_name for race in races),
+        *(race.display_name for race in races if race.is_grade_race),
+    ]
+    course_assets: dict[str, CourseAsset] = {}
+    for race in races:
+        course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
+        if course_asset is not None:
+            course_assets[course_asset.asset_id] = course_asset
+    selected_assets = {
+        "brand_logo": _brand_logo_metadata(),
+        "race_images": [visual_asset_metadata(asset) for asset in visual_assets],
+        "background_videos": [video_asset_metadata(asset) for asset in motion_video_assets],
+        "bgm": audio_asset_metadata(audio_asset),
+        "sfx": [audio_asset_metadata(asset) for asset in sfx_assets.values()],
+        "courses": [course_asset_metadata(asset) for asset in course_assets.values()],
+    }
+    featured_races = [
+        {
+            "race_id": race.id,
+            "venue_name": race.venue_name,
+            "race_number": race.race_number,
+            "race_name": race.display_name,
+            "grade": race.grade or "",
+            "destination_path": build_race_path(target_date, race.venue_name, race.race_number),
+        }
+        for race in races
+    ]
+    rights_manifest_hash = build_rights_manifest_hash(selected_assets)
+    content_hash = build_content_hash(
+        {
+            "video_type": "short",
+            "stable_id": stable_id,
+            "target_date": target_date,
+            "title": title,
+            "description": description,
+            "tags": tags,
+            "race_ids": [race.id for race in races],
+            "destination_url": url,
+            "rights_manifest_hash": rights_manifest_hash,
+            "design_system": "broadcast_editorial_v9_daily_compilation",
+            "motion_profile": resolve_motion_profile(),
+        }
+    )
+    metadata_path = video_dir / "metadata.json"
+    compilation_label = (
+        f"重賞{len(grade_races)}レースまとめ"
+        if grade_races
+        else f"各競馬場メイン{len(races)}レースまとめ"
+    )
+    metadata = {
+        "video_type": "short",
+        "stable_id": stable_id,
+        "title": title,
+        "description": description,
+        "tags": tags,
+        "target_date": target_date,
+        "venue_name": lead_race.venue_name,
+        "race_ids": [race.id for race in races],
+        "featured_races": featured_races,
+        "aspect_ratio": "9:16",
+        "url": url,
+        "video_path": str(video_path) if video_path else None,
+        "variant_video_paths": {
+            "standard": str(video_path) if video_path else None,
+            "tiktok_clean": str(tiktok_video_path) if tiktok_video_path else None,
+        },
+        "thumbnail_path": str(thumbnail),
+        "vertical_cover_path": str(video_dir / "000_intro.png"),
+        "destination_path": build_race_path(
+            target_date,
+            lead_race.venue_name,
+            lead_race.race_number,
+        ),
+        "race_number": lead_race.race_number,
+        "race_name": compilation_label,
+        "utm_content": utm_content,
+        "chapters": chapter_lines,
+        "rights_manifest_hash": rights_manifest_hash,
+        "content_hash": content_hash,
+        "thumbnail_required": False,
+        "publish_order": 1,
+        "publishable": not publish_block_reasons,
+        "publish_block_reasons": publish_block_reasons,
+        "selected_assets": selected_assets,
+        "asset_warnings": publish_block_reasons,
+        "design_system": "broadcast_editorial_v9_daily_compilation",
+        "motion_profile": resolve_motion_profile(),
+        "scene_count": len(standard_scenes),
+        "estimated_duration_seconds": sum(scene.duration_seconds for scene in standard_scenes),
+    }
+    _write_metadata(metadata_path, metadata)
+    return RenderedVideo(
+        video_type="short",
+        stable_id=stable_id,
+        title=title,
+        description=description,
+        tags=tags,
+        video_path=video_path,
+        thumbnail_path=thumbnail,
+        metadata_path=metadata_path,
+        publish_offset_minutes=0,
+        publishable=not publish_block_reasons,
+        publish_block_reasons=publish_block_reasons,
+        selected_assets=selected_assets,
+        target_date=target_date,
+        venue_name=lead_race.venue_name,
+        race_ids=[race.id for race in races],
+        aspect_ratio="9:16",
+        destination_url=url,
+        destination_path=build_race_path(
+            target_date,
+            lead_race.venue_name,
+            lead_race.race_number,
+        ),
+        utm_content=utm_content,
+        race_number=lead_race.race_number,
+        race_name=compilation_label,
+        featured_races=featured_races,
         vertical_cover_path=video_dir / "000_intro.png",
         variant_video_paths={
             **({"standard": video_path} if video_path else {}),

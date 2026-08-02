@@ -1,17 +1,20 @@
 import datetime
 import gc
+import math
 import os
 import sys
 import traceback
 import time
 import random
+from dataclasses import dataclass
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database import models
 from scripts.scraper import get_shutuba_html_content, get_race_result_html_content, get_horse_page_html, get_race_list_html
 from scripts import parser, database_loader, predictor
-from typing import List, Tuple, Dict, Optional, Set
+from scripts.race_classification import prediction_exclusion_reason
+from typing import Any, List, Tuple, Dict, Optional, Set
 from tqdm import tqdm
 
 BANEI_VENUE_CODES = ["33", "65"]
@@ -275,6 +278,197 @@ def update_race_results(db: Session, target_date: datetime.date):
     gc.collect()
 
 
+@dataclass(frozen=True)
+class PredictionCompletenessIssue:
+    """対象日の予測データを公開できない理由。"""
+
+    race_id: str
+    venue_name: str
+    race_number: Optional[int]
+    race_name: str
+    reason: str
+
+    def format_for_log(self) -> str:
+        race_number = f"{self.race_number}R" if self.race_number is not None else "R番号不明"
+        return (
+            f"{self.race_id} {self.venue_name or '会場不明'} {race_number} "
+            f"{self.race_name or 'レース名不明'}: {self.reason}"
+        )
+
+
+def _prediction_value(row: Any, key: str) -> Any:
+    if isinstance(row, dict):
+        return row.get(key)
+    return getattr(row, key, None)
+
+
+def _has_valid_deviation_score(row: Any) -> bool:
+    value = _prediction_value(row, "deviation_score")
+    if value is None:
+        return False
+    try:
+        return math.isfinite(float(value))
+    except (TypeError, ValueError):
+        return False
+
+
+def _prediction_rows_issue(race: Optional[models.Race], predictions: List[Any]) -> Optional[str]:
+    if race is None:
+        return "Raceレコードがありません"
+    if not predictions:
+        return "Predictionレコードがありません"
+    if any(_has_valid_deviation_score(prediction) for prediction in predictions):
+        return None
+
+    exclusion_reason = prediction_exclusion_reason(race.race_name, race.course_type)
+    if exclusion_reason:
+        reasons = {
+            str(_prediction_value(prediction, "unpredictable_reason") or "").strip()
+            for prediction in predictions
+        }
+        if reasons == {exclusion_reason}:
+            return None
+        return "新馬・障害の予測対象外理由が不完全です"
+
+    reasons = {
+        str(_prediction_value(prediction, "unpredictable_reason") or "").strip()
+        for prediction in predictions
+        if _prediction_value(prediction, "unpredictable_reason")
+    }
+    if "予測計算中にエラーが発生" in reasons:
+        return "一般レースの予測計算エラーが残っています"
+    return "一般レースに有効なAI偏差値がありません"
+
+
+def _prediction_payload_issue(
+    db: Session,
+    race_id: str,
+    predictions: Optional[List[Dict[str, Any]]],
+) -> Optional[str]:
+    race = db.query(models.Race).filter(models.Race.id == race_id).first()
+    return _prediction_rows_issue(race, list(predictions or []))
+
+
+def _generate_and_save_prediction(db: Session, race_id: str) -> Optional[str]:
+    predictions = predictor.create_predictions_for_race(race_id, db)
+    issue = _prediction_payload_issue(db, race_id, predictions)
+    if issue:
+        return issue
+
+    database_loader.save_prediction(db, race_id, predictions or [])
+    horse_ids_in_race = [
+        prediction["horse_id"]
+        for prediction in predictions or []
+        if prediction.get("horse_id")
+    ]
+    if horse_ids_in_race:
+        try:
+            predictor.calculate_and_save_matchups_for_race(db, race_id, horse_ids_in_race)
+        except Exception as error:
+            # 予測本体はsave_prediction()で既に確定済み。対戦成績だけの失敗で
+            # 有効な予測を公開不可にしない。
+            db.rollback()
+            tqdm.write(f"  -> [Warning] Matchup calculation for {race_id} failed: {error}")
+    return None
+
+
+def _retry_prediction_race(
+    db: Session,
+    race_id: str,
+    is_nar: bool,
+    target_date: date,
+) -> Optional[str]:
+    """失敗した1レースだけを再取得し、予測の原子的置換まで行う。"""
+    try:
+        shutuba_html = get_shutuba_html_content(
+            race_id,
+            is_nar=is_nar,
+            force_download=True,
+        )
+        if not shutuba_html:
+            return "再試行でも出馬表HTMLを取得できません"
+
+        shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
+        horses = shutuba_data.get("horses", []) if shutuba_data else []
+        if not horses:
+            return "再試行した出馬表に出走馬がありません"
+
+        database_loader.load_shutuba_data(
+            db,
+            shutuba_data,
+            race_id,
+            target_date,
+            is_nar,
+        )
+        horse_ids = {
+            horse["horse_id"]
+            for horse in horses
+            if horse.get("horse_id")
+        }
+        _fetch_and_load_horse_past_data(db, horse_ids, target_date)
+        return _generate_and_save_prediction(db, race_id)
+    except Exception as error:
+        db.rollback()
+        traceback.print_exc()
+        return f"再試行中の例外: {error}"
+
+
+def audit_prediction_completeness(
+    db: Session,
+    expected_races: List[Tuple[str, bool]],
+    refresh_failures: Optional[Dict[str, str]] = None,
+) -> List[PredictionCompletenessIssue]:
+    """今回の更新結果とDB上の公開可能性を対象レース単位で監査する。"""
+    race_ids = list(dict.fromkeys(race_id for race_id, _ in expected_races))
+    if not race_ids:
+        return []
+
+    races = db.query(models.Race).filter(models.Race.id.in_(race_ids)).all()
+    race_by_id = {race.id: race for race in races}
+    predictions = db.query(models.Prediction).filter(
+        models.Prediction.race_id.in_(race_ids)
+    ).all()
+    predictions_by_race: Dict[str, List[models.Prediction]] = {}
+    for prediction in predictions:
+        predictions_by_race.setdefault(prediction.race_id, []).append(prediction)
+
+    issues: List[PredictionCompletenessIssue] = []
+    failures = refresh_failures or {}
+    for race_id in race_ids:
+        race = race_by_id.get(race_id)
+        stored_issue = _prediction_rows_issue(
+            race,
+            predictions_by_race.get(race_id, []),
+        )
+        refresh_issue = failures.get(race_id)
+        if not stored_issue and not refresh_issue:
+            continue
+
+        reasons = []
+        if refresh_issue:
+            reasons.append(f"今回の更新が未完了です（{refresh_issue}）")
+        if stored_issue:
+            reasons.append(stored_issue)
+        issues.append(
+            PredictionCompletenessIssue(
+                race_id=race_id,
+                venue_name=race.venue_name if race else "",
+                race_number=race.race_number if race else None,
+                race_name=race.race_name if race else "",
+                reason=" / ".join(reasons),
+            )
+        )
+    return issues
+
+
+def _record_prediction_failure(failures: Dict[str, str], race_id: str, reason: str) -> None:
+    current = failures.get(race_id)
+    if not current:
+        failures[race_id] = reason
+    elif reason not in current:
+        failures[race_id] = f"{current} / {reason}"
+
+
 def insert_new_predictions(db: Session, target_date: datetime.date):
     """
     指定日の出走表を取得し、予測を生成してDBに保存する。
@@ -290,11 +484,12 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
         "is ready to replace them."
     )
 
-    # キャッシュされたレース一覧から race_id を収集
+    # JRA・NARを別々に確認し、一方だけキャッシュがある場合も他方を取りこぼさない。
     all_race_ids: List[Tuple[str, bool]] = []
     for is_nar in [False, True]:
         dir_path = os.path.join("data", "html_cache", "nar_racelist" if is_nar else "racelist")
         file_path = os.path.join(dir_path, f"{target_date.strftime('%Y%m%d')}.bin")
+        race_ids: List[str] = []
         if os.path.exists(file_path):
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 list_html = f.read()
@@ -302,13 +497,9 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
                 race_ids = parser.parse_race_ids_from_list(list_html)
                 if is_nar:
                     race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
-                all_race_ids.extend([(rid, is_nar) for rid in race_ids])
 
-    if not all_race_ids:
-        # フォールバック: キャッシュが空の場合、直接netkeibaから再取得を試みる
-        # キャッシュ書き込み失敗・ネットワーク一時エラー・データ未公開後の公開 等に対応
-        print(f"  -> [FALLBACK] No cached race data found for {target_date.strftime('%Y-%m-%d')}. Retrying direct fetch...")
-        for is_nar in [False, True]:
+        if not race_ids:
+            # キャッシュ書き込み失敗・ネットワーク一時エラー・データ公開後の再取得に対応。
             label = "NAR" if is_nar else "JRA"
             try:
                 list_html, fetched = get_race_list_html(
@@ -321,34 +512,67 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
                     if is_nar:
                         race_ids = [rid for rid in race_ids if rid[4:6] not in BANEI_VENUE_CODES]
                     if race_ids:
-                        all_race_ids.extend([(rid, is_nar) for rid in race_ids])
                         print(f"  -> [FALLBACK] {label}: Found {len(race_ids)} races via direct fetch")
                     else:
                         print(f"  -> [FALLBACK] {label}: No races found via direct fetch")
             except Exception as e:
                 print(f"  -> [FALLBACK ERROR] Failed to fetch {label} race list: {e}")
+        all_race_ids.extend((race_id, is_nar) for race_id in race_ids)
+
+    # 一覧取得が一時失敗しても、既にDBへ入っている対象日のレースを復旧対象に含める。
+    known_race_ids = {race_id for race_id, _ in all_race_ids}
+    races_in_db = db.query(models.Race.id).filter(models.Race.race_date == target_date).all()
+    for row in races_in_db:
+        race_id = row.id
+        if race_id in known_race_ids or race_id[4:6] in BANEI_VENUE_CODES:
+            continue
+        is_nar = len(race_id) >= 6 and int(race_id[4:6]) >= 30
+        all_race_ids.append((race_id, is_nar))
+
+    all_race_ids = list(dict.fromkeys(all_race_ids))
 
     if not all_race_ids:
-        print(f"No races found for {target_date.strftime('%Y-%m-%d')}.")
-        return
+        raise RuntimeError(
+            f"{target_date.strftime('%Y-%m-%d')} のレース一覧とDBレコードを取得できませんでした"
+        )
 
-    # step[1/5] で取得した shutuba HTML をキャッシュ（二重ダウンロード防止）
-    shutuba_cache: Dict[str, Optional[str]] = {}
+    # step[1/5] で解析した出馬表をキャッシュし、同じHTMLの再解析を避ける。
+    shutuba_data_cache: Dict[str, Optional[Dict[str, Any]]] = {}
     all_horse_ids_to_fetch: Set[str] = set()
+    refresh_failures: Dict[str, str] = {}
 
     print(f"\n  -> [1/5] Collecting all horse IDs for {target_date.strftime('%Y-%m-%d')}")
     for race_id, is_nar in tqdm(all_race_ids, desc="  -> Collecting horses", leave=False):
         try:
             shutuba_html = get_shutuba_html_content(race_id, is_nar=is_nar, force_download=True)
-            shutuba_cache[race_id] = shutuba_html
-            if shutuba_html:
-                shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
-                if shutuba_data and shutuba_data.get('horses'):
-                    for horse in shutuba_data.get("horses", []):
-                        if horse.get("horse_id"):
-                            all_horse_ids_to_fetch.add(horse["horse_id"])
+            if not shutuba_html:
+                _record_prediction_failure(
+                    refresh_failures,
+                    race_id,
+                    "出馬表HTMLを取得できません",
+                )
+                continue
+            shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
+            shutuba_data_cache[race_id] = shutuba_data
+            horses = shutuba_data.get('horses', []) if shutuba_data else []
+            if not horses:
+                _record_prediction_failure(
+                    refresh_failures,
+                    race_id,
+                    "出馬表に出走馬がありません",
+                )
+                continue
+            for horse in horses:
+                if horse.get("horse_id"):
+                    all_horse_ids_to_fetch.add(horse["horse_id"])
         except Exception as e:
             tqdm.write(f"\n[ERROR] Failed to collect horses for {race_id}: {e}")
+            shutuba_data_cache[race_id] = None
+            _record_prediction_failure(
+                refresh_failures,
+                race_id,
+                f"出走馬収集中の例外: {e}",
+            )
 
     print(f"\n  -> [2/5] Fetching past performance data for prediction")
     _fetch_and_load_horse_past_data(db, all_horse_ids_to_fetch, target_date)
@@ -360,17 +584,26 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
         leave=False,
     ):
         try:
-            shutuba_html = shutuba_cache.get(race_id)
-            if shutuba_html:
-                shutuba_data = parser.parse_shutuba_page(shutuba_html, race_id)
-                if shutuba_data and shutuba_data.get('horses'):
-                    database_loader.load_shutuba_data(db, shutuba_data, race_id, target_date, is_nar)
+            shutuba_data = shutuba_data_cache.get(race_id)
+            if shutuba_data and shutuba_data.get('horses'):
+                database_loader.load_shutuba_data(db, shutuba_data, race_id, target_date, is_nar)
+            else:
+                _record_prediction_failure(
+                    refresh_failures,
+                    race_id,
+                    "出馬表をDBへ保存できません",
+                )
         except Exception as e:
             tqdm.write(f"\n[CRITICAL ERROR] Shutuba data processing for {race_id} failed: {e}")
             traceback.print_exc()
             db.rollback()
+            _record_prediction_failure(
+                refresh_failures,
+                race_id,
+                f"出馬表保存中の例外: {e}",
+            )
 
-    del shutuba_cache
+    del shutuba_data_cache
     gc.collect()
 
     print(f"\n  -> [4/5] Predicting races and calculating matchups")
@@ -380,18 +613,60 @@ def insert_new_predictions(db: Session, target_date: datetime.date):
         leave=False,
     ):
         try:
-            predictions = predictor.create_predictions_for_race(race_id, db)
-            if predictions:
-                database_loader.save_prediction(db, race_id, predictions)
-                horse_ids_in_race = [p["horse_id"] for p in predictions if p.get("horse_id")]
-                if horse_ids_in_race:
-                    predictor.calculate_and_save_matchups_for_race(db, race_id, horse_ids_in_race)
-            else:
-                tqdm.write(f"  -> [Warning] No predictions generated for {race_id}.")
+            issue = _generate_and_save_prediction(db, race_id)
+            if issue:
+                tqdm.write(f"  -> [Warning] Prediction for {race_id} is incomplete: {issue}")
+                _record_prediction_failure(
+                    refresh_failures,
+                    race_id,
+                    issue,
+                )
         except Exception as e:
             tqdm.write(f"\n[CRITICAL ERROR] Prediction processing for {race_id} failed: {e}")
             traceback.print_exc()
             db.rollback()
+            _record_prediction_failure(
+                refresh_failures,
+                race_id,
+                f"予測保存中の例外: {e}",
+            )
+
+    # DB監査で見つかった欠損も再試行対象へ加え、正常レースは再処理しない。
+    for issue in audit_prediction_completeness(db, all_race_ids):
+        _record_prediction_failure(refresh_failures, issue.race_id, issue.reason)
+
+    if refresh_failures:
+        print(f"\n  -> Retrying {len(refresh_failures)} incomplete races once")
+    race_type_by_id = dict(all_race_ids)
+    for race_id in list(refresh_failures):
+        retry_issue = _retry_prediction_race(
+            db,
+            race_id,
+            race_type_by_id[race_id],
+            target_date,
+        )
+        if retry_issue:
+            refresh_failures[race_id] = retry_issue
+            tqdm.write(f"  -> [FAILED] Retry for {race_id}: {retry_issue}")
+        else:
+            refresh_failures.pop(race_id, None)
+            tqdm.write(f"  -> [RECOVERED] Retry completed for {race_id}")
+
+    completeness_issues = audit_prediction_completeness(
+        db,
+        all_race_ids,
+        refresh_failures,
+    )
+    if completeness_issues:
+        formatted = "\n".join(
+            f"  - {issue.format_for_log()}"
+            for issue in completeness_issues
+        )
+        raise RuntimeError(
+            f"{target_date.strftime('%Y-%m-%d')} の予測データ完全性監査に失敗しました:\n{formatted}"
+        )
+
+    print(f"  -> Prediction completeness audit passed: {len(all_race_ids)} races")
 
     print(f"\n  -> [5/5] Generating AI Analysis text for races in batches")
     try:

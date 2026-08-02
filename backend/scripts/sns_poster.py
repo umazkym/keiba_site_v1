@@ -561,6 +561,42 @@ def post_texts_to_threads(texts: List[str], delay_seconds: int = 3) -> int:
     return posted_count
 
 
+def _probe_threads_token() -> Optional[bool]:
+    """Threadsトークンを軽量APIで確認する。
+
+    Trueは有効、FalseはAPIが認証情報を拒否、Noneはレート制限や通信障害など
+    有効・無効を判断できない状態を表す。
+    """
+    try:
+        check_res = requests.get(
+            "https://graph.threads.net/v1.0/me",
+            params={"access_token": THREADS_ACCESS_TOKEN},
+            timeout=15,
+        )
+        if check_res.status_code == 200:
+            user_data = check_res.json()
+            _log(f"✅ Threadsトークン有効確認: ユーザーID={user_data.get('id', '?')}")
+            return True
+        if 400 <= check_res.status_code <= 499 and check_res.status_code != 429:
+            _log(
+                f"❌ Threads APIがトークンを拒否しました: "
+                f"{check_res.status_code} - {check_res.text[:200]}"
+            )
+            _log("  → Meta for Developers で新しいトークンを生成し、GitHub Secrets を更新してください")
+            return False
+        _log(
+            f"⚠️ Threadsトークンの有効性を判定できませんでした: "
+            f"{check_res.status_code} - {check_res.text[:200]}"
+        )
+        return None
+    except (requests.Timeout, requests.ConnectionError) as error:
+        _log(f"⚠️ Threadsトークン確認は通信エラーのため保留します: {error}")
+        return None
+    except Exception as error:
+        _log(f"⚠️ Threadsトークン確認エラー: {error}")
+        return None
+
+
 def refresh_threads_token_if_needed() -> None:
     """Threadsトークンの有効期限を確認し、期限が近い場合はリフレッシュを試みる。
     THREADS_TOKEN_EXPIRY未設定時はトークン有効性を軽量APIで確認する。
@@ -578,31 +614,24 @@ def refresh_threads_token_if_needed() -> None:
     # THREADS_TOKEN_EXPIRY が未設定の場合、APIでトークンの有効性を確認
     if not THREADS_TOKEN_EXPIRY:
         _log("⚠️ THREADS_TOKEN_EXPIRY が未設定です。トークンの有効性をAPIで確認します...")
-        try:
-            check_res = requests.get(
-                f"https://graph.threads.net/v1.0/me",
-                params={"access_token": THREADS_ACCESS_TOKEN},
-                timeout=15
-            )
-            if check_res.status_code == 200:
-                user_data = check_res.json()
-                _log(f"✅ Threadsトークン有効確認: ユーザーID={user_data.get('id', '?')}")
-            else:
-                _log(f"❌ Threadsトークン無効の可能性: {check_res.status_code} - {check_res.text[:200]}")
-                _log("  → Meta for Developers で新しいトークンを生成し、GitHub Secrets を更新してください")
-        except Exception as e:
-            _log(f"❌ Threadsトークン確認エラー: {e}")
+        _probe_threads_token()
         return
 
     try:
         expiry = datetime.fromisoformat(THREADS_TOKEN_EXPIRY)
-        days_left = (expiry - datetime.now()).days
+        now = datetime.now(expiry.tzinfo) if expiry.tzinfo else datetime.now()
+        days_left = (expiry - now).days
         _log(f"ℹ️ Threadsトークン残り{days_left}日 (期限: {THREADS_TOKEN_EXPIRY})")
 
         if days_left <= 0:
-            _log("❌ Threadsトークンは既に期限切れです！")
-            _log("  → Meta for Developers で新しいトークンを生成し、GitHub Secrets を更新してください")
-            return
+            _log("⚠️ THREADS_TOKEN_EXPIRYは期限切れ表示です。実トークンをAPIで確認します...")
+            token_state = _probe_threads_token()
+            if token_state is False:
+                return
+            if token_state is True:
+                _log("⚠️ 実トークンは有効です。THREADS_TOKEN_EXPIRYメタデータが古い可能性があります。")
+            else:
+                _log("⚠️ 実トークンは拒否されていないため、更新APIを試します。")
 
         if days_left > 10:
             return
@@ -1528,6 +1557,8 @@ def _classify_twitter_exception(error: Exception) -> tuple[bool, str]:
 
     if "just a moment" in body_lower or "challenges.cloudflare.com" in body_lower:
         return True, "X側のCloudflareチャレンジによる一時的な403"
+    if status == 403 and "you are not permitted to perform this action" in body_lower:
+        return True, "X APIが個別投稿を拒否した外部要因(403)"
     if status == 429:
         return True, "X APIのレート制限"
     if status is not None and 500 <= status <= 599:

@@ -6,6 +6,7 @@ import { DataHubActionLink } from '@/components/DataHubActionLink';
 import { DataHubNav } from '@/components/DataHubNav';
 import { DataSearchPanel } from '@/components/DataSearchPanel';
 import { BreadcrumbSchema } from '@/components/StructuredData';
+import { buildDatasetSchema } from '@/lib/dataset-schema';
 import {
     CENTRAL_VENUE_ORDER,
     LOCAL_VENUE_ORDER,
@@ -14,6 +15,8 @@ import { venueSlugToName } from '@/lib/race-url';
 
 
 export const revalidate = 21600;
+
+const datasetDescription = '中央・地方競馬の競走馬、騎手、調教師、競馬場・コースの成績を、出走数や集計期間とともに同じ条件で比較できる、UMA-FREEの無料競馬データセットです。';
 
 export const metadata: Metadata = {
     title: '競馬データベース｜競走馬・騎手・調教師・コース成績',
@@ -67,11 +70,12 @@ export default function KeibaDataPage() {
         name: 'UMA-FREE競馬データベース',
         description: metadata.description,
         url: 'https://uma-free.com/keiba-data',
-        mainEntity: {
-            '@type': 'Dataset',
+        mainEntity: buildDatasetSchema({
             name: 'UMA-FREE 競馬条件別成績',
+            description: datasetDescription,
+            url: 'https://uma-free.com/keiba-data',
             measurementTechnique: 'レース結果の条件別集計',
-        },
+        }),
     };
 
     return (

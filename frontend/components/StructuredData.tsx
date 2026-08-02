@@ -1,6 +1,26 @@
 // Server Component - 構造化データはSSR時にHTMLに直接含める必要がある
 // 'use client' と next/script の strategy="afterInteractive" は使用しない
 import { getConfiguredSocialLinks } from '@/lib/social-links';
+import {
+    buildDatasetSchema,
+    type DatasetSchemaInput,
+} from '@/lib/dataset-schema';
+
+/**
+ * 競馬データページ共通のDatasetスキーマ
+ */
+export function DatasetSchema(props: DatasetSchemaInput) {
+    const datasetSchema = buildDatasetSchema(props);
+
+    return (
+        <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+                __html: JSON.stringify(datasetSchema),
+            }}
+        />
+    );
+}
 
 /**
  * 組織情報のSchema.org構造化データ

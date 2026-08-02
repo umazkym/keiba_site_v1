@@ -43,6 +43,8 @@ Google Auth Platformの対象プロジェクト、OAuthクライアント、認�
 
 - You MUST hold only the venue containing missing races or predictions because正常会場まで停止すると投稿機会を失います。
 - You MUST include missing race numbers in Actions Summary because会場名だけではデータ更新側の復旧対象を特定できません。
+- You MUST require the upstream prediction workflow to retry only incomplete races once and fail its final completeness audit when an eligible race still has no AI deviation score because a false-success starts YouTube with known-missing data.
+- You MUST verify newcomer and obstacle exclusions by their explicit `unpredictable_reason` because an all-null prediction caused by a calculation error is not a valid exclusion.
 - You MUST preserve IAP-only database access because本番PostgreSQLを外部公開してはいけません。
 
 ### 4. 非公開で重複なく再実行する
@@ -104,6 +106,10 @@ Google Auth Platformが本番環境か、管理スコープで再認証したか
 ### 正常会場だけ投稿されWorkflowが失敗になる
 
 想定どおりの部分投稿です。Actions Summaryの保留会場・欠損Rをデータ更新側で修復し、同じ対象日を再実行します。既存動画は再利用され、保留会場だけが追加されます。
+
+### 午後データ更新が成功したのに欠損会場が繰り返し保留される
+
+午後予測処理の最終ログで対象日の完全性監査が実行され、欠損レースだけが1回再取得されているか確認します。対象レースが未復旧なら午後Workflow自体が失敗し、成功時の`workflow_run`でYouTubeを起動してはいけません。18:20 JSTの予備cronでは、既存どおり正常会場だけを重複なく処理します。
 
 ### 連動起動と予備cronが両方動く
 

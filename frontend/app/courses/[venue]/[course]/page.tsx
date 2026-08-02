@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
-import { BreadcrumbSchema } from '@/components/StructuredData';
+import { BreadcrumbSchema, DatasetSchema } from '@/components/StructuredData';
 import { CourseDataDetailView } from '@/components/CourseDataDetailView';
 import { EntityArticleSection } from '@/components/EntityArticleSection';
 import { getCourseDataDetail } from '@/lib/api';
@@ -62,19 +62,13 @@ export default async function CoursePage({ params }: Props) {
                         { name: detail.entity.name, url: `https://uma-free.com${detail.entity.url}` },
                     ]}
                 />
-                <script
-                    type="application/ld+json"
-                    dangerouslySetInnerHTML={{
-                        __html: JSON.stringify({
-                            '@context': 'https://schema.org',
-                            '@type': 'Dataset',
-                            name: `${detail.entity.name} 条件別成績`,
-                            description: `${detail.entity.name}の枠順・脚質・騎手・調教師別成績`,
-                            url: `https://uma-free.com${detail.entity.url}`,
-                            temporalCoverage: `${detail.analysis_start_date ?? ''}/${detail.analysis_end_date ?? ''}`,
-                            measurementTechnique: '過去レース結果の集計',
-                        }),
-                    }}
+                <DatasetSchema
+                    name={`${detail.entity.name} 条件別成績`}
+                    description={`${detail.entity.name}の過去レースを対象に、枠順・脚質・騎手・調教師ごとの成績を集計し、対象期間とサンプル数を確認できるUMA-FREEの競馬コースデータセットです。`}
+                    url={`https://uma-free.com${detail.entity.url}`}
+                    startDate={detail.analysis_start_date}
+                    endDate={detail.analysis_end_date}
+                    measurementTechnique="過去レース結果の集計"
                 />
                 <Breadcrumb />
                 <CourseDataDetailView detail={detail} relatedArticleHref={relatedArticleHref} />

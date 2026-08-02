@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
-import { BreadcrumbSchema } from '@/components/StructuredData';
+import { BreadcrumbSchema, DatasetSchema } from '@/components/StructuredData';
 import { DataEntityDetailView } from '@/components/DataEntityDetailView';
 import { getDataEntityDetail } from '@/lib/api';
 
@@ -37,19 +37,13 @@ export default async function HorseDetailPage({ params }: Props) {
                     { name: detail.entity.name, url: `https://uma-free.com${detail.entity.url}` },
                 ]}
             />
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{
-                    __html: JSON.stringify({
-                        '@context': 'https://schema.org',
-                        '@type': 'Dataset',
-                        name: `${detail.entity.name} 競走成績`,
-                        description: `${detail.entity.name}の条件別競走成績`,
-                        url: `https://uma-free.com${detail.entity.url}`,
-                        temporalCoverage: `${detail.recent_runs.at(-1)?.race_date ?? ''}/${detail.entity.last_race_date ?? ''}`,
-                        measurementTechnique: '過去レース結果の集計',
-                    }),
-                }}
+            <DatasetSchema
+                name={`${detail.entity.name} 競走成績`}
+                description={`${detail.entity.name}の直近成績と、コース・距離・馬場状態ごとの成績、AI偏差値の推移を、対象走数と集計期間とともに確認できるUMA-FREEの競走馬データセットです。`}
+                url={`https://uma-free.com${detail.entity.url}`}
+                startDate={detail.recent_runs.at(-1)?.race_date}
+                endDate={detail.entity.last_race_date}
+                measurementTechnique="過去レース結果の集計"
             />
             <Breadcrumb />
             <DataEntityDetailView detail={detail} entityType="horse" />

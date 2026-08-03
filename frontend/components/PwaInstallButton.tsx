@@ -1,7 +1,11 @@
 'use client';
 
 import { Download } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import {
+    sendPwaInstallPromptViewEvent,
+    sendPwaInstallResultEvent,
+} from '@/lib/analytics';
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
@@ -12,6 +16,8 @@ export function PwaInstallButton() {
     const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isInstalled, setIsInstalled] = useState(false);
     const [showIosHint, setShowIosHint] = useState(false);
+    const promptViewSentRef = useRef(false);
+    const installedResultSentRef = useRef(false);
 
     useEffect(() => {
         const standalone = window.matchMedia('(display-mode: standalone)').matches
@@ -29,6 +35,10 @@ export function PwaInstallButton() {
         const handleInstalled = () => {
             setInstallPrompt(null);
             setIsInstalled(true);
+            if (!installedResultSentRef.current) {
+                installedResultSentRef.current = true;
+                sendPwaInstallResultEvent({ surface: 'my_data', result: 'installed' });
+            }
         };
         window.addEventListener('beforeinstallprompt', handleBeforeInstall);
         window.addEventListener('appinstalled', handleInstalled);
@@ -37,6 +47,16 @@ export function PwaInstallButton() {
             window.removeEventListener('appinstalled', handleInstalled);
         };
     }, []);
+
+    useEffect(() => {
+        const promptType = showIosHint ? 'ios_instruction' : installPrompt ? 'native' : null;
+        if (!promptType || promptViewSentRef.current) return;
+        promptViewSentRef.current = true;
+        sendPwaInstallPromptViewEvent({ surface: 'my_data', prompt_type: promptType });
+        if (promptType === 'ios_instruction') {
+            sendPwaInstallResultEvent({ surface: 'my_data', result: 'ios_instruction' });
+        }
+    }, [installPrompt, showIosHint]);
 
     if (isInstalled) {
         return <span className="text-sm font-bold text-emerald-800">この端末に追加済み</span>;
@@ -55,6 +75,8 @@ export function PwaInstallButton() {
     const install = async () => {
         await installPrompt.prompt();
         const choice = await installPrompt.userChoice;
+        installedResultSentRef.current = true;
+        sendPwaInstallResultEvent({ surface: 'my_data', result: choice.outcome });
         if (choice.outcome === 'accepted') {
             setIsInstalled(true);
         }

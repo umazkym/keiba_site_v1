@@ -16,6 +16,17 @@ from googleapiclient.errors import HttpError
 
 
 EVENT_NAMES = (
+    "race_view",
+    "prediction_table_view",
+    "race_navigation",
+    "article_read_complete",
+    "article_race_click",
+    "recent_race_return_click",
+    "pwa_install_prompt_view",
+    "pwa_install_result",
+    "ad_experiment_exposure",
+    "article_bridge_experiment_exposure",
+    "article_ad_placement_exposure",
     "data_hub_action_click",
     "data_search_result_click",
     "compare_result_view",
@@ -129,6 +140,43 @@ def _safe_custom_count(
         }
 
 
+def _safe_breakdown(
+    service: Any,
+    property_id: str,
+    *,
+    start_date: str,
+    end_date: str,
+    dimension: str,
+) -> dict[str, Any]:
+    """未登録のカスタム定義があっても週次レポート全体を止めずに記録する。"""
+
+    try:
+        response = _run_report(
+            service,
+            property_id,
+            start_date=start_date,
+            end_date=end_date,
+            metrics=["sessions", "screenPageViews", "publisherAdRevenue", "activeUsers"],
+            dimensions=[dimension],
+        )
+        rows = []
+        for row in response.get("rows") or []:
+            metric_values = row.get("metricValues") or []
+            rows.append({
+                "value": row.get("dimensionValues", [{}])[0].get("value", "(not set)"),
+                "sessions": int(float(metric_values[0].get("value", "0"))) if len(metric_values) > 0 else 0,
+                "page_views": int(float(metric_values[1].get("value", "0"))) if len(metric_values) > 1 else 0,
+                "publisher_ad_revenue": round(float(metric_values[2].get("value", "0")), 4) if len(metric_values) > 2 else 0.0,
+                "active_users": int(float(metric_values[3].get("value", "0"))) if len(metric_values) > 3 else 0,
+            })
+        return {"available": True, "dimension": dimension, "rows": rows}
+    except HttpError as error:
+        return {
+            "available": False,
+            "dimension": dimension,
+            "reason": f"{dimension}をGA4レポートで利用できません: HTTP {error.resp.status}",
+            "rows": [],
+        }
 def collect_report(
     service: Any,
     property_id: str,
@@ -236,6 +284,62 @@ def collect_report(
         custom_field="customEvent:entry_source",
         custom_value="data_upcoming",
     )
+    monetization_breakdowns = {
+        "page_type": _safe_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            dimension="customEvent:page_type",
+        ),
+        "content_group": _safe_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            dimension="customEvent:content_group",
+        ),
+        "race_phase": _safe_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            dimension="customEvent:race_phase",
+        ),
+        "measurement_release_id": _safe_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            dimension="customEvent:measurement_release_id",
+        ),
+        "ad_placement": _safe_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            dimension="customEvent:ad_placement",
+        ),
+        "experiment_variant": _safe_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            dimension="customEvent:variant",
+        ),
+        "session_channel": _safe_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            dimension="sessionDefaultChannelGroup",
+        ),
+        "device": _safe_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            dimension="deviceCategory",
+        ),
+        "new_returning": _safe_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            dimension="newVsReturning",
+        ),
+    }
+    channel_rows = monetization_breakdowns["session_channel"].get("rows") or []
+    total_channel_sessions = sum(int(row.get("sessions") or 0) for row in channel_rows)
+    unassigned_sessions = sum(
+        int(row.get("sessions") or 0)
+        for row in channel_rows
+        if str(row.get("value") or "").lower() in {"unassigned", "(not set)"}
+    )
+    unassigned_rate = unassigned_sessions / total_channel_sessions if total_channel_sessions else None
+    release_available = monetization_breakdowns["measurement_release_id"].get("available") is True
+    measurement_quality_gate = {
+        "ready_for_new_experiment": False,
+        "required_complete_days": 7,
+        "max_missing_rate": 0.05,
+        "max_unassigned_rate": 0.05,
+        "observed_unassigned_rate": round(unassigned_rate, 6) if unassigned_rate is not None else None,
+        "release_dimension_available": release_available,
+        "reason": "日別の7完全日連続判定はGA4探索またはBigQueryで確認するまでfalseを維持する。",
+    }
 
     compare_count = events["compare_result_view"]["event_count"]
     saved_return_users = events["saved_user_return"]["users"]
@@ -337,6 +441,8 @@ def collect_report(
             "attributed_race_views": attributed_race_views,
         },
         "publisher_revenue": revenue,
+        "monetization_breakdowns": monetization_breakdowns,
+        "measurement_quality_gate": measurement_quality_gate,
         "gates": gates,
         "human_review_ready": not bool(
             gate_statuses & {"fail", "fail_proxy", "unavailable"}

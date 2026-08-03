@@ -484,16 +484,16 @@ function findExistingEntityArticlePath(data: Record<string, any>): string | null
 }
 
 async function verifyArticleRaceBridge(data: Record<string, any>): Promise<Record<string, any>> {
-  const nextData: Record<string, any> = { ...data, race_bridge_enabled: false };
+  const nextData: Record<string, any> = {
+    ...data,
+    race_bridge_eligible: false,
+    race_bridge_enabled: false,
+    race_bridge_eligibility_status: 'not_applicable',
+  };
   delete nextData.race_bridge_verified_at;
+  delete nextData.race_bridge_reminder_id;
   if (normalizeEntityValue(nextData.entity_type) !== 'grade_race') return nextData;
-
-  const experimentActive = String(process.env.ARTICLE_RACE_BRIDGE_EXPERIMENT_ACTIVE || '').toLowerCase() === 'true';
-  const reminderId = String(process.env.ARTICLE_RACE_BRIDGE_REMINDER_ID || '').trim();
-  if (!experimentActive || !reminderId) {
-    console.log('[Publisher Bridge] 見送り: 実験開始フラグまたは判断日リマインドIDが未登録');
-    return nextData;
-  }
+  nextData.race_bridge_eligibility_status = 'metadata_pending';
 
   const raceName = String(nextData.race_name || '').trim();
   const raceDate = String(nextData.scheduled_race_date || '').trim();
@@ -512,6 +512,7 @@ async function verifyArticleRaceBridge(data: Record<string, any>): Promise<Recor
     || !registryEntity
     || registryEntity.entity_key !== entityKey
   ) {
+    nextData.race_bridge_eligibility_status = 'metadata_mismatch';
     console.log(`[Publisher Bridge] 見送り: 必須メタデータ不足 (${raceName || 'race_nameなし'})`);
     return nextData;
   }
@@ -525,6 +526,7 @@ async function verifyArticleRaceBridge(data: Record<string, any>): Promise<Recor
       { signal: controller.signal, headers: { Accept: 'application/json' } },
     );
     if (!response.ok) {
+      nextData.race_bridge_eligibility_status = `preview_api_${response.status}`;
       console.log(`[Publisher Bridge] 見送り: preview API ${response.status} (${raceName})`);
       return nextData;
     }
@@ -543,21 +545,23 @@ async function verifyArticleRaceBridge(data: Record<string, any>): Promise<Recor
       || !Array.isArray(preview.top_predictions)
       || preview.top_predictions.length < 1
     ) {
+      nextData.race_bridge_eligibility_status = 'race_or_prediction_mismatch';
       console.log(`[Publisher Bridge] 見送り: 一意一致または予測データを確認できません (${raceName})`);
       return nextData;
     }
 
-    nextData.race_bridge_enabled = true;
+    nextData.race_bridge_eligible = true;
+    nextData.race_bridge_eligibility_status = 'eligible';
     nextData.race_bridge_verified_at = new Date().toISOString();
-    nextData.race_bridge_reminder_id = reminderId;
     nextData.race_id = verifiedRaceId;
     nextData.race_url = verifiedRaceUrl;
     nextData.race_entity_key = entityKey;
     nextData.race_number = Number(previewRace.race_number || nextData.race_number || 0) || undefined;
     nextData.scheduled_venue = String(previewRace.venue_name || nextData.scheduled_venue || '');
-    console.log(`[Publisher Bridge] 有効化: ${raceName} -> ${verifiedRaceUrl}`);
+    console.log(`[Publisher Bridge] 適格性確認: ${raceName} -> ${verifiedRaceUrl}`);
     return nextData;
   } catch (error) {
+    nextData.race_bridge_eligibility_status = 'preview_api_unavailable';
     console.log(`[Publisher Bridge] 見送り: preview APIに接続できません (${raceName})`, error);
     return nextData;
   } finally {
@@ -633,19 +637,6 @@ function updateExistingEntityArticle(destPath: string, parsedDraft: any, now: Da
     parsedDraft.data.schedule_milestones,
     parsedDraft.data.schedule_milestone,
   );
-  if (existing.data.race_bridge_enabled === true && parsedDraft.data.race_bridge_enabled !== true) {
-    nextData.race_bridge_enabled = true;
-    nextData.race_bridge_verified_at = existing.data.race_bridge_verified_at;
-    nextData.race_bridge_reminder_id = existing.data.race_bridge_reminder_id;
-    nextData.race_id = existing.data.race_id;
-    nextData.race_url = existing.data.race_url;
-    nextData.race_entity_key = existing.data.race_entity_key || existing.data.entity_key;
-    nextData.race_name = existing.data.race_name;
-    nextData.scheduled_race_date = existing.data.scheduled_race_date;
-    nextData.scheduled_venue = existing.data.scheduled_venue;
-    nextData.race_number = existing.data.race_number;
-    console.log('[Publisher Bridge] 再検証失敗のため、既存の検証済み導線メタデータを保持');
-  }
   const isSeasonalGradeRace = normalizeEntityValue(nextData.entity_type) === 'grade_race'
     && /^20\d{2}$/.test(String(nextData.season_year || ''));
   const nextContent = isSeasonalGradeRace

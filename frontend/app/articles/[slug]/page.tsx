@@ -11,7 +11,8 @@ import { enhanceArticleHtml } from '@/lib/article-ux';
 import { ArticleEngagementTracker } from '@/components/ArticleEngagementTracker';
 import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 import { ArticleBody } from '@/components/ArticleBody';
-import { ArticleRaceBridge } from '@/components/ArticleRaceBridge';
+import { ArticleRaceBridgeExperiment } from '@/components/ArticleRaceBridgeExperiment';
+import { ArticleAfterBodyLayout } from '@/components/ArticleAfterBodyLayout';
 import { getArticleRacePreview } from '@/lib/api';
 import { hasValidArticleRaceBridgeMetadata, shouldRenderArticleRaceBridge } from '@/lib/article-race-bridge';
 
@@ -97,7 +98,7 @@ export default async function ArticlePage({ params }: Props) {
       className: 'article-ad-slot',
     };
     const bridgeMetadata = {
-      enabled: article.raceBridgeEnabled,
+      eligible: article.raceBridgeEligible,
       entityType: article.entityType,
       raceName: article.raceName,
       scheduledRaceDate: article.scheduledRaceDate,
@@ -111,6 +112,12 @@ export default async function ArticlePage({ params }: Props) {
       : null;
     const shouldRenderRaceBridge = shouldRenderArticleRaceBridge(bridgeMetadata, racePreview);
     const shouldRenderGenericGuide = article.entityType !== 'grade_race';
+    const contentGroup = article.entityType === 'grade_race'
+      ? 'grade_race'
+      : article.entityType && article.entityType !== 'article'
+        ? 'entity_data'
+        : 'evergreen_guide';
+    const racePhase = article.racePhase || (article.entityType === 'grade_race' ? undefined : 'evergreen');
 
     return (
       <div className="article-detail-scope min-h-screen bg-white py-1 sm:py-8">
@@ -133,7 +140,11 @@ export default async function ArticlePage({ params }: Props) {
         <div className="mx-auto max-w-[1080px] px-0 sm:px-4">
           <Breadcrumb />
 
-          <article data-article-slug={params.slug}>
+          <article
+            data-article-slug={params.slug}
+            data-content-group={contentGroup}
+            data-race-phase={racePhase}
+          >
             {/* ===== ARTICLE HEADER ===== */}
             <header className="relative border-b border-slate-200 pb-4 sm:pb-8">
               <div>
@@ -150,7 +161,7 @@ export default async function ArticlePage({ params }: Props) {
                 )}
 
                 {shouldRenderRaceBridge && (
-                  <ArticleRaceBridge
+                  <ArticleRaceBridgeExperiment
                     articleSlug={params.slug}
                     articleCategory={article.category}
                     raceId={article.raceId as string}
@@ -159,7 +170,7 @@ export default async function ArticlePage({ params }: Props) {
                     venueName={article.scheduledVenue || ''}
                     raceNumber={article.raceNumber}
                     raceUrl={article.raceUrl as string}
-                    preview={racePreview}
+                    preview={racePreview!}
                   />
                 )}
 
@@ -259,15 +270,19 @@ export default async function ArticlePage({ params }: Props) {
               </div>
             </div>
 
-            {/* ===== 関連記事 ===== */}
-            <div className="pb-6 sm:pb-10">
-              <RelatedArticles currentSlug={params.slug} count={3} />
-            </div>
-
-            {/* ===== 広告: 記事本文後 ===== */}
-            <div className="pb-5 sm:pb-8">
-              <AdUnit slot="1489598374" analyticsPlacement="article_after_body" {...stableArticleAdProps} />
-            </div>
+            <ArticleAfterBodyLayout
+              articleSlug={params.slug}
+              relatedContent={(
+                <div className="pb-6 sm:pb-10">
+                  <RelatedArticles currentSlug={params.slug} count={3} />
+                </div>
+              )}
+              adContent={(
+                <div className="pb-5 sm:pb-8">
+                  <AdUnit slot="1489598374" analyticsPlacement="article_after_body" {...stableArticleAdProps} />
+                </div>
+              )}
+            />
 
             {/* ===== MultiplexAd ===== */}
             <MultiplexAd slot="9407670747" />

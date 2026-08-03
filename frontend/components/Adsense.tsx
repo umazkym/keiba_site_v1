@@ -12,6 +12,8 @@ import {
 type AdsenseProps = {
   client: string;
   slot: string;
+  /** AdSense管理画面で作成した配置別カスタムチャネルID */
+  adChannel?: string;
   /** レース切替等で広告をリフレッシュしたい場合に変更する一意キー */
   refreshKey?: string;
   className?: string;
@@ -56,6 +58,7 @@ const ensureAdsenseScript = () => {
 export const Adsense = ({
   client,
   slot,
+  adChannel,
   refreshKey = '',
   className,
   style,
@@ -163,6 +166,9 @@ export const Adsense = ({
 
       ins.setAttribute('data-ad-client', client);
       ins.setAttribute('data-ad-slot', slot);
+      if (adChannel && /^\d+$/.test(adChannel)) {
+        ins.setAttribute('data-ad-channel', adChannel);
+      }
 
       if (isResponsive) {
         ins.setAttribute('data-ad-format', format || 'auto');
@@ -256,6 +262,7 @@ export const Adsense = ({
     refreshKey,
     client,
     slot,
+    adChannel,
     className,
     style,
     isResponsive,

@@ -51,7 +51,12 @@ export const sendClarityEvent = (
     const clarity = getClarity();
     if (!clarity) return;
 
-    Object.entries(tags).forEach(([key, value]) => {
+    const commonTags = {
+        measurement_release_id: process.env.NEXT_PUBLIC_ANALYTICS_RELEASE_ID ?? '2026-08-01-ga-route-v2',
+        ...getBrowserMonetizationContext(),
+        ...tags,
+    };
+    Object.entries(commonTags).forEach(([key, value]) => {
         const normalizedValue = normalizeValue(value);
         if (normalizedValue) {
             clarity('set', key.slice(0, 120), normalizedValue);
@@ -59,3 +64,4 @@ export const sendClarityEvent = (
     });
     clarity('event', eventName.slice(0, 120));
 };
+import { getBrowserMonetizationContext } from '@/lib/monetization-context';

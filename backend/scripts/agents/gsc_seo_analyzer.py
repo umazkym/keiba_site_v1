@@ -91,6 +91,107 @@ def position_bucket(position: float) -> str | None:
     return None
 
 
+def classify_search_intent(query: str) -> str:
+    """自由入力の検索語を、収益監査で比較できる低カーディナリティへまとめる。"""
+
+    normalized = str(query or "").strip().lower().replace("　", " ")
+    compact = normalized.replace(" ", "")
+    if any(token in compact for token in ("uma-free", "umafree", "ウマフリー")):
+        return "brand"
+    if any(token in compact for token in ("結果", "着順", "払戻")):
+        return "result"
+    if any(token in compact for token in ("予想", "ai偏差値", "本命", "展開")):
+        return "prediction"
+    if any(token in compact for token in ("出走", "枠順", "追い切り", "調教", "登録馬")):
+        return "race_preparation"
+    if any(token in compact for token in ("稍重", "重馬場", "馬体重", "オッズ", "コース", "傾向")):
+        return "evergreen_research"
+    if any(token in compact for token in ("カップ", "記念", "ステークス", "ダービー", "賞", "g1", "g2", "g3", "jpn")):
+        return "race_name"
+    return "other"
+
+
+def page_revenue_group(article: Mapping[str, Any]) -> str:
+    if str(article.get("entity_type") or "") == "grade_race":
+        return "grade_race"
+    theme = str(article.get("theme_cluster") or "")
+    if theme in {"course_guide", "ground_condition", "evergreen_guide"}:
+        return "evergreen_guide"
+    return "article"
+
+
+def build_query_device_opportunities(
+    rows: Sequence[Mapping[str, Any]],
+    inventory_by_url: Mapping[str, Mapping[str, Any]],
+    *,
+    revenue_indices: Mapping[str, float] | None = None,
+) -> list[dict[str, Any]]:
+    """同順位帯・同端末・同意図のCTR中央値との差を収益指数で重み付けする。"""
+
+    indices = {
+        "grade_race": 1.0,
+        "evergreen_guide": 1.0,
+        "article": 1.0,
+        **dict(revenue_indices or {}),
+    }
+    normalized_rows: list[dict[str, Any]] = []
+    cohort_ctrs: dict[tuple[str, str, str], list[float]] = defaultdict(list)
+    for row in rows:
+        keys = row.get("keys") or []
+        if len(keys) < 3:
+            continue
+        canonical_url = normalize_url(str(keys[0]))
+        article = inventory_by_url.get(canonical_url)
+        query = str(keys[1] or "").strip()
+        device = str(keys[2] or "unknown").strip().lower()
+        impressions = max(0.0, float(row.get("impressions") or 0.0))
+        clicks = max(0.0, float(row.get("clicks") or 0.0))
+        position = float(row.get("position") or 0.0)
+        bucket = position_bucket(position)
+        if not article or not query or not bucket or impressions <= 0:
+            continue
+        ctr = clicks / impressions
+        intent = classify_search_intent(query)
+        cohort_key = (bucket, device, intent)
+        cohort_ctrs[cohort_key].append(ctr)
+        normalized_rows.append({
+            "canonical_url": canonical_url,
+            "source_slug": str(article.get("source_slug") or ""),
+            "query": query,
+            "device": device,
+            "search_intent": intent,
+            "position_bucket": bucket,
+            "impressions": impressions,
+            "clicks": clicks,
+            "ctr": ctr,
+            "position": position,
+            "revenue_group": page_revenue_group(article),
+        })
+
+    medians = {key: statistics.median(values) for key, values in cohort_ctrs.items() if values}
+    opportunities: list[dict[str, Any]] = []
+    for item in normalized_rows:
+        benchmark = medians[(item["position_bucket"], item["device"], item["search_intent"])]
+        revenue_index = max(0.0, float(indices.get(item["revenue_group"], 1.0)))
+        expected_click_gain = item["impressions"] * max(0.0, benchmark - item["ctr"])
+        score = expected_click_gain * revenue_index
+        if score <= 0:
+            continue
+        opportunities.append({
+            **item,
+            "ctr": round(item["ctr"], 6),
+            "cohort_median_ctr": round(benchmark, 6),
+            "revenue_index": round(revenue_index, 3),
+            "estimated_click_gain": round(expected_click_gain, 3),
+            "opportunity_score": round(score, 3),
+            "impressions": round(item["impressions"], 3),
+            "clicks": round(item["clicks"], 3),
+            "position": round(item["position"], 3),
+        })
+    opportunities.sort(key=lambda item: (-item["opportunity_score"], -item["impressions"], item["query"]))
+    return opportunities
+
+
 def _weighted_metrics(rows: Iterable[Mapping[str, Any]]) -> dict[str, float]:
     clicks = 0.0
     impressions = 0.0
@@ -339,6 +440,8 @@ def analyze_report(
     previous_page_rows: Sequence[Mapping[str, Any]],
     current_query_rows: Sequence[Mapping[str, Any]],
     as_of_date: date,
+    current_query_device_rows: Sequence[Mapping[str, Any]] | None = None,
+    revenue_indices: Mapping[str, float] | None = None,
 ) -> dict[str, Any]:
     inventory_by_url = {
         normalize_url(str(article.get("canonical_url") or "")): article
@@ -347,6 +450,14 @@ def analyze_report(
     }
     current_pages = aggregate_page_rows(current_page_rows)
     previous_pages = aggregate_page_rows(previous_page_rows)
+    query_device_opportunities = build_query_device_opportunities(
+        current_query_device_rows or [],
+        inventory_by_url,
+        revenue_indices=revenue_indices,
+    )
+    opportunity_by_url: dict[str, float] = defaultdict(float)
+    for opportunity in query_device_opportunities:
+        opportunity_by_url[opportunity["canonical_url"]] += float(opportunity["opportunity_score"])
 
     eligible_for_cohort: list[tuple[Mapping[str, Any], dict[str, float], str]] = []
     for canonical_url, article in inventory_by_url.items():
@@ -400,6 +511,7 @@ def analyze_report(
             "position_bucket": bucket or "outside-range",
             "cohort_median_ctr": round(benchmark_ctr, 6),
             "estimated_missed_clicks": round(missed_clicks, 3),
+            "opportunity_score": round(opportunity_by_url.get(canonical_url, 0.0), 3),
             "current": _round_metrics(metrics),
             "previous": _round_metrics(previous),
             "changes": {
@@ -441,7 +553,7 @@ def analyze_report(
 
     candidates.sort(
         key=lambda item: (
-            -float(item["estimated_missed_clicks"]),
+            -float(item["opportunity_score"] or item["estimated_missed_clicks"]),
             -float(item["current"]["impressions"]),
             item["canonical_url"],
         )
@@ -479,6 +591,13 @@ def analyze_report(
             "cannibalization_min_impressions": MIN_CANNIBALIZATION_IMPRESSIONS,
             "seasonal_grade_window_days": {"before": 7, "after": 3},
             "rewrite_cooldown_days": 28,
+            "opportunity_formula": "impressions * max(0, cohort_median_ctr - ctr) * page_group_revenue_index",
+            "opportunity_cohort": ["position_bucket", "device", "search_intent"],
+            "page_group_revenue_indices": {
+                "grade_race": float((revenue_indices or {}).get("grade_race", 1.0)),
+                "evergreen_guide": float((revenue_indices or {}).get("evergreen_guide", 1.0)),
+                "article": float((revenue_indices or {}).get("article", 1.0)),
+            },
         },
         "summary": {
             "inventory_articles": len(inventory),
@@ -492,6 +611,7 @@ def analyze_report(
             key: round(value, 6) for key, value in sorted(cohort_medians.items())
         },
         "candidates": candidates[:10],
+        "query_device_opportunities": query_device_opportunities[:50],
         "seasonal_grade_demand": seasonal_grade_demand,
         "cannibalization": [],
         "unmatched_pages": unmatched_pages[:20],
@@ -535,7 +655,7 @@ def render_markdown_summary(report: Mapping[str, Any]) -> str:
         "",
         "## 改善候補",
         "",
-        "| 順位 | 記事 | 表示 | CTR | 平均順位 | 推定取りこぼしクリック |",
+        "| 順位 | 記事 | 表示 | CTR | 平均順位 | 機会スコア |",
         "| ---: | --- | ---: | ---: | ---: | ---: |",
     ]
     candidates = list(report.get("candidates") or [])
@@ -548,7 +668,7 @@ def render_markdown_summary(report: Mapping[str, Any]) -> str:
                 f"{current['impressions']:.0f} | "
                 f"{current['ctr'] * 100:.2f}% | "
                 f"{current['position']:.1f} | "
-                f"{item['estimated_missed_clicks']:.1f} |"
+                f"{item['opportunity_score'] or item['estimated_missed_clicks']:.1f} |"
             )
     else:
         lines.append("| - | 候補なし | - | - | - | - |")
@@ -616,6 +736,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             window=current_window,
             dimensions=["page", "query"],
         )
+        current_query_device_rows = fetch_search_analytics_rows(
+            execute,
+            window=current_window,
+            dimensions=["page", "query", "device"],
+        )
         if not current_page_rows:
             raise GscAnalyzerError(
                 "確定期間のページ集計が空です。プロパティ、権限、データ蓄積状況を確認してください。"
@@ -634,8 +759,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             current_page_rows=current_page_rows,
             previous_page_rows=previous_page_rows,
             current_query_rows=current_query_rows,
+            current_query_device_rows=current_query_device_rows,
             as_of_date=as_of_date,
         )
+        report["quality"] = {
+            "query_device_row_count": len(current_query_device_rows),
+            "row_limit_reached": len(current_query_device_rows) >= MAX_ROWS,
+            "bigquery_export_recommended": len(current_query_device_rows) >= MAX_ROWS,
+            "note": "Search Consoleのディメンション別合計は匿名化等により一致しない場合があります。",
+        }
         finalize_cannibalization(report, current_query_rows, inventory)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.summary.parent.mkdir(parents=True, exist_ok=True)

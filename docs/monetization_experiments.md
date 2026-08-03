@@ -1,6 +1,6 @@
 # UMA-FREE 広告実験台帳
 
-更新日: 2026-08-01
+更新日: 2026-08-03
 
 日付順の作業とユーザーが用意するものは、[`monetization_task_calendar_2026.md`](./monetization_task_calendar_2026.md)へ集約する。このファイルは実験条件、判断結果、復元方法の詳細台帳として扱う。
 
@@ -133,6 +133,37 @@ Offerwallの設定は2026-08-01以降の固定ベースラインとして変更�
 | 実装状態 | コードは無効状態で残す。`race_bridge_enabled=false`ではDOM、予約高、空白を出さない |
 | 広告設定 | AdSense枠数・位置・slot、Offerwall、自動アンカーは変更していない |
 | リマインド | `uma-free-cta-14`を2026-08-01に削除 |
+
+## 実装済み・開始保留: ARTICLE-RACE-BRIDGE-2026-08
+
+| 項目 | 内容 |
+| --- | --- |
+| 実験ID | `ARTICLE-RACE-BRIDGE-2026-08` |
+| 状態 | 適格性保存と表示実験を分離して実装済み。既定`off`で未開始 |
+| 適格性 | Publisherが重賞名、開催日、`entity_key`、race ID、正確なrace URL、予測1頭以上をAPIで完全一致検証し、`race_bridge_eligible=true`を保存。実験OFFでも検証する |
+| 表示モード | `NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE=off|split|on`。`split`は適格記事セッションをタブ固定50/50、controlはDOM・予約高なし |
+| 安全縮退 | API障害、不一致、予測不足では適格メタデータがあってもDOM・空白を出さない |
+| 開始順 | `MOBILE-RACE-ENGAGED-AD-2026-08`の終了・翌日確認後。他の収益実験と重ねない |
+| 最低期間・母数 | 14完全日かつ各群500適格記事セッション。未達時は判断せず延長 |
+| 主指標 | 記事から正確なrace IDへの到達率 |
+| 収益保護 | 記事収益/1,000セッション非低下、`article_read_complete`低下5%未満、クイックバック悪化2pt未満 |
+| 判断リマインド | 未登録。開始日時Dと同時にD+14 09:00 JSTを登録する |
+| 復元 | `NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE=off`へ戻す。適格性メタデータは将来検証用に保持する |
+
+## 実装済み・開始保留: ARTICLE-AD-READ-COMPLETE-2026-08
+
+| 項目 | 内容 |
+| --- | --- |
+| 実験ID | `ARTICLE-AD-READ-COMPLETE-2026-08` |
+| 状態 | 既存1枠の順序切替を実装済み。既定`control`で未開始 |
+| 原案 | 関連記事の後に`article_after_body`を表示 |
+| バリエーション | 本文・記事フッター直後、関連記事の前へ同じ広告枠を移す。広告数、slot、Multiplex、Offerwallは固定 |
+| 表示モード | `NEXT_PUBLIC_ARTICLE_AD_PLACEMENT_MODE=control|split|variant`。`split`はタブセッション固定50/50 |
+| 開始順 | モバイルレース広告と記事ブリッジの終了後。複数の収益実験を重ねない |
+| 最低期間・母数 | 14完全日かつ各群500記事セッション |
+| 採用条件 | 記事広告収益/1,000セッション5%以上改善、読了率低下5%未満、クイックバック悪化2pt未満、モバイルCLS 0.1以下 |
+| 判断リマインド | 未登録。開始日時Dと同時にD+14 09:00 JSTを登録する |
+| 復元 | `NEXT_PUBLIC_ARTICLE_AD_PLACEMENT_MODE=control`へ戻す |
 
 ## 実装済み・再判断保留: AFF-RAKUTEN-QUALIFIED-NAR-2026-08
 

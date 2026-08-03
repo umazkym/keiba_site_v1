@@ -15,7 +15,7 @@ type ArticleRaceBridgeProps = {
   venueName: string;
   raceNumber?: number;
   raceUrl: string;
-  preview: ArticleRacePreviewResponse | null;
+  preview: ArticleRacePreviewResponse;
 };
 
 function formatAsOf(value: string | undefined): string {
@@ -31,7 +31,7 @@ function formatAsOf(value: string | undefined): string {
   }).format(parsed);
 }
 
-function courseLabel(preview: ArticleRacePreviewResponse | null): string {
+function courseLabel(preview: ArticleRacePreviewResponse): string {
   const race = preview?.race;
   if (!race) return '';
   const course = race.course_type === 'ダ' ? 'ダート' : race.course_type;
@@ -57,7 +57,7 @@ export function ArticleRaceBridge({
     && preview.top_predictions.length > 0
     ? preview
     : null;
-  const previewState: ArticleRacePreviewState = verifiedPreview ? 'available' : 'metadata_only';
+  const previewState: ArticleRacePreviewState = verifiedPreview ? 'available' : 'unavailable';
 
   useEffect(() => {
     const node = rootRef.current;
@@ -80,7 +80,9 @@ export function ArticleRaceBridge({
     return () => observer.disconnect();
   }, [articleCategory, articleSlug, previewState, raceDate, raceId, raceName]);
 
-  const liveRace = verifiedPreview?.race;
+  if (!verifiedPreview) return null;
+
+  const liveRace = verifiedPreview.race;
   const meta = [
     raceDate.replace(/-/g, '/'),
     liveRace?.venue_name || venueName,
@@ -121,8 +123,7 @@ export function ArticleRaceBridge({
             </span>
           </div>
 
-          {verifiedPreview ? (
-            <div className="mt-3 border-t border-slate-200 pt-2.5">
+          <div className="mt-3 border-t border-slate-200 pt-2.5">
               <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 text-xs sm:grid-cols-[2.5rem_minmax(0,1fr)_auto] sm:text-sm">
                 {verifiedPreview.top_predictions.slice(0, 3).map((prediction) => (
                   <div key={`${prediction.horse_number}-${prediction.horse_name}`} className="contents">
@@ -141,12 +142,7 @@ export function ArticleRaceBridge({
                   {formatAsOf(verifiedPreview.as_of)}取得
                 </p>
               )}
-            </div>
-          ) : (
-            <p className="mt-2 border-t border-slate-200 pt-2 text-xs leading-5 text-slate-600">
-              最新の出馬表とレース分析は、レースページで確認できます。
-            </p>
-          )}
+          </div>
         </section>
       </Link>
     </div>

@@ -1,5 +1,6 @@
 import { sendClarityEvent } from '@/lib/clarity';
 import { RACE_REVENUE_EXPERIMENT_ID } from '@/lib/ad-config';
+import { getBrowserMonetizationContext } from '@/lib/monetization-context';
 
 export const ANALYTICS_MEASUREMENT_RELEASE_ID =
     process.env.NEXT_PUBLIC_ANALYTICS_RELEASE_ID ?? '2026-08-01-ga-route-v2';
@@ -355,6 +356,7 @@ const sendAnalyticsEvent = (eventName: string, params: Record<string, unknown> =
 
     const compactedParams = compactParams({
         measurement_release_id: ANALYTICS_MEASUREMENT_RELEASE_ID,
+        ...getBrowserMonetizationContext(),
         ...params,
     });
     if (process.env.NODE_ENV !== 'production') {
@@ -380,26 +382,7 @@ export const setAnalyticsUserProperties = (properties: Record<string, string>) =
     window.gtag('set', 'user_properties', compactParams(properties));
 };
 
-const inferPageType = () => {
-    if (typeof window === 'undefined') return 'unknown';
-
-    const pathname = window.location.pathname;
-    if (pathname === '/') return 'home';
-    if (pathname === '/articles') return 'articles_index';
-    if (pathname.startsWith('/articles/')) return 'article';
-    if (/^\/races\/\d{4}-\d{2}-\d{2}\/[^/]+\/\d{1,2}$/.test(pathname)) return 'race_detail';
-    if (pathname.startsWith('/races/')) return 'race_day';
-    if (pathname.startsWith('/horses/')) return 'horse_data';
-    if (pathname.startsWith('/jockeys/')) return 'jockey_data';
-    if (pathname.startsWith('/trainers/')) return 'trainer_data';
-    if (pathname.startsWith('/courses/')) return 'course_data';
-    if (pathname.startsWith('/my-data')) return 'my_data';
-    if (pathname.startsWith('/compare')) return 'horse_compare';
-    if (pathname.startsWith('/keiba-data')) return 'data_guide';
-    if (pathname.startsWith('/results/')) return 'results';
-    if (pathname === '/faq') return 'faq';
-    return 'other';
-};
+const inferPageType = () => getBrowserMonetizationContext().page_type;
 
 /**
  * 予想表が画面内に表示された際に送信するイベント。
@@ -895,6 +878,66 @@ export const sendSavedUserReturnEvent = (params: {
 }) => {
     sendAnalyticsEvent('saved_user_return', params);
     sendClarityEvent('saved_user_return', params);
+};
+
+export const sendRecentRaceReturnClickEvent = (params: {
+    destination_path: string;
+    race_date: string;
+    venue_name: string;
+    race_number: number;
+    age_hours: number;
+}) => {
+    sendAnalyticsEvent('recent_race_return_click', params);
+    sendClarityEvent('recent_race_return_click', {
+        venue_name: params.venue_name,
+        race_number: params.race_number,
+        age_hours_bucket: params.age_hours < 6 ? '0_5' : params.age_hours < 24 ? '6_23' : '24_plus',
+    });
+};
+
+export const sendPwaInstallPromptViewEvent = (params: {
+    surface: 'my_data';
+    prompt_type: 'native' | 'ios_instruction';
+}) => {
+    sendAnalyticsEvent('pwa_install_prompt_view', params);
+    sendClarityEvent('pwa_install_prompt_view', params);
+};
+
+export const sendPwaInstallResultEvent = (params: {
+    surface: 'my_data';
+    result: 'accepted' | 'dismissed' | 'installed' | 'ios_instruction';
+}) => {
+    sendAnalyticsEvent('pwa_install_result', params);
+    sendClarityEvent('pwa_install_result', params);
+};
+
+export const sendArticleBridgeExperimentExposureEvent = (params: {
+    variant: 'control' | 'treatment';
+    article_slug: string;
+    race_id: string;
+}) => {
+    const eventParams = {
+        experiment_id: 'ARTICLE-RACE-BRIDGE-2026-08',
+        variant: params.variant,
+        article_slug: params.article_slug,
+        race_id: params.race_id,
+    };
+    sendAnalyticsEvent('article_bridge_experiment_exposure', eventParams);
+    sendClarityEvent('article_bridge_experiment_exposure', eventParams);
+};
+
+export const sendArticleAdPlacementExposureEvent = (params: {
+    variant: 'control' | 'after_body_before_related';
+    article_slug: string;
+}) => {
+    const eventParams = {
+        experiment_id: 'ARTICLE-AD-READ-COMPLETE-2026-08',
+        variant: params.variant,
+        article_slug: params.article_slug,
+        ad_placement: 'article_after_body',
+    };
+    sendAnalyticsEvent('article_ad_placement_exposure', eventParams);
+    sendClarityEvent('article_ad_placement_exposure', eventParams);
 };
 
 export const sendPricingSurveyResponseEvent = (params: {

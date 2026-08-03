@@ -1,7 +1,7 @@
 import type { ArticleRacePreviewResponse } from '@/lib/types';
 
 export type ArticleRaceBridgeMetadata = {
-  enabled: boolean;
+  eligible: boolean;
   entityType?: string;
   raceName?: string;
   scheduledRaceDate?: string;
@@ -14,7 +14,7 @@ const EXACT_RACE_URL = /^\/races\/\d{4}-\d{2}-\d{2}\/[a-z0-9%.-]+\/\d{1,2}$/;
 
 export function hasValidArticleRaceBridgeMetadata(metadata: ArticleRaceBridgeMetadata): boolean {
   return Boolean(
-    metadata.enabled
+    metadata.eligible
     && metadata.entityType === 'grade_race'
     && metadata.raceName
     && metadata.scheduledRaceDate
@@ -31,9 +31,8 @@ export function shouldRenderArticleRaceBridge(
 ): boolean {
   if (!hasValidArticleRaceBridgeMetadata(metadata)) return false;
 
-  // nullは、公開時に検証済みだったAPIが一時的に取得できない場合だけ到達する。
-  // その場合は保存済みの正確な情報とリンクだけを表示する。
-  if (preview === null) return true;
+  // 公開時に一度検証済みでも、表示時点でAPIを確認できない場合はDOMも予約高も出さない。
+  if (preview === null) return false;
 
   const race = preview.race;
   return Boolean(

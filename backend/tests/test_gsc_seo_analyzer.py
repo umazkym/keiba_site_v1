@@ -119,6 +119,39 @@ class GscSeoAnalyzerTest(unittest.TestCase):
         self.assertEqual(previous.start.isoformat(), "2026-05-26")
         self.assertEqual(previous.end.isoformat(), "2026-06-22")
 
+    def test_query_device_opportunity_uses_intent_device_and_revenue_index(self) -> None:
+        inventory_by_url = {
+            item["canonical_url"]: item
+            for item in self.inventory[:2]
+        }
+        rows = [
+            {
+                "keys": [self.inventory[0]["canonical_url"], "競馬 稍重", "mobile"],
+                "impressions": 1000,
+                "clicks": 10,
+                "ctr": 0.01,
+                "position": 8,
+            },
+            {
+                "keys": [self.inventory[1]["canonical_url"], "競馬 重馬場", "mobile"],
+                "impressions": 500,
+                "clicks": 25,
+                "ctr": 0.05,
+                "position": 8,
+            },
+        ]
+        opportunities = analyzer.build_query_device_opportunities(
+            rows,
+            inventory_by_url,
+            revenue_indices={"article": 1.2},
+        )
+
+        self.assertEqual(len(opportunities), 1)
+        self.assertEqual(opportunities[0]["device"], "mobile")
+        self.assertEqual(opportunities[0]["search_intent"], "evergreen_research")
+        self.assertAlmostEqual(opportunities[0]["cohort_median_ctr"], 0.03)
+        self.assertAlmostEqual(opportunities[0]["opportunity_score"], 24.0)
+
     def test_fetch_rows_pages_at_25000_and_stops_at_50000(self) -> None:
         first_page = [
             page_row(

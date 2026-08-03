@@ -10,6 +10,7 @@ import {
     shouldSuppressAdsInDevelopment,
 } from '@/lib/ad-config';
 import { useAdViewableEvent } from '@/hooks/useAdViewableEvent';
+import { getAdChannelForPlacement } from '@/lib/ad-channels';
 
 /**
  * 広告ユニットの配置タイプ
@@ -23,6 +24,8 @@ export type AdUnitStatus = 'loading' | 'filled' | 'unfilled';
 type AdUnitProps = {
     /** 広告スロットID */
     slot: string;
+    /** AdSense配置別カスタムチャネルID。未設定時は属性を出さない */
+    adChannel?: string;
     /** 配置タイプ */
     placement?: AdPlacement;
     /** GA4計測用の詳細な広告位置名 */
@@ -69,6 +72,7 @@ const AD_FORMAT_BY_PLACEMENT: Record<AdPlacement, AdFormat> = {
  */
 export const AdUnit = ({
     slot,
+    adChannel,
     placement = 'inline',
     analyticsPlacement,
     analyticsVariant,
@@ -85,6 +89,7 @@ export const AdUnit = ({
     const devStatusKeyRef = useRef('');
     const [adLoaded, setAdLoaded] = useState(false);
     const [adUnfilled, setAdUnfilled] = useState(false);
+    const effectiveAdChannel = adChannel ?? getAdChannelForPlacement(analyticsPlacement);
 
     // refreshKeyが変わったらステートをリセット
     useEffect(() => {
@@ -246,6 +251,7 @@ export const AdUnit = ({
             className={`ad-layout-wrapper relative ${collapseUnfilled ? 'ad-collapse-unfilled' : 'ad-preserve-space'} ${config.wrapperClass} ${className} ${shouldCollapse ? 'hidden m-0 p-0' : ''}`}
             data-ad-state={adLoaded ? 'filled' : adUnfilled ? 'unfilled' : 'loading'}
             data-ad-variant={analyticsVariant}
+            data-ad-channel={effectiveAdChannel}
             data-dev-ad-test-status={shouldShowDevAdPlaceholders ? DEV_AD_TEST_STATUS || undefined : undefined}
         >
             {/* Googleが広告DOMの祖先へmin-height:0を指定しても、通常フローのスペーサーで高さを維持する。 */}
@@ -270,6 +276,7 @@ export const AdUnit = ({
                         <Adsense
                             client={AD_CLIENT}
                             slot={slot}
+                            adChannel={effectiveAdChannel}
                             refreshKey={refreshKey}
                             style={adStyle}
                             isResponsive={true}

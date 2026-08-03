@@ -7,6 +7,7 @@ import {
     RACE_MEMORY_MAX_AGE_MS,
     StoredRaceView,
 } from '@/lib/race-memory';
+import { sendRecentRaceReturnClickEvent } from '@/lib/analytics';
 
 type RecentRaceReturnProps = {
     className?: string;
@@ -112,6 +113,13 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
                 <Link
                     href={recentRace.href}
                     prefetch={false}
+                    onClick={() => sendRecentRaceReturnClickEvent({
+                        destination_path: recentRace.href,
+                        race_date: recentRace.date,
+                        venue_name: recentRace.venueName,
+                        race_number: recentRace.raceNumber,
+                        age_hours: Math.max(0, Math.floor((Date.now() - recentRace.viewedAt) / 3_600_000)),
+                    })}
                     className="recent-return-primary shrink-0 text-center whitespace-nowrap px-2.5 sm:px-3 text-xs py-1.5"
                 >
                     {recentRace.venueName}{recentRace.raceNumber}Rに戻る

@@ -7,6 +7,7 @@ import {
     ANALYTICS_MEASUREMENT_RELEASE_ID,
     consumeSuppressedPageViewPath,
 } from '@/lib/analytics';
+import { getBrowserMonetizationContext } from '@/lib/monetization-context';
 
 type GoogleAnalyticsBootstrapProps = {
     gaId: string;
@@ -43,6 +44,7 @@ export function GoogleAnalyticsBootstrap({ gaId }: GoogleAnalyticsBootstrapProps
             page_path: normalizedPath,
             page_title: document.title,
             measurement_release_id: ANALYTICS_MEASUREMENT_RELEASE_ID,
+            ...getBrowserMonetizationContext(normalizedPath),
         });
         if (process.env.NODE_ENV !== 'production') {
             const currentCount = Number(document.documentElement.dataset.umaGaPageViewCount ?? '0');

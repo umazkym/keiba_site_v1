@@ -1,6 +1,6 @@
 # UMA-FREE 収益ファネル計測設計
 
-更新日: 2026-08-01
+更新日: 2026-08-03
 
 ## 目的
 
@@ -46,6 +46,11 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `compare_race_click` | 比較結果の直近5走からレースへ移動 | `horse_position`, `run_position`, `destination_type` | 比較から実レース確認への遷移 |
 | `upcoming_race_click` | 個別データの出走予定からレースへ移動 | `entity_type`, `relative_date_bucket`, `link_placement` | 保存・個別閲覧から当日レースへの接続 |
 | `saved_user_return` | 保存内容を持つ利用者が24時間以上空けてマイデータへ再訪 | `saved_type_count`, `favorite_count_bucket`, `comparison_count`, `days_since_last_visit_bucket` | 保存利用者の再訪率 |
+| `recent_race_return_click` | ホームの「前回確認していたレース」から正確なレースへ戻る | `destination_path`, `race_date`, `venue_name`, `race_number`, `age_hours` | ローカル保存による再訪回遊 |
+| `pwa_install_prompt_view` | 保存・比較利用者または別日再訪者にPWA案内を表示 | `surface`, `prompt_type` | PWA案内の適格表示母数 |
+| `pwa_install_result` | PWA案内への結果が確定 | `surface`, `result` | 追加・却下・iOS案内の結果 |
+| `article_bridge_experiment_exposure` | 適格記事の表示variantを確定 | `experiment_id`, `variant`, `article_slug`, `race_id` | 記事ブリッジ実験の割当母数 |
+| `article_ad_placement_exposure` | 記事広告の順序variantを確定 | `experiment_id`, `variant`, `article_slug`, `ad_placement` | 広告位置実験の割当母数 |
 | `pricing_survey_response` | 販売前アンケートへ1ブラウザ1回回答 | `response`, `surface` | 月390円の利用意向。申込み・決済ではない |
 | `pricing_survey_view` | 販売前アンケートが対象利用者へ初回表示 | `surface` | 月390円利用意向率の分母 |
 
@@ -55,7 +60,7 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 - `gtag.js`の`onLoad`後に、`gtag('js')`、`gtag('config', {send_page_view:false})`、明示的な初回`page_view`、`__umaGaReady=true`、`uma:ga-ready`の順で実行する。
 - Client Componentが初期化前に発生させたカスタムイベントは最大100件の内部キューへ保持し、`uma:ga-ready`後に一度だけ送信する。
 - 通常のNext.js pathname変更はサイト側が明示`page_view`を1回送る。レース切替の`history.replaceState`では抑止対象pathnameを1回消費し、`page_view`を送らない。
-- すべてのサイト側カスタムイベントへ`measurement_release_id`を自動付与する。2026-08-01版は`2026-08-01-ga-route-v2`。
+- `page_view`とすべてのサイト側カスタムイベントへ`measurement_release_id`、`page_type`、`content_group`、該当時の`race_phase`を自動付与する。2026-08-01版は`2026-08-01-ga-route-v2`。
 - GA4スクリプトの実ロード前に`config`や初回`page_view`を送らない。流入元確定前のイベント送信と`(not set)`セッションを抑えるためである。
 - `web_vital`は個人情報を含めず、セッション単位の固定20%サンプルとする。
 
@@ -100,7 +105,7 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 6. `race_navigation`
 7. `article_read_complete`と記事広告イベントは離脱・収益保護の並行指標として比較する
 
-`article_race_preview_view`の母数には`race_bridge_enabled=true`で正常表示された記事だけを含める。予測未作成や曖昧一致でブリッジを描画しない記事をCTRの母数へ入れない。
+`article_race_preview_view`の母数には`race_bridge_eligible=true`かつ表示時点のAPI完全一致を通過し、表示variantへ割り当てられた記事だけを含める。予測未作成、API障害、曖昧一致、controlをCTRの表示母数へ入れない。
 
 クリック時の流入属性は`sessionStorage`へ30分だけ保持し、最初の対応する`race_view`へ付与後に削除する。別の`race_id`へ到達した場合は誤帰属せず破棄する。URLクエリへ流入情報を付けない。
 
@@ -165,7 +170,7 @@ GA4ではイベントスコープのカスタム定義へ`source_platform`、`so
 - 旧`read_complete`は記事読了ではなく予想表の表示を表していたため、新しい`article_read_complete`と比較しない。
 - リワード広告を意図的に停止している期間は、通常公開を`premium_data_view.result=open_access`として扱う。
 - 2026-07-20〜21のUI変更が30日集計へ混在するため、広告・CTA判断では2026-07-22以降の期間を分離する。
-- 2026-07-23実装のレースブリッジは、本番デプロイ日Dより前の汎用CTAと同一期間へ混在させない。`metadata_only`は一時API障害時の静的リンク表示であり、上位3頭が表示された`available`と分けて集計する。
+- 記事レースブリッジは、適格性と表示実験を分離した2026-08-03版の本番反映日より前を混在させない。表示時点のAPI障害・不一致・予測不足ではDOMと予約高を出さず、`metadata_only`へフォールバックしない。
 - YouTube v7の公開開始日Dまでは`private_review`期間として扱い、通常流入の評価対象へ含めない。2026-07-28のURL統一後はYouTube参照元のトップページ流入、ホームからレースへの遷移、`race_view`、`prediction_table_view`を同じ期間で比較し、旧`utm_content`別集計とは期間を分ける。
 - SNS動画は媒体ごとの`public`切り替え日をDとして別々に集計する。`validate`と`draft`期間は流入効果の母数へ含めず、複数媒体を同日に公開開始した場合は因果分離できないことを明記する。
 - 楽天競馬の適格化実験は`NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=qualified_nar`へ切り替えた本番反映日をDとする。Dより前のレガシー導線、ヘッダー、JRA、日別ページ下部の表示・クリックを実験母数へ混ぜない。

@@ -26,6 +26,8 @@ jobs:
 
     env:
       GSC_SITE_URL: ${{ vars.GSC_SITE_URL || 'sc-domain:uma-free.com' }}
+      GA4_PROPERTY_ID: ${{ vars.GA4_PROPERTY_ID }}
+      CLARITY_API_KEY: ${{ secrets.CLARITY_API_KEY }}
       GEMINI_EDITOR_MODEL_TIERS: gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite
 
     steps:
@@ -76,9 +78,36 @@ jobs:
           --summary "$RUNNER_TEMP/gsc-seo/summary.md"
           --site-url "$GSC_SITE_URL"
 
+      - name: Collect GA4 Monetization Axes
+        if: env.GA4_PROPERTY_ID != ''
+        run: >-
+          python backend/scripts/agents/data_value_funnel_report.py
+          --days 28
+          --output-json "$RUNNER_TEMP/gsc-seo/ga4-report.json"
+          --summary "$RUNNER_TEMP/gsc-seo/ga4-summary.md"
+
+      - name: Collect Clarity Read-only Pulse
+        if: env.CLARITY_API_KEY != ''
+        run: >-
+          python backend/scripts/export_clarity_insights.py
+          --profile core
+          --num-days 3
+          --output-dir "$RUNNER_TEMP/gsc-seo/clarity"
+
+      - name: Build monetization-report.v1
+        run: >-
+          python backend/scripts/agents/monetization_weekly_report.py
+          --ga4-report "$RUNNER_TEMP/gsc-seo/ga4-report.json"
+          --gsc-report "$RUNNER_TEMP/gsc-seo/report.json"
+          --clarity-dir "$RUNNER_TEMP/gsc-seo/clarity"
+          --output-json "$RUNNER_TEMP/gsc-seo/monetization-report.v1.json"
+          --summary "$RUNNER_TEMP/gsc-seo/monetization-summary.md"
+
       - name: Add Audit to Actions Summary
         shell: bash
-        run: cat "$RUNNER_TEMP/gsc-seo/summary.md" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          cat "$RUNNER_TEMP/gsc-seo/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/gsc-seo/monetization-summary.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload GSC Audit Artifact
         uses: actions/upload-artifact@v4
@@ -88,6 +117,11 @@ jobs:
             ${{ runner.temp }}/gsc-seo/report.json
             ${{ runner.temp }}/gsc-seo/summary.md
             ${{ runner.temp }}/gsc-seo/article-inventory.json
+            ${{ runner.temp }}/gsc-seo/monetization-report.v1.json
+            ${{ runner.temp }}/gsc-seo/monetization-summary.md
+            ${{ runner.temp }}/gsc-seo/ga4-report.json
+            ${{ runner.temp }}/gsc-seo/ga4-summary.md
+            ${{ runner.temp }}/gsc-seo/clarity/**
           if-no-files-found: error
           retention-days: 90
 

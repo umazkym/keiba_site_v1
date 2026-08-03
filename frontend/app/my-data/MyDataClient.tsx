@@ -190,12 +190,16 @@ export default function MyDataClient() {
     const [favorites, setFavorites] = useState<SavedDataEntity[]>([]);
     const [history, setHistory] = useState<SavedDataEntity[]>([]);
     const [comparison, setComparison] = useState<SavedHorseComparison[]>([]);
+    const [pwaEligible, setPwaEligible] = useState(false);
     const [notificationState, setNotificationState] = useState<'unsupported' | NotificationPermission>('default');
 
     const refresh = useCallback(() => {
-        setFavorites(readFavorites());
+        const storedFavorites = readFavorites();
+        const storedComparison = readHorseComparison();
+        setFavorites(storedFavorites);
         setHistory(readDataHistory());
-        setComparison(readHorseComparison());
+        setComparison(storedComparison);
+        setPwaEligible((current) => current || storedFavorites.length > 0 || storedComparison.length > 0);
         if (typeof window !== 'undefined' && 'Notification' in window) {
             setNotificationState(Notification.permission);
         } else {
@@ -221,6 +225,7 @@ export default function MyDataClient() {
         const storedComparison = readHorseComparison();
         const hasSavedData = storedFavorites.length > 0 || storedComparison.length > 0;
         const elapsedDays = previous > 0 ? Math.floor((now - previous) / 86_400_000) : 0;
+        setPwaEligible(hasSavedData || elapsedDays >= 1);
         const alreadyTracked = window.sessionStorage.getItem(MY_DATA_RETURN_SESSION_KEY) === '1';
 
         if (hasSavedData && elapsedDays >= 1 && !alreadyTracked) {
@@ -345,6 +350,7 @@ export default function MyDataClient() {
                     <h2 className="text-xs font-black text-slate-800">アプリ設定 & ショートカット</h2>
                 </div>
                 <div className="divide-y divide-slate-100">
+                    {pwaEligible && (
                     <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h3 className="text-sm font-black text-slate-900">ホーム画面に追加</h3>
@@ -355,6 +361,7 @@ export default function MyDataClient() {
                         </div>
                         <PwaInstallButton />
                     </div>
+                    )}
                     <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex gap-3">
                             <Bell className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />

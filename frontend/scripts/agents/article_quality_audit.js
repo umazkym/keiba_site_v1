@@ -312,7 +312,12 @@ function auditArticle(file) {
     addIssue(issues, file, 'warning', 'cta', 'missing race page CTA');
   }
 
-  if (data.race_bridge_enabled === true || String(data.race_bridge_enabled || '').toLowerCase() === 'true') {
+  if (
+    data.race_bridge_eligible === true
+    || String(data.race_bridge_eligible || '').toLowerCase() === 'true'
+    || data.race_bridge_enabled === true
+    || String(data.race_bridge_enabled || '').toLowerCase() === 'true'
+  ) {
     const hasBridgeMetadata = Boolean(
       data.race_name
       && data.race_entity_key
@@ -321,10 +326,9 @@ function auditArticle(file) {
       && data.race_id
       && /^\/races\/\d{4}-\d{2}-\d{2}\/[a-z0-9%.-]+\/\d{1,2}$/.test(String(data.race_url || ''))
       && data.race_bridge_verified_at
-      && data.race_bridge_reminder_id
     );
     if (!hasBridgeMetadata) {
-      addIssue(issues, file, 'critical', 'race_bridge', 'enabled race bridge is missing verified exact-race metadata');
+      addIssue(issues, file, 'critical', 'race_bridge', 'eligible race bridge is missing verified exact-race metadata');
     }
   }
 

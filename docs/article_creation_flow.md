@@ -577,7 +577,7 @@ Plannerは `theme_cluster` を競馬固有の以下の型で出力する。
 
 個別記事は自己canonicalを維持する。`/articles/grade-races/{entity-key}`は最新記事本文を複製せず、年度別記事を案内する重賞ハブとする。既存の複数URLは確定済みGSCクリック最大のURLを代表にし、同数なら表示回数を使う。代表と転送元は`frontend/content/reference/grade-race-canonical-overrides.json`へ記録し、一段の301で集約する。コース解説など検索意図が明確に異なる記事だけは別URLを維持する。
 
-`race_bridge_enabled`は常に`false`から始め、Publisherだけが次の全条件を検証して`true`にできる。
+`race_bridge_enabled`は表示実験に使わず常に`false`とする。Publisherは実験モードに関係なく次の全条件を検証し、`race_bridge_eligible=true`と適格性理由を保存する。
 
 1. 開催日と正規化したレース名がDB上の1レースへ一意に一致する
 2. 正確な個別レースURLを生成できる
@@ -585,9 +585,9 @@ Plannerは `theme_cluster` を競馬固有の以下の型で出力する。
 4. 軽量プレビューAPIが正常応答し、race IDとURLが記事メタデータに一致する
 5. 記事年度と開催年が一致する
 
-さらに、D+1とD+14の9:00 JSTリマインド登録後に`ARTICLE_RACE_BRIDGE_EXPERIMENT_ACTIVE=true`と`ARTICLE_RACE_BRIDGE_REMINDER_ID`がPublisher環境へ設定されていることを開始条件とする。どちらかが欠ける場合は、レースデータが揃っていても`false`を維持する。
+表示は`NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE=off|split|on`で独立制御する。既定は`off`。`split`へ変更するのは、先行する広告実験の終了、7完全日の計測品質ゲート、D+14判断リマインド登録がすべて完了した場合だけとする。
 
-Writerは重賞記事本文に`/races/today`や個別レースCTAを書かない。Publisherの検証に失敗した場合は記事本文を公開できるが、ブリッジは無効のままにし、外枠、ローディング、予約スペースを描画しない。ブラウザ側でタイトルからレースを推測したり、別レースや`/races/today`へフォールバックしたりしない。検証済み記事で一時的なAPI障害が起きた場合だけ、保存済みのレース名、日付、競馬場、正確なURLを使う静的リンクを残し、予測欄は表示しない。
+Writerは重賞記事本文に`/races/today`や個別レースCTAを書かない。Publisherの検証に失敗した場合は記事本文を公開できるが、`eligible=false`のままとし、外枠、ローディング、予約スペースを描画しない。ブラウザ側でタイトルからレースを推測したり、別レースや`/races/today`へフォールバックしたりしない。適格記事でも表示時点のAPI障害、不一致、予測不足ではDOMを出さない。
 
 ## GSC週次監査と限定改稿
 

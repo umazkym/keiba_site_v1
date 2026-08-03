@@ -35,6 +35,9 @@ export interface Article {
   raceNumber?: number;
   raceId?: string;
   raceUrl?: string;
+  racePhase?: string;
+  raceBridgeEligible: boolean;
+  raceBridgeEligibilityReason?: string;
   raceBridgeEnabled: boolean;
   raceBridgeVerifiedAt?: string;
 }
@@ -250,6 +253,9 @@ export function getAllArticles(): Article[] {
       raceNumber: normalizeOptionalInteger(data.race_number || data.raceNumber),
       raceId: normalizeOptionalString(data.race_id || data.raceId),
       raceUrl: normalizeInternalCanonicalPath(data.race_url || data.raceUrl),
+      racePhase: normalizeOptionalString(data.race_phase || data.racePhase || data.update_stage || data.updateStage),
+      raceBridgeEligible: normalizeBoolean(data.race_bridge_eligible || data.raceBridgeEligible),
+      raceBridgeEligibilityReason: normalizeOptionalString(data.race_bridge_eligibility_status || data.raceBridgeEligibilityReason),
       raceBridgeEnabled: normalizeBoolean(data.race_bridge_enabled || data.raceBridgeEnabled),
       raceBridgeVerifiedAt: normalizeOptionalString(data.race_bridge_verified_at || data.raceBridgeVerifiedAt),
     }];
@@ -471,6 +477,9 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     raceNumber: normalizeOptionalInteger(data.race_number || data.raceNumber),
     raceId: normalizeOptionalString(data.race_id || data.raceId),
     raceUrl: normalizeInternalCanonicalPath(data.race_url || data.raceUrl),
+    racePhase: normalizeOptionalString(data.race_phase || data.racePhase || data.update_stage || data.updateStage),
+    raceBridgeEligible: normalizeBoolean(data.race_bridge_eligible || data.raceBridgeEligible),
+    raceBridgeEligibilityReason: normalizeOptionalString(data.race_bridge_eligibility_status || data.raceBridgeEligibilityReason),
     raceBridgeEnabled: normalizeBoolean(data.race_bridge_enabled || data.raceBridgeEnabled),
     raceBridgeVerifiedAt: normalizeOptionalString(data.race_bridge_verified_at || data.raceBridgeVerifiedAt),
   };

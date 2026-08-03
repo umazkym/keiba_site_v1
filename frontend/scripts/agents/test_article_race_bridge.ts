@@ -6,7 +6,7 @@ import { shouldRenderArticleRaceBridge, type ArticleRaceBridgeMetadata } from '.
 import type { ArticleRacePreviewResponse } from '../../lib/types';
 
 const metadata: ArticleRaceBridgeMetadata = {
-  enabled: true,
+  eligible: true,
   entityType: 'grade_race',
   raceName: 'マーキュリーカップ',
   scheduledRaceDate: '2026-07-20',
@@ -33,7 +33,7 @@ const available: ArticleRacePreviewResponse = {
   as_of: '2026-07-20T01:00:00Z',
 };
 
-assert.equal(shouldRenderArticleRaceBridge({ ...metadata, enabled: false }, available), false);
+assert.equal(shouldRenderArticleRaceBridge({ ...metadata, eligible: false }, available), false);
 assert.equal(shouldRenderArticleRaceBridge({ ...metadata, raceId: undefined }, available), false);
 assert.equal(shouldRenderArticleRaceBridge({ ...metadata, raceUrl: '/races/today' }, available), false);
 assert.equal(shouldRenderArticleRaceBridge({ ...metadata, seasonYear: 2025 }, available), false);
@@ -41,7 +41,7 @@ assert.equal(shouldRenderArticleRaceBridge(metadata, available), true);
 assert.equal(shouldRenderArticleRaceBridge(metadata, { ...available, status: 'race_only', top_predictions: [] }), false);
 assert.equal(shouldRenderArticleRaceBridge(metadata, { ...available, status: 'not_found', race: null, top_predictions: [] }), false);
 assert.equal(shouldRenderArticleRaceBridge(metadata, { ...available, race: { ...available.race!, id: 'other-race' } }), false);
-assert.equal(shouldRenderArticleRaceBridge(metadata, null), true);
+assert.equal(shouldRenderArticleRaceBridge(metadata, null), false);
 
 const commonBridgeProps = {
   articleSlug: 'mercury-cup-2026',
@@ -60,13 +60,5 @@ const availableHtml = renderToStaticMarkup(React.createElement(ArticleRaceBridge
 assert.match(availableHtml, /data-article-race-bridge/);
 assert.match(availableHtml, /テストホース/);
 assert.match(availableHtml, /href="\/races\/2026-07-20\/morioka\/12"/);
-
-const metadataOnlyHtml = renderToStaticMarkup(React.createElement(ArticleRaceBridge, {
-  ...commonBridgeProps,
-  preview: null,
-}));
-assert.match(metadataOnlyHtml, /レースページで確認できます/);
-assert.doesNotMatch(metadataOnlyHtml, /テストホース/);
-assert.match(metadataOnlyHtml, /href="\/races\/2026-07-20\/morioka\/12"/);
 
 console.log('article race bridge gate tests passed');

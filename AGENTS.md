@@ -113,6 +113,10 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-08-04**:
+  * **Vercel停止からCloud Run + Cloudflareへ移行する再発防止基盤を実装**:
+    Vercel Hobbyのrolling 30 daysでFluid Active CPU約12時間7分、ISR Writes約177.6万、Edge Requests約115.6万となり、CPU 300%超過でpauseされた原因を、高カーディナリティなレースISRとデータ詳細ページの大量露出・cache missの連鎖と特定した。プランは変更せず、Next.js standalone Docker、非root Cloud Run、手動OIDC deploy、release SHA付きhealth、min 0・max 2・concurrency 40、Cloudflare前提のroute別cacheを追加。domain mapping後だけ`run.app`既定URLを閉じられる二段階workflowとした。データ詳細は`data_page_publications`でcandidate/published/held/retiredを管理し、未登録を安全側noindex/no-follow、GSC需要・標本数・鮮度・完全性とCloud Run/Cloudflare直近7日指標で初回最大500、通常100/25/0件を段階公開する。指標不能・高負荷時は初回も0件とし、サイトマップは固定5,000件上限を廃止して1,000 URL単位の安定shardへ変更。過去レース内部リンクのnofollow、404 negative cache、CORS環境化、IAP限定migration workflow、Cloudflare DNS/TLS/cache/WAF/rollback SOPと移行手順を追加した。本番deploy、DNS、Cloudflare外部設定はリポジトリ規約に従い未実施。
+
 * **2026-08-03**:
   * **重賞記事・YouTube自動運用の恒久安定化**:
     はまなす賞、ジュニアグランプリ、九州チャンピオンシップを共有台帳へ追加し、JRA・地方競馬の信頼済み日程だけから`auto-{circuit}-{SHA-256先頭16桁}`の不変な内部キーを生成するPython/TypeScript共通識別規則を実装した。記事監査とPlannerは同じ公開期限判定を利用し、台帳未整備は決定的に識別できれば警告継続、公開期限前の曖昧レースは個別見送り、期限到達済みの重要レースだけを停止対象とする。自動識別記事には未整備の重賞アーカイブURLやcanonicalを作らない。YouTubeは状態照会・更新・チャンクアップロードを一時通信障害時に最大3回再試行し、リモート公開状態を優先する単調な状態遷移と動画ID再利用へ変更した。Blueskyは日付、主要レース名、案内、URLを優先する専用300文字captionへ分離した。2026年8月3日基準の実日程監査は226件中台帳48件・自動178件・停止0件、Python 84テスト、TypeScript型検査、記事回帰・リンク・品質監査、SOP形式検証、397ページの本番ビルドが成功した。

@@ -21,23 +21,30 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# ▼▼▼▼▼ 【ここから修正】 ▼▼▼▼▼
-# 許可するオリジンのリスト
-# ローカル開発環境、Vercelのプレビュードメイン、本番ドメインをすべて含めます。
-allow_origins = [
+default_allow_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://uma-free.com",
     "https://www.uma-free.com",
-    "https://keiba-site-v1-6brvxwn9l-umazkyms-projects.vercel.app", # ログに出ていたVercelのプレビュードメイン
+    "https://keiba-site-v1-6brvxwn9l-umazkyms-projects.vercel.app",
 ]
-# ▲▲▲▲▲ 【修正ここまで】 ▲▲▲▲▲
+configured_allow_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+preview_origin = os.getenv("FRONTEND_PREVIEW_ORIGIN", "").strip().rstrip("/")
+allow_origins = list(dict.fromkeys([
+    *default_allow_origins,
+    *configured_allow_origins,
+    *([preview_origin] if preview_origin else []),
+]))
 
 
 # CORS設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allow_origins, # 修正したリストを渡す
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

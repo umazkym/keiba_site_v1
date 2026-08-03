@@ -99,19 +99,37 @@ export function splitPersonDisplayName(
 
 export function normalizeDataEntitySummary(item: DataEntitySummary): DataEntitySummary {
     const person = splitPersonDisplayName(item.name, item.entity_type, item.affiliation);
+    const publicationStatus = ['candidate', 'published', 'held', 'retired'].includes(
+        item.search_publication_status,
+    )
+        ? item.search_publication_status
+        : 'candidate';
+    const qualityEligible = item.quality_eligible === true;
     return {
         ...item,
         name: person.name,
         affiliation: person.affiliation,
+        quality_eligible: qualityEligible,
+        search_publication_status: publicationStatus,
+        indexable: qualityEligible && publicationStatus === 'published',
     };
 }
 
 export function normalizeDataSearchResult(item: DataSearchResult): DataSearchResult {
     const person = splitPersonDisplayName(item.name, item.entity_type, item.affiliation);
+    const publicationStatus = ['candidate', 'published', 'held', 'retired'].includes(
+        item.search_publication_status,
+    )
+        ? item.search_publication_status
+        : 'candidate';
+    const qualityEligible = item.quality_eligible === true;
     return {
         ...item,
         name: person.name,
         affiliation: person.affiliation,
+        quality_eligible: qualityEligible,
+        search_publication_status: publicationStatus,
+        indexable: qualityEligible && publicationStatus === 'published',
     };
 }
 

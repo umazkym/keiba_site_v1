@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { BreadcrumbSchema, DatasetSchema } from '@/components/StructuredData';
 import { CourseDataDetailView } from '@/components/CourseDataDetailView';
@@ -11,8 +12,12 @@ import { getCourseProfile } from '@/lib/growth-content';
 import { getCourseArticleArchiveGroup } from '@/lib/article-archives';
 
 
-export const revalidate = 21600;
+export const revalidate = 86400;
 export const dynamicParams = true;
+
+const getCourseDetail = cache((venue: string, course: string) => (
+    getCourseDataDetail(venue, course)
+));
 
 type Props = {
     params: { venue: string; course: string };
@@ -20,23 +25,23 @@ type Props = {
 
 export function generateStaticParams() {
     // DB集計APIをVercelビルド中に19コース分同時実行しない。
-    // 初回アクセス時に生成し、以後は6時間ISRキャッシュする。
+    // 初回アクセス時に生成し、以後は24時間ISRキャッシュする。
     return [];
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-    const detail = await getCourseDataDetail(params.venue, params.course);
+    const detail = await getCourseDetail(params.venue, params.course);
     if (detail) {
         return {
             title: `${detail.entity.name} 枠順・脚質・騎手データ`,
             description: `${detail.entity.name}の枠番、馬番、位置取り、馬場状態、騎手、調教師別成績。直近5年の${detail.entity.sample_size}頭を集計。`,
             alternates: { canonical: detail.entity.url },
-            robots: { index: detail.entity.indexable, follow: true },
+            robots: { index: detail.entity.indexable, follow: detail.entity.indexable },
         };
     }
     const profile = getCourseProfile(params.venue, params.course);
     if (!profile) {
-        return { title: 'コースデータ', robots: { index: false, follow: true } };
+        return { title: 'コースデータ', robots: { index: false, follow: false } };
     }
     return {
         title: profile.title,
@@ -46,7 +51,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CoursePage({ params }: Props) {
-    const detail = await getCourseDataDetail(params.venue, params.course);
+    const detail = await getCourseDetail(params.venue, params.course);
     if (detail) {
         const courseSlug = detail.entity.id.split('/')[1] ?? params.course;
         const articleArchive = getCourseArticleArchiveGroup(detail.venue_slug, courseSlug);

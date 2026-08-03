@@ -65,6 +65,7 @@ _ENTITY_MIN_SAMPLE = {
     "trainer": 50,
     "course": 100,
 }
+_PUBLICATION_STATUSES = {"candidate", "published", "held", "retired"}
 _TRAINER_AFFILIATIONS = (
     "栃木・宇都宮",
     "ばんえい帯広",
@@ -314,13 +315,52 @@ def _entity_summary(
         "url": url,
         "sample_size": int(sample_size or 0),
         "last_race_date": last_race_date,
-        "indexable": indexable,
+        "quality_eligible": bool(indexable),
+        "search_publication_status": "candidate",
+        # 公開状態テーブルに明示的なpublishedがないページは安全側でnoindexにする。
+        "indexable": False,
         "venue_name": venue_name,
         "venue_slug": venue_slug,
         "course_type": course_type,
         "distance": distance,
         "race_count": race_count,
     }
+
+
+def _apply_publication_state(
+    db: Session,
+    items: Sequence[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """品質判定と検索公開状態を合成し、最終的なindexableを決める。"""
+
+    if not items:
+        return []
+    entity_types = sorted({str(item.get("entity_type") or "") for item in items})
+    rows = (
+        db.query(models.DataPagePublication)
+        .filter(models.DataPagePublication.entity_type.in_(entity_types))
+        .all()
+    )
+    states = {
+        (row.entity_type, row.entity_id): row.status
+        for row in rows
+        if row.status in _PUBLICATION_STATUSES
+    }
+    enriched: List[Dict[str, Any]] = []
+    for source in items:
+        item = dict(source)
+        quality_eligible = bool(
+            item.get("quality_eligible", item.get("indexable", False))
+        )
+        status = states.get(
+            (str(item.get("entity_type") or ""), str(item.get("id") or "")),
+            "candidate",
+        )
+        item["quality_eligible"] = quality_eligible
+        item["search_publication_status"] = status
+        item["indexable"] = quality_eligible and status == "published"
+        enriched.append(item)
+    return enriched
 
 
 def _directory_people_or_horses(
@@ -384,6 +424,7 @@ def _directory_people_or_horses(
             f"/{path}/{quote(str(row[0]), safe='')}",
             affiliation=affiliation,
         ))
+    items = _apply_publication_state(db, items)
     return {
         "entity_type": entity_type,
         "total": total,
@@ -450,6 +491,7 @@ def _directory_courses(
             distance=int(distance) if distance is not None else None,
             race_count=int(races or 0),
         ))
+    items = _apply_publication_state(db, items)
     return {
         "entity_type": "course",
         "total": total,
@@ -564,7 +606,8 @@ def search_entities(
                 "description": item["subtitle"],
                 "url": item["url"],
                 "sample_size": item["sample_size"],
-                "indexable": item["indexable"],
+                "quality_eligible": item["quality_eligible"],
+                "indexable": item["quality_eligible"],
             })
 
     items.sort(
@@ -575,7 +618,8 @@ def search_entities(
             item["name"],
         )
     )
-    result = {"query": query_text.strip(), "total": len(items), "items": items[:safe_limit]}
+    visible_items = _apply_publication_state(db, items[:safe_limit])
+    result = {"query": query_text.strip(), "total": len(items), "items": visible_items}
     _cache.set(cache_key, result, 600)
     return result
 
@@ -836,6 +880,7 @@ def get_entity_detail(
         f"/{path}/{quote(str(entity.id), safe='')}",
         affiliation=affiliation,
     )
+    summary = _apply_publication_state(db, [summary])[0]
     result = {
         "entity": summary,
         "overall": overall,
@@ -971,6 +1016,7 @@ def get_course_detail(
         course_type=course_type,
         distance=distance,
     )
+    summary = _apply_publication_state(db, [summary])[0]
 
     top_jockeys = _segment_stats(
         db,
@@ -1495,17 +1541,72 @@ def get_data_sitemap(db: Session) -> List[Dict[str, Any]]:
         return cached
     entries: List[Dict[str, Any]] = []
     for entity_type in ("course", "horse", "jockey", "trainer"):
-        directory = list_entities(
-            db,
-            entity_type,
-            limit=5000,
-            offset=0,
-            indexable_only=True,
-        )
-        entries.extend({
-            "url": item["url"],
-            "entity_type": entity_type,
-            "last_modified": item["last_race_date"],
-        } for item in directory["items"])
-    _cache.set(cache_key, entries, 86400)
+        offset = 0
+        while True:
+            directory = list_entities(
+                db,
+                entity_type,
+                limit=1000,
+                offset=offset,
+                indexable_only=True,
+            )
+            page_items = list(directory["items"])
+            entries.extend({
+                "url": item["url"],
+                "entity_type": entity_type,
+                "last_modified": item["last_race_date"],
+            } for item in page_items if item["indexable"])
+            offset += len(page_items)
+            if not page_items or offset >= int(directory["total"]):
+                break
+    entries.sort(key=lambda item: (item["entity_type"], item["url"]))
+    _cache.set(cache_key, entries, 3600)
     return entries
+
+
+def get_data_sitemap_manifest(
+    db: Session,
+    *,
+    shard_size: int = 1000,
+) -> List[Dict[str, Any]]:
+    safe_shard_size = max(1, min(shard_size, 5000))
+    grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for entry in get_data_sitemap(db):
+        grouped[entry["entity_type"]].append(entry)
+
+    manifest: List[Dict[str, Any]] = []
+    for entity_type in ("course", "horse", "jockey", "trainer"):
+        entries = grouped.get(entity_type, [])
+        for start in range(0, len(entries), safe_shard_size):
+            shard_entries = entries[start:start + safe_shard_size]
+            last_modified_values = [
+                item["last_modified"]
+                for item in shard_entries
+                if item.get("last_modified") is not None
+            ]
+            manifest.append({
+                "entity_type": entity_type,
+                "shard": start // safe_shard_size + 1,
+                "count": len(shard_entries),
+                "last_modified": max(last_modified_values) if last_modified_values else None,
+            })
+    return manifest
+
+
+def get_data_sitemap_shard(
+    db: Session,
+    entity_type: str,
+    shard: int,
+    *,
+    shard_size: int = 1000,
+) -> List[Dict[str, Any]]:
+    if entity_type not in {"course", "horse", "jockey", "trainer"}:
+        raise ValueError("unsupported entity type")
+    safe_shard_size = max(1, min(shard_size, 5000))
+    safe_shard = max(1, shard)
+    entries = [
+        item for item in get_data_sitemap(db)
+        if item["entity_type"] == entity_type
+    ]
+    start = (safe_shard - 1) * safe_shard_size
+    return entries[start:start + safe_shard_size]

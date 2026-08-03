@@ -98,7 +98,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             title: `${formattedDate}のAI競馬データ分析`,
             description: `${formattedDate}の中央・地方競馬のAI競馬データ分析。`,
             alternates: { canonical: `/races/${params.date}` },
-            robots: { index: false, follow: true },
+            robots: { index: false, follow: false },
         };
     }
 

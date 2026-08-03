@@ -102,7 +102,7 @@ export function getRaceIndexPolicy(
     options: { isGradeRace?: boolean } = {},
 ): { index: boolean; follow: boolean; reason: string } {
     if (!isValidRaceDate(date)) {
-        return { index: false, follow: true, reason: 'invalid-date' };
+        return { index: false, follow: false, reason: 'invalid-date' };
     }
 
     const daysFromToday = getDaysFromToday(date);
@@ -118,5 +118,5 @@ export function getRaceIndexPolicy(
         return { index: true, follow: true, reason: 'grade-race' };
     }
 
-    return { index: false, follow: true, reason: 'old-race-archive' };
+    return { index: false, follow: false, reason: 'old-race-archive' };
 }

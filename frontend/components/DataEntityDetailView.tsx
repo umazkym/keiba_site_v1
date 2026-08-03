@@ -93,7 +93,13 @@ export function DataEntityDetailView({
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-slate-500">
                     <span>集計対象 {entity.sample_size.toLocaleString('ja-JP')}走</span>
                     <span>最終出走 {entity.last_race_date ?? '確認できません'}</span>
-                    <span>{entity.indexable ? '公開基準を満たすデータ' : '母数または直近活動を確認中'}</span>
+                    <span>
+                        {entity.indexable
+                            ? '検索公開中のデータ'
+                            : entity.quality_eligible
+                                ? '検索公開を段階調整中'
+                                : '母数または直近活動を確認中'}
+                    </span>
                 </div>
             </header>
 
@@ -186,6 +192,7 @@ export function DataEntityDetailView({
                                 key={item.race_id}
                                 prefetch={false}
                                 href={item.url}
+                                rel="nofollow"
                                 className="grid min-h-14 grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-slate-50"
                             >
                                 <span className="min-w-0">

@@ -6,6 +6,7 @@ import {
     DataEntityType,
     DataSearchResponse,
     DataSitemapEntry,
+    DataSitemapManifestEntry,
     GrowthDataSummary,
     HorseComparisonRequest,
     HorseComparisonResponse,
@@ -527,5 +528,27 @@ export async function compareHorseData(
 export async function getDataSitemapEntries(): Promise<DataSitemapEntry[]> {
     return (
         await getDataApiJson<DataSitemapEntry[]>('/sitemap', { revalidate: 21600 })
+    ) ?? [];
+}
+
+export async function getDataSitemapManifest(): Promise<DataSitemapManifestEntry[]> {
+    return (
+        await getDataApiJson<DataSitemapManifestEntry[]>(
+            '/sitemap-manifest',
+            { revalidate: 3600 },
+        )
+    ) ?? [];
+}
+
+export async function getDataSitemapShard(
+    entityType: Exclude<DataEntityType, 'grade'>,
+    shard: number,
+): Promise<DataSitemapEntry[]> {
+    const safeShard = Math.max(1, Math.floor(shard));
+    return (
+        await getDataApiJson<DataSitemapEntry[]>(
+            `/sitemap-shards/${entityType}/${safeShard}`,
+            { revalidate: 3600 },
+        )
     ) ?? [];
 }

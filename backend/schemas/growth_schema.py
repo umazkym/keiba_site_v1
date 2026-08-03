@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 EntityType = Literal["course", "horse", "jockey", "trainer", "grade"]
+SearchPublicationStatus = Literal["candidate", "published", "held", "retired"]
 
 
 class RateSummary(BaseModel):
@@ -31,6 +32,8 @@ class EntitySummary(BaseModel):
     url: str
     sample_size: int
     last_race_date: Optional[date] = None
+    quality_eligible: bool
+    search_publication_status: SearchPublicationStatus
     indexable: bool
     venue_name: Optional[str] = None
     venue_slug: Optional[str] = None
@@ -55,6 +58,8 @@ class SearchResult(BaseModel):
     affiliation: Optional[str] = None
     url: str
     sample_size: int
+    quality_eligible: bool
+    search_publication_status: SearchPublicationStatus
     indexable: bool
 
 
@@ -280,4 +285,11 @@ class HorseComparisonResponse(BaseModel):
 class DataSitemapEntry(BaseModel):
     url: str
     entity_type: EntityType
+    last_modified: Optional[date] = None
+
+
+class DataSitemapManifestEntry(BaseModel):
+    entity_type: Literal["course", "horse", "jockey", "trainer"]
+    shard: int = Field(ge=1)
+    count: int = Field(ge=1, le=5000)
     last_modified: Optional[date] = None

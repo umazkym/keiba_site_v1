@@ -1,0 +1,103 @@
+name: Keiba Data Page Publication
+
+on:
+  schedule:
+    # 毎日09:45 JST（UTCでは00:45）
+    - cron: '45 0 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 公開状態を保存せず判定結果だけ確認する
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: keiba-data-page-publication
+  cancel-in-progress: false
+
+jobs:
+  evaluate-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: backend
+      GSC_SITE_URL: ${{ vars.GSC_SITE_URL || 'sc-domain:uma-free.com' }}
+      CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ANALYTICS_API_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install publication dependencies
+        run: >-
+          pip install
+          sqlalchemy
+          psycopg2-binary
+          python-dotenv
+          google-api-python-client
+          google-auth
+          google-cloud-monitoring
+
+      - name: Set up IAP database tunnel
+        uses: ./.github/actions/setup-iap-db
+        with:
+          database_url: ${{ secrets.DATABASE_URL }}
+
+      - name: Prepare report directory
+        shell: bash
+        run: mkdir -p "$RUNNER_TEMP/data-page-publication"
+
+      - name: Collect capacity metrics
+        run: >-
+          python backend/scripts/agents/cloud_run_capacity.py
+          --project-id keiba-api-project
+          --service-name keiba-frontend-v1
+          --max-instances 2
+          --output-json "$RUNNER_TEMP/data-page-publication/capacity.json"
+
+      - name: Apply idempotent publication table migration
+        run: python backend/scripts/migrate_data_page_publications.py
+
+      - name: Evaluate staged publication
+        shell: bash
+        run: |
+          EXTRA_ARGS=()
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.dry_run }}" == "true" ]]; then
+            EXTRA_ARGS+=(--dry-run)
+          fi
+          python backend/scripts/agents/data_page_publication.py \
+            --site-url "$GSC_SITE_URL" \
+            --capacity-metrics-json "$RUNNER_TEMP/data-page-publication/capacity.json" \
+            --output-json "$RUNNER_TEMP/data-page-publication/report.json" \
+            --summary "$RUNNER_TEMP/data-page-publication/summary.md" \
+            "${EXTRA_ARGS[@]}"
+
+      - name: Add result to Actions Summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f "$RUNNER_TEMP/data-page-publication/summary.md" ]]; then
+            cat "$RUNNER_TEMP/data-page-publication/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload publication report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-page-publication-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/data-page-publication/capacity.json
+            ${{ runner.temp }}/data-page-publication/report.json
+            ${{ runner.temp }}/data-page-publication/summary.md
+          if-no-files-found: warn
+          retention-days: 30

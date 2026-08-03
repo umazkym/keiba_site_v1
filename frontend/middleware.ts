@@ -41,10 +41,11 @@ export function middleware(request: NextRequest) {
             const newUrl = new URL(request.url);
             newUrl.pathname = `/races/${getJstTodayString()}`;
             newUrl.search = '';
-
-            return NextResponse.redirect(newUrl, {
+            const redirectResponse = NextResponse.redirect(newUrl, {
                 status: 307,
             });
+            redirectResponse.headers.set('Cache-Control', 'private, no-store');
+            return redirectResponse;
         }
 
         const dateOnlyMatch = pathname.match(/^\/races\/([^/]+)$/);

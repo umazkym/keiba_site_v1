@@ -76,8 +76,11 @@ def read_course_detail(
 ):
     result = growth_crud.get_course_detail(db, venue_slug, course_slug)
     if result is None:
-        response.headers["Cache-Control"] = "no-store"
-        raise HTTPException(status_code=404, detail="Course data not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Course data not found",
+            headers={"Cache-Control": "public, max-age=600"},
+        )
     _set_cache(response, 21600, 1800)
     return result
 
@@ -93,8 +96,11 @@ def read_horse_detail(
 ):
     result = growth_crud.get_entity_detail(db, "horse", entity_id)
     if result is None:
-        response.headers["Cache-Control"] = "no-store"
-        raise HTTPException(status_code=404, detail="Horse data not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Horse data not found",
+            headers={"Cache-Control": "public, max-age=600"},
+        )
     _set_cache(response, 3600, 300)
     return result
 
@@ -110,8 +116,11 @@ def read_jockey_detail(
 ):
     result = growth_crud.get_entity_detail(db, "jockey", entity_id)
     if result is None:
-        response.headers["Cache-Control"] = "no-store"
-        raise HTTPException(status_code=404, detail="Jockey data not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Jockey data not found",
+            headers={"Cache-Control": "public, max-age=600"},
+        )
     _set_cache(response, 3600, 300)
     return result
 
@@ -127,8 +136,11 @@ def read_trainer_detail(
 ):
     result = growth_crud.get_entity_detail(db, "trainer", entity_id)
     if result is None:
-        response.headers["Cache-Control"] = "no-store"
-        raise HTTPException(status_code=404, detail="Trainer data not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Trainer data not found",
+            headers={"Cache-Control": "public, max-age=600"},
+        )
     _set_cache(response, 3600, 300)
     return result
 
@@ -204,5 +216,37 @@ def read_data_sitemap(
     db: Session = Depends(get_db),
 ):
     result = growth_crud.get_data_sitemap(db)
-    _set_cache(response, 21600, 1800)
+    _set_cache(response, 3600, 86400)
+    return result
+
+
+@router.get(
+    "/sitemap-manifest",
+    response_model=List[growth_schema.DataSitemapManifestEntry],
+)
+def read_data_sitemap_manifest(
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    result = growth_crud.get_data_sitemap_manifest(db)
+    _set_cache(response, 3600, 86400)
+    return result
+
+
+@router.get(
+    "/sitemap-shards/{entity_type}/{shard}",
+    response_model=List[growth_schema.DataSitemapEntry],
+)
+def read_data_sitemap_shard(
+    entity_type: Literal["course", "horse", "jockey", "trainer"],
+    shard: int,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    if shard < 1:
+        raise HTTPException(status_code=404, detail="Sitemap shard not found")
+    result = growth_crud.get_data_sitemap_shard(db, entity_type, shard)
+    if not result:
+        raise HTTPException(status_code=404, detail="Sitemap shard not found")
+    _set_cache(response, 3600, 86400)
     return result

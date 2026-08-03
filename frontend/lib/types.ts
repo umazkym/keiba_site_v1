@@ -167,6 +167,7 @@ export interface PredictionAccuracySummary {
 }
 
 export type DataEntityType = 'course' | 'horse' | 'jockey' | 'trainer' | 'grade';
+export type SearchPublicationStatus = 'candidate' | 'published' | 'held' | 'retired';
 
 export interface RateSummary {
     sample_size: number;
@@ -192,6 +193,8 @@ export interface DataEntitySummary {
     url: string;
     sample_size: number;
     last_race_date: string | null;
+    quality_eligible: boolean;
+    search_publication_status: SearchPublicationStatus;
     indexable: boolean;
     venue_name?: string | null;
     venue_slug?: string | null;
@@ -216,6 +219,8 @@ export interface DataSearchResult {
     affiliation?: string | null;
     url: string;
     sample_size: number;
+    quality_eligible: boolean;
+    search_publication_status: SearchPublicationStatus;
     indexable: boolean;
 }
 
@@ -417,5 +422,12 @@ export interface HorseComparisonResponse {
 export interface DataSitemapEntry {
     url: string;
     entity_type: DataEntityType;
+    last_modified: string | null;
+}
+
+export interface DataSitemapManifestEntry {
+    entity_type: Exclude<DataEntityType, 'grade'>;
+    shard: number;
+    count: number;
     last_modified: string | null;
 }

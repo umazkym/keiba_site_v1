@@ -1,0 +1,11 @@
+node_modules
+.next
+.next-local-check
+.playwright-cli
+.git
+.env*
+!.env.production
+*.log
+.codex-dev.*
+next-dev-*.out.log
+next-dev-*.err.log

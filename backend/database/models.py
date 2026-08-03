@@ -1,8 +1,14 @@
 # C:\Users\tnszk\program\GitHub\backend\database\models.py
 from sqlalchemy.orm import relationship
 from .database import Base
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, JSON, UniqueConstraint, DateTime
-from datetime import datetime
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, JSON, UniqueConstraint, DateTime, Index
+from datetime import datetime, timezone
+
+
+def _utcnow_naive():
+    """既存のtimestamp without time zone列へ保存するUTC時刻を返す。"""
+
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 class Race(Base):
     __tablename__ = "races"
@@ -156,5 +162,44 @@ class VideoPublication(Base):
             "video_type",
             "stable_id",
             name="_video_publication_unique",
+        ),
+    )
+
+
+class DataPagePublication(Base):
+    """データ詳細ページを検索エンジンへ段階公開するための状態管理。"""
+
+    __tablename__ = "data_page_publications"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    entity_type = Column(String, nullable=False)
+    entity_id = Column(String, nullable=False)
+    url = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="candidate")
+    quality_score = Column(Float, nullable=False, default=0.0)
+    score_factors = Column(JSON, nullable=False, default=dict)
+    first_eligible_at = Column(DateTime, nullable=True)
+    first_published_at = Column(DateTime, nullable=True)
+    last_evaluated_at = Column(DateTime, nullable=False, default=_utcnow_naive)
+    last_seen_data_at = Column(Date, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=_utcnow_naive)
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=_utcnow_naive,
+        onupdate=_utcnow_naive,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_type",
+            "entity_id",
+            name="_data_page_publication_entity_unique",
+        ),
+        UniqueConstraint("url", name="_data_page_publication_url_unique"),
+        Index(
+            "ix_data_page_publications_status_score",
+            "status",
+            "quality_score",
         ),
     )

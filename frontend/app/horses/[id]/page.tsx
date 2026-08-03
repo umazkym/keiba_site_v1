@@ -1,32 +1,40 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { BreadcrumbSchema, DatasetSchema } from '@/components/StructuredData';
 import { DataEntityDetailView } from '@/components/DataEntityDetailView';
 import { getDataEntityDetail } from '@/lib/api';
 
 
-export const revalidate = 3600;
+export const revalidate = 86400;
+export const dynamicParams = true;
+
+export function generateStaticParams() {
+    return [];
+}
+
+const getHorseDetail = cache((id: string) => getDataEntityDetail('horse', id));
 
 type Props = {
     params: { id: string };
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-    const detail = await getDataEntityDetail('horse', params.id);
+    const detail = await getHorseDetail(params.id);
     if (!detail) {
-        return { title: '競走馬データ', robots: { index: false, follow: true } };
+        return { title: '競走馬データ', robots: { index: false, follow: false } };
     }
     return {
         title: `${detail.entity.name} 成績・得意条件・AI偏差値履歴`,
         description: `${detail.entity.name}の近走、コース・距離・馬場状態別成績、AI偏差値履歴を集計。対象${detail.entity.sample_size}走。`,
         alternates: { canonical: detail.entity.url },
-        robots: { index: detail.entity.indexable, follow: true },
+        robots: { index: detail.entity.indexable, follow: detail.entity.indexable },
     };
 }
 
 export default async function HorseDetailPage({ params }: Props) {
-    const detail = await getDataEntityDetail('horse', params.id);
+    const detail = await getHorseDetail(params.id);
     if (!detail) notFound();
     return (
         <>

@@ -1,33 +1,50 @@
-name: Database Migration (Render to Neon)
+name: Database Schema Migration
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: テーブル状態の確認だけを行う
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: database-schema-migration
+  cancel-in-progress: false
 
 jobs:
   migrate-database:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
-    
+    timeout-minutes: 20
     steps:
-      - name: Install PostgreSQL Client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
-          
-      - name: Dump Data from Render
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install migration dependencies
+        run: pip install sqlalchemy psycopg2-binary python-dotenv
+
+      - name: Set up IAP database tunnel
+        uses: ./.github/actions/setup-iap-db
+        with:
+          database_url: ${{ secrets.DATABASE_URL }}
+
+      - name: Verify or apply publication schema
         env:
-          SOURCE_DB: "postgresql://keiba_database_user:kRhHHHeIdx5Pw9LzkbA8HCLLKAg20XDm@dpg-d1gd9ajipnbc73aj1nlg-a.oregon-postgres.render.com/keiba_db"
+          PYTHONPATH: backend
+        shell: bash
         run: |
-          echo "Starting pg_dump from Render..."
-          # PGPASSWORDはURLにあるので不要だが念のため
-          pg_dump --no-owner --no-privileges --clean --if-exists -d $SOURCE_DB > dump.sql
-          ls -lh dump.sql
-          head -n 20 dump.sql
-          
-      - name: Restore Data to Neon
-        env:
-          TARGET_DB: "postgresql://neondb_owner:npg_0kOPvcxAU4bg@ep-hidden-fog-aksj4thi.c-3.us-west-2.aws.neon.tech/neondb?sslmode=require"
-        run: |
-          echo "Starting psql restore to Neon..."
-          psql -d $TARGET_DB -f dump.sql > restore.log 2>&1 || cat restore.log
-          echo "Checking tables..."
-          psql -d $TARGET_DB -c "\dt"
+          EXTRA_ARGS=()
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            EXTRA_ARGS+=(--dry-run)
+          fi
+          python backend/scripts/migrate_data_page_publications.py "${EXTRA_ARGS[@]}"

@@ -1,67 +1,39 @@
 import { NextResponse } from 'next/server';
-import { getDataSitemapEntries } from '@/lib/api';
+import { getDataSitemapManifest } from '@/lib/api';
 
 const BASE_URL = 'https://uma-free.com';
 
-// 数千URLのDB集計をVercelビルド時に実行しない。
-// 応答は下部のs-maxageでCDNキャッシュする。
 export const dynamic = 'force-dynamic';
 
 function escapeXml(value: string) {
   return value.replace(/[<>&'"]/g, (char) => {
-    switch (char) {
-      case '<':
-        return '&lt;';
-      case '>':
-        return '&gt;';
-      case '&':
-        return '&amp;';
-      case "'":
-        return '&apos;';
-      case '"':
-        return '&quot;';
-      default:
-        return char;
-    }
+    const escaped: Record<string, string> = {
+      '<': '&lt;',
+      '>': '&gt;',
+      '&': '&amp;',
+      "'": '&apos;',
+      '"': '&quot;',
+    };
+    return escaped[char] ?? char;
   });
-}
-
-function priorityFor(entityType: string) {
-  switch (entityType) {
-    case 'course':
-      return '0.75';
-    case 'horse':
-      return '0.70';
-    default:
-      return '0.65';
-  }
 }
 
 export async function GET() {
-  const entries = await getDataSitemapEntries();
-  const seen = new Set<string>();
-  const uniqueEntries = entries.filter((entry) => {
-    if (!entry.url.startsWith('/') || seen.has(entry.url)) return false;
-    seen.add(entry.url);
-    return true;
-  });
-
+  const manifest = await getDataSitemapManifest();
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${uniqueEntries
-  .map((entry) => `  <url>
-    <loc>${escapeXml(`${BASE_URL}${entry.url}`)}</loc>${entry.last_modified ? `
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${manifest
+  .map((entry) => `  <sitemap>
+    <loc>${escapeXml(`${BASE_URL}/sitemaps/data/${entry.entity_type}/${entry.shard}.xml`)}</loc>${entry.last_modified ? `
     <lastmod>${escapeXml(entry.last_modified)}</lastmod>` : ''}
-    <changefreq>weekly</changefreq>
-    <priority>${priorityFor(entry.entity_type)}</priority>
-  </url>`)
+  </sitemap>`)
   .join('\n')}
-</urlset>`;
+</sitemapindex>`;
 
   return new NextResponse(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 's-maxage=21600, stale-while-revalidate=86400',
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
       'X-Robots-Tag': 'noindex',
     },
   });

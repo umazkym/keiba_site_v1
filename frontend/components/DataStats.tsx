@@ -195,6 +195,7 @@ export function RecentRunsTable({
                                     <Link
                                         prefetch={false}
                                         href={run.url}
+                                        rel="nofollow"
                                         className="font-bold text-slate-900 transition-colors duration-150 hover:text-blue-600"
                                     >
                                         <span className="block text-xs font-semibold text-slate-500">
@@ -243,4 +244,3 @@ export function RecentRunsTable({
         </section>
     );
 }
-

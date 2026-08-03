@@ -16,6 +16,32 @@ TERMINAL_PUBLICATION_STATUSES = {
     "draft",
     "published",
 }
+YOUTUBE_PUBLICATION_STATUS_RANK = {
+    "planned": 0,
+    "uploaded": 1,
+    "thumbnail_set": 2,
+    "thumbnail_skipped": 2,
+    "processing": 3,
+    "private_review": 4,
+    "scheduled": 4,
+    "draft": 4,
+    "published": 5,
+}
+
+
+def validate_youtube_status_transition(current: str, target: str) -> None:
+    if current not in YOUTUBE_PUBLICATION_STATUS_RANK or target not in YOUTUBE_PUBLICATION_STATUS_RANK:
+        raise RuntimeError(f"未定義のYouTube投稿状態です: {current} -> {target}")
+    if current == target:
+        return
+    current_rank = YOUTUBE_PUBLICATION_STATUS_RANK[current]
+    target_rank = YOUTUBE_PUBLICATION_STATUS_RANK[target]
+    if target_rank < current_rank:
+        raise RuntimeError(f"YouTube投稿状態を後戻りできません: {current} -> {target}")
+    if current in TERMINAL_PUBLICATION_STATUSES and target != "published":
+        raise RuntimeError(f"確定済みのYouTube投稿状態を変更できません: {current} -> {target}")
+    if target_rank == current_rank:
+        raise RuntimeError(f"同段階のYouTube投稿状態を置換できません: {current} -> {target}")
 
 
 def _project_root() -> Path:
@@ -221,6 +247,8 @@ class VideoPostRegistry:
             ).first()
             if row is None:
                 raise RuntimeError(f"投稿状態の予約レコードがありません: {target_date} {video_type} {stable_id}")
+            if platform == "youtube":
+                validate_youtube_status_transition(str(row.status), status)
             row.status = status
             if remote_video_id:
                 row.remote_video_id = remote_video_id

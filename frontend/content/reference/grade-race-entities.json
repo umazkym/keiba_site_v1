@@ -97,5 +97,8 @@
   { "entity_key": "fleur-cup", "name": "フルールカップ", "aliases": ["フルールC", "フルールカップ"], "circuit": "nar", "grade": "地方重賞" },
   { "entity_key": "breeders-gold-junior-cup", "name": "ブリーダーズゴールドジュニアカップ", "aliases": ["ブリーダーズゴールドジュニアC", "ブリーダーズゴールドジュニアカップ"], "circuit": "nar", "grade": "地方重賞" },
   { "entity_key": "bay-sprint", "name": "ベイスプリント", "aliases": ["ベイスプリント"], "circuit": "nar", "grade": "地方重賞" },
+  { "entity_key": "hamanasu-sho", "name": "はまなす賞", "aliases": ["はまなす賞"], "circuit": "nar", "grade": "BG3" },
+  { "entity_key": "junior-grand-prix", "name": "ジュニアグランプリ", "aliases": ["ジュニアグランプリ"], "circuit": "nar", "grade": "M1" },
+  { "entity_key": "kyushu-championship", "name": "九州チャンピオンシップ", "aliases": ["九州チャンピオンシップ"], "circuit": "nar", "grade": "地方重賞" },
   { "entity_key": "dubai-world-cup", "name": "ドバイワールドカップ", "aliases": ["ドバイWC", "ドバイワールドカップ"], "circuit": "overseas", "grade": "海外G1" }
 ]

@@ -6,6 +6,7 @@ import argparse
 import json
 import math
 import os
+import re
 import sys
 import time
 import unicodedata
@@ -724,9 +725,14 @@ def _format_publish_at(value: Optional[datetime]) -> Optional[str]:
 def _is_retryable_status_visibility_error(record: PublicationRecord) -> bool:
     return bool(
         record.remote_video_id
-        and record.status in {"uploaded", "thumbnail_set", "thumbnail_skipped", "processing"}
+        and record.status in {"uploaded", "thumbnail_set", "thumbnail_skipped", "processing", "scheduled", "private_review"}
         and record.last_error
-        and "YouTube上の動画状態を取得できません" in record.last_error
+        and re.search(
+            r"YouTube上の動画状態を取得できません|SSL|EOF occurred|timed? ?out|"
+            r"connection (?:reset|aborted)|temporar(?:y|ily) unavailable|(?:^|\D)50[0234](?:\D|$)",
+            record.last_error,
+            re.IGNORECASE,
+        )
     )
 
 
@@ -858,7 +864,7 @@ def _upload_all(
         and record.target_date == target_date
         and record.remote_video_id
         and record.scheduled_at is not None
-        and record.status != "published"
+        and not record.is_terminal
     ]
     quota_budget = max(1, int(args.quota_budget))
     quota_estimate = estimate_quota_units(
@@ -959,32 +965,6 @@ def _upload_all(
 
         record = reserved_records[(item.video_type, item.stable_id)]
         if record.is_terminal:
-            if (
-                record.status == "scheduled"
-                and publication_mode == "private_review"
-                and record.remote_video_id
-            ):
-                try:
-                    client.clear_publish_schedule(record.remote_video_id)
-                    registry.transition(
-                        target_date,
-                        item.video_type,
-                        item.stable_id,
-                        "private_review",
-                        remote_video_id=record.remote_video_id,
-                        clear_scheduled_at=True,
-                        metadata={"publish_schedule_cleared": True},
-                    )
-                except Exception as exc:
-                    registry.record_error(target_date, item.video_type, item.stable_id, str(exc))
-                    error = f"{item.video_type} {item.stable_id}: 予約解除失敗（{exc}）"
-                    upload_errors.append(error)
-                    uploaded_lines.append(f"- 予約解除失敗: {item.title}（{exc}）")
-                    continue
-                print(f"安全モードのため予約公開を解除: {item.video_type} {item.stable_id}")
-                uploaded_lines.append(f"- 予約解除・非公開維持: {item.title}")
-                private_review_count += 1
-                continue
             print(f"投稿完了済みのためスキップ: {item.video_type} {item.stable_id} ({record.status})")
             uploaded_lines.append(f"- 再利用: {item.title}（{record.status}）")
             reused_count += 1
@@ -1035,7 +1015,28 @@ def _upload_all(
                 )
 
             if publication_mode == "private_review" and record.scheduled_at is not None:
-                client.clear_publish_schedule(video_id)
+                cleared_status = client.clear_publish_schedule(video_id)
+                if cleared_status.privacy_status == "public":
+                    registry.transition(
+                        target_date,
+                        item.video_type,
+                        item.stable_id,
+                        "published",
+                        remote_video_id=video_id,
+                        scheduled_at=record.scheduled_at,
+                        metadata={
+                            "processing_status": cleared_status.processing_status,
+                            "upload_status": cleared_status.upload_status,
+                            "privacy_status": cleared_status.privacy_status,
+                            "published_while_schedule_clear_checked": True,
+                        },
+                    )
+                    published_count += 1
+                    reused_count += 1
+                    uploaded_lines.append(
+                        f"- published: {item.title} — https://www.youtube.com/watch?v={video_id}"
+                    )
+                    continue
                 record = registry.transition(
                     target_date,
                     item.video_type,

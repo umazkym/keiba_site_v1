@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from unittest.mock import Mock, call, patch
 
 
@@ -17,7 +17,7 @@ if str(BACKEND_DIR) not in sys.path:
 from scripts import youtube_video_pipeline
 from scripts.social_video import data_loader
 from scripts.social_video.data_loader import HorseVideoData, RaceVideoData, VenueVideoData, merge_expected_races
-from scripts.social_video.registry import PublicationRecord
+from scripts.social_video.registry import PublicationRecord, validate_youtube_status_transition
 from scripts.social_video.video_package import VideoPackage, build_content_hash
 from scripts.social_video.youtube_client import (
     JST,
@@ -458,7 +458,7 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
 
         client.insert_video.assert_not_called()
 
-    def test_private_mode_clears_a_previous_future_schedule(self) -> None:
+    def test_private_mode_preserves_a_previous_terminal_schedule(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             package = _package(Path(temp_dir), "venue_long", thumbnail_required=True)
             existing = PublicationRecord(
@@ -481,10 +481,45 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             ), patch.object(youtube_video_pipeline, "YouTubeClient", return_value=client):
                 youtube_video_pipeline._upload_all(_args("private_review"), [package])
 
-        client.clear_publish_schedule.assert_called_once_with("scheduled-video")
+        client.clear_publish_schedule.assert_not_called()
         client.insert_video.assert_not_called()
-        self.assertEqual(registry.existing.status, "private_review")
-        self.assertIsNone(registry.existing.scheduled_at)
+        self.assertEqual(registry.existing.status, "scheduled")
+        self.assertIsNotNone(registry.existing.scheduled_at)
+
+    def test_private_mode_accepts_public_video_found_while_clearing_nonterminal_schedule(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            package = _package(Path(temp_dir), "venue_long", thumbnail_required=True)
+            existing = PublicationRecord(
+                platform="youtube",
+                target_date="2099-07-12",
+                video_type="venue_long",
+                stable_id=package.stable_id,
+                status="processing",
+                content_hash=package.content_hash,
+                remote_video_id="already-public-video",
+                scheduled_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=2),
+                attempt_count=1,
+                last_error=None,
+                metadata={},
+            )
+            registry = FakeRegistry(existing)
+            client = _youtube_client()
+            client.clear_publish_schedule.return_value = YouTubeVideoStatus(
+                video_id="already-public-video",
+                processing_status="succeeded",
+                upload_status="processed",
+                privacy_status="public",
+                publish_at=None,
+                failure_reason=None,
+                rejection_reason=None,
+            )
+            with patch.object(youtube_video_pipeline, "_env_flag", return_value=True), patch.object(
+                youtube_video_pipeline, "VideoPostRegistry", return_value=registry
+            ), patch.object(youtube_video_pipeline, "YouTubeClient", return_value=client):
+                youtube_video_pipeline._upload_all(_args("private_review"), [package])
+
+        client.insert_video.assert_not_called()
+        self.assertEqual(registry.existing.status, "published")
 
     def test_incomplete_race_is_omitted_without_blocking_other_venue(self) -> None:
         valid_race = RaceVideoData("valid", "2026-07-12", "東京", 1, "1R", "芝", 1600, predictions=_valid_horses())
@@ -968,6 +1003,37 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
     def test_quota_estimate_counts_thumbnail_only_for_long_videos(self) -> None:
         self.assertEqual(estimate_quota_units(video_count=4, thumbnail_count=3), 574)
 
+    def test_resumable_upload_uses_bounded_google_client_retries(self) -> None:
+        client = YouTubeClient.__new__(YouTubeClient)
+        service = Mock()
+        request = service.videos.return_value.insert.return_value
+        request.next_chunk.return_value = (None, {"id": "video-id"})
+        client._service = service
+        googleapiclient_module = ModuleType("googleapiclient")
+        googleapiclient_module.__path__ = []  # type: ignore[attr-defined]
+        http_module = ModuleType("googleapiclient.http")
+        http_module.MediaFileUpload = Mock()  # type: ignore[attr-defined]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            video_path = Path(temp_dir) / "video.mp4"
+            video_path.write_bytes(b"video")
+            with patch.dict(
+                sys.modules,
+                {
+                    "googleapiclient": googleapiclient_module,
+                    "googleapiclient.http": http_module,
+                },
+            ):
+                result = client.insert_video(
+                    video_path=video_path,
+                    title="テスト",
+                    description="説明",
+                    tags=["競馬"],
+                    publish_at=None,
+                )
+
+        self.assertEqual(result.video_id, "video-id")
+        request.next_chunk.assert_called_once_with(num_retries=3)
+
     def test_processing_check_rejects_changed_publish_time(self) -> None:
         client = YouTubeClient.__new__(YouTubeClient)
         client.get_video_status = Mock(
@@ -1045,6 +1111,41 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         )
 
         self.assertEqual(status.privacy_status, "public")
+
+    def test_processing_check_accepts_remote_public_state_even_if_publish_at_is_absent(self) -> None:
+        client = YouTubeClient.__new__(YouTubeClient)
+        client.get_video_status = Mock(
+            return_value=YouTubeVideoStatus(
+                video_id="video-id",
+                processing_status="succeeded",
+                upload_status="processed",
+                privacy_status="public",
+                publish_at=None,
+                failure_reason=None,
+                rejection_reason=None,
+            )
+        )
+        expected = (
+            datetime.now(timezone.utc) + timedelta(hours=1)
+        ).isoformat().replace("+00:00", "Z")
+
+        status = client.wait_for_processing(
+            "video-id",
+            expected_publish_at=expected,
+            timeout_seconds=1,
+            poll_interval_seconds=1,
+        )
+
+        self.assertEqual(status.privacy_status, "public")
+
+    def test_youtube_status_transition_is_monotonic(self) -> None:
+        validate_youtube_status_transition("planned", "processing")
+        validate_youtube_status_transition("processing", "scheduled")
+        validate_youtube_status_transition("scheduled", "published")
+        with self.assertRaisesRegex(RuntimeError, "後戻り"):
+            validate_youtube_status_transition("processing", "uploaded")
+        with self.assertRaisesRegex(RuntimeError, "確定済み"):
+            validate_youtube_status_transition("scheduled", "private_review")
 
     def test_video_summary_keeps_social_distribution_fields(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1140,6 +1241,7 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         client._service = service
         with self.assertRaisesRegex(RuntimeError, "一致しません"):
             client.validate_channel()
+        service.channels.return_value.list.return_value.execute.assert_called_once_with(num_retries=3)
 
     def test_invalid_grant_has_actionable_recovery_message(self) -> None:
         from google.auth.exceptions import RefreshError
@@ -1156,6 +1258,49 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             client.validate_channel()
 
         self.assertIn("本番環境", str(raised.exception))
+
+    def test_video_status_retries_temporary_empty_api_visibility(self) -> None:
+        client = YouTubeClient.__new__(YouTubeClient)
+        service = Mock()
+        request = service.videos.return_value.list.return_value
+        request.execute.side_effect = [
+            {"items": []},
+            {
+                "items": [{
+                    "status": {"uploadStatus": "processed", "privacyStatus": "private"},
+                    "processingDetails": {"processingStatus": "succeeded"},
+                }]
+            },
+        ]
+        client._service = service
+
+        with patch("scripts.social_video.youtube_client.time.sleep") as sleep:
+            status = client.get_video_status("video-id")
+
+        self.assertEqual(status.processing_status, "succeeded")
+        self.assertEqual(request.execute.call_count, 2)
+        request.execute.assert_has_calls([call(num_retries=3), call(num_retries=3)])
+        sleep.assert_called_once_with(1)
+
+    def test_clear_schedule_treats_remote_public_as_terminal_success(self) -> None:
+        client = YouTubeClient.__new__(YouTubeClient)
+        service = Mock()
+        client._service = service
+        public_status = YouTubeVideoStatus(
+            video_id="video-id",
+            processing_status="succeeded",
+            upload_status="processed",
+            privacy_status="public",
+            publish_at=None,
+            failure_reason=None,
+            rejection_reason=None,
+        )
+        client.get_video_status = Mock(return_value=public_status)
+
+        status = client.clear_publish_schedule("video-id")
+
+        self.assertEqual(status, public_status)
+        service.videos.return_value.update.assert_not_called()
 
     def test_reconciliation_marks_due_public_video_as_published(self) -> None:
         record = PublicationRecord(

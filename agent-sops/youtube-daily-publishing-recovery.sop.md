@@ -59,9 +59,14 @@ Google Auth Platformの対象プロジェクト、OAuthクライアント、認�
 **Constraints:**
 
 - You MUST keep the DB registry and content hash checks enabled because再実行時の重複投稿を防ぎます。
+- You MUST retry YouTube status reads, updates, thumbnail calls, and resumable upload chunks up to three times with exponential backoff for SSL切断、timeout、connection reset、5xx because一時的な通信障害で新しい動画IDを作ってはいけません。
+- You MUST NOT retry confirmed authentication, permission, or quota errors because 同じ要求の反復では復旧せず、原因の判別を遅らせます。
 - You MUST NOT use `--force` or disable the registry because 既存動画IDを見失い外部投稿が重複します。
 - You MUST resume from the saved remote video ID after an upload-stage failure because同じ動画を作り直す必要はありません。
 - You MUST verify each available output independently because横動画またはShortの片方が失敗しても成功済みの片方を取り消しません。
+- You MUST treat remote `privacyStatus=public` as the terminal `published` state even when `publishAt` is absent because公開済み動画には予約日時が残りません。
+- You MUST keep YouTube states monotonic from planned through processing to scheduled/private_review and finally published because確認失敗や安全モード切替で公開済み・予約済み動画を後戻りさせてはいけません。
+- You MUST preserve an existing terminal scheduled/private_review/published record when another video or reconciliation check fails because成功済み成果物を非公開化しても復旧にはなりません。
 - You MUST verify actual race counts, grade counts, duration, and uploaded video IDs before opening visibility becauseタイトルと概要欄を実収録内容へ一致させます。
 
 ### 5. Studio確認後に公開し、次回同期を確認する
@@ -109,6 +114,10 @@ dry_run: false
 ### `invalid_grant`で事前検証が止まる
 
 Google Auth Platformが本番環境か、管理スコープで再認証したか、Repository Secret `YOUTUBE_REFRESH_TOKEN`だけを新しい値へ交換したかを確認します。動画生成やDB予約は開始しません。
+
+### SSL EOFまたは状態確認の一時失敗が出る
+
+同じ対象日を`private_review`で再実行し、DBに保存済みの動画IDを再利用して状態を照合します。YouTube上ですでに`public`ならDBを`published`へ進め、予約済みなら予約状態を維持します。通信確認のためにレジストリ行を削除したり、同じ動画を新規アップロードしてはいけません。
 
 ### 一部レースの予測欠損がある
 

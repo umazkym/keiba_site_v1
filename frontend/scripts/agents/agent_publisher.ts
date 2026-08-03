@@ -5,7 +5,14 @@ import { execSync } from 'child_process';
 import { createHash } from 'crypto';
 import { autoRepairDraftMarkdown } from './agent_editor';
 import { checkSEO, checkSourceIndependence } from './seo_checker';
-import { findGradeRaceEntity, findGradeRaceEntityByName } from '../../lib/grade-race-entities';
+import {
+  GRADE_RACE_IDENTITY_VERSION,
+  findGradeRaceEntity,
+  findGradeRaceEntityByName,
+  getGradeRaceEntity,
+  resolveScheduledGradeRaceEntity,
+  type GradeRaceIdentityResolution,
+} from '../../lib/grade-race-entities';
 import { getApiBaseUrl } from '../../lib/api-base';
 import { getSeasonalGradeRaceSlug } from '../../lib/article-seasonal-routing';
 import gradeRaceCanonicalOverrides from '../../content/reference/grade-race-canonical-overrides.json';
@@ -193,9 +200,13 @@ function generateSlug(targetKeyword: string, date: Date): string {
 }
 
 function resolveUniqueSlug(data: Record<string, any>, targetKeyword: string, date: Date): string {
+  const entityKeySource = normalizeEntityValue(data.entity_key_source);
+  const publicEntityKey = entityKeySource === 'deterministic_schedule'
+    ? normalizeEntityValue(data.entity_archive_slug)
+    : data.entity_key;
   const semanticSlug = getSeasonalGradeRaceSlug(
     data.entity_type,
-    data.entity_key,
+    publicEntityKey,
     data.season_year,
   ) || '';
   const baseSlug = semanticSlug || generateSlug(targetKeyword, date);
@@ -262,6 +273,38 @@ function mergeMilestoneHistory(existing: unknown, incoming: unknown, current: un
   return GRADE_RACE_MILESTONE_ORDER.filter((milestone) => values.has(milestone)).join(',');
 }
 
+function resolvePublicationGradeRaceIdentity(data: Record<string, any>): GradeRaceIdentityResolution {
+  const raceName = String(data.race_name || '').trim();
+  const entityKeySource = normalizeEntityValue(data.entity_key_source);
+  const raceCircuit = normalizeEntityValue(data.race_circuit);
+  if (!entityKeySource) {
+    const legacyEntity = findGradeRaceEntityByName(raceName);
+    if (!legacyEntity) {
+      return {
+        entityKey: '',
+        source: 'unresolved',
+        circuit: '',
+        normalizedName: '',
+        archiveSlug: '',
+        error: 'legacy_registry_miss',
+      };
+    }
+    return {
+      entityKey: legacyEntity.entity_key,
+      source: 'curated_registry',
+      circuit: legacyEntity.circuit,
+      normalizedName: raceName,
+      archiveSlug: legacyEntity.archive_slug || legacyEntity.entity_key,
+      error: '',
+    };
+  }
+  return resolveScheduledGradeRaceEntity({
+    raceName,
+    circuit: raceCircuit,
+    trustedSchedule: entityKeySource === 'deterministic_schedule',
+  });
+}
+
 function validateGradeRacePublication(data: Record<string, any>): string[] {
   if (normalizeEntityValue(data.entity_type) !== 'grade_race') return [];
   const errors: string[] = [];
@@ -271,10 +314,37 @@ function validateGradeRacePublication(data: Record<string, any>): string[] {
   const raceDate = String(data.scheduled_race_date || '').trim();
   const updateStage = String(data.update_stage || '').trim();
   const milestone = String(data.schedule_milestone || '').trim();
-  const registryEntity = findGradeRaceEntityByName(raceName);
+  const entityKeySource = normalizeEntityValue(data.entity_key_source);
+  const identityVersion = normalizeEntityValue(data.race_identity_version);
+  const entityArchiveSlug = normalizeEntityValue(data.entity_archive_slug);
+  const resolution = resolvePublicationGradeRaceIdentity(data);
 
-  if (!entityKey || !registryEntity || registryEntity.entity_key !== entityKey) {
-    errors.push(`共有レジストリとentity_keyが一致しません: ${raceName || '(race_nameなし)'}`);
+  if (!entityKey || !resolution.entityKey || resolution.entityKey !== entityKey) {
+    errors.push(`重賞識別規則とentity_keyが一致しません: ${raceName || '(race_nameなし)'}`);
+  }
+  if (entityKeySource) {
+    if (!['curated_registry', 'deterministic_schedule'].includes(entityKeySource)) {
+      errors.push(`entity_key_sourceが不正です: ${entityKeySource}`);
+    }
+    if (identityVersion !== GRADE_RACE_IDENTITY_VERSION) {
+      errors.push(`race_identity_versionが不正です: ${identityVersion || '(empty)'}`);
+    }
+    if (!['jra', 'nar', 'overseas'].includes(normalizeEntityValue(data.race_circuit))) {
+      errors.push(`race_circuitが不正です: ${String(data.race_circuit || '(empty)')}`);
+    }
+    if (resolution.source !== entityKeySource) {
+      errors.push(`entity_key_sourceと解決結果が一致しません: ${entityKeySource}/${resolution.source}`);
+    }
+  }
+  if (entityArchiveSlug && resolution.archiveSlug !== entityArchiveSlug) {
+    errors.push(`entity_archive_slugが共有レジストリと一致しません: ${entityArchiveSlug}`);
+  }
+  if (
+    entityKeySource === 'deterministic_schedule'
+    && !entityArchiveSlug
+    && (normalizeInternalCanonicalPath(data.entity_path) || normalizeInternalCanonicalPath(data.canonical_path))
+  ) {
+    errors.push('自動識別された重賞には未整備のアーカイブURLやcanonicalを設定できません');
   }
   if (!/^20\d{2}$/.test(seasonYear) || !raceDate.startsWith(`${seasonYear}-`)) {
     errors.push('season_yearとscheduled_race_dateが一致しません');
@@ -333,7 +403,11 @@ function inferPublishedArticleMetadata(data: Record<string, any>): Record<string
     nextData.entity_type = 'grade_race';
     nextData.entity_key = sharedEntity.entity_key;
     nextData.race_entity_key = sharedEntity.entity_key;
-    nextData.entity_path = `/articles/grade-races/${sharedEntity.entity_key}`;
+    nextData.entity_key_source = 'curated_registry';
+    nextData.race_identity_version = GRADE_RACE_IDENTITY_VERSION;
+    nextData.race_circuit = sharedEntity.circuit;
+    nextData.entity_archive_slug = sharedEntity.archive_slug || sharedEntity.entity_key;
+    nextData.entity_path = `/articles/grade-races/${nextData.entity_archive_slug}`;
     nextData.content_target = nextData.content_target || 'grade_race_trend_article';
     return nextData;
   }
@@ -342,7 +416,14 @@ function inferPublishedArticleMetadata(data: Record<string, any>): Record<string
     if (text.includes(raceName)) {
       nextData.entity_type = 'grade_race';
       nextData.entity_key = slug;
-      nextData.entity_path = `/articles/grade-races/${slug}`;
+      const registryEntity = getGradeRaceEntity(slug);
+      if (registryEntity) {
+        nextData.entity_key_source = 'curated_registry';
+        nextData.race_identity_version = GRADE_RACE_IDENTITY_VERSION;
+        nextData.race_circuit = registryEntity.circuit;
+        nextData.entity_archive_slug = registryEntity.archive_slug || registryEntity.entity_key;
+        nextData.entity_path = `/articles/grade-races/${nextData.entity_archive_slug}`;
+      }
       nextData.content_target = nextData.content_target || 'grade_race_trend_article';
       return nextData;
     }
@@ -369,9 +450,23 @@ function inferPublishedArticleMetadata(data: Record<string, any>): Record<string
   return nextData;
 }
 
-function canonicalEntityArticlePath(entityType: string, entityKey: string): string {
+function canonicalEntityArticlePath(
+  entityType: string,
+  entityKey: string,
+  entityArchiveSlug = '',
+  entityKeySource = '',
+): string {
   if (!entityType || !entityKey) return '';
-  if (entityType === 'grade_race') return `/articles/grade-races/${entityKey}`;
+  if (entityType === 'grade_race') {
+    const registryEntity = getGradeRaceEntity(entityKey);
+    const archiveSlug = normalizeEntityValue(
+      entityArchiveSlug
+      || (entityKeySource === 'deterministic_schedule'
+        ? ''
+        : registryEntity?.archive_slug || registryEntity?.entity_key || ''),
+    );
+    return /^[a-z0-9-]+$/.test(archiveSlug) ? `/articles/grade-races/${archiveSlug}` : '';
+  }
   if (entityType === 'jockey') return `/articles/jockeys/${entityKey}`;
   if (entityType === 'race' && /^[a-z0-9-]+$/.test(entityKey)) return `/articles/races/${entityKey}`;
   if (entityType === 'course') {
@@ -388,7 +483,14 @@ function normalizePublishedArticleMetadata(data: Record<string, any>): Record<st
   const canonicalPath = normalizeInternalCanonicalPath(nextData.canonical_path);
   const entityType = normalizeEntityValue(nextData.entity_type);
   const entityKey = normalizeEntityValue(nextData.entity_key);
-  const stableEntityPath = canonicalEntityArticlePath(entityType, entityKey);
+  const entityKeySource = normalizeEntityValue(nextData.entity_key_source);
+  const entityArchiveSlug = normalizeEntityValue(nextData.entity_archive_slug);
+  const stableEntityPath = canonicalEntityArticlePath(
+    entityType,
+    entityKey,
+    entityArchiveSlug,
+    entityKeySource,
+  );
 
   if (stableEntityPath) {
     entityPath = stableEntityPath;
@@ -400,7 +502,14 @@ function normalizePublishedArticleMetadata(data: Record<string, any>): Record<st
     delete nextData.entity_path;
   }
 
-  if (canonicalPath) {
+  if (
+    entityType === 'grade_race'
+    && entityKeySource === 'deterministic_schedule'
+    && !entityArchiveSlug
+  ) {
+    delete nextData.entity_path;
+    delete nextData.canonical_path;
+  } else if (canonicalPath) {
     nextData.canonical_path = canonicalPath;
   } else if (entityType !== 'grade_race' && entityPath && /^\/articles\/(grade-races|jockeys|courses|races)\//.test(entityPath)) {
     nextData.canonical_path = entityPath;
@@ -501,7 +610,7 @@ async function verifyArticleRaceBridge(data: Record<string, any>): Promise<Recor
   const storedRaceUrl = String(nextData.race_url || '').trim();
   const seasonYear = String(nextData.season_year || '').trim();
   const entityKey = String(nextData.race_entity_key || nextData.entity_key || '').trim();
-  const registryEntity = findGradeRaceEntityByName(raceName);
+  const identityResolution = resolvePublicationGradeRaceIdentity(nextData);
 
   if (
     !raceName
@@ -509,8 +618,8 @@ async function verifyArticleRaceBridge(data: Record<string, any>): Promise<Recor
     || !/^20\d{2}$/.test(seasonYear)
     || !raceDate.startsWith(`${seasonYear}-`)
     || !entityKey
-    || !registryEntity
-    || registryEntity.entity_key !== entityKey
+    || !identityResolution.entityKey
+    || identityResolution.entityKey !== entityKey
   ) {
     nextData.race_bridge_eligibility_status = 'metadata_mismatch';
     console.log(`[Publisher Bridge] 見送り: 必須メタデータ不足 (${raceName || 'race_nameなし'})`);

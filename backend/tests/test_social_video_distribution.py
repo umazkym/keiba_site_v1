@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -169,6 +170,35 @@ class SocialVideoDistributionTest(unittest.TestCase):
         self.assertEqual(len(facets), 1)
         start = facets[0]["index"]["byteStart"]
         self.assertEqual(start, len("東京11Rの分析\n".encode("utf-8")))
+
+    def test_bluesky_multi_race_caption_is_bounded_and_keeps_destination(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            package = _package(Path(temp_dir))
+            package["stable_id"] = "daily_short"
+            package["featured_races"] = [
+                {
+                    "venue_name": "東京",
+                    "race_number": 11,
+                    "race_name": f"非常に長い名称を持つ確認用重賞レース{index}",
+                    "grade": "G1",
+                }
+                for index in range(1, 9)
+            ]
+
+            variant = build_variant(package, platform="bluesky", mode="validate")
+            variant.validate_local()
+
+            self.assertLessEqual(len(variant.caption), 300)
+            self.assertIn("2026-07-31", variant.caption)
+            self.assertIn("重賞8レース", variant.caption)
+            self.assertIn(variant.destination_url, variant.caption)
+
+    def test_bluesky_caption_boundary_is_checked_before_api_use(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            variant = build_variant(_package(Path(temp_dir)), platform="bluesky", mode="validate")
+            replace(variant, caption="あ" * 300).validate_local()
+            with self.assertRaisesRegex(ValueError, "301/300"):
+                replace(variant, caption="あ" * 301).validate_local()
 
 
 if __name__ == "__main__":

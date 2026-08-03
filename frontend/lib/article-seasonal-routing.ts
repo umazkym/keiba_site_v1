@@ -6,7 +6,12 @@ export function getSeasonalGradeRaceSlug(
   const type = String(entityType || '').trim().toLowerCase();
   const key = String(entityKey || '').trim().toLowerCase();
   const year = String(seasonYear || '').trim();
-  if (type !== 'grade_race' || !/^[a-z0-9-]+$/.test(key) || !/^20\d{2}$/.test(year)) {
+  if (
+    type !== 'grade_race'
+    || key.startsWith('auto-')
+    || !/^[a-z0-9-]+$/.test(key)
+    || !/^20\d{2}$/.test(year)
+  ) {
     return null;
   }
   return `${key}-${year}`;

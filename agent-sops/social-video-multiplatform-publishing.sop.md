@@ -43,6 +43,8 @@ TikTokだけは`tiktok_clean`、その他は`standard`を使用します。
 
 - You MUST use `utm_medium=organic_social` and `utm_campaign=daily_race_video` for direct race links.
 - You MUST build multi-race captions from `featured_races` and disclose every included grade race or main-race scope because単一レースの投稿文では映像内容と一致しません。
+- You MUST build Bluesky copy with a platform-specific 300-character budget in the order date/scope、主要レース名、analysis notice、destination URL, and validate the final Unicode character count before any API call because共通captionは複数重賞で上限を超えます。
+- You MUST keep the total featured-race count and use `ほかNレース` when every long race name cannot fit on Bluesky because文字切りだけで収録範囲を誤認させてはいけません。
 - You MUST use the profile campaign for Instagram and TikTok because their main external path is the profile link.
 - You MUST keep prohibited expressions such as「投資」「必勝」「絶対」「圧倒的」「最強」「消去対象」out of titles and captions because they weaken trust and ad-policy safety.
 - You MUST NOT route users through YouTube because the objective is an independent site-acquisition source.
@@ -116,6 +118,10 @@ python scripts/social_video_distribution.py --target-date 2026-07-31 --platforms
 ### 同一キーに異なる内容が検出される
 
 同じ対象日・媒体へ異なる投稿を重ねず、既存のリモート投稿とDBレコードを確認します。重複防止レコードを削除して再送してはいけません。
+
+### Blueskyだけ本文上限を超える
+
+共通captionを手作業で削らず、Bluesky専用builderが日付、収録数、主要レース名、URLを残して300文字以内へ収めているか確認します。`validate`で301文字を拒否できることを確認してから外部投稿を再実行します。
 
 ### GCS一時オブジェクトの削除に失敗する
 

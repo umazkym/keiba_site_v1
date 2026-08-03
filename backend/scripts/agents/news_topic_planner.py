@@ -28,6 +28,18 @@ from urllib.parse import quote, urlparse
 import requests
 from bs4 import BeautifulSoup
 
+AGENT_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if AGENT_SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, AGENT_SCRIPT_DIR)
+
+from grade_race_identity import (
+    GRADE_RACE_IDENTITY_VERSION,
+    TRUSTED_GRADE_RACE_SCHEDULE_SOURCES,
+    GradeRaceIdentityResolution,
+    normalize_grade_race_identity_text,
+    resolve_grade_race_identity,
+)
+
 try:
     from dotenv import load_dotenv
 
@@ -220,37 +232,50 @@ GRADE_RACE_HUB_SLUGS = {
 }
 
 
-def load_shared_grade_race_entities() -> Dict[str, List[str]]:
+def load_shared_grade_race_entity_rows() -> List[Dict[str, Any]]:
     """Python/TypeScript共通の重賞識別レジストリを読み込む。"""
     try:
         with open(GRADE_RACE_ENTITY_REGISTRY_PATH, "r", encoding="utf-8") as handle:
             rows = json.load(handle)
-        registry: Dict[str, List[str]] = {}
-        for row in rows if isinstance(rows, list) else []:
-            if not isinstance(row, dict):
-                continue
-            entity_key = str(row.get("entity_key") or "").strip()
-            name = str(row.get("name") or "").strip()
-            aliases = [str(value).strip() for value in row.get("aliases", []) if str(value).strip()]
-            merged_aliases = list(dict.fromkeys([name, *aliases]))
-            if re.fullmatch(r"[a-z0-9-]+", entity_key) and merged_aliases:
-                registry[entity_key] = merged_aliases
-        return registry
+        return [dict(row) for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
     except (OSError, ValueError, TypeError) as error:
         print(f"[Planner] 重賞識別レジストリを読めません。内蔵定義へフォールバックします: {error}")
-        return {}
+        return []
 
 
-_SHARED_GRADE_RACE_ENTITY_ALIASES = load_shared_grade_race_entities()
+def load_shared_grade_race_entities(rows: Optional[Sequence[Dict[str, Any]]] = None) -> Dict[str, List[str]]:
+    """Python/TypeScript共通の重賞識別レジストリを読み込む。"""
+    registry: Dict[str, List[str]] = {}
+    source_rows = rows if rows is not None else load_shared_grade_race_entity_rows()
+    for row in source_rows:
+        entity_key = str(row.get("entity_key") or "").strip()
+        name = str(row.get("name") or "").strip()
+        aliases = [str(value).strip() for value in row.get("aliases", []) if str(value).strip()]
+        merged_aliases = list(dict.fromkeys([name, *aliases]))
+        if re.fullmatch(r"[a-z0-9-]+", entity_key) and merged_aliases:
+            registry[entity_key] = merged_aliases
+    return registry
+
+
+_SHARED_GRADE_RACE_ENTITY_ROWS = load_shared_grade_race_entity_rows()
+_SHARED_GRADE_RACE_ENTITY_ALIASES = load_shared_grade_race_entities(_SHARED_GRADE_RACE_ENTITY_ROWS)
+GRADE_RACE_ARCHIVE_SLUGS_BY_KEY: Dict[str, str] = {
+    entity_key: entity_key for entity_key in GRADE_RACE_HUB_SLUGS
+}
 if _SHARED_GRADE_RACE_ENTITY_ALIASES:
     GRADE_RACE_ENTITY_ALIASES = _SHARED_GRADE_RACE_ENTITY_ALIASES
-    GRADE_RACE_HUB_SLUGS = set(GRADE_RACE_ENTITY_ALIASES)
+    GRADE_RACE_ARCHIVE_SLUGS_BY_KEY = {
+        str(row.get("entity_key") or "").strip(): str(
+            row.get("archive_slug") or row.get("entity_key") or ""
+        ).strip()
+        for row in _SHARED_GRADE_RACE_ENTITY_ROWS
+        if re.fullmatch(r"[a-z0-9-]+", str(row.get("entity_key") or "").strip())
+    }
+    GRADE_RACE_HUB_SLUGS = set(GRADE_RACE_ARCHIVE_SLUGS_BY_KEY)
 
 
 def normalize_race_entity_text(value: str) -> str:
-    normalized = unicodedata.normalize("NFKC", str(value or ""))
-    normalized = re.sub(r"20\d{2}年?", "", normalized)
-    return re.sub(r"[\s　・･（）()【】「」『』｜|:：_\-]", "", normalized).lower()
+    return normalize_grade_race_identity_text(value)
 
 
 RACE_ENTITY_CONTEXT_PREFIX_PATTERN = re.compile(
@@ -300,7 +325,8 @@ def grade_race_entity_key_from_text(value: str) -> str:
 
 
 def grade_race_canonical_path(entity_key: str) -> str:
-    return f"/articles/grade-races/{entity_key}" if entity_key in GRADE_RACE_HUB_SLUGS else ""
+    archive_slug = GRADE_RACE_ARCHIVE_SLUGS_BY_KEY.get(entity_key, "")
+    return f"/articles/grade-races/{archive_slug}" if archive_slug else ""
 
 OVERSEAS_KEYWORDS = re.compile(
     r"サウジカップ|サウジC|ドバイワールドC|ドバイWC|ドバイシーマ|ドバイターフ|ドバイゴールデン|ドバイSC|ドバイワールドカップ|"
@@ -753,6 +779,8 @@ def grade_priority_rank(grade: str) -> int:
 
 def grade_calendar_priority(grade: str, deadline_status: str = "") -> int:
     urgent_priority = {
+        "due_field_refresh": 100,
+        "due_race_week": 102,
         "due_draw_confirmed": 105,
         "due_final_48h": 110,
         "due_race_morning": 115,
@@ -765,8 +793,6 @@ def grade_calendar_priority(grade: str, deadline_status: str = "") -> int:
     base = max(82, 102 - rank * 3)
     urgency_bonus = {
         "due_initial": 0,
-        "due_field_refresh": 1,
-        "due_race_week": 2,
         # 旧WriteOrderとの互換
         "missed_preview": 3,
     }.get(deadline_status, 0)
@@ -841,11 +867,32 @@ def is_jra_grade_entry(entry: RaceDemand) -> bool:
     return not normalize_grade_label(entry.grade).startswith("Jpn")
 
 
+def race_demand_circuit(entry: RaceDemand) -> str:
+    source_kind = str(entry.source_kind or "").strip().lower()
+    if source_kind.startswith("jra"):
+        return "jra"
+    if source_kind == "nar" or entry.venue in NAR_VENUES or normalize_grade_label(entry.grade).startswith("Jpn"):
+        return "nar"
+    return "jra" if is_jra_grade_entry(entry) else "nar"
+
+
+def resolve_grade_race_schedule_identity(
+    entry: RaceDemand,
+    *,
+    registry: Optional[Sequence[Dict[str, Any]]] = None,
+) -> GradeRaceIdentityResolution:
+    source_kind = str(entry.source_kind or "").strip().lower()
+    return resolve_grade_race_identity(
+        entry.name,
+        race_demand_circuit(entry),
+        trusted_schedule=source_kind in TRUSTED_GRADE_RACE_SCHEDULE_SOURCES,
+        registry=registry if registry is not None else _SHARED_GRADE_RACE_ENTITY_ROWS,
+    )
+
+
 def grade_race_identity_key(entry: RaceDemand) -> str:
-    entity_key = grade_race_entity_key(entry.name)
-    if entity_key:
-        return entity_key
-    return normalize_race_alias(entry.name)
+    resolution = resolve_grade_race_schedule_identity(entry)
+    return resolution.entity_key if resolution.resolved else ""
 
 
 def aliases_for_schedule_race(name: str) -> Tuple[str, ...]:
@@ -2317,11 +2364,19 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
     for entry, days_to_race in focus_races()[:max_focus_races]:
         if not is_race_article_eligible(entry):
             continue
-        identity_key = grade_race_identity_key(entry)
-        entity_key = grade_race_entity_key(entry.name)
-        if not entity_key:
-            state.issues.append(f"重賞識別レジストリ未登録のため記事候補を停止: {entry.name}")
+        identity_resolution = resolve_grade_race_schedule_identity(entry)
+        identity_key = identity_resolution.entity_key
+        entity_key = identity_resolution.entity_key
+        if not identity_resolution.resolved:
+            state.issues.append(
+                f"重賞識別子を安全に解決できないため記事候補を停止: "
+                f"{entry.name} / {identity_resolution.error}"
+            )
             continue
+        if identity_resolution.source == "deterministic_schedule":
+            state.issues.append(
+                f"重賞識別子を日程から自動解決: {entry.name} / {identity_resolution.entity_key}"
+            )
         season_year = str(race_demand_date(entry).year)
         draw_confirmed = days_to_race <= 3 and grade_race_has_confirmed_draw(entry)
         result_confirmed = days_to_race <= 0 and grade_race_has_results(entry)
@@ -3248,13 +3303,41 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
             else (race_phase(candidate.days_to_race) if candidate.days_to_race is not None else "")
         )
         entity_source_name = race_name or calendar_race
-        entity_key = grade_race_entity_key(entity_source_name) if entity_source_name else ""
-        entity_path = grade_race_canonical_path(entity_key)
+        identity_resolution: Optional[GradeRaceIdentityResolution] = None
+        if schedule_entry:
+            identity_resolution = resolve_grade_race_schedule_identity(schedule_entry)
+        elif entity_source_name:
+            curated_key = grade_race_entity_key(entity_source_name)
+            curated_row = next(
+                (
+                    row
+                    for row in _SHARED_GRADE_RACE_ENTITY_ROWS
+                    if str(row.get("entity_key") or "").strip() == curated_key
+                ),
+                None,
+            )
+            if curated_key and curated_row:
+                identity_resolution = GradeRaceIdentityResolution(
+                    entity_key=curated_key,
+                    source="curated_registry",
+                    circuit=str(curated_row.get("circuit") or ""),
+                    normalized_name=normalize_race_entity_text(entity_source_name),
+                    archive_slug=str(curated_row.get("archive_slug") or curated_key),
+                )
+        entity_key = identity_resolution.entity_key if identity_resolution and identity_resolution.resolved else ""
+        entity_path = identity_resolution.entity_path if identity_resolution and identity_resolution.resolved else ""
+        entity_key_source = identity_resolution.source if identity_resolution and identity_resolution.resolved else ""
+        race_circuit = identity_resolution.circuit if identity_resolution and identity_resolution.resolved else ""
+        entity_archive_slug = identity_resolution.archive_slug if identity_resolution and identity_resolution.resolved else ""
         canonical_path = ""
         season_year = int(scheduled_date[:4]) if scheduled_date else current_jst().year
         entity_type = "grade_race" if (entity_key or schedule_entry or calendar_race) else ""
         if entity_type == "grade_race" and not entity_key:
-            state.issues.append(f"entity_key未登録のためWriteOrderを停止: {entity_source_name}")
+            resolution_error = identity_resolution.error if identity_resolution else "schedule_not_verified"
+            state.issues.append(
+                f"entity_keyを安全に解決できないためWriteOrderを停止: "
+                f"{entity_source_name} / {resolution_error}"
+            )
             continue
         content_target_by_theme = {
             "course_venue": "course_venue_article",
@@ -3320,6 +3403,10 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
             "entity_type": entity_type,
             "entity_key": entity_key,
             "race_entity_key": entity_key,
+            "entity_key_source": entity_key_source,
+            "race_identity_version": GRADE_RACE_IDENTITY_VERSION if entity_type else "",
+            "race_circuit": race_circuit,
+            "entity_archive_slug": entity_archive_slug,
             "season_year": season_year if entity_type else "",
             "entity_path": entity_path,
             "canonical_path": canonical_path,
@@ -3341,6 +3428,10 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "entity_type": entity_type,
                 "entity_key": entity_key,
                 "race_entity_key": entity_key,
+                "entity_key_source": entity_key_source,
+                "race_identity_version": GRADE_RACE_IDENTITY_VERSION if entity_type else "",
+                "race_circuit": race_circuit,
+                "entity_archive_slug": entity_archive_slug,
                 "season_year": season_year if entity_type else "",
                 "entity_path": entity_path,
                 "canonical_path": canonical_path,

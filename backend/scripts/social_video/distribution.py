@@ -118,6 +118,76 @@ def build_destination_url(
     return f"{SITE_BASE_URL}{normalized_path}?{query}"
 
 
+def _bluesky_caption_for(
+    target_date: str,
+    venue_name: str,
+    race_number: int,
+    race_name: str,
+    destination_url: str,
+    featured_races: tuple[Mapping[str, Any], ...],
+) -> str:
+    limit = PLATFORM_CAPTION_LIMITS["bluesky"]
+    if len(featured_races) > 1:
+        has_grade = any(_compact_text(str(item.get("grade") or "")) for item in featured_races)
+        scope = "重賞" if has_grade else "各場メイン"
+        header = f"{target_date} {scope}{len(featured_races)}レース"
+        names = [
+            _compact_text(str(item.get("race_name") or ""))
+            or f"{_compact_text(str(item.get('venue_name') or ''))}{max(0, int(item.get('race_number') or 0))}R"
+            for item in featured_races
+        ]
+    else:
+        race_label = f"{venue_name}{race_number}R"
+        if race_name:
+            race_label += f"「{race_name}」"
+        header = f"{target_date} {race_label}"
+        names = []
+
+    summary = "AI偏差値上位3頭と位置取り予測をまとめました。"
+    cta = f"続きの分析はこちら\n{destination_url}"
+    mandatory = [header, summary, cta]
+    if len("\n\n".join(mandatory)) > limit:
+        mandatory = [header, cta]
+    if len("\n\n".join(mandatory)) > limit:
+        raise ValueError("Blueskyの必須投稿文とURLを300文字以内に収められません。")
+
+    blocks = [header]
+    if names:
+        fixed_length = len("\n\n".join(mandatory))
+        available = limit - fixed_length - 2
+        full_names = f"収録: {'・'.join(names)}"
+        if len(full_names) <= available:
+            blocks.append(full_names)
+        elif available >= 8:
+            selected: list[str] = []
+            for index, name in enumerate(names):
+                remaining = len(names) - index - 1
+                suffix = f"・ほか{remaining}レース" if remaining else ""
+                candidate = f"収録: {'・'.join([*selected, name])}{suffix}"
+                if len(candidate) > available:
+                    break
+                selected.append(name)
+            if selected:
+                remaining = len(names) - len(selected)
+                suffix = f"・ほか{remaining}レース" if remaining else ""
+                blocks.append(f"収録: {'・'.join(selected)}{suffix}")
+            else:
+                prefix = "収録: "
+                truncated = names[0][: max(1, available - len(prefix) - 1)]
+                blocks.append(f"{prefix}{truncated}…")
+
+    if summary in mandatory:
+        blocks.append(summary)
+    note = "過去データをもとにした参考情報です。"
+    if len("\n\n".join([*blocks, note, cta])) <= limit:
+        blocks.append(note)
+    blocks.append(cta)
+    caption = "\n\n".join(blocks)
+    if len(caption) > limit:
+        raise ValueError(f"Blueskyの本文生成に失敗しました: {len(caption)}/{limit}")
+    return caption
+
+
 def _caption_for(
     platform: str,
     target_date: str,
@@ -127,6 +197,15 @@ def _caption_for(
     destination_url: str,
     featured_races: tuple[Mapping[str, Any], ...] = (),
 ) -> str:
+    if platform == "bluesky":
+        return _bluesky_caption_for(
+            target_date,
+            venue_name,
+            race_number,
+            race_name,
+            destination_url,
+            featured_races,
+        )
     if len(featured_races) > 1:
         race_labels = "、".join(
             f"{_compact_text(str(item.get('venue_name') or ''))}"

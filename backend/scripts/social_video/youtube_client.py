@@ -14,6 +14,7 @@ JST = timezone(timedelta(hours=9))
 UTC = timezone.utc
 YOUTUBE_MANAGE_SCOPE = "https://www.googleapis.com/auth/youtube"
 PUBLICATION_MODES = {"disabled", "private_review", "scheduled_public"}
+YOUTUBE_API_MAX_RETRIES = 3
 
 
 @dataclass(frozen=True)
@@ -191,7 +192,9 @@ class YouTubeClient:
 
     def validate_channel(self) -> str:
         try:
-            response = self._build_service().channels().list(part="id", mine=True).execute()
+            response = self._build_service().channels().list(part="id", mine=True).execute(
+                num_retries=YOUTUBE_API_MAX_RETRIES
+            )
         except Exception as exc:
             try:
                 from google.auth.exceptions import RefreshError
@@ -263,7 +266,7 @@ class YouTubeClient:
         )
         response: Optional[dict] = None
         while response is None:
-            progress, response = request.next_chunk()
+            progress, response = request.next_chunk(num_retries=YOUTUBE_API_MAX_RETRIES)
             if progress:
                 print(f"YouTubeアップロード進捗: {int(progress.progress() * 100)}%")
         video_id = str(response.get("id") or "")
@@ -286,18 +289,22 @@ class YouTubeClient:
                 str(thumbnail_path),
                 mimetype=mimetypes.guess_type(thumbnail_path.name)[0] or "image/jpeg",
             ),
-        ).execute()
+        ).execute(num_retries=YOUTUBE_API_MAX_RETRIES)
 
     def get_video_status(self, video_id: str) -> YouTubeVideoStatus:
-        response = self._build_service().videos().list(
-            part="status,processingDetails",
-            id=video_id,
-        ).execute()
-        items = response.get("items") or []
+        items = []
+        for visibility_attempt in range(YOUTUBE_API_MAX_RETRIES + 1):
+            response = self._build_service().videos().list(
+                part="status,processingDetails",
+                id=video_id,
+            ).execute(num_retries=YOUTUBE_API_MAX_RETRIES)
+            items = response.get("items") or []
+            if items:
+                break
+            if visibility_attempt < YOUTUBE_API_MAX_RETRIES:
+                time.sleep(2 ** visibility_attempt)
         if not items:
-            raise YouTubeVideoStatusUnavailableError(
-                f"YouTube上の動画状態を取得できません: {video_id}"
-            )
+            raise YouTubeVideoStatusUnavailableError(f"YouTube上の動画状態を取得できません: {video_id}")
         item = items[0]
         status = item.get("status") or {}
         processing = item.get("processingDetails") or {}
@@ -313,6 +320,9 @@ class YouTubeClient:
 
     def clear_publish_schedule(self, video_id: str) -> YouTubeVideoStatus:
         """部分失敗後に安全モードへ戻る際、既存動画の予約時刻を解除する。"""
+        current = self.get_video_status(video_id)
+        if current.privacy_status == "public":
+            return current
         self._build_service().videos().update(
             part="status",
             body={
@@ -322,8 +332,10 @@ class YouTubeClient:
                     "selfDeclaredMadeForKids": False,
                 },
             },
-        ).execute()
+        ).execute(num_retries=YOUTUBE_API_MAX_RETRIES)
         status = self.get_video_status(video_id)
+        if status.privacy_status == "public":
+            return status
         if status.privacy_status != "private" or status.publish_at:
             raise RuntimeError(
                 "YouTube動画の予約公開を解除できません: "
@@ -356,12 +368,7 @@ class YouTubeClient:
             processed = status.processing_status == "succeeded" or status.upload_status == "processed"
             if processed:
                 expected = parse_publish_at(expected_publish_at)
-                now_utc = datetime.now(UTC).replace(tzinfo=None)
                 if status.privacy_status == "public":
-                    if expected is None or now_utc < expected:
-                        raise RuntimeError(
-                            f"YouTube動画が意図しない公開状態です: {video_id} ({status.privacy_status})"
-                        )
                     return status
                 if status.privacy_status != "private":
                     raise RuntimeError(

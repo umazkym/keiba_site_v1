@@ -85,6 +85,11 @@ Constraints for parameter acquisition:
 **Constraints:**
 
 - You MUST keep `race_bridge_enabled=false` when the race, venue, year, URL, or prediction data is missing or ambiguous.
+- You MUST resolve a scheduled grade race by an exact shared-registry alias first, then use the versioned deterministic `auto-{circuit}-{hash}` key only for JRA/NAR schedule records because free text must not create identities.
+- You MUST keep a deterministic `entity_key` immutable across season and venue changes, and add future presentation metadata without replacing that internal key because key replacement can create a second same-season article.
+- You MUST leave `entity_path`、`canonical_path`、seasonal public slug empty for a deterministic identity until an `entity_archive_slug` is curated because an internal key must not create a nonexistent archive URL.
+- You MUST use the same `due_grade_race_milestones` decision in registry audit and Planner because a low-demand local race outside its publication lead window must not stop the whole article workflow.
+- You MUST treat a safely derived schedule identity as a warning, not a publication error. Only registry corruption or an unresolved race whose publication milestone is due may fail the workflow.
 - You MUST render no bridge DOM, loading state, placeholder, or reserved space while the gate is false.
 - You MUST NOT infer a race from article title text in the browser or fall back to another race or `/races/today` because an incorrect destination breaks search intent and attribution.
 - You MUST preserve the verified exact race link during a temporary API failure, but hide unverified prediction values.

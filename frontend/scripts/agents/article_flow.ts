@@ -193,7 +193,18 @@ function validateDraftMetadata(
     }
   }
 
-  for (const key of ['entity_type', 'entity_key', 'season_year', 'entity_path', 'canonical_path', 'content_target'] as const) {
+  for (const key of [
+    'entity_type',
+    'entity_key',
+    'entity_key_source',
+    'race_identity_version',
+    'race_circuit',
+    'entity_archive_slug',
+    'season_year',
+    'entity_path',
+    'canonical_path',
+    'content_target',
+  ] as const) {
     const orderValue = (order as unknown as Record<string, unknown>)[key];
     const expected = String(orderValue || ref[key] || '').trim();
     if (!expected) continue;

@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -67,6 +68,49 @@ class NewsTopicPlannerTest(unittest.TestCase):
             planner.grade_race_entity_key_from_text("2026 アイビスサマーダッシュ 出走予定"),
             "ibis-summer-dash",
         )
+        self.assertEqual(planner.grade_race_entity_key("はまなす賞"), "hamanasu-sho")
+        self.assertEqual(planner.grade_race_entity_key("ジュニアグランプリ"), "junior-grand-prix")
+        self.assertEqual(planner.grade_race_entity_key("九州チャンピオンシップ"), "kyushu-championship")
+
+    def test_deterministic_grade_race_identity_matches_shared_fixtures(self) -> None:
+        fixture_path = (
+            Path(__file__).resolve().parents[2]
+            / "frontend"
+            / "content"
+            / "reference"
+            / "grade-race-identity-fixtures.json"
+        )
+        fixtures = json.loads(fixture_path.read_text(encoding="utf-8"))
+        for fixture in fixtures:
+            entry = planner.RaceDemand(
+                fixture["race_name"],
+                (fixture["race_name"],),
+                12,
+                1,
+                "地方重賞" if fixture["circuit"] == "nar" else "G3",
+                30,
+                year=2026,
+                venue="佐賀" if fixture["circuit"] == "nar" else "東京",
+                source_kind="nar" if fixture["circuit"] == "nar" else "jra",
+            )
+            resolution = planner.resolve_grade_race_schedule_identity(entry, registry=[])
+            self.assertEqual(resolution.entity_key, fixture["entity_key"])
+            self.assertEqual(resolution.source, "deterministic_schedule")
+            self.assertEqual(resolution.archive_slug, "")
+
+    def test_future_schedule_entities_resolve_without_manual_registry_coverage(self) -> None:
+        now = datetime.fromisoformat("2026-08-03T08:00:00+09:00")
+        schedule = planner.available_race_demands(now)
+        future_entries = [
+            entry
+            for entry in schedule
+            if 0 <= planner.days_until_race(entry, now) <= 370
+            and planner.is_race_article_eligible(entry)
+        ]
+        resolutions = [planner.resolve_grade_race_schedule_identity(entry) for entry in future_entries]
+        self.assertTrue(future_entries)
+        self.assertTrue(all(resolution.resolved for resolution in resolutions))
+        self.assertTrue(any(resolution.source == "deterministic_schedule" for resolution in resolutions))
 
     def test_grade_race_query_intents_are_gated_by_verified_stage(self) -> None:
         elm = planner.find_race_demand("エルムS")

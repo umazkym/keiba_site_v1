@@ -47,6 +47,10 @@ export type WriteOrder = {
   theme_cluster: string;
   entity_type?: string;
   entity_key?: string;
+  entity_key_source?: string;
+  race_identity_version?: string;
+  race_circuit?: string;
+  entity_archive_slug?: string;
   season_year?: string | number;
   entity_path?: string;
   canonical_path?: string;
@@ -88,6 +92,10 @@ export type WriteOrder = {
     topic_bridge?: Record<string, unknown>;
     entity_type?: string;
     entity_key?: string;
+    entity_key_source?: string;
+    race_identity_version?: string;
+    race_circuit?: string;
+    entity_archive_slug?: string;
     season_year?: string | number;
     entity_path?: string;
     canonical_path?: string;
@@ -350,7 +358,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 - reference_data.draw_status が "confirmed" でない場合、「枠順確定」「枠順が確定した今」「枠順が発表されたことで」「枠順が決まった今」など、枠順発表済みと読める表現は禁止する。「枠順発表前」「枠順発表後に確認する材料」「出馬表で確認する順番」に留める。
 - reference_data.topic_bridge がある場合は writer_focus に沿って主題を一つに絞り、関係の薄い論点を定型的に追加しない。
 - frontmatter の search_intent、race_phase、scheduled_race_date、content_focus には、reference_data の同名値と topic_bridge.writer_focus を省略せずコピーする。Editorが主題を維持するために使う。
-- WriteOrder または reference_data に entity_type、entity_key、season_year、entity_path、canonical_path、content_target がある場合は、frontmatterへ同じ値を省略せずコピーする。重賞名・コース名・年度をまたいでSEO評価を集約するための管理情報なので、本文の都合で書き換えない。
+- WriteOrder または reference_data に entity_type、entity_key、entity_key_source、race_identity_version、race_circuit、entity_archive_slug、season_year、entity_path、canonical_path、content_target がある場合は、frontmatterへ同じ値を省略せずコピーする。重賞名・コース名・年度をまたいでSEO評価を集約するための管理情報なので、本文の都合で書き換えない。
 - reference_data.predictions、course_stats、horse_number_advantages、ai_analysis_text、matched_race がある場合、それらは掲載データとして扱い、「内部データ」「制作方針」のような読者に不要な説明は書かない。
 - reference_data.days_to_race がある場合、開催までの日数に合わせて書く。開催前なら「直前に確認する順番」、開催後なら「次に同条件を見る時の確認材料」に寄せる。
 
@@ -469,6 +477,10 @@ scheduled_race_date: ""
 content_focus: ""
 entity_type: ""
 entity_key: ""
+entity_key_source: ""
+race_identity_version: ""
+race_circuit: ""
+entity_archive_slug: ""
 season_year: ""
 entity_path: ""
 canonical_path: ""
@@ -851,12 +863,27 @@ function normalizeCanonicalPath(value: string): string {
 function normalizeDraftEntityMetadata(markdownText: string, order: WriteOrder): string {
   const entityType = orderMetadataValue(order, 'entity_type');
   const entityKey = orderMetadataValue(order, 'entity_key');
+  const entityKeySource = orderMetadataValue(order, 'entity_key_source');
+  const raceIdentityVersion = orderMetadataValue(order, 'race_identity_version');
+  const raceCircuit = orderMetadataValue(order, 'race_circuit');
+  const entityArchiveSlug = orderMetadataValue(order, 'entity_archive_slug');
   const seasonYear = orderMetadataValue(order, 'season_year');
   const contentTarget = orderMetadataValue(order, 'content_target');
   const entityPath = normalizeCanonicalPath(orderMetadataValue(order, 'entity_path'));
   const canonicalPath = normalizeCanonicalPath(orderMetadataValue(order, 'canonical_path'));
 
-  if (!entityType && !entityKey && !seasonYear && !contentTarget && !entityPath && !canonicalPath) {
+  if (
+    !entityType
+    && !entityKey
+    && !entityKeySource
+    && !raceIdentityVersion
+    && !raceCircuit
+    && !entityArchiveSlug
+    && !seasonYear
+    && !contentTarget
+    && !entityPath
+    && !canonicalPath
+  ) {
     return markdownText;
   }
 
@@ -865,10 +892,19 @@ function normalizeDraftEntityMetadata(markdownText: string, order: WriteOrder): 
     if (entityType) parsed.data.entity_type = entityType;
     if (entityKey) parsed.data.entity_key = entityKey;
     if (entityKey && entityType === 'grade_race') parsed.data.race_entity_key = entityKey;
+    if (entityKeySource) parsed.data.entity_key_source = entityKeySource;
+    if (raceIdentityVersion) parsed.data.race_identity_version = raceIdentityVersion;
+    if (raceCircuit) parsed.data.race_circuit = raceCircuit;
+    if (entityArchiveSlug) parsed.data.entity_archive_slug = entityArchiveSlug;
+    else if (entityType === 'grade_race') delete parsed.data.entity_archive_slug;
     if (seasonYear) parsed.data.season_year = seasonYear;
     if (contentTarget) parsed.data.content_target = contentTarget;
     if (entityPath) parsed.data.entity_path = entityPath;
     if (canonicalPath) parsed.data.canonical_path = canonicalPath;
+    if (entityType === 'grade_race' && entityKeySource === 'deterministic_schedule' && !entityArchiveSlug) {
+      delete parsed.data.entity_path;
+      delete parsed.data.canonical_path;
+    }
     return matter.stringify(`${parsed.content.trim()}\n`, parsed.data);
   } catch {
     return markdownText;

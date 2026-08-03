@@ -10,9 +10,11 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-import google.auth
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+try:
+    from googleapiclient.errors import HttpError
+except ModuleNotFoundError:
+    class HttpError(Exception):
+        """Google API依存関係がないローカル単体テスト用の代替例外。"""
 
 
 EVENT_NAMES = (
@@ -27,6 +29,10 @@ EVENT_NAMES = (
     "ad_experiment_exposure",
     "article_bridge_experiment_exposure",
     "article_ad_placement_exposure",
+    "ad_impression_custom",
+    "ad_viewable_custom",
+    "affiliate_impression",
+    "affiliate_click",
     "data_hub_action_click",
     "data_search_result_click",
     "compare_result_view",
@@ -46,6 +52,8 @@ DATA_PATH_PREFIXES = (
     "/trainers",
     "/courses",
 )
+DEFAULT_MEASUREMENT_RELEASE_ID = "2026-08-01-ga-route-v2"
+NOT_SET_VALUES = {"", "(not set)", "not set", "unknown"}
 
 
 def _metric_value(response: dict[str, Any], index: int = 0) -> float:
@@ -140,6 +148,50 @@ def _safe_custom_count(
         }
 
 
+def _safe_event_breakdown(
+    service: Any,
+    property_id: str,
+    *,
+    start_date: str,
+    end_date: str,
+    event_name: str,
+    dimension: str,
+) -> dict[str, Any]:
+    try:
+        response = _run_report(
+            service,
+            property_id,
+            start_date=start_date,
+            end_date=end_date,
+            metrics=["eventCount", "totalUsers"],
+            dimensions=[dimension],
+            dimension_filter=_event_filter(event_name),
+        )
+        rows = []
+        for row in response.get("rows") or []:
+            dimensions = row.get("dimensionValues") or []
+            metrics = row.get("metricValues") or []
+            rows.append({
+                "value": dimensions[0].get("value", "(not set)") if dimensions else "(not set)",
+                "event_count": int(float(metrics[0].get("value", "0"))) if metrics else 0,
+                "users": int(float(metrics[1].get("value", "0"))) if len(metrics) > 1 else 0,
+            })
+        return {
+            "available": True,
+            "event_name": event_name,
+            "dimension": dimension,
+            "rows": rows,
+        }
+    except HttpError as error:
+        return {
+            "available": False,
+            "event_name": event_name,
+            "dimension": dimension,
+            "reason": f"{dimension}を{event_name}で利用できません: HTTP {error.resp.status}",
+            "rows": [],
+        }
+
+
 def _safe_breakdown(
     service: Any,
     property_id: str,
@@ -177,6 +229,220 @@ def _safe_breakdown(
             "reason": f"{dimension}をGA4レポートで利用できません: HTTP {error.resp.status}",
             "rows": [],
         }
+
+
+def _normalize_ga4_date(value: str) -> str:
+    raw = str(value or "").strip()
+    if len(raw) == 8 and raw.isdigit():
+        return f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
+    return raw
+
+
+def _is_not_set(value: str) -> bool:
+    return str(value or "").strip().lower() in NOT_SET_VALUES
+
+
+def evaluate_measurement_quality_gate(
+    *,
+    channel_rows: list[dict[str, Any]],
+    page_view_rows: list[dict[str, Any]],
+    target_release_id: str,
+    required_complete_days: int = 7,
+    max_missing_rate: float = 0.05,
+    max_unassigned_rate: float = 0.05,
+) -> dict[str, Any]:
+    """完全日ごとの流入元・共通パラメータ品質を評価する。"""
+
+    daily: dict[str, dict[str, Any]] = {}
+
+    def get_day(raw_date: str) -> dict[str, Any]:
+        normalized_date = _normalize_ga4_date(raw_date)
+        return daily.setdefault(
+            normalized_date,
+            {
+                "date": normalized_date,
+                "sessions": 0,
+                "unassigned_sessions": 0,
+                "page_views": 0,
+                "target_release_page_views": 0,
+                "missing_page_type_page_views": 0,
+                "missing_content_group_page_views": 0,
+            },
+        )
+
+    for row in channel_rows:
+        day = get_day(str(row.get("date") or ""))
+        sessions = max(0, int(float(row.get("sessions") or 0)))
+        day["sessions"] += sessions
+        channel = str(row.get("channel") or "").strip().lower()
+        if channel in {"unassigned", "(not set)", "not set", ""}:
+            day["unassigned_sessions"] += sessions
+
+    for row in page_view_rows:
+        day = get_day(str(row.get("date") or ""))
+        page_views = max(0, int(float(row.get("page_views") or 0)))
+        day["page_views"] += page_views
+        if str(row.get("measurement_release_id") or "").strip() != target_release_id:
+            continue
+        day["target_release_page_views"] += page_views
+        if _is_not_set(str(row.get("page_type") or "")):
+            day["missing_page_type_page_views"] += page_views
+        if _is_not_set(str(row.get("content_group") or "")):
+            day["missing_content_group_page_views"] += page_views
+
+    evaluated_days: list[dict[str, Any]] = []
+    for day_key in sorted(key for key in daily if key):
+        day = daily[day_key]
+        sessions = int(day["sessions"])
+        page_views = int(day["page_views"])
+        target_views = int(day["target_release_page_views"])
+        unassigned_rate = (
+            day["unassigned_sessions"] / sessions if sessions > 0 else None
+        )
+        release_missing_rate = (
+            (page_views - target_views) / page_views if page_views > 0 else None
+        )
+        page_type_missing_rate = (
+            day["missing_page_type_page_views"] / target_views
+            if target_views > 0
+            else None
+        )
+        content_group_missing_rate = (
+            day["missing_content_group_page_views"] / target_views
+            if target_views > 0
+            else None
+        )
+        rates = (
+            unassigned_rate,
+            release_missing_rate,
+            page_type_missing_rate,
+            content_group_missing_rate,
+        )
+        passed = all(rate is not None for rate in rates) and all(
+            float(rate) < (
+                max_unassigned_rate if index == 0 else max_missing_rate
+            )
+            for index, rate in enumerate(rates)
+        )
+        evaluated_days.append({
+            **day,
+            "unassigned_rate": round(unassigned_rate, 6) if unassigned_rate is not None else None,
+            "measurement_release_missing_rate": round(release_missing_rate, 6) if release_missing_rate is not None else None,
+            "page_type_missing_rate": round(page_type_missing_rate, 6) if page_type_missing_rate is not None else None,
+            "content_group_missing_rate": round(content_group_missing_rate, 6) if content_group_missing_rate is not None else None,
+            "passed": passed,
+        })
+
+    consecutive_pass_days = 0
+    previous_date: date | None = None
+    for day in evaluated_days:
+        try:
+            current_date = date.fromisoformat(day["date"])
+        except ValueError:
+            consecutive_pass_days = 0
+            previous_date = None
+            continue
+        is_consecutive = previous_date is None or current_date == previous_date + timedelta(days=1)
+        if day["passed"] and is_consecutive:
+            consecutive_pass_days += 1
+        elif day["passed"]:
+            consecutive_pass_days = 1
+        else:
+            consecutive_pass_days = 0
+        previous_date = current_date
+
+    ready = consecutive_pass_days >= required_complete_days
+    latest_day = evaluated_days[-1] if evaluated_days else None
+    return {
+        "ready_for_new_experiment": ready,
+        "target_release_id": target_release_id,
+        "required_complete_days": required_complete_days,
+        "consecutive_pass_days": consecutive_pass_days,
+        "max_missing_rate": max_missing_rate,
+        "max_unassigned_rate": max_unassigned_rate,
+        "observed_unassigned_rate": latest_day.get("unassigned_rate") if latest_day else None,
+        "latest_complete_date": latest_day.get("date") if latest_day else None,
+        "daily": evaluated_days,
+        "reason": (
+            f"直近{consecutive_pass_days}完全日が全基準を満たしています。"
+            if ready
+            else f"連続合格は{consecutive_pass_days}日です。{required_complete_days}日へ到達するまで新しい収益実験を開始しません。"
+        ),
+    }
+
+
+def collect_measurement_quality_gate(
+    service: Any,
+    property_id: str,
+    *,
+    start_date: str,
+    end_date: str,
+    target_release_id: str,
+) -> dict[str, Any]:
+    try:
+        channel_response = _run_report(
+            service,
+            property_id,
+            start_date=start_date,
+            end_date=end_date,
+            metrics=["sessions"],
+            dimensions=["date", "sessionDefaultChannelGroup"],
+        )
+        page_view_response = _run_report(
+            service,
+            property_id,
+            start_date=start_date,
+            end_date=end_date,
+            metrics=["eventCount"],
+            dimensions=[
+                "date",
+                "customEvent:measurement_release_id",
+                "customEvent:page_type",
+                "customEvent:content_group",
+            ],
+            dimension_filter=_event_filter("page_view"),
+        )
+    except HttpError as error:
+        return {
+            "ready_for_new_experiment": False,
+            "target_release_id": target_release_id,
+            "required_complete_days": 7,
+            "consecutive_pass_days": 0,
+            "max_missing_rate": 0.05,
+            "max_unassigned_rate": 0.05,
+            "daily": [],
+            "reason": f"日別計測品質を取得できません: HTTP {error.resp.status}",
+        }
+
+    channel_rows: list[dict[str, Any]] = []
+    for row in channel_response.get("rows") or []:
+        dimensions = row.get("dimensionValues") or []
+        metrics = row.get("metricValues") or []
+        channel_rows.append({
+            "date": dimensions[0].get("value", "") if len(dimensions) > 0 else "",
+            "channel": dimensions[1].get("value", "") if len(dimensions) > 1 else "",
+            "sessions": metrics[0].get("value", "0") if metrics else "0",
+        })
+
+    page_view_rows: list[dict[str, Any]] = []
+    for row in page_view_response.get("rows") or []:
+        dimensions = row.get("dimensionValues") or []
+        metrics = row.get("metricValues") or []
+        page_view_rows.append({
+            "date": dimensions[0].get("value", "") if len(dimensions) > 0 else "",
+            "measurement_release_id": dimensions[1].get("value", "") if len(dimensions) > 1 else "",
+            "page_type": dimensions[2].get("value", "") if len(dimensions) > 2 else "",
+            "content_group": dimensions[3].get("value", "") if len(dimensions) > 3 else "",
+            "page_views": metrics[0].get("value", "0") if metrics else "0",
+        })
+
+    return evaluate_measurement_quality_gate(
+        channel_rows=channel_rows,
+        page_view_rows=page_view_rows,
+        target_release_id=target_release_id,
+    )
+
+
 def collect_report(
     service: Any,
     property_id: str,
@@ -322,24 +588,38 @@ def collect_report(
             dimension="newVsReturning",
         ),
     }
-    channel_rows = monetization_breakdowns["session_channel"].get("rows") or []
-    total_channel_sessions = sum(int(row.get("sessions") or 0) for row in channel_rows)
-    unassigned_sessions = sum(
-        int(row.get("sessions") or 0)
-        for row in channel_rows
-        if str(row.get("value") or "").lower() in {"unassigned", "(not set)"}
-    )
-    unassigned_rate = unassigned_sessions / total_channel_sessions if total_channel_sessions else None
-    release_available = monetization_breakdowns["measurement_release_id"].get("available") is True
-    measurement_quality_gate = {
-        "ready_for_new_experiment": False,
-        "required_complete_days": 7,
-        "max_missing_rate": 0.05,
-        "max_unassigned_rate": 0.05,
-        "observed_unassigned_rate": round(unassigned_rate, 6) if unassigned_rate is not None else None,
-        "release_dimension_available": release_available,
-        "reason": "日別の7完全日連続判定はGA4探索またはBigQueryで確認するまでfalseを維持する。",
+    affiliate_breakdowns = {
+        "click_provider": _safe_event_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            event_name="affiliate_click", dimension="customEvent:provider",
+        ),
+        "click_context": _safe_event_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            event_name="affiliate_click", dimension="customEvent:context",
+        ),
+        "click_campaign": _safe_event_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            event_name="affiliate_click", dimension="customEvent:campaign_id",
+        ),
+        "click_link": _safe_event_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            event_name="affiliate_click", dimension="customEvent:link_id",
+        ),
+        "impression_context": _safe_event_breakdown(
+            service, property_id, start_date=start_date, end_date=end_date,
+            event_name="affiliate_impression", dimension="customEvent:context",
+        ),
     }
+    measurement_quality_gate = collect_measurement_quality_gate(
+        service,
+        property_id,
+        start_date=start_date,
+        end_date=end_date,
+        target_release_id=(
+            os.environ.get("MONETIZATION_MEASUREMENT_RELEASE_ID")
+            or DEFAULT_MEASUREMENT_RELEASE_ID
+        ).strip(),
+    )
 
     compare_count = events["compare_result_view"]["event_count"]
     saved_return_users = events["saved_user_return"]["users"]
@@ -442,6 +722,13 @@ def collect_report(
         },
         "publisher_revenue": revenue,
         "monetization_breakdowns": monetization_breakdowns,
+        "affiliate_breakdowns": affiliate_breakdowns,
+        "affiliate_measurement_contract": {
+            "trafficgate_click": "TrafficGateが記録した外部リダイレクト回数。反復クリックを含み得る。",
+            "ga4_affiliate_click": "サイトのCTA押下ごとのイベント総数。provider、context、campaign_id、link_idで分解する。",
+            "clarity_affiliate_click": "affiliate_clickが1回以上発生した録画対象セッション数。クリック総数ではない。",
+            "comparison_rule": "同じJST日付範囲・provider=rakuten_keibaで比較し、Clarityをクリック数の分母にしない。",
+        },
         "measurement_quality_gate": measurement_quality_gate,
         "gates": gates,
         "human_review_ready": not bool(
@@ -515,6 +802,13 @@ def main() -> int:
         raise RuntimeError("GA4_PROPERTY_IDが未設定です。")
     if not 1 <= args.days <= 90:
         raise ValueError("--daysは1〜90で指定してください。")
+    try:
+        import google.auth
+        from googleapiclient.discovery import build
+    except ModuleNotFoundError as error:
+        raise RuntimeError(
+            "GA4取得にはbackend/requirements.txtのGoogle API依存関係が必要です。"
+        ) from error
     end_date = args.end_date or (date.today() - timedelta(days=1))
     start_date = end_date - timedelta(days=args.days - 1)
     credentials, _ = google.auth.default(

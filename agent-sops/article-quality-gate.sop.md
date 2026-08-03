@@ -80,7 +80,7 @@ Constraints for parameter acquisition:
 
 ### 6. Gate grade-race URLs and race bridges
 
-重賞記事では共有レジストリの`entity_key`と`season_year`を使い、同一年度の記事を更新します。Writerが本文へ個別レースCTAを直接埋め込むことは禁止し、Publisherだけが軽量プレビューAPIの一意一致、正確なrace IDとURL、予測1頭以上、年度一致を確認して`race_bridge_enabled=true`にできます。
+重賞記事では共有レジストリの`entity_key`と`season_year`を使い、同一年度の記事を更新します。Writerが本文へ個別レースCTAを直接埋め込むことは禁止し、Publisherだけが軽量プレビューAPIの一意一致、正確なrace IDとURL、予測1頭以上、年度一致を確認して`race_bridge_eligible=true`を保存できます。適格性は実験状態と分離し、表示は本番リリースゲートを通過した`off / split / on`だけで制御します。
 
 **Constraints:**
 
@@ -89,7 +89,7 @@ Constraints for parameter acquisition:
 - You MUST NOT infer a race from article title text in the browser or fall back to another race or `/races/today` because an incorrect destination breaks search intent and attribution.
 - You MUST preserve the verified exact race link during a temporary API failure, but hide unverified prediction values.
 - You MUST use a dry-run inventory before adding metadata to existing articles and leave ambiguous articles unchanged.
-- You MUST require `ARTICLE_RACE_BRIDGE_EXPERIMENT_ACTIVE=true` and a non-empty `ARTICLE_RACE_BRIDGE_REMINDER_ID` before Publisher enables a bridge because reminders are a mandatory revenue-protection gate.
+- You MUST keep `race_bridge_enabled=false` in article metadata and require the build-time monetization release gate plus a non-empty reminder ID before changing `NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE` from `off`, because eligibility collection must not silently activate the experiment.
 - You MUST protect existing URLs with at least one Search Console click or 100 impressions in the last 28 days; migrations require a direct, loop-free 301 and a self-canonical destination.
 
 ### 7. Gate GSC-assisted rewrites

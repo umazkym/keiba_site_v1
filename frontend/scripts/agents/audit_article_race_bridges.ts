@@ -19,6 +19,12 @@ type AuditRow = {
 const articlesDir = path.join(process.cwd(), 'content', 'articles');
 const apiBaseUrl = getApiBaseUrl();
 const offline = process.argv.includes('--offline');
+const slugIndex = process.argv.indexOf('--slug');
+const targetSlug = slugIndex >= 0 ? String(process.argv[slugIndex + 1] || '').trim() : '';
+
+if (targetSlug && !/^[a-z0-9][a-z0-9-]{0,199}$/.test(targetSlug)) {
+  throw new Error(`不正な記事slugです: ${targetSlug}`);
+}
 
 async function auditArticle(file: string): Promise<AuditRow | null> {
   const fullPath = path.join(articlesDir, file);
@@ -80,7 +86,13 @@ async function auditArticle(file: string): Promise<AuditRow | null> {
 }
 
 async function main() {
-  const files = fs.readdirSync(articlesDir).filter((file) => file.endsWith('.md')).sort();
+  const files = fs.readdirSync(articlesDir)
+    .filter((file) => file.endsWith('.md'))
+    .filter((file) => !targetSlug || file === `${targetSlug}.md`)
+    .sort();
+  if (targetSlug && files.length !== 1) {
+    throw new Error(`対象記事が一意に見つかりません: ${targetSlug}`);
+  }
   const rows: AuditRow[] = [];
   for (const file of files) {
     const row = await auditArticle(file);

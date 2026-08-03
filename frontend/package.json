@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/validate-monetization-release.js && next build",
     "start": "next start",
     "lint": "next lint",
     "design:audit": "node scripts/design-audit.js",
@@ -22,10 +22,13 @@
     "article:test-routing": "npx --yes tsx scripts/agents/test_article_seasonal_routing.ts",
     "article:test-race-bridge": "npx --yes tsx scripts/agents/test_article_race_bridge.ts",
     "analytics:test-monetization": "npx --yes tsx scripts/agents/test_monetization_context.ts",
+    "monetization:validate-release": "node scripts/validate-monetization-release.js",
+    "monetization:test-release-guard": "node scripts/test-monetization-release-guard.js",
     "article:test-order-priority": "npx --yes tsx scripts/agents/test_article_order_priority.ts",
     "gsc:export-inventory": "npx --yes tsx scripts/agents/export_gsc_article_inventory.ts",
     "gsc:rewrite": "npx --yes tsx scripts/agents/gsc_seo_rewrite.ts",
     "gsc:test-rewrite": "npx --yes tsx scripts/agents/test_gsc_seo_rewrite.ts",
+    "gsc:validate-rewrite-pair": "npx --yes tsx scripts/agents/validate_gsc_rewrite_pair.ts",
     "article:tone-fix": "node scripts/agents/improve_article_tone.js",
     "article:tone-fix:apply": "node scripts/agents/improve_article_tone.js --apply",
     "article:tone-audit": "node scripts/agents/article_quality_audit.js --json | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log('Critical:', d.summary.critical, '/ Warning:', d.summary.warning);\""

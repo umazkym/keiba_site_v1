@@ -45,6 +45,8 @@ def build_report(
     events = dict((ga4 or {}).get("events") or {})
     revenue = dict((ga4 or {}).get("publisher_revenue") or {})
     breakdowns = dict((ga4 or {}).get("monetization_breakdowns") or {})
+    affiliate_breakdowns = dict((ga4 or {}).get("affiliate_breakdowns") or {})
+    affiliate_contract = dict((ga4 or {}).get("affiliate_measurement_contract") or {})
     quality_gate = dict((ga4 or {}).get("measurement_quality_gate") or {})
     if not revenue.get("available"):
         warnings.append("publisherAdRevenueは未取得です。GA4–AdSenseリンク後のデータだけで評価してください。")
@@ -92,6 +94,14 @@ def build_report(
                 "article_ad_placement_exposure",
             )
         },
+        "affiliate": {
+            "events": {
+                name: events.get(name, {"event_count": 0, "users": 0})
+                for name in ("affiliate_impression", "affiliate_click")
+            },
+            "breakdowns": affiliate_breakdowns,
+            "measurement_contract": affiliate_contract,
+        },
         "search": {
             "summary": dict((gsc or {}).get("summary") or {}),
             "opportunities": list((gsc or {}).get("query_device_opportunities") or [])[:20],
@@ -106,13 +116,26 @@ def build_report(
 def render_summary(report: Mapping[str, Any]) -> str:
     revenue = report.get("revenue") or {}
     search = report.get("search") or {}
+    quality_gate = (
+        (report.get("sample_quality") or {}).get("measurement_quality_gate") or {}
+    )
     lines = [
         "# UMA-FREE 週次収益統合レポート",
         "",
         f"- 契約: `{report['schema_version']}`",
         f"- 自動変更: `{report['automatic_action']}`",
         f"- GSC機会候補: {len(search.get('opportunities') or [])}件",
+        (
+            "- 新規収益実験ゲート: "
+            f"{'合格' if quality_gate.get('ready_for_new_experiment') else '保留'} "
+            f"({quality_gate.get('consecutive_pass_days', 0)}/"
+            f"{quality_gate.get('required_complete_days', 7)}完全日)"
+        ),
     ]
+    if quality_gate.get("target_release_id"):
+        lines.append(f"- 対象計測リリース: `{quality_gate['target_release_id']}`")
+    if quality_gate.get("latest_complete_date"):
+        lines.append(f"- 最終確認日: {quality_gate['latest_complete_date']}")
     if revenue.get("available"):
         lines.append(
             f"- パブリッシャー広告収益/1,000セッション: {revenue.get('revenue_per_1000_sessions', '—')}"

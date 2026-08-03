@@ -131,7 +131,15 @@ def render_summary(report: Mapping[str, Any]) -> str:
             f"({quality_gate.get('consecutive_pass_days', 0)}/"
             f"{quality_gate.get('required_complete_days', 7)}完全日)"
         ),
+        f"- ゲート経路: `{quality_gate.get('gate_mode', 'unknown')}`",
     ]
+    accelerated_gate = quality_gate.get("accelerated_gate") or {}
+    if accelerated_gate:
+        lines.append(
+            "- 高速ゲート対象セッション: "
+            f"{accelerated_gate.get('observed_sessions', 0)}/"
+            f"{accelerated_gate.get('minimum_sessions', 500)}"
+        )
     if quality_gate.get("target_release_id"):
         lines.append(f"- 対象計測リリース: `{quality_gate['target_release_id']}`")
     if quality_gate.get("latest_complete_date"):

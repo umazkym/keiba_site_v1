@@ -56,6 +56,20 @@ function parseTimestamp(value, label, errors) {
   return parsed;
 }
 
+function parseNumber(value, label, errors) {
+  const raw = String(value ?? '').trim();
+  if (!raw) {
+    errors.push(`${label}が必要です。`);
+    return null;
+  }
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    errors.push(`${label}は0以上の数値で設定してください。`);
+    return null;
+  }
+  return parsed;
+}
+
 function validateMonetizationRelease(env) {
   const errors = [];
   const active = [];
@@ -87,12 +101,38 @@ function validateMonetizationRelease(env) {
     errors.push('MONETIZATION_QUALITY_GATE_STATUS=passedが必要です。');
   }
 
+  const gateMode = String(env.MONETIZATION_QUALITY_GATE_MODE || '').trim();
+  if (gateMode !== 'accelerated' && gateMode !== 'standard') {
+    errors.push('MONETIZATION_QUALITY_GATE_MODEはacceleratedまたはstandardにしてください。');
+  }
   const observedDays = Number.parseInt(
     String(env.MONETIZATION_QUALITY_GATE_OBSERVED_DAYS || ''),
     10,
   );
-  if (!Number.isFinite(observedDays) || observedDays < 7) {
-    errors.push('MONETIZATION_QUALITY_GATE_OBSERVED_DAYSは7以上が必要です。');
+  const minimumObservedDays = gateMode === 'accelerated' ? 3 : 7;
+  if (!Number.isFinite(observedDays) || observedDays < minimumObservedDays) {
+    errors.push(
+      `MONETIZATION_QUALITY_GATE_OBSERVED_DAYSは${minimumObservedDays}以上が必要です。`,
+    );
+  }
+  const maxObservedRate = parseNumber(
+    env.MONETIZATION_QUALITY_GATE_MAX_OBSERVED_RATE,
+    'MONETIZATION_QUALITY_GATE_MAX_OBSERVED_RATE',
+    errors,
+  );
+  const requiredMaxRate = gateMode === 'accelerated' ? 0.02 : 0.05;
+  if (maxObservedRate !== null && maxObservedRate >= requiredMaxRate) {
+    errors.push(
+      `MONETIZATION_QUALITY_GATE_MAX_OBSERVED_RATEは${requiredMaxRate}未満が必要です。`,
+    );
+  }
+  const observedSessions = parseNumber(
+    env.MONETIZATION_QUALITY_GATE_TOTAL_SESSIONS,
+    'MONETIZATION_QUALITY_GATE_TOTAL_SESSIONS',
+    errors,
+  );
+  if (gateMode === 'accelerated' && observedSessions !== null && observedSessions < 500) {
+    errors.push('高速ゲートではMONETIZATION_QUALITY_GATE_TOTAL_SESSIONSが500以上必要です。');
   }
 
   const expectedReleaseId = String(
@@ -135,11 +175,39 @@ function validateMonetizationRelease(env) {
       );
       const minimumDecisionDays = experiment.id === 'AFF-RAKUTEN-QUALIFIED-NAR-2026-08'
         ? 28
-        : 14;
+        : 7;
       if (decisionDays < minimumDecisionDays) {
         errors.push(
           `MONETIZATION_EXPERIMENT_DECISION_DATEは開始日から${minimumDecisionDays}日後以降にしてください。`,
         );
+      }
+      if (experiment.id !== 'AFF-RAKUTEN-QUALIFIED-NAR-2026-08') {
+        const finalDecisionDate = parseDate(
+          env.MONETIZATION_EXPERIMENT_FINAL_DECISION_DATE,
+          'MONETIZATION_EXPERIMENT_FINAL_DECISION_DATE',
+          errors,
+        );
+        const finalReminderId = String(
+          env.MONETIZATION_EXPERIMENT_FINAL_REMINDER_ID || '',
+        ).trim();
+        if (!finalReminderId) {
+          errors.push('MONETIZATION_EXPERIMENT_FINAL_REMINDER_IDが必要です。');
+        }
+        if (finalDecisionDate) {
+          const finalDecisionDays = Math.floor(
+            (finalDecisionDate.getTime() - startDate.getTime()) / 86_400_000,
+          );
+          if (finalDecisionDays < 14) {
+            errors.push(
+              'MONETIZATION_EXPERIMENT_FINAL_DECISION_DATEは開始日から14日後以降にしてください。',
+            );
+          }
+          if (decisionDate && finalDecisionDate <= decisionDate) {
+            errors.push(
+              'MONETIZATION_EXPERIMENT_FINAL_DECISION_DATEは早期判断日より後にしてください。',
+            );
+          }
+        }
       }
     }
   }

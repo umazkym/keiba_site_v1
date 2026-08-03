@@ -585,7 +585,7 @@ Plannerは `theme_cluster` を競馬固有の以下の型で出力する。
 4. 軽量プレビューAPIが正常応答し、race IDとURLが記事メタデータに一致する
 5. 記事年度と開催年が一致する
 
-表示は`NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE=off|split|on`で独立制御する。既定は`off`。`split`へ変更するのは、先行する広告実験の終了、7完全日の計測品質ゲート、D+14判断リマインド登録がすべて完了した場合だけとする。
+表示は`NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE=off|split|on`で独立制御する。既定は`off`。`split`へ変更するのは、先行する広告実験の終了、高速または標準の計測品質ゲート、D+7・D+14判断リマインド登録がすべて完了した場合だけとする。
 
 Writerは重賞記事本文に`/races/today`や個別レースCTAを書かない。Publisherの検証に失敗した場合は記事本文を公開できるが、`eligible=false`のままとし、外枠、ローディング、予約スペースを描画しない。ブラウザ側でタイトルからレースを推測したり、別レースや`/races/today`へフォールバックしたりしない。適格記事でも表示時点のAPI障害、不一致、予測不足ではDOMを出さない。
 

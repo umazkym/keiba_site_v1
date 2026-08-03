@@ -250,8 +250,12 @@ def evaluate_measurement_quality_gate(
     required_complete_days: int = 7,
     max_missing_rate: float = 0.05,
     max_unassigned_rate: float = 0.05,
+    accelerated_required_complete_days: int = 3,
+    accelerated_max_missing_rate: float = 0.02,
+    accelerated_max_unassigned_rate: float = 0.02,
+    accelerated_min_sessions: int = 500,
 ) -> dict[str, Any]:
-    """完全日ごとの流入元・共通パラメータ品質を評価する。"""
+    """完全日ごとの流入元・共通パラメータ品質を高速・標準の二段階で評価する。"""
 
     daily: dict[str, dict[str, Any]] = {}
 
@@ -318,9 +322,17 @@ def evaluate_measurement_quality_gate(
             page_type_missing_rate,
             content_group_missing_rate,
         )
-        passed = all(rate is not None for rate in rates) and all(
+        passed_standard = all(rate is not None for rate in rates) and all(
             float(rate) < (
                 max_unassigned_rate if index == 0 else max_missing_rate
+            )
+            for index, rate in enumerate(rates)
+        )
+        passed_accelerated = all(rate is not None for rate in rates) and all(
+            float(rate) < (
+                accelerated_max_unassigned_rate
+                if index == 0
+                else accelerated_max_missing_rate
             )
             for index, rate in enumerate(rates)
         )
@@ -330,44 +342,127 @@ def evaluate_measurement_quality_gate(
             "measurement_release_missing_rate": round(release_missing_rate, 6) if release_missing_rate is not None else None,
             "page_type_missing_rate": round(page_type_missing_rate, 6) if page_type_missing_rate is not None else None,
             "content_group_missing_rate": round(content_group_missing_rate, 6) if content_group_missing_rate is not None else None,
-            "passed": passed,
+            "passed": passed_standard,
+            "passed_standard": passed_standard,
+            "passed_accelerated": passed_accelerated,
         })
 
-    consecutive_pass_days = 0
-    previous_date: date | None = None
-    for day in evaluated_days:
-        try:
-            current_date = date.fromisoformat(day["date"])
-        except ValueError:
-            consecutive_pass_days = 0
-            previous_date = None
-            continue
-        is_consecutive = previous_date is None or current_date == previous_date + timedelta(days=1)
-        if day["passed"] and is_consecutive:
-            consecutive_pass_days += 1
-        elif day["passed"]:
-            consecutive_pass_days = 1
-        else:
-            consecutive_pass_days = 0
-        previous_date = current_date
+    def consecutive_tail(pass_key: str) -> tuple[int, list[dict[str, Any]]]:
+        consecutive_days = 0
+        previous_date: date | None = None
+        tail: list[dict[str, Any]] = []
+        for day in evaluated_days:
+            try:
+                current_date = date.fromisoformat(day["date"])
+            except ValueError:
+                consecutive_days = 0
+                previous_date = None
+                tail = []
+                continue
+            is_consecutive = (
+                previous_date is None
+                or current_date == previous_date + timedelta(days=1)
+            )
+            if day[pass_key] and is_consecutive:
+                consecutive_days += 1
+                tail.append(day)
+            elif day[pass_key]:
+                consecutive_days = 1
+                tail = [day]
+            else:
+                consecutive_days = 0
+                tail = []
+            previous_date = current_date
+        return consecutive_days, tail
 
-    ready = consecutive_pass_days >= required_complete_days
+    standard_pass_days, _standard_tail = consecutive_tail("passed_standard")
+    accelerated_pass_days, accelerated_tail = consecutive_tail("passed_accelerated")
+    accelerated_window = accelerated_tail[-accelerated_required_complete_days:]
+    accelerated_window_sessions = sum(
+        int(day.get("sessions") or 0) for day in accelerated_window
+    )
+    accelerated_ready = (
+        accelerated_pass_days >= accelerated_required_complete_days
+        and accelerated_window_sessions >= accelerated_min_sessions
+    )
+    standard_ready = standard_pass_days >= required_complete_days
+    ready = accelerated_ready or standard_ready
+    if accelerated_ready:
+        gate_mode = "accelerated"
+        consecutive_pass_days = accelerated_pass_days
+        selected_required_days = accelerated_required_complete_days
+        selected_max_missing_rate = accelerated_max_missing_rate
+        selected_max_unassigned_rate = accelerated_max_unassigned_rate
+    elif standard_ready:
+        gate_mode = "standard"
+        consecutive_pass_days = standard_pass_days
+        selected_required_days = required_complete_days
+        selected_max_missing_rate = max_missing_rate
+        selected_max_unassigned_rate = max_unassigned_rate
+    elif accelerated_pass_days > 0:
+        gate_mode = "pending_accelerated"
+        consecutive_pass_days = accelerated_pass_days
+        selected_required_days = accelerated_required_complete_days
+        selected_max_missing_rate = accelerated_max_missing_rate
+        selected_max_unassigned_rate = accelerated_max_unassigned_rate
+    else:
+        gate_mode = "pending_standard"
+        consecutive_pass_days = standard_pass_days
+        selected_required_days = required_complete_days
+        selected_max_missing_rate = max_missing_rate
+        selected_max_unassigned_rate = max_unassigned_rate
+
     latest_day = evaluated_days[-1] if evaluated_days else None
+    if accelerated_ready:
+        reason = (
+            f"高速ゲートを通過しました。直近{accelerated_required_complete_days}完全日が"
+            f"各欠損率{accelerated_max_missing_rate:.0%}未満で、"
+            f"合計{accelerated_window_sessions}セッションです。"
+        )
+    elif standard_ready:
+        reason = (
+            f"標準ゲートを通過しました。直近{required_complete_days}完全日が"
+            f"各欠損率{max_missing_rate:.0%}未満です。"
+        )
+    elif accelerated_pass_days > 0:
+        reason = (
+            f"高速ゲートは{accelerated_pass_days}/{accelerated_required_complete_days}完全日、"
+            f"対象期間は{accelerated_window_sessions}/{accelerated_min_sessions}セッションです。"
+            "未達の場合は標準ゲートの観測を継続します。"
+        )
+    else:
+        reason = (
+            f"標準ゲートの連続合格は{standard_pass_days}/{required_complete_days}完全日です。"
+            "高速ゲートまたは標準ゲートを通過するまで新しい収益実験を開始しません。"
+        )
     return {
         "ready_for_new_experiment": ready,
+        "gate_mode": gate_mode,
         "target_release_id": target_release_id,
-        "required_complete_days": required_complete_days,
+        "required_complete_days": selected_required_days,
         "consecutive_pass_days": consecutive_pass_days,
-        "max_missing_rate": max_missing_rate,
-        "max_unassigned_rate": max_unassigned_rate,
+        "max_missing_rate": selected_max_missing_rate,
+        "max_unassigned_rate": selected_max_unassigned_rate,
         "observed_unassigned_rate": latest_day.get("unassigned_rate") if latest_day else None,
+        "accelerated_gate": {
+            "ready": accelerated_ready,
+            "required_complete_days": accelerated_required_complete_days,
+            "consecutive_pass_days": accelerated_pass_days,
+            "max_missing_rate": accelerated_max_missing_rate,
+            "max_unassigned_rate": accelerated_max_unassigned_rate,
+            "minimum_sessions": accelerated_min_sessions,
+            "observed_sessions": accelerated_window_sessions,
+        },
+        "standard_gate": {
+            "ready": standard_ready,
+            "required_complete_days": required_complete_days,
+            "consecutive_pass_days": standard_pass_days,
+            "max_missing_rate": max_missing_rate,
+            "max_unassigned_rate": max_unassigned_rate,
+        },
         "latest_complete_date": latest_day.get("date") if latest_day else None,
         "daily": evaluated_days,
-        "reason": (
-            f"直近{consecutive_pass_days}完全日が全基準を満たしています。"
-            if ready
-            else f"連続合格は{consecutive_pass_days}日です。{required_complete_days}日へ到達するまで新しい収益実験を開始しません。"
-        ),
+        "reason": reason,
     }
 
 
@@ -405,11 +500,28 @@ def collect_measurement_quality_gate(
     except HttpError as error:
         return {
             "ready_for_new_experiment": False,
+            "gate_mode": "unavailable",
             "target_release_id": target_release_id,
-            "required_complete_days": 7,
+            "required_complete_days": 3,
             "consecutive_pass_days": 0,
-            "max_missing_rate": 0.05,
-            "max_unassigned_rate": 0.05,
+            "max_missing_rate": 0.02,
+            "max_unassigned_rate": 0.02,
+            "accelerated_gate": {
+                "ready": False,
+                "required_complete_days": 3,
+                "consecutive_pass_days": 0,
+                "max_missing_rate": 0.02,
+                "max_unassigned_rate": 0.02,
+                "minimum_sessions": 500,
+                "observed_sessions": 0,
+            },
+            "standard_gate": {
+                "ready": False,
+                "required_complete_days": 7,
+                "consecutive_pass_days": 0,
+                "max_missing_rate": 0.05,
+                "max_unassigned_rate": 0.05,
+            },
             "daily": [],
             "reason": f"日別計測品質を取得できません: HTTP {error.resp.status}",
         }

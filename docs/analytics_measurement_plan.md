@@ -90,7 +90,7 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 - AdSenseが配信済みと判断した時点は`ad_impression_custom`、実視認は`ad_viewable_custom`として区別する。
 - 配置別の収益判断は、AdSenseのPublisher Adsレポートと`ad_viewable_custom`を同じ期間・同じページ種別で比較する。
 - GA4で登録するイベントスコープのカスタム定義は、`ad_placement`、`ad_format`、`ad_slot`、`ad_page_type`、`ad_variant`、`experiment_id`、`measurement_release_id`、既存の`context`・`provider`、追加した`affiliate_page_type`とする。
-- 新しい広告実験はGA4の`(not set)`比率が7日連続で5%未満になってから開始する。
+- 新しい広告実験は、高速ゲート（3完全日で主要欠損と`Unassigned`が各2%未満、合計500セッション以上）または標準ゲート（7完全日で各5%未満）を通過してから開始する。
 - モバイルp75の合格基準はLCP 2.5秒以下、INP 200ms以下、CLS 0.1以下とし、リリース後の実測で確認する。
 
 ## 推奨ファネル

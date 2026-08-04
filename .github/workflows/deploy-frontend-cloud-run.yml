@@ -1,8 +1,28 @@
 name: Deploy Frontend to Cloud Run
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend-cloud-run.yml'
   workflow_dispatch:
     inputs:
+      source_ref:
+        description: デプロイするcommit SHA。未指定時は実行元SHA
+        type: string
+        required: false
+      disable_default_url:
+        description: カスタムドメイン疎通後にrun.app既定URLを無効化する
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      source_ref:
+        description: デプロイするcommit SHA
+        type: string
+        required: true
       disable_default_url:
         description: カスタムドメイン疎通後にrun.app既定URLを無効化する
         type: boolean
@@ -25,12 +45,26 @@ env:
 
 jobs:
   deploy:
+    # 初回移行中の通常pushでは外部状態を変更しない。手動実行と明示的な
+    # workflow_callは常に許可し、DNS切替後だけ通常pushを自動反映する。
+    if: ${{ github.event_name != 'push' || vars.CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
     steps:
-      - name: Checkout repository
+      - name: Checkout requested release
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+
+      - name: Resolve immutable release SHA
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_SHA="$(git rev-parse HEAD)"
+          echo "sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "Deploy source: $RELEASE_SHA"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
@@ -53,7 +87,7 @@ jobs:
         working-directory: frontend
         env:
           REPOSITORY_VARS_JSON: ${{ toJSON(vars) }}
-          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
         shell: bash
         run: |
           python - <<'PY'
@@ -84,22 +118,20 @@ jobs:
 
       - name: Build and push frontend image
         working-directory: frontend
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
         shell: bash
         run: |
-          IMAGE_URI="$REGION-docker.pkg.dev/$PROJECT_ID/$ARTIFACT_REPOSITORY/$IMAGE_NAME:$GITHUB_SHA"
+          set -euo pipefail
+          IMAGE_URI="$REGION-docker.pkg.dev/$PROJECT_ID/$ARTIFACT_REPOSITORY/$IMAGE_NAME:$RELEASE_SHA"
           docker build --tag "$IMAGE_URI" .
           docker push "$IMAGE_URI"
           echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
 
-      - name: Deploy frontend service
-        env:
-          DISABLE_DEFAULT_URL: ${{ inputs.disable_default_url }}
+      - name: Deploy frontend service with recovery endpoint enabled
         shell: bash
         run: |
-          ENDPOINT_ARGS=(--default-url)
-          if [[ "$DISABLE_DEFAULT_URL" == "true" ]]; then
-            ENDPOINT_ARGS=(--no-default-url)
-          fi
+          set -euo pipefail
           gcloud run deploy "$SERVICE_NAME" \
             --project="$PROJECT_ID" \
             --region="$REGION" \
@@ -113,38 +145,95 @@ jobs:
             --max=2 \
             --timeout=30 \
             --cpu-throttling \
+            --no-cpu-boost \
+            --default-url \
             --port=8080 \
-            "${ENDPOINT_ARGS[@]}" \
+            --labels=app=uma-free,component=frontend,managed-by=github-actions \
             --quiet
 
-      - name: Verify deployed health endpoint
+      - name: Verify deployed run.app recovery endpoint
         env:
-          DISABLE_DEFAULT_URL: ${{ inputs.disable_default_url }}
-          EXPECTED_RELEASE: ${{ github.sha }}
+          EXPECTED_RELEASE: ${{ steps.release.outputs.sha }}
         shell: bash
         run: |
-          if [[ "$DISABLE_DEFAULT_URL" == "true" ]]; then
-            SERVICE_URL="https://uma-free.com"
-          else
-            SERVICE_URL="$(gcloud run services describe "$SERVICE_NAME" --project="$PROJECT_ID" --region="$REGION" --format='value(status.url)')"
-          fi
-          HEALTH_PAYLOAD="$(curl --fail --show-error --silent --retry 5 --retry-all-errors "$SERVICE_URL/api/health")"
+          set -euo pipefail
+          SERVICE_URL="$(gcloud run services describe "$SERVICE_NAME" --project="$PROJECT_ID" --region="$REGION" --format='value(status.url)')"
+          HEALTH_PAYLOAD="$(curl --fail --show-error --silent --retry 5 --retry-all-errors -H 'Cache-Control: no-cache' "$SERVICE_URL/api/health?release=$EXPECTED_RELEASE")"
           export HEALTH_PAYLOAD
           python - <<'PY'
           import json
           import os
 
           payload = json.loads(os.environ["HEALTH_PAYLOAD"])
+          expected = os.environ["EXPECTED_RELEASE"]
           if payload.get("status") != "ok":
               raise SystemExit(f"health statusがokではありません: {payload!r}")
-          expected = os.environ["EXPECTED_RELEASE"]
           if payload.get("release") != expected:
               raise SystemExit(
                   f"release不一致: expected={expected} actual={payload.get('release')}"
               )
-          print(f"health確認成功: release={expected}")
+          print(f"run.app health確認成功: release={expected}")
           PY
-          echo "- Verification URL: $SERVICE_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Image: $IMAGE_URI" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Scaling: min=0 / max=2 / concurrency=40" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Default run.app URL disabled: $DISABLE_DEFAULT_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "SERVICE_URL=$SERVICE_URL" >> "$GITHUB_ENV"
+
+      - name: Harden default URL after custom-domain verification
+        if: ${{ inputs.disable_default_url == true || (github.event_name == 'push' && vars.CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED == 'true') }}
+        env:
+          EXPECTED_RELEASE: ${{ steps.release.outputs.sha }}
+          CUSTOM_DOMAIN_URL: https://uma-free.com
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          verify_custom_domain() {
+            local payload
+            payload="$(curl --fail --show-error --silent --retry 5 --retry-all-errors -H 'Cache-Control: no-cache' "$CUSTOM_DOMAIN_URL/api/health?release=$EXPECTED_RELEASE")" || return 1
+            HEALTH_PAYLOAD="$payload" EXPECTED_RELEASE="$EXPECTED_RELEASE" python - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["HEALTH_PAYLOAD"])
+          if payload.get("status") != "ok" or payload.get("release") != os.environ["EXPECTED_RELEASE"]:
+              raise SystemExit(f"custom domain health不一致: {payload!r}")
+          PY
+          }
+
+          restore_default_url() {
+            echo "::warning::独自ドメイン検証に失敗したためrun.app既定URLを再有効化します。"
+            gcloud run services update "$SERVICE_NAME" \
+              --project="$PROJECT_ID" \
+              --region="$REGION" \
+              --default-url \
+              --quiet || true
+          }
+
+          if ! verify_custom_domain; then
+            echo "::error::run.appを閉じる前の独自ドメイン確認に失敗しました。"
+            exit 1
+          fi
+
+          gcloud run services update "$SERVICE_NAME" \
+            --project="$PROJECT_ID" \
+            --region="$REGION" \
+            --no-default-url \
+            --quiet
+
+          if ! verify_custom_domain; then
+            restore_default_url
+            echo "::error::run.app無効化後の独自ドメイン確認に失敗しました。"
+            exit 1
+          fi
+          echo "独自ドメイン確認後にrun.app既定URLを無効化しました。"
+
+      - name: Add deployment summary
+        if: always()
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+          DISABLE_DEFAULT_URL: ${{ inputs.disable_default_url == true || (github.event_name == 'push' && vars.CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED == 'true') }}
+        shell: bash
+        run: |
+          echo "- Release: $RELEASE_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Image: ${IMAGE_URI:-not-built}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Recovery URL: ${SERVICE_URL:-not-verified}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Scaling: min=0 / max=2 / concurrency=40 / startup CPU boost=off" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Requested default run.app URL disable: $DISABLE_DEFAULT_URL" >> "$GITHUB_STEP_SUMMARY"

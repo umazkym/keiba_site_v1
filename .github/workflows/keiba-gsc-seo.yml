@@ -19,6 +19,9 @@ concurrency:
 jobs:
   audit-and-optional-rewrite:
     runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.resolve_published_release.outputs.published }}
+      published_sha: ${{ steps.resolve_published_release.outputs.published_sha }}
 
     permissions:
       contents: write
@@ -174,3 +177,34 @@ jobs:
         env:
           ARTICLE_PUBLISH_OPERATION: gsc_rewrite
         run: npm run article:publish
+
+      - name: Resolve published release
+        id: resolve_published_release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PUBLISHED_SHA="$(git rev-parse HEAD)"
+          if [[ "$PUBLISHED_SHA" == "$SOURCE_SHA" ]]; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "published_sha=" >> "$GITHUB_OUTPUT"
+            echo "記事commitが作成されなかったためCloud Runデプロイを省略します。"
+          else
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "published_sha=$PUBLISHED_SHA" >> "$GITHUB_OUTPUT"
+            echo "Cloud Run反映対象SHA: $PUBLISHED_SHA"
+          fi
+
+  deploy-frontend:
+    needs: audit-and-optional-rewrite
+    if: ${{ needs.audit-and-optional-rewrite.outputs.published == 'true' && vars.CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED == 'true' }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-frontend-cloud-run.yml
+    with:
+      source_ref: ${{ needs.audit-and-optional-rewrite.outputs.published_sha }}
+      disable_default_url: true
+    secrets: inherit

@@ -74,6 +74,18 @@ APIとDBの通信量を抑えます。
 - You SHOULD report before/after payload size or route classification when the task is cost-oriented.
 - You MUST NOT claim a Vercel or Cloud Run cost reduction without a measurement, build artifact, or clear code-level reason because usage reductions must be distinguishable from traffic fluctuation.
 
+### 6. Aggregate shared Cloud Run capacity
+
+Cloud Runへ複数サービスを置く場合、フロント単体ではなく同一請求先の共有無料枠へ影響するサービスを合算します。
+
+**Constraints:**
+
+- You MUST collect `billable_instance_time`、割当CPU・メモリ、request count、`network/sent_bytes_count`の`kind=internet`、5xx、p95、active instance count for every required service.
+- You MUST treat missing metrics for any required service as red rather than estimating zero usage.
+- You MUST keep the publication gate limited to new indexable data pages; existing pages and APIs must remain available.
+- You MUST use green thresholds below free-tier boundaries and red thresholds before a likely overage: CPU 72,000/120,000秒、メモリ144,000/240,000 GiB秒、request 800,000/1,400,000、internet egress 2/10 GiB.
+- You MUST NOT configure a Cloud Run hard spend cap when continuous site availability is the agreed priority because reaching it can pause the frontend and API together.
+
 ## Source references
 
 - `AGENTS.md`

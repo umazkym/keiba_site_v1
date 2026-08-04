@@ -2,7 +2,7 @@
 
 作成日: 2026-08-04  
 対象: UMA-FREEフロントエンド  
-状態: コードと手動workflowは実装・検証済み。本番デプロイ、DNS切替、Cloudflare設定は未実施。
+状態: コード、再利用可能workflow、合算容量ゲート、DB起動保護、手順を実装。本番デプロイ、DNS切替、Cloudflare・秘密情報設定は未実施。
 
 ## 1. 結論
 
@@ -26,7 +26,7 @@ GCE keiba-db（内部IP 10.138.0.2、IAP保守のみ）
 
 フロントはCloud RunからDBへ直接接続しない。既存バックエンドAPIを利用し、DBの外部IPv4や公開ファイアウォールを復活させない。
 
-Cloud Runは従量課金であり「必ず0円」ではない。request-based billingの無料枠は月180,000 vCPU秒、360,000 GiB秒、200万リクエストだが、同一請求先の他プロジェクトを含めて集計され、外向き通信やArtifact Registryも別に費用が生じ得る。実装した容量ゲートはフロント単体の月間換算が72,000 vCPU秒未満をgreen、120,000 vCPU秒以上をredとして、公式無料枠より手前で新規検索公開を止める。
+Cloud Runは従量課金であり「必ず0円」ではない。request-based billingの無料枠は月180,000 vCPU秒、360,000 GiB秒、200万リクエストだが、同一請求先の他プロジェクトを含めて集計され、外向き通信やArtifact Registryも別に費用が生じ得る。実装した容量ゲートはフロントとAPIのCPU、割当メモリ、リクエスト、internet egressを合算し、公式無料枠や許容費用より手前で新規検索公開だけを止める。
 
 ## 2. 原因と再発経路
 
@@ -54,15 +54,17 @@ Cloud Runは従量課金であり「必ず0円」ではない。request-based bi
 - `frontend/next.config.mjs`: `output: 'standalone'`、route別共有キャッシュ、`poweredByHeader`無効化。
 - `frontend/Dockerfile`: Node 20 multi-stage build、非root実行、port 8080。
 - `frontend/app/api/health/route.ts`: `status`、service、release SHAを返す非キャッシュhealth。
-- `.github/workflows/deploy-frontend-cloud-run.yml`: 手動実行だけのbuild・push・deploy・release一致確認。
-- `min=0`、`max=2`、1 vCPU、1 GiB、concurrency 40、CPU throttling、timeout 30秒。
+- `.github/workflows/deploy-frontend-cloud-run.yml`: 手動、対象pathのmain push、記事・GSC workflowから呼べるbuild・push・deploy・release一致確認。
+- 記事・GSC workflowは実際にcommitが作られた時だけ公開後SHAを渡す。`GITHUB_TOKEN`による自動pushが別workflowを発火しない制約を回避する。
+- `CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED=false`では通常pushと記事からの自動デプロイを行わず、移行完了後だけ`true`にする。
+- `min=0`、`max=2`、1 vCPU、1 GiB、concurrency 40、CPU throttling、startup CPU boost無効、timeout 30秒。
 
 デプロイworkflowの`disable_default_url`は二段階で使う。
 
 | 段階 | 値 | 目的 |
 | --- | --- | --- |
 | 初回bootstrap | `false` | `run.app`で主要ページとreleaseを確認し、domain mappingを作成できる状態にする |
-| Cloudflare疎通後 | `true` | `run.app`直アクセスによるCloudflare WAF迂回を閉じる |
+| Cloudflare疎通後 | `true` | 独自ドメインで同一SHAを確認してから`run.app`直アクセスを閉じる。無効化後に失敗した場合は自動復旧 |
 
 ### 3.2 検索公開の段階制御
 
@@ -130,6 +132,7 @@ projects/761440273070/locations/global/workloadIdentityPools/github-actions-pool
 
 Repository Variables:
 
+- `CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED`（初回は必ず`false`、切替・hardening完了後だけ`true`）
 - `GCP_FRONTEND_DEPLOY_SERVICE_ACCOUNT`
 - `GCP_FRONTEND_RUNTIME_SERVICE_ACCOUNT`
 - `GSC_SITE_URL`（未設定時は`sc-domain:uma-free.com`）
@@ -142,6 +145,7 @@ Repository Secrets:
 
 - `DATABASE_URL`（既存。IAP actionが実行時だけlocalhostへ変換）
 - `CLOUDFLARE_ANALYTICS_API_TOKEN`（Zone Analytics readだけ）
+- `GEMINI_API_KEY`（GitHub自動処理専用、Generative Language APIだけを許可）
 
 Vercelから値を移す際は画面上で一件ずつ照合し、文書やActionsログへ値そのものを出力しない。
 
@@ -154,7 +158,61 @@ Vercelから値を移す際は画面上で一件ずつ照合し、文書やActio
 3. `dry_run=false`で再実行。
 4. 外部DB IPを作らず、`.github/actions/setup-iap-db`経由で接続できたことを確認。
 
-### 5.2 backend
+### 5.2 backend DB資格情報の無停止分離
+
+API起動時の`Base.metadata.create_all()`は、未設定のSQLiteだけで動くよう変更した。PostgreSQLとCloud Runでは`ALLOW_SCHEMA_CREATE`未設定でもDDLを実行しない。最初にこのコードを現在のDB資格情報でデプロイし、APIが正常なことを確認してからruntimeロールへ切り替える。
+
+1. backendを現行資格情報のままデプロイし、ログに次が出ることを確認する。
+
+   ```text
+   [DB] Schema auto-create skipped for postgresql
+   ```
+
+2. IAPトンネルを開始する。旧外部IPを使用しない。
+
+   ```bash
+   gcloud compute start-iap-tunnel keiba-db 5432 --project=keiba-api-project --zone=us-west1-b --local-host-port=127.0.0.1:15432
+   ```
+
+3. 別ターミナルからDB所有者で`127.0.0.1:15432`へ接続し、DB名とschema ownerを確認する。
+
+   ```sql
+   SELECT current_database(), current_user;
+   SELECT nspname, pg_get_userbyid(nspowner) AS schema_owner
+     FROM pg_namespace
+    WHERE nspname = 'public';
+   ```
+
+4. `<DB_NAME>`と`<SCHEMA_OWNER>`を確認結果へ置換し、runtimeロールを作る。パスワードはSQLやshell履歴へ書かず、psqlの`\password keiba_app_runtime`で対話入力する。
+
+   ```sql
+   CREATE ROLE keiba_app_runtime LOGIN;
+   \password keiba_app_runtime
+
+   GRANT CONNECT ON DATABASE <DB_NAME> TO keiba_app_runtime;
+   GRANT USAGE ON SCHEMA public TO keiba_app_runtime;
+   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO keiba_app_runtime;
+   GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO keiba_app_runtime;
+
+   ALTER DEFAULT PRIVILEGES FOR ROLE <SCHEMA_OWNER> IN SCHEMA public
+     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO keiba_app_runtime;
+   ALTER DEFAULT PRIVILEGES FOR ROLE <SCHEMA_OWNER> IN SCHEMA public
+     GRANT USAGE, SELECT ON SEQUENCES TO keiba_app_runtime;
+
+   REVOKE CREATE ON SCHEMA public FROM keiba_app_runtime;
+   ```
+
+5. Secret Managerで`keiba-backend-database-url`を作り、runtimeロールの内部IP接続URLを新しいversionとして画面から登録する。値をCloud Shell履歴、Issue、Actionsログへ貼らない。
+6. backendのruntime service accountへ、このSecretだけの`Secret Manager Secret Accessor`を付与する。
+7. Cloud Runの`keiba-site-v1`を編集し、同一revision内で次を変更する。
+   - 平文`DATABASE_URL`を削除し、`keiba-backend-database-url:latest`を参照するSecret環境変数`DATABASE_URL`へ置換。
+   - `ALLOW_SCHEMA_CREATE=false`を追加。
+   - CPU、メモリ、concurrency 80、min 0、max 3、VPC設定は変更しない。
+8. 新revisionへ100%を流し、レース一覧、予測、データ検索、楽天URL解決、ログのDB権限エラーがないことを確認する。
+9. `Database Schema Migration`を`dry_run=true`で実行する。成功後、DB所有者のパスワードをpsqlの`\password <OWNER_ROLE>`で変更し、GitHub Secret `DATABASE_URL`を更新する。
+10. 以後はSecret参照済みrevisionより前へロールバックしない。旧revisionは所有者パスワード変更後にDB接続できないため、ロールバック先のrevision名を記録する。
+
+### 5.3 backend
 
 既存の手動手順でbackendを先に反映し、次を確認する。
 
@@ -166,7 +224,7 @@ Vercelから値を移す際は画面上で一件ずつ照合し、文書やActio
 
 publication rowがない状態ではデータ詳細の`indexable=false`が正しい。フロントを先に反映すると旧APIが新フィールドを返さないが、frontend側も安全側のcandidate/noindexへ縮退する。
 
-### 5.3 frontend bootstrap
+### 5.4 frontend bootstrap
 
 `Deploy Frontend to Cloud Run` workflowを次で手動実行する。
 
@@ -271,11 +329,13 @@ disable_default_url=true
 
 workflowは`https://uma-free.com/api/health`のrelease SHA一致を検証する。完了後、以前の`run.app/api/health`へ直接アクセスできないことを確認する。これによりWAF・rate limitの迂回経路を閉じる。
 
+24時間の正常稼働を確認したら、GitHub Repository Variable `CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED`を`true`へ変更する。以後、記事・GSC補修の新commitとフロント関連のmain pushだけが自動デプロイされる。自動デプロイも独自ドメインの同一SHA確認後に`run.app`を閉じるため、hardening状態を維持する。
+
 ## 7. 段階公開workflow
 
 1. `Keiba Data Page Publication`を`dry_run=true`で手動実行。
 2. artifactの`capacity.json`と`report.json`を確認。
-3. `cloud_run_metrics_available=true`であることを必須とする。
+3. `schema_version=cloud-run-capacity.v2`、`required_services`に`keiba-frontend-v1`と`keiba-site-v1`、`cloud_run_metrics_available=true`であることを必須とする。
 4. GSC障害は需要加点なしで継続できるが、Cloud Run指標障害はred・0件が正しい。
 5. 初回applyは手動dispatchの`dry_run=false`。
 6. 以後、毎日09:45 JSTに自動評価。
@@ -284,11 +344,32 @@ workflowは`https://uma-free.com/api/health`のrelease SHA一致を検証する�
 
 | mode | 条件 | 新規公開 |
 | --- | --- | ---: |
-| green | 月間換算vCPU秒<72,000、5xx<0.5%、p95<1.5秒、CF hit>=80%、max未飽和 | 100/日 |
-| yellow | red未満、CF hit>=65%。CF指標未設定もyellow | 25/日 |
-| red | 指標取得不能、月間換算>=120,000、5xx>=1%、p95>=2.5秒、max飽和、CF hit<65% | 0/日 |
+| green | CPU<72,000秒、メモリ<144,000 GiB秒、request<800,000、internet egress<2GiB、5xx<0.5%、p95<1.5秒、CF hit>=80%、max未飽和 | 100/日 |
+| yellow | red未満だがgreen条件を満たさない。CF指標未設定もyellow | 25/日 |
+| red | 必須サービス指標取得不能、CPU>=120,000秒、メモリ>=240,000 GiB秒、request>=1,400,000、internet egress>=10GiB、5xx>=1%、p95>=2.5秒、max飽和、CF hit<65% | 0/日 |
 
 初回のみ最大500件だが、redでは0件。初回500件は既存品質ページの再登録用であり、指標が取れない状態で強行しない。
+
+### 7.1 予算通知（停止処理なし）
+
+現在の請求先全体1,000円予算は残し、別に`keiba-api-project`かつCloud Run限定の月300円予算を追加する。無料枠超過の兆候を使用量段階で検知するため、credits/discountsは予算計算から除外する。
+
+| 通知 | 種別 | 金額換算 |
+| --- | --- | ---: |
+| 30% | Actual | 90円 |
+| 60% | Forecasted | 180円 |
+| 100% | Actual | 300円 |
+
+Billing管理者と運用者本人へのメール通知を有効にする。Cloud Run Spend Capや予算連動のサービス停止は設定しない。異常増加時もサイトを止めず、段階公開をyellow/redへ縮退させる。
+
+### 7.2 Gemini APIキーの交換
+
+1. Google Cloud CredentialsまたはGoogle AI StudioでGitHub自動処理専用キーを新規作成する。
+2. API restrictionsを`Generative Language API`だけにする。GitHub hosted runnerのIPは固定でないためApplication restrictionsは`None`とし、API範囲を限定する。
+3. GitHub Secret `GEMINI_API_KEY`を新しい値へ更新する。
+4. `Gemini API Key Read-only Smoke Test` workflowを手動実行する。このworkflowはモデル一覧を読むだけで、記事公開・DB更新・Git操作を行わない。
+5. 成功後、旧無制限キーを無効化する。24時間、自動記事・朝午後データworkflowに認証エラーがないことを確認してから削除する。
+6. キー値をActionsログやローカルのコマンド履歴へ出力しない。
 
 ## 8. 切替後の確認
 
@@ -362,6 +443,10 @@ gcloud run services update keiba-frontend-v1 --default-url --region=us-west1 --p
 - Cloud Run pricing: https://cloud.google.com/run/pricing
 - Cloud Run custom domain mapping: https://cloud.google.com/run/docs/mapping-custom-domains
 - Cloud Run default URL disable: https://cloud.google.com/run/docs/securing/ingress
+- Cloud Run Secret Manager integration: https://cloud.google.com/run/docs/configuring/services/secrets
+- Cloud Monitoring Cloud Run metrics: https://cloud.google.com/monitoring/api/metrics_gcp_p_z#gcp-run
+- Google Cloud budgets: https://cloud.google.com/billing/docs/how-to/budgets
+- GitHub Actions workflow triggering: https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow
 - Cloudflare Cache Rules: https://developers.cloudflare.com/cache/how-to/cache-rules/
 - Cloudflare Cache Rules settings: https://developers.cloudflare.com/cache/how-to/cache-rules/settings/
 - Cloudflare Rate Limiting: https://developers.cloudflare.com/waf/rate-limiting-rules/

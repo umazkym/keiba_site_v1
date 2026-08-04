@@ -18,6 +18,12 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 from crud import growth_crud
 from database import models
 from database.database import Base
+from scripts.agents.cloud_run_capacity import (
+    ServiceConfig,
+    aggregate_cloud_run_metrics,
+    collect_cloud_run_capacity,
+    parse_service_config,
+)
 from scripts.agents.data_page_publication import (
     calculate_quality_score,
     determine_capacity_mode,
@@ -117,6 +123,39 @@ class DataPagePublicationTest(unittest.TestCase):
         })
         self.assertEqual(mode, "yellow")
 
+    def test_capacity_mode_uses_all_free_tier_dimensions(self) -> None:
+        base = {
+            "cloud_run_metrics_available": True,
+            "projected_monthly_vcpu_seconds": 50000,
+            "projected_monthly_gib_seconds": 100000,
+            "projected_monthly_requests": 500000,
+            "projected_monthly_internet_egress_bytes": 1024 ** 3,
+            "error_rate": 0.001,
+            "p95_latency_ms": 800,
+            "max_instance_saturated": False,
+            "cloudflare_cache_hit_ratio": 0.9,
+        }
+        mode, _ = determine_capacity_mode(base)
+        self.assertEqual(mode, "green")
+
+        memory_red = {**base, "projected_monthly_gib_seconds": 240000}
+        mode, reasons = determine_capacity_mode(memory_red)
+        self.assertEqual(mode, "red")
+        self.assertTrue(any("GiB秒" in reason for reason in reasons))
+
+        request_red = {**base, "projected_monthly_requests": 1400000}
+        mode, reasons = determine_capacity_mode(request_red)
+        self.assertEqual(mode, "red")
+        self.assertTrue(any("リクエスト" in reason for reason in reasons))
+
+        egress_red = {
+            **base,
+            "projected_monthly_internet_egress_bytes": 10 * 1024 ** 3,
+        }
+        mode, reasons = determine_capacity_mode(egress_red)
+        self.assertEqual(mode, "red")
+        self.assertTrue(any("送信量" in reason for reason in reasons))
+
     def test_initial_seed_stops_when_capacity_is_red(self) -> None:
         rows = []
         for index in range(12):
@@ -212,6 +251,94 @@ class DataPagePublicationTest(unittest.TestCase):
             )
         self.assertEqual([item["count"] for item in manifest], [1000, 1])
         self.assertEqual(second[0]["url"], "/horses/1000")
+
+
+class CloudRunCapacityTest(unittest.TestCase):
+    def test_parse_repeated_service_config_shape(self) -> None:
+        config = parse_service_config("keiba-site-v1,1,0.5,3")
+        self.assertEqual(config.service_name, "keiba-site-v1")
+        self.assertEqual(config.cpu, 1.0)
+        self.assertEqual(config.memory_gib, 0.5)
+        self.assertEqual(config.max_instances, 3)
+
+    def test_aggregate_cloud_run_metrics_preserves_legacy_totals(self) -> None:
+        aggregate = aggregate_cloud_run_metrics([
+            {
+                "service_name": "keiba-frontend-v1",
+                "cloud_run_metrics_available": True,
+                "billable_instance_seconds_7d": 7000,
+                "projected_monthly_vcpu_seconds": 30000,
+                "projected_monthly_gib_seconds": 30000,
+                "request_count_7d": 70000,
+                "projected_monthly_requests": 300000,
+                "error_count_7d": 70,
+                "error_rate": 0.001,
+                "p95_latency_ms": 900,
+                "max_active_instances": 1,
+                "max_instance_saturated": False,
+                "internet_egress_bytes_7d": 100,
+                "projected_monthly_internet_egress_bytes": 430,
+                "window_start": "2026-07-28T00:00:00+00:00",
+                "window_end": "2026-08-04T00:00:00+00:00",
+            },
+            {
+                "service_name": "keiba-site-v1",
+                "cloud_run_metrics_available": True,
+                "billable_instance_seconds_7d": 3500,
+                "projected_monthly_vcpu_seconds": 15000,
+                "projected_monthly_gib_seconds": 7500,
+                "request_count_7d": 35000,
+                "projected_monthly_requests": 150000,
+                "error_count_7d": 35,
+                "error_rate": 0.001,
+                "p95_latency_ms": 1200,
+                "max_active_instances": 3,
+                "max_instance_saturated": True,
+                "internet_egress_bytes_7d": 200,
+                "projected_monthly_internet_egress_bytes": 860,
+                "window_start": "2026-07-28T00:00:00+00:00",
+                "window_end": "2026-08-04T00:00:00+00:00",
+            },
+        ])
+        self.assertEqual(aggregate["schema_version"], "cloud-run-capacity.v2")
+        self.assertTrue(aggregate["cloud_run_metrics_available"])
+        self.assertEqual(aggregate["projected_monthly_vcpu_seconds"], 45000)
+        self.assertEqual(aggregate["projected_monthly_gib_seconds"], 37500)
+        self.assertEqual(aggregate["projected_monthly_requests"], 450000)
+        self.assertEqual(aggregate["error_rate"], 0.001)
+        self.assertEqual(aggregate["p95_latency_ms"], 1200)
+        self.assertTrue(aggregate["max_instance_saturated"])
+        self.assertEqual(aggregate["saturated_services"], ["keiba-site-v1"])
+
+    def test_one_missing_service_fails_closed_but_keeps_other_metrics(self) -> None:
+        configs = [
+            ServiceConfig("keiba-frontend-v1", 1, 1, 2),
+            ServiceConfig("keiba-site-v1", 1, 0.5, 3),
+        ]
+
+        def fake_collect(*, service_config, **_kwargs):
+            if service_config.service_name == "keiba-site-v1":
+                raise RuntimeError("monitoring unavailable")
+            return {
+                "service_name": service_config.service_name,
+                "cloud_run_metrics_available": True,
+                "projected_monthly_vcpu_seconds": 100,
+                "request_count_7d": 10,
+                "window_start": "2026-07-28T00:00:00+00:00",
+                "window_end": "2026-08-04T00:00:00+00:00",
+            }
+
+        with patch(
+            "scripts.agents.cloud_run_capacity.collect_cloud_run_metrics",
+            side_effect=fake_collect,
+        ):
+            result = collect_cloud_run_capacity(
+                project_id="keiba-api-project",
+                service_configs=configs,
+            )
+        self.assertFalse(result["cloud_run_metrics_available"])
+        self.assertEqual(result["projected_monthly_vcpu_seconds"], 100)
+        self.assertIn("keiba-site-v1", result["cloud_run_errors"])
 
 
 if __name__ == "__main__":

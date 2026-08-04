@@ -61,8 +61,8 @@ jobs:
         run: >-
           python backend/scripts/agents/cloud_run_capacity.py
           --project-id keiba-api-project
-          --service-name keiba-frontend-v1
-          --max-instances 2
+          --service-config keiba-frontend-v1,1,1,2
+          --service-config keiba-site-v1,1,0.5,3
           --output-json "$RUNNER_TEMP/data-page-publication/capacity.json"
 
       - name: Apply idempotent publication table migration

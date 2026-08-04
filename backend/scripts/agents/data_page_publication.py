@@ -141,7 +141,13 @@ def determine_capacity_mode(metrics: Mapping[str, Any]) -> tuple[str, list[str]]
     if not metrics.get("cloud_run_metrics_available"):
         return "red", ["Cloud Run指標を取得できません"]
 
-    projected = float(metrics.get("projected_monthly_vcpu_seconds") or 0.0)
+    projected_vcpu = float(metrics.get("projected_monthly_vcpu_seconds") or 0.0)
+    projected_memory = float(metrics.get("projected_monthly_gib_seconds") or 0.0)
+    projected_requests = float(metrics.get("projected_monthly_requests") or 0.0)
+    projected_egress_bytes = float(
+        metrics.get("projected_monthly_internet_egress_bytes") or 0.0
+    )
+    projected_egress_gib = projected_egress_bytes / (1024 ** 3)
     error_rate = float(metrics.get("error_rate") or 0.0)
     p95_ms = float(metrics.get("p95_latency_ms") or 0.0)
     saturated = bool(metrics.get("max_instance_saturated"))
@@ -149,8 +155,14 @@ def determine_capacity_mode(metrics: Mapping[str, Any]) -> tuple[str, list[str]]
 
     if saturated:
         reasons.append("最大インスタンス数への到達を検出")
-    if projected >= 120000:
-        reasons.append(f"月間換算vCPU秒が上限超過: {projected:.0f}")
+    if projected_vcpu >= 120000:
+        reasons.append(f"月間換算vCPU秒が上限超過: {projected_vcpu:.0f}")
+    if projected_memory >= 240000:
+        reasons.append(f"月間換算GiB秒が上限超過: {projected_memory:.0f}")
+    if projected_requests >= 1400000:
+        reasons.append(f"月間換算リクエスト数が上限超過: {projected_requests:.0f}")
+    if projected_egress_gib >= 10:
+        reasons.append(f"月間換算インターネット送信量が10GiB以上: {projected_egress_gib:.2f}GiB")
     if error_rate >= 0.01:
         reasons.append(f"5xx率が1%以上: {error_rate:.3%}")
     if p95_ms >= 2500:
@@ -158,7 +170,14 @@ def determine_capacity_mode(metrics: Mapping[str, Any]) -> tuple[str, list[str]]
     if reasons:
         return "red", reasons
 
-    cloud_run_green = projected < 72000 and error_rate < 0.005 and p95_ms < 1500
+    cloud_run_green = (
+        projected_vcpu < 72000
+        and projected_memory < 144000
+        and projected_requests < 800000
+        and projected_egress_gib < 2
+        and error_rate < 0.005
+        and p95_ms < 1500
+    )
     if cache_hit is None:
         return "yellow", ["Cloudflare指標がないため25件/日に制限"]
     cache_hit_value = float(cache_hit)

@@ -7,13 +7,22 @@ from api.v1.endpoints import affiliate as affiliate_v1
 from api.v1.endpoints import data as data_v1
 from api.v1.endpoints import races as races_v1
 from database.database import engine, Base
+from database.schema_startup import schema_creation_enabled
 from dotenv import load_dotenv
 
 # .envファイルから環境変数を読み込む
 load_dotenv()
 
-# データベーステーブルを作成
-Base.metadata.create_all(bind=engine)
+# ローカルSQLiteだけは従来どおり自動作成する。本番PostgreSQLのDDLは
+# IAP限定のDatabase Schema Migration workflowから明示的に実行する。
+if schema_creation_enabled(
+    dialect_name=engine.dialect.name,
+    configured_value=os.getenv("ALLOW_SCHEMA_CREATE"),
+):
+    Base.metadata.create_all(bind=engine)
+    print(f"[DB] Schema auto-create enabled for {engine.dialect.name}")
+else:
+    print(f"[DB] Schema auto-create skipped for {engine.dialect.name}")
 
 app = FastAPI(
     title="Keiba AI API",

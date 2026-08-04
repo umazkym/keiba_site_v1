@@ -31,12 +31,14 @@ VercelのUsage、主要ルート、ISR、Edge Requests、検索ページ数を�
 
 ### 2. Prepare a reproducible Cloud Run origin
 
-`frontend/Dockerfile`、standalone build、`/api/health`、手動デプロイworkflowを確認します。環境値はGitHub Variablesへ移し、秘密値をDockerイメージやリポジトリへ含めません。
+`frontend/Dockerfile`、standalone build、`/api/health`、再利用可能なデプロイworkflowを確認します。環境値はGitHub Variablesへ移し、秘密値をDockerイメージやリポジトリへ含めません。記事・GSC補修からは公開後の不変commit SHAを渡し、記事更新がない実行ではデプロイしません。
 
 **Constraints:**
 
 - You MUST keep `min=0`、request-based billing、CPU throttling、bounded max instances.
+- You MUST keep startup CPU boost disabled unless measured cold-start latency requires an explicit review.
 - You MUST verify the health response contains the deployed release SHA.
+- You MUST keep `CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED=false` until custom-domain cutover and origin hardening are complete.
 - You MUST NOT attach the frontend service to the production database or restore a public DB IP because the frontend uses the public backend API and the DB remains on the existing internal/IAP path.
 - You MUST NOT commit、push、or trigger production deployment from the agent because repository policy assigns those actions to the user.
 
@@ -64,21 +66,23 @@ Cloud Runのdomain mappingを作成し、Cloudflareでは最初にDNS-onlyでGoo
 
 ### 5. Harden the origin after successful proxy verification
 
-Cloudflare経由でhealth、主要HTML、資産、広告・計測、サイトマップを確認した後、再デプロイ時に`disable_default_url=true`を選び、`run.app`の迂回経路を閉じます。
+Cloudflare経由でhealth、主要HTML、資産、広告・計測、サイトマップを確認した後、再デプロイ時に`disable_default_url=true`を選び、`run.app`の迂回経路を閉じます。workflowは一度`run.app`を復旧経路として有効化して新revisionを検証し、独自ドメインの同一SHAを確認してから閉じます。
 
 **Constraints:**
 
 - You MUST verify the custom domain health response reports the expected release before disabling the default URL.
+- You MUST restore `--default-url` automatically if the post-hardening custom-domain check fails.
 - You MUST keep a documented `--default-url` recovery command because disabled default URLs also disable several Google service invocation paths.
 - You MUST NOT disable the default URL before the domain mapping exists because Cloud Run cannot create the mapping in that state.
 
 ### 6. Gate search publication against capacity
 
-品質基準を満たす詳細ページを候補化し、Cloud RunとCloudflareの直近7日指標から1日あたりの新規公開数を決定します。
+品質基準を満たす詳細ページを候補化し、フロント・API双方のCloud RunとCloudflareの直近7日指標から1日あたりの新規公開数を決定します。CPU、割当メモリ、リクエスト、internet egress、5xx、p95、最大インスタンスを無料枠共有単位で合算します。
 
 **Constraints:**
 
 - You MUST fail closed when Cloud Run metrics are unavailable.
+- You MUST require metrics from every configured Cloud Run service; partial success must remain red.
 - You MUST keep未公開候補を`noindex, nofollow`かつサイトマップ外にする。
 - You MUST shard sitemap output deterministically and avoid a fixed 5,000 URL ceiling.
 - You MUST NOT publish new pages in red mode because search expansion must never outrun available origin capacity.
@@ -138,3 +142,7 @@ Cloud Runの証明書がActiveか、DNSが正しいmappingへ到達している�
 ### 次回デプロイ後にhealth確認が失敗する
 
 default URLを無効にした状態ではworkflowは`https://uma-free.com/api/health`を検証します。Cloudflare、domain mapping、証明書のいずれかが不調なら、まず既定URLを再有効化して診断します。
+
+### 自動記事はcommitされたがCloud Runへ反映されない
+
+`CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED`が`true`か、記事workflowの`published_sha`が空でないかを確認します。`GITHUB_TOKEN`によるpushは通常のpush workflowを再発火しないため、記事workflow内の再利用workflow呼び出しを削除しません。

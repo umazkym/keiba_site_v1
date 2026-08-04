@@ -116,6 +116,8 @@
 * **2026-08-04**:
   * **Vercel停止からCloud Run + Cloudflareへ移行する再発防止基盤を実装**:
     Vercel Hobbyのrolling 30 daysでFluid Active CPU約12時間7分、ISR Writes約177.6万、Edge Requests約115.6万となり、CPU 300%超過でpauseされた原因を、高カーディナリティなレースISRとデータ詳細ページの大量露出・cache missの連鎖と特定した。プランは変更せず、Next.js standalone Docker、非root Cloud Run、手動OIDC deploy、release SHA付きhealth、min 0・max 2・concurrency 40、Cloudflare前提のroute別cacheを追加。domain mapping後だけ`run.app`既定URLを閉じられる二段階workflowとした。データ詳細は`data_page_publications`でcandidate/published/held/retiredを管理し、未登録を安全側noindex/no-follow、GSC需要・標本数・鮮度・完全性とCloud Run/Cloudflare直近7日指標で初回最大500、通常100/25/0件を段階公開する。指標不能・高負荷時は初回も0件とし、サイトマップは固定5,000件上限を廃止して1,000 URL単位の安定shardへ変更。過去レース内部リンクのnofollow、404 negative cache、CORS環境化、IAP限定migration workflow、Cloudflare DNS/TLS/cache/WAF/rollback SOPと移行手順を追加した。本番deploy、DNS、Cloudflare外部設定はリポジトリ規約に従い未実施。
+  * **Cloud Run移行の自動運用・資格情報・合算費用ゲートを補完**:
+    フロントデプロイを手動・対象main push・記事/GSC公開後SHAから呼べる再利用workflowへ変更し、記事commitがない時はデプロイせず、独自ドメインの同一release確認前に`run.app`を閉じない自動復旧付きhardeningへ強化した。フロントとAPIのCloud Run指標を`cloud-run-capacity.v2`へ合算し、CPU、割当メモリ、request、internet egress、5xx、p95、max instance、Cloudflare hit率で新規検索公開だけを100/25/0件へ縮退させる。API起動時DDLは未設定SQLiteだけに限定し、Cloud Run runtime DBロールとSecret Managerへの無停止切替手順を追加。Gemini専用制限キーをDB・記事変更なしで確認する読み取り専用workflow、月300円の通知専用予算、証明書・DNS・rollback手順も文書化した。Python 234テスト、Python構文、Workflow YAML、`npx tsc --noEmit`、デザイン監査、SOP 11件、399ページの本番ビルドが成功した。Docker CLIがないためローカルimage buildは未実施。本番deploy、DNS、秘密情報、Git操作は未実施。
 
 * **2026-08-03**:
   * **重賞記事・YouTube自動運用の恒久安定化**:

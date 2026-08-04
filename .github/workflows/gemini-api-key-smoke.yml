@@ -1,0 +1,37 @@
+name: Gemini API Key Read-only Smoke Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gemini-api-key-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install read-only smoke dependencies
+        run: pip install google-genai python-dotenv
+
+      - name: Verify restricted Gemini API key
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python backend/scripts/check_models.py
+
+      - name: Add smoke-test summary
+        if: success()
+        run: echo "Gemini APIキーはモデル一覧の読み取りに成功しました。記事公開・DB更新は行っていません。" >> "$GITHUB_STEP_SUMMARY"

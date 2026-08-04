@@ -83,6 +83,7 @@ Cloudflare経由でhealth、主要HTML、資産、広告・計測、サイトマ
 
 - You MUST fail closed when Cloud Run metrics are unavailable.
 - You MUST require metrics from every configured Cloud Run service; partial success must remain red.
+- You MUST issue the Cloudflare GraphQL token with Account Analytics read-only access, store it only as GitHub Secret `CLOUDFLARE_ANALYTICS_API_TOKEN`, and rotate it immediately if its value is displayed or logged.
 - You MUST keep未公開候補を`noindex, nofollow`かつサイトマップ外にする。
 - You MUST shard sitemap output deterministically and avoid a fixed 5,000 URL ceiling.
 - You MUST NOT publish new pages in red mode because search expansion must never outrun available origin capacity.
@@ -94,6 +95,7 @@ Cloudflare経由でhealth、主要HTML、資産、広告・計測、サイトマ
 **Constraints:**
 
 - You MUST retain the previous Cloud Run revision and DNS snapshot during the observation period.
+- You MUST keep the old Vercel CORS origin for the first 7 days, then remove it only after access logs show no required traffic and production health is normal.
 - You MUST verify both proxied and DNS-only recovery paths before declaring migration complete.
 - You MUST NOT claim zero cost solely from configuration because egress、Artifact Registry、Cloud Run超過は実測が必要。
 
@@ -146,3 +148,7 @@ default URLを無効にした状態ではworkflowは`https://uma-free.com/api/he
 ### 自動記事はcommitされたがCloud Runへ反映されない
 
 `CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED`が`true`か、記事workflowの`published_sha`が空でないかを確認します。`GITHUB_TOKEN`によるpushは通常のpush workflowを再発火しないため、記事workflow内の再利用workflow呼び出しを削除しません。
+
+### 平文環境変数から同名Secretへの変更が型競合で失敗する
+
+`Cannot update environment variable ... because it has already been set with a different type`が出た場合は、平文環境変数の削除とSecret参照の追加を同一の`gcloud run services update`で行います。`--remove-env-vars=DATABASE_URL`、`--update-secrets=DATABASE_URL=<SECRET>:<VERSION>`、`--update-env-vars=ALLOW_SCHEMA_CREATE=false`を同時指定し、削除だけのrevisionを作りません。反映後は設定値そのものを表示せず、Secret参照あり、平文値なし、`ALLOW_SCHEMA_CREATE=false`の3点を確認します。

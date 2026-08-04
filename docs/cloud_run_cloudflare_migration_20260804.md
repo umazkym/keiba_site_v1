@@ -144,7 +144,7 @@ Repository Variables:
 Repository Secrets:
 
 - `DATABASE_URL`（既存。IAP actionが実行時だけlocalhostへ変換）
-- `CLOUDFLARE_ANALYTICS_API_TOKEN`（Zone Analytics readだけ）
+- `CLOUDFLARE_ANALYTICS_API_TOKEN`（Cloudflare GraphQL用のAccount Analytics readだけ。値が表示・記録された場合は即時失効し、再発行する）
 - `GEMINI_API_KEY`（GitHub自動処理専用、Generative Language APIだけを許可）
 
 Vercelから値を移す際は画面上で一件ずつ照合し、文書やActionsログへ値そのものを出力しない。
@@ -205,9 +205,20 @@ API起動時の`Base.metadata.create_all()`は、未設定のSQLiteだけで動�
 5. Secret Managerで`keiba-backend-database-url`を作り、runtimeロールの内部IP接続URLを新しいversionとして画面から登録する。値をCloud Shell履歴、Issue、Actionsログへ貼らない。
 6. backendのruntime service accountへ、このSecretだけの`Secret Manager Secret Accessor`を付与する。
 7. Cloud Runの`keiba-site-v1`を編集し、同一revision内で次を変更する。
-   - 平文`DATABASE_URL`を削除し、`keiba-backend-database-url:latest`を参照するSecret環境変数`DATABASE_URL`へ置換。
+   - 平文`DATABASE_URL`を削除し、確認済みの固定version（初回は`keiba-backend-database-url:1`）を参照するSecret環境変数`DATABASE_URL`へ置換。
    - `ALLOW_SCHEMA_CREATE=false`を追加。
    - CPU、メモリ、concurrency 80、min 0、max 3、VPC設定は変更しない。
+   - `gcloud run services update`で平文環境変数から同名Secretへ変更する場合は、型競合を避けるため、削除とSecret追加を必ず同一更新で実行する。`--remove-env-vars=DATABASE_URL`だけを単独実行しない。
+
+   ```bash
+   gcloud run services update keiba-site-v1 \
+     --project=keiba-api-project \
+     --region=us-west1 \
+     --remove-env-vars=DATABASE_URL \
+     --update-secrets=DATABASE_URL=keiba-backend-database-url:1 \
+     --update-env-vars=ALLOW_SCHEMA_CREATE=false \
+     --quiet
+   ```
 8. 新revisionへ100%を流し、レース一覧、予測、データ検索、楽天URL解決、ログのDB権限エラーがないことを確認する。
 9. `Database Schema Migration`を`dry_run=true`で実行する。成功後、DB所有者のパスワードをpsqlの`\password <OWNER_ROLE>`で変更し、GitHub Secret `DATABASE_URL`を更新する。
 10. 以後はSecret参照済みrevisionより前へロールバックしない。旧revisionは所有者パスワード変更後にDB接続できないため、ロールバック先のrevision名を記録する。
@@ -361,6 +372,8 @@ workflowは`https://uma-free.com/api/health`のrelease SHA一致を検証する�
 | 100% | Actual | 300円 |
 
 Billing管理者と運用者本人へのメール通知を有効にする。Cloud Run Spend Capや予算連動のサービス停止は設定しない。異常増加時もサイトを止めず、段階公開をyellow/redへ縮退させる。
+
+2026-08-05に`UMA-FREE Cloud Run 300 JPY`として作成済み。対象は`keiba-api-project`のCloud Runだけ、credits/discountsは未選択、通知は実額30%・予測60%・実額100%で、課金管理者とユーザーへのメール通知を有効化した。
 
 ### 7.2 Gemini APIキーの交換
 

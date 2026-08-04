@@ -113,6 +113,10 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-08-05**:
+  * **Cloud Run + Cloudflare本番移行とDB資格情報分離を完了**:
+    フロントはcommit `4697027065a0a4b9375431c3e9efcae148ffb781`をCloud Runへ反映し、`uma-free.com/api/health`のrelease一致後に`run.app`既定URLを無効化して404を確認した。バックエンドはDDL権限を持たない`keiba_app_runtime`、Secret Manager固定version、`ALLOW_SCHEMA_CREATE=false`へ切り替え、revision `keiba-site-v1-00355-wc6`へ100%配信した。平文`DATABASE_URL`が残っていないこと、DB依存APIがレース105,305件・最終日2026-08-05を返すことを確認。DB所有者パスワードとGitHub Secret `DATABASE_URL`を秘密値非表示で更新し、更新前後のIAP限定`Database Schema Migration` dry-runはいずれも成功した。平文環境変数から同名Secretへの変更では`--remove-env-vars`と`--update-secrets`を同一更新に含める再発防止手順をSOPへ追記した。GitHub専用GeminiキーはGenerative Language API限定へ交換し、読み取りスモーク成功後に旧無制限キーを削除。容量ゲートは直近指標をRed判定し、既存サイト・APIを維持したまま新規データページ公開だけを0件へ縮退している。CloudflareはAccount Analytics読み取り専用トークンを新規発行し、GitHub Secret `CLOUDFLARE_ANALYTICS_API_TOKEN`へ登録した。作成途中で表示された初回トークンは漏えい扱いで削除し、非表示の再発行トークンだけを有効化した。Google Cloudには`keiba-api-project`のCloud Run限定、割引前月300円、実額30%・予測60%・実額100%の通知専用予算を追加した。旧Vercel CORS originは2026-08-12 09:00 JSTにアクセスログと本番healthを確認し、安全条件を満たす場合だけ削除・検証・commit・push・再デプロイする一回限りの自動実行へ登録した。
+
 * **2026-08-04**:
   * **Vercel停止からCloud Run + Cloudflareへ移行する再発防止基盤を実装**:
     Vercel Hobbyのrolling 30 daysでFluid Active CPU約12時間7分、ISR Writes約177.6万、Edge Requests約115.6万となり、CPU 300%超過でpauseされた原因を、高カーディナリティなレースISRとデータ詳細ページの大量露出・cache missの連鎖と特定した。プランは変更せず、Next.js standalone Docker、非root Cloud Run、手動OIDC deploy、release SHA付きhealth、min 0・max 2・concurrency 40、Cloudflare前提のroute別cacheを追加。domain mapping後だけ`run.app`既定URLを閉じられる二段階workflowとした。データ詳細は`data_page_publications`でcandidate/published/held/retiredを管理し、未登録を安全側noindex/no-follow、GSC需要・標本数・鮮度・完全性とCloud Run/Cloudflare直近7日指標で初回最大500、通常100/25/0件を段階公開する。指標不能・高負荷時は初回も0件とし、サイトマップは固定5,000件上限を廃止して1,000 URL単位の安定shardへ変更。過去レース内部リンクのnofollow、404 negative cache、CORS環境化、IAP限定migration workflow、Cloudflare DNS/TLS/cache/WAF/rollback SOPと移行手順を追加した。本番deploy、DNS、Cloudflare外部設定はリポジトリ規約に従い未実施。

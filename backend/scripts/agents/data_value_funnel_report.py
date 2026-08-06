@@ -53,6 +53,7 @@ DATA_PATH_PREFIXES = (
     "/courses",
 )
 DEFAULT_MEASUREMENT_RELEASE_ID = "2026-08-01-ga-route-v2"
+GA4_AD_REVENUE_METRIC = "totalAdRevenue"
 NOT_SET_VALUES = {"", "(not set)", "not set", "unknown"}
 
 
@@ -208,7 +209,7 @@ def _safe_breakdown(
             property_id,
             start_date=start_date,
             end_date=end_date,
-            metrics=["sessions", "screenPageViews", "publisherAdRevenue", "activeUsers"],
+            metrics=["sessions", "screenPageViews", GA4_AD_REVENUE_METRIC, "activeUsers"],
             dimensions=[dimension],
         )
         rows = []
@@ -614,7 +615,7 @@ def collect_report(
             property_id,
             start_date=start_date,
             end_date=end_date,
-            metrics=["publisherAdRevenue", "sessions"],
+            metrics=[GA4_AD_REVENUE_METRIC, "sessions"],
             dimension_filter=path_filter,
         )
         publisher_revenue = _metric_value(revenue_response, 0)

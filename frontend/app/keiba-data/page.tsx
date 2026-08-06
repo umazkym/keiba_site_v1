@@ -5,6 +5,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { DataHubActionLink } from '@/components/DataHubActionLink';
 import { DataHubNav } from '@/components/DataHubNav';
 import { DataSearchPanel } from '@/components/DataSearchPanel';
+import { SectionHeader } from '@/components/SectionHeader';
 import { BreadcrumbSchema } from '@/components/StructuredData';
 import { buildDatasetSchema } from '@/lib/dataset-schema';
 import {
@@ -88,7 +89,7 @@ export default function KeibaDataPage() {
                 ]}
             />
             <Breadcrumb />
-            <main id="top" className="mx-auto max-w-6xl px-3 pb-14 pt-3 sm:px-4">
+            <main id="top" className="site-shell-data px-3 pb-14 pt-3 sm:px-4">
                 <DataHubNav currentPath="/keiba-data" />
 
                 <header className="mt-4 min-h-[136px] rounded-xl border border-slate-800 bg-slate-900 p-4 text-white sm:min-h-0 sm:p-6">
@@ -121,9 +122,7 @@ export default function KeibaDataPage() {
                 </section>
 
                 <section className="mt-5" aria-labelledby="data-actions-heading">
-                    <h2 id="data-actions-heading" className="text-lg font-black text-slate-950">
-                        目的から選ぶ
-                    </h2>
+                    <SectionHeader id="data-actions-heading" title="目的から選ぶ" compact />
                     <div className="mt-2 grid gap-2 lg:grid-cols-3">
                         <DataHubActionLink
                             action="today_compare"
@@ -147,23 +146,18 @@ export default function KeibaDataPage() {
                 </section>
 
                 <section id="course-search" className="mt-7 scroll-mt-24" aria-labelledby="course-search-heading">
-                    <div className="flex flex-wrap items-end justify-between gap-2 border-b border-slate-300 pb-2">
-                        <div>
-                            <h2 id="course-search-heading" className="text-xl font-black text-slate-950">
-                                競馬場からコースを探す
-                            </h2>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">
-                                競馬場を選ぶと、コースごとの距離一覧へ移動します。
-                            </p>
-                        </div>
-                        <Link
+                    <SectionHeader
+                        id="course-search-heading"
+                        title="競馬場からコースを探す"
+                        description="競馬場を選ぶと、コースごとの距離一覧へ移動します。"
+                        action={(<Link
                             href="/courses"
                             className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             コース一覧
                             <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                        </Link>
-                    </div>
+                        </Link>)}
+                    />
                     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1 sm:px-4">
                         <VenueLinks title="中央競馬" slugs={CENTRAL_VENUE_ORDER} />
                         <VenueLinks title="地方競馬" slugs={LOCAL_VENUE_ORDER} />

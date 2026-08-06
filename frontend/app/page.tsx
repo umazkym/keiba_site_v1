@@ -22,6 +22,7 @@ import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
 import { HomeStickyRaceCta } from '@/components/HomeStickyRaceCta';
 import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
+import { SectionHeader } from '@/components/SectionHeader';
 
 // ISR: データ更新は1日2〜3回（06:00, 13:30 JST）のバッチ処理のため、
 // 30分間キャッシュでも十分な鮮度を維持しつつ、Origin Transfer/CPUを大幅削減。
@@ -143,7 +144,7 @@ export default async function HomePage() {
     const gradeRaceTopHorses = buildGradeRaceTopHorseMap(predictions, weeklyGradeRaces);
 
     return (
-        <div className="home-page-scope touch-pan-y space-y-2.5 overscroll-y-auto sm:space-y-4">
+        <div className="home-page-scope site-shell-wide touch-pan-y space-y-2.5 overscroll-y-auto sm:space-y-4">
             <HomeStickyRaceCta raceDate={todayStr} raceCount={raceDaySummary.raceCount} />
             {/* ── 1. 最近確認したレース ── */}
             <RecentRaceReturn />
@@ -199,13 +200,12 @@ export default async function HomePage() {
 
             {/* ── 3. 本日の開催 ── */}
             <section className="venue-section card rounded-xl">
-                <h2 className="section-title">
-                    <span>
-                        <svg width="18" height="18" fill="none" stroke="var(--blue-color)" strokeWidth="2.5" viewBox="0 0 24 24" className="inline mr-1"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        本日の開催（{formatShortDate(todayStr)}）
-                    </span>
-                    <span className="section-note">毎日更新</span>
-                </h2>
+                <SectionHeader
+                    title={`本日の開催（${formatShortDate(todayStr)}）`}
+                    meta="毎日更新"
+                    className="mb-3"
+                    compact
+                />
 
                 <HomeTodayVenues
                     date={todayStr}
@@ -230,23 +230,23 @@ export default async function HomePage() {
 
                     {/* 本日の分析注目馬 */}
                     <section className="pick-section card rounded-xl">
-                        <h2 className="section-title">
-                            <span>本日の分析注目馬</span>
-                        </h2>
+                        <SectionHeader title="本日の分析注目馬" className="mb-3" compact />
                         <SpecialPickCard pick={specialPick} date={todayStr} precomputedPicks={homeSpecialPicks} />
                     </section>
 
                     {/* 最新の分析記事 */}
                     <section className="articles card rounded-xl">
-                        <div className="flex items-center justify-between mb-3">
-                            <h2 className="section-title !mb-0">
-                                <span>最新の分析記事</span>
-                                <span className="section-note">新着順</span>
-                            </h2>
-                            <Link prefetch={false} href="/articles" className="text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors pr-1">
-                                すべて見る →
-                            </Link>
-                        </div>
+                        <SectionHeader
+                            title="最新の分析記事"
+                            meta="新着順"
+                            action={(
+                                <Link prefetch={false} href="/articles" className="transition-colors duration-150 hover:text-blue-600">
+                                    すべて見る →
+                                </Link>
+                            )}
+                            className="mb-3"
+                            compact
+                        />
 
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
                             {latestArticles.slice(0, 3).map((article) => (
@@ -283,10 +283,7 @@ export default async function HomePage() {
 
                     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                         <div className="border-b border-slate-200 px-4 py-3">
-                            <h2 className="section-title">
-                                <span>過去データを調べる</span>
-                                <span className="section-note">馬・人・コース</span>
-                            </h2>
+                            <SectionHeader title="過去データを調べる" meta="馬・人・コース" compact />
                             <p className="mt-1 text-xs leading-6 text-slate-600">
                                 過去レースを競走馬、騎手、調教師、コースごとに再集計しています。
                             </p>

@@ -11,7 +11,7 @@ type Props = {
   selectedIndex: number;
   onSelectRace: (index: number) => void;
   raceLinks?: RaceSelectorLink[];
-  onSelectRaceLink?: (raceNumber: number) => void;
+  onSelectRaceLink?: (raceNumber: number, href: string, suppressPageView: boolean) => void;
 };
 
 export const RaceSelector = ({ races, selectedIndex, onSelectRace, raceLinks, onSelectRaceLink }: Props) => {
@@ -51,7 +51,15 @@ export const RaceSelector = ({ races, selectedIndex, onSelectRace, raceLinks, on
             key={option.key}
             href={option.href}
             prefetch={false}
-            onClick={() => onSelectRaceLink?.(option.raceNumber)}
+            onClick={(event) => onSelectRaceLink?.(
+              option.raceNumber,
+              option.href,
+              event.button === 0
+                && !event.metaKey
+                && !event.ctrlKey
+                && !event.shiftKey
+                && !event.altKey
+            )}
             className="race-tab flex items-center justify-center transition-colors duration-150"
           >
             {option.raceNumber}R

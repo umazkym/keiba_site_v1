@@ -5,6 +5,8 @@ from datetime import date, timedelta
 
 from backend.scripts.agents.data_value_funnel_report import (
     DEFAULT_MEASUREMENT_RELEASE_ID,
+    GA4_AD_REVENUE_METRIC,
+    _safe_breakdown,
     evaluate_measurement_quality_gate,
 )
 
@@ -93,6 +95,41 @@ def build_accelerated_rows(*, unassigned_sessions: int = 2, sessions_per_day: in
 
 
 class MeasurementQualityGateTest(unittest.TestCase):
+    def test_breakdown_uses_current_ga4_ad_revenue_metric(self) -> None:
+        class FakeRequest:
+            def execute(self):
+                return {"rows": []}
+
+        class FakeProperties:
+            body = None
+
+            def runReport(self, *, property, body):
+                self.body = body
+                return FakeRequest()
+
+        class FakeService:
+            def __init__(self):
+                self.reports = FakeProperties()
+
+            def properties(self):
+                return self.reports
+
+        service = FakeService()
+        result = _safe_breakdown(
+            service,
+            "461553182",
+            start_date="2026-08-04",
+            end_date="2026-08-06",
+            dimension="date",
+        )
+
+        self.assertTrue(result["available"])
+        self.assertEqual(GA4_AD_REVENUE_METRIC, "totalAdRevenue")
+        self.assertEqual(
+            [metric["name"] for metric in service.reports.body["metrics"]],
+            ["sessions", "screenPageViews", "totalAdRevenue", "activeUsers"],
+        )
+
     def test_three_complete_days_below_two_percent_and_500_sessions_pass_fast_gate(self) -> None:
         channel_rows, page_view_rows = build_accelerated_rows()
         result = evaluate_measurement_quality_gate(

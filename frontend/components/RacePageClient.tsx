@@ -314,7 +314,7 @@ export default function RacePageClient({
     return (
         <div
             id="race-page-top"
-            className="race-page-scope mx-auto max-w-6xl py-2 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-4"
+            className="race-page-scope site-shell-wide py-2 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-4"
             data-race-revenue-variant={raceRevenueExperiment.ready ? raceRevenueExperiment.variant : 'pending'}
             data-race-revenue-eligible={raceRevenueExperiment.eligible ? 'true' : 'false'}
         >

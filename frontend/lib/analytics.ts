@@ -318,11 +318,17 @@ const normalizePagePath = (pathname: string) => {
  * 同一レースページ内の選択状態だけをURLへ反映する。
  * App Router側でpathnameが更新されても、次のpage_viewを明示的に抑止する。
  */
+export const suppressNextPageViewPath = (pathname: string) => {
+    if (typeof window === 'undefined') return;
+
+    window.__umaSuppressedPageViewPath = normalizePagePath(pathname);
+};
+
 export const replaceRaceHistoryPathWithoutPageView = (pathname: string) => {
     if (typeof window === 'undefined') return;
 
     const normalizedPath = normalizePagePath(pathname);
-    window.__umaSuppressedPageViewPath = normalizedPath;
+    suppressNextPageViewPath(normalizedPath);
     window.history.replaceState(window.history.state, '', normalizedPath);
 };
 

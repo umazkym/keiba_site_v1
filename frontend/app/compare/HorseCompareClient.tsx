@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DataHubNav } from '@/components/DataHubNav';
+import { ResponsiveDataTable } from '@/components/ResponsiveDataTable';
 import {
     sendCompareConditionChangeEvent,
     sendCompareRaceClickEvent,
@@ -42,6 +43,7 @@ import type {
 
 
 type ComparisonCondition = Omit<HorseComparisonRequest, 'horse_ids'>;
+type ComparisonView = 'overall' | 'matched' | 'recent';
 
 const VENUE_OPTIONS = [...CENTRAL_VENUE_ORDER, ...LOCAL_VENUE_ORDER]
     .map((slug) => venueSlugToName(slug))
@@ -103,7 +105,10 @@ export default function HorseCompareClient() {
     const [query, setQuery] = useState('');
     const [searchResults, setSearchResults] = useState<DataSearchResponse['items']>([]);
     const [searching, setSearching] = useState(false);
+    const [searchAttempted, setSearchAttempted] = useState(false);
     const [error, setError] = useState('');
+    const [comparisonError, setComparisonError] = useState('');
+    const [comparisonView, setComparisonView] = useState<ComparisonView>('overall');
     const [draftCondition, setDraftCondition] = useState<ComparisonCondition>(DEFAULT_CONDITION);
     const [appliedCondition, setAppliedCondition] = useState<ComparisonCondition>(DEFAULT_CONDITION);
 
@@ -134,10 +139,11 @@ export default function HorseCompareClient() {
             if (saved.length < 2) {
                 setComparison(null);
                 setLoading(false);
+                setComparisonError('');
                 return;
             }
             setLoading(true);
-            setError('');
+            setComparisonError('');
             try {
                 const response = await fetch('/api/data/compare/horses', {
                     method: 'POST',
@@ -166,7 +172,7 @@ export default function HorseCompareClient() {
             } catch {
                 if (!cancelled) {
                     setComparison(null);
-                    setError('比較データを取得できませんでした。条件を確認して再度お試しください。');
+                    setComparisonError('比較データを取得できませんでした。条件を確認して再度お試しください。');
                 }
             } finally {
                 if (!cancelled) setLoading(false);
@@ -198,12 +204,14 @@ export default function HorseCompareClient() {
             const data = await response.json() as DataSearchResponse;
             const horses = data.items.filter((item) => item.entity_type === 'horse').slice(0, 8);
             setSearchResults(horses);
+            setSearchAttempted(true);
             sendDataSearchEvent({
                 query_length: normalized.length,
                 result_count: horses.length,
                 search_surface: 'compare',
             });
         } catch {
+            setSearchAttempted(false);
             setError('検索データを取得できませんでした。');
         } finally {
             setSearching(false);
@@ -239,6 +247,7 @@ export default function HorseCompareClient() {
         setError('');
         sendHorseCompareEvent({ action: 'add', horse_count: result.items.length });
         setSearchResults([]);
+        setSearchAttempted(false);
         setQuery('');
         refreshSaved();
     };
@@ -257,10 +266,10 @@ export default function HorseCompareClient() {
     const applyCondition = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!Number.isInteger(draftCondition.distance) || draftCondition.distance < 200) {
-            setError('距離は200m以上の整数で指定してください。');
+            setComparisonError('距離は200m以上の整数で指定してください。');
             return;
         }
-        setError('');
+        setComparisonError('');
         setAppliedCondition({ ...draftCondition });
         sendCompareConditionChangeEvent({
             changed_field: 'apply',
@@ -277,7 +286,7 @@ export default function HorseCompareClient() {
         : null;
 
     return (
-        <main className="mx-auto max-w-6xl px-3 pb-14 pt-3 sm:px-4">
+        <main className="site-shell-data px-3 pb-14 pt-3 sm:px-4">
             <DataHubNav currentPath="/compare" />
 
             <header className="mt-4 border-b border-slate-200 pb-4">
@@ -294,7 +303,10 @@ export default function HorseCompareClient() {
                     <input
                         id="horse-compare-search"
                         value={query}
-                        onChange={(event) => setQuery(event.target.value)}
+                        onChange={(event) => {
+                            setQuery(event.target.value);
+                            setSearchAttempted(false);
+                        }}
                         placeholder="比較する馬名を入力"
                         className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     />
@@ -328,23 +340,30 @@ export default function HorseCompareClient() {
                         ))}
                     </div>
                 )}
+                {searchAttempted && !searching && searchResults.length === 0 && (
+                    <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold text-slate-600">
+                        該当する競走馬が見つかりませんでした。馬名の一部を短くしてお試しください。
+                    </p>
+                )}
                 {error && <p className="mt-3 text-sm font-bold text-red-700">{error}</p>}
             </section>
 
-            <section className="mt-3 flex flex-wrap items-center gap-2" aria-label="比較中の競走馬">
+            {saved.length > 0 && (
+            <section className="compare-selected-summary sticky mt-3 flex flex-wrap items-center gap-1.5 border-y border-slate-200 bg-slate-50/95 py-2 md:static md:border-0 md:bg-transparent md:py-0" aria-label="比較中の競走馬">
+                <span className="mr-1 text-[11px] font-black text-slate-500 md:hidden">比較中 {saved.length}/5</span>
                 {saved.map((horse, index) => (
-                    <span key={horse.id} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white pl-2 pr-1 text-sm font-bold text-slate-800">
+                    <span key={horse.id} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white pl-1.5 pr-0.5 text-xs font-bold text-slate-800 md:min-h-10 md:gap-1.5 md:pl-2 md:pr-1 md:text-sm">
                         <span className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 font-mono text-[11px] font-black text-slate-600">
                             {index + 1}
                         </span>
-                        <Link prefetch={false} href={horse.url} className="max-w-[150px] truncate px-1 hover:text-blue-600" title={horse.name}>
+                        <Link prefetch={false} href={horse.url} className="max-w-[84px] truncate px-1 hover:text-blue-600 sm:max-w-[120px] md:max-w-[150px]" title={horse.name}>
                             {horse.name}
                         </Link>
                         <button
                             type="button"
                             onClick={() => removeHorse(horse)}
                             aria-label={`${horse.name}を比較から外す`}
-                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-slate-400 transition-colors duration-150 hover:bg-red-50 hover:text-red-600"
+                            className="flex h-8 w-7 cursor-pointer items-center justify-center rounded-md text-slate-400 transition-colors duration-150 hover:bg-red-50 hover:text-red-600 md:w-8"
                         >
                             <X className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
@@ -365,6 +384,7 @@ export default function HorseCompareClient() {
                     </button>
                 )}
             </section>
+            )}
 
             {saved.length < 2 ? (
                 <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
@@ -469,16 +489,50 @@ export default function HorseCompareClient() {
                         </p>
                     )}
 
+                    {!loading && comparisonError && (
+                        <section className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4" role="alert">
+                            <h2 className="text-sm font-black text-red-900">比較結果を表示できませんでした</h2>
+                            <p className="mt-1 text-sm leading-6 text-red-800">{comparisonError}</p>
+                        </section>
+                    )}
+
                     {comparison && (
                         <div className="mt-5 space-y-5">
-                            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white" aria-labelledby="overall-comparison-heading">
+                            <div className="comparison-view-switcher grid grid-cols-3 gap-1 rounded-lg border border-slate-200 bg-white p-1 md:hidden" role="group" aria-label="比較結果の表示切替">
+                                {([
+                                    ['overall', '通算'],
+                                    ['matched', '同条件'],
+                                    ['recent', '直近5走'],
+                                ] as const).map(([view, label]) => (
+                                    <button
+                                        key={view}
+                                        type="button"
+                                        onClick={() => setComparisonView(view)}
+                                        aria-pressed={comparisonView === view}
+                                        aria-controls={`${view}-comparison-panel`}
+                                        className={`min-h-10 rounded-md px-2 text-xs font-black transition-colors duration-150 ${
+                                            comparisonView === view
+                                                ? 'bg-slate-950 text-white'
+                                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+                                        }`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <section
+                                id="overall-comparison-panel"
+                                className={`${comparisonView === 'overall' ? 'block' : 'hidden'} overflow-hidden rounded-xl border border-slate-200 bg-white md:block`}
+                                aria-labelledby="overall-comparison-heading"
+                            >
                                 <div className="border-b border-slate-200 px-4 py-3">
                                     <h2 id="overall-comparison-heading" className="text-lg font-black text-slate-950">1. 通算成績</h2>
                                     <p className="mt-1 text-xs leading-5 text-slate-600">
                                         条件が異なるため順位付けは行いません。出走数と率を合わせて確認してください。
                                     </p>
                                 </div>
-                                <div className="overflow-x-auto">
+                                <ResponsiveDataTable label="通算成績の比較表">
                                     <table className="w-full min-w-[720px] text-sm">
                                         <thead className="bg-slate-50 text-xs text-slate-600">
                                             <tr>
@@ -528,10 +582,14 @@ export default function HorseCompareClient() {
                                             })}
                                         </tbody>
                                     </table>
-                                </div>
+                                </ResponsiveDataTable>
                             </section>
 
-                            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white" aria-labelledby="matched-comparison-heading">
+                            <section
+                                id="matched-comparison-panel"
+                                className={`${comparisonView === 'matched' ? 'block' : 'hidden'} overflow-hidden rounded-xl border border-slate-200 bg-white md:block`}
+                                aria-labelledby="matched-comparison-heading"
+                            >
                                 <div className="border-b border-slate-200 px-4 py-3">
                                     <h2 id="matched-comparison-heading" className="text-lg font-black text-slate-950">2. 同条件成績</h2>
                                     <p className="mt-1 text-sm font-bold text-blue-800">{conditionLabel(comparison.conditions)}</p>
@@ -539,7 +597,7 @@ export default function HorseCompareClient() {
                                         10走以上の馬だけを比較対象とし、3着以内率の95% Wilson下限値で比較上位を判定します。
                                     </p>
                                 </div>
-                                <div className="overflow-x-auto">
+                                <ResponsiveDataTable label="同条件成績の比較表">
                                     <table className="w-full min-w-[820px] text-sm">
                                         <thead className="bg-slate-50 text-xs text-slate-600">
                                             <tr>
@@ -586,7 +644,7 @@ export default function HorseCompareClient() {
                                             })}
                                         </tbody>
                                     </table>
-                                </div>
+                                </ResponsiveDataTable>
                                 <div className="border-t border-slate-100 px-4 py-2 text-[11px] leading-5 text-slate-500">
                                     <p>5走未満は「少数データ」で順位付けなし、5〜9走は「参考値」、10走以上を「比較対象」とします。</p>
                                     <p>
@@ -596,11 +654,15 @@ export default function HorseCompareClient() {
                                 </div>
                             </section>
 
-                            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white" aria-labelledby="recent-runs-heading">
+                            <section
+                                id="recent-comparison-panel"
+                                className={`${comparisonView === 'recent' ? 'block' : 'hidden'} overflow-hidden rounded-xl border border-slate-200 bg-white md:block`}
+                                aria-labelledby="recent-runs-heading"
+                            >
                                 <div className="border-b border-slate-200 px-4 py-3">
                                     <h2 id="recent-runs-heading" className="text-lg font-black text-slate-950">直近5走</h2>
                                 </div>
-                                <div className="overflow-x-auto">
+                                <ResponsiveDataTable label="直近5走の比較表">
                                     <table className="w-full min-w-[760px] text-sm">
                                         <thead className="bg-slate-50 text-xs text-slate-600">
                                             <tr>
@@ -654,7 +716,7 @@ export default function HorseCompareClient() {
                                             ))}
                                         </tbody>
                                     </table>
-                                </div>
+                                </ResponsiveDataTable>
                             </section>
                         </div>
                     )}

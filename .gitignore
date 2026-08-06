@@ -78,6 +78,7 @@ yarn-error.log*
 # ローカル検証・画面確認・個人分析の成果物
 /.tmp/
 /output/
+/outputs/uma-free-weekly-traffic-revenue-20260807/
 /scratch/
 /after_html.txt
 /分析レポート/

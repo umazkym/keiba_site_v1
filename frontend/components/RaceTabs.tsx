@@ -26,6 +26,7 @@ import {
     sendRaceViewEvent,
     sendRewardGateEvent,
     replaceRaceHistoryPathWithoutPageView,
+    suppressNextPageViewPath,
     type RaceNavigationMethod,
 } from '@/lib/analytics';
 import { LAST_RACE_STORAGE_KEY, StoredRaceView } from '@/lib/race-memory';
@@ -189,8 +190,11 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
         }
     }, [activeRace, activeRaceIndex, venue.races, venue.venue_name, currentDate, raceType, scrollVenueIntoView]);
 
-    const handleRaceLinkSelect = useCallback((raceNumber: number) => {
+    const handleRaceLinkSelect = useCallback((raceNumber: number, href: string, suppressPageView: boolean) => {
         if (!activeRace || raceNumber === activeRace.race_number) return;
+        if (suppressPageView) {
+            suppressNextPageViewPath(href);
+        }
         sendRaceNavigationEvent({
             race_date: currentDate,
             venue_name: venue.venue_name,
@@ -387,7 +391,8 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                 <div
                     data-race-selector-sticky
                     data-race-mobile-selector
-                    className="race-sticky-selector sticky z-30 mx-1 my-2 flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white sm:mx-0 lg:h-14 lg:flex-row"
+                    className="race-sticky-selector sticky z-30 my-1.5 flex max-h-[88px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white lg:h-14 lg:flex-row"
+                    aria-label="選択中のレースと1Rから12Rの切替"
                 >
                     <div className="flex h-8 shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-950 px-2.5 text-white lg:h-full lg:w-[210px] lg:border-b-0 lg:border-r">
                         <span className="flex h-6 min-w-9 items-center justify-center rounded-md bg-white/10 font-mono text-[11px] font-black lg:h-8">
@@ -419,13 +424,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                 >
                     <div className="grid gap-2 sm:gap-3">
                         <div id="race-prediction-section" className="race-panel mb-1 overflow-hidden sm:mb-1.5">
-                            <div className="border-b border-gray-200 bg-white px-3 py-2.5 sm:p-4">
-                                <h3 className="flex items-center text-[15px] font-bold text-gray-800 sm:text-lg">
-                                    <span className="bg-primary text-white rounded-md w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center mr-1.5 sm:mr-2 font-mono font-bold text-xs sm:text-base">{activeRace.race_number}R</span>
-                                    <span className="truncate">{activeRace.race_name}</span>
-                                </h3>
-                                <p className="ml-7 mt-0.5 text-[11px] font-medium leading-tight text-gray-500 sm:ml-11 sm:text-sm">{activeRace.course_type} {activeRace.distance}m</p>
-                            </div>
                             <div>
                                 <h4 id="race-prediction-heading" className="race-section-heading race-prediction-heading">
                                     AI偏差値

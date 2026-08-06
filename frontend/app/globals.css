@@ -153,6 +153,94 @@
 
 /* ---------- コンポーネントユーティリティ ---------- */
 @layer components {
+    .site-shell-wide {
+        width: 100%;
+        max-width: 1280px;
+        margin-inline: auto;
+    }
+
+    .site-shell-data {
+        width: 100%;
+        max-width: 1152px;
+        margin-inline: auto;
+    }
+
+    .site-shell-article {
+        width: 100%;
+        max-width: 1080px;
+        margin-inline: auto;
+    }
+
+    .ui-section-header {
+        @apply flex min-w-0 items-end justify-between gap-3 border-b border-slate-200 pb-2;
+    }
+
+    .ui-section-header--compact {
+        @apply items-center pb-1.5;
+    }
+
+    .ui-section-header__title {
+        @apply text-lg font-black leading-snug text-slate-950 sm:text-xl;
+    }
+
+    .ui-section-header--compact .ui-section-header__title {
+        @apply text-base sm:text-lg;
+    }
+
+    .ui-section-header__title::before {
+        display: inline-block;
+        width: 4px;
+        height: 18px;
+        margin-right: 8px;
+        border-radius: 999px;
+        background: var(--blue-color);
+        vertical-align: -3px;
+        content: "";
+    }
+
+    .ui-section-header__meta {
+        @apply text-[11px] font-bold text-slate-500 sm:text-xs;
+    }
+
+    .ui-section-header__description {
+        @apply mt-1 text-xs leading-5 text-slate-600 sm:text-sm sm:leading-6;
+    }
+
+    .ui-section-header__action {
+        @apply shrink-0 text-xs font-bold text-blue-700;
+    }
+
+    .responsive-data-table {
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-gutter: stable;
+    }
+
+    .responsive-data-table:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: -2px;
+    }
+
+    .responsive-data-table--sticky-first table :is(thead, tbody) > tr > :first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        border-right: 1px solid var(--slate-200-color);
+        background: #ffffff;
+        background-clip: padding-box;
+    }
+
+    .responsive-data-table--sticky-first table thead > tr > :first-child {
+        z-index: 2;
+        background: var(--slate-50-color);
+    }
+
+    .responsive-data-table--sticky-first table tbody > tr:nth-child(even) > :first-child {
+        background: #f8fafc;
+    }
+
     .card {
         @apply rounded-xl border bg-surface;
         border-color: var(--border);
@@ -521,6 +609,12 @@ header.glass {
     transition: top 180ms cubic-bezier(0.2, 0, 0, 1);
 }
 
+.compare-selected-summary {
+    top: calc(var(--site-header-offset) + 4px);
+    z-index: 24;
+    transition: top 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
 /* レスポンシブ改善 */
 @media (max-width: 640px) {
     body {
@@ -637,6 +731,17 @@ header.glass {
 .article-page-prose h3 {
     overflow-wrap: anywhere;
     word-break: normal;
+}
+
+@media (min-width: 640px) {
+    .article-page-prose > :is(h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote, pre) {
+        max-width: 760px;
+    }
+
+    .article-page-prose > :is(.article-table-scroll, figure, img, picture) {
+        width: 100%;
+        max-width: 1080px;
+    }
 }
 
 .breadcrumb-nav {
@@ -1753,7 +1858,7 @@ header.glass {
   gap: 16px;
   align-items: start;
   width: 100%;
-  max-width: 1180px;
+  max-width: 1280px;
   margin: 0 auto;
   padding-bottom: 16px;
 }

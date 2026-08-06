@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { FrameNumberBadge, RaceNumberBadge } from '@/components/RaceNumberBadge';
+import { ResponsiveDataTable } from '@/components/ResponsiveDataTable';
+import { SectionHeader } from '@/components/SectionHeader';
 import type {
     DataRecentRun,
     RateSummary,
@@ -100,11 +102,13 @@ export function SegmentStatsTable({
 
     return (
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="border-b border-slate-200 px-4 py-3">
-                <h2 className="text-lg font-black text-slate-950">{title}</h2>
-                {description && <p className="mt-1 text-xs leading-6 text-slate-600">{description}</p>}
-            </div>
-            <div className="overflow-x-auto">
+            <SectionHeader
+                title={title}
+                description={description}
+                className="mx-3 pt-3 sm:mx-4"
+                compact
+            />
+            <ResponsiveDataTable label={`${title}の条件別成績`}>
                 <table className="w-full min-w-[520px] text-sm">
                     <thead className="bg-slate-50 text-xs text-slate-600">
                         <tr>
@@ -152,7 +156,7 @@ export function SegmentStatsTable({
                         })}
                     </tbody>
                 </table>
-            </div>
+            </ResponsiveDataTable>
             <p className="border-t border-slate-100 px-4 py-2 text-[11px] leading-5 text-slate-500">
                 対象{minimumNotice}走以上の条件を表示。率だけでなく対象数も合わせて確認してください。
             </p>
@@ -172,10 +176,8 @@ export function RecentRunsTable({
     if (runs.length === 0) return null;
     return (
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="border-b border-slate-200 px-4 py-3">
-                <h2 className="text-lg font-black text-slate-950">{title}</h2>
-            </div>
-            <div className="overflow-x-auto">
+            <SectionHeader title={title} className="mx-3 pt-3 sm:mx-4" compact />
+            <ResponsiveDataTable label={`${title}の一覧`}>
                 <table className="w-full min-w-[740px] text-sm">
                     <thead className="bg-slate-50 text-xs text-slate-600">
                         <tr>
@@ -240,7 +242,7 @@ export function RecentRunsTable({
                         ))}
                     </tbody>
                 </table>
-            </div>
+            </ResponsiveDataTable>
         </section>
     );
 }

@@ -49,7 +49,7 @@ def build_report(
     affiliate_contract = dict((ga4 or {}).get("affiliate_measurement_contract") or {})
     quality_gate = dict((ga4 or {}).get("measurement_quality_gate") or {})
     if not revenue.get("available"):
-        warnings.append("publisherAdRevenueは未取得です。GA4–AdSenseリンク後のデータだけで評価してください。")
+        warnings.append("totalAdRevenueは未取得です。GA4–AdSenseリンク後のデータだけで評価してください。")
     if not quality_gate.get("ready_for_new_experiment", False):
         warnings.append("計測品質ゲート未達のため、新しい収益実験を開始しません。")
 

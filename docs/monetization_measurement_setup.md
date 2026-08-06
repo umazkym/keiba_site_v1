@@ -14,7 +14,7 @@
 2. UMA-FREEで利用中のAdSenseパブリッシャーを選び、対象のウェブデータストリームを指定する。
 3. AdSense側のサイトが`uma-free.com`であることを確認して送信する。
 4. 設定日時を`docs/monetization_experiments.md`へ記録する。
-5. 最大24時間待ち、GA4探索で`publisherAdRevenue`と`publisherAdImpressions`を取得できるか確認する。
+5. 最大24時間待ち、GA4探索で`totalAdRevenue`と`publisherAdImpressions`を取得できるか確認する。
 
 公式仕様: [Google AnalyticsとAdSenseをリンクする](https://support.google.com/analytics/answer/13610380?hl=ja)
 
@@ -108,7 +108,7 @@ NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=legacy
 
 - 初回表示の`page_view`は1回、通常遷移は1回、レース内切替は0回。
 - 広告の`ad_impression_custom`、`ad_viewable_custom`、実験露出が同一枠・同一セッションで重複していない。
-- `publisherAdRevenue`が取得可能で、リンク設定日より前を含めていない。
+- `totalAdRevenue`が取得可能で、リンク設定日より前を含めていない。
 
 週次workflowはGA4 Data APIを使い、完全日ごとに4つの欠損率を計算して`monetization-report.v1.json`へ保存する。高速・標準それぞれの連続日数、3日窓のセッション数、採用された`gate_mode`を保持する。日付が連続しない場合や閾値以上の場合は該当経路の連続日数をリセットする。`ready_for_new_experiment=true`になっても実験を自動開始せず、運用者がGA4探索で同じ期間を確認する。
 

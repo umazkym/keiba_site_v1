@@ -75,7 +75,7 @@ export function ArticleArchiveHero({
   children,
 }: ArticleArchiveHeroProps) {
   return (
-    <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
+    <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 sm:p-8">
       <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
@@ -102,7 +102,7 @@ export function ArticleArchiveGroupGrid({ groups }: ArticleArchiveGroupGridProps
       {groups.map((group) => (
         <article
           key={group.key}
-          className="flex h-full flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-soft"
+          className="flex h-full flex-col justify-between rounded-xl border border-slate-200 bg-white p-5"
         >
           <div>
             <div className="flex items-center justify-between gap-3">
@@ -156,7 +156,7 @@ export function ArticleArchiveArticleGrid({
 }: ArticleArchiveArticleGridProps) {
   if (articles.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-14 text-center shadow-soft">
+      <div className="rounded-xl border border-slate-200 bg-white px-4 py-14 text-center">
         <p className="text-base font-black text-slate-800">{emptyTitle}</p>
         <p className="mt-2 text-sm leading-7 text-slate-600">{emptyDescription}</p>
       </div>
@@ -171,17 +171,23 @@ export function ArticleArchiveArticleGrid({
           <Link
             key={article.slug}
             href={`/articles/${article.slug}`}
-            className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated"
+            className="group flex min-h-[360px] h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50/20"
           >
-            <div className="aspect-[16/9] overflow-hidden bg-slate-100">
-              <img
-                src={article.eyecatch}
-                alt={`${article.title} のアイキャッチ画像`}
-                loading="lazy"
-                decoding="async"
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-              />
-            </div>
+            {article.eyecatch ? (
+              <div className="aspect-[16/9] overflow-hidden bg-slate-100">
+                <img
+                  src={article.eyecatch}
+                  alt={`${article.title} のアイキャッチ画像`}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex min-h-20 items-end border-b border-slate-200 bg-slate-50 px-4 py-3">
+                <span className="text-xs font-black text-slate-600">{article.category}の記事</span>
+              </div>
+            )}
             <div className="flex flex-1 flex-col justify-between p-4">
               <div>
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-400">

@@ -42,6 +42,8 @@ const extendedTargetFiles = [
   'components/MobileArticleThemeDirectory.tsx',
   'components/EntityArticleDocument.tsx',
   'components/ArticleBody.tsx',
+  'components/ResponsiveDataTable.tsx',
+  'components/SectionHeader.tsx',
   'components/AdSensePageLevelScript.tsx',
   'lib/page-scroll-lock.ts',
 ];
@@ -156,6 +158,7 @@ const mobileArticleThemes = extendedSources.find(({ relativePath }) => relativeP
 const entityArticleDocument = extendedSources.find(({ relativePath }) => relativePath === 'components/EntityArticleDocument.tsx').content;
 const adSensePageLevel = extendedSources.find(({ relativePath }) => relativePath === 'components/AdSensePageLevelScript.tsx').content;
 const articlesPage = sources.find(({ relativePath }) => relativePath === 'app/articles/page.tsx').content;
+const articleDetailPage = sources.find(({ relativePath }) => relativePath === 'app/articles/[slug]/page.tsx').content;
 const raceJumpNav = sources.find(({ relativePath }) => relativePath === 'components/RacePageJumpNav.tsx').content;
 const raceSelector = sources.find(({ relativePath }) => relativePath === 'components/RaceSelector.tsx').content;
 const raceTabs = sources.find(({ relativePath }) => relativePath === 'components/RaceTabs.tsx').content;
@@ -164,6 +167,8 @@ const header = sources.find(({ relativePath }) => relativePath === 'components/H
 const dataHubPage = dataSources.find(({ relativePath }) => relativePath === 'app/keiba-data/page.tsx').content;
 const dataHubNav = dataSources.find(({ relativePath }) => relativePath === 'components/DataHubNav.tsx').content;
 const horseCompare = dataSources.find(({ relativePath }) => relativePath === 'app/compare/HorseCompareClient.tsx').content;
+const dataStats = dataSources.find(({ relativePath }) => relativePath === 'components/DataStats.tsx').content;
+const responsiveDataTable = extendedSources.find(({ relativePath }) => relativePath === 'components/ResponsiveDataTable.tsx').content;
 
 const checks = [
   {
@@ -229,9 +234,12 @@ const checks = [
   },
   {
     id: 'article-wide-layout',
-    description: '記事本文を1080px紙面幅で表示する',
+    description: '記事を1080px紙面、通常本文を760pxで表示する',
     passed: articleBody.includes('w-full max-w-none')
-      && entityArticleDocument.includes('max-w-[1080px]'),
+      && articleDetailPage.includes('site-shell-article')
+      && entityArticleDocument.includes('max-w-[1080px]')
+      && globals.includes('max-width: 760px;')
+      && globals.includes('max-width: 1080px;'),
   },
   {
     id: 'mobile-article-theme-collapsed',
@@ -262,6 +270,12 @@ const checks = [
       && !globals.includes('.race-selector {\n  padding: 4px;\n  display: flex'),
   },
   {
+    id: 'race-selector-height-budget',
+    description: 'レース要約と1〜12Rのsticky面が88px以内で重複要約を持たない',
+    passed: raceTabs.includes('max-h-[88px]')
+      && !raceTabs.includes('ml-7 mt-0.5 text-[11px] font-medium'),
+  },
+  {
     id: 'desktop-analysis-sidebar',
     description: 'PC右側が同日レースの重複ではなく4分析ナビになっている',
     passed: raceTabs.includes('<RacePageJumpNav />')
@@ -280,6 +294,13 @@ const checks = [
     description: '共通ヘッダーがページ最上部だけ表示される',
     passed: header.includes('nextScrollY <= 8')
       && !header.includes('accumulatedDelta'),
+  },
+  {
+    id: 'header-tablet-menu-breakpoint',
+    description: '768pxではメニュー、1024px以上では主要ナビを表示して横はみ出しを防ぐ',
+    passed: header.includes('hidden lg:flex items-center')
+      && header.includes('lg:hidden')
+      && !header.includes('hidden md:flex items-center'),
   },
   {
     id: 'article-top-switcher-removed',
@@ -326,6 +347,23 @@ const checks = [
       && horseCompare.includes('比較対象')
       && horseCompare.includes('Wilson下限')
       && !horseCompare.includes('BEST'),
+  },
+  {
+    id: 'mobile-horse-comparison-switcher',
+    description: 'モバイル比較が3区分の切替と選択馬sticky要約を持つ',
+    passed: horseCompare.includes("type ComparisonView = 'overall' | 'matched' | 'recent'")
+      && horseCompare.includes('comparison-view-switcher')
+      && horseCompare.includes('compare-selected-summary')
+      && horseCompare.includes('aria-controls={`${view}-comparison-panel`}'),
+  },
+  {
+    id: 'data-table-sticky-first-column',
+    description: '条件表と比較表がキーボード操作可能な表内スクロールと先頭列固定を使う',
+    passed: responsiveDataTable.includes('tabIndex={0}')
+      && globals.includes('.responsive-data-table--sticky-first')
+      && globals.includes('position: sticky;')
+      && dataStats.includes('<ResponsiveDataTable')
+      && horseCompare.includes('<ResponsiveDataTable'),
   },
 ];
 

@@ -166,7 +166,7 @@ function UpcomingGradeRacePickup({
   if (groups.length === 0) return null;
 
   return (
-    <section className="mb-3 overflow-hidden rounded-xl border-l-4 border-amber-400 bg-white shadow-sm ring-1 ring-slate-200" aria-label="近日の重賞記事">
+    <section className="mb-3 overflow-hidden rounded-xl border-l-4 border-amber-400 bg-white ring-1 ring-slate-200" aria-label="近日の重賞記事">
       <div className="mb-2 flex items-center justify-between gap-3">
         <h2 className="px-3 pt-3 text-sm font-black text-slate-950 sm:px-4 sm:text-base">近日の重賞</h2>
         <span className="px-3 pt-3 text-xs font-bold text-amber-700 sm:px-4">{groups.length}</span>
@@ -201,13 +201,18 @@ function CompactArticleLink({ article }: { article: ArticleLike }) {
     <Link
       prefetch={false}
       href={`/articles/${article.slug}`}
-      className="group flex min-h-[64px] flex-col justify-center border-b border-slate-100 bg-white px-3 py-2.5 transition-colors duration-150 last:border-b-0 hover:bg-slate-50 sm:rounded-xl sm:border sm:border-slate-200 sm:px-3 sm:py-2 sm:hover:border-slate-300"
+      className="group flex min-h-[112px] flex-col justify-center border-b border-slate-100 bg-white px-3 py-3 transition-colors duration-150 last:border-b-0 hover:bg-slate-50 sm:min-h-[172px] sm:justify-start sm:rounded-xl sm:border sm:border-slate-200 sm:p-4 sm:hover:border-blue-300"
     >
       <div className="min-w-0">
         <ArticleMeta article={article} />
         <h3 className="mt-1 line-clamp-2 text-sm font-black leading-snug text-slate-950 group-hover:text-primary sm:text-[15px]">
           {article.title}
         </h3>
+        {article.description && (
+          <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600 sm:text-sm sm:leading-6">
+            {article.description}
+          </p>
+        )}
       </div>
     </Link>
   );
@@ -406,7 +411,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
       />
       <Breadcrumb />
 
-      <div className="articles-page-scope mx-auto w-full max-w-[1200px] px-0 pb-10 pt-2 sm:px-4 sm:pb-16 sm:pt-4">
+      <div className="articles-page-scope site-shell-data px-0 pb-10 pt-2 sm:px-4 sm:pb-16 sm:pt-4">
         <header className="relative overflow-hidden rounded-lg border border-slate-200 bg-white p-3 sm:rounded-xl sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
           <div className="flex flex-col gap-2 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">

@@ -1,0 +1,622 @@
+- generic [active] [ref=f30e1]:
+  - link "本文へ移動" [ref=f30e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner:
+    - generic:
+      - generic:
+        - link "ウマFREE ホーム":
+          - /url: /
+          - img "UMA-FREE ロゴ"
+          - generic:
+            - generic: UMA-FREE
+            - paragraph: 完全無料のAI競馬分析
+        - navigation "主要ナビゲーション":
+          - link "ホーム":
+            - /url: /
+          - link "本日の分析":
+            - /url: /races/2026-08-07
+          - link "データベース":
+            - /url: /keiba-data
+          - link "記事":
+            - /url: /articles
+          - link "よくある質問":
+            - /url: /faq
+        - generic:
+          - link "PR 楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で。馬券の購入は20歳以上の方のみ対象です":
+            - /url: https://ad2.trafficgate.net/t/r/14/1958/318200_397641
+            - generic: PR
+            - generic: 地方競馬の投票は楽天競馬で
+            - generic: →
+          - link "サイト内検索":
+            - /url: /search
+  - main [ref=f30e26]:
+    - generic [ref=f30e27]:
+      - navigation "Breadcrumb" [ref=f30e1086]:
+        - list [ref=f30e1087]:
+          - listitem [ref=f30e1088]:
+            - link "ホーム" [ref=f30e1089] [cursor=pointer]:
+              - /url: /
+            - generic [ref=f30e1090]: /
+          - listitem [ref=f30e1091]:
+            - link "レース分析" [ref=f30e1092] [cursor=pointer]:
+              - /url: /races/today
+            - generic [ref=f30e1093]: /
+          - listitem [ref=f30e1094]:
+            - link "2026年08月07日 (金)のレース分析" [ref=f30e1095] [cursor=pointer]:
+              - /url: /races/2026-08-07
+            - generic [ref=f30e1096]: /
+          - listitem [ref=f30e1097]:
+            - generic [ref=f30e1098]: 園田2R 2歳未勝利
+      - generic [ref=f30e1099]:
+        - generic [ref=f30e1101]:
+          - generic [ref=f30e1102]:
+            - button "前日へ" [ref=f30e1103] [cursor=pointer]
+            - textbox "日付を選択" [ref=f30e1107] [cursor=pointer]: 2026-08-07
+            - button "翌日へ" [ref=f30e1108] [cursor=pointer]
+          - button "今日" [ref=f30e1111] [cursor=pointer]
+        - generic [ref=f30e1113]:
+          - generic [ref=f30e1114]:
+            - paragraph [ref=f30e1115]: 前回確認していたレース
+            - generic [ref=f30e1116]:
+              - generic [ref=f30e1117]:
+                - text: 8/7 園田 1R
+                - generic [ref=f30e1118]: C3
+              - generic [ref=f30e1119]: (ダ 820m)
+          - link "園田1Rに戻る" [ref=f30e1120] [cursor=pointer]:
+            - /url: /races/2026-08-07/sonoda/1
+          - link "今日へ" [ref=f30e1121] [cursor=pointer]:
+            - /url: /races/today
+        - generic [ref=f30e1122]:
+          - tablist [ref=f30e1123]:
+            - tab "地方競馬" [selected] [ref=f30e1124] [cursor=pointer]
+          - tabpanel "地方競馬" [ref=f30e1125]:
+            - generic [ref=f30e1127]:
+              - tablist [ref=f30e1128]:
+                - tab "園田" [selected] [ref=f30e1129] [cursor=pointer]
+              - tabpanel "園田" [ref=f30e1130]:
+                - generic [ref=f30e1131]:
+                  - generic [ref=f30e1132]:
+                    - generic [ref=f30e1133]:
+                      - generic [ref=f30e1134]: 2R
+                      - generic [ref=f30e1135]:
+                        - generic [ref=f30e1136]: 園田 2歳未勝利
+                        - generic [ref=f30e1137]: ダ 1400m
+                    - navigation "同日のレース" [ref=f30e1138]:
+                      - link "1R" [ref=f30e1139] [cursor=pointer]:
+                        - /url: /races/2026-08-07/sonoda/1
+                      - generic "2Rを表示中" [ref=f30e1140]: 2R
+                      - link "3R" [ref=f30e1141] [cursor=pointer]:
+                        - /url: /races/2026-08-07/sonoda/3
+                      - link "4R" [ref=f30e1142] [cursor=pointer]:
+                        - /url: /races/2026-08-07/sonoda/4
+                      - link "5R" [ref=f30e1143] [cursor=pointer]:
+                        - /url: /races/2026-08-07/sonoda/5
+                      - link "6R" [ref=f30e1144] [cursor=pointer]:
+                        - /url: /races/2026-08-07/sonoda/6
+                      - link "7R" [ref=f30e1145] [cursor=pointer]:
+                        - /url: /races/2026-08-07/sonoda/7
+                      - link "8R" [ref=f30e1146] [cursor=pointer]:
+                        - /url: /races/2026-08-07/sonoda/8
+                      - link "9R" [ref=f30e1147] [cursor=pointer]:
+                        - /url: /races/2026-08-07/sonoda/9
+                      - link "10R" [ref=f30e1148] [cursor=pointer]:
+                        - /url: /races/2026-08-07/sonoda/10
+                      - link "11R" [ref=f30e1149] [cursor=pointer]:
+                        - /url: /races/2026-08-07/sonoda/11
+                      - link "12R" [ref=f30e1150] [cursor=pointer]:
+                        - /url: /races/2026-08-07/sonoda/12
+                  - generic [ref=f30e1151]:
+                    - generic [ref=f30e1152]:
+                      - generic [ref=f30e1153]:
+                        - generic [ref=f30e1154]:
+                          - heading "2R 2歳未勝利" [level=3] [ref=f30e1155]:
+                            - generic [ref=f30e1156]: 2R
+                            - generic [ref=f30e1157]: 2歳未勝利
+                          - paragraph [ref=f30e1158]: ダ 1400m
+                        - generic [ref=f30e1159]:
+                          - heading "AI偏差値" [level=4] [ref=f30e1160]
+                          - generic "印の凡例" [ref=f30e1161]:
+                            - generic [ref=f30e1162]: ◎：本命
+                            - generic [ref=f30e1163]: ○：対抗
+                            - generic [ref=f30e1164]: ▲：単穴
+                            - generic [ref=f30e1165]: △：連下
+                            - generic [ref=f30e1166]: ☆：星
+                          - table [ref=f30e1168]:
+                            - rowgroup [ref=f30e1175]:
+                              - row [ref=f30e1176]:
+                                - columnheader "印" [ref=f30e1177]
+                                - columnheader "馬番" [ref=f30e1178]
+                                - columnheader "馬名" [ref=f30e1179]
+                                - columnheader "AI偏差値 AI偏差値の説明を表示" [ref=f30e1180]:
+                                  - generic [ref=f30e1181]:
+                                    - generic [ref=f30e1182]: AI偏差値
+                                    - button "AI偏差値の説明を表示" [ref=f30e1184] [cursor=pointer]:
+                                      - generic [ref=f30e1185]: "?"
+                                - columnheader "位置" [ref=f30e1186]
+                            - rowgroup [ref=f30e1187]:
+                              - row [ref=f30e1188]:
+                                - cell "◎" [ref=f30e1189]
+                                - cell "7" [ref=f30e1190]
+                                - cell [ref=f30e1192]:
+                                  - link "マイクロフォン" [ref=f30e1194] [cursor=pointer]:
+                                    - /url: /horses/2024102337
+                                - cell "63.0" [ref=f30e1195]
+                                - cell "中団" [ref=f30e1197]
+                              - row [ref=f30e1199]:
+                                - cell "○" [ref=f30e1200]
+                                - cell "3" [ref=f30e1201]
+                                - cell [ref=f30e1203]:
+                                  - link "モーモーシャイン" [ref=f30e1205] [cursor=pointer]:
+                                    - /url: /horses/2024106800
+                                - cell "59.8" [ref=f30e1206]
+                                - cell "先行" [ref=f30e1208]
+                              - row [ref=f30e1210]:
+                                - cell "▲" [ref=f30e1211]
+                                - cell "2" [ref=f30e1212]
+                                - cell [ref=f30e1214]:
+                                  - link "アンジェラスリング" [ref=f30e1216] [cursor=pointer]:
+                                    - /url: /horses/2024105074
+                                - cell "59.2" [ref=f30e1217]
+                                - cell "先行" [ref=f30e1219]
+                              - row [ref=f30e1221]:
+                                - cell "△" [ref=f30e1222]
+                                - cell "5" [ref=f30e1223]
+                                - cell [ref=f30e1225]:
+                                  - link "モンゲーホープ" [ref=f30e1227] [cursor=pointer]:
+                                    - /url: /horses/2024102737
+                                - cell "47.1" [ref=f30e1228]
+                                - cell "中団" [ref=f30e1230]
+                              - row [ref=f30e1232]:
+                                - cell "☆" [ref=f30e1233]
+                                - cell "1" [ref=f30e1234]
+                                - cell [ref=f30e1236]:
+                                  - link "カシノスピリタス" [ref=f30e1238] [cursor=pointer]:
+                                    - /url: /horses/2024103722
+                                - cell "45.6" [ref=f30e1239]
+                                - cell "中団" [ref=f30e1241]
+                              - row [ref=f30e1243]:
+                                - cell "−" [ref=f30e1244]
+                                - cell "6" [ref=f30e1245]
+                                - cell [ref=f30e1247]:
+                                  - link "クラインアベニュー" [ref=f30e1249] [cursor=pointer]:
+                                    - /url: /horses/2024104022
+                                - cell "40.7" [ref=f30e1250]
+                                - cell "後方" [ref=f30e1252]
+                              - row [ref=f30e1254]:
+                                - cell "−" [ref=f30e1255]
+                                - cell "4" [ref=f30e1256]
+                                - cell [ref=f30e1258]:
+                                  - link "プリンセスロード" [ref=f30e1260] [cursor=pointer]:
+                                    - /url: /horses/2024102073
+                                - cell "34.6" [ref=f30e1261]
+                                - cell "後方" [ref=f30e1263]
+                          - group [ref=f30e1265]:
+                            - generic "出走馬を保存・比較 最大5頭" [ref=f30e1266] [cursor=pointer]:
+                              - generic [ref=f30e1267]: 出走馬を保存・比較
+                              - generic [ref=f30e1275]: 最大5頭
+                      - region "楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で 広告リンク" [ref=f30e1276] [cursor=pointer]:
+                        - link "今すぐチェックを開く" [ref=f30e1277]:
+                          - /url: https://ad2.trafficgate.net/t/r/14/1958/318200_397641
+                        - generic [ref=f30e1282]:
+                          - generic [ref=f30e1283]: PR
+                          - heading "楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で" [level=3] [ref=f30e1285]
+                          - generic [ref=f30e1286]: 今すぐチェック
+                        - paragraph [ref=f30e1293]: ※馬券の購入は20歳以上の方のみ対象です。
+                      - group [ref=f30e1294]:
+                        - generic "このレースと同じ競馬場・コース・距離で比較 過去データ" [ref=f30e1295] [cursor=pointer]:
+                          - generic [ref=f30e1296]: このレースと同じ競馬場・コース・距離で比較
+                          - generic [ref=f30e1297]: 過去データ
+                      - generic [ref=f30e1298]:
+                        - generic [ref=f30e1301]:
+                          - generic [ref=f30e1302]:
+                            - generic [ref=f30e1303]:
+                              - heading "過去対決成績" [level=3] [ref=f30e1304]
+                              - button "過去対決成績の説明を表示" [ref=f30e1306] [cursor=pointer]:
+                                - generic [ref=f30e1307]: "?"
+                            - generic [ref=f30e1308]:
+                              - generic [ref=f30e1309]: 期間
+                              - generic [ref=f30e1310]:
+                                - textbox "期間" [ref=f30e1311]: 2026-01-01
+                                - generic [ref=f30e1312]: "-"
+                                - textbox "集計終了日" [ref=f30e1313]: 2026-08-06
+                          - table [ref=f30e1317]:
+                            - rowgroup [ref=f30e1327]:
+                              - row [ref=f30e1328]:
+                                - columnheader "馬名" [ref=f30e1329]
+                                - columnheader "1" [ref=f30e1330]
+                                - columnheader "2" [ref=f30e1333]
+                                - columnheader "3" [ref=f30e1336]
+                                - columnheader "4" [ref=f30e1339]
+                                - columnheader "5" [ref=f30e1342]
+                                - columnheader "6" [ref=f30e1345]
+                                - columnheader "7" [ref=f30e1348]
+                            - rowgroup [ref=f30e1351]:
+                              - row [ref=f30e1352]:
+                                - columnheader "1 カシノスピリタス" [ref=f30e1353]:
+                                  - generic [ref=f30e1354]:
+                                    - generic [ref=f30e1355]: "1"
+                                    - generic "カシノスピリタス" [ref=f30e1356]
+                                - cell [ref=f30e1357]
+                                - cell "-" [ref=f30e1358]
+                                - cell "-" [ref=f30e1361]
+                                - cell "-" [ref=f30e1364]
+                                - cell [ref=f30e1367]:
+                                  - button "カシノスピリタスから見たモンゲーホープとの対戦詳細を表示" [ref=f30e1368] [cursor=pointer]:
+                                    - generic [ref=f30e1369]:
+                                      - generic [ref=f30e1370]: "+1"
+                                      - generic [ref=f30e1371]: 1-0-0
+                                - cell "-" [ref=f30e1372]
+                                - cell "-" [ref=f30e1375]
+                              - row [ref=f30e1378]:
+                                - rowheader "2 アンジェラスリング" [ref=f30e1379]:
+                                  - generic [ref=f30e1380]:
+                                    - generic [ref=f30e1381]: "2"
+                                    - generic "アンジェラスリング" [ref=f30e1382]
+                                - cell "-" [ref=f30e1383]
+                                - cell [ref=f30e1386]
+                                - cell [ref=f30e1387]:
+                                  - button "アンジェラスリングから見たモーモーシャインとの対戦詳細を表示" [ref=f30e1388] [cursor=pointer]:
+                                    - generic [ref=f30e1389]:
+                                      - generic [ref=f30e1390]: "-1"
+                                      - generic [ref=f30e1391]: 0-1-0
+                                - cell "-" [ref=f30e1392]
+                                - cell "-" [ref=f30e1395]
+                                - cell "-" [ref=f30e1398]
+                                - cell "-" [ref=f30e1401]
+                              - row [ref=f30e1404]:
+                                - rowheader "3 モーモーシャイン" [ref=f30e1405]:
+                                  - generic [ref=f30e1406]:
+                                    - generic [ref=f30e1407]: "3"
+                                    - generic "モーモーシャイン" [ref=f30e1408]
+                                - cell "-" [ref=f30e1409]
+                                - cell [ref=f30e1412]:
+                                  - button "モーモーシャインから見たアンジェラスリングとの対戦詳細を表示" [ref=f30e1413] [cursor=pointer]:
+                                    - generic [ref=f30e1414]:
+                                      - generic [ref=f30e1415]: "+1"
+                                      - generic [ref=f30e1416]: 1-0-0
+                                - cell [ref=f30e1417]
+                                - cell "-" [ref=f30e1418]
+                                - cell "-" [ref=f30e1421]
+                                - cell "-" [ref=f30e1424]
+                                - cell "-" [ref=f30e1427]
+                              - row [ref=f30e1430]:
+                                - rowheader "4 プリンセスロード" [ref=f30e1431]:
+                                  - generic [ref=f30e1432]:
+                                    - generic [ref=f30e1433]: "4"
+                                    - generic "プリンセスロード" [ref=f30e1434]
+                                - cell "-" [ref=f30e1435]
+                                - cell "-" [ref=f30e1438]
+                                - cell "-" [ref=f30e1441]
+                                - cell [ref=f30e1444]
+                                - cell "-" [ref=f30e1445]
+                                - cell "-" [ref=f30e1448]
+                                - cell [ref=f30e1451]:
+                                  - button "プリンセスロードから見たマイクロフォンとの対戦詳細を表示" [ref=f30e1452] [cursor=pointer]:
+                                    - generic [ref=f30e1453]:
+                                      - generic [ref=f30e1454]: "-1"
+                                      - generic [ref=f30e1455]: 0-1-0
+                              - row [ref=f30e1456]:
+                                - rowheader "5 モンゲーホープ" [ref=f30e1457]:
+                                  - generic [ref=f30e1458]:
+                                    - generic [ref=f30e1459]: "5"
+                                    - generic "モンゲーホープ" [ref=f30e1460]
+                                - cell [ref=f30e1461]:
+                                  - button "モンゲーホープから見たカシノスピリタスとの対戦詳細を表示" [ref=f30e1462] [cursor=pointer]:
+                                    - generic [ref=f30e1463]:
+                                      - generic [ref=f30e1464]: "-1"
+                                      - generic [ref=f30e1465]: 0-1-0
+                                - cell "-" [ref=f30e1466]
+                                - cell "-" [ref=f30e1469]
+                                - cell "-" [ref=f30e1472]
+                                - cell [ref=f30e1475]
+                                - cell "-" [ref=f30e1476]
+                                - cell "-" [ref=f30e1479]
+                              - row [ref=f30e1482]:
+                                - rowheader "6 クラインアベニュー" [ref=f30e1483]:
+                                  - generic [ref=f30e1484]:
+                                    - generic [ref=f30e1485]: "6"
+                                    - generic "クラインアベニュー" [ref=f30e1486]
+                                - cell "-" [ref=f30e1487]
+                                - cell "-" [ref=f30e1490]
+                                - cell "-" [ref=f30e1493]
+                                - cell "-" [ref=f30e1496]
+                                - cell "-" [ref=f30e1499]
+                                - cell [ref=f30e1502]
+                                - cell "-" [ref=f30e1503]
+                              - row [ref=f30e1506]:
+                                - rowheader "7 マイクロフォン" [ref=f30e1507]:
+                                  - generic [ref=f30e1508]:
+                                    - generic [ref=f30e1509]: "7"
+                                    - generic "マイクロフォン" [ref=f30e1510]
+                                - cell "-" [ref=f30e1511]
+                                - cell "-" [ref=f30e1514]
+                                - cell "-" [ref=f30e1517]
+                                - cell [ref=f30e1520]:
+                                  - button "マイクロフォンから見たプリンセスロードとの対戦詳細を表示" [ref=f30e1521] [cursor=pointer]:
+                                    - generic [ref=f30e1522]:
+                                      - generic [ref=f30e1523]: "+1"
+                                      - generic [ref=f30e1524]: 1-0-0
+                                - cell "-" [ref=f30e1525]
+                                - cell "-" [ref=f30e1528]
+                                - cell [ref=f30e1531]
+                        - generic [ref=f30e1532]:
+                          - generic [ref=f30e1533]:
+                            - generic [ref=f30e1534]: 展開/脚質予測
+                            - generic [ref=f30e1539]:
+                              - generic [ref=f30e1540]:
+                                - generic "1番 カシノスピリタス、位置取りスコア49.0" [ref=f30e1544]:
+                                  - generic [ref=f30e1545]: "1"
+                                  - generic [ref=f30e1546]: カシノ
+                                - generic "2番 アンジェラスリング、位置取りスコア100.0" [ref=f30e1547]:
+                                  - generic [ref=f30e1548]: "2"
+                                  - generic [ref=f30e1549]: アンジ
+                                - generic "3番 モーモーシャイン、位置取りスコア66.0" [ref=f30e1550]:
+                                  - generic [ref=f30e1551]: "3"
+                                  - generic [ref=f30e1552]: モーモ
+                                - generic "4番 プリンセスロード、位置取りスコア1.0" [ref=f30e1553]:
+                                  - generic [ref=f30e1554]: "4"
+                                  - generic [ref=f30e1555]: プリン
+                                - generic "5番 モンゲーホープ、位置取りスコア37.0" [ref=f30e1556]:
+                                  - generic [ref=f30e1557]: "5"
+                                  - generic [ref=f30e1558]: モンゲ
+                                - generic "6番 クラインアベニュー、位置取りスコア19.2" [ref=f30e1559]:
+                                  - generic [ref=f30e1560]: "6"
+                                  - generic [ref=f30e1561]: クライ
+                                - generic "7番 マイクロフォン、位置取りスコア49.0" [ref=f30e1562]:
+                                  - generic [ref=f30e1563]: "7"
+                                  - generic [ref=f30e1564]: マイク
+                              - generic [ref=f30e1565]:
+                                - generic [ref=f30e1566]: 後方・差し
+                                - generic [ref=f30e1567]: 中団
+                                - generic [ref=f30e1568]: 先行・逃げ
+                          - generic [ref=f30e1569]:
+                            - generic [ref=f30e1570]: このコースの枠順傾向
+                            - generic "このコースの枠順傾向 ダ1400m" [ref=f30e1573]:
+                              - img "このコースの枠順傾向 ダ1400m" [ref=f30e1574]:
+                                - generic [ref=f30e1579]:
+                                  - generic "1番、スコア-0.035、平均的" [ref=f30e1580]: "-0.04"
+                                  - generic "2番、スコア-0.036、平均的" [ref=f30e1583]: "-0.04"
+                                  - generic "3番、スコア-0.019、平均的" [ref=f30e1586]
+                                  - generic "4番、スコア-0.021、平均的" [ref=f30e1588]
+                                  - generic "5番、スコア-0.020、平均的" [ref=f30e1590]
+                                  - generic "6番、スコア-0.030、平均的" [ref=f30e1592]: "-0.03"
+                                  - generic "7番、スコア-0.050、平均的" [ref=f30e1595]: "-0.05"
+                                  - generic "8番、スコア-0.003、平均的" [ref=f30e1598]
+                                  - generic "9番、スコア0.028、平均的" [ref=f30e1600]
+                                  - generic "10番、スコア0.090、有利寄り" [ref=f30e1602]: "0.09"
+                                  - generic "11番、スコア0.003、平均的" [ref=f30e1605]
+                                  - generic "12番、スコア0.092、有利寄り" [ref=f30e1607]: "0.09"
+                                - generic [ref=f30e1610]:
+                                  - generic [ref=f30e1611]: "1"
+                                  - generic [ref=f30e1612]: "2"
+                                  - generic [ref=f30e1613]: "3"
+                                  - generic [ref=f30e1614]: "4"
+                                  - generic [ref=f30e1615]: "5"
+                                  - generic [ref=f30e1616]: "6"
+                                  - generic [ref=f30e1617]: "7"
+                                  - generic [ref=f30e1618]: "8"
+                                  - generic [ref=f30e1619]: "9"
+                                  - generic [ref=f30e1620]: "10"
+                                  - generic [ref=f30e1621]: "11"
+                                  - generic [ref=f30e1622]: "12"
+                                - list [ref=f30e1623]:
+                                  - listitem [ref=f30e1624]: 1番、スコア-0.035、平均的
+                                  - listitem [ref=f30e1625]: 2番、スコア-0.036、平均的
+                                  - listitem [ref=f30e1626]: 3番、スコア-0.019、平均的
+                                  - listitem [ref=f30e1627]: 4番、スコア-0.021、平均的
+                                  - listitem [ref=f30e1628]: 5番、スコア-0.020、平均的
+                                  - listitem [ref=f30e1629]: 6番、スコア-0.030、平均的
+                                  - listitem [ref=f30e1630]: 7番、スコア-0.050、平均的
+                                  - listitem [ref=f30e1631]: 8番、スコア-0.003、平均的
+                                  - listitem [ref=f30e1632]: 9番、スコア0.028、平均的
+                                  - listitem [ref=f30e1633]: 10番、スコア0.090、有利寄り
+                                  - listitem [ref=f30e1634]: 11番、スコア0.003、平均的
+                                  - listitem [ref=f30e1635]: 12番、スコア0.092、有利寄り
+                              - generic [ref=f30e1636]:
+                                - generic [ref=f30e1637]: 有利
+                                - generic [ref=f30e1640]: 不利
+                        - group [ref=f30e1644]:
+                          - generic "AIレース展望 展望を開く" [ref=f30e1645] [cursor=pointer]:
+                            - heading "AIレース展望" [level=2] [ref=f30e1646]
+                            - generic [ref=f30e1647]: 展望を開く
+                      - button "AI偏差値・枠順傾向の見方 詳細を見る" [ref=f30e1650] [cursor=pointer]:
+                        - heading "AI偏差値・枠順傾向の見方" [level=4] [ref=f30e1652]
+                        - generic [ref=f30e1653]: 詳細を見る
+                      - generic [ref=f30e1654]:
+                        - heading "他の日付の分析もチェック" [level=3] [ref=f30e1655]
+                        - generic [ref=f30e1656]:
+                          - link "8/5（水）" [ref=f30e1657] [cursor=pointer]:
+                            - /url: /races/2026-08-05
+                          - link "8/6（木）" [ref=f30e1659] [cursor=pointer]:
+                            - /url: /races/2026-08-06
+                          - link "8/8（土）" [ref=f30e1661] [cursor=pointer]:
+                            - /url: /races/2026-08-08
+                      - generic [ref=f30e1664]:
+                        - heading "関連する分析記事" [level=3] [ref=f30e1665]
+                        - generic [ref=f30e1666]:
+                          - link "阪神ダート1400m｜8枠複勝率31.5%が教える外枠と先行馬の活かし方 コース分析 阪神ダート1400m｜8枠複勝率31.5%が教える外枠と先行馬の活かし方" [ref=f30e1667] [cursor=pointer]:
+                            - /url: /articles/2025-11-02-hanshin-dirt-1400m-data-analysis
+                            - img "阪神ダート1400m｜8枠複勝率31.5%が教える外枠と先行馬の活かし方" [ref=f30e1669]
+                            - generic [ref=f30e1671]:
+                              - generic [ref=f30e1672]: コース分析
+                              - heading "阪神ダート1400m｜8枠複勝率31.5%が教える外枠と先行馬の活かし方" [level=4] [ref=f30e1673]
+                          - link "【東京ダート1400m】騎手別成績と回収率の分析｜データで見る買い方 騎手分析 【東京ダート1400m】騎手別成績と回収率の分析｜データで見る買い方" [ref=f30e1674] [cursor=pointer]:
+                            - /url: /articles/2026-05-23-tokyodirt1400m-jockey-data
+                            - img "【東京ダート1400m】騎手別成績と回収率の分析｜データで見る買い方" [ref=f30e1676]
+                            - generic [ref=f30e1678]:
+                              - generic [ref=f30e1679]: 騎手分析
+                              - heading "【東京ダート1400m】騎手別成績と回収率の分析｜データで見る買い方" [level=4] [ref=f30e1680]
+                          - link "[阪神ダート1400m]川田将雅の勝率50%を軸に据えて的中を量産する 騎手分析 [阪神ダート1400m]川田将雅の勝率50%を軸に据えて的中を量産する" [ref=f30e1681] [cursor=pointer]:
+                            - /url: /articles/2026-04-12-hanshindirt1400m-jockey-data
+                            - img "[阪神ダート1400m]川田将雅の勝率50%を軸に据えて的中を量産する" [ref=f30e1683]
+                            - generic [ref=f30e1685]:
+                              - generic [ref=f30e1686]: 騎手分析
+                              - heading "[阪神ダート1400m]川田将雅の勝率50%を軸に据えて的中を量産する" [level=4] [ref=f30e1687]
+                    - complementary [ref=f30e1688]:
+                      - navigation "レース内の分析メニュー" [ref=f30e1689]:
+                        - heading "分析メニュー" [level=2] [ref=f30e1690]
+                        - generic [ref=f30e1691]:
+                          - button "AI偏差値 （表示中）" [ref=f30e1692] [cursor=pointer]:
+                            - generic [ref=f30e1693]: AI偏差値
+                            - generic [ref=f30e1704]: （表示中）
+                          - button "対戦比較" [ref=f30e1705] [cursor=pointer]:
+                            - generic [ref=f30e1719]:
+                              - generic [ref=f30e1720]: "+2"
+                              - generic [ref=f30e1721]: "0"
+                              - generic [ref=f30e1722]: "-1"
+                          - button "展開・脚質" [ref=f30e1723] [cursor=pointer]
+                          - button "枠順傾向" [ref=f30e1736] [cursor=pointer]
+        - generic [ref=f30e1749]:
+          - button "本命候補" [ref=f30e1751] [cursor=pointer]
+          - link "2026年08月07日 (金) · 浦和 4R トーセンスタイル C3六七 AI偏差値 74.7 AI偏差値 74.66！浦和4R の トーセンスタイル を詳しく見る → 分析データを詳しく確認する →" [ref=f30e1752] [cursor=pointer]:
+            - /url: /races/2026-08-07/urawa/4
+            - generic [ref=f30e1753]:
+              - generic [ref=f30e1754]:
+                - generic [ref=f30e1755]:
+                  - generic [ref=f30e1756]: 2026年08月07日 (金) · 浦和 4R
+                  - heading "トーセンスタイル" [level=3] [ref=f30e1757]
+                  - text: C3六七
+                - generic [ref=f30e1758]:
+                  - generic [ref=f30e1759]: AI偏差値
+                  - generic [ref=f30e1760]: "74.7"
+              - paragraph [ref=f30e1764]: AI偏差値 74.66！浦和4R の トーセンスタイル を詳しく見る →
+              - generic [ref=f30e1765]: 分析データを詳しく確認する →
+        - button "免責事項：AI分析は参考情報です" [ref=f30e1768] [cursor=pointer]
+        - generic [ref=f30e1776]:
+          - heading "高配当的中ランキング (8/1〜8/5)" [level=2] [ref=f30e1777]:
+            - generic [ref=f30e1784]: 高配当的中ランキング
+            - generic [ref=f30e1785]: (8/1〜8/5)
+          - generic [ref=f30e1786]:
+            - link "1位 235,660円 3連単 8/5 園田11R 組番 8→1→3" [ref=f30e1787] [cursor=pointer]:
+              - /url: /races/2026-08-05/sonoda/11
+              - generic [ref=f30e1788]:
+                - generic [ref=f30e1789]: 1位
+                - generic [ref=f30e1790]:
+                  - generic [ref=f30e1791]:
+                    - generic [ref=f30e1792]: 235,660円
+                    - generic [ref=f30e1793]: 3連単
+                  - generic [ref=f30e1794]: 8/5 園田11R
+                - generic [ref=f30e1795]:
+                  - generic [ref=f30e1796]: 組番
+                  - generic "8→1→3" [ref=f30e1797]
+            - link "2位 73,240円 枠連 8/2 新潟5R 組番 2-2" [ref=f30e1798] [cursor=pointer]:
+              - /url: /races/2026-08-02/niigata/5
+              - generic [ref=f30e1799]:
+                - generic [ref=f30e1800]: 2位
+                - generic [ref=f30e1801]:
+                  - generic [ref=f30e1802]:
+                    - generic [ref=f30e1803]: 73,240円
+                    - generic [ref=f30e1804]: 枠連
+                  - generic [ref=f30e1805]: 8/2 新潟5R
+                - generic [ref=f30e1806]:
+                  - generic [ref=f30e1807]: 組番
+                  - generic "2-2" [ref=f30e1808]
+            - link "3位 59,200円 3連単 8/1 札幌9R 組番 7→5→1" [ref=f30e1809] [cursor=pointer]:
+              - /url: /races/2026-08-01/sapporo/9
+              - generic [ref=f30e1810]:
+                - generic [ref=f30e1811]: 3位
+                - generic [ref=f30e1812]:
+                  - generic [ref=f30e1813]:
+                    - generic [ref=f30e1814]: 59,200円
+                    - generic [ref=f30e1815]: 3連単
+                  - generic [ref=f30e1816]: 8/1 札幌9R
+                - generic [ref=f30e1817]:
+                  - generic [ref=f30e1818]: 組番
+                  - generic "7→5→1" [ref=f30e1819]
+            - link "4位 47,680円 3連単 8/2 高知1R 組番 2→7→11" [ref=f30e1820] [cursor=pointer]:
+              - /url: /races/2026-08-02/kochi/1
+              - generic [ref=f30e1821]:
+                - generic [ref=f30e1822]: 4位
+                - generic [ref=f30e1823]:
+                  - generic [ref=f30e1824]:
+                    - generic [ref=f30e1825]: 47,680円
+                    - generic [ref=f30e1826]: 3連単
+                  - generic [ref=f30e1827]: 8/2 高知1R
+                - generic [ref=f30e1828]:
+                  - generic [ref=f30e1829]: 組番
+                  - generic "2→7→11" [ref=f30e1830]
+            - link "5位 37,840円 3連単 8/4 盛岡9R 組番 3→4→11" [ref=f30e1831] [cursor=pointer]:
+              - /url: /races/2026-08-04/morioka/9
+              - generic [ref=f30e1832]:
+                - generic [ref=f30e1833]: 5位
+                - generic [ref=f30e1834]:
+                  - generic [ref=f30e1835]:
+                    - generic [ref=f30e1836]: 37,840円
+                    - generic [ref=f30e1837]: 3連単
+                  - generic [ref=f30e1838]: 8/4 盛岡9R
+                - generic [ref=f30e1839]:
+                  - generic [ref=f30e1840]: 組番
+                  - generic "3→4→11" [ref=f30e1841]
+        - region "楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で 広告リンク" [ref=f30e1842] [cursor=pointer]:
+          - link "今すぐチェックを開く" [ref=f30e1843]:
+            - /url: https://ad2.trafficgate.net/t/r/14/1958/318200_397641
+          - generic [ref=f30e1848]:
+            - generic [ref=f30e1849]: PR
+            - heading "楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で" [level=3] [ref=f30e1851]
+            - generic [ref=f30e1852]: 今すぐチェック
+          - paragraph [ref=f30e1859]: ※馬券の購入は20歳以上の方のみ対象です。
+        - generic [ref=f30e1860]: 広告
+        - generic [ref=f30e1862]:
+          - link "← 前日のデータ" [ref=f30e1863] [cursor=pointer]:
+            - /url: /races/2026-08-06
+          - link "翌日のデータ →" [ref=f30e1864] [cursor=pointer]:
+            - /url: /races/2026-08-08
+  - contentinfo [ref=f30e508]:
+    - generic [ref=f30e509]:
+      - generic [ref=f30e510]:
+        - generic [ref=f30e511]:
+          - heading "UMA-FREE" [level=3] [ref=f30e512]
+          - paragraph [ref=f30e513]: 豊富な過去レースデータをAIで分析。中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を登録不要・完全無料で提供する競馬データ分析サイトです。
+        - generic [ref=f30e514]:
+          - heading "コンテンツ" [level=3] [ref=f30e515]
+          - list [ref=f30e516]:
+            - listitem [ref=f30e517]:
+              - link "競馬データベース" [ref=f30e518] [cursor=pointer]:
+                - /url: /keiba-data
+            - listitem [ref=f30e519]:
+              - link "競走馬データ" [ref=f30e520] [cursor=pointer]:
+                - /url: /horses
+            - listitem [ref=f30e521]:
+              - link "コースデータ" [ref=f30e522] [cursor=pointer]:
+                - /url: /courses
+            - listitem [ref=f30e523]:
+              - link "マイデータ" [ref=f30e524] [cursor=pointer]:
+                - /url: /my-data
+            - listitem [ref=f30e525]:
+              - link "データ分析記事" [ref=f30e526] [cursor=pointer]:
+                - /url: /articles
+            - listitem [ref=f30e527]:
+              - link "よくある質問" [ref=f30e528] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=f30e529]:
+              - link "このサイトについて" [ref=f30e530] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=f30e531]:
+              - link "AI予測モデルについて" [ref=f30e532] [cursor=pointer]:
+                - /url: /about-ai
+            - listitem [ref=f30e533]:
+              - link "公式Xアカウント" [ref=f30e534] [cursor=pointer]:
+                - /url: https://x.com/umafree_ai
+                - text: 公式X
+        - generic [ref=f30e535]:
+          - heading "サイトポリシー" [level=3] [ref=f30e536]
+          - list [ref=f30e537]:
+            - listitem [ref=f30e538]:
+              - link "広告について" [ref=f30e539] [cursor=pointer]:
+                - /url: /advertising
+            - listitem [ref=f30e540]:
+              - link "お問い合わせ" [ref=f30e541] [cursor=pointer]:
+                - /url: /contact
+            - listitem [ref=f30e542]:
+              - link "プライバシーポリシー" [ref=f30e543] [cursor=pointer]:
+                - /url: /privacy
+            - listitem [ref=f30e544]:
+              - link "利用規約" [ref=f30e545] [cursor=pointer]:
+                - /url: /terms
+            - listitem [ref=f30e546]:
+              - link "サイトマップ" [ref=f30e547] [cursor=pointer]:
+                - /url: /sitemap
+      - generic [ref=f30e549]:
+        - paragraph [ref=f30e550]: © 2026 UMA-FREE. All Rights Reserved.
+        - paragraph [ref=f30e551]: 本サイトは統計情報の提供を目的としており、投票の推奨ではありません。
+  - alert [ref=f30e552]: 園田2R 2歳未勝利 AI予想・出走馬分析 | UMA-FREE

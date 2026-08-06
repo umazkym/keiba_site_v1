@@ -137,7 +137,7 @@ export default async function ArticlePage({ params }: Props) {
           ]}
         />
 
-        <div className="mx-auto max-w-[1080px] px-0 sm:px-4">
+        <div className="site-shell-article px-0 sm:px-4">
           <Breadcrumb />
 
           <article

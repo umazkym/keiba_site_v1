@@ -1,6 +1,7 @@
 import { sendClarityEvent } from '@/lib/clarity';
 import { RACE_REVENUE_EXPERIMENT_ID } from '@/lib/ad-config';
 import { getBrowserMonetizationContext } from '@/lib/monetization-context';
+import { getMonetizationReleaseAttribution } from '@/lib/monetization-release';
 
 export const ANALYTICS_MEASUREMENT_RELEASE_ID =
     process.env.NEXT_PUBLIC_ANALYTICS_RELEASE_ID ?? '2026-08-01-ga-route-v2';
@@ -129,12 +130,14 @@ const ORGANIC_VIDEO_PLATFORMS = new Set([
     'pinterest',
     'bluesky',
 ]);
+const NORMAL_SOCIAL_PLATFORMS = new Set(['x', 'threads']);
 
-type SocialVideoAttribution = {
+export type SocialVideoAttribution = {
     source_platform: string;
     source_content_key: string;
-    video_format: 'venue_long' | 'short';
+    video_format: 'venue_long' | 'short' | 'none';
     source_venue: string;
+    post_type: string;
     stored_at: number;
 };
 
@@ -203,36 +206,61 @@ function consumeDataUpcomingAttribution(raceId?: string): boolean {
     }
 }
 
-function captureSocialVideoAttribution(sourceVenue: string): SocialVideoAttribution | null {
-    if (typeof window === 'undefined') return null;
-    const searchParams = new URLSearchParams(window.location.search);
+export function parseSocialAttributionSearch(
+    search: string,
+    sourceVenue: string,
+    storedAt = Date.now(),
+): SocialVideoAttribution | null {
+    const searchParams = new URLSearchParams(search);
     const source = (searchParams.get('utm_source') || '').trim().toLowerCase();
     const medium = (searchParams.get('utm_medium') || '').trim().toLowerCase();
     const campaign = (searchParams.get('utm_campaign') || '').trim().toLowerCase();
     const utmContent = (searchParams.get('utm_content') || '').trim().slice(0, 100);
-    const isYouTubeVideoLink = source === 'youtube' && medium === 'video' && Boolean(utmContent);
+    const utmTerm = (searchParams.get('utm_term') || '').trim().slice(0, 60);
+    const isYouTubeVideoLink =
+        source === 'youtube'
+        && medium === 'video'
+        && Boolean(utmContent)
+        && (campaign === 'daily_race_video_v2' || campaign === 'daily_race_video');
     const isYouTubeProfileLink = source === 'youtube' && medium === 'profile';
     const isOrganicSocialVideo =
         ORGANIC_VIDEO_PLATFORMS.has(source) &&
         medium === 'organic_social' &&
-        (campaign === 'daily_race_video' || campaign === 'profile');
-    if (!isYouTubeVideoLink && !isYouTubeProfileLink && !isOrganicSocialVideo) return null;
+        (campaign === 'daily_race_video' || campaign === 'daily_race_video_v2' || campaign === 'profile');
+    const isNormalSocialPost =
+        NORMAL_SOCIAL_PLATFORMS.has(source)
+        && medium === 'organic_social'
+        && campaign === 'race_post_v2'
+        && Boolean(utmContent);
+    if (!isYouTubeVideoLink && !isYouTubeProfileLink && !isOrganicSocialVideo && !isNormalSocialPost) {
+        return null;
+    }
     const contentKey =
         utmContent ||
         (source === 'youtube' ? 'channel_profile' : `${source}_profile`);
 
-    const attribution: SocialVideoAttribution = {
+    const postTypeFromContent = utmContent.match(/^(.+?)-\d{8}-[a-f0-9]{12}$/u)?.[1] || '';
+    return {
         source_platform: source,
         source_content_key: contentKey,
         video_format:
-            source !== 'youtube' ||
+            isNormalSocialPost
+                ? 'none'
+                : source !== 'youtube' ||
             isYouTubeProfileLink ||
-            contentKey.startsWith('short_')
+            /(^|_)short(_|$)/u.test(contentKey)
                 ? 'short'
                 : 'venue_long',
         source_venue: sourceVenue,
-        stored_at: Date.now(),
+        post_type: utmTerm || postTypeFromContent || (campaign === 'profile' ? 'profile' : 'social_video'),
+        stored_at: storedAt,
     };
+}
+
+function captureSocialVideoAttribution(sourceVenue: string): SocialVideoAttribution | null {
+    if (typeof window === 'undefined') return null;
+    const attribution = parseSocialAttributionSearch(window.location.search, sourceVenue);
+    if (!attribution) return null;
     try {
         window.sessionStorage.setItem(SOCIAL_VIDEO_ATTRIBUTION_KEY, JSON.stringify(attribution));
     } catch {
@@ -287,6 +315,7 @@ function consumeSocialVideoAttribution(sourceVenue: string): SocialVideoAttribut
             source_content_key: contentKey,
             video_format: parsed.video_format,
             source_venue: parsed.source_venue || sourceVenue,
+            post_type: parsed.post_type || 'social_video',
             stored_at: parsed.stored_at,
         };
     } catch {
@@ -499,22 +528,27 @@ export const sendRaceViewEvent = (params: {
         ? false
         : consumeDataUpcomingAttribution(params.race_id);
     const isYouTubeAttribution = socialVideoAttribution?.source_platform === 'youtube';
+    const isNormalSocialPost = socialVideoAttribution?.video_format === 'none';
     const attributedParams = socialVideoAttribution
         ? isYouTubeAttribution
           ? {
             ...params,
             entry_source: 'youtube',
             source_video_key: socialVideoAttribution.source_content_key,
-            video_format: socialVideoAttribution.video_format,
-            source_venue: socialVideoAttribution.source_venue,
-          }
-          : {
-            ...params,
-            entry_source: 'social_video',
             source_platform: socialVideoAttribution.source_platform,
             source_content_key: socialVideoAttribution.source_content_key,
             video_format: socialVideoAttribution.video_format,
             source_venue: socialVideoAttribution.source_venue,
+            post_type: socialVideoAttribution.post_type,
+          }
+          : {
+            ...params,
+            entry_source: isNormalSocialPost ? 'social_post' : 'social_video',
+            source_platform: socialVideoAttribution.source_platform,
+            source_content_key: socialVideoAttribution.source_content_key,
+            video_format: socialVideoAttribution.video_format,
+            source_venue: socialVideoAttribution.source_venue,
+            post_type: socialVideoAttribution.post_type,
         }
         : articleAttribution
           ? {
@@ -539,7 +573,9 @@ export const sendRaceViewEvent = (params: {
         entry_source: socialVideoAttribution
             ? isYouTubeAttribution
                 ? 'youtube'
-                : 'social_video'
+                : isNormalSocialPost
+                    ? 'social_post'
+                    : 'social_video'
             : articleAttribution
               ? 'article'
               : dataUpcomingAttribution
@@ -551,6 +587,7 @@ export const sendRaceViewEvent = (params: {
             ? socialVideoAttribution?.source_content_key
             : undefined,
         video_format: socialVideoAttribution?.video_format,
+        post_type: socialVideoAttribution?.post_type,
         article_entry_method: articleAttribution?.link_placement,
     });
 };
@@ -689,8 +726,10 @@ export const sendRewardGateEvent = (eventName: RewardGateEventName, params: Rewa
 };
 
 export const sendAffiliateClickEvent = (params: AffiliateClickParams) => {
+    const releaseAttribution = getMonetizationReleaseAttribution();
     sendAnalyticsEvent('affiliate_click', {
         ...params,
+        ...releaseAttribution,
         affiliate_page_type: inferPageType(),
     });
     sendClarityEvent('affiliate_click', {
@@ -699,12 +738,15 @@ export const sendAffiliateClickEvent = (params: AffiliateClickParams) => {
         affiliate_context: params.context,
         affiliate_campaign_type: params.campaign_type,
         race_type: params.race_type,
+        ...releaseAttribution,
     });
 };
 
 export const sendAffiliateImpressionEvent = (params: AffiliateImpressionParams) => {
+    const releaseAttribution = getMonetizationReleaseAttribution();
     sendAnalyticsEvent('affiliate_impression', {
         ...params,
+        ...releaseAttribution,
         affiliate_page_type: inferPageType(),
     });
     sendClarityEvent('affiliate_impression', {
@@ -713,6 +755,7 @@ export const sendAffiliateImpressionEvent = (params: AffiliateImpressionParams) 
         affiliate_context: params.context,
         affiliate_campaign_type: params.campaign_type,
         race_type: params.race_type,
+        ...releaseAttribution,
     });
 };
 
@@ -750,8 +793,10 @@ export const sendAdExperimentExposureEvent = (params: {
     ad_placement: string;
     page_type?: string;
 }) => {
+    const releaseAttribution = getMonetizationReleaseAttribution();
     sendAnalyticsEvent('ad_experiment_exposure', {
         ...params,
+        ...releaseAttribution,
         page_type: params.page_type || inferPageType(),
     });
     sendClarityEvent('ad_experiment_exposure', {
@@ -760,6 +805,7 @@ export const sendAdExperimentExposureEvent = (params: {
         slot_id: params.slot_id,
         ad_placement: params.ad_placement,
         page_type: params.page_type || inferPageType(),
+        ...releaseAttribution,
     });
 };
 
@@ -922,8 +968,10 @@ export const sendArticleBridgeExperimentExposureEvent = (params: {
     article_slug: string;
     race_id: string;
 }) => {
+    const releaseAttribution = getMonetizationReleaseAttribution();
     const eventParams = {
         experiment_id: 'ARTICLE-RACE-BRIDGE-2026-08',
+        ...releaseAttribution,
         variant: params.variant,
         article_slug: params.article_slug,
         race_id: params.race_id,
@@ -936,8 +984,10 @@ export const sendArticleAdPlacementExposureEvent = (params: {
     variant: 'control' | 'after_body_before_related';
     article_slug: string;
 }) => {
+    const releaseAttribution = getMonetizationReleaseAttribution();
     const eventParams = {
         experiment_id: 'ARTICLE-AD-READ-COMPLETE-2026-08',
+        ...releaseAttribution,
         variant: params.variant,
         article_slug: params.article_slug,
         ad_placement: 'article_after_body',

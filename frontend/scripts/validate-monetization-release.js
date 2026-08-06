@@ -1,4 +1,11 @@
 const DEFAULT_RELEASE_ID = '2026-08-01-ga-route-v2';
+const FIXED_ROLLOUT_ID = 'UMA-FREE-TRAFFIC-RECOVERY-2026-08';
+const FIXED_MODE_VALUES = Object.freeze({
+  NEXT_PUBLIC_RACE_REVENUE_EXPERIMENT_MODE: 'engaged_display',
+  NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE: 'on',
+  NEXT_PUBLIC_ARTICLE_AD_PLACEMENT_MODE: 'variant',
+  NEXT_PUBLIC_RAKUTEN_KEIBA_MODE: 'qualified_nar',
+});
 
 const EXPERIMENTS = [
   {
@@ -73,6 +80,11 @@ function parseNumber(value, label, errors) {
 function validateMonetizationRelease(env) {
   const errors = [];
   const active = [];
+  const releasePolicy = String(env.MONETIZATION_RELEASE_POLICY || 'experiment').trim();
+
+  if (releasePolicy !== 'experiment' && releasePolicy !== 'fixed') {
+    errors.push('MONETIZATION_RELEASE_POLICYはexperimentまたはfixedにしてください。');
+  }
 
   for (const experiment of EXPERIMENTS) {
     const value = String(env[experiment.envName] || experiment.baseline).trim();
@@ -85,11 +97,52 @@ function validateMonetizationRelease(env) {
     }
   }
 
+  if (releasePolicy === 'fixed') {
+    for (const [envName, expected] of Object.entries(FIXED_MODE_VALUES)) {
+      const actual = String(env[envName] || '').trim();
+      if (actual === 'split') {
+        errors.push(`${envName}にsplitは使用できません。固定運用値${expected}を設定してください。`);
+      } else if (actual !== expected) {
+        errors.push(`${envName}は固定運用値${expected}にしてください。`);
+      }
+    }
+
+    const fixedRolloutId = String(env.MONETIZATION_FIXED_ROLLOUT_ID || '').trim();
+    if (fixedRolloutId !== FIXED_ROLLOUT_ID) {
+      errors.push(`MONETIZATION_FIXED_ROLLOUT_IDは${FIXED_ROLLOUT_ID}にしてください。`);
+    }
+    const approvedAt = parseTimestamp(
+      env.MONETIZATION_FIXED_ROLLOUT_APPROVED_AT,
+      'MONETIZATION_FIXED_ROLLOUT_APPROVED_AT',
+      errors,
+    );
+
+    if (!/^\d{10}$/.test(String(env.NEXT_PUBLIC_RACE_ENGAGED_AD_SLOT || '').trim())) {
+      errors.push('NEXT_PUBLIC_RACE_ENGAGED_AD_SLOTには10桁の広告slotが必要です。');
+    }
+
+    return {
+      passed: errors.length === 0,
+      releasePolicy,
+      activeExperimentId: null,
+      fixedRolloutId: fixedRolloutId || null,
+      fixedRolloutApprovedAt: approvedAt?.toISOString() || null,
+      errors,
+    };
+  }
+
   if (active.length > 1) {
     errors.push(`収益実験を同時に開始できません: ${active.map(item => item.id).join(', ')}`);
   }
   if (active.length === 0) {
-    return { passed: errors.length === 0, activeExperimentId: null, errors };
+    return {
+      passed: errors.length === 0,
+      releasePolicy,
+      activeExperimentId: null,
+      fixedRolloutId: null,
+      fixedRolloutApprovedAt: null,
+      errors,
+    };
   }
 
   const experiment = active[0];
@@ -221,7 +274,10 @@ function validateMonetizationRelease(env) {
 
   return {
     passed: errors.length === 0,
+    releasePolicy,
     activeExperimentId: experiment.id,
+    fixedRolloutId: null,
+    fixedRolloutApprovedAt: null,
     errors,
   };
 }
@@ -235,13 +291,15 @@ function main() {
     for (const error of result.errors) console.error(`- ${error}`);
     process.exit(1);
   }
-  if (result.activeExperimentId) {
+  if (result.releasePolicy === 'fixed') {
+    console.log(`収益固定運用リリースゲート: OK (${result.fixedRolloutId})`);
+  } else if (result.activeExperimentId) {
     console.log(`収益実験リリースゲート: OK (${result.activeExperimentId})`);
   } else {
     console.log('収益実験リリースゲート: OK (実験なし)');
   }
 }
 
-module.exports = { validateMonetizationRelease };
+module.exports = { FIXED_MODE_VALUES, FIXED_ROLLOUT_ID, validateMonetizationRelease };
 
 if (require.main === module) main();

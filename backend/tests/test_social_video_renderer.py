@@ -490,10 +490,13 @@ class SocialVideoRendererTest(unittest.TestCase):
             with Image.open(date_root / "shorts-ui-overlay.png") as image:
                 self.assertEqual(image.size, (1080, 1920))
 
-    def test_video_urls_use_the_same_site_root_without_utm(self) -> None:
+    def test_video_urls_keep_site_root_and_add_v2_content_attribution(self) -> None:
         url = build_video_url("2026-07-12", "venue_long_函館", "函館", 11)
-        self.assertEqual(url, "https://uma-free.com")
-        self.assertNotIn("utm_", url)
+        self.assertTrue(url.startswith("https://uma-free.com/?"))
+        self.assertIn("utm_source=youtube", url)
+        self.assertIn("utm_medium=video", url)
+        self.assertIn("utm_campaign=daily_race_video_v2", url)
+        self.assertIn("utm_content=venue_long_%E5%87%BD%E9%A4%A8", url)
 
     def test_video_description_has_one_site_link_without_date_or_credit(self) -> None:
         description = renderer._description(

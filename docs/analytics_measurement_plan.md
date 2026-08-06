@@ -34,7 +34,7 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `premium_data_view` | 詳細データを表示 | `race_id`, `result` | 詳細データの利用状況 |
 | `web_vital` | 固定20%サンプルのセッションでWeb Vitalsを計測 | `metric_name`, `metric_id`, `value`, `rating`, `navigation_type`, `page_path`, `page_type`, `release_id` | リリース・ページ種別ごとのLCP、INP、CLS |
 | `adsense_offerwall_view` | AdSense Offerwallが非表示から表示へ変わった時に1回 | `path_group`, `page_path`, `page_type` | Offerwall到達後のレース操作・離脱との比較 |
-| `ad_experiment_exposure` | サイト側で広告実験のバリエーションが確定 | `experiment_id`, `variant`, `slot_id`, `ad_placement`, `page_type` | セッション固定広告実験の母数 |
+| `ad_experiment_exposure` | サイト側で広告配置が確定 | `experiment_id`, `variant`, `slot_id`, `ad_placement`, `page_type`, `release_policy`, `fixed_rollout_id` | 固定運用と過去AB露出の分離 |
 | `data_entity_view` | 馬・騎手・調教師・コース・重賞の詳細データが表示 | `entity_type`, `entity_id`, `sample_size`, `indexable` | データ対象別の閲覧数と十分な母数を持つページの利用状況 |
 | `data_search` | 横断検索または比較画面の検索結果を表示 | `query_length`, `result_count`, `search_surface` | 検索需要、0件率、検索面ごとの回遊 |
 | `data_favorite` | ブラウザ内のマイデータへ対象を追加・解除 | `action`, `entity_type`, `entity_id` | 保存対象と再訪につながる機能の利用状況 |
@@ -49,8 +49,8 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 | `recent_race_return_click` | ホームの「前回確認していたレース」から正確なレースへ戻る | `destination_path`, `race_date`, `venue_name`, `race_number`, `age_hours` | ローカル保存による再訪回遊 |
 | `pwa_install_prompt_view` | 保存・比較利用者または別日再訪者にPWA案内を表示 | `surface`, `prompt_type` | PWA案内の適格表示母数 |
 | `pwa_install_result` | PWA案内への結果が確定 | `surface`, `result` | 追加・却下・iOS案内の結果 |
-| `article_bridge_experiment_exposure` | 適格記事の表示variantを確定 | `experiment_id`, `variant`, `article_slug`, `race_id` | 記事ブリッジ実験の割当母数 |
-| `article_ad_placement_exposure` | 記事広告の順序variantを確定 | `experiment_id`, `variant`, `article_slug`, `ad_placement` | 広告位置実験の割当母数 |
+| `article_bridge_experiment_exposure` | 適格記事の表示状態を確定 | `experiment_id`, `variant`, `article_slug`, `race_id`, `release_policy`, `fixed_rollout_id` | 固定運用と過去AB露出の分離 |
+| `article_ad_placement_exposure` | 記事広告の順序を確定 | `experiment_id`, `variant`, `article_slug`, `ad_placement`, `release_policy`, `fixed_rollout_id` | 固定運用と過去AB露出の分離 |
 | `pricing_survey_response` | 販売前アンケートへ1ブラウザ1回回答 | `response`, `surface` | 月390円の利用意向。申込み・決済ではない |
 | `pricing_survey_view` | 販売前アンケートが対象利用者へ初回表示 | `surface` | 月390円利用意向率の分母 |
 
@@ -160,9 +160,9 @@ GA4のイベントスコープのカスタム定義には、`action`、`destinat
 6. `race_navigation`
 7. `ad_viewable_custom`
 
-SNS用UTMは`utm_medium=organic_social`、`utm_campaign=daily_race_video`へ統一する。Instagram/TikTokのプロフィールリンクだけは`utm_campaign=profile`とする。属性は`sessionStorage`へ30分保持し、最初の`race_view`へ一度だけ付与して削除する。YouTube互換処理と同様に仮想`page_view`は追加しない。
+X・Threadsの通常投稿は`utm_medium=organic_social`、`utm_campaign=race_post_v2`とし、`utm_content`を投稿種別・対象日・本文hashから生成する。`utm_term`へ投稿種別を入れる。SNS動画は既存`daily_race_video`、YouTube動画は`daily_race_video_v2`として旧系列と分離する。YouTubeの遷移先はトップURLを維持し、動画別`utm_content`を付ける。属性は`sessionStorage`へ30分保持し、最初の`race_view`へ`entry_source`、`source_platform`、`source_content_key`、`post_type`として一度だけ付与して削除する。レース切替で仮想`page_view`は追加しない。
 
-GA4ではイベントスコープのカスタム定義へ`source_platform`、`source_content_key`、`video_format`を登録する。媒体別の効果は再生数だけで判断せず、SNSセッションから`race_view`、`prediction_table_view`、`race_navigation`、`ad_viewable_custom`へ進んだ割合で比較する。
+GA4ではイベントスコープのカスタム定義へ`source_platform`、`source_content_key`、`video_format`、`post_type`を登録する。媒体別の効果は再生数だけで判断せず、投稿成功数から`race_view`、`prediction_table_view`、`race_navigation`、`publisherAdRevenue`へ進んだ割合で比較する。
 
 ## レポート上の注意
 
@@ -177,3 +177,4 @@ GA4ではイベントスコープのカスタム定義へ`source_platform`、`so
 - `ARTICLE-RACE-BRIDGE-2026-07`は2026-08-01に有効対象0件で未成立終了した。`article_race_preview_view`の0件期間を効果0として扱わない。
 - `MOBILE-RACE-ENGAGED-AD-2026-08`は`NEXT_PUBLIC_RACE_REVENUE_EXPERIMENT_MODE=split`を本番反映した時刻をDとする。準備期間の`legacy`、ローカルプレースホルダー、1024px以上を実験母数へ含めない。
 - 新広告試作の集計は`measurement_release_id=2026-08-01-ga-route-v2`以降に限定し、旧リリースの重複ページビューが混在する期間と分ける。
+- 2026-08-07以降の4施策は`UMA-FREE-TRAFFIC-RECOVERY-2026-08`の固定ベースラインであり、比較実験の勝者や因果的増収とは扱わない。過去のAB露出は`release_policy`で分離する。

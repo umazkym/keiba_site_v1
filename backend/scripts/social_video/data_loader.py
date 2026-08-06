@@ -15,6 +15,7 @@ import requests
 
 
 SITE_BASE_URL = "https://uma-free.com"
+YOUTUBE_CAMPAIGN_NAME = "daily_race_video_v2"
 DEFAULT_API_BASE_URL = "https://keiba-site-v1-761440273070.us-west1.run.app"
 JST = timezone(timedelta(hours=9))
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -147,7 +148,7 @@ def build_race_url(
     params = {
         "utm_source": "youtube",
         "utm_medium": "video",
-        "utm_campaign": f"{date_str.replace('-', '')}_preview",
+        "utm_campaign": YOUTUBE_CAMPAIGN_NAME,
     }
     if utm_content:
         params["utm_content"] = utm_content
@@ -155,8 +156,14 @@ def build_race_url(
 
 
 def build_video_url(date_str: str, utm_content: str, venue_name: str = "", race_number: Any = "") -> str:
-    """YouTubeの横長・Shortで共通利用する公開サイトURLを返す。"""
-    return SITE_BASE_URL
+    """YouTube動画別のcontent keyを付けたトップURLを返す。"""
+    params = {
+        "utm_source": "youtube",
+        "utm_medium": "video",
+        "utm_campaign": YOUTUBE_CAMPAIGN_NAME,
+        "utm_content": utm_content,
+    }
+    return f"{SITE_BASE_URL}/?{urlencode(params)}"
 
 
 def _api_base_url() -> str:

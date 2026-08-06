@@ -585,7 +585,7 @@ Plannerは `theme_cluster` を競馬固有の以下の型で出力する。
 4. 軽量プレビューAPIが正常応答し、race IDとURLが記事メタデータに一致する
 5. 記事年度と開催年が一致する
 
-表示は`NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE=off|split|on`で独立制御する。既定は`off`。`split`へ変更するのは、先行する広告実験の終了、高速または標準の計測品質ゲート、D+7・D+14判断リマインド登録がすべて完了した場合だけとする。
+表示は`NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE=off|split|on`で独立制御する。2026-08-07以降は、ユーザー承認済みの固定運用`UMA-FREE-TRAFFIC-RECOVERY-2026-08`として`on`を使用し、`split`は使用しない。ただし表示モードが`on`でも、上記5条件のうち1つでも満たさなければDOM、ローディング、予約高を一切出さない。`npm run article:reconcile-race-bridges`は既定dry-runで再照合し、`--apply-eligible`指定時も本文・記事URL・canonicalを変更せず、完全一致した適格性メタデータだけを更新する。
 
 Writerは重賞記事本文に`/races/today`や個別レースCTAを書かない。Publisherの検証に失敗した場合は記事本文を公開できるが、`eligible=false`のままとし、外枠、ローディング、予約スペースを描画しない。ブラウザ側でタイトルからレースを推測したり、別レースや`/races/today`へフォールバックしたりしない。適格記事でも表示時点のAPI障害、不一致、予測不足ではDOMを出さない。
 

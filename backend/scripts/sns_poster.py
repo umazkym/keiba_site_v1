@@ -50,7 +50,7 @@ import importlib
 import importlib.util
 from types import ModuleType
 import unicodedata
-from urllib.parse import quote as url_quote
+from urllib.parse import parse_qsl, quote as url_quote, urlencode, urlsplit, urlunsplit
 
 # --- attempt to import database.*; if fails, try dynamic import from common candidate paths ---
 def dynamic_module_from_path(module_name: str, candidate_paths: List[str]) -> Optional[ModuleType]:
@@ -214,6 +214,49 @@ def build_race_url(date_str: str, race_number: Any = None, venue_name: Any = Non
     if venue and venue != "?":
         params.append(f"venue={url_quote(venue)}")
     return f"{base_url}?{'&'.join(params)}" if params else base_url
+
+
+def build_social_content_key(content: str, post_type: str, target_date: str) -> str:
+    """投稿種別・対象日・元本文から、媒体間で照合できる短いキーを作る。"""
+    normalized_post_type = re.sub(r"[^a-z0-9_-]+", "-", str(post_type or "post").lower()).strip("-_") or "post"
+    normalized_date = re.sub(r"[^0-9]+", "", str(target_date or "")) or "undated"
+    content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()[:12]
+    return f"{normalized_post_type}-{normalized_date}-{content_hash}"
+
+
+def add_social_attribution_to_text(
+    text: str,
+    platform: str,
+    post_type: str,
+    target_date: str,
+) -> str:
+    """UMA-FREEへのリンクだけへ媒体別UTMを付け、外部URLと表示文は維持する。"""
+    normalized_platform = str(platform or "").strip().lower()
+    if normalized_platform not in {"x", "threads"}:
+        raise ValueError(f"未対応のSNS帰属媒体です: {platform}")
+    content_key = build_social_content_key(text, post_type, target_date)
+
+    def replace_url(match: re.Match[str]) -> str:
+        raw_url = match.group(0)
+        trailing = ""
+        while raw_url and raw_url[-1] in "。、）)]":
+            trailing = raw_url[-1] + trailing
+            raw_url = raw_url[:-1]
+        parsed = urlsplit(raw_url)
+        if parsed.scheme != "https" or parsed.netloc.lower() != "uma-free.com":
+            return match.group(0)
+        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        query.update({
+            "utm_source": normalized_platform,
+            "utm_medium": "organic_social",
+            "utm_campaign": "race_post_v2",
+            "utm_content": content_key,
+            "utm_term": str(post_type or "post"),
+        })
+        attributed = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
+        return f"{attributed}{trailing}"
+
+    return re.sub(r"https://uma-free\.com/[^\s<>\"']*", replace_url, text)
 
 
 def build_x_status_url(tweet_id: Any) -> str:
@@ -452,7 +495,11 @@ def _sleep_before_threads_retry(attempt: int) -> None:
     time.sleep(delay)
 
 
-def post_to_threads(text: str) -> ThreadsPostResult:
+def post_to_threads(
+    text: str,
+    post_type: str = "",
+    target_date: str = "",
+) -> ThreadsPostResult:
     """Threadsにテキスト投稿を行う。トークン失効時は明確な警告を出力する。"""
     global THREADS_ACCESS_TOKEN
     if not ENABLE_THREADS:
@@ -469,6 +516,8 @@ def post_to_threads(text: str) -> ThreadsPostResult:
         remove_urls=False,
         max_chars=THREADS_MAX_CHARS,
     )
+    if post_type and target_date:
+        text = add_social_attribution_to_text(text, "threads", post_type, target_date)
     text = truncate_for_threads(text)
 
     if DRY_RUN:
@@ -542,21 +591,36 @@ def post_to_threads(text: str) -> ThreadsPostResult:
     return last_result
 
 
-def post_texts_to_threads_results(texts: List[str], delay_seconds: int = 3) -> List[ThreadsPostResult]:
+def post_texts_to_threads_results(
+    texts: List[str],
+    delay_seconds: int = 3,
+    post_type: str = "",
+    target_date: str = "",
+) -> List[ThreadsPostResult]:
     """複数テキストをThreadsへ独立投稿し、各投稿の結果を返す。"""
     results: List[ThreadsPostResult] = []
     for idx, text in enumerate(texts, 1):
         _log(f"Threads投稿 {idx}/{len(texts)} を実行します。")
-        result = post_to_threads(text)
+        result = post_to_threads(text, post_type=post_type, target_date=target_date)
         results.append(result)
         if idx < len(texts) and delay_seconds > 0:
             time.sleep(delay_seconds)
     return results
 
 
-def post_texts_to_threads(texts: List[str], delay_seconds: int = 3) -> int:
+def post_texts_to_threads(
+    texts: List[str],
+    delay_seconds: int = 3,
+    post_type: str = "",
+    target_date: str = "",
+) -> int:
     """複数テキストをThreadsへ独立投稿し、成功件数を返す。"""
-    results = post_texts_to_threads_results(texts, delay_seconds=delay_seconds)
+    results = post_texts_to_threads_results(
+        texts,
+        delay_seconds=delay_seconds,
+        post_type=post_type,
+        target_date=target_date,
+    )
     posted_count = sum(1 for result in results if result.ok)
     return posted_count
 
@@ -1726,6 +1790,11 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
         prepare_short_social_text(tweet_text_1, "X"),
         prepare_short_social_text(tweet_text_2, "X"),
     ]
+    if post_type and target_date:
+        tweet_texts = [
+            add_social_attribution_to_text(text, "x", post_type, target_date)
+            for text in tweet_texts
+        ]
     _log(f"{len(tweet_texts)} 個のツイートを投稿します")
 
     if not ENABLE_TWITTER:
@@ -1783,6 +1852,8 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
     """
     _log("-> X (Twitter) への投稿を実行...")
     text = prepare_short_social_text(text, "X")
+    if post_type and target_date:
+        text = add_social_attribution_to_text(text, "x", post_type, target_date)
 
     if split_mode:
         tweet_texts = split_tweet_text(text, max_length=280, force_split=True)
@@ -2186,7 +2257,11 @@ def main():
                     else:
                         # 2つのツイートテキストを直接渡して投稿（分割なし、スレッド化防止済み）
                         x_result = post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
-                        threads_results = post_texts_to_threads_results([tweet_text_1, tweet_text_2])
+                        threads_results = post_texts_to_threads_results(
+                            [tweet_text_1, tweet_text_2],
+                            post_type="morning_combined",
+                            target_date=today_str,
+                        )
                         threads_ok = len(threads_results) == 2 and all(result.ok for result in threads_results)
                         if ENABLE_TWITTER:
                             track_x_result(sns_failures, "morning_combined", x_result, threads_ok=threads_ok)
@@ -2244,7 +2319,11 @@ def main():
                         _log(f"-> 既に投稿済み: morning_pick_only")
                     else:
                         x_result = post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
-                        threads_result = post_to_threads(tweet_text)
+                        threads_result = post_to_threads(
+                            tweet_text,
+                            post_type="morning_pick_only",
+                            target_date=today_str,
+                        )
                         threads_ok = bool(threads_result)
                         if ENABLE_TWITTER:
                             track_x_result(sns_failures, "morning_pick_only", x_result, threads_ok=threads_ok)
@@ -2275,7 +2354,11 @@ def main():
                             reason="夕方の動画投稿へ置換",
                         )
                         if THREADS_EVENING_VIDEO_REPLACES_TEXT
-                        else post_to_threads(tweet_text)
+                        else post_to_threads(
+                            tweet_text,
+                            post_type="afternoon_summary",
+                            target_date=today_str,
+                        )
                     )
                     threads_ok = bool(threads_result)
                     if ENABLE_TWITTER:
@@ -2312,7 +2395,11 @@ def main():
                     else:
                         _log("-> 画像生成に失敗しましたが、テキストのみで投稿します")
                         x_result = post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
-                    threads_result = post_to_threads(tweet_text)
+                    threads_result = post_to_threads(
+                        tweet_text,
+                        post_type="evening_race",
+                        target_date=tomorrow_str,
+                    )
                     threads_ok = bool(threads_result)
                     if ENABLE_TWITTER:
                         track_x_result(sns_failures, f"evening_race:{race_name}", x_result, threads_ok=threads_ok)
@@ -2363,7 +2450,11 @@ def main():
                     x_result = post_to_twitter(tweet_text, image_file, post_type="pre_race_remind", target_date=today_str, split_mode=False)
                 else:
                     x_result = post_to_twitter(tweet_text, None, post_type="pre_race_remind", target_date=today_str, split_mode=False)
-                threads_result = post_to_threads(tweet_text)
+                threads_result = post_to_threads(
+                    tweet_text,
+                    post_type="pre_race_remind",
+                    target_date=today_str,
+                )
                 threads_ok = bool(threads_result)
                 if ENABLE_TWITTER:
                     track_x_result(sns_failures, "pre_race_remind", x_result, threads_ok=threads_ok)
@@ -2424,7 +2515,11 @@ def main():
                     target_date=today_str,
                     split_mode=False
                 )
-                threads_result = post_to_threads(tweet_text)
+                threads_result = post_to_threads(
+                    tweet_text,
+                    post_type="hit_immediate",
+                    target_date=today_str,
+                )
                 threads_ok = bool(threads_result)
                 if ENABLE_TWITTER:
                     track_x_result(sns_failures, f"hit_immediate:{venue}{race_num}R", x_result, threads_ok=threads_ok)

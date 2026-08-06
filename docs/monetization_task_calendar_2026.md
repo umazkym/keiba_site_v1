@@ -1,10 +1,15 @@
 # UMA-FREE 収益化タスクカレンダー
 
-更新日: 2026-08-03 JST
+更新日: 2026-08-07 JST
 
 このファイルは、収益化・計測に関して人の判断が必要な予定を日付順に確認する一覧である。詳細条件と結果は [`monetization_experiments.md`](./monetization_experiments.md) を正とする。
 
 ## 現在の結論
+
+- 2026-08-07のユーザー承認により、従来のABテスト待ちとD+7・D+14・D+28スケジュールを終了した。下の日付表は8月3日までの履歴であり、現在の開始条件ではない。
+- 現在値は`engaged_display / on / variant / qualified_nar`。`UMA-FREE-TRAFFIC-RECOVERY-2026-08`の固定ベースラインとして同時運用し、勝者採用や因果効果とは扱わない。
+- `uma-free`は毎週木曜09:00 JSTの「UMA-FREE 週次流入・収益改善」へ置換した。`uma-free-ga4-cwv`は削除し、8月12日の`vercel-cors-origin`は維持する。
+- 週次成果物は`outputs/uma-free-weekly-traffic-revenue-YYYYMMDD/`へ保存し、commit・push・デプロイは行わない。
 
 - `ADS-OFFERWALL-2026-06`は2026-08-01に終了した。因果効果は判定不能だが、過去30日279円、サイト収益の約16.6%を占め、安全上の停止根拠がないため設定変更なしで固定ベースラインとして維持する。
 - 8月5日の追加判定は行わない。`uma-free-offerwall`は削除済みで、新しい8月5日通知も作成しない。

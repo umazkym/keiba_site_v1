@@ -32,6 +32,39 @@ class FakeResponse:
 
 
 class SnsPosterResilienceTest(unittest.TestCase):
+    def test_platform_specific_utm_keeps_path_and_external_urls(self) -> None:
+        source = (
+            "レパードSの分析\n"
+            "https://uma-free.com/races/2026-08-09/niigata/7?race=7\n"
+            "公式 https://www.jra.go.jp/"
+        )
+        x_text = sns_poster.add_social_attribution_to_text(
+            source,
+            "x",
+            "evening_race",
+            "2026-08-09",
+        )
+        threads_text = sns_poster.add_social_attribution_to_text(
+            source,
+            "threads",
+            "evening_race",
+            "2026-08-09",
+        )
+
+        self.assertIn("utm_source=x", x_text)
+        self.assertIn("utm_source=threads", threads_text)
+        self.assertIn("utm_medium=organic_social", x_text)
+        self.assertIn("utm_campaign=race_post_v2", x_text)
+        self.assertIn("utm_term=evening_race", x_text)
+        self.assertRegex(x_text, r"utm_content=evening_race-20260809-[a-f0-9]{12}")
+        self.assertIn("/races/2026-08-09/niigata/7", x_text)
+        self.assertIn("https://www.jra.go.jp/", x_text)
+
+    def test_social_content_key_is_stable_for_same_source(self) -> None:
+        first = sns_poster.build_social_content_key("同じ本文", "pre_race_remind", "2026-08-09")
+        second = sns_poster.build_social_content_key("同じ本文", "pre_race_remind", "2026-08-09")
+        self.assertEqual(first, second)
+
     def test_action_level_403_is_retryable_but_other_auth_errors_are_permanent(self) -> None:
         action_error = FakeTwitterError(
             403,

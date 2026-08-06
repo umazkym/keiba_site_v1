@@ -20,6 +20,17 @@ type Props = {
   params: { slug: string };
 };
 
+const ARTICLE_INTENT_GUIDES: Record<string, { href: string; label: string }> = {
+  '2025-10-26-ground-condition-impact': {
+    href: '/keiba-data/track-condition',
+    label: '馬場状態データを確認',
+  },
+  '2025-11-11-weight-change-impact-analysis': {
+    href: '/keiba-data/horse-weight',
+    label: '馬体重データを確認',
+  },
+};
+
 function resolveArticleCanonicalPath(article: { canonicalPath?: string; canonicalSlug?: string }, fallbackSlug: string): string {
   if (article.canonicalPath && article.canonicalPath.startsWith('/')) {
     return article.canonicalPath;
@@ -112,6 +123,7 @@ export default async function ArticlePage({ params }: Props) {
       : null;
     const shouldRenderRaceBridge = shouldRenderArticleRaceBridge(bridgeMetadata, racePreview);
     const shouldRenderGenericGuide = article.entityType !== 'grade_race';
+    const articleIntentGuide = ARTICLE_INTENT_GUIDES[params.slug];
     const contentGroup = article.entityType === 'grade_race'
       ? 'grade_race'
       : article.entityType && article.entityType !== 'article'
@@ -174,7 +186,39 @@ export default async function ArticlePage({ params }: Props) {
                   />
                 )}
 
-                {shouldRenderGenericGuide && (
+                {shouldRenderGenericGuide && articleIntentGuide && (
+                  <section
+                    aria-labelledby="article-intent-guide-title"
+                    className="mt-4 rounded-xl border border-blue-200 bg-slate-50 p-3 sm:mt-6"
+                    data-analytics-placement="article_intent_guide"
+                  >
+                    <h2 id="article-intent-guide-title" className="text-sm font-black leading-tight text-slate-950 sm:text-base">
+                      記事の内容を当日のレースへつなげる
+                    </h2>
+                    <div className="mt-2">
+                      <RaceAnalysisValueGrid variant="compact" />
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <Link
+                        href={articleIntentGuide.href}
+                        prefetch={false}
+                        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-2 text-center text-xs font-black text-slate-800 transition-colors duration-150 hover:border-blue-300 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:text-sm"
+                      >
+                        {articleIntentGuide.label}
+                      </Link>
+                      <Link
+                        href="/races/today"
+                        prefetch={false}
+                        data-preview-state="generic"
+                        className="inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-700 px-2 text-center text-xs font-black text-white transition-colors duration-150 hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:text-sm"
+                      >
+                        今日のレース分析へ
+                      </Link>
+                    </div>
+                  </section>
+                )}
+
+                {shouldRenderGenericGuide && !articleIntentGuide && (
                   <Link
                     href="/races/today"
                     prefetch={false}

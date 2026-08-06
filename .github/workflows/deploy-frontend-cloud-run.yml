@@ -96,10 +96,15 @@ jobs:
           from pathlib import Path
 
           values = json.loads(os.environ.get("REPOSITORY_VARS_JSON") or "{}")
+          release_keys = {
+              "MONETIZATION_RELEASE_POLICY",
+              "MONETIZATION_FIXED_ROLLOUT_ID",
+              "MONETIZATION_FIXED_ROLLOUT_APPROVED_AT",
+          }
           public_values = {
               key: str(value)
               for key, value in values.items()
-              if key.startswith("NEXT_PUBLIC_") and value is not None
+              if (key.startswith("NEXT_PUBLIC_") or key in release_keys) and value is not None
           }
           public_values.setdefault("NEXT_PUBLIC_APP_RELEASE", os.environ["RELEASE_SHA"])
           target = Path(".env.production")
@@ -110,7 +115,7 @@ jobs:
               ),
               encoding="utf-8",
           )
-          print(f"NEXT_PUBLIC環境変数を{len(public_values)}件準備しました。")
+          print(f"フロントエンドの公開値・収益リリース値を{len(public_values)}件準備しました。")
           PY
 
       - name: Configure Docker authentication

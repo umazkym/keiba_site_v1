@@ -1,10 +1,10 @@
 # UMA-FREE 収益計測・外部設定手順
 
-更新日: 2026-08-03
+更新日: 2026-08-07
 
 ## この手順の位置づけ
 
-コード側の計測契約と週次レポートは実装済み。2026-08-03にGA4–AdSenseの既存リンクとGA4カスタム定義を実画面で確認し、観測済みパラメータの不足定義を追加した。同日、AdSenseのURLチャネル7件と配置別カスタムチャネル8件を作成し、VercelのProduction環境へ配置別IDを登録した。リンク前のデータを遡及して収益帰属へ使わず、設定変更日を台帳へ記録する。新しい収益実験は、この文書の品質ゲートを満たすまで開始しない。
+コード側の計測契約と週次レポートは実装済み。2026-08-03にGA4–AdSenseの既存リンクとGA4カスタム定義を実画面で確認し、観測済みパラメータの不足定義を追加した。同日、AdSenseのURLチャネル7件と配置別カスタムチャネル8件を作成した。2026-08-05のCloud Run移行後はGitHub Repository Variablesを本番設定の正本とする。リンク前のデータを遡及して収益帰属へ使わず、設定変更日を台帳へ記録する。2026-08-07以降は比較実験を開始せず、承認済みの4施策を固定ベースラインとして週次監視する。
 
 ## 1. GA4とAdSenseの正式リンク
 
@@ -45,6 +45,7 @@
 | 流入起点 | `entry_source` | 登録済み（8月3日追加） |
 | SNS媒体 | `source_platform` | 対象イベント観測後に登録 |
 | SNSコンテンツキー | `source_content_key` | 対象イベント観測後に登録 |
+| 投稿種別 | `post_type` | 対象イベント観測後に登録 |
 | 動画形式 | `video_format` | 対象イベント観測後に登録 |
 
 `page_type`は`home / article / article_index / race_day / race_detail / data / other`、`content_group`は`grade_race / evergreen_guide / race_data / entity_data / utility`だけを使う。自由入力、検索語、馬名、保存内容はカスタム定義へ送らない。
@@ -84,62 +85,56 @@ AdSenseの「レポート > 設定 > URLチャネル」で次を個別登録す�
 
 コードは数値だけを`data-ad-channel`へ出し、空欄・不正値は属性自体を出さない。`NEXT_PUBLIC_*`はビルド時に確定するため、VercelのProductionへ8値を追加し、2026-08-03 11:30:25 JSTに再デプロイ`FGYUmBGJ6ZNqs1isCJYhgiGR8v7z`がReadyになった。本番DOMではホーム開催後の`5151906821`と記事導入後の`4785075314`を確認した。レース末尾はOfferwallの広告視聴を回避して未確認とし、広告を操作せず、環境設定・コード対応・本番ビルド成功を証跡とする。公式仕様: [カスタムチャネル](https://support.google.com/adsense/answer/10078316?hl=ja)
 
-## 5. 表示モードと開始前の固定値
+## 5. 2026-08-07以降の固定運用値
 
-開始前は次を維持する。
+GitHub Repository Variablesへ次を同時に設定する。Cloud Runのフロントエンドworkflowは`NEXT_PUBLIC_*`に加え、3つの`MONETIZATION_*`リリース値を`.env.production`へ渡す。
 
 ```text
-NEXT_PUBLIC_RACE_REVENUE_EXPERIMENT_MODE=legacy
-NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE=off
-NEXT_PUBLIC_ARTICLE_AD_PLACEMENT_MODE=control
-NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=legacy
+MONETIZATION_RELEASE_POLICY=fixed
+MONETIZATION_FIXED_ROLLOUT_ID=UMA-FREE-TRAFFIC-RECOVERY-2026-08
+MONETIZATION_FIXED_ROLLOUT_APPROVED_AT=2026-08-07T03:24:39+09:00
+NEXT_PUBLIC_RACE_REVENUE_EXPERIMENT_MODE=engaged_display
+NEXT_PUBLIC_RACE_ENGAGED_AD_SLOT=7550236816
+NEXT_PUBLIC_ARTICLE_RACE_BRIDGE_MODE=on
+NEXT_PUBLIC_ARTICLE_AD_PLACEMENT_MODE=variant
+NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=qualified_nar
 ```
 
-記事ブリッジはPublisherが`race_bridge_eligible=true`を保存しても、表示モードが`off`ならDOMも予約高も出さない。記事広告の`control`は現行順序の「関連記事→記事読了後広告」を維持する。
+記事ブリッジは表示モードが`on`でも、年度、レース名、日付、race ID、正確なrace URL、予測データが完全一致しなければDOMも予約高も出さない。記事広告は同じ1枠を本文・記事フッター直後、関連記事の前へ移し、MultiplexとOfferwallは変更しない。楽天競馬は地方開催のホーム枠と地方レース予想表後だけに限定する。
 
-## 6. 二段階の品質ゲート
+## 6. 週次品質観測
 
-2026-08-03の運用承認により、早期開始と標準確認を併用する。`measurement_release_id`ごとに日次集計し、次のどちらかを満たした場合だけ開始候補とする。
+旧高速・標準ゲートは固定運用の開始条件としては終了する。ただし、計測品質の異常検知として`measurement_release_id`ごとの欠損率、`Unassigned`、収益取得、重複送信を週次で継続する。未取得値を0と置かず、原因と必要操作を警告へ残す。
 
-- 高速ゲート: 連続3完全日で`page_type`、`content_group`、`measurement_release_id`欠損と`Unassigned`が各2%未満、かつ3日合計500セッション以上。
-- 標準ゲート: 連続7完全日で同じ4指標が各5%未満。高速ゲートが未達でも観測を継続する。
+- 対象は直前の完全な月曜〜日曜。前週、4週中央値、同曜日、中央開催・重賞日を比較する。
+- `monetization-report.v1`は`adsense_daily`、`youtube`、`social_workflows`、`week_over_week`、`root_causes`、`applied_local_actions`を任意で保持する。
+- AdSense日次データを提供した場合、7日が完全一致しなければ正式週ではなく参考集計とする。
+- TrafficGate CSVがない週は楽天成果を0件にせず「未取得」とする。
 
-どちらの経路でも次をすべて満たす。
+継続して確認する送信条件は次のとおり。
 
 - 初回表示の`page_view`は1回、通常遷移は1回、レース内切替は0回。
 - 広告の`ad_impression_custom`、`ad_viewable_custom`、実験露出が同一枠・同一セッションで重複していない。
 - `totalAdRevenue`が取得可能で、リンク設定日より前を含めていない。
 
-週次workflowはGA4 Data APIを使い、完全日ごとに4つの欠損率を計算して`monetization-report.v1.json`へ保存する。高速・標準それぞれの連続日数、3日窓のセッション数、採用された`gate_mode`を保持する。日付が連続しない場合や閾値以上の場合は該当経路の連続日数をリセットする。`ready_for_new_experiment=true`になっても実験を自動開始せず、運用者がGA4探索で同じ期間を確認する。
+週次のCodex自動運用はローカル修正までとし、commit、push、Cloud Run反映は行わない。
 
-## 7. 実験リリースゲート
+## 7. 固定運用リリースゲート
 
-実験モードへ変更する本番ビルドでは、次のサーバー側環境変数も必須となる。通常運用の固定値では不要。値が不足する、対象リリースが異なる、最終確認日が古い、複数実験が有効な場合は`npm run build`が失敗する。
+`MONETIZATION_RELEASE_POLICY=fixed`では、セクション5の4表示値、固定運用ID、承認日時、10桁の広告slotが必要となる。値不足、`split`混入、ID不一致、タイムゾーンのない承認日時では`npm run build`が失敗する。旧実験ゲートとD+7・D+14リマインドは要求しない。
 
 ```text
-MONETIZATION_ACTIVE_EXPERIMENT_ID=MOBILE-RACE-ENGAGED-AD-2026-08
-MONETIZATION_QUALITY_GATE_STATUS=passed
-MONETIZATION_QUALITY_GATE_MODE=accelerated
-MONETIZATION_QUALITY_GATE_OBSERVED_DAYS=3
-MONETIZATION_QUALITY_GATE_MAX_OBSERVED_RATE=0.019
-MONETIZATION_QUALITY_GATE_TOTAL_SESSIONS=500以上の実測値
-MONETIZATION_QUALITY_GATE_RELEASE_ID=2026-08-01-ga-route-v2
-MONETIZATION_QUALITY_GATE_END_DATE=YYYY-MM-DD
-MONETIZATION_EXPERIMENT_STARTED_AT=YYYY-MM-DDTHH:mm:ss+09:00
-MONETIZATION_EXPERIMENT_DECISION_DATE=D+7の日付
-MONETIZATION_EXPERIMENT_REMINDER_ID=D+7の作成済みリマインドID
-MONETIZATION_EXPERIMENT_FINAL_DECISION_DATE=D+14の日付
-MONETIZATION_EXPERIMENT_FINAL_REMINDER_ID=D+14の作成済みリマインドID
+MONETIZATION_RELEASE_POLICY=fixed
+MONETIZATION_FIXED_ROLLOUT_ID=UMA-FREE-TRAFFIC-RECOVERY-2026-08
+MONETIZATION_FIXED_ROLLOUT_APPROVED_AT=2026-08-07T03:24:39+09:00
 ```
-
-高速ゲートでは`MODE=accelerated`、3日以上、最大実測率2%未満、合計500セッション以上が必須。標準ゲートでは`MODE=standard`、7日以上、最大実測率5%未満が必須となる。`MONETIZATION_QUALITY_GATE_END_DATE`は実験開始日の1〜3日前でなければならない。開始日時はタイムゾーン付きISO日時、モバイル広告・記事系はD+7の早期判断とD+14の最終判断を両方登録し、楽天はD+28以降にする。検査処理はNext.jsと同じ`.env.local`も先に読み込み、ローカルビルドからの迂回も防ぐ。最初の実験では`NEXT_PUBLIC_RACE_REVENUE_EXPERIMENT_MODE=split`と`NEXT_PUBLIC_RACE_ENGAGED_AD_SLOT=7550236816`を同時に設定する。記事ブリッジ、記事広告、楽天を非既定値にしたままでは排他検査に失敗する。
 
 ## 8. 本番反映後の確認
 
 1. DebugViewでホーム、記事、日付レース、個別レース、データページを各1回表示する。
-2. 記事ブリッジ`off`、記事広告`control`、レース広告`legacy`を確認する。
+2. 記事ブリッジ`on`、記事広告`variant`、モバイルレース広告`engaged_display`、楽天`qualified_nar`を確認する。
 3. 375、390、768、1024、1440pxで広告未配信時も予約高が維持されることを確認する。
 4. AdSenseポリシーセンター、GA4リアルタイム、Clarityのイベントを確認する。
-5. 品質ゲート通過後、先行する1実験だけに開始日時Dと判断リマインドを登録し、台帳へIDを書いてからモードを変更する。
+5. `release_policy=fixed`と固定運用IDが露出・アフィリエイトイベントへ付くことを確認する。
 
 Search Console APIの`page × query × device`が50,000行へ達した場合に限り、BigQuery一括エクスポートへ移す。それまでは現行APIを継続する。

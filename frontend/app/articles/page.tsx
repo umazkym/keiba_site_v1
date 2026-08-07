@@ -166,10 +166,10 @@ function UpcomingGradeRacePickup({
   if (groups.length === 0) return null;
 
   return (
-    <section className="mb-3 overflow-hidden rounded-xl border-l-4 border-amber-400 bg-white ring-1 ring-slate-200" aria-label="近日の重賞記事">
+    <section className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white" aria-label="近日の重賞記事">
       <div className="mb-2 flex items-center justify-between gap-3">
         <h2 className="px-3 pt-3 text-sm font-black text-slate-950 sm:px-4 sm:text-base">近日の重賞</h2>
-        <span className="px-3 pt-3 text-xs font-bold text-amber-700 sm:px-4">{groups.length}</span>
+        <span className="px-3 pt-3 text-xs font-bold text-slate-500 sm:px-4">{groups.length}</span>
       </div>
       <div className="divide-y divide-slate-100 border-t border-slate-100 sm:grid sm:grid-cols-2 sm:divide-y-0">
         {groups.map((group) => {
@@ -178,9 +178,9 @@ function UpcomingGradeRacePickup({
             <Link
               key={group.href}
               href={group.href}
-              className="group px-3 py-2.5 transition-colors duration-150 hover:bg-amber-50/50 sm:border-b sm:border-slate-100 sm:px-4"
+              className="group px-3 py-2.5 transition-colors duration-150 hover:bg-slate-50 sm:border-b sm:border-slate-100 sm:px-4"
             >
-              <div className="flex items-center justify-between gap-3 text-[11px] font-black text-amber-700">
+              <div className="flex items-center justify-between gap-3 text-[11px] font-black text-blue-600">
                 <span>{formatRaceDate(group.scheduledDate)}</span>
                 <span>{group.articleCount}件</span>
               </div>

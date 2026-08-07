@@ -238,7 +238,7 @@ export default async function HomePage() {
                     <section className="articles card rounded-xl">
                         <SectionHeader
                             title="最新の分析記事"
-                            meta="新着順"
+                            meta=""
                             action={(
                                 <Link prefetch={false} href="/articles" className="transition-colors duration-150 hover:text-blue-600">
                                     すべて見る →
@@ -283,24 +283,23 @@ export default async function HomePage() {
 
                     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                         <div className="border-b border-slate-200 px-4 py-3">
-                            <SectionHeader title="過去データを調べる" meta="馬・人・コース" compact />
+                            <SectionHeader title="過去データを調べる" meta="" compact />
                             <p className="mt-1 text-xs leading-6 text-slate-600">
                                 過去レースを競走馬、騎手、調教師、コースごとに再集計しています。
                             </p>
                         </div>
                         <div className="grid sm:grid-cols-2">
                             {[
-                                { href: '/compare', label: '競走馬の成績比較', note: '2〜5頭の成績・得意条件を比較' },
-
-                                { href: '/my-data', label: 'マイデータ', note: '保存した馬・人・コースと履歴' },
-                                { href: '/horses', label: '競走馬データ', note: '近走・得意条件・AI偏差値履歴' },
-                                { href: '/courses', label: 'コースデータ', note: '枠順・脚質・馬場・払戻分布' },
+                                { href: '/compare', label: '競走馬のデータ比較', note: '複数の馬の成績・得意条件を比較できます。' },
+                                { href: '/my-data', label: 'マイデータ', note: '馬・人・コースのお気に入り登録と履歴を確認できます。' },
+                                { href: '/horses', label: '競走馬データ', note: '近走・得意条件・AI偏差値履歴を確認できます。' },
+                                { href: '/courses', label: 'コースデータ', note: '枠順・脚質の有利不利などを確認できます。' },
                             ].map((item) => (
                                 <Link
                                     key={item.href}
                                     prefetch={false}
                                     href={item.href}
-                                    className="min-h-16 border-b border-slate-100 px-4 py-3 transition-colors duration-150 hover:bg-blue-50/60 sm:border-r"
+                                    className="min-h-16 border-b border-slate-100 px-4 py-2 transition-colors duration-150 hover:bg-blue-50/60 sm:border-r"
                                 >
                                     <span className="block font-black text-slate-900">{item.label}</span>
                                     <span className="mt-0.5 block text-xs text-slate-500">{item.note}</span>
@@ -310,9 +309,10 @@ export default async function HomePage() {
                         <Link
                             href="/keiba-data"
                             prefetch={false}
-                            className="flex min-h-11 items-center justify-center bg-slate-950 px-4 py-2 text-sm font-bold text-white transition-colors duration-150 hover:bg-blue-600"
+                            className="flex min-h-12 items-center justify-between border-t border-slate-200 bg-slate-50/80 px-4 py-3 text-xs font-black text-blue-700 transition-colors duration-150 hover:bg-blue-50 hover:text-blue-800 sm:text-sm"
                         >
-                            競馬データベース・分析ハブを開く
+                            <span>競馬データベース・分析ハブを開く</span>
+                            <span aria-hidden="true" className="text-sm font-bold">→</span>
                         </Link>
                     </section>
 
@@ -321,16 +321,16 @@ export default async function HomePage() {
                     <section className="faq card rounded-xl">
                         <h2 className="section-title">
                             <span>よくある質問</span>
-                            <span className="section-note">初めての方へ</span>
+                            <span className="section-note"></span>
                         </h2>
                         <div className="space-y-1">
                             {homepageFaqItems.map((item, index) => (
                                 <details key={index} className="border-t border-slate-200 first:border-0">
-                                    <summary className="list-none cursor-pointer py-3 text-sm font-bold text-slate-900 flex justify-between items-center hover:bg-slate-50 px-2 rounded">
+                                    <summary className="list-none cursor-pointer py-1 text-sm font-bold text-slate-900 flex justify-between items-center hover:bg-slate-50 px-2 rounded">
                                         <span>{item.question}</span>
                                         <span className="text-xs text-slate-500">▼</span>
                                     </summary>
-                                    <div className="pb-3 px-2 text-xs leading-relaxed text-slate-500">
+                                    <div className="pb-1 px-2 text-xs leading-relaxed text-slate-500">
                                         {item.answer}
                                     </div>
                                 </details>

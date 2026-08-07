@@ -1033,7 +1033,6 @@ header.glass {
   color: white;
   background: var(--primary-color);
   border: 1px solid var(--primary-soft-color);
-  border-top: 3px solid var(--amber-color);
 }
 .hero .update {
   display: inline-flex;
@@ -1139,7 +1138,6 @@ header.glass {
   gap: 10px;
   background: #ffffff;
   border: 1px solid var(--slate-200-color);
-  border-top: 3px solid var(--amber-color);
   border-radius: 12px;
 }
 .grade-focus h2 {

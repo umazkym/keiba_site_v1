@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
+import { getGoogleAdOverlaySnapshot, GOOGLE_AD_OVERLAY_EVENT } from '@/lib/google-ad-overlay';
 
 type HomeStickyRaceCtaProps = {
     raceDate: string;
@@ -10,6 +11,7 @@ type HomeStickyRaceCtaProps = {
 
 export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProps) {
     const [isVisible, setIsVisible] = useState(false);
+    const [topAnchorHeight, setTopAnchorHeight] = useState<number>(() => getGoogleAdOverlaySnapshot().topAnchorHeight);
 
     const updateVisibility = useCallback(() => {
         const primaryCta = document.querySelector<HTMLElement>('[data-home-primary-race-cta]');
@@ -21,15 +23,24 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
         const headerOffset = Number.parseFloat(
             window.getComputedStyle(document.documentElement).getPropertyValue('--site-header-offset'),
         ) || 0;
-        setIsVisible(primaryCta.getBoundingClientRect().bottom <= headerOffset);
+        const currentTopAnchor = getGoogleAdOverlaySnapshot().topAnchorHeight;
+        setIsVisible(primaryCta.getBoundingClientRect().bottom <= (headerOffset + currentTopAnchor));
     }, []);
 
     useEffect(() => {
         let frameId = 0;
         const requestUpdate = () => {
             window.cancelAnimationFrame(frameId);
-            frameId = window.requestAnimationFrame(updateVisibility);
+            frameId = window.requestAnimationFrame(() => {
+                const overlay = getGoogleAdOverlaySnapshot();
+                setTopAnchorHeight(overlay.topAnchorHeight);
+                updateVisibility();
+            });
         };
+
+        const handleOverlayChange = () => requestUpdate();
+        window.addEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange as EventListener);
+
         const header = document.querySelector<HTMLElement>('[data-site-header]');
         const headerObserver = header ? new MutationObserver(requestUpdate) : null;
 
@@ -42,6 +53,7 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
 
         return () => {
             window.cancelAnimationFrame(frameId);
+            window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange as EventListener);
             headerObserver?.disconnect();
             window.removeEventListener('scroll', requestUpdate);
             window.removeEventListener('resize', requestUpdate);
@@ -51,6 +63,7 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
     return (
         <div
             className={`home-sticky-race-cta ${isVisible ? 'home-sticky-race-cta-visible' : ''}`}
+            style={topAnchorHeight > 0 ? { top: `calc(var(--site-header-offset) + ${topAnchorHeight}px)` } : undefined}
             aria-hidden={!isVisible}
         >
             <div className="mx-auto flex h-12 max-w-[1600px] items-center px-2 sm:px-4 md:px-6">

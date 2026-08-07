@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getTopPayoutHits } from '@/lib/api';
 import { TopPayoutHit } from '@/lib/types';
-import { TrophyIcon } from './Icons';
+import { SectionHeader } from './SectionHeader';
 import { getRaceDetailPath } from '@/lib/race-url';
 
 const formatShortRaceDate = (date: string): string => {
@@ -140,11 +140,12 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
     return (
         <div>
             {!compact && (
-                <h2 className="sec-title px-1 mb-1.5 sm:mb-2 flex items-center">
-                    <TrophyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 shrink-0" />
-                    <span className="whitespace-nowrap ml-1">高配当的中ランキング</span>
-                    <span className="text-[10px] sm:text-xs font-normal text-muted ml-1.5 whitespace-nowrap self-end mb-0.5">({getDateRangeLabel(hits)})</span>
-                </h2>
+                <SectionHeader
+                    title="高配当的中ランキング"
+                    meta={`(${getDateRangeLabel(hits)})`}
+                    className="mb-3"
+                    compact
+                />
             )}
             {hits.length === 0 ? (
                 <div className="p-6 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-center text-gray-500 text-sm">

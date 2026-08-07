@@ -85,9 +85,9 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions, precompu
     };
 
     return (
-        <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-md p-2 shadow-sm">
             {/* タブ切り替えヘッダー */}
-            <div className="flex gap-1.5 sm:gap-2 mb-3.5 border-b border-slate-100 pb-2 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-1.5 sm:gap-2 mb-1 border-slate-100 pb-2 overflow-x-auto scrollbar-hide">
                 <button
                     onClick={() => setActiveTab('favored')}
                     className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'favored' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
@@ -118,7 +118,7 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions, precompu
                 prefetch={false}
                 className="block group"
             >
-                <div className="relative overflow-hidden rounded-xl bg-slate-50/50 hover:bg-slate-50 p-3.5 border border-slate-100 transition-all group-hover:border-primary/20">
+                <div className="relative overflow-hidden rounded-md bg-slate-50/50 hover:bg-slate-50 p-3.5 border border-slate-100 transition-all group-hover:border-primary/20">
                     <div className="flex justify-between items-start gap-3 mb-2">
                         <div className="min-w-0">
                             <span className="text-[10px] font-bold text-slate-400 block mb-0.5">{formattedDate} · {currentPick.venue_name} {currentPick.race_number}R</span>

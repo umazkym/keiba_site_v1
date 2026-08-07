@@ -30,7 +30,7 @@ export const raceAnalysisFeatures: readonly RaceAnalysisFeature[] = [
         key: 'prediction',
         title: 'AI偏差値',
         compactTitle: 'AI偏差値',
-        description: '出走馬の能力をスコア化',
+        description: '馬の能力をAIで可視化',
         icon: Gauge,
         tone: 'blue',
         visual: 'score',

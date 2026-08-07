@@ -173,7 +173,6 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
             <div className={compact ? "" : "px-3 py-2 sm:px-4 sm:py-3"}>
                 <div role="heading" aria-level={2} className={compact ? "sr-only" : "mb-2.5 flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5"}>
                     <span className="flex min-w-0 items-center gap-1.5 text-[15px] font-bold leading-tight text-gray-800 sm:text-base">
-                        <span className="w-1 h-4 sm:h-5 rounded-sm shrink-0 bg-amber-500"></span>
                         <span className="truncate">{title}</span>
                     </span>
                 </div>
@@ -193,7 +192,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
                                     key={race.race_id}
                                     className="grade-focus"
                                 >
-                                    <span className="badge badge-amber text-[10px] sm:text-xs">
+                                    <span className="badge badge-blue text-[10px] sm:text-xs">
                                         {raceTypeLabel} {formatGrade(race.grade)} 注目開催
                                     </span>
                                     <h2>{displayName}</h2>

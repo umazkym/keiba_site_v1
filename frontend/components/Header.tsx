@@ -158,7 +158,7 @@ export const Header = ({ todayString }: HeaderProps) => {
     }, [pathname]);
 
     // 本文の途中では方向にかかわらず退避し、ページ最上部へ戻った時だけ復帰する。
-    // 上部アンカー広告が存在する場合は、全展開時（広告の高さ）と最小化時（矢印タブの高さ）を正確に追従する。
+    // 上部アンカー広告が存在する場合は、全展開時（広告の高さ）と最小化時（矢印タブの高さ）を物理的にmargin-topで押し下げる。
     useEffect(() => {
         if (isMenuOpen) {
             setIsHeaderVisible(true);
@@ -172,18 +172,32 @@ export const Header = ({ todayString }: HeaderProps) => {
          */
         const scanTopAnchorAdBottom = (): number => {
             const topAnchorElements = document.querySelectorAll<HTMLElement>(
-                'ins.adsbygoogle-noablate, .fc-ablate-drawer-tab, .fc-ablate-drawer-btn'
+                'ins.adsbygoogle-noablate, .fc-ablate-drawer-tab, .fc-ablate-drawer-btn, [id^="aswift_"][style*="position"], [id^="google_ads_iframe"][style*="position"]'
             );
             let maxBottom = 0;
+            let hasTopAnchorElement = false;
+
             topAnchorElements.forEach((el) => {
                 const style = window.getComputedStyle(el);
                 if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
                 const rect = el.getBoundingClientRect();
-                if (rect.height > 0 && rect.top <= 180 && rect.bottom > 0) {
-                    maxBottom = Math.max(maxBottom, Math.ceil(rect.bottom));
+                if (rect.top <= 200 && rect.bottom > 0) {
+                    hasTopAnchorElement = true;
+                    if (rect.height > 0) {
+                        maxBottom = Math.max(maxBottom, Math.ceil(rect.bottom));
+                    }
                 }
             });
-            return maxBottom;
+
+            if (maxBottom > 0) {
+                // 全展開時（画像1）は実測値を採用。
+                // 最小化/折りたたみ時（画像2）でも「∨」タブがロゴやボタンに被らないよう、最低38pxの物理押し下げを確保。
+                return Math.max(maxBottom, 38);
+            }
+            if (hasTopAnchorElement) {
+                return 38;
+            }
+            return 0;
         };
 
         const updateVisibility = () => {
@@ -196,9 +210,6 @@ export const Header = ({ todayString }: HeaderProps) => {
 
             let finalOffset = 0;
             if (rawOffset > 0) {
-                // 上部アンカーが存在する場合：
-                // 全展開時（画像1）は rawOffset（100px以上）を採用。
-                // 最小化/折りたたみ時（画像2）は矢印(∨)タブがロゴやボタンに被らないよう、最低38pxのオフセットを確保。
                 finalOffset = Math.max(rawOffset, 38);
             }
             setTopAnchorHeight(finalOffset);
@@ -263,8 +274,8 @@ export const Header = ({ todayString }: HeaderProps) => {
                 ref={headerRef}
                 data-site-header
                 data-site-header-visible={isHeaderVisible ? 'true' : 'false'}
-                className={`glass site-header sticky z-50 pt-[env(safe-area-inset-top,0px)] ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
-                style={{ top: topAnchorHeight > 0 ? `${topAnchorHeight}px` : '0px' }}
+                className={`glass site-header sticky top-0 z-50 pt-[env(safe-area-inset-top,0px)] ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
+                style={{ marginTop: topAnchorHeight > 0 ? `${topAnchorHeight}px` : '0px' }}
             >
                 <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 md:px-6">
                     <div className="flex h-10 items-center justify-between gap-1.5 sm:h-16 sm:gap-4">

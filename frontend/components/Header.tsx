@@ -10,6 +10,7 @@ import {
     shouldShowRakutenKeibaHeader,
 } from '@/lib/affiliate-campaigns';
 import { acquirePageScrollLock } from '@/lib/page-scroll-lock';
+import { getGoogleAdOverlaySnapshot, GOOGLE_AD_OVERLAY_EVENT } from '@/lib/google-ad-overlay';
 
 type HeaderProps = {
     todayString: string;
@@ -64,6 +65,7 @@ export const Header = ({ todayString }: HeaderProps) => {
     const pathname = usePathname();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+    const [topAnchorHeight, setTopAnchorHeight] = useState<number>(() => getGoogleAdOverlaySnapshot().topAnchorHeight);
     const headerRef = useRef<HTMLElement>(null);
     const menuButtonRef = useRef<HTMLButtonElement>(null);
     const menuPanelRef = useRef<HTMLDivElement>(null);
@@ -156,6 +158,7 @@ export const Header = ({ todayString }: HeaderProps) => {
     }, [pathname]);
 
     // 本文の途中では方向にかかわらず退避し、ページ最上部へ戻った時だけ復帰する。
+    // 同時にトップアンカー広告の高さも追跡する。
     useEffect(() => {
         if (isMenuOpen) {
             setIsHeaderVisible(true);
@@ -167,6 +170,9 @@ export const Header = ({ todayString }: HeaderProps) => {
             frameId = 0;
             const nextScrollY = Math.max(0, window.scrollY);
             setIsHeaderVisible(nextScrollY <= 8);
+            // トップアンカー広告の高さを同期
+            const overlay = getGoogleAdOverlaySnapshot();
+            setTopAnchorHeight(overlay.topAnchorHeight);
         };
 
         const requestUpdate = () => {
@@ -174,10 +180,13 @@ export const Header = ({ todayString }: HeaderProps) => {
             frameId = window.requestAnimationFrame(updateVisibility);
         };
 
+        const handleOverlayChange = () => requestUpdate();
+        window.addEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange as EventListener);
         window.addEventListener('scroll', requestUpdate, { passive: true });
         requestUpdate();
         return () => {
             if (frameId) window.cancelAnimationFrame(frameId);
+            window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange as EventListener);
             window.removeEventListener('scroll', requestUpdate);
         };
     }, [isMenuOpen]);
@@ -227,12 +236,13 @@ export const Header = ({ todayString }: HeaderProps) => {
                 ref={headerRef}
                 data-site-header
                 data-site-header-visible={isHeaderVisible ? 'true' : 'false'}
-                className={`glass site-header sticky top-0 z-50 pt-[env(safe-area-inset-top,0px)] ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
+                className={`glass site-header sticky z-50 pt-[env(safe-area-inset-top,0px)] ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
+                style={{ top: topAnchorHeight > 0 ? `${topAnchorHeight}px` : '0px' }}
             >
                 <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 md:px-6">
                     <div className="flex h-10 items-center justify-between gap-1.5 sm:h-16 sm:gap-4">
                     {/* ロゴ */}
-                    <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0 pl-0.5 sm:pl-0" aria-label="ウマFREE ホーム">
+                    <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0" aria-label="ウマFREE ホーム">
                         <img
                             src="/new-logo.webp"
                             alt="UMA-FREE ロゴ"

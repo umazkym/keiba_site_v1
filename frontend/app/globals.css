@@ -575,7 +575,7 @@ header.glass {
 .home-sticky-race-cta {
     position: fixed;
     z-index: 39;
-    bottom: 12px;
+    bottom: 0;
     right: 0;
     left: 0;
     background: transparent;

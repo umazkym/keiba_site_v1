@@ -77,12 +77,15 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
             className={`home-sticky-race-cta ${isVisible ? 'home-sticky-race-cta-visible' : ''}`}
             style={{
                 bottom: bottomAnchorHeight > 0
-                    ? `calc(12px + ${bottomAnchorHeight}px + env(safe-area-inset-bottom, 0px))`
-                    : `calc(12px + env(safe-area-inset-bottom, 0px))`,
+                    ? `calc(${bottomAnchorHeight}px + env(safe-area-inset-bottom, 0px))`
+                    : 'env(safe-area-inset-bottom, 0px)',
             }}
             aria-hidden={!isVisible}
         >
-            <div className="mx-auto flex h-12 max-w-[1600px] items-center justify-center px-3 sm:px-4 md:px-6">
+            {/* Safariタブ変色防止: ビューポート最下端にサイト背景色の物理シールドを配置し
+                Safariの色サンプリングが青色ボタンを検出しないようにする */}
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-[6px]" style={{ background: '#f8fafc' }} aria-hidden="true" />
+            <div className="relative mx-auto flex max-w-[1600px] items-center justify-center px-3 pb-[8px] pt-[2px] sm:px-4 md:px-6">
                 <HomeRaceEntryLink
                     href={`/races/${raceDate}`}
                     raceDate={raceDate}

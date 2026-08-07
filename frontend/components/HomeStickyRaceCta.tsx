@@ -20,6 +20,19 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
             return;
         }
 
+        // ページの最下部付近（フッター）までスクロールした場合はフッター文言との重なりを防ぐため退避
+        const scrollBottom = window.innerHeight + window.scrollY;
+        const pageHeight = Math.max(
+            document.body.scrollHeight,
+            document.documentElement.scrollHeight,
+        );
+        const isNearBottom = scrollBottom >= pageHeight - 200;
+
+        if (isNearBottom) {
+            setIsVisible(false);
+            return;
+        }
+
         const headerOffset = Number.parseFloat(
             window.getComputedStyle(document.documentElement).getPropertyValue('--site-header-offset'),
         ) || 0;

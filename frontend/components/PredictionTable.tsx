@@ -24,7 +24,7 @@ const getWakuClasses = (waku: number | null) => {
 };
 
 const HorseNumberCircle = ({ number, waku }: { number: number, waku: number | null }) => (
-    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-black sm:h-7 sm:w-7 sm:text-xs ${getWakuClasses(waku)}`}>
+    <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black sm:h-7 sm:w-7 sm:text-xs ${getWakuClasses(waku)}`}>
         {number}
     </span>
 );
@@ -139,7 +139,7 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                             : getWakuNumber(p.horse_number, race.predictions.length);
                         return (
                             <tr key={`${race.id}-${p.horse_number}`}>
-                                <td className="text-center text-lg font-black leading-none">{normalizePredictionMark(p.mark)}</td>
+                                <td className="text-center text-sm font-black leading-none sm:text-base">{normalizePredictionMark(p.mark)}</td>
                                 <td className="text-center">
                                     <HorseNumberCircle number={p.horse_number} waku={resolvedWaku} />
                                 </td>

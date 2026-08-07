@@ -1,5 +1,6 @@
 export type SocialPlatform =
     | 'x'
+    | 'youtube'
     | 'threads'
     | 'instagram'
     | 'facebook'
@@ -26,9 +27,18 @@ const socialLinkDefinitions: Array<{
             'https://x.com/umafree_ai',
     },
     {
+        platform: 'youtube',
+        label: '公式YouTube',
+        configuredUrl:
+            process.env.NEXT_PUBLIC_SOCIAL_YOUTUBE_URL ||
+            'https://www.youtube.com/@umafree_ai',
+    },
+    {
         platform: 'threads',
         label: '公式Threads',
-        configuredUrl: process.env.NEXT_PUBLIC_SOCIAL_THREADS_URL,
+        configuredUrl:
+            process.env.NEXT_PUBLIC_SOCIAL_THREADS_URL ||
+            'https://www.threads.net/@umafree_ai',
     },
     {
         platform: 'instagram',

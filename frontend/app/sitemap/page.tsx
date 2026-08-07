@@ -36,20 +36,20 @@ function getTodayString() {
 
 function SitemapCard({ group }: { group: SitemapGroup }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-      <h2 className="flex items-center gap-2 text-xl font-black text-slate-950">
-        <span className="h-5 w-1 rounded-sm bg-accent" />
+    <section className="rounded-xl border border-slate-200 bg-white p-2 sm:p-5 shadow-xs">
+      <h2 className="flex items-center gap-1.5 text-[14.5px] font-black text-slate-950 sm:text-xl">
+        <span className="h-3.5 w-1 rounded-sm bg-accent" />
         {group.title}
       </h2>
-      <div className="mt-4 space-y-2">
+      <div className="mt-1.5 space-y-1 sm:mt-4 sm:space-y-2">
         {group.links.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className="group block rounded-xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:border-slate-300 hover:bg-white"
+            className="group block rounded-lg border border-slate-100 bg-slate-50 p-2 transition-colors hover:border-slate-300 hover:bg-white sm:p-4"
           >
-            <span className="font-black text-slate-800 group-hover:text-primary">{link.label}</span>
-            {link.description && <span className="mt-1 block text-sm leading-6 text-slate-500">{link.description}</span>}
+            <span className="text-xs font-black text-slate-800 group-hover:text-primary sm:text-base">{link.label}</span>
+            {link.description && <span className="mt-0.5 block text-[10.5px] leading-tight text-slate-500 sm:text-sm sm:leading-6">{link.description}</span>}
           </Link>
         ))}
       </div>
@@ -131,7 +131,7 @@ export default function SitemapPage() {
         }
         maxWidth="wide"
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-1.5 md:grid-cols-2 sm:gap-4">
           {groups.map((group) => (
             <SitemapCard key={group.title} group={group} />
           ))}

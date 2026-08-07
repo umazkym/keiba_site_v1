@@ -32,7 +32,7 @@
     --elevated-shadow: 0 12px 34px rgba(15, 23, 42, 0.18);
 
     /* セクション間のギャップ（モバイル/デスクトップ自動切替） */
-    --section-gap: 1.25rem;
+    --section-gap: 0.375rem;
 
     /* サンプルカラー変数 */
     --primary-color: #0f172a;
@@ -172,42 +172,42 @@
     }
 
     .ui-section-header {
-        @apply flex min-w-0 items-end justify-between gap-3 border-b border-slate-200 pb-2;
+        @apply flex min-w-0 items-end justify-between gap-1.5 border-b border-slate-200 pb-1 sm:gap-3 sm:pb-2;
     }
 
     .ui-section-header--compact {
-        @apply items-center pb-1.5;
+        @apply items-center pb-0.5 sm:pb-1.5;
     }
 
     .ui-section-header__title {
-        @apply text-lg font-black leading-snug text-slate-950 sm:text-xl;
+        @apply text-[15px] font-extrabold leading-snug text-slate-950 sm:text-xl;
     }
 
     .ui-section-header--compact .ui-section-header__title {
-        @apply text-base sm:text-lg;
+        @apply text-[14px] font-bold sm:text-lg;
     }
 
     .ui-section-header__title::before {
         display: inline-block;
-        width: 4px;
-        height: 18px;
-        margin-right: 8px;
+        width: 3.5px;
+        height: 14px;
+        margin-right: 6px;
         border-radius: 999px;
         background: var(--blue-color);
-        vertical-align: -3px;
+        vertical-align: -2px;
         content: "";
     }
 
     .ui-section-header__meta {
-        @apply text-[11px] font-bold text-slate-500 sm:text-xs;
+        @apply text-[10.5px] font-bold text-slate-500 sm:text-xs;
     }
 
     .ui-section-header__description {
-        @apply mt-1 text-xs leading-5 text-slate-600 sm:text-sm sm:leading-6;
+        @apply mt-0.5 text-[11px] leading-4 text-slate-600 sm:text-sm sm:leading-6;
     }
 
     .ui-section-header__action {
-        @apply shrink-0 text-xs font-bold text-blue-700;
+        @apply shrink-0 text-[11px] font-bold text-blue-700 sm:text-xs;
     }
 
     .responsive-data-table {
@@ -613,31 +613,50 @@ header.glass {
     transition: top 180ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* レスポンシブ改善 */
+/* レスポンシブ改善: モバイル高密度＆フォント抑制 */
 @media (max-width: 640px) {
     body {
-        font-size: 15px;
+        font-size: 14px;
+        line-height: 1.5;
     }
 
     .react-tabs__tab {
-        padding: 0.28rem 0.65rem !important;
+        padding: 0.2rem 0.5rem !important;
         font-size: 0.72rem;
-        min-height: 30px;
+        min-height: 26px;
     }
 
     .table-wrapper {
         border-radius: 6px;
-        margin: 0 0.75rem;
+        margin: 0 0.25rem;
         padding: 1px;
         width: auto !important;
     }
 
     .card,
     .pick-card {
-        border-radius: 10px !important;
+        border-radius: 8px !important;
         box-shadow: none !important;
         margin-left: 0 !important;
         margin-right: 0 !important;
+        padding: 6px 8px !important;
+    }
+
+    .venue-section,
+    .hits,
+    .pick-section,
+    .articles,
+    .database-section,
+    .faq {
+        padding: 6px 8px !important;
+    }
+
+    .hero {
+        padding: 10px 12px !important;
+    }
+
+    .grade-focus {
+        padding: 8px 10px !important;
     }
 
     .home-page-scope .articles .article {
@@ -651,50 +670,60 @@ header.glass {
     }
 
     .container {
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
+        padding-left: 0.375rem;
+        padding-right: 0.375rem;
     }
 
+    /* モバイル見出し上限15px厳守 */
     h1 {
-        font-size: 1.35rem;
-        line-height: 1.25;
+        font-size: 15px !important;
+        line-height: 1.25 !important;
     }
 
     h2 {
-        font-size: 1.1rem;
-        line-height: 1.25;
+        font-size: 14.5px !important;
+        line-height: 1.25 !important;
     }
 
     h3 {
-        font-size: 1rem;
-        line-height: 1.3;
+        font-size: 14px !important;
+        line-height: 1.3 !important;
+    }
+
+    h4 {
+        font-size: 13px !important;
+        line-height: 1.35 !important;
+    }
+
+    p {
+        line-height: 1.5 !important;
     }
 
     .btn-primary {
-        min-height: 34px;
-        padding: 0.45rem 1rem;
-        font-size: 0.8rem;
+        min-height: 32px;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.78rem;
     }
 
     .matchup-table {
-        font-size: 0.75rem;
+        font-size: 0.72rem;
     }
 
     .matchup-table th,
     .matchup-table td {
-        padding: 0.25rem 0.35rem;
+        padding: 0.15rem 0.25rem;
     }
 
     .matchup-table.matchup-table-compact th,
     .matchup-table.matchup-table-compact td {
-        padding-top: 2px !important;
-        padding-bottom: 2px !important;
+        padding-top: 1px !important;
+        padding-bottom: 1px !important;
         padding-left: 1px !important;
         padding-right: 1px !important;
     }
 
     .matchup-table.matchup-table-compact .mobile-sticky-col {
-        min-width: 40px !important;
+        min-width: 36px !important;
     }
 }
 
@@ -779,39 +808,39 @@ header.glass {
     .article-page-title,
     .article-page-lead,
     .article-page-prose {
-        max-width: calc(100vw - 1rem) !important;
+        max-width: calc(100vw - 0.5rem) !important;
         width: 100%;
     }
 
     .article-page-title {
-        font-size: 1.55rem !important;
-        line-height: 1.24 !important;
+        font-size: 15px !important;
+        line-height: 1.25 !important;
         word-break: normal;
     }
 
     .article-page-prose h1,
     .article-page-prose h2 {
-        font-size: 1.32rem !important;
-        line-height: 1.34 !important;
+        font-size: 14.5px !important;
+        line-height: 1.3 !important;
         word-break: normal;
     }
 
     .article-page-prose h3 {
-        font-size: 1.08rem !important;
-        line-height: 1.38 !important;
+        font-size: 14px !important;
+        line-height: 1.35 !important;
     }
 
     .article-page-prose {
-        font-size: 0.94rem !important;
-        line-height: 1.78 !important;
+        font-size: 13.5px !important;
+        line-height: 1.6 !important;
     }
 
     .article-page-prose p,
     .article-page-prose ul,
     .article-page-prose ol {
-        margin-top: 0.9em !important;
-        margin-bottom: 0.9em !important;
-        line-height: 1.78 !important;
+        margin-top: 0.4em !important;
+        margin-bottom: 0.4em !important;
+        line-height: 1.6 !important;
     }
 
     .article-page-prose li {

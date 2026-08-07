@@ -91,13 +91,13 @@ function SectionHeading({
   description?: string;
 }) {
   return (
-    <div className="mb-4">
-      <p className="text-xs font-bold tracking-[0.16em] text-slate-400">{label}</p>
-      <h2 className="mt-1 flex items-center gap-2 text-2xl font-black text-slate-950">
-        <span className="h-5 w-1 rounded-sm bg-accent" />
+    <div className="mb-2 sm:mb-4">
+      <p className="text-[10px] font-bold tracking-[0.16em] text-slate-400">{label}</p>
+      <h2 className="mt-0.5 flex items-center gap-1.5 text-[14.5px] font-black text-slate-950 sm:text-2xl">
+        <span className="h-3.5 w-1 rounded-sm bg-accent" />
         {title}
       </h2>
-      {description && <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">{description}</p>}
+      {description && <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-slate-600 sm:text-sm sm:leading-7">{description}</p>}
     </div>
   );
 }
@@ -112,20 +112,20 @@ function RateCard({
   accent: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-      <div className="flex items-start justify-between gap-3">
+    <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs sm:p-5">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
         <div>
-          <p className="text-sm font-black text-slate-700">{item.label}</p>
-          <p className="mt-2 text-3xl font-black text-slate-950">{item.rate.toFixed(1)}%</p>
+          <p className="text-xs font-black text-slate-700 sm:text-sm">{item.label}</p>
+          <p className="mt-0.5 text-lg font-black text-slate-950 sm:text-3xl">{item.rate.toFixed(1)}%</p>
         </div>
-        <span className={`flex h-10 w-10 items-center justify-center rounded-xl text-white ${accent}`}>
-          <Icon className="h-5 w-5" />
+        <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-white sm:h-10 sm:w-10 sm:rounded-xl ${accent}`}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </span>
       </div>
-      <div className="mt-4 h-2 rounded-full bg-slate-100">
-        <div className={`h-2 rounded-full ${accent}`} style={{ width: percentWidth(item.rate) }} />
+      <div className="mt-2 h-1.5 rounded-full bg-slate-100 sm:mt-4 sm:h-2">
+        <div className={`h-1.5 rounded-full sm:h-2 ${accent}`} style={{ width: percentWidth(item.rate) }} />
       </div>
-      <p className="mt-2 text-xs text-slate-500">
+      <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
         {item.hits} / {item.total}件
       </p>
     </div>
@@ -141,23 +141,23 @@ function TrendCard({
 }) {
   const rate = summary?.race_count ? summary.top1_place.rate : null;
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold tracking-[0.14em] text-slate-400">{label}</p>
-        <TrendingUp className="h-4 w-4 text-slate-300" />
+    <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs sm:p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-bold tracking-[0.14em] text-slate-400">{label}</p>
+        <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
       </div>
       {rate !== null ? (
         <>
-          <p className="mt-2 text-2xl font-black text-slate-950">{rate.toFixed(1)}%</p>
-          <div className="mt-3 h-2 rounded-full bg-slate-100">
-            <div className="h-2 rounded-full bg-accent" style={{ width: percentWidth(rate) }} />
+          <p className="mt-1 text-base font-black text-slate-950 sm:text-2xl">{rate.toFixed(1)}%</p>
+          <div className="mt-1.5 h-1.5 rounded-full bg-slate-100 sm:mt-3 sm:h-2">
+            <div className="h-1.5 rounded-full bg-accent sm:h-2" style={{ width: percentWidth(rate) }} />
           </div>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
             AI偏差値1位の3着以内率 / {summary?.race_count}レース
           </p>
         </>
       ) : (
-        <p className="mt-3 text-sm leading-7 text-slate-500">表示できるレースがまだありません。</p>
+        <p className="mt-1.5 text-xs leading-5 text-slate-500">表示できるレースがまだありません。</p>
       )}
     </div>
   );

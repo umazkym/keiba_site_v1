@@ -160,11 +160,6 @@ export const Header = ({ todayString }: HeaderProps) => {
     // 本文の途中では方向にかかわらず退避し、ページ最上部へ戻った時だけ復帰する。
     // 上部アンカー広告が存在する場合は、AdSensePageLevelScriptのスナップショットのみを信頼源とする。
     useEffect(() => {
-        if (isMenuOpen) {
-            setIsHeaderVisible(true);
-            return undefined;
-        }
-
         let anchorDebounceTimer = 0;
         let pendingAnchorHeight = -1;
 
@@ -188,7 +183,9 @@ export const Header = ({ todayString }: HeaderProps) => {
 
         const updateVisibility = () => {
             const nextScrollY = Math.max(0, window.scrollY);
-            setIsHeaderVisible(nextScrollY <= 8);
+            if (!isMenuOpen) {
+                setIsHeaderVisible(nextScrollY <= 8);
+            }
 
             const overlay = getGoogleAdOverlaySnapshot();
             applyAnchorHeight(overlay.topAnchorHeight);

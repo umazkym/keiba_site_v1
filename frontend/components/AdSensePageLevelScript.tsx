@@ -28,7 +28,7 @@ const isVisibleAnchor = (element: HTMLElement) => {
 };
 
 const getVisibleGoogleAnchors = () => Array.from(document.querySelectorAll<HTMLElement>(
-    'ins.adsbygoogle-noablate[data-anchor-status="displayed"], ins.adsbygoogle[data-anchor-status="displayed"], .fc-ablate-drawer-tab',
+    'ins.adsbygoogle-noablate, .fc-ablate-drawer-tab, .fc-ablate-drawer-btn, [id^="aswift_"][style*="position"], [id^="google_ads_iframe"][style*="position"]',
 )).filter(isVisibleAnchor);
 
 const isVisibleOfferwall = () => Array.from(document.querySelectorAll<HTMLElement>(OFFERWALL_SELECTOR)).some((element) => {

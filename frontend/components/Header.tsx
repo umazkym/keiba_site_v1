@@ -155,13 +155,10 @@ export const Header = ({ todayString }: HeaderProps) => {
     useEffect(() => {
         setIsMenuOpen(false);
         setIsHeaderVisible(true);
-        setHasTopAnchorEverBeenSeen(false);
     }, [pathname]);
 
-    const [hasTopAnchorEverBeenSeen, setHasTopAnchorEverBeenSeen] = useState(false);
-
     // 本文の途中では方向にかかわらず退避し、ページ最上部へ戻った時だけ復帰する。
-    // 上部アンカー広告が存在する場合は、全展開時（広告の高さ）と最小化時（矢印タブの高さ）を物理的にmargin-topで押し下げる。
+    // 上部アンカー広告が存在する場合は、全展開時（広告の高さ）と最小化時（38px）の位置へposition:stickyのtopで吸着させる。
     useEffect(() => {
         if (isMenuOpen) {
             setIsHeaderVisible(true);
@@ -170,8 +167,7 @@ export const Header = ({ todayString }: HeaderProps) => {
 
         /**
          * Google Auto Adsの「上部アンカー専用要素」のみをピンポイントでスキャンする。
-         * ページ内の通常インライン広告ユニット(ins.adsbygoogle)は除外するため、
-         * 途中の広告読み込みやスクロールでヘッダーが誤動作することはありません。
+         * 全展開時は広告下端の高さ(100px以上)、折りたたみ時(「^」タブ)は最低38pxを返します。
          */
         const scanTopAnchorAdBottom = (): number => {
             const topAnchorElements = document.querySelectorAll<HTMLElement>(
@@ -194,10 +190,10 @@ export const Header = ({ todayString }: HeaderProps) => {
             });
 
             if (maxBottom > 0) {
-                return Math.max(maxBottom, 40);
+                return Math.max(maxBottom, 38);
             }
             if (hasTopAnchorElement) {
-                return 40;
+                return 38;
             }
             return 0;
         };
@@ -210,15 +206,8 @@ export const Header = ({ todayString }: HeaderProps) => {
             const directOffset = scanTopAnchorAdBottom();
             const rawOffset = Math.max(overlay.topAnchorHeight, directOffset);
 
-            if (rawOffset > 0 || hasTopAnchorEverBeenSeen) {
-                if (!hasTopAnchorEverBeenSeen && rawOffset > 0) {
-                    setHasTopAnchorEverBeenSeen(true);
-                }
-                // 全展開時（動画等を含む）は実測高さ、折りたたみ時（「^」タブ）は最低40pxを強固に保障
-                setTopAnchorHeight(Math.max(rawOffset, 40));
-            } else {
-                setTopAnchorHeight(0);
-            }
+            const finalOffset = rawOffset > 0 ? Math.max(rawOffset, 38) : 0;
+            setTopAnchorHeight(finalOffset);
         };
 
         const handleOverlayChange = () => updateVisibility();
@@ -233,7 +222,7 @@ export const Header = ({ todayString }: HeaderProps) => {
             window.removeEventListener('scroll', updateVisibility);
             window.removeEventListener('resize', updateVisibility);
         };
-    }, [isMenuOpen, hasTopAnchorEverBeenSeen]);
+    }, [isMenuOpen]);
 
     // sticky要素がヘッダーの実高と表示状態を共通参照できるようにする。
     useEffect(() => {
@@ -280,8 +269,8 @@ export const Header = ({ todayString }: HeaderProps) => {
                 ref={headerRef}
                 data-site-header
                 data-site-header-visible={isHeaderVisible ? 'true' : 'false'}
-                className={`glass site-header sticky top-0 z-50 pt-[env(safe-area-inset-top,0px)] ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
-                style={{ marginTop: topAnchorHeight > 0 ? `${topAnchorHeight}px` : '0px' }}
+                className={`glass site-header sticky z-50 pt-[env(safe-area-inset-top,0px)] ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
+                style={{ top: topAnchorHeight > 0 ? `${topAnchorHeight}px` : '0px' }}
             >
                 <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 md:px-6">
                     <div className="flex h-10 items-center justify-between gap-1.5 sm:h-16 sm:gap-4">

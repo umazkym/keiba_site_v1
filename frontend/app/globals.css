@@ -588,7 +588,7 @@ header.glass {
     bottom: 0;
     right: 0;
     left: 0;
-    background: transparent;
+    background: var(--bg);
     opacity: 0;
     pointer-events: none;
     transform: translateY(100%);

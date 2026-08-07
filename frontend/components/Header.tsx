@@ -195,6 +195,8 @@ export const Header = ({ todayString }: HeaderProps) => {
         };
 
         let frameId = 0;
+        let isPolling = false;
+
         const updateVisibility = () => {
             frameId = 0;
             const nextScrollY = Math.max(0, window.scrollY);
@@ -202,7 +204,9 @@ export const Header = ({ todayString }: HeaderProps) => {
             // オーバーレイ検出 + 直接DOM走査の大きい方を採用
             const overlay = getGoogleAdOverlaySnapshot();
             const directOffset = scanTopAdOffset();
-            setTopAnchorHeight(Math.max(overlay.topAnchorHeight, directOffset));
+            const rawOffset = Math.max(overlay.topAnchorHeight, directOffset);
+            // 安全マージン（+6px）を付与し、アニメーション途中の測定誤差や1pxの重なりを完全吸収
+            setTopAnchorHeight(rawOffset > 0 ? rawOffset + 6 : 0);
         };
 
         const requestUpdate = () => {
@@ -210,23 +214,37 @@ export const Header = ({ todayString }: HeaderProps) => {
             frameId = window.requestAnimationFrame(updateVisibility);
         };
 
-        const handleOverlayChange = () => requestUpdate();
-        window.addEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange as EventListener);
+        // 広告要素の出現や状態変更（スライドアニメーション含む）の直後、
+        // 約400ms間rAFで連続計測（settle polling）を行いアニメーション中の表示ズレを追従する
+        const startSettlePolling = () => {
+            requestUpdate();
+            if (isPolling) return;
+            isPolling = true;
+            const start = performance.now();
+            const poll = () => {
+                requestUpdate();
+                if (performance.now() - start < 400) {
+                    window.requestAnimationFrame(poll);
+                } else {
+                    isPolling = false;
+                }
+            };
+            window.requestAnimationFrame(poll);
+        };
+
+        window.addEventListener(GOOGLE_AD_OVERLAY_EVENT, startSettlePolling as EventListener);
         window.addEventListener('scroll', requestUpdate, { passive: true });
 
-        // Google Ad要素の出現・消滅・属性変更を監視するMutationObserver
-        const adObserver = new MutationObserver(requestUpdate);
+        // body直下の子要素変更を軽量監視し、無駄なsubtreeノイズを抑制しつつ新規広告要素の出現を捕捉
+        const adObserver = new MutationObserver(startSettlePolling);
         adObserver.observe(document.body, {
             childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['data-anchor-status', 'style', 'class'],
         });
 
         requestUpdate();
         return () => {
             if (frameId) window.cancelAnimationFrame(frameId);
-            window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange as EventListener);
+            window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, startSettlePolling as EventListener);
             window.removeEventListener('scroll', requestUpdate);
             adObserver.disconnect();
         };

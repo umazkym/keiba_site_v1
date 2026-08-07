@@ -158,44 +158,32 @@ export const Header = ({ todayString }: HeaderProps) => {
     }, [pathname]);
 
     // 本文の途中では方向にかかわらず退避し、ページ最上部へ戻った時だけ復帰する。
-    // 上部アンカー広告が存在する場合は、全展開時（広告の高さ）と最小化時（38px）の位置へposition:stickyのtopで吸着させる。
+    // 上部アンカー広告が存在する場合は、AdSensePageLevelScriptのスナップショットのみを信頼源とする。
     useEffect(() => {
         if (isMenuOpen) {
             setIsHeaderVisible(true);
             return undefined;
         }
 
-        /**
-         * Google Auto Adsの「上部アンカー専用要素」のみをピンポイントでスキャンする。
-         * 全展開時は広告下端の高さ(100px以上)、折りたたみ時(「^」タブ)は最低38pxを返します。
-         */
-        const scanTopAnchorAdBottom = (): number => {
-            const topAnchorElements = document.querySelectorAll<HTMLElement>(
-                'ins.adsbygoogle-noablate, .fc-ablate-drawer-tab, .fc-ablate-drawer-btn, [id^="aswift_"][style*="position"], [id^="google_ads_iframe"][style*="position"]'
-            );
-            let maxBottom = 0;
-            let hasTopAnchorElement = false;
+        let anchorDebounceTimer = 0;
+        let pendingAnchorHeight = -1;
 
-            topAnchorElements.forEach((el) => {
-                const style = window.getComputedStyle(el);
-                if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
-                const rect = el.getBoundingClientRect();
-                // 画面上部250px以内に位置するAuto Ads要素
-                if (rect.top <= 250 && rect.bottom > 0) {
-                    hasTopAnchorElement = true;
-                    if (rect.height > 0) {
-                        maxBottom = Math.max(maxBottom, Math.ceil(rect.bottom));
-                    }
-                }
-            });
-
-            if (maxBottom > 0) {
-                return Math.max(maxBottom, 38);
+        const applyAnchorHeight = (newHeight: number) => {
+            // 広告の展開/折りたたみアニメーション中の中間値でガタつかないようデバウンスする。
+            // ただし 0 への復帰（広告消失）は即座に適用する。
+            if (newHeight === 0) {
+                window.clearTimeout(anchorDebounceTimer);
+                pendingAnchorHeight = -1;
+                setTopAnchorHeight(0);
+                return;
             }
-            if (hasTopAnchorElement) {
-                return 38;
-            }
-            return 0;
+            if (newHeight === pendingAnchorHeight) return;
+            pendingAnchorHeight = newHeight;
+            window.clearTimeout(anchorDebounceTimer);
+            anchorDebounceTimer = window.setTimeout(() => {
+                setTopAnchorHeight(pendingAnchorHeight);
+                pendingAnchorHeight = -1;
+            }, 300);
         };
 
         const updateVisibility = () => {
@@ -203,11 +191,7 @@ export const Header = ({ todayString }: HeaderProps) => {
             setIsHeaderVisible(nextScrollY <= 8);
 
             const overlay = getGoogleAdOverlaySnapshot();
-            const directOffset = scanTopAnchorAdBottom();
-            const rawOffset = Math.max(overlay.topAnchorHeight, directOffset);
-
-            const finalOffset = rawOffset > 0 ? Math.max(rawOffset, 38) : 0;
-            setTopAnchorHeight(finalOffset);
+            applyAnchorHeight(overlay.topAnchorHeight);
         };
 
         const handleOverlayChange = () => updateVisibility();
@@ -218,6 +202,7 @@ export const Header = ({ todayString }: HeaderProps) => {
         updateVisibility();
 
         return () => {
+            window.clearTimeout(anchorDebounceTimer);
             window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange as EventListener);
             window.removeEventListener('scroll', updateVisibility);
             window.removeEventListener('resize', updateVisibility);

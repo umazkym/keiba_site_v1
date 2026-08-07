@@ -20,7 +20,9 @@ const isVisibleAnchor = (element: HTMLElement) => {
     if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || '1') <= 0) {
         return false;
     }
-    const isTopArea = rect.top <= 80 && rect.bottom > 0;
+    // 上部アンカーは画面上端に固定されるため、top <= 10 で十分。
+    // 以前の 80px はヘッダー下の要素まで拾い、空白の原因になっていた。
+    const isTopArea = rect.top <= 10 && rect.bottom > 0;
     const isBottomArea = rect.bottom >= window.innerHeight - 20;
     return rect.height >= 20 && (isTopArea || isBottomArea);
 };
@@ -51,8 +53,6 @@ export const AdSensePageLevelScript = ({ enabled }: AdSensePageLevelScriptProps)
 
         const baseline = {
             bodyOverflow: document.body.style.overflow,
-            bodyPaddingTop: document.body.style.paddingTop,
-            bodyPaddingBottom: document.body.style.paddingBottom,
             htmlOverflow: document.documentElement.style.overflow,
         };
         let observedGoogleUi = Boolean(document.querySelector(GOOGLE_UI_SELECTOR));
@@ -102,16 +102,15 @@ export const AdSensePageLevelScript = ({ enabled }: AdSensePageLevelScriptProps)
             restoreTimer = window.setTimeout(() => {
                 if (hasVisibleGoogleDialog() || getVisibleGoogleAnchors().length > 0 || hasSiteScrollLock()) return;
 
-                const scrollTop = window.scrollY;
+                // overflowの復帰のみ行う。
+                // body paddingはGoogle AdSenseスクリプト自身が管理するため、
+                // こちらで上書きリセットすると競合してちらつきの原因になる。
                 if (document.body.style.overflow === 'hidden') {
                     document.body.style.overflow = baseline.bodyOverflow;
                 }
                 if (document.documentElement.style.overflow === 'hidden') {
                     document.documentElement.style.overflow = baseline.htmlOverflow;
                 }
-                document.body.style.paddingTop = baseline.bodyPaddingTop;
-                document.body.style.paddingBottom = baseline.bodyPaddingBottom;
-                window.requestAnimationFrame(() => window.scrollTo({ top: scrollTop, behavior: 'auto' }));
                 wasBlocking = false;
             }, 240);
         };

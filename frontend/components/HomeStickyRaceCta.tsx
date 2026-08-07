@@ -75,7 +75,11 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
     return (
         <div
             className={`home-sticky-race-cta ${isVisible ? 'home-sticky-race-cta-visible' : ''}`}
-            style={bottomAnchorHeight > 0 ? { bottom: `calc(12px + ${bottomAnchorHeight}px)` } : undefined}
+            style={{
+                bottom: bottomAnchorHeight > 0
+                    ? `calc(12px + ${bottomAnchorHeight}px + env(safe-area-inset-bottom, 0px))`
+                    : `calc(12px + env(safe-area-inset-bottom, 0px))`,
+            }}
             aria-hidden={!isVisible}
         >
             <div className="mx-auto flex h-12 max-w-[1600px] items-center justify-center px-3 sm:px-4 md:px-6">

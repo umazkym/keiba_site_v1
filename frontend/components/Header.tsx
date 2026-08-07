@@ -227,12 +227,12 @@ export const Header = ({ todayString }: HeaderProps) => {
                 ref={headerRef}
                 data-site-header
                 data-site-header-visible={isHeaderVisible ? 'true' : 'false'}
-                className={`glass site-header sticky top-0 z-50 ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
+                className={`glass site-header sticky top-0 z-50 pt-[env(safe-area-inset-top,0px)] ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
             >
                 <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 md:px-6">
                     <div className="flex h-10 items-center justify-between gap-1.5 sm:h-16 sm:gap-4">
                     {/* ロゴ */}
-                    <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0" aria-label="ウマFREE ホーム">
+                    <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0 pl-0.5 sm:pl-0" aria-label="ウマFREE ホーム">
                         <img
                             src="/new-logo.webp"
                             alt="UMA-FREE ロゴ"

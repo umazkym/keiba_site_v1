@@ -158,27 +158,50 @@ export const Header = ({ todayString }: HeaderProps) => {
     }, [pathname]);
 
     // 本文の途中では方向にかかわらず退避し、ページ最上部へ戻った時だけ復帰する。
-    // 上部アンカー広告が存在する場合は矢印(▽)ボタン分（28px）だけヘッダーを下にオフセットする。
+    // 上部アンカー広告が存在する場合は、全展開時（広告の高さ）と最小化時（矢印タブの高さ）を正確に追従する。
     useEffect(() => {
         if (isMenuOpen) {
             setIsHeaderVisible(true);
             return undefined;
         }
 
-        const TOP_ANCHOR_TAB_HEIGHT = 28; // 矢印(▽)ボタン分の固定高さ(px)
+        /**
+         * Google Auto Adsの「上部アンカー専用要素」のみをピンポイントでスキャンする。
+         * ページ内の通常インライン広告ユニット(ins.adsbygoogle)は除外するため、
+         * 途中の広告読み込みやスクロールでヘッダーが誤動作することはありません。
+         */
+        const scanTopAnchorAdBottom = (): number => {
+            const topAnchorElements = document.querySelectorAll<HTMLElement>(
+                'ins.adsbygoogle-noablate, .fc-ablate-drawer-tab, .fc-ablate-drawer-btn'
+            );
+            let maxBottom = 0;
+            topAnchorElements.forEach((el) => {
+                const style = window.getComputedStyle(el);
+                if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
+                const rect = el.getBoundingClientRect();
+                if (rect.height > 0 && rect.top <= 180 && rect.bottom > 0) {
+                    maxBottom = Math.max(maxBottom, Math.ceil(rect.bottom));
+                }
+            });
+            return maxBottom;
+        };
 
         const updateVisibility = () => {
             const nextScrollY = Math.max(0, window.scrollY);
             setIsHeaderVisible(nextScrollY <= 8);
 
-            // Google Ad Overlayまたは折りたたみ矢印タブ(.fc-ablate-drawer-tab)の有無をシンプル判定
             const overlay = getGoogleAdOverlaySnapshot();
-            const hasDrawerTab = Boolean(
-                document.querySelector('.fc-ablate-drawer-tab, ins.adsbygoogle-noablate[data-anchor-status="displayed"]')
-            );
+            const directOffset = scanTopAnchorAdBottom();
+            const rawOffset = Math.max(overlay.topAnchorHeight, directOffset);
 
-            const hasTopAnchor = overlay.topAnchorHeight > 0 || hasDrawerTab;
-            setTopAnchorHeight(hasTopAnchor ? TOP_ANCHOR_TAB_HEIGHT : 0);
+            let finalOffset = 0;
+            if (rawOffset > 0) {
+                // 上部アンカーが存在する場合：
+                // 全展開時（画像1）は rawOffset（100px以上）を採用。
+                // 最小化/折りたたみ時（画像2）は矢印(∨)タブがロゴやボタンに被らないよう、最低38pxのオフセットを確保。
+                finalOffset = Math.max(rawOffset, 38);
+            }
+            setTopAnchorHeight(finalOffset);
         };
 
         const handleOverlayChange = () => updateVisibility();

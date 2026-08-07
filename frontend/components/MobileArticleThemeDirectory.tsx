@@ -59,7 +59,7 @@ const GroupLinks = ({ groups }: { groups: ArchiveGroup[] }) => (
             <Link
                 key={group.href}
                 href={group.href}
-                className="flex min-h-11 items-center justify-between gap-3 px-3 py-2 text-sm font-bold text-slate-700 transition-colors duration-150 hover:bg-slate-50 hover:text-primary"
+                className="flex min-h-11 items-center justify-between gap-3 px-3.5 py-2.5 text-sm font-bold text-slate-700 transition-colors duration-150 hover:bg-slate-50 hover:text-primary"
             >
                 <span className="min-w-0 truncate">{group.title}</span>
                 <span className="shrink-0 text-[11px] font-black text-slate-500">{group.articleCount}記事</span>
@@ -137,10 +137,10 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
             </div>
             {isOpen && <div id="mobile-article-theme-panel" role="tabpanel" className="max-h-[420px] overflow-y-auto overscroll-contain">
                 {activeTheme === 'grade' && (
-                    <div className="grid gap-1.5 p-1.5">
+                    <div className="grid gap-1.5 p-2">
                         {gradeRaceSections.map(section => (
                             <details key={section.id} className={`group/grade overflow-hidden rounded-lg border ${getGradeSectionTone(section.id)}`}>
-                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-1.5 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
+                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
                                     <span>{getGradeSectionLabel(section.id, section.title)}</span>
                                     <span className="flex items-center gap-1.5">
                                         <span className="rounded bg-white px-2 py-0.5 text-[10px] text-slate-600">
@@ -158,10 +158,10 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                 )}
                 {activeTheme === 'jockey' && <GroupLinks groups={jockeyGroups} />}
                 {activeTheme === 'course' && (
-                    <div className="grid gap-1.5 p-1.5">
+                    <div className="grid gap-1.5 p-2">
                         {courseSections.map(section => (
                             <details key={section.id} className="group/venue overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-800">
-                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-1.5 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
+                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
                                     <span>{section.title}</span>
                                     <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
                                         <span>{section.groups.length}コース / {section.articleCount}記事</span>

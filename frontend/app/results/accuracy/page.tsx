@@ -284,7 +284,6 @@ export default async function AccuracyPage({
       <Breadcrumb />
       <article className="mx-auto max-w-[1200px] px-4 pb-14 pt-4">
         <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
-          <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-stretch">
             <div className="flex flex-col justify-between">
               <div>

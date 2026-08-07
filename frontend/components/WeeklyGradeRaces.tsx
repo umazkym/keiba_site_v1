@@ -43,9 +43,12 @@ function getGradeBadgeClass(grade: string): string {
     return 'badge-purple';
 }
 
-function isFocusRace(race: WeeklyGradeRace): boolean {
-    const normalized = normalizeGrade(race.grade);
-    return normalized === 'G1' || normalized === 'JPN1';
+function getGradeRank(grade: string): number {
+    const normalized = normalizeGrade(grade);
+    if (normalized === 'G1' || normalized === 'JPN1') return 1;
+    if (normalized === 'G2' || normalized === 'JPN2') return 2;
+    if (normalized === 'G3' || normalized === 'JPN3') return 3;
+    return 4;
 }
 
 function formatRaceDate(date: string): string {
@@ -83,15 +86,22 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
     };
 
     const sortedRaces = [...races].sort((a, b) => {
+        const gradeRankA = getGradeRank(a.grade);
+        const gradeRankB = getGradeRank(b.grade);
+        if (gradeRankA !== gradeRankB) return gradeRankA - gradeRankB;
+
         const dateDiff = a.race_date.localeCompare(b.race_date);
         if (dateDiff !== 0) return dateDiff;
+
         const typePriority = { '中央': 0, '地方': 1 };
         const typeDiff = typePriority[getRaceTypeLabel(a)] - typePriority[getRaceTypeLabel(b)];
         if (typeDiff !== 0) return typeDiff;
+
         return a.race_number - b.race_number;
     });
-    const focusRaces = sortedRaces.filter(isFocusRace);
-    const listRaces = compact ? sortedRaces.slice(0, 3) : sortedRaces.filter(race => !isFocusRace(race));
+
+    const focusRaces = sortedRaces.slice(0, 1);
+    const listRaces = compact ? sortedRaces.slice(0, 3) : sortedRaces.slice(1);
     const compactRemainingRaces = compact ? sortedRaces.slice(3) : [];
     const jraListRaces = listRaces.filter(race => getRaceTypeLabel(race) === '中央');
     const narListRaces = listRaces.filter(race => getRaceTypeLabel(race) === '地方');
@@ -112,17 +122,22 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
                     key={race.race_id}
                     prefetch={false}
                     href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
-                    className={`inline-flex min-h-[44px] min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 no-underline transition-colors duration-150 hover:border-blue-300 hover:bg-slate-50 ${className}`}
+                    className={`inline-flex min-h-[44px] min-w-0 items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 no-underline transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50/50 ${className}`}
                 >
-                    <span className={`badge shrink-0 ${badgeColorClass}`}>
-                        {formatGrade(race.grade)}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-[12px] font-bold leading-tight text-slate-700 sm:text-[13px]">
-                        {displayName}
-                    </span>
-                    <span className="shrink-0 text-[10px] font-bold leading-none text-slate-500">
-                        {race.race_date.slice(5).replace('-', '/')} {race.venue_name}{race.race_number}R
-                    </span>
+                    <div className="flex min-w-0 items-center gap-2">
+                        <span className={`badge shrink-0 ${badgeColorClass}`}>
+                            {formatGrade(race.grade)}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-[12px] font-bold leading-tight text-slate-900 group-hover:text-blue-600 sm:text-[13px]">
+                            {displayName}
+                        </span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                        <span className="text-[10px] font-bold leading-none text-slate-500">
+                            {race.race_date.slice(5).replace('-', '/')} {race.venue_name}{race.race_number}R
+                        </span>
+                        <span aria-hidden="true" className="text-xs font-bold text-blue-600">→</span>
+                    </div>
                 </Link>
             );
         };
@@ -157,14 +172,17 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
             prefetch={false}
             href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
             aria-label={`${getRaceTypeLabel(race)} ${formatGrade(race.grade)} ${cleanRaceName(race.race_name)} ${race.race_date.slice(5).replace('-', '/')} ${race.venue_name}${race.race_number}R`}
-            className={`inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1.5 no-underline transition-colors duration-150 hover:border-blue-300 hover:bg-slate-50 ${className}`}
+            className={`inline-flex min-h-[44px] min-w-0 items-center justify-between gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 no-underline transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50/50 ${className}`}
         >
-            <span className={`badge shrink-0 ${getGradeBadgeClass(race.grade)}`}>
-                {formatGrade(race.grade)}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-slate-700 sm:text-xs">
-                {cleanRaceName(race.race_name)}
-            </span>
+            <div className="flex min-w-0 items-center gap-1.5">
+                <span className={`badge shrink-0 ${getGradeBadgeClass(race.grade)}`}>
+                    {formatGrade(race.grade)}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-slate-800 sm:text-xs">
+                    {cleanRaceName(race.race_name)}
+                </span>
+            </div>
+            <span aria-hidden="true" className="shrink-0 text-xs font-bold text-blue-600">→</span>
         </Link>
     );
 
@@ -179,7 +197,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
 
                 {/* G1/Jpn1級の強調表示（フルワイド専用カード） */}
                 {!compact && focusRaces.length > 0 && (
-                    <div className="grid gap-3 mb-3">
+                    <div className="grid gap-2 mb-2">
                         {focusRaces.map((race) => {
                             const displayName = cleanRaceName(race.race_name);
                             const topHorse = findTopHorse(race);
@@ -190,32 +208,32 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
                             return (
                                 <article
                                     key={race.race_id}
-                                    className="grade-focus"
+                                    className="grade-focus p-2.5 sm:p-4"
                                 >
-                                    <span className="badge badge-blue text-[10px] sm:text-xs">
+                                    <span className="badge badge-blue text-[9.5px] sm:text-xs">
                                         {raceTypeLabel} {formatGrade(race.grade)} 注目開催
                                     </span>
-                                    <h2>{displayName}</h2>
-                                    <p>
+                                    <h2 className="!text-[15px] sm:!text-[20px] font-black mt-1 mb-0.5">{displayName}</h2>
+                                    <p className="text-[11px] leading-relaxed text-slate-600 mb-2">
                                         {race.venue_name} {race.race_number}R · {formatRaceDate(race.race_date)}。公開データをもとに、出走馬の評価や展開材料を確認できます。
                                     </p>
 
                                     {topHorse && (
-                                        <div className="top-horse">
+                                        <div className="top-horse py-1.5 px-2">
                                             <div>
-                                                <span className="badge badge-blue">AI上位評価</span>
-                                                <strong style={{ display: 'block', marginTop: '5px' }}>{topHorse.horseName}</strong>
+                                                <span className="badge badge-blue text-[9px]">AI上位評価</span>
+                                                <strong className="block text-xs mt-0.5">{topHorse.horseName}</strong>
                                             </div>
-                                            <span className="grade-score">{topHorse.score?.toFixed(1) || '--'}</span>
+                                            <span className="grade-score text-sm">{topHorse.score?.toFixed(1) || '--'}</span>
                                         </div>
                                     )}
 
-                                    <div className={`mt-1 grid gap-2 ${hubPath ? 'sm:grid-cols-2' : ''}`}>
+                                    <div className={`mt-1.5 grid gap-1.5 ${hubPath ? 'sm:grid-cols-2' : ''}`}>
                                         {hubPath && (
                                             <Link
                                                 prefetch={false}
                                                 href={hubPath}
-                                                className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-950 px-3 py-2 text-center text-xs font-bold text-white no-underline transition-colors duration-150 hover:bg-primary"
+                                                className="inline-flex min-h-8 items-center justify-center rounded-lg bg-slate-950 px-2.5 py-1 text-center text-[11.5px] font-bold text-white no-underline transition-colors duration-150 hover:bg-primary"
                                             >
                                                 重賞データを見る
                                             </Link>
@@ -223,7 +241,7 @@ export function WeeklyGradeRaces({ races, compact = false, predictions, topHorse
                                         <Link
                                             prefetch={false}
                                             href={racePath}
-                                            className={`inline-flex min-h-[44px] items-center justify-center rounded-lg px-3 py-2 text-center text-xs font-bold no-underline transition-colors duration-150 ${hubPath
+                                            className={`inline-flex min-h-8 items-center justify-center rounded-lg px-2.5 py-1 text-center text-[11.5px] font-bold no-underline transition-colors duration-150 ${hubPath
                                                 ? 'border border-slate-200 bg-white text-slate-700 hover:border-primary/30 hover:text-primary'
                                                 : 'bg-slate-950 text-white hover:bg-primary'
                                                 }`}

@@ -132,18 +132,18 @@ export function DataSearchPanel({
 
     return (
         <section aria-labelledby={`${inputId}-heading`} className="overflow-hidden rounded-xl border border-slate-300 bg-white">
-            <div className="border-b border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4">
-                <h2 id={`${inputId}-heading`} className="flex items-center gap-2 text-sm font-black text-slate-900">
-                    <Search className="h-4 w-4 text-slate-500" aria-hidden="true" />
+            <div className="border-b border-slate-200 bg-slate-50 px-3 py-1.5 sm:px-4 sm:py-2">
+                <h2 id={`${inputId}-heading`} className="flex items-center gap-1.5 text-xs font-bold text-slate-900 sm:text-sm">
+                    <Search className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
                     {heading}
                 </h2>
             </div>
-            <div className="p-3 sm:p-4">
-                <label htmlFor={inputId} className="mb-1.5 block text-xs font-bold text-slate-600">
+            <div className="p-2.5 sm:p-4">
+                <label htmlFor={inputId} className="mb-1 block text-xs font-bold text-slate-600">
                     {entityType ? `${DATA_ENTITY_LABELS[entityType]}名で検索` : 'キーワード'}
                 </label>
-                <div className="flex min-h-12 items-center rounded-lg border border-slate-300 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
-                    <Search className="ml-3 h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+                <div className="flex min-h-10 items-center rounded-lg border border-slate-300 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                    <Search className="ml-2.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
                     <input
                         id={inputId}
                         type="search"
@@ -151,7 +151,7 @@ export function DataSearchPanel({
                         onChange={(event) => setQuery(event.target.value)}
                         placeholder={placeholder}
                         autoComplete="off"
-                        className="min-h-11 min-w-0 flex-1 bg-transparent px-3 py-2 text-base font-semibold text-slate-950 outline-none placeholder:font-normal placeholder:text-slate-400"
+                        className="min-h-9 min-w-0 flex-1 bg-transparent px-2.5 py-1 text-sm font-semibold text-slate-950 outline-none placeholder:font-normal placeholder:text-slate-400"
                     />
                     {completeQuery && (
                         <Link

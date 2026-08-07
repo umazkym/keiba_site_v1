@@ -85,19 +85,19 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions, precompu
     };
 
     return (
-        <div className="bg-white border border-slate-200 rounded-md p-2 shadow-sm">
+        <div>
             {/* タブ切り替えヘッダー */}
-            <div className="flex gap-1.5 sm:gap-2 mb-1 border-slate-100 pb-2 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-1.5 sm:gap-2 mb-2 overflow-x-auto scrollbar-hide">
                 <button
                     onClick={() => setActiveTab('favored')}
-                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'favored' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'favored' ? 'bg-primary text-white shadow-sm' : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-800'}`}
                 >
                     本命候補
                 </button>
                 {extractedPicks.value && (
                     <button
                         onClick={() => setActiveTab('value')}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'value' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'value' ? 'bg-primary text-white shadow-sm' : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-800'}`}
                     >
                         オッズ妙味
                     </button>
@@ -105,7 +105,7 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions, precompu
                 {extractedPicks.nar && (
                     <button
                         onClick={() => setActiveTab('nar')}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'nar' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'nar' ? 'bg-primary text-white shadow-sm' : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-800'}`}
                     >
                         地方注目
                     </button>
@@ -118,7 +118,7 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions, precompu
                 prefetch={false}
                 className="block group"
             >
-                <div className="relative overflow-hidden rounded-md bg-slate-50/50 hover:bg-slate-50 p-3.5 border border-slate-100 transition-all group-hover:border-primary/20">
+                <div className="relative overflow-hidden rounded-lg bg-slate-50/50 hover:bg-slate-50 p-3 sm:p-3.5 border border-slate-200 transition-all group-hover:border-blue-300">
                     <div className="flex justify-between items-start gap-3 mb-2">
                         <div className="min-w-0">
                             <span className="text-[10px] font-bold text-slate-400 block mb-0.5">{formattedDate} · {currentPick.venue_name} {currentPick.race_number}R</span>
@@ -137,7 +137,7 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions, precompu
                     </div>
 
                     {/* 偏差値プログレスバー */}
-                    <div className="mb-3">
+                    <div className="mb-2.5">
                         <div className="w-full bg-slate-200/60 rounded-full h-1.5 overflow-hidden">
                             <div
                                 className={`h-full rounded-full transition-all duration-500 ${getProgressBarColor(currentPick.deviation_score)}`}

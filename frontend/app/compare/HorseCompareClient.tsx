@@ -286,13 +286,13 @@ export default function HorseCompareClient() {
         : null;
 
     return (
-        <main className="site-shell-data px-3 pb-14 pt-3 sm:px-4">
+        <main className="site-shell-data px-3.5 pb-14 pt-3 sm:px-5">
             <DataHubNav currentPath="/compare" />
 
-            <header className="mt-4 border-b border-slate-200 pb-4">
-                <p className="text-xs font-bold text-slate-500">競馬データベース</p>
-                <h1 className="mt-1 text-2xl font-black text-slate-950 sm:text-3xl">競走馬の成績比較</h1>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+            <header className="mt-2 rounded-xl border border-slate-800 bg-slate-900 p-2.5 text-white sm:p-5">
+                <p className="text-[10px] font-bold text-blue-300">競馬データベース</p>
+                <h1 className="mt-0.5 text-[15px] font-black leading-tight !text-white sm:text-3xl">競走馬の成績比較</h1>
+                <p className="mt-1 max-w-3xl text-[11px] leading-relaxed !text-slate-200 sm:text-sm sm:leading-6">
                     通算成績や各コースごとに成績を確認出来ます。
                 </p>
             </header>

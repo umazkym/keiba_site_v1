@@ -76,7 +76,6 @@ export function ArticleArchiveHero({
 }: ArticleArchiveHeroProps) {
   return (
     <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 sm:p-8">
-      <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-bold tracking-[0.16em] text-slate-400">{eyebrow}</p>

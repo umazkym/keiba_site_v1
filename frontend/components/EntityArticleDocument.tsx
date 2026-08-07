@@ -88,11 +88,11 @@ export function EntityArticleDocument({
             )}
           </div>
 
-          <h1 className="article-page-title text-[1.55rem] font-black leading-tight tracking-tight text-slate-950 [overflow-wrap:anywhere] sm:text-4xl md:text-5xl">
+          <h1 className="article-page-title text-[13.5px] font-extrabold leading-snug tracking-tight text-slate-950 [overflow-wrap:anywhere] sm:text-3xl md:text-4xl">
             {article.title}
           </h1>
           {article.description && (
-            <p className="article-page-lead mt-3 max-w-3xl text-sm leading-6 text-slate-500 sm:mt-5 sm:text-lg sm:leading-8">
+            <p className="article-page-lead mt-1 max-w-3xl text-[10.5px] leading-relaxed text-slate-600 sm:mt-4 sm:text-base sm:leading-7">
               {article.description}
             </p>
           )}
@@ -119,27 +119,6 @@ export function EntityArticleDocument({
             </section>
           </Link>
         </header>
-
-        {toc.length > 1 && (
-          <details className="mt-3 border border-slate-200 bg-slate-50 sm:mt-4" aria-label="記事の目次">
-            <summary className="cursor-pointer list-none px-3 py-2 text-xs font-black text-slate-800 sm:px-4 sm:py-3 sm:text-sm">
-              この記事で確認できること
-            </summary>
-            <ol className="grid gap-1.5 border-t border-slate-200 px-3 py-2 sm:grid-cols-2 sm:gap-2 sm:px-4 sm:py-3">
-              {toc.map((item, index) => (
-                <li key={item.id}>
-                  <a
-                    href={`#${item.id}`}
-                    className="flex gap-2 text-xs font-semibold leading-5 text-slate-600 transition-colors hover:text-primary sm:text-sm sm:leading-6"
-                  >
-                    <span className="font-mono text-slate-400">{String(index + 1).padStart(2, "0")}</span>
-                    <span>{item.title}</span>
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </details>
-        )}
 
         <div className="px-1 pb-6 sm:px-0 sm:pb-10">
           <ArticleBody html={enhancedContent} analyticsPrefix="entity_article" />

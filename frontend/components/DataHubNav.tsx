@@ -117,7 +117,7 @@ export function DataHubNav({ currentPath }: { currentPath?: string }) {
                             key={item.href}
                             href={item.href}
                             aria-current={isCurrent ? 'page' : undefined}
-                            className={`relative flex min-h-12 flex-col items-center justify-center px-1.5 py-2 text-[11px] transition-colors duration-150 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs ${
+                            className={`relative flex min-h-9 flex-col items-center justify-center px-1 py-1 text-[10px] transition-colors duration-150 sm:flex-row sm:gap-1.5 sm:px-2 sm:py-2 sm:text-xs ${
                                 isCurrent
                                     ? `border-b-2 ${item.activeColor}`
                                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'

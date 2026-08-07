@@ -20,7 +20,7 @@ const BET_TYPE_LABELS: Record<string, string> = {
 export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: CourseDataDetail; relatedArticleHref: string | null }) {
     const entity = detail.entity;
     return (
-        <article className="mx-auto max-w-6xl px-3 pb-14 pt-3 sm:px-4">
+        <article className="mx-auto max-w-6xl px-3.5 pb-14 pt-3 sm:px-5">
             <DataDirectoryNav current="course" />
 
             <DataEntityTracker

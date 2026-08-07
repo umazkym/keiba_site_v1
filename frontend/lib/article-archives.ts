@@ -128,6 +128,7 @@ const additionalGradeRaceSeedOverrides: AdditionalGradeRaceSeed[] = [
   { slug: "froilein-cup", name: "フロイラインカップ", grade: "地方重賞", aliases: ["フロイラインカップ"], venue: "門別", course: "ダート1700m" },
   { slug: "kanazawa-summer-cup", name: "金沢サマーカップ", grade: "地方重賞", aliases: ["金沢サマーカップ"], venue: "金沢", course: "ダート1400m", date: "2026-06-28" },
   { slug: "sapphire-sho", name: "サファイア賞", grade: "地方重賞", aliases: ["サファイア賞"], venue: "盛岡", course: "芝2400m", date: "2026-06-28" },
+  { slug: "noto-fukko-hyakumangoku-kagayaki-night-sho", name: "能登復興かがやきナイト賞", grade: "地方重賞", aliases: ["能登復興かがやきナイト賞", "能登半島地震復興支援 能登復興かがやきナイト賞"], venue: "金沢", course: "ダート1500m" },
   { slug: "unicorn-stakes", name: "ユニコーンS", grade: "G3", aliases: ["ユニコーンS", "ユニコーンステークス"], venue: "京都", course: "ダート1900m" },
   { slug: "artemis-stakes", name: "アルテミスS", grade: "G3", aliases: ["アルテミスS", "アルテミスステークス"], venue: "東京", course: "芝1600m" },
   { slug: "kikka-sho", name: "菊花賞", grade: "G1", aliases: ["菊花賞"], venue: "京都", course: "芝3000m" },

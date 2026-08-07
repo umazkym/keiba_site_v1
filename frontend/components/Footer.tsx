@@ -5,15 +5,15 @@ export const Footer = () => {
     const socialLinks = getConfiguredSocialLinks();
 
     return (
-        <footer className="bg-primary text-slate-300 py-5 sm:py-16 relative z-0">
-            <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6">
+        <footer className="bg-primary text-slate-300 py-3 sm:py-16 relative z-0">
+            <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6">
                 {/* メインフッターコンテンツ（3カラム） */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-12 mb-5 sm:mb-12">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-12 mb-3 sm:mb-12">
                     {/* サイト情報 */}
                     <div>
-                        <h3 className="font-bold text-white text-base sm:text-xl mb-2 sm:mb-4 tracking-tight">UMA-FREE</h3>
-                        <p className="text-[11px] sm:text-sm text-slate-400 leading-[1.7] sm:leading-[1.8] max-w-sm">
-                            豊富な過去レースデータをAIで分析。中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を登録不要・完全無料で提供する競馬データ分析サイトです。
+                        <h3 className="font-bold text-white text-sm sm:text-xl mb-1 sm:mb-4 tracking-tight">UMA-FREE</h3>
+                        <p className="text-[10px] sm:text-sm text-slate-400 leading-normal sm:leading-[1.8] max-w-sm">
+                            豊富な過去レースデータをAIで分析。中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を完全無料で提供する競馬データ分析サイトです。
                         </p>
                     </div>
 

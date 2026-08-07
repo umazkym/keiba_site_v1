@@ -77,29 +77,29 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
       <div className="mx-auto w-full max-w-6xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
         <main className="mx-auto max-w-[1080px]">
           <header className="border-b border-slate-200 pb-5 sm:pb-8">
-            <p className="text-xs font-bold text-slate-500">重賞別の記事</p>
-            <h1 className="mt-1 text-2xl font-black leading-tight text-slate-950 sm:text-4xl">
+            <p className="text-[10px] font-bold text-slate-500">重賞別の記事</p>
+            <h1 className="mt-0.5 text-[15px] font-black leading-tight text-slate-950 sm:text-4xl">
               {group.title}
             </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
+            <p className="mt-1 max-w-3xl text-[11.5px] leading-relaxed text-slate-600 sm:text-base sm:leading-7">
               {group.description}
             </p>
             {group.profileHref && (
               <Link
                 href={group.profileHref}
                 prefetch={false}
-                className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                className="mt-2 inline-flex min-h-8 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
               >
                 {group.profileLabel}
               </Link>
             )}
           </header>
 
-          <section className="py-5 sm:py-8" aria-labelledby="grade-race-seasonal-articles">
-            <h2 id="grade-race-seasonal-articles" className="text-lg font-black text-slate-950 sm:text-2xl">
+          <section className="py-2.5 sm:py-8" aria-labelledby="grade-race-seasonal-articles">
+            <h2 id="grade-race-seasonal-articles" className="text-[13px] font-black text-slate-950 sm:text-2xl">
               年度別の記事
             </h2>
-            <ul className="mt-3 divide-y divide-slate-200 border-y border-slate-200">
+            <ul className="mt-1.5 divide-y divide-slate-200 border-y border-slate-200">
               {articlesByYear.map((article) => {
                 const year = article.seasonYear || article.scheduledRaceDate?.slice(0, 4) || article.date.slice(0, 4);
                 return (
@@ -107,13 +107,13 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
                     <Link
                       href={`/articles/${article.slug}`}
                       prefetch={false}
-                      className="grid min-h-11 gap-1 py-3 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 sm:grid-cols-[5rem_minmax(0,1fr)] sm:items-start sm:gap-4 sm:px-2"
+                      className="grid min-h-9 gap-0.5 py-1.5 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 sm:grid-cols-[5rem_minmax(0,1fr)] sm:items-start sm:gap-4 sm:px-2"
                     >
-                      <span className="font-mono text-xs font-black text-blue-700 sm:pt-0.5 sm:text-sm">{year}年</span>
+                      <span className="font-mono text-[11px] font-black text-blue-700 sm:pt-0.5 sm:text-sm">{year}年</span>
                       <span className="min-w-0">
-                        <span className="block font-bold leading-6 text-slate-900">{article.title}</span>
+                        <span className="block text-xs font-bold leading-snug text-slate-900">{article.title}</span>
                         {article.description && (
-                          <span className="mt-1 line-clamp-2 block text-xs leading-5 text-slate-600 sm:text-sm">
+                          <span className="mt-0.5 line-clamp-2 block text-[10.5px] leading-relaxed text-slate-600 sm:text-sm">
                             {article.description}
                           </span>
                         )}

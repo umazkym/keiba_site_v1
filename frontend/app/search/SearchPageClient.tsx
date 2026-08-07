@@ -188,28 +188,27 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
     };
 
     return (
-        <div className="mx-auto w-full max-w-5xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
-            <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
-                <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
-                <p className="text-xs font-bold tracking-[0.16em] text-slate-400">SITE SEARCH</p>
-                <h1 className="mt-2 text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
+        <div className="mx-auto w-full max-w-5xl px-2 pb-6 pt-2 sm:px-4 sm:pb-16">
+            <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 shadow-soft sm:p-8">
+                <p className="text-[10px] font-bold tracking-[0.16em] text-slate-400">SITE SEARCH</p>
+                <h1 className="mt-1 text-[15px] font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
                     サイト内検索
                 </h1>
-                <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
+                <p className="mt-1.5 max-w-3xl text-[11.5px] leading-relaxed text-slate-600 sm:text-base">
                     記事、レース関連ページ、運営情報をキーワードで探せます。レース名、騎手名、コース名などで検索してください。
                 </p>
-                <form onSubmit={handleSearchChange} className="mt-5">
-                    <div className="flex gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                <form onSubmit={handleSearchChange} className="mt-2.5">
+                    <div className="flex gap-1.5 rounded-xl border border-slate-200 bg-slate-50 p-1.5">
                         <input
                             type="text"
                             name="q"
                             defaultValue={query}
                             placeholder="例: 宝塚記念、東京芝2000m、騎手"
-                            className="min-w-0 flex-1 rounded-xl border border-transparent bg-white px-3 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-primary sm:px-4"
+                            className="min-w-0 flex-1 rounded-lg border border-transparent bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-slate-800 outline-none focus:border-primary sm:px-4"
                         />
                         <button
                             type="submit"
-                            className="shrink-0 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-primary sm:px-6"
+                            className="shrink-0 rounded-lg bg-slate-950 px-3 py-1.5 text-[11.5px] font-bold text-white transition-colors hover:bg-primary sm:px-6"
                         >
                             検索
                         </button>
@@ -217,14 +216,14 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
                 </form>
             </header>
 
-            <main className="mt-5">
+            <main className="mt-2.5">
                 {query && (
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-slate-600">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-1.5">
+                        <p className="text-xs font-bold text-slate-600">
                             「<span className="text-slate-950">{query}</span>」の検索結果
                         </p>
                         {!isLoading && searchPerformed && (
-                            <p className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-500">
+                            <p className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-500">
                                 {results.length}件
                             </p>
                         )}
@@ -232,20 +231,20 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
                 )}
 
                 {isLoading && (
-                    <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-soft">
-                        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />
+                    <div className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-soft">
+                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
                     </div>
                 )}
 
                 {searchPerformed && !isLoading && results.length === 0 && (
-                    <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-soft">
-                        <p className="font-bold text-slate-700">関連する結果が見つかりませんでした。</p>
-                        <p className="mt-2 text-sm text-slate-500">別のキーワードで検索してみてください。</p>
+                    <div className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-soft">
+                        <p className="text-xs font-bold text-slate-950">該当する項目が見つかりませんでした。</p>
+                        <p className="mt-1 text-[11px] text-slate-500">条件を少し広げるか、単語を変えて再検索してください。</p>
                     </div>
                 )}
 
-                {results.length > 0 && (
-                    <div className="grid gap-3 md:grid-cols-2">
+                {!isLoading && results.length > 0 && (
+                    <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
                         {results.map((result, index) => (
                             <Link
                                 key={`${result.type}-${result.url}`}
@@ -261,31 +260,31 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
                                         sample_size_bucket: sampleSizeBucket(result.sampleSize ?? 0),
                                     });
                                 }}
-                                className="group rounded-xl border border-slate-200 bg-white p-4 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50"
+                                className="group rounded-xl border border-slate-200 bg-white p-2.5 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50"
                             >
-                                <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black ${getBadgeClass(result.type)}`}>
+                                <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-black ${getBadgeClass(result.type)}`}>
                                     {getResultLabel(result.type)}
                                 </span>
-                                <h2 className="mt-3 line-clamp-2 text-base font-black leading-snug text-slate-950 group-hover:text-primary">
+                                <h2 className="mt-1.5 line-clamp-2 text-xs font-black leading-snug text-slate-950 group-hover:text-primary">
                                     {result.title}
                                 </h2>
-                                <p className="mt-2 line-clamp-2 text-sm leading-7 text-slate-600">{result.description}</p>
-                                <p className="mt-3 truncate text-xs font-semibold text-slate-400">{result.url}</p>
+                                <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-600">{result.description}</p>
+                                <p className="mt-1.5 truncate text-[10px] font-semibold text-slate-400">{result.url}</p>
                             </Link>
                         ))}
                     </div>
                 )}
 
                 {!searchPerformed && !query && (
-                    <section className="grid gap-3 md:grid-cols-3">
+                    <section className="grid gap-2 md:grid-cols-3">
                         {[
                             { label: 'レース名で探す', body: '宝塚記念、函館スプリントSなどの重賞名で検索できます。' },
                             { label: '条件で探す', body: '東京芝2000m、馬場、馬体重など、気になる材料で探せます。' },
                             { label: '使い方を探す', body: 'FAQ、運営情報、AI偏差値の見方も検索対象です。' },
                         ].map((item) => (
-                            <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-                                <h2 className="text-base font-black text-slate-950">{item.label}</h2>
-                                <p className="mt-2 text-sm leading-7 text-slate-600">{item.body}</p>
+                            <div key={item.label} className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-soft">
+                                <h2 className="text-xs font-black text-slate-950">{item.label}</h2>
+                                <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600">{item.body}</p>
                             </div>
                         ))}
                     </section>

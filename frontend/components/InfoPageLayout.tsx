@@ -38,28 +38,27 @@ export function InfoPageShell({
   const widthClass = maxWidth === "wide" ? "max-w-6xl" : "max-w-5xl";
 
   return (
-    <div className={`mx-auto w-full ${widthClass} px-3 pb-12 pt-4 sm:px-4 sm:pb-16`}>
-      <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
-        <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className={`mx-auto w-full ${widthClass} px-2 pb-6 pt-2 sm:px-4 sm:pb-14`}>
+      <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs sm:p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <p className="text-xs font-bold tracking-[0.16em] text-slate-400">{eyebrow}</p>
-            <h1 className="mt-2 text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
+            <p className="text-[10px] font-bold tracking-[0.16em] text-slate-400">{eyebrow}</p>
+            <h1 className="mt-1 text-[14px] font-black leading-tight tracking-tight text-slate-950 sm:text-3xl">
               {title}
             </h1>
-            <div className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
+            <div className="mt-1.5 max-w-3xl text-[11px] leading-relaxed text-slate-600 sm:text-sm sm:leading-7">
               {description}
             </div>
           </div>
           {updated && (
-            <p className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
+            <p className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500">
               {updated}
             </p>
           )}
         </div>
       </header>
 
-      <div className="mt-5 space-y-5 sm:mt-8 sm:space-y-6">{children}</div>
+      <div className="mt-2 space-y-2 sm:mt-4 sm:space-y-4">{children}</div>
     </div>
   );
 }
@@ -73,12 +72,12 @@ export function InfoSection({ title, children, tone = "default" }: InfoSectionPr
   }[tone];
 
   return (
-    <section className={`rounded-2xl border p-5 shadow-soft sm:p-6 ${toneClass}`}>
-      <h2 className="flex items-center gap-2 text-xl font-black text-slate-950 sm:text-2xl">
-        <span className="h-5 w-1 rounded-sm bg-accent" />
+    <section className={`rounded-xl border p-2.5 shadow-xs sm:p-5 ${toneClass}`}>
+      <h2 className="flex items-center gap-1.5 text-xs font-black text-slate-950 sm:text-xl">
+        <span className="h-3 w-1 rounded-full bg-blue-600" />
         {title}
       </h2>
-      <div className="mt-4 space-y-4 text-sm leading-8 text-slate-600 sm:text-base">{children}</div>
+      <div className="mt-2 space-y-2 text-[11px] leading-relaxed text-slate-600 sm:text-sm sm:leading-7">{children}</div>
     </section>
   );
 }
@@ -87,9 +86,9 @@ export function InfoDefinitionList({ items }: { items: InfoDefinitionItem[] }) {
   return (
     <dl className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
       {items.map((item) => (
-        <div key={item.label} className="grid gap-1 p-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-5">
-          <dt className="text-sm font-black text-slate-900">{item.label}</dt>
-          <dd className="text-sm leading-7 text-slate-600">{item.value}</dd>
+        <div key={item.label} className="grid gap-0.5 p-2 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-4 sm:p-4">
+          <dt className="text-[11.5px] font-black text-slate-900 sm:text-sm">{item.label}</dt>
+          <dd className="text-[11px] leading-relaxed text-slate-600 sm:text-sm sm:leading-7">{item.value}</dd>
         </div>
       ))}
     </dl>
@@ -109,17 +108,17 @@ export function InfoCallout({
     danger: "border-rose-200 bg-rose-50 text-rose-950",
   }[tone];
 
-  return <div className={`rounded-2xl border-l-4 p-4 text-sm leading-8 sm:p-5 ${toneClass}`}>{children}</div>;
+  return <div className={`rounded-xl border-l-2 p-2.5 text-[11px] leading-relaxed sm:p-4 sm:text-sm sm:leading-7 ${toneClass}`}>{children}</div>;
 }
 
 export function InfoCardLink({ href, title, description }: InfoCardLinkProps) {
   return (
     <Link
       href={href}
-      className="group block rounded-2xl border border-slate-200 bg-white p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated"
+      className="group block rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs transition-colors hover:border-blue-300 hover:bg-slate-50"
     >
-      <h3 className="text-base font-black text-slate-950 group-hover:text-primary">{title}</h3>
-      <p className="mt-2 text-sm leading-7 text-slate-500">{description}</p>
+      <h3 className="text-xs font-black text-slate-950 group-hover:text-primary sm:text-base">{title}</h3>
+      <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{description}</p>
     </Link>
   );
 }
@@ -132,9 +131,9 @@ export function PolicySection({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
-      <h2 className="border-b border-slate-100 pb-3 text-lg font-black text-slate-950 sm:text-xl">{title}</h2>
-      <div className="mt-4 space-y-4 text-sm leading-8 text-slate-600 sm:text-base">{children}</div>
+    <section className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs sm:p-5">
+      <h2 className="border-b border-slate-100 pb-1.5 text-xs font-black text-slate-950 sm:text-lg">{title}</h2>
+      <div className="mt-2 space-y-2 text-[11px] leading-relaxed text-slate-600 sm:text-sm sm:leading-7">{children}</div>
     </section>
   );
 }

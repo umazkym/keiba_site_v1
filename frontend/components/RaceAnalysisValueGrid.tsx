@@ -97,10 +97,10 @@ export function RaceAnalysisFeatureIcon({
 
     return (
         <span
-            className={`flex shrink-0 items-center justify-center ${toneClasses[feature.tone]} ${isCompact ? 'h-4 w-4 rounded-sm' : 'h-7 w-7 rounded-md'}`}
+            className={`flex shrink-0 items-center justify-center ${toneClasses[feature.tone]} ${isCompact ? 'h-4 w-4 rounded-sm' : 'h-6 w-6 rounded-md'}`}
             aria-hidden="true"
         >
-            <Icon className={isCompact ? 'h-2.5 w-2.5' : 'h-4 w-4'} />
+            <Icon className={isCompact ? 'h-2.5 w-2.5' : 'h-3.5 w-3.5'} />
         </span>
     );
 }
@@ -115,9 +115,9 @@ export function RaceAnalysisFeatureVisual({
     if (type === 'score') {
         return (
             <div className={`w-full ${compact ? 'space-y-0.5' : 'space-y-1'}`} aria-hidden="true">
-                <span className={`block w-[88%] rounded-full bg-blue-600 ${compact ? 'h-1' : 'h-1.5'}`} />
-                <span className={`block w-[64%] rounded-full bg-amber-400 ${compact ? 'h-1' : 'h-1.5'}`} />
-                <span className={`block w-[72%] rounded-full bg-slate-300 ${compact ? 'h-1' : 'h-1.5'}`} />
+                <span className={`block w-[88%] rounded-full bg-blue-600 ${compact ? 'h-0.5' : 'h-1.5'}`} />
+                <span className={`block w-[64%] rounded-full bg-amber-400 ${compact ? 'h-0.5' : 'h-1.5'}`} />
+                <span className={`block w-[72%] rounded-full bg-slate-300 ${compact ? 'h-0.5' : 'h-1.5'}`} />
             </div>
         );
     }
@@ -125,7 +125,7 @@ export function RaceAnalysisFeatureVisual({
     if (type === 'matchup') {
         const values = compact ? ['+2', '0', '-1'] : ['+2', '0', '-1', '0', '+1', '0'];
         return (
-            <div className={`grid w-full grid-cols-3 text-center font-bold ${compact ? 'gap-0.5 text-[9px]' : 'gap-1 text-[10px]'}`} aria-hidden="true">
+            <div className={`grid w-full ${compact ? 'grid-cols-3 gap-0.5 text-[8px]' : 'grid-cols-3 sm:grid-cols-6 gap-0.5 text-[9px]'} text-center font-bold`} aria-hidden="true">
                 {values.map((value, index) => {
                     const valueClass = value.startsWith('+')
                         ? 'bg-emerald-50 text-emerald-700'
@@ -146,7 +146,7 @@ export function RaceAnalysisFeatureVisual({
     const barClass = type === 'pace' ? 'bg-emerald-500' : 'bg-blue-500';
 
     return (
-        <div className={`flex w-full items-end ${compact ? 'h-5 gap-0.5' : 'h-7 gap-1'}`} aria-hidden="true">
+        <div className={`flex w-full items-end ${compact ? 'h-4 gap-0.5' : 'h-6 sm:h-7 gap-1'}`} aria-hidden="true">
             {heights.map((height, index) => (
                 <span
                     key={`${type}-${index}`}
@@ -174,7 +174,7 @@ export function RaceAnalysisValueGrid({ className = '', variant = 'full' }: Race
                                     {feature.compactTitle}
                                 </span>
                             </div>
-                            <div className="flex h-6 w-full items-center justify-center rounded bg-white px-1">
+                            <div className="flex h-5 w-full items-center justify-center rounded bg-white px-1">
                                 <RaceAnalysisFeatureVisual type={feature.visual} compact />
                             </div>
                         </li>
@@ -193,20 +193,20 @@ export function RaceAnalysisValueGrid({ className = '', variant = 'full' }: Race
                 return (
                     <li
                         key={feature.title}
-                        className="flex min-w-0 flex-col justify-between rounded-lg border border-slate-200 bg-white p-2.5 text-left"
+                        className="flex min-w-0 flex-col justify-between rounded-lg border border-slate-200 bg-white p-1.5 sm:p-2.5 text-left"
                     >
-                        <div className="mb-2 flex min-w-0 items-center gap-2">
+                        <div className="mb-1 flex min-w-0 items-center gap-1.5">
                             <RaceAnalysisFeatureIcon feature={feature} variant="full" />
                             <span className="min-w-0">
-                                <span className="block truncate text-xs font-black leading-tight text-slate-950">
+                                <span className="block truncate text-[11px] sm:text-xs font-black leading-tight text-slate-950">
                                     {feature.title}
                                 </span>
-                                <span className="mt-0.5 block text-[11px] font-semibold leading-tight text-slate-600">
+                                <span className="block truncate text-[9px] sm:text-[11px] font-semibold leading-tight text-slate-600">
                                     {feature.description}
                                 </span>
                             </span>
                         </div>
-                        <div className="flex h-11 w-full items-center justify-center rounded-md bg-slate-50 p-2">
+                        <div className="flex min-h-[26px] sm:h-9 w-full items-center justify-center rounded-md bg-slate-50 p-1 sm:p-1.5">
                             <RaceAnalysisFeatureVisual type={feature.visual} />
                         </div>
                     </li>

@@ -4,6 +4,7 @@ import { getAllArticles, getUniqueCategories } from "../../lib/articles";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { AdUnit } from "@/components/AdUnit";
 import { MultiplexAd } from "@/components/MultiplexAd";
+import { SectionHeader } from "@/components/SectionHeader";
 import { BreadcrumbSchema } from "@/components/StructuredData";
 import { shouldSuppressAdsInDevelopment } from "@/lib/ad-config";
 import {
@@ -18,7 +19,89 @@ interface ArticlesPageProps {
   searchParams: {
     category?: string;
     tag?: string;
+    page?: string;
   };
+}
+
+function getVisiblePageNumbers(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const items: (number | 'ellipsis')[] = [1];
+  if (current > 3) items.push('ellipsis');
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) {
+    if (!items.includes(i)) items.push(i);
+  }
+  if (current < total - 2) items.push('ellipsis');
+  if (!items.includes(total)) items.push(total);
+  return items;
+}
+
+function ArticlePagination({
+  currentPage,
+  totalPages,
+  category,
+  tag,
+}: {
+  currentPage: number;
+  totalPages: number;
+  category?: string;
+  tag?: string;
+}) {
+  if (totalPages <= 1) return null;
+
+  const buildUrl = (p: number) => {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (tag) params.set("tag", tag);
+    if (p > 1) params.set("page", String(p));
+    const query = params.toString();
+    return `/articles${query ? `?${query}` : ""}`;
+  };
+
+  const visiblePages = getVisiblePageNumbers(currentPage, totalPages);
+
+  return (
+    <nav className="mt-4 flex flex-wrap items-center justify-center gap-1 sm:gap-1.5" aria-label="ページナビゲーション">
+      {currentPage > 1 && (
+        <Link
+          href={buildUrl(currentPage - 1)}
+          className="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
+        >
+          ← 前へ
+        </Link>
+      )}
+      {visiblePages.map((p, idx) => {
+        if (p === 'ellipsis') {
+          return (
+            <span key={`ellipsis-${idx}`} className="inline-flex h-9 w-6 items-center justify-center text-xs font-bold text-slate-400">
+              …
+            </span>
+          );
+        }
+        return (
+          <Link
+            key={p}
+            href={buildUrl(p)}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-xs font-black transition-colors ${p === currentPage
+              ? "bg-slate-950 text-white"
+              : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+          >
+            {p}
+          </Link>
+        );
+      })}
+      {currentPage < totalPages && (
+        <Link
+          href={buildUrl(currentPage + 1)}
+          className="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
+        >
+          次へ →
+        </Link>
+      )}
+    </nav>
+  );
 }
 
 type ArticleLike = ReturnType<typeof getAllArticles>[number];
@@ -166,28 +249,34 @@ function UpcomingGradeRacePickup({
   if (groups.length === 0) return null;
 
   return (
-    <section className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white" aria-label="近日の重賞記事">
-      <div className="mb-2 flex items-center justify-between gap-3 px-4 pt-3.5 sm:px-5">
-        <h2 className="text-sm font-black text-slate-950 sm:text-base">近日の重賞</h2>
-        <span className="text-xs font-bold text-slate-500">{groups.length}</span>
-      </div>
-      <div className="divide-y divide-slate-100 border-t border-slate-100 sm:grid sm:grid-cols-2 sm:divide-y-0">
+    <section className="mb-2.5 overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 sm:p-4" aria-label="近日の重賞記事">
+      <SectionHeader title="近日の重賞" meta={`${groups.length}件`} className="mb-2 sm:mb-3" compact />
+      <div className="grid gap-1.5 sm:grid-cols-2 sm:gap-2">
         {groups.map((group) => {
           const latestArticle = group.articles[0];
           return (
             <Link
               key={group.href}
               href={group.href}
-              className="group px-4 py-3 transition-colors duration-150 hover:bg-slate-50 sm:border-b sm:border-slate-100 sm:px-5"
+              className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white p-2.5 transition-colors duration-150 hover:border-blue-300 hover:bg-slate-50/80 active:bg-slate-100"
             >
-              <div className="flex items-center justify-between gap-3 text-[11px] font-black text-blue-600">
-                <span>{formatRaceDate(group.scheduledDate)}</span>
-                <span>{group.articleCount}件</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-[10px] font-black text-blue-600">
+                  <span>{formatRaceDate(group.scheduledDate)}</span>
+                  <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] text-blue-700 border border-blue-100">{group.articleCount}件</span>
+                </div>
+                <h3 className="mt-0.5 truncate text-xs font-bold text-slate-950 group-hover:text-blue-600 transition-colors sm:text-sm">
+                  {group.title}
+                </h3>
+                {latestArticle && (
+                  <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-slate-500 sm:text-xs">
+                    {latestArticle.title}
+                  </p>
+                )}
               </div>
-              <p className="mt-1 truncate text-sm font-black text-slate-950 group-hover:text-primary">{group.title}</p>
-              {latestArticle && (
-                <p className="mt-1 line-clamp-1 text-xs font-semibold text-slate-500">{latestArticle.title}</p>
-              )}
+              <div className="ml-2 shrink-0 text-xs font-bold text-blue-600 group-hover:underline">
+                <span aria-hidden="true" className="text-sm font-bold transition-transform duration-150 group-hover:translate-x-0.5">→</span>
+              </div>
             </Link>
           );
         })}
@@ -201,15 +290,15 @@ function CompactArticleLink({ article }: { article: ArticleLike }) {
     <Link
       prefetch={false}
       href={`/articles/${article.slug}`}
-      className="group flex min-h-[112px] flex-col justify-center border-b border-slate-100 bg-white px-3 py-3 transition-colors duration-150 last:border-b-0 hover:bg-slate-50 sm:min-h-[172px] sm:justify-start sm:rounded-xl sm:border sm:border-slate-200 sm:p-4 sm:hover:border-blue-300"
+      className="group flex flex-col justify-center border-b border-slate-100 bg-white py-1.5 transition-colors duration-150 last:border-b-0 hover:bg-slate-50 sm:min-h-[140px] sm:justify-start sm:rounded-xl sm:border sm:border-slate-200 sm:p-3.5 sm:hover:border-blue-300"
     >
       <div className="min-w-0">
         <ArticleMeta article={article} />
-        <h3 className="mt-1 line-clamp-2 text-sm font-black leading-snug text-slate-950 group-hover:text-primary sm:text-[15px]">
+        <h3 className="mt-0.5 line-clamp-2 text-[11.5px] font-bold leading-snug text-slate-950 group-hover:text-primary sm:text-[14px]">
           {article.title}
         </h3>
         {article.description && (
-          <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600 sm:text-sm sm:leading-6">
+          <p className="mt-1 hidden text-xs leading-5 text-slate-600 sm:line-clamp-2 sm:block sm:leading-6">
             {article.description}
           </p>
         )}
@@ -401,6 +490,15 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
     count: allArticles.filter((article) => article.category === category).length,
   }));
 
+  const ARTICLES_PER_PAGE = 12;
+  const rawPage = parseInt(searchParams.page || "1", 10);
+  const currentPage = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+  const totalPages = Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE);
+  const paginatedArticles = filteredArticles.slice(
+    (currentPage - 1) * ARTICLES_PER_PAGE,
+    currentPage * ARTICLES_PER_PAGE,
+  );
+
   return (
     <>
       <BreadcrumbSchema
@@ -411,28 +509,27 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
       />
       <Breadcrumb />
 
-      <div className="articles-page-scope site-shell-data px-2 pb-10 pt-2 sm:px-4 sm:pb-16 sm:pt-4">
-        <header className="relative overflow-hidden rounded-lg border border-slate-200 bg-white p-3 sm:rounded-xl sm:p-8">
-          <div className="flex flex-col gap-2 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="articles-page-scope site-shell-data px-3.5 pb-10 pt-2 sm:px-6 sm:pb-16 sm:pt-4">
+        <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-3 sm:p-6">
+          <div className="flex flex-col gap-1.5 sm:gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-500">競馬統計コラム</p>
-              <h1 className="mt-1 text-2xl font-black leading-tight tracking-tight text-slate-950 sm:mt-2 sm:text-4xl">
+              <p className="text-[10px] font-bold text-slate-500">競馬統計コラム</p>
+              <h1 className="mt-0.5 text-[15px] font-black leading-tight tracking-tight text-slate-950 sm:text-3xl">
                 {selectedCategory ? `${selectedCategory}分析記事` : "競馬データ分析記事"}
               </h1>
             </div>
-            <p className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
-              {filteredArticles.length}件
+            <p className="w-fit rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+              {filteredArticles.length}件 ({currentPage} / {totalPages || 1} ページ)
             </p>
           </div>
 
           <div
-            className="mt-3 flex flex-wrap gap-1.5 sm:mt-5 sm:gap-2"
+            className="mt-2.5 flex flex-wrap gap-1 sm:mt-4 sm:gap-2"
           >
             <Link
               href="/articles"
-              className={`rounded-full px-3 py-2 text-xs font-bold transition-colors sm:px-4 sm:text-sm ${
-                !selectedCategory ? "bg-slate-950 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
+              className={`rounded-full px-2.5 py-1 text-xs font-bold transition-colors sm:px-3.5 sm:py-1.5 sm:text-sm ${!selectedCategory ? "bg-slate-950 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
             >
               すべての記事
             </Link>
@@ -440,11 +537,10 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               <Link
                 key={category}
                 href={`/articles?category=${encodeURIComponent(category)}`}
-                className={`rounded-full px-3 py-2 text-xs font-bold transition-colors sm:px-4 sm:text-sm ${
-                  selectedCategory === category
-                    ? "bg-slate-950 text-white"
-                    : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                }`}
+                className={`rounded-full px-2.5 py-1 text-xs font-bold transition-colors sm:px-3.5 sm:py-1.5 sm:text-sm ${selectedCategory === category
+                  ? "bg-slate-950 text-white"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
               >
                 {category}
                 <span className="ml-1 text-[10px] opacity-60">{count}</span>
@@ -471,16 +567,18 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                 </Link>
               </div>
             ) : (
-              <section className="overflow-hidden rounded-xl border border-slate-200 bg-white sm:p-4">
-                <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-3 sm:mb-3 sm:border-b-0 sm:px-0 sm:py-0">
-                  <h2 className="text-base font-black text-slate-950">記事</h2>
-                  <p className="text-xs font-bold text-slate-500">{filteredArticles.length}件</p>
-                </div>
+              <section className="overflow-hidden rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4">
+                <SectionHeader
+                  title="記事"
+                  meta={`${filteredArticles.length}件 (${currentPage}/${totalPages}ページ)`}
+                  className="mb-2.5 sm:mb-3"
+                  compact
+                />
                 <div className="grid gap-0 sm:gap-2 xl:grid-cols-2">
-                  {filteredArticles.map((article, index) => (
+                  {paginatedArticles.map((article, index) => (
                     <React.Fragment key={article.slug}>
                       <CompactArticleLink article={article} />
-                      {(index === 7 || index === 27) && shouldRenderAds && filteredArticles.length > index + 1 && (
+                      {(index === 5 || index === 11) && shouldRenderAds && paginatedArticles.length > index + 1 && (
                         <div className="xl:col-span-2">
                           <AdUnit
                             slot="8529703346"
@@ -492,6 +590,13 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                     </React.Fragment>
                   ))}
                 </div>
+
+                <ArticlePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  category={selectedCategory}
+                  tag={selectedTag}
+                />
               </section>
             )}
 
@@ -517,9 +622,8 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               <p className="mb-2 text-xs font-bold text-slate-600">記事カテゴリ</p>
               <Link
                 href="/articles"
-                className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
-                  !selectedCategory ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50"
-                }`}
+                className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold transition-colors ${!selectedCategory ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50"
+                  }`}
               >
                 <span>すべての記事</span>
                 <span className="text-xs opacity-70">{allArticles.length}</span>
@@ -529,9 +633,8 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                   <Link
                     key={category}
                     href={`/articles?category=${encodeURIComponent(category)}`}
-                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
-                      selectedCategory === category ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50"
-                    }`}
+                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold transition-colors ${selectedCategory === category ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50"
+                      }`}
                   >
                     <span>{category}</span>
                     <span className="text-xs opacity-70">{count}</span>

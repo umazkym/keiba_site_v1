@@ -57,7 +57,7 @@ const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: numb
     }
 
     return (
-        <div className="group flex min-w-0 items-center gap-3 bg-white px-2 py-2.5 transition-colors duration-150 hover:bg-slate-50 sm:rounded-lg sm:border sm:border-slate-200 sm:px-3.5 sm:py-3">
+        <div className="group flex min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-white px-2.5 py-2.5 transition-colors duration-150 hover:bg-slate-50 sm:px-3.5 sm:py-3">
             <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-black ${rankTone}`}>
                 {rank}位
             </span>

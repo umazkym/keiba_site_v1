@@ -11,7 +11,7 @@ type HomeStickyRaceCtaProps = {
 
 export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProps) {
     const [isVisible, setIsVisible] = useState(false);
-    const [topAnchorHeight, setTopAnchorHeight] = useState<number>(() => getGoogleAdOverlaySnapshot().topAnchorHeight);
+    const [bottomAnchorHeight, setBottomAnchorHeight] = useState<number>(() => getGoogleAdOverlaySnapshot().bottomAnchorHeight);
 
     const updateVisibility = useCallback(() => {
         const primaryCta = document.querySelector<HTMLElement>('[data-home-primary-race-cta]');
@@ -23,8 +23,7 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
         const headerOffset = Number.parseFloat(
             window.getComputedStyle(document.documentElement).getPropertyValue('--site-header-offset'),
         ) || 0;
-        const currentTopAnchor = getGoogleAdOverlaySnapshot().topAnchorHeight;
-        setIsVisible(primaryCta.getBoundingClientRect().bottom <= (headerOffset + currentTopAnchor));
+        setIsVisible(primaryCta.getBoundingClientRect().bottom <= headerOffset);
     }, []);
 
     useEffect(() => {
@@ -33,7 +32,7 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
             window.cancelAnimationFrame(frameId);
             frameId = window.requestAnimationFrame(() => {
                 const overlay = getGoogleAdOverlaySnapshot();
-                setTopAnchorHeight(overlay.topAnchorHeight);
+                setBottomAnchorHeight(overlay.bottomAnchorHeight);
                 updateVisibility();
             });
         };
@@ -63,22 +62,22 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
     return (
         <div
             className={`home-sticky-race-cta ${isVisible ? 'home-sticky-race-cta-visible' : ''}`}
-            style={topAnchorHeight > 0 ? { top: `calc(var(--site-header-offset) + ${topAnchorHeight}px)` } : undefined}
+            style={bottomAnchorHeight > 0 ? { bottom: `calc(12px + ${bottomAnchorHeight}px)` } : undefined}
             aria-hidden={!isVisible}
         >
-            <div className="mx-auto flex h-12 max-w-[1600px] items-center pl-12 pr-2 sm:px-4 md:px-6">
+            <div className="mx-auto flex h-12 max-w-[1600px] items-center justify-center px-3 sm:px-4 md:px-6">
                 <HomeRaceEntryLink
                     href={`/races/${raceDate}`}
                     raceDate={raceDate}
                     entryMethod="sticky_cta"
                     tabIndex={isVisible ? 0 : -1}
-                    className="flex h-10 w-full items-center rounded-md bg-blue-600 pl-2.5 pr-1.5 text-white transition-colors duration-150 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 sm:mx-auto sm:max-w-md"
+                    className="flex h-11 w-full items-center rounded-full bg-blue-600 pl-3 pr-2 text-white shadow-lg transition-colors duration-150 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 sm:max-w-md"
                 >
                     {raceCount > 0 && (
-                        <span className="mr-2 shrink-0 rounded bg-white/15 px-1.5 py-1 font-mono text-[10px] font-black">本日{raceCount}R</span>
+                        <span className="mr-2 shrink-0 rounded-full bg-white/20 px-2 py-0.5 font-mono text-[10px] font-black">本日{raceCount}R</span>
                     )}
-                    <span className="min-w-0 flex-1 truncate text-center text-[13px] font-black">レース分析を見る</span>
-                    <span className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded bg-blue-700 text-sm font-black" aria-hidden="true">→</span>
+                    <span className="min-w-0 flex-1 truncate text-center text-[13px] sm:text-sm font-black">本日のレース分析を見る</span>
+                    <span className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-700 text-sm font-black" aria-hidden="true">→</span>
                 </HomeRaceEntryLink>
             </div>
         </div>

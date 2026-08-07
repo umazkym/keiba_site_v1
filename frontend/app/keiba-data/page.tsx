@@ -43,9 +43,9 @@ function VenueLinks({
     slugs: readonly string[];
 }) {
     return (
-        <div className="grid grid-cols-[72px_1fr] items-start gap-2 border-b border-slate-100 py-3 last:border-b-0 sm:grid-cols-[88px_1fr]">
-            <h3 className="pt-1.5 text-xs font-black text-slate-700 sm:text-sm">{title}</h3>
-            <div className="flex flex-wrap gap-1.5">
+        <div className="grid grid-cols-[64px_1fr] items-start gap-1.5 border-b border-slate-100 py-2 last:border-b-0 sm:grid-cols-[88px_1fr]">
+            <h3 className="pt-1 text-[11px] font-black text-slate-700 sm:text-sm">{title}</h3>
+            <div className="flex flex-wrap gap-1">
                 {slugs.map((slug) => {
                     const name = venueSlugToName(slug);
                     if (!name) return null;
@@ -53,7 +53,7 @@ function VenueLinks({
                         <Link
                             key={slug}
                             href={`/courses#venue-${slug}`}
-                            className="inline-flex min-h-9 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-800 transition-colors duration-150 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:text-sm"
+                            className="inline-flex min-h-[30px] items-center rounded-md border border-slate-200 bg-white px-2 text-xs font-bold text-slate-800 transition-colors duration-150 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:min-h-9 sm:rounded-lg sm:px-2.5 sm:text-sm"
                         >
                             {name}
                         </Link>
@@ -89,31 +89,31 @@ export default function KeibaDataPage() {
                 ]}
             />
             <Breadcrumb />
-            <main id="top" className="site-shell-data px-3 pb-14 pt-3 sm:px-4">
+            <main id="top" className="site-shell-data px-3.5 pb-14 pt-3 sm:px-5">
                 <DataHubNav currentPath="/keiba-data" />
 
-                <header className="mt-4 min-h-[136px] rounded-xl border border-slate-800 bg-slate-900 p-4 text-white sm:min-h-0 sm:p-6">
-                    <p className="text-xs font-bold text-blue-200">競馬データベース</p>
-                    <h1 className="mt-1.5 text-2xl font-black leading-tight !text-white sm:text-3xl">
+                <header className="mt-2 rounded-xl border border-slate-800 bg-slate-900 p-2.5 text-white sm:p-5">
+                    <p className="text-[10px] font-bold text-blue-300">競馬データベース</p>
+                    <h1 className="mt-0.5 text-[15px] font-black leading-tight !text-white sm:text-3xl">
                         競走馬・騎手・コースを同じ条件で比較
                     </h1>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 !text-slate-200">
+                    <p className="mt-1 max-w-3xl text-[11px] leading-relaxed !text-slate-200 sm:text-sm sm:leading-6">
                         勝率・3着以内率を出走数と一緒に確認できます。
                     </p>
                 </header>
 
-                <section id="data-search" className="mt-4 scroll-mt-24">
+                <section id="data-search" className="mt-3 scroll-mt-24">
                     <DataSearchPanel heading="馬名・騎手名・調教師名・コース条件から検索" />
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5 px-1">
-                        <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
-                            <Search className="h-3.5 w-3.5" aria-hidden="true" />
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1 px-1">
+                        <span className="flex items-center gap-1 text-[11px] font-bold text-slate-500">
+                            <Search className="h-3 w-3" aria-hidden="true" />
                             検索例
                         </span>
                         {popularSearchTags.map((tag) => (
                             <Link
                                 key={tag.label}
                                 href={`/search?q=${encodeURIComponent(tag.query)}`}
-                                className="inline-flex min-h-8 items-center rounded-md border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                                className="inline-flex min-h-7 items-center rounded-md border border-slate-200 bg-white px-2 text-[11px] font-bold text-slate-700 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
                             >
                                 {tag.label}
                             </Link>
@@ -121,9 +121,9 @@ export default function KeibaDataPage() {
                     </div>
                 </section>
 
-                <section className="mt-5" aria-labelledby="data-actions-heading">
+                <section className="mt-3.5 sm:mt-4" aria-labelledby="data-actions-heading">
                     <SectionHeader id="data-actions-heading" title="目的から選ぶ" compact />
-                    <div className="mt-2 grid gap-2 lg:grid-cols-3">
+                    <div className="mt-1.5 grid gap-1.5 lg:grid-cols-3 sm:gap-2">
                         <DataHubActionLink
                             action="today_compare"
                             href="/races/today"
@@ -145,7 +145,7 @@ export default function KeibaDataPage() {
                     </div>
                 </section>
 
-                <section id="course-search" className="mt-7 scroll-mt-24" aria-labelledby="course-search-heading">
+                <section id="course-search" className="mt-4 sm:mt-5 scroll-mt-24" aria-labelledby="course-search-heading">
                     <SectionHeader
                         id="course-search-heading"
                         title="競馬場からコースを探す"

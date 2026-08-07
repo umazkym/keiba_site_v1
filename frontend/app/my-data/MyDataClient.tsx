@@ -280,21 +280,20 @@ export default function MyDataClient() {
     const horseFavoritesCount = favorites.filter((f) => f.entity_type === 'horse').length;
 
     return (
-        <main className="mx-auto max-w-6xl px-3 pb-14 pt-3 sm:px-4">
+        <main className="mx-auto max-w-6xl px-3.5 pb-14 pt-3 sm:px-5">
             <DataHubNav currentPath="/my-data" />
 
-            <header className="mt-5 border-b border-slate-200 pb-5">
-                <p className="text-xs font-bold text-slate-500">競馬データベース</p>
-                <h1 className="mt-1 text-2xl font-black text-slate-950 sm:text-4xl">マイデータ</h1>
-                <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-7">
+            <header className="mt-2 rounded-xl border border-slate-800 bg-slate-900 p-2.5 text-white sm:p-5">
+                <p className="text-[10px] font-bold text-blue-300">競馬データベース</p>
+                <h1 className="mt-0.5 text-[15px] font-black leading-tight !text-white sm:text-3xl">マイデータ</h1>
+                <p className="mt-1 max-w-3xl text-[11px] leading-relaxed !text-slate-200 sm:text-sm sm:leading-6">
                     確認した情報を端末に保存できます。
                 </p>
             </header>
 
             {/* 統計＆クイックアクションカード */}
-            <section className="mt-5 grid gap-3 sm:grid-cols-3">
+            <section className="mt-3.5 grid gap-2 sm:mt-4 sm:grid-cols-3 sm:gap-3">
                 <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
-                    <div className="h-1 -mx-4 -mt-4 mb-3 bg-emerald-600" />
                     <div className="flex items-center justify-between">
                         <Bookmark className="h-5 w-5 text-emerald-600" aria-hidden="true" />
                         <span className="text-xs font-bold text-slate-400">お気に入り</span>
@@ -314,7 +313,6 @@ export default function MyDataClient() {
                 </div>
 
                 <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
-                    <div className="h-1 -mx-4 -mt-4 mb-3 bg-amber-500" />
                     <div className="flex items-center justify-between">
                         <GitCompareArrows className="h-5 w-5 text-amber-600" aria-hidden="true" />
                         <span className="text-xs font-bold text-slate-400">比較中の馬</span>
@@ -333,7 +331,6 @@ export default function MyDataClient() {
                 </div>
 
                 <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
-                    <div className="h-1 -mx-4 -mt-4 mb-3 bg-blue-500" />
                     <div className="flex items-center justify-between">
                         <Clock3 className="h-5 w-5 text-blue-600" aria-hidden="true" />
                         <span className="text-xs font-bold text-slate-400">閲覧履歴</span>

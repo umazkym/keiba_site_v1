@@ -51,13 +51,13 @@ export default function GradeRacesPage() {
       />
       <Breadcrumb />
       <div className="mx-auto max-w-5xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
-        <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
+        <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 shadow-soft sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
-          <p className="text-xs font-bold tracking-[0.18em] text-slate-400">GRADE RACES</p>
-          <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+          <p className="text-[10px] font-bold tracking-[0.18em] text-slate-400">GRADE RACES</p>
+          <h1 className="mt-1 text-[15px] font-black leading-tight text-slate-950 sm:text-4xl">
             今週の重賞・G1データ分析
           </h1>
-          <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">
+          <p className="mt-1.5 max-w-3xl text-[11px] leading-relaxed text-slate-600 sm:text-base">
             重賞レースは、検索需要がレース週に集中します。
             UMA-FREEでは、枠順確定前、枠順確定後、当日、レース後の4段階で確認すべきデータを分けて整理します。
           </p>

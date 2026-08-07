@@ -144,7 +144,7 @@ export default async function HomePage() {
     const gradeRaceTopHorses = buildGradeRaceTopHorseMap(predictions, weeklyGradeRaces);
 
     return (
-        <div className="home-page-scope site-shell-wide touch-pan-y space-y-2.5 overscroll-y-auto sm:space-y-4">
+        <div className="home-page-scope site-shell-wide touch-pan-y space-y-1.5 sm:space-y-3 overscroll-y-auto">
             <HomeStickyRaceCta raceDate={todayStr} raceCount={raceDaySummary.raceCount} />
             {/* ── 1. 最近確認したレース ── */}
             <RecentRaceReturn />
@@ -152,27 +152,29 @@ export default async function HomePage() {
             {/* ── 2. ヒーローとG1重賞 ── */}
             <div className="hero-grid">
                 {/* ヒーローセクション */}
-                <section className="hero card rounded-xl">
-                    <span className="update inline-flex items-center gap-1.5 text-xs font-extrabold text-white/95">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                        {getFormattedUpdateDate()}
-                    </span>
-                    <h1 className="text-white font-extrabold tracking-tight leading-tight !text-[17px] sm:!text-[24px] mb-2">
-                        {raceDaySummary.venueCount > 0
-                            ? <>{getHomeVenueNamesString(homeVenues)}<br />全{raceDaySummary.raceCount}レース分析公開中</>
-                            : <>今日のレース分析を<br />無料で確認</>
-                        }
-                    </h1>
-                    <p className="text-slate-300 text-xs sm:text-base leading-relaxed pb-2 mb-4 max-w-xl">
-                        展開・対戦成績・枠順傾向をひと目で確認。登録不要で中央・地方の分析データを毎日無料で確認できます。
-                    </p>
-                    <RaceAnalysisValueGrid className="mb-4" />
+                <section className="hero card rounded-xl flex flex-col justify-between">
+                    <div>
+                        <span className="update inline-flex items-center gap-1 text-[10px] sm:text-xs font-extrabold text-white/95">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                            {getFormattedUpdateDate()}
+                        </span>
+                        <h1 className="text-white font-extrabold tracking-tight leading-tight !text-[14px] sm:!text-[24px] mb-1">
+                            {raceDaySummary.venueCount > 0
+                                ? <>{getHomeVenueNamesString(homeVenues)} 全{raceDaySummary.raceCount}レース分析公開中</>
+                                : <>今日のレース分析を無料で確認</>
+                            }
+                        </h1>
+                        <p className="text-slate-300 text-[10.5px] sm:text-sm leading-tight max-w-xl">
+                            展開・対戦成績・枠順傾向をひと目で確認。中央・地方の分析データを無料で確認できます。
+                        </p>
+                        <RaceAnalysisValueGrid className="mt-1.5 sm:mt-4" />
+                    </div>
                     <HomeRaceEntryLink
                         href={`/races/${todayStr}`}
                         raceDate={todayStr}
                         entryMethod="hero_cta"
                         data-home-primary-race-cta
-                        className="cta"
+                        className="cta mt-1.5"
                     >
                         本日のレース分析を見る <span aria-hidden="true">→</span>
                     </HomeRaceEntryLink>
@@ -182,15 +184,15 @@ export default async function HomePage() {
                 {weeklyGradeRaces.length > 0 ? (
                     <WeeklyGradeRaces races={weeklyGradeRaces} topHorses={gradeRaceTopHorses} />
                 ) : (
-                    <div className="grade-focus flex flex-col justify-center items-center p-6 text-center">
-                        <span className="badge badge-slate mb-2">重賞情報</span>
-                        <h2 className="text-slate-900 font-bold text-lg">近日の重賞情報を確認中です</h2>
-                        <p className="text-slate-500 text-xs mt-1">開催情報が反映されるまで少し時間がかかる場合があります。</p>
+                    <div className="grade-focus flex flex-col justify-center items-center p-3 sm:p-6 text-center">
+                        <span className="badge badge-slate mb-1">重賞情報</span>
+                        <h2 className="text-slate-900 font-bold text-xs sm:text-lg">近日の重賞情報を確認中です</h2>
+                        <p className="text-slate-500 text-[10.5px] sm:text-xs mt-0.5">開催情報が反映されるまで少し時間がかかる場合があります。</p>
                         <HomeRaceEntryLink
                             href={`/races/${todayStr}`}
                             raceDate={todayStr}
                             entryMethod="grade_fallback"
-                            className="cta mt-4"
+                            className="cta mt-2"
                         >
                             今日のレース分析を見る <span aria-hidden="true">→</span>
                         </HomeRaceEntryLink>
@@ -203,7 +205,7 @@ export default async function HomePage() {
                 <SectionHeader
                     title={`本日の開催（${formatShortDate(todayStr)}）`}
                     meta="毎日更新"
-                    className="mb-3"
+                    className="mb-1.5 sm:mb-3"
                     compact
                 />
 
@@ -213,7 +215,7 @@ export default async function HomePage() {
                 />
 
                 {!shouldSuppressAdsInDevelopment && (
-                    <div className="ad ad-wide mt-4">
+                    <div className="ad ad-wide mt-2 sm:mt-4">
                         <AdUnit slot="8529703346" placement="inline" analyticsPlacement="home_after_today_races" />
                     </div>
                 )}
@@ -222,7 +224,7 @@ export default async function HomePage() {
             {/* ── 4. メイングリッド (2カラム) ── */}
             <div className="main-grid">
                 {/* 左スタック */}
-                <div className="space-y-2.5 sm:space-y-4">
+                <div className="space-y-1.5 sm:space-y-3">
                     {/* 高配当的中ランキング */}
                     <section className="hits card rounded-xl">
                         <TopHitsDisplay initialHits={topHits} />
@@ -230,7 +232,7 @@ export default async function HomePage() {
 
                     {/* 本日の分析注目馬 */}
                     <section className="pick-section card rounded-xl">
-                        <SectionHeader title="本日の分析注目馬" className="mb-3" compact />
+                        <SectionHeader title="本日の分析注目馬" className="mb-1.5 sm:mb-3" compact />
                         <SpecialPickCard pick={specialPick} date={todayStr} precomputedPicks={homeSpecialPicks} />
                     </section>
 
@@ -244,14 +246,14 @@ export default async function HomePage() {
                                     すべて見る →
                                 </Link>
                             )}
-                            className="mb-3"
+                            className="mb-1.5 sm:mb-3"
                             compact
                         />
 
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 md:grid-cols-3">
                             {latestArticles.slice(0, 3).map((article) => (
-                                <Link prefetch={false} href={`/articles/${article.slug}`} key={article.slug} className="article group flex min-h-0 sm:block">
-                                    <div className="thumb relative h-20 w-24 shrink-0 overflow-hidden bg-slate-100 sm:h-auto sm:w-auto">
+                                <Link prefetch={false} href={`/articles/${article.slug}`} key={article.slug} className="group flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-1.5 transition-colors hover:border-blue-300 hover:bg-slate-50/60">
+                                    <div className="relative h-14 w-16 shrink-0 overflow-hidden rounded bg-slate-100">
                                         <img
                                             src={article.eyecatch || '/images/articles/data-analysis-eyecatch.png'}
                                             alt={article.title}
@@ -260,12 +262,14 @@ export default async function HomePage() {
                                             className="h-full w-full object-cover"
                                         />
                                     </div>
-                                    <div className="article-body">
-                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-block ${getCategoryBadgeClass(article.category)}`}>
-                                            {article.category}
-                                        </span>
-                                        <h3 className="line-clamp-2">{article.title}</h3>
-                                        <div className="meta">
+                                    <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
+                                        <div>
+                                            <span className={`text-[8.5px] font-bold px-1 py-0.2 rounded inline-block ${getCategoryBadgeClass(article.category)}`}>
+                                                {article.category}
+                                            </span>
+                                            <h3 className="line-clamp-2 text-[11.5px] font-bold leading-tight text-slate-900 group-hover:text-primary mt-0.5">{article.title}</h3>
+                                        </div>
+                                        <div className="mt-1 flex items-center justify-between text-[9.5px] text-slate-400">
                                             <span>{formatShortDate(article.date)}</span>
                                             <span>約{Math.max(1, Math.ceil(article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, '').length / 500))}分</span>
                                         </div>
@@ -281,14 +285,15 @@ export default async function HomePage() {
                         </div>
                     </section>
 
-                    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                        <div className="border-b border-slate-200 px-4 py-3">
-                            <SectionHeader title="過去データを調べる" meta="" compact />
-                            <p className="mt-1 text-xs leading-6 text-slate-600">
-                                過去レースを競走馬、騎手、調教師、コースごとに再集計しています。
-                            </p>
-                        </div>
-                        <div className="grid sm:grid-cols-2">
+                    {/* 過去データを調べる */}
+                    <section className="database-section card rounded-xl">
+                        <SectionHeader
+                            title="過去データを調べる"
+                            description="過去レースを競走馬、騎手、調教師、コースごとに再集計しています。"
+                            className="mb-1.5 sm:mb-2.5"
+                            compact
+                        />
+                        <div className="grid gap-1 sm:grid-cols-2 sm:gap-2">
                             {[
                                 { href: '/compare', label: '競走馬のデータ比較', note: '複数の馬の成績・得意条件を比較できます。' },
                                 { href: '/my-data', label: 'マイデータ', note: '馬・人・コースのお気に入り登録と履歴を確認できます。' },
@@ -299,44 +304,42 @@ export default async function HomePage() {
                                     key={item.href}
                                     prefetch={false}
                                     href={item.href}
-                                    className="min-h-16 border-b border-slate-100 px-4 py-2 transition-colors duration-150 hover:bg-blue-50/60 sm:border-r"
+                                    className="flex min-h-[36px] flex-col justify-center rounded-lg border border-slate-200 bg-white px-2 py-1 transition-colors duration-150 hover:border-blue-300 hover:bg-slate-50/70"
                                 >
-                                    <span className="block font-black text-slate-900">{item.label}</span>
-                                    <span className="mt-0.5 block text-xs text-slate-500">{item.note}</span>
+                                    <span className="text-[11.5px] font-bold text-slate-900 sm:text-sm">{item.label}</span>
+                                    <span className="mt-0.5 hidden text-[10px] text-slate-500 line-clamp-1 sm:block">{item.note}</span>
                                 </Link>
                             ))}
                         </div>
                         <Link
                             href="/keiba-data"
                             prefetch={false}
-                            className="flex min-h-12 items-center justify-between border-t border-slate-200 bg-slate-50/80 px-4 py-3 text-xs font-black text-blue-700 transition-colors duration-150 hover:bg-blue-50 hover:text-blue-800 sm:text-sm"
+                            className="mt-1.5 flex min-h-8 items-center justify-between rounded-lg border border-blue-200 bg-blue-50/60 px-2.5 py-1 text-[11.5px] font-bold text-blue-700 transition-colors duration-150 hover:bg-blue-100/70 sm:text-sm"
                         >
                             <span>競馬データベース・分析ハブを開く</span>
-                            <span aria-hidden="true" className="text-sm font-bold">→</span>
+                            <span aria-hidden="true" className="text-xs font-bold">→</span>
                         </Link>
                     </section>
 
-
                     {/* よくある質問 */}
                     <section className="faq card rounded-xl">
-                        <h2 className="section-title">
-                            <span>よくある質問</span>
-                            <span className="section-note"></span>
-                        </h2>
-                        <div className="space-y-1">
+                        <SectionHeader title="よくある質問" className="mb-1.5 sm:mb-2.5" compact />
+                        <div className="space-y-1 sm:space-y-1.5">
                             {homepageFaqItems.map((item, index) => (
-                                <details key={index} className="border-t border-slate-200 first:border-0">
-                                    <summary className="list-none cursor-pointer py-1 text-sm font-bold text-slate-900 flex justify-between items-center hover:bg-slate-50 px-2 rounded">
+                                <details key={index} className="rounded-lg border border-slate-200 bg-white p-1.5 transition-colors hover:border-slate-300">
+                                    <summary className="list-none cursor-pointer text-[11.5px] font-bold text-slate-900 flex justify-between items-center px-0.5">
                                         <span>{item.question}</span>
-                                        <span className="text-xs text-slate-500">▼</span>
+                                        <span className="text-[9px] text-slate-400 ml-1.5 shrink-0">▼</span>
                                     </summary>
-                                    <div className="pb-1 px-2 text-xs leading-relaxed text-slate-500">
+                                    <div className="mt-1 px-0.5 text-[11px] leading-snug text-slate-600 border-t border-slate-100 pt-1">
                                         {item.answer}
                                     </div>
                                 </details>
                             ))}
                         </div>
                     </section>
+
+                    <DisclaimerAlert />
                 </div>
 
                 {/* 右サイドバー */}
@@ -370,8 +373,6 @@ export default async function HomePage() {
                     </div>
                 </aside>
             </div>
-
-            <DisclaimerAlert />
         </div>
     );
 }

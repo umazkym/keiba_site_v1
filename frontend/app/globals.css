@@ -575,16 +575,14 @@ header.glass {
 .home-sticky-race-cta {
     position: fixed;
     z-index: 39;
-    top: var(--site-header-offset);
+    bottom: 12px;
     right: 0;
     left: 0;
-    border-bottom: 1px solid var(--slate-200-color);
-    background: #ffffff;
-    box-shadow: 0 2px 3px rgba(15, 23, 42, 0.12);
+    background: transparent;
     opacity: 0;
     pointer-events: none;
-    transform: translateY(-100%);
-    transition: top 180ms cubic-bezier(0.2, 0, 0, 1), transform 160ms ease, opacity 120ms ease;
+    transform: translateY(100%);
+    transition: bottom 180ms cubic-bezier(0.2, 0, 0, 1), transform 160ms ease, opacity 120ms ease;
 }
 
 .home-sticky-race-cta-visible {
@@ -1024,12 +1022,12 @@ header.glass {
 .hero-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.8fr);
-  gap: 16px;
+  gap: 12px;
   align-items: stretch;
 }
 .hero {
   position: relative;
-  padding: 22px;
+  padding: 18px 20px;
   color: white;
   background: var(--primary-color);
   border: 1px solid var(--primary-soft-color);
@@ -1051,10 +1049,10 @@ header.glass {
 }
 .hero p {
   max-width: 650px;
-  margin: 9px 0 0;
+  margin: 9px 0 16px;
   color: #cbd5e1;
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.6;
   font-weight: 600;
 }
 .hero-analysis-flow {
@@ -1169,9 +1167,14 @@ header.glass {
   font-weight: 900;
   line-height: 1;
 }
-/* Venue component */
-.venue-section {
-  padding: 16px;
+/* Standard Card Sections */
+.venue-section,
+.hits,
+.pick-section,
+.articles,
+.database-section,
+.faq {
+  padding: 14px 16px;
 }
 .venue-grid {
   display: grid;
@@ -1944,6 +1947,13 @@ header.glass {
 }
 
 /* Responsive adjustments for samples */
+@media (max-width: 1023px) {
+  .main-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px;
+  }
+}
+
 @media (max-width: 820px) {
   .resume-row {
     display: flex;
@@ -1998,78 +2008,42 @@ header.glass {
     margin-top: 10px;
     font-size: 12px;
   }
-  .grade-focus {
-    padding: 12px;
+}
+
+@media (max-width: 639px) {
+  .hero h1 {
+    font-size: 1.15rem;
+    line-height: 1.35;
   }
-  .grade-focus h2 {
-    font-size: 19px;
-  }
-  .venue-section, .hits, .pick-section, .articles, .faq {
-    padding: 12px;
-  }
-  .venue-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .venue-chip {
-    min-height: 68px;
-  }
-  .main-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
+
   .hit {
-    grid-template-columns: 32px 1fr auto;
-    gap: 8px;
-    padding: 9px;
+    grid-template-columns: 28px 1fr auto;
+    gap: 6px;
+    padding: 6px;
   }
   .hit .amount {
-    font-size: 14px;
+    font-size: 12px;
   }
   .tabs {
-    gap: 6px;
+    gap: 4px;
   }
   .tab {
     font-size: 11px;
-    min-height: 34px;
-  }
-  .pick-card {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  .pick-card h3 {
-    font-size: 20px;
-  }
-  .score-panel {
-    text-align: left;
-    font-size: 28px;
-  }
-  .affiliate {
-    grid-template-columns: 1fr;
-  }
-  .affiliate a {
-    width: 100%;
-  }
-  .article-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-  .article {
-    min-height: 0;
-  }
-  .thumb {
-    min-height: 80px;
-  }
-  .native-ad {
-    min-height: 192px;
-  }
-  .sticky-ad {
-    width: calc(100vw - 18px);
-    bottom: 8px;
-    grid-template-columns: 48px 1fr 26px;
-    font-size: 10px;
+    min-height: 30px;
   }
 
+  .article-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  .sticky-ad {
+    width: calc(100vw - 12px);
+    bottom: 4px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 768px) {
   /* Race detail responsive */
   .topbar-inner {
     grid-template-columns: 1fr;
@@ -2181,8 +2155,8 @@ header.glass {
   .bars {
     height: 104px;
   }
-
 }
+
 @layer utilities {
     .scrollbar-hide {
         -ms-overflow-style: none;
@@ -2236,4 +2210,29 @@ header.glass {
     :focus-visible {
         outline-width: 3px;
     }
+}
+
+/* Light prose pre/code styling for article flow text */
+.article-page-prose pre,
+.prose pre {
+    background-color: #f8fafc !important;
+    color: #1e293b !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    padding: 0.625rem 0.75rem !important;
+    font-family: inherit !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow-x: auto !important;
+}
+
+.article-page-prose pre code,
+.prose pre code {
+    background-color: transparent !important;
+    color: #1e293b !important;
+    padding: 0 !important;
+    border: none !important;
+    font-family: inherit !important;
+    font-size: 10.5px !important;
+    line-height: 1.6 !important;
 }

@@ -43,7 +43,7 @@ export function DataEntityDetailView({
         return `data:text/calendar;charset=utf-8,${encodeURIComponent(content)}`;
     };
     return (
-        <article className="site-shell-data px-3 pb-14 pt-3 sm:px-4">
+        <article className="site-shell-data px-3.5 pb-14 pt-3 sm:px-5">
             <DataDirectoryNav current={entityType} />
 
             <DataEntityTracker

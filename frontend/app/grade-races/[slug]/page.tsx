@@ -82,18 +82,18 @@ export default async function GradeRaceDetailPage({ params }: Props) {
       />
       <Breadcrumb />
       <article className="mx-auto max-w-5xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
-        <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
+        <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 shadow-soft sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
-          <p className="text-xs font-bold tracking-[0.18em] text-slate-400">{race.grade} RACE HUB</p>
-          <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+          <p className="text-[10px] font-bold tracking-[0.18em] text-slate-400">{race.grade} RACE HUB</p>
+          <h1 className="mt-1 text-[15px] font-black leading-tight text-slate-950 sm:text-4xl">
             {race.name} {race.date}
           </h1>
-          <p className="mt-3 text-sm font-bold text-slate-500">
+          <p className="mt-1 text-[11px] font-bold text-slate-500">
             {race.venue}{race.course} / {race.qualification}
           </p>
-          <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">{race.summary}</p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Link prefetch={false} href="/races/today" className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary">
+          <p className="mt-1.5 max-w-3xl text-[11px] leading-relaxed text-slate-600 sm:text-base">{race.summary}</p>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            <Link prefetch={false} href="/races/today" className="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-bold text-white hover:bg-primary">
               当日のAI予想を見る
             </Link>
           </div>

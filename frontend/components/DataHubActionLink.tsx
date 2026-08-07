@@ -47,14 +47,14 @@ export function DataHubActionLink({
                     destination_type: config.destinationType,
                 });
             }}
-            className={`grid min-h-16 grid-cols-[32px_1fr_20px] items-center gap-2 rounded-xl border px-3 py-2.5 transition-colors duration-150 hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${config.accent}`}
+            className={`grid min-h-11 grid-cols-[28px_1fr_16px] items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors duration-150 sm:min-h-14 sm:grid-cols-[32px_1fr_20px] sm:gap-2 sm:rounded-xl sm:px-3 sm:py-2.5 hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${config.accent}`}
         >
-            <Icon className="h-5 w-5" aria-hidden="true" />
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
             <span className="min-w-0">
-                <span className="block text-sm font-black">{title}</span>
-                <span className="mt-0.5 block text-xs leading-5 text-slate-600">{description}</span>
+                <span className="block text-xs font-black sm:text-sm">{title}</span>
+                <span className="mt-0.5 block truncate text-[11px] leading-tight text-slate-600 sm:text-xs sm:leading-5">{description}</span>
             </span>
-            <ChevronRight className="h-4 w-4 text-slate-500" aria-hidden="true" />
+            <ChevronRight className="h-3.5 w-3.5 text-slate-500 sm:h-4 sm:w-4" aria-hidden="true" />
         </Link>
     );
 }

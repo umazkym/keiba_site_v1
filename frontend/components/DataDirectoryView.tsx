@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { DataDirectoryNav } from '@/components/DataDirectoryNav';
 import { DataSearchPanel } from '@/components/DataSearchPanel';
+import { SectionHeader } from '@/components/SectionHeader';
 import {
     splitPersonDisplayName,
 } from '@/lib/data-directory';
@@ -71,20 +72,20 @@ export function DataDirectoryView({
         : 'sm:grid-cols-[minmax(0,1fr)_72px_110px_28px]';
 
     return (
-        <main className="mx-auto max-w-6xl px-3 pb-14 pt-3 sm:px-4">
+        <main className="mx-auto max-w-6xl px-3.5 pb-14 pt-3 sm:px-5">
             <DataDirectoryNav current={entityType} />
 
-            <header className="mt-5 border-b border-slate-200 pb-5">
-                <p className="text-xs font-bold text-slate-500">{content.categoryLabel}</p>
-                <h1 className="mt-1 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+            <header className="mt-3 rounded-xl border border-slate-800 bg-slate-900 p-3.5 text-white sm:p-5">
+                <p className="text-[10px] font-bold tracking-wider text-blue-400">KEIBA DATABASE</p>
+                <h1 className="mt-0.5 text-[15px] font-black leading-tight !text-white sm:text-3xl">
                     {content.title}
                 </h1>
-                <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
+                <p className="mt-1 max-w-3xl text-[11px] leading-relaxed !text-slate-200 sm:text-sm sm:leading-6">
                     {content.description}
                 </p>
             </header>
 
-            <div className="mt-5">
+            <div className="mt-2 sm:mt-4">
                 <DataSearchPanel
                     entityType={entityType}
                     heading={`${content.itemLabel}を名前で探す`}
@@ -92,25 +93,20 @@ export function DataDirectoryView({
                 />
             </div>
 
-            <section className="mt-6" aria-labelledby={`${entityType}-recent-heading`}>
-                <div className="mb-2 flex items-end justify-between gap-3">
-                    <div>
-                        <h2 id={`${entityType}-recent-heading`} className="text-lg font-black text-slate-950">
-                            {content.recentTitle}
-                        </h2>
-                        <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                            最終出走日の新しい順に掲載しています。
-                        </p>
-                    </div>
-                    <span className="shrink-0 text-xs font-bold tabular-nums text-slate-500">
-                        {directory.total.toLocaleString('ja-JP')}件
-                    </span>
-                </div>
+            <section className="mt-2.5 sm:mt-4" aria-labelledby={`${entityType}-recent-heading`}>
+                <SectionHeader
+                    id={`${entityType}-recent-heading`}
+                    title={content.recentTitle}
+                    description="最終出走日の新しい順に掲載しています。"
+                    meta={`${directory.total.toLocaleString('ja-JP')}件`}
+                    className="mb-1.5 sm:mb-3"
+                    compact
+                />
 
                 {directory.items.length === 0 ? (
-                    <div className="rounded-xl border border-slate-200 bg-white p-5">
-                        <h3 className="font-black text-slate-900">一覧を取得できませんでした</h3>
-                        <p className="mt-2 text-sm leading-7 text-slate-600">
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                        <h3 className="text-xs font-black text-slate-900">一覧を取得できませんでした</h3>
+                        <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
                             上の名前検索をお試しいただくか、時間を置いて再度表示してください。
                         </p>
                     </div>
@@ -137,13 +133,13 @@ export function DataDirectoryView({
                                         key={`${item.entity_type}-${item.id}`}
                                         prefetch={false}
                                         href={item.url}
-                                        className={`grid min-h-[60px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-blue-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 sm:min-h-14 sm:gap-3 ${desktopColumns} ${index % 2 === 1 ? 'bg-slate-50/50' : ''}`}
+                                        className={`grid min-h-[46px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 transition-colors duration-150 hover:bg-blue-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 sm:min-h-14 sm:gap-3 ${desktopColumns} ${index % 2 === 1 ? 'bg-slate-50/50' : ''}`}
                                     >
                                         <span className="min-w-0">
-                                            <span className="block truncate text-[15px] font-black text-slate-950">{display.name}</span>
-                                            <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 sm:hidden">
+                                            <span className="block truncate text-[13.5px] font-black text-slate-950">{display.name}</span>
+                                            <span className="mt-0.5 flex flex-wrap items-center gap-1 text-[10.5px] text-slate-500 sm:hidden">
                                                 {display.affiliation && (
-                                                    <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-bold text-slate-600">
+                                                    <span className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-bold text-slate-600 text-[9.5px]">
                                                         {display.affiliation}
                                                     </span>
                                                 )}

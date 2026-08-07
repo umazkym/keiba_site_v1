@@ -158,95 +158,40 @@ export const Header = ({ todayString }: HeaderProps) => {
     }, [pathname]);
 
     // 本文の途中では方向にかかわらず退避し、ページ最上部へ戻った時だけ復帰する。
-    // 同時にトップアンカー広告（展開・折りたたみ両方）の高さも追跡する。
+    // 上部アンカー広告が存在する場合は矢印(▽)ボタン分（28px）だけヘッダーを下にオフセットする。
     useEffect(() => {
         if (isMenuOpen) {
             setIsHeaderVisible(true);
             return undefined;
         }
 
-        /**
-         * Google Auto Ads が画面上端に配置する要素の下端(px)を直接DOMから取得する。
-         * オーバーレイ検出システムの `topAnchorHeight` はアンカー広告が
-         * data-anchor-status="displayed" のときのみ計測するが、
-         * 広告を非表示にしたあとに残る折りたたみタブ（∨ボタン,
-         * `.fc-ablate-drawer-tab` 等）は status が変わるため検出漏れする。
-         * ここでは status を問わず、ビューポート上端60px以内に存在する
-         * Google Ad関連の要素を全てスキャンして最大の bottom を返す。
-         */
-        const scanTopAdOffset = (): number => {
-            const candidates = document.querySelectorAll<HTMLElement>(
-                'ins.adsbygoogle-noablate[data-anchor-status],'
-                + 'ins.adsbygoogle[data-anchor-status],'
-                + '.fc-ablate-drawer-tab,'
-                + '[id^="google_ads_iframe"][style*="position"],'
-                + '[id^="aswift_"][style*="position"]',
-            );
-            let maxBottom = 0;
-            candidates.forEach((el) => {
-                const style = window.getComputedStyle(el);
-                if (style.display === 'none' || style.visibility === 'hidden') return;
-                const rect = el.getBoundingClientRect();
-                if (rect.height > 0 && rect.top <= 60 && rect.bottom > 0) {
-                    maxBottom = Math.max(maxBottom, Math.ceil(rect.bottom));
-                }
-            });
-            return maxBottom;
-        };
-
-        let frameId = 0;
-        let isPolling = false;
+        const TOP_ANCHOR_TAB_HEIGHT = 28; // 矢印(▽)ボタン分の固定高さ(px)
 
         const updateVisibility = () => {
-            frameId = 0;
             const nextScrollY = Math.max(0, window.scrollY);
             setIsHeaderVisible(nextScrollY <= 8);
-            // オーバーレイ検出 + 直接DOM走査の大きい方を採用
+
+            // Google Ad Overlayまたは折りたたみ矢印タブ(.fc-ablate-drawer-tab)の有無をシンプル判定
             const overlay = getGoogleAdOverlaySnapshot();
-            const directOffset = scanTopAdOffset();
-            const rawOffset = Math.max(overlay.topAnchorHeight, directOffset);
-            // 安全マージン（+6px）を付与し、アニメーション途中の測定誤差や1pxの重なりを完全吸収
-            setTopAnchorHeight(rawOffset > 0 ? rawOffset + 6 : 0);
+            const hasDrawerTab = Boolean(
+                document.querySelector('.fc-ablate-drawer-tab, ins.adsbygoogle-noablate[data-anchor-status="displayed"]')
+            );
+
+            const hasTopAnchor = overlay.topAnchorHeight > 0 || hasDrawerTab;
+            setTopAnchorHeight(hasTopAnchor ? TOP_ANCHOR_TAB_HEIGHT : 0);
         };
 
-        const requestUpdate = () => {
-            if (frameId) return;
-            frameId = window.requestAnimationFrame(updateVisibility);
-        };
+        const handleOverlayChange = () => updateVisibility();
+        window.addEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange as EventListener);
+        window.addEventListener('scroll', updateVisibility, { passive: true });
+        window.addEventListener('resize', updateVisibility, { passive: true });
 
-        // 広告要素の出現や状態変更（スライドアニメーション含む）の直後、
-        // 約400ms間rAFで連続計測（settle polling）を行いアニメーション中の表示ズレを追従する
-        const startSettlePolling = () => {
-            requestUpdate();
-            if (isPolling) return;
-            isPolling = true;
-            const start = performance.now();
-            const poll = () => {
-                requestUpdate();
-                if (performance.now() - start < 400) {
-                    window.requestAnimationFrame(poll);
-                } else {
-                    isPolling = false;
-                }
-            };
-            window.requestAnimationFrame(poll);
-        };
+        updateVisibility();
 
-        window.addEventListener(GOOGLE_AD_OVERLAY_EVENT, startSettlePolling as EventListener);
-        window.addEventListener('scroll', requestUpdate, { passive: true });
-
-        // body直下の子要素変更を軽量監視し、無駄なsubtreeノイズを抑制しつつ新規広告要素の出現を捕捉
-        const adObserver = new MutationObserver(startSettlePolling);
-        adObserver.observe(document.body, {
-            childList: true,
-        });
-
-        requestUpdate();
         return () => {
-            if (frameId) window.cancelAnimationFrame(frameId);
-            window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, startSettlePolling as EventListener);
-            window.removeEventListener('scroll', requestUpdate);
-            adObserver.disconnect();
+            window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange as EventListener);
+            window.removeEventListener('scroll', updateVisibility);
+            window.removeEventListener('resize', updateVisibility);
         };
     }, [isMenuOpen]);
 

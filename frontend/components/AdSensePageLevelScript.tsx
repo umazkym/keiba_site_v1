@@ -17,16 +17,16 @@ const OFFERWALL_SELECTOR = '.fc-monetization-dialog-container';
 const isVisibleAnchor = (element: HTMLElement) => {
     const style = window.getComputedStyle(element);
     const rect = element.getBoundingClientRect();
-    return style.display !== 'none'
-        && style.visibility !== 'hidden'
-        && Number(style.opacity || '1') > 0
-        && rect.height >= 24
-        && rect.width >= window.innerWidth * 0.45
-        && (rect.top <= 8 || rect.bottom >= window.innerHeight - 8);
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || '1') <= 0) {
+        return false;
+    }
+    const isTopArea = rect.top <= 80 && rect.bottom > 0;
+    const isBottomArea = rect.bottom >= window.innerHeight - 20;
+    return rect.height >= 20 && (isTopArea || isBottomArea);
 };
 
 const getVisibleGoogleAnchors = () => Array.from(document.querySelectorAll<HTMLElement>(
-    'ins.adsbygoogle-noablate[data-anchor-status="displayed"], ins.adsbygoogle[data-anchor-status="displayed"]',
+    'ins.adsbygoogle-noablate[data-anchor-status="displayed"], ins.adsbygoogle[data-anchor-status="displayed"], .fc-ablate-drawer-tab',
 )).filter(isVisibleAnchor);
 
 const isVisibleOfferwall = () => Array.from(document.querySelectorAll<HTMLElement>(OFFERWALL_SELECTOR)).some((element) => {
@@ -67,11 +67,11 @@ export const AdSensePageLevelScript = ({ enabled }: AdSensePageLevelScriptProps)
             const visibleAnchors = getVisibleGoogleAnchors();
             const topAnchorHeight = visibleAnchors.reduce((height, element) => {
                 const rect = element.getBoundingClientRect();
-                return rect.top <= 8 ? Math.max(height, Math.ceil(rect.height)) : height;
+                return rect.top <= 80 && rect.bottom > 0 ? Math.max(height, Math.ceil(rect.bottom)) : height;
             }, 0);
             const bottomAnchorHeight = visibleAnchors.reduce((height, element) => {
                 const rect = element.getBoundingClientRect();
-                return rect.bottom >= window.innerHeight - 8 ? Math.max(height, Math.ceil(rect.height)) : height;
+                return rect.bottom >= window.innerHeight - 20 ? Math.max(height, Math.ceil(rect.height)) : height;
             }, 0);
             const anchorIsVisible = topAnchorHeight > 0 || bottomAnchorHeight > 0;
             const isBlocking = dialogIsVisible || anchorIsVisible;

@@ -167,9 +167,9 @@ function UpcomingGradeRacePickup({
 
   return (
     <section className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white" aria-label="近日の重賞記事">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 className="px-3 pt-3 text-sm font-black text-slate-950 sm:px-4 sm:text-base">近日の重賞</h2>
-        <span className="px-3 pt-3 text-xs font-bold text-slate-500 sm:px-4">{groups.length}</span>
+      <div className="mb-2 flex items-center justify-between gap-3 px-4 pt-3.5 sm:px-5">
+        <h2 className="text-sm font-black text-slate-950 sm:text-base">近日の重賞</h2>
+        <span className="text-xs font-bold text-slate-500">{groups.length}</span>
       </div>
       <div className="divide-y divide-slate-100 border-t border-slate-100 sm:grid sm:grid-cols-2 sm:divide-y-0">
         {groups.map((group) => {
@@ -178,7 +178,7 @@ function UpcomingGradeRacePickup({
             <Link
               key={group.href}
               href={group.href}
-              className="group px-3 py-2.5 transition-colors duration-150 hover:bg-slate-50 sm:border-b sm:border-slate-100 sm:px-4"
+              className="group px-4 py-3 transition-colors duration-150 hover:bg-slate-50 sm:border-b sm:border-slate-100 sm:px-5"
             >
               <div className="flex items-center justify-between gap-3 text-[11px] font-black text-blue-600">
                 <span>{formatRaceDate(group.scheduledDate)}</span>
@@ -411,9 +411,8 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
       />
       <Breadcrumb />
 
-      <div className="articles-page-scope site-shell-data px-0 pb-10 pt-2 sm:px-4 sm:pb-16 sm:pt-4">
+      <div className="articles-page-scope site-shell-data px-2 pb-10 pt-2 sm:px-4 sm:pb-16 sm:pt-4">
         <header className="relative overflow-hidden rounded-lg border border-slate-200 bg-white p-3 sm:rounded-xl sm:p-8">
-          <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
           <div className="flex flex-col gap-2 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
               <p className="text-xs font-bold text-slate-500">競馬統計コラム</p>

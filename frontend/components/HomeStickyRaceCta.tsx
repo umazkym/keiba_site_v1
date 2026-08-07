@@ -66,7 +66,7 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
             style={topAnchorHeight > 0 ? { top: `calc(var(--site-header-offset) + ${topAnchorHeight}px)` } : undefined}
             aria-hidden={!isVisible}
         >
-            <div className="mx-auto flex h-12 max-w-[1600px] items-center px-2 sm:px-4 md:px-6">
+            <div className="mx-auto flex h-12 max-w-[1600px] items-center pl-12 pr-2 sm:px-4 md:px-6">
                 <HomeRaceEntryLink
                     href={`/races/${raceDate}`}
                     raceDate={raceDate}

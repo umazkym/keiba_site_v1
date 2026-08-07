@@ -205,10 +205,10 @@ export const AffiliateSlot = ({
     const fallbackVisualLabel = campaign.fallbackVisualLabel || '競馬グッズ';
     const sectionClassName = isCompact
         ? campaign.type === 'voting'
-            ? 'my-1.5 sm:my-2 rounded-lg border border-rose-100 bg-rose-50/30 p-2 sm:p-2.5'
-            : 'my-1.5 sm:my-2 rounded-xl border border-rose-100 bg-rose-50/35 p-2 shadow-sm sm:p-2.5'
+            ? 'my-1.5 sm:my-2 rounded-lg border border-rose-200 bg-rose-50/70 p-2 sm:p-2.5 shadow-2xs'
+            : 'my-1.5 sm:my-2 rounded-xl border border-rose-200 bg-rose-50/70 p-2 shadow-sm sm:p-2.5'
         : campaign.type === 'voting'
-            ? 'my-1.5 sm:my-3 rounded-lg border border-rose-100 bg-rose-50/25 p-2.5 sm:p-3'
+            ? 'my-1.5 sm:my-3 rounded-lg border border-rose-200 bg-rose-50/70 p-2.5 sm:p-3 shadow-2xs'
             : 'my-1.5 sm:my-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-3';
     const wholeSlotLink = !campaign.ctaOnly
         && campaign.type === 'voting'

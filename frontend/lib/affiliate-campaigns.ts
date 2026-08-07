@@ -91,7 +91,7 @@ export const RAKUTEN_KEIBA_MODE: RakutenKeibaMode =
 
 export const shouldShowRakutenKeibaHeader = (
     mode: RakutenKeibaMode = RAKUTEN_KEIBA_MODE
-) => mode !== 'qualified_nar';
+) => true;
 
 export const RAKUTEN_KEIBA_AFFILIATE_URLS: Record<RakutenKeibaPlacement, string> = {
     site_header: normalizeTrafficGateUrl(process.env.NEXT_PUBLIC_RAKUTEN_KEIBA_SITE_HEADER_URL),

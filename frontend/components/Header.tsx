@@ -155,7 +155,10 @@ export const Header = ({ todayString }: HeaderProps) => {
     useEffect(() => {
         setIsMenuOpen(false);
         setIsHeaderVisible(true);
+        setHasTopAnchorEverBeenSeen(false);
     }, [pathname]);
+
+    const [hasTopAnchorEverBeenSeen, setHasTopAnchorEverBeenSeen] = useState(false);
 
     // 本文の途中では方向にかかわらず退避し、ページ最上部へ戻った時だけ復帰する。
     // 上部アンカー広告が存在する場合は、全展開時（広告の高さ）と最小化時（矢印タブの高さ）を物理的にmargin-topで押し下げる。
@@ -181,7 +184,8 @@ export const Header = ({ todayString }: HeaderProps) => {
                 const style = window.getComputedStyle(el);
                 if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
                 const rect = el.getBoundingClientRect();
-                if (rect.top <= 200 && rect.bottom > 0) {
+                // 画面上部250px以内に位置するAuto Ads要素
+                if (rect.top <= 250 && rect.bottom > 0) {
                     hasTopAnchorElement = true;
                     if (rect.height > 0) {
                         maxBottom = Math.max(maxBottom, Math.ceil(rect.bottom));
@@ -190,12 +194,10 @@ export const Header = ({ todayString }: HeaderProps) => {
             });
 
             if (maxBottom > 0) {
-                // 全展開時（画像1）は実測値を採用。
-                // 最小化/折りたたみ時（画像2）でも「∨」タブがロゴやボタンに被らないよう、最低38pxの物理押し下げを確保。
-                return Math.max(maxBottom, 38);
+                return Math.max(maxBottom, 40);
             }
             if (hasTopAnchorElement) {
-                return 38;
+                return 40;
             }
             return 0;
         };
@@ -208,11 +210,15 @@ export const Header = ({ todayString }: HeaderProps) => {
             const directOffset = scanTopAnchorAdBottom();
             const rawOffset = Math.max(overlay.topAnchorHeight, directOffset);
 
-            let finalOffset = 0;
-            if (rawOffset > 0) {
-                finalOffset = Math.max(rawOffset, 38);
+            if (rawOffset > 0 || hasTopAnchorEverBeenSeen) {
+                if (!hasTopAnchorEverBeenSeen && rawOffset > 0) {
+                    setHasTopAnchorEverBeenSeen(true);
+                }
+                // 全展開時（動画等を含む）は実測高さ、折りたたみ時（「^」タブ）は最低40pxを強固に保障
+                setTopAnchorHeight(Math.max(rawOffset, 40));
+            } else {
+                setTopAnchorHeight(0);
             }
-            setTopAnchorHeight(finalOffset);
         };
 
         const handleOverlayChange = () => updateVisibility();
@@ -227,7 +233,7 @@ export const Header = ({ todayString }: HeaderProps) => {
             window.removeEventListener('scroll', updateVisibility);
             window.removeEventListener('resize', updateVisibility);
         };
-    }, [isMenuOpen]);
+    }, [isMenuOpen, hasTopAnchorEverBeenSeen]);
 
     // sticky要素がヘッダーの実高と表示状態を共通参照できるようにする。
     useEffect(() => {

@@ -346,6 +346,10 @@ export const Header = ({ todayString }: HeaderProps) => {
                 aria-label="モバイルナビゲーション"
                 aria-hidden={!isMenuOpen}
                 className={`mobile-menu-panel ${isMenuOpen ? 'open' : ''}`}
+                style={topAnchorHeight > 0 ? {
+                    top: `calc(var(--site-header-height) + ${topAnchorHeight}px)`,
+                    height: `calc(100dvh - var(--site-header-height) - ${topAnchorHeight}px)`,
+                } : undefined}
             >
                 <nav aria-label="モバイル主要ナビゲーション">
                     {navItems.map((item) => (

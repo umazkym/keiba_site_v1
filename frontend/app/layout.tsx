@@ -15,6 +15,7 @@ import { GoogleAnalyticsBootstrap } from "@/components/GoogleAnalyticsBootstrap"
 import { TrafficAttributionCapture } from "@/components/TrafficAttributionCapture";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { PwaRegistration } from "@/components/PwaRegistration";
+import { SafariViewportShim } from "@/components/SafariViewportShim";
 
 export const metadata: Metadata = {
     metadataBase: new URL("https://uma-free.com"),
@@ -61,6 +62,8 @@ export const viewport: Viewport = {
     initialScale: 1,
     maximumScale: 5,
     viewportFit: 'cover',
+    // 注: Safari 26以降では themeColor メタタグは無視されCSS実背景色が採用されますが、
+    // 旧Safari(15~18)および他ブラウザ(Android Chrome等)互換のため設定を維持します。
     themeColor: [
         { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
         { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
@@ -116,6 +119,7 @@ export default function RootLayout({
                      Rewarded Adはレースページでのみ使用されるため、他ページでは不要 */}
             </head>
             <body className="font-sans bg-surface text-text-primary antialiased">
+                <SafariViewportShim />
                 <TrafficAttributionCapture />
                 <a href="#main-content" className="skip-link">
                     本文へ移動

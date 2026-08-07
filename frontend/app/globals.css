@@ -68,6 +68,7 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         scroll-behavior: smooth;
+        background-color: var(--slate-50-color);
     }
 
     body {
@@ -555,8 +556,17 @@ body {
     padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
-/* Google Auto Ads 上部アンカー広告のヘッダー重なり対策 */
-/* Auto Adsがトップアンカーを挿入した場合、stickyヘッダーと重ならないようz-indexを調整 */
+/* 
+ * z-index 階層定義 (上位優先):
+ * 100: モーダル・スキップリンク (.skip-link)
+ * 50 : サイト固定ヘッダー (header.glass)
+ * 49 : モバイルメニューパネル (.mobile-menu-panel)
+ * 45 : モバイルメニューオーバーレイ (.mobile-menu-overlay)
+ * 40 : レースページボトムナビ (RacePageBottomNav)
+ * 39 : ホーム画面スティッキーCTA (.home-sticky-race-cta)
+ * 38 : 記事テーマ・サイドバー追従
+ * 30 : デスクトップ右サイドバー追従広告 (StickyAd)
+ */
 header.glass {
     z-index: 50 !important; /* Google Adsの上部アンカーより低く、サイト内の固定UIより高く保つ */
 }

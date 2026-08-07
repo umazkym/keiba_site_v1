@@ -77,8 +77,8 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
             className={`home-sticky-race-cta ${isVisible ? 'home-sticky-race-cta-visible' : ''}`}
             style={{
                 bottom: bottomAnchorHeight > 0
-                    ? `calc(${bottomAnchorHeight}px + env(safe-area-inset-bottom, 0px))`
-                    : 'env(safe-area-inset-bottom, 0px)',
+                    ? `calc(${bottomAnchorHeight}px + env(safe-area-inset-bottom, 0px) + var(--safari-bottom-offset, 0px))`
+                    : 'calc(env(safe-area-inset-bottom, 0px) + var(--safari-bottom-offset, 0px))',
             }}
             aria-hidden={!isVisible}
         >

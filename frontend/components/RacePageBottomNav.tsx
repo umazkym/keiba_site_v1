@@ -70,7 +70,7 @@ export function RacePageBottomNav() {
 
     return (
         <nav
-            className={`fixed inset-x-0 bottom-0 z-40 border-t border-slate-300 bg-white px-1 pb-[calc(env(safe-area-inset-bottom)+0.0625rem)] pt-px shadow-[0_-3px_10px_rgba(15,23,42,0.10)] transition-[transform,opacity] duration-200 lg:hidden ${isVisible
+            className={`fixed inset-x-0 bottom-0 z-40 border-t border-slate-300 bg-white px-1 pb-[calc(env(safe-area-inset-bottom,0px)+var(--safari-bottom-offset,0px)+0.0625rem)] pt-px shadow-[0_-3px_10px_rgba(15,23,42,0.10)] transition-[transform,opacity] duration-200 lg:hidden ${isVisible
                 ? 'translate-y-0 opacity-100'
                 : 'pointer-events-none translate-y-full opacity-0'
                 }`}

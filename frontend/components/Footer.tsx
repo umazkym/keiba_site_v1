@@ -122,6 +122,14 @@ export const Footer = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Safari 26色同化防止シールド: ビューポート下端にサイト背景色の物理要素を伸ばし
+                Safariがツールバー背景色としてフッターの暗色(bg-primary)を自動採用するのを防ぐ */}
+            <div
+                className="absolute bottom-0 left-0 right-0 h-[env(safe-area-inset-bottom,12px)] translate-y-full pointer-events-none"
+                style={{ backgroundColor: '#f8fafc' }}
+                aria-hidden="true"
+            />
         </footer>
     );
 };

@@ -58,8 +58,15 @@
 @media (min-width: 640px) {
     :root {
         --section-gap: 2rem;
-        --site-header-height: 64px;
-        --site-header-offset: 64px;
+        --site-header-height: 65px;
+        --site-header-offset: 65px;
+    }
+}
+
+@media (min-width: 1024px) {
+    :root {
+        --site-header-offset: 97px;
+        --site-header-top-gap: 32px;
     }
 }
 

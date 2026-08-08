@@ -24,6 +24,8 @@ const HEADER_AFFILIATE_EVENT = {
     campaign_type: 'voting',
 } as const;
 
+const DESKTOP_HEADER_TOP_GAP = 32;
+
 const HeaderAffiliateLink = () => {
     useEffect(() => {
         sendAffiliateImpressionEvent({
@@ -207,7 +209,10 @@ export const Header = ({ todayString }: HeaderProps) => {
             frameId = 0;
             const height = header.offsetHeight || (window.innerWidth >= 640 ? 64 : 48);
             const heightValue = `${height}px`;
-            const topGap = topAnchorControlHeight;
+            // PCは広告DOMの遅延生成でも動かないよう、操作部相当の32pxを初期表示から固定予約する。
+            // 1024px未満は既存どおり、実際に検出した操作部高（最大32px）を使用する。
+            const usesDesktopStableGap = window.matchMedia('(min-width: 1024px)').matches;
+            const topGap = usesDesktopStableGap ? DESKTOP_HEADER_TOP_GAP : topAnchorControlHeight;
             const offsetValue = `${height + topGap}px`;
             const topGapValue = `${topGap}px`;
             if (

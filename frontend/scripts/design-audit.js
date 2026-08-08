@@ -309,7 +309,8 @@ const checks = [
     passed: googleAdOverlay.includes('topAnchorControlHeight')
       && adSensePageLevel.includes('TOP_ANCHOR_CONTROL_MAX_HEIGHT = 32')
       && header.includes('overlay.topAnchorControlHeight')
-      && raceNavigation.includes('overlay.topAnchorControlHeight'),
+      && header.includes('DESKTOP_HEADER_TOP_GAP = 32')
+      && raceNavigation.includes('getBoundingClientRect().bottom'),
   },
   {
     id: 'home-persistent-cta',

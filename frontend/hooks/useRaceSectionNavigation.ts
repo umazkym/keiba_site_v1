@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getGoogleAdOverlaySnapshot, GOOGLE_AD_OVERLAY_EVENT } from '@/lib/google-ad-overlay';
+import { GOOGLE_AD_OVERLAY_EVENT } from '@/lib/google-ad-overlay';
 
 export type RaceSectionNavItem = {
     key: string;
@@ -26,20 +26,15 @@ const isVisible = (element: HTMLElement | null) => {
         && rect.bottom > 0;
 };
 
-const getVisibleTopAnchorHeight = () => {
-    const overlay = getGoogleAdOverlaySnapshot();
-    return overlay.topAnchorControlHeight;
-};
-
 export const getRaceTopObstructionHeight = () => {
     if (typeof window === 'undefined') return 128;
 
     const header = document.querySelector<HTMLElement>('[data-site-header]');
     const pageNavigation = document.querySelector<HTMLElement>('[data-race-selector-sticky]');
-    const headerHeight = isVisible(header) ? header!.getBoundingClientRect().height : 0;
+    const headerBottom = isVisible(header) ? Math.max(0, header!.getBoundingClientRect().bottom) : 0;
     const navigationHeight = isVisible(pageNavigation) ? pageNavigation!.getBoundingClientRect().height : 0;
 
-    return Math.ceil(headerHeight + navigationHeight + getVisibleTopAnchorHeight() + 8);
+    return Math.ceil(headerBottom + navigationHeight + 8);
 };
 
 const getScrollBehavior = (): ScrollBehavior => {

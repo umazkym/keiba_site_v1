@@ -252,7 +252,7 @@ export const Header = ({ todayString }: HeaderProps) => {
                 data-site-header
                 data-site-header-visible={isHeaderVisible ? 'true' : 'false'}
                 className={`glass site-header sticky z-50 pt-[env(safe-area-inset-top,0px)] ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
-                style={{ top: !isMenuOpen && topAnchorHeight > 0 ? `${topAnchorHeight}px` : '0px' }}
+                style={{ top: topAnchorHeight > 0 ? `${topAnchorHeight}px` : '0px' }}
             >
                 <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 md:px-6">
                     <div className="flex h-10 items-center justify-between gap-1.5 sm:h-16 sm:gap-4">
@@ -343,6 +343,10 @@ export const Header = ({ todayString }: HeaderProps) => {
                 aria-label="モバイルナビゲーション"
                 aria-hidden={!isMenuOpen}
                 className={`mobile-menu-panel ${isMenuOpen ? 'open' : ''}`}
+                style={topAnchorHeight > 0 ? {
+                    top: `calc(var(--site-header-height) + ${topAnchorHeight}px)`,
+                    height: `calc(100dvh - var(--site-header-height) - ${topAnchorHeight}px)`,
+                } : undefined}
             >
                 <nav aria-label="モバイル主要ナビゲーション">
                     {navItems.map((item) => (

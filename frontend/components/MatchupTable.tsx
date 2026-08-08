@@ -89,7 +89,7 @@ type MatchupSelection = {
 const MatchupDetails = ({ rowHorse, colHorse, record }: MatchupSelection) => (
     <div className="max-w-xl text-left text-slate-700">
         <h4 className="font-bold border-b border-gray-200 pb-1 mb-2">{rowHorse.horse_name} vs {colHorse.horse_name}</h4>
-        <div className="font-semibold mb-2 text-center text-lg">
+        <div className="mb-2 text-center text-[15px] font-semibold sm:text-lg">
             <span className="text-green-500">{record.win}</span>
             <span className="text-gray-500 mx-1">-</span>
             <span className="text-red-500">{record.loss}</span>
@@ -400,7 +400,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
 
     return (
         <div className="race-panel overflow-hidden">
-            <div className="flex flex-col gap-1.5 border-b border-slate-200 p-2 md:flex-row md:items-center md:justify-between md:p-3">
+            <div className="race-section-toolbar flex flex-col gap-1.5 border-b border-slate-200 p-2 md:flex-row md:items-center md:justify-between md:p-3">
                 <div className='flex items-center gap-2'>
                     <h3 id="race-matchup-heading" className="race-section-heading mb-0 whitespace-nowrap">過去対決成績</h3>
                     <AccessibleInfo

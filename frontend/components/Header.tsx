@@ -66,6 +66,7 @@ export const Header = ({ todayString }: HeaderProps) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
     const [topAnchorHeight, setTopAnchorHeight] = useState<number>(() => getGoogleAdOverlaySnapshot().topAnchorHeight);
+    const [topAnchorControlHeight, setTopAnchorControlHeight] = useState<number>(() => getGoogleAdOverlaySnapshot().topAnchorControlHeight);
     const headerRef = useRef<HTMLElement>(null);
     const menuButtonRef = useRef<HTMLButtonElement>(null);
     const menuPanelRef = useRef<HTMLDivElement>(null);
@@ -157,38 +158,50 @@ export const Header = ({ todayString }: HeaderProps) => {
         setIsHeaderVisible(true);
     }, [pathname]);
 
-    // 本文の途中では方向にかかわらず退避し、ページ最上部へ戻った時だけ復帰する。
-    // 上部アンカー広告が存在する場合は、AdSensePageLevelScriptのスナップショットのみを信頼源とする。
+    // 1024px未満は常時固定し、PCだけ従来どおりページ最上部で表示する。
+    // 上部アンカー広告の全高と、固定UI用の操作部高は分離して扱う。
     useEffect(() => {
         let anchorDebounceTimer = 0;
         let pendingAnchorHeight = -1;
+        let pendingAnchorControlHeight = -1;
 
-        const applyAnchorHeight = (newHeight: number) => {
+        const applyAnchorMetrics = (newHeight: number, newControlHeight: number) => {
             // 広告の展開/折りたたみアニメーション中の中間値でガタつかないようデバウンスする。
             // ただし 0 への復帰（広告消失）は即座に適用する。
             if (newHeight === 0) {
                 window.clearTimeout(anchorDebounceTimer);
                 pendingAnchorHeight = -1;
+                pendingAnchorControlHeight = -1;
                 setTopAnchorHeight(0);
+                setTopAnchorControlHeight(0);
                 return;
             }
-            if (newHeight === pendingAnchorHeight) return;
+            if (
+                newHeight === pendingAnchorHeight
+                && newControlHeight === pendingAnchorControlHeight
+            ) return;
             pendingAnchorHeight = newHeight;
+            pendingAnchorControlHeight = newControlHeight;
             window.clearTimeout(anchorDebounceTimer);
             anchorDebounceTimer = window.setTimeout(() => {
                 setTopAnchorHeight(pendingAnchorHeight);
+                setTopAnchorControlHeight(pendingAnchorControlHeight);
                 pendingAnchorHeight = -1;
+                pendingAnchorControlHeight = -1;
             }, 300);
         };
 
         const updateVisibility = () => {
             const nextScrollY = Math.max(0, window.scrollY);
-            if (!isMenuOpen) {
+            const usesFixedMobileHeader = window.matchMedia('(max-width: 1023px)').matches;
+            if (usesFixedMobileHeader) {
+                setIsHeaderVisible(true);
+            } else if (!isMenuOpen) {
                 setIsHeaderVisible(nextScrollY <= 8);
             }
 
             const overlay = getGoogleAdOverlaySnapshot();
-            applyAnchorHeight(overlay.topAnchorHeight);
+            applyAnchorMetrics(overlay.topAnchorHeight, overlay.topAnchorControlHeight);
         };
 
         const handleOverlayChange = () => updateVisibility();
@@ -206,7 +219,7 @@ export const Header = ({ todayString }: HeaderProps) => {
         };
     }, [isMenuOpen]);
 
-    // sticky要素がヘッダーの実高と表示状態を共通参照できるようにする。
+    // sticky要素がヘッダーの実高、固定用上余白、表示状態を共通参照できるようにする。
     useEffect(() => {
         const root = document.documentElement;
         const header = headerRef.current;
@@ -215,17 +228,32 @@ export const Header = ({ todayString }: HeaderProps) => {
         let frameId = 0;
         let previousHeight = -1;
         let previousOffset = '';
+        let previousAnchorHeight = '';
+        let previousTopGap = '';
         const updateHeaderMetrics = () => {
             frameId = 0;
             const height = header.offsetHeight || (window.innerWidth >= 640 ? 64 : 48);
             const heightValue = `${height}px`;
-            const offsetValue = isHeaderVisible ? heightValue : '0px';
-            if (height === previousHeight && offsetValue === previousOffset) return;
+            const usesFixedMobileHeader = window.matchMedia('(max-width: 1023px)').matches;
+            const topGap = usesFixedMobileHeader ? topAnchorControlHeight : 0;
+            const offsetValue = isHeaderVisible ? `${height + topGap}px` : '0px';
+            const anchorHeightValue = `${topAnchorHeight}px`;
+            const topGapValue = `${topGap}px`;
+            if (
+                height === previousHeight
+                && offsetValue === previousOffset
+                && anchorHeightValue === previousAnchorHeight
+                && topGapValue === previousTopGap
+            ) return;
 
             previousHeight = height;
             previousOffset = offsetValue;
+            previousAnchorHeight = anchorHeightValue;
+            previousTopGap = topGapValue;
             root.style.setProperty('--site-header-height', heightValue);
             root.style.setProperty('--site-header-offset', offsetValue);
+            root.style.setProperty('--site-header-anchor-height', anchorHeightValue);
+            root.style.setProperty('--site-header-top-gap', topGapValue);
             window.dispatchEvent(new Event('uma:header-metrics-change'));
         };
         const requestHeaderMetrics = () => {
@@ -243,7 +271,7 @@ export const Header = ({ todayString }: HeaderProps) => {
             resizeObserver.disconnect();
             window.removeEventListener('resize', requestHeaderMetrics);
         };
-    }, [isHeaderVisible]);
+    }, [isHeaderVisible, topAnchorControlHeight, topAnchorHeight]);
 
     return (
         <>
@@ -251,8 +279,7 @@ export const Header = ({ todayString }: HeaderProps) => {
                 ref={headerRef}
                 data-site-header
                 data-site-header-visible={isHeaderVisible ? 'true' : 'false'}
-                className={`glass site-header sticky z-50 pt-[env(safe-area-inset-top,0px)] ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
-                style={{ top: topAnchorHeight > 0 ? `${topAnchorHeight}px` : '0px' }}
+                className={`glass site-header z-50 pt-[env(safe-area-inset-top,0px)] ${isHeaderVisible ? 'site-header-visible' : 'site-header-hidden'}`}
             >
                 <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 md:px-6">
                     <div className="flex h-10 items-center justify-between gap-1.5 sm:h-16 sm:gap-4">
@@ -328,6 +355,8 @@ export const Header = ({ todayString }: HeaderProps) => {
                 </div>
             </header>
 
+            <div className="site-header-mobile-spacer" aria-hidden="true" />
+
             {/* backdrop-filterを持つヘッダー外へ置き、fixedの基準をビューポートへ固定する。 */}
             <div
                 className={`mobile-menu-overlay ${isMenuOpen ? 'active' : ''}`}
@@ -343,10 +372,6 @@ export const Header = ({ todayString }: HeaderProps) => {
                 aria-label="モバイルナビゲーション"
                 aria-hidden={!isMenuOpen}
                 className={`mobile-menu-panel ${isMenuOpen ? 'open' : ''}`}
-                style={topAnchorHeight > 0 ? {
-                    top: `calc(var(--site-header-height) + ${topAnchorHeight}px)`,
-                    height: `calc(100dvh - var(--site-header-height) - ${topAnchorHeight}px)`,
-                } : undefined}
             >
                 <nav aria-label="モバイル主要ナビゲーション">
                     {navItems.map((item) => (

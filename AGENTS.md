@@ -113,6 +113,10 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-08-08**:
+  * **モバイル固定UI・レース画面密度・記事可読性を改善**:
+    1024px未満の共通ヘッダーを上部固定し、上部アンカー広告は全高と固定UI用の操作部予約高を分離して最大32pxだけを固定offsetへ反映した。モバイルメニューも同じoffset直下と残りの`100dvh`へ統一し、ホームの「本日のレース分析を見る」は下部広告高やスクロール位置に追従しない画面下端固定へ変更。640px未満のレース画面は見出し14px・全表示最大15px・本文12px・共通左位置へ揃え、stickyレース選択面86pxと44pxタッチ対象を維持した。記事は639px以下でタイトル/H2 16px、H3 14px、本文/リード12px、表11pxへ統一し、640px以上は従来表示を維持。`npx tsc --noEmit`と403ページの`npm run build`が成功し、新規デザイン監査はすべて通過した。監査全体には既存の`interaction-motion`1件と`low-contrast-text`6件（上限5件）が残るが、今回の変更による増加はない。390/639/640/768/1023/1024pxの実ブラウザ検証も実施し、広告・API・分析イベント・URLは変更していない。
+
 * **2026-08-05**:
   * **Cloud Run + Cloudflare本番移行とDB資格情報分離を完了**:
     フロントはcommit `4697027065a0a4b9375431c3e9efcae148ffb781`をCloud Runへ反映し、`uma-free.com/api/health`のrelease一致後に`run.app`既定URLを無効化して404を確認した。バックエンドはDDL権限を持たない`keiba_app_runtime`、Secret Manager固定version、`ALLOW_SCHEMA_CREATE=false`へ切り替え、revision `keiba-site-v1-00355-wc6`へ100%配信した。平文`DATABASE_URL`が残っていないこと、DB依存APIがレース105,305件・最終日2026-08-05を返すことを確認。DB所有者パスワードとGitHub Secret `DATABASE_URL`を秘密値非表示で更新し、更新前後のIAP限定`Database Schema Migration` dry-runはいずれも成功した。平文環境変数から同名Secretへの変更では`--remove-env-vars`と`--update-secrets`を同一更新に含める再発防止手順をSOPへ追記した。GitHub専用GeminiキーはGenerative Language API限定へ交換し、読み取りスモーク成功後に旧無制限キーを削除。容量ゲートは直近指標をRed判定し、既存サイト・APIを維持したまま新規データページ公開だけを0件へ縮退している。CloudflareはAccount Analytics読み取り専用トークンを新規発行し、GitHub Secret `CLOUDFLARE_ANALYTICS_API_TOKEN`へ登録した。作成途中で表示された初回トークンは漏えい扱いで削除し、非表示の再発行トークンだけを有効化した。Google Cloudには`keiba-api-project`のCloud Run限定、割引前月300円、実額30%・予測60%・実額100%の通知専用予算を追加した。旧Vercel CORS originは2026-08-12 09:00 JSTにアクセスログと本番healthを確認し、安全条件を満たす場合だけ削除・検証・commit・push・再デプロイする一回限りの自動実行へ登録した。

@@ -52,6 +52,8 @@
     --shadow-color: 0 8px 22px rgba(15, 23, 42, 0.06);
     --site-header-height: 48px;
     --site-header-offset: 48px;
+    --site-header-anchor-height: 0px;
+    --site-header-top-gap: 0px;
 }
 
 @media (min-width: 640px) {
@@ -341,7 +343,7 @@
         display: none;
     }
 
-    @media (max-width: 767px) {
+    @media (max-width: 1023px) {
         .mobile-menu-overlay {
             display: block;
             position: fixed;
@@ -361,12 +363,12 @@
         .mobile-menu-panel {
             display: block;
             position: fixed;
-            top: var(--site-header-height);
+            top: var(--site-header-offset);
             bottom: 0;
             left: 0;
             right: 0;
             z-index: 49;
-            height: calc(100dvh - var(--site-header-height));
+            height: calc(100dvh - var(--site-header-offset));
             overflow-y: auto;
             overscroll-behavior: contain;
             border-top: 1px solid var(--slate-100-color);
@@ -572,6 +574,8 @@ header.glass {
 }
 
 .site-header {
+    position: sticky;
+    top: var(--site-header-anchor-height);
     transform: translateY(0);
     transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
     will-change: transform;
@@ -582,10 +586,36 @@ header.glass {
     transform: translateY(-100%);
 }
 
+.site-header-mobile-spacer {
+    display: none;
+}
+
+@media (max-width: 1023px) {
+    .site-header {
+        position: fixed;
+        top: var(--site-header-top-gap);
+        right: 0;
+        left: 0;
+        transform: none;
+        transition: none;
+        will-change: auto;
+    }
+
+    .site-header-hidden {
+        pointer-events: auto;
+        transform: none;
+    }
+
+    .site-header-mobile-spacer {
+        display: block;
+        height: var(--site-header-offset);
+    }
+}
+
 .home-sticky-race-cta {
     position: fixed;
     z-index: 39;
-    bottom: 0;
+    bottom: var(--home-cta-desktop-bottom, 0px);
     right: 0;
     left: 0;
     background: var(--bg);
@@ -599,6 +629,17 @@ header.glass {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0);
+}
+
+@media (max-width: 1023px) {
+    .home-sticky-race-cta,
+    .home-sticky-race-cta-visible {
+        bottom: calc(env(safe-area-inset-bottom, 0px) + var(--safari-bottom-offset, 0px));
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+        transition: none;
+    }
 }
 
 .article-theme-sticky {
@@ -823,34 +864,44 @@ header.glass {
     }
 
     .article-page-title {
-        font-size: 15px !important;
-        line-height: 1.25 !important;
+        font-size: 16px !important;
+        line-height: 1.35 !important;
         word-break: normal;
+    }
+
+    .article-page-lead {
+        font-size: 12px !important;
+        line-height: 1.65 !important;
     }
 
     .article-page-prose h1,
     .article-page-prose h2 {
-        font-size: 14.5px !important;
-        line-height: 1.3 !important;
+        margin-top: 14px !important;
+        margin-bottom: 5px !important;
+        font-size: 16px !important;
+        line-height: 1.35 !important;
         word-break: normal;
     }
 
     .article-page-prose h3 {
+        margin-top: 10px !important;
+        margin-bottom: 4px !important;
         font-size: 14px !important;
-        line-height: 1.35 !important;
+        line-height: 1.4 !important;
     }
 
     .article-page-prose {
-        font-size: 13.5px !important;
-        line-height: 1.6 !important;
+        font-size: 12px !important;
+        line-height: 1.65 !important;
     }
 
     .article-page-prose p,
     .article-page-prose ul,
     .article-page-prose ol {
-        margin-top: 0.4em !important;
-        margin-bottom: 0.4em !important;
-        line-height: 1.6 !important;
+        margin-top: 6px !important;
+        margin-bottom: 6px !important;
+        font-size: 12px !important;
+        line-height: 1.65 !important;
     }
 
     .article-page-prose li {
@@ -859,14 +910,24 @@ header.glass {
     }
 
     .article-page-prose blockquote {
-        margin-top: 1rem !important;
-        margin-bottom: 1rem !important;
-        padding: 0.75rem 0.875rem !important;
+        margin-top: 8px !important;
+        margin-bottom: 8px !important;
+        padding: 8px 10px !important;
+        font-size: 12px !important;
     }
 
     .article-page-prose img {
-        margin-top: 1rem !important;
-        margin-bottom: 1rem !important;
+        margin-top: 12px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .article-page-prose :is(pre, pre code) {
+        font-size: 12px !important;
+        line-height: 1.65 !important;
+    }
+
+    .article-page-prose :is(code, table) {
+        font-size: 11px !important;
     }
 }
 
@@ -1602,6 +1663,128 @@ header.glass {
 
 .race-prediction-heading {
   margin: 10px 12px 6px;
+}
+
+@media (max-width: 639px) {
+  .race-page-scope {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .race-page-scope .race-detail-layout {
+    gap: 6px;
+    padding-bottom: 8px;
+  }
+
+  .race-page-scope .race-detail-layout > .grid {
+    gap: 6px;
+  }
+
+  .race-page-scope .race-panel {
+    border-radius: 8px;
+  }
+
+  .race-page-scope .race-section-heading,
+  .race-page-scope .ui-section-header {
+    min-height: 24px;
+    margin: 0 8px 4px !important;
+    border-bottom: 1px solid var(--slate-200-color);
+    padding: 0 0 4px;
+  }
+
+  .race-page-scope .race-section-heading {
+    gap: 6px;
+    color: var(--primary-color);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.35;
+  }
+
+  .race-page-scope .race-section-heading::before,
+  .race-page-scope .ui-section-header__title::before {
+    width: 3.5px;
+    height: 14px;
+    border-radius: 999px;
+    vertical-align: -2px;
+  }
+
+  .race-page-scope .race-section-heading::before {
+    margin-right: 0;
+  }
+
+  .race-page-scope .ui-section-header__title::before {
+    margin-right: 6px;
+  }
+
+  .race-page-scope .ui-section-header {
+    align-items: center;
+    gap: 6px;
+  }
+
+  .race-page-scope .ui-section-header__title,
+  .race-page-scope .ui-section-header--compact .ui-section-header__title {
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.35;
+  }
+
+  .race-page-scope .ui-section-header__meta,
+  .race-page-scope .ui-section-header__action {
+    font-size: 10.5px;
+    line-height: 1.35;
+  }
+
+  .race-page-scope .ui-section-header__description {
+    margin-top: 2px;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .race-page-scope .race-prediction-heading {
+    margin-top: 0 !important;
+    padding-top: 6px;
+  }
+
+  .race-page-scope .race-section-toolbar,
+  .race-page-scope .race-analysis-panel {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .race-page-scope .race-section-summary .race-section-heading,
+  .race-page-scope .race-section-toolbar .race-section-heading {
+    margin-bottom: 0 !important;
+  }
+
+  .race-page-scope .race-section-summary .race-section-heading {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  .race-page-scope .race-related-dates-panel > .race-section-heading {
+    margin-top: 6px !important;
+  }
+
+  .race-page-scope :is(h1, h2, h3, h4, h5, h6),
+  .race-page-scope :is(.text-base, .text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl) {
+    font-size: 15px !important;
+  }
+
+  .race-page-scope .race-section-heading,
+  .race-page-scope .ui-section-header__title,
+  .race-page-scope .ui-section-header--compact .ui-section-header__title {
+    font-size: 14px !important;
+  }
+
+  .race-page-scope .race-prediction-table th {
+    padding: 4px 3px;
+    font-size: 10px;
+  }
+
+  .race-page-scope .race-prediction-table td {
+    padding: 4px 3px;
+    font-size: 12px;
+  }
 }
 
 @media (min-width: 640px) {

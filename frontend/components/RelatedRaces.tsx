@@ -71,10 +71,10 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
     }
 
     return (
-        <section className="race-panel mt-2 bg-blue-50/40 p-2.5 sm:mt-3 sm:p-4">
+        <section className="race-related-dates-panel race-panel mt-2 bg-blue-50/40 p-0 sm:mt-3 sm:p-4">
             <h3 className="race-section-heading mb-2">他の日付の分析もチェック</h3>
 
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
+            <div className="grid grid-cols-3 gap-1.5 px-2 pb-2 sm:gap-3 sm:p-0">
                 {relatedDates.map(date => {
                     const [y, m, d] = date.split('-').map(Number);
                     const dateObj = new Date(y, m - 1, d);

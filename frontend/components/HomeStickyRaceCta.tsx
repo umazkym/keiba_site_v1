@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
 import { getGoogleAdOverlaySnapshot, GOOGLE_AD_OVERLAY_EVENT } from '@/lib/google-ad-overlay';
 
@@ -11,9 +12,15 @@ type HomeStickyRaceCtaProps = {
 
 export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProps) {
     const [isVisible, setIsVisible] = useState(false);
+    const [isPersistentViewport, setIsPersistentViewport] = useState(false);
     const [bottomAnchorHeight, setBottomAnchorHeight] = useState<number>(() => getGoogleAdOverlaySnapshot().bottomAnchorHeight);
 
     const updateVisibility = useCallback(() => {
+        if (window.matchMedia('(max-width: 1023px)').matches) {
+            setIsVisible(true);
+            return;
+        }
+
         const primaryCta = document.querySelector<HTMLElement>('[data-home-primary-race-cta]');
         if (!primaryCta) {
             setIsVisible(false);
@@ -41,11 +48,13 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
 
     useEffect(() => {
         let frameId = 0;
+        const persistentViewportQuery = window.matchMedia('(max-width: 1023px)');
         const requestUpdate = () => {
             window.cancelAnimationFrame(frameId);
             frameId = window.requestAnimationFrame(() => {
                 const overlay = getGoogleAdOverlaySnapshot();
                 setBottomAnchorHeight(overlay.bottomAnchorHeight);
+                setIsPersistentViewport(persistentViewportQuery.matches);
                 updateVisibility();
             });
         };
@@ -59,6 +68,7 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
         if (header) {
             headerObserver?.observe(header, { attributes: true, attributeFilter: ['class', 'data-site-header-visible'] });
         }
+        persistentViewportQuery.addEventListener('change', requestUpdate);
         window.addEventListener('scroll', requestUpdate, { passive: true });
         window.addEventListener('resize', requestUpdate);
         requestUpdate();
@@ -67,6 +77,7 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
             window.cancelAnimationFrame(frameId);
             window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange as EventListener);
             headerObserver?.disconnect();
+            persistentViewportQuery.removeEventListener('change', requestUpdate);
             window.removeEventListener('scroll', requestUpdate);
             window.removeEventListener('resize', requestUpdate);
         };
@@ -76,11 +87,11 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
         <div
             className={`home-sticky-race-cta ${isVisible ? 'home-sticky-race-cta-visible' : ''}`}
             style={{
-                bottom: bottomAnchorHeight > 0
+                '--home-cta-desktop-bottom': bottomAnchorHeight > 0
                     ? `calc(${bottomAnchorHeight}px + env(safe-area-inset-bottom, 0px) + var(--safari-bottom-offset, 0px))`
                     : 'calc(env(safe-area-inset-bottom, 0px) + var(--safari-bottom-offset, 0px))',
-            }}
-            aria-hidden={!isVisible}
+            } as CSSProperties}
+            aria-hidden={!(isPersistentViewport || isVisible)}
         >
             {/* Safariタブ変色防止: ビューポート最下端にサイト背景色の物理シールドを配置し
                 Safariの色サンプリングが青色ボタンを検出しないようにする */}
@@ -90,7 +101,7 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
                     href={`/races/${raceDate}`}
                     raceDate={raceDate}
                     entryMethod="sticky_cta"
-                    tabIndex={isVisible ? 0 : -1}
+                    tabIndex={isPersistentViewport || isVisible ? 0 : -1}
                     className="flex h-11 w-full items-center rounded-full bg-blue-600 pl-3 pr-2 text-white shadow-lg transition-colors duration-150 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 sm:max-w-md"
                 >
                     {raceCount > 0 && (

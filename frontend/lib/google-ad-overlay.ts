@@ -4,6 +4,7 @@ export type GoogleAdOverlaySnapshot = {
     offerwallVisible: boolean;
     dialogVisible: boolean;
     topAnchorHeight: number;
+    topAnchorControlHeight: number;
     bottomAnchorHeight: number;
 };
 
@@ -11,6 +12,7 @@ let currentSnapshot: GoogleAdOverlaySnapshot = {
     offerwallVisible: false,
     dialogVisible: false,
     topAnchorHeight: 0,
+    topAnchorControlHeight: 0,
     bottomAnchorHeight: 0,
 };
 

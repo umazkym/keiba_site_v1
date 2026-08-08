@@ -27,7 +27,11 @@ const isVisible = (element: HTMLElement | null) => {
 };
 
 const getVisibleTopAnchorHeight = () => {
-    return Math.min(getGoogleAdOverlaySnapshot().topAnchorHeight, 160);
+    const overlay = getGoogleAdOverlaySnapshot();
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+        return overlay.topAnchorControlHeight;
+    }
+    return Math.min(overlay.topAnchorHeight, 160);
 };
 
 export const getRaceTopObstructionHeight = () => {

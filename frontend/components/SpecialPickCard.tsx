@@ -118,11 +118,11 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions, precompu
                 prefetch={false}
                 className="block group"
             >
-                <div className="relative overflow-hidden rounded-lg bg-slate-50/50 hover:bg-slate-50 p-3 sm:p-3.5 border border-slate-200 transition-all group-hover:border-blue-300">
-                    <div className="flex justify-between items-start gap-3 mb-2">
+                <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-50/50 p-2 transition-all hover:bg-slate-50 group-hover:border-blue-300 sm:p-3.5">
+                    <div className="mb-1.5 flex items-start justify-between gap-2 sm:mb-2 sm:gap-3">
                         <div className="min-w-0">
                             <span className="text-[10px] font-bold text-slate-400 block mb-0.5">{formattedDate} · {currentPick.venue_name} {currentPick.race_number}R</span>
-                            <h3 className="text-base sm:text-lg font-black text-slate-900 truncate leading-tight group-hover:text-primary transition-colors">
+                            <h3 className="truncate text-[15px] font-black leading-tight text-slate-900 transition-colors group-hover:text-primary sm:text-lg">
                                 {currentPick.horse_name}
                             </h3>
                             <span className="text-[11px] font-semibold text-slate-500">
@@ -132,7 +132,7 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions, precompu
 
                         <div className="shrink-0 text-right">
                             <div className="text-[10px] font-bold text-slate-400">AI偏差値</div>
-                            <div className="text-xl font-black text-primary font-mono">{currentPick.deviation_score.toFixed(1)}</div>
+                            <div className="font-mono text-[15px] font-black text-primary sm:text-xl">{currentPick.deviation_score.toFixed(1)}</div>
                         </div>
                     </div>
 

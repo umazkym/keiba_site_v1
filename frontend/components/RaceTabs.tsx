@@ -391,7 +391,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                 <div
                     data-race-selector-sticky
                     data-race-mobile-selector
-                    className="race-sticky-selector sticky z-30 my-1.5 flex max-h-[88px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white lg:h-14 lg:flex-row"
+                    className="race-sticky-selector sticky z-30 my-1 flex max-h-[88px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white sm:my-1.5 lg:h-14 lg:flex-row"
                     aria-label="選択中のレースと1Rから12Rの切替"
                 >
                     <div className="flex h-8 shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-950 px-2.5 text-white lg:h-full lg:w-[210px] lg:border-b-0 lg:border-r">
@@ -415,14 +415,14 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
             {activeRace && (
                 <div
                     id={`race-${activeRace.id}`}
-                    className="race-detail-layout mt-2"
+                    className="race-detail-layout mt-1.5 sm:mt-2"
                     data-active-race-summary="true"
                     data-venue-name={venue.venue_name}
                     data-race-number={activeRace.race_number}
                     data-race-name={activeRace.race_name}
                     data-course-label={`${activeRace.course_type} ${activeRace.distance}m`}
                 >
-                    <div className="grid gap-2 sm:gap-3">
+                    <div className="grid gap-1.5 sm:gap-3">
                         <div id="race-prediction-section" className="race-panel mb-1 overflow-hidden sm:mb-1.5">
                             <div>
                                 <h4 id="race-prediction-heading" className="race-section-heading race-prediction-heading">
@@ -464,20 +464,20 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                                 </div>
 
                                 <div className="mb-1.5 flex flex-col gap-1.5 sm:gap-2">
-                                    <div className="race-panel flex flex-col p-1.5 sm:p-3">
-                                        <div id="race-detail-heading" className="race-section-heading mx-1 mb-1 sm:mx-2.5 sm:mb-2">
+                                    <div className="race-analysis-panel race-panel flex flex-col p-0 sm:p-3">
+                                        <div id="race-detail-heading" className="race-section-heading sm:mx-2.5 sm:mb-2">
                                             <span>展開/脚質予測</span>
                                         </div>
-                                        <div className="race-analysis-visual px-1 pb-1 sm:px-2.5 sm:pb-2">
+                                        <div className="race-analysis-visual px-2 pb-1.5 sm:px-2.5 sm:pb-2">
                                             <StartPositionChart predictions={activeRace.predictions} />
                                         </div>
                                     </div>
 
-                                    <div className="race-panel flex flex-col p-1.5 sm:p-3">
-                                        <div id="race-frame-heading" className="race-section-heading mx-1 mb-1 sm:mx-2.5 sm:mb-2">
+                                    <div className="race-analysis-panel race-panel flex flex-col p-0 sm:p-3">
+                                        <div id="race-frame-heading" className="race-section-heading sm:mx-2.5 sm:mb-2">
                                             <span>このコースの枠順傾向</span>
                                         </div>
-                                        <div className="race-analysis-visual px-1 pb-1 sm:px-2.5 sm:pb-2.5">
+                                        <div className="race-analysis-visual px-2 pb-1.5 sm:px-2.5 sm:pb-2.5">
                                             <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
                                         </div>
                                     </div>
@@ -722,15 +722,15 @@ export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumb
     }
 
     const mainTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1.5 sm:gap-4 border-b-2 border-slate-200 mb-1 sm:mb-4";
-    const mainTabClass = "snap-start min-w-max px-2.5 sm:px-6 py-1 sm:py-4 text-[13px] sm:text-base font-bold text-slate-500 bg-transparent cursor-pointer hover:text-slate-700 transition-colors duration-150 outline-none border-b-2 border-transparent -mb-[2px]";
+    const mainTabClass = "snap-start min-h-11 min-w-max px-2.5 sm:px-6 py-1 sm:py-4 text-[13px] sm:text-base font-bold text-slate-500 bg-transparent cursor-pointer hover:text-slate-700 transition-colors duration-150 outline-none border-b-2 border-transparent -mb-[2px]";
     const mainSelectedTabClass = "!text-primary !border-primary";
 
     const venueTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1 sm:gap-2 mb-1 sm:mb-4 p-0.5 sm:p-1 bg-slate-100/60 rounded-lg sm:rounded-xl w-max border border-slate-200/50 max-w-full";
-    const venueTabClass = "snap-start min-w-max px-2 sm:px-5 py-0.5 sm:py-2.5 text-[10.5px] sm:text-sm font-bold text-slate-500 rounded-md sm:rounded-lg cursor-pointer hover:text-slate-700 hover:bg-slate-200/60 transition-colors duration-150 outline-none";
+    const venueTabClass = "snap-start min-h-11 min-w-max px-2 sm:px-5 py-0.5 sm:py-2.5 text-[10.5px] sm:text-sm font-bold text-slate-500 rounded-md sm:rounded-lg cursor-pointer hover:text-slate-700 hover:bg-slate-200/60 transition-colors duration-150 outline-none";
     const venueSelectedTabClass = "!text-primary !bg-white shadow-sm !border-slate-200";
 
     return (
-        <Tabs defaultIndex={initialTopTabIndex} onSelect={handleTopTabSelect} className="mt-1.5 sm:mt-4" forceRenderTabPanel={false}>
+        <Tabs defaultIndex={initialTopTabIndex} onSelect={handleTopTabSelect} className="mt-1 sm:mt-4" forceRenderTabPanel={false}>
             <TabList className={mainTabListClass}>
                 {jra.length > 0 && <Tab className={mainTabClass} selectedClassName={mainSelectedTabClass}>中央競馬</Tab>}
                 {nar.length > 0 && <Tab className={mainTabClass} selectedClassName={mainSelectedTabClass}>地方競馬</Tab>}

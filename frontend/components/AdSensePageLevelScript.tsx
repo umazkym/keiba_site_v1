@@ -13,6 +13,8 @@ const SCRIPT_ID = 'uma-adsense-page-level-script';
 const SCRIPT_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
 const GOOGLE_UI_SELECTOR = '.fc-dialog-container, .fc-monetization-dialog-container, .fc-consent-root, ins.adsbygoogle-noablate[data-anchor-status]';
 const OFFERWALL_SELECTOR = '.fc-monetization-dialog-container';
+const TOP_ANCHOR_CONTROL_SELECTOR = '.fc-ablate-drawer-tab, .fc-ablate-drawer-btn';
+const TOP_ANCHOR_CONTROL_MAX_HEIGHT = 32;
 
 const isVisibleAnchor = (element: HTMLElement) => {
     const style = window.getComputedStyle(element);
@@ -30,6 +32,25 @@ const isVisibleAnchor = (element: HTMLElement) => {
 const getVisibleGoogleAnchors = () => Array.from(document.querySelectorAll<HTMLElement>(
     'ins.adsbygoogle-noablate, .fc-ablate-drawer-tab, .fc-ablate-drawer-btn, [id^="aswift_"][style*="position"], [id^="google_ads_iframe"][style*="position"]',
 )).filter(isVisibleAnchor);
+
+const getTopAnchorControlHeight = (topAnchorHeight: number) => {
+    if (topAnchorHeight <= 0) return 0;
+
+    const measuredControlHeight = Array.from(document.querySelectorAll<HTMLElement>(TOP_ANCHOR_CONTROL_SELECTOR))
+        .reduce((height, element) => {
+            if (!isVisibleAnchor(element)) return height;
+            const rect = element.getBoundingClientRect();
+            if (rect.top > 10 || rect.bottom <= 0) return height;
+            return Math.max(height, Math.ceil(rect.bottom));
+        }, 0);
+
+    // Google側のDOM構造が変わって操作部を直接取得できない場合も、
+    // 展開した広告本体の高さへ追従せず、折りたたみボタン相当だけを予約する。
+    return Math.min(
+        measuredControlHeight > 0 ? measuredControlHeight : topAnchorHeight,
+        TOP_ANCHOR_CONTROL_MAX_HEIGHT,
+    );
+};
 
 const isVisibleOfferwall = () => Array.from(document.querySelectorAll<HTMLElement>(OFFERWALL_SELECTOR)).some((element) => {
     const style = window.getComputedStyle(element);
@@ -73,6 +94,7 @@ export const AdSensePageLevelScript = ({ enabled }: AdSensePageLevelScriptProps)
                 const rect = element.getBoundingClientRect();
                 return rect.bottom >= window.innerHeight - 20 ? Math.max(height, Math.ceil(rect.height)) : height;
             }, 0);
+            const topAnchorControlHeight = getTopAnchorControlHeight(topAnchorHeight);
             const anchorIsVisible = topAnchorHeight > 0 || bottomAnchorHeight > 0;
             const isBlocking = dialogIsVisible || anchorIsVisible;
             observedGoogleUi = observedGoogleUi || Boolean(document.querySelector(GOOGLE_UI_SELECTOR));
@@ -81,6 +103,7 @@ export const AdSensePageLevelScript = ({ enabled }: AdSensePageLevelScriptProps)
                 offerwallVisible,
                 dialogVisible: dialogIsVisible,
                 topAnchorHeight,
+                topAnchorControlHeight,
                 bottomAnchorHeight,
             });
 
@@ -155,6 +178,7 @@ export const AdSensePageLevelScript = ({ enabled }: AdSensePageLevelScriptProps)
                 offerwallVisible: false,
                 dialogVisible: false,
                 topAnchorHeight: 0,
+                topAnchorControlHeight: 0,
                 bottomAnchorHeight: 0,
             });
         };

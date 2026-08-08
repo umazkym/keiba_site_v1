@@ -9,6 +9,7 @@ const targetFiles = [
   'app/articles/page.tsx',
   'app/articles/[slug]/page.tsx',
   'components/Header.tsx',
+  'components/HomeStickyRaceCta.tsx',
   'components/RaceAnalysisValueGrid.tsx',
   'components/RecentRaceReturn.tsx',
   'components/WeeklyGradeRaces.tsx',
@@ -18,6 +19,7 @@ const targetFiles = [
   'components/RaceSelector.tsx',
   'components/RaceTabs.tsx',
   'hooks/useRaceSectionNavigation.ts',
+  'lib/google-ad-overlay.ts',
 ];
 
 const sources = targetFiles.map((relativePath) => {
@@ -164,6 +166,8 @@ const raceSelector = sources.find(({ relativePath }) => relativePath === 'compon
 const raceTabs = sources.find(({ relativePath }) => relativePath === 'components/RaceTabs.tsx').content;
 const startPositionChart = extendedSources.find(({ relativePath }) => relativePath === 'components/StartPositionChart.tsx').content;
 const header = sources.find(({ relativePath }) => relativePath === 'components/Header.tsx').content;
+const homeStickyCta = sources.find(({ relativePath }) => relativePath === 'components/HomeStickyRaceCta.tsx').content;
+const googleAdOverlay = sources.find(({ relativePath }) => relativePath === 'lib/google-ad-overlay.ts').content;
 const dataHubPage = dataSources.find(({ relativePath }) => relativePath === 'app/keiba-data/page.tsx').content;
 const dataHubNav = dataSources.find(({ relativePath }) => relativePath === 'components/DataHubNav.tsx').content;
 const horseCompare = dataSources.find(({ relativePath }) => relativePath === 'app/compare/HorseCompareClient.tsx').content;
@@ -290,10 +294,30 @@ const checks = [
       && !startPositionChart.includes('grid grid-cols-3 gap-1.5 md:hidden'),
   },
   {
-    id: 'header-top-only',
-    description: '共通ヘッダーがページ最上部だけ表示される',
-    passed: header.includes('nextScrollY <= 8')
-      && !header.includes('accumulatedDelta'),
+    id: 'header-responsive-fixed-policy',
+    description: '1024px未満はヘッダー固定、PCは最上部だけ表示する',
+    passed: header.includes("matchMedia('(max-width: 1023px)')")
+      && header.includes('setIsHeaderVisible(true)')
+      && header.includes('nextScrollY <= 8')
+      && globals.includes('.site-header-mobile-spacer')
+      && globals.includes('top: var(--site-header-top-gap);'),
+  },
+  {
+    id: 'header-stable-ad-control-gap',
+    description: '上部広告の全高と最大32pxの操作部予約高を分離する',
+    passed: googleAdOverlay.includes('topAnchorControlHeight')
+      && adSensePageLevel.includes('TOP_ANCHOR_CONTROL_MAX_HEIGHT = 32')
+      && header.includes('overlay.topAnchorControlHeight')
+      && raceNavigation.includes('overlay.topAnchorControlHeight'),
+  },
+  {
+    id: 'home-mobile-persistent-cta',
+    description: '1024px未満のホームCTAが広告高やスクロールで移動しない',
+    passed: homeStickyCta.includes("matchMedia('(max-width: 1023px)')")
+      && homeStickyCta.includes("'--home-cta-desktop-bottom'")
+      && globals.includes('.home-sticky-race-cta-visible {')
+      && globals.includes('@media (max-width: 1023px)')
+      && globals.includes('bottom: calc(env(safe-area-inset-bottom, 0px) + var(--safari-bottom-offset, 0px));'),
   },
   {
     id: 'header-tablet-menu-breakpoint',
@@ -303,6 +327,23 @@ const checks = [
       && !header.includes('hidden md:flex items-center'),
   },
   {
+    id: 'mobile-race-density-contract',
+    description: '640px未満のレース見出し14px・表示上限15pxを専用scopeで維持する',
+    passed: globals.includes('.race-page-scope .race-section-heading,')
+      && globals.includes('font-size: 15px !important;')
+      && globals.includes('font-size: 14px !important;')
+      && globals.includes('.race-page-scope .ui-section-header__title'),
+  },
+  {
+    id: 'mobile-article-readable-type',
+    description: '640px未満の記事本文12px・H2最大16pxを維持する',
+    passed: articleBody.includes('prose-p:text-[12px]')
+      && articleBody.includes('prose-h2:text-[16px]')
+      && articleBody.includes('prose-h3:text-[14px]')
+      && globals.includes('.article-page-lead {')
+      && globals.includes('font-size: 16px !important;'),
+  },
+  {
     id: 'article-top-switcher-removed',
     description: '省略表示ばかりになる記事上部の前後ナビを置かない',
     passed: !entityArticleDocument.includes('ArticleThemeNavigator')
@@ -310,10 +351,11 @@ const checks = [
   },
   {
     id: 'adsense-scroll-recovery',
-    description: 'Google広告UI終了後のoverflow/padding復旧監視がある',
+    description: 'Google広告UI終了後のoverflow復旧を監視し、Google管理paddingを上書きしない',
     passed: adSensePageLevel.includes('hasVisibleGoogleDialog')
-      && adSensePageLevel.includes('bodyPaddingTop')
-      && adSensePageLevel.includes('MutationObserver'),
+      && adSensePageLevel.includes('baseline.bodyOverflow')
+      && adSensePageLevel.includes('MutationObserver')
+      && !adSensePageLevel.includes('document.body.style.paddingTop ='),
   },
   {
     id: 'data-pages-no-prohibited-decoration',

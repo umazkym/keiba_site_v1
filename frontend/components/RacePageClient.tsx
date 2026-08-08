@@ -73,7 +73,7 @@ const DateNavigator = ({
     }, [onDateChange]);
 
     return (
-        <div className="mx-auto flex w-full max-w-[300px] items-center justify-between rounded-lg border border-slate-300 bg-white p-0.5 sm:max-w-sm">
+        <div className="mx-auto flex w-full max-w-none flex-1 items-center justify-between rounded-lg border border-slate-300 bg-white p-0.5 sm:max-w-sm">
             <button
                 onClick={(e) => handleDateShift(e, -1)}
                 className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-text-secondary transition-colors duration-150 hover:bg-slate-100 hover:text-primary"
@@ -257,14 +257,14 @@ export default function RacePageClient({
         }
         if (error || !predictionData || ((predictionData.jra?.length ?? 0) === 0 && (predictionData.nar?.length ?? 0) === 0)) {
             return (
-                <div className="text-center p-8 bg-red-50 rounded-lg border border-red-200 shadow-sm">
-                    <div className="flex justify-center mb-4">
-                        <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center sm:p-8">
+                    <div className="mb-2 flex justify-center sm:mb-4">
+                        <svg className="h-8 w-8 text-red-500 sm:h-12 sm:w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <h2 className="text-xl font-bold text-red-700 mb-2">{formatDate(currentDate)}のレースデータはありません</h2>
-                    <p className="text-gray-600 mb-6">
+                    <h2 className="mb-1.5 text-[15px] font-bold text-red-700 sm:mb-2 sm:text-xl">{formatDate(currentDate)}のレースデータはありません</h2>
+                    <p className="mb-3 text-xs text-gray-600 sm:mb-6 sm:text-sm">
                         指定された日付はレースが開催されないか、まだデータが登録されていません。<br />
                         他の日付のレースデータをお探しください。
                     </p>
@@ -275,8 +275,8 @@ export default function RacePageClient({
                     >
                         本日のレース分析を見る
                     </Link>
-                    <div className="mt-8 pt-6 border-t border-red-200 text-left max-w-2xl mx-auto">
-                        <h3 className="font-bold text-gray-700 mb-3">競馬開催スケジュール</h3>
+                    <div className="mx-auto mt-4 max-w-2xl border-t border-red-200 pt-3 text-left sm:mt-8 sm:pt-6">
+                        <h3 className="mb-1.5 text-sm font-bold text-gray-700 sm:mb-3">競馬開催スケジュール</h3>
                         <div className="space-y-2 text-sm text-gray-600">
                             <p>• 中央競馬: 主に土日に開催されます。</p>
                             <p>• 地方競馬: 各競馬場により開催日が異なります。</p>
@@ -314,7 +314,7 @@ export default function RacePageClient({
     return (
         <div
             id="race-page-top"
-            className="race-page-scope site-shell-wide py-2 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-4"
+            className="race-page-scope site-shell-wide py-1 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:py-2 lg:pb-4"
             data-race-revenue-variant={raceRevenueExperiment.ready ? raceRevenueExperiment.variant : 'pending'}
             data-race-revenue-eligible={raceRevenueExperiment.eligible ? 'true' : 'false'}
         >

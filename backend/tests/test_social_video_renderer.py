@@ -492,11 +492,7 @@ class SocialVideoRendererTest(unittest.TestCase):
 
     def test_video_urls_keep_site_root_and_add_v2_content_attribution(self) -> None:
         url = build_video_url("2026-07-12", "venue_long_函館", "函館", 11)
-        self.assertTrue(url.startswith("https://uma-free.com/?"))
-        self.assertIn("utm_source=youtube", url)
-        self.assertIn("utm_medium=video", url)
-        self.assertIn("utm_campaign=daily_race_video_v2", url)
-        self.assertIn("utm_content=venue_long_%E5%87%BD%E9%A4%A8", url)
+        self.assertEqual(url, "https://uma-free.com")
 
     def test_video_description_has_one_site_link_without_date_or_credit(self) -> None:
         description = renderer._description(
@@ -630,10 +626,10 @@ class SocialVideoRendererTest(unittest.TestCase):
             chapter_lines=("00:00 本日の全レースAI分析", "00:02 中央競馬 東京 全1レース"),
         )
 
-        self.assertIn("11/1 全2レースAI分析", long_title)
+        self.assertIn("11/1(日)｜全2レースAI分析", long_title)
         self.assertIn("中央競馬・地方競馬予想", long_title)
         self.assertIn("天皇賞（秋）", long_title)
-        self.assertIn("1重賞 AI競馬予想", short_title)
+        self.assertIn("11/1(日)｜全1レースAI分析", short_title)
         self.assertEqual(description.splitlines()[0], "https://uma-free.com")
         self.assertIn("【中央・地方競馬のAI分析をいつでも無料公開中】", description)
         self.assertIn("#競馬 #AI予想 #競馬予想", description)
@@ -683,7 +679,7 @@ class SocialVideoRendererTest(unittest.TestCase):
             self.assertEqual(long_package.stable_id, "daily_all")
             self.assertEqual(long_package.race_ids, ["tokyo-grade", "ooi-main"])
             self.assertTrue(long_package.thumbnail_path.is_file())
-            self.assertIn("11/1 全2レース AI分析", json.loads(
+            self.assertIn("11/1(日) 全2レース AI分析", json.loads(
                 long_package.metadata_path.read_text(encoding="utf-8")
             )["thumbnail_text"])
             self.assertEqual(short_package.video_type, "short")
@@ -760,7 +756,7 @@ class SocialVideoRendererTest(unittest.TestCase):
 
         self.assertEqual(package.race_ids, ["healthy-short"])
         self.assertEqual(metadata["render_omissions"][0]["race_id"], "broken-short")
-        self.assertIn("1重賞 AI競馬予想", package.title)
+        self.assertIn("11/1(日)｜全1レースAI分析", package.title)
         self.assertNotIn("全重賞", package.title)
         self.assertIn("除外重賞", package.description)
 
@@ -769,7 +765,7 @@ class SocialVideoRendererTest(unittest.TestCase):
         race.race_name = "宝塚記念"
         race.grade = "G1"
         title = renderer._long_title(VenueVideoData("阪神", "中央", [race]), "2026-06-28")
-        self.assertEqual(title, "6/28 阪神｜全1R AI予想｜宝塚記念開催｜2026")
+        self.assertEqual(title, "6/28(日)｜全1レースAI分析｜宝塚記念｜阪神競馬予想｜2026年")
 
     def test_long_title_does_not_expose_excluded_newcomer_detail(self) -> None:
         race = _race()
@@ -783,7 +779,7 @@ class SocialVideoRendererTest(unittest.TestCase):
             VenueVideoData("笠松", "地方", [race], excluded_races=[newcomer]),
             "2026-07-24",
         )
-        self.assertEqual(title, "7/24 笠松｜全1R AI予想｜2026")
+        self.assertEqual(title, "7/24(金)｜全1レースAI分析｜笠松競馬予想｜2026年")
         self.assertNotIn("新馬", title)
         self.assertNotIn("対象", title)
 
@@ -800,10 +796,10 @@ class SocialVideoRendererTest(unittest.TestCase):
                 venue = VenueVideoData(venue_name, "地方", races)
                 essential = renderer._long_title_essential(venue, "2026-12-31")
                 title = renderer._long_title(venue, "2026-12-31")
-                self.assertLessEqual(len(essential), 26)
+                self.assertLessEqual(len(essential), 40)
                 self.assertTrue(title.startswith(essential))
-                self.assertIn(f"12/31 {venue_name}", essential)
-                self.assertIn("全12R AI予想", essential)
+                self.assertIn(f"12/31(木) {venue_name}", essential)
+                self.assertIn("全12レースAI分析", essential)
 
     def test_short_title_starts_with_date_venue_and_single_race_scope(self) -> None:
         race = _race()
@@ -814,7 +810,7 @@ class SocialVideoRendererTest(unittest.TestCase):
         title = renderer._short_title(race, "2026-07-30")
         self.assertEqual(
             title,
-            "7/30 川崎11R｜AI予想TOP3｜川崎記念｜2026 #Shorts",
+            "7/30(木)｜川崎11R AI分析｜川崎記念｜川崎競馬予想｜2026年 #Shorts",
         )
         self.assertNotIn("全レース", title)
 
@@ -888,7 +884,7 @@ class SocialVideoRendererTest(unittest.TestCase):
         self.assertEqual([call.args[3] for call in build_race.call_args_list], [1, 2, 3])
         self.assertTrue(all(call.args[4] == 3 for call in build_race.call_args_list))
         self.assertEqual(package.race_ids, ["race-1", "race-2", "race-3"])
-        self.assertTrue(package.title.startswith("7/12 函館｜全3R AI予想"))
+        self.assertTrue(package.title.startswith("7/12(日)｜全3レースAI分析"))
         self.assertEqual(draw_thumbnail.call_args.args[1], "函館 全3R")
 
     def test_long_race_scene_contains_top_three_and_all_position_tokens_once(self) -> None:

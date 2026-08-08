@@ -155,15 +155,9 @@ def build_race_url(
     return f"{SITE_BASE_URL}{build_race_path(date_str, venue_name, race_number)}?{urlencode(params)}"
 
 
-def build_video_url(date_str: str, utm_content: str, venue_name: str = "", race_number: Any = "") -> str:
-    """YouTube動画別のcontent keyを付けたトップURLを返す。"""
-    params = {
-        "utm_source": "youtube",
-        "utm_medium": "video",
-        "utm_campaign": YOUTUBE_CAMPAIGN_NAME,
-        "utm_content": utm_content,
-    }
-    return f"{SITE_BASE_URL}/?{urlencode(params)}"
+def build_video_url(date_str: str = "", utm_content: str = "", venue_name: str = "", race_number: Any = "") -> str:
+    """概要欄・各種メタデータ用URLとして https://uma-free.com を固定で返す。"""
+    return SITE_BASE_URL
 
 
 def _api_base_url() -> str:

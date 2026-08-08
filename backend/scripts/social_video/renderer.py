@@ -3668,22 +3668,28 @@ def _build_short_motion_scene(
 
 def _title_date_parts(target_date: str) -> tuple[str, str]:
     parsed = date.fromisoformat(target_date)
-    return f"{parsed.month}/{parsed.day}", str(parsed.year)
+    weekday = "月火水木金土日"[parsed.weekday()]
+    return f"{parsed.month}/{parsed.day}({weekday})", f"{parsed.year}年"
 
 
 def _long_title_essential(venue: VenueVideoData, target_date: str) -> str:
     date_label, _ = _title_date_parts(target_date)
-    return f"{date_label} {venue.venue_name}｜全{len(venue.races)}R AI予想"
+    return f"{date_label} {venue.venue_name}｜全{len(venue.races)}レースAI分析"
 
 
 def _long_title(venue: VenueVideoData, target_date: str) -> str:
-    essential = _long_title_essential(venue, target_date)
-    _, year_label = _title_date_parts(target_date)
+    date_label, year_label = _title_date_parts(target_date)
+    parts = [
+        date_label,
+        f"全{len(venue.races)}レースAI分析",
+    ]
     featured_race = pick_featured_race(venue)
-    parts = [essential]
     if featured_race is not None and featured_race.is_grade_race:
-        parts.append(f"{featured_race.display_name}開催")
-    parts.append(year_label)
+        parts.append(featured_race.display_name)
+    parts.extend([
+        f"{venue.venue_name}競馬予想",
+        year_label,
+    ])
     return "｜".join(parts)[:100].rstrip("｜・ ")
 
 
@@ -3715,6 +3721,101 @@ def _description(
             + "、".join(excluded_race_labels)
         )
     return description
+
+
+def _compilation_races(venues: Sequence[VenueVideoData]) -> List[RaceVideoData]:
+    return [race for venue in venues for race in venue.races]
+
+
+def _compilation_grade_races(venues: Sequence[VenueVideoData]) -> List[RaceVideoData]:
+    return [race for race in _compilation_races(venues) if race.is_grade_race]
+
+
+def _race_type_scope(venues: Sequence[VenueVideoData]) -> str:
+    types = {str(venue.race_type).strip() for venue in venues}
+    if "中央" in types and "地方" in types:
+        return "中央競馬・地方競馬"
+    if "中央" in types:
+        return "中央競馬"
+    if "地方" in types:
+        return "地方競馬"
+    return "競馬"
+
+
+def _daily_long_title(venues: Sequence[VenueVideoData], target_date: str) -> str:
+    date_label, year_label = _title_date_parts(target_date)
+    races = _compilation_races(venues)
+    grade_names = "・".join(
+        race.display_name for race in _compilation_grade_races(venues)[:2]
+    )
+    parts = [
+        date_label,
+        f"全{len(races)}レースAI分析",
+    ]
+    if grade_names:
+        parts.append(grade_names)
+    parts.extend([
+        f"{_race_type_scope(venues)}予想",
+        year_label,
+    ])
+    return "｜".join(parts)[:100].rstrip("｜・ ")
+
+
+def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
+    if not races:
+        raise ValueError("Shortsの収録対象レースがありません")
+    date_label, year_label = _title_date_parts(target_date)
+    grade_races = [race for race in races if race.is_grade_race]
+    parts = [
+        date_label,
+        f"全{len(races)}レースAI分析",
+    ]
+    if grade_races:
+        displayed_names = "・".join(race.display_name for race in grade_races[:2])
+        parts.append(displayed_names)
+    parts.extend([
+        "AI競馬予想",
+        f"{year_label} #Shorts",
+    ])
+    return "｜".join(parts)[:100].rstrip("｜・ ")
+
+
+def _daily_long_title(venues: Sequence[VenueVideoData], target_date: str) -> str:
+    date_label, year_label = _title_date_parts(target_date)
+    races = _compilation_races(venues)
+    grade_names = "・".join(
+        race.display_name for race in _compilation_grade_races(venues)[:2]
+    )
+    parts = [
+        date_label,
+        f"全{len(races)}レースAI分析",
+    ]
+    if grade_names:
+        parts.append(grade_names)
+    parts.extend([
+        f"{_race_type_scope(venues)}予想",
+        year_label,
+    ])
+    return "｜".join(parts)[:100].rstrip("｜・ ")
+
+
+def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
+    if not races:
+        raise ValueError("Shortsの収録対象レースがありません")
+    date_label, year_label = _title_date_parts(target_date)
+    grade_races = [race for race in races if race.is_grade_race]
+    parts = [
+        date_label,
+        f"全{len(races)}レースAI分析",
+    ]
+    if grade_races:
+        displayed_names = "・".join(race.display_name for race in grade_races[:2])
+        parts.append(displayed_names)
+    parts.extend([
+        "AI競馬予想",
+        f"{year_label} #Shorts",
+    ])
+    return "｜".join(parts)[:100].rstrip("｜・ ")
 
 
 def _compilation_races(venues: Sequence[VenueVideoData]) -> List[RaceVideoData]:
@@ -4423,10 +4524,17 @@ def render_daily_long_video(
 
 def _short_title(race: RaceVideoData, target_date: str) -> str:
     date_label, year_label = _title_date_parts(target_date)
-    essential = f"{date_label} {race.venue_name}{race.race_number}R｜AI予想TOP3"
+    parts = [
+        date_label,
+        f"{race.venue_name}{race.race_number}R AI分析",
+    ]
     if race.grade:
-        return f"{essential}｜{race.display_name}｜{year_label} #Shorts"[:100].rstrip("｜・ ")
-    return f"{essential}｜{year_label} #Shorts"
+        parts.append(race.display_name)
+    parts.extend([
+        f"{race.venue_name}競馬予想",
+        f"{year_label} #Shorts",
+    ])
+    return "｜".join(parts)[:100].rstrip("｜・ ")
 
 
 def _append_audio_cue(

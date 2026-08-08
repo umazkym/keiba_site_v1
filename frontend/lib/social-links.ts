@@ -31,7 +31,7 @@ const socialLinkDefinitions: Array<{
         label: '公式YouTube',
         configuredUrl:
             process.env.NEXT_PUBLIC_SOCIAL_YOUTUBE_URL ||
-            'https://www.youtube.com/@umafree_ai',
+            'https://www.youtube.com/@uma-free_ai',
     },
     {
         platform: 'threads',

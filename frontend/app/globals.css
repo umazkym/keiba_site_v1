@@ -52,7 +52,6 @@
     --shadow-color: 0 8px 22px rgba(15, 23, 42, 0.06);
     --site-header-height: 48px;
     --site-header-offset: 48px;
-    --site-header-anchor-height: 0px;
     --site-header-top-gap: 0px;
 }
 
@@ -574,72 +573,35 @@ header.glass {
 }
 
 .site-header {
-    position: sticky;
-    top: var(--site-header-anchor-height);
+    position: fixed;
+    top: var(--site-header-top-gap);
+    right: 0;
+    left: 0;
     transform: translateY(0);
-    transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
-    will-change: transform;
+    transition: none;
 }
 
 .site-header-hidden {
-    pointer-events: none;
-    transform: translateY(-100%);
+    pointer-events: auto;
+    transform: none;
 }
 
-.site-header-mobile-spacer {
-    display: none;
-}
-
-@media (max-width: 1023px) {
-    .site-header {
-        position: fixed;
-        top: var(--site-header-top-gap);
-        right: 0;
-        left: 0;
-        transform: none;
-        transition: none;
-        will-change: auto;
-    }
-
-    .site-header-hidden {
-        pointer-events: auto;
-        transform: none;
-    }
-
-    .site-header-mobile-spacer {
-        display: block;
-        height: var(--site-header-offset);
-    }
+.site-header-spacer {
+    display: block;
+    height: var(--site-header-offset);
 }
 
 .home-sticky-race-cta {
     position: fixed;
     z-index: 39;
-    bottom: var(--home-cta-desktop-bottom, 0px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--safari-bottom-offset, 0px));
     right: 0;
     left: 0;
     background: var(--bg);
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(100%);
-    transition: bottom 180ms cubic-bezier(0.2, 0, 0, 1), transform 160ms ease, opacity 120ms ease;
-}
-
-.home-sticky-race-cta-visible {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0);
-}
-
-@media (max-width: 1023px) {
-    .home-sticky-race-cta,
-    .home-sticky-race-cta-visible {
-        bottom: calc(env(safe-area-inset-bottom, 0px) + var(--safari-bottom-offset, 0px));
-        opacity: 1;
-        pointer-events: auto;
-        transform: translateY(0);
-        transition: none;
-    }
+    transition: none;
 }
 
 .article-theme-sticky {

@@ -294,12 +294,13 @@ const checks = [
       && !startPositionChart.includes('grid grid-cols-3 gap-1.5 md:hidden'),
   },
   {
-    id: 'header-responsive-fixed-policy',
-    description: '1024px未満はヘッダー固定、PCは最上部だけ表示する',
-    passed: header.includes("matchMedia('(max-width: 1023px)')")
-      && header.includes('setIsHeaderVisible(true)')
-      && header.includes('nextScrollY <= 8')
-      && globals.includes('.site-header-mobile-spacer')
+    id: 'header-stable-fixed-policy',
+    description: '全画面幅でヘッダーを固定し、広告やスクロールで位置を変えない',
+    passed: header.includes('data-site-header-visible="true"')
+      && !header.includes('nextScrollY')
+      && !header.includes("window.addEventListener('scroll'")
+      && globals.includes('.site-header-spacer')
+      && globals.includes('position: fixed;')
       && globals.includes('top: var(--site-header-top-gap);'),
   },
   {
@@ -311,12 +312,12 @@ const checks = [
       && raceNavigation.includes('overlay.topAnchorControlHeight'),
   },
   {
-    id: 'home-mobile-persistent-cta',
-    description: '1024px未満のホームCTAが広告高やスクロールで移動しない',
-    passed: homeStickyCta.includes("matchMedia('(max-width: 1023px)')")
-      && homeStickyCta.includes("'--home-cta-desktop-bottom'")
-      && globals.includes('.home-sticky-race-cta-visible {')
-      && globals.includes('@media (max-width: 1023px)')
+    id: 'home-persistent-cta',
+    description: '全画面幅でホームCTAが広告高やスクロールに追従しない',
+    passed: homeStickyCta.includes('className="home-sticky-race-cta"')
+      && !homeStickyCta.includes('bottomAnchorHeight')
+      && !homeStickyCta.includes('data-home-primary-race-cta')
+      && !homeStickyCta.includes("window.addEventListener('scroll'")
       && globals.includes('bottom: calc(env(safe-area-inset-bottom, 0px) + var(--safari-bottom-offset, 0px));'),
   },
   {

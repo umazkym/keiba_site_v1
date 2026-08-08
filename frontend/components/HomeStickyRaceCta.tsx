@@ -1,9 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import type { CSSProperties } from 'react';
 import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
-import { getGoogleAdOverlaySnapshot, GOOGLE_AD_OVERLAY_EVENT } from '@/lib/google-ad-overlay';
 
 type HomeStickyRaceCtaProps = {
     raceDate: string;
@@ -11,87 +8,9 @@ type HomeStickyRaceCtaProps = {
 };
 
 export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProps) {
-    const [isVisible, setIsVisible] = useState(false);
-    const [isPersistentViewport, setIsPersistentViewport] = useState(false);
-    const [bottomAnchorHeight, setBottomAnchorHeight] = useState<number>(() => getGoogleAdOverlaySnapshot().bottomAnchorHeight);
-
-    const updateVisibility = useCallback(() => {
-        if (window.matchMedia('(max-width: 1023px)').matches) {
-            setIsVisible(true);
-            return;
-        }
-
-        const primaryCta = document.querySelector<HTMLElement>('[data-home-primary-race-cta]');
-        if (!primaryCta) {
-            setIsVisible(false);
-            return;
-        }
-
-        // ページの最下部付近（フッター）までスクロールした場合はフッター文言との重なりを防ぐため退避
-        const scrollBottom = window.innerHeight + window.scrollY;
-        const pageHeight = Math.max(
-            document.body.scrollHeight,
-            document.documentElement.scrollHeight,
-        );
-        const isNearBottom = scrollBottom >= pageHeight - 200;
-
-        if (isNearBottom) {
-            setIsVisible(false);
-            return;
-        }
-
-        const headerOffset = Number.parseFloat(
-            window.getComputedStyle(document.documentElement).getPropertyValue('--site-header-offset'),
-        ) || 0;
-        setIsVisible(primaryCta.getBoundingClientRect().bottom <= headerOffset);
-    }, []);
-
-    useEffect(() => {
-        let frameId = 0;
-        const persistentViewportQuery = window.matchMedia('(max-width: 1023px)');
-        const requestUpdate = () => {
-            window.cancelAnimationFrame(frameId);
-            frameId = window.requestAnimationFrame(() => {
-                const overlay = getGoogleAdOverlaySnapshot();
-                setBottomAnchorHeight(overlay.bottomAnchorHeight);
-                setIsPersistentViewport(persistentViewportQuery.matches);
-                updateVisibility();
-            });
-        };
-
-        const handleOverlayChange = () => requestUpdate();
-        window.addEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange as EventListener);
-
-        const header = document.querySelector<HTMLElement>('[data-site-header]');
-        const headerObserver = header ? new MutationObserver(requestUpdate) : null;
-
-        if (header) {
-            headerObserver?.observe(header, { attributes: true, attributeFilter: ['class', 'data-site-header-visible'] });
-        }
-        persistentViewportQuery.addEventListener('change', requestUpdate);
-        window.addEventListener('scroll', requestUpdate, { passive: true });
-        window.addEventListener('resize', requestUpdate);
-        requestUpdate();
-
-        return () => {
-            window.cancelAnimationFrame(frameId);
-            window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange as EventListener);
-            headerObserver?.disconnect();
-            persistentViewportQuery.removeEventListener('change', requestUpdate);
-            window.removeEventListener('scroll', requestUpdate);
-            window.removeEventListener('resize', requestUpdate);
-        };
-    }, [updateVisibility]);
-
     return (
         <div
-            className={`home-sticky-race-cta ${isVisible ? 'home-sticky-race-cta-visible' : ''}`}
-            style={{
-                '--home-cta-desktop-bottom': bottomAnchorHeight > 0
-                    ? `calc(${bottomAnchorHeight}px + env(safe-area-inset-bottom, 0px) + var(--safari-bottom-offset, 0px))`
-                    : 'calc(env(safe-area-inset-bottom, 0px) + var(--safari-bottom-offset, 0px))',
-            } as CSSProperties}
-            aria-hidden={!(isPersistentViewport || isVisible)}
+            className="home-sticky-race-cta"
         >
             {/* Safariタブ変色防止: ビューポート最下端にサイト背景色の物理シールドを配置し
                 Safariの色サンプリングが青色ボタンを検出しないようにする */}
@@ -101,7 +20,6 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
                     href={`/races/${raceDate}`}
                     raceDate={raceDate}
                     entryMethod="sticky_cta"
-                    tabIndex={isPersistentViewport || isVisible ? 0 : -1}
                     className="flex h-11 w-full items-center rounded-full bg-blue-600 pl-3 pr-2 text-white shadow-lg transition-colors duration-150 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 sm:max-w-md"
                 >
                     {raceCount > 0 && (

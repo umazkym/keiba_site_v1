@@ -6,6 +6,7 @@ import path from 'path';
 import matter from 'gray-matter';
 import { prioritizeOrderFiles } from './article_order_priority';
 import { generateGradeRaceSearchRepair } from './gsc_seo_rewrite';
+import { GEMINI_ACCOUNT_BLOCKED_HEADLINE, isGeminiAccountBlockedError, reportGeminiAccountBlock } from './gemini_error_policy';
 
 // .env.local などを読み込む (dotenv等)
 import * as dotenv from 'dotenv';
@@ -116,6 +117,7 @@ async function runPipeline() {
   let approvedCount = 0;
   let rejectedStreak = 0; // 連続却下数カウンター
   let stoppedForGeminiLimit = false;
+  let stoppedForGeminiAccountBlock = false;
   for (const file of files) {
     const orderPath = path.join(ordersDir, file);
     
@@ -153,6 +155,13 @@ async function runPipeline() {
         rejectedStreak = 0;
         moveToProcessed(orderPath);
       } catch (error) {
+        if (isGeminiAccountBlockedError(error)) {
+          // 課金残高切れ。write_orderは未消費のまま残し、以降の処理も止める。
+          reportGeminiAccountBlock(error, 'Grade Race Search Repair');
+          stoppedForGeminiAccountBlock = true;
+          stoppedForGeminiLimit = true;
+          break;
+        }
         moveToFailed(
           orderPath,
           `重賞検索救済に失敗: ${error instanceof Error ? error.message.slice(0, 180) : String(error).slice(0, 180)}`,
@@ -198,6 +207,12 @@ async function runPipeline() {
     
     if (!writerResult.success || !writerResult.filePath) {
       console.error("記事の生成に失敗しました:", writerResult.error);
+      if (writerResult.accountBlocked) {
+        // 課金残高切れ。残りのwrite_orderを回しても100%失敗するため、この場でループを止める。
+        stoppedForGeminiAccountBlock = true;
+        stoppedForGeminiLimit = true;
+        break;
+      }
       if (writerResult.apiKeyInvalid) {
         console.error("\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。");
         console.error("安全のため、現在の write_order は未消費（トップレベル）のまま残し、パイプラインを即座に緊急停止します。");
@@ -229,6 +244,12 @@ async function runPipeline() {
     console.log(`\n=== 判定結果: ${reviewResult.status} ===`);
     console.log(reviewResult.log);
     
+    if (reviewResult.accountBlocked) {
+      stoppedForGeminiAccountBlock = true;
+      stoppedForGeminiLimit = true;
+      break;
+    }
+
     if (reviewResult.apiKeyInvalid) {
       console.error("\n[CRITICAL ERROR] レビュー中に GEMINI_API_KEY が無効化、または漏洩判定されました。");
       console.error("安全のため、今回の write_order は未消費のまま残し、パイプラインを即座に緊急停止します。");
@@ -273,6 +294,13 @@ async function runPipeline() {
     console.log("[Pipeline] 処理対象のwrite_orderがありませんでした。");
   }
 
+  if (attemptedCount > 0 && approvedCount === 0 && stoppedForGeminiAccountBlock) {
+    // 一時的なレート制限とは別枠のメッセージにする。再実行では復旧せず、人手の課金対応が必要。
+    throw new Error(
+      `${GEMINI_ACCOUNT_BLOCKED_HEADLINE}。再実行では復旧しません。AI Studio (https://ai.studio/projects) でプリペイド残高をチャージしてから再実行してください。write_orderは未消費のまま保持しています。attempted=${attemptedCount}`
+    );
+  }
+
   if (attemptedCount > 0 && approvedCount === 0 && stoppedForGeminiLimit) {
     throw new Error(`Geminiの外部制限で記事生成を保留しました。GitHub Actions上の一時WriteOrderは公開・コミットされないため、課金/クォータを復旧して再実行してください。attempted=${attemptedCount}`);
   }
@@ -284,6 +312,9 @@ async function runPipeline() {
 
 // 実行
 runPipeline().catch(error => {
+  if (isGeminiAccountBlockedError(error)) {
+    reportGeminiAccountBlock(error, 'Article Pipeline');
+  }
   console.error(error);
   process.exitCode = 1;
 });

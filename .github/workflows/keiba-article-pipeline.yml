@@ -119,6 +119,16 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
+      # 課金残高切れ・APIキー失効はモデルフォールバックでもリトライでも復旧しない。
+      # Python環境構築・DBトンネル・各プランナー（数分＋DB書き込み）を回す前に検知して落とす。
+      # 一時的なレート制限では落とさず、本編のリトライへ委ねる。
+      - name: Preflight - Gemini API Reachability
+        working-directory: ./frontend
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL_TIERS: ${{ env.GEMINI_MODEL_TIERS }}
+        run: npm run article:preflight-gemini
+
       - name: Validate Existing Article Links
         working-directory: ./frontend
         run: npm run article:validate-links

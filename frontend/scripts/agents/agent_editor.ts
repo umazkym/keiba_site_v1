@@ -5,11 +5,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { checkSEO, SEO_RULES } from './seo_checker';
 import { ARTICLE_LLM_MODELS, getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
 import { GeminiQuotaExceededError, reserveGeminiRequest, rollbackGeminiRequest, recordTokenUsage } from './gemini_quota';
-
-function isApiKeyInvalidError(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error || '');
-  return /API key was reported as leaked|API_KEY_INVALID|API key not valid|Forbidden|403/i.test(msg);
-}
+import {
+  isApiKeyInvalidError,
+  isGeminiAccountBlockedError,
+  isRetryableGeminiError,
+  reportGeminiAccountBlock,
+} from './gemini_error_policy';
 
 
 const DEFAULT_BUYING_POINT_HEADING = '## このコースで確認したい判断材料';
@@ -1185,11 +1186,6 @@ STEP 3：フォーマットとSEOのチェック
 【極秘指示】
 元の原稿に含まれているデータテーブル（| で構築された表）およびリスト要素に対する修正は確実な理由がない限り行わないこと。表自体を削除・破壊してはならない。`;
 
-function isRetryableGeminiError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error || '');
-  return /429|503|quota|rate limit|resource exhausted|too many requests|service unavailable|high demand|overloaded|unavailable|timeout/i.test(message);
-}
-
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -1520,6 +1516,11 @@ async function runSingleGemmaReviewPass(input: {
         });
         reserved = false;
       }
+      // 課金残高切れは全モデル共通の恒久障害。レビュー全体を即時中断して上位へ伝播させる。
+      if (isGeminiAccountBlockedError(e)) {
+        reportGeminiAccountBlock(e, 'Gemma Review');
+        throw e;
+      }
       if (isApiKeyInvalidError(e)) {
         console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
         console.error(`Google AI Studioで新しいAPIキーを再生成し、.env または GitHub Secrets の GEMINI_API_KEY に設定し直してください。\n`);
@@ -1589,7 +1590,7 @@ async function buildGemmaReviewBrief(input: {
   };
 }
 
-export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED' | 'REJECTED'; log: string, newDraftPath?: string; retryable?: boolean; apiKeyInvalid?: boolean }> {
+export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED' | 'REJECTED'; log: string, newDraftPath?: string; retryable?: boolean; apiKeyInvalid?: boolean; accountBlocked?: boolean }> {
   let retryableApiFailure = false;
 
   try {
@@ -1731,6 +1732,11 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
                 target: targetStr,
               });
               reserved = false;
+            }
+            // 課金残高切れは全モデル共通の恒久障害。3アテンプト×4モデルを回さず即時中断する。
+            if (isGeminiAccountBlockedError(e)) {
+              reportGeminiAccountBlock(e, 'Editor');
+              throw e;
             }
             if (isApiKeyInvalidError(e)) {
               console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
@@ -2004,12 +2010,16 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
 
   } catch (error: any) {
     console.error(`[Editor Error] ${error.message}`);
-    const apiKeyInvalid = isApiKeyInvalidError(error);
+    const accountBlocked = isGeminiAccountBlockedError(error);
+    const apiKeyInvalid = !accountBlocked && isApiKeyInvalidError(error);
     return {
       status: 'REJECTED',
       log: `エラーにより検証失敗: ${error.message}`,
-      retryable: !apiKeyInvalid && (error instanceof GeminiQuotaExceededError || isRetryableGeminiError(error)),
+      // accountBlocked は「待っても直らない」ため retryable には含めない。
+      retryable: !accountBlocked && !apiKeyInvalid
+        && (error instanceof GeminiQuotaExceededError || isRetryableGeminiError(error)),
       apiKeyInvalid,
+      accountBlocked,
     };
   }
 }

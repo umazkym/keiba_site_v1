@@ -3,14 +3,15 @@ import path from 'path';
 import matter from 'gray-matter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ARTICLE_LLM_MODELS, getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
-import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
+import { GeminiQuotaExceededError, reserveGeminiRequest, rollbackGeminiRequest } from './gemini_quota';
+import {
+  isApiKeyInvalidError,
+  isGeminiAccountBlockedError,
+  isRetryableGeminiError,
+  reportGeminiAccountBlock,
+} from './gemini_error_policy';
 
 // APIキーは環境変数から取得
-
-function isApiKeyInvalidError(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error || '');
-  return /API key was reported as leaked|API_KEY_INVALID|API key not valid|Forbidden|403/i.test(msg);
-}
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
@@ -491,11 +492,6 @@ draft: true
 （本文）
 `;
 
-function isRetryableGeminiError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error || '');
-  return /429|503|quota|rate limit|resource exhausted|too many requests|service unavailable|high demand|overloaded|unavailable|timeout/i.test(message);
-}
-
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -590,6 +586,7 @@ async function buildArticleStrategyBrief(order: WriteOrder, genAI: GoogleGenerat
   const prompt = `以下のWriteOrderから、検索流入と記事の厚みを増やすための構成ブリーフを作る。\n\n${JSON.stringify(order, null, 2)}`;
 
   for (const currentModelName of modelTiers) {
+    let reserved = false;
     try {
       console.log(`[Strategy] Trying model: ${currentModelName}`);
       const model = genAI.getGenerativeModel({
@@ -608,6 +605,7 @@ async function buildArticleStrategyBrief(order: WriteOrder, genAI: GoogleGenerat
         purpose: 'strategy-brief',
         target: order.target_keyword,
       });
+      reserved = true;
       const result = await model.generateContent(prompt);
       logGeminiUsage(`[Strategy] ${currentModelName}`, result.response);
       const text = result.response.text() || '';
@@ -618,6 +616,20 @@ async function buildArticleStrategyBrief(order: WriteOrder, genAI: GoogleGenerat
       console.log(`[Strategy] Brief created: sections=${brief.section_plan.length} expansion=${brief.expansion_angles.length}`);
       return brief;
     } catch (e: any) {
+      if (reserved) {
+        await rollbackGeminiRequest({
+          scope: 'article',
+          model: currentModelName,
+          purpose: 'strategy-brief',
+          target: order.target_keyword,
+        });
+        reserved = false;
+      }
+      // 課金残高切れは全モデル共通の恒久障害。ここで即座に打ち切り、後続のWriter/Editorも走らせない。
+      if (isGeminiAccountBlockedError(e)) {
+        reportGeminiAccountBlock(e, 'Strategy Brief');
+        throw e;
+      }
       if (isApiKeyInvalidError(e)) {
         console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
         console.error(`Google AI Studioで新しいAPIキーを再生成し、.env または GitHub Secrets の GEMINI_API_KEY に設定し直してください。\n`);
@@ -672,6 +684,7 @@ ${currentText}
 ${JSON.stringify(order, null, 2)}
 `;
 
+  let reserved = false;
   try {
     const model = genAI.getGenerativeModel({
       model: modelName,
@@ -689,6 +702,7 @@ ${JSON.stringify(order, null, 2)}
       purpose: 'writer-dynamic-expansion',
       target: order.target_keyword,
     });
+    reserved = true;
 
     const response = await model.generateContent(prompt);
     logGeminiUsage(`[Writer-Expansion] ${modelName}`, response.response);
@@ -708,6 +722,14 @@ ${JSON.stringify(order, null, 2)}
     const after = currentText.slice(headingIndex).trim();
     return `${before}\n\n${addition}\n\n${after}`.trim();
   } catch (err: any) {
+    if (reserved) {
+      await rollbackGeminiRequest({
+        scope: 'article',
+        model: modelName,
+        purpose: 'writer-dynamic-expansion',
+        target: order.target_keyword,
+      });
+    }
     console.error(`[Writer-Expansion Error] ${err.message}`);
     throw err;
   }
@@ -914,7 +936,7 @@ function normalizeDraftEntityMetadata(markdownText: string, order: WriteOrder): 
 /**
  * ライターエンジンを実行し、指定されたWriteOrderに基づいて記事ドラフトを生成する
  */
-export async function generateDraft(order: WriteOrder): Promise<{ success: boolean; filePath?: string; error?: string; retryable?: boolean; apiKeyInvalid?: boolean }> {
+export async function generateDraft(order: WriteOrder): Promise<{ success: boolean; filePath?: string; error?: string; retryable?: boolean; apiKeyInvalid?: boolean; accountBlocked?: boolean }> {
   let retryableFailure = false;
 
   try {
@@ -954,6 +976,7 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
         });
 
         const maxRequestAttempts = geminiRetryAttemptsForModel(currentModelName);
+        let reserved = false;
         for (let requestAttempt = 1; requestAttempt <= maxRequestAttempts; requestAttempt++) {
           try {
             await reserveGeminiRequest({
@@ -962,12 +985,28 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
               purpose: 'writer',
               target: order.target_keyword,
             });
+            reserved = true;
             result = await model.generateContent(prompt);
             usedModel = currentModelName;
             console.log(`[Writer] Model succeeded: ${usedModel}`);
             logGeminiUsage(`[Writer] ${usedModel}`, result.response);
             break; // 成功したら抜ける
           } catch (e: any) {
+            // API到達前に失敗した場合も含め、消費しなかった予約は日次台帳へ戻す。
+            if (reserved) {
+              await rollbackGeminiRequest({
+                scope: 'article',
+                model: currentModelName,
+                purpose: 'writer',
+                target: order.target_keyword,
+              });
+              reserved = false;
+            }
+            // 課金残高切れ／請求停止は全モデル共通。リトライも下位モデルも無意味なので即時中断する。
+            if (isGeminiAccountBlockedError(e)) {
+                reportGeminiAccountBlock(e, 'Writer');
+                throw e;
+            }
             if (isApiKeyInvalidError(e)) {
                 console.error(`\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。`);
                 console.error(`Google AI Studioで新しいAPIキーを再生成し、.env または GitHub Secrets の GEMINI_API_KEY に設定し直してください。\n`);
@@ -1015,6 +1054,7 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
           topK: 40,
         }
       });
+      let fallbackReserved = false;
       try {
         await reserveGeminiRequest({
           scope: 'article',
@@ -1022,11 +1062,24 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
           purpose: 'writer-fallback-gemma',
           target: order.target_keyword,
         });
+        fallbackReserved = true;
         result = await model.generateContent(prompt);
         usedModel = fallbackModel;
         console.log(`[Writer] Fallback to Gemma succeeded: ${usedModel}`);
         logGeminiUsage(`[Writer-Fallback] ${usedModel}`, result.response);
       } catch (fallbackErr: any) {
+        if (fallbackReserved) {
+          await rollbackGeminiRequest({
+            scope: 'article',
+            model: fallbackModel,
+            purpose: 'writer-fallback-gemma',
+            target: order.target_keyword,
+          });
+        }
+        if (isGeminiAccountBlockedError(fallbackErr)) {
+          reportGeminiAccountBlock(fallbackErr, 'Writer Gemma Fallback');
+          throw fallbackErr;
+        }
         console.error(`[Writer Fatal] Gemma fallback also failed: ${fallbackErr.message}`);
         throw new Error(`すべての生成モデルおよびGemmaフォールバックでの試行が失敗しました。${fallbackErr.message}`);
       }
@@ -1125,12 +1178,16 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
 
   } catch (error: any) {
     console.error(`[Writer Error] ${error.message}`);
-    const apiKeyInvalid = isApiKeyInvalidError(error);
+    const accountBlocked = isGeminiAccountBlockedError(error);
+    const apiKeyInvalid = !accountBlocked && isApiKeyInvalidError(error);
     return {
       success: false,
       error: error.message,
-      retryable: !apiKeyInvalid && (retryableFailure || error instanceof GeminiQuotaExceededError || isRetryableGeminiError(error)),
+      // accountBlocked は「待っても直らない」ため retryable には含めない。
+      retryable: !accountBlocked && !apiKeyInvalid
+        && (retryableFailure || error instanceof GeminiQuotaExceededError || isRetryableGeminiError(error)),
       apiKeyInvalid,
+      accountBlocked,
     };
   }
 }

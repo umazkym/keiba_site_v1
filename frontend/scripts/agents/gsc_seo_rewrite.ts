@@ -10,6 +10,7 @@ import {
   validateGscRewrite,
 } from './gsc_rewrite_guard';
 import type { WriteOrder } from './agent_writer';
+import { isGeminiAccountBlockedError, reportGeminiAccountBlock } from './gemini_error_policy';
 
 export type GscQueryInsight = {
   query: string;
@@ -260,6 +261,11 @@ ${structure.headings.map((heading, index) => `${index + 1}. ${heading}`).join('\
         structure.headings.length,
       );
     } catch (error) {
+      // 課金残高切れは全モデル共通の恒久障害。下位モデルを試しても必ず失敗するため即時中断する。
+      if (isGeminiAccountBlockedError(error)) {
+        reportGeminiAccountBlock(error, 'GSC Rewrite');
+        throw error;
+      }
       lastError = error;
       console.warn(`[GSC Rewrite] ${modelName} の提案生成に失敗しました。`);
     }

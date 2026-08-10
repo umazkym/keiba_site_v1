@@ -798,7 +798,7 @@ class SocialVideoRendererTest(unittest.TestCase):
                 title = renderer._long_title(venue, "2026-12-31")
                 self.assertLessEqual(len(essential), 40)
                 self.assertTrue(title.startswith(essential))
-                self.assertIn(f"12/31(木) {venue_name}", essential)
+                self.assertIn("12/31(木)", essential)
                 self.assertIn("全12レースAI分析", essential)
 
     def test_short_title_starts_with_date_venue_and_single_race_scope(self) -> None:

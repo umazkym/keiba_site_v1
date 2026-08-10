@@ -3674,7 +3674,7 @@ def _title_date_parts(target_date: str) -> tuple[str, str]:
 
 def _long_title_essential(venue: VenueVideoData, target_date: str) -> str:
     date_label, _ = _title_date_parts(target_date)
-    return f"{date_label} {venue.venue_name}｜全{len(venue.races)}レースAI分析"
+    return f"{date_label}｜全{len(venue.races)}レースAI分析"
 
 
 def _long_title(venue: VenueVideoData, target_date: str) -> str:
@@ -3778,101 +3778,6 @@ def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
         f"{year_label} #Shorts",
     ])
     return "｜".join(parts)[:100].rstrip("｜・ ")
-
-
-def _daily_long_title(venues: Sequence[VenueVideoData], target_date: str) -> str:
-    date_label, year_label = _title_date_parts(target_date)
-    races = _compilation_races(venues)
-    grade_names = "・".join(
-        race.display_name for race in _compilation_grade_races(venues)[:2]
-    )
-    parts = [
-        date_label,
-        f"全{len(races)}レースAI分析",
-    ]
-    if grade_names:
-        parts.append(grade_names)
-    parts.extend([
-        f"{_race_type_scope(venues)}予想",
-        year_label,
-    ])
-    return "｜".join(parts)[:100].rstrip("｜・ ")
-
-
-def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
-    if not races:
-        raise ValueError("Shortsの収録対象レースがありません")
-    date_label, year_label = _title_date_parts(target_date)
-    grade_races = [race for race in races if race.is_grade_race]
-    parts = [
-        date_label,
-        f"全{len(races)}レースAI分析",
-    ]
-    if grade_races:
-        displayed_names = "・".join(race.display_name for race in grade_races[:2])
-        parts.append(displayed_names)
-    parts.extend([
-        "AI競馬予想",
-        f"{year_label} #Shorts",
-    ])
-    return "｜".join(parts)[:100].rstrip("｜・ ")
-
-
-def _compilation_races(venues: Sequence[VenueVideoData]) -> List[RaceVideoData]:
-    return [race for venue in venues for race in venue.races]
-
-
-def _compilation_grade_races(venues: Sequence[VenueVideoData]) -> List[RaceVideoData]:
-    return [race for race in _compilation_races(venues) if race.is_grade_race]
-
-
-def _race_type_scope(venues: Sequence[VenueVideoData]) -> str:
-    types = {str(venue.race_type).strip() for venue in venues}
-    if "中央" in types and "地方" in types:
-        return "中央競馬・地方競馬"
-    if "中央" in types:
-        return "中央競馬"
-    if "地方" in types:
-        return "地方競馬"
-    return "競馬"
-
-
-def _daily_long_title(venues: Sequence[VenueVideoData], target_date: str) -> str:
-    date_label, year_label = _title_date_parts(target_date)
-    races = _compilation_races(venues)
-    essential = f"{date_label} 全{len(races)}レースAI分析｜{_race_type_scope(venues)}予想"
-    grade_names = "・".join(
-        race.display_name for race in _compilation_grade_races(venues)[:2]
-    )
-    suffix = f"｜{year_label}"
-    if grade_names:
-        remaining = max(0, 100 - len(essential) - len(suffix) - 1)
-        if remaining:
-            essential += f"｜{grade_names[:remaining].rstrip('・｜ ')}"
-    return f"{essential}{suffix}"[:100].rstrip("｜・ ")
-
-
-def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
-    if not races:
-        raise ValueError("Shortsの収録対象レースがありません")
-    date_label, year_label = _title_date_parts(target_date)
-    grade_races = [race for race in races if race.is_grade_race]
-    if grade_races:
-        displayed_names = "・".join(race.display_name for race in grade_races[:2])
-        more = "ほか" if len(grade_races) > 2 else ""
-        essential = (
-            f"{date_label} {displayed_names}{more}｜"
-            f"{len(grade_races)}重賞 AI競馬予想"
-        )
-        race_names = ""
-    else:
-        venue_names = "・".join(dict.fromkeys(race.venue_name for race in races))
-        essential = f"{date_label} {venue_names} 11R・最終R｜AI競馬予想TOP3"
-        race_names = ""
-    suffix = f"｜{year_label} #Shorts"
-    remaining = max(0, 100 - len(essential) - len(suffix) - 1)
-    middle = f"｜{race_names[:remaining].rstrip('・｜ ')}" if remaining and race_names else ""
-    return f"{essential}{middle}{suffix}"[:100].rstrip("｜・ ")
 
 
 def _format_chapter_timestamp(seconds: float) -> str:

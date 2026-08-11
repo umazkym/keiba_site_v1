@@ -1286,6 +1286,23 @@ header.glass {
   color: var(--slate-500-color);
 }
 
+@media (max-width: 639px) {
+  .venue-grid {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    gap: 6px;
+  }
+
+  .venue-chip {
+    min-height: 64px;
+    padding: 8px;
+    gap: 3px;
+  }
+
+  .venue-state {
+    white-space: nowrap;
+  }
+}
+
 /* Affiliate components */
 .affiliate {
   padding: 12px;

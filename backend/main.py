@@ -35,7 +35,6 @@ default_allow_origins = [
     "http://127.0.0.1:3000",
     "https://uma-free.com",
     "https://www.uma-free.com",
-    "https://keiba-site-v1-6brvxwn9l-umazkyms-projects.vercel.app",
 ]
 configured_allow_origins = [
     origin.strip().rstrip("/")

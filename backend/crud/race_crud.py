@@ -8,7 +8,7 @@ import time
 import threading
 import re
 import unicodedata
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 # ==============================================================================
 # TTLキャッシュ（Neon通信量削減）
@@ -63,6 +63,11 @@ class _TTLCache:
         with self._lock:
             self._store.pop(key, None)
 
+    def invalidate_prefix(self, prefix: str):
+        with self._lock:
+            for key in [key for key in self._store if key.startswith(prefix)]:
+                del self._store[key]
+
     def clear(self):
         with self._lock:
             self._store.clear()
@@ -76,6 +81,7 @@ _special_pick_cache = _TTLCache(max_entries=10)
 _matchup_cache = _TTLCache(max_entries=30)
 _accuracy_cache = _TTLCache(max_entries=5)
 _article_preview_cache = _TTLCache(max_entries=100)
+_race_detail_cache = _TTLCache(max_entries=200)
 
 
 _VENUE_SLUGS = {
@@ -187,6 +193,7 @@ def get_article_race_preview(db: Session, target_date: date, race_name: str) -> 
 def invalidate_predictions_cache(target_date: date) -> None:
     """同一プロセス内のキャッシュを強制削除（GitHub Actions→Render間は不可）"""
     _predictions_cache.invalidate(f"pred_{target_date.isoformat()}")
+    _race_detail_cache.invalidate_prefix(f"race_detail:{target_date.isoformat()}:")
 
 
 def _get_cache_ttl(target_date: date, has_data: bool, has_results: bool = True) -> int:
@@ -199,8 +206,12 @@ def _get_cache_ttl(target_date: date, has_data: bool, has_results: bool = True) 
     if target_date < today and not has_results:
         return 60  # 過去日の予想はあるが結果未反映なら、SNS・表示用に長時間キャッシュしない
 
-    if target_date < today - timedelta(days=1):
-        return 14400  # 2日以上前: 4時間
+    age_days = (today - target_date).days
+    if age_days >= 15:
+        return 2592000  # 15日以上前: 30日
+
+    if age_days >= 2:
+        return 86400  # 2〜14日前: 24時間
 
     if target_date == today - timedelta(days=1):
         now_jst = datetime.now(_JST)
@@ -215,7 +226,32 @@ def _get_cache_ttl(target_date: date, has_data: bool, has_results: bool = True) 
     return 1800  # 翌日以降: 30分
 
 
-def _serialize_race_for_cache(race, advantages: list) -> dict:
+def _published_entity_ids(
+    db: Session,
+    entity_type: str,
+    entity_ids: List[str],
+) -> set[str]:
+    """検索公開済みの詳細ページIDを一括取得する。"""
+    normalized_ids = sorted({str(entity_id) for entity_id in entity_ids if entity_id})
+    if not normalized_ids:
+        return set()
+    rows = (
+        db.query(models.DataPagePublication.entity_id)
+        .filter(
+            models.DataPagePublication.entity_type == entity_type,
+            models.DataPagePublication.entity_id.in_(normalized_ids),
+            models.DataPagePublication.status == "published",
+        )
+        .all()
+    )
+    return {str(row[0]) for row in rows}
+
+
+def _serialize_race_for_cache(
+    race,
+    advantages: list,
+    published_horse_ids: set[str] | None = None,
+) -> dict:
     """
     SQLAlchemy オブジェクトを純粋な dict に変換してキャッシュする。
 
@@ -242,6 +278,7 @@ def _serialize_race_for_cache(race, advantages: list) -> dict:
                 'mark': p.mark,
                 'start_1c_indicator': p.start_1c_indicator,
                 'unpredictable_reason': p.unpredictable_reason,
+                'detail_page_indexable': p.horse_id in (published_horse_ids or set()),
             }
             for p in sorted(
                 race.predictions,
@@ -303,6 +340,12 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
         _predictions_cache.set(cache_key, empty, 60)
         return empty
 
+    published_horse_ids = _published_entity_ids(
+        db,
+        "horse",
+        [prediction.horse_id for race in races_with_preds for prediction in race.predictions],
+    )
+
     race_conditions = {
         (race.venue_name, race.course_type, race.distance)
         for race in races_with_preds
@@ -330,7 +373,7 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
             (race.venue_name, race.course_type, race.distance), []
         ) if race.venue_name and race.course_type and race.distance else []
 
-        race_dict = _serialize_race_for_cache(race, advantages)
+        race_dict = _serialize_race_for_cache(race, advantages, published_horse_ids)
 
         if race.race_type == '中央':
             jra_venues[race.venue_name].append(race_dict)
@@ -348,6 +391,103 @@ def get_predictions_by_date(db: Session, target_date: date) -> Dict[str, Any]:
         else any(race.results for race in races_with_preds)
     )
     _predictions_cache.set(cache_key, result, _get_cache_ttl(target_date, has_data, has_results))
+    return result
+
+
+def _venue_names_for_slug(venue_slug: str) -> List[str]:
+    """安定URLのslugをDB上の競馬場名候補へ変換する。"""
+    try:
+        decoded = unquote(venue_slug).strip()
+    except (UnicodeDecodeError, ValueError):
+        return []
+    normalized_slug = decoded.casefold()
+    names = [
+        venue_name
+        for venue_name, slug in _VENUE_SLUGS.items()
+        if slug.casefold() == normalized_slug
+    ]
+    if names:
+        return names
+    if re.fullmatch(r"[a-z0-9-]+", normalized_slug):
+        return []
+    normalized_name = re.sub(r"\s+", "", decoded.replace("競馬場", ""))
+    return [normalized_name] if normalized_name else []
+
+
+def get_prediction_detail(
+    db: Session,
+    target_date: date,
+    venue_slug: str,
+    race_number: int,
+) -> Optional[Dict[str, Any]]:
+    """レース詳細ページ用に対象レース1件と最小限の場内導線だけを返す。"""
+    normalized_slug = venue_slug.strip().casefold()
+    cache_key = f"race_detail:{target_date.isoformat()}:{normalized_slug}:{race_number}"
+    cached = _race_detail_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    venue_names = _venue_names_for_slug(venue_slug)
+    if not venue_names or not 1 <= race_number <= 18:
+        return None
+
+    race = (
+        db.query(models.Race)
+        .options(
+            selectinload(models.Race.predictions),
+            selectinload(models.Race.results).selectinload(models.Result.horse),
+        )
+        .filter(
+            models.Race.race_date == target_date,
+            models.Race.venue_name.in_(venue_names),
+            models.Race.race_number == race_number,
+        )
+        .first()
+    )
+    if race is None or not race.predictions:
+        return None
+
+    race_numbers = [
+        int(row[0])
+        for row in (
+            db.query(models.Race.race_number)
+            .filter(
+                models.Race.race_date == target_date,
+                models.Race.venue_name == race.venue_name,
+            )
+            .order_by(models.Race.race_number)
+            .all()
+        )
+    ]
+    advantages = []
+    if race.venue_name and race.course_type and race.distance:
+        advantages = (
+            db.query(models.HorseNumberAdvantage)
+            .filter(
+                models.HorseNumberAdvantage.venue_name == race.venue_name,
+                models.HorseNumberAdvantage.course_type == race.course_type,
+                models.HorseNumberAdvantage.distance == race.distance,
+            )
+            .order_by(models.HorseNumberAdvantage.horse_number)
+            .all()
+        )
+    published_horse_ids = _published_entity_ids(
+        db,
+        "horse",
+        [prediction.horse_id for prediction in race.predictions],
+    )
+    result = {
+        "race_type": race.race_type,
+        "venue_name": race.venue_name,
+        "race": _serialize_race_for_cache(race, advantages, published_horse_ids),
+        "race_numbers": race_numbers,
+    }
+    has_results = bool(race.results) if target_date < datetime.now(_JST).date() else True
+    _race_detail_cache.set(
+        cache_key,
+        result,
+        _get_cache_ttl(target_date, has_data=True, has_results=has_results),
+    )
     return result
 
 

@@ -21,13 +21,19 @@ export function RaceHorseActions({ predictions }: { predictions: HorsePrediction
             <div className="divide-y divide-slate-100 border-t border-slate-200 bg-white">
                 {predictions.map((horse) => (
                     <div key={horse.horse_id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                        <Link
-                            prefetch={false}
-                            href={`/horses/${encodeURIComponent(horse.horse_id)}`}
-                            className="font-bold text-slate-900 transition-colors duration-150 hover:text-primary"
-                        >
-                            {horse.horse_number}番 {horse.horse_name}
-                        </Link>
+                        {horse.detail_page_indexable ? (
+                            <Link
+                                prefetch={false}
+                                href={`/horses/${encodeURIComponent(horse.horse_id)}`}
+                                className="font-bold text-slate-900 transition-colors duration-150 hover:text-primary"
+                            >
+                                {horse.horse_number}番 {horse.horse_name}
+                            </Link>
+                        ) : (
+                            <span className="font-bold text-slate-900">
+                                {horse.horse_number}番 {horse.horse_name}
+                            </span>
+                        )}
                         <div className="flex flex-wrap gap-2">
                             <DataFavoriteButton
                                 entityType="horse"

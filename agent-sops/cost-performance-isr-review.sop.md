@@ -86,6 +86,19 @@ Cloud Runへ複数サービスを置く場合、フロント単体ではなく�
 - You MUST use green thresholds below free-tier boundaries and red thresholds before a likely overage: CPU 72,000/120,000秒、メモリ144,000/240,000 GiB秒、request 800,000/1,400,000、internet egress 2/10 GiB.
 - You MUST NOT configure a Cloud Run hard spend cap when continuous site availability is the agreed priority because reaching it can pause the frontend and API together.
 
+### 7. Monitor database inter-zone transfer and degrade only archive bot misses
+
+GCE PostgreSQLからCloud Runへのゾーン間転送は、APIの外向き応答が小さくてもORMが日付全体を読み込むと課金要因になります。レース詳細は`GET /api/v1/predictions/detail/{target_date}/{venue_slug}/{race_number}`を使い、対象1レースと同会場のレース番号だけを取得します。
+
+**Constraints:**
+
+- You MUST collect `compute.googleapis.com/instance/network/sent_bytes_count` for `keiba-db` over the latest 24 hours and 7 days.
+- You MUST warn at 0.5 GiB/24h and treat 2 GiB/24h or 10 GiB/7d, or missing DB metrics, as red.
+- You MUST keep red mode limited to bot cache misses on race archives older than 14 days and unpublished data pages; humans, current races, articles, and already cached stale pages remain available.
+- You MUST require 24-hour transfer to fall below 0.5 GiB before automatically leaving red mode; a short-lived drop is not sufficient.
+- You MUST keep DB `e2-micro`, internal IP, Direct VPC egress, and IAP-only maintenance access unless an explicit cost review approves a topology change.
+- You MUST NOT introduce Cloud SQL, Redis, a VPC Connector, public DB IP, or broad firewall rules as a transfer-cost workaround because they add fixed cost or reopen network exposure without removing the oversized query root cause.
+
 ## Source references
 
 - `AGENTS.md`
@@ -95,6 +108,9 @@ Cloud Runへ複数サービスを置く場合、フロント単体ではなく�
 - `frontend/app/races/[date]/page.tsx`
 - `frontend/app/races/[date]/[venue]/[race]/page.tsx`
 - `backend/main.py`
+- `backend/scripts/agents/cloud_run_capacity.py`
+- `.github/workflows/keiba-db-egress-guard.yml`
+- `.github/workflows/purge-race-cache.yml`
 
 ## Examples
 

@@ -1,0 +1,179 @@
+name: Keiba DB Egress Guard
+
+on:
+  schedule:
+    # 毎時17分。Cloud Monitoringの集計遅延を考慮して時刻境界を避ける。
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 判定したアーカイブガード状態をCloud Runへ反映する
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: keiba-db-egress-guard
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: keiba-api-project
+  REGION: us-west1
+  SERVICE_NAME: keiba-frontend-v1
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install monitoring dependencies
+        run: >-
+          pip install
+          google-api-python-client
+          google-auth
+          google-cloud-monitoring
+
+      - name: Authenticate monitoring account
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/761440273070/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+          service_account: github-actions-iap-db@keiba-api-project.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Prepare report directory
+        shell: bash
+        run: mkdir -p "$RUNNER_TEMP/db-egress-guard"
+
+      - name: Collect Cloud Run and DB network metrics
+        run: >-
+          python backend/scripts/agents/cloud_run_capacity.py
+          --project-id "$PROJECT_ID"
+          --service-config keiba-frontend-v1,1,1,2
+          --service-config keiba-site-v1,1,0.5,3
+          --db-instance-name keiba-db
+          --db-zone us-west1-b
+          --output-json "$RUNNER_TEMP/db-egress-guard/capacity.json"
+
+      - name: Authenticate Cloud Run deploy account
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/761440273070/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+          service_account: ${{ vars.GCP_FRONTEND_DEPLOY_SERVICE_ACCOUNT || 'github-actions-cloud-run@keiba-api-project.iam.gserviceaccount.com' }}
+
+      - name: Read current archive guard mode
+        id: current
+        shell: bash
+        run: |
+          set -euo pipefail
+          SERVICE_JSON="$(gcloud run services describe "$SERVICE_NAME" \
+            --project="$PROJECT_ID" \
+            --region="$REGION" \
+            --format=json)"
+          CURRENT_MODE="$(jq -r '
+            [.spec.template.spec.containers[0].env[]? | select(.name == "ARCHIVE_COST_GUARD_MODE") | .value][0] // "normal"
+          ' <<<"$SERVICE_JSON")"
+          echo "mode=$CURRENT_MODE" >> "$GITHUB_OUTPUT"
+
+      - name: Decide archive guard mode
+        id: guard
+        env:
+          CURRENT_MODE: ${{ steps.current.outputs.mode }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          metrics = json.loads(
+              (Path(os.environ["RUNNER_TEMP"]) / "db-egress-guard" / "capacity.json")
+              .read_text(encoding="utf-8")
+          )
+          current = os.environ.get("CURRENT_MODE") or "normal"
+          available = bool(metrics.get("db_network_metrics_available"))
+          sent_24h = float(metrics.get("db_sent_gib_24h") or 0.0)
+          sent_7d = float(metrics.get("db_sent_gib_7d") or 0.0)
+          red = not available or sent_24h >= 2.0 or sent_7d >= 10.0
+          recovered = available and sent_24h < 0.5
+
+          if red:
+              desired = "stale-only"
+              reason = "DB送信量がRed、または指標取得不能"
+          elif current == "stale-only" and not recovered:
+              desired = "stale-only"
+              reason = "0.5GiB/24h未満が確認できるまで縮退を維持"
+          else:
+              desired = "normal"
+              reason = "DB送信量が復旧条件内"
+
+          output = Path(os.environ["GITHUB_OUTPUT"])
+          with output.open("a", encoding="utf-8") as handle:
+              handle.write(f"desired={desired}\n")
+              handle.write(f"reason={reason}\n")
+              handle.write(f"sent_24h={sent_24h:.4f}\n")
+              handle.write(f"sent_7d={sent_7d:.4f}\n")
+              handle.write(f"metrics_available={str(available).lower()}\n")
+          PY
+
+      - name: Apply archive guard mode
+        if: >-
+          steps.guard.outputs.desired != steps.current.outputs.mode &&
+          (github.event_name == 'schedule' || inputs.apply == true)
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run services update "$SERVICE_NAME" \
+            --project="$PROJECT_ID" \
+            --region="$REGION" \
+            --update-env-vars="ARCHIVE_COST_GUARD_MODE=${{ steps.guard.outputs.desired }}" \
+            --quiet
+
+          UPDATED_MODE="$(gcloud run services describe "$SERVICE_NAME" \
+            --project="$PROJECT_ID" \
+            --region="$REGION" \
+            --format=json | jq -r '
+              [.spec.template.spec.containers[0].env[]? | select(.name == "ARCHIVE_COST_GUARD_MODE") | .value][0] // "normal"
+            ')"
+          test "$UPDATED_MODE" = "${{ steps.guard.outputs.desired }}"
+
+      - name: Add result to Actions Summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "# DB送信量ガード"
+            echo ""
+            echo "- 指標取得: ${{ steps.guard.outputs.metrics_available }}"
+            echo "- 24時間送信量: ${{ steps.guard.outputs.sent_24h }} GiB"
+            echo "- 7日送信量: ${{ steps.guard.outputs.sent_7d }} GiB"
+            echo "- 現在モード: ${{ steps.current.outputs.mode }}"
+            echo "- 判定モード: ${{ steps.guard.outputs.desired }}"
+            echo "- 理由: ${{ steps.guard.outputs.reason }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload guard report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-egress-guard-${{ github.run_id }}
+          path: ${{ runner.temp }}/db-egress-guard/capacity.json
+          if-no-files-found: warn
+          retention-days: 30

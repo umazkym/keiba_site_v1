@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from database.database import get_db
@@ -22,28 +22,21 @@ def _cache_control_for_date(target_date: date) -> str:
     CDN（Google Frontend）・Vercel・ブラウザに伝わる。
     race_crud の in-memory TTL と整合させること。
 
-    - 2日以上前: 4時間（結果確定済み・変化なし）
-    - 昨日結果確定後（JST 06:00以降）: 4時間
-    - 昨日結果未確定（JST 06:00前）: 5分
-    - 当日: 15分 + stale-while-revalidate=60（レース更新を素早く反映）
-    - 翌日以降: 30分 + stale-while-revalidate=60（データ投入前の段階）
+    - 当日・前日・翌日: 5分
+    - 2〜14日前: 24時間 + stale 7日
+    - 15日以上前: 30日 + stale/stale-if-error 90日
     """
     today = datetime.now(_JST).date()
 
-    if target_date < today - timedelta(days=1):
-        return "public, max-age=14400"  # 2日以上前: 4時間
-
-    if target_date == today - timedelta(days=1):
-        now_jst = datetime.now(_JST)
-        if now_jst.hour >= _RESULTS_DONE_HOUR_JST:
-            return "public, max-age=14400"  # 昨日・結果確定後: 4時間
-        else:
-            return "public, max-age=300"    # 昨日・結果未確定: 5分
-
-    if target_date == today:
-        return "public, max-age=900, stale-while-revalidate=60"  # 当日: 15分
-
-    return "public, max-age=1800, stale-while-revalidate=60"  # 翌日以降: 30分
+    age_days = (today - target_date).days
+    if age_days >= 15:
+        return (
+            "public, max-age=2592000, stale-while-revalidate=7776000, "
+            "stale-if-error=7776000"
+        )
+    if age_days >= 2:
+        return "public, max-age=86400, stale-while-revalidate=604800"
+    return "public, max-age=300, stale-while-revalidate=3600"
 # ▲▲▲ Cache-Control制御ヘルパー ▲▲▲
 
 
@@ -93,6 +86,31 @@ def read_article_race_preview(
     result = race_crud.get_article_race_preview(db=db, target_date=target_date, race_name=race_name)
     max_age = 3600 if target_date < datetime.now(_JST).date() else 300
     response.headers["Cache-Control"] = f"public, max-age={max_age}, stale-while-revalidate=60"
+    return result
+
+
+@router.get(
+    "/detail/{target_date}/{venue_slug}/{race_number}",
+    response_model=race_schema.RaceDetailPrediction,
+)
+def read_prediction_detail(
+    target_date: date,
+    venue_slug: str,
+    response: Response,
+    race_number: int = Path(..., ge=1, le=18),
+    db: Session = Depends(get_db),
+):
+    """レース詳細ページ向けに対象レース1件と場内レース番号だけを返す。"""
+    result = race_crud.get_prediction_detail(
+        db=db,
+        target_date=target_date,
+        venue_slug=venue_slug,
+        race_number=race_number,
+    )
+    if result is None:
+        response.headers["Cache-Control"] = "no-store"
+        raise HTTPException(status_code=404, detail="Race prediction not found")
+    response.headers["Cache-Control"] = _cache_control_for_date(target_date)
     return result
 
 

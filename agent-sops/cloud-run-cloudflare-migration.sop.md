@@ -99,6 +99,19 @@ Cloudflare経由でhealth、主要HTML、資産、広告・計測、サイトマ
 - You MUST verify both proxied and DNS-only recovery paths before declaring migration complete.
 - You MUST NOT claim zero cost solely from configuration because egress、Artifact Registry、Cloud Run超過は実測が必要。
 
+### 8. Keep date-aware caching and archive protection aligned
+
+レースHTML、RSC取得、バックエンドAPIで別々のTTLを持たせず、JSTの日付差で同じ階層へ分類します。当日・前日・翌日は5分、2〜14日前は24時間かつstale 7日、15日以上前は30日かつstale/stale-if-error 90日です。馬・騎手・調教師・コース詳細は24時間かつstale 7日です。
+
+**Constraints:**
+
+- You MUST place the public HTML eligibility rule before the final protocol bypass rule and verify an ordinary HTML request changes from `MISS` to `HIT` or `REVALIDATED` on the second request.
+- You MUST bypass `/api/`, RSC, Next router prefetch, Server Actions, and non-GET/HEAD requests.
+- You MUST respect origin `Cache-Control`; do not overwrite date-aware TTLs with one Cloudflare edge TTL.
+- You MUST preserve stale responses during origin errors so `ARCHIVE_COST_GUARD_MODE=stale-only` can reject only uncached crawler requests before they reach the DB.
+- You MUST use a separate least-privilege GitHub secret `CLOUDFLARE_CACHE_PURGE_API_TOKEN` with Zone Cache Purge permission for exact-URL purge. Do not reuse the Account Analytics read-only token.
+- You MUST purge only the repaired date page and its race detail URLs after the backend and frontend date caches have been invalidated.
+
 ## Source references
 
 - `AGENTS.md`
@@ -108,6 +121,8 @@ Cloudflare経由でhealth、主要HTML、資産、広告・計測、サイトマ
 - `frontend/Dockerfile`
 - `backend/scripts/agents/cloud_run_capacity.py`
 - `backend/scripts/agents/data_page_publication.py`
+- `.github/workflows/keiba-db-egress-guard.yml`
+- `.github/workflows/purge-race-cache.yml`
 - `agent-sops/cost-performance-isr-review.sop.md`
 - `agent-sops/frontend-build-release-verification.sop.md`
 - `agent-sops/production-db-iap-maintenance.sop.md`

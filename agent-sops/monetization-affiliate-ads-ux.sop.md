@@ -72,6 +72,7 @@ Constraints for parameter acquisition:
 
 - You MUST preserve `affiliate_impression`, `affiliate_click`, and relevant context/campaign parameters when touching affiliate components.
 - You MUST send singular `provider` and `link_id` on both affiliate impression and click events. Keep `providers` on impressions only for compatibility with multi-link slots.
+- You MUST verify mode-dependent placement behavior with the affiliate regression test during the production build; validating environment variable values alone does not prove that hidden placements are absent from the DOM.
 - You SHOULD preserve or update Clarity custom event linkage when adding new monetization events.
 - You MUST run `npx tsc --noEmit` for TypeScript changes.
 - You SHOULD run `npm run build` when page-level ad or affiliate placement changes.
@@ -160,3 +161,5 @@ provider: rakuten_keiba
 ### クリックは多いが成約が伸びない
 
 リンクを派手にする前に、成果条件、提携状態、Cookie期間、反映時間、配置別リンクの発行可否、Clarity録画、入口文言、ページ文脈、誤認の有無を確認します。新規登録が成果条件なら、既存会員や投票画面閲覧だけの利用者へ広く露出せず、対象者と必要な登録情報を明示します。単一リンクの投票カードでも枠全体をリンクにせず、44px以上の明示CTAだけを操作対象にします。中央競馬ページでは地方競馬サービスへの導線を原則表示しません。
+
+ASPの生クリック数がGA4の同期間`affiliate_click`を大きく上回る場合、生クリックには反復操作、クローラ、リンクスキャナが含まれ得ます。生クリックはリンク疎通の確認値に留め、成果件数・報酬はGA4のCTAクリック数とユーザー数を併記して判断します。テキストリンクでASP側の表示回数が0でも、表示ピクセルを埋め込んでいない構成なら障害とは扱いません。

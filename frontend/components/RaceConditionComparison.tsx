@@ -76,9 +76,15 @@ export function RaceConditionComparison({ raceId }: { raceId: string }) {
                                     {data.runners.map((runner) => (
                                         <tr key={runner.horse_id}>
                                             <th className="px-3 py-3 text-left">
-                                                <Link prefetch={false} href={`/horses/${encodeURIComponent(runner.horse_id)}`} className="font-bold text-slate-900 hover:text-primary">
-                                                    {runner.horse_number ?? '—'}番 {runner.horse_name}
-                                                </Link>
+                                                {runner.horse_detail_page_indexable ? (
+                                                    <Link prefetch={false} href={`/horses/${encodeURIComponent(runner.horse_id)}`} className="font-bold text-slate-900 hover:text-primary">
+                                                        {runner.horse_number ?? '—'}番 {runner.horse_name}
+                                                    </Link>
+                                                ) : (
+                                                    <span className="font-bold text-slate-900">
+                                                        {runner.horse_number ?? '—'}番 {runner.horse_name}
+                                                    </span>
+                                                )}
                                             </th>
                                             <td className="px-3 py-3 text-right font-mono tabular-nums text-slate-700">
                                                 {rate(runner.horse_overall.place_rate, runner.horse_overall.sample_size)}
@@ -87,21 +93,21 @@ export function RaceConditionComparison({ raceId }: { raceId: string }) {
                                                 {rate(runner.horse_condition.place_rate, runner.horse_condition.sample_size)}
                                             </td>
                                             <td className="px-3 py-3 font-bold text-slate-700">
-                                                {runner.jockey_id ? (
+                                                {runner.jockey_id && runner.jockey_detail_page_indexable ? (
                                                     <Link prefetch={false} href={`/jockeys/data/${encodeURIComponent(runner.jockey_id)}`} className="hover:text-primary">
                                                         {runner.jockey_name ?? '—'}
                                                     </Link>
-                                                ) : '—'}
+                                                ) : (runner.jockey_name ?? '—')}
                                             </td>
                                             <td className="px-3 py-3 text-right font-mono tabular-nums text-slate-700">
                                                 {rate(runner.jockey_condition.place_rate, runner.jockey_condition.sample_size)}
                                             </td>
                                             <td className="px-3 py-3 font-bold text-slate-700">
-                                                {runner.trainer_id ? (
+                                                {runner.trainer_id && runner.trainer_detail_page_indexable ? (
                                                     <Link prefetch={false} href={`/trainers/${encodeURIComponent(runner.trainer_id)}`} className="hover:text-primary">
                                                         {runner.trainer_name ?? '—'}
                                                     </Link>
-                                                ) : '—'}
+                                                ) : (runner.trainer_name ?? '—')}
                                             </td>
                                             <td className="px-3 py-3 text-right font-mono tabular-nums text-slate-700">
                                                 {rate(runner.trainer_condition.place_rate, runner.trainer_condition.sample_size)}

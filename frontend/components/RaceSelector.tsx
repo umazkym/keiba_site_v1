@@ -4,6 +4,7 @@ import { RacePrediction } from "@/lib/types";
 export type RaceSelectorLink = {
   raceNumber: number;
   href: string;
+  rel?: 'nofollow';
 };
 
 type Props = {
@@ -21,12 +22,14 @@ export const RaceSelector = ({ races, selectedIndex, onSelectRace, raceLinks, on
         key: `race-link-${link.raceNumber}`,
         raceNumber: link.raceNumber,
         href: link.href,
+        rel: link.rel,
         raceIndex: races.findIndex(race => race.race_number === link.raceNumber),
       }))
     : races.map((race, index) => ({
         key: race.id,
         raceNumber: race.race_number,
         href: null,
+        rel: undefined,
         raceIndex: index,
       }));
 
@@ -51,6 +54,7 @@ export const RaceSelector = ({ races, selectedIndex, onSelectRace, raceLinks, on
             key={option.key}
             href={option.href}
             prefetch={false}
+            rel={option.rel}
             onClick={(event) => onSelectRaceLink?.(
               option.raceNumber,
               option.href,

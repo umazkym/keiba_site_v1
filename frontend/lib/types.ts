@@ -17,6 +17,7 @@ export interface HorsePrediction {
     start_1c_indicator: number | null;
     rank: number | null;
     unpredictable_reason?: string | null; // ★★★ 追加 ★★★
+    detail_page_indexable?: boolean;
 }
 
 export interface MatchupRecord {
@@ -98,6 +99,13 @@ export interface WeeklyGradeRace {
     race_name: string;
     race_type?: "中央" | "地方" | string | null;
     grade: string; // "G1", "G2", "G3", "Jpn1", "Jpn2", "Jpn3", "地方重賞"
+}
+
+export interface RaceDetailPrediction {
+    race_type: string;
+    venue_name: string;
+    race: RacePrediction;
+    race_numbers: number[];
 }
 
 export interface ArticleRacePreviewPrediction {
@@ -363,6 +371,9 @@ export interface RunnerFeature {
     jockey_name: string | null;
     trainer_id: string | null;
     trainer_name: string | null;
+    horse_detail_page_indexable?: boolean;
+    jockey_detail_page_indexable?: boolean;
+    trainer_detail_page_indexable?: boolean;
     deviation_score: number | null;
     mark: string | null;
     horse_overall: RateSummary;

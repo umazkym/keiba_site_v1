@@ -91,7 +91,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, s-maxage=86400, stale-while-revalidate=604800',
+            value: 'public, s-maxage=86400, stale-while-revalidate=604800, stale-if-error=604800',
           },
         ],
       },
@@ -100,7 +100,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, s-maxage=86400, stale-while-revalidate=604800',
+            value: 'public, s-maxage=86400, stale-while-revalidate=604800, stale-if-error=604800',
           },
         ],
       },
@@ -109,7 +109,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, s-maxage=86400, stale-while-revalidate=604800',
+            value: 'public, s-maxage=86400, stale-while-revalidate=604800, stale-if-error=604800',
           },
         ],
       },
@@ -118,16 +118,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, s-maxage=86400, stale-while-revalidate=604800',
-          },
-        ],
-      },
-      {
-        source: '/races/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, s-maxage=3600, stale-while-revalidate=604800',
+            value: 'public, s-maxage=86400, stale-while-revalidate=604800, stale-if-error=604800',
           },
         ],
       },

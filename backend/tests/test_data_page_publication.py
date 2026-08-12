@@ -105,6 +105,9 @@ class DataPagePublicationTest(unittest.TestCase):
 
         mode, _ = determine_capacity_mode({
             "cloud_run_metrics_available": True,
+            "db_network_metrics_available": True,
+            "db_sent_gib_24h": 0.1,
+            "db_sent_gib_7d": 0.7,
             "projected_monthly_vcpu_seconds": 50000,
             "error_rate": 0.001,
             "p95_latency_ms": 800,
@@ -115,6 +118,9 @@ class DataPagePublicationTest(unittest.TestCase):
 
         mode, _ = determine_capacity_mode({
             "cloud_run_metrics_available": True,
+            "db_network_metrics_available": True,
+            "db_sent_gib_24h": 0.1,
+            "db_sent_gib_7d": 0.7,
             "projected_monthly_vcpu_seconds": 50000,
             "error_rate": 0.001,
             "p95_latency_ms": 800,
@@ -126,6 +132,9 @@ class DataPagePublicationTest(unittest.TestCase):
     def test_capacity_mode_uses_all_free_tier_dimensions(self) -> None:
         base = {
             "cloud_run_metrics_available": True,
+            "db_network_metrics_available": True,
+            "db_sent_gib_24h": 0.1,
+            "db_sent_gib_7d": 0.7,
             "projected_monthly_vcpu_seconds": 50000,
             "projected_monthly_gib_seconds": 100000,
             "projected_monthly_requests": 500000,
@@ -155,6 +164,21 @@ class DataPagePublicationTest(unittest.TestCase):
         mode, reasons = determine_capacity_mode(egress_red)
         self.assertEqual(mode, "red")
         self.assertTrue(any("送信量" in reason for reason in reasons))
+
+        db_warning = {**base, "db_sent_gib_24h": 0.5}
+        mode, reasons = determine_capacity_mode(db_warning)
+        self.assertEqual(mode, "yellow")
+        self.assertTrue(any("DB送信量" in reason for reason in reasons))
+
+        db_red = {**base, "db_sent_gib_24h": 2.0}
+        mode, reasons = determine_capacity_mode(db_red)
+        self.assertEqual(mode, "red")
+        self.assertTrue(any("24時間" in reason for reason in reasons))
+
+        db_week_red = {**base, "db_sent_gib_7d": 10.0}
+        mode, reasons = determine_capacity_mode(db_week_red)
+        self.assertEqual(mode, "red")
+        self.assertTrue(any("7日" in reason for reason in reasons))
 
     def test_initial_seed_stops_when_capacity_is_red(self) -> None:
         rows = []
@@ -300,7 +324,7 @@ class CloudRunCapacityTest(unittest.TestCase):
                 "window_end": "2026-08-04T00:00:00+00:00",
             },
         ])
-        self.assertEqual(aggregate["schema_version"], "cloud-run-capacity.v2")
+        self.assertEqual(aggregate["schema_version"], "cloud-run-capacity.v3")
         self.assertTrue(aggregate["cloud_run_metrics_available"])
         self.assertEqual(aggregate["projected_monthly_vcpu_seconds"], 45000)
         self.assertEqual(aggregate["projected_monthly_gib_seconds"], 37500)

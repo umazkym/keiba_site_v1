@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import RacePageClient from "@/components/RacePageClient";
 import { formatDate } from "@/lib/utils";
-import { RaceDayPrediction, RacePrediction, VenueRaces } from "@/lib/types";
 import { Suspense } from 'react';
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { notFound, redirect } from 'next/navigation';
@@ -12,17 +11,15 @@ import {
     getRaceDetailPath,
     getRaceIndexPolicy,
     isGradeRaceName,
-    isVenueSlugForName,
     isValidRaceDate,
     parseRaceNumberParam,
 } from '@/lib/race-url';
 import {
-    getRacePageData,
-    getStrictPredictionsForDate,
-    hasRaceDayData,
+    getRaceDetailPageData,
+    getStrictRaceDetailPrediction,
 } from '@/lib/race-page-data';
 
-export const revalidate = 3600;
+export const revalidate = 2592000;
 export const dynamicParams = true;
 
 export function generateStaticParams() {
@@ -52,40 +49,6 @@ const RacePageSkeleton = () => (
     </div>
 );
 
-function findRaceByStablePath(
-    predictionData: RaceDayPrediction | null,
-    venueSlug: string,
-    raceNumber: number,
-): { venue: VenueRaces; race: RacePrediction } | null {
-    const venues = [...(predictionData?.jra ?? []), ...(predictionData?.nar ?? [])];
-
-    for (const venue of venues) {
-        if (!isVenueSlugForName(venueSlug, venue.venue_name)) continue;
-        const race = venue.races.find((item) => item.race_number === raceNumber);
-        if (race) {
-            return { venue, race };
-        }
-    }
-
-    return null;
-}
-
-function buildSelectedRacePredictionData(
-    predictionData: RaceDayPrediction,
-    selectedVenue: VenueRaces,
-    selectedRace: RacePrediction,
-): RaceDayPrediction {
-    const isJraVenue = (predictionData.jra ?? []).some((venue) => venue.venue_name === selectedVenue.venue_name);
-    const venueData = {
-        ...selectedVenue,
-        races: [selectedRace],
-    };
-
-    return isJraVenue
-        ? { jra: [venueData], nar: [] }
-        : { jra: [], nar: [venueData] };
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const raceNumber = parseRaceNumberParam(params.race);
     const formattedDate = formatDate(params.date);
@@ -102,21 +65,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         };
     }
 
-    const predictionData = await getStrictPredictionsForDate(params.date);
-    const selected = findRaceByStablePath(predictionData, params.venue, raceNumber);
-    const raceName = selected?.race.race_name;
-    const venueName = selected?.venue.venue_name;
+    const detail = await getStrictRaceDetailPrediction(params.date, params.venue, raceNumber);
+    const raceName = detail?.race.race_name;
+    const venueName = detail?.venue_name;
     const indexPolicy = getRaceIndexPolicy(params.date, {
         isGradeRace: isGradeRaceName(raceName),
     });
-    const courseLabel = selected?.race.course_type && selected.race.distance
-        ? `${selected.race.course_type}${selected.race.distance}m`
+    const courseLabel = detail?.race.course_type && detail.race.distance
+        ? `${detail.race.course_type}${detail.race.distance}m`
         : '';
-    const seoTitle = selected
+    const seoTitle = detail
         ? `${venueName}${raceNumber}R ${raceName} AI予想・出走馬分析`
         : `${formattedDate} ${raceNumber}R AI競馬データ分析`;
     const socialTitle = `${seoTitle} | UMA-FREE`;
-    const seoDescription = selected
+    const seoDescription = detail
         ? `${formattedDate} ${venueName}${raceNumber}R ${raceName}${courseLabel ? `（${courseLabel}）` : ''}のAI予想。出走馬のAI偏差値、枠順、脚質、展開材料を無料で確認できます。`
         : `${formattedDate} ${raceNumber}RのAI競馬データ分析。AI偏差値、枠順、脚質、展開材料を確認できます。`;
 
@@ -148,60 +110,53 @@ export default async function RaceDetailPage({ params }: Props) {
         notFound();
     }
 
-    let selectedRace: RacePrediction | null = null;
-    let selectedVenue: VenueRaces | null = null;
     const articlesMeta = getRaceArticleMeta();
 
     const {
-        predictions: predictionData,
+        detail,
         specialPick: specialPickData,
         topHits: topHitsData,
         gradeRaces: weeklyGradeRaces,
-    } = await getRacePageData(params.date);
+    } = await getRaceDetailPageData(params.date, params.venue, raceNumber);
 
-    if (!hasRaceDayData(predictionData)) {
+    if (!detail) {
         notFound();
     }
 
-    const selected = findRaceByStablePath(predictionData, params.venue, raceNumber);
-    if (!selected) {
-        notFound();
-    }
-    selectedRace = selected.race;
-    selectedVenue = selected.venue;
-    const selectedPredictionData = buildSelectedRacePredictionData(
-        predictionData,
-        selectedVenue,
-        selectedRace,
-    );
-    const initialRaceLinks = selectedVenue.races
-        .slice()
-        .sort((left, right) => left.race_number - right.race_number)
-        .map(race => ({
-            raceNumber: race.race_number,
-            href: getRaceDetailPath(params.date, selectedVenue.venue_name, race.race_number),
-        }));
+    const selectedRace = detail.race;
+    const selectedVenueName = detail.venue_name;
+    const selectedPredictionData = detail.race_type === '中央'
+        ? { jra: [{ venue_name: selectedVenueName, races: [selectedRace] }], nar: [] }
+        : { jra: [], nar: [{ venue_name: selectedVenueName, races: [selectedRace] }] };
+    const detailIndexPolicy = getRaceIndexPolicy(params.date, {
+        isGradeRace: isGradeRaceName(selectedRace.race_name),
+    });
+    const initialRaceLinks = detail.race_numbers.map(raceNumberItem => ({
+        raceNumber: raceNumberItem,
+        href: getRaceDetailPath(params.date, selectedVenueName, raceNumberItem),
+        rel: detailIndexPolicy.follow ? undefined : 'nofollow' as const,
+    }));
 
-    const canonicalPath = getRaceDetailPath(params.date, selectedVenue.venue_name, selectedRace.race_number);
+    const canonicalPath = getRaceDetailPath(params.date, selectedVenueName, selectedRace.race_number);
     const requestedPath = `/races/${params.date}/${params.venue.toLowerCase()}/${raceNumber}`;
     if (canonicalPath !== requestedPath) {
         redirect(canonicalPath);
     }
 
-    const raceUrl = `https://uma-free.com${getRaceDetailPath(selectedRace.race_date, selectedVenue.venue_name, selectedRace.race_number)}`;
+    const raceUrl = `https://uma-free.com${getRaceDetailPath(selectedRace.race_date, selectedVenueName, selectedRace.race_number)}`;
     const formattedDate = formatDate(params.date);
     const jsonLd = {
         "@context": "https://schema.org",
         "@type": "SportsEvent",
-        "name": `${selectedVenue.venue_name} ${selectedRace.race_number}R - ${selectedRace.race_name}`,
+        "name": `${selectedVenueName} ${selectedRace.race_number}R - ${selectedRace.race_name}`,
         "startDate": `${selectedRace.race_date}T15:45:00+09:00`,
         "endDate": `${selectedRace.race_date}T16:00:00+09:00`,
         "location": {
             "@type": "Place",
-            "name": `${selectedVenue.venue_name}競馬場`,
-            "address": `${selectedVenue.venue_name}競馬場`
+            "name": `${selectedVenueName}競馬場`,
+            "address": `${selectedVenueName}競馬場`
         },
-        "description": `AIによる${selectedVenue.venue_name} ${selectedRace.race_number}R ${selectedRace.race_name}の競馬データ分析。`,
+        "description": `AIによる${selectedVenueName} ${selectedRace.race_number}R ${selectedRace.race_name}の競馬データ分析。`,
         "eventStatus": "https://schema.org/EventScheduled",
         "url": raceUrl,
         "image": [
@@ -242,7 +197,7 @@ export default async function RaceDetailPage({ params }: Props) {
                     { name: 'ホーム', url: 'https://uma-free.com' },
                     { name: 'レース分析', url: 'https://uma-free.com/races/today' },
                     { name: `${formattedDate}のレース分析`, url: `https://uma-free.com/races/${params.date}` },
-                    { name: `${selectedVenue.venue_name}${selectedRace.race_number}R ${selectedRace.race_name}`, url: raceUrl },
+                    { name: `${selectedVenueName}${selectedRace.race_number}R ${selectedRace.race_name}`, url: raceUrl },
                 ]}
             />
 
@@ -251,7 +206,7 @@ export default async function RaceDetailPage({ params }: Props) {
                     { label: 'ホーム', href: '/' },
                     { label: 'レース分析', href: '/races/today' },
                     { label: `${formattedDate}のレース分析`, href: `/races/${params.date}` },
-                    { label: `${selectedVenue.venue_name}${selectedRace.race_number}R ${selectedRace.race_name}`, href: '' },
+                    { label: `${selectedVenueName}${selectedRace.race_number}R ${selectedRace.race_name}`, href: '' },
                 ]}
             />
 
@@ -263,7 +218,7 @@ export default async function RaceDetailPage({ params }: Props) {
                     initialTopHits={topHitsData}
                     weeklyGradeRaces={weeklyGradeRaces}
                     articlesMeta={articlesMeta}
-                    initialVenueName={selectedVenue.venue_name}
+                    initialVenueName={selectedVenueName}
                     initialRaceNumber={selectedRace.race_number}
                     initialRaceLinks={initialRaceLinks}
                 />

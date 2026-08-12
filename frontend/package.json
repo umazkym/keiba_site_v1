@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/validate-monetization-release.js && next build",
+    "build": "node scripts/test_affiliate_campaigns.js && node scripts/validate-monetization-release.js && next build",
     "start": "next start",
     "lint": "next lint",
     "design:audit": "node scripts/design-audit.js",

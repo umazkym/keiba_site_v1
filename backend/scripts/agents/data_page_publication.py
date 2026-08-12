@@ -140,6 +140,8 @@ def determine_capacity_mode(metrics: Mapping[str, Any]) -> tuple[str, list[str]]
     reasons: list[str] = []
     if not metrics.get("cloud_run_metrics_available"):
         return "red", ["Cloud Run指標を取得できません"]
+    if not metrics.get("db_network_metrics_available"):
+        return "red", ["DB VM送信量を取得できません"]
 
     projected_vcpu = float(metrics.get("projected_monthly_vcpu_seconds") or 0.0)
     projected_memory = float(metrics.get("projected_monthly_gib_seconds") or 0.0)
@@ -152,6 +154,13 @@ def determine_capacity_mode(metrics: Mapping[str, Any]) -> tuple[str, list[str]]
     p95_ms = float(metrics.get("p95_latency_ms") or 0.0)
     saturated = bool(metrics.get("max_instance_saturated"))
     cache_hit = metrics.get("cloudflare_cache_hit_ratio")
+    db_sent_gib_24h = float(metrics.get("db_sent_gib_24h") or 0.0)
+    db_sent_gib_7d = float(metrics.get("db_sent_gib_7d") or 0.0)
+
+    if db_sent_gib_24h >= 2:
+        reasons.append(f"DB送信量が24時間で2GiB以上: {db_sent_gib_24h:.2f}GiB")
+    if db_sent_gib_7d >= 10:
+        reasons.append(f"DB送信量が7日で10GiB以上: {db_sent_gib_7d:.2f}GiB")
 
     if saturated:
         reasons.append("最大インスタンス数への到達を検出")
@@ -170,6 +179,9 @@ def determine_capacity_mode(metrics: Mapping[str, Any]) -> tuple[str, list[str]]
     if reasons:
         return "red", reasons
 
+    if db_sent_gib_24h >= 0.5:
+        return "yellow", [f"DB送信量が24時間で0.5GiB以上: {db_sent_gib_24h:.2f}GiB"]
+
     cloud_run_green = (
         projected_vcpu < 72000
         and projected_memory < 144000
@@ -177,6 +189,7 @@ def determine_capacity_mode(metrics: Mapping[str, Any]) -> tuple[str, list[str]]
         and projected_egress_gib < 2
         and error_rate < 0.005
         and p95_ms < 1500
+        and db_sent_gib_24h < 0.5
     )
     if cache_hit is None:
         return "yellow", ["Cloudflare指標がないため25件/日に制限"]

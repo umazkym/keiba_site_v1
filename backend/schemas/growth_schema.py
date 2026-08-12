@@ -202,6 +202,9 @@ class RunnerFeature(BaseModel):
     jockey_name: Optional[str] = None
     trainer_id: Optional[str] = None
     trainer_name: Optional[str] = None
+    horse_detail_page_indexable: bool = False
+    jockey_detail_page_indexable: bool = False
+    trainer_detail_page_indexable: bool = False
     deviation_score: Optional[float] = None
     mark: Optional[str] = None
     horse_overall: RateSummary

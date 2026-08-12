@@ -14,11 +14,13 @@ import {
     PredictionAccuracySummary,
     RaceDataFeatures,
     RaceDayPrediction,
+    RaceDetailPrediction,
     RaceSeriesData,
     SpecialPick,
     TopPayoutHit,
     WeeklyGradeRace,
 } from "./types";
+import { getRaceCachePolicy } from './race-cache-policy';
 import { getApiBaseUrl } from "./api-base";
 import {
     normalizeDataEntitySummary,
@@ -27,8 +29,6 @@ import {
 } from "./data-directory";
 
 const API_BASE_URL = getApiBaseUrl();
-const RECENT_RACE_REVALIDATE_SECONDS = 300;
-const DEFAULT_RACE_REVALIDATE_SECONDS = 3600;
 const BUILD_FETCH_TIMEOUT_MS = 8000;
 const RUNTIME_FETCH_TIMEOUT_MS = 20000;
 
@@ -40,44 +40,12 @@ function isNextProductionBuild(): boolean {
     );
 }
 
-function formatJstDate(date: Date): string {
-    const parts = new Intl.DateTimeFormat('ja-JP', {
-        timeZone: 'Asia/Tokyo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-    }).formatToParts(date);
-
-    const year = parts.find(part => part.type === 'year')?.value;
-    const month = parts.find(part => part.type === 'month')?.value;
-    const day = parts.find(part => part.type === 'day')?.value;
-
-    return `${year}-${month}-${day}`;
-}
-
-function addDays(dateString: string, days: number): string {
-    const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day + days));
-    return formatJstDate(date);
-}
-
 function getRaceDataRevalidate(date: string): number {
-    const today = formatJstDate(new Date());
-    const recentDates = new Set([
-        addDays(today, -1),
-        today,
-        addDays(today, 1),
-    ]);
-
-    return recentDates.has(date)
-        ? RECENT_RACE_REVALIDATE_SECONDS
-        : DEFAULT_RACE_REVALIDATE_SECONDS;
+    return getRaceCachePolicy(date).revalidateSeconds;
 }
 
 function getArticlePreviewRevalidate(date: string): number {
-    return date < formatJstDate(new Date())
-        ? DEFAULT_RACE_REVALIDATE_SECONDS
-        : RECENT_RACE_REVALIDATE_SECONDS;
+    return getRaceCachePolicy(date).revalidateSeconds;
 }
 
 // ▼▼▼▼▼【ISR導入】▼▼▼▼▼
@@ -187,6 +155,41 @@ export async function getPredictionsForDate(
         if (options.throwOnError) {
             throw error;
         }
+        return null;
+    }
+}
+
+export async function getRaceDetailPrediction(
+    date: string,
+    venueSlug: string,
+    raceNumber: number,
+    options: { throwOnError?: boolean; revalidateSeconds?: number } = {},
+): Promise<RaceDetailPrediction | null> {
+    try {
+        const revalidate = options.revalidateSeconds ?? getRaceDataRevalidate(date);
+        const res = await fetchWithRetry(
+            `${API_BASE_URL}/api/v1/predictions/detail/${date}/${encodeURIComponent(venueSlug)}/${raceNumber}`,
+            { next: { revalidate } },
+        );
+        if (!res.ok) {
+            const message = `Failed to fetch race detail. Status: ${res.status}`;
+            if (options.throwOnError && res.status !== 404) throw new Error(message);
+            return null;
+        }
+        const data = await res.json() as Partial<RaceDetailPrediction>;
+        if (
+            !data
+            || typeof data.venue_name !== 'string'
+            || typeof data.race_type !== 'string'
+            || !data.race
+            || !Array.isArray(data.race_numbers)
+        ) {
+            throw new Error(`Invalid race detail response for ${date}/${venueSlug}/${raceNumber}`);
+        }
+        return data as RaceDetailPrediction;
+    } catch (error) {
+        console.error('[getRaceDetailPrediction] Failed:', error);
+        if (options.throwOnError) throw error;
         return null;
     }
 }
@@ -374,7 +377,7 @@ export async function getDataEntityDirectory(
     });
     const directory = await getDataApiJson<DataEntityDirectory>(
         `/directories/${entityType}?${params.toString()}`,
-        { revalidate: 3600 },
+        { revalidate: 86400 },
     );
     if (!directory) return null;
     return {
@@ -455,7 +458,7 @@ export async function getDataEntityDetail(
     };
     const detail = await getDataApiJson<DataEntityDetail>(
         `/${paths[entityType]}/${encodeURIComponent(entityId)}`,
-        { revalidate: 3600 },
+        { revalidate: 86400 },
     );
     if (!detail) return null;
     return {
@@ -470,7 +473,7 @@ export async function getCourseDataDetail(
 ): Promise<CourseDataDetail | null> {
     const detail = await getDataApiJson<CourseDataDetail>(
         `/courses/${encodeURIComponent(venueSlug)}/${encodeURIComponent(courseSlug)}`,
-        { revalidate: 21600 },
+        { revalidate: 86400 },
     );
     if (!detail) return null;
     return {

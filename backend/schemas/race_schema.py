@@ -20,6 +20,7 @@ class HorsePrediction(BaseModel):
     mark: str
     start_1c_indicator: Optional[float]
     unpredictable_reason: Optional[str] = None # ★★★ 追加 ★★★
+    detail_page_indexable: bool = False
 
 class Matchup(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -52,6 +53,13 @@ class VenueRaces(BaseModel):
 class RaceDayPrediction(BaseModel):
     jra: List[VenueRaces]
     nar: List[VenueRaces]
+
+
+class RaceDetailPrediction(BaseModel):
+    race_type: str
+    venue_name: str
+    race: RacePrediction
+    race_numbers: List[int] = Field(default_factory=list)
 
 
 class ArticleRacePreviewPrediction(BaseModel):

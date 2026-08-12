@@ -145,13 +145,17 @@ export const PredictionTable = ({ race, refreshKey = '' }: { race: RacePredictio
                                 </td>
                                 <td>
                                     <div className="flex items-center gap-1.5 truncate font-bold text-slate-800">
-                                        <Link
-                                            prefetch={false}
-                                            href={`/horses/${encodeURIComponent(p.horse_id)}`}
-                                            className="truncate text-xs transition-colors duration-150 hover:text-primary sm:text-sm"
-                                        >
-                                            {p.horse_name}
-                                        </Link>
+                                        {p.detail_page_indexable ? (
+                                            <Link
+                                                prefetch={false}
+                                                href={`/horses/${encodeURIComponent(p.horse_id)}`}
+                                                className="truncate text-xs transition-colors duration-150 hover:text-primary sm:text-sm"
+                                            >
+                                                {p.horse_name}
+                                            </Link>
+                                        ) : (
+                                            <span className="truncate text-xs sm:text-sm">{p.horse_name}</span>
+                                        )}
                                     </div>
                                 </td>
                                 <td className="text-center">

@@ -15,7 +15,8 @@ growth_router = APIRouter()
 
 def _set_cache(response: Response, max_age: int, stale: int = 300) -> None:
     response.headers["Cache-Control"] = (
-        f"public, max-age={max_age}, stale-while-revalidate={stale}"
+        f"public, max-age={max_age}, stale-while-revalidate={stale}, "
+        f"stale-if-error={stale}"
     )
 
 
@@ -81,7 +82,7 @@ def read_course_detail(
             detail="Course data not found",
             headers={"Cache-Control": "public, max-age=600"},
         )
-    _set_cache(response, 21600, 1800)
+    _set_cache(response, 86400, 604800)
     return result
 
 
@@ -101,7 +102,7 @@ def read_horse_detail(
             detail="Horse data not found",
             headers={"Cache-Control": "public, max-age=600"},
         )
-    _set_cache(response, 3600, 300)
+    _set_cache(response, 86400, 604800)
     return result
 
 
@@ -121,7 +122,7 @@ def read_jockey_detail(
             detail="Jockey data not found",
             headers={"Cache-Control": "public, max-age=600"},
         )
-    _set_cache(response, 3600, 300)
+    _set_cache(response, 86400, 604800)
     return result
 
 
@@ -141,7 +142,7 @@ def read_trainer_detail(
             detail="Trainer data not found",
             headers={"Cache-Control": "public, max-age=600"},
         )
-    _set_cache(response, 3600, 300)
+    _set_cache(response, 86400, 604800)
     return result
 
 

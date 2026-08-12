@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-CAPACITY_SCHEMA_VERSION = "cloud-run-capacity.v2"
+CAPACITY_SCHEMA_VERSION = "cloud-run-capacity.v3"
 
 
 @dataclass(frozen=True)
@@ -24,6 +24,14 @@ class ServiceConfig:
     cpu: float
     memory_gib: float
     max_instances: int
+
+
+@dataclass(frozen=True)
+class GceInstanceConfig:
+    """DB VMの送信量監視対象。"""
+
+    instance_name: str
+    zone: str
 
 
 def parse_service_config(value: str) -> ServiceConfig:
@@ -109,6 +117,120 @@ def _list_metric_values(
     for series in client.list_time_series(request=request):
         values.extend(_numeric_value(point) for point in series.points)
     return values
+
+
+def _resolve_gce_instance_id(
+    *,
+    project_id: str,
+    instance_config: GceInstanceConfig,
+) -> str:
+    from googleapiclient.discovery import build
+
+    service = build("compute", "v1", cache_discovery=False)
+    instance = (
+        service.instances()
+        .get(
+            project=project_id,
+            zone=instance_config.zone,
+            instance=instance_config.instance_name,
+        )
+        .execute()
+    )
+    instance_id = str(instance.get("id") or "").strip()
+    if not instance_id:
+        raise RuntimeError("DB VMのinstance IDを取得できません")
+    return instance_id
+
+
+def _list_gce_metric_values(
+    client: Any,
+    *,
+    project_id: str,
+    instance_id: str,
+    metric_type: str,
+    start: datetime,
+    end: datetime,
+    alignment_seconds: int,
+    aligner: Any,
+    reducer: Any,
+) -> list[float]:
+    from google.cloud import monitoring_v3
+    from google.protobuf import duration_pb2, timestamp_pb2
+
+    start_ts = timestamp_pb2.Timestamp()
+    start_ts.FromDatetime(start)
+    end_ts = timestamp_pb2.Timestamp()
+    end_ts.FromDatetime(end)
+    request = monitoring_v3.ListTimeSeriesRequest(
+        name=f"projects/{project_id}",
+        filter=(
+            'resource.type="gce_instance" '
+            f'AND resource.labels.instance_id="{instance_id}" '
+            f'AND metric.type="{metric_type}"'
+        ),
+        interval=monitoring_v3.TimeInterval(start_time=start_ts, end_time=end_ts),
+        view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
+        aggregation=monitoring_v3.Aggregation(
+            alignment_period=duration_pb2.Duration(seconds=alignment_seconds),
+            per_series_aligner=aligner,
+            cross_series_reducer=reducer,
+        ),
+    )
+    values: list[float] = []
+    for series in client.list_time_series(request=request):
+        values.extend(_numeric_value(point) for point in series.points)
+    return values
+
+
+def collect_gce_db_network_metrics(
+    *,
+    project_id: str,
+    instance_config: GceInstanceConfig,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """DB VMの直近24時間・7日間の送信量を収集する。"""
+    from google.cloud import monitoring_v3
+
+    end = now or datetime.now(timezone.utc)
+    client = monitoring_v3.MetricServiceClient()
+    aligners = monitoring_v3.Aggregation.Aligner
+    reducers = monitoring_v3.Aggregation.Reducer
+    instance_id = _resolve_gce_instance_id(
+        project_id=project_id,
+        instance_config=instance_config,
+    )
+
+    def collect(days: int) -> list[float]:
+        return _list_gce_metric_values(
+            client,
+            project_id=project_id,
+            instance_id=instance_id,
+            metric_type="compute.googleapis.com/instance/network/sent_bytes_count",
+            start=end - timedelta(days=days),
+            end=end,
+            alignment_seconds=86400,
+            aligner=aligners.ALIGN_SUM,
+            reducer=reducers.REDUCE_SUM,
+        )
+
+    sent_values_24h = collect(1)
+    sent_values_7d = collect(7)
+    sent_bytes_24h = sum(sent_values_24h)
+    sent_bytes_7d = sum(sent_values_7d)
+    return {
+        "db_network_metrics_available": bool(sent_values_24h and sent_values_7d),
+        "db_instance": asdict(instance_config),
+        "db_sent_bytes_24h": round(sent_bytes_24h),
+        "db_sent_bytes_7d": round(sent_bytes_7d),
+        "db_sent_gib_24h": round(sent_bytes_24h / (1024 ** 3), 4),
+        "db_sent_gib_7d": round(sent_bytes_7d / (1024 ** 3), 4),
+        "db_network_warning": sent_bytes_24h >= 0.5 * 1024 ** 3,
+        "db_network_red": (
+            sent_bytes_24h >= 2 * 1024 ** 3
+            or sent_bytes_7d >= 10 * 1024 ** 3
+        ),
+        "db_network_window_end": end.isoformat(),
+    }
 
 
 def collect_cloud_run_metrics(
@@ -423,6 +545,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="旧単一サービス形式との互換用",
     )
     parser.add_argument("--output-json", type=Path, required=True)
+    parser.add_argument("--db-instance-name", default="keiba-db")
+    parser.add_argument("--db-zone", default="us-west1-b")
     return parser.parse_args(argv)
 
 
@@ -448,6 +572,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             "required_services": [config.service_name for config in service_configs],
             "cloud_run_error": str(exc),
         }
+
+    try:
+        output.update(collect_gce_db_network_metrics(
+            project_id=args.project_id,
+            instance_config=GceInstanceConfig(
+                instance_name=args.db_instance_name,
+                zone=args.db_zone,
+            ),
+        ))
+    except Exception as exc:  # noqa: BLE001 - DB送信量不明は安全側へ縮退
+        output.update({
+            "db_network_metrics_available": False,
+            "db_instance": {
+                "instance_name": args.db_instance_name,
+                "zone": args.db_zone,
+            },
+            "db_network_error": str(exc),
+        })
 
     zone_id = os.getenv("CLOUDFLARE_ZONE_ID", "").strip()
     api_token = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()

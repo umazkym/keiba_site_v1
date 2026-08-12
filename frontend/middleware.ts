@@ -6,6 +6,28 @@ import {
     isValidRaceDate,
     parseRaceNumberParam,
 } from './lib/race-url';
+import { getRaceCachePolicy } from './lib/race-cache-policy';
+
+
+const KNOWN_CRAWLER_PATTERN = /(?:bingbot|googlebot|google-inspectiontool|duckduckbot|baiduspider|yandexbot|slurp|applebot)/i;
+
+function isPublicHtmlNavigation(request: NextRequest): boolean {
+    if (request.method !== 'GET' && request.method !== 'HEAD') return false;
+    return (
+        request.headers.get('rsc') !== '1'
+        && request.headers.get('next-router-prefetch') !== '1'
+        && request.headers.get('next-action') == null
+    );
+}
+
+function isDataDetailPath(pathname: string): boolean {
+    return (
+        /^\/horses\/[^/]+$/.test(pathname)
+        || /^\/jockeys\/data\/[^/]+$/.test(pathname)
+        || /^\/trainers\/[^/]+$/.test(pathname)
+        || /^\/courses\/[^/]+\/[^/]+$/.test(pathname)
+    );
+}
 
 /**
  * ミドルウェア: URLの正規化
@@ -275,7 +297,49 @@ export function middleware(request: NextRequest) {
         });
     }
 
-    return NextResponse.next();
+    const response = NextResponse.next();
+    const archiveGuardEnabled = process.env.ARCHIVE_COST_GUARD_MODE === 'stale-only';
+    const knownCrawler = KNOWN_CRAWLER_PATTERN.test(request.headers.get('user-agent') ?? '');
+    if (
+        archiveGuardEnabled
+        && knownCrawler
+        && isPublicHtmlNavigation(request)
+        && isDataDetailPath(pathname)
+    ) {
+        return new NextResponse('データ詳細ページは一時的にキャッシュから配信しています。', {
+            status: 503,
+            headers: {
+                'Cache-Control': 'private, no-store',
+                'Retry-After': '86400',
+                'X-Archive-Cost-Guard': 'stale-only',
+            },
+        });
+    }
+
+    const racePageMatch = pathname.match(/^\/races\/(\d{4}-\d{2}-\d{2})(?:\/|$)/);
+    if (racePageMatch && isPublicHtmlNavigation(request)) {
+        const raceDate = racePageMatch[1];
+        const cachePolicy = getRaceCachePolicy(raceDate);
+
+        if (
+            archiveGuardEnabled
+            && cachePolicy.tier === 'archive'
+            && knownCrawler
+        ) {
+            return new NextResponse('過去レースページは一時的にキャッシュから配信しています。', {
+                status: 503,
+                headers: {
+                    'Cache-Control': 'private, no-store',
+                    'Retry-After': '86400',
+                    'X-Archive-Cost-Guard': 'stale-only',
+                },
+            });
+        }
+
+        response.headers.set('Cache-Control', cachePolicy.cacheControl);
+        response.headers.set('X-Race-Cache-Tier', cachePolicy.tier);
+    }
+    return response;
 }
 
 // ミドルウェアの適用範囲を指定
@@ -287,7 +351,10 @@ export const config = {
         '/rac:path*',
         '/guides/:path*',
         '/data/:path*',
+        '/horses/:path*',
         '/jockey/:path*',
+        '/jockeys/data/:path*',
+        '/trainers/:path*',
         '/course/:path*',
         '/courses/:path*',
         '/accuracy',

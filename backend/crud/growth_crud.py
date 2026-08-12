@@ -1439,6 +1439,26 @@ def get_horse_comparison(
     return result
 
 
+def _published_detail_ids(
+    db: Session,
+    entity_type: str,
+    entity_ids: Sequence[str],
+) -> set[str]:
+    normalized_ids = sorted({str(entity_id) for entity_id in entity_ids if entity_id})
+    if not normalized_ids:
+        return set()
+    rows = (
+        db.query(models.DataPagePublication.entity_id)
+        .filter(
+            models.DataPagePublication.entity_type == entity_type,
+            models.DataPagePublication.entity_id.in_(normalized_ids),
+            models.DataPagePublication.status == "published",
+        )
+        .all()
+    )
+    return {str(row[0]) for row in rows}
+
+
 def get_race_features(db: Session, race_id: str) -> Optional[Dict[str, Any]]:
     cache_key = f"race-features:{race_id}"
     cached = _cache.get(cache_key)
@@ -1488,6 +1508,9 @@ def get_race_features(db: Session, race_id: str) -> Optional[Dict[str, Any]]:
     horse_ids = [horse.id for _, horse, _, _, _ in rows]
     jockey_ids = [jockey.id for _, _, jockey, _, _ in rows if jockey]
     trainer_ids = [trainer.id for _, _, _, trainer, _ in rows if trainer]
+    published_horse_ids = _published_detail_ids(db, "horse", horse_ids)
+    published_jockey_ids = _published_detail_ids(db, "jockey", jockey_ids)
+    published_trainer_ids = _published_detail_ids(db, "trainer", trainer_ids)
     condition_filters = [
         models.Race.venue_name == race.venue_name,
         models.Race.course_type == race.course_type,
@@ -1513,6 +1536,9 @@ def get_race_features(db: Session, race_id: str) -> Optional[Dict[str, Any]]:
             "jockey_name": jockey.name if jockey else None,
             "trainer_id": trainer.id if trainer else None,
             "trainer_name": trainer.name if trainer else None,
+            "horse_detail_page_indexable": horse.id in published_horse_ids,
+            "jockey_detail_page_indexable": bool(jockey and jockey.id in published_jockey_ids),
+            "trainer_detail_page_indexable": bool(trainer and trainer.id in published_trainer_ids),
             "deviation_score": prediction.deviation_score if prediction else None,
             "mark": prediction.mark if prediction else None,
             "horse_overall": horse_overall.get(horse.id, _empty_rate()),

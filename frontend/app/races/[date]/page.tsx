@@ -16,7 +16,7 @@ import { getRacePageData, hasRaceDayData } from '@/lib/race-page-data';
 
 // 動的日付ルートを初回アクセス時に生成し、以降はISRキャッシュから配信する。
 // fetch側の5分・1時間設定のうち短い方が実際の再検証間隔になる。
-export const revalidate = 3600;
+export const revalidate = 2592000;
 export const dynamicParams = true;
 
 export function generateStaticParams() {

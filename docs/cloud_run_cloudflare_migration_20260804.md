@@ -120,7 +120,7 @@ gcloud iam service-accounts create github-actions-cloud-run --display-name="GitH
 gcloud iam service-accounts create keiba-frontend-runtime --display-name="UMA-FREE frontend runtime" --project=keiba-api-project
 ```
 
-デプロイ用SAにはプロジェクトで`roles/run.admin`、`roles/artifactregistry.writer`を付け、runtime SAに対する`roles/iam.serviceAccountUser`を付ける。Workload Identity Poolのrepository条件は`umazkym/keiba_site_v1`へ限定する。既存の`github-actions-iap-db` SAには段階公開workflow用に`roles/monitoring.viewer`を追加する。権限は対象SA・対象repositoryへ限定し、OwnerやEditorを付けない。
+デプロイ用SAにはプロジェクトで`roles/run.admin`、`roles/artifactregistry.writer`を付け、runtime SAに対する`roles/iam.serviceAccountUser`を付ける。Workload Identity Poolのrepository条件は`umazkym/keiba_site_v1`へ限定する。既存の`github-actions-iap-db` SAには段階公開workflow用に`roles/monitoring.viewer`を追加する。DB送信量の収集では、同SAがIAP接続用に保持する`keiba-db`のinstance参照権限でinstance IDを解決し、指標収集後にCloud Runデプロイ用SAへ再認証してガード状態だけを更新する。権限は対象SA・対象repositoryへ限定し、OwnerやEditorを付けない。
 
 GitHub Actionsで使う既存provider:
 
@@ -314,6 +314,8 @@ Cloudflare FreeではCache Rulesを10件まで利用できる。次の順で作�
 
 custom cache keyでcookie、User-Agent、RSC headerを追加しない。高カーディナリティなkeyはhit率を下げ、単一URL purgeも難しくする。HTMLはoriginの`s-maxage`を正とし、Cloudflare側で一律長期TTLへ上書きしない。
 
+レース系のorigin TTLはJSTの日付差で統一する。当日・前日・翌日は5分、2〜14日前は24時間かつstale 7日、15日以上前は30日かつstale/stale-if-error 90日。馬・騎手・調教師・コース詳細は24時間かつstale 7日とする。データ修復時は`Purge Race Date Cache` workflowで対象日だけを再検証し、Cloudflareも日付ページと同日のレース詳細URLだけをexact purgeする。purge用SecretはZone Cache Purge権限だけを持つ`CLOUDFLARE_CACHE_PURGE_API_TOKEN`とし、Analytics read-only tokenを流用しない。
+
 ### 6.5 WAFとbot対策
 
 Free planのRate Limiting Ruleは1件、10秒period、IP単位である。verified botを除外し、詳細ページ群だけを対象にする。
@@ -346,7 +348,7 @@ workflowは`https://uma-free.com/api/health`のrelease SHA一致を検証する�
 
 1. `Keiba Data Page Publication`を`dry_run=true`で手動実行。
 2. artifactの`capacity.json`と`report.json`を確認。
-3. `schema_version=cloud-run-capacity.v2`、`required_services`に`keiba-frontend-v1`と`keiba-site-v1`、`cloud_run_metrics_available=true`であることを必須とする。
+3. `schema_version=cloud-run-capacity.v3`、`required_services`に`keiba-frontend-v1`と`keiba-site-v1`、`cloud_run_metrics_available=true`、`db_network_metrics_available=true`であることを必須とする。
 4. GSC障害は需要加点なしで継続できるが、Cloud Run指標障害はred・0件が正しい。
 5. 初回applyは手動dispatchの`dry_run=false`。
 6. 以後、毎日09:45 JSTに自動評価。
@@ -361,21 +363,34 @@ workflowは`https://uma-free.com/api/health`のrelease SHA一致を検証する�
 
 初回のみ最大500件だが、redでは0件。初回500件は既存品質ページの再登録用であり、指標が取れない状態で強行しない。
 
-### 7.1 予算通知（停止処理なし）
+### 7.1 DBゾーン間転送ガード
 
-現在の請求先全体1,000円予算は残し、別に`keiba-api-project`かつCloud Run限定の月300円予算を追加する。無料枠超過の兆候を使用量段階で検知するため、credits/discountsは予算計算から除外する。
+`Keiba DB Egress Guard`を毎時実行し、`keiba-db`の`compute.googleapis.com/instance/network/sent_bytes_count`を24時間・7日間で集計する。
+
+| 判定 | 条件 | 動作 |
+| --- | --- | --- |
+| warning | 24時間で0.5GiB以上 | artifactとJob Summaryへ警告。新規公開判定はyellow以上 |
+| red | 24時間で2GiB以上、7日で10GiB以上、または指標取得不能 | フロントの`ARCHIVE_COST_GUARD_MODE=stale-only`を有効化し、新規データページ公開は0件 |
+| recovery | 24時間で0.5GiB未満 | ガードを`normal`へ戻す。24時間窓そのものを復旧確認期間として使う |
+
+ガード中も既存のCloudflare staleキャッシュ、人間の閲覧、当日ページ、記事、主要公開ページは維持する。15日以上前のレース、および未公開対象を含む馬・騎手・調教師・コース詳細に対する既知crawlerのorigin missだけが503と`Retry-After`になり、重いDB集計へ到達しない。公開済みページはCloudflareのstaleキャッシュが優先される。通常時はverified botを遮断しない。
+
+### 7.2 予算通知（停止処理なし）
+
+現在の請求先全体1,000円予算は残し、別に`keiba-api-project`の全サービスを対象とする月300円予算を設ける。クレジット・割引適用後の純額を監視し、実際の請求額が月300円へ近づく前に通知する。
 
 | 通知 | 種別 | 金額換算 |
 | --- | --- | ---: |
 | 30% | Actual | 90円 |
-| 60% | Forecasted | 180円 |
+| 60% | Actual | 180円 |
 | 100% | Actual | 300円 |
+| 100% | Forecasted | 300円予測 |
 
 Billing管理者と運用者本人へのメール通知を有効にする。Cloud Run Spend Capや予算連動のサービス停止は設定しない。異常増加時もサイトを止めず、段階公開をyellow/redへ縮退させる。
 
-2026-08-05に`UMA-FREE Cloud Run 300 JPY`として作成済み。対象は`keiba-api-project`のCloud Runだけ、credits/discountsは未選択、通知は実額30%・予測60%・実額100%で、課金管理者とユーザーへのメール通知を有効化した。
+2026-08-12に予算名を`UMA-FREE Project 300 JPY`へ変更し、対象を`keiba-api-project`の全サービス、クレジット・割引反映後へ更新済み。通知は実額30%・60%・100%と予測100%で、請求先全体1,000円予算は維持する。
 
-### 7.2 Gemini APIキーの交換
+### 7.3 Gemini APIキーの交換
 
 1. Google Cloud CredentialsまたはGoogle AI StudioでGitHub自動処理専用キーを新規作成する。
 2. API restrictionsを`Generative Language API`だけにする。GitHub hosted runnerのIPは固定でないためApplication restrictionsは`None`とし、API範囲を限定する。

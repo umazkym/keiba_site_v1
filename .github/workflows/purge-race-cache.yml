@@ -1,0 +1,184 @@
+name: Purge Race Cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      race_date:
+        description: 再取得するレース日（YYYY-MM-DD）
+        type: string
+        required: true
+      apply:
+        description: Cloud Runキャッシュ再起動とCloudflare purgeを実行する
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: purge-race-cache
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: keiba-api-project
+  REGION: us-west1
+  FRONTEND_SERVICE: keiba-frontend-v1
+  BACKEND_SERVICE: keiba-site-v1
+  SITE_URL: https://uma-free.com
+  API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+  CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Validate inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "${{ inputs.race_date }}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "race_dateはYYYY-MM-DD形式で指定してください。" >&2
+            exit 1
+          fi
+          python - <<'PY'
+          from datetime import date
+          date.fromisoformat("${{ inputs.race_date }}")
+          PY
+
+      - name: Authenticate to Google Cloud
+        if: inputs.apply == true
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/761440273070/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+          service_account: ${{ vars.GCP_FRONTEND_DEPLOY_SERVICE_ACCOUNT || 'github-actions-cloud-run@keiba-api-project.iam.gserviceaccount.com' }}
+
+      - name: Set up gcloud
+        if: inputs.apply == true
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Clear Cloud Run process and Next data caches
+        if: inputs.apply == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          CACHE_BUST="${{ inputs.race_date }}-$(date -u +%Y%m%dT%H%M%SZ)"
+          for SERVICE in "$BACKEND_SERVICE" "$FRONTEND_SERVICE"; do
+            gcloud run services update "$SERVICE" \
+              --project="$PROJECT_ID" \
+              --region="$REGION" \
+              --update-env-vars="RACE_CACHE_PURGE_AT=$CACHE_BUST" \
+              --quiet
+          done
+
+      - name: Build exact Cloudflare purge URL list
+        id: urls
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/race-cache-purge"
+          export RACE_DATE="${{ inputs.race_date }}"
+          export OUTPUT_PATH="$RUNNER_TEMP/race-cache-purge/urls.json"
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          race_date = os.environ["RACE_DATE"]
+          api_base = os.environ.get("API_BASE_URL", "").rstrip("/")
+          site_url = os.environ["SITE_URL"].rstrip("/")
+          venue_config = json.loads(
+              Path("frontend/lib/venue-slugs.json").read_text(encoding="utf-8")
+          )
+          aliases = venue_config["aliases"]
+          urls = {f"{site_url}/races/{race_date}"}
+
+          if api_base:
+              endpoint = f"{api_base}/api/v1/predictions/{race_date}"
+              try:
+                  with urllib.request.urlopen(endpoint, timeout=30) as response:
+                      payload = json.loads(response.read().decode("utf-8"))
+              except Exception as exc:
+                  raise SystemExit(f"対象日の詳細URL一覧を取得できません: {exc}") from exc
+              for group_name in ("jra", "nar"):
+                  for venue in payload.get(group_name) or []:
+                      venue_name = str(venue.get("venue_name") or "").strip()
+                      slug = aliases.get(venue_name)
+                      if not slug:
+                          raise SystemExit(f"競馬場slugが未登録です: {venue_name}")
+                      for race in venue.get("races") or []:
+                          race_number = int(race["race_number"])
+                          urls.add(f"{site_url}/races/{race_date}/{slug}/{race_number}")
+
+          output = Path(os.environ["OUTPUT_PATH"])
+          output.write_text(
+              json.dumps(sorted(urls), ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(f"Purge対象: {len(urls)} URL")
+          PY
+          echo "count=$(jq 'length' "$OUTPUT_PATH")" >> "$GITHUB_OUTPUT"
+
+      - name: Purge exact URLs from Cloudflare
+        if: inputs.apply == true
+        env:
+          CLOUDFLARE_CACHE_PURGE_API_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_PURGE_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_ZONE_ID"
+          test -n "$CLOUDFLARE_CACHE_PURGE_API_TOKEN"
+          export URLS_PATH="$RUNNER_TEMP/race-cache-purge/urls.json"
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          urls = json.loads(Path(os.environ["URLS_PATH"]).read_text(encoding="utf-8"))
+          zone_id = os.environ["CLOUDFLARE_ZONE_ID"]
+          token = os.environ["CLOUDFLARE_CACHE_PURGE_API_TOKEN"]
+          endpoint = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/purge_cache"
+          for offset in range(0, len(urls), 30):
+              request = urllib.request.Request(
+                  endpoint,
+                  data=json.dumps({"files": urls[offset:offset + 30]}).encode("utf-8"),
+                  method="POST",
+                  headers={
+                      "Authorization": f"Bearer {token}",
+                      "Content-Type": "application/json",
+                  },
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  result = json.loads(response.read().decode("utf-8"))
+              if not result.get("success"):
+                  raise SystemExit(f"Cloudflare purge失敗: {result.get('errors')}")
+          PY
+
+      - name: Add result to Actions Summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "# レースキャッシュ再検証"
+            echo ""
+            echo "- 対象日: ${{ inputs.race_date }}"
+            echo "- 実行モード: ${{ inputs.apply == true && 'apply' || 'dry-run' }}"
+            echo "- 対象URL数: ${{ steps.urls.outputs.count }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload purge manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: race-cache-purge-${{ github.run_id }}
+          path: ${{ runner.temp }}/race-cache-purge/urls.json
+          if-no-files-found: warn
+          retention-days: 30

@@ -66,9 +66,9 @@ export type AffiliateFilter = {
 };
 
 const DEFAULT_VOTING_NOTICE = '※馬券の購入は20歳以上の方のみ対象です。';
-const QUALIFIED_RAKUTEN_KEIBA_TITLE = '楽天競馬の投票会員登録が初めての方へ';
+const QUALIFIED_RAKUTEN_KEIBA_TITLE = '馬券を買うたびに楽天ポイントが貯まる！';
 const QUALIFIED_RAKUTEN_KEIBA_DESCRIPTION = '地方競馬全場に対応。投票会員登録には楽天会員情報と銀行口座の登録が必要です。';
-const QUALIFIED_RAKUTEN_KEIBA_NOTICE = '初めて投票会員登録する方向けの案内です。※馬券の購入は20歳以上の方のみ対象です。';
+const QUALIFIED_RAKUTEN_KEIBA_NOTICE = '※馬券の購入は20歳以上の方のみ対象です。';
 const QUALIFIED_RAKUTEN_KEIBA_CTA = '新規投票会員登録の案内を見る';
 const DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL = 'https://ad2.trafficgate.net/t/r/14/1958/318200_397641';
 

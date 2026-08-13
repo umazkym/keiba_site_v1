@@ -126,6 +126,19 @@ Constraints for parameter acquisition:
 - You MUST disable the bridge, not the ads, when reverting this experiment.
 - You MUST NOT increase ad count or move article ads while this experiment is running because simultaneous ad changes would invalidate revenue attribution.
 
+### 9. Run the weekly monetization improvement cycle
+
+3月14日以降の履歴分析では`monetization-history.v2`、`source-status.v2`、`monetization-cycle-analysis.v1`を正本とし、正式な月曜〜日曜と直近28日を混同しません。
+
+**Constraints:**
+
+- You MUST use AdSense direct revenue as the financial source of truth and treat GA4 ad revenue as an attribution value after the 2026-03-15 link boundary.
+- You MUST keep missing, unavailable, failed, and zero distinct and MUST NOT call a seven-day period formal unless AdSense, GA4, and GSC cover all seven dates.
+- You MUST inspect source quality, failures, grade-race publication timing, search CTR, navigation, and ad efficiency in that order before choosing one hypothesis.
+- You MUST include evidence, counterevidence, confidence, expected effect, and monitoring metrics for the selected hypothesis.
+- You MUST limit automatic work to one local change and verification. Ads, affiliate URLs, publication, external posts, production DB, secrets, Git operations, and deployment require user action.
+- You MUST preserve every successfully collected raw source before reporting a partial workflow failure.
+
 ## Source references
 
 - `AGENTS.md`
@@ -133,6 +146,7 @@ Constraints for parameter acquisition:
 - `docs/clarity_optimization_audit_20260620.md`
 - `docs/clarity_completeness_review_20260621.md`
 - `docs/monetization_experiments.md`
+- `docs/monetization_history_v2_operation.md`
 - `docs/system/05_広告収益化戦略.md`
 - `docs/system-documentation/17_GA4広告収益最大化設定.md`
 

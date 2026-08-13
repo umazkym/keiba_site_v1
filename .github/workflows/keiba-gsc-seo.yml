@@ -82,7 +82,9 @@ jobs:
           --site-url "$GSC_SITE_URL"
 
       - name: Collect GA4 Monetization Axes
+        id: collect_ga4
         if: env.GA4_PROPERTY_ID != ''
+        continue-on-error: true
         run: >-
           python backend/scripts/agents/data_value_funnel_report.py
           --days 28
@@ -90,7 +92,9 @@ jobs:
           --summary "$RUNNER_TEMP/gsc-seo/ga4-summary.md"
 
       - name: Collect Clarity Read-only Pulse
+        id: collect_clarity
         if: env.CLARITY_API_KEY != ''
+        continue-on-error: true
         run: >-
           python backend/scripts/export_clarity_insights.py
           --profile core
@@ -98,6 +102,9 @@ jobs:
           --output-dir "$RUNNER_TEMP/gsc-seo/clarity"
 
       - name: Build monetization-report.v1
+        id: build_monetization_report
+        if: always()
+        continue-on-error: true
         run: >-
           python backend/scripts/agents/monetization_weekly_report.py
           --ga4-report "$RUNNER_TEMP/gsc-seo/ga4-report.json"
@@ -107,12 +114,54 @@ jobs:
           --summary "$RUNNER_TEMP/gsc-seo/monetization-summary.md"
 
       - name: Add Audit to Actions Summary
+        if: always()
         shell: bash
         run: |
-          cat "$RUNNER_TEMP/gsc-seo/summary.md" >> "$GITHUB_STEP_SUMMARY"
-          cat "$RUNNER_TEMP/gsc-seo/monetization-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f "$RUNNER_TEMP/gsc-seo/summary.md" ]; then
+            cat "$RUNNER_TEMP/gsc-seo/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f "$RUNNER_TEMP/gsc-seo/monetization-summary.md" ]; then
+            cat "$RUNNER_TEMP/gsc-seo/monetization-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          {
+            echo ""
+            echo "## 取得状態"
+            echo "- GA4: ${{ steps.collect_ga4.outcome }}"
+            echo "- Clarity: ${{ env.CLARITY_API_KEY != '' && steps.collect_clarity.outcome || '未設定' }}"
+            echo "- monetization-report.v1: ${{ steps.build_monetization_report.outcome }}"
+            echo "- 個別媒体の失敗時も取得済み原本をartifactへ保存します。"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write Source Status
+        if: always()
+        shell: bash
+        env:
+          GA4_OUTCOME: ${{ steps.collect_ga4.outcome }}
+          CLARITY_CONFIGURED: ${{ env.CLARITY_API_KEY != '' }}
+          CLARITY_OUTCOME: ${{ steps.collect_clarity.outcome }}
+          REPORT_OUTCOME: ${{ steps.build_monetization_report.outcome }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          output = Path(os.environ["RUNNER_TEMP"]) / "gsc-seo" / "source-status.json"
+          payload = {
+              "ga4": os.environ.get("GA4_OUTCOME") or "skipped",
+              "clarity": (
+                  os.environ.get("CLARITY_OUTCOME") or "skipped"
+                  if os.environ.get("CLARITY_CONFIGURED") == "true"
+                  else "not_configured"
+              ),
+              "monetization_report": os.environ.get("REPORT_OUTCOME") or "skipped",
+              "partial_artifact_policy": True,
+          }
+          output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          PY
 
       - name: Upload GSC Audit Artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gsc-seo-audit-${{ github.run_id }}
@@ -125,8 +174,34 @@ jobs:
             ${{ runner.temp }}/gsc-seo/ga4-report.json
             ${{ runner.temp }}/gsc-seo/ga4-summary.md
             ${{ runner.temp }}/gsc-seo/clarity/**
-          if-no-files-found: error
+            ${{ runner.temp }}/gsc-seo/source-status.json
+          if-no-files-found: warn
           retention-days: 90
+
+      - name: Fail After Preserving Partial Artifact
+        if: always()
+        shell: bash
+        env:
+          GA4_CONFIGURED: ${{ env.GA4_PROPERTY_ID != '' }}
+          GA4_OUTCOME: ${{ steps.collect_ga4.outcome }}
+          CLARITY_CONFIGURED: ${{ env.CLARITY_API_KEY != '' }}
+          CLARITY_OUTCOME: ${{ steps.collect_clarity.outcome }}
+          REPORT_OUTCOME: ${{ steps.build_monetization_report.outcome }}
+        run: |
+          failed=0
+          if [ "$GA4_CONFIGURED" = "true" ] && [ "$GA4_OUTCOME" != "success" ]; then
+            echo "::error::GA4取得に失敗しました。取得済み原本はartifactへ保存済みです。"
+            failed=1
+          fi
+          if [ "$CLARITY_CONFIGURED" = "true" ] && [ "$CLARITY_OUTCOME" != "success" ]; then
+            echo "::error::Clarity取得に失敗しました。取得済み原本はartifactへ保存済みです。"
+            failed=1
+          fi
+          if [ "$REPORT_OUTCOME" != "success" ]; then
+            echo "::error::monetization-report.v1生成に失敗しました。取得済み原本はartifactへ保存済みです。"
+            failed=1
+          fi
+          exit "$failed"
 
       - name: Validate Manual Rewrite Input
         if: github.event_name == 'workflow_dispatch'

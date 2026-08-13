@@ -102,6 +102,14 @@ target_events: article_read_complete, article_race_click, race_view
 
 ## Troubleshooting
 
+### 週次Workflowで一つの媒体取得だけが失敗した
+
+- GA4、Clarityなど個別媒体の取得失敗で、取得済みGSC原本や記事台帳を破棄してはいけません。
+- 個別媒体の取得ステップは失敗結果を記録して後続へ進み、`source-status.json`と取得済みファイルを必ずartifactへ保存します。
+- artifact保存後にWorkflowを失敗扱いへ戻し、通知と再実行可能性を維持します。
+- 定期実行の再実行時は`github.event_name`が元の`schedule`のままであることを確認し、手動改稿・commit・deploy工程が起動しない場合だけ実行します。
+- Google Analytics Data APIの無効化エラーを確認した場合は、対象Google CloudプロジェクトでAPIを有効化してから同じrunを再実行します。ローカルOAuthがGoogleにブロックされる場合は、権限を迂回せずWorkload Identityのサービスアカウント経路を使用します。
+
 ### GA4でイベントが未検出に見える
 
 コード発火、DebugView/Tag Assistant、通常レポート反映を分けて確認します。通常レポートは遅延するため、未検出表示だけで実装失敗と判断しないでください。

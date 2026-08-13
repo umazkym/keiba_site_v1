@@ -1,0 +1,247 @@
+name: Keiba Monetization History and Weekly Cycle
+
+on:
+  schedule:
+    # 毎週水曜09:30 JST（UTCでは水曜00:30）
+    - cron: '30 0 * * 3'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'weekly または backfill'
+        required: true
+        default: weekly
+        type: choice
+        options: [weekly, backfill]
+      start_date:
+        description: '任意の開始日（YYYY-MM-DD、空欄は2026-03-14）'
+        required: false
+        type: string
+      end_date:
+        description: '任意の終了日（YYYY-MM-DD、空欄は最新完全日曜）'
+        required: false
+        type: string
+
+concurrency:
+  group: keiba-monetization-readonly-cycle
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+jobs:
+  collect-and-analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GA4_PROPERTY_ID: ${{ vars.GA4_PROPERTY_ID }}
+      GSC_SITE_URL: ${{ vars.GSC_SITE_URL || 'sc-domain:uma-free.com' }}
+      ADSENSE_ACCOUNT: ${{ vars.ADSENSE_ACCOUNT }}
+      ADSENSE_OAUTH_CLIENT_ID: ${{ secrets.ADSENSE_OAUTH_CLIENT_ID }}
+      ADSENSE_OAUTH_CLIENT_SECRET: ${{ secrets.ADSENSE_OAUTH_CLIENT_SECRET }}
+      ADSENSE_OAUTH_REFRESH_TOKEN: ${{ secrets.ADSENSE_OAUTH_REFRESH_TOKEN }}
+      YOUTUBE_ANALYTICS_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_ANALYTICS_OAUTH_CLIENT_ID }}
+      YOUTUBE_ANALYTICS_OAUTH_CLIENT_SECRET: ${{ secrets.YOUTUBE_ANALYTICS_OAUTH_CLIENT_SECRET }}
+      YOUTUBE_ANALYTICS_OAUTH_REFRESH_TOKEN: ${{ secrets.YOUTUBE_ANALYTICS_OAUTH_REFRESH_TOKEN }}
+      CLARITY_API_KEY: ${{ secrets.CLARITY_API_KEY }}
+      CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ANALYTICS_API_TOKEN }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install -r backend/requirements.txt
+          npm ci --prefix frontend
+
+      - name: Authenticate Google Read-only APIs
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: keiba-api-project
+          workload_identity_provider: projects/761440273070/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+          service_account: github-actions-iap-db@keiba-api-project.iam.gserviceaccount.com
+          create_credentials_file: true
+
+      - name: Prepare Output
+        run: mkdir -p "$RUNNER_TEMP/monetization-cycle"
+
+      - name: Export Article Inventory
+        working-directory: frontend
+        run: npm run gsc:export-inventory -- --output "$RUNNER_TEMP/monetization-cycle/article-inventory.json"
+
+      - name: Export Grade Race Schedule Coverage
+        run: >-
+          python backend/scripts/agents/grade_race_registry_audit.py
+          --registry frontend/content/reference/grade-race-entities.json
+          --output "$RUNNER_TEMP/monetization-cycle/grade-race-schedule.json"
+          --summary "$RUNNER_TEMP/monetization-cycle/grade-race-schedule.md"
+
+      - name: Collect Clarity 72-hour Snapshot
+        id: clarity
+        if: env.CLARITY_API_KEY != ''
+        continue-on-error: true
+        run: >-
+          python backend/scripts/export_clarity_insights.py
+          --profile full --num-days 3
+          --output-dir "$RUNNER_TEMP/monetization-cycle/clarity"
+
+      - name: Collect Cloud Run and Cloudflare Snapshot
+        id: infrastructure
+        continue-on-error: true
+        run: >-
+          python backend/scripts/agents/cloud_run_capacity.py
+          --project-id keiba-api-project
+          --service-config keiba-frontend-v1,1,1,2
+          --service-config keiba-site-v1,1,1,2
+          --output-json "$RUNNER_TEMP/monetization-cycle/infrastructure.json"
+
+      - name: Resolve Period
+        id: period
+        env:
+          INPUT_MODE: ${{ inputs.mode }}
+          INPUT_START_DATE: ${{ inputs.start_date }}
+          INPUT_END_DATE: ${{ inputs.end_date }}
+        run: |
+          mode="${INPUT_MODE:-weekly}"
+          start_date="${INPUT_START_DATE:-2026-03-14}"
+          end_date="${INPUT_END_DATE:-}"
+          if [ -z "$end_date" ]; then
+            end_date="$(python -c 'from backend.scripts.agents.monetization_history import latest_complete_sunday; print(latest_complete_sunday())')"
+          fi
+          week_ending="$(python -c "from datetime import date,timedelta; from backend.scripts.agents.monetization_history import latest_complete_sunday; print(latest_complete_sunday(date.fromisoformat('$end_date')+timedelta(days=1)))")"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "start_date=$start_date" >> "$GITHUB_OUTPUT"
+          echo "end_date=$end_date" >> "$GITHUB_OUTPUT"
+          echo "week_ending=$week_ending" >> "$GITHUB_OUTPUT"
+
+      - name: Collect and Analyze All Sources
+        id: collect
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          args=(
+            --mode "${{ steps.period.outputs.mode }}"
+            --start-date "${{ steps.period.outputs.start_date }}"
+            --end-date "${{ steps.period.outputs.end_date }}"
+            --week-ending "${{ steps.period.outputs.week_ending }}"
+            --output-dir "$RUNNER_TEMP/monetization-cycle/report"
+            --article-inventory "$RUNNER_TEMP/monetization-cycle/article-inventory.json"
+            --grade-schedule "$RUNNER_TEMP/monetization-cycle/grade-race-schedule.json"
+            --fail-on-partial
+          )
+          if [ -d "$RUNNER_TEMP/monetization-cycle/clarity" ]; then
+            args+=(--clarity-dir "$RUNNER_TEMP/monetization-cycle/clarity")
+          fi
+          if [ -f "$RUNNER_TEMP/monetization-cycle/infrastructure.json" ]; then
+            args+=(--infrastructure-json "$RUNNER_TEMP/monetization-cycle/infrastructure.json")
+          fi
+          python backend/scripts/agents/monetization_history.py "${args[@]}"
+
+      - name: Build XLSX Contract
+        id: workbook
+        if: always()
+        continue-on-error: true
+        run: >-
+          python backend/scripts/agents/monetization_workbook_ci.py
+          --analysis "$RUNNER_TEMP/monetization-cycle/report/monetization-cycle-analysis.v1.json"
+          --history "$RUNNER_TEMP/monetization-cycle/report/monetization-history.v2.json"
+          --output "$RUNNER_TEMP/monetization-cycle/report/UMA-FREE_週次収益改善.xlsx"
+
+      - name: Validate Secrets and Outputs
+        id: validate
+        if: always()
+        continue-on-error: true
+        env:
+          CHECK_ADSENSE_SECRET: ${{ secrets.ADSENSE_OAUTH_CLIENT_SECRET }}
+          CHECK_ADSENSE_TOKEN: ${{ secrets.ADSENSE_OAUTH_REFRESH_TOKEN }}
+          CHECK_YOUTUBE_SECRET: ${{ secrets.YOUTUBE_ANALYTICS_OAUTH_CLIENT_SECRET }}
+          CHECK_YOUTUBE_TOKEN: ${{ secrets.YOUTUBE_ANALYTICS_OAUTH_REFRESH_TOKEN }}
+          CHECK_CLARITY_TOKEN: ${{ secrets.CLARITY_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json, os, zipfile
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"]) / "monetization-cycle" / "report"
+          required = [
+              root / "monetization-history.v2.json",
+              root / "source-status.v2.json",
+              root / "monetization-cycle-analysis.v1.json",
+              root / "UMA-FREE_週次収益改善.md",
+              root / "UMA-FREE_週次収益改善.xlsx",
+          ]
+          missing = [str(path) for path in required if not path.exists()]
+          if missing:
+              raise SystemExit("成果物不足: " + ", ".join(missing))
+          secrets = [value for key, value in os.environ.items() if key.startswith("CHECK_") and len(value) >= 8]
+          for path in root.rglob("*"):
+              if not path.is_file() or path.suffix.lower() not in {".json", ".md", ".csv"}:
+                  continue
+              content = path.read_text(encoding="utf-8-sig", errors="replace")
+              if any(secret in content for secret in secrets):
+                  raise SystemExit(f"秘密値混入を検出: {path}")
+          with zipfile.ZipFile(required[-1]) as archive:
+              workbook_xml = archive.read("xl/workbook.xml").decode("utf-8")
+              expected = ("経営ダッシュボード", "週次推移", "流入源", "検索機会", "重賞記事", "広告収益", "YouTube・SNS", "障害", "ファネル", "改善台帳", "取得品質", "原本")
+              for sheet in expected:
+                  if sheet not in workbook_xml:
+                      raise SystemExit(f"XLSXシート不足: {sheet}")
+          analysis = json.loads(required[2].read_text(encoding="utf-8"))
+          print(json.dumps({"formal_week": analysis["formal_week"], "sources": analysis["source_status"]}, ensure_ascii=False))
+          PY
+
+      - name: Add Summary
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/monetization-cycle/report/UMA-FREE_週次収益改善.md" ]; then
+            cat "$RUNNER_TEMP/monetization-cycle/report/UMA-FREE_週次収益改善.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          {
+            echo ""
+            echo "## Workflow取得状態"
+            echo "- Clarity: ${{ env.CLARITY_API_KEY != '' && steps.clarity.outcome || '未設定' }}"
+            echo "- Cloud Run / Cloudflare: ${{ steps.infrastructure.outcome }}"
+            echo "- 全媒体分析: ${{ steps.collect.outcome }}"
+            echo "- XLSX: ${{ steps.workbook.outcome }}"
+            echo "- 検証: ${{ steps.validate.outcome }}"
+            echo "- 欠損媒体があっても取得済み原本は破棄しません。"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Complete or Partial Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monetization-cycle-${{ steps.period.outputs.week_ending || github.run_id }}
+          path: |
+            ${{ runner.temp }}/monetization-cycle/report/**
+            ${{ runner.temp }}/monetization-cycle/clarity/**
+            ${{ runner.temp }}/monetization-cycle/infrastructure.json
+            ${{ runner.temp }}/monetization-cycle/article-inventory.json
+            ${{ runner.temp }}/monetization-cycle/grade-race-schedule.json
+            ${{ runner.temp }}/monetization-cycle/grade-race-schedule.md
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Fail After Preserving Partial Artifact
+        if: always()
+        run: |
+          if [ "${{ steps.collect.outcome }}" != "success" ] || [ "${{ steps.workbook.outcome }}" != "success" ] || [ "${{ steps.validate.outcome }}" != "success" ]; then
+            echo "::error::週次分析は部分失敗しました。取得済み原本と状態一覧はartifactへ保存済みです。"
+            exit 1
+          fi

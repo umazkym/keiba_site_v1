@@ -16,6 +16,7 @@ webdriver-manager
 # Data Handling
 pandas
 numpy
+XlsxWriter>=3.2,<4
 
 # SNS & Utilities
 tweepy

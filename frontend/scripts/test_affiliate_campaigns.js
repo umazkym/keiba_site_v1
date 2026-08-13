@@ -87,7 +87,7 @@ const qualifiedRace = getAffiliateCampaignsForContext({
     raceType: 'nar',
     rakutenMode: 'qualified_nar',
 })[0];
-assert.equal(qualifiedRace.title, '楽天競馬の投票会員登録が初めての方へ');
+assert.equal(qualifiedRace.title, '馬券を買うたびに楽天ポイントが貯まる！');
 assert.equal(
     qualifiedRace.description,
     '地方競馬全場に対応。投票会員登録には楽天会員情報と銀行口座の登録が必要です。',
@@ -95,7 +95,7 @@ assert.equal(
 assert.equal(qualifiedRace.links[0].label, '新規投票会員登録の案内を見る');
 assert.equal(
     qualifiedRace.attention,
-    '初めて投票会員登録する方向けの案内です。※馬券の購入は20歳以上の方のみ対象です。',
+    '※馬券の購入は20歳以上の方のみ対象です。',
 );
 assert.equal(qualifiedRace.ctaOnly, true);
 assert.equal(qualifiedRace.showDescription, true);

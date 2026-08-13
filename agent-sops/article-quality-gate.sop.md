@@ -78,6 +78,18 @@ Constraints for parameter acquisition:
 - Evidence sanitization tests MUST cover a verified multi-column row that produces `evidence_rows > 0` and an external-source-only row that remains rejected.
 - You SHOULD run `npx tsc --noEmit` when TypeScript agent scripts or article rendering types change.
 
+### 5.1 Stop repeated Gemini billing failures without losing orders
+
+Geminiが課金残高枯渇、APIキー無効、クォータ枯渇を返した場合は、同じWriteOrderを消費し続けず、共有の回路遮断状態を保存します。復旧後は既存の優先順位規則に従い、古い高優先WriteOrderから再実行します。
+
+**Constraints:**
+
+- You MUST classify billing depletion before generic HTTP 429 handling and MUST NOT retry it as a transient rate limit.
+- You MUST retain the top-level WriteOrder when Writer or Editor fails before approval; a failed external call must not silently mark the order as processed.
+- You MUST persist only failure kind, timestamps, counters, and a redacted message. API keys, OAuth values, prompts, article bodies, and provider responses MUST NOT enter the circuit state or workflow summary.
+- You MUST skip external AI calls while the circuit is open and restore the state in later workflow runs.
+- You MUST run `npm run article:test-gemini-circuit` after changing failure classification, cooldowns, or workflow circuit handling.
+
 ### 6. Gate grade-race URLs and race bridges
 
 重賞記事では共有レジストリの`entity_key`と`season_year`を使い、同一年度の記事を更新します。Writerが本文へ個別レースCTAを直接埋め込むことは禁止し、Publisherだけが軽量プレビューAPIの一意一致、正確なrace IDとURL、予測1頭以上、年度一致を確認して`race_bridge_eligible=true`を保存できます。適格性は実験状態と分離し、表示は本番リリースゲートを通過した`off / split / on`だけで制御します。

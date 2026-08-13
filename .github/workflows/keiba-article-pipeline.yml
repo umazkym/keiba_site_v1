@@ -81,12 +81,63 @@ jobs:
       GSC_SITE_URL: ${{ vars.GSC_SITE_URL || 'sc-domain:uma-free.com' }}
       KEIBA_EVERGREEN_MAX_ORDERS_PER_RUN: "1"
       KEIBA_GRADE_RACE_LEGACY_WRITER_ENABLED: "false"
+      GEMINI_CIRCUIT_STATE_PATH: ${{ github.workspace }}/.runtime/gemini-article-circuit.json
+      ARTICLE_GEMINI_BILLING_COOLDOWN_HOURS: "12"
+      ARTICLE_GEMINI_AUTH_COOLDOWN_HOURS: "24"
+      ARTICLE_GEMINI_QUOTA_COOLDOWN_HOURS: "6"
+      ARTICLE_GEMINI_TRANSIENT_COOLDOWN_MINUTES: "60"
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
+      - name: Restore Gemini Article Circuit State
+        id: restore_gemini_circuit
+        uses: actions/cache/restore@v4
+        with:
+          path: .runtime/gemini-article-circuit.json
+          key: gemini-article-circuit-${{ github.run_id }}
+          restore-keys: |
+            gemini-article-circuit-
+
+      - name: Restore Pending Article Write Orders
+        uses: actions/cache/restore@v4
+        with:
+          path: .runtime/pending-write-orders
+          key: article-pending-orders-${{ github.run_id }}
+          restore-keys: |
+            article-pending-orders-
+
+      - name: Requeue Preserved Article Write Orders
+        shell: bash
+        run: |
+          mkdir -p data/write_orders .runtime/pending-write-orders
+          find .runtime/pending-write-orders -maxdepth 1 -type f -name '*.json' -exec cp -f {} data/write_orders/ \;
+          restored=$(find .runtime/pending-write-orders -maxdepth 1 -type f -name '*.json' | wc -l)
+          echo "- 前回から復旧した未処理WriteOrder: ${restored}件" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check Gemini Article Circuit
+        id: gemini_circuit
+        shell: bash
+        run: |
+          mkdir -p "$(dirname "$GEMINI_CIRCUIT_STATE_PATH")"
+          node <<'NODE'
+          const fs = require('fs');
+          const statePath = process.env.GEMINI_CIRCUIT_STATE_PATH;
+          let state = {};
+          try { state = JSON.parse(fs.readFileSync(statePath, 'utf8')); } catch {}
+          const openUntil = Date.parse(state.open_until || '');
+          const blocked = state.status === 'open' && Number.isFinite(openUntil) && Date.now() < openUntil;
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `blocked=${blocked ? 'true' : 'false'}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `open_until=${state.open_until || ''}\n`);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            `## Gemini記事生成サーキット\n\n- 状態: ${blocked ? '停止中' : '実行可能'}\n- 連続失敗: ${state.consecutive_failures || 0}\n- 最終失敗種別: ${state.last_failure_kind || 'なし'}\n- 次回試行可能時刻: ${state.open_until || '制限なし'}\n\n`
+          );
+          if (blocked) console.log(`::warning::Gemini記事生成を停止します。次回試行可能: ${state.open_until}`);
+          NODE
+
       - name: Preflight - Check Required Secrets
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         env:
           DATABASE_URL_ORIGINAL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -110,39 +161,46 @@ jobs:
           echo "Required secrets are configured."
 
       - name: Setup Node.js
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: 'npm'
 
       - name: Install Frontend Dependencies
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         working-directory: ./frontend
         run: npm ci
 
       - name: Validate Existing Article Links
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         working-directory: ./frontend
         run: npm run article:validate-links
 
       - name: Article Quality Audit
-        if: github.event_name == 'schedule' || inputs.run_quality_audit
+        if: steps.gemini_circuit.outputs.blocked != 'true' && (github.event_name == 'schedule' || inputs.run_quality_audit)
         working-directory: ./frontend
         run: npm run article:audit-quality
 
       - name: Setup Python
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: 'pip'
 
       - name: Install Backend Dependencies
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         working-directory: ./backend
         run: pip install -r requirements.txt
 
       - name: Prepare Article Coverage Reports
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         shell: bash
         run: mkdir -p "$RUNNER_TEMP/article-coverage"
 
       - name: Audit Grade Race Registry and Upcoming Coverage
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         run: >-
           python backend/scripts/agents/grade_race_registry_audit.py
           --registry frontend/content/reference/grade-race-entities.json
@@ -150,16 +208,18 @@ jobs:
           --summary "$RUNNER_TEMP/article-coverage/grade-race-registry.md"
 
       - name: Add Grade Race Registry Audit to Summary
-        if: always()
+        if: always() && steps.gemini_circuit.outputs.blocked != 'true'
         shell: bash
         run: cat "$RUNNER_TEMP/article-coverage/grade-race-registry.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Configure Git
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         run: |
           git config --global user.name "${{ secrets.GIT_USER_NAME || 'github-actions[bot]' }}"
           git config --global user.email "${{ secrets.GIT_USER_EMAIL || 'github-actions[bot]@users.noreply.github.com' }}"
 
       - name: Set up IAP database tunnel
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         uses: ./.github/actions/setup-iap-db
         with:
           database_url: ${{ secrets.DATABASE_URL }}
@@ -169,6 +229,7 @@ jobs:
         continue-on-error: true
         if: >-
           env.KEIBA_GRADE_RACE_AUTO_REPAIR_ENABLED == 'true'
+          && steps.gemini_circuit.outputs.blocked != 'true'
           && (github.event.schedule == '45 7 * * *' || inputs.run_grade_race_search_repair == true)
         run: >-
           python backend/scripts/agents/grade_race_search_monitor.py
@@ -182,6 +243,7 @@ jobs:
       - name: Add Grade Race Search Repair Candidates to Summary
         if: >-
           env.KEIBA_GRADE_RACE_AUTO_REPAIR_ENABLED == 'true'
+          && steps.gemini_circuit.outputs.blocked != 'true'
           && (github.event.schedule == '45 7 * * *' || inputs.run_grade_race_search_repair == true)
           && steps.grade_race_search_repair_monitor.outcome == 'success'
         shell: bash
@@ -190,6 +252,7 @@ jobs:
       - name: Generate One Grade Race Search Repair Order
         if: >-
           env.KEIBA_GRADE_RACE_AUTO_REPAIR_ENABLED == 'true'
+          && steps.gemini_circuit.outputs.blocked != 'true'
           && (github.event.schedule == '45 7 * * *' || inputs.run_grade_race_search_repair == true)
           && steps.grade_race_search_repair_monitor.outcome == 'success'
         run: >-
@@ -203,12 +266,14 @@ jobs:
       - name: Record Skipped Grade Race Search Repair
         if: >-
           env.KEIBA_GRADE_RACE_AUTO_REPAIR_ENABLED == 'true'
+          && steps.gemini_circuit.outputs.blocked != 'true'
           && (github.event.schedule == '45 7 * * *' || inputs.run_grade_race_search_repair == true)
           && steps.grade_race_search_repair_monitor.outcome == 'failure'
         shell: bash
         run: echo "- GSC重賞検索補修はデータ取得失敗のためスキップし、通常の記事生成を継続します。" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Step 1A - Generate News Topic Write Orders
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         working-directory: ./backend
         env:
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
@@ -227,21 +292,24 @@ jobs:
         run: python scripts/agents/news_topic_planner.py
 
       - name: Step 1B - Generate Grade Race Write Orders
-        if: env.KEIBA_GRADE_RACE_LEGACY_WRITER_ENABLED == 'true'
+        if: steps.gemini_circuit.outputs.blocked != 'true' && env.KEIBA_GRADE_RACE_LEGACY_WRITER_ENABLED == 'true'
         working-directory: ./backend
         run: python scripts/agents/grade_race_writer.py
 
       - name: Step 1C - Generate Evergreen Column Write Order
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         working-directory: ./backend
         env:
           KEIBA_EVERGREEN_MAX_ORDERS_PER_RUN: ${{ env.KEIBA_EVERGREEN_MAX_ORDERS_PER_RUN }}
         run: python scripts/agents/editorial_evergreen_planner.py
 
       - name: Step 1D - Generate Statistical Write Order (Data Scientist)
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         working-directory: ./backend
         run: python scripts/agents/data_scientist.py
 
       - name: Step 2 & 3 - Generate Draft and Review
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         working-directory: ./frontend
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -264,16 +332,22 @@ jobs:
           ARTICLE_PIPELINE_RESERVE_EVERGREEN_SLOT: ${{ env.ARTICLE_PIPELINE_RESERVE_EVERGREEN_SLOT }}
           KEIBA_ARTICLE_COVERAGE_MODE: ${{ env.KEIBA_ARTICLE_COVERAGE_MODE }}
           KEIBA_GRADE_RACE_REPAIR_COOLDOWN_HOURS: ${{ env.KEIBA_GRADE_RACE_REPAIR_COOLDOWN_HOURS }}
+          GEMINI_CIRCUIT_STATE_PATH: ${{ env.GEMINI_CIRCUIT_STATE_PATH }}
+          ARTICLE_GEMINI_BILLING_COOLDOWN_HOURS: ${{ env.ARTICLE_GEMINI_BILLING_COOLDOWN_HOURS }}
+          ARTICLE_GEMINI_AUTH_COOLDOWN_HOURS: ${{ env.ARTICLE_GEMINI_AUTH_COOLDOWN_HOURS }}
+          ARTICLE_GEMINI_QUOTA_COOLDOWN_HOURS: ${{ env.ARTICLE_GEMINI_QUOTA_COOLDOWN_HOURS }}
+          ARTICLE_GEMINI_TRANSIENT_COOLDOWN_MINUTES: ${{ env.ARTICLE_GEMINI_TRANSIENT_COOLDOWN_MINUTES }}
         run: npm run article:pipeline
 
       - name: Check if article was approved
         id: check_approved
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         run: |
           approved=$(find frontend/agents/queue/approved -name "*.md" 2>/dev/null | wc -l)
           echo "approved_count=$approved" >> $GITHUB_OUTPUT
 
       - name: Step 4 - Publish and Push
-        if: steps.check_approved.outputs.approved_count > 0
+        if: steps.gemini_circuit.outputs.blocked != 'true' && steps.check_approved.outputs.approved_count > 0
         working-directory: ./frontend
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -281,7 +355,7 @@ jobs:
 
       - name: Resolve published release
         id: resolve_published_release
-        if: steps.check_approved.outputs.approved_count > 0
+        if: steps.gemini_circuit.outputs.blocked != 'true' && steps.check_approved.outputs.approved_count > 0
         env:
           SOURCE_SHA: ${{ github.sha }}
         shell: bash
@@ -299,19 +373,47 @@ jobs:
           fi
 
       - name: Step 5 - Completion Check
+        if: steps.gemini_circuit.outputs.blocked != 'true'
         run: |
           echo "Pipeline execution completed successfully!"
           echo "max_articles=${{ env.ARTICLE_PIPELINE_MAX_ARTICLES }}" >> "$GITHUB_STEP_SUMMARY"
           echo "approved_count=${{ steps.check_approved.outputs.approved_count }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Article Coverage Reports
-        if: always()
+        if: always() && steps.gemini_circuit.outputs.blocked != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: article-coverage-${{ github.run_id }}
           path: ${{ runner.temp }}/article-coverage/
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Preserve Unprocessed Article Write Orders
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p .runtime/pending-write-orders
+          find .runtime/pending-write-orders -maxdepth 1 -type f -name '*.json' -delete
+          if [ -d data/write_orders ]; then
+            find data/write_orders -maxdepth 1 -type f -name '*.json' -exec cp -f {} .runtime/pending-write-orders/ \;
+          fi
+          pending=$(find .runtime/pending-write-orders -maxdepth 1 -type f -name '*.json' | wc -l)
+          printf '{"schema_version":"article-pending-orders.v1","pending_count":%s,"run_id":"%s"}\n' "$pending" "$GITHUB_RUN_ID" > .runtime/pending-write-orders/manifest.txt
+          echo "- 次回へ保持する未処理WriteOrder: ${pending}件" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Save Pending Article Write Orders
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .runtime/pending-write-orders
+          key: article-pending-orders-${{ github.run_id }}
+
+      - name: Save Gemini Article Circuit State
+        if: always() && hashFiles('.runtime/gemini-article-circuit.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .runtime/gemini-article-circuit.json
+          key: gemini-article-circuit-${{ github.run_id }}
 
   deploy-frontend:
     needs: build-and-publish

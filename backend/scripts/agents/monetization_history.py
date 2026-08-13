@@ -427,6 +427,9 @@ def paged_ga4_report(
 def parse_ga4_report(dataset: str, payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     dimension_names = [str(row.get("name") or "") for row in payload.get("dimensionHeaders") or []]
     metric_names = [str(row.get("name") or "") for row in payload.get("metricHeaders") or []]
+    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), Mapping) else {}
+    currency_code = str(metadata.get("currencyCode") or "").upper() or None
+    source_timezone = str(metadata.get("timeZone") or "") or "GA4_property_timezone"
     rows: list[dict[str, Any]] = []
     for raw_row in payload.get("rows") or []:
         dimension_values = list(raw_row.get("dimensionValues") or [])
@@ -445,16 +448,20 @@ def parse_ga4_report(dataset: str, payload: Mapping[str, Any]) -> list[dict[str,
             name: numeric(metric_values[index].get("value")) if index < len(metric_values) else None
             for index, name in enumerate(metric_names)
         }
-        rows.append(common_row(
+        row = common_row(
             "ga4",
             dataset,
             iso_date_from_ga4(str(raw_date or "")) or None,
-            "GA4_property_timezone",
+            source_timezone,
             "processed_yesterday",
             "Google Analytics Data API v1beta properties.runReport",
             dimensions,
             metrics,
-        ))
+        )
+        # totalAdRevenueはプロパティの表示通貨で返る。AdSenseのJPYと
+        # 換算せず直接比較しないよう、各正規化行にも通貨を保持する。
+        row["source_currency"] = currency_code
+        rows.append(row)
     return rows
 
 
@@ -469,6 +476,7 @@ def collect_ga4(period: Period, raw_dir: Path, service: Any | None = None) -> di
     )
     all_rows: list[dict[str, Any]] = []
     report_status: dict[str, Any] = {}
+    currency_codes: set[str] = set()
     reports = list(GA4_REPORTS)
     custom_start = max(period.start, date(2026, 8, 3))
     if custom_start <= period.end:
@@ -493,10 +501,14 @@ def collect_ga4(period: Period, raw_dir: Path, service: Any | None = None) -> di
             write_json(raw_dir / "ga4" / f"{report['name']}.json", payload)
             parsed = parse_ga4_report(report["name"], payload)
             all_rows.extend(parsed)
+            currency_code = str((payload.get("metadata") or {}).get("currencyCode") or "").upper()
+            if currency_code:
+                currency_codes.add(currency_code)
             report_status[report["name"]] = {
                 "status": "partial" if payload.get("truncated") else "complete",
                 "row_count": len(parsed),
                 "truncated": bool(payload.get("truncated")),
+                "currency_code": currency_code or None,
             }
         except Exception as exc:
             report_status[report["name"]] = {
@@ -504,7 +516,13 @@ def collect_ga4(period: Period, raw_dir: Path, service: Any | None = None) -> di
                 "row_count": 0,
                 "reason": safe_error(exc),
             }
-    return {"rows": all_rows, "reports": report_status, "property_id": property_id}
+    return {
+        "rows": all_rows,
+        "reports": report_status,
+        "property_id": property_id,
+        "currency_code": next(iter(currency_codes)) if len(currency_codes) == 1 else None,
+        "currency_codes": sorted(currency_codes),
+    }
 
 
 GSC_REPORTS: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -970,6 +988,28 @@ def average_metric(rows: Sequence[Mapping[str, Any]], metric: str) -> float | No
     return statistics.fmean(present) if present else None
 
 
+def ga4_currency_code(history: Mapping[str, Any]) -> str | None:
+    """GA4のプロパティ通貨を正規化行または取得詳細から解決する。"""
+
+    row_codes = {
+        str(row.get("source_currency") or "").upper()
+        for row in history.get("rows") or []
+        if row.get("source") == "ga4" and row.get("source_currency")
+    }
+    if len(row_codes) == 1:
+        return next(iter(row_codes))
+    details = (history.get("source_details") or {}).get("ga4") or {}
+    direct = str(details.get("currency_code") or "").upper()
+    if direct:
+        return direct
+    detail_codes = {
+        str(value).upper()
+        for value in details.get("currency_codes") or []
+        if value
+    }
+    return next(iter(detail_codes)) if len(detail_codes) == 1 else None
+
+
 def period_metrics(history: Mapping[str, Any], period: Period) -> dict[str, Any]:
     adsense = rows_for(history, "adsense", "daily", period)
     ga4 = rows_for(history, "ga4", "daily", period)
@@ -981,6 +1021,7 @@ def period_metrics(history: Mapping[str, Any], period: Period) -> dict[str, Any]
     sessions = sum_metric(ga4, "sessions")
     ga_pv = sum_metric(ga4, "screenPageViews")
     ga_revenue = sum_metric(ga4, "totalAdRevenue")
+    ga_currency = ga4_currency_code(history)
     return {
         "start_date": period.start.isoformat(),
         "end_date": period.end.isoformat(),
@@ -993,7 +1034,9 @@ def period_metrics(history: Mapping[str, Any], period: Period) -> dict[str, Any]
         "active_view_viewability": average_metric(adsense, "active_view_viewability"),
         "ga4_sessions": sessions,
         "ga4_page_views": ga_pv,
-        "ga4_ad_revenue_jpy": ga_revenue,
+        "ga4_ad_revenue": ga_revenue,
+        "ga4_revenue_currency": ga_currency,
+        "ga4_ad_revenue_jpy": ga_revenue if ga_currency == "JPY" else None,
         "page_views_per_session": ga_pv / sessions if ga_pv is not None and sessions else None,
         "revenue_per_1000_sessions": earnings / sessions * 1000 if earnings is not None and sessions else None,
         "gsc_clicks": sum_metric(gsc, "clicks"),
@@ -1187,6 +1230,230 @@ def load_grade_schedule(path: Path | None) -> list[dict[str, Any]]:
     return []
 
 
+def grade_race_publish_lead_days(
+    grade: Any,
+    circuit: Any,
+    historical_impressions: Any = None,
+    *,
+    demand_profile_known: bool = False,
+) -> int | None:
+    """記事Plannerと同じ需要別の初回公開期限を返す。"""
+
+    normalized_grade = re.sub(r"[\s　]+", "", str(grade or "")).upper()
+    normalized_circuit = str(circuit or "").strip().lower()
+    impressions = numeric(historical_impressions) or 0
+    if normalized_grade in {"G1", "JPNI", "JPN1"}:
+        return 21
+    if normalized_grade in {"G2", "JPNII", "JPN2"}:
+        return 14
+    if normalized_circuit == "jra" and normalized_grade == "G3":
+        return 10
+    if impressions >= 300:
+        return 9
+    if demand_profile_known and impressions < 50:
+        return None
+    return 3
+
+
+def grade_article_weekly_replacement(
+    history: Mapping[str, Any],
+    articles: Sequence[Mapping[str, Any]],
+    current_period: Period,
+    previous_period: Period,
+) -> dict[str, Any]:
+    """前週で終了した重賞記事流入を今週の記事が置換できた割合を算出する。"""
+
+    grade_urls = {
+        str(row.get("canonical_url") or "").rstrip("/")
+        for row in articles
+        if row.get("canonical_url")
+    }
+    grade_slugs = {
+        str(row.get("source_slug") or "")
+        for row in articles
+        if row.get("source_slug")
+    }
+
+    def aggregate(period: Period) -> tuple[float, dict[str, float]]:
+        by_page: dict[str, float] = defaultdict(float)
+        for row in rows_for(history, "gsc", "page_daily", period):
+            page = str((row.get("dimensions") or {}).get("page") or "").rstrip("/")
+            if page not in grade_urls and not any(slug and f"/articles/{slug}" in page for slug in grade_slugs):
+                continue
+            by_page[page] += numeric((row.get("metrics") or {}).get("clicks")) or 0
+        return sum(by_page.values()), by_page
+
+    current_clicks, current_pages = aggregate(current_period)
+    previous_clicks, previous_pages = aggregate(previous_period)
+    replacement_rate = current_clicks / previous_clicks if previous_clicks else None
+    losses = sorted(
+        (
+            {"page": page, "lost_clicks": previous - current_pages.get(page, 0)}
+            for page, previous in previous_pages.items()
+            if previous > current_pages.get(page, 0)
+        ),
+        key=lambda row: -row["lost_clicks"],
+    )
+    gains = sorted(
+        (
+            {"page": page, "gained_clicks": current - previous_pages.get(page, 0)}
+            for page, current in current_pages.items()
+            if current > previous_pages.get(page, 0)
+        ),
+        key=lambda row: -row["gained_clicks"],
+    )
+    return {
+        "definition": "対象週の重賞記事GSCクリック ÷ 前週の重賞記事GSCクリック",
+        "current_grade_article_clicks": current_clicks,
+        "previous_grade_article_clicks": previous_clicks,
+        "replacement_rate": replacement_rate,
+        "unreplaced_clicks": max(0.0, previous_clicks - current_clicks),
+        "top_expired_or_lost_pages": losses[:10],
+        "top_new_or_gained_pages": gains[:10],
+        "target_rate": 0.5,
+        "status": (
+            "unavailable" if replacement_rate is None
+            else "healthy" if replacement_rate >= 0.5
+            else "critical" if replacement_rate < 0.2
+            else "review"
+        ),
+        "caveat": "開催日・レース規模による需要差を含むため、記事障害だけの因果効果ではありません。",
+    }
+
+
+def workflow_failure_impact(
+    history: Mapping[str, Any],
+    period: Period,
+) -> dict[str, Any]:
+    jobs = (history.get("source_details") or {}).get("github_actions", {}).get("failure_jobs", [])
+    relevant = []
+    for job in jobs:
+        created = str(job.get("created_at") or "")[:10]
+        if not created:
+            continue
+        parsed = date.fromisoformat(created)
+        if period.start <= parsed <= period.end:
+            relevant.append(dict(job))
+    failed = [
+        job for job in relevant
+        if not job.get("conclusion")
+        or str(job.get("conclusion")).lower() in {"failure", "cancelled", "timed_out", "action_required"}
+    ]
+
+    def run_key(job: Mapping[str, Any]) -> str:
+        return str(
+            job.get("run_id")
+            or job.get("url")
+            or f"{job.get('workflow')}::{job.get('created_at')}"
+        )
+
+    article_failures = [job for job in failed if job.get("workflow") == "Keiba Article Auto Pipeline"]
+    draft_failures = [
+        job for job in article_failures
+        if any("Generate Draft and Review" in str(step) for step in job.get("failed_steps") or [])
+    ]
+    failed_runs = {run_key(job) for job in failed}
+    article_failure_runs = {run_key(job) for job in article_failures}
+    draft_failure_runs = {run_key(job) for job in draft_failures}
+    return {
+        "all_failure_jobs": len(failed),
+        "all_failure_runs": len(failed_runs),
+        "article_pipeline_failures": len(article_failure_runs),
+        "draft_review_failures": len(draft_failure_runs),
+        "ignored_nonfailure_job_rows": len(relevant) - len(failed),
+        "failure_jobs": failed,
+        "article_failure_dates": sorted({str(job.get("created_at"))[:10] for job in article_failures}),
+        "repeated_draft_review_failure": len(draft_failure_runs) >= 2,
+        "note": "失敗日と流入減の同時発生は因果確定ではなく、公開欠損と合わせて評価します。",
+    }
+
+
+def traffic_cross_analysis(
+    history: Mapping[str, Any],
+    current_period: Period,
+    previous_period: Period,
+) -> dict[str, Any]:
+    def summarize(period: Period) -> dict[str, float]:
+        result: dict[str, float] = defaultdict(float)
+        for row in rows_for(history, "ga4", "acquisition", period):
+            dimensions = row.get("dimensions") or {}
+            metrics = row.get("metrics") or {}
+            channel = str(dimensions.get("sessionDefaultChannelGroup") or "")
+            source_medium = str(dimensions.get("sessionSourceMedium") or "").lower()
+            sessions = numeric(metrics.get("sessions")) or 0
+            result[f"channel::{channel}"] += sessions
+            if "youtube" in source_medium:
+                result["source::youtube"] += sessions
+                campaign = str(dimensions.get("sessionCampaignName") or "").strip().lower()
+                if campaign and campaign not in {"(not set)", "(direct)"}:
+                    result["source::youtube_attributed"] += sessions
+            if any(platform in source_medium for platform in ("twitter", "t.co", "threads", "bluesky", "facebook", "instagram")):
+                result["source::social"] += sessions
+                campaign = str(dimensions.get("sessionCampaignName") or "").strip().lower()
+                if campaign and campaign not in {"(not set)", "(direct)"}:
+                    result["source::social_attributed"] += sessions
+        for row in rows_for(history, "ga4", "campaign_attribution", period):
+            serialized = json.dumps(row.get("dimensions") or {}, ensure_ascii=False).lower()
+            metrics = row.get("metrics") or {}
+            if "youtube" in serialized or "daily_race_video" in serialized:
+                result["campaign::youtube_events"] += numeric(metrics.get("eventCount")) or 0
+                result["campaign::youtube_users"] += numeric(metrics.get("totalUsers")) or 0
+            if any(platform in serialized for platform in ("race_post_v2", "twitter", "threads", "bluesky")):
+                result["campaign::social_events"] += numeric(metrics.get("eventCount")) or 0
+                result["campaign::social_users"] += numeric(metrics.get("totalUsers")) or 0
+        for row in rows_for(history, "youtube", "daily", period):
+            result["youtube_views"] += numeric((row.get("metrics") or {}).get("views")) or 0
+            result["youtube_watch_minutes"] += numeric((row.get("metrics") or {}).get("estimatedMinutesWatched")) or 0
+        for row in rows_for(history, "adsense", "traffic_source", period):
+            if "youtube" not in json.dumps(row.get("dimensions") or {}, ensure_ascii=False).lower():
+                continue
+            result["youtube_adsense_revenue_jpy"] += numeric((row.get("metrics") or {}).get("estimated_earnings")) or 0
+        return dict(result)
+
+    current = summarize(current_period)
+    previous = summarize(previous_period)
+    keys = sorted(set(current) | set(previous))
+    youtube_sessions = current.get("source::youtube", 0)
+    youtube_attributed = current.get("source::youtube_attributed", 0)
+    social_sessions = current.get("source::social", 0)
+    social_attributed = current.get("source::social_attributed", 0)
+    return {
+        "current": current,
+        "previous": previous,
+        "week_over_week": {
+            key: pct_change(current.get(key), previous.get(key))
+            for key in keys
+        },
+        "youtube_site_recovery": {
+            "organic_video_sessions": current.get("channel::Organic Video", 0),
+            "youtube_source_sessions": current.get("source::youtube", 0),
+            "youtube_views": current.get("youtube_views", 0),
+            "utm_attributed_sessions": youtube_attributed,
+            "utm_missing_rate": (
+                max(0.0, 1 - youtube_attributed / youtube_sessions)
+                if youtube_sessions else None
+            ),
+            "attributed_entry_events": current.get("campaign::youtube_events", 0),
+            "attributed_entry_users": current.get("campaign::youtube_users", 0),
+            "race_funnel_attribution_status": (
+                "available" if current.get("campaign::youtube_events", 0) > 0 else "unavailable"
+            ),
+            "site_recovery_supported": current.get("source::youtube", 0) >= 50,
+            "minimum_weekly_site_sessions": 50,
+        },
+        "social_site_attribution": {
+            "social_source_sessions": social_sessions,
+            "utm_attributed_sessions": social_attributed,
+            "utm_missing_rate": (
+                max(0.0, 1 - social_attributed / social_sessions)
+                if social_sessions else None
+            ),
+            "attributed_entry_events": current.get("campaign::social_events", 0),
+            "attributed_entry_users": current.get("campaign::social_users", 0),
+        },
+    }
+
+
 def assess_grade_races(
     history: Mapping[str, Any],
     inventory_path: Path | None,
@@ -1219,6 +1486,7 @@ def assess_grade_races(
     gsc_page_rows = rows_for(history, "gsc", "page_daily")
     ga4_landing_rows = rows_for(history, "ga4", "landing_device")
     ga4_funnel_rows = rows_for(history, "ga4", "article_funnel")
+    ga4_currency = ga4_currency_code(history)
     results: list[dict[str, Any]] = []
     for race in schedule:
         race_date_text = str(race.get("race_date") or race.get("scheduled_race_date") or "")[:10]
@@ -1258,10 +1526,34 @@ def assess_grade_races(
         clicks = sum_metric(gsc_rows, "clicks") or 0
         sessions = sum_metric(ga_rows, "sessions") or 0
         revenue = sum_metric(ga_rows, "totalAdRevenue")
-        expected_by = race_date - timedelta(days=21)
-        if article is None:
+        demand_profile = race.get("search_demand") if isinstance(race.get("search_demand"), Mapping) else {}
+        demand_keys = (
+            "historical_impressions",
+            "past_gsc_impressions",
+            "gsc_impressions",
+            "impressions",
+        )
+        historical_impressions = next(
+            (
+                race.get(key)
+                for key in demand_keys
+                if race.get(key) is not None
+            ),
+            demand_profile.get("impressions"),
+        )
+        demand_profile_known = bool(demand_profile) or any(race.get(key) is not None for key in demand_keys)
+        initial_lead_days = grade_race_publish_lead_days(
+            race.get("grade"),
+            race.get("circuit"),
+            historical_impressions,
+            demand_profile_known=demand_profile_known,
+        )
+        expected_by = race_date - timedelta(days=initial_lead_days) if initial_lead_days is not None else None
+        if initial_lead_days is None:
+            classification = "記事対象外（過去需要50未満）" if article is None else "需要対象外だが記事あり"
+        elif article is None:
             classification = "記事なし"
-        elif first_commit and date.fromisoformat(first_commit) > expected_by:
+        elif first_commit and expected_by and date.fromisoformat(first_commit) > expected_by:
             classification = "公開が遅い"
         elif impressions <= 0:
             classification = "公開済みだが検索表示なし"
@@ -1285,12 +1577,16 @@ def assess_grade_races(
             "article_url": canonical,
             "article_slug": source_slug,
             "first_commit_date": first_commit,
-            "expected_initial_publish_date": expected_by.isoformat(),
+            "initial_publish_lead_days": initial_lead_days,
+            "expected_initial_publish_date": expected_by.isoformat() if expected_by else None,
+            "historical_gsc_impressions": numeric(historical_impressions),
+            "demand_profile_known": demand_profile_known,
             "gsc_impressions_d21_d3": impressions,
             "gsc_clicks_d21_d3": clicks,
             "gsc_ctr_d21_d3": clicks / impressions if impressions else None,
             "ga4_sessions_d21_d3": sessions,
             "ga4_ad_revenue_d21_d3": revenue,
+            "ga4_revenue_currency": ga4_currency,
             "article_read_complete_d21_d3": funnel_counts.get("article_read_complete"),
             "article_race_click_d21_d3": funnel_counts.get("article_race_click"),
             "prediction_table_view_d21_d3": funnel_counts.get("prediction_table_view"),
@@ -1329,34 +1625,70 @@ def rank_root_causes(
     grade_rows: Sequence[Mapping[str, Any]],
     search_rows: Sequence[Mapping[str, Any]],
     clarity: Mapping[str, Any] | None = None,
+    grade_replacement: Mapping[str, Any] | None = None,
+    workflow_impact: Mapping[str, Any] | None = None,
+    traffic_cross: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     causes: list[dict[str, Any]] = []
-    unavailable = [name for name, value in source_status.items() if value.get("status") != "complete"]
+    core_sources = ("adsense", "ga4", "gsc")
+    unavailable = [
+        name for name in core_sources
+        if (source_status.get(name) or {}).get("status") in {"failed", "unavailable"}
+        or (
+            (source_status.get(name) or {}).get("status") == "partial"
+            and not (source_status.get(name) or {}).get("row_count")
+        )
+    ]
     if unavailable:
         causes.append({
             "priority": 1,
             "category": "data_quality",
-            "hypothesis": "媒体欠損により収益変動の帰属が不完全",
+            "hypothesis": "主要媒体の欠損により収益変動の帰属が不完全",
             "confidence": "high",
-            "evidence": f"完全取得でない媒体: {', '.join(unavailable)}",
+            "evidence": f"取得不能または実質空の主要媒体: {', '.join(unavailable)}",
             "counterevidence": "取得済み媒体の合計値は引き続き利用可能",
             "recommended_action": "欠損媒体の読取権限または原本を復旧する",
         })
-    workflow_failures = current.get("workflow_failures") or 0
-    if workflow_failures:
+
+    replacement = grade_replacement or {}
+    replacement_rate = numeric(replacement.get("replacement_rate"))
+    previous_grade_clicks = numeric(replacement.get("previous_grade_article_clicks")) or 0
+    if replacement_rate is not None and previous_grade_clicks >= 10 and replacement_rate < 0.5:
+        repeated_failures = bool((workflow_impact or {}).get("repeated_draft_review_failure"))
         causes.append({
             "priority": 2,
+            "category": "grade_race_replacement",
+            "hypothesis": "終了した重賞記事の検索流入を次の重賞記事で補充できず、週次収益の基礎流入が縮小した",
+            "confidence": "high" if repeated_failures else "medium",
+            "evidence": (
+                f"重賞記事クリック補充率 {replacement_rate:.1%}"
+                f"（前週 {previous_grade_clicks:.0f}件 → 対象週 "
+                f"{numeric(replacement.get('current_grade_article_clicks')) or 0:.0f}件）、"
+                f"未補充 {numeric(replacement.get('unreplaced_clicks')) or 0:.0f}件。"
+                f"記事Draft/Review失敗 {int((workflow_impact or {}).get('draft_review_failures') or 0)}件"
+            ),
+            "counterevidence": "レースごとの需要規模と開催週の季節性が異なるため、障害だけの因果効果とは断定しない",
+            "recommended_action": "需要別公開期限を過ぎた重賞の未処理WriteOrderを1件ずつ復旧し、翌週の補充率を再測定する",
+        })
+
+    workflow_failures = (workflow_impact or {}).get("article_pipeline_failures") or current.get("workflow_failures") or 0
+    if workflow_failures:
+        causes.append({
+            "priority": 3,
             "category": "reliability",
             "hypothesis": "自動運用失敗が記事・SNS・動画の流入機会を減らした可能性",
-            "confidence": "medium",
-            "evidence": f"対象週の失敗Workflow: {workflow_failures:.0f}件",
+            "confidence": "high" if (workflow_impact or {}).get("repeated_draft_review_failure") else "medium",
+            "evidence": (
+                f"対象週の記事Workflow失敗: {float(workflow_failures):.0f}件 / "
+                f"Draft・Review失敗: {int((workflow_impact or {}).get('draft_review_failures') or 0)}件"
+            ),
             "counterevidence": "失敗と収益低下の同時発生だけでは因果は確定できない",
-            "recommended_action": "失敗ステップと公開欠損日を照合する",
+            "recommended_action": "課金枯渇時の回路遮断と未処理WriteOrder保持を確認し、復旧後に古い高優先注文から再開する",
         })
     script_error_rate = numeric((clarity or {}).get("script_error_rate"))
     if script_error_rate is not None and script_error_rate >= 0.01:
         causes.append({
-            "priority": 2,
+            "priority": 3,
             "category": "reliability",
             "hypothesis": "画面内スクリプトエラーが回遊を阻害している可能性",
             "confidence": "medium",
@@ -1367,7 +1699,7 @@ def rank_root_causes(
     grade_misses = [row for row in grade_rows if row.get("classification") in {"記事なし", "公開が遅い", "公開済みだが検索表示なし"}]
     if grade_misses:
         causes.append({
-            "priority": 3,
+            "priority": 4,
             "category": "grade_race_coverage",
             "hypothesis": "重賞日程に対する公開時期または検索露出が不足",
             "confidence": "medium",
@@ -1378,7 +1710,7 @@ def rank_root_causes(
     if search_rows:
         top = search_rows[0]
         causes.append({
-            "priority": 4,
+            "priority": 5,
             "category": "search_ctr",
             "hypothesis": "上位表示済みページのCTR不足で検索流入を取りこぼしている",
             "confidence": "medium",
@@ -1386,13 +1718,30 @@ def rank_root_causes(
             "counterevidence": "順位帯中央値との差は因果効果ではなく改善余地の推定",
             "recommended_action": "既存URL1件の検索意図とスニペットを限定監査する",
         })
+
+    youtube_recovery = (traffic_cross or {}).get("youtube_site_recovery") or {}
+    traffic_wow = (traffic_cross or {}).get("week_over_week") or {}
+    youtube_view_change = numeric(traffic_wow.get("youtube_views"))
+    if youtube_view_change is not None and youtube_view_change > 0 and not youtube_recovery.get("site_recovery_supported"):
+        causes.append({
+            "priority": 4,
+            "category": "video_conversion",
+            "hypothesis": "YouTube視聴は増えているが、サイト流入は検索減を埋める規模に達していない",
+            "confidence": "high",
+            "evidence": (
+                f"YouTube視聴前週比 {youtube_view_change:.1%}、"
+                f"YouTube参照セッション {numeric(youtube_recovery.get('youtube_source_sessions')) or 0:.0f}件"
+            ),
+            "counterevidence": "参照元が渡らない遷移と従来のUTMなしリンクは過小計測になり得る",
+            "recommended_action": "新規動画URLへ固定UTMを付け、トップ→race_view→prediction_table_viewの到達率を週次比較する",
+        })
     revenue_change = pct_change(
         numeric(current.get("adsense_revenue_jpy")),
         numeric(previous.get("adsense_revenue_jpy")),
     )
     if revenue_change is not None and revenue_change < -0.1:
         causes.append({
-            "priority": 5,
+            "priority": 6,
             "category": "revenue_efficiency",
             "hypothesis": "流入量または広告効率の低下で週次収益が減少",
             "confidence": "high",
@@ -1435,18 +1784,59 @@ def build_analysis(
     grade_rows, grade_quality = assess_grade_races(
         history, inventory_path, schedule_path, repo_root
     )
+    inventory_payload = load_json(inventory_path) or {}
+    grade_articles = [
+        dict(row)
+        for row in inventory_payload.get("articles") or []
+        if isinstance(row, Mapping) and row.get("entity_type") == "grade_race"
+    ] if isinstance(inventory_payload, Mapping) else []
+    grade_replacement = grade_article_weekly_replacement(
+        history, grade_articles, current_period, previous_period
+    )
+    workflow_impact = workflow_failure_impact(history, current_period)
+    traffic_cross = traffic_cross_analysis(history, current_period, previous_period)
     opportunities = search_opportunities(history)
     clarity = clarity_snapshot_summary(history)
     root_causes = rank_root_causes(
-        history.get("source_status") or {}, current, previous, grade_rows, opportunities, clarity
+        history.get("source_status") or {},
+        current,
+        previous,
+        grade_rows,
+        opportunities,
+        clarity,
+        grade_replacement,
+        workflow_impact,
+        traffic_cross,
     )
     adsense_revenue = numeric(current.get("adsense_revenue_jpy"))
-    ga4_revenue = numeric(current.get("ga4_ad_revenue_jpy"))
+    ga4_revenue = numeric(current.get("ga4_ad_revenue"))
+    ga4_currency = str(current.get("ga4_revenue_currency") or "") or None
+    currencies_comparable = ga4_currency == "JPY"
     revenue_gap = (
         abs(adsense_revenue - ga4_revenue) / adsense_revenue
-        if adsense_revenue not in {None, 0} and ga4_revenue is not None
+        if currencies_comparable and adsense_revenue not in {None, 0} and ga4_revenue is not None
         else None
     )
+    previous_gsc_clicks = numeric(previous.get("gsc_clicks"))
+    previous_adsense_revenue = numeric(previous.get("adsense_revenue_jpy"))
+    revenue_per_gsc_click = (
+        previous_adsense_revenue / previous_gsc_clicks
+        if previous_adsense_revenue is not None and previous_gsc_clicks not in {None, 0}
+        else None
+    )
+    unreplaced_grade_clicks = numeric(grade_replacement.get("unreplaced_clicks"))
+    grade_opportunity = {
+        "estimated_revenue_jpy": (
+            unreplaced_grade_clicks * revenue_per_gsc_click
+            if unreplaced_grade_clicks is not None and revenue_per_gsc_click is not None
+            else None
+        ),
+        "unreplaced_grade_article_clicks": unreplaced_grade_clicks,
+        "previous_week_revenue_per_gsc_click_jpy": revenue_per_gsc_click,
+        "method": "未補充重賞記事クリック × 前週AdSense収益/GSCクリック",
+        "confidence": "low",
+        "caveat": "検索クリック以外の流入とレース需要差を含む粗い機会推定で、予測収益ではありません。",
+    }
     return {
         "schema_version": ANALYSIS_VERSION,
         "generated_at": RETRIEVED_AT,
@@ -1482,15 +1872,33 @@ def build_analysis(
         "clarity_72h_snapshot": clarity,
         "revenue_reconciliation": {
             "adsense_revenue_jpy": adsense_revenue,
-            "ga4_ad_revenue_jpy": ga4_revenue,
+            "ga4_ad_revenue": ga4_revenue,
+            "ga4_revenue_currency": ga4_currency,
+            "ga4_ad_revenue_jpy": ga4_revenue if currencies_comparable else None,
             "difference_rate": revenue_gap,
-            "status": "review" if revenue_gap is not None and revenue_gap > 0.05 else "ok" if revenue_gap is not None else "unavailable",
-            "rule": "5%超は失敗ではなく要照合",
+            "status": (
+                "currency_mismatch"
+                if ga4_revenue is not None and not currencies_comparable
+                else "review"
+                if revenue_gap is not None and revenue_gap > 0.05
+                else "ok"
+                if revenue_gap is not None
+                else "unavailable"
+            ),
+            "rule": "同一通貨の場合のみ比較し、5%超は失敗ではなく要照合",
+            "note": (
+                "GA4はプロパティ通貨の帰属分析値、AdSenseはJPYの収益正本です。"
+                "通貨不一致時は為替換算なしで差分率を算出しません。"
+            ),
         },
         "search_opportunities": opportunities,
         "grade_race_assessment": grade_rows,
         "grade_race_quality": grade_quality,
-        "github_failure_jobs": (history.get("source_details") or {}).get("github_actions", {}).get("failure_jobs", []),
+        "grade_article_weekly_replacement": grade_replacement,
+        "estimated_grade_article_opportunity": grade_opportunity,
+        "workflow_failure_impact": workflow_impact,
+        "traffic_cross_analysis": traffic_cross,
+        "github_failure_jobs": workflow_impact.get("failure_jobs") or [],
         "root_causes": root_causes,
         "selected_hypothesis": root_causes[0] if root_causes else None,
         "automatic_action": "none",
@@ -1554,6 +1962,39 @@ def render_markdown(analysis: Mapping[str, Any]) -> str:
             f"{'未取得' if previous_value is None else f'{previous_value:,.2f}'} | "
             f"{'未取得' if change is None else f'{change:.1%}'} |"
         )
+    replacement = analysis.get("grade_article_weekly_replacement") or {}
+    workflow_impact = analysis.get("workflow_failure_impact") or {}
+    youtube_recovery = ((analysis.get("traffic_cross_analysis") or {}).get("youtube_site_recovery") or {})
+    opportunity = analysis.get("estimated_grade_article_opportunity") or {}
+    reconciliation = analysis.get("revenue_reconciliation") or {}
+    replacement_rate = numeric(replacement.get("replacement_rate"))
+    estimated_revenue = numeric(opportunity.get("estimated_revenue_jpy"))
+    youtube_utm_missing = numeric(youtube_recovery.get("utm_missing_rate"))
+    lines.extend([
+        "",
+        "## 重賞記事の週次補充と障害影響",
+        "",
+        f"- 重賞記事GSCクリック: 前週 {numeric(replacement.get('previous_grade_article_clicks')) or 0:,.0f}件 → 対象週 {numeric(replacement.get('current_grade_article_clicks')) or 0:,.0f}件",
+        f"- 週次補充率: {'未取得' if replacement_rate is None else f'{replacement_rate:.1%}'}（目安50%以上）",
+        f"- 記事Pipeline失敗: {int(workflow_impact.get('article_pipeline_failures') or 0)}件 / Draft・Review失敗: {int(workflow_impact.get('draft_review_failures') or 0)}件",
+        f"- 粗い収益機会推定: {'未取得' if estimated_revenue is None else f'{estimated_revenue:,.0f}円'}（予測値ではなく、前週の収益/GSCクリックによる参考値）",
+        "",
+        "## YouTubeからサイトへの回復寄与",
+        "",
+        f"- YouTube視聴: {numeric(youtube_recovery.get('youtube_views')) or 0:,.0f}回",
+        f"- YouTube参照セッション: {numeric(youtube_recovery.get('youtube_source_sessions')) or 0:,.0f}件",
+        f"- YouTube UTM欠損率: {'未取得' if youtube_utm_missing is None else format(youtube_utm_missing, '.1%')}",
+        f"- YouTube→レース到達の媒体帰属: {youtube_recovery.get('race_funnel_attribution_status') or 'unavailable'}",
+        f"- 週50セッションの暫定確認線: {'到達' if youtube_recovery.get('site_recovery_supported') else '未到達'}",
+        "- 動画視聴の増加だけでは検索流入減の代替を意味しません。トップ到達後のrace_view・prediction_table_viewまで確認します。",
+        "",
+        "## 収益値の扱い",
+        "",
+        f"- AdSense収益正本: {numeric(reconciliation.get('adsense_revenue_jpy')) or 0:,.0f}円",
+        f"- GA4広告収益（帰属分析値）: {numeric(reconciliation.get('ga4_ad_revenue')) or 0:,.2f} {reconciliation.get('ga4_revenue_currency') or '通貨未取得'}",
+        f"- 照合状態: {reconciliation.get('status') or 'unavailable'}",
+        "- 通貨が異なる場合、為替換算なしの差分率は算出しません。",
+    ])
     lines.extend(["", "## 原因候補", ""])
     for index, cause in enumerate(analysis.get("root_causes") or [], start=1):
         lines.append(

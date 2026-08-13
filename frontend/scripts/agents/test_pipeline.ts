@@ -6,6 +6,13 @@ import path from 'path';
 import matter from 'gray-matter';
 import { prioritizeOrderFiles } from './article_order_priority';
 import { generateGradeRaceSearchRepair } from './gsc_seo_rewrite';
+import {
+  isGeminiCircuitOpen,
+  loadGeminiCircuitState,
+  recordGeminiFailure,
+  recordGeminiSuccess,
+} from './gemini_circuit_breaker';
+import { GeminiFailureKind, shouldOpenGeminiCircuit } from './gemini_failure';
 
 // .env.local などを読み込む (dotenv等)
 import * as dotenv from 'dotenv';
@@ -18,6 +25,15 @@ const MAX_ARTICLES_PER_RUN = Math.max(
 const RESERVE_RACE_UPDATE_SLOT = (process.env.ARTICLE_PIPELINE_RESERVE_RACE_UPDATE_SLOT || 'true').toLowerCase() !== 'false';
 const RESERVE_EVERGREEN_SLOT = (process.env.ARTICLE_PIPELINE_RESERVE_EVERGREEN_SLOT || 'true').toLowerCase() !== 'false';
 const AGGRESSIVE_COVERAGE = (process.env.KEIBA_ARTICLE_COVERAGE_MODE || 'aggressive').toLowerCase() === 'aggressive';
+const GEMINI_CIRCUIT_STATE_PATH = (process.env.GEMINI_CIRCUIT_STATE_PATH || '').trim();
+
+function recordExternalGeminiFailure(kind: GeminiFailureKind | undefined, reason: string): void {
+  if (!GEMINI_CIRCUIT_STATE_PATH || !kind || !shouldOpenGeminiCircuit(kind)) return;
+  const state = recordGeminiFailure(GEMINI_CIRCUIT_STATE_PATH, kind, reason);
+  console.error(
+    `[Pipeline] Geminiサーキット更新: kind=${kind}, failures=${state.consecutive_failures}, open_until=${state.open_until || '未開放'}`
+  );
+}
 
 /**
  * 既存記事のtarget_keywordを全て取得する（重複チェック用）
@@ -73,6 +89,13 @@ function getUniqueDestination(directory: string, fileName: string): string {
 
 async function runPipeline() {
   console.log("=== UMA-FREE 記事生成パイプライン テスト開始 ===");
+
+  if (GEMINI_CIRCUIT_STATE_PATH) {
+    const circuitState = loadGeminiCircuitState(GEMINI_CIRCUIT_STATE_PATH);
+    if (isGeminiCircuitOpen(circuitState)) {
+      throw new Error(`Gemini記事生成サーキットが停止中です。次回試行可能: ${circuitState.open_until}`);
+    }
+  }
 
   // 最新の write_orders/{YYYYMMDD_HHmmss}.json を取得する
   const ordersDir = path.join(__dirname, '..', '..', '..', 'data', 'write_orders');
@@ -199,12 +222,14 @@ async function runPipeline() {
     if (!writerResult.success || !writerResult.filePath) {
       console.error("記事の生成に失敗しました:", writerResult.error);
       if (writerResult.apiKeyInvalid) {
+        recordExternalGeminiFailure(writerResult.failureKind, writerResult.error || 'API key invalid');
         console.error("\n[CRITICAL ERROR] GEMINI_API_KEY が無効、または漏洩判定されています。");
         console.error("安全のため、現在の write_order は未消費（トップレベル）のまま残し、パイプラインを即座に緊急停止します。");
         console.error("Google AI Studioで新しいAPIキーを再生成し、環境変数 GEMINI_API_KEY を設定し直してください。\n");
         process.exit(1);
       }
-      if (writerResult.retryable) {
+      if (writerResult.retryable || (writerResult.failureKind && shouldOpenGeminiCircuit(writerResult.failureKind))) {
+        recordExternalGeminiFailure(writerResult.failureKind, writerResult.error || 'Gemini external failure');
         console.error("[Pipeline] Geminiの外部制限（クォータ・課金・レート制限等）により停止します。write_orderは未消費のまま残します。");
         stoppedForGeminiLimit = true;
         break;
@@ -230,13 +255,15 @@ async function runPipeline() {
     console.log(reviewResult.log);
     
     if (reviewResult.apiKeyInvalid) {
+      recordExternalGeminiFailure(reviewResult.failureKind, reviewResult.log || 'API key invalid');
       console.error("\n[CRITICAL ERROR] レビュー中に GEMINI_API_KEY が無効化、または漏洩判定されました。");
       console.error("安全のため、今回の write_order は未消費のまま残し、パイプラインを即座に緊急停止します。");
       console.error("Google AI Studioで新しいAPIキーを再生成し、環境変数 GEMINI_API_KEY を設定し直してください。\n");
       process.exit(1);
     }
 
-    if (reviewResult.retryable) {
+    if (reviewResult.retryable || (reviewResult.failureKind && shouldOpenGeminiCircuit(reviewResult.failureKind))) {
+      recordExternalGeminiFailure(reviewResult.failureKind, reviewResult.log || 'Gemini external failure');
       console.error("[Pipeline] Geminiの外部制限（クォータ・課金・レート制限等）によりレビューを停止します。write_orderは未消費のまま残します。");
       stoppedForGeminiLimit = true;
       break;
@@ -262,6 +289,7 @@ async function runPipeline() {
       console.log(`合格したため、承認済みキューに移動しました: ${reviewResult.newDraftPath}`);
       approvedCount++;
       rejectedStreak = 0; // 合格時に連続却下カウンターをリセット
+      if (GEMINI_CIRCUIT_STATE_PATH) recordGeminiSuccess(GEMINI_CIRCUIT_STATE_PATH);
     }
 
     // 承認まで進んだwrite_orderのみ消費済みに移動する。
@@ -274,7 +302,7 @@ async function runPipeline() {
   }
 
   if (attemptedCount > 0 && approvedCount === 0 && stoppedForGeminiLimit) {
-    throw new Error(`Geminiの外部制限で記事生成を保留しました。GitHub Actions上の一時WriteOrderは公開・コミットされないため、課金/クォータを復旧して再実行してください。attempted=${attemptedCount}`);
+    throw new Error(`Geminiの外部制限で記事生成を保留しました。未処理WriteOrderは次回実行用キャッシュへ保持されます。課金/クォータ復旧後に古い高優先注文から再実行してください。attempted=${attemptedCount}`);
   }
 
   if (attemptedCount > 0 && approvedCount === 0) {

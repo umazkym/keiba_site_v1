@@ -148,7 +148,7 @@ GA4のイベントスコープのカスタム定義には、`action`、`destinat
 5. `prediction_table_view`
 6. `race_navigation`
 
-2026-07-28以降に生成する横長動画とShortは、説明欄URLを`https://uma-free.com`へ統一し、UTMクエリを付けない。GA4ではブラウザから参照元が渡された場合のYouTube流入を標準の参照元・メディアで確認する。動画別の`utm_content`、`source_video_key`、`video_format`、`source_venue`は新規リンクから取得できないため、廃止前のデータと連続した動画別指標として扱わない。既存のUTM付きリンクから入ったセッションに対する互換処理は残し、タブ・レース切り替えによる仮想`page_view`は送らない。
+2026-07-28以降に生成した一部動画は説明欄URLを`https://uma-free.com`へ統一し、UTMを付けない期間がある。この期間は標準の参照元・メディアだけで確認し、動画別帰属は欠損として扱う。2026年8月の計測復旧版以降はトップURLを維持したまま`utm_source=youtube`、`utm_medium=video`、`utm_campaign=daily_race_video_v2`、動画別`utm_content`を付ける。属性は最初の`race_view`まで保持し、タブ・レース切り替えによる仮想`page_view`は送らない。UTMなし期間と復旧後は同一系列として単純比較せず、計測境界を明記する。
 
 ### SNS動画からレース
 
@@ -171,7 +171,7 @@ GA4ではイベントスコープのカスタム定義へ`source_platform`、`so
 - リワード広告を意図的に停止している期間は、通常公開を`premium_data_view.result=open_access`として扱う。
 - 2026-07-20〜21のUI変更が30日集計へ混在するため、広告・CTA判断では2026-07-22以降の期間を分離する。
 - 記事レースブリッジは、適格性と表示実験を分離した2026-08-03版の本番反映日より前を混在させない。表示時点のAPI障害・不一致・予測不足ではDOMと予約高を出さず、`metadata_only`へフォールバックしない。
-- YouTube v7の公開開始日Dまでは`private_review`期間として扱い、通常流入の評価対象へ含めない。2026-07-28のURL統一後はYouTube参照元のトップページ流入、ホームからレースへの遷移、`race_view`、`prediction_table_view`を同じ期間で比較し、旧`utm_content`別集計とは期間を分ける。
+- YouTube v7の公開開始日Dまでは`private_review`期間として扱い、通常流入の評価対象へ含めない。UTMなし期間はYouTube参照元のトップページ流入だけを補助値として扱う。計測復旧版以降は`daily_race_video_v2`のトップ到達、ホームからレースへの遷移、`race_view`、`prediction_table_view`を同じ期間で比較し、復旧前とは期間を分ける。
 - SNS動画は媒体ごとの`public`切り替え日をDとして別々に集計する。`validate`と`draft`期間は流入効果の母数へ含めず、複数媒体を同日に公開開始した場合は因果分離できないことを明記する。
 - 楽天競馬の適格化実験は`NEXT_PUBLIC_RAKUTEN_KEIBA_MODE=qualified_nar`へ切り替えた本番反映日をDとする。Dより前のレガシー導線、ヘッダー、JRA、日別ページ下部の表示・クリックを実験母数へ混ぜない。
 - `ARTICLE-RACE-BRIDGE-2026-07`は2026-08-01に有効対象0件で未成立終了した。`article_race_preview_view`の0件期間を効果0として扱わない。

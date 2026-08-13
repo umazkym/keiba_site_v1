@@ -156,8 +156,15 @@ def build_race_url(
 
 
 def build_video_url(date_str: str = "", utm_content: str = "", venue_name: str = "", race_number: Any = "") -> str:
-    """概要欄・各種メタデータ用URLとして https://uma-free.com を固定で返す。"""
-    return SITE_BASE_URL
+    """動画からトップへ誘導し、動画別の流入帰属を保持するURLを返す。"""
+    params = {
+        "utm_source": "youtube",
+        "utm_medium": "video",
+        "utm_campaign": YOUTUBE_CAMPAIGN_NAME,
+    }
+    if utm_content:
+        params["utm_content"] = utm_content
+    return f"{SITE_BASE_URL}?{urlencode(params)}"
 
 
 def _api_base_url() -> str:

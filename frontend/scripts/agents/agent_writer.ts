@@ -4,13 +4,14 @@ import matter from 'gray-matter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ARTICLE_LLM_MODELS, getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
 import { GeminiQuotaExceededError, reserveGeminiRequest } from './gemini_quota';
+import {
+  classifyGeminiFailure,
+  GeminiFailureKind,
+  isApiKeyInvalidError,
+  isRetryableGeminiError,
+} from './gemini_failure';
 
 // APIキーは環境変数から取得
-
-function isApiKeyInvalidError(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error || '');
-  return /API key was reported as leaked|API_KEY_INVALID|API key not valid|Forbidden|403/i.test(msg);
-}
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
@@ -491,11 +492,6 @@ draft: true
 （本文）
 `;
 
-function isRetryableGeminiError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error || '');
-  return /429|503|quota|rate limit|resource exhausted|too many requests|service unavailable|high demand|overloaded|unavailable|timeout/i.test(message);
-}
-
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -629,6 +625,9 @@ async function buildArticleStrategyBrief(order: WriteOrder, genAI: GoogleGenerat
         continue;
       }
       console.warn(`[Strategy Warning] ${currentModelName} failed: ${e.message || String(e)}`);
+      if (classifyGeminiFailure(e) === 'billing_depleted') {
+        throw e;
+      }
       if (!isRetryableGeminiError(e)) {
         continue;
       }
@@ -914,7 +913,14 @@ function normalizeDraftEntityMetadata(markdownText: string, order: WriteOrder): 
 /**
  * ライターエンジンを実行し、指定されたWriteOrderに基づいて記事ドラフトを生成する
  */
-export async function generateDraft(order: WriteOrder): Promise<{ success: boolean; filePath?: string; error?: string; retryable?: boolean; apiKeyInvalid?: boolean }> {
+export async function generateDraft(order: WriteOrder): Promise<{
+  success: boolean;
+  filePath?: string;
+  error?: string;
+  retryable?: boolean;
+  apiKeyInvalid?: boolean;
+  failureKind?: GeminiFailureKind;
+}> {
   let retryableFailure = false;
 
   try {
@@ -982,6 +988,9 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
             }
             console.error(`[Writer Warning] ${currentModelName} failed: ${e.message}`);
             lastErrorMessage = e.message || String(e);
+            if (classifyGeminiFailure(e) === 'billing_depleted') {
+                throw e;
+            }
             if (isRetryableGeminiError(e)) {
                 retryableFailure = true;
                 if (requestAttempt < maxRequestAttempts) {
@@ -1028,6 +1037,9 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
         logGeminiUsage(`[Writer-Fallback] ${usedModel}`, result.response);
       } catch (fallbackErr: any) {
         console.error(`[Writer Fatal] Gemma fallback also failed: ${fallbackErr.message}`);
+        if (classifyGeminiFailure(fallbackErr) === 'billing_depleted') {
+          throw fallbackErr;
+        }
         throw new Error(`すべての生成モデルおよびGemmaフォールバックでの試行が失敗しました。${fallbackErr.message}`);
       }
     }
@@ -1126,11 +1138,13 @@ export async function generateDraft(order: WriteOrder): Promise<{ success: boole
   } catch (error: any) {
     console.error(`[Writer Error] ${error.message}`);
     const apiKeyInvalid = isApiKeyInvalidError(error);
+    const failureKind = classifyGeminiFailure(error);
     return {
       success: false,
       error: error.message,
       retryable: !apiKeyInvalid && (retryableFailure || error instanceof GeminiQuotaExceededError || isRetryableGeminiError(error)),
       apiKeyInvalid,
+      failureKind,
     };
   }
 }

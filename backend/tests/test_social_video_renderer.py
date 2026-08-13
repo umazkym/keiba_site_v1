@@ -492,7 +492,11 @@ class SocialVideoRendererTest(unittest.TestCase):
 
     def test_video_urls_keep_site_root_and_add_v2_content_attribution(self) -> None:
         url = build_video_url("2026-07-12", "venue_long_函館", "函館", 11)
-        self.assertEqual(url, "https://uma-free.com")
+        self.assertEqual(
+            url,
+            "https://uma-free.com?utm_source=youtube&utm_medium=video"
+            "&utm_campaign=daily_race_video_v2&utm_content=venue_long_%E5%87%BD%E9%A4%A8",
+        )
 
     def test_video_description_has_one_site_link_without_date_or_credit(self) -> None:
         description = renderer._description(

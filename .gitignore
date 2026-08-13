@@ -82,6 +82,7 @@ node_modules/
 
 # ローカル検証・画面確認・個人分析の成果物
 /.tmp/
+/.runtime/
 /output/
 /outputs/
 /scratch/

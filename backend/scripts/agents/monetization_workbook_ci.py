@@ -142,14 +142,43 @@ def main() -> int:
     ], cell)
     dashboard.set_column("A:A", 22)
     dashboard.set_column("B:L", 16)
+    replacement = analysis.get("grade_article_weekly_replacement") or {}
+    youtube_recovery = ((analysis.get("traffic_cross_analysis") or {}).get("youtube_site_recovery") or {})
+    dashboard.merge_range("G25:L25", "重賞補充率とYouTube回復寄与", header)
+    dashboard.write_row("G26", [
+        "重賞補充率", replacement.get("replacement_rate"),
+        "未補充クリック", replacement.get("unreplaced_clicks"),
+        "判定", replacement.get("status") or "unavailable",
+    ], cell)
+    dashboard.write_row("G27", [
+        "YouTube視聴", youtube_recovery.get("youtube_views"),
+        "YouTube参照セッション", youtube_recovery.get("youtube_source_sessions"),
+        "50件線", "到達" if youtube_recovery.get("site_recovery_supported") else "未到達",
+    ], cell)
+    reconciliation = analysis.get("revenue_reconciliation") or {}
+    reconciliation_status = "通貨不一致" if reconciliation.get("status") == "currency_mismatch" else reconciliation.get("status") or "unavailable"
+    dashboard.merge_range("G30:L30", "収益値の通貨と照合", header)
+    dashboard.write_row("G31", [
+        "AdSense正本", reconciliation.get("adsense_revenue_jpy"), "通貨", "JPY",
+        "照合状態", reconciliation_status,
+    ], cell)
+    dashboard.write_row("G32", [
+        "GA4帰属値", reconciliation.get("ga4_ad_revenue"), "通貨",
+        reconciliation.get("ga4_revenue_currency") or "未取得", "差分率",
+        reconciliation.get("difference_rate"),
+    ], cell)
+    dashboard.write_row("G33", [
+        "ルール", "通貨一致時のみ比較", "基準", "5%超は要照合", "為替換算", "未実施",
+    ], cell)
     chart = workbook.add_chart({"type": "column"})
     chart.add_series({"name": "収益", "categories": "='週次推移'!$A$5:$A$6", "values": "='週次推移'!$D$5:$D$6"})
     chart.set_title({"name": "対象週と前週の収益"})
     dashboard.insert_chart("A19", chart, {"x_scale": 1.4, "y_scale": 1.2})
 
-    setup("流入源", "GA4参照元・メディア・チャネル別", [
+    ga4_currency = (analysis.get("current_week") or {}).get("ga4_revenue_currency") or "媒体通貨"
+    setup("流入源", f"GA4参照元・メディア・チャネル別。収益通貨={ga4_currency}", [
         ("日付", 12), ("チャネル", 20), ("参照元/メディア", 28), ("セッション", 12),
-        ("PV", 12), ("ユーザー", 12), ("エンゲージ", 14), ("収益", 12),
+        ("PV", 12), ("ユーザー", 12), ("エンゲージ", 14), (f"収益({ga4_currency})", 14),
     ], ([row.get("date"), (row.get("dimensions") or {}).get("sessionDefaultChannelGroup"),
          (row.get("dimensions") or {}).get("sessionSourceMedium"), metric(row, "sessions"),
          metric(row, "screenPageViews"), metric(row, "activeUsers"), metric(row, "engagedSessions"),
@@ -160,12 +189,14 @@ def main() -> int:
     ], ([row.get("page"), row.get("query"), row.get("device"), row.get("clicks"),
          row.get("impressions"), row.get("ctr"), row.get("position"), row.get("benchmark_ctr"),
          row.get("estimated_missed_clicks")] for row in analysis.get("search_opportunities") or []))
-    setup("重賞記事", "開催D-21〜D+3で公開・検索・流入・収益を判定", [
+    setup("重賞記事", "需要別の公開期限と開催D-21〜D+3で検索・流入・収益を判定", [
         ("開催日", 12), ("重賞", 24), ("格", 9), ("区分", 10), ("記事URL", 44),
-        ("初回commit日", 13), ("公開目安日", 13), ("GSC表示", 11), ("GSCクリック", 11),
-        ("CTR", 10), ("GA4セッション", 14), ("収益", 11), ("判定", 28),
+        ("初回commit日", 13), ("公開目安日", 13), ("先行日数", 10), ("過去GSC表示", 13),
+        ("GSC表示", 11), ("GSCクリック", 11),
+        ("CTR", 10), ("GA4セッション", 14), (f"GA4収益({ga4_currency})", 14), ("判定", 28),
     ], ([row.get("race_date"), row.get("race_name"), row.get("grade"), row.get("circuit"),
          row.get("article_url"), row.get("first_commit_date"), row.get("expected_initial_publish_date"),
+         row.get("initial_publish_lead_days"), row.get("historical_gsc_impressions"),
          row.get("gsc_impressions_d21_d3"), row.get("gsc_clicks_d21_d3"), row.get("gsc_ctr_d21_d3"),
          row.get("ga4_sessions_d21_d3"), row.get("ga4_ad_revenue_d21_d3"), row.get("classification")]
         for row in analysis.get("grade_race_assessment") or []))
@@ -185,11 +216,27 @@ def main() -> int:
          metric(row, "views"), metric(row, "impressions"), metric(row, "impressionClickThroughRate"),
          metric(row, "estimatedMinutesWatched"), metric(row, "failed"), row.get("status")]
         for row in history.get("rows") or [] if row.get("source") in {"youtube", "github_actions"}))
+    media = worksheets["YouTube・SNS"]
+    media.write_row("L4", ["クロス指標", "対象週"], header)
+    media.write_row("L5", ["YouTube視聴", youtube_recovery.get("youtube_views")], cell)
+    media.write_row("L6", ["YouTube参照セッション", youtube_recovery.get("youtube_source_sessions")], cell)
+    media.write_row("L7", ["Organic Videoセッション", youtube_recovery.get("organic_video_sessions")], cell)
+    media.write_row("L8", ["YouTube UTM欠損率", youtube_recovery.get("utm_missing_rate")], cell)
+    media.write_row("L9", ["レース到達媒体帰属", youtube_recovery.get("race_funnel_attribution_status") or "unavailable"], cell)
+    media.write_row("L10", ["暫定回復線", youtube_recovery.get("minimum_weekly_site_sessions", 50)], cell)
+    media.write_row("L11", ["回復線到達", "はい" if youtube_recovery.get("site_recovery_supported") else "いいえ"], cell)
     setup("障害", "失敗日と流入・収益の時系列を照合。相関と因果を分離。", [
         ("発生日時", 20), ("Workflow", 30), ("Job", 28), ("結果", 12), ("失敗ステップ", 45), ("URL", 45),
     ], ([row.get("created_at"), row.get("workflow"), row.get("job"), row.get("conclusion"),
          " / ".join(row.get("failed_steps") or []), row.get("url")]
         for row in analysis.get("github_failure_jobs") or []))
+    failure_impact = analysis.get("workflow_failure_impact") or {}
+    errors = worksheets["障害"]
+    errors.write_row("H4", ["対象週の影響指標", "値"], header)
+    errors.write_row("H5", ["全失敗run", failure_impact.get("all_failure_runs")], cell)
+    errors.write_row("H6", ["記事Pipeline失敗", failure_impact.get("article_pipeline_failures")], cell)
+    errors.write_row("H7", ["Draft・Review失敗", failure_impact.get("draft_review_failures")], cell)
+    errors.write_row("H8", ["繰返し失敗", "はい" if failure_impact.get("repeated_draft_review_failure") else "いいえ"], cell)
     events = {"article_read_complete", "article_race_click", "race_view", "prediction_table_view", "race_navigation", "ad_impression_custom"}
     setup("ファネル", "検索表示→記事→レース→予想表→移動→広告表示", [
         ("日付", 12), ("イベント", 28), ("件数", 12), ("ユーザー", 12),

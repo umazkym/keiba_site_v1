@@ -5,11 +5,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { checkSEO, SEO_RULES } from './seo_checker';
 import { ARTICLE_LLM_MODELS, getArticleLlmStrategySummary, getGeminiModelTiers } from './model_tiers';
 import { GeminiQuotaExceededError, reserveGeminiRequest, rollbackGeminiRequest, recordTokenUsage } from './gemini_quota';
-
-function isApiKeyInvalidError(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error || '');
-  return /API key was reported as leaked|API_KEY_INVALID|API key not valid|Forbidden|403/i.test(msg);
-}
+import {
+  classifyGeminiFailure,
+  GeminiFailureKind,
+  isApiKeyInvalidError,
+  isRetryableGeminiError,
+} from './gemini_failure';
 
 
 const DEFAULT_BUYING_POINT_HEADING = '## このコースで確認したい判断材料';
@@ -1185,11 +1186,6 @@ STEP 3：フォーマットとSEOのチェック
 【極秘指示】
 元の原稿に含まれているデータテーブル（| で構築された表）およびリスト要素に対する修正は確実な理由がない限り行わないこと。表自体を削除・破壊してはならない。`;
 
-function isRetryableGeminiError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error || '');
-  return /429|503|quota|rate limit|resource exhausted|too many requests|service unavailable|high demand|overloaded|unavailable|timeout/i.test(message);
-}
-
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -1531,6 +1527,9 @@ async function runSingleGemmaReviewPass(input: {
         continue;
       }
       console.warn(`[GemmaReview Warning] ${currentModelName} failed: ${e.message || String(e)}`);
+      if (classifyGeminiFailure(e) === 'billing_depleted') {
+        throw e;
+      }
       if (!isRetryableGeminiError(e)) {
         continue;
       }
@@ -1589,7 +1588,14 @@ async function buildGemmaReviewBrief(input: {
   };
 }
 
-export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED' | 'REJECTED'; log: string, newDraftPath?: string; retryable?: boolean; apiKeyInvalid?: boolean }> {
+export async function reviewDraft(filePath: string): Promise<{
+  status: 'APPROVED' | 'REJECTED';
+  log: string;
+  newDraftPath?: string;
+  retryable?: boolean;
+  apiKeyInvalid?: boolean;
+  failureKind?: GeminiFailureKind;
+}> {
   let retryableApiFailure = false;
 
   try {
@@ -1747,6 +1753,9 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
             console.error(`[Editor Warning] ${currentModelName} failed: ${e.message}`);
             allLogs += `\n[Editor Warning] ${currentModelName} failed: ${e.message}\n`;
             lastApiErrorMessage = e.message || String(e);
+            if (classifyGeminiFailure(e) === 'billing_depleted') {
+              throw e;
+            }
             if (isRetryableGeminiError(e)) {
               retryableApiFailure = true;
               if (requestAttempt < maxRequestAttempts) {
@@ -2005,11 +2014,13 @@ export async function reviewDraft(filePath: string): Promise<{ status: 'APPROVED
   } catch (error: any) {
     console.error(`[Editor Error] ${error.message}`);
     const apiKeyInvalid = isApiKeyInvalidError(error);
+    const failureKind = classifyGeminiFailure(error);
     return {
       status: 'REJECTED',
       log: `エラーにより検証失敗: ${error.message}`,
       retryable: !apiKeyInvalid && (error instanceof GeminiQuotaExceededError || isRetryableGeminiError(error)),
       apiKeyInvalid,
+      failureKind,
     };
   }
 }

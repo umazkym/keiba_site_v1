@@ -20,6 +20,7 @@ if (!valueOf("--analysis") || !valueOf("--history") || !valueOf("--output")) {
 
 const analysis = JSON.parse(await fs.readFile(analysisPath, "utf8"));
 const history = JSON.parse(await fs.readFile(historyPath, "utf8"));
+const ga4Currency = analysis.current_week?.ga4_revenue_currency || "媒体通貨";
 await fs.mkdir(path.dirname(outputPath), { recursive: true });
 await fs.mkdir(renderDir, { recursive: true });
 
@@ -110,7 +111,16 @@ const metric = (row, ...names) => {
   return null;
 };
 
-const normalizedRows = (history.rows || []).map((row) => [
+const rawRowsPerDataset = 200;
+const rawDatasetCounts = new Map();
+const sampledHistoryRows = (history.rows || []).filter((row) => {
+  const key = `${row.source || "unknown"}::${row.dataset || "unknown"}`;
+  const count = rawDatasetCounts.get(key) || 0;
+  if (count >= rawRowsPerDataset) return false;
+  rawDatasetCounts.set(key, count + 1);
+  return true;
+});
+const normalizedRows = sampledHistoryRows.map((row) => [
   row.source || "",
   row.dataset || "",
   row.date ? new Date(`${String(row.date).slice(0, 10)}T00:00:00Z`) : null,
@@ -133,7 +143,12 @@ const normalizedRows = (history.rows || []).map((row) => [
 ]);
 
 const raw = sheets["原本"];
-styleTitle(raw, "A1:S1", "正規化原本", "媒体原本はJSONとして別保存。空欄は未取得であり0ではありません。");
+styleTitle(
+  raw,
+  "A1:S1",
+  "正規化原本（監査標本）",
+  `全${(history.rows || []).length.toLocaleString()}行は同梱artifactのmonetization-history.v2.jsonに保存。XLSXは媒体×datasetごと先頭${rawRowsPerDataset}行を収録し、空欄は未取得で0ではありません。`,
+);
 const rawHeaders = [
   "source", "dataset", "date", "status", "dimensions_json", "metrics_json",
   "estimated_earnings", "page_views", "impressions", "clicks", "sessions",
@@ -213,7 +228,10 @@ for (const [labelRange, valueRange, label, formula, numberFormat] of cards) {
   dashboard.getRange(labelRange).format = { fill: teal, font: { bold: true, color: "#FFFFFF" } };
   dashboard.getRange(valueRange).merge();
   const sourceFormula = formula.slice(1);
-  dashboard.getRange(valueRange.split(":")[0]).formulas = [[`=IF(ISBLANK(${sourceFormula}),"",${sourceFormula})`]];
+  const displayedFormula = numberFormat.startsWith("¥")
+    ? `ROUND(${sourceFormula},0)`
+    : sourceFormula;
+  dashboard.getRange(valueRange.split(":")[0]).formulas = [[`=IF(ISBLANK(${sourceFormula}),"",${displayedFormula})`]];
   dashboard.getRange(valueRange).format = {
     fill: "#FFFFFF",
     font: { bold: true, color: navy, size: 18 },
@@ -223,6 +241,9 @@ for (const [labelRange, valueRange, label, formula, numberFormat] of cards) {
     verticalAlignment: "center",
   };
 }
+dashboard.getRange("A7:C9").format.numberFormat = "¥#,##0";
+dashboard.getRange("D7:F9").format.numberFormat = "¥#,##0";
+dashboard.getRange("G7:L9").format.numberFormat = "#,##0";
 
 dashboard.getRange("A12:F12").merge();
 dashboard.getRange("A12").values = [["今週の最重要仮説"]];
@@ -270,6 +291,33 @@ dashboard.getRange("G20:L23").format = { borders: { preset: "inside", style: "th
 dashboard.getRange("H21").format.numberFormat = "0.00%";
 dashboard.getRange("J20:J21").format.numberFormat = "0.00%";
 dashboard.getRange("L20:L22").format.numberFormat = "0.00%";
+const replacement = analysis.grade_article_weekly_replacement || {};
+const youtubeRecovery = analysis.traffic_cross_analysis?.youtube_site_recovery || {};
+dashboard.getRange("G25:L25").merge();
+dashboard.getRange("G25").values = [["重賞補充率とYouTube回復寄与"]];
+dashboard.getRange("G25:L25").format = { fill: navy, font: { bold: true, color: "#FFFFFF" } };
+dashboard.getRange("G26:L28").values = [
+  ["重賞記事クリック補充率", replacement.replacement_rate ?? null, "未補充クリック", replacement.unreplaced_clicks ?? null, "判定", replacement.status || "unavailable"],
+  ["YouTube視聴", youtubeRecovery.youtube_views ?? null, "YouTube参照セッション", youtubeRecovery.youtube_source_sessions ?? null, "暫定50件線", youtubeRecovery.site_recovery_supported ? "到達" : "未到達"],
+  ["注意", "開催需要差を含む", "用途", "翌週差分の再検証", "因果", "未確定"],
+];
+dashboard.getRange("H26").format.numberFormat = "0.0%";
+const reconciliation = analysis.revenue_reconciliation || {};
+const reconciliationStatus = reconciliation.status === "currency_mismatch"
+  ? "通貨不一致"
+  : reconciliation.status || "unavailable";
+dashboard.getRange("G30:L30").merge();
+dashboard.getRange("G30").values = [["収益値の通貨と照合"]];
+dashboard.getRange("G30:L30").format = { fill: navy, font: { bold: true, color: "#FFFFFF" } };
+dashboard.getRange("G31:L33").values = [
+  ["AdSense正本", reconciliation.adsense_revenue_jpy ?? null, "通貨", "JPY", "照合状態", reconciliationStatus],
+  ["GA4帰属値", reconciliation.ga4_ad_revenue ?? null, "通貨", reconciliation.ga4_revenue_currency || "未取得", "差分率", reconciliation.difference_rate ?? null],
+  ["ルール", "通貨一致時のみ比較", "基準", "5%超は要照合", "為替換算", "未実施"],
+];
+dashboard.getRange("G31:L33").format = { borders: { preset: "inside", style: "thin", color: line } };
+dashboard.getRange("H31:H31").format.numberFormat = "¥#,##0";
+dashboard.getRange("H32:H32").format.numberFormat = "0.000000";
+dashboard.getRange("L32:L32").format.numberFormat = "0.0%";
 
 const causes = (analysis.root_causes || []).map((row, index) => [
   index + 1,
@@ -297,8 +345,8 @@ const acquisition = (history.rows || [])
     metric(row, "totalAdRevenue"),
   ]);
 const sourceSheet = sheets["流入源"];
-styleTitle(sourceSheet, "A1:H1", "流入源", "GA4の参照元・メディア・チャネル別。収益はGA4帰属値です。");
-writeTable(sourceSheet, 4, ["日付", "チャネル", "参照元/メディア", "セッション", "PV", "ユーザー", "エンゲージ", "広告収益"], acquisition);
+styleTitle(sourceSheet, "A1:H1", "流入源", `GA4の参照元・メディア・チャネル別。収益はGA4帰属値（${ga4Currency}）です。`);
+writeTable(sourceSheet, 4, ["日付", "チャネル", "参照元/メディア", "セッション", "PV", "ユーザー", "エンゲージ", `広告収益(${ga4Currency})`], acquisition);
 if (acquisition.length) {
   sourceSheet.getRange(`A5:A${4 + acquisition.length}`).format.numberFormat = "yyyy-mm-dd";
   sourceSheet.getRange(`D5:H${4 + acquisition.length}`).format.numberFormat = "#,##0.00";
@@ -324,6 +372,8 @@ const gradeRows = (analysis.grade_race_assessment || []).map((row) => [
   row.race_name || "", row.grade || "", row.circuit || "", row.article_url || "",
   row.first_commit_date ? new Date(`${row.first_commit_date}T00:00:00Z`) : null,
   row.expected_initial_publish_date ? new Date(`${row.expected_initial_publish_date}T00:00:00Z`) : null,
+  row.initial_publish_lead_days ?? null,
+  row.historical_gsc_impressions ?? null,
   row.gsc_impressions_d21_d3 ?? null, row.gsc_clicks_d21_d3 ?? null,
   row.gsc_ctr_d21_d3 ?? null, row.ga4_sessions_d21_d3 ?? null,
   row.ga4_ad_revenue_d21_d3 ?? null, row.classification || "",
@@ -335,16 +385,29 @@ const gradeRows = (analysis.grade_race_assessment || []).map((row) => [
   row.ad_impression_d21_d3 ?? null,
 ]);
 const gradeSheet = sheets["重賞記事"];
-styleTitle(gradeSheet, "A1:S1", "重賞記事", "開催D-21〜D+3の公開時期・検索・流入・収益を判定");
-writeTable(gradeSheet, 4, ["開催日", "重賞", "格", "区分", "記事URL", "初回commit", "公開目安", "GSC表示", "GSCクリック", "CTR", "GA4セッション", "GA4広告収益", "判定", "同格GSC表示中央値", "同格GA4セッション中央値", "読了", "記事→レース", "予想表", "広告表示"], gradeRows);
+styleTitle(gradeSheet, "A1:U1", "重賞記事", "需要別の公開期限と開催D-21〜D+3の検索・流入・収益を判定");
+writeTable(gradeSheet, 4, ["開催日", "重賞", "格", "区分", "記事URL", "初回commit", "公開目安", "先行日数", "過去GSC表示", "GSC表示", "GSCクリック", "CTR", "GA4セッション", `GA4広告収益(${ga4Currency})`, "判定", "同格GSC表示中央値", "同格GA4セッション中央値", "読了", "記事→レース", "予想表", "広告表示"], gradeRows);
+gradeSheet.getRange("W4:X11").values = [
+  ["週次補充指標", "値"],
+  ["前週重賞記事クリック", replacement.previous_grade_article_clicks ?? null],
+  ["対象週重賞記事クリック", replacement.current_grade_article_clicks ?? null],
+  ["補充率", replacement.replacement_rate ?? null],
+  ["未補充クリック", replacement.unreplaced_clicks ?? null],
+  ["目標", replacement.target_rate ?? null],
+  ["判定", replacement.status || "unavailable"],
+  ["注意", replacement.caveat || ""],
+];
+gradeSheet.getRange("W4:X4").format = { fill: teal, font: { bold: true, color: "#FFFFFF" } };
+gradeSheet.getRange("X7:X7").format.numberFormat = "0.0%";
+gradeSheet.getRange("X9:X9").format.numberFormat = "0.0%";
 if (gradeRows.length) {
   const gradeEnd = 4 + gradeRows.length;
   gradeSheet.getRange(`A5:A${gradeEnd}`).format.numberFormat = "yyyy-mm-dd";
   gradeSheet.getRange(`F5:G${gradeEnd}`).format.numberFormat = "yyyy-mm-dd";
-  gradeSheet.getRange(`J5:J${gradeEnd}`).format.numberFormat = "0.00%";
-  gradeSheet.getRange(`M5:M${gradeEnd}`).conditionalFormats.add("containsText", { text: "良好", format: { fill: green } });
-  gradeSheet.getRange(`M5:M${gradeEnd}`).conditionalFormats.add("containsText", { text: "不足", format: { fill: amber } });
-  gradeSheet.getRange(`M5:M${gradeEnd}`).conditionalFormats.add("containsText", { text: "なし", format: { fill: red } });
+  gradeSheet.getRange(`L5:L${gradeEnd}`).format.numberFormat = "0.00%";
+  gradeSheet.getRange(`O5:O${gradeEnd}`).conditionalFormats.add("containsText", { text: "良好", format: { fill: green } });
+  gradeSheet.getRange(`O5:O${gradeEnd}`).conditionalFormats.add("containsText", { text: "不足", format: { fill: amber } });
+  gradeSheet.getRange(`O5:O${gradeEnd}`).conditionalFormats.add("containsText", { text: "なし", format: { fill: red } });
 }
 gradeSheet.freezePanes.freezeRows(4);
 
@@ -381,6 +444,19 @@ const mediaRows = (history.rows || [])
 const mediaSheet = sheets["YouTube・SNS"];
 styleTitle(mediaSheet, "A1:J1", "YouTube・SNS", "動画到達と投稿成功をGA4のUTM流入へつなぐための原本");
 writeTable(mediaSheet, 4, ["日付", "媒体", "内訳", "ディメンション", "視聴", "表示", "CTR", "視聴分", "失敗", "状態"], mediaRows);
+mediaSheet.getRange("L4:M12").values = [
+  ["クロス指標", "対象週"],
+  ["YouTube視聴", youtubeRecovery.youtube_views ?? null],
+  ["YouTube参照セッション", youtubeRecovery.youtube_source_sessions ?? null],
+  ["Organic Videoセッション", youtubeRecovery.organic_video_sessions ?? null],
+  ["YouTube UTM欠損率", youtubeRecovery.utm_missing_rate ?? null],
+  ["レース到達媒体帰属", youtubeRecovery.race_funnel_attribution_status || "unavailable"],
+  ["暫定回復線", youtubeRecovery.minimum_weekly_site_sessions ?? 50],
+  ["回復線到達", youtubeRecovery.site_recovery_supported ? "はい" : "いいえ"],
+  ["計測", "UTM復旧前後を分離"],
+];
+mediaSheet.getRange("L4:M4").format = { fill: teal, font: { bold: true, color: "#FFFFFF" } };
+mediaSheet.getRange("M8").format.numberFormat = "0.0%";
 if (mediaRows.length) {
   const mediaEnd = 4 + mediaRows.length;
   mediaSheet.getRange(`A5:A${mediaEnd}`).format.numberFormat = "yyyy-mm-dd";
@@ -396,6 +472,17 @@ const failureRows = (analysis.github_failure_jobs || []).map((row) => [
 const errorSheet = sheets["障害"];
 styleTitle(errorSheet, "A1:F1", "障害", "Workflow失敗と流入・収益の同時発生を確認。相関だけで因果を断定しません。");
 writeTable(errorSheet, 4, ["発生日時", "Workflow", "Job", "結果", "失敗ステップ", "URL"], failureRows, { headerFill: navy });
+const failureImpact = analysis.workflow_failure_impact || {};
+errorSheet.getRange("H4:I10").values = [
+  ["対象週の影響指標", "値"],
+  ["全失敗run", failureImpact.all_failure_runs ?? null],
+  ["記事Pipeline失敗", failureImpact.article_pipeline_failures ?? null],
+  ["Draft・Review失敗", failureImpact.draft_review_failures ?? null],
+  ["繰返し失敗", failureImpact.repeated_draft_review_failure ? "はい" : "いいえ"],
+  ["失敗日", (failureImpact.article_failure_dates || []).join(" / ")],
+  ["注意", failureImpact.note || ""],
+];
+errorSheet.getRange("H4:I4").format = { fill: teal, font: { bold: true, color: "#FFFFFF" } };
 if (failureRows.length) {
   const failureEnd = 4 + failureRows.length;
   errorSheet.getRange(`A5:A${failureEnd}`).format.numberFormat = "yyyy-mm-dd hh:mm";
@@ -447,23 +534,33 @@ if (qualityRows.length) {
 }
 qualitySheet.freezePanes.freezeRows(4);
 
-for (const sheet of Object.values(sheets)) {
+for (const [sheetName, sheet] of Object.entries(sheets)) {
   const used = sheet.getUsedRange();
   if (used) {
-    used.format.font = { name: "Yu Gothic", size: 10 };
-    used.format.autofitColumns();
-    used.format.autofitRows();
+    if (sheetName === "原本") {
+      // 10万行超の原本へ全行autofitをかけるとCI・ローカルともに時間超過する。
+      // 表示確認範囲だけ書式を揃え、列幅は下の明示指定で固定する。
+      sheet.getRange("A1:S25").format.font = { name: "Yu Gothic", size: 10 };
+    } else {
+      used.format.font = { name: "Yu Gothic", size: 10 };
+      used.format.autofitColumns();
+      used.format.autofitRows();
+    }
   }
 }
 
 // 読みやすさのため、自動幅の上限を主要列へ明示する。
 dashboard.getRange("A1:L60").format.columnWidth = 14;
 dashboard.getRange("C37:G60").format.columnWidth = 28;
+dashboard.getRange("C37:G60").format.wrapText = true;
+dashboard.getRange("A37:G60").format.autofitRows();
 sourceSheet.getRange("B1:C10000").format.columnWidth = 22;
 searchSheet.getRange(`A1:B${Math.max(5, 4 + searchRows.length)}`).format.columnWidth = 34;
 gradeSheet.getRange(`B1:E${Math.max(5, 4 + gradeRows.length)}`).format.columnWidth = 24;
 adSheet.getRange(`C1:C${Math.max(5, 4 + adRows.length)}`).format.columnWidth = 34;
 mediaSheet.getRange(`D1:D${Math.max(5, 4 + mediaRows.length)}`).format.columnWidth = 34;
+mediaSheet.getRange("L1:L20").format.columnWidth = 24;
+mediaSheet.getRange("M1:M20").format.columnWidth = 18;
 errorSheet.getRange(`B1:F${Math.max(5, 4 + failureRows.length)}`).format.columnWidth = 28;
 ledgerSheet.getRange(`C1:G${Math.max(5, 4 + ledgerRows.length)}`).format.columnWidth = 30;
 qualitySheet.getRange(`D1:E${Math.max(5, 4 + qualityRows.length)}`).format.columnWidth = 36;
@@ -485,10 +582,27 @@ const formulaErrors = await wb.inspect({
 });
 
 const renders = [];
+const renderRanges = {
+  "経営ダッシュボード": "A1:L50",
+  "週次推移": "A1:O12",
+  "流入源": "A1:H30",
+  "検索機会": "A1:I30",
+  "重賞記事": "A1:X30",
+  "広告収益": "A1:L30",
+  "YouTube・SNS": "A1:M30",
+  "障害": "A1:I30",
+  "ファネル": "A1:D30",
+  "改善台帳": "A1:I30",
+  "取得品質": "A1:E20",
+  "原本": "A1:S25",
+};
 for (const name of sheetNames) {
-  const renderOptions = name === "原本"
-    ? { sheetName: name, range: "A1:S25", scale: 1, format: "png" }
-    : { sheetName: name, autoCrop: "all", scale: 1, format: "png" };
+  const renderOptions = {
+    sheetName: name,
+    range: renderRanges[name],
+    scale: 1,
+    format: "png",
+  };
   const preview = await wb.render(renderOptions);
   const bytes = new Uint8Array(await preview.arrayBuffer());
   const renderPath = path.join(renderDir, `${name}.png`);
@@ -503,7 +617,9 @@ await fs.writeFile(validationPath, JSON.stringify({
   workbook: outputPath,
   formal_week: Boolean(formal.formal),
   sheet_names: sheetNames,
+  history_row_count: (history.rows || []).length,
   normalized_row_count: normalizedRows.length,
+  raw_rows_per_dataset: rawRowsPerDataset,
   dashboard_inspection: dashboardInspect,
   formula_error_inspection: formulaErrors,
   renders,

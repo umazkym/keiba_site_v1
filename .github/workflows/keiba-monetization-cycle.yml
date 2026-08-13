@@ -45,12 +45,15 @@ jobs:
       YOUTUBE_ANALYTICS_OAUTH_CLIENT_SECRET: ${{ secrets.YOUTUBE_ANALYTICS_OAUTH_CLIENT_SECRET }}
       YOUTUBE_ANALYTICS_OAUTH_REFRESH_TOKEN: ${{ secrets.YOUTUBE_ANALYTICS_OAUTH_REFRESH_TOKEN }}
       CLARITY_API_KEY: ${{ secrets.CLARITY_API_KEY }}
-      CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+      CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ANALYTICS_API_TOKEN }}
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
+        with:
+          # 重賞記事の初回公開日を git log --follow で判定するため、履歴を省略しない。
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v7
@@ -68,6 +71,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install -r backend/requirements.txt
+          python -m pip install google-cloud-monitoring
           npm ci --prefix frontend
 
       - name: Authenticate Google Read-only APIs

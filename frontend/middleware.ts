@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import {
     getJstTodayString,
     getRaceDetailPath,
+    isRetiredRaceDate,
     isValidRaceDate,
     parseRaceNumberParam,
 } from './lib/race-url';
@@ -90,6 +91,24 @@ export function middleware(request: NextRequest) {
         const dateOnlyMatch = pathname.match(/^\/races\/([^/]+)$/);
         const venueOnlyMatch = pathname.match(/^\/races\/([^/]+)\/([^/]+)$/);
         const detailMatch = pathname.match(/^\/races\/([^/]+)\/([^/]+)\/([^/]+)$/);
+
+        // RACE_PAGE_MIN_DATE より前の開催日はページとして提供しない。
+        // 404ではなく410を返し、検索エンジンに恒久削除を伝えてインデックスから外す。
+        // リダイレクト判定より先に置き、日付ページへ吸収されないようにする。
+        const requestedRaceDate =
+            dateOnlyMatch?.[1] ?? venueOnlyMatch?.[1] ?? detailMatch?.[1];
+        if (requestedRaceDate && isRetiredRaceDate(requestedRaceDate)) {
+            return new NextResponse(
+                'このレースページは提供を終了しました。',
+                {
+                    status: 410,
+                    headers: {
+                        'Cache-Control': 'public, max-age=86400',
+                        'X-Robots-Tag': 'noindex',
+                    },
+                },
+            );
+        }
 
         if (venueOnlyMatch) {
             const [, date] = venueOnlyMatch;

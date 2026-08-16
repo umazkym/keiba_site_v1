@@ -65,4 +65,14 @@ assert.equal(archive.revalidateSeconds, 2592000);
 assert.match(archive.cacheControl, /stale-if-error=7776000/);
 assert.equal(policy.getRaceCachePolicy("invalid").cacheControl, "private, no-store");
 
+// RACE_PAGE_MIN_DATE の境界。これより前はページを提供せず410を返す。
+assert.equal(raceUrl.RACE_PAGE_MIN_DATE, "2026-01-01");
+assert.equal(raceUrl.isRetiredRaceDate("2025-12-31"), true);
+assert.equal(raceUrl.isRetiredRaceDate("2024-01-14"), true);
+assert.equal(raceUrl.isRetiredRaceDate("2026-01-01"), false);
+assert.equal(raceUrl.isRetiredRaceDate("2026-08-16"), false);
+// 日付として不正なものは410ではなく通常の404扱いに委ねる。
+assert.equal(raceUrl.isRetiredRaceDate("invalid"), false);
+assert.equal(raceUrl.isRetiredRaceDate("2025-02-30"), false);
+
 console.log("race cache policy boundary checks: passed");

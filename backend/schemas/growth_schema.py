@@ -87,7 +87,8 @@ class RecentRun(BaseModel):
     horse_weight_diff: Optional[int] = None
     agari_3f: Optional[float] = None
     corner_positions: List[int] = Field(default_factory=list)
-    url: str
+    # RACE_PAGE_MIN_DATE より前のレースはページが存在しないためNoneになる。
+    url: Optional[str] = None
 
 
 class UpcomingRace(BaseModel):
@@ -114,7 +115,8 @@ class PredictionHistoryItem(BaseModel):
     deviation_score: Optional[float] = None
     mark: str
     rank: Optional[int] = None
-    url: str
+    # RACE_PAGE_MIN_DATE より前のレースはページが存在しないためNoneになる。
+    url: Optional[str] = None
 
 
 class EntityDetailResponse(BaseModel):
@@ -183,7 +185,8 @@ class SeriesRace(BaseModel):
     winner_popularity: Optional[int] = None
     top_prediction_name: Optional[str] = None
     top_prediction_rank: Optional[int] = None
-    url: str
+    # RACE_PAGE_MIN_DATE より前のレースはページが存在しないためNoneになる。
+    url: Optional[str] = None
 
 
 class RaceSeriesResponse(BaseModel):

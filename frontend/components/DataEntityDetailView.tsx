@@ -187,28 +187,47 @@ export function DataEntityDetailView({
                         </p>
                     </div>
                     <div className="divide-y divide-slate-100">
-                        {detail.prediction_history.map((item) => (
-                            <Link
-                                key={item.race_id}
-                                prefetch={false}
-                                href={item.url}
-                                rel="nofollow"
-                                className="grid min-h-14 grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-slate-50"
-                            >
-                                <span className="min-w-0">
-                                    <span className="block text-xs font-bold text-slate-500">
-                                        {item.race_date} {item.venue_name}{item.race_number}R
+                        {detail.prediction_history.map((item) => {
+                            const rowClassName =
+                                'grid min-h-14 grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-slate-50';
+                            const body = (
+                                <>
+                                    <span className="min-w-0">
+                                        <span className="block text-xs font-bold text-slate-500">
+                                            {item.race_date} {item.venue_name}{item.race_number}R
+                                        </span>
+                                        <span className="block truncate font-black text-slate-900">{item.race_name}</span>
                                     </span>
-                                    <span className="block truncate font-black text-slate-900">{item.race_name}</span>
-                                </span>
-                                <span className="font-mono text-sm font-black tabular-nums text-amber-700">
-                                    {item.deviation_score == null ? '—' : `偏差値 ${item.deviation_score.toFixed(1)}`}
-                                </span>
-                                <span className="w-12 text-right font-mono text-xs font-black text-slate-700">
-                                    {item.rank == null ? '—' : `${item.rank}着`}
-                                </span>
-                            </Link>
-                        ))}
+                                    <span className="font-mono text-sm font-black tabular-nums text-amber-700">
+                                        {item.deviation_score == null ? '—' : `偏差値 ${item.deviation_score.toFixed(1)}`}
+                                    </span>
+                                    <span className="w-12 text-right font-mono text-xs font-black text-slate-700">
+                                        {item.rank == null ? '—' : `${item.rank}着`}
+                                    </span>
+                                </>
+                            );
+
+                            // レースページを提供していない期間はリンクにしない。
+                            if (!item.url) {
+                                return (
+                                    <div key={item.race_id} className={rowClassName}>
+                                        {body}
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <Link
+                                    key={item.race_id}
+                                    prefetch={false}
+                                    href={item.url}
+                                    rel="nofollow"
+                                    className={rowClassName}
+                                >
+                                    {body}
+                                </Link>
+                            );
+                        })}
                     </div>
                 </section>
             )}

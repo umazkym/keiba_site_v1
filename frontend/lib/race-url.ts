@@ -6,6 +6,22 @@ const VENUE_SLUG_LABELS: Record<string, string> = venueSlugs.labels;
 export const RACE_INDEX_PAST_DAYS = 14;
 export const RACE_INDEX_FUTURE_DAYS = 2;
 
+/**
+ * レース詳細をページとして提供する最古の開催日。
+ *
+ * DBにはこれ以前の結果データも入っているが、ページとしては公開しない方針。
+ * 実測（2026-08-16）でも2026年より前のレースページは13ページ・13セッションしかなく、
+ * 一方でデータ詳細ページや場内ナビからリンクされて4,952件の404を生んでいた。
+ * この境界より前は410を返し、検索エンジンに恒久削除を伝える。
+ */
+export const RACE_PAGE_MIN_DATE = '2026-01-01';
+
+/** ページとして提供しない過去レースかどうか。日付形式が不正な場合はfalse（別途404扱い）。 */
+export function isRetiredRaceDate(date: string): boolean {
+    if (!isValidRaceDate(date)) return false;
+    return date < RACE_PAGE_MIN_DATE;
+}
+
 export function normalizeVenueName(venueName: string): string {
     return venueName
         .trim()

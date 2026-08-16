@@ -682,23 +682,33 @@ export default function HorseCompareClient() {
                                                                 {runIndex === 0 ? horse.horse_name : ''}
                                                             </th>
                                                             <td className="px-3 py-3">
-                                                                <Link
-                                                                    prefetch={false}
-                                                                    href={run.url}
-                                                                    onClick={() => {
-                                                                        sendCompareRaceClickEvent({
-                                                                            horse_position: horseIndex + 1,
-                                                                            run_position: runIndex + 1,
-                                                                            destination_type: 'past_race',
-                                                                        });
-                                                                    }}
-                                                                    className="font-bold text-slate-900 hover:text-blue-700"
-                                                                >
-                                                                    <span className="block text-xs font-semibold text-slate-500">
-                                                                        {run.race_date} {run.venue_name}{run.race_number}R
-                                                                    </span>
-                                                                    <span className="block max-w-[260px] truncate" title={run.race_name}>{run.race_name}</span>
-                                                                </Link>
+                                                                {run.url ? (
+                                                                    <Link
+                                                                        prefetch={false}
+                                                                        href={run.url}
+                                                                        onClick={() => {
+                                                                            sendCompareRaceClickEvent({
+                                                                                horse_position: horseIndex + 1,
+                                                                                run_position: runIndex + 1,
+                                                                                destination_type: 'past_race',
+                                                                            });
+                                                                        }}
+                                                                        className="font-bold text-slate-900 hover:text-blue-700"
+                                                                    >
+                                                                        <span className="block text-xs font-semibold text-slate-500">
+                                                                            {run.race_date} {run.venue_name}{run.race_number}R
+                                                                        </span>
+                                                                        <span className="block max-w-[260px] truncate" title={run.race_name}>{run.race_name}</span>
+                                                                    </Link>
+                                                                ) : (
+                                                                    /* レースページを提供していない期間はリンクにしない。 */
+                                                                    <div className="font-bold text-slate-900">
+                                                                        <span className="block text-xs font-semibold text-slate-500">
+                                                                            {run.race_date} {run.venue_name}{run.race_number}R
+                                                                        </span>
+                                                                        <span className="block max-w-[260px] truncate" title={run.race_name}>{run.race_name}</span>
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                             <td className="px-3 py-3 text-xs font-bold text-slate-700">{run.course_label}</td>
                                                             <td className="px-3 py-3 text-right font-mono tabular-nums text-slate-700">

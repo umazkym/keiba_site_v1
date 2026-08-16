@@ -191,22 +191,33 @@ export function RecentRunsTable({
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {runs.map((run) => (
+                        {runs.map((run) => {
+                            // レースページを提供していない期間はリンクにせず、文字だけ残す。
+                            const raceLabel = (
+                                <>
+                                    <span className="block text-xs font-semibold text-slate-500">
+                                        {run.race_date} {run.venue_name}{run.race_number}R
+                                    </span>
+                                    <span className="mt-0.5 block max-w-[240px] truncate text-sm font-black" title={run.race_name}>
+                                        {run.race_name}
+                                    </span>
+                                </>
+                            );
+                            return (
                             <tr key={`${run.race_id}-${run.horse_id ?? ''}`} className="hover:bg-slate-50/60">
                                 <td className="px-4 py-3">
-                                    <Link
-                                        prefetch={false}
-                                        href={run.url}
-                                        rel="nofollow"
-                                        className="font-bold text-slate-900 transition-colors duration-150 hover:text-blue-600"
-                                    >
-                                        <span className="block text-xs font-semibold text-slate-500">
-                                            {run.race_date} {run.venue_name}{run.race_number}R
-                                        </span>
-                                        <span className="mt-0.5 block max-w-[240px] truncate text-sm font-black" title={run.race_name}>
-                                            {run.race_name}
-                                        </span>
-                                    </Link>
+                                    {run.url ? (
+                                        <Link
+                                            prefetch={false}
+                                            href={run.url}
+                                            rel="nofollow"
+                                            className="font-bold text-slate-900 transition-colors duration-150 hover:text-blue-600"
+                                        >
+                                            {raceLabel}
+                                        </Link>
+                                    ) : (
+                                        <div className="font-bold text-slate-900">{raceLabel}</div>
+                                    )}
                                 </td>
                                 {showHorse && (
                                     <td className="px-3 py-3 font-bold text-slate-800 max-w-[160px] truncate">
@@ -238,8 +249,8 @@ export function RecentRunsTable({
                                         : `${run.horse_weight}kg${run.horse_weight_diff == null ? '' : ` (${run.horse_weight_diff >= 0 ? '+' : ''}${run.horse_weight_diff})`}`}
                                 </td>
                             </tr>
-
-                        ))}
+                            );
+                        })}
                     </tbody>
                 </table>
             </ResponsiveDataTable>

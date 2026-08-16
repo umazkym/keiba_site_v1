@@ -28,10 +28,18 @@ export function RaceSeriesPanel({ data }: { data: RaceSeriesData | null }) {
                         {data.history.map((race) => (
                             <tr key={race.race_id}>
                                 <td className="px-4 py-3">
-                                    <Link prefetch={false} href={race.url} className="font-bold text-slate-800 hover:text-primary">
-                                        <span className="block text-xs text-slate-500">{race.race_date}</span>
-                                        <span>{race.venue_name}{race.race_number}R</span>
-                                    </Link>
+                                    {race.url ? (
+                                        <Link prefetch={false} href={race.url} className="font-bold text-slate-800 hover:text-primary">
+                                            <span className="block text-xs text-slate-500">{race.race_date}</span>
+                                            <span>{race.venue_name}{race.race_number}R</span>
+                                        </Link>
+                                    ) : (
+                                        /* レースページを提供していない期間はリンクにしない。 */
+                                        <div className="font-bold text-slate-800">
+                                            <span className="block text-xs text-slate-500">{race.race_date}</span>
+                                            <span>{race.venue_name}{race.race_number}R</span>
+                                        </div>
+                                    )}
                                 </td>
                                 <td className="px-3 py-3 text-slate-600">{race.course_label}</td>
                                 <td className="px-3 py-3 font-bold text-slate-800">{race.winner_name ?? '—'}</td>

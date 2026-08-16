@@ -281,6 +281,64 @@ class ApiCostOptimizationTest(unittest.TestCase):
             db.close()
             engine.dispose()
 
+    def test_prediction_detail_venue_nav_skips_races_without_predictions(self) -> None:
+        """予測のないレースは詳細ページが404になるため、場内ナビに載せない。"""
+        from crud import race_crud
+
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(bind=engine)
+        db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
+        target_date = date(2026, 6, 20)
+        try:
+            db.add_all([
+                models.Race(
+                    id=f"20260620010{number}",
+                    race_date=target_date,
+                    venue_name="東京",
+                    race_number=number,
+                    race_name=f"確認用{number}R",
+                    race_type="中央",
+                    course_type="芝",
+                    distance=1600,
+                )
+                for number in (1, 2, 3)
+            ])
+            db.add(models.Horse(id="horse-nav", name="ナビ馬"))
+            db.flush()
+            # 1Rと3Rにのみ予測を入れ、2Rは予測なしのままにする。
+            db.add_all([
+                models.Prediction(
+                    race_id=f"20260620010{number}",
+                    horse_id="horse-nav",
+                    horse_name="ナビ馬",
+                    horse_number=1,
+                    deviation_score=65.0,
+                    mark="◎",
+                )
+                for number in (1, 3)
+            ])
+            db.commit()
+
+            result = race_crud.get_prediction_detail(db, target_date, "tokyo", 1)
+
+            self.assertIsNotNone(result)
+            self.assertEqual(result["race_numbers"], [1, 3])
+        finally:
+            db.close()
+            engine.dispose()
+
+    def test_race_url_is_omitted_before_race_page_min_date(self) -> None:
+        """ページを提供していない期間へはリンクを出さない（410の量産を防ぐ）。"""
+        from crud import growth_crud
+
+        self.assertEqual(growth_crud.RACE_PAGE_MIN_DATE, date(2026, 1, 1))
+        self.assertIsNone(growth_crud._race_url(date(2025, 12, 31), "中山", 10))
+        self.assertIsNone(growth_crud._race_url(date(2024, 1, 14), "中山", 10))
+        self.assertEqual(
+            growth_crud._race_url(date(2026, 1, 1), "東京", 11),
+            "/races/2026-01-01/tokyo/11",
+        )
+
     def test_prediction_detail_not_found_is_no_store(self) -> None:
         from api.v1.endpoints.races import read_prediction_detail
 
@@ -299,84 +357,6 @@ class ApiCostOptimizationTest(unittest.TestCase):
                 )
             self.assertEqual(context.exception.status_code, 404)
             self.assertEqual(response.headers.get("Cache-Control"), "no-store")
-        finally:
-            db.close()
-            engine.dispose()
-
-    def test_prediction_detail_returns_result_only_race(self) -> None:
-        """AI予測がなくても結果があれば200で返す。
-
-        AI予測の運用開始前のレースは predictions を持たない。以前はここで404を返しており、
-        データ詳細ページや場内ナビからのリンク先が全て404になっていた
-        （2026-08-16時点でGSCに4,952件の404が計上されていた）。
-        """
-        from crud import race_crud
-
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(bind=engine)
-        db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
-        target_date = date(2024, 1, 14)
-        try:
-            race = models.Race(
-                id="202401140110",
-                race_date=target_date,
-                venue_name="中山",
-                race_number=10,
-                race_name="予測なし過去レース",
-                race_type="中央",
-                course_type="芝",
-                distance=2000,
-            )
-            horse = models.Horse(id="horse-old", name="過去出走馬")
-            db.add_all([race, horse])
-            db.flush()
-            db.add(
-                models.Result(
-                    race_id=race.id,
-                    horse_id=horse.id,
-                    horse_number=3,
-                    rank=1,
-                )
-            )
-            db.commit()
-
-            result = race_crud.get_prediction_detail(db, target_date, "nakayama", 10)
-
-            self.assertIsNotNone(result)
-            self.assertEqual(result["race"]["id"], race.id)
-            self.assertEqual(result["race"]["predictions"], [])
-            self.assertEqual(
-                [item["horse_name"] for item in result["race"]["results"]],
-                ["過去出走馬"],
-            )
-        finally:
-            db.close()
-            engine.dispose()
-
-    def test_prediction_detail_without_predictions_and_results_is_not_found(self) -> None:
-        """予測も結果もないレースは従来どおり404にする。"""
-        from crud import race_crud
-
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(bind=engine)
-        db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
-        target_date = date(2024, 1, 14)
-        try:
-            db.add(
-                models.Race(
-                    id="202401140111",
-                    race_date=target_date,
-                    venue_name="中山",
-                    race_number=11,
-                    race_name="データなしレース",
-                    race_type="中央",
-                )
-            )
-            db.commit()
-
-            result = race_crud.get_prediction_detail(db, target_date, "nakayama", 11)
-
-            self.assertIsNone(result)
         finally:
             db.close()
             engine.dispose()

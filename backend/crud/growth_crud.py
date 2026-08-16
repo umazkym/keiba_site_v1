@@ -224,7 +224,16 @@ def _course_slug(course_type: Optional[str], distance: Optional[int]) -> str:
     return f"{prefix}-{distance}m" if distance else prefix
 
 
-def _race_url(race_date: date, venue_name: str, race_number: int) -> str:
+# レース詳細をページとして提供する最古の開催日。
+# frontend/lib/race-url.ts の RACE_PAGE_MIN_DATE と揃えること。
+# これ以前はページが存在せず410を返すため、リンクを出すと404/410を量産する。
+RACE_PAGE_MIN_DATE = date(2026, 1, 1)
+
+
+def _race_url(race_date: date, venue_name: str, race_number: int) -> Optional[str]:
+    """レース詳細ページのURL。ページが存在しない過去日はNoneを返す。"""
+    if race_date < RACE_PAGE_MIN_DATE:
+        return None
     return f"/races/{race_date.isoformat()}/{_venue_slug(venue_name)}/{race_number}"
 
 

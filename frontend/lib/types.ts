@@ -256,7 +256,8 @@ export interface DataRecentRun {
     horse_weight_diff: number | null;
     agari_3f: number | null;
     corner_positions: number[];
-    url: string;
+    /** RACE_PAGE_MIN_DATE より前のレースはページが存在しないため null。 */
+    url: string | null;
 }
 
 export interface DataUpcomingRace {
@@ -283,7 +284,8 @@ export interface PredictionHistoryItem {
     deviation_score: number | null;
     mark: string;
     rank: number | null;
-    url: string;
+    /** RACE_PAGE_MIN_DATE より前のレースはページが存在しないため null。 */
+    url: string | null;
 }
 
 export interface DataEntityDetail {
@@ -352,7 +354,8 @@ export interface SeriesRace {
     winner_popularity: number | null;
     top_prediction_name: string | null;
     top_prediction_rank: number | null;
-    url: string;
+    /** RACE_PAGE_MIN_DATE より前のレースはページが存在しないため null。 */
+    url: string | null;
 }
 
 export interface RaceSeriesData {

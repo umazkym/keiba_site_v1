@@ -444,22 +444,20 @@ def get_prediction_detail(
         )
         .first()
     )
-    # 予測がなくても結果があれば「結果ページ」として成立させる。
-    # AI予測の運用開始前のレースは predictions を持たないが results はあり、
-    # ここで404を返していたためGSCで4,952件の404が発生していた（2026-08-16調査）。
-    if race is None:
-        return None
-    if not race.predictions and not race.results:
+    if race is None or not race.predictions:
         return None
 
+    # 予測のないレースは詳細ページが404になるため、場内ナビのリンク対象から外す。
     race_numbers = [
         int(row[0])
         for row in (
             db.query(models.Race.race_number)
+            .join(models.Prediction, models.Prediction.race_id == models.Race.id)
             .filter(
                 models.Race.race_date == target_date,
                 models.Race.venue_name == race.venue_name,
             )
+            .distinct()
             .order_by(models.Race.race_number)
             .all()
         )
@@ -476,16 +474,10 @@ def get_prediction_detail(
             .order_by(models.HorseNumberAdvantage.horse_number)
             .all()
         )
-    # 予測がないレースでは結果側の馬IDで公開判定する。
-    horse_ids_for_publication = [prediction.horse_id for prediction in race.predictions]
-    if not horse_ids_for_publication:
-        horse_ids_for_publication = [
-            result_row.horse_id for result_row in race.results if result_row.horse_id
-        ]
     published_horse_ids = _published_entity_ids(
         db,
         "horse",
-        horse_ids_for_publication,
+        [prediction.horse_id for prediction in race.predictions],
     )
     result = {
         "race_type": race.race_type,

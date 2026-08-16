@@ -2,7 +2,8 @@ import { getAllArticleSlugs, getArticleBySlug } from '../../../lib/articles';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArticleSchema, BreadcrumbSchema } from '@/components/StructuredData';
+import { ArticleSchema, BreadcrumbSchema, FAQSchema } from '@/components/StructuredData';
+import { extractArticleFaqs } from '@/lib/article-faq';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { RelatedArticles } from '@/components/RelatedArticles';
 import { AdUnit } from '@/components/AdUnit';
@@ -76,7 +77,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     };
   } catch (error) {
-    return { title: "記事が見つかりません" };
+    // 記事を解決できないURLはインデックスさせない。
+    // ページ本体は notFound() を返すが、metadata 側が index 可のままだと
+    // 404 到達前のレスポンスがインデックス対象として扱われうる。
+    return {
+      title: "記事が見つかりません",
+      robots: { index: false, follow: false },
+    };
   }
 }
 
@@ -92,6 +99,7 @@ export default async function ArticlePage({ params }: Props) {
     const textContent = article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, '');
     const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
     const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
+    const articleFaqs = extractArticleFaqs(article.content);
 
     const canonicalPath = resolveArticleCanonicalPath(article, params.slug);
     const articleUrl = `https://uma-free.com${canonicalPath}`;
@@ -145,9 +153,12 @@ export default async function ArticlePage({ params }: Props) {
           items={[
             { name: 'ホーム', url: 'https://uma-free.com' },
             { name: '記事', url: 'https://uma-free.com/articles' },
+            { name: article.category, url: `https://uma-free.com/articles/category/${encodeURIComponent(article.category)}` },
             { name: article.title, url: articleUrl },
           ]}
         />
+        {/* 本文に「よくある質問」がある記事だけFAQPageを出す。旧記事では何も出力しない。 */}
+        {articleFaqs.length > 0 && <FAQSchema faqs={articleFaqs} />}
 
         <div className="site-shell-article mx-auto max-w-4xl px-3.5 sm:px-6">
           <Breadcrumb />
@@ -273,7 +284,7 @@ export default async function ArticlePage({ params }: Props) {
             <div className="border-t border-slate-200 pb-5 pt-4 sm:pb-8 sm:pt-6">
               <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                 <Link
-                  href={`/articles?category=${encodeURIComponent(article.category)}`}
+                  href={`/articles/category/${encodeURIComponent(article.category)}`}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition-colors hover:text-primary sm:gap-2 sm:text-sm"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

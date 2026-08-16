@@ -5,7 +5,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { AdUnit } from "@/components/AdUnit";
 import { MultiplexAd } from "@/components/MultiplexAd";
 import { SectionHeader } from "@/components/SectionHeader";
-import { BreadcrumbSchema } from "@/components/StructuredData";
+import { BreadcrumbSchema, ItemListSchema } from "@/components/StructuredData";
 import { shouldSuppressAdsInDevelopment } from "@/lib/ad-config";
 import {
   getArticleArchiveTotals,
@@ -21,6 +21,26 @@ interface ArticlesPageProps {
     tag?: string;
     page?: string;
   };
+}
+
+/** 1ページあたりの表示件数。薄い一覧ページを量産しないよう多めに取る。 */
+export const ARTICLES_PER_PAGE = 24;
+
+/**
+ * 記事一覧の正規URLを組み立てる。
+ * カテゴリは実ルート `/articles/category/{カテゴリ}` を正とし、
+ * タグとページ番号だけをクエリに残す。1ページ目はページ番号を付けない。
+ */
+export function buildArticlesHref(
+  options: { category?: string; tag?: string; page?: number } = {},
+): string {
+  const { category, tag, page } = options;
+  const basePath = category ? `/articles/category/${encodeURIComponent(category)}` : "/articles";
+  const params = new URLSearchParams();
+  if (tag) params.set("tag", tag);
+  if (page && page > 1) params.set("page", String(page));
+  const query = params.toString();
+  return query ? `${basePath}?${query}` : basePath;
 }
 
 function getVisiblePageNumbers(current: number, total: number): (number | 'ellipsis')[] {
@@ -50,14 +70,7 @@ function ArticlePagination({
 }) {
   if (totalPages <= 1) return null;
 
-  const buildUrl = (p: number) => {
-    const params = new URLSearchParams();
-    if (category) params.set("category", category);
-    if (tag) params.set("tag", tag);
-    if (p > 1) params.set("page", String(p));
-    const query = params.toString();
-    return `/articles${query ? `?${query}` : ""}`;
-  };
+  const buildUrl = (p: number) => buildArticlesHref({ category, tag, page: p });
 
   const visiblePages = getVisiblePageNumbers(currentPage, totalPages);
 
@@ -162,26 +175,48 @@ function groupCourseArchivesByVenue(groups: ArchiveGroupList): CourseVenueSectio
   return Array.from(sections.values()).sort((left, right) => left.title.localeCompare(right.title, "ja"));
 }
 
-export async function generateMetadata({ searchParams }: ArticlesPageProps): Promise<Metadata> {
-  const selectedCategory = searchParams.category;
-  let canonicalUrl = "/articles";
+export function buildArticlesMetadata({ category, tag, page }: {
+  category?: string;
+  tag?: string;
+  page?: number;
+}): Metadata {
   let title = "競馬データ分析記事 | 重賞・騎手・馬場の実戦コラム";
   let description =
     "競馬データ分析の記事一覧。重賞展望、騎手の得意コース、馬場状態、枠順傾向、馬体重、人気別成績など、レース前に確認したい統計コラムを掲載。";
 
-  if (selectedCategory) {
-    title = `${selectedCategory}のデータ分析記事 | 競馬統計コラム`;
-    description = `${selectedCategory}に関する競馬データ分析記事の一覧です。過去5年以上のデータに基づく統計分析で、レース前の判断材料を整理します。`;
-    canonicalUrl = `/articles?category=${encodeURIComponent(selectedCategory)}`;
+  if (category) {
+    title = `${category}のデータ分析記事 | 競馬統計コラム`;
+    description = `${category}に関する競馬データ分析記事の一覧です。過去5年以上のデータに基づく統計分析で、レース前の判断材料を整理します。`;
+  }
+
+  if (tag) {
+    title = `${tag}の競馬データ分析記事 | 競馬統計コラム`;
+    description = `${tag}に関する競馬データ分析記事の一覧です。出走数を伴う統計で、レース前に確認したい傾向を整理します。`;
+  }
+
+  // 2ページ目以降は同じtitleだと重複扱いになるため、ページ番号を明示する。
+  if (page && page > 1) {
+    title = `${title}（${page}ページ目）`;
   }
 
   return {
     title,
     description,
+    // canonicalは必ず自己参照にする。ページ番号やタグを落とすと
+    // 2ページ目以降がすべて1ページ目の重複として無視される。
     alternates: {
-      canonical: canonicalUrl,
+      canonical: buildArticlesHref({ category, tag, page }),
     },
   };
+}
+
+export async function generateMetadata({ searchParams }: ArticlesPageProps): Promise<Metadata> {
+  const rawPage = parseInt(searchParams.page || "1", 10);
+  return buildArticlesMetadata({
+    category: searchParams.category,
+    tag: searchParams.tag,
+    page: isNaN(rawPage) || rawPage < 1 ? 1 : rawPage,
+  });
 }
 
 const getCategoryBadgeClass = (category: string) => {
@@ -490,7 +525,6 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
     count: allArticles.filter((article) => article.category === category).length,
   }));
 
-  const ARTICLES_PER_PAGE = 12;
   const rawPage = parseInt(searchParams.page || "1", 10);
   const currentPage = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
   const totalPages = Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE);
@@ -499,14 +533,27 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
     currentPage * ARTICLES_PER_PAGE,
   );
 
+  const breadcrumbItems = [
+    { name: "ホーム", url: "https://uma-free.com" },
+    { name: "記事", url: "https://uma-free.com/articles" },
+  ];
+  if (selectedCategory) {
+    breadcrumbItems.push({
+      name: selectedCategory,
+      url: `https://uma-free.com${buildArticlesHref({ category: selectedCategory })}`,
+    });
+  }
+
+  // 一覧の並び順を検索エンジンへ伝える。表示中のページに載っている記事だけを対象にする。
+  const itemListEntries = paginatedArticles.map((article) => ({
+    name: article.title,
+    url: `https://uma-free.com${article.canonicalPath || `/articles/${article.canonicalSlug || article.slug}`}`,
+  }));
+
   return (
     <>
-      <BreadcrumbSchema
-        items={[
-          { name: "ホーム", url: "https://uma-free.com" },
-          { name: "記事", url: "https://uma-free.com/articles" },
-        ]}
-      />
+      <BreadcrumbSchema items={breadcrumbItems} />
+      <ItemListSchema items={itemListEntries} />
       <Breadcrumb />
 
       <div className="articles-page-scope site-shell-data px-3.5 pb-10 pt-2 sm:px-6 sm:pb-16 sm:pt-4">
@@ -536,7 +583,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
             {categoryItems.map(({ category, count }) => (
               <Link
                 key={category}
-                href={`/articles?category=${encodeURIComponent(category)}`}
+                href={buildArticlesHref({ category })}
                 className={`rounded-full px-2.5 py-1 text-xs font-bold transition-colors sm:px-3.5 sm:py-1.5 sm:text-sm ${selectedCategory === category
                   ? "bg-slate-950 text-white"
                   : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -632,7 +679,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                 {categoryItems.map(({ category, count }) => (
                   <Link
                     key={category}
-                    href={`/articles?category=${encodeURIComponent(category)}`}
+                    href={buildArticlesHref({ category })}
                     className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold transition-colors ${selectedCategory === category ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50"
                       }`}
                   >

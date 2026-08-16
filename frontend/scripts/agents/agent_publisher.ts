@@ -161,6 +161,73 @@ function determineCategory(data: Record<string, any>): string {
   return 'データ分析';
 }
 
+/** theme_cluster をそのままタグにすると英語のままなので、読者に見える日本語ラベルへ寄せる。 */
+const THEME_CLUSTER_TAG_LABELS: Record<string, string> = {
+  race_update: '重賞',
+  grade_race_preview: '重賞',
+  course_venue: 'コース',
+  waku_data: '枠順',
+  running_style_data: '脚質',
+  jockey_data: '騎手',
+  jockey_profile: '騎手',
+  popularity_data: '人気',
+  beginner_guide: '初心者',
+};
+
+/** グレード表記のゆらぎを1つのタグへ寄せる。 */
+const GRADE_TAG_PATTERNS: Array<{ pattern: RegExp; tag: string }> = [
+  { pattern: /(G1|Ｇ１|GⅠ|ＧI)/u, tag: 'G1' },
+  { pattern: /(G2|Ｇ２|GⅡ|ＧII)/u, tag: 'G2' },
+  { pattern: /(G3|Ｇ３|GⅢ|ＧIII)/u, tag: 'G3' },
+  { pattern: /(Jpn1|JpnⅠ)/u, tag: 'Jpn1' },
+  { pattern: /(Jpn2|JpnⅡ)/u, tag: 'Jpn2' },
+  { pattern: /(Jpn3|JpnⅢ)/u, tag: 'Jpn3' },
+];
+
+/**
+ * frontmatter からタグを組み立てる。
+ *
+ * タグは関連記事のスコアリング（lib/articles.ts の getRelatedArticles が共通タグへ +3点）に使う。
+ * 生成パイプラインがタグを付けていなかったため、この加点が新記事に対して常に働いていなかった。
+ * ファイル名ではなく frontmatter を根拠にするので、レース名や会場の取り違えが起きにくい。
+ */
+export function buildArticleTags(data: Record<string, any>): string[] {
+  const tags: string[] = [];
+  const push = (value: unknown) => {
+    const tag = String(value || '').trim();
+    if (tag && !tags.includes(tag)) tags.push(tag);
+  };
+
+  const targetKeyword = String(data.target_keyword || '');
+  const title = String(data.title || '');
+  const raceName = String(data.race_name || '').trim();
+  const scanTarget = `${title} ${targetKeyword} ${data.keywords || ''}`;
+
+  // 1. レース名（重賞記事の最も強いシグナル）
+  if (raceName) push(raceName);
+
+  // 2. 競馬場名。target_keyword に無い場合はタイトルからも探す。
+  push(extractVenue(targetKeyword) || extractVenue(title));
+
+  // 3. グレード表記
+  for (const { pattern, tag } of GRADE_TAG_PATTERNS) {
+    if (pattern.test(scanTarget)) {
+      push(tag);
+      break;
+    }
+  }
+
+  // 4. テーマ
+  push(THEME_CLUSTER_TAG_LABELS[String(data.theme_cluster || '')]);
+
+  // 5. コース種別
+  if (/ダート/u.test(scanTarget)) push('ダート');
+  else if (/芝/u.test(scanTarget)) push('芝');
+
+  // タグが増えすぎると関連記事のスコアが飽和して差が付かなくなる。
+  return tags.slice(0, 6);
+}
+
 /**
  * 日本語のキーワードから英語スラグを生成する関数
  */
@@ -1183,6 +1250,16 @@ async function publishDraft() {
     if (!parsed.data.category || parsed.data.category === '未分類') {
       parsed.data.category = determineCategory(parsed.data);
       console.log(`[Publisher] カテゴリを自動判定: ${parsed.data.category}`);
+    }
+
+    // タグの自動付与。Writerはタグを出力しないため、公開時にfrontmatterから組み立てる。
+    // 既にタグがある記事（GSC改稿の再公開など）は尊重して上書きしない。
+    if (!Array.isArray(parsed.data.tags) || parsed.data.tags.length === 0) {
+      const autoTags = buildArticleTags(parsed.data);
+      if (autoTags.length > 0) {
+        parsed.data.tags = autoTags;
+        console.log(`[Publisher] タグを自動付与: ${autoTags.join(', ')}`);
+      }
     }
 
     // 旧プロンプト由来の [関連記事：〇〇] プレースホルダーが混入した場合のみ掃除する。

@@ -21,6 +21,7 @@ import type { Metadata } from 'next';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
 import { HomeStickyRaceCta } from '@/components/HomeStickyRaceCta';
+import { FAQSchema } from '@/components/StructuredData';
 import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 import { SectionHeader } from '@/components/SectionHeader';
 
@@ -145,6 +146,7 @@ export default async function HomePage() {
 
     return (
         <div className="home-page-scope site-shell-wide touch-pan-y space-y-1.5 sm:space-y-3 overscroll-y-auto">
+            <FAQSchema faqs={homepageFaqItems} />
             <HomeStickyRaceCta raceDate={todayStr} raceCount={raceDaySummary.raceCount} />
             {/* ── 1. 最近確認したレース ── */}
             <RecentRaceReturn />

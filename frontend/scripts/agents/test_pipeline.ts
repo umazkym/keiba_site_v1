@@ -208,6 +208,17 @@ async function runPipeline() {
       console.log(`[ArticleFlow] research_sources attached: ${order.research_sources.length}`);
     }
 
+    // 本文内の内部リンク候補をWriterへ渡す。
+    // ここで渡したスラッグ以外へのリンクは seo_checker が実在チェックで弾く。
+    // 追加のLLM呼び出しは発生せず、pre-draftフローで算出済みの結果をそのまま使う。
+    if (preDraftFlow.state.related_articles.length > 0) {
+      order.related_articles = preDraftFlow.state.related_articles.map(article => ({
+        title: article.title,
+        slug: article.slug,
+      }));
+      console.log(`[ArticleFlow] related_articles attached: ${order.related_articles.length}`);
+    }
+
     if (!process.env.GEMINI_API_KEY) {
       throw new Error(`GEMINI_API_KEYが設定されていないため記事を生成できません。write_orderは未消費のまま残します: ${file}`);
     }

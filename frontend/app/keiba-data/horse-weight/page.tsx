@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "馬体重増減の見方｜±10kg以上で評価を変える条件",
   description:
     "競馬の馬体重増減を、±4kg、±10kg、休み明け、3歳馬の成長分に分けて解説。直前に評価を下げる条件と例外を整理します。",
-  robots: { index: false, follow: true },
+  robots: { index: true, follow: true },
   alternates: {
     canonical: "/keiba-data/horse-weight",
   },

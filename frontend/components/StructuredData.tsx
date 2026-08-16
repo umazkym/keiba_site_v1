@@ -213,6 +213,36 @@ export function FAQSchema({ faqs }: { faqs: Array<{ question: string; answer: st
 }
 
 /**
+ * ItemListスキーマ（記事一覧などの並び順を検索エンジンへ伝える）
+ * @param items 一覧アイテム [{name: string, url: string}, ...]（表示順に渡す）
+ */
+export function ItemListSchema({ items }: { items: Array<{ name: string; url: string }> }) {
+    if (items.length === 0) return null;
+
+    const itemListSchema = {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "itemListOrder": "https://schema.org/ItemListOrderDescending",
+        "numberOfItems": items.length,
+        "itemListElement": items.map((item, index) => ({
+            "@type": "ListItem",
+            "position": index + 1,
+            "name": item.name,
+            "url": item.url
+        }))
+    };
+
+    return (
+        <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+                __html: JSON.stringify(itemListSchema)
+            }}
+        />
+    );
+}
+
+/**
  * SoftwareApplicationスキーマ（AI予測サービスの説明）
  */
 export function SoftwareApplicationSchema() {

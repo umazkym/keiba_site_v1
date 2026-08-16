@@ -1,4 +1,40 @@
 import matter from 'gray-matter';
+import fs from 'fs';
+import path from 'path';
+
+const ARTICLES_DIR = path.join(__dirname, '..', '..', 'content', 'articles');
+
+/** 本文からリンクしてよい記事アーカイブのパス接頭辞。個別記事はslug実在チェックで判定する。 */
+const ARTICLE_ARCHIVE_PREFIXES = [
+  '/articles/grade-races',
+  '/articles/races',
+  '/articles/jockeys',
+  '/articles/courses',
+];
+
+let publishedArticleSlugsCache: Set<string> | null = null;
+
+/**
+ * 公開済み記事のslug集合を返す。
+ * 本文中の記事リンクが実在するかを、公開時の validate_article_links と同じ基準で判定するために使う。
+ * 1プロセス内では記事ディレクトリが変わらない前提でキャッシュする。
+ */
+function getPublishedArticleSlugs(): Set<string> {
+  if (publishedArticleSlugsCache) return publishedArticleSlugsCache;
+
+  try {
+    publishedArticleSlugsCache = new Set(
+      fs.readdirSync(ARTICLES_DIR)
+        .filter(file => file.endsWith('.md'))
+        .map(file => file.replace(/\.md$/, '')),
+    );
+  } catch {
+    // 記事ディレクトリを読めない環境では、実在しないslugを通さないよう空集合にする。
+    publishedArticleSlugsCache = new Set();
+  }
+
+  return publishedArticleSlugsCache;
+}
 
 function parsePositiveIntEnv(name: string, fallback: number): number {
   const parsed = Number.parseInt(process.env[name] || '', 10);
@@ -6,8 +42,10 @@ function parsePositiveIntEnv(name: string, fallback: number): number {
 }
 
 export const SEO_RULES = {
-  title_min_chars: 30,
-  title_max_chars: 50,
+  // 日本語の検索結果はタイトルを概ね30文字前後で省略するため、
+  // 下限を強制して狙いの語を後半へ追いやらないようにする。
+  title_min_chars: 28,
+  title_max_chars: 42,
   description_min_chars: 120,
   description_max_chars: 160,
   min_word_count: parsePositiveIntEnv('ARTICLE_MIN_BODY_CHARS', 3000),
@@ -539,7 +577,16 @@ export function checkSEO(markdownText: string): SEOCheckResult {
 
     const pathname = internalHref.split(/[?#]/)[0];
     if (pathname.startsWith('/articles/')) {
-      errors.push(`本文内に手動の記事リンクがあります: ${href}。関連記事はページ側で自動表示してください。`);
+      // 記事アーカイブ（重賞・レース・騎手・コース）は常に存在するルートなので許可する。
+      if (ARTICLE_ARCHIVE_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+        continue;
+      }
+
+      // 個別記事は実在するslugだけ許可する。存在しないslugは404になるため弾く。
+      const slug = decodeURIComponent(pathname.replace('/articles/', '').replace(/\/$/, ''));
+      if (!getPublishedArticleSlugs().has(slug)) {
+        errors.push(`存在しない記事へのリンクです: ${href}。関連記事リストにある公開済みslugだけをリンクしてください。`);
+      }
       continue;
     }
 

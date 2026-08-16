@@ -588,6 +588,21 @@ header.glass {
     transition: none;
 }
 
+/* ヘッダー上部に確保した広告操作部ぶんの余白（PCは常時32px）へ不透明の帯を敷き、
+   スクロール中の本文が隙間から透けないようにする。
+   広告そのものはより上位のz-indexで描画されるため、この帯に隠されることはない。
+   モバイルは --site-header-top-gap が0のとき高さ0となり、従来どおり見た目は変わらない。 */
+.site-header::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: var(--site-header-top-gap);
+    background: var(--surface-color);
+    pointer-events: none;
+}
+
 .site-header-hidden {
     pointer-events: auto;
     transform: none;

@@ -217,14 +217,26 @@ export function middleware(request: NextRequest) {
             '血統・馬券コラム': '馬券・統計',
         };
 
-        if (selectedCategory && categoryRedirects[selectedCategory]) {
+        // 旧カテゴリ名はまず現行カテゴリ名へ読み替える。
+        const normalizedCategory = selectedCategory
+            ? (categoryRedirects[selectedCategory] || selectedCategory)
+            : '';
+
+        // 2.2. カテゴリ一覧の正規URLは /articles/category/{カテゴリ} とする。
+        // クエリ形式は同じ内容を返す重複URLになるため301で寄せる。
+        // next.config.mjs の redirects() では非ASCIIのカテゴリ名がLocationヘッダーへ
+        // 生のまま入り ERR_INVALID_CHAR になるため、エンコードを制御できるここで処理する。
+        if (normalizedCategory) {
             const newUrl = new URL(request.url);
             const tag = searchParams.get('tag');
-            newUrl.pathname = '/articles';
+            const page = searchParams.get('page');
+            newUrl.pathname = `/articles/category/${encodeURIComponent(normalizedCategory)}`;
             newUrl.search = '';
-            newUrl.searchParams.set('category', categoryRedirects[selectedCategory]);
             if (tag) {
                 newUrl.searchParams.set('tag', tag);
+            }
+            if (page) {
+                newUrl.searchParams.set('page', page);
             }
 
             return NextResponse.redirect(newUrl, {

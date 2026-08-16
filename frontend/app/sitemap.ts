@@ -3,6 +3,7 @@ import { getAllRaceUrls, getWeeklyGradeRaces } from '@/lib/api';
 import { gradeRaceProfiles } from '@/lib/grade-race-content';
 import { courseProfiles, jockeyProfiles } from '@/lib/growth-content';
 import { getRaceDetailPath, getRaceIndexPolicy } from '@/lib/race-url';
+import { getUniqueCategories } from '@/lib/articles';
 
 // ▼▼▼▼▼【修正1】revalidate を追加▼▼▼▼▼
 // 旧: 指定なし → Googlebotがアクセスするたびに毎回Serverless関数が起動し、
@@ -44,6 +45,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: siteLastModified,
         changeFrequency: config.changeFrequency,
         priority: config.priority,
+    }));
+
+    // 記事カテゴリ一覧は実ルート化した /articles/category/{カテゴリ} を掲載する。
+    // 記事本体URLは sitemap-articles.xml が担当するため、ここには載せない。
+    const articleCategoryRoutes = getUniqueCategories().map((category) => ({
+        url: `${BASE_URL}/articles/category/${encodeURIComponent(category)}`,
+        lastModified: siteLastModified,
+        changeFrequency: 'weekly' as const,
+        priority: 0.75,
     }));
 
     const gradeRaceHubRoutes = gradeRaceProfiles.map((race) => ({
@@ -114,6 +124,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     return [
         ...staticRoutes,
+        ...articleCategoryRoutes,
         ...gradeRaceHubRoutes,
         ...jockeyHubRoutes,
         ...courseHubRoutes,

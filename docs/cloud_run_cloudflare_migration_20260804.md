@@ -370,8 +370,14 @@ workflowは`https://uma-free.com/api/health`のrelease SHA一致を検証する�
 | 判定 | 条件 | 動作 |
 | --- | --- | --- |
 | warning | 24時間で0.5GiB以上 | artifactとJob Summaryへ警告。新規公開判定はyellow以上 |
-| red | 24時間で2GiB以上、7日で10GiB以上、または指標取得不能 | フロントの`ARCHIVE_COST_GUARD_MODE=stale-only`を有効化し、新規データページ公開は0件 |
+| red | 24時間で2GiB以上、指標取得不能、または「7日で10GiB以上 かつ 24時間で0.5GiB以上」 | フロントの`ARCHIVE_COST_GUARD_MODE=stale-only`を有効化し、新規データページ公開は0件 |
 | recovery | 24時間で0.5GiB未満 | ガードを`normal`へ戻す。24時間窓そのものを復旧確認期間として使う |
+
+7日窓の条件には24時間窓の条件を掛け合わせている（2026-08-16変更）。
+redが7日窓・recoveryが24時間窓という非対称のままだと、原因を修正しても
+7日窓から古い実績が抜けるまで丸1週間データページの新規公開が止まる。
+7日窓は「じわじわ増え続けている」状態を捕まえる保険なので、
+直近24時間が既に収束しているケースでは縮退を維持しない。
 
 ガード中も既存のCloudflare staleキャッシュ、人間の閲覧、当日ページ、記事、主要公開ページは維持する。15日以上前のレース、および未公開対象を含む馬・騎手・調教師・コース詳細に対する既知crawlerのorigin missだけが503と`Retry-After`になり、重いDB集計へ到達しない。公開済みページはCloudflareのstaleキャッシュが優先される。通常時はverified botを遮断しない。
 

@@ -264,6 +264,8 @@ def sync_candidates(
         row.last_seen_data_at = item.get("last_race_date")
         row.last_evaluated_at = evaluated_at
         row.updated_at = evaluated_at
+        # 保留解除の基準（50）と公開の基準（MINIMUM_PUBLICATION_QUALITY_SCORE=65）は別物。
+        # ここは「品質低下による保留を解いて候補へ戻す」だけで、公開はしない。
         if row.status == "held" and score >= 50:
             row.status = "candidate"
         synced.append(row)
@@ -287,13 +289,24 @@ def _publication_priority(row: models.DataPagePublication) -> tuple[Any, ...]:
     )
 
 
+# データ詳細ページは「少数精選」で運用する。
+# 2026-08-16の実測では、公開59ページの収益寄与は全体の0.3%（$0.09）にとどまり、
+# 一方でDB転送とCPUの大半を消費していた。さらにGSCのnoindex除外6,018件の主因でもある。
+# 量を追わず、標本数と鮮度が十分なものだけを少しずつ公開する。
+PUBLICATION_DAILY_LIMITS = {"green": 10, "yellow": 3, "red": 0}
+# 未公開ページはnoindexのためGSC需要スコア（最大20点）を獲得できず、候補の実質上限は80点。
+# 65は「標本数と鮮度が十分」を意味する水準。
+MINIMUM_PUBLICATION_QUALITY_SCORE = 65
+DEFAULT_INITIAL_SEED_LIMIT = 50
+
+
 def publish_candidates(
     db: Any,
     *,
     candidates: Sequence[models.DataPagePublication],
     capacity_mode: str,
     evaluated_at: datetime,
-    initial_seed_limit: int = 500,
+    initial_seed_limit: int = DEFAULT_INITIAL_SEED_LIMIT,
 ) -> tuple[list[models.DataPagePublication], bool]:
     published_count = (
         db.query(models.DataPagePublication)
@@ -303,7 +316,8 @@ def publish_candidates(
     initial_seed = published_count == 0
     eligible = [
         row for row in candidates
-        if row.status == "candidate" and float(row.quality_score or 0.0) >= 50
+        if row.status == "candidate"
+        and float(row.quality_score or 0.0) >= MINIMUM_PUBLICATION_QUALITY_SCORE
     ]
     eligible.sort(key=_publication_priority, reverse=True)
 
@@ -316,12 +330,12 @@ def publish_candidates(
         ]
         preferred_ids = {row.id for row in preferred if row.id is not None}
         remaining = [row for row in eligible if row.id not in preferred_ids]
-        selected = (preferred + remaining)[:max(1, min(initial_seed_limit, 1000))]
+        selected = (preferred + remaining)[:max(1, min(initial_seed_limit, DEFAULT_INITIAL_SEED_LIMIT))]
     elif initial_seed:
         # 指標未取得または高負荷時は、初回であっても公開を開始しない。
         selected = []
     else:
-        daily_limit = {"green": 100, "yellow": 25, "red": 0}[capacity_mode]
+        daily_limit = PUBLICATION_DAILY_LIMITS[capacity_mode]
         selected = eligible[:daily_limit]
 
     for row in selected:

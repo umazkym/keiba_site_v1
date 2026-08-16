@@ -111,12 +111,23 @@ jobs:
           available = bool(metrics.get("db_network_metrics_available"))
           sent_24h = float(metrics.get("db_sent_gib_24h") or 0.0)
           sent_7d = float(metrics.get("db_sent_gib_7d") or 0.0)
-          red = not available or sent_24h >= 2.0 or sent_7d >= 10.0
+          # 7日窓は「じわじわ増え続けている」状態を捕まえるための保険。
+          # 直近24時間が既に収まっているのに7日窓だけで縮退を維持すると、
+          # 原因を直した後も丸1週間データページの新規公開が止まる。
+          # 7日窓は直近24時間も高いときにだけ効かせる。
+          red_now = not available or sent_24h >= 2.0
+          red_sustained = sent_7d >= 10.0 and sent_24h >= 0.5
+          red = red_now or red_sustained
           recovered = available and sent_24h < 0.5
 
           if red:
+              if not available:
+                  reason = "DB指標を取得できない"
+              elif red_now:
+                  reason = "直近24時間のDB送信量がRed"
+              else:
+                  reason = "7日間のDB送信量がRedかつ直近24時間も未収束"
               desired = "stale-only"
-              reason = "DB送信量がRed、または指標取得不能"
           elif current == "stale-only" and not recovered:
               desired = "stale-only"
               reason = "0.5GiB/24h未満が確認できるまで縮退を維持"

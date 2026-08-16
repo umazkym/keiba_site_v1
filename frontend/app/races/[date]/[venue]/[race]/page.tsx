@@ -74,12 +74,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const courseLabel = detail?.race.course_type && detail.race.distance
         ? `${detail.race.course_type}${detail.race.distance}m`
         : '';
+    // AI予測の運用開始前のレースは predictions を持たない。
+    // その場合は「AI予想」と名乗らず、結果ページとして正しく表示する。
+    const hasPredictions = (detail?.race.predictions?.length ?? 0) > 0;
     const seoTitle = detail
-        ? `${venueName}${raceNumber}R ${raceName} AI予想・出走馬分析`
+        ? hasPredictions
+            ? `${venueName}${raceNumber}R ${raceName} AI予想・出走馬分析`
+            : `${venueName}${raceNumber}R ${raceName} レース結果・データ`
         : `${formattedDate} ${raceNumber}R AI競馬データ分析`;
     const socialTitle = `${seoTitle} | UMA-FREE`;
     const seoDescription = detail
-        ? `${formattedDate} ${venueName}${raceNumber}R ${raceName}${courseLabel ? `（${courseLabel}）` : ''}のAI予想。出走馬のAI偏差値、枠順、脚質、展開材料を無料で確認できます。`
+        ? hasPredictions
+            ? `${formattedDate} ${venueName}${raceNumber}R ${raceName}${courseLabel ? `（${courseLabel}）` : ''}のAI予想。出走馬のAI偏差値、枠順、脚質、展開材料を無料で確認できます。`
+            : `${formattedDate} ${venueName}${raceNumber}R ${raceName}${courseLabel ? `（${courseLabel}）` : ''}のレース結果と着順。コース傾向とあわせて無料で確認できます。`
         : `${formattedDate} ${raceNumber}RのAI競馬データ分析。AI偏差値、枠順、脚質、展開材料を確認できます。`;
 
     return {
@@ -145,6 +152,17 @@ export default async function RaceDetailPage({ params }: Props) {
 
     const raceUrl = `https://uma-free.com${getRaceDetailPath(selectedRace.race_date, selectedVenueName, selectedRace.race_number)}`;
     const formattedDate = formatDate(params.date);
+    // AI予測の運用開始前のレースは predictions を持たない。
+    // その場合は結果データの出走馬名で構造化データを成立させる。
+    const structuredDataHorseNames = selectedRace.predictions.length > 0
+        ? selectedRace.predictions.map(p => p.horse_name)
+        : selectedRace.results
+            .map(r => r.horse_name)
+            .filter((name): name is string => Boolean(name) && name !== 'N/A');
+    const structuredDataEntrants = structuredDataHorseNames.map(name => ({
+        "@type": "SportsTeam",
+        "name": name,
+    }));
     const jsonLd = {
         "@context": "https://schema.org",
         "@type": "SportsEvent",
@@ -156,7 +174,9 @@ export default async function RaceDetailPage({ params }: Props) {
             "name": `${selectedVenueName}競馬場`,
             "address": `${selectedVenueName}競馬場`
         },
-        "description": `AIによる${selectedVenueName} ${selectedRace.race_number}R ${selectedRace.race_name}の競馬データ分析。`,
+        "description": structuredDataHorseNames.length > 0 && selectedRace.predictions.length === 0
+            ? `${selectedVenueName} ${selectedRace.race_number}R ${selectedRace.race_name}のレース結果と着順データ。`
+            : `AIによる${selectedVenueName} ${selectedRace.race_number}R ${selectedRace.race_name}の競馬データ分析。`,
         "eventStatus": "https://schema.org/EventScheduled",
         "url": raceUrl,
         "image": [
@@ -176,14 +196,12 @@ export default async function RaceDetailPage({ params }: Props) {
             "validFrom": `${selectedRace.race_date}T00:00:00+09:00`,
             "validThrough": `${selectedRace.race_date}T23:59:59+09:00`
         },
-        "performer": selectedRace.predictions.map(p => ({
-            "@type": "SportsTeam",
-            "name": p.horse_name
-        })),
-        "competitor": selectedRace.predictions.map(p => ({
-            "@type": "SportsTeam",
-            "name": p.horse_name
-        }))
+        ...(structuredDataEntrants.length > 0
+            ? {
+                "performer": structuredDataEntrants,
+                "competitor": structuredDataEntrants,
+            }
+            : {}),
     };
 
     return (

@@ -25,6 +25,9 @@ from scripts.agents.cloud_run_capacity import (
     parse_service_config,
 )
 from scripts.agents.data_page_publication import (
+    DEFAULT_INITIAL_SEED_LIMIT,
+    MINIMUM_PUBLICATION_QUALITY_SCORE,
+    PUBLICATION_DAILY_LIMITS,
     calculate_quality_score,
     determine_capacity_mode,
     publish_candidates,
@@ -255,6 +258,100 @@ class DataPagePublicationTest(unittest.TestCase):
         )
         self.assertFalse(second_initial)
         self.assertEqual(second, [])
+
+    def test_daily_limits_are_small_batch(self) -> None:
+        """データ詳細ページは少数精選で公開する。
+
+        2026-08-16の実測で、公開59ページの収益寄与は全体の0.3%にとどまる一方、
+        DB転送とCPUの大半を消費し、GSCのnoindex除外6,018件の主因にもなっていた。
+        green100件/日に戻すと同じ問題が再発するため、上限を固定して守る。
+        """
+        self.assertEqual(PUBLICATION_DAILY_LIMITS["green"], 10)
+        self.assertEqual(PUBLICATION_DAILY_LIMITS["yellow"], 3)
+        self.assertEqual(PUBLICATION_DAILY_LIMITS["red"], 0)
+        self.assertEqual(DEFAULT_INITIAL_SEED_LIMIT, 50)
+
+        rows = []
+        for index in range(30):
+            row = models.DataPagePublication(
+                entity_type="horse",
+                entity_id=f"entity-daily-{index}",
+                url=f"/entities/daily-{index}",
+                status="candidate",
+                quality_score=90,
+                score_factors={},
+                first_eligible_at=datetime(2026, 8, 16),
+                last_evaluated_at=datetime(2026, 8, 16),
+            )
+            self.db.add(row)
+            rows.append(row)
+        # 初回シード扱いを避けるため、既に公開済みの行を1つ用意する。
+        seeded = models.DataPagePublication(
+            entity_type="course",
+            entity_id="already-published",
+            url="/courses/already-published",
+            status="published",
+            quality_score=90,
+            score_factors={},
+            first_eligible_at=datetime(2026, 8, 15),
+            last_evaluated_at=datetime(2026, 8, 15),
+        )
+        self.db.add(seeded)
+        self.db.flush()
+
+        published, initial = publish_candidates(
+            self.db,
+            candidates=rows,
+            capacity_mode="green",
+            evaluated_at=datetime(2026, 8, 16),
+        )
+        self.assertFalse(initial)
+        self.assertEqual(len(published), 10)
+
+    def test_publication_requires_high_quality_score(self) -> None:
+        """品質スコアが65未満の候補は公開しない。"""
+        self.assertEqual(MINIMUM_PUBLICATION_QUALITY_SCORE, 65)
+
+        seeded = models.DataPagePublication(
+            entity_type="course",
+            entity_id="seeded-course",
+            url="/courses/seeded",
+            status="published",
+            quality_score=90,
+            score_factors={},
+            first_eligible_at=datetime(2026, 8, 15),
+            last_evaluated_at=datetime(2026, 8, 15),
+        )
+        below = models.DataPagePublication(
+            entity_type="horse",
+            entity_id="below-threshold",
+            url="/horses/below-threshold",
+            status="candidate",
+            quality_score=64,
+            score_factors={},
+            first_eligible_at=datetime(2026, 8, 16),
+            last_evaluated_at=datetime(2026, 8, 16),
+        )
+        at_threshold = models.DataPagePublication(
+            entity_type="horse",
+            entity_id="at-threshold",
+            url="/horses/at-threshold",
+            status="candidate",
+            quality_score=65,
+            score_factors={},
+            first_eligible_at=datetime(2026, 8, 16),
+            last_evaluated_at=datetime(2026, 8, 16),
+        )
+        self.db.add_all([seeded, below, at_threshold])
+        self.db.flush()
+
+        published, _ = publish_candidates(
+            self.db,
+            candidates=[below, at_threshold],
+            capacity_mode="green",
+            evaluated_at=datetime(2026, 8, 16),
+        )
+        self.assertEqual([row.entity_id for row in published], ["at-threshold"])
 
     def test_sitemap_is_stably_sharded(self) -> None:
         entries = [

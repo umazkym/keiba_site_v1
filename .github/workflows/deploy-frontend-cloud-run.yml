@@ -147,7 +147,7 @@ jobs:
             --memory=1Gi \
             --concurrency=40 \
             --min=0 \
-            --max=2 \
+            --max=4 \
             --timeout=30 \
             --cpu-throttling \
             --no-cpu-boost \
@@ -240,5 +240,5 @@ jobs:
           echo "- Release: $RELEASE_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "- Image: ${IMAGE_URI:-not-built}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Recovery URL: ${SERVICE_URL:-not-verified}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Scaling: min=0 / max=2 / concurrency=40 / startup CPU boost=off" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Scaling: min=0 / max=4 / concurrency=40 / startup CPU boost=off" >> "$GITHUB_STEP_SUMMARY"
           echo "- Requested default run.app URL disable: $DISABLE_DEFAULT_URL" >> "$GITHUB_STEP_SUMMARY"

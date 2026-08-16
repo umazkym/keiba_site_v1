@@ -303,6 +303,84 @@ class ApiCostOptimizationTest(unittest.TestCase):
             db.close()
             engine.dispose()
 
+    def test_prediction_detail_returns_result_only_race(self) -> None:
+        """AI予測がなくても結果があれば200で返す。
+
+        AI予測の運用開始前のレースは predictions を持たない。以前はここで404を返しており、
+        データ詳細ページや場内ナビからのリンク先が全て404になっていた
+        （2026-08-16時点でGSCに4,952件の404が計上されていた）。
+        """
+        from crud import race_crud
+
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(bind=engine)
+        db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
+        target_date = date(2024, 1, 14)
+        try:
+            race = models.Race(
+                id="202401140110",
+                race_date=target_date,
+                venue_name="中山",
+                race_number=10,
+                race_name="予測なし過去レース",
+                race_type="中央",
+                course_type="芝",
+                distance=2000,
+            )
+            horse = models.Horse(id="horse-old", name="過去出走馬")
+            db.add_all([race, horse])
+            db.flush()
+            db.add(
+                models.Result(
+                    race_id=race.id,
+                    horse_id=horse.id,
+                    horse_number=3,
+                    rank=1,
+                )
+            )
+            db.commit()
+
+            result = race_crud.get_prediction_detail(db, target_date, "nakayama", 10)
+
+            self.assertIsNotNone(result)
+            self.assertEqual(result["race"]["id"], race.id)
+            self.assertEqual(result["race"]["predictions"], [])
+            self.assertEqual(
+                [item["horse_name"] for item in result["race"]["results"]],
+                ["過去出走馬"],
+            )
+        finally:
+            db.close()
+            engine.dispose()
+
+    def test_prediction_detail_without_predictions_and_results_is_not_found(self) -> None:
+        """予測も結果もないレースは従来どおり404にする。"""
+        from crud import race_crud
+
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(bind=engine)
+        db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
+        target_date = date(2024, 1, 14)
+        try:
+            db.add(
+                models.Race(
+                    id="202401140111",
+                    race_date=target_date,
+                    venue_name="中山",
+                    race_number=11,
+                    race_name="データなしレース",
+                    race_type="中央",
+                )
+            )
+            db.commit()
+
+            result = race_crud.get_prediction_detail(db, target_date, "nakayama", 11)
+
+            self.assertIsNone(result)
+        finally:
+            db.close()
+            engine.dispose()
+
     def test_race_features_only_marks_published_entity_links(self) -> None:
         from crud import growth_crud
 

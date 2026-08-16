@@ -236,6 +236,20 @@ export default async function HomePage() {
                         <SpecialPickCard pick={specialPick} date={todayStr} precomputedPicks={homeSpecialPicks} />
                     </section>
 
+                    {/* 注目馬を読み終えた位置の広告枠。
+                        右サイドバーの枠は lg 以上でしか表示されないため、
+                        モバイルでは本日の開催直後と記事フィードの2枠しかなかった。
+                        高配当ランキングと注目馬という長いセクションを挟んだ後に1枠だけ足す。 */}
+                    {!shouldSuppressAdsInDevelopment && (
+                        <div className="ad ad-wide">
+                            <AdUnit
+                                slot="1489598374"
+                                placement="inline"
+                                analyticsPlacement="home_after_today_pick"
+                            />
+                        </div>
+                    )}
+
                     {/* 最新の分析記事 */}
                     <section className="articles card rounded-xl">
                         <SectionHeader

@@ -82,6 +82,9 @@ AdSenseの「レポート > 設定 > URLチャネル」で次を個別登録す�
 | レース分析後試作 | `uma_race_engaged` | `2321583566` | `NEXT_PUBLIC_AD_CHANNEL_RACE_ENGAGED` |
 | レース末尾 | `uma_race_end` | `3838825159` | `NEXT_PUBLIC_AD_CHANNEL_RACE_END` |
 | ホーム開催後 | `uma_home_races` | `5151906821` | `NEXT_PUBLIC_AD_CHANNEL_HOME_RACES` |
+| ホーム注目馬後 | `uma_home_pick`（未作成） | 未採番 | `NEXT_PUBLIC_AD_CHANNEL_HOME_PICK` |
+
+ホーム注目馬後は2026-08-16に追加した枠。チャネルIDが未採番のあいだは`data-ad-channel`属性を出さず、広告自体は通常どおり配信される。AdSense管理画面でチャネルを作成し、Repository VariablesへIDを追加すれば配置別の計測が有効になる。
 
 コードは数値だけを`data-ad-channel`へ出し、空欄・不正値は属性自体を出さない。`NEXT_PUBLIC_*`はビルド時に確定するため、VercelのProductionへ8値を追加し、2026-08-03 11:30:25 JSTに再デプロイ`FGYUmBGJ6ZNqs1isCJYhgiGR8v7z`がReadyになった。本番DOMではホーム開催後の`5151906821`と記事導入後の`4785075314`を確認した。レース末尾はOfferwallの広告視聴を回避して未確認とし、広告を操作せず、環境設定・コード対応・本番ビルド成功を証跡とする。公式仕様: [カスタムチャネル](https://support.google.com/adsense/answer/10078316?hl=ja)
 

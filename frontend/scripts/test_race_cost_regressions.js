@@ -48,6 +48,41 @@ assert.match(
   /isDataDetailPath\(pathname\)/,
   "未公開を含むデータ詳細のbot origin missもRed時に縮退すること",
 );
+
+// コスト保護は検索資産を犠牲にしてはいけない。
+// 503が続くと検索エンジンはインデックスからページを落とす。
+const bulkCrawlerPattern = middleware.match(
+  /const BULK_CRAWLER_PATTERN\s*=\s*\/\(\?:([^/]+)\)\/i/,
+);
+assert.ok(
+  bulkCrawlerPattern,
+  "縮退対象クローラーをBULK_CRAWLER_PATTERNで定義すること",
+);
+for (const searchEngine of [
+  "googlebot",
+  "bingbot",
+  "duckduckbot",
+  "yandexbot",
+  "baiduspider",
+  "applebot",
+  "slurp",
+]) {
+  assert.doesNotMatch(
+    bulkCrawlerPattern[1],
+    new RegExp(searchEngine),
+    `検索エンジン(${searchEngine})へ503を返さないこと`,
+  );
+}
+assert.match(
+  middleware,
+  /SEARCH_ENGINE_CRAWLER_PATTERN\.test\(userAgent\)/,
+  "検索エンジンUAを縮退対象から明示的に除外すること",
+);
+assert.doesNotMatch(
+  bulkCrawlerPattern[1],
+  /facebookexternalhit/,
+  "SNSのリンクプレビュー取得を壊さないこと",
+);
 assert.doesNotMatch(
   nextConfig,
   /source:\s*["']\/races\/:path\*["']/,

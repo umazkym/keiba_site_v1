@@ -21,7 +21,7 @@ import {
     WeeklyGradeRace,
 } from "./types";
 import { getRaceCachePolicy } from './race-cache-policy';
-import { getApiBaseUrl } from "./api-base";
+import { getApiBaseUrl, getPublicApiBaseUrl } from "./api-base";
 import {
     normalizeDataEntitySummary,
     normalizeDataSearchResult,
@@ -251,8 +251,10 @@ export async function getFilteredMatchups(
     signal?: AbortSignal,
 ): Promise<MatchupData | null> {
     try {
+        // 対戦成績はブラウザから直接叩かれる（バックエンド全リクエストの約2割）。
+        // 内部URLへ切り替わるとクライアントから到達できなくなるため、常に公開URLを使う。
         const res = await fetchWithRetry(
-            `${API_BASE_URL}/api/v1/predictions/matchups/${raceId}?start_date=${startDate}&end_date=${endDate}`,
+            `${getPublicApiBaseUrl()}/api/v1/predictions/matchups/${raceId}?start_date=${startDate}&end_date=${endDate}`,
             { next: { revalidate: 3600 }, signal },
             signal ? 0 : undefined,
         );

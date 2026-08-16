@@ -9,7 +9,24 @@ import {
 import { getRaceCachePolicy } from './lib/race-cache-policy';
 
 
-const KNOWN_CRAWLER_PATTERN = /(?:bingbot|googlebot|google-inspectiontool|duckduckbot|baiduspider|yandexbot|slurp|applebot)/i;
+// 検索エンジンのクローラー。コスト保護中でも503を返してはいけない。
+// 503が続くとインデックスから削除され、検索流入という資産そのものを失う。
+const SEARCH_ENGINE_CRAWLER_PATTERN = /(?:googlebot|google-inspectiontool|bingbot|duckduckbot|baiduspider|yandexbot|slurp|applebot)/i;
+
+// robots.txt で既に拒否を宣言している大量巡回クローラー。
+// コスト保護中はここだけを絞る。新しい拒否ポリシーは足さず、
+// 宣言済みの内容を無視してくる相手にだけ効かせる。
+//
+// facebookexternalhit は含めない。SNSシェア時のリンクプレビュー生成に使われ、
+// 遮断するとFacebook・Instagramの共有カードが壊れる。
+// chatgpt-user / oai-searchbot も含めない。前者は利用者の操作起点、
+// 後者はChatGPT検索の露出に関わり、いずれもrobots.txtで拒否していない。
+const BULK_CRAWLER_PATTERN = /(?:meta-webindexer|meta-externalagent|gptbot|claudebot|ccbot|amazonbot|bytespider|petalbot|ahrefsbot|semrushbot|mj12bot|dotbot|dataforseobot)/i;
+
+function isBulkCrawler(userAgent: string): boolean {
+    if (SEARCH_ENGINE_CRAWLER_PATTERN.test(userAgent)) return false;
+    return BULK_CRAWLER_PATTERN.test(userAgent);
+}
 
 function isPublicHtmlNavigation(request: NextRequest): boolean {
     if (request.method !== 'GET' && request.method !== 'HEAD') return false;
@@ -299,10 +316,10 @@ export function middleware(request: NextRequest) {
 
     const response = NextResponse.next();
     const archiveGuardEnabled = process.env.ARCHIVE_COST_GUARD_MODE === 'stale-only';
-    const knownCrawler = KNOWN_CRAWLER_PATTERN.test(request.headers.get('user-agent') ?? '');
+    const bulkCrawler = isBulkCrawler(request.headers.get('user-agent') ?? '');
     if (
         archiveGuardEnabled
-        && knownCrawler
+        && bulkCrawler
         && isPublicHtmlNavigation(request)
         && isDataDetailPath(pathname)
     ) {
@@ -324,7 +341,7 @@ export function middleware(request: NextRequest) {
         if (
             archiveGuardEnabled
             && cachePolicy.tier === 'archive'
-            && knownCrawler
+            && bulkCrawler
         ) {
             return new NextResponse('過去レースページは一時的にキャッシュから配信しています。', {
                 status: 503,

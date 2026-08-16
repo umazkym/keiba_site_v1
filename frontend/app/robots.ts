@@ -1,5 +1,11 @@
 import { MetadataRoute } from 'next'
 
+// ⚠️ このファイルは現在配信されていない。
+//    public/robots.txt が同じパスを先に解決するため、本番の /robots.txt は
+//    public/robots.txt の内容が返る（2026-08-15 本番レスポンスで確認済み）。
+//    実際に効いているポリシーは public/robots.txt を参照すること。
+//    重複を解消する場合はどちらか一方に統合する。
+
 // ▼▼▼▼▼【新規追加】robots.ts を作成▼▼▼▼▼
 // このファイルが存在しない場合、クローラーはデフォルトで全URLを無制限に巡回する。
 // crawlDelay を指定することで、Googlebotや各種SEOツールのアクセス頻度を

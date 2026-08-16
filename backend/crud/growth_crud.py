@@ -6,7 +6,7 @@ import threading
 import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 from urllib.parse import quote
 
 from sqlalchemy import and_, case, desc, func, or_
@@ -132,6 +132,8 @@ class _TTLCache:
 
 _cache = _TTLCache()
 
+_DATASET_RANGE_CACHE_KEY = "dataset_range"
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -227,8 +229,15 @@ def _race_url(race_date: date, venue_name: str, race_number: int) -> str:
 
 
 def _dataset_range(db: Session) -> Tuple[Optional[date], Optional[date]]:
+    # データセット全体の期間はエンティティに依存せず、レース取込（日次）でしか動かない。
+    # 詳細・一覧・検索のほぼ全経路から呼ばれるため、プロセス内で使い回す。
+    cached = _cache.get(_DATASET_RANGE_CACHE_KEY)
+    if cached is not None:
+        return cached
     row = db.query(func.min(models.Race.race_date), func.max(models.Race.race_date)).one()
-    return row[0], row[1]
+    value = (row[0], row[1])
+    _cache.set(_DATASET_RANGE_CACHE_KEY, value, 3600)
+    return value
 
 
 def _is_recent(last_race_date: Optional[date], dataset_last_date: Optional[date]) -> bool:
@@ -335,17 +344,43 @@ def _apply_publication_state(
 
     if not items:
         return []
-    entity_types = sorted({str(item.get("entity_type") or "") for item in items})
-    rows = (
-        db.query(models.DataPagePublication)
-        .filter(models.DataPagePublication.entity_type.in_(entity_types))
-        .all()
-    )
-    states = {
-        (row.entity_type, row.entity_id): row.status
-        for row in rows
-        if row.status in _PUBLICATION_STATUSES
-    }
+
+    # 表示対象のキーだけを引く。
+    # entity_type だけで絞ると該当種別の全行が score_factors ごと転送され、
+    # 1件の詳細表示でもテーブル全体を読むことになる。
+    # (entity_type, entity_id) には一意制約の索引があるため、両方で絞ると索引が効く。
+    wanted: Dict[str, Set[str]] = {}
+    for item in items:
+        entity_type = str(item.get("entity_type") or "")
+        entity_id = str(item.get("id") or "")
+        if not entity_type or not entity_id:
+            continue
+        wanted.setdefault(entity_type, set()).add(entity_id)
+
+    states: Dict[Tuple[str, str], str] = {}
+    if wanted:
+        key_conditions = [
+            and_(
+                models.DataPagePublication.entity_type == entity_type,
+                models.DataPagePublication.entity_id.in_(sorted(entity_ids)),
+            )
+            for entity_type, entity_ids in sorted(wanted.items())
+        ]
+        # status しか使わないため、JSON カラムを含む ORM オブジェクトは取得しない。
+        rows = (
+            db.query(
+                models.DataPagePublication.entity_type,
+                models.DataPagePublication.entity_id,
+                models.DataPagePublication.status,
+            )
+            .filter(or_(*key_conditions))
+            .all()
+        )
+        states = {
+            (row[0], row[1]): row[2]
+            for row in rows
+            if row[2] in _PUBLICATION_STATUSES
+        }
     enriched: List[Dict[str, Any]] = []
     for source in items:
         item = dict(source)

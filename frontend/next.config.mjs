@@ -123,6 +123,19 @@ const nextConfig = {
         ],
       },
       {
+        // 記事一覧: searchParams（category / tag / page）を読むため Next.js が
+        // 動的ルート扱いにし、既定で private, no-store を返していた。
+        // 結果として CDN が常に BYPASS し、全アクセスがオリジンに到達していた。
+        // 記事本文はビルド時のマークダウン由来なので、共有キャッシュで問題ない。
+        source: '/articles',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=1800, stale-while-revalidate=86400',
+          },
+        ],
+      },
+      {
         // robots.txt: 7日間CDNキャッシュ（ほぼ変化しない）
         source: '/robots.txt',
         headers: [

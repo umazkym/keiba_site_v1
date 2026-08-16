@@ -20,6 +20,22 @@ function escapeXml(value: string) {
 
 export async function GET() {
   const manifest = await getDataSitemapManifest();
+
+  // 公開済みデータページが1件もない間は、空のsitemapindexを返さない。
+  // sitemapindexは<sitemap>を1件以上含む必要があり、空だとSearch Consoleが
+  // 「必須タグが指定されていません」として解析エラーにする。
+  // 存在しないものは404で表明し、不正なXMLは配信しない。
+  if (manifest.length === 0) {
+    return new NextResponse('公開中のデータページがないため、サイトマップは生成されていません。', {
+      status: 404,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=3600',
+        'X-Robots-Tag': 'noindex',
+      },
+    });
+  }
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${manifest

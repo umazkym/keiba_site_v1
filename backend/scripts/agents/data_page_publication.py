@@ -192,12 +192,12 @@ def determine_capacity_mode(metrics: Mapping[str, Any]) -> tuple[str, list[str]]
         and db_sent_gib_24h < 0.5
     )
     if cache_hit is None:
-        return "yellow", ["Cloudflare指標がないため25件/日に制限"]
+        return "yellow", ["Cloudflare指標がないため3件/日に制限"]
     cache_hit_value = float(cache_hit)
     if cloud_run_green and cache_hit_value >= 0.80:
         return "green", []
     if cache_hit_value >= 0.65:
-        return "yellow", ["余力を確保するため25件/日に制限"]
+        return "yellow", ["余力を確保するため3件/日に制限"]
     return "red", [f"Cloudflareキャッシュヒット率が65%未満: {cache_hit_value:.1%}"]
 
 

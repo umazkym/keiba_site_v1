@@ -44,17 +44,27 @@ Actions遅延などで19:00まで45分未満になった場合、全動画を同
 
 ## サイト導線と計測
 
-横長動画とShortの説明欄1行目は、次のURLへ統一します。
+横長動画とShortの説明欄1行目は、`data_loader.build_video_url`が組み立てるURLで統一します。着地先は動画が扱う範囲に合わせて出し分けます。
+
+| 動画種別 | `scope` | 着地先 |
+|---|---|---|
+| 個別Short（1レース） | `race` | `https://uma-free.com/races/{対象日}/{会場slug}/{レース番号}` |
+| 会場別長尺 | `date` | `https://uma-free.com/races/{対象日}` |
+| 日次統合長尺・日次統合Short | `date` | `https://uma-free.com/races/{対象日}` |
+
+対象日が取得できない場合だけ`https://uma-free.com`へ戻します。チャンネルプロフィールに設定するURLは`https://uma-free.com`とします。
+
+すべての説明欄URLに次のUTMを付与します。パラメータはこの4つだけで、増やしません。
 
 ```text
-https://uma-free.com
+utm_source=youtube&utm_medium=video&utm_campaign=daily_race_video_v2&utm_content={動画別キー}
 ```
 
-動画種別、会場、レース、公開日によるURLの出し分けは行わず、UTMクエリも付与しません。チャンネルプロフィールに設定するURLも同じ`https://uma-free.com`とします。
+`utm_content`は動画ごとに`venue_long_{会場}`、`daily_long_all`、`short_{race_id}`、`daily_short_compilation`を割り当てます。
 
 説明欄には素材クレジットとデータ基準日を表示しません。素材の権利情報、ライセンス、権利ハッシュは内部の公開可否判定に必要なため、`credits.json`と動画メタデータで引き続き保持します。
 
-UTMを付けないため、`utm_content`別の動画単位集計と、UTMを起点にした`race_view`のYouTube属性付与は新規動画では行えません。GA4ではYouTubeからトップページへ到達した実ページビューを、参照元が取得できた範囲で確認します。タブやレース切り替えによる仮想`page_view`は引き続き送信しません。
+GA4では`utm_content`別の動画単位集計と、UTMを起点にした`race_view`のYouTube属性付与が行えます。属性はsessionStorageへ30分保持し、最初の`race_view`へ一度だけ引き継ぎます（`frontend/lib/analytics.ts`）。タブやレース切り替えによる仮想`page_view`は引き続き送信しません。
 
 ## 投稿モード
 
@@ -165,7 +175,7 @@ python scripts/social_video/create_design_contact_sheet.py ..\youtube_video_dist
 
 1. 生成可能な日次統合長尺とShortが独立して処理され、横長の章順が中央各場から地方各場になっている。片方の失敗はもう片方を取り消さない。
 2. YouTube上で処理が完了し、重複動画がない。
-3. 横長とShortの説明欄1行目が`https://uma-free.com`で、収録開催場・重賞名・チャプターが実データと一致する。
+3. 横長とShortの説明欄1行目が`https://uma-free.com/races/{対象日}`（個別Shortはレース詳細パス）で、収録開催場・重賞名・チャプターが実データと一致する。
 4. Shortの全収録レースで表紙と上位3頭がスマートフォンで読め、完成尺が59.5秒以下である。
 5. 246×138サムネイルで`M/D 全○レース AI分析`が読める。
 6. 素材権利エラー、プレースホルダー、強い購入誘導表現がない。

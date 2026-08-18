@@ -273,7 +273,11 @@ jobs:
         run: echo "- GSC重賞検索補修はデータ取得失敗のためスキップし、通常の記事生成を継続します。" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Step 1A - Generate News Topic Write Orders
-        if: steps.gemini_circuit.outputs.blocked != 'true'
+        # Tavilyクレジット節約のため、外部ニュース検索は朝1回の実行と手動実行のみ。
+        # 11:45/16:45の実行は枠順確定・結果反映のDB確認が主目的で、ニュース検索の寄与が薄い。
+        if: >-
+          steps.gemini_circuit.outputs.blocked != 'true'
+          && (github.event.schedule == '0 23 * * *' || github.event_name == 'workflow_dispatch')
         working-directory: ./backend
         env:
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}

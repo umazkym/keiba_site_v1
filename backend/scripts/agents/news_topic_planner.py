@@ -2019,7 +2019,7 @@ def tavily_search(query: str, include_domains: List[str], max_results: int, days
             "topic": "news",
             "days": days,
             "max_results": max_results,
-            "include_answer": True,
+            "include_answer": False,  # answerは未使用のため要求しない
             "include_raw_content": False,
             "include_images": False,
             "include_domains": include_domains,

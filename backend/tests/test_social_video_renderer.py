@@ -490,12 +490,28 @@ class SocialVideoRendererTest(unittest.TestCase):
             with Image.open(date_root / "shorts-ui-overlay.png") as image:
                 self.assertEqual(image.size, (1080, 1920))
 
-    def test_video_urls_keep_site_root_and_add_v2_content_attribution(self) -> None:
+    def test_compilation_video_url_points_to_race_date_page(self) -> None:
         url = build_video_url("2026-07-12", "venue_long_函館", "函館", 11)
         self.assertEqual(
             url,
-            "https://uma-free.com?utm_source=youtube&utm_medium=video"
+            "https://uma-free.com/races/2026-07-12?utm_source=youtube&utm_medium=video"
             "&utm_campaign=daily_race_video_v2&utm_content=venue_long_%E5%87%BD%E9%A4%A8",
+        )
+
+    def test_single_race_video_url_points_to_race_detail_page(self) -> None:
+        url = build_video_url("2026-07-12", "short_hakodate_11", "函館", 11, scope="race")
+        self.assertEqual(
+            url,
+            "https://uma-free.com/races/2026-07-12/hakodate/11?utm_source=youtube&utm_medium=video"
+            "&utm_campaign=daily_race_video_v2&utm_content=short_hakodate_11",
+        )
+
+    def test_video_url_falls_back_to_site_root_without_target_date(self) -> None:
+        url = build_video_url("", "daily_short_compilation")
+        self.assertEqual(
+            url,
+            "https://uma-free.com?utm_source=youtube&utm_medium=video"
+            "&utm_campaign=daily_race_video_v2&utm_content=daily_short_compilation",
         )
 
     def test_video_description_has_one_site_link_without_date_or_credit(self) -> None:

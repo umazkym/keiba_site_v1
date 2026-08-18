@@ -32,17 +32,11 @@ class FakeResponse:
 
 
 class SnsPosterResilienceTest(unittest.TestCase):
-    def test_platform_specific_utm_keeps_path_and_external_urls(self) -> None:
+    def test_threads_utm_keeps_path_and_external_urls(self) -> None:
         source = (
             "レパードSの分析\n"
             "https://uma-free.com/races/2026-08-09/niigata/7?race=7\n"
             "公式 https://www.jra.go.jp/"
-        )
-        x_text = sns_poster.add_social_attribution_to_text(
-            source,
-            "x",
-            "evening_race",
-            "2026-08-09",
         )
         threads_text = sns_poster.add_social_attribution_to_text(
             source,
@@ -51,14 +45,77 @@ class SnsPosterResilienceTest(unittest.TestCase):
             "2026-08-09",
         )
 
-        self.assertIn("utm_source=x", x_text)
         self.assertIn("utm_source=threads", threads_text)
-        self.assertIn("utm_medium=organic_social", x_text)
-        self.assertIn("utm_campaign=race_post_v2", x_text)
-        self.assertIn("utm_term=evening_race", x_text)
-        self.assertRegex(x_text, r"utm_content=evening_race-20260809-[a-f0-9]{12}")
-        self.assertIn("/races/2026-08-09/niigata/7", x_text)
-        self.assertIn("https://www.jra.go.jp/", x_text)
+        self.assertIn("utm_medium=organic_social", threads_text)
+        self.assertIn("utm_campaign=race_post_v2", threads_text)
+        self.assertIn("utm_term=evening_race", threads_text)
+        self.assertRegex(threads_text, r"utm_content=evening_race-20260809-[a-f0-9]{12}")
+        self.assertIn("/races/2026-08-09/niigata/7", threads_text)
+        self.assertIn("https://www.jra.go.jp/", threads_text)
+
+    def test_x_is_not_an_attribution_target(self) -> None:
+        """Xはリンクを貼らない方針のため、UTM付与の対象外であることを固定する。"""
+        with self.assertRaises(ValueError):
+            sns_poster.add_social_attribution_to_text(
+                "https://uma-free.com/races/2026-08-09",
+                "x",
+                "evening_race",
+                "2026-08-09",
+            )
+
+    def test_x_body_drops_url_and_cta_line(self) -> None:
+        """X本文からはURL行と直前の誘導文が落ちることを固定する。"""
+        source = (
+            "本日のAI注目馬\n"
+            "▼全レースの無料予測\n"
+            "https://uma-free.com/races/2026-08-09\n"
+            "#競馬 #AI予想"
+        )
+        x_text = sns_poster.prepare_short_social_text(source, "X")
+
+        self.assertNotIn("https://", x_text)
+        self.assertNotIn("▼", x_text)
+        self.assertIn("本日のAI注目馬", x_text)
+        self.assertIn("#競馬", x_text)
+
+    def test_x_body_drops_cta_separated_from_url_by_blank_line(self) -> None:
+        """誘導文とURLの間に空行があっても、リンク先のない誘導文を残さない。"""
+        source = (
+            "🐎本日のAI注目馬 (06/28)\n"
+            "\n"
+            "▼全レースの無料予測\n"
+            "\n"
+            "https://uma-free.com/races/2026-06-28?race=11\n"
+            "\n"
+            "#競馬 #AI予想"
+        )
+        x_text = sns_poster.prepare_short_social_text(source, "X")
+
+        self.assertNotIn("https://", x_text)
+        self.assertNotIn("▼全レースの無料予測", x_text)
+        self.assertIn("🐎本日のAI注目馬 (06/28)", x_text)
+        self.assertIn("#競馬", x_text)
+
+    def test_threads_body_keeps_cta_and_url(self) -> None:
+        """Threadsは誘導文とURLをそのまま残す（Xとの差分を固定する）。"""
+        source = (
+            "🐎本日のAI注目馬 (06/28)\n"
+            "\n"
+            "▼全レースの無料予測\n"
+            "\n"
+            "https://uma-free.com/races/2026-06-28?race=11\n"
+            "\n"
+            "#競馬 #AI予想"
+        )
+        threads_text = sns_poster.prepare_short_social_text(
+            source,
+            "Threads",
+            remove_urls=False,
+            max_chars=sns_poster.THREADS_MAX_CHARS,
+        )
+
+        self.assertIn("▼全レースの無料予測", threads_text)
+        self.assertIn("https://uma-free.com/races/2026-06-28?race=11", threads_text)
 
     def test_social_content_key_is_stable_for_same_source(self) -> None:
         first = sns_poster.build_social_content_key("同じ本文", "pre_race_remind", "2026-08-09")

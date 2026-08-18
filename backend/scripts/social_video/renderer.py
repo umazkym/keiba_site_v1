@@ -11,7 +11,7 @@ from dataclasses import dataclass, replace
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import Iterable, List, Optional, Sequence
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
@@ -3678,6 +3678,9 @@ def _long_title_essential(venue: VenueVideoData, target_date: str) -> str:
 
 
 def _long_title(venue: VenueVideoData, target_date: str) -> str:
+    # 先頭は _long_title_essential（日付＋レース数）で固定する。
+    # モバイルのYouTubeはタイトルを早い位置で省略するため、
+    # 重賞名は必須プレフィックスの直後という最速の位置に置く。
     date_label, year_label = _title_date_parts(target_date)
     parts = [
         date_label,
@@ -3699,22 +3702,28 @@ def _description(
     venue_name: Optional[str] = None,
     excluded_race_labels: Sequence[str] = (),
     excluded_race_intro: str = "AI偏差値の算出対象外となる新馬戦",
+    chapter_lines: Sequence[str] = (),
 ) -> str:
     venue_line = f"{venue_name}の" if venue_name else ""
-    description = textwrap.dedent(
-        f"""\
-        {url}
-
-        {title}
-
-        UMA-FREEでは、中央・地方競馬の全レース分析データを毎日無料で掲載しています。登録は不要です。
-        {venue_line}AI偏差値、過去対戦成績、位置取り予測、枠順傾向をレース順に掲載しています。
-
-        ※本動画は過去データをもとにした参考情報です。結果を保証するものではありません。
-
-        #競馬 #競馬データ #UMA_FREE
-        """
-    ).strip()
+    lines = [
+        url,
+        "",
+        title,
+        "",
+        "UMA-FREEでは、中央・地方競馬の全レース分析データを毎日無料で掲載しています。登録は不要です。",
+        f"{venue_line}AI偏差値、過去対戦成績、位置取り予測、枠順傾向をレース順に掲載しています。",
+    ]
+    if chapter_lines:
+        lines.extend(("", "チャプター", *chapter_lines))
+    lines.extend(
+        (
+            "",
+            "※本動画は過去データをもとにした参考情報です。結果を保証するものではありません。",
+            "",
+            "#競馬 #競馬データ #UMA_FREE",
+        )
+    )
+    description = "\n".join(lines).strip()
     if excluded_race_labels:
         description += (
             f"\n\n※{excluded_race_intro}は収録していません: "
@@ -3729,6 +3738,41 @@ def _compilation_races(venues: Sequence[VenueVideoData]) -> List[RaceVideoData]:
 
 def _compilation_grade_races(venues: Sequence[VenueVideoData]) -> List[RaceVideoData]:
     return [race for race in _compilation_races(venues) if race.is_grade_race]
+
+
+def _dedupe_tags(tags: Iterable[str], limit: int = 15) -> List[str]:
+    """空文字と重複を除いた順序どおりのタグ列を返す。YouTube側の上限は30件。"""
+    seen: set[str] = set()
+    result: List[str] = []
+    for tag in tags:
+        normalized = str(tag or "").strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(normalized)
+        if len(result) >= limit:
+            break
+    return result
+
+
+def _race_condition_tags(races: Sequence[RaceVideoData], limit: int = 4) -> List[str]:
+    """収録レースのコース条件を検索語に近い形（例: 芝1600m）でタグ化する。"""
+    conditions: List[str] = []
+    for race in races:
+        if not race.course_type or not race.distance:
+            continue
+        conditions.append(f"{race.course_type}{race.distance}m")
+    return _dedupe_tags(conditions, limit=limit)
+
+
+def _grade_tags(races: Sequence[RaceVideoData]) -> List[str]:
+    """重賞のグレード表記を検索されやすい形でタグ化する。"""
+    grades: List[str] = []
+    for race in races:
+        grade = str(race.grade or "").strip()
+        if grade:
+            grades.append(grade)
+    return _dedupe_tags(grades, limit=3)
 
 
 def _race_type_scope(venues: Sequence[VenueVideoData]) -> str:
@@ -3925,16 +3969,24 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
             duration_seconds=LONG_INTRO_SECONDS,
         )
     )
+    # レース単位のチャプターを作る。視聴者が目的のレースへ直接飛べるようにし、
+    # YouTube側の検索スニペットにもレース名が載る。
+    chapter_lines = ["00:00 オープニング"]
+    elapsed_seconds = float(LONG_INTRO_SECONDS)
     for progress_index, race in enumerate(venue.races, start=1):
-        scenes.append(
-            _build_long_race_motion_scene(
-                video_dir,
-                race,
-                target_date,
-                progress_index,
-                len(venue.races),
-            )
+        race_scene = _build_long_race_motion_scene(
+            video_dir,
+            race,
+            target_date,
+            progress_index,
+            len(venue.races),
         )
+        scenes.append(race_scene)
+        chapter_lines.append(
+            f"{_format_chapter_timestamp(elapsed_seconds)} "
+            f"{race.race_number}R {race.display_name}"
+        )
+        elapsed_seconds += race_scene.duration_seconds
     scenes.append(
         _build_outro_motion_scene(
             video_dir,
@@ -4002,8 +4054,21 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         venue.venue_name,
         excluded_race_labels=excluded_race_labels,
         excluded_race_intro=excluded_race_intro,
+        chapter_lines=chapter_lines,
     )
-    tags = ["競馬", "AI偏差値", "UMA-FREE", venue.venue_name, *(race.display_name for race in venue.grade_races[:2])]
+    tags = _dedupe_tags([
+        "競馬",
+        "競馬予想",
+        "AI競馬予想",
+        "AI偏差値",
+        "UMA-FREE",
+        venue.venue_name,
+        f"{venue.venue_name}競馬",
+        f"{venue.venue_name}競馬予想",
+        *(race.display_name for race in venue.grade_races[:2]),
+        *_grade_tags(venue.grade_races),
+        *_race_condition_tags(venue.races),
+    ])
     rights_manifest_hash = build_rights_manifest_hash(selected_assets)
     content_hash = build_content_hash(
         {
@@ -4315,7 +4380,7 @@ def render_daily_long_video(
         chapter_lines=chapter_lines,
     )
     grade_names = [race.display_name for race in _compilation_grade_races(venues)]
-    tags = [
+    tags = _dedupe_tags([
         "競馬",
         "AI予想",
         "競馬予想",
@@ -4323,9 +4388,11 @@ def render_daily_long_video(
         "中央競馬",
         "地方競馬",
         "UMA-FREE",
-        *(venue.venue_name for venue in venues),
         *grade_names,
-    ]
+        *_grade_tags(_compilation_grade_races(venues)),
+        *(venue.venue_name for venue in venues),
+        *_race_condition_tags(races),
+    ])
     course_assets: dict[str, CourseAsset] = {}
     for race in races:
         course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
@@ -4576,7 +4643,7 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         render_motion_video([scene], video_path, *size, audio_asset=audio_asset)
         render_motion_video([tiktok_scene], tiktok_video_path, *size, audio_asset=audio_asset)
 
-    url = build_video_url(target_date, utm_content, race.venue_name, race.race_number)
+    url = build_video_url(target_date, utm_content, race.venue_name, race.race_number, scope="race")
     course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
     selected_assets = {
         "brand_logo": _brand_logo_metadata(),
@@ -4588,7 +4655,19 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         "course": course_asset_metadata(course_asset),
     }
     description = _description(title, url, race.venue_name)
-    tags = ["競馬", "AI偏差値", "UMA-FREE", "Shorts", race.venue_name, race.display_name]
+    tags = _dedupe_tags([
+        "競馬",
+        "競馬予想",
+        "AI競馬予想",
+        "AI偏差値",
+        "UMA-FREE",
+        "Shorts",
+        race.venue_name,
+        f"{race.venue_name}競馬",
+        race.display_name,
+        *_grade_tags([race]),
+        *_race_condition_tags([race]),
+    ])
     rights_manifest_hash = build_rights_manifest_hash(selected_assets)
     content_hash = build_content_hash(
         {
@@ -4876,16 +4955,18 @@ def render_daily_short_video(
             for item in render_omissions
         ],
     )
-    tags = [
+    tags = _dedupe_tags([
         "競馬",
         "AI予想",
         "競馬予想",
         "AI競馬予想",
         "Shorts",
         "UMA-FREE",
-        *(race.venue_name for race in races),
         *(race.display_name for race in races if race.is_grade_race),
-    ]
+        *_grade_tags([race for race in races if race.is_grade_race]),
+        *(race.venue_name for race in races),
+        *_race_condition_tags(races),
+    ])
     course_assets: dict[str, CourseAsset] = {}
     for race in races:
         course_asset = resolve_course_asset(race.venue_name, race.course_type or "")

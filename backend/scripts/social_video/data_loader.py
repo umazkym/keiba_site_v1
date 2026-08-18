@@ -139,12 +139,19 @@ def build_race_path(date_str: str, venue_name: str = "", race_number: Any = "") 
     return f"/races/{date_str}"
 
 
-def build_race_url(
-    date_str: str,
+def build_video_url(
+    date_str: str = "",
+    utm_content: str = "",
     venue_name: str = "",
     race_number: Any = "",
-    utm_content: str = "",
+    scope: str = "date",
 ) -> str:
+    """動画の内容に対応するページへ誘導し、動画別の流入帰属を保持するURLを返す。
+
+    scope="race" は1レースだけを扱う動画向けで、そのレースの詳細ページへ着地させる。
+    scope="date" は複数レースをまとめた動画向けで、その日のレース一覧へ着地させる。
+    対象日が分からない場合だけトップページへ戻す。
+    """
     params = {
         "utm_source": "youtube",
         "utm_medium": "video",
@@ -152,19 +159,16 @@ def build_race_url(
     }
     if utm_content:
         params["utm_content"] = utm_content
-    return f"{SITE_BASE_URL}{build_race_path(date_str, venue_name, race_number)}?{urlencode(params)}"
 
+    query = urlencode(params)
+    if not date_str:
+        return f"{SITE_BASE_URL}?{query}"
 
-def build_video_url(date_str: str = "", utm_content: str = "", venue_name: str = "", race_number: Any = "") -> str:
-    """動画からトップへ誘導し、動画別の流入帰属を保持するURLを返す。"""
-    params = {
-        "utm_source": "youtube",
-        "utm_medium": "video",
-        "utm_campaign": YOUTUBE_CAMPAIGN_NAME,
-    }
-    if utm_content:
-        params["utm_content"] = utm_content
-    return f"{SITE_BASE_URL}?{urlencode(params)}"
+    if scope == "race" and venue_name and race_number:
+        path = build_race_path(date_str, venue_name, race_number)
+    else:
+        path = build_race_path(date_str)
+    return f"{SITE_BASE_URL}{path}?{query}"
 
 
 def _api_base_url() -> str:

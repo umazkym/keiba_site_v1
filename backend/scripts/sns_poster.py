@@ -230,9 +230,14 @@ def add_social_attribution_to_text(
     post_type: str,
     target_date: str,
 ) -> str:
-    """UMA-FREEへのリンクだけへ媒体別UTMを付け、外部URLと表示文は維持する。"""
+    """UMA-FREEへのリンクだけへ媒体別UTMを付け、外部URLと表示文は維持する。
+
+    Xはリンクを貼らない方針のため対象外。X本文は post_to_twitter が
+    prepare_short_social_text(remove_urls=True) でURL行を落としてから投稿するので、
+    この関数を通しても置換対象が残らない。実際に使うのはThreads経路だけ。
+    """
     normalized_platform = str(platform or "").strip().lower()
-    if normalized_platform not in {"x", "threads"}:
+    if normalized_platform != "threads":
         raise ValueError(f"未対応のSNS帰属媒体です: {platform}")
     content_key = build_social_content_key(text, post_type, target_date)
 
@@ -1390,10 +1395,15 @@ def sanitize_text_for_short_social_post(text: str, channel_name: str, remove_url
     for line in text.splitlines():
         if remove_urls and X_URL_PATTERN.search(line):
             removed_url = True
-            if cleaned_lines:
-                previous = cleaned_lines[-1].strip()
+            # URL行を消すと直前の誘導文がリンク先のない案内として残るため一緒に落とす。
+            # テンプレートは誘導文とURLの間に空行を挟むので、空行を読み飛ばして遡る。
+            lookback = len(cleaned_lines) - 1
+            while lookback >= 0 and not cleaned_lines[lookback].strip():
+                lookback -= 1
+            if lookback >= 0:
+                previous = cleaned_lines[lookback].strip()
                 if previous.startswith("▼") or "こちら" in previous or "無料予測" in previous:
-                    cleaned_lines.pop()
+                    del cleaned_lines[lookback:]
             continue
         cleaned_lines.append(line.rstrip())
 
@@ -1786,15 +1796,12 @@ def post_to_twitter_with_dual_images(tweet_text_1: str, tweet_text_2: str, image
     """
     _log("-> X (Twitter) への投稿を実行...")
 
+    # X本文はURL行を落として投稿する（リンクを貼らない方針）。
+    # URLが残らないためUTM付与も行わない。
     tweet_texts = [
         prepare_short_social_text(tweet_text_1, "X"),
         prepare_short_social_text(tweet_text_2, "X"),
     ]
-    if post_type and target_date:
-        tweet_texts = [
-            add_social_attribution_to_text(text, "x", post_type, target_date)
-            for text in tweet_texts
-        ]
     _log(f"{len(tweet_texts)} 個のツイートを投稿します")
 
     if not ENABLE_TWITTER:
@@ -1851,9 +1858,9 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
     各投稿に同じ画像を添付する（スレッド形式ではなく独立した投稿）。
     """
     _log("-> X (Twitter) への投稿を実行...")
+    # X本文はURL行を落として投稿する（リンクを貼らない方針）。
+    # URLが残らないためUTM付与も行わない。
     text = prepare_short_social_text(text, "X")
-    if post_type and target_date:
-        text = add_social_attribution_to_text(text, "x", post_type, target_date)
 
     if split_mode:
         tweet_texts = split_tweet_text(text, max_length=280, force_split=True)

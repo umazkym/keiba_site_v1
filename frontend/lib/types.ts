@@ -50,6 +50,9 @@ export interface RacePrediction {
     venue_name: string;
     race_number: number;
     race_name: string;
+    // race_name はAPI側で表示用に整形済み（末尾の「重賞」「Jpn3」等を除去）。
+    // 重賞かどうかはこのフィールドで判定すること。
+    grade?: string | null;
     course_type: string | null;
     distance: number | null;
     ai_analysis_text?: string | null; // ★★★ 追加 ★★★

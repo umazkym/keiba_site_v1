@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import desc, or_, func, case, and_
 from database import models
+from core.race_name import display_race_name
 from datetime import date, timedelta, datetime, timezone
 from typing import Dict, Any, List, Optional
 from collections import defaultdict
@@ -170,7 +171,7 @@ def get_article_race_preview(db: Session, target_date: date, race_name: str) -> 
             "race_date": race.race_date,
             "venue_name": race.venue_name,
             "race_number": race.race_number,
-            "race_name": race.race_name,
+            "race_name": display_race_name(race.race_name),
             "course_type": race.course_type,
             "distance": race.distance,
             "race_url": _article_race_url(race),
@@ -264,7 +265,10 @@ def _serialize_race_for_cache(
         'race_date': race.race_date,
         'venue_name': race.venue_name,
         'race_number': race.race_number,
-        'race_name': race.race_name,
+        # gradeは整形前の生のレース名から判定する。地方重賞は名前の末尾に
+        # 付く「重賞」表記が唯一の判定材料なので、順序を入れ替えないこと。
+        'grade': _detect_grade(race.race_name, race.race_type),
+        'race_name': display_race_name(race.race_name),
         'course_type': race.course_type,
         'distance': race.distance,
         'ai_analysis_text': race.ai_analysis_text,
@@ -580,7 +584,7 @@ def _format_hit(hit, str_date: bool = False) -> dict:
         "race_date": hit.race_date.strftime('%Y-%m-%d') if str_date else hit.race_date,
         "venue_name": hit.venue_name,
         "race_number": hit.race_number,
-        "race_name": hit.race_name,
+        "race_name": display_race_name(hit.race_name),
         "bet_type": _BET_TYPE_MAP_JA.get(hit.bet_type, hit.bet_type),
         "winning_numbers": delim.join(nums),
         "payout": hit.payout
@@ -748,7 +752,7 @@ def get_prediction_accuracy_summary(db: Session, days: int = 30) -> Dict[str, An
                 "race_date": top1.race_date,
                 "venue_name": top1.venue_name,
                 "race_number": top1.race_number,
-                "race_name": top1.race_name,
+                "race_name": display_race_name(top1.race_name),
                 "horse_name": top1.horse_name,
                 "deviation_score": round(top1.deviation_score or 0, 2),
                 "rank": top1.rank,
@@ -1211,7 +1215,7 @@ def get_weekly_grade_races(db: Session) -> List[Dict[str, Any]]:
             "race_date": r.race_date,
             "venue_name": r.venue_name,
             "race_number": r.race_number,
-            "race_name": r.race_name,
+            "race_name": display_race_name(r.race_name),
             "race_type": r.race_type,
             "grade": grade,
         })

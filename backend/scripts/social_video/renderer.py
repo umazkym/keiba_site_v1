@@ -3666,10 +3666,58 @@ def _build_short_motion_scene(
     )
 
 
+def _sentence_date_label(target_date: str) -> str:
+    """概要欄の本文で使う日付表記（例: 2026年8月19日(水)）を返す。"""
+    parsed = date.fromisoformat(target_date)
+    weekday = "月火水木金土日"[parsed.weekday()]
+    return f"{parsed.year}年{parsed.month}月{parsed.day}日({weekday})"
+
+
+def _bullet_lines(heading: str, items: Sequence[str]) -> List[str]:
+    """見出し付きの箇条書きを返す。項目が無ければ何も返さない。"""
+    if not items:
+        return []
+    return ["", heading, *[f"・{item}" for item in items]]
+
+
 def _title_date_parts(target_date: str) -> tuple[str, str]:
     parsed = date.fromisoformat(target_date)
     weekday = "月火水木金土日"[parsed.weekday()]
     return f"{parsed.month}/{parsed.day}({weekday})", f"{parsed.year}年"
+
+
+# YouTubeのタイトル上限。
+YOUTUBE_TITLE_MAX_LENGTH = 100
+
+
+def _assemble_title(essential: Sequence[str], optional: Sequence[str]) -> str:
+    """必須要素を先に確保し、残りは丸ごと入るものだけを採用する。
+
+    単純に連結して末尾を切ると、上限ぴったりのところで重賞名が
+    語の途中で切れて「スパーキングサマーカ」のような検索されない
+    文字列になる。入らない要素は落として、残った要素は原形を保つ。
+    """
+    parts = [str(item).strip() for item in essential if str(item).strip()]
+    title = "｜".join(parts)
+    for item in optional:
+        candidate = str(item).strip()
+        if not candidate:
+            continue
+        merged = f"{title}｜{candidate}" if title else candidate
+        if len(merged) > YOUTUBE_TITLE_MAX_LENGTH:
+            continue
+        title = merged
+    return title[:YOUTUBE_TITLE_MAX_LENGTH].rstrip("｜・ ")
+
+
+def _venue_label(venue_names: Sequence[str], limit: int = 2) -> str:
+    """タイトルへ入れる会場名。多すぎる場合は先頭だけ挙げて「ほか」で締める。"""
+    unique = list(dict.fromkeys(name for name in venue_names if name))
+    if not unique:
+        return ""
+    if len(unique) <= limit:
+        return "・".join(unique)
+    return "・".join(unique[:limit]) + "ほか"
 
 
 def _long_title_essential(venue: VenueVideoData, target_date: str) -> str:
@@ -3687,13 +3735,14 @@ def _long_title(venue: VenueVideoData, target_date: str) -> str:
         f"全{len(venue.races)}レースAI分析",
     ]
     featured_race = pick_featured_race(venue)
+    optional = []
     if featured_race is not None and featured_race.is_grade_race:
-        parts.append(featured_race.display_name)
-    parts.extend([
+        optional.append(featured_race.display_name)
+    optional.extend([
         f"{venue.venue_name}競馬予想",
         year_label,
     ])
-    return "｜".join(parts)[:100].rstrip("｜・ ")
+    return _assemble_title(parts, optional)
 
 
 def _description(
@@ -3703,12 +3752,15 @@ def _description(
     excluded_race_labels: Sequence[str] = (),
     excluded_race_intro: str = "AI偏差値の算出対象外となる新馬戦",
     chapter_lines: Sequence[str] = (),
+    lead: str = "",
 ) -> str:
     venue_line = f"{venue_name}の" if venue_name else ""
+    # 概要欄の冒頭はYouTube検索のスニペットに使われるため、
+    # タイトルをそのまま繰り返さず、レース名と「予想」を含む文章を置く。
     lines = [
         url,
         "",
-        title,
+        lead or title,
         "",
         "UMA-FREEでは、中央・地方競馬の全レース分析データを毎日無料で掲載しています。登録は不要です。",
         f"{venue_line}AI偏差値、過去対戦成績、位置取り予測、枠順傾向をレース順に掲載しています。",
@@ -3740,19 +3792,74 @@ def _compilation_grade_races(venues: Sequence[VenueVideoData]) -> List[RaceVideo
     return [race for race in _compilation_races(venues) if race.is_grade_race]
 
 
-def _dedupe_tags(tags: Iterable[str], limit: int = 15) -> List[str]:
-    """空文字と重複を除いた順序どおりのタグ列を返す。YouTube側の上限は30件。"""
+# YouTubeのタグはリスト全体で500文字までで、超えるとアップロードが
+# invalidTags で失敗する。件数の上限は30件。
+YOUTUBE_TAG_TOTAL_LIMIT = 500
+YOUTUBE_TAG_COUNT_LIMIT = 30
+
+
+def _dedupe_tags(
+    tags: Iterable[str],
+    limit: int = YOUTUBE_TAG_COUNT_LIMIT,
+    total_char_limit: int = YOUTUBE_TAG_TOTAL_LIMIT,
+) -> List[str]:
+    """空文字と重複を除き、YouTubeの上限に収まるタグ列を返す。
+
+    引数は優先度の高い順に渡すこと。文字数の予算を超えたタグは
+    そこで打ち切らず読み飛ばすため、後ろにある短い汎用タグは残る。
+    """
     seen: set[str] = set()
     result: List[str] = []
+    used_chars = 0
     for tag in tags:
         normalized = str(tag or "").strip()
         if not normalized or normalized in seen:
             continue
+        # 区切り文字ぶんを1文字として見積もる。
+        cost = len(normalized) + (1 if result else 0)
+        if used_chars + cost > total_char_limit:
+            continue
         seen.add(normalized)
         result.append(normalized)
-        if len(result) >= limit:
+        used_chars += cost
+        if len(result) >= min(limit, YOUTUBE_TAG_COUNT_LIMIT):
             break
     return result
+
+
+def _grade_race_intent_tags(
+    races: Sequence[RaceVideoData],
+    limit: int = 2,
+) -> List[str]:
+    """重賞名と検索意図を組み合わせたタグを返す。
+
+    「スパーキングサマーカップ 予想」のように、レース名と「予想」を
+    合わせて検索されるため、名前単体だけでなく組み合わせも持たせる。
+    """
+    tags: List[str] = []
+    for race in races[:limit]:
+        name = race.display_name
+        if not name:
+            continue
+        tags.extend([name, f"{name}予想", f"{name}AI予想"])
+    return tags
+
+
+def _venue_intent_tags(venue_names: Sequence[str], limit: int = 3) -> List[str]:
+    """競馬場名の検索バリエーションを返す（川崎 / 川崎競馬 / 川崎競馬予想）。"""
+    tags: List[str] = []
+    for name in list(dict.fromkeys(n for n in venue_names if n))[:limit]:
+        tags.extend([name, f"{name}競馬", f"{name}競馬予想"])
+    return tags
+
+
+def _date_tag(target_date: str) -> str:
+    """日付での検索に当てるタグ（例: 8月19日競馬）を返す。"""
+    try:
+        parsed = date.fromisoformat(target_date)
+    except (TypeError, ValueError):
+        return ""
+    return f"{parsed.month}月{parsed.day}日競馬"
 
 
 def _race_condition_tags(races: Sequence[RaceVideoData], limit: int = 4) -> List[str]:
@@ -3792,17 +3899,18 @@ def _daily_long_title(venues: Sequence[VenueVideoData], target_date: str) -> str
     grade_names = "・".join(
         race.display_name for race in _compilation_grade_races(venues)[:2]
     )
-    parts = [
-        date_label,
-        f"全{len(races)}レースAI分析",
-    ]
-    if grade_names:
-        parts.append(grade_names)
-    parts.extend([
-        f"{_race_type_scope(venues)}予想",
-        year_label,
-    ])
-    return "｜".join(parts)[:100].rstrip("｜・ ")
+    # 「{競馬場名} 予想」で検索されるため、収録会場をタイトルにも入れる。
+    # 4場以上あるので上位2場＋「ほか」に留める。
+    venue_label = _venue_label([venue.venue_name for venue in venues])
+    return _assemble_title(
+        [date_label, f"全{len(races)}レースAI分析"],
+        [
+            venue_label,
+            grade_names,
+            f"{_race_type_scope(venues)}予想",
+            year_label,
+        ],
+    )
 
 
 def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
@@ -3810,18 +3918,22 @@ def _daily_short_title(races: Sequence[RaceVideoData], target_date: str) -> str:
         raise ValueError("Shortsの収録対象レースがありません")
     date_label, year_label = _title_date_parts(target_date)
     grade_races = [race for race in races if race.is_grade_race]
-    parts = [
-        date_label,
-        f"全{len(races)}レースAI分析",
-    ]
+    # 収録会場は1〜3場に収まるため、日付の直後に置いて
+    # 「{競馬場名} 予想」の検索に当てる。
+    venue_label = _venue_label([race.venue_name for race in races], limit=3)
+    essential = [date_label]
+    if venue_label:
+        essential.append(f"{venue_label} 注目{len(races)}レースAI分析")
+    else:
+        essential.append(f"注目{len(races)}レースAI分析")
+    optional = []
     if grade_races:
-        displayed_names = "・".join(race.display_name for race in grade_races[:2])
-        parts.append(displayed_names)
-    parts.extend([
+        optional.append("・".join(race.display_name for race in grade_races[:2]))
+    optional.extend([
         "AI競馬予想",
         f"{year_label} #Shorts",
     ])
-    return "｜".join(parts)[:100].rstrip("｜・ ")
+    return _assemble_title(essential, optional)
 
 
 def _format_chapter_timestamp(seconds: float) -> str:
@@ -3833,11 +3945,95 @@ def _format_chapter_timestamp(seconds: float) -> str:
     return f"{minute:02d}:{second:02d}"
 
 
+# YouTubeがタイムスタンプをチャプターのリンクに変換する条件。
+# 「先頭が00:00」「3件以上」「各チャプターが10秒以上」を
+# すべて満たしたときだけリンク化され、1つでも欠けると
+# 全チャプターがただの文字列として表示される。
+YOUTUBE_MIN_CHAPTER_COUNT = 3
+YOUTUBE_MIN_CHAPTER_SECONDS = 10.0
+
+
+def _finalize_chapter_lines(
+    entries: Sequence[tuple[float, str]],
+    total_seconds: float,
+) -> List[str]:
+    """チャプター候補をYouTubeの要件に合わせて整形する。
+
+    10秒に満たない区間は直前のチャプターへ統合する（見出しも連結するため、
+    表示と中身がずれない）。統合しても要件を満たせない場合は空リストを返し、
+    リンクにならないタイムスタンプを概要欄へ載せない。
+    """
+    if not entries:
+        return []
+
+    merged: List[list] = []
+    for start, label in sorted(entries, key=lambda item: item[0]):
+        text = str(label).strip()
+        if not text:
+            continue
+        if merged and start - merged[-1][0] < YOUTUBE_MIN_CHAPTER_SECONDS:
+            merged[-1][1] = f"{merged[-1][1]} / {text}"
+        else:
+            merged.append([float(start), text])
+
+    # 最終チャプターも10秒以上必要。足りなければ1つ前へ畳む。
+    while len(merged) > 1 and total_seconds - merged[-1][0] < YOUTUBE_MIN_CHAPTER_SECONDS:
+        tail = merged.pop()
+        merged[-1][1] = f"{merged[-1][1]} / {tail[1]}"
+
+    if len(merged) < YOUTUBE_MIN_CHAPTER_COUNT or merged[0][0] > 0.5:
+        return []
+    merged[0][0] = 0.0
+    return [
+        f"{_format_chapter_timestamp(start)} {label}"
+        for start, label in merged
+    ]
+
+
+def _daily_compilation_lead(
+    venues: Sequence[VenueVideoData],
+    target_date: str,
+    short_races: Sequence[RaceVideoData] = (),
+) -> str:
+    """概要欄の冒頭に置く1文を組み立てる。
+
+    YouTube検索の結果に出るのは概要欄の先頭部分なので、
+    「日付」「開催場」「レース名」「予想」という
+    実際に検索される語を自然な文章のまま先頭へ入れる。
+    """
+    if not target_date:
+        return ""
+    date_label = _sentence_date_label(target_date)
+    scope = _race_type_scope(venues)
+    if short_races:
+        venue_names = "・".join(
+            dict.fromkeys(race.venue_name for race in short_races)
+        )
+        lead = (
+            f"{date_label}の{scope}から、{venue_names}の注目"
+            f"{len(short_races)}レースを取り上げ、AI偏差値をもとにした予想データを紹介します。"
+        )
+        grade_races = [race for race in short_races if race.is_grade_race]
+    else:
+        venue_names = "・".join(venue.venue_name for venue in venues)
+        lead = (
+            f"{date_label}に行われる{scope} {venue_names}の全"
+            f"{len(_compilation_races(venues))}レースについて、"
+            "AI偏差値をもとにした予想データをレース順にまとめました。"
+        )
+        grade_races = _compilation_grade_races(venues)
+    if grade_races:
+        names = "、".join(race.display_name for race in grade_races[:3])
+        lead += f"注目の重賞は{names}です。"
+    return lead
+
+
 def _daily_compilation_description(
     *,
     title: str,
     url: str,
     venues: Sequence[VenueVideoData],
+    target_date: str = "",
     chapter_lines: Sequence[str] = (),
     short_races: Sequence[RaceVideoData] = (),
     additional_excluded_labels: Sequence[str] = (),
@@ -3847,39 +4043,32 @@ def _daily_compilation_description(
         for race in (short_races or _compilation_grade_races(venues))
         if race.is_grade_race
     ]
-    if short_races:
-        venue_types = {venue.venue_name: venue.race_type for venue in venues}
-        short_counts: dict[str, int] = {}
-        for race in short_races:
-            short_counts[race.venue_name] = short_counts.get(race.venue_name, 0) + 1
-        venue_summary = " / ".join(
-            f"{venue_types.get(venue_name, '')}競馬 {venue_name}（{count}レース）"
-            for venue_name, count in short_counts.items()
-        )
-    else:
-        venue_summary = " / ".join(
-            f"{venue.race_type}競馬 {venue.venue_name}（{len(venue.races)}レース）"
-            for venue in venues
-        )
-    race_summary = " / ".join(
+    venue_items = [
+        f"{venue.race_type}競馬 {venue.venue_name}（全{len(venue.races)}レース）"
+        for venue in venues
+    ]
+    race_items = [
         f"{race.venue_name}{race.race_number}R {race.display_name}"
         for race in short_races
-    )
+    ]
     lines = [
         url,
         "",
-        title,
+        _daily_compilation_lead(venues, target_date, short_races) or title,
         "",
         "【中央・地方競馬のAI分析をいつでも無料公開中】",
         "UMA-FREEでは、AI偏差値、過去対戦成績、位置取り予測、枠順傾向を登録不要で確認できます。",
         "本動画は、当日の競馬予想を検討する際の参考情報として、過去データに基づくAI分析をまとめたものです。",
     ]
-    if venue_summary:
-        lines.extend(("", f"収録開催場: {venue_summary}"))
-    if race_summary:
-        lines.extend(("", f"収録レース: {race_summary}"))
-    if grade_races:
-        lines.extend(("", "重賞: " + "、".join(race.display_name for race in grade_races)))
+    if race_items:
+        lines.extend(_bullet_lines("収録レース", race_items))
+    else:
+        lines.extend(_bullet_lines("収録開催場", venue_items))
+    # 収録レース一覧に重賞名が出ている場合、同じ名前をもう一度並べない。
+    if grade_races and not race_items:
+        lines.extend(
+            _bullet_lines("収録重賞", [race.display_name for race in grade_races])
+        )
     if chapter_lines:
         lines.extend(("", "チャプター", *chapter_lines))
 
@@ -3971,7 +4160,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
     )
     # レース単位のチャプターを作る。視聴者が目的のレースへ直接飛べるようにし、
     # YouTube側の検索スニペットにもレース名が載る。
-    chapter_lines = ["00:00 オープニング"]
+    chapter_entries: List[tuple[float, str]] = [(0.0, "オープニング")]
     elapsed_seconds = float(LONG_INTRO_SECONDS)
     for progress_index, race in enumerate(venue.races, start=1):
         race_scene = _build_long_race_motion_scene(
@@ -3982,9 +4171,8 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
             len(venue.races),
         )
         scenes.append(race_scene)
-        chapter_lines.append(
-            f"{_format_chapter_timestamp(elapsed_seconds)} "
-            f"{race.race_number}R {race.display_name}"
+        chapter_entries.append(
+            (elapsed_seconds, f"{race.race_number}R {race.display_name}")
         )
         elapsed_seconds += race_scene.duration_seconds
     scenes.append(
@@ -4000,6 +4188,10 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         )
     )
     _attach_long_audio_cues(scenes, sfx_assets)
+    chapter_lines = _finalize_chapter_lines(
+        chapter_entries,
+        sum(scene.duration_seconds for scene in scenes),
+    )
 
     thumbnail = video_dir / "thumbnail.jpg"
     subtitle = (
@@ -4048,6 +4240,13 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         f"{race.race_number}R {race.display_name}"
         for race in venue.excluded_races
     ]
+    featured_race = pick_featured_race(venue)
+    lead = (
+        f"{_sentence_date_label(target_date)}の{venue.race_type}競馬 {venue.venue_name}"
+        f"、全{len(venue.races)}レースの予想データをAI偏差値をもとにレース順でまとめました。"
+    )
+    if featured_race is not None and featured_race.is_grade_race:
+        lead += f"注目の重賞は{featured_race.display_name}です。"
     description = _description(
         title,
         url,
@@ -4055,6 +4254,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         excluded_race_labels=excluded_race_labels,
         excluded_race_intro=excluded_race_intro,
         chapter_lines=chapter_lines,
+        lead=lead,
     )
     tags = _dedupe_tags([
         "競馬",
@@ -4062,11 +4262,10 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
         "AI競馬予想",
         "AI偏差値",
         "UMA-FREE",
-        venue.venue_name,
-        f"{venue.venue_name}競馬",
-        f"{venue.venue_name}競馬予想",
-        *(race.display_name for race in venue.grade_races[:2]),
+        *_venue_intent_tags([venue.venue_name]),
+        *_grade_race_intent_tags(venue.grade_races),
         *_grade_tags(venue.grade_races),
+        _date_tag(target_date),
         *_race_condition_tags(venue.races),
     ])
     rights_manifest_hash = build_rights_manifest_hash(selected_assets)
@@ -4268,7 +4467,7 @@ def render_daily_long_video(
         )
     )
 
-    chapter_lines = ["00:00 本日のAI分析まとめ"]
+    chapter_entries: List[tuple[float, str]] = [(0.0, "本日のAI分析まとめ")]
     elapsed_seconds = LONG_INTRO_SECONDS
     chapter_visual_assets: List[Optional[VisualAsset]] = []
     chapter_video_assets: List[Optional[VideoAsset]] = []
@@ -4295,9 +4494,11 @@ def render_daily_long_video(
         chapter_video_assets.append(venue_video)
         if venue_visual is None:
             asset_warnings.append(f"{venue.venue_name}章は代替背景を使用")
-        chapter_lines.append(
-            f"{_format_chapter_timestamp(elapsed_seconds)} "
-            f"{venue.race_type}競馬 {venue.venue_name} 収録{len(venue.races)}レース"
+        chapter_entries.append(
+            (
+                elapsed_seconds,
+                f"{venue.race_type}競馬 {venue.venue_name} 全{len(venue.races)}レース",
+            )
         )
         grade_names = "・".join(race.display_name for race in venue.grade_races)
         venue_headline = grade_names or f"{venue.venue_name} 全{len(venue.races)}レース"
@@ -4373,10 +4574,15 @@ def render_daily_long_video(
         render_motion_video(scenes, video_path, *size, audio_asset=audio_asset)
 
     url = build_video_url(target_date, utm_content, hero_race.venue_name, hero_race.race_number)
+    chapter_lines = _finalize_chapter_lines(
+        chapter_entries,
+        sum(scene.duration_seconds for scene in scenes),
+    )
     description = _daily_compilation_description(
         title=title,
         url=url,
         venues=venues,
+        target_date=target_date,
         chapter_lines=chapter_lines,
     )
     grade_names = [race.display_name for race in _compilation_grade_races(venues)]
@@ -4388,9 +4594,10 @@ def render_daily_long_video(
         "中央競馬",
         "地方競馬",
         "UMA-FREE",
-        *grade_names,
+        *_grade_race_intent_tags(_compilation_grade_races(venues)),
         *_grade_tags(_compilation_grade_races(venues)),
-        *(venue.venue_name for venue in venues),
+        *_venue_intent_tags([venue.venue_name for venue in venues]),
+        _date_tag(target_date),
         *_race_condition_tags(races),
     ])
     course_assets: dict[str, CourseAsset] = {}
@@ -4500,13 +4707,14 @@ def _short_title(race: RaceVideoData, target_date: str) -> str:
         date_label,
         f"{race.venue_name}{race.race_number}R AI分析",
     ]
+    optional = []
     if race.grade:
-        parts.append(race.display_name)
-    parts.extend([
+        optional.append(race.display_name)
+    optional.extend([
         f"{race.venue_name}競馬予想",
         f"{year_label} #Shorts",
     ])
-    return "｜".join(parts)[:100].rstrip("｜・ ")
+    return _assemble_title(parts, optional)
 
 
 def _append_audio_cue(
@@ -4662,10 +4870,11 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         "AI偏差値",
         "UMA-FREE",
         "Shorts",
-        race.venue_name,
-        f"{race.venue_name}競馬",
+        *_venue_intent_tags([race.venue_name]),
+        *_grade_race_intent_tags([race] if race.is_grade_race else []),
         race.display_name,
         *_grade_tags([race]),
+        _date_tag(target_date),
         *_race_condition_tags([race]),
     ])
     rights_manifest_hash = build_rights_manifest_hash(selected_assets)
@@ -4835,6 +5044,8 @@ def render_daily_short_video(
     tiktok_scenes: List[MotionScene] = []
     visual_assets: List[Optional[VisualAsset]] = []
     motion_video_assets: List[Optional[VideoAsset]] = []
+    # Shortsプレイヤーはチャプターを解釈しないため、概要欄には出さず
+    # メタデータ（収録順の記録）としてだけ保持する。
     chapter_lines: List[str] = []
     elapsed_seconds = 0.0
     intermediate_duration = _daily_short_intermediate_duration(len(races))
@@ -4948,7 +5159,7 @@ def render_daily_short_video(
         title=title,
         url=url,
         venues=venues,
-        chapter_lines=chapter_lines,
+        target_date=target_date,
         short_races=races,
         additional_excluded_labels=[
             f"{item['venue_name']}{item['race_number']}R {item['race_name']}"
@@ -4962,9 +5173,10 @@ def render_daily_short_video(
         "AI競馬予想",
         "Shorts",
         "UMA-FREE",
-        *(race.display_name for race in races if race.is_grade_race),
+        *_grade_race_intent_tags([race for race in races if race.is_grade_race]),
         *_grade_tags([race for race in races if race.is_grade_race]),
-        *(race.venue_name for race in races),
+        *_venue_intent_tags([race.venue_name for race in races]),
+        _date_tag(target_date),
         *_race_condition_tags(races),
     ])
     course_assets: dict[str, CourseAsset] = {}

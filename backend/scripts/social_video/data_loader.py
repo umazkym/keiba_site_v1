@@ -13,6 +13,8 @@ from urllib.parse import quote, urlencode
 
 import requests
 
+from core.race_name import display_race_name
+
 
 SITE_BASE_URL = "https://uma-free.com"
 YOUTUBE_CAMPAIGN_NAME = "daily_race_video_v2"
@@ -50,7 +52,7 @@ class RaceVideoData:
 
     @property
     def display_name(self) -> str:
-        name = self.race_name.strip() if self.race_name else ""
+        name = display_race_name(self.race_name)
         return name or f"{self.race_number}R"
 
     @property
@@ -292,7 +294,11 @@ def _normalize_race(raw: Dict[str, Any], grade_map: Dict[str, Dict[str, Any]]) -
         race_name=str(raw.get("race_name") or ""),
         course_type=raw.get("course_type"),
         distance=_to_int(raw.get("distance")) if raw.get("distance") is not None else None,
-        grade=str(grade_info.get("grade") or "") if grade_info else None,
+        # 近日重賞APIの結果を最優先し、次に予測APIが返すgradeを使う。
+        # 予測API側のgradeは、レース名を表示用に整形する前に
+        # サーバ側で判定した値なので、末尾のグレード表記が
+        # 取り除かれていても失われない。
+        grade=str(grade_info.get("grade") or "") if grade_info else (str(raw.get("grade") or "") or None),
         predictions=predictions,
         horse_number_advantages=raw.get("horse_number_advantages") or [],
     )

@@ -45,6 +45,8 @@ import traceback
 from PIL import Image, ImageDraw, ImageFont
 import psycopg2
 from contextlib import contextmanager
+
+from core.race_name import display_race_name
 import hashlib
 import importlib
 import importlib.util
@@ -309,6 +311,29 @@ GRADE_KEYWORDS = ['G1', 'G2', 'G3', 'GI', 'GII', 'GIII',
                   'ＧⅠ', 'ＧⅡ', 'ＧⅢ', 'J・G']
 
 # --- レース名正規化ユーティリティ（追加） ---
+def display_name(raw_name: Any) -> str:
+    """投稿本文と画像に出すレース名を返す。
+
+    DBのレース名は末尾にグレード表記（重賞 / OP / Jpn3）が貼り付いていたり、
+    netkeiba側の打ち切りで閉じ括弧を欠いていたりする。
+    表示に使う場所はすべてこれを通す。
+    """
+    return display_race_name(str(raw_name or ""))
+
+
+def hashtag_race_name(raw_name: Any) -> str:
+    """ハッシュタグに使うレース名を返す。
+
+    表示名から補足の括弧書きを外す。整形前の名前に対して括弧を外そうとすると
+    「スパーキングサマーカップ【地方交重賞」のように閉じ括弧が無い場合に
+    何も除去されず、壊れたタグがそのまま投稿されてしまう。
+    """
+    name = display_name(raw_name)
+    if not name or name == "?":
+        return ""
+    return re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', name).strip()
+
+
 def canonicalize_race_name(s: str) -> str:
     """
     レース名を正規化して比較可能にする。
@@ -1146,7 +1171,7 @@ def generate_pick_og_image(data: dict, date_str: str) -> Optional[str]:
     """注目馬用の画像を生成する"""
     safe_venue = data.get('venue_name', '')
     safe_race_num = data.get('race_number', '')
-    safe_race_name = data.get('race_name', '')
+    safe_race_name = display_name(data.get('race_name', ''))
     safe_horse_name = data.get('horse_name', '')
     ds = data.get('deviation_score', 0)
     try:
@@ -1220,7 +1245,7 @@ def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
         img, draw = create_base_image()
 
         # ヘッダー (重賞) とレース名
-        draw_centered_text(draw, race.get('race_name', ''), ImageFont.truetype(font_black, 64), TEXT_COLOR_LIGHT, 1200, 150)
+        draw_centered_text(draw, display_name(race.get('race_name', '')), ImageFont.truetype(font_black, 64), TEXT_COLOR_LIGHT, 1200, 150)
         
         # 開催情報
         race_date_safe = race.get('race_date', '1970-01-01')
@@ -1343,8 +1368,8 @@ def create_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
     if venue_name:
         hashtags.append(f"#{venue_name}競馬")
     
-    clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', pick.get('race_name', '')).strip()
-    if clean_race_name and clean_race_name != "?":
+    clean_race_name = hashtag_race_name(pick.get('race_name', ''))
+    if clean_race_name:
         hashtags.append(f"#{clean_race_name}")
 
     pick_horse_name = pick.get('horse_name', '')
@@ -1355,7 +1380,7 @@ def create_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
 
 AIが今日のレースで最も高く評価した一頭はこちら！
 
-【{pick.get('venue_name','')}{pick.get('race_number','')}R {pick.get('race_name','')}】
+【{pick.get('venue_name','')}{pick.get('race_number','')}R {display_name(pick.get('race_name',''))}】
 
 ◎ {pick_horse_name} (AI偏差値: {float(pick.get('deviation_score') or 0):.2f})
 
@@ -1371,9 +1396,9 @@ def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
     _log("-> 重賞レースのテキストを生成...")
     # ★★修正済み: 'race_date' を参照
     date_str = race.get('race_date', '')
-    clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', race.get('race_name', '')).strip()
-    hashtags = ["#競馬", "#競馬予想", "#AI予想", f"#{clean_race_name}"]
-    lines = [f"🏇本日の重賞 ({race.get('race_name','')}) AI予測\n"]
+    clean_race_name = hashtag_race_name(race.get('race_name', ''))
+    hashtags = ["#競馬", "#競馬予想", "#AI予想"] + ([f"#{clean_race_name}"] if clean_race_name else [])
+    lines = [f"🏇本日の重賞 ({display_name(race.get('race_name',''))}) AI予測\n"]
     for i, p in enumerate(top_preds[:3]):
         lines.append(f"{['◎','○','▲'][i]} {p.get('horse_name','?')} (AI偏差値: {float(p.get('deviation_score') or 0):.2f})")
     race_num = race.get('race_number', '')
@@ -1960,8 +1985,8 @@ def create_morning_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
     if venue_name:
         hashtags_2.append(f"#{venue_name}競馬")
     
-    clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', pick.get('race_name', '')).strip()
-    if clean_race_name and clean_race_name != "?":
+    clean_race_name = hashtag_race_name(pick.get('race_name', ''))
+    if clean_race_name:
         hashtags_2.append(f"#{clean_race_name}")
 
     pick_horse_name = pick.get('horse_name', '')
@@ -1970,7 +1995,7 @@ def create_morning_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
 
     lines = [f"🐎本日のAI注目馬 ({date_formatted})"]
     lines.append(f"\nAIが今日のレースで最も高く評価した一頭はこちら！")
-    lines.append(f"\n【{pick.get('venue_name','')}{pick.get('race_number','')}R {pick.get('race_name','')}】")
+    lines.append(f"\n【{pick.get('venue_name','')}{pick.get('race_number','')}R {display_name(pick.get('race_name',''))}】")
     lines.append(f"\n◎ {pick_horse_name} (AI偏差値: {float(pick.get('deviation_score') or 0):.2f})")
     lines.append(f"\n▼全レースの無料予測")
     race_num = pick.get('race_number', '')
@@ -2078,7 +2103,7 @@ def find_all_grade_races_for_date(target_date: str) -> List[tuple]:
             _log(f"-> 予測データあり (トップ3頭: {', '.join([p.get('horse_name', '?') for p in top_preds])})")
 
             lines = [f"🎯明日のレース AI予想"]
-            lines.append(f"\n【{race_name}】")
+            lines.append(f"\n【{display_name(race_name)}】")
             lines.append(f"{race.get('venue_name', '?')}   {datetime.strptime(target_date, '%Y-%m-%d').strftime('%m/%d')}\n")
 
             marks = ['◎', '○', '▲']
@@ -2093,9 +2118,9 @@ def find_all_grade_races_for_date(target_date: str) -> List[tuple]:
                     ds_val_f = 0.0
                 lines.append(f"{marks[i]} {horse_name} (AI偏差値: {ds_val_f:.1f})")
 
-            clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', race_name).strip()
+            clean_race_name = hashtag_race_name(race_name)
 
-            hashtags = ["#競馬予想", "#AI予想", f"#{clean_race_name}"]
+            hashtags = ["#競馬予想", "#AI予想"] + ([f"#{clean_race_name}"] if clean_race_name else [])
             venue_name = race.get('venue_name', '')
             if venue_name and venue_name != '?':
                 hashtags.append(f"#{venue_name}競馬")
@@ -2124,13 +2149,13 @@ def create_pre_race_tweet(race: dict, top_preds: List[dict]) -> str:
     """直前リマインド: レース直前の予想リマインド"""
     _log("-> 直前リマインドテキストを生成...")
     date_str = race.get('race_date', '')
-    clean_race_name = re.sub(r'\(.+?\)|\[.+?\]|【.+?】', '', race.get('race_name', '')).strip()
-    hashtags = ["#競馬", "#競馬予想", "#AI予想", f"#{clean_race_name}"]
+    clean_race_name = hashtag_race_name(race.get('race_name', ''))
+    hashtags = ["#競馬", "#競馬予想", "#AI予想"] + ([f"#{clean_race_name}"] if clean_race_name else [])
     venue_name = race.get('venue_name', '')
     if venue_name and venue_name != '?':
         hashtags.append(f"#{venue_name}競馬")
 
-    lines = [f"⏰まもなく発走！ ({race.get('race_name','')}) AI予想\n"]
+    lines = [f"⏰まもなく発走！ ({display_name(race.get('race_name',''))}) AI予想\n"]
     for i, p in enumerate(top_preds[:3]):
         ds_val = p.get('deviation_score')
         ds_val_f = float(ds_val) if ds_val is not None else 0.0
@@ -2495,7 +2520,7 @@ def main():
                 venue = hit.get('venue_name', '')
                 race_num = hit.get('race_number', '')
                 bet_type = hit.get('bet_type', '')
-                race_name = hit.get('race_name', '')
+                race_name = display_name(hit.get('race_name', ''))
                 winning_numbers = hit.get('winning_numbers', '')
                 date_formatted = datetime.strptime(today_str, '%Y-%m-%d').strftime('%m/%d')
 

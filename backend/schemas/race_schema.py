@@ -38,6 +38,9 @@ class RacePrediction(BaseModel):
     venue_name: str
     race_number: int
     race_name: str
+    # race_name は表示用に整形済み（末尾の「重賞」「Jpn3」等を除去）のため、
+    # グレードはこのフィールドで受け取ること。
+    grade: Optional[str] = None
     course_type: Optional[str]
     distance: Optional[int]
     ai_analysis_text: Optional[str] = None # ★★★ 追加 ★★★

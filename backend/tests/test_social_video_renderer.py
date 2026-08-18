@@ -506,6 +506,12 @@ class SocialVideoRendererTest(unittest.TestCase):
             "&utm_campaign=daily_race_video_v2&utm_content=short_hakodate_11",
         )
 
+    def test_race_display_name_uses_the_shared_normalizer(self) -> None:
+        # 整形規則そのものは tests/test_race_name.py で検証している。
+        race = _race()
+        race.race_name = "スパーキングサマーカップ【地方交重賞"
+        self.assertEqual(race.display_name, "スパーキングサマーカップ")
+
     def test_video_url_falls_back_to_site_root_without_target_date(self) -> None:
         url = build_video_url("", "daily_short_compilation")
         self.assertEqual(
@@ -643,17 +649,127 @@ class SocialVideoRendererTest(unittest.TestCase):
             title=long_title,
             url="https://uma-free.com",
             venues=venues,
-            chapter_lines=("00:00 本日の全レースAI分析", "00:02 中央競馬 東京 全1レース"),
+            target_date="2026-11-01",
+            chapter_lines=renderer._finalize_chapter_lines(
+                [
+                    (0.0, "本日の全レースAI分析"),
+                    (20.0, "中央競馬 東京 全1レース"),
+                    (40.0, "地方競馬 大井 全1レース"),
+                ],
+                60.0,
+            ),
         )
 
         self.assertIn("11/1(日)｜全2レースAI分析", long_title)
         self.assertIn("中央競馬・地方競馬予想", long_title)
         self.assertIn("天皇賞（秋）", long_title)
-        self.assertIn("11/1(日)｜全1レースAI分析", short_title)
+        # 「{競馬場名} 予想」で検索されるため、会場名もタイトルへ入れる
+        self.assertIn("東京・大井", long_title)
+        self.assertIn("11/1(日)｜東京 注目1レースAI分析", short_title)
         self.assertEqual(description.splitlines()[0], "https://uma-free.com")
         self.assertIn("【中央・地方競馬のAI分析をいつでも無料公開中】", description)
         self.assertIn("#競馬 #AI予想 #競馬予想", description)
         self.assertIn("チャプター", description)
+        # 概要欄の冒頭はタイトルの丸写しではなく、検索語を含む文章にする
+        self.assertNotIn(long_title, description)
+        self.assertIn("2026年11月1日(日)", description)
+        self.assertIn("天皇賞（秋）", description.splitlines()[2])
+
+    def test_title_drops_whole_elements_instead_of_cutting_a_race_name(self) -> None:
+        # 上限ぎりぎりで連結して末尾を切ると、重賞名が語の途中で切れて
+        # 検索されない文字列になる。入らない要素は丸ごと落とす。
+        long_name = "あ" * 75
+        title = renderer._assemble_title(
+            ["8/19(水)", "全48レースAI分析"],
+            [long_name, "地方競馬予想", "2026年"],
+        )
+
+        self.assertLessEqual(len(title), renderer.YOUTUBE_TITLE_MAX_LENGTH)
+        self.assertTrue(title.startswith("8/19(水)｜全48レースAI分析"))
+        # 重賞名は原形のまま残る（語の途中で切れない）
+        self.assertIn(long_name, title)
+        # 入らない要素は落とすが、そこで打ち切らず後続の短い要素は拾う
+        self.assertNotIn("地方競馬予想", title)
+        self.assertTrue(title.endswith("｜2026年"))
+
+    def test_title_keeps_every_element_when_they_all_fit(self) -> None:
+        title = renderer._assemble_title(
+            ["8/19(水)", "全48レースAI分析"],
+            ["川崎・門別ほか", "スパーキングサマーカップ", "地方競馬予想", "2026年"],
+        )
+
+        self.assertEqual(
+            title,
+            "8/19(水)｜全48レースAI分析｜川崎・門別ほか｜スパーキングサマーカップ｜地方競馬予想｜2026年",
+        )
+
+    def test_venue_label_summarises_when_there_are_too_many_venues(self) -> None:
+        self.assertEqual(renderer._venue_label(["川崎", "門別"]), "川崎・門別")
+        self.assertEqual(
+            renderer._venue_label(["川崎", "門別", "名古屋", "園田"]),
+            "川崎・門別ほか",
+        )
+        self.assertEqual(renderer._venue_label(["川崎", "川崎"]), "川崎")
+        self.assertEqual(renderer._venue_label([]), "")
+
+    def test_tags_stay_within_youtube_count_and_character_limits(self) -> None:
+        # タグはリスト全体で500文字を超えるとアップロードがinvalidTagsで落ちる。
+        oversized = [f"{'あ' * 40}{index}" for index in range(30)]
+        tags = renderer._dedupe_tags([*oversized, "競馬"])
+
+        self.assertLessEqual(len(tags), renderer.YOUTUBE_TAG_COUNT_LIMIT)
+        total = sum(len(tag) for tag in tags) + max(0, len(tags) - 1)
+        self.assertLessEqual(total, renderer.YOUTUBE_TAG_TOTAL_LIMIT)
+        # 予算を超えた長いタグを読み飛ばし、後ろの短いタグは残す
+        self.assertIn("競馬", tags)
+
+    def test_grade_race_tags_include_the_search_intent_combinations(self) -> None:
+        race = _race()
+        race.race_name = "スパーキングサマーカップ【地方交重賞"
+        race.grade = "地方重賞"
+
+        self.assertEqual(
+            renderer._grade_race_intent_tags([race]),
+            [
+                "スパーキングサマーカップ",
+                "スパーキングサマーカップ予想",
+                "スパーキングサマーカップAI予想",
+            ],
+        )
+        self.assertEqual(
+            renderer._venue_intent_tags(["川崎"]),
+            ["川崎", "川崎競馬", "川崎競馬予想"],
+        )
+        self.assertEqual(renderer._date_tag("2026-08-19"), "8月19日競馬")
+        self.assertEqual(renderer._date_tag(""), "")
+
+    def test_chapter_lines_meet_youtube_requirements_or_are_dropped(self) -> None:
+        # 10秒未満の区間は直前のチャプターへ統合される
+        merged = renderer._finalize_chapter_lines(
+            [(0.0, "オープニング"), (2.2, "東京"), (76.2, "大井"), (150.0, "川崎")],
+            220.0,
+        )
+        self.assertEqual(
+            merged,
+            [
+                "00:00 オープニング / 東京",
+                "01:16 大井",
+                "02:30 川崎",
+            ],
+        )
+        # 3件に満たない場合はリンク化されないので概要欄へ出さない
+        self.assertEqual(
+            renderer._finalize_chapter_lines([(0.0, "川崎11R"), (12.0, "門別12R")], 24.0),
+            [],
+        )
+        # 末尾のチャプターが10秒未満のときも1つ前へ畳む
+        self.assertEqual(
+            renderer._finalize_chapter_lines(
+                [(0.0, "A"), (20.0, "B"), (40.0, "C"), (60.0, "D")],
+                63.0,
+            ),
+            ["00:00 A", "00:20 B", "00:40 C / D"],
+        )
 
     def test_five_grade_short_is_capped_at_59_point_5_seconds(self) -> None:
         intermediate = renderer._daily_short_intermediate_duration(5)
@@ -745,13 +861,14 @@ class SocialVideoRendererTest(unittest.TestCase):
         broken = _race()
         broken.id = "broken-short"
         broken.race_number = 10
-        broken.race_name = "除外重賞"
+        broken.race_name = "除外ステークス"
         broken.grade = "G3"
         healthy = _race()
         healthy.id = "healthy-short"
         healthy.race_number = 11
-        healthy.race_name = "収録重賞"
+        healthy.race_name = "収録ステークス"
         healthy.grade = "G3"
+        broken.venue_name = healthy.venue_name = "東京"
         venue = VenueVideoData("東京", "中央", [broken, healthy])
         original_builder = renderer._build_short_motion_scene
 
@@ -776,9 +893,9 @@ class SocialVideoRendererTest(unittest.TestCase):
 
         self.assertEqual(package.race_ids, ["healthy-short"])
         self.assertEqual(metadata["render_omissions"][0]["race_id"], "broken-short")
-        self.assertIn("11/1(日)｜全1レースAI分析", package.title)
+        self.assertIn("11/1(日)｜東京 注目1レースAI分析", package.title)
         self.assertNotIn("全重賞", package.title)
-        self.assertIn("除外重賞", package.description)
+        self.assertIn("除外ステークス", package.description)
 
     def test_long_title_prioritizes_grade_race_name(self) -> None:
         race = _race()

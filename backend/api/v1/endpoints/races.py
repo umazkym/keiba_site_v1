@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from database.database import get_db
 from crud import race_crud
 from schemas import race_schema
+from core.race_name import display_race_name
 from datetime import date, timedelta, datetime, timezone
 # ▼▼▼▼▼ 【修正点】typingからDictとAnyをインポート ▼▼▼▼▼
 from typing import Optional, List, Dict, Any
@@ -175,7 +176,7 @@ def read_special_pick(target_date: date, response: Response, db: Session = Depen
         horse_id=pick.horse_id,
         horse_name=pick.horse_name,
         race_id=pick.race_id,
-        race_name=pick.race.race_name,
+        race_name=display_race_name(pick.race.race_name),
         venue_name=pick.race.venue_name,
         race_number=pick.race.race_number,
         deviation_score=pick.deviation_score,

@@ -69,7 +69,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const raceName = detail?.race.race_name;
     const venueName = detail?.venue_name;
     const indexPolicy = getRaceIndexPolicy(params.date, {
-        isGradeRace: isGradeRaceName(raceName),
+        // APIのgradeを優先する。race_nameは整形済みで末尾の「重賞」表記が
+        // 残らないため、名前による判定はgradeを返さない旧APIと過去データの
+        // フォールバックとしてのみ使う。
+        isGradeRace: Boolean(detail?.race.grade) || isGradeRaceName(raceName),
     });
     const courseLabel = detail?.race.course_type && detail.race.distance
         ? `${detail.race.course_type}${detail.race.distance}m`
@@ -129,7 +132,7 @@ export default async function RaceDetailPage({ params }: Props) {
         ? { jra: [{ venue_name: selectedVenueName, races: [selectedRace] }], nar: [] }
         : { jra: [], nar: [{ venue_name: selectedVenueName, races: [selectedRace] }] };
     const detailIndexPolicy = getRaceIndexPolicy(params.date, {
-        isGradeRace: isGradeRaceName(selectedRace.race_name),
+        isGradeRace: Boolean(selectedRace.grade) || isGradeRaceName(selectedRace.race_name),
     });
     const initialRaceLinks = detail.race_numbers.map(raceNumberItem => ({
         raceNumber: raceNumberItem,

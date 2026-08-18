@@ -13,6 +13,7 @@ from sqlalchemy import and_, case, desc, func, or_
 from sqlalchemy.orm import Session, load_only
 
 from database import models
+from core.race_name import display_race_name
 
 
 _VENUE_SLUGS: Dict[str, str] = {
@@ -701,7 +702,7 @@ def _recent_runs(
             "race_date": race.race_date,
             "venue_name": race.venue_name,
             "race_number": race.race_number,
-            "race_name": race.race_name,
+            "race_name": display_race_name(race.race_name),
             "course_label": _course_label(race.course_type, race.distance),
             "horse_id": horse.id,
             "horse_name": horse.name,
@@ -768,7 +769,7 @@ def _upcoming_races(
             "race_date": race.race_date,
             "venue_name": race.venue_name,
             "race_number": race.race_number,
-            "race_name": race.race_name,
+            "race_name": display_race_name(race.race_name),
             "course_label": _course_label(race.course_type, race.distance),
             "horse_id": horse.id,
             "horse_name": horse.name,
@@ -818,7 +819,7 @@ def _prediction_history(
             "race_date": race.race_date,
             "venue_name": race.venue_name,
             "race_number": race.race_number,
-            "race_name": race.race_name,
+            "race_name": display_race_name(race.race_name),
             "deviation_score": prediction.deviation_score,
             "mark": prediction.mark,
             "rank": rank,
@@ -1298,7 +1299,7 @@ def get_race_series(db: Session, race_name: str) -> Optional[Dict[str, Any]]:
             "race_date": race.race_date,
             "venue_name": race.venue_name,
             "race_number": race.race_number,
-            "race_name": race.race_name,
+            "race_name": display_race_name(race.race_name),
             "course_label": _course_label(race.course_type, race.distance),
             "field_size": race.total_horses,
             "winner_name": winner_horse.name if winner_horse else None,
@@ -1595,7 +1596,7 @@ def get_race_features(db: Session, race_id: str) -> Optional[Dict[str, Any]]:
         "race_date": race.race_date,
         "venue_name": race.venue_name,
         "race_number": race.race_number,
-        "race_name": race.race_name,
+        "race_name": display_race_name(race.race_name),
         "course_label": _course_label(race.course_type, race.distance),
         "runners": runners,
         "as_of": _now(),

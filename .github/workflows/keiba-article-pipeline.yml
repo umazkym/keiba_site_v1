@@ -192,7 +192,7 @@ jobs:
       - name: Install Backend Dependencies
         if: steps.gemini_circuit.outputs.blocked != 'true'
         working-directory: ./backend
-        run: pip install -r requirements.txt
+        run: pip install --prefer-binary -r requirements.txt
 
       - name: Prepare Article Coverage Reports
         if: steps.gemini_circuit.outputs.blocked != 'true'

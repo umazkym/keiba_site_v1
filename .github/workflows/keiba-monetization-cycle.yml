@@ -70,7 +70,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python -m pip install -r backend/requirements.txt
+          python -m pip install --prefer-binary -r backend/requirements.txt
           python -m pip install google-cloud-monitoring
           npm ci --prefix frontend
 

@@ -113,6 +113,10 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-08-20**:
+  * **lxmlのwheel欠落でデータ取得が停止し、YouTube日次投稿が不成立になった障害を修正**:
+    2026-08-19のKeiba Data Fetch (Afternoon)が`Install dependencies`で失敗した。バージョン未固定の`lxml`が新しいsdistのみのリリース（6.1.2）へ解決され、`libxml2`/`libxslt`の開発パッケージがないランナー上でwheelビルドに失敗したためである。翌日分の予測が生成されず、同日のKeiba YouTube Video Pipelineは2回とも`2026-08-20は2回再確認しても、3頭以上のAI偏差値を持つ収録可能レースが見つかりません。`で停止し、2026-08-20の横動画とShortが両方とも投稿されなかった。再発防止として、`backend/requirements.txt`を導入する全ワークフローのpip installへ`--prefer-binary`を付与し、新しいsdistのみのリリースより既存のwheelを優先させるようにした。2026-08-20分の投稿は`workflow_dispatch`（`target_date=2026-08-20`、`publication_mode=scheduled_public`、`dry_run=false`）での手動復旧が必要。
+
 * **2026-08-12**:
   * **TrafficGate報酬0円の導線・計測不整合を修正**:
     楽天競馬MID 1958・リンクID 14は提携中で、2026年8月1日〜11日に207クリック・発生0件だった一方、GA4の7月15日〜8月11日は15クリック・14ユーザーだけだった。`qualified_nar`でも共通ヘッダーを常時表示する回帰を修正し、ホーム地方開催一覧直後とNAR予想表直後の新規投票会員登録CTAだけに限定した。TrafficGateの生クリックはクローラ等を含み得る疎通値とし、成果・報酬をGA4のCTAクリック数・ユーザー数と照合する運用へ変更。アフィリエイト回帰テストを本番ビルド前へ組み込み、回帰、型、計測、リリースゲート、406ページの固定運用ビルドが成功した。デザイン監査には既存の`interaction-motion`1件と`low-contrast-text`6件が残るが、今回変更ファイルによる増加はない。本番反映、口座情報登録、計測開始時刻DとD+28リマインドの登録は未実施。

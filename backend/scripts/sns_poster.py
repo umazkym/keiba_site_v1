@@ -52,7 +52,6 @@ import importlib
 import importlib.util
 from types import ModuleType
 import unicodedata
-from urllib.parse import parse_qsl, quote as url_quote, urlencode, urlsplit, urlunsplit
 
 # --- attempt to import database.*; if fails, try dynamic import from common candidate paths ---
 def dynamic_module_from_path(module_name: str, candidate_paths: List[str]) -> Optional[ModuleType]:
@@ -205,65 +204,13 @@ class ThreadsPostResult:
         return self.ok
 
 
-def build_race_url(date_str: str, race_number: Any = None, venue_name: Any = None) -> str:
-    """レースページURLを正規のクエリ形式で生成する。"""
-    base_url = f"{SITE_BASE_URL}/races/{date_str}"
-    race = str(race_number or "").strip()
-    venue = str(venue_name or "").strip()
-    params = []
-    if race:
-        params.append(f"race={url_quote(race)}")
-    if venue and venue != "?":
-        params.append(f"venue={url_quote(venue)}")
-    return f"{base_url}?{'&'.join(params)}" if params else base_url
+def build_race_url(date_str: str) -> str:
+    """その日のレース一覧ページURLを返す。
 
-
-def build_social_content_key(content: str, post_type: str, target_date: str) -> str:
-    """投稿種別・対象日・元本文から、媒体間で照合できる短いキーを作る。"""
-    normalized_post_type = re.sub(r"[^a-z0-9_-]+", "-", str(post_type or "post").lower()).strip("-_") or "post"
-    normalized_date = re.sub(r"[^0-9]+", "", str(target_date or "")) or "undated"
-    content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()[:12]
-    return f"{normalized_post_type}-{normalized_date}-{content_hash}"
-
-
-def add_social_attribution_to_text(
-    text: str,
-    platform: str,
-    post_type: str,
-    target_date: str,
-) -> str:
-    """UMA-FREEへのリンクだけへ媒体別UTMを付け、外部URLと表示文は維持する。
-
-    Xはリンクを貼らない方針のため対象外。X本文は post_to_twitter が
-    prepare_short_social_text(remove_urls=True) でURL行を落としてから投稿するので、
-    この関数を通しても置換対象が残らない。実際に使うのはThreads経路だけ。
+    クエリは付けない。/races/ 配下はクエリが1つでもあると
+    ミドルウェアが301でクエリごと落とすため、付けても届かない。
     """
-    normalized_platform = str(platform or "").strip().lower()
-    if normalized_platform != "threads":
-        raise ValueError(f"未対応のSNS帰属媒体です: {platform}")
-    content_key = build_social_content_key(text, post_type, target_date)
-
-    def replace_url(match: re.Match[str]) -> str:
-        raw_url = match.group(0)
-        trailing = ""
-        while raw_url and raw_url[-1] in "。、）)]":
-            trailing = raw_url[-1] + trailing
-            raw_url = raw_url[:-1]
-        parsed = urlsplit(raw_url)
-        if parsed.scheme != "https" or parsed.netloc.lower() != "uma-free.com":
-            return match.group(0)
-        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
-        query.update({
-            "utm_source": normalized_platform,
-            "utm_medium": "organic_social",
-            "utm_campaign": "race_post_v2",
-            "utm_content": content_key,
-            "utm_term": str(post_type or "post"),
-        })
-        attributed = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
-        return f"{attributed}{trailing}"
-
-    return re.sub(r"https://uma-free\.com/[^\s<>\"']*", replace_url, text)
+    return f"{SITE_BASE_URL}/races/{date_str}"
 
 
 def build_x_status_url(tweet_id: Any) -> str:
@@ -525,11 +472,7 @@ def _sleep_before_threads_retry(attempt: int) -> None:
     time.sleep(delay)
 
 
-def post_to_threads(
-    text: str,
-    post_type: str = "",
-    target_date: str = "",
-) -> ThreadsPostResult:
+def post_to_threads(text: str) -> ThreadsPostResult:
     """Threadsにテキスト投稿を行う。トークン失効時は明確な警告を出力する。"""
     global THREADS_ACCESS_TOKEN
     if not ENABLE_THREADS:
@@ -546,8 +489,6 @@ def post_to_threads(
         remove_urls=False,
         max_chars=THREADS_MAX_CHARS,
     )
-    if post_type and target_date:
-        text = add_social_attribution_to_text(text, "threads", post_type, target_date)
     text = truncate_for_threads(text)
 
     if DRY_RUN:
@@ -624,14 +565,12 @@ def post_to_threads(
 def post_texts_to_threads_results(
     texts: List[str],
     delay_seconds: int = 3,
-    post_type: str = "",
-    target_date: str = "",
 ) -> List[ThreadsPostResult]:
     """複数テキストをThreadsへ独立投稿し、各投稿の結果を返す。"""
     results: List[ThreadsPostResult] = []
     for idx, text in enumerate(texts, 1):
         _log(f"Threads投稿 {idx}/{len(texts)} を実行します。")
-        result = post_to_threads(text, post_type=post_type, target_date=target_date)
+        result = post_to_threads(text)
         results.append(result)
         if idx < len(texts) and delay_seconds > 0:
             time.sleep(delay_seconds)
@@ -641,16 +580,9 @@ def post_texts_to_threads_results(
 def post_texts_to_threads(
     texts: List[str],
     delay_seconds: int = 3,
-    post_type: str = "",
-    target_date: str = "",
 ) -> int:
     """複数テキストをThreadsへ独立投稿し、成功件数を返す。"""
-    results = post_texts_to_threads_results(
-        texts,
-        delay_seconds=delay_seconds,
-        post_type=post_type,
-        target_date=target_date,
-    )
+    results = post_texts_to_threads_results(texts, delay_seconds=delay_seconds)
     posted_count = sum(1 for result in results if result.ok)
     return posted_count
 
@@ -1346,7 +1278,7 @@ def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date
 
 ▼レース結果とAIの印はこちらから
 
-{build_race_url(date_str, hit.get('race_number', ''), venue_name)}
+{build_race_url(date_str)}
 
 {' '.join(hashtags)}
 {build_x_status_url(quote_tweet_id) if quote_tweet_id else ''}
@@ -1386,7 +1318,7 @@ AIが今日のレースで最も高く評価した一頭はこちら！
 
 ▼全レースの無料予測
 
-{build_race_url(date_str, pick.get('race_number', ''), pick.get('venue_name', ''))}
+{build_race_url(date_str)}
 
 {' '.join(hashtags)}
 
@@ -1403,7 +1335,7 @@ def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
         lines.append(f"{['◎','○','▲'][i]} {p.get('horse_name','?')} (AI偏差値: {float(p.get('deviation_score') or 0):.2f})")
     race_num = race.get('race_number', '')
     venue = race.get('venue_name', '')
-    lines.append(f"\n▼詳細なデータはこちら\n{build_race_url(date_str, race_num, venue)}")
+    lines.append(f"\n▼詳細なデータはこちら\n{build_race_url(date_str)}")
     lines.append(f"\n{' '.join(hashtags)}")
     return "\n".join(lines)
 
@@ -1954,7 +1886,7 @@ def create_morning_hit_tweet(hit: Dict[str, Any], summary: dict, date_str: str, 
     lines.append(f"\n[{summary.get('win',0)}-{summary.get('second',0)}-{summary.get('third',0)}-{summary.get('other',0)}]")
     lines.append(f"\n勝率: {summary.get('win_rate',0.0):.1f}% / 複勝率: {in_money_rate:.1f}%")
     lines.append(f"\n▼レース結果とAIの印はこちらから")
-    lines.append(f"\n{build_race_url(date_str, hit.get('race_number', ''), venue_name)}")
+    lines.append(f"\n{build_race_url(date_str)}")
     lines.append(f"\n{' '.join(hashtags_1)}")
     
     if quote_tweet_id:
@@ -2000,7 +1932,7 @@ def create_morning_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
     lines.append(f"\n▼全レースの無料予測")
     race_num = pick.get('race_number', '')
     venue = pick.get('venue_name', '')
-    lines.append(f"\n{build_race_url(date_str, race_num, venue)}")
+    lines.append(f"\n{build_race_url(date_str)}")
     lines.append(f"\n{' '.join(hashtags_2)}")
 
     # engagements = [
@@ -2129,7 +2061,7 @@ def find_all_grade_races_for_date(target_date: str) -> List[tuple]:
                 hashtags.append(f"#{horse_name}")
 
             race_num = race.get('race_number', '')
-            lines.append(f"\n▼詳細はこちら\n{build_race_url(target_date, race_num, venue_name)}\n")
+            lines.append(f"\n▼詳細はこちら\n{build_race_url(target_date)}\n")
             lines.append(" ".join(hashtags))
 
             tweet_text = "\n".join(lines)
@@ -2164,7 +2096,7 @@ def create_pre_race_tweet(race: dict, top_preds: List[dict]) -> str:
         hashtags.append(f"#{horse_name}")
         
     race_num = race.get('race_number', '')
-    lines.append(f"\n▼詳細なデータはこちら\n{build_race_url(date_str, race_num, venue_name)}")
+    lines.append(f"\n▼詳細なデータはこちら\n{build_race_url(date_str)}")
     lines.append(f"\n{' '.join(hashtags)}")
     
     engagements = [
@@ -2291,8 +2223,6 @@ def main():
                         x_result = post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
                         threads_results = post_texts_to_threads_results(
                             [tweet_text_1, tweet_text_2],
-                            post_type="morning_combined",
-                            target_date=today_str,
                         )
                         threads_ok = len(threads_results) == 2 and all(result.ok for result in threads_results)
                         if ENABLE_TWITTER:
@@ -2351,11 +2281,7 @@ def main():
                         _log(f"-> 既に投稿済み: morning_pick_only")
                     else:
                         x_result = post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
-                        threads_result = post_to_threads(
-                            tweet_text,
-                            post_type="morning_pick_only",
-                            target_date=today_str,
-                        )
+                        threads_result = post_to_threads(tweet_text)
                         threads_ok = bool(threads_result)
                         if ENABLE_TWITTER:
                             track_x_result(sns_failures, "morning_pick_only", x_result, threads_ok=threads_ok)
@@ -2386,11 +2312,7 @@ def main():
                             reason="夕方の動画投稿へ置換",
                         )
                         if THREADS_EVENING_VIDEO_REPLACES_TEXT
-                        else post_to_threads(
-                            tweet_text,
-                            post_type="afternoon_summary",
-                            target_date=today_str,
-                        )
+                        else post_to_threads(tweet_text)
                     )
                     threads_ok = bool(threads_result)
                     if ENABLE_TWITTER:
@@ -2427,11 +2349,7 @@ def main():
                     else:
                         _log("-> 画像生成に失敗しましたが、テキストのみで投稿します")
                         x_result = post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
-                    threads_result = post_to_threads(
-                        tweet_text,
-                        post_type="evening_race",
-                        target_date=tomorrow_str,
-                    )
+                    threads_result = post_to_threads(tweet_text)
                     threads_ok = bool(threads_result)
                     if ENABLE_TWITTER:
                         track_x_result(sns_failures, f"evening_race:{race_name}", x_result, threads_ok=threads_ok)
@@ -2482,11 +2400,7 @@ def main():
                     x_result = post_to_twitter(tweet_text, image_file, post_type="pre_race_remind", target_date=today_str, split_mode=False)
                 else:
                     x_result = post_to_twitter(tweet_text, None, post_type="pre_race_remind", target_date=today_str, split_mode=False)
-                threads_result = post_to_threads(
-                    tweet_text,
-                    post_type="pre_race_remind",
-                    target_date=today_str,
-                )
+                threads_result = post_to_threads(tweet_text)
                 threads_ok = bool(threads_result)
                 if ENABLE_TWITTER:
                     track_x_result(sns_failures, "pre_race_remind", x_result, threads_ok=threads_ok)
@@ -2532,7 +2446,7 @@ def main():
 💰 {int(payout):,}円 的中！
 
 ▼今日の全レース無料予測
-{build_race_url(today_str, race_num, venue)}
+{build_race_url(today_str)}
 
 #競馬 #AI予想 #{'万馬券' if payout >= 100000 else '高配当的中'} #{venue}競馬"""
 
@@ -2547,11 +2461,7 @@ def main():
                     target_date=today_str,
                     split_mode=False
                 )
-                threads_result = post_to_threads(
-                    tweet_text,
-                    post_type="hit_immediate",
-                    target_date=today_str,
-                )
+                threads_result = post_to_threads(tweet_text)
                 threads_ok = bool(threads_result)
                 if ENABLE_TWITTER:
                     track_x_result(sns_failures, f"hit_immediate:{venue}{race_num}R", x_result, threads_ok=threads_ok)

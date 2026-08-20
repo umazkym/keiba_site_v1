@@ -6,11 +6,11 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
-from urllib.parse import urlencode
+
+from .data_loader import venue_name_to_slug
 
 
 SITE_BASE_URL = "https://uma-free.com"
-CAMPAIGN_NAME = "daily_race_video"
 SUPPORTED_PLATFORMS = (
     "threads",
     "instagram",
@@ -81,41 +81,27 @@ def _safe_content_part(value: str) -> str:
 
 def build_content_key(
     target_date: str,
-    destination_path: str,
+    venue_name: str,
     race_number: int,
 ) -> str:
-    path_parts = [part for part in destination_path.split("/") if part]
-    venue_slug = path_parts[2] if len(path_parts) >= 4 else "unknown"
+    """投稿の識別キーを作る。遷移先URLとは独立させ、会場名から直接組み立てる。"""
+    venue_slug = venue_name_to_slug(venue_name) if venue_name else ""
     return (
         f"{target_date.replace('-', '')}_"
         f"{_safe_content_part(venue_slug)}_{max(0, int(race_number))}r_daily1"
     )
 
 
-def build_destination_url(
-    platform: str,
-    destination_path: str,
-    content_key: str,
-) -> str:
+def build_destination_url(platform: str, destination_path: str) -> str:
+    """投稿本文に載せる遷移先URLを返す。
+
+    クエリは付けない。/races/ 配下はクエリが1つでもあると
+    ミドルウェアが301でクエリごと落とすため、付けても届かない。
+    """
     if platform in PROFILE_DESTINATION_PLATFORMS:
-        query = urlencode(
-            {
-                "utm_source": platform,
-                "utm_medium": "organic_social",
-                "utm_campaign": "profile",
-            }
-        )
-        return f"{SITE_BASE_URL}/?{query}"
-    query = urlencode(
-        {
-            "utm_source": platform,
-            "utm_medium": "organic_social",
-            "utm_campaign": CAMPAIGN_NAME,
-            "utm_content": content_key,
-        }
-    )
+        return f"{SITE_BASE_URL}/"
     normalized_path = destination_path if destination_path.startswith("/") else f"/{destination_path}"
-    return f"{SITE_BASE_URL}{normalized_path}?{query}"
+    return f"{SITE_BASE_URL}{normalized_path}"
 
 
 def _bluesky_caption_for(
@@ -350,8 +336,8 @@ def build_variant(
     if not target_date or not venue_name or race_number <= 0 or not destination_path:
         raise ValueError("SNS投稿に必要な対象日・会場・レース番号・遷移先が不足しています。")
 
-    content_key = build_content_key(target_date, destination_path, race_number)
-    destination_url = build_destination_url(normalized_platform, destination_path, content_key)
+    content_key = build_content_key(target_date, venue_name, race_number)
+    destination_url = build_destination_url(normalized_platform, destination_path)
     title = _title_for(venue_name, race_number, race_name, featured_races)
     caption = _caption_for(
         normalized_platform,

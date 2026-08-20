@@ -34,7 +34,7 @@ def _package(root: Path) -> dict:
         "venue_name": "東京",
         "race_number": 11,
         "race_name": "テスト重賞",
-        "destination_path": "/races/2026-07-31/tokyo/11",
+        "destination_path": "/races/2026-07-31",
         "video_path": str(standard),
         "vertical_cover_path": str(cover),
         "variant_video_paths": {
@@ -67,13 +67,15 @@ class SocialVideoDistributionTest(unittest.TestCase):
             for platform in SUPPORTED_PLATFORMS:
                 variant = build_variant(package, platform=platform, mode="validate")
                 variant.validate_local()
-                self.assertIn(f"utm_source={platform}", variant.destination_url)
-                self.assertIn("utm_medium=organic_social", variant.destination_url)
+                self.assertNotIn("?", variant.destination_url)
                 if platform in {"instagram", "tiktok"}:
-                    self.assertIn("utm_campaign=profile", variant.destination_url)
+                    self.assertEqual(variant.destination_url, "https://uma-free.com/")
                 else:
-                    self.assertIn("utm_campaign=daily_race_video", variant.destination_url)
-                    self.assertIn("/races/2026-07-31/tokyo/11", variant.destination_url)
+                    self.assertEqual(
+                        variant.destination_url,
+                        "https://uma-free.com/races/2026-07-31",
+                    )
+                self.assertEqual(variant.content_key, "20260731_tokyo_11r_daily1")
                 if platform == "tiktok":
                     self.assertEqual(variant.video_path.name, "clean.mp4")
                     self.assertTrue(variant.is_clean_variant)
@@ -160,11 +162,7 @@ class SocialVideoDistributionTest(unittest.TestCase):
                 build_variant(package, platform="threads", mode="validate")
 
     def test_bluesky_facet_uses_utf8_byte_offsets(self) -> None:
-        url = build_destination_url(
-            "bluesky",
-            "/races/2026-07-31/tokyo/11",
-            "20260731_tokyo_11r_daily1",
-        )
+        url = build_destination_url("bluesky", "/races/2026-07-31")
         text = f"東京11Rの分析\n{url}"
         facets = _bluesky_link_facets(text, url)
         self.assertEqual(len(facets), 1)

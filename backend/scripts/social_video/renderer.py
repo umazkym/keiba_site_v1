@@ -4221,7 +4221,7 @@ def render_long_video(venue: VenueVideoData, target_date: str, output_dir: Path,
 
     if hero_race_number is None:
         raise RuntimeError(f"代表レースを選定できません: {venue.venue_name}")
-    url = build_video_url(target_date, utm_content, venue.venue_name, hero_race_number)
+    url = build_video_url(target_date)
     course_assets: dict[str, CourseAsset] = {}
     for race in venue.races:
         course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
@@ -4573,7 +4573,7 @@ def render_daily_long_video(
     else:
         render_motion_video(scenes, video_path, *size, audio_asset=audio_asset)
 
-    url = build_video_url(target_date, utm_content, hero_race.venue_name, hero_race.race_number)
+    url = build_video_url(target_date)
     chapter_lines = _finalize_chapter_lines(
         chapter_entries,
         sum(scene.duration_seconds for scene in scenes),
@@ -4851,7 +4851,7 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         render_motion_video([scene], video_path, *size, audio_asset=audio_asset)
         render_motion_video([tiktok_scene], tiktok_video_path, *size, audio_asset=audio_asset)
 
-    url = build_video_url(target_date, utm_content, race.venue_name, race.race_number, scope="race")
+    url = build_video_url(target_date)
     course_asset = resolve_course_asset(race.venue_name, race.course_type or "")
     selected_assets = {
         "brand_logo": _brand_logo_metadata(),
@@ -4912,11 +4912,7 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         },
         "thumbnail_path": str(thumbnail),
         "vertical_cover_path": str(video_dir / "000_intro.png"),
-        "destination_path": build_race_path(
-            target_date,
-            race.venue_name,
-            race.race_number,
-        ),
+        "destination_path": build_race_path(target_date),
         "race_number": race.race_number,
         "race_name": race.display_name,
         "utm_content": utm_content,
@@ -4952,7 +4948,7 @@ def render_short_video(race: RaceVideoData, target_date: str, output_dir: Path, 
         race_ids=[race.id],
         aspect_ratio="9:16",
         destination_url=url,
-        destination_path=build_race_path(target_date, race.venue_name, race.race_number),
+        destination_path=build_race_path(target_date),
         utm_content=utm_content,
         race_number=race.race_number,
         race_name=race.display_name,
@@ -5149,12 +5145,7 @@ def render_daily_short_video(
         render_motion_video(standard_scenes, video_path, *size, audio_asset=audio_asset)
         render_motion_video(tiktok_scenes, tiktok_video_path, *size, audio_asset=audio_asset)
 
-    url = build_video_url(
-        target_date,
-        utm_content,
-        lead_race.venue_name,
-        lead_race.race_number,
-    )
+    url = build_video_url(target_date)
     description = _daily_compilation_description(
         title=title,
         url=url,
@@ -5199,7 +5190,7 @@ def render_daily_short_video(
             "race_number": race.race_number,
             "race_name": race.display_name,
             "grade": race.grade or "",
-            "destination_path": build_race_path(target_date, race.venue_name, race.race_number),
+            "destination_path": build_race_path(target_date),
         }
         for race in races
     ]
@@ -5246,11 +5237,7 @@ def render_daily_short_video(
         },
         "thumbnail_path": str(thumbnail),
         "vertical_cover_path": str(video_dir / "000_intro.png"),
-        "destination_path": build_race_path(
-            target_date,
-            lead_race.venue_name,
-            lead_race.race_number,
-        ),
+        "destination_path": build_race_path(target_date),
         "race_number": lead_race.race_number,
         "race_name": compilation_label,
         "utm_content": utm_content,
@@ -5287,11 +5274,7 @@ def render_daily_short_video(
         race_ids=[race.id for race in races],
         aspect_ratio="9:16",
         destination_url=url,
-        destination_path=build_race_path(
-            target_date,
-            lead_race.venue_name,
-            lead_race.race_number,
-        ),
+        destination_path=build_race_path(target_date),
         utm_content=utm_content,
         race_number=lead_race.race_number,
         race_name=compilation_label,

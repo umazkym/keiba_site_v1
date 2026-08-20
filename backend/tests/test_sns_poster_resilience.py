@@ -32,36 +32,16 @@ class FakeResponse:
 
 
 class SnsPosterResilienceTest(unittest.TestCase):
-    def test_threads_utm_keeps_path_and_external_urls(self) -> None:
-        source = (
-            "レパードSの分析\n"
-            "https://uma-free.com/races/2026-08-09/niigata/7?race=7\n"
-            "公式 https://www.jra.go.jp/"
-        )
-        threads_text = sns_poster.add_social_attribution_to_text(
-            source,
-            "threads",
-            "evening_race",
-            "2026-08-09",
-        )
+    def test_race_url_stops_at_the_date_without_query(self) -> None:
+        """投稿本文のリンクは日付ページまでとし、クエリを付けないことを固定する。
 
-        self.assertIn("utm_source=threads", threads_text)
-        self.assertIn("utm_medium=organic_social", threads_text)
-        self.assertIn("utm_campaign=race_post_v2", threads_text)
-        self.assertIn("utm_term=evening_race", threads_text)
-        self.assertRegex(threads_text, r"utm_content=evening_race-20260809-[a-f0-9]{12}")
-        self.assertIn("/races/2026-08-09/niigata/7", threads_text)
-        self.assertIn("https://www.jra.go.jp/", threads_text)
-
-    def test_x_is_not_an_attribution_target(self) -> None:
-        """Xはリンクを貼らない方針のため、UTM付与の対象外であることを固定する。"""
-        with self.assertRaises(ValueError):
-            sns_poster.add_social_attribution_to_text(
-                "https://uma-free.com/races/2026-08-09",
-                "x",
-                "evening_race",
-                "2026-08-09",
-            )
+        /races/ 配下はクエリが1つでもあるとミドルウェアが301でクエリごと
+        落とすため、レース番号・会場・帰属パラメータのいずれも届かない。
+        """
+        self.assertEqual(
+            sns_poster.build_race_url("2026-08-09"),
+            "https://uma-free.com/races/2026-08-09",
+        )
 
     def test_x_body_drops_url_and_cta_line(self) -> None:
         """X本文からはURL行と直前の誘導文が落ちることを固定する。"""
@@ -116,11 +96,6 @@ class SnsPosterResilienceTest(unittest.TestCase):
 
         self.assertIn("▼全レースの無料予測", threads_text)
         self.assertIn("https://uma-free.com/races/2026-06-28?race=11", threads_text)
-
-    def test_social_content_key_is_stable_for_same_source(self) -> None:
-        first = sns_poster.build_social_content_key("同じ本文", "pre_race_remind", "2026-08-09")
-        second = sns_poster.build_social_content_key("同じ本文", "pre_race_remind", "2026-08-09")
-        self.assertEqual(first, second)
 
     def test_action_level_403_is_retryable_but_other_auth_errors_are_permanent(self) -> None:
         action_error = FakeTwitterError(

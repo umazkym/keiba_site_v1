@@ -388,7 +388,7 @@ class SocialVideoRendererTest(unittest.TestCase):
             self.assertFalse(metadata["publishable"])
             self.assertEqual(metadata["selected_assets"]["brand_logo"]["type"], "brand_logo")
             self.assertEqual(metadata["race_number"], 11)
-            self.assertTrue(metadata["destination_path"].endswith("/11"))
+            self.assertEqual(metadata["destination_path"], "/races/2026-07-12")
             self.assertIn("tiktok_clean", metadata["variant_video_paths"])
             self.assertTrue(rendered.vertical_cover_path.exists())
 
@@ -490,20 +490,13 @@ class SocialVideoRendererTest(unittest.TestCase):
             with Image.open(date_root / "shorts-ui-overlay.png") as image:
                 self.assertEqual(image.size, (1080, 1920))
 
-    def test_compilation_video_url_points_to_race_date_page(self) -> None:
-        url = build_video_url("2026-07-12", "venue_long_函館", "函館", 11)
+    def test_video_url_points_to_the_race_date_page_without_query(self) -> None:
+        # 単発レースの動画も含め、着地先は日付ページに統一する。
+        # /races/ 配下はクエリが1つでもあるとミドルウェアが301で落とすため、
+        # 帰属パラメータを付けても届かない。
         self.assertEqual(
-            url,
-            "https://uma-free.com/races/2026-07-12?utm_source=youtube&utm_medium=video"
-            "&utm_campaign=daily_race_video_v2&utm_content=venue_long_%E5%87%BD%E9%A4%A8",
-        )
-
-    def test_single_race_video_url_points_to_race_detail_page(self) -> None:
-        url = build_video_url("2026-07-12", "short_hakodate_11", "函館", 11, scope="race")
-        self.assertEqual(
-            url,
-            "https://uma-free.com/races/2026-07-12/hakodate/11?utm_source=youtube&utm_medium=video"
-            "&utm_campaign=daily_race_video_v2&utm_content=short_hakodate_11",
+            build_video_url("2026-07-12"),
+            "https://uma-free.com/races/2026-07-12",
         )
 
     def test_race_display_name_uses_the_shared_normalizer(self) -> None:
@@ -513,12 +506,7 @@ class SocialVideoRendererTest(unittest.TestCase):
         self.assertEqual(race.display_name, "スパーキングサマーカップ")
 
     def test_video_url_falls_back_to_site_root_without_target_date(self) -> None:
-        url = build_video_url("", "daily_short_compilation")
-        self.assertEqual(
-            url,
-            "https://uma-free.com?utm_source=youtube&utm_medium=video"
-            "&utm_campaign=daily_race_video_v2&utm_content=daily_short_compilation",
-        )
+        self.assertEqual(build_video_url(""), "https://uma-free.com")
 
     def test_video_description_has_one_site_link_without_date_or_credit(self) -> None:
         description = renderer._description(

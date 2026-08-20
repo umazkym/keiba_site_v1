@@ -902,13 +902,21 @@ def _upload_all(
         for item in publishable_items
     }
     schedule_shift_minutes = 0
+    # 予約時刻は対象日前日19:00 JSTが基準。当日復旧は基準が丸1日前になるため、
+    # 遅延ガードの上限をそのままでは必ず超える。復旧時だけ上限を切り替える。
+    recovery_only = getattr(args, "recovery_only", False)
+    maximum_shift_minutes = (
+        getattr(args, "recovery_max_publish_shift_minutes", args.max_publish_shift_minutes)
+        if recovery_only
+        else args.max_publish_shift_minutes
+    )
     if publication_mode == "scheduled_public":
         publish_schedule, schedule_shift_minutes = build_publish_schedule(
             target_date,
             args.publish_time_jst,
             [item.publish_offset_minutes for item in publishable_items],
             minimum_lead_minutes=args.publish_min_lead_minutes,
-            maximum_shift_minutes=args.max_publish_shift_minutes,
+            maximum_shift_minutes=maximum_shift_minutes,
         )
         publish_at_by_key.update(
             {
@@ -1221,6 +1229,12 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=int(os.getenv("YOUTUBE_MAX_PUBLISH_SHIFT_MINUTES", "240")),
         help="GitHub Actions遅延時に許可する予約時刻の最大後ろ倒し分数",
+    )
+    parser.add_argument(
+        "--recovery-max-publish-shift-minutes",
+        type=int,
+        default=int(os.getenv("YOUTUBE_RECOVERY_MAX_PUBLISH_SHIFT_MINUTES", "2880")),
+        help="当日復旧モードで許可する予約時刻の最大後ろ倒し分数",
     )
     parser.add_argument(
         "--publication-mode",

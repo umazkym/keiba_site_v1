@@ -91,6 +91,8 @@ YouTube Studioで処理完了、日付、中央各場から地方各場への章
 - You MUST NOT delete registry rows to clear an error because 履歴と重複防止情報を失います。
 - You MUST let the 12:30 JST recovery cron re-attempt the current date when the previous evening produced no publication because上流データ欠損による欠測を手動`workflow_dispatch`だけに頼らせません。
 - You MUST keep `--recovery-only` on that cron because投稿済みの日に再生成・再投稿を走らせてはいけません。
+- You MUST use the recovery-specific publish shift cap when recovering the current date because予約基準は対象日前日19:00 JSTであり、通常の240分上限では必ず遅延ガードで停止します。
+- You MUST NOT run a manual `workflow_dispatch` recovery of a past target date with `publication_mode=scheduled_public` because同じ遅延ガードでアップロード前に停止します。手動復旧は`private_review`で投稿し、Studioで公開します。
 
 ## Source references
 

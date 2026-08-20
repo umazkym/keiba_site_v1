@@ -1231,6 +1231,35 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
                 maximum_shift_minutes=240,
             )
 
+    def test_same_day_recovery_shift_cap_allows_publishing_after_the_stale_anchor(self) -> None:
+        # 予約基準は対象日前日19:00 JST。当日復旧では基準が丸1日前になるため、
+        # 通常の240分上限では必ず弾かれ、復旧用の上限でのみ公開できる。
+        recovery_now = datetime(2026, 8, 20, 12, 30, tzinfo=JST)
+        with self.assertRaisesRegex(RuntimeError, "古い内容の自動公開を中止"):
+            build_publish_schedule(
+                "2026-08-20",
+                "19:00",
+                [0, 0],
+                now_jst=recovery_now,
+                maximum_shift_minutes=240,
+            )
+
+        publish_times, shift_minutes = build_publish_schedule(
+            "2026-08-20",
+            "19:00",
+            [0, 0],
+            now_jst=recovery_now,
+            maximum_shift_minutes=2880,
+        )
+        first_publish_at = datetime.fromisoformat(
+            publish_times[0].replace("Z", "+00:00")
+        ).astimezone(JST)
+        self.assertEqual(shift_minutes, 1100)
+        self.assertEqual(len(publish_times), 2)
+        self.assertEqual(len(set(publish_times)), 1)
+        self.assertGreaterEqual(first_publish_at, recovery_now + timedelta(minutes=45))
+        self.assertEqual(first_publish_at.date(), date(2026, 8, 20))
+
     def test_authenticated_channel_must_match_configured_channel(self) -> None:
         client = YouTubeClient.__new__(YouTubeClient)
         client.channel_id = "expected-channel"

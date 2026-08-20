@@ -118,6 +118,8 @@
     2026-08-19のKeiba Data Fetch (Afternoon)が`Install dependencies`で失敗した。バージョン未固定の`lxml`が新しいsdistのみのリリース（6.1.2）へ解決され、`libxml2`/`libxslt`の開発パッケージがないランナー上でwheelビルドに失敗したためである。翌日分の予測が生成されず、同日のKeiba YouTube Video Pipelineは2回とも`2026-08-20は2回再確認しても、3頭以上のAI偏差値を持つ収録可能レースが見つかりません。`で停止し、2026-08-20の横動画とShortが両方とも投稿されなかった。再発防止として、`backend/requirements.txt`を導入する全ワークフローのpip installへ`--prefer-binary`を付与し、新しいsdistのみのリリースより既存のwheelを優先させるようにした。2026-08-20分の投稿は`workflow_dispatch`（`target_date=2026-08-20`、`publication_mode=scheduled_public`、`dry_run=false`）での手動復旧が必要。
   * **YouTube日次投稿に当日復旧cronを追加**:
     前日夜の実行でデータが無かった場合、従来は`schedule`も`workflow_run`も翌日分を対象にするため、その日の動画が自動では復旧されなかった。12:30 JST（UTC 03:30）の当日復旧cronを`keiba-youtube-video-pipeline.yml`へ追加し、`workflow_dates.py`でcron文字列ごとに対象日オフセットを決めるようにした（未知のcronは従来どおり翌日分）。復旧起動では`--recovery-only`を渡し、対象日の日次動画が既に終端状態（scheduled / private_review / published）なら生成せず即終了、未投稿の種別が残る場合だけ生成・投稿する。未開催日にも毎日起動するため、収録可能レース0件は失敗とせず警告扱いで正常終了し、サマリー未生成時はSNS配信ステップもスキップする。`tests/test_workflow_dates.py`（10件）は成功。`tests/test_youtube_video_pipeline_v7.py`は変更前後で同じ3件（ローカル未導入の`google`パッケージ依存など）のみ失敗。
+  * **当日復旧が予約公開の遅延ガードで必ず停止する問題を修正**:
+    2026-08-20 17:09 JSTの手動復旧（`target_date=2026-08-20`、`scheduled_public`）は横動画1920x1080・4分56秒とShortの生成まで完了したが、`build_publish_schedule`が`RuntimeError: 必要な後ろ倒し=1390分 / 上限=240分`で停止し、2本ともアップロードされなかった。予約時刻の基準が`target_date`の前日19:00 JSTであり、当日実行では基準が丸1日前になるためである。同じ理由で追加直後の当日復旧cronも必ず停止する状態だったため、復旧起動時のみ`YOUTUBE_RECOVERY_MAX_PUBLISH_SHIFT_MINUTES`（既定2880分）を使うようにした。45分の最低猶予と動画間のoffsetは維持され、12:30 JST起動なら13:20 JST公開になる。過去日の手動復旧を`scheduled_public`で実行することはできず、`private_review`＋Studio公開が正しい手順であることをSOPへ明記した。
 
 * **2026-08-12**:
   * **TrafficGate報酬0円の導線・計測不整合を修正**:

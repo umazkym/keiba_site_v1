@@ -9,6 +9,9 @@ on:
   schedule:
     # データ更新連動が起動しない場合の予備。毎日 UTC 09:20 = JST 18:20。
     - cron: '20 9 * * *'
+    # 前日夜の投稿が不成立だった場合の当日復旧。当日データ取得の完了後、
+    # 毎日 UTC 03:30 = JST 12:30。投稿済みの日は生成せず即終了する。
+    - cron: '30 3 * * *'
   workflow_dispatch:
     inputs:
       target_date:
@@ -63,12 +66,14 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_TARGET_DATE: ${{ github.event.inputs.target_date }}
           SOURCE_RUN_STARTED_AT: ${{ github.event.workflow_run.run_started_at }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
           set -euo pipefail
           python backend/scripts/social_video/workflow_dates.py youtube \
             --event-name "$EVENT_NAME" \
             --explicit-target-date "$INPUT_TARGET_DATE" \
             --source-run-started-at "$SOURCE_RUN_STARTED_AT" \
+            --event-schedule "$EVENT_SCHEDULE" \
             --github-output >> "$GITHUB_OUTPUT"
 
       - name: Install FFmpeg and Japanese fonts
@@ -126,6 +131,7 @@ jobs:
           YOUTUBE_DAILY_QUOTA_BUDGET: ${{ vars.YOUTUBE_DAILY_QUOTA_BUDGET || '8000' }}
           SOCIAL_VIDEO_MOTION_PROFILE: 'standard'
           TARGET_DATE: ${{ steps.target_date.outputs.target_date }}
+          RECOVERY_MODE: ${{ steps.target_date.outputs.recovery_mode }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
           TZ: Asia/Tokyo
         run: |
@@ -133,6 +139,9 @@ jobs:
           EXTRA_ARGS="--target-date $TARGET_DATE"
           if [ "$DRY_RUN" = "true" ]; then
             EXTRA_ARGS="$EXTRA_ARGS --dry-run --skip-upload"
+          fi
+          if [ "$RECOVERY_MODE" = "true" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --recovery-only"
           fi
           python scripts/youtube_video_pipeline.py --max-shorts 1 $EXTRA_ARGS
 
@@ -170,6 +179,11 @@ jobs:
           TZ: Asia/Tokyo
         run: |
           set -euo pipefail
+          # 当日復旧のスキップ時と収録可能レース0件時はサマリーが生成されない。
+          if [ ! -f "../youtube_video_dist/$TARGET_DATE/summary.json" ]; then
+            echo "動画生成サマリーがないためSNS配信をスキップします: $TARGET_DATE"
+            exit 0
+          fi
           EXTRA_ARGS="--target-date $TARGET_DATE"
           if [ "$DRY_RUN" = "true" ]; then
             EXTRA_ARGS="$EXTRA_ARGS --force-validate"

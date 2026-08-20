@@ -82,13 +82,15 @@ YouTube Studioで処理完了、日付、中央各場から地方各場への章
 
 ### 6. 次の1開催日を監視する
 
-午後データ更新後の成否を問わない`workflow_run`、18:20 JSTの予備cron、単一concurrency、同一公開時刻、部分収録のSummaryを確認します。
+午後データ更新後の成否を問わない`workflow_run`、18:20 JSTの予備cron、12:30 JSTの当日復旧cron、単一concurrency、同一公開時刻、部分収録のSummaryを確認します。
 
 **Constraints:**
 
 - You MUST treat the upstream run start date in JST plus one day as the workflow-run target because完了が日付をまたいでも対象日は変わりません。
 - You MUST keep all publish offsets at zero and a 45-minute minimum lead because連続アップロード中の公開時刻超過を避けながら同時公開を維持します。
 - You MUST NOT delete registry rows to clear an error because 履歴と重複防止情報を失います。
+- You MUST let the 12:30 JST recovery cron re-attempt the current date when the previous evening produced no publication because上流データ欠損による欠測を手動`workflow_dispatch`だけに頼らせません。
+- You MUST keep `--recovery-only` on that cron because投稿済みの日に再生成・再投稿を走らせてはいけません。
 
 ## Source references
 

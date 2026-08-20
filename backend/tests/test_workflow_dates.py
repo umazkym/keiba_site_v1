@@ -51,27 +51,43 @@ class WorkflowDatesTest(unittest.TestCase):
         self.assertEqual((target_date, offset), ("2026-08-02", 2))
 
     def test_workflow_run_uses_source_start_date_when_completion_crosses_midnight(self) -> None:
-        target_date = resolve_youtube_target_date(
+        target_date, recovery_mode = resolve_youtube_target_date(
             "workflow_run",
             source_run_started_at="2026-07-31T14:55:00Z",
             now_jst=datetime(2026, 8, 1, 0, 30, tzinfo=JST),
         )
-        self.assertEqual(target_date, "2026-08-01")
+        self.assertEqual((target_date, recovery_mode), ("2026-08-01", False))
 
     def test_fallback_cron_uses_next_jst_date(self) -> None:
-        target_date = resolve_youtube_target_date(
+        target_date, recovery_mode = resolve_youtube_target_date(
+            "schedule",
+            event_schedule="20 9 * * *",
+            now_jst=datetime(2026, 7, 31, 18, 20, tzinfo=JST),
+        )
+        self.assertEqual((target_date, recovery_mode), ("2026-08-01", False))
+
+    def test_unknown_cron_keeps_next_day_target(self) -> None:
+        target_date, recovery_mode = resolve_youtube_target_date(
             "schedule",
             now_jst=datetime(2026, 7, 31, 18, 20, tzinfo=JST),
         )
-        self.assertEqual(target_date, "2026-08-01")
+        self.assertEqual((target_date, recovery_mode), ("2026-08-01", False))
+
+    def test_recovery_cron_targets_same_jst_date(self) -> None:
+        target_date, recovery_mode = resolve_youtube_target_date(
+            "schedule",
+            event_schedule="30 3 * * *",
+            now_jst=datetime(2026, 7, 31, 12, 30, tzinfo=JST),
+        )
+        self.assertEqual((target_date, recovery_mode), ("2026-07-31", True))
 
     def test_manual_target_date_is_authoritative(self) -> None:
-        target_date = resolve_youtube_target_date(
+        target_date, recovery_mode = resolve_youtube_target_date(
             "workflow_dispatch",
             explicit_target_date="2026-08-05",
             now_jst=datetime(2026, 7, 31, 12, 0, tzinfo=timezone(timedelta(hours=9))),
         )
-        self.assertEqual(target_date, "2026-08-05")
+        self.assertEqual((target_date, recovery_mode), ("2026-08-05", False))
 
     def test_workflows_use_stable_event_sources_and_single_concurrency_group(self) -> None:
         repository_root = BACKEND_DIR.parent
@@ -85,9 +101,12 @@ class WorkflowDatesTest(unittest.TestCase):
         self.assertIn("workflow_run:", youtube_workflow)
         self.assertIn("Keiba Data Fetch (Afternoon)", youtube_workflow)
         self.assertIn("cron: '20 9 * * *'", youtube_workflow)
+        self.assertIn("cron: '30 3 * * *'", youtube_workflow)
+        self.assertIn("--recovery-only", youtube_workflow)
         self.assertIn("group: keiba-youtube-video-daily", youtube_workflow)
         self.assertIn("YOUTUBE_PUBLISH_MIN_LEAD_MINUTES: '45'", youtube_workflow)
         self.assertIn("github.event.workflow_run.run_started_at", youtube_workflow)
+        self.assertIn("github.event.schedule", youtube_workflow)
         self.assertIn("github.event.schedule", friday_workflow)
         self.assertNotIn("date -u +%H", friday_workflow)
 

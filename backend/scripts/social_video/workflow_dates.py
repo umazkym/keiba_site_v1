@@ -12,6 +12,12 @@ FRIDAY_WEEKEND_OFFSETS = {
     "0 3 * * 5": 1,
     "0 6 * * 5": 2,
 }
+# cron文字列ごとのYouTube対象日オフセット。0は当日分の復旧起動を表す。
+YOUTUBE_SCHEDULE_OFFSETS = {
+    "20 9 * * *": 1,
+    "30 3 * * *": 0,
+}
+DEFAULT_YOUTUBE_SCHEDULE_OFFSET = 1
 
 
 def _as_jst(value: Optional[datetime]) -> datetime:
@@ -36,18 +42,24 @@ def resolve_youtube_target_date(
     *,
     explicit_target_date: str = "",
     source_run_started_at: str = "",
+    event_schedule: str = "",
     now_jst: Optional[datetime] = None,
-) -> str:
-    """起動種別からYouTube動画の対象日を決定する。"""
+) -> Tuple[str, bool]:
+    """起動種別からYouTube動画の対象日と当日復旧フラグを決定する。"""
     normalized_event = event_name.strip()
     explicit = explicit_target_date.strip()
     if normalized_event == "workflow_dispatch" and explicit:
-        return date.fromisoformat(explicit).isoformat()
+        return date.fromisoformat(explicit).isoformat(), False
     if normalized_event == "workflow_run":
         source_date_jst = _parse_timestamp(source_run_started_at).astimezone(JST).date()
-        return (source_date_jst + timedelta(days=1)).isoformat()
+        return (source_date_jst + timedelta(days=1)).isoformat(), False
     if normalized_event in {"schedule", "workflow_dispatch"}:
-        return (_as_jst(now_jst).date() + timedelta(days=1)).isoformat()
+        # 未知のcronは従来どおり翌日分として扱い、復旧cronだけを当日分へ切り替える。
+        offset = YOUTUBE_SCHEDULE_OFFSETS.get(
+            event_schedule.strip(), DEFAULT_YOUTUBE_SCHEDULE_OFFSET
+        )
+        target_date = (_as_jst(now_jst).date() + timedelta(days=offset)).isoformat()
+        return target_date, offset == 0
     raise ValueError(f"未対応のGitHub Actionsイベントです: {event_name}")
 
 
@@ -85,6 +97,7 @@ def _build_parser() -> argparse.ArgumentParser:
     youtube.add_argument("--event-name", required=True)
     youtube.add_argument("--explicit-target-date", default="")
     youtube.add_argument("--source-run-started-at", default="")
+    youtube.add_argument("--event-schedule", default="")
     youtube.add_argument("--github-output", action="store_true")
 
     friday = subparsers.add_parser("friday-weekend", help="金曜先行取得の対象日")
@@ -98,13 +111,15 @@ def _build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = _build_parser().parse_args()
     if args.command == "youtube":
-        target_date = resolve_youtube_target_date(
+        target_date, recovery_mode = resolve_youtube_target_date(
             args.event_name,
             explicit_target_date=args.explicit_target_date,
             source_run_started_at=args.source_run_started_at,
+            event_schedule=args.event_schedule,
         )
         if args.github_output:
             print(f"target_date={target_date}")
+            print(f"recovery_mode={'true' if recovery_mode else 'false'}")
         else:
             print(target_date)
         return

@@ -535,7 +535,12 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
                 f"- 結果: 全件ゼロのため停止（{message}）",
             ]
         )
-        if validate_publication_mode(args.publication_mode) != "disabled" and not args.dry_run:
+        # 当日復旧では未開催日にも毎日起動するため、収録可能レース0件は失敗にしない。
+        if (
+            validate_publication_mode(args.publication_mode) != "disabled"
+            and not args.dry_run
+            and not getattr(args, "recovery_only", False)
+        ):
             raise RuntimeError(message)
         print(f"{message} 動画生成を終了します。")
         return []
@@ -1146,6 +1151,57 @@ def _upload_all(
         )
 
 
+def _required_daily_video_types(args: argparse.Namespace) -> set[str]:
+    required = set()
+    if args.include_long:
+        required.add("daily_long")
+    if args.include_shorts and args.max_shorts > 0:
+        required.add("short")
+    return required
+
+
+def _completed_daily_video_types(target_date: str) -> set[str]:
+    """対象日で既に終端状態にある日次動画の種別を返す。"""
+    registry = VideoPostRegistry(enabled=True)
+    if not registry.enabled:
+        # レジストリを読めないときは通常実行へ倒す。投稿直前の予約照合で重複は防がれる。
+        return set()
+    return {
+        record.video_type
+        for record in registry.list_recent(days=1)
+        if record.target_date == target_date and record.is_terminal
+    }
+
+
+def _recovery_already_complete(args: argparse.Namespace) -> bool:
+    """当日復旧モードで、対象日の日次動画が揃っているかを判定する。"""
+    required = _required_daily_video_types(args)
+    if not required:
+        return True
+    completed = _completed_daily_video_types(args.target_date)
+    missing = required - completed
+    if missing:
+        print(
+            f"{args.target_date}の未投稿動画を復旧します: "
+            f"{', '.join(sorted(missing))}（投稿済み: {', '.join(sorted(completed)) or 'なし'}）"
+        )
+        return False
+    message = (
+        f"{args.target_date}の日次動画は投稿済みのため復旧実行をスキップします: "
+        f"{', '.join(sorted(completed))}"
+    )
+    print(message)
+    _append_actions_summary(
+        [
+            f"## YouTube当日復旧 {args.target_date}",
+            "",
+            "- 生成本数: 0",
+            f"- 結果: {message}",
+        ]
+    )
+    return True
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="UMA-FREEのYouTube向け自動動画生成・投稿パイプライン")
     parser.add_argument("--target-date", help="対象日 YYYY-MM-DD。未指定なら翌日JST")
@@ -1207,6 +1263,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-video", action="store_true", help="PNG/metadataのみ生成し、ffmpegによるMP4作成をスキップ")
     parser.add_argument("--allow-placeholder-data", action="store_true", help="検証用。サンプル馬名や空データの除外を無効化する")
     parser.add_argument("--disable-registry", action="store_true", help="DBの重複投稿レジストリを使わない")
+    parser.add_argument(
+        "--recovery-only",
+        action="store_true",
+        help="対象日の日次動画が未投稿のときだけ生成・投稿する当日復旧モード",
+    )
     parser.add_argument("--force", action="store_true", help="投稿済み判定を無視してアップロードする")
     parser.add_argument("--no-long", dest="include_long", action="store_false", help="会場別長尺動画を生成しない")
     parser.add_argument("--no-shorts", dest="include_shorts", action="store_false", help="Shorts動画を生成しない")
@@ -1225,6 +1286,8 @@ def main() -> None:
             "入力JSONまたはプレースホルダー許可を使ったYouTube投稿は禁止しています。"
             "実DBの確定データで実行してください。"
         )
+    if getattr(args, "recovery_only", False) and _recovery_already_complete(args):
+        return
     args.prepared_video_data = None
     upload_context = _preflight_upload(args)
     rendered = _render_all(args)

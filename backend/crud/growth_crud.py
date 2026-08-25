@@ -67,6 +67,8 @@ _ENTITY_MIN_SAMPLE = {
     "course": 100,
 }
 _PUBLICATION_STATUSES = {"candidate", "published", "held", "retired"}
+# データsitemapへ載せる対象。manifest/shardの順序もこの並びに従う。
+_SITEMAP_ENTITY_TYPES = ("course", "horse", "jockey", "trainer")
 _TRAINER_AFFILIATIONS = (
     "栃木・宇都宮",
     "ばんえい帯広",
@@ -1606,30 +1608,44 @@ def get_race_features(db: Session, race_id: str) -> Optional[Dict[str, Any]]:
 
 
 def get_data_sitemap(db: Session) -> List[Dict[str, Any]]:
+    """検索公開済みのデータ詳細ページを列挙する。
+
+    以前は list_entities() を1,000件ずつ全件ページングしていた。
+    _directory_people_or_horses() は1回の呼び出しで results と races の
+    全件集計（GROUP BY + HAVING を包んだ count() と本体クエリ）を2回走らせるため、
+    競走馬だけで数十ページ、つまり数十回の全件集計になり、
+    /api/v1/data/sitemap-manifest が応答しなくなっていた。
+    しかも完走しないのでキャッシュにも載らず、毎リクエストが最初からやり直していた。
+
+    sitemap に載るのは data_page_publications が published のものだけで、
+    その表は url と last_seen_data_at（最終レース日）を持っている。
+    公開判定は日次の段階公開ジョブが済ませているため、
+    ここで品質と鮮度を計算し直す必要はない。
+    """
+
     cache_key = "data-sitemap"
     cached = _cache.get(cache_key)
     if cached is not None:
         return cached
-    entries: List[Dict[str, Any]] = []
-    for entity_type in ("course", "horse", "jockey", "trainer"):
-        offset = 0
-        while True:
-            directory = list_entities(
-                db,
-                entity_type,
-                limit=1000,
-                offset=offset,
-                indexable_only=True,
-            )
-            page_items = list(directory["items"])
-            entries.extend({
-                "url": item["url"],
-                "entity_type": entity_type,
-                "last_modified": item["last_race_date"],
-            } for item in page_items if item["indexable"])
-            offset += len(page_items)
-            if not page_items or offset >= int(directory["total"]):
-                break
+
+    rows = (
+        db.query(
+            models.DataPagePublication.entity_type,
+            models.DataPagePublication.url,
+            models.DataPagePublication.last_seen_data_at,
+        )
+        .filter(models.DataPagePublication.status == "published")
+        .all()
+    )
+    entries: List[Dict[str, Any]] = [
+        {
+            "url": entity_url,
+            "entity_type": entity_type,
+            "last_modified": last_seen,
+        }
+        for entity_type, entity_url, last_seen in rows
+        if entity_type in _SITEMAP_ENTITY_TYPES and entity_url
+    ]
     entries.sort(key=lambda item: (item["entity_type"], item["url"]))
     _cache.set(cache_key, entries, 3600)
     return entries
@@ -1646,7 +1662,7 @@ def get_data_sitemap_manifest(
         grouped[entry["entity_type"]].append(entry)
 
     manifest: List[Dict[str, Any]] = []
-    for entity_type in ("course", "horse", "jockey", "trainer"):
+    for entity_type in _SITEMAP_ENTITY_TYPES:
         entries = grouped.get(entity_type, [])
         for start in range(0, len(entries), safe_shard_size):
             shard_entries = entries[start:start + safe_shard_size]
@@ -1671,7 +1687,7 @@ def get_data_sitemap_shard(
     *,
     shard_size: int = 1000,
 ) -> List[Dict[str, Any]]:
-    if entity_type not in {"course", "horse", "jockey", "trainer"}:
+    if entity_type not in _SITEMAP_ENTITY_TYPES:
         raise ValueError("unsupported entity type")
     safe_shard_size = max(1, min(shard_size, 5000))
     safe_shard = max(1, shard)

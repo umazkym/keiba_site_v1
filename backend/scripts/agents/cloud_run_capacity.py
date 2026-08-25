@@ -10,10 +10,16 @@ import urllib.request
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 
 CAPACITY_SCHEMA_VERSION = "cloud-run-capacity.v3"
+
+
+# Cloud Runの無料枠は請求先アカウント単位で共有される。同じ請求先に属する
+# 別プロジェクトのCloud Runが枠を食えば、keibaの使用分がそのまま課金対象になる。
+FREE_TIER_VCPU_SECONDS = 180_000
+FREE_TIER_GIB_SECONDS = 360_000
 
 
 @dataclass(frozen=True)
@@ -24,6 +30,8 @@ class ServiceConfig:
     cpu: float
     memory_gib: float
     max_instances: int
+    # 未指定なら--project-idを使う。同一請求先の別プロジェクトを見るときだけ指定する。
+    project_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -38,9 +46,10 @@ def parse_service_config(value: str) -> ServiceConfig:
     """`service,cpu,memory_gib,max_instances`を厳密に解釈する。"""
 
     parts = [part.strip() for part in value.split(",")]
-    if len(parts) != 4 or not parts[0]:
+    if len(parts) not in (4, 5) or not parts[0]:
         raise argparse.ArgumentTypeError(
-            "--service-configはservice,cpu,memory_gib,max_instances形式で指定してください"
+            "--service-configはservice,cpu,memory_gib,max_instances"
+            "[,project_id]形式で指定してください"
         )
     try:
         cpu = float(parts[1])
@@ -59,6 +68,7 @@ def parse_service_config(value: str) -> ServiceConfig:
         cpu=cpu,
         memory_gib=memory_gib,
         max_instances=max_instances,
+        project_id=parts[4] or None if len(parts) == 5 else None,
     )
 
 
@@ -430,19 +440,26 @@ def aggregate_cloud_run_metrics(
     }
 
 
-def collect_cloud_run_capacity(
+def _collect_service_metrics(
     *,
-    project_id: str,
+    default_project_id: str,
     service_configs: Sequence[ServiceConfig],
-    now: datetime | None = None,
-) -> dict[str, Any]:
-    """必須サービスを個別収集し、失敗したサービスも明示して返す。"""
+    end: datetime,
+) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """サービス単位で収集し、失敗分も欠測として明示する。"""
 
     metrics: list[dict[str, Any]] = []
     errors: dict[str, str] = {}
-    end = now or datetime.now(timezone.utc)
     start = end - timedelta(days=7)
     for config in service_configs:
+        project_id = config.project_id or default_project_id
+        # 既定プロジェクトのサービスは従来どおりサービス名だけをキーにする。
+        # 別プロジェクトのときだけ、衝突を避けるためprojectを前置する。
+        label = (
+            config.service_name
+            if project_id == default_project_id
+            else f"{project_id}/{config.service_name}"
+        )
         try:
             item = collect_cloud_run_metrics(
                 project_id=project_id,
@@ -450,7 +467,7 @@ def collect_cloud_run_capacity(
                 now=end,
             )
         except Exception as exc:  # noqa: BLE001 - 指標障害は公開停止へ縮退させる
-            errors[config.service_name] = str(exc)
+            errors[label] = str(exc)
             item = {
                 "service_name": config.service_name,
                 "config": asdict(config),
@@ -459,11 +476,82 @@ def collect_cloud_run_capacity(
                 "window_start": start.isoformat(),
                 "window_end": end.isoformat(),
             }
+        item["project_id"] = project_id
         metrics.append(item)
+    return metrics, errors
+
+
+def collect_cloud_run_capacity(
+    *,
+    project_id: str,
+    service_configs: Sequence[ServiceConfig],
+    shared_quota_configs: Sequence[ServiceConfig] = (),
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """必須サービスを個別収集し、失敗したサービスも明示して返す。
+
+    `shared_quota_configs`には、同じ請求先アカウントの無料枠を消費するが
+    keibaの公開可否を左右させたくないサービスを渡す。合算値だけを出力へ足し、
+    取得失敗しても`cloud_run_metrics_available`は落とさない。
+    """
+
+    end = now or datetime.now(timezone.utc)
+    metrics, errors = _collect_service_metrics(
+        default_project_id=project_id,
+        service_configs=service_configs,
+        end=end,
+    )
     output = aggregate_cloud_run_metrics(metrics)
     if errors:
         output["cloud_run_errors"] = errors
+
+    shared_metrics, shared_errors = _collect_service_metrics(
+        default_project_id=project_id,
+        service_configs=shared_quota_configs,
+        end=end,
+    )
+    output.update(_summarize_shared_quota(output, shared_metrics, shared_errors))
     return output
+
+
+def _summarize_shared_quota(
+    aggregate: Mapping[str, Any],
+    shared_metrics: Sequence[Mapping[str, Any]],
+    shared_errors: Mapping[str, str],
+) -> dict[str, Any]:
+    """共有無料枠の消費を、必須サービスの判定とは切り離して要約する。"""
+
+    def _total(key: str) -> float:
+        return sum(float(item.get(key) or 0.0) for item in shared_metrics)
+
+    shared_vcpu = round(_total("projected_monthly_vcpu_seconds"), 3)
+    shared_gib = round(_total("projected_monthly_gib_seconds"), 3)
+    available = bool(shared_metrics) and all(
+        bool(item.get("cloud_run_metrics_available")) for item in shared_metrics
+    )
+    summary: dict[str, Any] = {
+        "shared_quota_services": [
+            f"{item.get('project_id')}/{item.get('service_name')}"
+            for item in shared_metrics
+        ],  # 共有枠は必ず別プロジェクトなのでprojectを前置したまま出す。
+        # 監視対象を1件も渡していない場合は「欠測」ではなく「対象なし」なので真とする。
+        "shared_quota_metrics_available": available if shared_metrics else True,
+        "shared_quota_projected_monthly_vcpu_seconds": shared_vcpu,
+        "shared_quota_projected_monthly_gib_seconds": shared_gib,
+        "billing_account_projected_monthly_vcpu_seconds": round(
+            float(aggregate.get("projected_monthly_vcpu_seconds") or 0.0) + shared_vcpu,
+            3,
+        ),
+        "billing_account_projected_monthly_gib_seconds": round(
+            float(aggregate.get("projected_monthly_gib_seconds") or 0.0) + shared_gib,
+            3,
+        ),
+        "free_tier_vcpu_seconds": FREE_TIER_VCPU_SECONDS,
+        "free_tier_gib_seconds": FREE_TIER_GIB_SECONDS,
+    }
+    if shared_errors:
+        summary["shared_quota_errors"] = dict(shared_errors)
+    return summary
 
 
 def collect_cloudflare_cache_hit_ratio(
@@ -534,6 +622,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="service,cpu,memory_gib,max_instances。複数回指定できます。",
     )
     parser.add_argument(
+        "--shared-quota-config",
+        action="append",
+        type=parse_service_config,
+        default=[],
+        help=(
+            "同じ請求先アカウントの無料枠を消費する別サービス。"
+            "service,cpu,memory_gib,max_instances[,project_id]。"
+            "合算値だけを出力へ足し、公開可否そのものは左右しません。"
+        ),
+    )
+    parser.add_argument(
         "--service-name",
         default="keiba-frontend-v1",
         help="旧単一サービス形式との互換用",
@@ -564,6 +663,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         output = collect_cloud_run_capacity(
             project_id=args.project_id,
             service_configs=service_configs,
+            shared_quota_configs=args.shared_quota_config,
         )
     except Exception as exc:  # noqa: BLE001 - 最上位障害も安全側へ縮退
         output = {
@@ -571,6 +671,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "cloud_run_metrics_available": False,
             "required_services": [config.service_name for config in service_configs],
             "cloud_run_error": str(exc),
+            "shared_quota_metrics_available": not args.shared_quota_config,
         }
 
     try:

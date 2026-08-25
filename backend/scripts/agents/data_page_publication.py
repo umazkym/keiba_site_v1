@@ -179,8 +179,31 @@ def determine_capacity_mode(metrics: Mapping[str, Any]) -> tuple[str, list[str]]
     if reasons:
         return "red", reasons
 
+    # Cloud Runの無料枠は請求先アカウント単位で共有される。keiba自身の数字が
+    # 健全でも、同じ請求先の別プロジェクトが枠を使い切っていれば、新規に公開した
+    # ページのぶんはそのまま課金になる。ただし他プロジェクトの状態でkeibaの公開を
+    # 止めても事態は改善しないため、redではなくyellowへ落として理由を残す。
+    yellow_reasons: list[str] = []
+    if not metrics.get("shared_quota_metrics_available", True):
+        yellow_reasons.append("同一請求先の他プロジェクトのCloud Run消費を取得できません")
+    free_vcpu = float(metrics.get("free_tier_vcpu_seconds") or 0.0)
+    free_gib = float(metrics.get("free_tier_gib_seconds") or 0.0)
+    account_vcpu = float(metrics.get("billing_account_projected_monthly_vcpu_seconds") or 0.0)
+    account_gib = float(metrics.get("billing_account_projected_monthly_gib_seconds") or 0.0)
+    if free_vcpu and account_vcpu >= free_vcpu:
+        yellow_reasons.append(
+            f"請求先全体の月間換算vCPU秒が無料枠を超過: {account_vcpu:.0f} / {free_vcpu:.0f}"
+        )
+    if free_gib and account_gib >= free_gib:
+        yellow_reasons.append(
+            f"請求先全体の月間換算GiB秒が無料枠を超過: {account_gib:.0f} / {free_gib:.0f}"
+        )
+
     if db_sent_gib_24h >= 0.5:
-        return "yellow", [f"DB送信量が24時間で0.5GiB以上: {db_sent_gib_24h:.2f}GiB"]
+        yellow_reasons.append(f"DB送信量が24時間で0.5GiB以上: {db_sent_gib_24h:.2f}GiB")
+
+    if yellow_reasons:
+        return "yellow", yellow_reasons
 
     cloud_run_green = (
         projected_vcpu < 72000

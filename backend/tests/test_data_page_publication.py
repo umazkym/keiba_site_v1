@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 import unittest
@@ -353,6 +354,93 @@ class DataPagePublicationTest(unittest.TestCase):
         )
         self.assertEqual([row.entity_id for row in published], ["at-threshold"])
 
+    def test_sitemap_lists_only_published_rows_without_touching_results(self) -> None:
+        """sitemapは公開状態テーブルだけで組み立てる。
+
+        以前は list_entities() を全件ページングしており、results と races の
+        全件集計が数十回走って /sitemap-manifest が応答しなくなっていた。
+        """
+
+        self.db.add_all([
+            models.DataPagePublication(
+                entity_type="horse",
+                entity_id="published-horse",
+                url="/horses/published-horse",
+                status="published",
+                quality_score=90,
+                score_factors={},
+                last_seen_data_at=date(2026, 8, 20),
+                last_evaluated_at=datetime(2026, 8, 20),
+            ),
+            models.DataPagePublication(
+                entity_type="course",
+                entity_id="tokyo/turf-1600",
+                url="/courses/tokyo/turf-1600",
+                status="published",
+                quality_score=95,
+                score_factors={},
+                last_seen_data_at=date(2026, 8, 21),
+                last_evaluated_at=datetime(2026, 8, 21),
+            ),
+            # published 以外は載せない。
+            models.DataPagePublication(
+                entity_type="horse",
+                entity_id="candidate-horse",
+                url="/horses/candidate-horse",
+                status="candidate",
+                quality_score=60,
+                score_factors={},
+                last_seen_data_at=date(2026, 8, 20),
+                last_evaluated_at=datetime(2026, 8, 20),
+            ),
+            models.DataPagePublication(
+                entity_type="jockey",
+                entity_id="held-jockey",
+                url="/jockeys/data/held-jockey",
+                status="held",
+                quality_score=70,
+                score_factors={},
+                last_seen_data_at=date(2026, 8, 20),
+                last_evaluated_at=datetime(2026, 8, 20),
+            ),
+        ])
+        self.db.flush()
+
+        # results / races は空のままでも成立することが要点。
+        # 集計に依存していれば、ここで空リストになるか例外になる。
+        with patch.object(
+            growth_crud,
+            "list_entities",
+            side_effect=AssertionError("sitemapはlist_entitiesを呼んではいけない"),
+        ):
+            entries = growth_crud.get_data_sitemap(self.db)
+
+        self.assertEqual(
+            entries,
+            [
+                {
+                    "url": "/courses/tokyo/turf-1600",
+                    "entity_type": "course",
+                    "last_modified": date(2026, 8, 21),
+                },
+                {
+                    "url": "/horses/published-horse",
+                    "entity_type": "horse",
+                    "last_modified": date(2026, 8, 20),
+                },
+            ],
+        )
+
+        manifest = growth_crud.get_data_sitemap_manifest(self.db, shard_size=1000)
+        self.assertEqual(
+            [(item["entity_type"], item["shard"], item["count"]) for item in manifest],
+            [("course", 1, 1), ("horse", 1, 1)],
+        )
+
+    def test_sitemap_is_empty_when_nothing_is_published(self) -> None:
+        self.assertEqual(growth_crud.get_data_sitemap(self.db), [])
+        self.assertEqual(growth_crud.get_data_sitemap_manifest(self.db), [])
+
     def test_sitemap_is_stably_sharded(self) -> None:
         entries = [
             {
@@ -460,6 +548,103 @@ class CloudRunCapacityTest(unittest.TestCase):
         self.assertFalse(result["cloud_run_metrics_available"])
         self.assertEqual(result["projected_monthly_vcpu_seconds"], 100)
         self.assertIn("keiba-site-v1", result["cloud_run_errors"])
+
+    def test_shared_quota_service_is_summed_without_gating_required_services(self) -> None:
+        """別プロジェクトの消費は合算するが、必須サービスの可否は左右しない。"""
+
+        def fake_collect(*, project_id, service_config, **_kwargs):
+            return {
+                "service_name": service_config.service_name,
+                "cloud_run_metrics_available": True,
+                "projected_monthly_vcpu_seconds": (
+                    150000 if project_id == "kotoba-map-demo" else 30000
+                ),
+                "projected_monthly_gib_seconds": (
+                    300000 if project_id == "kotoba-map-demo" else 30000
+                ),
+                "request_count_7d": 10,
+                "window_start": "2026-07-28T00:00:00+00:00",
+                "window_end": "2026-08-04T00:00:00+00:00",
+            }
+
+        with patch(
+            "scripts.agents.cloud_run_capacity.collect_cloud_run_metrics",
+            side_effect=fake_collect,
+        ):
+            result = collect_cloud_run_capacity(
+                project_id="keiba-api-project",
+                service_configs=[ServiceConfig("keiba-frontend-v1", 1, 1, 2)],
+                shared_quota_configs=[
+                    ServiceConfig("kotoba-map", 1, 2, 2, project_id="kotoba-map-demo")
+                ],
+            )
+
+        # 必須サービスの集計値には共有枠分を混ぜない。
+        self.assertEqual(result["projected_monthly_vcpu_seconds"], 30000)
+        self.assertEqual(result["required_services"], ["keiba-frontend-v1"])
+        self.assertTrue(result["cloud_run_metrics_available"])
+        # 請求先アカウント全体の合算値は別キーで持つ。
+        self.assertEqual(result["shared_quota_services"], ["kotoba-map-demo/kotoba-map"])
+        self.assertEqual(result["billing_account_projected_monthly_vcpu_seconds"], 180000)
+        self.assertEqual(result["billing_account_projected_monthly_gib_seconds"], 330000)
+        self.assertTrue(result["shared_quota_metrics_available"])
+
+        mode, reasons = determine_capacity_mode({
+            **result,
+            "db_network_metrics_available": True,
+            "cloudflare_cache_hit_ratio": 0.9,
+        })
+        self.assertEqual(mode, "yellow")
+        self.assertTrue(any("無料枠を超過" in reason for reason in reasons))
+
+    def test_shared_quota_failure_degrades_to_yellow_not_red(self) -> None:
+        """他プロジェクトの指標が取れなくても、keibaの公開は止めない。"""
+
+        def fake_collect(*, project_id, service_config, **_kwargs):
+            if project_id == "kotoba-map-demo":
+                raise RuntimeError("monitoring viewer not granted")
+            return {
+                "service_name": service_config.service_name,
+                "cloud_run_metrics_available": True,
+                "projected_monthly_vcpu_seconds": 30000,
+                "projected_monthly_gib_seconds": 30000,
+                "request_count_7d": 10,
+                "window_start": "2026-07-28T00:00:00+00:00",
+                "window_end": "2026-08-04T00:00:00+00:00",
+            }
+
+        with patch(
+            "scripts.agents.cloud_run_capacity.collect_cloud_run_metrics",
+            side_effect=fake_collect,
+        ):
+            result = collect_cloud_run_capacity(
+                project_id="keiba-api-project",
+                service_configs=[ServiceConfig("keiba-frontend-v1", 1, 1, 2)],
+                shared_quota_configs=[
+                    ServiceConfig("kotoba-map", 1, 2, 2, project_id="kotoba-map-demo")
+                ],
+            )
+
+        self.assertTrue(result["cloud_run_metrics_available"])
+        self.assertFalse(result["shared_quota_metrics_available"])
+        self.assertIn("kotoba-map-demo/kotoba-map", result["shared_quota_errors"])
+
+        mode, reasons = determine_capacity_mode({
+            **result,
+            "db_network_metrics_available": True,
+            "cloudflare_cache_hit_ratio": 0.9,
+        })
+        self.assertEqual(mode, "yellow")
+        self.assertTrue(any("取得できません" in reason for reason in reasons))
+
+    def test_service_config_accepts_optional_project_id(self) -> None:
+        self.assertIsNone(parse_service_config("keiba-site-v1,1,0.5,3").project_id)
+        self.assertEqual(
+            parse_service_config("kotoba-map,1,2,2,kotoba-map-demo").project_id,
+            "kotoba-map-demo",
+        )
+        with self.assertRaises(argparse.ArgumentTypeError):
+            parse_service_config("kotoba-map,1,2")
 
 
 if __name__ == "__main__":

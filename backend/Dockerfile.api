@@ -27,5 +27,5 @@ ENV PYTHONGC=1
 # uvicorn起動:
 #   --workers 1       : 512MB制限下ではシングルワーカーが安全
 #   --limit-max-requests 1000 : メモリリーク防止のためワーカー自動再起動
-#   shell形式でRenderの$PORT環境変数を正しく展開する
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000} --workers 1 --limit-max-requests 1000"]
+#   shell形式でCloud Runが注入する$PORTを展開する（既定値はローカル実行用）
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --limit-max-requests 1000"]

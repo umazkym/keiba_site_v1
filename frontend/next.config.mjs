@@ -167,7 +167,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['@/components', '@/lib'],
   },
-  // Vercelビルドマシンでの静的生成ワーカータイムアウトを 60s -> 180s に延長
+  // ビルド時の静的生成ワーカータイムアウトを 60s -> 180s に延長
   staticPageGenerationTimeout: 180,
 };
 

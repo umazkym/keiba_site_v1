@@ -109,3 +109,9 @@ node_modules/
 /backend/scripts/social_video/assets/audio/**/*.wav
 /backend/scripts/social_video/assets/audio/**/*.flac
 /backend/scripts/social_video/assets/audio/**/*.ogg
+
+# 生成物・作業ダンプ（コミットしない）
+all_source_code.txt
+all_articles.md
+sitemap_test.xml
+debug_jra_racelist.html

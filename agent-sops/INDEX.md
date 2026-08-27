@@ -10,7 +10,7 @@
 | `monetization-affiliate-ads-ux.sop.md` | AdSense、AffiliateSlot、楽天競馬導線、PR表記 | 広告枠、アフィリエイト、レースページ/記事ページの収益導線を変える前 |
 | `production-db-iap-maintenance.sop.md` | 本番DB、IAPトンネル、GitHub ActionsのDB接続 | `DATABASE_URL`、DB保守、`.github/actions/setup-iap-db`、DB系workflowを扱う前 |
 | `analytics-clarity-ga4-audit.sop.md` | GA4、Clarity、収益ファネル、イベント設計 | 計測イベント、Clarity監査、収益ファネル分析を扱う前 |
-| `cost-performance-isr-review.sop.md` | ISR、prefetch、Vercel転送量、Cloud Runコスト | レースページ、トップページ、API応答、キャッシュ、ビルド負荷を扱う前 |
+| `cost-performance-isr-review.sop.md` | ISR、prefetch、Cloud Run/Cloudflareのコスト、請求実額の確定 | レースページ、トップページ、API応答、キャッシュ、ビルド負荷、課金調査を扱う前 |
 | `cloud-run-cloudflare-migration.sop.md` | Vercel停止、Cloud Runフロント、Cloudflare、DNS切替、段階公開 | フロントホスティング移行、ドメイン切替、CDN/WAF、検索公開容量を扱う前 |
 | `sop-authoring.sop.md` | SOPの作成・更新 | 反復手順を新規SOP化、または既存SOPを改訂するとき |
 | `social-video-multiplatform-publishing.sop.md` | Threads、Instagram、Facebook、TikTok、Pinterest、Blueskyの動画投稿 | SNS動画の追加・モード変更・認証・重複・計測を扱う前 |

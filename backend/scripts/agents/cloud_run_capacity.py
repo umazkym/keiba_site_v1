@@ -21,6 +21,29 @@ CAPACITY_SCHEMA_VERSION = "cloud-run-capacity.v3"
 FREE_TIER_VCPU_SECONDS = 180_000
 FREE_TIER_GIB_SECONDS = 360_000
 
+# 最大インスタンス数へ達した5分区間が、7日窓の何割を超えたら飽和とみなすか。
+# ゼロスケール構成では瞬間的に上限へ触れること自体は正常なため、単発では判定しない。
+# 0.01 は7日（約2016区間）でおよそ20区間に相当する。
+MAX_INSTANCE_SATURATION_RATIO = 0.01
+
+
+def sustained_saturation(
+    instance_values: Sequence[float],
+    max_instances: int,
+    *,
+    ratio_threshold: float = MAX_INSTANCE_SATURATION_RATIO,
+) -> tuple[int, int, float, bool]:
+    """上限インスタンス数へ達した区間の数・割合と、継続的な飽和かどうかを返す。
+
+    `instance_values` は5分刻みの active instance 最大値の列。
+    単発のスパイクで7日間ゲートを閉じないよう、割合で判定する。
+    """
+
+    interval_count = len(instance_values)
+    saturated = sum(1 for value in instance_values if value >= max_instances)
+    ratio = saturated / interval_count if interval_count else 0.0
+    return saturated, interval_count, ratio, ratio >= ratio_threshold
+
 
 @dataclass(frozen=True)
 class ServiceConfig:
@@ -301,6 +324,13 @@ def collect_cloud_run_metrics(
         reducer=reducers.REDUCE_SUM,
         extra_filter='metric.labels.response_code_class="5xx"',
     )
+    # request_latencies は response_code_class ごとに別系列になる。
+    # REDUCE_PERCENTILE_95 は系列をまたぐリデューサなので、件数が数十しかない
+    # 5xx 系列（タイムアウト由来で p95 が30秒級）が、件数が桁違いに多い 2xx 系列を
+    # 押しのけて全体値を決めてしまう。実測では7日間の 5xx が113件・全リクエストの
+    # 0.05%にすぎないのに p95_latency_ms が32.7秒として観測され、公開ゲートが
+    # 恒久的に閉じた。利用者が実際に待たされる時間は 2xx の遅さで測り、
+    # 失敗そのものは error_rate（閾値1%）で別に見る。
     latency_values = _list_metric_values(
         client,
         project_id=project_id,
@@ -311,6 +341,7 @@ def collect_cloud_run_metrics(
         alignment_seconds=604800,
         aligner=aligners.ALIGN_PERCENTILE_95,
         reducer=reducers.REDUCE_PERCENTILE_95,
+        extra_filter='metric.labels.response_code_class="2xx"',
     )
     instance_values = _list_metric_values(
         client,
@@ -342,6 +373,16 @@ def collect_cloud_run_metrics(
     error_count = sum(error_values)
     internet_egress_bytes = sum(internet_egress_values)
     max_active_instances = max(instance_values, default=0.0)
+    # instance_values は5分刻みの最大値で、7日間なら約2016点になる。
+    # max() だけで判定すると、1回でも上限へ触れた5分間が7日間ゲートを閉じ続ける。
+    # ゼロスケール構成では瞬間的に上限へ達すること自体は正常なので、
+    # 上限へ達した区間が一定割合を超えた場合だけ飽和とみなす。
+    (
+        saturated_intervals,
+        interval_count,
+        saturated_ratio,
+        saturated_flag,
+    ) = sustained_saturation(instance_values, config.max_instances)
     metrics_available = bool(
         billable_values or request_values or latency_values or instance_values
     )
@@ -364,7 +405,10 @@ def collect_cloud_run_metrics(
         "error_rate": error_count / request_count if request_count else 0.0,
         "p95_latency_ms": max(latency_values, default=0.0),
         "max_active_instances": max_active_instances,
-        "max_instance_saturated": max_active_instances >= config.max_instances,
+        "max_instance_saturated_intervals": saturated_intervals,
+        "max_instance_interval_count": interval_count,
+        "max_instance_saturated_ratio": round(saturated_ratio, 5),
+        "max_instance_saturated": saturated_flag,
         "internet_egress_bytes_7d": round(internet_egress_bytes),
         "projected_monthly_internet_egress_bytes": round(
             internet_egress_bytes * 30 / 7

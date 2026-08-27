@@ -164,7 +164,7 @@ export default function AboutPage() {
               "AI/機械学習: Python、scikit-learn、pandas",
               "フロントエンド: Next.js、React、TypeScript、Tailwind CSS",
               "バックエンド: FastAPI、PostgreSQL",
-              "インフラ: Vercel、Render",
+              "インフラ: Google Cloud、Cloudflare、GitHub Actions",
             ].map((item) => (
               <li key={item} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
                 {item}

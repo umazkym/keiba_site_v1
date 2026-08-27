@@ -42,10 +42,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # アプリケーションコードをコピー
 COPY . .
 
-# Render環境でのメモリ管理のため、ガベージコレクションを積極的に実行
+# メモリ制約下での安定動作のため、ガベージコレクションを積極的に実行
 ENV PYTHONGC=1
 
 # ★★★★★ 修正点 ★★★★★
 # このコンテナのデフォルトの実行コマンドを定義します。
-# このCMDは、render.yamlのdockerCommandで上書きされます。
+# 既定の実行コマンド。呼び出し側がコマンドを指定した場合はそちらが優先されます。
 CMD ["python", "run_pipeline.py"]

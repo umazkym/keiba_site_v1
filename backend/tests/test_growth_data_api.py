@@ -5,7 +5,7 @@ from datetime import date
 from pathlib import Path
 
 from pydantic import ValidationError
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 
@@ -177,6 +177,74 @@ class GrowthDataApiTest(unittest.TestCase):
         self.assertEqual(len(validated_features.runners), 2)
         self.assertEqual(validated_features.runners[0].horse_overall.sample_size, 2)
         self.assertEqual(validated_features.runners[0].horse_condition.sample_size, 2)
+
+    def test_directory_runs_the_group_by_aggregation_only_once(self) -> None:
+        # 以前は total を query.count() で別に取っていたため、GROUP BY + HAVING の
+        # 全件集計が1リクエストで2回走り、本番で10秒級の応答になっていた。
+        # count() OVER () へ寄せた結果、集計は1回だけになる。
+        for entity_type in ("course", "horse"):
+            with self.subTest(entity_type=entity_type):
+                growth_crud._cache.clear()
+                statements = []
+
+                def _record(conn, cursor, statement, parameters, context, executemany):
+                    statements.append(statement)
+
+                event.listen(self.engine, "before_cursor_execute", _record)
+                try:
+                    growth_crud.list_entities(
+                        self.db,
+                        entity_type,
+                        limit=10,
+                        offset=0,
+                        indexable_only=False,
+                    )
+                finally:
+                    event.remove(self.engine, "before_cursor_execute", _record)
+
+                grouped = [sql for sql in statements if "GROUP BY" in sql.upper()]
+                self.assertEqual(
+                    len(grouped),
+                    1,
+                    f"GROUP BYを含むSQLが{len(grouped)}本発行された: {grouped}",
+                )
+                self.assertIn("OVER (", grouped[0].upper())
+
+    def test_directory_total_is_consistent_across_pages(self) -> None:
+        # totalは count() OVER () で1回の集計から取り出している。
+        # ページを切っても総数が変わらないこと、offsetが末尾を超えたときに
+        # count()へ退避しても同じ総数になることを確認する。
+        for entity_type in ("course", "horse", "jockey", "trainer"):
+            with self.subTest(entity_type=entity_type):
+                full = growth_crud.list_entities(
+                    self.db,
+                    entity_type,
+                    limit=5000,
+                    offset=0,
+                    indexable_only=False,
+                )
+                expected_total = full["total"]
+                self.assertEqual(len(full["items"]), expected_total)
+
+                first_page = growth_crud.list_entities(
+                    self.db,
+                    entity_type,
+                    limit=1,
+                    offset=0,
+                    indexable_only=False,
+                )
+                self.assertEqual(first_page["total"], expected_total)
+                self.assertLessEqual(len(first_page["items"]), 1)
+
+                beyond = growth_crud.list_entities(
+                    self.db,
+                    entity_type,
+                    limit=10,
+                    offset=expected_total + 50,
+                    indexable_only=False,
+                )
+                self.assertEqual(beyond["total"], expected_total)
+                self.assertEqual(beyond["items"], [])
 
     def test_horse_comparison_matches_conditions_and_preserves_input_order(self) -> None:
         comparison = growth_crud.get_horse_comparison(

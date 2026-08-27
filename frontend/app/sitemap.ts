@@ -8,7 +8,7 @@ import { getUniqueCategories } from '@/lib/articles';
 // ▼▼▼▼▼【修正1】revalidate を追加▼▼▼▼▼
 // 旧: 指定なし → Googlebotがアクセスするたびに毎回Serverless関数が起動し、
 //     APIから全レースURLを取得して1MB超のXMLを新規生成していた。
-// 新: 86400秒（24時間）に1回だけ再生成。それ以外はVercel CDNキャッシュから配信。
+// 新: 86400秒（24時間）に1回だけ再生成。それ以外はCloudflareのキャッシュから配信。
 // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
 export const revalidate = 86400;
 

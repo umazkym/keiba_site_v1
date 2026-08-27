@@ -410,6 +410,37 @@ def _apply_publication_state(
     return enriched
 
 
+def _paged_groups_with_total(
+    ordered_query: Any,
+    counting_query: Any,
+    *,
+    offset: int,
+    limit: int,
+) -> Tuple[int, List[Any]]:
+    """グループ総数と1ページ分の行を1回の集計で取得する。
+
+    `query.count()` と本体クエリを別々に実行すると、GROUP BY + HAVING の全件集計が
+    2回走る。ウィンドウ関数は GROUP BY / HAVING の後に評価されるため、
+    `count() OVER ()` を選択列へ足せば同じ1回の集計からグループ総数が得られる。
+    ページが空（offsetが末尾を超えた）ときだけ総数が取れないので、その場合に限り
+    従来どおり `count()` へ退避する。
+    """
+
+    paged = (
+        ordered_query.add_columns(func.count().over().label("total_groups"))
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    if paged:
+        return int(paged[0][-1] or 0), [tuple(row)[:-1] for row in paged]
+    if offset == 0:
+        # 先頭ページが空なら該当グループは存在しない。count()を撃つ必要はない。
+        return 0, []
+    # offsetが末尾を超えた場合だけ総数が取れないので、ここでのみ集計をやり直す。
+    return counting_query.count(), []
+
+
 def _directory_people_or_horses(
     db: Session,
     entity_type: str,
@@ -448,12 +479,14 @@ def _directory_people_or_horses(
     if indexable_only and active_cutoff:
         query = query.having(last_date >= active_cutoff)
 
-    total = query.count()
-    rows = (
-        query.order_by(desc(last_date), desc(sample_count), name_column)
-        .offset(offset)
-        .limit(limit)
-        .all()
+    # GROUP BY + HAVING の全件集計はDBの主要コストで、count()と本体で2回走らせると
+    # 応答が10秒級になる。ウィンドウ関数はGROUP BY/HAVINGの後に評価されるため、
+    # count() OVER () でグループ総数を1回の集計から取り出す。
+    total, rows = _paged_groups_with_total(
+        query.order_by(desc(last_date), desc(sample_count), name_column),
+        query,
+        offset=offset,
+        limit=limit,
     )
     label = {"horse": "競走馬", "jockey": "騎手", "trainer": "調教師"}[entity_type]
     path = {"horse": "horses", "jockey": "jockeys/data", "trainer": "trainers"}[entity_type]
@@ -511,12 +544,11 @@ def _directory_courses(
         .group_by(models.Race.venue_name, models.Race.course_type, models.Race.distance)
         .having(sample_count >= (_ENTITY_MIN_SAMPLE["course"] if indexable_only else 10))
     )
-    total = query.count()
-    rows = (
-        query.order_by(desc(last_date), desc(sample_count))
-        .offset(offset)
-        .limit(limit)
-        .all()
+    total, rows = _paged_groups_with_total(
+        query.order_by(desc(last_date), desc(sample_count)),
+        query,
+        offset=offset,
+        limit=limit,
     )
     items = []
     for venue_name, course_type, distance, samples, races, latest in rows:

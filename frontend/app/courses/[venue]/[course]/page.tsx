@@ -24,7 +24,7 @@ type Props = {
 };
 
 export function generateStaticParams() {
-    // DB集計APIをVercelビルド中に19コース分同時実行しない。
+    // DB集計APIをビルド中に19コース分同時実行しない。
     // 初回アクセス時に生成し、以後は24時間ISRキャッシュする。
     return [];
 }

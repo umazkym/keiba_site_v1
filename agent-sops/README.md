@@ -43,6 +43,6 @@ npm run agent-sops:skills -- --output .claude/skills
 - `monetization-affiliate-ads-ux.sop.md`: 広告・アフィリエイト導線のUX/審査確認。
 - `production-db-iap-maintenance.sop.md`: 本番DB/IAPトンネル関連の保守。
 - `analytics-clarity-ga4-audit.sop.md`: GA4/Clarity収益ファネル監査。
-- `cost-performance-isr-review.sop.md`: Vercel/Cloud Run/ISR/転送量の低コスト運用確認。
+- `cost-performance-isr-review.sop.md`: Cloud Run/Cloudflare/ISR/転送量の低コスト運用確認と、課金レポートによる請求実額の確定。
 - `sop-authoring.sop.md`: SOP自体の作成・更新。
 - `social-video-multiplatform-publishing.sop.md`: 複数SNSへの動画配信、認証、重複防止、UTM計測。

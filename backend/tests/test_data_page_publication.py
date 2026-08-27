@@ -20,10 +20,12 @@ from crud import growth_crud
 from database import models
 from database.database import Base
 from scripts.agents.cloud_run_capacity import (
+    MAX_INSTANCE_SATURATION_RATIO,
     ServiceConfig,
     aggregate_cloud_run_metrics,
     collect_cloud_run_capacity,
     parse_service_config,
+    sustained_saturation,
 )
 from scripts.agents.data_page_publication import (
     DEFAULT_INITIAL_SEED_LIMIT,
@@ -463,6 +465,31 @@ class DataPagePublicationTest(unittest.TestCase):
 
 
 class CloudRunCapacityTest(unittest.TestCase):
+    def test_single_instance_spike_is_not_saturation(self) -> None:
+        # 5分刻み2016区間のうち1区間だけ上限へ触れても飽和とみなさない。
+        # max()判定では、この1回が7日間ゲートを閉じ続けていた。
+        values = [1.0] * 2015 + [4.0]
+        saturated, intervals, ratio, flag = sustained_saturation(values, 4)
+        self.assertEqual(saturated, 1)
+        self.assertEqual(intervals, 2016)
+        self.assertLess(ratio, MAX_INSTANCE_SATURATION_RATIO)
+        self.assertFalse(flag)
+
+    def test_sustained_saturation_is_detected(self) -> None:
+        # 上限へ達した区間が閾値を超えて続く場合は飽和として扱う。
+        values = [1.0] * 1900 + [4.0] * 116
+        saturated, intervals, ratio, flag = sustained_saturation(values, 4)
+        self.assertEqual(saturated, 116)
+        self.assertEqual(intervals, 2016)
+        self.assertGreaterEqual(ratio, MAX_INSTANCE_SATURATION_RATIO)
+        self.assertTrue(flag)
+
+    def test_saturation_without_samples_is_not_flagged(self) -> None:
+        # 指標が取れないこと自体は cloud_run_metrics_available 側で red にする。
+        saturated, intervals, ratio, flag = sustained_saturation([], 4)
+        self.assertEqual((saturated, intervals, ratio), (0, 0, 0.0))
+        self.assertFalse(flag)
+
     def test_parse_repeated_service_config_shape(self) -> None:
         config = parse_service_config("keiba-site-v1,1,0.5,3")
         self.assertEqual(config.service_name, "keiba-site-v1")

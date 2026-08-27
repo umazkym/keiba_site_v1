@@ -4,7 +4,7 @@
 
 ### 4.1.1 基本情報
 
-- **ベースURL (本番)**: `https://keiba-backend.onrender.com`
+- **ベースURL (本番)**: `https://keiba-site-v1-761440273070.us-west1.run.app`
 - **ベースURL (開発)**: `http://localhost:8000`
 - **APIバージョン**: v1
 - **プロトコル**: HTTPS
@@ -426,7 +426,7 @@ export default async function sitemap() {
 **理由**:
 - 無料サービス
 - ユーザー数が限定的
-- Renderの無料プランでの運用
+- Cloud Runの無料枠内での運用
 
 ### 4.5.2 将来の実装
 
@@ -456,9 +456,10 @@ from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://umafree.com",
-        "https://*.vercel.app",
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://uma-free.com",
+        "https://www.uma-free.com"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],

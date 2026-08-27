@@ -2,7 +2,9 @@
 
 ## Overview
 
-このSOPは、Vercel Hobby使用量、Fast Origin Transfer、Function Invocations、Cloud Run無料枠、Next.js ISR、API圧縮、prefetch抑制を扱うときの確認手順です。UMA-FREEは低コスト自動運用が前提のため、ページ表示やAPI変更は収益だけでなく無料枠消費にも影響します。
+クラウド費用を調べる、請求額の増減の原因を特定する、Cloud RunやCloudflareのキャッシュ挙動を変える、Next.jsのISR設定を触る、API応答やDBクエリの量を変える、段階公開ゲートの判定を確認する——これらのときに使う手順です。低コスト自動運用が前提のため、表示やAPIの変更は無料枠の消費と実際の請求額に直接効きます。
+
+フロントエンドは2026-08-04にVercelからCloud Run `keiba-frontend-v1` + Cloudflareへ移行済みです。無料枠の判定はCloud RunとCloudflareを対象とし、Vercel固有の指標（Fast Origin Transfer、Function Invocations、ISR Writes）はもう存在しません。費用の実額は`docs/cloud_cost_monitoring_operations.md`の手順で確認します。
 
 ## Parameters
 
@@ -99,6 +101,34 @@ GCE PostgreSQLからCloud Runへのゾーン間転送は、APIの外向き応答
 - You MUST keep DB `e2-micro`, internal IP, Direct VPC egress, and IAP-only maintenance access unless an explicit cost review approves a topology change.
 - You MUST NOT introduce Cloud SQL, Redis, a VPC Connector, public DB IP, or broad firewall rules as a transfer-cost workaround because they add fixed cost or reopen network exposure without removing the oversized query root cause.
 
+### 8. Confirm billed amounts from the billing report, not from estimates
+
+コストの結論はCloud Monitoringの推定ではなく、課金レポートの確定値で出します。`12_コスト最適化アーキテクチャ.md` §9.7 が「GCE→Cloud Run転送が課金対象か」を推定のまま未確定で残し、§11.4 で課金レポートを読んで初めて決着した経緯があります。
+
+**Constraints:**
+
+- You MUST group the billing report by SKU rather than by service, because a service total hides which mechanism is actually charging.
+- You MUST read the daily bar chart for the SKU in question before concluding that a cost is ongoing, because a burst that already ended looks identical to a steady cost in a monthly total.
+- You MUST compare the month-end forecast against the running total; a small gap means the spend has already stopped.
+- You MUST inspect the whole billing account rather than `keiba-api-project` alone, because the Cloud Run free tier is shared per billing account and another project can consume it.
+- You MUST verify that an item documented as 未対応 or 未実施 is still open before acting on it, because this repository's cost documents have repeatedly lagged behind the actual GCP state.
+- You MUST read the production capacity verdict from the GitHub Actions artifact `data-page-publication-{run_id}` (`capacity.json` / `summary.md`).
+- You MUST NOT run `cloud_run_capacity.py` locally to judge the production gate, because `google-cloud-monitoring` is absent from `backend/requirements.txt` and `backend/requirements-api.txt` and the script degrades to `cloud_run_metrics_available: false`, which `determine_capacity_mode()` reports as red even when production is healthy.
+- You MUST NOT apply an untagged-image cleanup policy to `keiba-containers` as a storage countermeasure, because `deploy-frontend-cloud-run.yml` tags every image with the commit SHA and never overwrites a tag, so no untagged image is ever produced; use `keep-recent-N` and `olderThan` conditions instead.
+- You MUST NOT set up a BigQuery billing export solely to identify which SKU is charging, because the billing report's SKU grouping combined with the daily chart already answers it.
+
+### 9. Judge Cloud Run health with request-weighted signals
+
+Cloud Monitoring の系列分割とリデューサの選び方で、健全なサービスが「壊れている」ように見えることがある。2026-08-27 に段階公開ゲートが恒久的に閉じた原因はこれだった（`12_コスト最適化アーキテクチャ.md` §12）。
+
+**Constraints:**
+
+- You MUST filter `run.googleapis.com/request_latencies` to `metric.labels.response_code_class="2xx"` when judging user-facing latency, because the metric splits into one time series per response-code class and `REDUCE_PERCENTILE_95` reduces *across series* without weighting by request count, so a handful of timed-out 5xx responses sets the reported p95 for the whole service.
+- You MUST treat failures through `error_rate` rather than through latency, because those are separate signals and double-counting failures in latency makes the gate impossible to satisfy.
+- You MUST judge instance saturation from the proportion of intervals at the ceiling, not from a single `max()` over the window, because a zero-scale service legitimately touches its ceiling for a few minutes and `max()` keeps the gate closed for the full seven days afterwards.
+- You MUST confirm a suspicious metric against Cloud Logging counts before acting on it; a p95 of 32 seconds against 113 5xx responses in 210,000 requests is an aggregation artifact, not an outage.
+- You MUST NOT loosen a gate threshold in `determine_capacity_mode()` to work around a stuck metric, because the thresholds encode free-tier boundaries; fix how the value is measured instead and leave the decision logic and its tests untouched.
+
 ## Source references
 
 - `AGENTS.md`
@@ -109,6 +139,10 @@ GCE PostgreSQLからCloud Runへのゾーン間転送は、APIの外向き応答
 - `frontend/app/races/[date]/[venue]/[race]/page.tsx`
 - `backend/main.py`
 - `backend/scripts/agents/cloud_run_capacity.py`
+- `backend/scripts/agents/data_page_publication.py`
+- `docs/cloud_cost_monitoring_operations.md`
+- `.github/workflows/deploy-frontend-cloud-run.yml`
+- `.github/workflows/keiba-data-page-publication.yml`
 - `.github/workflows/keiba-db-egress-guard.yml`
 - `.github/workflows/purge-race-cache.yml`
 
@@ -131,6 +165,10 @@ affected_routes: /races/[date]/[venue]/[race]
 ```
 
 ## Troubleshooting
+
+### 公開中のデータページが0件で`sitemap-data.xml`が404を返す
+
+`/api/v1/data/sitemap-manifest`が`[]`を返している状態です。`PUBLICATION_DAILY_LIMITS`はredで0件のため、`determine_capacity_mode()`がredを返しているかを先に確認します。redの理由は`p95_latency_ms >= 2500`（7日窓に遅い応答が残っている）か`projected_egress_gib >= 10`（恒久的に閉じる）か`max_instance_saturated`のいずれかです。判定はローカルではなくGitHub Actionsのartifactで読みます。
 
 ### `next build`で対象ルートがDynamicになる
 

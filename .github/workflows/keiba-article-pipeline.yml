@@ -80,7 +80,6 @@ jobs:
       KEIBA_GRADE_RACE_REPAIR_COOLDOWN_HOURS: "48"
       GSC_SITE_URL: ${{ vars.GSC_SITE_URL || 'sc-domain:uma-free.com' }}
       KEIBA_EVERGREEN_MAX_ORDERS_PER_RUN: "1"
-      KEIBA_GRADE_RACE_LEGACY_WRITER_ENABLED: "false"
       GEMINI_CIRCUIT_STATE_PATH: ${{ github.workspace }}/.runtime/gemini-article-circuit.json
       ARTICLE_GEMINI_BILLING_COOLDOWN_HOURS: "12"
       ARTICLE_GEMINI_AUTH_COOLDOWN_HOURS: "24"
@@ -294,11 +293,6 @@ jobs:
           KEIBA_NEWS_REQUIRE_SCHEDULE_MATCH: ${{ env.KEIBA_NEWS_REQUIRE_SCHEDULE_MATCH }}
           KEIBA_NEWS_DB_ENRICH_ENABLED: "true"
         run: python scripts/agents/news_topic_planner.py
-
-      - name: Step 1B - Generate Grade Race Write Orders
-        if: steps.gemini_circuit.outputs.blocked != 'true' && env.KEIBA_GRADE_RACE_LEGACY_WRITER_ENABLED == 'true'
-        working-directory: ./backend
-        run: python scripts/agents/grade_race_writer.py
 
       - name: Step 1C - Generate Evergreen Column Write Order
         if: steps.gemini_circuit.outputs.blocked != 'true'

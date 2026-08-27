@@ -13,6 +13,7 @@ JST = timezone(timedelta(hours=9))
 TERMINAL_PUBLICATION_STATUSES = {
     "private_review",
     "scheduled",
+    "superseded",
     "draft",
     "published",
 }
@@ -25,7 +26,8 @@ YOUTUBE_PUBLICATION_STATUS_RANK = {
     "private_review": 4,
     "scheduled": 4,
     "draft": 4,
-    "published": 5,
+    "superseded": 5,
+    "published": 6,
 }
 
 
@@ -33,6 +35,10 @@ def validate_youtube_status_transition(current: str, target: str) -> None:
     if current not in YOUTUBE_PUBLICATION_STATUS_RANK or target not in YOUTUBE_PUBLICATION_STATUS_RANK:
         raise RuntimeError(f"未定義のYouTube投稿状態です: {current} -> {target}")
     if current == target:
+        return
+    if target == "superseded":
+        if current not in {"scheduled", "private_review"}:
+            raise RuntimeError(f"差し替え対象にできないYouTube投稿状態です: {current} -> {target}")
         return
     current_rank = YOUTUBE_PUBLICATION_STATUS_RANK[current]
     target_rank = YOUTUBE_PUBLICATION_STATUS_RANK[target]

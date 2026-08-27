@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
     inputs:
       target_date:
-        description: '対象日 YYYY-MM-DD。未指定なら翌日JST'
-        required: false
+        description: '対象日 YYYY-MM-DD'
+        required: true
         type: string
       dry_run:
         description: 'true の場合は生成だけ行い、YouTube投稿しない'
@@ -32,6 +32,15 @@ on:
           - 'disabled'
           - 'private_review'
           - 'scheduled_public'
+      replacement_revision:
+        description: '差し替え版識別子。通常実行は空欄'
+        required: false
+        type: string
+      supersede_existing:
+        description: '旧予約動画を非公開化して差し替える'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: keiba-youtube-video-daily
@@ -43,6 +52,9 @@ permissions:
 
 jobs:
   generate-and-upload:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'schedule')
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -61,15 +73,27 @@ jobs:
         id: target_date
         env:
           EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
           INPUT_TARGET_DATE: ${{ github.event.inputs.target_date }}
           SOURCE_RUN_STARTED_AT: ${{ github.event.workflow_run.run_started_at }}
         run: |
           set -euo pipefail
           python backend/scripts/social_video/workflow_dates.py youtube \
             --event-name "$EVENT_NAME" \
+            --event-schedule "$EVENT_SCHEDULE" \
             --explicit-target-date "$INPUT_TARGET_DATE" \
             --source-run-started-at "$SOURCE_RUN_STARTED_AT" \
             --github-output >> "$GITHUB_OUTPUT"
+
+      - name: Record target date
+        run: |
+          {
+            echo "## YouTube対象日"
+            echo ""
+            echo "- 対象日: ${{ steps.target_date.outputs.target_date }}"
+            echo "- 本来のUTC実行時刻: ${{ steps.target_date.outputs.scheduled_at_utc }}"
+            echo "- 起動遅延: ${{ steps.target_date.outputs.delay_minutes }}分"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install FFmpeg and Japanese fonts
         run: |
@@ -127,18 +151,28 @@ jobs:
           SOCIAL_VIDEO_MOTION_PROFILE: 'standard'
           TARGET_DATE: ${{ steps.target_date.outputs.target_date }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          REPLACEMENT_REVISION: ${{ github.event.inputs.replacement_revision }}
+          SUPERSEDE_EXISTING: ${{ github.event.inputs.supersede_existing || 'false' }}
           TZ: Asia/Tokyo
         run: |
           set -euo pipefail
-          EXTRA_ARGS="--target-date $TARGET_DATE"
+          EXTRA_ARGS=(--target-date "$TARGET_DATE")
           if [ "$DRY_RUN" = "true" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --dry-run --skip-upload"
+            EXTRA_ARGS+=(--dry-run --skip-upload)
           fi
-          python scripts/youtube_video_pipeline.py --max-shorts 1 $EXTRA_ARGS
+          if [ -n "$REPLACEMENT_REVISION" ]; then
+            EXTRA_ARGS+=(--replacement-revision "$REPLACEMENT_REVISION")
+          fi
+          if [ "$SUPERSEDE_EXISTING" = "true" ]; then
+            EXTRA_ARGS+=(--supersede-existing)
+          fi
+          python scripts/youtube_video_pipeline.py --max-shorts 1 "${EXTRA_ARGS[@]}"
 
       - name: Distribute daily short to organic social platforms
         id: social_distribution
-        if: always()
+        if: >-
+          always() &&
+          (github.event_name != 'workflow_dispatch' || github.event.inputs.replacement_revision == '')
         continue-on-error: true
         working-directory: backend
         env:
@@ -181,14 +215,18 @@ jobs:
         env:
           YOUTUBE_OUTCOME: ${{ steps.youtube_pipeline.outcome }}
           SOCIAL_OUTCOME: ${{ steps.social_distribution.outcome }}
+          REPLACEMENT_REVISION: ${{ github.event.inputs.replacement_revision }}
         run: |
           if [ "$YOUTUBE_OUTCOME" != "success" ]; then
             echo "YouTube生成・投稿処理が失敗しました。"
             exit 1
           fi
-          if [ "$SOCIAL_OUTCOME" != "success" ]; then
+          if [ -z "$REPLACEMENT_REVISION" ] && [ "$SOCIAL_OUTCOME" != "success" ]; then
             echo "SNS動画配信処理が失敗しました。"
             exit 1
+          fi
+          if [ -n "$REPLACEMENT_REVISION" ]; then
+            echo "差し替え実行のためSNS動画配信をスキップしました。"
           fi
 
       - name: Upload social video validation artifacts

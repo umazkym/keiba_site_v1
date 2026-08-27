@@ -2,7 +2,7 @@
 
 ## Overview
 
-YouTube日次統合投稿の認証、データ欠損、途中失敗を安全に切り分け、利用可能なレースで横長1本とShort 1本を重複なく復旧する手順です。日次自動運用では午後の翌日データ更新完了を成否にかかわらず起点とし、18:20 JSTの予備起動とDBレジストリで停止・再実行に耐えます。
+YouTube日次統合投稿の認証、データ欠損、途中失敗を安全に切り分け、利用可能なレースで横長1本とShort 1本を重複なく復旧する手順です。日次自動運用では定期実行された午後の翌日データ更新が成功した場合だけ連動し、18:20 JSTの予備起動とDBレジストリで停止・再実行に耐えます。
 
 ## Parameters
 
@@ -67,6 +67,9 @@ Google Auth Platformの対象プロジェクト、OAuthクライアント、認�
 - You MUST treat remote `privacyStatus=public` as the terminal `published` state even when `publishAt` is absent because公開済み動画には予約日時が残りません。
 - You MUST keep YouTube states monotonic from planned through processing to scheduled/private_review and finally published because確認失敗や安全モード切替で公開済み・予約済み動画を後戻りさせてはいけません。
 - You MUST preserve an existing terminal scheduled/private_review/published record when another video or reconciliation check fails because成功済み成果物を非公開化しても復旧にはなりません。
+- You MUST use the explicit `supersede_existing` and `replacement_revision` recovery path only when an unpublished scheduled/private_review video contains incomplete race coverage because通常再実行と差し替えを混同すると重複投稿になります。
+- You MUST keep a superseded video private and retain its remote video ID, original schedule, and replacement key in the registry because動画本体は同じYouTube IDのまま置換できず、削除すると監査履歴を失います。
+- You MUST pass the complete-coverage dry-run before superseding an old video because部分データのまま旧予約だけを解除してはいけません。
 - You MUST verify actual race counts, grade counts, duration, and uploaded video IDs before opening visibility becauseタイトルと概要欄を実収録内容へ一致させます。
 
 ### 5. Studio確認後に公開し、次回同期を確認する
@@ -82,11 +85,12 @@ YouTube Studioで処理完了、日付、中央各場から地方各場への章
 
 ### 6. 次の1開催日を監視する
 
-午後データ更新後の成否を問わない`workflow_run`、18:20 JSTの予備cron、単一concurrency、同一公開時刻、部分収録のSummaryを確認します。
+成功した定期午後データ更新からの`workflow_run`、18:20 JSTの予備cron、単一concurrency、同一公開時刻、部分収録のSummaryを確認します。
 
 **Constraints:**
 
-- You MUST treat the upstream run start date in JST plus one day as the workflow-run target because完了が日付をまたいでも対象日は変わりません。
+- You MUST anchor the workflow-run target to the latest nominal UTC 04:30 Afternoon cron occurrence plus one day because実開始日のJST日付を使うと大幅遅延時に対象日が1日ずれます。
+- You MUST require an explicit YYYY-MM-DD for manual dispatch and ignore manually dispatched Afternoon runs as automatic YouTube triggers becauseバックフィル入力はworkflow_runイベントから復元できません。
 - You MUST keep all publish offsets at zero and a 45-minute minimum lead because連続アップロード中の公開時刻超過を避けながら同時公開を維持します。
 - You MUST NOT delete registry rows to clear an error because 履歴と重複防止情報を失います。
 
@@ -129,7 +133,11 @@ Actions Summaryの`coverage_status=partial`、除外R、理由、重賞収録状
 
 ### 午後データ更新Workflowが失敗した
 
-YouTubeの`workflow_run`が起動し、部分保存済みDBまたは公開予測APIから収録可能レースを探索したか確認します。上流失敗そのものはYouTube停止理由にせず、全件ゼロ、両動画生成不能、素材権利検証失敗、認証チャンネル不一致、またはYouTube側の確定的拒否だけを停止理由とします。
+失敗した上流からの`workflow_run`は投稿せず、18:20 JSTの予備cronが部分保存済みDBまたは公開予測APIから収録可能レースを探索したか確認します。緊急復旧は対象日を明示して手動実行し、全件ゼロ、両動画生成不能、素材権利検証失敗、認証チャンネル不一致、またはYouTube側の確定的拒否を停止理由とします。
+
+### 不完全な予約動画を完全版へ差し替える
+
+最初に`replacement_revision`を指定したdry-runを行い、`coverage_status=complete`、取得レース数と実収録数の一致、横動画とShortの生成成功を確認します。その後だけ同じrevisionと`supersede_existing=true`で再実行します。旧動画は`superseded`として非公開のまま保持し、完全版はrevision付きstable IDと新しいYouTube動画IDで作成します。差し替え実行では他SNSへ再配信しません。
 
 ### 連動起動と予備cronが両方動く
 

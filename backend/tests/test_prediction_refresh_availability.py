@@ -357,7 +357,7 @@ class PredictionRefreshAvailabilityTest(unittest.TestCase):
 
         self.assertIn("cron: '30 21 * * *'", workflow)
 
-    def test_youtube_workflow_runs_after_upstream_failure_and_retries_only_all_zero(self) -> None:
+    def test_youtube_workflow_uses_successful_scheduled_upstream_and_fallback_cron(self) -> None:
         workflow_path = (
             REPOSITORY_DIR
             / ".github"
@@ -366,7 +366,8 @@ class PredictionRefreshAvailabilityTest(unittest.TestCase):
         )
         workflow = workflow_path.read_text(encoding="utf-8")
 
-        self.assertNotIn("github.event.workflow_run.conclusion == 'success'", workflow)
+        self.assertIn("github.event.workflow_run.conclusion == 'success'", workflow)
+        self.assertIn("github.event.workflow_run.event == 'schedule'", workflow)
         self.assertIn("YOUTUBE_READINESS_ATTEMPTS: '3'", workflow)
         self.assertIn("YOUTUBE_READINESS_DELAY_SECONDS: '120'", workflow)
         self.assertIn("cron: '20 9 * * *'", workflow)

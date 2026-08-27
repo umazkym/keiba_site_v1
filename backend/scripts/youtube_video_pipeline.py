@@ -69,6 +69,7 @@ PLACEHOLDER_HORSE_NAMES = frozenset(
     }
 )
 PROHIBITED_VIDEO_PHRASES = ("投資", "必勝", "絶対", "圧倒的", "最強", "消去対象")
+REPLACEMENT_REVISION_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
 
 
 @dataclass(frozen=True)
@@ -427,6 +428,92 @@ def _is_upload_requested(args: argparse.Namespace) -> bool:
     )
 
 
+def _replacement_revision(args: argparse.Namespace) -> str:
+    return str(getattr(args, "replacement_revision", "") or "").strip()
+
+
+def _validate_replacement_request(args: argparse.Namespace) -> None:
+    revision = _replacement_revision(args)
+    supersede_existing = bool(getattr(args, "supersede_existing", False))
+    if revision and not REPLACEMENT_REVISION_PATTERN.fullmatch(revision):
+        raise RuntimeError(
+            "replacement_revisionは英小文字・数字・ハイフンのみ48文字以内で指定してください。"
+        )
+    if supersede_existing and not revision:
+        raise RuntimeError("supersede_existingにはreplacement_revisionが必要です。")
+    if supersede_existing and not _is_upload_requested(args):
+        raise RuntimeError("既存動画の差し替え確定はYouTubeアップロード有効時だけ実行できます。")
+    if revision and _is_upload_requested(args) and not supersede_existing:
+        raise RuntimeError(
+            "差し替え版をアップロードする場合はsupersede_existingを有効にしてください。"
+        )
+
+
+def _apply_replacement_revision(rendered: List[RenderedVideo], revision: str) -> None:
+    if not revision:
+        return
+    for item in rendered:
+        base_stable_id = item.stable_id
+        item.stable_id = f"{base_stable_id}__{revision}"
+        try:
+            metadata = json.loads(item.metadata_path.read_text(encoding="utf-8"))
+            if isinstance(metadata, dict):
+                metadata["stable_id"] = item.stable_id
+                metadata["replacement_revision"] = revision
+                metadata["replacement_of_stable_id"] = base_stable_id
+                item.metadata_path.write_text(
+                    json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(
+                f"差し替え版メタデータを更新できません: {item.metadata_path}"
+            ) from exc
+
+
+def _validate_replacement_coverage(
+    args: argparse.Namespace,
+    prepared: PreparedVideoData,
+    rendered: List[RenderedVideo],
+    included_races: List[dict[str, Any]],
+    coverage_status: str,
+    render_errors: List[str],
+) -> None:
+    revision = _replacement_revision(args)
+    if not revision:
+        return
+    required_video_types = set()
+    if args.include_long:
+        required_video_types.add("daily_long")
+    if args.include_shorts and args.max_shorts > 0:
+        required_video_types.add("short")
+    generated_video_types = {item.video_type for item in rendered}
+    missing_video_types = sorted(required_video_types - generated_video_types)
+    blocked_videos = [item.stable_id for item in rendered if not item.publishable]
+    if (
+        coverage_status == "complete"
+        and prepared.actual_race_count == prepared.source_race_count
+        and len(included_races) == prepared.source_race_count
+        and not render_errors
+        and not missing_video_types
+        and not blocked_videos
+    ):
+        return
+
+    details = [
+        f"coverage_status={coverage_status}",
+        f"収録可能={prepared.actual_race_count}/{prepared.source_race_count}",
+        f"横動画収録={len(included_races)}/{prepared.source_race_count}",
+    ]
+    if render_errors:
+        details.append("生成エラー=" + " / ".join(render_errors))
+    if missing_video_types:
+        details.append("未生成=" + ",".join(missing_video_types))
+    if blocked_videos:
+        details.append("公開不可=" + ",".join(blocked_videos))
+    raise RuntimeError("差し替え版は全レースを収録できないため停止します: " + " / ".join(details))
+
+
 def _preflight_upload(args: argparse.Namespace) -> Optional[UploadContext]:
     """動画生成前に認証・チャンネル・DBレジストリを検証する。"""
     if not _is_upload_requested(args):
@@ -629,11 +716,34 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
         else [race for race in included_races if race.get("grade")]
     )
     coverage_status = "partial" if all_omitted_races else prepared.coverage_status
+    replacement_revision = _replacement_revision(args)
+    if replacement_revision:
+        try:
+            _validate_replacement_coverage(
+                args,
+                prepared,
+                rendered,
+                included_races,
+                coverage_status,
+                render_errors,
+            )
+        except RuntimeError as exc:
+            _append_actions_summary(
+                [
+                    f"## YouTube差し替え完全性ゲート {target_date}",
+                    "",
+                    f"- replacement_revision: {replacement_revision}",
+                    f"- 結果: 停止（{exc}）",
+                ]
+            )
+            raise
+        _apply_replacement_revision(rendered, replacement_revision)
     summary = {
         "target_date": target_date,
         "generated_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "count": len(rendered),
         "publication_mode": validate_publication_mode(args.publication_mode),
+        "replacement_revision": replacement_revision or None,
         "included_races": included_races,
         "omitted_races": all_omitted_races,
         "included_grade_races": included_grade_races,
@@ -720,6 +830,93 @@ def _format_publish_at(value: Optional[datetime]) -> Optional[str]:
         return None
     aware = value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
     return aware.isoformat().replace("+00:00", "Z")
+
+
+def _supersede_existing_publications(
+    args: argparse.Namespace,
+    rendered: List[RenderedVideo],
+    context: UploadContext,
+) -> None:
+    """差し替え対象の予約を解除し、旧動画IDを履歴として確定する。"""
+    revision = _replacement_revision(args)
+    if not revision or not bool(getattr(args, "supersede_existing", False)):
+        return
+    suffix = f"__{revision}"
+    target_date = args.target_date or get_target_date()
+    candidates: List[tuple[RenderedVideo, str, PublicationRecord]] = []
+    for item in rendered:
+        if not item.stable_id.endswith(suffix):
+            raise RuntimeError(f"差し替え版の台帳キーが不正です: {item.stable_id}")
+        original_stable_id = item.stable_id[: -len(suffix)]
+        record = context.registry.get(target_date, item.video_type, original_stable_id)
+        if record is None:
+            raise RuntimeError(
+                "差し替え対象の旧動画レコードがありません: "
+                f"{target_date} {item.video_type} {original_stable_id}"
+            )
+        if record.target_date != target_date:
+            raise RuntimeError(
+                f"差し替え対象日が一致しません: expected={target_date} actual={record.target_date}"
+            )
+        if record.status not in {"scheduled", "private_review", "superseded"}:
+            raise RuntimeError(
+                "差し替え対象にできない旧動画状態です: "
+                f"{item.video_type} {original_stable_id} status={record.status}"
+            )
+        if not record.remote_video_id:
+            raise RuntimeError(f"差し替え対象の旧動画IDがありません: {original_stable_id}")
+        candidates.append((item, original_stable_id, record))
+
+    summary_lines = [
+        f"## YouTube旧動画の非公開化 {target_date}",
+        "",
+        f"- replacement_revision: {revision}",
+    ]
+    for item, original_stable_id, record in candidates:
+        if record.status == "superseded":
+            status = context.client.get_video_status(record.remote_video_id)
+            if status.privacy_status != "private" or status.publish_at:
+                raise RuntimeError(
+                    "superseded済み旧動画が非公開ではありません: "
+                    f"{record.remote_video_id} privacyStatus={status.privacy_status} "
+                    f"publishAt={status.publish_at}"
+                )
+            summary_lines.append(
+                f"- 確認済み: {original_stable_id} / video_id={record.remote_video_id} / superseded"
+            )
+            continue
+
+        status = context.client.clear_publish_schedule(record.remote_video_id)
+        if status.privacy_status == "public":
+            raise RuntimeError(
+                f"公開済み動画は自動差し替えできません: {record.remote_video_id}"
+            )
+        if status.privacy_status != "private" or status.publish_at:
+            raise RuntimeError(
+                "旧動画を非公開へ移行できません: "
+                f"{record.remote_video_id} privacyStatus={status.privacy_status} publishAt={status.publish_at}"
+            )
+        context.registry.transition(
+            target_date,
+            item.video_type,
+            original_stable_id,
+            "superseded",
+            remote_video_id=record.remote_video_id,
+            scheduled_at=record.scheduled_at,
+            metadata={
+                "superseded_reason": "coverage_recovery",
+                "replacement_revision": revision,
+                "replacement_stable_id": item.stable_id,
+                "original_scheduled_at": _format_publish_at(record.scheduled_at),
+                "privacy_status": status.privacy_status,
+                "publish_schedule_cleared": True,
+                "superseded_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            },
+        )
+        summary_lines.append(
+            f"- 非公開化: {original_stable_id} / video_id={record.remote_video_id} / superseded"
+        )
+    _append_actions_summary(summary_lines)
 
 
 def _is_retryable_status_visibility_error(record: PublicationRecord) -> bool:
@@ -930,6 +1127,12 @@ def _upload_all(
     for item in publishable_items:
         try:
             publication_metadata = item.publication_metadata()
+            replacement_revision = _replacement_revision(args)
+            if replacement_revision:
+                publication_metadata["replacement_revision"] = replacement_revision
+                publication_metadata["replacement_of_stable_id"] = item.stable_id.removesuffix(
+                    f"__{replacement_revision}"
+                )
             if schedule_shift_minutes:
                 publication_metadata["schedule_shift_minutes"] = schedule_shift_minutes
             reserved_records[(item.video_type, item.stable_id)] = registry.reserve(
@@ -1205,6 +1408,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true", help="生成のみ行い、アップロードしない")
     parser.add_argument("--skip-upload", action="store_true", help="YouTubeアップロードを常にスキップ")
     parser.add_argument("--skip-video", action="store_true", help="PNG/metadataのみ生成し、ffmpegによるMP4作成をスキップ")
+    parser.add_argument(
+        "--replacement-revision",
+        default="",
+        help="完全性ゲートを有効にして新しい台帳キーを作る差し替え版識別子",
+    )
+    parser.add_argument(
+        "--supersede-existing",
+        action="store_true",
+        help="差し替え対象の旧予約動画を非公開化しsupersededへ移行する",
+    )
     parser.add_argument("--allow-placeholder-data", action="store_true", help="検証用。サンプル馬名や空データの除外を無効化する")
     parser.add_argument("--disable-registry", action="store_true", help="DBの重複投稿レジストリを使わない")
     parser.add_argument("--force", action="store_true", help="投稿済み判定を無視してアップロードする")
@@ -1218,6 +1431,7 @@ def main() -> None:
     args = parse_args()
     if not args.target_date:
         args.target_date = get_target_date()
+    _validate_replacement_request(args)
     publication_mode = validate_publication_mode(args.publication_mode)
     upload_requested = publication_mode != "disabled" and not args.dry_run and not args.skip_upload
     if upload_requested and (args.input_json or args.allow_placeholder_data):
@@ -1229,6 +1443,8 @@ def main() -> None:
     upload_context = _preflight_upload(args)
     rendered = _render_all(args)
     if rendered:
+        if upload_context is not None:
+            _supersede_existing_publications(args, rendered, upload_context)
         _upload_all(args, rendered, upload_context=upload_context)
 
 

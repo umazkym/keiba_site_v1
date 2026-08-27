@@ -11,7 +11,7 @@ UMA-FREEへの検索外流入を増やすため、翌日開催分の確定済み
 - 説明欄はサイトURL、タイトル、`【中央・地方競馬のAI分析をいつでも無料公開中】`、収録開催場または収録レース、重賞名、チャプター、注意書き、検索意図に沿ったハッシュタグの順で構成します。
 - 基準公開時刻: 日次統合長尺と日次統合Shortを、前日19:00 JSTに同時公開します。
 - GitHub Actionsの起動が遅れた場合は、最初の公開まで45分の猶予を確保できる次の10分枠へ、全動画を同じ分数だけ後ろ倒しします。補正後も全動画は同時刻です。
-- GitHub Actionsは午後の翌日データ更新Workflowの成否にかかわらず完了時点で連動起動します。18:20 JSTの予備cronも残し、単一concurrencyグループで直列化します。連動時は前段WorkflowのJST開始日の翌日、予備cronはJST翌日、手動実行は明示した対象日を正本とします。
+- GitHub Actionsは成功した定期の午後データ更新Workflowだけから連動起動します。手動Afternoonと失敗した定期実行は自動連動せず、18:20 JSTの予備cronで補完します。単一concurrencyグループで直列化し、連動時は前段の本来のUTC 04:30 cron日+1日、予備cronは本来のUTC 09:20 cron日+1日、手動実行は必須入力の対象日を正本とします。
 - 対象日の収録可能レースが全件ゼロの場合だけ、120秒間隔で再取得2回を行い、初回を含む計3回確認します。2回目以降は同一プロセスの予測キャッシュを破棄します。1レースでも収録可能なら待機せず部分収録へ進みます。
 
 判定単位は会場ではなく各レースです。正常な馬名と有限なAI偏差値を持つ馬が3頭以上いれば収録し、出走頭数との差、位置取り指標の一部欠損、レース番号の飛び、他レースの欠損では停止しません。Prediction行なし、全馬スコアなし、予測計算エラーは当該レースだけを除外します。中央の新馬・障害、地方競馬の「ゴールデンデビュー」「スパーキングデビュー」「NewBeginning」などの初出走、比較可能な過去データ不足を明示した`予測対象外`は正常な除外です。プレースホルダー馬名はUnicode正規化後の完全一致で該当馬だけを除外し、`ウイングレイテスト`のような部分一致は拒否しません。
@@ -93,15 +93,18 @@ planned
   -> processing
   -> private_review / scheduled
   -> published
+
+scheduled / private_review
+  -> superseded（不完全な未公開動画の明示的な差し替え時だけ）
 ```
 
-動画IDはアップロード直後、サムネイル設定より前に保存します。途中で失敗した場合は同じ動画IDから再開し、動画を作り直しません。同一の対象日、動画種別、stable IDで内容hashが変わった場合は自動投稿を停止します。`--force`と投稿時の`--disable-registry`は許可しません。
+動画IDはアップロード直後、サムネイル設定より前に保存します。途中で失敗した場合は同じ動画IDから再開し、動画を作り直しません。同一の対象日、動画種別、stable IDで内容hashが変わった場合は自動投稿を停止します。`--force`と投稿時の`--disable-registry`は許可しません。不完全な予約動画を差し替える場合だけ、全レース収録可能なdry-runを先に通し、旧動画を非公開の`superseded`として保持して、`{stable_id}__{replacement_revision}`の新しい台帳キーと動画IDを作ります。同じYouTube動画IDの本体差し替えや旧台帳行の削除は行いません。
 
 Shortは`thumbnail_skipped`、横長だけが`thumbnail_set`へ進みます。アップロード後は`videos.list`で処理完了、拒否、公開状態、予約時刻を確認します。アップロード直後に動画一覧への反映が遅れて空応答になった場合は、処理確認の上限時間まで同じ動画IDを再照会します。`processing`は再開可能な中間状態として扱い、再実行時に新しい動画を作りません。既存動画が元の予約時刻を過ぎて公開済みなら`published`へ確定し、未処理の後続動画から再開します。安全ゲートで`private_review`になった動画をYouTube Studioから手動公開した場合も、次回実行時にYouTube上の公開状態を照合してDBを`published`へ同期します。
 
 生成サマリーのShort項目には、代表遷移先用の`target_date`、`venue_name`、`race_number`、`race_name`、`destination_path`に加え、全収録対象の`featured_races`を必ず残します。複数SNS配信は`featured_races`から複数レース用の投稿文を組み立て、代表レースpathを直接リンクの遷移先として使います。
 
-日次実行時には直近7日間の`scheduled`を照合し、公開済みなら`published`へ更新します。公開予定から1時間を過ぎても非公開、処理拒否、動画ID欠損のいずれかならエラーを保存します。素材・権利保留または直近7日間の投稿エラーが1件でもある日は、Repository Variableが`scheduled_public`でも当日分を自動的に`private_review`へ落とします。予測欠損はレース単位で除外し、全件ゼロの場合だけ3回確認後に停止します。すでにYouTubeへ予約済みの同日動画がある場合は`videos.update`で`publishAt`を削除し、`videos.list`で非公開を再確認します。Actions Summaryには`included_races`、`omitted_races`、収録・除外重賞、`data_source`、`retry_count`、`coverage_status`、実収録数、横動画・Shortの完成尺、投稿ID、直近7日間の状態件数とエラー件数を表示します。
+日次実行時には直近7日間の`scheduled`を照合し、公開済みなら`published`へ更新します。公開予定から1時間を過ぎても非公開、処理拒否、動画ID欠損のいずれかならエラーを保存します。素材・権利保留または直近7日間の投稿エラーが1件でもある日は、Repository Variableが`scheduled_public`でも当日分を自動的に`private_review`へ落とします。予測欠損はレース単位で除外し、全件ゼロの場合だけ3回確認後に停止します。差し替え実行では旧予約へ`videos.update`を行って`publishAt`を削除し、`videos.list`で非公開を再確認してから`superseded`へ進めます。Actions Summaryには`included_races`、`omitted_races`、収録・除外重賞、`data_source`、`retry_count`、`coverage_status`、実収録数、横動画・Shortの完成尺、投稿ID、直近7日間の状態件数とエラー件数を表示します。
 
 DB接続は既存のIAPトンネルと`127.0.0.1:15432`への実行時書き換えを維持します。旧外部IPや公開PostgreSQLは使用しません。
 
@@ -129,6 +132,8 @@ DB接続は既存のIAPトンネルと`127.0.0.1:15432`への実行時書き換�
 
 ワークフローはデータ更新連動と予備cronを単一concurrencyで直列化し、最大90分、日次統合長尺1本とShort 1本に固定します。アップロード前に動画本数、横長サムネイル数、状態確認回数からAPIクォータを概算し、設定上限を超える場合は投稿しません。日次実行ではMP4をartifactへ保存しません。手動`workflow_dispatch`かつ`dry_run=true`の場合だけ、縮小レビューMP4を7日保存します。
 
+手動実行の`target_date`はYYYY-MM-DDで必須です。通常は`replacement_revision`を空、`supersede_existing=false`にします。差し替え確認では最初に`replacement_revision`だけを指定して`dry_run=true`とし、完全性ゲート合格後の投稿実行だけ同じrevisionと`supersede_existing=true`を指定します。差し替え実行はShortを他SNSへ再配信しません。
+
 コンタクトシートにはサムネイル、導入、1レース統合画面、終了画面、Short各段階に加え、最初のレースの0.0、0.6、1.5、3.0、5.5秒フレームを収録します。
 
 ## ローカル検証
@@ -152,6 +157,13 @@ python scripts/youtube_video_pipeline.py --target-date 2026-07-24 --publication-
 ```powershell
 cd backend
 python scripts/youtube_video_pipeline.py --target-date 2026-07-24 --publication-mode disabled --dry-run --skip-upload
+```
+
+差し替え完全性のdry-run:
+
+```powershell
+cd backend
+python scripts/youtube_video_pipeline.py --target-date 2026-08-29 --publication-mode disabled --dry-run --skip-upload --replacement-revision coverage-recovery-v1
 ```
 
 非公開アップロード:

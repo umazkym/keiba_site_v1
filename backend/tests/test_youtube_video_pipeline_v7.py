@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
@@ -101,6 +102,8 @@ def _args(mode: str) -> SimpleNamespace:
         dry_run=False,
         disable_registry=False,
         force=False,
+        replacement_revision="",
+        supersede_existing=False,
         publication_mode=mode,
         publish_time_jst="19:00",
         publish_min_lead_minutes=20,
@@ -108,6 +111,9 @@ def _args(mode: str) -> SimpleNamespace:
         quota_budget=8000,
         processing_timeout_seconds=1,
         processing_poll_seconds=1,
+        include_long=True,
+        include_shorts=True,
+        max_shorts=1,
     )
 
 
@@ -170,6 +176,225 @@ def _valid_horses(prefix: str = "通常馬") -> list[HorseVideoData]:
 
 
 class YouTubeVideoPipelineV7Test(unittest.TestCase):
+    def test_replacement_revision_creates_separate_stable_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            long_video = _package(root, "daily_long", thumbnail_required=True)
+            short_video = _package(root, "short", thumbnail_required=False)
+            long_video.stable_id = "daily_all"
+            short_video.stable_id = "daily_short"
+
+            youtube_video_pipeline._apply_replacement_revision(
+                [long_video, short_video],
+                "coverage-recovery-v1",
+            )
+
+            long_metadata = json.loads(long_video.metadata_path.read_text(encoding="utf-8"))
+            short_metadata = json.loads(short_video.metadata_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(long_video.stable_id, "daily_all__coverage-recovery-v1")
+        self.assertEqual(short_video.stable_id, "daily_short__coverage-recovery-v1")
+        self.assertEqual(long_metadata["replacement_of_stable_id"], "daily_all")
+        self.assertEqual(short_metadata["replacement_revision"], "coverage-recovery-v1")
+
+    def test_replacement_coverage_blocks_partial_9_of_45(self) -> None:
+        valid_race = RaceVideoData(
+            "race-1",
+            "2026-08-29",
+            "佐賀",
+            1,
+            "1R",
+            "ダート",
+            1400,
+            predictions=_valid_horses(),
+        )
+        prepared = youtube_video_pipeline.PreparedVideoData(
+            venues=[VenueVideoData("佐賀", "地方", [valid_race] * 9)],
+            omitted_races=[],
+            data_source="database",
+            retry_count=0,
+            source_race_count=45,
+        )
+        args = _args("disabled")
+        args.replacement_revision = "coverage-recovery-v1"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rendered = [
+                _package(root, "daily_long", thumbnail_required=True),
+                _package(root, "short", thumbnail_required=False),
+            ]
+            with self.assertRaisesRegex(RuntimeError, "収録可能=9/45"):
+                youtube_video_pipeline._validate_replacement_coverage(
+                    args,
+                    prepared,
+                    rendered,
+                    [{"race_id": f"race-{index}"} for index in range(9)],
+                    "partial",
+                    [],
+                )
+
+    def test_supersede_existing_clears_schedule_and_preserves_old_video_ids(self) -> None:
+        revision = "coverage-recovery-v1"
+        scheduled_at = datetime(2026, 8, 28, 10, 0)
+        records = {
+            ("daily_long", "daily_all"): PublicationRecord(
+                platform="youtube",
+                target_date="2099-07-12",
+                video_type="daily_long",
+                stable_id="daily_all",
+                status="scheduled",
+                content_hash="old-long",
+                remote_video_id="old-long-video",
+                scheduled_at=scheduled_at,
+                attempt_count=1,
+                last_error=None,
+                metadata={},
+            ),
+            ("short", "daily_short"): PublicationRecord(
+                platform="youtube",
+                target_date="2099-07-12",
+                video_type="short",
+                stable_id="daily_short",
+                status="scheduled",
+                content_hash="old-short",
+                remote_video_id="old-short-video",
+                scheduled_at=scheduled_at,
+                attempt_count=1,
+                last_error=None,
+                metadata={},
+            ),
+        }
+        registry = Mock(enabled=True)
+        registry.get.side_effect = lambda target_date, video_type, stable_id: records.get(
+            (video_type, stable_id)
+        )
+        client = _youtube_client()
+        client.clear_publish_schedule.side_effect = lambda video_id: YouTubeVideoStatus(
+            video_id=video_id,
+            processing_status="succeeded",
+            upload_status="processed",
+            privacy_status="private",
+            publish_at=None,
+            failure_reason=None,
+            rejection_reason=None,
+        )
+        args = _args("scheduled_public")
+        args.replacement_revision = revision
+        args.supersede_existing = True
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            long_video = _package(root, "daily_long", thumbnail_required=True)
+            short_video = _package(root, "short", thumbnail_required=False)
+            long_video.stable_id = f"daily_all__{revision}"
+            short_video.stable_id = f"daily_short__{revision}"
+            youtube_video_pipeline._supersede_existing_publications(
+                args,
+                [long_video, short_video],
+                youtube_video_pipeline.UploadContext(registry, client, "channel"),
+            )
+
+        self.assertEqual(client.clear_publish_schedule.call_count, 2)
+        transitioned_ids = [call_args.args[2] for call_args in registry.transition.call_args_list]
+        self.assertEqual(transitioned_ids, ["daily_all", "daily_short"])
+        self.assertTrue(all(call_args.args[3] == "superseded" for call_args in registry.transition.call_args_list))
+        self.assertEqual(
+            [call_args.kwargs["remote_video_id"] for call_args in registry.transition.call_args_list],
+            ["old-long-video", "old-short-video"],
+        )
+
+    def test_supersede_existing_is_idempotent_after_remote_private_confirmation(self) -> None:
+        revision = "coverage-recovery-v1"
+        record = PublicationRecord(
+            platform="youtube",
+            target_date="2099-07-12",
+            video_type="daily_long",
+            stable_id="daily_all",
+            status="superseded",
+            content_hash="old-long",
+            remote_video_id="old-long-video",
+            scheduled_at=datetime(2026, 8, 28, 10, 0),
+            attempt_count=1,
+            last_error=None,
+            metadata={"replacement_revision": revision},
+        )
+        registry = Mock(enabled=True)
+        registry.get.return_value = record
+        client = _youtube_client()
+        client.get_video_status.return_value = YouTubeVideoStatus(
+            video_id="old-long-video",
+            processing_status="succeeded",
+            upload_status="processed",
+            privacy_status="private",
+            publish_at=None,
+            failure_reason=None,
+            rejection_reason=None,
+        )
+        args = _args("scheduled_public")
+        args.replacement_revision = revision
+        args.supersede_existing = True
+        args.include_shorts = False
+        with tempfile.TemporaryDirectory() as temp_dir:
+            package = _package(Path(temp_dir), "daily_long", thumbnail_required=True)
+            package.stable_id = f"daily_all__{revision}"
+            youtube_video_pipeline._supersede_existing_publications(
+                args,
+                [package],
+                youtube_video_pipeline.UploadContext(registry, client, "channel"),
+            )
+
+        client.clear_publish_schedule.assert_not_called()
+        registry.transition.assert_not_called()
+
+    def test_supersede_existing_rejects_already_public_video(self) -> None:
+        revision = "coverage-recovery-v1"
+        record = PublicationRecord(
+            platform="youtube",
+            target_date="2099-07-12",
+            video_type="daily_long",
+            stable_id="daily_all",
+            status="scheduled",
+            content_hash="old-long",
+            remote_video_id="public-video",
+            scheduled_at=datetime(2026, 8, 28, 10, 0),
+            attempt_count=1,
+            last_error=None,
+            metadata={},
+        )
+        registry = Mock(enabled=True)
+        registry.get.return_value = record
+        client = _youtube_client()
+        client.clear_publish_schedule.return_value = YouTubeVideoStatus(
+            video_id="public-video",
+            processing_status="succeeded",
+            upload_status="processed",
+            privacy_status="public",
+            publish_at=None,
+            failure_reason=None,
+            rejection_reason=None,
+        )
+        args = _args("scheduled_public")
+        args.replacement_revision = revision
+        args.supersede_existing = True
+        args.include_shorts = False
+        with tempfile.TemporaryDirectory() as temp_dir:
+            package = _package(Path(temp_dir), "daily_long", thumbnail_required=True)
+            package.stable_id = f"daily_all__{revision}"
+            with self.assertRaisesRegex(RuntimeError, "公開済み動画"):
+                youtube_video_pipeline._supersede_existing_publications(
+                    args,
+                    [package],
+                    youtube_video_pipeline.UploadContext(registry, client, "channel"),
+                )
+
+        registry.transition.assert_not_called()
+
+    def test_replacement_upload_requires_explicit_supersede_flag(self) -> None:
+        args = _args("scheduled_public")
+        args.replacement_revision = "coverage-recovery-v1"
+        with patch.object(youtube_video_pipeline, "_env_flag", return_value=True):
+            with self.assertRaisesRegex(RuntimeError, "supersede_existing"):
+                youtube_video_pipeline._validate_replacement_request(args)
+
     def test_private_review_short_skips_thumbnail_and_publish_at(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             package = _package(Path(temp_dir), "short", thumbnail_required=False)
@@ -1141,11 +1366,14 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
     def test_youtube_status_transition_is_monotonic(self) -> None:
         validate_youtube_status_transition("planned", "processing")
         validate_youtube_status_transition("processing", "scheduled")
+        validate_youtube_status_transition("scheduled", "superseded")
         validate_youtube_status_transition("scheduled", "published")
         with self.assertRaisesRegex(RuntimeError, "後戻り"):
             validate_youtube_status_transition("processing", "uploaded")
         with self.assertRaisesRegex(RuntimeError, "確定済み"):
             validate_youtube_status_transition("scheduled", "private_review")
+        with self.assertRaisesRegex(RuntimeError, "差し替え対象にできない"):
+            validate_youtube_status_transition("published", "superseded")
 
     def test_video_summary_keeps_social_distribution_fields(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

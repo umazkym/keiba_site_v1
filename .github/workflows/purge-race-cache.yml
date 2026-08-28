@@ -64,7 +64,9 @@ jobs:
         uses: google-github-actions/setup-gcloud@v3
 
       - name: Clear Cloud Run process and Next data caches
+        id: cloud_run_cache
         if: inputs.apply == true
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -76,6 +78,12 @@ jobs:
               --update-env-vars="RACE_CACHE_PURGE_AT=$CACHE_BUST" \
               --quiet
           done
+
+      - name: Warn when Cloud Run cache refresh is unavailable
+        if: inputs.apply == true && steps.cloud_run_cache.outcome != 'success'
+        shell: bash
+        run: |
+          echo "::warning::Cloud Runのrevision更新に失敗しました。Cloudflare purgeは続行します。アプリ内キャッシュは短いTTLで自然失効します。"
 
       - name: Build exact Cloudflare purge URL list
         id: urls
@@ -127,6 +135,7 @@ jobs:
           echo "count=$(jq 'length' "$OUTPUT_PATH")" >> "$GITHUB_OUTPUT"
 
       - name: Purge exact URLs from Cloudflare
+        id: cloudflare_purge
         if: inputs.apply == true
         env:
           CLOUDFLARE_CACHE_PURGE_API_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_PURGE_API_TOKEN }}
@@ -172,6 +181,8 @@ jobs:
             echo "- 対象日: ${{ inputs.race_date }}"
             echo "- 実行モード: ${{ inputs.apply == true && 'apply' || 'dry-run' }}"
             echo "- 対象URL数: ${{ steps.urls.outputs.count }}"
+            echo "- Cloud Runキャッシュ更新: ${{ steps.cloud_run_cache.outcome || 'skipped' }}"
+            echo "- Cloudflare purge: ${{ steps.cloudflare_purge.outcome || 'skipped' }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload purge manifest

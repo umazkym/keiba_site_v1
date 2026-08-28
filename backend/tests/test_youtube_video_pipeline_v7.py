@@ -229,6 +229,103 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
                     prepared,
                     rendered,
                     [{"race_id": f"race-{index}"} for index in range(9)],
+                    [],
+                    "partial",
+                    [],
+                )
+
+    def test_replacement_coverage_accepts_expected_exclusions(self) -> None:
+        valid_race = RaceVideoData(
+            "race-valid",
+            "2026-08-29",
+            "中京",
+            2,
+            "2R",
+            "芝",
+            1600,
+            predictions=_valid_horses(),
+        )
+        expected_exclusions = [
+            youtube_video_pipeline.RaceOmission(
+                race_id=f"race-excluded-{index}",
+                venue_name="中京",
+                race_number=index,
+                race_name="2歳新馬" if index != 1 else "3歳以上障害未勝利",
+                grade="",
+                reason="新馬戦のため、予測対象外です"
+                if index != 1
+                else "障害戦のため、予測対象外です",
+                category="expected_exclusion",
+            )
+            for index in range(1, 5)
+        ]
+        prepared = youtube_video_pipeline.PreparedVideoData(
+            venues=[VenueVideoData("中京", "中央", [valid_race] * 41)],
+            omitted_races=expected_exclusions,
+            data_source="database",
+            retry_count=0,
+            source_race_count=45,
+        )
+        args = _args("disabled")
+        args.replacement_revision = "coverage-recovery-v1"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rendered = [
+                _package(root, "daily_long", thumbnail_required=True),
+                _package(root, "short", thumbnail_required=False),
+            ]
+            youtube_video_pipeline._validate_replacement_coverage(
+                args,
+                prepared,
+                rendered,
+                [{"race_id": f"race-{index}"} for index in range(41)],
+                [item.to_dict() for item in expected_exclusions],
+                "partial",
+                [],
+            )
+
+    def test_replacement_coverage_blocks_unexpected_omission(self) -> None:
+        valid_race = RaceVideoData(
+            "race-valid",
+            "2026-08-29",
+            "中京",
+            1,
+            "1R",
+            "芝",
+            1600,
+            predictions=_valid_horses(),
+        )
+        unexpected = youtube_video_pipeline.RaceOmission(
+            race_id="race-missing",
+            venue_name="中京",
+            race_number=2,
+            race_name="2R",
+            grade="",
+            reason="Predictionレコードがありません",
+            category="missing_predictions",
+        )
+        prepared = youtube_video_pipeline.PreparedVideoData(
+            venues=[VenueVideoData("中京", "中央", [valid_race])],
+            omitted_races=[unexpected],
+            data_source="database",
+            retry_count=0,
+            source_race_count=2,
+        )
+        args = _args("disabled")
+        args.replacement_revision = "coverage-recovery-v1"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rendered = [
+                _package(root, "daily_long", thumbnail_required=True),
+                _package(root, "short", thumbnail_required=False),
+            ]
+            with self.assertRaisesRegex(RuntimeError, "異常除外=.*missing_predictions"):
+                youtube_video_pipeline._validate_replacement_coverage(
+                    args,
+                    prepared,
+                    rendered,
+                    [{"race_id": "race-valid"}],
+                    [unexpected.to_dict()],
                     "partial",
                     [],
                 )

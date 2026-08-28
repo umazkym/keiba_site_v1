@@ -476,12 +476,13 @@ def _validate_replacement_coverage(
     prepared: PreparedVideoData,
     rendered: List[RenderedVideo],
     included_races: List[dict[str, Any]],
+    omitted_races: List[dict[str, Any]],
     coverage_status: str,
     render_errors: List[str],
-) -> None:
+) -> Optional[dict[str, int]]:
     revision = _replacement_revision(args)
     if not revision:
-        return
+        return None
     required_video_types = set()
     if args.include_long:
         required_video_types.add("daily_long")
@@ -490,28 +491,56 @@ def _validate_replacement_coverage(
     generated_video_types = {item.video_type for item in rendered}
     missing_video_types = sorted(required_video_types - generated_video_types)
     blocked_videos = [item.stable_id for item in rendered if not item.publishable]
+    expected_exclusion_ids = {
+        str(item.get("race_id") or "").strip()
+        for item in omitted_races
+        if item.get("category") == "expected_exclusion"
+        and str(item.get("race_id") or "").strip()
+    }
+    blocking_omissions = [
+        item
+        for item in omitted_races
+        if item.get("category") != "expected_exclusion"
+    ]
+    expected_recordable_count = max(
+        0,
+        prepared.source_race_count - len(expected_exclusion_ids),
+    )
     if (
-        coverage_status == "complete"
-        and prepared.actual_race_count == prepared.source_race_count
-        and len(included_races) == prepared.source_race_count
+        prepared.actual_race_count == expected_recordable_count
+        and len(included_races) == expected_recordable_count
+        and not blocking_omissions
         and not render_errors
         and not missing_video_types
         and not blocked_videos
     ):
-        return
+        return {
+            "expected_recordable_count": expected_recordable_count,
+            "expected_exclusion_count": len(expected_exclusion_ids),
+        }
 
     details = [
         f"coverage_status={coverage_status}",
-        f"収録可能={prepared.actual_race_count}/{prepared.source_race_count}",
-        f"横動画収録={len(included_races)}/{prepared.source_race_count}",
+        f"収録可能={prepared.actual_race_count}/{expected_recordable_count}",
+        f"横動画収録={len(included_races)}/{expected_recordable_count}",
+        f"期待除外={len(expected_exclusion_ids)}件",
     ]
+    if blocking_omissions:
+        details.append(
+            "異常除外="
+            + " / ".join(
+                f"{item.get('venue_name')}{item.get('race_number')}R "
+                f"{item.get('race_name')}（{item.get('category')}）"
+                for item in blocking_omissions
+            )
+        )
     if render_errors:
         details.append("生成エラー=" + " / ".join(render_errors))
     if missing_video_types:
         details.append("未生成=" + ",".join(missing_video_types))
     if blocked_videos:
         details.append("公開不可=" + ",".join(blocked_videos))
-    raise RuntimeError("差し替え版は全レースを収録できないため停止します: " + " / ".join(details))
+    raise RuntimeError("差し替え版は収録対象レースを網羅できないため停止します: " + " / ".join(details))
 
 
 def _preflight_upload(args: argparse.Namespace) -> Optional[UploadContext]:
@@ -717,13 +746,15 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
     )
     coverage_status = "partial" if all_omitted_races else prepared.coverage_status
     replacement_revision = _replacement_revision(args)
+    replacement_coverage: Optional[dict[str, int]] = None
     if replacement_revision:
         try:
-            _validate_replacement_coverage(
+            replacement_coverage = _validate_replacement_coverage(
                 args,
                 prepared,
                 rendered,
                 included_races,
+                all_omitted_races,
                 coverage_status,
                 render_errors,
             )
@@ -744,6 +775,7 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
         "count": len(rendered),
         "publication_mode": validate_publication_mode(args.publication_mode),
         "replacement_revision": replacement_revision or None,
+        "replacement_coverage": replacement_coverage,
         "included_races": included_races,
         "omitted_races": all_omitted_races,
         "included_grade_races": included_grade_races,
@@ -786,6 +818,13 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
             ),
             f"- 実収録レース数: {len(included_races)}",
             f"- coverage_status: {coverage_status}",
+            (
+                "- 差し替え完全性: complete "
+                f"（収録対象{replacement_coverage['expected_recordable_count']}件 / "
+                f"期待除外{replacement_coverage['expected_exclusion_count']}件）"
+                if replacement_coverage
+                else "- 差し替え完全性: 対象外"
+            ),
             f"- データ取得元: {prepared.data_source}",
             f"- 再取得回数: {prepared.retry_count}",
             (

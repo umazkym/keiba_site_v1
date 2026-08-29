@@ -732,6 +732,7 @@ def collect_youtube(period: Period, raw_dir: Path, service: Any | None = None) -
     report_status["thumbnail_reach"] = {
         "status": "unavailable",
         "row_count": 0,
+        "required": False,
         "reason": (
             "YouTube Analytics Query APIのチャンネルレポートではサムネイル表示・CTRを"
             "取得できないため、Reporting APIのReach一括レポートまたはStudio出力が必要"
@@ -920,7 +921,15 @@ def import_infrastructure(path: Path | None) -> dict[str, Any]:
 
 def source_summary(result: Mapping[str, Any]) -> dict[str, Any]:
     reports = dict(result.get("reports") or {})
-    states = [str(report.get("status") or "unavailable") for report in reports.values()]
+    required_reports = [
+        report
+        for report in reports.values()
+        if report.get("required", True) is not False
+    ]
+    states = [
+        str(report.get("status") or "unavailable")
+        for report in required_reports
+    ]
     if states and all(state == "complete" for state in states):
         status = "complete"
     elif any(state in {"complete", "partial"} for state in states):

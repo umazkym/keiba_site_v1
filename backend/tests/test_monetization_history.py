@@ -93,6 +93,28 @@ class MonetizationHistoryTest(unittest.TestCase):
         }
         self.assertEqual(source_summary(result)["status"], "partial")
 
+    def test_source_summary_keeps_optional_unavailable_report_without_partial(self) -> None:
+        result = {
+            "rows": [{"source": "youtube"}],
+            "reports": {
+                "daily": {"status": "complete"},
+                "thumbnail_reach": {
+                    "status": "unavailable",
+                    "required": False,
+                    "reason": "Reporting APIまたはStudio出力が必要",
+                },
+            },
+        }
+
+        summary = source_summary(result)
+
+        self.assertEqual(summary["status"], "complete")
+        self.assertEqual(
+            summary["reports"]["thumbnail_reach"]["status"],
+            "unavailable",
+        )
+        self.assertFalse(summary["reports"]["thumbnail_reach"]["required"])
+
     def test_identical_history_rows_are_idempotent(self) -> None:
         row = daily_row("gsc", "daily", date(2026, 3, 14), {"clicks": 1})
         unique = deduplicate_history_rows([row, dict(row)])

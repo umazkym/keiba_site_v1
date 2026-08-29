@@ -1159,7 +1159,7 @@ STEP 3：フォーマットとSEOのチェック
 ※もし「事前の機械チェック結果」でエラーが指摘されている場合は、必ずそれを満たすようにtitleとdescriptionを修正すること。
 ※関連記事プレースホルダーは要求しない。本文中に「関連記事」セクションや「[関連記事：...]」は追加しないこと。
 ※存在確認できないURL、仮URL、単独行の「(/course-xxx)」のような壊れたリンク片は必ず削除すること。
-※本文を長くしすぎない。必要な修正だけ行い、表・数値・母数・期間は壊さないこと。
+※本文を長くしすぎない。必要な修正だけ行い、表・数値・母数・期間は壊さないこと。ただし事前の機械チェックで未確認数値と判定された値は例外で、数値を削除して入力済み事実だけの表現へ直すこと。
 ※本文が3,000字未満の場合は、入力にある材料だけで「確認順」「慎重に見る条件」「相手候補に残す前の線引き」を補う。数字を増やせない場合は、数字を作らず判断プロセスを具体化すること。
 ※content_replacements の fixed フィールドに、Evidence Packで確認できない勝率・複勝率・回収率・好走率などのパーセンテージ（%）を残してはいけない。元の本文に未確認の%値がある場合は、その数値を引き継がず「データで確認する」「傾向を確認する」など数値なしの自然な文に置き換えること。
 ※content_replacements は局所的な文言修正に限定する。見出し1行を複数段落の本文に置き換える、または新しいH2セクションをfixedへ丸ごと追加する行為は禁止。文字数不足はシステム側の安全な補足処理で補う。
@@ -1185,6 +1185,63 @@ STEP 3：フォーマットとSEOのチェック
 
 【極秘指示】
 元の原稿に含まれているデータテーブル（| で構築された表）およびリスト要素に対する修正は確実な理由がない限り行わないこと。表自体を削除・破壊してはならない。`;
+
+export type ReviewDraftOptions = {
+  machineIssues?: string[];
+  outputMode?: 'approved' | 'staged';
+};
+
+function appendDraftHistory(filePath: string, content: string): void {
+  try {
+    const historyPath = path.join(__dirname, '..', '..', '..', 'data', 'posted_history.json');
+    fs.mkdirSync(path.dirname(historyPath), { recursive: true });
+    const history = fs.existsSync(historyPath) ? JSON.parse(fs.readFileSync(historyPath, 'utf-8')) : [];
+    const parsed = matter(content);
+    history.push({
+      id: path.basename(filePath, '.md'),
+      title: parsed.data.title || '',
+      target_keyword: parsed.data.target_keyword || '',
+      theme_cluster: parsed.data.theme_cluster || '',
+      keywords: parsed.data.keywords || [],
+      posted_at: new Date().toISOString(),
+      draft: true,
+      estimated_monthly_searches: null,
+      actual_pv_30d: null,
+      ad_revenue_30d: null,
+      rewrite_score: null,
+    });
+    fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), 'utf-8');
+    console.log(`[Editor] History updated: ${historyPath}`);
+  } catch (err: any) {
+    console.error(`[Editor] Failed to update history: ${err.message}`);
+  }
+}
+
+export function promoteReviewedDraft(filePath: string): string {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const approvedDir = path.join(__dirname, '..', '..', 'agents', 'queue', 'approved');
+  fs.mkdirSync(approvedDir, { recursive: true });
+  const approvedPath = path.join(approvedDir, path.basename(filePath));
+  fs.writeFileSync(approvedPath, content, 'utf-8');
+  if (path.resolve(filePath) !== path.resolve(approvedPath) && fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+  appendDraftHistory(approvedPath, content);
+  console.log(`[Editor] Draft APPROVED after final flow. Saved to: ${approvedPath}`);
+  return approvedPath;
+}
+
+export function quarantineReviewedDraft(filePath: string, reason: string): string {
+  const rejectedDir = path.join(__dirname, '..', '..', '..', 'data', 'rejected_articles');
+  fs.mkdirSync(rejectedDir, { recursive: true });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const rejectedPath = path.join(rejectedDir, `${path.basename(filePath, '.md')}_${timestamp}.md`);
+  const content = fs.readFileSync(filePath, 'utf-8');
+  fs.writeFileSync(rejectedPath, content, 'utf-8');
+  fs.unlinkSync(filePath);
+  console.error(`[Editor] Final article flow rejected staged draft: ${reason.slice(0, 240)}`);
+  return rejectedPath;
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -1588,7 +1645,7 @@ async function buildGemmaReviewBrief(input: {
   };
 }
 
-export async function reviewDraft(filePath: string): Promise<{
+export async function reviewDraft(filePath: string, options: ReviewDraftOptions = {}): Promise<{
   status: 'APPROVED' | 'REJECTED';
   log: string;
   newDraftPath?: string;
@@ -1639,9 +1696,13 @@ export async function reviewDraft(filePath: string): Promise<{
       }
 
       const seoResult = checkSEO(currentContent);
-      const mechanicalLog = seoResult.passed
+      const seoMechanicalLog = seoResult.passed
         ? "機械チェック（文字数・NGワード等）：エラーなし"
         : `機械チェックエラー（以下の違反を必ず修正すること）:\n - ${seoResult.errors.join('\n - ')}`;
+      const articleFlowLog = (options.machineIssues || []).length > 0
+        ? `記事フロー機械チェックエラー（未確認数値・出典表現を必ず修正すること）:\n - ${(options.machineIssues || []).slice(0, 20).join('\n - ')}`
+        : '記事フロー機械チェック：エラーなし';
+      const mechanicalLog = `${seoMechanicalLog}\n${articleFlowLog}`;
 
       allLogs += `\n[Attempt ${attempt} Mechanical Check]\n${mechanicalLog}\n`;
 
@@ -1971,41 +2032,18 @@ export async function reviewDraft(filePath: string): Promise<{
         console.error(`[Editor] Failed to write rejects log: ${err.message}`);
       }
     } else if (finalStatus === 'APPROVED') {
-      const approvedDir = path.join(__dirname, '..', '..', 'agents', 'queue', 'approved');
-      fs.mkdirSync(approvedDir, { recursive: true });
-      newDraftPath = path.join(approvedDir, path.basename(filePath));
-
-      fs.writeFileSync(newDraftPath, currentContent, 'utf-8');
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-      console.log(`[Editor] Draft APPROVED. Saved to: ${newDraftPath}`);
-
-      // posted_history.json に追記
-      try {
-        const historyPath = path.join(__dirname, '..', '..', '..', 'data', 'posted_history.json');
-        const dataDir = path.dirname(historyPath);
-        if (!fs.existsSync(dataDir)) { fs.mkdirSync(dataDir, { recursive: true }); }
-        const history = fs.existsSync(historyPath) ? JSON.parse(fs.readFileSync(historyPath, 'utf-8')) : [];
-        const parsed = matter(currentContent);
-        history.push({
-          id: path.basename(filePath, '.md'),
-          title: parsed.data.title || '',
-          target_keyword: parsed.data.target_keyword || '',
-          theme_cluster: parsed.data.theme_cluster || '',
-          keywords: parsed.data.keywords || [],
-          posted_at: new Date().toISOString(),
-          draft: true,
-          // 施策G: 収益ポテンシャルスコア（Phase 4/6で自動入力）
-          estimated_monthly_searches: null,
-          actual_pv_30d: null,
-          ad_revenue_30d: null,
-          rewrite_score: null,
-        });
-        fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), 'utf-8');
-        console.log(`[Editor] History updated: ${historyPath}`);
-      } catch (err: any) {
-        console.error(`[Editor] Failed to update history: ${err.message}`);
+      if (options.outputMode === 'staged') {
+        const stagedDir = path.join(__dirname, '..', '..', 'agents', 'queue', 'revised');
+        fs.mkdirSync(stagedDir, { recursive: true });
+        newDraftPath = path.join(stagedDir, path.basename(filePath));
+        fs.writeFileSync(newDraftPath, currentContent, 'utf-8');
+        if (path.resolve(filePath) !== path.resolve(newDraftPath) && fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+        console.log(`[Editor] Draft passed editor and is staged for final article flow: ${newDraftPath}`);
+      } else {
+        fs.writeFileSync(filePath, currentContent, 'utf-8');
+        newDraftPath = promoteReviewedDraft(filePath);
       }
     }
 

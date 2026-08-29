@@ -1,5 +1,5 @@
 import { WriteOrder, generateDraft } from './agent_writer';
-import { reviewDraft } from './agent_editor';
+import { promoteReviewedDraft, quarantineReviewedDraft, reviewDraft } from './agent_editor';
 import { runPostWriterArticleFlow, runPreDraftArticleFlow } from './article_flow';
 import fs from 'fs';
 import path from 'path';
@@ -253,14 +253,15 @@ async function runPipeline() {
     const postWriterFlow = runPostWriterArticleFlow(order, writerResult.filePath);
     console.log(postWriterFlow.log);
     if (postWriterFlow.status === 'REJECTED') {
-      moveToFailed(orderPath, `article flow rejected after writer: ${postWriterFlow.log.slice(0, 160)}`);
-      if (attemptedCount >= MAX_ARTICLES_PER_RUN) break;
-      continue;
+      console.warn('[Pipeline] Writer後の機械チェック違反をEditorへ渡し、1回の修正機会を与えます。');
     }
 
     // 2. Editor & Checker: 完成した記事の検閲と自動修正
     console.log("\n[Step 2] Editor Agent is reviewing the draft...", writerResult.filePath);
-    const reviewResult = await reviewDraft(writerResult.filePath);
+    const reviewResult = await reviewDraft(writerResult.filePath, {
+      machineIssues: postWriterFlow.criticalIssues.map(issue => `[${issue.node}] ${issue.message}`),
+      outputMode: 'staged',
+    });
     
     console.log(`\n=== 判定結果: ${reviewResult.status} ===`);
     console.log(reviewResult.log);
@@ -297,7 +298,25 @@ async function runPipeline() {
       if (attemptedCount >= MAX_ARTICLES_PER_RUN) break;
       continue;
     } else if (reviewResult.status === 'APPROVED') {
-      console.log(`合格したため、承認済みキューに移動しました: ${reviewResult.newDraftPath}`);
+      if (!reviewResult.newDraftPath) {
+        moveToFailed(orderPath, 'editor approved without a staged draft path');
+        if (attemptedCount >= MAX_ARTICLES_PER_RUN) break;
+        continue;
+      }
+      const finalArticleFlow = runPostWriterArticleFlow(order, reviewResult.newDraftPath);
+      console.log(finalArticleFlow.log);
+      if (finalArticleFlow.status === 'REJECTED') {
+        const rejectedPath = quarantineReviewedDraft(reviewResult.newDraftPath, finalArticleFlow.log);
+        rejectedStreak++;
+        moveToFailed(orderPath, `final article flow rejected: ${path.basename(rejectedPath)}`);
+        if (rejectedStreak >= 3) {
+          throw new Error('3回連続で最終記事フローに却下されました。品質問題を確認してください。');
+        }
+        if (attemptedCount >= MAX_ARTICLES_PER_RUN) break;
+        continue;
+      }
+      const approvedPath = promoteReviewedDraft(reviewResult.newDraftPath);
+      console.log(`最終品質ゲートに合格し、承認済みキューに移動しました: ${approvedPath}`);
       approvedCount++;
       rejectedStreak = 0; // 合格時に連続却下カウンターをリセット
       if (GEMINI_CIRCUIT_STATE_PATH) recordGeminiSuccess(GEMINI_CIRCUIT_STATE_PATH);

@@ -38,6 +38,14 @@ class ExportQuery:
     dimensions: tuple[str, ...]
 
 
+class ClarityRequestError(RuntimeError):
+    """HTTPステータスを安全に保持するClarity取得エラー。"""
+
+    def __init__(self, message: str, *, http_status: int | None = None) -> None:
+        super().__init__(message)
+        self.http_status = http_status
+
+
 CORE_QUERIES = (
     ExportQuery("overview", ()),
     ExportQuery("content_url", ("URL",)),
@@ -252,12 +260,12 @@ def request_json(
                 if not SENSITIVE_KEY_PATTERN.search(key)
             }
     except urllib.error.HTTPError as error:
-        body = error.read()
+        error.read()
         elapsed_ms = round((time.perf_counter() - started_at) * 1000, 1)
-        safe_body = body.decode("utf-8", errors="replace")[:1000]
-        raise RuntimeError(
+        raise ClarityRequestError(
             f"{query.name}: Clarity APIがHTTP {error.code}を返しました。"
-            f" 応答先頭: {safe_body!r} / 経過: {elapsed_ms}ms"
+            f" 経過: {elapsed_ms}ms",
+            http_status=error.code,
         ) from error
     except urllib.error.URLError as error:
         elapsed_ms = round((time.perf_counter() - started_at) * 1000, 1)
@@ -270,9 +278,8 @@ def request_json(
     try:
         payload = json.loads(body.decode("utf-8-sig"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        safe_body = body.decode("utf-8", errors="replace")[:1000]
         raise RuntimeError(
-            f"{query.name}: JSON応答を解析できませんでした。応答先頭: {safe_body!r}"
+            f"{query.name}: JSON応答を解析できませんでした。レスポンス本文は保存しません。"
         ) from error
 
     metadata = {
@@ -457,6 +464,8 @@ def build_summary(
         f"- 対象期間: 取得時点から直近 `{manifest['numOfDays'] * 24}` 時間",
         f"- 実行プロファイル: `{manifest['profile']}`",
         f"- APIリクエスト数: `{manifest['requestCount']}` / 日次上限 `{MAX_REQUESTS_PER_DAY}`",
+        f"- 取得状態: `{manifest.get('status', 'complete')}`",
+        f"- 成功リクエスト数: `{manifest.get('successfulRequestCount', manifest['requestCount'])}` / 予定 `{manifest.get('plannedRequestCount', manifest['requestCount'])}`",
         f"- 出力先: `{output_dir}`",
         "",
         "## 取得状況",
@@ -479,6 +488,14 @@ def build_summary(
             f"{metadata['elapsedMs']} ms | {metadata['responseBytes']} bytes | "
             f"{len(metric_blocks)} | {total_rows} |"
         )
+
+    failed_queries = manifest.get("failedQueries") or []
+    if failed_queries:
+        lines.extend(["", "## 失敗クエリ", "", "| クエリ | HTTP | エラー種別 |", "| --- | ---: | --- |"])
+        for failure in failed_queries:
+            lines.append(
+                f"| {failure.get('queryName', '')} | {failure.get('httpStatus') or '-'} | {failure.get('errorType', '')} |"
+            )
 
     lines.extend(
         [
@@ -584,17 +601,37 @@ def main() -> int:
     payloads: dict[str, Any] = {}
     request_metadata: list[dict[str, Any]] = []
     csv_files: list[str] = []
+    failed_queries: list[dict[str, Any]] = []
+    attempted_count = 0
 
     for index, query in enumerate(queries, start=1):
         dimensions = ", ".join(query.dimensions) or "なし"
         print(f"[{index}/{len(queries)}] {query.name} ({dimensions})")
-        payload, metadata = request_json(
-            endpoint=endpoint,
-            token=token,
-            query=query,
-            num_days=args.num_days,
-            timeout=args.timeout,
-        )
+        attempted_count += 1
+        try:
+            payload, metadata = request_json(
+                endpoint=endpoint,
+                token=token,
+                query=query,
+                num_days=args.num_days,
+                timeout=args.timeout,
+            )
+        except Exception as error:
+            http_status = getattr(error, "http_status", None)
+            failed_queries.append(
+                {
+                    "queryName": query.name,
+                    "dimensions": list(query.dimensions),
+                    "httpStatus": http_status,
+                    "errorType": type(error).__name__,
+                    "message": "Clarity API request failed; workflow logを確認してください。",
+                }
+            )
+            print(f"取得失敗: {query.name}: {error}", file=sys.stderr)
+            if http_status == 429:
+                print("日次上限到達のため残りのClarityリクエストを中止します。", file=sys.stderr)
+                break
+            continue
         payloads[query.name] = payload
         request_metadata.append(metadata)
 
@@ -610,13 +647,18 @@ def main() -> int:
 
     manifest = {
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
+        "status": "partial" if failed_queries else "complete",
         "profile": args.profile,
         "numOfDays": args.num_days,
-        "requestCount": len(queries),
+        "requestCount": attempted_count,
+        "plannedRequestCount": len(queries),
+        "attemptedRequestCount": attempted_count,
+        "successfulRequestCount": len(request_metadata),
         "dailyRequestLimit": MAX_REQUESTS_PER_DAY,
         "endpoint": endpoint,
         "tokenIncluded": False,
         "requests": request_metadata,
+        "failedQueries": failed_queries,
         "csvFiles": csv_files,
     }
     write_json(output_dir / "manifest.json", manifest)
@@ -634,7 +676,7 @@ def main() -> int:
     print(f"実行情報: {output_dir / 'manifest.json'}")
     print(f"生JSON: {output_dir / 'raw'}")
     print(f"CSV: {output_dir / 'csv'}")
-    return 0
+    return 1 if failed_queries else 0
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ type ArticleType = 'data' | 'grade_race_preview' | 'race_update' | 'beginner' | 
 type FlowStatus = 'APPROVED' | 'REJECTED';
 type FlowSeverity = 'info' | 'warning' | 'critical';
 
-type FlowIssue = {
+export type FlowIssue = {
   node: string;
   severity: FlowSeverity;
   message: string;
@@ -74,6 +74,7 @@ type TavilySearchResponse = {
 export type ArticleFlowResult = {
   status: FlowStatus;
   state: ArticleFlowState;
+  criticalIssues: FlowIssue[];
   log: string;
 };
 
@@ -751,10 +752,7 @@ function normalizeMetricToken(token: string): string {
 
 function isAllowedMetricToken(token: string, allowed: Set<string>, targetKeyword: string): boolean {
   const normalized = normalizeMetricToken(token);
-  if (allowed.has(normalized) || targetKeyword.includes(normalized)) return true;
-
-  const numericOnly = normalized.match(/^\d+(?:\.\d+)?/)?.[0];
-  return Boolean(numericOnly && allowed.has(numericOnly));
+  return allowed.has(normalized) || targetKeyword.includes(normalized);
 }
 
 function collectMetricTokens(content: string): string[] {
@@ -768,14 +766,12 @@ function collectUnverifiedPercentageMetrics(content: string, allowed: Set<string
     new RegExp(`${metricNames}[^。\\n%％]{0,30}?(\\d+(?:\\.\\d+)?)\\s*[%％]`, 'g'),
     new RegExp(`(\\d+(?:\\.\\d+)?)\\s*[%％][^。\\n]{0,16}?${metricNames}`, 'g'),
   ];
-  const genericAllowed = new Set(['0%', '100%']);
   const result = new Set<string>();
 
   for (const pattern of patterns) {
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(content)) !== null) {
       const token = normalizeMetricToken(`${match[1]}%`);
-      if (genericAllowed.has(token)) continue;
       if (!isAllowedMetricToken(token, allowed, targetKeyword)) {
         result.add(token);
       }
@@ -783,6 +779,16 @@ function collectUnverifiedPercentageMetrics(content: string, allowed: Set<string
   }
 
   return Array.from(result);
+}
+
+function metricContext(content: string, token: string): string {
+  const normalizedContent = content.replace(/％/g, '%');
+  const index = normalizedContent.indexOf(token);
+  if (index < 0) return '';
+  const start = Math.max(0, normalizedContent.lastIndexOf('。', index - 1) + 1);
+  const sentenceEnd = normalizedContent.indexOf('。', index);
+  const end = sentenceEnd >= 0 ? sentenceEnd + 1 : Math.min(normalizedContent.length, index + 100);
+  return normalizedContent.slice(start, end).replace(/\s+/g, ' ').trim().slice(0, 180);
 }
 
 function validateDraftContent(order: WriteOrder, state: ArticleFlowState, content: string): void {
@@ -801,7 +807,7 @@ function validateDraftContent(order: WriteOrder, state: ArticleFlowState, conten
       state,
       'Fact Checker',
       'critical',
-      `hallucinated percentage metrics detected: ${unknownPercentageMetrics.slice(0, 12).join(', ')}`
+      `hallucinated percentage metrics detected: ${unknownPercentageMetrics.slice(0, 12).map(token => `${token} [${metricContext(content, token)}]`).join(', ')}`
     );
   }
 
@@ -852,6 +858,7 @@ export async function runPreDraftArticleFlow(order: WriteOrder): Promise<Article
   return {
     status,
     state,
+    criticalIssues: state.issues.filter(issue => issue.severity === 'critical'),
     log: buildLog(`pre-draft ${status}`, state),
   };
 }
@@ -873,6 +880,7 @@ export function runPostWriterArticleFlow(order: WriteOrder, draftPath: string): 
   return {
     status,
     state,
+    criticalIssues: state.issues.filter(issue => issue.severity === 'critical'),
     log: buildLog(`post-writer ${status}`, state),
   };
 }

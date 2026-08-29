@@ -594,6 +594,39 @@ def _preflight_upload(args: argparse.Namespace) -> Optional[UploadContext]:
     )
 
 
+def _preflight_scheduled_publish_window(args: argparse.Namespace) -> None:
+    """ffmpeg生成やYouTube API呼び出し前に予約公開可能な時間帯か検証する。"""
+    if not _is_upload_requested(args):
+        return
+    if validate_publication_mode(args.publication_mode) != "scheduled_public":
+        return
+    try:
+        publish_schedule, shift_minutes = build_publish_schedule(
+            args.target_date or get_target_date(),
+            args.publish_time_jst,
+            [0],
+            minimum_lead_minutes=args.publish_min_lead_minutes,
+            maximum_shift_minutes=args.max_publish_shift_minutes,
+            publish_cutoff_time_jst=getattr(args, "publish_cutoff_jst", "09:00"),
+        )
+    except Exception as exc:
+        _append_actions_summary(
+            [
+                f"## YouTube予約公開事前検証 {args.target_date or get_target_date()}",
+                "",
+                "- 結果: 失敗",
+                f"- 原因: {exc}",
+                "- 動画生成・アップロード: 未実行",
+            ]
+        )
+        raise
+    first_publish = publish_schedule[0] if publish_schedule else "なし"
+    print(
+        "YouTube予約公開時間の事前検証に成功しました: "
+        f"first_publish={first_publish}, shift={shift_minutes}分, cutoff={getattr(args, 'publish_cutoff_jst', '09:00')} JST"
+    )
+
+
 def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
     target_date = args.target_date or get_target_date()
     output_dir = Path(args.output_dir or DEFAULT_OUTPUT_DIR) / target_date
@@ -1140,6 +1173,7 @@ def _upload_all(
             [item.publish_offset_minutes for item in publishable_items],
             minimum_lead_minutes=args.publish_min_lead_minutes,
             maximum_shift_minutes=args.max_publish_shift_minutes,
+            publish_cutoff_time_jst=getattr(args, "publish_cutoff_jst", "09:00"),
         )
         publish_at_by_key.update(
             {
@@ -1405,8 +1439,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-publish-shift-minutes",
         type=int,
-        default=int(os.getenv("YOUTUBE_MAX_PUBLISH_SHIFT_MINUTES", "240")),
+        default=int(os.getenv("YOUTUBE_MAX_PUBLISH_SHIFT_MINUTES", "840")),
         help="GitHub Actions遅延時に許可する予約時刻の最大後ろ倒し分数",
+    )
+    parser.add_argument(
+        "--publish-cutoff-jst",
+        default=os.getenv("YOUTUBE_PUBLISH_CUTOFF_JST", "09:00"),
+        help="遅延時も自動公開を許可する対象日側の最終時刻 HH:MM",
     )
     parser.add_argument(
         "--publication-mode",
@@ -1479,6 +1518,7 @@ def main() -> None:
             "実DBの確定データで実行してください。"
         )
     args.prepared_video_data = None
+    _preflight_scheduled_publish_window(args)
     upload_context = _preflight_upload(args)
     rendered = _render_all(args)
     if rendered:

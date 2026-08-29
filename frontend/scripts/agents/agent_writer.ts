@@ -259,6 +259,29 @@ export function buildWriterFacingOrder(order: WriteOrder): WriteOrder {
   };
 }
 
+export function collectAllowedWriterMetricTokens(order: WriteOrder): string[] {
+  const writerOrder = buildWriterFacingOrder(order);
+  const tokens = new Set<string>();
+  const visit = (value: unknown): void => {
+    if (value === null || value === undefined) return;
+    if (typeof value === 'string' || typeof value === 'number') {
+      const matches = String(value).replace(/％/g, '%').match(/\d+(?:\.\d+)?(?:%|回|頭|レース|R|kg|m|年|月|日)/g) || [];
+      for (const token of matches) tokens.add(token);
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
+    }
+    if (typeof value === 'object') {
+      for (const item of Object.values(value as Record<string, unknown>)) visit(item);
+    }
+  };
+  visit(writerOrder.target_keyword);
+  visit(writerOrder.reference_data);
+  return Array.from(tokens).sort();
+}
+
 const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の編集ライターだ。
 与えられたJSONデータをもとに、Markdown形式の記事を執筆する。
 
@@ -274,7 +297,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 
 【書き方の原則（重要）】
 - 1文目から核心データを提示し、読者が取るべき確認順序を示す。挨拶・趣旨説明・問いかけは書かない。
-- 数字を出したら、必ず「馬券検討ではどう扱うか」まで落とし込み、「これが何を意味するか（例：3回走れば2回以上は馬券圏内に入る水準など）」を読者の理解を助けるために一言添える。
+- 入力にある数値を出したら「馬券検討ではどう扱うか」まで説明する。ただし、入力にない割合・比率・回数へ換算せず、N回中M回のような具体例も新しく作らない。
 - 文末は原則として曖昧に逃げない。ただし母数が少ない、差が小さい、回収率だけが突出している場合は「軸にはしにくい」「相手候補まで」といった抑制を入れる。
 - 前回と同じ見出し構成・同じ文の流れにしない。坂、直線、コーナー、スタート位置、開催時期など、条件固有の要素を1つ以上絡める。
 - 「当たる」「儲かる」と読ませる文章ではなく、「買い方の優先順位が整理できる」文章にする。
@@ -961,11 +984,12 @@ export async function generateDraft(order: WriteOrder): Promise<{
     console.log(`[Writer] LLM strategy: ${getArticleLlmStrategySummary()}`);
 
     const writerOrder = buildWriterFacingOrder(order);
+    const allowedMetricTokens = collectAllowedWriterMetricTokens(order);
     const strategyBrief = await buildArticleStrategyBrief(writerOrder, genAI);
     const strategySection = strategyBrief
       ? `\n\n【Gemma SEO/構成ブリーフ】\n${JSON.stringify(strategyBrief, null, 2)}`
       : '';
-    const prompt = `以下の入力データ（WriteOrder）に基づいて記事を生成する。${strategySection}\n\n【WriteOrder】\n${JSON.stringify(writerOrder, null, 2)}`;
+    const prompt = `以下の入力データ（WriteOrder）に基づいて記事を生成する。${strategySection}\n\n【使用を許可された単位付き数値トークン】\n${JSON.stringify(allowedMetricTokens)}\nこの一覧にないパーセンテージ、回数、頭数、距離、日付を本文・表・frontmatterへ追加しない。単位なしの数値から割合や回数を計算しない。\n\n【WriteOrder】\n${JSON.stringify(writerOrder, null, 2)}`;
     console.log(`[Writer] Generating draft for keyword: ${order.target_keyword}...`);
     console.log(`[Writer] Prompt size estimate: system=${SYSTEM_PROMPT.length} chars order_prompt=${prompt.length} chars`);
 

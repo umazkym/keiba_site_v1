@@ -51,40 +51,6 @@ jobs:
           date.fromisoformat("${{ inputs.race_date }}")
           PY
 
-      - name: Authenticate to Google Cloud
-        if: inputs.apply == true
-        uses: google-github-actions/auth@v3
-        with:
-          project_id: ${{ env.PROJECT_ID }}
-          workload_identity_provider: projects/761440273070/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
-          service_account: ${{ vars.GCP_FRONTEND_DEPLOY_SERVICE_ACCOUNT || 'github-actions-cloud-run@keiba-api-project.iam.gserviceaccount.com' }}
-
-      - name: Set up gcloud
-        if: inputs.apply == true
-        uses: google-github-actions/setup-gcloud@v3
-
-      - name: Clear Cloud Run process and Next data caches
-        id: cloud_run_cache
-        if: inputs.apply == true
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -euo pipefail
-          CACHE_BUST="${{ inputs.race_date }}-$(date -u +%Y%m%dT%H%M%SZ)"
-          for SERVICE in "$BACKEND_SERVICE" "$FRONTEND_SERVICE"; do
-            gcloud run services update "$SERVICE" \
-              --project="$PROJECT_ID" \
-              --region="$REGION" \
-              --update-env-vars="RACE_CACHE_PURGE_AT=$CACHE_BUST" \
-              --quiet
-          done
-
-      - name: Warn when Cloud Run cache refresh is unavailable
-        if: inputs.apply == true && steps.cloud_run_cache.outcome != 'success'
-        shell: bash
-        run: |
-          echo "::warning::Cloud Runのrevision更新に失敗しました。Cloudflare purgeは続行します。アプリ内キャッシュは短いTTLで自然失効します。"
-
       - name: Build exact Cloudflare purge URL list
         id: urls
         shell: bash
@@ -134,9 +100,86 @@ jobs:
           PY
           echo "count=$(jq 'length' "$OUTPUT_PATH")" >> "$GITHUB_OUTPUT"
 
+      - name: Authenticate to Google Cloud
+        if: inputs.apply == true
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/761440273070/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+          service_account: ${{ vars.GCP_FRONTEND_DEPLOY_SERVICE_ACCOUNT || 'github-actions-cloud-run@keiba-api-project.iam.gserviceaccount.com' }}
+
+      - name: Set up gcloud
+        if: inputs.apply == true
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Preflight production purge prerequisites
+        id: preflight
+        if: inputs.apply == true
+        env:
+          CLOUDFLARE_CACHE_PURGE_API_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_PURGE_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$CLOUDFLARE_ZONE_ID" ]; then
+            echo "::error::CLOUDFLARE_ZONE_IDが未設定です。" >&2
+            exit 1
+          fi
+          if [ -z "$CLOUDFLARE_CACHE_PURGE_API_TOKEN" ]; then
+            echo "::error::production環境のCLOUDFLARE_CACHE_PURGE_API_TOKENが未設定です。" >&2
+            exit 1
+          fi
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          request = urllib.request.Request(
+              "https://api.cloudflare.com/client/v4/user/tokens/verify",
+              headers={"Authorization": f"Bearer {os.environ['CLOUDFLARE_CACHE_PURGE_API_TOKEN']}"},
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              result = json.loads(response.read().decode("utf-8"))
+          if not result.get("success") or result.get("result", {}).get("status") != "active":
+              raise SystemExit("Cloudflare Cache Purge API tokenが無効または非アクティブです。")
+          PY
+          for SERVICE in "$BACKEND_SERVICE" "$FRONTEND_SERVICE"; do
+            RUNTIME_IDENTITY="$(gcloud run services describe "$SERVICE" \
+              --project="$PROJECT_ID" \
+              --region="$REGION" \
+              --format='value(spec.template.spec.serviceAccountName)')"
+            if [ -z "$RUNTIME_IDENTITY" ]; then
+              echo "::error::$SERVICE のruntime service accountを取得できません。" >&2
+              exit 1
+            fi
+            echo "$SERVICE runtime identity: $RUNTIME_IDENTITY"
+          done
+
+      - name: Clear Cloud Run process and Next data caches
+        id: cloud_run_cache
+        if: inputs.apply == true
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          CACHE_BUST="${{ inputs.race_date }}-$(date -u +%Y%m%dT%H%M%SZ)"
+          for SERVICE in "$BACKEND_SERVICE" "$FRONTEND_SERVICE"; do
+            gcloud run services update "$SERVICE" \
+              --project="$PROJECT_ID" \
+              --region="$REGION" \
+              --update-env-vars="RACE_CACHE_PURGE_AT=$CACHE_BUST" \
+              --quiet
+          done
+
+      - name: Warn when Cloud Run cache refresh is unavailable
+        if: inputs.apply == true && steps.cloud_run_cache.outcome != 'success'
+        shell: bash
+        run: |
+          echo "::warning::Cloud Runのrevision更新に失敗しました。Cloudflare purgeは続行します。アプリ内キャッシュは短いTTLで自然失効します。"
+
       - name: Purge exact URLs from Cloudflare
         id: cloudflare_purge
         if: inputs.apply == true
+        continue-on-error: true
         env:
           CLOUDFLARE_CACHE_PURGE_API_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_PURGE_API_TOKEN }}
         shell: bash
@@ -173,14 +216,40 @@ jobs:
 
       - name: Add result to Actions Summary
         if: always()
+        env:
+          PREFLIGHT_OUTCOME: ${{ steps.preflight.outcome || 'skipped' }}
+          CLOUD_RUN_OUTCOME: ${{ steps.cloud_run_cache.outcome || 'skipped' }}
+          CLOUDFLARE_OUTCOME: ${{ steps.cloudflare_purge.outcome || 'skipped' }}
+          URL_COUNT: ${{ steps.urls.outputs.count || '0' }}
+          RACE_DATE: ${{ inputs.race_date }}
+          APPLY_MODE: ${{ inputs.apply == true && 'apply' || 'dry-run' }}
         shell: bash
         run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          result = {
+              "schema_version": "race-cache-purge-result.v1",
+              "race_date": os.environ["RACE_DATE"],
+              "mode": os.environ["APPLY_MODE"],
+              "url_count": int(os.environ["URL_COUNT"]),
+              "preflight": os.environ["PREFLIGHT_OUTCOME"],
+              "cloud_run_cache": os.environ["CLOUD_RUN_OUTCOME"],
+              "cloudflare_purge": os.environ["CLOUDFLARE_OUTCOME"],
+          }
+          output = Path(os.environ["RUNNER_TEMP"]) / "race-cache-purge" / "result.json"
+          output.parent.mkdir(parents=True, exist_ok=True)
+          output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          PY
           {
             echo "# レースキャッシュ再検証"
             echo ""
             echo "- 対象日: ${{ inputs.race_date }}"
             echo "- 実行モード: ${{ inputs.apply == true && 'apply' || 'dry-run' }}"
             echo "- 対象URL数: ${{ steps.urls.outputs.count }}"
+            echo "- 事前検査: ${{ steps.preflight.outcome || 'skipped' }}"
             echo "- Cloud Runキャッシュ更新: ${{ steps.cloud_run_cache.outcome || 'skipped' }}"
             echo "- Cloudflare purge: ${{ steps.cloudflare_purge.outcome || 'skipped' }}"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -190,6 +259,17 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: race-cache-purge-${{ github.run_id }}
-          path: ${{ runner.temp }}/race-cache-purge/urls.json
+          path: ${{ runner.temp }}/race-cache-purge/**
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Fail after preserving partial purge result
+        if: always() && inputs.apply == true
+        shell: bash
+        run: |
+          if [ "${{ steps.preflight.outcome }}" != "success" ] || \
+             [ "${{ steps.cloud_run_cache.outcome }}" != "success" ] || \
+             [ "${{ steps.cloudflare_purge.outcome }}" != "success" ]; then
+            echo "::error::キャッシュ削除は部分失敗しました。URL manifestと各処理結果は保存済みです。"
+            exit 1
+          fi

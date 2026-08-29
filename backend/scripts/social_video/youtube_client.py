@@ -102,7 +102,8 @@ def build_publish_schedule(
     now_jst: Optional[datetime] = None,
     minimum_lead_minutes: int = 45,
     slot_minutes: int = 10,
-    maximum_shift_minutes: int = 240,
+    maximum_shift_minutes: int = 840,
+    publish_cutoff_time_jst: str = "09:00",
 ) -> Tuple[List[str], int]:
     """Actions遅延時も公開順を保ったまま、予約枠全体を安全に後ろへ移動する。"""
     offsets = [int(offset) for offset in offsets_minutes]
@@ -114,6 +115,15 @@ def build_publish_schedule(
         raise ValueError("予約公開枠の単位は1分以上にしてください。")
     if maximum_shift_minutes < 0:
         raise ValueError("予約公開の最大後ろ倒し時間は0分以上にしてください。")
+
+    try:
+        cutoff_hour_text, cutoff_minute_text = publish_cutoff_time_jst.split(":", 1)
+        cutoff_hour = int(cutoff_hour_text)
+        cutoff_minute = int(cutoff_minute_text)
+        if not 0 <= cutoff_hour <= 23 or not 0 <= cutoff_minute <= 59:
+            raise ValueError
+    except ValueError as exc:
+        raise ValueError(f"公開締切時刻はHH:MM形式で指定してください: {publish_cutoff_time_jst}") from exc
 
     effective_now_jst = (now_jst or datetime.now(JST)).astimezone(JST)
     requested_datetimes = [
@@ -139,6 +149,20 @@ def build_publish_schedule(
         requested + timedelta(minutes=shift_minutes)
         for requested in requested_datetimes
     ]
+    target = datetime.fromisoformat(target_date).date()
+    publish_cutoff = datetime(
+        target.year,
+        target.month,
+        target.day,
+        cutoff_hour,
+        cutoff_minute,
+        tzinfo=JST,
+    )
+    if max(effective_datetimes) > publish_cutoff:
+        raise RuntimeError(
+            "GitHub Actionsの遅延により対象日の自動公開締切を超えるため投稿を中止します: "
+            f"最終予約={max(effective_datetimes).isoformat()} / 締切={publish_cutoff.isoformat()}"
+        )
     if min(effective_datetimes) <= effective_now_jst + timedelta(minutes=5):
         raise RuntimeError("予約公開までの安全な猶予を確保できません。")
     return [

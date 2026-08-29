@@ -22,6 +22,7 @@
     "article:remediate-independence": "node scripts/agents/remediate_source_independence.js",
     "article:remediate-independence:apply": "node scripts/agents/remediate_source_independence.js --apply",
     "article:test-independence": "npx --yes tsx scripts/agents/test_source_independence.ts",
+    "article:test-flow": "npx --yes tsx scripts/agents/test_article_flow_numeric_gate.ts",
     "article:test-routing": "npx --yes tsx scripts/agents/test_article_seasonal_routing.ts",
     "article:test-race-bridge": "npx --yes tsx scripts/agents/test_article_race_bridge.ts",
     "analytics:test-monetization": "npx --yes tsx scripts/agents/test_monetization_context.ts",

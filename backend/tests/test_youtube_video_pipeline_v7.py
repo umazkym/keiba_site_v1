@@ -1498,7 +1498,7 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             [0, 0, 0, 0],
             now_jst=datetime(2026, 7, 26, 18, 43, tzinfo=JST),
             minimum_lead_minutes=20,
-            maximum_shift_minutes=240,
+            maximum_shift_minutes=840,
         )
 
         self.assertEqual(shift_minutes, 10)
@@ -1547,14 +1547,35 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         self.assertEqual([item.publish_offset_minutes for item in ordered], [0, 0])
 
     def test_excessively_late_actions_run_is_rejected(self) -> None:
-        with self.assertRaisesRegex(RuntimeError, "古い内容の自動公開を中止"):
+        with self.assertRaisesRegex(RuntimeError, "許容範囲を超えた|自動公開締切を超える"):
             build_publish_schedule(
                 "2026-07-27",
                 "19:00",
                 [0, 0],
-                now_jst=datetime(2026, 7, 27, 1, 0, tzinfo=JST),
-                maximum_shift_minutes=240,
+                now_jst=datetime(2026, 7, 27, 8, 20, tzinfo=JST),
+                maximum_shift_minutes=840,
             )
+
+    def test_delayed_actions_runs_before_target_day_cutoff_are_scheduled(self) -> None:
+        for now_jst in (
+            datetime(2026, 7, 27, 5, 30, tzinfo=JST),
+            datetime(2026, 7, 27, 7, 15, tzinfo=JST),
+        ):
+            with self.subTest(now_jst=now_jst):
+                publish_times, shift_minutes = build_publish_schedule(
+                    "2026-07-27",
+                    "19:00",
+                    [0, 0],
+                    now_jst=now_jst,
+                    minimum_lead_minutes=45,
+                    maximum_shift_minutes=840,
+                    publish_cutoff_time_jst="09:00",
+                )
+                scheduled = datetime.fromisoformat(publish_times[0].replace("Z", "+00:00")).astimezone(JST)
+                self.assertLessEqual(scheduled, datetime(2026, 7, 27, 9, 0, tzinfo=JST))
+                self.assertGreaterEqual(scheduled, now_jst + timedelta(minutes=45))
+                self.assertEqual(publish_times[0], publish_times[1])
+                self.assertGreater(shift_minutes, 240)
 
     def test_authenticated_channel_must_match_configured_channel(self) -> None:
         client = YouTubeClient.__new__(YouTubeClient)

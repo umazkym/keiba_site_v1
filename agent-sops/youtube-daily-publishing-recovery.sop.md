@@ -2,7 +2,7 @@
 
 ## Overview
 
-YouTube日次統合投稿の認証、データ欠損、途中失敗を安全に切り分け、利用可能なレースで横長1本とShort 1本を重複なく復旧する手順です。日次自動運用では定期実行された午後の翌日データ更新が成功した場合だけ連動し、18:20 JSTの予備起動とDBレジストリで停止・再実行に耐えます。
+YouTube日次統合投稿の認証、データ欠損、途中失敗を安全に切り分け、予測対象レースを網羅した横長1本とShort 1本を重複なく復旧する手順です。日次自動運用では定期実行された午後の翌日データ更新が成功した場合だけ連動し、18:20 JSTの予備起動とDBレジストリで停止・再実行に耐えます。
 
 ## Parameters
 
@@ -41,12 +41,12 @@ Google Auth Platformの対象プロジェクト、OAuthクライアント、認�
 
 **Constraints:**
 
-- You MUST omit only the affected race when Prediction行なし、全馬スコアなし、予測計算エラー、3頭未満の有効スコア、または描画失敗がある because一部欠損で他会場と当日全体の投稿を止めません。
-- You MUST continue rendering as soon as at least one race is publishable because投稿継続と流入獲得を会場・レース完全性より優先します。
-- You MUST retry data loading twice at 120-second intervals only when all candidate races are empty because部分収録可能な状態で待機すると公開機会を失います。
-- You MUST stop that target date after three total attempts only when no publishable race remains because前日データの流用や架空値の補完は禁止です。
-- You MUST include race numbers, names, grades, omission reasons, source, and retry count in Actions Summary because部分公開の内容と上流の復旧対象を照合できるようにします。
-- You MUST require the upstream prediction workflow to retry incomplete races once, but complete with warnings when at least one race remains renderable because上流の部分欠損をYouTube全停止へ波及させません。
+- You MUST retry data loading twice at 120-second intervals when Prediction行なし、全馬スコアなし、予測計算エラー、または3頭未満の有効スコアが1レースでも残る because上流処理中の部分保存を完成データと誤認してはいけません。
+- You MUST continue only when every prediction-eligible race is renderable and the remaining omissions are explicit `expected_exclusion` because新馬・障害など仕様上の対象外と一時欠損を区別する必要があります。
+- You MUST stop before video generation and every external upload after three total attempts when an unexpected omission remains because同じstable IDを不完全な内容で予約すると、後続の完全版は重複防止ゲートで置換できません。
+- You MUST stop before every external upload when a long-video race or Short target is omitted by rendering, or either required video fails to render because描画途中の部分成果物を投稿してはいけません。
+- You MUST include race numbers, names, grades, omission reasons, source, and retry count in Actions Summary because投稿前に止めた原因と上流の復旧対象を照合できるようにします。
+- You MUST require the upstream prediction workflow to retry incomplete races once; even if upstream completes with warnings, the YouTube readiness gate must reject remaining unexpected omissions because上流の成功状態だけでは動画完全性を保証できません。
 - You MUST verify newcomer and obstacle exclusions by their explicit `unpredictable_reason` or recognized race classification because an all-null prediction caused by a calculation error is not a valid exclusion。
 - You MUST treat `NewBeginning`を含む初出走レース and comparison-data shortage marked as `予測対象外` as expected exclusions because予測対象外は取得エラーではありません。
 - You MUST compare placeholder horse names by normalized exact match and omit only that horse because`ウイングレイテスト`のような正常馬名を部分一致で拒否してはいけません。
@@ -85,7 +85,7 @@ YouTube Studioで処理完了、日付、中央各場から地方各場への章
 
 ### 6. 次の1開催日を監視する
 
-成功した定期午後データ更新からの`workflow_run`、18:20 JSTの予備cron、単一concurrency、同一公開時刻、部分収録のSummaryを確認します。
+成功した定期午後データ更新からの`workflow_run`、18:20 JSTの予備cron、単一concurrency、同一公開時刻、`readiness_status`と期待除外のSummaryを確認します。
 
 **Constraints:**
 
@@ -125,15 +125,15 @@ Google Auth Platformが本番環境か、管理スコープで再認証したか
 
 ### 一部レースの予測欠損がある
 
-Actions Summaryの`coverage_status=partial`、除外R、理由、重賞収録状況を確認します。収録可能なレースが1件以上あれば正常な警告付き完了であり、横動画とShortの生成・投稿を継続します。上流側では欠損レースだけを次回取得対象にします。
+Actions Summaryの`readiness_status=incomplete`、除外R、理由、再取得回数を確認します。新馬・障害など明示的な`expected_exclusion`以外が1件でもあれば、横動画とShortを生成・投稿せず停止するのが正常です。`ready_with_expected_exclusions`は仕様上の対象外だけが残る状態で、投稿を継続できます。
 
-### 全件ゼロでWorkflowが失敗になる
+### 全件ゼロまたは一部欠損でWorkflowが失敗になる
 
-初回と120秒間隔の再取得2回が行われたか、DBからAPIへフォールバックしたかを確認します。3回後も正常な馬3頭以上の有限AI偏差値を持つレースが0件なら、その対象日だけ停止します。前日データは再利用しません。
+初回と120秒間隔の再取得2回が行われたか、DBからAPIへフォールバックしたかを確認します。3回後も正常な馬3頭以上の有限AI偏差値を持たない予測対象レースが1件でも残る場合、その対象日だけ停止します。前日データは再利用しません。
 
 ### 午後データ更新Workflowが失敗した
 
-失敗した上流からの`workflow_run`は投稿せず、18:20 JSTの予備cronが部分保存済みDBまたは公開予測APIから収録可能レースを探索したか確認します。緊急復旧は対象日を明示して手動実行し、全件ゼロ、両動画生成不能、素材権利検証失敗、認証チャンネル不一致、またはYouTube側の確定的拒否を停止理由とします。
+失敗した上流からの`workflow_run`は投稿せず、18:20 JSTの予備cronがDBまたは公開予測APIを3回確認し、不完全な部分保存を投稿前に停止したか確認します。緊急復旧は対象日を明示して手動実行し、予測対象レースの欠損、必要動画の生成不能、素材権利検証失敗、認証チャンネル不一致、またはYouTube側の確定的拒否を停止理由とします。
 
 ### 不完全な予約動画を完全版へ差し替える
 

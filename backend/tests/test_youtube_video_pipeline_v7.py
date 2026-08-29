@@ -5,6 +5,7 @@ import os
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -176,6 +177,77 @@ def _valid_horses(prefix: str = "通常馬") -> list[HorseVideoData]:
 
 
 class YouTubeVideoPipelineV7Test(unittest.TestCase):
+    def test_standard_render_coverage_accepts_all_recordable_races(self) -> None:
+        races = [
+            RaceVideoData(
+                f"race-{number}",
+                "2026-08-30",
+                "盛岡",
+                number,
+                f"{number}R",
+                "ダート",
+                1600,
+                predictions=_valid_horses(),
+            )
+            for number in (1, 2)
+        ]
+        args = _args("disabled")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            long_video = _package(root, "daily_long", thumbnail_required=True)
+            short_video = _package(root, "short", thumbnail_required=False)
+            long_video.race_ids = [race.id for race in races]
+            youtube_video_pipeline._ensure_standard_render_coverage(
+                args,
+                "2026-08-30",
+                [VenueVideoData("盛岡", "地方", races)],
+                [long_video, short_video],
+                [{"race_id": race.id} for race in races],
+                [],
+                [],
+            )
+
+    def test_standard_render_coverage_blocks_one_omitted_race(self) -> None:
+        races = [
+            RaceVideoData(
+                f"race-{number}",
+                "2026-08-30",
+                "盛岡",
+                number,
+                f"{number}R",
+                "ダート",
+                1600,
+                predictions=_valid_horses(),
+            )
+            for number in (1, 2)
+        ]
+        args = _args("disabled")
+        render_omission = {
+            "race_id": "race-2",
+            "venue_name": "盛岡",
+            "race_number": 2,
+            "race_name": "2R",
+            "reason": "描画失敗: RuntimeError: test",
+            "category": "render_error",
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            long_video = _package(root, "daily_long", thumbnail_required=True)
+            short_video = _package(root, "short", thumbnail_required=False)
+            long_video.race_ids = ["race-1"]
+            with patch.object(youtube_video_pipeline, "_append_actions_summary") as append_summary:
+                with self.assertRaisesRegex(RuntimeError, "投稿前に停止"):
+                    youtube_video_pipeline._ensure_standard_render_coverage(
+                        args,
+                        "2026-08-30",
+                        [VenueVideoData("盛岡", "地方", races)],
+                        [long_video, short_video],
+                        [{"race_id": "race-1"}],
+                        [render_omission],
+                        [],
+                    )
+            append_summary.assert_called_once()
+
     def test_replacement_revision_creates_separate_stable_ids(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -1050,7 +1122,101 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         self.assertFalse(load_venues.call_args_list[0].kwargs["force_refresh"])
         self.assertTrue(load_venues.call_args_list[1].kwargs["force_refresh"])
 
-    def test_partial_data_is_used_without_waiting_for_retry(self) -> None:
+    def test_unexpected_partial_data_retries_until_predictions_are_ready(self) -> None:
+        target_date = "2026-08-03"
+        valid = RaceVideoData(
+            "valid",
+            target_date,
+            "盛岡",
+            11,
+            "11R",
+            "ダート",
+            1600,
+            predictions=_valid_horses(),
+        )
+        missing = RaceVideoData(
+            "missing",
+            target_date,
+            "盛岡",
+            12,
+            "12R",
+            "ダート",
+            1600,
+            predictions=[],
+        )
+        args = SimpleNamespace(
+            input_json=None,
+            readiness_attempts=3,
+            readiness_delay_seconds=0,
+            allow_placeholder_data=False,
+        )
+
+        with patch.object(
+            youtube_video_pipeline,
+            "load_venues_for_date",
+            side_effect=[
+                [VenueVideoData("盛岡", "地方", [valid, missing])],
+                [VenueVideoData("盛岡", "地方", [valid, replace(missing, predictions=_valid_horses())])],
+            ],
+        ) as load_venues, patch.object(youtube_video_pipeline.time, "sleep") as sleep:
+            prepared = youtube_video_pipeline._load_venues_with_readiness(args, target_date)
+
+        self.assertEqual(prepared.actual_race_count, 2)
+        self.assertEqual(prepared.retry_count, 1)
+        self.assertEqual(prepared.coverage_status, "complete")
+        self.assertEqual(prepared.readiness_status, "ready")
+        self.assertEqual(prepared.omitted_races, [])
+        self.assertEqual(load_venues.call_count, 2)
+        sleep.assert_called_once_with(0)
+
+    def test_expected_exclusion_is_ready_without_retry(self) -> None:
+        target_date = "2026-08-03"
+        valid = RaceVideoData(
+            "valid",
+            target_date,
+            "盛岡",
+            11,
+            "11R",
+            "ダート",
+            1600,
+            predictions=_valid_horses(),
+        )
+        newcomer = RaceVideoData(
+            "newcomer",
+            target_date,
+            "盛岡",
+            12,
+            "2歳新馬",
+            "ダート",
+            1600,
+            predictions=[],
+        )
+        args = SimpleNamespace(
+            input_json=None,
+            readiness_attempts=3,
+            readiness_delay_seconds=0,
+            allow_placeholder_data=False,
+        )
+
+        with patch.object(
+            youtube_video_pipeline,
+            "load_venues_for_date",
+            return_value=[VenueVideoData("盛岡", "地方", [valid, newcomer])],
+        ) as load_venues, patch.object(youtube_video_pipeline.time, "sleep") as sleep:
+            prepared = youtube_video_pipeline._load_venues_with_readiness(args, target_date)
+
+        self.assertEqual(prepared.actual_race_count, 1)
+        self.assertEqual(prepared.retry_count, 0)
+        self.assertEqual(prepared.coverage_status, "partial")
+        self.assertEqual(prepared.readiness_status, "ready_with_expected_exclusions")
+        self.assertEqual(
+            [item.category for item in prepared.omitted_races],
+            ["expected_exclusion"],
+        )
+        load_venues.assert_called_once()
+        sleep.assert_not_called()
+
+    def test_unexpected_partial_data_is_blocked_after_all_retries(self) -> None:
         target_date = "2026-08-03"
         valid = RaceVideoData(
             "valid",
@@ -1083,15 +1249,17 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
             youtube_video_pipeline,
             "load_venues_for_date",
             return_value=[VenueVideoData("盛岡", "地方", [valid, missing])],
-        ) as load_venues, patch.object(youtube_video_pipeline.time, "sleep") as sleep:
+        ) as load_venues, patch.object(youtube_video_pipeline.time, "sleep"):
             prepared = youtube_video_pipeline._load_venues_with_readiness(args, target_date)
 
         self.assertEqual(prepared.actual_race_count, 1)
-        self.assertEqual(prepared.retry_count, 0)
-        self.assertEqual(prepared.coverage_status, "partial")
-        self.assertEqual([item.race_id for item in prepared.omitted_races], ["missing"])
-        load_venues.assert_called_once()
-        sleep.assert_not_called()
+        self.assertEqual(prepared.retry_count, 2)
+        self.assertEqual(prepared.readiness_status, "incomplete")
+        self.assertEqual(load_venues.call_count, 3)
+        with patch.object(youtube_video_pipeline, "_append_actions_summary") as append_summary:
+            with self.assertRaisesRegex(RuntimeError, "予測データが揃っていません"):
+                youtube_video_pipeline._ensure_video_data_ready(prepared, target_date)
+        append_summary.assert_called_once()
 
     def test_database_force_refresh_invalidates_prediction_cache(self) -> None:
         db = Mock()

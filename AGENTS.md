@@ -113,6 +113,10 @@
 > [!NOTE]
 > ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
 
+* **2026-08-30**:
+  * **上流予測完了前のYouTube部分投稿を恒久防止**:
+    8月30日分のYouTube #91は14:07の手動起動時点で全57レース中34レースのPredictionが未生成だったにもかかわらず、従来の「1件でも収録可能なら続行」仕様により23レース版を予約投稿していた。午後データ取得 #167はGitHub Actions遅延で20:13開始・21:07完了となり、完了後は51レースが収録可能、新馬5件・障害1件の計6件だけが明示的な予測対象外だった。後続 #92/#93は同じstable IDの内容hash変更を重複防止が拒否して安全停止した。対処として、Prediction行なし、予測計算エラー、有効スコア3頭未満など`expected_exclusion`以外の欠損が1件でもあれば全件ゼロでなくても120秒間隔で計3回確認し、残存時は動画生成・外部投稿前に停止するreadinessゲートへ変更した。さらに長尺の収録対象、Short対象、または必要動画種別の描画欠損も投稿前に止める完全性ゲートを追加し、Actions Summaryへ`readiness_status`と取得レース数を出すようにした。新馬・障害など明示的な対象外は従来どおり許容する。既存の8月30日投稿、YouTube上の公開状態、本番データ、Git操作、デプロイには触れていない。
+
 * **2026-08-28**:
   * **GitHub Actions遅延による対象日ずれとYouTube誤連鎖を恒久修正**:
     13:30 JST予定の`Keiba Data Fetch (Afternoon)`が約11時間遅れて翌日00:21に起動し、相対指定`tomorrow`が8月28日ではなく8月29日へ解決されたため、8月28日の公開レースデータが空になり、YouTubeも8月28日全件ゼロ失敗と8月29日佐賀9レースだけの先行予約へ連鎖していた。Morning Today・Retry Today・Afternoon・Resultsの対象日を、実開始日時ではなく各Workflowの本来のUTC cron時刻から決める共通`workflow_dates.py daily`へ統一し、手動実行はYYYY-MM-DD必須、cron不一致と24時間以上の遅延は停止、対象日・本来時刻・遅延分数をSummaryへ出すよう変更した。YouTubeの`workflow_run`は成功した定期Afternoonだけを受け、04:30 UTCの本来日+1日を対象とし、手動Afternoonと失敗runは18:20の予備cronまたは明示日付の手動復旧へ分離した。不完全な未公開予約は削除せず`superseded`として旧動画IDと予約履歴を保持し、`replacement_revision`付きの新stable IDで完全版を別動画IDへ生成する回復経路を追加。差し替えは取得数・収録数・横動画・Shortがすべて完全な場合だけ通し、他SNSへの重複配信を停止する。全23 WorkflowのYAML構文、SOP 11件、バックエンド302テスト / 61 subtestsが成功した。本番データ復旧、キャッシュpurge、旧動画の非公開化、Git操作、デプロイは未実施。

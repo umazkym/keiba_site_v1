@@ -13,7 +13,7 @@ import unicodedata
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -119,6 +119,24 @@ class PreparedVideoData:
         if not self.venues:
             return "empty"
         return "partial" if self.omitted_races else "complete"
+
+    @property
+    def blocking_omissions(self) -> List[RaceOmission]:
+        return [
+            item
+            for item in self.omitted_races
+            if item.category != "expected_exclusion"
+        ]
+
+    @property
+    def readiness_status(self) -> str:
+        if not self.venues:
+            return "empty"
+        if self.blocking_omissions:
+            return "incomplete"
+        if self.omitted_races:
+            return "ready_with_expected_exclusions"
+        return "ready"
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -270,6 +288,53 @@ def _partition_publishable_venues(
     return _prepare_publishable_venues(venues, allow_placeholder_data)
 
 
+def _source_race_count(venues: Iterable[VenueVideoData]) -> int:
+    return sum(len(_all_venue_races(venue)) for venue in venues)
+
+
+def _is_video_data_ready(
+    publishable: List[VenueVideoData],
+    omissions: List[RaceOmission],
+) -> bool:
+    return bool(publishable) and all(
+        item.category == "expected_exclusion"
+        for item in omissions
+    )
+
+
+def _ensure_video_data_ready(
+    prepared: PreparedVideoData,
+    target_date: str,
+) -> None:
+    blocking = prepared.blocking_omissions
+    if not blocking:
+        return
+    details = " / ".join(
+        f"{item.venue_name}{item.race_number}R {item.race_name}（{item.reason}）"
+        for item in blocking
+    )
+    message = (
+        f"{target_date}は{prepared.retry_count}回再確認しても、"
+        f"収録対象{prepared.source_race_count}レースの予測データが揃っていません: "
+        f"{details}"
+    )
+    _append_actions_summary(
+        [
+            f"## YouTube動画生成 {target_date}",
+            "",
+            "- 生成本数: 0",
+            "- readiness_status: incomplete",
+            f"- データ取得元: {prepared.data_source}",
+            f"- 再取得回数: {prepared.retry_count}",
+            f"- 取得レース数: {prepared.source_race_count}",
+            f"- 収録可能レース数: {prepared.actual_race_count}",
+            "- 結果: 予測データ準備未完了のため、動画生成・投稿前に停止",
+            f"- 未完了レース: {details}",
+        ]
+    )
+    raise RuntimeError(message)
+
+
 def _load_venues_with_readiness(
     args: argparse.Namespace,
     target_date: str,
@@ -285,7 +350,7 @@ def _load_venues_with_readiness(
             omitted_races=omissions,
             data_source="input_json",
             retry_count=0,
-            source_race_count=sum(len(venue.races) for venue in venues),
+            source_race_count=_source_race_count(venues),
         )
 
     attempts = max(1, int(args.readiness_attempts))
@@ -303,7 +368,7 @@ def _load_venues_with_readiness(
                 diagnostics=diagnostics,
             )
             last_data_source = str(diagnostics.get("data_source") or "unknown")
-            last_source_race_count = sum(len(venue.races) for venue in venues)
+            last_source_race_count = _source_race_count(venues)
             last_publishable, last_omissions = _prepare_publishable_venues(
                 venues,
                 allow_placeholder_data=args.allow_placeholder_data,
@@ -316,7 +381,7 @@ def _load_venues_with_readiness(
             error = f"{type(exc).__name__}: 動画データを取得できません"
             load_errors.append(error)
             print(f"動画データ取得エラー ({attempt}/{attempts}): {error}")
-        if last_publishable:
+        if _is_video_data_ready(last_publishable, last_omissions):
             return PreparedVideoData(
                 venues=last_publishable,
                 omitted_races=last_omissions,
@@ -543,6 +608,79 @@ def _validate_replacement_coverage(
     raise RuntimeError("差し替え版は収録対象レースを網羅できないため停止します: " + " / ".join(details))
 
 
+def _ensure_standard_render_coverage(
+    args: argparse.Namespace,
+    target_date: str,
+    venues: List[VenueVideoData],
+    rendered: List[RenderedVideo],
+    included_races: List[dict[str, Any]],
+    render_omissions: List[dict[str, Any]],
+    render_errors: List[str],
+) -> None:
+    required_video_types = set()
+    if args.include_long:
+        required_video_types.add("daily_long")
+    if args.include_shorts and args.max_shorts > 0:
+        required_video_types.add("short")
+    generated_video_types = {item.video_type for item in rendered}
+    missing_video_types = sorted(required_video_types - generated_video_types)
+    blocked_videos = [item.stable_id for item in rendered if not item.publishable]
+    expected_race_ids = {
+        race.id
+        for venue in venues
+        for race in venue.races
+    }
+    included_race_ids = {
+        str(item.get("race_id") or "").strip()
+        for item in included_races
+        if str(item.get("race_id") or "").strip()
+    }
+    missing_long_race_ids = sorted(expected_race_ids - included_race_ids)
+
+    if (
+        not render_omissions
+        and not render_errors
+        and not missing_video_types
+        and not blocked_videos
+        and (not args.include_long or not missing_long_race_ids)
+    ):
+        return
+
+    details = [
+        f"横動画収録={len(included_race_ids)}/{len(expected_race_ids)}",
+    ]
+    if render_omissions:
+        details.append(
+            "描画除外="
+            + " / ".join(
+                f"{item.get('venue_name')}{item.get('race_number')}R "
+                f"{item.get('race_name')}（{item.get('reason')}）"
+                for item in render_omissions
+            )
+        )
+    if missing_long_race_ids:
+        details.append("横動画未収録ID=" + ",".join(missing_long_race_ids))
+    if render_errors:
+        details.append("生成エラー=" + " / ".join(render_errors))
+    if missing_video_types:
+        details.append("未生成=" + ",".join(missing_video_types))
+    if blocked_videos:
+        details.append("公開不可=" + ",".join(blocked_videos))
+
+    message = "通常版は収録対象を網羅できないため、投稿前に停止します: " + " / ".join(details)
+    _append_actions_summary(
+        [
+            f"## YouTube動画生成 {target_date}",
+            "",
+            "- 生成本数: 0",
+            "- readiness_status: render_incomplete",
+            "- 結果: 描画完全性ゲートで動画投稿前に停止",
+            f"- 詳細: {' / '.join(details)}",
+        ]
+    )
+    raise RuntimeError(message)
+
+
 def _preflight_upload(args: argparse.Namespace) -> Optional[UploadContext]:
     """動画生成前に認証・チャンネル・DBレジストリを検証する。"""
     if not _is_upload_requested(args):
@@ -655,6 +793,8 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
     venues = prepared.venues
     args.prepared_video_data = prepared
 
+    _ensure_video_data_ready(prepared, target_date)
+
     if prepared.omitted_races:
         details = " / ".join(
             f"{item.venue_name}{item.race_number}R {item.race_name}: {item.reason}"
@@ -706,7 +846,10 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
         except Exception as exc:
             error = f"横動画: {type(exc).__name__}: {exc}"
             render_errors.append(error)
-            print(f"横動画の生成に失敗しました。Shortの生成は継続します: {error}")
+            print(
+                "横動画の生成に失敗しました。Shortの生成後、"
+                f"完全性ゲートで外部投稿を停止します: {error}"
+            )
 
     if args.include_shorts and args.max_shorts > 0:
         shorts_targets = pick_daily_short_races(venues)
@@ -731,7 +874,10 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
         except Exception as exc:
             error = f"Short: {type(exc).__name__}: {exc}"
             render_errors.append(error)
-            print(f"Shortの生成に失敗しました。生成済み横動画の処理は継続します: {error}")
+            print(
+                "Shortの生成に失敗しました。生成済み横動画は保持しますが、"
+                f"完全性ゲートで外部投稿を停止します: {error}"
+            )
 
     if not rendered:
         raise RuntimeError("横動画とShortの両方を生成できませんでした: " + " / ".join(render_errors))
@@ -771,6 +917,15 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
     for race in included_races:
         venue_name = str(race["venue_name"])
         included_counts_by_venue[venue_name] = included_counts_by_venue.get(venue_name, 0) + 1
+    _ensure_standard_render_coverage(
+        args,
+        target_date,
+        venues,
+        rendered,
+        included_races,
+        render_omissions,
+        render_errors,
+    )
     short_video = next((item for item in rendered if item.video_type == "short"), None)
     included_grade_races = (
         [race for race in short_video.featured_races if race.get("grade")]
@@ -851,6 +1006,8 @@ def _render_all(args: argparse.Namespace) -> List[RenderedVideo]:
             ),
             f"- 実収録レース数: {len(included_races)}",
             f"- coverage_status: {coverage_status}",
+            f"- readiness_status: {prepared.readiness_status}",
+            f"- 取得レース数: {prepared.source_race_count}",
             (
                 "- 差し替え完全性: complete "
                 f"（収録対象{replacement_coverage['expected_recordable_count']}件 / "

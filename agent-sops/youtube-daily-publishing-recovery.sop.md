@@ -7,7 +7,7 @@ YouTube日次統合投稿の認証、データ欠損、途中失敗を安全に�
 ## Parameters
 
 - **target_date** (required): 投稿対象のレース日。手動復旧では`YYYY-MM-DD`を明示します。
-- **publication_mode** (required): `private_review`または`scheduled_public`。
+- **publication_mode** (required): `scheduled_public`、`public`、または`private_review`。
 - **failed_run_url** (optional): 原因を特定するGitHub Actions実行URL。
 - **expected_venues** (optional): データ更新後に公開APIまたはDBで確認した開催会場。
 

@@ -24,14 +24,15 @@ on:
           - 'false'
           - 'true'
       publication_mode:
-        description: '投稿モード。通常の3日間検証はprivate_review'
+        description: '投稿モード。通常運用はscheduled_public'
         required: false
-        default: 'private_review'
+        default: 'scheduled_public'
         type: choice
         options:
-          - 'disabled'
-          - 'private_review'
           - 'scheduled_public'
+          - 'public'
+          - 'private_review'
+          - 'disabled'
       replacement_revision:
         description: '差し替え版識別子。通常実行は空欄'
         required: false
@@ -140,7 +141,7 @@ jobs:
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
           YOUTUBE_UPLOAD_ENABLED: ${{ secrets.YOUTUBE_UPLOAD_ENABLED }}
-          YOUTUBE_PUBLICATION_MODE: ${{ github.event.inputs.publication_mode || vars.YOUTUBE_PUBLICATION_MODE || 'private_review' }}
+          YOUTUBE_PUBLICATION_MODE: ${{ github.event.inputs.publication_mode || vars.YOUTUBE_PUBLICATION_MODE || 'scheduled_public' }}
           YOUTUBE_PUBLISH_TIME_JST: '19:00'
           YOUTUBE_PUBLISH_MIN_LEAD_MINUTES: '45'
           YOUTUBE_MAX_PUBLISH_SHIFT_MINUTES: ${{ vars.YOUTUBE_MAX_PUBLISH_SHIFT_MINUTES || '840' }}

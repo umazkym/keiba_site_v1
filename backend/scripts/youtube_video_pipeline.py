@@ -1276,12 +1276,10 @@ def _upload_all(
         reconciliation_lines.append(
             f"- 状態反映待ちから再開: {len(retryable_recent_errors)}件"
         )
-    safety_reasons: List[str] = []
     if reconciliation_errors or recent_errors:
-        safety_reasons.append("直近7日間の投稿エラーあり")
-    if publication_mode == "scheduled_public" and safety_reasons:
-        publication_mode = "private_review"
-        print(f"安全ゲートにより非公開レビューへ切り替えます: {', '.join(safety_reasons)}")
+        reconciliation_lines.append(
+            f"- 過去エラー履歴: 照合エラー={len(reconciliation_errors)}件 / 投稿エラー={len(recent_errors)}件"
+        )
 
     schedule_clear_candidates = [
         record
@@ -1313,9 +1311,12 @@ def _upload_all(
     published_count = 0
     private_review_count = 0
     upload_errors: List[str] = []
-    effective_publish_time = "なし（非公開レビュー）"
-    if safety_reasons:
-        uploaded_lines.append(f"- 安全ゲート: {', '.join(safety_reasons)}")
+    if publication_mode == "public":
+        effective_publish_time = "即時公開"
+    elif publication_mode == "scheduled_public":
+        effective_publish_time = f"{args.publish_time_jst} JST（予約公開）"
+    else:
+        effective_publish_time = "なし（非公開レビュー）"
 
     publishable_items = [item for item in rendered if item.publishable]
     publish_at_by_key: Dict[Tuple[str, str], Optional[str]] = {
@@ -1415,7 +1416,15 @@ def _upload_all(
             and record.scheduled_at is not None
         ):
             publish_at = _format_publish_at(record.scheduled_at)
-        mode_label = f"予約公開 {publish_at}" if publish_at else "非公開レビュー"
+        if publication_mode == "public":
+            mode_label = "即時公開"
+            privacy_status = "public"
+        elif publication_mode == "scheduled_public":
+            mode_label = f"予約公開 {publish_at}" if publish_at else "予約公開"
+            privacy_status = "private"
+        else:
+            mode_label = "非公開レビュー"
+            privacy_status = "private"
         print(f"YouTubeへ投稿します: {item.title} ({mode_label})")
         try:
             if item.video_path is None:
@@ -1430,6 +1439,7 @@ def _upload_all(
                     description=item.description,
                     tags=item.tags,
                     publish_at=publish_at,
+                    privacy_status=privacy_status,
                     notify_subscribers=False,
                 )
                 uploaded_count += 1
@@ -1521,7 +1531,12 @@ def _upload_all(
                 timeout_seconds=args.processing_timeout_seconds,
                 poll_interval_seconds=args.processing_poll_seconds,
             )
-            final_status = "scheduled" if publication_mode == "scheduled_public" else "private_review"
+            if publication_mode == "public":
+                final_status = "published"
+            elif publication_mode == "scheduled_public":
+                final_status = "scheduled"
+            else:
+                final_status = "private_review"
             if status.privacy_status == "public":
                 final_status = "published"
             registry.transition(
@@ -1606,9 +1621,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--publication-mode",
-        default=os.getenv("YOUTUBE_PUBLICATION_MODE", "disabled"),
-        choices=["disabled", "private_review", "scheduled_public"],
-        help="disabled=生成のみ、private_review=非公開投稿、scheduled_public=予約公開",
+        default=os.getenv("YOUTUBE_PUBLICATION_MODE", "scheduled_public"),
+        choices=["disabled", "private_review", "scheduled_public", "public"],
+        help="disabled=生成のみ、private_review=非公開投稿、scheduled_public=予約公開、public=即時公開",
     )
     parser.add_argument(
         "--readiness-attempts",

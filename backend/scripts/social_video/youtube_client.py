@@ -13,7 +13,7 @@ from typing import List, Optional, Sequence, Tuple
 JST = timezone(timedelta(hours=9))
 UTC = timezone.utc
 YOUTUBE_MANAGE_SCOPE = "https://www.googleapis.com/auth/youtube"
-PUBLICATION_MODES = {"disabled", "private_review", "scheduled_public"}
+PUBLICATION_MODES = {"disabled", "private_review", "scheduled_public", "public"}
 YOUTUBE_API_MAX_RETRIES = 3
 
 
@@ -252,7 +252,8 @@ class YouTubeClient:
         title: str,
         description: str,
         tags: List[str],
-        publish_at: Optional[str],
+        publish_at: Optional[str] = None,
+        privacy_status: str = "private",
         notify_subscribers: bool = False,
     ) -> YouTubeUploadResult:
         if not video_path.exists():
@@ -262,8 +263,9 @@ class YouTubeClient:
         except ImportError as exc:
             raise RuntimeError("googleapiclientが読み込めません。依存関係を確認してください。") from exc
 
+        effective_privacy_status = "public" if privacy_status == "public" and not publish_at else "private"
         status = {
-            "privacyStatus": "private",
+            "privacyStatus": effective_privacy_status,
             "selfDeclaredMadeForKids": False,
         }
         if publish_at:
@@ -424,8 +426,8 @@ class YouTubeClient:
         notify_subscribers: bool = False,
     ) -> YouTubeUploadResult:
         """旧呼び出し互換。新規パイプラインは段階APIを直接利用する。"""
-        if privacy_status != "private":
-            raise ValueError("安全な予約公開のためprivacy_statusはprivateだけを許可します。")
+        if privacy_status not in {"private", "public"}:
+            raise ValueError(f"無効なprivacy_statusです: {privacy_status}")
         result = self.insert_video(
             video_path=video_path,
             title=title,

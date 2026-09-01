@@ -739,6 +739,64 @@ class YouTubeVideoPipelineV7Test(unittest.TestCase):
         self.assertEqual(registry.existing.metadata["schedule_shift_minutes"], 60)
         self.assertIn("遅延時刻補正", summary_text)
 
+    def test_public_mode_uploads_immediately_as_published(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            package = _package(temp_root, "venue_long", thumbnail_required=True)
+            registry = FakeRegistry()
+            client = _youtube_client()
+            client.wait_for_processing.return_value = YouTubeVideoStatus(
+                video_id="video-id",
+                processing_status="succeeded",
+                upload_status="processed",
+                privacy_status="public",
+                publish_at=None,
+                failure_reason=None,
+                rejection_reason=None,
+            )
+            with patch.object(youtube_video_pipeline, "_env_flag", return_value=True), patch.object(
+                youtube_video_pipeline, "VideoPostRegistry", return_value=registry
+            ), patch.object(youtube_video_pipeline, "YouTubeClient", return_value=client):
+                youtube_video_pipeline._upload_all(_args("public"), [package])
+
+        self.assertIsNone(client.insert_video.call_args.kwargs["publish_at"])
+        self.assertEqual(client.insert_video.call_args.kwargs["privacy_status"], "public")
+        self.assertEqual(registry.transitions[-1], "published")
+
+    def test_recent_errors_do_not_downgrade_scheduled_public_to_private(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            package = _package(temp_root, "venue_long", thumbnail_required=True)
+            recent_err_record = PublicationRecord(
+                platform="youtube",
+                target_date="2099-07-11",
+                video_type="venue_long",
+                stable_id="venue_long_err",
+                status="failed",
+                content_hash="hash-err",
+                remote_video_id=None,
+                scheduled_at=None,
+                attempt_count=1,
+                last_error="過去のテストエラー",
+                metadata={},
+            )
+            registry = FakeRegistry()
+            registry.recent_records = [recent_err_record]
+            client = _youtube_client()
+            with patch.object(youtube_video_pipeline, "_env_flag", return_value=True), patch.object(
+                youtube_video_pipeline, "VideoPostRegistry", return_value=registry
+            ), patch.object(
+                youtube_video_pipeline, "YouTubeClient", return_value=client
+            ), patch.object(
+                youtube_video_pipeline,
+                "build_publish_schedule",
+                return_value=(["2099-07-11T10:00:00Z"], 0),
+            ):
+                youtube_video_pipeline._upload_all(_args("scheduled_public"), [package])
+
+        self.assertEqual(client.insert_video.call_args.kwargs["publish_at"], "2099-07-11T10:00:00Z")
+        self.assertEqual(registry.transitions[-1], "scheduled")
+
     def test_unpublishable_item_does_not_downgrade_other_scheduled_video(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             package = _package(Path(temp_dir), "venue_long", thumbnail_required=True)

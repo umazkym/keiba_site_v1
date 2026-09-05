@@ -76,6 +76,7 @@ Constraints for parameter acquisition:
 - You SHOULD run `npm run article:validate-links` and `npm run article:audit-quality` from `frontend/` when article Markdown or article validation logic changes.
 - You SHOULD run `npm run article:test-independence` when planner, Writer, Editor, SEO Checker, Publisher, or evidence sanitization changes.
 - Evidence sanitization tests MUST cover a verified multi-column row that produces `evidence_rows > 0` and an external-source-only row that remains rejected.
+- You MUST keep numeric-table heuristics in `article_flow.ts` aligned with `article_quality_audit.js`. A verified popularity/ranking table MUST NOT be rejected only because its rate columns follow the natural row order, while an unsorted over-smoothed table must remain covered by a rejection test.
 - You SHOULD run `npx tsc --noEmit` when TypeScript agent scripts or article rendering types change.
 
 ### 5.1 Stop repeated Gemini billing failures without losing orders

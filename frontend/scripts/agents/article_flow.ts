@@ -711,6 +711,7 @@ function detectSyntheticTableRisk(content: string): string[] {
     const rows = parseTableRows(table);
     if (rows.length < 6) return;
 
+    const headers = rows[0];
     const width = Math.max(...rows.map(row => row.length));
     let monotonicPercentColumns = 0;
 
@@ -723,7 +724,10 @@ function detectSyntheticTableRisk(content: string): string[] {
       if (isStrictlyMonotonic(values)) monotonicPercentColumns++;
     }
 
-    if (monotonicPercentColumns >= 2) {
+    // 人気順・順位順の実集計では、勝率と複勝率が同じ方向へ並ぶこと自体は自然。
+    // 公開済み記事の品質監査と同じ条件に揃え、通常の並びに意味がない表だけを厳しく見る。
+    const naturallySortedTable = /順位|人気/.test(headers[0] || '');
+    if (!naturallySortedTable && monotonicPercentColumns >= 3) {
       risks.push(`table ${index + 1}: ${monotonicPercentColumns} percentage columns are strictly monotonic`);
     }
   });

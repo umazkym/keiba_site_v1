@@ -49,6 +49,94 @@ try {
   assert.equal(accepted.status, 'APPROVED', accepted.log);
   assert.deepEqual(accepted.criticalIssues, []);
 
+  const popularityOrder: WriteOrder = {
+    target_keyword: '新潟ダート1800m 荒れる 傾向',
+    theme_cluster: 'popularity_data',
+    reference_data: {
+      period: '2024年10月〜2026年9月',
+      condition: '新潟ダート1800m 良〜不良',
+      sample_size: 500,
+      key_metrics: [
+        { 人気: '1番人気', 勝率: '45.0%', 複勝率: '75.0%', 単勝回収率: '85%' },
+        { 人気: '2番人気', 勝率: '25.0%', 複勝率: '55.0%', 単勝回収率: '80%' },
+        { 人気: '3番人気', 勝率: '15.0%', 複勝率: '40.0%', 単勝回収率: '90%' },
+        { 人気: '4番人気', 勝率: '8.0%', 複勝率: '25.0%', 単勝回収率: '70%' },
+        { 人気: '5番人気', 勝率: '4.0%', 複勝率: '15.0%', 単勝回収率: '30%' },
+      ],
+    },
+  };
+  const popularityFrontmatter = `---
+title: 新潟ダート1800mの人気別成績
+description: 入力済みの人気別成績から確認順を整理します。
+target_keyword: 新潟ダート1800m 荒れる 傾向
+theme_cluster: popularity_data
+---
+`;
+  const naturallySortedPath = path.join(tempDir, 'naturally-sorted-popularity.md');
+  fs.writeFileSync(
+    naturallySortedPath,
+    `${popularityFrontmatter}
+| 人気 | 勝率 | 複勝率 | 単勝回収率 |
+| --- | ---: | ---: | ---: |
+| 1番人気 | 45.0% | 75.0% | 85% |
+| 2番人気 | 25.0% | 55.0% | 80% |
+| 3番人気 | 15.0% | 40.0% | 90% |
+| 4番人気 | 8.0% | 25.0% | 70% |
+| 5番人気 | 4.0% | 15.0% | 30% |
+`,
+    'utf-8',
+  );
+  const naturallySorted = runPostWriterArticleFlow(popularityOrder, naturallySortedPath);
+  assert.equal(naturallySorted.status, 'APPROVED', naturallySorted.log);
+  assert.doesNotMatch(
+    naturallySorted.criticalIssues.map(issue => issue.message).join('\n'),
+    /numeric table may be synthetic/,
+  );
+
+  const syntheticOrder: WriteOrder = {
+    target_keyword: '検証用コース データ',
+    theme_cluster: 'asset',
+    reference_data: {
+      period: '2024年1月〜2026年8月',
+      condition: '検証用コース',
+      sample_size: 500,
+      key_metrics: [
+        { 区分: 'A', 勝率: '50%', 複勝率: '80%', 単勝回収率: '120%' },
+        { 区分: 'B', 勝率: '40%', 複勝率: '70%', 単勝回収率: '110%' },
+        { 区分: 'C', 勝率: '30%', 複勝率: '60%', 単勝回収率: '100%' },
+        { 区分: 'D', 勝率: '20%', 複勝率: '50%', 単勝回収率: '90%' },
+        { 区分: 'E', 勝率: '10%', 複勝率: '40%', 単勝回収率: '80%' },
+      ],
+    },
+  };
+  const syntheticFrontmatter = `---
+title: 検証用コースのデータ
+description: 入力済みデータの品質ゲートを検証します。
+target_keyword: 検証用コース データ
+theme_cluster: asset
+---
+`;
+  const syntheticPath = path.join(tempDir, 'synthetic-table.md');
+  fs.writeFileSync(
+    syntheticPath,
+    `${syntheticFrontmatter}
+| 区分 | 勝率 | 複勝率 | 単勝回収率 |
+| --- | ---: | ---: | ---: |
+| A | 50% | 80% | 120% |
+| B | 40% | 70% | 110% |
+| C | 30% | 60% | 100% |
+| D | 20% | 50% | 90% |
+| E | 10% | 40% | 80% |
+`,
+    'utf-8',
+  );
+  const synthetic = runPostWriterArticleFlow(syntheticOrder, syntheticPath);
+  assert.equal(synthetic.status, 'REJECTED', synthetic.log);
+  assert.match(
+    synthetic.criticalIssues.map(issue => issue.message).join('\n'),
+    /numeric table may be synthetic: table 1: 3 percentage columns are strictly monotonic/,
+  );
+
   const rejectedPath = path.join(tempDir, 'rejected.md');
   fs.writeFileSync(
     rejectedPath,

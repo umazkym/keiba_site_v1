@@ -1,0 +1,20 @@
+# API専用。Dockerfile.apiで指定するソースと依存一覧だけを送信する。
+# バッチ用Dockerfileのフォント・動画素材の扱いとは分離する。
+**
+!Dockerfile.api
+!requirements-api.txt
+!main.py
+!api/
+!api/**
+!core/
+!core/**
+!crud/
+!crud/**
+!database/
+!database/**
+!schemas/
+!schemas/**
+**/__pycache__/
+**/*.pyc
+**/.env
+**/.env.*

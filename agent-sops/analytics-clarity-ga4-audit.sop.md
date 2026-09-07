@@ -24,7 +24,7 @@ Constraints for parameter acquisition:
 
 **Constraints:**
 
-- You MUST read `docs/analytics_measurement_plan.md` before changing GA4 or Clarity event behavior.
+- You MUST read `docs/analytics/analytics_measurement_plan.md` before changing GA4 or Clarity event behavior.
 - You MUST distinguish real `page_view` from in-page interactions such as race group selection, venue selection, and race navigation.
 - You MUST identify key events such as `affiliate_click` and `article_race_click` when revenue funnel work is involved.
 - You MUST NOT reintroduce virtual `page_view` for tab or race switching because it previously distorted GA4 versus AdSense comparison.
@@ -59,7 +59,7 @@ Constraints for parameter acquisition:
 
 - You MUST run `npx tsc --noEmit` for TypeScript analytics changes.
 - You SHOULD run `npm run build` when page-level tracking components or App Router pages change.
-- You MUST update `docs/analytics_measurement_plan.md` if event names, parameters, or key-event recommendations change.
+- You MUST update `docs/analytics/analytics_measurement_plan.md` if event names, parameters, or key-event recommendations change.
 - You MUST NOT rename events casually because GA4 historical reporting and key-event settings depend on stable names.
 
 ### 5. Report analysis with caveats
@@ -75,9 +75,9 @@ Constraints for parameter acquisition:
 
 ## Source references
 
-- `docs/analytics_measurement_plan.md`
-- `docs/clarity_optimization_audit_20260620.md`
-- `docs/clarity_completeness_review_20260621.md`
+- `docs/analytics/analytics_measurement_plan.md`
+- `docs/analytics/clarity_optimization_audit_20260620.md`
+- `docs/analytics/clarity_completeness_review_20260621.md`
 - `frontend/lib/analytics.ts`
 - `frontend/components/ArticleEngagementTracker.tsx`
 - `frontend/components/AffiliateSlot.tsx`

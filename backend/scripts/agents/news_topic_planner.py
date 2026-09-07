@@ -72,8 +72,8 @@ GRADE_RACE_SEARCH_DEMAND_PATH = os.path.join(
     "reference",
     "grade-race-search-demand.json",
 )
-LOCAL_JRA_GRADE_SCHEDULE_PATH = os.path.join(PROJECT_ROOT, "中央競馬重賞一覧.txt")
-LOCAL_NAR_GRADE_SCHEDULE_PATH = os.path.join(PROJECT_ROOT, "地方競馬重賞一覧.txt")
+LOCAL_JRA_GRADE_SCHEDULE_PATH = os.path.join(PROJECT_ROOT, "data/reference/中央競馬重賞一覧.txt")
+LOCAL_NAR_GRADE_SCHEDULE_PATH = os.path.join(PROJECT_ROOT, "data/reference/地方競馬重賞一覧.txt")
 
 JST = timezone(timedelta(hours=9))
 CENTRAL_DRAW_READY_HOUR = 11

@@ -83,7 +83,7 @@ SOPを `agent-sops/{kebab-case}.sop.md` に作成または更新します。
 
 ```text
 sop_goal: Clarity監査の反復手順をSOP化したい
-source_materials: docs/clarity_optimization_audit_20260620.md, docs/clarity_completeness_review_20260621.md
+source_materials: docs/analytics/clarity_optimization_audit_20260620.md, docs/analytics/clarity_completeness_review_20260621.md
 ```
 
 ### Example Output

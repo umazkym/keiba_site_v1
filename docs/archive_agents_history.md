@@ -493,7 +493,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 #### ✅ 自動記事生成: Tavily検索流入最大化エンジン化
 - **完了日時**: 2026-06-11 17:24
 - **実施内容**: Tavily起点の記事生成を、単なるニュース収集ではなく検索流入を狙うWriteOrder生成へ強化した。直近21日以内から開催後3日以内の重賞を優先するレースカレンダーを追加し、毎日の自動実行でも宝塚記念・函館SSなど開催が近いレース名からTavilyクエリを組み立てるようにした。Tavily結果は `枠順`、`出走馬`、`馬場`、`追い切り`、`騎手変更`、`開催情報`、`AI予想` の検索意図に分類し、`宝塚記念2026 枠順 AI予想` のような自然検索向けの `target_keyword` へ変換する。季節外れのレースは原則採用せず、同一レースの記事量産を防ぎため、7日間で同一レース2本まで、1回の実行では同一レース1本までに制限した。さらに `article:pipeline` 側でニュース枠を1本予約し、通常データ記事にTavily起点記事が押し出されないようにした。公開slugも主要重賞名・検索意図語を英語slugへ変換するよう改善し、`2026-ai-xxxx` のような汎用slugを減らす構成にした。
-- **変更ファイル**: `backend/scripts/agents/news_topic_planner.py`, `frontend/scripts/agents/test_pipeline.ts`, `frontend/scripts/agents/agent_publisher.ts`, `frontend/scripts/agents/agent_writer.ts`, `.github/workflows/keiba-article-pipeline.yml`, `.env.example`, `docs/article_creation_flow.md`, `docs/system-documentation/14_自動記事生成システム全体仕様書.md`, `AGENTS.md`
+- **変更ファイル**: `backend/scripts/agents/news_topic_planner.py`, `frontend/scripts/agents/test_pipeline.ts`, `frontend/scripts/agents/agent_publisher.ts`, `frontend/scripts/agents/agent_writer.ts`, `.github/workflows/keiba-article-pipeline.yml`, `.env.example`, `docs/content/article_creation_flow.md`, `docs/system-documentation/14_自動記事生成システム全体仕様書.md`, `AGENTS.md`
 - **確認事項**: `KEIBA_NEWS_NOW=2026-06-11` のローカル確認で、フォーカス重賞は `函館SS` と `宝塚記念` になり、`皐月賞2026` はクラスタ段階で季節外れとして除外されることを確認。`宝塚記念2026 枠順確定` は `宝塚記念2026 枠順 AI予想` へ変換される。`python -m py_compile backend/scripts/agents/news_topic_planner.py`、`npm run build`、`git diff --check` は成功。既存どおりローカルバックエンド未起動による `127.0.0.1:8000` 取得失敗ログは出るが終了コードは0。
 - **次のステップ**: 次回のGitHub Actions実行で、NewsTopicPlannerのログが直近重賞名中心のクエリになっているか、`news_topic_history.json` に `race_name`、`search_intent_label`、`days_to_race` が記録されているか確認する。公開後はSearch Consoleで `枠順`、`出走馬`、`馬場`、`AI予想` の表示回数とCTRを見て、レースカレンダーの対象・検索意図スコアを調整する。
 
@@ -519,7 +519,7 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
   - ニュース記事では「このニュースの確認ポイント」、レース更新記事では「このレースの買い目ポイント」を許可し、従来の「このコースの買い目ポイント」だけに固定されていた末尾チェックを拡張。CTAはニュース記事でも自然に読める「最新の出馬表とAI予想」表現へ統一した。
   - GitHub Actionsの自動記事生成ワークフローにニュースPlannerをStep 1Aとして追加し、Tavilyキーがある本番環境ではニュース起点WriteOrderを優先生成するようにした。スケジュール実行の既定生成上限も2本に拡張。
   - `.env.example` と記事生成仕様書に、ニュース起点自動生成の環境変数・運用仕様・重複防止方針を追記した。
-- **変更ファイル**: `backend/scripts/agents/news_topic_planner.py`, `frontend/scripts/agents/article_flow.ts`, `frontend/scripts/agents/agent_writer.ts`, `frontend/scripts/agents/agent_editor.ts`, `frontend/scripts/agents/seo_checker.ts`, `frontend/scripts/agents/agent_publisher.ts`, `.github/workflows/keiba-article-pipeline.yml`, `.env.example`, `docs/article_creation_flow.md`, `docs/system-documentation/14_自動記事生成システム全体仕様書.md`, `AGENTS.md`
+- **変更ファイル**: `backend/scripts/agents/news_topic_planner.py`, `frontend/scripts/agents/article_flow.ts`, `frontend/scripts/agents/agent_writer.ts`, `frontend/scripts/agents/agent_editor.ts`, `frontend/scripts/agents/seo_checker.ts`, `frontend/scripts/agents/agent_publisher.ts`, `.github/workflows/keiba-article-pipeline.yml`, `.env.example`, `docs/content/article_creation_flow.md`, `docs/system-documentation/14_自動記事生成システム全体仕様書.md`, `AGENTS.md`
 - **確認事項**: `TAVILY_API_KEY` をGitHub Secretsに設定するとニュース起点のWriteOrder生成が有効化される。未設定時は既存の重賞・DBデータ記事生成だけが継続する。
 - **次のステップ**: 本番Secretsへ `TAVILY_API_KEY` を設定し、最初の1週間は `data/news_topic_history.json` と公開記事のSearch Console流入を確認して、採用クエリと許可ドメインを調整する。
 
@@ -760,3 +760,303 @@ UI/UXの修正・実装時は、ユーザー体験とサイトの信頼性を最
 3. **継続的改善**: データに基づいて改善を繰り返す
 
 それでは、ユーザーの指示に従って、AdSense審査合格プロジェクトを進めましょう！
+
+
+# 2026-09-07移管: 保守ガイドに残っていた実行記録
+
+## 8. 過去の実行ログ（圧縮版）
+今後の開発・保守において、過去の経緯を追うための要約ログです。新規タスク完了時も、このセクションへ適宜追記を行っていきます。
+
+> [!NOTE]
+> ログの量が多くなりすぎた場合は、トークン消費量を削減するため、古いログを [archive_agents_history.md](file:///c:/Users/zk-ht/Keiba/keiba_site_v1/docs/archive_agents_history.md) に移管・追記し、このファイル内のログを適宜整理（削除）してください。なお、アーカイブファイル側はAIが毎回参照する必要はありません。
+
+* **2026-09-05**:
+  * **記事生成 #306/#307 の人気別DB表誤検知を修正**:
+    Gemini APIキーやモデルフォールバックではなく、`article_flow.ts`だけが公開済み記事監査より厳しい古い数値表判定（割合2列の単調並びで拒否）を残していたため、DBから生成した「新潟ダート1800m 荒れる 傾向」の人気別5行表を人工的な表と誤判定し、#306/#307が承認済み0件で停止していた。#307では`gemini-3.5-flash-lite`の503後に`gemini-3.1-flash-lite`へ切り替わり、`gemini-3.6-flash`も再試行で成功しており、既存の保険動作は確認できた。生成時ゲートを`article_quality_audit.js`と同じ条件へ揃え、人気順・順位順は自然な並びとして許容し、それ以外は割合3列以上が厳密に単調な場合だけ停止するよう変更した。今回と同型の人気別Evidence表を承認し、並び順に意味のない過度に平滑な表を拒否する回帰テストを追加。#308は修正前コードでも別注文3件を公開・デプロイ済みで、未処理1件を次回用キャッシュへ保持している。数値ゲート、Evidence独立性、TypeScript型検査、307記事の品質監査、SOP 11件、467ページの本番ビルドが成功。品質監査の既存critical 1件・warning 508件は今回の変更とは別で、Git操作・デプロイは未実施。
+
+* **2026-08-30**:
+  * **上流予測完了前のYouTube部分投稿を恒久防止**:
+    8月30日分のYouTube #91は14:07の手動起動時点で全57レース中34レースのPredictionが未生成だったにもかかわらず、従来の「1件でも収録可能なら続行」仕様により23レース版を予約投稿していた。午後データ取得 #167はGitHub Actions遅延で20:13開始・21:07完了となり、完了後は51レースが収録可能、新馬5件・障害1件の計6件だけが明示的な予測対象外だった。後続 #92/#93は同じstable IDの内容hash変更を重複防止が拒否して安全停止した。対処として、Prediction行なし、予測計算エラー、有効スコア3頭未満など`expected_exclusion`以外の欠損が1件でもあれば全件ゼロでなくても120秒間隔で計3回確認し、残存時は動画生成・外部投稿前に停止するreadinessゲートへ変更した。さらに長尺の収録対象、Short対象、または必要動画種別の描画欠損も投稿前に止める完全性ゲートを追加し、Actions Summaryへ`readiness_status`と取得レース数を出すようにした。新馬・障害など明示的な対象外は従来どおり許容する。既存の8月30日投稿、YouTube上の公開状態、本番データ、Git操作、デプロイには触れていない。
+
+* **2026-09-01**:
+  * **YouTube動画投稿の非公開防止と公開設定（予約公開/即時公開）を恒久修正**:
+    横長動画およびShort動画が毎回非公開（private）になってしまう3重の構造的原因（ワークフローのデフォルトが`private_review`、過去7日間の履歴エラーによる安全ゲートの過剰降格、および即時公開`public`モードの未定義）を解消した。`.github/workflows/keiba-youtube-video-pipeline.yml`の`inputs.publication_mode`既定値および`YOUTUBE_PUBLICATION_MODE`環境変数フォールバックを`scheduled_public`へ変更し、選択肢へ`public`（即時公開）を追加した。`youtube_video_pipeline.py`では、過去7日間のエラー履歴を理由に当日の完全な動画投稿を`private_review`へ強制降格する処理を撤廃し、サマリーへの警告表示のみに限定した。`youtube_client.py`に`public`モードを追加し、`insert_video`および`wait_for_processing`で`privacyStatus="public"`の即時公開アップロードを完全サポートした。テスト61件すべて成功。Git操作、デプロイは未実施。
+
+* **2026-08-28**:
+  * **GitHub Actions遅延による対象日ずれとYouTube誤連鎖を恒久修正**:
+    13:30 JST予定の`Keiba Data Fetch (Afternoon)`が約11時間遅れて翌日00:21に起動し、相対指定`tomorrow`が8月28日ではなく8月29日へ解決されたため、8月28日の公開レースデータが空になり、YouTubeも8月28日全件ゼロ失敗と8月29日佐賀9レースだけの先行予約へ連鎖していた。Morning Today・Retry Today・Afternoon・Resultsの対象日を、実開始日時ではなく各Workflowの本来のUTC cron時刻から決める共通`workflow_dates.py daily`へ統一し、手動実行はYYYY-MM-DD必須、cron不一致と24時間以上の遅延は停止、対象日・本来時刻・遅延分数をSummaryへ出すよう変更した。YouTubeの`workflow_run`は成功した定期Afternoonだけを受け、04:30 UTCの本来日+1日を対象とし、手動Afternoonと失敗runは18:20の予備cronまたは明示日付の手動復旧へ分離した。不完全な未公開予約は削除せず`superseded`として旧動画IDと予約履歴を保持し、`replacement_revision`付きの新stable IDで完全版を別動画IDへ生成する回復経路を追加。差し替えは取得数・収録数・横動画・Shortがすべて完全な場合だけ通し、他SNSへの重複配信を停止する。全23 WorkflowのYAML構文、SOP 11件、バックエンド302テスト / 61 subtestsが成功した。本番データ復旧、キャッシュpurge、旧動画の非公開化、Git操作、デプロイは未実施。
+  * **8月28日公開データの本番復旧と誤予約動画の非公開化を実施**:
+    `Keiba Data Fetch (Morning) #16`を`target_date=2026-08-28`で手動実行し、園田・笠松・船橋の36レースとAI偏差値が公開ページへ復旧した。8月29日の佐賀9レース版として先行予約されていたShorts `6Y3YsMU9-Bk` と通常動画 `JLXbgMWWMmM` は削除せず予約を解除し、YouTube Studio上で非公開保存を確認した。`Purge Race Cache #1`はActions用サービスアカウントにCloud Run実行サービスアカウントの`iam.serviceaccounts.actAs`権限がなく、Cloudflare purge前に停止した。公開ページ自体は既に正常化していたためIAMは変更せず、Cloud Run revision更新を警告扱いにしてCloudflare purgeを継続できるようWorkflowを修正し、全23 WorkflowのYAML構文検査に合格した。続けて`Keiba Data Fetch (Afternoon) #165`を`target_date=2026-08-29`で手動実行し、中京12・新潟12・札幌12・佐賀9の全45レースと588頭を取得、45レースの予測処理を完了した。YouTube差し替えdry-run #86では41/45件で完全性ゲートが停止したが、除外4件は新馬戦3件と障害戦1件であり仕様どおりの`expected_exclusion`だった。差し替え完全性ゲートを「元レース数 − 期待除外数 = 収録対象数」で判定するよう修正し、欠損・予測計算エラー・描画失敗は引き続き停止させる回帰テストを追加した。反映後のdry-run #87は収録対象41/41件・期待除外4件・生成エラーなしで成功し、実行 #88 で旧2本を台帳上`superseded`へ更新、新Shorts `JboacVqs33M` と新通常動画 `eXonr3id9t8` を別IDの`private_review`として非公開アップロードした。YouTube Studioでも新旧4本の非公開を確認し、差し替え実行時のSNS配信ステップは0秒でスキップされた。`Purge Race Cache #2`はCloud Run権限不足を警告扱いにして37 URLの生成まで進んだが、GitHub Secret `CLOUDFLARE_CACHE_PURGE_API_TOKEN`が未設定のためCloudflare purgeは未実施。公開ページは既に正常で短TTLも失効済みのため、利用者向け復旧への影響はない。Git操作は未実施。
+
+* **2026-08-27**:
+  * **請求実額を確定し、コスト文書の実態ずれを一掃**:
+    「ドメイン更新料が月2,000円」という認識から調査に入り、実体はお名前.comの年1回1,788円（税込）の読み違いだと確定した。`.com`はICANN規定で登録期間が1年単位のため月額課金は存在しない。RDAP実測で`uma-free.com`は有効期限2027-09-10・ステータス`active`・NSは既にCloudflare・MX無しを確認し、Cloudflare Registrarへの移管は原価$10.4〜11.2/年＋海外事務手数料で差がほぼ無く為替次第で逆転するため見送った。請求先アカウント全体の実額は、Render $0（Active 0件・Suspended 18件・Hobby）、Vercel $0（チームPaused・Hobby）、GCPのみ8/1〜8/25で¥551・月末予想¥1,017（7月確定請求は¥2）。SKU別に分解し、`Network Inter Zone Data Transfer Out`が416.37 GiB・¥337・前月比+3534%で最大要因だが、日次グラフでは8/8〜8/11が山（8/10に¥95）で**8/16以降ほぼ0**であり、`12_コスト最適化アーキテクチャ.md` §9.6の修正が効いた終息済みバーストだと課金データ側から裏付けた。これにより§9.7が未確定として残していた「GCE→Cloud Run転送が課金対象か」に決着し、指示されていたBigQuery請求エクスポートの設定は不要と結論した。あわせて`gcloud`読み取りで、§9.3 #7のArtifact Registryクリーンアップ（両リポジトリに`delete-older-than-7-days`＋`keep-recent-5`、2.45GB→0.87GB）、#8のmaxScale（4/minScale 0）、§10.3の`kotoba-map-warm`（PAUSED）、§10.4の`kotoba-map-demo`へのIAM付与（`roles/monitoring.viewer`）、GCSステージングのライフサイクル（`Delete age:2`、バケットは空）がいずれも既に解消済みであることを確認し、文書の「未対応/未実施」表記を実測日付つきで更新した。§8.1の「タグなしイメージを自動削除」という対策記述は、`deploy-frontend-cloud-run.yml`がcommit SHAタグのみを打ちuntaggedを生まないため効果ゼロであることを明記した。文書側は`12_コスト最適化アーキテクチャ.md`へ§11を新設し、冒頭の「月額$0」結論と§2のmermaid構成図（Vercel前提・廃止済み外部IP`34.182.6.97`が残存）を現行構成へ差し替えた。公開ページ`frontend/app/about/page.tsx`の「インフラ: Vercel、Render」という誤記を「Google Cloud、Cloudflare、GitHub Actions」へ修正し、`04_API仕様.md`のベースURL`https://keiba-backend.onrender.com`をCloud RunのURLへ訂正、`08_デプロイメント.md`の「Cloud Buildが自動デプロイ」という裏付けの無い記述と、Vercel前提のロールバック手順・HTTPS記述を実態へ書き換えた。01/02/03/06/10章と`16_自動連携ジョブとデータ収集仕様.md`（Morning Todayが「金土日」とあるが実際は毎日）、`monetization_measurement_setup.md`も同様に更新した。新規に`docs/infrastructure/cloud_cost_monitoring_operations.md`（月次の課金監視手順）を追加した。未解決の課題として、公開中のデータページが0件で`sitemap-data.xml`が404を返し続けている（`/api/v1/data/sitemap-manifest`は0.15秒で200を返すが中身が`[]`）。`determine_capacity_mode()`がredを返しているためで、原因が`p95_ms>=2500`の7日窓なのか`projected_egress_gib>=10`なのかは本番artifactの`capacity.json`で確定させる必要がある。また`cloud_run_capacity.py`は`google-cloud-monitoring`がrequirementsに無くローカルでは常にredになるため、容量判定をローカル実行で確かめてはいけない。Render/Vercelのアカウント整理、`render.yaml`・`frontend/vercel.json`・Render専用スクリプトの削除、Git操作は未実施。
+
+  * **データページ公開が0件で止まっていた原因を特定し、指標と遅いAPIを修正**:
+    `Keiba Data Page Publication` #27 のジョブサマリーは `容量判定: red` / `候補総数: 17911` / `今回の公開数: 0` / `判定理由: 最大インスタンス数への到達を検出 / p95が2.5秒以上: 32683ms` で、懸念していた `projected_egress_gib >= 10` ではなかった。p95は #25 32,801ms → #26 32,763ms → #27 32,683ms とほぼ動かず、調べると `cloud_run_capacity.py` の `request_latencies` 取得が `alignment_seconds=604800`（窓全体で1区間）＋ `REDUCE_PERCENTILE_95` で、これは**時系列をまたぐ**リデューサだった。`run.googleapis.com/request_latencies` は `response_code_class` ごとに別系列になるため、7日で113件しかない5xx系列（タイムアウト由来でp95が30秒級）が、件数が桁違いに多い2xx系列を押しのけて全体値を決めていた。Cloud Loggingの実測では7日間の5xxが113件・2.5秒以上が614件で、総リクエスト約21万件に対し0.29%にすぎない。`max_instance_saturated` の方は `max(instance_values) >= max_instances` のため、5分区間2016点のうち1区間でも上限へ触れると7日間 true のままになっていた。対処として、latency取得へ `metric.labels.response_code_class="2xx"` を追加（失敗は `error_rate` 閾値1%で別に見る）、飽和判定を「上限へ達した区間が全体の1%以上」へ変更し純粋関数 `sustained_saturation()` と定数 `MAX_INSTANCE_SATURATION_RATIO` へ切り出した。**`determine_capacity_mode()` の判定ロジックと閾値は変更していない**（変えたのは渡す値の測り方だけ）。あわせて実在する遅延も潰した。`_directory_courses` と `_directory_people_or_horses` は `total` 用の `query.count()` と本体クエリで GROUP BY + HAVING の全件集計を1リクエストに2回走らせており、本番で `/api/v1/data/directories/course?limit=100` が10.4〜10.6秒かかっていた。`count() OVER ()` を選択列へ足して1回の集計から総数とページを同時に取るヘルパー `_paged_groups_with_total()` へ集約し、先頭ページが空なら総数0と確定して `count()` を撃たない形にした。テストは `test_directory_total_is_consistent_across_pages`（4種別でページングしても total 一致）、`test_directory_runs_the_group_by_aggregation_only_once`（`before_cursor_execute` で発行SQLを記録しGROUP BYが1本かつ `OVER (` を含むこと）、飽和判定3件を追加。リポジトリルートから `python -m pytest backend/tests` で 284 passed / 61 subtests passed。知見は `12_コスト最適化アーキテクチャ.md` §12 と `agent-sops/cost-performance-isr-review.sop.md` Step 9 へ記録した。`/api/v1/data/search` が広いクエリで10.6秒かかる件は二重集計ではなく別要因のため未対処。デプロイとGit操作は未実施で、反映後に次回の公開ジョブで `capacity_mode` を確認する必要がある。
+
+  * **旧構成の死んだ設定とリポジトリ内の生成物を削除**:
+    Render（全18サービスSuspended・Hobby・課金$0）とVercel（チームPaused・Hobby・課金$0）が使われていないことを実測で確認したうえで、`render.yaml`（cron 7件は全てGitHub Actionsへ同名・同コマンドで移行済みと突き合わせ済み。Render固有envもコード内デフォルトと同値かそれより古いモデル指定だった）、`frontend/vercel.json`（中身は`{"framework": "nextjs"}`のみでDockerビルドから参照されない）、`backend/upload_to_render.py`、`backend/download_render_db.py`（いずれもRender PostgreSQL専用で現構成では動作不能、参照ゼロ）を削除した。あわせて追跡下の生成物ダンプ `all_source_code.txt` / `all_articles.md` / `sitemap_test.xml` / `debug_jra_racelist.html`（計約2MB）を削除し、`.gitignore`へ同名パターンを追加した（`all_source_code.txt`はルートの`scripts/maintenance/export_source.py`で再生成できる）。`keiba-article-pipeline.yml` の Step 1B「Generate Grade Race Write Orders」は、制御用の`KEIBA_GRADE_RACE_LEGACY_WRITER_ENABLED`が同ファイル内で`"false"`固定であり一度も実行されない死コードだったため、ステップとenvごと削除した。`backend/scripts/agents/grade_race_writer.py`自体は`14_自動記事生成システム全体仕様書.md`が互換経路と定義しているため残し、同章へワークフローからの呼び出しを外した旨を追記した。`docs/system-documentation/01_システム概要.md`のディレクトリツリーからも`render.yaml`の行を削除した。全23ワークフローのYAML構文検査に合格し、リポジトリルートからの`python -m pytest backend/tests`で284 passed / 61 subtests passed、`frontend`での`npm run build`も成功した。Render/Vercelのアカウント側の削除、`frontend/.env.local`の`GEMINI_API_KEY`ローテーション、Git操作は未実施。
+
+* **2026-08-12**:
+  * **TrafficGate報酬0円の導線・計測不整合を修正**:
+    楽天競馬MID 1958・リンクID 14は提携中で、2026年8月1日〜11日に207クリック・発生0件だった一方、GA4の7月15日〜8月11日は15クリック・14ユーザーだけだった。`qualified_nar`でも共通ヘッダーを常時表示する回帰を修正し、ホーム地方開催一覧直後とNAR予想表直後の新規投票会員登録CTAだけに限定した。TrafficGateの生クリックはクローラ等を含み得る疎通値とし、成果・報酬をGA4のCTAクリック数・ユーザー数と照合する運用へ変更。アフィリエイト回帰テストを本番ビルド前へ組み込み、回帰、型、計測、リリースゲート、406ページの固定運用ビルドが成功した。デザイン監査には既存の`interaction-motion`1件と`low-contrast-text`6件が残るが、今回変更ファイルによる増加はない。本番反映、口座情報登録、計測開始時刻DとD+28リマインドの登録は未実施。
+
+* **2026-08-08**:
+  * **モバイル固定UI・レース画面密度・記事可読性を改善**:
+    共通ヘッダーを全画面幅で上部固定し、上部アンカー広告は全高と固定UI用の操作部予約高を分離して最大32pxだけを固定offsetへ反映した。PCは広告DOMの遅延生成でも位置が動かないよう広告非表示時から32pxを固定予約し、モバイルメニューは同じoffset直下と残りの`100dvh`へ統一した。ホームの「本日のレース分析を見る」はPCを含む全画面幅で下部広告高、主CTA、フッター、スクロール位置に追従しない画面下端固定へ変更。640px未満のレース画面は見出し14px・全表示最大15px・本文12px・共通左位置へ揃え、stickyレース選択面86pxと44pxタッチ対象を維持した。記事は639px以下でタイトル/H2 16px、H3 14px、本文/リード12px、表11pxへ統一し、640px以上は従来表示を維持。`npx tsc --noEmit`と403ページの`npm run build`が成功し、新規デザイン監査はすべて通過した。監査全体には既存の`interaction-motion`1件と`low-contrast-text`6件（上限5件）が残るが、今回の変更による増加はない。390/639/640/768/1023/1024/1440pxの実ブラウザ検証も実施し、PCでは上部240px・下部180pxの模擬広告追加/削除、ページ途中、フッター到達時も固定座標が不変であることを確認した。広告・API・分析イベント・URLは変更していない。
+
+* **2026-08-05**:
+  * **Cloud Run + Cloudflare本番移行とDB資格情報分離を完了**:
+    フロントはcommit `4697027065a0a4b9375431c3e9efcae148ffb781`をCloud Runへ反映し、`uma-free.com/api/health`のrelease一致後に`run.app`既定URLを無効化して404を確認した。バックエンドはDDL権限を持たない`keiba_app_runtime`、Secret Manager固定version、`ALLOW_SCHEMA_CREATE=false`へ切り替え、revision `keiba-site-v1-00355-wc6`へ100%配信した。平文`DATABASE_URL`が残っていないこと、DB依存APIがレース105,305件・最終日2026-08-05を返すことを確認。DB所有者パスワードとGitHub Secret `DATABASE_URL`を秘密値非表示で更新し、更新前後のIAP限定`Database Schema Migration` dry-runはいずれも成功した。平文環境変数から同名Secretへの変更では`--remove-env-vars`と`--update-secrets`を同一更新に含める再発防止手順をSOPへ追記した。GitHub専用GeminiキーはGenerative Language API限定へ交換し、読み取りスモーク成功後に旧無制限キーを削除。容量ゲートは直近指標をRed判定し、既存サイト・APIを維持したまま新規データページ公開だけを0件へ縮退している。CloudflareはAccount Analytics読み取り専用トークンを新規発行し、GitHub Secret `CLOUDFLARE_ANALYTICS_API_TOKEN`へ登録した。作成途中で表示された初回トークンは漏えい扱いで削除し、非表示の再発行トークンだけを有効化した。Google Cloudには`keiba-api-project`のCloud Run限定、割引前月300円、実額30%・予測60%・実額100%の通知専用予算を追加した。旧Vercel CORS originは2026-08-12 09:00 JSTにアクセスログと本番healthを確認し、安全条件を満たす場合だけ削除・検証・commit・push・再デプロイする一回限りの自動実行へ登録した。
+
+* **2026-08-04**:
+  * **Vercel停止からCloud Run + Cloudflareへ移行する再発防止基盤を実装**:
+    Vercel Hobbyのrolling 30 daysでFluid Active CPU約12時間7分、ISR Writes約177.6万、Edge Requests約115.6万となり、CPU 300%超過でpauseされた原因を、高カーディナリティなレースISRとデータ詳細ページの大量露出・cache missの連鎖と特定した。プランは変更せず、Next.js standalone Docker、非root Cloud Run、手動OIDC deploy、release SHA付きhealth、min 0・max 2・concurrency 40、Cloudflare前提のroute別cacheを追加。domain mapping後だけ`run.app`既定URLを閉じられる二段階workflowとした。データ詳細は`data_page_publications`でcandidate/published/held/retiredを管理し、未登録を安全側noindex/no-follow、GSC需要・標本数・鮮度・完全性とCloud Run/Cloudflare直近7日指標で初回最大500、通常100/25/0件を段階公開する。指標不能・高負荷時は初回も0件とし、サイトマップは固定5,000件上限を廃止して1,000 URL単位の安定shardへ変更。過去レース内部リンクのnofollow、404 negative cache、CORS環境化、IAP限定migration workflow、Cloudflare DNS/TLS/cache/WAF/rollback SOPと移行手順を追加した。本番deploy、DNS、Cloudflare外部設定はリポジトリ規約に従い未実施。
+  * **Cloud Run移行の自動運用・資格情報・合算費用ゲートを補完**:
+    フロントデプロイを手動・対象main push・記事/GSC公開後SHAから呼べる再利用workflowへ変更し、記事commitがない時はデプロイせず、独自ドメインの同一release確認前に`run.app`を閉じない自動復旧付きhardeningへ強化した。フロントとAPIのCloud Run指標を`cloud-run-capacity.v2`へ合算し、CPU、割当メモリ、request、internet egress、5xx、p95、max instance、Cloudflare hit率で新規検索公開だけを100/25/0件へ縮退させる。API起動時DDLは未設定SQLiteだけに限定し、Cloud Run runtime DBロールとSecret Managerへの無停止切替手順を追加。Gemini専用制限キーをDB・記事変更なしで確認する読み取り専用workflow、月300円の通知専用予算、証明書・DNS・rollback手順も文書化した。Python 234テスト、Python構文、Workflow YAML、`npx tsc --noEmit`、デザイン監査、SOP 11件、399ページの本番ビルドが成功した。Docker CLIがないためローカルimage buildは未実施。本番deploy、DNS、秘密情報、Git操作は未実施。
+
+* **2026-08-03**:
+  * **重賞記事・YouTube自動運用の恒久安定化**:
+    はまなす賞、ジュニアグランプリ、九州チャンピオンシップを共有台帳へ追加し、JRA・地方競馬の信頼済み日程だけから`auto-{circuit}-{SHA-256先頭16桁}`の不変な内部キーを生成するPython/TypeScript共通識別規則を実装した。記事監査とPlannerは同じ公開期限判定を利用し、台帳未整備は決定的に識別できれば警告継続、公開期限前の曖昧レースは個別見送り、期限到達済みの重要レースだけを停止対象とする。自動識別記事には未整備の重賞アーカイブURLやcanonicalを作らない。YouTubeは状態照会・更新・チャンクアップロードを一時通信障害時に最大3回再試行し、リモート公開状態を優先する単調な状態遷移と動画ID再利用へ変更した。Blueskyは日付、主要レース名、案内、URLを優先する専用300文字captionへ分離した。2026年8月3日基準の実日程監査は226件中台帳48件・自動178件・停止0件、Python 84テスト、TypeScript型検査、記事回帰・リンク・品質監査、SOP形式検証、397ページの本番ビルドが成功した。
+  * **収益実験の自動開始ゲートとGA4実設定を補完**:
+    GA4–AdSenseが2026年3月15日から正式リンク済みで、GA4収益化レポートへ広告収益が反映されていることを実画面で確認した。GA4へ`page_type`、`measurement_release_id`、`experiment_id`、`campaign_id`、`link_id`、`entry_source`をイベントスコープで追加し、2026年8月3日10:56 JSTのProduction反映後に`content_group`と`race_phase`も登録した。AdSense URLチャネル7件と配置別カスタムチャネル8件も同日登録済み。カスタムチャネルは広告ユニットへ直接紐付けず、配置別`data-ad-channel`で重複なく帰属させる。Vercel Productionへ配置別IDの8環境変数を登録し、11:30:25 JSTに再デプロイ`FGYUmBGJ6ZNqs1isCJYhgiGR8v7z`がReadyとなった。本番DOMでホーム開催後と記事導入後のチャネルIDを確認し、Offerwallの広告視聴が必要なレース末尾は広告を操作せず未確認とした。週次レポートへ高速ゲート（3完全日・各2%未満・合計500セッション）と標準ゲート（7完全日・各5%未満）の二段階判定、楽天クリックの提供元・配置・施策・リンク別照合を追加。実験モードのビルドではゲート経路、最大実測率、セッション数、単一実験、開始日時、D+7・D+14判断日とリマインドIDを必須にし、未達時に本番ビルドを停止する。GSC実績292表示・6クリック・平均掲載順位10.65のマーキュリーカップ2026代表記事は、数値・表・canonicalを維持してtitle、description、導入、既存H2だけを限定改稿し、完全一致レースがAPIで確認できないため記事レース導線は表示しなかった。
+  * **全流入・回遊・広告収益の再計算基盤と安全な次期実験コードを実装**:
+    `分析レポート`の26ファイルを原本のまま取込み、CP932/UTF-8 CSV、複数表GA4、PDF、画像、空ファイルを監査して`monetization-report.v1`、日本語分析報告書、11シートの再計算可能XLSXを生成する処理を追加した。AdSense 1,666円・6,475PV・19,965表示、GSC端末別1,371クリック、楽天517クリック・成果0件を受入値として固定。全GA4/Clarityイベントへページ種別、コンテンツ群、レース段階、計測リリースを付与し、AdSense配置別カスタムチャネル、前回レース復帰、適格者限定PWA計測を実装した。記事レースブリッジはPublisherの完全一致適格性と`off/split/on`表示を分離し、API障害・不一致・予測不足ではDOMを出さない。記事広告は枠数を増やさず関連記事前後の順序だけを比較できる既定OFF相当の実装とした。GSC機会スコアを順位帯×端末×検索意図×ページ群収益指数へ拡張し、GA4・GSC・Clarityを週次`monetization-report.v1`へ統合する読み取り専用workflowを追加。外部管理画面、本番環境値、実験開始は変更していない。
+  * **YouTube日次統合を投稿継続優先のレース単位判定へ変更**:
+    正常馬3頭以上の有限AI偏差値があるレースだけを収録し、Predictionなし、スコア不足、比較データ不足、予測計算エラー、個別描画失敗は当該レースだけを除外する構成へ変更した。`ウイングレイテスト`などの正常馬名を拒否しない完全一致プレースホルダー判定と、園田`NewBeginning`の初出走分類を追加。DB障害時は公開予測APIへ切り替え、全件ゼロの場合だけ120秒間隔で計3回確認する。上流Workflow失敗時もYouTubeを起動し、横動画とShortは生成・アップロードを独立継続する。サマリーへ収録・除外レース、重賞、取得元、再取得回数、coverage、実収録数、完成尺を追加し、Shortは最大5重賞でも59.5秒以内へ動的短縮する。
+
+* **2026-08-02**:
+  * **YouTubeを日次統合の横動画1本・Short 1本へ再構成**:
+    横動画は全開催場を1本へまとめ、中央競馬の各場を先に表示してから地方競馬の各場を表示する章構成へ変更した。サムネイルは`M/D 全○レース AI分析`を主見出しとし、タイトル・概要欄へ中央競馬、地方競馬、AI予想、競馬予想、全重賞名、開催場チャプター、`【中央・地方競馬のAI分析をいつでも無料公開中】`を自然な文脈で反映する。Shortは当日の全重賞を1本へ集約し、重賞がない日は各場11R、11Rがなければ最終レースを収録する。途中レースは約12秒、最後だけサイト案内を含む15.5秒とし、複数SNS用の`featured_races`と投稿文も複数レース対応へ変更した。統合成果物は1会場でも予測欠損がある場合に生成前停止し、不完全版を公開しない。Python 90テスト、日次統合レンダラー実生成テスト、SOP形式検証が成功した。
+  * **SNS・YouTube上流データ・Dataset構造化データの再発防止を実装**:
+    午後予測処理でレース単位の取得・生成失敗を収集し、失敗レースだけを1回再取得してから、対象日のRace・Prediction・AI偏差値・新馬/障害の対象外理由を完全性監査する構成へ変更した。旧予測の原子的保持とYouTubeの会場単位保留・動画ID再利用は維持し、未復旧時はレースID、会場、R番号、名称、理由を伴って上流Workflowを失敗させる。SNSはXの特定403だけを3回再試行し、Threads成功時のみ警告付き成功とする一方、認証失敗と両媒体失敗は従来どおり失敗させる。期限切れ表示のThreadsメタデータは実トークンをAPI確認して誤警告を防ぐ。Datasetは共通生成処理へ集約し、データトップ・競走馬・コースへ50文字以上のdescription、Organization creator、利用規約license、正規URL、無料公開属性を付与し、不正なtemporalCoverageを省略する。Python 46テスト、Datasetテスト、`npx tsc --noEmit`、デザイン監査、397ページの`npm run build`が成功した。
+
+* **2026-08-01**:
+  * **重賞記事の即時カバレッジ拡大と検索急落の安全な自動補修を実装**:
+    記事数を増やす方針を、同一重賞のURL乱立ではなく「代表URLの段階更新 + 開催場コース記事」の二層に整理した。重賞エンティティ解決を完全一致と安全な最長前方一致へ変更し、直近21日の不足18重賞を共有レジストリへ追加した。段階別keywordsは、枠番・馬番がなければ枠順、予測がなければAI予想、確定着順がなければ結果を出さない。公開期限到達の重賞更新と検索補修を最大3枠の先頭へ置き、直近10日重賞の開催場コース記事も常設枠で優先する。GSC日次監視の表示80%減または順位30位悪化から、当年度の代表URLを16:45 JSTに最大1件だけ自動補修する経路を追加し、D-21〜D0または結果確定済みD+3以内、48時間クールダウン、title・description・keywords・導入文・既存H2限定、新URL・本文事実・段階変更禁止を固定した。レジストリ監査、誤一致、優先順位、補修候補、クールダウンの回帰テストを追加した。
+  * **重賞検索流入の急落を受け、段階更新と日次監視を再設計**:
+    Search Consoleの2026年7月2日〜29日を基準に、重賞候補期間をD-21へ拡張し、JRA G1/JpnI=D-21、G2/JpnII=D-14、G3=D-10、地方・交流は過去表示300以上=D-9、50〜299=D-3、50未満=記事なしへ変更した。同一`entity_key + season_year`を一意キーとし、`field_building → race_week → draw_confirmed → final_48h → race_morning → post_race`を同一URLで更新する。馬番・枠番や確定着順がDBに存在しない段階更新はPlanner、Writer、Editor、SEO Checker、Publisherで拒否する。過去重複記事はGSC実績または既存canonicalを基に代表URLを固定し、一段301とサイトマップ除外へ集約。アイビスサマーダッシュ、クイーンS、エルムSのentityと更新段階を修正し、公開中重賞の空`entity_key`、重複、事実フラグ不整合を0件へ整理した。毎日09:15 JSTの読み取り専用GSC監視で表示80%減、順位30位悪化、複数URL、誤段階を検出する。Python 29テスト、記事ルーティング・優先度・独立性、`npx tsc --noEmit`、リンク監査、デザイン監査、396ページの`npm run build`が成功し、記事品質監査はcritical 0だった。
+  * **広告調査を終了し、モバイルの分析読了位置広告試作を実装**:
+    `ADS-OFFERWALL-2026-06`は因果効果を判定できない一方、過去30日279円・サイト収益の約16.6%という正の絶対収益と安全性を確認した固定ベースラインとして、設定変更なしで終了した。`ARTICLE-RACE-BRIDGE-2026-07`は有効対象0件のため未成立終了とし、楽天競馬適格化とデータ価値観測は次の広告試作終了後へ延期した。`MOBILE-RACE-ENGAGED-AD-2026-08`は1023px以下のレースページだけを対象に、既存末尾インフィードとAIレース展望直後の新レスポンシブ広告をタブセッション固定50/50で比較できるよう実装した。新ユニット`race-engaged-display-v1`（slot `7550236816`）を作成し、画面接近時要求、250px予約、未配信時の安全な縮退、同一ページ1配信、レース切替時の再読込禁止、GA4/Clarityへのvariant・slot・配置計測を追加した。既定は`legacy`で、計測の`(not set)`比率が7日連続5%未満になるまで`split`は開始しない。GA4は実ロード後にconfig・初回PV・待機イベント解放を行い、レース内`replaceState`の仮想PVを抑止する構成へ修正。対戦成績表は馬数連動の安定骨格、リクエスト中断、レース別キャッシュへ変更した。存在しないコース記事リンクを非表示にし、既知の旧コース・騎手記事URLは正規データページへの恒久リダイレクトへ整理した。Search Consoleへ`sitemap-data.xml`を登録したが初回取得は未成功表示のため再確認を残した。375/390/768/1024/1440px、両variant、配信済み・未配信、会場・レース・日付切替を確認し、`npx tsc --noEmit`、`npm run design:audit`、369ページの`npm run build`が成功した。
+
+* **2026-07-31**:
+  * **無料データ価値の検証基盤と統計的に安全な競走馬比較を実装**:
+    データトップを「今日の出走馬・名前検索・コース条件」の3導線へ絞り、データナビを主操作3列と分類4列の二段グリッドへ変更した。2〜5頭の汎用比較APIは通算、同条件、直近5走、5走未満・5〜9走・10走以上の母数区分、95% Wilson下限値、集計期間、データ基準日を返す。通算の単純最大値によるBEST表示を撤去し、同条件10走以上が2頭以上ある場合だけWilson下限値の比較上位を表示する。検索・比較・保存再訪・出走予定・価格意向のGA4/Clarityイベント、販売前かつ請求なしを明記した既定無効の月390円アンケート、日次DB品質監査、週次GA4ファネルworkflow、28日開始ゲート、Firebase/Stripeの承認後仕様を追加した。無料データ、広告、Offerwall、楽天競馬の本番設定は変更せず、課金基盤は未実装のままとした。`npx tsc --noEmit`と366ページの`npm run build`は成功。Python構文検証は成功したが、Python単体テスト、デザイン監査コマンド、ローカル画面幅確認は実行環境の権限制約で未完了のため、本番反映前に再実行する。
+
+* **2026-07-30**:
+  * **Vercel静的生成の外部API無応答耐性を追加**:
+    データページ追加後のVercelビルドで、外部API待機により394ページの静的生成が60秒ごとにワーカー単位で再試行され、3回目に失敗した。共通fetchへビルド時8秒・通常時20秒の中断上限を追加し、コース詳細19件と重賞詳細8件をオンデマンドISRへ、データサイトマップをCDNキャッシュ付き動的Route Handlerへ移行。静的生成対象を366件へ減らし、通常API接続時と無応答API再現時の双方で約72秒の本番ビルド成功を確認した。
+  * **YouTube投稿直後の状態反映遅延と途中再開を修復**:
+    7月31日対象のShortアップロード直後にYouTube `videos.list`が一時的な空応答となり、Shortは公開された一方で後続の会場別長尺が未投稿になった。空応答を処理確認タイムアウトまで再試行し、`processing`を再開可能な中間状態へ変更。再実行時は保存済み動画IDと元の予約時刻を維持し、予約時刻後に公開済みなら`published`へ確定して未処理動画から続行する。安全ゲートで`private_review`になった動画をYouTube Studioから手動公開した場合も、次回実行でDBを`published`へ同期する。SNS配信が参照する生成サマリーには会場名を追加し、対象日・会場・レース番号・遷移先の欠落を防止した。
+  * **YouTube Shortの複数SNS日次配信基盤を実装**:
+    最優先レースの縦動画1本をThreads、Instagram Reels、Facebook Reels、TikTok、Pinterest Video Pin、Blueskyへ公式APIで配信する共通ランナーを追加した。X動画は費用上の方針に従い対象外とし、既存テキスト・画像投稿を維持する。媒体別`disabled/validate/draft/public`、投稿先別content hash、`video_publications`による重複防止、失敗分離、240分の鮮度ゲート、非公開GCS署名URL、Actions Summaryを実装。既定は外部POST・DB・GCS変更を行わない`validate`とした。TikTokにはロゴ、URL、外部誘導文を焼き込まない専用動画を同時生成する。SNS別UTMと最初の`race_view`への30分一度限りの属性継承、設定済み公式SNSだけをフッターとOrganization JSON-LDへ表示する構成も追加した。
+  * **YouTube Studio実績を基に改善優先度を固定**:
+    直近Shortでは重賞回が529回・平均視聴23秒・視聴継続32.4%、非重賞回が219回・平均5秒・視聴継続7.3%、後者の94.1%がShortsフィードだった。長尺は直近0〜19回で、Shortの関連動画が未設定、外部リンクをクリック可能にする1回限りの確認も未完了だった。少数標本で映像を再変更せず、重賞優先を維持し、外部リンク確認と同日同会場の関連動画設定後に7開催日固定観測する方針を`docs/video/youtube_growth_audit_20260730.md`へ記録した。
+
+* **2026-07-29**:
+  * **YouTube全動画を19:00同時公開へ統一**:
+    Shortの20:10、最優先会場の20:30、残り会場の10分間隔という公開オフセットを廃止し、Shortと全会場動画を前日19:00 JSTへ同時予約する構成に変更した。既存のRepository Variableが旧時刻でも影響しないようWorkflowは19:00を固定値として渡し、生成開始を17:17 JSTへ前倒しして公開まで103分を確保する。Actions遅延で20分の最低猶予を確保できない場合は、全動画を同じ次の10分枠へ後ろ倒しし、同時公開を維持する。
+  * **YouTubeタイトルをモバイル一覧向けに再構成**:
+    長尺タイトルは日付、会場、全収録レース数、AI予想を先頭約26文字以内へ固定し、最上位重賞名と年を後段へ移した。重賞名には「開催」を付け、重賞1レースだけの動画に見えない構造とする。新馬戦などの除外情報はタイトルへ表示せず、常に`全○R AI予想`へ統一する。Shortは日付、会場、R番号、AI予想TOP3を先頭に置き、長尺と1レース動画の役割を分離した。
+
+* **2026-07-28**:
+  * **YouTube説明欄URL・CTA・公開文面を簡素化**:
+    横長動画とShortの説明欄1行目をUTMなしの`https://uma-free.com`へ統一し、会場・レース別URLへの出し分けを停止した。説明欄から素材クレジットとデータ基準日を削除し、縦横の動画内CTAを「その他の分析情報は概要欄のサイトから」へ統一。素材の権利メタデータ、ライセンス検証、権利ハッシュは内部ゲートとして維持する。UTM廃止後は動画別のYouTube流入属性を取得できないため、GA4では参照元が渡された範囲のトップページ流入と、その後のレース閲覧を期間分離して確認する。
+  * **Offerwallを固定ベースラインへ移行する方針に修正**:
+    2026年7月29日予定の確認を7月28日10:30 JSTに前倒しした。AdSenseでOfferwall公開済み、メッセージ表示558回、リワード広告収益287円、サイト全体の過去7日収益463円（直前7日間比13%増）、ポリシー問題なしを確認。Clarity直近3日は480人間セッション、デッドクリック11.88%、クイックバック26.88%、LCP 1.5秒、INP 270ms、CLS 0.072だった。AdSenseの「テスト」一覧にOfferwallの同時対照群・ランダム配分はなく、表示数を増やしても増分効果は判定できないため、1,000表示待ちを撤回した。8月5日まで設定を固定して安全観測し、問題がなければ「因果効果は判定不能・絶対収益と安全性を確認した固定ベースライン」として設定変更なしで維持する。将来のON/OFF比較は別実験IDで行い、後続の収益実験と重ねない。8月5日の通知登録は未完了のため、7月29日の既存通知時に更新する。
+
+* **2026-07-27**:
+  * **YouTube定期実行の遅延で予約投稿が全停止する問題を修正**:
+    GitHub Actionsの19:17 JST定期実行が20:38以降まで遅延し、Shortの20:10予約時刻を過ぎたことで、動画生成後・アップロード前に全件停止していた。通常時は20:10、20:30、以後10分間隔を維持しつつ、レンダリング完了時に最初の公開まで20分未満なら、公開順と間隔を保ったまま全予約を次の10分枠へ同じ分数だけ後ろ倒しする処理を追加。補正は最大240分とし、それを超える古い内容は公開拒否する。補正分数と最初の公開時刻をActions Summaryと投稿メタデータへ記録し、実障害相当の20:43完了ケース、通常時刻、過度な遅延、アップロード連携を回帰テストで固定した。
+
+* **2026-07-24**:
+  * **YouTube動画をBroadcast Editorial v8へ全面刷新**:
+    横長のAI偏差値と位置取りを別スライドに分ける構成を廃止し、新馬戦を除く各レースを約6秒・1シーンで表示する構成へ変更した。左側に上位3頭、右側に最大18頭の位置取り馬番トークンを配置し、1位カードの拡大、AI偏差値7段階カウントアップ、決勝線ワイプ、ease-out表示、進行ラインを追加。Shortは15.5秒で表紙、上位3頭、全馬位置取り、1位、プロフィール導線を同じ動画資産で表示する。Pillowで透過レイヤーを作り、FFmpeg overlayで合成する`MotionScene`、`MotionLayer`、`AudioCue`を導入し、standard/reduced/staticへ対応。任意B-roll、効果音5種、40MB上限、権利メタデータ検証、手動dry-run限定レビューMP4、時間別コンタクトシートを追加した。既存の投稿、UTM、DB、IAP、公開モードは変更していない。
+  * **動画内の4分析導線と縦型レイアウトを改善**:
+    横長の各レース下部へAI偏差値、対戦成績、展開・脚質、枠順傾向のミニグラフィックを常設し、概要欄リンクからレース詳細を確認できる導線へ変更した。位置取りレーンは馬番が1行・2行・3行のいずれでも垂直中央になる配置へ修正。Shortは中央安全領域へ情報を再配分し、4分析を2×2で常時表示して上部への偏りを解消した。
+  * **横長の枠線競合解消とShortsの光学中央配置**:
+    横長レース画面で背景カラム外枠、データカード枠、CTA外枠、4分析セル枠、進行線が同じ階層で重なっていたため、背景カラムを無枠の面へ変更し、CTAは全周枠を廃止してゴールドの左アクセントだけへ整理した。4分析セルも外枠を外し、必要なランキング・位置取りカード枠だけを残した。Shortはカード全体をYouTube操作欄から左へ逃がす方式を廃止し、左右108px・幅864pxで画面中央へ配置。重要文字とAI偏差値だけに独立した右安全余白を設け、ヘッダー、上位3頭、位置取り、4分析の中央軸を統一し、縦方向の重心も画面中央付近へ下げた。
+  * **横長グリッド整列とShorts非重複トランジションを固定**:
+    横長の下部CTAだけが上部より左右36px内側だったため、共通外端を44–1876pxへ統一した。位置取り馬番は固定X開始を廃止し、各行の頭数ごとにラベル右側領域で水平中央へ配置する。Shortは5フェーズの時間重複を廃止し、FFmpegの表示終了を排他的に変更して境界フレームの二重表示を防止。主要フェーズのスライド移動をやめ、生成時に全主要レイヤーの透過領域が1080×1920内かを検証する品質ゲートを追加した。
+  * **動画CTAをアクセス方法だけへ簡素化**:
+    4分析は名称とミニグラフィックだけで理解できるため、「このレースの詳細をチェック」「全レースに詳細4分析を掲載」などの重複説明を撤去した。横長は「サイトへのアクセスは概要欄のリンクから」、Shortはリンク仕様に合わせて「サイトへのアクセスはプロフィールのリンクから」へ統一した。
+
+* **2026-07-23**:
+  * **YouTube自動集客基盤v7と3日間非公開ゲートを実装**:
+    翌日開催の全会場へ長尺1本ずつ、最優先レースへShort 1本を生成する構成へ統一し、19:17 JST生成、Short 20:10、最優先会場20:30、残り10分間隔の固定予約を設定した。競馬場slugをPython/Next.js共通JSONへ集約し、動画リンクを正規レース詳細URLとUTMへ修正。`race_view`にはYouTube流入属性を一度だけ付与し、Shortsのプロフィール流入も次のレース到達まで30分だけ保持する。仮想PVは追加していない。Shortsの無効なカスタムサムネイル設定を廃止し、最初のレース固有フレームを表紙化。横長サムネイルは2MB未満のJPEGへ変更した。`VideoPackage`と`video_publications`を追加し、動画ID保存後にサムネイル、処理確認、非公開レビュー/予約公開へ進む再開可能な状態管理を実装。DB全レースと予測を照合して欠損会場だけを止め、権利・表現・過去7日エラー時は非公開レビューへ戻し、既存予約も解除確認する。既定は`private_review`で、3開催日合格後に`scheduled_public`へ手動切替する。映像・画像・音声・文章の生成AI、新規有料サービス、公開API、広告配置、IAP接続方式は変更していない。
+  * **YouTube動画から新馬戦を安全に除外**:
+    予測処理が意図的にAI偏差値を算出しない新馬戦を、会場単位の予測欠損エラーから分離した。元の全レースで番号連続性を確認した後、新馬戦だけを長尺動画とShort候補から除外し、通常レースの予測欠損・プレースホルダーは従来どおり会場保留とする。タイトル、サムネイル、説明欄には「新馬戦を除く対象レース」と除外レースを明示し、Actions Summaryと動画メタデータにも記録する。新馬戦だけの会場・開催日は正常な対象外として扱う。Python構文検証、YouTubeパイプライン17テスト、動画レンダラー31テストが成功。
+  * **GSC週次SEO監査と重賞投稿スケジュール保護を実装**:
+    Search Consoleの確定済み直近28日と直前28日を毎週水曜09:15 JSTに比較し、公開中・自己canonicalの記事から表示100以上、平均順位4〜20位、順位帯CTR中央値に対する推定取りこぼしクリック上位10件をActions Summaryとartifactへ出す監査workflowを追加した。開催7日前から開催後3日の重賞は季節需要へ分離し、08:00、11:45、16:45 JSTのカレンダー主導生成と年度付き新規URLを維持する。手動改稿はGSC候補の正確なslug1件だけを対象に、title、description、keywords、導入文、H2文言へ限定し、数値、表、本文、リンク、canonical、公開日、entity、更新段階、広告・レースブリッジの差分を拒否する。改稿クエリはEvidenceへ渡さず、同一slugへ28日クールダウンを適用する。重賞予約変数を`ARTICLE_PIPELINE_RESERVE_RACE_UPDATE_SLOT`へ統一し、緊急重賞3件が通常の最大3枠をすべて使える挙動を固定した。広告配置、Offerwall、公開API、DB、計測イベントは変更していない。
+  * **GSC接続の外部設定と費用条件を記録**:
+    `keiba-api-project`でSearch Console APIが有効であること、GitHub Actions用サービスアカウントを`sc-domain:uma-free.com`へ「制限付き」で追加したこと、Repository Variable `GSC_SITE_URL=sc-domain:uma-free.com`を登録したことを実画面で確認した。Search Console APIは無料で利用上限のみがあり、外部設定自体にも継続料金はない。GitHub Actionsはリポジトリの公開状態・契約プランに応じた標準runnerの無料条件とartifact保存枠に従う。詳細と再点検条件は`docs/content/gsc_weekly_seo_operations.md`に残し、403、認証エラー、変数欠損の実証がない限り再設定や権限昇格を行わない。
+  * **記事自動生成CIの複数列Evidence回帰を修復**:
+    Writer向けサニタイズが`label/value`形式だけを残し、騎手リーディングやData Scientistの複数列`key_metrics`を空にしていたため、列名とスカラー値を保持しつつ、外部出典行、URL、媒体名、制作メタだけを除去する構成へ修正した。`jockey_profile`と`jockey_data`で`evidence_rows > 0`、外部情報だけのデータ記事は拒否となる回帰テストを追加。川田将雅騎手の記事は2026年6月26日時点の検証済み成績だけで同じcanonicalのまま改稿し、未根拠のオッズ、得意条件、厩舎相性、歩様、強い購入誘導を削除した。13 workflowの`checkout`、`setup-node`、`setup-python`をNode 24対応のv7へ更新し、プロジェクトのNode.js 20とPython 3.11は維持した。広告配置、Offerwall、記事レースブリッジ実験、Geminiモデル構成は変更していない。
+  * **楽天競馬アフィリエイトの適格化実験を安全な待機状態で実装**:
+    2026年6月10日〜7月22日のTrafficGateクリック502件・発生0件を基準に、楽天競馬の表示対象をホーム地方開催一覧直後とNARのAI偏差値表直後へ限定する`qualified_nar`モードを追加した。新規登録向けの成果条件に合わせた見出し・補足・CTAへ変更し、カード全体リンクを廃止して44px以上の明示CTAだけを操作対象にした。適格化モードでは共通ヘッダー、JRA、日別ページ下部を非表示にする。配置別TrafficGate URL用の環境値を追加し、未設定・不正時は検証済み現URLへ戻す。GA4の表示・クリック双方へ`provider`、`context`、`campaign_id`、`link_id`、`race_type`を揃え、`providers`は表示イベントの互換値として維持。実験`AFF-RAKUTEN-QUALIFIED-NAR-2026-08`を台帳へ登録したが、Offerwall・記事レースブリッジの先行判断、TrafficGate確認、D+28リマインド登録が未完のため、既定は`legacy`のままとし本番表示変更は開始しない。
+  * **重賞記事から検証済み個別レースへ送客する収益保護ブリッジを実装**:
+    記事からレースへの直接遷移2.18%、主要重賞記事の同一ページ離脱94.2〜98.7%を受け、広告枠・Offerwall・自動アンカーを変更せず、個別レース導線だけを再設計した。Python/TypeScript共通の重賞識別レジストリ、開催日と正規化名を一意照合する軽量プレビューAPI、実AI偏差値上位3頭を表示する`ArticleRaceBridge`、記事から最初の一致レースまでのsessionStorage計測を追加。`race_bridge_enabled`は既定falseで、Publisherがrace ID、年度、正確なURL、予測データを検証できた場合だけ有効化する。無効時はDOM・ローディング・予約余白を出さず、検証後の一時API障害では保存済みの正確なリンクだけを残す。既存223記事のオフラインdry-runは重賞候補69件すべて必須メタデータ不足で、自動補完・有効化は0件。新規重賞記事は`{entity-key}-{season-year}`で同一年度を段階更新し、重賞ハブは本文複製から年度別記事一覧へ変更した。分析・実験台帳・計測計画・記事フロー・デザイン規則・記事/広告SOPへ判断と復元手順を記録した。
+* **2026-07-22**:
+  * **広告収益保護の実験運用基盤とレース画面軽量化を実装**:
+    `docs/monetization/monetization_experiments.md` を正式台帳として追加し、Offerwall実験を `ADS-OFFERWALL-2026-06` として遡及登録。2026-07-29 09:00 JSTの終了判断、2026-07-30 09:00 JSTのGA4・CWV準備判定、記事CTAの14日固定観測を確認する2026-08-04 09:00 JSTのリマインドを登録し、リマインド未登録時は開始不可、サンプル不足時は7日延長、終了時は勝者または元設定を同時反映する手順を広告SOPへ固定した。GA4はhead内でConsent Mode、gtag.js、configをClient Componentより先に初期化し、準備前イベントの一度だけ送信するキュー、`web_vital`、`adsense_offerwall_view`、`ad_experiment_exposure`を追加。レース切替は仮想PVを送らず`race_view`へ統一した。RechartsをCSSグラフへ、Tippy/Popper群を共有のアクセシブル補足UIへ置換し、分析の遅延ロード、IntersectionObserverによるセクション判定、広告オーバーレイ監視の一元化を実施。レースルートのFirst Load JSは144KBとなり180KB以下を達成した。記事・画像サイトマップをSearch Consoleへ送信し成功、canonical限定、旧URLの一段301、重複タイトル、馬場状態記事を改善。再監査で記事サイトマップ155件中54件が自己canonicalながら`noindex`だったため、重複元をcanonical集約したまま集約ページをindex可能へ修正した。375/390/768/1024/1440px、18頭表示、横スクロールなし、補足UIのEsc操作、ブラウザエラーなしを確認し、`npx tsc --noEmit`、`npm run build`、`npm run design:audit`、リンク・記事品質・SOP検証が成功。
+  * **記事生成LLMをGemini 3.6世代の4段階構成へ更新**:
+    WriterとEditorは `gemini-3.6-flash`、`gemini-3.5-flash`、`gemini-3.5-flash-lite`、`gemini-3.1-flash-lite` の品質順でフォールバックし、呼び出し回数の多いStrategyと複数観点レビューはRPD 500のLite系を優先する。モデル別のRPM、TPM、RPDを共通定義へ集約し、GitHub Actionsの日次合計上限を1,040へ同期。指定値に従い `gemini-3.1-flash-lite` のTPMは250として扱う。`npx tsc --noEmit` と `npm run article:test-independence` が成功。
+* **2026-07-21**:
+  * **4分析グラフィックの復帰と記事流入から当日レースへの導線強化**:
+    AI偏差値、対戦成績、展開・脚質、枠順傾向をミニグラフで示す共有コンポーネントを追加し、ホームのヒーローと全記事のタイトル・リード直後へ統合。記事では4つの分析価値を説明した後に「今日の全レース分析を見る」CTAを1つだけ配置し、`/races/today`、`prefetch={false}`、既存の`article_race_click`計測を維持した。ホームの日付生成がJST日付をUTCへ再変換して前日URLを作る場合があったため、`Intl.DateTimeFormat(...).formatToParts`で年月日を直接構成し、更新表示、開催一覧、CTAを当日URLへ統一。390pxでは2列、1440pxでは4列表示と横スクロールなしを実ブラウザで確認し、`npx tsc --noEmit`、`npm run design:audit`、221記事のリンク検証、`npm run build`が成功。
+* **2026-07-21**:
+  * **記事独立性ゲートとコンパクトな4視点導線を実装**:
+    外部媒体のタイトル・URL・要約・推奨・コメントをWriter入力から除外し、`WriterEvidence`を公式確認事項とUMA-FREE掲載データだけに限定。`news_context`は公開不可とし、レース更新、コース、騎手、入門へ分類するゲートをPlanner、Writer、Editor、SEO Checker、Publisherへ追加した。公開中220記事を全件監査し、媒体・制作メタ依存の記事を再編集、競馬外比喩記事と野畑凌騎手記事を全面改稿、根拠不明の数表3記事を確定結果中心に再構成し、Shepherd's Choice記事は地方競馬結果回顧へ301統合した。記事冒頭は説明文のない「タイトル＋4列ミニグラフ」の単一リンクへ圧縮し、ホーム用の情報量は維持。独立性テスト、記事監査、リンク、SOP、型、ビルド、主要画面幅のブラウザ確認を品質ゲートとする。
+  * **レース内4視点ナビを記事グラフィックと統一**:
+    レース日・レース詳細で共通利用するモバイル下部ナビとPCジャンプナビを、AI偏差値、対戦比較、展開・脚質、枠順傾向の4項目へ統一。記事冒頭と同じアイコン、役割色、ミニグラフを共有部品から描画し、従来の黒い5分割メニューと重複定義を廃止した。選択中はBlueの罫線、淡い背景、太字、`aria-current`で示し、44px以上の操作領域、safe-area、`prefers-reduced-motion`対応を維持する。
+* **2026-07-20**:
+  * **デザイン規律の共通化と主要3画面のUI/UX刷新**:
+    外部のデザイン知見をUMA-FREE向けに再構成し、`DESIGN.md`をデザイン判断の基準として追加。色、タイポグラフィ、余白、角丸、モーション、アクセシビリティ、画面別の情報優先順位を明文化した。共通ヘッダーにはスキップリンク、現在地表示、モバイルメニューのフォーカス復帰とEscape操作を追加し、ホームは「AI偏差値→対戦・展開→枠順確認」の理解順へ整理。レース画面はジャンプナビ、重賞一覧、下部ナビ、予想表を省スペースかつ44pxタッチ領域で統一し、記事画面はメタ情報、見出し、リード、アイキャッチ、本文の順に再構成した。広告・アフィリエイトの配置、PR表記、計測、ISR、動的リンクの`prefetch={false}`は維持。`design:audit`を追加し、過剰な角丸・グラデーション・ホバー移動・`transition-all`・点滅アニメーションの再混入を自動検出する。390/375/768/1024/1440pxの実ブラウザ確認で横スクロールなし、18頭表示、長い馬名、欠損値、重賞5件、記事の読み幅を確認し、`npm run build`、`npx tsc --noEmit`、`npm run design:audit`、`npm run article:validate-links`、`npm run agent-sops:validate`が成功。
+  * **当日レース更新中の一時欠損を解消**:
+    予測再生成ジョブが対象日すべての既存予測を先に削除・コミットし、再収集が終わるまで公開APIが404になる問題を修正。既存予測を維持したまま、新しい予測が完成したレースだけを削除・追加の同一トランザクションで置き換える構成へ変更し、取得・挿入失敗時は前回の正常データを残す。地方競馬と祝日開催を取りこぼさないよう当日朝のデータ取得を毎日実行へ変更。原子的置換、挿入失敗時のロールバック、レース一覧取得失敗時の旧データ維持を回帰テストで確認し、関連7テストとPython構文検証が成功。
+  * **YouTube動画v6・素材権利ゲート・実動画尺の安定化**:
+    競馬写真＋スポーツ誌紙面の動画デザインへ更新し、中央10場・地方14場のコース図、横縦の共通写真、公式ロゴ、18頭表示、Shorts安全領域、コンタクトシートを実装。写真は約24MBのPNGから約3.3MBの高品質JPEGへ圧縮し、Cloud Run用Dockerコンテキストから動画資産を除外した。DOVA-SYNDROMEのBGM原本は再配布を避けて非公開Cloud Storageへ分離し、GitHub Actions用サービスアカウントだけに読み取り権限を付与。`credits.json`の`credit`・`license`欠損をエラーにする権利ゲートを追加した。FFmpegのクロスフェード連結でShortsが約5.6秒へ短縮される問題は、入力タイムベースを統一して約16.0秒へ復旧し、動画尺・H.264・AAC 48kHzを回帰テストで固定した。
+* **2026-07-05**:
+  * **重賞カレンダー主導の記事生成スケジュール化**:
+    重賞名検索の流入を優先するため、`news_topic_planner.py` を重賞カレンダー締切ベースへ拡張。中央重賞は金曜11:45 JST以降の枠順確定後候補と16:45 JST以降の結果回顧更新、地方重賞は2日前直前記事のみを生成対象にした。優先順位はG1、Jpn1、G2、Jpn2、G3、Jpn3、その他重賞の順に明示し、2日前を過ぎた未生成重賞は `missed_preview` として補完する。WriteOrderには競馬場・距離・コースを含むSEOキーワード、`update_stage`、`deadline_status`、結果確定フラグを持たせ、既存重賞記事は同URL更新で育てる。Actionsへ11:45/16:45 JST実行を追加し、旧GradeRaceWriterは既定OFF。`py_compile`、`test_news_topic_planner.py`、`npx tsc --noEmit`、`npm run article:validate-links`、`npm run article:audit-quality`、`npm run build` 成功。品質監査のcritical/warningは既存記事由来の残課題として継続。
+  * **北九州記念の専用記事追加と重賞エンティティ補完**:
+    北九州記念は `news_topic_planner.py` の日程補完では候補化されていたが、公開済み記事ディレクトリでは6月29日以降の記事がなく、北九州記念専用記事が存在しなかった。さらに、重賞エンティティのalias、PublisherのraceNameMap、記事アーカイブseedに北九州記念が未登録で、生成・公開後も重賞アーカイブへ接続しにくい状態だった。`2026-07-05-kitakyushu-kinen-2026-field-analysis.md` を追加し、北九州記念を `kitakyushu-kinen` として planner、grade_race_writer、publisher、記事アーカイブへ登録。7月5日のrace-day補完でWriteOrder対象に残る回帰テストも追加した。`py_compile`、`test_news_topic_planner.py`、`npx tsc --noEmit`、`npm run article:validate-links`、`npm run article:audit-quality`、`npm run build` 成功。品質監査のcritical/warningは既存記事由来の残課題として継続。
+* **2026-06-29**:
+  * **物販アフィリエイト停止と楽天競馬導線の控えめ化**:
+    Amazon・楽天市場の物販アフィリエイト3キャンペーンを一時停止し、記事末尾とトップの物販専用枠を撤去。楽天競馬枠は塗りつぶしボタンから薄いローズの案内枠と白背景リンクへ変更し、地方レースでは予想表の前ではなく予想表確認後に表示する構成へ移動。PCサイドバーの楽天競馬重複枠も外し、レース確認の邪魔になりにくい導線に整理した。さらに投票系リンクが1件だけの場合は枠全体をクリック可能にし、ボタンだけを狙わなくても自然に遷移できるようにした。
+* **2026-06-28**:
+  * **楽天競馬ヘッダー導線の追加**:
+    楽天競馬アフィリエイトのクリック数に対して登録が伸びていない状況を受け、全ページ共通ヘッダーへ控えめな「PR 地方競馬の投票は楽天競馬で」リンクを追加。色は楽天競馬ロゴに近い `rose-600` / `rose-50` 系へ寄せ、ヘッダークリックは `affiliate_click` の `site_header` としてGA4/Clarityへ送信する。広告審査・読者信頼を損なわないよう、`PR` 表記、`rel="sponsored nofollow noopener noreferrer"`、20歳以上対象のtitle文言を維持する。
+  * **Vercel Fast Origin Transfer無料枠対策の追加削減**:
+    Vercel HobbyのFast Origin Transfer 10GB到達通知を受け、トップページとレース詳細ページの転送量を再監査。トップページは全レース・全馬の予測データをClient Componentへ複数回渡していたため、開催場要約、注目馬3枠、重賞上位馬だけを抽出する `home-page-summary.ts` を追加し、`HomeTodayVenues`、`SpecialPickCard`、`WeeklyGradeRaces` は要約propsで描画する形へ変更した。トップの当日API取得は5分ではなく30分再検証を明示し、`index.html` は約1.17MBから約105KB、`index.rsc` は約1.02MBから約49KBへ削減。レース詳細ページは選択レース中心の初期データだけを渡し、通常レース詳細URLの大量ISR生成を抑えるため、サイトマップ掲載は日付ページと重賞詳細中心へ絞った。`npx tsc --noEmit`、`npm run build` 成功。
+  * **記事公開ゲートの「無条件」補正追加**:
+    添付ログで、承認済み記事の公開直前に `article:validate-links` が「無条件」を強すぎる表現として検出し、同時公開予定の記事をロールバックしていたことを確認。SEO Checkerの禁止語とEditorの自動補正へ「無条件」の置換を追加した。トップの近日重賞欄は時間差でAPI表示が復旧する運用前提のため、静的な先日程フォールバックは使わず、従来通りDB/API由来の直近重賞だけを表示する。
+* **2026-06-27**:
+  * **記事生成の重賞偏重緩和と常設コラム枠の追加**:
+    ルート直下の `data/reference/中央競馬重賞一覧.txt`、`data/reference/地方競馬重賞一覧.txt` を `news_topic_planner.py` で読み込み、既存内蔵・リモート日程より手元の2026年重賞日程を優先して `RaceDemand` へマージするよう変更。直近重賞の優先度は維持しつつ、`editorial_evergreen_planner.py` を追加し、`data/reference/中央競馬ジョッキーリーディング.txt`、`data/reference/地方競馬ジョッキーリーディング.txt`、`data/reference/中央競馬ｺｰｽ一覧.txt`、`data/reference/地方競馬ｺｰｽ一覧.txt` から、騎手分析、競馬場単位のコース分析、入門ガイドをローテーションでWriteOrder化する構成にした。コース記事は距離別に分割せず、競馬場ごとに各距離を表で束ねる。
+    GitHub Actionsの記事生成フローへ常設コラム生成ステップを追加し、最終パイプラインでは最大3記事処理時にニュース枠と常設コラム枠を予約できるよう変更。Writer、Editor、Publisher、ArticleFlowには `course_venue`、`jockey_profile`、`beginner_guide` のカテゴリ、締め見出し、外部調査クエリを追加した。入門ガイドは20トピックへ拡張し、WriteOrder入力文に `期待値`、`勝負気配` などの文体ガード対象語が混入しない回帰テストも追加。さらに `docs/content/reference_data_summary.md` のMarkdown表を常設コラムplannerが直接パースし、騎手リーディングと中央・地方コース要点を既存 `.txt` データへマージする構成にした。ルート直下の6つの `.txt` は将来削除される補助スナップショット前提とし、今後の追加・修正では `docs/content/reference_data_summary.md` を主データソースとして扱う。騎手分析候補は上位30名で打ち切らず、既存・pending・postedで除外後に31位以降へ進めるよう修正。`py_compile`、`backend.tests.test_news_topic_planner`、`backend.tests.test_editorial_evergreen_planner`、`npx tsc --noEmit`、`npm run build` 成功。
+* **2026-06-26**:
+  * **Vercel Hobby使用量超過対策・レースページの実ISR化**:
+    Vercel Usageで直近30日のFluid Active CPUが8時間16秒/4時間、Fast Origin Transferが15.38GB/10GB、Function Invocationsが576,500回まで増えていたため、レース日付・詳細ページを監査した。コードコメント上はISR導入済みだったが、`next build`では両ルートが`ƒ Dynamic`、本番も毎回`X-Vercel-Cache: MISS`となっていた。動的化の原因だった日付ページmetadataの`searchParams`依存を除去し、動的パラメータを初回アクセス時に生成するオンデマンドISRへ変更。直近日付は5分、過去日は1時間で再検証し、ローカル本番環境で日付・詳細とも`MISS → HIT → HIT`、過去日は`s-maxage=3600`を確認した。
+    予測APIの一時的な5xx・通信失敗は404へ変換せず例外として扱い、ISR再生成失敗時に最後の正常キャッシュを維持できるよう変更。データ投入前の前日～2日後は200の更新待ち状態を維持し、ブラウザから再取得できる構成とした。`/races/today`は静的ビルド時の日付ではなく、Middlewareでアクセス時点のJST日付へ307転送する。
+    全ページ共通ヘッダーやレース関連記事・重賞・的中ランキング等の`next/link`による自動プリフェッチが、ユーザー操作前に動的レースFunctionを起動する可能性があるため、レース導線と動的な記事一覧導線で`prefetch={false}`を設定。クリック後の遷移、GA4計測、AdSense配置、アフィリエイト導線は維持した。記事Markdownはデプロイ内で一度だけ解析するメモ化を追加し、レースページへ渡す記事情報を表示に必要な5項目へ縮小。PC・390pxモバイルで横スクロールなし、AdSenseスクリプト・広告枠、楽天競馬PR表記と`sponsored nofollow noopener noreferrer`の維持を確認。`npx tsc --noEmit`、`npm run build`成功。
+* **2026-06-22**:
+  * **中央競馬ページへの楽天競馬導線追加**:
+    土日のアクセスが中央競馬ページへ集中すると、地方競馬限定だった楽天競馬アフィリエイトの表示機会が減る構成を見直した。中央競馬向けに `rakuten-keiba-jra-audience` キャンペーンを追加し、「地方競馬も確認する方へ」「楽天競馬の案内を見る」と、中央競馬の投票先であるように誤認させない文言へ分離。中央競馬のレース詳細では、AI偏差値表直後にあった手動InFeed広告を楽天競馬枠へ置き換え、広告枠数を増やさずモバイルでも確認しやすい位置へ配置した。PCサイドバーの重複表示は地方競馬だけに限定した。`npx tsc --noEmit`、`npm run build`成功を確認。
+* **2026-06-20**:
+  * **Clarity監査の完全性再確認とホーム収益導線計測の補完（2026-06-21 01:35 JST）**:
+    前回のData Export API監査は集計範囲の初回調査であり、録画、ヒートマップ、JavaScriptエラー本文、GA4/AdSense/アフィリエイト突合が未完了であることを明文化した。UTC日次枠の残り2回を使う`pulse`プロファイルを追加し、最新24時間を再取得。164セッション、ボット79、ページ/セッション4.06、デッドクリック15.85%、クイックバック32.32%、JavaScriptエラー1.83%で、デッドクリックは72時間値15.88%から横ばい。東京11RのPCは10セッション中50%にデッドクリックが残っていたが、修正前後が混在するため効果判定は保留とした。
+    公開サイトではClarityタグ`x3vmax3h3t`、収集POST、当日一覧CTA、ホームカードのホバー削除、`affiliate_click`イベントと関連タグの本番発火を確認した。ホームからレースへ進む入口を`home_race_entry_click`として`hero_cta / grade_fallback / venue_card`別にGA4とClarityへ送信し、公開サイトで`home_entry_method=hero_cta`と`home_race_entry_click`の本番発火まで確認。`ad_impression_custom`もClarity録画へ連携する処理を追加したが、広告が`filled`の時だけ発火するため、空振りした自動検証環境では実発火未確認。標準ページ計測と重複する`view_home`等のカスタムイベントは削除した。`npx tsc --noEmit`、`npm run build`、Python構文検証が成功。残課題と完了条件は`docs/analytics/clarity_completeness_review_20260621.md`へ整理した。
+  * **Clarity API監査・誤操作削減・収益導線の録画連携**:
+    Microsoft Clarity Data Export APIから直近72時間を、URL、端末、流入元、地域、キャンペーンの8クエリで取得する`backend/scripts/export_clarity_insights.py`を追加。APIトークンを成果物へ含めず、JSON、CSV、Markdownを`analysis_results/clarity/20260620T105522Z`へ出力した。人による359セッションに対してボット108件、モバイル73.0%、PC25.6%、デッドクリック15.88%、クイックバック25.63%、JavaScriptエラー2.51%を確認。PCのデッドクリックは27.17%で、東京11RではPCの45.45%に発生していた。
+    現在表示中のレース番号とPC同日レース一覧が押せる見た目のまま無反応になる構造を、`aria-current="page"`付きの非操作要素へ変更。ホームの非リンク機能カードからホバー移動を外し、「今日のレース分析」CTAは特定1Rではなく当日一覧へ着地させた。Clarityにはページ領域、レース閲覧・移動、予想表表示、記事読了、記事からレースへの移動、アフィリエイト表示・クリック、リワード関連のカスタムイベントを追加し、収益につながる操作の録画を絞り込めるようにした。`npx tsc --noEmit`、`npm run build`、Clarity取得スクリプトの`py_compile`が成功。詳細は`docs/analytics/clarity_optimization_audit_20260620.md`に整理した。
+  * **GCP課金監査とAPI通信・DB取得・自動デプロイの低コスト化**:
+    GCP構成と直近29日のCloud Runメトリクスを確認し、DB VM `keiba-db` は無料枠対象の `us-west1-b / e2-micro / pd-standard 30GB`、外部IPv4なし、Cloud NAT・VPCコネクタなし、Cloud Runは最小インスタンス指定なし・request-based課金・最大3インスタンスで、固定費を抑えた構成であることを確認した。Cloud Runは132,804リクエスト、CPU約20,573 vCPU秒、メモリ約9,483 GiB秒で無料枠内。一方、当日レースAPIの実測レスポンスは約391KBでgzip未使用だったため、`GZipMiddleware`を追加し、1KB以上の応答を圧縮レベル6で配信する構成へ変更。実データ相当では約79.7KB、約79.6%削減できることを確認した。
+    `get_predictions_by_date` は `predictions` と `results` を同時に `joinedload` して直積的に行数が増える構成だったため、`selectinload`へ変更し、レスポンス構造を維持したままDB内部通信量とメモリ使用量を抑える形へ変更。gzip適用、小レスポンス非圧縮、予測・結果・馬番傾向の返却互換性を検証する `backend/tests/test_api_cost_optimizations.py` を追加し、同テスト2件、既存記事生成テスト8件、`py_compile`が成功した。
+    Cloud BuildのGitHubトリガーは、Dockerfileとビルドコンテキストがともに`backend`配下のみであることを確認し、`includedFiles: backend/**`を設定。フロントエンド、記事、ドキュメントだけのpushでは不要なCloud Runビルドを起動せず、バックエンド変更時は従来通り自動ビルド・デプロイする。Artifact Registryには14日超のイメージ削除・最新10件保持のクリーンアップポリシーが設定済みで、追加の手動削除は行わない。
+  * **トップの重賞枠をレースページと統一**:
+    トップページだけ近日重賞APIの結果を当日分へ絞り込み、重賞がない日は独自の空表示へ差し替えていた構成を廃止。レース日別ページと同じ `WeeklyGradeRaces` を、同じ「近日の重賞レース」タイトル・今日から14日間の中央/地方重賞・G1/Jpn1級の注目カード・その他重賞の区分表示でそのまま利用する形へ統一した。API取得失敗時のみ「近日の重賞情報を確認中です」と表示する。
+  * **一般ニュースの季節外れ日付を遮断**:
+    6月19日の記事生成で、重賞名を持たない `news_context` が重賞カレンダーの期間判定対象外となり、2月14日の京都競馬場（2回5日目）の馬場情報を現在のニュースとして公開した問題を修正。一般ニュースのタイトル・本文から `YYYY年M月D日`、`M月D日`、ISO日付を抽出し、Tavily検索のlookback期間または直近開催期間から外れた明示日付しかないソースを候補から除外する。SEO Checkerにも `scheduled_race_date` を持たない `news_context` の日付鮮度チェックを追加し、公開日から7日以上離れた開催日だけを扱う記事を拒否する。誤公開された京都馬場記事は `draft: true` へ戻した。
+* **2026-06-19**:
+  * **記事画像軽量化・広告CLS・hydrationエラー対策**:
+    共通アイキャッチ4枚（`data-analysis-eyecatch.png`、`beginner.png`、`jockey.png`、`jyusyo-eyecatch.png`）を同じ1024px PNGのままパレット最適化し、合計約3.1MBから約124KBへ削減。参照URLを変えず、記事・関連記事・ホームの既存表示を維持した。AdSense枠はGoogleが空振り時に祖先要素へ `min-height: 0 !important` を付与する挙動を確認したため、通常フローの独立スペーサーと絶対配置の広告DOMを分離し、デスクトップ280px・モバイル250px、インフィード220pxを予約する構造へ変更。未配信広告の `aria-hidden` を外し、非表示時は `visibility` とポインター制御でフォーカス可能な広告要素との競合を避けた。ページレベルAdSenseスクリプトはhydration後に動的読込し、ヘッダーの日付と的中ランキング期間、関連日付導線をSSRとブラウザで決定的な値へ変更。`npx tsc --noEmit`、`npm run article:validate-links`、`npm run build`成功。ローカル本番ビルドをホーム・記事・レース詳細、PC・モバイル幅で確認し、React #422/#425は再現せず、広告空振り後も予約高が維持されることを確認した。
+  * **開催前の回顧記事防止と直近重賞の候補補完**:
+    6月21日開催予定の一條記念みちのく大賞典が、6月19日時点で `search_intent=result_review`、`race_phase=post_race` の回顧記事として公開された問題を修正。開催前に検索結果から「結果」「優勝」等を検出した場合は前年以前の材料とみなし、当年の結果回顧ではなく `past_trends` へ変換する。Tavilyに適切な記事が見つからなくても、公式重賞日程から開催直前の未作成レース候補を補完し、府中牝馬SやしらさぎSなどが検索結果の偶然で候補から消えない構成へ変更。下書き記事は重複判定から除外し、誤公開された一條記念みちのく大賞典記事は `draft: true` へ戻した。ArticleFlowでは開催日から算出した段階とWriteOrderの `race_phase` を照合し、Writer後のfrontmatterが `search_intent`、`race_phase`、`scheduled_race_date` を改変した場合もcriticalで拒否。SEO Checkerにも未来開催日の結果回顧を公開不可とする機械ゲートを追加した。
+  * **ホーム当日開催の空表示を自動復旧**:
+    当日データ投入前に生成されたホームのISRキャッシュが「本日のレースデータはありません」を保持し、Cloud Run API側では開催データが反映済みでも最初の閲覧者へ古い空状態を返す問題を修正。通常時は従来の30分ISRを維持し、サーバー描画時の中央・地方開催がともに空の場合だけ、ブラウザ側から当日APIをキャッシュなしで再取得する `HomeTodayVenues` を追加した。初回取得でも空の場合は1分後に一度だけ再確認し、未反映時の文言も「データはありません」ではなく更新中であることが分かる表現へ変更。地方開催が取得できた時点で競馬場カードと楽天競馬導線を復旧する。
+  * **収益ファネル計測の本番反映とGA4管理画面設定**:
+    6月18日に実装した収益ファネル計測を本番へ反映。初回Vercelビルドは、記事ページから参照する新規ファイル `frontend/components/ArticleEngagementTracker.tsx` がGit管理対象に含まれておらず、`Module not found: Can't resolve '@/components/ArticleEngagementTracker'` で失敗した。ユーザーが同ファイル、`docs/analytics/analytics_measurement_plan.md`、`backend/tests/test_news_topic_planner.py`を追加し、コミット`2bae3eb`（`収益ファネル計測と記事導線を改善`）を`main`へpushした後、Vercelビルド・デプロイが正常完了した。
+    GA4では`affiliate_click`と`article_race_click`をキーイベントとして登録。`affiliate_click`は本番ストリーム`uma-free`でデータ検出済み。`article_race_click`もキーイベント登録済みで、記事内の`/races/...`導線クリックから送信する構成になっている。通常レポートへの反映には時間差があるため、未検出表示の場合はTag AssistantまたはDebugViewで記事からレースページへ移動し、イベント発火を確認する。
+    イベントスコープのカスタムディメンションとして、`provider`（アフィリエイト提供元）、`context`（アフィリエイト配置）、`navigation_method`（レース移動方法）、`race_type`（レース種別）、`venue_name`（競馬場）、`article_category`（記事カテゴリ）、`article_slug`（記事スラッグ）、`link_placement`（記事リンク位置）を登録。高カーディナリティ化しやすい`race_id`と`link_path`はカスタムディメンションにしていない。
+    Tag Assistantで`https://uma-free.com`へ接続し、Googleタグ`G-10PZFRV2BX`の検出、`affiliate_impression`、`ad_impression_custom`、ページビュー等の送信を確認。Search ConsoleではモバイルCore Web VitalsのCLS・INPについて検証開始の操作を実施し、URLグループ単位の28日間評価を待つ状態とした。Analytics Admin APIやPageSpeed Insights APIを使うPowerShellコマンドは補助的な確認手段であり、今回は実行していない。
+  * **広告アカウント通知と性能課題の整理**:
+    Google Ad Managerネットワーク`23345285369`の「過去90日間インプレッションなし・今後90日で無効化予定」という通知は、現在一時停止中のGAM Rewarded Adに関するもの。収益稼働中のAdSense自動広告、手動広告、アンカー広告、オファーウォールとは別系統のため、現行運用では緊急対応不要。Rewarded Adを再開しない場合は無効化を許容し、再開する場合のみGAM側の配信設定と在庫を再検証する。
+    Lighthouseモバイル診断はPerformance 65、Accessibility 93、Best Practices 100、SEO 100。ラボ値はFCP 3.8秒、LCP 6.9秒、TBT 120ms、CLS 0で、`/images/articles/data-analysis-eyecatch.png`が約808KBと大きく、画像最適化による削減余地が大きい。また広告コンテナ内のフォーカス可能要素と`aria-hidden`の組み合わせがアクセシビリティ監査で指摘された。Search Consoleの実ユーザーデータでは62 URLのグループがCLS 0.49、INP 1,023msで不良判定だが、これは過去28日間のローリングデータであり、修正反映後も即時には解消されない。画像軽量化、広告コンポーネントの`aria-hidden`見直し、LCP・INPの追加改善は未実装の次期対応項目として残す。
+* **2026-06-18**:
+  * **収益ファネル計測の正常化と検索カニバリ抑制**:
+    GA4のページビューがAdSenseページビューを大きく上回っていた原因を調査し、`RaceTabs.tsx` が中央・地方タブと競馬場タブの切り替えを仮想`page_view`として送信していた処理を廃止。`race_group_select`、`race_venue_select`、`race_navigation`へ分離し、実ページ表示とレース画面内操作を区別できる構成へ変更した。予想表の表示時に送っていた旧`read_complete`は`prediction_table_view`へ改名し、記事本文末尾への到達を`article_read_complete`、記事からレースページへの遷移を`article_race_click`として新規計測。アフィリエイトクリックを含むGA4キーイベント候補と推奨ファネルを`docs/analytics/analytics_measurement_plan.md`へ整理した。
+    リワード広告の意図的な停止中は詳細データ閲覧を`open_access`として扱い、利用不可・自動フォールバックの診断イベントを各レース単位で大量送信しないよう、日付・競馬場・理由単位へ抑制。検索表示が多くCTRの低かった馬場状態、馬体重、オッズ妙味の記事タイトル・descriptionを検索意図に合わせて更新し、宝塚記念の重複4記事には検索実績のある中心記事への`canonical_slug`を設定した。`npx tsc --noEmit`、`npm run article:validate-links`、`npm run build`成功。生成HTMLのcanonicalと配信チャンク内の新イベントも確認。Browser実確認はWindowsサンドボックスの起動権限エラーで未実施。
+  * **重賞日程連動と記事テーマ偏重の修正**:
+    `news_topic_planner.py` が主要G1中心の手書き日程と、先頭から「枠順」「追い切り」を並べたTavilyクエリに依存していたため、2026年の実開催日と記事内容がずれる問題を修正。JRA公式重賞一覧と地方重賞スケジュールを1実行あたり低頻度で取得し、公式日程を内蔵カレンダーより優先する構成へ変更した。2026年は、さきたま杯を6月24日、帝王賞を7月1日として扱い、府中牝馬S、しらさぎS、ラジオNIKKEI賞、函館記念なども対象へ追加。
+    開催までの日数を `early_preview / field_building / race_week / final_48h / race_day / post_race` に分類し、早期はコース・過去傾向・出走構成、直前は馬場・陣営情報、終了後は結果回顧へ切り替えるロジックを追加。レース後に枠順・追い切り記事を生成せず、1回の生成で枠順・追い切り系は合計1本までに制限した。検索意図判定はTavilyクエリよりソースのタイトル・本文を重く評価し、公式日程に一致しないレース記事は既定で候補外とした。
+    Writer/Editor/文字数補完も `search_intent` と `race_phase` を引き継ぎ、出走構成、コース条件、過去傾向、中央馬と地方馬の比較、前走、結果回顧など主題別に展開するよう変更。主題でない枠順・追い切りを定型H2として追加しないガードを導入した。`grade_race_writer.py` も予測未取得時は「AI予想」ではなく出走構成・コース分析を中心にする構成へ変更。誤った段階で公開されていた帝王賞の最終追い切り記事と、レース終了後に公開された宝塚記念の事前記事は `draft: true` へ戻し、`frontend/lib/articles.ts` で下書きを一覧・サイトマップ・個別ページから除外するようにした。
+    `backend/tests/test_news_topic_planner.py` を追加し、日程、クエリ分散、検索意図、レース後ガードの4件を検証。`unittest`、`py_compile`、`npx tsc --noEmit`、`npm run article:validate-links`、`npm run build` 成功を確認。記事品質監査は既存100記事に由来するcritical 10件・warning 298件を報告したが、コマンド自体は完走した。
+  * **重賞記事の対象期間を開催前7日・開催後3日に短縮**:
+    SEO上の検索需要と記事内容の鮮度をそろえるため、`KEIBA_NEWS_RACE_WINDOW_BEFORE_DAYS` を21日から7日へ変更し、開催後は従来通り3日までとした。コード内フォールバック値、GitHub Actions、`.env.example` を同じ `7 / 3` に統一。開催後の検索クエリは `result_review` のみに限定し、過去傾向・枠順・追い切りなどの事前テーマを生成しない構成へ変更した。月またぎの日程取得処理は維持される。境界値（開催7日前・8日前・3日後・4日後）と結果回顧限定を含む回帰テスト5件、`py_compile` 成功を確認。
+* **2026-06-17**:
+  * **中央・地方重賞の近日表示対応**:
+    ホーム上部の重賞枠が中央競馬のみの取得条件になっていたため、`get_weekly_grade_races` を今日から14日以内の中央・地方重賞を返す構成へ変更。地方の `Jpn1/Jpn2/Jpn3` とレース名末尾の `重賞` 表記を検出し、通常レース名に含まれる「重賞級」などは拾わないようにした。`WeeklyGradeRaces` は「近日の重賞レース」として中央・地方を区分表示し、G1/Jpn1級は注目開催カードで表示。`py_compile`、`npx tsc --noEmit`、`npm run build` 成功を確認。
+    デプロイ後、API側の重賞枠が空でもホームには当日の全レースデータが存在するケースがあったため、ホーム側で `predictions` から当日重賞を補完抽出する処理を追加。`赤レンガ記念〔H3〕(ウエストオーバー賞 重賞`、`トリトン争覇 重賞`、`園田FCスプリント 重賞` のような地方重賞表記を拾い、表示名から副題・グレード表記を整理するようにした。該当がない場合は「本日開催の重賞はありません」と表示し、今日のレース分析導線を出す構成へ変更。`npx tsc --noEmit`、`py_compile`、`npm run build` 成功を確認。
+  * **記事生成パイプラインの公開ブロックと数値ハルシネーション対策**:
+    `validate_article_links.js` で既存記事の「大きくな」系の不自然な置換残りが検出され、承認済み記事の公開前にワークフローが停止する問題を修正。`naturalize_existing_articles.js` に同系統の補正を追加し、既存記事11本へ適用して `article:validate-links` を通過させた。あわせて `keiba-article-pipeline.yml` のリンク検証をLLM生成前のプリフライトへ移動し、既存記事の問題でWriteOrder消費後に公開だけ止まる事故を防止。
+    Writer/Editor/ArticleFlow側では、Evidence Packに存在しない勝率・複勝率・回収率などの%値をpost-writer段階でcritical扱いに格上げし、Editorの再試行時にも前回却下された未確認数値をプロンプトへ明示するよう修正。Writer/Editorプロンプトから例示用の具体%値や「買い足す」など強めの表現を減らし、未確認数値は数値なしの確認手順へ言い換える方針に統一。`npx tsc --noEmit`、`npm run article:validate-links`、`npm run article:audit-quality`、`npm run build` 成功を確認。
+    追加ログ確認で、`ARTICLE_MIN_BODY_CHARS=3000` 指定中でも `race_update` 系が2000字で承認される抜け道が判明したため、`agent_writer.ts` と `seo_checker.ts` の記事タイプ別文字数下限を環境変数未満に下げないよう修正。さらにEditorが見出し1行を長い本文セクションへ置換して文字数を稼ぐ経路をブロックし、文字数不足は安全な補足処理へ寄せる構成にした。`npx tsc --noEmit`、`npm run article:validate-links`、`npm run article:audit-quality`、`npm run build` 成功を確認。
+    さきたま杯記事で枠順未発表にもかかわらず「枠順確定」前提の記事が生成された問題を修正。`news_topic_planner.py` で「枠順」一般語と「枠順発表済み」を分離し、発表予定・発表日は `draw_status=pre_draw`、確定・公開済みの明示がある場合のみ `confirmed` とした。`article_flow.ts`、`agent_writer.ts`、`agent_editor.ts`、`grade-race-update-plan.ts` にも同じガードを追加し、対象記事は「枠順発表前に見る確認順」へ修正。`python -m py_compile`、`npx tsc --noEmit`、`npm run article:validate-links`、`npm run article:audit-quality`、`npm run build` 成功を確認。
+  * **GCP固定ネットワーク費（Networking）の完全削減と楽天APIドメイン認証移行**:
+    GCPの固定維持費（月額約 ¥6,000〜）を削減するため、Cloud RunのVPCコネクタ接続を解除し、GCP上のCloud NAT（`rakuten-cloudrun-nat`）、ルーター（`rakuten-nat-router`）、VPC Accessコネクタを削除。さらに、未使用となった旧固定IP（`35.252.200.91`）を解放してペナルティ課金を停止。本番DB（VM `keiba-db` / `34.182.6.97`）は `e2-micro` にてRUNNING（稼働中）を安全に維持。
+    楽天アフィリエイトAPIの2026年新基盤移行に伴い、認証をIP制限から「ドメイン（Allowed Origins）制限」に変更。楽天Developersコンソール側でWeb Application型へ変更してAllowed Originsにサイトドメインを登録し、バックエンドコード（`affiliate.py`）にてリクエストヘッダーに `Origin` を付与するように修正。アフィリエイトURLの解決・報酬トラッキング（ID紐付け）やサイト表示への悪影響がないことをローカル疎通テストにて検証済み。
+  * **DB外部IPv4廃止とIAP/内部IP接続への完全移行**:
+    GCPの日額課金を1日20円以下へ近づけるため、DB VM `keiba-db` の外部IPv4課金要因を撤去。Cloud Run `keiba-site-v1` にDirect VPC egress（`private-ranges-only`）を設定し、`DATABASE_URL` の接続先を外部IP `34.182.6.97` から内部IP `10.138.0.2` へ切り替えた。`/api/v1/predictions/stats/accuracy?days=30` がHTTP 200を返すことを確認し、サイト/バックエンドAPIからDB参照が継続できる状態を検証済み。
+    GitHub Actionsは `.github/actions/setup-iap-db/action.yml` を追加し、Workload Identity Federation（Pool `github-actions-pool` / Provider `github-actions-provider` / Service Account `github-actions-iap-db@keiba-api-project.iam.gserviceaccount.com`）でGoogle認証後、IAP TCPトンネルを `127.0.0.1:15432` に張る構成へ変更。データ取得、結果取得、記事生成、SNS投稿系workflowは、既存 `DATABASE_URL` secretを実行時にlocalhostへ差し替えるため、各スクリプトのDB参照方法は従来通り。
+    `allow-postgres`（0.0.0.0/0→5432）、`default-allow-ssh`、`default-allow-rdp` は無効化。IAP用に `allow-iap-postgres-keiba-db`（35.235.240.0/20→5432）と `allow-iap-ssh-keiba-db`（35.235.240.0/20→22）を作成し、保守経路を維持。予約IP `keiba-db-ip` とVMの `external-nat` access configを削除し、`gcloud compute instances list` で `EXTERNAL_IP` が空であること、IAP DBトンネルが外部IP削除後も疎通することを確認済み。
+    これによりDB本体・データは従来通りGCE VM `keiba-db` に残したまま、外部公開DBから内部/IAP接続へ移行。今後、ローカルやCloud ShellからDBへ入る場合は旧外部IPではなくIAPトンネルを利用すること。外部IPv4、Cloud NAT、Serverless VPC Access、Artifact RegistryのSKUは翌日以降のBillingで反映確認する。
+* **2026-06-13**:
+  * **ホーム/レース詳細UIの残差分修正**: localhost確認で残っていた薄青の空広告枠を解消するため、`.ad` / `.ad-large` / `.ad-wide` をプレースホルダー表示から中立ラッパーへ変更し、開発環境では広告親枠ごと非表示にする条件を追加。高配当的中ランキングは旧CSS依存をやめ、払戻金・式別・組番・レース情報が崩れないカード型リストへ再設計。レースページ下部のPR枠はコンパクト表示へ調整し、関連分析記事サムネイルも直接画像表示へ統一。`npx tsc --noEmit`、`npm run build`、`curl` による `localhost:3000` トップ/レース詳細と `localhost:8000` API疎通成功を確認。Browser確認はWindowsサンドボックス権限エラーで未実施。
+  * **localhost表示崩れの復旧**: HTML回収後に `output.css` 側だけへ残っていたモバイルメニューCSSを `globals.css` へ復旧し、デスクトップでメニュー縦リストが常時展開される問題を修正。ローカル開発時はAdSense/インフィード/追従広告の大きなプレースホルダーを既定で非表示にし、必要時のみ `NEXT_PUBLIC_SHOW_DEV_AD_PLACEHOLDERS=enabled` で確認できる構成へ変更。ヘッダーロゴとホーム記事サムネはローカル確認時の `/_next/image` 接続断に巻き込まれにくいよう直接画像表示へ変更。`npx tsc --noEmit`、`npm run build`、バックエンドAPI疎通成功を確認。
+  * **HTML回収差分の追補修正**: HTMLモック反映後の差分を再点検し、記事詳細の本文前AdSense枠を撤去して目次直後の広告過密を回避。`RaceTabs` の `useRewardedAd` 呼び出し順を早期return前へ移動し、地方競馬のみの日に上位タブ `defaultIndex` が存在しない番号になる不具合を修正。`PredictionTable` の予測対象外判定、`RaceAnalysis` の強表現サニタイズ、`RaceAnalysisComment` と説明ページの文体ガードも整理。`npx tsc --noEmit` と対象差分の `git diff --check` 成功を確認。
+  * **レース詳細の表示順と楽天競馬導線の整理**: レース詳細の主要データ順を `AI偏差値 → 過去対決成績 → 展開/脚質予測 → このコースの枠順傾向 → AIレース展望` に統一。地方競馬ではAI偏差値直後に楽天競馬のオッズ確認導線を表示し、JRAでは誤解を招く投票導線を出さない構成を維持。PC目次とスマホ下部ナビも同じ順番へ変更し、モバイル追従広告はレースページ下部ナビに重ならないよう表示位置を調整。`tsc --noEmit` 成功を確認。
+  * **収益優先のAdSense自動系復帰**: オファーウォールとリワード広告の違いを整理し、収益レポート上で好調だったAdSense自動広告・オファーウォール・アンカー広告の復帰を優先。GAM Rewarded Adは在庫不安定のため `fallback` 維持、`NEXT_PUBLIC_FULLSCREEN_AD_MODE=disabled` も維持したまま、`NEXT_PUBLIC_ADSENSE_AUTO_ADS_MODE` の既定値と `.env.example` を `enabled` に変更。手動広告ONとの併用で、良かった時の「手動配置 + AdSense自動系 + オファーウォール」構成へ戻す方針にした。`npx tsc --noEmit` 成功を確認。
+  * **オファーウォール収益機会の復帰**: 6/13のAdSenseレポートで本日のオファーウォール収益が0円となり、短期収益の大きな穴になっていたため、全画面広告・GAM Rewarded Adの停止は維持したまま、AdSenseページレベル機能の読み込みだけを復帰。`NEXT_PUBLIC_ADSENSE_OFFERWALL_MODE=enabled` を追加し、`NEXT_PUBLIC_ADSENSE_AUTO_ADS_MODE=manual-only` でもオファーウォール用スクリプトを読み込める構成にした。あわせてレースページの予想表直後広告と詳細データ後InFeed、記事序盤広告の先読み幅を広げ、NAR詳細データ後はアフィリエイトでAdSenseを置き換えず併設する運用へ調整。`npx tsc --noEmit` 成功を確認。`npm run build` はローカル環境で長時間応答せずタイムアウトしたため、残った確認用ビルドプロセスを停止した。
+  * **SNS Threads一時障害の失敗判定緩和**: 夜投稿GitHub ActionsでX投稿成功後、Threads APIの `is_transient=true` 付き500エラーによりジョブ全体が失敗していたため、Threads投稿に一時エラー分類とコンテナ作成時のリトライを追加。X投稿が成功済みの場合はThreadsの一時障害だけで `FAIL_ON_SNS_ERROR=true` のジョブを失敗させないようにし、認証エラーなど恒久的な問題は従来通り失敗扱いにした。`python -m py_compile backend\\scripts\\sns_poster.py` 成功を確認。
+  * **広告表示機会の回復調整**: 6/12のAdSenseレポートでPV増加に対してPage RPMと広告表示回数/PVが低下していたため、全画面広告・Rewarded Ad停止は維持したまま、手動広告の遅延読み込み条件を枠ごとに調整できるよう修正。通常AdUnitは先読み幅をやや拡大し、InFeed枠は高効率枠として広めに先読み、レースページのモバイル追従広告は開始閾値を1400pxから800pxへ緩和。アフィリエイト表示時にもAdSenseのInFeed機会が消えないよう、レース下部に独立したInFeed枠を1枠復帰した。`npx tsc --noEmit` 成功を確認。`next build` はローカル環境で長時間応答せずタイムアウトしたため、別途Vercel/CI側で最終確認する。
+  * **レースページのパンくず日本語化**: レース詳細URLの `tokyo` などのvenue slugが画面パンくずにローマ字表示される問題を修正。共通パンくずにレースURL専用の日本語ラベル生成と競馬場slug逆引きを追加し、日付ページ・詳細ページではSSR側の正式な日付/レース名を渡す形へ整理。楽天市場商品検索APIは `affiliateUrl`、`itemName`、`itemPrice`、`mediumImageUrls` を取得できる仕様で、既存の `/api/v1/affiliate/rakuten/resolve` と `AffiliateSlot` が画像・価格表示に利用可能であることを確認。`npx tsc --noEmit` 成功を確認。`npm run build` はローカル環境で長時間応答せずタイムアウトしたため、残った確認用ビルドプロセスを停止した。
+  * **楽天商品画像とレース切り替えパンくずの再修正**: レース詳細ページでレースを切り替えた際、URLは変わっても画面パンくずが初回レース名のまま残る問題を修正。`RaceTabs` から選択中レースのパンくず情報をイベント通知し、`Breadcrumb` が即時反映する構成にした。楽天商品枠はAPI画像を `object-contain` で表示し、画像URLエラー時は商品カテゴリ表示へ自然にフォールバックするよう改善。`NEXT_PUBLIC_API_URL` 未設定時の本番フォールバックURLを追加し、楽天API解決の失敗リスクを低減。バックエンドは `smallImageUrls` も取得対象へ追加。`npx tsc --noEmit` と `python -m py_compile backend\\api\\v1\\endpoints\\affiliate.py` 成功を確認。`npm run build` はローカル環境で長時間応答せずタイムアウトしたため、残った確認用ビルドプロセスを停止した。
+  * **スマホ過去対決成績のマトリクス化**: `MatchupTable.tsx` のモバイル表示を基準馬選択式カードからPC同等の全頭マトリクスへ変更。18頭立てでも横スクロールなしで収まるよう、スマホ専用の小型馬番バッジ、縦書き3文字馬名、21px行高の圧縮セルを追加した。馬名短縮は `Array.from(...).slice(0, 3)` で行い、`イクイノックス` は `イクイ` のように表示される。`npx tsc --noEmit` 成功を確認。`npm run build` はローカル環境で長時間応答せずタイムアウトしたため、残った確認用ビルドプロセスを停止した。ブラウザ確認はBrowser接続がWindowsサンドボックス権限エラーで起動できず未実施。
+  * **本サイト全体のUI/UX統一仕上げ**: 添付スクリーンショットで残っていた記事一覧の長いリスト感、運営者情報・規約・広告・お問い合わせ・サイトマップなど固定ページの文書感、コース/騎手/重賞ハブの古い矩形カードを再点検し、共通の情報ページレイアウト、角丸カード、控えめな影、カテゴリ導線へ統一。記事一覧はPCでカード型索引、モバイルで横画像付きカードとして読みやすさを維持。`next/image` 依存の残りを直接画像表示へ寄せ、ローカル確認時の画像破損リスクを低減。`買い時`、`消し`、`穴馬の激走` など強めの表現を評価材料・相手候補など自然な競馬メディア表現へ置換。`npx tsc --noEmit` と `npm run build` 成功、frontend/backend の localhost 疎通と主要ページのHTTP 200を確認。
+  * **トップヒーロー5要素の視認性修正**: トップページのヒーロー内にある `AI偏差値`、`対決成績`、`展開/脚質`、`枠順傾向`、`AI展望` の5要素が暗色半透明カードと白文字で視認性が低く、モバイルで横スクロール操作もしづらくなっていたため、白背景の小型カードへ変更。モバイルは2列グリッド、PCは5列グリッドにし、カード内テキスト・アイコン・ミニチャート・ヒーロー見出し/説明/CTAのサイズを全体的に圧縮。`npx tsc --noEmit` と `npm run build` 成功を確認。frontend devサーバー再起動は権限昇格の使用上限により未実施。
+* **2026-06-12**:
+  * **スマホ全画面広告・オファーウォール抑止**: AdSenseの全ページ先読みを停止し、手動広告枠が必要になった時だけスクリプトを遅延読み込みする構成へ変更。`NEXT_PUBLIC_ADSENSE_AUTO_ADS_MODE=manual-only`、`NEXT_PUBLIC_FULLSCREEN_AD_MODE=disabled` を既定とし、GAM Rewarded Adは二重フラグで明示許可しない限り起動しないようにして、スマホで閉じられない全画面動画・オファーウォールの再発リスクを下げた。
+  * **RaceTabsデプロイエラー修復**: `RaceTabs.tsx` に欠落していた `handleJraVenueSelect` を復旧し、JRA開催場タブ切り替え時の再描画キー更新とGA計測をNAR側と同等に整理。Vercelデプロイ時の `Cannot find name 'handleJraVenueSelect'` 型エラーを解消し、`npm run build` 成功を確認。
+  * **記事生成品質ゲート強化**: `agent_editor.ts` のGemini Editorレスポンスを堅牢なJSON抽出へ変更し、JSONパース失敗やAI Editor非承認時にSEO機械チェックだけで公開承認しないよう修正。Gemma複数観点レビューは構造化メモへ圧縮して最終Editorへ渡し、ノイズ混入を抑制。
+  * **検索カニバリ抑制 & 地方重賞対応**: `news_topic_planner.py` に `KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN` を追加し、既定で1実行1レース1本に制限。帝王賞、さきたま杯、関東オークス、JBC、東京大賞典など地方・交流重賞も季節カレンダーとTavilyクエリの対象へ追加。
+  * **記事表現ガード追加**: Writer/Editor/SEO Checkerで「軸の筆頭」「消し」「精度の高い予想」「AI偏差値70以上」「絶好枠」などの強い表現を抑制。予測データが空の場合はAI偏差値の具体値・しきい値・予想印を生成しないルールを明文化。
+  * **Gemini 503対策**: Writer/Editorの高性能・中性能モデルで一時混雑系エラー（503/high demand等）が出た場合、既定1回だけ短時間待機して同じモデルを再試行。クォータ上限時は再試行せず次モデルへフォールバック。
+* **2026-06-11**:
+  * **記事トーン改善**: `agent_writer.ts` / `agent_editor.ts` / `seo_checker.ts` 等の文言・表現ルール刷新。煽り表現禁止、語尾ローテーション追加。既存記事24本を一括トーン修正。
+  * **記事改善 & 自動生成ロジック適用**: 代表10記事個別修正、全88記事の一括置換（免責配置統一・語法補正）。
+  * **自動記事生成（Tavily検索流入最大化）**: レースカレンダー連動、検索意図分類（枠順・出走馬等）のキーワード変換、重複・カニバリ防止。
+  * **ニュースPlanner多様化 & 内部DB合流**: `news_topic_planner.py` のTavilyクエリを追い切り・前走後評価・陣営コメント・話題馬/騎手まで拡張。さらに `search_angle_label` で最終追い切り・坂路追い・巻き返し条件などへ細分化し、同一レースという理由だけで日次生成を止める長期クールダウンを撤廃。既存記事・未消費WriteOrderとの `target_keyword` 重複は維持し、該当レースのAI予想、コース統計、馬番有利度、AI展望テキストをWriteOrderへ自動マージする構成へ更新。
+  * **Editor文字数不足自動補正**: 3,000文字未満時の補足セクション（直前に見る材料等）自動挿入。
+  * **記事本文量とLLM使用量ログ改善**: Writer本文目安を3,400〜4,200字、最低3,000字に引き上げ。Writer/EditorのGemini `usageMetadata` をログ出力し、1記事ごとの入力・出力・合計トークンを確認できるように更新。
+  * **記事生成LLMの役割別ルーティング**: `gemini-3.5-flash`（高性能）を初稿生成、`gemini-3-flash-preview`（中性能）を最終編集、`gemma-4-31b-it`（低制限）を検索意図ブリーフと複数観点レビューへ割り当て。Gemmaで「検索意図」「本文深掘り」「トーン・事実性」の3回添削を行い、本文基準を3,000字以上へ拡張。
+  * **Gemini制限時のActions失敗判定化 & ニュース起点Planner接続**: Tavilyでのニュース取得を `write_order.json` に変換する `news_topic_planner.py` の追加。
+* **2026-06-10**:
+  * **収益・UI改善**: 楽天競馬本掲載、物販PR（Tシャツ等）文言・CTAの最適化。過密広告（InFeedAd、fallbacks）の削減。記事本文直後へのアフィリエイト枠移動。
+* **2026-06-09**:
+  * **収益改善**: アフィリエイト商品枠表示改善（楽天画像・価格動的表示）、楽天API affiliateUrl非同期自動解決の実装。アフィリエイト導線基盤（AffiliateSlot）追加。
+  * **UI・設定**: レース日別ページ「今日まず見るレース」等の補助ダッシュボード表示撤去。自動広告単独テストを終了し手動広告既定ONに復旧。Microsoft Clarity（ヒートマップ）導入。
+* **2026-06-07**:
+  * **構造化データSSR化**: Client Component内JSON-LD出力を廃止し `StructuredData.tsx` でのSSRに統一。低CTR記事（荒れ分析、人気的中率、武豊）のメタ最適化。
+* **2026-06-06**:
+  * **UI改善**: 記事詳細の最上部へ「本日の分析を見る」等の価値訴求・回遊導線を追加。トップページ下部「競馬データの見方」重複セクションの整理。
+* **2026-06-05**:
+  * **UX改善**: SC指摘のCLS対策（AdUnit、NativeCardAd等の未配信時枠キープ、RecentRaceReturn of SSR化）。
+  * **収益改善**: GAM Rewarded Ad在庫不安定のためリワードゲートをデフォルト一時停止（通常広告回収）へ変更。既存記事の不自然表現を一括置換。
+  * **データ復旧**: 地方競馬データ文字化け（デコード誤り）を修復、当日APIキャッシュTTLを5分へ短縮。
+* **2026-05-21**:
+  * **回遊・検索・信頼・データ改修**: 「競馬データ辞典」などのハブページ新設。騎手・コース個別ページ拡張（計100ページ以上）。Next.js側静的インデックスによる横断検索の実装。
+  * **精度検証API**: バックエンド `/api/v1/predictions/stats/accuracy` からAI偏差値の実測勝率等を取得するよう改修。
+  * **レースURL安定パス化**: クエリ型（`?race=11&venue=東京`）から安定パス（`/races/YYYY-MM-DD/venue-slug/raceNumber`）へ移行、旧URLは301リダイレクト。
+* **2026-05-19**:
+  * **広告枠連携**: AdSense Offerwall（リワード広告）を公開。GAM Rewarded Adの準備・検証およびタイムアウト処理（5秒）の追加。
+* **2026-05-17**:
+  * **ホーム画面改修**: サンプルカード（AI偏差値等の可視化）と的中ランキングを上部集約し、価値訴求後に広告が入る配置に変更。
+  * **レース予想ページ**: PC幅のコンテナ拡張とスマホでの指標解説・分析ブロックの圧縮、クライアント再取得時のデータ上書きバグ修正。
+* **2026-05-16**:
+  * **広告配置**: 予想表直前の広告を撤去し、確認後の自然な区切りに集約。
+  * **パイプライン復旧**: 記事生成・編集・SEOチェックの審査矛盾整理、失敗時のwrite_order退避（`failed/`）。
+  * **Gemini最適化**: AI Studio無料枠制限対策（Flash-Lite優先、使用回数の記録、1cronあたり上限8リクエスト）。
+
+---

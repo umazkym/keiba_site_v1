@@ -49,7 +49,7 @@ Constraints for parameter acquisition:
 
 **Constraints:**
 
-- You MUST keep banned and discouraged expressions aligned with `AGENTS.md`, `docs/reference_data_summary.md`, and tone checker code.
+- You MUST keep banned and discouraged expressions aligned with `AGENTS.md`, `docs/content/reference_data_summary.md`, and tone checker code.
 - You MUST avoid strong betting, certainty, sensational, and finance-like expressions in generated text.
 - You MUST keep article endings from falling into generic summary or sales-like instruction.
 - You MUST NOT add phrases such as strong guarantees, aggressive exclusion labels, or invented AI-score thresholds because they can harm AdSense review and reader trust.
@@ -62,7 +62,7 @@ Constraints for parameter acquisition:
 
 - You MUST preserve one-run one-race topic limits unless the user explicitly changes the strategy.
 - You MUST check `posted_history.json`, existing Markdown, pending write orders, and topic history when changing planner behavior.
-- You MUST keep local reference data from `docs/reference_data_summary.md` as the primary maintainable source for evergreen planner inputs.
+- You MUST keep local reference data from `docs/content/reference_data_summary.md` as the primary maintainable source for evergreen planner inputs.
 - You MUST NOT generate result-review framing for future races because it creates misleading content before the event is held.
 
 ### 5. Validate the pipeline surface
@@ -126,15 +126,15 @@ Search Consoleは既存記事の検索意図と改善優先度の判断にだけ
 - You MUST keep `grade_race_search_repair` on the same URL, entity, season, race date, and `update_stage`; it MUST NOT add a new article or advance factual stages.
 - You MUST reject the rewrite before file mutation if number tokens, tables, H2 bodies, links, canonical, publication date, entity metadata, `update_stage`, ad metadata, or verified race-bridge metadata change.
 - You MUST publish only the existing `rewrite_target_slug` file and MUST NOT generate a new slug, article file, redirect, or canonical because the rewrite must preserve the indexed URL exactly.
-- You MUST consult `docs/gsc_weekly_seo_operations.md` before diagnosing GSC authentication or cost because it records the completed external setup and the applicable free-tier conditions.
+- You MUST consult `docs/content/gsc_weekly_seo_operations.md` before diagnosing GSC authentication or cost because it records the completed external setup and the applicable free-tier conditions.
 - You MUST treat the recorded external setup as completed unless a current workflow or API response proves that access or configuration was removed; do not request unnecessary owner permission or service-account keys.
 
 ## Source references
 
 - `AGENTS.md`
-- `docs/article_creation_flow.md`
-- `docs/gsc_weekly_seo_operations.md`
-- `docs/reference_data_summary.md`
+- `docs/content/article_creation_flow.md`
+- `docs/content/gsc_weekly_seo_operations.md`
+- `docs/content/reference_data_summary.md`
 - `docs/system-documentation/13_記事生成AIトーンマナー定義書.md`
 - `docs/system-documentation/14_自動記事生成システム全体仕様書.md`
 - `.github/workflows/keiba-article-pipeline.yml`

@@ -83,6 +83,7 @@ node_modules/
 # ローカル検証・画面確認・個人分析の成果物
 /.tmp/
 /.runtime/
+/.local/
 /output/
 /outputs/
 /scratch/
@@ -94,13 +95,13 @@ node_modules/
 /video_frames/
 /extract_frames.py
 
-# docs/reference_data_summary.mdへ集約済みのローカル参照スナップショット
-/中央競馬ジョッキーリーディング.txt
-/中央競馬重賞一覧.txt
-/中央競馬ｺｰｽ一覧.txt
-/地方競馬ジョッキーリーディング.txt
-/地方競馬重賞一覧.txt
-/地方競馬ｺｰｽ一覧.txt
+# docs/content/reference_data_summary.mdへ集約済みのローカル参照スナップショット
+/data/reference/中央競馬ジョッキーリーディング.txt
+/data/reference/中央競馬重賞一覧.txt
+/data/reference/中央競馬ｺｰｽ一覧.txt
+/data/reference/地方競馬ジョッキーリーディング.txt
+/data/reference/地方競馬重賞一覧.txt
+/data/reference/地方競馬ｺｰｽ一覧.txt
 
 # BGM原本は素材サイトの再配布禁止条件に従い、非公開ストレージで管理する
 /backend/scripts/social_video/assets/audio/**/*.mp3
@@ -115,3 +116,25 @@ all_source_code.txt
 all_articles.md
 sitemap_test.xml
 debug_jra_racelist.html
+
+# 移動済みのローカル記録と新しい作業物の再混入を防ぐ。
+/archive/local/
+/.next/
+/.playwright-cli/
+/frontend/.playwright-cli/
+/frontend/output/
+/frontend/.codex-dev.*
+/frontend/build_output.txt
+/frontend/error.txt
+/debug_html/
+/backend/debug_html/
+/backend/debug_og_image.png
+/backend/existing_race_ids.txt
+/backend/repair_log.txt
+/indexerror/
+/tmp/
+/tmp_analysis/
+/0
+/check_result.txt
+/fetched.txt
+/script_output.txt

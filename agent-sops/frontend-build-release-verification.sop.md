@@ -95,9 +95,9 @@ Next.js App Router、ISR、prefetchの意図を確認します。
 - `AGENTS.md`
 - `DESIGN.md`
 - `frontend/package.json`
-- `docs/analytics_measurement_plan.md`
-- `docs/clarity_completeness_review_20260621.md`
-- `docs/hydration_and_ad_scroll_fix_walkthrough.md`
+- `docs/analytics/analytics_measurement_plan.md`
+- `docs/analytics/clarity_completeness_review_20260621.md`
+- `docs/development/hydration_and_ad_scroll_fix_walkthrough.md`
 
 ## Examples
 

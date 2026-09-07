@@ -74,6 +74,18 @@ Constraints for parameter acquisition:
 - You MUST report any skipped validation and the reason.
 - You MUST NOT present unverified code as verified because this project treats build and policy regressions as high-cost failures.
 
+### 6. ディレクトリを整理する場合の追加確認
+
+**Constraints:**
+
+- ファイル名だけで未使用と判断してはいけません。Workflow、package.json、Python import、コード中のパス、素材台帳を先に照合します。`test_pipeline.ts`のように名前にtestを含む運用入口もあるためです。
+- 移動先・元のパス・SHA-256・理由を`archive/manifest.json`へ記録します。旧診断は`.py.txt`等で実行対象から分け、端末固有の生成物はGit管理外の`archive/local/`に保管します。
+- 現役ファイルの移設は`docs/operations/layout-moves.json`へ記録し、ファイル位置に依存するimport・入力・出力・出典名と、移動元・移動先両方のMarkdownリンクを更新します。ローカル補助入力がないcloneでも主資料だけで動くことを確認します。
+- ルートの手動Pythonは`scripts/`または`backend/scripts/`の用途別フォルダへ、資料は`docs/operations/directory-layout.md`の分類へ保存します。空フォルダを除去する前に、配下にファイルが残っていないことを確認します。
+- 新しいWorkflowを追加したら`docs/operations/features.json`へ登録し、`npm run repository:map`と`npm run repository:check`を実行します。新しい機能が説明されないまま増えることを防ぐためです。
+- 公開URL、記事・素材のパス、DBスキーマ、投稿台帳、IAP、公開モードを配置整理に付随して変更してはいけません。保存済み状態や定期処理との互換性に影響するためです。
+- 長い実行記録は`docs/archive_agents_history.md`へ移し、`AGENTS.md`には常時守る規則と直近の要点だけを残します。
+
 ## Source references
 
 - `AGENTS.md`
@@ -99,7 +111,7 @@ user_request: レースページの楽天競馬導線を少し目立たせたい
 確認対象:
 - frontend/components/AffiliateSlot.tsx
 - frontend/components/RacePageClient.tsx
-- docs/analytics_measurement_plan.md
+- docs/analytics/analytics_measurement_plan.md
 ```
 
 ## Troubleshooting

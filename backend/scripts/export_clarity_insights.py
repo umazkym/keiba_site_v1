@@ -110,7 +110,7 @@ def parse_args() -> argparse.Namespace:
         "--output-dir",
         type=Path,
         default=None,
-        help="出力先。未指定時はanalysis_results/clarity/<UTCタイムスタンプ>です。",
+        help="出力先。未指定時は.local/analysis/clarity/<UTCタイムスタンプ>です。",
     )
     parser.add_argument(
         "--env-file",
@@ -206,7 +206,7 @@ def resolve_configuration(env_file: Path) -> tuple[str, str]:
 def make_output_dir(path: Path | None) -> Path:
     if path is None:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        path = REPOSITORY_ROOT / "analysis_results" / "clarity" / timestamp
+        path = REPOSITORY_ROOT / ".local" / "analysis" / "clarity" / timestamp
     elif not path.is_absolute():
         path = REPOSITORY_ROOT / path
 

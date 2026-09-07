@@ -115,7 +115,7 @@ Cloudflare経由でhealth、主要HTML、資産、広告・計測、サイトマ
 ## Source references
 
 - `AGENTS.md`
-- `docs/cloud_run_cloudflare_migration_20260804.md`
+- `docs/infrastructure/cloud_run_cloudflare_migration_20260804.md`
 - `.github/workflows/deploy-frontend-cloud-run.yml`
 - `.github/workflows/keiba-data-page-publication.yml`
 - `frontend/Dockerfile`

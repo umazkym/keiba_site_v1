@@ -51,7 +51,8 @@ class MonetizationClassificationTest(unittest.TestCase):
 class MonetizationSnapshotAcceptanceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.input_dir = Path(__file__).resolve().parents[2] / "分析レポート"
+        cls.input_dir = (Path(__file__).resolve().parents[2] / "archive" / "local"
+                         / "workspace-2026-09-07" / "分析レポート")
         if not cls.input_dir.exists():
             raise unittest.SkipTest("ローカル分析レポートがありません。")
         cls.report = reporter.build_report(cls.input_dir)

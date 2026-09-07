@@ -1,5 +1,7 @@
 {
   "scripts": {
+    "repository:check": "node scripts/maintenance/check_repository.cjs",
+    "repository:map": "node scripts/maintenance/check_repository.cjs --write-map",
     "agent-sops:validate": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/agent_sops/run_node.ps1 scripts/agent_sops/validate_sops.cjs",
     "agent-sops:skills": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/agent_sops/run_node.ps1 scripts/agent_sops/build_agent_skills.cjs"
   },

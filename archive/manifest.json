@@ -1,0 +1,866 @@
+{
+  "date": "2026-09-07",
+  "description": "移動前のSHA-256。旧DB認証情報のみ移動後に伏字化。local=trueは端末だけに保管。",
+  "moves": [
+    {
+      "source": ".next/trace",
+      "destination": "archive/local/.next/trace",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "17f7923fe71671fdc92fa3008bfee159a32c0c06a15d05f25a1f6e44360b1a48"
+    },
+    {
+      "source": ".playwright-cli/page-2026-08-06T16-03-08-046Z.yml",
+      "destination": "archive/local/.playwright-cli/page-2026-08-06T16-03-08-046Z.yml",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "bd61c4adeb81807579e28a0318ea2b7b0f0181ad4a0ce5381297d2637bf2b593"
+    },
+    {
+      "source": ".playwright-cli/page-2026-08-06T16-04-19-561Z.yml",
+      "destination": "archive/local/.playwright-cli/page-2026-08-06T16-04-19-561Z.yml",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "8e73f49c3a15f521de781e3fe02c3f1fdaba1cf929cdda5e177ec2c0764e822c"
+    },
+    {
+      "source": ".playwright-cli/page-2026-08-06T16-04-45-366Z.yml",
+      "destination": "archive/local/.playwright-cli/page-2026-08-06T16-04-45-366Z.yml",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "4869421da8f93dddf6b189cbf181fcb785ee1db25b4c4016658f0598a4af7ff0"
+    },
+    {
+      "source": ".playwright-cli/page-2026-08-06T16-07-11-634Z.yml",
+      "destination": "archive/local/.playwright-cli/page-2026-08-06T16-07-11-634Z.yml",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "6c3e2ab75edb0d1373829874f100e8e4c198e512ba406522d30b3f42b16eb09a"
+    },
+    {
+      "source": ".playwright-cli/page-2026-08-06T16-07-48-837Z.yml",
+      "destination": "archive/local/.playwright-cli/page-2026-08-06T16-07-48-837Z.yml",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "fc7e406be20010b66b9aed36a4e6b945a4ef9d6cb3f5df1f2ea71c27e59721cb"
+    },
+    {
+      "source": "0",
+      "destination": "archive/local/0",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "5fcb73d90fa54acf545b101d7ce3ec0b6ab6b504338123345e1c1aeb81808790"
+    },
+    {
+      "source": "ADSENSE_IMPROVEMENT_SPECIFICATION.md",
+      "destination": "archive/reports/ADSENSE_IMPROVEMENT_SPECIFICATION.md",
+      "reason": "現行仕様・運用手順と区別する過去の検討資料",
+      "local": false,
+      "sha256": "2f7729a07a3d575a9f8e10d4aebf5d24cc63baeb82e277e775c9635e0781fb96"
+    },
+    {
+      "source": "_rewrite-log.md",
+      "destination": "archive/reports/_rewrite-log.md",
+      "reason": "現行仕様・運用手順と区別する過去の検討資料",
+      "local": false,
+      "sha256": "0a63e65e8e05f983836f6e248b14f18d6150f7a3a483d407c17758d3c421801b"
+    },
+    {
+      "source": "backend/check_data_completeness.py",
+      "destination": "archive/legacy-tools/backend/check_data_completeness.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "f6bdffb9b864da10aca96e4df46a784c9aa65c37703b8de7953c830a50ce402a"
+    },
+    {
+      "source": "backend/check_data_integrity.py",
+      "destination": "archive/legacy-tools/backend/check_data_integrity.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "9c135250331c9bdb5905309122ccf4b359b3a844b453335e6a6686f59f3f03b9"
+    },
+    {
+      "source": "backend/check_date_range.py",
+      "destination": "archive/legacy-tools/backend/check_date_range.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "100b1d69fef423b596079c4947696cc936b2de0a999e9842411d00920237d75f"
+    },
+    {
+      "source": "backend/check_db.py",
+      "destination": "archive/legacy-tools/backend/check_db.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "96f9bc575eeb6135d76b3323a38c2e99d26cb9e7c43a6d28e551c51db69e2c36"
+    },
+    {
+      "source": "backend/debug_api_explore.py",
+      "destination": "archive/legacy-tools/backend/debug_api_explore.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "9ba630173b944c98d0410c5f1672a828e5249076c355386686c7409a59781952"
+    },
+    {
+      "source": "backend/debug_check.py",
+      "destination": "archive/legacy-tools/backend/debug_check.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "50c553ec0b564aea1e5fe0875b59b3ca0d6b38a0bf8a0cf39e0b8ae7f8c475a6"
+    },
+    {
+      "source": "backend/debug_data_investigation.py",
+      "destination": "archive/legacy-tools/backend/debug_data_investigation.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "c28959e2caace66f17d6096083e28a514f176c7606ccf700a8fe87fdff590200"
+    },
+    {
+      "source": "backend/debug_data_investigation2.py",
+      "destination": "archive/legacy-tools/backend/debug_data_investigation2.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "ca033fd199e33af48276a64dd49af43b315875a4def309f18fc93e60696f0acd"
+    },
+    {
+      "source": "backend/debug_data_investigation3.py",
+      "destination": "archive/legacy-tools/backend/debug_data_investigation3.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "4ae3e5adc2c86882f3fe1ddcc96bcdc7402d6a2ae656485f227f267e11507da1"
+    },
+    {
+      "source": "backend/debug_data_investigation4.py",
+      "destination": "archive/legacy-tools/backend/debug_data_investigation4.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "0c066548ea33e4095066337172380cd2a81a8e36b2434bc963bdf5107289b748"
+    },
+    {
+      "source": "backend/debug_data_investigation5.py",
+      "destination": "archive/legacy-tools/backend/debug_data_investigation5.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "ad69b6125128f1551e3ff59c05b831bddf8b1d1b397a905e9116ed8385e122a5"
+    },
+    {
+      "source": "backend/debug_date_check.py",
+      "destination": "archive/legacy-tools/backend/debug_date_check.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "5765d6eb1581e2eb96afe32f7c0b481da9927b0994ebd116cc8c84721923d99a"
+    },
+    {
+      "source": "backend/debug_db_netkeiba.py",
+      "destination": "archive/legacy-tools/backend/debug_db_netkeiba.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "03a1b7b32e52ca67e1964630fd166e487af6951b22eb7b14f391f12931c93ce1"
+    },
+    {
+      "source": "backend/debug_db_race_page.py",
+      "destination": "archive/legacy-tools/backend/debug_db_race_page.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "10d0a0e962abd944ce50dc1aeedd8bd1f5e46a0ddfb1adfb99be7c6cce6d9930"
+    },
+    {
+      "source": "backend/debug_deep_analysis.py",
+      "destination": "archive/legacy-tools/backend/debug_deep_analysis.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "4b88f8221821adac4c59da45cecb406dbcbb62ecae775e1fb0f9e8749e4c34a6"
+    },
+    {
+      "source": "backend/debug_e2e_test.py",
+      "destination": "archive/legacy-tools/backend/debug_e2e_test.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "48f159c8ce2ce3b1e05adde144973a312f6fe212f303666dc291f05313115fd5"
+    },
+    {
+      "source": "backend/debug_full_integration.py",
+      "destination": "archive/legacy-tools/backend/debug_full_integration.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "1fa02aed2992d5f5506cef3512f59cd2a90e128e4cdebbf06c7bd2b944749763"
+    },
+    {
+      "source": "backend/debug_grade_detection.py",
+      "destination": "archive/legacy-tools/backend/debug_grade_detection.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "32879243a68277bb934af0e190dc4831eac4d6c3b094def2b7d6d7789e20a5b3"
+    },
+    {
+      "source": "backend/debug_horse_page.py",
+      "destination": "archive/legacy-tools/backend/debug_horse_page.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "07f5b287646b2d7302aba25d1f0d4f2e98b45090fd1ce93c24d47a568bda25b3"
+    },
+    {
+      "source": "backend/debug_html/race_202530102212_shutuba.html",
+      "destination": "archive/local/backend/debug_html/race_202530102212_shutuba.html",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "e15293ac4951a71908ed96c7813dcdb695c2093fc65e8de3835812e60370e590"
+    },
+    {
+      "source": "backend/debug_integration_test.py",
+      "destination": "archive/legacy-tools/backend/debug_integration_test.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "48bd951ad020456ee19894b0bf97b738a68874df34cc3c29106425c06b76b8d2"
+    },
+    {
+      "source": "backend/debug_nar_test.py",
+      "destination": "archive/legacy-tools/backend/debug_nar_test.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "4ddfa7306575579817d9299827e3d779fba80b4ff5c013a89943496bc4ebb345"
+    },
+    {
+      "source": "backend/debug_og_image.png",
+      "destination": "archive/local/backend/debug_og_image.png",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "f19b850b0d3a332ae40456e3c4094845dd97072c48de12af798210fd593b482b"
+    },
+    {
+      "source": "backend/debug_race_list_sub.py",
+      "destination": "archive/legacy-tools/backend/debug_race_list_sub.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "a12dc871281829dafaf7269f7c8e2dcac5c4eb137861ef164b109f3b48d22b49"
+    },
+    {
+      "source": "backend/debug_requests_test.py",
+      "destination": "archive/legacy-tools/backend/debug_requests_test.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "fb646d6c73f0d779e929e468cc25eb33e5426ee030ca5b25db490993061ce887"
+    },
+    {
+      "source": "backend/debug_selenium_horse.py",
+      "destination": "archive/legacy-tools/backend/debug_selenium_horse.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "5eba96a90e39f4de482390cadeae211ab36e60e0f2aa0ceaf830e7db103918e1"
+    },
+    {
+      "source": "backend/debug_simple.py",
+      "destination": "archive/legacy-tools/backend/debug_simple.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "86f8aa8cf936372b28e22a57f6d45072679d94239e5d0c27b22c33088aa21be6"
+    },
+    {
+      "source": "backend/debug_verify_pipeline.py",
+      "destination": "archive/legacy-tools/backend/debug_verify_pipeline.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "dc1d65de1da5fe27af0b78373b386dfb2da7e12f2f593dfe6287ef88b05a3495"
+    },
+    {
+      "source": "backend/existing_race_ids.txt",
+      "destination": "archive/local/backend/existing_race_ids.txt",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "ae972c057a4572be9502f8332948c75d1177a199ce7b8e2698ec845d4849bcc3"
+    },
+    {
+      "source": "backend/log_race_counts.py",
+      "destination": "archive/legacy-tools/backend/log_race_counts.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "5c8a51fbbaea75fa1fa80e17c40a246c685def1a212c5eda25362b4e6ebdeca6"
+    },
+    {
+      "source": "backend/repair_log.txt",
+      "destination": "archive/local/backend/repair_log.txt",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "ea463d50af4d242ab3743376d64ffc1c84e335f24db2d0a180bb0eaa3d1df084"
+    },
+    {
+      "source": "backend/reset_database.py",
+      "destination": "archive/legacy-tools/backend/reset_database.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "b64b148433e8c84ad71f71769d7dd0864c76916bcf617c4dbbd361f99d166148"
+    },
+    {
+      "source": "backend/scripts/debug_preview.py",
+      "destination": "archive/legacy-tools/backend/scripts/debug_preview.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "a7fbd504f39f471779087b4a2c697e9d79fa931ae6ed87af6d93ed2267c56934"
+    },
+    {
+      "source": "backend/scripts/fetch_generated.py",
+      "destination": "archive/legacy-tools/backend/scripts/fetch_generated.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "7cea97e1305fb81110cd4d0ef96840fdbbb489d78137fafdc78fab06c450867c"
+    },
+    {
+      "source": "backend/scripts/print_json.py",
+      "destination": "archive/legacy-tools/backend/scripts/print_json.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "5bc47ac4baf896583271aa9270be198af8a15bb99684c347e1298f98435bea95"
+    },
+    {
+      "source": "backend/scripts/print_models.py",
+      "destination": "archive/legacy-tools/backend/scripts/print_models.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "ffa81c3a0a0294b0cc5ec2a87ae19991d40348704be87d18ef448d1ef1e65b21"
+    },
+    {
+      "source": "backend/scripts/test_batch_llm.py",
+      "destination": "archive/legacy-tools/backend/scripts/test_batch_llm.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "eefdbf2e3f77ea260d0c7f23cb1179321e07cacff900592c7e23f1a51c35be08"
+    },
+    {
+      "source": "backend/scripts/test_calendar.py",
+      "destination": "archive/legacy-tools/backend/scripts/test_calendar.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "cffe3811676d7d13d5857db41c44a7a6aeefb0500d556f299980bcce087b4d44"
+    },
+    {
+      "source": "backend/scripts/test_gemma.py",
+      "destination": "archive/legacy-tools/backend/scripts/test_gemma.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "2cafd5234ca7b8d8138a93ae5fea4453717c868b05152ae49b525fe52d73320d"
+    },
+    {
+      "source": "backend/scripts/test_gemma_real.py",
+      "destination": "archive/legacy-tools/backend/scripts/test_gemma_real.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "2f98de094d8ff7168b1405998c1a0fd1276954c085a4c47fc9fb7e495be8457e"
+    },
+    {
+      "source": "backend/scripts/test_json_models.py",
+      "destination": "archive/legacy-tools/backend/scripts/test_json_models.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "7960d6c9cfed9f4a0aafd2a258e9d853f5b1fa15ae1a02770dc7920999e27b1b"
+    },
+    {
+      "source": "backend/scripts/test_new_models.py",
+      "destination": "archive/legacy-tools/backend/scripts/test_new_models.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "ae3acde8a0f69694b80e53496e74f907662e339af5a47555a581d7433aee0c7e"
+    },
+    {
+      "source": "backend/test_db.py",
+      "destination": "archive/legacy-tools/backend/test_db.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "ab7a174ac2dd08a1cf82b1576b9c5b38780731e0b73b507b7a3173c46fda2198"
+    },
+    {
+      "source": "check_ids.py",
+      "destination": "archive/legacy-tools/check_ids.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "fa9f3810228491ca1077598e257b76e53b70d762c68243aea3448697fe21c056"
+    },
+    {
+      "source": "check_result.txt",
+      "destination": "archive/local/check_result.txt",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "60ab09cc11dbb64bb7f486857c3331dc8f7d0b171399f00630395808d7224940"
+    },
+    {
+      "source": "debug_html/race_list_JRA_20251011.html",
+      "destination": "archive/local/debug_html/race_list_JRA_20251011.html",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "ce165c65a1c1170eebae306449eeb7e0eb50de238a747ee19f30a10758077fc6"
+    },
+    {
+      "source": "debug_html/race_list_JRA_20251012.html",
+      "destination": "archive/local/debug_html/race_list_JRA_20251012.html",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "fb359088240108d2ff5b8be096c05593c56a01903fbad7e7b2d716b3c17faad8"
+    },
+    {
+      "source": "debug_html/race_list_NAR_20251011.html",
+      "destination": "archive/local/debug_html/race_list_NAR_20251011.html",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "07ea2830b9b13b311e84deb968a9219a2d1f7b196a48711fed4500756277c8f2"
+    },
+    {
+      "source": "debug_html/race_list_NAR_20251012.html",
+      "destination": "archive/local/debug_html/race_list_NAR_20251012.html",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "b11d35ba7c0cc94eb2d6b217fa08df684fe57f610698141f88d311d0a2e3307e"
+    },
+    {
+      "source": "fetched.txt",
+      "destination": "archive/local/fetched.txt",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "babcffde7163f358f3ba6a793d42f3caeea91ca31c07a54560957e3c5ecb46f1"
+    },
+    {
+      "source": "frontend/.codex-dev.err",
+      "destination": "archive/local/frontend/.codex-dev.err",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "frontend/.codex-dev.out",
+      "destination": "archive/local/frontend/.codex-dev.out",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "frontend/.playwright-cli/page-2026-07-20T23-39-09-998Z.yml",
+      "destination": "archive/local/frontend/.playwright-cli/page-2026-07-20T23-39-09-998Z.yml",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "c26ed5b2bcf8aaaf02fecd2676539427b76c398b6f20f9dc14ffc837349df8c5"
+    },
+    {
+      "source": "frontend/.playwright-cli/page-2026-07-22T04-14-06-703Z.yml",
+      "destination": "archive/local/frontend/.playwright-cli/page-2026-07-22T04-14-06-703Z.yml",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "9d86b43ecc7d85ecd09e9e02bb36b10f95eb5afc1b119297a2243edd8adb98de"
+    },
+    {
+      "source": "frontend/.playwright-cli/page-2026-07-22T04-16-50-381Z.yml",
+      "destination": "archive/local/frontend/.playwright-cli/page-2026-07-22T04-16-50-381Z.yml",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "055664f40b7a7692bf5a633db7a82fcf7819c38dc7aa2df11d6cef6e62be9fb5"
+    },
+    {
+      "source": "frontend/.playwright-cli/page-2026-07-22T04-17-15-558Z.yml",
+      "destination": "archive/local/frontend/.playwright-cli/page-2026-07-22T04-17-15-558Z.yml",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "7a587fc331e77f5c256349f45099594be6d6680009d996943f7eaa49d954c0f0"
+    },
+    {
+      "source": "frontend/build_output.txt",
+      "destination": "archive/local/frontend/build_output.txt",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "ab59fc21ac57804bc75777d3121f5ae1f76056960fe14dbbd4da7c503c12843d"
+    },
+    {
+      "source": "frontend/content/apply_disclaimer_and_word_replacements.py",
+      "destination": "archive/legacy-tools/frontend/content/apply_disclaimer_and_word_replacements.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "f7974adcc500e5797596fe717468260107aadbcb6b7dcca3ab6440d4e068286b"
+    },
+    {
+      "source": "frontend/content/naturalize_articles.py",
+      "destination": "archive/legacy-tools/frontend/content/naturalize_articles.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "ceb475ef8503e20e528453f690ed1531c006072dcbe053542a2fe972143a7548"
+    },
+    {
+      "source": "frontend/content/naturalize_articles_v2.py",
+      "destination": "archive/legacy-tools/frontend/content/naturalize_articles_v2.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "16f55ed50c46bf23a7789a9ff10e310f87c6f40515351d72fd8f273cba1776fd"
+    },
+    {
+      "source": "frontend/content/naturalize_articles_v3.py",
+      "destination": "archive/legacy-tools/frontend/content/naturalize_articles_v3.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "7c05b0bba8cfe10bb867fc0a50a3e3d7033b39609d3081776aa316e4668751fc"
+    },
+    {
+      "source": "frontend/error.txt",
+      "destination": "archive/local/frontend/error.txt",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "542768140becc48996a21717c468badb42e66d27250a88a35af4ace8c3de4a42"
+    },
+    {
+      "source": "frontend/output/playwright/article-panel-1280.png",
+      "destination": "archive/local/frontend/output/playwright/article-panel-1280.png",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "81717dae47e7f7fdd6b363d5dc691974eb0ce4ba57cbffd2c4eaae97bd3744e9"
+    },
+    {
+      "source": "frontend/output/playwright/article-panel-390.png",
+      "destination": "archive/local/frontend/output/playwright/article-panel-390.png",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "bd7a0c83e07ff668adb242bb03c8c8cd982cc1021216589cf0b60f86869bbd36"
+    },
+    {
+      "source": "frontend/test.js",
+      "destination": "archive/legacy-tools/frontend/test.js.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "ae8737ff62b1aa45da3c1674c98cca085f89fa051c164087996365d3bce2a9a8"
+    },
+    {
+      "source": "frontend/test_tags.js",
+      "destination": "archive/legacy-tools/frontend/test_tags.js.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "ae4c8410ef7785c09a4e7c940c9bbe2a60e80c719dd7cc0cf04c269f1887cd95"
+    },
+    {
+      "source": "generate_prototype.py",
+      "destination": "archive/prototypes/generate_prototype.py.txt",
+      "reason": "現行画面から参照されない試作",
+      "local": false,
+      "sha256": "55f5c6f021681f4ee2ac014e2ab6dd63e3b8c3686800f440e7fe3b6a65c663de"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-2026-02-28/メタデータ.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-2026-02-28/メタデータ.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "53fae8082d9dac37c1672fa663a127bd493c4837fa4a8eb6ec7dd2a32baab1a8"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-2026-02-28/平均読み込み時間のチャート.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-2026-02-28/平均読み込み時間のチャート.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "87ae36b3453e67f62766b514b63ab45c200b3c3ad206811f20f374f505d53c1f"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-2026-02-28/重大ではない問題.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-2026-02-28/重大ではない問題.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "a2b6e3b337a779da22d46df227c045d7b59920aec6b8d87fb1af70bd23e4abe7"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-2026-02-28/重大な問題.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-2026-02-28/重大な問題.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "65c13183cba04e6a03844d61f87bedf34cab070e882458a3e3ff2cdf3a9cbede"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (1)/メタデータ.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (1)/メタデータ.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "0b81935cacb75ece378b85ae6f7080a9adff2ceb5e608e123167f44229aa4c00"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (1)/平均読み込み時間のチャート.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (1)/平均読み込み時間のチャート.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "f62e6977d49dc87edd24f49d7f097fd6242b977681b4b4c73c6a5a0954a320cb"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (1)/表.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (1)/表.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "1be3dea951328daba89d8feff5fe5658fb7e9fc3aa5a129f32c90c3eb07bf043"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (2)/メタデータ.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (2)/メタデータ.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "ff548c8c6de7976fce9f9850b3c9afc98123247fafcb9c5b8b3239202f0cd56c"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (2)/平均読み込み時間のチャート.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (2)/平均読み込み時間のチャート.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "1450236f4845f2740efd16cfa04503cb4a9692527489879b1729dd3127f69b1f"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (2)/表.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (2)/表.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "e09c279506b9657be2376a150108f482357d9e8ae89e890fb1e3c4901cafec09"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (3)/メタデータ.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (3)/メタデータ.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "660fbe362b1ae752fddd2d2b80fc3edfaf88a82c724c873674f72a0a3cc50aff"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (3)/平均読み込み時間のチャート.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (3)/平均読み込み時間のチャート.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "c36d635a549f3eb6ed01ae5b03c4f695bd83950a8790644660e1529ec6d6b00b"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (3)/表.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (3)/表.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "dec1e474230a857d4b00542404733fa43f81ebe9fa6d6a6d964d9fc710bc32c3"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (4)/メタデータ.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (4)/メタデータ.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "90c2cc02e6888a6ccb8a30069bbbf688865616baeba19666e273b0d01a16bbb2"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (4)/平均読み込み時間のチャート.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (4)/平均読み込み時間のチャート.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "d0eb7e1bac43399a21640d0246330226f598d112308ef16d0eb073df812653c3"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (4)/表.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28 (4)/表.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "570b9a1ce419560eb09b9815c754246d51e2f88b6cd14d94e650358ba10a9513"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28/メタデータ.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28/メタデータ.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "4f24eeb26dd5d06e78f1bbb7e4696c1ca74c88ea980c36c621e074f0dfda17aa"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28/平均読み込み時間のチャート.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28/平均読み込み時間のチャート.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "5c719d7bea3820a48c83f2d9acb5ef4961f5d6246f18d31931c59d4e9ab09b8e"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Drilldown-2026-02-28/表.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Drilldown-2026-02-28/表.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "3ddc74b398ba72dbed30b6e78dde911abe8adc9c38c5de57523b58737126a41f"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Validation-2026-02-28/メタデータ.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Validation-2026-02-28/メタデータ.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "e79a0887a19314fbca9ed38d17335c2353a735924e7bcac11688e00958c81713"
+    },
+    {
+      "source": "indexerror/uma-free.com-Coverage-Validation-2026-02-28/表.csv",
+      "destination": "archive/local/indexerror/uma-free.com-Coverage-Validation-2026-02-28/表.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "e0320f3fc4ab378738c33f5dcd3cee5f4177c47ed4f6e39c880999c0a43ede64"
+    },
+    {
+      "source": "outputs/019fc36d-42f7-7dd1-be50-c1918d23f4c7/UMA-FREE_収益最大化分析_20260803.xlsx",
+      "destination": "archive/local/outputs/019fc36d-42f7-7dd1-be50-c1918d23f4c7/UMA-FREE_収益最大化分析_20260803.xlsx",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "8739eeaa6b2ef85f046bc4d984c70ebfcf6f236d5d6ec8dc408101fd51cb1a73"
+    },
+    {
+      "source": "script_output.txt",
+      "destination": "archive/local/script_output.txt",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "0005d90e735d64c5d29ba6ba4a3dfbfc029abc52a5534ccd750b8e26e1028830"
+    },
+    {
+      "source": "setup_postgres.sh",
+      "destination": "archive/legacy-tools/setup_postgres.sh.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "02a978eda21e97ed417b2ec529937488f7058c6f2b4b892d590bfd8930bc1e42"
+    },
+    {
+      "source": "tmp/pdfs/uma-free-20260807/data-1.png",
+      "destination": "archive/local/tmp/pdfs/uma-free-20260807/data-1.png",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "001c98fa8eba370edf814b43db99bb384f3beb38f0ee28f9ce0acd88fa65464b"
+    },
+    {
+      "source": "tmp_analysis/ga_pages.csv",
+      "destination": "archive/local/tmp_analysis/ga_pages.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "f39b9a34c1b489610735171441505fb41c2d9fac5e5473c11219e446528b419e"
+    },
+    {
+      "source": "tmp_analysis/tg_daily.csv",
+      "destination": "archive/local/tmp_analysis/tg_daily.csv",
+      "reason": "再現用の画面・ログ・取得済みデータ。内容を保持しGit管理と配布対象から外す",
+      "local": true,
+      "sha256": "0242b252af58702c7d22f2d26afdd09ab84beb0be0e957ec2c14d3b991fa2714"
+    },
+    {
+      "source": "uma-free-prototype.html",
+      "destination": "archive/prototypes/uma-free-prototype.html",
+      "reason": "現行画面から参照されない試作",
+      "local": false,
+      "sha256": "0a861a19fb0947bc3157c4b544ae8b72814ac5ee2b4a6362cd182b6fefaba614"
+    },
+    {
+      "source": "verify_db.py",
+      "destination": "archive/legacy-tools/verify_db.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "05640cb4c54a54a34d50f4fe960e4c44091ee3230e10400eb82b22fd48795a13",
+      "redacted": true,
+      "archived_sha256": "d9fa756573f725597e6912e43e7b517308636448ce3efee10ec1a38604a7a42b"
+    },
+    {
+      "source": "verify_fix.py",
+      "destination": "archive/legacy-tools/verify_fix.py.txt",
+      "reason": "定期処理・本番importから参照されない旧診断・試験。参照資料として保存し自動実行を避ける",
+      "local": false,
+      "sha256": "8dbac5f0c10ad067446a2a8273af82cf68fb06793a5499dd8073245f7de38419"
+    },
+    {
+      "source": "ScreenRecording_08-07-2026 23-34-42_1.MP4",
+      "destination": "archive/local/ScreenRecording_08-07-2026 23-34-42_1.MP4",
+      "reason": "端末の画面確認記録。録画と抽出スクリプトをまとめて保持",
+      "local": true,
+      "sha256": "697eb8acf21248591975e3ec04adc21d23c3748c419fdcc1609b97eb0ec77609"
+    },
+    {
+      "source": "ScreenRecording_08-07-2026 23-52-36_1.MP4",
+      "destination": "archive/local/ScreenRecording_08-07-2026 23-52-36_1.MP4",
+      "reason": "端末の画面確認記録。録画と抽出スクリプトをまとめて保持",
+      "local": true,
+      "sha256": "ec5f0efecb104a17efa2b90421406b4ceaf51b5cf8e0368c5d6737f95be11b36"
+    },
+    {
+      "source": "ScreenRecording_08-08-2026 00-05-55_1.MP4",
+      "destination": "archive/local/ScreenRecording_08-08-2026 00-05-55_1.MP4",
+      "reason": "端末の画面確認記録。録画と抽出スクリプトをまとめて保持",
+      "local": true,
+      "sha256": "a6ebbbd0a873dc962c83321fc98b1576518c1899fd001d6b8733f4eac41b6727"
+    },
+    {
+      "source": "ScreenRecording_08-08-2026 01-30-40_1.MP4",
+      "destination": "archive/local/ScreenRecording_08-08-2026 01-30-40_1.MP4",
+      "reason": "端末の画面確認記録。録画と抽出スクリプトをまとめて保持",
+      "local": true,
+      "sha256": "ca599e68a8dcc4c2fab563fac9827ae1e3944171424f66b65108d8cbd56c2eb5"
+    },
+    {
+      "source": "extract_frames.py",
+      "destination": "archive/local/extract_frames.py",
+      "reason": "端末の画面確認記録。録画と抽出スクリプトをまとめて保持",
+      "local": true,
+      "sha256": "d7fde2671f62b106eb0ca85de5f8724f88888d8a37c5647030593869fa1e89ef"
+    },
+    {
+      "source": "after_html.txt",
+      "destination": "archive/local/after_html.txt",
+      "reason": "端末の画面確認記録。録画と抽出スクリプトをまとめて保持",
+      "local": true,
+      "sha256": "87fc2f7873db82003020d31d4fcbee58adf6e034c2556210b63ad7c62c8a7d19"
+    },
+    {
+      "source": "backend/routers/races.py",
+      "destination": "archive/legacy-tools/backend/routers/races.py.txt",
+      "reason": "main.pyから登録されず、実行コードからimportされない旧APIルータ。現行はapi/v1/endpoints/races.py",
+      "local": false,
+      "sha256": "a6dffd2db5634cfe9af7fa374942166c45e966c64ac2383254b5a3a193b72bb5"
+    },
+    {
+      "source": "new-logo.png",
+      "destination": "archive/legacy-assets/new-logo.png",
+      "reason": "現行コードから参照なし。フォントはbackend/fontsとバイト一致、ロゴは旧配置を保管。Selenium設定は未使用の旧Render専用。",
+      "local": false,
+      "sha256": "b4a3aa0ad9a08c952d47afbb774763c035519aaf0b22ab48ca6abbc0f9cc66a8",
+      "active_alternatives": [
+        "backend/fonts/new-logo.png",
+        "frontend/public/new-logo.png"
+      ]
+    },
+    {
+      "source": "backend/new-logo.png",
+      "destination": "archive/legacy-assets/backend/new-logo.png",
+      "reason": "現行コードから参照なし。フォントはbackend/fontsとバイト一致、ロゴは旧配置を保管。Selenium設定は未使用の旧Render専用。",
+      "local": false,
+      "sha256": "5daf2d27d867a75d28def4ecb401432ddd57d5d0c66ba496de9099fa6da1a887"
+    },
+    {
+      "source": "backend/scripts/new-logo.png",
+      "destination": "archive/legacy-assets/backend/scripts/new-logo.png",
+      "reason": "現行コードから参照なし。フォントはbackend/fontsとバイト一致、ロゴは旧配置を保管。Selenium設定は未使用の旧Render専用。",
+      "local": false,
+      "sha256": "5daf2d27d867a75d28def4ecb401432ddd57d5d0c66ba496de9099fa6da1a887"
+    },
+    {
+      "source": "backend/Inter-Black.ttf",
+      "destination": "archive/legacy-assets/backend/Inter-Black.ttf",
+      "reason": "現行コードから参照なし。フォントはbackend/fontsとバイト一致、ロゴは旧配置を保管。Selenium設定は未使用の旧Render専用。",
+      "local": false,
+      "sha256": "6851375f42bc73da34cbeed07fc5f07dfcfbe7a47c1923c0f9d6d21d07cb3793"
+    },
+    {
+      "source": "backend/Inter-Bold.ttf",
+      "destination": "archive/legacy-assets/backend/Inter-Bold.ttf",
+      "reason": "現行コードから参照なし。フォントはbackend/fontsとバイト一致、ロゴは旧配置を保管。Selenium設定は未使用の旧Render専用。",
+      "local": false,
+      "sha256": "ceec73bdfc78d352bcc222b9ac28e752a20b4a339daefc69bc67f49380425c0c"
+    },
+    {
+      "source": "backend/MPLUSRounded1c-Black.ttf",
+      "destination": "archive/legacy-assets/backend/MPLUSRounded1c-Black.ttf",
+      "reason": "現行コードから参照なし。フォントはbackend/fontsとバイト一致、ロゴは旧配置を保管。Selenium設定は未使用の旧Render専用。",
+      "local": false,
+      "sha256": "0f7e5f0b8528febaa5d5318ea81a09fa4241fb7b270be8843d6a1daefdb59ff4"
+    },
+    {
+      "source": "backend/MPLUSRounded1c-Bold.ttf",
+      "destination": "archive/legacy-assets/backend/MPLUSRounded1c-Bold.ttf",
+      "reason": "現行コードから参照なし。フォントはbackend/fontsとバイト一致、ロゴは旧配置を保管。Selenium設定は未使用の旧Render専用。",
+      "local": false,
+      "sha256": "74df7c8ec6c73c3295bf5c0c09007728e0603466870ae8e0257967630c0124a2"
+    },
+    {
+      "source": "backend/selenium_config.py",
+      "destination": "archive/legacy-tools/backend/selenium_config.py.txt",
+      "reason": "現行コードから参照なし。フォントはbackend/fontsとバイト一致、ロゴは旧配置を保管。Selenium設定は未使用の旧Render専用。",
+      "local": false,
+      "sha256": "36abe8e5d7251bf420598ea18ae30a80759b9b139085a406303a3233b5cc5a48"
+    },
+    {
+      "source": "backend/scratch/debug_rakuten_api.py",
+      "destination": "archive/legacy-tools/backend/scratch/debug_rakuten_api.py.txt",
+      "reason": "現行処理から参照されない、過去の楽天API手動診断。",
+      "local": false,
+      "sha256": "7452eb962ddeb9d8b14c1810cc8449add656c371bf21ae5786b7d4f228681c86"
+    }
+  ]
+}

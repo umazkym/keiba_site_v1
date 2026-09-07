@@ -11,3 +11,16 @@ scripts/social_video/assets/video/
 __pycache__/
 *.pyc
 tests/
+
+# 認証情報とローカル生成物はバッチ用イメージにも含めない。
+.env
+.env.*
+!.env.example
+.git/
+.venv/
+venv/
+data/
+debug_logs/
+perf_logs/
+scratch/
+*.log

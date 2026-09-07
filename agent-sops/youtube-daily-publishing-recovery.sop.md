@@ -96,7 +96,7 @@ YouTube Studioで処理完了、日付、中央各場から地方各場への章
 
 ## Source references
 
-- `docs/youtube_video_pipeline.md`
+- `docs/video/youtube_video_pipeline.md`
 - `.github/workflows/keiba-youtube-video-pipeline.yml`
 - `.github/workflows/keiba-data-fetch-friday-weekend.yml`
 - `backend/scripts/youtube_video_pipeline.py`

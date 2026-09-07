@@ -4,7 +4,7 @@
 
 クラウド費用を調べる、請求額の増減の原因を特定する、Cloud RunやCloudflareのキャッシュ挙動を変える、Next.jsのISR設定を触る、API応答やDBクエリの量を変える、段階公開ゲートの判定を確認する——これらのときに使う手順です。低コスト自動運用が前提のため、表示やAPIの変更は無料枠の消費と実際の請求額に直接効きます。
 
-フロントエンドは2026-08-04にVercelからCloud Run `keiba-frontend-v1` + Cloudflareへ移行済みです。無料枠の判定はCloud RunとCloudflareを対象とし、Vercel固有の指標（Fast Origin Transfer、Function Invocations、ISR Writes）はもう存在しません。費用の実額は`docs/cloud_cost_monitoring_operations.md`の手順で確認します。
+フロントエンドは2026-08-04にVercelからCloud Run `keiba-frontend-v1` + Cloudflareへ移行済みです。無料枠の判定はCloud RunとCloudflareを対象とし、Vercel固有の指標（Fast Origin Transfer、Function Invocations、ISR Writes）はもう存在しません。費用の実額は`docs/infrastructure/cloud_cost_monitoring_operations.md`の手順で確認します。
 
 ## Parameters
 
@@ -140,7 +140,7 @@ Cloud Monitoring の系列分割とリデューサの選び方で、健全なサ
 - `backend/main.py`
 - `backend/scripts/agents/cloud_run_capacity.py`
 - `backend/scripts/agents/data_page_publication.py`
-- `docs/cloud_cost_monitoring_operations.md`
+- `docs/infrastructure/cloud_cost_monitoring_operations.md`
 - `.github/workflows/deploy-frontend-cloud-run.yml`
 - `.github/workflows/keiba-data-page-publication.yml`
 - `.github/workflows/keiba-db-egress-guard.yml`

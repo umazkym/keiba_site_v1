@@ -25,14 +25,14 @@ WRITE_ORDERS_DIR = os.path.join(PROJECT_ROOT, "data", "write_orders")
 POSTED_HISTORY_PATH = os.path.join(PROJECT_ROOT, "data", "posted_history.json")
 EVERGREEN_HISTORY_PATH = os.path.join(PROJECT_ROOT, "data", "evergreen_topic_history.json")
 ARTICLES_DIR = os.path.join(PROJECT_ROOT, "frontend", "content", "articles")
-REFERENCE_DATA_SUMMARY_PATH = os.path.join(PROJECT_ROOT, "docs", "reference_data_summary.md")
+REFERENCE_DATA_SUMMARY_PATH = os.path.join(PROJECT_ROOT, "docs", "content", "reference_data_summary.md")
 
-# ルート直下のtxtは移行期間中の補助スナップショット。将来削除されても、
-# docs/reference_data_summary.md から常設コラム候補を生成できる構成を維持する。
-JRA_JOCKEY_LEADING_PATH = os.path.join(PROJECT_ROOT, "中央競馬ジョッキーリーディング.txt")
-NAR_JOCKEY_LEADING_PATH = os.path.join(PROJECT_ROOT, "地方競馬ジョッキーリーディング.txt")
-JRA_COURSE_LIST_PATH = os.path.join(PROJECT_ROOT, "中央競馬ｺｰｽ一覧.txt")
-NAR_COURSE_LIST_PATH = os.path.join(PROJECT_ROOT, "地方競馬ｺｰｽ一覧.txt")
+# data/reference/のtxtはローカルの補助スナップショット。配置されていなくても、
+# docs/content/reference_data_summary.md から常設コラム候補を生成できる構成を維持する。
+JRA_JOCKEY_LEADING_PATH = os.path.join(PROJECT_ROOT, "data/reference/中央競馬ジョッキーリーディング.txt")
+NAR_JOCKEY_LEADING_PATH = os.path.join(PROJECT_ROOT, "data/reference/地方競馬ジョッキーリーディング.txt")
+JRA_COURSE_LIST_PATH = os.path.join(PROJECT_ROOT, "data/reference/中央競馬ｺｰｽ一覧.txt")
+NAR_COURSE_LIST_PATH = os.path.join(PROJECT_ROOT, "data/reference/地方競馬ｺｰｽ一覧.txt")
 
 JST = timezone(timedelta(hours=9))
 
@@ -226,7 +226,7 @@ def read_reference_summary() -> str:
 
 
 def reference_source_name() -> str:
-    return os.path.join("docs", os.path.basename(REFERENCE_DATA_SUMMARY_PATH)).replace("\\", "/")
+    return os.path.relpath(REFERENCE_DATA_SUMMARY_PATH, PROJECT_ROOT).replace("\\", "/")
 
 
 def extract_reference_section(markdown: str, heading_prefix: str) -> str:

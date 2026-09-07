@@ -83,7 +83,7 @@ Constraints for parameter acquisition:
 
 **Constraints:**
 
-- You MUST record every monetization experiment in `docs/monetization_experiments.md` before changing production ad behavior.
+- You MUST record every monetization experiment in `docs/monetization/monetization_experiments.md` before changing production ad behavior.
 - You MUST create a Codex reminder for 09:00 JST on the decision date and record its automation ID before starting a new experiment.
 - You MUST verify in the management UI whether the treatment has a simultaneously measured control group and random allocation before calling it an A/B experiment.
 - You MUST NOT use treatment-only impressions as proof of incremental revenue when no concurrent control exists because additional impressions cannot supply the missing counterfactual.
@@ -142,12 +142,12 @@ Constraints for parameter acquisition:
 ## Source references
 
 - `AGENTS.md`
-- `docs/analytics_measurement_plan.md`
-- `docs/clarity_optimization_audit_20260620.md`
-- `docs/clarity_completeness_review_20260621.md`
-- `docs/monetization_experiments.md`
-- `docs/monetization_history_v2_operation.md`
-- `docs/system/05_広告収益化戦略.md`
+- `docs/analytics/analytics_measurement_plan.md`
+- `docs/analytics/clarity_optimization_audit_20260620.md`
+- `docs/analytics/clarity_completeness_review_20260621.md`
+- `docs/monetization/monetization_experiments.md`
+- `docs/monetization/monetization_history_v2_operation.md`
+- `docs/monetization/05_広告収益化戦略.md`
 - `docs/system-documentation/17_GA4広告収益最大化設定.md`
 
 ## Examples

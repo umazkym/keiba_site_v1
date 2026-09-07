@@ -18,8 +18,13 @@ WORKDIR /app
 COPY requirements-api.txt .
 RUN pip install --no-cache-dir -r requirements-api.txt
 
-# アプリケーションコードをコピー
-COPY . .
+# APIが参照するコードだけを配布する。収集・SNS・動画・診断資産は含めない。
+COPY main.py ./
+COPY api/ ./api/
+COPY core/ ./core/
+COPY crud/ ./crud/
+COPY database/ ./database/
+COPY schemas/ ./schemas/
 
 # メモリ管理: ガベージコレクションを積極的に実行
 ENV PYTHONGC=1

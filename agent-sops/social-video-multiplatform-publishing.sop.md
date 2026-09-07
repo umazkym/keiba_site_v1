@@ -85,8 +85,8 @@ Actions Summary、SNS実画面、GA4を確認します。
 
 ## Source references
 
-- `docs/social_video_distribution.md`
-- `docs/analytics_measurement_plan.md`
+- `docs/video/social_video_distribution.md`
+- `docs/analytics/analytics_measurement_plan.md`
 - `.github/workflows/keiba-youtube-video-pipeline.yml`
 - `backend/scripts/social_video_distribution.py`
 - `backend/scripts/social_video/distribution.py`
@@ -113,7 +113,7 @@ python scripts/social_video_distribution.py --target-date 2026-07-31 --platforms
 
 ### 認証設定待ちと表示される
 
-`validate`自体は成功です。`docs/social_video_distribution.md`の媒体別Secrets/Variablesを設定し、まず下書き対応媒体だけ`draft`へ進めます。
+`validate`自体は成功です。`docs/video/social_video_distribution.md`の媒体別Secrets/Variablesを設定し、まず下書き対応媒体だけ`draft`へ進めます。
 
 ### 同一キーに異なる内容が検出される
 

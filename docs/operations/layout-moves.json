@@ -1,0 +1,385 @@
+{
+  "description": "2026-09-07 用途別配置への移動。現役ファイルは移動後に参照や説明を更新するため、sha256_beforeは移動前の記録。",
+  "moves": [
+    {
+      "source": "docs/article_creation_flow.md",
+      "destination": "docs/content/article_creation_flow.md",
+      "sha256_before": "b406e62c2290965deb9b7f3aad157160550331d2f98b32e881cb6e43f248e262",
+      "local": false
+    },
+    {
+      "source": "docs/reference_data_summary.md",
+      "destination": "docs/content/reference_data_summary.md",
+      "sha256_before": "9673dcf36041877e90fb7dae201147fbe35cf00cfa4220b32b2659caef0f9899",
+      "local": false
+    },
+    {
+      "source": "docs/gsc_weekly_seo_operations.md",
+      "destination": "docs/content/gsc_weekly_seo_operations.md",
+      "sha256_before": "ba65b1df1edf9443b66cb9d8f5b5cff1e9986a2d06b0114841de1e48b641c16d",
+      "local": false
+    },
+    {
+      "source": "docs/analytics_measurement_plan.md",
+      "destination": "docs/analytics/analytics_measurement_plan.md",
+      "sha256_before": "8532c7c7207197aea4de4d846e28c34534770bdb35e85ff4f400f1896884bd12",
+      "local": false
+    },
+    {
+      "source": "docs/affiliate_measurement_reconciliation_20260803.md",
+      "destination": "docs/analytics/affiliate_measurement_reconciliation_20260803.md",
+      "sha256_before": "5a34b8ef40a2047127e2d3926f1933a2b8e6c0f93822af044233f9f036208242",
+      "local": false
+    },
+    {
+      "source": "docs/clarity_completeness_review_20260621.md",
+      "destination": "docs/analytics/clarity_completeness_review_20260621.md",
+      "sha256_before": "fde3a7996df304e4755d828fecefbbbad8492d038bc76cfbf8614b83a966797b",
+      "local": false
+    },
+    {
+      "source": "docs/clarity_optimization_audit_20260620.md",
+      "destination": "docs/analytics/clarity_optimization_audit_20260620.md",
+      "sha256_before": "105b3ca0c408b2fbb4ab1309943293e061b25a007c48dda87e11e579062c5c7a",
+      "local": false
+    },
+    {
+      "source": "docs/cloud_cost_monitoring_operations.md",
+      "destination": "docs/infrastructure/cloud_cost_monitoring_operations.md",
+      "sha256_before": "f662c5460f93e9ce7555681a1e501eb8ab65417d6f8e14f754c53aed74a4dcca",
+      "local": false
+    },
+    {
+      "source": "docs/cloud_run_cloudflare_migration_20260804.md",
+      "destination": "docs/infrastructure/cloud_run_cloudflare_migration_20260804.md",
+      "sha256_before": "346af076e6e65583d62147ebb3fe1b717ebd440a8e5322ad49d06ebaa15fabdc",
+      "local": false
+    },
+    {
+      "source": "docs/data_value_operations.md",
+      "destination": "docs/data/data_value_operations.md",
+      "sha256_before": "b6e619838b21938ffa45b87522b78617c7777489ff1059c550d627bc7e6c6151",
+      "local": false
+    },
+    {
+      "source": "docs/free_data_platform_implementation_20260730.md",
+      "destination": "docs/data/free_data_platform_implementation_20260730.md",
+      "sha256_before": "89b54e65efc7b754e1feb95bd64828db16d872bc93044817bab14e15016b10a9",
+      "local": false
+    },
+    {
+      "source": "docs/my_data_plus_gate_spec.md",
+      "destination": "docs/data/my_data_plus_gate_spec.md",
+      "sha256_before": "01fd43e795b6c7fb2db066b9af6701a591c3583fdb575ea7c7649ab3b1fa2629",
+      "local": false
+    },
+    {
+      "source": "docs/gemini.md",
+      "destination": "docs/development/gemini.md",
+      "sha256_before": "c7bb4d68fc4c6b6e92b21dcdaa78ec1e435638f13457d8bb48344b8dc2ecb5b4",
+      "local": false
+    },
+    {
+      "source": "docs/skills.md",
+      "destination": "docs/development/skills.md",
+      "sha256_before": "b7a034e059b82f2cecf77cb4d57dc9ef39fe9885a68e5d8571297cf41c1d500c",
+      "local": false
+    },
+    {
+      "source": "docs/hydration_and_ad_scroll_fix_walkthrough.md",
+      "destination": "docs/development/hydration_and_ad_scroll_fix_walkthrough.md",
+      "sha256_before": "f229417c3514da4fa5943354e4a5384316cea9a7ab9b642f399e1bf79ac077be",
+      "local": false
+    },
+    {
+      "source": "docs/social_video_distribution.md",
+      "destination": "docs/video/social_video_distribution.md",
+      "sha256_before": "70abf2a83de9ac5e1fc9c5137892daabd5a81674e31083023afe5356f62eacc3",
+      "local": false
+    },
+    {
+      "source": "docs/youtube_growth_audit_20260730.md",
+      "destination": "docs/video/youtube_growth_audit_20260730.md",
+      "sha256_before": "b8de908a17ae156d0c87aadd5d7fb006277637ae413676daa53f5827637dd853",
+      "local": false
+    },
+    {
+      "source": "docs/youtube_video_pipeline.md",
+      "destination": "docs/video/youtube_video_pipeline.md",
+      "sha256_before": "cf570a90e1ee5efe532ada314dd81f0cfbbdb9bb62230fe397ad1ba48f3a4448",
+      "local": false
+    },
+    {
+      "source": "docs/adsense_analysis_report.md",
+      "destination": "docs/monetization/adsense_analysis_report.md",
+      "sha256_before": "ee486a8fa69d2146a1c14e83a39b8f1e40cc05ddfc36eafda3aa99c5037ae329",
+      "local": false
+    },
+    {
+      "source": "docs/fixed_rollout_20260807_runbook.md",
+      "destination": "docs/monetization/fixed_rollout_20260807_runbook.md",
+      "sha256_before": "885340fad3bf050f417e18c70748fc8afa0d67a25fe2630646c25a26ec5762e5",
+      "local": false
+    },
+    {
+      "source": "docs/monetization_analysis_20260803.md",
+      "destination": "docs/monetization/monetization_analysis_20260803.md",
+      "sha256_before": "b91f32d0e5203413098747e536f07c1002b32be0e289abb39ea316b80319539e",
+      "local": false
+    },
+    {
+      "source": "docs/monetization_analysis_handover_20260722.md",
+      "destination": "docs/monetization/monetization_analysis_handover_20260722.md",
+      "sha256_before": "fb6b9dbb83f856e98035d01810f594bec966c57cf798ba44151af439b3d6ece6",
+      "local": false
+    },
+    {
+      "source": "docs/monetization_experiments.md",
+      "destination": "docs/monetization/monetization_experiments.md",
+      "sha256_before": "e39917ae3a990453a1cb779d7aa996effe64bf87401744816b1d7d9e639899e7",
+      "local": false
+    },
+    {
+      "source": "docs/monetization_history_v2_operation.md",
+      "destination": "docs/monetization/monetization_history_v2_operation.md",
+      "sha256_before": "25a21c97e340b8d48b3420b1e69e78ca316f8a2c289ea9b4d2434b1c285ccdc2",
+      "local": false
+    },
+    {
+      "source": "docs/monetization_measurement_setup.md",
+      "destination": "docs/monetization/monetization_measurement_setup.md",
+      "sha256_before": "b6c8d37396acf84daf65339777a10acae80a776f97c7d7aac865e602d8402afb",
+      "local": false
+    },
+    {
+      "source": "docs/monetization_task_calendar_2026.md",
+      "destination": "docs/monetization/monetization_task_calendar_2026.md",
+      "sha256_before": "9413af3bdf5f8d0b1b3eddf07e59c17f776a87dfb46e88cbd276bed9d62683e5",
+      "local": false
+    },
+    {
+      "source": "docs/system/05_広告収益化戦略.md",
+      "destination": "docs/monetization/05_広告収益化戦略.md",
+      "sha256_before": "e51532ea5999c06d72fac273945e07137be5bec3e36be4e4388e606ea183b1f2",
+      "local": false
+    },
+    {
+      "source": "allcode.py",
+      "destination": "scripts/maintenance/export_source.py",
+      "sha256_before": "d6f619ee1413252f385dbfc13e7f1fc1a5fb62430e8841dd7c2beb1dd872384e",
+      "local": false
+    },
+    {
+      "source": "master_analyzer.py",
+      "destination": "scripts/analysis/master_analyzer.py",
+      "sha256_before": "eecdf0135c2287e06a10745a561d4b7e22f39801c9ac2989aa2c86020e0e763b",
+      "local": false
+    },
+    {
+      "source": "test_all_functions.py",
+      "destination": "scripts/analysis/run_analysis_examples.py",
+      "sha256_before": "2cd7eaea1877c8f7cb61b68af8581a7497e9c3b098c562f5ebcc6f5d543f0555",
+      "local": false
+    },
+    {
+      "source": "backend/generate_predictions.py",
+      "destination": "backend/scripts/maintenance/generate_predictions.py",
+      "sha256_before": "76d516e655f670b1c532bd8c1eccba6486b2a0c675b197e5f92796dfbd625c95",
+      "local": false
+    },
+    {
+      "source": "backend/recalculate_advantages.py",
+      "destination": "backend/scripts/maintenance/recalculate_advantages.py",
+      "sha256_before": "8056d41c55c2ba287de21c228ba622857de70418252f8f1b7960846ebba37ae2",
+      "local": false
+    },
+    {
+      "source": "backend/db_health_checker.py",
+      "destination": "backend/scripts/maintenance/db_health_checker.py",
+      "sha256_before": "eab01d1800e8db7016071b754c6ed2ffedb50801c04691321490000a28e784e7",
+      "local": false
+    },
+    {
+      "source": "backend/generate_race_graphs.py",
+      "destination": "backend/scripts/analysis/generate_race_graphs.py",
+      "sha256_before": "ad29baf984dd4c1cbc56a13be57aba9024a398a0ef8d22fc1934f49a053d17c1",
+      "local": false
+    },
+    {
+      "source": "backend/generate_website_analysis_data.py",
+      "destination": "backend/scripts/analysis/generate_website_analysis_data.py",
+      "sha256_before": "49b083ae692dc33cc5be18241de568fc26a9b085033319ed16d09fc053eb4a09",
+      "local": false
+    },
+    {
+      "source": "中央競馬ジョッキーリーディング.txt",
+      "destination": "data/reference/中央競馬ジョッキーリーディング.txt",
+      "sha256_before": "0d2c4ee0719d11b96a20de36b694f1f7acf7adc856388732c23c476785f68742",
+      "local": true
+    },
+    {
+      "source": "中央競馬重賞一覧.txt",
+      "destination": "data/reference/中央競馬重賞一覧.txt",
+      "sha256_before": "bff85a79a1012306e33e005af9ff92c595551b878bfd172ca292d0788e3732aa",
+      "local": true
+    },
+    {
+      "source": "中央競馬ｺｰｽ一覧.txt",
+      "destination": "data/reference/中央競馬ｺｰｽ一覧.txt",
+      "sha256_before": "db805ca62278d6a45788b467723396a2be3b363148ac74664a70d337b48a9a96",
+      "local": true
+    },
+    {
+      "source": "地方競馬ジョッキーリーディング.txt",
+      "destination": "data/reference/地方競馬ジョッキーリーディング.txt",
+      "sha256_before": "db9910e0d98cd640e16cceac8d89bcfa1bc911cfafec2015d25f6bd442a13ef5",
+      "local": true
+    },
+    {
+      "source": "地方競馬重賞一覧.txt",
+      "destination": "data/reference/地方競馬重賞一覧.txt",
+      "sha256_before": "6f240136904d9c2a47275af8e4e9b8b3873ba7bee6ae1d2d066741a410489c39",
+      "local": true
+    },
+    {
+      "source": "地方競馬ｺｰｽ一覧.txt",
+      "destination": "data/reference/地方競馬ｺｰｽ一覧.txt",
+      "sha256_before": "2f8b42938191d9b353d010701c08004563d6ead3b4a508fb9635b48c1b83dbf7",
+      "local": true
+    },
+    {
+      "source": "analysis_results",
+      "destination": "archive/local/workspace-2026-09-07/analysis_results",
+      "local": true,
+      "directory": true
+    },
+    {
+      "source": "scratch",
+      "destination": "archive/local/workspace-2026-09-07/scratch",
+      "local": true,
+      "directory": true
+    },
+    {
+      "source": "output",
+      "destination": "archive/local/workspace-2026-09-07/output",
+      "local": true,
+      "directory": true
+    },
+    {
+      "source": "outputs",
+      "destination": "archive/local/workspace-2026-09-07/outputs",
+      "local": true,
+      "directory": true
+    },
+    {
+      "source": "tmp",
+      "destination": "archive/local/workspace-2026-09-07/tmp",
+      "local": true,
+      "directory": true
+    },
+    {
+      "source": "video_frames",
+      "destination": "archive/local/workspace-2026-09-07/video_frames",
+      "local": true,
+      "directory": true
+    },
+    {
+      "source": "分析レポート",
+      "destination": "archive/local/workspace-2026-09-07/分析レポート",
+      "local": true,
+      "directory": true
+    },
+    {
+      "source": ".playwright-cli",
+      "destination": "archive/local/workspace-2026-09-07/.playwright-cli",
+      "local": true,
+      "directory": true
+    },
+    {
+      "source": ".vercel",
+      "destination": "archive/local/workspace-2026-09-07/.vercel",
+      "local": true,
+      "directory": true
+    },
+    {
+      "source": "frontend/.playwright-cli",
+      "destination": "archive/local/workspace-2026-09-07/frontend/.playwright-cli",
+      "local": true,
+      "directory": true
+    },
+    {
+      "source": "frontend/output",
+      "destination": "archive/local/workspace-2026-09-07/frontend/output",
+      "local": true,
+      "directory": true
+    },
+    {
+      "source": "backend/scratch",
+      "destination": "archive/local/workspace-2026-09-07/backend/scratch",
+      "local": true,
+      "directory": true
+    },
+    {
+      "source": "tmp_next_dev.err.log",
+      "destination": "archive/local/workspace-2026-09-07/tmp_next_dev.err.log",
+      "local": true,
+      "directory": false,
+      "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "tmp_next_dev.log",
+      "destination": "archive/local/workspace-2026-09-07/tmp_next_dev.log",
+      "local": true,
+      "directory": false,
+      "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "frontend/build_error.log",
+      "destination": "archive/local/workspace-2026-09-07/frontend/build_error.log",
+      "local": true,
+      "directory": false,
+      "sha256_before": "0f0c761cb5562e2f3c3be2544d567472721ef132a68d243b61cde66645ef0259"
+    },
+    {
+      "source": "frontend/build_error_utf8.log",
+      "destination": "archive/local/workspace-2026-09-07/frontend/build_error_utf8.log",
+      "local": true,
+      "directory": false,
+      "sha256_before": "0e60de7279649caa61b6004c01b10717d61acd4ed63fdb6a48c8b1eafff9184a"
+    },
+    {
+      "source": "frontend/next-dev-3001.err.log",
+      "destination": "archive/local/workspace-2026-09-07/frontend/next-dev-3001.err.log",
+      "local": true,
+      "directory": false,
+      "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "frontend/next-dev-3001.out.log",
+      "destination": "archive/local/workspace-2026-09-07/frontend/next-dev-3001.out.log",
+      "local": true,
+      "directory": false,
+      "sha256_before": "162db95bac685f009ffd3fa36449aa661c837b48d6bd774bc29f0b50860357ab"
+    },
+    {
+      "source": "frontend/next-dev-ui.err.log",
+      "destination": "archive/local/workspace-2026-09-07/frontend/next-dev-ui.err.log",
+      "local": true,
+      "directory": false,
+      "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "frontend/next-dev-ui.out.log",
+      "destination": "archive/local/workspace-2026-09-07/frontend/next-dev-ui.out.log",
+      "local": true,
+      "directory": false,
+      "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "backend/routers",
+      "destination": "archive/local/workspace-2026-09-07/backend/routers",
+      "local": true,
+      "directory": true
+    }
+  ]
+}

@@ -9,3 +9,10 @@ node_modules
 .codex-dev.*
 next-dev-*.out.log
 next-dev-*.err.log
+
+# 診断・画面確認・生成途中の資料をビルドへ送らない。
+output/
+outputs/
+scratch/
+build_output.txt
+error.txt

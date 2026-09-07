@@ -1,6 +1,7 @@
 import importlib.util
 import sys
 import types
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -17,6 +18,19 @@ SPEC.loader.exec_module(planner)
 
 
 class EditorialEvergreenPlannerTest(unittest.TestCase):
+    def test_planning_works_without_local_reference_snapshots(self) -> None:
+        # GitHubのcloneに補助TXTがなくても、移動後の主資料から候補を得られる。
+        with tempfile.TemporaryDirectory() as directory:
+            missing = str(Path(directory) / 'missing.txt')
+            with patch.multiple(planner, JRA_JOCKEY_LEADING_PATH=missing, NAR_JOCKEY_LEADING_PATH=missing,
+                                JRA_COURSE_LIST_PATH=missing, NAR_COURSE_LIST_PATH=missing):
+                groups = [planner.parse_jra_jockey_topics(), planner.parse_nar_jockey_topics(),
+                          planner.parse_jra_course_topics(), planner.parse_nar_course_topics()]
+        for topics in groups:
+            self.assertGreater(len(topics), 5)
+            for topic in topics:
+                self.assertEqual(topic.source_file, 'docs/content/reference_data_summary.md')
+
     def test_reference_summary_parsers_extract_markdown_tables(self) -> None:
         jra_jockeys = planner.parse_reference_jra_jockey_topics()
         nar_jockeys = planner.parse_reference_nar_jockey_topics()
@@ -47,7 +61,7 @@ class EditorialEvergreenPlannerTest(unittest.TestCase):
         courses = {row["コース"] for row in tokyo.rows}
         self.assertIn("芝1400m", courses)
         self.assertIn("ダート1600m", courses)
-        self.assertIn("docs/reference_data_summary.md", tokyo.source_file)
+        self.assertIn("docs/content/reference_data_summary.md", tokyo.source_file)
         self.assertTrue(any(row.get("リファレンス要点") for row in tokyo.rows))
 
     def test_nar_course_parser_groups_dirt_and_turf_rows_by_venue(self) -> None:

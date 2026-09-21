@@ -17,6 +17,7 @@ import {
 import { getApiBaseUrl } from '../../lib/api-base';
 import { getSeasonalGradeRaceSlug } from '../../lib/article-seasonal-routing';
 import gradeRaceCanonicalOverrides from '../../content/reference/grade-race-canonical-overrides.json';
+import { hasStagedGitChanges } from './publisher_git';
 import {
   assertSafeArticleSlug,
   finalizeGscRewriteFrontmatter,
@@ -1451,8 +1452,7 @@ async function publishDraft() {
   try {
     console.log('[Publisher] Committing changes to Git...');
     execSync('git add .');
-    const status = execSync('git status --porcelain').toString();
-    if (status.trim().length > 0) {
+    if (hasStagedGitChanges()) {
       const message = publishedSlugs.length === 1
         ? `Auto-publish: ${publishedSlugs[0]}`
         : `Auto-publish: ${publishedSlugs.length} articles`;

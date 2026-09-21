@@ -14,6 +14,7 @@
     "article:gemini-circuit": "npx --yes tsx scripts/agents/gemini_circuit_breaker.ts",
     "article:test-gemini-circuit": "npx --yes tsx scripts/agents/test_gemini_circuit_breaker.ts",
     "article:publish": "npx --yes tsx scripts/agents/agent_publisher.ts",
+    "article:test-publisher-git": "npx --yes tsx scripts/agents/test_publisher_git.ts",
     "article:validate-links": "node -e \"eval(require('fs').readFileSync('scripts/agents/validate_article_links.js','utf8'))\"",
     "article:audit-quality": "node -e \"eval(require('fs').readFileSync('scripts/agents/article_quality_audit.js','utf8'))\"",
     "article:audit-race-bridges": "npx --yes tsx scripts/agents/audit_article_race_bridges.ts",

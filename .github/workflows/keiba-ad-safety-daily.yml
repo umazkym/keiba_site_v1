@@ -26,14 +26,6 @@ jobs:
       ADSENSE_OAUTH_CLIENT_SECRET: ${{ secrets.ADSENSE_OAUTH_CLIENT_SECRET }}
       ADSENSE_OAUTH_REFRESH_TOKEN: ${{ secrets.ADSENSE_OAUTH_REFRESH_TOKEN }}
     steps:
-      - name: 集計の非公開保存先を確認
-        env:
-          PRIVATE_REPOSITORY: ${{ github.event.repository.private }}
-        run: |
-          if [ "$PRIVATE_REPOSITORY" != "true" ]; then
-            echo "公開リポジトリには収益・アクセス集計を保存しません。非公開の実行・保存先が未設定です。"
-            exit 1
-          fi
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
@@ -42,6 +34,7 @@ jobs:
         run: python -m pip install 'google-api-python-client>=2,<3' 'google-auth>=2,<3' 'google-auth-httplib2>=0.2,<1'
       - name: 前回成果物を探す
         id: previous
+        if: github.event.repository.private == true
         uses: actions/github-script@v7
         with:
           script: |
@@ -56,7 +49,7 @@ jobs:
               }
             }
       - name: 前回成果物を復元
-        if: steps.previous.outputs.run_id != ''
+        if: github.event.repository.private == true && steps.previous.outputs.run_id != ''
         uses: actions/download-artifact@v4
         with:
           name: uma-ad-safety-daily
@@ -72,6 +65,7 @@ jobs:
           create_credentials_file: true
       - name: 広告設定を変更せず日次保存
         id: collect
+        if: github.event.repository.private == true
         continue-on-error: true
         run: >-
           python backend/scripts/agents/ad_safety_daily.py
@@ -79,7 +73,7 @@ jobs:
           --previous "$RUNNER_TEMP/ad-safety-previous/snapshot.json"
       - name: 成果物に秘密情報を含めない
         id: secrets
-        if: always()
+        if: always() && github.event.repository.private == true
         env:
           OUTPUT_DIR: ${{ runner.temp }}/ad-safety-current
         run: |
@@ -97,7 +91,7 @@ jobs:
                       raise SystemExit('秘密情報の混入を検出したためアップロードを停止しました。')
           PY
       - name: 設定の保全記録を添付
-        if: always() && steps.secrets.outcome == 'success'
+        if: always() && github.event.repository.private == true && steps.secrets.outcome == 'success'
         run: |
           mkdir -p "$RUNNER_TEMP/ad-safety-current"
           cp docs/operations/ad-safety-baseline-20260915.json "$RUNNER_TEMP/ad-safety-current/"
@@ -105,18 +99,77 @@ jobs:
             cat "$RUNNER_TEMP/ad-safety-current/summary.md" >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: 取得済み成果物を90日保存
-        if: always() && steps.secrets.outcome == 'success'
+        if: always() && github.event.repository.private == true && steps.secrets.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: uma-ad-safety-daily
           path: ${{ runner.temp }}/ad-safety-current
           retention-days: 90
           if-no-files-found: error
+      - name: 金額を出さず広告とアクセスの異常を確認
+        id: notice
+        if: always()
+        continue-on-error: true
+        run: >-
+          python backend/scripts/agents/revenue_notifications.py
+          --kind daily --output-dir "$RUNNER_TEMP/revenue-notice"
+      - name: 公開原稿を検査して結果を表示
+        id: public_validate
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const { validate } = require('./scripts/notifications/publish_revenue_notice.cjs');
+            const payload = validate(JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/revenue-notice/notification.json`, 'utf8')));
+            await core.summary.addRaw(payload.body).write();
+      - name: 簡易通知だけを保存
+        if: always() && steps.public_validate.outcome == 'success'
+        uses: actions/upload-artifact@v6
+        with:
+          name: revenue-notice-daily
+          path: ${{ runner.temp }}/revenue-notice/notification.json
+          retention-days: 14
+          if-no-files-found: error
       - name: 取得失敗を成功として扱わない
         if: always()
         env:
+          PRIVATE_REPOSITORY: ${{ github.event.repository.private }}
           COLLECT_OUTCOME: ${{ steps.collect.outcome }}
           SECRET_OUTCOME: ${{ steps.secrets.outcome }}
+          NOTICE_OUTCOME: ${{ steps.notice.outcome }}
+          VALIDATE_OUTCOME: ${{ steps.public_validate.outcome }}
         run: |
-          test "$COLLECT_OUTCOME" = success
-          test "$SECRET_OUTCOME" = success
+          test "$NOTICE_OUTCOME" = success
+          test "$VALIDATE_OUTCOME" = success
+          if [ "$PRIVATE_REPOSITORY" = true ]; then
+            test "$COLLECT_OUTCOME" = success
+            test "$SECRET_OUTCOME" = success
+          fi
+
+  notify:
+    needs: evidence
+    if: always() && !cancelled() && github.repository == 'umazkym/keiba_site_v1' && vars.UMA_REVENUE_NOTIFICATIONS != 'disabled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    concurrency:
+      group: uma-revenue-notification-publisher
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - name: 公開用通知を受け取る
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: revenue-notice-daily
+          path: ${{ runner.temp }}/revenue-notice
+      - name: 異常の発生・変化・解消を通知
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { publish } = require('./scripts/notifications/publish_revenue_notice.cjs');
+            await publish({ github, context, core, directory: `${process.env.RUNNER_TEMP}/revenue-notice`, kind: 'daily' });

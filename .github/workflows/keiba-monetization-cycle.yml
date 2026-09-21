@@ -115,6 +115,7 @@ jobs:
           --service-config keiba-site-v1,1,0.5,3
           --shared-quota-config kotoba-map,1,2,2,kotoba-map-demo
           --output-json "$RUNNER_TEMP/monetization-cycle/infrastructure.json"
+          > "$RUNNER_TEMP/monetization-cycle/infrastructure.log" 2>&1
 
       - name: Resolve Period
         id: period
@@ -208,11 +209,29 @@ jobs:
                   if sheet not in workbook_xml:
                       raise SystemExit(f"XLSXシート不足: {sheet}")
           analysis = json.loads(required[2].read_text(encoding="utf-8"))
-          print(json.dumps({"formal_week": analysis["formal_week"], "sources": analysis["source_status"]}, ensure_ascii=False))
+          print('集計成果物と秘密情報の検査が完了しました。')
+          PY
+
+      - name: Check Private Artifact Secrets
+        id: private_secrets
+        if: always() && github.event.repository.private == true
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'monetization-cycle'
+          if not root.is_dir():
+              raise SystemExit('保存対象がありません。')
+          values = [value.encode() for key, value in os.environ.items()
+                    if any(token in key for token in ('SECRET', 'TOKEN', 'API_KEY')) and len(value) >= 8]
+          for path in root.rglob('*'):
+              if path.is_file() and any(value in path.read_bytes() for value in values):
+                  raise SystemExit('秘密情報の混入を検出したため保存を停止しました。')
+          print('非公開成果物の検査が完了しました。')
           PY
 
       - name: Add Summary
-        if: always()
+        if: always() && github.event.repository.private == true && steps.validate.outcome == 'success'
         run: |
           if [ -f "$RUNNER_TEMP/monetization-cycle/report/UMA-FREE_週次収益改善.md" ]; then
             cat "$RUNNER_TEMP/monetization-cycle/report/UMA-FREE_週次収益改善.md" >> "$GITHUB_STEP_SUMMARY"
@@ -229,7 +248,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Complete or Partial Artifact
-        if: always()
+        if: always() && github.event.repository.private == true && steps.private_secrets.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: monetization-cycle-${{ steps.period.outputs.week_ending || github.run_id }}
@@ -243,10 +262,67 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
-      - name: Fail After Preserving Partial Artifact
+      - name: 金額を含まない週次のお知らせを作る
+        id: notice
+        if: always()
+        continue-on-error: true
+        run: >-
+          python backend/scripts/agents/revenue_notifications.py --kind weekly
+          --analysis "$RUNNER_TEMP/monetization-cycle/report/monetization-cycle-analysis.v1.json"
+          --output-dir "$RUNNER_TEMP/revenue-notice"
+          --workflow-status "${{ steps.collect.outcome == 'success' && steps.workbook.outcome == 'success' && steps.validate.outcome == 'success' && steps.infrastructure.outcome == 'success' && (steps.clarity.outcome == 'success' || steps.clarity.outcome == 'skipped') && 'success' || 'incomplete' }}"
+
+      - name: 公開原稿を検査して結果を表示
+        id: public_validate
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const { validate } = require('./scripts/notifications/publish_revenue_notice.cjs');
+            const payload = validate(JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/revenue-notice/notification.json`, 'utf8')));
+            await core.summary.addRaw(payload.body).write();
+
+      - name: 簡易通知だけを保存
+        if: always() && steps.public_validate.outcome == 'success'
+        uses: actions/upload-artifact@v6
+        with:
+          name: revenue-notice-weekly
+          path: ${{ runner.temp }}/revenue-notice/notification.json
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Fail After Recording Collection Status
         if: always()
         run: |
-          if [ "${{ steps.collect.outcome }}" != "success" ] || [ "${{ steps.workbook.outcome }}" != "success" ] || [ "${{ steps.validate.outcome }}" != "success" ]; then
-            echo "::error::週次分析は部分失敗しました。取得済み原本と状態一覧はartifactへ保存済みです。"
+          if [ "${{ steps.collect.outcome }}" != "success" ] || [ "${{ steps.workbook.outcome }}" != "success" ] || [ "${{ steps.validate.outcome }}" != "success" ] || [ "${{ steps.notice.outcome }}" != "success" ] || [ "${{ steps.public_validate.outcome }}" != "success" ]; then
+            echo "::error::週次分析の一部を完了できませんでした。公開環境には金額を含まない通知だけを保存します。"
             exit 1
           fi
+
+  notify:
+    needs: collect-and-analyze
+    if: always() && !cancelled() && github.repository == 'umazkym/keiba_site_v1' && inputs.mode != 'backfill' && inputs.start_date == '' && inputs.end_date == '' && vars.UMA_REVENUE_NOTIFICATIONS != 'disabled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    concurrency:
+      group: uma-revenue-notification-publisher
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - name: 公開用通知を受け取る
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: revenue-notice-weekly
+          path: ${{ runner.temp }}/revenue-notice
+      - name: 週次の状況と次に確認することを通知
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { publish } = require('./scripts/notifications/publish_revenue_notice.cjs');
+            await publish({ github, context, core, directory: `${process.env.RUNNER_TEMP}/revenue-notice`, kind: 'weekly' });

@@ -22,6 +22,7 @@ from backend.scripts.agents.monetization_history import (
     grade_race_publish_lead_days,
     parse_adsense_report,
     parse_ga4_report,
+    period_metrics,
     measurement_rows_by_date,
     resolve_period,
     safe_error,
@@ -45,6 +46,18 @@ def daily_row(source: str, dataset: str, day: date, metrics: dict[str, float]):
 
 
 class MonetizationHistoryTest(unittest.TestCase):
+    def test_revenue_notification_metric_coverage_distinguishes_partial_sums(self) -> None:
+        period = Period(date(2026, 9, 1), date(2026, 9, 6))
+        rows = [daily_row("adsense", "daily", period.start + timedelta(days=index),
+                          {"estimated_earnings": value, "page_views": 100})
+                for index, value in enumerate((0, None, float("nan"), 5, -1, True))]
+        rows.append(dict(rows[3]))
+        metrics = period_metrics({"rows": rows}, period)
+        self.assertEqual(metrics["adsense_metric_coverage"]["estimated_earnings"], ["2026-09-01"])
+        self.assertEqual(metrics["adsense_metric_coverage"]["page_views"],
+                         ["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-05", "2026-09-06"])
+        self.assertEqual(len(metrics["date_coverage"]["adsense"]), 6)
+
     def test_youtube_video_report_uses_supported_top_video_query(self) -> None:
         video_report = next(
             report for report in YOUTUBE_REPORTS if report["name"] == "video_period"

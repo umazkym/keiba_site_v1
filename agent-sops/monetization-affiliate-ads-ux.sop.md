@@ -138,7 +138,8 @@ Constraints for parameter acquisition:
 - You MUST inspect source quality, failures, grade-race publication timing, search CTR, navigation, and ad efficiency in that order before choosing one hypothesis.
 - You MUST include evidence, counterevidence, confidence, expected effect, and monitoring metrics for the selected hypothesis.
 - You MUST limit automatic work to one local change and verification. Ads, affiliate URLs, publication, external posts, production DB, secrets, Git operations, and deployment require user action.
-- You MUST preserve every successfully collected raw source before reporting a partial workflow failure.
+- You MUST preserve successfully collected raw sources in an authorized private location before reporting a partial workflow failure. If the user chooses public notifications without figures, keep detailed data in the temporary runner only and publish validated categorical notices; do not upload raw reports, revenue Markdown, or XLSX to public artifacts or summaries.
+- You MUST distinguish collection failure, missing data, and confirmed zero in notifications. Use fixed public-safe wording, deduplicate continuing alerts, and send recovery only after the monitored conditions clear. Issue comments require explicit user authorization for this notification channel; local tests must not send real notifications.
 
 ## Source references
 

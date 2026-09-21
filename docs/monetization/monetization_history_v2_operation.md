@@ -4,7 +4,7 @@
 
 `monetization-history.v2`は、2026年3月14日を収益開始日、3月15日をGA4–AdSense連携境界として、AdSense・GA4・Search Console・Clarity・YouTube・GitHub Actions・Cloud Run・Cloudflareを同じ履歴契約へ正規化する。毎週水曜09:30 JSTに前週（月曜〜日曜）、前週比、直近28日、3月14日以降累積を生成し、木曜09:00 JSTのCodexタスクが最重要仮説を1件だけ選ぶ。
 
-外部サービスへの書込み、広告変更、記事公開、SNS投稿、Git操作、デプロイは行わない。自動修正はユーザー確認前のローカル変更と検証までとする。
+収集処理は外部サービスへの書込み、広告変更、記事公開、SNS投稿、Git操作、デプロイを行わない。ユーザー指定の[簡易通知](revenue-notifications.md)のみ、別ジョブからGitHub Issueへ投稿する。自動修正はユーザー確認前のローカル変更と検証までとする。
 
 ## 初回セットアップ
 
@@ -22,7 +22,7 @@ GitHub EnvironmentまたはRepository Secretsへ、投稿用資格情報とは�
 | `CLOUDFLARE_ZONE_ID` | Cloudflare分析対象zone |
 | `CLOUDFLARE_ANALYTICS_API_TOKEN` | Account Analytics読取トークン |
 
-Repository Variablesは`GA4_PROPERTY_ID`、`GSC_SITE_URL`、必要なら`ADSENSE_ACCOUNT`を使う。Workflow権限は`contents: read`、`actions: read`、Google WIFに必要な`id-token: write`だけである。
+Repository Variablesは`GA4_PROPERTY_ID`、`GSC_SITE_URL`、必要なら`ADSENSE_ACCOUNT`を使う。収集ジョブ権限は`contents: read`、`actions: read`、Google WIFに必要な`id-token: write`。通知ジョブは別に`issues: write`を使い、Google等のSecretsとOIDC権限は持たない。
 
 ## 初回バックフィル
 
@@ -32,7 +32,7 @@ Actionsの`Keiba Monetization History and Weekly Cycle`を手動実行し、`mod
 
 ## 毎週の成果物
 
-Workflow artifact `monetization-cycle-YYYY-MM-DD`に次を保存する。
+非公開リポジトリではWorkflow artifact `monetization-cycle-YYYY-MM-DD`に次を保存する。公開リポジトリでは金額を含まない`revenue-notice-weekly`のみを保存し、以下の詳細は一時実行領域での集計に留める。過去の公開済み成果物を自動削除する変更ではない。
 
 - `monetization-history.v2.json`: 正規化履歴と媒体別lineage
 - `source-status.v2.json`: `complete` / `partial` / `unavailable` / `failed`

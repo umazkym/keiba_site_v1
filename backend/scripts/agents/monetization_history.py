@@ -1052,6 +1052,23 @@ def period_metrics(history: Mapping[str, Any], period: Period) -> dict[str, Any]
     ga_pv = sum_metric(ga4, "screenPageViews")
     ga_revenue = sum_metric(ga4, "totalAdRevenue")
     ga_currency = ga4_currency_code(history)
+    # 行が存在しても指標が欠ける場合がある。通知で部分合計を完全実績と誤認しないため、
+    # 既存合計の契約を保ったまま、指標を確認できた日付を追加する。
+    adsense_by_date: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for row in adsense:
+        if row.get("date"):
+            adsense_by_date[str(row["date"])].append(row)
+    metric_coverage: dict[str, list[str]] = {}
+    for metric in ("estimated_earnings", "page_views"):
+        valid_days = []
+        for day, daily_rows in adsense_by_date.items():
+            if len(daily_rows) != 1:
+                continue
+            raw_value = (daily_rows[0].get("metrics") or {}).get(metric)
+            value = numeric(raw_value)
+            if not isinstance(raw_value, bool) and value is not None and math.isfinite(value) and value >= 0:
+                valid_days.append(day)
+        metric_coverage[metric] = sorted(valid_days)
     return {
         "start_date": period.start.isoformat(),
         "end_date": period.end.isoformat(),
@@ -1059,6 +1076,7 @@ def period_metrics(history: Mapping[str, Any], period: Period) -> dict[str, Any]
         "adsense_page_views": ad_pv,
         "adsense_impressions": impressions,
         "adsense_clicks": sum_metric(adsense, "clicks"),
+        "adsense_metric_coverage": metric_coverage,
         "page_rpm_jpy": earnings / ad_pv * 1000 if earnings is not None and ad_pv else None,
         "impressions_per_page_view": impressions / ad_pv if impressions is not None and ad_pv else None,
         "active_view_viewability": average_metric(adsense, "active_view_viewability"),

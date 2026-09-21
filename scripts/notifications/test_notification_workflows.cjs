@@ -20,7 +20,8 @@ for (const file of ['keiba-ad-safety-daily.yml', 'keiba-monetization-cycle.yml']
     assert.equal(notify.env, undefined);
     assert.equal(workflow.permissions['issues'], undefined);
     assert.match(JSON.stringify(notify.steps), /publish_revenue_notice\.cjs/);
-    const collection = Object.values(workflow.jobs).find(job => job !== notify);
+    const collection = file === 'keiba-ad-safety-daily.yml'
+      ? workflow.jobs.evidence : workflow.jobs['collect-and-analyze'];
     for (const step of collection.steps.filter(step => step.uses?.startsWith('actions/upload-artifact@'))) {
       if (step.with.name.startsWith('revenue-notice-')) {
         assert.match(step.with.path, /\/revenue-notice\/notification\.json$/);
@@ -35,8 +36,14 @@ for (const file of ['keiba-ad-safety-daily.yml', 'keiba-monetization-cycle.yml']
 }
 
 test('週次の過去期間の手動再集計ではメールを送らない', () => {
-  const notify = read('keiba-monetization-cycle.yml').jobs.notify;
+  const workflow = read('keiba-monetization-cycle.yml');
+  const notify = workflow.jobs.notify;
   assert.match(notify.if, /inputs.mode != 'backfill'/);
   assert.match(notify.if, /inputs.start_date == ''/);
   assert.match(notify.if, /inputs.end_date == ''/);
+  assert.match(notify.if, /needs.collect-and-analyze.result != 'skipped'/);
+  assert.deepEqual(workflow.on.schedule.map(row => row.cron), ['30 0 * * 3', '30 0 * * 4', '30 0 * * 5']);
+  assert.match(workflow.jobs['collect-and-analyze'].if, /needs.gate.outputs.run_cycle == 'true'/);
+  assert.match(JSON.stringify(workflow.jobs.gate.steps), /shouldRunWeekly/);
+  assert.match(JSON.stringify(workflow.jobs['collect-and-analyze'].steps), /latest_stable_sunday/);
 });

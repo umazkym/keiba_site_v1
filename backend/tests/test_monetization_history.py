@@ -20,6 +20,7 @@ from backend.scripts.agents.monetization_history import (
     deduplicate_history_rows,
     grade_article_weekly_replacement,
     grade_race_publish_lead_days,
+    latest_stable_sunday,
     parse_adsense_report,
     parse_ga4_report,
     period_metrics,
@@ -46,6 +47,14 @@ def daily_row(source: str, dataset: str, day: date, metrics: dict[str, float]):
 
 
 class MonetizationHistoryTest(unittest.TestCase):
+    def test_latest_stable_sunday_excludes_the_three_day_reporting_window(self) -> None:
+        self.assertEqual(latest_stable_sunday(date(2026, 9, 21)), date(2026, 9, 13))
+        self.assertEqual(latest_stable_sunday(date(2026, 9, 22)), date(2026, 9, 13))
+        self.assertEqual(latest_stable_sunday(date(2026, 9, 23)), date(2026, 9, 20))
+        self.assertEqual(latest_stable_sunday(date(2026, 9, 26)), date(2026, 9, 20))
+        with self.assertRaises(ValueError):
+            latest_stable_sunday(date(2026, 9, 23), -1)
+
     def test_revenue_notification_metric_coverage_distinguishes_partial_sums(self) -> None:
         period = Period(date(2026, 9, 1), date(2026, 9, 6))
         rows = [daily_row("adsense", "daily", period.start + timedelta(days=index),

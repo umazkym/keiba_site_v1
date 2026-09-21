@@ -68,8 +68,17 @@ def latest_complete_sunday(today: date | None = None) -> date:
     return candidate - timedelta(days=7) if candidate >= base else candidate
 
 
+def latest_stable_sunday(today: date | None = None, minimum_age_days: int = 3) -> date:
+    """媒体の反映待ちを除き、指定日数以上経過した最新の日曜を返す。"""
+    if minimum_age_days < 0:
+        raise ValueError("minimum_age_daysは0以上で指定してください。")
+    base = today or datetime.now(JST).date()
+    cutoff = base - timedelta(days=minimum_age_days)
+    return cutoff - timedelta(days=(cutoff.weekday() + 1) % 7)
+
+
 def resolve_period(mode: str, start: date | None, end: date | None) -> Period:
-    resolved_end = end or latest_complete_sunday()
+    resolved_end = end or latest_stable_sunday()
     if mode == "backfill":
         resolved_start = start or BUSINESS_START_DATE
     else:

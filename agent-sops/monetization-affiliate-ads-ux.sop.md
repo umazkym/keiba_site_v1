@@ -140,6 +140,8 @@ Constraints for parameter acquisition:
 - You MUST limit automatic work to one local change and verification. Ads, affiliate URLs, publication, external posts, production DB, secrets, Git operations, and deployment require user action.
 - You MUST preserve successfully collected raw sources in an authorized private location before reporting a partial workflow failure. If the user chooses public notifications without figures, keep detailed data in the temporary runner only and publish validated categorical notices; do not upload raw reports, revenue Markdown, or XLSX to public artifacts or summaries.
 - You MUST distinguish collection failure, missing data, and confirmed zero in notifications. Use fixed public-safe wording, deduplicate continuing alerts, and send recovery only after the monitored conditions clear. Issue comments require explicit user authorization for this notification channel; local tests must not send real notifications.
+- You MUST choose a weekly Sunday that is at least three calendar days old so Monday or Tuesday manual runs do not treat API latency as a revenue problem. Wednesday is the primary run; retry on Thursday and Friday only when the same period has missing or failed source evidence, and skip retries after complete collection.
+- You MUST treat ordinary content and traffic opportunities as automated follow-up candidates, not as a demand for the user to inspect every dashboard. Ask for human confirmation only when data quality, workflow failure, policy, or another condition prevents safe automation.
 
 ## Source references
 

@@ -56,9 +56,17 @@ function validate(payload) {
 
 function fallback(kind, now = new Date()) {
   // JSTの集計日。日次は反映待ちを除外、週次は直近の完了日曜に合わせる。
+  if (kind === 'weekly') {
+    return {
+      schema_version: 'revenue-notification.v1', public_safe: true,
+      kind, period_end: latestStableSunday(now), needs_attention: true,
+      reason_codes: ['monitor_failed'], title: 'UMA-FREE：自動確認が完了しませんでした',
+      body: '## 自動確認が完了しませんでした\n\nあなたの対応：実行履歴の確認が必要です。\n\n監視処理を完了できなかったため、今回の状況は未判定です。サイトの障害とは限りません。金額・アクセス数は掲載していません。',
+    };
+  }
   const day = new Date(now.getTime() + 9 * 3600 * 1000);
   day.setUTCHours(0, 0, 0, 0);
-  day.setUTCDate(day.getUTCDate() - (kind === 'daily' ? 2 : day.getUTCDay() || 7));
+  day.setUTCDate(day.getUTCDate() - 2);
   return {
     schema_version: 'revenue-notification.v1', public_safe: true,
     kind, period_end: day.toISOString().slice(0, 10), needs_attention: true,
@@ -87,6 +95,54 @@ function stateFromComment(comment) {
         || state.reason_codes.some(code => !REASON_CODES.has(code))) return null;
     return state;
   } catch { return null; }
+}
+
+function latestStableSunday(now = new Date(), minimumAgeDays = 3) {
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())
+      || !Number.isInteger(minimumAgeDays) || minimumAgeDays < 0) {
+    throw new Error('安定週の日付条件が不正です。');
+  }
+  const jst = new Date(now.getTime() + 9 * 3600 * 1000);
+  const cutoff = new Date(Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate()));
+  cutoff.setUTCDate(cutoff.getUTCDate() - minimumAgeDays);
+  cutoff.setUTCDate(cutoff.getUTCDate() - cutoff.getUTCDay());
+  return cutoff.toISOString().slice(0, 10);
+}
+
+function weeklyStateNeedsRetry(state) {
+  if (!state || state.kind !== 'weekly') return true;
+  return state.reason_codes.some(code =>
+    code === 'monitor_failed'
+    || code === 'workflow_incomplete'
+    || code === 'core_non_adsense_source_incomplete'
+    || code === 'monthly_pace_unavailable'
+    || code.startsWith('adsense_daily_report_')
+    || code.includes('_coverage_')
+    || code.endsWith('_revenue_missing')
+  );
+}
+
+function shouldRunWeekly({ eventName, schedule, states = [], now = new Date(), retryEnabled = true }) {
+  const periodEnd = latestStableSunday(now);
+  if (eventName !== 'schedule') {
+    return { run: true, periodEnd, reason: '手動実行のため週次分析を開始します。' };
+  }
+  if (schedule === '30 0 * * 3') {
+    return { run: true, periodEnd, reason: '水曜の定期週次分析を開始します。' };
+  }
+  if (!retryEnabled) {
+    return { run: false, periodEnd, reason: '通知停止中のため追加の再試行を省きます。' };
+  }
+  const latest = states
+    .filter(state => state.kind === 'weekly' && state.period_end === periodEnd)
+    .at(-1);
+  if (!latest) {
+    return { run: true, periodEnd, reason: '対象週の通知がないため自動再試行します。' };
+  }
+  if (weeklyStateNeedsRetry(latest)) {
+    return { run: true, periodEnd, reason: '対象週の取得不足を自動再試行します。' };
+  }
+  return { run: false, periodEnd, reason: '対象週は取得済みのため再試行を省きます。' };
 }
 
 function decision(payload, states) {
@@ -136,8 +192,7 @@ async function publish({ github, context, core, directory, kind, now }) {
   let prose = payload.body;
   const dailyState = states.filter(row => row.kind === 'daily').at(-1);
   if (kind === 'weekly' && dailyState?.reason_codes.length) {
-    prose = prose.replace('あなたの対応: 確認不要', 'あなたの対応: 確認が必要');
-    prose += '\n\n日次のお知らせに、まだ解消を確認できていない異常があります。このIssueの直近の日次通知を確認してください。';
+    prose += '\n\n日次でお知らせ済みの異常は、まだ解消を確認できていません。自動監視を継続しているため、新しい確認作業は不要です。';
   }
   // 確認先は固定の公開リンクだけにし、収集データ由来のURLを展開しない。
   if (payload.reason_codes.includes('action_content')) {
@@ -152,4 +207,8 @@ async function publish({ github, context, core, directory, kind, now }) {
   return { sent: true, reason: action, issue_number: issue.number };
 }
 
-module.exports = { publish, validate, fallback, readNotice, decision, stateFromComment, ISSUE_MARKER, ISSUE_TITLE, ISSUE_BODY };
+module.exports = {
+  publish, validate, fallback, readNotice, decision, stateFromComment,
+  latestStableSunday, weeklyStateNeedsRetry, shouldRunWeekly,
+  ISSUE_MARKER, ISSUE_TITLE, ISSUE_BODY,
+};

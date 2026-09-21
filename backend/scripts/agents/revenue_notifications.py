@@ -166,7 +166,7 @@ def main() -> int:
             payload["needs_attention"] = digest["needs_attention"]
     except Exception:
         payload = failed_notice(args.kind, today - timedelta(days=2) if args.kind == "daily"
-                                else history.latest_complete_sunday(today))
+                                else history.latest_stable_sunday(today))
     if args.workflow_status == "incomplete":
         payload["reason_codes"] = sorted(set(payload["reason_codes"] + ["workflow_incomplete"]))
         payload["needs_attention"] = True

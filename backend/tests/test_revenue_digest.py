@@ -63,8 +63,10 @@ class RevenueDigestTest(unittest.TestCase):
         self.assertIn("2,000 PV", digest["body"])
         self.assertNotIn("999,999", digest["body"])
         self.assertEqual(digest["period_end"], "2026-04-26")
-        self.assertTrue(digest["needs_attention"])
+        self.assertFalse(digest["needs_attention"])
         self.assertIn("action_traffic", digest["reason_codes"])
+        self.assertIn("あなたの対応: 確認不要", digest["public_body"])
+        self.assertIn("継続観測します", digest["public_body"])
 
     def test_partial_source_or_missing_coverage_makes_pace_undetermined(self) -> None:
         digest = build_weekly_digest(_analysis(partial=True))
@@ -148,6 +150,12 @@ class RevenueDigestTest(unittest.TestCase):
         self.assertFalse(digest["needs_attention"])
         self.assertIn("あなたの対応: 確認不要", digest["public_body"])
         self.assertIn("自動収集を継続します", digest["public_body"])
+
+        content_analysis = _analysis()
+        content_analysis["root_causes"] = [{"category": "grade_race_replacement"}]
+        content_digest = build_weekly_digest(content_analysis)
+        self.assertFalse(content_digest["needs_attention"])
+        self.assertIn("あなたの確認は不要です", content_digest["public_body"])
 
     def test_ga4_or_gsc_failure_is_a_fixed_data_quality_attention(self) -> None:
         analysis = _analysis()

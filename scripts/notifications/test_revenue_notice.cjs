@@ -4,7 +4,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { publish, validate, fallback, decision, stateFromComment, ISSUE_MARKER } = require('./publish_revenue_notice.cjs');
+const {
+  publish, validate, fallback, decision, stateFromComment,
+  latestStableSunday, shouldRunWeekly, ISSUE_MARKER,
+} = require('./publish_revenue_notice.cjs');
 
 const make = (reasons = [], kind = 'daily', end = '2026-09-19') => ({
   ...fallback(kind), period_end: end, reason_codes: reasons, needs_attention: reasons.length > 0,
@@ -51,6 +54,29 @@ test('収集開始前の失敗にもJST日付で未判定通知を作る', () =>
   assert.equal(fallback('weekly', new Date('2026-09-19T16:00:00Z')).period_end, '2026-09-13');
 });
 
+test('週次は三日以上経過した日曜を選ぶ', () => {
+  assert.equal(latestStableSunday(new Date('2026-09-20T15:00:00Z')), '2026-09-13'); // 月曜JST
+  assert.equal(latestStableSunday(new Date('2026-09-21T15:00:00Z')), '2026-09-13'); // 火曜JST
+  assert.equal(latestStableSunday(new Date('2026-09-22T15:00:00Z')), '2026-09-20'); // 水曜JST
+  assert.equal(latestStableSunday(new Date('2026-09-25T15:00:00Z')), '2026-09-20'); // 土曜JST
+});
+
+test('木金の再実行は対象週の取得不足時だけ行う', () => {
+  const now = new Date('2026-09-23T00:30:00Z'); // 木曜09:30 JST
+  const base = { kind: 'weekly', period_end: '2026-09-20', reason_codes: ['action_traffic'] };
+  assert.equal(shouldRunWeekly({ eventName: 'workflow_dispatch', states: [base], now }).run, true);
+  assert.equal(shouldRunWeekly({ eventName: 'schedule', schedule: '30 0 * * 3', states: [base], now }).run, true);
+  assert.equal(shouldRunWeekly({ eventName: 'schedule', schedule: '30 0 * * 4', states: [base], now }).run, false);
+  assert.equal(shouldRunWeekly({
+    eventName: 'schedule', schedule: '30 0 * * 4', states: [], now, retryEnabled: false,
+  }).run, false);
+  assert.equal(shouldRunWeekly({ eventName: 'schedule', schedule: '30 0 * * 4', states: [], now }).run, true);
+  assert.equal(shouldRunWeekly({
+    eventName: 'schedule', schedule: '30 0 * * 4', now,
+    states: [{ ...base, reason_codes: ['rolling_28_days_adsense_date_coverage_incomplete'] }],
+  }).run, true);
+});
+
 test('Issueの再利用・停止・コメント再実行をAPIモックで確認する', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'uma-notice-test-'));
   const issue = { number: 42, state: 'open', body: ISSUE_MARKER };
@@ -70,7 +96,8 @@ test('Issueの再利用・停止・コメント再実行をAPIモックで確認
     assert.equal(creates, 0);
     fs.writeFileSync(path.join(directory, 'notification.json'), JSON.stringify(make([], 'weekly', '2026-09-20')));
     assert.equal((await publish({ ...args, kind: 'weekly' })).reason, 'weekly');
-    assert.match(comments.at(-1).body, /まだ解消を確認できていない/);
+    assert.match(comments.at(-1).body, /まだ解消を確認できていません/);
+    assert.match(comments.at(-1).body, /新しい確認作業は不要/);
     fs.writeFileSync(path.join(directory, 'notification.json'), JSON.stringify(make([], 'daily', '2026-09-20')));
     assert.equal((await publish(args)).reason, 'recovery');
     issue.state = 'closed';

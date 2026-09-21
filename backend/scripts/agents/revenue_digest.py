@@ -120,9 +120,9 @@ _ACTION_TEXT = {
 
 _PUBLIC_NEXT_TEXT = {
     "data_quality": "今回の対象は計測データの取得状態です。全記事チェックは不要です。",
-    "content": "今回の対象は重賞記事の掲載状況です。全記事チェックは不要です。",
+    "content": "重賞記事を自動改善の候補として記録し、継続観測します。あなたの確認は不要です。",
     "workflow": "今回の対象は定期処理の結果です。全記事チェックは不要です。",
-    "traffic": "今回の対象は流入と広告効率の内訳です。全記事チェックは不要です。",
+    "traffic": "流入と広告効率を自動改善の候補として記録し、継続観測します。あなたの確認は不要です。",
     "routine": "今回の対象は週次の収益確認です。全記事チェックは不要で、自動収集を継続します。",
 }
 
@@ -280,7 +280,9 @@ def build_weekly_digest(
         public_goal = "単純換算では目標水準に到達（実月収の確定達成ではありません）"
     else:
         public_goal = "まだ届いていません（直近実績の単純換算）"
-    attention_categories = {"data_quality", "workflow", "traffic", "content"}
+    # 目標未達や改善候補は週次情報として伝えるが、人の確認を要求するのは
+    # 取得品質・定期処理など自動運用が継続できない状態に限定する。
+    attention_categories = {"data_quality", "workflow"}
     needs_attention = any(category in attention_categories for category in categories)
     priority_category = next(
         (category for category in categories if category in attention_categories), categories[0]

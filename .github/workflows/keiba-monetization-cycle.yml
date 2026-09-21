@@ -4,6 +4,9 @@ on:
   schedule:
     # 毎週水曜09:30 JST（UTCでは水曜00:30）
     - cron: '30 0 * * 3'
+    # 水曜の媒体データが未反映だった場合だけ木・金に再試行する。
+    - cron: '30 0 * * 4'
+    - cron: '30 0 * * 5'
   workflow_dispatch:
     inputs:
       mode:
@@ -31,7 +34,53 @@ permissions:
   id-token: write
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      run_cycle: ${{ steps.gate.outputs.run_cycle }}
+      period_end: ${{ steps.gate.outputs.period_end }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: 水曜実行または取得不足時の再試行だけを許可
+        id: gate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { shouldRunWeekly, stateFromComment, ISSUE_MARKER } = require('./scripts/notifications/publish_revenue_notice.cjs');
+            let states = [];
+            let notificationClosed = false;
+            if (context.eventName === 'schedule' && context.payload.schedule !== '30 0 * * 3') {
+              const issues = await github.paginate(github.rest.issues.listForRepo, {
+                ...context.repo, state: 'all', per_page: 100,
+              });
+              const issue = issues.find(row => !row.pull_request && row.body?.includes(ISSUE_MARKER));
+              notificationClosed = issue?.state === 'closed';
+              if (issue) {
+                const comments = await github.paginate(github.rest.issues.listComments, {
+                  ...context.repo, issue_number: issue.number, per_page: 100,
+                });
+                states = comments.map(stateFromComment).filter(Boolean);
+              }
+            }
+            const result = shouldRunWeekly({
+              eventName: context.eventName,
+              schedule: context.payload.schedule,
+              states,
+              now: new Date(),
+              retryEnabled: '${{ vars.UMA_REVENUE_NOTIFICATIONS }}' !== 'disabled'
+                && !notificationClosed,
+            });
+            core.setOutput('run_cycle', String(result.run));
+            core.setOutput('period_end', result.periodEnd);
+            core.info(result.reason);
+
   collect-and-analyze:
+    needs: gate
+    if: needs.gate.outputs.run_cycle == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -128,7 +177,7 @@ jobs:
           start_date="${INPUT_START_DATE:-2026-03-14}"
           end_date="${INPUT_END_DATE:-}"
           if [ -z "$end_date" ]; then
-            end_date="$(python -c 'from backend.scripts.agents.monetization_history import latest_complete_sunday; print(latest_complete_sunday())')"
+            end_date="$(python -c 'from backend.scripts.agents.monetization_history import latest_stable_sunday; print(latest_stable_sunday())')"
           fi
           week_ending="$(python -c "from datetime import date,timedelta; from backend.scripts.agents.monetization_history import latest_complete_sunday; print(latest_complete_sunday(date.fromisoformat('$end_date')+timedelta(days=1)))")"
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
@@ -301,8 +350,8 @@ jobs:
           fi
 
   notify:
-    needs: collect-and-analyze
-    if: always() && !cancelled() && github.repository == 'umazkym/keiba_site_v1' && inputs.mode != 'backfill' && inputs.start_date == '' && inputs.end_date == '' && vars.UMA_REVENUE_NOTIFICATIONS != 'disabled'
+    needs: [gate, collect-and-analyze]
+    if: always() && !cancelled() && needs.collect-and-analyze.result != 'skipped' && github.repository == 'umazkym/keiba_site_v1' && inputs.mode != 'backfill' && inputs.start_date == '' && inputs.end_date == '' && vars.UMA_REVENUE_NOTIFICATIONS != 'disabled'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

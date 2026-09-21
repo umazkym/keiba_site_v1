@@ -2,7 +2,7 @@
 
 ## 完成状態
 
-`monetization-history.v2`は、2026年3月14日を収益開始日、3月15日をGA4–AdSense連携境界として、AdSense・GA4・Search Console・Clarity・YouTube・GitHub Actions・Cloud Run・Cloudflareを同じ履歴契約へ正規化する。毎週水曜09:30 JSTに前週（月曜〜日曜）、前週比、直近28日、3月14日以降累積を生成し、木曜09:00 JSTのCodexタスクが最重要仮説を1件だけ選ぶ。
+`monetization-history.v2`は、2026年3月14日を収益開始日、3月15日をGA4–AdSense連携境界として、AdSense・GA4・Search Console・Clarity・YouTube・GitHub Actions・Cloud Run・Cloudflareを同じ履歴契約へ正規化する。毎週水曜09:30 JSTに、3日以上経過した最新の日曜までの前週（月曜〜日曜）、前週比、直近28日、3月14日以降累積を生成する。取得不足の場合だけ木・金の同時刻に再試行し、取得済みなら省略する。木曜09:00 JSTのCodexタスクは最重要仮説を1件だけ選ぶ。
 
 収集処理は外部サービスへの書込み、広告変更、記事公開、SNS投稿、Git操作、デプロイを行わない。ユーザー指定の[簡易通知](revenue-notifications.md)のみ、別ジョブからGitHub Issueへ投稿する。自動修正はユーザー確認前のローカル変更と検証までとする。
 

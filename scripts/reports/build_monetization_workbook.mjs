@@ -532,6 +532,37 @@ if (qualityRows.length) {
   qualitySheet.getRange(`B5:B${qualityEnd}`).conditionalFormats.add("containsText", { text: "unavailable", format: { fill: red } });
   qualitySheet.getRange(`D5:E${qualityEnd}`).format.wrapText = true;
 }
+const measurementQuality = analysis.measurement_quality || {};
+const ga4Measurement = measurementQuality.ga4 || {};
+const acquisitionMeasurement = ga4Measurement.acquisition?.quality || {};
+const landingMeasurement = ga4Measurement.landing?.not_set || {};
+const adsenseMeasurement = measurementQuality.adsense || {};
+const paymentsMeasurement = measurementQuality.adsense_payments || {};
+const acquisitionReconciliation = ga4Measurement.reconciliation?.daily_to_acquisition || {};
+const measurementRows = [
+  ["GA4日次とacquisition内訳", acquisitionReconciliation.status || "unavailable", acquisitionReconciliation.difference_sessions ?? null, acquisitionReconciliation.daily_total_sessions ?? null, acquisitionReconciliation.breakdown_total_sessions ?? null, "", "差分はGA4の集計差を含み得る"],
+  ...[
+      ["GA4参照元(not set)", acquisitionMeasurement.session_source_medium_not_set || {}],
+      ["GA4チャネル(not set)", acquisitionMeasurement.session_default_channel_group_not_set || {}],
+      ["GA4キャンペーン(not set)", acquisitionMeasurement.session_campaign_name_not_set || {}],
+      ["GA4 Unassigned", acquisitionMeasurement.unassigned || {}],
+      ["GA4 landing(not set)", landingMeasurement],
+    ].map(([label, row]) => [label, row.status || "unavailable", row.affected_sessions ?? null, row.denominator_sessions ?? null, row.rate ?? null, (row.missing_dates || []).join(", "), "欠損日は0補完しない"]),
+  ["AdSense requests", adsenseMeasurement.ad_requests?.status || "unavailable", null, null, adsenseMeasurement.ad_requests?.value ?? null, (adsenseMeasurement.ad_requests?.missing_dates || []).join(", "), "日別原本の合計"],
+  ["AdSense coverage", adsenseMeasurement.ad_requests_coverage?.status || "unavailable", null, null, adsenseMeasurement.ad_requests_coverage?.value ?? null, (adsenseMeasurement.ad_requests_coverage?.missing_dates || []).join(", "), "requests加重。単価だけで原因を断定しない"],
+  ["AdSense viewability", adsenseMeasurement.active_view_viewability?.status || "unavailable", null, null, adsenseMeasurement.active_view_viewability?.value ?? null, (adsenseMeasurement.active_view_viewability?.missing_dates || []).join(", "), adsenseMeasurement.active_view_viewability?.aggregation_reason || "日別原本のみ。期間加重集約はしない"],
+  ["AdSense payments", paymentsMeasurement.report_status?.status || "unavailable", null, null, null, "", "任意取得。アカウント警告は残し、広告実績とは分離"],
+];
+writeTable(qualitySheet, 4, ["計測品質", "状態", "分子", "分母", "率・値", "欠損日", "注記"], measurementRows, { startColumn: 6, headerFill: teal });
+if (measurementRows.length) {
+  const measurementEnd = 4 + measurementRows.length;
+  qualitySheet.getRange("J6:J10").format.numberFormat = "0.00%";
+  qualitySheet.getRange("J12:J13").format.numberFormat = "0.00%";
+  qualitySheet.getRange(`L5:L${measurementEnd}`).format.wrapText = true;
+}
+qualitySheet.getRange("F1:L30").format.columnWidth = 16;
+qualitySheet.getRange("F1:F30").format.columnWidth = 28;
+qualitySheet.getRange("L1:L30").format.columnWidth = 46;
 qualitySheet.freezePanes.freezeRows(4);
 
 for (const [sheetName, sheet] of Object.entries(sheets)) {
@@ -593,7 +624,7 @@ const renderRanges = {
   "障害": "A1:I30",
   "ファネル": "A1:D30",
   "改善台帳": "A1:I30",
-  "取得品質": "A1:E20",
+  "取得品質": "A1:L30",
   "原本": "A1:S25",
 };
 for (const name of sheetNames) {

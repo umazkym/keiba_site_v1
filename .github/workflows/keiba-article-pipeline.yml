@@ -42,6 +42,7 @@ jobs:
     outputs:
       published: ${{ steps.resolve_published_release.outputs.published }}
       published_sha: ${{ steps.resolve_published_release.outputs.published_sha }}
+      gemini_circuit_blocked: ${{ steps.gemini_circuit.outputs.blocked }}
 
     permissions:
       contents: write
@@ -49,7 +50,7 @@ jobs:
 
     env:
       ARTICLE_PIPELINE_MAX_ARTICLES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_articles || '3' }}
-      ARTICLE_MIN_BODY_CHARS: "3000"
+      ARTICLE_MIN_MEANINGFUL_BODY_CHARS: "80" # 破損検出の目安。内容品質は別途審査する。
       ARTICLE_GEMMA_REVIEW_ENABLED: "true"
       ARTICLE_GEMMA_REVIEW_PASSES: "3"
       ARTICLE_GEMMA_REVIEW_ATTEMPTS: "3"
@@ -319,7 +320,7 @@ jobs:
           GEMINI_EDITOR_MODEL_TIERS: ${{ env.GEMINI_EDITOR_MODEL_TIERS }}
           GEMINI_ARTICLE_DAILY_REQUEST_LIMIT: ${{ env.GEMINI_ARTICLE_DAILY_REQUEST_LIMIT }}
           GEMINI_ARTICLE_MODEL_DAILY_LIMITS: ${{ env.GEMINI_ARTICLE_MODEL_DAILY_LIMITS }}
-          ARTICLE_MIN_BODY_CHARS: ${{ env.ARTICLE_MIN_BODY_CHARS }}
+          ARTICLE_MIN_MEANINGFUL_BODY_CHARS: ${{ env.ARTICLE_MIN_MEANINGFUL_BODY_CHARS }}
           ARTICLE_GEMMA_REVIEW_ENABLED: ${{ env.ARTICLE_GEMMA_REVIEW_ENABLED }}
           ARTICLE_GEMMA_REVIEW_PASSES: ${{ env.ARTICLE_GEMMA_REVIEW_PASSES }}
           ARTICLE_GEMMA_REVIEW_ATTEMPTS: ${{ env.ARTICLE_GEMMA_REVIEW_ATTEMPTS }}
@@ -413,14 +414,203 @@ jobs:
           path: .runtime/gemini-article-circuit.json
           key: gemini-article-circuit-${{ github.run_id }}
 
-  deploy-frontend:
+  official-fact-fallback:
     needs: build-and-publish
-    if: ${{ needs.build-and-publish.outputs.published == 'true' && vars.CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED == 'true' }}
+    if: ${{ needs.build-and-publish.outputs.gemini_circuit_blocked == 'true' }}
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.resolve_fallback_release.outputs.published }}
+      published_sha: ${{ steps.resolve_fallback_release.outputs.published_sha }}
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      ARTICLE_PIPELINE_MAX_ARTICLES: "3"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Restore Pending Article Write Orders
+        uses: actions/cache/restore@v4
+        with:
+          path: .runtime/pending-write-orders
+          key: article-pending-orders-${{ github.run_id }}
+          restore-keys: |
+            article-pending-orders-
+
+      - name: Restore Fallback Article Write Orders
+        uses: actions/cache/restore@v4
+        with:
+          path: .runtime/pending-write-orders
+          key: article-pending-orders-fallback-${{ github.run_id }}
+          restore-keys: |
+            article-pending-orders-fallback-
+
+      - name: Requeue Preserved Article Write Orders
+        shell: bash
+        run: |
+          mkdir -p data/write_orders .runtime/pending-write-orders
+          find .runtime/pending-write-orders -maxdepth 1 -type f -name '*.json' -exec cp -f {} data/write_orders/ \;
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: pip install -r requirements.txt
+
+      - name: Generate Official Schedule Write Orders Without Tavily
+        working-directory: ./backend
+        env:
+          KEIBA_NEWS_TAVILY_ENABLED: "false"
+          KEIBA_NEWS_DB_ENRICH_ENABLED: "false"
+          KEIBA_NEWS_REMOTE_SCHEDULE_ENABLED: "true"
+          KEIBA_NEWS_REMOTE_NAR_SCHEDULE_ENABLED: "false"
+          KEIBA_NEWS_MAX_ORDERS_PER_RUN: ${{ env.ARTICLE_PIPELINE_MAX_ARTICLES }}
+          KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN: "1"
+        run: python scripts/agents/news_topic_planner.py
+
+      - name: Generate Official Fact Fallback Drafts
+        working-directory: ./frontend
+        env:
+          ARTICLE_PIPELINE_MAX_ARTICLES: ${{ env.ARTICLE_PIPELINE_MAX_ARTICLES }}
+        run: npm run article:pipeline
+
+      - name: Check Fallback Approval Queue
+        id: check_fallback_approved
+        shell: bash
+        run: |
+          approved=$(find frontend/agents/queue/approved -name "official-fact-*.md" 2>/dev/null | wc -l)
+          echo "approved_count=$approved" >> "$GITHUB_OUTPUT"
+
+      - name: Configure Git
+        if: steps.check_fallback_approved.outputs.approved_count > 0
+        run: |
+          git config --global user.name "${{ secrets.GIT_USER_NAME || 'github-actions[bot]' }}"
+          git config --global user.email "${{ secrets.GIT_USER_EMAIL || 'github-actions[bot]@users.noreply.github.com' }}"
+
+      - name: Publish Approved Official Fact Drafts
+        if: steps.check_fallback_approved.outputs.approved_count > 0
+        working-directory: ./frontend
+        env:
+          ARTICLE_PUBLISH_OFFICIAL_FACT_FALLBACK_ONLY: "true"
+        run: npm run article:publish
+
+      - name: Resolve Fallback Published Release
+        id: resolve_fallback_release
+        if: steps.check_fallback_approved.outputs.approved_count > 0
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          published_sha="$(git rev-parse HEAD)"
+          if [[ "$published_sha" == "$SOURCE_SHA" ]]; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "published_sha=" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "published_sha=$published_sha" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Preserve Unprocessed Article Write Orders
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p .runtime/pending-write-orders
+          find .runtime/pending-write-orders -maxdepth 1 -type f -name '*.json' -delete
+          find data/write_orders -maxdepth 1 -type f -name '*.json' -exec cp -f {} .runtime/pending-write-orders/ \;
+
+      - name: Save Pending Article Write Orders
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .runtime/pending-write-orders
+          key: article-pending-orders-fallback-${{ github.run_id }}
+
+  deploy-frontend:
+    needs: [build-and-publish, official-fact-fallback]
+    if: ${{ always() && (needs.build-and-publish.outputs.published == 'true' || needs.official-fact-fallback.outputs.published == 'true') && vars.CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED == 'true' }}
     permissions:
       contents: read
       id-token: write
     uses: ./.github/workflows/deploy-frontend-cloud-run.yml
     with:
-      source_ref: ${{ needs.build-and-publish.outputs.published_sha }}
+      source_ref: ${{ needs.official-fact-fallback.outputs.published_sha || needs.build-and-publish.outputs.published_sha }}
       disable_default_url: true
     secrets: inherit
+
+  verify-grade-race-publications:
+    needs: [deploy-frontend, build-and-publish, official-fact-fallback]
+    if: ${{ needs.deploy-frontend.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Deployed Source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.official-fact-fallback.outputs.published_sha || needs.build-and-publish.outputs.published_sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Determine Published Grade Race Targets
+        id: publication_targets
+        working-directory: ./frontend
+        env:
+          GRADE_RACE_PUBLICATION_TARGETS_PATH: ${{ github.workspace }}/data/grade-race-publication-targets.json
+        run: |
+          node -e "const fs=require('fs'); const targetPath=process.env.GRADE_RACE_PUBLICATION_TARGETS_PATH; const data=JSON.parse(fs.readFileSync(targetPath, 'utf8')); if(!Array.isArray(data.slugs)) throw new Error('公開確認対象manifestのslugsが配列ではありません'); const slugs=[...new Set(data.slugs.map(String))]; if(slugs.some(slug=>!/^[a-z0-9][a-z0-9-]*$/i.test(slug))) throw new Error('公開確認対象manifestに不正なslugがあります'); fs.appendFileSync(process.env.GITHUB_OUTPUT, 'has_targets='+(slugs.length > 0)+'\\n'); console.log('今回の重賞公開確認対象: '+slugs.length+'件');"
+
+      - name: Verify Live Grade Race Publications
+        id: verify_publications
+        if: ${{ steps.publication_targets.outputs.has_targets == 'true' }}
+        working-directory: ./frontend
+        env:
+          UMA_FREE_SITE_URL: https://uma-free.com
+          GRADE_RACE_PUBLICATION_TARGETS_PATH: ${{ github.workspace }}/data/grade-race-publication-targets.json
+          GRADE_RACE_PUBLICATION_VERIFICATION_PATH: ${{ runner.temp }}/grade-race-publication-verification.json
+        run: npm run article:audit-publication
+
+      - name: Add Publication Verification Summary
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.publication_targets.outputs.has_targets }}" != "true" ]; then
+            echo "- 今回のデプロイで公開した重賞記事はありません。重賞公開確認は不要です。" >> "$GITHUB_STEP_SUMMARY"
+          elif [ -f "$RUNNER_TEMP/grade-race-publication-verification.json" ]; then
+            node -e "const d=require(process.env.RUNNER_TEMP + '/grade-race-publication-verification.json'); const rows=d.rows||[]; const bad=rows.filter(r=>r.status!=='verified'); console.log('- 重賞公開確認: verified='+(rows.length-bad.length)+' / unverified='+bad.length); if(d.fatal_error) console.log('- 監査失敗: '+d.fatal_error); if(bad.length) console.log('- 未確認: '+bad.map(r=>r.slug+':'+r.reason.join(',')).join(' | '));" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- 重賞公開確認台帳を作成できませんでした。公開完了とは扱いません。" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload Publication Verification Ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: grade-race-publication-verification-${{ github.run_id }}
+          path: ${{ runner.temp }}/grade-race-publication-verification.json
+          if-no-files-found: warn
+          retention-days: 30

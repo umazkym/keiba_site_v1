@@ -4,13 +4,12 @@ import { useEffect } from 'react';
 import { hasSiteScrollLock, hasVisibleGoogleDialog } from '@/lib/page-scroll-lock';
 import { sendAdsenseOfferwallViewEvent } from '@/lib/analytics';
 import { publishGoogleAdOverlaySnapshot } from '@/lib/google-ad-overlay';
+import { ensureAdsenseScript } from '@/lib/adsense-script';
 
 type AdSensePageLevelScriptProps = {
     enabled: boolean;
 };
 
-const SCRIPT_ID = 'uma-adsense-page-level-script';
-const SCRIPT_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
 const GOOGLE_UI_SELECTOR = '.fc-dialog-container, .fc-monetization-dialog-container, .fc-consent-root, ins.adsbygoogle-noablate[data-anchor-status]';
 const OFFERWALL_SELECTOR = '.fc-monetization-dialog-container';
 const TOP_ANCHOR_CONTROL_SELECTOR = '.fc-ablate-drawer-tab, .fc-ablate-drawer-btn';
@@ -154,18 +153,7 @@ export const AdSensePageLevelScript = ({ enabled }: AdSensePageLevelScriptProps)
         window.addEventListener('resize', requestCheck);
         requestCheck();
 
-        const existingScript =
-            document.getElementById(SCRIPT_ID) ||
-            document.querySelector(`script[src^="${SCRIPT_SRC}"]`);
-
-        if (!existingScript) {
-            const script = document.createElement('script');
-            script.id = SCRIPT_ID;
-            script.async = true;
-            script.src = `${SCRIPT_SRC}?client=ca-pub-4411270831448240`;
-            script.crossOrigin = 'anonymous';
-            document.head.appendChild(script);
-        }
+        ensureAdsenseScript({ pageLevelEnabled: true });
 
         return () => {
             window.cancelAnimationFrame(frameId);

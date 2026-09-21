@@ -13,6 +13,10 @@ import {
   recordGeminiSuccess,
 } from './gemini_circuit_breaker';
 import { GeminiFailureKind, shouldOpenGeminiCircuit } from './gemini_failure';
+import {
+  createOfficialFactFallbackDraft,
+  validateOfficialFactFallbackOrder,
+} from './official_fact_fallback';
 
 // .env.local などを読み込む (dotenv等)
 import * as dotenv from 'dotenv';
@@ -90,10 +94,12 @@ function getUniqueDestination(directory: string, fileName: string): string {
 async function runPipeline() {
   console.log("=== UMA-FREE 記事生成パイプライン テスト開始 ===");
 
+  let geminiCircuitBlocked = false;
   if (GEMINI_CIRCUIT_STATE_PATH) {
     const circuitState = loadGeminiCircuitState(GEMINI_CIRCUIT_STATE_PATH);
     if (isGeminiCircuitOpen(circuitState)) {
-      throw new Error(`Gemini記事生成サーキットが停止中です。次回試行可能: ${circuitState.open_until}`);
+      geminiCircuitBlocked = true;
+      console.warn(`[Pipeline] Gemini記事生成サーキットが停止中です。公式日程だけで作れる重賞記事を確認します: ${circuitState.open_until}`);
     }
   }
 
@@ -185,6 +191,39 @@ async function runPipeline() {
       continue;
     }
 
+    // LLMまたは検索が停止していても、確認済み公式日程だけの初回重賞記事は生成する。
+    // それ以外のOrderは移動せず、次回の通常パイプラインまでトップレベルに保持する。
+    const fallbackGate = validateOfficialFactFallbackOrder(order);
+    if (fallbackGate.passed && (geminiCircuitBlocked || !process.env.GEMINI_API_KEY)) {
+      attemptedCount++;
+      try {
+        const fallbackPath = createOfficialFactFallbackDraft(order);
+        const finalArticleFlow = runPostWriterArticleFlow(order, fallbackPath);
+        console.log(finalArticleFlow.log);
+        if (finalArticleFlow.status === 'REJECTED') {
+          quarantineReviewedDraft(fallbackPath, finalArticleFlow.log);
+          throw new Error(`公式事実品質ゲート後の検査に失敗: ${finalArticleFlow.log.slice(0, 160)}`);
+        }
+        const approvedPath = promoteReviewedDraft(fallbackPath);
+        console.log(`[Pipeline] LLMなし公式事実記事を承認キューへ移動: ${approvedPath}`);
+        approvedCount++;
+        rejectedStreak = 0;
+        moveToProcessed(orderPath);
+      } catch (error) {
+        // 公式事実が不足したOrderを失敗扱いで消さず、日程訂正・次回再試行へ残す。
+        console.error(`[Pipeline] 公式事実定型記事を保留: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      if (attemptedCount >= MAX_ARTICLES_PER_RUN) break;
+      continue;
+    }
+
+    if (geminiCircuitBlocked || !process.env.GEMINI_API_KEY) {
+      console.warn(`[Pipeline] LLM停止中のためOrderを保持: ${file} (${fallbackGate.errors.join(' / ') || '通常生成が必要'})`);
+      stoppedForGeminiLimit = true;
+      // 通常Orderが先頭でも、後続の公式事実fallback対象を探す。Orderは移動しない。
+      continue;
+    }
+
     const preDraftFlow = await runPreDraftArticleFlow(order);
     console.log(preDraftFlow.log);
     if (preDraftFlow.status === 'REJECTED') {
@@ -217,10 +256,6 @@ async function runPipeline() {
         slug: article.slug,
       }));
       console.log(`[ArticleFlow] related_articles attached: ${order.related_articles.length}`);
-    }
-
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error(`GEMINI_API_KEYが設定されていないため記事を生成できません。write_orderは未消費のまま残します: ${file}`);
     }
 
     attemptedCount++;

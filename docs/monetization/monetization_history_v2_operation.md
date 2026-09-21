@@ -36,7 +36,7 @@ Workflow artifact `monetization-cycle-YYYY-MM-DD`に次を保存する。
 
 - `monetization-history.v2.json`: 正規化履歴と媒体別lineage
 - `source-status.v2.json`: `complete` / `partial` / `unavailable` / `failed`
-- `monetization-cycle-analysis.v1.json`: 7日、前週、28日、累積、収益照合、原因候補
+- `monetization-cycle-analysis.v1.json`: 7日、前週、28日、累積、収益照合、原因候補、`measurement_quality`
 - `UMA-FREE_週次収益改善.md`: 人が読む週次要約
 - `UMA-FREE_週次収益改善.xlsx`: 12シートの再計算・確認用ブック
 - `raw/`: APIから受け取った変更前原本
@@ -52,6 +52,9 @@ XLSXは「経営ダッシュボード」「週次推移」「流入源」「検�
 - 原因候補は取得品質、障害、重賞機会損失、検索CTR、収益効率の順で評価し、根拠と反証を併記する。
 - YouTube・SNSは媒体到達だけで評価せず、GA4の参照元・UTM、レース閲覧、広告表示と照合する。媒体API未提供値は未取得のまま残す。
 - Workflow失敗と収益低下が同日に発生しても相関として記録し、因果とは断定しない。
+- `measurement_quality`は既存の`monetization-history.v2`正規化rawを再利用する。GA4の明示された`(not set)`（参照元・チャネル・キャンペーン）、`Unassigned`、landingの`(not set)`について、日別の分子・分母・取得期間・欠損日・`complete` / `partial` / `unavailable`を出力する。空・欠損したディメンションは`(not set)`と推定せず、欠損として別記する。欠損日、指標欠損、partialな正規化行は0に補完せず、その日の日次率・差分・完全期間合計を算出しない。GA4のacquisition（`date, sessionDefaultChannelGroup, sessionSourceMedium, sessionCampaignName`）には端末ディメンションがないため、参照元の端末別分析は出力しない。
+- `overall_status`はGA4日次・acquisition・landing、AdSense日次のrequests・coverage・viewabilityの必須品質を統合する。GA4日次とacquisition/landing内訳の合計差は日別に表示するが、GA4のスコープ・集計差を含み得るため一致を必須条件にせず、差だけで原因を断定しない。AdSenseは日別原本から`ad_requests`、`ad_requests_coverage`、`active_view_viewability`を確認し、単価やPage RPMだけで収益変動を説明しない。Active View measurable impressionsが原本にないため、viewabilityの期間値は`null`とし、日別率だけを残す。
+- AdSense `payments`は週次の広告実績ではなく任意の補助取得である。`payments`のみが失敗した場合、失敗内容（アカウント警告を含む）は`source-status.v2`のreport内訳に残し、日別広告実績が揃っていれば広告実績のsource statusをpartialへ変更しない。日別広告実績の取得失敗は従来どおりpartial/failedとして扱う。
 
 ## 変更してよい範囲
 

@@ -1,0 +1,26 @@
+{
+  "recordedDate": "2026-09-15",
+  "publisher": "pub-4411270831448240",
+  "source": "本タスクの管理画面調査と既存ソース",
+  "adsenseServing": "Google側の共通アカウント停止解除待ち",
+  "preserve": {
+    "autoAds": true,
+    "vignette": true,
+    "vignetteIntervalMinutes": 10,
+    "anchor": true,
+    "adIntents": true,
+    "offerwall": true,
+    "offerwallPageViews": 4,
+    "offerwallAccessHours": 24
+  },
+  "automatedBlocking": false,
+  "notes": [
+    "クリックの原因は未確定。AdMobが原因とは断定しない。",
+    "本処理は広告設定、流入経路、ブラウザ側計測を変更しない。"
+  ],
+  "sourceHashes": {
+    "frontend/components/AdSensePageLevelScript.tsx": "967ec2a60b76e73703c3e939f84f615ca50f979dbe3b565c144e333a7dbe8844",
+    "frontend/app/layout.tsx": "e38e207e2d7aa778d575d4cb7891c3fb6fb0a6ae9df248062eb9e60dccdaf8d5",
+    "frontend/middleware.ts": "1c16b3acc29313288d98a4d9c3bc161cdd459deebb93275cb499c1851ce67eba"
+  }
+}

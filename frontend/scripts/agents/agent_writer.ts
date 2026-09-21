@@ -408,37 +408,23 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
   - その上で「この記事を読むと何ができるか」を明示して閉じる。
   - 検索語の羅列、未完文、同じ語尾の連発は禁止。「確認できます」を2回以上使わない。
   - タイトル同様、過去の集計年と「最新」の混同表記は【絶対に禁止】する。
-- 見出し（H2・H3）：数字を含む見出しを最低1つ入れる。ただし全見出しを「3つの〜」に寄せない。同じ語尾の見出しを繰り返さない。
-- 枠順別のデータ等は見やすくするため、【必ず1つ以上のMarkdown形式のデータテーブル】（| で区切る表）にすること。リスト代用は不可。ただし表の数値は入力JSONに存在する値だけを使う。
+- 見出し（H2・H3）は検索意図と利用できる事実に合わせて選ぶ。数字や条件は、読者の判断に必要で入力済みのときだけ見出しへ使う。同じ語尾の見出しを繰り返さない。
+- 比較値・期間・母数を並べる必要がある場合はMarkdown表を使う。確認順や少数の判断材料には要約文または箇条書きを選ぶ。数値は入力JSONに存在する値だけを使う。
 - 数値を使う場合は期間・条件・母数を必ず明記する。
-- 本文3,400〜4,200字を目安にし、最低3,000字は必ず超える。ただし水増し禁止。短くなりそうな場合は、入力データから読み取れる「扱い方」「慎重に見る条件」「当日の確認順序」「サンプル数が少ない場合の注意点」「検索読者が次に調べる観点」を具体化して厚みを出す。
-- 生成後に本文量を自分で確認し、3,000字未満になりそうなら、架空の数値や外部情報を足さず、「出馬表で見る順番」「人気馬を慎重に見る条件」「相手候補に残す前の確認順」「評価を下げる条件」「直前に確認する材料」のうち不足している観点を追加する。
+- 本文量ではなく、検索意図への答え、確認できる固有情報、その条件・確認時点を優先する。短い記事でも、公開済みの事実だけで疑問へ答えられるなら一般論を足さない。反対に、この4点が欠ける時は、数値や外部情報を作らず、公開済み事実に合う記事の約束へ狭めるか、生成を保留する。
 - 重賞記事（entity_type が "grade_race"）では、本文中に /races/today や個別レースCTAを生成しない。検証済みレース導線はページ側で表示する。常設記事だけ、本文中のCTAに /races/today を使用できる。存在確認できないURLや仮のURLは書かない。
 
-【よくある質問セクション ― 締めの見出しの直前に必須】
-締めの「確認したい判断材料」見出しの【直前】に、\`## よくある質問\` を1つ置く。記事の末尾に置いてはならない。
-- 質問は \`### \` 見出しで3問。読者が検索窓に打ち込みそうな短い疑問文にする（例: \`### 新潟芝1600mは内枠が有利ですか？\`）。
+【よくある質問セクション ― 必要な場合だけ】
+検索意図に短い疑問への回答が複数含まれ、本文だけでは答えが見つけにくい場合に限り、締めの前へ\`## よくある質問\`を置く。
+- 質問数は検索意図に必要な分だけにし、読者が検索窓に打ち込みそうな短い疑問文を \`### \` 見出しにする（例: \`### 新潟芝1600mは内枠が有利ですか？\`）。
 - 各回答は2〜3文。本文ですでに扱った内容と入力データの範囲だけで答える。
 - 【重要】このセクションで新しい数値を出してはならない。パーセンテージ、頭数、回収率などは、本文中に既出で reference_data に根拠がある値だけを再掲する。根拠がない場合は数値を使わず「出馬表ページで確認する」と答える。
 - 「はい、そうです」だけで終わる回答や、質問を言い換えただけの回答は禁止する。読者が次に取る行動が分かる形で閉じる。
-- 質問を水増しして4問以上にしない。3問固定とする。
+- 質問を水増ししない。必要な数だけにする。
 
-【記事の締め方 ― 確認ポイントセクション必須】
-記事の最後のセクションは、theme_clusterに応じて以下の見出しで締める。
-- "race_update" または "grade_race_preview": ## このレースで確認したい判断材料
-- "course_venue": ## この競馬場で確認したい判断材料
-- "jockey_profile": ## この騎手を確認するポイント
-- "beginner_guide": ## このテーマで確認したい判断材料
-- それ以外: ## このコースで確認したい判断材料
-内容: 「確認」「相手候補」「慎重」「条件付き」のような自然なラベルで、読者がすぐ使える判断基準を3〜5個提示。必要な場合だけ「買い目に含める候補」という控えめな表現を使い、「軸」「消し」は避ける。
-例:
-  - 確認: 入力済みデータで安定している枠は、出馬表では先に脚質を確認したい。
-  - 相手候補: 人気とのズレが出やすい先行馬は、相手候補として残す材料になる。
-  - 慎重: 評価を下げたい条件に当てはまる人気馬は、馬場と展開を合わせて確認する。
-  - 条件付き: 内で脚をためられる先行馬だけ拾う。
-数値がない項目には数字を付け足さず、「確認」「相手候補」「慎重」「条件付き」の判断ラベルで整理する。
-その後、以下の1文で記事を閉じる:
-常設記事だけ「最新の出馬表とAI予想は [今日のAI予想・出馬表](/races/today) で無料公開中。」を使用する。重賞記事ではこの文を出力しない。
+【記事の締め方】
+最後に結論、確認事項、次に読む導線を置くかは、検索意図と確認済み事実で決める。短い事実記事は冒頭の答えで完結してよい。確認事項を並べる必要がある時だけ、記事種別に合う短い見出しと「確認」「慎重」「条件付き」などの自然なラベルを使う。
+常設記事で存在確認済みの /races/today が次の行動に役立つ場合だけ、自然な文脈でリンクする。重賞記事ではこの導線を出力しない。数値がない項目へ数字を付け足さず、「軸」「消し」の断定語も使わない。
 
 【禁止事項】
 - 「まとめ」「総論」「おわりに」の見出しは禁止。代わりに記事種別に合う確認材料の見出しで締める。
@@ -462,7 +448,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
 ・"jockey_data": 騎手のコース成績記事。「勝率は高いが回収率は低い」等の人気とのズレを掘り下げる。
 ・"popularity_data": 配当傾向と上位人気の信頼度。「堅いコースか荒れるコースか」を明確にする。
 ・"running_style_data": コース形態と脚質の有利不利。直線距離や坂の有無を根拠にする。
-・"course_venue": 競馬場単位のコース分析記事。距離ごとに別記事化せず、reference_data.key_metrics の各距離を表で整理し、短距離・マイル・中距離・長距離の確認順を1本の記事内で分ける。出馬表で当日確認する順番へ接続する。
+・"course_venue": 競馬場単位のコース分析記事。reference_data.key_metrics に複数距離の比較値がある場合は表で整理し、そうでなければ本文で条件を明示する。距離ごとに別記事化せず、確認済みの距離区分と当日の確認順だけを扱う。
 ・"jockey_profile": 騎手分析記事。リーディング表の勝率・連対率・3着内率を入口にし、得意コースや近況は writer_evidence と入力データの範囲で扱う。特定騎手を「信頼できる」と断定せず、人気時に慎重に見る条件と相手候補に残す条件を分ける。
 ・"beginner_guide": 入門ガイド記事。競馬初心者がレースページを見る前に迷いやすい順番を整理する。専門用語を増やしすぎず、最後は /races/today で確認できる操作に自然につなげる。
 ・"grade_race_preview": 重賞レースのプレビュー記事。以下のルールに従う:
@@ -473,7 +459,7 @@ const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の�
   - update_stage が post_race、または search_intent が result_review の場合は、既存記事を結果確定後に更新する記事として書く。レース前の確認順へ戻さず、確定着順、展開の見直し、事前評価との差、次走へ残す材料を、reference_data.results と key_metrics の範囲だけで整理する。
   - 追記更新を想定し、古い判断を消すのではなく「どの条件なら評価を上げるか」「どの条件なら見送るか」を更新後も読み返せる形にする。
   - 導入: レースの基本情報（開催場・コース・距離）を1〜2文で簡潔に。
-  - コース傾向セクション必須: reference_data のデータから傾向をMarkdownテーブルで提示。
+  - reference_data に比較可能な複数値がある場合は、コース傾向をMarkdown表で提示する。値が不足する場合は表を作らず、確認済みの条件と未確認項目を本文で区別する。
   - 予測データがある場合: 偏差値上位の馬を印（◎○▲△）付きで分析。
   - 予測データがない場合: コース傾向と過去データに絞って記述。「最新のAI偏差値・AI予想印は枠順発表後に出馬表ページで無料公開されます」と一文添え、reference_data.race_url のリンクを配置。
   - 読者は直前の不安解消を求めている。人気馬を煽るのではなく、慎重に見る条件・評価を上げる材料・見送りを検討する条件を分けて書く。
@@ -594,8 +580,8 @@ WriteOrderを読み、検索流入を増やすための構成ブリーフをJSON
 {
   "primary_search_intent": "検索ユーザーがこの記事で解決したい具体的な悩みや疑問を1文で書く",
   "title_angles": ["30〜50文字のタイトルで、ターゲットキーワードを含みつつ、クリックされやすい自然な切り口を3件"],
-  "section_plan": ["検索流入を最大化するためのH2見出し候補を5〜7件。最低2件は具体的な数値や条件を含める"],
-  "expansion_angles": ["3,000字以上にするため、選ばれた検索意図を深掘りできる安全な分析・比較の観点を5件"],
+  "section_plan": ["検索意図へ答えるためのH2見出し候補。件数と数値・条件の有無は、入力済み事実と記事の役割に合わせる"],
+  "expansion_angles": ["選ばれた検索意図に答えるため、入力済み事実だけで補足できる条件・確認時点・比較観点を5件"],
   "long_tail_terms": ["主題と直接関係し、本文や見出しに自然に含めたい検索語を5〜10件。枠順・追い切りは主題の場合だけ含める"],
   "fact_guardrails": ["捏造を避け、正確なデータのみを提示するための注意点を3〜5件"],
   "internal_link_flow": ["重賞記事はページ側の検証済みレース導線へ任せ、常設記事だけ /races/today へ自然につなぐための観点を2〜3件"]
@@ -687,80 +673,6 @@ async function buildArticleStrategyBrief(order: WriteOrder, genAI: GoogleGenerat
 
   console.warn('[Strategy] 構成ブリーフの生成に失敗したため、WriteOrderのみで初稿を生成します。');
   return null;
-}
-
-async function expandDraftWithGemma(
-  order: WriteOrder,
-  currentText: string,
-  neededChars: number,
-  genAI: GoogleGenerativeAI
-): Promise<string | null> {
-  const modelName = ARTICLE_LLM_MODELS.efficient; // RPD 500の高効率モデルを固定で使用
-  const SYSTEM_PROMPT = `あなたは競馬データメディア「UMA-FREE」の編集ライターだ。
-与えられた現在の記事ドラフトとWriteOrderに基づき、記事の文字数を増やしつつ品質と専門性を高めるために、新たなH2セクション（見出しと詳細な解説本文）を1〜2件追加執筆する。
-
-【執筆のルール】
-1. 絶対に架空の数値、成績、馬名などを捏造しない。WriteOrder.reference_dataに明記されている実データ（勝率、複勝率、回収率など）のみを数値根拠として使用すること。データがない場合は、reference_data.search_intent と topic_bridge.writer_focus に沿う定性的な比較・確認手順を詳しく述べる。
-2. 読者が「出馬表で何を確認すべきか」「どのような条件なら評価を上げる/下げるか」という実務的なチェック手順にフォーカスして執筆する。
-3. 当日の具体的なオッズ数値や人気の動きについて、予測・断定するような記述（例：「当日は〇〇番人気になる」「オッズは〇〇倍程度」など）は絶対に記述しないこと。具体的な数値を使わず、「人気とのズレ」「オッズの妙味」といった定性的な線引きや、コース固有の普遍的な特徴、出馬表を確認する手順のみに追記を制限すること。
-4. 煽り表現（「最強」「絶対」「必勝」など）や、AI特有の手癖表現（「いかがでしたか」「今回は〜について解説します」「興味深いことに」など）は一切禁止。
-5. Markdown形式の適切なH2（##）とH3（###）で記述する。
-6. search_intent が "waku" でない場合は枠順を、"training" でない場合は追い切りを新しいH2の主題にしない。race_phase が "post_race" の場合はレース前の確認手順へ戻さない。
-7. 出力は、追加するセクションのMarkdownテキストのみとすること。前置きや説明は不要。`;
-
-  const prompt = `以下の現在の記事ドラフトとWriteOrder情報に基づき、記事を補強する新しい詳細なH2セクションを執筆してください。
-追加するセクションは、現在のドラフトの「締めセクション（## このコースで確認したい判断材料 / ## このレースで確認したい判断材料 / ## この競馬場で確認したい判断材料 / ## この騎手を確認するポイント / ## このテーマで確認したい判断材料）」の直前に安全に挿入できるような構成にしてください。
-
-目標追加文字数: 約 ${neededChars} 文字
-
-【現在の記事ドラフト】
-\`\`\`markdown
-${currentText}
-\`\`\`
-
-【WriteOrder】
-${JSON.stringify(order, null, 2)}
-`;
-
-  try {
-    const model = genAI.getGenerativeModel({
-      model: modelName,
-      systemInstruction: SYSTEM_PROMPT,
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.8,
-        topK: 40,
-      }
-    });
-
-    await reserveGeminiRequest({
-      scope: 'article',
-      model: modelName,
-      purpose: 'writer-dynamic-expansion',
-      target: order.target_keyword,
-    });
-
-    const response = await model.generateContent(prompt);
-    logGeminiUsage(`[Writer-Expansion] ${modelName}`, response.response);
-    let addition = response.response.text() || '';
-    
-    // Markdownマーカーの除去
-    addition = addition.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
-    if (!addition) return null;
-
-    // 締めセクションの直前に挿入する
-    const headingIndex = findLastBuyingPointHeading(currentText);
-    if (headingIndex < 0) {
-      return `${currentText.trim()}\n\n${addition}`.trim();
-    }
-
-    const before = currentText.slice(0, headingIndex).trim();
-    const after = currentText.slice(headingIndex).trim();
-    return `${before}\n\n${addition}\n\n${after}`.trim();
-  } catch (err: any) {
-    console.error(`[Writer-Expansion Error] ${err.message}`);
-    throw err;
-  }
 }
 
 function cleanWriterPromptEchoesAndMeta(markdownText: string): string {
@@ -1109,47 +1021,7 @@ export async function generateDraft(order: WriteOrder): Promise<{
     text = normalizeDraftEntityMetadata(text, order);
     console.log(`[Writer] Draft length: ${text.replace(/\s/g, '').length} chars`);
 
-    // Gemmaによる動的拡張
-    // 記事タイプ別の目安は残しつつ、ARTICLE_MIN_BODY_CHARS を下回らないようにする。
-    const configuredMinChars = parsePositiveInt(process.env.ARTICLE_MIN_BODY_CHARS, 3000);
-    let minChars = configuredMinChars;
-    const themeCluster = order.theme_cluster || '';
-    const articleType = order.reference_data?.article_type || '';
-    
-    if (
-      themeCluster === 'waku_data' ||
-      themeCluster === 'jockey_data' ||
-      themeCluster === 'popularity_data' ||
-      themeCluster === 'running_style_data' ||
-      themeCluster === 'asset' ||
-      articleType === 'jockey_data' ||
-      articleType === 'popularity_data' ||
-      articleType === 'data'
-    ) {
-      minChars = Math.max(configuredMinChars, 1500); // データ・統計系
-    } else if (
-      themeCluster === 'grade_race_preview' ||
-      themeCluster === 'race_update' ||
-      articleType === 'grade_race_preview' ||
-      articleType === 'race_update'
-    ) {
-      minChars = Math.max(configuredMinChars, 2000); // 重賞・ニュース系
-    }
-
-    const plainLen = text.replace(/\s/g, '').length;
-
-    if (plainLen < minChars) {
-      console.log(`[Writer] Draft length (${plainLen} chars) is below target (${minChars} chars). Expanding dynamically with Gemma...`);
-      try {
-        const expandedText = await expandDraftWithGemma(writerOrder, text, minChars - plainLen, genAI);
-        if (expandedText) {
-          text = expandedText;
-          console.log(`[Writer] Expanded draft length: ${text.replace(/\s/g, '').length} chars`);
-        }
-      } catch (err: any) {
-        console.error(`[Writer Warning] Gemma expansion failed, proceeding with original draft: ${err.message}`);
-      }
-    }
+    // 本文量を理由にGemmaへ追加呼出ししない。内容の充足はEditorの構造化レビューで判定する。
 
     // 一時ディレクトリ (pending) に保存
     const now = new Date();

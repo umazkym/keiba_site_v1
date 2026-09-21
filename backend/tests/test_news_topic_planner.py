@@ -177,10 +177,10 @@ class NewsTopicPlannerTest(unittest.TestCase):
 
         self.assertEqual(planner.race_article_initial_lead_days(g1), 21)
         self.assertEqual(planner.race_article_initial_lead_days(g2), 14)
-        self.assertEqual(planner.race_article_initial_lead_days(g3), 10)
+        self.assertEqual(planner.race_article_initial_lead_days(g3), 14)
         self.assertIsNotNone(mercury)
-        self.assertEqual(planner.race_article_initial_lead_days(mercury), 9)
-        self.assertIsNone(planner.race_article_initial_lead_days(banei))
+        self.assertEqual(planner.race_article_initial_lead_days(mercury), 14)
+        self.assertEqual(planner.race_article_initial_lead_days(banei), 14)
 
     def test_replays_four_observed_search_demand_patterns(self) -> None:
         ibis = planner.find_race_demand("アイビスサマーダッシュ")
@@ -192,11 +192,161 @@ class NewsTopicPlannerTest(unittest.TestCase):
         self.assertIsNotNone(mercury)
         self.assertIsNotNone(opal)
         self.assertIsNotNone(north_queen)
-        self.assertEqual(planner.race_article_initial_lead_days(ibis), 10)
-        self.assertEqual(planner.race_article_initial_lead_days(mercury), 9)
-        self.assertEqual(planner.race_article_initial_lead_days(opal), 3)
-        self.assertEqual(planner.race_article_initial_lead_days(north_queen), 3)
+        self.assertEqual(planner.race_article_initial_lead_days(ibis), 14)
+        self.assertEqual(planner.race_article_initial_lead_days(mercury), 14)
+        self.assertEqual(planner.race_article_initial_lead_days(opal), 14)
+        self.assertEqual(planner.race_article_initial_lead_days(north_queen), 14)
         self.assertTrue(planner.is_race_article_eligible(north_queen))
+
+    def test_all_grade_races_keep_d21_d16_d14_publication_boundaries(self) -> None:
+        g1 = planner.RaceDemand(
+            "確認G1", ("確認G1",), 8, 22, "G1", 40, year=2026,
+            venue="東京", distance="芝2000m", conditions="3歳以上", source_kind="jra",
+        )
+        g3 = planner.RaceDemand(
+            "確認G3", ("確認G3",), 8, 15, "G3", 30, year=2026,
+            venue="東京", distance="芝1600m", conditions="3歳以上", source_kind="jra",
+        )
+        local = planner.RaceDemand(
+            "確認地方重賞", ("確認地方重賞",), 8, 15, "地方重賞", 20, year=2026,
+            venue="大井", distance="1800m", conditions="3歳以上", source_kind="nar",
+        )
+        now = datetime.fromisoformat("2026-08-01T08:00:00+09:00")
+        self.assertEqual(planner.race_article_initial_lead_days(g1), 21)
+        self.assertEqual(planner.race_article_initial_lead_days(g3), 14)
+        self.assertEqual(planner.race_article_initial_lead_days(local), 14)
+        self.assertEqual(planner.grade_race_publication_readiness(g1, 21, set(), now=now), "preparation_d21")
+        self.assertEqual(planner.grade_race_publication_readiness(g1, 16, set(), now=now), "warning_d16_unpublished")
+        self.assertEqual(planner.grade_race_publication_readiness(g3, 14, set(), now=now), "due_initial")
+
+    def test_official_fact_fallback_requires_complete_confirmed_schedule(self) -> None:
+        confirmed = planner.RaceDemand(
+            "確認重賞", ("確認重賞",), 8, 15, "G3", 30, year=2026,
+            venue="東京", distance="芝1600m", conditions="3歳以上", source_kind="jra",
+        )
+        incomplete = planner.RaceDemand(
+            "日程未確定重賞", ("日程未確定重賞",), 8, 15, "地方重賞", 20, year=2026,
+            venue="大井", distance="1800m", conditions="", source_kind="nar",
+        )
+        late = planner.RaceDemand(
+            "遅発表重賞", ("遅発表重賞",), 8, 15, "地方重賞", 20, year=2026,
+            venue="大井", distance="1800m", conditions="3歳以上", source_kind="web",
+        )
+        cached_jra = planner.RaceDemand(
+            "保存済みJRA日程", ("保存済みJRA日程",), 8, 15, "G3", 30, year=2026,
+            venue="東京", distance="芝1600m", conditions="3歳以上", source_kind="jra_local",
+            source_url="https://www.jra.go.jp/datafile/seiseki/replay/2026/jyusyo.html",
+        )
+        self.assertTrue(planner.has_confirmed_official_schedule_facts(confirmed))
+        self.assertFalse(planner.has_confirmed_official_schedule_facts(incomplete))
+        self.assertFalse(planner.has_confirmed_official_schedule_facts(late))
+        self.assertFalse(planner.has_confirmed_official_schedule_facts(cached_jra))
+        self.assertFalse(
+            planner.has_confirmed_official_schedule_facts(
+                planner.RaceDemand(
+                    "偽装JRA日程", ("偽装JRA日程",), 8, 15, "G3", 30, year=2026,
+                    venue="東京", distance="芝1600m", conditions="3歳以上", source_kind="jra",
+                    source_url="https://attacker@example.org@www.jra.go.jp/datafile/seiseki/replay/2026/jyusyo.html",
+                )
+            )
+        )
+
+    def test_nar_official_pdf_text_requires_complete_rows_and_keeps_source_evidence(self) -> None:
+        source_url = "https://www.keiba.go.jp/pdf/RaceScheduleList/heavyprize202608.pdf"
+        extracted_text = """2026年8月重賞日程
+競馬場 実施日 曜日 レース名 格 シリーズ 距離(m) 出走資格 交流区分
+盛岡 8/11 祝火 第31回クラスターカップ JpnⅢ 1200 サラ系3歳以上 指定交流
+園田 8/14 金 第58回摂津盃 重賞Ⅰ 1700 サラ系3歳以上
+大井 8/32 月 第1回不正日付賞 SⅢ 1200 サラ系3歳以上
+金沢 8/20 木 第1回条件欠落賞 SⅢ 1500
+"""
+        entries = planner.parse_nar_official_schedule_text(extracted_text, 2026, source_url)
+        self.assertEqual([entry.name for entry in entries], ["クラスターカップ", "摂津盃"])
+        cluster = entries[0]
+        self.assertEqual(cluster.grade, "JpnIII")
+        self.assertEqual(cluster.venue, "盛岡")
+        self.assertEqual(cluster.distance, "1200m")
+        self.assertEqual(cluster.conditions, "サラ系3歳以上")
+        self.assertEqual(cluster.source_kind, "nar_official_pdf")
+        self.assertEqual(cluster.source_url, source_url)
+        self.assertTrue(planner.has_confirmed_official_schedule_facts(cluster))
+        self.assertFalse(
+            planner.has_confirmed_official_schedule_facts(
+                planner.RaceDemand(
+                    **{**cluster.__dict__, "source_url": "https://www.keiba.go.jp/"},
+                )
+            )
+        )
+
+    def test_official_nar_pdf_fetch_is_month_bounded_and_never_uses_media_when_disabled(self) -> None:
+        calls = []
+
+        class FakeResponse:
+            headers = {"content-type": "application/pdf"}
+            content = b"not-a-pdf"
+            text = ""
+            status_code = 200
+            url = ""
+
+            def raise_for_status(self) -> None:
+                return None
+
+            def iter_content(self, chunk_size):
+                yield self.content
+
+            def close(self) -> None:
+                return None
+
+        def fake_get(url, **_kwargs):
+            calls.append((url, _kwargs))
+            response = FakeResponse()
+            response.url = url
+            return response
+
+        with (
+            patch.dict(os.environ, {
+                "KEIBA_NEWS_REMOTE_SCHEDULE_ENABLED": "true",
+                "KEIBA_NEWS_OFFICIAL_NAR_SCHEDULE_ENABLED": "true",
+                "KEIBA_NEWS_REMOTE_NAR_SCHEDULE_ENABLED": "false",
+            }, clear=False),
+            patch.object(planner, "schedule_months_in_window", return_value=[(2026, 8), (2026, 9), (2026, 10), (2026, 11)]),
+            patch.object(planner.requests, "get", side_effect=fake_get),
+        ):
+            planner.fetch_remote_race_schedule(datetime.fromisoformat("2026-08-01T08:00:00+09:00"))
+
+        official_pdf_calls = [(url, kwargs) for url, kwargs in calls if "heavyprize" in url]
+        self.assertEqual(len(official_pdf_calls), planner.NAR_OFFICIAL_PDF_MAX_MONTHS)
+        self.assertTrue(all(url.startswith("https://www.keiba.go.jp/pdf/RaceScheduleList/heavyprize2026") for url, _kwargs in official_pdf_calls))
+        self.assertTrue(all(kwargs["allow_redirects"] is False and kwargs["stream"] is True for _url, kwargs in official_pdf_calls))
+        self.assertFalse(any("netkeiba" in url for url, _kwargs in calls))
+
+    def test_due_official_schedule_order_marks_llm_free_fallback_eligibility(self) -> None:
+        now = datetime.fromisoformat("2026-08-01T08:00:00+09:00")
+        entry = planner.RaceDemand(
+            "確認重賞", ("確認重賞",), 8, 15, "G3", 30, year=2026,
+            venue="東京", distance="芝1600m", conditions="3歳以上", source_kind="jra",
+        )
+        candidate = planner.schedule_backfill_candidate(
+            entry,
+            14,
+            now=now,
+            search_intent_override="field_analysis",
+            update_stage="field_building",
+            deadline_status="due_initial",
+            schedule_milestone="initial",
+        )
+        state = planner.WorkflowState(run_id="official-fact-order", fetched_at=now.isoformat(), topic_candidates=[candidate])
+        with (
+            patch.object(planner, "find_race_demand", return_value=entry),
+            patch.object(planner, "build_internal_data_bundle", return_value={}),
+        ):
+            planner.build_write_orders_node(state)
+
+        self.assertEqual(len(state.write_orders), 1)
+        ref = state.write_orders[0]["reference_data"]
+        self.assertTrue(ref["official_schedule_confirmed"])
+        self.assertTrue(ref["official_fact_fallback_eligible"])
+        self.assertEqual(ref["schedule_source_url"], "https://www.jra.go.jp/datafile/seiseki/replay/2026/jyusyo.html")
 
     def test_schedule_milestone_history_prevents_duplicate_stage_generation(self) -> None:
         fields = {

@@ -42,6 +42,7 @@ Constraints for parameter acquisition:
 - You MUST reject articles containing external media names, column names, quote-like attribution, third-party recommendations/comments, production meta language, or off-topic analogies.
 - You MUST preserve freshness checks for date-specific news and race context.
 - You MUST NOT allow the LLM to invent missing prediction values, race results, odds, rankings, or threshold claims because this directly damages trust and search quality.
+- 公式資料への本文リンクを追加する場合は、本文の主張との対応を実際に確認し、`official_reference_reviewed_at` と完全一致する `verified_official_references` を保存する。一般媒体への依存禁止を解除する用途には使わない。監査は許可されたJRA/NARのHTTPS URLだけを例外扱いする。
 
 ### 3. Preserve tone and policy guardrails
 
@@ -71,6 +72,8 @@ Constraints for parameter acquisition:
 
 **Constraints:**
 
+- 2026-09-21のユーザー指示により、最低3,000字の生成・増補・承認条件は廃止する。検索意図への回答、確認可能な固有価値、適用条件、確認時点をEditorの構造化レビューで確認し、欠落・false・文字列のtrueを承認条件として扱わない。モデルの評価は事実の決定的な検証ではないため、既存Evidence Packの数値検証と禁止表現の検査を維持する。
+- 本文の空・破損検出の短文ガードと、内容の充足判定を分離する。表、FAQ、見出し数、説明の長さを全記事一律の品質指標にしない。確認済み公式事実だけの定型記事は専用の完全一致検証を通し、通常Editorを迂回する汎用経路へ拡張しない。
 - You MUST run Python syntax checks for changed backend article scripts.
 - You SHOULD run targeted backend unit tests such as `test_news_topic_planner.py` or `test_editorial_evergreen_planner.py` when planner behavior changes.
 - You SHOULD run `npm run article:validate-links` and `npm run article:audit-quality` from `frontend/` when article Markdown or article validation logic changes.

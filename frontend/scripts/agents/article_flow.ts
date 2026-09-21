@@ -423,7 +423,11 @@ function getHostname(urlValue: string): string {
 
 function classifySourceType(urlValue: string): ResearchSource['source_type'] {
   const host = getHostname(urlValue);
-  if (host === 'jra.jp' || host.endsWith('.jra.jp') || host === 'jra.go.jp' || host.endsWith('.jra.go.jp')) {
+  if (
+    host === 'jra.jp' || host.endsWith('.jra.jp')
+    || host === 'jra.go.jp' || host.endsWith('.jra.go.jp')
+    || host === 'keiba.go.jp' || host.endsWith('.keiba.go.jp')
+  ) {
     return 'official';
   }
   if (/keiba|netkeiba|sponichi|sanspo|nikkan|tospo|yahoo/.test(host)) {

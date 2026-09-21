@@ -8,6 +8,10 @@ import {
     parseRaceNumberParam,
 } from './lib/race-url';
 import { getRaceCachePolicy } from './lib/race-cache-policy';
+import {
+    hasNonAttributionQuery,
+    preserveAttributionQuery,
+} from './lib/redirect-attribution';
 
 
 // 検索エンジンのクローラー。コスト保護中でも503を返してはいけない。
@@ -67,7 +71,7 @@ export function middleware(request: NextRequest) {
     if (pathname === '/races' || pathname === '/races/') {
         const newUrl = new URL(request.url);
         newUrl.pathname = `/races/${getJstTodayString()}`;
-        newUrl.search = '';
+        preserveAttributionQuery(searchParams, newUrl);
 
         return NextResponse.redirect(newUrl, {
             status: 307,
@@ -80,7 +84,7 @@ export function middleware(request: NextRequest) {
         if (pathname === '/races/today') {
             const newUrl = new URL(request.url);
             newUrl.pathname = `/races/${getJstTodayString()}`;
-            newUrl.search = '';
+            preserveAttributionQuery(searchParams, newUrl);
             const redirectResponse = NextResponse.redirect(newUrl, {
                 status: 307,
             });
@@ -114,7 +118,7 @@ export function middleware(request: NextRequest) {
             const [, date] = venueOnlyMatch;
             const newUrl = new URL(request.url);
             newUrl.pathname = isValidRaceDate(date) ? `/races/${date}` : todayPath;
-            newUrl.search = '';
+            preserveAttributionQuery(searchParams, newUrl);
 
             return NextResponse.redirect(newUrl, {
                 status: 301,
@@ -128,7 +132,7 @@ export function middleware(request: NextRequest) {
             if (!isValidRaceDate(date) || !raceNumber) {
                 const newUrl = new URL(request.url);
                 newUrl.pathname = isValidRaceDate(date) ? `/races/${date}` : todayPath;
-                newUrl.search = '';
+                preserveAttributionQuery(searchParams, newUrl);
 
                 return NextResponse.redirect(newUrl, {
                     status: 301,
@@ -136,10 +140,10 @@ export function middleware(request: NextRequest) {
             }
 
             const expectedPath = `/races/${date}/${venueSlug.toLowerCase()}/${raceNumber}`;
-            if (pathname !== expectedPath || searchParams.size > 0) {
+            if (pathname !== expectedPath || hasNonAttributionQuery(searchParams)) {
                 const newUrl = new URL(request.url);
                 newUrl.pathname = expectedPath;
-                newUrl.search = '';
+                preserveAttributionQuery(searchParams, newUrl);
 
                 return NextResponse.redirect(newUrl, {
                     status: 301,
@@ -150,7 +154,7 @@ export function middleware(request: NextRequest) {
         if (dateOnlyMatch && !isValidRaceDate(dateOnlyMatch[1]) && dateOnlyMatch[1] !== 'today') {
             const newUrl = new URL(request.url);
             newUrl.pathname = todayPath;
-            newUrl.search = '';
+            preserveAttributionQuery(searchParams, newUrl);
 
             return NextResponse.redirect(newUrl, {
                 status: 301,
@@ -160,7 +164,7 @@ export function middleware(request: NextRequest) {
         const venue = searchParams.get('venue');
         const race = searchParams.get('race');
 
-        if (dateOnlyMatch && dateOnlyMatch[1] !== 'today' && searchParams.size > 0) {
+        if (dateOnlyMatch && dateOnlyMatch[1] !== 'today' && hasNonAttributionQuery(searchParams)) {
             const date = dateOnlyMatch[1];
             const raceNumber = parseRaceNumberParam(race);
             const newUrl = new URL(request.url);
@@ -170,7 +174,7 @@ export function middleware(request: NextRequest) {
             } else {
                 newUrl.pathname = `/races/${date}`;
             }
-            newUrl.search = '';
+            preserveAttributionQuery(searchParams, newUrl);
 
             return NextResponse.redirect(newUrl, {
                 status: 301,
@@ -231,7 +235,7 @@ export function middleware(request: NextRequest) {
             const tag = searchParams.get('tag');
             const page = searchParams.get('page');
             newUrl.pathname = `/articles/category/${encodeURIComponent(normalizedCategory)}`;
-            newUrl.search = '';
+            preserveAttributionQuery(searchParams, newUrl);
             if (tag) {
                 newUrl.searchParams.set('tag', tag);
             }
@@ -283,7 +287,7 @@ export function middleware(request: NextRequest) {
     if (legacyPathRedirects[pathname]) {
         const newUrl = new URL(request.url);
         newUrl.pathname = legacyPathRedirects[pathname];
-        newUrl.search = '';
+        preserveAttributionQuery(searchParams, newUrl);
 
         return NextResponse.redirect(newUrl, {
             status: 301,
@@ -297,7 +301,7 @@ export function middleware(request: NextRequest) {
         if (q && (q.includes('{') || q.includes('}'))) {
             const newUrl = new URL(request.url);
             newUrl.pathname = '/';
-            newUrl.search = '';
+            preserveAttributionQuery(searchParams, newUrl);
 
             return NextResponse.redirect(newUrl, {
                 status: 301,
@@ -338,7 +342,7 @@ export function middleware(request: NextRequest) {
             // マッピングにないガイドは記事一覧にリダイレクト
             newUrl.pathname = '/articles';
         }
-        newUrl.search = '';
+        preserveAttributionQuery(searchParams, newUrl);
 
         return NextResponse.redirect(newUrl, {
             status: 301,

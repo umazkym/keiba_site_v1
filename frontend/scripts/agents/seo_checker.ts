@@ -48,13 +48,7 @@ export const SEO_RULES = {
   title_max_chars: 42,
   description_min_chars: 120,
   description_max_chars: 160,
-  min_word_count: parsePositiveIntEnv('ARTICLE_MIN_BODY_CHARS', 3000),
-  require_today_race_cta: true,
-  require_buying_point_heading: true,
-  require_data_table_or_list: true,
-  require_number_in_all_h2: false,
-  require_number_in_some_h2: true,
-  require_number_in_first_100_chars: true,
+  min_meaningful_body_chars: parsePositiveIntEnv('ARTICLE_MIN_MEANINGFUL_BODY_CHARS', 80),
   hard_banned_strings: [
     "いかがでしたか",
     "ぜひ参考にしてください",
@@ -161,19 +155,6 @@ export const SEO_RULES = {
     "期待できる",
   ],
 };
-
-const REQUIRED_POINT_HEADINGS = [
-  'このコースで確認したい判断材料',
-  'このレースで確認したい判断材料',
-  'この競馬場で確認したい判断材料',
-  'この騎手を確認するポイント',
-  'このテーマで確認したい判断材料',
-];
-
-const REQUIRED_POINT_HEADING_PATTERN = new RegExp(
-  `^##\\s+(${REQUIRED_POINT_HEADINGS.join('|')})\\s*$`,
-  'm'
-);
 
 export interface SEOCheckResult {
   passed: boolean;
@@ -391,35 +372,10 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     errors.push(`descriptionが途中で切れている可能性があります。title/descriptionは検索結果で自然に読める文にしてください。`);
   }
 
-  // 3. 文字数（スペース改行を除くおおまかな文字数。記事タイプに応じて動的判定）
-  const themeCluster = (data.theme_cluster || '').toString();
-  const articleType = (data.article_type || '').toString();
-  
-  const configuredMinChars = SEO_RULES.min_word_count;
-  let minChars = configuredMinChars; // ARTICLE_MIN_BODY_CHARS を全タイプの下限として扱う
-  if (
-    themeCluster === 'waku_data' ||
-    themeCluster === 'jockey_data' ||
-    themeCluster === 'popularity_data' ||
-    themeCluster === 'running_style_data' ||
-    themeCluster === 'asset' ||
-    articleType === 'jockey_data' ||
-    articleType === 'popularity_data' ||
-    articleType === 'data'
-  ) {
-    minChars = Math.max(configuredMinChars, 1500); // データ・統計系
-  } else if (
-    themeCluster === 'grade_race_preview' ||
-    themeCluster === 'race_update' ||
-    articleType === 'grade_race_preview' ||
-    articleType === 'race_update'
-  ) {
-    minChars = Math.max(configuredMinChars, 2000); // 重賞・ニュース系
-  }
-
+  // 3. 空本文・破損した極短本文だけを機械的に止める。内容の充足はEditorの構造化レビューで判定する。
   const plainText = content.replace(/\s/g, '');
-  if (plainText.length < minChars) {
-    errors.push(`本文の文字数が不足: 現在${plainText.length}文字 (最小: ${minChars}文字, タイプ: ${themeCluster || articleType || 'default'})`);
+  if (plainText.length < SEO_RULES.min_meaningful_body_chars) {
+    errors.push(`本文が極端に短く、検索意図への回答を確認できません: 現在${plainText.length}文字 (最小: ${SEO_RULES.min_meaningful_body_chars}文字)`);
   }
 
   // 重複文検知（30文字以上の同一文の出現）
@@ -455,48 +411,16 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     }
   }
 
-  // 4. レースページへの自然な内部導線
-  // 関連記事はフロント側で自動表示するため、本文内の[関連記事：...]プレースホルダーは要求しない。
-  // 海外競馬（is_overseas: true または overseas: true または category: '海外競馬'）の場合は /races/today へのリンクは必須としない。
-  const isOverseas = data.is_overseas === true || data.overseas === true || data.category === '海外競馬';
+  // 4. 重賞記事へ不適切な当日レース導線が混入していないかを確認する。
   const isGradeRace = String(data.entity_type || '') === 'grade_race';
   if (isGradeRace && content.includes('/races/today')) {
     errors.push('重賞記事の本文に /races/today を含めないでください。検証済みレース導線はページ側で表示します。');
   }
-  if (SEO_RULES.require_today_race_cta && !isOverseas && !isGradeRace && !content.includes('/races/today')) {
-    errors.push(`今日のAI予想・出馬表への内部リンクがありません。記事末尾に /races/today への自然な導線を含めてください。`);
-  }
-
-  if (SEO_RULES.require_buying_point_heading && !REQUIRED_POINT_HEADING_PATTERN.test(content)) {
-    errors.push(`記事末尾にテーマに応じた確認ポイントH2がありません。まとめ見出しではなく、判断の箇条書きで締めてください。`);
-  }
-
-  // 5. データテーブルまたはリストの存在
-  const hasTable = content.includes('|---|') || content.includes('| --- |') || content.includes('|-');
-  const hasList = /^[-*・]/m.test(content.replace(/^[ \t]+/gm, '')) || /^\d+\./m.test(content.replace(/^[ \t]+/gm, ''));
-  if (SEO_RULES.require_data_table_or_list && !hasTable && !hasList) {
-    errors.push(`データテーブルまたはリストが含まれていません。`);
-  }
-
-  // 6. 見出し(H2)チェック
+  // 5. 見出しがある場合だけ、読みにくい定型見出しを検査する。
   const h2Regex = /^##\s+(.*)$/gm;
   let match;
-  let foundH2 = false;
-  let nonBuyingH2Count = 0;
-  let numberedNonBuyingH2Count = 0;
   while ((match = h2Regex.exec(content)) !== null) {
-    foundH2 = true;
     const h2Text = match[1].trim();
-    const isRequiredBuyingPointHeading = REQUIRED_POINT_HEADINGS.includes(h2Text);
-
-    if (!isRequiredBuyingPointHeading) {
-      nonBuyingH2Count++;
-      if (/\d/.test(h2Text)) {
-        numberedNonBuyingH2Count++;
-      } else if (SEO_RULES.require_number_in_all_h2) {
-        errors.push(`H2見出しに数字が含まれていません: 「${h2Text}」`);
-      }
-    }
 
     if (h2Text === 'まとめ') {
       errors.push(`「まとめ」というH2見出しが存在します。(作成禁止)`);
@@ -506,27 +430,7 @@ export function checkSEO(markdownText: string): SEOCheckResult {
     }
   }
 
-  if (!foundH2) {
-    errors.push(`H2見出しが存在しません。見出しに数字または具体的な条件を含めてください。`);
-  }
-
-  if (SEO_RULES.require_number_in_some_h2 && nonBuyingH2Count > 0 && numberedNonBuyingH2Count === 0) {
-    errors.push(`主要H2のうち少なくとも1つには、勝率・距離・枠番などの具体的な数字を含めてください。`);
-  }
-
-  // 7. 冒頭100文字以内の数字チェック
-  if (SEO_RULES.require_number_in_first_100_chars) {
-    const first100 = plainText.substring(0, 100);
-    if (!/\d/.test(first100)) {
-      errors.push(`本文の冒頭100文字以内に数字が含まれていません。(1文目で核心データを提示してください)`);
-    }
-    const pastYearLatestPattern = /(?:19\d{2}|20[0-2][0-5])\s*年?\s*(?:度|の)?\s*(?:情報|データ|版)?\s*最新|最新\s*(?:情報|データ|版)?\s*(?:19\d{2}|20[0-2][0-5])\s*年?/i;
-    if (pastYearLatestPattern.test(first100)) {
-      errors.push(`本文の冒頭100文字以内に過去の集計年と「最新」が混同した不整合表現が含まれています。`);
-    }
-  }
-
-  // 8. 記事の末尾チェック（まとめ・総論・戦略の復唱禁止）
+  // 6. 記事の末尾チェック（まとめ・総論・戦略の復唱禁止）
   const endingForbiddenPatterns = [
     /鍵となる。?$/,
     /実現する。?$/,

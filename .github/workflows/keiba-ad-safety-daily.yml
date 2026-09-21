@@ -1,0 +1,122 @@
+name: UMA-FREE Ad Safety Daily Evidence
+
+on:
+  schedule:
+    - cron: '0 1 * * *' # 毎日10:00 JST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: uma-ad-safety-daily
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      UMA_ADS_RESUMED_ON: ${{ vars.UMA_ADS_RESUMED_ON }}
+      GA4_PROPERTY_ID: ${{ vars.GA4_PROPERTY_ID }}
+      ADSENSE_ACCOUNT: accounts/pub-4411270831448240
+      ADSENSE_OAUTH_CLIENT_ID: ${{ secrets.ADSENSE_OAUTH_CLIENT_ID }}
+      ADSENSE_OAUTH_CLIENT_SECRET: ${{ secrets.ADSENSE_OAUTH_CLIENT_SECRET }}
+      ADSENSE_OAUTH_REFRESH_TOKEN: ${{ secrets.ADSENSE_OAUTH_REFRESH_TOKEN }}
+    steps:
+      - name: 集計の非公開保存先を確認
+        env:
+          PRIVATE_REPOSITORY: ${{ github.event.repository.private }}
+        run: |
+          if [ "$PRIVATE_REPOSITORY" != "true" ]; then
+            echo "公開リポジトリには収益・アクセス集計を保存しません。非公開の実行・保存先が未設定です。"
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: 取得用の依存関係
+        run: python -m pip install 'google-api-python-client>=2,<3' 'google-auth>=2,<3' 'google-auth-httplib2>=0.2,<1'
+      - name: 前回成果物を探す
+        id: previous
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runs = await github.rest.actions.listWorkflowRuns({
+              ...context.repo, workflow_id: 'keiba-ad-safety-daily.yml', status: 'completed', per_page: 20
+            });
+            for (const run of runs.data.workflow_runs) {
+              if (run.id === context.runId) continue;
+              const artifacts = await github.rest.actions.listWorkflowRunArtifacts({ ...context.repo, run_id: run.id });
+              if (artifacts.data.artifacts.some(a => a.name === 'uma-ad-safety-daily' && !a.expired)) {
+                core.setOutput('run_id', run.id); return;
+              }
+            }
+      - name: 前回成果物を復元
+        if: steps.previous.outputs.run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: uma-ad-safety-daily
+          path: ${{ runner.temp }}/ad-safety-previous
+          run-id: ${{ steps.previous.outputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: 読み取り用のGoogle認証
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: keiba-api-project
+          workload_identity_provider: projects/761440273070/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+          service_account: github-actions-iap-db@keiba-api-project.iam.gserviceaccount.com
+          create_credentials_file: true
+      - name: 広告設定を変更せず日次保存
+        id: collect
+        continue-on-error: true
+        run: >-
+          python backend/scripts/agents/ad_safety_daily.py
+          --output-dir "$RUNNER_TEMP/ad-safety-current"
+          --previous "$RUNNER_TEMP/ad-safety-previous/snapshot.json"
+      - name: 成果物に秘密情報を含めない
+        id: secrets
+        if: always()
+        env:
+          OUTPUT_DIR: ${{ runner.temp }}/ad-safety-current
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          root = Path(os.environ['OUTPUT_DIR'])
+          if not (root / 'snapshot.json').is_file():
+              raise SystemExit('スナップショット未作成のため成果物を更新しません。')
+          secrets = [os.environ.get(name, '') for name in ('ADSENSE_OAUTH_CLIENT_SECRET', 'ADSENSE_OAUTH_REFRESH_TOKEN')]
+          for path in root.rglob('*'):
+              if path.is_file():
+                  data = path.read_bytes()
+                  if any(secret and secret.encode() in data for secret in secrets):
+                      raise SystemExit('秘密情報の混入を検出したためアップロードを停止しました。')
+          PY
+      - name: 設定の保全記録を添付
+        if: always() && steps.secrets.outcome == 'success'
+        run: |
+          mkdir -p "$RUNNER_TEMP/ad-safety-current"
+          cp docs/operations/ad-safety-baseline-20260915.json "$RUNNER_TEMP/ad-safety-current/"
+          if [ -f "$RUNNER_TEMP/ad-safety-current/summary.md" ]; then
+            cat "$RUNNER_TEMP/ad-safety-current/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: 取得済み成果物を90日保存
+        if: always() && steps.secrets.outcome == 'success'
+        uses: actions/upload-artifact@v6
+        with:
+          name: uma-ad-safety-daily
+          path: ${{ runner.temp }}/ad-safety-current
+          retention-days: 90
+          if-no-files-found: error
+      - name: 取得失敗を成功として扱わない
+        if: always()
+        env:
+          COLLECT_OUTCOME: ${{ steps.collect.outcome }}
+          SECRET_OUTCOME: ${{ steps.secrets.outcome }}
+        run: |
+          test "$COLLECT_OUTCOME" = success
+          test "$SECRET_OUTCOME" = success

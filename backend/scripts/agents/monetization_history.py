@@ -22,6 +22,11 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
+try:
+    from .grade_race_publication_policy import grade_race_publish_lead_days
+except ImportError:  # 直接実行時も共有ポリシーを同じく参照する。
+    from grade_race_publication_policy import grade_race_publish_lead_days
+
 
 SCHEMA_VERSION = "monetization-history.v2"
 SOURCE_STATUS_VERSION = "source-status.v2"
@@ -263,7 +268,9 @@ def parse_adsense_report(dataset: str, payload: Mapping[str, Any]) -> list[dict[
     return rows
 
 
-def collect_adsense(period: Period, raw_dir: Path, service: Any | None = None) -> dict[str, Any]:
+def collect_adsense(period: Period, raw_dir: Path, service: Any | None = None, *,
+                    report_definitions: Sequence[tuple[str, tuple[str, ...]]] | None = None,
+                    include_payments: bool = True) -> dict[str, Any]:
     credentials = oauth_credentials("ADSENSE", ["https://www.googleapis.com/auth/adsense.readonly"])
     service = service or build_google_service("adsense", "v2", credentials)
     account = os.getenv("ADSENSE_ACCOUNT", "").strip()
@@ -277,7 +284,7 @@ def collect_adsense(period: Period, raw_dir: Path, service: Any | None = None) -
 
     all_rows: list[dict[str, Any]] = []
     report_status: dict[str, Any] = {}
-    for dataset, dimensions in ADSENSE_REPORTS:
+    for dataset, dimensions in (ADSENSE_REPORTS if report_definitions is None else report_definitions):
         dataset_rows: list[dict[str, Any]] = []
         errors: list[str] = []
         for chunk in month_chunks(period):
@@ -311,6 +318,9 @@ def collect_adsense(period: Period, raw_dir: Path, service: Any | None = None) -
             "errors": errors,
         }
 
+    if not include_payments:
+        return {"rows": all_rows, "reports": report_status}
+
     payments_payload: Mapping[str, Any] = {}
     try:
         payments_payload = service.accounts().payments().list(parent=account).execute(num_retries=3)
@@ -334,7 +344,15 @@ def collect_adsense(period: Period, raw_dir: Path, service: Any | None = None) -
         all_rows.extend(payment_rows)
         report_status["payments"] = {"status": "complete", "row_count": len(payment_rows)}
     except Exception as exc:
-        report_status["payments"] = {"status": "failed", "errors": [safe_error(exc)]}
+        # 支払履歴は週次の広告実績（日別reports）の補助情報であり、アカウント状態に
+        # よって取得を拒否され得る。実績取得の成否は塗り替えず、警告はreport単位で残す。
+        report_status["payments"] = {
+            "status": "failed",
+            "errors": [safe_error(exc)],
+            "required": False,
+            "warning_level": "account",
+            "impact": "支払履歴は未取得だが、日別広告実績の取得状態とは別に扱う",
+        }
     return {"rows": all_rows, "reports": report_status, "payments": payments_payload}
 
 
@@ -465,7 +483,8 @@ def parse_ga4_report(dataset: str, payload: Mapping[str, Any]) -> list[dict[str,
     return rows
 
 
-def collect_ga4(period: Period, raw_dir: Path, service: Any | None = None) -> dict[str, Any]:
+def collect_ga4(period: Period, raw_dir: Path, service: Any | None = None, *,
+                report_definitions: Sequence[dict[str, Any]] | None = None) -> dict[str, Any]:
     property_id = os.getenv("GA4_PROPERTY_ID", "").removeprefix("properties/").strip()
     if not property_id:
         raise RuntimeError("GA4_PROPERTY_IDが未設定です。")
@@ -477,9 +496,11 @@ def collect_ga4(period: Period, raw_dir: Path, service: Any | None = None) -> di
     all_rows: list[dict[str, Any]] = []
     report_status: dict[str, Any] = {}
     currency_codes: set[str] = set()
-    reports = list(GA4_REPORTS)
+    reports = list(GA4_REPORTS if report_definitions is None else report_definitions)
     custom_start = max(period.start, date(2026, 8, 3))
-    if custom_start <= period.end:
+    if report_definitions is not None:
+        pass
+    elif custom_start <= period.end:
         reports.extend({**report, "period": Period(custom_start, period.end)} for report in GA4_CUSTOM_REPORTS)
     else:
         for report in GA4_CUSTOM_REPORTS:
@@ -1059,6 +1080,405 @@ def period_metrics(history: Mapping[str, Any], period: Period) -> dict[str, Any]
     }
 
 
+EXPLICIT_NOT_SET_VALUES = {"(not set)", "not set", "(not provided)"}
+
+
+def report_measurement_status(report_status: Mapping[str, Any] | None) -> str:
+    """取得レポートの状態を計測品質の3状態へ正規化する。"""
+
+    if report_status is None:
+        return "complete"
+    status = str(report_status.get("status") or "unavailable").lower()
+    if status == "complete":
+        return "complete"
+    if status == "partial":
+        return "partial"
+    return "unavailable"
+
+
+def combine_measurement_status(*statuses: str) -> str:
+    """必須構成要素の品質を、欠損を隠さない優先順位で統合する。"""
+
+    if any(status == "unavailable" for status in statuses):
+        return "unavailable"
+    if any(status == "partial" for status in statuses):
+        return "partial"
+    return "complete"
+
+
+def measurement_quality_status(
+    expected_dates: set[str],
+    observed_dates: set[str],
+    missing_metric_dates: set[str],
+    partial_row_dates: set[str],
+    report_status: Mapping[str, Any] | None = None,
+) -> str:
+    """期間内の行・必須指標がそろうかを、数値の大小と切り離して返す。"""
+
+    if not observed_dates:
+        data_status = "unavailable"
+    elif expected_dates - observed_dates or missing_metric_dates or partial_row_dates:
+        data_status = "partial"
+    else:
+        data_status = "complete"
+    return combine_measurement_status(data_status, report_measurement_status(report_status))
+
+
+def measurement_rows_by_date(
+    rows: Sequence[Mapping[str, Any]],
+    metric: str,
+    expected_dates: set[str],
+    *,
+    report_status: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """日別値を作る。明示された0と未取得(None)を混同しない。"""
+
+    values: dict[str, float] = defaultdict(float)
+    observed_dates: set[str] = set()
+    missing_metric_dates: set[str] = set()
+    partial_row_dates: set[str] = set()
+    for row in rows:
+        row_date = str(row.get("date") or "")[:10]
+        if row_date not in expected_dates:
+            continue
+        observed_dates.add(row_date)
+        if str(row.get("status") or "complete").lower() != "complete":
+            partial_row_dates.add(row_date)
+        value = numeric((row.get("metrics") or {}).get(metric))
+        if value is None:
+            missing_metric_dates.add(row_date)
+            continue
+        values[row_date] += value
+    report_complete = report_measurement_status(report_status) == "complete"
+    complete_values = (
+        not missing_metric_dates
+        and not partial_row_dates
+        and observed_dates == expected_dates
+        and report_complete
+    )
+    return {
+        "expected_dates": sorted(expected_dates),
+        "observed_dates": sorted(observed_dates),
+        "missing_dates": sorted(expected_dates - observed_dates),
+        "missing_metric_dates": sorted(missing_metric_dates),
+        "partial_row_dates": sorted(partial_row_dates),
+        "status": measurement_quality_status(
+            expected_dates, observed_dates, missing_metric_dates, partial_row_dates, report_status
+        ),
+        "values_by_date": {
+            day: values.get(day)
+            if report_complete
+            and day in observed_dates
+            and day not in missing_metric_dates
+            and day not in partial_row_dates
+            else None
+            for day in sorted(expected_dates)
+        },
+        "observed_values_by_date": {day: values.get(day) for day in sorted(expected_dates)},
+        "total": sum(values.values()) if complete_values else None,
+        "observed_total": sum(values.values()) if values else None,
+        "complete_values": complete_values,
+    }
+
+
+def measurement_dimension_quality(
+    rows: Sequence[Mapping[str, Any]],
+    dimension: str,
+    expected_dates: set[str],
+    *,
+    unassigned: bool = False,
+    report_status: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """既存のGA4内訳原本から、(not set)等の比率だけを集計する。"""
+
+    denominator = measurement_rows_by_date(
+        rows, "sessions", expected_dates, report_status=report_status
+    )
+    affected_by_date: dict[str, float] = defaultdict(float)
+    missing_dimension_dates: set[str] = set()
+    for row in rows:
+        row_date = str(row.get("date") or "")[:10]
+        if row_date not in expected_dates:
+            continue
+        dimensions = row.get("dimensions") or {}
+        raw_value = dimensions.get(dimension) if isinstance(dimensions, Mapping) else None
+        if raw_value is None or not str(raw_value).strip():
+            missing_dimension_dates.add(row_date)
+            continue
+        value = str(raw_value).strip().lower()
+        matches = value == "unassigned" if unassigned else value in EXPLICIT_NOT_SET_VALUES
+        sessions = numeric((row.get("metrics") or {}).get("sessions"))
+        if matches and sessions is not None:
+            affected_by_date[row_date] += sessions
+    denominator_total = denominator["total"]
+    dimension_status = combine_measurement_status(
+        denominator["status"], "partial" if missing_dimension_dates else "complete"
+    )
+    dimension_complete = denominator["complete_values"] and not missing_dimension_dates
+    affected_total = sum(affected_by_date.values()) if dimension_complete else None
+    return {
+        "dimension": dimension,
+        "status": dimension_status,
+        "denominator_sessions": denominator_total,
+        "observed_denominator_sessions": denominator["observed_total"],
+        "denominator_complete": dimension_complete,
+        "affected_sessions": affected_total,
+        "rate": (
+            affected_total / denominator_total
+            if affected_total is not None and denominator_total not in {None, 0}
+            else None
+        ),
+        "expected_dates": denominator["expected_dates"],
+        "observed_dates": denominator["observed_dates"],
+        "missing_dates": denominator["missing_dates"],
+        "missing_metric_dates": denominator["missing_metric_dates"],
+        "partial_row_dates": denominator["partial_row_dates"],
+        "missing_dimension_dates": sorted(missing_dimension_dates),
+        "daily": [
+            {
+                "date": day,
+                "denominator_sessions": (
+                    denominator["values_by_date"].get(day)
+                    if day not in missing_dimension_dates else None
+                ),
+                "observed_denominator_sessions": denominator["observed_values_by_date"].get(day),
+                "affected_sessions": affected_by_date.get(day) if day not in missing_dimension_dates else None,
+                "observed_affected_sessions": affected_by_date.get(day),
+                "rate": (
+                    affected_by_date.get(day, 0) / denominator["values_by_date"][day]
+                    if day not in missing_dimension_dates
+                    and denominator["values_by_date"].get(day) not in {None, 0}
+                    else None
+                ),
+            }
+            for day in denominator["expected_dates"]
+        ],
+    }
+
+
+def measurement_breakdown_reconciliation(
+    daily_rows: Sequence[Mapping[str, Any]],
+    breakdown_rows: Sequence[Mapping[str, Any]],
+    expected_dates: set[str],
+    label: str,
+    *,
+    daily_report_status: Mapping[str, Any] | None = None,
+    breakdown_report_status: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """日別合計と内訳合計の差を、そのまま可視化する（差を0補完しない）。"""
+
+    daily = measurement_rows_by_date(
+        daily_rows, "sessions", expected_dates, report_status=daily_report_status
+    )
+    breakdown = measurement_rows_by_date(
+        breakdown_rows, "sessions", expected_dates, report_status=breakdown_report_status
+    )
+    rows: list[dict[str, Any]] = []
+    comparable = True
+    for day in sorted(expected_dates):
+        total = daily["values_by_date"].get(day)
+        detail = breakdown["values_by_date"].get(day)
+        if total is None or detail is None:
+            comparable = False
+        rows.append({
+            "date": day,
+            "daily_sessions": total,
+            "breakdown_sessions": detail,
+            "difference_sessions": total - detail if total is not None and detail is not None else None,
+        })
+    return {
+        "label": label,
+        "status": combine_measurement_status(daily["status"], breakdown["status"]),
+        "daily_total_sessions": daily["total"],
+        "breakdown_total_sessions": breakdown["total"],
+        "difference_sessions": (
+            daily["total"] - breakdown["total"]
+            if daily["total"] is not None and breakdown["total"] is not None else None
+        ),
+        "comparable": comparable,
+        "daily": rows,
+    }
+
+
+def measurement_ad_metric(
+    rows: Sequence[Mapping[str, Any]],
+    metric: str,
+    expected_dates: set[str],
+    *,
+    weight_metric: str | None = None,
+    report_status: Mapping[str, Any] | None = None,
+    aggregation: str = "sum",
+) -> dict[str, Any]:
+    """広告requests・coverage・viewabilityを原本日次から再現可能にする。"""
+
+    values = measurement_rows_by_date(rows, metric, expected_dates, report_status=report_status)
+    weights = measurement_rows_by_date(
+        rows, weight_metric, expected_dates, report_status=report_status
+    ) if weight_metric else None
+    weighted_value: float | None = None
+    if weight_metric and values["complete_values"] and weights and weights["complete_values"]:
+        numerator = sum(
+            (values["values_by_date"][day] or 0) * (weights["values_by_date"][day] or 0)
+            for day in sorted(expected_dates)
+        )
+        weight_total = weights["total"]
+        weighted_value = numerator / weight_total if weight_total not in {None, 0} else None
+    status = combine_measurement_status(
+        values["status"], weights["status"] if weights else "complete"
+    )
+    aggregation_reason: str | None = None
+    if aggregation == "daily_only":
+        aggregation_status = "unavailable"
+        aggregation_reason = "Active View measurable impressionsが原本にないため、期間平均を正しく加重集計できない"
+    elif weight_metric and (weights is None or not weights["complete_values"]):
+        aggregation_status = "unavailable"
+        aggregation_reason = f"{weight_metric}の日別分母が欠損または不完全"
+    elif weight_metric and weights["total"] == 0:
+        aggregation_status = "unavailable"
+        aggregation_reason = f"{weight_metric}の期間分母が0"
+    else:
+        aggregation_status = "complete"
+    return {
+        "metric": metric,
+        "status": status,
+        "value": (
+            values["total"] if aggregation == "sum"
+            else weighted_value if aggregation == "weighted_average"
+            else None
+        ),
+        "observed_value": values["observed_total"] if weight_metric is None else None,
+        "weight_metric": weight_metric,
+        "aggregation": aggregation,
+        "aggregation_status": aggregation_status,
+        "aggregation_reason": aggregation_reason,
+        "expected_dates": values["expected_dates"],
+        "observed_dates": values["observed_dates"],
+        "missing_dates": values["missing_dates"],
+        "missing_metric_dates": values["missing_metric_dates"],
+        "daily": [
+            {"date": day, "value": values["values_by_date"].get(day)}
+            for day in values["expected_dates"]
+        ],
+    }
+
+
+def build_measurement_quality(
+    history: Mapping[str, Any], period: Period
+) -> dict[str, Any]:
+    """新規収集をせず、monetization-history.v2の正規化rawから品質を再分析する。"""
+
+    expected_dates = {
+        (period.start + timedelta(days=index)).isoformat()
+        for index in range(period.days)
+    }
+    ga4_daily = rows_for(history, "ga4", "daily", period)
+    acquisition = rows_for(history, "ga4", "acquisition", period)
+    landing = rows_for(history, "ga4", "landing_device", period)
+    adsense_daily = rows_for(history, "adsense", "daily", period)
+    source_status = history.get("source_status") or {}
+    report_status = (source_status.get("ga4") or {}).get("reports") or {}
+    adsense_reports = (source_status.get("adsense") or {}).get("reports") or {}
+    acquisition_quality = {
+        "session_default_channel_group_not_set": measurement_dimension_quality(
+            acquisition, "sessionDefaultChannelGroup", expected_dates,
+            report_status=report_status.get("acquisition"),
+        ),
+        "session_source_medium_not_set": measurement_dimension_quality(
+            acquisition, "sessionSourceMedium", expected_dates,
+            report_status=report_status.get("acquisition"),
+        ),
+        "session_campaign_name_not_set": measurement_dimension_quality(
+            acquisition, "sessionCampaignName", expected_dates,
+            report_status=report_status.get("acquisition"),
+        ),
+        "unassigned": measurement_dimension_quality(
+            acquisition, "sessionDefaultChannelGroup", expected_dates, unassigned=True,
+            report_status=report_status.get("acquisition"),
+        ),
+    }
+    landing_quality = measurement_dimension_quality(
+        landing, "landingPagePlusQueryString", expected_dates,
+        report_status=report_status.get("landing_device"),
+    )
+    ga4_daily_quality = measurement_rows_by_date(
+        ga4_daily, "sessions", expected_dates, report_status=report_status.get("daily")
+    )
+    acquisition_reconciliation = measurement_breakdown_reconciliation(
+        ga4_daily, acquisition, expected_dates, "GA4日次とacquisition内訳",
+        daily_report_status=report_status.get("daily"),
+        breakdown_report_status=report_status.get("acquisition"),
+    )
+    landing_reconciliation = measurement_breakdown_reconciliation(
+        ga4_daily, landing, expected_dates, "GA4日次とlanding内訳",
+        daily_report_status=report_status.get("daily"),
+        breakdown_report_status=report_status.get("landing_device"),
+    )
+    ad_requests = measurement_ad_metric(
+        adsense_daily, "ad_requests", expected_dates,
+        report_status=adsense_reports.get("daily"),
+    )
+    ad_requests_coverage = measurement_ad_metric(
+        adsense_daily, "ad_requests_coverage", expected_dates,
+        weight_metric="ad_requests", report_status=adsense_reports.get("daily"),
+        aggregation="weighted_average",
+    )
+    active_view_viewability = measurement_ad_metric(
+        adsense_daily, "active_view_viewability", expected_dates,
+        report_status=adsense_reports.get("daily"), aggregation="daily_only",
+    )
+    overall_status = combine_measurement_status(
+        ga4_daily_quality["status"],
+        acquisition_reconciliation["status"],
+        landing_reconciliation["status"],
+        *(row["status"] for row in acquisition_quality.values()),
+        landing_quality["status"],
+        ad_requests["status"],
+        ad_requests_coverage["status"],
+        active_view_viewability["status"],
+    )
+    return {
+        "schema_version": "measurement-quality.v1",
+        "period": {"start_date": period.start.isoformat(), "end_date": period.end.isoformat(), "expected_dates": sorted(expected_dates)},
+        "overall_status": overall_status,
+        "ga4": {
+            "daily": ga4_daily_quality,
+            "acquisition": {
+                "report_status": report_status.get("acquisition") or {"status": "unavailable"},
+                "dimensions": ["date", "sessionDefaultChannelGroup", "sessionSourceMedium", "sessionCampaignName"],
+                "quality": acquisition_quality,
+            },
+            "landing": {
+                "report_status": report_status.get("landing_device") or {"status": "unavailable"},
+                "dimensions": ["date", "landingPagePlusQueryString", "deviceCategory"],
+                "not_set": landing_quality,
+            },
+            "reconciliation": {
+                "daily_to_acquisition": acquisition_reconciliation,
+                "daily_to_landing": landing_reconciliation,
+            },
+            "limitations": [
+                "acquisitionのdimensionsにはdeviceCategoryがないため、参照元・チャネル・キャンペーンを端末別に推定しない。",
+                "内訳合計とGA4日次合計の差は、GA4のスコープ・集計差を含み得るため、差だけで原因を断定しない。",
+                "明示された(not set)・Unassignedだけを分子にする。空または欠損したdimensionは別途欠損として扱い、(not set)へ推定しない。",
+            ],
+        },
+        "adsense": {
+            "daily_report_status": adsense_reports.get("daily") or {"status": "unavailable"},
+            "ad_requests": ad_requests,
+            "ad_requests_coverage": ad_requests_coverage,
+            "active_view_viewability": active_view_viewability,
+            "limitations": [
+                "広告requests・coverage・viewabilityは日別AdSense原本から確認する。Active View measurable impressionsがないため、viewabilityの期間加重平均は出力しない。単価やPage RPMだけで収益変動の原因を断定しない。",
+            ],
+        },
+        "adsense_payments": {
+            "report_status": adsense_reports.get("payments") or {"status": "unavailable"},
+            "required_for_weekly_performance": False,
+            "note": "paymentsの失敗はアカウント警告として残し、日別広告実績の完全性とは分離する。",
+        },
+    }
+
+
 def pct_change(current: float | None, previous: float | None) -> float | None:
     if current is None or previous in {None, 0}:
         return None
@@ -1237,31 +1657,6 @@ def load_grade_schedule(path: Path | None) -> list[dict[str, Any]]:
             if isinstance(value, list):
                 return [dict(row) for row in value if isinstance(row, Mapping)]
     return []
-
-
-def grade_race_publish_lead_days(
-    grade: Any,
-    circuit: Any,
-    historical_impressions: Any = None,
-    *,
-    demand_profile_known: bool = False,
-) -> int | None:
-    """記事Plannerと同じ需要別の初回公開期限を返す。"""
-
-    normalized_grade = re.sub(r"[\s　]+", "", str(grade or "")).upper()
-    normalized_circuit = str(circuit or "").strip().lower()
-    impressions = numeric(historical_impressions) or 0
-    if normalized_grade in {"G1", "JPNI", "JPN1"}:
-        return 21
-    if normalized_grade in {"G2", "JPNII", "JPN2"}:
-        return 14
-    if normalized_circuit == "jra" and normalized_grade == "G3":
-        return 10
-    if impressions >= 300:
-        return 9
-    if demand_profile_known and impressions < 50:
-        return None
-    return 3
 
 
 def grade_article_weekly_replacement(
@@ -1550,17 +1945,12 @@ def assess_grade_races(
             ),
             demand_profile.get("impressions"),
         )
-        demand_profile_known = bool(demand_profile) or any(race.get(key) is not None for key in demand_keys)
-        initial_lead_days = grade_race_publish_lead_days(
-            race.get("grade"),
-            race.get("circuit"),
-            historical_impressions,
-            demand_profile_known=demand_profile_known,
+        demand_profile_known = bool(demand_profile) or any(
+            race.get(key) is not None for key in demand_keys
         )
-        expected_by = race_date - timedelta(days=initial_lead_days) if initial_lead_days is not None else None
-        if initial_lead_days is None:
-            classification = "記事対象外（過去需要50未満）" if article is None else "需要対象外だが記事あり"
-        elif article is None:
+        initial_lead_days = grade_race_publish_lead_days(str(race.get("grade") or ""))
+        expected_by = race_date - timedelta(days=initial_lead_days)
+        if article is None:
             classification = "記事なし"
         elif first_commit and expected_by and date.fromisoformat(first_commit) > expected_by:
             classification = "公開が遅い"
@@ -1804,6 +2194,7 @@ def build_analysis(
     )
     workflow_impact = workflow_failure_impact(history, current_period)
     traffic_cross = traffic_cross_analysis(history, current_period, previous_period)
+    measurement_quality = build_measurement_quality(history, current_period)
     opportunities = search_opportunities(history)
     clarity = clarity_snapshot_summary(history)
     root_causes = rank_root_causes(
@@ -1907,6 +2298,7 @@ def build_analysis(
         "estimated_grade_article_opportunity": grade_opportunity,
         "workflow_failure_impact": workflow_impact,
         "traffic_cross_analysis": traffic_cross,
+        "measurement_quality": measurement_quality,
         "github_failure_jobs": workflow_impact.get("failure_jobs") or [],
         "root_causes": root_causes,
         "selected_hypothesis": root_causes[0] if root_causes else None,
@@ -1976,6 +2368,7 @@ def render_markdown(analysis: Mapping[str, Any]) -> str:
     youtube_recovery = ((analysis.get("traffic_cross_analysis") or {}).get("youtube_site_recovery") or {})
     opportunity = analysis.get("estimated_grade_article_opportunity") or {}
     reconciliation = analysis.get("revenue_reconciliation") or {}
+    measurement_quality = analysis.get("measurement_quality") or {}
     replacement_rate = numeric(replacement.get("replacement_rate"))
     estimated_revenue = numeric(opportunity.get("estimated_revenue_jpy"))
     youtube_utm_missing = numeric(youtube_recovery.get("utm_missing_rate"))
@@ -2022,6 +2415,46 @@ def render_markdown(analysis: Mapping[str, Any]) -> str:
     lines.extend(["", "## 取得品質", ""])
     for source, status in (analysis.get("source_status") or {}).items():
         lines.append(f"- {source}: `{status.get('status')}`（{status.get('row_count', 0)}行）")
+    ga4_quality = measurement_quality.get("ga4") or {}
+    acquisition_quality = (ga4_quality.get("acquisition") or {}).get("quality") or {}
+    landing_quality = (ga4_quality.get("landing") or {}).get("not_set") or {}
+    adsense_quality = measurement_quality.get("adsense") or {}
+    payments_quality = measurement_quality.get("adsense_payments") or {}
+    acquisition_reconciliation = (ga4_quality.get("reconciliation") or {}).get("daily_to_acquisition") or {}
+
+    def rate_text(value: Any) -> str:
+        number = numeric(value)
+        return "未取得" if number is None else f"{number:.1%}"
+
+    def number_text(value: Any) -> str:
+        number = numeric(value)
+        return "未取得" if number is None else f"{number:,.0f}"
+
+    viewability = adsense_quality.get("active_view_viewability") or {}
+    viewability_text = (
+        rate_text(viewability.get("value"))
+        if viewability.get("aggregation_status") == "complete"
+        else f"期間集約不可（{viewability.get('aggregation_reason') or '日別原本を参照'}）"
+    )
+
+    lines.extend([
+        "",
+        "## 計測品質（週次原本の再分析）",
+        "",
+        f"- 全体状態: `{measurement_quality.get('overall_status') or 'unavailable'}`。欠損日・指標欠損は0として扱いません。",
+        f"- GA4日次とacquisition内訳: `{acquisition_reconciliation.get('status') or 'unavailable'}` / 差分 {number_text(acquisition_reconciliation.get('difference_sessions'))}セッション",
+        "- 参照元(not set): "
+        f"{rate_text((acquisition_quality.get('session_source_medium_not_set') or {}).get('rate'))} / "
+        f"landing(not set): {rate_text(landing_quality.get('rate'))} / "
+        f"Unassigned: {rate_text((acquisition_quality.get('unassigned') or {}).get('rate'))}",
+        "- AdSense requests: "
+        f"{number_text((adsense_quality.get('ad_requests') or {}).get('value'))} / "
+        f"coverage: {rate_text((adsense_quality.get('ad_requests_coverage') or {}).get('value'))} / "
+        f"viewability: {viewability_text}",
+        f"- AdSense payments: `{(payments_quality.get('report_status') or {}).get('status') or 'unavailable'}`（週次広告実績の必須取得ではありません。アカウント警告は別途確認します）",
+        "- acquisitionにdeviceCategoryはないため、参照元・チャネル・キャンペーンを端末別には分析していません。",
+        "- 単価だけで収益変動の原因を断定せず、requests・coverage・viewability・流入量を併記して確認します。",
+    ])
     lines.extend([
         "",
         "このレポートは相関と因果を分けて扱います。広告設定、公開、外部投稿、Git操作は自動変更しません。",

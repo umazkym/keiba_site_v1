@@ -253,6 +253,10 @@ function repairAwkwardReplacementArtifacts(input: string): string {
 
 function sanitizeGeneratedText(input: string): string {
   let text = applyContextualToneReplacements(input);
+  text = text
+    .replace(/ニュース後/g, BANNED_REPLACEMENTS['ニュース後'])
+    .replace(/ニュース起点/g, BANNED_REPLACEMENTS['ニュース起点'])
+    .replace(/ニュースで/g, BANNED_REPLACEMENTS['ニュースで']);
   for (const banned of SEO_RULES.hard_banned_strings) {
     if (banned === '買うな') {
       text = text.replace(/買うな(?!ら)/g, BANNED_REPLACEMENTS[banned] ?? '');
@@ -356,7 +360,7 @@ function extractNumbersFromEvidence(data: any): Set<number> {
   return numbers;
 }
 
-function checkFixedValueHallucination(fixed: string, evidenceNumbers: Set<number>): { hasHallucination: boolean, details?: string } {
+export function checkFixedValueHallucination(fixed: string, evidenceNumbers: Set<number>): { hasHallucination: boolean, details?: string } {
   // パターン 1: 騎手名等.*?(\d+\.?\d*)[%％] (勝率・回収率)
   const pattern1 = /(?:勝率|回収率|複勝率|好走率)[^%％0-9]*?(\d+(?:\.\d+)?)\s*[%％]/g;
   // パターン 1b: 35.3%の複勝率 のように数値が先に出る表現
@@ -404,6 +408,19 @@ function checkFixedValueHallucination(fixed: string, evidenceNumbers: Set<number
   }
 
   return { hasHallucination: false };
+}
+
+/**
+ * Editorモデルの構造化レビューが全観点を承認したかだけを判定する。
+ * これは事実の決定的な検証ではなく、Evidence Packの数値検証やSEO機械検査を代替しない。
+ */
+export function hasApprovedContentQuality(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const quality = value as Record<string, unknown>;
+  return quality.answers_search_intent === true
+    && quality.has_verifiable_specific_value === true
+    && quality.states_applicable_conditions === true
+    && quality.states_as_of_or_update_status === true;
 }
 
 function isUnsafeLongFormReplacement(original: string, fixed: string): boolean {
@@ -471,537 +488,26 @@ function stableIndex(seed: string, size: number): number {
   return hash % size;
 }
 
-function requiredPointHeadingForData(data: Record<string, any>): string {
-  const theme = String(data.theme_cluster || data.article_type || '');
-  if (theme === 'race_update' || theme === 'grade_race_preview') return RACE_BUYING_POINT_HEADING;
-  if (theme === 'course_venue') return COURSE_VENUE_POINT_HEADING;
-  if (theme === 'jockey_profile') return JOCKEY_POINT_HEADING;
-  if (theme === 'beginner_guide') return BEGINNER_POINT_HEADING;
-  return DEFAULT_BUYING_POINT_HEADING;
-}
-
-function isPointHeadingText(heading: string): boolean {
-  return POINT_HEADING_TEXTS.includes(heading.trim());
-}
-
-function suffixForTheme(themeCluster: unknown, seed: string, searchIntent?: unknown): string {
-  const suffixesByIntent: Record<string, string[]> = {
-    race_profile: ['開催条件から見る評価軸', 'コースと距離の確認順', 'レース条件を読む3点'],
-    field_analysis: ['出走構成から見る評価軸', '距離適性と相手関係の見方', 'メンバー比較の確認順'],
-    past_trends: ['過去傾向の使い分け', '今年も使える条件を整理', '過去結果から見る3点'],
-    local_matchup: ['中央馬と地方馬の比較軸', '交流重賞で見る条件差', '所属別に決めない評価順'],
-    result_review: ['結果から見直す評価軸', '展開と事前評価のずれ', '次走へ残す確認材料'],
-    previous_run: ['前走から変わる条件', 'ローテーションの確認順', '条件替わりで見る評価軸'],
-    stable_comment: ['コメントと事実の分け方', '陣営発言を扱う確認順', '状態面を決め手にしない見方'],
-    track_condition: ['馬場変化で見る評価軸', '良馬場と道悪の確認順', 'コース状態から見る3点'],
-    training: ['追い切りを実戦へつなぐ見方', '調教評価を分ける3点', '最終追いと条件の確認順'],
-    waku: ['枠順とコース形態の確認順', '内外だけで決めない評価軸', '位置取りから見る枠順'],
-  };
-  const intentSuffixes = suffixesByIntent[String(searchIntent || '')];
-  if (intentSuffixes) {
-    return intentSuffixes[stableIndex(seed, intentSuffixes.length)];
+function fitTitleToSeo(title: string, data: Record<string, any>, _content: string): string {
+  const compactTitle = String(title || '').replace(/\s+/g, ' ').trim();
+  if (compactTitle.length >= SEO_RULES.title_min_chars) {
+    return compactTitle.slice(0, SEO_RULES.title_max_chars);
   }
 
-  const suffixesByTheme: Record<string, string[]> = {
-    jockey_data: [
-      '勝率と回収率で残す騎手',
-      '人気とのズレを見る騎手データ',
-      '軸候補を絞る騎手成績',
-    ],
-    jockey_profile: [
-      '成績と得意条件の確認順',
-      '人気時に慎重に見る条件',
-      'リーディング成績の使い方',
-    ],
-    course_venue: [
-      '全距離の確認順',
-      '芝とダートの見方',
-      '距離別に見る評価軸',
-    ],
-    beginner_guide: [
-      '最初に見る確認順',
-      '迷わないための基本',
-      '出馬表で使う見方',
-    ],
-    grade_race_preview: [
-      '枠順と偏差値の確認順',
-      '慎重に見る条件と評価を上げる材料',
-      '直前データで見る評価軸',
-    ],
-    race_update: [
-      '直前情報から見る確認順',
-      '枠順と馬場の判断材料',
-      '直前データで見る評価軸',
-    ],
-    running_style_data: [
-      '脚質と隊列で見る狙い所',
-      '展開から残す馬の条件',
-      '先行差しの評価を分ける',
-    ],
-    popularity_data: [
-      '人気と配当のズレを読む',
-      '荒れ方を見る上位人気データ',
-      '買い過ぎを避ける人気傾向',
-    ],
-    waku_data: [
-      '枠順で評価を分ける条件',
-      '内外の差から見る買い方',
-      '有利枠を出馬表で確認',
-    ],
-    asset: [
-      '枠順で評価を分ける条件',
-      '内外の差から見る買い方',
-      '有利枠を出馬表で確認',
-    ],
-    seasonal: [
-      '開催時期で見る枠順傾向',
-      '今の馬場で残す条件',
-      '季節替わりの評価軸',
-    ],
-  };
-
-  const suffixes = suffixesByTheme[String(themeCluster || '')] || [
-    'データから見る確認順',
-    '出馬表で使う判断材料',
-    '買い目を絞るデータ軸',
-  ];
-  return suffixes[stableIndex(seed, suffixes.length)];
-}
-
-function fitTitleToSeo(title: string, data: Record<string, any>, content: string): string {
-  let result = sanitizeGeneratedText(title).replace(/^["']|["']$/g, '');
-  const fallbackBase = compactForTitle(data.target_keyword || result || '競馬データ');
-  const suffix = suffixForTheme(data.theme_cluster, fallbackBase, data.search_intent);
-  const numberInContent = content.match(/\d+(?:\.\d+)?%?/)?.[0] || '3点';
-
-  if (!/\d/.test(result)) {
-    result = `${result || fallbackBase}${numberInContent}`;
-  }
-
-  if (result.length < SEO_RULES.title_min_chars || result.length > SEO_RULES.title_max_chars) {
-    result = `${fallbackBase}｜${suffix}`;
-  }
-
-  if (!/\d/.test(result)) {
-    result = `${result}3点`;
-  }
-
-  if (result.length < SEO_RULES.title_min_chars) {
-    for (const addition of ['直前確認', '買い方整理', 'データ確認']) {
-      if (result.length + addition.length <= SEO_RULES.title_max_chars) {
-        result += addition;
-        break;
-      }
-    }
-  }
-
-  if (result.length > SEO_RULES.title_max_chars) {
-    const separator = '｜';
-    const maxBaseLength = SEO_RULES.title_max_chars - suffix.length - separator.length;
-    const base = fallbackBase.slice(0, Math.max(8, maxBaseLength));
-    result = `${base}${separator}${suffix}`;
-  }
-
-  if (result.length < SEO_RULES.title_min_chars) {
-    const addition = 'データ確認3点';
-    result = `${result}${addition}`.slice(0, SEO_RULES.title_max_chars);
-  }
-
-  return sanitizeGeneratedText(result);
-}
-
-function trimDescription(description: string): string {
-  let result = description.trim();
-  if (result.length <= SEO_RULES.description_max_chars) return result;
-
-  result = result.slice(0, SEO_RULES.description_max_chars - 1);
-  const lastBreak = Math.max(result.lastIndexOf('。'), result.lastIndexOf('、'));
-  if (lastBreak >= SEO_RULES.description_min_chars - 1) {
-    result = result.slice(0, lastBreak);
-  }
-  return `${result.replace(/[、。]+$/g, '')}。`;
-}
-
-function descriptionAdditionsForTheme(themeCluster: unknown): string[] {
-  const theme = String(themeCluster || '');
-  if (theme === 'jockey_data') {
-    return [
-      '騎乗回数、勝率、人気とのズレを分け、軸候補と相手候補の線引きを整理します。',
-      '好走率だけでなく、回収率が数字に残る場面と人気先行で疑う場面を確認できます。',
-    ];
-  }
-
-  if (theme === 'grade_race_preview') {
-    return [
-      '枠順、脚質、AI偏差値を分け、評価を上げる材料と評価を下げる条件を整理します。',
-      '直前に見る材料を絞り、人気馬をそのまま信じるか疑うかの判断順を確認できます。',
-    ];
-  }
-
-  if (theme === 'race_update') {
-    return [
-      'レース前の発表や話題を踏まえ、枠順、馬場、脚質、AI予想で確認する順番を整理します。',
-      '直前に見る材料を分け、評価を上げる材料と評価を下げる条件を確認できます。',
-    ];
-  }
-
-  if (theme === 'running_style_data') {
-    return [
-      '先行勢と差し勢の数字を分け、隊列が向く馬と展開待ちの馬を整理します。',
-      '直線やコーナーの特徴を踏まえ、出馬表で脚質を確認する順番をまとめます。',
-    ];
-  }
-
-  if (theme === 'popularity_data') {
-    return [
-      '上位人気の信頼度と配当妙味を分け、堅く見る場面と広げる場面を確認できます。',
-      '人気だけで決めず、オッズに織り込まれた条件と残したい穴条件を整理します。',
-    ];
-  }
-
-  if (theme === 'waku_data' || theme === 'asset' || theme === 'seasonal') {
-    return [
-      '内外の枠差、複勝率、回収率を分け、軸にしやすい枠と割り引く枠を整理します。',
-      '枠番の数字を出馬表で使える形にし、当日の馬場や脚質と重ねて確認できます。',
-    ];
-  }
-
-  return [
-    '数字の強弱と当日の確認材料を分け、買い・抑え・見送りの判断を整理します。',
-    '出馬表を見る前に、評価を上げる条件と下げる条件を確認できます。',
-  ];
+  const keyword = compactForTitle(data.target_keyword || data.title);
+  const suffix = keyword && !compactTitle.includes(keyword) ? `｜${keyword}` : '｜確認条件';
+  return `${compactTitle}${suffix}`.slice(0, SEO_RULES.title_max_chars);
 }
 
 function fitDescriptionToSeo(description: string, data: Record<string, any>): string {
-  const target = compactForTitle(data.target_keyword || data.title || 'この条件');
-  const additionsByIntent: Record<string, string[]> = {
-    race_profile: [
-      '公式日程と開催条件を起点に、コース形態、距離、出走構成から評価を組み立てる順番を整理します。',
-      '枠順や追い切りへ寄せず、レース固有の条件と当日更新する材料を分けて確認できます。',
-    ],
-    field_analysis: [
-      '出走構成、距離適性、相手関係、斤量、ローテーションを分け、比較する順番を整理します。',
-      '個別馬の材料を入力済みデータの範囲で照合し、評価を上げる条件と慎重に見る条件を確認できます。',
-    ],
-    past_trends: [
-      '過去結果から残る傾向と、今年の開催条件では使いにくい傾向を分けて整理します。',
-      'データを機械的に当てはめず、コース、距離、出走構成の違いから確認順を組み立てます。',
-    ],
-    local_matchup: [
-      '中央馬と地方馬を所属だけで比べず、コース経験、輸送、距離適性、相手関係から整理します。',
-      '交流重賞ならではの条件差を分け、当日の出馬表で確認したい材料をまとめます。',
-    ],
-    result_review: [
-      '確定した結果を展開、位置取り、馬場、事前評価との差に分け、次走へ残す材料を整理します。',
-      'レース前情報へ戻らず、評価を上げたい内容と条件が変われば慎重に見たい内容を確認できます。',
-    ],
-    previous_run: [
-      '前走内容と今回の距離、コース、相手関係の変化を分け、評価を見直す順番を整理します。',
-      '着順だけに寄らず、ローテーションと条件替わりから上積みと慎重材料を確認できます。',
-    ],
-  };
-  const additions =
-    additionsByIntent[String(data.search_intent || '')] ||
-    descriptionAdditionsForTheme(data.theme_cluster);
-
-  let result = sanitizeGeneratedText(description)
-    .replace(/徹底分析/g, '整理')
-    .replace(/^["']|["']$/g, '');
-
-  if (!result) {
-    result = `${target}の成績データを整理。`;
+  const normalized = String(description || '').replace(/\s+/g, ' ').trim();
+  if (normalized.length >= SEO_RULES.description_min_chars) {
+    return normalized.slice(0, SEO_RULES.description_max_chars);
   }
 
-  for (const addition of additions) {
-    if (result.length >= SEO_RULES.description_min_chars) break;
-    const candidate = `${result}${result.endsWith('。') ? '' : '。'}${addition}`;
-    result = candidate.length <= SEO_RULES.description_max_chars ? candidate : trimDescription(candidate);
-  }
-
-  if (result.length < SEO_RULES.description_min_chars) {
-    result = `${target}のデータを整理。${additions.join('')}`;
-  }
-
-  return trimDescription(sanitizeGeneratedText(result));
-}
-
-function findLastBuyingPointHeading(content: string): number {
-  const pattern = pointHeadingLineRegex();
-  let match: RegExpExecArray | null;
-  let lastIndex = -1;
-  while ((match = pattern.exec(content)) !== null) {
-    lastIndex = match.index;
-  }
-  return lastIndex;
-}
-
-function fallbackBuyingPoints(data: Record<string, any>): string[] {
-  const theme = String(data.theme_cluster || '');
-  const intent = String(data.search_intent || '');
-  const pointsByIntent: Record<string, string[]> = {
-    race_profile: [
-      '確認: 開催場、距離、コース形態を先にそろえ、今年の出走構成と合う条件を確認する。',
-      '相手候補: コース経験や距離適性を入力済みデータで裏付けられる馬を残す。',
-      '慎重: レース名の印象だけで評価し、今年の条件差を見ていない馬は重く扱わない。',
-      '条件付き: 当日の馬場や頭数が変わる時は、コース特性の使い方を更新する。',
-    ],
-    field_analysis: [
-      '確認: 出走構成を距離適性、相手関係、斤量、ローテーションに分けて比較する。',
-      '相手候補: 複数の比較軸で大きな不安がない馬を候補として残す。',
-      '慎重: 1つの話題だけで評価が上がった馬は、他の条件との釣り合いを見る。',
-      '条件付き: 出走取消や騎手変更が出た時は、メンバー構成を組み直す。',
-    ],
-    past_trends: [
-      '確認: 過去傾向は今年も同じ開催場、距離、条件で使えるかを先に見る。',
-      '相手候補: 傾向と今年の出走構成が重なる条件を持つ馬を残す。',
-      '慎重: 母数が少ない傾向や開催条件が変わった数字は決め手にしない。',
-      '条件付き: 当日の馬場や頭数が過去集計と違う時は評価を調整する。',
-    ],
-    local_matchup: [
-      '確認: 中央・地方の所属より、コース経験、輸送、距離適性を先に比較する。',
-      '相手候補: 開催場への適性を入力済みデータで確認できる馬を残す。',
-      '慎重: 実績の格だけで条件差を無視した評価は重く扱わない。',
-      '条件付き: 馬場や発走時刻の違いがある時は、過去走との比較条件をそろえる。',
-    ],
-    result_review: [
-      '確認: 確定結果を展開、位置取り、馬場、事前評価との差に分けて振り返る。',
-      '評価材料: 条件に左右されにくい内容は次走でも確認候補として残す。',
-      '慎重: 展開や馬場の助けが大きかった内容は、条件替わりで同じ評価を置かない。',
-      '条件付き: 次走で距離やコースが変わる馬は、今回の結果をそのまま当てはめない。',
-    ],
-    previous_run: [
-      '確認: 前走の着順より、今回変わる距離、コース、相手関係を先に見る。',
-      '相手候補: 条件替わりで前走より走りやすくなる根拠がある馬を残す。',
-      '慎重: 前走の展開や馬場に恵まれた馬は、同じ形を前提にしない。',
-      '条件付き: 間隔や斤量が変わる時は、前走評価の重みを調整する。',
-    ],
-    training: [
-      '確認: 追い切りは時計、負荷、併せ方を分け、確認済みの事実だけを扱う。',
-      '相手候補: 調教内容と今回条件の両方に不安が少ない馬を残す。',
-      '慎重: 追い切り評価だけで人気が集まる馬は、実戦条件との接点を見る。',
-      '条件付き: 調教過程と輸送やレース間隔が異なる時は評価を調整する。',
-    ],
-    waku: [
-      '確認: 枠順はコース形態と想定する位置取りを組み合わせて見る。',
-      '相手候補: 内外の不利を脚質や先行力で補える馬を残す。',
-      '慎重: 枠番だけで評価が上がった馬は、出走構成との釣り合いを見る。',
-      '条件付き: 当日の馬場で内外の伸びが変わる時は枠評価を更新する。',
-    ],
-  };
-  if (pointsByIntent[intent]) return pointsByIntent[intent];
-  if (theme === 'jockey_data' || theme === 'jockey_profile') {
-    return [
-      '確認: 勝率と騎乗回数を分け、今回の騎乗馬と条件が合うかを見る。',
-      '相手候補: 複勝率と騎乗馬の近走がそろう場合に候補として残す。',
-      '慎重: 騎手名だけで人気が先行する騎乗は、馬側の条件を優先する。',
-      '条件付き: 馬場悪化や少頭数では、先行できる馬との組み合わせを優先する。',
-    ];
-  }
-
-  if (theme === 'grade_race_preview') {
-    return [
-      '確認: AI偏差値上位でも、枠順と脚質が合うかを確かめる。',
-      '相手候補: コース傾向に合う馬は、人気との釣り合いを見て候補に残す。',
-      '慎重: 評価が低く展開の助けも必要な馬は、条件をもう一度確認する。',
-      '条件付き: 馬場が変わる日は、当日の時計と内外の伸びを見て評価を調整する。',
-    ];
-  }
-
-  if (theme === 'race_update') {
-    return [
-      '確認: 発表済みの枠順と脚質がかみ合うかを最初に見る。',
-      '相手候補: コース傾向に合う馬は、人気との釣り合いを見て候補に残す。',
-      '慎重: 話題性だけで人気が先行する馬は、AI偏差値と馬場適性を照合する。',
-      '条件付き: 騎手変更や馬場悪化がある日は、直前の出馬表で評価を調整する。',
-    ];
-  }
-
-  return [
-    '確認: 勝率と複勝率がそろう条件を最初に見る。',
-    '相手候補: 回収率に妙味が残る条件は、母数を見て候補に残す。',
-    '慎重: 数字が低く人気だけ先行する条件は、評価を見直す。',
-    '条件付き: 馬場や頭数が変わる日は、直前の出馬表で脚質との相性を確認する。',
-  ];
-}
-
-function normalizeBuyingPointLines(sectionText: string, data: Record<string, any>): string {
-  const lines = sectionText
-    .split('\n')
-    .map(line => sanitizeGeneratedText(line).replace(/^[・\s]+/, '').trim())
-    .filter(line => line && !line.includes('/races/today') && !/^#{1,6}\s+/.test(line));
-
-  const normalizedLines = lines.map(line => {
-    const withoutBullet = line.replace(/^[-*]\s+/, '').replace(/^\d+\.\s+/, '').trim();
-    return `- ${withoutBullet}`;
-  });
-
-  const existingText = normalizedLines.join('\n');
-  for (const point of fallbackBuyingPoints(data)) {
-    if (normalizedLines.length >= 3) break;
-    if (!existingText.includes(point.slice(0, 8))) {
-      normalizedLines.push(`- ${point}`);
-    }
-  }
-
-  return (normalizedLines.length > 0 ? normalizedLines : fallbackBuyingPoints(data).map(point => `- ${point}`)).join('\n');
-}
-
-function normalizeBuyingPointSection(content: string, data: Record<string, any>): string {
-  const requiredHeading = requiredPointHeadingForData(data);
-  let result = content
-    .replace(pointHeadingNormalizeRegex(), requiredHeading)
-    .replace(/^.*\[今日のAI予想・出馬表]\(\/races\/today\).*$/gm, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-
-  const isOverseas = data.is_overseas === true || data.overseas === true || data.category === '海外競馬';
-  const isGradeRace = String(data.entity_type || '') === 'grade_race';
-  const shouldAppendTodayCta = !isOverseas && !isGradeRace;
-
-  const requiredHeadingRegex = new RegExp(`^${requiredHeading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
-  if (!requiredHeadingRegex.test(result)) {
-    result = `${result}\n\n${requiredHeading}\n\n${fallbackBuyingPoints(data).map(point => `- ${point}`).join('\n')}`;
-  }
-
-  const headingIndex = findLastBuyingPointHeading(result);
-  if (headingIndex < 0) {
-    return shouldAppendTodayCta ? `${result}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim() : result.trim();
-  }
-
-  const before = result.slice(0, headingIndex).trim();
-  const sectionWithHeading = result.slice(headingIndex);
-  const sectionBody = sectionWithHeading
-    .replace(pointHeadingLineRegex('m'), '')
-    .trim();
-  const normalizedSection = normalizeBuyingPointLines(sectionBody, data);
-
-  return shouldAppendTodayCta
-    ? `${before}\n\n${requiredHeading}\n\n${normalizedSection}\n\n${REQUIRED_TODAY_RACE_CTA}`.trim()
-    : `${before}\n\n${requiredHeading}\n\n${normalizedSection}`.trim();
-}
-
-function ensureH2HeadingsHaveNumbers(content: string): string {
-  return content.replace(/^##\s+(.*)$/gm, (full, headingText) => {
-    const heading = String(headingText || '').trim();
-    if (isPointHeadingText(heading)) return full;
-    if (heading === 'まとめ' || heading === '総論' || heading === 'おわりに') {
-      return '## 買い目を決める前に確認する材料';
-    }
-    if (/\d/.test(heading)) return full;
-    if (heading.includes('AI偏差値')) return '## AI偏差値上位と買い方の優先順';
-    if (heading.includes('騎手')) return '## 騎手データで評価を分ける材料';
-    if (heading.includes('コース')) return '## コース特性と当日の確認順';
-    return full;
-  });
-}
-
-function ensureNumberInOpening(content: string, data: Record<string, any>): string {
-  const plainText = content.replace(/\s/g, '');
-  if (/\d/.test(plainText.slice(0, 100))) return content;
-
-  const target = compactForTitle(data.target_keyword || data.title || 'この条件');
-  return `${target}では、まず3つの数字を順に確認すると判断の優先順位を決めやすい。\n\n${content}`;
-}
-
-function bodyPlainLength(content: string): number {
-  return content.replace(/\s/g, '').length;
-}
-
-function hasHeading(content: string, heading: string): boolean {
-  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`^##\\s+${escaped}\\s*$`, 'm').test(content);
-}
-
-function insertBeforeFinalPointSection(content: string, insertion: string): string {
-  const headingIndex = findLastBuyingPointHeading(content);
-  if (headingIndex < 0) {
-    return `${content.trim()}\n\n${insertion.trim()}`.trim();
-  }
-
-  const before = content.slice(0, headingIndex).trim();
-  const after = content.slice(headingIndex).trim();
-  return `${before}\n\n${insertion.trim()}\n\n${after}`.trim();
-}
-
-function raceIntentExpansionBlocks(data: Record<string, any>): string[] {
-  const intent = String(data.search_intent || 'race_profile');
-  const target = compactForTitle(data.target_keyword || data.title || 'このレース');
-  const phase = String(data.race_phase || '');
-  const isPostRace = phase === 'post_race' || intent === 'result_review';
-  const focus = String(data.content_focus || data.topic_bridge?.writer_focus || '').trim();
-
-  const primaryBlocks: Record<string, string> = {
-    race_profile: `## 開催条件を3層に分けて見る\n\n${target}では、レース名だけで過去のイメージを当てはめず、開催場、距離、コース形態の順に条件をそろえたい。最初に確認するのは、直線の長さやコーナーの回り方など、走り方へ直接影響する舞台設定だ。次に出走資格や斤量条件を見て、最後に今年のメンバー構成を重ねる。この順番なら、枠順や追い切りが未発表の段階でも、レース固有の論点を整理できる。\n\n同じ距離でも開催場が変われば求められる加速や持続力は変わる。過去傾向を使う時は、今回と条件がそろう集計かを確認し、違う条件の数字は参考材料までに留める。`,
-    field_analysis: `## 出走構成を4つの比較軸に分ける\n\n${target}のメンバー比較では、馬名を並べるだけでなく、距離適性、コース経験、斤量、ローテーションの4点に分ける。どれか1つが優れていても、他の条件で負担が増えるなら評価は一段落ち着かせたい。反対に派手な話題がなくても、複数の比較軸で不安が少ない馬は候補として残しやすい。\n\n個別馬の事実はWriteOrderに含まれる範囲だけを使う。情報がない項目を推測で埋めず、未確認の部分は当日の出馬表で更新する項目として残す。`,
-    past_trends: `## 過去傾向を今年へ移す前の3条件\n\n${target}で過去結果を使う時は、開催場、距離、出走条件が今年とそろっているかを先に確認する。集計期間が長くても、施行条件が変わっていれば同じ重みでは扱えない。次に母数を見て、少数例の偏りを決め手にしない。最後に今年の出走構成を重ね、傾向が働きやすい組み合わせかを見直す。\n\n過去傾向は答えではなく比較の土台になる。今回と共通する条件だけを残し、違う条件は評価を下げる材料ではなく、慎重に扱う理由として記録する。`,
-    local_matchup: `## 中央馬と地方馬を所属だけで比べない\n\n${target}のような交流重賞では、所属の違いよりも開催場の経験、輸送、距離適性、普段戦う相手関係を分けて見る。中央所属という理由だけで上げず、地方所属という理由だけで下げない。小回り、直線、砂質、ナイターなど、その競馬場で走る時に変わる条件を先にそろえる。\n\n比較する情報が入力にない場合は、実績を推測で補わない。当日の出馬表と掲載データで確認する項目を明示し、所属ラベルだけで結論を作らないことが重要になる。`,
-    previous_run: `## 前走から変わる条件を先に拾う\n\n${target}では、前走の着順だけで評価を引き継がず、距離、コース、相手関係、斤量、レース間隔の変化を見る。前走と同じ走り方を再現しやすい条件なのか、別の対応が必要なのかを分けると、巻き返し材料と慎重材料が混ざりにくい。\n\n前走で有利だった展開や馬場が今回は再現しない可能性もある。逆に前走で合わなかった条件が変わるなら、着順だけでは見えない見直し余地が生まれる。`,
-    training: `## 追い切りを3つの事実に分ける\n\n${target}の追い切りは、時計、負荷、併せ方を分けて確認する。時計だけを切り取って評価せず、どのコースで、どの程度の負荷をかけ、併せた相手とどう動いたかを確認済みの範囲で整理したい。入力にない調教時計や状態評価は作らない。\n\n追い切りは状態面の材料であり、距離適性や相手関係を上書きするものではない。実戦条件との接点が説明できる時だけ評価材料として残す。`,
-    waku: `## 枠順をコース形態と位置取りへ置き換える\n\n${target}の枠順は、内外の番号だけで評価しない。スタートから最初のコーナーまでの距離、コーナーの数、想定する位置取りを重ね、どこでロスが生まれるかを確認する。発表済みの枠順だけを扱い、未確認の馬番や並びは補わない。\n\n内枠でも包まれる可能性があり、外枠でも先行力や頭数によって負担は変わる。枠番を結論ではなく、走り方を具体化する材料として使う。`,
-    result_review: `## 結果を4つの要素へ分解する\n\n${target}の振り返りでは、確定着順、展開、位置取り、馬場の4点を分ける。着順だけで事前評価の正誤を決めず、想定した走りができたか、条件の助けや不利がどこにあったかを確認する。入力にない通過順や不利は推測で補わない。\n\n次走へ残すのは、条件が変わっても再現しやすい内容だ。展開や馬場への依存が大きい場合は、同じ評価を置く条件を限定する。`,
-  };
-
-  const opening = primaryBlocks[intent] || primaryBlocks.race_profile;
-  const shared = [
-    `## 確認済み情報と未確認情報を分ける\n\n記事で扱う材料は、開催条件、掲載データ、まだ更新を待つ情報の3層に分ける。確認済みの事実は本文の土台にできるが、未発表の項目を一般論で埋めると、どの重賞でも同じ内容になってしまう。${focus || '選ばれた検索意図を主役にし、関係の薄い材料は広げない。'}\n\n未確認情報は弱点ではなく、更新箇所を明確にするための余白になる。何が分かっていて、何を当日に確認するのかを分ける方が、読者は記事を使いやすい。`,
-    `## 比較材料の重さをそろえる\n\n複数の材料を比べる時は、事実の確度と今回条件への近さをそろえたい。公式発表と推測、今回と同条件の実績と別条件の実績を同じ重さで並べると、評価理由がぼやける。今回の開催条件に近く、入力済みデータで確認できる材料から先に置く。\n\n補助材料は結論を強めるために数を増やすのではなく、主題と矛盾しないかを確かめるために使う。理由が重複する項目はまとめ、違う角度の材料だけを残す。`,
-    `## 評価材料を2段階で確認する\n\n最初に、今回の条件と接点がある材料かを確認する。次に掲載データと照合し、評価を上げる材料、判断を保留する材料、慎重に見る材料へ分ける。注目度の高さは、適性の根拠そのものにはならない。\n\nこの2段階を守ると、知名度の高い馬だけで記事が埋まるのを避けられる。情報量が少ない馬も、確認できる条件があれば同じ比較軸に置ける。`,
-    isPostRace
-      ? `## 次走へ残す材料と今回限りの材料\n\nレース後は、今回の結果をそのまま次走評価へ持ち込まない。開催場、距離、馬場、相手関係が変わっても残る内容と、今回の展開で強く出た内容を分ける。前者は次走の確認候補になり、後者は同じ条件が重なった時だけ使う材料になる。\n\n結果を振り返る目的は、後から正解へ寄せることではない。事前に置いた比較軸のどこが機能し、どこを更新すべきかを記録することにある。`
-      : `## 更新情報で変える項目を限定する\n\nレースが近づくと情報は増えるが、記事全体を毎回組み替える必要はない。出走取消、騎手変更、馬場発表など、主題へ直接影響する情報だけを更新する。関係の薄いニュースまで足すと、最初に整理した比較軸が見えにくくなる。\n\n更新前に残した条件と、更新後に変わった条件を分ければ、読者は判断の変化を追いやすい。新しい情報が出ても、理由なく評価を反転させない。`,
-    `## 最後に残す3つのメモ\n\n記事を読み終えた時点で残すのは、評価を上げる材料、慎重に見る条件、追加確認する項目の3つで十分だ。材料が複数重なる場合でも、同じ理由を言い換えて数を増やさない。異なる比較軸で裏付けられているかを確認する。\n\n追加確認する項目は、入力にない事実を埋める場所ではない。最新の出馬表や確定結果で更新し、最初に置いた評価理由が維持できるかを確かめるために使う。`,
-  ];
-  return [opening, ...shared];
-}
-
-function lengthExpansionBlocks(data: Record<string, any>): string[] {
-  const theme = String(data.theme_cluster || data.article_type || '');
-  const target = compactForTitle(data.target_keyword || data.title || 'このレース');
-  if (theme === 'grade_race_preview' || theme === 'race_update') {
-    return raceIntentExpansionBlocks(data);
-  }
-  const genericBlocks = [
-    `## 出馬表で使う3つの順番\n\n${target}を見る時は、最初に表の数字、次に当日の条件、最後に人気との釣り合いを確認する。数字が強い条件でも、当日の馬場や枠順が合わなければ軸にはしにくい。反対に数字が控えめでも、少頭数、内外の伸び、先行馬の少なさなどが重なれば、相手候補として残す理由になる。\n\n出馬表では、馬の能力だけでなく、どの位置から競馬を進めるかを見たい。逃げ先行が多い時は差し馬の届く条件を確認し、前が楽になりそうな時は内外のロスを見直す。数字をそのまま買うのではなく、当日の隊列に置き換えると、買いと見送りの線を引きやすくなる。`,
-    `## 数字を疑う2つの条件\n\n1つ目は母数が少ないケースだ。勝率や回収率が高く見えても、対象レースが少ない場合は偶然の影響を受けやすい。そうした数字は軸の決め手ではなく、相手候補を広げる材料として扱う。2つ目は人気とのズレが大きいケースだ。数字が良くても人気が過度に集まっているなら、買い目の中心に置く前に馬場や脚質の裏付けを確認したい。\n\n数字を疑うことは、データを軽視することではない。数字が強い理由を出馬表で確認し、説明できる時だけ重く扱う。説明できない数字は抑えまでに留め、当日の条件が合う馬を優先する。これだけでも、買い目の広げすぎを避けやすくなる。`,
-    `## オッズを見る前の3つの線引き\n\nオッズを見る前に、買い、抑え、見送りの線を先に置く。買いは、データと当日の条件がそろう馬に限る。抑えは、どちらか一方に強い材料がある馬にする。見送りは、数字が弱い、条件が合わない、人気だけが先行している馬に付ける。この線引きを先に作ると、直前に人気が動いても判断を戻しやすい。\n\nオッズは最後の調整材料として使う。買いに入れた馬が想定以上に売れているなら、点数を絞る。抑えの馬が売れていないなら、相手候補として残す価値がある。見送りにした馬は、明確な条件変化が出ない限り買い目へ戻さない。こうした順番を守ると、データ記事を実際の馬券検討に使いやすくなる。`,
-    `## 条件が変わる日の2つの見直し\n\n同じ数字でも、当日の条件が変われば扱い方は変わる。まず見直したいのは馬場だ。良馬場で残っていた傾向が、雨や乾きかけの馬場でも同じとは限らない。時計が速い日は位置取りを重く見て、力のいる馬場では最後まで脚を使えるタイプを残す。次に見るのは頭数と隊列だ。少頭数なら外を回すロスが小さくなり、多頭数なら内で包まれるリスクや外を回される距離ロスが大きくなる。\n\nこの見直しを入れると、表の数字をそのまま使う場面と、当日の条件で評価を調整する場面を分けられる。数字が強い馬でも、条件が反対に出るなら相手までに下げる。数字が控えめな馬でも、馬場や隊列が向くなら買い目に残す理由ができる。`,
-    `## 人気と評価を分ける3つのメモ\n\n人気を確認する前に、評価の理由を短く残しておく。1つ目はデータで評価する理由、2つ目は当日の条件で評価を上げる理由、3つ目は評価を下げる理由だ。買い目を決める直前は情報が増えやすく、人気の動きだけで判断が揺れやすい。先にメモを作っておくと、人気が上がった馬をそのまま買うのか、相手までに留めるのかを落ち着いて分けられる。\n\n評価を上げる理由がデータだけなら、馬場や脚質の確認を残す。評価を上げる理由が当日の条件だけなら、過去データとの相性を確認する。評価を下げる理由が複数ある馬は、人気が落ちても無理に戻さない。この順番なら、検索で記事を読んだ後に出馬表へ移った時も、確認する場所がはっきりする。`,
-    `## 最後に確認する2つのズレ\n\n最後に見るのは、データ評価と当日の見え方のズレだ。データで評価できる馬が、出馬表では不利な枠や苦しい隊列になっていないかを確認する。反対に、データだけでは強く見えない馬でも、当日の馬場や相手関係で走りやすい形になっていないかを見る。この2つを分けると、買い目を増やす理由と減らす理由が自然に整理される。\n\nもう1つは、人気と評価のズレだ。評価を上げる材料があるのに人気が控えめなら、相手候補として残す余地がある。評価を下げたい条件があるのに人気が集まるなら、軸には置かず抑えまでにする。検索で記事を読んだ後は、このズレを出馬表で確認してから買い目を決めたい。`,
-  ];
-
-  if (theme === 'grade_race_preview') {
-    return [
-      `## 直前に見る3つの材料\n\n${target}で最初に切り分けたいのは、枠順、馬場、脚質の3点だ。枠順は内外の距離ロスと位置取りに直結し、馬場は同じ脚質でも評価を変える材料になる。脚質は展開予測そのものではなく、出馬表で「無理なく前を取れるか」「差しに回った時に届く条件があるか」を確認するために使う。\n\nここで大切なのは、1つの材料だけで評価を決めないことだ。内枠でも包まれやすい馬なら軸にしにくく、外枠でも先行力があれば不利を補える。馬場が速い日は位置取りを重く見て、時計がかかる日は持続力と騎手の判断を見直す。AI予想を見る時も、偏差値の順位だけではなく、なぜその馬が上に来ているのかを枠順と脚質で確かめると、買い目を広げる理由と削る理由が分かれやすい。`,
-      `## 人気馬を慎重に見る2つの条件\n\n人気馬を評価する時は、強いか弱いかではなく、人気ほど条件がそろっているかを見たい。1つ目は、前走内容と今回条件のズレだ。前走で楽に運べた馬が、今回は外を回される形や速い流れに巻き込まれる形になるなら、同じ評価をそのまま置きにくい。2つ目は、馬場と脚質のかみ合わせだ。差し馬が人気を集める時でも、当日の内が残る馬場なら、相手候補までに留める判断が現実的になる。\n\n反対に、人気薄でも条件がかみ合う馬は残す余地がある。派手な実績がなくても、枠順でロスを抑えられる、先行馬が少なく隊列を取りやすい、馬場替わりで前走より走りやすい、といった材料が重なるなら、評価を上げる理由になる。人気そのものを嫌うのではなく、人気と条件の釣り合いを見ることが、直前の判断では一番ぶれにくい。`,
-      `## 相手候補に残す前の確認順\n\n買い目を増やす前は、まず軸候補を増やすのか、相手候補だけを広げるのかを分ける。軸候補を増やすなら、枠順、脚質、馬場のうち少なくとも2つで納得できる材料がほしい。相手候補なら、どれか1つの材料が強く、展開が向いた時に届く理由があれば残せる。ここを分けないまま広げると、人気馬も穴馬も同じ重さで扱ってしまい、レース後に判断の根拠が残りにくい。\n\n当日はオッズだけで判断を変えすぎないことも大事だ。オッズが下がった馬は、評価材料が増えたのか、話題性だけで売れたのかを出馬表で確認する。オッズが上がった馬は、評価を落とす理由が出たのか、単に見落とされているのかを馬場と枠順で見直す。最後はAI予想の印と自分の確認順を重ね、残す理由が説明できる馬を整理する。`,
-    ].concat(genericBlocks);
-  }
-
-  if (theme === 'race_update') {
-    return [
-      `## 直前に見る3つの順番\n\n${target}では、更新済みの条件を出馬表で確認できる形にそろえる。1つ目は枠順と位置取りだ。能力評価が高くても、外を回される形になれば評価は変わる。2つ目は馬場状態で、時計が速いか、力のいる馬場かによって残す脚質が変わる。3つ目はAI予想とオッズの差で、評価が高いのに人気が落ちている馬は相手候補として見直せる。\n\nこの順番にすると、一つの材料だけで買い目を増やす流れを避けやすい。枠順が合わない馬は抑えまで、馬場が合う馬は評価を上げる、AI予想と人気が大きくずれる馬は理由を確認する。直前情報は、最後に出馬表の条件へ戻して判断する。`,
-      `## 相手候補に残す前に分ける2つの線\n\n評価を上げるかどうかは、軸候補と相手候補を分けて考える。軸候補にするなら、能力値だけでなく、枠順、脚質、馬場のうち複数の材料がそろっている必要がある。相手候補なら、展開が向いた時に浮上する理由が1つあれば残せる。どちらの扱いにするかを決めてからオッズを見ると、人気の動きに引っ張られにくい。\n\n評価を下げる線も先に決めておきたい。評価上位の馬が不利な枠に入った、先行馬が多く自分の形に持ち込みにくい、馬場が想定と違う。このような条件が出た時は、無理に軸へ置かず相手までに留める。逆に人気が落ちていても条件が合う馬は、買い目の厚みを作る候補になる。`,
-      `## 直前判断で残す3つのメモ\n\nレース直前は情報が増えるほど判断が散らばりやすい。残すメモは3つに絞ると見返しやすい。まず「買い」は、出馬表とAI予想の両方で評価できる馬に付ける。次に「抑え」は、条件の一部が強い馬に付ける。最後に「見送り」は、人気ほど条件がそろっていない馬に付ける。\n\nこのメモを作ってから買い目を見ると、点数を増やす理由が明確になる。人気馬を信じる場合も、人気薄を拾う場合も、どの材料で評価したのかを残しておけば、次回の見直しにも使える。レース前の情報は、出馬表で確認する順番へ落とし込む。`,
-    ].concat(genericBlocks);
-  }
-
-  return genericBlocks;
-}
-
-function ensureMinimumBodyLength(content: string, data: Record<string, any>): string {
-  const targetLength = SEO_RULES.min_word_count + 120;
-  let result = content.trim();
-  if (bodyPlainLength(result) >= SEO_RULES.min_word_count) return result;
-
-  for (const block of lengthExpansionBlocks(data)) {
-    const heading = block.match(/^##\s+(.+)$/m)?.[1]?.trim();
-    if (heading && hasHeading(result, heading)) continue;
-
-    result = insertBeforeFinalPointSection(result, block);
-    if (bodyPlainLength(result) >= targetLength) break;
-  }
-
-  return result;
+  const keyword = compactForTitle(data.target_keyword || data.title || 'この記事の条件');
+  const supplement = `。${keyword}について、確認済みの条件と確認時点を分け、未発表の情報を補わずに確認する順番を整理します。`;
+  return `${normalized}${supplement}`.slice(0, SEO_RULES.description_max_chars);
 }
 
 function cleanPromptEchoes(content: string): { content: string; cleaned: boolean } {
@@ -1112,20 +618,16 @@ export function autoRepairDraftMarkdown(markdownText: string): { content: string
 
   data.title = fitTitleToSeo(String(data.title || beforeTitle), data, content);
   data.description = fitDescriptionToSeo(String(data.description || beforeDescription), { ...data, title: data.title });
+  data.title = sanitizeGeneratedText(data.title);
+  data.description = sanitizeGeneratedText(data.description);
 
   content = sanitizeGeneratedText(content);
   content = unwrapDisallowedLinks(content);
-  content = normalizeBuyingPointSection(content, data);
-  content = ensureH2HeadingsHaveNumbers(content);
-  content = ensureNumberInOpening(content, data);
-  // ensureMinimumBodyLength(content, data) はAIライター側の Gemma 補強に任せるため廃止
-  content = normalizeBuyingPointSection(content, data);
-  content = ensureH2HeadingsHaveNumbers(content);
   content = sanitizeGeneratedText(content);
 
   if (data.title !== beforeTitle) changes.push('titleをSEO文字数内に補正');
   if (data.description !== beforeDescription) changes.push('descriptionをSEO文字数内に補正');
-  if (content !== beforeContent) changes.push('本文のNG語・リンク・末尾CTA・文字数を補正');
+  if (content !== beforeContent) changes.push('本文のNG語とリンクを補正');
 
   return {
     content: matter.stringify(`${content.trim()}\n`, data),
@@ -1139,18 +641,19 @@ const EDITOR_SYSTEM_PROMPT = `あなたはUMA-FREEの編集長だ。ライター
 STEP 1：禁止ワードスキャン
 記事全文から、導入テンプレート、AI手癖表現、誇張表現などの禁止ワードを抽出し、修正文言を作成する。
 STEP 2：構造チェック
-・1文目に核心データと、読者が最初に確認すべき材料が含まれているか
-・見出しに数字と結論が含まれているか（最後のテーマ別確認ポイント見出しは例外）
-・「まとめ」や「総論」などの見出しが存在しないか
+・冒頭で検索意図への答え、適用条件、確認時点を読者が把握できるか
+・見出し、表、箇条書き、内部リンクは、検索意図と確認済み事実に役立つ場合だけ使われているか。一律の形式を要求しない
+・一般論を増やして記事の固有性を薄めていないか
 ・frontmatter の search_intent と content_focus が記事の中心になっているか
 ・search_intent が "waku" でないのに枠順が複数H2へ広がっていないか、"training" でないのに追い切りが主題化されていないか
 ・race_phase が "post_race" の記事に、枠順発表や最終追い切りなどレース前の確認手順が混入していないか
-・記事末尾にテーマに応じた確認ポイント見出しがあるか。entity_type が "grade_race" の記事には /races/today のCTAを入れず、常設記事だけ自然な導線を置く
+・導線がある場合は対象ページと自然に対応しているか。entity_type が "grade_race" の記事には /races/today のCTAを入れない
 ・チェックマークやバツ印などの装飾記号、煽りの強い「最強」「圧倒的」「狙い撃つ」「買うな」「消去対象」が残っていないか
 ・重賞記事は、人気馬を煽るだけでなく「評価を上げる材料」「慎重に見る条件」「見送りを検討する条件」が分かれているか
 ・平場向け記事は、短時間で複数レースを見る読者が使える初期判断になっているか
 ・Gemma複数観点レビューが付いている場合は、検索意図、本文の厚み、トーン・事実性の指摘を優先順に反映すること
-・文字数不足を補うために、勝率、回収率、枠順別成績、斤量別成績などの新しい数値を作らないこと
+・文字数では承認しない。検索意図へ答え、確認可能な固有価値を示し、適用条件と確認時点を読者が確認できるかを個別に判定すること
+・勝率、回収率、枠順別成績、斤量別成績などの新しい数値を作らないこと
 STEP 3：フォーマットとSEOのチェック
 ・タイトルの文字数（30〜50文字）と構成
 ・ディスクリプションの文字数（120〜160文字）
@@ -1160,9 +663,9 @@ STEP 3：フォーマットとSEOのチェック
 ※関連記事プレースホルダーは要求しない。本文中に「関連記事」セクションや「[関連記事：...]」は追加しないこと。
 ※存在確認できないURL、仮URL、単独行の「(/course-xxx)」のような壊れたリンク片は必ず削除すること。
 ※本文を長くしすぎない。必要な修正だけ行い、表・数値・母数・期間は壊さないこと。ただし事前の機械チェックで未確認数値と判定された値は例外で、数値を削除して入力済み事実だけの表現へ直すこと。
-※本文が3,000字未満の場合は、入力にある材料だけで「確認順」「慎重に見る条件」「相手候補に残す前の線引き」を補う。数字を増やせない場合は、数字を作らず判断プロセスを具体化すること。
+※本文量を理由に一般論や定型の確認順を追加してはならない。検索意図への回答、確認可能な固有価値、適用条件、確認時点のいずれかが欠ける場合は、入力にある事実だけで局所的に直すか、REJECTEDにすること。
 ※content_replacements の fixed フィールドに、Evidence Packで確認できない勝率・複勝率・回収率・好走率などのパーセンテージ（%）を残してはいけない。元の本文に未確認の%値がある場合は、その数値を引き継がず「データで確認する」「傾向を確認する」など数値なしの自然な文に置き換えること。
-※content_replacements は局所的な文言修正に限定する。見出し1行を複数段落の本文に置き換える、または新しいH2セクションをfixedへ丸ごと追加する行為は禁止。文字数不足はシステム側の安全な補足処理で補う。
+※content_replacements は局所的な文言修正に限定する。見出し1行を複数段落の本文に置き換える、または新しいH2セクションをfixedへ丸ごと追加する行為は禁止。
 ※frontmatter の draw_status が "confirmed" でない枠順記事では、「枠順確定」「枠順が確定した今」「枠順が発表されたことで」など発表済みと読める表現を使わない。「枠順発表前」「枠順発表後に確認する材料」に直すこと。
 
 【JSON出力フォーマット】
@@ -1170,6 +673,12 @@ STEP 3：フォーマットとSEOのチェック
 {
   "status": "APPROVED" | "REJECTED",
   "log": "編集確認の所感やエラー理由の一言メモ",
+  "content_quality": {
+    "answers_search_intent": true,
+    "has_verifiable_specific_value": true,
+    "states_applicable_conditions": true,
+    "states_as_of_or_update_status": true
+  },
   "fixed_frontmatter": {
     "title": "新しいタイトル",
     "description": "新しいディスクリプション"
@@ -1181,7 +690,7 @@ STEP 3：フォーマットとSEOのチェック
     }
   ]
 }
-※修正不要な要素（fixed_frontmatter や content_replacements）は空または省略してよい。
+※content_qualityの4項目は必須である。1つでもfalseならstatusはREJECTEDにし、logに不足点を具体的に書く。修正不要な要素（fixed_frontmatter や content_replacements）は空または省略してよい。
 
 【極秘指示】
 元の原稿に含まれているデータテーブル（| で構築された表）およびリスト要素に対する修正は確実な理由がない限り行わないこと。表自体を削除・破壊してはならない。`;
@@ -1322,7 +831,7 @@ const GEMMA_REVIEW_PASSES: GemmaReviewPass[] = [
   {
     id: 'depth',
     label: '本文深掘りレビュー',
-    instruction: '3,000字以上でも薄く見えないよう、入力データだけで深掘りできる確認順、慎重に見る条件、相手候補に残す前の線引きを提案する。',
+    instruction: '本文量ではなく、入力データだけで検索意図に答えられるかを確認し、必要な場合だけ確認順、慎重に見る条件、相手候補に残す前の線引きを提案する。',
   },
   {
     id: 'tone-fact',
@@ -1670,6 +1179,7 @@ export async function reviewDraft(filePath: string, options: ReviewDraftOptions 
     let sawEditorJsonParseFailure = false;
     let lastParsedEditorStatus: string | null = null;
     let lastReplacementFailed = false;
+    let lastContentQualityPassed = false;
     let previousCriticalFeedback = '';
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -1870,6 +1380,7 @@ export async function reviewDraft(filePath: string, options: ReviewDraftOptions 
         continue;
       }
       lastParsedEditorStatus = String(parsedJson.status || '').trim();
+      const contentQualityPassed = hasApprovedContentQuality(parsedJson.content_quality);
 
       // JSONを適用して content を更新
       const parsedMatter = matter(currentContent);
@@ -1950,8 +1461,9 @@ export async function reviewDraft(filePath: string, options: ReviewDraftOptions 
       // パッチ後の内容でSEO再チェック。機械チェック由来のREJECTEDは自動補正後に通れば承認扱いにする。
       const postPatchSeo = checkSEO(currentContent);
       lastReplacementFailed = replacementFailed;
+      lastContentQualityPassed = contentQualityPassed;
       const lastHasCriticalFailed = hasCriticalFailed;
-      if (postPatchSeo.passed && parsedJson.status === 'APPROVED' && !hasCriticalFailed) {
+      if (postPatchSeo.passed && parsedJson.status === 'APPROVED' && contentQualityPassed && !hasCriticalFailed) {
         finalStatus = 'APPROVED';
         allLogs += `\n[Attempt ${attempt}] SEO Passed. APPROVED (No Critical replacement failures). Cosmetic Failed Allowed: ${replacementFailed && !hasCriticalFailed}\n`;
         break; // 合格
@@ -1962,6 +1474,9 @@ export async function reviewDraft(filePath: string, options: ReviewDraftOptions 
         allLogs += `\n[Attempt ${attempt}] AI status was ${parsedJson.status}. Post-patch SEO passed: ${postPatchSeo.passed}. Replacement Failed: ${replacementFailed}, Critical Failed: ${hasCriticalFailed}`;
         if (postPatchSeo.passed && parsedJson.status !== 'APPROVED') {
           allLogs += `\n[Attempt ${attempt}] SEOは通過しましたが、AI Editorが承認していないため公開承認しません。`;
+        }
+        if (postPatchSeo.passed && !contentQualityPassed) {
+          allLogs += `\n[Attempt ${attempt}] SEOは通過しましたが、検索意図への回答・固有価値・条件・確認時点の構造化レビューが未充足のため公開承認しません。`;
         }
         if (postPatchSeo.passed && hasCriticalFailed) {
           allLogs += `\n[Attempt ${attempt}] SEOは通過しましたが、AI Editorの重要置換指示が一部未反映のため再確認します。`;
@@ -1982,7 +1497,7 @@ export async function reviewDraft(filePath: string, options: ReviewDraftOptions 
       }
 
       const finalSeo = checkSEO(currentContent);
-      if (finalSeo.passed && !sawEditorJsonParseFailure && lastParsedEditorStatus === 'APPROVED' && !lastReplacementFailed) {
+      if (finalSeo.passed && !sawEditorJsonParseFailure && lastParsedEditorStatus === 'APPROVED' && lastContentQualityPassed && !lastReplacementFailed) {
         // 全く失敗がなかった場合のみ
         finalStatus = 'APPROVED';
         allLogs += `\n[Final Auto Repair] SEO Passed after AI Editor approval. APPROVED.\n`;

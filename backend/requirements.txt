@@ -17,6 +17,7 @@ webdriver-manager
 pandas
 numpy
 XlsxWriter>=3.2,<4
+pypdf>=5,<7
 
 # SNS & Utilities
 tweepy

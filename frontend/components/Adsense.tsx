@@ -5,9 +5,11 @@ import { usePathname } from 'next/navigation';
 import {
   isManualAdsEnabled,
   isProductionRuntime,
+  shouldLoadAdsensePageLevelScript,
   shouldShowDevAdPlaceholders,
   shouldSuppressAdsInDevelopment,
 } from '@/lib/ad-config';
+import { ensureAdsenseScript } from '@/lib/adsense-script';
 
 type AdsenseProps = {
   client: string;
@@ -26,33 +28,6 @@ type AdsenseProps = {
   lazyRootMargin?: string;
   /** レース切替などの再読み込み時に即時リクエストを許可するビューポート外余白(px) */
   refreshRootMarginPx?: number;
-};
-
-const ADSENSE_SCRIPT_ID = 'uma-adsense-manual-script';
-const ADSENSE_SCRIPT_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
-
-const ensureAdsenseScript = () => {
-  if (typeof window === 'undefined') return false;
-
-  const existingAds = (window as any).adsbygoogle;
-  if (!existingAds) {
-    (window as any).adsbygoogle = [];
-  }
-
-  const hasScript =
-    document.getElementById(ADSENSE_SCRIPT_ID) ||
-    document.querySelector(`script[src^="${ADSENSE_SCRIPT_SRC}"]`);
-
-  if (!hasScript) {
-    const script = document.createElement('script');
-    script.id = ADSENSE_SCRIPT_ID;
-    script.async = true;
-    script.src = ADSENSE_SCRIPT_SRC;
-    script.crossOrigin = 'anonymous';
-    document.head.appendChild(script);
-  }
-
-  return true;
 };
 
 export const Adsense = ({
@@ -87,15 +62,15 @@ export const Adsense = ({
           : configuredMinHeight;
   };
 
-  // 手動広告枠が必要になった時だけAdSenseスクリプトを読む。
-  // 全ページheadでclient付きスクリプトを先読みすると、自動広告の全画面表示が起動しやすくなるため分離する。
+  // hydration後、手動枠とページレベル側で同じ有効設定のスクリプトを共有する。
+  // 手動のみの運用では従来のURLを保ち、広告枠の要求は下の可視位置判定まで待つ。
   useEffect(() => {
     if (!shouldRenderAd || !isProductionRuntime) return;
 
     let timer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
 
-    ensureAdsenseScript();
+    ensureAdsenseScript({ pageLevelEnabled: shouldLoadAdsensePageLevelScript });
 
     const checkScriptReady = () => {
       if (cancelled) return;

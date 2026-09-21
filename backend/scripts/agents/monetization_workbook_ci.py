@@ -251,6 +251,69 @@ def main() -> int:
         ("媒体", 24), ("状態", 14), ("行数", 12), ("理由・内訳", 70),
     ], ([name, value.get("status"), value.get("row_count"), json_cell(value.get("reports") or value.get("reason"))]
         for name, value in (analysis.get("source_status") or {}).items()))
+    measurement_quality = analysis.get("measurement_quality") or {}
+    ga4_quality = measurement_quality.get("ga4") or {}
+    acquisition_quality = (ga4_quality.get("acquisition") or {}).get("quality") or {}
+    landing_quality = (ga4_quality.get("landing") or {}).get("not_set") or {}
+    adsense_quality = measurement_quality.get("adsense") or {}
+    payments_quality = measurement_quality.get("adsense_payments") or {}
+    acquisition_reconciliation = (ga4_quality.get("reconciliation") or {}).get("daily_to_acquisition") or {}
+    quality_sheet = worksheets["取得品質"]
+    quality_sheet.write_row("F4", ["計測品質", "状態", "分子", "分母", "率・値", "欠損日", "注記"], header)
+    quality_rows = [
+        (
+            "GA4日次とacquisition内訳",
+            acquisition_reconciliation.get("status"),
+            acquisition_reconciliation.get("difference_sessions"),
+            acquisition_reconciliation.get("daily_total_sessions"),
+            acquisition_reconciliation.get("breakdown_total_sessions"),
+            "", "差分はGA4の集計差を含み得る",
+        ),
+        *[
+            (
+                label, row.get("status"), row.get("affected_sessions"),
+                row.get("denominator_sessions"), row.get("rate"),
+                ", ".join(row.get("missing_dates") or []), "欠損日は0補完しない",
+            )
+            for label, row in (
+                ("GA4参照元(not set)", acquisition_quality.get("session_source_medium_not_set") or {}),
+                ("GA4チャネル(not set)", acquisition_quality.get("session_default_channel_group_not_set") or {}),
+                ("GA4キャンペーン(not set)", acquisition_quality.get("session_campaign_name_not_set") or {}),
+                ("GA4 Unassigned", acquisition_quality.get("unassigned") or {}),
+                ("GA4 landing(not set)", landing_quality),
+            )
+        ],
+        (
+            "AdSense requests", (adsense_quality.get("ad_requests") or {}).get("status"), None, None,
+            (adsense_quality.get("ad_requests") or {}).get("value"),
+            ", ".join((adsense_quality.get("ad_requests") or {}).get("missing_dates") or []),
+            "日別原本の合計",
+        ),
+        (
+            "AdSense coverage", (adsense_quality.get("ad_requests_coverage") or {}).get("status"), None, None,
+            (adsense_quality.get("ad_requests_coverage") or {}).get("value"),
+            ", ".join((adsense_quality.get("ad_requests_coverage") or {}).get("missing_dates") or []),
+            "requests加重。単価だけで原因を断定しない",
+        ),
+        (
+            "AdSense viewability", (adsense_quality.get("active_view_viewability") or {}).get("status"), None, None,
+            (adsense_quality.get("active_view_viewability") or {}).get("value"),
+            ", ".join((adsense_quality.get("active_view_viewability") or {}).get("missing_dates") or []),
+            (adsense_quality.get("active_view_viewability") or {}).get("aggregation_reason")
+            or "日別原本のみ。期間加重集約はしない",
+        ),
+        (
+            "AdSense payments", (payments_quality.get("report_status") or {}).get("status"), None, None, None, "",
+            "任意取得。アカウント警告は残し、広告実績とは分離",
+        ),
+    ]
+    for row_index, row in enumerate(quality_rows, start=4):
+        for column, value in enumerate(row, start=5):
+            selected = rate if column == 9 and isinstance(value, float) and 0 <= value <= 1 else wrap if isinstance(value, str) and len(value) > 24 else cell
+            quality_sheet.write(row_index, column, value, selected)
+    quality_sheet.set_column("F:F", 30)
+    quality_sheet.set_column("G:J", 16)
+    quality_sheet.set_column("K:K", 55)
     setup("原本", "正規化行。媒体別の変更前原本JSONもartifactへ保存。", [
         ("source", 20), ("dataset", 24), ("date", 12), ("status", 12), ("dimensions", 60),
         ("metrics", 60), ("lineage", 48), ("freshness", 24),

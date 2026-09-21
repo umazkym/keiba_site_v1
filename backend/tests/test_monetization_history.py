@@ -14,6 +14,7 @@ from backend.scripts.agents.monetization_history import (
     YOUTUBE_REPORTS,
     assess_grade_races,
     build_analysis,
+    build_measurement_quality,
     clarity_snapshot_summary,
     common_row,
     deduplicate_history_rows,
@@ -21,6 +22,7 @@ from backend.scripts.agents.monetization_history import (
     grade_race_publish_lead_days,
     parse_adsense_report,
     parse_ga4_report,
+    measurement_rows_by_date,
     resolve_period,
     safe_error,
     source_summary,
@@ -114,6 +116,245 @@ class MonetizationHistoryTest(unittest.TestCase):
             "unavailable",
         )
         self.assertFalse(summary["reports"]["thumbnail_reach"]["required"])
+
+    def test_adsense_payment_failure_is_visible_but_not_weekly_performance_failure(self) -> None:
+        summary = source_summary({
+            "rows": [{"source": "adsense"}],
+            "reports": {
+                "daily": {"status": "complete"},
+                "payments": {
+                    "status": "failed",
+                    "required": False,
+                    "warning_level": "account",
+                },
+            },
+        })
+
+        self.assertEqual(summary["status"], "complete")
+        self.assertEqual(summary["reports"]["payments"]["status"], "failed")
+        self.assertEqual(summary["reports"]["payments"]["warning_level"], "account")
+
+    def test_required_adsense_performance_failure_is_not_hidden(self) -> None:
+        summary = source_summary({
+            "rows": [],
+            "reports": {
+                "daily": {"status": "failed"},
+                "payments": {"status": "failed", "required": False},
+            },
+        })
+
+        self.assertEqual(summary["status"], "failed")
+
+    def test_measurement_quality_keeps_zero_distinct_from_missing_and_reconciles_breakdowns(self) -> None:
+        week_end = date(2026, 3, 22)
+        rows = []
+        for offset in range(7):
+            day = week_end - timedelta(days=6 - offset)
+            rows.extend([
+                daily_row("ga4", "daily", day, {"sessions": 101}),
+                daily_row("ga4", "acquisition", day, {"sessions": 90}) | {
+                    "dimensions": {
+                        "sessionDefaultChannelGroup": "Organic Search",
+                        "sessionSourceMedium": "google / organic",
+                        "sessionCampaignName": "(not set)",
+                    },
+                },
+                daily_row("ga4", "acquisition", day, {"sessions": 10}) | {
+                    "dimensions": {
+                        "sessionDefaultChannelGroup": "Unassigned",
+                        "sessionSourceMedium": "(not set)",
+                        "sessionCampaignName": "(not set)",
+                    },
+                },
+                daily_row("ga4", "landing_device", day, {"sessions": 100}) | {
+                    "dimensions": {
+                        "landingPagePlusQueryString": "(not set)",
+                        "deviceCategory": "mobile",
+                    },
+                },
+                daily_row("adsense", "daily", day, {
+                    "ad_requests": 0,
+                    "ad_requests_coverage": 0,
+                    "active_view_viewability": 0,
+                    "impressions": 0,
+                }),
+            ])
+        history = {
+            "rows": rows,
+            "source_status": {
+                "ga4": {"reports": {"acquisition": {"status": "complete"}, "landing_device": {"status": "complete"}}},
+                "adsense": {"reports": {"daily": {"status": "complete"}, "payments": {"status": "failed", "required": False}}},
+            },
+        }
+
+        quality = build_measurement_quality(history, Period(date(2026, 3, 16), week_end))
+        source_not_set = quality["ga4"]["acquisition"]["quality"]["session_source_medium_not_set"]
+        unassigned = quality["ga4"]["acquisition"]["quality"]["unassigned"]
+        reconciliation = quality["ga4"]["reconciliation"]["daily_to_acquisition"]
+
+        self.assertEqual(source_not_set["status"], "complete")
+        self.assertEqual(source_not_set["denominator_sessions"], 700)
+        self.assertEqual(source_not_set["affected_sessions"], 70)
+        self.assertEqual(source_not_set["rate"], 0.1)
+        self.assertEqual(unassigned["rate"], 0.1)
+        self.assertEqual(reconciliation["difference_sessions"], 7)
+        self.assertEqual(quality["adsense"]["ad_requests"]["value"], 0)
+        self.assertIsNone(quality["adsense"]["ad_requests_coverage"]["value"])
+        self.assertEqual(quality["adsense_payments"]["report_status"]["status"], "failed")
+
+    def test_measurement_quality_marks_partial_days_without_zero_filling(self) -> None:
+        week_end = date(2026, 3, 22)
+        rows = []
+        for offset in range(7):
+            day = week_end - timedelta(days=6 - offset)
+            rows.append(daily_row("ga4", "daily", day, {"sessions": 100}))
+            if offset != 3:
+                rows.append(daily_row("ga4", "acquisition", day, {"sessions": 90}) | {
+                    "dimensions": {
+                        "sessionDefaultChannelGroup": "Organic Search",
+                        "sessionSourceMedium": "google / organic",
+                        "sessionCampaignName": "spring",
+                    },
+                })
+            rows.append(daily_row("ga4", "landing_device", day, {"sessions": 100}) | {
+                "dimensions": {"landingPagePlusQueryString": "/", "deviceCategory": "desktop"},
+            })
+        quality = build_measurement_quality(
+            {"rows": rows, "source_status": {}}, Period(date(2026, 3, 16), week_end)
+        )
+        acquisition = quality["ga4"]["acquisition"]["quality"]["session_source_medium_not_set"]
+        reconciliation = quality["ga4"]["reconciliation"]["daily_to_acquisition"]
+
+        self.assertEqual(acquisition["status"], "partial")
+        self.assertEqual(acquisition["missing_dates"], ["2026-03-19"])
+        self.assertIsNone(acquisition["denominator_sessions"])
+        self.assertEqual(acquisition["observed_denominator_sessions"], 540)
+        self.assertEqual(reconciliation["status"], "partial")
+        self.assertIsNone(reconciliation["difference_sessions"])
+
+    def test_measurement_quality_keeps_zero_denominator_as_zero_not_missing(self) -> None:
+        day = date(2026, 3, 16)
+        history = {"rows": [
+            daily_row("ga4", "daily", day, {"sessions": 0}),
+            daily_row("ga4", "acquisition", day, {"sessions": 0}) | {
+                "dimensions": {
+                    "sessionDefaultChannelGroup": "Unassigned",
+                    "sessionSourceMedium": "(not set)",
+                    "sessionCampaignName": "(not set)",
+                },
+            },
+            daily_row("ga4", "landing_device", day, {"sessions": 0}) | {
+                "dimensions": {"landingPagePlusQueryString": "(not set)", "deviceCategory": "mobile"},
+            },
+        ], "source_status": {}}
+
+        quality = build_measurement_quality(history, Period(day, day))
+        source_not_set = quality["ga4"]["acquisition"]["quality"]["session_source_medium_not_set"]
+        reconciliation = quality["ga4"]["reconciliation"]["daily_to_acquisition"]
+
+        self.assertEqual(source_not_set["status"], "complete")
+        self.assertEqual(source_not_set["denominator_sessions"], 0)
+        self.assertEqual(source_not_set["affected_sessions"], 0)
+        self.assertIsNone(source_not_set["rate"])
+        self.assertEqual(reconciliation["difference_sessions"], 0)
+
+    def test_measurement_rows_do_not_use_known_part_of_incomplete_day_for_rates_or_differences(self) -> None:
+        day = date(2026, 3, 16)
+        rows = [
+            daily_row("ga4", "acquisition", day, {"sessions": 7}),
+            daily_row("ga4", "acquisition", day, {"sessions": None}),
+            common_row("ga4", "acquisition", day.isoformat(), "test", "fixture", "unit-test", {}, {"sessions": 2}, status="partial"),
+        ]
+
+        measured = measurement_rows_by_date(rows, "sessions", {day.isoformat()})
+
+        self.assertEqual(measured["status"], "partial")
+        self.assertIsNone(measured["values_by_date"][day.isoformat()])
+        self.assertEqual(measured["observed_values_by_date"][day.isoformat()], 9)
+        self.assertEqual(measured["missing_metric_dates"], [day.isoformat()])
+        self.assertEqual(measured["partial_row_dates"], [day.isoformat()])
+
+    def test_measurement_rows_keep_partial_report_values_observed_only(self) -> None:
+        day = date(2026, 3, 16)
+        measured = measurement_rows_by_date(
+            [daily_row("ga4", "acquisition", day, {"sessions": 10})],
+            "sessions",
+            {day.isoformat()},
+            report_status={"status": "partial"},
+        )
+
+        self.assertEqual(measured["status"], "partial")
+        self.assertFalse(measured["complete_values"])
+        self.assertIsNone(measured["values_by_date"][day.isoformat()])
+        self.assertEqual(measured["observed_values_by_date"][day.isoformat()], 10)
+        self.assertIsNone(measured["total"])
+        self.assertEqual(measured["observed_total"], 10)
+
+    def test_measurement_quality_distinguishes_missing_dimension_and_missing_weights(self) -> None:
+        day = date(2026, 3, 16)
+        history = {
+            "rows": [
+                daily_row("ga4", "daily", day, {"sessions": 10}),
+                daily_row("ga4", "acquisition", day, {"sessions": 10}) | {
+                    "dimensions": {
+                        "sessionDefaultChannelGroup": "Organic Search",
+                        "sessionCampaignName": "spring",
+                    },
+                },
+                daily_row("ga4", "landing_device", day, {"sessions": 10}) | {
+                    "dimensions": {"landingPagePlusQueryString": "/", "deviceCategory": "desktop"},
+                },
+                daily_row("adsense", "daily", day, {
+                    "ad_requests_coverage": 0.9,
+                    "active_view_viewability": 0.6,
+                    "impressions": 100,
+                }),
+            ],
+            "source_status": {
+                "ga4": {"reports": {"daily": {"status": "complete"}, "acquisition": {"status": "complete"}, "landing_device": {"status": "complete"}}},
+                "adsense": {"reports": {"daily": {"status": "complete"}}},
+            },
+        }
+
+        quality = build_measurement_quality(history, Period(day, day))
+        source_medium = quality["ga4"]["acquisition"]["quality"]["session_source_medium_not_set"]
+        coverage = quality["adsense"]["ad_requests_coverage"]
+        viewability = quality["adsense"]["active_view_viewability"]
+
+        self.assertEqual(source_medium["status"], "partial")
+        self.assertEqual(source_medium["missing_dimension_dates"], [day.isoformat()])
+        self.assertIsNone(source_medium["affected_sessions"])
+        self.assertIsNone(source_medium["daily"][0]["rate"])
+        self.assertEqual(coverage["status"], "partial")
+        self.assertIsNone(coverage["value"])
+        self.assertEqual(coverage["aggregation_status"], "unavailable")
+        self.assertEqual(viewability["status"], "complete")
+        self.assertIsNone(viewability["value"])
+        self.assertEqual(viewability["aggregation_status"], "unavailable")
+        self.assertEqual(quality["overall_status"], "partial")
+
+    def test_measurement_overall_status_becomes_unavailable_when_required_landing_is_missing(self) -> None:
+        day = date(2026, 3, 16)
+        history = {"rows": [
+            daily_row("ga4", "daily", day, {"sessions": 10}),
+            daily_row("ga4", "acquisition", day, {"sessions": 10}) | {
+                "dimensions": {
+                    "sessionDefaultChannelGroup": "Organic Search",
+                    "sessionSourceMedium": "google / organic",
+                    "sessionCampaignName": "spring",
+                },
+            },
+            daily_row("adsense", "daily", day, {
+                "ad_requests": 10,
+                "ad_requests_coverage": 0.9,
+                "active_view_viewability": 0.6,
+            }),
+        ], "source_status": {}}
+
+        quality = build_measurement_quality(history, Period(day, day))
+
+        self.assertEqual(quality["ga4"]["landing"]["not_set"]["status"], "unavailable")
+        self.assertEqual(quality["overall_status"], "unavailable")
 
     def test_identical_history_rows_are_idempotent(self) -> None:
         row = daily_row("gsc", "daily", date(2026, 3, 14), {"clicks": 1})
@@ -261,12 +502,12 @@ class MonetizationHistoryTest(unittest.TestCase):
             self.assertEqual(quality["missing_article_detection"], "complete")
 
     def test_grade_race_publish_lead_matches_demand_policy(self) -> None:
-        self.assertEqual(grade_race_publish_lead_days("G1", "jra"), 21)
-        self.assertEqual(grade_race_publish_lead_days("JpnII", "nar"), 14)
-        self.assertEqual(grade_race_publish_lead_days("G3", "JRA"), 10)
-        self.assertEqual(grade_race_publish_lead_days("S1", "nar", 300, demand_profile_known=True), 9)
-        self.assertEqual(grade_race_publish_lead_days("S2", "nar", 120, demand_profile_known=True), 3)
-        self.assertIsNone(grade_race_publish_lead_days("S3", "nar", 49, demand_profile_known=True))
+        self.assertEqual(grade_race_publish_lead_days("G1"), 21)
+        self.assertEqual(grade_race_publish_lead_days("JpnI"), 21)
+        self.assertEqual(grade_race_publish_lead_days("JpnII"), 14)
+        self.assertEqual(grade_race_publish_lead_days("G3"), 14)
+        self.assertEqual(grade_race_publish_lead_days("S1"), 14)
+        self.assertEqual(grade_race_publish_lead_days("S3"), 14)
 
     def test_grade_article_weekly_replacement_and_cross_analysis(self) -> None:
         previous = Period(date(2026, 7, 27), date(2026, 8, 2))

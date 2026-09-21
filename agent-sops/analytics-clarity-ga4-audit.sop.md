@@ -72,6 +72,9 @@ Constraints for parameter acquisition:
 - You MUST separate confirmed live firing, code presence, and dashboard reflection because they occur at different times.
 - You SHOULD identify remaining validation such as ad-filled `ad_impression_custom` if ads did not fill in test.
 - You MUST NOT overstate causality from analytics correlations because traffic source, device mix, and ad fill can change independently.
+- GA4日次、参照元内訳、ランディング内訳は各々のセッション合計を分母にし、合計差を明示する。取得行のない日と明示された0を分け、不完全日の部分合計で比率を確定しない。
+- 広告の可視率を期間集計するには計測可能インプレッションの分母が必要。総インプレッション加重を正しい期間可視率として表示しない。分母がなければ日別率と集約不能の理由を残す。
+- Clarityのデッドクリックには本文選択等、クイックバックには通常のレース巡回も含まれ得る。録画の前後の操作で確認し、単一指標を離脱理由に置き換えない。非表示・複数タブ区間を連続閲覧時間と扱わない。
 
 ## Source references
 

@@ -7,7 +7,7 @@ const FRONTEND_ROOT = path.basename(process.cwd()) === 'frontend'
 const ARTICLES_DIR = path.join(FRONTEND_ROOT, 'content', 'articles');
 
 const RULES = {
-  minBodyChars: Number.parseInt(process.env.ARTICLE_MIN_BODY_CHARS || '3000', 10) || 3000,
+  minBodyChars: Number.parseInt(process.env.ARTICLE_MIN_MEANINGFUL_BODY_CHARS || '80', 10) || 80,
   titleMin: 30,
   titleMax: 50,
   descriptionMin: 120,
@@ -33,7 +33,6 @@ const RULES = {
   ],
 };
 
-const CONFIRMATION_POINT_HEADING_PATTERN = /^##\s+.*(?:確認ポイント|確認順|確認手順|判断材料|確認すること|確認したいこと|評価基準).*$/m;
 const DUPLICATED_TERM_PATTERN = /(組み立て|確認ポイント|確認手順|判断材料|確認|分析|枠順|発表|ニュース|データ|レース|競馬|馬券|騎手|コース|前|後)\1/;
 const NAR_VENUE_PATTERN = /大井|川崎|船橋|浦和|盛岡|水沢|金沢|笠松|名古屋|園田|姫路|高知|佐賀|門別|帯広/;
 
@@ -127,6 +126,23 @@ function isExternalHref(href) {
   try {
     const url = new URL(href);
     return url.hostname !== 'uma-free.com' && url.hostname !== 'www.uma-free.com';
+  } catch {
+    return false;
+  }
+}
+
+// 本文との対応を確認した公式資料だけを許可し、一般媒体リンクの禁止は維持する。
+function isVerifiedOfficialReference(href, data) {
+  const references = data.verified_official_references;
+  const reviewedAt = String(data.official_reference_reviewed_at || '');
+  if (!Array.isArray(references) || !references.includes(href)) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(reviewedAt)) return false;
+  const reviewedDate = new Date(`${reviewedAt}T00:00:00Z`);
+  if (Number.isNaN(reviewedDate.getTime()) || reviewedDate.toISOString().slice(0, 10) !== reviewedAt) return false;
+  try {
+    const url = new URL(href);
+    const officialHosts = new Set(['jra.jp', 'www.jra.jp', 'jra.go.jp', 'www.jra.go.jp', 'company.jra.jp', 'keiba.go.jp', 'www.keiba.go.jp']);
+    return url.protocol === 'https:' && !url.username && !url.password && !url.port && officialHosts.has(url.hostname);
   } catch {
     return false;
   }
@@ -295,21 +311,17 @@ function auditArticle(file) {
   }
 
   if (bodyChars < RULES.minBodyChars) {
-    addIssue(issues, file, 'warning', 'body_length', `body length ${bodyChars}, expected at least ${RULES.minBodyChars}`);
+    addIssue(issues, file, 'warning', 'body_length', `本文が極端に短い可能性: ${bodyChars}字（破損検出の目安${RULES.minBodyChars}字）。文字数だけで品質や公開可否を判断しない。`);
   }
 
-  const dataCentricThemes = new Set(['asset', 'waku_data', 'jockey_data', 'popularity_data', 'running_style_data', 'grade_race_preview', 'race_update']);
-  const needsDataTable = dataCentricThemes.has(themeCluster) || /AI偏差値|勝率|複勝率|回収率|有利度スコア/.test(content);
-  if (needsDataTable && !/^\s*\|.+\|\s*$/m.test(content)) {
-    addIssue(issues, file, 'warning', 'data_format', 'missing markdown data table');
-  }
+  // 表や定型の見出しの有無だけで記事品質を判定しない。数値の異常検知は下で維持する。
 
   const isGradeRaceArticle = String(data.entity_type || '') === 'grade_race';
   if (isGradeRaceArticle && content.includes('/races/today')) {
     addIssue(issues, file, 'warning', 'cta', 'grade race article body must not contain the generic /races/today CTA');
   }
-  if (!isGradeRaceArticle && !content.includes('/races/today') && !/\/races\/\d{4}-\d{2}-\d{2}/.test(content)) {
-    addIssue(issues, file, 'warning', 'cta', 'missing race page CTA');
+  if (!isGradeRaceArticle && !collectMarkdownLinks(content).some(href => /^\/(?:races|articles|horses|jockeys|trainers|courses|keiba-data)(?:\/|$)/.test(href))) {
+    addIssue(issues, file, 'warning', 'internal_link_opportunity', '関連情報への内部リンクがありません。記事の目的に合う確認先があるか検討してください。');
   }
 
   if (
@@ -330,10 +342,6 @@ function auditArticle(file) {
     if (!hasBridgeMetadata) {
       addIssue(issues, file, 'critical', 'race_bridge', 'eligible race bridge is missing verified exact-race metadata');
     }
-  }
-
-  if (!CONFIRMATION_POINT_HEADING_PATTERN.test(content)) {
-    addIssue(issues, file, 'warning', 'confirmation_points', 'missing a neutral confirmation or decision-material section');
   }
 
   if (themeCluster === 'grade_race_preview' && !data.update_stage) {
@@ -364,7 +372,7 @@ function auditArticle(file) {
     if (href.includes('uma-free.jp')) {
       addIssue(issues, file, 'critical', 'link', `old domain link found: ${href}`);
     }
-    if (isExternalHref(href)) {
+    if (isExternalHref(href) && !isVerifiedOfficialReference(href, data)) {
       addIssue(issues, file, 'critical', 'link', `external link in generated article body: ${href}`);
     }
   }
@@ -420,4 +428,6 @@ function main() {
   }
 }
 
-main();
+module.exports = { isVerifiedOfficialReference };
+// npmの既存eval呼び出しと、直接実行の両方に対応する。
+if (!module.parent) main();

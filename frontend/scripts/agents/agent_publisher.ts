@@ -4,6 +4,7 @@ import matter from 'gray-matter';
 import { execSync } from 'child_process';
 import { createHash } from 'crypto';
 import { autoRepairDraftMarkdown } from './agent_editor';
+import { shouldPreserveRichExistingGradeRaceContent } from './grade_race_content_protection';
 import { checkSEO, checkSourceIndependence } from './seo_checker';
 import {
   GRADE_RACE_IDENTITY_VERSION,
@@ -25,6 +26,16 @@ import {
 const APPROVED_DIR = path.join(__dirname, '..', '..', 'agents', 'queue', 'approved');
 const ARTICLES_DIR = path.join(__dirname, '..', '..', 'content', 'articles');
 const HISTORY_PATH = path.join(__dirname, '..', '..', '..', 'data', 'posted_history.json');
+// 配信後の到達確認は、この実行で実際に更新した重賞記事だけを対象にする。
+// 全記事を走査すると、古い記事だけの成功で今回の記事の失敗を見落とし得る。
+const GRADE_RACE_PUBLICATION_TARGETS_PATH = path.join(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  'data',
+  'grade-race-publication-targets.json',
+);
 
 // 施策E: 競馬場名→英語スラグの変換マップ（CTA・ハブ記事でも参照）
 const venueMap: Record<string, string> = {
@@ -786,6 +797,10 @@ function mergeSeasonalGradeRaceContent(existingContent: string, incomingContent:
 
 function updateExistingEntityArticle(destPath: string, parsedDraft: any, now: Date): boolean {
   const existing = matter(fs.readFileSync(destPath, 'utf-8'));
+  if (shouldPreserveRichExistingGradeRaceContent(existing.data, existing.content, parsedDraft.data, parsedDraft.content)) {
+    console.warn('[Publisher] 公式事実の短い定型記事では既存の確認済み重賞本文を置き換えません');
+    return false;
+  }
   const existingStage = String(existing.data.update_stage || '').trim();
   const incomingStage = String(parsedDraft.data.update_stage || '').trim();
   if (
@@ -858,6 +873,21 @@ function writeHistory(history: any[]): void {
     fs.mkdirSync(dataDir, { recursive: true });
   }
   fs.writeFileSync(HISTORY_PATH, JSON.stringify(history, null, 2), 'utf-8');
+}
+
+function writeGradeRacePublicationTargets(slugs: Iterable<string>): void {
+  const uniqueSlugs = Array.from(new Set(slugs)).sort();
+  fs.mkdirSync(path.dirname(GRADE_RACE_PUBLICATION_TARGETS_PATH), { recursive: true });
+  fs.writeFileSync(
+    GRADE_RACE_PUBLICATION_TARGETS_PATH,
+    `${JSON.stringify({
+      schema_version: 'grade-race-publication-targets.v1',
+      generated_at: new Date().toISOString(),
+      slugs: uniqueSlugs,
+    }, null, 2)}\n`,
+    'utf-8',
+  );
+  console.log(`[Publisher] 公開確認対象の重賞記事: ${uniqueSlugs.length}件`);
 }
 
 function findHistoryIndex(history: any[], draftId: string, targetKeyword: string): number {
@@ -1016,6 +1046,9 @@ async function publishDraft() {
   }
 
   let files = fs.readdirSync(APPROVED_DIR).filter(f => f.endsWith('.md')).sort();
+  if (process.env.ARTICLE_PUBLISH_OFFICIAL_FACT_FALLBACK_ONLY === 'true') {
+    files = files.filter(file => file.startsWith('official-fact-'));
+  }
   if (process.env.ARTICLE_PUBLISH_OPERATION === 'gsc_rewrite') {
     files = files.filter(file => file.startsWith('gsc-rewrite-'));
     if (files.length !== 1) {
@@ -1036,6 +1069,7 @@ async function publishDraft() {
   let history = loadHistory();
   const publishedKeywords = loadPublishedArticleKeywords();
   const publishedSlugs: string[] = [];
+  const publishedGradeRaceSlugs = new Set<string>();
   const affectedVenues = new Set<string>();
   const approvedFilesToRemove: string[] = [];
   const writtenArticlePaths: string[] = [];
@@ -1100,6 +1134,9 @@ async function publishDraft() {
       fs.writeFileSync(rewriteTargetPath, finalContent, 'utf-8');
       approvedFilesToRemove.push(filePath);
       publishedSlugs.push(rewriteTargetSlug);
+      if (originalParsed.data.entity_type === 'grade_race') {
+        publishedGradeRaceSlugs.add(rewriteTargetSlug);
+      }
 
       const historyIndex = findPublishedHistoryIndexBySlug(history, rewriteTargetSlug);
       const rewriteRecord = {
@@ -1158,7 +1195,12 @@ async function publishDraft() {
       skippedCount++;
       continue;
     }
-    parsed.data = await verifyArticleRaceBridge(parsed.data);
+    if (parsed.data.official_fact_fallback === true) {
+      parsed.data.race_bridge_enabled = false;
+      parsed.data.race_bridge_eligibility_status = 'official_fact_fallback';
+    } else {
+      parsed.data = await verifyArticleRaceBridge(parsed.data);
+    }
 
     const sourceIndependence = checkSourceIndependence(matter.stringify(parsed.content, parsed.data));
     if (!sourceIndependence.passed) {
@@ -1178,6 +1220,10 @@ async function publishDraft() {
       });
       if (!updateExistingEntityArticle(existingEntityArticlePath, parsed, now)) {
         updatedArticleBackups.pop();
+        if (parsed.data.official_fact_fallback === true) {
+          fs.unlinkSync(filePath);
+          console.log('[Publisher] 既存の確認済み本文を保護したため公式事実定型draftを消費しました');
+        }
         skippedCount++;
         continue;
       }
@@ -1187,6 +1233,9 @@ async function publishDraft() {
       const venue = extractVenue(targetKeyword);
       if (venue) affectedVenues.add(venue);
       publishedSlugs.push(existingSlug);
+      if (parsed.data.entity_type === 'grade_race') {
+        publishedGradeRaceSlugs.add(existingSlug);
+      }
 
       const idx = findHistoryIndex(history, oldId, targetKeyword);
       if (idx !== -1) {
@@ -1359,6 +1408,9 @@ async function publishDraft() {
 
     publishedKeywords.add(targetKeyword);
     publishedSlugs.push(slug);
+    if (parsed.data.entity_type === 'grade_race') {
+      publishedGradeRaceSlugs.add(slug);
+    }
   }
 
   // 施策C: ハブ記事の自動生成/更新
@@ -1384,6 +1436,9 @@ async function publishDraft() {
   }
 
   writeHistory(history);
+  if (publishedSlugs.length > 0) {
+    writeGradeRacePublicationTargets(publishedGradeRaceSlugs);
+  }
 
   for (const approvedPath of approvedFilesToRemove) {
     if (fs.existsSync(approvedPath)) {

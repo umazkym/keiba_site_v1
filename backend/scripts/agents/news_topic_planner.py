@@ -20,6 +20,7 @@ import re
 import sys
 import time
 import unicodedata
+from io import BytesIO
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
@@ -39,6 +40,7 @@ from grade_race_identity import (
     normalize_grade_race_identity_text,
     resolve_grade_race_identity,
 )
+from grade_race_publication_policy import grade_race_publish_lead_days
 
 try:
     from dotenv import load_dotenv
@@ -74,6 +76,10 @@ GRADE_RACE_SEARCH_DEMAND_PATH = os.path.join(
 )
 LOCAL_JRA_GRADE_SCHEDULE_PATH = os.path.join(PROJECT_ROOT, "data/reference/中央競馬重賞一覧.txt")
 LOCAL_NAR_GRADE_SCHEDULE_PATH = os.path.join(PROJECT_ROOT, "data/reference/地方競馬重賞一覧.txt")
+NAR_OFFICIAL_HEAVYPRIZE_URL = "https://www.keiba.go.jp/pdf/RaceScheduleList/heavyprize{year}{month:02d}.pdf"
+NAR_OFFICIAL_PDF_MAX_BYTES = 2_000_000
+NAR_OFFICIAL_PDF_MAX_MONTHS = 3
+NAR_OFFICIAL_GRADE_PATTERN = re.compile(r"(?:Jpn(?:III|II|I)|重賞(?:III|II|I)|(?:SP|BG|[MHS])(?:III|II|I|3|2|1))$")
 
 JST = timezone(timedelta(hours=9))
 CENTRAL_DRAW_READY_HOUR = 11
@@ -831,27 +837,9 @@ def search_demand_profile(entry: RaceDemand) -> Dict[str, Any]:
 
 
 def race_article_initial_lead_days(entry: RaceDemand) -> Optional[int]:
-    """過去需要と格に基づく最初の公開日。Noneは記事を作らない。"""
-    grade = normalize_grade_label(entry.grade)
-    if grade in {"G1", "JpnI"}:
-        return 21
-    if grade in {"G2", "JpnII"}:
-        return 14
-    if is_jra_grade_entry(entry) and grade == "G3":
-        return 10
-
-    profile = search_demand_profile(entry)
-    impressions = float(profile.get("impressions") or 0)
-    race_page_position = float(profile.get("race_page_position") or 0)
-    race_page_ctr = float(profile.get("race_page_ctr") or 0)
-    if race_page_position and race_page_position <= 10 and race_page_ctr >= 0.10:
-        return None
-    if impressions >= 300:
-        return 9
-    if profile and impressions < 50:
-        return None
-    # 過去データがない地方重賞、または50〜299表示の地方重賞。
-    return 3
+    """全重賞の初回公開期限を返す。検索需要は優先順位だけに使う。"""
+    # JRA G2/G3、交流重賞、地方重賞は需要の大小で除外せずD-14までに初回公開する。
+    return grade_race_publish_lead_days(normalize_grade_label(entry.grade))
 
 
 def is_race_article_eligible(entry: RaceDemand) -> bool:
@@ -885,7 +873,7 @@ def resolve_grade_race_schedule_identity(
     return resolve_grade_race_identity(
         entry.name,
         race_demand_circuit(entry),
-        trusted_schedule=source_kind in TRUSTED_GRADE_RACE_SCHEDULE_SOURCES,
+        trusted_schedule=source_kind in TRUSTED_GRADE_RACE_SCHEDULE_SOURCES | {"nar_official_pdf"},
         registry=registry if registry is not None else _SHARED_GRADE_RACE_ENTITY_ROWS,
     )
 
@@ -988,6 +976,87 @@ def parse_nar_schedule_html(html_text: str, year: int) -> List[RaceDemand]:
             )
         )
     return entries
+
+
+def parse_nar_official_schedule_text(text_value: str, year: int, source_url: str) -> List[RaceDemand]:
+    """NAR月別重賞PDFから、列がそろう行だけを公式日程として取り込む。"""
+    venue_pattern = "|".join(sorted((*NAR_VENUES, "帯広"), key=len, reverse=True))
+    row_pattern = re.compile(
+        rf"^(?P<venue>{venue_pattern})\s+(?P<month>\d{{1,2}})/(?P<day>\d{{1,2}})\s+\S+\s+(?P<rest>.+)$"
+    )
+    grade_pattern = re.compile(r"(?:Jpn(?:III|II|I|3|2|1)|重賞(?:III|II|I|3|2|1)|(?:SP|BG|[MHS])(?:III|II|I|3|2|1))")
+    entries: List[RaceDemand] = []
+    seen: Set[Tuple[str, int, int]] = set()
+    for raw_line in text_value.splitlines():
+        line = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", raw_line or "")).strip()
+        match = row_pattern.match(line)
+        if not match:
+            continue
+        try:
+            month = int(match.group("month"))
+            day = int(match.group("day"))
+            date(year, month, day)
+        except ValueError:
+            continue
+        rest = match.group("rest")
+        condition_match = re.search(r"\s+(?P<conditions>(?:サラ\s*系|\d+歳).+)$", rest)
+        if not condition_match:
+            continue
+        before_conditions = rest[:condition_match.start()].strip()
+        distance_match = re.search(r"\s+(?P<distance>\d{3,4})\s*$", before_conditions)
+        if not distance_match:
+            continue
+        label = before_conditions[:distance_match.start()].strip()
+        grade_match = grade_pattern.search(label)
+        if not grade_match:
+            continue
+        grade = normalize_grade_label(re.sub(r"\s+", "", grade_match.group(0)))
+        if not NAR_OFFICIAL_GRADE_PATTERN.fullmatch(grade):
+            continue
+        name_part = label[:grade_match.start()].strip()
+        name_part = re.sub(r"(?:\s+(?:GDJ|3SS|未来))+$", "", name_part)
+        name = re.sub(r"^第\d+回", "", re.sub(r"\s+", "", name_part)).strip()
+        conditions = re.sub(r"\s+", "", condition_match.group("conditions"))
+        conditions = re.sub(r"(?:指定交流|地方全国交流|東日本交流|西日本交流|北陸・東海・近畿交流|北陸・東海交流)$", "", conditions)
+        if not name or not conditions:
+            continue
+        venue = "帯広ば" if match.group("venue") == "帯広" else match.group("venue")
+        key = (schedule_identity(name), month, day)
+        if key in seen:
+            continue
+        seen.add(key)
+        entries.append(
+            RaceDemand(
+                name=name,
+                aliases=aliases_for_schedule_race(name),
+                month=month,
+                day=day,
+                grade=grade,
+                base_score=base_score_for_grade(grade),
+                year=year,
+                venue=venue,
+                distance=f"{distance_match.group('distance')}m",
+                conditions=conditions,
+                source_kind="nar_official_pdf",
+                source_url=source_url,
+            )
+        )
+    return entries
+
+
+def parse_nar_official_schedule_pdf(pdf_bytes: bytes, year: int, source_url: str) -> List[RaceDemand]:
+    """壊れた・過大なPDFは空として扱い、既存キューを推測で更新しない。"""
+    if not pdf_bytes or len(pdf_bytes) > NAR_OFFICIAL_PDF_MAX_BYTES:
+        return []
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(BytesIO(pdf_bytes), strict=True)
+        text_pages = [page.extract_text() or "" for page in reader.pages]
+    except Exception as exc:
+        print(f"[NewsPlanner] NAR公式重賞PDFの解析に失敗: {exc}")
+        return []
+    return parse_nar_official_schedule_text("\n".join(text_pages), year, source_url)
 
 
 def normalize_schedule_course_text(course_text: str) -> str:
@@ -1152,6 +1221,51 @@ def fetch_remote_race_schedule(now: datetime) -> List[RaceDemand]:
     except Exception as exc:
         print(f"[NewsPlanner] JRA重賞日程の取得に失敗。内蔵日程へフォールバック: {exc}")
 
+    official_nar_enabled = os.environ.get("KEIBA_NEWS_OFFICIAL_NAR_SCHEDULE_ENABLED", "true").lower() not in {
+        "0", "false", "no",
+    }
+    if official_nar_enabled:
+        for year, month in schedule_months_in_window(now)[:NAR_OFFICIAL_PDF_MAX_MONTHS]:
+            source_url = NAR_OFFICIAL_HEAVYPRIZE_URL.format(year=year, month=month)
+            response = None
+            try:
+                response = requests.get(
+                    source_url,
+                    headers=headers,
+                    timeout=timeout_seconds,
+                    allow_redirects=False,
+                    stream=True,
+                )
+                response.raise_for_status()
+                if (
+                    300 <= response.status_code < 400
+                    or response.url != source_url
+                ):
+                    raise ValueError("NAR公式日程PDFのリダイレクトを拒否")
+                content_type = response.headers.get("content-type", "").lower()
+                content_length = response.headers.get("content-length", "")
+                if content_length.isdigit() and int(content_length) > NAR_OFFICIAL_PDF_MAX_BYTES:
+                    raise ValueError("NAR公式日程PDFがサイズ上限を超過")
+                if "pdf" not in content_type:
+                    raise ValueError("NAR公式日程PDFの形式またはサイズが不正")
+                pdf_bytes = bytearray()
+                for chunk in response.iter_content(chunk_size=64 * 1024):
+                    pdf_bytes.extend(chunk)
+                    if len(pdf_bytes) > NAR_OFFICIAL_PDF_MAX_BYTES:
+                        raise ValueError("NAR公式日程PDFがサイズ上限を超過")
+                entries.extend(parse_nar_official_schedule_pdf(bytes(pdf_bytes), year, source_url))
+            except Exception as exc:
+                print(f"[NewsPlanner] NAR公式重賞日程の取得に失敗 ({year}-{month:02d})。既存日程を保持: {exc}")
+            finally:
+                if response is not None:
+                    response.close()
+
+    remote_nar_enabled = os.environ.get("KEIBA_NEWS_REMOTE_NAR_SCHEDULE_ENABLED", "true").lower() not in {
+        "0", "false", "no",
+    }
+    if not remote_nar_enabled:
+        return entries
+
     for year, month in schedule_months_in_window(now):
         try:
             response = requests.get(
@@ -1181,7 +1295,15 @@ def available_race_demands(now: Optional[datetime] = None) -> Tuple[RaceDemand, 
         if entry.year is not None and entry.year not in {base_now.year - 1, base_now.year, base_now.year + 1}:
             return
         identity = schedule_identity(entry.name)
-        for existing_key in list(merged):
+        matching_keys = [
+            existing_key for existing_key in merged
+            if existing_key[0] == identity and existing_key[1] == entry_year
+        ]
+        # 同一実行でJRA公式から解析した日程は、ローカルキャッシュで上書きしない。
+        official_sources = {"jra", "nar_official_pdf"}
+        if any(merged[key].source_kind in official_sources for key in matching_keys) and entry.source_kind not in official_sources:
+            return
+        for existing_key in matching_keys:
             if existing_key[0] == identity and existing_key[1] == entry_year:
                 merged.pop(existing_key, None)
         key = (schedule_identity(entry.name), entry_year, entry.month, entry.day)
@@ -1726,12 +1848,36 @@ def schedule_source_url(entry: RaceDemand, now: Optional[datetime] = None) -> st
     if entry.source_url:
         return entry.source_url
     base_now = now or current_jst()
-    if entry.source_kind == "jra":
+    if str(entry.source_kind).startswith("jra"):
         return f"https://www.jra.go.jp/datafile/seiseki/replay/{base_now.year}/jyusyo.html"
-    return (
-        "https://nar.sp.netkeiba.com/top/schedule.html"
-        f"?year={race_demand_date(entry, base_now).year}&month={entry.month}"
+    return "https://www.keiba.go.jp/"
+
+
+def has_confirmed_official_schedule_facts(entry: RaceDemand, now: Optional[datetime] = None) -> bool:
+    """LLMなし定型記事に必要な公式日程の4項目がそろう場合だけTrue。"""
+    # 現時点で自動公開できるのは、この実行でJRA公式日程を解析したentryだけ。
+    # 内蔵・ローカル日程とnetkeiba由来の地方日程は、公式URLへ置換して扱わない。
+    source_kind = str(entry.source_kind or "").lower()
+    if source_kind not in {"jra", "nar_official_pdf"}:
+        return False
+    if not all((entry.venue.strip(), entry.distance.strip(), entry.conditions.strip())):
+        return False
+    source_url = schedule_source_url(entry, now)
+    parsed_url = urlparse(source_url)
+    try:
+        has_port = parsed_url.port is not None
+    except ValueError:
+        return False
+    if parsed_url.scheme != "https" or parsed_url.username or parsed_url.password or has_port:
+        return False
+    host = (parsed_url.hostname or "").lower()
+    if source_kind == "jra":
+        return host == "www.jra.go.jp" and f"/{race_demand_date(entry, now).year}/" in source_url
+    expected_url = NAR_OFFICIAL_HEAVYPRIZE_URL.format(
+        year=race_demand_date(entry, now).year,
+        month=entry.month,
     )
+    return source_url == expected_url and host == "www.keiba.go.jp"
 
 
 def seo_keywords_for_grade_race(
@@ -2032,6 +2178,9 @@ def tavily_search(query: str, include_domains: List[str], max_results: int, days
 
 
 def fetch_tavily_node(state: WorkflowState) -> WorkflowState:
+    if os.environ.get("KEIBA_NEWS_TAVILY_ENABLED", "true").lower() in {"0", "false", "no"}:
+        state.issues.append("Tavily search is disabled. Official schedule coverage continues.")
+        return state
     if not os.environ.get("TAVILY_API_KEY"):
         state.issues.append("TAVILY_API_KEY is not set. News topic planner skipped.")
         return state
@@ -2360,8 +2509,8 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
     # Tavilyの有無とは独立して、重賞ごとの需要時期と事実の反映状況から
     # 同一年度記事の次の更新だけを候補化する。枠順・結果はDB確認なしで進めない。
     added_calendar_stage_keys: Set[str] = set()
-    max_focus_races = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_FOCUS_RACES"), 10), 12)
-    for entry, days_to_race in focus_races()[:max_focus_races]:
+    # 件数capはWriteOrder処理側にだけ適用する。公開期限の重賞候補を探索段階で捨てない。
+    for entry, days_to_race in focus_races():
         if not is_race_article_eligible(entry):
             continue
         identity_resolution = resolve_grade_race_schedule_identity(entry)
@@ -2378,6 +2527,11 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
                 f"重賞識別子を日程から自動解決: {entry.name} / {identity_resolution.entity_key}"
             )
         season_year = str(race_demand_date(entry).year)
+        readiness = grade_race_publication_readiness(entry, days_to_race, grade_stage_keys)
+        if readiness == "preparation_d21":
+            state.issues.append(f"D-21公開準備: {entry.name} / 初回公開期限D-{race_article_initial_lead_days(entry)}")
+        elif readiness == "warning_d16_unpublished":
+            state.issues.append(f"D-16未公開警告: {entry.name} / 初回公開期限D-{race_article_initial_lead_days(entry)}")
         draw_confirmed = days_to_race <= 3 and grade_race_has_confirmed_draw(entry)
         result_confirmed = days_to_race <= 0 and grade_race_has_results(entry)
         due_milestones = due_grade_race_milestones(
@@ -2763,6 +2917,30 @@ def due_grade_race_milestones(
     if 0 <= days_to_race <= lead_days:
         due.append((INITIAL_STAGE_KEY, "field_building", "field_analysis", "due_initial"))
     return due
+
+
+def grade_race_publication_readiness(
+    entry: RaceDemand,
+    days_to_race: int,
+    completed_stage_keys: Set[str],
+    *,
+    now: Optional[datetime] = None,
+) -> str:
+    """初回公開の準備・警告・期限を、生成可否とは分けて表す。"""
+    lead_days = race_article_initial_lead_days(entry)
+    if lead_days is None or days_to_race < 0 or days_to_race > 21:
+        return ""
+    season_year = str(race_demand_date(entry, now).year)
+    initial_key = grade_race_stage_key(grade_race_identity_key(entry), season_year, INITIAL_STAGE_KEY)
+    if initial_key and initial_key in completed_stage_keys:
+        return "published_or_queued"
+    if days_to_race == 21 and lead_days == 21:
+        return "preparation_d21"
+    if days_to_race <= 14:
+        return "due_initial"
+    if days_to_race <= 16:
+        return "warning_d16_unpublished"
+    return "preparation_d21"
 
 
 def course_stat_rows(db: Any, race: Any) -> List[Dict[str, Any]]:
@@ -3459,7 +3637,15 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
                 "scheduled_distance": schedule_entry.distance if schedule_entry else "",
                 "scheduled_conditions": schedule_entry.conditions if schedule_entry else "",
                 "scheduled_grade": normalize_grade_label(schedule_entry.grade) if schedule_entry else "",
-                "schedule_source_url": schedule_entry.source_url if schedule_entry else "",
+                "schedule_source_url": schedule_source_url(schedule_entry) if schedule_entry else "",
+                "official_schedule_confirmed": bool(
+                    schedule_entry and has_confirmed_official_schedule_facts(schedule_entry)
+                ),
+                "official_fact_fallback_eligible": bool(
+                    schedule_entry
+                    and update_stage == "field_building"
+                    and has_confirmed_official_schedule_facts(schedule_entry)
+                ),
                 "search_intent": candidate.search_intent,
                 "search_intent_label": candidate.search_intent_label,
                 "search_angle_label": candidate.search_angle_label,

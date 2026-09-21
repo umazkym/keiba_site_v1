@@ -27,6 +27,7 @@ Constraints for parameter acquisition:
 - You MUST inspect `frontend/components/AffiliateSlot.tsx`, `frontend/lib/affiliate-campaigns.ts`, `frontend/components/AdUnit.tsx`, `frontend/components/AdSensePageLevelScript.tsx`, and relevant page components when affected.
 - You MUST identify whether the surface appears before, inside, or after the main user task.
 - You MUST check whether GA4/Clarity events are emitted for impression and click behavior.
+- You MUST 手動枠とページレベルのAdSenseローダーが同じ有効設定を参照し、effectの順序にかかわらず1本だけ初期化することを確認する。ページレベル有効時にclientなしの手動用スクリプトが先行し、client付き読込を妨げてはいけない。修復目的の再読込や広告要求追加は行わない。
 - You MUST NOT place monetization UI inside prediction tables, sticky selectors, or dense race navigation because it increases accidental interaction and harms race browsing.
 
 ### 2. Preserve disclosure and link safety

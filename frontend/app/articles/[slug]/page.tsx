@@ -16,6 +16,7 @@ import { ArticleRaceBridgeExperiment } from '@/components/ArticleRaceBridgeExper
 import { ArticleAfterBodyLayout } from '@/components/ArticleAfterBodyLayout';
 import { getArticleRacePreview } from '@/lib/api';
 import { hasValidArticleRaceBridgeMetadata, shouldRenderArticleRaceBridge } from '@/lib/article-race-bridge';
+import { resolveArticleCanonicalPath } from '@/lib/article-canonical';
 
 type Props = {
   params: { slug: string };
@@ -31,13 +32,6 @@ const ARTICLE_INTENT_GUIDES: Record<string, { href: string; label: string }> = {
     label: '馬体重データを確認',
   },
 };
-
-function resolveArticleCanonicalPath(article: { canonicalPath?: string; canonicalSlug?: string }, fallbackSlug: string): string {
-  if (article.canonicalPath && article.canonicalPath.startsWith('/')) {
-    return article.canonicalPath;
-  }
-  return `/articles/${article.canonicalSlug || fallbackSlug}`;
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {

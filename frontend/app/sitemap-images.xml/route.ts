@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAllArticles } from '@/lib/articles';
+import { resolveArticleCanonicalPath, REDIRECTED_ARTICLE_PATHS } from '@/lib/article-canonical';
 
 const BASE_URL = 'https://uma-free.com';
 
@@ -17,7 +18,12 @@ function escapeXml(unsafe: string) {
 }
 
 export async function GET() {
-    const articles = getAllArticles();
+    const articles = getAllArticles()
+        .map(article => ({
+            ...article,
+            canonicalPath_: resolveArticleCanonicalPath(article, article.slug),
+        }))
+        .filter(a => a.canonicalPath_.startsWith('/articles/') && !REDIRECTED_ARTICLE_PATHS.has(a.canonicalPath_));
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -30,7 +36,7 @@ export async function GET() {
         </image:image>
     </url>
 ${articles.map(article => `    <url>
-        <loc>${BASE_URL}/articles/${article.slug}</loc>
+        <loc>${BASE_URL}${article.canonicalPath_}</loc>
         <image:image>
             <image:loc>${BASE_URL}${escapeXml(article.eyecatch)}</image:loc>
             <image:title>${escapeXml(article.title)}</image:title>

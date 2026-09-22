@@ -7,6 +7,7 @@ import { MultiplexAd } from "@/components/MultiplexAd";
 import { SectionHeader } from "@/components/SectionHeader";
 import { BreadcrumbSchema, ItemListSchema } from "@/components/StructuredData";
 import { shouldSuppressAdsInDevelopment } from "@/lib/ad-config";
+import { resolveArticleCanonicalPath } from "@/lib/article-canonical";
 import {
   getArticleArchiveTotals,
   getGradeRaceArticleArchiveSections,
@@ -547,7 +548,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
   // 一覧の並び順を検索エンジンへ伝える。表示中のページに載っている記事だけを対象にする。
   const itemListEntries = paginatedArticles.map((article) => ({
     name: article.title,
-    url: `https://uma-free.com${article.canonicalPath || `/articles/${article.canonicalSlug || article.slug}`}`,
+    url: `https://uma-free.com${resolveArticleCanonicalPath(article, article.slug)}`,
   }));
 
   return (

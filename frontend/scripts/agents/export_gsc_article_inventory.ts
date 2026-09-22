@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import { getArticleArchiveGroupForArticle } from '../../lib/article-archives';
+import { resolveArticleCanonicalPath } from '../../lib/article-canonical';
 import { getCanonicalArticleSitemapEntries } from '../../lib/article-sitemap';
 import { getAllArticles } from '../../lib/articles';
 
@@ -55,9 +56,7 @@ function resolveInventory(): InventoryArticle[] {
 
   for (const article of articles) {
     const archiveGroup = getArticleArchiveGroupForArticle(article);
-    const canonicalPath = article.canonicalPath
-      || archiveGroup?.href
-      || `/articles/${article.canonicalSlug || article.slug}`;
+    const canonicalPath = resolveArticleCanonicalPath(article, article.slug);
     if (!canonicalPath.startsWith('/articles/') || !sitemapCanonicals.has(canonicalPath)) {
       continue;
     }

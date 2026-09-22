@@ -3379,7 +3379,7 @@ def build_competing_structure(candidate: TopicCandidate) -> List[str]:
 
 
 def build_write_orders_node(state: WorkflowState) -> WorkflowState:
-    max_orders = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_ORDERS_PER_RUN"), 3), 5)
+    max_orders = min(parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_ORDERS_PER_RUN"), 5), 8)
     max_topics_per_race = parse_positive_int(os.environ.get("KEIBA_NEWS_MAX_TOPICS_PER_RACE_PER_RUN"), 1)
     min_topic_score = float(os.environ.get("KEIBA_NEWS_MIN_TOPIC_SCORE", "45"))
     selected: List[TopicCandidate] = []

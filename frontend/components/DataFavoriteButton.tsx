@@ -52,8 +52,8 @@ export function DataFavoriteButton({
             aria-pressed={saved}
             className={`inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                 saved
-                    ? 'border-blue-200 bg-blue-50 text-blue-800'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-primary'
+                    ? 'border-brand-200 bg-brand-50 text-brand-800'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:text-primary'
             }`}
         >
             <Bookmark className={`h-4 w-4 ${saved ? 'fill-current' : ''}`} aria-hidden="true" />

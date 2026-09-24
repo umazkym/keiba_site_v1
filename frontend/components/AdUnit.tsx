@@ -269,7 +269,7 @@ export const AdUnit = ({
                     <div className={`ad-highlight relative z-10 w-full ${!adLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-500'}`}>
                         {/* 広告がロードされた場合のみラベルを表示 */}
                         {label && adLoaded && (
-                            <div className="mb-1 select-none text-center text-[10px] tracking-wider text-gray-400">
+                            <div className="mb-1 select-none text-center text-[10px] tracking-wider text-slate-400">
                                 {label}
                             </div>
                         )}

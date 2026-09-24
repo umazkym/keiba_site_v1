@@ -1,14 +1,17 @@
 'use client';
 
+// 本日の分析注目馬。本命候補（◎で最も高いAI偏差値）・対抗以下の上位（◎以外の印で最も高い）・地方の注目。
+// オッズは使っていないため、オッズを根拠にした呼び方（妙味・割安など）はしない。
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { SpecialPick, RaceDayPrediction } from "@/lib/types";
-import { formatDate } from '@/lib/utils';
 import { getRaceDetailPath } from '@/lib/race-url';
 import {
     extractHomeSpecialPicks,
     type HomeSpecialPickSet,
 } from '@/lib/home-page-summary';
+import { getSurfaceLabel } from '@/lib/race-display';
+import { HorseNumber, RacePlate } from '@/components/RaceParts';
 
 type Props = {
     pick?: SpecialPick | null;
@@ -17,35 +20,19 @@ type Props = {
     precomputedPicks?: HomeSpecialPickSet;
 };
 
-// スケルトン
-const Skeleton = () => (
-    <div className="h-[180px] animate-pulse rounded-xl border border-slate-100 bg-white p-4 sm:p-6">
-        <div className="flex gap-2 mb-4">
-            <div className="h-6 bg-slate-100 rounded w-20"></div>
-            <div className="h-6 bg-slate-100 rounded w-20"></div>
-            <div className="h-6 bg-slate-100 rounded w-20"></div>
-        </div>
-        <div className="flex justify-between items-center mt-2">
-            <div className="h-4 bg-slate-100 rounded w-1/3 sm:h-5"></div>
-            <div className="h-8 bg-slate-100 rounded-full w-24"></div>
-        </div>
-        <div className="h-6 bg-slate-100 rounded w-3/4 mt-3"></div>
-        <div className="h-4 bg-slate-100 rounded w-full mt-2"></div>
-    </div>
-);
+type TabKey = 'favored' | 'value' | 'nar';
+
+const TAB_LABELS: Record<TabKey, string> = {
+    favored: '本命候補',
+    value: '対抗以下の上位',
+    nar: '地方の注目',
+};
+
+const getJstToday = () => new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
 export const SpecialPickCard = ({ pick: initialPick, date, predictions, precomputedPicks }: Props) => {
-    const [activeTab, setActiveTab] = useState<'favored' | 'value' | 'nar'>('favored');
-
-    const getEffectiveDate = () => {
-        if (date) return date;
-        const now = new Date();
-        const jstDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-        return jstDate.toISOString().split('T')[0];
-    };
-
-    const effectiveDate = getEffectiveDate();
-    const formattedDate = formatDate(effectiveDate);
+    const [activeTab, setActiveTab] = useState<TabKey>('favored');
+    const effectiveDate = date ?? getJstToday();
 
     // 予測データから注目馬を動的に抽出
     const extractedPicks = useMemo(() => {
@@ -66,98 +53,67 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions, precompu
     }, [activeTab, extractedPicks]);
 
     if (!currentPick) {
-        return (
-            <div className="bg-white text-gray-600 p-6 rounded-xl border border-gray-200 h-full flex items-center justify-center">
-                <p>本日のAI注目馬はありません。</p>
-            </div>
-        );
+        return null;
     }
 
-    // 偏差値をプログレスバーの%に変換 (偏差値40〜70の範囲でマッピング)
-    const barPercent = Math.min(100, Math.max(10, ((currentPick.deviation_score - 40) / 30) * 100));
-
-    // 偏差値のスコア別カラー
-    const getProgressBarColor = (score: number) => {
-        if (score >= 70) return 'bg-rose-500';
-        if (score >= 60) return 'bg-orange-500';
-        if (score >= 50) return 'bg-amber-500';
-        return 'bg-blue-500';
-    };
+    const tabs = (['favored', 'value', 'nar'] as TabKey[]).filter((key) => key === 'favored' || extractedPicks[key]);
+    const racePath = getRaceDetailPath(effectiveDate, currentPick.venue_name, currentPick.race_number);
+    const raceMeta = [
+        currentPick.race_name,
+        currentPick.course_type || currentPick.distance ? `${getSurfaceLabel(currentPick.course_type)}${currentPick.distance ?? ''}${currentPick.distance ? 'm' : ''}` : null,
+        currentPick.runners ? `${currentPick.runners}頭` : null,
+    ].filter(Boolean).join(' · ');
 
     return (
-        <div>
-            {/* タブ切り替えヘッダー */}
-            <div className="flex gap-1.5 sm:gap-2 mb-2 overflow-x-auto scrollbar-hide">
-                <button
-                    onClick={() => setActiveTab('favored')}
-                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'favored' ? 'bg-primary text-white shadow-sm' : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-800'}`}
-                >
-                    本命候補
-                </button>
-                {extractedPicks.value && (
-                    <button
-                        onClick={() => setActiveTab('value')}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'value' ? 'bg-primary text-white shadow-sm' : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-800'}`}
-                    >
-                        オッズ妙味
-                    </button>
-                )}
-                {extractedPicks.nar && (
-                    <button
-                        onClick={() => setActiveTab('nar')}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'nar' ? 'bg-primary text-white shadow-sm' : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-800'}`}
-                    >
-                        地方注目
-                    </button>
-                )}
+        <div className="flex flex-col gap-3.5">
+            {tabs.length > 1 && (
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="注目馬の種類">
+                    {tabs.map((key) => (
+                        <button
+                            key={key}
+                            type="button"
+                            onClick={() => setActiveTab(key)}
+                            aria-pressed={activeTab === key}
+                            className={`inline-flex h-9 items-center whitespace-nowrap rounded-full border px-3.5 text-[13px] font-bold transition-colors duration-150 ${activeTab === key
+                                ? 'border-navy bg-navy text-white'
+                                : 'border-slate-300 bg-white text-slate-700 hover:border-brand-300'
+                                }`}
+                        >
+                            {TAB_LABELS[key]}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            <div className="flex flex-wrap items-start gap-3 md:flex-nowrap md:items-center md:gap-[18px]">
+                <RacePlate venue={currentPick.venue_name} raceNumber={currentPick.race_number} size="s" className="md:hidden" />
+                <RacePlate venue={currentPick.venue_name} raceNumber={currentPick.race_number} size="m" className="hidden md:inline-flex" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <span className="truncate text-[12.5px] font-bold text-slate-500">{raceMeta}</span>
+                    <span className="flex min-w-0 items-center gap-2.5">
+                        {currentPick.horse_number != null && (
+                            <HorseNumber number={currentPick.horse_number} waku={currentPick.waku_number} size={28} />
+                        )}
+                        <span className="truncate font-display text-[22px] font-extrabold text-slate-900 md:text-[26px]">
+                            {currentPick.horse_name}
+                        </span>
+                    </span>
+                </div>
+                <div className="flex w-full items-baseline justify-between gap-1 md:w-auto md:flex-col md:items-end">
+                    <span className="text-[12px] font-bold text-slate-500">AI偏差値</span>
+                    <span className="font-num text-[38px] font-bold leading-none text-ai-deep md:text-[46px]">
+                        {currentPick.deviation_score.toFixed(1)}
+                    </span>
+                </div>
             </div>
 
-            {/* 注目馬情報カード */}
-            <Link
-                href={getRaceDetailPath(effectiveDate, currentPick.venue_name, currentPick.race_number)}
-                prefetch={false}
-                className="block group"
-            >
-                <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-50/50 p-2 transition-all hover:bg-slate-50 group-hover:border-blue-300 sm:p-3.5">
-                    <div className="mb-1.5 flex items-start justify-between gap-2 sm:mb-2 sm:gap-3">
-                        <div className="min-w-0">
-                            <span className="text-[10px] font-bold text-slate-400 block mb-0.5">{formattedDate} · {currentPick.venue_name} {currentPick.race_number}R</span>
-                            <h3 className="truncate text-[15px] font-black leading-tight text-slate-900 transition-colors group-hover:text-primary sm:text-lg">
-                                {currentPick.horse_name}
-                            </h3>
-                            <span className="text-[11px] font-semibold text-slate-500">
-                                {currentPick.race_name}
-                            </span>
-                        </div>
+            <p className="text-[13.5px] leading-relaxed text-slate-700">{currentPick.commentary}</p>
 
-                        <div className="shrink-0 text-right">
-                            <div className="text-[10px] font-bold text-slate-400">AI偏差値</div>
-                            <div className="font-mono text-[15px] font-black text-primary sm:text-xl">{currentPick.deviation_score.toFixed(1)}</div>
-                        </div>
-                    </div>
-
-                    {/* 偏差値プログレスバー */}
-                    <div className="mb-2.5">
-                        <div className="w-full bg-slate-200/60 rounded-full h-1.5 overflow-hidden">
-                            <div
-                                className={`h-full rounded-full transition-all duration-500 ${getProgressBarColor(currentPick.deviation_score)}`}
-                                style={{ width: `${barPercent}%` }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* 解説コメント */}
-                    <p className="text-xs sm:text-[13px] leading-relaxed text-slate-600 font-medium">
-                        {currentPick.commentary}
-                    </p>
-
-                    <div className="mt-2 text-right">
-                        <span className="inline-flex items-center text-[10px] sm:text-xs font-bold text-primary group-hover:underline">
-                            分析データを詳しく確認する →
-                        </span>
-                    </div>
-                </div>
-            </Link>
+            <div>
+                <Link href={racePath} prefetch={false} className="ui-btn ui-btn--secondary w-full md:w-auto">
+                    {currentPick.venue_name}{currentPick.race_number}Rの出走表を確認する
+                </Link>
+            </div>
         </div>
     );
 };

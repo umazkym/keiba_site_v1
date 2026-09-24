@@ -68,15 +68,15 @@ export default function JockeyPage({ params }: Props) {
         <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
           <p className="text-xs font-bold tracking-[0.18em] text-slate-400">JOCKEY DATA</p>
-          <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+          <h1 className="mt-2 text-2xl font-black leading-tight text-slate-950 sm:text-4xl">
             {profile.searchTitle}
           </h1>
-          <p className="mt-4 text-base leading-8 text-slate-600">{profile.lead}</p>
+          <p className="mt-4 text-[15px] leading-[1.8] text-slate-700 sm:text-base sm:leading-8">{profile.lead}</p>
         </header>
 
         <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
           <h2 className="text-xl font-black text-slate-950">騎乗傾向</h2>
-          <p className="mt-3 text-sm leading-8 text-slate-600">{profile.summary}</p>
+          <p className="mt-3 text-sm leading-[1.8] text-slate-700 sm:leading-8">{profile.summary}</p>
         </section>
 
         <section className="mt-8 grid gap-5 md:grid-cols-2">

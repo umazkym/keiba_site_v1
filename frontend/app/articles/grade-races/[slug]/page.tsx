@@ -88,7 +88,7 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
               <Link
                 href={group.profileHref}
                 prefetch={false}
-                className="mt-2 inline-flex min-h-8 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                className="mt-2 inline-flex min-h-8 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
               >
                 {group.profileLabel}
               </Link>
@@ -107,9 +107,9 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
                     <Link
                       href={`/articles/${article.slug}`}
                       prefetch={false}
-                      className="grid min-h-9 gap-0.5 py-1.5 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 sm:grid-cols-[5rem_minmax(0,1fr)] sm:items-start sm:gap-4 sm:px-2"
+                      className="grid min-h-9 gap-0.5 py-1.5 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 sm:grid-cols-[5rem_minmax(0,1fr)] sm:items-start sm:gap-4 sm:px-2"
                     >
-                      <span className="font-mono text-[11px] font-black text-blue-700 sm:pt-0.5 sm:text-sm">{year}年</span>
+                      <span className="font-mono text-[11px] font-black text-brand-700 sm:pt-0.5 sm:text-sm">{year}年</span>
                       <span className="min-w-0">
                         <span className="block text-xs font-bold leading-snug text-slate-900">{article.title}</span>
                         {article.description && (

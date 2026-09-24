@@ -12,7 +12,7 @@ export const ARTICLE_PROSE_CLASS = [
     'prose-h2:text-[16px] prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-1 prose-h2:mt-3.5 prose-h2:mb-[5px] prose-h2:scroll-mt-20 sm:prose-h2:text-xl sm:prose-h2:mt-6 sm:prose-h2:mb-3 sm:prose-h2:pb-1.5',
     'prose-h3:text-[14px] prose-h3:mt-2.5 prose-h3:mb-1 sm:prose-h3:text-lg sm:prose-h3:mt-4 sm:prose-h3:mb-1.5',
     'prose-p:text-[12px] prose-p:leading-[1.65] prose-p:my-1.5 prose-p:text-slate-700 sm:prose-p:text-sm sm:prose-p:leading-relaxed sm:prose-p:my-3 sm:prose-p:text-slate-600',
-    'prose-a:text-primary prose-a:font-semibold prose-a:no-underline hover:prose-a:text-blue-600',
+    'prose-a:text-primary prose-a:font-semibold prose-a:no-underline hover:prose-a:text-brand-600',
     'prose-strong:text-slate-900 prose-strong:font-bold',
     'prose-img:border prose-img:border-slate-100 prose-img:my-1.5',
     'prose-blockquote:border-l-2 prose-blockquote:border-slate-300 prose-blockquote:bg-slate-50 prose-blockquote:py-2 prose-blockquote:px-2.5 prose-blockquote:my-2 prose-blockquote:not-italic prose-blockquote:text-slate-700 prose-blockquote:text-[12px]',

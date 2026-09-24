@@ -36,7 +36,7 @@ function getTodayString() {
 
 function SitemapCard({ group }: { group: SitemapGroup }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-2 sm:p-5 shadow-xs">
+    <section className="rounded-xl border border-slate-200 bg-white p-2 sm:p-5">
       <h2 className="flex items-center gap-1.5 text-[14.5px] font-black text-slate-950 sm:text-xl">
         <span className="h-3.5 w-1 rounded-sm bg-accent" />
         {group.title}

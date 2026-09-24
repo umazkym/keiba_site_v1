@@ -85,6 +85,21 @@ const dataContent = dataSources.map(({ content }) => content).join('\n');
 
 const countMatches = (content, pattern) => Array.from(content.matchAll(pattern)).length;
 
+// 全画面の走査（ブランド色と文字サイズの検査に使う）
+const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+  const absolutePath = path.join(dir, entry.name);
+  if (entry.isDirectory()) return walk(absolutePath);
+  return /\.(tsx?|css)$/.test(entry.name) ? [absolutePath] : [];
+});
+const allSources = ['app', 'components', 'lib', 'hooks']
+  .flatMap((dir) => walk(path.join(root, dir)))
+  .map((absolutePath) => ({
+    relativePath: path.relative(root, absolutePath).split(path.sep).join('/'),
+    content: fs.readFileSync(absolutePath, 'utf8'),
+  }));
+const repoRoot = path.resolve(root, '..');
+const readRepoFile = (relativePath) => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+
 const rules = [
   {
     id: 'transition-all',
@@ -137,6 +152,31 @@ const rules = [
   },
 ];
 
+// 全画面に対する上限。数を増やさない（段階ごとに減らし、減らしたら max も下げる）
+const siteWideRules = [
+  {
+    id: 'raw-blue-utility',
+    description: 'Tailwindのblue-*（ブランド色はbrand-*、4枠の青はwaku-4）',
+    pattern: /(?<=-)blue-(?:50|100|200|300|400|500|600|700|800|900|950)\b/g,
+    max: 0,
+    rationale: 'ロゴのインディゴ（brand）と枠色（waku）を混ぜない',
+  },
+  {
+    id: 'tiny-text',
+    description: '11px未満の文字（text-[8px]〜text-[10.5px]）',
+    pattern: /\btext-\[(?:8|8\.5|9|9\.5|10|10\.5)px\]/g,
+    max: 69,
+    rationale: '段階0で130件、段階1（共通の枠）で122件、段階2（レース画面）で91件、段階3（ホーム）で69件へ。出走表など比較表の中だけを残し、段階4〜5で減らす',
+  },
+];
+const siteWideResults = siteWideRules.map((rule) => {
+  const locations = allSources
+    .map(({ relativePath, content }) => ({ relativePath, count: countMatches(content, rule.pattern) }))
+    .filter(({ count }) => count > 0);
+  const count = locations.reduce((sum, item) => sum + item.count, 0);
+  return { ...rule, count, locations, passed: count <= rule.max };
+});
+
 const results = rules.map((rule) => {
   const locations = sources
     .map(({ relativePath, content }) => ({
@@ -174,7 +214,69 @@ const horseCompare = dataSources.find(({ relativePath }) => relativePath === 'ap
 const dataStats = dataSources.find(({ relativePath }) => relativePath === 'components/DataStats.tsx').content;
 const responsiveDataTable = extendedSources.find(({ relativePath }) => relativePath === 'components/ResponsiveDataTable.tsx').content;
 
+const brandTokenFiles = [
+  'frontend/tailwind.config.ts',
+  'frontend/app/globals.css',
+  'frontend/lib/brand.ts',
+  'backend/scripts/brand_tokens.py',
+].map((relativePath) => ({ relativePath, content: readRepoFile(relativePath) }));
+
+const readFrontendFile = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
+const footer = readFrontendFile('components/Footer.tsx');
+const notFoundPage = readFrontendFile('app/not-found.tsx');
+const errorPage = readFrontendFile('app/error.tsx');
+const racesDatePage = readFrontendFile('app/races/[date]/page.tsx');
+const courseShapes = readFrontendFile('lib/course-shapes.ts');
+
 const checks = [
+  {
+    id: 'no-global-mobile-heading-cap',
+    description: 'スマホの見出しを一律15px前後に押さえ込む!important指定を置かない（各画面のクラスで決める）',
+    // 行頭（インデント4つ）の素の h1 規則だけを見る。.race-page-scope など scope 付きの規格は対象外
+    passed: !/\n {4}h1 \{\n {8}font-size: [0-9.]+px !important;/.test(globals),
+  },
+  {
+    id: 'shell-footer-brand',
+    description: 'フッターが夜の紺の面に横組みロゴと20歳未満の注意を置く',
+    passed: footer.includes('bg-night')
+      && footer.includes('<BrandLockup')
+      && footer.includes('20歳'),
+  },
+  {
+    id: 'shell-guide-horse-states',
+    description: '404とエラー画面が案内役の馬と次に押す場所を持つ',
+    passed: notFoundPage.includes('<GuideHorse')
+      && notFoundPage.includes('action="/search"')
+      && errorPage.includes('<GuideHorse')
+      && errorPage.includes('ui-btn--primary'),
+  },
+  {
+    id: 'shell-unified-buttons',
+    description: 'ボタンがui-btnの1系統で、旧来のボタン名も主ボタンの色にそろう',
+    passed: globals.includes('.ui-btn--primary')
+      && globals.includes('.ui-btn--secondary')
+      && /\.btn-primary \{\s+@apply[^;]*bg-brand-600/.test(globals)
+      && /\.recent-return-primary \{\s+@apply[^;]*bg-brand-600/.test(globals),
+  },
+  {
+    id: 'brand-tokens-in-sync',
+    description: 'ブランド色（#4C4EFF・#1C2787・#0E1440）がtailwind・CSS・lib/brand.ts・Pythonで同じ',
+    passed: brandTokenFiles.every(({ content }) => ['#4C4EFF', '#1C2787', '#0E1440'].every((hex) => content.toUpperCase().includes(hex))),
+  },
+  {
+    id: 'brand-fonts-loaded',
+    description: '見出しと数字の書体をnext/fontで読み込み、本文は端末の書体（日本語の本文書体は配信しない）',
+    passed: layout.includes("from \"next/font/google\"")
+      && ['--font-display', '--font-num'].every((name) => layout.includes(name))
+      && !layout.includes('Noto_Sans_JP')
+      && globals.includes('--font-body: "Hiragino Sans"'),
+  },
+  {
+    id: 'waku-single-source',
+    description: '枠色の定義がlib/waku.tsの1か所にまとまっている',
+    passed: allSources.filter(({ relativePath, content }) => relativePath !== 'lib/waku.ts'
+      && /(?:case 4|4:)\s*(?:return\s*)?['"`][^'"`]*bg-(?:blue|brand)-6/.test(content)).length === 0,
+  },
   {
     id: 'single-root',
     description: ':root定義が1か所に統合されている',
@@ -329,12 +431,51 @@ const checks = [
       && !header.includes('hidden md:flex items-center'),
   },
   {
-    id: 'mobile-race-density-contract',
-    description: '640px未満のレース見出し14px・表示上限15pxを専用scopeで維持する',
+    id: 'mobile-race-readable-type',
+    description: '640px未満のレース画面で見出しを一律15px・14pxに押さえ込まず、セクション見出し17px・本文13pxの専用scopeを持つ（2026-09-24 段階2）',
     passed: globals.includes('.race-page-scope .race-section-heading,')
-      && globals.includes('font-size: 15px !important;')
-      && globals.includes('font-size: 14px !important;')
-      && globals.includes('.race-page-scope .ui-section-header__title'),
+      && globals.includes('.race-page-scope .ui-section-header__title')
+      && !globals.includes('.race-page-scope :is(h1, h2, h3, h4, h5, h6)')
+      && /\.race-page-scope \.race-section-heading \{\s+gap: 6px;\s+font-size: 17px;/.test(globals),
+  },
+  {
+    id: 'race-analysis-bug-fixes',
+    description: 'AIレース展望の先行判定がレース内の相対値で、馬番の有利不利を出走馬だけで比べ「枠」と呼ばない',
+    passed: raceAnalysis.includes('getPositionLabels(race.predictions)')
+      && !raceAnalysis.includes('start_1c_indicator > 0')
+      && raceAnalysis.includes('runnerNumbers.has(item.horse_number)')
+      && !raceAnalysis.includes('waku_number === bestFrame')
+      && !raceAnalysis.includes('オッズ妙味を判断'),
+  },
+  {
+    id: 'race-day-board',
+    description: '開催日ページが全馬データを送らない開催日ボードで、コース図のデータはサーバー専用',
+    passed: racesDatePage.includes('<RaceDayBoard')
+      && racesDatePage.includes('buildRaceDaySummary(')
+      && !racesDatePage.includes('RacePageClient')
+      && courseShapes.includes("import 'server-only';"),
+  },
+  {
+    id: 'home-photo-entry',
+    description: 'ホームが写真の入口（A×C）で、広告4枠・PR枠・ホームからの入口計測を保ち、注目馬をオッズの言葉で呼ばない（2026-09-25 段階3）',
+    passed: (() => {
+      const homePage = sources.find(({ relativePath }) => relativePath === 'app/page.tsx').content;
+      const homeHero = fs.readFileSync(path.join(root, 'components/HomeHero.tsx'), 'utf8');
+      const homeVenues = fs.readFileSync(path.join(root, 'components/HomeTodayVenues.tsx'), 'utf8');
+      const pickSummary = fs.readFileSync(path.join(root, 'lib/home-page-summary.ts'), 'utf8')
+        + fs.readFileSync(path.join(root, 'components/SpecialPickCard.tsx'), 'utf8');
+      return homePage.includes('<HomeHero')
+        && homeHero.includes('fetchPriority="high"')
+        && homeHero.includes('home-hero-scrim')
+        && homeHero.includes('entryMethod="hero_cta"')
+        && ['home_after_today_races', 'home_after_today_pick', 'home_article_feed_1', 'home_after_special_pick']
+          .every((placement) => homePage.includes(`analyticsPlacement="${placement}"`))
+        && homePage.includes('entryMethod="grade_fallback"')
+        && homeVenues.includes("entry_method: 'venue_card'")
+        && homeVenues.includes('home_nar_voting')
+        && globals.includes('.home-hero-scrim')
+        && !pickSummary.includes('オッズ妙味');
+    })(),
   },
   {
     id: 'mobile-article-readable-type',
@@ -412,11 +553,11 @@ const checks = [
 ];
 
 console.log('UMA-FREE design audit');
-for (const result of results) {
+for (const result of [...siteWideResults, ...results]) {
   const status = result.passed ? 'PASS' : 'FAIL';
-  const locationText = result.locations.length > 0
-    ? ` (${result.locations.map(({ relativePath, count }) => `${relativePath}:${count}`).join(', ')})`
-    : '';
+  const shown = result.locations.slice(0, 6).map(({ relativePath, count }) => `${relativePath}:${count}`);
+  if (result.locations.length > 6) shown.push(`ほか${result.locations.length - 6}ファイル`);
+  const locationText = shown.length > 0 ? ` (${shown.join(', ')})` : '';
   console.log(`${status} ${result.id}: ${result.count}/${result.max}${locationText}`);
   console.log(`     ${result.rationale}`);
 }
@@ -424,7 +565,7 @@ for (const check of checks) {
   console.log(`${check.passed ? 'PASS' : 'FAIL'} ${check.id}: ${check.description}`);
 }
 
-const failed = results.some((result) => !result.passed) || checks.some((check) => !check.passed);
+const failed = [...siteWideResults, ...results].some((result) => !result.passed) || checks.some((check) => !check.passed);
 if (failed) {
   console.error('デザイン監査に失敗しました。DESIGN.mdの基準と例外上限を確認してください。');
   process.exitCode = 1;

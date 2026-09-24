@@ -271,6 +271,10 @@ def _serialize_race_for_cache(
         'race_name': display_race_name(race.race_name),
         'course_type': race.course_type,
         'distance': race.distance,
+        # レース見出しに出す条件。出馬表の取得時に入るため、発表前は None のことがある。
+        'total_horses': race.total_horses,
+        'ground_condition': race.ground_condition,
+        'weather': race.weather,
         'ai_analysis_text': race.ai_analysis_text,
         'predictions': [
             {

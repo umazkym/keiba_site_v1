@@ -11,7 +11,7 @@ const ACTIONS = {
     today_compare: {
         Icon: CalendarDays,
         destinationType: 'race' as const,
-        accent: 'border-blue-300 bg-blue-50 text-blue-900',
+        accent: 'border-brand-300 bg-brand-50 text-brand-900',
     },
     name_search: {
         Icon: Search,
@@ -47,7 +47,7 @@ export function DataHubActionLink({
                     destination_type: config.destinationType,
                 });
             }}
-            className={`grid min-h-11 grid-cols-[28px_1fr_16px] items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors duration-150 sm:min-h-14 sm:grid-cols-[32px_1fr_20px] sm:gap-2 sm:rounded-xl sm:px-3 sm:py-2.5 hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${config.accent}`}
+            className={`grid min-h-11 grid-cols-[28px_1fr_16px] items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors duration-150 sm:min-h-14 sm:grid-cols-[32px_1fr_20px] sm:gap-2 sm:rounded-xl sm:px-3 sm:py-2.5 hover:border-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${config.accent}`}
         >
             <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
             <span className="min-w-0">

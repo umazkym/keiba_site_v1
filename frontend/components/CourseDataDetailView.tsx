@@ -160,14 +160,14 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
                 <Link
                     prefetch={false}
                     href="/races/today"
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-5 py-2 text-xs font-bold text-white transition-colors duration-150 hover:bg-blue-600"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-5 py-2 text-xs font-bold text-white transition-colors duration-150 hover:bg-brand-600"
                 >
                     本日のレースと照合
                 </Link>
                 {relatedArticleHref && (
                     <Link
                         href={relatedArticleHref}
-                        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-blue-300 hover:text-blue-700"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-brand-300 hover:text-brand-700"
                     >
                         関連記事を見る
                     </Link>

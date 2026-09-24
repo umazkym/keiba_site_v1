@@ -43,6 +43,9 @@ class RacePrediction(BaseModel):
     grade: Optional[str] = None
     course_type: Optional[str]
     distance: Optional[int]
+    total_horses: Optional[int] = None
+    ground_condition: Optional[str] = None
+    weather: Optional[str] = None
     ai_analysis_text: Optional[str] = None # ★★★ 追加 ★★★
     predictions: List[HorsePrediction]
     matchup: Optional[Matchup]

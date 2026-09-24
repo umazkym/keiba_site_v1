@@ -8,6 +8,8 @@ import {
     StoredRaceView,
 } from '@/lib/race-memory';
 import { sendRecentRaceReturnClickEvent } from '@/lib/analytics';
+import { RacePlate } from '@/components/RaceParts';
+import { LineIcon } from '@/components/LineIcon';
 
 type RecentRaceReturnProps = {
     className?: string;
@@ -64,74 +66,32 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
         }
     }, []);
 
-    const sectionClass = `card min-h-0 overflow-hidden border-slate-200 bg-white ${className}`;
-
+    // 見たレースが無いときは何も出さない（今日のレースへの入口はヒーローと固定CTAが持つ）
     if (!recentRace) {
-        return (
-            <section className={sectionClass}>
-                <div className="flex items-center gap-2 p-2 sm:p-2.5">
-                    <div className="min-w-0 flex-1">
-                        <p className="mb-0.5 text-[10px] font-bold leading-none text-secondary">本日のレースデータを確認</p>
-                        <div className="min-w-0">
-                            <div className="truncate text-xs font-bold leading-tight text-slate-900 sm:text-sm">
-                                AI偏差値、枠順傾向、展開予測
-                            </div>
-                            <p className="truncate text-[10px] leading-tight text-slate-500 sm:text-xs">
-                                中央・地方 全レース毎日無料分析
-                            </p>
-                        </div>
-                    </div>
-                    <Link
-                        href="/races/today"
-                        prefetch={false}
-                        className="recent-return-primary shrink-0"
-                    >
-                        確認する
-                    </Link>
-                </div>
-            </section>
-        );
+        return null;
     }
 
     return (
-        <section className={sectionClass}>
-            <div className="flex items-center gap-2 p-2 sm:p-2.5">
-                <div className="min-w-0 flex-1">
-                    <p className="mb-0.5 text-[10px] font-bold leading-none text-secondary">前回確認していたレース</p>
-                    <div className="min-w-0">
-                        <div className="truncate text-sm font-bold leading-tight text-slate-900 sm:text-sm">
-                            {formatRaceDate(recentRace.date)} {recentRace.venueName} {recentRace.raceNumber}R
-                            <span className="hidden sm:inline text-xs font-normal text-slate-500 ml-1"> {recentRace.raceName}</span>
-                        </div>
-                        {recentRace.courseLabel && (
-                            <span className="block truncate text-[10px] font-medium leading-tight text-slate-500 sm:text-xs">
-                                ({recentRace.courseLabel})
-                            </span>
-                        )}
-                    </div>
-                </div>
-                <Link
-                    href={recentRace.href}
-                    prefetch={false}
-                    onClick={() => sendRecentRaceReturnClickEvent({
-                        destination_path: recentRace.href,
-                        race_date: recentRace.date,
-                        venue_name: recentRace.venueName,
-                        race_number: recentRace.raceNumber,
-                        age_hours: Math.max(0, Math.floor((Date.now() - recentRace.viewedAt) / 3_600_000)),
-                    })}
-                    className="recent-return-primary shrink-0 text-center whitespace-nowrap px-2.5 sm:px-3 text-xs py-1.5"
-                >
-                    {recentRace.venueName}{recentRace.raceNumber}Rに戻る
-                </Link>
-                <Link
-                    href="/races/today"
-                    prefetch={false}
-                    className="hidden min-h-[44px] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 sm:inline-flex sm:flex-none"
-                >
-                    今日へ
-                </Link>
-            </div>
-        </section>
+        <Link
+            href={recentRace.href}
+            prefetch={false}
+            onClick={() => sendRecentRaceReturnClickEvent({
+                destination_path: recentRace.href,
+                race_date: recentRace.date,
+                venue_name: recentRace.venueName,
+                race_number: recentRace.raceNumber,
+                age_hours: Math.max(0, Math.floor((Date.now() - recentRace.viewedAt) / 3_600_000)),
+            })}
+            className={`flex min-h-[52px] items-center gap-2.5 rounded-xl border border-slate-200 bg-white py-2 pl-2 pr-3 transition-colors duration-150 hover:border-brand-300 ${className}`}
+        >
+            <RacePlate venue={recentRace.venueName} raceNumber={recentRace.raceNumber} size="xs" />
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="text-[11.5px] font-bold text-slate-500">前回の続き · {formatRaceDate(recentRace.date)}</span>
+                <span className="truncate text-[14px] font-bold text-slate-900">
+                    {recentRace.raceName}の出走表に戻る
+                </span>
+            </span>
+            <LineIcon name="chevR" size={18} className="block shrink-0 text-slate-500" />
+        </Link>
     );
 }

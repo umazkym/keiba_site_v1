@@ -55,6 +55,10 @@ export interface RacePrediction {
     grade?: string | null;
     course_type: string | null;
     distance: number | null;
+    // 出馬表の取得時に入る条件。発表前や旧APIでは undefined / null
+    total_horses?: number | null;
+    ground_condition?: string | null;
+    weather?: string | null;
     ai_analysis_text?: string | null; // ★★★ 追加 ★★★
     predictions: HorsePrediction[];
     matchup: MatchupData | null;
@@ -81,6 +85,12 @@ export interface SpecialPick {
     race_number: number;
     deviation_score: number;
     commentary: string;
+    // ホームで当日の予測から作ったときだけ入る（APIの注目馬には無い）
+    horse_number?: number;
+    waku_number?: number | null;
+    course_type?: string | null;
+    distance?: number | null;
+    runners?: number;
 }
 
 export interface TopPayoutHit {

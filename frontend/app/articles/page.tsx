@@ -233,7 +233,7 @@ const getCategoryBadgeClass = (category: string) => {
     case "コース分析":
       return "bg-emerald-50 text-emerald-700 border border-emerald-200/70";
     default:
-      return "bg-blue-50 text-blue-700 border border-blue-200/70";
+      return "bg-brand-50 text-brand-700 border border-brand-200/70";
   }
 };
 
@@ -294,14 +294,14 @@ function UpcomingGradeRacePickup({
             <Link
               key={group.href}
               href={group.href}
-              className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white p-2.5 transition-colors duration-150 hover:border-blue-300 hover:bg-slate-50/80 active:bg-slate-100"
+              className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white p-2.5 transition-colors duration-150 hover:border-brand-300 hover:bg-slate-50/80 active:bg-slate-100"
             >
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 text-[10px] font-black text-blue-600">
+                <div className="flex items-center gap-2 text-[10px] font-black text-brand-600">
                   <span>{formatRaceDate(group.scheduledDate)}</span>
-                  <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] text-blue-700 border border-blue-100">{group.articleCount}件</span>
+                  <span className="rounded-full bg-brand-50 px-1.5 py-0.5 text-[9px] text-brand-700 border border-brand-100">{group.articleCount}件</span>
                 </div>
-                <h3 className="mt-0.5 truncate text-xs font-bold text-slate-950 group-hover:text-blue-600 transition-colors sm:text-sm">
+                <h3 className="mt-0.5 truncate text-xs font-bold text-slate-950 group-hover:text-brand-600 transition-colors sm:text-sm">
                   {group.title}
                 </h3>
                 {latestArticle && (
@@ -310,8 +310,8 @@ function UpcomingGradeRacePickup({
                   </p>
                 )}
               </div>
-              <div className="ml-2 shrink-0 text-xs font-bold text-blue-600 group-hover:underline">
-                <span aria-hidden="true" className="text-sm font-bold transition-transform duration-150 group-hover:translate-x-0.5">→</span>
+              <div className="ml-2 shrink-0 text-xs font-bold text-brand-600 group-hover:underline">
+                <span aria-hidden="true" className="text-sm font-bold">→</span>
               </div>
             </Link>
           );
@@ -326,7 +326,7 @@ function CompactArticleLink({ article }: { article: ArticleLike }) {
     <Link
       prefetch={false}
       href={`/articles/${article.slug}`}
-      className="group flex flex-col justify-center border-b border-slate-100 bg-white py-1.5 transition-colors duration-150 last:border-b-0 hover:bg-slate-50 sm:min-h-[140px] sm:justify-start sm:rounded-xl sm:border sm:border-slate-200 sm:p-3.5 sm:hover:border-blue-300"
+      className="group flex flex-col justify-center border-b border-slate-100 bg-white py-1.5 transition-colors duration-150 last:border-b-0 hover:bg-slate-50 sm:min-h-[140px] sm:justify-start sm:rounded-xl sm:border sm:border-slate-200 sm:p-3.5 sm:hover:border-brand-300"
     >
       <div className="min-w-0">
         <ArticleMeta article={article} />
@@ -409,7 +409,7 @@ function GradeRaceDirectoryDetails({
         <div className="grid gap-1.5">
           {sections.map((section) => (
             <details key={section.id} className={`group/grade overflow-hidden rounded-lg border ${getGradeSectionTone(section.id)}`}>
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
                 <span>{getGradeSectionLabel(section.id, section.title)}</span>
                 <span className="flex items-center gap-1.5">
                   <span className="rounded bg-white px-2 py-0.5 text-[10px] text-slate-600">
@@ -694,10 +694,10 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
             <Link
               prefetch={false}
               href="/races/today"
-              className="flex min-h-[44px] items-center justify-between rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3 text-sm font-black text-slate-950 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50"
+              className="flex min-h-[44px] items-center justify-between rounded-xl border border-brand-200 bg-brand-50/70 px-4 py-3 text-sm font-black text-slate-950 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50"
             >
               <span>本日のレース分析</span>
-              <span className="rounded-full bg-white px-2 py-0.5 text-xs text-blue-700">今日</span>
+              <span className="rounded-full bg-white px-2 py-0.5 text-xs text-brand-700">今日</span>
             </Link>
 
             {/* ★ PCサイドバー広告

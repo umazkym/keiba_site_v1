@@ -1,6 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import Link from 'next/link';
 import { RaceDayPrediction, SpecialPick, TopPayoutHit, WeeklyGradeRace } from "@/lib/types";
 import { RaceTabs } from "@/components/RaceTabs";
@@ -13,7 +12,7 @@ import { getPredictionsForDate } from "@/lib/api";
 import { RaceArticleMeta } from "@/lib/articles";
 import DisclaimerAlert from "@/components/DisclaimerAlert";
 import { InFeedAd } from "@/components/InFeedAd";
-import { RecentRaceReturn } from "@/components/RecentRaceReturn";
+import { GuideHorse } from "@/components/BrandLogo";
 import { AffiliateSlot } from "@/components/AffiliateSlot";
 import { RacePageBottomNav } from "@/components/RacePageBottomNav";
 import type { RaceSelectorLink } from '@/components/RaceSelector';
@@ -50,57 +49,6 @@ const isValidDateFormat = (dateStr: string): boolean => {
 };
 
 
-const DateNavigator = ({
-    currentDate,
-    onDateChange,
-}: {
-    currentDate: string;
-    onDateChange: (newDate: string) => void;
-}) => {
-    const handleDateShift = useCallback((e: React.MouseEvent<HTMLButtonElement>, days: number) => {
-        const [year, month, day] = currentDate.split("-").map(Number);
-        const dateObj = new Date(Date.UTC(year, month - 1, day));
-        dateObj.setUTCDate(dateObj.getUTCDate() + days);
-        onDateChange(dateObj.toISOString().split("T")[0]);
-        e.currentTarget.blur();
-    }, [currentDate, onDateChange]);
-
-    const handleDateInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const newDate = e.target.value;
-        if (newDate) {
-            onDateChange(newDate);
-        }
-    }, [onDateChange]);
-
-    return (
-        <div className="mx-auto flex w-full max-w-none flex-1 items-center justify-between rounded-lg border border-slate-300 bg-white p-0.5 sm:max-w-sm">
-            <button
-                onClick={(e) => handleDateShift(e, -1)}
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-text-secondary transition-colors duration-150 hover:bg-slate-100 hover:text-primary"
-                aria-label="前日へ"
-            >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            </button>
-            <div className="flex items-center gap-2">
-                <input
-                    type="date"
-                    value={currentDate}
-                    onChange={handleDateInputChange}
-                    className="min-h-[44px] cursor-pointer border-none bg-transparent p-0 text-center font-mono text-sm font-bold text-text-primary focus:ring-0 sm:text-base"
-                    aria-label="日付を選択"
-                />
-            </div>
-            <button
-                onClick={(e) => handleDateShift(e, 1)}
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-text-secondary transition-colors duration-150 hover:bg-slate-100 hover:text-primary"
-                aria-label="翌日へ"
-            >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </button>
-        </div>
-    );
-};
-
 type RacePageClientProps = {
     initialDate: string;
     initialPredictionData: RaceDayPrediction | null;
@@ -111,6 +59,8 @@ type RacePageClientProps = {
     initialVenueName?: string | null;
     initialRaceNumber?: number | null;
     initialRaceLinks?: RaceSelectorLink[];
+    // サーバーで描いたレースの見出し（RaceHead）。コース図のデータをクライアントに送らないため props で受け取る
+    header?: ReactNode;
 };
 
 const getShiftedDate = (dateStr: string, days: number) => {
@@ -133,8 +83,8 @@ export default function RacePageClient({
     initialVenueName: routeInitialVenueName = null,
     initialRaceNumber: routeInitialRaceNumber = null,
     initialRaceLinks,
+    header,
 }: RacePageClientProps) {
-    const router = useRouter();
     const [currentDate, setCurrentDate] = useState(initialDate);
     const [predictionData, setPredictionData] = useState<RaceDayPrediction | null>(initialPredictionData);
     const [isLoading, setIsLoading] = useState(!initialPredictionData);
@@ -233,13 +183,6 @@ export default function RacePageClient({
         }
     }, [initialVenue, initialRaceNumber, predictionData]);
 
-    const handleDateChange = useCallback((newDate: string) => {
-        if (newDate && newDate !== currentDate && isValidDateFormat(newDate)) {
-            hasScrolled.current = false;
-            router.push(`/races/${newDate}`);
-        }
-    }, [currentDate, router]);
-
     const getTodayString = () => {
         const today = new Date(
             new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
@@ -257,33 +200,16 @@ export default function RacePageClient({
         }
         if (error || !predictionData || ((predictionData.jra?.length ?? 0) === 0 && (predictionData.nar?.length ?? 0) === 0)) {
             return (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center sm:p-8">
-                    <div className="mb-2 flex justify-center sm:mb-4">
-                        <svg className="h-8 w-8 text-red-500 sm:h-12 sm:w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <h2 className="mb-1.5 text-[15px] font-bold text-red-700 sm:mb-2 sm:text-xl">{formatDate(currentDate)}のレースデータはありません</h2>
-                    <p className="mb-3 text-xs text-gray-600 sm:mb-6 sm:text-sm">
-                        指定された日付はレースが開催されないか、まだデータが登録されていません。<br />
-                        他の日付のレースデータをお探しください。
+                <section className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-8 text-center">
+                    <GuideHorse size={110} mood="sleep" />
+                    <h2 className="text-[20px] font-extrabold text-slate-900">{formatDate(currentDate)}のレースデータはありません</h2>
+                    <p className="max-w-xl text-sm leading-relaxed text-slate-700">
+                        開催がないか、まだデータが登録されていません。翌日のレース分析は、通常前日の7時ごろに公開します。
                     </p>
-                    <Link
-                        href={`/races/${getTodayString()}`}
-                        prefetch={false}
-                        className="inline-block bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg shadow-sm transition-colors"
-                    >
+                    <Link href={`/races/${getTodayString()}`} prefetch={false} className="ui-btn ui-btn--primary">
                         本日のレース分析を見る
                     </Link>
-                    <div className="mx-auto mt-4 max-w-2xl border-t border-red-200 pt-3 text-left sm:mt-8 sm:pt-6">
-                        <h3 className="mb-1.5 text-sm font-bold text-gray-700 sm:mb-3">競馬開催スケジュール</h3>
-                        <div className="space-y-2 text-sm text-gray-600">
-                            <p>• 中央競馬: 主に土日に開催されます。</p>
-                            <p>• 地方競馬: 各競馬場により開催日が異なります。</p>
-                            <p>• 翌日のレース分析データは、通常、前日の7時頃に更新されます。</p>
-                        </div>
-                    </div>
-                </div>
+                </section>
             );
         }
         return (
@@ -300,7 +226,7 @@ export default function RacePageClient({
                         : undefined}
                 />
 
-                {showSpecialPick && (
+                {showSpecialPick && initialSpecialPick && (
                     <div className="mx-2 mt-2">
                         <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
                     </div>
@@ -318,32 +244,15 @@ export default function RacePageClient({
             data-race-revenue-variant={raceRevenueExperiment.ready ? raceRevenueExperiment.variant : 'pending'}
             data-race-revenue-eligible={raceRevenueExperiment.eligible ? 'true' : 'false'}
         >
-            {/* ▼▼▼▼▼【ファーストビュー改善】▼▼▼▼▼ */}
-            {/* 従来: 的中ランキング→バナー広告→日付ナビ→レースデータ（ファーストビューを広告と的中ランキングが占有） */}
-            <div className="relative z-10 mb-1.5 border-b border-slate-200 bg-slate-50 p-1 sm:mb-3 sm:p-2">
-                <div className="flex items-center justify-center gap-1.5 sm:gap-4 flex-wrap">
-                    <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
-                    <button
-                        onClick={(e) => {
-                            handleDateChange(getTodayString());
-                            e.currentTarget.blur();
-                        }}
-                        className="min-h-[44px] whitespace-nowrap rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white transition-colors duration-150 hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary-light sm:px-4 sm:py-2.5 sm:text-sm"
-                    >
-                        今日
-                    </button>
-                </div>
-            </div>
+            {header}
 
-            <RecentRaceReturn className="mb-1.5 sm:mb-3" />
+            {renderContent()}
 
             {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
-                <div className="mb-1.5 sm:mb-3">
+                <div className="mt-2 sm:mt-3">
                     <WeeklyGradeRaces races={weeklyGradeRaces} predictions={predictionData} compact />
                 </div>
             )}
-
-            {renderContent()}
 
             <div className="mt-1.5 sm:mt-3 mb-1 sm:mb-2">
                 <TopHitsDisplay initialHits={initialTopHits} />
@@ -368,26 +277,21 @@ export default function RacePageClient({
                 />
             )}
 
-            <div className="flex justify-center gap-2 sm:gap-3 my-3 sm:my-4">
-                <Link
-                    href={`/races/${getShiftedDate(currentDate, -1)}`}
-                    prefetch={false}
-                    className="inline-flex min-h-[44px] max-w-[160px] flex-1 items-center justify-center rounded-lg border border-slate-200 bg-white px-2 py-2.5 text-[11px] font-bold text-slate-600 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-primary sm:text-[13px]"
-                >
-                    ← 前日のデータ
+            <nav className="my-3 grid grid-cols-3 gap-2 sm:my-4 sm:gap-3" aria-label="日付の移動">
+                <Link href={`/races/${getShiftedDate(currentDate, -1)}`} prefetch={false} className="ui-btn ui-btn--secondary px-2 text-[13px] sm:text-sm">
+                    ← 前日
                 </Link>
-                <Link
-                    href={`/races/${getShiftedDate(currentDate, 1)}`}
-                    prefetch={false}
-                    className="inline-flex min-h-[44px] max-w-[160px] flex-1 items-center justify-center rounded-lg border border-slate-200 bg-white px-2 py-2.5 text-[11px] font-bold text-slate-600 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-primary sm:text-[13px]"
-                >
-                    翌日のデータ →
+                <Link href={`/races/${currentDate}`} prefetch={false} className="ui-btn ui-btn--secondary px-2 text-[13px] sm:text-sm">
+                    この日の全レース
                 </Link>
-            </div>
+                <Link href={`/races/${getShiftedDate(currentDate, 1)}`} prefetch={false} className="ui-btn ui-btn--secondary px-2 text-[13px] sm:text-sm">
+                    翌日 →
+                </Link>
+            </nav>
 
             {/* SEO・回遊導線 */}
             {/* <section className="mt-1.5 sm:mt-2.5 bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
-                <div className="flex flex-wrap gap-2 justify-center text-sm text-gray-600">
+                <div className="flex flex-wrap gap-2 justify-center text-sm text-slate-600">
                     <Link href="/grade-races" className="text-primary hover:underline font-semibold">重賞・G1一覧</Link>
                     <span className="text-slate-300">|</span>
                     <Link href="/courses" className="text-primary hover:underline font-semibold">コース分析</Link>

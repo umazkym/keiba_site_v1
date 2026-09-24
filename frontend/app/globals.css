@@ -3,53 +3,68 @@
 @tailwind utilities;
 
 /* === Design tokens (CSS変数) ===
- * tailwind.config.ts と同じ値を使用
- * Tailwind ユーティリティクラスでカバーできない箇所で参照
+ * ロゴ（インディゴの円と紺の線の馬）から決めた値。
+ * tailwind.config.ts・lib/brand.ts・backend/scripts/brand_tokens.py と同じ値を使う。
+ * Tailwind のクラスで書けない箇所だけで参照する。
  */
 :root {
-    /* メインカラー：Midnight Blue (Slate 900 modified) */
-    --color-primary: #0f172a;
-    --color-primary-light: #1e293b;
-    --color-primary-dark: #020617;
+    /* 本文の書体：端末の日本語書体（app/layout.tsx の説明を参照） */
+    --font-body: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo", system-ui, sans-serif;
 
-    /* セカンダリーカラー：Slate 500 */
-    --color-secondary: #64748b;
-    --color-secondary-light: #64748b;
-    --color-secondary-dark: #475569;
+    /* 役割の色 */
+    --brand: #4C4EFF;        /* ロゴの円：リンク・選択中・主ボタン */
+    --brand-deep: #3638D6;   /* 文字にするときのブランド色（白地で7:1） */
+    --brand-soft: #E5E6FF;
+    --brand-tint: #F3F3FF;
+    --navy: #1C2787;         /* ロゴの線：見出し・会場×Rのプレート */
+    --night: #0E1440;        /* フッター・写真の上の幕 */
+    --ink: #151A3D;
+    --ink-2: #3A4063;
+    --ink-muted: #5A6183;
+    --ai: #F2A516;           /* AI偏差値の棒と◎（面だけ） */
+    --ai-deep: #865300;      /* AI偏差値の数字 */
+    --ai-soft: #FFF1D1;
+    --turf: #2E8B57;
+    --dirt: #A5692F;
 
-    /* アクセントカラー：Amber 500 */
-    --color-accent: #f59e0b;
-    --color-accent-light: #fbbf24;
-    --color-accent-dark: #d97706;
+    /* 旧来の名前（既存のCSSが参照している。新しい値へ向ける） */
+    --color-primary: #151A3D;
+    --color-primary-light: #3A4063;
+    --color-primary-dark: #0E1440;
+    --color-secondary: #5A6183;
+    --color-secondary-light: #8388A6;
+    --color-secondary-dark: #474E73;
+    --color-accent: #F2A516;
+    --color-accent-light: #FFC24D;
+    --color-accent-dark: #865300;
 
     /* 背景とテキストカラー */
-    --bg: #f8fafc;
+    --bg: #F3F5FA;
     --surface: #ffffff;
-    --muted: #64748b;
-    --border: #e2e8f0;
-    --text: #0f172a;
+    --muted: #5A6183;
+    --border: #E2E5EF;
+    --text: #151A3D;
     --soft-shadow: none;
-    --elevated-shadow: 0 12px 34px rgba(15, 23, 42, 0.18);
+    --elevated-shadow: 0 12px 34px rgba(14, 20, 64, 0.16);
 
     /* セクション間のギャップ（モバイル/デスクトップ自動切替） */
     --section-gap: 0.375rem;
 
-    /* サンプルカラー変数 */
-    --primary-color: #0f172a;
-    --primary-soft-color: #1e293b;
-    --blue-color: #2563eb;
-    --blue-soft-color: #eff6ff;
-    --amber-color: #f59e0b;
-    --green-color: #059669;
+    --primary-color: #151A3D;
+    --primary-soft-color: #262C52;
+    --blue-color: #4C4EFF;
+    --blue-soft-color: #F3F3FF;
+    --amber-color: #F2A516;
+    --green-color: #2E8B57;
     --rose-color: #e11d48;
-    --slate-50-color: #f8fafc;
-    --slate-100-color: #f1f5f9;
-    --slate-200-color: #e2e8f0;
-    --slate-300-color: #cbd5e1;
-    --slate-500-color: #64748b;
-    --slate-700-color: #334155;
+    --slate-50-color: #F3F5FA;
+    --slate-100-color: #EEF0F7;
+    --slate-200-color: #E2E5EF;
+    --slate-300-color: #CDD2E2;
+    --slate-500-color: #5A6183;
+    --slate-700-color: #3A4063;
     --surface-color: #ffffff;
-    --shadow-color: 0 8px 22px rgba(15, 23, 42, 0.06);
+    --shadow-color: 0 8px 22px rgba(14, 20, 64, 0.06);
     --site-header-height: 48px;
     --site-header-offset: 48px;
     --site-header-top-gap: 0px;
@@ -86,7 +101,7 @@
         word-break: break-word;
         min-height: 100dvh;
         position: relative;
-        font-family: "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+        font-family: var(--font-body);
         letter-spacing: 0;
         overscroll-behavior-y: auto;
         touch-action: pan-y;
@@ -104,6 +119,12 @@
     h4 {
         color: var(--text);
         letter-spacing: 0;
+    }
+
+    /* 大きい見出しだけロゴの丸みに合わせる。h3以下と表の中は本文の書体のまま */
+    h1,
+    h2 {
+        font-family: var(--font-display), var(--font-body);
     }
 
     h1 {
@@ -181,7 +202,7 @@
     }
 
     .ui-section-header {
-        @apply flex min-w-0 items-end justify-between gap-1.5 border-b border-slate-200 pb-1 sm:gap-3 sm:pb-2;
+        @apply flex min-w-0 items-end justify-between gap-2 border-b border-slate-200 pb-1.5 sm:gap-3 sm:pb-2;
     }
 
     .ui-section-header--compact {
@@ -189,34 +210,51 @@
     }
 
     .ui-section-header__title {
-        @apply text-[15px] font-extrabold leading-snug text-slate-950 sm:text-xl;
+        @apply text-[17px] font-extrabold leading-snug text-slate-900 sm:text-xl;
     }
 
     .ui-section-header--compact .ui-section-header__title {
-        @apply text-[14px] font-bold sm:text-lg;
+        @apply text-[15px] font-bold sm:text-lg;
     }
 
     .ui-section-header__title::before {
         display: inline-block;
-        width: 3.5px;
-        height: 14px;
-        margin-right: 6px;
+        width: 4px;
+        height: 0.95em;
+        margin-right: 7px;
         border-radius: 999px;
-        background: var(--blue-color);
+        background: var(--brand);
         vertical-align: -2px;
         content: "";
     }
 
     .ui-section-header__meta {
-        @apply text-[10.5px] font-bold text-slate-500 sm:text-xs;
+        @apply text-xs font-medium text-slate-500 sm:text-[13px];
     }
 
     .ui-section-header__description {
-        @apply mt-0.5 text-[11px] leading-4 text-slate-600 sm:text-sm sm:leading-6;
+        @apply mt-1 text-[13px] leading-5 text-slate-600 sm:text-sm sm:leading-6;
     }
 
     .ui-section-header__action {
-        @apply shrink-0 text-[11px] font-bold text-blue-700 sm:text-xs;
+        @apply shrink-0 text-[13px] font-bold text-brand-700 sm:text-sm;
+    }
+
+    /* ホームの見出し：下線と色の棒を付けず、丸い書体で大きめに（2026-09-25 段階3） */
+    .home-page-scope .ui-section-header {
+        @apply items-end border-b-0 pb-0 sm:pb-0;
+    }
+
+    .home-page-scope .ui-section-header__title {
+        @apply text-[19px] font-extrabold md:text-[21px];
+    }
+
+    .home-page-scope .ui-section-header__title::before {
+        content: none;
+    }
+
+    .home-page-scope .ui-section-header__meta {
+        @apply text-[12.5px] font-medium md:text-[13.5px];
     }
 
     .responsive-data-table {
@@ -228,7 +266,7 @@
     }
 
     .responsive-data-table:focus-visible {
-        outline: 2px solid #2563eb;
+        outline: 2px solid #4C4EFF;
         outline-offset: -2px;
     }
 
@@ -247,7 +285,7 @@
     }
 
     .responsive-data-table--sticky-first table tbody > tr:nth-child(even) > :first-child {
-        background: #f8fafc;
+        background: #F3F5FA;
     }
 
     .card {
@@ -256,92 +294,59 @@
         box-shadow: none;
     }
 
-    /* Unified Micro-interaction: Hover Lift */
-    .hover-lift {
-        @apply transition-colors duration-150;
-    }
-
-    .hover-lift:hover {
-        border-color: #cbd5e1;
-        background-color: #f8fafc;
-    }
-
-
-
     /* Glassmorphism utility */
     .glass {
         @apply border-b border-slate-200 bg-white/95 backdrop-blur-sm;
     }
 
-    .btn-primary {
-        @apply inline-flex items-center justify-center rounded-lg font-bold transition-colors duration-150;
-        padding: 0.75rem 1.5rem;
-        background: var(--color-primary);
-        color: white;
+    /* ボタンは1系統（DESIGN.md「ボタン」）。高さは標準44px・大52px。
+       主＝インディゴ、紺＝写真や強い区切りの中、副＝白地に枠、白＝紺や写真の上、文字だけ＝補助の操作 */
+    .ui-btn {
+        @apply inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-[11px] px-[18px] text-[15px] font-bold leading-tight transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 focus-visible:ring-offset-2;
     }
 
-    .btn-primary:hover {
-        background: var(--color-primary-light);
+    .ui-btn--l {
+        @apply min-h-[52px] rounded-[13px] px-[22px] text-base;
+    }
+
+    .ui-btn--full {
+        @apply flex w-full;
+    }
+
+    .ui-btn--primary {
+        @apply bg-brand-600 text-white hover:bg-brand-700;
+    }
+
+    .ui-btn--navy {
+        @apply bg-navy text-white hover:bg-navy-deep;
+    }
+
+    .ui-btn--secondary {
+        @apply border-[1.5px] border-slate-300 bg-white text-navy hover:border-brand-300 hover:bg-brand-50;
+    }
+
+    .ui-btn--white {
+        @apply bg-white text-navy hover:bg-brand-50;
+    }
+
+    .ui-btn--ghost {
+        @apply text-brand-700 hover:bg-brand-50;
+    }
+
+    /* 旧来のボタン名（使っている画面を段階2・3で ui-btn に置き換えるまで、見た目だけ主ボタンにそろえる） */
+    .btn-primary {
+        @apply inline-flex items-center justify-center rounded-[11px] bg-brand-600 font-bold text-white transition-colors duration-150 hover:bg-brand-700;
+        padding: 0.75rem 1.5rem;
     }
 
     .recent-return-primary {
-        @apply inline-flex min-h-[44px] items-center justify-center rounded-lg bg-primary px-3 py-1 text-[11px] font-bold leading-none text-white transition-colors duration-150 hover:bg-primary-light sm:px-3 sm:py-1.5 sm:text-xs;
-    }
-
-    .adsense-wrapper {
-        @apply w-full flex items-center justify-center bg-gray-50 border rounded-lg;
-        border-color: var(--border);
-        min-height: 90px;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .adsense-wrapper::before {
-        content: "広告";
-        position: absolute;
-        top: 4px;
-        right: 8px;
-        font-size: 10px;
-        color: var(--muted);
-        opacity: 0.5;
+        @apply inline-flex min-h-[44px] items-center justify-center rounded-[11px] bg-brand-600 px-3 py-1 text-[11px] font-bold leading-none text-white transition-colors duration-150 hover:bg-brand-700 sm:px-3 sm:py-1.5 sm:text-xs;
     }
 
     .skip-link {
         @apply sr-only focus:not-sr-only fixed left-2 top-2 z-[100] inline-block rounded-md px-3 py-2 font-medium;
         background: white;
         border: 1px solid var(--border);
-    }
-
-    /* セクション区切り: コンテンツと広告の間に控えめなセパレーター */
-    .section-divider {
-        @apply w-full flex items-center justify-center;
-        padding: var(--section-gap) 0;
-    }
-
-    .section-divider::before {
-        content: '';
-        display: block;
-        width: 40px;
-        height: 3px;
-        border-radius: 2px;
-        background: var(--border);
-    }
-
-    /* ネイティブ風広告スタイル: コンテンツと自然に馴染む */
-    .ad-native {
-        @apply w-full bg-slate-50/50 border border-slate-100 rounded-xl overflow-hidden;
-        transition: opacity 0.3s ease, max-height 0.3s ease;
-    }
-
-    .ad-native::before {
-        content: '広告';
-        display: block;
-        text-align: center;
-        font-size: 10px;
-        letter-spacing: 0.1em;
-        color: var(--muted);
-        padding-top: 6px;
-        opacity: 0.6;
     }
 
     .mobile-menu-overlay,
@@ -356,7 +361,7 @@
             inset: 0;
             z-index: 45;
             pointer-events: none;
-            background: rgba(15, 23, 42, 0.32);
+            background: rgba(14, 20, 64, 0.32);
             opacity: 0;
             transition: opacity 0.24s ease;
         }
@@ -379,7 +384,7 @@
             overscroll-behavior: contain;
             border-top: 1px solid var(--slate-100-color);
             background: #ffffff;
-            box-shadow: 0 18px 28px rgba(15, 23, 42, 0.12);
+            box-shadow: 0 18px 28px rgba(14, 20, 64, 0.12);
             opacity: 0;
             pointer-events: none;
             visibility: hidden;
@@ -449,60 +454,6 @@
     max-width: 72px;
     text-align: left;
     border-right: 2px solid var(--border);
-}
-
-.net-wins-cell {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    height: 100%;
-    min-height: 56px;
-    cursor: pointer;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "monospace";
-}
-
-.net-wins-number {
-    font-size: 1.15rem;
-    font-weight: 700;
-}
-
-.wld-text {
-    font-size: 0.75rem;
-    color: var(--muted);
-}
-
-td.matchup-win {
-    background-color: rgba(16, 185, 129, 0.1);
-}
-
-td.matchup-loss {
-    background-color: rgba(239, 68, 68, 0.08);
-}
-
-td.matchup-draw {
-    background-color: rgba(245, 158, 11, 0.08);
-}
-
-.net-wins-number.matchup-win {
-    color: var(--color-secondary-dark);
-}
-
-.net-wins-number.matchup-loss {
-    color: #b91c1c;
-}
-
-.net-wins-number.matchup-draw {
-    color: var(--color-accent-dark);
-}
-
-.self-match {
-    background-color: #f3f4f6;
-}
-
-td.no-match {
-    background-color: #ffffff;
 }
 
 /* React Tabs styling is now handled by Tailwind classes exclusively */
@@ -603,11 +554,6 @@ header.glass {
     pointer-events: none;
 }
 
-.site-header-hidden {
-    pointer-events: auto;
-    transform: none;
-}
-
 .site-header-spacer {
     display: block;
     height: var(--site-header-offset);
@@ -633,7 +579,7 @@ header.glass {
     box-shadow:
         inset 0 0 0 1px var(--slate-200-color),
         0 -6px 0 var(--bg),
-        0 2px 3px rgba(15, 23, 42, 0.1);
+        0 2px 3px rgba(14, 20, 64, 0.1);
     transition: top 180ms cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -668,8 +614,7 @@ header.glass {
         width: auto !important;
     }
 
-    .card,
-    .pick-card {
+    .card {
         border-radius: 8px !important;
         box-shadow: none !important;
         margin-left: 0 !important;
@@ -677,62 +622,14 @@ header.glass {
         padding: 6px 8px !important;
     }
 
-    .venue-section,
-    .hits,
-    .pick-section,
-    .articles,
-    .database-section,
-    .faq {
-        padding: 6px 8px !important;
-    }
-
-    .hero {
-        padding: 10px 12px !important;
-    }
-
-    .grade-focus {
-        padding: 8px 10px !important;
-    }
-
-    .home-page-scope .articles .article {
-        border: 0;
-        border-bottom: 1px solid var(--slate-100-color);
-        border-radius: 0 !important;
-    }
-
-    .home-page-scope .articles .article:last-of-type {
-        border-bottom: 0;
-    }
-
     .container {
         padding-left: 0.375rem;
         padding-right: 0.375rem;
     }
 
-    /* モバイル見出し上限15px厳守 */
-    h1 {
-        font-size: 15px !important;
-        line-height: 1.25 !important;
-    }
-
-    h2 {
-        font-size: 14.5px !important;
-        line-height: 1.25 !important;
-    }
-
-    h3 {
-        font-size: 14px !important;
-        line-height: 1.3 !important;
-    }
-
-    h4 {
-        font-size: 13px !important;
-        line-height: 1.35 !important;
-    }
-
-    p {
-        line-height: 1.5 !important;
-    }
+    /* 見出しの大きさは各画面のクラスで決める（2026-09-24 に「見出し上限15px」の一括指定を廃止）。
+       スマホの上限は h1 24px・h2 20px・h3 18px（DESIGN.md「タイポグラフィ」）。
+       レース画面と記事は .race-page-scope / .article-page-* の専用規格が優先される。 */
 
     .btn-primary {
         min-height: 32px;
@@ -772,17 +669,6 @@ header.glass {
     .card {
         margin-bottom: 1.5rem;
     }
-}
-
-/* 印の強調スタイル */
-.prediction-mark {
-    display: inline-block;
-    font-weight: 900;
-    font-size: 1.2em;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    background: var(--color-accent);
-    color: white;
 }
 
 /* 記事タイトルや本文見出しの長い語句でモバイル横スクロールを起こさない */
@@ -1010,11 +896,6 @@ header.glass {
   border-radius: 999px;
   background: var(--blue-color);
 }
-.section-note {
-  color: var(--slate-500-color);
-  font-size: 11px;
-  font-weight: 700;
-}
 
 .badge {
   display: inline-flex;
@@ -1031,292 +912,36 @@ header.glass {
   line-height: 1;
   white-space: nowrap;
 }
-.badge-amber,
-.badge-main {
-  background: #fef3c7;
-  border-color: #fde68a;
-  color: #92400e;
+
+/* グレードのバッジ（DESIGN.md の色の役割表。グレード以外に使わない） */
+.grade-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 5px;
+  color: #ffffff;
+  font-family: var(--font-num), var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  white-space: nowrap;
 }
-.badge-blue {
-  background: #dbeafe;
-  border-color: #bfdbfe;
-  color: #1d4ed8;
-}
-.badge-green {
-  background: #dcfce7;
-  border-color: #bbf7d0;
-  color: #047857;
-}
-.badge-purple {
-  background: #ede9fe;
-  border-color: #ddd6fe;
-  color: #6d28d9;
-}
-.badge-slate {
-  background: var(--slate-100-color);
-  border-color: var(--slate-200-color);
-  color: var(--slate-700-color);
-}
+.grade-badge--g1 { background: #1F5FD1; }
+.grade-badge--g2 { background: #D23B3B; }
+.grade-badge--g3 { background: #1E8E4F; }
+.grade-badge--local { background: #8E5E26; }
 
 /* Resume component */
-.resume {
-  padding: 12px;
-  display: grid;
-  gap: 10px;
-}
-.resume-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-.resume-card {
-  display: grid;
-  gap: 6px;
-  padding: 12px;
-  border: 1px solid var(--slate-200-color);
-  border-radius: 10px;
-  background: #fff;
-}
-.resume-card strong {
-  font-size: 14px;
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.resume-card small {
-  color: var(--slate-500-color);
-  font-size: 11px;
-  font-weight: 700;
-}
-.resume-action {
-  justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 0 12px;
-  border-radius: 8px;
-  background: var(--primary-color);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 800;
-}
 
 /* Hero elements */
-.hero-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.8fr);
-  gap: 12px;
-  align-items: stretch;
-}
-.hero {
-  position: relative;
-  padding: 18px 20px;
-  color: white;
-  background: var(--primary-color);
-  border: 1px solid var(--primary-soft-color);
-}
-.hero .update {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 10px;
-  color: #dbeafe;
-  font-size: 11px;
-  font-weight: 800;
-}
-.hero h1 {
-  margin: 0;
-  color: white;
-  font-size: clamp(18px, 2.5vw, 26px);
-  line-height: 1.2;
-}
-.hero p {
-  max-width: 650px;
-  margin: 9px 0 16px;
-  color: #cbd5e1;
-  font-size: 13px;
-  line-height: 1.6;
-  font-weight: 600;
-}
-.hero-analysis-flow {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 14px 0 2px;
-  padding: 0;
-  border-block: 1px solid rgba(255, 255, 255, 0.14);
-  list-style: none;
-}
-.hero-analysis-flow li {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  border-right: 1px solid rgba(255, 255, 255, 0.14);
-}
-.hero-analysis-flow li:last-child {
-  border-right: 0;
-}
-.hero-analysis-flow span:last-child {
-  min-width: 0;
-}
-.hero-analysis-flow b {
-  display: block;
-  color: white;
-  font-size: 12px;
-  line-height: 1.3;
-}
-.hero-analysis-flow small {
-  display: block;
-  margin-top: 2px;
-  color: #cbd5e1;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.35;
-}
-.hero-flow-icon {
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fbbf24;
-}
-.cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  margin-top: 12px;
-  padding: 0 18px;
-  border-radius: 10px;
-  background: white;
-  color: var(--primary-color);
-  font-size: 12px;
-  font-weight: 900;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-.cta:hover {
-  background: #f8fafc;
-  color: #1d4ed8;
-}
+
+/* 紺の面の上の白いボタン（ui-btn--white と同じ見た目。ホームは段階3で置き換える） */
 
 /* Grade focus card */
-.grade-races-panel {
-  min-width: 0;
-  align-self: stretch;
-  border: 1px solid var(--slate-200-color);
-  border-radius: 12px;
-  background: #ffffff;
-}
-.grade-focus {
-  padding: 16px;
-  display: grid;
-  align-content: stretch;
-  gap: 10px;
-  background: #ffffff;
-  border: 1px solid var(--slate-200-color);
-  border-radius: 12px;
-}
-.grade-focus h2 {
-  margin: 0;
-  font-size: 24px;
-  line-height: 1.25;
-}
-.grade-focus p {
-  margin: 0;
-  color: var(--slate-500-color);
-  font-size: 13px;
-  line-height: 1.7;
-  font-weight: 700;
-}
-.top-horse {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  align-items: center;
-  margin-top: auto;
-  padding: 11px;
-  border: 1px solid rgba(37, 99, 235, 0.16);
-  border-radius: 10px;
-  background: white;
-}
-.grade-score {
-  color: var(--blue-color);
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 1;
-}
+
 /* Standard Card Sections */
-.venue-section,
-.hits,
-.pick-section,
-.articles,
-.database-section,
-.faq {
-  padding: 14px 16px;
-}
-.venue-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
-}
-.venue-chip {
-  min-height: 74px;
-  padding: 10px;
-  border: 1px solid var(--slate-200-color);
-  border-radius: 10px;
-  background: #fff;
-  display: grid;
-  gap: 5px;
-}
-.venue-chip strong {
-  font-size: 15px;
-}
-.venue-chip small {
-  color: var(--slate-500-color);
-  font-size: 11px;
-  font-weight: 800;
-}
-.venue-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--green-color);
-  font-size: 10px;
-  font-weight: 900;
-}
-.venue-state::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: currentColor;
-}
-.venue-state.muted {
-  color: var(--slate-500-color);
-}
-
-@media (max-width: 639px) {
-  .venue-grid {
-    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-    gap: 6px;
-  }
-
-  .venue-chip {
-    min-height: 64px;
-    padding: 8px;
-    gap: 3px;
-  }
-
-  .venue-state {
-    white-space: nowrap;
-  }
-}
 
 /* Affiliate components */
 .affiliate {
@@ -1356,21 +981,9 @@ header.glass {
 }
 
 /* Main Grid */
-.main-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 16px;
-  align-items: start;
-}
 
 /* Hits card */
-.hits {
-  padding: 16px;
-}
-.hit-list {
-  display: grid;
-  gap: 8px;
-}
+
 .hit {
   display: grid;
   grid-template-columns: 42px 1fr auto;
@@ -1390,21 +1003,9 @@ header.glass {
   color: var(--amber-color);
   font-weight: 900;
 }
-.hit .amount {
-  color: #dc2626;
-  font-weight: 900;
-}
 
 /* Special Pick components */
-.pick-section {
-  padding: 16px;
-}
-.tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
-}
+
 .tab {
   min-height: 36px;
   border-radius: 8px;
@@ -1419,60 +1020,9 @@ header.glass {
   color: white;
   border-color: var(--primary-color);
 }
-.pick-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  padding: 14px;
-  border: 1px solid var(--slate-200-color);
-  border-radius: 10px;
-  background: #fff;
-}
-.pick-card h3 {
-  margin: 0 0 4px;
-  font-size: 22px;
-  font-weight: 800;
-}
-.pick-card p {
-  margin: 0;
-  color: var(--slate-500-color);
-  font-size: 13px;
-  line-height: 1.7;
-  font-weight: 700;
-}
-.bar-track {
-  height: 7px;
-  margin-top: 10px;
-  border-radius: 999px;
-  background: var(--slate-200-color);
-  overflow: hidden;
-}
-.bar-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--blue-color);
-}
-.score-panel {
-  text-align: right;
-  color: var(--blue-color);
-  font-size: 32px;
-  font-weight: 900;
-}
-.score-panel small {
-  display: block;
-  color: var(--slate-500-color);
-  font-size: 11px;
-}
 
 /* Articles list */
-.articles {
-  padding: 16px;
-}
-.article-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
+
 .article {
   border: 1px solid var(--slate-200-color);
   border-radius: 10px;
@@ -1480,31 +1030,7 @@ header.glass {
   overflow: hidden;
   min-height: 210px;
 }
-.thumb {
-  position: relative;
-  min-height: 92px;
-  display: grid;
-  place-items: center;
-  padding: 10px;
-  color: var(--slate-700-color);
-  font-size: 13px;
-  font-weight: 900;
-  text-align: center;
-  overflow: hidden;
-}
-.thumb.gold { background: #fef3c7; color: #92400e; }
-.thumb.blue { background: #dbeafe; color: #1d4ed8; }
-.thumb.green { background: #dcfce7; color: #047857; }
-.thumb.purple { background: #ede9fe; color: #6d28d9; }
-.article-body {
-  padding: 10px;
-}
-.article-body h3 {
-  margin: 6px 0 8px;
-  font-size: 13px;
-  line-height: 1.55;
-  font-weight: 700;
-}
+
 .meta {
   display: flex;
   align-items: center;
@@ -1514,123 +1040,16 @@ header.glass {
   font-size: 11px;
   font-weight: 800;
 }
-.native-ad {
-  display: grid;
-  place-items: center;
-  min-height: 210px;
-  border: 1px solid var(--slate-200-color);
-  border-radius: 10px;
-  background: #fff;
-  text-align: center;
-  padding: 12px;
-}
 
 /* FAQ elements */
-.faq {
-  padding: 14px 16px;
-}
-.faq-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 13px 0;
-  border-top: 1px solid var(--slate-200-color);
-  font-size: 14px;
-  font-weight: 800;
-}
-
-/* Sticky Ads */
-.sticky-ad {
-  display: flex;
-  position: fixed;
-  left: 50%;
-  bottom: 12px;
-  transform: translateX(-50%);
-  z-index: 30;
-  width: min(760px, calc(100vw - 24px));
-  min-height: 54px;
-  grid-template-columns: 72px 1fr 36px;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--slate-200-color);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.18);
-  color: var(--slate-500-color);
-  font-size: 12px;
-  font-weight: 800;
-}
-.sticky-ad .slot {
-  min-height: 38px;
-  border-radius: 8px;
-  background: var(--slate-100-color);
-  display: grid;
-  place-items: center;
-}
 
 /* Race Details specific layout */
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background: rgba(255, 255, 255, 0.94);
-  border-bottom: 1px solid var(--slate-200-color);
-  backdrop-filter: blur(12px);
-}
-.topbar-inner {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 8px 16px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-}
-.race-now {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  font-weight: 900;
-}
-.race-now span:first-child {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  background: var(--primary-color);
-  color: #fff;
-  font-size: 13px;
-}
-.race-now small {
-  display: block;
-  color: var(--slate-500-color);
-  font-size: 11px;
-  font-weight: 800;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.top-pick {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: #fef3c7;
-  color: #92400e;
-  font-size: 12px;
-  font-weight: 900;
-  white-space: nowrap;
-}
 
 .race-selector {
   display: grid;
-  gap: 1px;
+  gap: 4px;
   min-width: 0;
-  padding: 5px;
+  padding: 0;
   overflow: hidden;
   background: #ffffff;
 }
@@ -1647,19 +1066,47 @@ header.glass {
   align-items: center;
   gap: 8px;
   margin: 0 0 8px;
-  color: var(--primary-color);
-  font-size: 14px;
+  color: var(--ink);
+  font-family: var(--font-display), var(--font-body);
+  font-size: 20px;
   font-weight: 800;
-  line-height: 1.35;
+  line-height: 1.3;
 }
 
 .race-section-heading::before {
   width: 4px;
-  height: 18px;
+  height: 0.95em;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: var(--blue-color);
+  background: var(--brand);
   content: "";
+}
+
+.race-section-lead {
+  margin: 0 0 12px;
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* 写真の上に文字を置くときの幕（DESIGN.md「写真とイラスト」） */
+.photo-scrim-left {
+  background: linear-gradient(90deg, rgba(14, 20, 64, 0.85) 0%, rgba(14, 20, 64, 0.25) 70%);
+}
+
+.photo-fade-left {
+  background: linear-gradient(90deg, #ffffff 0%, rgba(255, 255, 255, 0.85) 22%, rgba(255, 255, 255, 0) 60%);
+}
+
+/* ホームの写真の入口。スマホ〜タブレットは下に見出しを置くため上から下へ、PC（1024px以上）は左に置くため左から右へ暗くする */
+.home-hero-scrim {
+  background: linear-gradient(180deg, rgba(14, 20, 64, 0.25) 0%, rgba(14, 20, 64, 0.1) 30%, rgba(14, 20, 64, 0.78) 68%, rgba(14, 20, 64, 0.94) 100%);
+}
+
+@media (min-width: 1024px) {
+  .home-hero-scrim {
+    background: linear-gradient(90deg, rgba(14, 20, 64, 0.94) 0%, rgba(14, 20, 64, 0.82) 36%, rgba(14, 20, 64, 0.35) 62%, rgba(14, 20, 64, 0.12) 100%);
+  }
 }
 
 .race-prediction-heading {
@@ -1668,8 +1115,8 @@ header.glass {
 
 @media (max-width: 639px) {
   .race-page-scope {
-    font-size: 12px;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.6;
   }
 
   .race-page-scope .race-detail-layout {
@@ -1695,16 +1142,14 @@ header.glass {
 
   .race-page-scope .race-section-heading {
     gap: 6px;
-    color: var(--primary-color);
-    font-size: 14px;
-    font-weight: 800;
+    font-size: 17px;
     line-height: 1.35;
   }
 
   .race-page-scope .race-section-heading::before,
   .race-page-scope .ui-section-header__title::before {
-    width: 3.5px;
-    height: 14px;
+    width: 4px;
+    height: 0.95em;
     border-radius: 999px;
     vertical-align: -2px;
   }
@@ -1724,21 +1169,21 @@ header.glass {
 
   .race-page-scope .ui-section-header__title,
   .race-page-scope .ui-section-header--compact .ui-section-header__title {
-    font-size: 14px;
+    font-size: 17px;
     font-weight: 800;
     line-height: 1.35;
   }
 
   .race-page-scope .ui-section-header__meta,
   .race-page-scope .ui-section-header__action {
-    font-size: 10.5px;
-    line-height: 1.35;
+    font-size: 12px;
+    line-height: 1.4;
   }
 
   .race-page-scope .ui-section-header__description {
     margin-top: 2px;
-    font-size: 11px;
-    line-height: 1.45;
+    font-size: 13px;
+    line-height: 1.6;
   }
 
   .race-page-scope .race-prediction-heading {
@@ -1746,10 +1191,12 @@ header.glass {
     padding-top: 6px;
   }
 
-  .race-page-scope .race-section-toolbar,
-  .race-page-scope .race-analysis-panel {
-    padding-right: 0;
-    padding-left: 0;
+  /* 余白を持つカードの見出し（段階2）。左右の余白と下線を付けない */
+  .race-page-scope .race-section-heading.race-section-heading--flush {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    border-bottom: 0;
+    padding-bottom: 0;
   }
 
   .race-page-scope .race-section-summary .race-section-heading,
@@ -1766,25 +1213,14 @@ header.glass {
     margin-top: 6px !important;
   }
 
-  .race-page-scope :is(h1, h2, h3, h4, h5, h6),
-  .race-page-scope :is(.text-base, .text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl) {
-    font-size: 15px !important;
-  }
-
-  .race-page-scope .race-section-heading,
-  .race-page-scope .ui-section-header__title,
-  .race-page-scope .ui-section-header--compact .ui-section-header__title {
-    font-size: 14px !important;
-  }
-
   .race-page-scope .race-prediction-table th {
-    padding: 4px 3px;
-    font-size: 10px;
+    padding: 6px 4px;
+    font-size: 11px;
   }
 
   .race-page-scope .race-prediction-table td {
-    padding: 4px 3px;
-    font-size: 12px;
+    padding: 7px 4px;
+    font-size: 13px;
   }
 }
 
@@ -1802,75 +1238,44 @@ header.glass {
 }
 
 .race-prediction-table th {
-  height: 32px;
-  padding: 5px 4px;
+  height: 34px;
+  padding: 8px 6px;
   border-bottom: 1px solid var(--slate-200-color);
   background: var(--slate-50-color);
-  color: var(--slate-600, #475569);
-  font-size: 10px;
-  font-weight: 800;
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 700;
   line-height: 1.2;
   vertical-align: middle;
 }
 
 .race-prediction-table td {
-  height: 39px;
-  padding: 5px 4px;
-  border-bottom: 1px solid var(--slate-100-color);
-  color: var(--primary-color);
-  font-size: 12px;
-  font-weight: 800;
+  height: 52px;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--slate-200-color);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
   vertical-align: middle;
 }
 
-.race-prediction-table tbody tr:nth-child(even) td {
-  background: #f8fafc;
+.race-prediction-table tr.is-top-pick td {
+  background: #FFFBF1;
 }
 
-.race-score-badge {
-  display: inline-flex;
-  min-width: 50px;
-  justify-content: center;
-  border-radius: 999px;
-  background: #ffedd5;
-  padding: 4px 6px;
-  color: #c2410c;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.race-score-badge-low {
-  background: var(--slate-100-color);
-  color: var(--slate-500-color);
-}
-
-.race-position-badge {
-  display: inline-flex;
-  min-width: 40px;
-  min-height: 22px;
-  align-items: center;
-  justify-content: center;
-  border-width: 1px;
-  border-radius: 999px;
-  padding: 0 5px;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-}
 .race-tab {
   min-width: 0;
-  min-height: 44px;
-  padding: 5px 2px;
+  min-height: 40px;
+  padding: 5px 1px;
   border: 1px solid var(--slate-200-color);
-  border-radius: 6px;
+  border-radius: 10px;
   background: white;
+  color: var(--ink-2);
   text-align: center;
-  font-weight: 900;
-  font-size: 12px;
+  font-family: var(--font-num), var(--font-body);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
 }
 .race-tab small {
   display: block;
@@ -1879,81 +1284,12 @@ header.glass {
   margin-top: 3px;
 }
 .race-tab.active {
-  background: var(--blue-color);
-  border-color: var(--blue-color);
+  background: var(--navy);
+  border-color: var(--navy);
   color: white;
 }
 .race-tab.active small {
-  color: #dbeafe;
-}
-
-.nav-pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.nav-card {
-  min-height: 64px;
-  padding: 10px;
-  border: 1px solid #bfdbfe;
-  border-radius: 12px;
-  background: #eff6ff;
-  color: var(--blue-color);
-  display: grid;
-  place-items: center;
-  text-align: center;
-  font-weight: 900;
-  line-height: 1.35;
-}
-.nav-card.next {
-  background: var(--blue-color);
-  color: white;
-  border-color: var(--blue-color);
-}
-.nav-card small {
-  display: block;
-  font-size: 11px;
-  font-weight: 800;
-  opacity: 0.88;
-}
-
-.race-title {
-  padding: 14px 16px 12px;
-  border-bottom: 1px solid var(--slate-200-color);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.race-title .num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 38px;
-  height: 38px;
-  border-radius: 9px;
-  background: var(--blue-color);
-  color: white;
-  font-weight: 900;
-}
-.race-title h1 {
-  margin: 0;
-  font-size: 23px;
-  line-height: 1.25;
-}
-.race-title p {
-  margin: 2px 0 0;
-  color: var(--slate-500-color);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.legend {
-  padding: 10px 12px;
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
-  border-bottom: 1px solid var(--slate-200-color);
-  background: var(--slate-50-color);
+  color: #E5E6FF;
 }
 
 .table {
@@ -1978,33 +1314,13 @@ header.glass {
   vertical-align: middle;
 }
 .table tr:nth-child(even) td {
-  background: #f8fafc;
+  background: #F3F5FA;
 }
 
 .mark {
   text-align: center;
   font-size: 20px;
 }
-.horse-no {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  background: var(--slate-200-color);
-  color: var(--primary-color);
-  font-size: 12px;
-  font-weight: 900;
-}
-.horse-no.waku1 { background: #ffffff; color: #111827; border: 1px solid var(--slate-300-color); }
-.horse-no.waku2 { background: #111827; color: white; }
-.horse-no.waku3 { background: #dc2626; color: white; }
-.horse-no.waku4 { background: #2563eb; color: white; }
-.horse-no.waku5 { background: #eab308; color: #111827; }
-.horse-no.waku6 { background: #16a34a; color: white; }
-.horse-no.waku7 { background: #ea580c; color: white; }
-.horse-no.waku8 { background: #ec4899; color: white; }
 
 .score {
   display: inline-flex;
@@ -2044,15 +1360,6 @@ header.glass {
   line-height: 1.85;
   font-weight: 700;
 }
-.read-more {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--slate-200-color);
-  text-align: center;
-  color: var(--blue-color);
-  font-size: 13px;
-  font-weight: 900;
-}
 
 .chart {
   min-height: 190px;
@@ -2072,7 +1379,7 @@ header.glass {
 .bars span {
   flex: 1;
   border-radius: 8px 8px 0 0;
-  background: #60a5fa;
+  background: #7C7EFF;
   min-height: 22px;
 }
 
@@ -2101,7 +1408,7 @@ header.glass {
 
 .race-sticky-selector {
   top: calc(var(--site-header-offset) + 8px);
-  box-shadow: 0 -10px 0 var(--bg), 0 1px 3px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 -10px 0 var(--bg), 0 6px 18px rgba(20, 26, 61, 0.08);
   transition: top 180ms cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -2116,33 +1423,6 @@ header.glass {
     min-height: 220px;
   }
 }
-.side-card {
-  padding: 14px;
-}
-.side-list {
-  display: grid;
-  gap: 8px;
-}
-.side-link {
-  display: grid;
-  grid-template-columns: 42px 1fr;
-  gap: 10px;
-  align-items: center;
-  padding: 9px;
-  border: 1px solid var(--slate-200-color);
-  border-radius: 9px;
-  background: white;
-  font-size: 12px;
-  font-weight: 900;
-}
-.side-link span:first-child {
-  display: grid;
-  place-items: center;
-  height: 34px;
-  border-radius: 8px;
-  background: var(--slate-100-color);
-  color: var(--slate-700-color);
-}
 
 .ad {
   display: block;
@@ -2156,7 +1436,7 @@ header.glass {
 .ad small {
   display: block;
   margin-bottom: 5px;
-  color: #94a3b8;
+  color: #8388A6;
   font-size: 11px;
 }
 .ad:empty {
@@ -2170,132 +1450,31 @@ header.glass {
 }
 
 /* Responsive adjustments for samples */
-@media (max-width: 1023px) {
-  .main-grid {
-    grid-template-columns: minmax(0, 1fr) !important;
-    gap: 12px;
-  }
-}
-
-@media (max-width: 820px) {
-  .resume-row {
-    display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    padding-bottom: 2px;
-  }
-  .resume-card {
-    min-width: 224px;
-    scroll-snap-align: start;
-    flex-shrink: 0;
-  }
-  .hero-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  .hero {
-    padding: 14px;
-  }
-  .hero .update {
-    margin-bottom: 7px;
-    font-size: 9px;
-  }
-  .hero h1 {
-    font-size: 17px;
-  }
-  .hero p {
-    font-size: 11px;
-    line-height: 1.6;
-    margin-top: 7px;
-  }
-  .hero-analysis-flow {
-    margin-top: 10px;
-  }
-  .hero-analysis-flow li {
-    display: grid;
-    justify-items: center;
-    gap: 4px;
-    padding: 8px 4px;
-    text-align: center;
-  }
-  .hero-analysis-flow small {
-    display: none;
-  }
-  .hero-flow-icon {
-    width: 26px;
-    height: 26px;
-  }
-  .cta {
-    width: 100%;
-    min-height: 44px;
-    margin-top: 10px;
-    font-size: 12px;
-  }
-}
 
 @media (max-width: 639px) {
-  .hero h1 {
-    font-size: 1.15rem;
-    line-height: 1.35;
-  }
 
   .hit {
     grid-template-columns: 28px 1fr auto;
     gap: 6px;
     padding: 6px;
   }
-  .hit .amount {
-    font-size: 12px;
-  }
-  .tabs {
-    gap: 4px;
-  }
+
   .tab {
     font-size: 11px;
     min-height: 30px;
   }
 
-  .article-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
-  }
-  .sticky-ad {
-    width: calc(100vw - 12px);
-    bottom: 4px;
-    font-size: 10px;
-  }
 }
 
 @media (max-width: 768px) {
   /* Race detail responsive */
-  .topbar-inner {
-    grid-template-columns: 1fr;
-    gap: 5px;
-    padding: 7px 10px;
-  }
-  .race-now {
-    gap: 8px;
-  }
-  .race-now span:first-child {
-    min-width: 30px;
-    height: 30px;
-    font-size: 12px;
-  }
-  .race-now strong {
-    font-size: 13px;
-  }
-  .top-pick {
-    justify-self: start;
-    min-height: 26px;
-    padding: 0 9px;
-    font-size: 11px;
-  }
+
   .race-selector {
     min-width: 0;
     border: 0;
     border-radius: 0;
-    padding: 4px;
-    gap: 1px;
+    padding: 0;
+    gap: 2px;
     overflow: hidden;
   }
   .race-detail-layout {
@@ -2308,7 +1487,8 @@ header.glass {
     width: auto;
     min-height: 44px;
     padding: 5px 0;
-    font-size: 10px;
+    border-radius: 8px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2319,33 +1499,7 @@ header.glass {
     margin-top: 0;
     font-size: 9px;
   }
-  .nav-pair {
-    padding: 0 10px;
-    gap: 8px;
-  }
-  .nav-card {
-    min-height: 58px;
-    font-size: 13px;
-    border-radius: 10px;
-  }
-  .race-title {
-    padding: 12px 10px 10px;
-  }
-  .race-title .num {
-    min-width: 32px;
-    height: 32px;
-  }
-  .race-title h1 {
-    font-size: 19px;
-  }
-  .race-title p {
-    font-size: 12px;
-  }
-  .legend {
-    padding: 8px 10px;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-  }
+
   .table th {
     padding: 8px 6px;
     font-size: 10px;
@@ -2357,10 +1511,7 @@ header.glass {
   .mark {
     font-size: 18px;
   }
-  .horse-no {
-    width: 24px;
-    height: 24px;
-  }
+  
   .score {
     min-width: 48px;
     padding: 4px 7px;
@@ -2378,20 +1529,6 @@ header.glass {
   .bars {
     height: 104px;
   }
-}
-
-@layer utilities {
-    .scrollbar-hide {
-        -ms-overflow-style: none;
-        /* IE and Edge */
-        scrollbar-width: none;
-        /* Firefox */
-    }
-
-    .scrollbar-hide::-webkit-scrollbar {
-        display: none;
-        /* Chrome, Safari and Opera */
-    }
 }
 
 /* ---------- accessibility preferences ---------- */
@@ -2425,9 +1562,9 @@ header.glass {
 
 @media (prefers-contrast: more) {
     :root {
-        --border: #94a3b8;
-        --slate-200-color: #94a3b8;
-        --slate-500-color: #475569;
+        --border: #8388A6;
+        --slate-200-color: #8388A6;
+        --slate-500-color: #474E73;
     }
 
     :focus-visible {
@@ -2438,9 +1575,9 @@ header.glass {
 /* Light prose pre/code styling for article flow text */
 .article-page-prose pre,
 .prose pre {
-    background-color: #f8fafc !important;
-    color: #1e293b !important;
-    border: 1px solid #e2e8f0 !important;
+    background-color: #F3F5FA !important;
+    color: #262C52 !important;
+    border: 1px solid #E2E5EF !important;
     border-radius: 0.5rem !important;
     padding: 0.625rem 0.75rem !important;
     font-family: inherit !important;
@@ -2452,7 +1589,7 @@ header.glass {
 .article-page-prose pre code,
 .prose pre code {
     background-color: transparent !important;
-    color: #1e293b !important;
+    color: #262C52 !important;
     padding: 0 !important;
     border: none !important;
     font-family: inherit !important;

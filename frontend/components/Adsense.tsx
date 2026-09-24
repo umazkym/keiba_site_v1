@@ -256,7 +256,7 @@ export const Adsense = ({
   if (shouldShowDevAdPlaceholders) {
     return (
       <div
-        className={`bg-gray-200 border-2 border-dashed border-gray-400 text-gray-500 flex items-center justify-center ${className || ''}`}
+        className={`bg-slate-200 border-2 border-dashed border-slate-400 text-slate-500 flex items-center justify-center ${className || ''}`}
         style={style}
       >
         広告エリア (Slot: {slot}{refreshKey ? ` | Key: ${refreshKey}` : ''})

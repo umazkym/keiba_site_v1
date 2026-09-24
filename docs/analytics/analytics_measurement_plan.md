@@ -13,6 +13,7 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 - `page_view` は実際にページが表示された場合だけ使用する。
 - 中央・地方タブ、競馬場タブ、同一競馬場内のレース切り替えでは送信しない。
 - レース切り替えは `race_view` と `race_navigation` で評価する。
+- 2026-09-24（デザイン改修 段階2）で `/races/{日付}` を開催日ボード（全会場×全レースの一覧）に変更した。ボードではレースの予想表を表示しないため `race_view` と `prediction_table_view` を送らず、レース詳細（`/races/{日付}/{会場}/{R}`）へ移動したときだけ送る。ボードからレース詳細への移動は通常のページ遷移なので実際の `page_view` が発生する。中央・地方の切り替え（`race_group_select`）とスマホの会場ボタン（`race_venue_select`）はボードから同じ名前・同じパラメータで送る（PCは全会場を並べるため会場選択イベントは発生しない）。デプロイ日の前後で「1セッション当たりの `race_view`」と日付ページの `page_view` の意味が変わるため、単純に比較せず計測境界として扱う。
 - GA4拡張計測のページ読込はON、「ブラウザの履歴イベントに基づくページの変更」は2026-08-01にOFFへ変更済み。
 - サイト側はGAスクリプトの実ロード後に初回`page_view`を明示送信する。Next.jsのpathname変更だけを通常遷移として送信し、レース切替で使う`history.replaceState`は次のpathname観測から除外する。
 
@@ -20,9 +21,9 @@ GA4の実ページ表示、レース画面内の操作、記事読了、収益�
 
 | イベント名 | 発火条件 | 主なパラメータ | 用途 |
 | --- | --- | --- | --- |
-| `race_group_select` | 中央・地方タブを選択 | `race_date`, `race_type` | 開催区分の利用状況 |
-| `home_race_entry_click` | ホームから当日レースへ移動 | `race_date`, `entry_method`, `race_type`, `venue_name` | ホーム入口別の送客 |
-| `race_venue_select` | 競馬場タブを選択 | `race_date`, `race_type`, `venue_name` | 競馬場間の巡回 |
+| `race_group_select` | 中央・地方タブを選択（2026-09-24以降は開催日ボード） | `race_date`, `race_type` | 開催区分の利用状況 |
+| `home_race_entry_click` | ホームから当日レースへ移動 | `race_date`, `entry_method`（`hero_cta`・`sticky_cta`・`venue_card`・`grade_fallback`、2026-09-25から「本日の開催」見出し横の開催日ボードへのリンク `board_link`）, `race_type`, `venue_name` | ホーム入口別の送客 |
+| `race_venue_select` | 競馬場タブを選択（2026-09-24以降は開催日ボードのスマホの会場ボタン） | `race_date`, `race_type`, `venue_name` | 競馬場間の巡回 |
 | `race_view` | レースデータを表示 | `race_id`, `race_date`, `race_type`, `venue_name`, `race_number`。記事流入時は`entry_source=article`、動画流入時は対応する流入属性、出走予定リンク流入時は`entry_source=data_upcoming`, `data_entry_method=upcoming_race` | 1セッション当たりの閲覧レース数と記事・動画・データ送客後の到達 |
 | `race_navigation` | 前後レースやレース番号から移動 | `from_race_number`, `to_race_number`, `navigation_method` | 次レース導線の比較 |
 | `prediction_table_view` | AI偏差値表が画面内に入る | `race_id`, `race_number`, `page_path` | 予想表の実閲覧 |

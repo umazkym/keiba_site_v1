@@ -5,9 +5,8 @@ import { useCallback, useEffect, useState } from 'react';
 import {
     raceAnalysisFeatures,
     raceAnalysisSectionTrackingItems,
-    RaceAnalysisFeatureIcon,
-    RaceAnalysisFeatureVisual,
 } from '@/components/RaceAnalysisValueGrid';
+import { LineIcon } from '@/components/LineIcon';
 import { useRaceSectionNavigation } from '@/hooks/useRaceSectionNavigation';
 import {
     getGoogleAdOverlaySnapshot,
@@ -70,14 +69,14 @@ export function RacePageBottomNav() {
 
     return (
         <nav
-            className={`fixed inset-x-0 bottom-0 z-40 border-t border-slate-300 bg-white px-1 pb-[calc(env(safe-area-inset-bottom,0px)+var(--safari-bottom-offset,0px)+0.0625rem)] pt-px shadow-[0_-3px_10px_rgba(15,23,42,0.10)] transition-[transform,opacity] duration-200 lg:hidden ${isVisible
+            className={`fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white pb-[calc(env(safe-area-inset-bottom,0px)+var(--safari-bottom-offset,0px))] shadow-[0_-8px_20px_rgba(20,26,61,0.06)] transition-[transform,opacity] duration-200 lg:hidden ${isVisible
                 ? 'translate-y-0 opacity-100'
                 : 'pointer-events-none translate-y-full opacity-0'
                 }`}
             aria-label="レースページ内ナビゲーション"
             aria-hidden={!isVisible}
         >
-            <div className="mx-auto grid max-w-md grid-cols-4 overflow-hidden rounded-lg border border-slate-200 bg-white divide-x divide-slate-200">
+            <div className="mx-auto grid max-w-md grid-cols-4">
                 {raceAnalysisFeatures.map((feature) => {
                     const isActive = activeKey === feature.key;
                     return (
@@ -87,19 +86,15 @@ export function RacePageBottomNav() {
                             onClick={() => scrollToItem(feature)}
                             tabIndex={isVisible ? 0 : -1}
                             aria-current={isActive ? 'location' : undefined}
-                            className={`flex min-h-11 min-w-0 flex-col items-center justify-center border-t-2 px-1 py-px text-center transition-colors duration-150 focus:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 ${isActive
-                                ? 'border-blue-600 bg-blue-50/80 text-slate-950'
-                                : 'border-transparent bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+                            className={`relative flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 px-1 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${isActive
+                                ? 'text-navy'
+                                : 'text-slate-500 hover:text-navy'
                                 }`}
                         >
-                            <span className="flex min-w-0 items-center justify-center gap-1">
-                                <RaceAnalysisFeatureIcon feature={feature} />
-                                <span className={`whitespace-nowrap text-[11px] leading-none tracking-[-0.02em] ${isActive ? 'font-black' : 'font-bold'}`}>
-                                    {feature.compactTitle}
-                                </span>
-                            </span>
-                            <span className={`flex h-3 w-full max-w-[52px] items-center rounded bg-slate-50 px-1 ${isActive ? 'opacity-100' : 'opacity-70'}`}>
-                                <RaceAnalysisFeatureVisual type={feature.visual} compact />
+                            {isActive && <span className="absolute inset-x-[18%] top-0 h-[3px] rounded-b-[3px] bg-brand-600" aria-hidden="true" />}
+                            <LineIcon name={feature.lineIcon} size={20} className={`block shrink-0 ${isActive ? 'text-brand-600' : 'text-slate-500'}`} />
+                            <span className="whitespace-nowrap text-[11.5px] font-bold leading-none">
+                                {feature.compactTitle}
                             </span>
                             {isActive && <span className="sr-only">（表示中）</span>}
                         </button>

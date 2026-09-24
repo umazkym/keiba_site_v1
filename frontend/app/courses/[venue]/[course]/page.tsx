@@ -103,7 +103,7 @@ export default async function CoursePage({ params }: Props) {
             <article className="mx-auto max-w-4xl px-3 pb-14 pt-4 sm:px-4">
                 <header className="border-b border-slate-200 pb-5">
                     <p className="text-xs font-bold text-slate-500">コースデータ</p>
-                    <h1 className="mt-1 text-3xl font-black text-slate-950 sm:text-4xl">{profile.title}</h1>
+                    <h1 className="mt-1 text-2xl font-black text-slate-950 sm:text-4xl">{profile.title}</h1>
                     <p className="mt-3 text-sm leading-7 text-slate-600">{profile.lead}</p>
                     <p className="mt-2 text-xs font-semibold text-slate-500">
                         DB集計が利用できない場合の編集部ガイドを表示しています。

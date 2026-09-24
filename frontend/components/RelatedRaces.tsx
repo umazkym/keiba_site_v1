@@ -71,7 +71,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
     }
 
     return (
-        <section className="race-related-dates-panel race-panel mt-2 bg-blue-50/40 p-0 sm:mt-3 sm:p-4">
+        <section className="race-related-dates-panel race-panel mt-2 bg-brand-50/40 p-0 sm:mt-3 sm:p-4">
             <h3 className="race-section-heading mb-2">他の日付の分析もチェック</h3>
 
             <div className="grid grid-cols-3 gap-1.5 px-2 pb-2 sm:gap-3 sm:p-0">
@@ -86,9 +86,9 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                             key={date}
                             href={`/races/${date}`}
                             prefetch={false}
-                            className="group flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-1.5 py-2 text-center transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50"
+                            className="group flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-1.5 py-2 text-center transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50"
                         >
-                            <span className="whitespace-nowrap text-[11px] font-black text-slate-700 group-hover:text-blue-700 sm:text-sm">
+                            <span className="whitespace-nowrap text-[11px] font-black text-slate-700 group-hover:text-brand-700 sm:text-sm">
                                 {m}/{d}（{['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()]}）
                             </span>
                         </Link>

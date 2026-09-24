@@ -68,7 +68,7 @@ export default function HorseWeightPage() {
         </header>
 
         <section className="mt-8">
-          <h2 className="text-2xl font-black text-slate-950">増減幅ごとの見方</h2>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-950">増減幅ごとの見方</h2>
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
             {weightRows.map((row) => (
               <div key={row.range} className="grid gap-2 border-b border-slate-100 p-4 last:border-b-0 sm:grid-cols-[110px_1fr_1.2fr]">
@@ -89,7 +89,7 @@ export default function HorseWeightPage() {
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-            <div className="mb-3 h-1.5 w-12 rounded-full bg-blue-600" />
+            <div className="mb-3 h-1.5 w-12 rounded-full bg-brand-600" />
             <h3 className="text-lg font-black text-slate-950">増えすぎ</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               太め残りと成長増は意味が違います。休み明けで追い切りの動きが良ければ、体重増だけを理由に評価を下げすぎるのは早計です。
@@ -105,13 +105,13 @@ export default function HorseWeightPage() {
         </section>
 
         <section className="mt-10">
-          <h2 className="text-2xl font-black text-slate-950">予想に入れる順番</h2>
-          <ol className="mt-4 space-y-3 text-sm leading-8 text-slate-600">
+          <h2 className="text-xl sm:text-2xl font-black text-slate-950">予想に入れる順番</h2>
+          <ol className="mt-4 space-y-3 text-sm leading-[1.8] text-slate-700 sm:leading-8">
             <li className="rounded-xl border-l-4 border-accent bg-white p-4 shadow-soft">
               <strong className="text-slate-950">1. 能力評価を先に作る。</strong>
               馬体重は最終判断を決める材料ではなく、リスクを測る材料です。
             </li>
-            <li className="rounded-xl border-l-4 border-blue-600 bg-white p-4 shadow-soft">
+            <li className="rounded-xl border-l-4 border-brand-600 bg-white p-4 shadow-soft">
               <strong className="text-slate-950">2. 上位人気馬の増減に注目する。</strong>
               1〜3番人気で±10kg以上の変動があれば、過信は禁物です。
             </li>

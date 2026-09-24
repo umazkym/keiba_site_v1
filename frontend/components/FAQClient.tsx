@@ -14,7 +14,7 @@ const categoryColorMap: Record<string, { badge: string; border: string }> = {
 };
 
 const getCategoryColor = (category: string) =>
-    categoryColorMap[category] || { badge: 'bg-gray-100 text-gray-700', border: 'border-gray-300' };
+    categoryColorMap[category] || { badge: 'bg-slate-100 text-slate-700', border: 'border-slate-300' };
 
 export const FAQClient = () => {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);

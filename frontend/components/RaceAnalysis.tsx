@@ -1,4 +1,5 @@
 import { RacePrediction } from '@/lib/types';
+import { getPositionLabels } from '@/lib/race-display';
 
 const sanitizeRaceAnalysisText = (text: string): string => {
     const replacements: Array<[RegExp, string]> = [
@@ -23,6 +24,14 @@ const sanitizeRaceAnalysisText = (text: string): string => {
         [/信頼度/g, '評価'],
         [/最も高い/g, '上位です'],
         [/馬券/g, '投票判断'],
+        [/推奨したい/g, '注目したい'],
+        [/推奨する/g, '注目する'],
+        [/推奨/g, '注目'],
+        [/おすすめ/g, '注目'],
+        [/絶対に/g, 'かなり'],
+        [/絶対的な/g, '目立つ'],
+        [/絶対/g, '有力'],
+        [/オッズ妙味/g, '判断材料'],
     ];
 
     return replacements.reduce((current, [pattern, replacement]) => (
@@ -49,11 +58,15 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
     const minDeviation = deviationScores.length > 0 ? Math.min(...deviationScores) : 0;
     const deviationRange = maxDeviation - minDeviation;
 
-    const strongStartHorses = race.predictions.filter(
-        p => p.start_1c_indicator !== null && p.start_1c_indicator > 0
-    );
+    // 序盤の位置取りはレース内の相対値で分ける（出走表の「位置」と同じ判定）。
+    // 指標が全頭0以上のレースで「全頭が先行」と数えない。
+    const positionLabels = getPositionLabels(race.predictions);
+    const positionedCount = positionLabels.size;
+    const strongStartHorses = race.predictions.filter(p => positionLabels.get(p.horse_number) === '先行');
 
-    const frameScores = race.horse_number_advantages;
+    // 馬番の有利不利は、今回の出走馬の馬番だけで比べる（コース全体のデータには出走していない馬番も含まれる）。
+    const runnerNumbers = new Set(race.predictions.map(p => p.horse_number));
+    const frameScores = race.horse_number_advantages.filter(item => runnerNumbers.has(item.horse_number));
     const bestFrame = frameScores.length > 0
         ? frameScores.reduce((best, current) =>
             current.advantage_score > best.advantage_score ? current : best
@@ -80,48 +93,50 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
         } else if (deviationRange > 8) {
             return `各馬のAI偏差値に中程度の開きがあり、上位評価馬を中心に確認したいレースです。トップ評価の${topHorse.horse_number}番「${topHorse.horse_name}」（偏差値${maxDeviation.toFixed(1)}）は目立つ存在ですが、展開や馬場次第で中位評価の馬が評価を上げる余地もあります。`;
         } else {
-            return `最高評価の${topHorse.horse_number}番「${topHorse.horse_name}」（偏差値${maxDeviation.toFixed(1)}）を含め、出走馬間の偏差値差が小さいレースです。道中の位置取りや仕掛けのタイミングなど、展開面の確認も重要になります。能力値だけでなく、対決成績や枠順傾向も合わせて見たい構成です。`;
+            return `最高評価の${topHorse.horse_number}番「${topHorse.horse_name}」（偏差値${maxDeviation.toFixed(1)}）を含め、出走馬間の偏差値差が小さいレースです。道中の位置取りや仕掛けのタイミングなど、展開面の確認も重要になります。能力値だけでなく、対戦成績や馬番の傾向も合わせて見たい構成です。`;
         }
     };
 
     const generateStartAnalysis = (): string => {
-        const strongRatio = (strongStartHorses.length / race.predictions.length * 100).toFixed(0);
+        if (positionedCount === 0) {
+            return 'このレースは序盤の位置取りを予測できるデータがそろっていません。展開は当日の隊列を見て判断したいレースです。';
+        }
+        const strongRatio = (strongStartHorses.length / positionedCount * 100).toFixed(0);
         const startHorseNames = strongStartHorses.slice(0, 3).map(h => `${h.horse_number}番${h.horse_name}`).join('や');
-        const startHorseText = startHorseNames ? `特に${startHorseNames}あたりがハナを主張しそうです。` : '';
+        const startHorseText = startHorseNames ? `特に${startHorseNames}あたりが前へ行きそうです。` : '';
 
-        if (strongStartHorses.length >= race.predictions.length * 0.5) {
-            return `スタートから前に行きたい馬が全体の${strongRatio}%（${strongStartHorses.length}頭）と多く、激しい先行争いが予想されます。${startHorseText}ハイペースになれば、道中脚を溜められる差し・追い込み馬に有利な展開が向く可能性があります。逆に前が止まらない馬場状態であれば、そのまま押し切るケースも考えられます。`;
-        } else if (strongStartHorses.length >= race.predictions.length * 0.3) {
-            return `先行力が期待できる馬が${strongRatio}%（${strongStartHorses.length}頭）存在し、標準的でよどみないペースになりそうです。${startHorseText}極端な展開にはなりにくいため、先行馬と差し馬の双方が持ち味を発揮しやすいフェアな流れになる確率が高いでしょう。`;
+        if (strongStartHorses.length >= positionedCount * 0.5) {
+            return `序盤に前寄りの位置を取りそうな馬が${strongStartHorses.length}頭（${strongRatio}%）と多く、先行争いが激しくなりそうです。${startHorseText}ペースが上がれば、道中で脚をためられる差し・追い込みの馬に向く展開も考えられます。`;
+        } else if (strongStartHorses.length >= positionedCount * 0.3) {
+            return `序盤に前寄りの位置を取りそうな馬は${strongStartHorses.length}頭（${strongRatio}%）で、標準的な流れになりそうです。${startHorseText}極端な展開にはなりにくく、先行馬と差し馬の双方が持ち味を出しやすい構成です。`;
         } else {
-            return `スタートからハナを切りたい馬が少なく（${strongRatio}%）、ペースが落ち着いてスローになりやすい構成です。${startHorseText}前半のペースが緩むと、後方から追い込む馬には厳しい展開となり、前で立ち回れる馬や好位で脚を溜められる馬が有利になります。上がり3ハロンの速い末脚勝負への警戒が必要です。`;
+            return `序盤に前寄りの位置を取りそうな馬が${strongStartHorses.length}頭（${strongRatio}%）と少なく、ペースが落ち着きやすい構成です。${startHorseText}前半が緩むと、前で立ち回れる馬や好位で脚をためられる馬が有利になり、後方から追い込む馬には厳しい展開になりやすくなります。`;
         }
     };
 
     const generateFrameAnalysis = (): string => {
         let analysis = '';
-        if (bestFrame) {
-            const bestHorses = race.predictions.filter(p => p.waku_number === bestFrame.horse_number).map(h => h.horse_name);
-            const bestHorseText = bestHorses.length > 0 ? `（${bestHorses.join('、')}など）` : '';
-            analysis += `過去の傾向から、このコースでは${bestFrame.horse_number}枠${bestHorseText}が有利なポジションを取りやすいデータが出ています。`;
+        const nameOf = (horseNumber: number) => race.predictions.find(p => p.horse_number === horseNumber)?.horse_name;
+        if (bestFrame && bestFrame.advantage_score > 0) {
+            const bestName = nameOf(bestFrame.horse_number);
+            analysis += `このコースの過去データでは、今回の出走馬の馬番のうち${bestFrame.horse_number}番${bestName ? `（${bestName}）` : ''}が最も良い傾向です。`;
         }
-        if (worstFrame) {
-            const worstHorses = race.predictions.filter(p => p.waku_number === worstFrame.horse_number).map(h => h.horse_name);
-            const worstHorseText = worstHorses.length > 0 ? `（${worstHorses.join('、')}など）` : '';
-            analysis += `逆に、${worstFrame.horse_number}枠${worstHorseText}はやや不利な傾向が見られ、コース取りでロスが生じやすい点に注意が必要です。`;
+        if (worstFrame && worstFrame.advantage_score < 0 && worstFrame.horse_number !== bestFrame?.horse_number) {
+            const worstName = nameOf(worstFrame.horse_number);
+            analysis += `逆に${worstFrame.horse_number}番${worstName ? `（${worstName}）` : ''}はやや不利寄りの傾向で、コース取りでロスが出やすい点に注意したいところです。`;
         }
-        return analysis || `このコース・距離において、枠順による極端な有利・不利のデータはみられません。馬番よりも純粋な能力や展開が勝敗に直結しやすい条件です。`;
+        return analysis || 'このコース・距離では、今回の出走馬の馬番による大きな有利・不利の傾向はみられません。馬番よりも能力や展開が結果に直結しやすい条件です。';
     };
 
     const generateStrategyAnalysis = (): string => {
         const topHorse = [...race.predictions].filter(p => p.deviation_score !== null).sort((a, b) => (b.deviation_score as number) - (a.deviation_score as number))[0];
 
         if (topMarkedHorses.length > 0 && darkHorses.length > 0) {
-            return `◎や〇の印がついた上位評価馬に加え、▲や△の相手候補もいるレースです。まずは${topHorse?.horse_name || '高い評価の馬'}の条件を確認しつつ、展開次第で浮上しそうな馬がいないかを見ておきたい構成です。`;
+            return `◎や○の印がついた上位評価馬に加え、▲や△の相手候補もいるレースです。まずは${topHorse?.horse_name || '高い評価の馬'}の条件を確認しつつ、展開次第で浮上しそうな馬がいないかを見ておきたい構成です。`;
         } else if (topMarkedHorses.length >= 3) {
-            return `◎や〇の印がついた上位評価馬が${topMarkedHorses.length}頭おり、上位の比較が大事になりそうです。AI偏差値だけでなく、過去対決成績や脚質予測を合わせて確認すると、評価の優先順位を整理しやすくなります。`;
+            return `◎や○の印がついた上位評価馬が${topMarkedHorses.length}頭おり、上位の比較が大事になりそうです。AI偏差値だけでなく、対戦成績や展開予測を合わせて確認すると、評価の優先順位を整理しやすくなります。`;
         } else if (darkHorses.length >= 2) {
-            return `▲や△の印がついた相手候補が複数います。上位評価馬だけでなく、展開や枠順が合う馬を確認しておくと、オッズ妙味を判断する材料になりそうです。`;
+            return `▲や△の印がついた相手候補が複数います。上位評価馬だけでなく、展開や馬番が合う馬を確認しておくと、判断材料が増えます。`;
         } else {
             return `印の分布を見ると、上位評価馬を中心に確認しやすい構成です。${topHorse?.horse_name || 'トップ評価の馬'}の条件が当日の馬場や展開に合うかを見ながら、相手候補を整理したいレースです。`;
         }
@@ -130,38 +145,38 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
     // ========== レンダリング ==========
     return (
         <details className="race-panel group overflow-hidden">
-            <summary className="race-section-summary flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-2 py-1.5 transition-colors duration-150 hover:bg-slate-50 sm:px-4 sm:py-2">
-                <h2 className="race-section-heading mb-0" id="race-analysis-heading">AIレース展望</h2>
-                <span className="shrink-0 text-xs font-bold text-blue-700 group-open:hidden">展望を開く</span>
-                <span className="hidden shrink-0 text-xs font-bold text-slate-600 group-open:inline">閉じる</span>
+            <summary className="race-section-summary flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 transition-colors duration-150 hover:bg-slate-50 md:px-5 md:py-3">
+                <h2 className="race-section-heading race-section-heading--flush !mb-0" id="race-analysis-heading">AIレース展望</h2>
+                <span className="shrink-0 text-[13px] font-bold text-brand-700 group-open:hidden">展望を開く</span>
+                <span className="hidden shrink-0 text-[13px] font-bold text-slate-600 group-open:inline">閉じる</span>
             </summary>
 
-            <div className="space-y-2 border-t border-slate-200 bg-slate-50 p-2 sm:space-y-3 sm:p-4">
+            <div className="flex flex-col gap-4 border-t border-slate-200 px-3 pb-4 pt-3.5 md:px-5 md:pb-5">
                 {race.ai_analysis_text && (
-                    <section className="rounded-lg border border-slate-200 bg-white p-2.5 sm:p-4">
-                        <h3 className="mb-1 text-xs font-black text-slate-800 sm:text-sm">AI展望コメント</h3>
-                        <p className="whitespace-pre-wrap text-[11px] font-semibold leading-[1.65] text-slate-700 sm:text-sm sm:leading-7">
+                    <section className="flex flex-col gap-1">
+                        <h3 className="text-sm font-bold text-navy md:text-[15px]">AI展望コメント</h3>
+                        <p className="whitespace-pre-wrap text-sm leading-[1.85] text-slate-700 md:text-[15px]">
                             {sanitizeRaceAnalysisText(race.ai_analysis_text)}
                         </p>
                     </section>
                 )}
 
-                <div className="grid gap-2 lg:grid-cols-2">
+                <div className="grid gap-4 lg:grid-cols-2 lg:gap-x-8">
                     {[
-                        ['出走馬の能力分析', generateAbilityAnalysis(), 'border-l-blue-600'],
-                        ['スタートからの展開予想', generateStartAnalysis(), 'border-l-amber-500'],
-                        ['枠順による影響', generateFrameAnalysis(), 'border-l-emerald-600'],
-                        ['検討材料のまとめ', generateStrategyAnalysis(), 'border-l-indigo-600'],
-                    ].map(([title, body, borderClass]) => (
-                        <section key={title} className={`rounded-lg border border-slate-200 border-l-4 bg-white p-2.5 sm:p-4 ${borderClass}`}>
-                            <h3 className="mb-1 text-xs font-black text-slate-800 sm:text-sm">{title}</h3>
-                            <p className="text-[11px] leading-[1.65] text-slate-700 sm:text-sm sm:leading-7">{body}</p>
+                        ['出走馬の能力', generateAbilityAnalysis()],
+                        ['序盤の展開', generateStartAnalysis()],
+                        ['馬番の傾向', generateFrameAnalysis()],
+                        ['検討材料のまとめ', generateStrategyAnalysis()],
+                    ].map(([title, body]) => (
+                        <section key={title} className="flex flex-col gap-1">
+                            <h3 className="text-sm font-bold text-navy md:text-[15px]">{title}</h3>
+                            <p className="text-sm leading-[1.85] text-slate-700 md:text-[15px]">{body}</p>
                         </section>
                     ))}
                 </div>
 
-                <p className="px-1 text-[10px] leading-[1.6] text-slate-500 sm:text-xs">
-                    この分析は過去データに基づく推定です。天候、馬場状態、騎手の判断、馬の状態などにより結果は変わります。
+                <p className="rounded-lg bg-slate-100 px-3.5 py-3 text-[12.5px] leading-relaxed text-slate-600">
+                    過去データにもとづく推定です。天候・馬場・当日の状態などで結果は変わります。投票の推奨ではありません。
                 </p>
             </div>
         </details>

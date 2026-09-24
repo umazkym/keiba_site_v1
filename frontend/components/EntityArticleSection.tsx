@@ -32,7 +32,7 @@ export function EntityArticleSection({
     <section className="mt-10">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-black text-slate-950">{title}</h2>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-950">{title}</h2>
           {description && (
             <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">{description}</p>
           )}

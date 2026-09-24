@@ -70,7 +70,7 @@ export default function GradeRacesPage() {
         </header>
 
         <section className="mt-8">
-          <h2 className="text-2xl font-black text-slate-950">主要G1の個別ハブ</h2>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-950">主要G1の個別ハブ</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             {gradeRaceProfiles.map((race) => (
               <Link key={race.slug} href={`/grade-races/${race.slug}`} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated">
@@ -93,7 +93,7 @@ export default function GradeRacesPage() {
         </section>
 
         <section className="mt-10">
-          <h2 className="text-2xl font-black text-slate-950">公開中の重賞データ記事</h2>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-950">公開中の重賞データ記事</h2>
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
             {articleLinks.map((link) => (
               <Link key={link.href} href={link.href} className="block p-4 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-primary">

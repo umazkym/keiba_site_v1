@@ -2,7 +2,7 @@ import React from 'react';
 
 // 個々のスケルトン要素
 export const SkeletonBox = ({ className }: { className?: string }) => (
-    <div className={`bg-gray-200 rounded animate-pulse ${className}`} />
+    <div className={`bg-slate-200 rounded animate-pulse ${className}`} />
 );
 
 // レースセレクターのスケルトン
@@ -18,8 +18,8 @@ const RaceSelectorSkeleton = () => (
 const PredictionTableSkeleton = () => (
     <div>
         <SkeletonBox className="h-10 w-48 mb-3 px-2" />
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-            <div className="bg-gray-200 p-3 border-b border-gray-200">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
+            <div className="bg-slate-200 p-3 border-b border-slate-200">
                 <SkeletonBox className="h-7 w-3/4 mb-2" />
                 <SkeletonBox className="h-5 w-1/4" />
             </div>
@@ -41,7 +41,7 @@ const PredictionTableSkeleton = () => (
 
 // 詳細情報（アコーディオン）のスケルトン
 const DetailsSkeleton = ({ titleWidth = "w-64" }: { titleWidth?: string }) => (
-    <div className="rounded-lg bg-gray-50 p-3">
+    <div className="rounded-lg bg-slate-50 p-3">
         <div className="flex items-center">
             <SkeletonBox className={`h-8 ${titleWidth}`} />
             <div className="ml-auto">
@@ -69,8 +69,8 @@ const VenuePanelSkeleton = () => (
 export const RaceTabsSkeleton = () => (
      <div className="mt-8">
         {/* JRA/NARのタブ */}
-        <div className="flex border-b-2 border-gray-200 bg-gray-100 rounded-t-lg">
-            <div className="flex-1 px-4 py-3 bg-white border-gray-200 border-b-white">
+        <div className="flex border-b-2 border-slate-200 bg-slate-100 rounded-t-lg">
+            <div className="flex-1 px-4 py-3 bg-white border-slate-200 border-b-white">
                 <SkeletonBox className="h-6 w-24" />
             </div>
             <div className="flex-1 px-4 py-3">
@@ -78,8 +78,8 @@ export const RaceTabsSkeleton = () => (
             </div>
         </div>
         {/* 会場タブとコンテンツ */}
-        <div className="p-4 md:p-6 bg-white rounded-b-lg border border-t-0 border-gray-200 shadow-md">
-            <div className="flex flex-wrap border-b border-gray-200 mb-6">
+        <div className="p-4 md:p-6 bg-white rounded-b-lg border border-t-0 border-slate-200 shadow-md">
+            <div className="flex flex-wrap border-b border-slate-200 mb-6">
                 {[...Array(4)].map((_, i) => (
                      <SkeletonBox key={i} className="h-10 w-20 mr-2 mb-2" />
                 ))}

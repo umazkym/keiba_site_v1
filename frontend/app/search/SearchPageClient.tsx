@@ -83,7 +83,7 @@ function getResultLabel(type: SearchIndexItem['type']) {
 function getBadgeClass(type: SearchIndexItem['type']) {
     switch (type) {
         case 'article':
-            return 'bg-blue-50 text-blue-700 border-blue-200';
+            return 'bg-brand-50 text-brand-700 border-brand-200';
         case 'course':
             return 'bg-emerald-50 text-emerald-700 border-emerald-200';
         case 'horse':

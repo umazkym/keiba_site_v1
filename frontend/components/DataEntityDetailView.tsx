@@ -108,16 +108,16 @@ export function DataEntityDetailView({
             </div>
 
             {detail.upcoming_races.length > 0 && (
-                <section className="mt-6 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/60">
-                    <div className="flex items-center gap-2 border-b border-blue-200 bg-blue-100/50 px-4 py-3">
-                        <CalendarDays className="h-5 w-5 text-blue-700" aria-hidden="true" />
-                        <h2 className="font-black text-blue-950">直近の出走予定・開催データ</h2>
+                <section className="mt-6 overflow-hidden rounded-xl border border-brand-200 bg-brand-50/60">
+                    <div className="flex items-center gap-2 border-b border-brand-200 bg-brand-100/50 px-4 py-3">
+                        <CalendarDays className="h-5 w-5 text-brand-700" aria-hidden="true" />
+                        <h2 className="font-black text-brand-950">直近の出走予定・開催データ</h2>
                     </div>
-                    <div className="divide-y divide-blue-100 bg-white">
+                    <div className="divide-y divide-brand-100 bg-white">
                         {detail.upcoming_races.map((race) => (
                             <div
                                 key={`${race.race_id}-${race.horse_id ?? ''}`}
-                                className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 transition-colors duration-150 hover:bg-blue-50"
+                                className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 transition-colors duration-150 hover:bg-brand-50"
                             >
                                 <UpcomingRaceTrackedLink
                                     href={race.url}
@@ -135,7 +135,7 @@ export function DataEntityDetailView({
                                     <a
                                         href={buildCalendarUrl(race)}
                                         download={`${race.race_date}-${race.race_id}.ics`}
-                                        className="inline-flex min-h-10 items-center rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 transition-colors duration-150 hover:bg-blue-50"
+                                        className="inline-flex min-h-10 items-center rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-xs font-bold text-brand-700 transition-colors duration-150 hover:bg-brand-50"
                                     >
                                         予定に追加
                                     </a>

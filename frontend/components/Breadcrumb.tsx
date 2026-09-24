@@ -235,21 +235,21 @@ export function Breadcrumb({ items }: BreadcrumbProps = {}) {
       className="breadcrumb-nav"
       aria-label="Breadcrumb"
     >
-      <ol className="flex min-w-0 items-center text-xs sm:flex-wrap">
+      <ol className="flex min-w-0 items-center text-[12.5px] sm:flex-wrap sm:text-[13px]">
         {breadcrumbs.map((item, index) => (
           <li key={index} className="breadcrumb-item flex min-w-0 items-center">
             {item.href ? (
               <>
                 <Link
                   href={item.href}
-                  className="whitespace-nowrap font-semibold text-slate-600 transition-colors hover:text-blue-600"
+                  className="whitespace-nowrap font-medium text-slate-500 transition-colors duration-150 hover:text-brand-700"
                 >
                   {item.label}
                 </Link>
-                <span className="mx-1 text-slate-300" aria-hidden="true">/</span>
+                <span className="mx-1.5 text-slate-300" aria-hidden="true">/</span>
               </>
             ) : (
-              <span className="breadcrumb-current font-semibold text-slate-900">
+              <span className="breadcrumb-current font-bold text-slate-700">
                 {item.label}
               </span>
             )}

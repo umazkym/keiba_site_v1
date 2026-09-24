@@ -1,13 +1,4 @@
-const FRAME_COLOR_CLASSES: Record<number, string> = {
-    1: 'border-slate-400 bg-white text-slate-950',
-    2: 'border-slate-950 bg-slate-950 text-white',
-    3: 'border-red-600 bg-red-600 text-white',
-    4: 'border-blue-600 bg-blue-600 text-white',
-    5: 'border-yellow-400 bg-yellow-300 text-slate-950',
-    6: 'border-emerald-600 bg-emerald-600 text-white',
-    7: 'border-orange-500 bg-orange-500 text-slate-950',
-    8: 'border-pink-500 bg-pink-500 text-slate-950',
-};
+import { getWakuClasses } from '@/lib/waku';
 
 export function RaceNumberBadge({
     horseNumber,
@@ -21,7 +12,7 @@ export function RaceNumberBadge({
     if (horseNumber == null) return <span className="text-slate-500">—</span>;
     const colorClass = frameNumber == null
         ? 'border-slate-300 bg-white text-slate-950'
-        : FRAME_COLOR_CLASSES[frameNumber] ?? 'border-slate-300 bg-white text-slate-950';
+        : getWakuClasses(frameNumber);
 
     return (
         <span
@@ -34,7 +25,7 @@ export function RaceNumberBadge({
 }
 
 export function FrameNumberBadge({ frameNumber }: { frameNumber: number }) {
-    const colorClass = FRAME_COLOR_CLASSES[frameNumber] ?? 'border-slate-300 bg-white text-slate-950';
+    const colorClass = getWakuClasses(frameNumber);
     return (
         <span
             aria-label={`${frameNumber}枠`}

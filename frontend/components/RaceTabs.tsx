@@ -2,8 +2,7 @@
 import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
-import 'react-tabs/style/react-tabs.css';
+import Link from 'next/link';
 import { PredictionTable } from '@/components/PredictionTable';
 import { RaceConditionComparison } from '@/components/RaceConditionComparison';
 import { RaceHorseActions } from '@/components/RaceHorseActions';
@@ -11,7 +10,8 @@ import { RaceAnalysis } from '@/components/RaceAnalysis';
 import { VenueRaces, RaceDayPrediction, type RacePrediction } from '@/lib/types';
 import { RaceSelector, type RaceSelectorLink } from './RaceSelector';
 import { RacePageJumpNav } from './RacePageJumpNav';
-import { SparklesIcon, FlagIcon, UsersIcon, ChartBarIcon } from './Icons';
+import { LineIcon, type LineIconName } from './LineIcon';
+import { FinishBadge, HorseNumber, MarkGlyph } from './RaceParts';
 import { AffiliateSlot } from './AffiliateSlot';
 import { RaceEngagedAd } from './RaceEngagedAd';
 import { RelatedRaces } from './RelatedRaces';
@@ -20,9 +20,7 @@ import { DynamicRelatedArticles } from './DynamicRelatedArticles';
 import { RaceArticleMeta } from '@/lib/articles';
 import { useRewardedAd, type RewardedAdContext } from '@/hooks/useRewardedAd';
 import {
-    sendRaceGroupSelectEvent,
     sendRaceNavigationEvent,
-    sendRaceVenueSelectEvent,
     sendRaceViewEvent,
     sendRewardGateEvent,
     replaceRaceHistoryPathWithoutPageView,
@@ -34,6 +32,7 @@ import { getRaceDetailPath } from '@/lib/race-url';
 import { formatDate } from '@/lib/utils';
 import { RACE_BREADCRUMB_CHANGE_EVENT } from '@/lib/race-breadcrumb-event';
 import { getRaceTopObstructionHeight } from '@/hooks/useRaceSectionNavigation';
+import { getAiRanks, getFinishRanks, hasRaceResults, normalizeMark, resolveWaku } from '@/lib/race-display';
 
 const MatchupTable = dynamic(
     () => import('./MatchupTable').then((module) => module.MatchupTable),
@@ -112,6 +111,62 @@ const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
 ));
 
 PremiumDetailPlaceholder.displayName = 'PremiumDetailPlaceholder';
+
+// 結果が出たレースの上位3頭と、印を付けた馬の着順（数え方は変えない）。
+const RaceResultCard = ({ race }: { race: RacePrediction }) => {
+    const finishRanks = getFinishRanks(race);
+    const aiRanks = getAiRanks(race.predictions);
+    const podium = Array.from(finishRanks.entries())
+        .filter(([, rank]) => rank <= 3)
+        .sort((a, b) => a[1] - b[1])
+        .map(([horseNumber, rank]) => ({
+            rank,
+            horseNumber,
+            prediction: race.predictions.find((p) => p.horse_number === horseNumber),
+            name: race.predictions.find((p) => p.horse_number === horseNumber)?.horse_name
+                ?? race.results.find((r) => r.horse_number === horseNumber)?.horse_name
+                ?? '',
+        }));
+    const marked = race.predictions
+        .filter((p) => ['◎', '○'].includes(normalizeMark(p.mark) ?? ''))
+        .filter((p) => finishRanks.has(p.horse_number));
+    if (podium.length === 0) return null;
+    return (
+        <section className="race-panel px-3 py-3.5 md:px-5 md:py-4" aria-labelledby="race-result-heading">
+            <h2 id="race-result-heading" className="race-section-heading race-section-heading--flush">このレースの結果</h2>
+            <ol className="flex flex-col">
+                {podium.map((row) => (
+                    <li key={row.horseNumber} className="flex min-h-12 items-center gap-2.5 border-b border-slate-200 last:border-b-0">
+                        <FinishBadge rank={row.rank} size={28} />
+                        <HorseNumber number={row.horseNumber} waku={row.prediction ? resolveWaku(row.prediction, race.predictions.length) : null} size={26} />
+                        <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-slate-900">{row.name}</span>
+                        {row.prediction && normalizeMark(row.prediction.mark) && <MarkGlyph mark={row.prediction.mark} size={16} />}
+                        <span className="whitespace-nowrap text-[12px] text-slate-500">
+                            {aiRanks.get(row.horseNumber) ? `AI ${aiRanks.get(row.horseNumber)}位` : 'AI対象外'}
+                        </span>
+                    </li>
+                ))}
+            </ol>
+            {marked.length > 0 && (
+                <p className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-slate-700">
+                    {marked.map((p) => (
+                        <span key={p.horse_number} className="inline-flex items-center gap-1.5">
+                            <MarkGlyph mark={p.mark} size={15} />
+                            {p.horse_name}は<b className="font-num text-[15px]">{finishRanks.get(p.horse_number)}</b>着
+                        </span>
+                    ))}
+                </p>
+            )}
+        </section>
+    );
+};
+
+const REWARD_PREVIEW_ITEMS: Array<{ icon: LineIconName; title: string; description: string }> = [
+    { icon: 'swords', title: '対戦成績', description: '出走馬同士の直接比較' },
+    { icon: 'lanes', title: '展開予測', description: '序盤の位置取り' },
+    { icon: 'bars', title: '馬番の傾向', description: 'コース別の有利・不利' },
+    { icon: 'book', title: 'AIレース展望', description: '展開・適性の解説' },
+];
 
 const isIntentionalRewardedDisableReason = (reason: string | null) => {
     return reason === 'rewarded_temporarily_disabled' || reason === 'rewarded_fullscreen_disabled';
@@ -391,17 +446,22 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                 <div
                     data-race-selector-sticky
                     data-race-mobile-selector
-                    className="race-sticky-selector sticky z-30 my-1 flex max-h-[88px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white sm:my-1.5 lg:h-14 lg:flex-row"
+                    className="race-sticky-selector sticky z-30 my-2 flex max-h-[88px] flex-col gap-1 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 lg:h-14 lg:flex-row lg:items-center lg:gap-3 lg:px-2"
                     aria-label="選択中のレースと1Rから12Rの切替"
                 >
-                    <div className="flex h-8 shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-950 px-2.5 text-white lg:h-full lg:w-[210px] lg:border-b-0 lg:border-r">
-                        <span className="flex h-6 min-w-9 items-center justify-center rounded-md bg-white/10 font-mono text-[11px] font-black lg:h-8">
-                            {activeRace.race_number}R
+                    <div className="flex h-7 shrink-0 items-center gap-2 px-1 lg:h-full lg:w-[250px] lg:border-r lg:border-slate-200 lg:pr-3">
+                        <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md bg-navy px-1.5 text-[12px] font-bold text-white">
+                            {venue.venue_name}
+                            <span className="font-num text-[14px]">{activeRace.race_number}R</span>
                         </span>
-                        <span className="min-w-0">
-                            <span className="block truncate text-[11px] font-black">{venue.venue_name} {activeRace.race_name}</span>
-                            <span className="block truncate text-[9px] font-semibold text-slate-300">{activeRace.course_type} {activeRace.distance}m</span>
-                        </span>
+                        <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-slate-900">{activeRace.race_name}</span>
+                        <Link
+                            href={`/races/${currentDate}`}
+                            prefetch={false}
+                            className="shrink-0 text-[12px] font-bold text-brand-700 hover:text-navy lg:hidden"
+                        >
+                            全レース
+                        </Link>
                     </div>
                     <RaceSelector
                         races={venue.races}
@@ -423,23 +483,12 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                     data-course-label={`${activeRace.course_type} ${activeRace.distance}m`}
                 >
                     <div className="grid gap-1.5 sm:gap-3">
-                        <div id="race-prediction-section" className="race-panel mb-1 overflow-hidden sm:mb-1.5">
-                            <div>
-                                <h4 id="race-prediction-heading" className="race-section-heading race-prediction-heading">
-                                    AI偏差値
-                                </h4>
-                                {/* 印 of 凡例 */}
-                                <div className="flex gap-1 overflow-x-auto px-3 pb-2 text-[10px] font-bold sm:gap-1.5 sm:px-4 sm:pb-1 sm:text-[11px]" aria-label="印の凡例">
-                                    <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 text-amber-800 sm:h-6 sm:px-2">◎：本命</span>
-                                    <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-blue-200 bg-blue-50 px-1.5 text-blue-700 sm:h-6 sm:px-2">○：対抗</span>
-                                    <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-purple-200 bg-purple-50 px-1.5 text-purple-700 sm:h-6 sm:px-2">▲：単穴</span>
-                                    <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-green-200 bg-green-50 px-1.5 text-green-700 sm:h-6 sm:px-2">△：連下</span>
-                                    <span className="shrink-0 inline-flex h-5 items-center rounded-full border border-slate-200 bg-slate-100 px-1.5 text-slate-600 sm:h-6 sm:px-2">☆：星</span>
-                                </div>
-                                <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
-                                <RaceHorseActions predictions={activeRace.predictions} />
-                            </div>
+                        <div id="race-prediction-section" className="race-panel overflow-hidden">
+                            <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
+                            <RaceHorseActions predictions={activeRace.predictions} />
                         </div>
+
+                        {hasRaceResults(activeRace) && <RaceResultCard race={activeRace} />}
 
                         <AffiliateSlot
                             context="race_after_prediction"
@@ -463,24 +512,29 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                                     <StableMatchupTable race={activeRace} />
                                 </div>
 
-                                <div className="mb-1.5 flex flex-col gap-1.5 sm:gap-2">
-                                    <div className="race-analysis-panel race-panel flex flex-col p-0 sm:p-3">
-                                        <div id="race-detail-heading" className="race-section-heading sm:mx-2.5 sm:mb-2">
-                                            <span>展開/脚質予測</span>
-                                        </div>
-                                        <div className="race-analysis-visual px-2 pb-1.5 sm:px-2.5 sm:pb-2">
+                                <div className="mb-2 grid gap-2 md:gap-3 xl:grid-cols-2">
+                                    <section className="race-analysis-panel race-panel flex flex-col px-3 pb-3 pt-3.5 md:px-5 md:pb-4 md:pt-4">
+                                        <h2 id="race-detail-heading" className="race-section-heading race-section-heading--flush">展開予測</h2>
+                                        <p className="race-section-lead">序盤（1コーナー）の位置取りの予測。右ほど前です。琥珀の輪はAI偏差値の上位3頭です。</p>
+                                        <div className="race-analysis-visual">
                                             <StartPositionChart predictions={activeRace.predictions} />
                                         </div>
-                                    </div>
+                                    </section>
 
-                                    <div className="race-analysis-panel race-panel flex flex-col p-0 sm:p-3">
-                                        <div id="race-frame-heading" className="race-section-heading sm:mx-2.5 sm:mb-2">
-                                            <span>このコースの枠順傾向</span>
+                                    <section className="race-analysis-panel race-panel flex flex-col px-3 pb-3 pt-3.5 md:px-5 md:pb-4 md:pt-4">
+                                        <h2 id="race-frame-heading" className="race-section-heading race-section-heading--flush">馬番の傾向</h2>
+                                        <p className="race-section-lead">
+                                            {venue.venue_name}{activeRace.course_type ?? ''}{activeRace.distance ? `${activeRace.distance}m` : ''}の過去データで、今回の出走馬の馬番だけを並べています。
+                                        </p>
+                                        <div className="race-analysis-visual">
+                                            <HorseNumberAdvantageChart
+                                                advantages={activeRace.horse_number_advantages}
+                                                courseType={activeRace.course_type}
+                                                distance={activeRace.distance}
+                                                runnerNumbers={activeRace.predictions.map((p) => p.horse_number)}
+                                            />
                                         </div>
-                                        <div className="race-analysis-visual px-2 pb-1.5 sm:px-2.5 sm:pb-2.5">
-                                            <HorseNumberAdvantageChart advantages={activeRace.horse_number_advantages} courseType={activeRace.course_type} distance={activeRace.distance} />
-                                        </div>
-                                    </div>
+                                    </section>
                                 </div>
                                 </>
                             )
@@ -494,9 +548,9 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                                         </div>
                                         <div className="mb-2">
                                             <div className="race-panel p-2 sm:p-3">
-                                                <div className="flex items-center text-md font-bold text-gray-800 p-2 sm:p-3">
-                                                    <FlagIcon className="w-5 h-5 mr-2 text-primary" />
-                                                    <span>展開/脚質予測</span>
+                                                <div className="flex items-center gap-2 p-2 text-base font-bold text-slate-800 sm:p-3">
+                                                    <LineIcon name="lanes" size={20} className="block shrink-0 text-navy" />
+                                                    <span>展開予測</span>
                                                 </div>
                                                 <div className="px-2 pb-2 sm:px-3 sm:pb-3">
                                                     <StartPositionChart predictions={activeRace.predictions} />
@@ -509,40 +563,22 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                                 {/* オーバーレイ: 4つの分析データプレビュー + 解除ボタン */}
                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 px-4">
                                     <div className="text-center max-w-sm w-full">
-                                        <p className="text-[13px] sm:text-sm font-bold text-slate-800 mb-3">このレースの詳細分析を表示</p>
-                                        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-4 text-left">
-                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
-                                                <UsersIcon className="w-3.5 h-3.5 text-secondary shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">過去対決成績</p>
-                                                    <p className="text-[9px] sm:text-[10px] text-slate-500 leading-tight">出走馬同士の直接比較</p>
+                                        <p className="mb-3 text-[15px] font-bold text-slate-900">このレースの詳細分析を表示</p>
+                                        <div className="mb-4 grid grid-cols-2 gap-2 text-left">
+                                            {REWARD_PREVIEW_ITEMS.map((item) => (
+                                                <div key={item.title} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+                                                    <LineIcon name={item.icon} size={18} className="block shrink-0 text-brand-700" />
+                                                    <div className="min-w-0">
+                                                        <p className="text-[13px] font-bold leading-tight text-slate-900">{item.title}</p>
+                                                        <p className="text-[11px] leading-tight text-slate-500">{item.description}</p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
-                                                <FlagIcon className="w-3.5 h-3.5 text-primary shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">脚質予測</p>
-                                                    <p className="text-[9px] sm:text-[10px] text-slate-500 leading-tight">各コーナーの位置取り</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
-                                                <ChartBarIcon className="w-3.5 h-3.5 text-accent shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">枠順傾向</p>
-                                                    <p className="text-[9px] sm:text-[10px] text-slate-500 leading-tight">コース別の有利枠</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 rounded-lg bg-white/90 border border-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2">
-                                                <SparklesIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="text-[11px] sm:text-xs font-bold text-slate-800 leading-tight">AIレース展望</p>
-                                                    <p className="text-[9px] sm:text-[10px] text-slate-500 leading-tight">展開・適性の解説</p>
-                                                </div>
-                                            </div>
+                                            ))}
                                         </div>
                                         <button
+                                            type="button"
                                             onClick={() => handleRewardGateClick()}
-                                            className="btn-primary w-full text-sm gap-2"
+                                            className="ui-btn ui-btn--primary ui-btn--full"
                                         >
                                             {canUseRewardedAd ? (
                                                 '広告を見て詳細分析を表示'
@@ -566,38 +602,58 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                             <RaceEngagedAd slot={engagedAdSlot} pageKey={currentDate} />
                         )}
 
-                        <div className="my-1.5 sm:my-3">
-                            {(() => {
-                                const hasNext = activeRaceIndex < venue.races.length - 1;
-                                const nextRace = hasNext ? venue.races[activeRaceIndex + 1] : null;
-                                const nextTopHorse = nextRace?.predictions?.[0];
-                                if (nextTopHorse && nextRace) {
-                                    return (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRaceSelect(activeRaceIndex + 1, 'analysis_next_button')}
-                                            className="mb-1 flex w-full items-center gap-2 rounded-xl border border-blue-100 bg-blue-50/70 p-2 text-left transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 sm:gap-3 sm:p-3"
-                                        >
-                                            <div className="h-8 w-8 sm:w-9 sm:h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
-                                                <span className="text-xs font-bold text-primary">{nextRace.race_number}R</span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] text-slate-500">次のレース</p>
-                                                <p className="text-xs sm:text-sm font-bold text-primary truncate">
-                                                    {nextRace.race_name}
-                                                </p>
-                                            </div>
-                                            <div className="max-w-[104px] shrink-0 text-right sm:max-w-[160px]">
-                                                <p className="text-[10px] text-slate-500">AI 1位</p>
-                                                <p className="truncate text-xs font-bold text-primary" title={nextTopHorse.horse_name}>{nextTopHorse.horse_name}</p>
-                                            </div>
-                                            <span className="text-primary text-sm">→</span>
-                                        </button>
-                                    );
-                                }
-                                return null;
-                            })()}
-                        </div>
+                        {(() => {
+                            // 開催日ボードから来た詳細ページでは、この会場の他のレースは番号とURLだけを持っている
+                            const nextLink = raceLinks?.find((link) => link.raceNumber === activeRace.race_number + 1);
+                            const nextRace = venue.races[activeRaceIndex + 1];
+                            const nextTopHorse = nextRace?.predictions?.[0];
+                            if (!nextLink && !nextRace) return null;
+                            const inner = (
+                                <>
+                                    <span className="inline-flex h-11 w-11 shrink-0 items-baseline justify-center rounded-[11px] bg-navy pt-2.5 font-num text-[22px] font-bold leading-none text-white" aria-hidden="true">
+                                        {activeRace.race_number + 1}<span className="ml-px text-[12px]">R</span>
+                                    </span>
+                                    <span className="flex min-w-0 flex-1 flex-col gap-1">
+                                        <span className="text-[12px] font-bold text-slate-500">次のレース</span>
+                                        <span className="truncate text-[15px] font-bold text-slate-900">
+                                            {nextRace ? nextRace.race_name : `${venue.venue_name}${activeRace.race_number + 1}Rの分析を見る`}
+                                        </span>
+                                        {nextTopHorse && nextTopHorse.deviation_score != null && (
+                                            <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-slate-700">
+                                                AI 1位
+                                                <HorseNumber number={nextTopHorse.horse_number} waku={resolveWaku(nextTopHorse, nextRace.predictions.length)} size={20} />
+                                                <span className="truncate">{nextTopHorse.horse_name}</span>
+                                                <b className="font-num text-[15px] text-ai-deep">{nextTopHorse.deviation_score.toFixed(1)}</b>
+                                            </span>
+                                        )}
+                                    </span>
+                                    <LineIcon name="chevR" size={20} className="block shrink-0 text-slate-500" />
+                                </>
+                            );
+                            const cardClass = 'my-2 flex w-full items-center gap-3.5 rounded-xl border border-slate-200 bg-white p-3.5 text-left transition-colors duration-150 hover:border-brand-300 md:p-4';
+                            if (nextRace) {
+                                return (
+                                    <button type="button" onClick={() => handleRaceSelect(activeRaceIndex + 1, 'analysis_next_button')} className={cardClass}>
+                                        {inner}
+                                    </button>
+                                );
+                            }
+                            return (
+                                <Link
+                                    href={nextLink!.href}
+                                    prefetch={false}
+                                    rel={nextLink!.rel}
+                                    onClick={(event) => handleRaceLinkSelect(
+                                        nextLink!.raceNumber,
+                                        nextLink!.href,
+                                        event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey,
+                                    )}
+                                    className={cardClass}
+                                >
+                                    {inner}
+                                </Link>
+                            );
+                        })()}
 
                         <div id="race-data-guide-section">
                             <DataExplanationPanel showAdvanced={true} />
@@ -631,142 +687,38 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
 VenuePanel.displayName = 'VenuePanel';
 
 export const RaceTabs = ({ data, articlesMeta, initialVenueName, initialRaceNumber, initialRaceLinks, engagedAdSlot }: { data: RaceDayPrediction, articlesMeta: RaceArticleMeta[], initialVenueName?: string | null, initialRaceNumber?: number | null, initialRaceLinks?: RaceSelectorLink[], engagedAdSlot?: string }) => {
-    // ★ 防御的チェック: data.jra/nar が undefined の場合も安全に処理
+    // 開催日のタブ（中央／地方・会場の切り替え）は開催日ボード（/races/[date]）が持つ。
+    // ここはレース詳細として、選ばれた会場の1会場だけを描く。
     const jra = data?.jra ?? [];
     const nar = data?.nar ?? [];
-    const isEmpty = !data || (jra.length === 0 && nar.length === 0);
-
-    // ▼▼▼▼▼【フックルール違反修正】▼▼▼▼▼
-    // 修正前: isEmpty時に早期リターンし、その後にuseParams/useState/useCallback/useMemoを呼んでいた
-    //   → Reactのフックルール違反（条件分岐の後にフックを呼んではいけない）
-    //   → SSRとクライアントでフック呼び出し順序が不整合になり、
-    //     "Cannot read properties of undefined (reading 'push')" エラーが発生
-    // 修正後: 全てのフックを条件分岐より前に移動し、早期リターンは一番最後に行う
-    // ▲▲▲▲▲【修正ここまで】▲▲▲▲▲
-
-    const params = useParams();
-    const currentDate = params.date as string;
-
-    const [jraActivationKey, setJraActivationKey] = useState(0);
-    const [narActivationKey, setNarActivationKey] = useState(0);
-
-    const availableRaceTypes = useMemo<Array<'jra' | 'nar'>>(() => {
-        const types: Array<'jra' | 'nar'> = [];
-        if (jra.length > 0) types.push('jra');
-        if (nar.length > 0) types.push('nar');
-        return types;
-    }, [jra.length, nar.length]);
-
-    const handleTopTabSelect = useCallback((index: number) => {
-        const raceType = availableRaceTypes[index];
-        if (!raceType) return;
-
-        if (raceType === 'jra') setJraActivationKey(prev => prev + 1);
-        else setNarActivationKey(prev => prev + 1);
-
-        sendRaceGroupSelectEvent({
-            race_date: currentDate,
-            race_type: raceType,
-        });
-    }, [availableRaceTypes, currentDate]);
-
-    const handleJraVenueSelect = useCallback((index: number) => {
-        setJraActivationKey(prev => prev + 1);
-        const venue = jra[index];
-        if (venue) {
-            sendRaceVenueSelectEvent({
-                race_date: currentDate,
-                race_type: 'jra',
-                venue_name: venue.venue_name,
-            });
-        }
-    }, [jra, currentDate]);
-
-    const handleNarVenueSelect = useCallback((index: number) => {
-        setNarActivationKey(prev => prev + 1);
-        const venue = nar[index];
-        if (venue) {
-            sendRaceVenueSelectEvent({
-                race_date: currentDate,
-                race_type: 'nar',
-                venue_name: venue.venue_name,
-            });
-        }
-    }, [nar, currentDate]);
-
-    const isInitialVenueInJra = useMemo(() => jra.some(v => v.venue_name === initialVenueName), [jra, initialVenueName]);
-    const isInitialVenueInNar = useMemo(() => nar.some(v => v.venue_name === initialVenueName), [nar, initialVenueName]);
-    const initialTopTabIndex = useMemo(() => {
-        if (isInitialVenueInJra) return 0;
-        if (isInitialVenueInNar) return jra.length > 0 ? 1 : 0;
-        return 0;
-    }, [isInitialVenueInJra, isInitialVenueInNar, jra.length]);
-
-    const initialJraVenueIndex = useMemo(() => {
-        if (!initialVenueName) return 0;
-        const index = jra.findIndex(v => v.venue_name === initialVenueName);
-        return index >= 0 ? index : 0;
-    }, [jra, initialVenueName]);
-
-    const initialNarVenueIndex = useMemo(() => {
-        if (!initialVenueName) return 0;
-        const index = nar.findIndex(v => v.venue_name === initialVenueName);
-        return index >= 0 ? index : 0;
-    }, [nar, initialVenueName]);
-
     const { isRaceUnlocked, isReady, isLoading: isAdLoading, isSupported, unavailableReason, showAd, unlock } = useRewardedAd();
 
-    // ★ 全てのフックの後で早期リターン
-    if (isEmpty) {
-        return <div className="race-panel p-6 text-center text-muted">対象日のレースデータがありません。</div>;
+    const jraVenue = jra.find((v) => v.venue_name === initialVenueName);
+    const narVenue = nar.find((v) => v.venue_name === initialVenueName);
+    const venue = jraVenue ?? narVenue ?? jra[0] ?? nar[0];
+    const raceType: 'jra' | 'nar' = jraVenue || (!narVenue && jra.length > 0) ? 'jra' : 'nar';
+
+    if (!venue) {
+        return <div className="race-panel p-6 text-center text-slate-600">対象日のレースデータがありません。</div>;
     }
 
-    const mainTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1.5 sm:gap-4 border-b-2 border-slate-200 mb-1 sm:mb-4";
-    const mainTabClass = "snap-start min-h-11 min-w-max px-2.5 sm:px-6 py-1 sm:py-4 text-[13px] sm:text-base font-bold text-slate-500 bg-transparent cursor-pointer hover:text-slate-700 transition-colors duration-150 outline-none border-b-2 border-transparent -mb-[2px]";
-    const mainSelectedTabClass = "!text-primary !border-primary";
-
-    const venueTabListClass = "flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-1 sm:gap-2 mb-1 sm:mb-4 p-0.5 sm:p-1 bg-slate-100/60 rounded-lg sm:rounded-xl w-max border border-slate-200/50 max-w-full";
-    const venueTabClass = "snap-start min-h-11 min-w-max px-2 sm:px-5 py-0.5 sm:py-2.5 text-[10.5px] sm:text-sm font-bold text-slate-500 rounded-md sm:rounded-lg cursor-pointer hover:text-slate-700 hover:bg-slate-200/60 transition-colors duration-150 outline-none";
-    const venueSelectedTabClass = "!text-primary !bg-white shadow-sm !border-slate-200";
-
     return (
-        <Tabs defaultIndex={initialTopTabIndex} onSelect={handleTopTabSelect} className="mt-1 sm:mt-4" forceRenderTabPanel={false}>
-            <TabList className={mainTabListClass}>
-                {jra.length > 0 && <Tab className={mainTabClass} selectedClassName={mainSelectedTabClass}>中央競馬</Tab>}
-                {nar.length > 0 && <Tab className={mainTabClass} selectedClassName={mainSelectedTabClass}>地方競馬</Tab>}
-            </TabList>
-            {jra.length > 0 && (
-                <TabPanel>
-                    <div className="p-0 sm:p-2 md:p-3 relative">
-                        <Tabs defaultIndex={initialJraVenueIndex} onSelect={handleJraVenueSelect} forceRenderTabPanel={false}>
-                            <TabList className={venueTabListClass}>
-                                {jra.map(venue => <Tab key={venue.venue_name} className={venueTabClass} selectedClassName={venueSelectedTabClass}>{venue.venue_name}</Tab>)}
-                            </TabList>
-                            {jra.map(venue => (
-                                <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} raceType="jra" articlesMeta={articlesMeta} venueActivationKey={jraActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} raceLinks={initialVenueName === venue.venue_name ? initialRaceLinks : undefined} engagedAdSlot={engagedAdSlot} isRaceUnlocked={isRaceUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} unavailableReason={unavailableReason} showAd={showAd} unlock={unlock} />
-                                </TabPanel>
-                            ))}
-                        </Tabs>
-                    </div>
-                </TabPanel>
-            )}
-            {nar.length > 0 && (
-                <TabPanel>
-                    <div className="p-0 sm:p-2 md:p-3 relative">
-                        <Tabs defaultIndex={initialNarVenueIndex} onSelect={handleNarVenueSelect} forceRenderTabPanel={false}>
-                            <TabList className={venueTabListClass}>
-                                {nar.map(venue => <Tab key={venue.venue_name} className={venueTabClass} selectedClassName={venueSelectedTabClass}>{venue.venue_name}</Tab>)}
-                            </TabList>
-                            {nar.map(venue => (
-                                <TabPanel key={venue.venue_name}>
-                                    <VenuePanel venue={venue} raceType="nar" articlesMeta={articlesMeta} venueActivationKey={narActivationKey} initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null} raceLinks={initialVenueName === venue.venue_name ? initialRaceLinks : undefined} engagedAdSlot={engagedAdSlot} isRaceUnlocked={isRaceUnlocked} isReady={isReady} isLoading={isAdLoading} isSupported={isSupported} unavailableReason={unavailableReason} showAd={showAd} unlock={unlock} />
-                                </TabPanel>
-                            ))}
-                        </Tabs>
-                    </div>
-                </TabPanel>
-            )}
-        </Tabs>
+        <div className="mt-1 sm:mt-2">
+            <VenuePanel
+                venue={venue}
+                raceType={raceType}
+                articlesMeta={articlesMeta}
+                initialRaceNumber={initialVenueName === venue.venue_name ? initialRaceNumber : null}
+                raceLinks={initialVenueName === venue.venue_name ? initialRaceLinks : undefined}
+                engagedAdSlot={engagedAdSlot}
+                isRaceUnlocked={isRaceUnlocked}
+                isReady={isReady}
+                isLoading={isAdLoading}
+                isSupported={isSupported}
+                unavailableReason={unavailableReason}
+                showAd={showAd}
+                unlock={unlock}
+            />
+        </div>
     );
 };

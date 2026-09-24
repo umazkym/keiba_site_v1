@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Barlow_Semi_Condensed, M_PLUS_Rounded_1c } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -17,6 +18,26 @@ import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { PwaRegistration } from "@/components/PwaRegistration";
 import { SafariViewportShim } from "@/components/SafariViewportShim";
 
+// 書体：見出しとロゴ文字はロゴの丸みに合わせた M PLUS Rounded 1c、
+// 数字（AI偏差値・オッズ・距離）は幅の狭い Barlow Semi Condensed。
+// 本文は端末の日本語書体（globals.css の --font-body）。Noto Sans JP を配信すると
+// 文字範囲ごとの @font-face だけで描画を止めるCSSが gzip 約31KB増え、本文の字形で
+// 1ページ数百KBの追加転送になるため読み込まない。
+// 見出し書体も同じ理由で 800 の1ウェイトだけにする（700 を足すとCSSが約31KB増える）。
+const displayFont = M_PLUS_Rounded_1c({
+    weight: "800",
+    subsets: ["latin"],
+    display: "swap",
+    preload: false,
+    variable: "--font-display",
+});
+const numFont = Barlow_Semi_Condensed({
+    weight: ["500", "600", "700"],
+    subsets: ["latin"],
+    display: "swap",
+    variable: "--font-num",
+});
+
 export const metadata: Metadata = {
     metadataBase: new URL("https://uma-free.com"),
     title: {
@@ -25,9 +46,11 @@ export const metadata: Metadata = {
     },
     description: "競馬データ分析サイト。中央・地方の全レースをAIが無料分析。馬場状態の勝率影響、騎手の得意コース、枠順・距離適性、馬体重増減と成績の関係をデータで解説。登録不要で今すぐ使えます。",
     icons: {
-        icon: "/new-logo.webp",
-        shortcut: "/new-logo.webp",
-        apple: "/new-logo.png",
+        icon: [
+            { url: "/favicon.ico", sizes: "any" },
+            { url: "/brand/uma-free-mark-small.svg", type: "image/svg+xml" },
+        ],
+        apple: "/brand/apple-touch-icon.png",
     },
     other: {
         'google-adsense-account': 'ca-pub-4411270831448240',
@@ -39,9 +62,10 @@ export const metadata: Metadata = {
         siteName: "UMA-FREE",
         images: [
             {
-                url: "/new-logo.png",
-                width: 800,
-                height: 600,
+                url: "/brand/og-default.png",
+                width: 1200,
+                height: 630,
+                alt: "UMA-FREE 中央・地方の全レースをAIが毎日無料で分析",
             },
         ],
         locale: "ja_JP",
@@ -64,10 +88,8 @@ export const viewport: Viewport = {
     viewportFit: 'cover',
     // 注: Safari 26以降では themeColor メタタグは無視されCSS実背景色が採用されますが、
     // 旧Safari(15~18)および他ブラウザ(Android Chrome等)互換のため設定を維持します。
-    themeColor: [
-        { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
-        { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
-    ],
+    // ダークモードは作らないため、どちらの設定でもサイトの背景色にそろえる。
+    themeColor: '#F3F5FA',
 };
 
 export default function RootLayout({
@@ -79,12 +101,8 @@ export default function RootLayout({
     const gaId = process.env.NEXT_PUBLIC_GA_ID || "";
 
     return (
-        <html lang="ja">
+        <html lang="ja" className={`${displayFont.variable} ${numFont.variable}`}>
             <head>
-                {/* Preconnect for External Resources */}
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-
                 {/* ★ パフォーマンス改善: AdSense/GAへのdns-prefetch + preconnect
                     広告のロード開始を早め、Viewable判定の機会を増やす */}
                 <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
@@ -140,7 +158,7 @@ export default function RootLayout({
                     </div>
                 </main>
                 {/* フッター直前の全ページ共通広告はユーザーの要望により撤去（UIスッキリ化のため） */}
-                <Footer />
+                <Footer todayString={todayString} />
                 {/* CookieConsent削除済み: Google側のGDPR同意メッセージに一元化 */}
                 <AdSensePageLevelScript enabled={shouldLoadAdsensePageLevelScript} />
             </body>

@@ -1,7 +1,8 @@
 // frontend/app/not-found.tsx
 import Link from "next/link";
-import { SearchIcon } from "@/components/Icons";
 import type { Metadata } from 'next';
+import { GuideHorse } from "@/components/BrandLogo";
+import { LineIcon, type LineIconName } from "@/components/LineIcon";
 
 // 404ページはインデックスさせない
 export const metadata: Metadata = {
@@ -11,159 +12,75 @@ export const metadata: Metadata = {
     },
 };
 
+const ENTRIES: Array<{ href: string; icon: LineIconName; title: string; description: string }> = [
+    { href: '/races/today', icon: 'race', title: '今日のレース分析', description: 'AI偏差値・対戦成績・展開・枠順傾向' },
+    { href: '/articles', icon: 'book', title: 'データ分析記事', description: '重賞・騎手・コースの傾向' },
+    { href: '/keiba-data', icon: 'database', title: '競馬データベース', description: '競走馬・騎手・コースの成績' },
+];
+
+const SUB_LINKS = [
+    { href: '/', label: 'ホーム' },
+    { href: '/faq', label: 'よくある質問' },
+    { href: '/contact', label: 'お問い合わせ' },
+    { href: '/sitemap', label: 'サイトマップ' },
+];
+
 export default function NotFound() {
     return (
-        <div className="py-8 space-y-10">
-            <div className="max-w-4xl mx-auto">
-                {/* エラーメッセージ - ヒーロースタイル */}
-                <section className="text-center p-8 md:p-12 bg-gray-50 rounded-lg border border-gray-200">
-                    <h1 className="text-5xl md:text-6xl font-extrabold text-primary-dark mb-3">
-                        404
-                    </h1>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">
-                        ページが見つかりません
-                    </p>
-                    <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
-                        お探しのページは存在しないか、移動した可能性があります。<br className="hidden sm:block" />
-                        下記のリンクから目的のページをお探しください。
-                    </p>
-                </section>
+        <div className="mx-auto w-full max-w-[960px] px-1 pb-10 pt-6 sm:px-4 sm:pb-14 sm:pt-12">
+            <section className="flex flex-col items-center gap-3 text-center sm:gap-4">
+                <GuideHorse size={150} mood="lost" className="block h-[120px] w-[120px] sm:h-[150px] sm:w-[150px]" />
+                <p className="font-num text-[15px] font-bold tracking-[0.14em] text-slate-500">404</p>
+                <h1 className="text-2xl font-extrabold leading-snug text-slate-900 sm:text-[32px]">ページが見つかりませんでした</h1>
+                <p className="max-w-[520px] text-sm leading-7 text-slate-700 sm:text-[15.5px]">
+                    移動したか、削除された可能性があります。<br />
+                    レース名・競馬場・騎手の名前で探せます。
+                </p>
+                <form action="/search" method="get" role="search" className="mt-1 flex w-full max-w-[520px] items-center gap-2">
+                    <label className="flex h-[52px] min-w-0 flex-1 items-center gap-2.5 rounded-[14px] border-[1.5px] border-slate-300 bg-white px-4 transition-colors duration-150 focus-within:border-brand-600">
+                        <LineIcon name="search" size={20} className="block shrink-0 text-slate-400" />
+                        <span className="sr-only">サイト内を検索</span>
+                        <input
+                            type="search"
+                            name="q"
+                            placeholder="例：スプリンターズS、園田、戸崎圭太"
+                            className="h-full w-full min-w-0 border-0 bg-transparent p-0 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                        />
+                    </label>
+                    <button type="submit" className="ui-btn ui-btn--primary ui-btn--l shrink-0">検索</button>
+                </form>
+            </section>
 
-
-                {/* ナビゲーションカード */}
-                <div className="grid md:grid-cols-2 gap-6 my-10">
-                    {/* 今日のレース分析（最優先導線） */}
+            <nav aria-label="主なページ" className="mt-8 grid gap-3 sm:mt-10 sm:grid-cols-3">
+                {ENTRIES.map((entry) => (
                     <Link
-                        href="/races/today"
+                        key={entry.href}
+                        href={entry.href}
                         prefetch={false}
-                        className="bg-primary/5 rounded-lg border-2 border-primary/20 p-6 hover:border-primary transition-colors group"
+                        className="flex items-center gap-3.5 rounded-[14px] border border-slate-200 bg-white p-4 transition-colors duration-150 hover:border-brand-300"
                     >
-                        <div className="flex items-start gap-4">
-                            <div className="bg-primary/10 text-primary rounded-lg p-4 flex-shrink-0 group-hover:bg-primary/20 transition-colors">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg text-primary mb-1">今日のレースデータ分析</h3>
-                                <p className="text-sm text-gray-600">AI偏差値・対戦成績・枠順傾向を無料で確認</p>
-                            </div>
-                        </div>
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                            <LineIcon name={entry.icon} size={22} />
+                        </span>
+                        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <span className="text-[15px] font-bold text-slate-900">{entry.title}</span>
+                            <span className="text-[13px] text-slate-500">{entry.description}</span>
+                        </span>
+                        <LineIcon name="chevR" size={18} className="block shrink-0 text-slate-400" />
                     </Link>
+                ))}
+            </nav>
 
-                    {/* 分析記事 */}
+            <div className="mt-5 flex flex-wrap justify-center gap-x-5">
+                {SUB_LINKS.map((link) => (
                     <Link
-                        href="/articles"
-                        className="bg-white rounded-lg border border-gray-200 p-6 hover:border-secondary transition-colors group"
+                        key={link.href}
+                        href={link.href}
+                        className="flex min-h-11 items-center text-sm text-slate-600 transition-colors duration-150 hover:text-brand-700"
                     >
-                        <div className="flex items-start gap-4">
-                            <div className="bg-secondary/10 text-secondary rounded-lg p-4 flex-shrink-0 group-hover:bg-secondary/20 transition-colors">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg text-gray-800 mb-1 group-hover:text-secondary transition-colors">競馬データ分析記事</h3>
-                                <p className="text-sm text-gray-600">枠順・騎手・コース別の統計データを解説</p>
-                            </div>
-                        </div>
+                        {link.label}
                     </Link>
-
-                    {/* トップページ */}
-                    <Link
-                        href="/"
-                        className="bg-white rounded-lg border border-gray-200 p-6 hover:border-primary transition-colors group"
-                    >
-                        <div className="flex items-start gap-4">
-                            <div className="bg-primary-light/10 text-primary rounded-lg p-4 flex-shrink-0 group-hover:bg-primary-light/20 transition-colors">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg text-gray-800 mb-1 group-hover:text-primary transition-colors">トップページ</h3>
-                                <p className="text-sm text-gray-600">最新のデータ分析情報と注目馬をチェック</p>
-                            </div>
-                        </div>
-                    </Link>
-
-                    {/* 検索 */}
-                    <Link
-                        href="/search"
-                        className="bg-white rounded-lg border border-gray-200 p-6 hover:border-accent transition-colors group"
-                    >
-                        <div className="flex items-start gap-4">
-                            <div className="bg-accent-light/10 text-accent rounded-lg p-4 flex-shrink-0 group-hover:bg-accent-light/20 transition-colors">
-                                <SearchIcon className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg text-gray-800 mb-1 group-hover:text-accent transition-colors">サイト内検索</h3>
-                                <p className="text-sm text-gray-600">キーワードから情報を検索</p>
-                            </div>
-                        </div>
-                    </Link>
-
-                    {/* よくある質問 */}
-                    <Link
-                        href="/faq"
-                        className="bg-white rounded-lg border border-gray-200 p-6 hover:border-green-600 transition-colors group"
-                    >
-                        <div className="flex items-start gap-4">
-                            <div className="bg-green-50 text-green-600 rounded-lg p-4 flex-shrink-0 group-hover:bg-green-100 transition-colors">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg text-gray-800 mb-1 group-hover:text-green-600 transition-colors">よくある質問</h3>
-                                <p className="text-sm text-gray-600">よくあるご質問と回答をチェック</p>
-                            </div>
-                        </div>
-                    </Link>
-
-                    {/* お問い合わせ */}
-                    <Link
-                        href="/contact"
-                        className="bg-white rounded-lg border border-gray-200 p-6 hover:border-blue-600 transition-colors group"
-                    >
-                        <div className="flex items-start gap-4">
-                            <div className="bg-blue-50 text-blue-600 rounded-lg p-4 flex-shrink-0 group-hover:bg-blue-100 transition-colors">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg text-gray-800 mb-1 group-hover:text-blue-600 transition-colors">お問い合わせ</h3>
-                                <p className="text-sm text-gray-600">ご質問や問題をご報告ください</p>
-                            </div>
-                        </div>
-                    </Link>
-                </div>
-
-                {/* 主要ページリンク */}
-                <section className="bg-gray-50 rounded-lg border border-gray-200 p-8">
-                    <h2 className="font-bold text-lg text-gray-800 mb-6 text-center">その他の主要ページ</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <Link href="/articles" className="text-primary hover:text-primary-dark font-semibold text-center py-3 px-2 rounded-lg hover:bg-white transition-colors">
-                            分析記事
-                        </Link>
-                        <Link href="/about" className="text-primary hover:text-primary-dark font-semibold text-center py-3 px-2 rounded-lg hover:bg-white transition-colors">
-                            運営者情報
-                        </Link>
-                        <Link href="/advertising" className="text-primary hover:text-primary-dark font-semibold text-center py-3 px-2 rounded-lg hover:bg-white transition-colors">
-                            広告について
-                        </Link>
-                        <Link href="/privacy" className="text-primary hover:text-primary-dark font-semibold text-center py-3 px-2 rounded-lg hover:bg-white transition-colors">
-                            プライバシーポリシー
-                        </Link>
-                        <Link href="/terms" className="text-primary hover:text-primary-dark font-semibold text-center py-3 px-2 rounded-lg hover:bg-white transition-colors">
-                            利用規約
-                        </Link>
-                        <Link href="/faq" className="text-primary hover:text-primary-dark font-semibold text-center py-3 px-2 rounded-lg hover:bg-white transition-colors">
-                            よくある質問
-                        </Link>
-                    </div>
-                </section>
+                ))}
             </div>
         </div>
     );

@@ -103,7 +103,7 @@ export function EntityArticleDocument({
             data-analytics-placement="article_value_guide"
             data-analytics-variant="compact_four"
             data-preview-state="generic"
-            className="mt-4 block min-h-[44px] rounded-xl border border-blue-200 bg-slate-50 p-3 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:mt-6"
+            className="mt-4 block min-h-[44px] rounded-xl border border-brand-200 bg-slate-50 p-3 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:mt-6"
             aria-label="今日の全レース分析を見る。AI偏差値、対戦比較、展開・脚質、枠順傾向を確認できます"
           >
             <section aria-labelledby="entity-article-site-value-title">
@@ -111,7 +111,7 @@ export function EntityArticleDocument({
                 <h2 id="entity-article-site-value-title" className="text-sm font-black leading-tight text-slate-950 sm:text-base">
                   今日の全レースを4つの視点で確認
                 </h2>
-                <span className="shrink-0 text-[11px] font-black text-blue-700 sm:text-xs">
+                <span className="shrink-0 text-[11px] font-black text-brand-700 sm:text-xs">
                   全レース分析へ <span aria-hidden="true">→</span>
                 </span>
               </div>

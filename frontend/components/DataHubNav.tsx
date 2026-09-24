@@ -33,7 +33,7 @@ const PRIMARY_ITEMS: NavItem[] = [
         label: 'データトップ',
         icon: Database,
         color: 'text-slate-500',
-        activeColor: 'border-blue-600 bg-blue-50/80 text-blue-800 font-black',
+        activeColor: 'border-brand-600 bg-brand-50/80 text-brand-800 font-black',
     },
     {
         href: '/compare',
@@ -65,8 +65,8 @@ const DIRECTORY_ITEMS: NavItem[] = [
         href: '/jockeys',
         label: '騎手',
         icon: UserRound,
-        color: 'text-blue-600',
-        activeColor: 'border-blue-600 bg-blue-50/80 text-blue-900 font-black',
+        color: 'text-brand-600',
+        activeColor: 'border-brand-600 bg-brand-50/80 text-brand-900 font-black',
     },
     {
         href: '/trainers',

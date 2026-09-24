@@ -1,28 +1,35 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
+import type { Metadata } from 'next';
 import { SpecialPickCard } from '@/components/SpecialPickCard';
 import { TopHitsDisplay } from '@/components/TopHitsDisplay';
-import { WeeklyGradeRaces } from '@/components/WeeklyGradeRaces';
+import { WeeklyGradeRaces, sortWeeklyGradeRaces } from '@/components/WeeklyGradeRaces';
 import { RecentRaceReturn } from '@/components/RecentRaceReturn';
 import { HomeTodayVenues } from '@/components/HomeTodayVenues';
+import { HomeHero, type HomeHeroPhoto } from '@/components/HomeHero';
+import { CourseGlyph } from '@/components/CourseGlyph';
+import { ArticleThumb } from '@/components/ArticleThumb';
+import { LineIcon, type LineIconName } from '@/components/LineIcon';
 import { getSpecialPick, getPredictionsForDate, getWeeklyGradeRaces, getTopPayoutHits } from '@/lib/api';
-import { getLatestArticles } from '../lib/articles';
+import { getAllArticlesMeta, getLatestArticles } from '../lib/articles';
 import {
     buildGradeRaceTopHorseMap,
+    describeHomeVenues,
     extractHomeSpecialPicks,
     getHomeRaceDaySummary,
-    getHomeVenueNamesString,
     summarizeHomeVenues,
+    type HomeVenueSummary,
 } from '@/lib/home-page-summary';
+import { estimateReadingMinutes, getArticleCategoryStyle, pickArticleThumbs } from '@/lib/article-visual';
+import { formatRaceDateLabel } from '@/lib/race-display';
 
 import DisclaimerAlert from '@/components/DisclaimerAlert';
 import { AdUnit } from '@/components/AdUnit';
 import { NativeCardAd } from '@/components/NativeCardAd';
-import type { Metadata } from 'next';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
 import { HomeStickyRaceCta } from '@/components/HomeStickyRaceCta';
 import { FAQSchema } from '@/components/StructuredData';
-import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 import { SectionHeader } from '@/components/SectionHeader';
 
 // ISR: データ更新は1日2〜3回（06:00, 13:30 JST）のバッチ処理のため、
@@ -52,20 +59,31 @@ export const metadata: Metadata = {
 const homepageFaqItems = [
     {
         question: '本当に無料ですか？',
-        answer: 'はい。すべてのデータ分析情報が完全無料です。登録やメール入力は一切不要です。',
+        answer: 'すべての分析データを無料で公開しています。会員登録やメールアドレスの入力はありません。',
     },
     {
         question: 'データはいつ更新されますか？',
-        answer: '毎日午前7時頃を目安に、前日の結果と当日の分析データを更新しています。',
+        answer: '毎日午前7時ごろに、前日の結果と当日の分析データを更新しています。',
+    },
+    {
+        question: 'AI偏差値とは何ですか？',
+        answer: 'AIが算出した各馬の評価を、同じレースの出走馬どうしで比べやすいよう偏差値の形にしたものです。結果を保証するものではなく、コースの傾向や馬場とあわせて見る参考の指標です。',
     },
     {
         question: '分析の精度はどのくらいですか？',
-        answer: '過去レースの統計データをもとに算出しているため、実際の結果とは異なる場合があります。サイト内の高配当的中ランキングでは、過去の的中実績を公開しています。',
+        answer: '過去レースの統計データをもとに算出しているため、実際の結果とは異なる場合があります。高配当的中ランキングとAI予想の成績のページで、過去の的中実績を公開しています。',
     },
     {
-        question: 'モバイルでも使えますか？',
-        answer: 'はい。PC・スマートフォン・タブレットすべてのデバイスに対応しています。',
+        question: 'スマートフォンでも使えますか？',
+        answer: 'PC・スマートフォン・タブレットのいずれにも対応しています。',
     },
+];
+
+const DATA_LINKS: { href: string; icon: LineIconName; label: string; note: string }[] = [
+    { href: '/horses', icon: 'user', label: '競走馬データ', note: '近走・得意条件・AI偏差値の履歴' },
+    { href: '/jockeys', icon: 'trophy', label: '騎手データ', note: 'コース別・条件別の成績' },
+    { href: '/courses', icon: 'pin', label: 'コースデータ', note: '枠順・脚質の有利不利' },
+    { href: '/compare', icon: 'compare', label: '馬を比べる', note: '複数の馬の成績と得意条件を並べる' },
 ];
 
 const getJstDateParts = () => {
@@ -74,18 +92,16 @@ const getJstDateParts = () => {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
+        hour: '2-digit',
+        hourCycle: 'h23',
     }).formatToParts(new Date());
 
     return {
         year: parts.find(part => part.type === 'year')?.value ?? '',
         month: parts.find(part => part.type === 'month')?.value ?? '',
         day: parts.find(part => part.type === 'day')?.value ?? '',
+        hour: Number(parts.find(part => part.type === 'hour')?.value ?? '0'),
     };
-};
-
-const getTodayString = () => {
-    const { year, month, day } = getJstDateParts();
-    return `${year}-${month}-${day}`;
 };
 
 const formatShortDate = (date: string) => {
@@ -94,30 +110,23 @@ const formatShortDate = (date: string) => {
     return `${Number(matched[1])}/${Number(matched[2])}`;
 };
 
-const getFormattedUpdateDate = () => {
-    const { month, day } = getJstDateParts();
-    return `${Number(month)}/${Number(day)} 7:00頃更新`;
+// 中央の開催がある日は芝の写真。地方だけの日は、16時以降をナイターの写真にする
+const pickHeroPhoto = (venues: HomeVenueSummary[], jstHour: number): HomeHeroPhoto => {
+    if (venues.length === 0 || venues.some((venue) => venue.race_type === 'jra')) return 'jra';
+    return jstHour >= 16 ? 'night' : 'nar-day';
 };
 
-const getCategoryBadgeClass = (category: string) => {
-    switch (category) {
-        case '重賞':
-        case 'G1':
-        case 'G2':
-        case 'G3':
-            return 'bg-amber-50 text-amber-700 border border-amber-200/50';
-        case '騎手':
-            return 'bg-purple-50 text-purple-700 border border-purple-200/50';
-        case 'コース':
-        case 'コース分析':
-            return 'bg-emerald-50 text-emerald-700 border border-emerald-200/50';
-        default:
-            return 'bg-blue-50 text-blue-700 border border-blue-200/50';
-    }
-};
+function Panel({ children, className = '', labelledBy }: { children: ReactNode; className?: string; labelledBy?: string }) {
+    return (
+        <section aria-labelledby={labelledBy} className={`rounded-xl border border-slate-200 bg-white p-4 md:p-6 ${className}`}>
+            {children}
+        </section>
+    );
+}
 
 export default async function HomePage() {
-    const todayStr = getTodayString();
+    const { year, month, day, hour } = getJstDateParts();
+    const todayStr = `${year}-${month}-${day}`;
     const homeRevalidateSeconds = 1800;
     const [specialPick, predictions, weeklyGradeRaces, topHits] = await Promise.all([
         getSpecialPick(todayStr, { revalidateSeconds: homeRevalidateSeconds }).catch(e => {
@@ -138,256 +147,333 @@ export default async function HomePage() {
         })
     ]);
 
-    const latestArticles = getLatestArticles(6);
+    const latestArticles = getLatestArticles(4);
+    const articleThumbs = pickArticleThumbs(latestArticles);
     const homeVenues = summarizeHomeVenues(predictions);
     const raceDaySummary = getHomeRaceDaySummary(homeVenues);
     const homeSpecialPicks = extractHomeSpecialPicks(predictions, specialPick);
     const gradeRaceTopHorses = buildGradeRaceTopHorseMap(predictions, weeklyGradeRaces);
+    const hasVenues = raceDaySummary.venueCount > 0;
+    const venueMeta = hasVenues ? `${describeHomeVenues(homeVenues)} · ${raceDaySummary.raceCount}レース` : '';
+    const dateLabel = formatRaceDateLabel(todayStr);
+
+    // 会場が多い日は名前を並べず「中央3場・地方4場」と数える
+    const heroTitle = hasVenues ? (
+        <>
+            {homeVenues.length <= 4 ? homeVenues.map((venue) => venue.venue_name).join('・') : describeHomeVenues(homeVenues)}
+            <br />
+            全{raceDaySummary.raceCount}レースの分析を公開中
+        </>
+    ) : (
+        <>
+            今日のレース分析を
+            <br />
+            無料で確認できます
+        </>
+    );
+
+    const glyphs: Record<string, ReactNode> = {};
+    for (const venue of homeVenues) {
+        glyphs[venue.venue_name] = <CourseGlyph venue={venue.venue_name} className="block h-auto w-full" />;
+    }
+
+    const categoryCounts = Object.entries(
+        getAllArticlesMeta().reduce<Record<string, number>>((counts, article) => {
+            if (article.category && article.category !== '未分類') {
+                counts[article.category] = (counts[article.category] ?? 0) + 1;
+            }
+            return counts;
+        }, {}),
+    )
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+    const searchExamples = Array.from(new Set([
+        ...sortWeeklyGradeRaces(weeklyGradeRaces).slice(0, 2).map((race) => race.race_name),
+        ...homeVenues.slice(0, 2).map((venue) => venue.venue_name),
+    ])).slice(0, 4);
 
     return (
-        <div className="home-page-scope site-shell-wide touch-pan-y space-y-1.5 sm:space-y-3 overscroll-y-auto">
+        <div className="home-page-scope site-shell-wide flex touch-pan-y flex-col gap-6 overscroll-y-auto pb-2 md:gap-8 md:pt-2">
             <FAQSchema faqs={homepageFaqItems} />
             <HomeStickyRaceCta raceDate={todayStr} raceCount={raceDaySummary.raceCount} />
-            {/* ── 1. 最近確認したレース ── */}
-            <RecentRaceReturn />
 
-            {/* ── 2. ヒーローとG1重賞 ── */}
-            <div className="hero-grid">
-                {/* ヒーローセクション */}
-                <section className="hero card rounded-xl flex flex-col justify-between">
-                    <div>
-                        <span className="update inline-flex items-center gap-1 text-[10px] sm:text-xs font-extrabold text-white/95">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                            {getFormattedUpdateDate()}
-                        </span>
-                        <h1 className="text-white font-extrabold tracking-tight leading-tight !text-[14px] sm:!text-[24px] mb-1">
-                            {raceDaySummary.venueCount > 0
-                                ? <>{getHomeVenueNamesString(homeVenues)} 全{raceDaySummary.raceCount}レース分析公開中</>
-                                : <>今日のレース分析を無料で確認</>
-                            }
-                        </h1>
-                        <p className="text-slate-300 text-[10.5px] sm:text-sm leading-tight max-w-xl">
-                            展開・対戦成績・枠順傾向をひと目で確認。中央・地方の分析データを無料で確認できます。
-                        </p>
-                        <RaceAnalysisValueGrid className="mt-1.5 sm:mt-4" />
-                    </div>
-                    <HomeRaceEntryLink
-                        href={`/races/${todayStr}`}
-                        raceDate={todayStr}
-                        entryMethod="hero_cta"
-                        data-home-primary-race-cta
-                        className="cta mt-1.5"
-                    >
-                        本日のレース分析を見る <span aria-hidden="true">→</span>
-                    </HomeRaceEntryLink>
-                </section>
-
-                {/* レースページと同じ近日重賞表示 */}
-                {weeklyGradeRaces.length > 0 ? (
-                    <WeeklyGradeRaces races={weeklyGradeRaces} topHorses={gradeRaceTopHorses} />
-                ) : (
-                    <div className="grade-focus flex flex-col justify-center items-center p-3 sm:p-6 text-center">
-                        <span className="badge badge-slate mb-1">重賞情報</span>
-                        <h2 className="text-slate-900 font-bold text-xs sm:text-lg">近日の重賞情報を確認中です</h2>
-                        <p className="text-slate-500 text-[10.5px] sm:text-xs mt-0.5">開催情報が反映されるまで少し時間がかかる場合があります。</p>
-                        <HomeRaceEntryLink
-                            href={`/races/${todayStr}`}
-                            raceDate={todayStr}
-                            entryMethod="grade_fallback"
-                            className="cta mt-2"
-                        >
-                            今日のレース分析を見る <span aria-hidden="true">→</span>
-                        </HomeRaceEntryLink>
-                    </div>
-                )}
+            {/* ── 1. 写真の入口と前回の続き（PCは日付の行の右に前回の続き） ── */}
+            <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-4">
+                <p className="hidden items-baseline gap-3 lg:order-1 lg:flex">
+                    <span className="font-display text-[22px] font-extrabold text-slate-900">{dateLabel}</span>
+                    <span className="text-[13.5px] font-bold text-slate-500">7:00ごろ更新{venueMeta ? ` · ${venueMeta}` : ''}</span>
+                </p>
+                <div className="lg:order-3 lg:col-span-2">
+                    <HomeHero
+                        todayStr={todayStr}
+                        title={heroTitle}
+                        tagLabel={hasVenues ? '本日の開催' : '毎朝7時ごろ更新'}
+                        updateLabel={`${dateLabel} 7:00ごろ更新`}
+                        photo={pickHeroPhoto(homeVenues, hour)}
+                        gradeRaces={weeklyGradeRaces}
+                        gradeTopHorses={gradeRaceTopHorses}
+                    />
+                </div>
+                <RecentRaceReturn className="mx-2.5 sm:mx-0 lg:order-2 lg:w-[380px]" />
             </div>
 
-            {/* ── 3. 本日の開催 ── */}
-            <section className="venue-section card rounded-xl">
-                <SectionHeader
-                    title={`本日の開催（${formatShortDate(todayStr)}）`}
-                    meta="毎日更新"
-                    className="mb-1.5 sm:mb-3"
-                    compact
-                />
+            <div className="flex flex-col gap-6 px-2.5 sm:px-0 md:gap-8">
+                {/* ── 2. 本日の開催 ── */}
+                <section aria-labelledby="home-venues-heading" className="flex flex-col gap-3 md:gap-4">
+                    <SectionHeader
+                        id="home-venues-heading"
+                        title={`本日の開催（${formatShortDate(todayStr)}）`}
+                        meta={venueMeta}
+                        action={hasVenues ? (
+                            <HomeRaceEntryLink
+                                href={`/races/${todayStr}`}
+                                raceDate={todayStr}
+                                entryMethod="board_link"
+                                className="inline-flex items-center gap-1 whitespace-nowrap text-[13.5px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600"
+                            >
+                                開催日のボードで見る
+                                <LineIcon name="chevR" size={16} className="block" />
+                            </HomeRaceEntryLink>
+                        ) : undefined}
+                        className="!mb-0"
+                        compact
+                    />
 
-                <HomeTodayVenues
-                    date={todayStr}
-                    initialVenues={homeVenues}
-                />
+                    <HomeTodayVenues date={todayStr} initialVenues={homeVenues} glyphs={glyphs} />
 
-                {!shouldSuppressAdsInDevelopment && (
-                    <div className="ad ad-wide mt-2 sm:mt-4">
-                        <AdUnit slot="8529703346" placement="inline" analyticsPlacement="home_after_today_races" />
-                    </div>
-                )}
-            </section>
-
-            {/* ── 4. メイングリッド (2カラム) ── */}
-            <div className="main-grid">
-                {/* 左スタック */}
-                <div className="space-y-1.5 sm:space-y-3">
-                    {/* 高配当的中ランキング */}
-                    <section className="hits card rounded-xl">
-                        <TopHitsDisplay initialHits={topHits} />
-                    </section>
-
-                    {/* 本日の分析注目馬 */}
-                    <section className="pick-section card rounded-xl">
-                        <SectionHeader title="本日の分析注目馬" className="mb-1.5 sm:mb-3" compact />
-                        <SpecialPickCard pick={specialPick} date={todayStr} precomputedPicks={homeSpecialPicks} />
-                    </section>
-
-                    {/* 注目馬を読み終えた位置の広告枠。
-                        右サイドバーの枠は lg 以上でしか表示されないため、
-                        モバイルでは本日の開催直後と記事フィードの2枠しかなかった。
-                        高配当ランキングと注目馬という長いセクションを挟んだ後に1枠だけ足す。 */}
                     {!shouldSuppressAdsInDevelopment && (
                         <div className="ad ad-wide">
-                            <AdUnit
-                                slot="1489598374"
-                                placement="inline"
-                                analyticsPlacement="home_after_today_pick"
-                            />
+                            <AdUnit slot="8529703346" placement="inline" analyticsPlacement="home_after_today_races" />
                         </div>
                     )}
+                </section>
 
-                    {/* 最新の分析記事 */}
-                    <section className="articles card rounded-xl">
-                        <SectionHeader
-                            title="最新の分析記事"
-                            meta=""
-                            action={(
-                                <Link prefetch={false} href="/articles" className="transition-colors duration-150 hover:text-blue-600">
-                                    すべて見る →
-                                </Link>
-                            )}
-                            className="mb-1.5 sm:mb-3"
-                            compact
-                        />
+                {/* ── 3. 2列（PCは右に広告・重賞・検索・カテゴリ） ── */}
+                <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_384px]">
+                    <div className="flex min-w-0 flex-col gap-6">
+                        {/* スマホ・タブレットの今週の重賞（PCはヒーローの右上に出す） */}
+                        {weeklyGradeRaces.length > 0 ? (
+                            <div className="lg:hidden">
+                                <WeeklyGradeRaces variant="feature" races={weeklyGradeRaces} topHorses={gradeRaceTopHorses} />
+                            </div>
+                        ) : (
+                            <Panel labelledBy="home-grade-fallback-heading">
+                                <SectionHeader id="home-grade-fallback-heading" title="今週の重賞" className="!mb-0" compact />
+                                <p className="mt-2 text-[13.5px] leading-relaxed text-slate-600">
+                                    重賞の開催情報を確認しています。反映まで少し時間がかかる場合があります。
+                                </p>
+                                <HomeRaceEntryLink
+                                    href={`/races/${todayStr}`}
+                                    raceDate={todayStr}
+                                    entryMethod="grade_fallback"
+                                    className="ui-btn ui-btn--secondary mt-3 w-full md:w-auto"
+                                >
+                                    今日のレース分析を確認する
+                                </HomeRaceEntryLink>
+                            </Panel>
+                        )}
 
-                        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 md:grid-cols-3">
-                            {latestArticles.slice(0, 3).map((article) => (
-                                <Link prefetch={false} href={`/articles/${article.slug}`} key={article.slug} className="group flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-1.5 transition-colors hover:border-blue-300 hover:bg-slate-50/60">
-                                    <div className="relative h-14 w-16 shrink-0 overflow-hidden rounded bg-slate-100">
-                                        <img
-                                            src={article.eyecatch || '/images/articles/data-analysis-eyecatch.png'}
-                                            alt={article.title}
-                                            loading="lazy"
-                                            decoding="async"
-                                            className="h-full w-full object-cover"
-                                        />
-                                    </div>
-                                    <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
-                                        <div>
-                                            <span className={`text-[8.5px] font-bold px-1 py-0.2 rounded inline-block ${getCategoryBadgeClass(article.category)}`}>
-                                                {article.category}
-                                            </span>
-                                            <h3 className="line-clamp-2 text-[11.5px] font-bold leading-tight text-slate-900 group-hover:text-primary mt-0.5">{article.title}</h3>
-                                        </div>
-                                        <div className="mt-1 flex items-center justify-between text-[9.5px] text-slate-400">
-                                            <span>{formatShortDate(article.date)}</span>
-                                            <span>約{Math.max(1, Math.ceil(article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, '').length / 500))}分</span>
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
-                            {/* 4枚目のネイティブ広告枠 */}
+                        {/* 本日の分析注目馬（注目馬が無い日は出さない） */}
+                        {homeSpecialPicks.favored && (
+                            <Panel labelledBy="home-pick-heading">
+                                <SectionHeader id="home-pick-heading" title="本日の分析注目馬" className="!mb-3" compact />
+                                <SpecialPickCard pick={specialPick} date={todayStr} precomputedPicks={homeSpecialPicks} />
+                            </Panel>
+                        )}
+
+                        {/* 注目馬を読み終えた位置の広告枠。
+                            右列の枠は lg 以上でしか表示されないため、スマホでは本日の開催の直後と記事一覧の2枠になる。
+                            長いセクションのあとに1枠だけ足す。 */}
+                        {!shouldSuppressAdsInDevelopment && (
+                            <div className="ad ad-wide">
+                                <AdUnit
+                                    slot="1489598374"
+                                    placement="inline"
+                                    analyticsPlacement="home_after_today_pick"
+                                />
+                            </div>
+                        )}
+
+                        {/* 高配当的中ランキング */}
+                        <Panel>
+                            <TopHitsDisplay initialHits={topHits} />
+                        </Panel>
+
+                        {/* 最新の分析記事 */}
+                        <Panel labelledBy="home-articles-heading">
+                            <SectionHeader
+                                id="home-articles-heading"
+                                title="最新の分析記事"
+                                action={(
+                                    <Link prefetch={false} href="/articles" className="inline-flex items-center gap-1 whitespace-nowrap text-[13.5px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600">
+                                        すべて見る
+                                        <LineIcon name="chevR" size={16} className="block" />
+                                    </Link>
+                                )}
+                                className="!mb-1 md:!mb-4"
+                                compact
+                            />
+                            <ul className="flex flex-col md:grid md:grid-cols-3 md:gap-5">
+                                {latestArticles.map((article, index) => {
+                                    const categoryStyle = getArticleCategoryStyle(article.category);
+                                    return (
+                                        <li key={article.slug} className={`border-b border-slate-200 last:border-b-0 md:border-b-0 ${index >= 3 ? 'md:hidden' : ''}`}>
+                                            <Link
+                                                prefetch={false}
+                                                href={`/articles/${article.slug}`}
+                                                className="group flex gap-3 py-3 md:flex-col md:gap-2.5 md:py-0"
+                                            >
+                                                <ArticleThumb
+                                                    thumb={articleThumbs[index]}
+                                                    sizes="(min-width: 1024px) 260px, (min-width: 768px) 30vw, 104px"
+                                                    className="h-[70px] w-[104px] shrink-0 rounded-[10px] md:aspect-[16/9] md:h-auto md:w-full md:rounded-xl"
+                                                />
+                                                <span className="flex min-w-0 flex-col gap-1.5 md:contents">
+                                                    <span className="line-clamp-2 text-[14px] font-bold leading-normal text-slate-900 group-hover:text-brand-700 md:order-2 md:text-[15px] md:leading-[1.55]">
+                                                        {article.title}
+                                                    </span>
+                                                    <span className="flex items-center gap-2 text-[12px] text-slate-500 md:order-1">
+                                                        <span className={`inline-flex items-center rounded-[5px] bg-white px-1.5 py-px text-[11px] font-bold ring-1 ring-inset ${categoryStyle.tagClass}`}>
+                                                            {article.category}
+                                                        </span>
+                                                        {formatShortDate(article.date)} · 約{estimateReadingMinutes(article.content)}分
+                                                    </span>
+                                                </span>
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
                             {!shouldSuppressAdsInDevelopment && (
-                                <div className="md:col-span-3">
+                                <div className="mt-3 md:mt-5">
                                     <NativeCardAd slot="1489598374" variant="article" className="h-full" analyticsPlacement="home_article_feed_1" />
                                 </div>
                             )}
-                        </div>
-                    </section>
+                        </Panel>
 
-                    {/* 過去データを調べる */}
-                    <section className="database-section card rounded-xl">
-                        <SectionHeader
-                            title="過去データを調べる"
-                            description="過去レースを競走馬、騎手、調教師、コースごとに再集計しています。"
-                            className="mb-1.5 sm:mb-2.5"
-                            compact
-                        />
-                        <div className="grid gap-1 sm:grid-cols-2 sm:gap-2">
-                            {[
-                                { href: '/compare', label: '競走馬のデータ比較', note: '複数の馬の成績・得意条件を比較できます。' },
-                                { href: '/my-data', label: 'マイデータ', note: '馬・人・コースのお気に入り登録と履歴を確認できます。' },
-                                { href: '/horses', label: '競走馬データ', note: '近走・得意条件・AI偏差値履歴を確認できます。' },
-                                { href: '/courses', label: 'コースデータ', note: '枠順・脚質の有利不利などを確認できます。' },
-                            ].map((item) => (
-                                <Link
-                                    key={item.href}
-                                    prefetch={false}
-                                    href={item.href}
-                                    className="flex min-h-[36px] flex-col justify-center rounded-lg border border-slate-200 bg-white px-2 py-1 transition-colors duration-150 hover:border-blue-300 hover:bg-slate-50/70"
-                                >
-                                    <span className="text-[11.5px] font-bold text-slate-900 sm:text-sm">{item.label}</span>
-                                    <span className="mt-0.5 hidden text-[10px] text-slate-500 line-clamp-1 sm:block">{item.note}</span>
-                                </Link>
-                            ))}
-                        </div>
-                        <Link
-                            href="/keiba-data"
-                            prefetch={false}
-                            className="mt-1.5 flex min-h-8 items-center justify-between rounded-lg border border-blue-200 bg-blue-50/60 px-2.5 py-1 text-[11.5px] font-bold text-blue-700 transition-colors duration-150 hover:bg-blue-100/70 sm:text-sm"
-                        >
-                            <span>競馬データベース・分析ハブを開く</span>
-                            <span aria-hidden="true" className="text-xs font-bold">→</span>
-                        </Link>
-                    </section>
-
-                    {/* よくある質問 */}
-                    <section className="faq card rounded-xl">
-                        <SectionHeader title="よくある質問" className="mb-1.5 sm:mb-2.5" compact />
-                        <div className="space-y-1 sm:space-y-1.5">
-                            {homepageFaqItems.map((item, index) => (
-                                <details key={index} className="rounded-lg border border-slate-200 bg-white p-1.5 transition-colors hover:border-slate-300">
-                                    <summary className="list-none cursor-pointer text-[11.5px] font-bold text-slate-900 flex justify-between items-center px-0.5">
-                                        <span>{item.question}</span>
-                                        <span className="text-[9px] text-slate-400 ml-1.5 shrink-0">▼</span>
-                                    </summary>
-                                    <div className="mt-1 px-0.5 text-[11px] leading-snug text-slate-600 border-t border-slate-100 pt-1">
-                                        {item.answer}
-                                    </div>
-                                </details>
-                            ))}
-                        </div>
-                    </section>
-
-                    <DisclaimerAlert />
-                </div>
-
-                {/* 右サイドバー */}
-                <aside className="hidden lg:grid gap-4">
-                    {!shouldSuppressAdsInDevelopment && (
-                        <div className="ad ad-large">
-                            <AdUnit slot="1489598374" placement="inline" analyticsPlacement="home_after_special_pick" />
-                        </div>
-                    )}
-                    <div className="card rounded-xl p-4 bg-white border border-slate-200">
-                        <h2 className="section-title">
-                            <span>関連コンテンツ</span>
-                        </h2>
-                        <div className="side-list">
-                            <Link prefetch={false} href={`/races/${todayStr}`} className="resume-card">
-                                <small>本日のデータ</small>
-                                <strong>全レース一覧</strong>
-                                <span className="resume-action mt-2">確認する</span>
+                        {/* 過去データを調べる */}
+                        <Panel labelledBy="home-data-heading">
+                            <SectionHeader
+                                id="home-data-heading"
+                                title="過去データを調べる"
+                                description="過去のレースを競走馬・騎手・調教師・コースごとに集計しています。"
+                                className="!mb-3 md:!mb-4"
+                                compact
+                            />
+                            <div className="grid gap-2.5 sm:grid-cols-2">
+                                {DATA_LINKS.map((item) => (
+                                    <Link
+                                        key={item.href}
+                                        prefetch={false}
+                                        href={item.href}
+                                        className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5 transition-colors duration-150 hover:border-brand-300"
+                                    >
+                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-slate-200 bg-white text-navy" aria-hidden="true">
+                                            <LineIcon name={item.icon} size={20} />
+                                        </span>
+                                        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                            <span className="text-[14.5px] font-bold text-slate-900">{item.label}</span>
+                                            <span className="text-[12.5px] text-slate-500">{item.note}</span>
+                                        </span>
+                                        <LineIcon name="chevR" size={18} className="block shrink-0 text-slate-500" />
+                                    </Link>
+                                ))}
+                            </div>
+                            <Link
+                                href="/keiba-data"
+                                prefetch={false}
+                                className="ui-btn ui-btn--ghost mt-2 w-full justify-between sm:w-auto"
+                            >
+                                競馬データベースのトップを開く
+                                <LineIcon name="chevR" size={18} className="block" />
                             </Link>
-                            <Link prefetch={false} href="/keiba-data" className="resume-card mt-2">
-                                <small>過去データ</small>
-                                <strong>競馬データベース</strong>
-                                <span className="resume-action mt-2">調べる</span>
-                            </Link>
-                            <Link href="/my-data" className="resume-card mt-2">
-                                <small>保存・履歴</small>
-                                <strong>マイデータ</strong>
-                                <span className="resume-action mt-2">開く</span>
-                            </Link>
-                        </div>
+                        </Panel>
+
+                        {/* よくある質問 */}
+                        <Panel labelledBy="home-faq-heading">
+                            <SectionHeader id="home-faq-heading" title="よくある質問" className="!mb-1" compact />
+                            <div className="flex flex-col">
+                                {homepageFaqItems.map((item, index) => (
+                                    <details key={item.question} open={index === 0} className="group border-b border-slate-200 last:border-b-0">
+                                        <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-3 text-[14.5px] font-bold text-slate-900 md:min-h-[56px] md:text-[15.5px] [&::-webkit-details-marker]:hidden">
+                                            <span className="font-display text-[18px] font-extrabold text-brand-600" aria-hidden="true">Q</span>
+                                            <span className="flex-1">{item.question}</span>
+                                            <LineIcon name="chevD" size={18} className="block shrink-0 text-slate-500 transition-transform duration-150 group-open:rotate-180" />
+                                        </summary>
+                                        <p className="mb-4 ml-[30px] text-[13.5px] leading-[1.85] text-slate-700 md:text-[14.5px]">
+                                            {item.answer}
+                                        </p>
+                                    </details>
+                                ))}
+                            </div>
+                        </Panel>
+
+                        <DisclaimerAlert />
                     </div>
-                </aside>
+
+                    {/* 右列（PCのみ） */}
+                    <aside className="hidden flex-col gap-6 lg:flex">
+                        {!shouldSuppressAdsInDevelopment && (
+                            <div className="ad ad-large">
+                                <AdUnit slot="1489598374" placement="inline" analyticsPlacement="home_after_special_pick" />
+                            </div>
+                        )}
+
+                        <WeeklyGradeRaces variant="list" races={weeklyGradeRaces} topHorses={gradeRaceTopHorses} />
+
+                        <section aria-labelledby="home-search-heading" className="rounded-xl border border-slate-200 bg-white p-5">
+                            <h2 id="home-search-heading" className="text-[17px] font-extrabold text-slate-900">データベースで調べる</h2>
+                            <form action="/search" method="get" role="search" className="mt-3.5">
+                                <label className="flex h-12 items-center gap-2.5 rounded-xl border-[1.5px] border-slate-300 bg-white px-3.5 transition-colors duration-150 focus-within:border-brand-600">
+                                    <LineIcon name="search" size={18} className="block shrink-0 text-slate-500" />
+                                    <span className="sr-only">サイト内を検索</span>
+                                    <input
+                                        type="search"
+                                        name="q"
+                                        placeholder="馬名・騎手・コースで検索"
+                                        className="h-full w-full min-w-0 border-0 bg-transparent p-0 text-[14px] text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-0"
+                                    />
+                                </label>
+                            </form>
+                            {searchExamples.length > 0 && (
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                    {searchExamples.map((example) => (
+                                        <Link
+                                            key={example}
+                                            prefetch={false}
+                                            href={`/search?q=${encodeURIComponent(example)}`}
+                                            className="inline-flex h-8 items-center rounded-full border border-slate-300 bg-white px-3 text-[12px] font-bold text-slate-700 transition-colors duration-150 hover:border-brand-300"
+                                        >
+                                            {example}
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+
+                        {categoryCounts.length > 0 && (
+                            <section aria-labelledby="home-categories-heading" className="rounded-xl border border-slate-200 bg-white p-5">
+                                <h2 id="home-categories-heading" className="text-[17px] font-extrabold text-slate-900">記事のカテゴリ</h2>
+                                <ul className="mt-2.5">
+                                    {categoryCounts.map(([category, count]) => (
+                                        <li key={category}>
+                                            <Link
+                                                prefetch={false}
+                                                href={`/articles/category/${encodeURIComponent(category)}`}
+                                                className="flex min-h-[44px] items-center gap-2.5 border-b border-slate-200 text-[14px] font-bold text-slate-900 transition-colors duration-150 hover:text-brand-700"
+                                            >
+                                                <span className={`h-2.5 w-2.5 rounded-[3px] ${getArticleCategoryStyle(category).fillClass}`} aria-hidden="true" />
+                                                <span className="flex-1">{category}</span>
+                                                <span className="font-num font-semibold text-slate-500">{count}</span>
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </section>
+                        )}
+                    </aside>
+                </div>
             </div>
         </div>
     );

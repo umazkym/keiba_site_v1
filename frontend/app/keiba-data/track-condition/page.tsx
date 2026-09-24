@@ -59,16 +59,16 @@ export default function TrackConditionPage() {
         <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
           <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">馬場の読み方</p>
-          <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-black leading-tight text-slate-950 sm:text-4xl">
             馬場状態とは？良・稍重・重・不良の違い
           </h1>
-          <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
+          <p className="mt-4 max-w-3xl text-sm leading-[1.8] text-slate-700 sm:leading-8 sm:text-base">
             馬場状態が変われば、当然ながら「走れる馬」も変わります。良馬場の能力序列をそのまま信じるのか、それとも道悪適性を重く見るのか。馬場の特性を理解することで、人気馬の信頼度や人気薄の見直し材料を整理しやすくなります。
           </p>
         </header>
 
         <section className="mt-8">
-          <h2 className="text-2xl font-black text-slate-950">4つの馬場状態の見方</h2>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-950">4つの馬場状態の見方</h2>
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
             {conditionRows.map((row) => (
               <div key={row.name} className="grid gap-2 border-b border-slate-100 p-4 last:border-b-0 sm:grid-cols-[80px_1fr_1.6fr]">
@@ -89,7 +89,7 @@ export default function TrackConditionPage() {
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-            <div className="mb-3 h-1.5 w-12 rounded-full bg-blue-600" />
+            <div className="mb-3 h-1.5 w-12 rounded-full bg-brand-600" />
             <h3 className="text-lg font-black text-slate-950">脚質を見る</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               道悪で前が粘るか差しが届くかは、含水率やコース形態で変わります。同日の他レースで前後どちらが有利かを掴んでから対象レースに臨むのが定石です。
@@ -105,13 +105,13 @@ export default function TrackConditionPage() {
         </section>
 
         <section className="mt-10">
-          <h2 className="text-2xl font-black text-slate-950">予想に使う順番</h2>
-          <ol className="mt-4 space-y-3 text-sm leading-8 text-slate-600">
+          <h2 className="text-xl sm:text-2xl font-black text-slate-950">予想に使う順番</h2>
+          <ol className="mt-4 space-y-3 text-sm leading-[1.8] text-slate-700 sm:leading-8">
             <li className="rounded-xl border-l-4 border-accent bg-white p-4 shadow-soft">
               <strong className="text-slate-950">1. 能力順を土台にする。</strong>
               AI偏差値と近走の着差・上がりから基本の序列を作ります。
             </li>
-            <li className="rounded-xl border-l-4 border-blue-600 bg-white p-4 shadow-soft">
+            <li className="rounded-xl border-l-4 border-brand-600 bg-white p-4 shadow-soft">
               <strong className="text-slate-950">2. 馬場で序列を動かす。</strong>
               道悪経験がない人気馬を1段下げ、重馬場巧者を相手候補に加える、といった補正を入れます。
             </li>

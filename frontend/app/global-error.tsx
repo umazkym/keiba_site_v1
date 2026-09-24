@@ -16,7 +16,11 @@ export default function GlobalError({
                     alignItems: 'center',
                     justifyContent: 'center',
                     minHeight: '100vh',
-                    fontFamily: 'system-ui, sans-serif'
+                    padding: '0 16px',
+                    textAlign: 'center',
+                    color: '#151A3D',
+                    backgroundColor: '#F3F5FA',
+                    fontFamily: '"Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo", system-ui, sans-serif'
                 }}>
                     <h2>重大なシステムエラーが発生しました</h2>
                     <p>申し訳ありません。現在システムを復旧中です。</p>
@@ -24,11 +28,14 @@ export default function GlobalError({
                         onClick={() => reset()}
                         style={{
                             marginTop: '20px',
-                            padding: '10px 20px',
-                            backgroundColor: '#0A1128',
+                            minHeight: '44px',
+                            padding: '0 20px',
+                            backgroundColor: '#4C4EFF',
                             color: 'white',
                             border: 'none',
-                            borderRadius: '8px',
+                            borderRadius: '11px',
+                            fontWeight: 700,
+                            fontSize: '15px',
                             cursor: 'pointer'
                         }}
                     >

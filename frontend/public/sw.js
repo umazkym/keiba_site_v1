@@ -1,9 +1,10 @@
-const CACHE_NAME = 'uma-free-data-v1';
+// ロゴと配色を差し替えたため v2 に上げ、古いロゴ画像のキャッシュを捨てる
+const CACHE_NAME = 'uma-free-data-v2';
 const OFFLINE_URLS = [
   '/',
   '/keiba-data',
   '/manifest.json',
-  '/new-logo.webp',
+  '/brand/icon-192.png',
 ];
 
 self.addEventListener('install', (event) => {

@@ -79,7 +79,7 @@ export function PricingInterestSurvey({
                                 surface,
                             });
                         }}
-                        className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm font-bold text-slate-800 transition-colors duration-150 hover:border-blue-500 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm font-bold text-slate-800 transition-colors duration-150 hover:border-brand-500 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                     >
                         {option.label}
                     </button>

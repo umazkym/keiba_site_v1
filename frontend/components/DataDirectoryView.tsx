@@ -76,7 +76,7 @@ export function DataDirectoryView({
             <DataDirectoryNav current={entityType} />
 
             <header className="mt-3 rounded-xl border border-slate-800 bg-slate-900 p-3.5 text-white sm:p-5">
-                <p className="text-[10px] font-bold tracking-wider text-blue-400">KEIBA DATABASE</p>
+                <p className="text-[10px] font-bold tracking-wider text-brand-400">KEIBA DATABASE</p>
                 <h1 className="mt-0.5 text-[15px] font-black leading-tight !text-white sm:text-3xl">
                     {content.title}
                 </h1>
@@ -133,7 +133,7 @@ export function DataDirectoryView({
                                         key={`${item.entity_type}-${item.id}`}
                                         prefetch={false}
                                         href={item.url}
-                                        className={`grid min-h-[46px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 transition-colors duration-150 hover:bg-blue-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 sm:min-h-14 sm:gap-3 ${desktopColumns} ${index % 2 === 1 ? 'bg-slate-50/50' : ''}`}
+                                        className={`grid min-h-[46px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 transition-colors duration-150 hover:bg-brand-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 sm:min-h-14 sm:gap-3 ${desktopColumns} ${index % 2 === 1 ? 'bg-slate-50/50' : ''}`}
                                     >
                                         <span className="min-w-0">
                                             <span className="block truncate text-[13.5px] font-black text-slate-950">{display.name}</span>

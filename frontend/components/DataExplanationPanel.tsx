@@ -41,7 +41,7 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
 
     const advancedExplanations: ExplanationItem[] = [
         {
-            title: 'このコースの枠順傾向',
+            title: '馬番の傾向',
             description: 'そのコース・距離における枠番別の有利不利を独自スコア化したものです。',
             example: 'プラススコアは外枠有利、マイナススコアは内枠有利の傾向を示します。',
             importance: 'medium',
@@ -56,9 +56,9 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
 
     const renderExplanationItem = (item: ExplanationItem) => (
         <div key={item.title} className="rounded-lg border border-slate-200 bg-white p-2 sm:p-3">
-            <h4 className="mb-0.5 text-xs sm:text-sm font-bold text-gray-800">{item.title}</h4>
-            <p className="mb-1.5 text-[11px] leading-relaxed text-gray-700 sm:text-sm">{item.description}</p>
-            <div className="rounded border-l-4 border-blue-400 bg-blue-50 px-2 py-1.5 sm:px-3 sm:py-2 text-[11px] sm:text-xs leading-relaxed text-gray-700">
+            <h4 className="mb-0.5 text-xs sm:text-sm font-bold text-slate-800">{item.title}</h4>
+            <p className="mb-1.5 text-[11px] leading-relaxed text-slate-700 sm:text-sm">{item.description}</p>
+            <div className="rounded border-l-4 border-brand-400 bg-brand-50 px-2 py-1.5 sm:px-3 sm:py-2 text-[11px] sm:text-xs leading-relaxed text-slate-700">
                 {item.example}
             </div>
         </div>
@@ -69,10 +69,10 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
             {/* アコーディオンのヘッダー */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-between p-2 sm:p-4 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between p-2 sm:p-4 hover:bg-slate-50 transition-colors"
             >
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 text-left">
-                    <h4 className="font-bold text-gray-800 text-xs sm:text-base">AI偏差値・枠順傾向の見方</h4>
+                    <h4 className="font-bold text-slate-800 text-xs sm:text-base">AI偏差値・枠順傾向の見方</h4>
                 </div>
                 <span className="text-xs font-semibold text-primary sm:text-sm">
                     {isExpanded ? '詳細を閉じる' : '詳細を見る'}
@@ -81,13 +81,13 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
 
             {/* アコーディオンのコンテンツ */}
             {isExpanded && (
-                <div className="border-t border-gray-200 bg-slate-50 p-2 sm:p-4">
+                <div className="border-t border-slate-200 bg-slate-50 p-2 sm:p-4">
                     {/* 基本指標セクション */}
                     <div className="mb-3 sm:mb-4">
-                        <h3 className="mb-1.5 sm:mb-2 border-b-2 border-primary pb-1.5 sm:pb-2 text-sm font-bold text-gray-800">
+                        <h3 className="mb-1.5 sm:mb-2 border-b-2 border-primary pb-1.5 sm:pb-2 text-sm font-bold text-slate-800">
                             基本指標
                         </h3>
-                        <p className="mb-2 sm:mb-3 text-xs text-gray-600 sm:text-sm">
+                        <p className="mb-2 sm:mb-3 text-xs text-slate-600 sm:text-sm">
                             レース分析でまず確認したい基本指標です。
                         </p>
                         <div className="grid gap-2 sm:gap-3 lg:grid-cols-2">
@@ -98,10 +98,10 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
                     {/* 高度な指標セクション */}
                     {showAdvanced && (
                         <div>
-                            <h3 className="mb-2 border-b-2 border-gray-400 pb-2 text-sm font-bold text-gray-800">
+                            <h3 className="mb-2 border-b-2 border-slate-400 pb-2 text-sm font-bold text-slate-800">
                                 その他の指標
                             </h3>
-                            <p className="mb-3 text-xs text-gray-600 sm:text-sm">
+                            <p className="mb-3 text-xs text-slate-600 sm:text-sm">
                                 多角的な分析に用いる補助的な指標です。
                             </p>
                             <div className="grid gap-2 sm:gap-3 lg:grid-cols-2">
@@ -112,7 +112,7 @@ export const DataExplanationPanel: React.FC<DataExplanationPanelProps> = ({
 
                     {/* 免責事項 */}
                     <div className="mt-3 sm:mt-4 rounded-lg border border-amber-100 bg-amber-50 px-2 py-2 sm:px-3 sm:py-3">
-                        <p className="text-[11px] leading-relaxed text-gray-700 sm:text-sm">
+                        <p className="text-[11px] leading-relaxed text-slate-700 sm:text-sm">
                             <strong>ご注意:</strong> これらの指標は過去データに基づく統計的な分析結果です。当日の馬の状態や天候、騎手の判断など、数値化できない要素も多数あります。予想の参考としてご活用ください。
                         </p>
                     </div>

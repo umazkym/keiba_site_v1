@@ -1,22 +1,11 @@
 'use client';
 
 import { HorsePrediction } from '@/lib/types';
+import { getWakuClasses } from '@/lib/waku';
 
-const getWakuColor = (waku: number | null): string => {
-    switch (waku) {
-        case 1: return 'border-slate-300 bg-white text-slate-900';
-        case 2: return 'border-slate-950 bg-slate-950 text-white';
-        case 3: return 'border-red-600 bg-red-600 text-white';
-        case 4: return 'border-blue-600 bg-blue-600 text-white';
-        case 5: return 'border-yellow-400 bg-yellow-400 text-slate-950';
-        case 6: return 'border-green-600 bg-green-600 text-white';
-        case 7: return 'border-orange-600 bg-orange-600 text-white';
-        case 8: return 'border-pink-500 bg-pink-500 text-white';
-        default: return 'border-slate-300 bg-slate-100 text-slate-800';
-    }
-};
+const getWakuColor = (waku: number | null): string => getWakuClasses(waku);
 
-const HorseMarker = ({ horse, position, top, compact = false }: { horse: HorsePrediction; position: number; top: number; compact?: boolean }) => {
+const HorseMarker = ({ horse, position, top, compact = false, isAiTop = false }: { horse: HorsePrediction; position: number; top: number; compact?: boolean; isAiTop?: boolean }) => {
     const scoreLabel = horse.start_1c_indicator?.toFixed(1) || '算出なし';
     return (
         <span
@@ -30,7 +19,7 @@ const HorseMarker = ({ horse, position, top, compact = false }: { horse: HorsePr
                 zIndex: 10 + horse.horse_number,
             }}
         >
-            <span className={`flex h-6 w-6 items-center justify-center rounded-full border text-xs font-bold shadow-sm ${getWakuColor(horse.waku_number)}`}>
+            <span className={`flex h-6 w-6 items-center justify-center rounded-full border-[1.5px] font-num text-[13px] font-bold ${isAiTop ? 'ring-[2.5px] ring-ai ring-offset-1 ring-offset-turf-soft' : ''} ${getWakuColor(horse.waku_number)}`}>
                 {horse.horse_number}
             </span>
             {!compact && (
@@ -49,6 +38,7 @@ const TrackView = ({
     height,
     laneCount,
     compact = false,
+    aiTopNumbers,
 }: {
     horses: HorsePrediction[];
     minScore: number;
@@ -56,6 +46,7 @@ const TrackView = ({
     height: number;
     laneCount: number;
     compact?: boolean;
+    aiTopNumbers: Set<number>;
 }) => {
     const topPadding = compact ? 18 : 24;
     const bottomPadding = compact ? 18 : 30;
@@ -66,10 +57,8 @@ const TrackView = ({
 
     return (
         <div>
-            <div className="relative w-full overflow-hidden rounded-lg bg-slate-50" style={{ height: `${height}px` }}>
-                <div className="absolute inset-y-0 left-0 w-1/3 bg-blue-100/40" />
-                <div className="absolute inset-y-0 left-1/3 w-1/3 border-x border-dashed border-slate-300 bg-slate-100/40" />
-                <div className="absolute inset-y-0 right-0 w-1/3 bg-amber-100/40" />
+            <div className="relative w-full overflow-hidden rounded-xl bg-turf-soft" style={{ height: `${height}px` }}>
+                <div className="absolute inset-y-0 left-1/3 w-1/3 border-x border-dashed border-turf/30" />
                 {horses.map((horse, index) => {
                     const position = scoreRange > 0.01
                         ? 6 + (((horse.start_1c_indicator as number) - minScore) / scoreRange) * 88
@@ -82,24 +71,33 @@ const TrackView = ({
                             position={position}
                             top={topPadding + laneIndex * markerSpacing}
                             compact={compact}
+                            isAiTop={aiTopNumbers.has(horse.horse_number)}
                         />
                     );
                 })}
             </div>
-            <div className="mt-1 flex justify-between px-1 text-[10px] font-semibold text-slate-600 sm:px-2 sm:text-xs">
+            <div className="mt-1.5 flex justify-between px-1 text-[12px] font-bold text-turf-deep sm:px-2 sm:text-[13px]">
                 <span>後方・差し</span>
                 <span>中団</span>
-                <span>先行・逃げ</span>
+                <span className="inline-flex items-center gap-1">先行・逃げ<span aria-hidden="true">→</span></span>
             </div>
         </div>
     );
 };
 
 export const StartPositionChart = ({ predictions }: { predictions: HorsePrediction[] }) => {
+    // AI偏差値の上位3頭に琥珀の輪を付ける
+    const aiTopNumbers = new Set(
+        [...(predictions ?? [])]
+            .filter((prediction) => prediction.deviation_score != null)
+            .sort((a, b) => (b.deviation_score as number) - (a.deviation_score as number))
+            .slice(0, 3)
+            .map((prediction) => prediction.horse_number),
+    );
     const validPredictions = predictions?.filter(prediction => prediction.start_1c_indicator != null) ?? [];
     if (validPredictions.length === 0) {
         return (
-            <div className="my-2 rounded-lg border bg-slate-50 p-3 text-center text-sm text-slate-500">
+            <div className="my-2 rounded-lg bg-slate-100 p-3 text-center text-sm text-slate-600">
                 このレースの展開/脚質予測はありません。
             </div>
         );
@@ -120,6 +118,7 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
                     height={128}
                     laneCount={8}
                     compact
+                    aiTopNumbers={aiTopNumbers}
                 />
             </div>
 
@@ -130,6 +129,7 @@ export const StartPositionChart = ({ predictions }: { predictions: HorsePredicti
                     scoreRange={scoreRange}
                     height={184}
                     laneCount={sortedByNumber.length}
+                    aiTopNumbers={aiTopNumbers}
                 />
             </div>
         </div>

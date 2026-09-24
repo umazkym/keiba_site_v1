@@ -1,133 +1,108 @@
 import Link from 'next/link';
+import { BrandLockup } from '@/components/BrandLogo';
 import { getConfiguredSocialLinks } from '@/lib/social-links';
 
-export const Footer = () => {
+type FooterProps = {
+    todayString: string;
+};
+
+type FooterLink = {
+    href: string;
+    label: string;
+    prefetch?: false;
+};
+
+export const Footer = ({ todayString }: FooterProps) => {
     const socialLinks = getConfiguredSocialLinks();
+    const groups: Array<{ title: string; links: FooterLink[] }> = [
+        {
+            title: '分析',
+            links: [
+                { href: `/races/${todayString}`, label: '本日のレース分析', prefetch: false },
+                { href: '/results/accuracy', label: 'AI予想の成績', prefetch: false },
+                { href: '/about-ai', label: 'AI予測モデルについて' },
+                { href: '/faq', label: 'よくある質問' },
+            ],
+        },
+        {
+            title: 'データと記事',
+            links: [
+                { href: '/keiba-data', label: '競馬データベース', prefetch: false },
+                { href: '/horses', label: '競走馬データ', prefetch: false },
+                { href: '/courses', label: 'コースデータ', prefetch: false },
+                { href: '/articles', label: 'データ分析記事', prefetch: false },
+                { href: '/my-data', label: 'マイデータ' },
+            ],
+        },
+        {
+            title: 'このサイトについて',
+            links: [
+                { href: '/about', label: '運営者情報' },
+                { href: '/advertising', label: '広告について' },
+                { href: '/contact', label: 'お問い合わせ' },
+                { href: '/privacy', label: 'プライバシーポリシー' },
+                { href: '/terms', label: '利用規約' },
+                { href: '/sitemap', label: 'サイトマップ' },
+            ],
+        },
+    ];
 
     return (
-        <footer className="bg-primary text-slate-300 pt-2 pb-12 sm:pt-16 sm:pb-16 relative z-0">
-            <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-6">
-                {/* メインフッターコンテンツ（3カラム） */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-12 mb-2 sm:mb-12">
-                    {/* サイト情報 */}
-                    <div>
-                        <h3 className="font-bold text-white text-[13px] sm:text-xl mb-0.5 sm:mb-4 tracking-tight">UMA-FREE</h3>
-                        <p className="text-[9.5px] sm:text-sm text-slate-400 leading-tight sm:leading-[1.8] max-w-sm">
-                            豊富な過去レースデータをAIで分析。中央・地方競馬の全レースの偏差値・対戦成績・枠順傾向を完全無料で提供する競馬データ分析サイトです。
+        <footer className="relative z-0 mt-6 bg-night pb-12 pt-8 text-night-sub sm:mt-12 sm:pb-16 sm:pt-12">
+            <div className="site-shell-wide px-4 sm:px-6">
+                <div className="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,1fr))] lg:gap-10">
+                    <div className="max-w-sm">
+                        <BrandLockup size={36} tone="inverse" tagline="完全無料のAI競馬分析" />
+                        <p className="mt-4 text-[13px] leading-relaxed text-night-sub sm:text-sm sm:leading-7">
+                            過去のレースデータをもとに、中央・地方の全レースのAI偏差値・対戦成績・展開・枠順傾向を毎日公開しています。
                         </p>
                     </div>
 
-                    {/* コンテンツリンク */}
-                    <div>
-                        <h3 className="font-bold text-white text-[12.5px] sm:text-base mb-1 sm:mb-4">コンテンツ</h3>
-                        <ul className="grid grid-cols-2 gap-x-2 gap-y-0.5 sm:block sm:space-y-3">
-                            <li>
-                                <Link prefetch={false} href="/keiba-data" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    競馬データベース
-                                </Link>
-                            </li>
-                            <li>
-                                <Link prefetch={false} href="/horses" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    競走馬データ
-                                </Link>
-                            </li>
-                            <li>
-                                <Link prefetch={false} href="/courses" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    コースデータ
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/my-data" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    マイデータ
-                                </Link>
-                            </li>
-                            <li>
-                                <Link prefetch={false} href="/articles" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    データ分析記事
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/faq" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    よくある質問
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/about" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    このサイトについて
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/about-ai" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    AI予測モデルについて
-                                </Link>
-                            </li>
-                            {socialLinks.map((socialLink) => (
-                                <li key={socialLink.platform}>
-                                    <Link
-                                        href={socialLink.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1 py-0.5"
-                                        aria-label={`${socialLink.label}アカウント`}
-                                    >
-                                        {socialLink.label}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    {/* ポリシーリンク */}
-                    <div>
-                        <h3 className="font-bold text-white text-[12.5px] sm:text-base mb-1 sm:mb-4">サイトポリシー</h3>
-                        <ul className="grid grid-cols-2 gap-x-2 gap-y-0.5 sm:block sm:space-y-3">
-                            <li>
-                                <Link href="/advertising" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    広告について
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/contact" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    お問い合わせ
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/privacy" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    プライバシーポリシー
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/terms" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    利用規約
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/sitemap" className="text-[11px] sm:text-sm text-slate-400 hover:text-white transition-colors py-0.5 block sm:inline">
-                                    サイトマップ
-                                </Link>
-                            </li>
-                        </ul>
-                    </div>
+                    {groups.map((group) => (
+                        <nav key={group.title} aria-label={group.title}>
+                            <p className="text-[13px] font-bold tracking-[0.06em] text-white">{group.title}</p>
+                            <ul className="mt-2 grid grid-cols-2 gap-x-4 lg:mt-3 lg:grid-cols-1">
+                                {group.links.map((link) => (
+                                    <li key={link.href}>
+                                        <Link
+                                            href={link.href}
+                                            prefetch={link.prefetch}
+                                            className="flex min-h-10 items-center text-sm text-night-sub transition-colors duration-150 hover:text-white lg:min-h-9"
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </nav>
+                    ))}
                 </div>
 
-                {/* 区切り線 */}
-                <div className="border-t border-slate-800 pt-2 sm:pt-8 mt-1.5 sm:mt-4">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-1 sm:gap-4">
-                        <p className="text-[10px] sm:text-sm text-slate-500">
-                            &copy; {new Date().getFullYear()} UMA-FREE. All Rights Reserved.
-                        </p>
-                        <p className="text-[9px] sm:text-xs text-slate-500 max-w-md text-center sm:text-right leading-tight">
-                            本サイトは統計情報の提供を目的としており、投票の推奨ではありません。
-                        </p>
+                <div className="mt-8 flex flex-col gap-3 border-t border-white/[0.12] pt-5 text-xs leading-relaxed text-night-faint sm:mt-10 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+                    <p className="text-night-faint">本サイトは統計情報の提供を目的としており、投票の推奨ではありません。馬券の購入は20歳になってから。</p>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                        {socialLinks.map((socialLink) => (
+                            <a
+                                key={socialLink.platform}
+                                href={socialLink.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex min-h-10 items-center text-night-sub transition-colors duration-150 hover:text-white"
+                                aria-label={`${socialLink.label}アカウント`}
+                            >
+                                {socialLink.label.replace(/^公式/, '')}
+                            </a>
+                        ))}
+                        <span>&copy; {new Date().getFullYear()} UMA-FREE</span>
                     </div>
                 </div>
             </div>
 
             {/* Safari 26色同化防止シールド: ビューポート下端にサイト背景色の物理要素を伸ばし
-                Safariがツールバー背景色としてフッターの暗色(bg-primary)を自動採用するのを防ぐ */}
+                Safariがツールバー背景色としてフッターの暗色(bg-night)を自動採用するのを防ぐ */}
             <div
-                className="absolute bottom-0 left-0 right-0 h-[env(safe-area-inset-bottom,12px)] translate-y-full pointer-events-none"
-                style={{ backgroundColor: '#f8fafc' }}
+                className="pointer-events-none absolute bottom-0 left-0 right-0 h-[env(safe-area-inset-bottom,12px)] translate-y-full"
+                style={{ backgroundColor: '#F3F5FA' }}
                 aria-hidden="true"
             />
         </footer>

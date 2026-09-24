@@ -2,16 +2,30 @@ import type {
     RaceDayPrediction,
     RacePrediction,
     SpecialPick,
+    VenueRaces,
     WeeklyGradeRace,
 } from '@/lib/types';
+import { getSurfaceKey, resolveWaku } from '@/lib/race-display';
 
 export type HomeRaceType = 'jra' | 'nar';
+
+export type HomeVenueMainRace = {
+    race_number: number;
+    race_name: string;
+    grade: string | null;
+    // 重賞・中央の11R は「メイン」、それ以外は「最終レース」（地方はメインの判定材料が無いため）
+    label: 'メイン' | '最終レース';
+    top: { number: number; waku: number | null; name: string; score: number } | null;
+};
 
 export type HomeVenueSummary = {
     venue_name: string;
     race_count: number;
     first_race_number: number | null;
     race_type: HomeRaceType;
+    // 「芝・ダート」「ダート」など
+    surfaces: string;
+    main: HomeVenueMainRace | null;
 };
 
 export type HomeSpecialPickSet = {
@@ -30,10 +44,15 @@ export type GradeRaceTopHorseMap = Record<string, GradeRaceTopHorse>;
 type HomeHorseCandidate = {
     horse_id: string;
     horse_name: string;
+    horse_number: number;
+    waku_number: number | null;
     venue_name: string;
     race_number: number;
     race_name: string;
     race_id: string;
+    course_type: string | null;
+    distance: number | null;
+    runners: number;
     deviation_score: number;
     mark: string;
     is_nar: boolean;
@@ -47,23 +66,45 @@ export function getGradeRaceSummaryKey(
     return `${raceDate}__${venueName}__${raceNumber}`;
 }
 
-export function summarizeHomeVenues(predictions: RaceDayPrediction | null): HomeVenueSummary[] {
-    const jraVenues = predictions?.jra ?? [];
-    const narVenues = predictions?.nar ?? [];
+const summarizeSurfaces = (venue: VenueRaces): string => {
+    const keys = new Set(venue.races.map((race) => getSurfaceKey(race.course_type)).filter(Boolean));
+    const labels = [keys.has('turf') ? '芝' : null, keys.has('dirt') ? 'ダート' : null, keys.has('jump') ? '障害' : null].filter(Boolean);
+    return labels.join('・');
+};
 
+const pickMainRace = (venue: VenueRaces, raceType: HomeRaceType): HomeVenueMainRace | null => {
+    const races = [...venue.races].sort((a, b) => a.race_number - b.race_number);
+    if (races.length === 0) return null;
+    const graded = races.filter((race) => race.grade);
+    const jraMain = raceType === 'jra' ? races.find((race) => race.race_number === 11) : undefined;
+    const main = graded[graded.length - 1] ?? jraMain ?? races[races.length - 1];
+    const top = main.predictions
+        .filter((p) => p.deviation_score != null)
+        .sort((a, b) => (b.deviation_score as number) - (a.deviation_score as number))[0];
+    return {
+        race_number: main.race_number,
+        race_name: main.race_name,
+        grade: main.grade ?? null,
+        label: graded.length > 0 || jraMain ? 'メイン' : '最終レース',
+        top: top
+            ? { number: top.horse_number, waku: resolveWaku(top, main.predictions.length), name: top.horse_name, score: top.deviation_score as number }
+            : null,
+    };
+};
+
+const summarizeVenue = (venue: VenueRaces, raceType: HomeRaceType): HomeVenueSummary => ({
+    venue_name: venue.venue_name,
+    race_count: venue.races.length,
+    first_race_number: venue.races[0]?.race_number ?? null,
+    race_type: raceType,
+    surfaces: summarizeSurfaces(venue),
+    main: pickMainRace(venue, raceType),
+});
+
+export function summarizeHomeVenues(predictions: RaceDayPrediction | null): HomeVenueSummary[] {
     return [
-        ...jraVenues.map((venue) => ({
-            venue_name: venue.venue_name,
-            race_count: venue.races.length,
-            first_race_number: venue.races[0]?.race_number ?? null,
-            race_type: 'jra' as const,
-        })),
-        ...narVenues.map((venue) => ({
-            venue_name: venue.venue_name,
-            race_count: venue.races.length,
-            first_race_number: venue.races[0]?.race_number ?? null,
-            race_type: 'nar' as const,
-        })),
+        ...(predictions?.jra ?? []).map((venue) => summarizeVenue(venue, 'jra')),
+        ...(predictions?.nar ?? []).map((venue) => summarizeVenue(venue, 'nar')),
     ];
 }
 
@@ -77,6 +118,13 @@ export function getHomeRaceDaySummary(venues: HomeVenueSummary[]) {
 export function getHomeVenueNamesString(venues: HomeVenueSummary[]): string {
     if (venues.length === 0) return '';
     return `本日開催の${venues.map((venue) => venue.venue_name).join('・')}`;
+}
+
+// 「中央2場・地方2場」のような開催の数え方
+export function describeHomeVenues(venues: HomeVenueSummary[]): string {
+    const jra = venues.filter((venue) => venue.race_type === 'jra').length;
+    const nar = venues.filter((venue) => venue.race_type === 'nar').length;
+    return [jra ? `中央${jra}場` : null, nar ? `地方${nar}場` : null].filter(Boolean).join('・');
 }
 
 function collectHomeHorseCandidates(predictions: RaceDayPrediction | null): HomeHorseCandidate[] {
@@ -94,10 +142,15 @@ function collectHomeHorseCandidates(predictions: RaceDayPrediction | null): Home
                 horses.push({
                     horse_id: prediction.horse_id,
                     horse_name: prediction.horse_name,
+                    horse_number: prediction.horse_number,
+                    waku_number: resolveWaku(prediction, race.predictions.length),
                     venue_name: venue.venue_name,
                     race_number: race.race_number,
                     race_name: race.race_name,
                     race_id: race.id,
+                    course_type: race.course_type,
+                    distance: race.distance,
+                    runners: race.total_horses || race.predictions.length,
                     deviation_score: prediction.deviation_score,
                     mark: prediction.mark,
                     is_nar: isNar,
@@ -126,6 +179,11 @@ function toSpecialPick(candidate: HomeHorseCandidate, commentary: string): Speci
         race_number: candidate.race_number,
         deviation_score: candidate.deviation_score,
         commentary,
+        horse_number: candidate.horse_number,
+        waku_number: candidate.waku_number,
+        course_type: candidate.course_type,
+        distance: candidate.distance,
+        runners: candidate.runners,
     };
 }
 
@@ -156,7 +214,7 @@ export function extractHomeSpecialPicks(
 
     const favored = toSpecialPick(
         bestFavored,
-        `AI偏差値 ${bestFavored.deviation_score.toFixed(1)}。本日の全開催を通じて上位に位置する評価です。能力面の条件は整っており、当日の馬場状態や展開面も合わせて確認したい一頭です。`,
+        `本日の全レースで上位のAI偏差値（${bestFavored.deviation_score.toFixed(1)}）です。展開予測と馬番の傾向もあわせて確認できます。`,
     );
 
     const narCandidates = allHorses.filter((horse) => horse.is_nar && horse.mark === '◎');
@@ -165,7 +223,7 @@ export function extractHomeSpecialPicks(
     const nar = bestNar
         ? toSpecialPick(
             bestNar,
-            `AI偏差値 ${bestNar.deviation_score.toFixed(1)}。本日の地方競馬（NAR）開催の中で目立つ評価を受けています。ダート適性と馬場の利条件を合わせて判断材料にしたい一頭。`,
+            `本日の地方競馬の中で上位のAI偏差値（${bestNar.deviation_score.toFixed(1)}）です。当日の馬場と展開予測をあわせて確認できます。`,
         )
         : null;
 
@@ -179,7 +237,7 @@ export function extractHomeSpecialPicks(
     const value = bestValue
         ? toSpecialPick(
             bestValue,
-            `AI偏差値 ${bestValue.deviation_score.toFixed(1)}。展開面や枠順条件次第で評価を上げたい相手候補です。人気馬とのオッズ差も考慮しながら判断材料にしたい一頭。`,
+            `◎以外の印の馬で最も高いAI偏差値（${bestValue.deviation_score.toFixed(1)}）です。展開や馬番の条件がそろうかを確認したい一頭です。`,
         )
         : null;
 

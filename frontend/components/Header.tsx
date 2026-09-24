@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { BrandMark } from '@/components/BrandLogo';
+import { LineIcon, type LineIconName } from '@/components/LineIcon';
 import { usePathname } from 'next/navigation';
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { SearchIcon, MenuIcon, XIcon } from '@/components/Icons';
 import { sendAffiliateClickEvent, sendAffiliateImpressionEvent } from '@/lib/analytics';
 import {
     getRakutenKeibaAffiliateUrl,
@@ -25,6 +26,15 @@ const HEADER_AFFILIATE_EVENT = {
 } as const;
 
 const DESKTOP_HEADER_TOP_GAP = 32;
+
+type NavItem = {
+    href: string;
+    label: string;
+    menuLabel: string;
+    icon: LineIconName;
+    prefetch: false | undefined;
+    isActive: boolean;
+};
 
 const HeaderAffiliateLink = () => {
     useEffect(() => {
@@ -71,13 +81,18 @@ export const Header = ({ todayString }: HeaderProps) => {
     const menuButtonRef = useRef<HTMLButtonElement>(null);
     const menuPanelRef = useRef<HTMLDivElement>(null);
 
-    const navItems = [
-        { href: '/', label: 'ホーム', prefetch: undefined, isActive: pathname === '/' },
-        { href: `/races/${todayString}`, label: '本日の分析', prefetch: false, isActive: pathname.startsWith('/races') },
-        { href: '/keiba-data', label: 'データベース', prefetch: false, isActive: pathname.startsWith('/keiba-data') || pathname.startsWith('/horses') || pathname.startsWith('/jockeys') || pathname.startsWith('/trainers') || pathname.startsWith('/courses') || pathname.startsWith('/compare') || pathname.startsWith('/my-data') },
-        { href: '/articles', label: '記事', prefetch: false, isActive: pathname.startsWith('/articles') },
-        { href: '/faq', label: 'よくある質問', prefetch: undefined, isActive: pathname === '/faq' },
-    ] as const;
+    const navItems: NavItem[] = [
+        { href: '/', label: 'ホーム', menuLabel: 'ホーム', icon: 'home', prefetch: undefined, isActive: pathname === '/' },
+        { href: `/races/${todayString}`, label: '本日の分析', menuLabel: '本日のレース分析', icon: 'race', prefetch: false, isActive: pathname.startsWith('/races') },
+        { href: '/keiba-data', label: 'データベース', menuLabel: '競馬データベース', icon: 'database', prefetch: false, isActive: pathname.startsWith('/keiba-data') || pathname.startsWith('/horses') || pathname.startsWith('/jockeys') || pathname.startsWith('/trainers') || pathname.startsWith('/courses') || pathname.startsWith('/compare') || pathname.startsWith('/my-data') },
+        { href: '/articles', label: '記事', menuLabel: 'データ分析記事', icon: 'book', prefetch: false, isActive: pathname.startsWith('/articles') },
+        { href: '/faq', label: 'よくある質問', menuLabel: 'よくある質問', icon: 'help', prefetch: undefined, isActive: pathname === '/faq' },
+    ];
+    // モバイルメニューだけに出す項目（PCの横並びは5項目のまま）
+    const menuOnlyItems: NavItem[] = [
+        { href: '/results/accuracy', label: 'AI予想の成績', menuLabel: 'AI予想の成績', icon: 'trophy', prefetch: false, isActive: pathname.startsWith('/results') },
+        { href: '/search', label: '検索', menuLabel: 'サイト内検索', icon: 'search', prefetch: undefined, isActive: pathname === '/search' },
+    ];
 
     const toggleMenu = useCallback(() => {
         setIsMenuOpen(prev => !prev);
@@ -257,37 +272,31 @@ export const Header = ({ todayString }: HeaderProps) => {
                 <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 md:px-6">
                     <div className="flex h-10 items-center justify-between gap-1.5 sm:h-16 sm:gap-4">
                     {/* ロゴ */}
-                    <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0" aria-label="ウマFREE ホーム">
-                        <img
-                            src="/new-logo.webp"
-                            alt="UMA-FREE ロゴ"
-                            width="40"
-                            height="40"
-                            loading="eager"
-                            decoding="async"
-                            className="h-8 w-8 sm:h-12 sm:w-12"
-                        />
-                        <div className="flex flex-col hidden sm:flex">
-                            <span className="text-xl sm:text-2xl font-bold tracking-tight text-primary">
+                    <Link href="/" className="flex min-h-[44px] items-center gap-2 sm:gap-3 shrink-0" aria-label="UMA-FREE ホーム">
+                        {/* 32px以下は内側の線を省いた小さい版のマークを使う */}
+                        <BrandMark size={30} variant="small" className="sm:hidden" />
+                        <BrandMark size={44} variant="full" className="hidden sm:block" />
+                        <span className="flex flex-col leading-none">
+                            <span className="font-display text-[17px] font-extrabold tracking-[0.01em] text-navy sm:text-[23px]">
                                 UMA-FREE
                             </span>
-                            <p className="text-xs text-text-muted tracking-wider font-medium">
+                            <span className="mt-1 hidden text-xs font-medium text-slate-500 sm:block">
                                 完全無料のAI競馬分析
-                            </p>
-                        </div>
+                            </span>
+                        </span>
                     </Link>
 
                     {/* デスクトップナビゲーション */}
-                    <nav className="hidden lg:flex items-center gap-1 flex-1 ml-8" aria-label="主要ナビゲーション">
+                    <nav className="hidden lg:flex items-center self-stretch gap-0.5 flex-1 ml-6" aria-label="主要ナビゲーション">
                         {navItems.map((item) => (
                             <Link
                                 key={item.href}
                                 href={item.href}
                                 prefetch={item.prefetch}
                                 aria-current={item.isActive ? 'page' : undefined}
-                                className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors duration-150 ${item.isActive
-                                    ? 'bg-slate-100 text-primary'
-                                    : 'text-text-secondary hover:bg-slate-50 hover:text-primary'
+                                className={`relative flex h-full items-center whitespace-nowrap px-3.5 text-[15px] transition-colors duration-150 ${item.isActive
+                                    ? 'font-bold text-navy after:absolute after:inset-x-3.5 after:bottom-0 after:h-[3px] after:rounded-t-[3px] after:bg-brand-600'
+                                    : 'font-medium text-slate-700 hover:text-navy'
                                     }`}
                             >
                                 {item.label}
@@ -301,27 +310,23 @@ export const Header = ({ todayString }: HeaderProps) => {
 
                         <Link
                             href="/search"
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary transition-colors duration-150 hover:bg-slate-100 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-700 transition-colors duration-150 hover:bg-slate-100 hover:text-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40"
                             aria-label="サイト内検索"
                             title="検索"
                         >
-                            <SearchIcon className="h-5 w-5" />
+                            <LineIcon name="search" size={22} />
                         </Link>
 
                         {/* モバイルメニューボタン */}
                         <button
                             ref={menuButtonRef}
                             onClick={toggleMenu}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary transition-colors duration-150 hover:bg-slate-100 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 lg:hidden"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-700 transition-colors duration-150 hover:bg-slate-100 hover:text-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 lg:hidden"
                             aria-label={isMenuOpen ? 'メニューを閉じる' : 'メニューを開く'}
                             aria-expanded={isMenuOpen}
                             aria-controls="mobile-navigation"
                         >
-                            {isMenuOpen ? (
-                                <XIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                            ) : (
-                                <MenuIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                            )}
+                            <LineIcon name={isMenuOpen ? 'close' : 'menu'} size={22} />
                         </button>
                     </div>
                     </div>
@@ -346,8 +351,8 @@ export const Header = ({ todayString }: HeaderProps) => {
                 aria-hidden={!isMenuOpen}
                 className={`mobile-menu-panel ${isMenuOpen ? 'open' : ''}`}
             >
-                <nav aria-label="モバイル主要ナビゲーション">
-                    {navItems.map((item) => (
+                <nav aria-label="モバイル主要ナビゲーション" className="px-4 pt-1">
+                    {[...navItems, ...menuOnlyItems].map((item) => (
                         <Link
                             key={item.href}
                             prefetch={item.prefetch}
@@ -355,45 +360,40 @@ export const Header = ({ todayString }: HeaderProps) => {
                             tabIndex={isMenuOpen ? 0 : -1}
                             data-menu-initial-focus={item.href === '/' ? 'true' : undefined}
                             aria-current={item.isActive ? 'page' : undefined}
-                            className={`flex min-h-11 items-center border-b border-slate-100 px-4 py-2 text-sm font-medium transition-colors duration-150 ${item.isActive
-                                ? 'bg-slate-100 text-primary'
-                                : 'text-text-primary hover:bg-slate-50 hover:text-primary'
+                            className={`flex min-h-[52px] items-center gap-3.5 border-b border-slate-200 px-1.5 text-base font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600/40 ${item.isActive
+                                ? 'text-brand-700'
+                                : 'text-slate-900 hover:text-brand-700'
                                 }`}
+                            onClick={() => closeMenu()}
+                        >
+                            <LineIcon name={item.icon} size={22} className={`block shrink-0 ${item.isActive ? 'text-brand-600' : 'text-navy'}`} />
+                            <span className="flex-1">{item.menuLabel}</span>
+                            <LineIcon name="chevR" size={18} className="block shrink-0 text-slate-500" />
+                        </Link>
+                    ))}
+                </nav>
+                <div className="flex flex-wrap gap-x-4 px-4 pt-3">
+                    {[
+                        { href: '/about', label: '運営者情報' },
+                        { href: '/about-ai', label: 'AI予測モデルについて' },
+                        { href: '/advertising', label: '広告について' },
+                        { href: '/contact', label: 'お問い合わせ' },
+                        { href: '/privacy', label: 'プライバシーポリシー' },
+                    ].map((item) => (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            tabIndex={isMenuOpen ? 0 : -1}
+                            className="flex min-h-11 items-center text-sm text-slate-700 transition-colors duration-150 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40"
                             onClick={() => closeMenu()}
                         >
                             {item.label}
                         </Link>
                     ))}
-                    <Link
-                        href="/search"
-                        tabIndex={isMenuOpen ? 0 : -1}
-                        className="flex min-h-11 items-center border-b border-slate-100 px-4 py-2 text-sm font-medium text-text-primary transition-colors duration-150 hover:bg-slate-50 hover:text-primary"
-                        onClick={() => closeMenu()}
-                    >
-                        検索
-                    </Link>
-                </nav>
-                <div className="bg-slate-50 px-4 py-3">
-                    <p className="mb-2 font-mono text-xs font-bold uppercase tracking-wider text-text-muted">その他</p>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                        {[
-                            { href: '/about', label: 'このサイトについて' },
-                            { href: '/advertising', label: '広告について' },
-                            { href: '/contact', label: 'お問い合わせ' },
-                            { href: '/privacy', label: 'プライバシーポリシー' },
-                        ].map((item) => (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                tabIndex={isMenuOpen ? 0 : -1}
-                                className="flex min-h-11 items-center text-sm text-text-secondary transition-colors duration-150 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                                onClick={() => closeMenu()}
-                            >
-                                {item.label}
-                            </Link>
-                        ))}
-                    </div>
                 </div>
+                <p className="mx-4 mb-6 mt-4 rounded-xl bg-slate-100 px-3.5 py-3 text-xs leading-relaxed text-slate-600">
+                    AI分析は過去のデータにもとづく参考情報です。投票の推奨ではありません。
+                </p>
             </div>
         </>
     );

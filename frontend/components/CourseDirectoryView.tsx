@@ -109,7 +109,7 @@ function VenueJumpLinks({
                     <a
                         key={group.venueSlug}
                         href={`#venue-${group.venueSlug}`}
-                        className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-sm font-bold text-slate-800 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                        className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-sm font-bold text-slate-800 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
                     >
                         {group.venueName}
                         <span className="text-[10px] font-bold tabular-nums text-slate-400">
@@ -158,7 +158,7 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
                                         key={course.url}
                                         href={course.url}
                                         prefetch={false}
-                                        className={`group flex min-h-11 flex-col items-start justify-center rounded-md border px-2 py-1 text-xs sm:text-sm font-black transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${style.link}`}
+                                        className={`group flex min-h-11 flex-col items-start justify-center rounded-md border px-2 py-1 text-xs sm:text-sm font-black transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${style.link}`}
                                     >
                                         <span className="flex w-full items-center justify-between gap-0.5">
                                             <span className="font-mono tabular-nums whitespace-nowrap text-xs sm:text-sm">
@@ -195,7 +195,7 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
             <DataDirectoryNav current="course" />
 
             <header className="mt-2 rounded-xl border border-slate-800 bg-slate-900 p-2.5 text-white sm:p-5">
-                <p className="text-[10px] font-bold text-blue-300">競馬データベース</p>
+                <p className="text-[10px] font-bold text-brand-300">競馬データベース</p>
                 <h1 className="mt-0.5 text-[15px] font-black leading-tight !text-white sm:text-3xl">
                     競馬場・コース別データ一覧
                 </h1>
@@ -253,7 +253,7 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
                                 <h2 className="text-xl font-black text-slate-950">地方競馬</h2>
                                 <a
                                     href="#top"
-                                    className="text-xs font-bold text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                    className="text-xs font-bold text-brand-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                                 >
                                     競馬場一覧へ戻る
                                 </a>

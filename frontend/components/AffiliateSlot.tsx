@@ -44,7 +44,7 @@ const providerClassNames: Record<AffiliateProvider, string> = {
     oddspark: 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700 hover:border-amber-700 shadow-sm',
     rakuten: 'border-rose-600 bg-rose-600 text-white hover:bg-rose-700 hover:border-rose-700 shadow-sm',
     amazon: 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100',
-    official: 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700 hover:border-blue-700 shadow-sm',
+    official: 'border-brand-600 bg-brand-600 text-white hover:bg-brand-700 hover:border-brand-700 shadow-sm',
 };
 
 export const AffiliateSlot = ({
@@ -270,7 +270,7 @@ export const AffiliateSlot = ({
                                 }}
                             />
                         ) : (
-                            <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-rose-50 via-white to-amber-50 px-1.5 text-center">
+                            <div className="flex h-full w-full flex-col items-center justify-center bg-rose-50 px-1.5 text-center">
                                 <Icon className="mb-1 h-5 w-5 text-rose-300" />
                                 <span className="text-[10px] font-bold leading-tight text-rose-700">
                                     {fallbackVisualLabel}
@@ -286,7 +286,7 @@ export const AffiliateSlot = ({
 
                 <div className="min-w-0 flex-1">
                     <div className={`${isCompact ? 'mb-1' : 'mb-1.5'} flex flex-wrap items-center gap-1.5`}>
-                        <span className="rounded border border-rose-100 bg-white px-1.5 py-0.5 text-[10px] font-bold text-rose-600 sm:text-[11px]">
+                        <span className="rounded border border-rose-100 bg-white px-1.5 py-0.5 text-[11px] font-bold text-rose-600">
                             PR
                         </span>
                         {productPriceLabel && (
@@ -351,7 +351,7 @@ export const AffiliateSlot = ({
             </div>
 
             {campaign.attention && (
-                <p className={`${isCompact ? 'mt-1.5 pt-1.5' : 'mt-1.5 pt-1.5 sm:mt-2 sm:pt-2'} border-t border-slate-100 ${campaign.ctaOnly ? 'text-[11px] text-slate-500' : 'text-[10px] text-slate-400'} leading-4`}>
+                <p className={`${isCompact ? 'mt-1.5 pt-1.5' : 'mt-1.5 pt-1.5 sm:mt-2 sm:pt-2'} border-t border-slate-100 text-[11px] text-slate-500 leading-4`}>
                     {campaign.attention}
                 </p>
             )}

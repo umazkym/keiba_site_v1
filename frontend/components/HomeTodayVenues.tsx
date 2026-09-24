@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { AffiliateSlot } from '@/components/AffiliateSlot';
 import { getPredictionsForDate } from '@/lib/api';
@@ -10,13 +10,85 @@ import {
 } from '@/lib/home-page-summary';
 import { getRaceDetailPath } from '@/lib/race-url';
 import { sendHomeRaceEntryClickEvent } from '@/lib/analytics';
+import { GradeBadge, HorseNumber, RaceNumberBox } from '@/components/RaceParts';
+import { LineIcon } from '@/components/LineIcon';
 
 type RefreshStatus = 'ready' | 'checking' | 'waiting' | 'empty';
 
 type HomeTodayVenuesProps = {
     date: string;
     initialVenues: HomeVenueSummary[];
+    // サーバーで描いたコース図（会場名 → 要素）
+    glyphs?: Record<string, ReactNode>;
 };
+
+function VenueTile({ venue, date, glyph }: { venue: HomeVenueSummary; date: string; glyph?: ReactNode }) {
+    const main = venue.main;
+    return (
+        <Link
+            prefetch={false}
+            href={venue.first_race_number
+                ? getRaceDetailPath(date, venue.venue_name, venue.first_race_number)
+                : `/races/${date}`}
+            onClick={() => {
+                sendHomeRaceEntryClickEvent({
+                    race_date: date,
+                    entry_method: 'venue_card',
+                    race_type: venue.race_type,
+                    venue_name: venue.venue_name,
+                });
+            }}
+            className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200 bg-white px-3 pb-3 pt-3.5 transition-colors duration-150 hover:border-brand-300 md:gap-3 md:px-[18px] md:pb-4 md:pt-[18px]"
+        >
+            <span className="flex items-start justify-between gap-2">
+                <span className="flex flex-col gap-1">
+                    <span className="font-display text-[21px] font-extrabold leading-none text-slate-900 md:text-[26px]">{venue.venue_name}</span>
+                    <span className="whitespace-nowrap text-[12px] font-bold text-slate-500">
+                        全{venue.race_count}R{venue.surfaces ? ` · ${venue.surfaces}` : ''}
+                    </span>
+                </span>
+                {glyph && <span className="block w-[58px] shrink-0 md:w-[92px]" aria-hidden="true">{glyph}</span>}
+            </span>
+            {main && (
+                <>
+                    <span className="h-px bg-slate-200" aria-hidden="true" />
+                    <span className="flex min-w-0 flex-col gap-1.5">
+                        <span className="flex items-center gap-1.5 text-[11.5px] font-bold text-slate-500">
+                            {main.label}
+                            <GradeBadge grade={main.grade} />
+                        </span>
+                        <span className="flex min-w-0 items-center gap-2">
+                            <RaceNumberBox raceNumber={main.race_number} size={28} />
+                            <span className="min-w-0 truncate text-[13px] font-bold text-slate-900 md:text-[14.5px]">{main.race_name}</span>
+                        </span>
+                    </span>
+                    {main.top ? (
+                        // スマホ・タブレットは「AI 1位 … 偏差値」と馬名を2段に分け、馬名を切れにくくする。lg以上は1行
+                        <span className="flex min-w-0 flex-col gap-1 lg:flex-row lg:items-center lg:gap-1.5">
+                            <span className="flex items-baseline justify-between lg:contents">
+                                <span className="whitespace-nowrap text-[11.5px] font-bold text-ai-deep">AI 1位</span>
+                                <span className="font-num text-[16px] font-bold text-ai-deep md:text-[17px] lg:order-last">{main.top.score.toFixed(1)}</span>
+                            </span>
+                            <span className="flex min-w-0 items-center gap-1.5 lg:flex-1">
+                                <HorseNumber number={main.top.number} waku={main.top.waku} size={20} />
+                                <span className="min-w-0 truncate text-[13px] font-bold text-slate-900 md:text-[14px]">{main.top.name}</span>
+                            </span>
+                        </span>
+                    ) : (
+                        <span className="text-[12px] text-slate-500">AI偏差値の対象外のレースです</span>
+                    )}
+                </>
+            )}
+            <span className="hidden h-10 items-center justify-center gap-1.5 rounded-[10px] bg-brand-50 text-[13.5px] font-bold text-brand-700 md:flex">
+                1Rから確認する
+                <LineIcon name="arrowR" size={16} />
+            </span>
+        </Link>
+    );
+}
+
+// PCの列数は会場数に合わせる（3場なら3列。空の列を作らない）
+const venueGridCols = (count: number) => (count >= 4 ? 'md:grid-cols-4' : count === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2');
 
 const hasVenueData = (venues: HomeVenueSummary[]): boolean => (
     venues.length > 0
@@ -25,6 +97,7 @@ const hasVenueData = (venues: HomeVenueSummary[]): boolean => (
 export function HomeTodayVenues({
     date,
     initialVenues,
+    glyphs = {},
 }: HomeTodayVenuesProps) {
     const initialHasVenueData = hasVenueData(initialVenues);
     const [venues, setVenues] = useState<HomeVenueSummary[]>(initialVenues);
@@ -83,56 +156,14 @@ export function HomeTodayVenues({
 
     return (
         <>
-            <div className="venue-grid">
-                {jraVenues.map((venue) => (
-                    <Link
-                        key={venue.venue_name}
-                        prefetch={false}
-                        href={venue.first_race_number
-                            ? getRaceDetailPath(date, venue.venue_name, venue.first_race_number)
-                            : `/races/${date}`}
-                        onClick={() => {
-                            sendHomeRaceEntryClickEvent({
-                                race_date: date,
-                                entry_method: 'venue_card',
-                                race_type: 'jra',
-                                venue_name: venue.venue_name,
-                            });
-                        }}
-                        className="venue-chip"
-                    >
-                        <strong>{venue.venue_name}</strong>
-                        <small>全{venue.race_count}R</small>
-                        <span className="venue-state">分析公開</span>
-                    </Link>
-                ))}
-
-                {narVenues.map((venue) => (
-                    <Link
-                        key={venue.venue_name}
-                        prefetch={false}
-                        href={venue.first_race_number
-                            ? getRaceDetailPath(date, venue.venue_name, venue.first_race_number)
-                            : `/races/${date}`}
-                        onClick={() => {
-                            sendHomeRaceEntryClickEvent({
-                                race_date: date,
-                                entry_method: 'venue_card',
-                                race_type: 'nar',
-                                venue_name: venue.venue_name,
-                            });
-                        }}
-                        className="venue-chip"
-                    >
-                        <strong>{venue.venue_name}</strong>
-                        <small>全{venue.race_count}R</small>
-                        <span className="venue-state muted">地方競馬</span>
-                    </Link>
+            <div className={`grid grid-cols-2 gap-2.5 md:gap-4 ${venueGridCols(jraVenues.length + narVenues.length)}`}>
+                {[...jraVenues, ...narVenues].map((venue) => (
+                    <VenueTile key={venue.venue_name} venue={venue} date={date} glyph={glyphs[venue.venue_name]} />
                 ))}
 
                 {!showVenues && (
-                    <div className="col-span-full py-4 text-center">
-                        <p className="text-sm text-slate-500">
+                    <div className="col-span-full rounded-xl border border-slate-200 bg-white py-6 text-center">
+                        <p className="text-sm text-slate-600">
                             {status === 'checking' && '本日のレースデータを確認しています。'}
                             {status === 'waiting' && '本日のレースデータを更新中です。約1分後に自動で再確認します。'}
                             {status === 'empty' && '本日のレースデータの反映に時間がかかっています。'}
@@ -144,7 +175,7 @@ export function HomeTodayVenues({
                                     setStatus('checking');
                                     setRefreshKey((current) => current + 1);
                                 }}
-                                className="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                                className="ui-btn ui-btn--ghost mt-2"
                             >
                                 データを再確認
                             </button>

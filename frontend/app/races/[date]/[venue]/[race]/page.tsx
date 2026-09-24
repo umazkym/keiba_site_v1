@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import RacePageClient from "@/components/RacePageClient";
+import { RaceHead } from "@/components/RaceHead";
 import { formatDate } from "@/lib/utils";
 import { Suspense } from 'react';
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
@@ -224,6 +225,7 @@ export default async function RaceDetailPage({ params }: Props) {
                     initialVenueName={selectedVenueName}
                     initialRaceNumber={selectedRace.race_number}
                     initialRaceLinks={initialRaceLinks}
+                    header={<RaceHead race={selectedRace} venueName={selectedVenueName} />}
                 />
             </Suspense>
         </>

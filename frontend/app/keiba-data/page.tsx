@@ -53,7 +53,7 @@ function VenueLinks({
                         <Link
                             key={slug}
                             href={`/courses#venue-${slug}`}
-                            className="inline-flex min-h-[30px] items-center rounded-md border border-slate-200 bg-white px-2 text-xs font-bold text-slate-800 transition-colors duration-150 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:min-h-9 sm:rounded-lg sm:px-2.5 sm:text-sm"
+                            className="inline-flex min-h-[30px] items-center rounded-md border border-slate-200 bg-white px-2 text-xs font-bold text-slate-800 transition-colors duration-150 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:min-h-9 sm:rounded-lg sm:px-2.5 sm:text-sm"
                         >
                             {name}
                         </Link>
@@ -93,7 +93,7 @@ export default function KeibaDataPage() {
                 <DataHubNav currentPath="/keiba-data" />
 
                 <header className="mt-2 rounded-xl border border-slate-800 bg-slate-900 p-2.5 text-white sm:p-5">
-                    <p className="text-[10px] font-bold text-blue-300">競馬データベース</p>
+                    <p className="text-[10px] font-bold text-brand-300">競馬データベース</p>
                     <h1 className="mt-0.5 text-[15px] font-black leading-tight !text-white sm:text-3xl">
                         競走馬・騎手・コースを同じ条件で比較
                     </h1>
@@ -113,7 +113,7 @@ export default function KeibaDataPage() {
                             <Link
                                 key={tag.label}
                                 href={`/search?q=${encodeURIComponent(tag.query)}`}
-                                className="inline-flex min-h-7 items-center rounded-md border border-slate-200 bg-white px-2 text-[11px] font-bold text-slate-700 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                                className="inline-flex min-h-7 items-center rounded-md border border-slate-200 bg-white px-2 text-[11px] font-bold text-slate-700 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
                             >
                                 {tag.label}
                             </Link>
@@ -152,7 +152,7 @@ export default function KeibaDataPage() {
                         description="競馬場を選ぶと、コースごとの距離一覧へ移動します。"
                         action={(<Link
                             href="/courses"
-                            className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                            className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-brand-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                         >
                             コース一覧
                             <ChevronRight className="h-4 w-4" aria-hidden="true" />

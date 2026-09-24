@@ -211,7 +211,7 @@ export function RecentRunsTable({
                                             prefetch={false}
                                             href={run.url}
                                             rel="nofollow"
-                                            className="font-bold text-slate-900 transition-colors duration-150 hover:text-blue-600"
+                                            className="font-bold text-slate-900 transition-colors duration-150 hover:text-brand-600"
                                         >
                                             {raceLabel}
                                         </Link>
@@ -222,7 +222,7 @@ export function RecentRunsTable({
                                 {showHorse && (
                                     <td className="px-3 py-3 font-bold text-slate-800 max-w-[160px] truncate">
                                         {run.horse_id ? (
-                                            <Link prefetch={false} href={`/horses/${encodeURIComponent(run.horse_id)}`} className="hover:text-blue-600" title={run.horse_name ?? ''}>
+                                            <Link prefetch={false} href={`/horses/${encodeURIComponent(run.horse_id)}`} className="hover:text-brand-600" title={run.horse_name ?? ''}>
                                                 {run.horse_name ?? '—'}
                                             </Link>
                                         ) : '—'}

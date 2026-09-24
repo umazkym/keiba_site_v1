@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
-import RacePageClient from "@/components/RacePageClient";
+import type { ReactNode } from 'react';
 import { formatDate } from "@/lib/utils";
-import { Suspense } from 'react';
-import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { notFound } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { BreadcrumbSchema } from '@/components/StructuredData';
-import { getRaceArticleMeta } from '@/lib/articles';
+import { CourseGlyph } from '@/components/CourseGlyph';
+import { RaceDateNav } from '@/components/RaceDateNav';
+import { RaceDayBoard } from '@/components/RaceDayBoard';
+import { RaceDayExtras } from '@/components/RaceDayExtras';
+import { buildRaceDaySummary } from '@/lib/race-day-summary';
+import { buildGradeRaceTopHorseMap } from '@/lib/home-page-summary';
+import { formatRaceDateLabel } from '@/lib/race-display';
 import {
     getDaysFromToday,
     getRaceDetailPath,
@@ -44,24 +48,8 @@ export async function generateMetadata(
     };
 }
 
-const RacePageSkeleton = () => (
-    <div className="py-4">
-        <div className="glass mb-5 p-2 sm:p-3">
-            <div className="animate-pulse flex items-center justify-between max-w-[280px] sm:max-w-sm mx-auto">
-                <div className="bg-slate-200 h-9 w-10 text-white px-4 py-2.5 rounded-xl shadow-sm"></div>
-                <div className="flex-grow flex justify-center">
-                    <div className="bg-slate-200 h-9 w-32 rounded-lg"></div>
-                </div>
-                <div className="bg-slate-200 h-9 w-10 text-white px-4 py-2.5 rounded-xl shadow-sm"></div>
-            </div>
-        </div>
-        <RaceTabsSkeleton />
-    </div>
-);
-
 export default async function RacePage({ params }: { params: { date: string } }) {
     let jsonLd = null;
-    const articlesMeta = getRaceArticleMeta();
     const formattedDate = formatDate(params.date);
     const {
         predictions: predictionData,
@@ -80,6 +68,15 @@ export default async function RacePage({ params }: { params: { date: string } })
     }
 
     const mainRace = predictionData.jra?.[0]?.races?.[0] || predictionData.nar?.[0]?.races?.[0];
+
+    // ボードに渡すのは一覧に必要な値だけ（全馬の予測データはクライアントへ送らない）。
+    const summary = buildRaceDaySummary(predictionData, params.date);
+    const gradeRaceTopHorses = buildGradeRaceTopHorseMap(predictionData, weeklyGradeRaces);
+    // コース図はサーバーで描いて渡す（コースのデータはクライアントへ送らない）
+    const glyphs: Record<string, ReactNode> = {};
+    [...summary.jra, ...summary.nar].forEach((venue) => {
+        glyphs[venue.venue] = <CourseGlyph venue={venue.venue} className="block h-auto w-full" />;
+    });
 
     if (mainRace) {
         jsonLd = {
@@ -148,16 +145,30 @@ export default async function RacePage({ params }: { params: { date: string } })
                 ]}
             />
 
-            <Suspense fallback={<RacePageSkeleton />}>
-                <RacePageClient
-                    initialDate={params.date}
-                    initialPredictionData={predictionData}
-                    initialSpecialPick={specialPickData}
-                    initialTopHits={topHitsData}
-                    weeklyGradeRaces={weeklyGradeRaces}
-                    articlesMeta={articlesMeta}
+            <div className="race-page-scope site-shell-wide flex flex-col gap-3 pb-6 md:gap-5">
+                <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                    <h1 className="text-[22px] font-extrabold leading-tight text-slate-900 md:text-[32px]">
+                        {formatRaceDateLabel(params.date)}のレース分析
+                    </h1>
+                    <RaceDateNav date={params.date} />
+                </header>
+
+                <RaceDayBoard
+                    initialSummary={summary}
+                    glyphs={glyphs}
+                    refetchIfEmpty={!hasData && isDataArrivalWindow}
                 />
-            </Suspense>
+
+                <RaceDayExtras
+                    date={params.date}
+                    hasRaces={hasData}
+                    hasNarRaces={summary.nar.length > 0}
+                    specialPick={specialPickData}
+                    topHits={topHitsData}
+                    weeklyGradeRaces={weeklyGradeRaces}
+                    gradeRaceTopHorses={gradeRaceTopHorses}
+                />
+            </div>
         </>
     );
 }

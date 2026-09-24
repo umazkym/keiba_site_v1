@@ -13,7 +13,7 @@ const CategoryFallbackIcon = ({ category }: { category: string }) => {
     ? 'bg-purple-50 text-purple-700'
     : isCourse
       ? 'bg-emerald-50 text-emerald-700'
-      : 'bg-blue-50 text-blue-700';
+      : 'bg-brand-50 text-brand-700';
   return (
     <div className={`flex h-full w-full items-center justify-center ${tone}`} aria-hidden="true">
       {isJockey ? (
@@ -63,7 +63,7 @@ export function RelatedArticles({ currentSlug, count = 3 }: RelatedArticlesProps
                 />
               </div>
               <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5 sm:mt-2">
-                <span className="mb-0.5 inline-block w-fit rounded bg-slate-100 px-1 py-0.2 text-[9px] font-bold text-slate-700 sm:mb-1 sm:px-2 sm:py-0.5 sm:text-xs">
+                <span className="mb-0.5 inline-block w-fit rounded bg-slate-100 px-1 text-[9px] font-bold text-slate-700 sm:mb-1 sm:px-2 sm:py-0.5 sm:text-xs">
                   {article.category}
                 </span>
                 <h4 className="line-clamp-2 text-[11.5px] font-bold leading-tight text-slate-900 transition-colors group-hover:text-primary sm:text-sm">

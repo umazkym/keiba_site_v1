@@ -100,7 +100,7 @@ export function ArticleRaceBridge({
         data-race-name={raceName}
         data-race-date={raceDate}
         data-preview-state={previewState}
-        className="block min-h-[44px] cursor-pointer rounded-xl border border-blue-200 bg-slate-50 p-3 transition-colors duration-150 hover:border-blue-300 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:p-4"
+        className="block min-h-[44px] cursor-pointer rounded-xl border border-brand-200 bg-slate-50 p-3 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:p-4"
         aria-label={`${raceName}の全頭AI偏差値と4つの分析を見る`}
       >
         <section aria-labelledby={`article-race-bridge-${articleSlug}`}>
@@ -118,7 +118,7 @@ export function ArticleRaceBridge({
                 {meta.join(' ・ ')}
               </p>
             </div>
-            <span className="inline-flex min-h-11 shrink-0 items-center gap-1 text-[11px] font-black text-blue-700 sm:text-xs">
+            <span className="inline-flex min-h-11 shrink-0 items-center gap-1 text-[11px] font-black text-brand-700 sm:text-xs">
               全頭分析へ <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
           </div>

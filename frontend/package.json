@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "node scripts/test_affiliate_campaigns.js && node scripts/validate-monetization-release.js && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "next lint --dir app --dir components --dir lib --dir hooks --file middleware.ts",
     "design:audit": "node scripts/design-audit.js",
     "structured-data:test": "npx --yes tsx scripts/test_dataset_schema.ts",
     "affiliate:test": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/agent_sops/run_node.ps1 frontend/scripts/test_affiliate_campaigns.js",

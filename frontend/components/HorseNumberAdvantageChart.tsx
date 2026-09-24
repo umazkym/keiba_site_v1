@@ -7,13 +7,15 @@ type Props = {
     advantages: HorseNumberAdvantage[];
     courseType: string | null;
     distance: number | null;
+    // 今回の出走馬の馬番。コース全体のデータから、この馬番だけを並べる
+    runnerNumbers?: number[];
 };
 
-const getBarColor = (value: number) => {
-    if (value > 0.05) return 'bg-emerald-500';
-    if (value > 0) return 'bg-emerald-300';
-    if (value < -0.05) return 'bg-red-500';
-    if (value < 0) return 'bg-red-300';
+const getBarColor = (value: number, isBest: boolean, isWorst: boolean) => {
+    if (isBest) return 'bg-brand-600';
+    if (isWorst) return 'bg-rose-600';
+    if (value > 0) return 'bg-brand-300';
+    if (value < 0) return 'bg-rose-300';
     return 'bg-slate-400';
 };
 
@@ -23,16 +25,18 @@ const getInterpretation = (value: number) => {
     return '平均的';
 };
 
-export const HorseNumberAdvantageChart = ({ advantages, courseType, distance }: Props) => {
-    if (!advantages || advantages.length === 0) {
+export const HorseNumberAdvantageChart = ({ advantages, courseType, distance, runnerNumbers }: Props) => {
+    const runnerSet = runnerNumbers && runnerNumbers.length > 0 ? new Set(runnerNumbers) : null;
+    const runnerAdvantages = runnerSet ? (advantages ?? []).filter((item) => runnerSet.has(item.horse_number)) : advantages;
+    if (!runnerAdvantages || runnerAdvantages.length === 0) {
         return (
-            <div className="my-4 rounded-lg border bg-slate-50 p-4 text-center text-sm text-slate-500">
+            <div className="my-4 rounded-lg bg-slate-100 p-4 text-center text-sm text-slate-600">
                 <p>データ不足のため表示できません</p>
             </div>
         );
     }
 
-    const sortedAdvantages = [...advantages].sort((a, b) => a.horse_number - b.horse_number);
+    const sortedAdvantages = [...runnerAdvantages].sort((a, b) => a.horse_number - b.horse_number);
     const scores = sortedAdvantages.map((item) => item.advantage_score);
     const maxScore = Math.max(...scores);
     const minScore = Math.min(...scores);
@@ -43,7 +47,7 @@ export const HorseNumberAdvantageChart = ({ advantages, courseType, distance }: 
     const gridStyle = {
         gridTemplateColumns: `repeat(${sortedAdvantages.length}, minmax(0, 1fr))`,
     } satisfies CSSProperties;
-    const chartLabel = `このコースの枠順傾向 ${courseType || ''}${distance || ''}m`;
+    const chartLabel = `馬番の傾向 ${courseType || ''}${distance || ''}m`;
 
     return (
         <div className="flex h-full flex-col justify-center" aria-label={chartLabel}>
@@ -72,12 +76,12 @@ export const HorseNumberAdvantageChart = ({ advantages, courseType, distance }: 
                                     title={`${entry.horse_number}番 / ${entry.advantage_score.toFixed(3)} / ${getInterpretation(entry.advantage_score)}`}
                                 >
                                     <span
-                                        className={`absolute left-[18%] right-[18%] min-h-px rounded-t-sm ${getBarColor(entry.advantage_score)}`}
+                                        className={`absolute left-[18%] right-[18%] min-h-px rounded-sm ${getBarColor(entry.advantage_score, entry.advantage_score === maxScore && maxScore > 0, entry.advantage_score === minScore && minScore < 0)}`}
                                         style={{ top: `${barTop}%`, height: `${barHeight}%` }}
                                     />
                                     {shouldShowLabel && (
                                         <span
-                                            className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] font-bold leading-none text-slate-700 md:text-[10px]"
+                                            className="absolute left-1/2 hidden -translate-x-1/2 whitespace-nowrap font-num text-[11px] font-bold leading-none text-slate-700 md:block"
                                             style={{ top: `${labelTop}%` }}
                                             aria-hidden="true"
                                         >
@@ -91,7 +95,7 @@ export const HorseNumberAdvantageChart = ({ advantages, courseType, distance }: 
                 </div>
                 <div className="absolute inset-x-0 bottom-0 grid gap-px sm:gap-1" style={gridStyle} aria-hidden="true">
                     {sortedAdvantages.map((entry) => (
-                        <span key={entry.horse_number} className="truncate text-center text-[9px] font-semibold text-slate-600 md:text-xs">
+                        <span key={entry.horse_number} className="truncate text-center font-num text-[12px] font-bold text-slate-700 md:text-[13px]">
                             {entry.horse_number}
                         </span>
                     ))}
@@ -104,14 +108,14 @@ export const HorseNumberAdvantageChart = ({ advantages, courseType, distance }: 
                     ))}
                 </ul>
             </div>
-            <div className="mt-0.5 flex justify-center gap-3 text-[10px] font-medium text-slate-700 md:text-xs">
+            <div className="mt-1 flex justify-center gap-4 text-[12px] font-medium text-slate-700 md:text-[13px]">
                 <span className="flex items-center gap-1">
-                    <span className="h-3 w-3 rounded-sm bg-emerald-500" />
-                    <span>有利</span>
+                    <span className="h-3 w-3 rounded-sm bg-brand-600" />
+                    <span>有利寄り</span>
                 </span>
                 <span className="flex items-center gap-1">
-                    <span className="h-3 w-3 rounded-sm bg-red-500" />
-                    <span>不利</span>
+                    <span className="h-3 w-3 rounded-sm bg-rose-600" />
+                    <span>不利寄り</span>
                 </span>
             </div>
         </div>

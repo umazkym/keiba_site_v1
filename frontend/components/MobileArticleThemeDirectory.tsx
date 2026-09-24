@@ -118,8 +118,8 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                                     setIsOpen(true);
                                 }
                             }}
-                            className={`flex min-h-11 items-center justify-center gap-1.5 border-t-2 px-2 text-xs font-black transition-colors duration-150 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 ${isActive
-                                ? 'border-blue-600 bg-blue-50/70 text-slate-950'
+                            className={`flex min-h-11 items-center justify-center gap-1.5 border-t-2 px-2 text-xs font-black transition-colors duration-150 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${isActive
+                                ? 'border-brand-600 bg-brand-50/70 text-slate-950'
                                 : 'border-transparent bg-white text-slate-500 hover:bg-slate-50'
                                 }`}
                         >
@@ -140,7 +140,7 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                     <div className="grid gap-1.5 p-2">
                         {gradeRaceSections.map(section => (
                             <details key={section.id} className={`group/grade overflow-hidden rounded-lg border ${getGradeSectionTone(section.id)}`}>
-                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
+                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
                                     <span>{getGradeSectionLabel(section.id, section.title)}</span>
                                     <span className="flex items-center gap-1.5">
                                         <span className="rounded bg-white px-2 py-0.5 text-[10px] text-slate-600">
@@ -161,7 +161,7 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                     <div className="grid gap-1.5 p-2">
                         {courseSections.map(section => (
                             <details key={section.id} className="group/venue overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-800">
-                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
+                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
                                     <span>{section.title}</span>
                                     <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
                                         <span>{section.groups.length}コース / {section.articleCount}記事</span>

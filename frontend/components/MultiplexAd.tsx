@@ -21,15 +21,15 @@ export const MultiplexAd = ({ slot, refreshKey = '' }: MultiplexAdProps) => {
 
     return (
         <section className="mt-4 mb-2 px-1">
-            <h3 className="text-sm sm:text-base font-bold text-gray-800 mb-2 flex items-center justify-between">
+            <h3 className="text-sm sm:text-base font-bold text-slate-800 mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <span className="w-1 h-4 sm:h-5 bg-secondary rounded-full"></span>
                     おすすめの関連情報
                 </div>
-                <span className="text-[10px] text-gray-400 font-normal">スポンサーリンク</span>
+                <span className="text-[10px] text-slate-400 font-normal">スポンサーリンク</span>
             </h3>
             
-            <div className="w-full bg-white rounded-lg border border-gray-100 overflow-hidden">
+            <div className="w-full bg-white rounded-lg border border-slate-100 overflow-hidden">
                 <Adsense
                     client={AD_CLIENT}
                     slot={slot}

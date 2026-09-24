@@ -290,7 +290,7 @@ export default function HorseCompareClient() {
             <DataHubNav currentPath="/compare" />
 
             <header className="mt-1.5 rounded-xl border border-slate-800 bg-slate-900 p-2 text-white sm:p-5">
-                <p className="text-[9.5px] font-bold text-blue-300">競馬データベース</p>
+                <p className="text-[9.5px] font-bold text-brand-300">競馬データベース</p>
                 <h1 className="mt-0.5 text-[14.5px] font-black leading-tight !text-white sm:text-3xl">競走馬の成績比較</h1>
                 <p className="mt-0.5 max-w-3xl text-[10.5px] leading-snug !text-slate-200 sm:text-sm sm:leading-6">
                     通算成績や各コースごとに成績を確認出来ます。
@@ -308,12 +308,12 @@ export default function HorseCompareClient() {
                             setSearchAttempted(false);
                         }}
                         placeholder="比較する馬名を入力"
-                        className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                     />
                     <button
                         type="submit"
                         disabled={searching}
-                        className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-bold text-white transition-colors duration-150 hover:bg-blue-700 disabled:cursor-wait disabled:bg-slate-400"
+                        className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2 text-sm font-bold text-white transition-colors duration-150 hover:bg-brand-700 disabled:cursor-wait disabled:bg-slate-400"
                     >
                         <Search className="h-4 w-4" aria-hidden="true" />
                         {searching ? '検索中' : '馬を検索'}
@@ -326,13 +326,13 @@ export default function HorseCompareClient() {
                                 key={item.id}
                                 type="button"
                                 onClick={() => addHorse(item, index + 1)}
-                                className="flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-blue-50"
+                                className="flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-brand-50"
                             >
                                 <span className="min-w-0 flex-1">
                                     <span className="block truncate font-bold text-slate-900">{item.name}</span>
                                     <span className="block truncate text-xs text-slate-500">{item.description}</span>
                                 </span>
-                                <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">
+                                <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-brand-200 bg-brand-50 px-2 py-1 text-xs font-bold text-brand-700">
                                     <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                                     追加
                                 </span>
@@ -356,7 +356,7 @@ export default function HorseCompareClient() {
                         <span className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 font-mono text-[11px] font-black text-slate-600">
                             {index + 1}
                         </span>
-                        <Link prefetch={false} href={horse.url} className="max-w-[84px] truncate px-1 hover:text-blue-600 sm:max-w-[120px] md:max-w-[150px]" title={horse.name}>
+                        <Link prefetch={false} href={horse.url} className="max-w-[84px] truncate px-1 hover:text-brand-600 sm:max-w-[120px] md:max-w-[150px]" title={horse.name}>
                             {horse.name}
                         </Link>
                         <button
@@ -389,7 +389,7 @@ export default function HorseCompareClient() {
             {saved.length < 2 ? (
                 <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
                     <div className="flex items-start gap-3">
-                        <GitCompareArrows className="mt-0.5 h-5 w-5 text-blue-600" aria-hidden="true" />
+                        <GitCompareArrows className="mt-0.5 h-5 w-5 text-brand-600" aria-hidden="true" />
                         <div>
                             <h2 className="text-lg font-black text-slate-950">2頭以上の馬を選択してください</h2>
                             <p className="mt-1 text-sm leading-6 text-slate-600">
@@ -416,7 +416,7 @@ export default function HorseCompareClient() {
                                         ...current,
                                         venue_name: event.target.value,
                                     }))}
-                                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                                 >
                                     {VENUE_OPTIONS.map((venue) => (
                                         <option key={venue} value={venue}>{venue}</option>
@@ -431,7 +431,7 @@ export default function HorseCompareClient() {
                                         ...current,
                                         course_type: event.target.value as ComparisonCondition['course_type'],
                                     }))}
-                                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                                 >
                                     <option value="芝">芝</option>
                                     <option value="ダート">ダート</option>
@@ -440,7 +440,7 @@ export default function HorseCompareClient() {
                             </label>
                             <label className="text-xs font-bold text-slate-700">
                                 距離
-                                <span className="mt-1 flex min-h-11 items-center rounded-lg border border-slate-300 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                                <span className="mt-1 flex min-h-11 items-center rounded-lg border border-slate-300 bg-white focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100">
                                     <input
                                         type="number"
                                         min={200}
@@ -464,7 +464,7 @@ export default function HorseCompareClient() {
                                         ...current,
                                         ground_condition: event.target.value || null,
                                     }))}
-                                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                                 >
                                     <option value="">指定なし</option>
                                     <option value="良">良</option>
@@ -476,7 +476,7 @@ export default function HorseCompareClient() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-900 px-5 text-sm font-bold text-white transition-colors duration-150 hover:bg-blue-700 disabled:cursor-wait disabled:bg-slate-400"
+                                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-900 px-5 text-sm font-bold text-white transition-colors duration-150 hover:bg-brand-700 disabled:cursor-wait disabled:bg-slate-400"
                             >
                                 {loading ? '集計中' : 'この条件で比較'}
                             </button>
@@ -550,7 +550,7 @@ export default function HorseCompareClient() {
                                                     <tr key={horse.horse_id} className={index % 2 === 1 ? 'bg-slate-50/40' : undefined}>
                                                         <th className="px-4 py-3 text-left">
                                                             <span className="flex items-center gap-2">
-                                                                <Link prefetch={false} href={horse.url} className="font-black text-slate-950 hover:text-blue-700">
+                                                                <Link prefetch={false} href={horse.url} className="font-black text-slate-950 hover:text-brand-700">
                                                                     {horse.horse_name}
                                                                 </Link>
                                                                 <button
@@ -592,7 +592,7 @@ export default function HorseCompareClient() {
                             >
                                 <div className="border-b border-slate-200 px-4 py-3">
                                     <h2 id="matched-comparison-heading" className="text-lg font-black text-slate-950">2. 同条件成績</h2>
-                                    <p className="mt-1 text-sm font-bold text-blue-800">{conditionLabel(comparison.conditions)}</p>
+                                    <p className="mt-1 text-sm font-bold text-brand-800">{conditionLabel(comparison.conditions)}</p>
                                     <p className="mt-1 text-xs leading-5 text-slate-600">
                                         10走以上の馬だけを比較対象とし、3着以内率の95% Wilson下限値で比較上位を判定します。
                                     </p>
@@ -620,7 +620,7 @@ export default function HorseCompareClient() {
                                                         <th className="px-4 py-3 text-left font-black text-slate-950">
                                                             {horse.horse_name}
                                                             {isComparisonLeader && (
-                                                                <span className="ml-2 inline-flex rounded-md border border-blue-300 bg-blue-50 px-1.5 py-0.5 text-[11px] font-black text-blue-800">
+                                                                <span className="ml-2 inline-flex rounded-md border border-brand-300 bg-brand-50 px-1.5 py-0.5 text-[11px] font-black text-brand-800">
                                                                     比較上位
                                                                 </span>
                                                             )}
@@ -693,7 +693,7 @@ export default function HorseCompareClient() {
                                                                                 destination_type: 'past_race',
                                                                             });
                                                                         }}
-                                                                        className="font-bold text-slate-900 hover:text-blue-700"
+                                                                        className="font-bold text-slate-900 hover:text-brand-700"
                                                                     >
                                                                         <span className="block text-xs font-semibold text-slate-500">
                                                                             {run.race_date} {run.venue_name}{run.race_number}R

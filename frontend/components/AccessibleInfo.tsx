@@ -43,7 +43,7 @@ export function AccessibleInfo({ label, children, buttonClassName = '' }: Access
                 aria-expanded={isOpen}
                 aria-describedby={isOpen ? tooltipId : undefined}
                 onClick={() => setIsOpen((current) => !current)}
-                className={`inline-flex min-h-6 min-w-6 cursor-pointer items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 ${buttonClassName}`}
+                className={`inline-flex min-h-6 min-w-6 cursor-pointer items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-1 ${buttonClassName}`}
             >
                 <span aria-hidden="true">?</span>
             </button>

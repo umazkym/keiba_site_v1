@@ -57,7 +57,7 @@ export function UpcomingRaceTrackedLink({
             <span className="block text-xs font-bold text-slate-500">
                 {raceDate} {venueName}{raceNumber}R
             </span>
-            <span className="mt-0.5 block font-black text-slate-900 hover:text-blue-600">{raceName}</span>
+            <span className="mt-0.5 block font-black text-slate-900 hover:text-brand-600">{raceName}</span>
         </Link>
     );
 }

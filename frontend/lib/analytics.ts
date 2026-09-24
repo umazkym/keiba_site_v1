@@ -99,7 +99,8 @@ export type HomeRaceEntryMethod =
     | 'hero_cta'
     | 'sticky_cta'
     | 'grade_fallback'
-    | 'venue_card';
+    | 'venue_card'
+    | 'board_link';
 
 export type ArticleRaceDestinationType = 'exact_race' | 'race_date' | 'today';
 export type ArticleRacePreviewState = 'available' | 'metadata_only' | 'unavailable' | 'generic';

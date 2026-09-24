@@ -42,7 +42,7 @@ const criteria = [
 
 const criterionAccents = [
   "bg-accent",
-  "bg-blue-600",
+  "bg-brand-600",
   "bg-emerald-600",
   "bg-slate-900",
   "bg-amber-700",
@@ -66,10 +66,10 @@ export default function SiteSelectionPage() {
           <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
             予想サイト選びの視点
           </p>
-          <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-black leading-tight text-slate-950 sm:text-4xl">
             競馬予想サイトの選び方
           </h1>
-          <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600 sm:text-base">
+          <p className="mt-4 max-w-3xl text-sm leading-[1.8] text-slate-700 sm:leading-8 sm:text-base">
             的中率だけを比較してサイトを選ぶと、いざ使い始めてから「欲しい情報が有料の壁の向こう」と気づくことがあります。
             登録前に何を見られるか、指数に根拠があるか、成績をどこまで公開しているかを先に見極めておくと失敗が減ります。
           </p>

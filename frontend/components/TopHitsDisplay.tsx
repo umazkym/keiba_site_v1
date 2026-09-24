@@ -27,76 +27,57 @@ const getDateRangeLabel = (hits: TopPayoutHit[]): string => {
 
 const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: number, compact?: boolean }) => {
     const raceDate = formatShortRaceDate(hit.race_date);
-    const rankTone = rank === 1
-        ? 'border-amber-200 bg-amber-50 text-amber-700'
-        : rank === 2
-            ? 'border-slate-200 bg-slate-50 text-slate-600'
-            : rank === 3
-                ? 'border-orange-200 bg-orange-50 text-orange-700'
-                : 'border-blue-100 bg-blue-50 text-blue-700';
 
     if (compact) {
         return (
-            <div className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-100 bg-white px-2.5 py-2 transition-colors hover:border-slate-200 hover:bg-slate-50">
-                <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-black ${rankTone}`}>
-                    {rank}
-                </span>
+            <div className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 transition-colors duration-150 hover:border-brand-300">
+                <span className={`w-6 shrink-0 font-num text-[17px] font-bold ${rank === 1 ? 'text-navy' : 'text-slate-500'}`}>{rank}</span>
                 <div className="min-w-0 flex-1">
-                    <div className="truncate text-[11px] font-bold text-slate-800">
+                    <div className="truncate text-[12px] font-bold text-slate-800">
                         {raceDate} {hit.venue_name}{hit.race_number}R
                     </div>
-                    <div className="truncate text-[10px] text-slate-400" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
-                        {hit.bet_type}: {hit.winning_numbers}
+                    <div className="truncate text-[11px] text-slate-500" title={`${hit.bet_type}: ${hit.winning_numbers}`}>
+                        {hit.bet_type} {hit.winning_numbers}
                     </div>
                 </div>
-                <span className="shrink-0 text-xs font-black tracking-tight text-red-600">
-                    {hit.payout.toLocaleString()}円
+                <span className="shrink-0 font-num text-[15px] font-bold text-slate-900">
+                    {hit.payout.toLocaleString('en-US')}<span className="ml-0.5 font-sans text-[11px]">円</span>
                 </span>
             </div>
         );
     }
 
     return (
-        <div className="group flex min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-white px-2.5 py-2.5 transition-colors duration-150 hover:bg-slate-50 sm:px-3.5 sm:py-3">
-            <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-black ${rankTone}`}>
-                {rank}位
+        <div className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-1 border-b border-slate-200 py-2.5 transition-colors duration-150 hover:bg-slate-50 md:grid-cols-[30px_150px_76px_minmax(0,1fr)_auto] md:gap-x-3.5 md:py-3">
+            <span className={`font-num text-[18px] font-bold md:text-[20px] ${rank === 1 ? 'text-navy' : 'text-slate-500'}`}>{rank}</span>
+            <span className="font-num text-[19px] font-bold text-slate-900 md:text-[22px]">
+                {hit.payout.toLocaleString('en-US')}<span className="ml-0.5 font-sans text-[12px]">円</span>
             </span>
-            <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="truncate text-sm font-black text-slate-900 sm:text-base">
-                        {hit.payout.toLocaleString()}円
-                    </span>
-                    <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
-                        {hit.bet_type}
-                    </span>
-                </div>
-                <div className="mt-0.5 truncate text-[11px] font-semibold text-slate-500 sm:text-xs">
-                    {raceDate} {hit.venue_name}{hit.race_number}R
-                </div>
-            </div>
-            <div className="shrink-0 text-right">
-                <div className="text-[10px] font-bold text-slate-400">組番</div>
-                <div className="max-w-[92px] truncate text-xs font-black text-slate-700 sm:max-w-[120px]" title={hit.winning_numbers}>
-                    {hit.winning_numbers}
-                </div>
-            </div>
+            <span className="justify-self-end md:justify-self-start">
+                <span className="inline-flex items-center rounded-[5px] bg-navy-soft px-1.5 py-0.5 text-[11.5px] font-bold text-navy">{hit.bet_type}</span>
+            </span>
+            <span className="col-span-2 truncate text-[12.5px] text-slate-500 md:col-span-1 md:text-[13.5px] md:text-slate-700">
+                {raceDate} {hit.venue_name}{hit.race_number}R<span className="hidden md:inline"> {hit.race_name}</span>
+                <span className="md:hidden"> · 組番 <b className="font-num text-[14px] text-slate-700">{hit.winning_numbers}</b></span>
+            </span>
+            <span className="hidden font-num text-[16px] font-bold text-slate-700 md:block">{hit.winning_numbers}</span>
         </div>
     );
 };
 
 const Skeleton = ({ compact = false }: { compact?: boolean }) => (
-    <div className="animate-pulse">
-        <div className="h-6 bg-gray-200 rounded w-1/2 mb-2"></div>
+    <div aria-busy="true" aria-label="的中ランキングを読み込み中">
+        <div className="h-6 bg-slate-200 rounded w-1/2 mb-2"></div>
         {compact ? (
             <div className="space-y-2">
                 {[...Array(5)].map((_, i) => (
-                    <div key={i} className="h-12 bg-gray-100 rounded-lg border border-gray-200"></div>
+                    <div key={i} className="h-12 bg-slate-100 rounded-lg border border-slate-200"></div>
                 ))}
             </div>
         ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2">
                 {[...Array(5)].map((_, i) => (
-                    <div key={i} className={`h-14 sm:h-24 bg-gray-100 rounded-lg border border-gray-200 ${i === 4 ? 'col-span-2 sm:col-span-1' : ''}`}></div>
+                    <div key={i} className={`h-14 sm:h-24 bg-slate-100 rounded-lg border border-slate-200 ${i === 4 ? 'col-span-2 sm:col-span-1' : ''}`}></div>
                 ))}
             </div>
         )}
@@ -142,13 +123,13 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
             {!compact && (
                 <SectionHeader
                     title="高配当的中ランキング"
-                    meta={`(${getDateRangeLabel(hits)})`}
-                    className="mb-3"
+                    meta={getDateRangeLabel(hits)}
+                    className="mb-1"
                     compact
                 />
             )}
             {hits.length === 0 ? (
-                <div className="p-6 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-center text-gray-500 text-sm">
+                <div className="mt-2 rounded-lg bg-slate-100 p-5 text-center text-sm text-slate-600">
                     <p>対象期間の的中実績はありませんでした。</p>
                 </div>
             ) : compact ? (
@@ -165,20 +146,19 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
                     ))}
                 </div>
             ) : (
-                <>
-                    <div className="divide-y divide-slate-100 sm:grid sm:grid-cols-1 sm:gap-2 sm:divide-y-0">
-                        {hits.map((hit, index) => (
+                <ol className="flex flex-col">
+                    {hits.map((hit, index) => (
+                        <li key={`${hit.race_id}-${hit.winning_numbers}`}>
                             <Link
-                                key={`${hit.race_id}-${hit.winning_numbers}`}
                                 prefetch={false}
                                 href={getRaceDetailPath(hit.race_date, hit.venue_name, hit.race_number)}
-                                className="block h-full"
+                                className="block"
                             >
                                 <HitCard hit={hit} rank={index + 1} />
                             </Link>
-                        ))}
-                    </div>
-                </>
+                        </li>
+                    ))}
+                </ol>
             )}
         </div>
     );

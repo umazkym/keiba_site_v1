@@ -44,7 +44,7 @@ const ENTITY_ICON_MAP: Record<string, {
     label: string;
 }> = {
     horse: { Icon: CircleDot, className: 'text-emerald-600', label: '馬' },
-    jockey: { Icon: UserRound, className: 'text-blue-600', label: '騎手' },
+    jockey: { Icon: UserRound, className: 'text-brand-600', label: '騎手' },
     trainer: { Icon: UsersRound, className: 'text-violet-600', label: '調教師' },
     course: { Icon: MapPinned, className: 'text-amber-700', label: 'コース' },
 };
@@ -121,7 +121,7 @@ function SavedEntityList({
                         <button
                             type="button"
                             onClick={() => setFilter('people')}
-                            className={`rounded-md px-2 py-1 transition-colors ${filter === 'people' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                            className={`rounded-md px-2 py-1 transition-colors ${filter === 'people' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
                         >
                             人
                         </button>
@@ -141,7 +141,7 @@ function SavedEntityList({
                     {emptyAction && (
                         <Link
                             href={emptyAction.href}
-                            className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
+                            className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700"
                         >
                             <Search className="h-3.5 w-3.5" aria-hidden="true" />
                             {emptyAction.label}
@@ -159,7 +159,7 @@ function SavedEntityList({
                                     key={`${item.entity_type}-${item.id}`}
                                     prefetch={false}
                                     href={item.url}
-                                    className={`grid min-h-14 grid-cols-[20px_1fr] items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-blue-50/50 ${index % 2 === 1 ? 'bg-slate-50/40' : ''}`}
+                                    className={`grid min-h-14 grid-cols-[20px_1fr] items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-brand-50/50 ${index % 2 === 1 ? 'bg-slate-50/40' : ''}`}
                                 >
                                     <EntityIcon className={`h-4 w-4 ${entityStyle?.className ?? 'text-slate-400'}`} aria-hidden="true" />
                                     <span className="min-w-0">
@@ -174,7 +174,7 @@ function SavedEntityList({
                         <button
                             type="button"
                             onClick={() => setShowAll(!showAll)}
-                            className="w-full cursor-pointer border-t border-slate-100 px-4 py-2.5 text-center text-xs font-bold text-blue-600 hover:bg-blue-50"
+                            className="w-full cursor-pointer border-t border-slate-100 px-4 py-2.5 text-center text-xs font-bold text-brand-600 hover:bg-brand-50"
                         >
                             {showAll ? '折りたたむ' : `残り${filteredItems.length - 10}件を表示`}
                         </button>
@@ -284,7 +284,7 @@ export default function MyDataClient() {
             <DataHubNav currentPath="/my-data" />
 
             <header className="mt-2 rounded-xl border border-slate-800 bg-slate-900 p-2.5 text-white sm:p-5">
-                <p className="text-[10px] font-bold text-blue-300">競馬データベース</p>
+                <p className="text-[10px] font-bold text-brand-300">競馬データベース</p>
                 <h1 className="mt-0.5 text-[15px] font-black leading-tight !text-white sm:text-3xl">マイデータ</h1>
                 <p className="mt-1 max-w-3xl text-[11px] leading-relaxed !text-slate-200 sm:text-sm sm:leading-6">
                     確認した情報を端末に保存できます。
@@ -332,7 +332,7 @@ export default function MyDataClient() {
 
                 <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
                     <div className="flex items-center justify-between">
-                        <Clock3 className="h-5 w-5 text-blue-600" aria-hidden="true" />
+                        <Clock3 className="h-5 w-5 text-brand-600" aria-hidden="true" />
                         <span className="text-xs font-bold text-slate-400">閲覧履歴</span>
                     </div>
                     <p className="mt-2 font-mono text-3xl font-black tabular-nums text-slate-950">{history.length}</p>
@@ -376,7 +376,7 @@ export default function MyDataClient() {
                                 type="button"
                                 onClick={requestNotifications}
                                 disabled={notificationState === 'granted'}
-                                className="min-h-9 shrink-0 cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-blue-400 hover:text-blue-700 disabled:cursor-default disabled:border-emerald-200 disabled:bg-emerald-50 disabled:text-emerald-800"
+                                className="min-h-9 shrink-0 cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-brand-400 hover:text-brand-700 disabled:cursor-default disabled:border-emerald-200 disabled:bg-emerald-50 disabled:text-emerald-800"
                             >
                                 {notificationState === 'granted' ? '許可済み' : notificationState === 'denied' ? '設定で許可' : '通知を許可'}
                             </button>
@@ -425,7 +425,7 @@ export default function MyDataClient() {
                     <div className="p-4">
                         <div className="flex flex-wrap gap-2">
                             {comparison.map((horse, index) => (
-                                <Link key={horse.id} prefetch={false} href={horse.url} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-blue-50 hover:text-blue-700">
+                                <Link key={horse.id} prefetch={false} href={horse.url} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-brand-50 hover:text-brand-700">
                                     <span className="flex h-4 w-4 items-center justify-center rounded bg-slate-200 font-mono text-[9px] font-black text-slate-600">
                                         {index + 1}
                                     </span>
@@ -452,7 +452,7 @@ export default function MyDataClient() {
 
             {/* 下部データ操作 */}
             <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
-                <Link href="/keiba-data" className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-blue-600">
+                <Link href="/keiba-data" className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-brand-600">
                     <Search className="h-4 w-4" aria-hidden="true" />
                     データを探す
                 </Link>

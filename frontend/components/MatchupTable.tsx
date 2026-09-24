@@ -5,20 +5,9 @@ import React, { startTransition, useEffect, useMemo, useState, type CSSPropertie
 import { getFilteredMatchups } from '@/lib/api';
 import { getWakuNumber } from '@/lib/utils';
 import { AccessibleInfo } from '@/components/AccessibleInfo';
+import { getWakuClasses } from '@/lib/waku';
 
-const getWakuColorClasses = (waku: number | null): string => {
-    switch (waku) {
-        case 1: return 'bg-white text-black border-gray-500';
-        case 2: return 'bg-black text-white border-gray-700';
-        case 3: return 'bg-red-500 text-white border-red-700';
-        case 4: return 'bg-blue-600 text-white border-blue-800';
-        case 5: return 'bg-yellow-400 text-black border-yellow-600';
-        case 6: return 'bg-green-500 text-white border-green-700';
-        case 7: return 'bg-orange-500 text-white border-orange-700';
-        case 8: return 'bg-pink-500 text-white border-pink-700';
-        default: return 'bg-gray-200 text-black border-gray-400';
-    }
-};
+const getWakuColorClasses = (waku: number | null): string => getWakuClasses(waku);
 
 const HorseNumberCircle = ({ number, waku, compact = false }: { number: number, waku: number | null, compact?: boolean }) => (
     <div className={`${compact ? 'h-5 w-5 text-[10px] border' : 'h-7 w-7 text-sm border-2'} rounded-full flex items-center justify-center font-bold shadow-sm shrink-0 ${getWakuColorClasses(waku)}`}>
@@ -88,13 +77,13 @@ type MatchupSelection = {
 
 const MatchupDetails = ({ rowHorse, colHorse, record }: MatchupSelection) => (
     <div className="max-w-xl text-left text-slate-700">
-        <h4 className="font-bold border-b border-gray-200 pb-1 mb-2">{rowHorse.horse_name} vs {colHorse.horse_name}</h4>
+        <h4 className="font-bold border-b border-slate-200 pb-1 mb-2">{rowHorse.horse_name} vs {colHorse.horse_name}</h4>
         <div className="mb-2 text-center text-[15px] font-semibold sm:text-lg">
             <span className="text-green-500">{record.win}</span>
-            <span className="text-gray-500 mx-1">-</span>
+            <span className="text-slate-500 mx-1">-</span>
             <span className="text-red-500">{record.loss}</span>
-            <span className="text-gray-500 mx-1">-</span>
-            <span className="text-gray-500">{record.draw}</span>
+            <span className="text-slate-500 mx-1">-</span>
+            <span className="text-slate-500">{record.draw}</span>
         </div>
         {record.history.length > 0 && (
             <ul className="space-y-2 text-xs max-h-40 overflow-y-auto pr-2">
@@ -103,7 +92,7 @@ const MatchupDetails = ({ rowHorse, colHorse, record }: MatchupSelection) => (
                     const colRank = colHorse.horse_id === h.p1_horse_id ? h.p1_rank : h.p2_rank;
                     const isWin = rowRank < colRank;
                     return (
-                        <li key={index} className="border-t border-gray-200 pt-1">
+                        <li key={index} className="border-t border-slate-200 pt-1">
                             <div className="font-semibold">{new Date(h.race_date).toLocaleDateString()} {h.venue_name}</div>
                             <div>
                                 {rowRank}着 vs {colRank}着
@@ -199,7 +188,7 @@ const TableView = ({ predictions, matchupData, onSelect }: { predictions: HorseP
                                                 <button
                                                     type="button"
                                                     onClick={() => onSelect({ rowHorse, colHorse, record })}
-                                                    className="block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600"
+                                                    className="block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600"
                                                     aria-label={`${rowHorse.horse_name}から見た${colHorse.horse_name}との対戦詳細を表示`}
                                                 >
                                                     {content}
@@ -310,7 +299,7 @@ const MobileMatrixView = ({ predictions, matchupData, onSelect }: { predictions:
                                             <button
                                                 type="button"
                                                 onClick={() => onSelect({ rowHorse, colHorse, record })}
-                                                className="block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600"
+                                                className="block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600"
                                                 aria-label={`${rowHorse.horse_name}から見た${colHorse.horse_name}との対戦詳細を表示`}
                                             >
                                                 {cellContent}
@@ -400,9 +389,9 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
 
     return (
         <div className="race-panel overflow-hidden">
-            <div className="race-section-toolbar flex flex-col gap-1.5 border-b border-slate-200 p-2 md:flex-row md:items-center md:justify-between md:p-3">
+            <div className="race-section-toolbar flex flex-col gap-2 border-b border-slate-200 px-3 pb-2.5 pt-3 md:flex-row md:items-center md:justify-between md:px-5 md:py-4">
                 <div className='flex items-center gap-2'>
-                    <h3 id="race-matchup-heading" className="race-section-heading mb-0 whitespace-nowrap">過去対決成績</h3>
+                    <h2 id="race-matchup-heading" className="race-section-heading race-section-heading--flush !mb-0 whitespace-nowrap">対戦成績</h2>
                     <AccessibleInfo
                         label="過去対決成績の説明を表示"
                         buttonClassName="h-6 w-6 bg-slate-200 text-xs font-bold text-slate-700 transition-colors duration-150 hover:bg-slate-300"
@@ -417,7 +406,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                     </AccessibleInfo>
                 </div>
                 <details className="w-full rounded-lg border border-slate-200 bg-slate-50 md:hidden">
-                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 text-[11px] font-semibold text-slate-600">
+                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 text-[12px] font-semibold text-slate-600">
                         <span>集計期間 {formatCompactDate(startDate)}–{formatCompactDate(endDate)}</span>
                         <span aria-hidden="true" className="text-slate-400">⌄</span>
                     </summary>
@@ -474,7 +463,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         <button
                             type="button"
                             onClick={() => setSelectedMatchup(null)}
-                            className="inline-flex min-h-11 cursor-pointer items-center rounded-lg px-3 text-xs font-bold text-slate-600 transition-colors duration-150 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                            className="inline-flex min-h-11 cursor-pointer items-center rounded-lg px-3 text-xs font-bold text-slate-600 transition-colors duration-150 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
                         >
                             閉じる
                         </button>

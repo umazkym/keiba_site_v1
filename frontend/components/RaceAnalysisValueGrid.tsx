@@ -5,6 +5,7 @@ import {
     Swords,
     type LucideIcon,
 } from 'lucide-react';
+import { LineIcon, type LineIconName } from '@/components/LineIcon';
 
 export type RaceAnalysisFeatureTone = 'blue' | 'indigo' | 'emerald' | 'amber';
 export type RaceAnalysisFeatureVisualType = 'score' | 'matchup' | 'pace' | 'frame';
@@ -15,6 +16,8 @@ export type RaceAnalysisFeature = {
     compactTitle: string;
     description: string;
     icon: LucideIcon;
+    // レース内のナビで使う線アイコン（ポートフォリオと同じ形）
+    lineIcon: LineIconName;
     tone: RaceAnalysisFeatureTone;
     visual: RaceAnalysisFeatureVisualType;
     targetIds: string[];
@@ -22,7 +25,8 @@ export type RaceAnalysisFeature = {
 
 type RaceAnalysisValueGridProps = {
     className?: string;
-    variant?: 'full' | 'compact';
+    // full：明るいカード（スマホ2列・PC4列）／bar：PCのヒーロー下の帯／compact：記事冒頭の4列
+    variant?: 'full' | 'bar' | 'compact';
 };
 
 export const raceAnalysisFeatures: readonly RaceAnalysisFeature[] = [
@@ -32,6 +36,7 @@ export const raceAnalysisFeatures: readonly RaceAnalysisFeature[] = [
         compactTitle: 'AI偏差値',
         description: '馬の能力をAIで可視化',
         icon: Gauge,
+        lineIcon: 'gauge',
         tone: 'blue',
         visual: 'score',
         targetIds: ['race-prediction-heading', 'race-prediction-section'],
@@ -42,6 +47,7 @@ export const raceAnalysisFeatures: readonly RaceAnalysisFeature[] = [
         compactTitle: '対戦比較',
         description: '過去の直接対決を比較',
         icon: Swords,
+        lineIcon: 'swords',
         tone: 'indigo',
         visual: 'matchup',
         targetIds: ['race-matchup-heading', 'race-matchup-section'],
@@ -52,16 +58,19 @@ export const raceAnalysisFeatures: readonly RaceAnalysisFeature[] = [
         compactTitle: '展開・脚質',
         description: '序盤の位置取りを予測',
         icon: ChartLine,
+        lineIcon: 'lanes',
         tone: 'emerald',
         visual: 'pace',
         targetIds: ['race-detail-heading', 'race-detail-data-section'],
     },
     {
         key: 'frame',
-        title: '枠順傾向',
-        compactTitle: '枠順傾向',
-        description: 'コース別の枠順を分析',
+        // 中身は馬番ごとの過去データなので「馬番」と書く
+        title: '馬番の傾向',
+        compactTitle: '馬番傾向',
+        description: 'コース別の馬番の有利・不利',
         icon: ChartColumn,
+        lineIcon: 'bars',
         tone: 'amber',
         visual: 'frame',
         targetIds: ['race-frame-heading'],
@@ -79,7 +88,7 @@ export const raceAnalysisSectionTrackingItems = [
 ];
 
 const toneClasses: Record<RaceAnalysisFeatureTone, string> = {
-    blue: 'bg-blue-50 text-blue-700',
+    blue: 'bg-brand-50 text-brand-700',
     indigo: 'bg-indigo-50 text-indigo-700',
     emerald: 'bg-emerald-50 text-emerald-700',
     amber: 'bg-amber-50 text-amber-700',
@@ -115,8 +124,8 @@ export function RaceAnalysisFeatureVisual({
     if (type === 'score') {
         return (
             <div className={`w-full ${compact ? 'space-y-0.5' : 'space-y-1'}`} aria-hidden="true">
-                <span className={`block w-[88%] rounded-full bg-blue-600 ${compact ? 'h-0.5' : 'h-1.5'}`} />
-                <span className={`block w-[64%] rounded-full bg-amber-400 ${compact ? 'h-0.5' : 'h-1.5'}`} />
+                <span className={`block w-[88%] rounded-full bg-brand-600 ${compact ? 'h-0.5' : 'h-1.5'}`} />
+                <span className={`block w-[64%] rounded-full bg-ai ${compact ? 'h-0.5' : 'h-1.5'}`} />
                 <span className={`block w-[72%] rounded-full bg-slate-300 ${compact ? 'h-0.5' : 'h-1.5'}`} />
             </div>
         );
@@ -128,7 +137,7 @@ export function RaceAnalysisFeatureVisual({
             <div className={`grid w-full ${compact ? 'grid-cols-3 gap-0.5 text-[8px]' : 'grid-cols-3 sm:grid-cols-6 gap-0.5 text-[9px]'} text-center font-bold`} aria-hidden="true">
                 {values.map((value, index) => {
                     const valueClass = value.startsWith('+')
-                        ? 'bg-emerald-50 text-emerald-700'
+                        ? 'bg-turf-soft text-turf-deep'
                         : value.startsWith('-')
                             ? 'bg-rose-50 text-rose-700'
                             : 'bg-slate-100 text-slate-600';
@@ -143,7 +152,7 @@ export function RaceAnalysisFeatureVisual({
     }
 
     const heights = type === 'pace' ? ['54%', '76%', '38%', '64%'] : ['82%', '42%', '66%', '36%'];
-    const barClass = type === 'pace' ? 'bg-emerald-500' : 'bg-blue-500';
+    const barClass = type === 'pace' ? 'bg-turf' : 'bg-brand-500';
 
     return (
         <div className={`flex w-full items-end ${compact ? 'h-4 gap-0.5' : 'h-6 sm:h-7 gap-1'}`} aria-hidden="true">
@@ -184,34 +193,49 @@ export function RaceAnalysisValueGrid({ className = '', variant = 'full' }: Race
         );
     }
 
+    if (variant === 'bar') {
+        return (
+            <div className={`flex items-center gap-4 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-elevated ${className}`}>
+                <p className="whitespace-nowrap text-[13px] font-bold leading-snug text-slate-500">4つの視点で<br />全レースを分析</p>
+                <ul className="grid min-w-0 flex-1 grid-cols-4 gap-2.5" aria-label="UMA-FREEで確認できる4つの分析">
+                    {raceAnalysisFeatures.map((feature) => (
+                        <li key={feature.title} className="flex min-w-0 items-center gap-2.5 rounded-xl bg-slate-50 px-2.5 py-2">
+                            <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700" aria-hidden="true">
+                                <LineIcon name={feature.lineIcon} size={17} />
+                            </span>
+                            <span className="flex min-w-0 flex-1 flex-col gap-1">
+                                <span className="truncate text-[13.5px] font-bold text-slate-900">{feature.title}</span>
+                                <span className="flex h-5 w-16 items-center"><RaceAnalysisFeatureVisual type={feature.visual} compact /></span>
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        );
+    }
+
     return (
         <ul
-            className={`grid w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5 ${className}`}
+            className={`grid w-full grid-cols-2 gap-2 md:grid-cols-4 md:gap-3 ${className}`}
             aria-label="UMA-FREEで確認できる4つの分析"
         >
-            {raceAnalysisFeatures.map((feature) => {
-                return (
-                    <li
-                        key={feature.title}
-                        className="flex min-w-0 flex-col justify-between rounded-lg border border-slate-200 bg-white p-1.5 sm:p-2.5 text-left"
-                    >
-                        <div className="mb-1 flex min-w-0 items-center gap-1.5">
-                            <RaceAnalysisFeatureIcon feature={feature} variant="full" />
-                            <span className="min-w-0">
-                                <span className="block truncate text-[11px] sm:text-xs font-black leading-tight text-slate-950">
-                                    {feature.title}
-                                </span>
-                                <span className="block truncate text-[9px] sm:text-[11px] font-semibold leading-tight text-slate-600">
-                                    {feature.description}
-                                </span>
-                            </span>
-                        </div>
-                        <div className="flex min-h-[26px] sm:h-9 w-full items-center justify-center rounded-md bg-slate-50 p-1 sm:p-1.5">
-                            <RaceAnalysisFeatureVisual type={feature.visual} />
-                        </div>
-                    </li>
-                );
-            })}
+            {raceAnalysisFeatures.map((feature) => (
+                <li
+                    key={feature.title}
+                    className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left md:px-3.5 md:pb-3 md:pt-3.5"
+                >
+                    <span className="flex min-w-0 items-center gap-2">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700" aria-hidden="true">
+                            <LineIcon name={feature.lineIcon} size={17} />
+                        </span>
+                        <span className="truncate text-[13.5px] font-bold text-slate-900 md:text-[14.5px]">{feature.title}</span>
+                    </span>
+                    <span className="hidden text-[12px] leading-normal text-slate-500 md:block">{feature.description}</span>
+                    <span className="flex h-6 w-16 items-center">
+                        <RaceAnalysisFeatureVisual type={feature.visual} compact />
+                    </span>
+                </li>
+            ))}
         </ul>
     );
 }

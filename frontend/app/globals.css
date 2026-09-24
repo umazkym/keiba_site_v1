@@ -725,6 +725,8 @@ header.glass {
     }
 }
 
+/* 記事（2026-09-25 段階5）：スマホの本文12px・H2 16pxの押さえ込みをやめ、文字の大きさは ArticleBody.tsx のクラスで決める。
+   ここではスマホで横にはみ出さないための幅と、見出しへ移動したときにヘッダーの下へ隠れない余白だけを持つ。 */
 @media (max-width: 639px) {
     .article-page-title,
     .article-page-lead,
@@ -732,144 +734,74 @@ header.glass {
         max-width: calc(100vw - 0.5rem) !important;
         width: 100%;
     }
-
-    .article-page-title {
-        font-size: 16px !important;
-        line-height: 1.35 !important;
-        word-break: normal;
-    }
-
-    .article-page-lead {
-        font-size: 12px !important;
-        line-height: 1.65 !important;
-    }
-
-    .article-page-prose h1,
-    .article-page-prose h2 {
-        margin-top: 14px !important;
-        margin-bottom: 5px !important;
-        font-size: 16px !important;
-        line-height: 1.35 !important;
-        word-break: normal;
-    }
-
-    .article-page-prose h3 {
-        margin-top: 10px !important;
-        margin-bottom: 4px !important;
-        font-size: 14px !important;
-        line-height: 1.4 !important;
-    }
-
-    .article-page-prose {
-        font-size: 12px !important;
-        line-height: 1.65 !important;
-    }
-
-    .article-page-prose p,
-    .article-page-prose ul,
-    .article-page-prose ol {
-        margin-top: 6px !important;
-        margin-bottom: 6px !important;
-        font-size: 12px !important;
-        line-height: 1.65 !important;
-    }
-
-    .article-page-prose li {
-        margin-top: 0.25em !important;
-        margin-bottom: 0.25em !important;
-    }
-
-    .article-page-prose blockquote {
-        margin-top: 8px !important;
-        margin-bottom: 8px !important;
-        padding: 8px 10px !important;
-        font-size: 12px !important;
-    }
-
-    .article-page-prose img {
-        margin-top: 12px !important;
-        margin-bottom: 12px !important;
-    }
-
-    .article-page-prose :is(pre, pre code) {
-        font-size: 12px !important;
-        line-height: 1.65 !important;
-    }
-
-    .article-page-prose :is(code, table) {
-        font-size: 11px !important;
-    }
 }
 
-/* ---------- Prose テーブルスタイル ---------- */
+.article-page-prose h2,
+.article-page-prose h3 {
+    scroll-margin-top: calc(var(--site-header-offset, 48px) + 16px);
+}
+
+/* ---------- 記事の表：横線だけ・見出しは淡い面・数字は Barlow で桁をそろえる ---------- */
 .article-table-scroll {
-    margin: 1.25rem 0;
+    margin: 1.5rem 0;
     max-width: 100%;
     overflow-x: auto;
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 12px;
     background: white;
+    box-shadow: inset 0 0 0 1px var(--slate-200-color);
     -webkit-overflow-scrolling: touch;
 }
 
 .prose table {
     @apply w-full border-collapse;
     margin: 0;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
     background: white;
 }
 
 .prose table th {
     @apply font-bold;
-    background-color: #f3f4f6;
-    border: 1px solid var(--border);
-    padding: 0.75rem;
+    padding: 10px 14px;
+    background-color: var(--slate-50-color, #F3F5FA);
+    border-bottom: 1px solid var(--slate-200-color);
+    color: #5A6183;
+    font-size: 12.5px;
+    line-height: 1.5;
     text-align: left;
-    color: var(--text);
+    white-space: nowrap;
 }
 
 .prose table td {
-    border: 1px solid var(--border);
-    padding: 0.75rem;
+    min-width: 4.5em;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--slate-200-color);
     color: var(--text);
+    font-family: var(--font-num), var(--font-body);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.55;
+    vertical-align: top;
 }
 
-.prose table tbody tr {
-    transition: background-color 0.2s ease;
+.prose table tbody tr:last-child td {
+    border-bottom: 0;
 }
 
-.prose table tbody tr:hover {
-    background-color: #f9fafb;
-}
-
-.prose table tbody tr:nth-child(even) {
-    background-color: #fafbfc;
+.prose table td:first-child {
+    font-family: var(--font-body);
+    font-weight: 700;
 }
 
 @media (max-width: 639px) {
     .article-table-scroll {
-        margin: 1rem 0;
-        border-radius: 6px;
+        margin: 1.25rem 0;
     }
 
-    .article-table-scroll table {
-        min-width: 560px;
-        font-size: 0.78rem;
+    .prose table th {
+        padding: 9px 12px;
     }
 
-    .article-table-scroll table th,
-    .article-table-scroll table td {
-        padding: 0.45rem 0.5rem;
-        line-height: 1.5;
-        vertical-align: top;
+    .prose table td {
+        padding: 10px 12px;
     }
-}
-
-.article-table-scroll table {
-    border: 0;
-    border-radius: 0;
 }
 
 /* === UMA-FREE page patterns === */
@@ -1593,6 +1525,14 @@ header.glass {
     padding: 0 !important;
     border: none !important;
     font-family: inherit !important;
-    font-size: 10.5px !important;
-    line-height: 1.6 !important;
+    /* 記事の手順・流れの図（コードブロック）。2026-09-25 段階5 で 10.5px → スマホ14px・PC15px */
+    font-size: 14px !important;
+    line-height: 1.75 !important;
+}
+
+@media (min-width: 640px) {
+    .article-page-prose pre code,
+    .prose pre code {
+        font-size: 15px !important;
+    }
 }

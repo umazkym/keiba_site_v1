@@ -42,11 +42,11 @@ import argparse
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 import traceback
-from PIL import Image, ImageDraw, ImageFont
 import psycopg2
 from contextlib import contextmanager
 
 from core.race_name import display_race_name
+from pathlib import Path
 import hashlib
 import importlib
 import importlib.util
@@ -114,6 +114,10 @@ except Exception as e_import:
             SessionLocal = getattr(database, "database", None)  # unlikely
         except Exception:
             pass
+
+# 投稿文と画像（デザイン改修 2026-09。絵文字を使わない・Xの文字数はXの数え方）
+from scripts import sns_content as SC  # noqa: E402
+from scripts import sns_images as SI  # noqa: E402
 
 # --- 1. 基本設定とパス解決（Render対応版）---
 # NOTE: PROJECT_ROOT は既に設定済み（上で推定）
@@ -190,6 +194,10 @@ THREADS_USER_ID = os.getenv("THREADS_USER_ID")
 THREADS_ACCESS_TOKEN = os.getenv("THREADS_ACCESS_TOKEN")
 THREADS_TOKEN_EXPIRY = os.getenv("THREADS_TOKEN_EXPIRY")
 THREADS_MAX_CHARS = 480
+# Threads に画像を付けるか（off：文字だけ／public：非公開GCSに一時配置した画像の署名URLを渡す）。
+# 署名には、Workflowのサービスアカウントが自分自身に「サービス アカウント トークン作成者」を持つ必要がある。
+THREADS_IMAGE_MODE = (_env_value("SNS_THREADS_IMAGE_MODE", default="off") or "off").strip().lower()
+THREADS_IMAGE_SIGNED_URL_DURATION = "2h"
 
 
 @dataclass
@@ -210,7 +218,7 @@ def build_race_url(date_str: str) -> str:
     クエリは付けない。/races/ 配下はクエリが1つでもあると
     ミドルウェアが301でクエリごと落とすため、付けても届かない。
     """
-    return f"{SITE_BASE_URL}/races/{date_str}"
+    return SC.build_race_url(date_str)
 
 
 def build_x_status_url(tweet_id: Any) -> str:
@@ -391,31 +399,6 @@ def _now_str():
 def _log(msg: str):
     print(f"{_now_str()} {msg}")
 
-def get_font_path(font_name: str) -> str:
-    """CI環境とローカル環境の両方で正しくフォントパスを取得"""
-    font_dir = os.path.join(PROJECT_ROOT, "backend", "fonts")
-    
-    font_path = os.path.join(font_dir, font_name)
-    if os.path.exists(font_path):
-        return font_path
-    
-    # フォールバック (デバッグ用)
-    alt_font_path = os.path.join(os.getcwd(), "fonts", font_name)
-    if os.path.exists(alt_font_path):
-        return alt_font_path
-
-    raise FileNotFoundError(f"フォントファイルが見つかりません: '{font_path}'")
-
-def draw_centered_text(draw, text, font, fill_color, image_width, y_position, **kwargs):
-    """テキストを画像の中央に描画する"""
-    try:
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = bbox[2] - bbox[0]
-    except AttributeError: # 古いPillowバージョン対応
-        text_width, _ = draw.textsize(text, font=font)
-    x_position = (image_width - text_width) / 2
-    draw.text((x_position, y_position), text, fill=fill_color, font=font, **kwargs)
-
 # ===== Threads API関数群 =====
 
 def truncate_for_threads(text: str) -> str:
@@ -472,8 +455,53 @@ def _sleep_before_threads_retry(attempt: int) -> None:
     time.sleep(delay)
 
 
-def post_to_threads(text: str) -> ThreadsPostResult:
-    """Threadsにテキスト投稿を行う。トークン失効時は明確な警告を出力する。"""
+def threads_images_enabled() -> bool:
+    return THREADS_IMAGE_MODE == "public"
+
+
+def _stage_threads_image(image_path: Optional[str]):
+    """画像を非公開GCSへ一時配置し、(stager, 署名URL) を返す。失敗したら (stager, None)。"""
+    if not image_path or not threads_images_enabled() or not os.path.exists(image_path):
+        return None, None
+    try:
+        from scripts.social_video.gcs_staging import GcsMediaStager
+
+        stager = GcsMediaStager(duration=THREADS_IMAGE_SIGNED_URL_DURATION)
+        digest = hashlib.sha256(Path(image_path).read_bytes()).hexdigest()[:16]
+        day = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d')
+        staged = stager.stage(Path(image_path), f"sns/{day}/threads-{digest}{Path(image_path).suffix}")
+        return stager, staged.signed_url
+    except Exception as error:
+        # 署名URLはログに出さない
+        _log(f"⚠️ Threads用の画像を一時配置できなかったため、文字だけで投稿します: {str(error)[:300]}")
+        return None, None
+
+
+def _wait_threads_container(base_headers: Dict[str, str], container_id: str, attempts: int = 10, delay: int = 3) -> bool:
+    """画像のコンテナが公開できる状態になるまで待つ。"""
+    for _ in range(attempts):
+        try:
+            res = requests.get(
+                f"https://graph.threads.net/v1.0/{container_id}",
+                headers=base_headers,
+                params={"fields": "status,error_message"},
+                timeout=15,
+            )
+            if res.status_code == 200:
+                status = str(res.json().get("status") or "").upper()
+                if status in {"FINISHED", "PUBLISHED"}:
+                    return True
+                if status in {"ERROR", "EXPIRED"}:
+                    _log(f"⚠️ Threadsの画像コンテナが処理できませんでした: {res.json().get('error_message') or status}")
+                    return False
+        except Exception as error:
+            _log(f"⚠️ Threadsの画像コンテナの状態確認に失敗しました: {error}")
+        time.sleep(delay)
+    return False
+
+
+def post_to_threads(text: str, image_path: Optional[str] = None) -> ThreadsPostResult:
+    """Threadsへ投稿する。SNS_THREADS_IMAGE_MODE=public のときだけ画像を付け、画像の準備に失敗したら文字だけで投稿する。"""
     global THREADS_ACCESS_TOKEN
     if not ENABLE_THREADS:
         _log("Threads投稿は ENABLE_THREADS=false のためスキップします。")
@@ -492,74 +520,99 @@ def post_to_threads(text: str) -> ThreadsPostResult:
     text = truncate_for_threads(text)
 
     if DRY_RUN:
-        _log(f"[DRY_RUN] Threads投稿スキップ:\n{text[:80]}...")
+        attach = "画像つき" if image_path and threads_images_enabled() else "文字だけ"
+        _log(f"[DRY_RUN] Threads投稿スキップ（{attach}）:\n{text}")
+        if image_path:
+            _log(f"  画像: {image_path}")
         return ThreadsPostResult(ok=True, post_id="dry_run_threads_id", reason="DRY_RUN")
 
     base_url = f"https://graph.threads.net/v1.0/{THREADS_USER_ID}"
     headers = {"Authorization": f"Bearer {THREADS_ACCESS_TOKEN}"}
     last_result = ThreadsPostResult(ok=False, reason="Threads投稿が完了しませんでした")
+    stager, image_url = _stage_threads_image(image_path)
 
-    for attempt in range(1, THREADS_POST_MAX_RETRIES + 1):
-        try:
-            res = requests.post(
-                f"{base_url}/threads",
-                headers=headers,
-                data={"media_type": "TEXT", "text": text},
-                timeout=30
-            )
-            if res.status_code == 401:
-                _log("❌ Threadsコンテナ作成失敗: 401 Unauthorized")
-                _log("  → アクセストークンが失効している可能性があります。")
-                _log("  → Meta for Developers で新しいトークンを生成し、GitHub Secrets の THREADS_ACCESS_TOKEN を更新してください")
-                _log(f"  → レスポンス: {res.text[:300]}")
-                return ThreadsPostResult(ok=False, transient=False, reason="Threads認証エラー")
-            if res.status_code != 200:
-                transient, reason = _classify_threads_response(res, "コンテナ作成")
-                _log(f"❌ Threadsコンテナ作成失敗: {res.status_code} - {res.text[:200]} (試行 {attempt}/{THREADS_POST_MAX_RETRIES})")
+    try:
+        for attempt in range(1, THREADS_POST_MAX_RETRIES + 1):
+            try:
+                payload = (
+                    {"media_type": "IMAGE", "image_url": image_url, "text": text}
+                    if image_url
+                    else {"media_type": "TEXT", "text": text}
+                )
+                res = requests.post(
+                    f"{base_url}/threads",
+                    headers=headers,
+                    data=payload,
+                    timeout=30
+                )
+                if res.status_code == 401:
+                    _log("❌ Threadsコンテナ作成失敗: 401 Unauthorized")
+                    _log("  → アクセストークンが失効している可能性があります。")
+                    _log("  → Meta for Developers で新しいトークンを生成し、GitHub Secrets の THREADS_ACCESS_TOKEN を更新してください")
+                    _log(f"  → レスポンス: {res.text[:300]}")
+                    return ThreadsPostResult(ok=False, transient=False, reason="Threads認証エラー")
+                if res.status_code != 200:
+                    transient, reason = _classify_threads_response(res, "コンテナ作成")
+                    _log(f"❌ Threadsコンテナ作成失敗: {res.status_code} - {res.text[:200]} (試行 {attempt}/{THREADS_POST_MAX_RETRIES})")
+                    if image_url and not transient:
+                        # 画像を受け付けなかったときは、まだ何も公開していないので文字だけでやり直す
+                        _log("  → 画像を外して文字だけで投稿し直します。")
+                        image_url = None
+                        continue
+                    last_result = ThreadsPostResult(ok=False, transient=transient, reason=reason)
+                    if transient and attempt < THREADS_POST_MAX_RETRIES:
+                        _sleep_before_threads_retry(attempt)
+                        continue
+                    return last_result
+
+                container_id = res.json().get("id")
+                if not container_id:
+                    _log("❌ Threadsコンテナ作成: レスポンスにIDが含まれていません")
+                    return ThreadsPostResult(ok=False, transient=False, reason="ThreadsコンテナIDなし")
+
+                if image_url:
+                    if not _wait_threads_container(headers, str(container_id)):
+                        _log("  → 画像の処理が終わらないため、文字だけで投稿し直します。")
+                        image_url = None
+                        continue
+                else:
+                    time.sleep(3)
+
+                pub_res = requests.post(
+                    f"{base_url}/threads_publish",
+                    headers=headers,
+                    data={"creation_id": container_id},
+                    timeout=30
+                )
+                if pub_res.status_code != 200:
+                    transient, reason = _classify_threads_response(pub_res, "公開")
+                    _log(f"❌ Threads公開失敗: {pub_res.status_code} - {pub_res.text[:200]}")
+                    if transient:
+                        _log("  → 公開段階の一時エラーは重複投稿防止のため、同一実行内では再公開しません。")
+                    return ThreadsPostResult(ok=False, transient=transient, reason=reason)
+
+                post_id = pub_res.json().get("id")
+                if not post_id:
+                    _log("❌ Threads公開: レスポンスにIDが含まれていません")
+                    return ThreadsPostResult(ok=False, transient=False, reason="Threads投稿IDなし")
+                _log(f"✅ Threads投稿成功{'（画像つき）' if image_url else ''}! ID: {post_id}")
+                return ThreadsPostResult(ok=True, post_id=str(post_id), reason="投稿成功")
+
+            except Exception as e:
+                transient = isinstance(e, (requests.Timeout, requests.ConnectionError))
+                reason = "Threads APIへのネットワーク接続エラー" if transient else f"Threads投稿エラー: {e}"
+                _log(f"❌ Threads投稿エラー: {e} (試行 {attempt}/{THREADS_POST_MAX_RETRIES})")
                 last_result = ThreadsPostResult(ok=False, transient=transient, reason=reason)
                 if transient and attempt < THREADS_POST_MAX_RETRIES:
                     _sleep_before_threads_retry(attempt)
                     continue
                 return last_result
 
-            container_id = res.json().get("id")
-            if not container_id:
-                _log("❌ Threadsコンテナ作成: レスポンスにIDが含まれていません")
-                return ThreadsPostResult(ok=False, transient=False, reason="ThreadsコンテナIDなし")
-
-            time.sleep(3)
-
-            pub_res = requests.post(
-                f"{base_url}/threads_publish",
-                headers=headers,
-                data={"creation_id": container_id},
-                timeout=30
-            )
-            if pub_res.status_code != 200:
-                transient, reason = _classify_threads_response(pub_res, "公開")
-                _log(f"❌ Threads公開失敗: {pub_res.status_code} - {pub_res.text[:200]}")
-                if transient:
-                    _log("  → 公開段階の一時エラーは重複投稿防止のため、同一実行内では再公開しません。")
-                return ThreadsPostResult(ok=False, transient=transient, reason=reason)
-
-            post_id = pub_res.json().get("id")
-            if not post_id:
-                _log("❌ Threads公開: レスポンスにIDが含まれていません")
-                return ThreadsPostResult(ok=False, transient=False, reason="Threads投稿IDなし")
-            _log(f"✅ Threads投稿成功! ID: {post_id}")
-            return ThreadsPostResult(ok=True, post_id=str(post_id), reason="投稿成功")
-
-        except Exception as e:
-            transient = isinstance(e, (requests.Timeout, requests.ConnectionError))
-            reason = "Threads APIへのネットワーク接続エラー" if transient else f"Threads投稿エラー: {e}"
-            _log(f"❌ Threads投稿エラー: {e} (試行 {attempt}/{THREADS_POST_MAX_RETRIES})")
-            last_result = ThreadsPostResult(ok=False, transient=transient, reason=reason)
-            if transient and attempt < THREADS_POST_MAX_RETRIES:
-                _sleep_before_threads_retry(attempt)
-                continue
-            return last_result
-
-    return last_result
+        return last_result
+    finally:
+        if stager is not None:
+            for failure in stager.cleanup():
+                _log(f"⚠️ Threads用の一時画像を削除できませんでした（2日後に自動で消えます）: {failure[:200]}")
 
 
 def post_texts_to_threads_results(
@@ -686,66 +739,6 @@ def refresh_threads_token_if_needed() -> None:
     except Exception as e:
         _log(f"❌ トークン更新エラー: {e}")
 
-
-def load_logo(size: int = 50) -> Optional[Image.Image]:
-    """ロゴ画像を読み込み、指定されたサイズにリサイズする"""
-    try:
-        logo_path = get_font_path("new-logo.png")
-        logo = Image.open(logo_path).convert('RGBA')
-        resample_filter = Image.Resampling.LANCZOS if hasattr(Image, 'Resampling') else Image.LANCZOS
-        logo.thumbnail((size, size), resample_filter)
-        return logo
-    except Exception as e:
-        _log(f"ロゴ読み込みエラー: {e}")
-        return None
-
-def create_base_image(width: int = 1200, height: int = 630):
-    """全画像で共通のベース（背景・ロゴ・フッター）を生成する"""
-    # カラーパレット
-    BG_COLOR_DARK = (24, 30, 54)
-    BG_COLOR_LIGHT = (45, 55, 95)
-    TEXT_COLOR_LIGHT = (230, 230, 245)
-    TEXT_COLOR_MUTED = (150, 160, 180)
-
-    # フォント
-    font_regular = ImageFont.truetype(get_font_path("MPLUSRounded1c-Regular.ttf"), 22)
-    font_bold = ImageFont.truetype(get_font_path("MPLUSRounded1c-Bold.ttf"), 24)
-
-    # ベース作成
-    img = Image.new('RGB', (width, height))
-    draw = ImageDraw.Draw(img)
-
-    # 背景グラデーション
-    for y in range(height):
-        ratio = y / (height - 1)
-        r = int(BG_COLOR_DARK[0] * (1 - ratio) + BG_COLOR_LIGHT[0] * ratio)
-        g = int(BG_COLOR_DARK[1] * (1 - ratio) + BG_COLOR_LIGHT[1] * ratio)
-        b = int(BG_COLOR_DARK[2] * (1 - ratio) + BG_COLOR_LIGHT[2] * ratio)
-        draw.line([(0, y), (width, y)], fill=(r, g, b))
-    
-    # 星空のようなテクスチャを追加
-    # 小さな星（ノイズベース）
-    for _ in range(5000):
-        x, y = random.randint(0, width - 1), random.randint(0, height - 1)
-        brightness = random.randint(50, 120) # 暗めの星
-        draw.point((x, y), fill=(brightness, brightness, brightness))
-    # 大きめの明るい星
-    for _ in range(200):
-        x, y = random.randint(0, width - 1), random.randint(0, height - 1)
-        size = random.uniform(1, 2)
-        brightness = random.randint(150, 220) # 明るい星
-        draw.ellipse([(x, y), (x + size, y + size)], fill=(brightness, brightness, brightness))
-
-    # ロゴ配置
-    logo = load_logo(size=55)
-    if logo:
-        img.paste(logo, (50, 45), logo)
-        draw.text((120, 58), "UMA-FREE", font=font_bold, fill=TEXT_COLOR_LIGHT)
-
-    # フッター
-    draw.text((width - 50, height - 55), "uma-free.com", font=font_regular, fill=TEXT_COLOR_MUTED, anchor="rm")
-    
-    return img, draw
 
 def is_already_posted(content: str, post_type: str, target_date: str) -> bool:
     """
@@ -1052,292 +1045,39 @@ def summarize_honmei_results_from_api(all_races_data: Optional[Dict[str, Any]]) 
     return _finalize_honmei_summary(summary)
 
 # --- 6. OGP画像生成関数群 (改良: 安全な .get 使用、None ハンドリング) ---
-def generate_hit_og_image(hit_data: dict, date_str: str) -> Optional[str]:
-    """的中報告用の画像を生成する"""
-    safe_venue = hit_data.get('venue_name', '')
-    safe_race_num = hit_data.get('race_number', '')
-    safe_bet_type = hit_data.get('bet_type', '')
-    payout_val = hit_data.get('payout', 0) or 0
+# --- 6. 画像（sns_images.py）---
+def _image_path(prefix: str, key: str, suffix: str) -> str:
+    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()[:10]
+    return os.path.join(IMAGE_OUTPUT_DIR, f"{prefix}_{digest}{suffix}")
 
-    filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_hit_{date_str}_{random.randint(1000,9999)}.png")
-    _log(f"-> 的中報告用の画像を生成: {filename}")
+
+def render_sns_image(renderer, data: Any, prefix: str, key: str, suffix: str = ".png", **kwargs: Any) -> Optional[str]:
+    """画像を作る。失敗しても投稿は文字だけで続けられるよう、例外は記録して None を返す。"""
+    path = _image_path(prefix, key, suffix)
     try:
-        # カラーとフォント
-        COLOR_GOLD = (250, 204, 21) # Amber 400
-        TEXT_COLOR_LIGHT = (230, 230, 245)
-        font_light = get_font_path("MPLUSRounded1c-Light.ttf")
-        font_regular = get_font_path("MPLUSRounded1c-Regular.ttf")
-        font_bold = get_font_path("MPLUSRounded1c-Bold.ttf")
-        font_black = get_font_path("MPLUSRounded1c-Black.ttf")
-
-        # ベース画像生成
-        img, draw = create_base_image()
-
-        # ヘッダー (昨日の最高配当)
-        header_text = "昨日の最高配当"
-        header_font = ImageFont.truetype(font_bold, 42)
-        draw_centered_text(draw, header_text, header_font, COLOR_GOLD, 1200, 150)
-
-        # レース情報
-        race_info_text = f"{safe_venue} {safe_race_num}R"
-        draw_centered_text(draw, race_info_text, ImageFont.truetype(font_regular, 32), TEXT_COLOR_LIGHT, 1200, 240)
-
-        # 馬券種類
-        draw_centered_text(draw, safe_bet_type, ImageFont.truetype(font_bold, 48), TEXT_COLOR_LIGHT, 1200, 290)
-
-        # 配当金額
-        payout_text = f"¥{int(payout_val):,}"
-        draw_centered_text(draw, payout_text, ImageFont.truetype(font_black, 110), COLOR_GOLD, 1200, 370)
-
-        # フッター情報
-        date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%Y.%m.%d')
-        draw.text((50, 580), date_formatted, font=ImageFont.truetype(font_light, 22), fill=TEXT_COLOR_LIGHT, anchor="ls")
-
-        img.save(filename, quality=95, optimize=True)
-        return filename
-    except Exception as e:
-        _log(f"❌ Hit OGP生成エラー: {e}\n{traceback.format_exc()}")
+        result = renderer(data, path, **kwargs)
+        _log(f"-> 画像を生成: {result}")
+        return result
+    except Exception as error:
+        _log(f"❌ 画像の生成に失敗しました（{prefix}）: {error}\n{traceback.format_exc()}")
         return None
 
-def generate_pick_og_image(data: dict, date_str: str) -> Optional[str]:
-    """注目馬用の画像を生成する"""
-    safe_venue = data.get('venue_name', '')
-    safe_race_num = data.get('race_number', '')
-    safe_race_name = display_name(data.get('race_name', ''))
-    safe_horse_name = data.get('horse_name', '')
-    ds = data.get('deviation_score', 0)
-    try:
-        ds_val = float(ds) if ds is not None else 0.0
-    except Exception:
-        ds_val = 0.0
 
-    filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_pick_{date_str}.png")
-    _log(f"-> 注目馬用の画像を生成: {filename}")
-    try:
-        # カラーとフォント
-        COLOR_CYAN = (34, 211, 238) # Cyan 400
-        TEXT_COLOR_LIGHT = (230, 230, 245)
-        TEXT_COLOR_MUTED = (150, 160, 180)
-        font_light = get_font_path("MPLUSRounded1c-Light.ttf")
-        font_regular = get_font_path("MPLUSRounded1c-Regular.ttf")
-        font_bold = get_font_path("MPLUSRounded1c-Bold.ttf")
-        font_black = get_font_path("MPLUSRounded1c-Black.ttf")
-        
-        # ベース画像生成
-        img, draw = create_base_image()
-
-        # ヘッダー (本日の注目馬)
-        draw_centered_text(draw, "本日のAI注目馬", ImageFont.truetype(font_bold, 32), COLOR_CYAN, 1200, 150)
-
-        # レース情報
-        race_info_text = f"{safe_venue} {safe_race_num}R"
-        draw_centered_text(draw, race_info_text, ImageFont.truetype(font_regular, 28), TEXT_COLOR_LIGHT, 1200, 220)
-        draw_centered_text(draw, safe_race_name, ImageFont.truetype(font_light, 24), TEXT_COLOR_MUTED, 1200, 260)
-
-        # 馬名
-        draw_centered_text(draw, safe_horse_name, ImageFont.truetype(font_black, 84), TEXT_COLOR_LIGHT, 1200, 320)
-
-        # AI偏差値
-        draw.line([(450, 450), (750, 450)], fill=TEXT_COLOR_MUTED, width=1)
-        deviation_score_text = f"{ds_val:.1f}"
-        score_font = ImageFont.truetype(font_black, 56)
-        label_font = ImageFont.truetype(font_regular, 28)
-
-        draw_centered_text(draw, "AI偏差値", label_font, TEXT_COLOR_MUTED, 1200, 470)
-        draw_centered_text(draw, deviation_score_text, score_font, COLOR_CYAN, 1200, 505)
-
-        # フッター情報
-        date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%Y.%m.%d')
-        draw.text((50, 580), date_formatted, font=ImageFont.truetype(font_light, 22), fill=TEXT_COLOR_LIGHT, anchor="ls")
-
-        img.save(filename, quality=95, optimize=True)
-        return filename
-    except Exception as e:
-        _log(f"❌ Pick OGP生成エラー: {e}\n{traceback.format_exc()}")
+def render_threads_image(renderer, data: Any, prefix: str, key: str, **kwargs: Any) -> Optional[str]:
+    """Threads用の縦長の画像。画像を付けない設定のときは作らない。"""
+    if not threads_images_enabled():
         return None
+    return render_sns_image(renderer, data, prefix, key, ".jpg", **kwargs)
 
-def generate_reminder_og_image(race: dict, top_preds: list) -> Optional[str]:
-    """重賞レース用の画像を生成する"""
-    race_id_safe = race.get('id', 'unknown')
-    filename = os.path.join(IMAGE_OUTPUT_DIR, f"og_reminder_{race_id_safe}_{random.randint(1000,9999)}.png")
-    _log(f"-> 重賞レース用の画像を生成: {filename}")
-    try:
-        # カラーとフォント
-        COLOR_GOLD = (250, 204, 21)
-        COLOR_SILVER = (209, 213, 219)
-        COLOR_BRONZE = (205, 151, 104)
-        TEXT_COLOR_LIGHT = (230, 230, 245)
-        TEXT_COLOR_MUTED = (150, 160, 180)
-        font_light = get_font_path("MPLUSRounded1c-Light.ttf")
-        font_regular = get_font_path("MPLUSRounded1c-Regular.ttf")
-        font_bold = get_font_path("MPLUSRounded1c-Bold.ttf")
-        font_black = get_font_path("MPLUSRounded1c-Black.ttf")
 
-        # ベース画像生成
-        img, draw = create_base_image()
+def same_race_hits(hits: List[Dict[str, Any]], top: Dict[str, Any], fallback_date: str) -> List[SC.HitCard]:
+    race_id = top.get("race_id")
+    return [
+        SC.hit_card_from_api(hit, fallback_date)
+        for hit in hits
+        if hit is not top and race_id and hit.get("race_id") == race_id
+    ]
 
-        # ヘッダー (重賞) とレース名
-        draw_centered_text(draw, display_name(race.get('race_name', '')), ImageFont.truetype(font_black, 64), TEXT_COLOR_LIGHT, 1200, 150)
-        
-        # 開催情報
-        race_date_safe = race.get('race_date', '1970-01-01')
-        try:
-            date_str_for_v = datetime.strptime(race_date_safe, '%Y-%m-%d').strftime('%m/%d')
-        except Exception:
-            date_str_for_v = race_date_safe
-        venue_info = f"{race.get('venue_name','')} {date_str_for_v}"
-        draw_centered_text(draw, venue_info, ImageFont.truetype(font_light, 28), TEXT_COLOR_MUTED, 1200, 240)
-
-        # 予測リスト
-        y_start, y_step = 320, 80
-        marks, colors = ["◎", "○", "▲"], [COLOR_GOLD, COLOR_SILVER, COLOR_BRONZE]
-        mark_font = ImageFont.truetype(font_black, 40)
-        horse_font = ImageFont.truetype(font_bold, 36)
-        score_font = ImageFont.truetype(font_regular, 32)
-        
-        for i, p in enumerate(top_preds):
-            if i >= 3:
-                break
-            y_pos = y_start + i * y_step
-            # Mark
-            draw.text((350, y_pos), marks[i], font=mark_font, fill=colors[i], anchor="lm")
-            # Horse Name
-            horse_name = p.get('horse_name', '')
-            draw.text((420, y_pos), horse_name, font=horse_font, fill=TEXT_COLOR_LIGHT, anchor="lm")
-            # Score (safe)
-            ds_p = p.get('deviation_score', 0)
-            try:
-                ds_p_val = float(ds_p) if ds_p is not None else 0.0
-            except Exception:
-                ds_p_val = 0.0
-            score_text = f"偏差値: {ds_p_val:.1f}"
-            draw.text((850, y_pos), score_text, font=score_font, fill=TEXT_COLOR_MUTED, anchor="rm")
-        
-        # フッター情報
-        date_str = race_date_safe
-        try:
-            date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%Y.%m.%d')
-        except Exception:
-            date_formatted = date_str
-        draw.text((50, 580), date_formatted, font=ImageFont.truetype(font_light, 22), fill=TEXT_COLOR_LIGHT, anchor="ls")
-
-        img.save(filename, quality=95, optimize=True)
-        return filename
-    except Exception as e:
-        _log(f"❌ Reminder OGP生成エラー: {e}\n{traceback.format_exc()}")
-        return None
-
-# --- 7. テキスト生成関数群 (安全に .get を使い None を扱う) ---
-def get_past_tweet_id_for_race(target_date_str: str, post_type_prefix: str = "evening_race") -> Optional[str]:
-    """
-    指定した日付に関する過去の投稿（例：前日の evening_race または 本日の morning_pick_only）
-    の tweet_id を取得し、引用RT用のURLを生成するために使用する。
-    """
-    if not DATABASE_URL or SessionLocal is None or models is None:
-        return None
-
-    db = SessionLocal()
-    try:
-        # target_date_str の日付に対する投稿を探す
-        # 例えば今日が2023-10-15で、昨日の的中(10-14)を報告する場合、
-        # 探したいのは「10-14のレース」に向けて投稿されたtweet_id。
-        # evening_race は前日(10-13)に target_date=10-14 として保存されている。
-        past_post = db.query(models.SnsPost).filter(
-            models.SnsPost.target_date == target_date_str,
-            models.SnsPost.post_type.like(f"{post_type_prefix}%"),
-            models.SnsPost.tweet_id.isnot(None)
-        ).order_by(models.SnsPost.posted_at.desc()).first()
-        
-        if past_post and past_post.tweet_id:
-            return past_post.tweet_id
-        return None
-    except Exception as e:
-        _log(f"⚠️ 過去のtweet_id取得に失敗しました: {e}")
-        return None
-    finally:
-        db.close()
-
-def create_hit_report_and_summary_tweet(hit: Dict[str, Any], summary: dict, date_str: str, quote_tweet_id: Optional[str] = None) -> str:
-    _log("-> 的中報告＋成績サマリーのテキストを生成...")
-    payout_val = hit.get('payout', 0) or 0
-    hashtags = ["#競馬", "#AI予想", "#万馬券" if payout_val >= 10000 else "#的中"]
-    venue_name = hit.get('venue_name', '')
-    if venue_name:
-        hashtags.append(f"#{venue_name}競馬")
-    return f"""🎯昨日のAI的中速報 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})
-
-【{venue_name}{hit.get('race_number','')}R {hit.get('bet_type','')}】で
-
-🎉 {int(payout_val):,}円 の高配当を的中しました！
-
-📈昨日のAI本命馬(◎)成績
-
-[{summary.get('win',0)}-{summary.get('second',0)}-{summary.get('third',0)}-{summary.get('other',0)}]
-
-勝率: {summary.get('win_rate',0.0):.1f}% / 複勝率: {summary.get('in_money_rate',0.0):.1f}%
-
-▼レース結果とAIの印はこちらから
-
-{build_race_url(date_str)}
-
-{' '.join(hashtags)}
-{build_x_status_url(quote_tweet_id) if quote_tweet_id else ''}
-"""
-
-def create_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
-    _log("-> 注目馬のテキストを生成...")
-    # JRA判定（race_id 形式を利用する既存ロジックを維持）
-    is_jra = False
-    race_id_val = pick.get('race_id', '')
-    if isinstance(race_id_val, str) and len(race_id_val) >= 6:
-        try:
-            is_jra = int(race_id_val[4:6]) < 30
-        except Exception:
-            is_jra = False
-
-    hashtags = ["#競馬", "#AI予想", "#中央競馬" if is_jra else "#地方競馬"]
-    venue_name = pick.get('venue_name', '')
-    if venue_name:
-        hashtags.append(f"#{venue_name}競馬")
-    
-    clean_race_name = hashtag_race_name(pick.get('race_name', ''))
-    if clean_race_name:
-        hashtags.append(f"#{clean_race_name}")
-
-    pick_horse_name = pick.get('horse_name', '')
-    if pick_horse_name:
-        hashtags.append(f"#{pick_horse_name}")
-
-    return f"""🏇本日のAI注目馬 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})
-
-AIが今日のレースで最も高く評価した一頭はこちら！
-
-【{pick.get('venue_name','')}{pick.get('race_number','')}R {display_name(pick.get('race_name',''))}】
-
-◎ {pick_horse_name} (AI偏差値: {float(pick.get('deviation_score') or 0):.2f})
-
-▼全レースの無料予測
-
-{build_race_url(date_str)}
-
-{' '.join(hashtags)}
-
-"""
-
-def create_reminder_tweet(race: dict, top_preds: List[dict]) -> str:
-    _log("-> 重賞レースのテキストを生成...")
-    # ★★修正済み: 'race_date' を参照
-    date_str = race.get('race_date', '')
-    clean_race_name = hashtag_race_name(race.get('race_name', ''))
-    hashtags = ["#競馬", "#競馬予想", "#AI予想"] + ([f"#{clean_race_name}"] if clean_race_name else [])
-    lines = [f"🏇本日の重賞 ({display_name(race.get('race_name',''))}) AI予測\n"]
-    for i, p in enumerate(top_preds[:3]):
-        lines.append(f"{['◎','○','▲'][i]} {p.get('horse_name','?')} (AI偏差値: {float(p.get('deviation_score') or 0):.2f})")
-    race_num = race.get('race_number', '')
-    venue = race.get('venue_name', '')
-    lines.append(f"\n▼詳細なデータはこちら\n{build_race_url(date_str)}")
-    lines.append(f"\n{' '.join(hashtags)}")
-    return "\n".join(lines)
 
 # --- 8. X (Twitter) 投稿関数 (文字数制限対応版) ---
 X_URL_PATTERN = re.compile(r'https?://\S+')
@@ -1359,7 +1099,12 @@ def sanitize_text_for_short_social_post(text: str, channel_name: str, remove_url
                 lookback -= 1
             if lookback >= 0:
                 previous = cleaned_lines[lookback].strip()
-                if previous.startswith("▼") or "こちら" in previous or "無料予測" in previous:
+                if (
+                    previous.startswith("▼")
+                    or previous in SC.LINK_LABELS
+                    or "こちら" in previous
+                    or "無料予測" in previous
+                ):
                     del cleaned_lines[lookback:]
             continue
         cleaned_lines.append(line.rstrip())
@@ -1384,9 +1129,11 @@ def fit_text_for_short_social_post(
     channel_name: str,
     max_chars: int = SHORT_SOCIAL_MAX_CHARS,
     preserve_urls: bool = False,
+    length_fn=len,
 ) -> str:
-    """XとThreadsで同じ印象になるよう、短いSNS本文に丸める。"""
-    if len(text) <= max_chars:
+    """XとThreadsで同じ印象になるよう、短いSNS本文に丸める。長さは length_fn で数える（XはXの数え方）。"""
+    measure = length_fn
+    if measure(text) <= max_chars:
         return text
 
     lines = [line.rstrip() for line in text.splitlines()]
@@ -1407,14 +1154,14 @@ def fit_text_for_short_social_post(
     ]
 
     suffix = "..."
-    reserved = len("\n") + len(suffix)
+    reserved = measure("\n") + measure(suffix)
     trailing_blocks = []
     if url_lines:
         trailing_blocks.append("\n".join(url_lines))
     if hashtag_line:
         trailing_blocks.append(hashtag_line)
 
-    while trailing_blocks and reserved + sum(len("\n\n") + len(block) for block in trailing_blocks) > max_chars:
+    while trailing_blocks and reserved + sum(measure("\n\n") + measure(block) for block in trailing_blocks) > max_chars:
         if hashtag_line and trailing_blocks[-1] == hashtag_line:
             trailing_blocks.pop()
             hashtag_line = ""
@@ -1424,12 +1171,12 @@ def fit_text_for_short_social_post(
         else:
             break
 
-    reserved += sum(len("\n\n") + len(block) for block in trailing_blocks)
+    reserved += sum(measure("\n\n") + measure(block) for block in trailing_blocks)
 
     fitted_lines: List[str] = []
     current_len = 0
     for line in content_lines:
-        next_len = len(line) if not fitted_lines else current_len + 1 + len(line)
+        next_len = measure(line) if not fitted_lines else current_len + 1 + measure(line)
         if next_len + reserved > max_chars:
             break
         fitted_lines.append(line)
@@ -1437,17 +1184,20 @@ def fit_text_for_short_social_post(
 
     if not fitted_lines:
         base_limit = max_chars - reserved
-        fitted_lines = [content_lines[0][:max(base_limit, 1)].rstrip()] if content_lines else []
+        first_line = content_lines[0] if content_lines else ""
+        while first_line and measure(first_line) > max(base_limit, 1):
+            first_line = first_line[:-1]
+        fitted_lines = [first_line.rstrip()] if first_line else []
 
     fitted = "\n".join(fitted_lines).rstrip()
     if fitted and not fitted.endswith(suffix):
         fitted = f"{fitted}\n{suffix}"
     for block in trailing_blocks:
-        if block and len(f"{fitted}\n\n{block}") <= max_chars:
+        if block and measure(f"{fitted}\n\n{block}") <= max_chars:
             fitted = f"{fitted}\n\n{block}"
 
     _log(f"{channel_name}投稿用に本文を{max_chars}文字以内へ調整しました。")
-    return fitted.strip() or text[:max_chars]
+    return fitted.strip() or text[:max_chars // 2]
 
 
 def prepare_short_social_text(
@@ -1456,12 +1206,15 @@ def prepare_short_social_text(
     remove_urls: bool = True,
     max_chars: int = SHORT_SOCIAL_MAX_CHARS,
 ) -> str:
+    """投稿先に合わせて本文を整える。Xは日本語を2文字・URLを23文字と数える（Xの数え方）。"""
     sanitized = sanitize_text_for_short_social_post(text, channel_name, remove_urls=remove_urls)
+    length_fn = SC.x_weighted_length if channel_name == "X" else len
     return fit_text_for_short_social_post(
         sanitized,
         channel_name,
         max_chars=max_chars,
         preserve_urls=not remove_urls,
+        length_fn=length_fn,
     )
 
 
@@ -1865,249 +1618,52 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
 
     return TwitterPostResult(ok=True, posted_ids=posted_ids, reason="投稿成功")
 
-# --- 7.5 新しい投稿用テキスト生成関数 ---
-def create_morning_hit_tweet(hit: Dict[str, Any], summary: dict, date_str: str, quote_tweet_id: Optional[str] = None) -> str:
-    """朝投稿ツイート1: 昨日の的中報告 + 本命馬成績"""
-    _log("-> 朝投稿ツイート1: 的中報告＋本命馬成績のテキストを生成...")
+# --- 7.5 SNSごとの投稿 ---
+def post_to_threads_with_images(
+    items: List[tuple[str, Optional[str]]],
+    delay_seconds: int = 3,
+) -> List[ThreadsPostResult]:
+    """(本文, 画像) の組を順にThreadsへ投稿する。"""
+    results: List[ThreadsPostResult] = []
+    for idx, (text, image_path) in enumerate(items, 1):
+        _log(f"Threads投稿 {idx}/{len(items)} を実行します。")
+        results.append(post_to_threads(text, image_path))
+        if idx < len(items) and delay_seconds > 0:
+            time.sleep(delay_seconds)
+    return results
 
-    date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')
-    total = max(summary.get('total',0), 1)
-    in_money_rate = ((summary.get('win',0) + summary.get('second',0) + summary.get('third',0)) / total * 100) if summary.get('total',0) > 0 else 0.0
 
-    hashtags_1 = ["#競馬", "#AI予想", "#万馬券" if (hit.get('payout',0) or 0) >= 10000 else "#的中"]
-    venue_name = hit.get('venue_name', '')
-    if venue_name:
-        hashtags_1.append(f"#{venue_name}競馬")
+def post_single(
+    sns_failures: List[str],
+    text: str,
+    post_type: str,
+    target_date: str,
+    *,
+    x_image: Optional[str] = None,
+    threads_image: Optional[str] = None,
+    context: str = "",
+    post_threads: bool = True,
+) -> None:
+    """1つの本文をXとThreadsへ投稿し、結果を記録する。"""
+    context = context or post_type
+    if is_already_posted(text, post_type, target_date):
+        _log(f"-> 既に投稿済み: {context}")
+        return
+    x_result = post_to_twitter(text, x_image, post_type=post_type, target_date=target_date, split_mode=False)
+    if post_threads:
+        threads_result = post_to_threads(text, threads_image)
+    else:
+        threads_result = ThreadsPostResult(ok=False, attempted=False, reason="夜のThreadsは動画投稿へ置換")
+        _log("-> Threadsのこの投稿は、夜の動画投稿に置き換えているため送りません。")
+    threads_ok = bool(threads_result)
+    if ENABLE_TWITTER:
+        track_x_result(sns_failures, context, x_result, threads_ok=threads_ok)
+    if ENABLE_THREADS and post_threads:
+        track_threads_result(sns_failures, context, threads_result, x_ok=bool(x_result))
+    record_post_if_delivered(text, post_type, target_date, x_result=x_result, threads_ok=threads_ok)
+    if not x_result:
+        _log("⚠️ X投稿は失敗しましたが、Threads投稿は試行済みです")
 
-    lines = [f"🎯昨日のAI的中速報 ({date_formatted})"]
-    lines.append(f"\n【{venue_name}{hit.get('race_number','')}R {hit.get('bet_type','')}】で")
-    lines.append(f"\n🎉 {int(hit.get('payout',0) or 0):,}円 の高配当を的中しました！")
-    lines.append(f"\n📈昨日のAI本命馬(◎)成績")
-    lines.append(f"\n[{summary.get('win',0)}-{summary.get('second',0)}-{summary.get('third',0)}-{summary.get('other',0)}]")
-    lines.append(f"\n勝率: {summary.get('win_rate',0.0):.1f}% / 複勝率: {in_money_rate:.1f}%")
-    lines.append(f"\n▼レース結果とAIの印はこちらから")
-    lines.append(f"\n{build_race_url(date_str)}")
-    lines.append(f"\n{' '.join(hashtags_1)}")
-    
-    if quote_tweet_id:
-        lines.append(f"\n{build_x_status_url(quote_tweet_id)}")
-
-    # engagements = [
-    #     "皆さんの本命馬と同じでしたか？👇",
-    #     "この結果に驚いた方は『いいね』で教えてください🐴",
-    #     "AIの印が参考になったら『いいね/ブックマーク』をぜひ！🔖",
-    #     "今後も高配当を狙うならお見逃しなく！🏇"
-    # ]
-    # lines.append(f"\n\n{random.choice(engagements)}")
-
-    return "\n".join(lines)
-
-def create_morning_pick_tweet(pick: Dict[str, Any], date_str: str) -> str:
-    """朝投稿ツイート2: 本日のAI注目馬"""
-    _log("-> 朝投稿ツイート2: 本日のAI注目馬のテキストを生成...")
-
-    date_formatted = datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')
-
-    venue_name = pick.get('venue_name', '')
-
-    jra_venues = ['札幌', '函館', '福島', '新潟', '東京', '中山', '京都', '阪神']
-    is_jra = any(jra_venue in venue_name for jra_venue in jra_venues)
-
-    hashtags_2 = ["#競馬", "#AI予想", "#中央競馬" if is_jra else "#地方競馬"]
-    if venue_name:
-        hashtags_2.append(f"#{venue_name}競馬")
-    
-    clean_race_name = hashtag_race_name(pick.get('race_name', ''))
-    if clean_race_name:
-        hashtags_2.append(f"#{clean_race_name}")
-
-    pick_horse_name = pick.get('horse_name', '')
-    if pick_horse_name:
-        hashtags_2.append(f"#{pick_horse_name}")
-
-    lines = [f"🐎本日のAI注目馬 ({date_formatted})"]
-    lines.append(f"\nAIが今日のレースで最も高く評価した一頭はこちら！")
-    lines.append(f"\n【{pick.get('venue_name','')}{pick.get('race_number','')}R {display_name(pick.get('race_name',''))}】")
-    lines.append(f"\n◎ {pick_horse_name} (AI偏差値: {float(pick.get('deviation_score') or 0):.2f})")
-    lines.append(f"\n▼全レースの無料予測")
-    race_num = pick.get('race_number', '')
-    venue = pick.get('venue_name', '')
-    lines.append(f"\n{build_race_url(date_str)}")
-    lines.append(f"\n{' '.join(hashtags_2)}")
-
-    # engagements = [
-    #     "波乱の予感がする方は『いいね/ブックマーク』で保存！🔖",
-    #     "この馬鹿にならないAI偏差値、ぜひ参考に！🐴",
-    #     "皆さんの予想はどうですか？👇",
-    #     "発走前にオッズと一緒にチェック！🏇"
-    # ]
-    # lines.append(f"\n\n{random.choice(engagements)}")
-
-    return "\n".join(lines)
-
-def create_afternoon_race_summary_tweet(all_races_today: dict, yesterday_hits: List[Dict], date_str: str) -> str:
-    """昼投稿: 本日のレース一覧 + 昨日の的中ランキング"""
-    _log("-> 昼投稿: 本日のレース一覧テキストを生成...")
-
-    total_races = 0
-    venue_info = []
-    jra_races = 0
-    nar_races = 0
-    venues = all_races_today.get('jra', []) + all_races_today.get('nar', [])
-
-    for venue in venues:
-        races = venue.get('races', [])
-        race_count = len(races)
-        if race_count > 0:
-            total_races += race_count
-            venue_info.append((venue.get('venue_name', '?'), race_count))
-            venue_name = venue.get('venue_name', '')
-            jra_venues = ['札幌', '函館', '福島', '新潟', '東京', '中山', '京都', '阪神']
-            if any(jra_venue in venue_name for jra_venue in jra_venues):
-                jra_races += race_count
-            else:
-                nar_races += race_count
-
-    hit_summary = "昨日の的中実績: 予測あり"
-    if yesterday_hits and len(yesterday_hits) > 0:
-        hit_summary = f"昨日の最高配当: {yesterday_hits[0].get('venue_name','?')}{yesterday_hits[0].get('race_number','?')}R {yesterday_hits[0].get('bet_type','?')} ¥{int(yesterday_hits[0].get('payout',0) or 0):,}"
-
-    lines = [f"📊本日のレース情報 ({datetime.strptime(date_str, '%Y-%m-%d').strftime('%m/%d')})"]
-    lines.append(f"\n{hit_summary}")
-    lines.append(f"\n✅ 本日は 全{total_races}レース 無料予想公開中！\n")
-    lines.append("【本日の開催場】")
-
-    for venue_name, count in sorted(venue_info, key=lambda x: x[1], reverse=True)[:5]:
-        lines.append(f"• {venue_name}:全{count}R")
-
-    hashtags = ["#競馬予想", "#AI予想"]
-    if jra_races > 0:
-        hashtags.append("#中央競馬")
-    if nar_races > 0:
-        hashtags.append("#地方競馬")
-
-    lines.append(f"\n▼詳細データはこちら\n{build_race_url(date_str)}\n")
-    lines.append(" ".join(hashtags))
-
-    return "\n".join(lines)
-
-def find_all_grade_races_for_date(target_date: str) -> List[tuple]:
-    """
-    指定日の全重賞レースを検索し、投稿用データのリストを返す。
-    戻り値: [(tweet_text, race_data, top_preds), ...] (グレード優先度順)
-    """
-    _log(f"-> 重賞レース検索: {target_date} のレースデータを取得中...")
-
-    races_data = get_api_data(target_date)
-    if not races_data:
-        _log("-> APIからレースデータが取得できませんでした")
-        return []
-
-    venues = races_data.get('jra', []) + races_data.get('nar', [])
-    _log(f"-> レースデータ: JRA {len(races_data.get('jra', []))}会場, NAR {len(races_data.get('nar', []))}会場")
-
-    grade_results = []
-
-    for venue in venues:
-        for race in venue.get('races', []):
-            race_name = (race.get('race_name') or '').strip()
-            if not race_name:
-                continue
-
-            if not is_grade_race(race_name):
-                continue
-
-            norm_race = canonicalize_race_name(race_name)
-            _log(f"-> 重賞レース発見: {race_name} (normalized: {norm_race})")
-
-            preds_raw = race.get('predictions', []) or []
-            preds = [p for p in preds_raw if p and p.get('deviation_score') is not None]
-            preds = sorted(preds, key=lambda p: p['deviation_score'], reverse=True)
-            top_preds = preds[:3]
-
-            if len(top_preds) < 3:
-                _log(f"-> 重賞 {race_name} の予測データが不足しています (取得: {len(preds_raw)}件, deviation_score を持つ: {len(preds)}件, トップ取得: {len(top_preds)}件).")
-                for i, p in enumerate(preds_raw[:10]):
-                    ds = p.get('deviation_score', None)
-                    _log(f"  pred[{i}]: horse_name={p.get('horse_name','?')}, deviation_score={ds}")
-                continue
-
-            _log(f"-> 予測データあり (トップ3頭: {', '.join([p.get('horse_name', '?') for p in top_preds])})")
-
-            lines = [f"🎯明日のレース AI予想"]
-            lines.append(f"\n【{display_name(race_name)}】")
-            lines.append(f"{race.get('venue_name', '?')}   {datetime.strptime(target_date, '%Y-%m-%d').strftime('%m/%d')}\n")
-
-            marks = ['◎', '○', '▲']
-            horse_names = []
-            for i, pred in enumerate(top_preds):
-                horse_name = pred.get('horse_name', '?')
-                horse_names.append(horse_name)
-                ds_val = pred.get('deviation_score')
-                try:
-                    ds_val_f = float(ds_val) if ds_val is not None else 0.0
-                except Exception:
-                    ds_val_f = 0.0
-                lines.append(f"{marks[i]} {horse_name} (AI偏差値: {ds_val_f:.1f})")
-
-            clean_race_name = hashtag_race_name(race_name)
-
-            hashtags = ["#競馬予想", "#AI予想"] + ([f"#{clean_race_name}"] if clean_race_name else [])
-            venue_name = race.get('venue_name', '')
-            if venue_name and venue_name != '?':
-                hashtags.append(f"#{venue_name}競馬")
-
-            for horse_name in horse_names:
-                hashtags.append(f"#{horse_name}")
-
-            race_num = race.get('race_number', '')
-            lines.append(f"\n▼詳細はこちら\n{build_race_url(target_date)}\n")
-            lines.append(" ".join(hashtags))
-
-            tweet_text = "\n".join(lines)
-            priority = get_grade_priority(race_name)
-            grade_results.append((tweet_text, race, top_preds, priority))
-
-    if not grade_results:
-        _log("-> 重賞レースが見つかりませんでした")
-        return []
-
-    # グレード優先度順にソート (G1 -> G2 -> G3)
-    grade_results.sort(key=lambda x: x[3])
-    _log(f"-> {len(grade_results)}件の重賞レースを検出")
-    return [(text, race, preds) for text, race, preds, _ in grade_results]
-
-def create_pre_race_tweet(race: dict, top_preds: List[dict]) -> str:
-    """直前リマインド: レース直前の予想リマインド"""
-    _log("-> 直前リマインドテキストを生成...")
-    date_str = race.get('race_date', '')
-    clean_race_name = hashtag_race_name(race.get('race_name', ''))
-    hashtags = ["#競馬", "#競馬予想", "#AI予想"] + ([f"#{clean_race_name}"] if clean_race_name else [])
-    venue_name = race.get('venue_name', '')
-    if venue_name and venue_name != '?':
-        hashtags.append(f"#{venue_name}競馬")
-
-    lines = [f"⏰まもなく発走！ ({display_name(race.get('race_name',''))}) AI予想\n"]
-    for i, p in enumerate(top_preds[:3]):
-        ds_val = p.get('deviation_score')
-        ds_val_f = float(ds_val) if ds_val is not None else 0.0
-        horse_name = p.get('horse_name','?')
-        lines.append(f"{['◎','○','▲'][i]} {horse_name} (AI偏差値: {ds_val_f:.1f})")
-        hashtags.append(f"#{horse_name}")
-        
-    race_num = race.get('race_number', '')
-    lines.append(f"\n▼詳細なデータはこちら\n{build_race_url(date_str)}")
-    lines.append(f"\n{' '.join(hashtags)}")
-    
-    engagements = [
-        "馬券購入の参考にどうぞ！🐴",
-        "皆さんの本命は決まりましたか？👇",
-        "発走前に『いいね/ブックマーク』で保存！🔖",
-        "AIが高配当を狙います！🏇"
-    ]
-    lines.append(f"\n\n{random.choice(engagements)}")
-    
-    return "\n".join(lines)
 
 # --- 9. メイン処理 ---
 def main():
@@ -2161,204 +1717,136 @@ def main():
 
         # ========== 朝7時投稿 ==========
         if post_type == 'morning':
-            _log("\n--- 朝投稿: 的中報告 + 本命馬成績 + 本日のAI注目馬 ---")
+            _log("\n--- 朝投稿: 前日の的中 + AI本命(◎)の成績 + 本日のAI注目馬 ---")
             hits_data = get_api_data(f"hits/high-payouts/{yesterday_str}")
+            top_hit = (
+                hits_data[0]
+                if isinstance(hits_data, list) and hits_data and (hits_data[0].get('payout', 0) or 0) >= 10000
+                else None
+            )
+            all_races_today = get_api_data(today_str)
+            pick_card = SC.find_best_pick(all_races_today, today_str)
+            if pick_card:
+                _log(f"-> AI注目馬: {pick_card.pick.name} (AI偏差値: {pick_card.pick.score:.1f}、全{pick_card.total_races}レース)")
 
-            if hits_data and isinstance(hits_data, list) and len(hits_data) > 0 and (hits_data[0].get('payout', 0) or 0) >= 10000:
-                _log("-> 昨日の本命馬成績を集計中...")
+            if top_hit and pick_card:
+                _log("-> 前日のAI本命(◎)の成績を集計中...")
                 summary = summarize_honmei_results_from_db(yesterday_str)
                 if summary is None:
-                    all_races_data_yesterday = get_api_data(yesterday_str)
-                    summary = summarize_honmei_results_from_api(all_races_data_yesterday)
+                    summary = summarize_honmei_results_from_api(get_api_data(yesterday_str))
+                hit_card = SC.hit_card_from_api(top_hit, yesterday_str)
+                others = same_race_hits(hits_data, top_hit, yesterday_str)
+                tweet_text_1 = SC.build_hit_text(hit_card, summary)
+                tweet_text_2 = SC.build_pick_text(pick_card)
+                key_1, key_2 = f"hit:{yesterday_str}:{top_hit.get('race_id')}", f"pick:{today_str}"
+                image_file_1 = render_sns_image(SI.render_x_hit, hit_card, "x_hit", key_1, others=others[:2])
+                image_file_2 = render_sns_image(SI.render_x_pick, pick_card, "x_pick", key_2)
+                threads_image_1 = render_threads_image(SI.render_threads_hit, hit_card, "th_hit", key_1, others=others[:3])
+                threads_image_2 = render_threads_image(SI.render_threads_pick, pick_card, "th_pick", key_2)
 
-                # 本日のレース情報を取得
-                all_races_today = get_api_data(today_str)
-
-                # 本日のAI注目馬を取得
-                pick_data = None
-                if all_races_today:
-                    _log("-> 本日のAI注目馬を検索中...")
-                    venues = all_races_today.get('jra', []) + all_races_today.get('nar', [])
-                    for venue in venues:
-                        for race in venue.get('races', []):
-                            preds = race.get('predictions', [])
-                            if preds:
-                                # AI偏差値が最も高い馬を取得
-                                sorted_preds = sorted([p for p in preds if p.get('deviation_score') is not None],
-                                                     key=lambda p: p['deviation_score'], reverse=True)
-                                if sorted_preds:
-                                    pick_data = sorted_preds[0]
-                                    pick_data['venue_name'] = venue.get('venue_name', '?')
-                                    pick_data['race_name'] = race.get('race_name', '?')
-                                    pick_data['race_number'] = race.get('race_number', '?')
-                                    _log(f"-> AI注目馬を検出: {pick_data.get('horse_name', '?')} (AI偏差値: {pick_data.get('deviation_score', 0):.2f})")
-                                    break
-                        if pick_data:
-                            break
-
-                if all_races_today and pick_data:
-                    # 画像を生成（ツイート1用と2用で別の画像）
-                    image_file_1 = generate_hit_og_image(hits_data[0], yesterday_str)
-                    image_file_2 = generate_pick_og_image(pick_data, today_str)
-
-                    # 過去の重賞予想などの tweet_id を取得 (的中したレースの昨日の日付に対応)
-                    quote_tweet_id = get_past_tweet_id_for_race(yesterday_str, post_type_prefix="evening_race")
-                    if not quote_tweet_id:
-                        # 見つからない場合は当日の予想などを探す
-                        quote_tweet_id = get_past_tweet_id_for_race(yesterday_str, post_type_prefix="morning_pick")
-                    
-                    # ツイート1と2を個別に生成
-                    tweet_text_1 = create_morning_hit_tweet(hits_data[0], summary, yesterday_str, quote_tweet_id=quote_tweet_id)
-                    tweet_text_2 = create_morning_pick_tweet(pick_data, today_str)
-
-                    # 重複チェック: morning_combined として既に投稿済みか確認
-                    # ※テキスト1を代表してハッシュ化の基準とするか、結合文字列でチェックする。
-                    # post_to_twitter_with_dual_images は内部で各ツイートを記録するが、
-                    # target_date と post_type("morning_combined") で判定すれば全体として1回のみ実行される
-                    combined_check_text = tweet_text_1 + "\n---\n" + tweet_text_2
-                    if is_already_posted(combined_check_text, "morning_combined", today_str):
-                        _log(f"-> 既に投稿済み: morning_combined")
-                    else:
-                        # 2つのツイートテキストを直接渡して投稿（分割なし、スレッド化防止済み）
-                        x_result = post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
-                        threads_results = post_texts_to_threads_results(
-                            [tweet_text_1, tweet_text_2],
-                        )
-                        threads_ok = len(threads_results) == 2 and all(result.ok for result in threads_results)
-                        if ENABLE_TWITTER:
-                            track_x_result(sns_failures, "morning_combined", x_result, threads_ok=threads_ok)
-                        if ENABLE_THREADS:
-                            for result_idx, threads_result in enumerate(threads_results, 1):
-                                track_threads_result(
-                                    sns_failures,
-                                    f"morning_combined:{result_idx}",
-                                    threads_result,
-                                    x_ok=bool(x_result),
-                                )
-                        record_post_if_delivered(
-                            combined_check_text,
-                            "morning_combined",
-                            today_str,
-                            x_result=x_result,
-                            threads_ok=threads_ok,
-                        )
-                        if not x_result and not threads_ok:
-                            _log("⚠️ X投稿とThreads投稿の両方が失敗したため、投稿記録を保存しません。")
-                        elif not x_result:
-                            _log("⚠️ X投稿は失敗しましたが、Threads投稿は完了したため投稿記録を保存しました。")
-                        else:
-                            _log("-> 朝投稿の配信記録を保存しました。")
-            else:
-                _log("-> 昨日は1万円以上の高配当的中がありませんでした。本日のAI注目馬のみ投稿します。")
-                # フォールバック: 高配当的中がなくても、本日のAI注目馬を画像付きで投稿する
-                all_races_today = get_api_data(today_str)
-                pick_data = None
-                if all_races_today:
-                    _log("-> 本日のAI注目馬を検索中（フォールバック）...")
-                    venues = all_races_today.get('jra', []) + all_races_today.get('nar', [])
-                    best_score = -1
-                    for venue in venues:
-                        for race in venue.get('races', []):
-                            preds = race.get('predictions', [])
-                            if preds:
-                                sorted_preds = sorted(
-                                    [p for p in preds if p.get('deviation_score') is not None],
-                                    key=lambda p: p['deviation_score'], reverse=True
-                                )
-                                if sorted_preds and sorted_preds[0]['deviation_score'] > best_score:
-                                    best_score = sorted_preds[0]['deviation_score']
-                                    pick_data = sorted_preds[0]
-                                    pick_data['venue_name'] = venue.get('venue_name', '?')
-                                    pick_data['race_name'] = race.get('race_name', '?')
-                                    pick_data['race_number'] = race.get('race_number', '?')
-
-                if pick_data:
-                    _log(f"-> AI注目馬を検出（フォールバック）: {pick_data.get('horse_name', '?')} (AI偏差値: {pick_data.get('deviation_score', 0):.2f})")
-                    image_file = generate_pick_og_image(pick_data, today_str)
-                    tweet_text = create_morning_pick_tweet(pick_data, today_str)
-                    
-                    if is_already_posted(tweet_text, "morning_pick_only", today_str):
-                        _log(f"-> 既に投稿済み: morning_pick_only")
-                    else:
-                        x_result = post_to_twitter(tweet_text, image_file, post_type="morning_pick_only", target_date=today_str, split_mode=False)
-                        threads_result = post_to_threads(tweet_text)
-                        threads_ok = bool(threads_result)
-                        if ENABLE_TWITTER:
-                            track_x_result(sns_failures, "morning_pick_only", x_result, threads_ok=threads_ok)
-                        if ENABLE_THREADS:
-                            track_threads_result(sns_failures, "morning_pick_only", threads_result, x_ok=bool(x_result))
-                        record_post_if_delivered(tweet_text, "morning_pick_only", today_str, x_result=x_result, threads_ok=threads_ok)
-                        if not x_result:
-                            _log("⚠️ X投稿は失敗しましたが、Threads投稿は試行済みです")
+                # 朝の2投稿は、結合した本文で1回だけ実行する
+                combined_check_text = tweet_text_1 + "\n---\n" + tweet_text_2
+                if is_already_posted(combined_check_text, "morning_combined", today_str):
+                    _log("-> 既に投稿済み: morning_combined")
                 else:
-                    _log("-> 本日のレースデータも取得できなかったため、投稿をスキップします。")
+                    x_result = post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
+                    threads_results = post_to_threads_with_images(
+                        [(tweet_text_1, threads_image_1), (tweet_text_2, threads_image_2)],
+                    )
+                    threads_ok = len(threads_results) == 2 and all(result.ok for result in threads_results)
+                    if ENABLE_TWITTER:
+                        track_x_result(sns_failures, "morning_combined", x_result, threads_ok=threads_ok)
+                    if ENABLE_THREADS:
+                        for result_idx, threads_result in enumerate(threads_results, 1):
+                            track_threads_result(
+                                sns_failures,
+                                f"morning_combined:{result_idx}",
+                                threads_result,
+                                x_ok=bool(x_result),
+                            )
+                    record_post_if_delivered(
+                        combined_check_text,
+                        "morning_combined",
+                        today_str,
+                        x_result=x_result,
+                        threads_ok=threads_ok,
+                    )
+                    if not x_result and not threads_ok:
+                        _log("⚠️ X投稿とThreads投稿の両方が失敗したため、投稿記録を保存しません。")
+                    elif not x_result:
+                        _log("⚠️ X投稿は失敗しましたが、Threads投稿は完了したため投稿記録を保存しました。")
+                    else:
+                        _log("-> 朝投稿の配信記録を保存しました。")
+            elif pick_card:
+                _log("-> 前日は1万円以上の高配当的中がありませんでした。本日のAI注目馬だけを投稿します。")
+                key = f"pick:{today_str}"
+                post_single(
+                    sns_failures,
+                    SC.build_pick_text(pick_card),
+                    "morning_pick_only",
+                    today_str,
+                    x_image=render_sns_image(SI.render_x_pick, pick_card, "x_pick", key),
+                    threads_image=render_threads_image(SI.render_threads_pick, pick_card, "th_pick", key),
+                )
+            elif top_hit:
+                _log("-> 本日のレースデータが無いため、前日の的中だけを投稿します。")
+                hit_card = SC.hit_card_from_api(top_hit, yesterday_str)
+                others = same_race_hits(hits_data, top_hit, yesterday_str)
+                key = f"hit:{yesterday_str}:{top_hit.get('race_id')}"
+                post_single(
+                    sns_failures,
+                    SC.build_hit_text(hit_card),
+                    "morning_hit_only",
+                    today_str,
+                    x_image=render_sns_image(SI.render_x_hit, hit_card, "x_hit", key, others=others[:2]),
+                    threads_image=render_threads_image(SI.render_threads_hit, hit_card, "th_hit", key, others=others[:3]),
+                )
+            else:
+                _log("-> 前日の的中も本日のレースデータも無いため、投稿をスキップします。")
 
         # ========== 昼12時投稿 ==========
         elif post_type == 'afternoon':
-            _log("\n--- 昼投稿: 本日のレース一覧 + 昨日のAI的中ランキング ---")
+            _log("\n--- 昼投稿: 本日の開催 + 前日の最高配当 ---")
             all_races_today = get_api_data(today_str)
             yesterday_hits = get_api_data(f"hits/high-payouts/{yesterday_str}")
-
-            if all_races_today:
-                tweet_text = create_afternoon_race_summary_tweet(all_races_today, yesterday_hits if yesterday_hits else [], today_str)
-                if is_already_posted(tweet_text, "afternoon_summary", today_str):
-                    _log(f"-> 既に投稿済み: afternoon_summary")
-                else:
-                    x_result = post_to_twitter(tweet_text, image_path=None, post_type="afternoon_summary", target_date=today_str, split_mode=False)
-                    threads_result = (
-                        ThreadsPostResult(
-                            ok=False,
-                            attempted=False,
-                            reason="夕方の動画投稿へ置換",
-                        )
-                        if THREADS_EVENING_VIDEO_REPLACES_TEXT
-                        else post_to_threads(tweet_text)
-                    )
-                    threads_ok = bool(threads_result)
-                    if ENABLE_TWITTER:
-                        track_x_result(sns_failures, "afternoon_summary", x_result, threads_ok=threads_ok)
-                    if ENABLE_THREADS:
-                        track_threads_result(sns_failures, "afternoon_summary", threads_result, x_ok=bool(x_result))
-                    record_post_if_delivered(tweet_text, "afternoon_summary", today_str, x_result=x_result, threads_ok=threads_ok)
-                    if not x_result:
-                        _log("⚠️ X投稿は失敗しましたが、Threads投稿は試行済みです")
+            top_hit = (
+                SC.hit_card_from_api(yesterday_hits[0], yesterday_str)
+                if isinstance(yesterday_hits, list) and yesterday_hits
+                else None
+            )
+            tweet_text = SC.build_day_summary_text(today_str, all_races_today, top_hit)
+            if tweet_text:
+                # 昼の投稿は文字だけ。Threadsも従来どおり投稿する（夜の動画への置き換えは20時だけ）
+                post_single(sns_failures, tweet_text, "afternoon_summary", today_str)
             else:
                 _log("-> 本日のレース情報が取得できませんでした。")
 
         # ========== 夜20時投稿 ==========
         elif post_type == 'evening':
             _log("\n--- 夜投稿: 明日の全重賞レース分析 ---")
-            grade_races = find_all_grade_races_for_date(tomorrow_str)
+            grade_cards = SC.find_grade_races(get_api_data(tomorrow_str), tomorrow_str, min_scored=3)
 
-            if grade_races:
-                _log(f"-> {len(grade_races)}件の重賞レースを投稿します")
-                for idx, (tweet_text, race_data, top_preds) in enumerate(grade_races):
-                    race_name = race_data.get('race_name', '?')
-                    _log(f"\n-> [{idx+1}/{len(grade_races)}] 重賞レースの投稿準備: {race_name}")
-
-                    # 重複チェック
-                    if is_already_posted(tweet_text, 'evening_race', tomorrow_str):
-                        _log(f"-> 既に投稿済み: {race_name}")
-                        continue
-
-                    image_file = generate_reminder_og_image(race_data, top_preds)
-
-                    if image_file:
-                        _log(f"-> 画像生成成功: {image_file}")
-                        x_result = post_to_twitter(tweet_text, image_file, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
-                    else:
-                        _log("-> 画像生成に失敗しましたが、テキストのみで投稿します")
-                        x_result = post_to_twitter(tweet_text, None, post_type="evening_race", target_date=tomorrow_str, split_mode=False)
-                    threads_result = post_to_threads(tweet_text)
-                    threads_ok = bool(threads_result)
-                    if ENABLE_TWITTER:
-                        track_x_result(sns_failures, f"evening_race:{race_name}", x_result, threads_ok=threads_ok)
-                    if ENABLE_THREADS and not THREADS_EVENING_VIDEO_REPLACES_TEXT:
-                        track_threads_result(sns_failures, f"evening_race:{race_name}", threads_result, x_ok=bool(x_result))
-                    record_post_if_delivered(tweet_text, "evening_race", tomorrow_str, x_result=x_result, threads_ok=threads_ok)
+            if grade_cards:
+                _log(f"-> {len(grade_cards)}件の重賞レースを投稿します")
+                if THREADS_EVENING_VIDEO_REPLACES_TEXT:
+                    _log("-> SOCIAL_VIDEO_THREADS_MODE=public のため、Threadsへは送らず動画投稿に任せます（Xは投稿します）。")
+                headline = f"{SC.date_label(tomorrow_str)}の重賞"
+                for idx, card in enumerate(grade_cards):
+                    _log(f"\n-> [{idx+1}/{len(grade_cards)}] 重賞レースの投稿準備: {card.race_name}")
+                    key = f"race:{tomorrow_str}:{card.race_id or card.venue + str(card.race_number)}"
+                    post_single(
+                        sns_failures,
+                        SC.build_race_text(card, headline),
+                        "evening_race",
+                        tomorrow_str,
+                        x_image=render_sns_image(SI.render_x_race, card, "x_race", key),
+                        threads_image=None if THREADS_EVENING_VIDEO_REPLACES_TEXT else render_threads_image(SI.render_threads_race, card, "th_race", key),
+                        context=f"evening_race:{card.race_name}",
+                        post_threads=not THREADS_EVENING_VIDEO_REPLACES_TEXT,
+                    )
 
                     # 次の重賞投稿まで120秒待機（スレッド化防止 + レート制限対策）
-                    if idx < len(grade_races) - 1:
+                    if idx < len(grade_cards) - 1:
                         _log("-> 次の重賞投稿まで120秒待機...")
                         time.sleep(120)
             else:
@@ -2366,47 +1854,27 @@ def main():
 
         # ========== 週末直前(14:00)投稿 ==========
         elif post_type == 'pre_race':
-            _log("\n--- 直前リマインド: 本日のメインレース分析 ---")
-            all_races_today = get_api_data(today_str)
-            target_race = None
-            target_preds = None
+            _log("\n--- 直前: 本日の重賞またはメインレース ---")
+            cards = [
+                card
+                for card in SC.iter_race_cards(get_api_data(today_str), today_str)
+                if len(card.scored_rows) >= 3
+            ]
+            grade_cards = sorted((card for card in cards if card.grade), key=lambda card: SC.grade_priority(card.grade))
+            target = grade_cards[0] if grade_cards else next((card for card in cards if card.race_number == 11), None)
 
-            if all_races_today:
-                venues = all_races_today.get('jra', []) + all_races_today.get('nar', [])
-                for venue in venues:
-                    for race in venue.get('races', []):
-                        race_name = (race.get('race_name') or '').strip()
-                        # 11Rなどメインレース、または特別戦などを対象とする
-                        # シンプルにするため、本日の一番注目度が高い（AI偏差値トップがいる、あるいは重賞）レースを選ぶ
-                        # 今回は11Rを優先的に探すロジックを採用
-                        if race.get('race_number') == 11 or is_grade_race(race_name):
-                            preds_raw = race.get('predictions', []) or []
-                            preds = [p for p in preds_raw if p and p.get('deviation_score') is not None]
-                            preds = sorted(preds, key=lambda p: p['deviation_score'], reverse=True)
-                            if len(preds) >= 3:
-                                target_race = race
-                                target_preds = preds[:3]
-                                break
-                    if target_race:
-                        break
-
-            if target_race and target_preds:
-                _log(f"-> 直前リマインダー投稿準備完了: {target_race.get('race_name', '?')}")
-                tweet_text = create_pre_race_tweet(target_race, target_preds)
-                image_file = generate_reminder_og_image(target_race, target_preds)
-                
-                if image_file:
-                    _log(f"-> 画像生成成功: {image_file}")
-                    x_result = post_to_twitter(tweet_text, image_file, post_type="pre_race_remind", target_date=today_str, split_mode=False)
-                else:
-                    x_result = post_to_twitter(tweet_text, None, post_type="pre_race_remind", target_date=today_str, split_mode=False)
-                threads_result = post_to_threads(tweet_text)
-                threads_ok = bool(threads_result)
-                if ENABLE_TWITTER:
-                    track_x_result(sns_failures, "pre_race_remind", x_result, threads_ok=threads_ok)
-                if ENABLE_THREADS:
-                    track_threads_result(sns_failures, "pre_race_remind", threads_result, x_ok=bool(x_result))
-                record_post_if_delivered(tweet_text, "pre_race_remind", today_str, x_result=x_result, threads_ok=threads_ok)
+            if target:
+                _log(f"-> 直前の投稿準備: {target.venue}{target.race_number}R {target.race_name}")
+                headline = f"{SC.date_label(today_str)} 本日の{'重賞' if target.grade else 'メインレース'}"
+                key = f"pre:{today_str}:{target.race_id or target.venue + str(target.race_number)}"
+                post_single(
+                    sns_failures,
+                    SC.build_race_text(target, headline),
+                    "pre_race_remind",
+                    today_str,
+                    x_image=render_sns_image(SI.render_x_race, target, "x_race", key),
+                    threads_image=render_threads_image(SI.render_threads_race, target, "th_race", key),
+                )
             else:
                 _log("-> 本日の適切な直前リマインダー対象レースがありませんでした。")
 
@@ -2426,54 +1894,24 @@ def main():
                 _log("-> 1万円以上の的中はありません。スキップします。")
                 sys.exit(0)
 
-            _log(f"-> {len(big_hits)}件の高配当的中を発見！")
+            _log(f"-> {len(big_hits)}件の高配当的中を発見")
 
-            posted_count = 0
-            for hit in big_hits[:3]:
-                payout = hit.get('payout') or 0
-                venue = hit.get('venue_name', '')
-                race_num = hit.get('race_number', '')
-                bet_type = hit.get('bet_type', '')
-                race_name = display_name(hit.get('race_name', ''))
-                winning_numbers = hit.get('winning_numbers', '')
-                date_formatted = datetime.strptime(today_str, '%Y-%m-%d').strftime('%m/%d')
-
-                tweet_text = f"""🎯AI的中速報！({date_formatted})
-
-{venue}{race_num}R {race_name}
-{bet_type}（{winning_numbers}）
-
-💰 {int(payout):,}円 的中！
-
-▼今日の全レース無料予測
-{build_race_url(today_str)}
-
-#競馬 #AI予想 #{'万馬券' if payout >= 100000 else '高配当的中'} #{venue}競馬"""
-
-                if is_already_posted(tweet_text, 'hit_immediate', today_str):
-                    _log(f"-> 既に投稿済み: {venue}{race_num}R")
-                    continue
-
-                image_file = generate_hit_og_image(hit, today_str)
-                x_result = post_to_twitter(
-                    tweet_text, image_file,
-                    post_type='hit_immediate',
-                    target_date=today_str,
-                    split_mode=False
+            for posted_count, hit in enumerate(big_hits[:3], 1):
+                hit_card = SC.hit_card_from_api(hit, today_str)
+                key = f"hit:{today_str}:{hit.get('race_id')}:{hit_card.bet_type}:{hit_card.winning_numbers}"
+                post_single(
+                    sns_failures,
+                    SC.build_hit_text(hit_card),
+                    "hit_immediate",
+                    today_str,
+                    x_image=render_sns_image(SI.render_x_hit, hit_card, "x_hit", key),
+                    threads_image=render_threads_image(SI.render_threads_hit, hit_card, "th_hit", key),
+                    context=f"hit_immediate:{hit_card.venue}{hit_card.race_number}R",
                 )
-                threads_result = post_to_threads(tweet_text)
-                threads_ok = bool(threads_result)
-                if ENABLE_TWITTER:
-                    track_x_result(sns_failures, f"hit_immediate:{venue}{race_num}R", x_result, threads_ok=threads_ok)
-                if ENABLE_THREADS:
-                    track_threads_result(sns_failures, f"hit_immediate:{venue}{race_num}R", threads_result, x_ok=bool(x_result))
-                record_post_if_delivered(tweet_text, "hit_immediate", today_str, x_result=x_result, threads_ok=threads_ok)
-                posted_count += 1
-
-                if posted_count < len(big_hits):
+                if posted_count < min(len(big_hits), 3):
                     time.sleep(10)
 
-            _log(f"-> 的中速報 {posted_count}件投稿完了")
+            _log(f"-> 的中速報 {min(len(big_hits), 3)}件の処理を完了")
 
         if sns_failures:
             _log("\nSNS投稿で失敗または未設定の項目があります。")

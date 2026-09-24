@@ -51,19 +51,18 @@ export default function GradeRacesPage() {
       />
       <Breadcrumb />
       <div className="mx-auto max-w-5xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
-        <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 shadow-soft sm:p-8">
-          <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
-          <p className="text-[10px] font-bold tracking-[0.18em] text-slate-400">GRADE RACES</p>
-          <h1 className="mt-1 text-[15px] font-black leading-tight text-slate-950 sm:text-4xl">
+        <header className="rounded-[16px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-8">
+          <p className="text-[13px] font-bold text-slate-500">重賞</p>
+          <h1 className="mt-1 font-display text-[24px] font-extrabold leading-snug text-slate-900 sm:text-[34px]">
             今週の重賞・G1データ分析
           </h1>
-          <p className="mt-1.5 max-w-3xl text-[11px] leading-relaxed text-slate-600 sm:text-base">
+          <p className="mt-2 max-w-3xl text-[14px] leading-[1.75] text-slate-700 sm:text-base">
             重賞レースは、検索需要がレース週に集中します。
             UMA-FREEでは、枠順確定前、枠順確定後、当日、レース後の4段階で確認すべきデータを分けて整理します。
           </p>
           <Link
             href="/articles#grade-races"
-            className="mt-5 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary"
+            className="ui-btn ui-btn--primary mt-5"
           >
             重賞記事
           </Link>
@@ -73,7 +72,7 @@ export default function GradeRacesPage() {
           <h2 className="text-xl sm:text-2xl font-black text-slate-950">主要G1の個別ハブ</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             {gradeRaceProfiles.map((race) => (
-              <Link key={race.slug} href={`/grade-races/${race.slug}`} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated">
+              <Link key={race.slug} href={`/grade-races/${race.slug}`} className="group rounded-[14px] bg-white p-5 ring-1 ring-inset ring-slate-200 transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated">
                 <p className="text-xs font-bold text-primary">{race.date} / {race.grade}</p>
                 <h3 className="mt-2 text-lg font-black text-slate-950 group-hover:text-primary">{race.name}</h3>
                 <p className="mt-1 text-sm font-bold text-slate-500">{race.venue}{race.course}</p>
@@ -85,7 +84,7 @@ export default function GradeRacesPage() {
 
         <section className="mt-8 grid gap-4 md:grid-cols-2">
           {guideBlocks.map((block) => (
-            <div key={block.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+            <div key={block.title} className="rounded-[14px] bg-white p-5 ring-1 ring-inset ring-slate-200">
               <h2 className="text-lg font-black text-slate-950">{block.title}</h2>
               <p className="mt-2 text-sm leading-7 text-slate-600">{block.body}</p>
             </div>
@@ -104,7 +103,7 @@ export default function GradeRacesPage() {
         </section>
 
         <section className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-soft">
-          <h2 className="text-xl font-black text-slate-950">本日の重賞を確認する</h2>
+          <h2 className="font-display text-[19px] font-extrabold text-slate-900 sm:text-[21px]">本日の重賞を確認する</h2>
           <p className="mt-2 text-sm leading-7 text-slate-600">
             当日の出走表、AI偏差値、脚質予測、対戦成績はレース分析ページで確認できます。
           </p>

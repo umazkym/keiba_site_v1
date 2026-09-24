@@ -57,7 +57,7 @@ export default function HorseWeightPage() {
       <Breadcrumb />
       <article className="mx-auto max-w-5xl px-4 pb-14 pt-4">
         <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 shadow-soft sm:p-8">
-          <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">馬体重の読み方</p>
+          <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[12px] font-bold text-amber-800">馬体重の読み方</p>
           <h1 className="mt-1 text-[15px] font-black leading-tight text-slate-950 sm:text-4xl">
             馬体重増減の見方
           </h1>

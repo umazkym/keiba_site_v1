@@ -49,6 +49,9 @@ jobs:
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
           THREADS_TOKEN_EXPIRY: ${{ secrets.THREADS_TOKEN_EXPIRY }}
+          SNS_THREADS_IMAGE_MODE: ${{ vars.SNS_THREADS_IMAGE_MODE || 'off' }}
+          SOCIAL_VIDEO_STAGING_GCS_BUCKET: ${{ vars.SOCIAL_VIDEO_STAGING_GCS_BUCKET }}
+          SOCIAL_VIDEO_GCS_SIGNING_SERVICE_ACCOUNT: ${{ vars.SOCIAL_VIDEO_GCS_SIGNING_SERVICE_ACCOUNT }}
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
           ENABLE_TWITTER: 'true'
           ENABLE_THREADS: 'true'
@@ -61,3 +64,29 @@ jobs:
           RENDER: 'false'
         run: |
           python scripts/sns_poster.py --post-type evening
+
+      # 翌日の重賞1レースのInstagramカルーセル。X・Threadsの投稿の結果に関係なく実行する。
+      # 既定は validate（画像と本文を作って確かめるだけ）。公開は vars.SOCIAL_VIDEO_INSTAGRAM_CAROUSEL_MODE=public。
+      - name: Instagram carousel (tomorrow's grade race)
+        if: ${{ !cancelled() }}
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          SOCIAL_VIDEO_INSTAGRAM_CAROUSEL_MODE: ${{ vars.SOCIAL_VIDEO_INSTAGRAM_CAROUSEL_MODE || 'validate' }}
+          SOCIAL_VIDEO_STAGING_GCS_BUCKET: ${{ vars.SOCIAL_VIDEO_STAGING_GCS_BUCKET }}
+          SOCIAL_VIDEO_GCS_SIGNING_SERVICE_ACCOUNT: ${{ vars.SOCIAL_VIDEO_GCS_SIGNING_SERVICE_ACCOUNT }}
+          TZ: Asia/Tokyo
+        run: |
+          python scripts/instagram_carousel.py
+
+      - name: Keep SNS images for review
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: sns-images-evening
+          path: sns_images_dist/
+          retention-days: 3
+          if-no-files-found: ignore

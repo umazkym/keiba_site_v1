@@ -12,44 +12,34 @@ from sqlalchemy.orm import sessionmaker, Session
 from tqdm import tqdm
 from datetime import datetime, date
 import re
+import sys
 import traceback
+
+# 記事用グラフの見た目（書体・色・%表記）はサイトと共通の backend/scripts/analysis/brand_chart_style.py に合わせる
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'backend' / 'scripts' / 'analysis'))
+from brand_chart_style import (  # noqa: E402
+    AI,
+    BRAND,
+    BRAND_SOFT,
+    DIRT,
+    ROSE,
+    SERIES,
+    TURF,
+    apply_brand_chart_style,
+    brand_cmap,
+    highlight_colors,
+    percent_axis,
+)
 
 # ==============================================================================
 # 共通ユーティリティ関数
 # ==============================================================================
 def setup_matplotlib():
     """
-    matplotlibで日本語が文字化けしないように設定します。
-    japanize-matplotlibライブラリが必要です。
+    グラフの見た目をサイトと合わせる（2026-09-25）。書体は backend/fonts の M PLUS Rounded 1c を登録して使うため、
+    端末の日本語書体や japanize-matplotlib に頼らない。
     """
-
-    # ★★★ 修正箇所 ★★★
-    # 先にseabornのスタイルを設定し、その後にフォント設定を適用することで、
-    # スタイルによってフォント設定が上書きされるのを防ぎます。
-    plt.style.use('seaborn-v0_8-whitegrid')
-    sns.set_palette("viridis")
-
-    try:
-        import japanize_matplotlib
-        print("✅ japanize-matplotlibによる日本語設定が有効になりました。")
-    except ImportError:
-        print("⚠️ 警告: japanize-matplotlibがインストールされていません。代替フォントを設定します。")
-        # Windows, macOS, Linuxで一般的に利用可能な日本語フォントを試す
-        font_families = [
-            'Yu Gothic', 'Hiragino Sans', 'MS Gothic', 'TakaoPGothic', 'IPAexGothic', 'Noto Sans CJK JP'
-        ]
-        font_found = False
-        for font in font_families:
-            try:
-                plt.rcParams['font.family'] = font
-                plt.rcParams['axes.unicode_minus'] = False # マイナス記号の文字化け防止
-                print(f"✅ 代替フォントとして '{font}' を設定しました。")
-                font_found = True
-                break
-            except Exception:
-                continue
-        if not font_found:
-            print("❌ 代替フォントが見つかりませんでした。文字化けする可能性があります。")
+    apply_brand_chart_style()
 
 
 def get_db_session(database_url: str) -> Session | None:
@@ -198,6 +188,7 @@ def analyze_ai_performance(db_session: Session, start_date: str, end_date: str):
     )
     ax1.set_title('印別成績（複勝率と回収率）', fontsize=16, fontweight='bold')
     ax1.set_ylabel('複勝率', fontsize=12)
+    percent_axis(ax1, fraction=True)
     ax1.right_ax.set_ylabel('回収率 (%)', fontsize=12)
     ax1.tick_params(axis='x', rotation=0)
     ax1.legend(loc='upper left')
@@ -207,7 +198,7 @@ def analyze_ai_performance(db_session: Session, start_date: str, end_date: str):
     # グラフ2: 偏差値帯別回収率
     fig2, ax2 = plt.subplots(figsize=(12, 7))
     deviation_summary[['tansho_return', 'fukusho_return']].plot(kind='bar', ax=ax2)
-    ax2.axhline(100, color='red', linestyle='--', linewidth=2, label='損益分岐点(100%)')
+    ax2.axhline(100, color=ROSE, linestyle='--', linewidth=2, label='損益分岐点(100%)')
     ax2.set_title('AI偏差値帯別の単勝・複勝回収率', fontsize=16, fontweight='bold')
     ax2.set_xlabel('AI偏差値帯', fontsize=12)
     ax2.set_ylabel('回収率 (%)', fontsize=12)
@@ -324,11 +315,12 @@ def analyze_course(db_session: Session, venue: str, course_type: str, distance: 
     
     # グラフ1: 枠番別複勝率（ヒートマップ風）
     fig1, ax1 = plt.subplots(figsize=(10, 6))
-    colors = plt.cm.RdYlGn(waku_summary['within_3_rate'] / waku_summary['within_3_rate'].max())
+    colors = highlight_colors(list(waku_summary['within_3_rate']))
     bars = ax1.bar(waku_summary.index, waku_summary['within_3_rate'], color=colors)
     ax1.set_title(f'{venue} {course_type}{distance}m - 枠番別 複勝率', fontsize=16, fontweight='bold')
     ax1.set_xlabel('枠番', fontsize=12)
     ax1.set_ylabel('複勝率', fontsize=12)
+    percent_axis(ax1, fraction=True)
     ax1.set_ylim(0, waku_summary['within_3_rate'].max() * 1.2)
     
     for bar in bars:
@@ -342,7 +334,7 @@ def analyze_course(db_session: Session, venue: str, course_type: str, distance: 
     fig2, ax2 = plt.subplots(figsize=(8, 8))
     leg_type_summary['win_rate'].plot(
         kind='pie', ax=ax2, autopct='%1.1f%%', startangle=90,
-        colors=sns.color_palette('viridis', len(leg_type_summary))
+        colors=SERIES[:len(leg_type_summary)]
     )
     ax2.set_title(f'{venue} {course_type}{distance}m - 脚質別 勝率', fontsize=16, fontweight='bold')
     ax2.set_ylabel('')
@@ -447,7 +439,7 @@ def _analyze_person(db_session: Session, person_type: str, person_id: str):
     if not course_summary.empty:
         fig1, ax1 = plt.subplots(figsize=(10, 8))
         sns.barplot(x=course_summary['within_3_rate'], y=course_summary.index, 
-                    ax=ax1, orient='h', palette='summer')
+                    ax=ax1, orient='h', color=BRAND_SOFT)
         ax1.set_title(f'{person_name}の得意コース TOP10 (複勝率, 20走以上)', 
                       fontsize=16, fontweight='bold')
         ax1.set_xlabel('複勝率', fontsize=12)
@@ -457,10 +449,11 @@ def _analyze_person(db_session: Session, person_type: str, person_id: str):
     if not popularity_summary.empty:
         fig2, ax2 = plt.subplots(figsize=(12, 7))
         ax2.bar(popularity_summary.index, popularity_summary['within_3_rate'], 
-                color='skyblue', label='複勝率')
+                color=BRAND_SOFT, label='複勝率')
         ax2.set_title(f'{person_name}の人気別成績', fontsize=16, fontweight='bold')
         ax2.set_xlabel('人気', fontsize=12)
         ax2.set_ylabel('複勝率', fontsize=12)
+        percent_axis(ax2, fraction=True)
         ax2.set_xticks(range(1, len(popularity_summary) + 1))
         figures[f'{person_type}_popularity_summary'] = fig2
     
@@ -586,8 +579,8 @@ def analyze_odds(db_session: Session, start_date: str, end_date: str):
     
     if not umami_score_summary.empty:
         fig1, ax1 = plt.subplots(figsize=(10, 6))
-        umami_score_summary['tansho_return'].plot(kind='bar', ax=ax1, color='gold')
-        ax1.axhline(100, color='red', linestyle='--', linewidth=2, label='損益分岐点(100%)')
+        umami_score_summary['tansho_return'].plot(kind='bar', ax=ax1, color=AI)
+        ax1.axhline(100, color=ROSE, linestyle='--', linewidth=2, label='損益分岐点(100%)')
         ax1.set_title('AI vs 人気のギャップ（妙味スコア）別 単勝回収率', fontsize=16, fontweight='bold')
         ax1.set_xlabel('妙味スコア (人気 - AI評価順位)', fontsize=12)
         ax1.set_ylabel('単勝回収率 (%)', fontsize=12)
@@ -690,10 +683,11 @@ def analyze_seasonal(db_session: Session, start_date: str, end_date: str):
     fig1, ax1 = plt.subplots(figsize=(10, 6))
     season_order = ['春 (3-5月)', '夏 (6-8月)', '秋 (9-11月)', '冬 (12-2月)']
     season_summary_ordered = season_summary.reindex(season_order)
-    season_summary_ordered['within_3_rate'].plot(kind='bar', ax=ax1, color=['lightgreen', 'gold', 'orange', 'lightblue'])
+    season_summary_ordered['within_3_rate'].plot(kind='bar', ax=ax1, color=[TURF, AI, DIRT, BRAND])
     ax1.set_title('季節別 複勝率', fontsize=16, fontweight='bold')
     ax1.set_xlabel('季節', fontsize=12)
     ax1.set_ylabel('複勝率', fontsize=12)
+    percent_axis(ax1, fraction=True)
     ax1.tick_params(axis='x', rotation=0)
     figures['seasonal_rate'] = fig1
     
@@ -701,7 +695,7 @@ def analyze_seasonal(db_session: Session, start_date: str, end_date: str):
     fig2, ax2 = plt.subplots(figsize=(10, 6))
     pivot_data = season_course_summary.pivot(index='season', columns='course_type', values='win_rate')
     pivot_data = pivot_data.reindex(season_order)
-    sns.heatmap(pivot_data, annot=True, fmt='.2%', cmap='YlOrRd', ax=ax2, cbar_kws={'label': '勝率'})
+    sns.heatmap(pivot_data, annot=True, fmt='.2%', cmap=brand_cmap(), ax=ax2, cbar_kws={'label': '勝率'})
     ax2.set_title('季節×コース種別 勝率ヒートマップ', fontsize=16, fontweight='bold')
     ax2.set_xlabel('コース種別', fontsize=12)
     ax2.set_ylabel('季節', fontsize=12)
@@ -825,7 +819,7 @@ def analyze_ground_condition(db_session: Session, venue: str, start_date: str, e
     # グラフ2: ヒートマップ（馬場状態×コース種別）
     fig2, ax2 = plt.subplots(figsize=(10, 6))
     pivot_data = ground_course_summary.pivot(index='ground_condition', columns='course_type', values='avg_rank')
-    sns.heatmap(pivot_data, annot=True, fmt='.2f', cmap='RdYlGn_r', ax=ax2, cbar_kws={'label': '平均着順'})
+    sns.heatmap(pivot_data, annot=True, fmt='.2f', cmap=brand_cmap(reverse=True), ax=ax2, cbar_kws={'label': '平均着順'})
     ax2.set_title(f'{venue} - 馬場状態×コース種別 平均着順', fontsize=16, fontweight='bold')
     ax2.set_xlabel('コース種別', fontsize=12)
     ax2.set_ylabel('馬場状態', fontsize=12)
@@ -833,10 +827,11 @@ def analyze_ground_condition(db_session: Session, venue: str, start_date: str, e
     
     # グラフ3: 人気馬の馬場状態別勝率
     fig3, ax3 = plt.subplots(figsize=(10, 6))
-    popular_ground_summary['win_rate'].plot(kind='bar', ax=ax3, color='coral')
+    popular_ground_summary['win_rate'].plot(kind='bar', ax=ax3, color=BRAND)
     ax3.set_title(f'{venue} - 1〜3番人気馬の馬場状態別勝率', fontsize=16, fontweight='bold')
     ax3.set_xlabel('馬場状態', fontsize=12)
     ax3.set_ylabel('勝率', fontsize=12)
+    percent_axis(ax3, fraction=True)
     ax3.tick_params(axis='x', rotation=0)
     figures['ground_popular_win_rate'] = fig3
     
@@ -966,10 +961,11 @@ def analyze_grade(db_session: Session, start_date: str, end_date: str):
     fig2, ax2 = plt.subplots(figsize=(10, 6))
     if not honmei_grade_summary.empty:
         honmei_grade_summary_ordered = honmei_grade_summary.reindex([g for g in grade_order if g in honmei_grade_summary.index])
-        honmei_grade_summary_ordered['within_3_rate'].plot(kind='bar', ax=ax2, color='gold')
+        honmei_grade_summary_ordered['within_3_rate'].plot(kind='bar', ax=ax2, color=AI)
         ax2.set_title('AI本命馬(◎)のグレード別 複勝率', fontsize=16, fontweight='bold')
         ax2.set_xlabel('レースグレード', fontsize=12)
         ax2.set_ylabel('複勝率', fontsize=12)
+        percent_axis(ax2, fraction=True)
         ax2.tick_params(axis='x', rotation=0)
     figures['grade_honmei_rate'] = fig2
     
@@ -989,8 +985,8 @@ def analyze_grade(db_session: Session, start_date: str, end_date: str):
         g1_data += g1_data[:1]
         angles += angles[:1]
         
-        ax3.plot(angles, g1_data, 'o-', linewidth=2, label='G1', color='gold')
-        ax3.fill(angles, g1_data, alpha=0.25, color='gold')
+        ax3.plot(angles, g1_data, 'o-', linewidth=2, label='G1', color=AI)
+        ax3.fill(angles, g1_data, alpha=0.25, color=AI)
         ax3.set_xticks(angles[:-1])
         ax3.set_xticklabels(categories)
         ax3.set_ylim(0, max(g1_data) * 1.2)
@@ -1131,8 +1127,8 @@ def analyze_distance_profile(db_session: Session, horse_id: str):
     values += values[:1]
     angles += angles[:1]
     
-    ax1.plot(angles, values, 'o-', linewidth=2, color='blue')
-    ax1.fill(angles, values, alpha=0.25, color='blue')
+    ax1.plot(angles, values, 'o-', linewidth=2, color=BRAND)
+    ax1.fill(angles, values, alpha=0.25, color=BRAND)
     ax1.set_xticks(angles[:-1])
     ax1.set_xticklabels(categories)
     ax1.set_ylim(0, max(values) * 1.2 if values else 10)
@@ -1149,6 +1145,7 @@ def analyze_distance_profile(db_session: Session, horse_id: str):
         ax2.set_title(f'{horse_name} - コース種別×距離帯 勝率', fontsize=16, fontweight='bold')
         ax2.set_xlabel('距離帯', fontsize=12)
         ax2.set_ylabel('勝率', fontsize=12)
+        percent_axis(ax2, fraction=True)
         ax2.legend(title='コース種別')
         ax2.tick_params(axis='x', rotation=45)
     figures['distance_profile_course_type'] = fig2

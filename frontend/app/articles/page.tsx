@@ -4,7 +4,6 @@ import { getAllArticles, getUniqueCategories } from "../../lib/articles";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { AdUnit } from "@/components/AdUnit";
 import { MultiplexAd } from "@/components/MultiplexAd";
-import { SectionHeader } from "@/components/SectionHeader";
 import { BreadcrumbSchema, ItemListSchema } from "@/components/StructuredData";
 import { shouldSuppressAdsInDevelopment } from "@/lib/ad-config";
 import { resolveArticleCanonicalPath } from "@/lib/article-canonical";
@@ -15,6 +14,11 @@ import {
 } from "@/lib/article-archives";
 import type { Metadata } from "next";
 import { MobileArticleThemeDirectory } from "@/components/MobileArticleThemeDirectory";
+import { ArticleCategoryTag, formatArticleShortDate } from "@/components/ArticleParts";
+import { ArticleThumb } from "@/components/ArticleThumb";
+import { GuideHorse } from "@/components/BrandLogo";
+import { LineIcon } from "@/components/LineIcon";
+import { estimateReadingMinutes, getArticleCategoryStyle, pickArticleThumbs, type ArticleThumb as ArticleThumbData } from "@/lib/article-visual";
 
 interface ArticlesPageProps {
   searchParams: {
@@ -72,34 +76,34 @@ function ArticlePagination({
   if (totalPages <= 1) return null;
 
   const buildUrl = (p: number) => buildArticlesHref({ category, tag, page: p });
-
   const visiblePages = getVisiblePageNumbers(currentPage, totalPages);
+  const stepClass = "inline-flex h-11 items-center justify-center gap-1 rounded-[10px] bg-white px-3 text-[14px] font-bold text-slate-700 ring-1 ring-inset ring-slate-200 transition-colors duration-150 hover:bg-slate-50 hover:text-brand-700";
 
   return (
-    <nav className="mt-4 flex flex-wrap items-center justify-center gap-1 sm:gap-1.5" aria-label="ページナビゲーション">
+    <nav className="mt-6 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2" aria-label="ページナビゲーション">
       {currentPage > 1 && (
-        <Link
-          href={buildUrl(currentPage - 1)}
-          className="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
-        >
-          ← 前へ
+        <Link href={buildUrl(currentPage - 1)} className={stepClass}>
+          <LineIcon name="chevL" size={16} className="block" />
+          前へ
         </Link>
       )}
       {visiblePages.map((p, idx) => {
         if (p === 'ellipsis') {
           return (
-            <span key={`ellipsis-${idx}`} className="inline-flex h-9 w-6 items-center justify-center text-xs font-bold text-slate-400">
+            <span key={`ellipsis-${idx}`} className="inline-flex h-11 w-6 items-center justify-center text-[14px] font-bold text-slate-500">
               …
             </span>
           );
         }
+        const isCurrent = p === currentPage;
         return (
           <Link
             key={p}
             href={buildUrl(p)}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-xs font-black transition-colors ${p === currentPage
-              ? "bg-slate-950 text-white"
-              : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            aria-current={isCurrent ? "page" : undefined}
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-[10px] font-num text-[15px] font-bold transition-colors duration-150 ${isCurrent
+              ? "bg-navy text-white"
+              : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"
               }`}
           >
             {p}
@@ -107,11 +111,9 @@ function ArticlePagination({
         );
       })}
       {currentPage < totalPages && (
-        <Link
-          href={buildUrl(currentPage + 1)}
-          className="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
-        >
-          次へ →
+        <Link href={buildUrl(currentPage + 1)} className={stepClass}>
+          次へ
+          <LineIcon name="chevR" size={16} className="block" />
         </Link>
       )}
     </nav>
@@ -220,28 +222,6 @@ export async function generateMetadata({ searchParams }: ArticlesPageProps): Pro
   });
 }
 
-const getCategoryBadgeClass = (category: string) => {
-  switch (category) {
-    case "重賞":
-    case "G1":
-    case "G2":
-    case "G3":
-      return "bg-amber-50 text-amber-700 border border-amber-200/70";
-    case "騎手":
-      return "bg-purple-50 text-purple-700 border border-purple-200/70";
-    case "コース":
-    case "コース分析":
-      return "bg-emerald-50 text-emerald-700 border border-emerald-200/70";
-    default:
-      return "bg-brand-50 text-brand-700 border border-brand-200/70";
-  }
-};
-
-function getReadingTime(content: string): number {
-  const text = content.replace(/<[^>]*>/g, "").replace(/\s+/g, "");
-  return Math.max(1, Math.ceil(text.length / 500));
-}
-
 function isNewArticle(dateStr: string): boolean {
   const date = new Date(dateStr);
   const now = new Date();
@@ -249,34 +229,29 @@ function isNewArticle(dateStr: string): boolean {
   return diffHours >= 0 && diffHours <= 72;
 }
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("ja-JP", {
-    month: "numeric",
-    day: "numeric",
-  });
-}
-
-function ArticleMeta({ article }: { article: ArticleLike }) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold text-slate-500 sm:text-xs">
-      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${getCategoryBadgeClass(article.category)}`}>
-        {article.category}
-      </span>
-      <time dateTime={new Date(article.date).toISOString()}>{formatDate(article.date)}</time>
-      <span>約{getReadingTime(article.content)}分</span>
-      {isNewArticle(article.date) && <span className="font-black text-primary">NEW</span>}
-    </div>
-  );
-}
-
 function formatRaceDate(date?: string) {
   if (!date) return "";
   return new Date(`${date}T00:00:00+09:00`).toLocaleDateString("ja-JP", {
     month: "numeric",
     day: "numeric",
+    weekday: "short",
+    timeZone: "Asia/Tokyo",
   });
 }
 
+// カテゴリ・日付・読了時間（3日以内は「新着」）
+function ArticleMeta({ article }: { article: ArticleLike }) {
+  return (
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-slate-500 sm:text-[13px]">
+      <ArticleCategoryTag category={article.category} />
+      <time dateTime={new Date(article.date).toISOString()}>{formatArticleShortDate(article.date)}</time>
+      <span>約{estimateReadingMinutes(article.content)}分</span>
+      {isNewArticle(article.date) && <span className="font-bold text-brand-700">新着</span>}
+    </span>
+  );
+}
+
+// 近日開催の重賞の記事（開催日の近い順）
 function UpcomingGradeRacePickup({
   groups,
 }: {
@@ -285,60 +260,91 @@ function UpcomingGradeRacePickup({
   if (groups.length === 0) return null;
 
   return (
-    <section className="mb-2.5 overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 sm:p-4" aria-label="近日の重賞記事">
-      <SectionHeader title="近日の重賞" meta={`${groups.length}件`} className="mb-2 sm:mb-3" compact />
-      <div className="grid gap-1.5 sm:grid-cols-2 sm:gap-2">
+    <section className="rounded-[14px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-5" aria-labelledby="articles-upcoming-grade-heading">
+      <h2 id="articles-upcoming-grade-heading" className="flex items-center gap-2 font-display text-[18px] font-extrabold text-slate-900 sm:text-[19px]">
+        <LineIcon name="trophy" size={19} className="block text-navy" />
+        近日の重賞
+      </h2>
+      <ul className="mt-1 grid grid-cols-1 sm:grid-cols-2 sm:gap-x-6">
         {groups.map((group) => {
           const latestArticle = group.articles[0];
           return (
-            <Link
-              key={group.href}
-              href={group.href}
-              className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white p-2.5 transition-colors duration-150 hover:border-brand-300 hover:bg-slate-50/80 active:bg-slate-100"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 text-[10px] font-black text-brand-600">
-                  <span>{formatRaceDate(group.scheduledDate)}</span>
-                  <span className="rounded-full bg-brand-50 px-1.5 py-0.5 text-[9px] text-brand-700 border border-brand-100">{group.articleCount}件</span>
-                </div>
-                <h3 className="mt-0.5 truncate text-xs font-bold text-slate-950 group-hover:text-brand-600 transition-colors sm:text-sm">
-                  {group.title}
-                </h3>
-                {latestArticle && (
-                  <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-slate-500 sm:text-xs">
-                    {latestArticle.title}
-                  </p>
-                )}
-              </div>
-              <div className="ml-2 shrink-0 text-xs font-bold text-brand-600 group-hover:underline">
-                <span aria-hidden="true" className="text-sm font-bold">→</span>
-              </div>
-            </Link>
+            <li key={group.href} className="border-b border-slate-200 last:border-b-0 sm:[&:nth-last-child(2):nth-child(odd)]:border-b-0">
+              <Link href={group.href} className="group flex items-center gap-3 py-3">
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2 text-[12.5px] text-slate-500">
+                    <span className="font-bold text-brand-700">{formatRaceDate(group.scheduledDate)}</span>
+                    <span>{group.articleCount}記事</span>
+                  </span>
+                  <span className="mt-0.5 block truncate text-[15px] font-bold text-slate-900 transition-colors duration-150 group-hover:text-brand-700">
+                    {group.title}
+                  </span>
+                  {latestArticle && (
+                    <span className="mt-0.5 block truncate text-[13px] text-slate-600">{latestArticle.title}</span>
+                  )}
+                </span>
+                <LineIcon name="chevR" size={18} className="block shrink-0 text-slate-500" />
+              </Link>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   );
 }
 
-function CompactArticleLink({ article }: { article: ArticleLike }) {
+// 1ページ目の先頭の記事（写真を大きく）
+function FeaturedArticle({ article, thumb }: { article: ArticleLike; thumb: ArticleThumbData }) {
   return (
     <Link
       prefetch={false}
       href={`/articles/${article.slug}`}
-      className="group flex flex-col justify-center border-b border-slate-100 bg-white py-1.5 transition-colors duration-150 last:border-b-0 hover:bg-slate-50 sm:min-h-[140px] sm:justify-start sm:rounded-xl sm:border sm:border-slate-200 sm:p-3.5 sm:hover:border-brand-300"
+      className="group grid overflow-hidden rounded-[16px] bg-white ring-1 ring-inset ring-slate-200 transition-colors duration-150 hover:ring-brand-300 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"
     >
-      <div className="min-w-0">
+      <ArticleThumb
+        thumb={thumb}
+        sizes="(min-width: 1152px) 560px, (min-width: 768px) 52vw, 100vw"
+        className="aspect-[16/9] w-full md:aspect-auto md:h-full md:min-h-[280px]"
+      />
+      <span className="flex flex-col justify-center gap-2.5 p-4 sm:p-6 lg:p-8">
         <ArticleMeta article={article} />
-        <h3 className="mt-0.5 line-clamp-2 text-[11.5px] font-bold leading-snug text-slate-950 group-hover:text-primary sm:text-[14px]">
+        <span className="font-display text-[19px] font-extrabold leading-[1.5] text-slate-900 transition-colors duration-150 group-hover:text-brand-700 sm:text-[22px] lg:text-[25px]">
           {article.title}
-        </h3>
+        </span>
         {article.description && (
-          <p className="mt-1 hidden text-xs leading-5 text-slate-600 sm:line-clamp-2 sm:block sm:leading-6">
-            {article.description}
-          </p>
+          <span className="line-clamp-3 text-[14px] leading-[1.8] text-slate-700 sm:text-[15px]">{article.description}</span>
         )}
-      </div>
+        <span className="mt-1 hidden items-center gap-1 text-[14.5px] font-bold text-brand-700 md:inline-flex">
+          記事を読む
+          <LineIcon name="arrowR" size={16} className="block" />
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+// 一覧の1行（写真・カテゴリ・日付・題名）
+function ArticleRow({ article, thumb }: { article: ArticleLike; thumb: ArticleThumbData }) {
+  return (
+    <Link
+      prefetch={false}
+      href={`/articles/${article.slug}`}
+      className="group flex gap-3 py-3.5 sm:gap-5 sm:py-4"
+    >
+      <ArticleThumb
+        thumb={thumb}
+        sizes="(min-width: 640px) 200px, 104px"
+        className="h-[70px] w-[104px] shrink-0 rounded-[10px] sm:h-[112px] sm:w-[200px] sm:rounded-xl"
+      />
+      <span className="flex min-w-0 flex-col justify-center gap-1.5 sm:gap-2">
+        <ArticleMeta article={article} />
+        <span className="line-clamp-2 text-[15px] font-bold leading-[1.55] text-slate-900 transition-colors duration-150 group-hover:text-brand-700 sm:text-[17px]">
+          {article.title}
+        </span>
+        {article.description && (
+          <span className="hidden text-[13.5px] leading-[1.7] text-slate-600 sm:line-clamp-2">{article.description}</span>
+        )}
+      </span>
     </Link>
   );
 }
@@ -352,10 +358,10 @@ function EntityDirectoryLinks({ groups }: { groups: ArchiveGroupList }) {
         <Link
           key={group.href}
           href={group.href}
-          className="group flex min-h-[36px] items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+          className="group flex min-h-[40px] items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[14px] font-bold text-slate-800 transition-colors duration-150 hover:bg-slate-50"
         >
-          <span className="min-w-0 truncate group-hover:text-primary">{group.title}</span>
-          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">
+          <span className="min-w-0 truncate group-hover:text-brand-700">{group.title}</span>
+          <span className="shrink-0 font-num text-[12.5px] font-semibold text-slate-500">
             {group.articleCount}記事
           </span>
         </Link>
@@ -398,21 +404,21 @@ function GradeRaceDirectoryDetails({
 
   return (
     <details id={id} className="group scroll-mt-20 rounded-xl border border-slate-200 bg-white" open={defaultOpen}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-black text-slate-800">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[14.5px] font-bold text-slate-900">
         <span>重賞</span>
         <span className="flex items-center gap-2">
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{groupCount}レース / {articleCount}記事</span>
-          <span className="text-slate-400 transition-transform group-open:rotate-90">›</span>
+          <span className="text-[12.5px] font-semibold text-slate-500">{groupCount}レース / {articleCount}記事</span>
+          <span className="text-slate-500 transition-transform duration-150 group-open:rotate-90">›</span>
         </span>
       </summary>
       <div className="max-h-[390px] overflow-y-auto border-t border-slate-100 p-1.5">
         <div className="grid gap-1.5">
           {sections.map((section) => (
             <details key={section.id} className={`group/grade overflow-hidden rounded-lg border ${getGradeSectionTone(section.id)}`}>
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-[13.5px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
                 <span>{getGradeSectionLabel(section.id, section.title)}</span>
                 <span className="flex items-center gap-1.5">
-                  <span className="rounded bg-white px-2 py-0.5 text-[10px] text-slate-600">
+                  <span className="rounded bg-white px-2 py-0.5 text-[12px] font-semibold text-slate-600">
                     {section.groupCount}レース / {section.articleCount}記事
                   </span>
                   <span aria-hidden="true" className="text-slate-500 transition-transform duration-150 group-open/grade:rotate-90">›</span>
@@ -445,11 +451,11 @@ function EntityDirectoryDetails({
 
   return (
     <details id={id} className="group scroll-mt-20 rounded-xl border border-slate-200 bg-white" open={defaultOpen}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-black text-slate-800">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[14.5px] font-bold text-slate-900">
         <span>{title}</span>
         <span className="flex items-center gap-2">
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{visibleGroups.length}</span>
-          <span className="text-slate-400 transition-transform group-open:rotate-90">›</span>
+          <span className="font-num text-[12.5px] font-semibold text-slate-500">{visibleGroups.length}</span>
+          <span className="text-slate-500 transition-transform duration-150 group-open:rotate-90">›</span>
         </span>
       </summary>
       <div className="max-h-[300px] overflow-y-auto border-t border-slate-100 p-1.5">
@@ -471,20 +477,20 @@ function CourseDirectoryDetails({
 
   return (
     <details id={id} className="group scroll-mt-20 rounded-lg border border-slate-200 bg-white">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-black text-slate-800">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[14.5px] font-bold text-slate-900">
         <span>コース</span>
         <span className="flex items-center gap-2">
-          <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{courseCount}</span>
-          <span className="text-slate-400 transition-transform group-open:rotate-90">›</span>
+          <span className="font-num text-[12.5px] font-semibold text-slate-500">{courseCount}</span>
+          <span className="text-slate-500 transition-transform duration-150 group-open:rotate-90">›</span>
         </span>
       </summary>
       <div className="max-h-[390px] overflow-y-auto border-t border-slate-100 p-1.5">
         <div className="grid gap-1.5">
           {sections.map((section) => (
             <details key={section.id} className="group/venue overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-800">
-              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-xs font-black">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-[13.5px] font-bold">
                 <span>{section.title}</span>
-                <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                <span className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500">
                   <span>{section.groups.length}コース / {section.articleCount}記事</span>
                   <span aria-hidden="true" className="transition-transform group-open/venue:rotate-90">›</span>
                 </span>
@@ -551,50 +557,57 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
     url: `https://uma-free.com${resolveArticleCanonicalPath(article, article.slug)}`,
   }));
 
+  // 1ページ目の先頭は写真を大きく。サムネイルは先頭から順に決め、同じ写真を並べない。
+  const showFeatured = currentPage === 1 && paginatedArticles.length > 0;
+  const thumbs = pickArticleThumbs(paginatedArticles);
+  const listStart = showFeatured ? 1 : 0;
+  const pageTitle = selectedCategory ? `${selectedCategory}の記事` : "競馬データ分析記事";
+
   return (
     <>
       <BreadcrumbSchema items={breadcrumbItems} />
       <ItemListSchema items={itemListEntries} />
       <Breadcrumb />
 
-      <div className="articles-page-scope site-shell-data px-3.5 pb-10 pt-2 sm:px-6 sm:pb-16 sm:pt-4">
-        <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-3 sm:p-6">
-          <div className="flex flex-col gap-1.5 sm:gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-slate-500">競馬統計コラム</p>
-              <h1 className="mt-0.5 text-[15px] font-black leading-tight tracking-tight text-slate-950 sm:text-3xl">
-                {selectedCategory ? `${selectedCategory}分析記事` : "競馬データ分析記事"}
-              </h1>
-            </div>
-            <p className="w-fit rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500">
-              {filteredArticles.length}件 ({currentPage} / {totalPages || 1} ページ)
+      <div className="articles-page-scope site-shell-data px-4 pb-12 pt-1 sm:px-6 sm:pb-16 sm:pt-3">
+        <header className="flex flex-col gap-3 sm:gap-4">
+          <div className="flex flex-col gap-1.5 sm:gap-2">
+            <h1 className="font-display text-[24px] font-extrabold leading-snug text-slate-900 sm:text-[30px] lg:text-[34px]">
+              {pageTitle}
+            </h1>
+            <p className="max-w-3xl text-[14px] leading-[1.75] text-slate-700 sm:text-[15px]">
+              重賞・騎手・コース・人気別のデータを、レース前の判断材料としてまとめています。
+              <span className="whitespace-nowrap text-slate-500">
+                {filteredArticles.length}本{totalPages > 1 ? `（${currentPage}/${totalPages}ページ）` : ""}
+              </span>
             </p>
           </div>
 
-          <div
-            className="mt-2.5 flex flex-wrap gap-1 sm:mt-4 sm:gap-2"
-          >
+          <nav aria-label="記事カテゴリ" className="flex flex-wrap gap-2">
             <Link
               href="/articles"
-              className={`rounded-full px-2.5 py-1 text-xs font-bold transition-colors sm:px-3.5 sm:py-1.5 sm:text-sm ${!selectedCategory ? "bg-slate-950 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                }`}
+              aria-current={!selectedCategory ? "page" : undefined}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-bold transition-colors duration-150 sm:h-10 sm:px-4 sm:text-[14px] ${!selectedCategory ? "bg-navy text-white" : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"}`}
             >
-              すべての記事
+              すべて
+              <span className={`font-num text-[12.5px] font-semibold ${!selectedCategory ? "text-white/75" : "text-slate-500"}`}>{allArticles.length}</span>
             </Link>
-            {categoryItems.map(({ category, count }) => (
-              <Link
-                key={category}
-                href={buildArticlesHref({ category })}
-                className={`rounded-full px-2.5 py-1 text-xs font-bold transition-colors sm:px-3.5 sm:py-1.5 sm:text-sm ${selectedCategory === category
-                  ? "bg-slate-950 text-white"
-                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-              >
-                {category}
-                <span className="ml-1 text-[10px] opacity-60">{count}</span>
-              </Link>
-            ))}
-          </div>
+            {categoryItems.map(({ category, count }) => {
+              const isActive = selectedCategory === category;
+              return (
+                <Link
+                  key={category}
+                  href={buildArticlesHref({ category })}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-bold transition-colors duration-150 sm:h-10 sm:px-4 sm:text-[14px] ${isActive ? "bg-navy text-white" : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"}`}
+                >
+                  <span className={`h-2 w-2 rounded-[2px] ${getArticleCategoryStyle(category).fillClass}`} aria-hidden="true" />
+                  {category}
+                  <span className={`font-num text-[12.5px] font-semibold ${isActive ? "text-white/75" : "text-slate-500"}`}>{count}</span>
+                </Link>
+              );
+            })}
+          </nav>
         </header>
 
         <MobileArticleThemeDirectory
@@ -603,41 +616,45 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
           courseSections={courseVenueSections}
         />
 
-        <div className="mt-3 grid gap-5 lg:mt-5 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <main className="min-w-0">
-            <UpcomingGradeRacePickup groups={upcomingGradeRaceGroups} />
-
+        <div className="mt-4 grid gap-6 lg:mt-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8">
+          <main className="flex min-w-0 flex-col gap-5">
             {filteredArticles.length === 0 ? (
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-16 text-center">
-                <p className="text-base font-bold text-slate-700">条件に合う記事が見つかりませんでした</p>
-                <Link href="/articles" className="mt-4 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white">
-                  一覧へ
+              <div className="flex flex-col items-center gap-3 rounded-[16px] bg-white px-4 py-12 text-center ring-1 ring-inset ring-slate-200">
+                <GuideHorse size={96} mood="look" />
+                <p className="text-[16px] font-bold text-slate-900">条件に合う記事が見つかりませんでした</p>
+                <Link href="/articles" className="ui-btn ui-btn--primary">
+                  すべての記事を見る
                 </Link>
               </div>
             ) : (
-              <section className="overflow-hidden rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4">
-                <SectionHeader
-                  title="記事"
-                  meta={`${filteredArticles.length}件 (${currentPage}/${totalPages}ページ)`}
-                  className="mb-2.5 sm:mb-3"
-                  compact
-                />
-                <div className="grid gap-0 sm:gap-2 xl:grid-cols-2">
-                  {paginatedArticles.map((article, index) => (
-                    <React.Fragment key={article.slug}>
-                      <CompactArticleLink article={article} />
-                      {(index === 5 || index === 11) && shouldRenderAds && paginatedArticles.length > index + 1 && (
-                        <div className="xl:col-span-2">
-                          <AdUnit
-                            slot="8529703346"
-                            placement="inline"
-                            analyticsPlacement={`articles_grid_after_${index + 1}`}
-                          />
-                        </div>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </div>
+              <>
+                {showFeatured && <FeaturedArticle article={paginatedArticles[0]} thumb={thumbs[0]} />}
+
+                <UpcomingGradeRacePickup groups={upcomingGradeRaceGroups} />
+
+                <section aria-labelledby="articles-list-heading" className="rounded-[16px] bg-white px-4 py-1 ring-1 ring-inset ring-slate-200 sm:px-6 sm:py-2">
+                  <h2 id="articles-list-heading" className="sr-only">記事の一覧</h2>
+                  <ul>
+                    {paginatedArticles.map((article, index) => (
+                      <React.Fragment key={article.slug}>
+                        {index >= listStart && (
+                          <li className="border-b border-slate-200 last:border-b-0">
+                            <ArticleRow article={article} thumb={thumbs[index]} />
+                          </li>
+                        )}
+                        {(index === 5 || index === 11) && shouldRenderAds && paginatedArticles.length > index + 1 && (
+                          <li className="border-b border-slate-200 py-3">
+                            <AdUnit
+                              slot="8529703346"
+                              placement="inline"
+                              analyticsPlacement={`articles_grid_after_${index + 1}`}
+                            />
+                          </li>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </ul>
+                </section>
 
                 <ArticlePagination
                   currentPage={currentPage}
@@ -645,61 +662,17 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                   category={selectedCategory}
                   tag={selectedTag}
                 />
-              </section>
+              </>
             )}
 
             {shouldRenderAds && (
-              <div className="pt-5">
+              <div className="pt-2">
                 <MultiplexAd slot="9407670747" />
               </div>
             )}
           </main>
 
-          <aside className="article-desktop-sidebar space-y-3 lg:sticky lg:self-start">
-            <nav className="hidden rounded-xl border border-slate-200 bg-white p-3 lg:block" aria-label="記事テーマ">
-              <p className="mb-2 px-1 text-xs font-bold text-slate-600">記事テーマ</p>
-              <div className="space-y-2">
-                <GradeRaceDirectoryDetails id="sidebar-grade-races" sections={gradeRaceSections} />
-                <EntityDirectoryDetails id="sidebar-races" title="レース" groups={archiveTotals.raceGroups} />
-                <EntityDirectoryDetails id="sidebar-jockeys" title="騎手" groups={archiveTotals.jockeyGroups} />
-                <CourseDirectoryDetails id="sidebar-courses" sections={courseVenueSections} />
-              </div>
-            </nav>
-
-            <nav className="rounded-xl border border-slate-200 bg-white p-4" aria-label="記事カテゴリ">
-              <p className="mb-2 text-xs font-bold text-slate-600">記事カテゴリ</p>
-              <Link
-                href="/articles"
-                className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold transition-colors ${!selectedCategory ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50"
-                  }`}
-              >
-                <span>すべての記事</span>
-                <span className="text-xs opacity-70">{allArticles.length}</span>
-              </Link>
-              <div className="mt-2 space-y-1">
-                {categoryItems.map(({ category, count }) => (
-                  <Link
-                    key={category}
-                    href={buildArticlesHref({ category })}
-                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold transition-colors ${selectedCategory === category ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50"
-                      }`}
-                  >
-                    <span>{category}</span>
-                    <span className="text-xs opacity-70">{count}</span>
-                  </Link>
-                ))}
-              </div>
-            </nav>
-
-            <Link
-              prefetch={false}
-              href="/races/today"
-              className="flex min-h-[44px] items-center justify-between rounded-xl border border-brand-200 bg-brand-50/70 px-4 py-3 text-sm font-black text-slate-950 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50"
-            >
-              <span>本日のレース分析</span>
-              <span className="rounded-full bg-white px-2 py-0.5 text-xs text-brand-700">今日</span>
-            </Link>
-
+          <aside className="article-desktop-sidebar space-y-4 lg:sticky lg:self-start">
             {/* ★ PCサイドバー広告
                 モバイルでは非表示（hidden）、PCのみ表示（lg:block）。
                 記事一覧はPC訪問者が約40%（Clarity 72h計測）のため、
@@ -717,6 +690,28 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                 />
               </div>
             )}
+
+            <Link
+              prefetch={false}
+              href="/races/today"
+              className="flex min-h-[52px] items-center justify-between gap-3 rounded-[14px] bg-brand-50/70 px-4 py-3 ring-1 ring-inset ring-brand-200 transition-colors duration-150 hover:bg-brand-50 hover:ring-brand-300"
+            >
+              <span className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
+                <LineIcon name="race" size={20} className="block text-brand-600" />
+                本日のレース分析
+              </span>
+              <LineIcon name="chevR" size={18} className="block text-brand-700" />
+            </Link>
+
+            <nav className="hidden rounded-[14px] bg-white p-3 ring-1 ring-inset ring-slate-200 lg:block" aria-label="記事テーマ">
+              <p className="mb-1 px-1 font-display text-[16px] font-extrabold text-slate-900">記事テーマ</p>
+              <div className="space-y-2">
+                <GradeRaceDirectoryDetails id="sidebar-grade-races" sections={gradeRaceSections} />
+                <EntityDirectoryDetails id="sidebar-races" title="レース" groups={archiveTotals.raceGroups} />
+                <EntityDirectoryDetails id="sidebar-jockeys" title="騎手" groups={archiveTotals.jockeyGroups} />
+                <CourseDirectoryDetails id="sidebar-courses" sections={courseVenueSections} />
+              </div>
+            </nav>
           </aside>
         </div>
       </div>

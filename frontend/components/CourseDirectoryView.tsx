@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { DataPageHead } from '@/components/DataPageHead';
 import { ChevronRight } from 'lucide-react';
 import { DataDirectoryNav } from '@/components/DataDirectoryNav';
 import {
@@ -21,21 +22,21 @@ const SURFACE_STYLES: Record<CourseSurface, {
 }> = {
     turf: {
         label: '芝',
-        marker: 'bg-emerald-600',
-        headerBg: 'text-emerald-800',
-        link: 'border-emerald-200 bg-emerald-50 text-emerald-950 hover:border-emerald-400 hover:bg-emerald-100',
+        marker: 'bg-turf',
+        headerBg: 'text-turf-deep',
+        link: 'border-turf/25 bg-turf-soft text-turf-deep hover:border-turf',
     },
     dirt: {
         label: 'ダート',
-        marker: 'bg-amber-700',
-        headerBg: 'text-amber-900',
-        link: 'border-amber-200 bg-amber-50 text-amber-950 hover:border-amber-400 hover:bg-amber-100',
+        marker: 'bg-dirt',
+        headerBg: 'text-dirt-deep',
+        link: 'border-dirt/25 bg-dirt-soft text-dirt-deep hover:border-dirt',
     },
     obstacle: {
         label: '障害',
-        marker: 'bg-violet-700',
-        headerBg: 'text-violet-800',
-        link: 'border-violet-200 bg-violet-50 text-violet-950 hover:border-violet-400 hover:bg-violet-100',
+        marker: 'bg-jump',
+        headerBg: 'text-jump',
+        link: 'border-jump/25 bg-jump/10 text-[#4E3A9E] hover:border-jump',
     },
     other: {
         label: 'その他',
@@ -103,7 +104,7 @@ function VenueJumpLinks({
     if (groups.length === 0) return null;
     return (
         <div className="grid grid-cols-[72px_1fr] items-start gap-2 border-b border-slate-100 py-2.5 last:border-b-0 sm:grid-cols-[88px_1fr]">
-            <h2 className="pt-2 text-xs font-black text-slate-600 sm:text-sm">{title}</h2>
+            <h2 className="pt-2 text-[13px] font-bold text-slate-700 sm:text-[14px]">{title}</h2>
             <div className="flex flex-wrap gap-1.5">
                 {groups.map((group) => (
                     <a
@@ -112,7 +113,7 @@ function VenueJumpLinks({
                         className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-sm font-bold text-slate-800 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
                     >
                         {group.venueName}
-                        <span className="text-[10px] font-bold tabular-nums text-slate-400">
+                        <span className="font-num text-[12px] font-semibold tabular-nums text-slate-500">
                             {getTotalCourseCount(group)}
                         </span>
                     </a>
@@ -127,18 +128,17 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
         <section
             id={`venue-${group.venueSlug}`}
             aria-labelledby={`venue-${group.venueSlug}-heading`}
-            className="scroll-mt-24 overflow-hidden rounded-xl border border-slate-200 bg-white"
+            className="scroll-mt-24 overflow-hidden rounded-[14px] bg-white ring-1 ring-inset ring-slate-200"
         >
-            {/* ヘッダーの色差別化：中央=bg-slate-900、地方=bg-slate-700 */}
-            <div className={`flex items-center justify-between border-b border-slate-200 px-4 py-2.5 text-white ${group.isCentral ? 'bg-slate-900' : 'bg-slate-700'}`}>
-                <h3 id={`venue-${group.venueSlug}-heading`} className="text-base font-black text-white">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
+                <h3 id={`venue-${group.venueSlug}-heading`} className="font-display text-[17px] font-extrabold text-slate-900">
                     {group.venueName}競馬場
                 </h3>
-                <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${group.isCentral ? 'bg-white/15 text-white' : 'bg-amber-500/20 text-amber-200'}`}>
+                <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-bold ${group.isCentral ? 'bg-navy text-white' : 'bg-dirt-soft text-dirt-deep'}`}>
                     {group.isCentral ? '中央' : '地方'}
                 </span>
             </div>
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-200">
                 {SURFACE_ORDER.map((surface) => {
                     const items = group.itemsBySurface.get(surface) ?? [];
                     if (items.length === 0) return null;
@@ -150,7 +150,7 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
                         >
                             <div className="flex min-h-11 items-center gap-2 self-start">
                                 <span className={`h-3 w-3 shrink-0 rounded-sm ${style.marker}`} aria-hidden="true" />
-                                <h4 className={`text-sm font-black ${style.headerBg}`}>{style.label}</h4>
+                                <h4 className={`text-[14.5px] font-bold ${style.headerBg}`}>{style.label}</h4>
                             </div>
                             <div className="grid grid-cols-3 gap-1.5 min-[420px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
                                 {items.map((course) => (
@@ -158,10 +158,10 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
                                         key={course.url}
                                         href={course.url}
                                         prefetch={false}
-                                        className={`group flex min-h-11 flex-col items-start justify-center rounded-md border px-2 py-1 text-xs sm:text-sm font-black transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${style.link}`}
+                                        className={`group flex min-h-12 flex-col items-start justify-center rounded-[8px] border px-2.5 py-1 font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${style.link}`}
                                     >
                                         <span className="flex w-full items-center justify-between gap-0.5">
-                                            <span className="font-mono tabular-nums whitespace-nowrap text-xs sm:text-sm">
+                                            <span className="whitespace-nowrap font-num text-[15px] font-bold tabular-nums">
                                                 {course.distance == null ? course.name : `${course.distance}m`}
                                             </span>
                                             <ChevronRight
@@ -170,7 +170,7 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
                                             />
                                         </span>
                                         {course.sampleSize > 0 && (
-                                            <span className="mt-0.5 text-[10px] font-bold tabular-nums opacity-50 whitespace-nowrap">
+                                            <span className="mt-0.5 whitespace-nowrap font-num text-[12px] font-semibold tabular-nums opacity-70">
                                                 {course.sampleSize.toLocaleString('ja-JP')}走
                                             </span>
                                         )}
@@ -194,15 +194,11 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
         <main id="top" className="mx-auto max-w-6xl px-3.5 pb-14 pt-3 sm:px-5">
             <DataDirectoryNav current="course" />
 
-            <header className="mt-2 rounded-xl border border-slate-800 bg-slate-900 p-2.5 text-white sm:p-5">
-                <p className="text-[10px] font-bold text-brand-300">競馬データベース</p>
-                <h1 className="mt-0.5 text-[15px] font-black leading-tight !text-white sm:text-3xl">
-                    競馬場・コース別データ一覧
-                </h1>
-                <p className="mt-1 max-w-3xl text-[11px] leading-relaxed !text-slate-200 sm:text-sm sm:leading-6">
-                    中央・地方の全競馬場と各コース・距離ごとに、枠順・脚質・馬場傾向や騎手・調教師成績を確認できます。
-                </p>
-            </header>
+            <DataPageHead
+                icon="pin"
+                title="競馬場・コース別データ一覧"
+                description="中央・地方の全競馬場と各コース・距離ごとに、枠番・位置取り・馬場の傾向や騎手・調教師の成績を確認できます。"
+            />
 
             {groups.length === 0 ? (
                 <section className="mt-5 rounded-xl border border-slate-200 bg-white p-6">

@@ -234,3 +234,19 @@ python scripts/social_video_distribution.py --target-date 2026-07-31 --platforms
 ```
 
 X動画投稿はこの処理へ追加しない。費用条件が変わっても、ユーザーが明示的に再承認するまでは既存のテキスト・画像投稿だけを維持する。
+
+## 通常のSNS投稿の画像とInstagramカルーセル（2026-09-25 追加）
+
+動画とは別に、毎日のSNS投稿（`backend/scripts/sns_poster.py`）の画像と、夜のInstagramカルーセル（`backend/scripts/instagram_carousel.py`）がある。どちらも非公開の `SOCIAL_VIDEO_STAGING_GCS_BUCKET`（us-west1、2日で消えるLifecycle）に画像を一時配置し、短命の署名URLをMetaへ渡す。
+
+| 項目 | Repository Variable | 既定 | 内容 |
+| --- | --- | --- | --- |
+| Threadsの画像 | `SNS_THREADS_IMAGE_MODE` | `off` | `public` で朝・直前・的中・夜の投稿に1080×1350の画像を付ける。一時配置や受け付けに失敗したら文字だけで投稿する（昼は文字だけ） |
+| Instagramカルーセル | `SOCIAL_VIDEO_INSTAGRAM_CAROUSEL_MODE` | `validate` | 20時の夜投稿のあとに、翌日の最もグレードの高い重賞（AI偏差値のある馬が5頭以上）を6枚以内のカルーセルにする。`validate` は画像と本文を作って確かめるだけ。`public` で公開。下書きのAPIが無いため `draft` は受け付けない |
+
+- 夜のWorkflowは、作った画像を Artifact `sns-images-evening` に3日だけ残す（validate の目視確認用）。
+- カルーセルの重複防止は動画と同じ `video_publications`（`platform=instagram`, `video_type=carousel`, `stable_id=レースID`）。公開の直前にコンテナIDを記録し、途中で止まった場合は自動で再送しない。
+- **署名の権限**：`gcloud storage sign-url --impersonate-service-account` で署名するには、Workflowのサービスアカウント（`github-actions-iap-db@keiba-api-project.iam.gserviceaccount.com`）が自分自身に `roles/iam.serviceAccountTokenCreator` を持つ必要がある。2026-09-25 に付与した（それまでは付いておらず、動画の配信も全媒体 validate だったため署名は一度も実行されていなかった）。付与と同時に `SNS_THREADS_IMAGE_MODE=public` を設定した。最初の定時実行でThreadsの投稿に画像が付いたか、ログに「文字だけで投稿します」が出ていないかを確かめる。
+- Instagramは後回し（2026-09-25 決定）。認証情報（`INSTAGRAM_USER_ID`・`INSTAGRAM_ACCESS_TOKEN`）が未登録のため、カルーセルは validate のまま画像と本文を作るだけ。
+- なりすましでの署名URLの有効期間は最長12時間。`GcsMediaStager` の既定は6時間、Threadsの画像は2時間。
+- 費用：バケットは無料枠の対象地域（us-west1）で、1日数ファイル・2日で削除のため、保存・操作回数とも無料枠の中。

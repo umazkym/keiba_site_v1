@@ -10,19 +10,21 @@ export type ArticleCategoryStyle = {
     // 写真が無いときの面、カテゴリ一覧の色の目印
     fillClass: string;
     icon: LineIconName;
+    // 同じ色の16進（OG画像など Tailwind の外で描くもの）
+    hex: string;
 };
 
 const CATEGORY_STYLES: Record<string, ArticleCategoryStyle> = {
-    重賞攻略: { tagClass: 'text-navy ring-navy', fillClass: 'bg-navy', icon: 'trophy' },
-    騎手分析: { tagClass: 'text-[#6A4BC4] ring-[#6A4BC4]', fillClass: 'bg-[#6A4BC4]', icon: 'user' },
-    コース分析: { tagClass: 'text-turf-deep ring-turf-deep', fillClass: 'bg-turf-deep', icon: 'pin' },
-    入門ガイド: { tagClass: 'text-[#0E7490] ring-[#0E7490]', fillClass: 'bg-[#0E7490]', icon: 'book' },
-    '馬券・統計': { tagClass: 'text-dirt-deep ring-dirt-deep', fillClass: 'bg-dirt-deep', icon: 'chart' },
-    海外競馬: { tagClass: 'text-[#3F4A6B] ring-[#3F4A6B]', fillClass: 'bg-[#3F4A6B]', icon: 'flag' },
-    枠順データ: { tagClass: 'text-[#B4436C] ring-[#B4436C]', fillClass: 'bg-[#B4436C]', icon: 'bars' },
+    重賞攻略: { tagClass: 'text-navy ring-navy', fillClass: 'bg-navy', icon: 'trophy', hex: '#1C2787' },
+    騎手分析: { tagClass: 'text-[#6A4BC4] ring-[#6A4BC4]', fillClass: 'bg-[#6A4BC4]', icon: 'user', hex: '#6A4BC4' },
+    コース分析: { tagClass: 'text-turf-deep ring-turf-deep', fillClass: 'bg-turf-deep', icon: 'pin', hex: '#1D6B40' },
+    入門ガイド: { tagClass: 'text-[#0E7490] ring-[#0E7490]', fillClass: 'bg-[#0E7490]', icon: 'book', hex: '#0E7490' },
+    '馬券・統計': { tagClass: 'text-dirt-deep ring-dirt-deep', fillClass: 'bg-dirt-deep', icon: 'chart', hex: '#7D4B1C' },
+    海外競馬: { tagClass: 'text-[#3F4A6B] ring-[#3F4A6B]', fillClass: 'bg-[#3F4A6B]', icon: 'flag', hex: '#3F4A6B' },
+    枠順データ: { tagClass: 'text-[#B4436C] ring-[#B4436C]', fillClass: 'bg-[#B4436C]', icon: 'bars', hex: '#B4436C' },
 };
 
-const DEFAULT_STYLE: ArticleCategoryStyle = { tagClass: 'text-slate-600 ring-slate-300', fillClass: 'bg-slate-600', icon: 'chart' };
+const DEFAULT_STYLE: ArticleCategoryStyle = { tagClass: 'text-slate-600 ring-slate-300', fillClass: 'bg-slate-600', icon: 'chart', hex: '#474E73' };
 
 export const getArticleCategoryStyle = (category: string): ArticleCategoryStyle =>
     CATEGORY_STYLES[category] ?? DEFAULT_STYLE;
@@ -79,6 +81,19 @@ export function pickArticleThumbs(articles: { category: string; eyecatch?: strin
         used.add(name);
         return photoThumb(name);
     });
+}
+
+// 記事の冒頭の写真。記事ごとのアイキャッチがあればそれを、無ければカテゴリの写真を使う。
+// 重賞は開催日（無ければ記事の日付）の季節の写真にする。写真が無いカテゴリは null（冒頭に写真を出さない）。
+export function pickArticleCover(article: { category: string; eyecatch?: string; date: string; scheduledRaceDate?: string }): ArticleThumb | null {
+    if (article.eyecatch && !GENERIC_EYECATCHES.has(article.eyecatch)) {
+        return { kind: 'eyecatch', src: article.eyecatch };
+    }
+    if (article.category === '重賞攻略') {
+        return photoThumb(`grade-${getSeason(article.scheduledRaceDate || article.date)}`);
+    }
+    const name = CATEGORY_PHOTOS[article.category]?.[0];
+    return name ? photoThumb(name) : null;
 }
 
 // 本文の文字数からの目安（1分で500字）

@@ -90,7 +90,7 @@ export default function SiteSelectionPage() {
           <h2 className="text-xl font-black text-slate-950">UMA-FREEの場合</h2>
           <ul className="mt-4 grid gap-3 text-sm leading-7 text-slate-600 sm:grid-cols-2">
             <li className="rounded-xl bg-white p-4 shadow-soft">中央・地方の全レースを登録不要で閲覧可能。</li>
-            <li className="rounded-xl bg-white p-4 shadow-soft">AI偏差値・脚質予測・対戦成績・枠順傾向をレースごとに算出。</li>
+            <li className="rounded-xl bg-white p-4 shadow-soft">AI偏差値・脚質予測・対戦成績・馬番の傾向をレースごとに算出。</li>
             <li className="rounded-xl bg-white p-4 shadow-soft">成績は好調条件・不調条件の両方を公開。</li>
             <li className="rounded-xl bg-white p-4 shadow-soft">投票推奨ではなく、レース検討の参考情報として提供。</li>
           </ul>

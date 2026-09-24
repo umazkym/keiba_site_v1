@@ -23,7 +23,9 @@ class GcsMediaStager:
         self,
         bucket: str | None = None,
         signing_service_account: str | None = None,
-        duration: str = "24h",
+        # サービスアカウントになりすまして署名するとき、gcloud storage sign-url の有効期間は最長12時間。
+        # Meta/Pinterest が取得するのは投稿の直後なので、短くしておく。
+        duration: str = "6h",
     ) -> None:
         self.bucket = (bucket or os.getenv("SOCIAL_VIDEO_STAGING_GCS_BUCKET") or "").strip()
         self.signing_service_account = (

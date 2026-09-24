@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
 import { DataDirectoryNav } from '@/components/DataDirectoryNav';
 import { DataSearchPanel } from '@/components/DataSearchPanel';
+import { DataPageHead } from '@/components/DataPageHead';
+import { LineIcon } from '@/components/LineIcon';
 import { SectionHeader } from '@/components/SectionHeader';
 import {
     splitPersonDisplayName,
@@ -48,12 +49,12 @@ const labels: Record<Exclude<DataEntityType, 'grade'>, {
 
 /** 最終出走日の新鮮度に応じた色を返す */
 function getDateFreshnessClass(dateString: string | null): string {
-    if (!dateString) return 'text-slate-400';
+    if (!dateString) return 'text-slate-500';
     const diffMs = Date.now() - new Date(dateString).getTime();
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
     if (diffDays <= 7) return 'text-emerald-700 font-bold';
     if (diffDays <= 30) return 'text-slate-700';
-    return 'text-slate-400';
+    return 'text-slate-500';
 }
 
 export function DataDirectoryView({
@@ -75,15 +76,11 @@ export function DataDirectoryView({
         <main className="mx-auto max-w-6xl px-3.5 pb-14 pt-3 sm:px-5">
             <DataDirectoryNav current={entityType} />
 
-            <header className="mt-3 rounded-xl border border-slate-800 bg-slate-900 p-3.5 text-white sm:p-5">
-                <p className="text-[10px] font-bold tracking-wider text-brand-400">KEIBA DATABASE</p>
-                <h1 className="mt-0.5 text-[15px] font-black leading-tight !text-white sm:text-3xl">
-                    {content.title}
-                </h1>
-                <p className="mt-1 max-w-3xl text-[11px] leading-relaxed !text-slate-200 sm:text-sm sm:leading-6">
-                    {content.description}
-                </p>
-            </header>
+            <DataPageHead
+                icon={entityType === 'course' ? 'pin' : entityType === 'horse' ? 'race' : 'user'}
+                title={content.title}
+                description={content.description}
+            />
 
             <div className="mt-2 sm:mt-4">
                 <DataSearchPanel
@@ -104,24 +101,22 @@ export function DataDirectoryView({
                 />
 
                 {directory.items.length === 0 ? (
-                    <div className="rounded-xl border border-slate-200 bg-white p-3">
-                        <h3 className="text-xs font-black text-slate-900">一覧を取得できませんでした</h3>
-                        <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                    <div className="rounded-[14px] bg-white p-4 ring-1 ring-inset ring-slate-200">
+                        <h3 className="text-[15px] font-bold text-slate-900">一覧を取得できませんでした</h3>
+                        <p className="mt-1 text-[13.5px] leading-[1.7] text-slate-600">
                             上の名前検索をお試しいただくか、時間を置いて再度表示してください。
                         </p>
                     </div>
                 ) : (
-                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                        {/* ヘッダー上部のアクセントライン */}
-                        <div className="h-px bg-slate-300" />
-                        <div className={`hidden border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-600 sm:grid sm:items-center sm:gap-3 ${desktopColumns}`}>
+                    <div className="overflow-hidden rounded-[14px] bg-white ring-1 ring-inset ring-slate-200">
+                        <div className={`hidden border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-[12.5px] font-bold text-slate-500 sm:grid sm:items-center sm:gap-3 ${desktopColumns}`}>
                             <span>{content.itemLabel}</span>
                             {hasAffiliation && <span>所属</span>}
                             <span className="text-right">出走数</span>
                             <span>最終出走</span>
                             <span aria-hidden="true" />
                         </div>
-                        <div className="divide-y divide-slate-100">
+                        <div className="divide-y divide-slate-200">
                             {directory.items.map((item, index) => {
                                 const display = splitPersonDisplayName(
                                     item.name,
@@ -133,13 +128,13 @@ export function DataDirectoryView({
                                         key={`${item.entity_type}-${item.id}`}
                                         prefetch={false}
                                         href={item.url}
-                                        className={`grid min-h-[46px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 transition-colors duration-150 hover:bg-brand-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 sm:min-h-14 sm:gap-3 ${desktopColumns} ${index % 2 === 1 ? 'bg-slate-50/50' : ''}`}
+                                        className={`grid min-h-[56px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-2 transition-colors duration-150 hover:bg-brand-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 sm:min-h-14 sm:gap-3 ${desktopColumns}`}
                                     >
                                         <span className="min-w-0">
-                                            <span className="block truncate text-[13.5px] font-black text-slate-950">{display.name}</span>
-                                            <span className="mt-0.5 flex flex-wrap items-center gap-1 text-[10.5px] text-slate-500 sm:hidden">
+                                            <span className="block truncate text-[15px] font-bold text-slate-900">{display.name}</span>
+                                            <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-slate-500 sm:hidden">
                                                 {display.affiliation && (
-                                                    <span className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-bold text-slate-600 text-[9.5px]">
+                                                    <span className="rounded-[5px] bg-slate-50 px-1.5 font-bold text-slate-600 ring-1 ring-inset ring-slate-200 text-[11.5px]">
                                                         {display.affiliation}
                                                     </span>
                                                 )}
@@ -150,17 +145,17 @@ export function DataDirectoryView({
                                             </span>
                                         </span>
                                         {hasAffiliation && (
-                                            <span className="hidden text-xs font-bold text-slate-600 sm:block">
+                                            <span className="hidden text-[13px] font-bold text-slate-600 sm:block">
                                                 {display.affiliation ?? '—'}
                                             </span>
                                         )}
-                                        <span className="hidden text-right font-mono text-xs font-bold tabular-nums text-slate-500 sm:block">
+                                        <span className="hidden text-right font-num text-[15px] font-semibold tabular-nums text-slate-600 sm:block">
                                             {item.sample_size.toLocaleString('ja-JP')}
                                         </span>
-                                        <span className={`hidden text-xs tabular-nums sm:block ${getDateFreshnessClass(item.last_race_date)}`}>
+                                        <span className={`hidden font-num text-[14px] tabular-nums sm:block ${getDateFreshnessClass(item.last_race_date)}`}>
                                             {item.last_race_date ?? '—'}
                                         </span>
-                                        <ChevronRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                                        <LineIcon name="chevR" size={18} className="block text-slate-500" />
                                     </Link>
                                 );
                             })}

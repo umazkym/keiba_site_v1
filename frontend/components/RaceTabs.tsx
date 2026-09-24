@@ -67,7 +67,7 @@ const HorseNumberAdvantageChart = dynamic(
     () => import('./HorseNumberAdvantageChart').then((module) => module.HorseNumberAdvantageChart),
     {
         ssr: false,
-        loading: () => <div className="min-h-32 rounded-lg bg-slate-50 md:min-h-[196px]" aria-busy="true" aria-label="枠順傾向を読み込み中" />,
+        loading: () => <div className="min-h-32 rounded-lg bg-slate-50 md:min-h-[196px]" aria-busy="true" aria-label="馬番の傾向を読み込み中" />,
     },
 );
 

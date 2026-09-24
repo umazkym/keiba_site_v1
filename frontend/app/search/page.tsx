@@ -46,7 +46,7 @@ function buildSearchIndex(): SearchIndexItem[] {
         {
             type: 'page',
             title: '本日のAI競馬データ分析',
-            description: '中央・地方競馬の当日レースをAI偏差値、脚質予測、枠順傾向で確認できます。',
+            description: '中央・地方競馬の当日レースをAI偏差値、脚質予測、馬番の傾向で確認できます。',
             url: '/races/today',
             keywords: ['本日', '今日', 'AI予想', 'レース', '出馬表', '偏差値'],
         },

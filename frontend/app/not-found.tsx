@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 const ENTRIES: Array<{ href: string; icon: LineIconName; title: string; description: string }> = [
-    { href: '/races/today', icon: 'race', title: '今日のレース分析', description: 'AI偏差値・対戦成績・展開・枠順傾向' },
+    { href: '/races/today', icon: 'race', title: '今日のレース分析', description: 'AI偏差値・対戦成績・展開・馬番の傾向' },
     { href: '/articles', icon: 'book', title: 'データ分析記事', description: '重賞・騎手・コースの傾向' },
     { href: '/keiba-data', icon: 'database', title: '競馬データベース', description: '競走馬・騎手・コースの成績' },
 ];

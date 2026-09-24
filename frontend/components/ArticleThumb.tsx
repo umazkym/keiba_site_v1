@@ -16,7 +16,7 @@ export function ArticleThumb({ thumb, sizes, className = '' }: ArticleThumbProps
         const style = getArticleCategoryStyle(thumb.category);
         return (
             <span className={`flex items-end justify-between p-2 text-white md:p-3.5 ${style.fillClass} ${className}`} aria-hidden="true">
-                <span className="text-[10.5px] font-bold opacity-90 md:text-[13px]">{thumb.category}</span>
+                <span className="text-[11.5px] font-bold opacity-90 md:text-[13px]">{thumb.category}</span>
                 <LineIcon name={style.icon} size={22} strokeWidth={1.8} className="block h-[22px] w-[22px] text-white/85 md:h-[34px] md:w-[34px]" />
             </span>
         );

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { DataPageHead } from '@/components/DataPageHead';
 import {
     Bookmark,
     GitCompareArrows,
@@ -289,13 +290,12 @@ export default function HorseCompareClient() {
         <main className="site-shell-data px-2 pb-8 pt-2 sm:px-5">
             <DataHubNav currentPath="/compare" />
 
-            <header className="mt-1.5 rounded-xl border border-slate-800 bg-slate-900 p-2 text-white sm:p-5">
-                <p className="text-[9.5px] font-bold text-brand-300">競馬データベース</p>
-                <h1 className="mt-0.5 text-[14.5px] font-black leading-tight !text-white sm:text-3xl">競走馬の成績比較</h1>
-                <p className="mt-0.5 max-w-3xl text-[10.5px] leading-snug !text-slate-200 sm:text-sm sm:leading-6">
-                    通算成績や各コースごとに成績を確認出来ます。
-                </p>
-            </header>
+            <DataPageHead
+                icon="compare"
+                title="競走馬の成績比較"
+                description="通算・同じ条件・直近5走の成績を、選んだ馬どうしで並べて確認できます。"
+                className="mt-3"
+            />
 
             <section className="mt-2.5 rounded-xl border border-slate-200 bg-white p-2 sm:p-4">
                 <form onSubmit={runSearch} className="flex flex-col gap-2 sm:flex-row">

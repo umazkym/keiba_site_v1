@@ -12,6 +12,9 @@ import { enhanceArticleHtml } from '@/lib/article-ux';
 import { ArticleEngagementTracker } from '@/components/ArticleEngagementTracker';
 import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 import { ArticleBody } from '@/components/ArticleBody';
+import { ArticleCover, ArticleMetaRow, ArticleToc, ArticleValueGuide } from '@/components/ArticleParts';
+import { LineIcon } from '@/components/LineIcon';
+import { estimateReadingMinutes, pickArticleCover } from '@/lib/article-visual';
 import { ArticleRaceBridgeExperiment } from '@/components/ArticleRaceBridgeExperiment';
 import { ArticleAfterBodyLayout } from '@/components/ArticleAfterBodyLayout';
 import { getArticleRacePreview } from '@/lib/api';
@@ -44,9 +47,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const canonicalPath = resolveArticleCanonicalPath(article, params.slug);
     const canonicalUrl = `https://uma-free.com${canonicalPath}`;
-    const imageUrl = article.eyecatch.startsWith('http')
-      ? article.eyecatch
-      : `https://uma-free.com${article.eyecatch}`;
+    // OG画像は題名入りのブランドの画像（app/og/[slug]/route.tsx）。汎用のアイキャッチでは記事の区別がつかないため。
+    const imageUrl = `https://uma-free.com/og/${encodeURIComponent(params.slug)}.png`;
 
     return {
       title: article.title,
@@ -91,7 +93,7 @@ export default async function ArticlePage({ params }: Props) {
     const article = await getArticleBySlug(params.slug);
 
     const textContent = article.content.replace(/<[^>]*>/g, '').replace(/\s+/g, '');
-    const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
+    const readingTimeMin = estimateReadingMinutes(article.content);
     const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
     const articleFaqs = extractArticleFaqs(article.content);
 
@@ -99,9 +101,8 @@ export default async function ArticlePage({ params }: Props) {
     const articleUrl = `https://uma-free.com${canonicalPath}`;
     const datePublished = new Date(article.date).toISOString();
     const dateModified = new Date(article.lastUpdated || article.date).toISOString();
-    const shouldShowEyecatch = Boolean(
-      article.eyecatch && !article.eyecatch.endsWith('/images/articles/data-analysis-eyecatch.png'),
-    );
+    // 冒頭の写真：記事ごとのアイキャッチ、無ければカテゴリ（重賞は季節）の写真
+    const cover = pickArticleCover(article);
     const stableArticleAdProps = {
       placement: 'inline' as const,
       minHeight: '280px',
@@ -134,14 +135,14 @@ export default async function ArticlePage({ params }: Props) {
     const racePhase = article.racePhase || (article.entityType === 'grade_race' ? undefined : 'evergreen');
 
     return (
-      <div className="article-detail-scope min-h-screen bg-white py-1 sm:py-8">
+      <div className="article-detail-scope min-h-screen bg-white pb-2 pt-1 sm:py-8">
         <ArticleSchema
           title={article.title}
           description={article.description || textContent.substring(0, 160)}
           url={articleUrl}
           datePublished={datePublished}
           dateModified={dateModified}
-          image={article.eyecatch.startsWith('http') ? article.eyecatch : `https://uma-free.com${article.eyecatch}`}
+          image={`https://uma-free.com/og/${encodeURIComponent(params.slug)}.png`}
         />
         <BreadcrumbSchema
           items={[
@@ -154,7 +155,7 @@ export default async function ArticlePage({ params }: Props) {
         {/* 本文に「よくある質問」がある記事だけFAQPageを出す。旧記事では何も出力しない。 */}
         {articleFaqs.length > 0 && <FAQSchema faqs={articleFaqs} />}
 
-        <div className="site-shell-article mx-auto max-w-4xl px-3.5 sm:px-6">
+        <div className="site-shell-article mx-auto max-w-[1080px] px-4 sm:px-6">
           <Breadcrumb />
 
           <article
@@ -162,104 +163,72 @@ export default async function ArticlePage({ params }: Props) {
             data-content-group={contentGroup}
             data-race-phase={racePhase}
           >
-            {/* ===== ARTICLE HEADER ===== */}
-            <header className="relative border-b border-slate-200 pb-4 sm:pb-8">
-              <div>
-                {/* タイトル */}
-                <h1 className="article-page-title text-[1.55rem] font-black leading-tight tracking-tight text-slate-950 [overflow-wrap:anywhere] sm:text-4xl md:text-5xl">
+            {/* ===== ARTICLE HEADER =====
+                見出し → リード → カテゴリ・日付・読了時間 → （対応するレースへの導線）→ 写真 → 今日の全レースへの案内 → 目次 */}
+            <header className="flex max-w-[760px] flex-col gap-4 border-b border-slate-200 pb-7 sm:gap-5 sm:pb-9">
+              <div className="flex flex-col gap-3 sm:gap-4">
+                <h1 className="article-page-title font-display text-[23px] font-extrabold leading-[1.5] text-slate-900 [overflow-wrap:anywhere] sm:text-[30px] lg:text-[34px]">
                   {article.title}
                 </h1>
 
-                {/* リードテキスト */}
                 {article.description && (
-                  <p className="article-page-lead mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:mt-5 sm:text-lg sm:leading-8">
+                  <p className="article-page-lead max-w-3xl text-[15px] leading-[1.9] text-slate-700 sm:text-[17px]">
                     {article.description}
                   </p>
                 )}
 
-                {shouldRenderRaceBridge && (
-                  <ArticleRaceBridgeExperiment
-                    articleSlug={params.slug}
-                    articleCategory={article.category}
-                    raceId={article.raceId as string}
-                    raceName={article.raceName as string}
-                    raceDate={article.scheduledRaceDate as string}
-                    venueName={article.scheduledVenue || ''}
-                    raceNumber={article.raceNumber}
-                    raceUrl={article.raceUrl as string}
-                    preview={racePreview!}
-                  />
-                )}
-
-                {shouldRenderGenericGuide && articleIntentGuide && (
-                  <section
-                    aria-labelledby="article-intent-guide-title"
-                    className="mt-4 rounded-xl border border-brand-200 bg-slate-50 p-3 sm:mt-6"
-                    data-analytics-placement="article_intent_guide"
-                  >
-                    <h2 id="article-intent-guide-title" className="text-sm font-black leading-tight text-slate-950 sm:text-base">
-                      記事の内容を当日のレースへつなげる
-                    </h2>
-                    <div className="mt-2">
-                      <RaceAnalysisValueGrid variant="compact" />
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <Link
-                        href={articleIntentGuide.href}
-                        prefetch={false}
-                        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-2 text-center text-xs font-black text-slate-800 transition-colors duration-150 hover:border-brand-300 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:text-sm"
-                      >
-                        {articleIntentGuide.label}
-                      </Link>
-                      <Link
-                        href="/races/today"
-                        prefetch={false}
-                        data-preview-state="generic"
-                        className="inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-700 px-2 text-center text-xs font-black text-white transition-colors duration-150 hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:text-sm"
-                      >
-                        今日のレース分析へ
-                      </Link>
-                    </div>
-                  </section>
-                )}
-
-                {shouldRenderGenericGuide && !articleIntentGuide && (
-                  <Link
-                    href="/races/today"
-                    prefetch={false}
-                    data-analytics-placement="article_value_guide"
-                    data-analytics-variant="compact_four"
-                    data-preview-state="generic"
-                    className="mt-4 block min-h-[44px] cursor-pointer rounded-xl border border-brand-200 bg-slate-50 p-3 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:mt-6"
-                    aria-label="今日の全レース分析を見る。AI偏差値、対戦比較、展開・脚質、枠順傾向を確認できます"
-                  >
-                    <section aria-labelledby="article-site-value-title">
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <h2 id="article-site-value-title" className="text-sm font-black leading-tight text-slate-950 sm:text-base">
-                          今日の全レースを4つの視点で確認
-                        </h2>
-                        <span className="shrink-0 text-[11px] font-black text-brand-700 sm:text-xs">
-                          全レース分析へ <span aria-hidden="true">→</span>
-                        </span>
-                      </div>
-                      <RaceAnalysisValueGrid variant="compact" />
-                    </section>
-                  </Link>
-                )}
+                <ArticleMetaRow
+                  category={article.category}
+                  date={article.date}
+                  lastUpdated={article.lastUpdated}
+                  readingMinutes={readingTimeMin}
+                />
               </div>
 
-              {/* アイキャッチは内容を把握した後の補助ビジュアルとして配置 */}
-              {shouldShowEyecatch && (
-                <div className="relative mt-4 aspect-[16/8] max-h-[180px] w-full overflow-hidden rounded-lg bg-slate-100 sm:mt-7 sm:aspect-[16/6] sm:max-h-[320px]">
-                  <img
-                    src={article.eyecatch}
-                    alt={`${article.title} のアイキャッチ画像`}
-                    loading="eager"
-                    decoding="async"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
+              {shouldRenderRaceBridge && (
+                <ArticleRaceBridgeExperiment
+                  articleSlug={params.slug}
+                  articleCategory={article.category}
+                  raceId={article.raceId as string}
+                  raceName={article.raceName as string}
+                  raceDate={article.scheduledRaceDate as string}
+                  venueName={article.scheduledVenue || ''}
+                  raceNumber={article.raceNumber}
+                  raceUrl={article.raceUrl as string}
+                  preview={racePreview!}
+                />
               )}
+
+              <ArticleCover cover={cover} title={article.title} />
+
+              {shouldRenderGenericGuide && articleIntentGuide && (
+                <section
+                  aria-labelledby="article-intent-guide-title"
+                  className="rounded-[14px] bg-brand-50/70 p-3 ring-1 ring-inset ring-brand-200 sm:p-4"
+                  data-analytics-placement="article_intent_guide"
+                >
+                  <h2 id="article-intent-guide-title" className="font-sans text-[14.5px] font-bold leading-tight text-slate-900 sm:text-[15.5px]">
+                    記事の内容を当日のレースへつなげる
+                  </h2>
+                  <div className="mt-2">
+                    <RaceAnalysisValueGrid variant="compact" />
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Link href={articleIntentGuide.href} prefetch={false} className="ui-btn ui-btn--secondary px-2 text-center text-[14px]">
+                      {articleIntentGuide.label}
+                    </Link>
+                    <Link href="/races/today" prefetch={false} data-preview-state="generic" className="ui-btn ui-btn--primary px-2 text-center text-[14px]">
+                      今日のレース分析へ
+                    </Link>
+                  </div>
+                </section>
+              )}
+
+              {shouldRenderGenericGuide && !articleIntentGuide && (
+                <ArticleValueGuide headingId="article-site-value-title" />
+              )}
+
+              <ArticleToc toc={toc} headingId="article-toc-heading" />
             </header>
 
             {/* ===== ARTICLE BODY ===== */}
@@ -275,27 +244,18 @@ export default async function ArticlePage({ params }: Props) {
             />
 
             {/* ===== 記事フッター ===== */}
-            <div className="border-t border-slate-200 pb-5 pt-4 sm:pb-8 sm:pt-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-                <Link
-                  href={`/articles/category/${encodeURIComponent(article.category)}`}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition-colors hover:text-primary sm:gap-2 sm:text-sm"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                  </svg>
-                  {article.category}の記事をもっと見る
-                </Link>
-                <Link
-                  href="/articles"
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-slate-400 hover:bg-slate-50 hover:text-primary sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                  </svg>
-                  ほかの記事を確認する
-                </Link>
-              </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pb-6 pt-5 sm:pb-8 sm:pt-6">
+              <Link
+                href={`/articles/category/${encodeURIComponent(article.category)}`}
+                className="inline-flex min-h-11 items-center gap-1.5 text-[14px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600"
+              >
+                {article.category}の記事をもっと読む
+                <LineIcon name="chevR" size={16} className="block" />
+              </Link>
+              <Link href="/articles" className="ui-btn ui-btn--secondary gap-1.5 text-[14px]">
+                <LineIcon name="book" size={18} className="block" />
+                記事の一覧へ
+              </Link>
             </div>
 
             <ArticleAfterBodyLayout

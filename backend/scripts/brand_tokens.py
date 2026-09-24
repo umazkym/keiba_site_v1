@@ -27,12 +27,23 @@ FAINT_HEX = "#8388A6"
 LINE_HEX = "#E2E5EF"
 LINE2_HEX = "#CDD2E2"
 BG_HEX = "#F3F5FA"
+PANEL_HEX = "#F7F8FC"  # 白い紙面の中の薄い面
+PANEL2_HEX = "#EEF0F7"  # 横棒の下地など
+NAVY_SOFT_HEX = "#DFE2F4"
 ON_NIGHT_SUB_HEX = "#C9CDEB"  # 夜の紺の上の補足文字
+ON_NIGHT_TEXT_HEX = "#DADDF3"  # 写真の幕の上の説明文
+ON_NIGHT_FAINT_HEX = "#AEB3D9"
+BRAND_ON_NIGHT_HEX = "#B7B8FF"  # 夜の紺の上の○
 AI_HEX = "#F2A516"  # AI偏差値の棒と◎（面だけに使う）
 AI_DEEP_HEX = "#865300"  # 白地の上のAI偏差値の数字
 AI_SOFT_HEX = "#FFF1D1"
+AI_ROW_HEX = "#FFF7E4"  # AI偏差値1位の行
 TURF_HEX = "#2E8B57"
+TURF_DEEP_HEX = "#1D6B40"
+TURF_SOFT_HEX = "#E2F2E8"
 DIRT_HEX = "#A5692F"
+DIRT_DEEP_HEX = "#7D4B1C"
+BAD_HEX = "#C8364A"  # 馬番の傾向で最も低い馬番
 JUMP_HEX = "#6C54C8"
 GRADE_HEX = {"G1": "#1F5FD1", "G2": "#D23B3B", "G3": "#1E8E4F", "LOCAL": "#8E5E26"}
 
@@ -50,12 +61,23 @@ FAINT = hex_to_rgb(FAINT_HEX)
 LINE = hex_to_rgb(LINE_HEX)
 LINE2 = hex_to_rgb(LINE2_HEX)
 BG = hex_to_rgb(BG_HEX)
+PANEL = hex_to_rgb(PANEL_HEX)
+PANEL2 = hex_to_rgb(PANEL2_HEX)
+NAVY_SOFT = hex_to_rgb(NAVY_SOFT_HEX)
 ON_NIGHT_SUB = hex_to_rgb(ON_NIGHT_SUB_HEX)
+ON_NIGHT_TEXT = hex_to_rgb(ON_NIGHT_TEXT_HEX)
+ON_NIGHT_FAINT = hex_to_rgb(ON_NIGHT_FAINT_HEX)
+BRAND_ON_NIGHT = hex_to_rgb(BRAND_ON_NIGHT_HEX)
 AI = hex_to_rgb(AI_HEX)
 AI_DEEP = hex_to_rgb(AI_DEEP_HEX)
 AI_SOFT = hex_to_rgb(AI_SOFT_HEX)
+AI_ROW = hex_to_rgb(AI_ROW_HEX)
 TURF = hex_to_rgb(TURF_HEX)
+TURF_DEEP = hex_to_rgb(TURF_DEEP_HEX)
+TURF_SOFT = hex_to_rgb(TURF_SOFT_HEX)
 DIRT = hex_to_rgb(DIRT_HEX)
+DIRT_DEEP = hex_to_rgb(DIRT_DEEP_HEX)
+BAD = hex_to_rgb(BAD_HEX)
 JUMP = hex_to_rgb(JUMP_HEX)
 GRADE = {key: hex_to_rgb(value) for key, value in GRADE_HEX.items()}
 WHITE = (255, 255, 255)
@@ -72,6 +94,12 @@ WAKU = {
     8: (hex_to_rgb("#EC5A96"), WHITE, hex_to_rgb("#EC5A96")),
 }
 
-# 書体（backend/fonts に置くファイル名）。見出しは M PLUS Rounded 1c、本文は Noto Sans JP。
+# 書体（backend/fonts に置くファイル名）。サイトと同じく、見出しは M PLUS Rounded 1c の800、
+# 数字は Barlow Semi Condensed。画像の本文も M PLUS Rounded 1c（Noto Sans JP は同梱しない）。
+FONT_DISPLAY = "MPLUSRounded1c-ExtraBold.ttf"
 FONT_DISPLAY_BOLD = "MPLUSRounded1c-Bold.ttf"
 FONT_DISPLAY_BLACK = "MPLUSRounded1c-Black.ttf"
+FONT_BODY = "MPLUSRounded1c-Bold.ttf"
+FONT_BODY_REGULAR = "MPLUSRounded1c-Regular.ttf"
+FONT_NUM = "BarlowSemiCondensed-Bold.ttf"
+FONT_NUM_SEMI = "BarlowSemiCondensed-SemiBold.ttf"

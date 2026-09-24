@@ -92,7 +92,7 @@ function SectionHeading({
 }) {
   return (
     <div className="mb-2 sm:mb-4">
-      <p className="text-[10px] font-bold tracking-[0.16em] text-slate-400">{label}</p>
+      <p className="text-[12.5px] font-bold text-slate-500">{label}</p>
       <h2 className="mt-0.5 flex items-center gap-1.5 text-[14.5px] font-black text-slate-950 sm:text-2xl">
         <span className="h-3.5 w-1 rounded-sm bg-accent" />
         {title}
@@ -125,7 +125,7 @@ function RateCard({
       <div className="mt-2 h-1.5 rounded-full bg-slate-100 sm:mt-4 sm:h-2">
         <div className={`h-1.5 rounded-full sm:h-2 ${accent}`} style={{ width: percentWidth(item.rate) }} />
       </div>
-      <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
+      <p className="mt-1 text-[12px] text-slate-500 sm:text-[12.5px]">
         {item.hits} / {item.total}件
       </p>
     </div>
@@ -143,7 +143,7 @@ function TrendCard({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-bold tracking-[0.14em] text-slate-400">{label}</p>
+        <p className="text-[12.5px] font-bold text-slate-500">{label}</p>
         <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
       </div>
       {rate !== null ? (
@@ -152,7 +152,7 @@ function TrendCard({
           <div className="mt-1.5 h-1.5 rounded-full bg-slate-100 sm:mt-3 sm:h-2">
             <div className="h-1.5 rounded-full bg-accent sm:h-2" style={{ width: percentWidth(rate) }} />
           </div>
-          <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">
+          <p className="mt-1 text-[12px] text-slate-500 sm:text-[12.5px]">
             AI偏差値1位の3着以内率 / {summary?.race_count}レース
           </p>
         </>
@@ -308,7 +308,7 @@ export default async function AccuracyPage({
                     }`}
                   >
                     <span className="block leading-none">{option.label}</span>
-                    <span className="mt-1 block text-[10px] font-semibold opacity-70">{option.note}</span>
+                    <span className="mt-1 block text-[11.5px] font-semibold opacity-75">{option.note}</span>
                   </Link>
                 ))}
               </div>
@@ -361,7 +361,7 @@ export default async function AccuracyPage({
             <section className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                  <p className="text-xs font-bold tracking-[0.16em] text-slate-400">集計結果</p>
+                  <p className="text-[12.5px] font-bold text-slate-500">集計結果</p>
                   <h2 className="mt-1 flex items-center gap-2 text-xl sm:text-2xl font-black text-slate-950">
                     <span className="h-5 w-1 rounded-sm bg-accent" />
                     主要成績

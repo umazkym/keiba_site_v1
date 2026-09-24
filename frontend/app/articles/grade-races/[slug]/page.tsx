@@ -77,7 +77,7 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
       <div className="mx-auto w-full max-w-6xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
         <main className="mx-auto max-w-[1080px]">
           <header className="border-b border-slate-200 pb-5 sm:pb-8">
-            <p className="text-[10px] font-bold text-slate-500">重賞別の記事</p>
+            <p className="text-[13px] font-bold text-slate-500">重賞別の記事</p>
             <h1 className="mt-0.5 text-[15px] font-black leading-tight text-slate-950 sm:text-4xl">
               {group.title}
             </h1>
@@ -113,7 +113,7 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
                       <span className="min-w-0">
                         <span className="block text-xs font-bold leading-snug text-slate-900">{article.title}</span>
                         {article.description && (
-                          <span className="mt-0.5 line-clamp-2 block text-[10.5px] leading-relaxed text-slate-600 sm:text-sm">
+                          <span className="mt-0.5 line-clamp-2 block text-[13px] leading-[1.7] text-slate-600 sm:text-sm">
                             {article.description}
                           </span>
                         )}

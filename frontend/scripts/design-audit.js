@@ -165,8 +165,8 @@ const siteWideRules = [
     id: 'tiny-text',
     description: '11px未満の文字（text-[8px]〜text-[10.5px]）',
     pattern: /\btext-\[(?:8|8\.5|9|9\.5|10|10\.5)px\]/g,
-    max: 69,
-    rationale: '段階0で130件、段階1（共通の枠）で122件、段階2（レース画面）で91件、段階3（ホーム）で69件へ。出走表など比較表の中だけを残し、段階4〜5で減らす',
+    max: 19,
+    rationale: '段階0で130件、段階1（共通の枠）で122件、段階2（レース画面）で91件、段階3（ホーム）で69件、段階5（記事・データ）で19件へ。残りは広告のPR表記・対戦表の中・4つの視点の小さな図だけ',
   },
 ];
 const siteWideResults = siteWideRules.map((rule) => {
@@ -479,12 +479,43 @@ const checks = [
   },
   {
     id: 'mobile-article-readable-type',
-    description: '640px未満の記事本文12px・H2最大16pxを維持する',
-    passed: articleBody.includes('prose-p:text-[12px]')
-      && articleBody.includes('prose-h2:text-[16px]')
-      && articleBody.includes('prose-h3:text-[14px]')
-      && globals.includes('.article-page-lead {')
-      && globals.includes('font-size: 16px !important;'),
+    description: '記事の本文はスマホ15.5px・PC17px、H2はスマホ20px・PC25px、H3はスマホ17px（2026-09-25 段階5。スマホで12px・16pxに押さえ込む !important を置かない）',
+    passed: articleBody.includes('prose-p:text-[15.5px]')
+      && articleBody.includes('sm:prose-p:text-[17px]')
+      && articleBody.includes('prose-h2:text-[20px]')
+      && articleBody.includes('sm:prose-h2:text-[25px]')
+      && articleBody.includes('prose-h3:text-[17px]')
+      && !/\.article-page-prose[^{]*\{[^}]*font-size: 1[26]px !important/.test(globals)
+      && !globals.includes('.article-page-lead {'),
+  },
+  {
+    id: 'article-reading-aids',
+    description: '記事が目次・カテゴリと日付・冒頭の写真を持ち、OG画像を題名入りのブランドの画像にしている（段階5）',
+    passed: (() => {
+      const parts = fs.readFileSync(path.join(root, 'components/ArticleParts.tsx'), 'utf8');
+      const ogRoute = fs.readFileSync(path.join(root, 'app/og/[slug]/route.tsx'), 'utf8');
+      const nextConfig = fs.readFileSync(path.join(root, 'next.config.mjs'), 'utf8');
+      return articleDetailPage.includes('<ArticleToc')
+        && articleDetailPage.includes('<ArticleMetaRow')
+        && articleDetailPage.includes('<ArticleCover')
+        && entityArticleDocument.includes('<ArticleToc')
+        && parts.includes('この記事で確認できること')
+        && articleDetailPage.includes('/og/${encodeURIComponent(params.slug)}.png')
+        && ogRoute.includes("from 'next/og'")
+        && ogRoute.includes('MPLUSRounded1c-ExtraBold.ttf')
+        && !ogRoute.includes("from 'sharp'")
+        && nextConfig.includes("'/og/**'")
+        && fs.existsSync(path.join(root, 'assets/fonts/MPLUSRounded1c-ExtraBold.ttf'));
+    })(),
+  },
+  {
+    id: 'data-pages-light-head',
+    description: 'データベースの画面が紺の面の15px見出しではなく白い紙面の見出し（DataPageHead）を使う（段階5）',
+    passed: (() => {
+      const files = ['app/keiba-data/page.tsx', 'components/DataDirectoryView.tsx', 'components/CourseDirectoryView.tsx', 'app/my-data/MyDataClient.tsx', 'app/compare/HorseCompareClient.tsx']
+        .map((relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8'));
+      return files.every((content) => content.includes('<DataPageHead') && !content.includes('border-slate-800 bg-slate-900'));
+    })(),
   },
   {
     id: 'article-top-switcher-removed',

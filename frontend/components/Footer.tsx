@@ -54,7 +54,7 @@ export const Footer = ({ todayString }: FooterProps) => {
                     <div className="max-w-sm">
                         <BrandLockup size={36} tone="inverse" tagline="完全無料のAI競馬分析" />
                         <p className="mt-4 text-[13px] leading-relaxed text-night-sub sm:text-sm sm:leading-7">
-                            過去のレースデータをもとに、中央・地方の全レースのAI偏差値・対戦成績・展開・枠順傾向を毎日公開しています。
+                            過去のレースデータをもとに、中央・地方の全レースのAI偏差値・対戦成績・展開・馬番の傾向を毎日公開しています。
                         </p>
                     </div>
 

@@ -117,7 +117,7 @@ export function DataHubNav({ currentPath }: { currentPath?: string }) {
                             key={item.href}
                             href={item.href}
                             aria-current={isCurrent ? 'page' : undefined}
-                            className={`relative flex min-h-9 flex-col items-center justify-center px-1 py-1 text-[10px] transition-colors duration-150 sm:flex-row sm:gap-1.5 sm:px-2 sm:py-2 sm:text-xs ${
+                            className={`relative flex min-h-11 flex-col items-center justify-center px-1 py-1.5 text-[11.5px] transition-colors duration-150 sm:flex-row sm:gap-1.5 sm:px-2 sm:py-2 sm:text-[13px] ${
                                 isCurrent
                                     ? `border-b-2 ${item.activeColor}`
                                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -129,12 +129,12 @@ export function DataHubNav({ currentPath }: { currentPath?: string }) {
                                     aria-hidden="true"
                                 />
                                 {badgeCount > 0 && (
-                                    <span className="absolute -right-2 -top-1.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-amber-500 px-1 font-mono text-[9px] font-black text-white">
+                                    <span className="absolute -right-2.5 -top-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-ai px-1 font-num text-[11px] font-bold text-slate-950">
                                         {badgeCount}
                                     </span>
                                 )}
                             </span>
-                            <span className="mt-1 font-black whitespace-nowrap sm:mt-0">{item.label}</span>
+                            <span className="mt-1 whitespace-nowrap font-bold sm:mt-0">{item.label}</span>
                         </Link>
                     );
                 })}

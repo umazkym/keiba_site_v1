@@ -2,8 +2,12 @@ import Link from 'next/link';
 import { DataDirectoryNav } from '@/components/DataDirectoryNav';
 import { DataEntityTracker } from '@/components/DataEntityTracker';
 import { DataFavoriteButton } from '@/components/DataFavoriteButton';
+import { CourseGlyph } from '@/components/CourseGlyph';
+import { LineIcon } from '@/components/LineIcon';
+import { SectionHeader } from '@/components/SectionHeader';
+import { getWakuClasses } from '@/lib/waku';
 import { RateSummaryStrip, RecentRunsTable, SegmentStatsTable } from '@/components/DataStats';
-import type { CourseDataDetail } from '@/lib/types';
+import type { CourseDataDetail, SegmentStat } from '@/lib/types';
 
 
 const BET_TYPE_LABELS: Record<string, string> = {
@@ -16,6 +20,49 @@ const BET_TYPE_LABELS: Record<string, string> = {
     sanrenpuku: '3連複',
     sanrentan: '3連単',
 };
+
+// 枠番別の3着以内率の棒（ポートフォリオの「枠番別の複勝率」）。最も高い枠はインディゴ、棒の下に枠色の番号と頭数。
+function WakuPlaceRateBars({ items }: { items: SegmentStat[] }) {
+    const waku = items
+        .filter((item) => Number.isInteger(Number(item.key)) && Number(item.key) >= 1 && Number(item.key) <= 8)
+        .sort((a, b) => Number(a.key) - Number(b.key));
+    if (waku.length < 4) return null;
+    const max = Math.max(...waku.map((item) => item.place_rate));
+    if (!(max > 0)) return null;
+    return (
+        <section className="rounded-[14px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-5" aria-labelledby="course-waku-bars-heading">
+            <SectionHeader id="course-waku-bars-heading" title="枠番別の3着以内率" description="棒の下の数字は集計した頭数です。" compact />
+            <div className="mt-2 flex h-[176px] items-end gap-1.5 sm:h-[200px] sm:gap-3">
+                {waku.map((item) => {
+                    const isBest = item.place_rate === max;
+                    const height = Math.max(5, Math.round((item.place_rate / max) * 78));
+                    const wakuClass = getWakuClasses(Number(item.key));
+                    return (
+                        <div key={item.key} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5">
+                            <div className="flex w-full max-w-[44px] flex-1 flex-col items-center justify-end gap-1">
+                                <span className={`font-num text-[13.5px] font-bold tabular-nums sm:text-[15px] ${isBest ? 'text-brand-700' : 'text-slate-700'}`}>
+                                    {item.place_rate.toFixed(1)}
+                                </span>
+                                <div
+                                    className={`w-full rounded-t-[6px] ${isBest ? 'bg-brand-600' : 'bg-brand-200'}`}
+                                    style={{ height: `${height}%` }}
+                                    aria-hidden="true"
+                                />
+                            </div>
+                            <span className={`inline-flex h-6 w-6 items-center justify-center rounded-[6px] border-[1.5px] font-num text-[13px] font-bold ${wakuClass}`}>
+                                {item.key}
+                            </span>
+                            <span className="font-num text-[11.5px] font-semibold text-slate-500">{item.sample_size}</span>
+                        </div>
+                    );
+                })}
+            </div>
+            <p className="sr-only">
+                {waku.map((item) => `${item.key}枠 ${item.place_rate.toFixed(1)}%（${item.sample_size}頭）`).join('、')}
+            </p>
+        </section>
+    );
+}
 
 export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: CourseDataDetail; relatedArticleHref: string | null }) {
     const entity = detail.entity;
@@ -32,36 +79,44 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
                 sampleSize={entity.sample_size}
                 indexable={entity.indexable}
             />
-            <header className="mt-5 border-b border-slate-200 pb-5">
-                <p className="text-xs font-bold text-slate-500">
-                    {detail.venue_name}競馬場・コースデータ詳細
-                </p>
-                <div className="mt-1 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                        <h1 className="text-2xl font-black leading-tight text-slate-950 sm:text-4xl">
+            <header className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3 sm:gap-5">
+                    <CourseGlyph
+                        venue={detail.venue_name}
+                        width={150}
+                        activeCourseType={detail.course_type}
+                        className="block h-auto w-[96px] shrink-0 sm:w-[150px]"
+                        title={`${detail.venue_name}競馬場のコース図`}
+                    />
+                    <div className="flex min-w-0 flex-col gap-1">
+                        <p className="text-[13px] font-bold text-slate-500">{detail.venue_name}競馬場 コースデータ</p>
+                        <h1 className="font-display text-[23px] font-extrabold leading-snug text-slate-900 [overflow-wrap:anywhere] sm:text-[32px]">
                             {entity.name}の枠順・脚質・騎手傾向
                         </h1>
-                        <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-7">
-                            同競馬場・コース種別・距離のレース結果を集計。
-                            枠順有利不利、位置取り、人気別傾向、得意騎手・調教師を分析できます。
+                        <p className="text-[12.5px] text-slate-500 sm:text-[13px]">
+                            集計期間 {detail.analysis_start_date ?? '—'}〜{detail.analysis_end_date ?? '—'}
+                            {' · '}対象 <span className="font-num font-semibold">{entity.sample_size.toLocaleString('ja-JP')}</span>頭
                         </p>
                     </div>
-                    <DataFavoriteButton
-                        entityType="course"
-                        entityId={entity.id}
-                        name={entity.name}
-                        subtitle={entity.subtitle}
-                        url={entity.url}
-                    />
                 </div>
-                <p className="mt-3 text-xs font-bold text-slate-500">
-                    集計期間 {detail.analysis_start_date ?? '—'}〜{detail.analysis_end_date ?? '—'}
-                    {' / '}対象 {entity.sample_size.toLocaleString('ja-JP')}頭
-                </p>
+                <DataFavoriteButton
+                    entityType="course"
+                    entityId={entity.id}
+                    name={entity.name}
+                    subtitle={entity.subtitle}
+                    url={entity.url}
+                />
             </header>
+            <p className="mt-3 max-w-3xl text-[14px] leading-[1.75] text-slate-700 sm:text-[15px]">
+                同じ競馬場・コース種別・距離のレース結果を集計し、枠番・馬番・位置取り・人気ごとの成績と、成績の良い騎手・調教師を並べています。
+            </p>
 
             <div className="mt-5">
                 <RateSummaryStrip summary={detail.overall} label={`${entity.name}の全体集計`} />
+            </div>
+
+            <div className="mt-6">
+                <WakuPlaceRateBars items={detail.segments.waku ?? []} />
             </div>
 
             <div className="mt-6 grid gap-5 lg:grid-cols-2">
@@ -112,37 +167,37 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
             </div>
 
             {detail.payout_stats.length > 0 && (
-                <section className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-                        <h2 className="text-lg font-black text-slate-950">配当・払戻分布</h2>
-                        <p className="mt-0.5 text-xs leading-5 text-slate-600">
-                            このコース条件で記録された過去払戻額の統計値です。
-                        </p>
-                    </div>
+                <section className="mt-6 overflow-hidden rounded-[14px] bg-white ring-1 ring-inset ring-slate-200">
+                    <SectionHeader
+                        title="配当・払戻の分布"
+                        description="このコース条件で記録された過去の払戻額です。"
+                        className="mx-4 pt-4 sm:mx-5"
+                        compact
+                    />
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[500px] text-sm">
-                            <thead className="bg-slate-50 text-xs text-slate-600">
+                        <table className="w-full min-w-[460px] text-[14px]">
+                            <thead className="bg-slate-50 text-[12.5px] text-slate-500">
                                 <tr>
-                                    <th className="px-4 py-2 text-left font-black">券種</th>
-                                    <th className="px-3 py-2 text-right font-black">対象</th>
-                                    <th className="px-3 py-2 text-right font-black">平均払戻</th>
-                                    <th className="px-4 py-2 text-right font-black">最高払戻</th>
+                                    <th className="px-4 py-2.5 text-left font-bold">券種</th>
+                                    <th className="px-3 py-2.5 text-right font-bold">対象</th>
+                                    <th className="px-3 py-2.5 text-right font-bold">平均払戻</th>
+                                    <th className="px-4 py-2.5 text-right font-bold">最高払戻</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-slate-200">
                                 {detail.payout_stats.map((item) => (
-                                    <tr key={item.bet_type} className="hover:bg-slate-50/50">
-                                        <th className="px-4 py-3 text-left font-bold text-slate-800">
+                                    <tr key={item.bet_type}>
+                                        <th className="px-4 py-3 text-left font-bold text-slate-900">
                                             {BET_TYPE_LABELS[item.bet_type] ?? item.bet_type}
                                         </th>
-                                        <td className="px-3 py-3 text-right font-mono tabular-nums text-slate-600">
+                                        <td className="px-3 py-3 text-right font-num text-[15px] tabular-nums text-slate-600">
                                             {item.sample_size.toLocaleString('ja-JP')}
                                         </td>
-                                        <td className="px-3 py-3 text-right font-mono font-bold tabular-nums text-slate-900">
-                                            {item.average_payout.toLocaleString('ja-JP')}円
+                                        <td className="px-3 py-3 text-right font-num text-[15.5px] font-bold tabular-nums text-slate-900">
+                                            {item.average_payout.toLocaleString('ja-JP')}<span className="font-sans text-[12px]">円</span>
                                         </td>
-                                        <td className="px-4 py-3 text-right font-mono font-bold tabular-nums text-amber-800">
-                                            {item.max_payout.toLocaleString('ja-JP')}円
+                                        <td className="px-4 py-3 text-right font-num text-[15.5px] font-bold tabular-nums text-ai-deep">
+                                            {item.max_payout.toLocaleString('ja-JP')}<span className="font-sans text-[12px]">円</span>
                                         </td>
                                     </tr>
                                 ))}
@@ -156,28 +211,20 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
                 <RecentRunsTable title="このコースの最近の勝ち馬" runs={detail.recent_races} showHorse />
             </div>
 
-            <section className="mt-6 flex flex-wrap gap-3 border-t border-slate-200 pt-5">
-                <Link
-                    prefetch={false}
-                    href="/races/today"
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-5 py-2 text-xs font-bold text-white transition-colors duration-150 hover:bg-brand-600"
-                >
-                    本日のレースと照合
+            <section className="mt-6 flex flex-wrap gap-2.5 border-t border-slate-200 pt-5">
+                <Link prefetch={false} href="/races/today" className="ui-btn ui-btn--primary gap-1.5">
+                    <LineIcon name="race" size={18} className="block" />
+                    今日のレースで確認する
                 </Link>
                 {relatedArticleHref && (
-                    <Link
-                        href={relatedArticleHref}
-                        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-brand-300 hover:text-brand-700"
-                    >
-                        関連記事を見る
+                    <Link href={relatedArticleHref} className="ui-btn ui-btn--secondary gap-1.5">
+                        <LineIcon name="book" size={18} className="block" />
+                        関連記事を読む
                     </Link>
                 )}
-                <Link
-                    href="/compare"
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-5 py-2 text-xs font-bold text-amber-900 transition-colors duration-150 hover:bg-amber-100"
-                >
-                    競走馬の成績比較
-
+                <Link href="/compare" className="ui-btn ui-btn--secondary gap-1.5">
+                    <LineIcon name="compare" size={18} className="block" />
+                    競走馬の成績を比べる
                 </Link>
             </section>
         </article>

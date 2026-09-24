@@ -82,26 +82,25 @@ export default async function GradeRaceDetailPage({ params }: Props) {
       />
       <Breadcrumb />
       <article className="mx-auto max-w-5xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
-        <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 shadow-soft sm:p-8">
-          <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
-          <p className="text-[10px] font-bold tracking-[0.18em] text-slate-400">{race.grade} RACE HUB</p>
-          <h1 className="mt-1 text-[15px] font-black leading-tight text-slate-950 sm:text-4xl">
+        <header className="rounded-[16px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-8">
+          <p className="text-[13px] font-bold text-slate-500">{race.grade}の重賞</p>
+          <h1 className="mt-1 font-display text-[24px] font-extrabold leading-snug text-slate-900 sm:text-[34px]">
             {race.name} {race.date}
           </h1>
-          <p className="mt-1 text-[11px] font-bold text-slate-500">
+          <p className="mt-1.5 text-[13.5px] font-bold text-slate-600">
             {race.venue}{race.course} / {race.qualification}
           </p>
-          <p className="mt-1.5 max-w-3xl text-[11px] leading-relaxed text-slate-600 sm:text-base">{race.summary}</p>
+          <p className="mt-2 max-w-3xl text-[14px] leading-[1.75] text-slate-700 sm:text-base">{race.summary}</p>
           <div className="mt-2.5 flex flex-wrap gap-2">
-            <Link prefetch={false} href="/races/today" className="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-bold text-white hover:bg-primary">
+            <Link prefetch={false} href="/races/today" className="ui-btn ui-btn--primary">
               当日のAI予想を見る
             </Link>
           </div>
         </header>
 
         <section className="mt-8 grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-            <h2 className="text-xl font-black text-slate-950">レース前に見るポイント</h2>
+          <div className="rounded-[14px] bg-white p-5 ring-1 ring-inset ring-slate-200">
+            <h2 className="font-display text-[19px] font-extrabold text-slate-900 sm:text-[21px]">レース前に見るポイント</h2>
             <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
               {race.focusPoints.map((point) => (
                 <li key={point} className="border-l-4 border-slate-300 pl-3">{point}</li>
@@ -110,7 +109,7 @@ export default async function GradeRaceDetailPage({ params }: Props) {
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-soft">
-            <h2 className="text-xl font-black text-slate-950">更新の流れ</h2>
+            <h2 className="font-display text-[19px] font-extrabold text-slate-900 sm:text-[21px]">更新の流れ</h2>
             <div className="mt-4 space-y-3">
               {race.updateStages.map((stage) => (
                 <div key={stage.label} className="rounded-xl bg-white p-4 shadow-soft">
@@ -167,7 +166,7 @@ export default async function GradeRaceDetailPage({ params }: Props) {
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-soft">
-            <h2 className="text-xl font-black text-slate-950">X投稿の導線</h2>
+            <h2 className="font-display text-[19px] font-extrabold text-slate-900 sm:text-[21px]">X投稿の導線</h2>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               投稿先はトップページではなく、このレース、関連コース、関連騎手ページへ直接送る方針です。
             </p>

@@ -77,7 +77,7 @@ export const raceAnalysisFeatures: readonly RaceAnalysisFeature[] = [
     },
 ];
 
-// 主要4視点より下へ進んだ後に、最後の「枠順傾向」を選択中のままにしないための監視用項目。
+// 主要4視点より下へ進んだ後に、最後の「馬番の傾向」を選択中のままにしないための監視用項目。
 // 描画するナビ項目は raceAnalysisFeatures の4件だけに限定する。
 export const raceAnalysisSectionTrackingItems = [
     ...raceAnalysisFeatures,

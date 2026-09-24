@@ -189,9 +189,8 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
 
     return (
         <div className="mx-auto w-full max-w-5xl px-2 pb-6 pt-2 sm:px-4 sm:pb-16">
-            <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 shadow-soft sm:p-8">
-                <p className="text-[10px] font-bold tracking-[0.16em] text-slate-400">SITE SEARCH</p>
-                <h1 className="mt-1 text-[15px] font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
+            <header className="rounded-[16px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-8">
+                <h1 className="font-display text-[24px] font-extrabold leading-snug text-slate-900 sm:text-[34px]">
                     サイト内検索
                 </h1>
                 <p className="mt-1.5 max-w-3xl text-[11.5px] leading-relaxed text-slate-600 sm:text-base">
@@ -223,7 +222,7 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
                             「<span className="text-slate-950">{query}</span>」の検索結果
                         </p>
                         {!isLoading && searchPerformed && (
-                            <p className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                            <p className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[12px] font-bold text-slate-500">
                                 {results.length}件
                             </p>
                         )}
@@ -262,14 +261,14 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
                                 }}
                                 className="group rounded-xl border border-slate-200 bg-white p-2.5 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50"
                             >
-                                <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-black ${getBadgeClass(result.type)}`}>
+                                <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11.5px] font-bold ${getBadgeClass(result.type)}`}>
                                     {getResultLabel(result.type)}
                                 </span>
                                 <h2 className="mt-1.5 line-clamp-2 text-xs font-black leading-snug text-slate-950 group-hover:text-primary">
                                     {result.title}
                                 </h2>
                                 <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-600">{result.description}</p>
-                                <p className="mt-1.5 truncate text-[10px] font-semibold text-slate-400">{result.url}</p>
+                                <p className="mt-1.5 truncate text-[12px] text-slate-500">{result.url}</p>
                             </Link>
                         ))}
                     </div>

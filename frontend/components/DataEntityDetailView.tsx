@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { CalendarDays } from 'lucide-react';
 import { DataDirectoryNav } from '@/components/DataDirectoryNav';
 import { DataEntityTracker } from '@/components/DataEntityTracker';
 import { DataFavoriteButton } from '@/components/DataFavoriteButton';
+import { LineIcon, type LineIconName } from '@/components/LineIcon';
 import { HorseCompareButton } from '@/components/HorseCompareButton';
 import { RateSummaryStrip, RecentRunsTable, SegmentStatsTable } from '@/components/DataStats';
+import { FinishBadge } from '@/components/RaceParts';
 import { UpcomingRaceTrackedLink } from '@/components/UpcomingRaceTrackedLink';
 import type { DataEntityDetail } from '@/lib/types';
 
@@ -14,6 +15,19 @@ const entityLabels = {
     jockey: '騎手',
     trainer: '調教師',
 } as const;
+
+const entityIcons: Record<keyof typeof entityLabels, LineIconName> = {
+    horse: 'race',
+    jockey: 'user',
+    trainer: 'user',
+};
+
+const JST_DATE = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'long', day: 'numeric', weekday: 'short' });
+const formatLastRace = (value: string | null) => {
+    if (!value) return '確認できません';
+    const date = new Date(`${value.slice(0, 10)}T00:00:00+09:00`);
+    return Number.isNaN(date.getTime()) ? value : JST_DATE.format(date);
+};
 
 export function DataEntityDetailView({
     detail,
@@ -55,69 +69,70 @@ export function DataEntityDetailView({
                 sampleSize={entity.sample_size}
                 indexable={entity.indexable}
             />
-            <header className="mt-5 border-b border-slate-200 pb-5">
-                <p className="text-xs font-bold text-slate-500">
-                    {entityLabels[entityType]}データ詳細
-                </p>
-                <div className="mt-1 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                        <h1 className="flex flex-wrap items-center gap-2 text-2xl font-black leading-tight text-slate-950 sm:text-4xl">
-                            <span>{entity.name}</span>
+            <header className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex min-w-0 items-center gap-4">
+                    <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-navy/10 sm:h-[72px] sm:w-[72px]" aria-hidden="true">
+                        <LineIcon name={entityIcons[entityType]} size={30} className="block h-7 w-7 text-navy sm:h-9 sm:w-9" />
+                    </span>
+                    <div className="flex min-w-0 flex-col gap-1">
+                        <p className="text-[13px] font-bold text-slate-500">{entityLabels[entityType]}データ</p>
+                        <h1 className="flex flex-wrap items-center gap-2 font-display text-[26px] font-extrabold leading-tight text-slate-900 sm:text-[34px]">
+                            <span className="[overflow-wrap:anywhere]">{entity.name}</span>
                             {entity.affiliation && (
-                                <span className="rounded-md border border-slate-300 bg-slate-100 px-2 py-0.5 text-xs font-black text-slate-700 sm:text-sm">
+                                <span className="rounded-[6px] bg-white px-2 py-0.5 font-sans text-[12.5px] font-bold text-slate-700 ring-1 ring-inset ring-slate-300 sm:text-[13.5px]">
                                     {entity.affiliation}所属
                                 </span>
                             )}
                         </h1>
-                        <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-7">
-                            コース、距離、馬場状態、人気別の集計成績を、対象出走数やAI偏差値履歴とともに一目で分析できます。
+                        <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-[12.5px] text-slate-500 sm:text-[13px]">
+                            <span>集計対象 <span className="font-num font-semibold">{entity.sample_size.toLocaleString('ja-JP')}</span>走</span>
+                            <span>最終出走 {formatLastRace(entity.last_race_date)}</span>
+                            <span>
+                                {entity.indexable
+                                    ? '検索公開中のデータ'
+                                    : entity.quality_eligible
+                                        ? '検索公開を段階調整中'
+                                        : '母数または直近活動を確認中'}
+                            </span>
                         </p>
                     </div>
-                    <div className="flex flex-wrap gap-2 shrink-0">
-                        <DataFavoriteButton
-                            entityType={entityType}
-                            entityId={entity.id}
-                            name={entity.name}
-                            subtitle={entity.subtitle}
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                    <DataFavoriteButton
+                        entityType={entityType}
+                        entityId={entity.id}
+                        name={entity.name}
+                        subtitle={entity.subtitle}
+                        url={pageUrl}
+                    />
+                    {entityType === 'horse' && (
+                        <HorseCompareButton
+                            horseId={entity.id}
+                            horseName={entity.name}
                             url={pageUrl}
                         />
-                        {entityType === 'horse' && (
-                            <HorseCompareButton
-                                horseId={entity.id}
-                                horseName={entity.name}
-                                url={pageUrl}
-                            />
-                        )}
-                    </div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-slate-500">
-                    <span>集計対象 {entity.sample_size.toLocaleString('ja-JP')}走</span>
-                    <span>最終出走 {entity.last_race_date ?? '確認できません'}</span>
-                    <span>
-                        {entity.indexable
-                            ? '検索公開中のデータ'
-                            : entity.quality_eligible
-                                ? '検索公開を段階調整中'
-                                : '母数または直近活動を確認中'}
-                    </span>
+                    )}
                 </div>
             </header>
+            <p className="mt-3 max-w-3xl text-[14px] leading-[1.75] text-slate-700 sm:text-[15px]">
+                コース・距離・馬場状態・人気別の成績を、対象の出走数とあわせて集計しています。
+            </p>
 
             <div className="mt-5">
                 <RateSummaryStrip summary={detail.overall} label={`${entity.name}の全集計成績`} />
             </div>
 
             {detail.upcoming_races.length > 0 && (
-                <section className="mt-6 overflow-hidden rounded-xl border border-brand-200 bg-brand-50/60">
-                    <div className="flex items-center gap-2 border-b border-brand-200 bg-brand-100/50 px-4 py-3">
-                        <CalendarDays className="h-5 w-5 text-brand-700" aria-hidden="true" />
-                        <h2 className="font-black text-brand-950">直近の出走予定・開催データ</h2>
+                <section className="mt-6 overflow-hidden rounded-[14px] bg-white ring-1 ring-inset ring-brand-200" aria-labelledby="entity-upcoming-heading">
+                    <div className="flex items-center gap-2 border-b border-brand-200 bg-brand-50/70 px-4 py-3 sm:px-5">
+                        <LineIcon name="calendar" size={20} className="block text-brand-700" />
+                        <h2 id="entity-upcoming-heading" className="font-display text-[17px] font-extrabold text-slate-900 sm:text-[19px]">出走予定</h2>
                     </div>
-                    <div className="divide-y divide-brand-100 bg-white">
+                    <div className="divide-y divide-slate-200">
                         {detail.upcoming_races.map((race) => (
                             <div
                                 key={`${race.race_id}-${race.horse_id ?? ''}`}
-                                className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 transition-colors duration-150 hover:bg-brand-50"
+                                className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 transition-colors duration-150 hover:bg-brand-50/50 sm:px-5"
                             >
                                 <UpcomingRaceTrackedLink
                                     href={race.url}
@@ -128,15 +143,18 @@ export function DataEntityDetailView({
                                     entityType={entityType}
                                     raceId={race.race_id}
                                 />
-                                <div className="flex shrink-0 items-center gap-2">
-                                    <span className="hidden text-right text-xs font-bold text-slate-600 sm:block">
-                                        {race.deviation_score == null ? race.course_label : `AI偏差値 ${race.deviation_score.toFixed(1)}`}
+                                <div className="flex shrink-0 items-center gap-3">
+                                    <span className="hidden text-right text-[13px] font-bold text-slate-600 sm:block">
+                                        {race.deviation_score == null
+                                            ? race.course_label
+                                            : <>AI偏差値 <span className="font-num text-[16px] text-ai-deep">{race.deviation_score.toFixed(1)}</span></>}
                                     </span>
                                     <a
                                         href={buildCalendarUrl(race)}
                                         download={`${race.race_date}-${race.race_id}.ics`}
-                                        className="inline-flex min-h-10 items-center rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-xs font-bold text-brand-700 transition-colors duration-150 hover:bg-brand-50"
+                                        className="inline-flex min-h-11 items-center gap-1.5 rounded-[10px] bg-white px-3 text-[13.5px] font-bold text-brand-700 ring-1 ring-inset ring-brand-200 transition-colors duration-150 hover:bg-brand-50"
                                     >
+                                        <LineIcon name="calendar" size={16} className="block" />
                                         予定に追加
                                     </a>
                                 </div>
@@ -179,30 +197,33 @@ export function DataEntityDetailView({
             </div>
 
             {entityType === 'horse' && detail.prediction_history.length > 0 && (
-                <section className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-                        <h2 className="text-lg font-black text-slate-950">AI偏差値の履歴</h2>
-                        <p className="mt-0.5 text-xs leading-5 text-slate-600">
-                            過去にUMA-FREE AI予測を公開したレースの数値履歴です。
+                <section className="mt-6 overflow-hidden rounded-[14px] bg-white ring-1 ring-inset ring-slate-200" aria-labelledby="entity-prediction-history-heading">
+                    <div className="px-4 pb-2 pt-4 sm:px-5">
+                        <h2 id="entity-prediction-history-heading" className="font-display text-[17px] font-extrabold text-slate-900 sm:text-[19px]">AI偏差値の履歴</h2>
+                        <p className="mt-1 text-[13px] leading-[1.6] text-slate-600">
+                            UMA-FREEでAI偏差値を公開したレースの数値と着順です。
                         </p>
                     </div>
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-slate-200 border-t border-slate-200">
                         {detail.prediction_history.map((item) => {
                             const rowClassName =
-                                'grid min-h-14 grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-slate-50';
+                                'grid min-h-14 grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-slate-50 sm:px-5';
                             const body = (
                                 <>
                                     <span className="min-w-0">
-                                        <span className="block text-xs font-bold text-slate-500">
+                                        <span className="block text-[12.5px] font-semibold text-slate-500">
                                             {item.race_date} {item.venue_name}{item.race_number}R
                                         </span>
-                                        <span className="block truncate font-black text-slate-900">{item.race_name}</span>
+                                        <span className="block truncate text-[14.5px] font-bold text-slate-900">{item.race_name}</span>
                                     </span>
-                                    <span className="font-mono text-sm font-black tabular-nums text-amber-700">
-                                        {item.deviation_score == null ? '—' : `偏差値 ${item.deviation_score.toFixed(1)}`}
+                                    <span className="whitespace-nowrap text-right text-[12px] font-bold text-slate-500">
+                                        AI偏差値
+                                        <span className="ml-1.5 font-num text-[18px] tabular-nums text-ai-deep">
+                                            {item.deviation_score == null ? '—' : item.deviation_score.toFixed(1)}
+                                        </span>
                                     </span>
-                                    <span className="w-12 text-right font-mono text-xs font-black text-slate-700">
-                                        {item.rank == null ? '—' : `${item.rank}着`}
+                                    <span className="flex w-10 justify-end">
+                                        <FinishBadge rank={item.rank} size={28} />
                                     </span>
                                 </>
                             );

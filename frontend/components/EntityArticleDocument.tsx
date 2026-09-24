@@ -4,8 +4,9 @@ import { ArticleSchema } from "@/components/StructuredData";
 import { enhanceArticleHtml } from "@/lib/article-ux";
 import { AdUnit } from "@/components/AdUnit";
 import { MultiplexAd } from "@/components/MultiplexAd";
-import { RaceAnalysisValueGrid } from "@/components/RaceAnalysisValueGrid";
 import { ArticleBody } from "@/components/ArticleBody";
+import { ArticleCover, ArticleMetaRow, ArticleToc, ArticleValueGuide } from "@/components/ArticleParts";
+import { estimateReadingMinutes, pickArticleCover } from "@/lib/article-visual";
 import { ArticleEngagementTracker } from "@/components/ArticleEngagementTracker";
 
 type EntityArticleDocumentProps = {
@@ -29,7 +30,7 @@ export function EntityArticleDocument({
   const textContent = article.content.replace(/<[^>]*>/g, "").replace(/\s+/g, "");
   const datePublished = new Date(article.date).toISOString();
   const dateModified = new Date(article.lastUpdated || article.date).toISOString();
-  const readingTimeMin = Math.max(1, Math.ceil(textContent.length / 500));
+  const readingTimeMin = estimateReadingMinutes(article.content);
   const { html: enhancedContent, toc } = enhanceArticleHtml(article.content);
   const stableArticleAdProps = {
     placement: "inline" as const,
@@ -39,12 +40,9 @@ export function EntityArticleDocument({
     refreshRootMarginPx: 720,
     className: "article-ad-slot",
   };
-  const imageUrl = article.eyecatch.startsWith("http")
-    ? article.eyecatch
-    : `https://uma-free.com${article.eyecatch}`;
-  const shouldShowEyecatch = Boolean(
-    article.eyecatch && !article.eyecatch.endsWith('/images/articles/data-analysis-eyecatch.png'),
-  );
+  // 構造化データの画像は題名入りのOG画像（app/og/[slug]/route.tsx）
+  const imageUrl = `https://uma-free.com/og/${encodeURIComponent(article.slug)}.png`;
+  const cover = pickArticleCover(article);
 
   return (
     <>
@@ -58,66 +56,38 @@ export function EntityArticleDocument({
       />
 
       <article data-article-slug={article.slug} className="mx-auto max-w-[1080px]">
-        <header className="relative border-b border-slate-200 pb-4 sm:pb-8">
-          {shouldShowEyecatch && (
-            <div className="relative mb-3 aspect-[16/8] max-h-[180px] w-full overflow-hidden bg-slate-100 sm:mb-7 sm:aspect-[16/6] sm:max-h-[320px]">
-              <img
-                src={article.eyecatch}
-                alt={`${article.title} のアイキャッチ画像`}
-                loading="eager"
-                decoding="async"
-                className="h-full w-full object-cover"
-              />
-            </div>
-          )}
-
-          <div className="mb-3 flex flex-wrap gap-2">
-            <Link
-              href={backHref}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600 hover:bg-slate-50"
-            >
+        <header className="flex max-w-[760px] flex-col gap-4 border-b border-slate-200 pb-7 sm:gap-5 sm:pb-9">
+          <div className="flex flex-wrap gap-2">
+            <Link href={backHref} className="ui-btn ui-btn--secondary text-[14px]">
               {backLabel}
             </Link>
             {profileHref && profileLabel && profileHref !== backHref && (
-              <Link
-                href={profileHref}
-                className="rounded-xl bg-slate-950 px-3 py-1.5 text-xs font-black text-white hover:bg-primary"
-              >
+              <Link href={profileHref} className="ui-btn ui-btn--navy text-[14px]">
                 {profileLabel}
               </Link>
             )}
           </div>
 
-          <h1 className="article-page-title text-[13.5px] font-extrabold leading-snug tracking-tight text-slate-950 [overflow-wrap:anywhere] sm:text-3xl md:text-4xl">
-            {article.title}
-          </h1>
-          {article.description && (
-            <p className="article-page-lead mt-1 max-w-3xl text-[10.5px] leading-relaxed text-slate-600 sm:mt-4 sm:text-base sm:leading-7">
-              {article.description}
-            </p>
-          )}
+          <div className="flex flex-col gap-3 sm:gap-4">
+            <h1 className="article-page-title font-display text-[23px] font-extrabold leading-[1.5] text-slate-900 [overflow-wrap:anywhere] sm:text-[30px] lg:text-[34px]">
+              {article.title}
+            </h1>
+            {article.description && (
+              <p className="article-page-lead max-w-3xl text-[15px] leading-[1.9] text-slate-700 sm:text-[17px]">
+                {article.description}
+              </p>
+            )}
+            <ArticleMetaRow
+              category={article.category}
+              date={article.date}
+              lastUpdated={article.lastUpdated}
+              readingMinutes={readingTimeMin}
+            />
+          </div>
 
-          <Link
-            href="/races/today"
-            prefetch={false}
-            data-analytics-placement="article_value_guide"
-            data-analytics-variant="compact_four"
-            data-preview-state="generic"
-            className="mt-4 block min-h-[44px] rounded-xl border border-brand-200 bg-slate-50 p-3 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:mt-6"
-            aria-label="今日の全レース分析を見る。AI偏差値、対戦比較、展開・脚質、枠順傾向を確認できます"
-          >
-            <section aria-labelledby="entity-article-site-value-title">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h2 id="entity-article-site-value-title" className="text-sm font-black leading-tight text-slate-950 sm:text-base">
-                  今日の全レースを4つの視点で確認
-                </h2>
-                <span className="shrink-0 text-[11px] font-black text-brand-700 sm:text-xs">
-                  全レース分析へ <span aria-hidden="true">→</span>
-                </span>
-              </div>
-              <RaceAnalysisValueGrid variant="compact" />
-            </section>
-          </Link>
+          <ArticleCover cover={cover} title={article.title} />
+          <ArticleValueGuide headingId="entity-article-site-value-title" />
+          <ArticleToc toc={toc} headingId="entity-article-toc-heading" />
         </header>
 
         <div className="px-1 pb-6 sm:px-0 sm:pb-10">

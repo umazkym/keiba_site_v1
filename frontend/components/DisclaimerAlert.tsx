@@ -38,7 +38,7 @@ const DisclaimerAlert = () => {
                 >
                     <p>当サイトが提供するAI偏差値および各種予想データは、過去のレース結果等に基づく統計的な参考情報であり、<strong>的中や利益を保証するものではありません。</strong></p>
                     <p>馬券の購入はユーザー様ご自身の判断と責任において行ってください。当サイトの情報を利用して生じたいかなる損害・損失についても、運営者は責任を負いかねます。</p>
-                    <p className="pt-0.5 text-[10px] text-amber-600/80 md:text-xs md:text-amber-600/90">
+                    <p className="pt-0.5 text-[11.5px] text-amber-700 md:text-xs">
                         ※20歳未満の方の勝馬投票券の購入は競馬法（第28条）により禁止されています。
                     </p>
                 </div>

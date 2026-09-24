@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { DataPageHead } from '@/components/DataPageHead';
 import { useRouter } from 'next/navigation';
 import {
     Bell,
@@ -283,13 +284,11 @@ export default function MyDataClient() {
         <main className="mx-auto max-w-6xl px-3.5 pb-14 pt-3 sm:px-5">
             <DataHubNav currentPath="/my-data" />
 
-            <header className="mt-2 rounded-xl border border-slate-800 bg-slate-900 p-2.5 text-white sm:p-5">
-                <p className="text-[10px] font-bold text-brand-300">競馬データベース</p>
-                <h1 className="mt-0.5 text-[15px] font-black leading-tight !text-white sm:text-3xl">マイデータ</h1>
-                <p className="mt-1 max-w-3xl text-[11px] leading-relaxed !text-slate-200 sm:text-sm sm:leading-6">
-                    確認した情報を端末に保存できます。
-                </p>
-            </header>
+            <DataPageHead
+                icon="bookmark"
+                title="マイデータ"
+                description="確認した競走馬・騎手・コースをこの端末に保存できます。"
+            />
 
             {/* 統計＆クイックアクションカード */}
             <section className="mt-3.5 grid gap-2 sm:mt-4 sm:grid-cols-3 sm:gap-3">
@@ -426,7 +425,7 @@ export default function MyDataClient() {
                         <div className="flex flex-wrap gap-2">
                             {comparison.map((horse, index) => (
                                 <Link key={horse.id} prefetch={false} href={horse.url} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-brand-50 hover:text-brand-700">
-                                    <span className="flex h-4 w-4 items-center justify-center rounded bg-slate-200 font-mono text-[9px] font-black text-slate-600">
+                                    <span className="flex h-5 w-5 items-center justify-center rounded bg-slate-200 font-num text-[11.5px] font-bold text-slate-700">
                                         {index + 1}
                                     </span>
                                     {horse.name}

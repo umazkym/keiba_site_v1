@@ -37,15 +37,15 @@ export default function FAQPage() {
             <Breadcrumb />
             {/* 広告: FAQページ上部（ブレッドクラム直下） */}
             {shouldRenderAds && (
-                <div className="mx-auto px-4 pt-4 w-full max-w-[800px]">
+                <div className="mx-auto w-full max-w-[840px] px-4 pt-2">
                     <AdUnit slot="1489598374" placement="banner" />
                 </div>
             )}
-            <div className="w-full bg-surface">
+            <div className="w-full">
                 <FAQClient />
                 {/* 広告: FAQコンテンツ後 */}
                 {shouldRenderAds && (
-                    <div className="mx-auto px-4 pb-8">
+                    <div className="mx-auto w-full max-w-[840px] px-4 pb-8">
                         <AdUnit slot="9407670747" placement="inline" />
                     </div>
                 )}

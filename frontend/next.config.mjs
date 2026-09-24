@@ -166,6 +166,16 @@ const nextConfig = {
 
   experimental: {
     optimizePackageImports: ['@/components', '@/lib'],
+    // 記事のOG画像（app/og/[slug]/route.tsx）が実行時に読むファイルを standalone の出力へ含める。
+    // next/og（@vercel/og）の描画用の yoga.wasm・resvg.wasm・既定の書体は自動では含まれない（14.2.31 で確認）。
+    outputFileTracingIncludes: {
+      '/og/**': [
+        './assets/fonts/MPLUSRounded1c-ExtraBold.ttf',
+        './content/articles/**/*.md',
+        './node_modules/next/dist/compiled/@vercel/og/*.wasm',
+        './node_modules/next/dist/compiled/@vercel/og/*.ttf',
+      ],
+    },
   },
   // ビルド時の静的生成ワーカータイムアウトを 60s -> 180s に延長
   staticPageGenerationTimeout: 180,

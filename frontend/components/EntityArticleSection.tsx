@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ArticleMeta } from "@/lib/articles";
+import { ArticleCategoryTag, formatArticleDate } from "@/components/ArticleParts";
+import { LineIcon } from "@/components/LineIcon";
 
 type EntityArticleSectionProps = {
   title: string;
@@ -9,14 +11,7 @@ type EntityArticleSectionProps = {
   archiveLabel?: string;
 };
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-  });
-}
-
+// 騎手・コース・重賞のデータ画面に置く関連記事の一覧（区切り線の行。PCは2列）
 export function EntityArticleSection({
   title,
   description,
@@ -29,57 +24,55 @@ export function EntityArticleSection({
   }
 
   return (
-    <section className="mt-10">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-950">{title}</h2>
+    <section className="mt-10 rounded-[14px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-6">
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
+          <h2 className="font-display text-[19px] font-extrabold leading-snug text-slate-900 sm:text-[21px]">{title}</h2>
           {description && (
-            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">{description}</p>
+            <p className="mt-1.5 max-w-3xl text-[14px] leading-[1.75] text-slate-700">{description}</p>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
-            {articles.length}件
-          </span>
+        <div className="flex items-center gap-3 text-[13px] text-slate-500">
+          <span>{articles.length}件</span>
           {archiveHref && (
             <Link
               href={archiveHref}
-              className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white hover:bg-primary"
+              className="inline-flex min-h-11 items-center gap-1 font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600"
             >
               {archiveLabel}
+              <LineIcon name="chevR" size={15} className="block" />
             </Link>
           )}
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
+      <ul className="mt-1 grid grid-cols-1 md:grid-cols-2 md:gap-x-8">
         {articles.map((article) => (
-          <Link
-            key={article.slug}
-            href={`/articles/${article.slug}`}
-            className="group flex h-full flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated"
-          >
-            <div>
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-400">
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">{article.category}</span>
-                <time dateTime={new Date(article.date).toISOString()}>{formatDate(article.date)}</time>
+          <li key={article.slug} className="border-b border-slate-200 last:border-b-0 md:[&:nth-last-child(2):nth-child(odd)]:border-b-0">
+            <Link
+              prefetch={false}
+              href={`/articles/${article.slug}`}
+              className="group flex h-full flex-col gap-1.5 py-3.5"
+            >
+              <span className="flex flex-wrap items-center gap-2 text-[12.5px] text-slate-500">
+                <ArticleCategoryTag category={article.category} />
+                <time dateTime={new Date(article.date).toISOString()}>{formatArticleDate(article.date)}</time>
                 {article.contentTarget && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
+                  <span className="font-bold text-slate-600">
                     {article.contentTarget.includes("trend") ? "トレンド" : "データ"}
                   </span>
                 )}
-              </div>
-              <h3 className="mt-2 line-clamp-2 text-base font-black leading-snug text-slate-950 group-hover:text-primary">
+              </span>
+              <span className="line-clamp-2 text-[15px] font-bold leading-[1.55] text-slate-900 transition-colors duration-150 group-hover:text-brand-700">
                 {article.title}
-              </h3>
+              </span>
               {article.description && (
-                <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{article.description}</p>
+                <span className="line-clamp-2 text-[13.5px] leading-[1.7] text-slate-600">{article.description}</span>
               )}
-            </div>
-            <span className="mt-4 text-xs font-black text-primary">詳細</span>
-          </Link>
+            </Link>
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }

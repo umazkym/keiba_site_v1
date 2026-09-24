@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { LineIcon, type LineIconName } from '@/components/LineIcon';
 
 type ArchiveGroup = {
     href: string;
@@ -31,27 +32,7 @@ type Props = {
     courseSections: CourseVenueSection[];
 };
 
-const ThemeIcon = ({ theme }: { theme: ThemeKey }) => {
-    if (theme === 'jockey') {
-        return (
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 18c1.5-2.4 3.2-3.6 5-3.6s3.5 1.2 5 3.6M12 11.5a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z" />
-            </svg>
-        );
-    }
-    if (theme === 'course') {
-        return (
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 17.5h16M6 14V9m4 5V6m4 8v-3m4 3V4" />
-            </svg>
-        );
-    }
-    return (
-        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 4h8v3a4 4 0 0 1-8 0V4Zm4 7v5m-3 3h6M7.5 5H5v1.5A4.5 4.5 0 0 0 9 11m7.5-6H19v1.5a4.5 4.5 0 0 1-4 4.5" />
-        </svg>
-    );
-};
+const THEME_ICONS: Record<ThemeKey, LineIconName> = { grade: 'trophy', jockey: 'user', course: 'pin' };
 
 const GroupLinks = ({ groups }: { groups: ArchiveGroup[] }) => (
     <div className="divide-y divide-slate-100">
@@ -59,10 +40,10 @@ const GroupLinks = ({ groups }: { groups: ArchiveGroup[] }) => (
             <Link
                 key={group.href}
                 href={group.href}
-                className="flex min-h-11 items-center justify-between gap-3 px-3.5 py-2.5 text-sm font-bold text-slate-700 transition-colors duration-150 hover:bg-slate-50 hover:text-primary"
+                className="flex min-h-11 items-center justify-between gap-3 px-3.5 py-2.5 text-[14px] font-bold text-slate-800 transition-colors duration-150 hover:bg-slate-50 hover:text-brand-700"
             >
                 <span className="min-w-0 truncate">{group.title}</span>
-                <span className="shrink-0 text-[11px] font-black text-slate-500">{group.articleCount}記事</span>
+                <span className="shrink-0 font-num text-[12.5px] font-semibold text-slate-500">{group.articleCount}記事</span>
             </Link>
         ))}
     </div>
@@ -118,14 +99,14 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                                     setIsOpen(true);
                                 }
                             }}
-                            className={`flex min-h-11 items-center justify-center gap-1.5 border-t-2 px-2 text-xs font-black transition-colors duration-150 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${isActive
-                                ? 'border-brand-600 bg-brand-50/70 text-slate-950'
+                            className={`flex min-h-11 items-center justify-center gap-1.5 border-t-[3px] px-2 text-[13.5px] font-bold transition-colors duration-150 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${isActive
+                                ? 'border-brand-600 bg-brand-50/70 text-navy'
                                 : 'border-transparent bg-white text-slate-500 hover:bg-slate-50'
                                 }`}
                         >
-                            <ThemeIcon theme={theme.key} />
+                            <LineIcon name={THEME_ICONS[theme.key]} size={17} className={`block ${isActive ? 'text-brand-600' : 'text-slate-500'}`} />
                             <span>{theme.label}</span>
-                            <span className="text-[10px] text-slate-400">{theme.count}</span>
+                            <span className="font-num text-[12px] font-semibold text-slate-500">{theme.count}</span>
                             {isActive && (
                                 <svg aria-hidden="true" viewBox="0 0 20 20" className={`h-3 w-3 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} fill="currentColor">
                                     <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
@@ -140,10 +121,10 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                     <div className="grid gap-1.5 p-2">
                         {gradeRaceSections.map(section => (
                             <details key={section.id} className={`group/grade overflow-hidden rounded-lg border ${getGradeSectionTone(section.id)}`}>
-                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
+                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-[14px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
                                     <span>{getGradeSectionLabel(section.id, section.title)}</span>
                                     <span className="flex items-center gap-1.5">
-                                        <span className="rounded bg-white px-2 py-0.5 text-[10px] text-slate-600">
+                                        <span className="rounded bg-white px-2 py-0.5 text-[12px] font-semibold text-slate-600">
                                             {section.groups.length}レース / {section.articleCount}記事
                                         </span>
                                         <span aria-hidden="true" className="text-slate-500 transition-transform duration-150 group-open/grade:rotate-90">›</span>
@@ -161,9 +142,9 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                     <div className="grid gap-1.5 p-2">
                         {courseSections.map(section => (
                             <details key={section.id} className="group/venue overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-800">
-                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-xs font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
+                                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-[14px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
                                     <span>{section.title}</span>
-                                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                                    <span className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500">
                                         <span>{section.groups.length}コース / {section.articleCount}記事</span>
                                         <span aria-hidden="true" className="transition-transform duration-150 group-open/venue:rotate-90">›</span>
                                     </span>

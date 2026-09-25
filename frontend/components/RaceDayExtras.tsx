@@ -1,9 +1,8 @@
 'use client';
 
 // 開催日ボードの下に置く部分。免責の1文・前回見たレース・PR・記事内広告（実験）。計測名と広告枠は従来の日付ページと同じ。
-// 免責は黄色の警告帯をやめ、ボードの直後の1文（DisclaimerNote）にした（2026-09-25）。
+// 免責の1文（DisclaimerNote）は 2026-09-26 に外した（利用者の指定。フッターに同じ趣旨の注記がある）。
 // 「注目馬・近日の重賞・高配当」は見本（スマホ・PC とも）に無いため外した（2026-09-25 スマホの見直し。ホームにある）。
-import { DisclaimerNote } from '@/components/DisclaimerNote';
 import { InFeedAd } from '@/components/InFeedAd';
 import { RecentRaceReturn } from '@/components/RecentRaceReturn';
 import { AffiliateSlot } from '@/components/AffiliateSlot';
@@ -29,7 +28,6 @@ export function RaceDayExtras({
             data-race-revenue-eligible={raceRevenueExperiment.eligible ? 'true' : 'false'}
         >
             {/* スマホは一覧の左端（外枠の16px）にそろえる。PC は今のまま */}
-            {hasRaces && <DisclaimerNote className="md:px-1" />}
 
             <RecentRaceReturn />
 

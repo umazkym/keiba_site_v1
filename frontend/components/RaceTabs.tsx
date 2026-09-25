@@ -4,9 +4,7 @@ import { useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { PredictionTable } from '@/components/PredictionTable';
-import { RaceConditionComparison } from '@/components/RaceConditionComparison';
 import { RaceHorseActions } from '@/components/RaceHorseActions';
-import { RaceAnalysis } from '@/components/RaceAnalysis';
 import { VenueRaces, RaceDayPrediction, type RacePrediction } from '@/lib/types';
 import { RaceSelector, type RaceSelectorLink } from './RaceSelector';
 import { RacePageJumpNav } from './RacePageJumpNav';
@@ -15,9 +13,9 @@ import { HorseNumber } from './RaceParts';
 import { AffiliateSlot } from './AffiliateSlot';
 import { RaceEngagedAd } from './RaceEngagedAd';
 import { DynamicRelatedArticles } from './DynamicRelatedArticles';
-import { DisclaimerNote } from './DisclaimerNote';
 import { RaceArticleMeta } from '@/lib/articles';
 import { useRewardedAd, type RewardedAdContext } from '@/hooks/useRewardedAd';
+import { useStickyStuck } from '@/hooks/useStickyStuck';
 import {
     sendRaceNavigationEvent,
     sendRaceViewEvent,
@@ -31,7 +29,7 @@ import { getRaceDetailPath } from '@/lib/race-url';
 import { formatDate } from '@/lib/utils';
 import { RACE_BREADCRUMB_CHANGE_EVENT } from '@/lib/race-breadcrumb-event';
 import { getRaceTopObstructionHeight } from '@/hooks/useRaceSectionNavigation';
-import { getTopAiPredictions, resolveWaku } from '@/lib/race-display';
+import { resolveWaku } from '@/lib/race-display';
 import { StartPositionChart } from './StartPositionChart';
 
 const MatchupTable = dynamic(
@@ -44,9 +42,8 @@ const MatchupTable = dynamic(
 
 const StableMatchupTable = ({ race }: { race: RacePrediction }) => {
     const runnerCount = race.predictions.length;
-    // スマホは AI上位5頭×5 の表（MatchupTable の MobileTopFiveView）。見出し約77px ＋ 表（50px ＋ 1行48px）
-    const mobileRows = Math.max(2, getTopAiPredictions(race.predictions, 5).length);
-    const mobileMinHeight = 127 + mobileRows * 48;
+    // スマホは全頭×全頭の表（MatchupTable の MobileMatrixView）で、画面の幅に合わせたほぼ正方形。見出し約40px ＋ 表。
+    // 実際の高さより大きく予約すると、表の下に空きが残るため、少し小さめに取る（2026-09-26）
     const desktopClassName = runnerCount >= 16
         ? 'md:min-h-[760px]'
         : runnerCount >= 10
@@ -56,7 +53,7 @@ const StableMatchupTable = ({ race }: { race: RacePrediction }) => {
     return (
         <div
             className={`min-h-[var(--matchup-boundary-mobile)] ${desktopClassName}`}
-            style={{ '--matchup-boundary-mobile': `${mobileMinHeight}px` } as CSSProperties}
+            style={{ '--matchup-boundary-mobile': 'calc(100vw - 30px)' } as CSSProperties}
         >
             <MatchupTable race={race} />
         </div>
@@ -148,6 +145,8 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
         && !isActiveRaceUnlocked
         && !isIntentionalRewardedDisableReason(unavailableReason);
     const previousInitialRaceNumberRef = useRef(initialRaceNumber);
+    const selectorSentinelRef = useRef<HTMLDivElement>(null);
+    const isSelectorStuck = useStickyStuck(selectorSentinelRef);
 
     // ブラウザ「戻る」対応
     useEffect(() => {
@@ -393,14 +392,17 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
 
     return (
         <div id={`venue-${venue.venue_name}`}>
+            {/* 帯が止まったかを見る目印。スマホは止まったときだけ要約の行を出す（race-sticky-selector の data-stuck） */}
+            {activeRace && <div ref={selectorSentinelRef} aria-hidden="true" />}
             {activeRace && (
                 <div
                     data-race-selector-sticky
                     data-race-mobile-selector
+                    data-stuck={isSelectorStuck ? 'true' : 'false'}
                     className="race-sticky-selector sticky z-30 my-2 flex max-h-[88px] flex-col overflow-hidden rounded-xl bg-white ring-1 ring-inset ring-slate-200 lg:h-14 lg:flex-row lg:items-center lg:gap-3 lg:px-2"
                     aria-label="選択中のレースと1Rから12Rの切替"
                 >
-                    <div className="flex h-11 shrink-0 items-center gap-2 px-2 lg:h-full lg:w-[250px] lg:border-r lg:border-slate-200 lg:pr-3">
+                    <div className="race-selector-summary flex h-9 shrink-0 items-center gap-2 px-2 lg:h-full lg:w-[250px] lg:border-r lg:border-slate-200 lg:pr-3">
                         <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md bg-navy px-1.5 text-[12px] font-bold text-white">
                             {venue.venue_name}
                             <span className="font-num text-[14px]">{activeRace.race_number}R</span>
@@ -409,7 +411,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                         <Link
                             href={`/races/${currentDate}`}
                             prefetch={false}
-                            className="-mr-1 inline-flex h-11 shrink-0 items-center px-2 text-[12px] font-bold text-brand-700 hover:text-navy lg:hidden"
+                            className="-mr-1 inline-flex h-9 shrink-0 items-center px-2 text-[12px] font-bold text-brand-700 hover:text-navy lg:hidden"
                         >
                             全レース
                         </Link>
@@ -442,7 +444,6 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                             <RaceHorseActions predictions={activeRace.predictions} />
                         </div>
 
-                        <DisclaimerNote className="sm:px-1.5 md:px-1" />
 
                         <AffiliateSlot
                             context="race_after_prediction"
@@ -465,17 +466,15 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                                 </div>
 
                                 <div className="grid gap-2.5 sm:mb-2 sm:gap-2 md:gap-3 xl:grid-cols-2">
-                                    <section className="race-analysis-panel race-panel flex flex-col px-3.5 pb-3.5 pt-3 md:px-5 md:pb-4 md:pt-4">
+                                    <section className="race-analysis-panel race-panel flex flex-col px-3.5 pb-3 pt-2.5 md:px-5 md:pb-4 md:pt-4">
                                         <h2 id="race-detail-heading" className="race-section-heading race-section-heading--flush">展開予測</h2>
-                                        <p className="race-section-lead">1コーナーの位置取り予測。琥珀の輪はAI上位3頭。</p>
+                                        {/* 「琥珀の輪はAI上位3頭」の説明は置かない（2026-09-26 利用者の指定） */}
+                                        <p className="race-section-lead">1コーナーの位置取り予測。</p>
                                         <StartPositionChart predictions={activeRace.predictions} />
                                     </section>
 
-                                    <section className="race-analysis-panel race-panel flex flex-col px-3.5 pb-3.5 pt-3 md:px-5 md:pb-4 md:pt-4">
+                                    <section className="race-analysis-panel race-panel flex flex-col px-3.5 pb-3 pt-2.5 md:px-5 md:pb-4 md:pt-4">
                                         <h2 id="race-frame-heading" className="race-section-heading race-section-heading--flush">馬番の傾向</h2>
-                                        <p className="race-section-lead">
-                                            {venue.venue_name}{activeRace.course_type ?? ''}{activeRace.distance ? `${activeRace.distance}m` : ''}の過去データ。上ほど有利
-                                        </p>
                                         <div className="h-[128px] md:h-[220px]">
                                             <HorseNumberAdvantageChart
                                                 advantages={activeRace.horse_number_advantages}
@@ -543,14 +542,10 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                         ) : null}
 
                         {/* AIレース展望（常時表示、SEO・滞在時間向上） */}
-                        <div id="race-analysis-section" className="sm:mb-1.5">
-                            <RaceAnalysis race={activeRace} />
-                        </div>
+                        {/* AIレース展望（RaceAnalysis）と同じ条件の過去成績（RaceConditionComparison）は 2026-09-26 に外した（利用者の指定） */}
 
                         </div>
 
-                        {/* 同じ条件の過去成績（騎手・調教師）。見本に無い補足のため、分析の後ろに置く（2026-09-25） */}
-                        <RaceConditionComparison raceId={activeRace.id} />
 
                         {engagedAdSlot && (
                             <RaceEngagedAd slot={engagedAdSlot} pageKey={currentDate} />
@@ -564,10 +559,10 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                             if (!nextLink && !nextRace) return null;
                             const inner = (
                                 <>
-                                    <span className="inline-flex h-11 w-11 shrink-0 items-baseline justify-center rounded-[11px] bg-navy pt-2.5 font-num text-[22px] font-bold leading-none text-white" aria-hidden="true">
+                                    <span className="inline-flex h-10 w-10 shrink-0 items-baseline justify-center rounded-[10px] bg-navy pt-2 font-num text-[21px] font-bold leading-none text-white" aria-hidden="true">
                                         {activeRace.race_number + 1}<span className="ml-px text-[12px]">R</span>
                                     </span>
-                                    <span className="flex min-w-0 flex-1 flex-col gap-1">
+                                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                                         <span className="text-[12px] font-bold text-slate-500">次のレース</span>
                                         <span className="truncate text-[15px] font-bold text-slate-900">
                                             {nextRace ? nextRace.race_name : `${venue.venue_name}${activeRace.race_number + 1}Rの分析を見る`}
@@ -584,7 +579,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                                     <LineIcon name="chevR" size={20} className="block shrink-0 text-slate-500" />
                                 </>
                             );
-                            const cardClass = 'flex w-full items-center gap-3.5 rounded-xl border border-slate-200 bg-white p-3.5 text-left transition-colors duration-150 hover:border-brand-300 sm:my-2 md:p-4';
+                            const cardClass = 'flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-left transition-colors duration-150 hover:border-brand-300 sm:my-2 md:p-4';
                             if (nextRace) {
                                 return (
                                     <button type="button" onClick={() => handleRaceSelect(activeRaceIndex + 1, 'analysis_next_button')} className={cardClass}>

@@ -47,7 +47,8 @@ export const Footer = ({ todayString }: FooterProps) => {
             ],
         },
     ];
-    // スマホは見本どおり、見出しと説明文を省いた2列の10項目にまとめる（PC は見出しつきの3列のまま。2026-09-25）
+    // スマホは見本どおり、見出しと説明文を省いた2列の10項目にまとめる（PC は見出しつきの3列のまま。2026-09-25）。
+    // 1行は32px（2026-09-26 押せる大きさの見直し。文字リンクは見た目を詰め、最低24pxを保つ）
     const mobileLinks: FooterLink[] = [
         { href: `/races/${todayString}`, label: '本日の分析' },
         { href: '/keiba-data', label: '競馬データベース' },
@@ -62,7 +63,7 @@ export const Footer = ({ todayString }: FooterProps) => {
     ];
 
     return (
-        <footer className="relative z-0 mt-4 bg-night pb-10 pt-6 text-night-sub sm:mt-12 sm:pb-16 sm:pt-12">
+        <footer className="relative z-0 mt-4 bg-night pb-8 pt-5 text-night-sub sm:mt-12 sm:pb-16 sm:pt-12">
             <div className="site-shell-wide px-4 sm:px-6">
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,1fr))] lg:gap-10">
                     <div className="max-w-sm">
@@ -79,7 +80,7 @@ export const Footer = ({ todayString }: FooterProps) => {
                                     <Link
                                         href={link.href}
                                         prefetch={false}
-                                        className="flex min-h-11 items-center text-sm font-medium text-night-sub transition-colors duration-150 hover:text-white"
+                                        className="flex min-h-8 items-center text-sm font-medium text-night-sub transition-colors duration-150 hover:text-white"
                                     >
                                         {link.label}
                                     </Link>
@@ -108,7 +109,7 @@ export const Footer = ({ todayString }: FooterProps) => {
                     ))}
                 </div>
 
-                <div className="mt-4 flex flex-col gap-2 border-t border-white/[0.12] pt-4 text-xs leading-relaxed text-night-faint sm:mt-10 sm:gap-3 sm:pt-5 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+                <div className="mt-3 flex flex-col gap-1.5 border-t border-white/[0.12] pt-4 text-xs leading-relaxed text-night-faint sm:mt-10 sm:gap-3 sm:pt-5 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
                     <p className="text-night-faint">本サイトは統計情報の提供を目的としており、投票の推奨ではありません。馬券の購入は20歳になってから。</p>
                     {/* SNS のリンクは、見える間隔をそろえたまま、押せる範囲を左右に広げる（X は1文字なので箱を広げると間が不ぞろいになる） */}
                     <div className="flex flex-wrap items-center gap-x-8 gap-y-1">
@@ -118,7 +119,7 @@ export const Footer = ({ todayString }: FooterProps) => {
                                 href={socialLink.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="-mx-4 flex min-h-11 min-w-11 items-center px-4 text-night-sub transition-colors duration-150 hover:text-white"
+                                className="-mx-4 flex min-h-8 min-w-8 items-center px-4 text-night-sub transition-colors duration-150 hover:text-white"
                                 aria-label={`${socialLink.label}アカウント`}
                             >
                                 {socialLink.label.replace(/^公式/, '')}

@@ -70,7 +70,7 @@ export function EntityArticleDocument({
           </div>
 
           <div className="flex flex-col gap-3 sm:gap-4">
-            <h1 className="article-page-title font-display text-[23px] font-extrabold leading-[1.5] text-slate-900 [overflow-wrap:anywhere] text-balance sm:text-[30px] sm:text-wrap lg:text-[34px]">
+            <h1 className="article-page-title font-display text-[23px] font-bold leading-[1.5] text-slate-900 [overflow-wrap:anywhere] text-balance sm:text-[30px] sm:text-wrap lg:text-[34px]">
               <ArticleTitleText title={article.title} />
             </h1>
             {article.description && (

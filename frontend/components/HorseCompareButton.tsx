@@ -49,7 +49,7 @@ export function HorseCompareButton({
                 type="button"
                 onClick={handleClick}
                 aria-pressed={selected}
-                className={`inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+                className={`inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                     selected
                         ? 'border-amber-300 bg-amber-50 text-amber-900'
                         : 'border-slate-200 bg-white text-slate-700 hover:border-amber-300'
@@ -62,7 +62,7 @@ export function HorseCompareButton({
                 <Link
                     href="/compare"
                     prefetch={false}
-                    className="inline-flex min-h-11 items-center rounded-xl bg-slate-950 px-3 py-2 text-sm font-bold text-white transition-colors duration-150 hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className="inline-flex min-h-10 items-center rounded-xl bg-slate-950 px-3 py-2 text-sm font-bold text-white transition-colors duration-150 hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                 >
                     {count}頭を比較
                 </Link>

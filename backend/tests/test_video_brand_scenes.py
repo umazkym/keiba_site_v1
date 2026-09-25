@@ -133,18 +133,35 @@ class LanesTest(unittest.TestCase):
         self.assertEqual(sorted(numbers), [n for n in range(1, 19) if n not in (5, 10)])
         self.assertEqual(plan.unknown, 2)
 
-    def test_horses_at_the_same_position_stack_into_at_most_three_rows(self) -> None:
+    def test_each_lane_is_ordered_by_number_and_centered(self) -> None:
+        # サイトの展開予測と同じ：段ごとに馬番の小さい順に左から、段の中で横の中央（2026-09-26）
         race = _race(runners=12)
+        for horse in race.predictions:
+            horse.start_1c_indicator = float(100 - horse.horse_number * 7)
+        plan = scenes.plan_lanes(scenes.race_card(race), 830, size=46, label_width=110)
+        center = 110 + (830 - 2 * 110) / 2
+        for _, placed, _, _ in plan.lanes:
+            for slot in {row_slot for _, _, row_slot in placed}:
+                row = sorted(((px, horse.number) for horse, px, row_slot in placed if row_slot == slot))
+                numbers = [number for _, number in row]
+                self.assertEqual(numbers, sorted(numbers))
+                left, right = row[0][0], row[-1][0] + 46
+                self.assertAlmostEqual((left + right) / 2, center, places=6)
+
+    def test_crowded_lane_wraps_into_centered_rows(self) -> None:
+        race = _race(runners=16)
         for horse in race.predictions:
             horse.start_1c_indicator = 50.0
         plan = scenes.plan_lanes(scenes.race_card(race), 830, size=46, label_width=110)
         _, placed, lane_height, rows = next(lane for lane in plan.lanes if lane[1])
-        self.assertEqual(len(placed), 12)
-        self.assertLessEqual(max(slot for _, _, slot in placed), 2)
-        self.assertEqual((lane_height, rows), (3 * (46 + 8) + 16, 3))
-        for slot in range(3):
+        self.assertEqual(len(placed), 16)
+        self.assertGreaterEqual(rows, 2)
+        self.assertEqual(lane_height, rows * (46 + 8) + 16)
+        for slot in range(rows):
             xs = sorted(px for _, px, row_slot in placed if row_slot == slot)
             self.assertTrue(all(b - a >= 46 + 4 for a, b in zip(xs, xs[1:])))
+            self.assertGreaterEqual(xs[0], 110)
+            self.assertLessEqual(xs[-1] + 46, 830 - 110)
 
     def test_stretched_lanes_fill_the_height_and_widen_crowded_lanes_more(self) -> None:
         race = _race(runners=10)

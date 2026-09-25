@@ -45,9 +45,9 @@ export const RaceSelector = ({ races, selectedIndex, onSelectRace, raceLinks, on
             key={option.key}
             className="race-tab active cursor-default"
             aria-current="page"
-            title={`${option.raceNumber}Rを表示中`}
+            title={`${option.raceNumber}<span className="race-tab__r">R</span>を表示中`}
           >
-            {option.raceNumber}R
+            {option.raceNumber}<span className="race-tab__r">R</span>
           </span>
         ) : option.href ? (
           <Link
@@ -66,7 +66,7 @@ export const RaceSelector = ({ races, selectedIndex, onSelectRace, raceLinks, on
             )}
             className="race-tab flex items-center justify-center transition-colors duration-150"
           >
-            {option.raceNumber}R
+            {option.raceNumber}<span className="race-tab__r">R</span>
           </Link>
         ) : (
           <button
@@ -78,7 +78,7 @@ export const RaceSelector = ({ races, selectedIndex, onSelectRace, raceLinks, on
             }}
             className="race-tab transition-colors duration-150"
           >
-            {option.raceNumber}R
+            {option.raceNumber}<span className="race-tab__r">R</span>
           </button>
         )
       ))}

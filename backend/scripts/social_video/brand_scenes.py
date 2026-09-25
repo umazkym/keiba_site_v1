@@ -22,7 +22,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from .. import brand_tokens as T
 from ..sns_content import JRA_VENUES, WEEKDAYS, HorseRow, RaceCard, date_label, grade_priority, parse_date, race_card_from_api
-from ..sns_images import SCALE, Canvas, _logo, grade_badge, horse_no, lockup, mark_glyph, plate, rank_row, score_bar
+from ..sns_images import SCALE, Canvas, _logo, center_lane_rows, grade_badge, horse_no, lockup, mark_glyph, plate, rank_row, score_bar
 from .data_loader import RaceVideoData
 from .motion import MotionLayer, MotionScene
 from .visual_assets import VideoAsset, VisualAsset
@@ -462,32 +462,17 @@ def plan_lanes(
     label_width: float,
     right_pad: float = 0,
 ) -> Optional[LanePlan]:
-    """序盤の位置取り（右ほど前）の並べ方。重なる馬は同じ段の下の行へずらす（最大3行）。"""
-    rows_by_lane = {
-        lane: sorted((row for row in card.rows if row.position == lane), key=lambda row: row.position_index or 0)
-        for lane in LANES
-    }
+    """序盤の位置取りの並べ方。段ごとに馬番の小さい順に左から並べ、段の中で横の中央にそろえる（入らなければ折り返す）。
+    サイトの展開予測と同じ（2026-09-26。以前は右ほど前で、重なる馬を下の行へずらしていた）。"""
+    rows_by_lane = {lane: [row for row in card.rows if row.position == lane] for lane in LANES}
     if not any(rows_by_lane.values()):
         return None
-    usable = width - label_width - size - 16 - right_pad
+    # 左の段の名前と同じ幅を右にも空け、馬の並びを図の真ん中にそろえる
+    usable = width - 2 * label_width - right_pad
     lanes: list[tuple[str, list[tuple[HorseRow, float, int]], float, int]] = []
     total = 6.0
     for lane in LANES:
-        slots: list[float] = []
-        placed: list[tuple[HorseRow, float, int]] = []
-        for row in rows_by_lane[lane]:
-            px = label_width + ((row.position_index or 0) / 100) * usable
-            slot = next((k for k, last in enumerate(slots) if last + size + 4 <= px), -1)
-            if slot < 0:
-                if len(slots) < 3:
-                    slot = len(slots)
-                    slots.append(-1e9)
-                else:
-                    slot = slots.index(min(slots))
-                    px = max(px, slots[slot] + size + 4)
-            slots[slot] = px
-            placed.append((row, px, slot))
-        rows = max(1, len(slots))
+        placed, rows = center_lane_rows(rows_by_lane[lane], label_width, usable, size)
         lane_height = rows * (size + 8) + 16
         lanes.append((lane, placed, lane_height, rows))
         total += lane_height
@@ -522,12 +507,11 @@ def lanes_legend(plan: LanePlan) -> str:
 
 
 def draw_lanes(c: VideoCanvas, x: float, y: float, width: float, plan: LanePlan, *, dark: bool = False) -> float:
-    """位置取りの図。AI偏差値の上位3頭に琥珀の輪。下の行に凡例（左）と進行方向（右）。高さを返す。"""
+    """位置取りの図。AI偏差値の上位3頭に琥珀の輪。下の行に凡例（進行方向の文字は出さない。2026-09-26）。高さを返す。"""
     size = plan.size
     background = white(0.06) if dark else T.TURF_SOFT
     label_color = T.ON_NIGHT_TEXT if dark else T.TURF_DEEP
     separator = white(0.10) if dark else tint(T.TURF_DEEP, 0.18)
-    footer_color = T.ON_NIGHT_FAINT if dark else T.TURF_DEEP
     c.rect((x, y, x + width, y + plan.height), radius=size * 0.5, fill=background)
     cursor = y + 6
     for index, (lane, placed, lane_height, rows) in enumerate(plan.lanes):
@@ -544,8 +528,7 @@ def draw_lanes(c: VideoCanvas, x: float, y: float, width: float, plan: LanePlan,
             c.line((x, cursor, x + width, cursor), separator, 1.5)
     footer_cy = cursor + lanes_footer_height(size) / 2
     text_size = size * 0.46
-    arrow_width = c.text(x + width - size * 0.5 - plan.right_pad, footer_cy, "進行方向 →", "bold", text_size, footer_color, anchor="rm")
-    legend, legend_size = c.fit(lanes_legend(plan), "bold", text_size, width - size - plan.right_pad - arrow_width - 24, text_size * 0.8)
+    legend, legend_size = c.fit(lanes_legend(plan), "bold", text_size, width - size - plan.right_pad - 24, text_size * 0.8)
     c.text(x + size * 0.5, footer_cy, legend, "bold", legend_size, T.AI if dark else T.AI_DEEP)
     return plan.height
 
@@ -1271,7 +1254,7 @@ def _short_lanes(directory: Path, plan: Optional[LanePlan]) -> list[tuple[Path, 
     if plan is None:
         return []
     stretched = stretch_lanes(plan, SHORT_LANES_MIN_HEIGHT)
-    label = _short_label(directory / "030_lanes_label.png", "序盤の位置取り（右ほど前）", T.ON_NIGHT_TEXT)
+    label = _short_label(directory / "030_lanes_label.png", "序盤の位置取り", T.ON_NIGHT_TEXT)
     lanes_path = element(directory / "031_lanes.png", (SHORT_WIDTH, stretched.height), lambda c: draw_lanes(c, 0, 0, SHORT_WIDTH, stretched, dark=True))
     return [(label, SHORT_LEFT, 0), (lanes_path, SHORT_LEFT, 72)]
 

@@ -25,7 +25,7 @@ export function DataPageHead({
             )}
             <div className="min-w-0">
                 <p className="text-[13px] font-bold text-slate-500">{label}</p>
-                <h1 className="mt-0.5 font-display text-[24px] font-extrabold leading-snug text-slate-900 [overflow-wrap:anywhere] sm:text-[32px]">
+                <h1 className="mt-0.5 font-display text-[24px] font-bold leading-snug text-slate-900 [overflow-wrap:anywhere] sm:text-[32px]">
                     {title}
                 </h1>
                 {description && (

@@ -45,7 +45,7 @@ export function RaceHead({ race, venueName }: RaceHeadProps) {
         <header className="-mt-1 mb-2 flex flex-col gap-2 sm:mt-0 md:mb-3 md:gap-2.5">
             {isGrade && (
                 <div className="relative h-[60px] overflow-hidden rounded-xl md:hidden">
-                    <GradePhoto raceDate={race.race_date} sizes="100vw" className="absolute inset-0 h-full w-full object-cover object-[60%_40%]" />
+                    <GradePhoto raceDate={race.race_date} sizes="100vw" className="absolute inset-0 h-full w-full object-cover object-[60%_80%]" />
                     <div className="photo-scrim-left absolute inset-0" aria-hidden="true" />
                     {/* グレード・コースは下の見出しに出すため、帯は開催日と競馬場だけ（以前は「重賞 重賞・園田 ダ1400m」と重なっていた） */}
                     <p className="absolute inset-y-0 left-3 flex items-center text-[13px] font-bold text-white">
@@ -57,7 +57,7 @@ export function RaceHead({ race, venueName }: RaceHeadProps) {
             <section className="relative overflow-hidden md:rounded-xl md:border md:border-slate-200 md:bg-white md:px-7 md:py-6">
                 {isGrade && (
                     <div className="absolute inset-y-0 right-0 hidden w-[520px] md:block" aria-hidden="true">
-                        <GradePhoto raceDate={race.race_date} sizes="520px" className="h-full w-full object-cover object-[55%_45%]" />
+                        <GradePhoto raceDate={race.race_date} sizes="520px" className="h-full w-full object-cover object-[55%_75%]" />
                         <div className="photo-fade-left absolute inset-0" />
                     </div>
                 )}

@@ -84,7 +84,7 @@ export default async function GradeRaceDetailPage({ params }: Props) {
       <article className="mx-auto max-w-5xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
         <header className="rounded-[16px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-8">
           <p className="text-[13px] font-bold text-slate-500">{race.grade}の重賞</p>
-          <h1 className="mt-1 font-display text-[24px] font-extrabold leading-snug text-slate-900 sm:text-[34px]">
+          <h1 className="mt-1 font-display text-[24px] font-bold leading-snug text-slate-900 sm:text-[34px]">
             {race.name} {race.date}
           </h1>
           <p className="mt-1.5 text-[13.5px] font-bold text-slate-600">
@@ -100,7 +100,7 @@ export default async function GradeRaceDetailPage({ params }: Props) {
 
         <section className="mt-8 grid gap-4 md:grid-cols-2">
           <div className="rounded-[14px] bg-white p-5 ring-1 ring-inset ring-slate-200">
-            <h2 className="font-display text-[19px] font-extrabold text-slate-900 sm:text-[21px]">レース前に見るポイント</h2>
+            <h2 className="font-display text-[19px] font-bold text-slate-900 sm:text-[21px]">レース前に見るポイント</h2>
             <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
               {race.focusPoints.map((point) => (
                 <li key={point} className="border-l-4 border-slate-300 pl-3">{point}</li>
@@ -109,7 +109,7 @@ export default async function GradeRaceDetailPage({ params }: Props) {
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-soft">
-            <h2 className="font-display text-[19px] font-extrabold text-slate-900 sm:text-[21px]">更新の流れ</h2>
+            <h2 className="font-display text-[19px] font-bold text-slate-900 sm:text-[21px]">更新の流れ</h2>
             <div className="mt-4 space-y-3">
               {race.updateStages.map((stage) => (
                 <div key={stage.label} className="rounded-xl bg-white p-4 shadow-soft">
@@ -166,7 +166,7 @@ export default async function GradeRaceDetailPage({ params }: Props) {
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-soft">
-            <h2 className="font-display text-[19px] font-extrabold text-slate-900 sm:text-[21px]">X投稿の導線</h2>
+            <h2 className="font-display text-[19px] font-bold text-slate-900 sm:text-[21px]">X投稿の導線</h2>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               投稿先はトップページではなく、このレース、関連コース、関連騎手ページへ直接送る方針です。
             </p>

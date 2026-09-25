@@ -32,6 +32,7 @@ export function ArticleThumb({ thumb, sizes, className = '' }: ArticleThumbProps
                 loading="lazy"
                 decoding="async"
                 className="h-full w-full object-cover"
+                style={thumb.kind === 'photo' && thumb.position ? { objectPosition: thumb.position } : undefined}
             />
         </span>
     );

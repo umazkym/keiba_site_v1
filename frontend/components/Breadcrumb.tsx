@@ -250,7 +250,7 @@ export function Breadcrumb({ items }: BreadcrumbProps = {}) {
                 <Link
                   href={item.href}
                   prefetch={false}
-                  className="inline-flex min-h-11 min-w-11 items-center whitespace-nowrap font-medium text-slate-500 transition-colors duration-150 hover:text-brand-700"
+                  className="inline-flex min-h-8 items-center whitespace-nowrap font-medium text-slate-500 transition-colors duration-150 hover:text-brand-700"
                 >
                   {item.label}
                 </Link>

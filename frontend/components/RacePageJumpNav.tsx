@@ -30,7 +30,7 @@ export function RacePageJumpNav({ className = '' }: RacePageJumpNavProps) {
                                 type="button"
                                 onClick={() => scrollToItem(feature)}
                                 aria-current={isActive ? 'location' : undefined}
-                                className={`flex min-h-[46px] w-full min-w-0 items-center gap-2.5 rounded-[10px] px-2.5 text-left text-[14.5px] font-bold transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${isActive
+                                className={`flex min-h-10 w-full min-w-0 items-center gap-2.5 rounded-[10px] px-2.5 text-left text-[14.5px] font-bold transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${isActive
                                     ? 'bg-brand-50 text-navy'
                                     : 'text-slate-700 hover:bg-slate-50 hover:text-navy'
                                     }`}

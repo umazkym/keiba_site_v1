@@ -170,7 +170,7 @@ export default async function ArticlePage({ params }: Props) {
             {/* スマホは区切り線を付けず、本文との間は16px（見本）。PCは従来どおり線で区切る */}
             <header className="flex max-w-[760px] flex-col gap-3 sm:gap-5 sm:border-b sm:border-slate-200 sm:pb-9">
               <div className="flex flex-col gap-3 sm:gap-4">
-                <h1 className="article-page-title font-display text-[23px] font-extrabold leading-[1.5] text-slate-900 [overflow-wrap:anywhere] text-balance sm:text-[30px] sm:text-wrap lg:text-[34px]">
+                <h1 className="article-page-title font-display text-[23px] font-bold leading-[1.5] text-slate-900 [overflow-wrap:anywhere] text-balance sm:text-[30px] sm:text-wrap lg:text-[34px]">
                   <ArticleTitleText title={article.title} />
                 </h1>
 
@@ -252,7 +252,7 @@ export default async function ArticlePage({ params }: Props) {
               <Link
                 prefetch={false}
                 href={`/articles/category/${encodeURIComponent(article.category)}`}
-                className="inline-flex min-h-11 items-center gap-1.5 text-[14px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600"
+                className="inline-flex min-h-8 items-center gap-1.5 text-[14px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600"
               >
                 {article.category}の記事をもっと読む
                 <LineIcon name="chevR" size={16} className="block" />
@@ -260,7 +260,7 @@ export default async function ArticlePage({ params }: Props) {
               <Link
                 prefetch={false}
                 href="/articles"
-                className="inline-flex min-h-11 items-center gap-1 text-[14px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600 sm:hidden"
+                className="inline-flex min-h-8 items-center gap-1 text-[14px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600 sm:hidden"
               >
                 記事の一覧
                 <LineIcon name="chevR" size={16} className="block" />

@@ -18,7 +18,8 @@ import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { PwaRegistration } from "@/components/PwaRegistration";
 import { SafariViewportShim } from "@/components/SafariViewportShim";
 
-// 書体：見出しとロゴ文字はロゴの丸みに合わせた M PLUS Rounded 1c、
+// 書体：ロゴ文字とホームの大見出しだけ、ロゴの丸みに合わせた M PLUS Rounded 1c（--font-brand）。
+// ほかの見出しは本文と同じゴシックの太字（2026-09-26 利用者の選択「ゴシックでそろえる」。丸ゴシックの極太が並ぶと重かった）。
 // 数字（AI偏差値・オッズ・距離）は幅の狭い Barlow Semi Condensed。
 // 本文は端末の日本語書体（globals.css の --font-body）。Noto Sans JP を配信すると
 // 文字範囲ごとの @font-face だけで描画を止めるCSSが gzip 約31KB増え、本文の字形で
@@ -29,7 +30,7 @@ const displayFont = M_PLUS_Rounded_1c({
     subsets: ["latin"],
     display: "swap",
     preload: false,
-    variable: "--font-display",
+    variable: "--font-brand",
 });
 const numFont = Barlow_Semi_Condensed({
     weight: ["500", "600", "700"],

@@ -71,7 +71,7 @@ export function DataSegmentTabs({
                                 tabIndex={selected ? 0 : -1}
                                 onClick={() => setActive(index)}
                                 onKeyDown={(event) => handleKeyDown(event, index)}
-                                className={`inline-flex h-11 flex-auto items-center justify-center whitespace-nowrap rounded-full px-2 text-[13.5px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 ${
+                                className={`inline-flex h-8 flex-auto items-center justify-center whitespace-nowrap rounded-full px-2 text-[13.5px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 ${
                                     selected
                                         ? 'bg-navy text-white'
                                         : 'bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50'

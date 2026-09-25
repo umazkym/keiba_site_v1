@@ -134,7 +134,7 @@ export default async function CoursePage({ params }: Props) {
                     archiveHref={courseArticles.length > 0 ? `/articles/courses/${profile.venue}/${profile.course}` : undefined}
                     archiveLabel="記事アーカイブ"
                 />
-                <Link prefetch={false} href="/races/today" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary">
+                <Link prefetch={false} href="/races/today" className="mt-6 inline-flex min-h-10 items-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-primary">
                     今日のレースを確認
                 </Link>
             </article>

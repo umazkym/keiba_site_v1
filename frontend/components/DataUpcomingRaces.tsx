@@ -105,7 +105,7 @@ export function DataUpcomingRaces({
                             <a
                                 href={buildCalendarUrl(race)}
                                 download={`${race.race_date}-${race.race_id}.ics`}
-                                className="inline-flex min-h-11 items-center gap-1.5 rounded-[10px] bg-white px-3 text-[13.5px] font-bold text-brand-700 ring-1 ring-inset ring-brand-200 transition-colors duration-150 hover:bg-brand-50"
+                                className="inline-flex min-h-9 items-center gap-1.5 rounded-[10px] bg-white px-3 text-[13.5px] font-bold text-brand-700 ring-1 ring-inset ring-brand-200 transition-colors duration-150 hover:bg-brand-50"
                             >
                                 <LineIcon name="calendar" size={16} className="block" />
                                 予定に追加

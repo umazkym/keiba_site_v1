@@ -20,6 +20,7 @@ import {
     summarizeHomeVenues,
     type HomeVenueSummary,
 } from '@/lib/home-page-summary';
+import { buildRaceDaySummary } from '@/lib/race-day-summary';
 import { estimateReadingMinutes, getArticleCategoryStyle, pickArticleThumbs } from '@/lib/article-visual';
 import { formatRaceDateLabel } from '@/lib/race-display';
 
@@ -27,6 +28,7 @@ import { AdUnit } from '@/components/AdUnit';
 import { NativeCardAd } from '@/components/NativeCardAd';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
 import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
+import { FaqItem } from '@/components/FaqItem';
 import { HomeStickyRaceCta } from '@/components/HomeStickyRaceCta';
 import { FAQSchema } from '@/components/StructuredData';
 import { SectionHeader } from '@/components/SectionHeader';
@@ -78,11 +80,12 @@ const homepageFaqItems = [
     },
 ];
 
-const DATA_LINKS: { href: string; icon: LineIconName; label: string; note: string }[] = [
-    { href: '/horses', icon: 'user', label: '競走馬データ', note: '近走・得意条件・AI偏差値の履歴' },
-    { href: '/jockeys', icon: 'trophy', label: '騎手データ', note: 'コース別・条件別の成績' },
-    { href: '/courses', icon: 'pin', label: 'コースデータ', note: '枠順・脚質の有利不利' },
-    { href: '/compare', icon: 'compare', label: '馬を比べる', note: '複数の馬の成績と得意条件を並べる' },
+// short：スマホの4つ横並びの名前（2026-09-26 利用者の指定「競走馬, 騎手, コース, 馬比較」）
+const DATA_LINKS: { href: string; icon: LineIconName; label: string; short: string; note: string }[] = [
+    { href: '/horses', icon: 'user', label: '競走馬データ', short: '競走馬', note: '近走・得意条件・AI偏差値の履歴' },
+    { href: '/jockeys', icon: 'trophy', label: '騎手データ', short: '騎手', note: 'コース別・条件別の成績' },
+    { href: '/courses', icon: 'pin', label: 'コースデータ', short: 'コース', note: '枠順・脚質の有利不利' },
+    { href: '/compare', icon: 'compare', label: '馬を比べる', short: '馬比較', note: '複数の馬の成績と得意条件を並べる' },
 ];
 
 const getJstDateParts = () => {
@@ -117,7 +120,7 @@ const pickHeroPhoto = (venues: HomeVenueSummary[], jstHour: number): HomeHeroPho
 
 function Panel({ children, className = '', labelledBy }: { children: ReactNode; className?: string; labelledBy?: string }) {
     return (
-        <section aria-labelledby={labelledBy} className={`rounded-xl border border-slate-200 bg-white p-4 md:p-6 ${className}`}>
+        <section aria-labelledby={labelledBy} className={`rounded-xl border border-slate-200 bg-white px-4 py-3.5 md:p-6 ${className}`}>
             {children}
         </section>
     );
@@ -149,6 +152,7 @@ export default async function HomePage() {
     const latestArticles = getLatestArticles(4);
     const articleThumbs = pickArticleThumbs(latestArticles);
     const homeVenues = summarizeHomeVenues(predictions);
+    const raceDay = buildRaceDaySummary(predictions, todayStr);
     const raceDaySummary = getHomeRaceDaySummary(homeVenues);
     const homeSpecialPicks = extractHomeSpecialPicks(predictions, specialPick);
     const gradeRaceTopHorses = buildGradeRaceTopHorseMap(predictions, weeklyGradeRaces);
@@ -161,7 +165,8 @@ export default async function HomePage() {
         <>
             {homeVenues.length <= 4 ? homeVenues.map((venue) => venue.venue_name).join('・') : describeHomeVenues(homeVenues)}
             <br />
-            全{raceDaySummary.raceCount}レースの分析を公開中
+            {/* 狭い幅で「公／開中」と言葉の途中で折れないよう、「全Nレースの分析を公開中」の区切りでだけ折る */}
+            <span className="inline-block">全{raceDaySummary.raceCount}レースの</span><span className="inline-block">分析を公開中</span>
         </>
     ) : (
         <>
@@ -200,7 +205,7 @@ export default async function HomePage() {
             {/* ── 1. 写真の入口と前回の続き（PCは日付の行の右に前回の続き） ── */}
             <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-4">
                 <p className="hidden items-baseline gap-3 lg:order-1 lg:flex">
-                    <span className="font-display text-[22px] font-extrabold text-slate-900">{dateLabel}</span>
+                    <span className="font-display text-[22px] font-bold text-slate-900">{dateLabel}</span>
                     <span className="text-[13.5px] font-bold text-slate-500">7:00ごろ更新{venueMeta ? ` · ${venueMeta}` : ''}</span>
                 </p>
                 <div className="lg:order-3 lg:col-span-2">
@@ -232,7 +237,7 @@ export default async function HomePage() {
                                 entryMethod="board_link"
                                 className="inline-flex items-center gap-1 whitespace-nowrap text-[13.5px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600"
                             >
-                                開催日のボードで見る
+                                開催日のボード
                                 <LineIcon name="chevR" size={16} className="block" />
                             </HomeRaceEntryLink>
                         ) : undefined}
@@ -240,7 +245,7 @@ export default async function HomePage() {
                         compact
                     />
 
-                    <HomeTodayVenues date={todayStr} initialVenues={homeVenues} glyphs={glyphs} />
+                    <HomeTodayVenues date={todayStr} initialVenues={homeVenues} initialRaceDay={raceDay} glyphs={glyphs} />
 
                     {!shouldSuppressAdsInDevelopment && (
                         <div className="ad ad-wide">
@@ -252,32 +257,18 @@ export default async function HomePage() {
                 {/* ── 3. 2列（PCは右に広告・重賞・検索・カテゴリ） ── */}
                 <div className="grid items-start gap-3 md:gap-6 lg:grid-cols-[minmax(0,1fr)_384px]">
                     <div className="flex min-w-0 flex-col gap-3 md:gap-6">
-                        {/* スマホ・タブレットの今週の重賞（PCはヒーローの右上に出す） */}
-                        {weeklyGradeRaces.length > 0 ? (
+                        {/* スマホ・タブレットの今週の重賞（PCはヒーローの右上に出す）。重賞の無い週は何も出さない
+                            （以前は代わりに「確認しています」の1文とボタンを出していたが、読み込み中に見え、追従ボタンと同じ導線を重ねていた。2026-09-26） */}
+                        {weeklyGradeRaces.length > 0 && (
                             <div className="lg:hidden">
                                 <WeeklyGradeRaces variant="feature" races={weeklyGradeRaces} topHorses={gradeRaceTopHorses} />
                             </div>
-                        ) : (
-                            <Panel labelledBy="home-grade-fallback-heading">
-                                <SectionHeader id="home-grade-fallback-heading" title="今週の重賞" className="!mb-0" compact />
-                                <p className="mt-2 text-[13.5px] leading-relaxed text-slate-600">
-                                    重賞の開催情報を確認しています。
-                                </p>
-                                <HomeRaceEntryLink
-                                    href={`/races/${todayStr}`}
-                                    raceDate={todayStr}
-                                    entryMethod="grade_fallback"
-                                    className="ui-btn ui-btn--secondary mt-3 w-full md:w-auto"
-                                >
-                                    今日のレース分析を確認する
-                                </HomeRaceEntryLink>
-                            </Panel>
                         )}
 
                         {/* 本日の分析注目馬（注目馬が無い日は出さない） */}
                         {homeSpecialPicks.favored && (
                             <Panel labelledBy="home-pick-heading">
-                                <SectionHeader id="home-pick-heading" title="本日の分析注目馬" className="!mb-3" compact />
+                                <SectionHeader id="home-pick-heading" title="本日の分析注目馬" className="!mb-2.5 md:!mb-3" compact />
                                 <SpecialPickCard pick={specialPick} date={todayStr} precomputedPicks={homeSpecialPicks} />
                             </Panel>
                         )}
@@ -322,14 +313,14 @@ export default async function HomePage() {
                                             <Link
                                                 prefetch={false}
                                                 href={`/articles/${article.slug}`}
-                                                className="group flex gap-3 py-3 md:flex-col md:gap-2.5 md:py-0"
+                                                className="group flex gap-3 py-2.5 md:flex-col md:gap-2.5 md:py-0"
                                             >
                                                 <ArticleThumb
                                                     thumb={articleThumbs[index]}
-                                                    sizes="(min-width: 1024px) 260px, (min-width: 768px) 30vw, 104px"
-                                                    className="h-[70px] w-[104px] shrink-0 rounded-[10px] md:aspect-[16/9] md:h-auto md:w-full md:rounded-xl"
+                                                    sizes="(min-width: 1024px) 260px, (min-width: 768px) 30vw, 90px"
+                                                    className="h-[60px] w-[90px] shrink-0 rounded-[10px] md:aspect-[16/9] md:h-auto md:w-full md:rounded-xl"
                                                 />
-                                                <span className="flex min-w-0 flex-col gap-1.5 md:contents">
+                                                <span className="flex min-w-0 flex-col gap-1 md:contents">
                                                     <span className="line-clamp-2 text-[14px] font-bold leading-normal text-slate-900 group-hover:text-brand-700 md:order-2 md:text-[15px] md:leading-[1.55]">
                                                         {article.title}
                                                     </span>
@@ -364,45 +355,40 @@ export default async function HomePage() {
                                         <LineIcon name="chevR" size={16} className="block" />
                                     </Link>
                                 )}
-                                className="!mb-3 md:!mb-4"
+                                className="!mb-2 md:!mb-4"
                                 compact
                             />
-                            <div className="grid gap-2.5 sm:grid-cols-2">
+                            {/* スマホはアイコンと名前を縦に置いた4つの横並び。枠線と灰色の面は付けず、全体の大きさはそのままでアイコンだけ大きく（2026-09-26 利用者の指定）。PCは2×2の札で補足の1行つき */}
+                            <div className="grid grid-cols-4 gap-2 md:grid-cols-2 md:gap-2.5">
                                 {DATA_LINKS.map((item) => (
                                     <Link
                                         key={item.href}
                                         prefetch={false}
                                         href={item.href}
-                                        className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5 transition-colors duration-150 hover:border-brand-300"
+                                        aria-label={item.label}
+                                        className="flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 transition-colors duration-150 hover:bg-slate-50 md:flex-row md:gap-3 md:border md:border-slate-200 md:bg-slate-50 md:p-3.5 md:hover:border-brand-300"
                                     >
-                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-slate-200 bg-white text-navy" aria-hidden="true">
-                                            <LineIcon name={item.icon} size={20} />
+                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center text-navy md:h-10 md:w-10 md:rounded-[10px] md:border md:border-slate-200 md:bg-white" aria-hidden="true">
+                                            <LineIcon name={item.icon} size={30} className="block md:hidden" />
+                                            <LineIcon name={item.icon} size={18} className="hidden md:block" />
                                         </span>
-                                        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                        <span className="whitespace-nowrap text-[12.5px] font-bold text-slate-900 md:hidden">{item.short}</span>
+                                        <span className="hidden min-w-0 flex-1 flex-col gap-0.5 md:flex">
                                             <span className="text-[14.5px] font-bold text-slate-900">{item.label}</span>
                                             <span className="text-[12.5px] text-slate-500">{item.note}</span>
                                         </span>
-                                        <LineIcon name="chevR" size={18} className="block shrink-0 text-slate-500" />
+                                        <LineIcon name="chevR" size={18} className="hidden shrink-0 text-slate-500 md:block" />
                                     </Link>
                                 ))}
                             </div>
                         </Panel>
 
-                        {/* よくある質問 */}
+                        {/* よくある質問。ホームでは全部閉じた一覧にする（開いた1問ぶんの高さを使わない。2026-09-26） */}
                         <Panel labelledBy="home-faq-heading">
                             <SectionHeader id="home-faq-heading" title="よくある質問" className="!mb-1" compact />
                             <div className="flex flex-col">
-                                {homepageFaqItems.map((item, index) => (
-                                    <details key={item.question} open={index === 0} className="group border-b border-slate-200 last:border-b-0">
-                                        <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-3 text-[14.5px] font-bold text-slate-900 md:min-h-[56px] md:text-[15.5px] [&::-webkit-details-marker]:hidden">
-                                            <span className="font-display text-[18px] font-extrabold text-brand-600" aria-hidden="true">Q</span>
-                                            <span className="flex-1">{item.question}</span>
-                                            <LineIcon name="chevD" size={18} className="block shrink-0 text-slate-500 transition-transform duration-150 group-open:rotate-180" />
-                                        </summary>
-                                        <p className="mb-4 ml-[30px] text-pretty text-[13.5px] leading-[1.85] text-slate-700 md:text-[14.5px]">
-                                            {item.answer}
-                                        </p>
-                                    </details>
+                                {homepageFaqItems.map((item) => (
+                                    <FaqItem key={item.question} question={item.question}>{item.answer}</FaqItem>
                                 ))}
                             </div>
                         </Panel>

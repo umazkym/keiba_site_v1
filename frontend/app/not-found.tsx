@@ -35,7 +35,7 @@ export default function NotFound() {
                 </p>
                 {/* 送信は Enter・キーボードの「検索」で行う。読み上げ用の送信ボタンは見えない形で残す */}
                 <form action="/search" method="get" role="search" className="flex w-full max-w-[520px] items-center">
-                    <label className="flex h-[52px] min-w-0 flex-1 items-center gap-2.5 rounded-[14px] border-[1.5px] border-slate-300 bg-white px-4 transition-colors duration-150 focus-within:border-brand-600">
+                    <label className="flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-[14px] border-[1.5px] border-slate-300 bg-white px-4 transition-colors duration-150 focus-within:border-brand-600">
                         <LineIcon name="search" size={20} className="block shrink-0 text-slate-400" />
                         <span className="sr-only">サイト内を検索</span>
                         <input
@@ -58,7 +58,7 @@ export default function NotFound() {
                         prefetch={false}
                         className="flex items-center gap-3.5 rounded-[14px] border border-slate-200 bg-white p-4 transition-colors duration-150 hover:border-brand-300"
                     >
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
                             <LineIcon name={entry.icon} size={22} />
                         </span>
                         <span className="flex min-w-0 flex-1 flex-col gap-0.5">

@@ -82,7 +82,7 @@ export function RecentRaceReturn({ className = '' }: RecentRaceReturnProps) {
                 race_number: recentRace.raceNumber,
                 age_hours: Math.max(0, Math.floor((Date.now() - recentRace.viewedAt) / 3_600_000)),
             })}
-            className={`flex min-h-[52px] items-center gap-2.5 rounded-xl border border-slate-200 bg-white py-2 pl-2 pr-3 transition-colors duration-150 hover:border-brand-300 ${className}`}
+            className={`flex min-h-11 items-center gap-2.5 rounded-xl border border-slate-200 bg-white py-2 pl-2 pr-3 transition-colors duration-150 hover:border-brand-300 ${className}`}
         >
             <RacePlate venue={recentRace.venueName} raceNumber={recentRace.raceNumber} size="xs" />
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">

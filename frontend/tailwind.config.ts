@@ -118,8 +118,14 @@ const config: Config = {
         sans: [
           "var(--font-body)",
         ],
+        // 見出し：本文と同じゴシック（--font-display は globals.css で本文の書体を指す）
         display: [
           "var(--font-display)",
+          "var(--font-body)",
+        ],
+        // ロゴ文字とホームの大見出しだけの丸ゴシック（app/layout.tsx の M PLUS Rounded 1c）
+        brand: [
+          "var(--font-brand)",
           "var(--font-body)",
         ],
         num: [

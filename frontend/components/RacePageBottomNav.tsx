@@ -100,7 +100,7 @@ export function RacePageBottomNav() {
                             onClick={() => scrollToItem(feature)}
                             tabIndex={isVisible ? 0 : -1}
                             aria-current={isActive ? 'location' : undefined}
-                            className={`relative flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 px-1 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${isActive
+                            className={`relative flex min-h-[50px] min-w-0 flex-col items-center justify-center gap-1 px-1 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${isActive
                                 ? 'text-navy'
                                 : 'text-slate-500 hover:text-navy'
                                 }`}

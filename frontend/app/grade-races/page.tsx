@@ -53,7 +53,7 @@ export default function GradeRacesPage() {
       <div className="mx-auto max-w-5xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
         <header className="rounded-[16px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-8">
           <p className="text-[13px] font-bold text-slate-500">重賞</p>
-          <h1 className="mt-1 font-display text-[24px] font-extrabold leading-snug text-slate-900 sm:text-[34px]">
+          <h1 className="mt-1 font-display text-[24px] font-bold leading-snug text-slate-900 sm:text-[34px]">
             今週の重賞・G1データ分析
           </h1>
           <p className="mt-2 max-w-3xl text-[14px] leading-[1.75] text-slate-700 sm:text-base">
@@ -104,7 +104,7 @@ export default function GradeRacesPage() {
         </section>
 
         <section className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-soft">
-          <h2 className="font-display text-[19px] font-extrabold text-slate-900 sm:text-[21px]">本日の重賞を確認する</h2>
+          <h2 className="font-display text-[19px] font-bold text-slate-900 sm:text-[21px]">本日の重賞を確認する</h2>
           <p className="mt-2 text-sm leading-7 text-slate-600">
             当日の出走表、AI偏差値、脚質予測、対戦成績はレース分析ページで確認できます。
           </p>

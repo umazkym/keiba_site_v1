@@ -204,10 +204,10 @@ export const AffiliateSlot = ({
         : null;
     const fallbackVisualLabel = campaign.fallbackVisualLabel || '競馬グッズ';
     const isVoting = campaign.type === 'voting';
-    // 投票の PR は見本の形（白地・薄い赤の枠・「PR 楽天競馬」・見出し・注記・全幅44pxのボタン。2026-09-25）。
+    // 投票の PR は見本の形（白地・薄い赤の枠・「PR 楽天競馬」・見出し・注記・全幅40pxのボタン。2026-09-25、高さは2026-09-26に詰めた）。
     // スマホでは外側の余白を持たず、置き場所の gap で間を決める。
     const sectionClassName = isVoting
-        ? 'my-0 sm:my-2 rounded-[14px] border border-rose-200 bg-white p-3.5 sm:p-4'
+        ? 'my-0 sm:my-2 rounded-[14px] border border-rose-200 bg-white px-3.5 py-3 sm:p-4'
         : isCompact
             ? 'my-1.5 sm:my-2 rounded-xl border border-rose-200 bg-rose-50/70 p-2 shadow-sm sm:p-2.5'
             : 'my-1.5 sm:my-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-3';
@@ -315,9 +315,9 @@ export const AffiliateSlot = ({
                         </p>
                     )}
 
-                    <div className={`${isVoting ? 'mt-2.5' : isCompact ? 'mt-1.5' : 'mt-1.5 sm:mt-2'} flex flex-col gap-1.5 sm:gap-2`}>
+                    <div className={`${isVoting ? 'mt-2' : isCompact ? 'mt-1.5' : 'mt-1.5 sm:mt-2'} flex flex-col gap-1.5 sm:gap-2`}>
                         {wholeSlotLink && isVoting ? (
-                            <div className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[10px] border border-rose-200 bg-rose-50 px-4 text-[14px] font-bold text-rose-700">
+                            <div className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-[10px] border border-rose-200 bg-rose-50 px-4 text-[14px] font-bold text-rose-700">
                                 <span className="min-w-0 truncate">{wholeSlotLink.label || providerLabels[wholeSlotLink.provider]}</span>
                                 <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                             </div>

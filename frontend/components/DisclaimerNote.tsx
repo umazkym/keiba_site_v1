@@ -8,8 +8,9 @@ export function DisclaimerNote({ className = '' }: { className?: string }) {
     return (
         <p className={`text-[12.5px] leading-relaxed text-slate-500 ${className}`}>
             過去データによる参考値で、的中は保証しません。
-            <Link href="/terms" prefetch={false} className="ml-1 font-bold text-slate-600 underline underline-offset-2 hover:text-brand-700">
-                利用規約（免責）
+            {/* 以前の「利用規約（免責）」は390px幅で行をはみ出し、「利用規約／（免責）」と不自然に折れていた。1行に収め、折れるときも言葉の途中で切らない（2026-09-26） */}
+            <Link href="/terms" prefetch={false} className="ml-1 whitespace-nowrap font-bold text-slate-600 underline underline-offset-2 hover:text-brand-700">
+                利用規約
             </Link>
         </p>
     );

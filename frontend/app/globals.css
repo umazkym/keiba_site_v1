@@ -7,9 +7,25 @@
  * tailwind.config.ts・lib/brand.ts・backend/scripts/brand_tokens.py と同じ値を使う。
  * Tailwind のクラスで書けない箇所だけで参照する。
  */
+/* Windows の游ゴシック：太さ400を Medium、700を Bold で描く（端末の書体だけで、配信しない） */
+@font-face {
+    font-family: "YuGothicM";
+    src: local("Yu Gothic Medium"), local("YuGothic-Medium");
+    font-weight: 100 600;
+}
+
+@font-face {
+    font-family: "YuGothicM";
+    src: local("Yu Gothic Bold"), local("YuGothic-Bold");
+    font-weight: 700 900;
+}
+
 :root {
-    /* 本文の書体：端末の日本語書体（app/layout.tsx の説明を参照） */
-    --font-body: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+    /* 本文の書体：端末の日本語書体（app/layout.tsx の説明を参照）。
+       Noto Sans JP の無い Windows は游ゴシックの Medium を使う（Regular は細くかすれて見える。2026-09-26） */
+    --font-body: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "YuGothicM", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+    /* 見出しも本文と同じゴシック（2026-09-26「ゴシックでそろえる」）。丸ゴシックは --font-brand（ロゴ文字とホームの大見出し） */
+    --font-display: var(--font-body);
 
     /* 役割の色 */
     --brand: #4C4EFF;        /* ロゴの円：リンク・選択中・主ボタン */
@@ -121,14 +137,14 @@
         letter-spacing: 0;
     }
 
-    /* 大きい見出しだけロゴの丸みに合わせる。h3以下と表の中は本文の書体のまま */
+    /* h1・h2 は見出しの書体（本文と同じゴシック。2026-09-26 に丸ゴシックから変えた） */
     h1,
     h2 {
         font-family: var(--font-display), var(--font-body);
     }
 
     h1 {
-        font-weight: 800;
+        font-weight: 700;
         line-height: 1.2;
     }
 
@@ -213,7 +229,7 @@
     }
 
     .ui-section-header__title {
-        @apply text-[18px] font-extrabold leading-snug text-slate-900 sm:text-xl;
+        @apply text-[18px] font-bold leading-snug text-slate-900 sm:text-xl;
     }
 
     .ui-section-header--compact .ui-section-header__title {
@@ -232,10 +248,10 @@
         @apply shrink-0 text-[13px] font-bold text-brand-700 sm:text-sm;
     }
 
-    /* 見出しの右のリンクは、リンクそのものに押せる範囲を広げる（外側の箱に広げても押せない） */
+    /* 見出しの右のリンクは32pxの実寸（2026-09-26 押せる大きさの見直し：見た目を詰め、最低24pxを保つ） */
     .ui-section-header__action > a,
     .ui-section-header__action > button {
-        @apply inline-flex min-h-11 items-center;
+        @apply inline-flex min-h-8 items-center;
         position: relative;
     }
 
@@ -244,9 +260,7 @@
         position: relative;
     }
 
-    .hit-44::after,
-    .ui-section-header__action > a::after,
-    .ui-section-header__action > button::after {
+    .hit-44::after {
         position: absolute;
         top: 50%;
         left: 0;
@@ -273,13 +287,13 @@
         @apply items-end;
     }
 
-    /* 見出しの操作は44pxを実寸で確保し、直下の記事リンクと当たり判定を重ねない。 */
+    /* 見出しの操作は上下中央にそろえる */
     .ui-section-header:has(.ui-section-header__action) {
         align-items: center;
     }
 
     .home-page-scope .ui-section-header__title {
-        @apply text-[19px] font-extrabold md:text-[21px];
+        @apply text-[19px] font-bold md:text-[21px];
     }
 
     .home-page-scope .ui-section-header__meta {
@@ -343,14 +357,14 @@
         @apply border-b border-slate-200 bg-white;
     }
 
-    /* ボタンは1系統（DESIGN.md「ボタン」）。高さは標準44px・大52px。
+    /* ボタンは1系統（DESIGN.md「ボタン」）。高さは標準40px・大48px（2026-09-26 に44・52から詰めた）。
        主＝インディゴ、紺＝写真や強い区切りの中、副＝白地に枠、白＝紺や写真の上、文字だけ＝補助の操作 */
     .ui-btn {
-        @apply inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-[11px] px-[18px] text-[15px] font-bold leading-tight transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 focus-visible:ring-offset-2;
+        @apply inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-[11px] px-[18px] text-[15px] font-bold leading-tight transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 focus-visible:ring-offset-2;
     }
 
     .ui-btn--l {
-        @apply min-h-[52px] rounded-[13px] px-[22px] text-base;
+        @apply min-h-12 rounded-[13px] px-[22px] text-base;
     }
 
     .ui-btn--full {
@@ -384,7 +398,7 @@
     }
 
     .recent-return-primary {
-        @apply inline-flex min-h-[44px] items-center justify-center rounded-[11px] bg-brand-600 px-3 py-1 text-[11px] font-bold leading-none text-white transition-colors duration-150 hover:bg-brand-700 sm:px-3 sm:py-1.5 sm:text-xs;
+        @apply inline-flex min-h-9 items-center justify-center rounded-[11px] bg-brand-600 px-3 py-1 text-[11px] font-bold leading-none text-white transition-colors duration-150 hover:bg-brand-700 sm:px-3 sm:py-1.5 sm:text-xs;
     }
 
     .skip-link {
@@ -739,10 +753,10 @@ header.glass {
     }
 }
 
-/* 横だけ切り、縦は切らない（リンクの押せる範囲 hit-44 を上下に広げるため） */
+/* 横だけ切り、縦は切らない。スマホは32pxの1行（2026-09-26 押せる大きさの見直し） */
 .breadcrumb-nav {
-    min-height: 44px;
-    margin-bottom: 6px;
+    min-height: 32px;
+    margin-bottom: 4px;
     overflow-x: clip;
     overflow-y: visible;
     padding: 0;
@@ -864,22 +878,22 @@ header.glass {
     }
 }
 
-/* ---------- 記事の「よくある質問」：白いカードの開閉式（lib/article-ux.ts の wrapFaqSection。2026-09-25 見本） ----------
-   Qの印・∨、最初の1問だけ開く。答えの文字は本文と同じ（スマホ15.5px・行間1.9、PC 17px・1.95）。最後の行の下線は付けない。 */
+/* ---------- 記事の「よくある質問」：白いカードの開閉式（lib/article-ux.ts の wrapFaqSection） ----------
+   ホームの質問（components/FaqItem.tsx）と同じ見た目にそろえる（2026-09-26 利用者の指定）。初めは全部閉じる。最後の行の下線は付けない。 */
 .article-faq {
     margin: 28px 0 0;
     padding: 14px 16px 2px;
-    border-radius: 14px;
+    border-radius: 12px;
     background: #ffffff;
     box-shadow: inset 0 0 0 1px var(--slate-200-color);
 }
 
 .article-faq > h2 {
     margin: 0 0 2px;
-    color: var(--navy);
+    color: var(--text);
     font-family: var(--font-display), var(--font-body);
     font-size: 18px;
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1.4;
 }
 
@@ -890,9 +904,9 @@ header.glass {
 .article-faq-item > summary {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 52px;
-    padding: 10px 0;
+    gap: 12px;
+    min-height: 44px;
+    padding: 6px 0;
     cursor: pointer;
     list-style: none;
 }
@@ -904,7 +918,7 @@ header.glass {
 .article-faq-q {
     flex: 0 0 18px;
     color: var(--brand);
-    font-family: var(--font-num), var(--font-body);
+    font-family: var(--font-body);
     font-size: 18px;
     font-weight: 700;
     line-height: 1;
@@ -915,14 +929,17 @@ header.glass {
     min-width: 0;
     margin: 0;
     color: var(--text);
-    font-size: 17px;
+    /* 2行目に「か？」だけが落ちないよう、行の長さをそろえ文節で折る（FaqItem と同じ） */
+    text-wrap: balance;
+    word-break: auto-phrase;
+    font-size: 14.5px;
     font-weight: 700;
     line-height: 1.5;
 }
 
 .article-faq-chev {
     flex-shrink: 0;
-    color: #8388A6;
+    color: var(--slate-500-color);
     transition: transform 150ms ease;
 }
 
@@ -931,7 +948,7 @@ header.glass {
 }
 
 .article-faq-a {
-    padding: 0 0 14px 28px;
+    padding: 0 0 12px 30px;
 }
 
 .article-faq-a > * + *,
@@ -946,9 +963,9 @@ header.glass {
 .article-faq-a :is(p, li),
 .article-faq-intro :is(p, li) {
     margin: 0;
-    color: var(--text);
-    font-size: 15.5px;
-    line-height: 1.9;
+    color: var(--slate-700-color);
+    font-size: 13.5px;
+    line-height: 1.85;
 }
 
 .article-faq-a ul,
@@ -990,13 +1007,13 @@ header.glass {
     }
 
     .article-faq-item > summary h3 {
-        font-size: 19px;
+        font-size: 15.5px;
     }
 
     .article-faq-a :is(p, li),
     .article-faq-intro :is(p, li) {
-        font-size: 17px;
-        line-height: 1.95;
+        font-size: 14.5px;
+        line-height: 1.85;
     }
 }
 
@@ -1197,13 +1214,13 @@ header.glass {
   color: var(--ink);
   font-family: var(--font-display), var(--font-body);
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.3;
 }
 
 
 .race-section-lead {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   color: var(--ink-muted);
   font-size: 13px;
   line-height: 1.7;
@@ -1282,7 +1299,7 @@ header.glass {
   .race-page-scope .ui-section-header__title,
   .race-page-scope .ui-section-header--compact .ui-section-header__title {
     font-size: 17px;
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1.35;
   }
 
@@ -1308,13 +1325,26 @@ header.glass {
     margin-bottom: 0 !important;
   }
 
+  /* スマホは列見出しの行を画面に出さない（読み上げには残す。2026-09-26 画面の案D） */
+  .race-prediction-thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* スマホの出走表は1行44px（馬名15px＋位置取りの2段が収まる高さ。2026-09-26 に52pxから詰めた） */
   .race-page-scope .race-prediction-table th {
-    padding: 6px 4px;
+    height: 32px;
+    padding: 0 4px;
     font-size: 11px;
   }
 
   .race-page-scope .race-prediction-table td {
-    padding: 7px 4px;
+    height: 44px;
+    padding: 4px 4px;
     font-size: 13px;
   }
 }
@@ -1358,19 +1388,30 @@ header.glass {
   background: #FFFBF1;
 }
 
+/* 1〜12R は枠線をやめて淡い面、選択中だけ紺（2026-09-26 画面の案D。12個の枠線が並ぶとうるさかった） */
 .race-tab {
   min-width: 0;
   min-height: 40px;
   padding: 5px 1px;
-  border: 1px solid var(--slate-200-color);
+  border: 1px solid transparent;
   border-radius: 10px;
-  background: white;
+  background: var(--slate-50-color);
   color: var(--ink-2);
   text-align: center;
   font-family: var(--font-num), var(--font-body);
-  font-weight: 700;
+  /* 数字は中くらいの太さ（700 だと12個並んでごつく見えた。2026-09-26）。R は小さく細く */
+  font-weight: 500;
   font-size: 15px;
   line-height: 1;
+}
+.race-tab__r {
+  margin-left: 1px;
+  font-size: 0.72em;
+  font-weight: 500;
+  opacity: 0.75;
+}
+.race-tab.active {
+  font-weight: 600;
 }
 .race-tab small {
   display: block;
@@ -1501,11 +1542,29 @@ header.glass {
   transition: top 180ms cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* スマホ・タブレットは、止まる前はレース名の要約の行（36px）を出さない。すぐ上のレースの見出しと同じ内容のため。
+   止まったら出し、その分を下の余白から引いて本文の位置を動かさない（2026-09-26 画面の案D） */
+@media (max-width: 1023px) {
+  .race-sticky-selector[data-stuck="false"] .race-selector-summary {
+    display: none;
+  }
+
+  .race-sticky-selector[data-stuck="true"] {
+    margin-bottom: -28px;
+  }
+}
+
 .race-sticky-selector {
   top: calc(var(--site-header-offset) + 8px);
-  /* 上の影（背景色）でヘッダーとの間の本文を隠す。広げる量（6px）を付けないと、角丸の外側の角から本文が透けていた（2026-09-25） */
-  box-shadow: 0 -10px 0 6px var(--bg), 0 6px 18px rgba(20, 26, 61, 0.08);
+  /* 枠線（Tailwind の ring-1 も box-shadow のため、ここで描く）。止まる前は影を付けない */
+  box-shadow: inset 0 0 0 1px var(--slate-200-color);
   transition: top 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* 止まっている間だけ、上の影（背景色）でヘッダーとの間（8px）の本文を隠し、浮いた影を付ける。
+   止まる前に付けると、すぐ上のレースの見出しの札の下を背景色で欠いていた（2026-09-26） */
+.race-sticky-selector[data-stuck="true"] {
+  box-shadow: inset 0 0 0 1px var(--slate-200-color), 0 -10px 0 6px var(--bg), 0 6px 18px rgba(20, 26, 61, 0.08);
 }
 
 .ad {
@@ -1553,11 +1612,12 @@ header.glass {
 @media (max-width: 768px) {
   /* Race detail responsive */
 
+  /* 番号の列を枠の内側に置く。以前は左右の余白0で、角丸の枠に1Rと12Rの角が切られていた（2026-09-26） */
   .race-selector {
     min-width: 0;
     border: 0;
     border-radius: 0;
-    padding: 0;
+    padding: 0 4px 4px;
     gap: 2px;
     overflow: hidden;
   }
@@ -1569,8 +1629,8 @@ header.glass {
   .race-tab {
     min-width: 0;
     width: auto;
-    min-height: 44px;
-    padding: 5px 0;
+    min-height: 36px;
+    padding: 4px 0;
     border-radius: 8px;
     font-size: 14px;
     display: flex;

@@ -79,7 +79,7 @@ function ArticlePagination({
 
   const buildUrl = (p: number) => buildArticlesHref({ category, tag, page: p });
   const visiblePages = getVisiblePageNumbers(currentPage, totalPages);
-  const stepClass = "inline-flex h-11 items-center justify-center gap-1 rounded-[10px] bg-white px-3 text-[14px] font-bold text-slate-700 ring-1 ring-inset ring-slate-200 transition-colors duration-150 hover:bg-slate-50 hover:text-brand-700";
+  const stepClass = "inline-flex h-9 items-center justify-center gap-1 rounded-[10px] bg-white px-3 text-[14px] font-bold text-slate-700 ring-1 ring-inset ring-slate-200 transition-colors duration-150 hover:bg-slate-50 hover:text-brand-700";
 
   return (
     // スマホの上の空きは親の gap で決める（mt はPCだけ。2026-09-25 スマホの見直し）
@@ -93,7 +93,7 @@ function ArticlePagination({
       {visiblePages.map((p, idx) => {
         if (p === 'ellipsis') {
           return (
-            <span key={`ellipsis-${idx}`} className="inline-flex h-11 w-6 items-center justify-center text-[14px] font-bold text-slate-500">
+            <span key={`ellipsis-${idx}`} className="inline-flex h-9 w-6 items-center justify-center text-[14px] font-bold text-slate-500">
               …
             </span>
           );
@@ -105,7 +105,7 @@ function ArticlePagination({
             key={p}
             href={buildUrl(p)}
             aria-current={isCurrent ? "page" : undefined}
-            className={`inline-flex h-11 w-11 items-center justify-center rounded-[10px] font-num text-[15px] font-bold transition-colors duration-150 ${isCurrent
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-[10px] font-num text-[15px] font-bold transition-colors duration-150 ${isCurrent
               ? "bg-navy text-white"
               : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"
               }`}
@@ -262,7 +262,7 @@ function UpcomingGradeRacePickup({
   return (
     // 下の空きは最後の行の py-3 と合わせて16px（2026-09-25）
     <section className={`rounded-[14px] bg-white px-4 pb-1 pt-4 ring-1 ring-inset ring-slate-200 sm:p-5 ${className}`} aria-labelledby="articles-upcoming-grade-heading">
-      <h2 id="articles-upcoming-grade-heading" className="flex items-center gap-2 font-display text-[18px] font-extrabold text-slate-900 sm:text-[19px]">
+      <h2 id="articles-upcoming-grade-heading" className="flex items-center gap-2 font-display text-[18px] font-bold text-slate-900 sm:text-[19px]">
         <LineIcon name="trophy" size={19} className="block text-navy" />
         近日の重賞
       </h2>
@@ -309,7 +309,7 @@ function FeaturedArticle({ article, thumb, className = "" }: { article: ArticleL
       />
       <span className="flex flex-col justify-center gap-2.5 p-4 sm:p-6 lg:p-8">
         <ArticleMeta article={article} />
-        <span className="font-display text-[19px] font-extrabold leading-[1.5] text-slate-900 transition-colors duration-150 group-hover:text-brand-700 sm:text-[22px] lg:text-[25px]">
+        <span className="font-display text-[19px] font-bold leading-[1.5] text-slate-900 transition-colors duration-150 group-hover:text-brand-700 sm:text-[22px] lg:text-[25px]">
           {article.title}
         </span>
         {/* 説明はPCだけ（スマホは見本どおり写真・日付・題名だけ。2026-09-25） */}
@@ -331,12 +331,12 @@ function ArticleRow({ article, thumb }: { article: ArticleLike; thumb: ArticleTh
     <Link
       prefetch={false}
       href={`/articles/${article.slug}`}
-      className="group flex gap-3 py-3 sm:gap-5 sm:py-4"
+      className="group flex gap-3 py-2.5 sm:gap-5 sm:py-4"
     >
       <ArticleThumb
         thumb={thumb}
-        sizes="(min-width: 640px) 200px, 104px"
-        className="h-[70px] w-[104px] shrink-0 rounded-[10px] sm:h-[112px] sm:w-[200px] sm:rounded-xl"
+        sizes="(min-width: 640px) 200px, 90px"
+        className="h-[60px] w-[90px] shrink-0 rounded-[10px] sm:h-[112px] sm:w-[200px] sm:rounded-xl"
       />
       {/* スマホは見本どおり題名→カテゴリ・日付、PCは日付→題名 */}
       <span className="flex min-w-0 flex-col justify-center gap-1.5 sm:gap-2">
@@ -408,7 +408,7 @@ function GradeRaceDirectoryDetails({
 
   return (
     <details id={id} className="group scroll-mt-20 rounded-xl border border-slate-200 bg-white" open={defaultOpen}>
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[14.5px] font-bold text-slate-900">
+      <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[14.5px] font-bold text-slate-900">
         <span>重賞</span>
         <span className="flex items-center gap-2">
           <span className="text-[12.5px] font-semibold text-slate-500">{groupCount}レース / {articleCount}記事</span>
@@ -419,7 +419,7 @@ function GradeRaceDirectoryDetails({
         <div className="grid gap-1.5">
           {sections.map((section) => (
             <details key={section.id} className={`group/grade overflow-hidden rounded-lg border ${getGradeSectionTone(section.id)}`}>
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-[13.5px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-[13.5px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
                 <span>{getGradeSectionLabel(section.id, section.title)}</span>
                 <span className="flex items-center gap-1.5">
                   <span className="rounded bg-white px-2 py-0.5 text-[12px] font-semibold text-slate-600">
@@ -455,7 +455,7 @@ function EntityDirectoryDetails({
 
   return (
     <details id={id} className="group scroll-mt-20 rounded-xl border border-slate-200 bg-white" open={defaultOpen}>
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[14.5px] font-bold text-slate-900">
+      <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[14.5px] font-bold text-slate-900">
         <span>{title}</span>
         <span className="flex items-center gap-2">
           <span className="font-num text-[12.5px] font-semibold text-slate-500">{visibleGroups.length}</span>
@@ -481,7 +481,7 @@ function CourseDirectoryDetails({
 
   return (
     <details id={id} className="group scroll-mt-20 rounded-lg border border-slate-200 bg-white">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[14.5px] font-bold text-slate-900">
+      <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[14.5px] font-bold text-slate-900">
         <span>コース</span>
         <span className="flex items-center gap-2">
           <span className="font-num text-[12.5px] font-semibold text-slate-500">{courseCount}</span>
@@ -492,7 +492,7 @@ function CourseDirectoryDetails({
         <div className="grid gap-1.5">
           {sections.map((section) => (
             <details key={section.id} className="group/venue overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-800">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-[13.5px] font-bold">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-[13.5px] font-bold">
                 <span>{section.title}</span>
                 <span className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500">
                   <span>{section.groups.length}コース / {section.articleCount}記事</span>
@@ -580,7 +580,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
       <div className="articles-page-scope site-shell-data pb-4 pt-1 sm:px-6 sm:pb-16 sm:pt-3">
         <header className="flex flex-col gap-3 sm:gap-4">
           <div className="flex flex-col gap-1.5 sm:gap-2">
-            <h1 className="font-display text-[24px] font-extrabold leading-snug text-slate-900 sm:text-[30px] lg:text-[34px]">
+            <h1 className="font-display text-[24px] font-bold leading-snug text-slate-900 sm:text-[30px] lg:text-[34px]">
               {pageTitle}
             </h1>
             {/* 導入文はページの説明として残す。件数とページ番号は「すべて」のチップ・ページ送りと重なるのでPCだけ */}
@@ -598,7 +598,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               prefetch={false}
               href="/articles"
               aria-current={!selectedCategory ? "page" : undefined}
-              className={`relative inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-bold transition-colors duration-150 before:absolute before:-inset-y-1 before:inset-x-0 sm:h-10 sm:px-4 sm:text-[14px] ${!selectedCategory ? "bg-navy text-white" : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"}`}
+              className={`relative inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13.5px] font-bold transition-colors duration-150 before:absolute before:-inset-y-1 before:inset-x-0 sm:h-10 sm:px-4 sm:text-[14px] ${!selectedCategory ? "bg-navy text-white" : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"}`}
             >
               すべて
               <span className={`font-num text-[12.5px] font-semibold ${!selectedCategory ? "text-white/75" : "text-slate-500"}`}>{allArticles.length}</span>
@@ -611,7 +611,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                   key={category}
                   href={buildArticlesHref({ category })}
                   aria-current={isActive ? "page" : undefined}
-                  className={`relative inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-bold transition-colors duration-150 before:absolute before:-inset-y-1 before:inset-x-0 sm:h-10 sm:px-4 sm:text-[14px] ${isActive ? "bg-navy text-white" : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"}`}
+                  className={`relative inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13.5px] font-bold transition-colors duration-150 before:absolute before:-inset-y-1 before:inset-x-0 sm:h-10 sm:px-4 sm:text-[14px] ${isActive ? "bg-navy text-white" : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"}`}
                 >
                   {category}
                   <span className={`font-num text-[12.5px] font-semibold ${isActive ? "text-white/75" : "text-slate-500"}`}>{count}</span>
@@ -711,7 +711,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
             <Link
               prefetch={false}
               href="/races/today"
-              className="flex min-h-[52px] items-center justify-between gap-3 rounded-[14px] bg-brand-50/70 px-4 py-3 ring-1 ring-inset ring-brand-200 transition-colors duration-150 hover:bg-brand-50 hover:ring-brand-300"
+              className="flex min-h-11 items-center justify-between gap-3 rounded-[14px] bg-brand-50/70 px-4 py-2.5 ring-1 ring-inset ring-brand-200 transition-colors duration-150 hover:bg-brand-50 hover:ring-brand-300"
             >
               <span className="flex items-center gap-2 text-[15px] font-bold text-slate-900">
                 <LineIcon name="race" size={20} className="block text-brand-600" />
@@ -721,7 +721,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
             </Link>
 
             <nav className="hidden rounded-[14px] bg-white p-3 ring-1 ring-inset ring-slate-200 lg:block" aria-label="記事テーマ">
-              <p className="mb-1 px-1 font-display text-[16px] font-extrabold text-slate-900">記事テーマ</p>
+              <p className="mb-1 px-1 font-display text-[16px] font-bold text-slate-900">記事テーマ</p>
               <div className="space-y-2">
                 <GradeRaceDirectoryDetails id="sidebar-grade-races" sections={gradeRaceSections} />
                 <EntityDirectoryDetails id="sidebar-races" title="レース" groups={archiveTotals.raceGroups} />

@@ -48,7 +48,7 @@ export function BrandLockup({ size = 40, tagline, tone = 'default', className = 
             <BrandMark size={size} />
             <span className="flex flex-col leading-none" style={{ gap: Math.round(size * 0.12) }}>
                 <span
-                    className={`font-display font-extrabold whitespace-nowrap ${inverse ? 'text-white' : 'text-navy'}`}
+                    className={`font-brand font-extrabold whitespace-nowrap ${inverse ? 'text-white' : 'text-navy'}`}
                     style={{ fontSize: Math.round(size * 0.56), letterSpacing: '0.01em' }}
                 >
                     UMA-FREE

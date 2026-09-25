@@ -63,7 +63,13 @@ export const HorseNumberAdvantageChart = ({ advantages, courseType, distance, ru
 
     return (
         <div className="flex h-full flex-col" aria-label={chartLabel}>
-            <div className="relative min-h-0 flex-1" role="img" aria-label={chartLabel}>
+            {/* 左に「有利（上）・不利（下）」の目印。説明文の代わり（2026-09-26 利用者の指定） */}
+            <div className="flex min-h-0 flex-1 gap-1.5">
+            <div className="flex w-6 shrink-0 flex-col justify-between text-[11px] font-bold leading-none" aria-hidden="true">
+                <span className="text-brand-700">有利</span>
+                <span className="text-rose-600">不利</span>
+            </div>
+            <div className="relative min-h-0 flex-1" role="img" aria-label={`${chartLabel}（上ほど有利、下ほど不利）`}>
                 <div className="absolute inset-x-0 border-t border-slate-400" style={{ top: `${zeroTop}%` }} />
                 <div className="absolute inset-0 grid gap-px sm:gap-1" style={gridStyle}>
                     {sortedAdvantages.map((entry) => {
@@ -93,7 +99,10 @@ export const HorseNumberAdvantageChart = ({ advantages, courseType, distance, ru
                     ))}
                 </ul>
             </div>
-            <div className="mt-1.5 grid shrink-0 gap-px sm:gap-1" style={gridStyle} aria-hidden="true">
+            </div>
+            <div className="mt-1.5 flex shrink-0 gap-1.5" aria-hidden="true">
+            <span className="w-6 shrink-0" />
+            <div className="grid min-w-0 flex-1 gap-px sm:gap-1" style={gridStyle}>
                 {sortedAdvantages.map((entry) => (
                     showBadges ? (
                         <span key={entry.horse_number} className="flex justify-center">
@@ -105,6 +114,7 @@ export const HorseNumberAdvantageChart = ({ advantages, courseType, distance, ru
                         </span>
                     )
                 ))}
+            </div>
             </div>
         </div>
     );

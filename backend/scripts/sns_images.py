@@ -369,33 +369,40 @@ def rank_row(c: Canvas, x: float, y: float, width: float, row: HorseRow, index: 
     return height
 
 
+LANE_GAP = 12
+
+
+def center_lane_rows(rows: list, left: float, usable: float, size: float, gap: float = LANE_GAP) -> tuple[list, int]:
+    """段の馬を馬番の小さい順に左から並べ、段の中で横の中央にそろえる。1行に入らなければ次の行へ折り返す（各行も中央）。
+    返り値は ([(馬, 左からの位置, 行)], 行の数)。2026-09-26 サイトの展開予測と同じ並べ方にした
+    （以前は位置取りの指標で右ほど前に置き、重なる馬を下の行へずらしていた）。"""
+    ordered = sorted(rows, key=lambda row: row.number or 0)
+    step = size + gap
+    per_row = max(1, int((usable + gap) // step))
+    chunks = [ordered[k:k + per_row] for k in range(0, len(ordered), per_row)]
+    placed = []
+    for slot, chunk in enumerate(chunks):
+        row_width = len(chunk) * size + (len(chunk) - 1) * gap
+        start = left + (usable - row_width) / 2
+        for k, row in enumerate(chunk):
+            placed.append((row, start + k * step, slot))
+    return placed, max(1, len(chunks))
+
+
 def lanes_block(c: Canvas, x: float, y: float, width: float, card: RaceCard, *, size: float = 40, label_width: float = 110) -> float:
-    """序盤の位置取り（右ほど前）。AI偏差値の上位3頭に琥珀の輪。高さを返す。"""
+    """序盤の位置取り。段ごとに馬番の小さい順・横の中央。AI偏差値の上位3頭に琥珀の輪。高さを返す。"""
     lanes = ("先行", "中団", "後方")
-    rows_by_lane = {lane: sorted((r for r in card.rows if r.position == lane), key=lambda r: r.position_index or 0) for lane in lanes}
+    rows_by_lane = {lane: [r for r in card.rows if r.position == lane] for lane in lanes}
     layouts = []
     total = 6.0
-    usable = width - label_width - size - 16
+    # 左の段の名前と同じ幅を右にも空け、馬の並びを図の真ん中にそろえる
+    usable = width - 2 * label_width
     for lane in lanes:
-        subs: list[float] = []
-        placed = []
-        for row in rows_by_lane[lane]:
-            px = label_width + ((row.position_index or 0) / 100) * usable
-            slot = next((k for k, last in enumerate(subs) if last + size + 4 <= px), -1)
-            if slot < 0:
-                if len(subs) < 3:
-                    slot = len(subs)
-                    subs.append(-1e9)
-                else:
-                    slot = subs.index(min(subs))
-                    px = max(px, subs[slot] + size + 4)
-            subs[slot] = px
-            placed.append((row, px, slot))
-        lane_height = max(1, len(subs)) * (size + 8) + 16
+        placed, rows = center_lane_rows(rows_by_lane[lane], label_width, usable, size)
+        lane_height = rows * (size + 8) + 16
         layouts.append((lane, placed, lane_height))
         total += lane_height
-    footer = size * 0.5 + 16
-    total += footer
+    total += 6
     c.rect((x, y, x + width, y + total), radius=size * 0.5, fill=T.TURF_SOFT)
     cursor = y + 6
     for index, (lane, placed, lane_height) in enumerate(layouts):
@@ -409,7 +416,6 @@ def lanes_block(c: Canvas, x: float, y: float, width: float, card: RaceCard, *, 
         cursor += lane_height
         if index < len(layouts) - 1:
             c.line((x, cursor, x + width, cursor), _mix(T.TURF_DEEP, T.TURF_SOFT, 0.18), 1.5)
-    c.text(x + width - size * 0.5, cursor + footer / 2, "進行方向 →", "bold", size * 0.5, T.TURF_DEEP, anchor="rm")
     return total
 
 
@@ -645,7 +651,7 @@ def render_threads_race(card: RaceCard, path: Path | str) -> str:
         y += rank_row(c, x, y, width, row, index, s=0.98, bar_width=320) + 12
     if any(row.position for row in card.rows):
         y += 18
-        c.text(x, y + 14, "序盤の位置取り（右ほど前）", "bold", 26, T.TURF_DEEP)
+        c.text(x, y + 14, "序盤の位置取り", "bold", 26, T.TURF_DEEP)
         y += 40
         lanes_block(c, x, y, width, card, size=36, label_width=100)
     runners = f"全{card.runners}頭" if card.runners else "全頭"
@@ -732,7 +738,7 @@ def _carousel_lanes(card: RaceCard, number: int, total: int) -> Canvas:
     c = Canvas(*PORTRAIT_SIZE, background=T.BG)
     y = _carousel_header(c, "展開予測", number, total)
     c.text(56, y + 20, "序盤（1コーナー）の位置取りの予測です。", "reg", 30, T.INK2)
-    c.text(56, y + 20 + 48, "右ほど前。琥珀の輪はAI偏差値の上位3頭。", "reg", 30, T.INK2)
+    c.text(56, y + 20 + 48, "琥珀の輪はAI偏差値の上位3頭。", "reg", 30, T.INK2)
     y += 130
     height = lanes_block(c, 56, y, 968, card, size=62, label_width=130)
     note = _lanes_note(card)

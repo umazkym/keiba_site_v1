@@ -118,7 +118,7 @@ export function ArticleRaceBridge({
                 {meta.join(' ・ ')}
               </p>
             </div>
-            <span className="inline-flex min-h-11 shrink-0 items-center gap-1 text-[11px] font-black text-brand-700 sm:text-xs">
+            <span className="inline-flex min-h-8 shrink-0 items-center gap-1 text-[11px] font-black text-brand-700 sm:text-xs">
               全頭分析へ <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
           </div>

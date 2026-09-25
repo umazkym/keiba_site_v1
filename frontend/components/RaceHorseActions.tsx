@@ -11,7 +11,7 @@ export function RaceHorseActions({ predictions }: { predictions: HorsePrediction
     if (predictions.length === 0) return null;
     return (
         <details className="border-t border-slate-200 bg-slate-50">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-bold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30">
+            <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 px-3 py-1.5 text-sm font-bold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30">
                 <span className="inline-flex items-center gap-2">
                     <GitCompareArrows className="h-4 w-4" aria-hidden="true" />
                     出走馬を保存・比較

@@ -27,7 +27,7 @@ export function EntityArticleSection({
     <section className="mt-10 rounded-[14px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-6">
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
-          <h2 className="font-display text-[19px] font-extrabold leading-snug text-slate-900 sm:text-[21px]">{title}</h2>
+          <h2 className="font-display text-[19px] font-bold leading-snug text-slate-900 sm:text-[21px]">{title}</h2>
           {description && (
             <p className="mt-1.5 max-w-3xl text-[14px] leading-[1.75] text-slate-700">{description}</p>
           )}
@@ -38,7 +38,7 @@ export function EntityArticleSection({
             <Link
               prefetch={false}
               href={archiveHref}
-              className="inline-flex min-h-11 items-center gap-1 font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600"
+              className="inline-flex min-h-8 items-center gap-1 font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600"
             >
               {archiveLabel}
               <LineIcon name="chevR" size={15} className="block" />

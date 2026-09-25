@@ -91,7 +91,7 @@ function markNumericColumns(tableHtml: string): string {
   });
 }
 
-// ---------- よくある質問：白いカードの開閉式にする（2026-09-25 スマホの見直し。見本：Qの印・∨、最初の1問だけ開く） ----------
+// ---------- よくある質問：白いカードの開閉式にする（Qの印・∨。2026-09-26 からホームと同じ見た目で、初めは全部閉じる） ----------
 // 本文のHTMLの形だけを変える。質問はH3のまま summary の中に置き、答えも閉じた中に残す（検索に読まれる）。
 // FAQの構造化データは元の本文から lib/article-faq.ts が作るので影響しない。
 const FAQ_HEADING_WITH_ID_PATTERN = /<h2 id="(section-\d+)">\s*よくある質問\s*<\/h2>/;
@@ -120,7 +120,7 @@ function wrapFaqSection(html: string): string {
     if (!questionHtml) continue;
     const answerHtml = question[3].trim();
     items.push(
-      `<details class="article-faq-item"${items.length === 0 ? ' open' : ''}>`
+      '<details class="article-faq-item">'
       + `<summary><span class="article-faq-q" aria-hidden="true">Q</span><h3${question[1] || ''}>${questionHtml}</h3>${FAQ_CHEVRON_SVG}</summary>`
       + (answerHtml ? `<div class="article-faq-a">${answerHtml}</div>` : '')
       + '</details>',

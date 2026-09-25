@@ -172,7 +172,7 @@ export function DataSearchPanel({
                             id={`${inputId}-affiliation`}
                             value={affiliation}
                             onChange={(event) => setAffiliation(event.target.value)}
-                            className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                            className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                         >
                             <option value="">すべての所属</option>
                             {TRAINER_AFFILIATION_OPTIONS.map((option) => (

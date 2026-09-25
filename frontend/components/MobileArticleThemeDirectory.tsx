@@ -42,7 +42,7 @@ const GroupLinks = ({ groups }: { groups: ArchiveGroup[] }) => (
                 prefetch={false}
                 key={group.href}
                 href={group.href}
-                className="flex min-h-11 items-center justify-between gap-3 px-3.5 py-2.5 text-[14px] font-bold text-slate-800 transition-colors duration-150 hover:bg-slate-50 hover:text-brand-700"
+                className="flex min-h-10 items-center justify-between gap-3 px-3.5 py-2.5 text-[14px] font-bold text-slate-800 transition-colors duration-150 hover:bg-slate-50 hover:text-brand-700"
             >
                 <span className="min-w-0 truncate">{group.title}</span>
                 <span className="shrink-0 font-num text-[12.5px] font-semibold text-slate-500">{group.articleCount}記事</span>
@@ -84,7 +84,7 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
 
     return (
         <section className={`lg:hidden ${className}`} aria-labelledby="mobile-article-theme-heading">
-            <h2 id="mobile-article-theme-heading" className="mb-2 font-display text-[18px] font-extrabold leading-snug text-slate-900">
+            <h2 id="mobile-article-theme-heading" className="mb-2 font-display text-[18px] font-bold leading-snug text-slate-900">
                 記事テーマ
             </h2>
             <div className="overflow-hidden rounded-[14px] border border-slate-200 bg-white">
@@ -108,7 +108,7 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                                         setIsOpen(true);
                                     }
                                 }}
-                                className={`flex min-h-11 items-center justify-center gap-1.5 px-2 text-[13.5px] font-bold transition-colors duration-150 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${isShown
+                                className={`flex min-h-10 items-center justify-center gap-1.5 px-2 text-[13.5px] font-bold transition-colors duration-150 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${isShown
                                     ? 'bg-brand-50/70 text-navy'
                                     : 'bg-white text-slate-700 hover:bg-slate-50'
                                     }`}
@@ -127,7 +127,7 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                         <div className="grid gap-1.5 p-2">
                             {gradeRaceSections.map(section => (
                                 <details key={section.id} className={`group/grade overflow-hidden rounded-lg border ${getGradeSectionTone(section.id)}`}>
-                                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-[14px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
+                                    <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-[14px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
                                         <span>{getGradeSectionLabel(section.id, section.title)}</span>
                                         <span className="flex items-center gap-1.5">
                                             <span className="rounded bg-white px-2 py-0.5 text-[12px] font-semibold text-slate-600">
@@ -148,7 +148,7 @@ export function MobileArticleThemeDirectory({ gradeRaceSections, jockeyGroups, c
                         <div className="grid gap-1.5 p-2">
                             {courseSections.map(section => (
                                 <details key={section.id} className="group/venue overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-800">
-                                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-[14px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
+                                    <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2 text-[14px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600">
                                         <span>{section.title}</span>
                                         <span className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500">
                                             <span>{section.groups.length}コース / {section.articleCount}記事</span>

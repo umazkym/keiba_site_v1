@@ -119,7 +119,7 @@ function PayoutStatsTable({ stats, inTabs = false }: { stats: PayoutStat[]; inTa
                     <tbody className="divide-y divide-slate-200">
                         {sorted.map((item) => (
                             <tr key={item.bet_type}>
-                                <th className="whitespace-nowrap px-4 py-2.5 text-left font-bold text-slate-900 sm:py-3">
+                                <th className="whitespace-nowrap px-4 py-2 text-left font-bold text-slate-900 sm:py-3">
                                     {BET_TYPE_LABELS[item.bet_type] ?? item.bet_type}
                                     <span className="ml-1.5 font-num text-[12px] font-semibold text-slate-500 sm:hidden">
                                         {item.sample_size.toLocaleString('ja-JP')}件
@@ -128,10 +128,10 @@ function PayoutStatsTable({ stats, inTabs = false }: { stats: PayoutStat[]; inTa
                                 <td className="hidden px-3 py-3 text-right font-num text-[15px] tabular-nums text-slate-600 sm:table-cell">
                                     {item.sample_size.toLocaleString('ja-JP')}
                                 </td>
-                                <td className="whitespace-nowrap px-2 py-2.5 text-right font-num text-[15.5px] font-bold tabular-nums text-slate-900 sm:px-3 sm:py-3">
+                                <td className="whitespace-nowrap px-2 py-2 text-right font-num text-[15.5px] font-bold tabular-nums text-slate-900 sm:px-3 sm:py-3">
                                     {item.average_payout.toLocaleString('ja-JP')}<span className="font-sans text-[12px]">円</span>
                                 </td>
-                                <td className="whitespace-nowrap py-2.5 pl-2 pr-4 text-right font-num text-[15.5px] font-bold tabular-nums text-ai-deep sm:px-4 sm:py-3">
+                                <td className="whitespace-nowrap py-2 pl-2 pr-4 text-right font-num text-[15.5px] font-bold tabular-nums text-ai-deep sm:px-4 sm:py-3">
                                     {item.max_payout.toLocaleString('ja-JP')}<span className="font-sans text-[12px]">円</span>
                                 </td>
                             </tr>
@@ -236,7 +236,7 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <p className="pr-24 text-[13px] font-bold text-slate-500 sm:pr-0">{detail.venue_name}競馬場 コースデータ</p>
                         {/* 見本どおり「中山 芝2200m」を大きく、検索の語句（枠順・脚質・騎手）は h1 の2行目に小さく残す */}
-                        <h1 className="font-display font-extrabold leading-tight text-slate-900 [overflow-wrap:anywhere]">
+                        <h1 className="font-display font-bold leading-tight text-slate-900 [overflow-wrap:anywhere]">
                             <span className="block text-[26px] sm:text-[32px]">{displayName}</span>
                             <span className="mt-0.5 block text-[15px] font-bold text-slate-600 sm:text-[18px]">枠順・脚質・騎手の傾向</span>
                         </h1>

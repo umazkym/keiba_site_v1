@@ -2,7 +2,8 @@
 // 見出しの下の「カテゴリ・公開日・読了時間」、冒頭の写真、目次（この記事で確認できること）、
 // 今日の全レースへの案内、本文の後の「次に読む分析」。
 import Link from 'next/link';
-import { LineIcon, type LineIconName } from '@/components/LineIcon';
+import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
+import { LineIcon } from '@/components/LineIcon';
 import { ArticleThumb } from '@/components/ArticleThumb';
 import type { ArticleTocItem } from '@/lib/article-ux';
 import type { ArticleThumb as ArticleThumbData } from '@/lib/article-visual';
@@ -95,10 +96,8 @@ export function ArticleCover({ cover, title }: { cover: ArticleThumbData | null;
     );
 }
 
-// 今日の全レースへの案内。見本どおり1行：4つの視点のアイコン（AI偏差値・対戦成績・展開予測・馬番の傾向）＋文＋矢印。
-// パネル全体で1つのリンク（2026-09-25 スマホの見直し。以前は見出し＋「全レース分析へ」＋4列の小さな図で約120px）。
-const VALUE_GUIDE_ICONS: LineIconName[] = ['gauge', 'swords', 'lanes', 'bars'];
-
+// 今日の全レースへの案内。ホームの写真の下と同じ「4つの視点」の1行（小図と名前）に、文と矢印を添える。
+// パネル全体で1つのリンク（2026-09-26 利用者の指定「ホームと同じUI」。以前は4つの線のアイコンと文の1行）。
 export function ArticleValueGuide({ headingId }: { headingId: string }) {
     return (
         <Link
@@ -107,21 +106,16 @@ export function ArticleValueGuide({ headingId }: { headingId: string }) {
             data-analytics-placement="article_value_guide"
             data-analytics-variant="compact_four"
             data-preview-state="generic"
-            className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-[14px] bg-brand-50/70 px-3.5 py-3.5 ring-1 ring-inset ring-brand-200 transition-colors duration-150 hover:bg-brand-50 hover:ring-brand-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:gap-3.5 sm:px-5 sm:py-4"
+            className="flex cursor-pointer flex-col gap-2 rounded-xl bg-white px-2 pb-2 pt-2.5 ring-1 ring-inset ring-slate-200 transition-colors duration-150 hover:ring-brand-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:px-4 sm:pt-3"
             aria-label="今日の全レース分析を見る。AI偏差値、対戦成績、展開予測、馬番の傾向を確認できます"
         >
-            <span className="flex shrink-0 gap-1" aria-hidden="true">
-                {VALUE_GUIDE_ICONS.map((name) => (
-                    <span key={name} className="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
-                        <LineIcon name={name} size={16} className="block text-brand-700" />
-                    </span>
-                ))}
+            <RaceAnalysisValueGrid variant="strip" />
+            <span className="flex items-center justify-center gap-1 border-t border-slate-100 pt-2 text-brand-700">
+                <h2 id={headingId} className="font-sans text-[13.5px] font-bold leading-snug text-brand-700 sm:text-[14.5px]">
+                    今日の全レースを4つの視点で確認する
+                </h2>
+                <LineIcon name="arrowR" size={16} className="block shrink-0" />
             </span>
-            {/* 「4つの」の後でだけ折り返す。入らない幅（320px）では、どこでも折り返してはみ出さない */}
-            <h2 id={headingId} className="min-w-0 flex-1 font-sans text-[14.5px] font-bold leading-snug text-slate-900 [overflow-wrap:anywhere] [word-break:keep-all] sm:text-[15.5px]">
-                今日の全レースを4つの<wbr />視点で確認する
-            </h2>
-            <LineIcon name="arrowR" size={18} className="block shrink-0 text-brand-700" />
         </Link>
     );
 }
@@ -145,7 +139,7 @@ export function ArticleToc({ toc, headingId }: { toc: ArticleTocItem[]; headingI
                     <li key={item.id} className="pl-1">
                         <a
                             href={`#${item.id}`}
-                            className="flex min-h-11 items-center py-1 text-[14.5px] leading-[1.55] text-slate-700 transition-colors duration-150 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 sm:min-h-[36px] sm:text-[15px]"
+                            className="flex min-h-9 items-center py-1 text-[14.5px] leading-[1.55] text-slate-700 transition-colors duration-150 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 sm:min-h-[36px] sm:text-[15px]"
                         >
                             {item.title}
                         </a>
@@ -170,9 +164,9 @@ export type RelatedArticleItem = {
 export function RelatedArticleList({ items, headingId, title = '次に読む分析' }: { items: RelatedArticleItem[]; headingId: string; title?: string }) {
     if (items.length === 0) return null;
     return (
-        // 下の空きは最後の行の py-3 と合わせて16px、見出しは18px（2026-09-25。レース画面の「関連する分析記事」も同じ）
-        <section aria-labelledby={headingId} className="rounded-[14px] bg-white px-4 pb-1 pt-4 ring-1 ring-inset ring-slate-200 sm:p-6">
-            <h2 id={headingId} className="font-display text-[18px] font-extrabold leading-snug text-slate-900 sm:text-[21px]">
+        // 見出しは18px。スマホの行はホームの記事一覧と同じ90×60の写真と上下10px（2026-09-26 縦の高さの見直し）
+        <section aria-labelledby={headingId} className="rounded-[14px] bg-white px-4 pb-1 pt-3.5 ring-1 ring-inset ring-slate-200 sm:p-6">
+            <h2 id={headingId} className="font-display text-[18px] font-bold leading-snug text-slate-900 sm:text-[21px]">
                 {title}
             </h2>
             <ul className="mt-1 flex flex-col sm:mt-4 sm:grid sm:grid-cols-3 sm:gap-5">
@@ -181,14 +175,14 @@ export function RelatedArticleList({ items, headingId, title = '次に読む分�
                         <Link
                             prefetch={false}
                             href={`/articles/${item.slug}`}
-                            className="group flex gap-3 py-3 sm:flex-col sm:gap-2.5 sm:py-0"
+                            className="group flex gap-3 py-2.5 sm:flex-col sm:gap-2.5 sm:py-0"
                         >
                             <ArticleThumb
                                 thumb={item.thumb}
-                                sizes="(min-width: 1080px) 300px, (min-width: 640px) 30vw, 104px"
-                                className="h-[70px] w-[104px] shrink-0 rounded-[10px] sm:aspect-[16/9] sm:h-auto sm:w-full sm:rounded-xl"
+                                sizes="(min-width: 1080px) 300px, (min-width: 640px) 30vw, 90px"
+                                className="h-[60px] w-[90px] shrink-0 rounded-[10px] sm:aspect-[16/9] sm:h-auto sm:w-full sm:rounded-xl"
                             />
-                            <span className="flex min-w-0 flex-col gap-1.5 sm:contents">
+                            <span className="flex min-w-0 flex-col gap-1 sm:contents">
                                 <span className="line-clamp-2 text-[14.5px] font-bold leading-normal text-slate-900 group-hover:text-brand-700 sm:order-2 sm:text-[15px] sm:leading-[1.55]">
                                     {item.title}
                                 </span>

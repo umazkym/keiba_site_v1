@@ -13,6 +13,8 @@ import { getSurfaceLabel } from '@/lib/race-display';
 import { GradeBadge, HorseNumber, RaceNumberBox } from '@/components/RaceParts';
 import { GuideHorse } from '@/components/BrandLogo';
 import { LineIcon } from '@/components/LineIcon';
+import { CompactRaceRow, RaceListCaption } from '@/components/RaceDayRows';
+import { SegmentedControl } from '@/components/SegmentedControl';
 
 type GroupKey = 'jra' | 'nar';
 
@@ -136,7 +138,7 @@ export function RaceDayBoard({
 
     // 見出し・開催の説明・日付送り。説明は h1 の直下（見本）。PC（1024px以上）は右に日付送り
     const pageHead = (
-        <header className="flex flex-col gap-3 md:mb-1 lg:flex-row lg:items-end lg:justify-between">
+        <header className="flex flex-col gap-3 md:mb-1">
             <div className="flex min-w-0 flex-col gap-1 md:gap-1.5">
                 <h1 className="text-[22px] font-extrabold leading-tight text-slate-900 md:text-[32px]">{title}</h1>
                 {!isLoading && summary.totalRaces > 0 && (
@@ -210,61 +212,70 @@ export function RaceDayBoard({
         <div className="flex flex-col gap-3 md:gap-4">
             {pageHead}
 
-            <div role="tablist" aria-label="中央・地方" className="flex gap-1 border-b border-slate-300">
-                {groups.map((item) => {
-                    const count = item.venues.reduce((sum, venue) => sum + venue.races.length, 0);
-                    const active = item.key === group;
-                    return (
-                        <button
-                            key={item.key}
-                            type="button"
-                            role="tab"
-                            aria-selected={active}
-                            disabled={item.venues.length === 0}
-                            onClick={() => selectGroup(item.key)}
-                            className={`relative flex h-12 items-center gap-2 px-3 text-[14.5px] font-bold transition-colors duration-150 disabled:cursor-default md:px-4 md:text-[15.5px] ${active ? 'text-navy' : 'text-slate-500 hover:text-navy disabled:hover:text-slate-500'}`}
-                        >
-                            {item.label}
-                            <span className={`font-num text-[13px] font-semibold ${active ? 'text-brand-700' : 'text-slate-400'}`}>
-                                {item.venues.length > 0 ? `${item.venues.length}場 ${count}R` : '開催なし'}
-                            </span>
-                            {active && <span className="absolute inset-x-2.5 -bottom-px h-[3px] rounded-[3px] bg-brand-600" aria-hidden="true" />}
-                        </button>
-                    );
-                })}
+            {/* 中央／地方は切り替えのボタンで、日付送りと同じく中央に置く（2026-09-26 利用者の指定） */}
+            <div className="flex justify-center">
+                <SegmentedControl
+                    ariaLabel="中央・地方"
+                    value={group}
+                    onChange={selectGroup}
+                    options={groups.map((item) => {
+                        const count = item.venues.reduce((sum, venue) => sum + venue.races.length, 0);
+                        return {
+                            value: item.key,
+                            disabled: item.venues.length === 0,
+                            label: (
+                                <>
+                                    {item.label}
+                                    <span className="font-num text-[12px] font-semibold opacity-75">
+                                        {item.venues.length > 0 ? `${item.venues.length}場 ${count}R` : '開催なし'}
+                                    </span>
+                                </>
+                            ),
+                        };
+                    })}
+                />
             </div>
 
-            {/* スマホ：会場を選んで1列 */}
-            <div className="flex flex-col gap-3 md:hidden">
-                <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(venues.length, 1), 4)}, minmax(0, 1fr))` }}>
+            {/* スマホ：会場を選んで1列。ホームの会場の一覧と同じ形（切り替えは1枚の面の上、レースは1行ずつ、「AI 1位」は上に1回。2026-09-26 画面の案D） */}
+            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white md:hidden" aria-label="会場ごとのレース">
+                <div
+                    role="tablist"
+                    aria-label="会場"
+                    className="grid border-b border-slate-200"
+                    style={{ gridTemplateColumns: `repeat(${venues.length <= 5 ? Math.max(venues.length, 1) : Math.min(5, Math.ceil(venues.length / 2))}, minmax(0, 1fr))` }}
+                >
                     {venues.map((venue, index) => {
                         const active = venue === selectedVenue;
                         return (
                             <button
                                 key={venue.venue}
                                 type="button"
-                                aria-pressed={active}
+                                role="tab"
+                                aria-selected={active}
+                                aria-controls="board-venue-races"
                                 onClick={() => selectVenue(index)}
-                                className={`flex min-h-[44px] flex-col items-center gap-1 rounded-xl border px-1 py-2 transition-colors duration-150 ${active ? 'border-navy bg-navy text-white' : 'border-slate-200 bg-white text-slate-900'}`}
+                                className={`relative flex min-w-0 flex-col items-center gap-0.5 pb-1.5 pt-2 transition-colors duration-150 ${active ? 'text-navy' : 'text-slate-500'}`}
                             >
                                 {/* コース図は場ごとに縦の長さが違うため、同じ高さの箱の中で上下の中央に置く（名前とR数の高さをそろえる） */}
                                 {glyphs[venue.venue] && (
-                                    <span className={`flex h-7 w-10 items-center ${active ? '' : 'opacity-50 grayscale'}`} aria-hidden="true">{glyphs[venue.venue]}</span>
+                                    <span className={`flex h-6 w-9 items-center ${active ? '' : 'opacity-50 grayscale'}`} aria-hidden="true">{glyphs[venue.venue]}</span>
                                 )}
-                                <span className="text-[14px] font-bold">{venue.venue}</span>
-                                <span className="font-num text-[12px] opacity-75">{venue.races.length}R</span>
+                                <span className="text-[15px] font-bold leading-tight">{venue.venue}</span>
+                                <span className="font-num text-[11px] font-semibold leading-none">{venue.races.length}R</span>
+                                {active && <span className="absolute inset-x-[20%] bottom-0 h-[3px] rounded-t-[3px] bg-brand-600" aria-hidden="true" />}
                             </button>
                         );
                     })}
                 </div>
                 {selectedVenue && (
-                    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white" aria-label={`${selectedVenue.venue}のレース`}>
+                    <div id="board-venue-races" role="tabpanel" aria-label={`${selectedVenue.venue}のレース`} className="px-3.5">
+                        <RaceListCaption className="pt-1.5" />
                         <ul>
-                            {selectedVenue.races.map((race) => <BoardRow key={race.raceNumber} race={race} />)}
+                            {selectedVenue.races.map((race) => <CompactRaceRow key={race.raceNumber} race={race} />)}
                         </ul>
-                    </section>
+                    </div>
                 )}
-            </div>
+            </section>
 
             {/* PC：会場ごとの列 */}
             <div

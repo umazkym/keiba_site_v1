@@ -94,7 +94,7 @@ function GradeRaceRow({ race }: { race: WeeklyGradeRace }) {
         <Link
             prefetch={false}
             href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
-            className="flex min-h-[48px] min-w-0 items-center gap-2.5 border-b border-slate-200 py-2 last:border-b-0 transition-colors duration-150 hover:bg-slate-50"
+            className="flex min-h-10 min-w-0 items-center gap-2.5 border-b border-slate-200 py-2 last:border-b-0 transition-colors duration-150 hover:bg-slate-50"
         >
             <GradeBadge grade={race.grade} />
             <span className="min-w-0 flex-1 truncate text-[14px] font-bold text-slate-900">{cleanRaceName(race.race_name)}</span>
@@ -115,7 +115,7 @@ export function HomeGradeMini({ races, topHorses }: { races: WeeklyGradeRace[]; 
     return (
         <section className="w-[340px] overflow-hidden rounded-xl bg-white shadow-[0_18px_40px_rgba(14,20,64,0.28)]" aria-label="今週の重賞">
             <div className="relative h-[150px]">
-                <GradePhoto raceDate={race.race_date} sizes="340px" className="h-full w-full object-cover object-[62%_45%]" />
+                <GradePhoto raceDate={race.race_date} sizes="340px" className="h-full w-full object-cover object-[62%_70%]" />
                 <span className="absolute left-3 top-3 flex items-center gap-1.5">
                     <GradeBadge grade={race.grade} size="l" />
                     <span className="rounded-[7px] bg-night/80 px-2 py-1 text-[12px] font-bold text-white">今週の重賞</span>
@@ -130,7 +130,7 @@ export function HomeGradeMini({ races, topHorses }: { races: WeeklyGradeRace[]; 
                     <RacePlate venue={race.venue_name} raceNumber={race.race_number} size="s" />
                     <span className="flex min-w-0 flex-col gap-0.5">
                         <span className="text-[12px] font-bold text-slate-500">{formatRaceDateLabel(race.race_date)}</span>
-                        <span className="truncate font-display text-[22px] font-extrabold leading-tight text-slate-900">{cleanRaceName(race.race_name)}</span>
+                        <span className="truncate font-display text-[22px] font-bold leading-tight text-slate-900">{cleanRaceName(race.race_name)}</span>
                     </span>
                 </Link>
                 {topHorse ? (
@@ -189,7 +189,7 @@ export function WeeklyGradeRaces({ races, compact = false, variant, predictions,
                             prefetch={false}
                             href={getRaceDetailPath(race.race_date, race.venue_name, race.race_number)}
                             aria-label={`${getRaceTypeLabel(race)} ${race.grade} ${cleanRaceName(race.race_name)} ${formatRaceDateLabel(race.race_date)} ${race.venue_name}${race.race_number}R`}
-                            className="flex min-h-[44px] min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 transition-colors duration-150 hover:border-brand-300"
+                            className="flex min-h-10 min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 transition-colors duration-150 hover:border-brand-300"
                         >
                             <GradeBadge grade={race.grade} />
                             <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-slate-900">{cleanRaceName(race.race_name)}</span>
@@ -221,15 +221,15 @@ export function WeeklyGradeRaces({ races, compact = false, variant, predictions,
 
     return (
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white" id="weekly-grade-races" aria-labelledby="weekly-grade-races-heading">
-            <div className="relative h-[190px] md:h-[230px]">
-                <GradePhoto raceDate={focusRace.race_date} sizes="(min-width: 1024px) 460px, 100vw" className="h-full w-full object-cover object-[55%_40%]" />
+            <div className="relative h-[140px] md:h-[230px]">
+                <GradePhoto raceDate={focusRace.race_date} sizes="(min-width: 1024px) 460px, 100vw" className="h-full w-full object-cover object-[55%_70%] md:object-[55%_60%]" />
                 <span className="absolute left-3.5 top-3.5 flex items-center gap-2">
                     <GradeBadge grade={focusRace.grade} size="l" />
                     <span className="rounded-[7px] bg-night/80 px-2.5 py-1 text-[12.5px] font-bold text-white">{title === '近日の重賞レース' ? '今週の重賞' : title}</span>
                 </span>
             </div>
-            {/* スマホは写真→日付を12px、最後のリンクの下線と下の余白を詰める（2026-09-25 スマホの見直し）。PCは今のまま */}
-            <div className="flex flex-col gap-2.5 px-4 pb-2 pt-3 md:px-5 md:pb-5 md:pt-4">
+            {/* スマホは写真を140px、リンクの行を40pxに詰める（2026-09-25・26 スマホの見直し）。PCは今のまま */}
+            <div className="flex flex-col gap-2 px-4 pb-1.5 pt-2.5 md:gap-2.5 md:px-5 md:pb-5 md:pt-4">
                 <div className="flex items-center gap-3">
                     <RacePlate venue={focusRace.venue_name} raceNumber={focusRace.race_number} size="s" />
                     <div className="flex min-w-0 flex-col gap-1">
@@ -247,13 +247,13 @@ export function WeeklyGradeRaces({ races, compact = false, variant, predictions,
                     <p className="text-[13.5px] leading-relaxed text-slate-700">出走馬が確定したあと、全頭のAI偏差値と展開予測をここに公開します。</p>
                 )}
                 <div className="flex flex-col border-t border-slate-200">
-                    <Link prefetch={false} href={racePath} className={`flex min-h-[46px] items-center gap-2.5 border-b border-slate-200 text-[14px] font-bold text-slate-900 hover:text-brand-700 ${lastLinkLine}`}>
+                    <Link prefetch={false} href={racePath} className={`flex min-h-10 items-center gap-2.5 border-b border-slate-200 text-[14px] font-bold text-slate-900 hover:text-brand-700 ${lastLinkLine}`}>
                         <LineIcon name="gauge" size={18} className="block shrink-0 text-brand-700" />
                         <span className="flex-1">当日のAI偏差値を見る</span>
                         <LineIcon name="chevR" size={18} className="block shrink-0 text-slate-500" />
                     </Link>
                     {hubPath && (
-                        <Link prefetch={false} href={hubPath} className={`flex min-h-[46px] items-center gap-2.5 border-b border-slate-200 text-[14px] font-bold text-slate-900 hover:text-brand-700 ${lastLinkLine}`}>
+                        <Link prefetch={false} href={hubPath} className={`flex min-h-10 items-center gap-2.5 border-b border-slate-200 text-[14px] font-bold text-slate-900 hover:text-brand-700 ${lastLinkLine}`}>
                             <LineIcon name="book" size={18} className="block shrink-0 text-brand-700" />
                             <span className="flex-1">過去のデータと傾向を見る</span>
                             <LineIcon name="chevR" size={18} className="block shrink-0 text-slate-500" />
@@ -262,7 +262,7 @@ export function WeeklyGradeRaces({ races, compact = false, variant, predictions,
                 </div>
                 {otherRaces.length > 0 && (
                     <details className="group">
-                        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between text-[13.5px] font-bold text-slate-700">
+                        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between text-[13.5px] font-bold text-slate-700">
                             <span>そのほかの重賞</span>
                             <span className="inline-flex items-center gap-1 text-slate-500">
                                 {otherRaces.length}件

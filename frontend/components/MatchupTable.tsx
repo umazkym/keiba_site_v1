@@ -7,7 +7,7 @@ import { getWakuNumber } from '@/lib/utils';
 import { AccessibleInfo } from '@/components/AccessibleInfo';
 import { HorseNumber } from '@/components/RaceParts';
 import { getWakuClasses } from '@/lib/waku';
-import { getTopAiPredictions, resolveWaku } from '@/lib/race-display';
+import { resolveWaku } from '@/lib/race-display';
 
 const getWakuColorClasses = (waku: number | null): string => getWakuClasses(waku);
 
@@ -54,19 +54,12 @@ const MatchupMatrixSkeleton = ({ runnerCount }: { runnerCount: number }) => {
     );
 };
 
-// スマホは見本どおり「AI偏差値の上位5頭どうし」の5×5にする（2026-09-25 スマホの見直し）。
-// 以前は全頭の表をスマホにも出していて、1マスが14〜21px・文字が8〜9pxになり、押し間違えやすかった。PC は全頭の表のまま。
-const MOBILE_TOP_COUNT = 5;
-// 見出しの行（28px）＋ 1行44px と間4px ＋ 上下の余白（8px・14px）
-const getMobileGridHeight = (rows: number) => 50 + rows * 48;
+// スマホの表は画面の幅に合わせたほぼ正方形（全頭×全頭）。読み込み中も同じくらいの高さを取り、表が出たときに下が動かないようにする
+const MOBILE_MATRIX_HEIGHT = 'calc(100vw - 60px)';
 
-const getMobileRowCount = (predictions: HorsePrediction[]) => (
-    Math.max(2, getTopAiPredictions(predictions, MOBILE_TOP_COUNT).length)
-);
-
-const MobileTopFiveSkeleton = ({ rows }: { rows: number }) => (
-    <div className="px-3.5 pb-3.5 pt-2" aria-hidden="true">
-        <div className="rounded-lg bg-slate-50" style={{ height: getMobileGridHeight(rows) - 22 }} />
+const MobileMatrixSkeleton = () => (
+    <div className="px-2 pb-2.5 pt-1" aria-hidden="true">
+        <div className="rounded-lg bg-slate-50" style={{ height: MOBILE_MATRIX_HEIGHT }} />
     </div>
 );
 
@@ -214,58 +207,62 @@ const getCellTone = (record: MatchupRecord) => {
     return 'bg-slate-50 text-slate-500';
 };
 
-const MobileTopFiveView = ({ predictions, matchupData, onSelect }: { predictions: HorsePrediction[]; matchupData: MatchupData; onSelect: (selection: MatchupSelection) => void }) => {
+// スマホは全頭の表を、横にずらさず画面の幅に収める（2026-09-26 利用者の指定「18頭でもすべて入り切るように。馬名3文字・説明書きは要らない」）。
+// 行と列は馬番の順で、見出しは馬番の丸だけ。マスは行の馬から見た勝ち越し数（勝ち−負け）で、押すと下に内訳（馬名・勝-負-分）を出す。
+// 頭数が多いほどマスは小さくなる（18頭で1マス約16px）。文字と丸の大きさは頭数で決める。
+const mobileScale = (count: number) => (
+    count >= 16 ? { badge: 14, font: 9 } : count >= 13 ? { badge: 16, font: 10 } : count >= 10 ? { badge: 18, font: 11 } : { badge: 20, font: 13 }
+);
+
+const formatNet = (record: MatchupRecord) => {
+    const diff = record.win - record.loss;
+    return diff > 0 ? `+${diff}` : `${diff}`;
+};
+
+const MobileMatrixView = ({ predictions, matchupData, onSelect }: { predictions: HorsePrediction[]; matchupData: MatchupData; onSelect: (selection: MatchupSelection) => void }) => {
     const { matchup_data } = matchupData;
-    const horses = getTopAiPredictions(predictions, MOBILE_TOP_COUNT);
+    const horses = [...predictions].sort((a, b) => a.horse_number - b.horse_number);
     const runnerCount = predictions.length;
     if (horses.length < 2) {
-        return (
-            <p className="px-3.5 py-5 text-center text-sm text-slate-500">
-                AI偏差値のある馬が2頭未満のため、対戦成績を出せません。
-            </p>
-        );
+        return <p className="px-3.5 py-5 text-center text-sm text-slate-500">出走馬が2頭未満のため、対戦成績を出せません。</p>;
     }
-    // 狭い比較表は馬番と先頭3文字を縦に並べる。全文は出走表で確認でき、読み上げにも残す。
+    const scale = mobileScale(horses.length);
     const gridStyle = {
-        gridTemplateColumns: `minmax(44px, 1fr) repeat(${horses.length}, 44px)`,
+        gridTemplateColumns: `${scale.badge + 4}px repeat(${horses.length}, minmax(0, 1fr))`,
+        fontSize: scale.font,
     } satisfies CSSProperties;
 
     return (
-        <div className="grid gap-1 px-3.5 pb-3.5 pt-2 max-[359px]:gap-0.5 max-[359px]:px-1" style={gridStyle}>
+        <div className="grid gap-px px-2 pb-2.5 pt-1" style={gridStyle}>
             <span aria-hidden="true" />
             {horses.map((horse) => (
-                <span key={`head-${horse.horse_id}`} className="flex h-7 items-center justify-center" title={horse.horse_name}>
-                    <HorseNumber number={horse.horse_number} waku={resolveWaku(horse, runnerCount)} size={24} />
+                <span key={`head-${horse.horse_id}`} className="flex items-center justify-center pb-0.5" title={horse.horse_name} aria-hidden="true">
+                    <HorseNumber number={horse.horse_number} waku={resolveWaku(horse, runnerCount)} size={scale.badge} />
                 </span>
             ))}
             {horses.map((rowHorse) => (
                 <React.Fragment key={rowHorse.horse_id}>
-                    <span className="flex h-11 min-w-0 flex-col items-center justify-center gap-0.5" aria-label={`${rowHorse.horse_number}番 ${rowHorse.horse_name}`}>
-                        <HorseNumber number={rowHorse.horse_number} waku={resolveWaku(rowHorse, runnerCount)} size={20} />
-                        <span className="whitespace-nowrap text-[12.5px] font-bold leading-none text-slate-900" aria-hidden="true">{Array.from(rowHorse.horse_name).slice(0, 3).join('')}</span>
+                    <span className="flex items-center justify-center" aria-label={`${rowHorse.horse_number}番 ${rowHorse.horse_name}`}>
+                        <HorseNumber number={rowHorse.horse_number} waku={resolveWaku(rowHorse, runnerCount)} size={scale.badge} />
                     </span>
                     {horses.map((colHorse) => {
                         const key = `${rowHorse.horse_id}-${colHorse.horse_id}`;
                         if (colHorse.horse_id === rowHorse.horse_id) {
-                            return <span key={key} className="h-11 rounded-md bg-slate-100" aria-hidden="true" />;
+                            return <span key={key} className="aspect-square rounded-[3px] bg-slate-200" aria-hidden="true" />;
                         }
                         const record = matchup_data[`${rowHorse.horse_id}_vs_${colHorse.horse_id}`];
                         if (!record || (record.win === 0 && record.loss === 0 && record.draw === 0)) {
-                            return (
-                                <span key={key} className="flex h-11 items-center justify-center text-[13px] text-slate-400" aria-label={`${rowHorse.horse_name}と${colHorse.horse_name}の対戦はありません`}>
-                                    —
-                                </span>
-                            );
+                            return <span key={key} className="aspect-square rounded-[3px] bg-slate-50" aria-label={`${rowHorse.horse_name}と${colHorse.horse_name}の対戦はありません`} />;
                         }
                         return (
                             <button
                                 key={key}
                                 type="button"
                                 onClick={() => onSelect({ rowHorse, colHorse, record })}
-                                className={`flex h-11 w-full cursor-pointer items-center justify-center rounded-md font-num text-[14px] font-bold leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${getCellTone(record)}`}
+                                className={`flex aspect-square min-w-0 cursor-pointer items-center justify-center rounded-[3px] font-num font-bold leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${getCellTone(record)}`}
                                 aria-label={`${rowHorse.horse_name}から見た${colHorse.horse_name}との対戦 ${record.win}勝${record.loss}敗${record.draw > 0 ? `${record.draw}分` : ''}。詳細を表示`}
                             >
-                                {record.win}-{record.loss}{record.draw > 0 ? `-${record.draw}` : ''}
+                                {formatNet(record)}
                             </button>
                         );
                     })}
@@ -340,18 +337,16 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
     const showLoadingState = isLoading || !isDateRangeCurrent;
     const isDataEmpty = !matchupData || Object.keys(matchupData.matchup_data).length === 0;
     const runnerCount = race.predictions.length;
-    const mobileRows = getMobileRowCount(race.predictions);
-    const mobileMinHeight = getMobileGridHeight(mobileRows);
     const desktopMinHeight = 50 + Math.max(1, runnerCount) * 36;
     const stableRegionStyle = {
-        '--matchup-mobile-min-height': `${mobileMinHeight}px`,
+        '--matchup-mobile-min-height': MOBILE_MATRIX_HEIGHT,
         '--matchup-desktop-min-height': `${desktopMinHeight}px`,
     } as CSSProperties;
 
     return (
         <div className="race-panel overflow-hidden">
             <div className="race-section-toolbar flex flex-col gap-1 px-3.5 pt-1.5 md:flex-row md:items-center md:justify-between md:gap-2 md:border-b md:border-slate-200 md:px-5 md:py-4">
-                <div className='flex min-h-11 items-center gap-2 md:min-h-0'>
+                <div className='flex min-h-10 items-center gap-2 md:min-h-0'>
                     <h2 id="race-matchup-heading" className="race-section-heading race-section-heading--flush !mb-0 whitespace-nowrap">対戦成績</h2>
                     <AccessibleInfo
                         label="過去対決成績の説明を表示"
@@ -360,7 +355,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         <span className="mb-1 block font-bold text-slate-900">過去対決成績とは？</span>
                         <span className="block">出走馬同士が過去に同じレースで直接対決した際の成績です。</span>
                         <ul className="mt-2 list-disc space-y-1 pl-4">
-                            <li><strong>スマホ：</strong>AI偏差値の上位5頭どうしを、行の馬から見た勝ち-負けで表示します。</li>
+                            <li><strong>スマホ：</strong>全頭を馬番の順に並べ、行の馬から見た勝ち越し数（勝ち数 - 負け数）を表示します。マスを押すと内訳が出ます。</li>
                             <li><strong>PC：</strong>全頭の勝ち越し数（勝ち数 - 負け数）と、勝-負-分の内訳です。</li>
                             <li><strong>集計期間：</strong>日付欄から変更できます。</li>
                         </ul>
@@ -370,7 +365,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         onClick={() => setIsPeriodOpen((current) => !current)}
                         aria-expanded={isPeriodOpen}
                         aria-controls="matchup-period-panel"
-                        className="-mr-2 ml-auto inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-[12px] font-semibold text-slate-600 transition-colors duration-150 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 md:hidden"
+                        className="-mr-2 ml-auto inline-flex min-h-8 shrink-0 items-center gap-1 rounded-lg px-2 text-[12px] font-semibold text-slate-600 transition-colors duration-150 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 md:hidden"
                     >
                         集計期間 {formatCompactDate(startDate)}–{formatCompactDate(endDate)}
                         <span aria-hidden="true" className="text-slate-400">{isPeriodOpen ? '閉じる' : '⌄'}</span>
@@ -378,12 +373,11 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                 </div>
                 {isPeriodOpen && (
                     <div id="matchup-period-panel" className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-2 md:hidden">
-                        <input aria-label="集計開始日" type="date" value={startDate} onChange={e => setDateRange(current => ({ ...current, startDate: e.target.value }))} className="min-h-11 min-w-0 rounded border border-slate-300 bg-white px-2 text-[11px]" />
+                        <input aria-label="集計開始日" type="date" value={startDate} onChange={e => setDateRange(current => ({ ...current, startDate: e.target.value }))} className="min-h-9 min-w-0 rounded border border-slate-300 bg-white px-2 text-[11px]" />
                         <span className="shrink-0 text-slate-400">–</span>
-                        <input aria-label="集計終了日" type="date" value={endDate} onChange={e => setDateRange(current => ({ ...current, endDate: e.target.value }))} className="min-h-11 min-w-0 rounded border border-slate-300 bg-white px-2 text-[11px]" />
+                        <input aria-label="集計終了日" type="date" value={endDate} onChange={e => setDateRange(current => ({ ...current, endDate: e.target.value }))} className="min-h-9 min-w-0 rounded border border-slate-300 bg-white px-2 text-[11px]" />
                     </div>
                 )}
-                <p className="text-[13px] leading-[1.6] text-slate-500 md:hidden">AI上位5頭の対戦（行の馬の勝ち-負け）</p>
                 <div className="hidden w-full flex-col gap-1 text-[11px] md:flex md:w-auto md:flex-row md:items-center md:gap-2 md:text-sm">
                     <label htmlFor="start-date" className="shrink-0 font-semibold text-slate-500 md:font-medium">期間</label>
                     <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 md:flex md:w-auto">
@@ -402,7 +396,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                 {showLoadingState && (
                     <div aria-busy="true" aria-label="対決データを読み込み中">
                         <div className="md:hidden">
-                            <MobileTopFiveSkeleton rows={mobileRows} />
+                            <MobileMatrixSkeleton />
                         </div>
                         <div className="hidden md:block">
                             <MatchupMatrixSkeleton runnerCount={runnerCount} />
@@ -423,7 +417,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                                 <TableView predictions={race.predictions} matchupData={matchupData} onSelect={setSelectedMatchup} />
                             </div>
                             <div className="md:hidden">
-                                <MobileTopFiveView predictions={race.predictions} matchupData={matchupData} onSelect={setSelectedMatchup} />
+                                <MobileMatrixView predictions={race.predictions} matchupData={matchupData} onSelect={setSelectedMatchup} />
                             </div>
                         </>
                 )}
@@ -436,7 +430,7 @@ export const MatchupTable = ({ race }: { race: RacePrediction }) => {
                         <button
                             type="button"
                             onClick={() => setSelectedMatchup(null)}
-                            className="inline-flex min-h-11 cursor-pointer items-center rounded-lg px-3 text-xs font-bold text-slate-600 transition-colors duration-150 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+                            className="inline-flex min-h-8 cursor-pointer items-center rounded-lg px-3 text-xs font-bold text-slate-600 transition-colors duration-150 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
                         >
                             閉じる
                         </button>

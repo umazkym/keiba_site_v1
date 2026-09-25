@@ -97,13 +97,17 @@ const MARK_CLASS: Record<string, string> = {
     '☆': 'text-slate-500 font-bold',
 };
 
+const MARK_NAME: Record<string, string> = { '◎': '本命', '○': '対抗', '▲': '単穴', '△': '連下', '☆': '星' };
+
 export function MarkGlyph({ mark, size = 17 }: { mark: string | null | undefined; size?: number }) {
     const value = normalizeMark(mark);
     const style: CSSProperties = { width: size, fontSize: value ? size : size - 3 };
     if (!value) {
         return <span className="inline-block text-center leading-none text-slate-300" style={style} aria-label="印なし">－</span>;
     }
-    return <span className={`inline-block text-center leading-none ${MARK_CLASS[value] ?? 'font-bold text-slate-500'}`} style={style}>{value}</span>;
+    // 印の意味は凡例を出さず、押さえたとき・読み上げで分かるようにする（2026-09-26 凡例を外した）
+    const name = MARK_NAME[value];
+    return <span className={`inline-block text-center leading-none ${MARK_CLASS[value] ?? 'font-bold text-slate-500'}`} style={style} role={name ? 'img' : undefined} aria-label={name ? `${value}${name}` : undefined} title={name}>{value}</span>;
 }
 
 export function HorseNumber({ number, waku, size = 28 }: { number: number; waku: number | null | undefined; size?: number }) {

@@ -128,7 +128,7 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
     // ========== レンダリング ==========
     return (
         <details className="race-panel group overflow-hidden">
-            <summary className="race-section-summary flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2 transition-colors duration-150 hover:bg-slate-50 md:px-5 md:py-3">
+            <summary className="race-section-summary flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-1.5 transition-colors duration-150 hover:bg-slate-50 md:px-5 md:py-3">
                 <h2 className="race-section-heading race-section-heading--flush !mb-0" id="race-analysis-heading">AIレース展望</h2>
                 <span className="shrink-0 text-[13px] font-bold text-brand-700 group-open:hidden">展望を開く</span>
                 <span className="hidden shrink-0 text-[13px] font-bold text-slate-600 group-open:inline">閉じる</span>

@@ -122,7 +122,7 @@ export function DataEntityDetailView({
                     </span>
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <p className={`text-[13px] font-bold text-slate-500 ${isHorse ? '' : 'pr-20 sm:pr-0'}`}>{entityLabels[entityType]}データ</p>
-                        <h1 className="flex flex-wrap items-center gap-2 font-display text-[26px] font-extrabold leading-tight text-slate-900 sm:text-[34px]">
+                        <h1 className="flex flex-wrap items-center gap-2 font-display text-[26px] font-bold leading-tight text-slate-900 sm:text-[34px]">
                             <span className="[overflow-wrap:anywhere]">{entity.name}</span>
                             {entity.affiliation && (
                                 <span className="rounded-[6px] bg-white px-2 py-0.5 font-sans text-[12.5px] font-bold text-slate-700 ring-1 ring-inset ring-slate-300 sm:text-[13.5px]">
@@ -192,7 +192,7 @@ export function DataEntityDetailView({
             {isHorse && detail.prediction_history.length > 0 && (
                 <section className="overflow-hidden rounded-[14px] border border-slate-200 bg-white sm:mt-6" aria-labelledby="entity-prediction-history-heading">
                     <div className="px-4 pb-2 pt-3.5 sm:px-5 sm:pt-4">
-                        <h2 id="entity-prediction-history-heading" className="font-display text-[18px] font-extrabold text-slate-900 sm:text-[19px]">AI偏差値の履歴</h2>
+                        <h2 id="entity-prediction-history-heading" className="font-display text-[18px] font-bold text-slate-900 sm:text-[19px]">AI偏差値の履歴</h2>
                         <p className="mt-1 text-[13px] leading-[1.6] text-slate-600">
                             UMA-FREEでAI偏差値を公開したレースの数値と着順です。
                         </p>
@@ -200,7 +200,7 @@ export function DataEntityDetailView({
                     <div className="divide-y divide-slate-200 border-t border-slate-200">
                         {detail.prediction_history.map((item) => {
                             const rowClassName =
-                                'grid min-h-14 grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-slate-50 sm:px-5';
+                                'grid min-h-12 grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-slate-50 sm:px-5';
                             const body = (
                                 <>
                                     <span className="min-w-0">

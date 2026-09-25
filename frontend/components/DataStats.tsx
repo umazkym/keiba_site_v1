@@ -66,7 +66,7 @@ export function StatTiles({ items, label }: { items: StatTileItem[]; label: stri
         <section aria-label={label}>
             <dl className={`grid ${gridClass} gap-2 sm:gap-3`}>
                 {items.map((item) => (
-                    <div key={item.label} className="flex flex-col gap-1 rounded-[14px] bg-white px-3 py-3 ring-1 ring-inset ring-slate-200 sm:px-4 sm:py-4">
+                    <div key={item.label} className="flex flex-col gap-1 rounded-[14px] bg-white px-3 py-2.5 ring-1 ring-inset ring-slate-200 sm:px-4 sm:py-4">
                         <dt className="text-[12px] font-bold text-slate-500 sm:text-[12.5px]">{item.label}</dt>
                         <dd className="flex items-baseline gap-0.5 whitespace-nowrap font-num text-[24px] font-bold leading-none tabular-nums text-slate-900 sm:text-[30px]">
                             {item.value}
@@ -168,7 +168,7 @@ export function SegmentStatsTable({
                         {items.map((item) => {
                             return (
                                 <tr key={item.key}>
-                                    <th className="px-4 py-2.5 text-left font-bold text-slate-900 sm:py-3">
+                                    <th className="px-4 py-2 text-left font-bold text-slate-900 sm:py-3">
                                         {labelKind === 'frame' && Number.isInteger(Number(item.key)) ? (
                                             <span className="inline-flex items-center gap-2">
                                                 <FrameNumberBadge frameNumber={Number(item.key)} />
@@ -185,13 +185,13 @@ export function SegmentStatsTable({
                                             </Link>
                                         ) : item.label}
                                     </th>
-                                    <td className="px-2 py-2.5 text-right font-num text-[15px] tabular-nums text-slate-600 sm:px-3 sm:py-3">
+                                    <td className="px-2 py-2 text-right font-num text-[15px] tabular-nums text-slate-600 sm:px-3 sm:py-3">
                                         {item.sample_size.toLocaleString('ja-JP')}
                                     </td>
-                                    <td className="px-2 py-2.5 text-right font-num text-[15.5px] font-bold tabular-nums text-slate-900 sm:px-3 sm:py-3">
+                                    <td className="px-2 py-2 text-right font-num text-[15.5px] font-bold tabular-nums text-slate-900 sm:px-3 sm:py-3">
                                         {formatRate(item.win_rate)}
                                     </td>
-                                    <td className="py-2.5 pl-2 pr-4 text-right font-num text-[15.5px] font-bold tabular-nums text-navy sm:px-3 sm:py-3">
+                                    <td className="py-2 pl-2 pr-4 text-right font-num text-[15.5px] font-bold tabular-nums text-navy sm:px-3 sm:py-3">
                                         {formatRate(item.place_rate)}
                                     </td>
                                     <td className="hidden px-4 py-3 text-right font-num text-[15px] tabular-nums text-slate-600 sm:table-cell">
@@ -239,7 +239,7 @@ function RecentRunRow({
             </span>
         </>
     );
-    const rowClassName = 'flex min-h-14 items-center gap-3 py-2.5';
+    const rowClassName = 'flex min-h-12 items-center gap-3 py-2';
     // 行ごと1つのリンク（レースのページ。無い期間は競走馬のページ）。PC の表では馬名とレースを別々にリンクする
     const href = run.url ?? (showHorse && run.horse_id ? `/horses/${encodeURIComponent(run.horse_id)}` : null);
     if (!href) return <div className={rowClassName}>{body}</div>;
@@ -288,7 +288,7 @@ export function RecentRunsTable({
                 </div>
                 {restRuns.length > 0 && (
                     <details className="group border-t border-slate-200">
-                        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center gap-1 text-[13.5px] font-bold text-brand-700 [&::-webkit-details-marker]:hidden">
+                        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-center gap-1 text-[13.5px] font-bold text-brand-700 [&::-webkit-details-marker]:hidden">
                             <span className="group-open:hidden">もっと見る（{restRuns.length}件）</span>
                             <span className="hidden group-open:inline">閉じる</span>
                             <LineIcon name="chevD" size={16} className="block transition-transform duration-150 group-open:rotate-180" />

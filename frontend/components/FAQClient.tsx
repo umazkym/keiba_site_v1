@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { AdUnit } from './AdUnit';
 import { GuideHorse } from '@/components/BrandLogo';
 import { LineIcon } from '@/components/LineIcon';
+import { FaqItem } from '@/components/FaqItem';
 import { faqItems } from '@/lib/faq-content';
 
 // よくある質問（2026-09-25 段階5）：カテゴリごとの白い紙面に、Qの印と開閉できる回答。
@@ -29,14 +30,14 @@ export const FAQClient = () => {
         }
     }
 
-    const chipClass = (active: boolean) => `inline-flex h-11 items-center rounded-full px-4 text-[13.5px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:text-[14px] ${active
+    const chipClass = (active: boolean) => `inline-flex h-8 items-center rounded-full px-4 text-[13.5px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:text-[14px] ${active
         ? 'bg-navy text-white'
         : 'bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50'}`;
 
     return (
         <div className="mx-auto flex w-full max-w-[840px] flex-col gap-3 pb-4 pt-1 sm:gap-6 sm:px-4 sm:pb-16 sm:pt-4">
             <header className="flex flex-col gap-2">
-                <h1 className="font-display text-[24px] font-extrabold leading-snug text-slate-900 sm:text-[34px]">
+                <h1 className="font-display text-[24px] font-bold leading-snug text-slate-900 sm:text-[34px]">
                     よくある質問
                 </h1>
                 <p className="text-[14px] leading-[1.75] text-slate-700 sm:text-[15px]">
@@ -65,24 +66,15 @@ export const FAQClient = () => {
                 <div key={group.category} className="flex flex-col gap-3 sm:gap-6">
                     <section
                         aria-labelledby={`faq-group-${groupIndex}`}
-                        className="rounded-[16px] bg-white px-4 pb-1 pt-4 ring-1 ring-inset ring-slate-200 sm:px-6 sm:pt-5"
+                        className="rounded-[16px] bg-white px-4 pb-1 pt-3.5 ring-1 ring-inset ring-slate-200 sm:px-6 sm:pt-5"
                     >
-                        <h2 id={`faq-group-${groupIndex}`} className="font-display text-[18px] font-extrabold text-navy sm:text-[20px]">
+                        <h2 id={`faq-group-${groupIndex}`} className="font-display text-[18px] font-bold text-navy sm:text-[20px]">
                             {group.category}
                         </h2>
                         <div className="mt-1">
-                            {group.items.map((item, index) => (
-                                <details key={item.id} open={groupIndex === 0 && index === 0} className="group border-b border-slate-200 last:border-b-0">
-                                    <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-3 py-2 text-[15px] font-bold text-slate-900 sm:min-h-[56px] sm:text-[16px] [&::-webkit-details-marker]:hidden">
-                                        <span className="font-display text-[18px] font-extrabold text-brand-600" aria-hidden="true">Q</span>
-                                        {/* 2行目に「か？」だけが落ちないよう、行の長さをそろえ文節で折る（効くブラウザだけ） */}
-                                        <span className="flex-1 [text-wrap:balance] [word-break:auto-phrase]">{item.question}</span>
-                                        <LineIcon name="chevD" size={18} className="block shrink-0 text-slate-500 transition-transform duration-150 group-open:rotate-180" />
-                                    </summary>
-                                    <p className="mb-4 ml-[30px] text-[14.5px] leading-[1.85] text-slate-700 sm:text-[15.5px]">
-                                        {item.answer}
-                                    </p>
-                                </details>
+                            {/* ホームと同じ行（FaqItem）。初めは全部閉じる（2026-09-26 利用者の指定「ホーム同様」） */}
+                            {group.items.map((item) => (
+                                <FaqItem key={item.id} question={item.question}>{item.answer}</FaqItem>
                             ))}
                         </div>
                     </section>

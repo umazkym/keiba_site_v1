@@ -152,7 +152,7 @@ export default function KeibaDataPage() {
                         action={(<Link
                             prefetch={false}
                             href="/courses"
-                            className="inline-flex min-h-11 items-center gap-1 text-[14px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                            className="inline-flex min-h-8 items-center gap-1 text-[14px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                         >
                             コース一覧
                             <LineIcon name="chevR" size={16} className="block" />

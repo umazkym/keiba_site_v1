@@ -279,12 +279,12 @@ export const Header = ({ todayString }: HeaderProps) => {
                     {/* ヘッダーのリンクは先読みしない（全ページで画面に入るため、先読みがキャッシュを通らず Cloud Run へ届く。
                         閉じたモバイルメニューも画面の外に置かれているだけなので先読みされていた。2026-09-25） */}
                     <Link href="/" prefetch={false} className="flex min-h-[44px] items-center gap-2 sm:gap-3 shrink-0" aria-label="UMA-FREE ホーム">
-                        {/* 32px以下は内側の線を省いた小さい版のマークを使う */}
-                        <BrandMark size={30} variant="small" className="sm:hidden" />
+                        {/* スマホも正式なロゴと同じ線のあるマークを使う（以前は線を省いた小さい版で、ロゴが違って見えた。2026-09-26） */}
+                        <BrandMark size={30} variant="full" className="sm:hidden" />
                         <BrandMark size={44} variant="full" className="hidden sm:block" />
                         {/* 幅360px未満（iPhone SE 初代など）は、PR と検索・メニューを収めるため文字のロゴを省きマークだけにする */}
                         <span className="flex flex-col leading-none max-[359px]:hidden">
-                            <span className="font-display text-[17px] font-extrabold tracking-[0.01em] text-navy sm:text-[23px]">
+                            <span className="font-brand text-[17px] font-extrabold tracking-[0.01em] text-navy sm:text-[23px]">
                                 UMA-FREE
                             </span>
                             <span className="mt-1 hidden text-xs font-medium text-slate-500 sm:block">
@@ -368,7 +368,7 @@ export const Header = ({ todayString }: HeaderProps) => {
                             tabIndex={isMenuOpen ? 0 : -1}
                             data-menu-initial-focus={item.href === '/' ? 'true' : undefined}
                             aria-current={item.isActive ? 'page' : undefined}
-                            className={`flex min-h-[52px] items-center gap-3.5 border-b border-slate-200 px-1.5 text-base font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600/40 ${item.isActive
+                            className={`flex min-h-11 items-center gap-3.5 border-b border-slate-200 px-1.5 text-base font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600/40 ${item.isActive
                                 ? 'text-brand-700'
                                 : 'text-slate-900 hover:text-brand-700'
                                 }`}
@@ -400,7 +400,7 @@ export const Header = ({ todayString }: HeaderProps) => {
                         </Link>
                     ))}
                 </div>
-                <p className="mx-4 mb-6 mt-auto rounded-xl bg-slate-100 px-3.5 py-3 text-xs leading-relaxed text-slate-600">
+                <p className="mx-4 mb-6 mt-auto rounded-xl bg-slate-100 px-3.5 py-3 text-right text-xs leading-relaxed text-slate-600">
                     {/* 文の切れ目で2行にする（1行に詰めると「ありませ／ん。」と折れる） */}
                     <span className="block">AI分析は参考情報です。</span>
                     <span className="block">投票の推奨ではありません。</span>

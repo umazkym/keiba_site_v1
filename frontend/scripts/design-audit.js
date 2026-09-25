@@ -265,11 +265,12 @@ const checks = [
   },
   {
     id: 'brand-fonts-loaded',
-    description: '見出しと数字の書体をnext/fontで読み込み、本文は端末の書体（日本語の本文書体は配信しない）',
+    description: 'ロゴ文字・ホームの大見出しの丸ゴシック（--font-brand）と数字の書体をnext/fontで読み込み、見出しと本文は端末のゴシック（日本語の本文書体は配信しない。2026-09-26「ゴシックでそろえる」）',
     passed: layout.includes("from \"next/font/google\"")
-      && ['--font-display', '--font-num'].every((name) => layout.includes(name))
+      && ['--font-brand', '--font-num'].every((name) => layout.includes(name))
       && !layout.includes('Noto_Sans_JP')
-      && globals.includes('--font-body: "Hiragino Sans"'),
+      && globals.includes('--font-body: "Hiragino Sans"')
+      && globals.includes('--font-display: var(--font-body)'),
   },
   {
     id: 'waku-single-source',
@@ -391,10 +392,11 @@ const checks = [
   },
   {
     id: 'mobile-pace-chart-parity',
-    description: 'スマホの展開予測もPCと同じ位置取りグラフを使う。見本どおり先行・中団・後方の3段に置き、近い馬は段の中の小さな段へ移して馬番を重ねない（2026-09-25）',
+    description: '展開予測はスマホもPCも同じ図。先行・中団・後方の3段に、馬番の小さい順に左から並べ、段ごとに横の中央へそろえる。「進行方向」の文字は出さない（2026-09-26 利用者の指定）',
     passed: startPositionChart.includes("const LANES: PositionLabel[] = ['先行', '中団', '後方']")
-      && startPositionChart.includes('buildLaneLayouts')
-      && !startPositionChart.includes('index % usableLanes')
+      && startPositionChart.includes('.sort((a, b) => a.horse_number - b.horse_number)')
+      && startPositionChart.includes('justify-center')
+      && !startPositionChart.includes('進行方向')
       && !startPositionChart.includes('grid grid-cols-3 gap-1.5 md:hidden'),
   },
   {
@@ -475,7 +477,8 @@ const checks = [
         && homeHero.includes('entryMethod="hero_cta"')
         && ['home_after_today_races', 'home_after_today_pick', 'home_article_feed_1', 'home_after_special_pick']
           .every((placement) => homePage.includes(`analyticsPlacement="${placement}"`))
-        && homePage.includes('entryMethod="grade_fallback"')
+        // 重賞の無い週の代わりの枠（grade_fallback）は 2026-09-26 に外した（読み込み中に見え、追従ボタンと同じ導線だった）
+        && !homePage.includes('重賞の開催情報を確認しています')
         && homeVenues.includes("entry_method: 'venue_card'")
         && homeVenues.includes('home_nar_voting')
         && globals.includes('.home-hero-scrim')
@@ -524,7 +527,7 @@ const checks = [
   },
   {
     id: 'mobile-layer-cleanup',
-    description: 'ヘッダーを不透明にし（本文がロゴの後ろに透けない）、レース詳細に別レースの注目馬と黄色の免責帯を挟まず、免責は出走表の直後の1文にする。ナビの名前はレース画面の見出しと同じ（2026-09-25）',
+    description: 'ヘッダーを不透明にし（本文がロゴの後ろに透けない）、レース詳細に別レースの注目馬と黄色の免責帯を挟まない。免責の1文はレース・開催日ボードに置かず、フッターの注記に集約する（2026-09-26 利用者の指定）。ナビの名前はレース画面の見出しと同じ',
     passed: (() => {
       const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
       const raceTabs = read('components/RaceTabs.tsx');
@@ -535,8 +538,8 @@ const checks = [
         && !/bg-white\/\d+|backdrop-blur/.test(glassRule[0])
         && !racePageClient.includes('SpecialPickCard')
         && !racePageClient.includes('DisclaimerAlert')
-        && raceTabs.includes('<DisclaimerNote')
-        && raceDayExtras.includes('<DisclaimerNote')
+        && !raceTabs.includes('<DisclaimerNote')
+        && !raceDayExtras.includes('<DisclaimerNote')
         && !raceDayExtras.includes('SpecialPickCard')
         && !fs.existsSync(path.join(root, 'components/DisclaimerAlert.tsx'))
         && !valueGrid.includes("compactTitle: '対戦比較'")

@@ -1,6 +1,6 @@
 // 記事のカテゴリ色とサムネイル。ホームの記事一覧と記事ページで同じ規則を使う。
 // 共通のアイキャッチ（データ分析・入門・騎手・重賞の汎用画像）はカテゴリの写真に置き換える。
-// 同じ一覧で同じ写真が並ばないよう、写真が尽きたらカテゴリ色の面＋線のアイコンにする。
+// 同じ一覧では、まだ使っていない写真を優先し、使い切ったら間を空けて使い回す（色の面は、写真の無いときだけの予備）。
 import type { LineIconName } from '@/components/LineIcon';
 import { getSeason } from '@/lib/race-display';
 
@@ -38,47 +38,70 @@ const GENERIC_EYECATCHES = new Set([
 ]);
 
 const CATEGORY_PHOTOS: Record<string, string[]> = {
-    重賞攻略: ['article-grade'],
-    騎手分析: ['article-jockey'],
-    コース分析: ['article-course'],
+    重賞攻略: ['article-grade', 'article-grade-2'],
+    騎手分析: ['article-jockey', 'article-jockey-2'],
+    コース分析: ['article-course', 'article-course-2'],
     入門ガイド: ['article-guide'],
-    '馬券・統計': ['article-stats'],
-    海外競馬: ['article-overseas'],
-    枠順データ: ['article-gate'],
+    '馬券・統計': ['article-stats', 'article-stats-2'],
+    海外競馬: ['article-overseas', 'article-overseas-2'],
+    枠順データ: ['article-gate', 'article-stats-2'],
+};
+
+// どのカテゴリにも使えるレースの写真。カテゴリの写真を使い切ったら、ここから選ぶ（2026-09-26）。
+// 以前は写真を使い切ると色の面にしており、記事一覧では332件中約270件が写真なしになっていた。
+const SEASON_PHOTOS = ['grade-spring', 'grade-summer', 'grade-autumn', 'grade-winter', 'grade-spring-2', 'grade-summer-2', 'grade-winter-2'];
+const RACE_PHOTOS = ['race-turf-1', 'race-turf-2', 'race-dirt-1', 'race-night-1', 'race-dusk-1'];
+// 横長（2.4:1 など）で馬群が右に寄っている写真は、小さな枠でも馬が入るよう右寄りに切り取る
+const PHOTO_POSITION: Record<string, string> = {
+    'race-turf-1': '72% 50%',
+    'race-turf-2': '75% 50%',
+    'race-dirt-1': '75% 50%',
+    'race-night-1': '80% 50%',
+    'race-dusk-1': '55% 60%',
 };
 
 export type ArticleThumb =
-    | { kind: 'photo'; src: string; srcSet: string }
+    | { kind: 'photo'; src: string; srcSet: string; position?: string }
     | { kind: 'eyecatch'; src: string }
     | { kind: 'category'; category: string };
 
 const photoThumb = (name: string): ArticleThumb => {
-    // 重賞の季節写真（grade-*）は 720/1200、記事の写真（article-*）は 800/1600
+    // 重賞の季節写真（grade-*）は 720/1200、記事・レースの写真（article-*・race-*）は 800/1600
     const [small, large] = name.startsWith('grade-') ? [720, 1200] : [800, 1600];
     return {
         kind: 'photo',
         src: `/images/photos/${name}-${small}.webp`,
         srcSet: `/images/photos/${name}-${small}.webp ${small}w, /images/photos/${name}-${large}.webp ${large}w`,
+        position: PHOTO_POSITION[name],
     };
 };
 
-// 一覧に並べる記事のサムネイルを、上から順に決める
+// 記事の候補の写真：カテゴリの写真 → （重賞は）その季節の写真 → どのカテゴリにも使える写真の順
+const photoCandidates = (article: { category: string; date: string }): string[] => {
+    const own = [...(CATEGORY_PHOTOS[article.category] ?? [])];
+    if (article.category === '重賞攻略') {
+        const season = `grade-${getSeason(article.date)}`;
+        own.unshift(season);
+        if (SEASON_PHOTOS.includes(`${season}-2`)) own.push(`${season}-2`);
+    }
+    return Array.from(new Set([...own, ...SEASON_PHOTOS, ...RACE_PHOTOS]));
+};
+
+// 一覧に並べる記事のサムネイルを、上から順に決める。
+// まだ使っていない写真を優先し、全部使ったら、いちばん前に使った写真へ戻る（直前の3件と同じ写真は避ける）。
 export function pickArticleThumbs(articles: { category: string; eyecatch?: string; date: string }[]): ArticleThumb[] {
-    const used = new Set<string>();
-    return articles.map((article) => {
+    const lastUsed = new Map<string, number>();
+    return articles.map((article, index) => {
         if (article.eyecatch && !GENERIC_EYECATCHES.has(article.eyecatch)) {
             return { kind: 'eyecatch', src: article.eyecatch };
         }
-        const pool = [...(CATEGORY_PHOTOS[article.category] ?? [])];
-        // 重賞は記事の日付の季節の写真も候補にする
-        if (article.category === '重賞攻略') {
-            pool.push(`grade-${getSeason(article.date)}`);
-        }
-        const name = pool.find((candidate) => !used.has(candidate));
-        if (!name) {
-            return { kind: 'category', category: article.category };
-        }
-        used.add(name);
+        const candidates = photoCandidates(article);
+        const fresh = candidates.find((candidate) => !lastUsed.has(candidate));
+        const name = fresh ?? candidates
+            .filter((candidate) => index - (lastUsed.get(candidate) ?? -Infinity) > 3)
+            .sort((a, b) => (lastUsed.get(a) ?? -1) - (lastUsed.get(b) ?? -1))[0]
+            ?? candidates[0];
+        lastUsed.set(name, index);
         return photoThumb(name);
     });
 }

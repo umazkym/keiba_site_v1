@@ -86,7 +86,7 @@ export const RelatedRaces = ({ currentRace, currentDate }: RelatedRacesProps) =>
                             key={date}
                             href={`/races/${date}`}
                             prefetch={false}
-                            className="group flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-1.5 py-2 text-center transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50"
+                            className="group flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-1.5 py-2 text-center transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50"
                         >
                             <span className="whitespace-nowrap text-[11px] font-black text-slate-700 group-hover:text-brand-700 sm:text-sm">
                                 {m}/{d}（{['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()]}）

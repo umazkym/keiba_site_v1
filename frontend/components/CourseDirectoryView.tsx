@@ -131,7 +131,7 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
             className="scroll-mt-24 overflow-hidden rounded-[14px] bg-white ring-1 ring-inset ring-slate-200"
         >
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
-                <h3 id={`venue-${group.venueSlug}-heading`} className="font-display text-[17px] font-extrabold text-slate-900">
+                <h3 id={`venue-${group.venueSlug}-heading`} className="font-display text-[17px] font-bold text-slate-900">
                     {group.venueName}競馬場
                 </h3>
                 <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-bold ${group.isCentral ? 'bg-navy text-white' : 'bg-dirt-soft text-dirt-deep'}`}>
@@ -148,7 +148,7 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
                             key={surface}
                             className="grid grid-cols-[76px_1fr] gap-2 px-3 py-3 sm:grid-cols-[96px_1fr] sm:px-4"
                         >
-                            <div className="flex min-h-11 items-center gap-2 self-start">
+                            <div className="flex min-h-9 items-center gap-2 self-start">
                                 <span className={`h-3 w-3 shrink-0 rounded-sm ${style.marker}`} aria-hidden="true" />
                                 <h4 className={`text-[14.5px] font-bold ${style.headerBg}`}>{style.label}</h4>
                             </div>
@@ -158,7 +158,7 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
                                         key={course.url}
                                         href={course.url}
                                         prefetch={false}
-                                        className={`group flex min-h-12 flex-col items-start justify-center rounded-[8px] border px-2.5 py-1 font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${style.link}`}
+                                        className={`group flex min-h-10 flex-col items-start justify-center rounded-[8px] border px-2.5 py-1 font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${style.link}`}
                                     >
                                         <span className="flex w-full items-center justify-between gap-0.5">
                                             <span className="whitespace-nowrap font-num text-[15px] font-bold tabular-nums">

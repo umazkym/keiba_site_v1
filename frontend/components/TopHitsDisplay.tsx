@@ -48,7 +48,7 @@ const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: numb
     }
 
     return (
-        <div className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-1 border-b border-slate-200 py-2.5 transition-colors duration-150 hover:bg-slate-50 md:grid-cols-[30px_150px_76px_minmax(0,1fr)_auto] md:gap-x-3.5 md:py-3">
+        <div className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-0.5 border-b border-slate-200 py-2 transition-colors duration-150 hover:bg-slate-50 md:grid-cols-[30px_150px_76px_minmax(0,1fr)_auto] md:gap-x-3.5 md:py-3">
             <span className={`font-num text-[18px] font-bold leading-tight md:text-[20px] md:leading-normal ${rank === 1 ? 'text-navy' : 'text-slate-500'}`}>{rank}</span>
             <span className="font-num text-[19px] font-bold leading-tight text-slate-900 md:text-[22px] md:leading-normal">
                 {hit.payout.toLocaleString('en-US')}<span className="ml-0.5 font-sans text-[12px]">円</span>

@@ -190,7 +190,7 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
     return (
         <div className="mx-auto w-full max-w-5xl px-2 pb-6 pt-2 sm:px-4 sm:pb-16">
             <header className="rounded-[16px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-8">
-                <h1 className="font-display text-[24px] font-extrabold leading-snug text-slate-900 sm:text-[34px]">
+                <h1 className="font-display text-[24px] font-bold leading-snug text-slate-900 sm:text-[34px]">
                     サイト内検索
                 </h1>
                 <p className="mt-1.5 max-w-3xl text-[11.5px] leading-relaxed text-slate-600 sm:text-base">

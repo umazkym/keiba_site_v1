@@ -26,7 +26,8 @@ export type RaceAnalysisFeature = {
 type RaceAnalysisValueGridProps = {
     className?: string;
     // full：明るいカード（スマホ2列・PC4列）／bar：PCのヒーロー下の帯／compact：記事冒頭の4列
-    variant?: 'full' | 'bar' | 'compact';
+    // strip：スマホ〜タブレットのヒーロー下の1行（小図と名前だけ。2026-09-26 縦の高さの見直し）
+    variant?: 'full' | 'bar' | 'compact' | 'strip';
 };
 
 export const raceAnalysisFeatures: readonly RaceAnalysisFeature[] = [
@@ -191,6 +192,19 @@ export function RaceAnalysisValueGrid({ className = '', variant = 'full' }: Race
                         </li>
                     );
                 })}
+            </ul>
+        );
+    }
+
+    if (variant === 'strip') {
+        return (
+            <ul className={`grid w-full grid-cols-4 gap-1 ${className}`} aria-label="UMA-FREEで確認できる4つの分析">
+                {raceAnalysisFeatures.map((feature) => (
+                    <li key={feature.title} className="flex min-w-0 flex-col items-center gap-1.5">
+                        <span className="flex h-[22px] w-14 items-center justify-center"><RaceAnalysisFeatureVisual type={feature.visual} /></span>
+                        <span className="max-w-full whitespace-nowrap text-[12px] font-bold leading-none text-slate-900">{feature.title}</span>
+                    </li>
+                ))}
             </ul>
         );
     }

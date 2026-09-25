@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { sendPredictionTableViewEvent } from '../lib/analytics';
 import { AccessibleInfo } from '@/components/AccessibleInfo';
+import { SegmentedControl } from '@/components/SegmentedControl';
 import { HorseNumber, MarkGlyph, PositionChip, ScoreBar } from '@/components/RaceParts';
 import {
     getPositionLabels,
@@ -16,8 +17,6 @@ import {
 } from '@/lib/race-display';
 
 type SortKey = 'ai' | 'number';
-
-const LEGEND: Array<[string, string]> = [['◎', '本命'], ['○', '対抗'], ['▲', '単穴'], ['△', '連下'], ['☆', '星']];
 
 // 当該レースの着順は表示せず、AI偏差値順と馬番順だけを切り替える。
 export const PredictionTable = ({
@@ -59,42 +58,38 @@ export const PredictionTable = ({
 
     const unpredictableReason = getUnpredictableReason(race);
     const sortOptions: Array<[SortKey, string]> = [['ai', 'AI偏差値順'], ['number', '馬番順']];
+    // 印の凡例は出さない（2026-09-26 利用者の指定）。印の意味は読み上げ用の名前（MarkGlyph）に残る
 
     const heading = (
-        <div className="flex flex-col gap-2 border-b border-slate-200 px-3 pb-2.5 pt-3 md:px-5 md:pb-3.5 md:pt-4">
+        <div className="flex flex-col gap-1.5 border-b border-slate-200 px-3 pb-2 pt-2.5 md:gap-2 md:px-5 md:pb-3.5 md:pt-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 id="race-prediction-heading" className="race-section-heading race-section-heading--flush race-prediction-heading !m-0">
-                    AI偏差値
-                </h2>
-                {!unpredictableReason && (
-                    <div className="flex gap-1.5" role="group" aria-label="並べ替え">
-                        {sortOptions.map(([key, label]) => (
-                            <button
-                                key={key}
-                                type="button"
-                                onClick={() => setSortKey(key)}
-                                aria-pressed={sortKey === key}
-                                className={`inline-flex h-11 items-center whitespace-nowrap rounded-full border px-3 text-[12px] font-bold transition-colors duration-150 sm:h-8 ${sortKey === key
-                                    ? 'border-navy bg-navy text-white'
-                                    : 'border-slate-300 bg-white text-slate-700 hover:border-brand-300'
-                                    }`}
+                <span className="flex items-center gap-1.5">
+                    <h2 id="race-prediction-heading" className="race-section-heading race-section-heading--flush race-prediction-heading !m-0">
+                        AI偏差値
+                    </h2>
+                    {/* スマホは表の列見出しの行を出さず、説明の「?」を見出しの横に置く（2026-09-26 画面の案D） */}
+                    {!unpredictableReason && (
+                        <span className="md:hidden">
+                            <AccessibleInfo
+                                label="AI偏差値の説明を表示"
+                                buttonClassName="h-6 w-6 bg-slate-200 text-[12px] font-bold text-slate-700 transition-colors duration-150 hover:bg-slate-300"
                             >
-                                {label}
-                            </button>
-                        ))}
-                    </div>
+                                <span className="mb-1 block font-bold text-navy">AI偏差値とは？</span>
+                                過去のレースタイムなどからAIが算出した馬の能力指数です。数値が高いほど、高く評価していることを示します。
+                            </AccessibleInfo>
+                        </span>
+                    )}
+                </span>
+                {!unpredictableReason && (
+                    <SegmentedControl
+                        ariaLabel="並べ替え"
+                        value={sortKey}
+                        onChange={setSortKey}
+                        options={sortOptions.map(([key, label]) => ({ value: key, label }))}
+                    />
                 )}
             </div>
-            {!unpredictableReason && (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label="印の凡例">
-                    {LEGEND.map(([mark, label]) => (
-                        <span key={mark} className="inline-flex items-center gap-1 text-[12px] font-bold text-slate-700">
-                            <MarkGlyph mark={mark} size={15} />
-                            {label}
-                        </span>
-                    ))}
-                </div>
-            )}
+
         </div>
     );
 
@@ -126,7 +121,8 @@ export const PredictionTable = ({
                         <col className="w-[76px] md:w-[210px]" />
                         <col className="hidden md:table-column md:w-[104px]" />
                     </colgroup>
-                    <thead>
+                    {/* スマホは列見出しの行を画面に出さない（読み上げには残す）。印・馬番・偏差値は見た目で分かり、凡例は上にある */}
+                    <thead className="race-prediction-thead">
                         <tr>
                             <th className="text-center">印</th>
                             <th className="whitespace-nowrap text-center">馬番</th>
@@ -134,19 +130,22 @@ export const PredictionTable = ({
                                 馬名<span className="md:hidden"> · 位置</span>
                             </th>
                             <th className="!py-0 text-right md:text-left">
+                                    <span className="md:hidden">AI偏差値</span>
+                                    <span className="hidden md:inline">
                                     <AccessibleInfo
                                         label="AI偏差値の説明を表示"
-                                        buttonClassName="h-11 gap-1 whitespace-nowrap text-[11px] font-bold text-slate-500 md:text-xs"
+                                        buttonClassName="h-8 gap-1 whitespace-nowrap text-[11px] font-bold text-slate-500 md:h-10 md:text-xs"
                                         trigger={(
                                             <>
                                                 AI偏差値
-                                                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-200 text-slate-700" aria-hidden="true">?</span>
+                                                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-slate-200 text-slate-700" aria-hidden="true">?</span>
                                             </>
                                         )}
                                     >
                                         <span className="mb-1 block font-bold text-navy">AI偏差値とは？</span>
                                         過去のレースタイムなどからAIが算出した馬の能力指数です。数値が高いほど、高く評価していることを示します。
                                     </AccessibleInfo>
+                                    </span>
                             </th>
                             <th className="hidden whitespace-nowrap text-left md:table-cell">位置取り</th>
                         </tr>
@@ -164,7 +163,7 @@ export const PredictionTable = ({
                                         <HorseNumber number={p.horse_number} waku={resolveWaku(p, race.predictions.length)} size={28} />
                                     </td>
                                     <td className="min-w-0">
-                                        <span className="flex min-w-0 flex-col gap-1 leading-[1.3] md:leading-normal">
+                                        <span className="flex min-w-0 flex-col gap-0.5 leading-[1.3] md:gap-1 md:leading-normal">
                                             {p.detail_page_indexable ? (
                                                 <Link
                                                     prefetch={false}

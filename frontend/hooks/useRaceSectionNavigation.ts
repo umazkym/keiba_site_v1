@@ -32,7 +32,9 @@ export const getRaceTopObstructionHeight = () => {
     const header = document.querySelector<HTMLElement>('[data-site-header]');
     const pageNavigation = document.querySelector<HTMLElement>('[data-race-selector-sticky]');
     const headerBottom = isVisible(header) ? Math.max(0, header!.getBoundingClientRect().bottom) : 0;
-    const navigationHeight = isVisible(pageNavigation) ? pageNavigation!.getBoundingClientRect().height : 0;
+    // スマホのレース選択は、止まる前は要約の行（36px）を隠している。移動した先では止まって出るため、その分も足す
+    const hiddenSummary = pageNavigation?.dataset.stuck === 'false' && window.innerWidth < 1024 ? 36 : 0;
+    const navigationHeight = isVisible(pageNavigation) ? pageNavigation!.getBoundingClientRect().height + hiddenSummary : 0;
 
     return Math.ceil(headerBottom + navigationHeight + 8);
 };

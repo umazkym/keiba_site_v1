@@ -1,6 +1,6 @@
 """記事に載せるグラフ（matplotlib）の見た目をサイトと合わせる（2026-09-25 デザイン改修 段階5）。
 
-- 書体は backend/fonts の M PLUS Rounded 1c（端末の日本語書体に頼らない。環境で見た目が変わらない）
+- 書体は backend/fonts の Noto Sans JP（サイトと同じゴシック。端末の日本語書体に頼らない。環境で見た目が変わらない）
 - 色はサイトと同じ：比べる棒は淡いインディゴ、最も良い値だけインディゴ、勝率など重ねる系列は紺
 - 率の軸は「%」で表示する（0.35 ではなく 35%）
 - 上と右の枠線を消し、横の目盛り線だけを薄く引く。題名は左寄せ
@@ -48,12 +48,12 @@ _FONT_FAMILY: str | None = None
 
 
 def _register_fonts() -> str:
-    """同梱の M PLUS Rounded 1c を登録し、書体の名前を返す。"""
+    """同梱の Noto Sans JP（サイトの見出し・本文と同じゴシック。2026-09-26）を登録し、書体の名前を返す。"""
     global _FONT_FAMILY
     if _FONT_FAMILY:
         return _FONT_FAMILY
     family = 'sans-serif'
-    for name in ('MPLUSRounded1c-Regular.ttf', 'MPLUSRounded1c-Bold.ttf', 'MPLUSRounded1c-ExtraBold.ttf'):
+    for name in ('NotoSansJP-Regular.ttf', 'NotoSansJP-Bold.ttf'):
         path = FONTS_DIR / name
         if path.exists():
             font_manager.fontManager.addfont(str(path))

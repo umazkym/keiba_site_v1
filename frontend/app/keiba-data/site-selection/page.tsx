@@ -66,7 +66,7 @@ export default function SiteSelectionPage() {
           <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
             予想サイト選びの視点
           </p>
-          <h1 className="mt-4 text-2xl font-black leading-tight text-slate-950 sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-bold leading-tight text-slate-950 sm:text-4xl">
             競馬予想サイトの選び方
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-[1.8] text-slate-700 sm:leading-8 sm:text-base">
@@ -79,20 +79,20 @@ export default function SiteSelectionPage() {
           {criteria.map((item, index) => (
             <div key={item.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
               <div className={`mb-3 h-1.5 w-12 rounded-full ${criterionAccents[index]}`} />
-              <p className="font-mono text-xs font-black text-slate-400">{String(index + 1).padStart(2, '0')}</p>
-              <h2 className="mt-1 text-lg font-black text-slate-950">{item.title}</h2>
+              <p className="font-mono text-xs font-bold text-slate-400">{String(index + 1).padStart(2, '0')}</p>
+              <h2 className="mt-1 text-lg font-bold text-slate-950">{item.title}</h2>
               <p className="mt-2 text-sm leading-7 text-slate-600">{item.body}</p>
             </div>
           ))}
         </section>
 
         <section className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
-          <h2 className="text-xl font-black text-slate-950">UMA-FREEの場合</h2>
+          <h2 className="text-xl font-bold text-slate-950">UMA-FREEの場合</h2>
           <ul className="mt-4 grid gap-3 text-sm leading-7 text-slate-600 sm:grid-cols-2">
             <li className="rounded-xl bg-white p-4 shadow-soft">中央・地方の全レースを登録不要で閲覧可能。</li>
             <li className="rounded-xl bg-white p-4 shadow-soft">AI偏差値・脚質予測・対戦成績・馬番の傾向をレースごとに算出。</li>
             <li className="rounded-xl bg-white p-4 shadow-soft">成績は好調条件・不調条件の両方を公開。</li>
-            <li className="rounded-xl bg-white p-4 shadow-soft">投票推奨ではなく、レース検討の参考情報として提供。</li>
+            {/* 「投票推奨ではなく…」の繰り返しの注記はやめた（運営者情報・AIの説明のページに残す。2026-09-26） */}
           </ul>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link prefetch={false} href="/results/accuracy" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-primary-light">

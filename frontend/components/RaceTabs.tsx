@@ -109,11 +109,13 @@ const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
 
 PremiumDetailPlaceholder.displayName = 'PremiumDetailPlaceholder';
 
-const REWARD_PREVIEW_ITEMS: Array<{ icon: LineIconName; title: string; description: string }> = [
-    { icon: 'swords', title: '対戦成績', description: '出走馬同士の直接比較' },
-    { icon: 'lanes', title: '展開予測', description: '序盤の位置取り' },
-    { icon: 'bars', title: '馬番の傾向', description: 'コース別の有利・不利' },
-    { icon: 'book', title: 'AIレース展望', description: '展開・適性の解説' },
+// 表示を解除すると見られる4つの視点（レース画面の見出しと同じ名前）。
+// もう出していない「AIレース展望」を案内していたため、実際の4つに直し、説明の文はやめた（2026-09-26）
+const REWARD_PREVIEW_ITEMS: Array<{ icon: LineIconName; title: string }> = [
+    { icon: 'gauge', title: 'AI偏差値' },
+    { icon: 'swords', title: '対戦成績' },
+    { icon: 'lanes', title: '展開予測' },
+    { icon: 'bars', title: '馬番の傾向' },
 ];
 
 const isIntentionalRewardedDisableReason = (reason: string | null) => {
@@ -518,10 +520,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                                             {REWARD_PREVIEW_ITEMS.map((item) => (
                                                 <div key={item.title} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
                                                     <LineIcon name={item.icon} size={18} className="block shrink-0 text-brand-700" />
-                                                    <div className="min-w-0">
-                                                        <p className="text-[13px] font-bold leading-tight text-slate-900">{item.title}</p>
-                                                        <p className="text-[11px] leading-tight text-slate-500">{item.description}</p>
-                                                    </div>
+                                                    <p className="min-w-0 text-[13px] font-bold leading-tight text-slate-900">{item.title}</p>
                                                 </div>
                                             ))}
                                         </div>

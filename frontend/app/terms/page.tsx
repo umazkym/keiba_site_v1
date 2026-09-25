@@ -225,7 +225,7 @@ function TermsContentSection({ section }: { section: Section }) {
 
             {section.subsections?.map((subsection) => (
                 <div key={subsection.title} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                    <h3 className="text-base font-black text-slate-900 sm:text-lg">{subsection.title}</h3>
+                    <h3 className="text-base font-bold text-slate-900 sm:text-lg">{subsection.title}</h3>
                     {subsection.intro && <p className="mt-2">{subsection.intro}</p>}
                     {Array.isArray(subsection.content) &&
                         subsection.content.map((p) => <HtmlText key={p} html={p} />)}

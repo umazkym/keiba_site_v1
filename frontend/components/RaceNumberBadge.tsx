@@ -1,5 +1,7 @@
 import { getWakuClasses } from '@/lib/waku';
 
+// 馬番・枠番の印。数字は semibold に軽くする（2026-09-26 利用者の指定「数字の並びを重くしない」）
+
 export function RaceNumberBadge({
     horseNumber,
     frameNumber,
@@ -17,7 +19,7 @@ export function RaceNumberBadge({
     return (
         <span
             aria-label={label ?? `${frameNumber == null ? '' : `${frameNumber}枠 `}${horseNumber}番`}
-            className={`inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-1 font-mono text-xs font-black tabular-nums ${colorClass}`}
+            className={`inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-1 font-mono text-xs font-semibold tabular-nums ${colorClass}`}
         >
             {horseNumber}
         </span>
@@ -29,7 +31,7 @@ export function FrameNumberBadge({ frameNumber }: { frameNumber: number }) {
     return (
         <span
             aria-label={`${frameNumber}枠`}
-            className={`inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-1 font-mono text-xs font-black tabular-nums ${colorClass}`}
+            className={`inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-1 font-mono text-xs font-semibold tabular-nums ${colorClass}`}
         >
             {frameNumber}
         </span>

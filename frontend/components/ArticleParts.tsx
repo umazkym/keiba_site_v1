@@ -80,6 +80,9 @@ export function ArticleMetaRow({
 export function ArticleCover({ cover, title }: { cover: ArticleThumbData | null; title: string }) {
     if (!cover || cover.kind === 'category') return null;
     const isPhoto = cover.kind === 'photo';
+    // 写真の見せる位置（一覧のサムネイルと同じ）。無いときも重賞の季節写真は下寄りの馬群を見せる（2026-09-26）
+    const position = isPhoto ? cover.position : undefined;
+    const gradeFallback = !position && cover.src.includes('/images/photos/grade-') ? ' object-[50%_70%]' : '';
     return (
         <div className="overflow-hidden rounded-[14px] bg-slate-100 ring-1 ring-inset ring-slate-200">
             {/* eslint-disable-next-line @next/next/no-img-element -- 事前に書き出した画像を直接配信し、サーバーの画像最適化を使わない */}
@@ -90,7 +93,8 @@ export function ArticleCover({ cover, title }: { cover: ArticleThumbData | null;
                 alt={isPhoto ? '' : `${title} のアイキャッチ画像`}
                 loading="eager"
                 decoding="async"
-                className="block aspect-[19/10] w-full object-cover sm:aspect-[9/4]"
+                className={`block aspect-[19/10] w-full object-cover sm:aspect-[9/4]${gradeFallback}`}
+                style={position ? { objectPosition: position } : undefined}
             />
         </div>
     );

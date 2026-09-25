@@ -18,70 +18,26 @@ import {
     readHorseComparison,
 } from '@/lib/my-data';
 
+// データの案内。2026-09-26：項目ごとの色と下線のタブをやめ、切り替えボタン（SegmentedControl）と同じ形の
+// リンクの列にする（淡い面の中で、今いるページだけ白く浮く）。アイコンは文字と同じ色。
 interface NavItem {
     href: string;
     label: string;
     icon: typeof Database;
     badgeKey?: 'favorites' | 'comparison';
-    color: string;
-    activeColor: string;
 }
 
 const PRIMARY_ITEMS: NavItem[] = [
-    {
-        href: '/keiba-data',
-        label: 'データトップ',
-        icon: Database,
-        color: 'text-slate-500',
-        activeColor: 'border-brand-600 bg-brand-50/80 text-brand-800 font-black',
-    },
-    {
-        href: '/compare',
-        label: '競走馬比較',
-        icon: GitCompareArrows,
-        badgeKey: 'comparison',
-        color: 'text-amber-600',
-        activeColor: 'border-amber-600 bg-amber-50/80 text-amber-900 font-black',
-    },
-    {
-        href: '/my-data',
-        label: 'マイデータ',
-        icon: Bookmark,
-        badgeKey: 'favorites',
-        color: 'text-emerald-600',
-        activeColor: 'border-emerald-600 bg-emerald-50/80 text-emerald-900 font-black',
-    },
+    { href: '/keiba-data', label: 'データトップ', icon: Database },
+    { href: '/compare', label: '競走馬比較', icon: GitCompareArrows, badgeKey: 'comparison' },
+    { href: '/my-data', label: 'マイデータ', icon: Bookmark, badgeKey: 'favorites' },
 ];
 
 const DIRECTORY_ITEMS: NavItem[] = [
-    {
-        href: '/horses',
-        label: '競走馬',
-        icon: CircleDot,
-        color: 'text-emerald-600',
-        activeColor: 'border-emerald-600 bg-emerald-50/80 text-emerald-900 font-black',
-    },
-    {
-        href: '/jockeys',
-        label: '騎手',
-        icon: UserRound,
-        color: 'text-brand-600',
-        activeColor: 'border-brand-600 bg-brand-50/80 text-brand-900 font-black',
-    },
-    {
-        href: '/trainers',
-        label: '調教師',
-        icon: UsersRound,
-        color: 'text-violet-600',
-        activeColor: 'border-violet-600 bg-violet-50/80 text-violet-900 font-black',
-    },
-    {
-        href: '/courses',
-        label: 'コース別',
-        icon: MapPinned,
-        color: 'text-amber-700',
-        activeColor: 'border-amber-600 bg-amber-50/80 text-amber-900 font-black',
-    },
+    { href: '/horses', label: '競走馬', icon: CircleDot },
+    { href: '/jockeys', label: '騎手', icon: UserRound },
+    { href: '/trainers', label: '調教師', icon: UsersRound },
+    { href: '/courses', label: 'コース別', icon: MapPinned },
 ];
 
 export function DataHubNav({ currentPath }: { currentPath?: string }) {
@@ -105,51 +61,43 @@ export function DataHubNav({ currentPath }: { currentPath?: string }) {
         };
     }, []);
 
-    const renderItems = (items: NavItem[], columns: string) => (
-        <div className={`grid ${columns} divide-x divide-slate-100`}>
+    const renderItems = (items: NavItem[], label: string) => (
+        <div role="group" aria-label={label} className="flex rounded-[10px] bg-slate-100 p-0.5">
             {items.map((item) => {
-                    const Icon = item.icon;
-                    const isCurrent = activePath === item.href || (item.href !== '/keiba-data' && activePath.startsWith(item.href));
-                    const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0;
+                const Icon = item.icon;
+                const isCurrent = activePath === item.href || (item.href !== '/keiba-data' && activePath.startsWith(item.href));
+                const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0;
 
-                    return (
-                        <Link
-                            prefetch={false}
-                            key={item.href}
-                            href={item.href}
-                            aria-current={isCurrent ? 'page' : undefined}
-                            className={`relative flex min-h-10 flex-col items-center justify-center px-1 py-1.5 text-[11.5px] transition-colors duration-150 sm:flex-row sm:gap-1.5 sm:px-2 sm:py-2 sm:text-[13px] ${
-                                isCurrent
-                                    ? `border-b-2 ${item.activeColor}`
-                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                            }`}
-                        >
-                            <span className="relative flex items-center justify-center">
-                                <Icon
-                                    className={`h-4 w-4 shrink-0 ${isCurrent ? '' : item.color}`}
-                                    aria-hidden="true"
-                                />
-                                {badgeCount > 0 && (
-                                    <span className="absolute -right-2.5 -top-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-ai px-1 font-num text-[11px] font-bold text-slate-950">
-                                        {badgeCount}
-                                    </span>
-                                )}
+                return (
+                    <Link
+                        prefetch={false}
+                        key={item.href}
+                        href={item.href}
+                        aria-current={isCurrent ? 'page' : undefined}
+                        className={`inline-flex h-8 min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-[8px] px-1 text-[12.5px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 sm:gap-1.5 sm:px-2 sm:text-[13px] ${
+                            isCurrent
+                                ? 'bg-white text-navy shadow-[0_1px_2px_rgba(20,26,61,0.16)]'
+                                : 'text-slate-500 hover:text-navy'
+                        }`}
+                    >
+                        {/* 360px未満では文字が入りきらないため、アイコンを出さない */}
+                        <Icon className="hidden h-4 w-4 shrink-0 min-[360px]:block sm:h-[18px] sm:w-[18px]" aria-hidden="true" />
+                        <span>{item.label}</span>
+                        {badgeCount > 0 && (
+                            <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-ai px-1 font-num text-[11px] font-bold text-slate-950">
+                                {badgeCount}
                             </span>
-                            <span className="mt-1 whitespace-nowrap font-bold sm:mt-0">{item.label}</span>
-                        </Link>
-                    );
-                })}
+                        )}
+                    </Link>
+                );
+            })}
         </div>
     );
 
     return (
-        <nav aria-label="競馬データナビゲーション" className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div aria-label="主な操作">
-                {renderItems(PRIMARY_ITEMS, 'grid-cols-3')}
-            </div>
-            <div className="border-t border-slate-200 bg-slate-50/50" aria-label="データ分類">
-                {renderItems(DIRECTORY_ITEMS, 'grid-cols-4')}
-            </div>
+        <nav aria-label="競馬データナビゲーション" className="flex flex-col gap-1.5">
+            {renderItems(PRIMARY_ITEMS, '主な操作')}
+            {renderItems(DIRECTORY_ITEMS, 'データ分類')}
         </nav>
     );
 }

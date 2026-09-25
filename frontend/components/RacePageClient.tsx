@@ -160,7 +160,7 @@ export default function RacePageClient({
             return (
                 <section className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-6 text-center md:py-8">
                     <GuideHorse size={110} mood={isFetchError ? 'look' : 'sleep'} />
-                    <h2 className="text-[20px] font-extrabold text-slate-900">
+                    <h2 className="text-[20px] font-bold text-slate-900">
                         {isFetchError ? 'データを読み込めませんでした' : (
                             <>
                                 <span className="inline-block">この日のレースは</span>

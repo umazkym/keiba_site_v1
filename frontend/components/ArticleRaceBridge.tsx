@@ -110,7 +110,7 @@ export function ArticleRaceBridge({
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700" aria-hidden="true">
                   <Gauge className="h-4 w-4" />
                 </span>
-                <h2 id={`article-race-bridge-${articleSlug}`} className="min-w-0 text-sm font-black leading-tight text-slate-950 sm:text-base">
+                <h2 id={`article-race-bridge-${articleSlug}`} className="min-w-0 text-sm font-bold leading-tight text-slate-950 sm:text-base">
                   {raceName}の実データ
                 </h2>
               </div>
@@ -118,7 +118,7 @@ export function ArticleRaceBridge({
                 {meta.join(' ・ ')}
               </p>
             </div>
-            <span className="inline-flex min-h-8 shrink-0 items-center gap-1 text-[11px] font-black text-brand-700 sm:text-xs">
+            <span className="inline-flex min-h-8 shrink-0 items-center gap-1 text-[11px] font-bold text-brand-700 sm:text-xs">
               全頭分析へ <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
           </div>
@@ -127,11 +127,11 @@ export function ArticleRaceBridge({
               <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 text-xs sm:grid-cols-[2.5rem_minmax(0,1fr)_auto] sm:text-sm">
                 {verifiedPreview.top_predictions.slice(0, 3).map((prediction) => (
                   <div key={`${prediction.horse_number}-${prediction.horse_name}`} className="contents">
-                    <span className="font-mono font-black text-slate-700">{prediction.horse_number}</span>
+                    <span className="font-mono font-bold text-slate-700">{prediction.horse_number}</span>
                     <span className="min-w-0 break-words font-bold text-slate-900">
                       {prediction.horse_name}
                     </span>
-                    <span className="whitespace-nowrap font-mono font-black text-amber-700">
+                    <span className="whitespace-nowrap font-mono font-bold text-amber-700">
                       {prediction.mark ? `${prediction.mark} ` : ''}{prediction.deviation_score?.toFixed(1) ?? '--'}
                     </span>
                   </div>

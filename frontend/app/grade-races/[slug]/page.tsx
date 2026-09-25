@@ -103,7 +103,7 @@ export default async function GradeRaceDetailPage({ params }: Props) {
             <h2 className="font-display text-[19px] font-bold text-slate-900 sm:text-[21px]">レース前に見るポイント</h2>
             <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
               {race.focusPoints.map((point) => (
-                <li key={point} className="border-l-4 border-slate-300 pl-3">{point}</li>
+                <li key={point} className="border-b border-slate-100 pb-2 last:border-b-0">{point}</li>
               ))}
             </ul>
           </div>
@@ -113,7 +113,7 @@ export default async function GradeRaceDetailPage({ params }: Props) {
             <div className="mt-4 space-y-3">
               {race.updateStages.map((stage) => (
                 <div key={stage.label} className="rounded-xl bg-white p-4 shadow-soft">
-                  <p className="text-xs font-black text-primary">{stage.label} / {stage.timing}</p>
+                  <p className="text-xs font-bold text-primary">{stage.label} / {stage.timing}</p>
                   <p className="mt-2 text-sm leading-7 text-slate-600">{stage.body}</p>
                 </div>
               ))}
@@ -123,7 +123,6 @@ export default async function GradeRaceDetailPage({ params }: Props) {
 
         <EntityArticleSection
           title={`${race.name}の記事`}
-          description="展望、枠順、追い切り、結果回顧など、この重賞名に紐づく記事を自動で集約しています。年ごとのトレンド記事を読み返しながら、固定の重賞ページに評価を重ねます。"
           articles={raceArticles}
           archiveHref={`/articles/grade-races/${race.slug}`}
           archiveLabel="記事アーカイブ"
@@ -132,7 +131,7 @@ export default async function GradeRaceDetailPage({ params }: Props) {
         <RaceSeriesPanel data={seriesData} />
 
         <section className="mt-10">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-950">レース後回顧テンプレート</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-950">レース後回顧テンプレート</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {[
               "前半の流れと隊列",
@@ -147,40 +146,17 @@ export default async function GradeRaceDetailPage({ params }: Props) {
               </div>
             ))}
           </div>
-          <p className="mt-4 text-sm leading-7 text-slate-600">
-            回顧では着順だけを見ず、当日の馬場、通ったコース、直線の進路、人気とのズレを残します。
-            次走で同じ条件に戻る馬と、条件が変わって評価を下げたい馬を分けるための記録です。
-          </p>
         </section>
 
-        <section className="mt-10 grid gap-4 md:grid-cols-2">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-950">関連データ</h2>
-            <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
-              {race.relatedLinks.map((link) => (
-                <Link prefetch={false} key={link.href} href={link.href} className="block p-4 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-primary">
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-soft">
-            <h2 className="font-display text-[19px] font-bold text-slate-900 sm:text-[21px]">X投稿の導線</h2>
-            <p className="mt-2 text-sm leading-7 text-slate-600">
-              投稿先はトップページではなく、このレース、関連コース、関連騎手ページへ直接送る方針です。
-            </p>
-            <div className="mt-4 space-y-2">
-              {race.xPostThemes.map((theme) => (
-                <a
-                  key={theme}
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${theme}\n${race.name}のデータ整理はこちら`) }&url=${encodeURIComponent(`https://uma-free.com/grade-races/${race.slug}`)}`}
-                  className="block rounded-xl bg-white p-3 text-sm font-bold text-slate-700 shadow-soft hover:text-primary"
-                >
-                  {theme}
-                </a>
-              ))}
-            </div>
+        {/* 「X投稿の導線」は運営の内部の言葉だったため外した。回顧テンプレートの下の説明文もやめた（2026-09-26） */}
+        <section className="mt-10">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-950">関連データ</h2>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
+            {race.relatedLinks.map((link) => (
+              <Link prefetch={false} key={link.href} href={link.href} className="block p-4 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-primary">
+                {link.label}
+              </Link>
+            ))}
           </div>
         </section>
       </article>

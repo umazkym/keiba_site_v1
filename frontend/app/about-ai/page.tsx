@@ -92,7 +92,7 @@ export default function AboutAiPage() {
           <div className="grid gap-3 md:grid-cols-2">
             {featureItems.map((item) => (
               <div key={item.label} className="rounded-xl border border-slate-200 bg-white p-4">
-                <h3 className="text-base font-black text-slate-950">{item.label}</h3>
+                <h3 className="text-base font-bold text-slate-950">{item.label}</h3>
                 <p className="mt-2 text-sm leading-7 text-slate-600">{item.body}</p>
               </div>
             ))}

@@ -81,7 +81,7 @@ function VenueColumn({ venue, glyph }: { venue: BoardVenue; glyph?: ReactNode })
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white" aria-labelledby={`board-venue-${venue.venue}`}>
             <header className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-3.5 py-3">
                 <div className="flex flex-1 flex-col gap-0.5">
-                    <h2 id={`board-venue-${venue.venue}`} className="text-[22px] font-extrabold leading-tight text-slate-900">{venue.venue}</h2>
+                    <h2 id={`board-venue-${venue.venue}`} className="text-[22px] font-bold leading-tight text-slate-900">{venue.venue}</h2>
                     <p className="text-[12px] font-bold text-slate-500">
                         全{venue.races.length}R
                     </p>
@@ -140,7 +140,7 @@ export function RaceDayBoard({
     const pageHead = (
         <header className="flex flex-col gap-3 md:mb-1">
             <div className="flex min-w-0 flex-col gap-1 md:gap-1.5">
-                <h1 className="text-[22px] font-extrabold leading-tight text-slate-900 md:text-[32px]">{title}</h1>
+                <h1 className="text-[22px] font-bold leading-tight text-slate-900 md:text-[32px]">{title}</h1>
                 {!isLoading && summary.totalRaces > 0 && (
                     <p className="text-[12.5px] font-bold text-slate-500 md:text-sm">{describeDay(summary)}</p>
                 )}
@@ -166,7 +166,7 @@ export function RaceDayBoard({
                 <section className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-6 text-center md:py-8">
                     <GuideHorse size={110} mood="sleep" />
                     {/* 狭い画面で折り返すときは「この日のレースは／まだありません」の区切りで折る */}
-                    <h2 className="text-[20px] font-extrabold text-slate-900">
+                    <h2 className="text-[20px] font-bold text-slate-900">
                         <span className="inline-block">この日のレースは</span><span className="inline-block">まだありません</span>
                     </h2>
                     <p className="text-sm leading-relaxed text-slate-700">開催がないか、データの公開前です。</p>

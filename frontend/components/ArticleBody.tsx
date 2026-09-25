@@ -18,7 +18,7 @@ export const ARTICLE_PROSE_CLASS = [
     'prose-a:text-brand-700 prose-a:font-bold prose-a:underline prose-a:decoration-brand-200 prose-a:decoration-2 prose-a:underline-offset-4 hover:prose-a:decoration-brand-600',
     'prose-strong:text-slate-900 prose-strong:font-bold',
     'prose-img:rounded-xl prose-img:border prose-img:border-slate-200 prose-img:my-6',
-    'prose-blockquote:border-l-[3px] prose-blockquote:border-brand-300 prose-blockquote:bg-slate-50 prose-blockquote:py-3 prose-blockquote:px-4 prose-blockquote:my-5 prose-blockquote:not-italic prose-blockquote:font-normal prose-blockquote:text-slate-700 prose-blockquote:text-[15px] sm:prose-blockquote:text-[16px]',
+    'prose-blockquote:rounded-lg prose-blockquote:border-l-0 prose-blockquote:bg-slate-50 prose-blockquote:py-3 prose-blockquote:px-4 prose-blockquote:my-5 prose-blockquote:not-italic prose-blockquote:font-normal prose-blockquote:text-slate-700 prose-blockquote:text-[15px] sm:prose-blockquote:text-[16px]',
     'prose-code:bg-slate-100 prose-code:text-slate-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:font-mono prose-code:text-[13px] prose-code:before:content-none prose-code:after:content-none',
     'prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-pre:text-slate-800 prose-pre:rounded-lg prose-pre:my-4 prose-pre:p-3 prose-pre:font-sans prose-pre:text-[14px] prose-pre:leading-[1.7] [&_pre_code]:text-slate-800 [&_pre_code]:bg-transparent [&_pre_code]:p-0',
     'prose-ul:marker:text-slate-500 prose-ol:marker:text-slate-500 prose-ol:marker:font-bold prose-ul:my-4 prose-ol:my-4 prose-li:text-[15.5px] prose-li:leading-[1.85] prose-li:my-1 prose-li:text-slate-900 sm:prose-li:text-[17px]',

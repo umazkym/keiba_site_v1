@@ -5,7 +5,7 @@ import {
     Swords,
     type LucideIcon,
 } from 'lucide-react';
-import { LineIcon, type LineIconName } from '@/components/LineIcon';
+import type { LineIconName } from '@/components/LineIcon';
 
 export type RaceAnalysisFeatureTone = 'blue' | 'indigo' | 'emerald' | 'amber';
 export type RaceAnalysisFeatureVisualType = 'score' | 'matchup' | 'pace' | 'frame';
@@ -25,9 +25,10 @@ export type RaceAnalysisFeature = {
 
 type RaceAnalysisValueGridProps = {
     className?: string;
-    // full：明るいカード（スマホ2列・PC4列）／bar：PCのヒーロー下の帯／compact：記事冒頭の4列
+    // bar：PCのヒーロー下の白い帯／compact：記事冒頭の4列
     // strip：スマホ〜タブレットのヒーロー下の1行（小図と名前だけ。2026-09-26 縦の高さの見直し）
-    variant?: 'full' | 'bar' | 'compact' | 'strip';
+    // 2026-09-26：bar も strip と同じ中身（小図と名前だけ。色の面のアイコンと灰色の札はやめた）。使っていない full はなくした
+    variant?: 'bar' | 'compact' | 'strip';
 };
 
 export const raceAnalysisFeatures: readonly RaceAnalysisFeature[] = [
@@ -170,7 +171,21 @@ export function RaceAnalysisFeatureVisual({ type }: { type: RaceAnalysisFeatureV
     );
 }
 
-export function RaceAnalysisValueGrid({ className = '', variant = 'full' }: RaceAnalysisValueGridProps) {
+// 小図と名前だけの4列（strip と bar の中身）
+function FeatureStripList({ large = false, className = '' }: { large?: boolean; className?: string }) {
+    return (
+        <ul className={`grid w-full grid-cols-4 ${large ? 'gap-2.5' : 'gap-1'} ${className}`} aria-label="UMA-FREEで確認できる4つの分析">
+            {raceAnalysisFeatures.map((feature) => (
+                <li key={feature.title} className={`flex min-w-0 flex-col items-center ${large ? 'gap-2' : 'gap-1.5'}`}>
+                    <span className={`flex items-center justify-center ${large ? 'h-[26px] w-16' : 'h-[22px] w-14'}`}><RaceAnalysisFeatureVisual type={feature.visual} /></span>
+                    <span className={`max-w-full whitespace-nowrap font-bold leading-none text-slate-900 ${large ? 'text-[13.5px]' : 'text-[12px]'}`}>{feature.title}</span>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+export function RaceAnalysisValueGrid({ className = '', variant = 'strip' }: RaceAnalysisValueGridProps) {
     if (variant === 'compact') {
         return (
             <ul
@@ -182,7 +197,7 @@ export function RaceAnalysisValueGrid({ className = '', variant = 'full' }: Race
                         <li key={feature.title} className="flex min-w-0 flex-col px-1.5 first:pl-0 last:pr-0">
                             <div className="mb-1 flex min-w-0 flex-col items-center justify-center gap-0.5">
                                 <RaceAnalysisFeatureIcon feature={feature} />
-                                <span className="max-w-full whitespace-nowrap text-[10px] font-black leading-none tracking-[-0.02em] text-slate-900">
+                                <span className="max-w-full whitespace-nowrap text-[10px] font-bold leading-none tracking-[-0.02em] text-slate-900">
                                     {feature.compactTitle}
                                 </span>
                             </div>
@@ -196,62 +211,14 @@ export function RaceAnalysisValueGrid({ className = '', variant = 'full' }: Race
         );
     }
 
-    if (variant === 'strip') {
-        return (
-            <ul className={`grid w-full grid-cols-4 gap-1 ${className}`} aria-label="UMA-FREEで確認できる4つの分析">
-                {raceAnalysisFeatures.map((feature) => (
-                    <li key={feature.title} className="flex min-w-0 flex-col items-center gap-1.5">
-                        <span className="flex h-[22px] w-14 items-center justify-center"><RaceAnalysisFeatureVisual type={feature.visual} /></span>
-                        <span className="max-w-full whitespace-nowrap text-[12px] font-bold leading-none text-slate-900">{feature.title}</span>
-                    </li>
-                ))}
-            </ul>
-        );
-    }
-
     if (variant === 'bar') {
         return (
             <div className={`flex items-center gap-4 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-elevated ${className}`}>
                 <p className="whitespace-nowrap text-[13px] font-bold leading-snug text-slate-500">4つの視点で<br />全レースを分析</p>
-                <ul className="grid min-w-0 flex-1 grid-cols-4 gap-2.5" aria-label="UMA-FREEで確認できる4つの分析">
-                    {raceAnalysisFeatures.map((feature) => (
-                        <li key={feature.title} className="flex min-w-0 items-center gap-2.5 rounded-xl bg-slate-50 px-2.5 py-2">
-                            <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700" aria-hidden="true">
-                                <LineIcon name={feature.lineIcon} size={17} />
-                            </span>
-                            <span className="flex min-w-0 flex-1 flex-col gap-1">
-                                <span className="min-w-0 break-words text-[13.5px] font-bold text-slate-900">{feature.title}</span>
-                                <span className="flex h-[22px] w-16 items-center"><RaceAnalysisFeatureVisual type={feature.visual} /></span>
-                            </span>
-                        </li>
-                    ))}
-                </ul>
+                <FeatureStripList large className="min-w-0 flex-1" />
             </div>
         );
     }
 
-    return (
-        <ul
-            className={`grid w-full grid-cols-2 gap-2 md:grid-cols-4 md:gap-3 ${className}`}
-            aria-label="UMA-FREEで確認できる4つの分析"
-        >
-            {raceAnalysisFeatures.map((feature) => (
-                <li
-                    key={feature.title}
-                    className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left max-[359px]:p-2.5 md:px-3.5 md:pb-3 md:pt-3.5"
-                >
-                    <span className="flex min-w-0 items-center gap-2">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700" aria-hidden="true">
-                            <LineIcon name={feature.lineIcon} size={17} />
-                        </span>
-                        <span className="min-w-0 break-words text-[13.5px] font-bold text-slate-900 md:text-[14.5px]">{feature.title}</span>
-                    </span>
-                    <span className="hidden text-[12px] leading-normal text-slate-500 md:block">{feature.description}</span>
-                    <span className="flex h-[26px] w-16 items-center">
-                        <RaceAnalysisFeatureVisual type={feature.visual} />
-                    </span>
-                </li>
-            ))}
-        </ul>
-    );
+    return <FeatureStripList className={className} />;
 }

@@ -28,7 +28,7 @@ export default function NotFound() {
             <section className="flex flex-col items-center gap-3 text-center sm:gap-4">
                 <GuideHorse size={150} mood="lost" className="block h-[120px] w-[120px] sm:h-[150px] sm:w-[150px]" />
                 <p className="font-num text-[15px] font-bold tracking-[0.14em] text-slate-500">404</p>
-                <h1 className="text-2xl font-extrabold leading-snug text-slate-900 sm:text-[32px]">ページが見つかりませんでした</h1>
+                <h1 className="text-2xl font-bold leading-snug text-slate-900 sm:text-[32px]">ページが見つかりませんでした</h1>
                 <p className="max-w-[520px] text-sm leading-7 text-slate-700 sm:text-[15.5px]">
                     移動したか、削除された可能性があります。<br />
                     レース名・競馬場・騎手の名前で探せます。
@@ -58,9 +58,8 @@ export default function NotFound() {
                         prefetch={false}
                         className="flex items-center gap-3.5 rounded-[14px] border border-slate-200 bg-white p-4 transition-colors duration-150 hover:border-brand-300"
                     >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
-                            <LineIcon name={entry.icon} size={22} />
-                        </span>
+                        {/* アイコンの色の面はやめ、アイコンだけ大きく（2026-09-26） */}
+                        <LineIcon name={entry.icon} size={32} className="block shrink-0 text-brand-700" />
                         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                             <span className="text-[15px] font-bold text-slate-900">{entry.title}</span>
                             <span className="text-[13px] text-slate-500">{entry.description}</span>

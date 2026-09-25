@@ -58,6 +58,15 @@ const PHOTO_POSITION: Record<string, string> = {
     'race-dirt-1': '75% 50%',
     'race-night-1': '80% 50%',
     'race-dusk-1': '55% 60%',
+    // 重賞の季節写真（16:10）は馬群が下寄り。16:9のカードと90×60の行で馬が切れないよう下を見せる（2026-09-26）
+    // article-grade・article-grade-2 は16:9の寄りの写真のため真ん中のまま
+    'grade-spring': '50% 70%',
+    'grade-summer': '50% 70%',
+    'grade-autumn': '50% 70%',
+    'grade-winter': '50% 70%',
+    'grade-spring-2': '50% 70%',
+    'grade-summer-2': '50% 70%',
+    'grade-winter-2': '50% 70%',
 };
 
 export type ArticleThumb =

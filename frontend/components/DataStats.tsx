@@ -14,6 +14,7 @@ import type {
 // 表の文字はスマホでも14px以上、着順はレース画面と同じ丸い印（1着は紺の塗り、2・3着は紺の輪）。
 // 2026-09-25 スマホの見直し：カードの線は border（内側の影は表の背景に塗りつぶされて消えていた）、表の行は44px、
 // 最近の成績はスマホだけ見本の1行リストにする（表は PC だけ）。
+// 2026-09-26：表の説明文の枠（description）をやめ、率の数字は semibold に軽くする。
 
 function formatRate(value: number): string {
     return `${value.toFixed(1)}%`;
@@ -109,7 +110,6 @@ export function RateSummaryStrip({
 // 条件別の成績の表。inTabs のときはスマホで DataSegmentTabs のカードの中に入る（自分のカードと見出しを出さない）。
 export function SegmentStatsTable({
     title,
-    description,
     items,
     linkPrefix,
     labelKind = 'plain',
@@ -119,7 +119,6 @@ export function SegmentStatsTable({
     className = '',
 }: {
     title: string;
-    description?: string;
     items: SegmentStat[];
     linkPrefix?: string;
     labelKind?: 'plain' | 'frame';
@@ -140,14 +139,8 @@ export function SegmentStatsTable({
             <SectionHeader
                 id={headingId}
                 title={title}
-                description={description}
                 className={inTabs ? 'sr-only sm:not-sr-only sm:mx-5 sm:pt-4' : 'mx-4 pt-3.5 sm:mx-5 sm:pt-4'}
             />
-            {inTabs && description && (
-                <p aria-hidden="true" className="px-4 pb-2 text-[12.5px] leading-5 text-slate-500 sm:hidden">
-                    {description}
-                </p>
-            )}
             <ResponsiveDataTable
                 label={`${title}の条件別成績`}
                 firstColumnDivider={false}
@@ -188,10 +181,10 @@ export function SegmentStatsTable({
                                     <td className="px-2 py-2 text-right font-num text-[15px] tabular-nums text-slate-600 sm:px-3 sm:py-3">
                                         {item.sample_size.toLocaleString('ja-JP')}
                                     </td>
-                                    <td className="px-2 py-2 text-right font-num text-[15.5px] font-bold tabular-nums text-slate-900 sm:px-3 sm:py-3">
+                                    <td className="px-2 py-2 text-right font-num text-[15.5px] font-semibold tabular-nums text-slate-900 sm:px-3 sm:py-3">
                                         {formatRate(item.win_rate)}
                                     </td>
-                                    <td className="py-2 pl-2 pr-4 text-right font-num text-[15.5px] font-bold tabular-nums text-navy sm:px-3 sm:py-3">
+                                    <td className="py-2 pl-2 pr-4 text-right font-num text-[15.5px] font-semibold tabular-nums text-navy sm:px-3 sm:py-3">
                                         {formatRate(item.place_rate)}
                                     </td>
                                     <td className="hidden px-4 py-3 text-right font-num text-[15px] tabular-nums text-slate-600 sm:table-cell">

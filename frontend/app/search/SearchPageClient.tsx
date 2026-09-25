@@ -264,7 +264,7 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
                                 <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11.5px] font-bold ${getBadgeClass(result.type)}`}>
                                     {getResultLabel(result.type)}
                                 </span>
-                                <h2 className="mt-1.5 line-clamp-2 text-xs font-black leading-snug text-slate-950 group-hover:text-primary">
+                                <h2 className="mt-1.5 line-clamp-2 text-xs font-bold leading-snug text-slate-950 group-hover:text-primary">
                                     {result.title}
                                 </h2>
                                 <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-600">{result.description}</p>
@@ -274,20 +274,7 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
                     </div>
                 )}
 
-                {!searchPerformed && !query && (
-                    <section className="grid gap-2 md:grid-cols-3">
-                        {[
-                            { label: 'レース名で探す', body: '宝塚記念、函館スプリントSなどの重賞名で検索できます。' },
-                            { label: '条件で探す', body: '東京芝2000m、馬場、馬体重など、気になる材料で探せます。' },
-                            { label: '使い方を探す', body: 'FAQ、運営情報、AI偏差値の見方も検索対象です。' },
-                        ].map((item) => (
-                            <div key={item.label} className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-soft">
-                                <h2 className="text-xs font-black text-slate-950">{item.label}</h2>
-                                <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600">{item.body}</p>
-                            </div>
-                        ))}
-                    </section>
-                )}
+                {/* 検索前に出していた使い方の説明カード3枚はやめた（2026-09-26 利用者の指定） */}
             </main>
         </div>
     );

@@ -3,6 +3,7 @@
 // データ詳細の「条件別の成績」など、表が縦に何枚も並ぶところを、スマホだけ1枚のカードにまとめてタブで切り替える（2026-09-25 スマホの見直し）。
 // 表はタブを切り替えても全部 HTML に残し（検索のため）、スマホでは選んでいない表を hidden で隠すだけにする。
 // PC（640px以上）はタブを出さず、今までどおり表ごとのカードを格子に並べる。
+// 2026-09-26：タブの列は切り替えボタン（SegmentedControl）と同じ形にする。表の下の補足（note）はやめた。
 import { useId, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { SectionHeader } from '@/components/SectionHeader';
 
@@ -15,13 +16,11 @@ export type DataSegmentTab = {
 export function DataSegmentTabs({
     title,
     tabs,
-    note,
     className = '',
     gridClassName = 'lg:grid-cols-2',
 }: {
     title: string;
     tabs: DataSegmentTab[];
-    note?: ReactNode;
     className?: string;
     gridClassName?: string;
 }) {
@@ -56,8 +55,8 @@ export function DataSegmentTabs({
         <section className={`overflow-hidden rounded-[14px] border border-slate-200 bg-white sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent ${className}`.trim()}>
             <div className="px-4 pb-2.5 pt-3.5 sm:hidden">
                 <SectionHeader title={title} />
-                {/* 390pxでは1行に収まる。320pxなど狭い画面では2行に折り返す（丸の中の文字を切らない） */}
-                <div role="tablist" aria-label={title} className="mt-2.5 flex flex-wrap gap-1">
+                {/* 淡い面の中で選んだものだけ白く浮く。390pxでは1行に収まり、狭い画面では折り返さずに面の中を横に動かす */}
+                <div role="tablist" aria-label={title} className="mt-2.5 flex overflow-x-auto rounded-[10px] bg-slate-100 p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {tabs.map((tab, index) => {
                         const selected = index === current;
                         return (
@@ -71,10 +70,10 @@ export function DataSegmentTabs({
                                 tabIndex={selected ? 0 : -1}
                                 onClick={() => setActive(index)}
                                 onKeyDown={(event) => handleKeyDown(event, index)}
-                                className={`inline-flex h-8 flex-auto items-center justify-center whitespace-nowrap rounded-full px-2 text-[13.5px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 ${
+                                className={`inline-flex h-7 flex-[1_0_auto] items-center justify-center whitespace-nowrap rounded-[8px] px-2.5 text-[12.5px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 ${
                                     selected
-                                        ? 'bg-navy text-white'
-                                        : 'bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50'
+                                        ? 'bg-white text-navy shadow-[0_1px_2px_rgba(20,26,61,0.16)]'
+                                        : 'text-slate-500 hover:text-navy'
                                 }`}
                             >
                                 {tab.label}
@@ -96,11 +95,6 @@ export function DataSegmentTabs({
                     </div>
                 ))}
             </div>
-            {note && (
-                <p className="border-t border-slate-200 px-4 py-2.5 text-[12.5px] leading-5 text-slate-500 sm:mt-3 sm:border-0 sm:px-0 sm:py-0">
-                    {note}
-                </p>
-            )}
         </section>
     );
 }

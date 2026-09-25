@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { SegmentedLinks } from "@/components/SegmentedLinks";
 import { BreadcrumbSchema } from "@/components/StructuredData";
 import { getPredictionAccuracySummary } from "@/lib/api";
 import type { AccuracyCondition, AccuracyRate, PredictionAccuracySummary } from "@/lib/types";
@@ -26,40 +27,44 @@ export const metadata: Metadata = {
 
 export const revalidate = 3600;
 
+// 期間の切り替え。ボタンの下の小さな補足（直近の変化 など）はやめた（2026-09-26）
 const rangeOptions = [
-  { label: "7日", days: 7, note: "直近の変化" },
-  { label: "30日", days: 30, note: "標準表示" },
-  { label: "90日", days: 90, note: "傾向確認" },
-  { label: "180日", days: 180, note: "長めに確認" },
+  { label: "7日", days: 7 },
+  { label: "30日", days: 30 },
+  { label: "90日", days: 90 },
+  { label: "180日", days: 180 },
 ];
+
+// アイコンは面に載せず、棒と同じ色の線で大きく出す（2026-09-26）
+const ACCENT_TEXT: Record<string, string> = {
+  "bg-amber-500": "text-amber-500",
+  "bg-brand-600": "text-brand-600",
+  "bg-emerald-600": "text-emerald-600",
+  "bg-slate-900": "text-slate-900",
+};
 
 const fallbackMetrics: Array<{
   label: string;
-  body: string;
   icon: LucideIcon;
   accent: string;
 }> = [
   {
     label: "上位評価馬の走り",
-    body: "AI偏差値上位馬が実際にどの程度馬券に絡んだかを数字で示します。",
     icon: Gauge,
     accent: "bg-amber-500",
   },
   {
     label: "条件別の傾向",
-    body: "芝・ダート・距離帯・地方など、条件ごとの精度差が分かります。",
     icon: BarChart3,
     accent: "bg-brand-600",
   },
   {
     label: "不的中レースの振り返り",
-    body: "出遅れ・馬場急変・ハイペースなど、外れた背景を分類し、次のレース判断に活かせます。",
     icon: AlertTriangle,
     accent: "bg-emerald-600",
   },
   {
     label: "人気との違い",
-    body: "オッズ上位とAI偏差値上位のズレを追跡し、モデルの偏りを検証します。",
     icon: LineChart,
     accent: "bg-slate-900",
   },
@@ -81,23 +86,21 @@ function percentWidth(value: number) {
   return `${Math.max(4, Math.min(100, value))}%`;
 }
 
+// 見出しの下の説明文はやめた（2026-09-26 利用者の指定）
 function SectionHeading({
   label,
   title,
-  description,
 }: {
   label: string;
   title: string;
-  description?: string;
 }) {
   return (
     <div className="mb-2 sm:mb-4">
       <p className="text-[12.5px] font-bold text-slate-500">{label}</p>
-      <h2 className="mt-0.5 flex items-center gap-1.5 text-[14.5px] font-black text-slate-950 sm:text-2xl">
+      <h2 className="mt-0.5 flex items-center gap-1.5 text-[14.5px] font-bold text-slate-950 sm:text-2xl">
         <span className="h-3.5 w-1 rounded-sm bg-accent" />
         {title}
       </h2>
-      {description && <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-slate-600 sm:text-sm sm:leading-7">{description}</p>}
     </div>
   );
 }
@@ -115,12 +118,10 @@ function RateCard({
     <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-5">
       <div className="flex items-start justify-between gap-2 sm:gap-3">
         <div>
-          <p className="text-xs font-black text-slate-700 sm:text-sm">{item.label}</p>
-          <p className="mt-0.5 text-lg font-black text-slate-950 sm:text-3xl">{item.rate.toFixed(1)}%</p>
+          <p className="text-xs font-bold text-slate-700 sm:text-sm">{item.label}</p>
+          <p className="mt-0.5 text-lg font-bold text-slate-950 sm:text-3xl">{item.rate.toFixed(1)}%</p>
         </div>
-        <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-white sm:h-10 sm:w-10 sm:rounded-xl ${accent}`}>
-          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-        </span>
+        <Icon className={`h-7 w-7 shrink-0 sm:h-9 sm:w-9 ${ACCENT_TEXT[accent] ?? "text-navy"}`} strokeWidth={1.75} aria-hidden="true" />
       </div>
       <div className="mt-2 h-1.5 rounded-full bg-slate-100 sm:mt-4 sm:h-2">
         <div className={`h-1.5 rounded-full sm:h-2 ${accent}`} style={{ width: percentWidth(item.rate) }} />
@@ -148,12 +149,13 @@ function TrendCard({
       </div>
       {rate !== null ? (
         <>
-          <p className="mt-1 text-base font-black text-slate-950 sm:text-2xl">{rate.toFixed(1)}%</p>
+          <p className="mt-1 text-base font-bold text-slate-950 sm:text-2xl">{rate.toFixed(1)}%</p>
           <div className="mt-1.5 h-1.5 rounded-full bg-slate-100 sm:mt-3 sm:h-2">
             <div className="h-1.5 rounded-full bg-accent sm:h-2" style={{ width: percentWidth(rate) }} />
           </div>
+          {/* 数字の説明の文はやめ、対象のレース数だけ残す（2026-09-26） */}
           <p className="mt-1 text-[12px] text-slate-500 sm:text-[12.5px]">
-            AI偏差値1位の3着以内率 / {summary?.race_count}レース
+            {summary?.race_count}レース
           </p>
         </>
       ) : (
@@ -172,21 +174,22 @@ function ConditionPanel({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-      <h3 className="text-lg font-black text-slate-950">{title}</h3>
+      <h3 className="text-lg font-bold text-slate-950">{title}</h3>
       <div className="mt-4 space-y-4">
         {items.length > 0 ? (
           items.slice(0, 5).map((item) => (
             <div key={item.label}>
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-bold text-slate-800">{item.label}</p>
-                <p className="text-xs font-semibold text-slate-400">{item.races}レース</p>
+                {/* 棒の下の説明の行はやめ、1位の3着以内率とレース数を右に並べる（2026-09-26） */}
+                <p className="whitespace-nowrap text-xs text-slate-500">
+                  <span className="font-num text-[14px] font-semibold tabular-nums text-slate-900">{item.top1_place_rate.toFixed(1)}%</span>
+                  <span className="ml-1.5">{item.races}レース</span>
+                </p>
               </div>
               <div className="mt-2 h-2 rounded-full bg-slate-100">
                 <div className="h-2 rounded-full bg-brand-600" style={{ width: percentWidth(item.top1_place_rate) }} />
               </div>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                1位3着以内率 {item.top1_place_rate.toFixed(1)}% / 上位3頭の3着以内率 {item.top3_place_rate.toFixed(1)}%
-              </p>
             </div>
           ))
         ) : (
@@ -206,7 +209,7 @@ function WeakConditionList({
 }) {
   return (
     <div className="rounded-2xl border border-amber-100 bg-white p-4">
-      <h3 className="text-sm font-black text-slate-800">{title}</h3>
+      <h3 className="text-sm font-bold text-slate-800">{title}</h3>
       <div className="mt-3 space-y-3">
         {items.length > 0 ? (
           items.map((item) => (
@@ -287,7 +290,7 @@ export default async function AccuracyPage({
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-stretch">
             <div className="flex flex-col justify-between">
               <div>
-                <h1 className="text-2xl font-black leading-tight text-slate-950 sm:text-4xl">
+                <h1 className="text-2xl font-bold leading-tight text-slate-950 sm:text-4xl">
                   AI予想の成績
                 </h1>
                 <p className="mt-4 max-w-3xl text-sm leading-[1.8] text-slate-700 sm:leading-8 sm:text-base">
@@ -295,34 +298,25 @@ export default async function AccuracyPage({
                 </p>
               </div>
 
-              <div className="mt-6 flex flex-wrap gap-2">
-                {rangeOptions.map((option) => (
-                  <Link
-                    prefetch={false}
-                    key={option.days}
-                    href={`/results/accuracy?days=${option.days}`}
-                    aria-current={selectedDays === option.days ? "page" : undefined}
-                    className={`rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
-                      selectedDays === option.days
-                        ? "bg-accent text-slate-950"
-                        : "border border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white"
-                    }`}
-                  >
-                    <span className="block leading-none">{option.label}</span>
-                    <span className="mt-1 block text-[11.5px] font-semibold opacity-75">{option.note}</span>
-                  </Link>
-                ))}
+              {/* 期間はほかの画面と同じ切り替えボタンの形（2026-09-26） */}
+              <div className="mt-6">
+                <SegmentedLinks
+                  ariaLabel="表示期間"
+                  items={rangeOptions.map((option) => ({
+                    href: `/results/accuracy?days=${option.days}`,
+                    label: option.label,
+                    current: selectedDays === option.days,
+                  }))}
+                />
               </div>
             </div>
 
             <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-slate-950">
-                  <ListChecks className="h-5 w-5" />
-                </span>
+                <ListChecks className="h-8 w-8 shrink-0 text-navy" strokeWidth={1.75} aria-hidden="true" />
                 <div>
                   <p className="text-xs font-bold text-slate-500">表示期間</p>
-                  <p className="text-lg font-black text-slate-950">直近{selectedDays}日</p>
+                  <p className="text-lg font-bold text-slate-950">直近{selectedDays}日</p>
                 </div>
               </div>
               {hasSummary ? (
@@ -363,7 +357,7 @@ export default async function AccuracyPage({
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                   <p className="text-[12.5px] font-bold text-slate-500">集計結果</p>
-                  <h2 className="mt-1 flex items-center gap-2 text-xl sm:text-2xl font-black text-slate-950">
+                  <h2 className="mt-1 flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-950">
                     <span className="h-5 w-1 rounded-sm bg-accent" />
                     主要成績
                   </h2>
@@ -390,7 +384,6 @@ export default async function AccuracyPage({
               <SectionHeading
                 label="注意条件"
                 title="扱いに注意したい条件"
-                description="以下の条件ではAI偏差値の精度が低めに出ています。馬場や展開など他の材料と組み合わせて判断してください。"
               />
               <div className="grid gap-4 md:grid-cols-2">
                 <WeakConditionList title="コース種別" items={weakCourseTypes} />
@@ -403,14 +396,13 @@ export default async function AccuracyPage({
               <SectionHeading
                 label="不的中レース"
                 title="外れたレース"
-                description="AI偏差値1位の馬が馬券圏外に終わったレースです。外れた原因を振り返る材料として残しています。"
               />
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
                 {summary.recent_misses.length > 0 ? (
                   summary.recent_misses.map((miss) => (
                     <div key={`${miss.race_date}-${miss.venue_name}-${miss.race_number}-${miss.horse_name}`} className="grid gap-3 border-b border-slate-100 p-4 last:border-b-0 md:grid-cols-[1fr_220px_120px] md:items-center">
                       <div>
-                        <p className="text-sm font-black text-slate-900">
+                        <p className="text-sm font-bold text-slate-900">
                           {formatDate(miss.race_date)} {miss.venue_name}{miss.race_number}R {miss.race_name}
                         </p>
                         <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -420,7 +412,7 @@ export default async function AccuracyPage({
                       <p className="text-sm font-bold text-slate-700">
                         AI偏差値1位: {miss.horse_name}
                       </p>
-                      <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm font-black text-slate-700 md:text-right">
+                      <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700 md:text-right">
                         {miss.rank ? `${miss.rank}着` : "着順不明"}
                         <span className="block text-xs font-semibold text-slate-400">偏差値 {miss.deviation_score.toFixed(2)}</span>
                       </div>
@@ -438,11 +430,8 @@ export default async function AccuracyPage({
               const Icon = metric.icon;
               return (
                 <div key={metric.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-                  <span className={`flex h-10 w-10 items-center justify-center rounded-xl text-white ${metric.accent}`}>
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <h2 className="mt-4 text-lg font-black text-slate-950">{metric.label}</h2>
-                  <p className="mt-2 text-sm leading-7 text-slate-600">{metric.body}</p>
+                  <Icon className={`h-9 w-9 ${ACCENT_TEXT[metric.accent] ?? "text-navy"}`} strokeWidth={1.75} aria-hidden="true" />
+                  <h2 className="mt-4 text-lg font-bold text-slate-950">{metric.label}</h2>
                 </div>
               );
             })}
@@ -454,19 +443,18 @@ export default async function AccuracyPage({
             <SectionHeading
               label="数字の読み方"
               title="数字の使い方"
-              description="AI偏差値はあくまで馬の比較を補助する参考指標です。"
             />
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm font-black text-slate-950">短期のブレ幅</p>
+                <p className="text-sm font-bold text-slate-950">短期のブレ幅</p>
                 <p className="mt-2 text-xs leading-6 text-slate-600">7日間は母数が少なく変動が大きいため、傾向よりも直近の状況把握に使います。</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm font-black text-slate-950">中期の安定度</p>
+                <p className="text-sm font-bold text-slate-950">中期の安定度</p>
                 <p className="mt-2 text-xs leading-6 text-slate-600">30〜90日なら母数がある程度揃い、条件別の得意・不得意が見えてきます。</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm font-black text-slate-950">不的中の記録</p>
+                <p className="text-sm font-bold text-slate-950">不的中の記録</p>
                 <p className="mt-2 text-xs leading-6 text-slate-600">外れたレースも隠さず残すことで、どの条件で精度が落ちるかを把握できます。</p>
               </div>
             </div>
@@ -483,15 +471,13 @@ export default async function AccuracyPage({
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
             <SectionHeading label="成績の扱い" title="公開方針" />
             <div className="space-y-3 text-sm leading-7 text-slate-600">
-              <p className="rounded-xl border-l-4 border-accent bg-white p-4 shadow-soft">
+              <p className="rounded-xl border border-slate-200 bg-white p-4">
                 集計対象を恣意的に絞って的中率を高く見せることはしていません。
               </p>
-              <p className="rounded-xl border-l-4 border-brand-600 bg-white p-4 shadow-soft">
+              <p className="rounded-xl border border-slate-200 bg-white p-4">
                 回収率を掲載する際は、点数・券種・購入条件を併記します。条件が不明確な数字は載せません。
               </p>
-              <p className="rounded-xl border-l-4 border-emerald-600 bg-white p-4 shadow-soft">
-                AI偏差値は馬の比較を補助するための参考指標であり、特定の投票行動を推奨するものではありません。
-              </p>
+              {/* 「参考指標であり、推奨するものではありません」の繰り返しの文はやめた（運営者情報・AIの説明のページに残す。2026-09-26） */}
             </div>
           </div>
         </section>

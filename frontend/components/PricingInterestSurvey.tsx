@@ -50,7 +50,7 @@ export function PricingInterestSurvey({
     if (response) {
         return (
             <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3" aria-live="polite">
-                <h2 className="text-sm font-black text-slate-900">機能アンケートへの回答</h2>
+                <h2 className="text-sm font-bold text-slate-900">機能アンケートへの回答</h2>
                 <p className="mt-1 text-xs leading-5 text-slate-600">
                     回答ありがとうございます。現時点で申込みや請求は発生していません。
                 </p>
@@ -60,9 +60,10 @@ export function PricingInterestSurvey({
 
     return (
         <section className="mt-5 rounded-xl border border-slate-300 bg-white p-4" aria-labelledby={`${surface}-pricing-survey-heading`}>
-            <h2 id={`${surface}-pricing-survey-heading`} className="text-base font-black text-slate-950">
+            <h2 id={`${surface}-pricing-survey-heading`} className="text-base font-bold text-slate-950">
                 保存・比較をもっと手早くする機能について
             </h2>
+            {/* 何の機能をいくらで出す場合の質問かが分からないと答えられないため、この1文は残す（申込み・請求が無いことも添える） */}
             <p className="mt-1 text-xs leading-5 text-slate-600">
                 販売前の機能アンケートです。端末間同期、比較セット保存、保存馬の前日メール通知を月390円で提供する場合の意向を教えてください。申込み・請求は発生しません。
             </p>

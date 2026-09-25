@@ -132,13 +132,14 @@ export function DataSearchPanel({
 
     return (
         <section aria-labelledby={`${inputId}-heading`} className="overflow-hidden rounded-xl border border-slate-300 bg-white">
-            <div className="border-b border-slate-200 bg-slate-50 px-3 py-1.5 sm:px-4 sm:py-2">
+            {/* 見出しの灰色の帯と線はやめ、文字だけ残す（2026-09-26） */}
+            <div className="px-2.5 pt-2.5 sm:px-4 sm:pt-3">
                 <h2 id={`${inputId}-heading`} className="flex items-center gap-1.5 text-xs font-bold text-slate-900 sm:text-sm">
-                    <Search className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
+                    <Search className="h-4 w-4 text-navy" aria-hidden="true" />
                     {heading}
                 </h2>
             </div>
-            <div className="p-2.5 sm:p-4">
+            <div className="px-2.5 pb-2.5 pt-1.5 sm:px-4 sm:pb-4 sm:pt-2">
                 <label htmlFor={inputId} className="mb-1 block text-xs font-bold text-slate-600">
                     {entityType ? `${DATA_ENTITY_LABELS[entityType]}名で検索` : 'キーワード'}
                 </label>
@@ -181,11 +182,7 @@ export function DataSearchPanel({
                         </select>
                     </div>
                 )}
-                <p className="mt-1.5 text-xs leading-5 text-slate-500">
-                    {entityType === 'trainer'
-                        ? '所属だけでも絞り込めます。所属は氏名とは分けて表示します。'
-                        : '2文字以上で候補を表示します。'}
-                </p>
+                {/* 入力欄の下の使い方の文はやめた（2026-09-26） */}
             </div>
 
             <div aria-live="polite" aria-busy={isLoading} className="border-t border-slate-100">
@@ -229,13 +226,13 @@ export function DataSearchPanel({
                                     }}
                                     className={`grid min-h-14 grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 ${index % 2 === 1 ? 'bg-slate-50/40' : ''}`}
                                 >
-                                    <span className={`inline-flex min-h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-black ${badge?.className ?? 'border-slate-200 bg-slate-100 text-slate-700'}`}>
+                                    <span className={`inline-flex min-h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-bold ${badge?.className ?? 'border-slate-200 bg-slate-100 text-slate-700'}`}>
                                         {BadgeIcon && <BadgeIcon className="h-3 w-3" aria-hidden="true" />}
                                         {DATA_ENTITY_LABELS[item.entity_type as SearchableEntityType] ?? 'データ'}
                                     </span>
                                     <span className="min-w-0">
                                         <span className="flex min-w-0 items-center gap-2">
-                                            <span className="truncate font-black text-slate-950">{display.name}</span>
+                                            <span className="truncate font-bold text-slate-950">{display.name}</span>
                                             {display.affiliation && (
                                                 <span className="shrink-0 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-bold text-slate-600">
                                                     {display.affiliation}

@@ -4,7 +4,8 @@
 
 | ファイル | 書体 | ライセンス |
 | --- | --- | --- |
-| `MPLUSRounded1c-ExtraBold.ttf` | M PLUS Rounded 1c ExtraBold（800。サイトの見出しと同じ） | SIL Open Font License 1.1（全文は `OFL-MPLUSRounded1c.txt`） |
+| `NotoSansJP-Bold.ttf` | Noto Sans JP Bold（700。題名など。サイトの見出しと同じゴシック。2026-09-26） | SIL Open Font License 1.1（全文は `OFL-NotoSansJP.txt`） |
+| `MPLUSRounded1c-ExtraBold.ttf` | M PLUS Rounded 1c ExtraBold（800。ロゴ文字だけ） | SIL Open Font License 1.1（全文は `OFL-MPLUSRounded1c.txt`） |
 
 - 本番のコンテナ（node:20-bookworm-slim）には日本語の書体が無く、以前の sharp＋SVG の描き方では英字も含めて全文字が四角になっていた。書体をこのファイルで渡して描く。
 - `next.config.mjs` の `outputFileTracingIncludes` で standalone の出力に含める。

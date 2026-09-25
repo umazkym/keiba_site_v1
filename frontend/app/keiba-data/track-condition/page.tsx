@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { FaqItem } from "@/components/FaqItem";
 import { BreadcrumbSchema } from "@/components/StructuredData";
 
 export const metadata: Metadata = {
@@ -20,28 +21,30 @@ const conditionRows = [
   { name: "不良", point: "水分が多く、適性差が出やすい状態", read: "馬場巧者、パワー型、前走凡走馬の巻き返しを検討する。" },
 ];
 
+// よくある質問（画面の一覧と構造化データで同じ文を使う）
+const FAQ_ITEMS = [
+  {
+    question: "稍重は何と読みますか？",
+    answer: "稍重は「ややおも」と読みます。良馬場より水分を含みますが、重馬場ほど大きく悪化していない状態です。",
+  },
+  {
+    question: "重馬場ではどんな馬を評価しますか？",
+    answer: "過去に重・不良馬場で好走した馬、時計のかかる条件に強い馬、前で運べるパワー型を確認します。ただしコースや当日のペースで変わります。",
+  },
+];
+
 export default function TrackConditionPage() {
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: [
-      {
-        "@type": "Question",
-        name: "稍重は何と読みますか？",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "稍重は「ややおも」と読みます。良馬場より水分を含みますが、重馬場ほど大きく悪化していない状態です。",
-        },
+    mainEntity: FAQ_ITEMS.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
       },
-      {
-        "@type": "Question",
-        name: "重馬場ではどんな馬を評価しますか？",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "過去に重・不良馬場で好走した馬、時計のかかる条件に強い馬、前で運べるパワー型を確認します。ただしコースや当日のペースで変わります。",
-        },
-      },
-    ],
+    })),
   };
 
   return (
@@ -59,7 +62,7 @@ export default function TrackConditionPage() {
         <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
           <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">馬場の読み方</p>
-          <h1 className="mt-4 text-2xl font-black leading-tight text-slate-950 sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-bold leading-tight text-slate-950 sm:text-4xl">
             馬場状態とは？良・稍重・重・不良の違い
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-[1.8] text-slate-700 sm:leading-8 sm:text-base">
@@ -68,11 +71,11 @@ export default function TrackConditionPage() {
         </header>
 
         <section className="mt-8">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-950">4つの馬場状態の見方</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-950">4つの馬場状態の見方</h2>
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
             {conditionRows.map((row) => (
               <div key={row.name} className="grid gap-2 border-b border-slate-100 p-4 last:border-b-0 sm:grid-cols-[80px_1fr_1.6fr]">
-                <div className="text-xl font-black text-accent-dark">{row.name}</div>
+                <div className="text-xl font-bold text-accent-dark">{row.name}</div>
                 <div className="text-sm font-bold text-slate-700">{row.point}</div>
                 <div className="text-sm leading-7 text-slate-600">{row.read}</div>
               </div>
@@ -83,21 +86,21 @@ export default function TrackConditionPage() {
         <section className="mt-10 grid gap-5 md:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <div className="mb-3 h-1.5 w-12 rounded-full bg-accent" />
-            <h3 className="text-lg font-black text-slate-950">時計を見る</h3>
+            <h3 className="text-lg font-bold text-slate-950">時計を見る</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               高速決着で好走した馬が、時計のかかる馬場でも同じ力を出せるとは限りません。道悪で大きく着順を落とした経験がないかは必ず見ておきたいポイントです。
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <div className="mb-3 h-1.5 w-12 rounded-full bg-brand-600" />
-            <h3 className="text-lg font-black text-slate-950">脚質を見る</h3>
+            <h3 className="text-lg font-bold text-slate-950">脚質を見る</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               道悪で前が粘るか差しが届くかは、含水率やコース形態で変わります。同日の他レースで前後どちらが有利かを掴んでから対象レースに臨むのが定石です。
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <div className="mb-3 h-1.5 w-12 rounded-full bg-emerald-600" />
-            <h3 className="text-lg font-black text-slate-950">実績を見る</h3>
+            <h3 className="text-lg font-bold text-slate-950">実績を見る</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               過去に重・不良で馬券圏内に入った実績は、道悪適性の裏付けとして強い材料です。逆に初めての道悪で人気を集めている馬は、過信を避けたいところです。
             </p>
@@ -105,25 +108,35 @@ export default function TrackConditionPage() {
         </section>
 
         <section className="mt-10">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-950">予想に使う順番</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-950">予想に使う順番</h2>
           <ol className="mt-4 space-y-3 text-sm leading-[1.8] text-slate-700 sm:leading-8">
-            <li className="rounded-xl border-l-4 border-accent bg-white p-4 shadow-soft">
+            <li className="rounded-xl border border-slate-200 bg-white p-4">
               <strong className="text-slate-950">1. 能力順を土台にする。</strong>
               AI偏差値と近走の着差・上がりから基本の序列を作ります。
             </li>
-            <li className="rounded-xl border-l-4 border-brand-600 bg-white p-4 shadow-soft">
+            <li className="rounded-xl border border-slate-200 bg-white p-4">
               <strong className="text-slate-950">2. 馬場で序列を動かす。</strong>
               道悪経験がない人気馬を1段下げ、重馬場巧者を相手候補に加える、といった補正を入れます。
             </li>
-            <li className="rounded-xl border-l-4 border-emerald-600 bg-white p-4 shadow-soft">
+            <li className="rounded-xl border border-slate-200 bg-white p-4">
               <strong className="text-slate-950">3. 当日のレース傾向で裏を取る。</strong>
               同じ競馬場のここまでの結果で、内前残りか外差し有利かを確かめてから最終判断に入ります。
             </li>
           </ol>
         </section>
 
+        {/* 構造化データ（FAQPage）と同じ質問を、画面にも閉じた一覧で出す。ホームのよくある質問と同じ形（2026-09-26） */}
+        <section aria-labelledby="page-faq-heading" className="mt-10 rounded-xl border border-slate-200 bg-white px-4 py-3.5 md:p-6">
+          <h2 id="page-faq-heading" className="text-[18px] font-bold text-slate-900">よくある質問</h2>
+          <div className="mt-1 flex flex-col">
+            {FAQ_ITEMS.map((item) => (
+              <FaqItem key={item.question} question={item.question}>{item.answer}</FaqItem>
+            ))}
+          </div>
+        </section>
+
         <section className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
-          <h2 className="text-xl font-black text-slate-950">関連して確認したいページ</h2>
+          <h2 className="text-xl font-bold text-slate-950">関連して確認したいページ</h2>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link prefetch={false} href="/keiba-data/horse-weight" className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
               馬体重を見る

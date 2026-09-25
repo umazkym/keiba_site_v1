@@ -28,6 +28,8 @@ X_SIZE = (1200, 675)
 PORTRAIT_SIZE = (1080, 1350)
 
 _FONT_FILES = {
+    # brand：ロゴ文字と写真の上の大きな見出しだけの丸ゴシック。ほかの見出し・本文はゴシック（disp・bold・reg）
+    "brand": T.FONT_BRAND,
     "disp": T.FONT_DISPLAY,
     "bold": T.FONT_BODY,
     "reg": T.FONT_BODY_REGULAR,
@@ -258,7 +260,7 @@ def lockup(c: Canvas, x: float, cy: float, size: float, *, dark: bool = False) -
     """ロゴの円＋「UMA-FREE」。幅を返す。"""
     c.paste_logo(x, cy - size / 2, size)
     text_x = x + size + size * 0.28
-    width = c.text(text_x, cy, "UMA-FREE", "disp", size * 0.56, T.WHITE if dark else T.NAVY)
+    width = c.text(text_x, cy, "UMA-FREE", "brand", size * 0.56, T.WHITE if dark else T.NAVY)
     return size + size * 0.28 + width
 
 
@@ -389,7 +391,7 @@ def center_lane_rows(rows: list, left: float, usable: float, size: float, gap: f
     return placed, max(1, len(chunks))
 
 
-def lanes_block(c: Canvas, x: float, y: float, width: float, card: RaceCard, *, size: float = 40, label_width: float = 110) -> float:
+def lanes_block(c: Canvas, x: float, y: float, width: float, card: RaceCard, *, size: float = 40, label_width: float = 110, min_lane_height: float = 0) -> float:
     """序盤の位置取り。段ごとに馬番の小さい順・横の中央。AI偏差値の上位3頭に琥珀の輪。高さを返す。"""
     lanes = ("先行", "中団", "後方")
     rows_by_lane = {lane: [r for r in card.rows if r.position == lane] for lane in lanes}
@@ -399,17 +401,19 @@ def lanes_block(c: Canvas, x: float, y: float, width: float, card: RaceCard, *, 
     usable = width - 2 * label_width
     for lane in lanes:
         placed, rows = center_lane_rows(rows_by_lane[lane], label_width, usable, size)
-        lane_height = rows * (size + 8) + 16
-        layouts.append((lane, placed, lane_height))
+        # min_lane_height：1ページを使う図（カルーセル）で段を高くし、馬は段の上下の中央に置く
+        lane_height = max(rows * (size + 8) + 16, min_lane_height)
+        layouts.append((lane, placed, lane_height, rows))
         total += lane_height
     total += 6
     c.rect((x, y, x + width, y + total), radius=size * 0.5, fill=T.TURF_SOFT)
     cursor = y + 6
-    for index, (lane, placed, lane_height) in enumerate(layouts):
+    for index, (lane, placed, lane_height, rows) in enumerate(layouts):
         c.text(x + size * 0.5, cursor + lane_height / 2, lane, "bold", size * 0.6, T.TURF_DEEP)
+        top = cursor + (lane_height - (rows * (size + 8) - 8)) / 2
         for row, px, slot in placed:
             cx = x + px + size / 2
-            cy = cursor + 8 + slot * (size + 8) + size / 2
+            cy = top + slot * (size + 8) + size / 2
             if row.ai_rank and row.ai_rank <= 3:
                 c.circle(cx, cy, size / 2 + 5, outline=T.AI, width=size * 0.1)
             horse_no(c, cx, cy, size, row.number, row.waku)
@@ -417,6 +421,55 @@ def lanes_block(c: Canvas, x: float, y: float, width: float, card: RaceCard, *, 
         if index < len(layouts) - 1:
             c.line((x, cursor, x + width, cursor), _mix(T.TURF_DEEP, T.TURF_SOFT, 0.18), 1.5)
     return total
+
+
+_SLATE300 = (205, 210, 226)
+_ROSE_SOFT = (255, 228, 230)
+_ROSE_DEEP = (190, 18, 60)
+FOUR_VIEWS = (("score", "AI偏差値"), ("matchup", "対戦成績"), ("pace", "展開予測"), ("frame", "馬番の傾向"))
+
+
+def mini_view(c: Canvas, kind: str, x: float, y: float, width: float, *, dark: bool = False) -> None:
+    """4つの視点の小図（サイトの RaceAnalysisFeatureVisual と同じ 64×26 の形を、幅 width に縮めて描く）。"""
+    k = width / 64
+    muted = _mix(T.WHITE, T.NIGHT, 0.35) if dark else _SLATE300
+    track = _mix(T.WHITE, T.NIGHT, 0.2) if dark else T.LINE
+    ink = T.WHITE if dark else T.NAVY
+
+    def box(x0: float, y0: float, w: float, h: float, r: float, fill: tuple[int, int, int]) -> None:
+        c.rect((x + x0 * k, y + y0 * k, x + (x0 + w) * k, y + (y0 + h) * k), radius=r * k, fill=fill)
+
+    if kind == "score":
+        box(0, 3, 56, 5, 2.5, T.AI)
+        box(0, 11, 44, 5, 2.5, T.BRAND)
+        box(0, 19, 30, 5, 2.5, muted)
+    elif kind == "matchup":
+        for x0, fill, label, color in ((0, T.TURF_SOFT, "+2", T.TURF_DEEP), (22, T.PANEL2, "0", T.MUTED), (44, _ROSE_SOFT, "-1", _ROSE_DEEP)):
+            box(x0, 4, 19, 18, 4, fill)
+            c.text_center(x + (x0 + 9.5) * k, y + 13 * k, label, "num", 11 * k, color)
+    elif kind == "pace":
+        for line_y in (5, 13, 21):
+            c.line((x + 2 * k, y + line_y * k, x + 62 * k, y + line_y * k), track, 2 * k)
+        for cx, cy, fill in ((50, 5, T.BRAND), (40, 5, ink), (30, 13, ink), (14, 21, ink)):
+            c.circle(x + cx * k, y + cy * k, 3.6 * k, fill=fill)
+    elif kind == "frame":
+        for index, value in enumerate((14, 20, 17, 11, 9, 13, 7, 5)):
+            box(index * 8, 24 - value, 6, value, 1.5, T.BRAND if index < 3 else muted)
+
+
+def view_strip(c: Canvas, x: float, y: float, width: float, *, visual: float = 84, label_size: float = 20, gap: float = 10, dark: bool = False) -> float:
+    """4つの視点を横に4つ並べる（小図の下に名前）。枠やアイコンの札は使わない。高さを返す。"""
+    column = width / 4
+    visual_h = visual * 26 / 64
+    # 両端の名前の幅が違う（「AI偏差値」と「馬番の傾向」）ため、描いた範囲の左右の余白がそろうよう全体を少しずらす
+    first = max(visual, c.text_width(FOUR_VIEWS[0][1], "bold", label_size)) / 2
+    last = max(visual, c.text_width(FOUR_VIEWS[-1][1], "bold", label_size)) / 2
+    shift = (last - first) / 2
+    for index, (kind, label) in enumerate(FOUR_VIEWS):
+        cx = x + column * index + column / 2 - shift
+        mini_view(c, kind, cx - visual / 2, y, visual, dark=dark)
+        c.text_center(cx, y + visual_h + gap + label_size * 0.55, label, "bold", label_size, T.WHITE if dark else T.INK)
+    return visual_h + gap + label_size * 1.1
 
 
 def _race_meta(card: RaceCard) -> str:
@@ -454,16 +507,8 @@ def render_x_pick(card: PickCard, path: Path | str) -> str:
     c.rect(box, radius=24, fill=T.AI_ROW, outline=T.AI, width=2)
     c.text(box[2] - 30, box[1] + 42, "AI偏差値", "bold", 22, T.AI_DEEP, anchor="rm")
     c.text(box[2] - 30, box[1] + 130, f"{pick.score:.1f}", "num", 120, T.AI_DEEP, anchor="rm")
-    note = f"本日の全{card.total_races}レースで最上位" if card.total_races > 1 else "本日のレースで最上位"
-    c.text(box[2] - 30, box[3] - 34, note, "bold", 18, T.AI_DEEP, anchor="rm")
-    # 4つの視点
-    chip_y = 675 - 72 - 44 - 52
-    cursor = left
-    for label in ("AI偏差値", "対戦成績", "展開予測", "馬番の傾向"):
-        w = c.text_width(label, "bold", 19) + 36
-        c.rect((cursor, chip_y, cursor + w, chip_y + 52), radius=14, fill=T.PANEL, outline=T.LINE, width=1.5)
-        c.text(cursor + 18, chip_y + 26, label, "bold", 19, T.INK2)
-        cursor += w + 12
+    # 4つの視点（サイトと同じ小図と名前の帯。説明の文は置かない。2026-09-26）
+    view_strip(c, left, 675 - 72 - 44 - 66, column, visual=76, label_size=18)
     footer_bar(c, 72, f"{card.venues_label} 全{card.total_races}レースの分析を UMA-FREE で公開中", size=21)
     return c.save(path)
 
@@ -532,11 +577,6 @@ def render_x_race(card: RaceCard, path: Path | str, *, label: str = "AI偏差値
     y = 40 + 36
     for index, row in enumerate(card.scored_rows[:3]):
         y += rank_row(c, x0, y, width, row, index, s=1.0, bar_width=300) + 14
-    note = _lanes_note(card)
-    if note:
-        note, note_size = c.fit(note, "bold", 19, width - 36, 15)
-        c.rect((x0, y + 6, x0 + width, y + 6 + 56), radius=14, fill=T.TURF_SOFT)
-        c.text(x0 + 18, y + 6 + 28, note, "bold", note_size, T.TURF_DEEP)
     footer_bar(c, 72, "全頭のAI偏差値・展開予測・馬番の傾向は UMA-FREE で公開", size=21)
     return c.save(path)
 
@@ -556,8 +596,8 @@ def render_threads_pick(card: PickCard, path: Path | str) -> str:
     lockup(c, 56, 40 + 26, 52, dark=True)
     c.text(1080 - 56, 40 + 26, date_label(race.date), "bold", 30, T.WHITE, anchor="rm")
     c.text(56, 620 - 44 - 92 - 34, "本日のAI注目馬", "bold", 32, T.WHITE)
-    name, size = c.fit(pick.name, "disp", 92, 1080 - 112, 56)
-    c.text(56, 620 - 44 - 46, name, "disp", size, T.WHITE)
+    name, size = c.fit(pick.name, "brand", 92, 1080 - 112, 56)
+    c.text(56, 620 - 44 - 46, name, "brand", size, T.WHITE)
     y = 620 + 44
     plate(c, 56, y, 84, race.venue, race.race_number)
     title, title_size = c.fit(race.race_name, "disp", 44, 1080 - 56 - 76 - 300 - 20, 30)
@@ -568,10 +608,7 @@ def render_threads_pick(card: PickCard, path: Path | str) -> str:
     c.text(56 + 104, y + 66, " · ".join(meta_parts), "bold", 26, T.MUTED)
     c.text(1080 - 56, y + 12, "AI偏差値", "bold", 24, T.AI_DEEP, anchor="rm")
     c.text(1080 - 56, y + 86, f"{pick.score:.1f}", "num", 112, T.AI_DEEP, anchor="rm")
-    sentence = f"本日の{card.venues_label}・全{card.total_races}レースの中で、最も高いAI偏差値です。"
-    sentence, sentence_size = c.fit(sentence, "reg", 28, 1080 - 112, 22)
-    c.text(56, y + 84 + 84, sentence, "reg", sentence_size, T.INK2)
-    y += 84 + 136
+    y += 84 + 96
     c.text(56, y + 14, "同じレースのAI偏差値の上位", "bold", 24, T.MUTED)
     y += 40
     for row in [r for r in race.scored_rows if r is not pick][:3]:
@@ -620,7 +657,6 @@ def render_threads_hit(hit: HitCard, path: Path | str, others: Sequence[HitCard]
         c.mixed_text(84 + tag_w + 24, cy, other.winning_numbers, "num", 40, T.INK2)
         c.mixed_text(1080 - 56 - 28, cy, f"{other.payout:,}円", "num", 44, T.INK, anchor="rm")
         y += 84 + 14
-    c.text(56, y + 40, "AIの印と全レースの結果は、サイトの開催日のページで確認できます。", "reg", 26, T.INK2)
     footer_bar(c, 90, "全レースの分析は uma-free.com", size=26)
     return c.save(path, fmt="JPEG")
 
@@ -672,24 +708,21 @@ def _carousel_cover(card: RaceCard, total: int) -> Canvas:
     c.scrim((0, 0, 1080, 1350), [(0, 0.35), (0.4, 0.3), (0.65, 0.7), (1, 0.92)])
     lockup(c, 64, 60 + 29, 58, dark=True)
     _page_number(c, 1, total, dark=True)
-    lines, size = c.wrap(card.race_name, "disp", (120, 104, 88, 76), 1080 - 128, max_lines=2)
+    lines, size = c.wrap(card.race_name, "brand", (120, 104, 88, 76), 1080 - 128, max_lines=2)
     bottom = 1350 - 120
-    y = bottom - 38 * 1.5 * 2 - 40 - 64 - 26 - size * 1.1 * len(lines) - 26 - 52
+    y = bottom - 64 - 26 - size * 1.1 * len(lines) - 26 - 52
     pill = f"{date_label(card.date)} · {card.venue}{card.race_number}R"
     pill_w = c.text_width(pill, "bold", 28) + 40
     c.rect((64, y, 64 + pill_w, y + 52), radius=14, fill=_mix(T.WHITE, T.NIGHT, 0.14))
     c.text(84, y + 26, pill, "bold", 28, T.WHITE)
     y += 52 + 26
     for line in lines:
-        c.text(64, y + size * 0.55, line, "disp", size, T.WHITE)
+        c.text(64, y + size * 0.55, line, "brand", size, T.WHITE)
         y += size * 1.1
     y += 26
     badge_w = grade_badge(c, 64, y + 32, card.grade, 34) if card.grade else 0
     meta = " · ".join(card.meta_parts(with_grade=False))
     c.text(64 + badge_w + (18 if badge_w else 0), y + 32, meta, "bold", 34, T.ON_NIGHT_TEXT)
-    y += 64 + 40
-    c.text(64, y + 28, "AI偏差値の上位5頭と、", "bold", 38, T.WHITE)
-    c.text(64, y + 28 + 57, "序盤の位置取りの予測", "bold", 38, T.WHITE)
     return c
 
 
@@ -737,24 +770,20 @@ def _carousel_all(card: RaceCard, number: int, total: int) -> Canvas:
 def _carousel_lanes(card: RaceCard, number: int, total: int) -> Canvas:
     c = Canvas(*PORTRAIT_SIZE, background=T.BG)
     y = _carousel_header(c, "展開予測", number, total)
-    c.text(56, y + 20, "序盤（1コーナー）の位置取りの予測です。", "reg", 30, T.INK2)
-    c.text(56, y + 20 + 48, "琥珀の輪はAI偏差値の上位3頭。", "reg", 30, T.INK2)
-    y += 130
-    height = lanes_block(c, 56, y, 968, card, size=62, label_width=130)
-    note = _lanes_note(card)
-    if note:
-        note, size = c.fit(note + "です。", "reg", 28, 968, 22)
-        c.text(56, y + height + 50, note, "reg", size, T.INK2)
+    c.text(56, y + 20, "1コーナーの位置取り予測。", "reg", 30, T.INK2)
+    y += 80
+    # 図の高さを先に測り、見出しの下から下の余白までの真ん中に置く（下に大きな空きを残さない）
+    height = lanes_block(Canvas(10, 10), 0, 0, 968, card, size=76, label_width=140, min_lane_height=250)
+    y = max(y, y + (1350 - 90 - y - height) / 2)
+    lanes_block(c, 56, y, 968, card, size=76, label_width=140, min_lane_height=250)
     return c
 
 
 def _carousel_advantages(card: RaceCard, number: int, total: int) -> Canvas:
     c = Canvas(*PORTRAIT_SIZE, background=T.BG)
     y = _carousel_header(c, "馬番の傾向", number, total)
-    course = f"{card.venue}{card.course}" if card.course else card.venue
-    c.text(56, y + 20, f"{course}の過去データで、", "reg", 30, T.INK2)
-    c.text(56, y + 20 + 48, "今回の出走馬の馬番を並べています。", "reg", 30, T.INK2)
-    y += 140
+    chart_total = 36 + 250 * 2 + 30 + 70
+    y = max(y + 40, y + (1350 - 90 - y - chart_total) / 2)
     values = card.advantages
     peak = max(abs(v) for _, v in values) or 1.0
     best = max(values, key=lambda item: item[1])[0]
@@ -763,11 +792,15 @@ def _carousel_advantages(card: RaceCard, number: int, total: int) -> Canvas:
     box = (56, y, 1080 - 56, y + 36 + chart_h * 2 + 30 + 70)
     c.rect(box, radius=28, fill=T.WHITE, outline=T.LINE, width=1.5)
     axis = y + 36 + chart_h
-    c.line((box[0] + 20, axis, box[2] - 20, axis), T.LINE2, 2)
-    slot = (box[2] - box[0] - 40) / len(values)
+    # 説明の文の代わりに、図の左に「有利」（上）・「不利」（下）の目印（サイトと同じ。2026-09-26）
+    c.text(box[0] + 24, y + 36 + 14, "有利", "bold", 26, T.BRAND_DEEP)
+    c.text(box[0] + 24, axis + chart_h - 14, "不利", "bold", 26, T.BAD)
+    label_w = 24 + c.text_width("有利", "bold", 26) + 14
+    c.line((box[0] + label_w, axis, box[2] - 20, axis), T.LINE2, 2)
+    slot = (box[2] - box[0] - label_w - 20) / len(values)
     waku = {row.number: row.waku for row in card.rows}
     for index, (horse_number, value) in enumerate(values):
-        cx = box[0] + 20 + slot * index + slot / 2
+        cx = box[0] + label_w + slot * index + slot / 2
         bar_h = abs(value) / peak * chart_h
         bar_w = min(40, slot * 0.6)
         color = T.BRAND if horse_number == best else T.BAD if horse_number == worst else (
@@ -778,7 +811,6 @@ def _carousel_advantages(card: RaceCard, number: int, total: int) -> Canvas:
         else:
             c.rect((cx - bar_w / 2, axis, cx + bar_w / 2, axis + bar_h), radius=min(8, bar_h / 2), fill=color)
         horse_no(c, cx, box[3] - 50, min(48, slot * 0.8), horse_number, waku.get(horse_number))
-    c.text(56, box[3] + 60, f"最も良い傾向は{best}番、最も低い傾向は{worst}番の馬番です。", "reg", 28, T.INK2)
     return c
 
 
@@ -788,17 +820,10 @@ def _carousel_closing(number: int, total: int) -> Canvas:
     c.paste_logo(540 - 110, 230, 220)
     c.text_center(540, 560, "対戦成績・馬番の傾向も", "disp", 60, T.WHITE)
     c.text_center(540, 560 + 80, "全レースで公開中", "disp", 60, T.WHITE)
-    labels = ("AI偏差値", "対戦成績", "展開予測", "馬番の傾向")
-    cell_w, cell_h = (1080 - 140 - 16) / 2, 96
-    for index, label in enumerate(labels):
-        col, line = index % 2, index // 2
-        x = 70 + col * (cell_w + 16)
-        y = 740 + line * (cell_h + 16)
-        c.rect((x, y, x + cell_w, y + cell_h), radius=20, fill=_mix(T.WHITE, T.NIGHT, 0.08), outline=_mix(T.WHITE, T.NIGHT, 0.16), width=1.5)
-        c.text_center(x + cell_w / 2, y + cell_h / 2, label, "bold", 32, T.WHITE)
+    view_strip(c, 70, 750, 1080 - 140, visual=150, label_size=32, gap=18, dark=True)
     c.text_center(540, 1010, "全レースの分析は", "bold", 34, T.ON_NIGHT_TEXT)
     c.text_center(540, 1010 + 54, "プロフィールのリンクから", "bold", 34, T.ON_NIGHT_TEXT)
-    width = 56 + 56 * 0.28 + c.text_width("UMA-FREE", "disp", 56 * 0.56)
+    width = 56 + 56 * 0.28 + c.text_width("UMA-FREE", "brand", 56 * 0.56)
     lockup(c, 540 - width / 2, 1190, 56, dark=True)
     return c
 

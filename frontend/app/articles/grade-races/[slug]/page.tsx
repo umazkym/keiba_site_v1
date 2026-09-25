@@ -78,7 +78,7 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
         <main className="mx-auto max-w-[1080px]">
           <header className="border-b border-slate-200 pb-5 sm:pb-8">
             <p className="text-[13px] font-bold text-slate-500">重賞別の記事</p>
-            <h1 className="mt-0.5 text-[15px] font-black leading-tight text-slate-950 sm:text-4xl">
+            <h1 className="mt-0.5 text-[15px] font-bold leading-tight text-slate-950 sm:text-4xl">
               {group.title}
             </h1>
             <p className="mt-1 max-w-3xl text-[11.5px] leading-relaxed text-slate-600 sm:text-base sm:leading-7">
@@ -96,7 +96,7 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
           </header>
 
           <section className="py-2.5 sm:py-8" aria-labelledby="grade-race-seasonal-articles">
-            <h2 id="grade-race-seasonal-articles" className="text-[13px] font-black text-slate-950 sm:text-2xl">
+            <h2 id="grade-race-seasonal-articles" className="text-[13px] font-bold text-slate-950 sm:text-2xl">
               年度別の記事
             </h2>
             <ul className="mt-1.5 divide-y divide-slate-200 border-y border-slate-200">
@@ -109,7 +109,7 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
                       prefetch={false}
                       className="grid min-h-9 gap-0.5 py-1.5 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 sm:grid-cols-[5rem_minmax(0,1fr)] sm:items-start sm:gap-4 sm:px-2"
                     >
-                      <span className="font-mono text-[11px] font-black text-brand-700 sm:pt-0.5 sm:text-sm">{year}年</span>
+                      <span className="font-mono text-[11px] font-semibold text-brand-700 sm:pt-0.5 sm:text-sm">{year}年</span>
                       <span className="min-w-0">
                         <span className="block text-xs font-bold leading-snug text-slate-900">{article.title}</span>
                         {article.description && (

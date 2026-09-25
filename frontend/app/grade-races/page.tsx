@@ -70,12 +70,12 @@ export default function GradeRacesPage() {
         </header>
 
         <section className="mt-8">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-950">主要G1の個別ハブ</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-950">主要G1の個別ハブ</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             {gradeRaceProfiles.map((race) => (
               <Link prefetch={false} key={race.slug} href={`/grade-races/${race.slug}`} className="group rounded-[14px] bg-white p-5 ring-1 ring-inset ring-slate-200 transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated">
                 <p className="text-xs font-bold text-primary">{race.date} / {race.grade}</p>
-                <h3 className="mt-2 text-lg font-black text-slate-950 group-hover:text-primary">{race.name}</h3>
+                <h3 className="mt-2 text-lg font-bold text-slate-950 group-hover:text-primary">{race.name}</h3>
                 <p className="mt-1 text-sm font-bold text-slate-500">{race.venue}{race.course}</p>
                 <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-600">{race.summary}</p>
               </Link>
@@ -86,14 +86,14 @@ export default function GradeRacesPage() {
         <section className="mt-8 grid gap-4 md:grid-cols-2">
           {guideBlocks.map((block) => (
             <div key={block.title} className="rounded-[14px] bg-white p-5 ring-1 ring-inset ring-slate-200">
-              <h2 className="text-lg font-black text-slate-950">{block.title}</h2>
+              <h2 className="text-lg font-bold text-slate-950">{block.title}</h2>
               <p className="mt-2 text-sm leading-7 text-slate-600">{block.body}</p>
             </div>
           ))}
         </section>
 
         <section className="mt-10">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-950">公開中の重賞データ記事</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-950">公開中の重賞データ記事</h2>
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
             {articleLinks.map((link) => (
               <Link prefetch={false} key={link.href} href={link.href} className="block p-4 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-primary">
@@ -104,10 +104,8 @@ export default function GradeRacesPage() {
         </section>
 
         <section className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-soft">
+          {/* 見出しの下の説明文はやめた（2026-09-26） */}
           <h2 className="font-display text-[19px] font-bold text-slate-900 sm:text-[21px]">本日の重賞を確認する</h2>
-          <p className="mt-2 text-sm leading-7 text-slate-600">
-            当日の出走表、AI偏差値、脚質予測、対戦成績はレース分析ページで確認できます。
-          </p>
           <Link prefetch={false} href="/races/today" className="mt-4 inline-flex rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary">
             本日の分析を見る
           </Link>

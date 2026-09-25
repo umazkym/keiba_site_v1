@@ -19,6 +19,7 @@ import type { DataEntityDetail, SegmentStat } from '@/lib/types';
 // - 見本の構成：見出し → 通算のタイル → 予定 → 条件別の成績 → 最近の成績。データの案内（DataHubNav）は見本に無いので置かない
 // - スマホは左右の余白を足さない（外枠の16pxだけ）。まとまりの間は12px（親の gap）。PC は sm: で今までの間隔
 // - 条件別の表はスマホだけタブで1枚にまとめる（表は全部 HTML に残す）。PC は今までどおり表ごとのカード
+// - 表の下・見出しの下の説明文は置かない（2026-09-26 利用者の指定）
 
 const entityLabels = {
     horse: '競走馬',
@@ -50,9 +51,6 @@ const recentTitles: Record<keyof typeof entityLabels, string> = {
     jockey: '最近の騎乗',
     trainer: '管理馬の最近の成績',
 };
-
-// 条件別の表に出す最小の対象数（API の minimum_sample と同じ）
-const MINIMUM_SAMPLE = 2;
 
 const JST_DATE = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'long', day: 'numeric', weekday: 'short' });
 const formatLastRace = (value: string | null) => {
@@ -117,9 +115,8 @@ export function DataEntityDetailView({
                     : 'relative flex items-center gap-4 sm:items-end sm:justify-between'}
             >
                 <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
-                    <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-navy/10 sm:h-[72px] sm:w-[72px]" aria-hidden="true">
-                        <LineIcon name={entityIcons[entityType]} size={30} className="block h-7 w-7 text-navy sm:h-9 sm:w-9" />
-                    </span>
+                    {/* 丸い面をやめ、アイコンだけ大きく（2026-09-26） */}
+                    <LineIcon name={entityIcons[entityType]} size={44} className="block h-11 w-11 shrink-0 text-navy sm:h-14 sm:w-14" />
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <p className={`text-[13px] font-bold text-slate-500 ${isHorse ? '' : 'pr-20 sm:pr-0'}`}>{entityLabels[entityType]}データ</p>
                         <h1 className="flex flex-wrap items-center gap-2 font-display text-[26px] font-bold leading-tight text-slate-900 sm:text-[34px]">
@@ -165,7 +162,6 @@ export function DataEntityDetailView({
             <DataSegmentTabs
                 title="条件別の成績"
                 className="sm:mt-6"
-                note={`対象${MINIMUM_SAMPLE}走以上の条件だけを表示しています。`}
                 tabs={segmentTabs.map((tab) => ({
                     key: tab.key,
                     label: tab.label,
@@ -192,10 +188,8 @@ export function DataEntityDetailView({
             {isHorse && detail.prediction_history.length > 0 && (
                 <section className="overflow-hidden rounded-[14px] border border-slate-200 bg-white sm:mt-6" aria-labelledby="entity-prediction-history-heading">
                     <div className="px-4 pb-2 pt-3.5 sm:px-5 sm:pt-4">
+                        {/* 見出しの下の説明文は置かない（2026-09-26） */}
                         <h2 id="entity-prediction-history-heading" className="font-display text-[18px] font-bold text-slate-900 sm:text-[19px]">AI偏差値の履歴</h2>
-                        <p className="mt-1 text-[13px] leading-[1.6] text-slate-600">
-                            UMA-FREEでAI偏差値を公開したレースの数値と着順です。
-                        </p>
                     </div>
                     <div className="divide-y divide-slate-200 border-t border-slate-200">
                         {detail.prediction_history.map((item) => {

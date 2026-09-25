@@ -70,7 +70,7 @@ export function RaceHead({ race, venueName }: RaceHeadProps) {
                         <p className="hidden text-sm font-bold text-slate-500 md:block">
                             {formatRaceDateLabel(race.race_date, { year: true })} · {venueName}競馬場
                         </p>
-                        <h1 className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[22px] font-extrabold leading-tight text-slate-900 md:text-[34px]">
+                        <h1 className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[22px] font-bold leading-tight text-slate-900 md:text-[34px]">
                             <span className="line-clamp-2 break-words">{race.race_name}</span>
                             <GradeBadge grade={race.grade} size="m" />
                         </h1>

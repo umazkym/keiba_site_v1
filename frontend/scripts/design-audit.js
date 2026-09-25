@@ -35,12 +35,12 @@ const sources = targetFiles.map((relativePath) => {
 
 const extendedTargetFiles = [
   'components/PredictionTable.tsx',
-  'components/RaceAnalysis.tsx',
+  // RaceAnalysis・RelatedRaces・DisclaimerNote は 2026-09-26 に部品ごと消した（使っていなかった）
   'components/StartPositionChart.tsx',
   'components/HorseNumberAdvantageChart.tsx',
-  'components/RelatedRaces.tsx',
   'components/DynamicRelatedArticles.tsx',
-  'components/DisclaimerNote.tsx',
+  'components/SegmentedControl.tsx',
+  'components/SegmentedLinks.tsx',
   'components/MobileArticleThemeDirectory.tsx',
   'components/EntityArticleDocument.tsx',
   'components/ArticleBody.tsx',
@@ -68,7 +68,8 @@ const dataTargetFiles = [
   'components/DataSearchPanel.tsx',
   'components/DataStats.tsx',
   'components/PricingInterestSurvey.tsx',
-  'components/RaceConditionComparison.tsx',
+  // RaceConditionComparison は 2026-09-26 に部品ごと消した
+  'components/DataSegmentTabs.tsx',
   'components/UpcomingRaceTrackedLink.tsx',
 ];
 const dataSources = dataTargetFiles.map((relativePath) => {
@@ -194,7 +195,6 @@ const raceNavigation = sources.find(({ relativePath }) => relativePath === 'hook
 const racePageClient = sources.find(({ relativePath }) => relativePath === 'components/RacePageClient.tsx').content;
 const weeklyGradeRaces = sources.find(({ relativePath }) => relativePath === 'components/WeeklyGradeRaces.tsx').content;
 const predictionTable = extendedSources.find(({ relativePath }) => relativePath === 'components/PredictionTable.tsx').content;
-const raceAnalysis = extendedSources.find(({ relativePath }) => relativePath === 'components/RaceAnalysis.tsx').content;
 const articleBody = extendedSources.find(({ relativePath }) => relativePath === 'components/ArticleBody.tsx').content;
 const mobileArticleThemes = extendedSources.find(({ relativePath }) => relativePath === 'components/MobileArticleThemeDirectory.tsx').content;
 const entityArticleDocument = extendedSources.find(({ relativePath }) => relativePath === 'components/EntityArticleDocument.tsx').content;
@@ -334,11 +334,14 @@ const checks = [
       && !predictionTable.includes(' position"'),
   },
   {
-    id: 'race-analysis-full-accordion',
-    description: 'AIレース展望全体が閉じたdetailsになっている',
-    passed: raceAnalysis.includes('<details className="race-panel group overflow-hidden">')
-      && !raceAnalysis.includes('analysis-preview')
-      && !raceAnalysis.includes('section-title'),
+    // 以前は「AIレース展望全体が閉じたdetails」「先行判定・馬番の比べ方」を RaceAnalysis.tsx で確かめていた。
+    // 2026-09-26 にAIレース展望をレース画面から外し（利用者の指定）、使わなくなった部品も消したため、消えていることを確かめる
+    id: 'race-analysis-removed',
+    description: 'AIレース展望（RaceAnalysis）・同じ条件の過去成績（RaceConditionComparison）・関連レース（RelatedRaces）・データの説明（DataExplanationPanel）の部品が残っていない（2026-09-26 外した）',
+    passed: ['RaceAnalysis', 'RaceConditionComparison', 'RelatedRaces', 'DataExplanationPanel', 'DisclaimerNote']
+      .every((name) => !fs.existsSync(path.join(root, `components/${name}.tsx`)))
+      && !racePageClient.includes('<RaceAnalysis ')
+      && !fs.readFileSync(path.join(root, 'components/RaceTabs.tsx'), 'utf8').includes("title: 'AIレース展望'"),
   },
   {
     id: 'article-wide-layout',
@@ -444,15 +447,6 @@ const checks = [
       && globals.includes('.race-page-scope .ui-section-header__title')
       && !globals.includes('.race-page-scope :is(h1, h2, h3, h4, h5, h6)')
       && /\.race-page-scope \.race-section-heading \{\s+gap: 6px;\s+font-size: 17px;/.test(globals),
-  },
-  {
-    id: 'race-analysis-bug-fixes',
-    description: 'AIレース展望の先行判定がレース内の相対値で、馬番の有利不利を出走馬だけで比べ「枠」と呼ばない',
-    passed: raceAnalysis.includes('getPositionLabels(race.predictions)')
-      && !raceAnalysis.includes('start_1c_indicator > 0')
-      && raceAnalysis.includes('runnerNumbers.has(item.horse_number)')
-      && !raceAnalysis.includes('waku_number === bestFrame')
-      && !raceAnalysis.includes('オッズ妙味を判断'),
   },
   {
     id: 'race-day-board',
@@ -593,10 +587,15 @@ const checks = [
       && !/\brounded-2xl\b/.test(dataContent),
   },
   {
+    // 2026-09-26：下線のタブと項目ごとの色をやめ、切り替えボタン（SegmentedControl）と同じ形のリンクの列にした（利用者の指定）
     id: 'data-nav-visible-mobile-grid',
-    description: 'データナビが主操作3列・分類4列でモバイルにも全項目を表示する',
-    passed: dataHubNav.includes("'grid-cols-3'")
-      && dataHubNav.includes("'grid-cols-4'")
+    description: 'データナビが主操作3つ・分類4つを切り替えボタンの形で1列ずつ均等に並べ、モバイルにも全項目を表示する（項目ごとの色・下線のタブは使わない。2026-09-26）',
+    passed: dataHubNav.includes('renderItems(PRIMARY_ITEMS')
+      && dataHubNav.includes('renderItems(DIRECTORY_ITEMS')
+      && dataHubNav.includes('rounded-[10px] bg-slate-100 p-0.5')
+      && dataHubNav.includes('flex-1')
+      && !dataHubNav.includes('border-b-2')
+      && !dataHubNav.includes('activeColor')
       && !dataHubNav.includes('overflow-x-auto'),
   },
   {
@@ -606,9 +605,11 @@ const checks = [
       && dataHubPage.includes('勝率・3着以内率を出走数と一緒に確認できます。'),
   },
   {
+    // 2026-09-26：表の上下の説明文（順位付けをしない理由・母数区分の凡例）はやめた（利用者の指定）。区分の名前と Wilson下限の列は表に残す
     id: 'horse-comparison-sample-contract',
-    description: '比較画面が通算順位を避け、母数区分とWilson下限値を明示する',
-    passed: horseCompare.includes('条件が異なるため順位付けは行いません')
+    description: '比較画面が母数区分（少数データ・参考値・比較対象）とWilson下限値を表に出し、表の上下に説明文を置かない（2026-09-26）',
+    passed: !horseCompare.includes('条件が異なるため順位付けは行いません')
+      && !horseCompare.includes('5走未満は「少数データ」')
       && horseCompare.includes('少数データ')
       && horseCompare.includes('参考値')
       && horseCompare.includes('比較対象')
@@ -616,12 +617,16 @@ const checks = [
       && !horseCompare.includes('BEST'),
   },
   {
+    // 2026-09-26：切り替えはほかの画面と同じ SegmentedControl にした（利用者の指定「切り替えボタン的なUI」）
     id: 'mobile-horse-comparison-switcher',
-    description: 'モバイル比較が3区分の切替と選択馬sticky要約を持つ',
+    description: 'モバイル比較が3区分の切り替え（SegmentedControl）と選択馬sticky要約を持つ',
     passed: horseCompare.includes("type ComparisonView = 'overall' | 'matched' | 'recent'")
-      && horseCompare.includes('comparison-view-switcher')
+      && horseCompare.includes('<SegmentedControl')
+      && horseCompare.includes("value: 'overall'")
+      && horseCompare.includes("value: 'matched'")
+      && horseCompare.includes("value: 'recent'")
       && horseCompare.includes('compare-selected-summary')
-      && horseCompare.includes('aria-controls={`${view}-comparison-panel`}'),
+      && horseCompare.includes('id="overall-comparison-panel"'),
   },
   {
     id: 'data-table-sticky-first-column',

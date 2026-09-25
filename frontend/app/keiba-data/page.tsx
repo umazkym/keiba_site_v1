@@ -122,24 +122,22 @@ export default function KeibaDataPage() {
 
                 <section className="mt-3.5 sm:mt-4" aria-labelledby="data-actions-heading">
                     <SectionHeader id="data-actions-heading" title="目的から選ぶ" compact />
-                    <div className="mt-1.5 grid gap-1.5 lg:grid-cols-3 sm:gap-2">
+                    {/* 3つの行を1枚の白いまとまりに線で区切って並べる（色つきの札と説明文はやめた。2026-09-26） */}
+                    <div className="mt-1.5 grid divide-y divide-slate-200 overflow-hidden rounded-[14px] border border-slate-200 bg-white lg:grid-cols-3 lg:divide-x lg:divide-y-0">
                         <DataHubActionLink
                             action="today_compare"
                             href="/races/today"
                             title="今日の出走馬を比較"
-                            description="本日開催のレースを確認"
                         />
                         <DataHubActionLink
                             action="name_search"
                             href="#data-search"
                             title="馬名・騎手名から検索"
-                            description="名前の一部から個別成績と直近の結果を確認"
                         />
                         <DataHubActionLink
                             action="course_lookup"
                             href="#course-search"
                             title="競馬場・距離からコース傾向"
-                            description="コースや距離を分けて条件別の成績を確認"
                         />
                     </div>
                 </section>
@@ -148,7 +146,6 @@ export default function KeibaDataPage() {
                     <SectionHeader
                         id="course-search-heading"
                         title="競馬場からコースを探す"
-                        description="競馬場を選ぶと、コースごとの距離一覧へ移動します。"
                         action={(<Link
                             prefetch={false}
                             href="/courses"
@@ -162,20 +159,7 @@ export default function KeibaDataPage() {
                         <VenueLinks title="中央競馬" slugs={CENTRAL_VENUE_ORDER} />
                         <VenueLinks title="地方競馬" slugs={LOCAL_VENUE_ORDER} />
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 px-1 text-[13px] font-bold text-slate-600">
-                        <span className="inline-flex items-center gap-1.5">
-                            <span className="h-3 w-3 rounded-xs bg-turf" aria-hidden="true" />
-                            芝コース
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                            <span className="h-3 w-3 rounded-xs bg-dirt" aria-hidden="true" />
-                            ダートコース
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                            <span className="h-3 w-3 rounded-xs bg-jump" aria-hidden="true" />
-                            障害コース
-                        </span>
-                    </div>
+                    {/* 見出しの下の案内文と、芝・ダート・障害の凡例はやめた（2026-09-26） */}
                 </section>
             </main>
         </>

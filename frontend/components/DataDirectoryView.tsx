@@ -94,7 +94,6 @@ export function DataDirectoryView({
                 <SectionHeader
                     id={`${entityType}-recent-heading`}
                     title={content.recentTitle}
-                    description="最終出走日の新しい順に掲載しています。"
                     meta={`${directory.total.toLocaleString('ja-JP')}件`}
                     className="mb-1.5 sm:mb-3"
                     compact

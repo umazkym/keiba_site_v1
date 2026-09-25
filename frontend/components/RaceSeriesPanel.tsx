@@ -7,10 +7,8 @@ export function RaceSeriesPanel({ data }: { data: RaceSeriesData | null }) {
     return (
         <section className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-4 py-3">
-                <h2 className="text-xl font-black text-slate-950">過去の同レース</h2>
-                <p className="mt-1 text-xs leading-6 text-slate-600">
-                    レース名を正規化して一致した過去{data.sample_size}回を表示します。
-                </p>
+                {/* 見出しの下の説明文はやめた（2026-09-26） */}
+                <h2 className="text-xl font-bold text-slate-950">過去の同レース</h2>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-sm">

@@ -83,7 +83,7 @@ export default function JockeyPage({ params }: Props) {
             <h2 className="font-display text-[19px] font-bold text-slate-900 sm:text-[21px]">評価を上げたい条件</h2>
             <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-600">
               {profile.strengths.map((strength) => (
-                <li key={strength} className="border-l-4 border-slate-300 pl-3">{strength}</li>
+                <li key={strength} className="border-b border-slate-100 pb-2 last:border-b-0">{strength}</li>
               ))}
             </ul>
           </div>
@@ -91,7 +91,7 @@ export default function JockeyPage({ params }: Props) {
             <h2 className="font-display text-[19px] font-bold text-slate-900 sm:text-[21px]">評価を下げたい条件</h2>
             <ul className="mt-4 space-y-2 text-sm leading-7 text-slate-600">
               {profile.checkpoints.map((checkpoint) => (
-                <li key={checkpoint} className="border-l-4 border-slate-300 pl-3">{checkpoint}</li>
+                <li key={checkpoint} className="border-b border-slate-100 pb-2 last:border-b-0">{checkpoint}</li>
               ))}
             </ul>
           </div>
@@ -122,17 +122,14 @@ export default function JockeyPage({ params }: Props) {
 
         <EntityArticleSection
           title={`${profile.name}の記事`}
-          description="騎手別データ、得意コース、条件替わりの見方など、この騎手名に紐づく記事を自動で集約しています。"
           articles={jockeyArticles}
           archiveHref={`/articles/jockeys/${profile.slug}`}
           archiveLabel="記事アーカイブ"
         />
 
         <section className="mt-8 rounded-[14px] bg-white p-5 ring-1 ring-inset ring-slate-200">
+          {/* 見出しの下の説明文はやめた（2026-09-26） */}
           <h2 className="font-display text-[19px] font-bold text-slate-900 sm:text-[21px]">当日のレースに活かす</h2>
-          <p className="mt-2 text-sm leading-7 text-slate-600">
-            ここで押さえた得意条件を、当日の枠順・馬場・出走馬と照合してみてください。
-          </p>
           <Link prefetch={false} href="/races/today" className="mt-4 inline-flex rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary">
             今日の騎乗レースを確認する
           </Link>

@@ -170,6 +170,7 @@ const nextConfig = {
     // next/og（@vercel/og）の描画用の yoga.wasm・resvg.wasm・既定の書体は自動では含まれない（14.2.31 で確認）。
     outputFileTracingIncludes: {
       '/og/**': [
+        './assets/fonts/NotoSansJP-Bold.ttf',
         './assets/fonts/MPLUSRounded1c-ExtraBold.ttf',
         './content/articles/**/*.md',
         './node_modules/next/dist/compiled/@vercel/og/*.wasm',

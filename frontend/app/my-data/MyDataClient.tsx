@@ -20,6 +20,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { DataHubNav } from '@/components/DataHubNav';
 import { PricingInterestSurvey } from '@/components/PricingInterestSurvey';
 import { PwaInstallButton } from '@/components/PwaInstallButton';
+import { SegmentedControl } from '@/components/SegmentedControl';
 import {
     sendHorseCompareEvent,
     sendSavedUserReturnEvent,
@@ -67,6 +68,16 @@ function returnDaysBucket(days: number): '1_2' | '3_6' | '7_13' | '14_plus' {
     return '14_plus';
 }
 
+type SavedFilter = 'all' | 'horse' | 'people' | 'course';
+
+// 種類の絞り込み。選んだときの色を種類ごとに変えず、ほかの画面と同じ切り替えボタンの形にする（2026-09-26）
+const SAVED_FILTER_OPTIONS: { value: SavedFilter; label: string }[] = [
+    { value: 'all', label: 'すべて' },
+    { value: 'horse', label: '馬' },
+    { value: 'people', label: '人' },
+    { value: 'course', label: 'コース' },
+];
+
 function SavedEntityList({
     title,
     items,
@@ -78,7 +89,7 @@ function SavedEntityList({
     emptyMessage: string;
     emptyAction?: { label: string; href: string };
 }) {
-    const [filter, setFilter] = useState<'all' | 'horse' | 'people' | 'course'>('all');
+    const [filter, setFilter] = useState<SavedFilter>('all');
     const [showAll, setShowAll] = useState(false);
 
     const filteredItems = items.filter((item) => {
@@ -96,44 +107,21 @@ function SavedEntityList({
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
-                    <h2 className="font-black text-slate-950">{title}</h2>
+                    <h2 className="font-bold text-slate-950">{title}</h2>
                     {items.length > 0 && (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-black tabular-nums text-slate-600">
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold tabular-nums text-slate-600">
                             {items.length}件
                         </span>
                     )}
                 </div>
                 {items.length > 0 && (
-                    <div className="flex items-center gap-1 text-[11px] font-bold">
-                        <button
-                            type="button"
-                            onClick={() => setFilter('all')}
-                            className={`rounded-md px-2 py-1 transition-colors ${filter === 'all' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-                        >
-                            すべて
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setFilter('horse')}
-                            className={`rounded-md px-2 py-1 transition-colors ${filter === 'horse' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-                        >
-                            馬
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setFilter('people')}
-                            className={`rounded-md px-2 py-1 transition-colors ${filter === 'people' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-                        >
-                            人
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setFilter('course')}
-                            className={`rounded-md px-2 py-1 transition-colors ${filter === 'course' ? 'bg-amber-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-                        >
-                            コース
-                        </button>
-                    </div>
+                    <SegmentedControl
+                        ariaLabel={`${title}の種類`}
+                        value={filter}
+                        onChange={setFilter}
+                        options={SAVED_FILTER_OPTIONS}
+                        className="self-start sm:self-auto"
+                    />
                 )}
             </div>
             {filteredItems.length === 0 ? (
@@ -298,8 +286,8 @@ export default function MyDataClient() {
                         <Bookmark className="h-5 w-5 text-emerald-600" aria-hidden="true" />
                         <span className="text-xs font-bold text-slate-400">お気に入り</span>
                     </div>
-                    <p className="mt-2 font-mono text-3xl font-black tabular-nums text-slate-950">{favorites.length}</p>
-                    <p className="mt-1 text-xs text-slate-500">馬 {horseFavoritesCount}頭 / 他</p>
+                    {/* 数字の下の補足の文はやめた（2026-09-26） */}
+                    <p className="mt-2 font-mono text-3xl font-bold tabular-nums text-slate-950">{favorites.length}</p>
                     {horseFavoritesCount >= 2 && (
                         <button
                             type="button"
@@ -317,8 +305,7 @@ export default function MyDataClient() {
                         <GitCompareArrows className="h-5 w-5 text-amber-600" aria-hidden="true" />
                         <span className="text-xs font-bold text-slate-400">比較中の馬</span>
                     </div>
-                    <p className="mt-2 font-mono text-3xl font-black tabular-nums text-slate-950">{comparison.length}</p>
-                    <p className="mt-1 text-xs text-slate-500">最大5頭まで登録可能</p>
+                    <p className="mt-2 font-mono text-3xl font-bold tabular-nums text-slate-950">{comparison.length}</p>
                     {comparison.length > 0 && (
                         <Link
                             prefetch={false}
@@ -336,27 +323,21 @@ export default function MyDataClient() {
                         <Clock3 className="h-5 w-5 text-brand-600" aria-hidden="true" />
                         <span className="text-xs font-bold text-slate-400">閲覧履歴</span>
                     </div>
-                    <p className="mt-2 font-mono text-3xl font-black tabular-nums text-slate-950">{history.length}</p>
-                    <p className="mt-1 text-xs text-slate-500">自動で最新データ追加</p>
+                    <p className="mt-2 font-mono text-3xl font-bold tabular-nums text-slate-950">{history.length}</p>
                 </div>
             </section>
 
             {/* 設定セクション */}
             <section className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
-                    <Settings className="h-4 w-4 text-slate-500" aria-hidden="true" />
-                    <h2 className="text-xs font-black text-slate-800">アプリ設定 & ショートカット</h2>
+                {/* 見出しの灰色の帯と線はやめ、文字だけ残す（2026-09-26） */}
+                <div className="flex items-center gap-2 px-4 pt-3">
+                    <Settings className="h-[18px] w-[18px] text-navy" aria-hidden="true" />
+                    <h2 className="text-xs font-bold text-slate-800">アプリ設定 & ショートカット</h2>
                 </div>
                 <div className="divide-y divide-slate-100">
                     {pwaEligible && (
                     <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="text-sm font-black text-slate-900">ホーム画面に追加</h3>
-                            <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                                ホーム画面に追加すると、直接データを確認出来ます。<br />
-                                <span className="text-slate-400">※Safariの共有メニュー &gt; 「ホーム画面に追加」を選択</span>
-                            </p>
-                        </div>
+                        <h3 className="text-sm font-bold text-slate-900">ホーム画面に追加</h3>
                         <PwaInstallButton />
                     </div>
                     )}
@@ -364,7 +345,7 @@ export default function MyDataClient() {
                         <div className="flex gap-3">
                             <Bell className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
                             <div>
-                                <h3 className="text-sm font-black text-slate-900">レース開催通知</h3>
+                                <h3 className="text-sm font-bold text-slate-900">レース開催通知</h3>
                                 <p className="mt-0.5 text-xs leading-5 text-slate-500">
                                     お気に入り馬の出走日や重賞の通知を受け取れます。
                                 </p>
@@ -405,7 +386,7 @@ export default function MyDataClient() {
             {/* 比較中の馬 */}
             <section className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-                    <h2 className="font-black text-slate-950">比較中の競走馬</h2>
+                    <h2 className="font-bold text-slate-950">比較中の競走馬</h2>
                     {comparison.length > 0 && (
                         <button
                             type="button"
@@ -417,11 +398,14 @@ export default function MyDataClient() {
                         </button>
                     )}
                 </div>
-                {comparison.length < 2 ? (
-                    <p className="px-4 py-5 text-xs leading-6 text-slate-600">
-                        2頭以上の馬を選択すると、勝率・得意コース・AI偏差値をまとめて比較できます。
-
-                    </p>
+                {/* 「2頭以上の馬を選択すると…」の説明文はやめ、まだ無いときは比較の画面へのリンクだけ置く（2026-09-26） */}
+                {comparison.length === 0 ? (
+                    <div className="px-4 py-3.5">
+                        <Link prefetch={false} href="/compare" className="inline-flex min-h-9 items-center gap-1.5 text-sm font-bold text-brand-700 hover:text-brand-600">
+                            <GitCompareArrows className="h-4 w-4" aria-hidden="true" />
+                            比較する馬を選ぶ
+                        </Link>
+                    </div>
                 ) : (
                     <div className="p-4">
                         <div className="flex flex-wrap gap-2">
@@ -434,14 +418,16 @@ export default function MyDataClient() {
                                 </Link>
                             ))}
                         </div>
-                        <Link
-                            href="/compare"
-                            prefetch={false}
-                            className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-amber-600 px-5 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-700"
-                        >
-                            <GitCompareArrows className="h-4 w-4" aria-hidden="true" />
-                            {comparison.length}頭を今すぐ比較
-                        </Link>
+                        {comparison.length >= 2 && (
+                            <Link
+                                href="/compare"
+                                prefetch={false}
+                                className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-amber-600 px-5 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-700"
+                            >
+                                <GitCompareArrows className="h-4 w-4" aria-hidden="true" />
+                                {comparison.length}頭を今すぐ比較
+                            </Link>
+                        )}
                     </div>
                 )}
             </section>

@@ -20,9 +20,7 @@ import type { CourseDataDetail, PayoutStat, SegmentStat } from '@/lib/types';
 // - 見本の構成：見出し → タイル → 枠番別の3着以内率の棒（主役）→ 条件別の成績 → 成績の良い騎手・調教師 → 最近の勝ち馬 → ボタン
 // - 条件別（枠番・馬番・馬場・位置取り・人気・払戻）と騎手・調教師は、スマホだけタブで1枚にまとめる（表は全部 HTML に残す）
 // - スマホは左右の余白を足さない（外枠の16pxだけ）。まとまりの間は12px。PC は sm: で今までの間隔
-
-// 条件別の表に出す最小の対象数（API の minimum_sample と同じ）
-const MINIMUM_SAMPLE = 10;
+// - 表の上下の説明文（対象〇走以上・並び順・位置取りの区分）は置かない（2026-09-26 利用者の指定）
 
 // 券種の並び（API は対象の数の順で返すため、複勝→ワイド→3連単…と並んでいた）
 const BET_TYPE_LABELS: Record<string, string> = {
@@ -65,7 +63,7 @@ function WakuPlaceRateBars({ items }: { items: SegmentStat[] }) {
                     return (
                         <div key={item.key} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5">
                             <div className="flex w-full max-w-[44px] flex-1 flex-col items-center justify-end gap-1">
-                                <span className={`font-num text-[13.5px] font-bold tabular-nums sm:text-[15px] ${isBest ? 'text-brand-700' : 'text-slate-700'}`}>
+                                <span className={`font-num text-[13.5px] font-semibold tabular-nums sm:text-[15px] ${isBest ? 'text-brand-700' : 'text-slate-700'}`}>
                                     {item.place_rate.toFixed(1)}
                                 </span>
                                 <div
@@ -128,10 +126,10 @@ function PayoutStatsTable({ stats, inTabs = false }: { stats: PayoutStat[]; inTa
                                 <td className="hidden px-3 py-3 text-right font-num text-[15px] tabular-nums text-slate-600 sm:table-cell">
                                     {item.sample_size.toLocaleString('ja-JP')}
                                 </td>
-                                <td className="whitespace-nowrap px-2 py-2 text-right font-num text-[15.5px] font-bold tabular-nums text-slate-900 sm:px-3 sm:py-3">
+                                <td className="whitespace-nowrap px-2 py-2 text-right font-num text-[15.5px] font-semibold tabular-nums text-slate-900 sm:px-3 sm:py-3">
                                     {item.average_payout.toLocaleString('ja-JP')}<span className="font-sans text-[12px]">円</span>
                                 </td>
-                                <td className="whitespace-nowrap py-2 pl-2 pr-4 text-right font-num text-[15.5px] font-bold tabular-nums text-ai-deep sm:px-4 sm:py-3">
+                                <td className="whitespace-nowrap py-2 pl-2 pr-4 text-right font-num text-[15.5px] font-semibold tabular-nums text-ai-deep sm:px-4 sm:py-3">
                                     {item.max_payout.toLocaleString('ja-JP')}<span className="font-sans text-[12px]">円</span>
                                 </td>
                             </tr>
@@ -183,7 +181,7 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
         { key: 'waku', label: '枠番', title: '枠番別', firstLabel: '枠', items: sortByNumberKey(detail.segments.waku ?? []), labelKind: 'frame' as const },
         { key: 'horse_numbers', label: '馬番', title: '馬番別', firstLabel: '馬番', items: sortByNumberKey(detail.segments.horse_numbers ?? []) },
         { key: 'grounds', label: '馬場', title: '馬場状態別', firstLabel: '馬場', items: normalizeGroundStats(detail.segments.grounds ?? []) },
-        { key: 'running_styles', label: '位置取り', title: '位置取り別', firstLabel: '位置取り', description: '最終コーナーの位置を頭数比で3区分しています。', items: detail.segments.running_styles ?? [] },
+        { key: 'running_styles', label: '位置取り', title: '位置取り別', firstLabel: '位置取り', items: detail.segments.running_styles ?? [] },
         { key: 'popularities', label: '人気', title: '人気別', firstLabel: '人気', items: sortByNumberKey(detail.segments.popularities ?? []) },
     ].filter((spec) => spec.items.length > 0);
 
@@ -195,7 +193,6 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
                 inTabs
                 headingId={`course-segment-${spec.key}-heading`}
                 title={spec.title}
-                description={spec.description}
                 firstLabel={spec.firstLabel}
                 items={spec.items}
                 labelKind={spec.labelKind}
@@ -210,7 +207,6 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
         { key: 'jockeys', label: '騎手', title: 'このコースで成績の良い騎手', firstLabel: '騎手', items: detail.top_jockeys, linkPrefix: '/jockeys/data/' },
         { key: 'trainers', label: '調教師', title: 'このコースで成績の良い調教師', firstLabel: '調教師', items: detail.top_trainers, linkPrefix: '/trainers/' },
     ].filter((spec) => spec.items.length > 0);
-    const peopleDescription = `${MINIMUM_SAMPLE}走以上・3着以内率の高い順`;
 
     return (
         <article className="mx-auto flex max-w-6xl flex-col gap-3 pb-2 pt-1.5 sm:block sm:px-5 sm:pb-14 sm:pt-3">
@@ -273,7 +269,6 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
             <DataSegmentTabs
                 title="条件別の成績"
                 className="sm:mt-6"
-                note={`対象${MINIMUM_SAMPLE}走以上の条件だけを表示しています。`}
                 tabs={conditionTabs}
             />
 
@@ -282,7 +277,6 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
                     className="sm:mt-6"
                     headingId={`course-${peopleSpecs[0].key}-heading`}
                     title={peopleSpecs[0].title}
-                    description={peopleDescription}
                     firstLabel={peopleSpecs[0].firstLabel}
                     items={peopleSpecs[0].items}
                     linkPrefix={peopleSpecs[0].linkPrefix}
@@ -300,7 +294,6 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
                                 inTabs
                                 headingId={`course-${spec.key}-heading`}
                                 title={spec.title}
-                                description={peopleDescription}
                                 firstLabel={spec.firstLabel}
                                 items={spec.items}
                                 linkPrefix={spec.linkPrefix}

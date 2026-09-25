@@ -94,12 +94,14 @@ WAKU = {
     8: (hex_to_rgb("#EC5A96"), WHITE, hex_to_rgb("#EC5A96")),
 }
 
-# 書体（backend/fonts に置くファイル名）。サイトと同じく、見出しは M PLUS Rounded 1c の800、
-# 数字は Barlow Semi Condensed。画像の本文も M PLUS Rounded 1c（Noto Sans JP は同梱しない）。
-FONT_DISPLAY = "MPLUSRounded1c-ExtraBold.ttf"
-FONT_DISPLAY_BOLD = "MPLUSRounded1c-Bold.ttf"
-FONT_DISPLAY_BLACK = "MPLUSRounded1c-Black.ttf"
-FONT_BODY = "MPLUSRounded1c-Bold.ttf"
-FONT_BODY_REGULAR = "MPLUSRounded1c-Regular.ttf"
+# 書体（backend/fonts に置くファイル名）。サイトと同じく、見出しも本文も Noto Sans JP のゴシック（Bold 700・Regular 400）、
+# 数字は Barlow Semi Condensed。丸ゴシック（M PLUS Rounded 1c ExtraBold）は、ロゴ文字と写真の上の大きな見出しだけ
+# （FONT_BRAND。2026-09-26 利用者の選択「ゴシックでそろえる」をサイト以外にも当てた）。
+FONT_BRAND = "MPLUSRounded1c-ExtraBold.ttf"
+FONT_DISPLAY = "NotoSansJP-Bold.ttf"
+FONT_DISPLAY_BOLD = "NotoSansJP-Bold.ttf"
+FONT_DISPLAY_BLACK = "NotoSansJP-Bold.ttf"
+FONT_BODY = "NotoSansJP-Bold.ttf"
+FONT_BODY_REGULAR = "NotoSansJP-Regular.ttf"
 FONT_NUM = "BarlowSemiCondensed-Bold.ttf"
 FONT_NUM_SEMI = "BarlowSemiCondensed-SemiBold.ttf"

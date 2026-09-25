@@ -1,5 +1,7 @@
 'use client';
 
+// データトップの「目的から選ぶ」の1行。色つきの面と枠はやめ、紺のアイコンを大きくして、
+// 白いまとまりの中に線で区切って並べる（まとまりはページ側で作る）。行の下の説明文もやめた（2026-09-26）。
 import Link from 'next/link';
 import { CalendarDays, ChevronRight, MapPinned, Search } from 'lucide-react';
 import { sendDataHubActionClickEvent } from '@/lib/analytics';
@@ -11,17 +13,14 @@ const ACTIONS = {
     today_compare: {
         Icon: CalendarDays,
         destinationType: 'race' as const,
-        accent: 'border-brand-300 bg-brand-50 text-brand-900',
     },
     name_search: {
         Icon: Search,
         destinationType: 'search' as const,
-        accent: 'border-slate-300 bg-white text-slate-900',
     },
     course_lookup: {
         Icon: MapPinned,
         destinationType: 'course' as const,
-        accent: 'border-emerald-300 bg-emerald-50 text-emerald-950',
     },
 };
 
@@ -29,12 +28,10 @@ export function DataHubActionLink({
     action,
     href,
     title,
-    description,
 }: {
     action: Action;
     href: string;
     title: string;
-    description: string;
 }) {
     const config = ACTIONS[action];
     const Icon = config.Icon;
@@ -48,14 +45,11 @@ export function DataHubActionLink({
                     destination_type: config.destinationType,
                 });
             }}
-            className={`grid min-h-10 grid-cols-[28px_1fr_16px] items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors duration-150 sm:min-h-14 sm:grid-cols-[32px_1fr_20px] sm:gap-2 sm:rounded-xl sm:px-3 sm:py-2.5 hover:border-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${config.accent}`}
+            className="flex min-h-12 items-center gap-3 px-3.5 py-2 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 sm:min-h-14 sm:px-4"
         >
-            <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
-            <span className="min-w-0">
-                <span className="block text-xs font-black sm:text-sm">{title}</span>
-                <span className="mt-0.5 block truncate text-[11px] leading-tight text-slate-600 sm:text-xs sm:leading-5">{description}</span>
-            </span>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-500 sm:h-4 sm:w-4" aria-hidden="true" />
+            <Icon className="h-6 w-6 shrink-0 text-navy" strokeWidth={1.75} aria-hidden="true" />
+            <span className="min-w-0 flex-1 text-[14px] font-bold text-slate-900 sm:text-[15px]">{title}</span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
         </Link>
     );
 }

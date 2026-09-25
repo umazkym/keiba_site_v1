@@ -28,10 +28,10 @@ export type HomeVenueSummary = {
     main: HomeVenueMainRace | null;
 };
 
+// 注目馬（全レースで上位のAI偏差値の1頭）。画面で使うのは favored だけのため、
+// 「◎以外の印」「地方」の候補の取り出しはやめた（2026-09-26）
 export type HomeSpecialPickSet = {
     favored: SpecialPick | null;
-    value: SpecialPick | null;
-    nar: SpecialPick | null;
 };
 
 export type GradeRaceTopHorse = {
@@ -196,22 +196,14 @@ export function extractHomeSpecialPicks(
     const allHorses = collectHomeHorseCandidates(predictions);
 
     if (allHorses.length === 0) {
-        return {
-            favored: fallbackPick ?? null,
-            value: null,
-            nar: null,
-        };
+        return { favored: fallbackPick ?? null };
     }
 
     const favoredCandidates = allHorses.filter((horse) => horse.mark === '◎');
     const bestFavored = selectTopHorse(favoredCandidates) ?? selectTopHorse(allHorses);
 
     if (!bestFavored) {
-        return {
-            favored: fallbackPick ?? null,
-            value: null,
-            nar: null,
-        };
+        return { favored: fallbackPick ?? null };
     }
 
     // 説明は1行。数値はカードに大きく出ているので文に繰り返さない（2026-09-25 スマホの見直し）
@@ -220,31 +212,7 @@ export function extractHomeSpecialPicks(
         `${dayLabel}の全レースで上位のAI偏差値です。`,
     );
 
-    const narCandidates = allHorses.filter((horse) => horse.is_nar && horse.mark === '◎');
-    const narPool = allHorses.filter((horse) => horse.is_nar);
-    const bestNar = selectTopHorse(narCandidates) ?? selectTopHorse(narPool);
-    const nar = bestNar
-        ? toSpecialPick(
-            bestNar,
-            `${dayLabel}の地方競馬で上位のAI偏差値です。`,
-        )
-        : null;
-
-    const valueCandidates = allHorses.filter((horse) => (
-        horse.horse_id !== bestFavored.horse_id
-        && ['○', '〇', '▲', '△', '☆'].includes(horse.mark)
-    ));
-    const bestValue = valueCandidates.length > 0
-        ? selectTopHorse(valueCandidates)
-        : allHorses.find((horse) => horse.horse_id !== bestFavored.horse_id) ?? bestFavored;
-    const value = bestValue
-        ? toSpecialPick(
-            bestValue,
-            `◎以外の印の馬で最も高いAI偏差値です。`,
-        )
-        : null;
-
-    return { favored, value, nar };
+    return { favored };
 }
 
 function findRace(

@@ -103,22 +103,20 @@ export default async function CoursePage({ params }: Props) {
             <article className="mx-auto max-w-4xl px-0 pb-2 pt-1.5 sm:px-4 sm:pb-14 sm:pt-4">
                 <header className="border-b border-slate-200 pb-5">
                     <p className="text-xs font-bold text-slate-500">コースデータ</p>
-                    <h1 className="mt-1 text-2xl font-black text-slate-950 sm:text-4xl">{profile.title}</h1>
+                    <h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-4xl">{profile.title}</h1>
                     <p className="mt-3 text-sm leading-7 text-slate-600">{profile.lead}</p>
-                    <p className="mt-2 text-xs font-semibold text-slate-500">
-                        DB集計が利用できない場合の編集部ガイドを表示しています。
-                    </p>
+                    {/* 「DB集計が利用できない場合の…」の注記はやめた（2026-09-26） */}
                 </header>
                 <section className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
                     {profile.stats.map((stat) => (
                         <div key={stat.label} className="border-b border-slate-100 px-4 py-3 last:border-b-0">
-                            <h2 className="font-black text-slate-900">{stat.label}：{stat.value}</h2>
+                            <h2 className="font-bold text-slate-900">{stat.label}：{stat.value}</h2>
                             <p className="mt-1 text-sm leading-7 text-slate-600">{stat.note}</p>
                         </div>
                     ))}
                 </section>
                 <section className="mt-6">
-                    <h2 className="text-xl font-black text-slate-950">確認項目</h2>
+                    <h2 className="text-xl font-bold text-slate-950">確認項目</h2>
                     <ol className="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
                         {profile.checkpoints.map((checkpoint, index) => (
                             <li key={checkpoint} className="px-4 py-3 text-sm leading-7 text-slate-600">
@@ -129,7 +127,6 @@ export default async function CoursePage({ params }: Props) {
                 </section>
                 <EntityArticleSection
                     title={`${profile.venueName}${profile.courseName}の記事`}
-                    description="このコース条件に紐づく記事を集約しています。"
                     articles={courseArticles}
                     archiveHref={courseArticles.length > 0 ? `/articles/courses/${profile.venue}/${profile.course}` : undefined}
                     archiveLabel="記事アーカイブ"

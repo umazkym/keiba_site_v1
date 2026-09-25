@@ -1,6 +1,7 @@
 // 記事のOG画像（1200×630）。リンクを貼ったときに出る画像。
 // 以前は sharp＋SVG で描いていたが、本番のコンテナに日本語の書体が無く、英字も含めて全文字が四角になっていた。
-// 見出しと同じ M PLUS Rounded 1c ExtraBold を同梱し（assets/fonts）、next/og で描く。
+// 題名などはサイトの見出しと同じゴシック（Noto Sans JP Bold）、ロゴ文字だけ丸ゴシック（M PLUS Rounded 1c ExtraBold）。
+// どちらも assets/fonts に同梱し、next/og で描く（2026-09-26「ゴシックでそろえる」をOG画像にも当てた）。
 // 形はポートフォリオの「記事のOG画像」：白地・左に紺の帯・ロゴ・カテゴリ・題名・日付と読了時間。
 import fs from 'fs/promises';
 import path from 'path';
@@ -26,11 +27,17 @@ type OgMeta = {
 };
 
 let fontPromise: Promise<Buffer> | null = null;
+let brandFontPromise: Promise<Buffer> | null = null;
 let markPromise: Promise<string> | null = null;
 
 const loadFont = () => {
-  fontPromise ??= fs.readFile(path.join(process.cwd(), 'assets', 'fonts', 'MPLUSRounded1c-ExtraBold.ttf'));
+  fontPromise ??= fs.readFile(path.join(process.cwd(), 'assets', 'fonts', 'NotoSansJP-Bold.ttf'));
   return fontPromise;
+};
+
+const loadBrandFont = () => {
+  brandFontPromise ??= fs.readFile(path.join(process.cwd(), 'assets', 'fonts', 'MPLUSRounded1c-ExtraBold.ttf'));
+  return brandFontPromise;
 };
 
 const loadMark = () => {
@@ -87,7 +94,7 @@ export async function GET(
   { params }: { params: { slug: string } },
 ): Promise<Response> {
   const slug = normalizeSlug(params.slug);
-  const [meta, font, mark] = await Promise.all([readArticleMeta(slug), loadFont(), loadMark()]);
+  const [meta, font, brandFont, mark] = await Promise.all([readArticleMeta(slug), loadFont(), loadBrandFont(), loadMark()]);
   const [main, sub] = splitTitle(meta.title);
   const titleSize = mainTitleSize(main, Boolean(sub));
   const categoryColor = meta.category ? getArticleCategoryStyle(meta.category).hex : NAVY;
@@ -102,7 +109,7 @@ export async function GET(
           display: 'flex',
           position: 'relative',
           background: '#FFFFFF',
-          fontFamily: 'MPLUSRounded',
+          fontFamily: 'NotoSansJP',
           color: INK,
         }}
       >
@@ -112,7 +119,7 @@ export async function GET(
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {/* eslint-disable-next-line @next/next/no-img-element -- next/og の描画用 */}
             <img src={mark} width={56} height={56} alt="" />
-            <span style={{ fontSize: 32, color: NAVY, letterSpacing: 1 }}>UMA-FREE</span>
+            <span style={{ fontSize: 32, color: NAVY, letterSpacing: 1, fontFamily: 'MPLUSRounded' }}>UMA-FREE</span>
           </div>
           {meta.category && (
             <span
@@ -158,7 +165,10 @@ export async function GET(
     {
       width: WIDTH,
       height: HEIGHT,
-      fonts: [{ name: 'MPLUSRounded', data: font, weight: 800, style: 'normal' }],
+      fonts: [
+        { name: 'NotoSansJP', data: font, weight: 700, style: 'normal' },
+        { name: 'MPLUSRounded', data: brandFont, weight: 800, style: 'normal' },
+      ],
       // 小文字の 'cache-control' で渡すと next/og の既定（1年・immutable）を置き換える。大文字だと両方が並ぶ。
       // 題名を直したとき（検索向けの改稿など）に1日で入れ替わるようにする。
       headers: {

@@ -158,10 +158,11 @@ function VenueCourseSection({ group }: { group: VenueCourseGroup }) {
                                         key={course.url}
                                         href={course.url}
                                         prefetch={false}
-                                        className={`group flex min-h-10 flex-col items-start justify-center rounded-[8px] border px-2.5 py-1 font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${style.link}`}
+                                        className={`group flex min-h-10 flex-col items-start justify-center rounded-[8px] border px-2.5 py-1 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${style.link}`}
                                     >
                                         <span className="flex w-full items-center justify-between gap-0.5">
-                                            <span className="whitespace-nowrap font-num text-[15px] font-bold tabular-nums">
+                                            {/* 距離の数字は semibold に軽くする（2026-09-26） */}
+                                            <span className="whitespace-nowrap font-num text-[15px] font-semibold tabular-nums">
                                                 {course.distance == null ? course.name : `${course.distance}m`}
                                             </span>
                                             <ChevronRight
@@ -202,7 +203,7 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
 
             {groups.length === 0 ? (
                 <section className="mt-5 rounded-xl border border-slate-200 bg-white p-6">
-                    <h2 className="font-black text-slate-900">コースデータを取得できませんでした</h2>
+                    <h2 className="font-bold text-slate-900">コースデータを取得できませんでした</h2>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
                         時間を置いて再度お試しください。
                     </p>
@@ -214,25 +215,11 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
                         <VenueJumpLinks title="地方競馬" groups={localGroups} />
                     </nav>
 
-                    {/* 芝/ダート/障害 凡例 */}
-                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 px-1 text-xs font-bold text-slate-600">
-                        <span className="inline-flex items-center gap-1.5">
-                            <span className="h-3 w-3 rounded-xs bg-emerald-600" aria-hidden="true" />
-                            芝コース
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                            <span className="h-3 w-3 rounded-xs bg-amber-700" aria-hidden="true" />
-                            ダートコース
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                            <span className="h-3 w-3 rounded-xs bg-violet-700" aria-hidden="true" />
-                            障害コース
-                        </span>
-                    </div>
+                    {/* 芝/ダート/障害の凡例はやめた。各行の見出し（芝・ダート・障害）で分かる（2026-09-26） */}
 
                     {centralGroups.length > 0 && (
                         <div className="mt-6">
-                            <h2 className="mb-3 border-b border-slate-300 pb-2 text-xl font-black text-slate-950">
+                            <h2 className="mb-3 border-b border-slate-300 pb-2 text-xl font-bold text-slate-950">
                                 中央競馬
                             </h2>
                             <div className="space-y-4">
@@ -246,7 +233,7 @@ export function CourseDirectoryView({ directory }: { directory: DataEntityDirect
                     {localGroups.length > 0 && (
                         <div className="mt-8">
                             <div className="mb-3 flex items-end justify-between border-b border-slate-300 pb-2">
-                                <h2 className="text-xl font-black text-slate-950">地方競馬</h2>
+                                <h2 className="text-xl font-bold text-slate-950">地方競馬</h2>
                                 <a
                                     href="#top"
                                     className="text-xs font-bold text-brand-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"

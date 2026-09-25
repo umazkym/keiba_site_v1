@@ -22,7 +22,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from .. import brand_tokens as T
 from ..sns_content import JRA_VENUES, WEEKDAYS, HorseRow, RaceCard, date_label, grade_priority, parse_date, race_card_from_api
-from ..sns_images import SCALE, Canvas, _logo, center_lane_rows, grade_badge, horse_no, lockup, mark_glyph, plate, rank_row, score_bar
+from ..sns_images import SCALE, Canvas, _logo, center_lane_rows, grade_badge, horse_no, lockup, mark_glyph, plate, rank_row, score_bar, view_strip
 from .data_loader import RaceVideoData
 from .motion import MotionLayer, MotionScene
 from .visual_assets import VideoAsset, VisualAsset
@@ -48,7 +48,6 @@ SHORT_CONTENT_BOTTOM = 1500
 # 文字・数字・札を置いてよい範囲（下の題名・説明の上まで）
 SHORT_SAFE_BOX = (SHORT_LEFT - 4, 230, SHORT_RIGHT + 4, 1540)
 
-FOUR_VIEWS = (("AI偏差値", "gauge"), ("対戦成績", "swords"), ("展開予測", "lanes"), ("馬番の傾向", "bars"))
 LANES = ("先行", "中団", "後方")
 LONG_FOOTER_TEXT = "対戦成績・馬番の傾向は概要欄のサイトで確認できます"
 
@@ -482,7 +481,8 @@ def plan_lanes(
 
 
 def lanes_footer_height(size: float) -> float:
-    return size * 0.5 + 20
+    # 以前は凡例（琥珀の輪は…）と進行方向の行だった。説明書きを置かないため、下の余白だけ（2026-09-26）
+    return 6.0
 
 
 def stretch_lanes(plan: LanePlan, height: float) -> LanePlan:
@@ -499,15 +499,8 @@ def stretch_lanes(plan: LanePlan, height: float) -> LanePlan:
     return LanePlan(lanes=lanes, height=height, unknown=plan.unknown, size=plan.size, label_width=plan.label_width, right_pad=plan.right_pad)
 
 
-def lanes_legend(plan: LanePlan) -> str:
-    legend = "琥珀の輪はAI偏差値の上位3頭"
-    if plan.unknown:
-        legend += f" · 予測なし{plan.unknown}頭"
-    return legend
-
-
 def draw_lanes(c: VideoCanvas, x: float, y: float, width: float, plan: LanePlan, *, dark: bool = False) -> float:
-    """位置取りの図。AI偏差値の上位3頭に琥珀の輪。下の行に凡例（進行方向の文字は出さない。2026-09-26）。高さを返す。"""
+    """位置取りの図。AI偏差値の上位3頭に琥珀の輪。凡例・進行方向などの説明書きは置かない（2026-09-26）。高さを返す。"""
     size = plan.size
     background = white(0.06) if dark else T.TURF_SOFT
     label_color = T.ON_NIGHT_TEXT if dark else T.TURF_DEEP
@@ -526,26 +519,11 @@ def draw_lanes(c: VideoCanvas, x: float, y: float, width: float, plan: LanePlan,
         cursor += lane_height
         if index < len(plan.lanes) - 1:
             c.line((x, cursor, x + width, cursor), separator, 1.5)
-    footer_cy = cursor + lanes_footer_height(size) / 2
-    text_size = size * 0.46
-    legend, legend_size = c.fit(lanes_legend(plan), "bold", text_size, width - size - plan.right_pad - 24, text_size * 0.8)
-    c.text(x + size * 0.5, footer_cy, legend, "bold", legend_size, T.AI if dark else T.AI_DEEP)
     return plan.height
 
 
-def view_chip_width(c: VideoCanvas, label: str, *, size: float, icon: float, pad: float) -> float:
-    return pad + icon + size * 0.42 + c.text_width(label, "bold", size) + pad
-
-
-def view_chip(c: VideoCanvas, x: float, y: float, width: float, height: float, label: str, icon_name: str, *, size: float, icon: float, pad: float) -> None:
-    """4つの視点の札（夜の紺の上）。"""
-    c.rect((x, y, x + width, y + height), radius=height * 0.24, fill=white(0.08), outline=white(0.14), width=2)
-    c.paste_image(video_asset(f"icon-{icon_name}"), x + pad, y + (height - icon) / 2, (icon, icon))
-    c.text(x + pad + icon + size * 0.42, y + height / 2, label, "bold", size, T.WHITE)
-
-
 def lockup_width(c: VideoCanvas, size: float) -> float:
-    return size + size * 0.28 + c.text_width("UMA-FREE", "disp", size * 0.56)
+    return size + size * 0.28 + c.text_width("UMA-FREE", "brand", size * 0.56)
 
 
 # ---------------------------------------------------------------------------
@@ -716,8 +694,8 @@ def build_long_intro(
 
     def title(c: VideoCanvas) -> None:
         c.text(0, 30, long_date(target_date), "bold", 44, T.ON_NIGHT_TEXT)
-        c.text(0, 160, f"全{race_count}レース", "disp", 150, T.WHITE)
-        c.text(0, 318, "AI分析", "disp", 150, T.AI)
+        c.text(0, 160, f"全{race_count}レース", "brand", 150, T.WHITE)
+        c.text(0, 318, "AI分析", "brand", 150, T.AI)
 
     title_path = element(directory / f"{prefix}_title.png", (1700, 420), title)
     scope_text = "・".join(venue_names) + "の順に収録"
@@ -786,14 +764,15 @@ def build_long_chapter(
             if number == featured.race_number:
                 r_box(c, left, 0, box, number, light=True)
                 continue
-            c.rect((left, 0, left + box, box), radius=box * 0.24, fill=white(0.08) if included else None, outline=white(0.24) if included else white(0.12), width=1.5)
-            color = T.WHITE if included else tint(T.WHITE, 0.32)
+            if included:
+                c.rect((left, 0, left + box, box), radius=box * 0.24, fill=white(0.08))
+            color = tint(T.WHITE, 0.86) if included else tint(T.WHITE, 0.32)
             number_text = str(number)
             number_size, r_size = box * 0.46, box * 0.26
-            total = c.text_width(number_text, "num", number_size) + 1 + c.text_width("R", "num", r_size)
+            total = c.text_width(number_text, "num_semi", number_size) + 1 + c.text_width("R", "num_semi", r_size)
             start = left + (box - total) / 2
-            c.text(start, box * 0.68, number_text, "num", number_size, color, anchor="ls")
-            c.text(start + c.text_width(number_text, "num", number_size) + 1, box * 0.68, "R", "num", r_size, color, anchor="ls")
+            c.text(start, box * 0.68, number_text, "num_semi", number_size, color, anchor="ls")
+            c.text(start + c.text_width(number_text, "num_semi", number_size) + 1, box * 0.68, "R", "num_semi", r_size, tint(T.WHITE, 0.6) if included else tint(T.WHITE, 0.25), anchor="ls")
 
     strip_width = count * box + (count - 1) * 10
     strip_path = element(directory / f"{prefix}_races.png", (strip_width, box), strip)
@@ -945,28 +924,24 @@ def build_long_outro(directory: Path, *, duration: float, prefix: str = "999_out
     """締め：案内役の馬、「全頭のデータはサイトで」、4つの視点、UMA-FREE と URL（画面の中央にそろえる）。"""
     base = VideoCanvas(*LONG_SIZE).save(directory / f"{prefix}_base.png")
     probe = VideoCanvas(1, 1, transparent=True)
-    widths = [view_chip_width(probe, label, size=40, icon=44, pad=32) for label, _ in FOUR_VIEWS]
-    chips_width = sum(widths) + 22 * (len(widths) - 1)
+    chips_width = 1120
     site_width = lockup_width(probe, 76) + 26 + probe.text_width("uma-free.com", "num", 60)
-    # 馬(230) + 48 + 見出し(116) + 48 + 4つの視点(100) + 48 + ロゴとURL(76) + 40 + 注記(52)
-    heights = (230, 48, 116, 48, 100, 48, 76, 40, 52)
+    # 馬(230) + 48 + 見出し(116) + 48 + 4つの視点(116) + 48 + ロゴとURL(76) + 40 + 注記(52)
+    heights = (230, 48, 116, 48, 116, 48, 76, 40, 52)
     top = round((1080 - sum(heights)) / 2)
     y_horse = top
     y_title = y_horse + 230 + 48
     y_views = y_title + 116 + 48
-    y_site = y_views + 100 + 48
+    y_site = y_views + 116 + 48
     y_note = y_site + 76 + 40
 
     horse = element(directory / f"{prefix}_horse.png", (230, 230), lambda c: c.paste_image(video_asset("guide-horse"), 0, 0, (230, 230)))
     title = element(directory / f"{prefix}_title.png", (1920, 116), lambda c: c.text_center(960, 58, "全頭のデータはサイトで", "disp", 94, T.WHITE))
 
     def chips(c: VideoCanvas) -> None:
-        cursor = 0.0
-        for (label, icon_name), width in zip(FOUR_VIEWS, widths):
-            view_chip(c, cursor, 0, width, 100, label, icon_name, size=40, icon=44, pad=32)
-            cursor += width + 22
+        view_strip(c, 0, 4, chips_width, visual=150, label_size=38, gap=14, dark=True)
 
-    chips_path = element(directory / f"{prefix}_views.png", (chips_width, 100), chips)
+    chips_path = element(directory / f"{prefix}_views.png", (chips_width, 116), chips)
 
     def site(c: VideoCanvas) -> None:
         width = lockup(c, 0, 38, 76, dark=True)
@@ -1005,9 +980,9 @@ def draw_thumbnail(path: Path, *, target_date: str, headline: str, accent: str, 
     number, weekday = day.split("(", 1)
     width = c.text(56, 227, number, "num", 120, T.WHITE)
     c.text(56 + width + 8, 250, f"({weekday}", "bold", 56, T.WHITE)
-    fitted, size = c.fit(headline, "disp", 96, 1180, 64)
-    c.text(56, 344, fitted, "disp", size, T.WHITE)
-    c.text(56, 455, accent, "disp", 96, T.AI)
+    fitted, size = c.fit(headline, "brand", 96, 1180, 64)
+    c.text(56, 344, fitted, "brand", size, T.WHITE)
+    c.text(56, 455, accent, "brand", 96, T.AI)
     if featured is not None:
         card = race_card(featured)
         top = card.scored_rows[0] if card.scored_rows else None
@@ -1263,6 +1238,16 @@ def _short_lanes(directory: Path, plan: Optional[LanePlan]) -> list[tuple[Path, 
 SHORT_LANES_MIN_HEIGHT = 780
 
 
+def text_center_ink(c: VideoCanvas, cx: float, cy: float, text: str, kind: str, size: float, color: Color, width: float) -> None:
+    """文字の実際に描かれる範囲（字の左右の余白を除いた形）で、横の中央にそろえる。
+    書体によっては字の送り幅と形の幅が違い、text_center だけでは数px左右にずれる（ゴシックの書体にしたときに出た。2026-09-26）。"""
+    probe = VideoCanvas(round(width), round(size * 2), transparent=True)
+    probe.text_center(width / 2, size, text, kind, size, color)
+    box = probe.image.getchannel("A").getbbox()
+    offset = ((box[0] + box[2]) / 2 / SCALE - width / 2) if box else 0.0
+    c.text_center(cx - offset, cy, text, kind, size, color)
+
+
 def _short_closing(directory: Path, *, branded: bool) -> list[tuple[Path, int, float]]:
     """締め。TikTok 用の版は案内役の馬とサイトへの案内を入れない。画面の中央にそろえる。"""
     items: list[tuple[Path, int, float]] = []
@@ -1275,20 +1260,17 @@ def _short_closing(directory: Path, *, branded: bool) -> list[tuple[Path, int, f
 
     def title(c: VideoCanvas) -> None:
         for index, line in enumerate(lines):
-            c.text_center(SHORT_WIDTH / 2, 52 + index * 104, line, "disp", 80, T.WHITE)
+            text_center_ink(c, SHORT_WIDTH / 2, 52 + index * 104, line, "disp", 80, T.WHITE, SHORT_WIDTH)
 
     items.append((element(directory / "041_closing_title.png", (SHORT_WIDTH, 208), title), SHORT_LEFT, cursor))
     cursor += 208 + 44
-    cell_w, cell_h = (SHORT_WIDTH - 20) / 2, 104
+    strip_h = 120
 
     def chips(c: VideoCanvas) -> None:
-        for index, (label, icon_name) in enumerate(FOUR_VIEWS):
-            x = (index % 2) * (cell_w + 20)
-            y = (index // 2) * (cell_h + 20)
-            view_chip(c, x, y, cell_w, cell_h, label, icon_name, size=40, icon=46, pad=30)
+        view_strip(c, 0, 4, SHORT_WIDTH, visual=150, label_size=38, gap=14, dark=True)
 
-    items.append((element(directory / "042_closing_views.png", (SHORT_WIDTH, cell_h * 2 + 20), chips), SHORT_LEFT, cursor))
-    cursor += cell_h * 2 + 20 + 44
+    items.append((element(directory / "042_closing_views.png", (SHORT_WIDTH, strip_h), chips), SHORT_LEFT, cursor))
+    cursor += strip_h + 44
     note = "登録不要 · 毎日無料で公開" if branded else "過去データをもとにした参考情報です"
     items.append((
         element(directory / "043_closing_note.png", (SHORT_WIDTH, 60), lambda c: c.text_center(SHORT_WIDTH / 2, 30, note, "bold", 40, T.ON_NIGHT_TEXT)),

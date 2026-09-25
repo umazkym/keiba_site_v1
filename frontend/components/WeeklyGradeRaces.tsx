@@ -234,7 +234,7 @@ export function WeeklyGradeRaces({ races, compact = false, variant, predictions,
                     <RacePlate venue={focusRace.venue_name} raceNumber={focusRace.race_number} size="s" />
                     <div className="flex min-w-0 flex-col gap-1">
                         <span className="text-[13px] font-bold text-slate-500">{formatRaceDateLabel(focusRace.race_date)} · {getRaceTypeLabel(focusRace)}</span>
-                        <h2 id="weekly-grade-races-heading" className="text-[24px] font-extrabold leading-tight text-slate-900 md:text-[28px]">{cleanRaceName(focusRace.race_name)}</h2>
+                        <h2 id="weekly-grade-races-heading" className="text-[24px] font-bold leading-tight text-slate-900 md:text-[28px]">{cleanRaceName(focusRace.race_name)}</h2>
                     </div>
                 </div>
                 {topHorse ? (

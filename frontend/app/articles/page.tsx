@@ -105,7 +105,8 @@ function ArticlePagination({
             key={p}
             href={buildUrl(p)}
             aria-current={isCurrent ? "page" : undefined}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-[10px] font-num text-[15px] font-bold transition-colors duration-150 ${isCurrent
+            // ページ番号の数字は semibold に軽くする（2026-09-26）
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-[10px] font-num text-[15px] font-semibold transition-colors duration-150 ${isCurrent
               ? "bg-navy text-white"
               : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"
               }`}

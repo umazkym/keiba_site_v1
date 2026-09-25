@@ -20,7 +20,7 @@ export default function Error({
     return (
         <div className="mx-auto flex min-h-[60vh] w-full max-w-[560px] flex-col items-center justify-center gap-3 px-4 py-10 text-center">
             <GuideHorse size={120} mood="look" />
-            <h1 className="mt-1 text-[22px] font-extrabold leading-snug text-slate-900 sm:text-[26px]">ページを表示できませんでした</h1>
+            <h1 className="mt-1 text-[22px] font-bold leading-snug text-slate-900 sm:text-[26px]">ページを表示できませんでした</h1>
             <p className="text-sm leading-7 text-slate-700 sm:text-[15px]">
                 読み込みの途中で問題が起きました。時間をおいて、もう一度お試しください。
             </p>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { FaqItem } from "@/components/FaqItem";
 import { BreadcrumbSchema } from "@/components/StructuredData";
 
 export const metadata: Metadata = {
@@ -20,28 +21,30 @@ const weightRows = [
   { range: "休み明けの増加", read: "成長分・回復分の可能性がある", action: "調教、年齢、過去の好走体重を合わせる" },
 ];
 
+// よくある質問（画面の一覧と構造化データで同じ文を使う）
+const FAQ_ITEMS = [
+  {
+    question: "馬体重が10kg以上増えていたら評価を下げるべきですか？",
+    answer: "必ず評価を下げる必要はありません。休み明け、3歳馬の成長分、過去の好走体重への回帰なら評価を下げすぎない方がよい場合があります。",
+  },
+  {
+    question: "馬体重はいつ予想に入れますか？",
+    answer: "基本の能力評価を作ったあと、直前の状態確認として使います。評価を上げる理由よりも、人気馬のリスク確認として使うと判断しやすくなります。",
+  },
+];
+
 export default function HorseWeightPage() {
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: [
-      {
-        "@type": "Question",
-        name: "馬体重が10kg以上増えていたら評価を下げるべきですか？",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "必ず評価を下げる必要はありません。休み明け、3歳馬の成長分、過去の好走体重への回帰なら評価を下げすぎない方がよい場合があります。",
-        },
+    mainEntity: FAQ_ITEMS.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
       },
-      {
-        "@type": "Question",
-        name: "馬体重はいつ予想に入れますか？",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "基本の能力評価を作ったあと、直前の状態確認として使います。評価を上げる理由よりも、人気馬のリスク確認として使うと判断しやすくなります。",
-        },
-      },
-    ],
+    })),
   };
 
   return (
@@ -58,7 +61,7 @@ export default function HorseWeightPage() {
       <article className="mx-auto max-w-5xl px-4 pb-14 pt-4">
         <header className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 shadow-soft sm:p-8">
           <p className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[12px] font-bold text-amber-800">馬体重の読み方</p>
-          <h1 className="mt-1 text-[15px] font-black leading-tight text-slate-950 sm:text-4xl">
+          <h1 className="mt-1 text-[15px] font-bold leading-tight text-slate-950 sm:text-4xl">
             馬体重増減の見方
           </h1>
           <p className="mt-1.5 max-w-3xl text-[11px] leading-relaxed text-slate-600 sm:text-base">
@@ -68,11 +71,11 @@ export default function HorseWeightPage() {
         </header>
 
         <section className="mt-8">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-950">増減幅ごとの見方</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-950">増減幅ごとの見方</h2>
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
             {weightRows.map((row) => (
               <div key={row.range} className="grid gap-2 border-b border-slate-100 p-4 last:border-b-0 sm:grid-cols-[110px_1fr_1.2fr]">
-                <div className="font-mono text-lg font-black text-accent-dark">{row.range}</div>
+                <div className="font-mono text-lg font-bold text-accent-dark">{row.range}</div>
                 <div className="text-sm font-bold text-slate-700">{row.read}</div>
                 <div className="text-sm leading-7 text-slate-600">{row.action}</div>
               </div>
@@ -83,21 +86,21 @@ export default function HorseWeightPage() {
         <section className="mt-10 grid gap-5 md:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <div className="mb-3 h-1.5 w-12 rounded-full bg-accent" />
-            <h3 className="text-lg font-black text-slate-950">減りすぎ</h3>
+            <h3 className="text-lg font-bold text-slate-950">減りすぎ</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               連戦続きで大幅に絞れている馬は、消耗や輸送疲れが疑われます。人気馬でも中心には据えづらく、相手候補に留めるのが無難です。
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <div className="mb-3 h-1.5 w-12 rounded-full bg-brand-600" />
-            <h3 className="text-lg font-black text-slate-950">増えすぎ</h3>
+            <h3 className="text-lg font-bold text-slate-950">増えすぎ</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               太め残りと成長増は意味が違います。休み明けで追い切りの動きが良ければ、体重増だけを理由に評価を下げすぎるのは早計です。
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <div className="mb-3 h-1.5 w-12 rounded-full bg-emerald-600" />
-            <h3 className="text-lg font-black text-slate-950">好走体重への戻り</h3>
+            <h3 className="text-lg font-bold text-slate-950">好走体重への戻り</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               前走で絞れすぎて力を出せなかった馬が、過去の好走時と同じ水準まで増量して出走してくるケースです。これは復調のサインと捉え、再評価するチャンスになります。
             </p>
@@ -105,25 +108,35 @@ export default function HorseWeightPage() {
         </section>
 
         <section className="mt-10">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-950">予想に入れる順番</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-950">予想に入れる順番</h2>
           <ol className="mt-4 space-y-3 text-sm leading-[1.8] text-slate-700 sm:leading-8">
-            <li className="rounded-xl border-l-4 border-accent bg-white p-4 shadow-soft">
+            <li className="rounded-xl border border-slate-200 bg-white p-4">
               <strong className="text-slate-950">1. 能力評価を先に作る。</strong>
               馬体重は最終判断を決める材料ではなく、リスクを測る材料です。
             </li>
-            <li className="rounded-xl border-l-4 border-brand-600 bg-white p-4 shadow-soft">
+            <li className="rounded-xl border border-slate-200 bg-white p-4">
               <strong className="text-slate-950">2. 上位人気馬の増減に注目する。</strong>
               1〜3番人気で±10kg以上の変動があれば、過信は禁物です。
             </li>
-            <li className="rounded-xl border-l-4 border-emerald-600 bg-white p-4 shadow-soft">
+            <li className="rounded-xl border border-slate-200 bg-white p-4">
               <strong className="text-slate-950">3. 例外パターンを見落とさない。</strong>
               3歳馬の成長期、長期休養明けの回復増、ベスト体重への回帰は、増減の数字だけでは測れません。
             </li>
           </ol>
         </section>
 
+        {/* 構造化データ（FAQPage）と同じ質問を、画面にも閉じた一覧で出す。ホームのよくある質問と同じ形（2026-09-26） */}
+        <section aria-labelledby="page-faq-heading" className="mt-10 rounded-xl border border-slate-200 bg-white px-4 py-3.5 md:p-6">
+          <h2 id="page-faq-heading" className="text-[18px] font-bold text-slate-900">よくある質問</h2>
+          <div className="mt-1 flex flex-col">
+            {FAQ_ITEMS.map((item) => (
+              <FaqItem key={item.question} question={item.question}>{item.answer}</FaqItem>
+            ))}
+          </div>
+        </section>
+
         <section className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
-          <h2 className="text-xl font-black text-slate-950">関連して確認したいページ</h2>
+          <h2 className="text-xl font-bold text-slate-950">関連して確認したいページ</h2>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link prefetch={false} href="/articles/2025-11-11-weight-change-impact-analysis" className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
               馬体重±10kgの記事

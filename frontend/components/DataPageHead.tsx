@@ -1,5 +1,6 @@
 // データベースの各画面の見出し（2026-09-25 段階5）。紺の面に15pxの見出しを置いていた形をやめ、
 // 白い紙面に「競馬データベース」の小さなラベル・丸い書体の見出し・説明1文を置く。
+// 2026-09-26：アイコンの丸い面をやめ、紺のアイコンだけを大きく置く。
 import type { ReactNode } from 'react';
 import { LineIcon, type LineIconName } from '@/components/LineIcon';
 
@@ -19,9 +20,7 @@ export function DataPageHead({
     return (
         <header className={`flex items-center gap-3.5 sm:gap-4 ${className}`}>
             {icon && (
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-navy/10 sm:h-14 sm:w-14" aria-hidden="true">
-                    <LineIcon name={icon} size={26} className="block text-navy" />
-                </span>
+                <LineIcon name={icon} size={40} className="block h-10 w-10 shrink-0 text-navy sm:h-12 sm:w-12" />
             )}
             <div className="min-w-0">
                 <p className="text-[13px] font-bold text-slate-500">{label}</p>

@@ -358,7 +358,8 @@ export default async function HomePage() {
                                 className="!mb-2 md:!mb-4"
                                 compact
                             />
-                            {/* スマホはアイコンと名前を縦に置いた4つの横並び。枠線と灰色の面は付けず、全体の大きさはそのままでアイコンだけ大きく（2026-09-26 利用者の指定）。PCは2×2の札で補足の1行つき */}
+                            {/* スマホはアイコンと名前を縦に置いた4つの横並び。枠線と灰色の面は付けず、全体の大きさはそのままでアイコンだけ大きく（2026-09-26 利用者の指定）。
+                                PCは2×2で補足の1行つき。PCも札の枠線・灰色の面とアイコンの枠をやめた（2026-09-26「全ページ同じ決まり」） */}
                             <div className="grid grid-cols-4 gap-2 md:grid-cols-2 md:gap-2.5">
                                 {DATA_LINKS.map((item) => (
                                     <Link
@@ -366,11 +367,11 @@ export default async function HomePage() {
                                         prefetch={false}
                                         href={item.href}
                                         aria-label={item.label}
-                                        className="flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 transition-colors duration-150 hover:bg-slate-50 md:flex-row md:gap-3 md:border md:border-slate-200 md:bg-slate-50 md:p-3.5 md:hover:border-brand-300"
+                                        className="flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 transition-colors duration-150 hover:bg-slate-50 md:flex-row md:gap-3 md:px-2 md:py-3"
                                     >
-                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center text-navy md:h-10 md:w-10 md:rounded-[10px] md:border md:border-slate-200 md:bg-white" aria-hidden="true">
+                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center text-navy md:h-10 md:w-10" aria-hidden="true">
                                             <LineIcon name={item.icon} size={30} className="block md:hidden" />
-                                            <LineIcon name={item.icon} size={18} className="hidden md:block" />
+                                            <LineIcon name={item.icon} size={34} className="hidden md:block" />
                                         </span>
                                         <span className="whitespace-nowrap text-[12.5px] font-bold text-slate-900 md:hidden">{item.short}</span>
                                         <span className="hidden min-w-0 flex-1 flex-col gap-0.5 md:flex">
@@ -406,7 +407,7 @@ export default async function HomePage() {
                         <WeeklyGradeRaces variant="list" races={weeklyGradeRaces} topHorses={gradeRaceTopHorses} />
 
                         <section aria-labelledby="home-search-heading" className="rounded-xl border border-slate-200 bg-white p-5">
-                            <h2 id="home-search-heading" className="text-[17px] font-extrabold text-slate-900">データベースで調べる</h2>
+                            <h2 id="home-search-heading" className="text-[17px] font-bold text-slate-900">データベースで調べる</h2>
                             <form action="/search" method="get" role="search" className="mt-3.5">
                                 <label className="flex h-12 items-center gap-2.5 rounded-xl border-[1.5px] border-slate-300 bg-white px-3.5 transition-colors duration-150 focus-within:border-brand-600">
                                     <LineIcon name="search" size={18} className="block shrink-0 text-slate-500" />
@@ -437,7 +438,7 @@ export default async function HomePage() {
 
                         {categoryCounts.length > 0 && (
                             <section aria-labelledby="home-categories-heading" className="rounded-xl border border-slate-200 bg-white p-5">
-                                <h2 id="home-categories-heading" className="text-[17px] font-extrabold text-slate-900">記事のカテゴリ</h2>
+                                <h2 id="home-categories-heading" className="text-[17px] font-bold text-slate-900">記事のカテゴリ</h2>
                                 <ul className="mt-2.5">
                                     {categoryCounts.map(([category, count]) => (
                                         <li key={category}>

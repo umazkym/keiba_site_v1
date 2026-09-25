@@ -76,7 +76,6 @@ export const getRaceDetailPageData = cache(async (
     if (!detail) {
         return {
             detail: null,
-            specialPick: null,
             topHits: [],
             gradeRaces: [],
         };
@@ -85,18 +84,17 @@ export const getRaceDetailPageData = cache(async (
     if (getRaceCachePolicy(date).tier !== 'recent') {
         return {
             detail,
-            specialPick: null,
             topHits: [],
             gradeRaces: [],
         };
     }
 
-    const [specialPick, topHits, gradeRaces] = await Promise.all([
-        getSpecialPick(date),
+    // レース詳細には「その日の注目馬」（別レースのAI偏差値1位）を出さないため取得しない（2026-09-25）
+    const [topHits, gradeRaces] = await Promise.all([
         getTopPayoutHits(),
         getWeeklyGradeRaces(),
     ]);
-    return { detail, specialPick, topHits, gradeRaces };
+    return { detail, topHits, gradeRaces };
 });
 
 export function hasRaceDayData(

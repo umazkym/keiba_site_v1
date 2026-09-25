@@ -40,7 +40,7 @@ const extendedTargetFiles = [
   'components/HorseNumberAdvantageChart.tsx',
   'components/RelatedRaces.tsx',
   'components/DynamicRelatedArticles.tsx',
-  'components/DisclaimerAlert.tsx',
+  'components/DisclaimerNote.tsx',
   'components/MobileArticleThemeDirectory.tsx',
   'components/EntityArticleDocument.tsx',
   'components/ArticleBody.tsx',
@@ -294,9 +294,10 @@ const checks = [
   },
   {
     id: 'reduced-motion-scroll',
-    description: 'レース内スクロールが動きの削減設定を尊重する',
+    description: 'レース内スクロールが動きの削減設定を尊重し、レース詳細は読み込み時に自動でスクロールしない（見出しを画面の外へ送らない。2026-09-25）',
     passed: raceNavigation.includes("matchMedia('(prefers-reduced-motion: reduce)')")
-      && racePageClient.includes("matchMedia('(prefers-reduced-motion: reduce)')"),
+      && !racePageClient.includes('window.scrollTo(')
+      && !racePageClient.includes('hasScrolled'),
   },
   {
     id: 'skip-link',
@@ -515,6 +516,27 @@ const checks = [
       const files = ['app/keiba-data/page.tsx', 'components/DataDirectoryView.tsx', 'components/CourseDirectoryView.tsx', 'app/my-data/MyDataClient.tsx', 'app/compare/HorseCompareClient.tsx']
         .map((relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8'));
       return files.every((content) => content.includes('<DataPageHead') && !content.includes('border-slate-800 bg-slate-900'));
+    })(),
+  },
+  {
+    id: 'mobile-layer-cleanup',
+    description: 'ヘッダーを不透明にし（本文がロゴの後ろに透けない）、レース詳細に別レースの注目馬と黄色の免責帯を挟まず、免責は出走表の直後の1文にする。ナビの名前はレース画面の見出しと同じ（2026-09-25）',
+    passed: (() => {
+      const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
+      const raceTabs = read('components/RaceTabs.tsx');
+      const raceDayExtras = read('components/RaceDayExtras.tsx');
+      const valueGrid = read('components/RaceAnalysisValueGrid.tsx');
+      const glassRule = globals.match(/\.glass \{[^}]*\}/);
+      return Boolean(glassRule)
+        && !/bg-white\/\d+|backdrop-blur/.test(glassRule[0])
+        && !racePageClient.includes('SpecialPickCard')
+        && !racePageClient.includes('DisclaimerAlert')
+        && raceTabs.includes('<DisclaimerNote')
+        && raceDayExtras.includes('<DisclaimerNote')
+        && raceDayExtras.includes('race-day-pick-heading')
+        && !fs.existsSync(path.join(root, 'components/DisclaimerAlert.tsx'))
+        && !valueGrid.includes("compactTitle: '対戦比較'")
+        && !valueGrid.includes("compactTitle: '馬番傾向'");
     })(),
   },
   {

@@ -1,22 +1,19 @@
 "use client";
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import Link from 'next/link';
-import { RaceDayPrediction, SpecialPick, TopPayoutHit, WeeklyGradeRace } from "@/lib/types";
+import { RaceDayPrediction, TopPayoutHit, WeeklyGradeRace } from "@/lib/types";
 import { RaceTabs } from "@/components/RaceTabs";
-import { SpecialPickCard } from "@/components/SpecialPickCard";
 import { TopHitsDisplay } from "@/components/TopHitsDisplay";
 import { WeeklyGradeRaces } from "@/components/WeeklyGradeRaces";
 import { formatDate } from "@/lib/utils";
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { getPredictionsForDate } from "@/lib/api";
 import { RaceArticleMeta } from "@/lib/articles";
-import DisclaimerAlert from "@/components/DisclaimerAlert";
 import { InFeedAd } from "@/components/InFeedAd";
 import { GuideHorse } from "@/components/BrandLogo";
 import { AffiliateSlot } from "@/components/AffiliateSlot";
 import { RacePageBottomNav } from "@/components/RacePageBottomNav";
 import type { RaceSelectorLink } from '@/components/RaceSelector';
-import { getRaceTopObstructionHeight } from "@/hooks/useRaceSectionNavigation";
 import { useRaceRevenueExperiment } from "@/hooks/useRaceRevenueExperiment";
 
 // 日付フォーマット検証関数
@@ -52,7 +49,6 @@ const isValidDateFormat = (dateStr: string): boolean => {
 type RacePageClientProps = {
     initialDate: string;
     initialPredictionData: RaceDayPrediction | null;
-    initialSpecialPick?: SpecialPick | null;
     initialTopHits?: TopPayoutHit[];
     weeklyGradeRaces?: WeeklyGradeRace[];
     articlesMeta: RaceArticleMeta[];
@@ -69,14 +65,9 @@ const getShiftedDate = (dateStr: string, days: number) => {
     return date.toISOString().split('T')[0];
 };
 
-const getPreferredScrollBehavior = (): ScrollBehavior => (
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
-);
-
 export default function RacePageClient({
     initialDate,
     initialPredictionData,
-    initialSpecialPick,
     initialTopHits,
     weeklyGradeRaces,
     articlesMeta,
@@ -91,7 +82,6 @@ export default function RacePageClient({
     const [error, setError] = useState<string | null>(null);
     const [initialVenue, setInitialVenue] = useState<string | null>(routeInitialVenueName);
     const [initialRaceNumber, setInitialRaceNumber] = useState<number | null>(routeInitialRaceNumber);
-    const hasScrolled = useRef(false);
     const isInitialLoad = useRef(true);
     const raceRevenueExperiment = useRaceRevenueExperiment();
 
@@ -148,40 +138,9 @@ export default function RacePageClient({
         setInitialRaceNumber(routeInitialRaceNumber);
     }, [routeInitialVenueName, routeInitialRaceNumber]);
 
-    useEffect(() => {
-        if (!hasScrolled.current && initialVenue && initialRaceNumber && predictionData) {
-            const venueExists = [...(predictionData.jra ?? []), ...(predictionData.nar ?? [])].some(
-                v => v.venue_name === initialVenue
-            );
-
-            if (venueExists) {
-                setTimeout(() => {
-                    const venueElement = document.getElementById(`venue-${initialVenue}`);
-                    if (venueElement) {
-                        setTimeout(() => {
-                            const raceData = [...(predictionData.jra ?? []), ...(predictionData.nar ?? [])]
-                                .find(v => v.venue_name === initialVenue)
-                                ?.races.find(r => r.race_number === initialRaceNumber);
-
-                            if (raceData) {
-                                const raceElement = document.getElementById(`race-${raceData.id}`);
-                                if (raceElement) {
-                                    const rect = raceElement.getBoundingClientRect();
-                                    const scrollTop = window.scrollY || document.documentElement.scrollTop;
-                                    const elementTop = rect.top + scrollTop;
-                                    window.scrollTo({
-                                        top: Math.max(0, elementTop - getRaceTopObstructionHeight()),
-                                        behavior: getPreferredScrollBehavior()
-                                    });
-                                }
-                            }
-                        }, 500);
-                    }
-                    hasScrolled.current = true;
-                }, 100);
-            }
-        }
-    }, [initialVenue, initialRaceNumber, predictionData]);
+    // 以前は読み込み直後に選んだレースの位置まで自動でスクロールしていた（全会場を並べていた頃の日付ページの名残り）。
+    // 2026-09-24 にレース詳細の見出し（RaceHead・h1）を上に置いてから、見出しが画面の外へ送られて見えなくなっていたため、
+    // 読み込み時は動かさない（2026-09-25）。レースを切り替えたときの位置合わせは RaceTabs が行う。
 
     const getTodayString = () => {
         const today = new Date(
@@ -194,7 +153,14 @@ export default function RacePageClient({
     const hasRaceData = Boolean(
         predictionData && ((predictionData.jra?.length ?? 0) > 0 || (predictionData.nar?.length ?? 0) > 0)
     );
-    const renderContent = ({ showSpecialPick = true }: { showSpecialPick?: boolean } = {}) => {
+    // 「近日の重賞」から、いま開いているレースそのものを外す（自分自身へのリンクになるため）
+    const otherGradeRaces = (weeklyGradeRaces ?? []).filter((race) => !(
+        race.race_date === currentDate
+        && race.venue_name === routeInitialVenueName
+        && race.race_number === routeInitialRaceNumber
+    ));
+
+    const renderContent = () => {
         if (isLoading) {
             return <RaceTabsSkeleton />;
         }
@@ -226,13 +192,9 @@ export default function RacePageClient({
                         : undefined}
                 />
 
-                {showSpecialPick && initialSpecialPick && (
-                    <div className="mx-2 mt-2">
-                        <SpecialPickCard pick={initialSpecialPick} date={currentDate} />
-                    </div>
-                )}
-
-                <DisclaimerAlert />
+                {/* 以前はここに「その日の注目馬」（別のレースのAI偏差値1位）と免責の警告帯を置いていた。
+                    レースの詳細の中に別レースの馬が見出しなしで挟まり、このレースの内容と誤読されるため外した（2026-09-25）。
+                    注目馬は開催日のボードとホームに、免責は出走表の直後の1文（DisclaimerNote）にある。 */}
             </>
         );
     };
@@ -248,9 +210,9 @@ export default function RacePageClient({
 
             {renderContent()}
 
-            {weeklyGradeRaces && weeklyGradeRaces.length > 0 && (
+            {otherGradeRaces.length > 0 && (
                 <div className="mt-2 sm:mt-3">
-                    <WeeklyGradeRaces races={weeklyGradeRaces} predictions={predictionData} compact />
+                    <WeeklyGradeRaces races={otherGradeRaces} predictions={predictionData} compact />
                 </div>
             )}
 

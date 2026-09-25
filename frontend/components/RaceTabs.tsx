@@ -17,6 +17,7 @@ import { RaceEngagedAd } from './RaceEngagedAd';
 import { RelatedRaces } from './RelatedRaces';
 import { DataExplanationPanel } from './DataExplanationPanel';
 import { DynamicRelatedArticles } from './DynamicRelatedArticles';
+import { DisclaimerNote } from './DisclaimerNote';
 import { RaceArticleMeta } from '@/lib/articles';
 import { useRewardedAd, type RewardedAdContext } from '@/hooks/useRewardedAd';
 import {
@@ -487,6 +488,8 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                             <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
                             <RaceHorseActions predictions={activeRace.predictions} />
                         </div>
+
+                        <DisclaimerNote className="px-1.5 md:px-1" />
 
                         {hasRaceResults(activeRace) && <RaceResultCard race={activeRace} />}
 

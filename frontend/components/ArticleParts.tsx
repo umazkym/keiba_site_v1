@@ -92,7 +92,7 @@ export function ArticleValueGuide({ headingId }: { headingId: string }) {
             data-analytics-variant="compact_four"
             data-preview-state="generic"
             className="block min-h-[44px] cursor-pointer rounded-[14px] bg-brand-50/70 p-3 ring-1 ring-inset ring-brand-200 transition-colors duration-150 hover:bg-brand-50 hover:ring-brand-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:p-4"
-            aria-label="今日の全レース分析を見る。AI偏差値、対戦比較、展開・脚質、馬番の傾向を確認できます"
+            aria-label="今日の全レース分析を見る。AI偏差値、対戦成績、展開予測、馬番の傾向を確認できます"
         >
             <section aria-labelledby={headingId}>
                 <div className="mb-2 flex items-center justify-between gap-2">
@@ -144,17 +144,18 @@ export type RelatedArticleItem = {
     title: string;
     category: string;
     date: string;
-    readingMinutes: number;
+    // 本文を持たない一覧（レース画面の関連記事）では出さない
+    readingMinutes?: number;
     thumb: ArticleThumbData;
 };
 
-// 本文の後の「次に読む分析」。スマホは写真つきの行、PCは3列。
-export function RelatedArticleList({ items, headingId }: { items: RelatedArticleItem[]; headingId: string }) {
+// 本文の後の「次に読む分析」。スマホは写真つきの行、PCは3列。レース画面の「関連する分析記事」も同じ形を使う。
+export function RelatedArticleList({ items, headingId, title = '次に読む分析' }: { items: RelatedArticleItem[]; headingId: string; title?: string }) {
     if (items.length === 0) return null;
     return (
         <section aria-labelledby={headingId} className="rounded-[14px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-6">
             <h2 id={headingId} className="font-display text-[19px] font-extrabold leading-snug text-slate-900 sm:text-[21px]">
-                次に読む分析
+                {title}
             </h2>
             <ul className="mt-1 flex flex-col sm:mt-4 sm:grid sm:grid-cols-3 sm:gap-5">
                 {items.map((item) => (
@@ -175,7 +176,7 @@ export function RelatedArticleList({ items, headingId }: { items: RelatedArticle
                                 </span>
                                 <span className="flex items-center gap-2 text-[12.5px] text-slate-500 sm:order-1">
                                     <ArticleCategoryTag category={item.category} />
-                                    {formatArticleShortDate(item.date)} · 約{item.readingMinutes}分
+                                    {formatArticleShortDate(item.date)}{item.readingMinutes ? ` · 約${item.readingMinutes}分` : ''}
                                 </span>
                             </span>
                         </Link>

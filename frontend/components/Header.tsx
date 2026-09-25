@@ -61,14 +61,18 @@ const HeaderAffiliateLink = () => {
             onClick={handleClick}
             data-affiliate-context={HEADER_AFFILIATE_EVENT.context}
             data-affiliate-campaign={HEADER_AFFILIATE_EVENT.campaign_id}
-            className="inline-flex h-11 items-center gap-1 rounded-lg border border-rose-100 bg-rose-50/70 px-1.5 text-[11px] font-semibold text-rose-700 transition-colors duration-150 hover:border-rose-200 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-500/20 sm:gap-1.5 sm:px-3 sm:text-xs"
+            className="group inline-flex h-11 items-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30"
             aria-label="PR 楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で。馬券の購入は20歳以上の方のみ対象です"
             title="PR 楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で。馬券の購入は20歳以上の方のみ対象です。"
         >
-            <span className="rounded bg-rose-600 px-1 py-0.5 text-[11px] leading-none text-white">PR</span>
-            <span className="hidden sm:inline">地方競馬の投票は楽天競馬で</span>
-            <span className="sm:hidden">楽天競馬</span>
-            <span aria-hidden="true" className="text-[13px] leading-none">→</span>
+            {/* 押せる範囲は44pxのまま、見える枠はヘッダー（スマホ40px）の中に収める。
+                以前は枠そのものが44pxで、ヘッダーの上下からはみ出して見えていた */}
+            <span className="inline-flex h-8 items-center gap-1 rounded-lg border border-rose-100 bg-rose-50 px-1.5 text-[11px] font-semibold text-rose-700 transition-colors duration-150 group-hover:border-rose-200 sm:h-10 sm:gap-1.5 sm:px-3 sm:text-xs">
+                <span className="rounded bg-rose-600 px-1 py-0.5 text-[11px] leading-none text-white">PR</span>
+                <span className="hidden sm:inline">地方競馬の投票は楽天競馬で</span>
+                <span className="sm:hidden">楽天競馬</span>
+                <span aria-hidden="true" className="text-[13px] leading-none">→</span>
+            </span>
         </a>
     );
 };

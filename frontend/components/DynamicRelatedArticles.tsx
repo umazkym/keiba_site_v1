@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
-import Link from 'next/link';
 import { RaceArticleMeta } from '@/lib/articles';
+import { pickArticleThumbs } from '@/lib/article-visual';
+import { RelatedArticleList } from '@/components/ArticleParts';
 
 interface DynamicRelatedArticlesProps {
     venueName: string;
@@ -68,46 +69,29 @@ export function DynamicRelatedArticles({
             return a.article.date < b.article.date ? 1 : -1;
         });
 
-        return scoredArticles.slice(0, count).map(sa => sa.article);
+        // 競馬場か距離が合う記事だけにする（カテゴリだけの加点で、関係の薄い記事や入門記事が並ばないように）
+        return scoredArticles.filter(sa => sa.score >= 2).slice(0, count).map(sa => sa.article);
     }, [venueName, courseType, distance, articlesMeta, count]);
 
     if (relatedArticles.length === 0) {
         return null;
     }
 
+    // 記事ページの「次に読む分析」と同じ形（汎用のアイキャッチは出さず、カテゴリの写真にする）
+    const thumbs = pickArticleThumbs(relatedArticles);
     return (
-        <section className="mb-3 mt-3 sm:mb-5 sm:mt-5">
-            <h3 className="race-section-heading mb-2 sm:mb-3">関連する分析記事</h3>
-            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3 sm:gap-3">
-                {relatedArticles.map((article) => (
-                    <Link
-                        href={`/articles/${article.slug}`}
-                        key={article.slug}
-                        prefetch={false}
-                        className="group flex min-h-[68px] overflow-hidden rounded-lg border border-slate-200 bg-white transition-[border-color,background-color] duration-150 hover:border-slate-300 hover:bg-slate-50 sm:block"
-                    >
-                        <div className="h-[68px] w-14 shrink-0 overflow-hidden bg-slate-100 sm:h-28 sm:w-full">
-                            <img
-                                src={article.eyecatch || '/images/articles/data-analysis-eyecatch.png'}
-                                alt={article.title}
-                                loading="lazy"
-                                decoding="async"
-                                className="h-full w-full object-cover object-center"
-                            />
-                        </div>
-                        <div className="flex min-w-0 flex-grow flex-col justify-center p-2 sm:justify-between sm:p-3">
-                            <div>
-                                <span className="mb-0.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[11.5px] font-bold text-slate-700 sm:mb-1 sm:text-[12px]">
-                                    {article.category}
-                                </span>
-                                <h4 className="mb-0 line-clamp-2 text-[11px] font-bold leading-snug text-text-primary transition-colors group-hover:text-primary sm:text-sm">
-                                    {article.title}
-                                </h4>
-                            </div>
-                        </div>
-                    </Link>
-                ))}
-            </div>
-        </section>
+        <div className="my-3 sm:my-5">
+            <RelatedArticleList
+                headingId="race-related-articles-heading"
+                title="関連する分析記事"
+                items={relatedArticles.map((article, index) => ({
+                    slug: article.slug,
+                    title: article.title,
+                    category: article.category,
+                    date: article.date,
+                    thumb: thumbs[index],
+                }))}
+            />
+        </div>
     );
 }

@@ -77,21 +77,22 @@ export function SegmentStatsTable({
                 compact
             />
             <ResponsiveDataTable label={`${title}の条件別成績`}>
-                <table className="w-full min-w-[480px] text-[14px]">
+                {/* スマホは4列を画面幅に収める（以前は最小480pxで、3着以内率が右で切れていた）。平均人気は640px以上で出す */}
+                <table className="w-full text-[14px] sm:min-w-[480px]">
                     <thead className="bg-slate-50 text-[12.5px] text-slate-500">
                         <tr>
-                            <th className="px-4 py-2.5 text-left font-bold">条件</th>
-                            <th className="px-3 py-2.5 text-right font-bold">対象</th>
-                            <th className="px-3 py-2.5 text-right font-bold">勝率</th>
-                            <th className="px-3 py-2.5 text-right font-bold">3着以内率</th>
-                            <th className="px-4 py-2.5 text-right font-bold">平均人気</th>
+                            <th className="px-3 py-2.5 text-left font-bold sm:px-4">条件</th>
+                            <th className="px-2 py-2.5 text-right font-bold sm:px-3">対象</th>
+                            <th className="px-2 py-2.5 text-right font-bold sm:px-3">勝率</th>
+                            <th className="px-2 py-2.5 text-right font-bold sm:px-3">3着以内率</th>
+                            <th className="hidden px-4 py-2.5 text-right font-bold sm:table-cell">平均人気</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                         {items.map((item) => {
                             return (
                                 <tr key={item.key}>
-                                    <th className="px-4 py-3 text-left font-bold text-slate-900">
+                                    <th className="px-3 py-3 text-left font-bold text-slate-900 sm:px-4">
                                         {labelKind === 'frame' && Number.isInteger(Number(item.key)) ? (
                                             <span className="inline-flex items-center gap-2">
                                                 <FrameNumberBadge frameNumber={Number(item.key)} />
@@ -107,16 +108,16 @@ export function SegmentStatsTable({
                                             </Link>
                                         ) : item.label}
                                     </th>
-                                    <td className="px-3 py-3 text-right font-num text-[15px] tabular-nums text-slate-600">
+                                    <td className="px-2 py-3 text-right font-num text-[15px] tabular-nums text-slate-600 sm:px-3">
                                         {item.sample_size.toLocaleString('ja-JP')}
                                     </td>
-                                    <td className="px-3 py-3 text-right font-num text-[15.5px] font-bold tabular-nums text-slate-900">
+                                    <td className="px-2 py-3 text-right font-num text-[15.5px] font-bold tabular-nums text-slate-900 sm:px-3">
                                         {formatRate(item.win_rate)}
                                     </td>
-                                    <td className="px-3 py-3 text-right font-num text-[15.5px] font-bold tabular-nums text-navy">
+                                    <td className="px-2 py-3 text-right font-num text-[15.5px] font-bold tabular-nums text-navy sm:px-3">
                                         {formatRate(item.place_rate)}
                                     </td>
-                                    <td className="px-4 py-3 text-right font-num text-[15px] tabular-nums text-slate-600">
+                                    <td className="hidden px-4 py-3 text-right font-num text-[15px] tabular-nums text-slate-600 sm:table-cell">
                                         {item.average_popularity == null ? '—' : item.average_popularity.toFixed(1)}
                                     </td>
                                 </tr>

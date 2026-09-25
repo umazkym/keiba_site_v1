@@ -160,24 +160,26 @@
         border-radius: 4px;
     }
 
-    /* スクロールバーのカスタマイズ */
-    ::-webkit-scrollbar {
-        width: 8px;
-        /* Thinner */
-        height: 8px;
-    }
+    /* スクロールバーのカスタマイズはマウスで操作するPCだけ（2026-09-25）。
+       タッチ端末のWebKitで幅8pxのスクロールバーが表示領域を狭め、スクロールすると固定ヘッダーが8px上へずれていたため。 */
+    @media (hover: hover) and (pointer: fine) {
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
 
-    ::-webkit-scrollbar-track {
-        background: transparent;
-    }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
 
-    ::-webkit-scrollbar-thumb {
-        background: var(--color-secondary-light);
-        border-radius: 4px;
-    }
+        ::-webkit-scrollbar-thumb {
+            background: var(--color-secondary-light);
+            border-radius: 4px;
+        }
 
-    ::-webkit-scrollbar-thumb:hover {
-        background: var(--color-secondary);
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--color-secondary);
+        }
     }
 }
 
@@ -294,9 +296,9 @@
         box-shadow: none;
     }
 
-    /* Glassmorphism utility */
+    /* 固定ヘッダーの面。以前は白95%＋ぼかしの半透明で、スクロール中の本文や数字がロゴの後ろに透けていたため不透明にする（2026-09-25） */
     .glass {
-        @apply border-b border-slate-200 bg-white/95 backdrop-blur-sm;
+        @apply border-b border-slate-200 bg-white;
     }
 
     /* ボタンは1系統（DESIGN.md「ボタン」）。高さは標準44px・大52px。

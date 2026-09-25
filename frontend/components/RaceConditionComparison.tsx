@@ -47,8 +47,8 @@ export function RaceConditionComparison({ raceId }: { raceId: string }) {
             }}
         >
             <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-bold text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 sm:px-4">
-                <span>このレースと同じ競馬場・コース・距離で比較</span>
-                <span className="text-xs font-semibold text-slate-500">過去データ</span>
+                <span className="min-w-0">同じ競馬場・コース・距離の過去データと比べる</span>
+                <span className="shrink-0 whitespace-nowrap text-xs font-semibold text-slate-500">開く</span>
             </summary>
             <div className="border-t border-slate-200">
                 {loading && <p className="px-4 py-5 text-sm font-bold text-slate-600">集計データを読み込んでいます。</p>}

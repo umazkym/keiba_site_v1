@@ -9,7 +9,7 @@ import { RaceDateNav } from '@/components/RaceDateNav';
 import { RaceDayBoard } from '@/components/RaceDayBoard';
 import { RaceDayExtras } from '@/components/RaceDayExtras';
 import { buildRaceDaySummary } from '@/lib/race-day-summary';
-import { buildGradeRaceTopHorseMap } from '@/lib/home-page-summary';
+import { buildGradeRaceTopHorseMap, extractHomeSpecialPicks } from '@/lib/home-page-summary';
 import { formatRaceDateLabel } from '@/lib/race-display';
 import {
     getDaysFromToday,
@@ -72,6 +72,8 @@ export default async function RacePage({ params }: { params: { date: string } })
     // ボードに渡すのは一覧に必要な値だけ（全馬の予測データはクライアントへ送らない）。
     const summary = buildRaceDaySummary(predictionData, params.date);
     const gradeRaceTopHorses = buildGradeRaceTopHorseMap(predictionData, weeklyGradeRaces);
+    // 注目馬はホームと同じ規則で選ぶ（APIの注目馬の説明文をそのまま出さない）。渡すのは数頭分の値だけ
+    const specialPicks = extractHomeSpecialPicks(predictionData, specialPickData, 'この日');
     // コース図はサーバーで描いて渡す（コースのデータはクライアントへ送らない）
     const glyphs: Record<string, ReactNode> = {};
     [...summary.jra, ...summary.nar].forEach((venue) => {
@@ -163,7 +165,7 @@ export default async function RacePage({ params }: { params: { date: string } })
                     date={params.date}
                     hasRaces={hasData}
                     hasNarRaces={summary.nar.length > 0}
-                    specialPick={specialPickData}
+                    specialPicks={specialPicks}
                     topHits={topHitsData}
                     weeklyGradeRaces={weeklyGradeRaces}
                     gradeRaceTopHorses={gradeRaceTopHorses}

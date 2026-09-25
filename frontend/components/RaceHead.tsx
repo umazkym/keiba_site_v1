@@ -57,13 +57,16 @@ function ResultLine({ race }: { race: RacePrediction }) {
     );
 }
 
+// 未発表の馬場・天候は API が「-」などで返すことがあるため、値として扱わない
+const isKnownCondition = (value?: string | null): value is string => Boolean(value && !/^[\s\-‐‑‒–—―−－ー～~・.．?？*]*$/.test(value));
+
 export function RaceHead({ race, venueName }: RaceHeadProps) {
     const isGrade = Boolean(race.grade);
     const runners = race.total_horses || race.predictions.length;
     const courseLabel = `${getSurfaceLabel(race.course_type)}${race.distance ?? ''}${race.distance ? 'm' : ''}`;
     const conditions = [
-        race.ground_condition ? `馬場 ${race.ground_condition}` : null,
-        race.weather ? `天候 ${race.weather}` : null,
+        isKnownCondition(race.ground_condition) ? `馬場 ${race.ground_condition}` : null,
+        isKnownCondition(race.weather) ? `天候 ${race.weather}` : null,
     ].filter(Boolean);
 
     return (
@@ -72,9 +75,9 @@ export function RaceHead({ race, venueName }: RaceHeadProps) {
                 <div className="relative h-[60px] overflow-hidden rounded-xl md:hidden">
                     <GradePhoto raceDate={race.race_date} sizes="100vw" className="absolute inset-0 h-full w-full object-cover object-[60%_40%]" />
                     <div className="photo-scrim-left absolute inset-0" aria-hidden="true" />
-                    <p className="absolute inset-y-0 left-3 flex items-center gap-2 text-[12.5px] font-bold text-white">
-                        <GradeBadge grade={race.grade} size="m" />
-                        重賞 · {venueName} {courseLabel}
+                    {/* グレード・コースは下の見出しに出すため、帯は開催日と競馬場だけ（以前は「重賞 重賞・園田 ダ1400m」と重なっていた） */}
+                    <p className="absolute inset-y-0 left-3 flex items-center text-[13px] font-bold text-white">
+                        {formatRaceDateLabel(race.race_date, { year: true })} · {venueName}競馬場
                     </p>
                 </div>
             )}
@@ -100,7 +103,8 @@ export function RaceHead({ race, venueName }: RaceHeadProps) {
                             <GradeBadge grade={race.grade} size="m" />
                         </h1>
                         <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] font-bold text-slate-500 md:text-sm">
-                            <span className="md:hidden">{formatRaceDateLabel(race.race_date)}</span>
+                            {/* 重賞はスマホの写真の帯に日付を出すため、ここでは出さない */}
+                            {!isGrade && <span className="md:hidden">{formatRaceDateLabel(race.race_date)}</span>}
                             <SurfaceLabel courseType={race.course_type} distance={race.distance} className="text-[13px] md:text-sm" />
                             {runners > 0 && (
                                 <span className="text-slate-700">

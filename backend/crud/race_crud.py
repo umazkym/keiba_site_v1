@@ -248,6 +248,25 @@ def _published_entity_ids(
     return {str(row[0]) for row in rows}
 
 
+# 地方の出馬表では、発表前の馬場・天候が「−」（U+2212）などの記号で入っている。値として返すと
+# レース見出しに「馬場 −」と出るため、記号だけの値は未発表（None）として扱う。
+# 空白は strip で落ちるため含めない。ハイフン類・長音・波ダッシュ・中黒・句点・疑問符
+_PLACEHOLDER_CONDITION_CHARS = set(
+    "-~.*?"
+    "‐‑‒–—―−"
+    "－ー～・．？"
+)
+
+
+def _known_condition(value):
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or all(char in _PLACEHOLDER_CONDITION_CHARS for char in text):
+        return None
+    return text
+
+
 def _serialize_race_for_cache(
     race,
     advantages: list,
@@ -273,8 +292,8 @@ def _serialize_race_for_cache(
         'distance': race.distance,
         # レース見出しに出す条件。出馬表の取得時に入るため、発表前は None のことがある。
         'total_horses': race.total_horses,
-        'ground_condition': race.ground_condition,
-        'weather': race.weather,
+        'ground_condition': _known_condition(race.ground_condition),
+        'weather': _known_condition(race.weather),
         'ai_analysis_text': race.ai_analysis_text,
         'predictions': [
             {

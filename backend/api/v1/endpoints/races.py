@@ -169,7 +169,8 @@ def read_special_pick(target_date: date, response: Response, db: Session = Depen
         response.headers["Cache-Control"] = "no-store"
         return None
 
-    commentary = f"AI偏差値 {pick.deviation_score:.2f}！{pick.race.venue_name}{pick.race.race_number}R の {pick.horse_name} を詳しく見る →"
+    # 画面の説明文として出すため、感嘆符や「詳しく見る →」の誘導を入れない（リンクは画面側のボタンが持つ）
+    commentary = f"この日の全レースで最も高いAI偏差値（{pick.deviation_score:.1f}）です。展開予測と馬番の傾向もあわせて確認できます。"
 
     response.headers["Cache-Control"] = _cache_control_for_date(target_date)
     return race_schema.SpecialPick(

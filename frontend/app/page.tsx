@@ -23,7 +23,7 @@ import {
 import { estimateReadingMinutes, getArticleCategoryStyle, pickArticleThumbs } from '@/lib/article-visual';
 import { formatRaceDateLabel } from '@/lib/race-display';
 
-import DisclaimerAlert from '@/components/DisclaimerAlert';
+import { DisclaimerNote } from '@/components/DisclaimerNote';
 import { AdUnit } from '@/components/AdUnit';
 import { NativeCardAd } from '@/components/NativeCardAd';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
@@ -409,7 +409,7 @@ export default async function HomePage() {
                             </div>
                         </Panel>
 
-                        <DisclaimerAlert />
+                        <DisclaimerNote className="px-1" />
                     </div>
 
                     {/* 右列（PCのみ） */}

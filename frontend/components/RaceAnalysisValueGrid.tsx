@@ -44,7 +44,8 @@ export const raceAnalysisFeatures: readonly RaceAnalysisFeature[] = [
     {
         key: 'matchup',
         title: '対戦成績',
-        compactTitle: '対戦比較',
+        // ナビ・記事の案内・レース画面の見出しで同じ名前にする（以前は「対戦比較」「馬番傾向」と見出しと違っていた）
+        compactTitle: '対戦成績',
         description: '過去の直接対決を比較',
         icon: Swords,
         lineIcon: 'swords',
@@ -54,8 +55,8 @@ export const raceAnalysisFeatures: readonly RaceAnalysisFeature[] = [
     },
     {
         key: 'start',
-        title: '展開・脚質',
-        compactTitle: '展開・脚質',
+        title: '展開予測',
+        compactTitle: '展開予測',
         description: '序盤の位置取りを予測',
         icon: ChartLine,
         lineIcon: 'lanes',
@@ -67,7 +68,7 @@ export const raceAnalysisFeatures: readonly RaceAnalysisFeature[] = [
         key: 'frame',
         // 中身は馬番ごとの過去データなので「馬番」と書く
         title: '馬番の傾向',
-        compactTitle: '馬番傾向',
+        compactTitle: '馬番の傾向',
         description: 'コース別の馬番の有利・不利',
         icon: ChartColumn,
         lineIcon: 'bars',

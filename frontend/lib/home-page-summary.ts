@@ -187,9 +187,11 @@ function toSpecialPick(candidate: HomeHorseCandidate, commentary: string): Speci
     };
 }
 
+// dayLabel：ホームは「本日」、開催日のボードは日付を問わないため「この日」
 export function extractHomeSpecialPicks(
     predictions: RaceDayPrediction | null,
     fallbackPick?: SpecialPick | null,
+    dayLabel = '本日',
 ): HomeSpecialPickSet {
     const allHorses = collectHomeHorseCandidates(predictions);
 
@@ -214,7 +216,7 @@ export function extractHomeSpecialPicks(
 
     const favored = toSpecialPick(
         bestFavored,
-        `本日の全レースで上位のAI偏差値（${bestFavored.deviation_score.toFixed(1)}）です。展開予測と馬番の傾向もあわせて確認できます。`,
+        `${dayLabel}の全レースで上位のAI偏差値（${bestFavored.deviation_score.toFixed(1)}）です。展開予測と馬番の傾向もあわせて確認できます。`,
     );
 
     const narCandidates = allHorses.filter((horse) => horse.is_nar && horse.mark === '◎');
@@ -223,7 +225,7 @@ export function extractHomeSpecialPicks(
     const nar = bestNar
         ? toSpecialPick(
             bestNar,
-            `本日の地方競馬の中で上位のAI偏差値（${bestNar.deviation_score.toFixed(1)}）です。当日の馬場と展開予測をあわせて確認できます。`,
+            `${dayLabel}の地方競馬の中で上位のAI偏差値（${bestNar.deviation_score.toFixed(1)}）です。当日の馬場と展開予測をあわせて確認できます。`,
         )
         : null;
 

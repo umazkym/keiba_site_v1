@@ -118,7 +118,6 @@ export default async function RaceDetailPage({ params }: Props) {
 
     const {
         detail,
-        specialPick: specialPickData,
         topHits: topHitsData,
         gradeRaces: weeklyGradeRaces,
     } = await getRaceDetailPageData(params.date, params.venue, raceNumber);
@@ -218,7 +217,6 @@ export default async function RaceDetailPage({ params }: Props) {
                 <RacePageClient
                     initialDate={params.date}
                     initialPredictionData={selectedPredictionData}
-                    initialSpecialPick={specialPickData}
                     initialTopHits={topHitsData}
                     weeklyGradeRaces={weeklyGradeRaces}
                     articlesMeta={articlesMeta}

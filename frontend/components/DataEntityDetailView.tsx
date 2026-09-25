@@ -6,7 +6,7 @@ import { LineIcon, type LineIconName } from '@/components/LineIcon';
 import { HorseCompareButton } from '@/components/HorseCompareButton';
 import { RateSummaryStrip, RecentRunsTable, SegmentStatsTable } from '@/components/DataStats';
 import { FinishBadge } from '@/components/RaceParts';
-import { UpcomingRaceTrackedLink } from '@/components/UpcomingRaceTrackedLink';
+import { DataUpcomingRaces } from '@/components/DataUpcomingRaces';
 import type { DataEntityDetail } from '@/lib/types';
 
 
@@ -38,24 +38,6 @@ export function DataEntityDetailView({
 }) {
     const entity = detail.entity;
     const pageUrl = entity.url;
-    const buildCalendarUrl = (race: DataEntityDetail['upcoming_races'][number]) => {
-        const compactDate = race.race_date.replace(/-/g, '');
-        const content = [
-            'BEGIN:VCALENDAR',
-            'VERSION:2.0',
-            'PRODID:-//UMA-FREE//Race Reminder//JA',
-            'BEGIN:VEVENT',
-            `UID:${race.race_id}@uma-free.com`,
-            `DTSTART;VALUE=DATE:${compactDate}`,
-            `DTEND;VALUE=DATE:${compactDate}`,
-            `SUMMARY:${race.venue_name}${race.race_number}R ${race.race_name}`,
-            `DESCRIPTION:UMA-FREEで${race.course_label}の分析を確認`,
-            `URL:https://uma-free.com${race.url}`,
-            'END:VEVENT',
-            'END:VCALENDAR',
-        ].join('\r\n');
-        return `data:text/calendar;charset=utf-8,${encodeURIComponent(content)}`;
-    };
     return (
         <article className="site-shell-data px-3.5 pb-14 pt-3 sm:px-5">
             <DataDirectoryNav current={entityType} />
@@ -87,13 +69,6 @@ export function DataEntityDetailView({
                         <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-[12.5px] text-slate-500 sm:text-[13px]">
                             <span>集計対象 <span className="font-num font-semibold">{entity.sample_size.toLocaleString('ja-JP')}</span>走</span>
                             <span>最終出走 {formatLastRace(entity.last_race_date)}</span>
-                            <span>
-                                {entity.indexable
-                                    ? '検索公開中のデータ'
-                                    : entity.quality_eligible
-                                        ? '検索公開を段階調整中'
-                                        : '母数または直近活動を確認中'}
-                            </span>
                         </p>
                     </div>
                 </div>
@@ -123,45 +98,7 @@ export function DataEntityDetailView({
             </div>
 
             {detail.upcoming_races.length > 0 && (
-                <section className="mt-6 overflow-hidden rounded-[14px] bg-white ring-1 ring-inset ring-brand-200" aria-labelledby="entity-upcoming-heading">
-                    <div className="flex items-center gap-2 border-b border-brand-200 bg-brand-50/70 px-4 py-3 sm:px-5">
-                        <LineIcon name="calendar" size={20} className="block text-brand-700" />
-                        <h2 id="entity-upcoming-heading" className="font-display text-[17px] font-extrabold text-slate-900 sm:text-[19px]">出走予定</h2>
-                    </div>
-                    <div className="divide-y divide-slate-200">
-                        {detail.upcoming_races.map((race) => (
-                            <div
-                                key={`${race.race_id}-${race.horse_id ?? ''}`}
-                                className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 transition-colors duration-150 hover:bg-brand-50/50 sm:px-5"
-                            >
-                                <UpcomingRaceTrackedLink
-                                    href={race.url}
-                                    raceDate={race.race_date}
-                                    venueName={race.venue_name}
-                                    raceNumber={race.race_number}
-                                    raceName={race.race_name}
-                                    entityType={entityType}
-                                    raceId={race.race_id}
-                                />
-                                <div className="flex shrink-0 items-center gap-3">
-                                    <span className="hidden text-right text-[13px] font-bold text-slate-600 sm:block">
-                                        {race.deviation_score == null
-                                            ? race.course_label
-                                            : <>AI偏差値 <span className="font-num text-[16px] text-ai-deep">{race.deviation_score.toFixed(1)}</span></>}
-                                    </span>
-                                    <a
-                                        href={buildCalendarUrl(race)}
-                                        download={`${race.race_date}-${race.race_id}.ics`}
-                                        className="inline-flex min-h-11 items-center gap-1.5 rounded-[10px] bg-white px-3 text-[13.5px] font-bold text-brand-700 ring-1 ring-inset ring-brand-200 transition-colors duration-150 hover:bg-brand-50"
-                                    >
-                                        <LineIcon name="calendar" size={16} className="block" />
-                                        予定に追加
-                                    </a>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                <DataUpcomingRaces races={detail.upcoming_races} entityType={entityType} />
             )}
 
             <div className="mt-6 grid gap-5 lg:grid-cols-2">

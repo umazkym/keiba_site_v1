@@ -49,6 +49,16 @@ class RaceSerializerConditionsTest(unittest.TestCase):
         self.assertIsNone(validated.ground_condition)
         self.assertIsNone(validated.weather)
 
+    def test_placeholder_marks_are_treated_as_unannounced(self) -> None:
+        # 地方の出馬表は発表前の馬場を「−」（U+2212）で返す。見出しに「馬場 −」と出さない
+        for mark in ('−', '-', '―', '－', ' '):
+            payload = _serialize_race_for_cache(_race(ground_condition=mark, weather=mark), [])
+            self.assertIsNone(payload['ground_condition'], repr(mark))
+            self.assertIsNone(payload['weather'], repr(mark))
+        payload = _serialize_race_for_cache(_race(ground_condition='稍重', weather='曇'), [])
+        self.assertEqual(payload['ground_condition'], '稍重')
+        self.assertEqual(payload['weather'], '曇')
+
 
 if __name__ == '__main__':
     unittest.main()

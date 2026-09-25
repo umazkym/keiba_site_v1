@@ -59,6 +59,7 @@ export const useRaceSectionNavigation = <TItem extends RaceSectionNavItem>(items
         if (typeof window === 'undefined' || items.length === 0) return undefined;
 
         let observer: IntersectionObserver | null = null;
+        let scrollFrame = 0;
         const targets = items
             .map((item) => ({ item, target: findTargetElement(item.targetIds) }))
             .filter((entry): entry is { item: TItem; target: HTMLElement } => Boolean(entry.target));
@@ -84,13 +85,26 @@ export const useRaceSectionNavigation = <TItem extends RaceSectionNavItem>(items
             updateActiveSection();
         };
 
+        // 素早いスクロールや一気に上へ戻ったときは、判定線をまたぐ要素が無く監視の通知が来ないことがある。
+        // その場合に選択中の項目が前の位置のまま残らないよう、スクロールの最後の位置でも判定し直す。
+        const handleScroll = () => {
+            if (scrollFrame) return;
+            scrollFrame = window.requestAnimationFrame(() => {
+                scrollFrame = 0;
+                updateActiveSection();
+            });
+        };
+
         connectObserver();
+        window.addEventListener('scroll', handleScroll, { passive: true });
         window.addEventListener('resize', connectObserver);
         window.addEventListener(GOOGLE_AD_OVERLAY_EVENT, connectObserver);
         window.addEventListener('uma:header-metrics-change', connectObserver);
 
         return () => {
             observer?.disconnect();
+            if (scrollFrame) window.cancelAnimationFrame(scrollFrame);
+            window.removeEventListener('scroll', handleScroll);
             window.removeEventListener('resize', connectObserver);
             window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, connectObserver);
             window.removeEventListener('uma:header-metrics-change', connectObserver);

@@ -10,6 +10,14 @@ import { RateSummaryStrip, RecentRunsTable, SegmentStatsTable } from '@/componen
 import type { CourseDataDetail, SegmentStat } from '@/lib/types';
 
 
+// 枠番・馬番の表は番号の順に並べる（API は対象の数の順で返すため、8枠→6枠→7枠…と並んでいた）
+const sortByNumberKey = (items: SegmentStat[]) => [...items].sort((a, b) => {
+    const left = Number(a.key);
+    const right = Number(b.key);
+    if (Number.isFinite(left) && Number.isFinite(right)) return left - right;
+    return 0;
+});
+
 const BET_TYPE_LABELS: Record<string, string> = {
     tansho: '単勝',
     fukusho: '複勝',
@@ -123,14 +131,14 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
                 <SegmentStatsTable
                     title="枠番別"
                     description="公式1〜8枠別の成績です。"
-                    items={detail.segments.waku ?? []}
+                    items={sortByNumberKey(detail.segments.waku ?? [])}
                     minimumNotice={10}
                     labelKind="frame"
                 />
                 <SegmentStatsTable
                     title="馬番別"
                     description="頭数構成の違いがあるため、枠番別と合わせて確認します。"
-                    items={detail.segments.horse_numbers ?? []}
+                    items={sortByNumberKey(detail.segments.horse_numbers ?? [])}
                     minimumNotice={10}
                 />
                 <SegmentStatsTable

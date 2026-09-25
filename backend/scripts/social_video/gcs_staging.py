@@ -8,6 +8,9 @@ from pathlib import Path
 
 
 SIGNED_URL_PATTERN = re.compile(r"https://[^\s]+")
+# 一時配置用バケットの場所。署名するサービスアカウントはオブジェクトの権限しか持たず
+# (storage.buckets.get が無い)、sign-url が場所を自動判別できずに失敗するため明示する。
+DEFAULT_STAGING_REGION = "us-west1"
 
 
 @dataclass(frozen=True)
@@ -26,6 +29,7 @@ class GcsMediaStager:
         # サービスアカウントになりすまして署名するとき、gcloud storage sign-url の有効期間は最長12時間。
         # Meta/Pinterest が取得するのは投稿の直後なので、短くしておく。
         duration: str = "6h",
+        region: str | None = None,
     ) -> None:
         self.bucket = (bucket or os.getenv("SOCIAL_VIDEO_STAGING_GCS_BUCKET") or "").strip()
         self.signing_service_account = (
@@ -34,6 +38,11 @@ class GcsMediaStager:
             or ""
         ).strip()
         self.duration = duration
+        self.region = (
+            region
+            or os.getenv("SOCIAL_VIDEO_STAGING_GCS_REGION")
+            or DEFAULT_STAGING_REGION
+        ).strip()
         self._objects: list[str] = []
 
     def validate_config(self) -> None:
@@ -72,6 +81,7 @@ class GcsMediaStager:
             "sign-url",
             object_uri,
             f"--duration={self.duration}",
+            f"--region={self.region}",
             f"--impersonate-service-account={self.signing_service_account}",
         ]
         output = self._run(sign_command)

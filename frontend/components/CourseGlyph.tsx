@@ -19,7 +19,10 @@ const PAD = 14;
 export function CourseGlyph({ venue, width = 120, activeCourseType = null, muted = false, className, title }: CourseGlyphProps) {
     const shape = COURSE_SHAPES[venue];
     if (!shape) return null;
-    const [x, y, w, h] = shape.bbox;
+    // bbox は [左, 上, 右, 下]。以前は [x, y, 幅, 高さ] として読み、図が小さく左上に寄っていた（2026-09-25 に修正）
+    const [x, y, right, bottom] = shape.bbox;
+    const w = right - x;
+    const h = bottom - y;
     const height = Math.round((width * (h + PAD * 2)) / (w + PAD * 2));
     const active = getSurfaceKey(activeCourseType);
     const turfOn = !active || active === 'turf';

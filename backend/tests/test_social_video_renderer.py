@@ -9,7 +9,7 @@ import unittest
 import wave
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from PIL import Image
 
@@ -19,7 +19,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from scripts.social_video import renderer
-from scripts.social_video.create_design_contact_sheet import create_contact_sheet
+from scripts.social_video.create_design_contact_sheet import _collect_review_images, create_contact_sheet
 from scripts import youtube_video_pipeline
 from scripts.social_video.data_loader import (
     HorseVideoData,
@@ -33,6 +33,7 @@ from scripts.social_video.data_loader import (
     pick_shorts_targets,
 )
 from scripts.social_video import visual_assets
+from scripts.social_video.motion import MotionLayer
 from scripts.social_video.visual_assets import (
     AudioAsset,
     resolve_audio_asset,
@@ -72,112 +73,10 @@ def _race() -> RaceVideoData:
 
 
 class SocialVideoRendererTest(unittest.TestCase):
-    def test_brand_logo_resolves_and_is_circularly_masked(self) -> None:
-        logo_path = renderer._resolve_brand_logo_path()
-        self.assertIsNotNone(logo_path)
-        logo = renderer._load_brand_logo(str(logo_path), 64)
-        self.assertEqual(logo.size, (64, 64))
-        alpha = logo.getchannel("A")
-        self.assertEqual(alpha.getpixel((0, 0)), 0)
-        self.assertEqual(alpha.getpixel((32, 32)), 255)
-
-    def test_intro_sequence_hides_first_score_and_never_counts_from_zero(self) -> None:
-        race = _race()
-        with tempfile.TemporaryDirectory() as temp_dir:
-            with patch.object(renderer, "_draw_intro_slide") as draw_intro:
-                slides = renderer._draw_intro_sequence(
-                    Path(temp_dir),
-                    race.race_date,
-                    race.display_name,
-                    (1080, 1920),
-                    hero_horse=race.predictions[0],
-                    race_label="函館11R",
-                    venue_name="函館",
-                    race_number=11,
-                )
-        self.assertEqual(len(slides), 7)
-        self.assertAlmostEqual(sum(slide.duration_seconds for slide in slides), 1.85)
-        calls = draw_intro.call_args_list
-        self.assertFalse(calls[0].kwargs["show_score"])
-        visible_scores = [call.kwargs["score_override"] for call in calls[1:]]
-        self.assertGreaterEqual(min(visible_scores), 50.0)
-        self.assertEqual(visible_scores[-1], race.predictions[0].deviation_score)
-
-    def test_horse_number_badge_uses_site_circle_without_shadow(self) -> None:
-        horse = _horse(12, "中団", 6)
-        draw = Mock()
-        renderer._draw_horse_number_badge(draw, (80, 64), horse, 48, stroke_width=2)
-        draw.ellipse.assert_called_once_with((56, 40, 104, 88), fill=(22, 163, 74))
-        draw.rounded_rectangle.assert_not_called()
-        text_call = draw.text.call_args
-        self.assertEqual(text_call.args[0], (80, 64))
-        self.assertEqual(text_call.kwargs["anchor"], "mm")
-
     def test_waku_inference_matches_frontend_distribution(self) -> None:
         expected = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 7, 8, 8, 8]
         actual = [infer_waku_number(number, 18) for number in range(1, 19)]
         self.assertEqual(actual, expected)
-
-    def test_unknown_position_is_not_merged_into_middle_group(self) -> None:
-        race = _race()
-        race.predictions[0].position_label = "-"
-        groups = renderer._position_groups(race)
-        self.assertIn(race.predictions[0], groups["-"])
-        self.assertNotIn(race.predictions[0], groups["中団"])
-
-    def test_position_slide_draws_all_18_horses_once(self) -> None:
-        race = _race()
-        race.predictions[-1].position_label = "-"
-        with tempfile.TemporaryDirectory() as temp_dir:
-            output = Path(temp_dir) / "position.png"
-            with patch.object(renderer, "_draw_position_token") as draw_token:
-                renderer._draw_position_slide(output, race, race.race_date, (1080, 1920))
-        numbers = [call.args[1].horse_number for call in draw_token.call_args_list]
-        self.assertEqual(len(numbers), 18)
-        self.assertEqual(sorted(numbers), list(range(1, 19)))
-
-    def test_position_slide_orders_lanes_and_uses_one_column(self) -> None:
-        race = _race()
-        for horse in race.predictions:
-            horse.position_label = "先行"
-        with tempfile.TemporaryDirectory() as temp_dir:
-            output = Path(temp_dir) / "position-wide.png"
-            with patch.object(renderer, "_draw_position_token") as draw_token, patch.object(renderer, "_draw_position_lane", wraps=renderer._draw_position_lane) as draw_lane:
-                renderer._draw_position_slide(output, race, race.race_date, (1920, 1080))
-        labels = [call.args[2] for call in draw_lane.call_args_list[:3]]
-        self.assertEqual(labels, ["先行", "中団", "後方"])
-        positions = [call.args[2] for call in draw_token.call_args_list]
-        self.assertEqual(len({x for x, _ in positions}), 1)
-        self.assertEqual([y for _, y in positions], sorted(y for _, y in positions))
-
-    def test_new_templates_do_not_expose_internal_or_absolute_track_labels(self) -> None:
-        source = "\n".join(
-            inspect.getsource(function)
-            for function in (
-                renderer._draw_race_slide,
-                renderer._draw_position_slide,
-                renderer._draw_outro_slide,
-            )
-        )
-        for forbidden in ("NEXT", "スタート", "ゴール"):
-            self.assertNotIn(forbidden, source)
-
-    def test_no_ellipsis_fit_keeps_full_horse_name_when_shrinking(self) -> None:
-        image = Image.new("RGB", (320, 120), "white")
-        draw = renderer.ImageDraw.Draw(image)
-        horse_name = "ヴィクトリーノート"
-        _, lines = renderer._fit_text_no_ellipsis(
-            draw,
-            horse_name,
-            renderer.FONT_BOLD,
-            28,
-            12,
-            150,
-            max_lines=1,
-        )
-        self.assertEqual("".join(lines), horse_name)
-        self.assertNotIn("...", "".join(lines))
-        self.assertNotIn("…", "".join(lines))
 
     def test_visual_asset_priority_is_race_then_venue_then_default(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -364,34 +263,6 @@ class SocialVideoRendererTest(unittest.TestCase):
             self.assertEqual(asset.path.name, "ooi_course_texture.png")
             self.assertEqual(asset.asset_id, "courses/local/ooi_course_texture.png")
 
-    def test_missing_assets_generate_preview_but_block_publish(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            (root / "credits.json").write_text("{}\n", encoding="utf-8")
-            output = root / "output"
-            with patch.dict(
-                os.environ,
-                {
-                    "SOCIAL_VIDEO_ASSET_ROOT": str(root),
-                    "SOCIAL_VIDEO_ASSET_MANIFEST": str(root / "missing.json"),
-                    "SOCIAL_VIDEO_BGM_PATH": "",
-                },
-                clear=False,
-            ):
-                rendered = renderer.render_short_video(_race(), "2026-07-12", output, index=1, skip_video=True)
-            self.assertFalse(rendered.publishable)
-            self.assertTrue(rendered.thumbnail_path.exists())
-            self.assertIn("Shorts用の縦写真が見つかりません", rendered.publish_block_reasons)
-            self.assertIn("Shorts用BGMが見つかりません", rendered.publish_block_reasons)
-            self.assertFalse(rendered.thumbnail_required)
-            metadata = json.loads(rendered.metadata_path.read_text(encoding="utf-8"))
-            self.assertFalse(metadata["publishable"])
-            self.assertEqual(metadata["selected_assets"]["brand_logo"]["type"], "brand_logo")
-            self.assertEqual(metadata["race_number"], 11)
-            self.assertEqual(metadata["destination_path"], "/races/2026-07-12")
-            self.assertIn("tiktok_clean", metadata["variant_video_paths"])
-            self.assertTrue(rendered.vertical_cover_path.exists())
-
     def test_upload_skips_only_unpublishable_video(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -426,70 +297,6 @@ class SocialVideoRendererTest(unittest.TestCase):
                         youtube_video_pipeline._upload_all(args, [blocked])
             client.return_value.upload_video.assert_not_called()
 
-    def test_thumbnail_and_position_slides_have_expected_sizes(self) -> None:
-        race = _race()
-        hero = race.predictions[0]
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            thumbnail = root / "thumbnail.jpg"
-            position_wide = root / "position-wide.png"
-            position_vertical = root / "position-vertical.png"
-            renderer._draw_thumbnail(
-                thumbnail,
-                race.display_name,
-                "AI偏差値",
-                race.race_date,
-                (1920, 1080),
-                hero_horse=hero,
-                venue_name=race.venue_name,
-                race_number=race.race_number,
-                grade=race.grade or "",
-            )
-            renderer._draw_position_slide(position_wide, race, race.race_date, (1920, 1080))
-            renderer._draw_position_slide(position_vertical, race, race.race_date, (1080, 1920))
-            with Image.open(thumbnail) as image:
-                self.assertEqual(image.size, (1920, 1080))
-            self.assertLess(thumbnail.stat().st_size, 2 * 1024 * 1024)
-            with Image.open(position_wide) as image:
-                self.assertEqual(image.size, (1920, 1080))
-            with Image.open(position_vertical) as image:
-                self.assertEqual(image.size, (1080, 1920))
-
-    def test_design_contact_sheet_contains_review_frames_and_small_thumbnail(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            date_root = root / "2026-07-12"
-            long_dir = date_root / "long" / "venue_福島"
-            short_dir = date_root / "shorts" / "short_test"
-            long_dir.mkdir(parents=True)
-            short_dir.mkdir(parents=True)
-            (date_root / "summary.json").write_text("{}\n", encoding="utf-8")
-            for path in [
-                long_dir / "thumbnail.jpg",
-                long_dir / "000_intro.png",
-                long_dir / "002_11r_race.png",
-                long_dir / "999_outro.png",
-            ]:
-                Image.new("RGB", (1920, 1080), "white").save(path)
-            for path in [
-                short_dir / "000_intro.png",
-                short_dir / "001_race.png",
-                short_dir / "002_position_preview.png",
-                short_dir / "003_hero_preview.png",
-                short_dir / "999_outro_preview.png",
-            ]:
-                Image.new("RGB", (1080, 1920), "white").save(path)
-            destination = date_root / "design-contact-sheet.png"
-            create_contact_sheet(date_root, destination)
-            self.assertTrue(destination.exists())
-            with Image.open(destination) as image:
-                self.assertGreater(image.width, 2000)
-                self.assertGreater(image.height, 1000)
-            with Image.open(date_root / "thumbnail_246x138.png") as image:
-                self.assertEqual(image.size, (246, 138))
-            with Image.open(date_root / "shorts-ui-overlay.png") as image:
-                self.assertEqual(image.size, (1080, 1920))
-
     def test_video_url_points_to_the_race_date_page_without_query(self) -> None:
         # 単発レースの動画も含め、着地先は日付ページに統一する。
         # /races/ 配下はクエリが1つでもあるとミドルウェアが301で落とすため、
@@ -507,34 +314,6 @@ class SocialVideoRendererTest(unittest.TestCase):
 
     def test_video_url_falls_back_to_site_root_without_target_date(self) -> None:
         self.assertEqual(build_video_url(""), "https://uma-free.com")
-
-    def test_video_description_has_one_site_link_without_date_or_credit(self) -> None:
-        description = renderer._description(
-            "テスト動画",
-            "https://uma-free.com",
-            "函館",
-            excluded_race_labels=("5R 2歳新馬",),
-        )
-
-        self.assertEqual(description.splitlines()[0], "https://uma-free.com")
-        self.assertEqual(description.count("https://uma-free.com"), 1)
-        self.assertNotIn("データ基準日", description)
-        self.assertNotIn("素材クレジット", description)
-        self.assertNotIn("DOVA-SYNDROME", description)
-        self.assertIn("5R 2歳新馬", description)
-        self.assertIn("AI偏差値の算出対象外となる新馬戦は収録していません", description)
-
-    def test_video_description_can_list_an_excluded_obstacle_race(self) -> None:
-        description = renderer._description(
-            "テスト動画",
-            "https://uma-free.com",
-            "中京",
-            excluded_race_labels=("9R 3歳以上障害未勝利",),
-            excluded_race_intro="AI偏差値の算出対象外レース",
-        )
-
-        self.assertIn("9R 3歳以上障害未勝利", description)
-        self.assertNotIn("算出対象外となる新馬戦", description)
 
     def test_daily_short_selection_prefers_highest_grade_then_main_race(self) -> None:
         g1 = _race()
@@ -885,288 +664,175 @@ class SocialVideoRendererTest(unittest.TestCase):
         self.assertNotIn("全重賞", package.title)
         self.assertIn("除外ステークス", package.description)
 
-    def test_long_title_prioritizes_grade_race_name(self) -> None:
-        race = _race()
-        race.race_name = "宝塚記念"
-        race.grade = "G1"
-        title = renderer._long_title(VenueVideoData("阪神", "中央", [race]), "2026-06-28")
-        self.assertEqual(title, "6/28(日)｜全1レースAI分析｜宝塚記念｜阪神競馬予想｜2026年")
+    def test_brand_logo_metadata_points_to_the_drawn_logo(self) -> None:
+        metadata = renderer._brand_logo_metadata()
+        self.assertEqual(metadata["type"], "brand_logo")
+        self.assertEqual(metadata["asset_id"], "backend/fonts/new-logo.png")
+        self.assertTrue(Path(metadata["path"]).is_file())
 
-    def test_long_title_does_not_expose_excluded_newcomer_detail(self) -> None:
-        race = _race()
-        race.grade = None
-        newcomer = _race()
-        newcomer.id = "newcomer"
-        newcomer.race_number = 2
-        newcomer.race_name = "2歳新馬"
-        newcomer.predictions = []
-        title = renderer._long_title(
-            VenueVideoData("笠松", "地方", [race], excluded_races=[newcomer]),
-            "2026-07-24",
-        )
-        self.assertEqual(title, "7/24(金)｜全1レースAI分析｜笠松競馬予想｜2026年")
-        self.assertNotIn("新馬", title)
-        self.assertNotIn("対象", title)
-
-    def test_long_title_keeps_mobile_essential_prefix_short_for_every_venue(self) -> None:
-        venue_registry = json.loads(
-            (renderer.PROJECT_ROOT / "frontend" / "lib" / "venue-slugs.json").read_text(
-                encoding="utf-8"
-            )
-        )
-        race = _race()
-        races = [race] * 12
-        for venue_name in venue_registry["aliases"]:
-            with self.subTest(venue_name=venue_name):
-                venue = VenueVideoData(venue_name, "地方", races)
-                essential = renderer._long_title_essential(venue, "2026-12-31")
-                title = renderer._long_title(venue, "2026-12-31")
-                self.assertLessEqual(len(essential), 40)
-                self.assertTrue(title.startswith(essential))
-                self.assertIn("12/31(木)", essential)
-                self.assertIn("全12レースAI分析", essential)
-
-    def test_short_title_starts_with_date_venue_and_single_race_scope(self) -> None:
-        race = _race()
-        race.venue_name = "川崎"
-        race.race_number = 11
-        race.race_name = "川崎記念"
-        race.grade = "Jpn1"
-        title = renderer._short_title(race, "2026-07-30")
-        self.assertEqual(
-            title,
-            "7/30(木)｜川崎11R AI分析｜川崎記念｜川崎競馬予想｜2026年 #Shorts",
-        )
-        self.assertNotIn("全レース", title)
-
-    def test_long_ranking_slide_limits_rows_to_top_five(self) -> None:
-        race = _race()
-        with tempfile.TemporaryDirectory() as temp_dir:
-            output = Path(temp_dir) / "ranking.png"
-            with patch.object(renderer, "_draw_ranking_row") as draw_row:
-                renderer._draw_race_slide(output, race, race.race_date, (1920, 1080), "venue_long_test")
-        self.assertEqual(draw_row.call_count, 4)
-
-    def test_long_video_records_every_race_once_in_number_order(self) -> None:
-        races = []
-        for race_number in (1, 2, 3):
-            race = _race()
-            race.id = f"race-{race_number}"
-            race.race_number = race_number
-            race.race_name = f"{race_number}R"
-            race.grade = None
-            races.append(race)
-        venue = VenueVideoData("函館", "中央", races)
-
+    def test_missing_assets_still_render_but_block_publish(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            dummy = root / "dummy.png"
-            Image.new("RGB", (16, 9), "black").save(dummy)
-            intro_scene = renderer.MotionScene(dummy, renderer.LONG_INTRO_SECONDS, dummy, scene_id="intro")
-            outro_scene = renderer.MotionScene(dummy, renderer.LONG_OUTRO_SECONDS, dummy, scene_id="outro")
-
-            def build_race_scene(
-                _video_dir: Path,
-                race: RaceVideoData,
-                _target_date: str,
-                _progress_index: int,
-                _progress_total: int,
-            ) -> renderer.MotionScene:
-                return renderer.MotionScene(
-                    dummy,
-                    renderer.LONG_RACE_SCENE_SECONDS,
-                    dummy,
-                    scene_id=f"race-{race.race_number}",
-                )
-
-            with patch.object(
-                renderer, "_build_intro_motion_scene", return_value=intro_scene
-            ), patch.object(
-                renderer, "_build_long_race_motion_scene", side_effect=build_race_scene
-            ) as build_race, patch.object(
-                renderer, "_build_outro_motion_scene", return_value=outro_scene
-            ), patch.object(
-            renderer, "_draw_thumbnail"
-            ) as draw_thumbnail, patch.object(
-                renderer, "resolve_visual_asset", return_value=None
-            ), patch.object(
-                renderer, "resolve_video_asset", return_value=None
-            ), patch.object(
-                renderer, "resolve_audio_asset", return_value=None
-            ), patch.object(
-                renderer, "resolve_sfx_assets", return_value={}
-            ), patch.object(
-                renderer, "resolve_course_asset", return_value=None
+            (root / "credits.json").write_text("{}\n", encoding="utf-8")
+            race = _race()
+            with patch.dict(
+                os.environ,
+                {
+                    "SOCIAL_VIDEO_ASSET_ROOT": str(root),
+                    "SOCIAL_VIDEO_ASSET_MANIFEST": str(root / "missing.json"),
+                    "SOCIAL_VIDEO_BGM_PATH": "",
+                },
+                clear=False,
             ):
-                package = renderer.render_long_video(
-                    venue,
-                    "2026-07-12",
-                    root,
-                    skip_video=True,
+                rendered = renderer.render_daily_short_video(
+                    [race], [VenueVideoData("函館", "中央", [race])], "2026-07-12", root / "output", skip_video=True
                 )
+            self.assertFalse(rendered.publishable)
+            self.assertIn("日次Shorts用BGMが見つかりません", rendered.publish_block_reasons)
+            self.assertTrue(rendered.thumbnail_path.exists())
+            self.assertTrue(rendered.vertical_cover_path.exists())
+            self.assertFalse(rendered.thumbnail_required)
+            metadata = json.loads(rendered.metadata_path.read_text(encoding="utf-8"))
+            self.assertFalse(metadata["publishable"])
+            self.assertIn("函館11Rは紺の背景を使用", metadata["asset_warnings"])
+            self.assertEqual(metadata["selected_assets"]["brand_logo"]["type"], "brand_logo")
+            self.assertEqual(metadata["selected_assets"]["brand_design"]["type"], "brand_design")
+            self.assertEqual(metadata["destination_path"], "/races/2026-07-12")
+            self.assertIn("tiktok_clean", metadata["variant_video_paths"])
+            self.assertEqual(metadata["design_system"], renderer.DESIGN_SYSTEM)
 
-        self.assertEqual([call.args[1].race_number for call in build_race.call_args_list], [1, 2, 3])
-        self.assertEqual([call.args[3] for call in build_race.call_args_list], [1, 2, 3])
-        self.assertTrue(all(call.args[4] == 3 for call in build_race.call_args_list))
-        self.assertEqual(package.race_ids, ["race-1", "race-2", "race-3"])
-        self.assertTrue(package.title.startswith("7/12(日)｜全3レースAI分析"))
-        self.assertEqual(draw_thumbnail.call_args.args[1], "函館 全3R")
-
-    def test_long_race_scene_contains_top_three_and_all_position_tokens_once(self) -> None:
+    def test_daily_description_has_one_site_link_and_lists_excluded_races(self) -> None:
         race = _race()
-        race.predictions[-1].position_label = "-"
-        with tempfile.TemporaryDirectory() as temp_dir, patch.object(
-            renderer,
-            "_draw_broadcast_position_lane_layer",
-            wraps=renderer._draw_broadcast_position_lane_layer,
-        ) as draw_lane, patch.object(
-            renderer,
-            "_draw_broadcast_rank_layer",
-            wraps=renderer._draw_broadcast_rank_layer,
-        ) as draw_rank:
-            scene = renderer._build_long_race_motion_scene(
-                Path(temp_dir),
-                race,
-                race.race_date,
-                1,
-                11,
-            )
-            self.assertTrue(scene.preview_path.exists())
+        newcomer = _race()
+        newcomer.race_number = 5
+        newcomer.race_name = "2歳新馬"
+        obstacle = _race()
+        obstacle.race_number = 9
+        obstacle.race_name = "3歳以上障害未勝利"
+        description = renderer._daily_compilation_description(
+            title="テスト動画",
+            url="https://uma-free.com/races/2026-07-12",
+            venues=[VenueVideoData("函館", "中央", [race], excluded_races=[newcomer, obstacle])],
+            target_date="2026-07-12",
+        )
 
-        self.assertEqual(scene.duration_seconds, 6.0)
-        self.assertEqual(draw_rank.call_count, 3)
-        lane_horses = [
-            horse.horse_number
-            for call in draw_lane.call_args_list
-            for horse in call.args[2]
-        ]
-        self.assertEqual(sorted(lane_horses), list(range(1, 19)))
-        self.assertEqual(len(lane_horses), 18)
-        self.assertEqual([call.args[1] for call in draw_lane.call_args_list], ["先行", "中団", "後方", "不明"])
+        self.assertEqual(description.splitlines()[0], "https://uma-free.com/races/2026-07-12")
+        self.assertEqual(description.count("https://uma-free.com"), 1)
+        self.assertNotIn("素材クレジット", description)
+        self.assertNotIn("DOVA-SYNDROME", description)
+        self.assertIn("函館5R 2歳新馬", description)
+        self.assertIn("函館9R 3歳以上障害未勝利", description)
+        self.assertIn("算出対象外・データ未掲載のレースは収録していません", description)
 
-    def test_position_lane_centers_one_and_two_rows_vertically(self) -> None:
-        ranked_numbers: dict[int, int] = {}
-        with tempfile.TemporaryDirectory() as temp_dir, patch.object(
-            renderer,
-            "_draw_horse_number_badge",
-        ) as draw_badge:
-            renderer._draw_broadcast_position_lane_layer(
-                Path(temp_dir) / "one-row.png",
-                "先行",
-                [_horse(index, "先行") for index in range(1, 7)],
-                ranked_numbers,
-            )
-            one_row_centers = [call.args[1] for call in draw_badge.call_args_list]
-            draw_badge.reset_mock()
-            renderer._draw_broadcast_position_lane_layer(
-                Path(temp_dir) / "two-rows.png",
-                "中団",
-                [_horse(index, "中団") for index in range(1, 10)],
-                ranked_numbers,
-            )
-            two_row_centers = [call.args[1] for call in draw_badge.call_args_list]
-
-        self.assertEqual({center[1] for center in one_row_centers}, {72})
-        self.assertEqual({center[1] for center in two_row_centers}, {48, 96})
-        self.assertEqual((one_row_centers[0][0] + one_row_centers[-1][0]) // 2, 409)
-        first_two_row = [center for center in two_row_centers if center[1] == 48]
-        second_two_row = [center for center in two_row_centers if center[1] == 96]
-        self.assertEqual((first_two_row[0][0] + first_two_row[-1][0]) // 2, 409)
-        self.assertEqual([center[0] for center in second_two_row], [409])
-
-    def test_long_race_scene_keeps_detail_navigation_visible(self) -> None:
+    def test_chapter_scope_says_how_many_races_are_included(self) -> None:
         race = _race()
+        race.course_type = "ダ"
+        excluded = _race()
+        excluded.race_number = 1
+        self.assertEqual(renderer._chapter_scope(VenueVideoData("園田", "地方", [race])), "全1レース · ダート")
+        self.assertEqual(
+            renderer._chapter_scope(VenueVideoData("園田", "地方", [race], excluded_races=[excluded])),
+            "全2レース中1レースを収録 · ダート",
+        )
+
+    def test_design_contact_sheet_contains_review_frames_and_small_thumbnail(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            scene = renderer._build_long_race_motion_scene(
-                Path(temp_dir),
-                race,
-                race.race_date,
-                1,
-                11,
-            )
-            cta = next(layer for layer in scene.layers if layer.image_path.name.endswith("_cta.png"))
-            with Image.open(cta.image_path) as image:
-                cta_size = image.size
-        self.assertLessEqual(cta.start_seconds, 0.35)
-        self.assertEqual(cta.end_seconds, renderer.LONG_RACE_SCENE_SECONDS)
-        self.assertEqual(cta_size, (renderer.LONG_CONTENT_WIDTH, 186))
-        self.assertEqual(cta.x, renderer.LONG_CONTENT_LEFT)
-        self.assertEqual(cta.x + cta_size[0], renderer.LONG_CONTENT_RIGHT)
-        self.assertEqual(cta.y, renderer.LONG_CTA_Y)
-        self.assertGreaterEqual(
-            renderer.LONG_CTA_Y - renderer.LONG_DATA_PANEL_BOTTOM,
-            24,
+            root = Path(temp_dir)
+            date_root = root / "2026-07-12"
+            long_dir = date_root / "long" / "daily_all"
+            short_dir = date_root / "shorts" / "daily_short"
+            (short_dir / "race_02").mkdir(parents=True)
+            (short_dir / "tiktok-clean" / "race_02").mkdir(parents=True)
+            long_dir.mkdir(parents=True)
+            (date_root / "summary.json").write_text("{}\n", encoding="utf-8")
+            for path in [
+                long_dir / "thumbnail.jpg",
+                long_dir / "000_intro.png",
+                long_dir / "chapter_01_福島.png",
+                long_dir / "chapter_01_福島_base.png",
+                long_dir / "01_01_11r_race.png",
+                long_dir / "999_outro.png",
+            ]:
+                Image.new("RGB", (1920, 1080), "white").save(path)
+            for path in [
+                short_dir / "000_intro.png",
+                short_dir / "001_top5.png",
+                short_dir / "002_lanes.png",
+                short_dir / "race_02" / "999_outro.png",
+                short_dir / "tiktok-clean" / "race_02" / "999_outro.png",
+            ]:
+                Image.new("RGB", (1080, 1920), "white").save(path)
+            destination = date_root / "design-contact-sheet.png"
+            items = _collect_review_images(date_root, "v10 / ")
+            chapter = next(path for label, path in items if label.endswith("競馬場の章"))
+            create_contact_sheet(date_root, destination)
+            self.assertTrue(destination.exists())
+            with Image.open(date_root / "thumbnail_246x138.png") as image:
+                self.assertEqual(image.size, (246, 138))
+            with Image.open(date_root / "shorts-ui-overlay.png") as image:
+                self.assertEqual(image.size, (1080, 1920))
+        self.assertEqual(chapter.name, "chapter_01_福島.png")
+        self.assertEqual(
+            [label for label, _ in items],
+            [
+                "v10 / 長尺サムネイル",
+                "v10 / 長尺導入",
+                "v10 / 長尺競馬場の章",
+                "v10 / 長尺レース",
+                "v10 / 長尺締め",
+                "v10 / Shorts表紙",
+                "v10 / Shorts上位5頭",
+                "v10 / Shorts位置取り",
+                "v10 / Shorts締め",
+                "v10 / TikTok用の締め",
+            ],
         )
 
-    def test_access_cta_copy_is_unified_and_not_redundant(self) -> None:
-        self.assertEqual(
-            renderer.LONG_SITE_ACCESS_CTA,
-            "その他の分析情報は概要欄のサイトから",
-        )
-        self.assertEqual(
-            renderer.SHORT_SITE_ACCESS_CTA,
-            "その他の分析情報はUMA-FREEで公開",
-        )
-        source = (
-            inspect.getsource(renderer._draw_broadcast_cta_layer)
-            + inspect.getsource(renderer._draw_outro_slide)
-            + inspect.getsource(renderer._draw_short_analysis_footer)
-        )
-        self.assertNotIn("サイトへのアクセスは概要欄のリンクから", source)
-        self.assertNotIn("サイトへのアクセスはプロフィールのリンクから", source)
-        self.assertNotIn("このレースの詳細をチェック", source)
-        self.assertNotIn("全レースに詳細4分析を掲載", source)
-        self.assertNotIn("全レースに4つの詳細分析を掲載", source)
+    def test_motion_renderer_does_not_use_zoompan(self) -> None:
+        from scripts.social_video import motion
 
-    def test_short_motion_scene_has_cover_at_zero_and_cta_until_end(self) -> None:
-        race = _race()
+        self.assertNotIn("zoompan", inspect.getsource(motion))
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpegとffprobeが必要です")
+    def test_motion_video_with_bgm_has_aac_audio_and_keeps_the_timeline(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            scene = renderer._build_short_motion_scene(
-                Path(temp_dir),
-                race,
-                race.race_date,
-                race.predictions[0],
-                None,
-                None,
+            root = Path(temp_dir)
+            audio_path = root / "bgm.wav"
+            with wave.open(str(audio_path), "wb") as wav:
+                wav.setnchannels(1)
+                wav.setsampwidth(2)
+                wav.setframerate(48000)
+                wav.writeframes(b"\x00\x00" * 48000)
+            scene_list = []
+            for index, duration in enumerate((0.4, 1.2, 0.9)):
+                background = root / f"scene-{index}.png"
+                Image.new("RGB", (320, 180), (20 + index * 30, 30, 60)).save(background)
+                scene_list.append(renderer.MotionScene(background, duration, background))
+            output_path = root / "output.mp4"
+            with patch.dict(os.environ, {"SOCIAL_VIDEO_BGM_PATH": ""}, clear=False):
+                renderer.render_motion_video(
+                    scene_list, output_path, 320, 180, audio_asset=AudioAsset(path=audio_path, title="テストBGM", volume=0.2)
+                )
+            result = subprocess.run(
+                [
+                    shutil.which("ffprobe") or "ffprobe",
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "stream=codec_name,sample_rate:format=duration",
+                    "-of",
+                    "json",
+                    str(output_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
             )
-            self.assertTrue(scene.preview_path.exists())
-            cover = next(layer for layer in scene.layers if layer.image_path.name == "000_cover.png")
-            cta = next(layer for layer in scene.layers if layer.image_path.name == "999_outro.png")
-            analysis_footer = next(
-                layer
-                for layer in scene.layers
-                if layer.image_path.name == "000_short_analysis_footer.png"
-            )
-            with Image.open(analysis_footer.image_path) as footer_image:
-                footer_center_x = analysis_footer.x + footer_image.width // 2
-            phase_names = {timing[0] for timing in renderer.SHORT_PHASE_TIMINGS}
-            phase_layers = sorted(
-                (
-                    layer
-                    for layer in scene.layers
-                    if layer.image_path.name in phase_names
-                ),
-                key=lambda layer: layer.start_seconds,
-            )
-        self.assertEqual(scene.duration_seconds, 15.5)
-        self.assertEqual(cover.start_seconds, 0.0)
-        self.assertEqual(cta.end_seconds, 15.5)
-        self.assertEqual(analysis_footer.start_seconds, 0.0)
-        self.assertEqual(analysis_footer.end_seconds, 15.5)
-        self.assertEqual(
-            (analysis_footer.x, analysis_footer.y),
-            (renderer.SHORT_COLUMN_X, renderer.SHORT_ANALYSIS_FOOTER_Y),
-        )
-        self.assertEqual(footer_center_x, 540)
-        self.assertEqual(
-            renderer.SHORT_COLUMN_X + renderer.SHORT_COLUMN_WIDTH,
-            renderer.SHORT_COLUMN_RIGHT,
-        )
-        self.assertEqual(len(phase_layers), 5)
-        for previous, current in zip(phase_layers, phase_layers[1:]):
-            self.assertLessEqual(previous.end_seconds, current.start_seconds)
-            self.assertIsNone(current.start_x)
-            self.assertIsNone(current.start_y)
+            probe = json.loads(result.stdout)
+            self.assertFalse(output_path.with_suffix(".video.mp4").exists())
+        audio = next(stream for stream in probe["streams"] if stream["codec_name"] == "aac")
+        self.assertEqual(audio["sample_rate"], "48000")
+        self.assertAlmostEqual(float(probe["format"]["duration"]), 2.5, delta=0.15)
 
     def test_motion_overlay_uses_end_exclusive_interval(self) -> None:
         from scripts.social_video import motion
@@ -1180,60 +846,6 @@ class SocialVideoRendererTest(unittest.TestCase):
         with patch.dict(os.environ, {"SOCIAL_VIDEO_MOTION_PROFILE": "unknown"}, clear=False):
             with self.assertRaises(ValueError):
                 renderer.resolve_motion_profile()
-
-    def test_video_clip_renderer_does_not_use_zoompan(self) -> None:
-        source = inspect.getsource(renderer._render_static_clip)
-        self.assertNotIn("zoompan", source)
-        self.assertEqual(renderer.KEN_BURNS_ZOOM_TO, 1.0)
-
-    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpegが必要です")
-    def test_static_mode_mp4_contains_aac_audio(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            image_path = root / "slide.png"
-            audio_path = root / "bgm.wav"
-            output_path = root / "output.mp4"
-            Image.new("RGB", (320, 180), "navy").save(image_path)
-            with wave.open(str(audio_path), "wb") as wav:
-                wav.setnchannels(1)
-                wav.setsampwidth(2)
-                wav.setframerate(48000)
-                wav.writeframes(b"\x00\x00" * 48000)
-            audio_asset = AudioAsset(path=audio_path, title="テストBGM", volume=0.2)
-            with patch.dict(os.environ, {"SOCIAL_VIDEO_DISABLE_MOTION": "1", "SOCIAL_VIDEO_BGM_PATH": ""}, clear=False):
-                renderer.render_mp4([renderer.Slide(image_path, 1.2)], output_path, 320, 180, audio_asset=audio_asset)
-            result = subprocess.run(
-                [
-                    shutil.which("ffprobe") or "ffprobe",
-                    "-v",
-                    "error",
-                    "-select_streams",
-                    "a:0",
-                    "-show_entries",
-                    "stream=codec_name,sample_rate",
-                    "-of",
-                    "json",
-                    str(output_path),
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            stream = json.loads(result.stdout)["streams"][0]
-            self.assertEqual(stream["codec_name"], "aac")
-            self.assertEqual(stream["sample_rate"], "48000")
-
-    @unittest.skipUnless(shutil.which("ffmpeg"), "FFmpegが必要です")
-    def test_motion_mode_removes_intermediate_clips(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            image_path = root / "slide.png"
-            output_path = root / "output.mp4"
-            Image.new("RGB", (320, 180), "navy").save(image_path)
-            with patch.dict(os.environ, {"SOCIAL_VIDEO_DISABLE_MOTION": "0", "SOCIAL_VIDEO_BGM_PATH": ""}, clear=False):
-                renderer.render_mp4([renderer.Slide(image_path, 0.4)], output_path, 320, 180)
-            self.assertTrue(output_path.exists())
-            self.assertFalse((root / ".output_motion").exists())
 
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpegとffprobeが必要です")
     def test_motion_scene_renders_h264_and_removes_scene_clips(self) -> None:
@@ -1250,7 +862,7 @@ class SocialVideoRendererTest(unittest.TestCase):
                 0.6,
                 preview,
                 layers=[
-                    renderer.MotionLayer(
+                    MotionLayer(
                         layer,
                         120,
                         70,
@@ -1289,38 +901,6 @@ class SocialVideoRendererTest(unittest.TestCase):
             self.assertEqual(stream["codec_name"], "h264")
             self.assertEqual((stream["width"], stream["height"]), (320, 180))
             self.assertFalse((root / ".motion_motion").exists())
-
-    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpegとffprobeが必要です")
-    def test_motion_mode_preserves_timeline_duration(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            slides = []
-            for index, duration in enumerate((0.10, 0.10, 1.25, 5.0, 3.5)):
-                image_path = root / f"slide-{index}.png"
-                Image.new("RGB", (320, 180), (20 + index * 20, 30, 60)).save(image_path)
-                slides.append(renderer.Slide(image_path, duration))
-            output_path = root / "output.mp4"
-            with patch.dict(os.environ, {"SOCIAL_VIDEO_DISABLE_MOTION": "0", "SOCIAL_VIDEO_BGM_PATH": ""}, clear=False):
-                renderer.render_mp4(slides, output_path, 320, 180)
-
-            result = subprocess.run(
-                [
-                    shutil.which("ffprobe") or "ffprobe",
-                    "-v",
-                    "error",
-                    "-show_entries",
-                    "format=duration",
-                    "-of",
-                    "default=noprint_wrappers=1:nokey=1",
-                    str(output_path),
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            actual_duration = float(result.stdout.strip())
-            expected_duration = renderer._timeline_duration(slides, use_crossfade=True)
-            self.assertAlmostEqual(actual_duration, expected_duration, delta=0.20)
 
     def test_asset_validation_reports_required_materials(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

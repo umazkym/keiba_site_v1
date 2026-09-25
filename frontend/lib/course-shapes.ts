@@ -4,6 +4,7 @@
 import 'server-only';
 
 export type CourseShape = {
+    // [左, 上, 右, 下]（幅と高さではない）
     bbox: [number, number, number, number];
     turf: string | null;
     dirt: string | null;

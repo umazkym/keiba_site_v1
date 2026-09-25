@@ -30,6 +30,9 @@ class MotionLayer:
     end_y: Optional[int] = None
     easing: EasingName = "ease_out"
     z_index: int = 0
+    # 0より大きいと、start_secondsから左端を起点に等速で伸びて見える（進み具合の棒）。
+    # 単色の棒に使う。模様のある画像では中身が横へずれて見える。
+    reveal_duration: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -162,6 +165,18 @@ def render_motion_scene(
         source_label = f"[layer{index}]"
         enter_duration = 0.12 if active_profile == "reduced" else layer.enter_duration
         layer_filters = [f"[{index}:v]format=rgba,settb=AVTB,setpts=PTS-STARTPTS"]
+        if layer.reveal_duration > 0:
+            # 右に同じ幅の透明を足し、切り抜く窓を右端から左端へ動かす。
+            # 窓に入る棒の幅が 0 から全幅まで伸びる。
+            progress = (
+                f"max(0,min(1,(t-{layer.start_seconds:.3f})/{layer.reveal_duration:.3f}))"
+            )
+            layer_filters.append("pad=w=2*iw:h=ih:x=0:y=0:color=black@0")
+            layer_filters.append(
+                "crop=w=iw/2:h=ih:x='"
+                + _escaped_expression(f"(iw/2)*(1-{progress})")
+                + "':y=0"
+            )
         if enter_duration > 0:
             layer_filters.append(
                 f"fade=t=in:st={layer.start_seconds:.3f}:d={enter_duration:.3f}:alpha=1"

@@ -23,6 +23,30 @@
     "allowed_platforms": ["youtube", "threads", "instagram", "facebook", "tiktok", "pinterest", "bluesky"],
     "focus": [0.50, 0.64]
   },
+  "images/surfaces/turf/wide/hero-jra.jpg": {
+    "credit": "UMA-FREE制作素材（デザイン改修 2026-09 ホームの写真・芝）",
+    "license": "UMA-FREE管理素材・動画内利用",
+    "allowed_platforms": ["youtube", "threads", "instagram", "facebook", "tiktok", "pinterest", "bluesky"],
+    "focus": [0.70, 0.55]
+  },
+  "images/surfaces/dirt/wide/hero-nar-day.jpg": {
+    "credit": "UMA-FREE制作素材（デザイン改修 2026-09 ホームの写真・ダート）",
+    "license": "UMA-FREE管理素材・動画内利用",
+    "allowed_platforms": ["youtube", "threads", "instagram", "facebook", "tiktok", "pinterest", "bluesky"],
+    "focus": [0.70, 0.55]
+  },
+  "images/surfaces/turf/vertical/sns-turf.jpg": {
+    "credit": "UMA-FREE制作素材（デザイン改修 2026-09 SNS・縦動画の背景・芝）",
+    "license": "UMA-FREE管理素材・動画内利用",
+    "allowed_platforms": ["youtube", "threads", "instagram", "facebook", "tiktok", "pinterest", "bluesky"],
+    "focus": [0.50, 0.60]
+  },
+  "images/surfaces/dirt/vertical/sns-dirt.jpg": {
+    "credit": "UMA-FREE制作素材（デザイン改修 2026-09 SNS・縦動画の背景・ダート）",
+    "license": "UMA-FREE管理素材・動画内利用",
+    "allowed_platforms": ["youtube", "threads", "instagram", "facebook", "tiktok", "pinterest", "bluesky"],
+    "focus": [0.50, 0.60]
+  },
   "audio/common/わいわいミュージック・タイム.mp3": {
     "title": "わいわいミュージック・タイム",
     "credit": "こばっと / DOVA-SYNDROME",

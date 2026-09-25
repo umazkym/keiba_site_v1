@@ -14,16 +14,18 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from scripts.social_video import renderer
+from scripts.sns_images import _font
+from scripts.social_video import brand_scenes, renderer
 
 
-SHEET_BG = (229, 227, 220)
-CELL_BG = (248, 246, 240)
-CELL_RULE = (180, 178, 169)
-LABEL = (18, 23, 27)
-# カードの面は画面中央に置き、文字・数値だけをこの範囲へ収める。
-# 右端はYouTubeの操作ボタン、下端は説明欄UIとの重なりを確認するための境界。
-SHORTS_SAFE_BOUNDS = (96, 280, 948, 1600)
+SHEET_BG = (229, 231, 239)
+CELL_BG = (247, 248, 252)
+CELL_RULE = (205, 210, 226)
+LABEL = (21, 26, 61)
+DESIGN_LABEL = "v10 / "
+# 文字・数字はこの範囲へ収める（brand_scenes.validate_short_layers と同じ範囲）。
+# 右端はYouTubeの操作ボタン、下端は題名・説明欄との重なりを確認するための境界。
+SHORTS_SAFE_BOUNDS = brand_scenes.SHORT_SAFE_BOX
 
 
 def _first(paths: Iterable[Path]) -> Path | None:
@@ -49,8 +51,10 @@ def _collect_review_images(date_root: Path, prefix: str) -> List[Tuple[str, Path
         candidates = [
             ("長尺サムネイル", long_thumbnail),
             ("長尺導入", long_dir / "000_intro.png"),
-            ("長尺1レース統合", _first(long_dir.glob("*_race.png"))),
-            ("長尺アウトロ", long_dir / "999_outro.png"),
+            # 章の完成図は「chapter_01_中山.png」。部品（_base・_card など）は除く
+            ("長尺競馬場の章", _first(path for path in long_dir.glob("chapter_*.png") if path.stem.count("_") == 2)),
+            ("長尺レース", _first(long_dir.glob("*_race.png"))),
+            ("長尺締め", long_dir / "999_outro.png"),
         ]
         for label, path in candidates:
             if path and path.exists():
@@ -63,10 +67,11 @@ def _collect_review_images(date_root: Path, prefix: str) -> List[Tuple[str, Path
     if short_dir:
         candidates = [
             ("Shorts表紙", short_dir / "000_intro.png"),
-            ("Shortsランキング", short_dir / "001_race.png"),
-            ("Shorts位置取り", short_dir / "002_position_preview.png"),
-            ("Shorts1位", short_dir / "003_hero_preview.png"),
-            ("Shortsアウトロ", short_dir / "999_outro_preview.png"),
+            ("Shorts上位5頭", short_dir / "001_top5.png"),
+            ("Shorts位置取り", short_dir / "002_lanes.png"),
+            # 締めは最後のレースにだけ付く（2レース目以降は race_NN/ の中）
+            ("Shorts締め", _first(path for path in short_dir.rglob("999_outro.png") if "tiktok-clean" not in path.parts)),
+            ("TikTok用の締め", _first((short_dir / "tiktok-clean").rglob("999_outro.png")) if (short_dir / "tiktok-clean").exists() else None),
         ]
         for label, path in candidates:
             if path and path.exists():
@@ -98,7 +103,7 @@ def _extract_long_motion_frames(date_root: Path) -> list[Path]:
                 "-loglevel",
                 "error",
                 "-ss",
-                f"{renderer.LONG_INTRO_SECONDS + relative_seconds:.3f}",
+                f"{renderer.LONG_INTRO_SECONDS + renderer.LONG_CHAPTER_SECONDS + relative_seconds:.3f}",
                 "-i",
                 str(video_path),
                 "-frames:v",
@@ -129,7 +134,7 @@ def _draw_cell(
 ) -> None:
     x1, y1, x2, y2 = box
     draw.rectangle(box, fill=CELL_BG, outline=CELL_RULE, width=2)
-    draw.text((x1 + 18, y1 + 14), label, font=renderer._font(renderer.FONT_BOLD, 24), fill=LABEL)
+    draw.text((x1 + 18, y1 + 14), label, font=_font("bold", 24), fill=LABEL)
     media_box = (x1 + 18, y1 + 56, x2 - 18, y2 - 18)
     with Image.open(source_path) as source:
         image = ImageOps.contain(source.convert("RGB"), (media_box[2] - media_box[0], media_box[3] - media_box[1]))
@@ -145,13 +150,13 @@ def _create_shorts_ui_overlay(source_path: Path, destination: Path) -> Path:
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     safe_left, safe_top, safe_right, safe_bottom = SHORTS_SAFE_BOUNDS
-    blocked = (157, 52, 56, 76)
+    blocked = (200, 54, 74, 76)
     draw.rectangle((0, 0, width, safe_top), fill=blocked)
     draw.rectangle((0, safe_bottom, width, height), fill=blocked)
     draw.rectangle((safe_right, safe_top, width, safe_bottom), fill=blocked)
     draw.rectangle((0, safe_top, safe_left, safe_bottom), fill=blocked)
-    draw.rectangle(SHORTS_SAFE_BOUNDS, outline=(200, 155, 60, 255), width=6)
-    draw.text((safe_left + 18, safe_bottom + 18), "重要情報セーフ領域", font=renderer._font(renderer.FONT_BOLD, 25), fill=(255, 253, 247, 255))
+    draw.rectangle(SHORTS_SAFE_BOUNDS, outline=(242, 165, 22, 255), width=6)
+    draw.text((safe_left + 18, safe_bottom + 18), "重要情報セーフ領域", font=_font("bold", 25), fill=(255, 255, 255, 255))
     reviewed = Image.alpha_composite(image, overlay).convert("RGB")
     destination.parent.mkdir(parents=True, exist_ok=True)
     reviewed.save(destination)
@@ -168,12 +173,12 @@ def create_contact_sheet(
     items: List[Tuple[str, Path]] = []
     if baseline_root:
         items.extend(_collect_review_images(_resolve_date_root(baseline_root), "旧版 / "))
-    current_items = _collect_review_images(current_root, "v8 / ")
+    current_items = _collect_review_images(current_root, DESIGN_LABEL)
     items.extend(current_items)
-    short_source = next((path for label, path in current_items if label.endswith("Shortsランキング")), None)
+    short_source = next((path for label, path in current_items if label.endswith("Shorts上位5頭")), None)
     if short_source is not None:
         overlay_path = _create_shorts_ui_overlay(short_source, destination.with_name("shorts-ui-overlay.png"))
-        items.append(("v8 / Shorts UI安全領域", overlay_path))
+        items.append((f"{DESIGN_LABEL}Shorts UI安全領域", overlay_path))
     if not items:
         raise RuntimeError(f"レビュー対象PNGが見つかりません: {current_root}")
 
@@ -200,7 +205,7 @@ def create_contact_sheet(
     sheet.save(destination)
 
     for label, path in items:
-        if label.endswith("長尺サムネイル") and label.startswith("v8"):
+        if label.endswith("長尺サムネイル") and label.startswith(DESIGN_LABEL):
             with Image.open(path) as thumbnail:
                 thumbnail.convert("RGB").resize((246, 138), Image.Resampling.LANCZOS).save(
                     destination.with_name("thumbnail_246x138.png")

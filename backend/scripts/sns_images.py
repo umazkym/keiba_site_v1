@@ -453,7 +453,7 @@ def render_x_pick(card: PickCard, path: Path | str) -> str:
     # 4つの視点
     chip_y = 675 - 72 - 44 - 52
     cursor = left
-    for label in ("AI偏差値", "対戦成績", "展開・脚質", "馬番の傾向"):
+    for label in ("AI偏差値", "対戦成績", "展開予測", "馬番の傾向"):
         w = c.text_width(label, "bold", 19) + 36
         c.rect((cursor, chip_y, cursor + w, chip_y + 52), radius=14, fill=T.PANEL, outline=T.LINE, width=1.5)
         c.text(cursor + 18, chip_y + 26, label, "bold", 19, T.INK2)
@@ -782,7 +782,7 @@ def _carousel_closing(number: int, total: int) -> Canvas:
     c.paste_logo(540 - 110, 230, 220)
     c.text_center(540, 560, "対戦成績・馬番の傾向も", "disp", 60, T.WHITE)
     c.text_center(540, 560 + 80, "全レースで公開中", "disp", 60, T.WHITE)
-    labels = ("AI偏差値", "対戦成績", "展開・脚質", "馬番の傾向")
+    labels = ("AI偏差値", "対戦成績", "展開予測", "馬番の傾向")
     cell_w, cell_h = (1080 - 140 - 16) / 2, 96
     for index, label in enumerate(labels):
         col, line = index % 2, index // 2

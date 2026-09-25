@@ -27,6 +27,21 @@ images/races/2026-07-13/函館/11/vertical/
 
 同じフォルダに複数素材を置くと、日付と動画IDから毎回同じ素材を自動選択します。
 
+## 馬場ごとの写真（デザイン改修 2026-09）
+
+写真は レース → 競馬場 → 馬場 → 共通 の順に探します。馬場の段はデザイン改修の写真（ユーザー制作）です。
+
+```text
+images/surfaces/turf/wide/hero-jra.jpg          長尺の導入・サムネイル（中央の開催がある日）
+images/surfaces/dirt/wide/hero-nar-day.jpg      長尺の導入・サムネイル（地方だけの日）
+images/surfaces/turf/vertical/sns-turf.jpg      Shorts の背景（芝のレース）
+images/surfaces/dirt/vertical/sns-dirt.jpg      Shorts の背景（ダートのレース）
+```
+
+- 横はホームの写真（`reference/UIdesign/uma-free-assets/hero-*-pc.png`）を右端に寄せて 16:9 に切り、芝は緑へ補正して 1920×1080 に。縦は SNS 画像の写真（`backend/assets/sns/`）を 1080×1920 に。
+- 書き出しは `.local/design-portfolio/impl/export_video_assets.py`（git の対象外）。
+- `courses/` のコースPNGは旧デザイン用で、新しい動画はサイトと同じコース図（`frontend/lib/course-shapes.ts`）を描きます。
+
 ## Broadcast Editorial用動画素材
 
 動画素材は任意です。未配置時は権利確認済み写真を使い、導入とShortsのデザインを維持します。

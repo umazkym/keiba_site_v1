@@ -417,7 +417,9 @@ def resolve_visual_asset(
     orientation: str,
     manifest_path: Optional[Path] = None,
     selection_key: str = "",
+    surface: str = "",
 ) -> Optional[VisualAsset]:
+    """写真を レース → 競馬場 → 馬場（surface: turf・dirt）→ 共通 の順に探す。"""
     if orientation not in {"wide", "vertical"}:
         raise ValueError(f"orientationはwideまたはverticalを指定してください: {orientation}")
 
@@ -446,6 +448,8 @@ def resolve_visual_asset(
     if race_number:
         folders.append((root / "images" / "races" / target_date / venue_name / str(race_number) / orientation, "folder:race"))
     folders.append((root / "images" / "venues" / venue_name / orientation, "folder:venue"))
+    if surface:
+        folders.append((root / "images" / "surfaces" / surface / orientation, "folder:surface"))
     folders.append((root / "images" / "default" / orientation, "folder:default"))
     stable_key = selection_key or f"{target_date}:{venue_name}:{race_number}:{orientation}"
     for folder, source in folders:

@@ -52,6 +52,7 @@ function VenueLinks({
                     if (!name) return null;
                     return (
                         <Link
+                            prefetch={false}
                             key={slug}
                             href={`/courses#venue-${slug}`}
                             className="inline-flex min-h-9 items-center rounded-[8px] bg-white px-2.5 text-[13.5px] font-bold text-slate-800 ring-1 ring-inset ring-slate-200 transition-colors duration-150 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:text-[14px]"
@@ -108,6 +109,7 @@ export default function KeibaDataPage() {
                         </span>
                         {popularSearchTags.map((tag) => (
                             <Link
+                                prefetch={false}
                                 key={tag.label}
                                 href={`/search?q=${encodeURIComponent(tag.query)}`}
                                 className="inline-flex min-h-9 items-center rounded-full bg-white px-3 text-[13px] font-bold text-slate-700 ring-1 ring-inset ring-slate-200 transition-colors duration-150 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-300"
@@ -148,6 +150,7 @@ export default function KeibaDataPage() {
                         title="競馬場からコースを探す"
                         description="競馬場を選ぶと、コースごとの距離一覧へ移動します。"
                         action={(<Link
+                            prefetch={false}
                             href="/courses"
                             className="inline-flex min-h-11 items-center gap-1 text-[14px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                         >

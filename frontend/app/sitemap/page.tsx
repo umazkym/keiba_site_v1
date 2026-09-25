@@ -44,6 +44,7 @@ function SitemapCard({ group }: { group: SitemapGroup }) {
       <div className="mt-1.5 space-y-1 sm:mt-4 sm:space-y-2">
         {group.links.map((link) => (
           <Link
+            prefetch={false}
             key={link.href}
             href={link.href}
             className="group block rounded-lg border border-slate-100 bg-slate-50 p-2 transition-colors hover:border-slate-300 hover:bg-white sm:p-4"
@@ -123,7 +124,7 @@ export default function SitemapPage() {
         description={
           <>
             UMA-FREE内の主要ページをまとめています。お探しのページが見つからない場合は、
-            <Link href="/search" className="font-bold text-primary hover:underline">
+            <Link prefetch={false} href="/search" className="font-bold text-primary hover:underline">
               サイト内検索
             </Link>
             もご利用ください。

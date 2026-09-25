@@ -158,7 +158,7 @@ export default async function GradeRaceDetailPage({ params }: Props) {
             <h2 className="text-xl sm:text-2xl font-black text-slate-950">関連データ</h2>
             <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
               {race.relatedLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="block p-4 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-primary">
+                <Link prefetch={false} key={link.href} href={link.href} className="block p-4 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-primary">
                   {link.label}
                 </Link>
               ))}

@@ -141,6 +141,7 @@ function SavedEntityList({
                     <p className="text-sm leading-6 text-slate-600">{emptyMessage}</p>
                     {emptyAction && (
                         <Link
+                            prefetch={false}
                             href={emptyAction.href}
                             className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700"
                         >
@@ -320,6 +321,7 @@ export default function MyDataClient() {
                     <p className="mt-1 text-xs text-slate-500">最大5頭まで登録可能</p>
                     {comparison.length > 0 && (
                         <Link
+                            prefetch={false}
                             href="/compare"
                             className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-900 border border-amber-200 hover:bg-amber-100"
                         >
@@ -451,7 +453,7 @@ export default function MyDataClient() {
 
             {/* 下部データ操作 */}
             <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
-                <Link href="/keiba-data" className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-brand-600">
+                <Link prefetch={false} href="/keiba-data" className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-brand-600">
                     <Search className="h-4 w-4" aria-hidden="true" />
                     データを探す
                 </Link>

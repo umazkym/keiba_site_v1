@@ -36,6 +36,7 @@ export function EntityArticleSection({
           <span>{articles.length}件</span>
           {archiveHref && (
             <Link
+              prefetch={false}
               href={archiveHref}
               className="inline-flex min-h-11 items-center gap-1 font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600"
             >

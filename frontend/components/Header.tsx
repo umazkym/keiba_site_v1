@@ -32,7 +32,6 @@ type NavItem = {
     label: string;
     menuLabel: string;
     icon: LineIconName;
-    prefetch: false | undefined;
     isActive: boolean;
 };
 
@@ -86,16 +85,16 @@ export const Header = ({ todayString }: HeaderProps) => {
     const menuPanelRef = useRef<HTMLDivElement>(null);
 
     const navItems: NavItem[] = [
-        { href: '/', label: 'ホーム', menuLabel: 'ホーム', icon: 'home', prefetch: undefined, isActive: pathname === '/' },
-        { href: `/races/${todayString}`, label: '本日の分析', menuLabel: '本日のレース分析', icon: 'race', prefetch: false, isActive: pathname.startsWith('/races') },
-        { href: '/keiba-data', label: 'データベース', menuLabel: '競馬データベース', icon: 'database', prefetch: false, isActive: pathname.startsWith('/keiba-data') || pathname.startsWith('/horses') || pathname.startsWith('/jockeys') || pathname.startsWith('/trainers') || pathname.startsWith('/courses') || pathname.startsWith('/compare') || pathname.startsWith('/my-data') },
-        { href: '/articles', label: '記事', menuLabel: 'データ分析記事', icon: 'book', prefetch: false, isActive: pathname.startsWith('/articles') },
-        { href: '/faq', label: 'よくある質問', menuLabel: 'よくある質問', icon: 'help', prefetch: undefined, isActive: pathname === '/faq' },
+        { href: '/', label: 'ホーム', menuLabel: 'ホーム', icon: 'home', isActive: pathname === '/' },
+        { href: `/races/${todayString}`, label: '本日の分析', menuLabel: '本日のレース分析', icon: 'race', isActive: pathname.startsWith('/races') },
+        { href: '/keiba-data', label: 'データベース', menuLabel: '競馬データベース', icon: 'database', isActive: pathname.startsWith('/keiba-data') || pathname.startsWith('/horses') || pathname.startsWith('/jockeys') || pathname.startsWith('/trainers') || pathname.startsWith('/courses') || pathname.startsWith('/compare') || pathname.startsWith('/my-data') },
+        { href: '/articles', label: '記事', menuLabel: 'データ分析記事', icon: 'book', isActive: pathname.startsWith('/articles') },
+        { href: '/faq', label: 'よくある質問', menuLabel: 'よくある質問', icon: 'help', isActive: pathname === '/faq' },
     ];
     // モバイルメニューだけに出す項目（PCの横並びは5項目のまま）
     const menuOnlyItems: NavItem[] = [
-        { href: '/results/accuracy', label: 'AI予想の成績', menuLabel: 'AI予想の成績', icon: 'trophy', prefetch: false, isActive: pathname.startsWith('/results') },
-        { href: '/search', label: '検索', menuLabel: 'サイト内検索', icon: 'search', prefetch: undefined, isActive: pathname === '/search' },
+        { href: '/results/accuracy', label: 'AI予想の成績', menuLabel: 'AI予想の成績', icon: 'trophy', isActive: pathname.startsWith('/results') },
+        { href: '/search', label: '検索', menuLabel: 'サイト内検索', icon: 'search', isActive: pathname === '/search' },
     ];
 
     const toggleMenu = useCallback(() => {
@@ -276,7 +275,9 @@ export const Header = ({ todayString }: HeaderProps) => {
                 <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 md:px-6">
                     <div className="flex h-10 items-center justify-between gap-1.5 sm:h-16 sm:gap-4">
                     {/* ロゴ */}
-                    <Link href="/" className="flex min-h-[44px] items-center gap-2 sm:gap-3 shrink-0" aria-label="UMA-FREE ホーム">
+                    {/* ヘッダーのリンクは先読みしない（全ページで画面に入るため、先読みがキャッシュを通らず Cloud Run へ届く。
+                        閉じたモバイルメニューも画面の外に置かれているだけなので先読みされていた。2026-09-25） */}
+                    <Link href="/" prefetch={false} className="flex min-h-[44px] items-center gap-2 sm:gap-3 shrink-0" aria-label="UMA-FREE ホーム">
                         {/* 32px以下は内側の線を省いた小さい版のマークを使う */}
                         <BrandMark size={30} variant="small" className="sm:hidden" />
                         <BrandMark size={44} variant="full" className="hidden sm:block" />
@@ -296,7 +297,7 @@ export const Header = ({ todayString }: HeaderProps) => {
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                prefetch={item.prefetch}
+                                prefetch={false}
                                 aria-current={item.isActive ? 'page' : undefined}
                                 className={`relative flex h-full items-center whitespace-nowrap px-3.5 text-[15px] transition-colors duration-150 ${item.isActive
                                     ? 'font-bold text-navy after:absolute after:inset-x-3.5 after:bottom-0 after:h-[3px] after:rounded-t-[3px] after:bg-brand-600'
@@ -314,6 +315,7 @@ export const Header = ({ todayString }: HeaderProps) => {
 
                         <Link
                             href="/search"
+                            prefetch={false}
                             className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-700 transition-colors duration-150 hover:bg-slate-100 hover:text-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40"
                             aria-label="サイト内検索"
                             title="検索"
@@ -359,7 +361,7 @@ export const Header = ({ todayString }: HeaderProps) => {
                     {[...navItems, ...menuOnlyItems].map((item) => (
                         <Link
                             key={item.href}
-                            prefetch={item.prefetch}
+                            prefetch={false}
                             href={item.href}
                             tabIndex={isMenuOpen ? 0 : -1}
                             data-menu-initial-focus={item.href === '/' ? 'true' : undefined}
@@ -387,6 +389,7 @@ export const Header = ({ todayString }: HeaderProps) => {
                         <Link
                             key={item.href}
                             href={item.href}
+                            prefetch={false}
                             tabIndex={isMenuOpen ? 0 : -1}
                             className="flex min-h-11 items-center text-sm text-slate-700 transition-colors duration-150 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40"
                             onClick={() => closeMenu()}

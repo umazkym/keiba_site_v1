@@ -95,10 +95,10 @@ export default function SiteSelectionPage() {
             <li className="rounded-xl bg-white p-4 shadow-soft">投票推奨ではなく、レース検討の参考情報として提供。</li>
           </ul>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link href="/results/accuracy" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-primary-light">
+            <Link prefetch={false} href="/results/accuracy" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-primary-light">
               AI予想の成績を見る
             </Link>
-            <Link href="/keiba-data" className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:text-primary">
+            <Link prefetch={false} href="/keiba-data" className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:text-primary">
               データの見方へ戻る
             </Link>
           </div>

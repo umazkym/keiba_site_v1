@@ -95,7 +95,7 @@ export const FAQClient = () => {
                 <div className="flex flex-1 flex-col gap-3">
                     <p className="text-[15.5px] font-bold text-slate-900">解決しないときは</p>
                     <div className="flex flex-wrap gap-2">
-                        <Link href="/contact" className="ui-btn ui-btn--secondary gap-1">
+                        <Link prefetch={false} href="/contact" className="ui-btn ui-btn--secondary gap-1">
                             お問い合わせ
                             <LineIcon name="chevR" size={16} className="block" />
                         </Link>

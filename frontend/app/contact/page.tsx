@@ -81,7 +81,7 @@ export default function ContactPage() {
           <p>お問い合わせいただいた内容に対して、必要に応じてご返信します。迷惑メールフォルダに振り分けられる場合もありますので、あわせてご確認ください。</p>
           <p>
             入力いただいた個人情報は、サイトの改善とお問い合わせへの返信にのみ使用します。詳細は
-            <Link href="/privacy" className="font-bold text-primary hover:underline">
+            <Link prefetch={false} href="/privacy" className="font-bold text-primary hover:underline">
               プライバシーポリシー
             </Link>
             をご覧ください。

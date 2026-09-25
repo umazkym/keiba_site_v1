@@ -114,6 +114,7 @@ export function DataHubNav({ currentPath }: { currentPath?: string }) {
 
                     return (
                         <Link
+                            prefetch={false}
                             key={item.href}
                             href={item.href}
                             aria-current={isCurrent ? 'page' : undefined}

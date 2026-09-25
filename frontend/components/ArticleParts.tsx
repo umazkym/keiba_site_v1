@@ -47,6 +47,7 @@ export function ArticleMetaRow({
     return (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-slate-500 sm:text-[13.5px]">
             <Link
+                prefetch={false}
                 href={`/articles/category/${encodeURIComponent(category)}`}
                 className="rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
             >

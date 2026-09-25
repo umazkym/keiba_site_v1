@@ -40,6 +40,7 @@ export function DataHubActionLink({
     const Icon = config.Icon;
     return (
         <Link
+            prefetch={false}
             href={href}
             onClick={() => {
                 sendDataHubActionClickEvent({

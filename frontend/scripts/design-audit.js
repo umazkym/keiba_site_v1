@@ -540,6 +540,28 @@ const checks = [
     })(),
   },
   {
+    id: 'links-no-background-prefetch',
+    description: 'サイト内のリンク（next/link）はすべて prefetch={false}。先読み（?_rsc=）は Cloudflare のキャッシュを通らず Cloud Run へ届き、Cloudflare のレート制限にも数えられる。以前はヘッダー・フッターだけで1回の表示ごとに10〜13件出ていた（2026-09-25）',
+    passed: (() => {
+      const walk = (dir) => fs.readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((entry) => {
+        const relative = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) return walk(relative);
+        return relative.endsWith('.tsx') ? [relative] : [];
+      });
+      const offenders = [...walk('components'), ...walk('app')].flatMap((relativePath) => {
+        // JSX と行のコメントの中のリンクは数えない
+        const source = fs.readFileSync(path.join(root, relativePath), 'utf8')
+          .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+          .replace(/\/\*[\s\S]*?\*\//g, '');
+        return [...source.matchAll(/<Link\b[\s\S]*?>/g)]
+          .filter((match) => !match[0].includes('prefetch'))
+          .map(() => relativePath);
+      });
+      if (offenders.length) console.log(`  prefetch の指定がないリンク: ${[...new Set(offenders)].join(', ')}`);
+      return offenders.length === 0;
+    })(),
+  },
+  {
     id: 'article-top-switcher-removed',
     description: '省略表示ばかりになる記事上部の前後ナビを置かない',
     passed: !entityArticleDocument.includes('ArticleThemeNavigator')

@@ -9,17 +9,18 @@ type FooterProps = {
 type FooterLink = {
     href: string;
     label: string;
-    prefetch?: false;
 };
 
+// フッターのリンクは先読みしない。全ページの下にあるため、画面に入るたびに約10件の先読み（?_rsc=）が
+// Cloudflare のキャッシュを通らずに Cloud Run へ届き、/faq・/about などが1日約400件ずつ数えられていた（2026-09-25）。
 export const Footer = ({ todayString }: FooterProps) => {
     const socialLinks = getConfiguredSocialLinks();
     const groups: Array<{ title: string; links: FooterLink[] }> = [
         {
             title: '分析',
             links: [
-                { href: `/races/${todayString}`, label: '本日のレース分析', prefetch: false },
-                { href: '/results/accuracy', label: 'AI予想の成績', prefetch: false },
+                { href: `/races/${todayString}`, label: '本日のレース分析' },
+                { href: '/results/accuracy', label: 'AI予想の成績' },
                 { href: '/about-ai', label: 'AI予測モデルについて' },
                 { href: '/faq', label: 'よくある質問' },
             ],
@@ -27,10 +28,10 @@ export const Footer = ({ todayString }: FooterProps) => {
         {
             title: 'データと記事',
             links: [
-                { href: '/keiba-data', label: '競馬データベース', prefetch: false },
-                { href: '/horses', label: '競走馬データ', prefetch: false },
-                { href: '/courses', label: 'コースデータ', prefetch: false },
-                { href: '/articles', label: 'データ分析記事', prefetch: false },
+                { href: '/keiba-data', label: '競馬データベース' },
+                { href: '/horses', label: '競走馬データ' },
+                { href: '/courses', label: 'コースデータ' },
+                { href: '/articles', label: 'データ分析記事' },
                 { href: '/my-data', label: 'マイデータ' },
             ],
         },
@@ -66,7 +67,7 @@ export const Footer = ({ todayString }: FooterProps) => {
                                     <li key={link.href}>
                                         <Link
                                             href={link.href}
-                                            prefetch={link.prefetch}
+                                            prefetch={false}
                                             className="flex min-h-10 items-center text-sm text-night-sub transition-colors duration-150 hover:text-white lg:min-h-9"
                                         >
                                             {link.label}

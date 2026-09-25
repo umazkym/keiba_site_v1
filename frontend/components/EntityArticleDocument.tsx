@@ -58,11 +58,11 @@ export function EntityArticleDocument({
       <article data-article-slug={article.slug} className="mx-auto max-w-[1080px]">
         <header className="flex max-w-[760px] flex-col gap-4 border-b border-slate-200 pb-7 sm:gap-5 sm:pb-9">
           <div className="flex flex-wrap gap-2">
-            <Link href={backHref} className="ui-btn ui-btn--secondary text-[14px]">
+            <Link prefetch={false} href={backHref} className="ui-btn ui-btn--secondary text-[14px]">
               {backLabel}
             </Link>
             {profileHref && profileLabel && profileHref !== backHref && (
-              <Link href={profileHref} className="ui-btn ui-btn--navy text-[14px]">
+              <Link prefetch={false} href={profileHref} className="ui-btn ui-btn--navy text-[14px]">
                 {profileLabel}
               </Link>
             )}

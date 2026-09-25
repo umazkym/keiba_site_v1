@@ -38,6 +38,7 @@ const GroupLinks = ({ groups }: { groups: ArchiveGroup[] }) => (
     <div className="divide-y divide-slate-100">
         {groups.filter(group => group.articleCount > 0).map(group => (
             <Link
+                prefetch={false}
                 key={group.href}
                 href={group.href}
                 className="flex min-h-11 items-center justify-between gap-3 px-3.5 py-2.5 text-[14px] font-bold text-slate-800 transition-colors duration-150 hover:bg-slate-50 hover:text-brand-700"

@@ -74,6 +74,7 @@ export default function NotFound() {
             <div className="mt-5 flex flex-wrap justify-center gap-x-5">
                 {SUB_LINKS.map((link) => (
                     <Link
+                        prefetch={false}
                         key={link.href}
                         href={link.href}
                         className="flex min-h-11 items-center text-sm text-slate-600 transition-colors duration-150 hover:text-brand-700"

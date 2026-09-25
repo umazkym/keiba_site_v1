@@ -125,10 +125,10 @@ export default function TrackConditionPage() {
         <section className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
           <h2 className="text-xl font-black text-slate-950">関連して確認したいページ</h2>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link href="/keiba-data/horse-weight" className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
+            <Link prefetch={false} href="/keiba-data/horse-weight" className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
               馬体重を見る
             </Link>
-            <Link href="/courses" className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
+            <Link prefetch={false} href="/courses" className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
               コース別データ
             </Link>
             <Link prefetch={false} href="/races/today" className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white hover:bg-primary-light">

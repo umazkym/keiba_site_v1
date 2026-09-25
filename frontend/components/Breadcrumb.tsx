@@ -242,6 +242,7 @@ export function Breadcrumb({ items }: BreadcrumbProps = {}) {
               <>
                 <Link
                   href={item.href}
+                  prefetch={false}
                   className="whitespace-nowrap font-medium text-slate-500 transition-colors duration-150 hover:text-brand-700"
                 >
                   {item.label}

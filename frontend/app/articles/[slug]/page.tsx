@@ -246,13 +246,14 @@ export default async function ArticlePage({ params }: Props) {
             {/* ===== 記事フッター ===== */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pb-6 pt-5 sm:pb-8 sm:pt-6">
               <Link
+                prefetch={false}
                 href={`/articles/category/${encodeURIComponent(article.category)}`}
                 className="inline-flex min-h-11 items-center gap-1.5 text-[14px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600"
               >
                 {article.category}の記事をもっと読む
                 <LineIcon name="chevR" size={16} className="block" />
               </Link>
-              <Link href="/articles" className="ui-btn ui-btn--secondary gap-1.5 text-[14px]">
+              <Link prefetch={false} href="/articles" className="ui-btn ui-btn--secondary gap-1.5 text-[14px]">
                 <LineIcon name="book" size={18} className="block" />
                 記事の一覧へ
               </Link>

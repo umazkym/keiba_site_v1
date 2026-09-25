@@ -29,7 +29,7 @@ export default function Error({
                     <LineIcon name="refresh" size={18} />
                     もう一度読み込む
                 </button>
-                <Link href="/" className="ui-btn ui-btn--secondary">
+                <Link prefetch={false} href="/" className="ui-btn ui-btn--secondary">
                     ホームへ戻る
                 </Link>
             </div>

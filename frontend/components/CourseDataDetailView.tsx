@@ -225,12 +225,12 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
                     今日のレースで確認する
                 </Link>
                 {relatedArticleHref && (
-                    <Link href={relatedArticleHref} className="ui-btn ui-btn--secondary gap-1.5">
+                    <Link prefetch={false} href={relatedArticleHref} className="ui-btn ui-btn--secondary gap-1.5">
                         <LineIcon name="book" size={18} className="block" />
                         関連記事を読む
                     </Link>
                 )}
-                <Link href="/compare" className="ui-btn ui-btn--secondary gap-1.5">
+                <Link prefetch={false} href="/compare" className="ui-btn ui-btn--secondary gap-1.5">
                     <LineIcon name="compare" size={18} className="block" />
                     競走馬の成績を比べる
                 </Link>

@@ -82,7 +82,7 @@ function ArticlePagination({
   return (
     <nav className="mt-6 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2" aria-label="ページナビゲーション">
       {currentPage > 1 && (
-        <Link href={buildUrl(currentPage - 1)} className={stepClass}>
+        <Link prefetch={false} href={buildUrl(currentPage - 1)} className={stepClass}>
           <LineIcon name="chevL" size={16} className="block" />
           前へ
         </Link>
@@ -98,6 +98,7 @@ function ArticlePagination({
         const isCurrent = p === currentPage;
         return (
           <Link
+            prefetch={false}
             key={p}
             href={buildUrl(p)}
             aria-current={isCurrent ? "page" : undefined}
@@ -111,7 +112,7 @@ function ArticlePagination({
         );
       })}
       {currentPage < totalPages && (
-        <Link href={buildUrl(currentPage + 1)} className={stepClass}>
+        <Link prefetch={false} href={buildUrl(currentPage + 1)} className={stepClass}>
           次へ
           <LineIcon name="chevR" size={16} className="block" />
         </Link>
@@ -270,7 +271,7 @@ function UpcomingGradeRacePickup({
           const latestArticle = group.articles[0];
           return (
             <li key={group.href} className="border-b border-slate-200 last:border-b-0 sm:[&:nth-last-child(2):nth-child(odd)]:border-b-0">
-              <Link href={group.href} className="group flex items-center gap-3 py-3">
+              <Link prefetch={false} href={group.href} className="group flex items-center gap-3 py-3">
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2 text-[12.5px] text-slate-500">
                     <span className="font-bold text-brand-700">{formatRaceDate(group.scheduledDate)}</span>
@@ -356,6 +357,7 @@ function EntityDirectoryLinks({ groups }: { groups: ArchiveGroupList }) {
     <div className="grid gap-1.5">
       {visibleGroups.map((group) => (
         <Link
+          prefetch={false}
           key={group.href}
           href={group.href}
           className="group flex min-h-[40px] items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[14px] font-bold text-slate-800 transition-colors duration-150 hover:bg-slate-50"
@@ -585,6 +587,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
 
           <nav aria-label="記事カテゴリ" className="flex flex-wrap gap-2">
             <Link
+              prefetch={false}
               href="/articles"
               aria-current={!selectedCategory ? "page" : undefined}
               className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-bold transition-colors duration-150 sm:h-10 sm:px-4 sm:text-[14px] ${!selectedCategory ? "bg-navy text-white" : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"}`}
@@ -596,6 +599,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               const isActive = selectedCategory === category;
               return (
                 <Link
+                  prefetch={false}
                   key={category}
                   href={buildArticlesHref({ category })}
                   aria-current={isActive ? "page" : undefined}
@@ -622,7 +626,7 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               <div className="flex flex-col items-center gap-3 rounded-[16px] bg-white px-4 py-12 text-center ring-1 ring-inset ring-slate-200">
                 <GuideHorse size={96} mood="look" />
                 <p className="text-[16px] font-bold text-slate-900">条件に合う記事が見つかりませんでした</p>
-                <Link href="/articles" className="ui-btn ui-btn--primary">
+                <Link prefetch={false} href="/articles" className="ui-btn ui-btn--primary">
                   すべての記事を見る
                 </Link>
               </div>

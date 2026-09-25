@@ -298,6 +298,7 @@ export default async function AccuracyPage({
               <div className="mt-6 flex flex-wrap gap-2">
                 {rangeOptions.map((option) => (
                   <Link
+                    prefetch={false}
                     key={option.days}
                     href={`/results/accuracy?days=${option.days}`}
                     aria-current={selectedDays === option.days ? "page" : undefined}
@@ -470,7 +471,7 @@ export default async function AccuracyPage({
               </div>
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Link href="/keiba-data" className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700 hover:text-primary">
+              <Link prefetch={false} href="/keiba-data" className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700 hover:text-primary">
                 データの見方へ
               </Link>
               <Link prefetch={false} href="/races/today" className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-light">

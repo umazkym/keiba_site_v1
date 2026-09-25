@@ -61,6 +61,7 @@ export default function GradeRacesPage() {
             UMA-FREEでは、枠順確定前、枠順確定後、当日、レース後の4段階で確認すべきデータを分けて整理します。
           </p>
           <Link
+            prefetch={false}
             href="/articles#grade-races"
             className="ui-btn ui-btn--primary mt-5"
           >
@@ -72,7 +73,7 @@ export default function GradeRacesPage() {
           <h2 className="text-xl sm:text-2xl font-black text-slate-950">主要G1の個別ハブ</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             {gradeRaceProfiles.map((race) => (
-              <Link key={race.slug} href={`/grade-races/${race.slug}`} className="group rounded-[14px] bg-white p-5 ring-1 ring-inset ring-slate-200 transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated">
+              <Link prefetch={false} key={race.slug} href={`/grade-races/${race.slug}`} className="group rounded-[14px] bg-white p-5 ring-1 ring-inset ring-slate-200 transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated">
                 <p className="text-xs font-bold text-primary">{race.date} / {race.grade}</p>
                 <h3 className="mt-2 text-lg font-black text-slate-950 group-hover:text-primary">{race.name}</h3>
                 <p className="mt-1 text-sm font-bold text-slate-500">{race.venue}{race.course}</p>
@@ -95,7 +96,7 @@ export default function GradeRacesPage() {
           <h2 className="text-xl sm:text-2xl font-black text-slate-950">公開中の重賞データ記事</h2>
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
             {articleLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="block p-4 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-primary">
+              <Link prefetch={false} key={link.href} href={link.href} className="block p-4 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-primary">
                 {link.label}
               </Link>
             ))}

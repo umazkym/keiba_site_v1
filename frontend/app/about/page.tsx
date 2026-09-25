@@ -42,7 +42,7 @@ const operatorItems = [
     label: "お問い合わせ",
     value: (
       <>
-        <Link href="/contact" className="font-bold text-primary hover:underline">
+        <Link prefetch={false} href="/contact" className="font-bold text-primary hover:underline">
           お問い合わせフォーム
         </Link>
         をご利用ください。

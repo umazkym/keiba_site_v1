@@ -102,7 +102,7 @@ export default function JockeyPage({ params }: Props) {
             <h2 className="font-display text-[19px] font-extrabold text-slate-900 sm:text-[21px]">関連コース</h2>
             <div className="mt-4 flex flex-wrap gap-2">
               {profile.courseLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
+                <Link prefetch={false} key={link.href} href={link.href} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
                   {link.label}
                 </Link>
               ))}
@@ -112,7 +112,7 @@ export default function JockeyPage({ params }: Props) {
             <h2 className="font-display text-[19px] font-extrabold text-slate-900 sm:text-[21px]">関連記事</h2>
             <div className="mt-4 flex flex-wrap gap-2">
               {profile.relatedArticles.map((link) => (
-                <Link key={link.href} href={link.href} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
+                <Link prefetch={false} key={link.href} href={link.href} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:text-primary">
                   {link.label}
                 </Link>
               ))}

@@ -155,6 +155,7 @@ export function DataSearchPanel({
                     />
                     {completeQuery && (
                         <Link
+                            prefetch={false}
                             href={`/search?q=${encodeURIComponent(completeQuery)}`}
                             className="mr-1.5 inline-flex min-h-10 shrink-0 items-center rounded-md bg-brand-600 px-3 text-sm font-bold text-white transition-colors duration-150 hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
                         >

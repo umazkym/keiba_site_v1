@@ -109,7 +109,7 @@ export default function AboutAiPage() {
             評価では、単なる的中率だけでなく、確率予測のズレや条件別の得意・不得意も確認します。
             どの条件で参考にしやすく、どの条件で慎重に扱うべきかを把握することを重視しています。
           </p>
-          <Link href="/results/accuracy" className="inline-flex rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary">
+          <Link prefetch={false} href="/results/accuracy" className="inline-flex rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary">
             AI予想成績を確認する
           </Link>
         </InfoSection>

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo, useRef, type CSSProperties } from 'react';
 import { useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -11,11 +11,9 @@ import { VenueRaces, RaceDayPrediction, type RacePrediction } from '@/lib/types'
 import { RaceSelector, type RaceSelectorLink } from './RaceSelector';
 import { RacePageJumpNav } from './RacePageJumpNav';
 import { LineIcon, type LineIconName } from './LineIcon';
-import { FinishBadge, HorseNumber, MarkGlyph } from './RaceParts';
+import { HorseNumber } from './RaceParts';
 import { AffiliateSlot } from './AffiliateSlot';
 import { RaceEngagedAd } from './RaceEngagedAd';
-import { RelatedRaces } from './RelatedRaces';
-import { DataExplanationPanel } from './DataExplanationPanel';
 import { DynamicRelatedArticles } from './DynamicRelatedArticles';
 import { DisclaimerNote } from './DisclaimerNote';
 import { RaceArticleMeta } from '@/lib/articles';
@@ -33,7 +31,8 @@ import { getRaceDetailPath } from '@/lib/race-url';
 import { formatDate } from '@/lib/utils';
 import { RACE_BREADCRUMB_CHANGE_EVENT } from '@/lib/race-breadcrumb-event';
 import { getRaceTopObstructionHeight } from '@/hooks/useRaceSectionNavigation';
-import { getAiRanks, getFinishRanks, hasRaceResults, normalizeMark, resolveWaku } from '@/lib/race-display';
+import { getTopAiPredictions, resolveWaku } from '@/lib/race-display';
+import { StartPositionChart } from './StartPositionChart';
 
 const MatchupTable = dynamic(
     () => import('./MatchupTable').then((module) => module.MatchupTable),
@@ -45,25 +44,25 @@ const MatchupTable = dynamic(
 
 const StableMatchupTable = ({ race }: { race: RacePrediction }) => {
     const runnerCount = race.predictions.length;
-    const boundaryClassName = runnerCount >= 16
-        ? 'min-h-[500px] md:min-h-[760px]'
+    // スマホは AI上位5頭×5 の表（MatchupTable の MobileTopFiveView）。見出し約77px ＋ 表（50px ＋ 1行48px）
+    const mobileRows = Math.max(2, getTopAiPredictions(race.predictions, 5).length);
+    const mobileMinHeight = 127 + mobileRows * 48;
+    const desktopClassName = runnerCount >= 16
+        ? 'md:min-h-[760px]'
         : runnerCount >= 10
-            ? 'min-h-[390px] md:min-h-[560px]'
-            : 'min-h-[310px] md:min-h-[420px]';
+            ? 'md:min-h-[560px]'
+            : 'md:min-h-[420px]';
 
     return (
-        <div className={boundaryClassName}>
+        <div
+            className={`min-h-[var(--matchup-boundary-mobile)] ${desktopClassName}`}
+            style={{ '--matchup-boundary-mobile': `${mobileMinHeight}px` } as CSSProperties}
+        >
             <MatchupTable race={race} />
         </div>
     );
 };
-const StartPositionChart = dynamic(
-    () => import('./StartPositionChart').then((module) => module.StartPositionChart),
-    {
-        ssr: false,
-        loading: () => <div className="min-h-32 rounded-lg bg-slate-50 md:min-h-[184px]" aria-busy="true" aria-label="展開予測を読み込み中" />,
-    },
-);
+// 展開予測は3段（先行・中団・後方）の高さが馬の並びで変わるため、読み込み後に高さが変わらないようサーバーでも描く
 const HorseNumberAdvantageChart = dynamic(
     () => import('./HorseNumberAdvantageChart').then((module) => module.HorseNumberAdvantageChart),
     {
@@ -112,55 +111,6 @@ const PremiumDetailPlaceholder = memo(({ showAd }: { showAd: boolean }) => (
 ));
 
 PremiumDetailPlaceholder.displayName = 'PremiumDetailPlaceholder';
-
-// 結果が出たレースの上位3頭と、印を付けた馬の着順（数え方は変えない）。
-const RaceResultCard = ({ race }: { race: RacePrediction }) => {
-    const finishRanks = getFinishRanks(race);
-    const aiRanks = getAiRanks(race.predictions);
-    const podium = Array.from(finishRanks.entries())
-        .filter(([, rank]) => rank <= 3)
-        .sort((a, b) => a[1] - b[1])
-        .map(([horseNumber, rank]) => ({
-            rank,
-            horseNumber,
-            prediction: race.predictions.find((p) => p.horse_number === horseNumber),
-            name: race.predictions.find((p) => p.horse_number === horseNumber)?.horse_name
-                ?? race.results.find((r) => r.horse_number === horseNumber)?.horse_name
-                ?? '',
-        }));
-    const marked = race.predictions
-        .filter((p) => ['◎', '○'].includes(normalizeMark(p.mark) ?? ''))
-        .filter((p) => finishRanks.has(p.horse_number));
-    if (podium.length === 0) return null;
-    return (
-        <section className="race-panel px-3 py-3.5 md:px-5 md:py-4" aria-labelledby="race-result-heading">
-            <h2 id="race-result-heading" className="race-section-heading race-section-heading--flush">このレースの結果</h2>
-            <ol className="flex flex-col">
-                {podium.map((row) => (
-                    <li key={row.horseNumber} className="flex min-h-12 items-center gap-2.5 border-b border-slate-200 last:border-b-0">
-                        <FinishBadge rank={row.rank} size={28} />
-                        <HorseNumber number={row.horseNumber} waku={row.prediction ? resolveWaku(row.prediction, race.predictions.length) : null} size={26} />
-                        <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-slate-900">{row.name}</span>
-                        {row.prediction && normalizeMark(row.prediction.mark) && <MarkGlyph mark={row.prediction.mark} size={16} />}
-                        <span className="whitespace-nowrap text-[12px] text-slate-500">
-                            {aiRanks.get(row.horseNumber) ? `AI ${aiRanks.get(row.horseNumber)}位` : 'AI対象外'}
-                        </span>
-                    </li>
-                ))}
-            </ol>
-            {marked.length > 0 && (
-                <p className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-slate-700">
-                    {marked.map((p) => (
-                        <span key={p.horse_number} className="inline-flex items-center gap-1.5">
-                            <MarkGlyph mark={p.mark} size={15} />
-                            {p.horse_name}は<b className="font-num text-[15px]">{finishRanks.get(p.horse_number)}</b>着
-                        </span>
-                    ))}
-                </p>
-            )}
-        </section>
-    );
-};
 
 const REWARD_PREVIEW_ITEMS: Array<{ icon: LineIconName; title: string; description: string }> = [
     { icon: 'swords', title: '対戦成績', description: '出走馬同士の直接比較' },
@@ -447,10 +397,10 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                 <div
                     data-race-selector-sticky
                     data-race-mobile-selector
-                    className="race-sticky-selector sticky z-30 my-2 flex max-h-[88px] flex-col gap-1 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 lg:h-14 lg:flex-row lg:items-center lg:gap-3 lg:px-2"
+                    className="race-sticky-selector sticky z-30 my-2 flex max-h-[88px] flex-col overflow-hidden rounded-xl bg-white ring-1 ring-inset ring-slate-200 lg:h-14 lg:flex-row lg:items-center lg:gap-3 lg:px-2"
                     aria-label="選択中のレースと1Rから12Rの切替"
                 >
-                    <div className="flex h-7 shrink-0 items-center gap-2 px-1 lg:h-full lg:w-[250px] lg:border-r lg:border-slate-200 lg:pr-3">
+                    <div className="flex h-11 shrink-0 items-center gap-2 px-2 lg:h-full lg:w-[250px] lg:border-r lg:border-slate-200 lg:pr-3">
                         <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md bg-navy px-1.5 text-[12px] font-bold text-white">
                             {venue.venue_name}
                             <span className="font-num text-[14px]">{activeRace.race_number}R</span>
@@ -459,7 +409,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                         <Link
                             href={`/races/${currentDate}`}
                             prefetch={false}
-                            className="shrink-0 text-[12px] font-bold text-brand-700 hover:text-navy lg:hidden"
+                            className="-mr-1 inline-flex h-11 shrink-0 items-center px-2 text-[12px] font-bold text-brand-700 hover:text-navy lg:hidden"
                         >
                             全レース
                         </Link>
@@ -485,13 +435,14 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                 >
                     <div className="grid gap-1.5 sm:gap-3">
                         <div id="race-prediction-section" className="race-panel overflow-hidden">
-                            <PredictionTable race={activeRace} refreshKey={adRefreshKey} />
+                            <PredictionTable
+                                race={activeRace}
+                                refreshKey={adRefreshKey}
+                            />
                             <RaceHorseActions predictions={activeRace.predictions} />
                         </div>
 
-                        <DisclaimerNote className="px-1.5 md:px-1" />
-
-                        {hasRaceResults(activeRace) && <RaceResultCard race={activeRace} />}
+                        <DisclaimerNote className="sm:px-1.5 md:px-1" />
 
                         <AffiliateSlot
                             context="race_after_prediction"
@@ -499,42 +450,39 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                             venueName={venue.venue_name}
                             selectionKey={`prediction-read-${adRefreshKey}`}
                             variant="compact"
-                            className="my-1 sm:my-1.5"
                         />
 
-                        <RaceConditionComparison raceId={activeRace.id} />
-
-                        <div id="race-detail-data-section">
+                        {/* スマホは中の塊どうしの間も、外の並びと同じ 10px にする（PC は各部品の下の余白のまま） */}
+                        <div id="race-detail-data-section" className="flex flex-col gap-2.5 sm:block">
                         {/* プレミアム・ロック切り替え部分 */}
                         {(activeRace && isPremiumDetailVisible) ? (
                             isWaitingForRewardDecision ? (
                                 <PremiumDetailPlaceholder showAd={Boolean(shouldShowAd)} />
                             ) : (
                                 <>
-                                <div id="race-matchup-section" className="mb-1.5">
+                                <div id="race-matchup-section" className="sm:mb-1.5">
                                     <StableMatchupTable race={activeRace} />
                                 </div>
 
-                                <div className="mb-2 grid gap-2 md:gap-3 xl:grid-cols-2">
-                                    <section className="race-analysis-panel race-panel flex flex-col px-3 pb-3 pt-3.5 md:px-5 md:pb-4 md:pt-4">
+                                <div className="grid gap-2.5 sm:mb-2 sm:gap-2 md:gap-3 xl:grid-cols-2">
+                                    <section className="race-analysis-panel race-panel flex flex-col px-3.5 pb-3.5 pt-3 md:px-5 md:pb-4 md:pt-4">
                                         <h2 id="race-detail-heading" className="race-section-heading race-section-heading--flush">展開予測</h2>
-                                        <p className="race-section-lead">序盤（1コーナー）の位置取りの予測。右ほど前です。琥珀の輪はAI偏差値の上位3頭です。</p>
-                                        <div className="race-analysis-visual">
-                                            <StartPositionChart predictions={activeRace.predictions} />
-                                        </div>
+                                        <p className="race-section-lead">1コーナーの位置取り予測。琥珀の輪はAI上位3頭。</p>
+                                        <StartPositionChart predictions={activeRace.predictions} />
                                     </section>
 
-                                    <section className="race-analysis-panel race-panel flex flex-col px-3 pb-3 pt-3.5 md:px-5 md:pb-4 md:pt-4">
+                                    <section className="race-analysis-panel race-panel flex flex-col px-3.5 pb-3.5 pt-3 md:px-5 md:pb-4 md:pt-4">
                                         <h2 id="race-frame-heading" className="race-section-heading race-section-heading--flush">馬番の傾向</h2>
                                         <p className="race-section-lead">
-                                            {venue.venue_name}{activeRace.course_type ?? ''}{activeRace.distance ? `${activeRace.distance}m` : ''}の過去データで、今回の出走馬の馬番だけを並べています。
+                                            {venue.venue_name}{activeRace.course_type ?? ''}{activeRace.distance ? `${activeRace.distance}m` : ''}の過去データ。上ほど有利
                                         </p>
-                                        <div className="race-analysis-visual">
+                                        <div className="h-[128px] md:h-[220px]">
                                             <HorseNumberAdvantageChart
                                                 advantages={activeRace.horse_number_advantages}
                                                 courseType={activeRace.course_type}
                                                 distance={activeRace.distance}
                                                 runnerNumbers={activeRace.predictions.map((p) => p.horse_number)}
+                                                runnerWaku={Object.fromEntries(activeRace.predictions.map((p) => [p.horse_number, resolveWaku(p, activeRace.predictions.length)]))}
                                             />
                                         </div>
                                     </section>
@@ -542,7 +490,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                                 </>
                             )
                         ) : shouldShowRewardGate ? (
-                            <div className="relative mb-2 overflow-hidden rounded-xl" style={{ minHeight: '320px' }}>
+                            <div className="relative overflow-hidden rounded-xl sm:mb-2" style={{ minHeight: '320px' }}>
                                 {/* 背景: ぼかした実データ */}
                                 <div className="select-none pointer-events-none" aria-hidden="true">
                                     <div className="blur-[6px] opacity-60">
@@ -595,11 +543,14 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                         ) : null}
 
                         {/* AIレース展望（常時表示、SEO・滞在時間向上） */}
-                        <div id="race-analysis-section" className="mb-1.5">
+                        <div id="race-analysis-section" className="sm:mb-1.5">
                             <RaceAnalysis race={activeRace} />
                         </div>
 
                         </div>
+
+                        {/* 同じ条件の過去成績（騎手・調教師）。見本に無い補足のため、分析の後ろに置く（2026-09-25） */}
+                        <RaceConditionComparison raceId={activeRace.id} />
 
                         {engagedAdSlot && (
                             <RaceEngagedAd slot={engagedAdSlot} pageKey={currentDate} />
@@ -625,7 +576,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                                             <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-slate-700">
                                                 AI 1位
                                                 <HorseNumber number={nextTopHorse.horse_number} waku={resolveWaku(nextTopHorse, nextRace.predictions.length)} size={20} />
-                                                <span className="truncate">{nextTopHorse.horse_name}</span>
+                                                <span className="min-w-0 break-words">{nextTopHorse.horse_name}</span>
                                                 <b className="font-num text-[15px] text-ai-deep">{nextTopHorse.deviation_score.toFixed(1)}</b>
                                             </span>
                                         )}
@@ -633,7 +584,7 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                                     <LineIcon name="chevR" size={20} className="block shrink-0 text-slate-500" />
                                 </>
                             );
-                            const cardClass = 'my-2 flex w-full items-center gap-3.5 rounded-xl border border-slate-200 bg-white p-3.5 text-left transition-colors duration-150 hover:border-brand-300 md:p-4';
+                            const cardClass = 'flex w-full items-center gap-3.5 rounded-xl border border-slate-200 bg-white p-3.5 text-left transition-colors duration-150 hover:border-brand-300 sm:my-2 md:p-4';
                             if (nextRace) {
                                 return (
                                     <button type="button" onClick={() => handleRaceSelect(activeRaceIndex + 1, 'analysis_next_button')} className={cardClass}>
@@ -658,13 +609,8 @@ const VenuePanel = memo(({ venue, raceType, articlesMeta, initialRaceNumber, rac
                             );
                         })()}
 
-                        <div id="race-data-guide-section">
-                            <DataExplanationPanel showAdvanced={true} />
-                        </div>
-
-                        {/* 広告過密削減のため、データ解説後のInFeedAdを廃止 */}
-
-                        <RelatedRaces currentRace={activeRace} currentDate={activeRace.race_date.toString()} />
+                        {/* 以前はここに「AI偏差値・馬番の傾向の見方」（開閉）と「他の日付の分析もチェック」を置いていた。
+                            見本に無く、見方は表の「?」、ほかの日付は末尾の「前日／この日の全レース／翌日」と重なるため外した（2026-09-25） */}
 
                         {/* MultiplexAd削除: 最下部のviewable率が極端に低い広告を廃止（Active View 27-45%改善施策） */}
 

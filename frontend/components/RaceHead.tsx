@@ -1,15 +1,12 @@
 // レース詳細の見出し（サーバーで描く）。会場×Rのプレート・レース名・グレード・条件・コース図。
-// 重賞は季節の写真を入口に置く（スマホは上の帯、PCは右側）。結果が出ていれば1着とAI順位を並べる。
+// 重賞は季節の写真を入口に置く（スマホは上の帯、PCは右側）。当該レースの着順・結果は表示しない。
 import type { RacePrediction } from '@/lib/types';
 import { CourseGlyph } from '@/components/CourseGlyph';
-import { GradeBadge, HorseNumber, RacePlate, SurfaceLabel } from '@/components/RaceParts';
+import { GradeBadge, RacePlate, SurfaceLabel } from '@/components/RaceParts';
 import {
     formatRaceDateLabel,
-    getAiRanks,
-    getFinishRanks,
     getSeason,
     getSurfaceLabel,
-    resolveWaku,
 } from '@/lib/race-display';
 
 type RaceHeadProps = {
@@ -32,31 +29,6 @@ function GradePhoto({ raceDate, className, sizes }: { raceDate: string; classNam
     );
 }
 
-function ResultLine({ race }: { race: RacePrediction }) {
-    const finishRanks = getFinishRanks(race);
-    const winnerNumber = Array.from(finishRanks.entries()).find(([, rank]) => rank === 1)?.[0];
-    if (winnerNumber == null) return null;
-    const winner = race.predictions.find((p) => p.horse_number === winnerNumber);
-    const winnerName = winner?.horse_name ?? race.results.find((r) => r.horse_number === winnerNumber)?.horse_name ?? '';
-    const aiRank = getAiRanks(race.predictions).get(winnerNumber);
-    const score = winner?.deviation_score;
-    return (
-        <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-xl bg-slate-100 px-3 py-2 text-[13px] text-slate-700 md:inline-flex md:w-fit md:max-w-full md:bg-white/90 md:text-sm">
-            <span className="rounded-[5px] bg-navy px-1.5 py-0.5 text-[11px] font-bold leading-snug text-white">結果確定</span>
-            <span className="inline-flex items-center gap-1.5 font-bold">
-                1着
-                <HorseNumber number={winnerNumber} waku={winner ? resolveWaku(winner, race.predictions.length) : null} size={22} />
-                {winnerName}
-            </span>
-            <span>
-                {aiRank
-                    ? `AI偏差値 ${score != null ? score.toFixed(1) : '--'}（${race.predictions.length}頭中${aiRank}位）`
-                    : 'AI偏差値の対象外'}
-            </span>
-        </p>
-    );
-}
-
 // 未発表の馬場・天候は API が「-」などで返すことがあるため、値として扱わない
 const isKnownCondition = (value?: string | null): value is string => Boolean(value && !/^[\s\-‐‑‒–—―−－ー～~・.．?？*]*$/.test(value));
 
@@ -70,7 +42,7 @@ export function RaceHead({ race, venueName }: RaceHeadProps) {
     ].filter(Boolean);
 
     return (
-        <header className="mb-2 flex flex-col gap-2.5 md:mb-3">
+        <header className="-mt-1 mb-2 flex flex-col gap-2 sm:mt-0 md:mb-3 md:gap-2.5">
             {isGrade && (
                 <div className="relative h-[60px] overflow-hidden rounded-xl md:hidden">
                     <GradePhoto raceDate={race.race_date} sizes="100vw" className="absolute inset-0 h-full w-full object-cover object-[60%_40%]" />
@@ -102,24 +74,22 @@ export function RaceHead({ race, venueName }: RaceHeadProps) {
                             <span className="line-clamp-2 break-words">{race.race_name}</span>
                             <GradeBadge grade={race.grade} size="m" />
                         </h1>
-                        <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] font-bold text-slate-500 md:text-sm">
-                            {/* 重賞はスマホの写真の帯に日付を出すため、ここでは出さない */}
-                            {!isGrade && <span className="md:hidden">{formatRaceDateLabel(race.race_date)}</span>}
+                        <p className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[13px] font-bold text-slate-500 md:gap-y-1 md:text-sm">
+                            {/* 重賞はスマホの写真の帯に日付を出すため、ここでは出さない。スマホは「9/24(木)」の短い形 */}
+                            {!isGrade && <span className="md:hidden">{formatRaceDateLabel(race.race_date, { short: true })}</span>}
                             <SurfaceLabel courseType={race.course_type} distance={race.distance} className="text-[13px] md:text-sm" />
                             {runners > 0 && (
                                 <span className="text-slate-700">
                                     <span className="font-num text-[15px] md:text-base">{runners}</span>頭
                                 </span>
                             )}
+                            {/* 馬場・天候：スマホは枠の無い文字（以前の札は3行目の高さを増やしていた）、PC は札 */}
                             {conditions.map((condition) => (
-                                <span key={condition} className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[12px] text-slate-700">
+                                <span key={condition} className="text-[12px] text-slate-700 md:rounded-md md:border md:border-slate-200 md:bg-white md:px-1.5 md:py-0.5">
                                     {condition}
                                 </span>
                             ))}
                         </p>
-                        <div className="hidden md:block">
-                            <ResultLine race={race} />
-                        </div>
                     </div>
 
                     <CourseGlyph
@@ -139,10 +109,6 @@ export function RaceHead({ race, venueName }: RaceHeadProps) {
                     </figure>
                 </div>
             </section>
-
-            <div className="md:hidden">
-                <ResultLine race={race} />
-            </div>
         </header>
     );
 }

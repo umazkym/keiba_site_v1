@@ -12,7 +12,7 @@ import { enhanceArticleHtml } from '@/lib/article-ux';
 import { ArticleEngagementTracker } from '@/components/ArticleEngagementTracker';
 import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
 import { ArticleBody } from '@/components/ArticleBody';
-import { ArticleCover, ArticleMetaRow, ArticleToc, ArticleValueGuide } from '@/components/ArticleParts';
+import { ArticleCover, ArticleMetaRow, ArticleTitleText, ArticleToc, ArticleValueGuide } from '@/components/ArticleParts';
 import { LineIcon } from '@/components/LineIcon';
 import { estimateReadingMinutes, pickArticleCover } from '@/lib/article-visual';
 import { ArticleRaceBridgeExperiment } from '@/components/ArticleRaceBridgeExperiment';
@@ -135,7 +135,8 @@ export default async function ArticlePage({ params }: Props) {
     const racePhase = article.racePhase || (article.entityType === 'grade_race' ? undefined : 'evergreen');
 
     return (
-      <div className="article-detail-scope min-h-screen bg-white pb-2 pt-1 sm:py-8">
+      // スマホは見本どおり灰色の地に白いカード（目次・FAQ・表）を置く。白い紙面はPCだけ（2026-09-25 スマホの見直し）
+      <div className="article-detail-scope min-h-screen pb-2 pt-1 sm:bg-white sm:py-8">
         <ArticleSchema
           title={article.title}
           description={article.description || textContent.substring(0, 160)}
@@ -155,7 +156,8 @@ export default async function ArticlePage({ params }: Props) {
         {/* 本文に「よくある質問」がある記事だけFAQPageを出す。旧記事では何も出力しない。 */}
         {articleFaqs.length > 0 && <FAQSchema faqs={articleFaqs} />}
 
-        <div className="site-shell-article mx-auto max-w-[1080px] px-4 sm:px-6">
+        {/* スマホの左右の余白は外枠（layout の main）の16pxだけ。ここでは足さない */}
+        <div className="site-shell-article mx-auto max-w-[1080px] sm:px-6">
           <Breadcrumb />
 
           <article
@@ -165,10 +167,11 @@ export default async function ArticlePage({ params }: Props) {
           >
             {/* ===== ARTICLE HEADER =====
                 見出し → リード → カテゴリ・日付・読了時間 → （対応するレースへの導線）→ 写真 → 今日の全レースへの案内 → 目次 */}
-            <header className="flex max-w-[760px] flex-col gap-4 border-b border-slate-200 pb-7 sm:gap-5 sm:pb-9">
+            {/* スマホは区切り線を付けず、本文との間は16px（見本）。PCは従来どおり線で区切る */}
+            <header className="flex max-w-[760px] flex-col gap-3 sm:gap-5 sm:border-b sm:border-slate-200 sm:pb-9">
               <div className="flex flex-col gap-3 sm:gap-4">
-                <h1 className="article-page-title font-display text-[23px] font-extrabold leading-[1.5] text-slate-900 [overflow-wrap:anywhere] sm:text-[30px] lg:text-[34px]">
-                  {article.title}
+                <h1 className="article-page-title font-display text-[23px] font-extrabold leading-[1.5] text-slate-900 [overflow-wrap:anywhere] text-balance sm:text-[30px] sm:text-wrap lg:text-[34px]">
+                  <ArticleTitleText title={article.title} />
                 </h1>
 
                 {article.description && (
@@ -232,7 +235,7 @@ export default async function ArticlePage({ params }: Props) {
             </header>
 
             {/* ===== ARTICLE BODY ===== */}
-            <div className="px-1 pb-6 sm:px-0 sm:pb-10">
+            <div className="sm:pb-10">
               <ArticleBody html={enhancedContent} analyticsPrefix="article" />
             </div>
 
@@ -243,8 +246,9 @@ export default async function ArticlePage({ params }: Props) {
               readingTimeMin={readingTimeMin}
             />
 
-            {/* ===== 記事フッター ===== */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pb-6 pt-5 sm:pb-8 sm:pt-6">
+            {/* ===== 記事フッター =====
+                スマホは線を付けず、2つの文字リンクを1行に（本文の最後の段落の下16pxから）。PCは従来どおり線の下にリンクとボタン */}
+            <div className="flex flex-wrap items-center justify-between gap-x-3 pb-3 sm:gap-3 sm:border-t sm:border-slate-200 sm:pb-8 sm:pt-6">
               <Link
                 prefetch={false}
                 href={`/articles/category/${encodeURIComponent(article.category)}`}
@@ -253,7 +257,15 @@ export default async function ArticlePage({ params }: Props) {
                 {article.category}の記事をもっと読む
                 <LineIcon name="chevR" size={16} className="block" />
               </Link>
-              <Link prefetch={false} href="/articles" className="ui-btn ui-btn--secondary gap-1.5 text-[14px]">
+              <Link
+                prefetch={false}
+                href="/articles"
+                className="inline-flex min-h-11 items-center gap-1 text-[14px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600 sm:hidden"
+              >
+                記事の一覧
+                <LineIcon name="chevR" size={16} className="block" />
+              </Link>
+              <Link prefetch={false} href="/articles" className="ui-btn ui-btn--secondary hidden gap-1.5 text-[14px] sm:inline-flex">
                 <LineIcon name="book" size={18} className="block" />
                 記事の一覧へ
               </Link>
@@ -262,12 +274,12 @@ export default async function ArticlePage({ params }: Props) {
             <ArticleAfterBodyLayout
               articleSlug={params.slug}
               relatedContent={(
-                <div className="pb-6 sm:pb-10">
+                <div className="pb-3 sm:pb-10">
                   <RelatedArticles currentSlug={params.slug} count={3} />
                 </div>
               )}
               adContent={(
-                <div className="pb-5 sm:pb-8">
+                <div className="pb-3 sm:pb-8">
                   <AdUnit slot="1489598374" analyticsPlacement="article_after_body" {...stableArticleAdProps} />
                 </div>
               )}

@@ -1,14 +1,24 @@
 import Link from 'next/link';
-import { DataDirectoryNav } from '@/components/DataDirectoryNav';
 import { DataEntityTracker } from '@/components/DataEntityTracker';
 import { DataFavoriteButton } from '@/components/DataFavoriteButton';
+import { DataSegmentTabs } from '@/components/DataSegmentTabs';
 import { LineIcon, type LineIconName } from '@/components/LineIcon';
 import { HorseCompareButton } from '@/components/HorseCompareButton';
-import { RateSummaryStrip, RecentRunsTable, SegmentStatsTable } from '@/components/DataStats';
+import {
+    normalizeGroundStats,
+    RateSummaryStrip,
+    RecentRunsTable,
+    SegmentStatsTable,
+    sortByNumberKey,
+} from '@/components/DataStats';
 import { FinishBadge } from '@/components/RaceParts';
 import { DataUpcomingRaces } from '@/components/DataUpcomingRaces';
-import type { DataEntityDetail } from '@/lib/types';
+import type { DataEntityDetail, SegmentStat } from '@/lib/types';
 
+// 競走馬・騎手・調教師の詳細（2026-09-25 スマホの見直し）
+// - 見本の構成：見出し → 通算のタイル → 予定 → 条件別の成績 → 最近の成績。データの案内（DataHubNav）は見本に無いので置かない
+// - スマホは左右の余白を足さない（外枠の16pxだけ）。まとまりの間は12px（親の gap）。PC は sm: で今までの間隔
+// - 条件別の表はスマホだけタブで1枚にまとめる（表は全部 HTML に残す）。PC は今までどおり表ごとのカード
 
 const entityLabels = {
     horse: '競走馬',
@@ -22,11 +32,42 @@ const entityIcons: Record<keyof typeof entityLabels, LineIconName> = {
     trainer: 'user',
 };
 
+// 導入文で名前の後ろに付ける呼び方
+const nameSuffixes: Record<keyof typeof entityLabels, string> = {
+    horse: '',
+    jockey: '騎手',
+    trainer: '調教師',
+};
+
+const lastRaceLabels: Record<keyof typeof entityLabels, string> = {
+    horse: '最終出走',
+    jockey: '最終騎乗',
+    trainer: '最終出走',
+};
+
+const recentTitles: Record<keyof typeof entityLabels, string> = {
+    horse: '近走成績',
+    jockey: '最近の騎乗',
+    trainer: '管理馬の最近の成績',
+};
+
+// 条件別の表に出す最小の対象数（API の minimum_sample と同じ）
+const MINIMUM_SAMPLE = 2;
+
 const JST_DATE = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'long', day: 'numeric', weekday: 'short' });
 const formatLastRace = (value: string | null) => {
     if (!value) return '確認できません';
     const date = new Date(`${value.slice(0, 10)}T00:00:00+09:00`);
     return Number.isNaN(date.getTime()) ? value : JST_DATE.format(date);
+};
+
+type SegmentTabSpec = {
+    key: string;
+    label: string;
+    title: string;
+    firstLabel: string;
+    items: SegmentStat[];
+    linkPrefix?: string;
 };
 
 export function DataEntityDetailView({
@@ -38,10 +79,28 @@ export function DataEntityDetailView({
 }) {
     const entity = detail.entity;
     const pageUrl = entity.url;
-    return (
-        <article className="site-shell-data px-3.5 pb-14 pt-3 sm:px-5">
-            <DataDirectoryNav current={entityType} />
+    const isHorse = entityType === 'horse';
 
+    const segmentTabs: SegmentTabSpec[] = [
+        { key: 'courses', label: 'コース', title: 'コース別', firstLabel: 'コース', items: detail.segments.courses ?? [], linkPrefix: '/courses/' },
+        { key: 'distances', label: '距離', title: '距離別', firstLabel: '距離', items: sortByNumberKey(detail.segments.distances ?? []) },
+        { key: 'grounds', label: '馬場', title: '馬場状態別', firstLabel: '馬場', items: normalizeGroundStats(detail.segments.grounds ?? []) },
+        { key: 'popularities', label: '人気', title: '人気別', firstLabel: '人気', items: sortByNumberKey(detail.segments.popularities ?? []) },
+    ].filter((tab) => tab.items.length > 0);
+
+    const favoriteButton = (
+        <DataFavoriteButton
+            entityType={entityType}
+            entityId={entity.id}
+            name={entity.name}
+            subtitle={entity.subtitle}
+            url={pageUrl}
+            headPlacement={!isHorse}
+        />
+    );
+
+    return (
+        <article className="site-shell-data flex flex-col gap-3 pb-2 pt-1.5 sm:block sm:px-5 sm:pb-14 sm:pt-3">
             <DataEntityTracker
                 entityType={entityType}
                 entityId={entity.id}
@@ -51,13 +110,18 @@ export function DataEntityDetailView({
                 sampleSize={entity.sample_size}
                 indexable={entity.indexable}
             />
-            <header className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div className="flex min-w-0 items-center gap-4">
+            {/* 保存はスマホでは名前の右上に小さく置き、行を増やさない（競走馬は比較のボタンもあるので下に並べる） */}
+            <header
+                className={isHorse
+                    ? 'flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4'
+                    : 'relative flex items-center gap-4 sm:items-end sm:justify-between'}
+            >
+                <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
                     <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-navy/10 sm:h-[72px] sm:w-[72px]" aria-hidden="true">
                         <LineIcon name={entityIcons[entityType]} size={30} className="block h-7 w-7 text-navy sm:h-9 sm:w-9" />
                     </span>
-                    <div className="flex min-w-0 flex-col gap-1">
-                        <p className="text-[13px] font-bold text-slate-500">{entityLabels[entityType]}データ</p>
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                        <p className={`text-[13px] font-bold text-slate-500 ${isHorse ? '' : 'pr-20 sm:pr-0'}`}>{entityLabels[entityType]}データ</p>
                         <h1 className="flex flex-wrap items-center gap-2 font-display text-[26px] font-extrabold leading-tight text-slate-900 sm:text-[34px]">
                             <span className="[overflow-wrap:anywhere]">{entity.name}</span>
                             {entity.affiliation && (
@@ -67,76 +131,68 @@ export function DataEntityDetailView({
                             )}
                         </h1>
                         <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-[12.5px] text-slate-500 sm:text-[13px]">
-                            <span>集計対象 <span className="font-num font-semibold">{entity.sample_size.toLocaleString('ja-JP')}</span>走</span>
-                            <span>最終出走 {formatLastRace(entity.last_race_date)}</span>
+                            <span className="whitespace-nowrap">集計対象 <span className="font-num font-semibold">{entity.sample_size.toLocaleString('ja-JP')}</span>走</span>
+                            <span className="whitespace-nowrap">{lastRaceLabels[entityType]} {formatLastRace(entity.last_race_date)}</span>
                         </p>
                     </div>
                 </div>
-                <div className="flex shrink-0 flex-wrap gap-2">
-                    <DataFavoriteButton
-                        entityType={entityType}
-                        entityId={entity.id}
-                        name={entity.name}
-                        subtitle={entity.subtitle}
-                        url={pageUrl}
-                    />
-                    {entityType === 'horse' && (
+                {isHorse ? (
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                        {favoriteButton}
                         <HorseCompareButton
                             horseId={entity.id}
                             horseName={entity.name}
                             url={pageUrl}
                         />
-                    )}
-                </div>
+                    </div>
+                ) : (
+                    <div className="absolute -top-1 right-0 sm:static sm:shrink-0">
+                        {favoriteButton}
+                    </div>
+                )}
             </header>
-            <p className="mt-3 max-w-3xl text-[14px] leading-[1.75] text-slate-700 sm:text-[15px]">
-                コース・距離・馬場状態・人気別の成績を、対象の出走数とあわせて集計しています。
+            {/* ページの導入文（検索・審査のため1文だけ残す） */}
+            <p className="max-w-3xl text-[14px] leading-[1.75] text-slate-700 sm:mt-3 sm:text-[15px]">
+                {entity.name}{nameSuffixes[entityType]}のコース・距離・馬場・人気別の成績です。
             </p>
 
-            <div className="mt-5">
+            <div className="sm:mt-5">
                 <RateSummaryStrip summary={detail.overall} label={`${entity.name}の全集計成績`} />
             </div>
 
-            {detail.upcoming_races.length > 0 && (
-                <DataUpcomingRaces races={detail.upcoming_races} entityType={entityType} />
-            )}
+            <DataUpcomingRaces races={detail.upcoming_races} entityType={entityType} className="sm:mt-6" />
 
-            <div className="mt-6 grid gap-5 lg:grid-cols-2">
-                <SegmentStatsTable
-                    title="コース別"
-                    description="競馬場・コース種別・距離を組み合わせた成績です。タップでコース詳細へ。"
-                    items={detail.segments.courses ?? []}
-                    linkPrefix="/courses/"
-                />
-                <SegmentStatsTable
-                    title="距離別"
-                    description="距離ごとの出走結果を比較します。"
-                    items={detail.segments.distances ?? []}
-                />
-                <SegmentStatsTable
-                    title="馬場状態別"
-                    description="良・稍重・重・不良などの馬場状態別集計です。"
-                    items={detail.segments.grounds ?? []}
-                />
-                <SegmentStatsTable
-                    title="人気別"
-                    description="当時の人気帯と結果を並べています。"
-                    items={detail.segments.popularities ?? []}
-                />
-            </div>
+            <DataSegmentTabs
+                title="条件別の成績"
+                className="sm:mt-6"
+                note={`対象${MINIMUM_SAMPLE}走以上の条件だけを表示しています。`}
+                tabs={segmentTabs.map((tab) => ({
+                    key: tab.key,
+                    label: tab.label,
+                    panel: (
+                        <SegmentStatsTable
+                            inTabs
+                            headingId={`entity-segment-${tab.key}-heading`}
+                            title={tab.title}
+                            firstLabel={tab.firstLabel}
+                            items={tab.items}
+                            linkPrefix={tab.linkPrefix}
+                        />
+                    ),
+                }))}
+            />
 
-            <div className="mt-6">
-                <RecentRunsTable
-                    title={entityType === 'horse' ? '近走成績' : '最近の騎乗・管理成績'}
-                    runs={detail.recent_runs}
-                    showHorse={entityType !== 'horse'}
-                />
-            </div>
+            <RecentRunsTable
+                className="sm:mt-6"
+                title={recentTitles[entityType]}
+                runs={detail.recent_runs}
+                showHorse={!isHorse}
+            />
 
-            {entityType === 'horse' && detail.prediction_history.length > 0 && (
-                <section className="mt-6 overflow-hidden rounded-[14px] bg-white ring-1 ring-inset ring-slate-200" aria-labelledby="entity-prediction-history-heading">
-                    <div className="px-4 pb-2 pt-4 sm:px-5">
-                        <h2 id="entity-prediction-history-heading" className="font-display text-[17px] font-extrabold text-slate-900 sm:text-[19px]">AI偏差値の履歴</h2>
+            {isHorse && detail.prediction_history.length > 0 && (
+                <section className="overflow-hidden rounded-[14px] border border-slate-200 bg-white sm:mt-6" aria-labelledby="entity-prediction-history-heading">
+                    <div className="px-4 pb-2 pt-3.5 sm:px-5 sm:pt-4">
+                        <h2 id="entity-prediction-history-heading" className="font-display text-[18px] font-extrabold text-slate-900 sm:text-[19px]">AI偏差値の履歴</h2>
                         <p className="mt-1 text-[13px] leading-[1.6] text-slate-600">
                             UMA-FREEでAI偏差値を公開したレースの数値と着順です。
                         </p>

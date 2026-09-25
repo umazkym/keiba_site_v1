@@ -1,7 +1,14 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 import { HomeRaceEntryLink } from '@/components/HomeRaceEntryLink';
 import { LineIcon } from '@/components/LineIcon';
+import {
+    getGoogleAdOverlaySnapshot,
+    GOOGLE_AD_OVERLAY_EVENT,
+    type GoogleAdOverlaySnapshot,
+} from '@/lib/google-ad-overlay';
 
 type HomeStickyRaceCtaProps = {
     raceDate: string;
@@ -9,9 +16,26 @@ type HomeStickyRaceCtaProps = {
 };
 
 export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProps) {
+    const [googleOverlay, setGoogleOverlay] = useState(getGoogleAdOverlaySnapshot);
+
+    useEffect(() => {
+        const handleOverlayChange = (event: Event) => {
+            setGoogleOverlay((event as CustomEvent<GoogleAdOverlaySnapshot>).detail);
+        };
+        window.addEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange);
+        return () => window.removeEventListener(GOOGLE_AD_OVERLAY_EVENT, handleOverlayChange);
+    }, []);
+
+    // 下のアンカー広告・全画面の広告が出ている間は隠す（広告の下に隠れて押せないボタンを残さない）。
+    // 位置は動かさない（レース画面の下ナビと同じ考え方。2026-09-25 スマホの見直し）。
+    const isHidden = googleOverlay.bottomAnchorHeight > 0
+        || googleOverlay.offerwallVisible
+        || googleOverlay.dialogVisible;
+
     return (
         <div
-            className="home-sticky-race-cta"
+            className={`home-sticky-race-cta ${isHidden ? 'is-hidden' : ''}`}
+            aria-hidden={isHidden || undefined}
         >
             {/* Safariタブ変色防止: ビューポート最下端にサイト背景色の物理シールドを配置し
                 Safariの色サンプリングが青色ボタンを検出しないようにする */}
@@ -26,7 +50,10 @@ export function HomeStickyRaceCta({ raceDate, raceCount }: HomeStickyRaceCtaProp
                     {raceCount > 0 && (
                         <span className="shrink-0 rounded-[9px] bg-white/[0.18] px-2.5 py-1.5 font-num text-[15px] font-bold leading-none">本日 {raceCount}R</span>
                     )}
-                    <span className="min-w-0 flex-1 truncate text-center text-[15px] font-bold">今日の全レースを確認する</span>
+                    <span className="min-w-0 flex-1 text-center text-[15px] font-bold">
+                        <span className="min-[360px]:hidden">全レースを確認する</span>
+                        <span className="hidden min-[360px]:inline">今日の全レースを確認する</span>
+                    </span>
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center" aria-hidden="true">
                         <LineIcon name="arrowR" size={20} />
                     </span>

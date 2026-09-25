@@ -6,10 +6,11 @@ type AccessibleInfoProps = {
     label: string;
     children: ReactNode;
     buttonClassName?: string;
+    trigger?: ReactNode;
 };
 
 /** 小さな説明をホバー専用にせず、タップ・キーボードでも開ける共有UI。 */
-export function AccessibleInfo({ label, children, buttonClassName = '' }: AccessibleInfoProps) {
+export function AccessibleInfo({ label, children, buttonClassName = '', trigger }: AccessibleInfoProps) {
     const [isOpen, setIsOpen] = useState(false);
     const tooltipId = useId();
     const rootRef = useRef<HTMLSpanElement>(null);
@@ -45,7 +46,7 @@ export function AccessibleInfo({ label, children, buttonClassName = '' }: Access
                 onClick={() => setIsOpen((current) => !current)}
                 className={`inline-flex min-h-6 min-w-6 cursor-pointer items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-1 ${buttonClassName}`}
             >
-                <span aria-hidden="true">?</span>
+                {trigger ?? <span aria-hidden="true">?</span>}
             </button>
             {isOpen && (
                 <span

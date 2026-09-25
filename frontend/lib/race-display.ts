@@ -120,9 +120,21 @@ export const getSeason = (raceDate: string): Season => {
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
-// 「9月20日(日)」。year: true で「2026年9月20日(日)」。
-export const formatRaceDateLabel = (raceDate: string, { year = false }: { year?: boolean } = {}): string => {
+// 「9月20日(日)」。year: true で「2026年9月20日(日)」、short: true で「9/20(日)」（スマホのレースの見出しの条件の行）。
+export const formatRaceDateLabel = (
+    raceDate: string,
+    { year = false, short = false }: { year?: boolean; short?: boolean } = {},
+): string => {
     const [y, m, d] = raceDate.slice(0, 10).split('-').map(Number);
     const weekday = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+    if (short) return `${m}/${d}(${weekday})`;
     return `${year ? `${y}年` : ''}${m}月${d}日(${weekday})`;
 };
+
+// スマホの対戦成績に出す「AI偏差値の上位5頭」（偏差値の高い順。偏差値の無い馬は数えない）。
+export const getTopAiPredictions = (predictions: HorsePrediction[], count = 5): HorsePrediction[] => (
+    predictions
+        .filter((p) => p.deviation_score != null)
+        .sort((a, b) => (b.deviation_score as number) - (a.deviation_score as number))
+        .slice(0, count)
+);

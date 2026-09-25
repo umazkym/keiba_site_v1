@@ -74,7 +74,7 @@ export default async function GradeRaceArticleArchiveDetailPage({ params }: Prop
           { label: group.title, href: "" },
         ]}
       />
-      <div className="mx-auto w-full max-w-6xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
+      <div className="mx-auto w-full max-w-6xl pb-12 pt-4 sm:px-4 sm:pb-16">
         <main className="mx-auto max-w-[1080px]">
           <header className="border-b border-slate-200 pb-5 sm:pb-8">
             <p className="text-[13px] font-bold text-slate-500">重賞別の記事</p>

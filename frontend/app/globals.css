@@ -203,31 +203,21 @@
         margin-inline: auto;
     }
 
+    /* 見出しは太さと大きさで区切る。下線と左の色の棒は使わない（2026-09-25 スマホの見直し。見本・DESIGN.md の使わない表現） */
     .ui-section-header {
-        @apply flex min-w-0 items-end justify-between gap-2 border-b border-slate-200 pb-1.5 sm:gap-3 sm:pb-2;
+        @apply flex min-w-0 items-end justify-between gap-2 sm:gap-3;
     }
 
     .ui-section-header--compact {
-        @apply items-center pb-0.5 sm:pb-1.5;
+        @apply items-center;
     }
 
     .ui-section-header__title {
-        @apply text-[17px] font-extrabold leading-snug text-slate-900 sm:text-xl;
+        @apply text-[18px] font-extrabold leading-snug text-slate-900 sm:text-xl;
     }
 
     .ui-section-header--compact .ui-section-header__title {
-        @apply text-[15px] font-bold sm:text-lg;
-    }
-
-    .ui-section-header__title::before {
-        display: inline-block;
-        width: 4px;
-        height: 0.95em;
-        margin-right: 7px;
-        border-radius: 999px;
-        background: var(--brand);
-        vertical-align: -2px;
-        content: "";
+        @apply text-[16px] font-bold sm:text-lg;
     }
 
     .ui-section-header__meta {
@@ -242,21 +232,63 @@
         @apply shrink-0 text-[13px] font-bold text-brand-700 sm:text-sm;
     }
 
+    /* 見出しの右のリンクは、リンクそのものに押せる範囲を広げる（外側の箱に広げても押せない） */
+    .ui-section-header__action > a,
+    .ui-section-header__action > button {
+        @apply inline-flex min-h-11 items-center;
+        position: relative;
+    }
+
+    /* 見た目の大きさはそのままで、押せる範囲だけ上下左右に広げて44px前後にする */
+    .hit-44 {
+        position: relative;
+    }
+
+    .hit-44::after,
+    .ui-section-header__action > a::after,
+    .ui-section-header__action > button::after {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        width: 100%;
+        min-width: 44px;
+        height: max(44px, 100%);
+        transform: translateY(-50%);
+        content: "";
+    }
+
+    /* 広告の予約面（読み込み前）。背景と同じ色だと「何も無い空き」に見えるため、見本の斜めの縞にする（2026-09-25） */
+    .ad-reserve-stripes {
+        background: repeating-linear-gradient(135deg, #F7F8FC 0 10px, #EEF0F7 10px 20px);
+    }
+
+    /* 広告が入ったら縞をやめて白にする（広告のまわりに縞が残らないように） */
+    .ad-reserve-stripes[data-ad-state="filled"],
+    .ad-reserve-stripes:has(ins.adsbygoogle[data-ad-status="filled"]) {
+        background: #ffffff;
+    }
+
     /* ホームの見出し：下線と色の棒を付けず、丸い書体で大きめに（2026-09-25 段階3） */
     .home-page-scope .ui-section-header {
-        @apply items-end border-b-0 pb-0 sm:pb-0;
+        @apply items-end;
+    }
+
+    /* 見出しの操作は44pxを実寸で確保し、直下の記事リンクと当たり判定を重ねない。 */
+    .ui-section-header:has(.ui-section-header__action) {
+        align-items: center;
     }
 
     .home-page-scope .ui-section-header__title {
         @apply text-[19px] font-extrabold md:text-[21px];
     }
 
-    .home-page-scope .ui-section-header__title::before {
-        content: none;
-    }
-
     .home-page-scope .ui-section-header__meta {
         @apply text-[12.5px] font-medium md:text-[13.5px];
+    }
+
+    /* ホームのスマホはセクションの導入文を出さない（見本のスマホに無い。PCは残す。2026-09-25 スマホの見直し） */
+    .home-page-scope .ui-section-header__description {
+        @apply hidden md:block;
     }
 
     .responsive-data-table {
@@ -288,6 +320,16 @@
 
     .responsive-data-table--sticky-first table tbody > tr:nth-child(even) > :first-child {
         background: #F3F5FA;
+    }
+
+    /* 行に縞の無い表（データ詳細の条件別成績）：先頭列は固定したまま、縦線と先頭列だけの灰色を付けない。
+       ResponsiveDataTable の firstColumnDivider={false} で付く（2026-09-25 スマホの見直し） */
+    .responsive-data-table--plain-first table :is(thead, tbody) > tr > :first-child {
+        border-right: 0;
+    }
+
+    .responsive-data-table--plain-first table tbody > tr:nth-child(even) > :first-child {
+        background: #ffffff;
     }
 
     .card {
@@ -373,25 +415,29 @@
             opacity: 1;
         }
 
+        /* 右から出る板（見本：幅330px、左に暗くした本文が見える。2026-09-25） */
         .mobile-menu-panel {
-            display: block;
+            display: flex;
+            flex-direction: column;
             position: fixed;
             top: var(--site-header-offset);
             bottom: 0;
-            left: 0;
             right: 0;
             z-index: 49;
+            width: min(330px, 86vw);
             height: calc(100dvh - var(--site-header-offset));
             overflow-y: auto;
             overscroll-behavior: contain;
             border-top: 1px solid var(--slate-100-color);
             background: #ffffff;
-            box-shadow: 0 18px 28px rgba(14, 20, 64, 0.12);
+            box-shadow: -12px 0 28px rgba(14, 20, 64, 0.14);
             opacity: 0;
             pointer-events: none;
             visibility: hidden;
+            transform: translateX(24px);
             transition:
                 opacity 0.2s ease,
+                transform 0.2s ease,
                 visibility 0.2s ease;
         }
 
@@ -399,6 +445,7 @@
             opacity: 1;
             pointer-events: auto;
             visibility: visible;
+            transform: none;
         }
     }
 }
@@ -574,16 +621,14 @@ header.glass {
     transition: none;
 }
 
-.article-theme-sticky {
-    position: sticky;
-    z-index: 38;
-    top: calc(var(--site-header-offset) + 4px);
-    box-shadow:
-        inset 0 0 0 1px var(--slate-200-color),
-        0 -6px 0 var(--bg),
-        0 2px 3px rgba(14, 20, 64, 0.1);
-    transition: top 180ms cubic-bezier(0.2, 0, 0, 1);
+/* 下のアンカー広告などが出ている間は隠す（位置は動かさない。2026-09-25） */
+.home-sticky-race-cta.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
 }
+
+/* 記事一覧のテーマのバー（.article-theme-sticky）は 2026-09-25 に追従をやめ、ページ送りの下へ移したため規則を削除 */
 
 .article-desktop-sidebar {
     top: calc(var(--site-header-offset) + 8px);
@@ -694,11 +739,13 @@ header.glass {
     }
 }
 
+/* 横だけ切り、縦は切らない（リンクの押せる範囲 hit-44 を上下に広げるため） */
 .breadcrumb-nav {
-    min-height: 28px;
+    min-height: 44px;
     margin-bottom: 6px;
-    overflow: hidden;
-    padding: 3px 2px;
+    overflow-x: clip;
+    overflow-y: visible;
+    padding: 0;
 }
 
 .breadcrumb-current {
@@ -719,7 +766,7 @@ header.glass {
     .breadcrumb-nav {
         min-height: 32px;
         margin-bottom: 10px;
-        padding: 5px 2px;
+        padding: 5px 0;
     }
 
     .breadcrumb-current {
@@ -792,6 +839,11 @@ header.glass {
     font-weight: 700;
 }
 
+/* 数字だけの列は右寄せ（lib/article-ux.ts の markNumericColumns が is-num を付ける。文字の列は左寄せのまま。2026-09-25 見本） */
+.prose table :is(th, td).is-num {
+    text-align: right;
+}
+
 @media (max-width: 639px) {
     .article-table-scroll {
         margin: 1.25rem 0;
@@ -803,6 +855,148 @@ header.glass {
 
     .prose table td {
         padding: 10px 12px;
+    }
+
+    /* スマホの数字は見本どおり16px（PCは従来の15px） */
+    .prose table td.is-num {
+        font-size: 16px;
+        font-weight: 600;
+    }
+}
+
+/* ---------- 記事の「よくある質問」：白いカードの開閉式（lib/article-ux.ts の wrapFaqSection。2026-09-25 見本） ----------
+   Qの印・∨、最初の1問だけ開く。答えの文字は本文と同じ（スマホ15.5px・行間1.9、PC 17px・1.95）。最後の行の下線は付けない。 */
+.article-faq {
+    margin: 28px 0 0;
+    padding: 14px 16px 2px;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px var(--slate-200-color);
+}
+
+.article-faq > h2 {
+    margin: 0 0 2px;
+    color: var(--navy);
+    font-family: var(--font-display), var(--font-body);
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.4;
+}
+
+.article-faq-item + .article-faq-item {
+    border-top: 1px solid var(--slate-200-color);
+}
+
+.article-faq-item > summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 10px 0;
+    cursor: pointer;
+    list-style: none;
+}
+
+.article-faq-item > summary::-webkit-details-marker {
+    display: none;
+}
+
+.article-faq-q {
+    flex: 0 0 18px;
+    color: var(--brand);
+    font-family: var(--font-num), var(--font-body);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.article-faq-item > summary h3 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    color: var(--text);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.article-faq-chev {
+    flex-shrink: 0;
+    color: #8388A6;
+    transition: transform 150ms ease;
+}
+
+.article-faq-item[open] > summary .article-faq-chev {
+    transform: rotate(180deg);
+}
+
+.article-faq-a {
+    padding: 0 0 14px 28px;
+}
+
+.article-faq-a > * + *,
+.article-faq-intro > * + * {
+    margin-top: 16px;
+}
+
+.article-faq-intro {
+    padding: 6px 0 10px;
+}
+
+.article-faq-a :is(p, li),
+.article-faq-intro :is(p, li) {
+    margin: 0;
+    color: var(--text);
+    font-size: 15.5px;
+    line-height: 1.9;
+}
+
+.article-faq-a ul,
+.article-faq-intro ul {
+    padding-left: 1.25em;
+    list-style: disc;
+}
+
+.article-faq-a ol,
+.article-faq-intro ol {
+    padding-left: 1.25em;
+    list-style: decimal;
+}
+
+.article-faq-a a,
+.article-faq-intro a {
+    color: var(--brand-deep);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-color: #CDCEFF;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+}
+
+.article-faq-a strong,
+.article-faq-intro strong {
+    font-weight: 700;
+}
+
+@media (min-width: 640px) {
+    .article-faq {
+        max-width: 760px;
+        margin-top: 48px;
+        padding: 20px 24px 4px;
+    }
+
+    .article-faq > h2 {
+        font-size: 21px;
+    }
+
+    .article-faq-item > summary h3 {
+        font-size: 19px;
+    }
+
+    .article-faq-a :is(p, li),
+    .article-faq-intro :is(p, li) {
+        font-size: 17px;
+        line-height: 1.95;
     }
 }
 
@@ -1007,14 +1201,6 @@ header.glass {
   line-height: 1.3;
 }
 
-.race-section-heading::before {
-  width: 4px;
-  height: 0.95em;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: var(--brand);
-  content: "";
-}
 
 .race-section-lead {
   margin: 0 0 12px;
@@ -1053,47 +1239,39 @@ header.glass {
     line-height: 1.6;
   }
 
+  /* まとまりの間は 10px にそろえる。部品の外側の余白は持たせず、この gap で決める（2026-09-25 スマホの見直し） */
   .race-page-scope .race-detail-layout {
-    gap: 6px;
-    padding-bottom: 8px;
+    gap: 10px;
+    padding-bottom: 0;
   }
 
   .race-page-scope .race-detail-layout > .grid {
-    gap: 6px;
+    gap: 10px;
   }
 
+  /* 関連する分析記事（DynamicRelatedArticles）の外側の余白も gap に任せる。
+     記事が無いときの空の枠は消さない（下ナビが「分析の終わり」の目印に使う。display:none だと位置が取れず、ナビが出なくなる） */
+  .race-page-scope #race-related-articles-section > * {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  /* カードの角丸は 12px にそろえる（レース選択・次のレース・広告の枠と同じ） */
   .race-page-scope .race-panel {
-    border-radius: 8px;
+    border-radius: 12px;
   }
 
   .race-page-scope .race-section-heading,
   .race-page-scope .ui-section-header {
     min-height: 24px;
-    margin: 0 8px 4px !important;
-    border-bottom: 1px solid var(--slate-200-color);
-    padding: 0 0 4px;
+    margin: 0 0 4px !important;
+    padding: 0;
   }
 
   .race-page-scope .race-section-heading {
     gap: 6px;
     font-size: 17px;
     line-height: 1.35;
-  }
-
-  .race-page-scope .race-section-heading::before,
-  .race-page-scope .ui-section-header__title::before {
-    width: 4px;
-    height: 0.95em;
-    border-radius: 999px;
-    vertical-align: -2px;
-  }
-
-  .race-page-scope .race-section-heading::before {
-    margin-right: 0;
-  }
-
-  .race-page-scope .ui-section-header__title::before {
-    margin-right: 6px;
   }
 
   .race-page-scope .ui-section-header {
@@ -1125,26 +1303,9 @@ header.glass {
     padding-top: 6px;
   }
 
-  /* 余白を持つカードの見出し（段階2）。左右の余白と下線を付けない */
-  .race-page-scope .race-section-heading.race-section-heading--flush {
-    margin-right: 0 !important;
-    margin-left: 0 !important;
-    border-bottom: 0;
-    padding-bottom: 0;
-  }
-
   .race-page-scope .race-section-summary .race-section-heading,
   .race-page-scope .race-section-toolbar .race-section-heading {
     margin-bottom: 0 !important;
-  }
-
-  .race-page-scope .race-section-summary .race-section-heading {
-    margin-right: 0 !important;
-    margin-left: 0 !important;
-  }
-
-  .race-page-scope .race-related-dates-panel > .race-section-heading {
-    margin-top: 6px !important;
   }
 
   .race-page-scope .race-prediction-table th {
@@ -1342,20 +1503,9 @@ header.glass {
 
 .race-sticky-selector {
   top: calc(var(--site-header-offset) + 8px);
-  box-shadow: 0 -10px 0 var(--bg), 0 6px 18px rgba(20, 26, 61, 0.08);
+  /* 上の影（背景色）でヘッダーとの間の本文を隠す。広げる量（6px）を付けないと、角丸の外側の角から本文が透けていた（2026-09-25） */
+  box-shadow: 0 -10px 0 6px var(--bg), 0 6px 18px rgba(20, 26, 61, 0.08);
   transition: top 180ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.race-analysis-visual {
-  height: 150px;
-  min-height: 150px;
-}
-
-@media (min-width: 768px) {
-  .race-analysis-visual {
-    height: 220px;
-    min-height: 220px;
-  }
 }
 
 .ad {

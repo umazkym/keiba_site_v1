@@ -22,6 +22,8 @@ type HomeHeroProps = {
 };
 
 const LEAD = 'AI偏差値・対戦成績・展開・馬番の傾向を、毎朝7時ごろに更新しています。登録は必要ありません。';
+// スマホ〜タブレットは1行。4つの名前は直下のカード、更新時刻は上のタグに出ているため繰り返さない（2026-09-25 スマホの見直し）
+const LEAD_SHORT = '登録なし・無料で使えます。';
 
 function HeroCta({ todayStr, className }: { todayStr: string; className: string }) {
     return (
@@ -42,7 +44,9 @@ export function HomeHero({ todayStr, title, tagLabel, updateLabel, photo, gradeR
     const base = `/images/photos/hero-${photo}`;
     return (
         <section className="relative" aria-labelledby="home-hero-heading">
-            <div className="relative -mx-1.5 h-[430px] overflow-hidden sm:mx-0 sm:rounded-xl lg:h-[480px]">
+            {/* スマホは340px（見本は430px）。実際に見える高さ（iPhone 13 の Safari で約664px）で、カードの主ボタンが
+                下の追従ボタンより上に出るようにする（同じ文言のボタンを重ねない。2026-09-25 スマホの見直し） */}
+            <div className="relative -mx-4 h-[340px] overflow-hidden sm:mx-0 sm:h-[430px] sm:rounded-xl lg:h-[480px]">
                 <picture>
                     <source
                         media="(min-width: 768px)"
@@ -71,7 +75,10 @@ export function HomeHero({ todayStr, title, tagLabel, updateLabel, photo, gradeR
                         <h1 id="home-hero-heading" className="text-[26px] font-extrabold leading-[1.35] text-white lg:text-[40px]">
                             {title}
                         </h1>
-                        <p className="text-[13.5px] leading-relaxed text-night-sub lg:text-base lg:leading-[1.8]">{LEAD}</p>
+                        <p className="text-[13.5px] leading-relaxed text-night-sub lg:text-base lg:leading-[1.8]">
+                            <span className="lg:hidden">{LEAD_SHORT}</span>
+                            <span className="hidden lg:inline">{LEAD}</span>
+                        </p>
                         <div className="hidden lg:block">
                             <HeroCta todayStr={todayStr} className="ui-btn ui-btn--primary ui-btn--l gap-2.5" />
                         </div>
@@ -86,7 +93,7 @@ export function HomeHero({ todayStr, title, tagLabel, updateLabel, photo, gradeR
             </div>
 
             {/* スマホ〜タブレット：写真に重ねた白いカード */}
-            <div className="relative mx-2.5 -mt-9 flex flex-col gap-3 rounded-xl bg-white p-3.5 shadow-elevated sm:mx-6 lg:hidden">
+            <div className="relative -mt-9 flex flex-col gap-3 rounded-xl bg-white p-3.5 shadow-elevated sm:mx-6 lg:hidden">
                 <RaceAnalysisValueGrid />
                 <HeroCta todayStr={todayStr} className="ui-btn ui-btn--primary ui-btn--full gap-2.5" />
             </div>

@@ -391,9 +391,10 @@ const checks = [
   },
   {
     id: 'mobile-pace-chart-parity',
-    description: 'スマホの展開・脚質もPCと同じ位置取りグラフを短い高さで使う',
-    passed: startPositionChart.includes('height={128}')
-      && startPositionChart.includes('<TrackView')
+    description: 'スマホの展開予測もPCと同じ位置取りグラフを使う。見本どおり先行・中団・後方の3段に置き、近い馬は段の中の小さな段へ移して馬番を重ねない（2026-09-25）',
+    passed: startPositionChart.includes("const LANES: PositionLabel[] = ['先行', '中団', '後方']")
+      && startPositionChart.includes('buildLaneLayouts')
+      && !startPositionChart.includes('index % usableLanes')
       && !startPositionChart.includes('grid grid-cols-3 gap-1.5 md:hidden'),
   },
   {
@@ -417,11 +418,14 @@ const checks = [
   },
   {
     id: 'home-persistent-cta',
-    description: '全画面幅でホームCTAが広告高やスクロールに追従しない',
-    passed: homeStickyCta.includes('className="home-sticky-race-cta"')
-      && !homeStickyCta.includes('bottomAnchorHeight')
+    description: '全画面幅でホームCTAが広告高やスクロールに追従しない（位置は動かさない）。下のアンカー広告・全画面の広告が出ている間は隠す（広告の下に隠れて押せないボタンを残さない。2026-09-25）',
+    passed: homeStickyCta.includes('home-sticky-race-cta')
+      && homeStickyCta.includes("isHidden ? 'is-hidden' : ''")
+      && homeStickyCta.includes('googleOverlay.bottomAnchorHeight > 0')
+      && !/bottomAnchorHeight\s*[+-]|translateY|style=\{\{\s*bottom/.test(homeStickyCta)
       && !homeStickyCta.includes('data-home-primary-race-cta')
       && !homeStickyCta.includes("window.addEventListener('scroll'")
+      && globals.includes('.home-sticky-race-cta.is-hidden {')
       && globals.includes('bottom: calc(env(safe-area-inset-bottom, 0px) + var(--safari-bottom-offset, 0px));'),
   },
   {
@@ -533,7 +537,7 @@ const checks = [
         && !racePageClient.includes('DisclaimerAlert')
         && raceTabs.includes('<DisclaimerNote')
         && raceDayExtras.includes('<DisclaimerNote')
-        && raceDayExtras.includes('race-day-pick-heading')
+        && !raceDayExtras.includes('SpecialPickCard')
         && !fs.existsSync(path.join(root, 'components/DisclaimerAlert.tsx'))
         && !valueGrid.includes("compactTitle: '対戦比較'")
         && !valueGrid.includes("compactTitle: '馬番傾向'");

@@ -20,16 +20,10 @@ export const MultiplexAd = ({ slot, refreshKey = '' }: MultiplexAdProps) => {
     if (!isManualAdsEnabled) return null;
 
     return (
-        <section className="mt-4 mb-2 px-1">
-            <h3 className="text-sm sm:text-base font-bold text-slate-800 mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <span className="w-1 h-4 sm:h-5 bg-secondary rounded-full"></span>
-                    おすすめの関連情報
-                </div>
-                <span className="text-[10px] text-slate-400 font-normal">スポンサーリンク</span>
-            </h3>
-            
-            <div className="w-full bg-white rounded-lg border border-slate-100 overflow-hidden">
+        // 「おすすめの関連情報」の見出しと色の棒は外し、広告であることの表示だけを残す（見出しで記事の一部と誤認させない。2026-09-25）
+        <section className="mb-1 sm:mb-2 sm:mt-4" aria-label="スポンサーリンク">
+            <p className="mb-1 text-[11px] font-medium text-slate-400">スポンサーリンク</p>
+            <div className="ad-reserve-stripes w-full overflow-hidden rounded-lg border border-slate-200">
                 <Adsense
                     client={AD_CLIENT}
                     slot={slot}

@@ -18,7 +18,7 @@ import { ArticleCategoryTag, formatArticleShortDate } from "@/components/Article
 import { ArticleThumb } from "@/components/ArticleThumb";
 import { GuideHorse } from "@/components/BrandLogo";
 import { LineIcon } from "@/components/LineIcon";
-import { estimateReadingMinutes, getArticleCategoryStyle, pickArticleThumbs, type ArticleThumb as ArticleThumbData } from "@/lib/article-visual";
+import { estimateReadingMinutes, pickArticleThumbs, type ArticleThumb as ArticleThumbData } from "@/lib/article-visual";
 
 interface ArticlesPageProps {
   searchParams: {
@@ -67,11 +67,13 @@ function ArticlePagination({
   totalPages,
   category,
   tag,
+  className = "",
 }: {
   currentPage: number;
   totalPages: number;
   category?: string;
   tag?: string;
+  className?: string;
 }) {
   if (totalPages <= 1) return null;
 
@@ -80,7 +82,8 @@ function ArticlePagination({
   const stepClass = "inline-flex h-11 items-center justify-center gap-1 rounded-[10px] bg-white px-3 text-[14px] font-bold text-slate-700 ring-1 ring-inset ring-slate-200 transition-colors duration-150 hover:bg-slate-50 hover:text-brand-700";
 
   return (
-    <nav className="mt-6 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2" aria-label="ページナビゲーション">
+    // スマホの上の空きは親の gap で決める（mt はPCだけ。2026-09-25 スマホの見直し）
+    <nav className={`flex flex-wrap items-center justify-center gap-1.5 sm:mt-6 sm:gap-2 ${className}`} aria-label="ページナビゲーション">
       {currentPage > 1 && (
         <Link prefetch={false} href={buildUrl(currentPage - 1)} className={stepClass}>
           <LineIcon name="chevL" size={16} className="block" />
@@ -223,13 +226,6 @@ export async function generateMetadata({ searchParams }: ArticlesPageProps): Pro
   });
 }
 
-function isNewArticle(dateStr: string): boolean {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-  return diffHours >= 0 && diffHours <= 72;
-}
-
 function formatRaceDate(date?: string) {
   if (!date) return "";
   return new Date(`${date}T00:00:00+09:00`).toLocaleDateString("ja-JP", {
@@ -240,14 +236,15 @@ function formatRaceDate(date?: string) {
   });
 }
 
-// カテゴリ・日付・読了時間（3日以内は「新着」）
-function ArticleMeta({ article }: { article: ArticleLike }) {
+// カテゴリ・日付・読了時間（見本：「9/24 · 約5分」。日付で分かるので「新着」は付けない。2026-09-25）
+function ArticleMeta({ article, className = "" }: { article: ArticleLike; className?: string }) {
   return (
-    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-slate-500 sm:text-[13px]">
+    <span className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-slate-500 sm:text-[13px] ${className}`}>
       <ArticleCategoryTag category={article.category} />
-      <time dateTime={new Date(article.date).toISOString()}>{formatArticleShortDate(article.date)}</time>
-      <span>約{estimateReadingMinutes(article.content)}分</span>
-      {isNewArticle(article.date) && <span className="font-bold text-brand-700">新着</span>}
+      <span>
+        <time dateTime={new Date(article.date).toISOString()}>{formatArticleShortDate(article.date)}</time>
+        {" · "}約{estimateReadingMinutes(article.content)}分
+      </span>
     </span>
   );
 }
@@ -255,13 +252,16 @@ function ArticleMeta({ article }: { article: ArticleLike }) {
 // 近日開催の重賞の記事（開催日の近い順）
 function UpcomingGradeRacePickup({
   groups,
+  className = "",
 }: {
   groups: ReturnType<typeof getUpcomingGradeRaceArticleGroups>;
+  className?: string;
 }) {
   if (groups.length === 0) return null;
 
   return (
-    <section className="rounded-[14px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-5" aria-labelledby="articles-upcoming-grade-heading">
+    // 下の空きは最後の行の py-3 と合わせて16px（2026-09-25）
+    <section className={`rounded-[14px] bg-white px-4 pb-1 pt-4 ring-1 ring-inset ring-slate-200 sm:p-5 ${className}`} aria-labelledby="articles-upcoming-grade-heading">
       <h2 id="articles-upcoming-grade-heading" className="flex items-center gap-2 font-display text-[18px] font-extrabold text-slate-900 sm:text-[19px]">
         <LineIcon name="trophy" size={19} className="block text-navy" />
         近日の重賞
@@ -295,12 +295,12 @@ function UpcomingGradeRacePickup({
 }
 
 // 1ページ目の先頭の記事（写真を大きく）
-function FeaturedArticle({ article, thumb }: { article: ArticleLike; thumb: ArticleThumbData }) {
+function FeaturedArticle({ article, thumb, className = "" }: { article: ArticleLike; thumb: ArticleThumbData; className?: string }) {
   return (
     <Link
       prefetch={false}
       href={`/articles/${article.slug}`}
-      className="group grid overflow-hidden rounded-[16px] bg-white ring-1 ring-inset ring-slate-200 transition-colors duration-150 hover:ring-brand-300 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"
+      className={`group grid overflow-hidden rounded-[16px] bg-white ring-1 ring-inset ring-slate-200 transition-colors duration-150 hover:ring-brand-300 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] ${className}`}
     >
       <ArticleThumb
         thumb={thumb}
@@ -312,8 +312,9 @@ function FeaturedArticle({ article, thumb }: { article: ArticleLike; thumb: Arti
         <span className="font-display text-[19px] font-extrabold leading-[1.5] text-slate-900 transition-colors duration-150 group-hover:text-brand-700 sm:text-[22px] lg:text-[25px]">
           {article.title}
         </span>
+        {/* 説明はPCだけ（スマホは見本どおり写真・日付・題名だけ。2026-09-25） */}
         {article.description && (
-          <span className="line-clamp-3 text-[14px] leading-[1.8] text-slate-700 sm:text-[15px]">{article.description}</span>
+          <span className="hidden text-[14px] leading-[1.8] text-slate-700 sm:line-clamp-3 sm:text-[15px]">{article.description}</span>
         )}
         <span className="mt-1 hidden items-center gap-1 text-[14.5px] font-bold text-brand-700 md:inline-flex">
           記事を読む
@@ -330,16 +331,17 @@ function ArticleRow({ article, thumb }: { article: ArticleLike; thumb: ArticleTh
     <Link
       prefetch={false}
       href={`/articles/${article.slug}`}
-      className="group flex gap-3 py-3.5 sm:gap-5 sm:py-4"
+      className="group flex gap-3 py-3 sm:gap-5 sm:py-4"
     >
       <ArticleThumb
         thumb={thumb}
         sizes="(min-width: 640px) 200px, 104px"
         className="h-[70px] w-[104px] shrink-0 rounded-[10px] sm:h-[112px] sm:w-[200px] sm:rounded-xl"
       />
+      {/* スマホは見本どおり題名→カテゴリ・日付、PCは日付→題名 */}
       <span className="flex min-w-0 flex-col justify-center gap-1.5 sm:gap-2">
-        <ArticleMeta article={article} />
-        <span className="line-clamp-2 text-[15px] font-bold leading-[1.55] text-slate-900 transition-colors duration-150 group-hover:text-brand-700 sm:text-[17px]">
+        <ArticleMeta article={article} className="order-2 sm:order-none" />
+        <span className="order-1 line-clamp-2 text-[15px] font-bold leading-[1.55] text-slate-900 transition-colors duration-150 group-hover:text-brand-700 sm:order-none sm:text-[17px]">
           {article.title}
         </span>
         {article.description && (
@@ -529,10 +531,13 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
     filteredArticles = filteredArticles.filter((article) => article.tags && article.tags.includes(selectedTag));
   }
 
-  const categoryItems = uniqueCategories.map((category) => ({
-    category,
-    count: allArticles.filter((article) => article.category === category).length,
-  }));
+  // 見本どおり件数の多い順（同数は従来の順のまま）
+  const categoryItems = uniqueCategories
+    .map((category) => ({
+      category,
+      count: allArticles.filter((article) => article.category === category).length,
+    }))
+    .sort((left, right) => right.count - left.count);
 
   const rawPage = parseInt(searchParams.page || "1", 10);
   const currentPage = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
@@ -571,26 +576,29 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
       <ItemListSchema items={itemListEntries} />
       <Breadcrumb />
 
-      <div className="articles-page-scope site-shell-data px-4 pb-12 pt-1 sm:px-6 sm:pb-16 sm:pt-3">
+      {/* スマホの左右の余白は外枠（layout の main）の16pxだけ。ここでは足さない（2026-09-25 スマホの見直し） */}
+      <div className="articles-page-scope site-shell-data pb-4 pt-1 sm:px-6 sm:pb-16 sm:pt-3">
         <header className="flex flex-col gap-3 sm:gap-4">
           <div className="flex flex-col gap-1.5 sm:gap-2">
             <h1 className="font-display text-[24px] font-extrabold leading-snug text-slate-900 sm:text-[30px] lg:text-[34px]">
               {pageTitle}
             </h1>
+            {/* 導入文はページの説明として残す。件数とページ番号は「すべて」のチップ・ページ送りと重なるのでPCだけ */}
             <p className="max-w-3xl text-[14px] leading-[1.75] text-slate-700 sm:text-[15px]">
               重賞・騎手・コース・人気別のデータを、レース前の判断材料としてまとめています。
-              <span className="whitespace-nowrap text-slate-500">
+              <span className="hidden whitespace-nowrap text-slate-500 sm:inline">
                 {filteredArticles.length}本{totalPages > 1 ? `（${currentPage}/${totalPages}ページ）` : ""}
               </span>
             </p>
           </div>
 
+          {/* チップは見本どおり色の目印なし・件数の多い順。見た目36pxのまま、押せる範囲だけ上下4pxずつ広げて44pxにする（段の間8pxに収まる） */}
           <nav aria-label="記事カテゴリ" className="flex flex-wrap gap-2">
             <Link
               prefetch={false}
               href="/articles"
               aria-current={!selectedCategory ? "page" : undefined}
-              className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-bold transition-colors duration-150 sm:h-10 sm:px-4 sm:text-[14px] ${!selectedCategory ? "bg-navy text-white" : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"}`}
+              className={`relative inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-bold transition-colors duration-150 before:absolute before:-inset-y-1 before:inset-x-0 sm:h-10 sm:px-4 sm:text-[14px] ${!selectedCategory ? "bg-navy text-white" : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"}`}
             >
               すべて
               <span className={`font-num text-[12.5px] font-semibold ${!selectedCategory ? "text-white/75" : "text-slate-500"}`}>{allArticles.length}</span>
@@ -603,9 +611,8 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                   key={category}
                   href={buildArticlesHref({ category })}
                   aria-current={isActive ? "page" : undefined}
-                  className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-bold transition-colors duration-150 sm:h-10 sm:px-4 sm:text-[14px] ${isActive ? "bg-navy text-white" : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"}`}
+                  className={`relative inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-bold transition-colors duration-150 before:absolute before:-inset-y-1 before:inset-x-0 sm:h-10 sm:px-4 sm:text-[14px] ${isActive ? "bg-navy text-white" : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"}`}
                 >
-                  <span className={`h-2 w-2 rounded-[2px] ${getArticleCategoryStyle(category).fillClass}`} aria-hidden="true" />
                   {category}
                   <span className={`font-num text-[12.5px] font-semibold ${isActive ? "text-white/75" : "text-slate-500"}`}>{count}</span>
                 </Link>
@@ -614,14 +621,10 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
           </nav>
         </header>
 
-        <MobileArticleThemeDirectory
-          gradeRaceSections={gradeRaceSections}
-          jockeyGroups={archiveTotals.jockeyGroups}
-          courseSections={courseVenueSections}
-        />
-
-        <div className="mt-4 grid gap-6 lg:mt-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8">
-          <main className="flex min-w-0 flex-col gap-5">
+        <div className="mt-3 grid gap-3 sm:mt-4 sm:gap-6 lg:mt-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8">
+          {/* スマホの並び（DOMの順）：先頭の記事 → 一覧 → ページ送り → 近日の重賞 → 記事テーマ → 広告。
+              PC（sm以上）は order で従来の並び（先頭の記事 → 近日の重賞 → 一覧 → ページ送り → 広告）に戻す */}
+          <main className="flex min-w-0 flex-col gap-3 sm:gap-5">
             {filteredArticles.length === 0 ? (
               <div className="flex flex-col items-center gap-3 rounded-[16px] bg-white px-4 py-12 text-center ring-1 ring-inset ring-slate-200">
                 <GuideHorse size={96} mood="look" />
@@ -632,11 +635,9 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
               </div>
             ) : (
               <>
-                {showFeatured && <FeaturedArticle article={paginatedArticles[0]} thumb={thumbs[0]} />}
+                {showFeatured && <FeaturedArticle article={paginatedArticles[0]} thumb={thumbs[0]} className="sm:order-1" />}
 
-                <UpcomingGradeRacePickup groups={upcomingGradeRaceGroups} />
-
-                <section aria-labelledby="articles-list-heading" className="rounded-[16px] bg-white px-4 py-1 ring-1 ring-inset ring-slate-200 sm:px-6 sm:py-2">
+                <section aria-labelledby="articles-list-heading" className="rounded-[16px] bg-white px-4 py-1 ring-1 ring-inset ring-slate-200 sm:order-3 sm:px-6 sm:py-2">
                   <h2 id="articles-list-heading" className="sr-only">記事の一覧</h2>
                   <ul>
                     {paginatedArticles.map((article, index) => (
@@ -665,12 +666,24 @@ export default function ArticlesPage({ searchParams }: ArticlesPageProps) {
                   totalPages={totalPages}
                   category={selectedCategory}
                   tag={selectedTag}
+                  className="sm:order-4"
                 />
+
+                {/* スマホは見本に無いため一覧の後ろへ。PCは従来どおり先頭の記事の下（sm:order-2） */}
+                <UpcomingGradeRacePickup groups={upcomingGradeRaceGroups} className="sm:order-2" />
               </>
             )}
 
+            {/* 記事テーマ（重賞・騎手・コース）。追従をやめ、ページ送りの下へ移した（2026-09-25）。PCは右の列の「記事テーマ」 */}
+            <MobileArticleThemeDirectory
+              gradeRaceSections={gradeRaceSections}
+              jockeyGroups={archiveTotals.jockeyGroups}
+              courseSections={courseVenueSections}
+              className="sm:order-5"
+            />
+
             {shouldRenderAds && (
-              <div className="pt-2">
+              <div className="sm:order-6 sm:pt-2">
                 <MultiplexAd slot="9407670747" />
               </div>
             )}

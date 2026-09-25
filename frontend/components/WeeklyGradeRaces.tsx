@@ -136,7 +136,7 @@ export function HomeGradeMini({ races, topHorses }: { races: WeeklyGradeRace[]; 
                 {topHorse ? (
                     <p className="flex items-center gap-2 text-[13px] text-slate-700">
                         <span className="font-bold text-ai-deep">AI上位評価</span>
-                        <span className="min-w-0 flex-1 truncate font-bold text-slate-900">{topHorse.horseName}</span>
+                        <span className="min-w-0 flex-1 break-words font-bold text-slate-900">{topHorse.horseName}</span>
                         <span className="font-num text-[16px] font-bold text-ai-deep">{topHorse.score?.toFixed(1) ?? '--'}</span>
                     </p>
                 ) : (
@@ -216,6 +216,8 @@ export function WeeklyGradeRaces({ races, compact = false, variant, predictions,
     const topHorse = findTopHorse(focusRace, topHorses, predictions);
     const racePath = getRaceDetailPath(focusRace.race_date, focusRace.venue_name, focusRace.race_number);
     const hubPath = getGradeRaceHubPathByName(focusRace.race_name);
+    // 下に「そのほかの重賞」が続かないときは、最後のリンクの下線を消す（カードの枠と二重にしない）
+    const lastLinkLine = otherRaces.length > 0 ? '' : 'last:border-b-0';
 
     return (
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white" id="weekly-grade-races" aria-labelledby="weekly-grade-races-heading">
@@ -226,7 +228,8 @@ export function WeeklyGradeRaces({ races, compact = false, variant, predictions,
                     <span className="rounded-[7px] bg-night/80 px-2.5 py-1 text-[12.5px] font-bold text-white">{title === '近日の重賞レース' ? '今週の重賞' : title}</span>
                 </span>
             </div>
-            <div className="flex flex-col gap-2.5 px-4 pb-4 pt-4 md:px-5 md:pb-5">
+            {/* スマホは写真→日付を12px、最後のリンクの下線と下の余白を詰める（2026-09-25 スマホの見直し）。PCは今のまま */}
+            <div className="flex flex-col gap-2.5 px-4 pb-2 pt-3 md:px-5 md:pb-5 md:pt-4">
                 <div className="flex items-center gap-3">
                     <RacePlate venue={focusRace.venue_name} raceNumber={focusRace.race_number} size="s" />
                     <div className="flex min-w-0 flex-col gap-1">
@@ -237,20 +240,20 @@ export function WeeklyGradeRaces({ races, compact = false, variant, predictions,
                 {topHorse ? (
                     <p className="flex items-center gap-2 rounded-lg bg-ai-soft/60 px-3 py-2 text-[14px] text-slate-700">
                         <span className="text-[12.5px] font-bold text-ai-deep">AI上位評価</span>
-                        <span className="min-w-0 flex-1 truncate font-bold text-slate-900">{topHorse.horseName}</span>
+                        <span className="min-w-0 flex-1 break-words font-bold text-slate-900">{topHorse.horseName}</span>
                         <span className="font-num text-[20px] font-bold text-ai-deep">{topHorse.score?.toFixed(1) ?? '--'}</span>
                     </p>
                 ) : (
                     <p className="text-[13.5px] leading-relaxed text-slate-700">出走馬が確定したあと、全頭のAI偏差値と展開予測をここに公開します。</p>
                 )}
                 <div className="flex flex-col border-t border-slate-200">
-                    <Link prefetch={false} href={racePath} className="flex min-h-[46px] items-center gap-2.5 border-b border-slate-200 text-[14px] font-bold text-slate-900 hover:text-brand-700">
+                    <Link prefetch={false} href={racePath} className={`flex min-h-[46px] items-center gap-2.5 border-b border-slate-200 text-[14px] font-bold text-slate-900 hover:text-brand-700 ${lastLinkLine}`}>
                         <LineIcon name="gauge" size={18} className="block shrink-0 text-brand-700" />
                         <span className="flex-1">当日のAI偏差値を見る</span>
                         <LineIcon name="chevR" size={18} className="block shrink-0 text-slate-500" />
                     </Link>
                     {hubPath && (
-                        <Link prefetch={false} href={hubPath} className="flex min-h-[46px] items-center gap-2.5 border-b border-slate-200 text-[14px] font-bold text-slate-900 hover:text-brand-700">
+                        <Link prefetch={false} href={hubPath} className={`flex min-h-[46px] items-center gap-2.5 border-b border-slate-200 text-[14px] font-bold text-slate-900 hover:text-brand-700 ${lastLinkLine}`}>
                             <LineIcon name="book" size={18} className="block shrink-0 text-brand-700" />
                             <span className="flex-1">過去のデータと傾向を見る</span>
                             <LineIcon name="chevR" size={18} className="block shrink-0 text-slate-500" />

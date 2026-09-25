@@ -15,10 +15,7 @@ import {
     isValidRaceDate,
     parseRaceNumberParam,
 } from '@/lib/race-url';
-import {
-    getRaceDetailPageData,
-    getStrictRaceDetailPrediction,
-} from '@/lib/race-page-data';
+import { getStrictRaceDetailPrediction } from '@/lib/race-page-data';
 
 export const revalidate = 2592000;
 export const dynamicParams = true;
@@ -116,11 +113,8 @@ export default async function RaceDetailPage({ params }: Props) {
 
     const articlesMeta = getRaceArticleMeta();
 
-    const {
-        detail,
-        topHits: topHitsData,
-        gradeRaces: weeklyGradeRaces,
-    } = await getRaceDetailPageData(params.date, params.venue, raceNumber);
+    // レース詳細には「近日の重賞」「高配当的中ランキング」を出さないため、そのデータは取得しない（2026-09-25）
+    const detail = await getStrictRaceDetailPrediction(params.date, params.venue, raceNumber);
 
     if (!detail) {
         notFound();
@@ -217,8 +211,6 @@ export default async function RaceDetailPage({ params }: Props) {
                 <RacePageClient
                     initialDate={params.date}
                     initialPredictionData={selectedPredictionData}
-                    initialTopHits={topHitsData}
-                    weeklyGradeRaces={weeklyGradeRaces}
                     articlesMeta={articlesMeta}
                     initialVenueName={selectedVenueName}
                     initialRaceNumber={selectedRace.race_number}

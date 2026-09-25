@@ -35,17 +35,17 @@ export default function FAQPage() {
                 ]}
             />
             <Breadcrumb />
-            {/* 広告: FAQページ上部（ブレッドクラム直下） */}
+            {/* 広告: FAQページ上部（ブレッドクラム直下）。スマホの左右は外枠の16pxだけ、上の余白はパンくずの下の余白で足りる（2026-09-25） */}
             {shouldRenderAds && (
-                <div className="mx-auto w-full max-w-[840px] px-4 pt-2">
+                <div className="mx-auto w-full max-w-[840px] sm:px-4 sm:pt-2">
                     <AdUnit slot="1489598374" placement="banner" />
                 </div>
             )}
             <div className="w-full">
                 <FAQClient />
-                {/* 広告: FAQコンテンツ後 */}
+                {/* 広告: FAQコンテンツ後。スマホは下の余白をフッターの余白だけにする（2026-09-25） */}
                 {shouldRenderAds && (
-                    <div className="mx-auto w-full max-w-[840px] px-4 pb-8">
+                    <div className="mx-auto w-full max-w-[840px] sm:px-4 sm:pb-8">
                         <AdUnit slot="9407670747" placement="inline" />
                     </div>
                 )}

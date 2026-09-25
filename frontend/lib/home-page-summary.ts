@@ -214,9 +214,10 @@ export function extractHomeSpecialPicks(
         };
     }
 
+    // 説明は1行。数値はカードに大きく出ているので文に繰り返さない（2026-09-25 スマホの見直し）
     const favored = toSpecialPick(
         bestFavored,
-        `${dayLabel}の全レースで上位のAI偏差値（${bestFavored.deviation_score.toFixed(1)}）です。展開予測と馬番の傾向もあわせて確認できます。`,
+        `${dayLabel}の全レースで上位のAI偏差値です。`,
     );
 
     const narCandidates = allHorses.filter((horse) => horse.is_nar && horse.mark === '◎');
@@ -225,7 +226,7 @@ export function extractHomeSpecialPicks(
     const nar = bestNar
         ? toSpecialPick(
             bestNar,
-            `${dayLabel}の地方競馬の中で上位のAI偏差値（${bestNar.deviation_score.toFixed(1)}）です。当日の馬場と展開予測をあわせて確認できます。`,
+            `${dayLabel}の地方競馬で上位のAI偏差値です。`,
         )
         : null;
 
@@ -239,7 +240,7 @@ export function extractHomeSpecialPicks(
     const value = bestValue
         ? toSpecialPick(
             bestValue,
-            `◎以外の印の馬で最も高いAI偏差値（${bestValue.deviation_score.toFixed(1)}）です。展開や馬番の条件がそろうかを確認したい一頭です。`,
+            `◎以外の印の馬で最も高いAI偏差値です。`,
         )
         : null;
 

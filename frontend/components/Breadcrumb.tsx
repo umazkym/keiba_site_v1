@@ -211,7 +211,14 @@ export function Breadcrumb({ items }: BreadcrumbProps = {}) {
     segments.forEach((segment, index) => {
       currentPath += `/${segment}`;
       const isLast = index === segments.length - 1;
-      const label = parseSegmentLabel(segment, isLast, pageTitle);
+      // /jockeys/data/{id} などの「data」は置き場所の名前で、ページが無い。パンくずに出さない
+      if (!isLast && segment === 'data') return;
+      let label = parseSegmentLabel(segment, isLast, pageTitle);
+      // コースの詳細は、スマホでは途中の段（競馬場）が隠れるため、最後の段に場名を付ける（例：中山 芝2200m）
+      const previousVenue = index > 0 ? venueSlugToName(segments[index - 1]) : null;
+      if (isLast && previousVenue && /^(turf|dirt|obstacle)-\d+m$/i.test(segment)) {
+        label = `${previousVenue} ${label}`;
+      }
 
       if (isLast) {
         breadcrumbs.push({ label, href: '' });
@@ -243,7 +250,7 @@ export function Breadcrumb({ items }: BreadcrumbProps = {}) {
                 <Link
                   href={item.href}
                   prefetch={false}
-                  className="whitespace-nowrap font-medium text-slate-500 transition-colors duration-150 hover:text-brand-700"
+                  className="inline-flex min-h-11 min-w-11 items-center whitespace-nowrap font-medium text-slate-500 transition-colors duration-150 hover:text-brand-700"
                 >
                   {item.label}
                 </Link>

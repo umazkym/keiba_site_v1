@@ -23,7 +23,6 @@ import {
 import { estimateReadingMinutes, getArticleCategoryStyle, pickArticleThumbs } from '@/lib/article-visual';
 import { formatRaceDateLabel } from '@/lib/race-display';
 
-import { DisclaimerNote } from '@/components/DisclaimerNote';
 import { AdUnit } from '@/components/AdUnit';
 import { NativeCardAd } from '@/components/NativeCardAd';
 import { shouldSuppressAdsInDevelopment } from '@/lib/ad-config';
@@ -59,7 +58,7 @@ export const metadata: Metadata = {
 const homepageFaqItems = [
     {
         question: '本当に無料ですか？',
-        answer: 'すべての分析データを無料で公開しています。会員登録やメールアドレスの入力はありません。',
+        answer: 'すべての分析データを無料で公開しています。会員登録は不要です。',
     },
     {
         question: 'データはいつ更新されますか？',
@@ -194,7 +193,7 @@ export default async function HomePage() {
     ])).slice(0, 4);
 
     return (
-        <div className="home-page-scope site-shell-wide flex touch-pan-y flex-col gap-6 overscroll-y-auto pb-2 md:gap-8 md:pt-2">
+        <div className="home-page-scope site-shell-wide flex touch-pan-y flex-col gap-3 overscroll-y-auto md:gap-8 md:pb-2 md:pt-2">
             <FAQSchema faqs={homepageFaqItems} />
             <HomeStickyRaceCta raceDate={todayStr} raceCount={raceDaySummary.raceCount} />
 
@@ -215,16 +214,17 @@ export default async function HomePage() {
                         gradeTopHorses={gradeRaceTopHorses}
                     />
                 </div>
-                <RecentRaceReturn className="mx-2.5 sm:mx-0 lg:order-2 lg:w-[380px]" />
+                <RecentRaceReturn className="lg:order-2 lg:w-[380px]" />
             </div>
 
-            <div className="flex flex-col gap-6 px-2.5 sm:px-0 md:gap-8">
+            {/* スマホの左右の余白は外枠（layout の px-4）だけ。まとまりの間は12px（2026-09-25 スマホの見直し） */}
+            <div className="flex flex-col gap-3 md:gap-8">
                 {/* ── 2. 本日の開催 ── */}
                 <section aria-labelledby="home-venues-heading" className="flex flex-col gap-3 md:gap-4">
                     <SectionHeader
                         id="home-venues-heading"
-                        title={`本日の開催（${formatShortDate(todayStr)}）`}
-                        meta={venueMeta}
+                        title="本日の開催"
+                        meta={venueMeta ? <span className="hidden md:inline">{venueMeta}</span> : undefined}
                         action={hasVenues ? (
                             <HomeRaceEntryLink
                                 href={`/races/${todayStr}`}
@@ -250,8 +250,8 @@ export default async function HomePage() {
                 </section>
 
                 {/* ── 3. 2列（PCは右に広告・重賞・検索・カテゴリ） ── */}
-                <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_384px]">
-                    <div className="flex min-w-0 flex-col gap-6">
+                <div className="grid items-start gap-3 md:gap-6 lg:grid-cols-[minmax(0,1fr)_384px]">
+                    <div className="flex min-w-0 flex-col gap-3 md:gap-6">
                         {/* スマホ・タブレットの今週の重賞（PCはヒーローの右上に出す） */}
                         {weeklyGradeRaces.length > 0 ? (
                             <div className="lg:hidden">
@@ -261,7 +261,7 @@ export default async function HomePage() {
                             <Panel labelledBy="home-grade-fallback-heading">
                                 <SectionHeader id="home-grade-fallback-heading" title="今週の重賞" className="!mb-0" compact />
                                 <p className="mt-2 text-[13.5px] leading-relaxed text-slate-600">
-                                    重賞の開催情報を確認しています。反映まで少し時間がかかる場合があります。
+                                    重賞の開催情報を確認しています。
                                 </p>
                                 <HomeRaceEntryLink
                                     href={`/races/${todayStr}`}
@@ -346,7 +346,7 @@ export default async function HomePage() {
                                 })}
                             </ul>
                             {!shouldSuppressAdsInDevelopment && (
-                                <div className="mt-3 md:mt-5">
+                                <div className="mt-1 md:mt-5">
                                     <NativeCardAd slot="1489598374" variant="article" className="h-full" analyticsPlacement="home_article_feed_1" />
                                 </div>
                             )}
@@ -358,6 +358,12 @@ export default async function HomePage() {
                                 id="home-data-heading"
                                 title="過去データを調べる"
                                 description="過去のレースを競走馬・騎手・調教師・コースごとに集計しています。"
+                                action={(
+                                    <Link prefetch={false} href="/keiba-data" className="inline-flex items-center gap-1 whitespace-nowrap text-[13.5px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600">
+                                        すべて見る
+                                        <LineIcon name="chevR" size={16} className="block" />
+                                    </Link>
+                                )}
                                 className="!mb-3 md:!mb-4"
                                 compact
                             />
@@ -380,14 +386,6 @@ export default async function HomePage() {
                                     </Link>
                                 ))}
                             </div>
-                            <Link
-                                href="/keiba-data"
-                                prefetch={false}
-                                className="ui-btn ui-btn--ghost mt-2 w-full justify-between sm:w-auto"
-                            >
-                                競馬データベースのトップを開く
-                                <LineIcon name="chevR" size={18} className="block" />
-                            </Link>
                         </Panel>
 
                         {/* よくある質問 */}
@@ -401,15 +399,14 @@ export default async function HomePage() {
                                             <span className="flex-1">{item.question}</span>
                                             <LineIcon name="chevD" size={18} className="block shrink-0 text-slate-500 transition-transform duration-150 group-open:rotate-180" />
                                         </summary>
-                                        <p className="mb-4 ml-[30px] text-[13.5px] leading-[1.85] text-slate-700 md:text-[14.5px]">
+                                        <p className="mb-4 ml-[30px] text-pretty text-[13.5px] leading-[1.85] text-slate-700 md:text-[14.5px]">
                                             {item.answer}
                                         </p>
                                     </details>
                                 ))}
                             </div>
                         </Panel>
-
-                        <DisclaimerNote className="px-1" />
+                        {/* 免責の注記はフッターにあるため、ホームでは重ねて出さない（2026-09-25 スマホの見直し） */}
                     </div>
 
                     {/* 右列（PCのみ） */}

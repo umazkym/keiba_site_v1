@@ -12,6 +12,7 @@ import {
 } from '@/lib/home-page-summary';
 import { getSurfaceLabel } from '@/lib/race-display';
 import { HorseNumber, RacePlate } from '@/components/RaceParts';
+import { LineIcon } from '@/components/LineIcon';
 
 type Props = {
     pick?: SpecialPick | null;
@@ -74,7 +75,7 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions, precompu
                             type="button"
                             onClick={() => setActiveTab(key)}
                             aria-pressed={activeTab === key}
-                            className={`inline-flex h-9 items-center whitespace-nowrap rounded-full border px-3.5 text-[13px] font-bold transition-colors duration-150 ${activeTab === key
+                            className={`inline-flex h-11 items-center whitespace-nowrap rounded-full border px-3.5 text-[13px] font-bold transition-colors duration-150 sm:h-9 ${activeTab === key
                                 ? 'border-navy bg-navy text-white'
                                 : 'border-slate-300 bg-white text-slate-700 hover:border-brand-300'
                                 }`}
@@ -94,7 +95,7 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions, precompu
                         {currentPick.horse_number != null && (
                             <HorseNumber number={currentPick.horse_number} waku={currentPick.waku_number} size={28} />
                         )}
-                        <span className="truncate font-display text-[22px] font-extrabold text-slate-900 md:text-[26px]">
+                        <span className="min-w-0 break-words font-display text-[22px] font-extrabold text-slate-900 md:text-[26px]">
                             {currentPick.horse_name}
                         </span>
                     </span>
@@ -112,6 +113,7 @@ export const SpecialPickCard = ({ pick: initialPick, date, predictions, precompu
             <div>
                 <Link href={racePath} prefetch={false} className="ui-btn ui-btn--secondary w-full md:w-auto">
                     {currentPick.venue_name}{currentPick.race_number}Rの出走表を確認する
+                    <LineIcon name="arrowR" size={17} className="block shrink-0" />
                 </Link>
             </div>
         </div>

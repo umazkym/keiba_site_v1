@@ -128,7 +128,7 @@ export function ArticleRaceBridge({
                 {verifiedPreview.top_predictions.slice(0, 3).map((prediction) => (
                   <div key={`${prediction.horse_number}-${prediction.horse_name}`} className="contents">
                     <span className="font-mono font-black text-slate-700">{prediction.horse_number}</span>
-                    <span className="min-w-0 truncate font-bold text-slate-900" title={prediction.horse_name}>
+                    <span className="min-w-0 break-words font-bold text-slate-900">
                       {prediction.horse_name}
                     </span>
                     <span className="whitespace-nowrap font-mono font-black text-amber-700">

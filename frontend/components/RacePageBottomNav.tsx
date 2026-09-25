@@ -30,7 +30,10 @@ export function RacePageBottomNav() {
 
         let hasReachedPrediction = false;
         let hasNotPassedEnd = true;
-        const syncRange = () => setIsInAnalysisRange(hasReachedPrediction && hasNotPassedEnd);
+        // フッターが見えている間も隠す。ページの末尾に下ナビ用の余白を取らないため（2026-09-25 スマホの見直し）、
+        // 関連記事の後ろが短いページでも、ナビがフッターの最後の行に重ならないようにする
+        let isFooterInView = false;
+        const syncRange = () => setIsInAnalysisRange(hasReachedPrediction && hasNotPassedEnd && !isFooterInView);
         const predictionObserver = new IntersectionObserver(([entry]) => {
             hasReachedPrediction = entry.isIntersecting
                 || entry.boundingClientRect.top <= window.innerHeight - 48;
@@ -43,9 +46,20 @@ export function RacePageBottomNav() {
         predictionObserver.observe(predictionSection);
         endObserver.observe(analysisEnd);
 
+        const footers = document.querySelectorAll('footer');
+        const siteFooter = footers.length > 0 ? footers[footers.length - 1] : null;
+        const footerObserver = siteFooter
+            ? new IntersectionObserver(([entry]) => {
+                isFooterInView = entry.isIntersecting;
+                syncRange();
+            })
+            : null;
+        if (siteFooter && footerObserver) footerObserver.observe(siteFooter);
+
         return () => {
             predictionObserver.disconnect();
             endObserver.disconnect();
+            footerObserver?.disconnect();
         };
     }, []);
 

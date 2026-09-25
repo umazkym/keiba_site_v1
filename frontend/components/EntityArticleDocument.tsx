@@ -5,7 +5,7 @@ import { enhanceArticleHtml } from "@/lib/article-ux";
 import { AdUnit } from "@/components/AdUnit";
 import { MultiplexAd } from "@/components/MultiplexAd";
 import { ArticleBody } from "@/components/ArticleBody";
-import { ArticleCover, ArticleMetaRow, ArticleToc, ArticleValueGuide } from "@/components/ArticleParts";
+import { ArticleCover, ArticleMetaRow, ArticleTitleText, ArticleToc, ArticleValueGuide } from "@/components/ArticleParts";
 import { estimateReadingMinutes, pickArticleCover } from "@/lib/article-visual";
 import { ArticleEngagementTracker } from "@/components/ArticleEngagementTracker";
 
@@ -56,7 +56,8 @@ export function EntityArticleDocument({
       />
 
       <article data-article-slug={article.slug} className="mx-auto max-w-[1080px]">
-        <header className="flex max-w-[760px] flex-col gap-4 border-b border-slate-200 pb-7 sm:gap-5 sm:pb-9">
+        {/* 記事（app/articles/[slug]）と同じ：スマホは目次の下に区切り線を付けず、本文との間は16px。PCは従来どおり線で区切る（2026-09-25） */}
+        <header className="flex max-w-[760px] flex-col gap-3 sm:gap-5 sm:border-b sm:border-slate-200 sm:pb-9">
           <div className="flex flex-wrap gap-2">
             <Link prefetch={false} href={backHref} className="ui-btn ui-btn--secondary text-[14px]">
               {backLabel}
@@ -69,8 +70,8 @@ export function EntityArticleDocument({
           </div>
 
           <div className="flex flex-col gap-3 sm:gap-4">
-            <h1 className="article-page-title font-display text-[23px] font-extrabold leading-[1.5] text-slate-900 [overflow-wrap:anywhere] sm:text-[30px] lg:text-[34px]">
-              {article.title}
+            <h1 className="article-page-title font-display text-[23px] font-extrabold leading-[1.5] text-slate-900 [overflow-wrap:anywhere] text-balance sm:text-[30px] sm:text-wrap lg:text-[34px]">
+              <ArticleTitleText title={article.title} />
             </h1>
             {article.description && (
               <p className="article-page-lead max-w-3xl text-[15px] leading-[1.9] text-slate-700 sm:text-[17px]">
@@ -90,7 +91,8 @@ export function EntityArticleDocument({
           <ArticleToc toc={toc} headingId="entity-article-toc-heading" />
         </header>
 
-        <div className="px-1 pb-6 sm:px-0 sm:pb-10">
+        {/* スマホの左右は外枠の16pxだけ（px-1 を外す）。本文の最後の段落の下16pxで次へつなぐ */}
+        <div className="sm:pb-10">
           <ArticleBody html={enhancedContent} analyticsPrefix="entity_article" />
         </div>
 
@@ -100,7 +102,7 @@ export function EntityArticleDocument({
           readingTimeMin={readingTimeMin}
         />
 
-        <div className="pb-5 sm:pb-8">
+        <div className="pb-3 sm:pb-8">
           <AdUnit slot="1489598374" analyticsPlacement="entity_article_after_body" {...stableArticleAdProps} />
         </div>
 

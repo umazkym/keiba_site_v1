@@ -5,7 +5,9 @@
 // さらにページは1日キャッシュされるため、表示する時点の日本の日付より前のレースはここで外す（2026-09-25）。
 // サーバーの描画と食い違わないよう、最初は全件を描き、読み込み後に日付で絞る。
 import { useEffect, useState } from 'react';
+import { GuideHorse } from '@/components/BrandLogo';
 import { LineIcon } from '@/components/LineIcon';
+import { SectionHeader } from '@/components/SectionHeader';
 import { UpcomingRaceTrackedLink } from '@/components/UpcomingRaceTrackedLink';
 import { getJstTodayString } from '@/lib/race-url';
 import type { DataUpcomingRace } from '@/lib/types';
@@ -29,12 +31,27 @@ const buildCalendarUrl = (race: DataUpcomingRace) => {
     return `data:text/calendar;charset=utf-8,${encodeURIComponent(content)}`;
 };
 
+// 見出し：騎手は見本の「今日の騎乗」に合わせるが、API は翌日以降の予定も返すため「騎乗予定」とする（2026-09-25）
+const HEADINGS = {
+    horse: '出走予定',
+    jockey: '騎乗予定',
+    trainer: '管理馬の出走予定',
+} as const;
+
+const EMPTY_TITLES = {
+    horse: '出走予定はまだありません',
+    jockey: '騎乗予定はまだありません',
+    trainer: '管理馬の出走予定はまだありません',
+} as const;
+
 export function DataUpcomingRaces({
     races,
     entityType,
+    className = '',
 }: {
     races: DataUpcomingRace[];
     entityType: 'horse' | 'jockey' | 'trainer';
+    className?: string;
 }) {
     const [today, setToday] = useState<string | null>(null);
     useEffect(() => {
@@ -42,15 +59,29 @@ export function DataUpcomingRaces({
     }, []);
 
     const visibleRaces = today ? races.filter((race) => race.race_date.slice(0, 10) >= today) : races;
-    if (visibleRaces.length === 0) return null;
+    const headingId = `entity-upcoming-heading-${entityType}`;
+
+    // 予定が無いとき：騎手・調教師は見本の空の状態（眠る馬と1行）を出す。競走馬は引退馬が多いので出さない
+    if (visibleRaces.length === 0) {
+        if (entityType === 'horse') return null;
+        return (
+            <section className={`rounded-[14px] border border-slate-200 bg-white px-4 py-3.5 sm:px-5 sm:py-4 ${className}`.trim()} aria-labelledby={headingId}>
+                <SectionHeader id={headingId} title={HEADINGS[entityType]} />
+                <div className="mt-2 flex items-center gap-3">
+                    <GuideHorse size={44} mood="sleep" className="block h-11 w-11 shrink-0" />
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                        <p className="text-[14.5px] font-bold text-slate-900">{EMPTY_TITLES[entityType]}</p>
+                        <p className="text-[12.5px] leading-5 text-slate-500">出馬表が確定すると、ここにレースが出ます。</p>
+                    </div>
+                </div>
+            </section>
+        );
+    }
 
     return (
-        <section className="mt-6 overflow-hidden rounded-[14px] bg-white ring-1 ring-inset ring-brand-200" aria-labelledby="entity-upcoming-heading">
-            <div className="flex items-center gap-2 border-b border-brand-200 bg-brand-50/70 px-4 py-3 sm:px-5">
-                <LineIcon name="calendar" size={20} className="block text-brand-700" />
-                <h2 id="entity-upcoming-heading" className="font-display text-[17px] font-extrabold text-slate-900 sm:text-[19px]">出走予定</h2>
-            </div>
-            <div className="divide-y divide-slate-200">
+        <section className={`overflow-hidden rounded-[14px] border border-slate-200 bg-white ${className}`.trim()} aria-labelledby={headingId}>
+            <SectionHeader id={headingId} title={HEADINGS[entityType]} className="mx-4 pt-3.5 sm:mx-5 sm:pt-4" />
+            <div className="mt-1 divide-y divide-slate-200 sm:mt-2">
                 {visibleRaces.map((race) => (
                     <div
                         key={`${race.race_id}-${race.horse_id ?? ''}`}

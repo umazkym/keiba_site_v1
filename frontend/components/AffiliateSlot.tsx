@@ -203,12 +203,13 @@ export const AffiliateSlot = ({
         ? productPreview.imageUrl
         : null;
     const fallbackVisualLabel = campaign.fallbackVisualLabel || '競馬グッズ';
-    const sectionClassName = isCompact
-        ? campaign.type === 'voting'
-            ? 'my-1.5 sm:my-2 rounded-lg border border-rose-200 bg-rose-50/70 p-2 sm:p-2.5 shadow-2xs'
-            : 'my-1.5 sm:my-2 rounded-xl border border-rose-200 bg-rose-50/70 p-2 shadow-sm sm:p-2.5'
-        : campaign.type === 'voting'
-            ? 'my-1.5 sm:my-3 rounded-lg border border-rose-200 bg-rose-50/70 p-2.5 sm:p-3 shadow-2xs'
+    const isVoting = campaign.type === 'voting';
+    // 投票の PR は見本の形（白地・薄い赤の枠・「PR 楽天競馬」・見出し・注記・全幅44pxのボタン。2026-09-25）。
+    // スマホでは外側の余白を持たず、置き場所の gap で間を決める。
+    const sectionClassName = isVoting
+        ? 'my-0 sm:my-2 rounded-[14px] border border-rose-200 bg-white p-3.5 sm:p-4'
+        : isCompact
+            ? 'my-1.5 sm:my-2 rounded-xl border border-rose-200 bg-rose-50/70 p-2 shadow-sm sm:p-2.5'
             : 'my-1.5 sm:my-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-3';
     const wholeSlotLink = !campaign.ctaOnly
         && campaign.type === 'voting'
@@ -278,7 +279,7 @@ export const AffiliateSlot = ({
                             </div>
                         )}
                     </div>
-                ) : (
+                ) : isVoting ? null : (
                     <span className={`mt-0.5 flex shrink-0 items-center justify-center rounded-lg ${isCompact ? 'h-7 w-7' : 'h-7 w-7 sm:h-8 sm:w-8'} ${iconWrapperClassName}`}>
                         <Icon className={isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
                     </span>
@@ -286,26 +287,41 @@ export const AffiliateSlot = ({
 
                 <div className="min-w-0 flex-1">
                     <div className={`${isCompact ? 'mb-1' : 'mb-1.5'} flex flex-wrap items-center gap-1.5`}>
-                        <span className="rounded border border-rose-100 bg-white px-1.5 py-0.5 text-[11px] font-bold text-rose-600">
-                            PR
-                        </span>
+                        {isVoting ? (
+                            <>
+                                <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">PR</span>
+                                <span className="text-[12px] font-medium text-slate-500">{providerLabels[mainLinks[0]?.provider ?? 'rakuten_keiba']}</span>
+                            </>
+                        ) : (
+                            <span className="rounded border border-rose-100 bg-white px-1.5 py-0.5 text-[11px] font-bold text-rose-600">
+                                PR
+                            </span>
+                        )}
                         {productPriceLabel && (
                             <span className="rounded border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
                                 楽天 {productPriceLabel}円
                             </span>
                         )}
                     </div>
-                    <h3 className={`${isCompact ? 'text-xs sm:text-[13px]' : 'text-sm sm:text-sm'} font-bold leading-tight text-slate-700`}>
+                    <h3 className={`${isVoting ? 'text-[14.5px] leading-normal text-slate-900 sm:text-[15.5px]' : `${isCompact ? 'text-xs sm:text-[13px]' : 'text-sm sm:text-sm'} leading-tight text-slate-700`} font-bold`}>
                         {campaign.title}
                     </h3>
+                    {isVoting && campaign.attention && (
+                        <p className="mt-1 text-[12px] leading-5 text-slate-500">{campaign.attention}</p>
+                    )}
                     {campaign.showDescription && campaign.description && (
                         <p className={`${isCompact ? 'mt-1 text-[11px] leading-[1.55]' : 'mt-1 text-[11px] leading-[1.55] sm:text-xs sm:leading-5'} text-slate-600`}>
                             {campaign.description}
                         </p>
                     )}
 
-                    <div className={`${isCompact ? 'mt-1.5' : 'mt-1.5 sm:mt-2'} flex flex-col gap-1.5 sm:gap-2`}>
-                        {wholeSlotLink ? (
+                    <div className={`${isVoting ? 'mt-2.5' : isCompact ? 'mt-1.5' : 'mt-1.5 sm:mt-2'} flex flex-col gap-1.5 sm:gap-2`}>
+                        {wholeSlotLink && isVoting ? (
+                            <div className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[10px] border border-rose-200 bg-rose-50 px-4 text-[14px] font-bold text-rose-700">
+                                <span className="min-w-0 truncate">{wholeSlotLink.label || providerLabels[wholeSlotLink.provider]}</span>
+                                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                            </div>
+                        ) : wholeSlotLink ? (
                             <div className={`inline-flex w-full items-center justify-between gap-2 rounded-lg border border-rose-100 bg-white/80 px-3 py-1.5 text-xs font-bold text-rose-700 ${isCompact ? 'min-h-[32px] sm:min-h-[36px]' : 'min-h-[34px] sm:min-h-[40px]'}`}>
                                 <span className="min-w-0 truncate">{wholeSlotLink.label || providerLabels[wholeSlotLink.provider]}</span>
                                 <ExternalLink className="h-3.5 w-3.5 shrink-0" />
@@ -350,8 +366,8 @@ export const AffiliateSlot = ({
                 </div>
             </div>
 
-            {campaign.attention && (
-                <p className={`${isCompact ? 'mt-1.5 pt-1.5' : 'mt-1.5 pt-1.5 sm:mt-2 sm:pt-2'} border-t border-slate-100 text-[11px] text-slate-500 leading-4`}>
+            {campaign.attention && !isVoting && (
+                <p className={`${isCompact ? 'mt-1.5 pt-1.5' : 'mt-1.5 pt-1.5 sm:mt-2 sm:pt-2'} border-t border-slate-100 text-[12px] text-slate-500 leading-4`}>
                     {campaign.attention}
                 </p>
             )}

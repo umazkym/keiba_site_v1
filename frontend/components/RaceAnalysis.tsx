@@ -79,9 +79,6 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
         )
         : null;
 
-    const topMarkedHorses = race.predictions.filter(p => p.mark === '◎' || p.mark === '〇' || p.mark === '○');
-    const darkHorses = race.predictions.filter(p => p.mark === '▲' || p.mark === '△');
-
     // ========== 分析文言の生成 ==========
     const generateAbilityAnalysis = (): string => {
         const topHorse = [...race.predictions].filter(p => p.deviation_score !== null).sort((a, b) => (b.deviation_score as number) - (a.deviation_score as number))[0];
@@ -128,30 +125,16 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
         return analysis || 'このコース・距離では、今回の出走馬の馬番による大きな有利・不利の傾向はみられません。馬番よりも能力や展開が結果に直結しやすい条件です。';
     };
 
-    const generateStrategyAnalysis = (): string => {
-        const topHorse = [...race.predictions].filter(p => p.deviation_score !== null).sort((a, b) => (b.deviation_score as number) - (a.deviation_score as number))[0];
-
-        if (topMarkedHorses.length > 0 && darkHorses.length > 0) {
-            return `◎や○の印がついた上位評価馬に加え、▲や△の相手候補もいるレースです。まずは${topHorse?.horse_name || '高い評価の馬'}の条件を確認しつつ、展開次第で浮上しそうな馬がいないかを見ておきたい構成です。`;
-        } else if (topMarkedHorses.length >= 3) {
-            return `◎や○の印がついた上位評価馬が${topMarkedHorses.length}頭おり、上位の比較が大事になりそうです。AI偏差値だけでなく、対戦成績や展開予測を合わせて確認すると、評価の優先順位を整理しやすくなります。`;
-        } else if (darkHorses.length >= 2) {
-            return `▲や△の印がついた相手候補が複数います。上位評価馬だけでなく、展開や馬番が合う馬を確認しておくと、判断材料が増えます。`;
-        } else {
-            return `印の分布を見ると、上位評価馬を中心に確認しやすい構成です。${topHorse?.horse_name || 'トップ評価の馬'}の条件が当日の馬場や展開に合うかを見ながら、相手候補を整理したいレースです。`;
-        }
-    };
-
     // ========== レンダリング ==========
     return (
         <details className="race-panel group overflow-hidden">
-            <summary className="race-section-summary flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 transition-colors duration-150 hover:bg-slate-50 md:px-5 md:py-3">
+            <summary className="race-section-summary flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2 transition-colors duration-150 hover:bg-slate-50 md:px-5 md:py-3">
                 <h2 className="race-section-heading race-section-heading--flush !mb-0" id="race-analysis-heading">AIレース展望</h2>
                 <span className="shrink-0 text-[13px] font-bold text-brand-700 group-open:hidden">展望を開く</span>
                 <span className="hidden shrink-0 text-[13px] font-bold text-slate-600 group-open:inline">閉じる</span>
             </summary>
 
-            <div className="flex flex-col gap-4 border-t border-slate-200 px-3 pb-4 pt-3.5 md:px-5 md:pb-5">
+            <div className="flex flex-col gap-3.5 border-t border-slate-200 px-3.5 pb-3.5 pt-3 md:gap-4 md:px-5 md:pb-5 md:pt-3.5">
                 {race.ai_analysis_text && (
                     <section className="flex flex-col gap-1">
                         <h3 className="text-sm font-bold text-navy md:text-[15px]">AI展望コメント</h3>
@@ -161,12 +144,13 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
                     </section>
                 )}
 
-                <div className="grid gap-4 lg:grid-cols-2 lg:gap-x-8">
+                {/* 見本と同じ3項目。以前の「検討材料のまとめ」（どのレースでもほぼ同じ文）と、
+                    免責の注記（出走表の直後の1文とフッターにある）は外した（2026-09-25） */}
+                <div className="grid gap-3.5 md:gap-4 lg:grid-cols-2 lg:gap-x-8">
                     {[
                         ['出走馬の能力', generateAbilityAnalysis()],
                         ['序盤の展開', generateStartAnalysis()],
                         ['馬番の傾向', generateFrameAnalysis()],
-                        ['検討材料のまとめ', generateStrategyAnalysis()],
                     ].map(([title, body]) => (
                         <section key={title} className="flex flex-col gap-1">
                             <h3 className="text-sm font-bold text-navy md:text-[15px]">{title}</h3>
@@ -174,10 +158,6 @@ export const RaceAnalysis = ({ race }: { race: RacePrediction }) => {
                         </section>
                     ))}
                 </div>
-
-                <p className="rounded-lg bg-slate-100 px-3.5 py-3 text-[12.5px] leading-relaxed text-slate-600">
-                    過去データにもとづく推定です。天候・馬場・当日の状態などで結果は変わります。投票の推奨ではありません。
-                </p>
             </div>
         </details>
     );

@@ -61,10 +61,10 @@ const HeaderAffiliateLink = () => {
             data-affiliate-context={HEADER_AFFILIATE_EVENT.context}
             data-affiliate-campaign={HEADER_AFFILIATE_EVENT.campaign_id}
             className="group inline-flex h-11 items-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30"
-            aria-label="PR 楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で。馬券の購入は20歳以上の方のみ対象です"
-            title="PR 楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で。馬券の購入は20歳以上の方のみ対象です。"
+            aria-label="PR 地方競馬の投票は楽天競馬で。馬券の購入は20歳以上の方のみ対象です"
+            title="PR 地方競馬の投票は楽天競馬で。馬券の購入は20歳以上の方のみ対象です。"
         >
-            {/* 押せる範囲は44pxのまま、見える枠はヘッダー（スマホ40px）の中に収める。
+            {/* 押せる範囲は44pxのまま、見える枠はヘッダー（スマホ44px）の中に収める。
                 以前は枠そのものが44pxで、ヘッダーの上下からはみ出して見えていた */}
             <span className="inline-flex h-8 items-center gap-1 rounded-lg border border-rose-100 bg-rose-50 px-1.5 text-[11px] font-semibold text-rose-700 transition-colors duration-150 group-hover:border-rose-200 sm:h-10 sm:gap-1.5 sm:px-3 sm:text-xs">
                 <span className="rounded bg-rose-600 px-1 py-0.5 text-[11px] leading-none text-white">PR</span>
@@ -86,16 +86,17 @@ export const Header = ({ todayString }: HeaderProps) => {
 
     const navItems: NavItem[] = [
         { href: '/', label: 'ホーム', menuLabel: 'ホーム', icon: 'home', isActive: pathname === '/' },
-        { href: `/races/${todayString}`, label: '本日の分析', menuLabel: '本日のレース分析', icon: 'race', isActive: pathname.startsWith('/races') },
-        { href: '/keiba-data', label: 'データベース', menuLabel: '競馬データベース', icon: 'database', isActive: pathname.startsWith('/keiba-data') || pathname.startsWith('/horses') || pathname.startsWith('/jockeys') || pathname.startsWith('/trainers') || pathname.startsWith('/courses') || pathname.startsWith('/compare') || pathname.startsWith('/my-data') },
+        { href: `/races/${todayString}`, label: '本日の分析', menuLabel: '本日の分析', icon: 'race', isActive: pathname.startsWith('/races') },
+        { href: '/keiba-data', label: 'データベース', menuLabel: 'データベース', icon: 'database', isActive: pathname.startsWith('/keiba-data') || pathname.startsWith('/horses') || pathname.startsWith('/jockeys') || pathname.startsWith('/trainers') || pathname.startsWith('/courses') || pathname.startsWith('/compare') || pathname.startsWith('/my-data') },
         { href: '/articles', label: '記事', menuLabel: 'データ分析記事', icon: 'book', isActive: pathname.startsWith('/articles') },
         { href: '/faq', label: 'よくある質問', menuLabel: 'よくある質問', icon: 'help', isActive: pathname === '/faq' },
     ];
-    // モバイルメニューだけに出す項目（PCの横並びは5項目のまま）
+    // モバイルメニューだけに出す項目（PCの横並びは5項目のまま）。見本の順で「よくある質問」の前に入れる。
+    // サイト内検索はヘッダーの虫めがねと同じ行き先なので、メニューには置かない（2026-09-25）
     const menuOnlyItems: NavItem[] = [
         { href: '/results/accuracy', label: 'AI予想の成績', menuLabel: 'AI予想の成績', icon: 'trophy', isActive: pathname.startsWith('/results') },
-        { href: '/search', label: '検索', menuLabel: 'サイト内検索', icon: 'search', isActive: pathname === '/search' },
     ];
+    const menuItems: NavItem[] = [...navItems.slice(0, -1), ...menuOnlyItems, ...navItems.slice(-1)];
 
     const toggleMenu = useCallback(() => {
         setIsMenuOpen(prev => !prev);
@@ -272,8 +273,8 @@ export const Header = ({ todayString }: HeaderProps) => {
                 data-site-header-visible="true"
                 className="glass site-header site-header-visible z-50 pt-[env(safe-area-inset-top,0px)]"
             >
-                <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 md:px-6">
-                    <div className="flex h-10 items-center justify-between gap-1.5 sm:h-16 sm:gap-4">
+                <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-4 md:px-6">
+                    <div className="flex h-11 items-center justify-between gap-1.5 sm:h-16 sm:gap-4">
                     {/* ロゴ */}
                     {/* ヘッダーのリンクは先読みしない（全ページで画面に入るため、先読みがキャッシュを通らず Cloud Run へ届く。
                         閉じたモバイルメニューも画面の外に置かれているだけなので先読みされていた。2026-09-25） */}
@@ -281,7 +282,8 @@ export const Header = ({ todayString }: HeaderProps) => {
                         {/* 32px以下は内側の線を省いた小さい版のマークを使う */}
                         <BrandMark size={30} variant="small" className="sm:hidden" />
                         <BrandMark size={44} variant="full" className="hidden sm:block" />
-                        <span className="flex flex-col leading-none">
+                        {/* 幅360px未満（iPhone SE 初代など）は、PR と検索・メニューを収めるため文字のロゴを省きマークだけにする */}
+                        <span className="flex flex-col leading-none max-[359px]:hidden">
                             <span className="font-display text-[17px] font-extrabold tracking-[0.01em] text-navy sm:text-[23px]">
                                 UMA-FREE
                             </span>
@@ -358,7 +360,7 @@ export const Header = ({ todayString }: HeaderProps) => {
                 className={`mobile-menu-panel ${isMenuOpen ? 'open' : ''}`}
             >
                 <nav aria-label="モバイル主要ナビゲーション" className="px-4 pt-1">
-                    {[...navItems, ...menuOnlyItems].map((item) => (
+                    {menuItems.map((item) => (
                         <Link
                             key={item.href}
                             prefetch={false}
@@ -381,7 +383,7 @@ export const Header = ({ todayString }: HeaderProps) => {
                 <div className="flex flex-wrap gap-x-4 px-4 pt-3">
                     {[
                         { href: '/about', label: '運営者情報' },
-                        { href: '/about-ai', label: 'AI予測モデルについて' },
+                        { href: '/about-ai', label: 'AI偏差値について' },
                         { href: '/advertising', label: '広告について' },
                         { href: '/contact', label: 'お問い合わせ' },
                         { href: '/privacy', label: 'プライバシーポリシー' },
@@ -398,8 +400,10 @@ export const Header = ({ todayString }: HeaderProps) => {
                         </Link>
                     ))}
                 </div>
-                <p className="mx-4 mb-6 mt-4 rounded-xl bg-slate-100 px-3.5 py-3 text-xs leading-relaxed text-slate-600">
-                    AI分析は過去のデータにもとづく参考情報です。投票の推奨ではありません。
+                <p className="mx-4 mb-6 mt-auto rounded-xl bg-slate-100 px-3.5 py-3 text-xs leading-relaxed text-slate-600">
+                    {/* 文の切れ目で2行にする（1行に詰めると「ありませ／ん。」と折れる） */}
+                    <span className="block">AI分析は参考情報です。</span>
+                    <span className="block">投票の推奨ではありません。</span>
                 </p>
             </div>
         </>

@@ -1,16 +1,14 @@
 "use client";
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import Link from 'next/link';
-import { RaceDayPrediction, TopPayoutHit, WeeklyGradeRace } from "@/lib/types";
+import { RaceDayPrediction } from "@/lib/types";
 import { RaceTabs } from "@/components/RaceTabs";
-import { TopHitsDisplay } from "@/components/TopHitsDisplay";
-import { WeeklyGradeRaces } from "@/components/WeeklyGradeRaces";
-import { formatDate } from "@/lib/utils";
 import { RaceTabsSkeleton } from "@/components/SkeletonLoader";
 import { getPredictionsForDate } from "@/lib/api";
 import { RaceArticleMeta } from "@/lib/articles";
 import { InFeedAd } from "@/components/InFeedAd";
 import { GuideHorse } from "@/components/BrandLogo";
+import { LineIcon } from "@/components/LineIcon";
 import { AffiliateSlot } from "@/components/AffiliateSlot";
 import { RacePageBottomNav } from "@/components/RacePageBottomNav";
 import type { RaceSelectorLink } from '@/components/RaceSelector';
@@ -49,8 +47,6 @@ const isValidDateFormat = (dateStr: string): boolean => {
 type RacePageClientProps = {
     initialDate: string;
     initialPredictionData: RaceDayPrediction | null;
-    initialTopHits?: TopPayoutHit[];
-    weeklyGradeRaces?: WeeklyGradeRace[];
     articlesMeta: RaceArticleMeta[];
     initialVenueName?: string | null;
     initialRaceNumber?: number | null;
@@ -58,6 +54,8 @@ type RacePageClientProps = {
     // サーバーで描いたレースの見出し（RaceHead）。コース図のデータをクライアントに送らないため props で受け取る
     header?: ReactNode;
 };
+
+const FETCH_ERROR_MESSAGE = "データの取得に失敗しました。時間をおいて再度お試しください。";
 
 const getShiftedDate = (dateStr: string, days: number) => {
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -68,8 +66,6 @@ const getShiftedDate = (dateStr: string, days: number) => {
 export default function RacePageClient({
     initialDate,
     initialPredictionData,
-    initialTopHits,
-    weeklyGradeRaces,
     articlesMeta,
     initialVenueName: routeInitialVenueName = null,
     initialRaceNumber: routeInitialRaceNumber = null,
@@ -103,7 +99,7 @@ export default function RacePageClient({
                     setError("指定された日付のレースデータはありませんでした。");
                 }
             } catch (err) {
-                setError("データの取得に失敗しました。時間をおいて再度お試しください。");
+                setError(FETCH_ERROR_MESSAGE);
                 console.error(err);
             } finally {
                 setIsLoading(false);
@@ -153,28 +149,38 @@ export default function RacePageClient({
     const hasRaceData = Boolean(
         predictionData && ((predictionData.jra?.length ?? 0) > 0 || (predictionData.nar?.length ?? 0) > 0)
     );
-    // 「近日の重賞」から、いま開いているレースそのものを外す（自分自身へのリンクになるため）
-    const otherGradeRaces = (weeklyGradeRaces ?? []).filter((race) => !(
-        race.race_date === currentDate
-        && race.venue_name === routeInitialVenueName
-        && race.race_number === routeInitialRaceNumber
-    ));
 
     const renderContent = () => {
         if (isLoading) {
             return <RaceTabsSkeleton />;
         }
         if (error || !predictionData || ((predictionData.jra?.length ?? 0) === 0 && (predictionData.nar?.length ?? 0) === 0)) {
+            // 見本（開催のない日）と同じ形：案内役の馬・1行の見出しと説明・主と副のボタン（開催日ボードの空の表示と同じ）
+            const isFetchError = error === FETCH_ERROR_MESSAGE;
             return (
-                <section className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-8 text-center">
-                    <GuideHorse size={110} mood="sleep" />
-                    <h2 className="text-[20px] font-extrabold text-slate-900">{formatDate(currentDate)}のレースデータはありません</h2>
-                    <p className="max-w-xl text-sm leading-relaxed text-slate-700">
-                        開催がないか、まだデータが登録されていません。翌日のレース分析は、通常前日の7時ごろに公開します。
+                <section className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-6 text-center md:py-8">
+                    <GuideHorse size={110} mood={isFetchError ? 'look' : 'sleep'} />
+                    <h2 className="text-[20px] font-extrabold text-slate-900">
+                        {isFetchError ? 'データを読み込めませんでした' : (
+                            <>
+                                <span className="inline-block">この日のレースは</span>
+                                <span className="inline-block">まだありません</span>
+                            </>
+                        )}
+                    </h2>
+                    <p className="text-sm leading-relaxed text-slate-700">
+                        {isFetchError ? '時間をおいて、もう一度開いてください。' : '開催がないか、データの公開前です。'}
                     </p>
-                    <Link href={`/races/${getTodayString()}`} prefetch={false} className="ui-btn ui-btn--primary">
-                        本日のレース分析を見る
-                    </Link>
+                    <div className="flex w-full max-w-md flex-col gap-2">
+                        <Link href={`/races/${getTodayString()}`} prefetch={false} className="ui-btn ui-btn--primary ui-btn--full">
+                            本日のレース分析へ
+                            <LineIcon name="arrowR" size={18} className="block shrink-0" />
+                        </Link>
+                        <Link href="/keiba-data" prefetch={false} className="ui-btn ui-btn--secondary ui-btn--full">
+                            過去のデータを調べる
+                            <LineIcon name="chevR" size={18} className="block shrink-0" />
+                        </Link>
+                    </div>
                 </section>
             );
         }
@@ -202,7 +208,7 @@ export default function RacePageClient({
     return (
         <div
             id="race-page-top"
-            className="race-page-scope site-shell-wide py-1 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:py-2 lg:pb-4"
+            className="race-page-scope site-shell-wide sm:py-2 lg:pb-4"
             data-race-revenue-variant={raceRevenueExperiment.ready ? raceRevenueExperiment.variant : 'pending'}
             data-race-revenue-eligible={raceRevenueExperiment.eligible ? 'true' : 'false'}
         >
@@ -210,22 +216,15 @@ export default function RacePageClient({
 
             {renderContent()}
 
-            {otherGradeRaces.length > 0 && (
-                <div className="mt-2 sm:mt-3">
-                    <WeeklyGradeRaces races={otherGradeRaces} predictions={predictionData} compact />
-                </div>
-            )}
-
-            <div className="mt-1.5 sm:mt-3 mb-1 sm:mb-2">
-                <TopHitsDisplay initialHits={initialTopHits} />
-            </div>
+            {/* 以前はここに「近日の重賞」と「高配当的中ランキング」（0件のときは「実績はありませんでした」）を置いていた。
+                見本に無く、このレースと関係しないため外した（開催日ボード・ホームにも置かない。2026-09-25） */}
 
             <AffiliateSlot
                 context="race_after_top_hits"
                 raceType={hasNarRaces ? 'nar' : 'jra'}
                 selectionKey={currentDate}
                 variant="compact"
-                className="my-1.5 sm:my-2"
+                className="mt-2.5 sm:my-2"
             />
 
             {hasRaceData && !isLoading && !error && raceRevenueExperiment.shouldRenderLegacySlot && (
@@ -233,13 +232,13 @@ export default function RacePageClient({
                     refreshKey={`race-after-top-hits-${currentDate}`}
                     analyticsPlacement="race_after_top_hits_infeed"
                     analyticsVariant={raceRevenueExperiment.eligible ? 'legacy' : undefined}
-                    className="mt-1.5 sm:mt-2"
+                    className="mt-2.5 sm:mt-2"
                     lazyRootMargin="520px 0px 520px 0px"
                     refreshRootMarginPx={600}
                 />
             )}
 
-            <nav className="my-3 grid grid-cols-3 gap-2 sm:my-4 sm:gap-3" aria-label="日付の移動">
+            <nav className="mt-2.5 grid grid-cols-3 gap-2 sm:my-4 sm:gap-3" aria-label="日付の移動">
                 <Link href={`/races/${getShiftedDate(currentDate, -1)}`} prefetch={false} className="ui-btn ui-btn--secondary px-2 text-[13px] sm:text-sm">
                     ← 前日
                 </Link>

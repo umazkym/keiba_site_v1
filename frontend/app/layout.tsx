@@ -151,7 +151,7 @@ export default function RootLayout({
                 <SoftwareApplicationSchema />
 
                 <Header todayString={todayString} />
-                <main id="main-content" tabIndex={-1} className="w-full max-w-7xl mx-auto mb-2 px-1.5 sm:px-5 md:px-6 min-h-[calc(100dvh-48px)] sm:min-h-[calc(100dvh-64px)]">
+                <main id="main-content" tabIndex={-1} className="w-full max-w-7xl mx-auto mb-2 px-4 sm:px-5 md:px-6 min-h-[calc(100dvh-48px)] sm:min-h-[calc(100dvh-64px)]">
                     {/* メインコンテンツエリア */}
                     <div className="w-full">
                         {children}

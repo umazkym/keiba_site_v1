@@ -190,7 +190,7 @@ export const AdUnit = ({
         adStyle: React.CSSProperties;
     }> = {
         inline: {
-            wrapperClass: 'my-1 sm:my-3 w-full',
+            wrapperClass: 'my-0 sm:my-3 w-full',
             contentClass: 'flex flex-col items-center justify-center',
             reserveClass: 'ad-slot-reserve-inline',
             adStyle: { width: '100%' },
@@ -262,8 +262,8 @@ export const AdUnit = ({
                 <div ref={containerRef} className="ad-unit-container relative h-full w-full">
                     {/* スクロール中の再描画負荷を抑えるため、広告待機面は静止表示にする。 */}
                     {!adLoaded && !adUnfilled && (
-                        <div className="absolute inset-0 z-0 flex items-center justify-center rounded-lg bg-slate-50 pointer-events-none">
-                            <span className="text-[10px] font-semibold tracking-wider text-slate-300">広告</span>
+                        <div className="ad-reserve-stripes absolute inset-0 z-0 flex items-center justify-center rounded-lg pointer-events-none">
+                            <span className="text-[10px] font-semibold tracking-wider text-slate-400">広告</span>
                         </div>
                     )}
                     <div className={`ad-highlight relative z-10 w-full ${!adLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-500'}`}>

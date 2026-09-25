@@ -49,14 +49,14 @@ const HitCard = ({ hit, rank, compact = false }: { hit: TopPayoutHit, rank: numb
 
     return (
         <div className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-1 border-b border-slate-200 py-2.5 transition-colors duration-150 hover:bg-slate-50 md:grid-cols-[30px_150px_76px_minmax(0,1fr)_auto] md:gap-x-3.5 md:py-3">
-            <span className={`font-num text-[18px] font-bold md:text-[20px] ${rank === 1 ? 'text-navy' : 'text-slate-500'}`}>{rank}</span>
-            <span className="font-num text-[19px] font-bold text-slate-900 md:text-[22px]">
+            <span className={`font-num text-[18px] font-bold leading-tight md:text-[20px] md:leading-normal ${rank === 1 ? 'text-navy' : 'text-slate-500'}`}>{rank}</span>
+            <span className="font-num text-[19px] font-bold leading-tight text-slate-900 md:text-[22px] md:leading-normal">
                 {hit.payout.toLocaleString('en-US')}<span className="ml-0.5 font-sans text-[12px]">円</span>
             </span>
             <span className="justify-self-end md:justify-self-start">
                 <span className="inline-flex items-center rounded-[5px] bg-navy-soft px-1.5 py-0.5 text-[11.5px] font-bold text-navy">{hit.bet_type}</span>
             </span>
-            <span className="col-span-2 truncate text-[12.5px] text-slate-500 md:col-span-1 md:text-[13.5px] md:text-slate-700">
+            <span className="col-span-2 col-start-2 truncate text-[12.5px] text-slate-500 md:col-span-1 md:col-start-auto md:text-[13.5px] md:text-slate-700">
                 {raceDate} {hit.venue_name}{hit.race_number}R<span className="hidden md:inline"> {hit.race_name}</span>
                 <span className="md:hidden"> · 組番 <b className="font-num text-[14px] text-slate-700">{hit.winning_numbers}</b></span>
             </span>
@@ -146,7 +146,7 @@ export const TopHitsDisplay = ({ initialHits, compact = false }: { initialHits?:
                     ))}
                 </div>
             ) : (
-                <ol className="flex flex-col">
+                <ol className="flex flex-col [&>li:last-child_a>div]:border-b-0 [&>li:last-child_a>div]:pb-0">
                     {hits.map((hit, index) => (
                         <li key={`${hit.race_id}-${hit.winning_numbers}`}>
                             <Link

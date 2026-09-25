@@ -65,7 +65,9 @@ export type AffiliateFilter = {
     rakutenMode?: RakutenKeibaMode;
 };
 
-const DEFAULT_VOTING_NOTICE = '※馬券の購入は20歳以上の方のみ対象です。';
+// 見本（2026-09 デザイン改修）の PR 枠の文言。投票の推奨に見える煽りは避け、登録に要るものと年齢の注意を添える
+const DEFAULT_VOTING_TITLE = '地方競馬の投票は楽天競馬で。馬券の購入で楽天ポイントが貯まります';
+const DEFAULT_VOTING_NOTICE = '投票会員の登録には楽天会員情報と銀行口座が必要です。馬券の購入は20歳以上の方のみ対象です。';
 const QUALIFIED_RAKUTEN_KEIBA_TITLE = '馬券を買うたびに楽天ポイントが貯まる！';
 const QUALIFIED_RAKUTEN_KEIBA_DESCRIPTION = '地方競馬全場に対応。投票会員登録には楽天会員情報と銀行口座の登録が必要です。';
 const QUALIFIED_RAKUTEN_KEIBA_NOTICE = '※馬券の購入は20歳以上の方のみ対象です。';
@@ -127,7 +129,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         id: 'rakuten-keiba-default',
         enabled: true,
         type: 'voting',
-        title: '楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で',
+        title: DEFAULT_VOTING_TITLE,
         description: '',
         attention: DEFAULT_VOTING_NOTICE,
         contexts: ['race_after_prediction', 'race_after_premium_data', 'race_after_top_hits', 'home_nar_voting'],
@@ -140,7 +142,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
             {
                 id: 'rakuten-keiba-main',
                 provider: 'rakuten_keiba',
-                label: '今すぐチェック',
+                label: '投票会員登録の案内を見る',
                 url: DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL,
                 enabled: true,
             },
@@ -150,7 +152,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
         id: 'rakuten-keiba-jra-audience',
         enabled: true,
         type: 'voting',
-        title: '楽天ポイントがお得に貯まる！地方競馬の投票は楽天競馬で',
+        title: DEFAULT_VOTING_TITLE,
         description: '',
         attention: DEFAULT_VOTING_NOTICE,
         contexts: ['race_after_prediction', 'race_after_top_hits'],
@@ -163,7 +165,7 @@ export const AFFILIATE_CAMPAIGNS: AffiliateCampaign[] = [
             {
                 id: 'rakuten-keiba-jra-main',
                 provider: 'rakuten_keiba',
-                label: '今すぐチェック',
+                label: '投票会員登録の案内を見る',
                 url: DEFAULT_RAKUTEN_KEIBA_AFFILIATE_URL,
                 enabled: true,
             },

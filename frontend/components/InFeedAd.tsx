@@ -165,7 +165,7 @@ export const InFeedAd = ({
     return (
         <div
             ref={containerRef}
-            className={`overflow-hidden rounded-xl border-l-[3px] border-l-brand-200 border border-y-slate-200 border-r-slate-200 shadow-sm relative w-full bg-slate-50 p-1.5 sm:p-3 mt-2 mb-2 ${adUnfilled ? 'invisible pointer-events-none' : ''} ${className}`}
+            className={`ad-reserve-stripes overflow-hidden rounded-xl border border-slate-200 relative w-full p-1.5 sm:p-3 sm:mt-2 sm:mb-2 ${adUnfilled ? 'invisible pointer-events-none' : ''} ${className}`}
             style={{ minHeight: '220px' }}
             data-ad-state={adLoaded ? 'filled' : adUnfilled ? 'unfilled' : 'loading'}
             data-ad-variant={analyticsVariant}

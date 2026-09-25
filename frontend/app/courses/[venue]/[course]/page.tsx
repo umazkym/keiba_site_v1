@@ -100,7 +100,7 @@ export default async function CoursePage({ params }: Props) {
                 ]}
             />
             <Breadcrumb />
-            <article className="mx-auto max-w-4xl px-3 pb-14 pt-4 sm:px-4">
+            <article className="mx-auto max-w-4xl px-0 pb-2 pt-1.5 sm:px-4 sm:pb-14 sm:pt-4">
                 <header className="border-b border-slate-200 pb-5">
                     <p className="text-xs font-bold text-slate-500">コースデータ</p>
                     <h1 className="mt-1 text-2xl font-black text-slate-950 sm:text-4xl">{profile.title}</h1>

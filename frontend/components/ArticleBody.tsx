@@ -6,13 +6,14 @@ type ArticleBodyProps = {
 };
 
 // 記事本文の文字（2026-09-25 段階5）：本文はスマホ15.5px・PC17px、H2は紺の丸い書体でスマホ20px・PC25px、H3はスマホ17px・PC19px。
+// 見出しの上の空き（2026-09-25 スマホの見直し）：スマホは H2 28px（見本 12+16）・H3 20px。段落の間16px・行間1.9は変えない。PCは従来のまま。
 // リンクはインディゴの文字に下線（紺の文字だけでは本文と見分けにくい）。表の数字は Barlow で桁をそろえる（globals.css）。
 export const ARTICLE_PROSE_CLASS = [
     'article-page-prose prose prose-slate w-full max-w-none',
     '[overflow-wrap:anywhere]',
     'prose-headings:tracking-normal prose-headings:text-slate-900',
-    'prose-h2:font-display prose-h2:font-extrabold prose-h2:text-navy prose-h2:text-[20px] prose-h2:leading-[1.45] prose-h2:border-b-2 prose-h2:border-slate-200 prose-h2:pb-2.5 prose-h2:mt-10 prose-h2:mb-4 sm:prose-h2:text-[25px] sm:prose-h2:mt-12 sm:prose-h2:mb-5',
-    'prose-h3:font-bold prose-h3:text-[17px] prose-h3:leading-[1.5] prose-h3:mt-7 prose-h3:mb-2 sm:prose-h3:text-[19px] sm:prose-h3:mt-8 sm:prose-h3:mb-2.5',
+    'prose-h2:font-display prose-h2:font-extrabold prose-h2:text-navy prose-h2:text-[20px] prose-h2:leading-[1.45] prose-h2:border-b-2 prose-h2:border-slate-200 prose-h2:pb-2.5 prose-h2:mt-7 prose-h2:mb-4 sm:prose-h2:text-[25px] sm:prose-h2:mt-12 sm:prose-h2:mb-5',
+    'prose-h3:font-bold prose-h3:text-[17px] prose-h3:leading-[1.5] prose-h3:mt-5 prose-h3:mb-2 sm:prose-h3:text-[19px] sm:prose-h3:mt-8 sm:prose-h3:mb-2.5',
     'prose-p:text-[15.5px] prose-p:leading-[1.9] prose-p:my-4 prose-p:text-slate-900 sm:prose-p:text-[17px] sm:prose-p:leading-[1.95] sm:prose-p:my-5',
     'prose-a:text-brand-700 prose-a:font-bold prose-a:underline prose-a:decoration-brand-200 prose-a:decoration-2 prose-a:underline-offset-4 hover:prose-a:decoration-brand-600',
     'prose-strong:text-slate-900 prose-strong:font-bold',
@@ -33,16 +34,18 @@ const stableArticleAdProps = {
     className: 'article-ad-slot',
 };
 
+// 目次との間はスマホ16px（最初の段落の上の16pxと重なる）、PCは40px
 const ArticlePart = ({ html, first = false }: { html: string; first?: boolean }) => (
     <div
-        className={`${ARTICLE_PROSE_CLASS} ${first ? 'mt-7 sm:mt-10' : ''}`}
+        className={`${ARTICLE_PROSE_CLASS} ${first ? 'mt-4 sm:mt-10' : ''}`}
         dangerouslySetInnerHTML={{ __html: html }}
     />
 );
 
 export function ArticleBody({ html, analyticsPrefix }: ArticleBodyProps) {
     const h2Positions: number[] = [];
-    const searchRegex = /<h2[\s>]/gi;
+    // 「よくある質問」は enhanceArticleHtml が <section class="article-faq"> で包む。その中のH2では切らず、section の前で切る
+    const searchRegex = /<section class="article-faq[^"]*"[^>]*>\s*<h2[\s>]|<h2[\s>]/gi;
     let match: RegExpExecArray | null;
     while ((match = searchRegex.exec(html)) !== null) {
         h2Positions.push(match.index);

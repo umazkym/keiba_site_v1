@@ -2,7 +2,7 @@
 // サーバー（/races/[date]）で作り、データ到着前にクライアントで取り直したときも同じ関数で作る。
 import type { RaceDayPrediction, RacePrediction } from '@/lib/types';
 import { getRaceDetailPath } from '@/lib/race-url';
-import { getAiRanks, getFinishRanks, getUnpredictableReason, normalizeMark, resolveWaku } from '@/lib/race-display';
+import { getUnpredictableReason, resolveWaku } from '@/lib/race-display';
 
 export type BoardHorse = {
     number: number;
@@ -20,13 +20,11 @@ export type BoardRace = {
     href: string;
     top: (BoardHorse & { score: number }) | null;
     unpredictableReason: string | null;
-    winner: (BoardHorse & { mark: string | null; aiRank: number | null }) | null;
 };
 
 export type BoardVenue = {
     venue: string;
     races: BoardRace[];
-    doneCount: number;
 };
 
 export type RaceDaySummary = {
@@ -34,7 +32,6 @@ export type RaceDaySummary = {
     jra: BoardVenue[];
     nar: BoardVenue[];
     totalRaces: number;
-    doneRaces: number;
 };
 
 const summarizeRace = (race: RacePrediction, date: string, venue: string): BoardRace => {
@@ -42,12 +39,6 @@ const summarizeRace = (race: RacePrediction, date: string, venue: string): Board
     const topPrediction = race.predictions
         .filter((p) => p.deviation_score != null)
         .sort((a, b) => (b.deviation_score as number) - (a.deviation_score as number))[0];
-    const finishRanks = getFinishRanks(race);
-    const winnerNumber = Array.from(finishRanks.entries()).find(([, rank]) => rank === 1)?.[0];
-    const winnerPrediction = winnerNumber != null ? race.predictions.find((p) => p.horse_number === winnerNumber) : undefined;
-    const winnerName = winnerPrediction?.horse_name ?? race.results.find((r) => r.horse_number === winnerNumber)?.horse_name ?? null;
-    const aiRanks = getAiRanks(race.predictions);
-
     return {
         raceNumber: race.race_number,
         name: race.race_name,
@@ -65,15 +56,6 @@ const summarizeRace = (race: RacePrediction, date: string, venue: string): Board
             }
             : null,
         unpredictableReason: topPrediction ? null : getUnpredictableReason(race),
-        winner: winnerNumber != null && winnerName
-            ? {
-                number: winnerNumber,
-                waku: winnerPrediction ? resolveWaku(winnerPrediction, race.predictions.length) : null,
-                name: winnerName,
-                mark: normalizeMark(winnerPrediction?.mark),
-                aiRank: aiRanks.get(winnerNumber) ?? null,
-            }
-            : null,
     };
 };
 
@@ -85,7 +67,6 @@ const summarizeVenues = (venues: RaceDayPrediction['jra'], date: string): BoardV
         return {
             venue: venue.venue_name,
             races,
-            doneCount: races.filter((race) => race.winner).length,
         };
     })
 );
@@ -99,6 +80,5 @@ export const buildRaceDaySummary = (predictions: RaceDayPrediction | null, date:
         jra,
         nar,
         totalRaces: all.reduce((sum, venue) => sum + venue.races.length, 0),
-        doneRaces: all.reduce((sum, venue) => sum + venue.doneCount, 0),
     };
 };

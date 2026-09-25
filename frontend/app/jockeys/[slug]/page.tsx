@@ -64,7 +64,7 @@ export default function JockeyPage({ params }: Props) {
         ]}
       />
       <Breadcrumb />
-      <article className="mx-auto max-w-4xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16">
+      <article className="mx-auto max-w-4xl px-0 pb-2 pt-1.5 sm:px-4 sm:pb-16 sm:pt-4">
         <header className="rounded-[16px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-8">
           <p className="text-[13px] font-bold text-slate-500">騎手のデータ</p>
           <h1 className="mt-2 font-display text-[24px] font-extrabold leading-snug text-slate-900 sm:text-[34px]">

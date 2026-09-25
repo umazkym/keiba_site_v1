@@ -36,6 +36,104 @@ function decodeHtmlEntities(value: string): string {
     .replace(/&#39;/g, "'");
 }
 
+// ---------- 表：数字の列を右寄せにする（2026-09-25 スマホの見直し。見本は数字の列を右寄せ） ----------
+// 記事の表には馬名・騎手・回りなど文字の列も多いため、列の中身がすべて数字のときだけ `is-num` を付ける（1列目は見出しの列なので対象外）。
+const NUMERIC_CELL_PATTERN = /^[+\-−±]?\d[\d,]*(?:\.\d+)?\s*(?:%|％|円|倍|秒|回|頭|件|走|レース|R|kg|m|pt|点|着|位|歳)?$/;
+const RECORD_CELL_PATTERN = /^\d+(?:[-－]\d+){2,3}$/;
+const TIME_CELL_PATTERN = /^\d+:\d{2}(?:\.\d+)?$/;
+const BLANK_CELL_PATTERN = /^(?:|[-‐－—―–])$/;
+
+function isNumericCell(value: string): boolean {
+  return NUMERIC_CELL_PATTERN.test(value) || RECORD_CELL_PATTERN.test(value) || TIME_CELL_PATTERN.test(value);
+}
+
+function markNumericColumns(tableHtml: string): string {
+  const numericCounts: number[] = [];
+  const textCounts: number[] = [];
+  const rowPattern = /<tr(\s[^>]*)?>([\s\S]*?)<\/tr>/gi;
+  let row: RegExpExecArray | null;
+  while ((row = rowPattern.exec(tableHtml)) !== null) {
+    // <thead> を拾わないよう、タグ名の後は空白か > に限る
+    const cellPattern = /<(td|th)(\s[^>]*)?>([\s\S]*?)<\/\1>/gi;
+    let column = 0;
+    let cell: RegExpExecArray | null;
+    while ((cell = cellPattern.exec(row[2])) !== null) {
+      if (cell[1].toLowerCase() === 'td') {
+        const value = decodeHtmlEntities(stripHtml(cell[3].replace(/&nbsp;/g, ' ')));
+        if (!BLANK_CELL_PATTERN.test(value)) {
+          if (isNumericCell(value)) numericCounts[column] = (numericCounts[column] || 0) + 1;
+          else textCounts[column] = (textCounts[column] || 0) + 1;
+        }
+      }
+      column += 1;
+    }
+  }
+
+  const numericColumns = new Set<number>();
+  for (let column = 1; column < numericCounts.length; column += 1) {
+    if ((numericCounts[column] || 0) > 0 && !textCounts[column]) numericColumns.add(column);
+  }
+  if (numericColumns.size === 0) return tableHtml;
+
+  return tableHtml.replace(rowPattern, (_row, rowAttrs: string | undefined, inner: string) => {
+    let column = 0;
+    const marked = inner.replace(/<(td|th)(\s[^>]*)?>/gi, (tag, name: string, attrs: string | undefined) => {
+      const current = column;
+      column += 1;
+      if (!numericColumns.has(current)) return tag;
+      const attributes = attrs || '';
+      if (/\sclass="/i.test(attributes)) {
+        return `<${name}${attributes.replace(/\sclass="([^"]*)"/i, ' class="$1 is-num"')}>`;
+      }
+      return `<${name}${attributes} class="is-num">`;
+    });
+    return `<tr${rowAttrs || ''}>${marked}</tr>`;
+  });
+}
+
+// ---------- よくある質問：白いカードの開閉式にする（2026-09-25 スマホの見直し。見本：Qの印・∨、最初の1問だけ開く） ----------
+// 本文のHTMLの形だけを変える。質問はH3のまま summary の中に置き、答えも閉じた中に残す（検索に読まれる）。
+// FAQの構造化データは元の本文から lib/article-faq.ts が作るので影響しない。
+const FAQ_HEADING_WITH_ID_PATTERN = /<h2 id="(section-\d+)">\s*よくある質問\s*<\/h2>/;
+const FAQ_CHEVRON_SVG = '<svg class="article-faq-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 9.5 12 15l5.5-5.5"/></svg>';
+
+function wrapFaqSection(html: string): string {
+  const heading = html.match(FAQ_HEADING_WITH_ID_PATTERN);
+  if (!heading || heading.index === undefined) return html;
+
+  const start = heading.index;
+  const bodyStart = start + heading[0].length;
+  // 次のH2（締めの「確認したい判断材料」）までがFAQ
+  const nextHeading = html.slice(bodyStart).search(/<h2[\s>]/i);
+  const end = nextHeading === -1 ? html.length : bodyStart + nextHeading;
+  const body = html.slice(bodyStart, end);
+  const firstQuestion = body.search(/<h3[\s>]/i);
+  if (firstQuestion === -1) return html;
+
+  const intro = body.slice(0, firstQuestion).trim();
+  const questionPattern = /<h3(\s[^>]*)?>([\s\S]*?)<\/h3>([\s\S]*?)(?=<h3[\s>]|$)/gi;
+  const questionsHtml = body.slice(firstQuestion);
+  const items: string[] = [];
+  let question: RegExpExecArray | null;
+  while ((question = questionPattern.exec(questionsHtml)) !== null) {
+    const questionHtml = question[2].trim();
+    if (!questionHtml) continue;
+    const answerHtml = question[3].trim();
+    items.push(
+      `<details class="article-faq-item"${items.length === 0 ? ' open' : ''}>`
+      + `<summary><span class="article-faq-q" aria-hidden="true">Q</span><h3${question[1] || ''}>${questionHtml}</h3>${FAQ_CHEVRON_SVG}</summary>`
+      + (answerHtml ? `<div class="article-faq-a">${answerHtml}</div>` : '')
+      + '</details>',
+    );
+  }
+  if (items.length === 0) return html;
+
+  const section = `<section class="article-faq not-prose" aria-labelledby="${heading[1]}">${heading[0]}`
+    + (intro ? `<div class="article-faq-intro">${intro}</div>` : '')
+    + `${items.join('')}</section>\n`;
+  return `${html.slice(0, start)}${section}${html.slice(end)}`;
+}
+
 export function enhanceArticleHtml(html: string): { html: string; toc: ArticleTocItem[] } {
   const toc: ArticleTocItem[] = [];
   let index = 0;
@@ -50,11 +148,11 @@ export function enhanceArticleHtml(html: string): { html: string; toc: ArticleTo
     return `<h2 id="${id}">${innerHtml}</h2>`;
   });
 
-  const enhancedHtml = htmlWithAnchors.replace(/<table([\s\S]*?)<\/table>/g, (match) => (
-    `<div class="article-table-scroll">${match}</div>`
+  const htmlWithTables = htmlWithAnchors.replace(/<table([\s\S]*?)<\/table>/g, (match) => (
+    `<div class="article-table-scroll">${markNumericColumns(match)}</div>`
   ));
 
-  return { html: enhancedHtml, toc };
+  return { html: wrapFaqSection(htmlWithTables), toc };
 }
 
 function getFeaturedRaceLink(article: Article): ArticleNextLink | null {

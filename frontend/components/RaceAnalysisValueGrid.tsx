@@ -115,56 +115,57 @@ export function RaceAnalysisFeatureIcon({
     );
 }
 
-export function RaceAnalysisFeatureVisual({
-    type,
-    compact = false,
-}: {
-    type: RaceAnalysisFeatureVisualType;
-    compact?: boolean;
-}) {
-    if (type === 'score') {
-        return (
-            <div className={`w-full ${compact ? 'space-y-0.5' : 'space-y-1'}`} aria-hidden="true">
-                <span className={`block w-[88%] rounded-full bg-brand-600 ${compact ? 'h-0.5' : 'h-1.5'}`} />
-                <span className={`block w-[64%] rounded-full bg-ai ${compact ? 'h-0.5' : 'h-1.5'}`} />
-                <span className={`block w-[72%] rounded-full bg-slate-300 ${compact ? 'h-0.5' : 'h-1.5'}`} />
-            </div>
-        );
-    }
+// 4つの視点の小さな図。ポートフォリオの miniGraphic（lib.mjs、64×26）と同じ形。
+// 大きさは置き場所の枠（高さ）で決め、横は比率のまま（ホームのカード・PCの帯・記事の案内で共通。2026-09-25 スマホの見直し）
+const WAKU_BARS = [14, 20, 17, 11, 9, 13, 7, 5];
 
-    if (type === 'matchup') {
-        const values = compact ? ['+2', '0', '-1'] : ['+2', '0', '-1', '0', '+1', '0'];
-        return (
-            <div className={`grid w-full ${compact ? 'grid-cols-3 gap-0.5 text-[8px]' : 'grid-cols-3 sm:grid-cols-6 gap-0.5 text-[9px]'} text-center font-bold`} aria-hidden="true">
-                {values.map((value, index) => {
-                    const valueClass = value.startsWith('+')
-                        ? 'bg-turf-soft text-turf-deep'
-                        : value.startsWith('-')
-                            ? 'bg-rose-50 text-rose-700'
-                            : 'bg-slate-100 text-slate-600';
-                    return (
-                        <span key={`${value}-${index}`} className={`rounded py-0.5 ${valueClass}`}>
-                            {value}
-                        </span>
-                    );
-                })}
-            </div>
-        );
-    }
-
-    const heights = type === 'pace' ? ['54%', '76%', '38%', '64%'] : ['82%', '42%', '66%', '36%'];
-    const barClass = type === 'pace' ? 'bg-turf' : 'bg-brand-500';
-
+export function RaceAnalysisFeatureVisual({ type }: { type: RaceAnalysisFeatureVisualType }) {
     return (
-        <div className={`flex w-full items-end ${compact ? 'h-4 gap-0.5' : 'h-6 sm:h-7 gap-1'}`} aria-hidden="true">
-            {heights.map((height, index) => (
-                <span
-                    key={`${type}-${index}`}
-                    className={`flex-1 rounded-t ${barClass}`}
-                    style={{ height }}
+        <svg
+            viewBox="0 0 64 26"
+            preserveAspectRatio="xMinYMid meet"
+            className="block h-full w-auto max-w-full"
+            aria-hidden="true"
+            focusable="false"
+        >
+            {type === 'score' && (
+                <>
+                    <rect x="0" y="3" width="56" height="5" rx="2.5" className="fill-ai" />
+                    <rect x="0" y="11" width="44" height="5" rx="2.5" className="fill-brand-600" />
+                    <rect x="0" y="19" width="30" height="5" rx="2.5" className="fill-slate-300" />
+                </>
+            )}
+            {type === 'matchup' && (
+                <>
+                    <rect x="0" y="4" width="19" height="18" rx="4" className="fill-turf-soft" />
+                    <rect x="22" y="4" width="19" height="18" rx="4" className="fill-slate-100" />
+                    <rect x="44" y="4" width="19" height="18" rx="4" className="fill-rose-100" />
+                    <text x="9.5" y="17" textAnchor="middle" fontSize="11" fontWeight="700" className="fill-turf-deep font-num">+2</text>
+                    <text x="31.5" y="17" textAnchor="middle" fontSize="11" fontWeight="700" className="fill-slate-500 font-num">0</text>
+                    <text x="53.5" y="17" textAnchor="middle" fontSize="11" fontWeight="700" className="fill-rose-700 font-num">-1</text>
+                </>
+            )}
+            {type === 'pace' && (
+                <>
+                    <path d="M2 5h60M2 13h60M2 21h60" fill="none" strokeWidth="2" strokeLinecap="round" className="stroke-slate-200" />
+                    <circle cx="50" cy="5" r="3.6" className="fill-brand-600" />
+                    <circle cx="40" cy="5" r="3.6" className="fill-navy" />
+                    <circle cx="30" cy="13" r="3.6" className="fill-navy" />
+                    <circle cx="14" cy="21" r="3.6" className="fill-navy" />
+                </>
+            )}
+            {type === 'frame' && WAKU_BARS.map((value, index) => (
+                <rect
+                    key={index}
+                    x={index * 8}
+                    y={24 - value}
+                    width="6"
+                    height={value}
+                    rx="1.5"
+                    className={index < 3 ? 'fill-brand-600' : 'fill-slate-300'}
                 />
             ))}
-        </div>
+        </svg>
     );
 }
 
@@ -185,7 +186,7 @@ export function RaceAnalysisValueGrid({ className = '', variant = 'full' }: Race
                                 </span>
                             </div>
                             <div className="flex h-5 w-full items-center justify-center rounded bg-white px-1">
-                                <RaceAnalysisFeatureVisual type={feature.visual} compact />
+                                <RaceAnalysisFeatureVisual type={feature.visual} />
                             </div>
                         </li>
                     );
@@ -205,8 +206,8 @@ export function RaceAnalysisValueGrid({ className = '', variant = 'full' }: Race
                                 <LineIcon name={feature.lineIcon} size={17} />
                             </span>
                             <span className="flex min-w-0 flex-1 flex-col gap-1">
-                                <span className="truncate text-[13.5px] font-bold text-slate-900">{feature.title}</span>
-                                <span className="flex h-5 w-16 items-center"><RaceAnalysisFeatureVisual type={feature.visual} compact /></span>
+                                <span className="min-w-0 break-words text-[13.5px] font-bold text-slate-900">{feature.title}</span>
+                                <span className="flex h-[22px] w-16 items-center"><RaceAnalysisFeatureVisual type={feature.visual} /></span>
                             </span>
                         </li>
                     ))}
@@ -223,17 +224,17 @@ export function RaceAnalysisValueGrid({ className = '', variant = 'full' }: Race
             {raceAnalysisFeatures.map((feature) => (
                 <li
                     key={feature.title}
-                    className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left md:px-3.5 md:pb-3 md:pt-3.5"
+                    className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left max-[359px]:p-2.5 md:px-3.5 md:pb-3 md:pt-3.5"
                 >
                     <span className="flex min-w-0 items-center gap-2">
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700" aria-hidden="true">
                             <LineIcon name={feature.lineIcon} size={17} />
                         </span>
-                        <span className="truncate text-[13.5px] font-bold text-slate-900 md:text-[14.5px]">{feature.title}</span>
+                        <span className="min-w-0 break-words text-[13.5px] font-bold text-slate-900 md:text-[14.5px]">{feature.title}</span>
                     </span>
                     <span className="hidden text-[12px] leading-normal text-slate-500 md:block">{feature.description}</span>
-                    <span className="flex h-6 w-16 items-center">
-                        <RaceAnalysisFeatureVisual type={feature.visual} compact />
+                    <span className="flex h-[26px] w-16 items-center">
+                        <RaceAnalysisFeatureVisual type={feature.visual} />
                     </span>
                 </li>
             ))}

@@ -2,8 +2,7 @@
 // 見出しの下の「カテゴリ・公開日・読了時間」、冒頭の写真、目次（この記事で確認できること）、
 // 今日の全レースへの案内、本文の後の「次に読む分析」。
 import Link from 'next/link';
-import { LineIcon } from '@/components/LineIcon';
-import { RaceAnalysisValueGrid } from '@/components/RaceAnalysisValueGrid';
+import { LineIcon, type LineIconName } from '@/components/LineIcon';
 import { ArticleThumb } from '@/components/ArticleThumb';
 import type { ArticleTocItem } from '@/lib/article-ux';
 import type { ArticleThumb as ArticleThumbData } from '@/lib/article-visual';
@@ -29,6 +28,20 @@ export function ArticleCategoryTag({ category, size = 'sm' }: { category: string
     );
 }
 
+// 記事の題名。「本題｜副題」は、スマホだけ区切りの後で改行して2段にする（1字だけ次の行に落ちるのを防ぐ。OG画像と同じ分け方）。
+// 文字の並びは元の題名のまま（パンくず・読み上げ・検索で同じ文になる）。
+export function ArticleTitleText({ title }: { title: string }) {
+    const match = title.match(/^(.+?)(\s*[｜|]\s*)(.+)$/);
+    if (!match) return <>{title}</>;
+    const [, main, separator, sub] = match;
+    return (
+        <>
+            <span className="block sm:inline">{main}{separator}</span>
+            <span className="block sm:inline">{sub}</span>
+        </>
+    );
+}
+
 // 見出しの下に置く「カテゴリ・公開日・読了時間」。更新日が公開日と別の日なら「更新」を添える。
 export function ArticleMetaRow({
     category,
@@ -46,19 +59,18 @@ export function ArticleMetaRow({
     const showUpdated = Boolean(published && updated && JST_DAY_KEY.format(updated) > JST_DAY_KEY.format(published));
     return (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-slate-500 sm:text-[13.5px]">
+            {/* 札は見た目23pxのまま、押せる範囲だけ広げる（hit-44） */}
             <Link
                 prefetch={false}
                 href={`/articles/category/${encodeURIComponent(category)}`}
-                className="rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+                className="hit-44 rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
             >
                 <ArticleCategoryTag category={category} size="md" />
             </Link>
             {published && <time dateTime={published.toISOString()}>{JST_DATE.format(published)}</time>}
             {showUpdated && updated && <span>更新 <time dateTime={updated.toISOString()}>{JST_DATE.format(updated)}</time></span>}
-            <span className="inline-flex items-center gap-1">
-                <LineIcon name="clock" size={15} className="block text-slate-500" />
-                約{readingMinutes}分
-            </span>
+            {/* 見本どおり時計のアイコンは付けない */}
+            <span>約{readingMinutes}分</span>
         </div>
     );
 }
@@ -83,7 +95,10 @@ export function ArticleCover({ cover, title }: { cover: ArticleThumbData | null;
     );
 }
 
-// 今日の全レースへの案内（4つの視点の図と、パネル全体で1つのリンク）
+// 今日の全レースへの案内。見本どおり1行：4つの視点のアイコン（AI偏差値・対戦成績・展開予測・馬番の傾向）＋文＋矢印。
+// パネル全体で1つのリンク（2026-09-25 スマホの見直し。以前は見出し＋「全レース分析へ」＋4列の小さな図で約120px）。
+const VALUE_GUIDE_ICONS: LineIconName[] = ['gauge', 'swords', 'lanes', 'bars'];
+
 export function ArticleValueGuide({ headingId }: { headingId: string }) {
     return (
         <Link
@@ -92,26 +107,27 @@ export function ArticleValueGuide({ headingId }: { headingId: string }) {
             data-analytics-placement="article_value_guide"
             data-analytics-variant="compact_four"
             data-preview-state="generic"
-            className="block min-h-[44px] cursor-pointer rounded-[14px] bg-brand-50/70 p-3 ring-1 ring-inset ring-brand-200 transition-colors duration-150 hover:bg-brand-50 hover:ring-brand-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:p-4"
+            className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-[14px] bg-brand-50/70 px-3.5 py-3.5 ring-1 ring-inset ring-brand-200 transition-colors duration-150 hover:bg-brand-50 hover:ring-brand-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:gap-3.5 sm:px-5 sm:py-4"
             aria-label="今日の全レース分析を見る。AI偏差値、対戦成績、展開予測、馬番の傾向を確認できます"
         >
-            <section aria-labelledby={headingId}>
-                <div className="mb-2 flex items-center justify-between gap-2">
-                    <h2 id={headingId} className="font-sans text-[14.5px] font-bold leading-tight text-slate-900 sm:text-[15.5px]">
-                        今日の全レースを4つの視点で確認
-                    </h2>
-                    <span className="inline-flex shrink-0 items-center gap-0.5 text-[12.5px] font-bold text-brand-700 sm:text-[13.5px]">
-                        全レース分析へ
-                        <LineIcon name="chevR" size={15} className="block" />
+            <span className="flex shrink-0 gap-1" aria-hidden="true">
+                {VALUE_GUIDE_ICONS.map((name) => (
+                    <span key={name} className="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
+                        <LineIcon name={name} size={16} className="block text-brand-700" />
                     </span>
-                </div>
-                <RaceAnalysisValueGrid variant="compact" />
-            </section>
+                ))}
+            </span>
+            {/* 「4つの」の後でだけ折り返す。入らない幅（320px）では、どこでも折り返してはみ出さない */}
+            <h2 id={headingId} className="min-w-0 flex-1 font-sans text-[14.5px] font-bold leading-snug text-slate-900 [overflow-wrap:anywhere] [word-break:keep-all] sm:text-[15.5px]">
+                今日の全レースを4つの<wbr />視点で確認する
+            </h2>
+            <LineIcon name="arrowR" size={18} className="block shrink-0 text-brand-700" />
         </Link>
     );
 }
 
 // 目次。本文のH2（enhanceArticleHtml が付けた id）へ移動する。見出しが2つ未満なら出さない。
+// 各行はスマホで44px以上（押せる所は44px以上の決まり。2026-09-25 に40pxから変更）、PCは36px。
 export function ArticleToc({ toc, headingId }: { toc: ArticleTocItem[]; headingId: string }) {
     if (toc.length < 2) return null;
     return (
@@ -129,7 +145,7 @@ export function ArticleToc({ toc, headingId }: { toc: ArticleTocItem[]; headingI
                     <li key={item.id} className="pl-1">
                         <a
                             href={`#${item.id}`}
-                            className="flex min-h-[40px] items-center py-1 text-[14.5px] leading-[1.55] text-slate-700 transition-colors duration-150 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 sm:min-h-[36px] sm:text-[15px]"
+                            className="flex min-h-11 items-center py-1 text-[14.5px] leading-[1.55] text-slate-700 transition-colors duration-150 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 sm:min-h-[36px] sm:text-[15px]"
                         >
                             {item.title}
                         </a>
@@ -154,8 +170,9 @@ export type RelatedArticleItem = {
 export function RelatedArticleList({ items, headingId, title = '次に読む分析' }: { items: RelatedArticleItem[]; headingId: string; title?: string }) {
     if (items.length === 0) return null;
     return (
-        <section aria-labelledby={headingId} className="rounded-[14px] bg-white p-4 ring-1 ring-inset ring-slate-200 sm:p-6">
-            <h2 id={headingId} className="font-display text-[19px] font-extrabold leading-snug text-slate-900 sm:text-[21px]">
+        // 下の空きは最後の行の py-3 と合わせて16px、見出しは18px（2026-09-25。レース画面の「関連する分析記事」も同じ）
+        <section aria-labelledby={headingId} className="rounded-[14px] bg-white px-4 pb-1 pt-4 ring-1 ring-inset ring-slate-200 sm:p-6">
+            <h2 id={headingId} className="font-display text-[18px] font-extrabold leading-snug text-slate-900 sm:text-[21px]">
                 {title}
             </h2>
             <ul className="mt-1 flex flex-col sm:mt-4 sm:grid sm:grid-cols-3 sm:gap-5">

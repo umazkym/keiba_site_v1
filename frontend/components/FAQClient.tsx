@@ -8,7 +8,8 @@ import { LineIcon } from '@/components/LineIcon';
 import { faqItems } from '@/lib/faq-content';
 
 // よくある質問（2026-09-25 段階5）：カテゴリごとの白い紙面に、Qの印と開閉できる回答。
-// 「すべて」のときは各カテゴリの最初の質問を開いておく。広告は8問目を含むカテゴリの後（従来と同じ1枠）。
+// 見本どおり、開いておくのは一番上の1問だけ（閉じた回答も HTML と FAQSchema に残る）。広告は8問目を含むカテゴリの後（従来と同じ1枠）。
+// 2026-09-25 スマホの見直し：左右は外枠の16pxだけ、まとまりの間は12px、絞り込みの丸は44px。
 export const FAQClient = () => {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -28,12 +29,12 @@ export const FAQClient = () => {
         }
     }
 
-    const chipClass = (active: boolean) => `inline-flex h-10 items-center rounded-full px-4 text-[13.5px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:text-[14px] ${active
+    const chipClass = (active: boolean) => `inline-flex h-11 items-center rounded-full px-4 text-[13.5px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:text-[14px] ${active
         ? 'bg-navy text-white'
         : 'bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50'}`;
 
     return (
-        <div className="mx-auto flex w-full max-w-[840px] flex-col gap-5 px-4 pb-10 pt-2 sm:gap-6 sm:pb-16 sm:pt-4">
+        <div className="mx-auto flex w-full max-w-[840px] flex-col gap-3 pb-4 pt-1 sm:gap-6 sm:px-4 sm:pb-16 sm:pt-4">
             <header className="flex flex-col gap-2">
                 <h1 className="font-display text-[24px] font-extrabold leading-snug text-slate-900 sm:text-[34px]">
                     よくある質問
@@ -61,7 +62,7 @@ export const FAQClient = () => {
             </div>
 
             {groups.map((group, groupIndex) => (
-                <div key={group.category} className="flex flex-col gap-5 sm:gap-6">
+                <div key={group.category} className="flex flex-col gap-3 sm:gap-6">
                     <section
                         aria-labelledby={`faq-group-${groupIndex}`}
                         className="rounded-[16px] bg-white px-4 pb-1 pt-4 ring-1 ring-inset ring-slate-200 sm:px-6 sm:pt-5"
@@ -71,10 +72,11 @@ export const FAQClient = () => {
                         </h2>
                         <div className="mt-1">
                             {group.items.map((item, index) => (
-                                <details key={item.id} open={index === 0} className="group border-b border-slate-200 last:border-b-0">
+                                <details key={item.id} open={groupIndex === 0 && index === 0} className="group border-b border-slate-200 last:border-b-0">
                                     <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-3 py-2 text-[15px] font-bold text-slate-900 sm:min-h-[56px] sm:text-[16px] [&::-webkit-details-marker]:hidden">
                                         <span className="font-display text-[18px] font-extrabold text-brand-600" aria-hidden="true">Q</span>
-                                        <span className="flex-1">{item.question}</span>
+                                        {/* 2行目に「か？」だけが落ちないよう、行の長さをそろえ文節で折る（効くブラウザだけ） */}
+                                        <span className="flex-1 [text-wrap:balance] [word-break:auto-phrase]">{item.question}</span>
                                         <LineIcon name="chevD" size={18} className="block shrink-0 text-slate-500 transition-transform duration-150 group-open:rotate-180" />
                                     </summary>
                                     <p className="mb-4 ml-[30px] text-[14.5px] leading-[1.85] text-slate-700 sm:text-[15.5px]">
@@ -90,7 +92,8 @@ export const FAQClient = () => {
                 </div>
             ))}
 
-            <section className="flex flex-col items-start gap-4 rounded-[16px] bg-brand-50/70 p-4 ring-1 ring-inset ring-brand-200 sm:flex-row sm:items-center sm:p-5">
+            {/* 見本：左に馬、右に見出しとボタン。枠線は付けず淡い面だけ */}
+            <section className="flex items-center gap-3.5 rounded-[16px] bg-brand-50/70 p-4 sm:gap-4 sm:p-5">
                 <GuideHorse size={68} mood="look" className="block h-14 w-14 shrink-0 sm:h-[68px] sm:w-[68px]" />
                 <div className="flex flex-1 flex-col gap-3">
                     <p className="text-[15.5px] font-bold text-slate-900">解決しないときは</p>

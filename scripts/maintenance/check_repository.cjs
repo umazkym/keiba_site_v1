@@ -120,8 +120,9 @@ function generateMap(workflows, features) {
     lines.push(`| [${row.config.name}](../../${row.file}) | ${triggers.join('<br>')} | ${group || '設定なし（個別の台帳・処理制御を確認）'} | ${row.entrypoints.map((p) => `[${p}](../../${p})`).join('<br>') || 'Workflow内の処理／再利用Workflow'} |`);
   }
   lines.push('', '## Next.jsの公開ルートとAPI', '', 'ファイルルートの一覧です。実際の公開可否・リダイレクト・noindexは各ページと公開台帳に依存します。', '', '| ルート | ソース |', '| --- | --- |');
-  for (const file of filesUnder('frontend/app').filter((f) => /\/(page\.tsx|route\.ts)$/.test(f))) {
-    const route = file.replace('frontend/app', '').replace(/\/(page\.tsx|route\.ts)$/, '') || '/';
+  // JSXで画像を返すルート（記事のOG画像 route.tsx）も公開ルートとして載せる
+  for (const file of filesUnder('frontend/app').filter((f) => /\/(page\.tsx|route\.tsx?)$/.test(f))) {
+    const route = file.replace('frontend/app', '').replace(/\/(page\.tsx|route\.tsx?)$/, '') || '/';
     lines.push(`| \`${route}\` | [${file}](../../${file}) |`);
   }
   lines.push('', '## FastAPIの登録エンドポイント', '', 'ルータのprefixは`backend/main.py`を参照してください。下表は各ルータ内の相対パスです。', '', '| ファイル | メソッドと相対パス |', '| --- | --- |');

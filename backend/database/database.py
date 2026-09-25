@@ -7,6 +7,14 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/keiba.db")
 
+# ドライバを明示する。SQLAlchemy 2.1 から「postgresql://」の既定ドライバが psycopg2 から
+# psycopg（v3）に変わり、入れていない psycopg を読みに行って API と定時処理が起動できなかった（2026-09-25）。
+# 依存は psycopg2-binary なので、ドライバ指定のないURLは psycopg2 を使う。
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = "postgresql+psycopg2://" + DATABASE_URL[len("postgres://"):]
+elif DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = "postgresql+psycopg2://" + DATABASE_URL[len("postgresql://"):]
+
 if DATABASE_URL.startswith("postgres"):
 
     # PostgreSQLはGCE VM上で稼働する。

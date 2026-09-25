@@ -31,7 +31,7 @@ jobs:
           cache: pip
 
       - name: Install migration dependencies
-        run: pip install sqlalchemy psycopg2-binary python-dotenv
+        run: pip install "sqlalchemy>=2.0,<2.1" psycopg2-binary python-dotenv
 
       - name: Set up IAP database tunnel
         uses: ./.github/actions/setup-iap-db

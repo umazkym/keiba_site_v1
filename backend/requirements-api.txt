@@ -6,7 +6,8 @@ fastapi
 uvicorn
 
 # Database
-sqlalchemy
+# 2.1 は「postgresql://」の既定ドライバが psycopg（v3）に変わるため、2.0 系に留める（2026-09-25 に API と定時処理が止まった）
+sqlalchemy>=2.0,<2.1
 psycopg2-binary
 
 # Utilities

@@ -168,6 +168,25 @@ class NewsTopicPlannerTest(unittest.TestCase):
         self.assertLess(planner.grade_priority_rank("G3"), planner.grade_priority_rank("JpnIII"))
         self.assertLess(planner.grade_priority_rank("JpnIII"), planner.grade_priority_rank("重賞"))
 
+    def test_first_pre_race_article_outranks_updates_and_reviews(self) -> None:
+        # 検索はレースの前に集まるため、記事のない重賞の最初の1本を、既存記事の更新と結果回顧より先に書く。
+        initial = planner.grade_calendar_priority("重賞", "due_initial")
+        self.assertEqual(initial, planner.INITIAL_ARTICLE_PRIORITY)
+        self.assertEqual(initial, planner.grade_calendar_priority("G1", "due_initial"))
+        for status in (
+            "due_race_morning",
+            "due_final_48h",
+            "due_draw_confirmed",
+            "due_race_week",
+            "due_field_refresh",
+            "due_post_race",
+            "due_result_review",
+        ):
+            self.assertGreater(initial, planner.grade_calendar_priority("G1", status), status)
+        self.assertGreater(initial, planner.grade_calendar_priority("G1"))
+        # 記事のない重賞の結果回顧は、ニュース由来の候補よりも後
+        self.assertLess(planner.UNCOVERED_POST_RACE_PRIORITY, planner.grade_calendar_priority("重賞"))
+
     def test_article_lead_days_follow_grade_and_observed_demand(self) -> None:
         g1 = planner.RaceDemand("確認G1", ("確認G1",), 12, 1, "G1", 40, source_kind="jra")
         g2 = planner.RaceDemand("確認G2", ("確認G2",), 12, 1, "G2", 36, source_kind="jra")
@@ -460,7 +479,8 @@ class NewsTopicPlannerTest(unittest.TestCase):
             self.assertIn("北九州記念 小倉", order["reference_data"]["keywords"])
             self.assertIn("小倉芝1200m 傾向", order["reference_data"]["keywords"])
             self.assertEqual(order["reference_data"]["schedule_milestone"], "draw_confirmed")
-            self.assertEqual(order["priority"], planner.grade_calendar_priority("G3", "due_draw_confirmed"))
+            # 記事のない重賞の最初の1本なので、枠順確定後の段階でも初回として先に書く
+            self.assertEqual(order["priority"], planner.INITIAL_ARTICLE_PRIORITY)
         finally:
             if previous_now is None:
                 os.environ.pop("KEIBA_NEWS_NOW", None)
@@ -541,6 +561,10 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 ),
             ):
                 planner.cluster_topics_node(state)
+                # 並び順（記事のない他の重賞の初回が先）ではなく、結果回顧の注文の中身を確かめる
+                state.topic_candidates = [
+                    candidate for candidate in state.topic_candidates if candidate.race_name == "北九州記念"
+                ]
                 planner.build_write_orders_node(state)
 
             order = next(
@@ -586,6 +610,34 @@ class NewsTopicPlannerTest(unittest.TestCase):
             ]
             self.assertEqual(len(result_candidates), 1)
             self.assertEqual(result_candidates[0].update_stage, "post_race")
+            # レース前の記事を一度も出していない重賞の結果回顧は、最後に回す
+            self.assertEqual(result_candidates[0].order_priority, planner.UNCOVERED_POST_RACE_PRIORITY)
+
+            # レース前の記事がある重賞は、同じURLを結果回顧へ更新する通常の優先度
+            entry = next(entry for entry, _days in planner.focus_races() if entry.name == "スパーキングレディーカップ")
+            identity_key = planner.resolve_grade_race_schedule_identity(entry).entity_key
+            season_year = str(planner.race_demand_date(entry).year)
+            covered_keys = {planner.grade_race_stage_key(identity_key, season_year, planner.INITIAL_STAGE_KEY)}
+            covered_state = planner.WorkflowState(
+                run_id="nar-covered-result-review-test",
+                fetched_at=planner.current_jst().isoformat(),
+            )
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=covered_keys),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "grade_race_has_results", return_value=True),
+            ):
+                planner.cluster_topics_node(covered_state)
+            covered_candidates = [
+                candidate
+                for candidate in covered_state.topic_candidates
+                if candidate.search_intent == "result_review"
+                and candidate.race_name == "スパーキングレディーカップ"
+            ]
+            self.assertEqual(len(covered_candidates), 1)
+            self.assertEqual(covered_candidates[0].order_priority, planner.grade_calendar_priority("", "due_post_race"))
         finally:
             if previous_now is None:
                 os.environ.pop("KEIBA_NEWS_NOW", None)

@@ -783,6 +783,15 @@ def grade_priority_rank(grade: str) -> int:
     }.get(normalized, 7)
 
 
+# 検索はレースの前に集まるため、記事のない重賞の最初の1本（レース前）を、既存記事の段階更新と結果回顧より先に書く。
+# 同じ優先度の中では score（格・開催の近さ）で並ぶ。1日の注文数は変えず、公開期限（G1はD-21、他はD-14）に近づける。
+# 以前は結果回顧を最優先（120）、初回を最下位（82〜99）にしており、1日3枠が結果回顧と更新で埋まっていた。
+# 2026-09-22〜25 の地方重賞8本は、すべてレース翌日の結果回顧が初出だった（記事の検索クリックは7月の約1割に減少）。
+INITIAL_ARTICLE_PRIORITY = 120
+# 一度も記事を出していない重賞の結果回顧は、ニュース由来の候補（82〜99）よりも後にする。
+UNCOVERED_POST_RACE_PRIORITY = 80
+
+
 def grade_calendar_priority(grade: str, deadline_status: str = "") -> int:
     urgent_priority = {
         "due_field_refresh": 100,
@@ -790,20 +799,16 @@ def grade_calendar_priority(grade: str, deadline_status: str = "") -> int:
         "due_draw_confirmed": 105,
         "due_final_48h": 110,
         "due_race_morning": 115,
-        "due_post_race": 120,
-        "due_result_review": 120,
+        "due_post_race": 95,
+        "due_result_review": 95,
     }.get(deadline_status)
     if urgent_priority is not None:
         return urgent_priority
+    # missed_preview は旧WriteOrderとの互換
+    if deadline_status in {"due_initial", "missed_preview"}:
+        return INITIAL_ARTICLE_PRIORITY
     rank = grade_priority_rank(grade)
-    base = max(82, 102 - rank * 3)
-    urgency_bonus = {
-        "due_initial": 0,
-        # 旧WriteOrderとの互換
-        "missed_preview": 3,
-    }.get(deadline_status, 0)
-    base += urgency_bonus
-    return min(99, base)
+    return min(99, max(82, 102 - rank * 3))
 
 
 def load_grade_race_search_demand() -> Dict[str, Dict[str, Any]]:
@@ -2540,20 +2545,25 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
             draw_confirmed=draw_confirmed,
             result_confirmed=result_confirmed,
         )
+        initial_stage_key = grade_race_stage_key(identity_key, season_year, INITIAL_STAGE_KEY)
         for milestone, update_stage, search_intent, deadline_status in due_milestones:
             stage_key = grade_race_stage_key(identity_key, season_year, milestone)
             if stage_key in grade_stage_keys or stage_key in added_calendar_stage_keys:
                 continue
-            candidates.append(
-                schedule_backfill_candidate(
-                    entry,
-                    days_to_race,
-                    search_intent_override=search_intent,
-                    update_stage=update_stage,
-                    deadline_status=deadline_status,
-                    schedule_milestone=milestone,
-                )
+            candidate = schedule_backfill_candidate(
+                entry,
+                days_to_race,
+                search_intent_override=search_intent,
+                update_stage=update_stage,
+                deadline_status=deadline_status,
+                schedule_milestone=milestone,
             )
+            if initial_stage_key not in grade_stage_keys:
+                # 記事のない重賞は、最初の段階が当日・直前・週内の更新でも、最初の1本として扱う
+                candidate.order_priority = (
+                    UNCOVERED_POST_RACE_PRIORITY if milestone == POST_RACE_STAGE_KEY else INITIAL_ARTICLE_PRIORITY
+                )
+            candidates.append(candidate)
             for completed in completed_milestones_for(milestone):
                 completed_key = grade_race_stage_key(identity_key, season_year, completed)
                 if completed_key:

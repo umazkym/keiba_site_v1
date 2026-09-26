@@ -198,6 +198,14 @@ THREADS_MAX_CHARS = 480
 # 署名には、Workflowのサービスアカウントが自分自身に「サービス アカウント トークン作成者」を持つ必要がある。
 THREADS_IMAGE_MODE = (_env_value("SNS_THREADS_IMAGE_MODE", default="off") or "off").strip().lower()
 THREADS_IMAGE_SIGNED_URL_DURATION = "2h"
+# 画像つきの投稿には、Threads がリンクのカードを出さない。そこで、画像つきで公開できた投稿に
+# つかみの一言（重賞名・配当・注目馬）とそのレースのページへのリンクの返信を付け、返信の側に
+# カード（題名にレース名）を出す（2026-09-26 利用者の選択 B と文の指定）。
+# 1日の投稿量を増やしすぎないよう、1回の実行で付けるのは最初の N 本まで（既定1本。朝だけ的中と
+# 注目馬の2本に付けるため Workflow で2本。平日は多くて3本、土日は5本）。0 で止める。
+# 返信の失敗は元の投稿の失敗にしない。
+THREADS_LINK_REPLY_MAX_PER_RUN = _env_int("SNS_THREADS_LINK_REPLY_MAX_PER_RUN", 1, minimum=0)
+_threads_link_replies_sent = 0
 
 
 @dataclass
@@ -207,6 +215,8 @@ class ThreadsPostResult:
     post_id: Optional[str] = None
     transient: bool = False
     reason: str = ""
+    with_image: bool = False
+    link_reply_id: Optional[str] = None
 
     def __bool__(self) -> bool:
         return self.ok
@@ -500,7 +510,77 @@ def _wait_threads_container(base_headers: Dict[str, str], container_id: str, att
     return False
 
 
-def post_to_threads(text: str, image_path: Optional[str] = None) -> ThreadsPostResult:
+def _threads_link_reply_text(text: str) -> Optional[str]:
+    """本文のリンクの部分（小見出しとURL）だけを取り出す。リンクが無ければ None。"""
+    lines = [line.strip() for line in text.splitlines()]
+    for index, line in enumerate(lines):
+        if line.startswith(SITE_BASE_URL):
+            label = lines[index - 1] if index > 0 and lines[index - 1] in SC.LINK_LABELS else ""
+            return "\n".join([label, line]) if label else line
+    return None
+
+
+def _post_threads_link_reply(parent_id: str, text: str, reply_text: Optional[str] = None) -> Optional[str]:
+    """画像つきの投稿に、リンクの返信を1本付ける。付けなかった・失敗したときは None。
+
+    reply_text は呼び出し元が作ったつかみの一言とレースのページ（sns_content.build_threads_*_reply）。
+    無ければ、本文のリンクの部分（小見出しとURL）をそのまま使う。
+    """
+    global _threads_link_replies_sent
+    if _threads_link_replies_sent >= THREADS_LINK_REPLY_MAX_PER_RUN:
+        return None
+    reply_text = reply_text or _threads_link_reply_text(text)
+    if not reply_text:
+        return None
+    # 失敗しても数える（同じ実行で返信を出し直して、投稿の数を増やさない）
+    _threads_link_replies_sent += 1
+    if DRY_RUN:
+        _log(f"[DRY_RUN] Threadsのリンクの返信スキップ（返信先 {parent_id}）: {reply_text.replace(chr(10), ' / ')}")
+        return "dry_run_threads_reply_id"
+
+    base_url = f"https://graph.threads.net/v1.0/{THREADS_USER_ID}"
+    headers = {"Authorization": f"Bearer {THREADS_ACCESS_TOKEN}"}
+    try:
+        # 返信先の投稿が見えるようになるまで少し待つ
+        time.sleep(3)
+        res = requests.post(
+            f"{base_url}/threads",
+            headers=headers,
+            data={"media_type": "TEXT", "text": reply_text, "reply_to_id": parent_id},
+            timeout=30,
+        )
+        if res.status_code != 200:
+            _log(f"⚠️ Threadsのリンクの返信を作れませんでした（元の投稿はそのまま）: {res.status_code} - {res.text[:200]}")
+            return None
+        container_id = res.json().get("id")
+        if not container_id:
+            _log("⚠️ Threadsのリンクの返信: レスポンスにIDがありません（元の投稿はそのまま）")
+            return None
+        time.sleep(3)
+        pub_res = requests.post(
+            f"{base_url}/threads_publish",
+            headers=headers,
+            data={"creation_id": container_id},
+            timeout=30,
+        )
+        if pub_res.status_code != 200:
+            # 重複を避けるため、公開の段階の失敗はやり直さない
+            _log(f"⚠️ Threadsのリンクの返信を公開できませんでした（元の投稿はそのまま）: {pub_res.status_code} - {pub_res.text[:200]}")
+            return None
+        reply_id = pub_res.json().get("id")
+        if reply_id:
+            _log(f"✅ Threadsのリンクの返信を付けました! ID: {reply_id}（返信先 {parent_id}）")
+        return str(reply_id) if reply_id else None
+    except Exception as error:
+        _log(f"⚠️ Threadsのリンクの返信でエラー（元の投稿はそのまま）: {error}")
+        return None
+
+
+def post_to_threads(
+    text: str,
+    image_path: Optional[str] = None,
+    reply_text: Optional[str] = None,
+) -> ThreadsPostResult:
     """Threadsへ投稿する。SNS_THREADS_IMAGE_MODE=public のときだけ画像を付け、画像の準備に失敗したら文字だけで投稿する。"""
     global THREADS_ACCESS_TOKEN
     if not ENABLE_THREADS:
@@ -524,7 +604,14 @@ def post_to_threads(text: str, image_path: Optional[str] = None) -> ThreadsPostR
         _log(f"[DRY_RUN] Threads投稿スキップ（{attach}）:\n{text}")
         if image_path:
             _log(f"  画像: {image_path}")
-        return ThreadsPostResult(ok=True, post_id="dry_run_threads_id", reason="DRY_RUN")
+        dry_with_image = bool(image_path and threads_images_enabled())
+        return ThreadsPostResult(
+            ok=True,
+            post_id="dry_run_threads_id",
+            reason="DRY_RUN",
+            with_image=dry_with_image,
+            link_reply_id=_post_threads_link_reply("dry_run_threads_id", text, reply_text) if dry_with_image else None,
+        )
 
     base_url = f"https://graph.threads.net/v1.0/{THREADS_USER_ID}"
     headers = {"Authorization": f"Bearer {THREADS_ACCESS_TOKEN}"}
@@ -596,7 +683,14 @@ def post_to_threads(text: str, image_path: Optional[str] = None) -> ThreadsPostR
                     _log("❌ Threads公開: レスポンスにIDが含まれていません")
                     return ThreadsPostResult(ok=False, transient=False, reason="Threads投稿IDなし")
                 _log(f"✅ Threads投稿成功{'（画像つき）' if image_url else ''}! ID: {post_id}")
-                return ThreadsPostResult(ok=True, post_id=str(post_id), reason="投稿成功")
+                with_image = bool(image_url)
+                return ThreadsPostResult(
+                    ok=True,
+                    post_id=str(post_id),
+                    reason="投稿成功",
+                    with_image=with_image,
+                    link_reply_id=_post_threads_link_reply(str(post_id), text, reply_text) if with_image else None,
+                )
 
             except Exception as e:
                 transient = isinstance(e, (requests.Timeout, requests.ConnectionError))
@@ -1620,14 +1714,14 @@ def post_to_twitter(text: str, image_path: Optional[str] = None, post_type: str 
 
 # --- 7.5 SNSごとの投稿 ---
 def post_to_threads_with_images(
-    items: List[tuple[str, Optional[str]]],
+    items: List[tuple[str, Optional[str], Optional[str]]],
     delay_seconds: int = 3,
 ) -> List[ThreadsPostResult]:
-    """(本文, 画像) の組を順にThreadsへ投稿する。"""
+    """(本文, 画像, 返信の文) の組を順にThreadsへ投稿する。"""
     results: List[ThreadsPostResult] = []
-    for idx, (text, image_path) in enumerate(items, 1):
+    for idx, (text, image_path, reply_text) in enumerate(items, 1):
         _log(f"Threads投稿 {idx}/{len(items)} を実行します。")
-        results.append(post_to_threads(text, image_path))
+        results.append(post_to_threads(text, image_path, reply_text))
         if idx < len(items) and delay_seconds > 0:
             time.sleep(delay_seconds)
     return results
@@ -1641,17 +1735,24 @@ def post_single(
     *,
     x_image: Optional[str] = None,
     threads_image: Optional[str] = None,
+    threads_text: Optional[str] = None,
+    threads_reply: Optional[str] = None,
     context: str = "",
     post_threads: bool = True,
 ) -> None:
-    """1つの本文をXとThreadsへ投稿し、結果を記録する。"""
+    """1つの本文をXとThreadsへ投稿し、結果を記録する。
+
+    threads_text を渡すと Threads だけ別の本文にする（的中・注目馬の Threads 用の文）。
+    threads_reply は画像つきで公開できたときに付ける返信（つかみの一言とレースのページ）。
+    重複の判定と記録は X と同じ text で行う。
+    """
     context = context or post_type
     if is_already_posted(text, post_type, target_date):
         _log(f"-> 既に投稿済み: {context}")
         return
     x_result = post_to_twitter(text, x_image, post_type=post_type, target_date=target_date, split_mode=False)
     if post_threads:
-        threads_result = post_to_threads(text, threads_image)
+        threads_result = post_to_threads(threads_text or text, threads_image, threads_reply)
     else:
         threads_result = ThreadsPostResult(ok=False, attempted=False, reason="夜のThreadsは動画投稿へ置換")
         _log("-> Threadsのこの投稿は、夜の動画投稿に置き換えているため送りません。")
@@ -1750,8 +1851,20 @@ def main():
                     _log("-> 既に投稿済み: morning_combined")
                 else:
                     x_result = post_to_twitter_with_dual_images(tweet_text_1, tweet_text_2, image_file_1, image_file_2, post_type="morning_combined", target_date=today_str)
+                    # Threads は改修前の文をもとにした Threads 用の文と、レースのページへの返信（2026-09-26）
                     threads_results = post_to_threads_with_images(
-                        [(tweet_text_1, threads_image_1), (tweet_text_2, threads_image_2)],
+                        [
+                            (
+                                SC.build_threads_hit_text(hit_card, summary, day_word="昨日"),
+                                threads_image_1,
+                                SC.build_threads_hit_reply(hit_card),
+                            ),
+                            (
+                                SC.build_threads_pick_text(pick_card),
+                                threads_image_2,
+                                SC.build_threads_pick_reply(pick_card),
+                            ),
+                        ],
                     )
                     threads_ok = len(threads_results) == 2 and all(result.ok for result in threads_results)
                     if ENABLE_TWITTER:
@@ -1787,6 +1900,8 @@ def main():
                     today_str,
                     x_image=render_sns_image(SI.render_x_pick, pick_card, "x_pick", key),
                     threads_image=render_threads_image(SI.render_threads_pick, pick_card, "th_pick", key),
+                    threads_text=SC.build_threads_pick_text(pick_card),
+                    threads_reply=SC.build_threads_pick_reply(pick_card),
                 )
             elif top_hit:
                 _log("-> 本日のレースデータが無いため、前日の的中だけを投稿します。")
@@ -1800,6 +1915,8 @@ def main():
                     today_str,
                     x_image=render_sns_image(SI.render_x_hit, hit_card, "x_hit", key, others=others[:2]),
                     threads_image=render_threads_image(SI.render_threads_hit, hit_card, "th_hit", key, others=others[:3]),
+                    threads_text=SC.build_threads_hit_text(hit_card, day_word="昨日"),
+                    threads_reply=SC.build_threads_hit_reply(hit_card),
                 )
             else:
                 _log("-> 前日の的中も本日のレースデータも無いため、投稿をスキップします。")
@@ -1841,6 +1958,7 @@ def main():
                         tomorrow_str,
                         x_image=render_sns_image(SI.render_x_race, card, "x_race", key),
                         threads_image=None if THREADS_EVENING_VIDEO_REPLACES_TEXT else render_threads_image(SI.render_threads_race, card, "th_race", key),
+                        threads_reply=SC.build_threads_race_reply(card),
                         context=f"evening_race:{card.race_name}",
                         post_threads=not THREADS_EVENING_VIDEO_REPLACES_TEXT,
                     )
@@ -1874,6 +1992,7 @@ def main():
                     today_str,
                     x_image=render_sns_image(SI.render_x_race, target, "x_race", key),
                     threads_image=render_threads_image(SI.render_threads_race, target, "th_race", key),
+                    threads_reply=SC.build_threads_race_reply(target),
                 )
             else:
                 _log("-> 本日の適切な直前リマインダー対象レースがありませんでした。")
@@ -1906,6 +2025,8 @@ def main():
                     today_str,
                     x_image=render_sns_image(SI.render_x_hit, hit_card, "x_hit", key),
                     threads_image=render_threads_image(SI.render_threads_hit, hit_card, "th_hit", key),
+                    threads_text=SC.build_threads_hit_text(hit_card, day_word="本日"),
+                    threads_reply=SC.build_threads_hit_reply(hit_card),
                     context=f"hit_immediate:{hit_card.venue}{hit_card.race_number}R",
                 )
                 if posted_count < min(len(big_hits), 3):

@@ -9,10 +9,12 @@
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from core.race_name import display_race_name
@@ -489,6 +491,118 @@ def build_race_text(card: RaceCard, headline: str, *, top: int = 3) -> str:
     lines += _link_block("全頭の分析", build_race_url(card.date))
     lines.append(_hashtags(hashtag(card.race_name), hashtag(f"{card.venue}競馬"), "#競馬予想"))
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Threads 用（2026-09-26 利用者の指定）
+# 的中・注目馬は、改修前（〜9/24）の文の中身と雰囲気をもとに、絵文字をやめて少しトーンを抑える。
+# 重賞は build_race_text のまま。画像つきの投稿には、つかみの一言とそのレースのページへの
+# リンクだけの返信を付け、返信の側にリンクのカード（題名にレース名）を出す。
+# ---------------------------------------------------------------------------
+_VENUE_SLUGS_PATH = Path(__file__).resolve().parents[2] / "frontend" / "lib" / "venue-slugs.json"
+_venue_slugs_cache: Optional[dict[str, str]] = None
+
+
+def _venue_slugs() -> dict[str, str]:
+    """サイトと同じ競馬場の英字（frontend/lib/venue-slugs.json）。読めなければ空。"""
+    global _venue_slugs_cache
+    if _venue_slugs_cache is None:
+        try:
+            payload = json.loads(_VENUE_SLUGS_PATH.read_text(encoding="utf-8"))
+            aliases = payload.get("aliases") if isinstance(payload, dict) else None
+            _venue_slugs_cache = dict(aliases) if isinstance(aliases, dict) else {}
+        except (OSError, ValueError):
+            _venue_slugs_cache = {}
+    return _venue_slugs_cache
+
+
+def build_race_detail_url(date_str: str, venue: str, race_number: Optional[int]) -> str:
+    """そのレースのページ。場の英字が分からないときは、その日のレース一覧へ戻す。"""
+    name = re.sub(r"\s+", "", str(venue or "")).removesuffix("競馬場")
+    slug = _venue_slugs().get(name)
+    if not slug or not race_number:
+        return build_race_url(date_str)
+    return f"{SITE_BASE_URL}/races/{str(date_str)[:10]}/{slug}/{int(race_number)}"
+
+
+def build_threads_hit_text(hit: HitCard, honmei: Optional[dict[str, Any]] = None, *, day_word: str = "昨日") -> str:
+    """的中（Threads 用）。day_word は朝の投稿で「昨日」、当日の速報で「本日」。"""
+    lines = [
+        f"{day_word}のAI的中速報（{date_label(hit.date)}）",
+        "",
+        f"【{hit.venue}{hit.race_number}R {hit.bet_type}】",
+        # 「！」はこの1か所だけ（2026-09-26 利用者の指定）
+        f"{hit.payout:,}円の高配当を的中しました！",
+    ]
+    total = int((honmei or {}).get("total") or 0)
+    if total > 0:
+        win = int(honmei.get("win") or 0)
+        second = int(honmei.get("second") or 0)
+        third = int(honmei.get("third") or 0)
+        other = int(honmei.get("other") or 0)
+        lines += [
+            "",
+            f"{day_word}のAI本命(◎)の成績",
+            f"{win}-{second}-{third}-{other}（勝率{win / total * 100:.1f}%・複勝率{(win + second + third) / total * 100:.1f}%）",
+        ]
+    lines += [
+        "",
+        # 「はこちら」は使わない言葉の一覧に入っているので、改修前の形（▼＋中身の名前）にする
+        "▼レース結果とAIの印",
+        build_race_url(hit.date),
+        "",
+        _hashtags("#競馬", "#AI予想", "#万馬券" if hit.payout >= 10000 else "#的中", hashtag(f"{hit.venue}競馬")),
+    ]
+    return "\n".join(lines)
+
+
+def build_threads_pick_text(card: PickCard) -> str:
+    """本日のAI注目馬（Threads 用）。"""
+    race = card.race
+    pick = card.pick
+    scope = f"今日の全{card.total_races}レース" if card.total_races > 1 else "今日のレース"
+    score = f"（AI偏差値 {pick.score:.1f}）" if pick.score is not None else ""
+    lines = [
+        f"本日のAI注目馬（{date_label(race.date)}）",
+        "",
+        f"AIが{scope}で最も高く評価した1頭です",
+        "",
+        f"【{race.venue}{race.race_number}R {race.race_name}】",
+        f"◎ {_horse_label(pick)}{score}",
+        "",
+        "▼全レースの無料予測",
+        build_race_url(race.date),
+        "",
+        _hashtags("#競馬", "#AI予想", "#中央競馬" if race.is_jra else "#地方競馬", hashtag(f"{race.venue}競馬")),
+    ]
+    return "\n".join(lines)
+
+
+def build_threads_race_reply(card: RaceCard) -> str:
+    """重賞・メインレースの投稿への返信：「オールカマー（G2）の全頭の分析」＋そのレースのページ。"""
+    if card.grade:
+        head = f"{card.race_name}（{card.grade}）の全頭の分析"
+    else:
+        head = f"{card.venue}{card.race_number}R {card.race_name}の全頭の分析"
+    return "\n".join([head, build_race_detail_url(card.date, card.venue, card.race_number)])
+
+
+def build_threads_hit_reply(hit: HitCard) -> str:
+    """的中の投稿への返信：「中山12R 3連単 716,000円の結果」＋そのレースのページ（「AIの評価」は付けない）。"""
+    return "\n".join([
+        f"{hit.venue}{hit.race_number}R {hit.bet_type} {hit.payout:,}円の結果",
+        build_race_detail_url(hit.date, hit.venue, hit.race_number),
+    ])
+
+
+def build_threads_pick_reply(card: PickCard) -> str:
+    """注目馬の投稿への返信：「高知9R デバッグ AI偏差値75.1の分析」＋そのレースのページ。"""
+    race = card.race
+    score = f" AI偏差値{card.pick.score:.1f}" if card.pick.score is not None else ""
+    return "\n".join([
+        f"{race.venue}{race.race_number}R {card.pick.name}{score}の分析",
+        build_race_detail_url(race.date, race.venue, race.race_number),
+    ])
 
 
 def build_carousel_caption(card: RaceCard) -> str:

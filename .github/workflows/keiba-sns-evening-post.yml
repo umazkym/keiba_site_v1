@@ -50,6 +50,8 @@ jobs:
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
           THREADS_TOKEN_EXPIRY: ${{ secrets.THREADS_TOKEN_EXPIRY }}
           SNS_THREADS_IMAGE_MODE: ${{ vars.SNS_THREADS_IMAGE_MODE || 'off' }}
+          # 画像つきの投稿に付ける返信の数（つかみの一言とレースのページ。1回の実行で最初のN本まで。0で止める）
+          SNS_THREADS_LINK_REPLY_MAX_PER_RUN: ${{ vars.SNS_THREADS_LINK_REPLY_MAX_PER_RUN || '1' }}
           SOCIAL_VIDEO_STAGING_GCS_BUCKET: ${{ vars.SOCIAL_VIDEO_STAGING_GCS_BUCKET }}
           SOCIAL_VIDEO_GCS_SIGNING_SERVICE_ACCOUNT: ${{ vars.SOCIAL_VIDEO_GCS_SIGNING_SERVICE_ACCOUNT }}
           API_BASE_URL: ${{ secrets.API_BASE_URL }}

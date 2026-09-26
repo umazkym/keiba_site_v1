@@ -76,8 +76,6 @@ cronはUTCです。JSTは時刻に9時間を足し、曜日をまたぐ場合も
 | `/faq` | [frontend/app/faq/page.tsx](../../frontend/app/faq/page.tsx) |
 | `/grade-races/[slug]` | [frontend/app/grade-races/[slug]/page.tsx](../../frontend/app/grade-races/[slug]/page.tsx) |
 | `/grade-races` | [frontend/app/grade-races/page.tsx](../../frontend/app/grade-races/page.tsx) |
-| `/horses/[id]` | [frontend/app/horses/[id]/page.tsx](../../frontend/app/horses/[id]/page.tsx) |
-| `/horses` | [frontend/app/horses/page.tsx](../../frontend/app/horses/page.tsx) |
 | `/jockeys/[slug]` | [frontend/app/jockeys/[slug]/page.tsx](../../frontend/app/jockeys/[slug]/page.tsx) |
 | `/jockeys` | [frontend/app/jockeys/page.tsx](../../frontend/app/jockeys/page.tsx) |
 | `/keiba-data/horse-weight` | [frontend/app/keiba-data/horse-weight/page.tsx](../../frontend/app/keiba-data/horse-weight/page.tsx) |
@@ -98,8 +96,6 @@ cronはUTCです。JSTは時刻に9時間を足し、曜日をまたぐ場合も
 | `/sitemap-images.xml` | [frontend/app/sitemap-images.xml/route.ts](../../frontend/app/sitemap-images.xml/route.ts) |
 | `/sitemap` | [frontend/app/sitemap/page.tsx](../../frontend/app/sitemap/page.tsx) |
 | `/terms` | [frontend/app/terms/page.tsx](../../frontend/app/terms/page.tsx) |
-| `/trainers/[id]` | [frontend/app/trainers/[id]/page.tsx](../../frontend/app/trainers/[id]/page.tsx) |
-| `/trainers` | [frontend/app/trainers/page.tsx](../../frontend/app/trainers/page.tsx) |
 
 ## FastAPIの登録エンドポイント
 

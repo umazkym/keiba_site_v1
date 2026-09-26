@@ -234,6 +234,14 @@ Offerwallの設定は2026-08-01以降の固定ベースラインとして変更�
 5. GA4で40%以上表示時に`affiliate_impression`が1回、CTA押下時に`affiliate_click`が1回だけ送られ、両イベントの`provider`、`context`、`campaign_id`、`link_id`、`race_type`が一致することを確認する。
 6. D+28時点で発生0件なら、TrafficGateの生クリック数を成果率の分母にせず、GA4の対象配置クリック数・ユーザー数を添えてTrafficGateへ計測確認を依頼する。
 
+### 2026-09-26 TrafficGateの端末・ブラウザ別の確認と対策
+
+- TrafficGateの月別：2026-06は222、07は464、08は385、09（25日まで）は116クリックで、発生は全期間0件。GA4の`affiliate_click`は同じ時期に計43回（6月18・7月16・8月9・9月1〜13日0）。
+- 「月、デバイス、ブラウザ別」レポートで、クリックの64〜84%が`FacebookBot`だった（6月175・7月389・8月283・9月75）。ほかにBytespider・ClaudeBot・bingbot・SemrushBot・AhrefsBot・OAI-SearchBot等。TrafficGateのリンクはサイトのコードにしかないため、巡回ロボットがサーバーのHTML内のリンクをたどったと判断した。
+- 広告主詳細：ITP対応、本人OK、再訪問30日、新規の正規登録1件515円、月1承認（2026-09-26時点）。口座情報は未登録（TOPの警告）。
+- 対策：`AffiliateSlot`とヘッダーの楽天リンクは、画面が動き出してから（`useHydrated`）リンク先を入れる。サーバーのHTMLにはTrafficGateのURLを載せない。見た目・配置・文言・計測イベントは変えない。`scripts/test_affiliate_campaigns.js`で回帰を検査する。
+- 反映後の確認：TrafficGateの`FacebookBot`等のクリックが減り、人のブラウザのクリックがGA4の`affiliate_click`に近づくこと。人のクリックが月10回前後のままなら、発生0件は母数不足として扱い、全ページ露出へは戻さない。
+
 ## 実装済み・再判断保留: DATA-VALUE-VALIDATION-2026-08
 
 これは広告・アフィリエイトのA/B実験ではなく、無料データ機能の利用価値を確認する28日間の観測である。AdSense、Offerwall、記事レースブリッジ、楽天競馬の設定は変更しない。

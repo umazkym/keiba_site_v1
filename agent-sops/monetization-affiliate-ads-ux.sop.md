@@ -38,6 +38,7 @@ Constraints for parameter acquisition:
 
 - You MUST keep visible PR disclosure near affiliate links.
 - You MUST preserve `rel="sponsored nofollow noopener noreferrer"` on affiliate outbound links.
+- You MUST set affiliate outbound `href` only after hydration (`useHydrated`) and keep the ASP URL out of server HTML because crawlers such as FacebookBot followed the link and made up 64-84% of TrafficGate clicks in 2026-06〜09 despite `nofollow`.
 - You MUST keep 20歳未満向け注意や投票誤認を避ける文脈 when touching betting-related links.
 - You MUST NOT make a central racing page imply Rakuten Keiba is a JRA betting destination because the current guidance separates central racing audience from local racing service.
 
@@ -180,4 +181,4 @@ provider: rakuten_keiba
 
 リンクを派手にする前に、成果条件、提携状態、Cookie期間、反映時間、配置別リンクの発行可否、Clarity録画、入口文言、ページ文脈、誤認の有無を確認します。新規登録が成果条件なら、既存会員や投票画面閲覧だけの利用者へ広く露出せず、対象者と必要な登録情報を明示します。単一リンクの投票カードでも枠全体をリンクにせず、44px以上の明示CTAだけを操作対象にします。中央競馬ページでは地方競馬サービスへの導線を原則表示しません。
 
-ASPの生クリック数がGA4の同期間`affiliate_click`を大きく上回る場合、生クリックには反復操作、クローラ、リンクスキャナが含まれ得ます。生クリックはリンク疎通の確認値に留め、成果件数・報酬はGA4のCTAクリック数とユーザー数を併記して判断します。テキストリンクでASP側の表示回数が0でも、表示ピクセルを埋め込んでいない構成なら障害とは扱いません。
+ASPの生クリック数がGA4の同期間`affiliate_click`を大きく上回る場合、生クリックには反復操作、クローラ、リンクスキャナが含まれ得ます。TrafficGateでは「レポート」→「月、デバイス、ブラウザ別」でボット名（FacebookBot、Bytespider、ClaudeBot等）の割合を確かめます。生クリックはリンク疎通の確認値に留め、成果件数・報酬はGA4のCTAクリック数とユーザー数を併記して判断します。テキストリンクでASP側の表示回数が0でも、表示ピクセルを埋め込んでいない構成なら障害とは扱いません。

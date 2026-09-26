@@ -13,6 +13,7 @@ import {
     selectWeightedAffiliateCampaign,
 } from '@/lib/affiliate-campaigns';
 import { sendAffiliateClickEvent, sendAffiliateImpressionEvent } from '@/lib/analytics';
+import { useHydrated } from '@/hooks/useHydrated';
 import {
     resolveRakutenAffiliateLink,
     type ResolvedAffiliateLink,
@@ -97,6 +98,8 @@ export const AffiliateSlot = ({
     const linkSignature = links.map((link) => `${link.id}:${link.provider}:${link.url}`).join('|');
     const [resolvedLinks, setResolvedLinks] = useState<Record<string, ResolvedAffiliateLink>>({});
     const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(() => new Set());
+    // 外へのリンク先は画面が動き出してから入れる（サーバーのHTMLには載せず、巡回ロボットにたどらせない）。見た目は同じ
+    const hydrated = useHydrated();
     const slotRef = useRef<HTMLElement | null>(null);
     const setSlotRef = useCallback((node: HTMLElement | null) => {
         slotRef.current = node;
@@ -217,9 +220,12 @@ export const AffiliateSlot = ({
         && subLinks.length === 0
         ? mainLinks[0]
         : null;
-    const wholeSlotHref = wholeSlotLink
+    const wholeSlotHref = wholeSlotLink && hydrated
         ? resolvedLinks[wholeSlotLink.id]?.affiliateUrl || wholeSlotLink.url
-        : '';
+        : undefined;
+    const linkHref = (link: typeof links[number]) => (
+        hydrated ? resolvedLinks[link.id]?.affiliateUrl || link.url : undefined
+    );
     const trackAffiliateClick = (link: typeof links[number]) => {
         sendAffiliateClickEvent({
             campaign_id: campaign.id,
@@ -331,7 +337,7 @@ export const AffiliateSlot = ({
                                 {mainLinks.map((link) => (
                                     <a
                                         key={link.id}
-                                        href={resolvedLinks[link.id]?.affiliateUrl || link.url}
+                                        href={linkHref(link)}
                                         target="_blank"
                                         rel="sponsored nofollow noopener noreferrer"
                                         onClick={() => trackAffiliateClick(link)}
@@ -350,7 +356,7 @@ export const AffiliateSlot = ({
                                 {subLinks.map((link) => (
                                     <a
                                         key={link.id}
-                                        href={resolvedLinks[link.id]?.affiliateUrl || link.url}
+                                        href={linkHref(link)}
                                         target="_blank"
                                         rel="sponsored nofollow noopener noreferrer"
                                         onClick={() => trackAffiliateClick(link)}

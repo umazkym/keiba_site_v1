@@ -6,6 +6,7 @@ import { LineIcon, type LineIconName } from '@/components/LineIcon';
 import { usePathname } from 'next/navigation';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { sendAffiliateClickEvent, sendAffiliateImpressionEvent } from '@/lib/analytics';
+import { useHydrated } from '@/hooks/useHydrated';
 import {
     getRakutenKeibaAffiliateUrl,
     shouldShowRakutenKeibaHeader,
@@ -36,6 +37,9 @@ type NavItem = {
 };
 
 const HeaderAffiliateLink = () => {
+    // リンク先は画面が動き出してから入れる（巡回ロボットにたどらせない。AffiliateSlot と同じ）
+    const hydrated = useHydrated();
+
     useEffect(() => {
         sendAffiliateImpressionEvent({
             campaign_id: HEADER_AFFILIATE_EVENT.campaign_id,
@@ -54,7 +58,7 @@ const HeaderAffiliateLink = () => {
 
     return (
         <a
-            href={getRakutenKeibaAffiliateUrl('site_header')}
+            href={hydrated ? getRakutenKeibaAffiliateUrl('site_header') : undefined}
             target="_blank"
             rel="sponsored nofollow noopener noreferrer"
             onClick={handleClick}

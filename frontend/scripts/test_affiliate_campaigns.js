@@ -120,4 +120,13 @@ assert.match(slotSource, /campaign\.ctaOnly \? 'min-h-11'/);
 assert.match(slotSource, /campaign\.showDescription && campaign\.description/);
 assert.match(slotSource, /rel="sponsored nofollow noopener noreferrer"/);
 
+// 外へのリンク先はサーバーのHTMLに載せない（巡回ロボットが TrafficGate のクリックの約8割だったため。2026-09-26）
+assert.match(slotSource, /const hydrated = useHydrated\(\)/);
+assert.doesNotMatch(slotSource, /href=\{resolvedLinks\[/);
+const headerSource = fs.readFileSync(
+    path.join(frontendRoot, 'components', 'Header.tsx'),
+    'utf8',
+);
+assert.match(headerSource, /href=\{hydrated \? getRakutenKeibaAffiliateUrl\('site_header'\) : undefined\}/);
+
 console.log('楽天競馬アフィリエイトの配置・CTA回帰テストに成功しました。');

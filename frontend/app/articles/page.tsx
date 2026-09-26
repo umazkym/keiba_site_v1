@@ -18,7 +18,7 @@ import { ArticleCategoryTag, formatArticleShortDate } from "@/components/Article
 import { ArticleThumb } from "@/components/ArticleThumb";
 import { GuideHorse } from "@/components/BrandLogo";
 import { LineIcon } from "@/components/LineIcon";
-import { estimateReadingMinutes, pickArticleThumbs, type ArticleThumb as ArticleThumbData } from "@/lib/article-visual";
+import { pickArticleThumbs, type ArticleThumb as ArticleThumbData } from "@/lib/article-visual";
 
 interface ArticlesPageProps {
   searchParams: {
@@ -237,15 +237,13 @@ function formatRaceDate(date?: string) {
   });
 }
 
-// カテゴリ・日付・読了時間（見本：「9/24 · 約5分」。日付で分かるので「新着」は付けない。2026-09-25）
+// カテゴリ・日付（日付で分かるので「新着」は付けない。2026-09-25）
+// 読了時間は出さない（「約30分」のような表示になっていた。2026-09-26 利用者の指定）
 function ArticleMeta({ article, className = "" }: { article: ArticleLike; className?: string }) {
   return (
     <span className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-slate-500 sm:text-[13px] ${className}`}>
       <ArticleCategoryTag category={article.category} />
-      <span>
-        <time dateTime={new Date(article.date).toISOString()}>{formatArticleShortDate(article.date)}</time>
-        {" · "}約{estimateReadingMinutes(article.content)}分
-      </span>
+      <time dateTime={new Date(article.date).toISOString()}>{formatArticleShortDate(article.date)}</time>
     </span>
   );
 }

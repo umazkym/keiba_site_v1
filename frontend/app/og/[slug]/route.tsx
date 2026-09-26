@@ -2,12 +2,13 @@
 // 以前は sharp＋SVG で描いていたが、本番のコンテナに日本語の書体が無く、英字も含めて全文字が四角になっていた。
 // 題名などはサイトの見出しと同じゴシック（Noto Sans JP Bold）、ロゴ文字だけ丸ゴシック（M PLUS Rounded 1c ExtraBold）。
 // どちらも assets/fonts に同梱し、next/og で描く（2026-09-26「ゴシックでそろえる」をOG画像にも当てた）。
-// 形はポートフォリオの「記事のOG画像」：白地・左に紺の帯・ロゴ・カテゴリ・題名・日付と読了時間。
+// 形はポートフォリオの「記事のOG画像」：白地・左に紺の帯・ロゴ・カテゴリ・題名・日付。
+// 読了時間は出さない（「約30分」のような表示になっていた。2026-09-26 利用者の指定）。
 import fs from 'fs/promises';
 import path from 'path';
 import { ImageResponse } from 'next/og';
 import { getArticleBySlug } from '@/lib/articles';
-import { estimateReadingMinutes, getArticleCategoryStyle } from '@/lib/article-visual';
+import { getArticleCategoryStyle } from '@/lib/article-visual';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,7 +24,6 @@ type OgMeta = {
   title: string;
   category: string | null;
   date: string | null;
-  readingMinutes: number | null;
 };
 
 let fontPromise: Promise<Buffer> | null = null;
@@ -59,10 +59,9 @@ async function readArticleMeta(slug: string): Promise<OgMeta> {
       title: article.title,
       category: article.category || null,
       date: article.date || null,
-      readingMinutes: estimateReadingMinutes(article.content),
     };
   } catch {
-    return { title: 'UMA-FREE｜競馬データ分析', category: null, date: null, readingMinutes: null };
+    return { title: 'UMA-FREE｜競馬データ分析', category: null, date: null };
   }
 }
 
@@ -98,7 +97,7 @@ export async function GET(
   const [main, sub] = splitTitle(meta.title);
   const titleSize = mainTitleSize(main, Boolean(sub));
   const categoryColor = meta.category ? getArticleCategoryStyle(meta.category).hex : NAVY;
-  const footer = [formatDate(meta.date), meta.readingMinutes ? `約${meta.readingMinutes}分` : ''].filter(Boolean).join(' · ');
+  const footer = formatDate(meta.date);
 
   return new ImageResponse(
     (

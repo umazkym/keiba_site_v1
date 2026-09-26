@@ -184,7 +184,6 @@ export default async function ArticlePage({ params }: Props) {
                   category={article.category}
                   date={article.date}
                   lastUpdated={article.lastUpdated}
-                  readingMinutes={readingTimeMin}
                 />
               </div>
 

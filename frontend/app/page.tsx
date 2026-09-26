@@ -21,7 +21,7 @@ import {
     type HomeVenueSummary,
 } from '@/lib/home-page-summary';
 import { buildRaceDaySummary } from '@/lib/race-day-summary';
-import { estimateReadingMinutes, getArticleCategoryStyle, pickArticleThumbs } from '@/lib/article-visual';
+import { getArticleCategoryStyle, pickArticleThumbs } from '@/lib/article-visual';
 import { formatRaceDateLabel } from '@/lib/race-display';
 
 import { AdUnit } from '@/components/AdUnit';
@@ -328,7 +328,7 @@ export default async function HomePage() {
                                                         <span className={`inline-flex items-center rounded-[5px] bg-white px-1.5 py-px text-[11px] font-bold ring-1 ring-inset ${categoryStyle.tagClass}`}>
                                                             {article.category}
                                                         </span>
-                                                        {formatShortDate(article.date)} · 約{estimateReadingMinutes(article.content)}分
+                                                        {formatShortDate(article.date)}
                                                     </span>
                                                 </span>
                                             </Link>

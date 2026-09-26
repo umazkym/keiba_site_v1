@@ -1,5 +1,5 @@
 import { getRelatedArticles } from '@/lib/articles';
-import { estimateReadingMinutes, pickArticleThumbs } from '@/lib/article-visual';
+import { pickArticleThumbs } from '@/lib/article-visual';
 import { RelatedArticleList } from '@/components/ArticleParts';
 
 interface RelatedArticlesProps {
@@ -23,7 +23,6 @@ export function RelatedArticles({ currentSlug, count = 3 }: RelatedArticlesProps
         title: article.title,
         category: article.category,
         date: article.date,
-        readingMinutes: estimateReadingMinutes(article.content),
         thumb: thumbs[index],
       }))}
     />

@@ -194,7 +194,7 @@ UMA-FREEの画面は「ロゴの丸い線と同じ手触りの、競馬場で素
 
 ### 記事
 
-- 記事冒頭は H1 → リード → カテゴリ・公開日（更新日）・読了時間 → （対応するレースへの導線）→ 冒頭の写真 → 今日の全レースへの案内 → 目次（この記事で確認できること）→ 本文の順にする（2026-09-25 段階5）。カテゴリ・日付はタイトルの上へ置かない。
+- 記事冒頭は H1 → リード → カテゴリ・公開日（更新日） → （対応するレースへの導線）→ 冒頭の写真 → 今日の全レースへの案内 → 目次（この記事で確認できること）→ 本文の順にする（2026-09-25 段階5）。カテゴリ・日付はタイトルの上へ置かない。読了時間（「約◯分」）はどこにも出さない。本文が長く「約30分」のような表示になっていた（2026-09-26 利用者の指定。記事・一覧・ホーム・レースの日の記事・関連記事・OG画像）。計測の `reading_time_min` は残す。
 - 冒頭の写真は、記事ごとのアイキャッチがあればそれ、無ければカテゴリの写真（重賞攻略は開催日の季節の写真）。スマホ 19:10・PC 9:4、角丸14px、`loading="eager"`。カテゴリの写真は内容を表さないため alt は空にする（`lib/article-visual.ts` の `pickArticleCover`）。汎用のアイキャッチ画像は本文にも一覧にも出さない。
 - 目次は本文のH2（`enhanceArticleHtml` が付けた id）から作り、見出しが2つ未満なら出さない。各行はスマホ36px・PC36px前後、見出しへ移動したときヘッダーの下へ隠れない余白（`scroll-margin-top`）を持つ。
 - 見出し・本文・目次・導線は760pxの列に置き、表・図・画像だけ1080pxまで広げる。PCの右列は作らない（記事に新しい広告枠を足さないため）。
@@ -214,7 +214,7 @@ UMA-FREEの画面は「ロゴの丸い線と同じ手触りの、競馬場で素
 
 ### 記事のOG画像（2026-09-25 段階5）
 
-- 記事の og:image・twitter:image・構造化データの画像は `/og/{slug}.png`（`app/og/[slug]/route.tsx`、1200×630）。白地・左に紺の帯・ロゴ・カテゴリの色の札・題名（「本題｜副題」は2段）・公開日と読了時間・uma-free.com。
+- 記事の og:image・twitter:image・構造化データの画像は `/og/{slug}.png`（`app/og/[slug]/route.tsx`、1200×630）。白地・左に紺の帯・ロゴ・カテゴリの色の札・題名（「本題｜副題」は2段）・公開日・uma-free.com。
 - 書体は `frontend/assets/fonts/NotoSansJP-Bold.ttf`（題名など。サイトの見出しと同じゴシック）と `MPLUSRounded1c-ExtraBold.ttf`（ロゴ文字だけ）を next/og に渡す（2026-09-26「ゴシックでそろえる」をOG画像にも当てた）。本番のコンテナには日本語の書体が無く、以前の sharp＋SVG では全文字が四角になっていた。書体・記事・next/og の wasm は `next.config.mjs` の `outputFileTracingIncludes` で standalone に含める。
 - キャッシュは1日（CDN）＋1週間の stale-while-revalidate。next/og の既定（1年・immutable）は小文字の `cache-control` で置き換える（題名を直したときに入れ替わるように）。
 - 手元の Windows では next/og の node 版が壊れる（`import.meta.url` を path.join で扱っている。Linux の本番では動く）。手元で確かめるときは読み込み時だけ書き換えるローダーを使う（`node --import=file:///…/.local/design-portfolio/impl/og-win-fix.mjs node_modules/next/dist/bin/next start`。node_modules は変更しない）。

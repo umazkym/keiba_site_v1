@@ -82,7 +82,6 @@ export function EntityArticleDocument({
               category={article.category}
               date={article.date}
               lastUpdated={article.lastUpdated}
-              readingMinutes={readingTimeMin}
             />
           </div>
 

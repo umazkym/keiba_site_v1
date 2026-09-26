@@ -43,17 +43,16 @@ export function ArticleTitleText({ title }: { title: string }) {
     );
 }
 
-// 見出しの下に置く「カテゴリ・公開日・読了時間」。更新日が公開日と別の日なら「更新」を添える。
+// 見出しの下に置く「カテゴリ・公開日」。更新日が公開日と別の日なら「更新」を添える。
+// 読了時間は出さない（本文が長く「約30分」のような表示になっていた。2026-09-26 利用者の指定）。
 export function ArticleMetaRow({
     category,
     date,
     lastUpdated,
-    readingMinutes,
 }: {
     category: string;
     date: string;
     lastUpdated?: string;
-    readingMinutes: number;
 }) {
     const published = isValidDate(date) ? toDate(date) : null;
     const updated = isValidDate(lastUpdated) ? toDate(lastUpdated) : null;
@@ -70,8 +69,6 @@ export function ArticleMetaRow({
             </Link>
             {published && <time dateTime={published.toISOString()}>{JST_DATE.format(published)}</time>}
             {showUpdated && updated && <span>更新 <time dateTime={updated.toISOString()}>{JST_DATE.format(updated)}</time></span>}
-            {/* 見本どおり時計のアイコンは付けない */}
-            <span>約{readingMinutes}分</span>
         </div>
     );
 }
@@ -159,8 +156,6 @@ export type RelatedArticleItem = {
     title: string;
     category: string;
     date: string;
-    // 本文を持たない一覧（レース画面の関連記事）では出さない
-    readingMinutes?: number;
     thumb: ArticleThumbData;
 };
 
@@ -192,7 +187,7 @@ export function RelatedArticleList({ items, headingId, title = '次に読む分�
                                 </span>
                                 <span className="flex items-center gap-2 text-[12.5px] text-slate-500 sm:order-1">
                                     <ArticleCategoryTag category={item.category} />
-                                    {formatArticleShortDate(item.date)}{item.readingMinutes ? ` · 約${item.readingMinutes}分` : ''}
+                                    {formatArticleShortDate(item.date)}
                                 </span>
                             </span>
                         </Link>

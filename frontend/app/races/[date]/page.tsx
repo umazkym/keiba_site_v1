@@ -15,7 +15,7 @@ import { LineIcon } from '@/components/LineIcon';
 import { buildRaceDaySummary } from '@/lib/race-day-summary';
 import { formatRaceDateLabel } from '@/lib/race-display';
 import { getLatestArticles } from '@/lib/articles';
-import { estimateReadingMinutes, getArticleCategoryStyle, pickArticleThumbs } from '@/lib/article-visual';
+import { getArticleCategoryStyle, pickArticleThumbs } from '@/lib/article-visual';
 import {
     getDaysFromToday,
     getJstTodayString,
@@ -232,7 +232,7 @@ function LatestArticlesPanel() {
                                         <span className={`inline-flex items-center rounded-[5px] bg-white px-1.5 py-px text-[11px] font-bold ring-1 ring-inset ${categoryStyle.tagClass}`}>
                                             {article.category}
                                         </span>
-                                        {formatShortDate(article.date)} · 約{estimateReadingMinutes(article.content)}分
+                                        {formatShortDate(article.date)}
                                     </span>
                                 </span>
                             </Link>

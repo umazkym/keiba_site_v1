@@ -80,11 +80,10 @@ export default function SitemapPage() {
     {
       title: "データハブ",
       links: [
-        { label: "競馬データベース", href: "/keiba-data", description: "競走馬、騎手、調教師、コースを横断して調べられます。" },
-        { label: "競走馬データ", href: "/horses", description: "近走と条件別成績、AI偏差値履歴を確認できます。" },
+        { label: "競馬データベース", href: "/keiba-data", description: "騎手とコースの成績を調べられます。" },
+        { label: "競走馬比較", href: "/compare", description: "複数の馬の成績と得意条件を並べられます。" },
         { label: "コース別データ", href: "/courses", description: "競馬場・距離ごとの傾向を確認できます。" },
         { label: "騎手別データ", href: "/jockeys", description: "主要騎手の条件別傾向を整理しています。" },
-        { label: "調教師別データ", href: "/trainers", description: "管理馬の条件別成績を確認できます。" },
         { label: "重賞データ", href: "/grade-races", description: "G1・G2・G3の個別ハブです。" },
       ],
     },

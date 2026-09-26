@@ -18,11 +18,11 @@ import { venueSlugToName } from '@/lib/race-url';
 
 export const revalidate = 21600;
 
-const datasetDescription = '中央・地方競馬の競走馬、騎手、調教師、競馬場・コースの成績を、出走数や集計期間とともに同じ条件で比較できる、UMA-FREEの無料競馬データセットです。';
+const datasetDescription = '中央・地方競馬の騎手と競馬場・コースの成績を、出走数や集計期間とともに同じ条件で比較できる、UMA-FREEの無料競馬データセットです。';
 
 export const metadata: Metadata = {
-    title: '競馬データベース｜競走馬・騎手・調教師・コース成績',
-    description: '競走馬、騎手、調教師、競馬場・コースの成績を、出走数を伴う同じ条件で無料比較できます。',
+    title: '競馬データベース｜騎手・コース成績と馬の比較',
+    description: '騎手と競馬場・コースの成績を、出走数と一緒に無料で比べられます。',
     robots: { index: true, follow: true },
     alternates: { canonical: '/keiba-data' },
 };
@@ -96,12 +96,13 @@ export default function KeibaDataPage() {
 
                 <DataPageHead
                     icon="database"
-                    title="競走馬・騎手・コースを同じ条件で比較"
-                    description="勝率・3着以内率を出走数と一緒に確認できます。"
+                    // 言葉のまとまりで折り返す（スマホで「同じ条｜件」と切れないように。2026-09-26）
+                    title={<><span className="inline-block">騎手・コースを</span><span className="inline-block">同じ条件で比較</span></>}
+                    description={<><span className="inline-block">勝率・3着以内率を</span><span className="inline-block">出走数と一緒に確認できます。</span></>}
                 />
 
                 <section id="data-search" className="mt-3 scroll-mt-24">
-                    <DataSearchPanel heading="馬名・騎手名・調教師名・コース条件から検索" />
+                    <DataSearchPanel heading="騎手名・コース条件から検索" />
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 px-1">
                         <span className="flex items-center gap-1 text-[12.5px] font-bold text-slate-500">
                             <LineIcon name="search" size={14} className="block" />
@@ -132,7 +133,7 @@ export default function KeibaDataPage() {
                         <DataHubActionLink
                             action="name_search"
                             href="#data-search"
-                            title="馬名・騎手名から検索"
+                            title="騎手名から検索"
                         />
                         <DataHubActionLink
                             action="course_lookup"

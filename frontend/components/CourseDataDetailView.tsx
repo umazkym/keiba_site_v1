@@ -205,6 +205,7 @@ export function CourseDataDetailView({ detail, relatedArticleHref }: { detail: C
 
     const peopleSpecs = [
         { key: 'jockeys', label: '騎手', title: 'このコースで成績の良い騎手', firstLabel: '騎手', items: detail.top_jockeys, linkPrefix: '/jockeys/data/' },
+        // 調教師のページは提供を終了した（2026-09-26）。DataStats が閉じたパスをリンクにしないので、名前は文字だけで出る
         { key: 'trainers', label: '調教師', title: 'このコースで成績の良い調教師', firstLabel: '調教師', items: detail.top_trainers, linkPrefix: '/trainers/' },
     ].filter((spec) => spec.items.length > 0);
 

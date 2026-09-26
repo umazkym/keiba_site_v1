@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { DataHubNav } from '@/components/DataHubNav';
+import { linkableDataHref } from '@/lib/closed-data-pages';
 import { PricingInterestSurvey } from '@/components/PricingInterestSurvey';
 import { PwaInstallButton } from '@/components/PwaInstallButton';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -144,18 +145,29 @@ function SavedEntityList({
                         {displayItems.map((item, index) => {
                             const entityStyle = ENTITY_ICON_MAP[item.entity_type];
                             const EntityIcon = entityStyle?.Icon ?? CircleDot;
-                            return (
-                                <Link
-                                    key={`${item.entity_type}-${item.id}`}
-                                    prefetch={false}
-                                    href={item.url}
-                                    className={`grid min-h-14 grid-cols-[20px_1fr] items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-brand-50/50 ${index % 2 === 1 ? 'bg-slate-50/40' : ''}`}
-                                >
+                            const rowClassName = `grid min-h-14 grid-cols-[20px_1fr] items-center gap-3 px-4 py-3 ${index % 2 === 1 ? 'bg-slate-50/40' : ''}`;
+                            const rowBody = (
+                                <>
                                     <EntityIcon className={`h-4 w-4 ${entityStyle?.className ?? 'text-slate-400'}`} aria-hidden="true" />
                                     <span className="min-w-0">
                                         <span className="block truncate font-bold text-slate-900">{item.name}</span>
                                         <span className="mt-0.5 block truncate text-xs text-slate-500">{item.subtitle}</span>
                                     </span>
+                                </>
+                            );
+                            // 保存済みの競走馬・調教師は、ページの提供を終了した（2026-09-26）のでリンクにしない
+                            const href = linkableDataHref(item.url);
+                            if (!href) {
+                                return <div key={`${item.entity_type}-${item.id}`} className={rowClassName}>{rowBody}</div>;
+                            }
+                            return (
+                                <Link
+                                    key={`${item.entity_type}-${item.id}`}
+                                    prefetch={false}
+                                    href={href}
+                                    className={`${rowClassName} transition-colors duration-150 hover:bg-brand-50/50`}
+                                >
+                                    {rowBody}
                                 </Link>
                             );
                         })}
@@ -410,12 +422,13 @@ export default function MyDataClient() {
                     <div className="p-4">
                         <div className="flex flex-wrap gap-2">
                             {comparison.map((horse, index) => (
-                                <Link key={horse.id} prefetch={false} href={horse.url} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-brand-50 hover:text-brand-700">
+                                // 競走馬のページは提供を終了した（2026-09-26）。比べる馬は名前だけを並べる
+                                <span key={horse.id} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-800">
                                     <span className="flex h-5 w-5 items-center justify-center rounded bg-slate-200 font-num text-[11.5px] font-bold text-slate-700">
                                         {index + 1}
                                     </span>
                                     {horse.name}
-                                </Link>
+                                </span>
                             ))}
                         </div>
                         {comparison.length >= 2 && (

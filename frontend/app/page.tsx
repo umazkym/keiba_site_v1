@@ -80,12 +80,12 @@ const homepageFaqItems = [
     },
 ];
 
-// short：スマホの4つ横並びの名前（2026-09-26 利用者の指定「競走馬, 騎手, コース, 馬比較」）
+// short：スマホの横並びの名前（2026-09-26 利用者の指定「競走馬, 騎手, コース, 馬比較」）。
+// 競走馬のページは同日に提供を終了したので、3つにした
 const DATA_LINKS: { href: string; icon: LineIconName; label: string; short: string; note: string }[] = [
-    { href: '/horses', icon: 'user', label: '競走馬データ', short: '競走馬', note: '近走・得意条件・AI偏差値の履歴' },
     { href: '/jockeys', icon: 'trophy', label: '騎手データ', short: '騎手', note: 'コース別・条件別の成績' },
     { href: '/courses', icon: 'pin', label: 'コースデータ', short: 'コース', note: '枠順・脚質の有利不利' },
-    { href: '/compare', icon: 'compare', label: '馬を比べる', short: '馬比較', note: '複数の馬の成績と得意条件を並べる' },
+    { href: '/compare', icon: 'compare', label: '馬を比べる', short: '馬比較', note: '複数の馬の成績を並べる' },
 ];
 
 const getJstDateParts = () => {
@@ -348,7 +348,7 @@ export default async function HomePage() {
                             <SectionHeader
                                 id="home-data-heading"
                                 title="過去データを調べる"
-                                description="過去のレースを競走馬・騎手・調教師・コースごとに集計しています。"
+                                description="騎手とコースの成績、馬どうしの比較を見られます。"
                                 action={(
                                     <Link prefetch={false} href="/keiba-data" className="inline-flex items-center gap-1 whitespace-nowrap text-[13.5px] font-bold text-brand-700 transition-colors duration-150 hover:text-brand-600">
                                         すべて見る
@@ -358,9 +358,9 @@ export default async function HomePage() {
                                 className="!mb-2 md:!mb-4"
                                 compact
                             />
-                            {/* スマホはアイコンと名前を縦に置いた4つの横並び。枠線と灰色の面は付けず、全体の大きさはそのままでアイコンだけ大きく（2026-09-26 利用者の指定）。
-                                PCは2×2で補足の1行つき。PCも札の枠線・灰色の面とアイコンの枠をやめた（2026-09-26「全ページ同じ決まり」） */}
-                            <div className="grid grid-cols-4 gap-2 md:grid-cols-2 md:gap-2.5">
+                            {/* スマホはアイコンと名前を縦に置いた3つの横並び（競走馬のページの終了で4つから3つに。2026-09-26）。枠線と灰色の面は付けず、全体の大きさはそのままでアイコンだけ大きく（2026-09-26 利用者の指定）。
+                                PCは横3列で補足の1行つき（3つを2列にすると最後の行が片寄り、縦3行は長くなるため）。PCも札の枠線・灰色の面とアイコンの枠をやめた（2026-09-26「全ページ同じ決まり」） */}
+                            <div className="grid grid-cols-3 gap-2 md:gap-2.5">
                                 {DATA_LINKS.map((item) => (
                                     <Link
                                         key={item.href}
@@ -378,7 +378,6 @@ export default async function HomePage() {
                                             <span className="text-[14.5px] font-bold text-slate-900">{item.label}</span>
                                             <span className="text-[12.5px] text-slate-500">{item.note}</span>
                                         </span>
-                                        <LineIcon name="chevR" size={18} className="hidden shrink-0 text-slate-500 md:block" />
                                     </Link>
                                 ))}
                             </div>
@@ -415,7 +414,7 @@ export default async function HomePage() {
                                     <input
                                         type="search"
                                         name="q"
-                                        placeholder="馬名・騎手・コースで検索"
+                                        placeholder="騎手・コース・記事で検索"
                                         className="h-full w-full min-w-0 border-0 bg-transparent p-0 text-[14px] text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-0"
                                     />
                                 </label>

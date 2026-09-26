@@ -9,6 +9,7 @@ import {
     type DataEntityEventType,
 } from '@/lib/analytics';
 import type { DataSearchResponse } from '@/lib/types';
+import { isClosedDataPath } from '@/lib/closed-data-pages';
 
 interface SearchResult {
     type: SearchIndexItem['type'];
@@ -162,6 +163,8 @@ export default function SearchPageClient({ searchIndex }: { searchIndex: SearchI
         }
         const seen = new Set<string>();
         const nextResults = [...dataResults, ...localResults]
+            // 競走馬・調教師のページは提供を終了した（2026-09-26）。API や手元の一覧が返しても出さない
+            .filter((item) => !isClosedDataPath(item.url))
             .filter((item) => {
                 if (seen.has(item.url)) return false;
                 seen.add(item.url);

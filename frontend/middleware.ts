@@ -12,6 +12,17 @@ import {
     hasNonAttributionQuery,
     preserveAttributionQuery,
 } from './lib/redirect-attribution';
+import { isClosedDataPath } from './lib/closed-data-pages';
+
+// 閉じたデータページ（競走馬・調教師）の案内。410 で恒久削除を伝え、人にはトップと馬比較への道を残す。
+const CLOSED_DATA_PAGE_HTML = `<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>このページは提供を終了しました | UMA-FREE</title></head>
+<body style="margin:0;font-family:system-ui,-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;background:#f8fafc;color:#0f172a">
+<main style="max-width:560px;margin:0 auto;padding:48px 16px">
+<h1 style="font-size:20px;margin:0 0 12px">このページは提供を終了しました</h1>
+<p style="font-size:15px;line-height:1.7;margin:0 0 20px">競走馬・調教師ごとのデータページは、2026年9月に提供を終了しました。</p>
+<p style="font-size:15px;margin:0;display:flex;gap:8px;flex-wrap:wrap"><a href="/" style="display:inline-flex;align-items:center;min-height:44px;padding:0 8px;color:#1d4ed8;font-weight:700">トップへ戻る</a><a href="/compare" style="display:inline-flex;align-items:center;min-height:44px;padding:0 8px;color:#1d4ed8;font-weight:700">馬を比べる</a></p>
+</main></body></html>`;
 
 
 // 検索エンジンのクローラー。コスト保護中でも503を返してはいけない。
@@ -44,9 +55,7 @@ function isPublicHtmlNavigation(request: NextRequest): boolean {
 
 function isDataDetailPath(pathname: string): boolean {
     return (
-        /^\/horses\/[^/]+$/.test(pathname)
-        || /^\/jockeys\/data\/[^/]+$/.test(pathname)
-        || /^\/trainers\/[^/]+$/.test(pathname)
+        /^\/jockeys\/data\/[^/]+$/.test(pathname)
         || /^\/courses\/[^/]+\/[^/]+$/.test(pathname)
     );
 }
@@ -64,6 +73,19 @@ function isDataDetailPath(pathname: string): boolean {
  */
 export function middleware(request: NextRequest) {
     const { pathname, searchParams } = request.nextUrl;
+
+    // 0. 提供を終了したデータページ（競走馬・調教師、2026-09-26）。
+    // 404ではなく410で恒久削除を伝え、検索エンジンのインデックスから外す。
+    if (isClosedDataPath(pathname)) {
+        return new NextResponse(CLOSED_DATA_PAGE_HTML, {
+            status: 410,
+            headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'public, max-age=86400',
+                'X-Robots-Tag': 'noindex',
+            },
+        });
+    }
 
     // 1. レースページURL正規化（301リダイレクト）
     // クエリ付き詳細URLは /races/YYYY-MM-DD/venue-slug/R へ統一する。
@@ -403,9 +425,12 @@ export const config = {
         '/rac:path*',
         '/guides/:path*',
         '/data/:path*',
+        // 提供を終了した競走馬・調教師のページ（410を返す）。一覧の /horses・/trainers も含める。
+        '/horses',
         '/horses/:path*',
         '/jockey/:path*',
         '/jockeys/data/:path*',
+        '/trainers',
         '/trainers/:path*',
         '/course/:path*',
         '/courses/:path*',

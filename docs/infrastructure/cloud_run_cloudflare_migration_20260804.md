@@ -321,8 +321,10 @@ custom cache keyでcookie、User-Agent、RSC headerを追加しない。高カ�
 Free planのRate Limiting Ruleは1件、10秒period、IP単位である。verified botを除外し、詳細ページ群だけを対象にする。
 
 ```text
-(not cf.client.bot and (starts_with(http.request.uri.path, "/races/") or starts_with(http.request.uri.path, "/horses/") or starts_with(http.request.uri.path, "/jockeys/data/") or starts_with(http.request.uri.path, "/trainers/") or starts_with(http.request.uri.path, "/courses/") or starts_with(http.request.uri.path, "/sitemaps/data/")))
+(not cf.client.bot and (starts_with(http.request.uri.path, "/races/") or starts_with(http.request.uri.path, "/jockeys/data/") or starts_with(http.request.uri.path, "/courses/") or starts_with(http.request.uri.path, "/sitemaps/data/")))
 ```
+
+`/horses/`・`/trainers/` は 2026-09-26 に提供を終了し、ミドルウェアが DB を読まずに 410 を返すので、式から外した。
 
 - threshold: 40 requests / 10 seconds / IP
 - action: Managed Challenge
@@ -331,6 +333,8 @@ Free planのRate Limiting Ruleは1件、10秒period、IP単位である。verifi
 Free planではcached assetをcount対象から外せないため、Security Eventsで正規利用者のchallenge率を確認し、誤検知があれば閾値を上げる。検索クローラーへ適用するとSEOへ影響するため、`not cf.client.bot`を外さない。
 
 > **2026-09-25 の観測（ダッシュボードとの照合待ち）**：自宅回線（150.246.198.58）が2回、`Error 1015 You are being rate limited` で締め出された（2026-09-24 18:29 UTC と 2026-09-25 01:06 UTC。Ray ID a403db3d3bd5d764・a403db249c9e2c1c・a40620a2b8c4f6ee）。1回目はトップページ `/` も止められた。上の式には `/` が入っていないので、実際に動いている式はこれより広い。1015 は Block の応答なので、動作も Managed Challenge ではないと考えられる。初回の表示は同じサイトへの要求が29〜50件（JS・CSS・書体・画像）あり、式がすべてのパスを数えていると、デプロイ直後に1〜2ページ開くだけで基準を超えうる。Security Events で上の Ray ID を開き、ルールの式・動作・時間を確かめ、この節の式と Managed Challenge に戻す。あわせて、サイト内のリンクの先読み（1回の表示ごとに10〜13件の `?_rsc=`）をやめた（全 `next/link` に `prefetch={false}`、監査 `links-no-background-prefetch`）。
+
+> **2026-09-26 の確認（利用者のダッシュボードの画面）**：動いているルールは「Extreme request burst protection」の1件で、式は `(http.request.method in {"GET" "POST"}) and not cf.client.bot`（すべてのパス）、IP ごとに10秒で100件、超えたら Block を10秒。検索ロボット（verified bot）は除外済みなので、検索の巡回には影響しない。画像・JS・CSS も数えるため、同じ回線で数ページを続けて開くと止まる。上の式（詳細ページだけ）へ戻すかは、利用者の判断待ち。
 
 Bot Fight Modeはdomain全体へ作用し、WAF ruleで例外化できない。最初の24時間はRate Limitingだけで観測し、AdSense、GA4、Clarity、Search Console、通常操作に問題がないことを確認してからONにする。問題があれば直ちにOFFへ戻す。
 

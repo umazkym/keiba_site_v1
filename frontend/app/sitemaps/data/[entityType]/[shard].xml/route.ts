@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getDataSitemapShard } from '@/lib/api';
 import type { DataEntityType } from '@/lib/types';
+import { CLOSED_DATA_ENTITY_TYPES } from '@/lib/closed-data-pages';
 
 const BASE_URL = 'https://uma-free.com';
-const ENTITY_TYPES = new Set(['course', 'horse', 'jockey', 'trainer']);
+// 競走馬・調教師のページは提供を終了した（2026-09-26）。その分割サイトマップは 410 を返す
+const ENTITY_TYPES = new Set(['course', 'jockey']);
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +24,6 @@ function escapeXml(value: string) {
 
 function priorityFor(entityType: string) {
   if (entityType === 'course') return '0.75';
-  if (entityType === 'horse') return '0.70';
   return '0.65';
 }
 
@@ -31,6 +32,12 @@ export async function GET(
   { params }: { params: { entityType: string; shard: string } },
 ) {
   const shard = Number(params.shard);
+  if (CLOSED_DATA_ENTITY_TYPES.has(params.entityType)) {
+    return new NextResponse('Gone', {
+      status: 410,
+      headers: { 'Cache-Control': 'public, s-maxage=86400', 'X-Robots-Tag': 'noindex' },
+    });
+  }
   if (!ENTITY_TYPES.has(params.entityType) || !Number.isInteger(shard) || shard < 1) {
     return new NextResponse('Not Found', {
       status: 404,

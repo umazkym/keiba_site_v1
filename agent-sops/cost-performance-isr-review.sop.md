@@ -85,6 +85,7 @@ Cloud Runへ複数サービスを置く場合、フロント単体ではなく�
 - You MUST collect `billable_instance_time`、割当CPU・メモリ、request count、`network/sent_bytes_count`の`kind=internet`、5xx、p95、active instance count for every required service.
 - You MUST treat missing metrics for any required service as red rather than estimating zero usage.
 - You MUST keep the publication gate limited to new indexable data pages; existing pages and APIs must remain available.
+- You MUST NOT reopen or link to the horse (`/horses`) and trainer (`/trainers`) pages because they were closed on 2026-09-26 with 410 (0.5〜7% of views, 3 search clicks in 3.5 months, and about 18,000 template pages that drew bot crawling and DB load); keep `frontend/lib/closed-data-pages.ts` as the single switch and ask the user before reopening.
 - You MUST use green thresholds below free-tier boundaries and red thresholds before a likely overage: CPU 72,000/120,000秒、メモリ144,000/240,000 GiB秒、request 800,000/1,400,000、internet egress 2/10 GiB.
 - You MUST NOT configure a Cloud Run hard spend cap when continuous site availability is the agreed priority because reaching it can pause the frontend and API together.
 

@@ -590,7 +590,7 @@ const checks = [
   {
     // 2026-09-26：下線のタブと項目ごとの色をやめ、切り替えボタン（SegmentedControl）と同じ形のリンクの列にした（利用者の指定）
     id: 'data-nav-visible-mobile-grid',
-    description: 'データナビが主操作3つ・分類4つを切り替えボタンの形で1列ずつ均等に並べ、モバイルにも全項目を表示する（項目ごとの色・下線のタブは使わない。2026-09-26）',
+    description: 'データナビが主操作3つ・分類2つ（騎手・コース別。競走馬・調教師は 2026-09-26 に終了）を切り替えボタンの形で1列ずつ均等に並べ、モバイルにも全項目を表示する（項目ごとの色・下線のタブは使わない。2026-09-26）',
     passed: dataHubNav.includes('renderItems(PRIMARY_ITEMS')
       && dataHubNav.includes('renderItems(DIRECTORY_ITEMS')
       && dataHubNav.includes('rounded-[10px] bg-slate-100 p-0.5')
@@ -602,8 +602,39 @@ const checks = [
   {
     id: 'data-hub-concrete-value-copy',
     description: 'データトップが同条件・出走数を具体的に説明する',
-    passed: dataHubPage.includes('競走馬・騎手・コースを同じ条件で比較')
-      && dataHubPage.includes('勝率・3着以内率を出走数と一緒に確認できます。'),
+    // 見出しと説明は言葉のまとまりごとの span に分けている（折り返しの位置を決めるため）
+    passed: dataHubPage.includes('騎手・コースを')
+      && dataHubPage.includes('同じ条件で比較')
+      && dataHubPage.includes('勝率・3着以内率を')
+      && dataHubPage.includes('出走数と一緒に確認できます。'),
+  },
+  {
+    // 2026-09-26：競走馬・調教師のページは提供を終了した（閲覧0.5〜7%・検索クリックは馬3件・調教師0件。約1万8千件のひな形ページがロボットの巡回と DB の負荷の元）
+    id: 'closed-data-pages-stay-closed',
+    description: '競走馬（/horses）・調教師（/trainers）のページを作らず、画面からリンクしない。ミドルウェアが 410 を返し、API の url は linkableDataHref・isClosedDataPath を通す（2026-09-26）',
+    passed: (() => {
+      const walkSource = (dir) => fs.readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((entry) => {
+        const relative = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) return walkSource(relative);
+        return /\.(tsx|ts)$/.test(relative) ? [relative] : [];
+      });
+      const pageDirsLeft = ['app/horses', 'app/trainers'].filter((dir) => fs.existsSync(path.join(root, dir)));
+      const offenders = [...walkSource('components'), ...walkSource('app'), ...walkSource('lib')].filter((relativePath) => {
+        const source = fs.readFileSync(path.join(root, relativePath), 'utf8')
+          .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/^\s*\/\/.*$/gm, '');
+        // href に直接書いたリンクと、ナビ・一覧の href の設定だけを数える（保存データの識別用の url 文字列は対象外）
+        return /href=\{?[`'"]\/(horses|trainers)\b/.test(source) || /href: '\/(horses|trainers)'/.test(source);
+      });
+      const middleware = fs.readFileSync(path.join(root, 'middleware.ts'), 'utf8');
+      if (pageDirsLeft.length) console.log(`  閉じたページが残っています: ${pageDirsLeft.join(', ')}`);
+      if (offenders.length) console.log(`  閉じたページへのリンク: ${offenders.join(', ')}`);
+      return pageDirsLeft.length === 0
+        && offenders.length === 0
+        && middleware.includes('isClosedDataPath(pathname)')
+        && middleware.includes('status: 410');
+    })(),
   },
   {
     // 2026-09-26：表の上下の説明文（順位付けをしない理由・母数区分の凡例）はやめた（利用者の指定）。区分の名前と Wilson下限の列は表に残す

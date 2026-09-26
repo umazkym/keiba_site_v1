@@ -357,9 +357,10 @@ export default function HorseCompareClient() {
                         <span className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 font-mono text-[11px] font-bold text-slate-600">
                             {index + 1}
                         </span>
-                        <Link prefetch={false} href={horse.url} className="max-w-[84px] truncate px-1 hover:text-brand-600 sm:max-w-[120px] md:max-w-[150px]" title={horse.name}>
+                        {/* 競走馬のページは提供を終了した（2026-09-26）。馬名は文字だけにする */}
+                        <span className="max-w-[84px] truncate px-1 sm:max-w-[120px] md:max-w-[150px]" title={horse.name}>
                             {horse.name}
-                        </Link>
+                        </span>
                         <button
                             type="button"
                             onClick={() => removeHorse(horse)}
@@ -532,9 +533,9 @@ export default function HorseCompareClient() {
                                                     <tr key={horse.horse_id} className={index % 2 === 1 ? 'bg-slate-50/40' : undefined}>
                                                         <th className="px-4 py-3 text-left">
                                                             <span className="flex items-center gap-2">
-                                                                <Link prefetch={false} href={horse.url} className="font-bold text-slate-950 hover:text-brand-700">
+                                                                <span className="font-bold text-slate-950">
                                                                     {horse.horse_name}
-                                                                </Link>
+                                                                </span>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleToggleFavorite(horse)}

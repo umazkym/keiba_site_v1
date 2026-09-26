@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { GitCompareArrows } from 'lucide-react';
 import type { HorsePrediction } from '@/lib/types';
 import { DataFavoriteButton } from '@/components/DataFavoriteButton';
@@ -21,19 +20,10 @@ export function RaceHorseActions({ predictions }: { predictions: HorsePrediction
             <div className="divide-y divide-slate-100 border-t border-slate-200 bg-white">
                 {predictions.map((horse) => (
                     <div key={horse.horse_id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                        {horse.detail_page_indexable ? (
-                            <Link
-                                prefetch={false}
-                                href={`/horses/${encodeURIComponent(horse.horse_id)}`}
-                                className="font-bold text-slate-900 transition-colors duration-150 hover:text-primary"
-                            >
-                                {horse.horse_number}番 {horse.horse_name}
-                            </Link>
-                        ) : (
-                            <span className="font-bold text-slate-900">
-                                {horse.horse_number}番 {horse.horse_name}
-                            </span>
-                        )}
+                        {/* 競走馬のページは提供を終了した（2026-09-26）。馬名は文字だけにする */}
+                        <span className="font-bold text-slate-900">
+                            {horse.horse_number}番 {horse.horse_name}
+                        </span>
                         <div className="flex flex-wrap gap-2">
                             <DataFavoriteButton
                                 entityType="horse"

@@ -87,25 +87,7 @@ const nextConfig = {
         ],
       },
       {
-        source: '/horses/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, s-maxage=86400, stale-while-revalidate=604800, stale-if-error=604800',
-          },
-        ],
-      },
-      {
         source: '/jockeys/data/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, s-maxage=86400, stale-while-revalidate=604800, stale-if-error=604800',
-          },
-        ],
-      },
-      {
-        source: '/trainers/:path*',
         headers: [
           {
             key: 'Cache-Control',

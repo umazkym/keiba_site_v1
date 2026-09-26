@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { isClosedDataPath, linkableDataHref } from '@/lib/closed-data-pages';
 import { FrameNumberBadge, RaceNumberBadge } from '@/components/RaceNumberBadge';
 import { FinishBadge } from '@/components/RaceParts';
 import { LineIcon } from '@/components/LineIcon';
@@ -167,7 +168,7 @@ export function SegmentStatsTable({
                                                 <FrameNumberBadge frameNumber={Number(item.key)} />
                                                 <span>{item.label}</span>
                                             </span>
-                                        ) : linkPrefix ? (
+                                        ) : linkPrefix && !isClosedDataPath(linkPrefix) ? (
                                             // 見た目は文字のまま、押せる範囲だけ行の高さまで広げる（hit-44）
                                             <Link
                                                 prefetch={false}
@@ -233,8 +234,8 @@ function RecentRunRow({
         </>
     );
     const rowClassName = 'flex min-h-12 items-center gap-3 py-2';
-    // 行ごと1つのリンク（レースのページ。無い期間は競走馬のページ）。PC の表では馬名とレースを別々にリンクする
-    const href = run.url ?? (showHorse && run.horse_id ? `/horses/${encodeURIComponent(run.horse_id)}` : null);
+    // 行ごと1つのリンク（レースのページ）。競走馬のページは提供を終了した（2026-09-26）ので、レースのページが無い期間はリンクにしない
+    const href = linkableDataHref(run.url);
     if (!href) return <div className={rowClassName}>{body}</div>;
     return (
         <Link
@@ -339,11 +340,8 @@ export function RecentRunsTable({
                                     </td>
                                     {showHorse && (
                                         <td className="max-w-[160px] truncate px-3 py-3 font-bold text-slate-900">
-                                            {run.horse_id ? (
-                                                <Link prefetch={false} href={`/horses/${encodeURIComponent(run.horse_id)}`} className="hover:text-brand-700" title={run.horse_name ?? ''}>
-                                                    {run.horse_name ?? '—'}
-                                                </Link>
-                                            ) : '—'}
+                                            {/* 競走馬のページは提供を終了した（2026-09-26）。馬名は文字だけにする */}
+                                            <span title={run.horse_name ?? ''}>{run.horse_name ?? '—'}</span>
                                         </td>
                                     )}
                                     <td className="px-3 py-3 text-center">

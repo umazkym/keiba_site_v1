@@ -16,7 +16,10 @@ from database.database import Base, SessionLocal, engine
 
 
 JST = timezone(timedelta(hours=9))
-ENTITY_TYPES = ("course", "horse", "jockey", "trainer")
+# 競走馬・調教師のページは 2026-09-26 に提供を終了した（フロントは 410 を返す）。
+# 候補にせず、残っている行は retire_closed_entity_rows で retired にする。
+CLOSED_ENTITY_TYPES = ("horse", "trainer")
+ENTITY_TYPES = ("course", "jockey")
 MINIMUM_SAMPLES = {
     "horse": 5,
     "jockey": 50,
@@ -244,6 +247,21 @@ def _iter_quality_candidates(db: Any) -> list[dict[str, Any]]:
     return candidates
 
 
+def retire_closed_entity_rows(db: Any, *, evaluated_at: datetime) -> int:
+    """提供を終了した種類の行を retired にし、サイトマップと公開の数から外す。"""
+    rows = (
+        db.query(models.DataPagePublication)
+        .filter(models.DataPagePublication.entity_type.in_(CLOSED_ENTITY_TYPES))
+        .filter(models.DataPagePublication.status != "retired")
+        .all()
+    )
+    for row in rows:
+        row.status = "retired"
+        row.updated_at = evaluated_at
+    db.flush()
+    return len(rows)
+
+
 def sync_candidates(
     db: Any,
     *,
@@ -392,6 +410,7 @@ def build_report(
     initial_seed: bool,
     gsc_warning: str | None,
     dry_run: bool,
+    retired_closed_count: int = 0,
 ) -> dict[str, Any]:
     status_counts: dict[str, int] = {}
     for row in candidates:
@@ -407,6 +426,7 @@ def build_report(
         "gsc_warning": gsc_warning,
         "candidate_count": len(candidates),
         "status_counts": status_counts,
+        "retired_closed_count": retired_closed_count,
         "published_now": [
             {
                 "entity_type": row.entity_type,
@@ -430,6 +450,8 @@ def render_summary(report: Mapping[str, Any]) -> str:
         f"- 候補総数: {report.get('candidate_count')}",
         f"- 今回の公開数: {len(report.get('published_now') or [])}",
     ]
+    if report.get("retired_closed_count"):
+        lines.append(f"- 提供を終了した種類（競走馬・調教師）を終了にした数: {report.get('retired_closed_count')}")
     if reasons:
         lines.append(f"- 判定理由: {' / '.join(str(reason) for reason in reasons)}")
     if report.get("gsc_warning"):
@@ -463,6 +485,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     db = SessionLocal()
     try:
+        retired_closed_count = retire_closed_entity_rows(db, evaluated_at=evaluated_at)
         candidates = sync_candidates(
             db,
             demand_by_path=demand,
@@ -484,6 +507,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             initial_seed=initial_seed,
             gsc_warning=gsc_warning,
             dry_run=args.dry_run,
+            retired_closed_count=retired_closed_count,
         )
         if args.dry_run:
             db.rollback()

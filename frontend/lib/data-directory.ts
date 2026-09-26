@@ -13,10 +13,9 @@ export const DATA_ENTITY_LABELS: Record<Exclude<DataEntityType, 'grade'>, string
     course: 'コース',
 };
 
+// 競走馬・調教師のページは提供を終了した（2026-09-26）
 export const DATA_DIRECTORY_LINKS = [
-    { href: '/horses', label: '競走馬', entityType: 'horse' as const },
     { href: '/jockeys', label: '騎手', entityType: 'jockey' as const },
-    { href: '/trainers', label: '調教師', entityType: 'trainer' as const },
     { href: '/courses', label: 'コース', entityType: 'course' as const },
 ];
 

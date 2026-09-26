@@ -45,7 +45,8 @@
     "gsc:validate-rewrite-pair": "npx --yes tsx scripts/agents/validate_gsc_rewrite_pair.ts",
     "article:tone-fix": "node scripts/agents/improve_article_tone.js",
     "article:tone-fix:apply": "node scripts/agents/improve_article_tone.js --apply",
-    "article:tone-audit": "node scripts/agents/article_quality_audit.js --json | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log('Critical:', d.summary.critical, '/ Warning:', d.summary.warning);\""
+    "article:tone-audit": "node scripts/agents/article_quality_audit.js --json | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log('Critical:', d.summary.critical, '/ Warning:', d.summary.warning);\"",
+    "data:test-closed-pages": "npx --yes tsx scripts/test_closed_data_pages.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

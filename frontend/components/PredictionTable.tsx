@@ -4,7 +4,6 @@
 import { RacePrediction } from '@/lib/types';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import Link from 'next/link';
 import { sendPredictionTableViewEvent } from '../lib/analytics';
 import { AccessibleInfo } from '@/components/AccessibleInfo';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -164,17 +163,8 @@ export const PredictionTable = ({
                                     </td>
                                     <td className="min-w-0">
                                         <span className="flex min-w-0 flex-col gap-0.5 leading-[1.3] md:gap-1 md:leading-normal">
-                                            {p.detail_page_indexable ? (
-                                                <Link
-                                                    prefetch={false}
-                                                    href={`/horses/${encodeURIComponent(p.horse_id)}`}
-                                                    className="break-words text-[15px] font-bold text-slate-900 transition-colors duration-150 hover:text-brand-700 md:text-base"
-                                                >
-                                                    {p.horse_name}
-                                                </Link>
-                                            ) : (
-                                                <span className="break-words text-[15px] font-bold text-slate-900 md:text-base">{p.horse_name}</span>
-                                            )}
+                                            {/* 競走馬のページは提供を終了した（2026-09-26）。馬名は文字だけにする */}
+                                            <span className="break-words text-[15px] font-bold text-slate-900 md:text-base">{p.horse_name}</span>
                                             <span className="flex md:hidden">
                                                 <PositionChip label={position} className="text-[11.5px] leading-[1.3]" />
                                             </span>

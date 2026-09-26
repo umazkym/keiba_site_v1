@@ -23,9 +23,7 @@ const STATIC_LABEL_MAP: Record<string, string> = {
   // メイン機能・データベース
   'keiba-data': '競馬データベース',
   'courses': 'コース別データ',
-  'horses': '競走馬データ',
   'jockeys': '騎手別データ',
-  'trainers': '調教師別データ',
   'compare': '競走馬比較',
   'my-data': 'マイデータ',
   'search': 'サイト内検索',

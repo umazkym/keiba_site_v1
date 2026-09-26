@@ -8,9 +8,7 @@ export function DataDirectoryNav({
     current?: Exclude<DataEntityType, 'grade'>;
 }) {
     const currentPathMap: Record<string, string> = {
-        horse: '/horses',
         jockey: '/jockeys',
-        trainer: '/trainers',
         course: '/courses',
     };
     const currentPath = current ? currentPathMap[current] : undefined;

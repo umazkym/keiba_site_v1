@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDataSitemapManifest } from '@/lib/api';
+import { CLOSED_DATA_ENTITY_TYPES } from '@/lib/closed-data-pages';
 
 const BASE_URL = 'https://uma-free.com';
 
@@ -19,7 +20,9 @@ function escapeXml(value: string) {
 }
 
 export async function GET() {
-  const manifest = await getDataSitemapManifest();
+  // 競走馬・調教師のページは提供を終了した（2026-09-26）。バックエンドが返しても載せない
+  const manifest = (await getDataSitemapManifest())
+    .filter((entry) => !CLOSED_DATA_ENTITY_TYPES.has(entry.entity_type));
 
   // 公開済みデータページが1件もない間は、空のsitemapindexを返さない。
   // sitemapindexは<sitemap>を1件以上含む必要があり、空だとSearch Consoleが

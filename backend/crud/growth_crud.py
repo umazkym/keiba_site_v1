@@ -68,7 +68,8 @@ _ENTITY_MIN_SAMPLE = {
 }
 _PUBLICATION_STATUSES = {"candidate", "published", "held", "retired"}
 # データsitemapへ載せる対象。manifest/shardの順序もこの並びに従う。
-_SITEMAP_ENTITY_TYPES = ("course", "horse", "jockey", "trainer")
+# 競走馬・調教師のページは 2026-09-26 に提供を終了した（フロントは 410 を返す）ので載せない。
+_SITEMAP_ENTITY_TYPES = ("course", "jockey")
 _TRAINER_AFFILIATIONS = (
     "栃木・宇都宮",
     "ばんえい帯広",

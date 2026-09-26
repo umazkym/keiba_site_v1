@@ -29,7 +29,6 @@ export const Footer = ({ todayString }: FooterProps) => {
             title: 'データと記事',
             links: [
                 { href: '/keiba-data', label: '競馬データベース' },
-                { href: '/horses', label: '競走馬データ' },
                 { href: '/courses', label: 'コースデータ' },
                 { href: '/articles', label: 'データ分析記事' },
                 { href: '/my-data', label: 'マイデータ' },

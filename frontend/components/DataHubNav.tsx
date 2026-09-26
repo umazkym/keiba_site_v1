@@ -4,12 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     Bookmark,
-    CircleDot,
     Database,
     GitCompareArrows,
     MapPinned,
     UserRound,
-    UsersRound,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
@@ -33,10 +31,9 @@ const PRIMARY_ITEMS: NavItem[] = [
     { href: '/my-data', label: 'マイデータ', icon: Bookmark, badgeKey: 'favorites' },
 ];
 
+// 競走馬・調教師のページは提供を終了した（2026-09-26）
 const DIRECTORY_ITEMS: NavItem[] = [
-    { href: '/horses', label: '競走馬', icon: CircleDot },
     { href: '/jockeys', label: '騎手', icon: UserRound },
-    { href: '/trainers', label: '調教師', icon: UsersRound },
     { href: '/courses', label: 'コース別', icon: MapPinned },
 ];
 

@@ -8,6 +8,7 @@ import {
     splitPersonDisplayName,
     TRAINER_AFFILIATION_OPTIONS,
 } from '@/lib/data-directory';
+import { CLOSED_DATA_ENTITY_TYPES, isClosedDataPath } from '@/lib/closed-data-pages';
 import {
     sendDataSearchEvent,
     sendDataSearchResultClickEvent,
@@ -74,11 +75,14 @@ export function DataSearchPanel({
     const [isLoading, setIsLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    // 検索で見つかったが、ページの提供を終了したため出さない競走馬の数（馬比較へ案内する）
+    const [hiddenHorseCount, setHiddenHorseCount] = useState(0);
 
     useEffect(() => {
         const normalized = `${entityType === 'trainer' ? affiliation : ''}${query.trim()}`.trim();
         if (normalized.length < 2) {
             setResults([]);
+            setHiddenHorseCount(0);
             setHasSearched(false);
             setIsLoading(false);
             setErrorMessage(null);
@@ -98,7 +102,12 @@ export function DataSearchPanel({
                     throw new Error('検索データを取得できませんでした。');
                 }
                 const data = await response.json() as DataSearchResponse;
-                const nextResults = data.items
+                // 競走馬・調教師のページは提供を終了した（2026-09-26）。API が返しても結果に出さない
+                const openItems = data.items.filter(
+                    (item) => !CLOSED_DATA_ENTITY_TYPES.has(item.entity_type) && !isClosedDataPath(item.url),
+                );
+                setHiddenHorseCount(entityType ? 0 : data.items.filter((item) => item.entity_type === 'horse').length);
+                const nextResults = openItems
                     .filter((item) => !entityType || item.entity_type === entityType)
                     .filter((item) => !affiliation || item.affiliation === affiliation)
                     .slice(0, entityType ? 20 : 12);
@@ -112,6 +121,7 @@ export function DataSearchPanel({
             } catch (error) {
                 if (controller.signal.aborted) return;
                 setResults([]);
+                setHiddenHorseCount(0);
                 setHasSearched(true);
                 setErrorMessage(error instanceof Error ? error.message : '検索データを取得できませんでした。');
             } finally {
@@ -127,7 +137,7 @@ export function DataSearchPanel({
 
     const placeholder = entityType
         ? SEARCH_PLACEHOLDERS[entityType]
-        : '競走馬、騎手、調教師、東京芝1600mなど';
+        : '騎手名、東京芝1600mなど';
     const completeQuery = `${entityType === 'trainer' ? affiliation : ''}${query.trim()}`.trim();
 
     return (
@@ -196,7 +206,7 @@ export function DataSearchPanel({
                     <div className="px-4 py-3">
                         <p className="text-sm font-bold text-slate-800">一致するデータが見つかりませんでした。</p>
                         <p className="mt-1 text-xs leading-5 text-slate-500">
-                            姓だけ、馬名の一部、または「東京 芝 1600m」のように条件を短くしてお試しください。
+                            騎手は姓だけ、コースは「東京 芝 1600m」のように短くして探してください。
                         </p>
                     </div>
                 )}
@@ -246,6 +256,15 @@ export function DataSearchPanel({
                             );
                         })}
                     </div>
+                )}
+                {!isLoading && !errorMessage && hiddenHorseCount > 0 && (
+                    <p className="border-t border-slate-100 px-4 py-2.5 text-xs leading-5 text-slate-600">
+                        競走馬は
+                        <Link prefetch={false} href="/compare" className="mx-0.5 font-bold text-brand-700 underline decoration-brand-200 underline-offset-4 hover:decoration-brand-600">
+                            馬を比べる
+                        </Link>
+                        で名前から探せます。
+                    </p>
                 )}
             </div>
         </section>

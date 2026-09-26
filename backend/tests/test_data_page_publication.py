@@ -27,6 +27,7 @@ from scripts.agents.cloud_run_capacity import (
     parse_service_config,
     sustained_saturation,
 )
+from scripts.agents import data_page_publication as publication
 from scripts.agents.data_page_publication import (
     DEFAULT_INITIAL_SEED_LIMIT,
     MINIMUM_PUBLICATION_QUALITY_SCORE,
@@ -417,6 +418,7 @@ class DataPagePublicationTest(unittest.TestCase):
         ):
             entries = growth_crud.get_data_sitemap(self.db)
 
+        # 競走馬のページは 2026-09-26 に提供を終了したので、published の馬も載せない。
         self.assertEqual(
             entries,
             [
@@ -425,18 +427,13 @@ class DataPagePublicationTest(unittest.TestCase):
                     "entity_type": "course",
                     "last_modified": date(2026, 8, 21),
                 },
-                {
-                    "url": "/horses/published-horse",
-                    "entity_type": "horse",
-                    "last_modified": date(2026, 8, 20),
-                },
             ],
         )
 
         manifest = growth_crud.get_data_sitemap_manifest(self.db, shard_size=1000)
         self.assertEqual(
             [(item["entity_type"], item["shard"], item["count"]) for item in manifest],
-            [("course", 1, 1), ("horse", 1, 1)],
+            [("course", 1, 1)],
         )
 
     def test_sitemap_is_empty_when_nothing_is_published(self) -> None:
@@ -446,8 +443,8 @@ class DataPagePublicationTest(unittest.TestCase):
     def test_sitemap_is_stably_sharded(self) -> None:
         entries = [
             {
-                "url": f"/horses/{index:04d}",
-                "entity_type": "horse",
+                "url": f"/jockeys/data/{index:04d}",
+                "entity_type": "jockey",
                 "last_modified": date(2026, 8, 1),
             }
             for index in range(1001)
@@ -456,12 +453,55 @@ class DataPagePublicationTest(unittest.TestCase):
             manifest = growth_crud.get_data_sitemap_manifest(self.db, shard_size=1000)
             second = growth_crud.get_data_sitemap_shard(
                 self.db,
-                "horse",
+                "jockey",
                 2,
                 shard_size=1000,
             )
         self.assertEqual([item["count"] for item in manifest], [1000, 1])
-        self.assertEqual(second[0]["url"], "/horses/1000")
+        self.assertEqual(second[0]["url"], "/jockeys/data/1000")
+
+    def test_closed_entity_types_are_not_in_sitemap_shards(self) -> None:
+        with self.assertRaises(ValueError):
+            growth_crud.get_data_sitemap_shard(self.db, "horse", 1)
+        with self.assertRaises(ValueError):
+            growth_crud.get_data_sitemap_shard(self.db, "trainer", 1)
+
+    def test_closed_entity_rows_are_retired(self) -> None:
+        """提供を終了した競走馬・調教師の行は retired にし、騎手・コースは触らない。"""
+        for entity_type, entity_id, url, status in [
+            ("horse", "published-horse", "/horses/published-horse", "published"),
+            ("horse", "candidate-horse", "/horses/candidate-horse", "candidate"),
+            ("trainer", "held-trainer", "/trainers/held-trainer", "held"),
+            ("jockey", "published-jockey", "/jockeys/data/published-jockey", "published"),
+            ("course", "tokyo/turf-1600", "/courses/tokyo/turf-1600", "published"),
+        ]:
+            self.db.add(models.DataPagePublication(
+                entity_type=entity_type,
+                entity_id=entity_id,
+                url=url,
+                status=status,
+                quality_score=80,
+                score_factors={},
+                last_evaluated_at=datetime(2026, 9, 1),
+            ))
+        self.db.flush()
+
+        retired = publication.retire_closed_entity_rows(self.db, evaluated_at=datetime(2026, 9, 27))
+        again = publication.retire_closed_entity_rows(self.db, evaluated_at=datetime(2026, 9, 28))
+
+        statuses = {
+            row.entity_id: row.status
+            for row in self.db.query(models.DataPagePublication).all()
+        }
+        self.assertEqual(retired, 3)
+        self.assertEqual(again, 0)
+        self.assertEqual(statuses["published-horse"], "retired")
+        self.assertEqual(statuses["candidate-horse"], "retired")
+        self.assertEqual(statuses["held-trainer"], "retired")
+        self.assertEqual(statuses["published-jockey"], "published")
+        self.assertEqual(statuses["tokyo/turf-1600"], "published")
+        self.assertNotIn("horse", publication.ENTITY_TYPES)
+        self.assertNotIn("trainer", publication.ENTITY_TYPES)
 
 
 class CloudRunCapacityTest(unittest.TestCase):

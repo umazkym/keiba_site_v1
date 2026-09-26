@@ -403,14 +403,15 @@ const checks = [
       && !startPositionChart.includes('grid grid-cols-3 gap-1.5 md:hidden'),
   },
   {
-    id: 'header-stable-fixed-policy',
-    description: '全画面幅でヘッダーを固定し、広告やスクロールで位置を変えない',
+    id: 'header-stable-sticky-policy',
+    description: '全画面幅でヘッダーを上部に留め、広告やスクロールで位置を変えない。fixed にしない（自動広告が画面端の fixed 要素を見つけるとアンカー広告を出さない。2026-08-08 の fixed 化でアンカー表示/PVが約0.8→0.3）',
     passed: header.includes('data-site-header-visible="true"')
       && !header.includes('nextScrollY')
       && !header.includes("window.addEventListener('scroll'")
-      && globals.includes('.site-header-spacer')
-      && globals.includes('position: fixed;')
-      && globals.includes('top: var(--site-header-top-gap);'),
+      && header.indexOf('site-header-spacer') < header.indexOf('<header')
+      && /\.site-header-spacer \{[^}]*height: var\(--site-header-top-gap\);/.test(globals)
+      && /\.site-header \{[^}]*position: sticky;[^}]*top: var\(--site-header-top-gap\);/.test(globals)
+      && !/\.site-header \{[^}]*position: fixed;/.test(globals),
   },
   {
     id: 'header-stable-ad-control-gap',

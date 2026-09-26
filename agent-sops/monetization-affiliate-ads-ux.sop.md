@@ -65,6 +65,8 @@ Constraints for parameter acquisition:
 - You MUST keep Google dialog scroll locks while an Offerwall or consent dialog is visibly active, then restore stale `body/html` overflow and Google-injected top/bottom padding after the dialog or anchor is dismissed.
 - You MUST centralize site-owned scroll locks so a mobile menu cleanup does not overwrite an active Google dialog lock, and vice versa.
 - You MUST NOT rely on ad fill behavior for layout stability because unfilled ads can still alter parent styles.
+- You MUST keep the site header `position: sticky`, not `fixed`, and SHOULD NOT add new site-owned `fixed` layers at the top or bottom edge, because AdSense Auto ads can withhold anchor ads when they detect fixed edge elements; after the header became `fixed` on 2026-08-08, anchor impressions per page view fell from about 0.8 to 0.3 and anchor revenue fell by about 500 yen per month.
+- You MUST compare anchor impressions per AdSense page view for seven full days before and after any release that changes the header, bottom navigation, sticky CTAs, or scroll locks.
 
 ### 5. Validate tracking and build
 

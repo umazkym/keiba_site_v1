@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { BrandMark } from '@/components/BrandLogo';
 import { LineIcon, type LineIconName } from '@/components/LineIcon';
 import { usePathname } from 'next/navigation';
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { sendAffiliateClickEvent, sendAffiliateImpressionEvent } from '@/lib/analytics';
 import { useHydrated } from '@/hooks/useHydrated';
 import {
@@ -27,6 +27,8 @@ const HEADER_AFFILIATE_EVENT = {
 } as const;
 
 const DESKTOP_HEADER_TOP_GAP = 32;
+// サーバー描画では useLayoutEffect が警告を出すため、ブラウザでだけ使う。
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 type NavItem = {
     href: string;
@@ -113,13 +115,19 @@ export const Header = ({ todayString }: HeaderProps) => {
         }
     }, []);
 
-    // メニュー展開時に背景スクロールを止め、最初の主要リンクへフォーカスを移す。
+    // メニュー展開時に背景スクロールを止める。ヘッダーを fixed にする class（site-header--pinned）と
+    // 同じ描画で切り替えるため、描画前に動かす（描画後だと、閉じた瞬間に sticky のヘッダーが1コマ画面外へ出る）。
+    useIsomorphicLayoutEffect(() => {
+        if (!isMenuOpen) return undefined;
+        return acquirePageScrollLock();
+    }, [isMenuOpen]);
+
+    // メニュー展開時に最初の主要リンクへフォーカスを移す。
     useEffect(() => {
         if (!isMenuOpen) return undefined;
 
         let focusFrame: number | undefined;
         let visibleFrame: number | undefined;
-        const releaseScrollLock = acquirePageScrollLock();
         // visibilityの反映後にフォーカスする。1フレームだけではSafariで
         // 直前のメニューボタンへ残ることがあるため、描画を2回待つ。
         visibleFrame = window.requestAnimationFrame(() => {
@@ -136,7 +144,6 @@ export const Header = ({ todayString }: HeaderProps) => {
             if (focusFrame !== undefined) {
                 window.cancelAnimationFrame(focusFrame);
             }
-            releaseScrollLock();
         };
     }, [isMenuOpen]);
 
@@ -271,11 +278,13 @@ export const Header = ({ todayString }: HeaderProps) => {
 
     return (
         <>
+            <div className={`site-header-spacer ${isMenuOpen ? 'site-header-spacer--pinned' : ''}`} aria-hidden="true" />
+
             <header
                 ref={headerRef}
                 data-site-header
                 data-site-header-visible="true"
-                className="glass site-header site-header-visible z-50 pt-[env(safe-area-inset-top,0px)]"
+                className={`glass site-header site-header-visible z-50 pt-[env(safe-area-inset-top,0px)] ${isMenuOpen ? 'site-header--pinned' : ''}`}
             >
                 <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-4 md:px-6">
                     <div className="flex h-11 items-center justify-between gap-1.5 sm:h-16 sm:gap-4">
@@ -344,8 +353,6 @@ export const Header = ({ todayString }: HeaderProps) => {
                     </div>
                 </div>
             </header>
-
-            <div className="site-header-spacer" aria-hidden="true" />
 
             {/* backdrop-filterを持つヘッダー外へ置き、fixedの基準をビューポートへ固定する。 */}
             <div

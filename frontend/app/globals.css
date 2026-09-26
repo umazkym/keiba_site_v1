@@ -593,11 +593,12 @@ header.glass {
     z-index: 50 !important; /* Google Adsの上部アンカーより低く、サイト内の固定UIより高く保つ */
 }
 
+/* fixed にしない。AdSense の自動広告は画面端の fixed 要素を見つけるとアンカー広告を出さない。
+   2026-08-08 に sticky から fixed へ変えた後、1PVあたりのアンカー広告の表示が約0.8→0.3に落ちた
+   （7月の sticky・常時表示の頃は約0.8）。見た目はどちらも上部に留まる（2026-09-26）。 */
 .site-header {
-    position: fixed;
+    position: sticky;
     top: var(--site-header-top-gap);
-    right: 0;
-    left: 0;
     transform: translateY(0);
     transition: none;
 }
@@ -617,8 +618,23 @@ header.glass {
     pointer-events: none;
 }
 
+/* ヘッダーの前に置き、広告操作部ぶんの余白（PCは常時32px、スマホは検出した高さ）だけを予約する。
+   ヘッダー自身は sticky で本文の流れの中にあるため、ヘッダーの高さは予約しない。 */
 .site-header-spacer {
     display: block;
+    height: var(--site-header-top-gap);
+}
+
+/* メニューを開いている間は背景を止めるため body が overflow: hidden になり、sticky が効かずヘッダーが画面外へ出る。
+   その間だけ fixed にして閉じるボタンを残し、スペーサーでヘッダーの高さを埋めて背景を動かさない。 */
+.site-header.site-header--pinned {
+    position: fixed;
+    top: var(--site-header-top-gap);
+    right: 0;
+    left: 0;
+}
+
+.site-header-spacer.site-header-spacer--pinned {
     height: var(--site-header-offset);
 }
 

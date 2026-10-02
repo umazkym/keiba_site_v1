@@ -1429,11 +1429,38 @@ def find_race_demand(
     if not haystack:
         return None
 
+    alias_rows: List[Tuple[str, RaceDemand]] = []
     for entry in schedule or available_race_demands():
         for alias in (entry.name, *entry.aliases):
             alias_key = normalize_race_alias(alias)
-            if alias_key and alias_key in haystack:
+            if alias_key:
+                alias_rows.append((alias_key, entry))
+
+    race_name_key = normalize_race_alias(race_name)
+    text_key = normalize_race_alias(text)
+
+    # 1. 完全一致を先に見る。日程由来の候補は race_name が日程の行の名前そのものなので、
+    #    「マイルチャンピオンシップ南部杯」が「マイルチャンピオンシップ」の行に化けない。
+    for exact_key in (race_name_key, text_key):
+        if not exact_key:
+            continue
+        for alias_key, entry in alias_rows:
+            if alias_key == exact_key:
                 return entry
+
+    # 2. 含む一致は、いちばん長く合う別名の行を選ぶ（同じ長さなら日程の並びで先の行）。
+    #    取り出し済みの race_name の中を先に見て、無ければニュースの文の全体から探す。
+    for scope in (race_name_key, haystack):
+        if not scope:
+            continue
+        best_entry: Optional[RaceDemand] = None
+        best_length = 0
+        for alias_key, entry in alias_rows:
+            if len(alias_key) > best_length and alias_key in scope:
+                best_entry = entry
+                best_length = len(alias_key)
+        if best_entry is not None:
+            return best_entry
     return None
 
 
@@ -3473,6 +3500,10 @@ def build_write_orders_node(state: WorkflowState) -> WorkflowState:
         source_urls = [card.url for card in candidate.source_cards]
         key_metrics = source_cards_to_claim_rows(candidate.source_cards) + internal_metric_rows(internal_data)
         if not key_metrics:
+            state.issues.append(
+                f"記事の材料（出典・内部データ）が無いためWriteOrderを停止: "
+                f"{race_name or calendar_race or candidate.target_keyword}"
+            )
             continue
         writer_evidence = build_writer_evidence(candidate, internal_data)
 

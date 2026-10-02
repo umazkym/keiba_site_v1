@@ -72,6 +72,80 @@ class NewsTopicPlannerTest(unittest.TestCase):
         self.assertEqual(planner.grade_race_entity_key("ジュニアグランプリ"), "junior-grand-prix")
         self.assertEqual(planner.grade_race_entity_key("九州チャンピオンシップ"), "kyushu-championship")
 
+    def test_find_race_demand_prefers_exact_and_longest_alias(self) -> None:
+        planner._RACE_SCHEDULE_CACHE.clear()
+        schedule = planner.available_race_demands()
+        # 名前の一部が別の重賞の別名と重なるレース。直す前は、先に並ぶ短い別名の行に化けていた
+        # （南部杯→マイルCS、関東オークス→オークス、ノースクイーンC→クイーンカップ）。
+        expected_rows = [
+            ("マイルチャンピオンシップ南部杯", "マイルチャンピオンシップ南部杯", "2026-10-12"),
+            ("関東オークス", "関東オークス", "2026-06-17"),
+            ("東京ダービー", "東京ダービー", "2026-06-10"),
+            ("ジャパンダートクラシック", "ジャパンダートクラシック", "2026-10-07"),
+            ("ノースクイーンC", "ノースクイーンカップ", "2026-07-16"),
+            # 中央の本家は従来どおり
+            ("マイルCS", "マイルCS", "2026-11-22"),
+            ("マイルチャンピオンシップ", "マイルCS", "2026-11-22"),
+            ("日本ダービー", "日本ダービー", "2026-05-31"),
+            # 取り違えの無かったレースは直す前と同じ行
+            ("さきたま杯", "さきたま杯", "2026-06-24"),
+            ("帝王賞", "帝王賞", "2026-07-01"),
+            ("ラジオNIKKEI賞", "ラジオNIKKEI賞", "2026-06-28"),
+            ("金沢サマーカップ", "金沢サマーカップ", "2026-06-28"),
+            ("北九州記念", "北九州記念", "2026-07-05"),
+            ("エルムS", "エルムS", "2026-08-08"),
+            ("マーキュリーカップ", "マーキュリーカップ", "2026-07-20"),
+            ("アイビスサマーダッシュ", "アイビスサマーダッシュ", "2026-08-02"),
+            ("オパールC", "オパールカップ", "2026-07-28"),
+        ]
+        for query, expected_name, expected_date in expected_rows:
+            # race_name で引く形（日程由来の候補）と、文だけで引く形（ニュース由来）の両方
+            for args in (("", query), (query,), (f"{query}2026 出走予定 開催概要", query)):
+                with self.subTest(query=query, args=args):
+                    entry = planner.find_race_demand(*args, schedule=schedule)
+                    self.assertIsNotNone(entry)
+                    self.assertEqual(entry.name, expected_name)
+                    self.assertEqual(planner.race_demand_date(entry).isoformat(), expected_date)
+
+        # 文に別のレース名が混じっていても、取り出し済みの race_name の行を選ぶ
+        mixed = planner.find_race_demand(
+            "マイルチャンピオンシップ南部杯 前年のマイルCS出走馬",
+            "マイルチャンピオンシップ南部杯",
+            schedule=schedule,
+        )
+        self.assertIsNotNone(mixed)
+        self.assertEqual(mixed.name, "マイルチャンピオンシップ南部杯")
+
+    def test_nanbu_hai_order_is_not_resolved_as_mile_championship(self) -> None:
+        planner._RACE_SCHEDULE_CACHE.clear()
+        now = datetime.fromisoformat("2026-09-28T08:00:00+09:00")
+        entry = planner.find_race_demand("", "マイルチャンピオンシップ南部杯")
+        self.assertIsNotNone(entry)
+        candidate = planner.schedule_backfill_candidate(
+            entry,
+            14,
+            now=now,
+            search_intent_override="field_analysis",
+            update_stage="field_building",
+            deadline_status="due_initial",
+            schedule_milestone="initial",
+        )
+        state = planner.WorkflowState(run_id="nanbu-hai-order", fetched_at=now.isoformat(), topic_candidates=[candidate])
+        with patch.object(planner, "build_internal_data_bundle", return_value={}):
+            planner.build_write_orders_node(state)
+
+        self.assertEqual(len(state.write_orders), 1)
+        order = state.write_orders[0]
+        ref = order["reference_data"]
+        self.assertEqual(ref["race_name"], "マイルチャンピオンシップ南部杯")
+        self.assertEqual(ref["race_date"], "2026-10-12")
+        self.assertEqual(ref["scheduled_venue"], "盛岡")
+        self.assertEqual(ref["scheduled_grade"], "JpnI")
+        self.assertEqual(ref["race_circuit"], "nar")
+        self.assertNotEqual(ref["entity_archive_slug"], "mile-championship")
+        self.assertNotEqual(ref["entity_key"], "mile-championship")
+        self.assertNotIn("mile-championship", order["canonical_path"])
+
     def test_deterministic_grade_race_identity_matches_shared_fixtures(self) -> None:
         fixture_path = (
             Path(__file__).resolve().parents[2]

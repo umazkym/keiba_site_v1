@@ -133,6 +133,31 @@ jobs:
           docker push "$IMAGE_URI"
           echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
 
+      - name: Resolve previously deployed release SHA
+        # IndexNow 用。公開の前に、いま動いている版（イメージの札＝そのとき公開した SHA）を控える。
+        # push・ほかの Workflow からの呼び出し・手動のどれでも同じ方法で分かる（github.event.before は呼び出しのとき空）。
+        # 読めないとき・SHA の形でないとき（初回など）は空のままにし、IndexNow は送らない。
+        id: previous_release
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -uo pipefail
+          REVISION="$(gcloud run services describe "$SERVICE_NAME" --project="$PROJECT_ID" --region="$REGION" --format='value(status.latestReadyRevisionName)' 2>/dev/null || true)"
+          IMAGE=""
+          if [ -n "$REVISION" ]; then
+            IMAGE="$(gcloud run revisions describe "$REVISION" --project="$PROJECT_ID" --region="$REGION" --format='value(spec.containers[0].image)' 2>/dev/null || true)"
+          fi
+          if [ -z "$IMAGE" ]; then
+            IMAGE="$(gcloud run services describe "$SERVICE_NAME" --project="$PROJECT_ID" --region="$REGION" --format='value(spec.template.spec.containers[0].image)' 2>/dev/null || true)"
+          fi
+          TAG="${IMAGE##*:}"
+          if [[ "$TAG" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "sha=$TAG" >> "$GITHUB_OUTPUT"
+            echo "前回の公開: $TAG"
+          else
+            echo "前回の公開の SHA を読めませんでした（revision=${REVISION:-なし}）。IndexNow は送りません。"
+          fi
+
       - name: Deploy frontend service with recovery endpoint enabled
         shell: bash
         run: |
@@ -182,6 +207,7 @@ jobs:
           echo "SERVICE_URL=$SERVICE_URL" >> "$GITHUB_ENV"
 
       - name: Harden default URL after custom-domain verification
+        id: harden_default_url
         if: ${{ inputs.disable_default_url == true || (github.event_name == 'push' && vars.CLOUD_RUN_FRONTEND_AUTO_DEPLOY_ENABLED == 'true') }}
         env:
           EXPECTED_RELEASE: ${{ steps.release.outputs.sha }}
@@ -229,6 +255,32 @@ jobs:
             exit 1
           fi
           echo "独自ドメイン確認後にrun.app既定URLを無効化しました。"
+
+      - name: Notify IndexNow about published grade-race articles
+        # 独自ドメインで新しい版が動いていると確かめたあとにだけ、重賞の記事の URL を Bing などへ知らせる（無料）。
+        # 送るのは、前回の公開から今回までに足された・変わった重賞の記事だけ（1回 10 本まで）。
+        # 巻き戻し・枝分かれ・前回が分からないときは送らない。失敗しても公開は成功のまま。
+        # 止めたいときは、リポジトリの変数 INDEXNOW_ENABLED を false にする。
+        if: ${{ steps.harden_default_url.outcome == 'success' && steps.previous_release.outputs.sha != '' && vars.INDEXNOW_ENABLED != 'false' }}
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_SHA: ${{ steps.previous_release.outputs.sha }}
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$PREVIOUS_SHA" = "$RELEASE_SHA" ]; then
+            echo "前回と同じ版のため、IndexNow は送りません。"
+            exit 0
+          fi
+          COMPARE_JSON="$RUNNER_TEMP/indexnow-compare.json"
+          if ! gh api "repos/$GITHUB_REPOSITORY/compare/$PREVIOUS_SHA...$RELEASE_SHA" > "$COMPARE_JSON"; then
+            echo "::warning::IndexNow: 前回の公開との差分を読めなかったため、送りません。"
+            exit 0
+          fi
+          python backend/scripts/agents/indexnow_grade_race_articles.py --compare-json "$COMPARE_JSON"
 
       - name: Add deployment summary
         if: always()

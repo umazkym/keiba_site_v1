@@ -602,6 +602,16 @@ Writerは重賞記事本文に`/races/today`や個別レースCTAを書かない
 
 通常のGSC改稿はartifact確認後、`workflow_dispatch`へ正確な`article_slug`を1件指定した場合だけ実行する。検索クエリは検索意図の参考に限り、WriterEvidenceや本文の事実根拠へ渡さない。変更可能範囲はtitle、description、keywords、導入文、既存H2文言だけで、数値集合、表、H2配下本文、リンク、canonical、公開日、entity、`update_stage`、広告・レースブリッジ情報の差分を公開前に拒否する。Publisherは対象の既存Markdownだけを上書きし、`last_updated`と改稿履歴を更新する。通常改稿は28日、重賞検索急落補修は48時間の別クールダウンで管理する。
 
+## 公開後のIndexNow通知（重賞記事だけ）
+
+`.github/workflows/deploy-frontend-cloud-run.yml`は、独自ドメインで新しい版が動いていることを確認した後に、`backend/scripts/agents/indexnow_grade_race_articles.py`を1回だけ実行する。IndexNowは、URLの追加・更新をBingなどへ知らせる無料の仕組みである。
+
+- 送る対象は、前回の公開から今回の公開までに追加・変更された重賞記事（frontmatterの`category: 重賞攻略`または`entity_type: grade_race`）だけとする。下書き、301で統合済みのslug、`/articles/`以外へcanonicalを移した記事は送らない。URLは記事サイトマップと同じ決め方（`canonical_path` → `canonical_slug` → 自分のslug）で作る。
+- 前回の公開は、公開前のCloud Runで動いているイメージのタグ（公開時のSHA）から読む。読めないとき、巻き戻し、枝分かれ、独自ドメイン確認を行わない実行（`disable_default_url=false`の手動実行）では送らない。
+- 1回の上限は10本（`--limit`で変更できる）。0本なら送らない。通信失敗や4xx・5xxは警告だけを出し、公開は成功のままとする。止めるときはRepository Variableの`INDEXNOW_ENABLED`を`false`にする。
+- 鍵は`frontend/public/<鍵>.txt`（中身は鍵と同じ文字列）の1か所だけに置く。鍵を替えるときは、このファイルを置き換える（スクリプトはファイル名から鍵を読む）。
+- 手元で確かめるときは`--dry-run`を付ける（URLを表示するだけで送らない）。例：`python backend/scripts/agents/indexnow_grade_race_articles.py --base-sha <前回のSHA> --head-sha <今回のSHA> --dry-run`。送った結果はActions SummaryとBing Webmaster ToolsのIndexNow画面で確認する。
+
 ## 参照
 
 - Google Search Central: Creating helpful, reliable, people-first content

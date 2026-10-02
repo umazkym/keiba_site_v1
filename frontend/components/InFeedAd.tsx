@@ -11,6 +11,7 @@ import {
     shouldSuppressAdsInDevelopment,
 } from '@/lib/ad-config';
 import { useAdViewableEvent } from '@/hooks/useAdViewableEvent';
+import { getAdChannelForPlacement } from '@/lib/ad-channels';
 
 type InFeedAdProps = {
     /** 広告スロットID（省略時はインフィード専用スロットを使用） */
@@ -192,6 +193,7 @@ export const InFeedAd = ({
                 isResponsive={false}
                 lazyRootMargin={lazyRootMargin}
                 refreshRootMarginPx={refreshRootMarginPx}
+                adChannel={getAdChannelForPlacement(analyticsPlacement)}
             />
         </div>
     );

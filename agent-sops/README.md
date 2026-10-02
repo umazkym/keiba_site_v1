@@ -46,3 +46,11 @@ npm run agent-sops:skills -- --output .claude/skills
 - `cost-performance-isr-review.sop.md`: Cloud Run/Cloudflare/ISR/転送量の低コスト運用確認と、課金レポートによる請求実額の確定。
 - `sop-authoring.sop.md`: SOP自体の作成・更新。
 - `social-video-multiplatform-publishing.sop.md`: 複数SNSへの動画配信、認証、重複防止、UTM計測。
+- `multi-agent-orchestration.sop.md`: 複数の作業員（Agent）とCodexで並べて進めるときの分け方、点検、気づきの返し方。
+
+## SOP以外のファイル
+
+検査とSkill変換は、このディレクトリ直下の `.sop.md` だけを対象にします。次の2つは対象外です。
+
+- `templates/`: 作業員に渡す決まりのひな形（`multi-agent-orchestration.sop.md` の 4）。
+- `feedback-log.md`: 作業員・指揮役・利用者の気づきの記録（同 8）。

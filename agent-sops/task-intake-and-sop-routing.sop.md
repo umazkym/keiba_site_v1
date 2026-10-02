@@ -39,6 +39,7 @@ Constraints for parameter acquisition:
 - You MUST read every selected `.sop.md` completely before applying it.
 - You SHOULD prefer one to three SOPs for a task to avoid loading unrelated context.
 - You MUST NOT read all SOPs by default because unnecessary context increases the chance of stale or irrelevant guidance affecting the work.
+- 観点が2つ以上ある調査や、直すファイルが重ならない実装が2つ以上あり、作業員（Agent）を並べて進めるときは、分野のSOPを選んだあとに `multi-agent-orchestration.sop.md` を読みます。分け方と点検の決まりを先に決めないと、作業員の直しがぶつかるためです。
 
 ### 3. Gather local context
 
@@ -72,6 +73,7 @@ Constraints for parameter acquisition:
 - You MUST run the narrowest meaningful validation for the changed surface when tooling is available.
 - You SHOULD update or propose updates to a SOP when the task reveals a recurring step, a new failure mode, or a changed operational rule.
 - You MUST report any skipped validation and the reason.
+- 作業員を使った作業の気づきは、`agent-sops/feedback-log.md` に記録します（返す先の決め方は `multi-agent-orchestration.sop.md` の 8）。
 - You MUST NOT present unverified code as verified because this project treats build and policy regressions as high-cost failures.
 
 ### 6. ディレクトリを整理する場合の追加確認

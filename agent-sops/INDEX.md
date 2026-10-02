@@ -15,6 +15,7 @@
 | `sop-authoring.sop.md` | SOPの作成・更新 | 反復手順を新規SOP化、または既存SOPを改訂するとき |
 | `social-video-multiplatform-publishing.sop.md` | Threads、Instagram、Facebook、TikTok、Pinterest、Blueskyの動画投稿 | SNS動画の追加・モード変更・認証・重複・計測を扱う前 |
 | `youtube-daily-publishing-recovery.sop.md` | YouTube日次投稿、OAuth失効、部分投稿、再実行、公開状態同期 | YouTube Workflowの変更、投稿失敗の復旧、token再発行を扱う前 |
+| `multi-agent-orchestration.sop.md` | 複数の作業員（Agent）とCodexへの仕事の分け方、依頼文と報告の型、指揮役の点検、気づきをSOP・記憶へ返す流れ | 調査を観点ごとに、実装をファイルごとに分けて並べて進める前。作業員の報告を受けたとき |
 
 ## ルーティングの原則
 
@@ -22,3 +23,4 @@
 - 該当SOPが複数ある場合は、まず `task-intake-and-sop-routing.sop.md` を読み、作業の順番を決める。
 - SOPが古い可能性がある場合は、関連するコードと `docs/` の現行仕様を確認してから判断する。
 - SOPにない反復手順を見つけた場合は、完了報告でSOP化候補として明示する。
+- 作業員を並べて進めるときは、分野のSOPを選んだあとに `multi-agent-orchestration.sop.md` を読む。作業員の決まりのひな形は `agent-sops/templates/`、気づきの記録は `agent-sops/feedback-log.md`。

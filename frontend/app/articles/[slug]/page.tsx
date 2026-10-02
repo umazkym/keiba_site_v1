@@ -17,6 +17,7 @@ import { LineIcon } from '@/components/LineIcon';
 import { estimateReadingMinutes, pickArticleCover } from '@/lib/article-visual';
 import { ArticleRaceBridgeExperiment } from '@/components/ArticleRaceBridgeExperiment';
 import { ArticleAfterBodyLayout } from '@/components/ArticleAfterBodyLayout';
+import { ArticleEndRaceLink } from '@/components/ArticleEndRaceLink';
 import { getArticleRacePreview } from '@/lib/api';
 import { hasValidArticleRaceBridgeMetadata, shouldRenderArticleRaceBridge } from '@/lib/article-race-bridge';
 import { resolveArticleCanonicalPath } from '@/lib/article-canonical';
@@ -249,6 +250,21 @@ export default async function ArticlePage({ params }: Props) {
               slug={params.slug}
               category={article.category}
               readingTimeMin={readingTimeMin}
+            />
+
+            {/* 読み終えた所からレースのページへ（1行の枠）。予測まで確かめられた重賞の記事はそのレースへ、ほかは今日のレースへ。
+                クリックの計測は上の ArticleEngagementTracker が拾うので、<article> の中に置く */}
+            <ArticleEndRaceLink
+              race={shouldRenderRaceBridge
+                ? {
+                    raceId: article.raceId as string,
+                    raceName: article.raceName as string,
+                    raceDate: article.scheduledRaceDate as string,
+                    raceUrl: article.raceUrl as string,
+                    venueName: article.scheduledVenue,
+                    raceNumber: article.raceNumber,
+                  }
+                : null}
             />
 
             {/* ===== 記事フッター =====

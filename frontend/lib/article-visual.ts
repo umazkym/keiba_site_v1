@@ -14,20 +14,24 @@ export type ArticleCategoryStyle = {
     hex: string;
 };
 
-const CATEGORY_STYLES: Record<string, ArticleCategoryStyle> = {
-    重賞攻略: { tagClass: 'text-navy ring-navy', fillClass: 'bg-navy', icon: 'trophy', hex: '#1C2787' },
-    騎手分析: { tagClass: 'text-[#6A4BC4] ring-[#6A4BC4]', fillClass: 'bg-[#6A4BC4]', icon: 'user', hex: '#6A4BC4' },
-    コース分析: { tagClass: 'text-turf-deep ring-turf-deep', fillClass: 'bg-turf-deep', icon: 'pin', hex: '#1D6B40' },
-    入門ガイド: { tagClass: 'text-[#0E7490] ring-[#0E7490]', fillClass: 'bg-[#0E7490]', icon: 'book', hex: '#0E7490' },
-    '馬券・統計': { tagClass: 'text-dirt-deep ring-dirt-deep', fillClass: 'bg-dirt-deep', icon: 'chart', hex: '#7D4B1C' },
-    海外競馬: { tagClass: 'text-[#3F4A6B] ring-[#3F4A6B]', fillClass: 'bg-[#3F4A6B]', icon: 'flag', hex: '#3F4A6B' },
-    枠順データ: { tagClass: 'text-[#B4436C] ring-[#B4436C]', fillClass: 'bg-[#B4436C]', icon: 'bars', hex: '#B4436C' },
-};
+// カテゴリ名は、オブジェクトの鍵にしないで Map に入れる（2026-10-02）。
+// 鍵に「・」があると、ビルドの圧縮が引用符を外して `馬券・統計:{…}` という形にする。
+// 「・」を名前の文字として読めない古いブラウザ（iPhone の Safari など）は、そのファイル全体を読めず、
+// レース詳細がエラー画面になっていた（Invalid character '・'）。Map なら文字列のまま残る。
+const CATEGORY_STYLES = new Map<string, ArticleCategoryStyle>([
+    ['重賞攻略', { tagClass: 'text-navy ring-navy', fillClass: 'bg-navy', icon: 'trophy', hex: '#1C2787' }],
+    ['騎手分析', { tagClass: 'text-[#6A4BC4] ring-[#6A4BC4]', fillClass: 'bg-[#6A4BC4]', icon: 'user', hex: '#6A4BC4' }],
+    ['コース分析', { tagClass: 'text-turf-deep ring-turf-deep', fillClass: 'bg-turf-deep', icon: 'pin', hex: '#1D6B40' }],
+    ['入門ガイド', { tagClass: 'text-[#0E7490] ring-[#0E7490]', fillClass: 'bg-[#0E7490]', icon: 'book', hex: '#0E7490' }],
+    ['馬券・統計', { tagClass: 'text-dirt-deep ring-dirt-deep', fillClass: 'bg-dirt-deep', icon: 'chart', hex: '#7D4B1C' }],
+    ['海外競馬', { tagClass: 'text-[#3F4A6B] ring-[#3F4A6B]', fillClass: 'bg-[#3F4A6B]', icon: 'flag', hex: '#3F4A6B' }],
+    ['枠順データ', { tagClass: 'text-[#B4436C] ring-[#B4436C]', fillClass: 'bg-[#B4436C]', icon: 'bars', hex: '#B4436C' }],
+]);
 
 const DEFAULT_STYLE: ArticleCategoryStyle = { tagClass: 'text-slate-600 ring-slate-300', fillClass: 'bg-slate-600', icon: 'chart', hex: '#474E73' };
 
 export const getArticleCategoryStyle = (category: string): ArticleCategoryStyle =>
-    CATEGORY_STYLES[category] ?? DEFAULT_STYLE;
+    CATEGORY_STYLES.get(category) ?? DEFAULT_STYLE;
 
 // 記事ごとに作られていない、使い回しのアイキャッチ
 const GENERIC_EYECATCHES = new Set([
@@ -37,15 +41,16 @@ const GENERIC_EYECATCHES = new Set([
     '/images/articles/jyusyo-eyecatch.png',
 ]);
 
-const CATEGORY_PHOTOS: Record<string, string[]> = {
-    重賞攻略: ['article-grade', 'article-grade-2'],
-    騎手分析: ['article-jockey', 'article-jockey-2'],
-    コース分析: ['article-course', 'article-course-2'],
-    入門ガイド: ['article-guide'],
-    '馬券・統計': ['article-stats', 'article-stats-2'],
-    海外競馬: ['article-overseas', 'article-overseas-2'],
-    枠順データ: ['article-gate', 'article-stats-2'],
-};
+// ここも Map（理由は CATEGORY_STYLES と同じ。鍵に「・」を置かない）
+const CATEGORY_PHOTOS = new Map<string, string[]>([
+    ['重賞攻略', ['article-grade', 'article-grade-2']],
+    ['騎手分析', ['article-jockey', 'article-jockey-2']],
+    ['コース分析', ['article-course', 'article-course-2']],
+    ['入門ガイド', ['article-guide']],
+    ['馬券・統計', ['article-stats', 'article-stats-2']],
+    ['海外競馬', ['article-overseas', 'article-overseas-2']],
+    ['枠順データ', ['article-gate', 'article-stats-2']],
+]);
 
 // どのカテゴリにも使えるレースの写真。カテゴリの写真を使い切ったら、ここから選ぶ（2026-09-26）。
 // 以前は写真を使い切ると色の面にしており、記事一覧では332件中約270件が写真なしになっていた。
@@ -87,7 +92,7 @@ const photoThumb = (name: string): ArticleThumb => {
 
 // 記事の候補の写真：カテゴリの写真 → （重賞は）その季節の写真 → どのカテゴリにも使える写真の順
 const photoCandidates = (article: { category: string; date: string }): string[] => {
-    const own = [...(CATEGORY_PHOTOS[article.category] ?? [])];
+    const own = [...(CATEGORY_PHOTOS.get(article.category) ?? [])];
     if (article.category === '重賞攻略') {
         const season = `grade-${getSeason(article.date)}`;
         own.unshift(season);
@@ -124,7 +129,7 @@ export function pickArticleCover(article: { category: string; eyecatch?: string;
     if (article.category === '重賞攻略') {
         return photoThumb(`grade-${getSeason(article.scheduledRaceDate || article.date)}`);
     }
-    const name = CATEGORY_PHOTOS[article.category]?.[0];
+    const name = CATEGORY_PHOTOS.get(article.category)?.[0];
     return name ? photoThumb(name) : null;
 }
 

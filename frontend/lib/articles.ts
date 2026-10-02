@@ -4,6 +4,7 @@ import matter from 'gray-matter';
 import { remark } from 'remark';
 import html from 'remark-html';
 import gfm from 'remark-gfm';
+import { addArticleImageDimensions } from './article-image-size';
 
 const articlesDirectory = path.join(process.cwd(), 'content', 'articles');
 
@@ -447,7 +448,8 @@ export async function getArticleBySlug(slug: string): Promise<Article> {
     .use(gfm)
     .use(html)
     .process(cleanedContent);
-  const contentHtml = processedContent.toString();
+  // 本文の画像に幅・高さを足し、届く前から場所を取らせる（CLS を無くす）。
+  const contentHtml = addArticleImageDimensions(processedContent.toString());
 
   return {
     slug,

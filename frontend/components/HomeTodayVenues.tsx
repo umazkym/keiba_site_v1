@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { AffiliateSlot } from '@/components/AffiliateSlot';
 import { getPredictionsForDate } from '@/lib/api';
@@ -107,6 +107,43 @@ const hasVenueData = (venues: HomeVenueSummary[]): boolean => (
 const FIRST_ROWS = 5;
 const venueTabColumns = (count: number) => (count <= 5 ? Math.max(count, 1) : Math.min(5, Math.ceil(count / 2)));
 
+// 「残りNレース」を一度開いた人には、次に来たときも開いた形で出す（2026-10-02。常連は来るたびに押していた）。
+// 開いたことは端末（localStorage）に覚え、「閉じる」を押したら忘れる。サーバーの HTML は今までどおり5件（閉じた形）のまま。
+// 表示のあとで行を足すと、下の物が丸ごと下へ動く。そこで、すぐ後ろの小さなスクリプトが最初の描画の前に、
+// 開いたときの高さぶんの場所を一覧に取っておく（RecentRaceReturn と同じ形）。残りの行は React が入れる。
+const RACES_OPEN_STORAGE_KEY = 'uma-free:home-races-open';
+const RACES_OPEN_VALUE = '1';
+
+// 読めない端末では「覚えていない」（今までどおり閉じた形）
+const readRacesOpen = (): boolean => {
+    try {
+        return window.localStorage.getItem(RACES_OPEN_STORAGE_KEY) === RACES_OPEN_VALUE;
+    } catch {
+        return false;
+    }
+};
+
+// 覚えたら true を返す。保存できない端末では false（今までどおり、その場だけ開く）
+const writeRacesOpen = (open: boolean): boolean => {
+    try {
+        if (open) window.localStorage.setItem(RACES_OPEN_STORAGE_KEY, RACES_OPEN_VALUE);
+        else window.localStorage.removeItem(RACES_OPEN_STORAGE_KEY);
+        return open;
+    } catch {
+        return false;
+    }
+};
+
+// HTML の解析中にその場で動くスクリプト。中身は ASCII だけにする（日本語や全角の記号を入れると、構文エラーになることがある）。
+// 鍵と残りの件数は直前の箱の data 属性から読む（値を文字列に差し込まない）。覚えた値 "1" は上の RACES_OPEN_VALUE と同じにする。
+// 高さは、いま出ている行を測って決める（下線つきの行の高さの真ん中の値 × 残りの件数を足す）。
+// いちばん低い行にしない：AI 1位の出ない行（新馬戦など）は約2px 低く、それで数えると 7件で約13px 足りなくなる。
+// PC・タブレットは箱ごと出ていないので高さが 0 になり、何もしない。失敗したら何もしない。
+const RESERVE_SCRIPT = '(function(){try{var s=document.currentScript,el=s&&s.previousElementSibling;if(!el)return;var k=el.getAttribute("data-storage-key")||"",n=Number(el.getAttribute("data-rest"));if(!k||!(n>0))return;if(window.localStorage.getItem(k)!=="1")return;var ul=el.querySelector("[data-race-list]");if(!ul)return;var c=ul.children,a=[],i,r;for(i=0;i<c.length-1;i++){r=c[i].getBoundingClientRect().height;if(r>0)a.push(r)}if(!a.length)return;a.sort(function(x,y){return x-y});var h=a[(a.length-1)>>1],u=ul.getBoundingClientRect().height;if(!(h>0)||!(u>0))return;ul.style.minHeight=(u+n*h)+"px"}catch(e){}})();';
+
+// サーバーでは useLayoutEffect が使えないため、サーバーでは useEffect にする
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
+
 function HomeVenueRaces({ date, raceDay, glyphs }: { date: string; raceDay: RaceDaySummary; glyphs: Record<string, ReactNode> }) {
     const groups: Array<{ type: 'jra' | 'nar'; venue: BoardVenue }> = [
         ...raceDay.jra.map((venue) => ({ type: 'jra' as const, venue })),
@@ -114,6 +151,27 @@ function HomeVenueRaces({ date, raceDay, glyphs }: { date: string; raceDay: Race
     ];
     const [selected, setSelected] = useState(0);
     const [expanded, setExpanded] = useState(false);
+    const listRef = useRef<HTMLUListElement>(null);
+    const openCheckedRef = useRef(false);
+    // 「開いた形で出す」と覚えているか（保存できた・読めたときだけ true）
+    const rememberedRef = useRef(false);
+
+    // 最初の1回：覚えていたら、描画の前に開く（人が押したのではないので、計測は何も送らない）。
+    // そのあと：行が入った・閉じた・会場を替えたら、スクリプトが取っておいた場所（min-height）を外す。
+    // min-height は React の状態にせず、要素を直接動かす（スクリプトが付けた値を、React が知らないため）
+    useIsomorphicLayoutEffect(() => {
+        if (!openCheckedRef.current) {
+            openCheckedRef.current = true;
+            rememberedRef.current = readRacesOpen();
+            if (rememberedRef.current) {
+                setExpanded(true);
+                return;
+            }
+        }
+        const list = listRef.current;
+        if (list) list.style.minHeight = '';
+    }, [expanded, selected]);
+
     const current = groups[Math.min(selected, groups.length - 1)];
     if (!current) return null;
     const { venue, type } = current;
@@ -122,7 +180,13 @@ function HomeVenueRaces({ date, raceDay, glyphs }: { date: string; raceDay: Race
     const panelId = 'home-venue-races';
 
     return (
-        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white md:hidden" aria-label="会場ごとのレース">
+        <>
+        <section
+            className="overflow-hidden rounded-xl border border-slate-200 bg-white md:hidden"
+            aria-label="会場ごとのレース"
+            data-storage-key={RACES_OPEN_STORAGE_KEY}
+            data-rest={Math.max(rest, 0)}
+        >
             <div
                 role="tablist"
                 aria-label="会場"
@@ -140,7 +204,8 @@ function HomeVenueRaces({ date, raceDay, glyphs }: { date: string; raceDay: Race
                             aria-controls={panelId}
                             onClick={() => {
                                 setSelected(index);
-                                setExpanded(false);
+                                // 覚えている人は、会場を替えても開いた形のまま。覚えていない人は今までどおり閉じる
+                                setExpanded(rememberedRef.current);
                             }}
                             className={`relative flex min-w-0 flex-col items-center gap-0.5 pb-1.5 pt-2 transition-colors duration-150 ${active ? 'text-navy' : 'text-slate-500'}`}
                         >
@@ -156,7 +221,8 @@ function HomeVenueRaces({ date, raceDay, glyphs }: { date: string; raceDay: Race
             </div>
             <div id={panelId} role="tabpanel" aria-label={`${venue.venue}のレース`} className="px-3.5">
                 <RaceListCaption className="pt-1.5" />
-                <ul>
+                {/* スクリプトが style（min-height）を足すことがあるので、サーバーとの違いの警告を止める */}
+                <ul ref={listRef} data-race-list suppressHydrationWarning>
                     {visible.map((race) => (
                         <CompactRaceRow
                             key={race.raceNumber}
@@ -178,7 +244,12 @@ function HomeVenueRaces({ date, raceDay, glyphs }: { date: string; raceDay: Race
                     type="button"
                     aria-expanded={expanded}
                     aria-controls={panelId}
-                    onClick={() => setExpanded((value) => !value)}
+                    onClick={() => {
+                        // 開いたら覚え、閉じたら忘れる
+                        const next = !expanded;
+                        rememberedRef.current = writeRacesOpen(next);
+                        setExpanded(next);
+                    }}
                     className="flex h-10 w-full items-center justify-center gap-1 border-t border-slate-200 text-[13.5px] font-bold text-brand-700 transition-colors duration-150 hover:bg-brand-50"
                 >
                     {expanded ? '閉じる' : `${venue.venue}の残り${rest}レースを表示`}
@@ -186,6 +257,8 @@ function HomeVenueRaces({ date, raceDay, glyphs }: { date: string; raceDay: Race
                 </button>
             )}
         </section>
+        <script dangerouslySetInnerHTML={{ __html: RESERVE_SCRIPT }} />
+        </>
     );
 }
 

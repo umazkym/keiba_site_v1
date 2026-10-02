@@ -7,6 +7,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { BreadcrumbSchema } from '@/components/StructuredData';
 import { CourseGlyph } from '@/components/CourseGlyph';
 import { RaceDateNav } from '@/components/RaceDateNav';
+import { RaceDateTodayLink } from '@/components/RaceDateTodayLink';
 import { RaceDayBoard } from '@/components/RaceDayBoard';
 import { RaceDayExtras } from '@/components/RaceDayExtras';
 import { SectionHeader } from '@/components/SectionHeader';
@@ -83,7 +84,8 @@ export default async function RacePage({ params }: { params: { date: string } })
     const today = getJstTodayString();
     const emptyTarget = daysFromToday >= 1 ? today : shiftDate(params.date, 1);
     const emptyPrimary = {
-        href: `/races/${emptyTarget}`,
+        // 今日へ送るときは /races/today（開いた時の日付へ送られる。この HTML は長く使い回されるので、作った時の日付を残さない）
+        href: emptyTarget === today ? '/races/today' : `/races/${emptyTarget}`,
         label: emptyTarget === today ? '今日のレース分析へ' : '翌日のレース分析へ',
     };
     // その下に最新の分析記事3件（記事はファイルを読むだけで、APIは呼ばない）
@@ -162,7 +164,13 @@ export default async function RacePage({ params }: { params: { date: string } })
                 <RaceDayBoard
                     initialSummary={summary}
                     title={`${formatRaceDateLabel(params.date)}のレース分析`}
-                    dateNav={<RaceDateNav date={params.date} />}
+                    dateNav={(
+                        <>
+                            <RaceDateNav date={params.date} />
+                            {/* スマホで過去の日付に着いた人へ「今日のレース分析へ」。レースが無い日は、下の案内に同じ役目のボタンがあるので出さない */}
+                            {hasData && <RaceDateTodayLink date={params.date} />}
+                        </>
+                    )}
                     glyphs={glyphs}
                     refetchIfEmpty={!hasData && isDataArrivalWindow}
                     emptyPrimary={emptyPrimary}

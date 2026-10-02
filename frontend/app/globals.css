@@ -786,6 +786,7 @@ header.glass {
     white-space: nowrap;
 }
 
+/* スマホは「ホーム / 現在地」の2段。レース詳細だけは、その日の一覧の段に breadcrumb-item を付けずに出す（Breadcrumb.tsx の showRaceDateOnMobile） */
 @media (max-width: 639px) {
     .breadcrumb-item:not(:first-child):not(:last-child) {
         display: none;

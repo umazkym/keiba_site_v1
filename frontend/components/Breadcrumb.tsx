@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { formatDate } from '@/lib/utils';
+import { formatRaceDateLabel } from '@/lib/race-display';
 import { isValidRaceDate, parseRaceNumberParam, venueSlugToName } from '@/lib/race-url';
 import {
   RACE_BREADCRUMB_CHANGE_EVENT,
@@ -17,7 +18,18 @@ interface BreadcrumbItem {
 
 type BreadcrumbProps = {
   items?: BreadcrumbItem[];
+  // レース詳細だけ true にする。スマホでも「その日のレース一覧（/races/<日付>）」の段を出す（2026-10-02）。
+  // 付けないページは、スマホでは今までどおり「ホーム / 現在地」の2段。
+  showRaceDateOnMobile?: boolean;
 };
+
+// その日のレース一覧（/races/<日付>）の段を、スマホ用の短い呼び名にする。
+// 「10/2(金)のレース」。レース名の側に幅を残すため、レース詳細のスマホの見出し（RaceHead）と同じ短い日付にする。一覧の段でなければ null。
+function getMobileRaceDateLabel(href: string): string | null {
+  const match = href.match(/^\/races\/(\d{4}-\d{2}-\d{2})\/?$/);
+  if (!match || !isValidRaceDate(match[1])) return null;
+  return `${formatRaceDateLabel(match[1], { short: true })}のレース`;
+}
 
 const STATIC_LABEL_MAP: Record<string, string> = {
   // メイン機能・データベース
@@ -114,7 +126,7 @@ function parseSegmentLabel(segment: string, isLast: boolean, pageTitle: string |
     .join(' ');
 }
 
-export function Breadcrumb({ items }: BreadcrumbProps = {}) {
+export function Breadcrumb({ items, showRaceDateOnMobile = false }: BreadcrumbProps = {}) {
   const pathname = usePathname();
   const [pageTitle, setPageTitle] = useState<string | null>(null);
   const [liveItems, setLiveItems] = useState<BreadcrumbItem[] | null>(null);
@@ -241,26 +253,43 @@ export function Breadcrumb({ items }: BreadcrumbProps = {}) {
       aria-label="Breadcrumb"
     >
       <ol className="flex min-w-0 items-center text-[12.5px] sm:flex-wrap sm:text-[13px]">
-        {breadcrumbs.map((item, index) => (
-          <li key={index} className="breadcrumb-item flex min-w-0 items-center">
-            {item.href ? (
-              <>
-                <Link
-                  href={item.href}
-                  prefetch={false}
-                  className="inline-flex min-h-8 items-center whitespace-nowrap font-medium text-slate-500 transition-colors duration-150 hover:text-brand-700"
-                >
+        {breadcrumbs.map((item, index) => {
+          // レース詳細のスマホで出す「その日のレース一覧」の段。RaceTabs が差し替える段（liveItems）にも効くよう、href で見分ける
+          const mobileDateLabel = showRaceDateOnMobile && item.href ? getMobileRaceDateLabel(item.href) : null;
+          // globals.css はスマホで途中の breadcrumb-item を隠す。スマホでも出す段には breadcrumb-item を付けない。
+          // 1行に収めるため、スマホではリンクの段（ホーム・日付）を縮めず、最後の段（レース名）の側を省略する
+          const itemClass = [
+            mobileDateLabel ? '' : 'breadcrumb-item',
+            'flex min-w-0 items-center',
+            showRaceDateOnMobile && item.href ? 'max-sm:shrink-0' : '',
+          ].filter(Boolean).join(' ');
+
+          return (
+            <li key={index} className={itemClass}>
+              {item.href ? (
+                <>
+                  <Link
+                    href={item.href}
+                    prefetch={false}
+                    className="inline-flex min-h-8 items-center whitespace-nowrap font-medium text-slate-500 transition-colors duration-150 hover:text-brand-700"
+                  >
+                    {mobileDateLabel ? (
+                      <>
+                        <span className="sm:hidden">{mobileDateLabel}</span>
+                        <span className="hidden sm:inline">{item.label}</span>
+                      </>
+                    ) : item.label}
+                  </Link>
+                  <span className="mx-1.5 text-slate-300" aria-hidden="true">/</span>
+                </>
+              ) : (
+                <span className="breadcrumb-current font-bold text-slate-700">
                   {item.label}
-                </Link>
-                <span className="mx-1.5 text-slate-300" aria-hidden="true">/</span>
-              </>
-            ) : (
-              <span className="breadcrumb-current font-bold text-slate-700">
-                {item.label}
-              </span>
-            )}
-          </li>
-        ))}
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ol>
     </nav>
   );

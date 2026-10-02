@@ -198,7 +198,9 @@ export default async function RaceDetailPage({ params }: Props) {
                 ]}
             />
 
+            {/* スマホでも、その日のレース一覧（/races/<日付>）への段を出す。段の数と順は上の BreadcrumbSchema と同じ */}
             <Breadcrumb
+                showRaceDateOnMobile
                 items={[
                     { label: 'ホーム', href: '/' },
                     { label: 'レース分析', href: '/races/today' },

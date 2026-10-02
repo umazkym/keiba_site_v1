@@ -3,7 +3,7 @@ import json
 import os
 import sys
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -258,8 +258,118 @@ class NewsTopicPlannerTest(unittest.TestCase):
         ):
             self.assertGreater(initial, planner.grade_calendar_priority("G1", status), status)
         self.assertGreater(initial, planner.grade_calendar_priority("G1"))
-        # 記事のない重賞の結果回顧は、ニュース由来の候補よりも後
-        self.assertLess(planner.UNCOVERED_POST_RACE_PRIORITY, planner.grade_calendar_priority("重賞"))
+
+    def test_uncovered_grade_races_are_ordered_by_race_date_and_far_initials_go_last(self) -> None:
+        # 記事のない重賞（優先度120）の中の並び。
+        # レース週（D-7以内）はレース日が近い順、同じ日は score 順。それより遠い初回は後ろで score 順。
+        now = datetime.fromisoformat("2026-10-02T08:00:00+09:00")
+
+        def uncovered(name: str, grade: str, days: int, venue: str, source_kind: str):
+            race_date = now.date() + timedelta(days=days)
+            entry = planner.RaceDemand(
+                name,
+                (name,),
+                race_date.month,
+                race_date.day,
+                grade,
+                planner.base_score_for_grade(grade),
+                year=race_date.year,
+                venue=venue,
+                distance="ダ1400m" if source_kind == "nar" else "芝2000m",
+                source_kind=source_kind,
+            )
+            candidate = planner.schedule_backfill_candidate(
+                entry,
+                days,
+                now=now,
+                search_intent_override="field_analysis",
+                update_stage="race_week" if days <= 7 else "field_building",
+                deadline_status="due_race_week" if days <= 7 else "due_initial",
+                schedule_milestone=planner.RACE_WEEK_STAGE_KEY if days <= 7 else planner.INITIAL_STAGE_KEY,
+            )
+            candidate.order_priority = planner.INITIAL_ARTICLE_PRIORITY
+            return candidate
+
+        far_g1 = uncovered("並び確認G1", "G1", 16, "京都", "jra")
+        far_jpn1 = uncovered("並び確認JpnI", "JpnI", 10, "盛岡", "nar")
+        far_local = uncovered("並び確認ローカル遠い", "重賞", 9, "佐賀", "nar")
+        week_g2 = uncovered("並び確認G2", "G2", 6, "東京", "jra")
+        near_local = uncovered("並び確認ローカル前々日", "重賞", 2, "金沢", "nar")
+        near_g3 = uncovered("並び確認G3", "G3", 2, "小倉", "jra")
+        tomorrow_local = uncovered("並び確認ローカル前日", "重賞", 1, "園田", "nar")
+
+        # score だけで並べると、遠い G1・JpnI がローカル重賞の前日・前々日より先になる（直す前の並び）
+        self.assertGreater(far_g1.score, tomorrow_local.score)
+        self.assertGreater(far_jpn1.score, near_local.score)
+
+        ordered = sorted(
+            [far_g1, far_jpn1, far_local, week_g2, near_local, near_g3, tomorrow_local],
+            key=planner.topic_candidate_sort_key,
+            reverse=True,
+        )
+        self.assertEqual(
+            [candidate.race_name for candidate in ordered],
+            [
+                "並び確認ローカル前日",
+                "並び確認G3",
+                "並び確認ローカル前々日",
+                "並び確認G2",
+                "並び確認JpnI",
+                "並び確認G1",
+                "並び確認ローカル遠い",
+            ],
+        )
+
+        # 記事のある重賞の更新（120未満）は、これまでどおり priority → score の順で、記事のない重賞の後ろ
+        update = uncovered("並び確認更新", "G1", 0, "中山", "jra")
+        update.order_priority = planner.grade_calendar_priority("G1", "due_race_morning")
+        self.assertLess(planner.topic_candidate_sort_key(update), planner.topic_candidate_sort_key(far_local))
+        news = uncovered("並び確認ニュース", "G1", 1, "中山", "jra")
+        news.order_priority = 0
+        self.assertLess(planner.topic_candidate_sort_key(news), planner.topic_candidate_sort_key(update))
+
+    def test_cluster_topics_orders_uncovered_grade_races_by_sort_key(self) -> None:
+        previous_now = os.environ.get("KEIBA_NEWS_NOW")
+        os.environ["KEIBA_NEWS_NOW"] = "2026-07-03T11:45:00+09:00"
+        planner._RACE_SCHEDULE_CACHE.clear()
+        try:
+            state = planner.WorkflowState(
+                run_id="uncovered-order-test",
+                fetched_at=planner.current_jst().isoformat(),
+            )
+            with (
+                patch.object(planner, "load_existing_article_keywords", return_value=set()),
+                patch.object(planner, "load_pending_order_keywords", return_value=set()),
+                patch.object(planner, "load_existing_grade_race_stage_keys", return_value=set()),
+                patch.object(planner, "load_pending_grade_race_stage_keys", return_value=set()),
+            ):
+                planner.cluster_topics_node(state)
+
+            uncovered_candidates = [
+                candidate
+                for candidate in state.topic_candidates
+                if candidate.order_priority == planner.INITIAL_ARTICLE_PRIORITY
+            ]
+            uncovered_days = [candidate.days_to_race for candidate in uncovered_candidates]
+            self.assertGreater(len(uncovered_days), 1)
+            self.assertTrue(all(days is not None and days >= 0 for days in uncovered_days))
+            near_days = [days for days in uncovered_days if days <= planner.INITIAL_ARTICLE_NEAR_RACE_DAYS]
+            far_days = [days for days in uncovered_days if days > planner.INITIAL_ARTICLE_NEAR_RACE_DAYS]
+            # レース週の候補が先（レース日が近い順）、遠い初回はそのあと
+            self.assertEqual(uncovered_days, near_days + far_days)
+            self.assertEqual(near_days, sorted(near_days))
+            # 同じレース日の中は score の高い順
+            for earlier, later in zip(uncovered_candidates, uncovered_candidates[1:]):
+                if earlier.days_to_race == later.days_to_race:
+                    self.assertGreaterEqual(earlier.score, later.score)
+            # 記事のない重賞は、どの候補よりも先に並ぶ
+            self.assertEqual(state.topic_candidates[: len(uncovered_candidates)], uncovered_candidates)
+        finally:
+            if previous_now is None:
+                os.environ.pop("KEIBA_NEWS_NOW", None)
+            else:
+                os.environ["KEIBA_NEWS_NOW"] = previous_now
+            planner._RACE_SCHEDULE_CACHE.clear()
 
     def test_article_lead_days_follow_grade_and_observed_demand(self) -> None:
         g1 = planner.RaceDemand("確認G1", ("確認G1",), 12, 1, "G1", 40, source_kind="jra")
@@ -682,10 +792,18 @@ class NewsTopicPlannerTest(unittest.TestCase):
                 if candidate.search_intent == "result_review"
                 and candidate.race_name == "スパーキングレディーカップ"
             ]
-            self.assertEqual(len(result_candidates), 1)
-            self.assertEqual(result_candidates[0].update_stage, "post_race")
-            # レース前の記事を一度も出していない重賞の結果回顧は、最後に回す
-            self.assertEqual(result_candidates[0].order_priority, planner.UNCOVERED_POST_RACE_PRIORITY)
+            # レース前の記事を一度も出していない重賞は、結果回顧だけの候補を作らない（レース後が初出の記事は読まれない）
+            self.assertEqual(result_candidates, [])
+            self.assertFalse(
+                any(candidate.race_name == "スパーキングレディーカップ" for candidate in state.topic_candidates)
+            )
+            self.assertTrue(
+                any(
+                    "結果回顧の候補を見送り" in issue and "スパーキングレディーカップ" in issue
+                    for issue in state.issues
+                )
+            )
+            self.assertFalse(any(candidate.update_stage == "post_race" for candidate in state.topic_candidates))
 
             # レース前の記事がある重賞は、同じURLを結果回顧へ更新する通常の優先度
             entry = next(entry for entry, _days in planner.focus_races() if entry.name == "スパーキングレディーカップ")

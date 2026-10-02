@@ -784,12 +784,26 @@ def grade_priority_rank(grade: str) -> int:
 
 
 # 検索はレースの前に集まるため、記事のない重賞の最初の1本（レース前）を、既存記事の段階更新と結果回顧より先に書く。
-# 同じ優先度の中では score（格・開催の近さ）で並ぶ。1日の注文数は変えず、公開期限（G1はD-21、他はD-14）に近づける。
+# 1日の注文数は変えない。公開期限（G1はD-21、他はD-14）と D-16 未公開の警告もそのまま。
 # 以前は結果回顧を最優先（120）、初回を最下位（82〜99）にしており、1日3枠が結果回顧と更新で埋まっていた。
 # 2026-09-22〜25 の地方重賞8本は、すべてレース翌日の結果回顧が初出だった（記事の検索クリックは7月の約1割に減少）。
 INITIAL_ARTICLE_PRIORITY = 120
-# 一度も記事を出していない重賞の結果回顧は、ニュース由来の候補（82〜99）よりも後にする。
-UNCOVERED_POST_RACE_PRIORITY = 80
+# 記事のない重賞（優先度120）の中の並び（2026-10-02）。
+# score（格・開催の近さ）だけで並べると、G1・JpnI・G2 の遠い初回が、前日のローカル重賞より先になっていた。
+# レース週（D-7 以内）はレース日が近い順（同じ日は score 順）、それより遠い初回は後ろに回して score 順にする。
+# 注文の priority は120のまま。書く側は同じ priority の中で planner の順を保つ。
+INITIAL_ARTICLE_NEAR_RACE_DAYS = 7
+
+
+def topic_candidate_sort_key(candidate: TopicCandidate) -> Tuple[int, int, int, float]:
+    """題材の候補を並べる鍵（大きい方が先）。"""
+    priority = candidate.order_priority or 0
+    days_to_race = candidate.days_to_race
+    if priority != INITIAL_ARTICLE_PRIORITY or days_to_race is None or days_to_race < 0:
+        return (priority, 0, 0, candidate.score)
+    if days_to_race <= INITIAL_ARTICLE_NEAR_RACE_DAYS:
+        return (priority, 2, -days_to_race, candidate.score)
+    return (priority, 1, 0, candidate.score)
 
 
 def grade_calendar_priority(grade: str, deadline_status: str = "") -> int:
@@ -2577,6 +2591,12 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
             stage_key = grade_race_stage_key(identity_key, season_year, milestone)
             if stage_key in grade_stage_keys or stage_key in added_calendar_stage_keys:
                 continue
+            uncovered = initial_stage_key not in grade_stage_keys
+            if uncovered and milestone == POST_RACE_STAGE_KEY:
+                # レース後が初出の記事は検索で読まれないため、結果回顧だけの注文は作らない。
+                # 結果が出たあとに、レース前の段階へ戻って書くこともしない。
+                state.issues.append(f"レース前の記事が無いため結果回顧の候補を見送り: {entry.name}")
+                break
             candidate = schedule_backfill_candidate(
                 entry,
                 days_to_race,
@@ -2585,11 +2605,9 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
                 deadline_status=deadline_status,
                 schedule_milestone=milestone,
             )
-            if initial_stage_key not in grade_stage_keys:
+            if uncovered:
                 # 記事のない重賞は、最初の段階が当日・直前・週内の更新でも、最初の1本として扱う
-                candidate.order_priority = (
-                    UNCOVERED_POST_RACE_PRIORITY if milestone == POST_RACE_STAGE_KEY else INITIAL_ARTICLE_PRIORITY
-                )
+                candidate.order_priority = INITIAL_ARTICLE_PRIORITY
             candidates.append(candidate)
             for completed in completed_milestones_for(milestone):
                 completed_key = grade_race_stage_key(identity_key, season_year, completed)
@@ -2597,11 +2615,7 @@ def cluster_topics_node(state: WorkflowState) -> WorkflowState:
                     added_calendar_stage_keys.add(completed_key)
             break
 
-    state.topic_candidates = sorted(
-        candidates,
-        key=lambda item: (item.order_priority or 0, item.score),
-        reverse=True,
-    )
+    state.topic_candidates = sorted(candidates, key=topic_candidate_sort_key, reverse=True)
     return state
 
 
